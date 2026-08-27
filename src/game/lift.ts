@@ -788,6 +788,43 @@ export function lifterCapacity(config: LiftConfig): number {
 }
 
 /**
+ * ---------------------------------------------------------------------------
+ * BENCH ONLY: is this bar far enough under the lifter that the ASCENT CLOCK
+ * has no business deciding it?
+ * ---------------------------------------------------------------------------
+ * `peakDemand - capacity` at the sticking point against
+ * `BENCH_WARMUP_FLOOR_MARGIN`. Both terms are fixed before the rep starts, so
+ * this is a property of the BAR AND THE LIFTER and not of anything the player
+ * does with either — it cannot be played into or out of, and it reads the same
+ * on the first tick as on the last.
+ *
+ * WHY IT IS NOT KEYED ON THE RUNG. `LiftConfig` has no RPE in it, and giving it
+ * one to make this decision would put the prescription inside the physics: the
+ * engine would be asking "what was I told this was" instead of "what is this".
+ * The margin is the mechanical statement of the same thing, and the reachable
+ * rungs are separated by a 0.0160-wide gap in it, which the tuning header
+ * records and `lift.test.ts` pins from both sides.
+ *
+ * WHAT IT DOES NOT DO, WHICH IS MOST OF THE POINT: it does not add force, does
+ * not change velocity, does not touch the grade, and does not shorten or
+ * lengthen a rep that reaches lockout on its own. The ONLY thing downstream of
+ * it is which constant the timeout compares against, so a rep that never
+ * reaches the timeout is byte-identical with the floor and without it.
+ */
+export function benchClearsTheClock(config: LiftConfig): boolean {
+  if (config.kind !== 'bench') return false;
+  const peak = ascentDemand(STICK_HEIGHT_FRAC.bench, config.loadRatio, 'bench', 0, 0);
+  return peak - lifterCapacity(config) <= LIFT_TUNING.BENCH_WARMUP_FLOOR_MARGIN;
+}
+
+/** The ascent clock this rep runs on. See `benchClearsTheClock`. */
+export function ascentTimeoutTicksFor(config: LiftConfig): number {
+  return benchClearsTheClock(config)
+    ? LIFT_TUNING.BENCH_WARMUP_FLOOR_ASCENT_TICKS
+    : LIFT_TUNING.ASCENT_TIMEOUT_TICKS;
+}
+
+/**
  * Narrow a lift kind to one that HAS a way down, or refuse.
  *
  * ---------------------------------------------------------------------------
@@ -2326,7 +2363,7 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
       m.resolution = resolutionFor({ ...state, ...m }, 'miss', 'stalled');
       m.events.push({ kind: 'resolved', tick });
       enter('RESOLVED');
-    } else if (m.ascentTicks >= LIFT_TUNING.ASCENT_TIMEOUT_TICKS) {
+    } else if (m.ascentTicks >= ascentTimeoutTicksFor(state.config)) {
       m.resolution = resolutionFor({ ...state, ...m }, 'miss', 'timeout');
       m.events.push({ kind: 'resolved', tick });
       enter('RESOLVED');

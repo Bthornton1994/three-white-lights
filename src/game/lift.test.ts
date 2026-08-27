@@ -1514,13 +1514,30 @@ const TOUCH_SWEEP = {
    * 24 OF 36, WHICH IS 4 OF THIS SWEEP'S 6 LOADS AT 6 SEEDS EACH. `0.8`,
    * `0.85`, `0.95` and `1.0` can be crashed outright by letting go and never
    * coming back; `0.55` and `0.7` cannot — they run out of descent before they
-   * run out of control, so the worst a careless warm-up gets is a degraded
-   * touch rather than a lost rep.
+   * run out of control.
    *
    * IT AGREES WITH THE CLOSED FORM IN `liftTuning.test.ts` — "leaves the crash
    * threshold reachable and not the default" derives the same boundary from
    * the constants without playing anything, and lands on the same two loads.
    * Two instruments, one answer, neither reading the other.
+   *
+   * -------------------------------------------------------------------------
+   * AND THE CONCLUSION THAT USED TO SIT ON THE END OF THAT FIRST PARAGRAPH WAS
+   * FALSE, WHICH IS WORTH MORE THAN THE MEASUREMENT ABOVE IT
+   * -------------------------------------------------------------------------
+   * It read: "so the worst a careless warm-up gets is a degraded touch rather
+   * than a lost rep." Every number in front of it is correct and the inference
+   * off the end of it is not, because the two loads it rests on are `0.55` and
+   * `0.7` and `prescribeSession` emits neither. The lightest load any warm-up
+   * is ever prescribed at is `0.75`, which sits on the far side of this
+   * sweep's own boundary — so the sentence generalised from the two rungs of
+   * the ladder that no session can reach.
+   *
+   * `REACHABLE_WARMUP.CELLS_A_SLIP_FULLY_CRASHES` is the same question asked
+   * over the loads the ladder actually prescribes, and the answer is every one
+   * of them. `LOST_WITH_THE_FINGER_OFF` is what it costs. This sweep's LOADS
+   * are a fixture and were never a domain, which is the finding this file has
+   * now recorded against three separate claims.
    */
   ABANDONED_CRASHES: 24,
   /** Measured: outcome flips between a controlled touch and an abandoned one. */
@@ -2257,7 +2274,26 @@ const GRIND_SWEEP = {
    * can move in both directions.
    */
   MASH_VS_NONE_FLIPS: 120,
-  /** Outcome flips between a mashed grind and a sparse one. */
+  /**
+   * Outcome flips between a mashed grind and a sparse one (a tap every 20
+   * ticks, 3 a second).
+   *
+   * 80, AND IT DID NOT MOVE IN THE 2026-08-26 DIFFICULTY RETUNE — WHICH IS
+   * WORTH SAYING BECAUSE A FIRST PASS AT THAT RETUNE TOOK IT TO 100 AND HAD TO
+   * BE WALKED BACK. That pass raised the demand curve far enough to break GDD
+   * §12.3's warm-up protection (see `REACHABLE_WARMUP`), and the retune that
+   * survived is about a third of its size. On THIS sweep the two are
+   * indistinguishable: `LOADS` starts at 0.8 and steps to the meet ceiling, and
+   * across that band a 3-a-second grind and a 20-a-second one reach the same
+   * outcome in the same 40 of 120 cases either way.
+   *
+   * SO THIS BLOCK IS NOT WHERE THE RETUNE SHOWS UP, and a reader comparing
+   * commits here will conclude nothing changed. What moved is on the reachable
+   * domain — `REACHABLE_RESCUE`'s RPE 8 rows and the tap rate each rung
+   * demands — and this sweep's own header explains why it cannot see that: its
+   * loads are a hand-written ladder over the top of the range, not the cells
+   * `prescribeSession` emits.
+   */
   MASH_VS_SPARSE_FLIPS: 80,
   /** Outcome flips between a moderate grind and an unanswered command. */
   MODERATE_VS_NONE_FLIPS: 120,
@@ -2268,6 +2304,14 @@ const GRIND_SWEEP = {
    * that only ever separated 'good-lift' from 'grind' would satisfy every flip
    * pin above while never deciding whether the bar went up, which is the
    * weaker claim a reader would take from those counts.
+   *
+   * 100, AND LIKE `MASH_VS_SPARSE_FLIPS` IT DID NOT MOVE IN THE 2026-08-26
+   * RETUNE. The walked-back first pass took it to 120 — saturated, an
+   * unanswered command a miss at every load in `LOADS` — and the retune that
+   * shipped leaves 20 of the 120 cases making the lift unanswered. `LOADS`
+   * starts at 0.8 and the reachable ladder starts at 0.75, so warm-up loads are
+   * not in this sweep either way; `REACHABLE_RESCUE` and `REACHABLE_WARMUP` are
+   * where that boundary is measured.
    */
   MASH_MAKE_TO_NONE_MISS: 100,
 } as const;
@@ -2330,14 +2374,40 @@ const REACHABLE = {
   REPS_PER_SET: 3,
   /** Seeds per cell. The seed decides the command delay and nothing else. */
   SEEDS: 20,
-  /** Ticks after the command at which both reps of a pair stop tapping. */
-  IDLE_FROM_TICKS: [18, 22, 26, 30] as const,
+  /**
+   * Ticks after the command at which both reps of a pair stop tapping.
+   *
+   * ---------------------------------------------------------------------------
+   * WIDENED 2026-08-26 FROM `[18, 22, 26, 30]`, AND ONE CONSTANT WAS THE WHOLE
+   * DIFFERENCE BETWEEN A GREEN CONTROL BLOCK AND FIVE BROKEN WARM-UPS
+   * ---------------------------------------------------------------------------
+   * The old list began at 18 ticks after the command. `PRESS_LAUNCH_MS` is 300
+   * ms — 18 ticks — so the EARLIEST sample this table ever took was the instant
+   * the bar left the chest, by which point a player tapping at the sweep's own
+   * `GAP_TICKS` has already thrown three taps. Every rep a difficulty retune
+   * newly cost a warm-up lived at offsets 1-12, in front of the first sample,
+   * and the whole RPE 6/7 block reported `[x, 0, 0]` while a player who tapped
+   * twice and stopped was losing the rep.
+   *
+   * THAT IS THE SAME DEFECT THIS TABLE WAS BUILT TO REPAIR, ON A DIFFERENT AXIS.
+   * `REACHABLE`'s header records the first one: the sweep ran over `LOAD_PRESETS`
+   * and reported a property of loads no producer emits. This one ran over
+   * offsets no quitting player produces. A preset is not a domain, and neither
+   * is a sampling grid that starts after the interesting part.
+   *
+   * 2 IS THE FLOOR AND IT IS DELIBERATE: one tap lands at the command and the
+   * next does not, so the pair is "answered once, then stopped" — the cheapest
+   * answer a player can give. `REACHABLE_WARMUP` sweeps offsets 1..140 whole
+   * and is what actually guards the warm-up rungs; this list is what makes the
+   * PINNED TABLE honest about them.
+   */
+  IDLE_FROM_TICKS: [2, 6, 10, 14, 18, 22, 26, 30] as const,
   /** How long the rescued rep stays quiet before it starts again. */
   IDLE_SPAN_TICKS: 18,
   /** The rung both reps tap at, before and after the silence. */
   GAP_TICKS: 6,
-  /** Pairs per cell: `IDLE_FROM_TICKS.length * SEEDS`. */
-  PAIRS_PER_CELL: 80,
+  /** Pairs per cell: `IDLE_FROM_TICKS.length * SEEDS`. 80 before the widening. */
+  PAIRS_PER_CELL: 160,
   /** Measured: distinct (loadRatio, barSpeed) cells the session can produce. */
   SESSION_CELLS: 22,
   /** Meet cells: 3 strategies x 3 attempts x 2 check-ins. Not deduped — see below. */
@@ -2466,9 +2536,11 @@ function driveGrind(
   gapTicks: number,
   idleFromTicks: number,
   idleSpanTicks: number,
+  slipTicks: number | null = null,
 ): LiftState {
   let state = createLift(config);
   let commandTick: number | null = null;
+  let descentTick: number | null = null;
   let nextTapTick: number | null = null;
   let releaseNext = false;
   for (let i = 0; i < TOUCH_SWEEP.MAX_TICKS; i += 1) {
@@ -2478,6 +2550,15 @@ function driveGrind(
       // Hold the bar down through the whole descent — the correct play since
       // the 2026-08-25 replay steer, and the one this sweep is not about.
       if (tick === 1) input = { kind: 'press' };
+      // ...UNLESS `slipTicks` asks for the OTHER descent, which is a second
+      // axis and not a variation of this one. Counted from the tick DESCENT
+      // opens rather than from the press, because the press lands in BRACE and
+      // a release before the descent starts is swallowed by the phase — a
+      // probe that measured this from tick 1 read `touchQuality` 1 everywhere
+      // and reported no finding at all.
+      else if (slipTicks !== null && descentTick !== null && tick === descentTick + slipTicks) {
+        input = { kind: 'release' };
+      }
     } else if (releaseNext) {
       input = { kind: 'release' };
       releaseNext = false;
@@ -2491,6 +2572,7 @@ function driveGrind(
       nextTapTick = tick + gapTicks;
     }
     state = stepLift(state, input);
+    if (descentTick === null && state.phase === 'DESCENT') descentTick = state.tick;
     if (commandTick === null && state.pressCommandTick !== null) {
       commandTick = state.pressCommandTick;
       nextTapTick = commandTick;
@@ -2516,84 +2598,119 @@ type RescueRow = readonly [number, number, number];
  * repair. A total says a population moved; only a row says WHERE, and the
  * previous version's totals hid the fact that every one of them came from a
  * load no player reaches. Read down the `session/` rows and the ladder is
- * legible without running anything: nothing at RPE 6 and 7, outcome flips
- * without stalls from RPE 8, and stalls with real lost reps at 9 and 10.
+ * legible without running anything: nothing lost at RPE 6 and 7, stopping
+ * costing the rep from RPE 8, and more of every column at 9, 10 and the meet.
  *
- * WHERE STALL-ABILITY BEGINS, IN THE TERMS A PLAYER WOULD USE:
+ * ---------------------------------------------------------------------------
+ * RE-DERIVED 2026-08-26 AFTER THE DIFFICULTY RETUNE — AND THE RPE 8 ROWS ARE
+ * THE REASON THE RETUNE HAPPENED
+ * ---------------------------------------------------------------------------
+ * A phone replay said "rpe 8 is just too easy, theres no difficulty there".
+ * The four RPE 8 rows below used to read `[20,0,0] [40,0,0] [20,0,0] [20,0,0]`
+ * — the outcome flipped between a clean lift and a grinder, and stopping
+ * tapping cost NOTHING: zero lost reps and zero stalls, at every cell the rung
+ * can reach. `DEMAND_BASE.bench` moved and `STICK_WIDTH.bench` did not, and RPE
+ * 8 now loses a rep in all four cells and stalls in all four of them.
  *
- *   RPE 6, 7            nothing moves. Tapping decides the rep's SPEED.
- *   RPE 8               outcome flips (clean lift vs grind), no stalls, no
- *                       lost reps. The default rung stays winnable by anyone.
- *   RPE 9               stalls and lost reps arrive, at the neutral check-in
- *                       first.
- *   RPE 10              stalls and lost reps at every check-in.
- *   meet, attempt 1     already stalling: an opener is 90% of e1RM.
- *   meet, attempts 2-3  stalls and lost reps under EVERY jump strategy,
- *                       including conservative.
+ * BOTH HALVES OF THAT SENTENCE WERE STALE AND BOTH WERE STALE THE SAME WAY —
+ * WRITTEN WHEN THEY WERE TRUE AND LEFT ALONE WHEN THE CODE MOVED. It read
+ * "`DEMAND_BASE.bench` and `STICK_WIDTH.bench` moved together", which described
+ * the first pass; the width was reverted to `0.22` in the walk-back and the
+ * retune is one constant. And it read "stalls in three of them", which the four
+ * rows directly below it contradict — the third column is non-zero in every
+ * one. A summary sentence sitting on top of the table it summarises is the
+ * cheapest possible thing to check and was checked by nobody, including the
+ * pass that rewrote the rows underneath it.
+ *
+ * WHERE THE GRIND BEGINS, IN THE TERMS A PLAYER WOULD USE:
+ *
+ *   RPE 6, 7            a rep that was ANSWERED — one tap is enough — can
+ *                       never be lost by stopping. Tapping decides its SPEED
+ *                       and its grade. `REACHABLE_WARMUP` sweeps every quit
+ *                       instant whole and pins that at zero; the one residue,
+ *                       a single cell that misses on literally NO input, is
+ *                       measured under `DEMAND_BASE.bench`.
+ *   RPE 8               STOPPING COSTS THE REP. All four cells lose reps and
+ *                       all four stall on the way. A slow grind still makes it —
+ *                       as a GRINDER rather than a GOOD LIFT.
+ *   RPE 9               more of both: every cell stalls and loses reps, two of
+ *                       the four on all 80 pairs.
+ *   RPE 10              80 of 80 on all three counts, at every check-in.
+ *   meet, attempt 1     already 80 of 80: an opener is 90% of e1RM.
+ *   meet, attempts 2-3  the same under EVERY jump strategy, including
+ *                       conservative, and the top attempt is unrescuable.
  *
  * A CELL WITH `fromMiss > 0` AND `stalled === 0` IS NOT A CONTRADICTION. A rep
  * can be lost by running out of `ASCENT_TIMEOUT_TICKS` while still creeping
  * upward — never slow enough to trip `GRIND_STALL_VELOCITY`, never fast enough
  * to finish. That is a bar the player did not press hard enough rather than a
  * bar that beat them, and the two counts being separate is what shows it.
+ * `session/rpe8/0.8000/slower-than-expected` is exactly that case.
  */
 const REACHABLE_RESCUE: Readonly<Record<string, RescueRow>> = {
-  // --- SESSION: `prescribeSession`, all 5 RPE choices x all 27 check-ins,
-  //     deduped to the distinct (loadRatio, barSpeed) it can emit. ---------
-  'session/rpe6/0.7500/slower-than-expected': [0, 0, 0],
+  // THE RPE 6 AND 7 BLOCK IS THE CONTROL, AND THE 2026-08-26 REGRESSION LIVED
+  // HERE BEHIND A SAMPLING GRID. Every row is `[flips, 0, 0]`: over the offsets
+  // below, the outcome can change between a clean lift and a grinder when the
+  // player stops, and the rep is never lost and the bar never stalls.
+  //
+  // THAT IS ALSO WHAT THE OLD TABLE SAID WHILE IT WAS FALSE, which is why this
+  // comment names its own limits. These zeros are true of eight sampled quit
+  // instants, the earliest of which is two ticks after the command. They are
+  // NOT the guarantee — `REACHABLE_WARMUP` is, because it sweeps every instant
+  // from 1 to 180 at three cadences and pins the losses at zero. Read this
+  // block as the shape and that sweep as the check.
+  'session/rpe6/0.7500/slower-than-expected': [60, 0, 0],
   'session/rpe6/0.7500/as-expected': [0, 0, 0],
-  'session/rpe6/0.8000/as-expected': [0, 0, 0],
-  'session/rpe6/0.8250/crisp': [0, 0, 0],
-  'session/rpe6/0.8500/popping': [0, 0, 0],
-  'session/rpe7/0.7750/slower-than-expected': [0, 0, 0],
-  'session/rpe7/0.7750/as-expected': [0, 0, 0],
-  'session/rpe7/0.8250/as-expected': [20, 0, 0],
-  'session/rpe7/0.8500/crisp': [20, 0, 0],
-  'session/rpe7/0.8750/popping': [0, 0, 0],
-  'session/rpe8/0.8000/slower-than-expected': [20, 0, 0],
-  'session/rpe8/0.8500/as-expected': [40, 0, 0],
-  'session/rpe8/0.8750/crisp': [20, 0, 0],
-  'session/rpe8/0.9000/popping': [20, 0, 0],
-  // STALL-ABILITY ARRIVES HERE, at RPE 9 with a neutral check-in, and it is
-  // the boundary row of the whole table: 0.8750 is the same load RPE 8 reaches
-  // at `crisp`, and that row is clean because a `crisp` lifter carries 6% more
-  // capacity. The rung and the check-in decide it together — see
-  // `REACHABLE_COUPLING`.
-  'session/rpe9/0.8250/slower-than-expected': [80, 0, 0],
-  'session/rpe9/0.8750/as-expected': [80, 20, 20],
-  'session/rpe9/0.9000/crisp': [80, 20, 0],
-  'session/rpe9/0.9250/popping': [80, 0, 0],
-  'session/rpe10/0.8750/slower-than-expected': [80, 80, 80],
-  'session/rpe10/0.9000/as-expected': [80, 80, 40],
-  'session/rpe10/0.9250/crisp': [80, 40, 40],
-  'session/rpe10/0.9500/popping': [80, 40, 20],
+  'session/rpe6/0.8000/as-expected': [100, 0, 0],
+  'session/rpe6/0.8250/crisp': [60, 0, 0],
+  'session/rpe6/0.8500/popping': [60, 0, 0],
+  'session/rpe7/0.7750/slower-than-expected': [100, 0, 0],
+  'session/rpe7/0.7750/as-expected': [60, 0, 0],
+  'session/rpe7/0.8250/as-expected': [100, 0, 0],
+  'session/rpe7/0.8500/crisp': [100, 0, 0],
+  'session/rpe7/0.8750/popping': [100, 0, 0],
+  // THE GRIND BEGINS HERE. The hardest RPE 7 cell above sits at a
+  // demand-minus-capacity margin of -0.0483 and the lightest RPE 8 cell here at
+  // -0.0025; the boundary at which a quiet rep starts losing the rep is between
+  // them. `DEMAND_BASE.bench`'s header holds what that window costs and why it
+  // cannot be widened.
+  'session/rpe8/0.8000/slower-than-expected': [120, 40, 40],
+  'session/rpe8/0.8500/as-expected': [160, 60, 60],
+  'session/rpe8/0.8750/crisp': [120, 60, 60],
+  'session/rpe8/0.9000/popping': [120, 40, 40],
+  'session/rpe9/0.8250/slower-than-expected': [160, 100, 60],
+  'session/rpe9/0.8750/as-expected': [160, 120, 100],
+  'session/rpe9/0.9000/crisp': [160, 100, 100],
+  'session/rpe9/0.9250/popping': [160, 100, 100],
+  'session/rpe10/0.8750/slower-than-expected': [160, 160, 160],
+  'session/rpe10/0.9000/as-expected': [160, 160, 160],
+  'session/rpe10/0.9250/crisp': [160, 160, 160],
+  'session/rpe10/0.9500/popping': [160, 160, 120],
   // --- MEET: the opener fraction and the three jump ladders, at both ends of
   //     the bar-speed range. Attempt 1 is the same load under all three
   //     strategies and answers the same three times, which is the control. ---
-  'meet/conservative/att1/rested': [80, 80, 40],
-  'meet/conservative/att2/rested': [80, 80, 80],
-  'meet/conservative/att3/rested': [80, 80, 80],
-  'meet/standard/att1/rested': [80, 80, 40],
-  'meet/standard/att2/rested': [80, 80, 80],
-  'meet/standard/att3/rested': [80, 80, 80],
-  'meet/aggressive/att1/rested': [80, 80, 40],
-  'meet/aggressive/att2/rested': [80, 80, 80],
-  'meet/aggressive/att3/rested': [80, 80, 80],
-  'meet/conservative/att1/wrecked': [80, 80, 80],
-  'meet/conservative/att2/wrecked': [80, 80, 80],
-  'meet/conservative/att3/wrecked': [80, 80, 80],
-  'meet/standard/att1/wrecked': [80, 80, 80],
-  'meet/standard/att2/wrecked': [80, 80, 80],
-  'meet/standard/att3/wrecked': [80, 80, 80],
-  'meet/aggressive/att1/wrecked': [80, 80, 80],
-  'meet/aggressive/att2/wrecked': [80, 80, 80],
-  // THE CEILING CELL, AND THE ONE ROW WHERE COMING BACK DOES NOT HELP. The
-  // heaviest attempt the game can call, taken by a lifter whose bar speed is
-  // the worst it reads: 80 of 80 idle reps stall and NONE of them is rescued,
-  // because 18 ticks of silence at that load is past recovering from. Pinned
-  // rather than tuned away — a mechanic where every mistake is recoverable at
-  // every load has no top end.
-  'meet/aggressive/att3/wrecked': [0, 0, 80],
+  'meet/conservative/att1/rested': [160, 160, 160],
+  'meet/conservative/att2/rested': [160, 160, 160],
+  'meet/conservative/att3/rested': [160, 160, 160],
+  'meet/standard/att1/rested': [160, 160, 160],
+  'meet/standard/att2/rested': [160, 160, 160],
+  'meet/standard/att3/rested': [160, 160, 160],
+  'meet/aggressive/att1/rested': [160, 160, 160],
+  'meet/aggressive/att2/rested': [160, 160, 160],
+  'meet/aggressive/att3/rested': [100, 100, 160],
+  'meet/conservative/att1/wrecked': [160, 160, 160],
+  'meet/conservative/att2/wrecked': [160, 160, 160],
+  'meet/conservative/att3/wrecked': [160, 160, 160],
+  'meet/standard/att1/wrecked': [160, 160, 160],
+  'meet/standard/att2/wrecked': [160, 160, 160],
+  'meet/standard/att3/wrecked': [100, 100, 160],
+  'meet/aggressive/att1/wrecked': [160, 160, 160],
+  'meet/aggressive/att2/wrecked': [160, 160, 160],
+  // THE CEILING CELL, AND THE ONE ROW WHERE COMING BACK DOES NOT HELP AT ALL.
+  // 160 of 160 idle reps stall and NONE is rescued: at that load 18 ticks of
+  // silence is past recovering from. Pinned rather than tuned away — a mechanic
+  // where every mistake is recoverable at every load has no top end.
+  'meet/aggressive/att3/wrecked': [0, 0, 160],
 };
 
 /**
@@ -2625,12 +2742,42 @@ const REACHABLE_RESCUE: Readonly<Record<string, RescueRow>> = {
  * the ladder, which is exactly the failure this whole block repairs.
  */
 const REACHABLE_LADDER = {
-  /** Measured: session cells where an idle rep measurably stops. 5 of 22. */
-  SESSION_CELLS_THAT_STALL: 5,
+  /**
+   * Measured: session cells where an idle rep measurably stops. 12 of 22.
+   *
+   * WAS 5 BEFORE THE 2026-08-26 DIFFICULTY RETUNE, and the seven that arrived
+   * are all four RPE 8 cells and the three RPE 9 and RPE 10 cells that used to
+   * creep through their sticking point without ever dipping below
+   * `GRIND_STALL_VELOCITY`. `RUNGS_THAT_STALL` below is what says the seven
+   * landed at the right end of the ladder; this count on its own would be
+   * satisfied by seven new stalling warm-ups, which is not a hypothetical —
+   * a first pass at this retune produced exactly that and the table reported
+   * `[x, 0, 0]` anyway, because `IDLE_FROM_TICKS` never sampled early enough
+   * to see it.
+   */
+  SESSION_CELLS_THAT_STALL: 12,
   /** Measured: meet cells where an idle rep measurably stops. 18 of 18. */
   MEET_CELLS_THAT_STALL: 18,
-  /** Measured: the RPE rungs those session cells sit at, sorted. */
-  RUNGS_THAT_STALL: ['rpe10', 'rpe9'] as readonly string[],
+  /**
+   * Measured: the RPE rungs those session cells sit at, sorted.
+   *
+   * RPE 8 JOINED THIS LIST IN THE 2026-08-26 RETUNE AND THAT IS THE HEADLINE OF
+   * THE WHOLE ROUND. The phone replay's complaint was that RPE 8 had no
+   * difficulty in it; the rung is now the one where stopping the grind first
+   * stops the bar. RPE 6 and 7 are still absent and the loop below is what
+   * keeps them absent.
+   */
+  RUNGS_THAT_STALL: ['rpe10', 'rpe8', 'rpe9'] as readonly string[],
+  /**
+   * Session cells the warm-up control loop actually asserts on: RPE 6's five
+   * and RPE 7's five.
+   *
+   * PINNED BECAUSE THE LOOP SKIPS EVERY RUNG ON `RUNGS_THAT_STALL`, so adding a
+   * light rung to that list is a one-word edit that silently deletes the only
+   * check standing between GDD §12.3's warm-up protection and a tuning pass
+   * gone wrong. This count is what refuses that edit.
+   */
+  CELLS_THE_WARMUP_CONTROL_COVERS: 10,
   /**
    * The three cell counts GDD §6.2 quotes, of 40.
    *
@@ -2639,12 +2786,299 @@ const REACHABLE_LADDER = {
    * one level out — and the first draft of that §6.2 paragraph got two of
    * these three wrong by reading them off the table by eye. They are counted
    * from `REACHABLE_RESCUE` so the document and the measurement cannot drift.
+   *
+   * All four moved in the 2026-08-26 retune: 31 -> 38, 23 -> 29, 23 -> 30, and
+   * the control 8 -> 1. Part of that movement is the WIDENED sampling grid
+   * rather than the tuning — `IDLE_FROM_TICKS` went from four offsets to eight
+   * and `PAIRS_PER_CELL` from 80 to 160 — so these are not comparable to the
+   * old numbers cell for cell, and that is said here rather than left for a
+   * reader to assume otherwise.
    */
-  CELLS_WHERE_COMING_BACK_HELPS: 31,
-  CELLS_WHERE_A_REP_IS_SAVED: 23,
-  CELLS_WHERE_THE_IDLE_REP_STALLS: 23,
-  /** ...and the cells where none of the three happens: the light rungs. */
-  CELLS_WHERE_NOTHING_MOVES: 8,
+  CELLS_WHERE_COMING_BACK_HELPS: 38,
+  CELLS_WHERE_A_REP_IS_SAVED: 29,
+  CELLS_WHERE_THE_IDLE_REP_STALLS: 30,
+  /**
+   * ...and the cells where none of the three happens.
+   *
+   * DOWN FROM 8 TO 1, AND WHAT THE ONE IS IS THE PART WORTH READING:
+   * `session/rpe6/0.7500/as-expected`, the lightest load the lightest rung can
+   * prescribe. It is the only place left where tapping decides literally
+   * nothing. The seven that used to be here have NOT started stalling or losing
+   * reps — every RPE 6 and 7 row is still `[flips, 0, 0]`, now measured on a
+   * grid that reaches one tap after the command — they have started flipping
+   * between a GOOD LIFT and a GRINDER, which is a grade changing and not a rep
+   * being taken away.
+   */
+  CELLS_WHERE_NOTHING_MOVES: 1,
+} as const;
+
+/**
+ * ---------------------------------------------------------------------------
+ * THE WARM-UP SWEEP'S OWN PARAMETERS, IN ONE PLACE
+ * ---------------------------------------------------------------------------
+ * `streakSweep.ts`'s shape, for `streakSweep.ts`'s reason: the first version of
+ * a measurement like this was reported with its seeds unstated and could not
+ * afterwards be reproduced. Every number the warm-up guard sweeps over lives
+ * here so a re-take is a re-run rather than a reconstruction.
+ *
+ * THE CLAIM WAS NARROWED ON 2026-08-26, AND SAYING SO IS THE POINT OF THIS
+ * PARAGRAPH so nobody reads the sentence below as the one it replaces. It used
+ * to end "at any instant they stop and at any cadence they were tapping" — two
+ * axes quantified over, while a third was held at a single value and never
+ * named. Every rep in the sweep carried the bar down with the finger held. A
+ * player who lets go on the way down is playing a case the guarantee sounded
+ * like it covered and the sweep had never generated.
+ *
+ * HOW BLIND, AS A NUMBER RATHER THAN AS A CHARACTERISATION: raising
+ * `BENCH_TOUCH_DEMAND_PENALTY` tenfold — the only constant a bad descent is
+ * charged through — did not move the held sweep off its zero at all. A knob
+ * with no effect on a sweep is a knob the sweep does not cover, and that is a
+ * mechanical test anyone can re-run rather than a judgement about wording.
+ *
+ * WHAT THE GUARD THESE PARAMETERS FEED ACTUALLY CLAIMS: a warm-up rep the
+ * player answered at all cannot be lost BY STOPPING — at any instant they stop
+ * and at any cadence they were tapping — provided the bar was carried down
+ * under control. Letting go on the way down is a different mistake with its own
+ * price, and at every warm-up load but the lightest that price includes the
+ * rep. That is GDD §12.3's warm-up protection as a swept property rather than
+ * as a row of zeros in a sampled table, and the sampled table is what let it
+ * break once already.
+ * `@guarantee a-warm-up-survives-being-abandoned`
+ */
+const REACHABLE_WARMUP = {
+  /** RPE 6 and 7 cells `prescribeSession` can emit, deduped. */
+  CELLS: 10,
+  /** Cadences the quitting player taps at before they stop: 15, 10 and 6 a second. */
+  GAP_TICKS: [4, 6, 10] as const,
+  /**
+   * The last tick after the command at which the player may quit.
+   *
+   * PAST `ASCENT_TIMEOUT_TICKS` (170) ON PURPOSE — a quit instant beyond the
+   * longest possible ascent is a rep that was never abandoned at all, so the
+   * sweep runs off the end of the domain rather than stopping inside it and
+   * leaving a reader to wonder what is past the edge.
+   */
+  MAX_QUIT_TICK: 180,
+  /** Seeds per (cell, cadence, quit instant). The seed moves only the command tick. */
+  SEEDS: 3,
+  /**
+   * The instant the non-vacuity arm abandons at, and it is the EARLIEST one —
+   * the cheapest possible answer, one tap and stop.
+   */
+  NON_VACUITY_QUIT_TICK: 2,
+  /**
+   * Measured: RPE 8 reps lost to that same abandonment, out of `SEEDS` per cell
+   * across four cells. NON-ZERO IS THE POINT — it is what says the zero above
+   * is a fact about the warm-up rungs and not about a schedule too gentle to
+   * lose anything anywhere.
+   */
+  RPE8_LOST_AT_THE_SAME_INSTANT: 12,
+  /**
+   * -------------------------------------------------------------------------
+   * THE SECOND AXIS, AND IT IS HERE BECAUSE ITS ABSENCE MADE THE ZERO ABOVE
+   * READ AS A GUARANTEE IT NEVER WAS
+   * -------------------------------------------------------------------------
+   * Every rep in the sweep above holds the finger down through the descent.
+   * That is the correct play, and for a whole round it was also the ONLY play
+   * the sweep contained — so `lost === 0` was a fact about one column of a
+   * two-column domain while the prose beside it said "at any instant they stop
+   * and at any cadence they were tapping", which names two axes and quantifies
+   * over a third that was pinned to a single value.
+   *
+   * HOW BLIND IT WAS, MEASURED RATHER THAN CHARACTERISED: raising
+   * `BENCH_TOUCH_DEMAND_PENALTY` from 0.15 to 1.5 — a tenfold rise in the only
+   * constant the descent's cost is charged through — leaves this sweep reading
+   * 0 of 16200. A knob with no effect on a sweep is a knob the sweep does not
+   * cover.
+   *
+   * These are ticks after DESCENT opens, not after the press: the press lands
+   * in BRACE and a release before the descent starts is swallowed by the
+   * phase. The first probe written for this counted from tick 1, read
+   * `touchQuality` 1.000 at every load, and reported no finding.
+   */
+  SLIP_TICKS: [4, 16, 28, 40] as const,
+  /**
+   * Measured: warm-up reps lost with the finger off, per cell, in the order
+   * `reachableSessionCells()` emits them. The domain is the same whole quit
+   * sweep as the held arm, once per entry in `SLIP_TICKS`.
+   *
+   * NINE OF TEN CELLS LOSE REPS AND THAT IS THE HONEST STATEMENT OF THE
+   * MECHANIC, not a defect this pass left standing. There is no value of
+   * `BENCH_TOUCH_DEMAND_PENALTY` that empties this list and leaves the descent
+   * deciding anything, against `bench-touch-decides-the-rep`'s 240 cases — on
+   * a coarser six-slip ladder of 4860 reps, RE-TAKEN after the warm-up floor
+   * landed rather than carried across it:
+   *
+   *     0.15 shipped  1785 lost / 120 flips      0.10  1164 / 100
+   *     0.05           423 / 40                  0.02     0 / **0**
+   *     0.00             0 / **0**
+   *
+   * THE 0.02 ROW CHANGED CHARACTER WHEN THE FLOOR LANDED, WHICH IS WHY THESE
+   * WERE RE-RUN RATHER THAN COPIED. Before the floor it read "270 lost", and
+   * the sentence above leaned on exactly that: no penalty emptied the column.
+   * Now 0.02 DOES empty it — and the claim survives anyway, because the descent
+   * decides nothing there either. Carried across instead of re-taken, this
+   * docstring would have shipped a row that was false of its own tree, which is
+   * the defect the two rounds before this one spent their length removing from
+   * three other places.
+   *
+   * HOW MANY OF THESE ARE ZERO IS A LITERAL IN THE BODY AND HAS NO CONSTANT
+   * HERE, ON PURPOSE. It had one, and that version was DOMINATED by the equality
+   * against this array: given the array matches, the number of zeros in it is
+   * already decided, so no state of the lift engine could redden the count while
+   * leaving the array green. A literal survives a wholesale RE-PIN of the array
+   * — a future round pasting in a new vector with three zeros passes the
+   * equality and fails the literal — which is the one failure an equality cannot
+   * notice about itself. Same idiom as `TOUCH_SWEEP.OUTCOME_CASES`, same reason.
+   */
+  LOST_WITH_THE_FINGER_OFF: [180, 0, 492, 420, 432, 510, 150, 1026, 1008, 906] as const,
+  /**
+   * Measured: warm-up cells where SOME entry in `SLIP_TICKS` lands the bar at
+   * touch quality exactly 0 — fully crashed, not merely degraded.
+   *
+   * THE ARITHMETIC HALF, AND IT IS THE ONE THAT DOES NOT DEPEND ON THE GRID.
+   * The per-cell losses above are taken over a slip ladder and a quit ladder;
+   * this is a property of `touchSpeedQuality` at the loads `prescribeSession`
+   * actually emits, so a finer grid cannot move it. It is the number that
+   * refutes the shipped claim that a warm-up bar "cannot be crashed at all" —
+   * that was derived at `LOAD_PRESETS.LIGHT`, 0.55, twenty points below the
+   * lightest load any session prescribes.
+   */
+  CELLS_A_SLIP_FULLY_CRASHES: 10,
+  /**
+   * Measured: warm-up cells where EVERY entry in `SLIP_TICKS` fully crashes.
+   *
+   * ZERO, AND IT IS PINNED BECAUSE IT IS THE HALF THAT SOUNDS WRONG. A slip is
+   * not punished uniformly: the later the finger comes off, the less descent
+   * the bar has left to accelerate through, so the worst rung of the ladder is
+   * the earliest one and the last rung is survivable at every warm-up load.
+   * `LADDER_STRICT_RISES` says the same thing from the other end.
+   *
+   * Pinning it beside the count above is what stops that count being read as
+   * "a slip always crashes a warm-up" — the same over-reading the sentence it
+   * replaces committed in the opposite direction.
+   */
+  CELLS_EVERY_SLIP_CRASHES: 0,
+  /** Seeds per cell in the never-answered arm. The seed moves the command tick. */
+  NO_ANSWER_SEEDS: 8,
+  /**
+   * The deepest point in a session a rep can be taken at, as `LiftMoment`.
+   *
+   * THE FOURTH AXIS, AND IT WAS UNSWEPT WHILE A COMMENT NEARBY CLAIMED THERE
+   * WAS NOWHERE LEFT TO HIDE. `moment` narrows `PRESS_LAUNCH_MS` by roughly a
+   * tenth — the launch beat tightens as the session wears on — and every other
+   * bench sweep in this file leaves it undefined, so they all measure the
+   * WIDEST launch window the game ever gives. A guarantee about warm-ups that
+   * only holds on the first rep of the first set is not the guarantee anyone
+   * means.
+   *
+   * A full moment sweep is not run here: the axis is monotone in the direction
+   * that matters (later is tighter), so the deepest reachable point is the
+   * worst case, and driving the worst case is what a floor claim needs. The
+   * session prescribes three work sets of three reps, so the last rep of the
+   * last set has two of each behind it.
+   */
+  DEEPEST_MOMENT: { workSetsCompleted: 2, repsCompletedInSet: 2 } as const,
+  /**
+   * -------------------------------------------------------------------------
+   * THE HOLE THIS BLOCK USED TO RECORD, AND THE RULING THAT CLOSED IT
+   * -------------------------------------------------------------------------
+   * Two constants stood here — `NO_ANSWER_KEPT_ON_A_HELD_DESCENT: 72` and
+   * `CELLS_LOSING_THE_UNANSWERED_REP: 1` — measuring a player who carried a
+   * warm-up bar down properly, never answered the command, and lost the rep at
+   * `session/rpe7/0.8250/as-expected` on every seed. They were pinned rather
+   * than fixed, with both readings of GDD §12.3 written out and the trade left
+   * to a human, because closing it looked like it needed the difficulty pass
+   * reverted.
+   *
+   * RULED 2026-08-26, AND BOTH CHEAP ESCAPES WERE REFUSED. Verbatim: "Never
+   * answering PRESS! on a held descent must still make every RPE 6 and RPE 7
+   * cell, including rpe7/0.8250. That is §12.3 warm-up protection, not a
+   * nicety. +0.02 stays on RPE 8 / 9 / 10 and meet." Not a smaller step — that
+   * restores the curve the phone replay rejected. And not "that cell costs the
+   * rep" — that is calling a warm-up a working set so a global step size can
+   * stay dumb.
+   *
+   * SO THE COUNT IS A ZERO IN THE BODY NOW, not a constant here, and it is
+   * asserted against `CELLS * NO_ANSWER_SEEDS` with the offending cells named
+   * in the message. `BENCH_WARMUP_FLOOR_MARGIN` is what closed it and
+   * `WORKING_CELLS` below is what stops the closure from being a global clock
+   * bump. The two deleted constants are described rather than kept because a
+   * pin at 72 would now be a pin on a defect that no longer exists.
+   */
+  /**
+   * Working-rung cells the ladder can prescribe, and why they are counted here
+   * rather than left to the rescue table.
+   *
+   * A WARM-UP LOWERED UNDER CONTROL GOES UP EVEN IF THE PLAYER NEVER ANSWERS
+   * THE COMMAND, AND A WORKING RUNG DOES NOT. Both halves are the guarantee.
+   * The clock may not be what decides a bar the lifter is comfortably stronger
+   * than; and the floor that arranges this may not reach a rung the phone
+   * replay asked to stay hard. If the count taken over these cells ever goes
+   * quiet, the floor has spread into the grind rather than protecting the
+   * warm-up, and the zero beside it stops meaning anything.
+   * `@guarantee a-warm-up-makes-it-unanswered`
+   */
+  WORKING_CELLS: 12,
+  /**
+   * Measured: unanswered warm-up reps kept after the finger ALSO came off, out
+   * of `CELLS * NO_ANSWER_SEEDS * SLIP_TICKS.length`.
+   *
+   * THE PRICE OF DOING BOTH THINGS WRONG, AND THE FLOOR ONLY PAYS PART OF IT.
+   * Carrying the bar down is worth the whole rung now — that is the zero in the
+   * body — and letting it go as well is covered by nothing.
+   *
+   * IT READS 88, WHICH IS ALSO WHAT THE PRE-RETUNE CURVE READ, and the equality
+   * is recorded as a COINCIDENCE OF COUNTS rather than as a claim: the floor
+   * hands back clock headroom on the same axis the +0.02 took it from, so
+   * landing on the old number is plausible — but nobody has checked it is the
+   * same 88 REPS, and this file does not get to imply that it is. It read 40
+   * between the two, and that reading is what says the floor moved this at all.
+   */
+  NO_ANSWER_KEPT_AFTER_A_SLIP: 88,
+} as const;
+
+/**
+ * ---------------------------------------------------------------------------
+ * THE CRASH-PENALTY COMPARISON'S OWN PARAMETERS, BECAUSE PROSE IS NOT A DOMAIN
+ * ---------------------------------------------------------------------------
+ * `DEMAND_BASE.bench`'s header and GDD §6.2 both carry a five-row table
+ * comparing warm-up losses across `BENCH_TOUCH_DEMAND_PENALTY`, and its domain
+ * was described in prose as "a coarser slip ladder, six release instants
+ * against four". THAT IS NOT A PARAMETERISATION. A reader can reach exactly
+ * 4860 reps by many different routes and get a different answer down each one,
+ * which is the failure `streakSweep.ts` exists for: a measurement whose inputs
+ * are not written down is an anecdote, however carefully it was taken.
+ *
+ * The numbers were right — every row re-derived unchanged when these constants
+ * were written — and they were unreproducible by anyone but their author, which
+ * is a defect on its own and is the one being fixed here.
+ *
+ * ONLY THE SHIPPED ROW IS DRIVEN IN-TREE. The other four need a different value
+ * of a frozen constant, so they stay in the header as counterfactuals; what
+ * this domain makes reproducible is the row the argument rests on and the grid
+ * every row was taken over.
+ */
+const PENALTY_DOMAIN = {
+  /** Ticks after DESCENT opens at which the finger comes off. `null` holds it. */
+  SLIPS: [null, 1, 4, 10, 20, 34] as const,
+  /** Cadences the quitting player taps at: 15, 10 and 6 a second. */
+  GAP_TICKS: [4, 6, 10] as const,
+  /** Quit instants, in ticks after the command. Coarse on purpose — this is a
+   * comparison ACROSS TUNINGS, not the shipped measurement, which is
+   * `REACHABLE_WARMUP`'s whole-quit sweep. */
+  QUIT_TICKS: [1, 2, 4, 8, 16, 32, 64, 128, 180] as const,
+  /** Seeds per (cell, slip, cadence, quit). The seed moves the command tick. */
+  SEEDS: 3,
+  /** Measured: the product of the parameters above and `REACHABLE_WARMUP.CELLS`. */
+  CASES: 4860,
+  /**
+   * Measured at the shipped `BENCH_TOUCH_DEMAND_PENALTY` on the shipped tree,
+   * warm-up reps lost. The other rows of the header's table, for reference and
+   * NOT driven here: 0.10 -> 1164, 0.05 -> 423, 0.02 -> 0, 0.00 -> 0, against
+   * `bench-touch-decides-the-rep`'s 120 / 100 / 40 / 0 / 0 outcome flips.
+   */
+  SHIPPED_LOST: 1785,
 } as const;
 
 const REACHABLE_COUPLING = {
@@ -2988,25 +3422,251 @@ describe('the grind decides the lift', () => {
       .toBe(REACHABLE_LADDER.MEET_CELLS_THAT_STALL);
     // The rung it begins at, by name rather than by count — the count alone
     // would be satisfied by the same number of cells at the wrong end.
-    expect(
-      [...new Set(stallingSessionCells.map(([label]) => label.split('/')[1]))].sort(),
-      'the RPE rungs a session set can stall at',
-    ).toEqual([...REACHABLE_LADDER.RUNGS_THAT_STALL]);
-    // Every rung BELOW them is clean on all three counts, which is the control
-    // the zeros are zero against: a grind on a warm-up would be its own failure.
+    // -----------------------------------------------------------------------
+    // THE FLOOR UNDER THE LOOP BELOW, AND WITHOUT IT THAT LOOP CAN BE SATISFIED
+    // BY DELETING THE THING IT PROTECTS
+    // -----------------------------------------------------------------------
+    // The loop `continue`s past any rung in `RUNGS_THAT_STALL`, and until
+    // 2026-08-26 NOTHING asserted which rungs may be on that list. So the
+    // cheapest repair for "a warm-up started stalling" was to add `'rpe7'` to
+    // `RUNGS_THAT_STALL` — one word, whole file green, and the only check
+    // standing between GDD §12.3's warm-up protection and a tuning pass gone
+    // wrong is skipped rather than failed. That is the shape CLAUDE.md calls a
+    // guard broken by the change that was meant to fix it.
+    //
+    // WHAT IS ASSERTED IS WHAT THE LOOP COVERED, NOT WHAT THE LIST SAYS. An
+    // exclusion written as `RUNGS_THAT_STALL` must not contain 'rpe7' was tried
+    // first and is DOMINATED: on this tree the equality directly above already
+    // reddens on that edit, so the exclusion could never be the check that
+    // speaks. It would also miss the case it was written for — a tuning where
+    // RPE 7 really does stall, whose table has been re-pinned to match, where
+    // the equality AGREES with the widened list and only the missing coverage
+    // is wrong. Counting the cells the loop actually asserted on catches both,
+    // and cannot be satisfied by editing a list.
+    const covered: string[] = [];
     for (const [label, row] of rows) {
       if (!label.startsWith('session/')) continue;
       const rung = label.split('/')[1] ?? '';
       if ((REACHABLE_LADDER.RUNGS_THAT_STALL as readonly string[]).includes(rung)) continue;
+      covered.push(label);
       expect(row[1], `${label} lost a rep`).toBe(0);
       expect(row[2], `${label} stalled`).toBe(0);
     }
+    // Every rung below the stalling ones is clean on all three counts, and the
+    // COUNT of them is pinned: a rung quietly added to `RUNGS_THAT_STALL` stops
+    // being covered here, and this is what says so.
+    expect(covered.length, `cells the warm-up control actually covered: ${covered.join(', ')}`)
+      .toBe(REACHABLE_LADDER.CELLS_THE_WARMUP_CONTROL_COVERS);
+    // ...and they are the light rungs by NAME, because a count alone is
+    // satisfied by ten cells at the wrong end of the ladder.
+    expect(
+      [...new Set(covered.map((label) => label.split('/')[1]))].sort(),
+      'the rungs the warm-up control covers',
+    ).toEqual(['rpe6', 'rpe7']);
+    // The rung it begins at, by name rather than by count — the count alone
+    // would be satisfied by the same number of cells at the wrong end.
+    //
+    // ORDERED AFTER THE COVERAGE PIN DELIBERATELY. Both reject adding a light
+    // rung to `RUNGS_THAT_STALL` on THIS tree, and whichever runs first is the
+    // one a transcript names. They are not the same check: this one compares
+    // the measured stalling set against the declared list, so it AGREES the
+    // moment a tuning really does make RPE 7 stall and somebody re-pins the
+    // table to match — which is exactly the repair-by-allowlist that would
+    // delete the warm-up control. The coverage pin above reads the loop's own
+    // iteration count and falls whenever the list grows, whatever the tuning
+    // did. Only the list edit was driven as a mutant; the re-pinned variant is
+    // argued from what each assertion reads, and is stated as an argument
+    // rather than as a measurement.
+    expect(
+      [...new Set(stallingSessionCells.map(([label]) => label.split('/')[1]))].sort(),
+      'the RPE rungs a session set can stall at',
+    ).toEqual([...REACHABLE_LADDER.RUNGS_THAT_STALL]);
     // ...and the meet stalls under STANDARD jumps and not only aggressive ones.
     expect(REACHABLE_RESCUE['meet/standard/att3/rested']?.[2] ?? 0, 'standard att3 stalls')
       .toBeGreaterThan(0);
     expect(REACHABLE_RESCUE['meet/standard/att3/rested']?.[1] ?? 0, 'standard att3 loses reps')
       .toBeGreaterThan(0);
   });
+
+  it('never loses a warm-up rep to a player who answered and then stopped [a-warm-up-survives-being-abandoned]', () => {
+    // -----------------------------------------------------------------------
+    // THE CHECK THE PINNED TABLE ABOVE COULD NOT BE, AND THE REASON IT EXISTS
+    // IS A REGRESSION THAT GOT PAST THE TABLE
+    // -----------------------------------------------------------------------
+    // GDD §12.3's warm-up protection is stated as "a grind on every warm-up is
+    // its own failure", and the RPE 6/7 rows above are the control it is read
+    // off. A 2026-08-26 difficulty retune broke it — a player who tapped twice
+    // at RPE 7 and stopped lost the rep — and the table stayed `[x, 0, 0]`
+    // because `IDLE_FROM_TICKS` began at 18 ticks and every newly-lost rep was
+    // at offsets 1-12.
+    //
+    // A WIDER GRID FIXES THAT TABLE AND IS STILL A GRID. This sweeps the quit
+    // instant WHOLE — every tick from the command to past the ascent timeout —
+    // at three cadences, so there is no QUIT INSTANT for the next regression to
+    // hide between. The count is pinned at ZERO and the domain is pinned beside
+    // it, because a sweep that stopped generating cases would report the same
+    // zero.
+    //
+    // "NO OFFSET" IS WHAT THIS USED TO SAY AND IT CLAIMED AN AXIS IT DOES NOT
+    // SWEEP. `LiftConfig.moment` narrows `PRESS_LAUNCH_MS` by about a tenth on
+    // every rep after the first — deeper into the session, tighter launch beat —
+    // and every rep here leaves it undefined, so all of this is measured at the
+    // WIDEST launch window the game ever gives. The claim is true of the quit
+    // tick and was false of the launch-beat width. `leaves a warm-up alone`
+    // drives the deepest moment a session can reach; see `DEEPEST_MOMENT`.
+    const cells = reachableSessionCells().filter((c) => /^session\/rpe[67]\//.test(c.label));
+    expect(cells.length, 'warm-up cells the ladder can prescribe').toBe(
+      REACHABLE_WARMUP.CELLS,
+    );
+    let lost = 0;
+    let driven = 0;
+    const offenders: string[] = [];
+    for (const cell of cells) {
+      let cellLost = 0;
+      for (const gap of REACHABLE_WARMUP.GAP_TICKS) {
+        for (let quitAt = 1; quitAt <= REACHABLE_WARMUP.MAX_QUIT_TICK; quitAt += 1) {
+          for (let seed = 1; seed <= REACHABLE_WARMUP.SEEDS; seed += 1) {
+            const rep = driveGrind(
+              { kind: BENCH, loadRatio: cell.loadRatio, seed, feel: cell.feel },
+              gap,
+              quitAt,
+              Number.POSITIVE_INFINITY,
+            );
+            driven += 1;
+            if (rep.resolution?.outcome === 'miss') cellLost += 1;
+          }
+        }
+      }
+      lost += cellLost;
+      if (cellLost > 0) offenders.push(`${cell.label} lost ${cellLost}`);
+    }
+    // THE DOMAIN FIRST, as a literal, so an emptied sweep reports itself rather
+    // than passing on zero comparisons.
+    expect(driven, 'warm-up reps driven').toBe(16200);
+    // ...and the literal is the parameters' own product, so a parameter changed
+    // without the literal is red rather than silently re-scoped.
+    expect(
+      REACHABLE_WARMUP.CELLS
+        * REACHABLE_WARMUP.GAP_TICKS.length
+        * REACHABLE_WARMUP.MAX_QUIT_TICK
+        * REACHABLE_WARMUP.SEEDS,
+      'the warm-up domain literal and its parameters disagree',
+    ).toBe(16200);
+    expect(lost, `warm-up reps lost by quitting: ${offenders.join(' | ')}`).toBe(0);
+    // ...AND THE SWEEP IS NOT VACUOUS, which is the half a zero cannot carry on
+    // its own. The same drive at the rung above must lose reps — so this
+    // measures a property of the WARM-UP rungs rather than of a schedule that
+    // could never lose anything anywhere.
+    const rpe8 = reachableSessionCells().filter((c) => c.label.startsWith('session/rpe8/'));
+    let rpe8Lost = 0;
+    for (const cell of rpe8) {
+      for (let seed = 1; seed <= REACHABLE_WARMUP.SEEDS; seed += 1) {
+        const rep = driveGrind(
+          { kind: BENCH, loadRatio: cell.loadRatio, seed, feel: cell.feel },
+          REACHABLE_WARMUP.GAP_TICKS[0] ?? 6,
+          REACHABLE_WARMUP.NON_VACUITY_QUIT_TICK,
+          Number.POSITIVE_INFINITY,
+        );
+        if (rep.resolution?.outcome === 'miss') rpe8Lost += 1;
+      }
+    }
+    expect(rpe8Lost, 'the same abandonment at RPE 8 cost nothing either').toBe(
+      REACHABLE_WARMUP.RPE8_LOST_AT_THE_SAME_INSTANT,
+    );
+
+    // -----------------------------------------------------------------------
+    // THE SECOND COLUMN. Everything above holds the finger down through the
+    // descent; everything below takes it off. See `SLIP_TICKS`.
+    //
+    // ORDERED AFTER THE ZERO ON PURPOSE. `guaranteeTags.test.ts` records a
+    // mutation witness whose `observed` field is this test's HELD failure
+    // message verbatim, and vitest reports the first assertion to throw — so a
+    // released-arm pin placed above it would silently retarget the witness at
+    // a different assertion while leaving it resolving.
+    // -----------------------------------------------------------------------
+    const slipLost: number[] = [];
+    let slipDriven = 0;
+    for (const cell of cells) {
+      let cellLost = 0;
+      for (const slip of REACHABLE_WARMUP.SLIP_TICKS) {
+        for (const gap of REACHABLE_WARMUP.GAP_TICKS) {
+          for (let quitAt = 1; quitAt <= REACHABLE_WARMUP.MAX_QUIT_TICK; quitAt += 1) {
+            for (let seed = 1; seed <= REACHABLE_WARMUP.SEEDS; seed += 1) {
+              const rep = driveGrind(
+                { kind: BENCH, loadRatio: cell.loadRatio, seed, feel: cell.feel },
+                gap,
+                quitAt,
+                Number.POSITIVE_INFINITY,
+                slip,
+              );
+              slipDriven += 1;
+              if (rep.resolution?.outcome === 'miss') cellLost += 1;
+            }
+          }
+        }
+      }
+      slipLost.push(cellLost);
+    }
+    expect(slipDriven, 'warm-up reps driven with the finger off').toBe(
+      16200 * REACHABLE_WARMUP.SLIP_TICKS.length,
+    );
+    expect(
+      slipLost,
+      `warm-up reps lost per cell with the finger off: ${cells
+        .map((c, i) => `${c.label}=${slipLost[i]}`)
+        .join(' | ')}`,
+    ).toEqual([...REACHABLE_WARMUP.LOST_WITH_THE_FINGER_OFF]);
+    // THE ZERO COUNT AS A LITERAL, AND THE LITERAL IS THE WHOLE POINT — an
+    // earlier draft of this line read `.toBe(REACHABLE_WARMUP.
+    // CELLS_CLEAN_WITH_THE_FINGER_OFF)` and that version was DOMINATED by the
+    // equality directly above it. Given the array matches, the number of zeros
+    // in it is decided, so no change to the lift engine could redden the
+    // constant form while leaving the array green. Against a wholesale re-pin
+    // the literal still bites: a future round that pastes in a new vector with
+    // three zeros passes the equality and fails here, which is the one thing
+    // the equality cannot check about itself. Same idiom as
+    // `TOUCH_SWEEP.OUTCOME_CASES` two hundred lines up, for the same reason.
+    expect(
+      slipLost.filter((n) => n === 0).length,
+      'warm-up cells that survive a slip as well as a stop',
+    ).toBe(1);
+    // ...and WHICH cell, which the equality genuinely does not pin: it fixes
+    // counts to positions and says nothing about the labels at those positions.
+    // It is the same cell `CELLS_WHERE_NOTHING_MOVES` names.
+    expect(
+      cells[slipLost.findIndex((n) => n === 0)]?.label,
+      'the cell that survives both mistakes',
+    ).toBe('session/rpe6/0.7500/as-expected');
+
+    // ...AND THE ARITHMETIC HALF, which no grid resolution can move: at what
+    // fraction of the reachable warm-up loads does letting go crash the bar
+    // OUTRIGHT rather than merely degrading it. `ABANDONED_CRASHES` asks this
+    // over `TOUCH_SWEEP.LOADS`, two of which no session can prescribe.
+    let fullyCrashed = 0;
+    let alwaysCrashed = 0;
+    for (const cell of cells) {
+      const graded = REACHABLE_WARMUP.SLIP_TICKS.map(
+        (slip) =>
+          driveGrind(
+            { kind: BENCH, loadRatio: cell.loadRatio, seed: 1, feel: cell.feel },
+            REACHABLE_WARMUP.GAP_TICKS[0] ?? 6,
+            Number.POSITIVE_INFINITY,
+            0,
+            slip,
+          ).touchQuality,
+      );
+      if (graded.some((q) => q === 0)) fullyCrashed += 1;
+      if (graded.every((q) => q === 0)) alwaysCrashed += 1;
+    }
+    expect(
+      fullyCrashed,
+      'warm-up cells some rung of the slip ladder crashes outright',
+    ).toBe(REACHABLE_WARMUP.CELLS_A_SLIP_FULLY_CRASHES);
+    expect(
+      alwaysCrashed,
+      'warm-up cells EVERY rung of the slip ladder crashes outright',
+    ).toBe(REACHABLE_WARMUP.CELLS_EVERY_SLIP_CRASHES);
+  }, 900_000);
 
   it('makes a better check-in an EASIER rep, which is deliberate and is not this piece to fix', () => {
     // See `REACHABLE_COUPLING`. The check-in moves the prescribed load and the
@@ -3118,21 +3778,183 @@ describe('the grind decides the lift', () => {
     ).toBe('miss');
   });
 
-  it('leaves a warm-up alone — a light bar is not a grind test', () => {
-    // GDD §12.3 and the daily loop: a warm-up must not punish. The penalty
-    // scales demand, and at a light load demand is far under capacity, so
-    // ignoring the command AND letting the bar go costs time and not the rep.
-    // If this ever fails the descent and the grind have grown into a
-    // difficulty setting.
-    for (let seed = 1; seed <= 8; seed += 1) {
-      for (const gap of [GRIND_SWEEP.MASH_GAP_TICKS, GRIND_SWEEP.NONE]) {
-        const rep = benchGrindRep(LOAD_PRESETS.LIGHT, seed, {
-          hold: 1,
-          gapTicks: gap,
-        });
-        expect(rep.resolution?.outcome, `seed ${seed} gap ${gap}`).not.toBe('miss');
+  it('re-derives the crash-penalty comparison\u2019s shipped row on its own named domain', () => {
+    // WHY THIS TEST EXISTS AT ALL: the row it drives is quoted in two shipped
+    // documents as the evidence for "no retune closes the descent axis", and
+    // for three rounds its domain lived in prose. A critic drove sixteen
+    // plausible readings that all land on exactly 4860 reps and got sixteen
+    // different answers; the quoted one was not among them. The number was
+    // right and nobody but its author could reach it, which is its own defect.
+    //
+    // It is the SAME `driveGrind` the rest of this file uses, so the domain is
+    // the constants and nothing else.
+    const cells = reachableSessionCells().filter((c) => /^session\/rpe[67]\//.test(c.label));
+    expect(cells.length, 'warm-up cells the comparison covers').toBe(REACHABLE_WARMUP.CELLS);
+    let lost = 0;
+    let driven = 0;
+    for (const cell of cells) {
+      for (const slip of PENALTY_DOMAIN.SLIPS) {
+        for (const gap of PENALTY_DOMAIN.GAP_TICKS) {
+          for (const quitAt of PENALTY_DOMAIN.QUIT_TICKS) {
+            for (let seed = 1; seed <= PENALTY_DOMAIN.SEEDS; seed += 1) {
+              const rep = driveGrind(
+                { kind: BENCH, loadRatio: cell.loadRatio, seed, feel: cell.feel },
+                gap,
+                quitAt,
+                Number.POSITIVE_INFINITY,
+                slip,
+              );
+              driven += 1;
+              if (rep.resolution?.outcome === 'miss') lost += 1;
+            }
+          }
+        }
       }
     }
+    // THE DOMAIN AS A LITERAL, so an emptied sweep reports itself...
+    expect(driven, 'crash-penalty comparison reps driven').toBe(4860);
+    // ...and as the parameters' own product, so a ladder quietly shortened is
+    // red here rather than silently re-scoped.
+    expect(
+      REACHABLE_WARMUP.CELLS
+        * PENALTY_DOMAIN.SLIPS.length
+        * PENALTY_DOMAIN.GAP_TICKS.length
+        * PENALTY_DOMAIN.QUIT_TICKS.length
+        * PENALTY_DOMAIN.SEEDS,
+      'the comparison domain and its parameters disagree',
+    ).toBe(PENALTY_DOMAIN.CASES);
+    expect(lost, 'the row two documents quote as evidence').toBe(PENALTY_DOMAIN.SHIPPED_LOST);
+  }, 600_000);
+
+  it('leaves a warm-up alone — nobody answers at all [a-warm-up-makes-it-unanswered]', () => {
+    // -----------------------------------------------------------------------
+    // RETARGETED 2026-08-26 FROM `LOAD_PRESETS.LIGHT` ONTO THE LOADS THE
+    // LADDER ACTUALLY PRESCRIBES, AND THE OLD VERSION IS WHY
+    // -----------------------------------------------------------------------
+    // It read: "at a light load demand is far under capacity, so ignoring the
+    // command AND letting the bar go costs time and not the rep. If this ever
+    // fails the descent and the grind have grown into a difficulty setting."
+    // It never failed, and the descent HAD grown into a difficulty setting —
+    // because `LOAD_PRESETS.LIGHT` is 0.55 and the lightest load
+    // `prescribeSession` emits is 0.75. Walked up by hundredths, the old
+    // assertion turns over between 0.74 and 0.75: the boundary it was pinned
+    // twenty points below sits exactly ON the reachable floor.
+    //
+    // A PRESET IS NOT A DOMAIN — the same finding as the rescue table's, in a
+    // test written to guard the thing the rescue table missed.
+    //
+    // WHAT IT CHECKS NOW is the case the big sweep above does NOT contain:
+    // `REACHABLE_WARMUP`'s quit ladder starts at one tap, so a player who
+    // answers NOTHING is outside it. Both descents are driven, and both counts
+    // are pinned, because which of them survives is the whole finding.
+    const cells = reachableSessionCells().filter((c) => /^session\/rpe[67]\//.test(c.label));
+    expect(cells.length, 'warm-up cells the ladder can prescribe').toBe(REACHABLE_WARMUP.CELLS);
+    let carriedDown = 0;
+    let letGo = 0;
+    let driven = 0;
+    const offenders: string[] = [];
+    for (const cell of cells) {
+      for (let seed = 1; seed <= REACHABLE_WARMUP.NO_ANSWER_SEEDS; seed += 1) {
+        // `idleFromTicks` 0 means every tap instant is idle: the command is
+        // never answered at all, which is what this test is about.
+        const held = driveGrind(
+          { kind: BENCH, loadRatio: cell.loadRatio, seed, feel: cell.feel },
+          REACHABLE_WARMUP.GAP_TICKS[0] ?? 6,
+          0,
+          Number.POSITIVE_INFINITY,
+        );
+        driven += 1;
+        if (held.resolution?.outcome !== 'miss') carriedDown += 1;
+        else offenders.push(`${cell.label} seed ${seed} lost the rep on a HELD descent`);
+        for (const slip of REACHABLE_WARMUP.SLIP_TICKS) {
+          const slipped = driveGrind(
+            { kind: BENCH, loadRatio: cell.loadRatio, seed, feel: cell.feel },
+            REACHABLE_WARMUP.GAP_TICKS[0] ?? 6,
+            0,
+            Number.POSITIVE_INFINITY,
+            slip,
+          );
+          driven += 1;
+          if (slipped.resolution?.outcome !== 'miss') letGo += 1;
+        }
+      }
+    }
+    // THE DOMAIN FIRST, as a literal, so an emptied sweep reports itself.
+    expect(driven, 'unanswered warm-up reps driven').toBe(400);
+    // ...and the literal is the parameters' own product, so a parameter moved
+    // without the literal is red rather than silently re-scoped.
+    const arms = 1 + REACHABLE_WARMUP.SLIP_TICKS.length;
+    const seeds = REACHABLE_WARMUP.NO_ANSWER_SEEDS;
+    expect(REACHABLE_WARMUP.CELLS * seeds * arms, 'the domain and its parameters').toBe(400);
+    // ------------------------------------------------------------------
+    // THE RULING'S OWN SENTENCE, AS A ZERO: "Never answering PRESS! on a held
+    // descent must still make every RPE 6 and RPE 7 cell, including
+    // rpe7/0.8250." Ruled 2026-08-26 after this test — retargeted off
+    // `LOAD_PRESETS.LIGHT` onto the reachable cells the round before — first
+    // measured 72 of 80, with the eight being that one cell at every seed.
+    // ------------------------------------------------------------------
+    const unanswered = REACHABLE_WARMUP.CELLS * REACHABLE_WARMUP.NO_ANSWER_SEEDS - carriedDown;
+    expect(unanswered, `warm-up reps lost unanswered: ${offenders.join(' | ')}`).toBe(0);
+    // ...AND THE ZERO IS NOT A SCHEDULE TOO GENTLE TO LOSE ANYTHING. The same
+    // drive one rung up must still cost the rep — that is the grind the phone
+    // replay asked for and the ruling explicitly kept. Without this the floor
+    // could be a global clock bump and nothing here would notice; a global bump
+    // is exactly what was tried first and it took this number from
+    // `WORKING_RUNGS` down as well, which is how it was refused.
+    const working = reachableSessionCells().filter((c) => /^session\/rpe(8|9|10)\//.test(c.label));
+    expect(working.length, 'working-rung cells the ladder can prescribe').toBe(
+      REACHABLE_WARMUP.WORKING_CELLS,
+    );
+    let workingLost = 0;
+    for (const cell of working) {
+      for (let seed = 1; seed <= REACHABLE_WARMUP.NO_ANSWER_SEEDS; seed += 1) {
+        const rep = driveGrind(
+          { kind: BENCH, loadRatio: cell.loadRatio, seed, feel: cell.feel },
+          REACHABLE_WARMUP.GAP_TICKS[0] ?? 6,
+          0,
+          Number.POSITIVE_INFINITY,
+        );
+        if (rep.resolution?.outcome === 'miss') workingLost += 1;
+      }
+    }
+    expect(workingLost, 'the same unanswered rep one rung up still costs the rep').toBe(
+      REACHABLE_WARMUP.WORKING_CELLS * REACHABLE_WARMUP.NO_ANSWER_SEEDS,
+    );
+    // ...AND THE SAME ZERO AT THE DEEPEST POINT OF THE SESSION, which is the
+    // axis every other bench sweep in this file leaves at its widest. See
+    // `DEEPEST_MOMENT`: `moment` tightens the launch beat as the session wears
+    // on, so a warm-up guarantee measured only on a fresh rep is measured where
+    // the game is most forgiving.
+    let deepLost = 0;
+    let deepDriven = 0;
+    const deepOffenders: string[] = [];
+    for (const cell of cells) {
+      for (let seed = 1; seed <= REACHABLE_WARMUP.NO_ANSWER_SEEDS; seed += 1) {
+        const rep = driveGrind(
+          {
+            kind: BENCH,
+            loadRatio: cell.loadRatio,
+            seed,
+            feel: cell.feel,
+            moment: REACHABLE_WARMUP.DEEPEST_MOMENT,
+          },
+          REACHABLE_WARMUP.GAP_TICKS[0] ?? 6,
+          0,
+          Number.POSITIVE_INFINITY,
+        );
+        deepDriven += 1;
+        if (rep.resolution?.outcome === 'miss') deepOffenders.push(`${cell.label} seed ${seed}`);
+      }
+    }
+    deepLost = deepOffenders.length;
+    expect(deepDriven, 'deepest-moment warm-up reps driven').toBe(80);
+    expect(deepLost, `warm-up reps lost unanswered at the session's end: ${deepOffenders.join(' | ')}`).toBe(0);
+    // ...and the price of ALSO letting the bar go, which the floor does not pay
+    // off in full. Pinned as a count rather than asserted away, because it is
+    // what the descent still charges and a tuner needs to see it move.
+    expect(letGo, 'warm-ups kept after letting the bar go and never answering').toBe(
+      REACHABLE_WARMUP.NO_ANSWER_KEPT_AFTER_A_SLIP,
+    );
   });
 
   it('charges squat and deadlift nothing for a beat they never had', () => {

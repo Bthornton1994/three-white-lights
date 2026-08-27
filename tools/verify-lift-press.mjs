@@ -1646,26 +1646,35 @@ const LIFT_LADDER = Object.freeze({
    * bar stalls; start again and it comes back", and this probe now drives that
    * on the stage: a rep with a deliberate hole in its grind, a stall cue that
    * has to draw during the hole, and a lockout on the other side of it. THAT
-   * CHECK NEEDS A LOAD THAT CAN ACTUALLY STALL, and at RPE 8 nothing can:
-   * `lift.test.ts`'s `REACHABLE_RESCUE` walks every load `prescribeSession`
-   * emits and pins `session/rpe8/0.8500/as-expected` at `[40, 0, 0]` — the
-   * outcome moves, but ZERO of 80 paired reps stall and ZERO lose a rep. A
-   * stall check driven there has an empty domain, which is the vacuity this
-   * repository refuses by name.
+   * CHECK NEEDS A LOAD THAT CAN ACTUALLY STALL.
    *
-   * The same table gives the two rungs that do stall at the check-in this probe
-   * answers (`SESSION_DRIVE.CHECK_IN_TAPS`, which reaches `as-expected`):
+   * ===========================================================================
+   * THE REASON THIS BLOCK GAVE FOR RPE 10 WAS TRUE AND IS NOT ANY MORE, AND IT
+   * IS CORRECTED RATHER THAN LEFT STANDING BEHIND A DECISION IT NO LONGER
+   * SUPPORTS
+   * ===========================================================================
+   * It read: "at RPE 8 nothing can [stall] — `REACHABLE_RESCUE` pins
+   * `session/rpe8/0.8500/as-expected` at `[40, 0, 0]`, the outcome moves but
+   * ZERO of 80 paired reps stall and ZERO lose a rep. A stall check driven
+   * there has an empty domain." That was accurate, and it is the exact
+   * complaint a phone replay made about RPE 8 on 2026-08-26; the difficulty
+   * retune it produced is what closed it. The same three rows now read:
    *
-   *     session/rpe9/0.8750/as-expected    [80, 20, 20]
-   *     session/rpe10/0.9000/as-expected   [80, 80, 40]
+   *     session/rpe8/0.8500/as-expected    [80, 20, 20]   (was [40,  0,  0])
+   *     session/rpe9/0.8750/as-expected    [80, 80, 80]   (was [80, 20, 20])
+   *     session/rpe10/0.9000/as-expected   [80, 80, 80]   (was [80, 80, 40])
    *
-   * as `[rescued, fromMiss, stalled]` out of 80 pairs. RPE 10 is chosen because
-   * both columns this probe depends on are stronger there: FOUR TIMES as many
-   * of its pairs stall, and every one of its 80 pairs turns a MISS into a make
-   * when the tapping resumes — so the rescue is load-bearing rather than
-   * cosmetic, which is what makes "pause -> stall -> resume -> LOCKOUT" a claim
-   * about the mechanic instead of a claim about a rep that was going to make
-   * anyway.
+   * as `[rescued, fromMiss, stalled]` out of 80 pairs. So RPE 8 CAN stall now
+   * and the old argument's empty-domain premise is gone with it.
+   *
+   * RPE 10 STAYS, ON THE WEAKER REASON THAT IS STILL TRUE. It is the hardest
+   * rung the ladder offers, so the stall it produces is the largest and the
+   * abandoned control is the least likely to sneak a make: every one of its 80
+   * pairs stalls AND turns a miss into a make when the tapping resumes, which
+   * is what makes "pause -> stall -> resume -> LOCKOUT" a claim about the
+   * mechanic rather than about a rep that was going to make anyway. RPE 9 would
+   * now satisfy the same two conditions, and that is written down so nobody
+   * re-derives this choice as FORCED when it is only the strongest.
    *
    * AND THE COST IS STATED RATHER THAN HIDDEN, in the shape this block's own
    * RPE-8 note already uses: RPE 10 is the hardest rung the ladder offers, so a
@@ -1715,6 +1724,32 @@ const LIFT_LADDER = Object.freeze({
    * the hardest cell. So the hardest bench rep the ladder can offer is the top
    * of the RPE ladder answered at the bottom of the check-in, which is what
    * these three press.
+   *
+   * ===========================================================================
+   * RE-TAKEN AFTER THE 2026-08-26 DIFFICULTY RETUNE: THE WORST CHECK-IN IS NO
+   * LONGER REQUIRED, AND IT IS KEPT ANYWAY
+   * ===========================================================================
+   * The table above is the OLD curve's and is kept as the record of why this
+   * row was written. Re-run on the shipped curve at this probe's own schedule
+   * and its own hole (taps every 3 ticks, hole at 12t, pause 45t), 20 seeds:
+   *
+   *     cell                              pause  stalled  rescued  abandoned
+   *     mid/as-expected   rpe10  0.9000    42t   20/20    20/20      0/20
+   *     mid/as-expected   rpe10  0.9000    55t   20/20     0/20      0/20
+   *     best/popping      rpe10  0.9500    42t   20/20    20/20      0/20
+   *     poor/slower...    rpe10  0.8750    42t   20/20    20/20      0/20
+   *     poor/slower...    rpe10  0.8750    55t   20/20     0/20      0/20
+   *
+   * The `0/20` in the mid row's `stalled` column — the whole reason this arm
+   * takes the worst answers — is now `20/20`. Every check-in stalls at RPE 10.
+   *
+   * IT STAYS AT THE WORST ANSWERS, and the reason is that it is still the
+   * hardest cell (`REACHABLE_COUPLING`'s pin that RPE 10 is the one rung where
+   * a poor check-in is hardest is unchanged, because a uniform demand shift
+   * preserves differences) and that changing which cell a browser instrument
+   * presses is a change to what the evidence is OF. The row is corrected, not
+   * re-chosen. A future piece that wants the mid answers here now can have
+   * them; this one is a tuning pass and does not get to move the subject.
    *
    * The other two lifts keep `SESSION_DRIVE.CHECK_IN_TAPS`: the deadlift arm's
    * whole control pair is calibrated at the mid answers (see `RPE_CHOICE`), and
@@ -1784,9 +1819,48 @@ const LIFT_LADDER = Object.freeze({
    * the worst-case stall drops to 16 and at 65 the rescued arm starts failing
    * at the slower cadences (40 / 0 / 0 at 12t). 55 is the middle of the only
    * column where both arms hold at every cadence measured.
+   *
+   * ===========================================================================
+   * BOTH SWEPT TABLES ABOVE ARE THE OLD CURVE'S, AND 55 TICKS WENT PAST THE
+   * RESCUE CLIFF WHEN THE 2026-08-26 DIFFICULTY RETUNE LANDED
+   * ===========================================================================
+   * THIS IS THE FAILURE THIS RE-SWEEP EXISTS TO CATCH, and it was caught before
+   * a browser run rather than by one. Re-run on the shipped curve, same sim,
+   * same cell, same three cadences, 40 seeds each, at the shipped instant of
+   * 12t: the RESCUED arm reads `0 / 0 / 0` made at a 55-tick pause. The
+   * instrument's own control pair had stopped being a pair — the rep it was
+   * driving to lockout no longer reaches lockout — and the check would have
+   * come back red about the app.
+   *
+   * RE-SWEPT, and the pause axis at instant 12t is where the cliff is (worst
+   * banded ticks and `rescued made`, per cadence 3/4/5 ticks):
+   *
+   *     pause   worst banded ticks   rescued made
+   *      30t     2 / 11 / 12         40 / 40 / 40
+   *      38t    16 / 23 / 19         40 / 40 / 40
+   *      42t    20 / 28 / 27         40 / 40 / 40
+   *      45t    24 / 33 / 33         40 / 40 / 40
+   *      48t    28 / 33 / 33         40 / 40 / 40
+   *      52t    36 / 32 / 32         40 /  0 /  0
+   *      55t    30 / 30 / 30          0 /  0 /  0
+   *
+   * 45 ticks (750 ms) is taken: the largest pause that still rescues at EVERY
+   * cadence with a whole column of margin above it, and the one that leaves the
+   * biggest stall for the stage check to photograph. Seven ticks (117 ms) of
+   * slack to the cliff at 52t, which is what `page.waitForTimeout` overshoot has
+   * to fit inside; under-ticking on a loaded browser makes the real hole SHORTER
+   * than 45 and is therefore the safe direction for the rescue, costing only
+   * stall depth (16-23 banded ticks even at 38t).
+   *
+   * THE INSTANT DID NOT MOVE, AND IT GAINED SLACK. On the same re-sweep at a
+   * 45-tick pause the abandoned arm is `0 / 0 / 0` made at every instant from
+   * 10t through 33t and only starts making at 40t — the retune pushed that edge
+   * out from 27t. The worst banded ticks still peak early (24/33/33 at 12t,
+   * falling to 3/9/19 by 27t), so 12t remains the widest point in both
+   * directions and stays.
    */
   GRIND_HOLE_AT_MS: 200,
-  GRIND_PAUSE_MS: 917,
+  GRIND_PAUSE_MS: 750,
 
   /**
    * How many reps this probe will spend trying to walk one kind's full ladder.
@@ -3521,8 +3595,37 @@ function gradeStageBeat(kind, run) {
   const rescueGrind = paused?.grind ?? null;
   const givenUp = run.abandoned ?? null;
   const givenUpGrind = givenUp?.grind ?? null;
+  // ---- THE SAME PRECONDITION AS THE PAIR BELOW, AND MISSING IT HERE WAS A
+  // ---- DEFECT THE PAIR'S OWN FIX WALKED PAST
+  //
+  // The pair check below skips when the achieved cadence exceeds
+  // `GRIND_PAIR_MAX_GAP_MS`. THIS check has the identical dependency and was
+  // left as a red: recovering from a stall is the thing both lines are about,
+  // and `GRIND_PAIR_MAX_GAP_MS`'s own header says the sim measures that
+  // recovery FAILING at 100 ms between taps. So a host tapping at 119 ms
+  // produces a rep that does not lock out for exactly the reason the constant
+  // predicts, and calling that the app's failure is the misattribution the
+  // ceiling exists to prevent. Measured: 119 ms mean, implied force 0.886
+  // clearing `GRIND_FORCE_FLOOR` 0.7 comfortably — so the weaker floor passes
+  // while the one that actually governs recovery is exceeded.
+  //
+  // CLAUDE.md's rule, applied to the branch immediately above the one that was
+  // fixed: "when you fix a check, the next thing to look at is the branch
+  // immediately below it." Here it was the branch above.
+  const rescueCadenceHolds =
+    (rescueGrind?.gaps?.meanMs ?? Infinity) <= BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS;
+  if (!rescueCadenceHolds) {
+    skip(
+      'LADDER bench RESCUE: the resumed rep was driven fast enough for the recovery to be the app’s to make',
+      `this host tapped at ${Math.round(rescueGrind?.gaps?.meanMs ?? -1)}ms mean against a `
+        + `${BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS}ms ceiling; the sim measures stall recovery failing `
+        + 'at 100ms between taps, so a rep that does not lock out here is the driver\u2019s cadence '
+        + 'rather than the app\u2019s grind. Not a tolerance to widen.',
+    );
+  }
   check(
-    paused !== null &&
+    rescueCadenceHolds === false ||
+      (paused !== null &&
       paused.played === true &&
       paused.reachedDescent === true &&
       paused.reachedCommand === true &&
@@ -3532,7 +3635,7 @@ function gradeStageBeat(kind, run) {
       rescueGrind.impliedForce !== null &&
       rescueGrind.impliedForce >= BENCH_DRIVE.GRIND_FORCE_FLOOR &&
       paused.reachedLockout === true &&
-      paused.outcome !== 'NO LIFT',
+      paused.outcome !== 'NO LIFT'),
     'LADDER bench RESCUE: a rep whose grind was deliberately STOPPED and then RESUMED stalled on the way up and reached LOCKOUT anyway, through the app’s own controls',
     paused === null
       ? 'no paused rep was driven'
@@ -3567,15 +3670,43 @@ function gradeStageBeat(kind, run) {
   const cadenceHolds =
     (rescueGrind?.gaps?.meanMs ?? Infinity) <= BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS &&
     (givenUpGrind?.gaps?.meanMs ?? Infinity) <= BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS;
+  // ---- THE CADENCE IS A PRECONDITION, SO ITS FAILURE IS A SKIP -------------
+  //
+  // `cadenceHolds` is a fact about the DRIVER, not the app — the header above
+  // says so. Folded into the `check` below it turned a host that could not tap
+  // fast enough into a RED on a line that reads as an app claim, and left the
+  // run with no way to say the honest thing: the instrument could not make this
+  // measurement here. Five runs across two hosts read achieved means of 78-110ms
+  // against an 83ms ceiling with EVERY substantive clause about the app passing.
+  //
+  // CLAUDE.md: "If the played arm cannot be driven, the honest output is a named
+  // SKIPPED check, not a quiet fallback." So an unmet cadence is now a skip that
+  // carries its own achieved numbers, and the app clauses are asserted only when
+  // the pair is actually comparable. This is NOT a widened tolerance: 83ms is
+  // unchanged, and above it the pair genuinely cannot discriminate, so there is
+  // no claim to make either way.
+  const cadenceDetail =
+    `rescued ${Math.round(rescueGrind?.gaps?.meanMs ?? -1)}ms and abandoned `
+    + `${Math.round(givenUpGrind?.gaps?.meanMs ?? -1)}ms against a `
+    + `${BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS}ms ceiling`;
+  if (!cadenceHolds) {
+    skip(
+      'LADDER bench RESCUE CONTROL: the abandoned/resumed pair is comparable enough to discriminate',
+      `this host did not tap fast enough to make the pair a pair — ${cadenceDetail}. `
+        + 'Above the ceiling the two reps differ in cadence as well as in the thing under '
+        + 'test, so neither a pass nor a fail is available. Not a tolerance to widen: the '
+        + 'ceiling is what makes the pair discriminating.',
+    );
+  }
   check(
-    givenUp !== null &&
+    cadenceHolds === false ||
+      (givenUp !== null &&
       givenUp.played === true &&
       givenUp.reachedCommand === true &&
       givenUpGrind !== null &&
       holesAgree &&
-      cadenceHolds &&
       givenUp.reachedLockout === false &&
-      paused?.reachedLockout === true,
+      paused?.reachedLockout === true),
     'LADDER bench RESCUE CONTROL: the SAME rep with the grind stopped at the SAME instant and never resumed does NOT reach lockout — so coming back is what saved the one above',
     givenUp === null
       ? 'no abandoned rep was driven'
@@ -4756,15 +4887,62 @@ for (const arm of armsToRun) {
   gradeMeetBookkeeping(arm, { panPlan: PAN_PLAN, panSurfaces, blockedBy: null });
   reportStageSelectionGap(arm, { readings, target, neutralised, blockedBy: null });
 
+  // ---- A PAN THE PAGE NEVER HEARD IS A MEASUREMENT THIS HOST CANNOT MAKE --
+  //
+  // Every `cancels === ...` conclusion below reads a count off ONE pan, and a
+  // pan that dispatched nothing reports zero cancels — which is the value three
+  // of the four conclusions WANT. So a starved pan does not redden them, it
+  // passes them, vacuously, and the only thing that notices is the non-vacuity
+  // guard further down. That guard was reddening as an app failure on a host
+  // that simply could not deliver the gesture.
+  //
+  // WHY THE 20px PAN IS THE ONE THAT STARVES, so nobody re-derives it: the
+  // full-size pans travel `PAN_PX` in `PAN_STEPS` steps and the page sees all
+  // ten every time. `SMALL_PAN_PX` is 20px over the same step count, so each
+  // step is 2px — under the browser's own slop threshold, where Chromium
+  // coalesces or drops the moves entirely. Measured across six runs on this
+  // host: the 200px pans read 10 moves every time; the 20px pan read 0 four
+  // times and 3 twice, never more. The guard's requirement is calibrated to a
+  // distance the small pan cannot reliably reach here.
+  //
+  // So a starved pan is reported as a NAMED SKIP — the pan AND the conclusion
+  // that reads it — and everything that did drive is graded exactly as before.
+  // `checkPan` is the whole mechanism, applied to all four conclusions rather
+  // than to the one that failed today, because they share the dependency and
+  // patching one is how the sibling defect two rounds ago happened.
+  const panStarved = (name) => pans[name].moves === 0 && pans[name].cancels === 0;
+  const starvedPans = Object.keys(pans).filter(panStarved);
+  for (const name of starvedPans) {
+    skip(
+      `ARM ${arm.id}: PROBE 2 pan "${name}" — the page received this gesture at all`,
+      `${pans[name].moves} touchmove(s) and ${pans[name].cancels} pointercancel(s) at `
+        + `${pans[name].panPx}px: the page heard nothing, so its cancel count is a count of `
+        + 'nothing and every conclusion resting on it is skipped with it. Not a threshold to '
+        + 'lower — a smaller required distance would make the pan stop testing the gesture.',
+    );
+  }
+  /** `check`, unless the pan it reads never reached the page. */
+  const checkPan = (name, ok, what, detail) => {
+    if (panStarved(name)) {
+      skip(what, `the "${name}" pan put nothing on the page (${detail}) — skipped rather than `
+        + 'passed, because zero cancels is the value this conclusion wants and it would have '
+        + 'read as the cleanest line in the file');
+      return;
+    }
+    check(ok, what, detail);
+  };
+
   // ---- THE PROBE'S DOMAIN, DEMONSTRATED IN BOTH DIRECTIONS ---------------
   // Same element, same pan, only `touch-action` moved. Counts pinned exactly,
   // not bounded — `>= 0` would be true of a probe that never fired at all.
-  check(
+  checkPan(
+    'neutralised',
     pans['neutralised'].cancels === PRESS_PROBE.PAN_CANCELS_WHEN_BROWSER_MAY_PAN,
     `ARM ${arm.id}: PROBE 2 DOMAIN — with touch-action neutralised to manipulation, the browser TAKES the gesture`,
     `pointercancel=${pans['neutralised'].cancels}, wanted exactly ${PRESS_PROBE.PAN_CANCELS_WHEN_BROWSER_MAY_PAN} (touch-action read back as ${JSON.stringify(pans['neutralised'].forcedTo?.touchAction)})`,
   );
-  check(
+  checkPan(
+    'forced-fixed',
     pans['forced-fixed'].cancels === PRESS_PROBE.PAN_CANCELS_WHEN_TOUCH_ACTION_NONE,
     `ARM ${arm.id}: PROBE 2 DOMAIN — with touch-action forced to none on the SAME element, it does not`,
     `pointercancel=${pans['forced-fixed'].cancels}, wanted exactly ${PRESS_PROBE.PAN_CANCELS_WHEN_TOUCH_ACTION_NONE} (touch-action read back as ${JSON.stringify(pans['forced-fixed'].forcedTo?.touchAction)})`,
@@ -4792,10 +4970,20 @@ for (const arm of armsToRun) {
   // What must not happen is a pan the page never heard about at all, and that is
   // what this counts.
   const pansThePageSaw = panNames.filter((n) => pans[n].moves > 0 || pans[n].cancels > 0).length;
+  // SCOPED TO THE PANS THAT DROVE, AND ALL-STARVED IS A RED RATHER THAN A PASS.
+  //
+  // The starved ones are named skips above, with the conclusions that read them.
+  // What is left for this line to say is the half a skip cannot: that SOMETHING
+  // drove. Without the first clause an arm where every pan starved would satisfy
+  // `pansThePageSaw === panNames.length - starvedPans.length` as `0 === 0` and
+  // report the cleanest pass in the file, which is the exact shape this guard
+  // exists to refuse — a count of nothing reading as evidence, one level out.
   check(
-    pansThePageSaw === panNames.length,
-    `ARM ${arm.id}: PROBE 2 — the page saw all ${panNames.length} pans, so none of the cancel counts is a count of nothing`,
-    `${pansThePageSaw} of ${panNames.length}; ${panNames.map((n) => `${n}=${pans[n].moves} moves @${pans[n].panPx}px, ${pans[n].cancels} cancel(s)`).join('; ')}`,
+    pansThePageSaw > 0 && pansThePageSaw === panNames.length - starvedPans.length,
+    `ARM ${arm.id}: PROBE 2 — at least one pan reached the page, and every pan not skipped for starvation put something on it`,
+    `${pansThePageSaw} of ${panNames.length} drove`
+      + `${starvedPans.length === 0 ? '' : `, ${starvedPans.length} skipped as starved (${starvedPans.join(', ')})`}`
+      + `; ${panNames.map((n) => `${n}=${pans[n].moves} moves @${pans[n].panPx}px, ${pans[n].cancels} cancel(s)`).join('; ')}`,
   );
   // AND THE MOVE STREAM ITSELF, SCOPED TO THE PANS IT CAN BE A STATEMENT ABOUT.
   //
@@ -4892,12 +5080,14 @@ for (const arm of armsToRun) {
   // Two readings rather than one because "the browser takes the press away" is
   // a statement about a gesture that MOVED, and a reader cannot tell from a
   // single number whether that needed a swipe or a wobble.
-  check(
+  checkPan(
+    'as-shipped',
     pans['as-shipped'].cancels === PRESS_PROBE.PAN_CANCELS_WHEN_TOUCH_ACTION_NONE,
     `ARM ${arm.id}: PROBE 2 — as shipped, a ${PRESS_PROBE.PAN_PX}px drag never has the press taken away from the app mid-gesture`,
     `pointercancel=${pans['as-shipped'].cancels} with touch-action ${JSON.stringify(pans['as-shipped'].touchAction)}, wanted exactly ${PRESS_PROBE.PAN_CANCELS_WHEN_TOUCH_ACTION_NONE}`,
   );
-  check(
+  checkPan(
+    'as-shipped-small',
     pans['as-shipped-small'].cancels === PRESS_PROBE.PAN_CANCELS_WHEN_TOUCH_ACTION_NONE,
     `ARM ${arm.id}: PROBE 2 — nor does a ${PRESS_PROBE.SMALL_PAN_PX}px finger drift, which is the gesture the descent actually is`,
     `pointercancel=${pans['as-shipped-small'].cancels} at ${PRESS_PROBE.SMALL_PAN_PX}px vs ${pans['as-shipped'].cancels} at ${PRESS_PROBE.PAN_PX}px, both with touch-action ${JSON.stringify(pans['as-shipped-small'].touchAction)}; wanted exactly ${PRESS_PROBE.PAN_CANCELS_WHEN_TOUCH_ACTION_NONE}. The page heard ${pans['as-shipped-small'].moves} touchmove(s) of the ${PRESS_PROBE.PAN_STEPS} dispatched before that verdict`,
@@ -5261,6 +5451,37 @@ if (LADDER_REQUESTED) {
     // wider threshold when it first went out of range (see the spacing-floor
     // wait in `tapDriveCuesToLockout`). Measured after that fix across three
     // real runs against `18ef5b7`: 90, 114 and 121 ms against a 167 ms grace.
+    //
+    // ===========================================================================
+    // AND IT WENT OUT OF RANGE AGAIN ON 2026-08-26 — 218 ms, ON A RUN WHOSE
+    // RE-RUN READ 42 ms. THE CAUSE IS OPEN.
+    // ===========================================================================
+    // BOTH NUMBERS ARE HERE BECAUSE ONLY ONE OF THEM MAKES IT INTO A GREEN
+    // RECORD, and a reader who sees only the green one learns to re-run until
+    // the check agrees with them. That is the crying-wolf failure this
+    // repository has already paid for on three instruments, arriving through
+    // non-determinism instead of noise. The spread across five real runs of the
+    // bench difficulty round is now 42 / 90 / 114 / 121 / 218 ms against the
+    // same 167 ms grace — one reading past the wall and one at a quarter of it,
+    // which is not a rounding artefact.
+    //
+    // THE MERGE WAS RULED OUT STRUCTURALLY BEFORE THE RE-RUN, and the prediction
+    // was written down while the red result was still the only evidence:
+    // `LOCKOUT_GRIP_GRACE_TICKS` was unchanged; every constant that round moved
+    // is bench-only (`DEMAND_BASE.bench` and `STICK_WIDTH.bench` are `PerKind`
+    // tables read at `[kind]`, and `GRIND_BOOST_FORCE_MAX` is gated on
+    // `kind === 'bench'` in `lift.ts`'s ascent branch); and all 85 of
+    // `lift.test.ts`'s `BASELINE_DIGESTS` — every squat and deadlift rep in that
+    // sweep — were byte-identical. So the app's deadlift did not move and the
+    // reading is the robot's own dispatch latency.
+    //
+    // WHAT WAS NOT ESTABLISHED IS WHY IT VARIES BY A FACTOR OF FIVE. The
+    // threshold is deliberately NOT widened to cover 218 — a threshold chosen to
+    // stop a check failing hides the next real failure at the same site — so
+    // this stays strict and the flake stays recorded. A future round that wants
+    // it closed should instrument the gap the way `AIM_FOR_CENTER_DELAY_MS`'s
+    // own header describes: measure the press-to-observation lag per attempt and
+    // subtract it live, rather than assuming a fixed cost.
     check(
       reGripMs !== null && graceMs !== null && reGripMs <= graceMs,
       'LADDER deadlift: the re-grip landed inside LOCKOUT_GRIP_GRACE_TICKS, so the held rep is a clean hold and the pair below differs in exactly one thing',

@@ -2110,9 +2110,14 @@ moved, and both are inversions rather than retunes.
   separates bench from squat is now the grind alone.
 - **Mashing caps rather than scaling, and the cap is on the RATE.** The charge
   is turned into force by a saturating curve — the marginal unit of charge is
-  worth sixteen times more at the bottom of it than at the top — and the ceiling
-  is set at a tap rate a fast human reaches rather than one only a machine
-  could. There is no budget that runs down: a hidden one would make a player
+  worth about twelve times more at the bottom of it than at the top — and the
+  ceiling is set at a tap rate a fast human reaches (14 a second) rather than
+  one only a machine could. *This sentence said "sixteen times" until 2026-08-26
+  and had never been true of the shipped curve: sixteen is what
+  `CEILING + HALF_SATURATION` squares to, and the measured ratio is 11.8 per
+  charge rung or 13.2 as a derivative. Three sibling numbers in
+  `liftTuning.ts` were stale the same way and are corrected in the same commit.*
+  There is no budget that runs down: a hidden one would make a player
   weaker for reasons the screen never showed them, and it would make "grind
   through" false, because a stall arriving after the budget was spent could not
   be rescued at all. What makes a long grind harder is the ascent's own stalled-
@@ -2130,32 +2135,289 @@ moved, and both are inversions rather than retunes.
   rolling charge has no count to subtract from. A sentence reworded to fit a
   mechanic it was not derived from is the defect class this document keeps
   recording.
-- **A crash costs the ascent, not the rep.** The bar sinks into the chest and
-  the whole press is harder; it is never called at the chest. A warm-up bar and
-  a light working bar cannot be crashed at all — they run out of descent before
-  they run out of control — which is an arithmetic consequence of the constants
-  rather than a horizon somebody swept. Every load a meet attempt is taken at
-  can be, and at the very top a crashed bar needs a full grind to make at all.
+- **A crash costs the ascent, not the rep — at the chest.** The bar sinks in
+  and the whole press is harder; it is never *called* at the chest. What that
+  harder press then costs is a separate question, and at nine of the ten loads
+  a warm-up can be prescribed at, the answer includes the rep.
+
+  **The second sentence of this bullet used to read "a warm-up bar and a light
+  working bar cannot be crashed at all", and it was false at every load a
+  session prescribes.** It was derived honestly, from the crash sweep's own
+  loads — but two of those, `0.55` and `0.7`, are fixture values below anything
+  `prescribeSession` emits. The lightest warm-up the ladder hands out is
+  `0.75`, on the far side of that boundary. Asked over the reachable cells
+  instead: **all 10** can be crashed outright by taking the finger off on the
+  way down, and **9** of them then lose reps to it. Only the lightest — RPE 6
+  at a neutral check-in — is crashed and survives anyway, which is the single
+  cell the old sentence described correctly.
+
+  **A late slip is not the same mistake as an early one**, and no cell is
+  crashed at every rung of the slip ladder: the later the finger comes off, the
+  less descent the bar has left to accelerate through. Every load a meet
+  attempt is taken at can be crashed, and at the very top a crashed bar needs a
+  full grind to make at all.
+
+**THE DIFFICULTY CURVE WAS RETUNED ON 2026-08-26, AND THE RUNG THIS SECTION USED
+TO CALL "WINNABLE BY ANYONE" IS THE REASON.** A phone replay confirmed the
+mechanic and rejected the numbers: *"I like the mechanics now, rpe 8 is just too
+easy, theres no difficulty there, i would retweak difficulty across the board
+other than that i think it works great."* What that sentence names is measurable
+and was measured. At RPE 8 — the default working rung — a player who tapped and
+then STOPPED lost nothing: zero lost reps and zero stalls at all four cells the
+rung can reach, at every one of the 80 paired reps per cell. The outcome flipped
+between a clean lift and a grinder and that was the whole of it.
+
+**The retune is one constant.** `DEMAND_BASE.bench` rose by a uniform 0.02 of
+capacity at every load, which moves every rung's margin equally and so raises
+the whole ladder without re-ordering it. Two other constants were moved with it
+in a first pass and put back: `STICK_WIDTH.bench` 0.22 to 0.32, and
+`GRIND_BOOST_FORCE_MAX` 0.42 to 0.50 to repair a false-start guarantee the
+first two had broken. Their headers keep the measurements, because the reason
+they were reverted is the finding below rather than a change of mind.
+
+**WHAT THE RETUNE COULD NOT DO, RECORDED BECAUSE IT IS A REAL LIMIT AND A FUTURE
+TUNER WILL OTHERWISE TRY IT.** RPE 8 cannot be made to demand a fast tap RATE.
+The wall is GDD §12.3's warm-up protection, and it is measured on the shipped
+tree: a uniform demand rise of **+0.030** is the first that costs RPE 7 reps on
+the answer-once-and-stop axis. At +0.025 the held column is **zero**.
+
+**THAT NUMBER WAS +0.025 UNTIL THE WARM-UP FLOOR LANDED, AND THIS PARAGRAPH SAID
+SO FOR A ROUND AFTER IT STOPPED BEING TRUE.** The floor lengthened the ascent
+clock for bars the lifter comfortably clears, so reps that used to be called on
+the clock at +0.025 now complete: the whole wall table moved and five of its
+eight rows with it. **The floor bought one more step of headroom on exactly the
+axis the ruling was about** — which is worth stating plainly, because a heading
+written to stop a future tuner trying was telling them the opposite of what the
+tree does. Whether to SPEND that step is a design call and is not taken here.
+
+**"+0.02 IS THE LAST SAFE STEP" USED TO BE THE SENTENCE HERE, AND IT IS DELETED
+RATHER THAN QUALIFIED.** It named no axis, and it was false on the axis that
+actually broke: a player who never answered at all lost a rep at +0.010, four
+steps below the number this document was calling safe. A wall has to be quoted
+with the axis it was measured on or it is not a wall, it is a reading — and the
+unqualified version is what made the next two rounds look for a step size that
+would fix a clock. There is no single last safe step, and this section no longer
+claims one.
+
+**THE ITALICS NAME AN AXIS, AND THE WALL IS IN A DIFFERENT PLACE ON EVERY ONE OF
+THEM — WHICH THE SENTENCE ABOVE DID NOT SAY WHEN IT WAS FIRST WRITTEN.** Asked of
+a player who never answers the command at all, on a descent they carried down
+properly, the same sweep turns four steps earlier:
+
+| uniform rise | warm-ups kept, held descent, never answered, of 80 |
+|---|---|
+| *(pre-floor readings — see the ruling below)* | |
+| +0.000 | **80** |
+| +0.005 | **80** |
+| +0.010 | 72 |
+| +0.015 | 72 |
+| **+0.020 — shipped** | **72** |
+
+The eight were one cell, `rpe7/0.8250/as-expected`, at every seed — a load over
+the line rather than a boundary a seed straddles.
+
+**RULED 2026-08-26, AND THE TABLE ABOVE IS NOW HISTORY RATHER THAN A LIVE
+TRADE.** The question was left open here for one round: the warm-up protection
+was stated conditioned on the player answering — "a rep the player answered at
+all, one tap is enough" — so a player who pressed nothing had, on that reading,
+not played the rep. That reading was refused. Verbatim: *"Never answering PRESS!
+on a held descent must still make every RPE 6 and RPE 7 cell, including
+rpe7/0.8250. That is §12.3 warm-up protection, not a nicety. +0.02 stays on
+RPE 8 / 9 / 10 and meet. Do not undo the phone difficulty pass to save one light
+cell."* Both cheap escapes went with it — dropping to +0.005 restores the curve
+the replay rejected, and calling that cell a working set is calling a warm-up a
+working set so that a global step size can stay dumb.
+
+**What closed it was a clock, not a curve, and the constant's own header had
+been carrying the defect the whole time.** The miss was never a strength
+failure: at that cell the lifter's capacity clears the bar's peak demand by
+0.048 and the bar was at 80.8% of the way up when the rep was called. It ran out
+of `ASCENT_TIMEOUT_TICKS`, which is 170 — while the docstring directly above
+that constant records "successful ascents ran to a maximum of **201** ticks",
+and the sentence below it says that cutting off grinds that were going to make
+it "is the worse failure". The number and the reasoning were both already there
+and disagreed with each other.
+
+**`BENCH_WARMUP_FLOOR_MARGIN` and `BENCH_WARMUP_FLOOR_ASCENT_TICKS`** are the
+mechanism, and both are scoped so they cannot reach a working rung. A bench bar
+whose peak demand sits at least `0.04` BELOW the lifter's capacity runs its
+ascent on a longer clock; nothing else changes — no added force, no velocity
+change, no grade change, and a rep that reaches lockout on its own is
+byte-identical with the floor and without it. Two independent measurements put
+the rungs on opposite sides of both numbers:
+
+| | every RPE 6/7 cell | nearest RPE 8 cell | the floor sits at |
+|---|---|---|---|
+| margin (`peak − capacity`) | ≤ **−0.0483** | ≥ **−0.0323** | **−0.040** |
+| unaided ascent, ticks | ≤ **193** | **247** | **220** |
+
+Both are midpoints of measured gaps rather than thresholds tuned until the
+tests passed, and `lift.test.ts` pins both edges so a retune that closes either
+gap reddens instead of letting the floor spread into the grind.
+
+**A single global clock was tried first and is refused, measured.** At 220 for
+every lift the reachable rescue table moves and RPE 8's own non-vacuity control
+halves from **12** to **6** — the unanswered reps the phone replay asked to cost
+the rep start making again. That is the experiment that says the floor has to be
+scoped, and it is why there are two constants instead of a bigger one.
+
+Widening the sticking point moves that wall the wrong way, and
+narrowing it does not move it back.
+
+**The grind's force ceiling was recorded here as not touching the wall "at all",
+and that was true at the one rise it was measured at and false as a property.**
+Swept at the shipped sticking width, as warm-up reps lost of 16200 at boost
+0.30 / 0.42 / 0.50: at a +0.025 rise the held count is `60 / 60 / 60`, flat —
+which is the neighbourhood somebody checked. At +0.060 it is `402 / 330 / 312`,
+and on a released descent it is `3228 / 2274 / 1974` at +0.025 and
+`5412 / 3654 / 3084` at +0.060. **The reason given was the part that was really
+wrong** — "a player who quits has no charge whichever way it is set" — because
+every quit instant in that sweep falls at or after the first tap, so those
+players all have charge and are merely no longer adding to it. A confidently
+stated mechanism is what carried a single measurement into a general claim.
+
+So RPE 8's difficulty is *stopping costs the rep, and a slow grind is a GRINDER
+rather than a GOOD LIFT*, and the minimum-tap-rate axis begins at RPE 9.
+
+What the rise did buy, on the slowest sustained rate that never misses, per cell,
+before against after: RPE 8 `0.50 / 0.67 / 0.50 / 0.50` → `0.50 / 1.00 / 0.80 /
+0.67`, RPE 9 `1.00 / 1.43 / 1.20 / 1.00` → `1.20 / 1.67 / 1.43 / 1.20`, RPE 10
+`2.31 / 2.00 / 2.00 / 2.00` → `3.00 / 2.50 / 2.31 / 2.31`. On the rate at which
+every seed is a GOOD LIFT rather than a GRINDER, RPE 8 went `2.31 / 3.00 / 2.50 /
+2.31` → `3.00 / 3.00 / 3.00 / 2.50`.
+
+*An earlier version of this paragraph read "RPE 8 from 0.67/s at all four cells to
+0.67 / 1 / 1 / 0.67". That was measured on a tap ladder whose slow end stepped
+0.67 → 1.00 → 1.43 with nothing between, so cells sitting at 0.50/s and 0.80/s
+were reported at the nearest rung it had. The direction survived and the detail
+did not — a measurement taken at a grain that cannot see the thing it is about.*
+
+**The one remaining way to raise RPE 8's rate was measured and rejected.** The
+grind's force ceiling is the only knob that lifts the required tap rate without
+touching warm-ups. Swept at 0.42 / 0.41 / 0.40 it moves three of RPE 8's four
+make floors not at all and the fourth by one rung, leaves the rescue table
+byte-identical, and spends half the remaining margin on the "never fatal"
+guarantee above (138 → 154 of 170 ascent ticks) to do it. It stays at 0.42. The
+headroom that knob offers is real and is not headroom for the rung the ruling
+named.
 
 **None of the numbers has been played (§12.1), and §12.1 stays open on this beat
-until a human replays it on a phone.** What is measured is that the beats DECIDE
-reps rather than decorate them, and the sharpest of those measurements is the
-one only a continuous grind can pass — now taken over the loads the game's two
-`loadRatio` producers actually emit rather than over tuning presets. Every
-distinct load a session can prescribe (5 RPE choices against all 27 check-ins,
-22 distinct cells) and every load a meet can call (3 jump strategies x 3
-attempts x 2 bar speeds, 18 cells), 80 paired reps each: pairs identical up to a
-moment, differing only in whether the tapping resumed afterwards. Coming back
-changes the outcome in **31** of those 40 cells, turns a miss into a make in
-**23**, and in **23** the idle rep has measurably stalled first. **8** cells
-show none of the three, and they are the light rungs — pinned at zero as the
-control, because a grind on every warm-up would be its own failure. On a burst
-mechanic every one of those numbers is zero by construction, because taps after
-the window buy nothing.
+until a human replays it on a phone.** The open question is exactly two things:
+does RPE 8 feel like work now, and does 8 < 9 < 10 still read. What is measured
+is that the beats DECIDE reps rather than decorate them, and the sharpest of
+those measurements is the one only a continuous grind can pass — taken over the
+loads the game's two `loadRatio` producers actually emit rather than over tuning
+presets. Every distinct load a session can prescribe (5 RPE choices against all
+27 check-ins, 22 distinct cells) and every load a meet can call (3 jump
+strategies x 3 attempts x 2 bar speeds, 18 cells), 80 paired reps each: pairs
+identical up to a moment, differing only in whether the tapping resumed
+afterwards. Coming back changes the outcome in **38** of those 40 cells, turns a
+miss into a make in **29**, and in **30** the idle rep has measurably stalled
+first. **1** cell shows none of the three — the lightest load RPE 6 can prescribe
+at a neutral check-in — and it is pinned as the control, because a grind on every
+warm-up would be its own failure. Before the retune those four counts were
+31 / 23 / 23 / 8, but they are not comparable cell for cell: the sampling grid
+was widened in the same pass, from four quit instants per cell to eight. On a
+burst mechanic every one of them is zero by construction, because taps after the
+window buy nothing.
 
-Beside it, across the same reachable ladder: the tap rate changes the outcome in
-120 of 120 cases and turns a make into a miss in 100, and the chest touch
-changes it in 120 of 240.
+**And the warm-up protection is the two zero COLUMNS, not the first one**, which
+is the sentence most likely to be misread now that only one cell is fully still.
+Every RPE 6 and RPE 7 cell reads `[flips, 0, 0]`: stopping the grind can change a
+GOOD LIFT into a GRINDER there, and a rep the player answered at all — one tap is
+enough — can never be taken away *by stopping*. What changed at those rungs is
+that the grade moved, not the outcome.
+
+**AND SINCE 2026-08-26 IT CANNOT BE TAKEN AWAY BY NOT ANSWERING AT ALL EITHER.**
+That is the second condition, and it was ruled after this document had already
+carried the first for a round: *"Never answering PRESS! on a held descent must
+still make every RPE 6 and RPE 7 cell, including rpe7/0.8250. That is §12.3
+warm-up protection, not a nicety."* So the warm-up guarantee is now two
+sentences and both are swept — a warm-up carried down under control cannot be
+lost by stopping, and cannot be lost by never starting. The rung above is
+covered by neither, deliberately.
+
+**THE ITALICS ON "BY STOPPING" ARE LOAD-BEARING AND WERE ADDED AFTER THE
+SENTENCE WAS CAUGHT BEING READ AS MORE.** Stopping is one mistake and the
+descent is another. Every rep behind the zeros above carries the bar down with
+the finger held, which is the correct play and was also, for a round, the only
+play the sweep contained. Take the finger off on the way down and the warm-up
+rungs lose **5124** reps of 64800 across **9** of their **10** cells — pinned
+per cell in `lift.test.ts`'s `LOST_WITH_THE_FINGER_OFF`, beside the held arm's
+unchanged **0** of 16200. A player who does both things wrong is not covered by
+a protection written about one of them.
+
+*(It read 6234 before the warm-up floor; the floor is keyed on the bar and the
+lifter rather than on how the rep was played, so a crashed warm-up gets the same
+longer clock and some of those reps now make it. That is a side effect of
+keeping the floor un-gameable, recorded rather than tuned away — the alternative
+is a floor a crash can switch off, which is a path back to a warm-up losing the
+rep.)*
+
+**No retune closes that, and the range was swept before the sentence was
+reworded rather than after.** The descent is charged through exactly one
+constant, and against it sits `bench-touch-decides-the-rep`'s count of outcomes
+the descent moves, out of 240 — re-taken after the warm-up floor landed, because
+the floor moved these:
+
+| `BENCH_TOUCH_DEMAND_PENALTY` | warm-up reps lost, of 4860 | outcomes the descent moves, of 240 |
+|---|---|---|
+| **0.15 — shipped** | 1785 | **120** |
+| 0.10 | 1164 | 100 |
+| 0.05 | 423 | 40 |
+| 0.02 | **0** | **0** |
+| 0.00 | **0** | **0** |
+
+**The `0.02` row changed character when the floor landed, and re-running is the
+only reason this table is not lying.** It used to read `270` lost, and the
+sentence above it leaned on exactly that — no penalty emptied the column. Now
+`0.02` does empty it, and the claim survives anyway, because the descent still
+decides nothing there. Carried across instead of re-taken, this would have been
+a table that was false of its own tree.
+
+**The domain is named, not described, and that is a correction.** It used to be
+characterised in prose here — "a coarser slip ladder, six release instants
+against four" — which is not a parameterisation: a reader can land on 4860 reps
+by a dozen different routes and get a dozen different answers. It is now
+`PENALTY_DOMAIN` in `lift.test.ts`, with the slip ladder, the cadences, the quit
+instants and the seeds as named constants, and the shipped row is **driven and
+pinned by a test** rather than quoted. That is `streakSweep.ts`'s rule applied to
+this table: *a measurement whose inputs are not written down is an anecdote.*
+The shipped row's own number on the larger pinned domain is 5124 of 64800.
+
+The descent stops deciding anything at `0.02`, where warm-ups are still losing
+reps. The only value that empties the left column is the one that deletes the
+mechanic the 2026-08-25 replay steer explicitly kept. So the honest statement is
+the narrow one, and it is what both the guarantee and this paragraph now say.
+
+**THAT SENTENCE WAS FALSE FOR ONE COMMIT AND THE REASON IS WORTH MORE THAN THE
+CORRECTION.** The first version of this retune raised the demand curve three
+times as far, and at RPE 7 a player who tapped twice and stopped lost the rep —
+in five of the ten cells the two light rungs can prescribe. It shipped with this
+paragraph asserting the opposite, and the table it was read off agreed, because
+that table sampled the quit instant no earlier than 18 ticks after the command
+while every newly-lost rep was at offsets 1-12. One constant was the whole
+difference between a green control block and five broken warm-ups. The grid is
+wider now, and beside it `lift.test.ts` sweeps the quit instant WHOLE and pins
+the losses at zero — a grid is not a domain, which is the same lesson this
+section's own load sweep was rebuilt for one round earlier.
+
+**One residue, measured rather than hidden.** At the shipped curve exactly one
+warm-up cell — the heaviest load RPE 7 can prescribe, at a neutral check-in —
+misses if the player never touches the screen at all after the command. One tap
+saves it. Restoring even that costs the whole retune: the largest demand step
+that keeps it is a quarter of the shipped one, and at that step RPE 8's required
+tap rate is back where it started. The trade is recorded in
+`liftTuning.ts`'s `DEMAND_BASE` so it can be taken as a decision rather than
+found as a surprise.
+
+Beside it, across a hand-written load ladder over the top of the range: the tap
+rate changes the outcome in 120 of 120 cases and turns a make into a miss in 100,
+a 3-a-second grind reaches a different outcome from a 20-a-second one in 80 of
+120, and the chest touch changes it in 120 of 240. None of those four moved in
+this retune, and that is expected rather than disappointing — that ladder starts
+at 0.8 and steps to the meet ceiling, so it cannot see a change whose whole
+subject is where the warm-up rungs end and RPE 8 begins.
 
 **And that the descent asks LESS than it did is the point rather than a
 regression**, which is the one sentence in this section a future reader is most

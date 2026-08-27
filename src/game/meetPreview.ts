@@ -390,6 +390,25 @@ function deadliftScript(config: LiftConfig, style: RepStyle): ScriptedInput[] {
  *               than a gap. A caller asking for a guaranteed bench miss at any
  *               load no longer has one, and that is a real narrowing of this
  *               file's vocabulary rather than a rename.
+ *
+ *               WHERE "A WORKING WEIGHT" ACTUALLY IS, RE-MEASURED RATHER THAN
+ *               ADJUSTED AFTER THE 2026-08-26 DIFFICULTY RETUNE. Swept at 0.01
+ *               of `loadRatio` with no `feel` on the config, twenty seeds each:
+ *               an unanswered bench is a MAKE up to load 0.81 and a MISS at
+ *               0.82 and everything above, unanimously on both sides of that
+ *               step. The retune moved that boundary DOWN from 0.84, so the
+ *               sentence above says the same thing about a slightly wider band
+ *               than it used to. `LOAD_PRESETS.MODERATE` is 0.75 and still on
+ *               the make side, which is what keeps the sentence true; `HEAVY`
+ *               at 0.88 and every meet attempt are on the miss side.
+ *
+ *               THIS NUMBER WAS 0.79 FOR ONE COMMIT AND THAT WAS RIGHT AT THE
+ *               TIME, which is worth a line rather than a silent edit: the
+ *               first pass at that retune raised the demand curve three times
+ *               as far, broke GDD §12.3's warm-up protection, and was cut back.
+ *               A boundary re-measured against a tuning that then changes again
+ *               is a boundary that has to be re-measured again — this one is
+ *               taken at the shipped constants and nowhere else.
  *   'dumped'    The same rep as 'high', for the same reason: braking the bar
  *               no longer stops it, so there is nothing left to distinguish
  *               "never touched" from "dropped it and gave up".

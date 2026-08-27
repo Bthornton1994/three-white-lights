@@ -1155,13 +1155,30 @@ describe('the stall band', () => {
     //     the band keys on being SLOW rather than on some other fact that
     //     happens to correlate on this seed.
     // Re-driven against the measured mutant while writing this: every ascent
-    // frame bands (24 of 24), the exact pins redden first, and the file reads
+    // frame bands, the exact pins redden first, and the file reads
     // 3 failed | 56 passed (59) — with this test among the three, which is the
-    // whole repair.
+    // whole repair. (That mutant read "24 of 24" when it was taken; the ascent
+    // is 21 frames long now — see the note below.)
+    //
+    // THE BANDED COUNT WAS 18 AND IS 17 SINCE THE 2026-08-26 BENCH DIFFICULTY
+    // RETUNE, RE-DERIVED RATHER THAN ACCOMMODATED, AND IT MOVED TWICE. This rep
+    // is a maximal bench that taps three times and then stops; it MISSED before
+    // the retune and MISSES after, so nothing about what the test is looking at
+    // changed. What moved is that a harder demand curve kills the bar sooner:
+    // the whole ascent went 24 frames -> 21 at the first, over-large retune
+    // (banded 18 -> 15) and sits at 23 now that the demand rise was cut to a
+    // third of it (banded 17). The UNBANDED count is 6 in all three worlds —
+    // the bar leaves the chest with the same three taps behind it every time,
+    // and it is the dying half that got shorter.
+    //
+    // THAT IT MOVED TWICE WHILE BOTH RANK CHECKS BELOW MOVED NEITHER TIME is
+    // the reason both kinds of check are in this test rather than one. An exact
+    // count tracks the tuning and has to be re-taken with it; a rank holds
+    // across every tuning that keeps the band meaning what it says.
     // -----------------------------------------------------------------------
     const ascent = history.filter((s) => s.phase === 'ASCENT');
     const unbanded = ascent.filter((s) => stallBand(s) === null);
-    expect(banded.length, 'banded frames of the driven rep').toBe(18);
+    expect(banded.length, 'banded frames of the driven rep').toBe(17);
     expect(unbanded.length, 'moving ascent frames of the driven rep').toBe(6);
     const fastestFirst = [...ascent].sort((a, b) => b.velocity - a.velocity);
     const topQuartile = fastestFirst.slice(0, Math.floor(ascent.length / 4));
@@ -1200,7 +1217,7 @@ describe('the stall band', () => {
     // AN EXACT COUNT, NOT A BOUND — the rep is a pure function of its inputs,
     // and a bound is what let the first version of the test above stay green
     // while its subject changed shape underneath it.
-    expect(stalledFrames.length, 'stalled frames this pair is drawn from').toBe(18);
+    expect(stalledFrames.length, 'stalled frames this pair is drawn from').toBe(17);
     const stalledAt = stalledFrames[0];
     expect(stalledAt, 'the bar never stalled').toBeDefined();
     if (stalledAt === undefined) return;
@@ -1220,7 +1237,7 @@ describe('the stall band', () => {
       .map((s) => stallBand(s))
       .filter((b) => b !== null);
     // Exact for the reason the pair test's count is: a bound is not a domain.
-    expect(bands.length, 'no band to measure').toBe(18);
+    expect(bands.length, 'no band to measure').toBe(17);
     const alphas = bands.map((b) => b.alpha);
     // A floor, because a frame at alpha 0 is indistinguishable from a stage
     // that draws no stall at all — which is what the browser check reads.

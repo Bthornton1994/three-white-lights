@@ -257,6 +257,49 @@ export const STICK_HEIGHT_FRAC: PerKind<number> = Object.freeze({
   bench: 0.2,
   deadlift: 0.62,
 });
+/**
+ * Half-width of the sticking point's gaussian, per kind, in bar-height units:
+ * `gauss(h, STICK_HEIGHT_FRAC[kind], this)`, so at `this` away from the centre
+ * the bump is worth 1/e of its peak.
+ *
+ * ---------------------------------------------------------------------------
+ * BENCH WAS WIDENED TO 0.32 ON 2026-08-26 AND PUT BACK THE SAME DAY, AND THE
+ * REVERT IS RECORDED RATHER THAN ERASED BECAUSE THE MEASUREMENT IS THE USEFUL
+ * PART
+ * ---------------------------------------------------------------------------
+ * The reasoning for widening it was sound and is still worth reading: the width
+ * does NOT move the peak — `gauss` is 1 at the centre whatever this is — so it
+ * changes no cell's demand-minus-capacity margin, only how many TICKS the bar
+ * spends near that peak. Paired with `DEMAND_BASE.bench` it looked like a clean
+ * split: the base decides which rung the bar stops at, the width decides how
+ * long the fight lasts.
+ *
+ * WHAT THAT MISSED IS THAT A LONGER FIGHT IS ALSO A LONGER FIGHT FOR A WARM-UP.
+ * Widening moves the margin at which an UNTAPPED bar starts failing DOWNWARD,
+ * and GDD §12.3's warm-up protection is exactly a claim about that boundary.
+ * Measured, as the total RPE 6/7 reps lost across every quit instant 1..140 at
+ * three cadences (`REACHABLE_WARMUP`'s sweep, 12600 reps):
+ *
+ *     base +0.06 / width 0.32   456 lost   <- shipped for one commit, wrong
+ *     base +0.02 / width 0.32    60 lost
+ *     base +0.02 / width 0.26    60 lost
+ *     base +0.02 / width 0.22     0 lost   <- shipped
+ *     base +0.04 / width 0.16    60 lost
+ *
+ * Narrowing does not buy the base back either, which is the row a reader would
+ * otherwise try next. At every width the warm-up wall sits at about +0.02 of
+ * base, so the width is not an independent difficulty knob at all — it trades
+ * against the same budget the base spends, and it costs more per unit of
+ * difficulty bought. It is therefore left where it was.
+ *
+ * DEADLIFT KEEPS SQUAT'S (0.14) AND MUST. Its header above records a first pass
+ * that widened it alongside a raised base and made a perfectly-driven maximal
+ * pull unwinnable. Bench has now reproduced the same failure one axis over —
+ * not an unwinnable top, but an unwinnable warm-up — which is the second time
+ * this constant has punished being widened. Treat a proposal to widen any of
+ * these three as a proposal to move a boundary somebody else's guarantee is
+ * written about.
+ */
 export const STICK_WIDTH: PerKind<number> = Object.freeze({
   squat: STICK.WIDTH,
   bench: 0.22,
@@ -790,10 +833,20 @@ export const LIFT_TUNING = Object.freeze({
    * chest to build the launch, not a smaller ceiling.
    *
    * 300ms at 60Hz is 18 ticks. Against `GRIND_TAP_REFRACTORY_TICKS` that is
-   * room for 6 taps, which at `GRIND_CHARGE`'s decay is a little over half of
-   * a full charge — so a player who answers instantly leaves the chest fast
-   * and a player who answers late leaves it slow, and neither has lost the
-   * rep. Not measured by play; GDD §10 applies.
+   * room for 6 taps, which at `GRIND_CHARGE`'s shipped decay settles at charge
+   * **2.654 of a 2.9 ceiling — grind force 0.975**, so a player who mashes the
+   * whole launch beat leaves the chest at essentially full speed and a player
+   * who answers late leaves it slow, and neither has lost the rep. Not measured
+   * by play; GDD §10 applies.
+   *
+   * THE SENTENCE THIS REPLACES SAID "a little over half of a full charge",
+   * WHICH WAS FALSE. It was written against the 12-tick charge half-life this
+   * file used to describe — see `GRIND_CHARGE_DECAY_PER_TICK`'s own correction,
+   * where the same stale value produced the same class of wrong sentence. The
+   * consequence a tuner would draw from the old wording is the opposite of the
+   * truth: the launch beat is long enough to reach the ceiling, not half of it,
+   * so shortening it is a real difficulty knob and lengthening it buys almost
+   * nothing.
    */
   PRESS_LAUNCH_MS: 300,
 
@@ -825,12 +878,32 @@ export const LIFT_TUNING = Object.freeze({
    * away in about a fifth of a second, which is what turns idle hands into a
    * stall and continued tapping into a rescue.
    *
-   * 0.9439 is a half-life of 12 ticks (200ms) — `0.5 ** (1/12)`, written out
-   * as the decimal rather than computed so the file has no arithmetic in it. A
-   * SHORTER half-life makes the grind twitchier and compresses the spread
-   * between a mash and a jog — so it is a spread dial as much as a
-   * responsiveness dial, and the two pull in opposite directions. Unplayed
-   * placeholder.
+   * ---------------------------------------------------------------------------
+   * THIS PARAGRAPH DESCRIBED A VALUE THIS CONSTANT HAS NOT HELD FOR TWO ROUNDS,
+   * AND IT IS CORRECTED HERE RATHER THAN TRIMMED
+   * ---------------------------------------------------------------------------
+   * It read "0.9439 is a half-life of 12 ticks (200ms) — `0.5 ** (1/12)`".
+   * The shipped value is **0.9057**, which is `0.5 ** (1/7)`: a half-life of
+   * 6.998 ticks, **116.6 ms**. Every clause of the old sentence was false of the
+   * number sitting under it, including the one telling a tuner what arithmetic
+   * produced it — and the sentence above it, "falls away in about a fifth of a
+   * second", was written for the 200ms value and is nearer three half-lives of
+   * the real one. `liftTuning.test.ts` bounds the half-life to 100-400ms, so
+   * 116.6 ms is close to the fast end of what that guard allows, which is worth
+   * knowing before turning it further down.
+   *
+   * Written out as the decimal rather than computed, so the file has no
+   * arithmetic in it. A SHORTER half-life makes the grind twitchier and
+   * compresses the spread between a mash and a jog — so it is a spread dial as
+   * much as a responsiveness dial, and the two pull in opposite directions.
+   * Unplayed placeholder.
+   *
+   * IT WAS CONSIDERED AND NOT MOVED IN THE 2026-08-26 DIFFICULTY RETUNE.
+   * Shortening it is the obvious way to make a slow tapper's charge collapse
+   * between taps, and measured against the guard's own floor the whole
+   * available range (7.0 down to 6.0 ticks) is about a 10% change in what a
+   * 3/s grind is worth — too small to be the difference the replay asked for,
+   * and it would have been a third knob moving with the two that were.
    *
    * IT IS WHAT MAKES A STALL RESCUABLE, WHICH IS THE STEER'S OWN SENTENCE.
    * Force falls away when the player stops and comes back when they start
@@ -851,16 +924,45 @@ export const LIFT_TUNING = Object.freeze({
    * DIMINISHING RETURNS ARE THE SHAPE OF THE CURVE, NOT A CAP BOLTED ON TOP,
    * which is unchanged from the burst and is the half of the old beat the
    * steer explicitly keeps. The marginal force per unit of charge falls at
-   * every point — sixteen times steeper at the bottom of the curve than at the
-   * top — so a player who cannot mash still gets most of the value of trying
-   * and a player who can does not convert thumb speed into unbounded force.
+   * every point — **11.8 times** steeper over the first tenth of the charge
+   * range than over the last, measured the way `lift.test.ts`'s knee check
+   * measures it, or 13.2 taking the continuous derivative at 0 against the one
+   * at the ceiling — so a player who cannot mash still gets most of the value
+   * of trying and a player who can does not convert thumb speed into unbounded
+   * force.
    *
-   * CEILING IS A RATE A REAL THUMB CAN REACH, DELIBERATELY. At this decay a
-   * tap every 4 ticks (15/s) settles at charge 4.85 and a tap every 6 ticks
-   * (10/s) at 3.41, so a ceiling of 4.5 is met by a fast human and beaten by
-   * nobody. A ceiling only a machine could reach would put every real player
-   * on the steep part of the curve forever, and "mashing caps" would be a
-   * sentence about a region nobody visits.
+   * ---------------------------------------------------------------------------
+   * BOTH NUMBERS ABOVE AND THE WHOLE PARAGRAPH BELOW WERE FALSE OF THE SHIPPED
+   * VALUES, AND THEY ARE CORRECTED RATHER THAN TRIMMED
+   * ---------------------------------------------------------------------------
+   * The first said "sixteen times steeper", which is what `(CEILING +
+   * HALF_SATURATION) ** 2` comes to and not a ratio of anything; the real
+   * figures are 11.8 and 13.2, and `lift.test.ts` pins only that the ratio
+   * clears 8. The second read: "At this decay a tap every 4 ticks (15/s)
+   * settles at charge 4.85 and a tap every 6 ticks (10/s) at 3.41, so a ceiling
+   * of 4.5 is met by a fast human and beaten by nobody." At the SHIPPED decay
+   * the steady charges are **3.057** and **2.232**, and the ceiling is
+   * **2.9** — so all three numbers named a tuning that is not in the file, and
+   * a tuner reading them would have set a ceiling (4.5) that no tap rate can
+   * reach at all, because the refractory floor caps the steady charge at 3.89.
+   *
+   * CEILING IS A RATE A REAL THUMB CAN REACH, DELIBERATELY, AND THAT CLAIM IS
+   * STILL TRUE OF 2.9. A tap every 4 ticks (15/s) settles at 3.057 and clears
+   * it; a tap every 8 ticks (7.5/s) settles at 1.827 and does not — which is
+   * exactly the two-sided bound `liftTuning.test.ts` asserts. The ceiling is
+   * first met at a tap every 4.27 ticks, i.e. **14.1 taps a second**. A ceiling
+   * only a machine could reach would put every real player on the steep part of
+   * the curve forever, and "mashing caps" would be a sentence about a region
+   * nobody visits.
+   *
+   * NEITHER MEMBER MOVED IN THE 2026-08-26 DIFFICULTY RETUNE, AND THE REASON IS
+   * WORTH LEAVING FOR THE NEXT TUNER. Raising `HALF_SATURATION` is the knob
+   * that would make a SINGLE isolated tap worth less — it is worth 0.66 of full
+   * force today, which is why a bar at a rung whose margin is near zero goes up
+   * for almost any tapping at all — but it also straightens the curve, and at
+   * `HALF_SATURATION` 1.4 the knee ratio is already down to 8.6 against a pinned
+   * floor of 8. There is not enough room in that knob to move the rung the
+   * minimum-rate axis starts at.
    *
    * NO FALSE-START FLOOR LIVES HERE ANY MORE — see `GRIND_FALSE_START`. The
    * burst charged early taps against the tap COUNT and needed a floor on that
@@ -976,8 +1078,76 @@ export const LIFT_TUNING = Object.freeze({
    * BOOST. At `LOAD_PRESETS.MAXIMAL` bench's peak demand is above the lifter's
    * capacity, so an untapped bar stops there; this has to be enough that a
    * sustained grind clears it and a jog does not. What says whether it is is
-   * `lift.test.ts`'s `GRIND_SWEEP` and `RESCUE_SWEEP`, not this sentence.
-   * Unplayed placeholder, GDD §10.
+   * `lift.test.ts`'s `GRIND_SWEEP` and its reachable rescue table, not this
+   * sentence. Unplayed placeholder, GDD §10.
+   *
+   * ---------------------------------------------------------------------------
+   * RAISED TO 0.50 ON 2026-08-26 AND PUT BACK, AND THE SWEEP IS THE USEFUL PART
+   * ---------------------------------------------------------------------------
+   * It was raised to keep GDD §6.2's "jumping the call costs the launch and
+   * never the rep" true after a demand rise that has since been walked back by
+   * two thirds. At the shipped demand curve the guarantee holds here at 0.42
+   * with room: a maximal false start at the heaviest attempt a meet can call
+   * uses 138 of its 170 ascent ticks.
+   *
+   * THE SWEEP IS KEPT BECAUSE IT MEASURES SOMETHING NO OTHER KNOB DOES. This is
+   * the one bench constant that raises the tap rate every rung demands WITHOUT
+   * touching the warm-up boundary — a player who quits has no charge either
+   * way, so `REACHABLE_WARMUP` reads 0 lost of 16200 at EVERY value below.
+   *
+   * ---------------------------------------------------------------------------
+   * AND IT WAS THEN ASKED THE ONLY QUESTION THAT MATTERED — DOES IT RAISE RPE 8
+   * — AND THE ANSWER IS ESSENTIALLY NO
+   * ---------------------------------------------------------------------------
+   * `DEMAND_BASE.bench`'s wall leaves RPE 8's tap floor low, and this was the
+   * remaining candidate for lifting it. Measured at the shipped demand curve,
+   * RPE 8's four cells, make floor and GOOD-LIFT floor:
+   *
+   *     boost   rpe8 make floors             rpe8 clean floors
+   *     0.42    0.50 / 1.00 / 0.80 / 0.67    3.00 / 3.00 / 3.00 / 2.50  <- shipped
+   *     0.41    0.50 / 1.00 / 0.80 / 0.67    3.00 / 3.33 / 3.00 / 3.00
+   *     0.40    0.67 / 1.00 / 0.80 / 0.67    3.00 / 3.33 / 3.00 / 3.00
+   *
+   * Three of the four make floors do not move at all across that range; the
+   * fourth moves ONE rung, from 0.50/s to 0.67/s, which is a tap every two
+   * seconds becoming a tap every second and a half. Two clean floors move one
+   * rung. AND `REACHABLE_RESCUE`'s RPE 8 ROWS ARE BYTE-IDENTICAL AT ALL THREE
+   * VALUES — `[120,40,40] [160,60,60] [120,60,60] [120,40,40]` — so the axis on
+   * which RPE 8 actually changed in this round does not respond to this knob at
+   * all.
+   *
+   * WHAT IT COSTS, on the same three values: the false start at the reachable
+   * ceiling uses 138 / 145 / 154 of its 170 ascent ticks. Going to 0.40 spends
+   * HALF the remaining margin on GDD §6.2's "never fatal" guarantee to move one
+   * cell one rung. The wider sweep says where the wall is:
+   *
+   *     boost   worst meet floor   false start at the ceiling   warm-ups lost
+   *     0.50    10/s               100/170                          0
+   *     0.42    10/s               138/170                          0  <- shipped
+   *     0.41    10/s               145/170                          0
+   *     0.40    10/s               154/170                          0
+   *     0.38    12/s               170 MISS                         0
+   *     0.35    15/s               170 MISS                         0
+   *     0.30    unmakeable         170 MISS                         0
+   *
+   * (The `worst meet floor` column below 0.42 was taken on a coarser tap ladder
+   * than the RPE 8 tables above; those three rows are disqualified by the
+   * false-start column whatever their floors, so they were not re-taken.)
+   *
+   * SO 0.42 STAYS, AND THE HONEST READING IS THAT THE HEADROOM THIS CONSTANT
+   * OFFERS IS NOT HEADROOM FOR RPE 8. It is real headroom for RPE 9 and 10 —
+   * which do not need it — and for the meet, which is already at 10/s. The
+   * sentence "the one knob that raises the tap rate without touching warm-ups"
+   * is true and was worth finding; what it does NOT say, and this paragraph
+   * does, is that the rung the ruling named is the one rung it barely moves.
+   *
+   * THE GUARANTEE THIS CONSTANT CARRIES IS THE TAP RATE DECIDING THE OUTCOME
+   * RATHER THAN DECORATING IT, and `lift.test.ts`'s tap ladder is what measures
+   * it, over 120 cases. The sweep figures above are measured elsewhere — in the
+   * warm-up sweep and the false-start probe — and are deliberately outside the
+   * tagged paragraph rather than excused on `UNPINNED_PROSE_NUMBERS`, because a
+   * tag whose numbers must appear in one named body should not be made to reach
+   * numbers that body has no business measuring.
    * `@guarantee bench-grind-decides-the-rep`
    */
   GRIND_BOOST_FORCE_MAX: 0.42,
@@ -1078,20 +1248,215 @@ export const LIFT_TUNING = Object.freeze({
    * costs ground everywhere — which is the only shape "continuously tap to
    * grind through" can have.
    *
-   * Bench's base at `LOAD_PRESETS.MAXIMAL` is 1.147, above the lifter's
+   * Bench's base at `LOAD_PRESETS.MAXIMAL` is 1.167, above the lifter's
    * capacity on its own: a limit bench that is not being pressed does not
    * merely slow down, it does not move. Squat's is 0.808 and deadlift's 0.792
    * at the same preset, because both of those keep their difficulty in a
    * notch. Unplayed placeholder, GDD §10.
    *
+   * ---------------------------------------------------------------------------
+   * RAISED 1.25 -> 1.27 AND 0.38 -> 0.40 ON 2026-08-26: "RPE 8 IS JUST TOO EASY"
+   * ---------------------------------------------------------------------------
+   * A phone replay confirmed the mechanic and rejected the difficulty, naming
+   * RPE 8 and asking for a rise across the board. Both endpoints moved by the
+   * SAME +0.02, deliberately: `byLoad` interpolates linearly in `loadT`, so an
+   * equal move at both ends is a UNIFORM +0.02 of demand at every load, and a
+   * uniform shift is the only shape that raises the whole ladder without
+   * re-ordering it. `REACHABLE_COUPLING`'s three pins do not move at all as a
+   * result — a uniform shift preserves differences, and that coupling is a
+   * difference.
+   *
+   * ---------------------------------------------------------------------------
+   * IT WAS FIRST SHIPPED AT +0.06 AND THAT BROKE GDD §12.3's WARM-UP PROTECTION
+   * ---------------------------------------------------------------------------
+   * THE NUMBER A TUNER MUST NOT GUESS AT IS THE WALL, NOT THE STEP. At +0.06 a
+   * player who tapped twice at RPE 7 and stopped LOST THE REP, in five of the
+   * ten cells the two light rungs can prescribe. It shipped anyway, because the
+   * table that was supposed to catch it sampled the quit instant no earlier
+   * than 18 ticks after the command and every newly-lost rep was at offsets
+   * 1-12. `REACHABLE.IDLE_FROM_TICKS` carries that finding; this constant
+   * carries what it costs.
+   *
+   * ---------------------------------------------------------------------------
+   * THE TABLE, RE-DERIVED 2026-08-26 AT ONE STATED CONFIGURATION — WHICH IS THE
+   * CORRECTION, NOT THE DIGITS
+   * ---------------------------------------------------------------------------
+   * `STICK_WIDTH.bench = 0.22`, `GRIND_BOOST_FORCE_MAX = 0.42`, the shipped
+   * pair. Every row below comes from that one configuration and from one run.
+   * The version this replaces had rows taken at DIFFERENT widths and boosts
+   * without saying so — its `+0.040` read `120` and its `+0.060` read `456`
+   * against `132` and `330` here — so it was a column of numbers that could not
+   * be reproduced by any single tuning and read as though it could. A tuner
+   * comparing two rows of it was comparing three variables.
+   *
+   * Domain: `REACHABLE_WARMUP`'s held sweep — every RPE 6/7 cell, every quit
+   * instant 1..180, three cadences, three seeds, **16200 reps**. It said 12600,
+   * which was the domain before `MAX_QUIT_TICK` went from 140 to 180. Both
+   * domains were run for this table and every row is identical across them, so
+   * the stale label cost nothing here — it was not the cause of the bad rows,
+   * and saying so is the point of having measured it rather than assumed it.
+   *
+   *     rise     lost (held)   lost (finger off at descent tick 1)
+   *     +0.000       0                1218        (the pre-retune curve)
+   *     +0.015       0                1674
+   *     +0.020       0                1818        <- shipped
+   *     +0.025       0                1998
+   *     +0.030      60                2214
+   *     +0.040      72                2550
+   *     +0.060     330                3432        <- shipped for one commit
+   *
+   * -------------------------------------------------------------------------
+   * RE-DERIVED A SECOND TIME AFTER THE WARM-UP FLOOR, AND FIVE OF EIGHT ROWS
+   * HAD MOVED. THIS TABLE WAS THE FOURTH PLACE A PRE-FLOOR NUMBER WAS CARRIED
+   * ACROSS THE FLOOR
+   * -------------------------------------------------------------------------
+   * The round that added `BENCH_WARMUP_FLOOR_MARGIN` re-took the crash-penalty
+   * table for exactly this reason and wrote the hazard down one docstring away
+   * — and then left this table alone. Every row above reproduces with the floor
+   * DISABLED and five are wrong with it enabled, which is the signature of a
+   * measurement carried across a change rather than re-run on it. The stale
+   * readings were `+0.020` finger-off 2154, `+0.025` held 60, `+0.040` held 132
+   * and finger-off 2838, `+0.060` finger-off 3654.
+   *
+   * THE FLOOR MOVED THE WALL, AND IT MOVED IT THE USEFUL WAY. The held wall was
+   * between +0.020 and +0.025; it is now between **+0.025 and +0.030**. At
+   * +0.025 the held column is **0** where it used to be 60 — so a rise this
+   * document spent two rounds calling the first unsafe step now costs nothing,
+   * and the floor bought one more step of headroom on precisely the axis the
+   * 2026-08-26 ruling was about. Whether to SPEND that step is a human's call
+   * and is not taken here.
+   *
+   * THE SECOND COLUMN IS THE ONE THAT CHANGES WHAT THIS BLOCK MEANS. It is
+   * never zero — not even at the pre-retune curve — so the "wall" this table
+   * locates is a property of the HELD descent only. See
+   * `REACHABLE_WARMUP.SLIP_TICKS` for why that column exists and what it is
+   * pinned at.
+   *
+   * THE HELD WALL IS BETWEEN +0.025 AND +0.030, which is where it was measured
+   * rather than the "+0.022" this block used to interpolate to. Widening
+   * `STICK_WIDTH.bench` moves it DOWN rather than up (that header has the
+   * table); narrowing it does not move it up either.
+   *
+   * ---------------------------------------------------------------------------
+   * AND `GRIND_BOOST_FORCE_MAX` DOES MOVE IT. THE OLD SENTENCE SAID IT "DOES
+   * NOT TOUCH IT AT ALL", WHICH WAS TRUE AT THE ONE POINT IT WAS MEASURED AND
+   * FALSE AS THE PROPERTY IT WAS WRITTEN AS
+   * ---------------------------------------------------------------------------
+   * Swept at `STICK_WIDTH.bench = 0.22`, both columns, boost 0.30/0.42/0.50:
+   *
+   *     rise     held                 finger off
+   *     +0.025   60 /  60 /  60       3228 / 2274 / 1974
+   *     +0.060  402 / 330 / 312       5412 / 3654 / 3084
+   *
+   * So it is flat in the immediate neighbourhood of the wall, which is where
+   * somebody checked, and it swings the held count by a fifth two steps out and
+   * the released count by nearly two fifths everywhere.
+   *
+   * THE REASON GIVEN WAS THE PART THAT WAS ACTUALLY WRONG, and it is why the
+   * claim generalised: "a player who quits has no charge whichever way it is
+   * set." Every quit instant in this sweep is at or after the first tap, so
+   * every one of these players HAS charge — what they stop doing is adding to
+   * it. A mechanism stated confidently is what carried a one-point measurement
+   * into a general claim; the measurement was fine and the sentence around it
+   * was not.
+   *
+   * SO THERE IS NO "LAST SAFE STEP" AND THIS BLOCK NO LONGER NAMES ONE. It named
+   * +0.02, on the ANSWER-ONCE-AND-STOP axis, at the shipped width and boost —
+   * and on the never-answered axis the same sweep turned at +0.010, four steps
+   * lower. The fix for that was not a smaller step but
+   * `BENCH_WARMUP_FLOOR_MARGIN`, because the reps being lost were ended by a
+   * clock rather than by the curve. A wall quoted without its axis is a reading
+   * wearing a limit's clothes, and this one sent two rounds looking for a step
+   * size that would fix a timeout.
+   *
+   * AND THE FLOOR THEN MOVED BOTH AXES, WHICH IS WHY EVEN THE AXIS-QUALIFIED
+   * VERSION HAD TO BE RE-MEASURED RATHER THAN RE-WORDED. On the held axis the
+   * first costing step is now +0.030, not +0.025. On the never-answered axis
+   * the turn is gone entirely — `leaves a warm-up alone` pins zero lost at the
+   * shipped rise. Naming an axis is necessary and is not sufficient: a wall is
+   * a reading of a TREE, and this one has been re-read on every tree that moved
+   * it.
+   *
+   * WHY THE WALL IS THERE, WHICH IS THE PART THAT GENERALISES. The rungs are
+   * stacked 0.044-0.060 apart in margin, because the bar-speed cue is worth
+   * 0.06 of capacity per band and adjacent RPE choices differ little in load.
+   * Measured on the reachable domain at the shipped values, the hardest cell
+   * each rung reaches:
+   *
+   *     rpe6 -0.0923   rpe7 -0.0483   rpe8 -0.0025   rpe9 0.0448   rpe10 0.1048
+   *
+   * ALL FIVE RE-DERIVED 2026-08-26 AT THE SAME CONFIGURATION AS THE TABLE ABOVE
+   * and all five reproduce exactly, which is worth a line because the rows above
+   * them did not — a stale number beside a fresh one is the shape this file
+   * keeps recording, and "the neighbouring paragraph was wrong" is not evidence
+   * either way about this one.
+   *
+   * WHAT THE RE-DERIVATION DID CATCH IS ONE ROW UP. The old wall paragraph
+   * closed "+0.02 ... with about 0.0025 of margin on the hardest warm-up cell",
+   * and `-0.0025` is RPE 8's margin on this line, not a warm-up's — the warm-up
+   * rungs are `-0.0923` and `-0.0483`, forty times further out. A number was
+   * read off the wrong column of a table twelve lines away and given a
+   * confident sentence to live in. It is deleted rather than repaired, because
+   * the margin it was trying to describe is the one the table already states.
+   *
+   * The grind begins where a quiet rep starts losing the rep, and that boundary
+   * has to sit ABOVE every RPE 7 cell and BELOW every RPE 8 one. The window
+   * between the hardest RPE 7 cell and the lightest RPE 8 cell is 0.046 wide
+   * here — wider than it looks, because the cells either side of it are the two
+   * the rungs happen to place closest — and every one of the knobs above moves
+   * BOTH ends of it together.
+   *
+   * WHAT THE RETUNE THEREFORE BOUGHT, STATED SO NOBODY OVERSELLS IT, on the
+   * slowest sustained tap rate that never misses — before against after:
+   *
+   *     rpe8   0.50 / 0.67 / 0.50 / 0.50   ->   0.50 / 1.00 / 0.80 / 0.67
+   *     rpe9   1.00 / 1.43 / 1.20 / 1.00   ->   1.20 / 1.67 / 1.43 / 1.20
+   *     rpe10  2.31 / 2.00 / 2.00 / 2.00   ->   3.00 / 2.50 / 2.31 / 2.31
+   *
+   * and on the rate at which every seed is a GOOD LIFT rather than a GRINDER,
+   * RPE 8 went 2.31 / 3.00 / 2.50 / 2.31 to 3.00 / 3.00 / 3.00 / 2.50. On
+   * `REACHABLE_RESCUE`, RPE 8 went from two of four cells losing reps to four
+   * of four. Three of the four cells rise on each axis; the lightest one does
+   * not move on the make floor.
+   *
+   * THESE NUMBERS REPLACE A COARSER SET THAT WAS WRONG IN THE DETAIL. The first
+   * write-up read "RPE 8 went 0.67/s at all four cells to 0.67 / 1 / 1 / 0.67",
+   * measured on a tap ladder whose slow end stepped 0.67 -> 1.00 -> 1.43 with
+   * nothing between. Rates of 0.50/s and 0.80/s were not on it, so cells sitting
+   * there were reported at the nearest rung it had. The direction survived and
+   * the detail did not, which is the ordinary way a measurement misleads: not by
+   * being false, by being taken at a grain that cannot see the thing it is
+   * about. The ladder now steps 0.50 / 0.67 / 0.80 / 1.00 / 1.20 / 1.43 at the
+   * bottom.
+   *
+   * AND WHAT IT COULD NOT BUY. RPE 8 cannot be made to demand a FAST tap rate.
+   * Its floor is 1.00/s at its hardest cell and 0.50/s at its lightest, and
+   * pushing it further is what the wall above refuses. Lowering
+   * `GRIND_BOOST_FORCE_MAX` was measured as the one remaining way to raise it
+   * without touching warm-ups, and its own header records the answer: it moves
+   * ONE of the four cells by ONE rung and leaves `REACHABLE_RESCUE` byte-
+   * identical, for half the false-start margin. So RPE 8's difficulty is
+   * "stopping costs the rep, and a slow grind is a GRINDER rather than a GOOD
+   * LIFT"; the minimum-tap-rate axis begins at RPE 9.
+   *
+   * ONE RESIDUE, MEASURED AND NOT HIDDEN. At the shipped +0.02 exactly one of
+   * the ten warm-up cells — `session/rpe7/0.8250/as-expected`, the heaviest
+   * load the rung can prescribe — misses if the player never touches the screen
+   * AT ALL after the command. One tap saves it, which is why
+   * `REACHABLE_WARMUP`'s sweep (which starts at one tap) reads 0. The
+   * pre-retune curve made that cell at zero taps too, and restoring that costs
+   * the whole retune: at +0.0075, the largest step that keeps it, RPE 8's
+   * floors are back to 0.67/s at three of four cells. Both numbers are here so
+   * the trade is a decision somebody can take rather than a fact they discover.
+   *
    * WHAT THIS NUMBER IS ACCOUNTABLE FOR, AND IT IS NOT A PRESET. The value it
-   * replaced (0.95) put every stall and every lost rep at
+   * replaced two rounds ago (0.95) put every stall and every lost rep at
    * `LOAD_PRESETS.MAXIMAL` — a point no producer emits — and left zero of both
    * in every training rep the game can prescribe. `lift.test.ts`'s
    * `REACHABLE_RESCUE` walks the loads `prescribeSession` and the meet's jump
    * ladder actually emit and pins where the grind bites per cell; restoring
-   * 0.95 here reddens that table, which is the mutation recorded against
-   * `a-stalled-bench-can-be-ground-through`.
+   * either 0.95 or the pre-retune 1.25 here reddens that table, which is the
+   * mutation recorded against `a-stalled-bench-can-be-ground-through`.
    *
    * NO SEPARATE TAG, AND THE ATTEMPT IS RECORDED. One was declared here and
    * pointed at the ceilings test beside that table; the flattening mutant left
@@ -1118,7 +1483,7 @@ export const LIFT_TUNING = Object.freeze({
    */
   DEMAND_BASE: {
     squat: { LIGHT: 0.42, MAXIMAL: 0.86 },
-    bench: { LIGHT: 0.38, MAXIMAL: 1.25 },
+    bench: { LIGHT: 0.4, MAXIMAL: 1.27 },
     deadlift: { LIGHT: 0.42, MAXIMAL: 0.84 },
   } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
@@ -1145,11 +1510,28 @@ export const LIFT_TUNING = Object.freeze({
    * bench's peak was 1.153 against squat's 1.238 and deadlift's 1.202, the
    * LOWEST rather than a comparable one.
    *
-   * WHAT IS TRUE NOW, MEASURED AT `LOAD_PRESETS.MAXIMAL`: squat 1.238,
-   * deadlift 1.202, bench 1.285. Bench's is the largest margin above capacity
-   * of the three, and it is reached the opposite way round from the other two
-   * — a high floor with a shallow notch on it (endpoint 1.25 + 0.15) rather
-   * than an easy run-up into a tall one.
+   * WHAT IS TRUE NOW, RE-MEASURED AT `LOAD_PRESETS.MAXIMAL` AFTER THE
+   * 2026-08-26 DIFFICULTY RETUNE: squat 1.238, deadlift 1.202, bench 1.305.
+   * Bench's is the largest margin above capacity of the three, and it is
+   * reached the opposite way round from the other two — a high floor with a
+   * shallow notch on it (endpoint 1.27 + 0.15) rather than an easy run-up into
+   * a tall one.
+   *
+   * THIS PAIR OF NUMBERS WAS WRONG FOR ONE COMMIT AND IS CORRECTED HERE. It
+   * read "bench 1.335 … (endpoint 1.30 + 0.15)" against a shipped endpoint of
+   * 1.31 and a measured peak of 1.34518 — introduced by the same pass that was
+   * correcting four OTHER stale numbers in this file, which is the shape worth
+   * noticing: a correction pass is exactly when a new false number gets written,
+   * because the numbers are being retyped rather than re-measured. Both figures
+   * above are now taken from `byLoad` at the shipped endpoints.
+   *
+   * THIS GAIN DID NOT MOVE IN THAT RETUNE, AND THAT WAS A DECISION RATHER THAN
+   * AN OVERSIGHT. Raising it raises the PEAK, and the peak is where GDD §12.3's
+   * warm-up protection binds: RPE 7's hardest reachable cell sits at a LOWER
+   * `loadT` than RPE 8's lightest, so any knob weighted toward heavy loads
+   * closes the 0.016-wide window between them rather than opening it. The
+   * difficulty went into `DEMAND_BASE` (a uniform lift, which preserves the
+   * window) and `STICK_WIDTH` (which does not touch the peak at all).
    *
    * THE ASYMMETRY IS THE MECHANIC'S, NOT A DIFFICULTY SETTING. Squat and
    * deadlift are driven by `DRIVE_BOOST_FORCE_MAX` (0.62), an impulse thrown
@@ -1162,9 +1544,17 @@ export const LIFT_TUNING = Object.freeze({
    * DEADLIFT'S GAIN IS THE LARGEST (0.46) ON TOP OF THE SMALLEST BASE — peak
    * 0.84 + 0.46 = 1.30 at the endpoint, a comparable margin above capacity to
    * the other two, reached by a taller notch on an easier run-up rather than a
-   * higher floor. Measured at LOAD_PRESETS.MAXIMAL the three peaks are squat
-   * 1.238, deadlift 1.202, bench 1.285; against the other two what differs is
-   * WHERE the peak sits (0.62 against squat's 0.34), not how bad it is.
+   * higher floor. What differs against the other two is WHERE the peak sits
+   * (0.62 against squat's 0.34), not how bad it is; the three peaks themselves
+   * are stated once, above.
+   *
+   * "STATED ONCE, ABOVE" IS THE FIX AND THE DIGIT WAS ONLY THE SYMPTOM. This
+   * paragraph used to carry its own copy of the three peaks, ending "bench
+   * 1.285" — thirty-four lines under a paragraph in the SAME docstring saying
+   * `bench 1.305`. One docstring, one quantity, two numbers, and the retune
+   * that re-measured the first copy had no reason to look at the second.
+   * Correcting the digit would have left two copies for the next retune to
+   * desynchronise, so the second copy is gone instead of fixed.
    *
    * Also the reverse of the first guess (0.42 gain on a 0.90 base), and for the
    * same reason recorded under `DEMAND_BASE`: difficulty spread across the whole
@@ -1461,14 +1851,172 @@ export const LIFT_TUNING = Object.freeze({
    * scripts and asserts every one resolves; this is what makes that true even
    * for a force balance that happens to sit at a stable equilibrium.
    *
-   * 170 ticks is 2.83 s of concentric. Chosen against a measured distribution
-   * rather than picked: across a sweep of every load, depth and drive offset,
-   * successful ascents ran to a maximum of 201 ticks with a 99th percentile of
-   * 121, so this clips only the longest creeps. Raise it far and 'timeout'
-   * becomes unreachable and its copy becomes dead; drop it far and it starts
-   * cutting off grinds that were going to make it, which is the worse failure.
+   * 170 ticks is 2.83 s of concentric, and the trade is two-sided: raise it far
+   * and 'timeout' becomes unreachable and its copy becomes dead; drop it far
+   * and it starts cutting off grinds that were going to make it, which is the
+   * worse failure.
+   *
+   * -------------------------------------------------------------------------
+   * THIS PARAGRAPH USED TO SAY 170 "CLIPS ONLY THE LONGEST CREEPS" AND CITE A
+   * MEASURED MAXIMUM OF 201 IN THE SAME BREATH. IT CARRIED THAT CONTRADICTION
+   * THROUGH FOUR RETUNE ROUNDS
+   * -------------------------------------------------------------------------
+   * The sweep was real and the number was right: across every load, depth and
+   * drive offset, successful ascents ran to a maximum of **201** ticks, 99th
+   * percentile 121. A cap of 170 sits BELOW that maximum, so by its own
+   * measurement it was never clipping "only the longest creeps" — it was
+   * cutting off ascents the sweep had already watched succeed, which is the
+   * failure the sentence above calls the worse one. The reasoning and the
+   * evidence were in the same docstring, one line apart, disagreeing.
+   *
+   * WHAT IT COST: a bench warm-up at `rpe7/0.8250/as-expected` — capacity
+   * clearing peak demand by 0.048, bar at 80.8% of the way up — was called a
+   * miss on the clock, and for a whole round that read as a DIFFICULTY question
+   * about `DEMAND_BASE.bench`. Two rounds of curve sweeps went looking for a
+   * step size that would fix a clock.
+   *
+   * -------------------------------------------------------------------------
+   * WHAT 170 DOES AND DOES NOT COVER NOW
+   * -------------------------------------------------------------------------
+   * It is still the cap for squat, for deadlift, and for every bench bar that
+   * is NOT under `BENCH_WARMUP_FLOOR_MARGIN`. Under that margin the ascent runs
+   * on `BENCH_WARMUP_FLOOR_ASCENT_TICKS` instead, and this constant never sees
+   * those reps.
+   *
+   * WHY 170 IS STILL RIGHT FOR SQUAT AND DEADLIFT AND WAS NOT FOR A LIGHT BENCH
+   * BAR. It is a LOAD-CURVE fact, and the first version of this paragraph got
+   * the mechanism wrong in a way worth recording, because the wrong mechanism
+   * was reassuring and the right one is a warning.
+   *
+   * IT SAID squat and deadlift are cue-driven, so a rep that has not made it by
+   * 170 ticks "has spent its cues and is not going to get another — there is no
+   * channel left through which it could still complete". THAT IS FALSE.
+   * `stepLift` opens the ascent with `let drive = capacity - m.stallCapacityLoss`
+   * UNCONDITIONALLY, for every kind, before any cue or grind term is added. So
+   * squat and deadlift have exactly bench's continuous balance between capacity
+   * and demand; what bench adds on top is a maintained boost, not the balance
+   * itself. A squat that has not locked out by 170 ticks is still being pushed
+   * by the same term a bench is.
+   *
+   * WHAT ACTUALLY DIFFERS IS THE CEILING OF THE DEMAND CURVE. `DEMAND_BASE`
+   * tops out at **0.86** on squat and **0.84** on deadlift against bench's
+   * **1.27**. A bench bar can therefore sit far closer to capacity, for far
+   * longer, than either of the other two can be made to; squat and deadlift
+   * never produce an ascent slow enough to approach this cap, so it never binds
+   * on them. Measured longest successful ascents run bench > squat > deadlift
+   * on every harness that has driven them, though the digits depend on the
+   * drive grammar and are quoted as a range rather than pinned: two independent
+   * harnesses got squat 118 and 127, deadlift 51 and 108, bench 163 and 207.
+   *
+   * WHY THE DISTINCTION IS NOT PEDANTRY: the wrong version told a future tuner
+   * that this defect cannot be recreated on squat, because squat has cues and
+   * cues run out. It can. Raise `DEMAND_BASE.squat.MAXIMAL` toward bench's and
+   * squat gets bench's problem, cues or no cues. `liftTuning.test.ts` pins all
+   * three ceilings so that move reddens and asks whoever makes it to re-check
+   * this clock.
+   *
+   * On bench, then, the cap was ending reps that had lost nothing — 193 ticks
+   * at the slowest reachable warm-up, against a cap of 170.
+   *
+   * THE CLOCK IS "RAN OUT OF AIR", NOT A SECOND CRASH PENALTY. Ruled 2026-08-26
+   * when the floor was made blind to how the rep was played: a crashed warm-up
+   * gets the same floor, because the crash is already taxed through
+   * `BENCH_TOUCH_DEMAND_PENALTY` scaling the whole ascent. Making the timeout
+   * do that job as well would charge one mistake twice and hand the floor an
+   * off switch a player could trip.
    */
   ASCENT_TIMEOUT_TICKS: 170,
+
+  /**
+   * -------------------------------------------------------------------------
+   * BENCH WARM-UP FLOOR, RULED 2026-08-26: HOW FAR UNDER THE LIFTER A BAR HAS
+   * TO SIT BEFORE THE CLOCK STOPS BEING ALLOWED TO DECIDE IT
+   * -------------------------------------------------------------------------
+   * `peakDemand - capacity` at the sticking point, both known before the rep
+   * starts and neither touched by anything the player does. At or below this,
+   * a bench bar is a warm-up MECHANICALLY rather than by which rung prescribed
+   * it, and its ascent runs on `BENCH_WARMUP_FLOOR_ASCENT_TICKS` instead.
+   *
+   * THE RULING IT SERVES: "Never answering PRESS! on a held descent must still
+   * make every RPE 6 and RPE 7 cell, including rpe7/0.8250. That is §12.3
+   * warm-up protection, not a nicety. +0.02 stays on RPE 8 / 9 / 10 and meet."
+   * So this floor may not reach a working rung, and the number is chosen to
+   * make that structural rather than hoped for.
+   *
+   * -------------------------------------------------------------------------
+   * THIS VALUE IS THE MIDPOINT OF A MEASURED GAP, AND THE GAP IS THE REASON —
+   * NOT THE DIGIT
+   * -------------------------------------------------------------------------
+   * Measured over the reachable cells at the shipped tuning, as
+   * `peakDemand - capacity` for the hardest cell each rung can prescribe:
+   *
+   *     rpe6 -0.0923   rpe7 -0.0483 | rpe8 -0.0025   rpe9 0.0448  rpe10 0.1048
+   *
+   * THE MEASUREMENT, STATED AS THE TWO EDGES IT RESTS ON:
+   *
+   *     every RPE 6/7 cell    at or below   -0.048
+   *     nearest RPE 8 cell    at or above   -0.032
+   *     the gap between them                 0.016
+   *     this floor, its midpoint            -0.040
+   *
+   * So the rungs are separated in this quantity before anything is chosen, and
+   * ANY value strictly inside that gap gives the same partition. That is what
+   * makes this a boundary rather than a threshold tuned until the tests passed
+   * — a distinction worth being able to check, so `lift.test.ts` pins BOTH
+   * EDGES rather than only the digit. A retune that narrows the gap reddens
+   * there; a retune that closes it means the floor can no longer separate
+   * warm-up from working rung and the mechanism needs rethinking, not renumbering.
+   *
+   * PLACEHOLDER, like every feel value here. Nobody has played it.
+   */
+  BENCH_WARMUP_FLOOR_MARGIN: -0.04,
+
+  /**
+   * The ascent clock for a bar under `BENCH_WARMUP_FLOOR_MARGIN`, in ticks.
+   *
+   * WHY A SECOND CLOCK RATHER THAN A BIGGER `ASCENT_TIMEOUT_TICKS`: measured,
+   * and the global version is refuted. At 220 for every lift the reachable
+   * rescue table moves and RPE 8's own non-vacuity control halves from 12 to 6
+   * — the unanswered reps the phone replay asked to COST the rep start making
+   * again. A shared clock cannot separate the rungs; this one does, because
+   * nothing above the floor margin ever reads it.
+   *
+   * -------------------------------------------------------------------------
+   * ALSO THE MIDPOINT OF A MEASURED GAP, ON A SECOND AND INDEPENDENT AXIS
+   * -------------------------------------------------------------------------
+   * Measured by lifting the clock out of the way entirely and counting ticks of
+   * ascent to lockout with ZERO taps after the command:
+   *
+   *     rpe6  87..129     rpe7 103..**193** | rpe8 **247**, 256, and two that
+   *     never make it at all (they collapse at 0.119 and 0.178)
+   *
+   * THE MEASUREMENT, STATED AS THE TWO EDGES IT RESTS ON:
+   *
+   *     slowest RPE 6/7 unaided ascent        193 ticks
+   *     fastest working-rung completion       247 ticks
+   *     the gap between them                   54 ticks
+   *     this clock, its midpoint              220 ticks
+   *
+   * TWO SEPARATORS THAT WERE NOT DERIVED FROM EACH OTHER AND AGREE. The margin
+   * above is a force balance read before the rep starts; this is a duration
+   * read from playing the rep out. Either one alone would partition the rungs;
+   * that both do, at values neither borrowed from the other, is what says the
+   * partition is a property of the ladder rather than of one instrument.
+   *
+   * Both edges are pinned in `lift.test.ts`; a retune that closes the gap
+   * reddens there rather than silently letting the floor reach RPE 8.
+   *
+   * AND `ASCENT_TIMEOUT_TICKS`'s OWN HEADER ALREADY CARRIED THIS DEFECT. It
+   * records "successful ascents ran to a maximum of 201 ticks" and then caps at
+   * 170 — below its own measured maximum — while the sentence beneath it says
+   * that cutting off grinds that were going to make it "is the worse failure".
+   * The number and the reasoning were both right there and disagreed with each
+   * other, which is why the warm-up hole read as a difficulty question for a
+   * whole round instead of a clock that was documented too short.
+   *
+   * PLACEHOLDER. Nobody has felt 3.67 s of concentric on a warm-up.
+   */
+  BENCH_WARMUP_FLOOR_ASCENT_TICKS: 220,
 
   /**
    * Ticks standing at lockout before the rep resolves, per kind. bench

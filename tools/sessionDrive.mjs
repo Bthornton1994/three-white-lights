@@ -519,9 +519,28 @@ export const BENCH_DRIVE = Object.freeze({
    * cadence and read as the app's failure.
    *
    * 83 ms is 5 ticks at 60 Hz, the slowest column the sweep measured the pair
-   * discriminating at. The browser's achieved means across the runs so far were
-   * 44-73 ms, so this is a guard against a slower machine rather than a bar the
-   * current one is scraping.
+   * discriminating at. That half is unchanged and is the reason the number is
+   * what it is.
+   *
+   * THE SECOND HALF OF THIS PARAGRAPH USED TO SAY THE BROWSER'S ACHIEVED MEANS
+   * WERE 44-73 ms, "a guard against a slower machine rather than a bar the
+   * current one is scraping". THAT IS NO LONGER TRUE AND IT IS THE SENTENCE
+   * MOST LIKELY TO MISLEAD, because it tells a reader a red here means the app.
+   * Five runs across two hosts have now read achieved means of **78-110 ms**:
+   * 110/80, 107/78, 90/94 on one host and 98/78 on another, at loads from 0.21
+   * to ~1.5. The ceiling is squarely inside the range this environment produces,
+   * so exceeding it is an ordinary event here rather than a signal.
+   *
+   * WHAT CHANGED IN RESPONSE IS THE REPORTING, NOT THE NUMBER. `verify-lift-press`
+   * now emits a NAMED SKIPPED check carrying the achieved means when the cadence
+   * is not met, instead of a red on a line that reads as an app claim. Widening
+   * 83 was refused: above it the pair genuinely stops discriminating, so a wider
+   * ceiling would buy green runs by making the measurement meaningless — which
+   * is the failure mode CLAUDE.md records for three other instruments.
+   *
+   * If a future host reads 44-73 ms again, nothing here needs changing; the skip
+   * simply stops firing. What must NOT happen is the ceiling drifting upward to
+   * chase whatever this box does today.
    */
   GRIND_PAIR_MAX_GAP_MS: 83,
   /**

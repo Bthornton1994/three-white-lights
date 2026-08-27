@@ -1347,3 +1347,46 @@ describe('no feel value lives outside this file', () => {
   });
 
 });
+
+describe('the ascent clock and the demand ceiling it is safe against', () => {
+  it('pins all three DEMAND_BASE ceilings, because ASCENT_TIMEOUT_TICKS is only safe against these', () => {
+    // ---------------------------------------------------------------------
+    // THE GUARD FOR A SENTENCE THAT WAS WRONG IN THE REASSURING DIRECTION
+    // ---------------------------------------------------------------------
+    // `ASCENT_TIMEOUT_TICKS` is 170 and bench needs a scoped longer clock
+    // (`BENCH_WARMUP_FLOOR_ASCENT_TICKS`) because a light bench bar can creep
+    // for 193 ticks and still make it. Squat and deadlift do not need one.
+    //
+    // The reason recorded for that was CUE EXHAUSTION -- squat and deadlift
+    // are cue-driven, so a rep past 170 ticks supposedly has no channel left.
+    // That is false: `stepLift` computes `drive = capacity - stallCapacityLoss`
+    // unconditionally for every kind, before any cue or grind term, so all
+    // three lifts share one continuous balance. The real reason is the CEILING
+    // OF THE DEMAND CURVE: bench's base tops out half again as high as the
+    // other two, so only bench can sit near capacity long enough to creep.
+    //
+    // WHY THAT MATTERS ENOUGH TO PIN: the false version told a future tuner
+    // this defect could not be recreated on squat. It can -- raise squat's
+    // ceiling toward bench's and squat inherits bench's problem, cues or no
+    // cues. This is the assertion that makes them look at the clock first.
+    expect(LIFT_TUNING.DEMAND_BASE.squat.MAXIMAL).toBe(0.86);
+    expect(LIFT_TUNING.DEMAND_BASE.deadlift.MAXIMAL).toBe(0.84);
+    expect(LIFT_TUNING.DEMAND_BASE.bench.MAXIMAL).toBe(1.27);
+    // ...and the RELATIONSHIP, not just the values, because that is the fact
+    // the clock's safety rests on. A tuner who raises squat to bench's ceiling
+    // reddens here even if they also re-pin the literal above.
+    expect(
+      LIFT_TUNING.DEMAND_BASE.squat.MAXIMAL < LIFT_TUNING.DEMAND_BASE.bench.MAXIMAL,
+      'squat sits below bench, which is why 170 never binds on it',
+    ).toBe(true);
+    expect(
+      LIFT_TUNING.DEMAND_BASE.deadlift.MAXIMAL < LIFT_TUNING.DEMAND_BASE.bench.MAXIMAL,
+      'deadlift sits below bench, which is why 170 never binds on it',
+    ).toBe(true);
+    // ...and bench is the only kind with a scoped clock, which is the other
+    // half of the same statement.
+    expect(LIFT_TUNING.BENCH_WARMUP_FLOOR_ASCENT_TICKS).toBeGreaterThan(
+      LIFT_TUNING.ASCENT_TIMEOUT_TICKS,
+    );
+  });
+});
