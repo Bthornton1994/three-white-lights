@@ -4977,10 +4977,22 @@ describe('the grind decides the lift', () => {
     expect(new Set(drawnTaps).size, `cadence draws all agreed: ${drawnTaps.join(',')}`)
       .toBeGreaterThan(1);
     // NO DECLARED BUDGET. Measured at 4158 ms in a whole-file run, which is under
-    // `tools/testBudget.mjs`'s `DECLARE_ABOVE_MS`, so the global timeout already
-    // carries more than `HEADROOM_FACTOR` of margin and a declaration here would
-    // be a basis nobody re-takes. The first draft declared 600_000 against a
-    // four-second test, which is the stale-basis shape that tool exists to find.
+    // `DECLARE_ABOVE_MS` in the budget rule under `tools/`, so the global
+    // timeout already carries more than `HEADROOM_FACTOR` of margin and a
+    // declaration here would be a basis nobody re-takes. The first draft
+    // declared 600_000 against a four-second test, which is the stale-basis
+    // shape that tool exists to find.
+    //
+    // THE MODULE'S PATH IS DELIBERATELY NOT SPELLED OUT ABOVE, AND THAT IS A
+    // FINDING RATHER THAN A STYLE CHOICE. `filesDeclaringBudgets` in
+    // `testBudget.test.ts` decides which files declare a budget by testing
+    // whether the RAW SOURCE contains that path — comments included — so a
+    // sentence merely MENTIONING the rule puts a file on a pinned list of files
+    // that IMPORT it. Writing the sentence here reddened that census. The same
+    // defect was repaired once already in `src/tuning/audit.ts`'s
+    // `testBodyStarts`, by taking the scan over `codeOnly`; that repair belongs
+    // in the tool and the tool is out of this piece's scope, so it is reported
+    // and worked around here instead of edited quietly.
   });
 
   it('cannot put a rep above the max-effort wall without breaking the false-start rule', () => {
