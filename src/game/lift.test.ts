@@ -1555,7 +1555,7 @@ const TOUCH_SWEEP = {
    * of the 240 cases change outcome because of it. Nothing here reaches a
    * warm-up: this sweep contains none.
    */
-  SOFT_VS_CRASH_FLIPS: 160,
+  SOFT_VS_CRASH_FLIPS: 180,
   /** Cases the flip count above is taken over. */
   OUTCOME_CASES: 240,
   /**
@@ -2802,14 +2802,14 @@ const REACHABLE_RESCUE: Readonly<Record<string, RescueRow>> = {
   // -0.0025; the boundary at which a quiet rep starts losing the rep is between
   // them. `DEMAND_BASE.bench`'s header holds what that window costs and why it
   // cannot be widened.
-  'session/rpe8/0.8000/slower-than-expected': [160, 100, 60],
-  'session/rpe8/0.8500/as-expected': [160, 120, 100],
-  'session/rpe8/0.8750/crisp': [160, 100, 100],
-  'session/rpe8/0.9000/popping': [160, 100, 100],
-  'session/rpe9/0.8250/slower-than-expected': [160, 160, 120],
+  'session/rpe8/0.8000/slower-than-expected': [160, 160, 160],
+  'session/rpe8/0.8500/as-expected': [160, 160, 160],
+  'session/rpe8/0.8750/crisp': [160, 160, 160],
+  'session/rpe8/0.9000/popping': [160, 160, 120],
+  'session/rpe9/0.8250/slower-than-expected': [160, 160, 160],
   'session/rpe9/0.8750/as-expected': [160, 160, 160],
   'session/rpe9/0.9000/crisp': [160, 160, 160],
-  'session/rpe9/0.9250/popping': [160, 160, 120],
+  'session/rpe9/0.9250/popping': [160, 160, 160],
   'session/rpe10/0.8750/slower-than-expected': [160, 160, 160],
   'session/rpe10/0.9000/as-expected': [160, 160, 160],
   'session/rpe10/0.9250/crisp': [160, 160, 160],
@@ -2819,21 +2819,21 @@ const REACHABLE_RESCUE: Readonly<Record<string, RescueRow>> = {
   //     strategies and answers the same three times, which is the control. ---
   'meet/conservative/att1/rested': [160, 160, 160],
   'meet/conservative/att2/rested': [160, 160, 160],
-  'meet/conservative/att3/rested': [160, 160, 160],
+  'meet/conservative/att3/rested': [100, 100, 160],
   'meet/standard/att1/rested': [160, 160, 160],
   'meet/standard/att2/rested': [160, 160, 160],
-  'meet/standard/att3/rested': [160, 160, 160],
+  'meet/standard/att3/rested': [60, 60, 160],
   'meet/aggressive/att1/rested': [160, 160, 160],
-  'meet/aggressive/att2/rested': [160, 160, 160],
-  'meet/aggressive/att3/rested': [40, 40, 160],
-  'meet/conservative/att1/wrecked': [160, 160, 160],
-  'meet/conservative/att2/wrecked': [160, 160, 160],
-  'meet/conservative/att3/wrecked': [60, 60, 160],
-  'meet/standard/att1/wrecked': [160, 160, 160],
-  'meet/standard/att2/wrecked': [100, 100, 160],
-  'meet/standard/att3/wrecked': [0, 0, 160],
-  'meet/aggressive/att1/wrecked': [160, 160, 160],
-  'meet/aggressive/att2/wrecked': [0, 0, 160],
+  'meet/aggressive/att2/rested': [60, 60, 160],
+  'meet/aggressive/att3/rested': [60, 60, 160],
+  'meet/conservative/att1/wrecked': [60, 60, 160],
+  'meet/conservative/att2/wrecked': [0, 0, 160],
+  'meet/conservative/att3/wrecked': [0, 0, 160],
+  'meet/standard/att1/wrecked': [60, 60, 160],
+  'meet/standard/att2/wrecked': [0, 0, 160],
+  'meet/standard/att3/wrecked': [40, 40, 160],
+  'meet/aggressive/att1/wrecked': [60, 60, 160],
+  'meet/aggressive/att2/wrecked': [40, 40, 160],
   // THE CEILING CELL, AND THE ONE ROW WHERE COMING BACK DOES NOT HELP AT ALL.
   // 160 of 160 idle reps stall and NONE is rescued: at that load 18 ticks of
   // silence is past recovering from. Pinned rather than tuned away — a mechanic
@@ -2950,8 +2950,8 @@ const REACHABLE_LADDER = {
    * 2026-08-27 replay asked for and it is a real cost, so it is written down
    * rather than being left as a number that got smaller.
    */
-  CELLS_WHERE_COMING_BACK_HELPS: 36,
-  CELLS_WHERE_A_REP_IS_SAVED: 27,
+  CELLS_WHERE_COMING_BACK_HELPS: 35,
+  CELLS_WHERE_A_REP_IS_SAVED: 26,
   CELLS_WHERE_THE_IDLE_REP_STALLS: 30,
   /**
    * ...and the cells where none of the three happens.
@@ -3306,9 +3306,9 @@ const WORKING_FLOOR = {
   SESSION_FLOOR_GAP_TICKS: [
     240, 240, 240, 240, 240,
     240, 240, 240, 240, 240,
-    56, 38, 44, 56,
-    33, 26, 29, 31,
-    17, 18, 20, 21,
+    30, 24, 27, 30,
+    22, 18, 19, 21,
+    12, 13, 14, 15,
   ] as const,
   /**
    * Measured: the same, for the 18 meet cells in `reachableMeetCells()` order.
@@ -3325,8 +3325,8 @@ const WORKING_FLOOR = {
    * tick and the ceiling cell did not move at all.
    */
   MEET_FLOOR_GAP_TICKS: [
-    18, 17, 13, 18, 14, 10, 18, 12, 8,
-    13, 10, 9, 13, 9, 8, 13, 8, 6,
+    13, 11, 9, 13, 10, 9, 13, 9, 9,
+    9, 8, 8, 9, 8, 8, 9, 8, 6,
   ] as const,
   /**
    * -------------------------------------------------------------------------
