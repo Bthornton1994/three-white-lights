@@ -9561,7 +9561,15 @@ const DRIVE_CENSUS = Object.freeze({
   // 6416250 -> 6417384: S4b's larger element tree. The drive walks every
   // node of every rendered screen, so a screen with a stage-4 section in it
   // is a bigger walk. Read from this pin's own failure value.
-  NODES: 6417384,
+  // 6417384 -> 6417438: the same round, after `VALUE_WALK_MAX_DEPTH` went
+  // 16 -> 24 so the walk stopped truncating on that tree. Fifty-four more
+  // nodes, which is what the 81 depth cuts were declining to look at.
+  // `STRINGS` and `DISTINCT_STRINGS` did NOT move with it — the nodes past
+  // the old bound carry no string this scan had not already reached by
+  // another path — and that is worth writing down rather than inferring,
+  // because it is the difference between "the cut hid nothing on this tree
+  // today" and "the cut could not hide anything", and only the first is true.
+  NODES: 6417438,
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
