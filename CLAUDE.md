@@ -577,6 +577,61 @@ the same commit as the constants; both floors are named as midpoints of
 measured gaps (margin -0.048 vs -0.032; unaided ascent 193 vs 247); and
 "+0.02 is the last safe step" comes out of the GDD wherever it survives.
 
+### PHONE REPLAY 2, 2026-08-27: STILL TOO EASY — THE UNIFORM LEVER IS SPENT
+
+Verbatim, phone at `8235c383` / merge `9c99aa3c`, tunnel over Safari: *"Still
+way too easy for RPE 8, overall difficulty needs to be higher."* Second
+rejection on the same complaint after the first ruling's uniform
+`DEMAND_BASE.bench` +0.02 lift landed. Mechanic confirmed again — this is
+numbers only, grammar stays closed.
+
+**The uniform lever is provably spent, not merely disfavoured.** On the
+floored tree the held wall reads:
+
+| rise | held warm-ups lost / 16200 |
+|---|---|
+| +0.020 (shipped) | 0 |
+| +0.025 (headroom the floor bought, unspent) | 0 |
+| +0.030 | 60 — first RPE 7 cost |
+
+The remaining step before RPE 7 starts losing reps is +0.005 — shipping it
+after "+0.020 is too easy" is a wasted round, not a genuine difficulty
+increase. **Do not touch `DEMAND_BASE.bench` uniformly again.**
+
+**Required: a working-rung-scoped lever — RPE 8/9/10 and meet — that leaves
+RPE ≤ 7 untouched.** Two already-tried mechanisms are ruled out by measurement:
+`GRIND_BOOST_FORCE_MAX` barely moves RPE 8's make floors; `STICK_WIDTH` moves
+the wall the wrong way. Shipped RPE 8 make floors are **0.50 / 1.00 / 0.80 /
+0.67 taps/s** — a tap every 1–2 seconds still makes, which is why the grind
+"works" mechanically and still reads as nothing.
+
+**Still binding, unchanged from the last ruling:** the floor keys on bar and
+lifter before the rep (`BENCH_WARMUP_FLOOR_MARGIN -0.04`,
+`BENCH_WARMUP_FLOOR_ASCENT_TICKS 220`) — not touched. Global
+`ASCENT_TIMEOUT_TICKS` (170) not lengthened — it halves RPE 8's unanswered-loss
+control. RPE ≤ 7 unanswered on a held descent must still make, including
+`rpe7/0.8250`. RPE 8+ unanswered must still lose. A crashed warm-up gets a
+harder press via `BENCH_TOUCH_DEMAND_PENALTY`, never a silent timeout. Squat
+and deadlift stay byte-identical. §12.1 stays a phone question; no bar-met
+claim.
+
+**Constraints on the new lever:** RPE 8 you actually work can still lose it by
+stopping or slowing down — unanswered still loses. Do not buy RPE 8's
+difficulty out of RPE 7's floor. Keep 8 < 9 < 10; meet rides the top; "overall
+higher" means working rungs plus meet. `REACHABLE_WARMUP` (held and
+finger-off) re-derived after the change, never carried across it. Both floor
+edges re-pinned (margin −0.0483 vs −0.0323; unaided ticks 193 vs 247) — **if
+the change closes either gap, that means the floor can no longer separate
+warm-up from working rung, and the answer is to rethink the lever, not
+renumber the floor.**
+
+**Bar before a URL:** RPE ≤ 7 unanswered held, 0 lost. RPE 8 unanswered, still
+all lost. At least one RPE 8 make floor moves up in taps/s, old pinned beside
+new.
+
+**`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not a
+crossing.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
