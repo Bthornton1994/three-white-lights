@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-evidence-mjs-2026-08-27T05-30-20-302Z-9632",
+  "label": null,
+  "command": [
+    "node",
+    "tools/evidence.mjs",
+    "suite"
+  ],
+  "budgetSeconds": 3600,
+  "startedAtIso": "2026-08-27T05:30:20.302Z",
+  "startedAtMs": 1787808620302,
+  "cwd": "/home/user/wt-bench-docs",
+  "commit": "75b460ebb878fd4b2d4b62351f293c3719853539",
+  "branch": "claude/bench-difficulty",
+  "dirty": 15,
+  "dirtyPaths": [
+    ".gauntlet/shots/meet/sound.json",
+    ".gauntlet/shots/shell/01-session-with-nav.png",
+    ".gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+    ".gauntlet/shots/shell/05-back-on-the-session.png",
+    ".gauntlet/shots/shell/05a-check-in-after-a-played-meet.png",
+    ".gauntlet/shots/shell/05b-check-in-after-the-second-meet.png",
+    ".gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+    ".gauntlet/shots/shell/12-cutin-has-no-shell-chrome.png",
+    ".gauntlet/shots/shell/12-openers-follow-the-session.png",
+    ".gauntlet/shots/shell/13-recap-before-the-return-leg.png",
+    ".gauntlet/shots/shell/16-empire-round-trip-closed.png",
+    ".gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
+    ".gauntlet/shots/shell/18-briefing-round-trip-lands-back-on-the-briefing.png",
+    ".gauntlet/shots/shell/22-career-round-trip-closed.png",
+    ".gauntlet/shots/shell/route.json"
+  ],
+  "runner": {
+    "pid": 9632,
+    "startTick": "307242",
+    "cmdline": "node tools/watchdog.mjs --budget 3600 -- node tools/evidence.mjs suite",
+    "bootId": "6b9555b0-c9e0-4be0-8304-50832877994e",
+    "bootEpochSeconds": 1787805548,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-27T05:30:20.333Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
