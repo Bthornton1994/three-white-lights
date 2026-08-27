@@ -3595,8 +3595,37 @@ function gradeStageBeat(kind, run) {
   const rescueGrind = paused?.grind ?? null;
   const givenUp = run.abandoned ?? null;
   const givenUpGrind = givenUp?.grind ?? null;
+  // ---- THE SAME PRECONDITION AS THE PAIR BELOW, AND MISSING IT HERE WAS A
+  // ---- DEFECT THE PAIR'S OWN FIX WALKED PAST
+  //
+  // The pair check below skips when the achieved cadence exceeds
+  // `GRIND_PAIR_MAX_GAP_MS`. THIS check has the identical dependency and was
+  // left as a red: recovering from a stall is the thing both lines are about,
+  // and `GRIND_PAIR_MAX_GAP_MS`'s own header says the sim measures that
+  // recovery FAILING at 100 ms between taps. So a host tapping at 119 ms
+  // produces a rep that does not lock out for exactly the reason the constant
+  // predicts, and calling that the app's failure is the misattribution the
+  // ceiling exists to prevent. Measured: 119 ms mean, implied force 0.886
+  // clearing `GRIND_FORCE_FLOOR` 0.7 comfortably — so the weaker floor passes
+  // while the one that actually governs recovery is exceeded.
+  //
+  // CLAUDE.md's rule, applied to the branch immediately above the one that was
+  // fixed: "when you fix a check, the next thing to look at is the branch
+  // immediately below it." Here it was the branch above.
+  const rescueCadenceHolds =
+    (rescueGrind?.gaps?.meanMs ?? Infinity) <= BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS;
+  if (!rescueCadenceHolds) {
+    skip(
+      'LADDER bench RESCUE: the resumed rep was driven fast enough for the recovery to be the app’s to make',
+      `this host tapped at ${Math.round(rescueGrind?.gaps?.meanMs ?? -1)}ms mean against a `
+        + `${BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS}ms ceiling; the sim measures stall recovery failing `
+        + 'at 100ms between taps, so a rep that does not lock out here is the driver\u2019s cadence '
+        + 'rather than the app\u2019s grind. Not a tolerance to widen.',
+    );
+  }
   check(
-    paused !== null &&
+    rescueCadenceHolds === false ||
+      (paused !== null &&
       paused.played === true &&
       paused.reachedDescent === true &&
       paused.reachedCommand === true &&
@@ -3606,7 +3635,7 @@ function gradeStageBeat(kind, run) {
       rescueGrind.impliedForce !== null &&
       rescueGrind.impliedForce >= BENCH_DRIVE.GRIND_FORCE_FLOOR &&
       paused.reachedLockout === true &&
-      paused.outcome !== 'NO LIFT',
+      paused.outcome !== 'NO LIFT'),
     'LADDER bench RESCUE: a rep whose grind was deliberately STOPPED and then RESUMED stalled on the way up and reached LOCKOUT anyway, through the app’s own controls',
     paused === null
       ? 'no paused rep was driven'
