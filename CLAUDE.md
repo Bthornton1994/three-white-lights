@@ -839,6 +839,62 @@ pre-commit the worktree scan covers it, post-commit the branch scan ages it, and
 the two halves hand off correctly — which is exactly what `wt-e14-local` fell
 through.
 
+### `evidence.mjs`'s 600s PER-COMMAND CAP IS 16 SECONDS UNDER THE SUITE — REPORTED, NOT FIXED
+
+`tools/` is Session A's, so this is routed rather than fixed. Measured by
+execution on `80dd1c2`, not read from source.
+
+`tools/evidence.mjs:29` spawns every command it captures with
+`timeout: 600_000`. Regenerating the `empire` bundle at `c8b257a` produced a
+piece section that is real — 22 files, 880 tests, exit 0 — a typecheck at exit
+0, and a whole-suite section reading
+
+    [whole suite] exit code: null (spawnSync npx ETIMEDOUT)
+
+**The margin is the finding, and my own first report of this was wrong in the
+direction that suppresses the search.** The commit that regenerated the bundle
+says the whole suite "cannot finish inside that cap". Measured immediately
+afterwards under `watchdog.mjs --budget 3000`, the whole suite is **94 files,
+3819 tests, 0 failures, 616.3s** — over the cap by **16 seconds, a 2.6%
+margin**. Not impossible. *Marginal*, which is worse, because a hard failure is
+reported every time and a 2.6% margin is reported on whichever runs happen to
+land slow.
+
+That is the same shape this file already records twice — a bundle that
+sometimes describes the tree and sometimes silently does not, and
+`streakEntitlement.test.ts`'s `EXHAUSTIVE, ACROSS A WINDOW BOUNDARY` timing out
+at 30 000 ms after 31 082 ms under parallel load while passing at 16 866 ms
+solo. **A budget set near a measured runtime is not a guard, it is a coin
+flip**, and this file's own `--budget` table says to budget generously because
+the guard exists to catch a hang rather than to enforce a deadline. That advice
+was written for briefs and is not followed by the harness the briefs depend on.
+
+*A counter-intuitive measurement worth keeping, because it will mislead the
+next person who reasons about this from part counts.* `npx vitest run src/empire`
+alone takes **656s** — LONGER than the whole 94-file suite's 616s. More files
+give vitest more to parallelise across workers, so the slowest single directory
+is not a lower bound on the whole. Do not estimate the suite by adding
+directories up.
+
+**Scope, stated so it is not read as worse than it is.** Nothing is currently
+mis-reported: the timed-out section prints `exit code: null (spawnSync npx
+ETIMEDOUT)`, which a reader cannot mistake for a pass. The defect is that the
+bundle a critic is handed will *sometimes* carry a whole-suite result and
+sometimes not, for reasons that have nothing to do with the tree.
+
+**What would close it, offered rather than done.** Raise the per-command cap
+well clear of the measured runtime rather than just above it, and make the
+whole-suite section's absence a non-zero exit of `evidence.mjs` itself, so a
+bundle missing its suite result cannot be committed silently. The first is one
+number; the second is what makes it a guard.
+
+*Session B has not edited `tools/` and will not.* Note the second-order cost
+this report itself pays: `evidence.mjs` lists `CLAUDE.md` among the files whose
+change makes a bundle stale, so writing this paragraph re-stales the bundle it
+is about. Recorded rather than avoided — the report is worth more than the
+freshness, and a bundle whose whole-suite section is unobtainable was not going
+to be clean anyway.
+
 ### A `.test.tsx` COMPILES AND IS COLLECTED BY NOTHING — REPORTED, NOT FIXED
 
 `vitest.config.ts` is a Session B hard exclusion, so this is a report. Measured
