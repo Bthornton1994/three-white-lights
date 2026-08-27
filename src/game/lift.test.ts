@@ -4976,7 +4976,12 @@ describe('the grind decides the lift', () => {
     const drawnTaps = [0, 1, 2, 3, 4, 5].map(tapsOf);
     expect(new Set(drawnTaps).size, `cadence draws all agreed: ${drawnTaps.join(',')}`)
       .toBeGreaterThan(1);
-  }, 600_000);
+    // NO DECLARED BUDGET. Measured at 4158 ms in a whole-file run, which is under
+    // `tools/testBudget.mjs`'s `DECLARE_ABOVE_MS`, so the global timeout already
+    // carries more than `HEADROOM_FACTOR` of margin and a declaration here would
+    // be a basis nobody re-takes. The first draft declared 600_000 against a
+    // four-second test, which is the stale-basis shape that tool exists to find.
+  });
 
   it('cannot put a rep above the max-effort wall without breaking the false-start rule', () => {
     // ------------------------------------------------------------------
@@ -5106,7 +5111,8 @@ describe('the grind decides the lift', () => {
     // force budget short of the margin where a realistic max-effort player
     // begins to lose. Nothing about the tuning gets between those two numbers.
     expect(highest, 'a reachable cell reached the max-effort wall').toBeLessThan(maxEffortWall);
-  }, 900_000);
+    // NO DECLARED BUDGET — measured at 1828 ms. See the note on the sweep above.
+  });
 
   it('keeps every cell the ceiling clips inside the false-start rule [the-ceiling-keeps-the-false-start-rule]', () => {
     // ------------------------------------------------------------------
@@ -5181,7 +5187,8 @@ describe('the grind decides the lift', () => {
       })
       .map((cell) => cell.label);
     expect(clipped.length, `cells the ceiling clips: ${clipped.join(', ')}`).toBeGreaterThan(0);
-  }, 600_000);
+    // NO DECLARED BUDGET — measured at 1988 ms. See the note on the sweep above.
+  });
 
 });
 
