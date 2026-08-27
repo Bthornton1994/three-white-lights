@@ -985,7 +985,12 @@ const GUARANTEE_COVERAGE = {
   // +1 ON THE WARM-UP FLOOR ROUND: `a-warm-up-makes-it-unanswered`, whose
   // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
   // is therefore the tree as it stood before the 2026-08-26 ruling.
-  TREE_WIDE: 300,
+  // 300 -> 301 on the documentation round that followed the floor. Net one,
+  // against a rewritten `ASCENT_TIMEOUT_TICKS` header, two rewritten floor
+  // headers, and two deleted "last safe step" claims — several capitalised runs
+  // added and several removed, which is the third measurement of the same
+  // warning this constant carries: it counts a SHAPE, not prose volume.
+  TREE_WIDE: 301,
 } as const;
 
 // ---------------------------------------------------------------------------

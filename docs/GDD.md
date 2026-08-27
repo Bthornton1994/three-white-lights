@@ -2178,8 +2178,16 @@ they were reverted is the finding below rather than a change of mind.
 **WHAT THE RETUNE COULD NOT DO, RECORDED BECAUSE IT IS A REAL LIMIT AND A FUTURE
 TUNER WILL OTHERWISE TRY IT.** RPE 8 cannot be made to demand a fast tap RATE.
 The wall is GDD §12.3's warm-up protection, and it is measured: a uniform demand
-rise of +0.025 starts costing RPE 7 reps *a player who answers once and stops*,
-so +0.02 is the last step before that guarantee breaks.
+rise of +0.025 starts costing RPE 7 reps **on the answer-once-and-stop axis**.
+
+**"+0.02 IS THE LAST SAFE STEP" USED TO BE THE SENTENCE HERE, AND IT IS DELETED
+RATHER THAN QUALIFIED.** It named no axis, and it was false on the axis that
+actually broke: a player who never answered at all lost a rep at +0.010, four
+steps below the number this document was calling safe. A wall has to be quoted
+with the axis it was measured on or it is not a wall, it is a reading — and the
+unqualified version is what made the next two rounds look for a step size that
+would fix a clock. There is no single last safe step, and this section no longer
+claims one.
 
 **THE ITALICS NAME AN AXIS, AND THE WALL IS IN A DIFFERENT PLACE ON EVERY ONE OF
 THEM — WHICH THE SENTENCE ABOVE DID NOT SAY WHEN IT WAS FIRST WRITTEN.** Asked of

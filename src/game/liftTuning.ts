@@ -1339,10 +1339,14 @@ export const LIFT_TUNING = Object.freeze({
    * into a general claim; the measurement was fine and the sentence around it
    * was not.
    *
-   * So +0.02 is the last step before the HELD guarantee breaks, at the shipped
-   * width and boost, and it is not the last step before every guarantee breaks
-   * — `REACHABLE_WARMUP.NO_ANSWER_KEPT_ON_A_HELD_DESCENT` turns between +0.005
-   * and +0.010 on a player who never answers at all.
+   * SO THERE IS NO "LAST SAFE STEP" AND THIS BLOCK NO LONGER NAMES ONE. What
+   * +0.02 is the last step before is the ANSWER-ONCE-AND-STOP guarantee, at the
+   * shipped width and boost. On the never-answered axis the same sweep turned
+   * at +0.010 — four steps lower — and the fix for that was not a smaller step
+   * but `BENCH_WARMUP_FLOOR_MARGIN`, because the reps it was losing were being
+   * ended by a clock rather than by the curve. A wall quoted without its axis
+   * is a reading wearing a limit's clothes, and this one sent two rounds
+   * looking for a step size that would fix a timeout.
    *
    * WHY THE WALL IS THERE, WHICH IS THE PART THAT GENERALISES. The rungs are
    * stacked 0.044-0.060 apart in margin, because the bar-speed cue is worth
@@ -1818,12 +1822,56 @@ export const LIFT_TUNING = Object.freeze({
    * scripts and asserts every one resolves; this is what makes that true even
    * for a force balance that happens to sit at a stable equilibrium.
    *
-   * 170 ticks is 2.83 s of concentric. Chosen against a measured distribution
-   * rather than picked: across a sweep of every load, depth and drive offset,
-   * successful ascents ran to a maximum of 201 ticks with a 99th percentile of
-   * 121, so this clips only the longest creeps. Raise it far and 'timeout'
-   * becomes unreachable and its copy becomes dead; drop it far and it starts
-   * cutting off grinds that were going to make it, which is the worse failure.
+   * 170 ticks is 2.83 s of concentric, and the trade is two-sided: raise it far
+   * and 'timeout' becomes unreachable and its copy becomes dead; drop it far
+   * and it starts cutting off grinds that were going to make it, which is the
+   * worse failure.
+   *
+   * -------------------------------------------------------------------------
+   * THIS PARAGRAPH USED TO SAY 170 "CLIPS ONLY THE LONGEST CREEPS" AND CITE A
+   * MEASURED MAXIMUM OF 201 IN THE SAME BREATH. IT CARRIED THAT CONTRADICTION
+   * THROUGH FOUR RETUNE ROUNDS
+   * -------------------------------------------------------------------------
+   * The sweep was real and the number was right: across every load, depth and
+   * drive offset, successful ascents ran to a maximum of **201** ticks, 99th
+   * percentile 121. A cap of 170 sits BELOW that maximum, so by its own
+   * measurement it was never clipping "only the longest creeps" — it was
+   * cutting off ascents the sweep had already watched succeed, which is the
+   * failure the sentence above calls the worse one. The reasoning and the
+   * evidence were in the same docstring, one line apart, disagreeing.
+   *
+   * WHAT IT COST: a bench warm-up at `rpe7/0.8250/as-expected` — capacity
+   * clearing peak demand by 0.048, bar at 80.8% of the way up — was called a
+   * miss on the clock, and for a whole round that read as a DIFFICULTY question
+   * about `DEMAND_BASE.bench`. Two rounds of curve sweeps went looking for a
+   * step size that would fix a clock.
+   *
+   * -------------------------------------------------------------------------
+   * WHAT 170 DOES AND DOES NOT COVER NOW
+   * -------------------------------------------------------------------------
+   * It is still the cap for squat, for deadlift, and for every bench bar that
+   * is NOT under `BENCH_WARMUP_FLOOR_MARGIN`. Under that margin the ascent runs
+   * on `BENCH_WARMUP_FLOOR_ASCENT_TICKS` instead, and this constant never sees
+   * those reps.
+   *
+   * WHY 170 IS STILL RIGHT FOR SQUAT AND DEADLIFT AND WAS NOT FOR A LIGHT BENCH
+   * BAR, which is the part worth keeping. Squat and deadlift are driven by
+   * `DRIVE_BOOST_FORCE_MAX` — an impulse thrown at a cue and decaying from it.
+   * A rep that has not made it by 170 ticks on those lifts has spent its cues
+   * and is not going to get another: there is no channel left through which it
+   * could still complete, so the cap ends a rep that was already over. Bench
+   * since the replay steer has no cues at all; its ascent is a continuous
+   * balance between capacity and demand, and a light bar sits on the winning
+   * side of that balance for as long as it takes. It does not run out of a
+   * resource, it runs slowly — 193 ticks at the slowest reachable warm-up. So
+   * on bench the cap was ending reps that had lost nothing.
+   *
+   * THE CLOCK IS "RAN OUT OF AIR", NOT A SECOND CRASH PENALTY. Ruled 2026-08-26
+   * when the floor was made blind to how the rep was played: a crashed warm-up
+   * gets the same floor, because the crash is already taxed through
+   * `BENCH_TOUCH_DEMAND_PENALTY` scaling the whole ascent. Making the timeout
+   * do that job as well would charge one mistake twice and hand the floor an
+   * off switch a player could trip.
    */
   ASCENT_TIMEOUT_TICKS: 170,
 
@@ -1843,20 +1891,31 @@ export const LIFT_TUNING = Object.freeze({
    * So this floor may not reach a working rung, and the number is chosen to
    * make that structural rather than hoped for.
    *
-   * MEASURED WINDOW, over the reachable cells at the shipped tuning — the
-   * hardest cell of each rung, as `peakDemand - capacity`:
+   * -------------------------------------------------------------------------
+   * THIS VALUE IS THE MIDPOINT OF A MEASURED GAP, AND THE GAP IS THE REASON —
+   * NOT THE DIGIT
+   * -------------------------------------------------------------------------
+   * Measured over the reachable cells at the shipped tuning, as
+   * `peakDemand - capacity` for the hardest cell each rung can prescribe:
    *
    *     rpe6 -0.0923   rpe7 -0.0483 | rpe8 -0.0025   rpe9 0.0448  rpe10 0.1048
    *
-   * Every RPE 6/7 cell sits at or below **-0.0483** and every RPE 8+ cell at or
-   * above **-0.0323**, so the rungs are separated by a gap of 0.0160 and this
-   * value is its midpoint. It is not a threshold tuned until the tests passed:
-   * anything strictly inside that gap gives the same partition, and the gap is
-   * what the choice rests on rather than the digit.
+   * THE MEASUREMENT, STATED AS THE TWO EDGES IT RESTS ON:
    *
-   * PLACEHOLDER, like every feel value here. It is a boundary in a window, not
-   * a number anybody has played, and if a future retune narrows the window this
-   * sits in, that is the thing to notice — `lift.test.ts` pins both edges.
+   *     every RPE 6/7 cell    at or below   -0.048
+   *     nearest RPE 8 cell    at or above   -0.032
+   *     the gap between them                 0.016
+   *     this floor, its midpoint            -0.040
+   *
+   * So the rungs are separated in this quantity before anything is chosen, and
+   * ANY value strictly inside that gap gives the same partition. That is what
+   * makes this a boundary rather than a threshold tuned until the tests passed
+   * — a distinction worth being able to check, so `lift.test.ts` pins BOTH
+   * EDGES rather than only the digit. A retune that narrows the gap reddens
+   * there; a retune that closes it means the floor can no longer separate
+   * warm-up from working rung and the mechanism needs rethinking, not renumbering.
+   *
+   * PLACEHOLDER, like every feel value here. Nobody has played it.
    */
   BENCH_WARMUP_FLOOR_MARGIN: -0.04,
 
@@ -1870,16 +1929,30 @@ export const LIFT_TUNING = Object.freeze({
    * again. A shared clock cannot separate the rungs; this one does, because
    * nothing above the floor margin ever reads it.
    *
-   * MEASURED WINDOW, unaided ascents with the clock lifted out of the way —
-   * ticks of ascent needed to reach lockout with ZERO taps after the command:
+   * -------------------------------------------------------------------------
+   * ALSO THE MIDPOINT OF A MEASURED GAP, ON A SECOND AND INDEPENDENT AXIS
+   * -------------------------------------------------------------------------
+   * Measured by lifting the clock out of the way entirely and counting ticks of
+   * ascent to lockout with ZERO taps after the command:
    *
    *     rpe6  87..129     rpe7 103..**193** | rpe8 **247**, 256, and two that
    *     never make it at all (they collapse at 0.119 and 0.178)
    *
-   * The slowest warm-up needs 193 and the fastest working-rung completion needs
-   * 247, so this is the midpoint of a 54-tick gap. Both edges are pinned in
-   * `lift.test.ts`; a retune that closes the gap reddens there rather than
-   * silently letting the floor reach RPE 8.
+   * THE MEASUREMENT, STATED AS THE TWO EDGES IT RESTS ON:
+   *
+   *     slowest RPE 6/7 unaided ascent        193 ticks
+   *     fastest working-rung completion       247 ticks
+   *     the gap between them                   54 ticks
+   *     this clock, its midpoint              220 ticks
+   *
+   * TWO SEPARATORS THAT WERE NOT DERIVED FROM EACH OTHER AND AGREE. The margin
+   * above is a force balance read before the rep starts; this is a duration
+   * read from playing the rep out. Either one alone would partition the rungs;
+   * that both do, at values neither borrowed from the other, is what says the
+   * partition is a property of the ladder rather than of one instrument.
+   *
+   * Both edges are pinned in `lift.test.ts`; a retune that closes the gap
+   * reddens there rather than silently letting the floor reach RPE 8.
    *
    * AND `ASCENT_TIMEOUT_TICKS`'s OWN HEADER ALREADY CARRIED THIS DEFECT. It
    * records "successful ascents ran to a maximum of 201 ticks" and then caps at
