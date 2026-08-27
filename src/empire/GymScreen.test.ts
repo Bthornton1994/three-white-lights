@@ -638,14 +638,25 @@ describe('stage 4: only a press moves the failure ledger', () => {
     expect(conditionIncomeMultiplier(advanced.managed)).toBeLessThan(
       conditionIncomeMultiplier(opened.managed),
     );
-    expect(wornItems(advanced.managed).length).toBeGreaterThan(0);
-    // The ledger, and everything derived from it, is byte-identical.
+    // The ledger, and everything derived from it, is byte-identical. THESE
+    // COME BEFORE THE WORN-ITEMS READING BELOW ON PURPOSE, and the ordering
+    // was chosen from a planted mutant rather than by taste: a build in which
+    // low condition alone appends a strike takes the gym dormant, dormancy
+    // applies no wear, and `wornItems` then comes back EMPTY — so with the
+    // reading first, the mutant reddened at `expected 0 to be greater than 0`,
+    // which names the wrong thing entirely. A check that bites and fails
+    // uselessly is half a check.
     expect(advanced.managed.strikes).toEqual([]);
     expect(advanced.managed.neglected).toEqual([]);
     expect(advanced.managed.promptDismissals).toBe(0);
     expect(failurePhase(advanced.managed)).toBe('sound');
     expect(warningSigns(advanced.managed).strikeCount).toBe(0);
     expect(recoveryRequirement(advanced.managed).kind).toBe('not-dormant');
+    // Non-vacuity, and it is the reason the zeros above are worth something:
+    // the gym really is worn past the maintenance-prompt line here, which is
+    // the exact state a build with the forbidden chain in it would have
+    // charged for.
+    expect(wornItems(advanced.managed).length).toBeGreaterThan(0);
     // And the screen says the same thing, in the words a player reads.
     const root = render(advanced, []);
     expect(textOf(findByTestId(root, 'gymscreen-phase'))).toContain('sound');

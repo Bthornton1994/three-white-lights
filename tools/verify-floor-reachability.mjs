@@ -138,6 +138,42 @@
  *          second, independent motion discriminator that does not depend on
  *          any member walking.
  *
+ *   9. §5.11 STAGE 4 (S4b) — staffing, maintenance, equipment condition and
+ *      recoverable failure, on the same gym surface, driven by pressing the
+ *      real controls. Seven readings, and the middle one is why the block
+ *      exists:
+ *
+ *      9a. The section is reachable by scrolling the gym screen — no new
+ *          route, no query string, same surface the floor is on.
+ *      9b. Equipment condition is LIVE state: the mean and one item's own row
+ *          are read before and after a single clock press and both must fall,
+ *          and the check-in reports what condition cost it rather than
+ *          deducting silently.
+ *      9c. THE CLAIM `docs/GDD.md` §5.7's clarification TURNS ON. A run of
+ *          clock presses with NO decision must move condition and move
+ *          nothing on the failure ledger — phase, counted-decision count and
+ *          the number of drawn strike rows are all read before and after.
+ *
+ *          WHY IT IS NOT VACUOUS, stated because a zero read off a screen
+ *          that can never show anything else is worth nothing: 9b is the
+ *          evidence that the screen is live (condition really moves under the
+ *          same presses), and 9g is the evidence that the ledger can move at
+ *          all (three declines put three rows on it, on this same run). The
+ *          zero here sits between two non-zeros taken on the same screen.
+ *      9d. A standing maintenance review NAMES its item and QUOTES its price
+ *          before anything is decided, and says what refusing it is worth.
+ *      9e. Pressing repair charges exactly the price already on screen — the
+ *          purse is read before and after and differenced — and the item's
+ *          own condition row goes to 1, with the ledger still at zero.
+ *      9f. Hiring goes through the real control at the price the tier row
+ *          quoted, the manager's wage and auto-repair threshold are drawn,
+ *          and dismissing returns the screen to "no manager".
+ *      9g. Dormancy is reached ONLY by declining shown repairs. Every strike
+ *          row drawn afterwards is checked to carry the exact price the
+ *          review quoted BEFORE the press that created it. Then the quoted
+ *          repair investment is made item by item and the reopen control
+ *          brings the gym back with the ledger cleared.
+ *
  * USAGE. Start the web build first (`npx expo start --web`), then:
  *
  *     node tools/verify-floor-reachability.mjs [--url http://localhost:8081]
@@ -232,6 +268,31 @@ const REACTION_CELLS_WITH_CUE = Object.freeze(['0,1', '0,2', '0,3', '1,3']);
 const CELLS_WHERE_MATS_IS_CLAIMED = Object.freeze(['0,1', '0,2', '3,0', '4,0', '4,1', '5,0']);
 /** How long to wait for a member to walk to the machine the player just placed. */
 const MATS_CLAIM_POLL_MS = 20000;
+/**
+ * §5.11 stage 4 (S4b) — the parameters of the stage-4 drive below, named here
+ * rather than spelled at the call sites, the same rule the Phase 3 sampling
+ * parameters above follow.
+ *
+ * `S4B_MAX_CLOCK_PRESSES` bounds the walk to a standing maintenance review.
+ * The review cadence is `MAINTENANCE_ORDER_FIRST_CHECK_IN` (4) then every
+ * `MAINTENANCE_ORDER_STRIDE` (4) check-ins, so one is never more than four
+ * presses away and a run needing more than this is a defect rather than a
+ * slow gym. `S4B_MAX_REVIEW_ROUNDS` bounds the walk to dormancy:
+ * `FAILURE_STRIKES` is 3, one refusal per standing order, so three rounds is
+ * the floor and the slack is for a review that names an already-refused item.
+ */
+const S4B_MAX_CLOCK_PRESSES = 12;
+const S4B_MAX_REVIEW_ROUNDS = 10;
+/** How long to let the screen re-render after a stage-4 press. */
+const S4B_PRESS_SETTLE_MS = 200;
+/**
+ * Gym Bucks are scrubbed to a fixed precision by the engine; the DIFFERENCE of
+ * two scrubbed balances is not, so a purse comparison is made to this
+ * tolerance rather than to exact equality. Small enough that a wrong charge
+ * (the cheapest repair on this screen is tens of Gym Bucks) cannot hide in it.
+ */
+const S4B_PURSE_EPSILON = 0.01;
+
 /** GDD §5.13's five member states, in `FLOOR_SIM_MEMBER_STATES` order. */
 const MEMBER_STATES = Object.freeze([
   'seeking',
@@ -1702,6 +1763,303 @@ try {
     } else {
       fail(`Phase 3 (8a): the busiest member showed ${bestX} distinct horizontal positions across ${tilesForBestX} tile(s) — a member that only ever appears at whole tiles is a chess piece, not a person`);
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // 9. §5.11 STAGE 4 ON THE GARAGE FLOOR (S4b) — staffing, maintenance,
+  //    equipment condition, and recoverable failure, driven the way a player
+  //    drives them: by pressing the real controls on the same gym surface,
+  //    reached by scrolling, with the address bar carrying no query string.
+  //
+  //    THE CLAIM THIS BLOCK EXISTS FOR is 9c, and it is the one `docs/GDD.md`
+  //    §5.7's clarification turns on: pressing the clock moves condition and
+  //    income, and moves NOTHING on the failure ledger. Everything around it
+  //    is what makes 9c non-vacuous — 9b shows the condition really does move
+  //    (so 9c is not reading a dead screen) and 9g shows the ledger really can
+  //    move (so its zero in 9c is not a ledger nothing can write to).
+  //
+  //    Every reading below is real DOM text taken before and after a press,
+  //    not presence of a testID.
+  // -------------------------------------------------------------------------
+  const numberIn = (text, pattern) => {
+    if (text === null) return null;
+    const found = text.match(pattern);
+    return found === null ? null : Number.parseFloat(found[1]);
+  };
+  const purseNow = async () => numberIn(await textOf('gymscreen-gym-bucks'), /gym bucks:\s*([\d.]+)/);
+  const meanConditionNow = async () =>
+    numberIn(await textOf('gymscreen-condition'), /equipment condition ([\d.]+)/);
+  const strikeCountNow = async () =>
+    numberIn(await textOf('gymscreen-phase'), /([\d]+) counted decision\(s\)/);
+  const phaseNow = async () => {
+    const text = await textOf('gymscreen-phase');
+    if (text === null) return null;
+    const found = text.match(/gym status: (\w+)/);
+    return found === null ? null : found[1];
+  };
+  const pressById = async (id) => {
+    const control = page.getByTestId(id);
+    await control.scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
+    await control.click({ timeout: 10000 });
+    await page.waitForTimeout(S4B_PRESS_SETTLE_MS);
+  };
+
+  // 9a. The section is reachable within the existing gym surface, by scrolling
+  // — no new route, no query string, same screen the floor is on.
+  await page.getByTestId('gymscreen-management').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
+  const managementDrawn = await waitUntilDrawn(page, 'gymscreen-management', BEAT_TIMEOUT_MS);
+  if (managementDrawn.drawn) {
+    ok(`S4b (9a): the stage-4 section is reachable within the existing gym surface (${managementDrawn.why})`);
+  } else {
+    fail(`S4b (9a): gymscreen-management never drawn after scrolling — ${managementDrawn.why}`);
+    throw new Error('unreachable');
+  }
+
+  // 9b. Equipment condition is readable state, and it MOVES when the gym runs.
+  // Read the mean and one item's own row before and after a single clock
+  // press; both must fall, and the per-item row must be a real number rather
+  // than a label.
+  const conditionBefore = await meanConditionNow();
+  const powerBarBefore = numberIn(
+    await textOf('gymscreen-condition-power-bar'),
+    /condition ([\d.]+)/,
+  );
+  await pressById(advanceId);
+  const conditionAfter = await meanConditionNow();
+  const powerBarAfter = numberIn(await textOf('gymscreen-condition-power-bar'), /condition ([\d.]+)/);
+  if (
+    conditionBefore !== null &&
+    conditionAfter !== null &&
+    conditionAfter < conditionBefore &&
+    powerBarBefore !== null &&
+    powerBarAfter !== null &&
+    powerBarAfter < powerBarBefore
+  ) {
+    ok(
+      `S4b (9b): equipment condition is live state — one clock press took the mean ${conditionBefore} -> ${conditionAfter} and power-bar ${powerBarBefore} -> ${powerBarAfter}, read off the drawn screen both times`,
+    );
+  } else {
+    fail(
+      `S4b (9b): condition did not move on a clock press — mean ${conditionBefore} -> ${conditionAfter}, power-bar ${powerBarBefore} -> ${powerBarAfter}`,
+    );
+  }
+  const checkInCostsText = await textOf('gymscreen-check-in-costs');
+  if (checkInCostsText !== null && /condition took [\d.]+ gym bucks off the accrual/.test(checkInCostsText)) {
+    ok(`S4b (9b): the check-in reports what condition cost it, rather than deducting silently — "${checkInCostsText}"`);
+  } else {
+    fail(`S4b (9b): expected the check-in cost line to report the deduction — got "${checkInCostsText}"`);
+  }
+
+  // 9c. THE RULING, DRIVEN. `docs/GDD.md` §5.7: failure accrues only from a
+  // decision the player was shown the cost of and took. So a run of clock
+  // presses with no decision must move condition and move NOTHING on the
+  // ledger. Both halves are read off the same screen.
+  const ledgerPhaseBefore = await phaseNow();
+  const ledgerStrikesBefore = await strikeCountNow();
+  const ledgerConditionBefore = await meanConditionNow();
+  const ledgerLeadBefore = await textOf('gymscreen-strikes-lead');
+  for (let press = 0; press < S4B_MAX_CLOCK_PRESSES; press += 1) await pressById(advanceId);
+  const ledgerPhaseAfter = await phaseNow();
+  const ledgerStrikesAfter = await strikeCountNow();
+  const ledgerConditionAfter = await meanConditionNow();
+  const ledgerLeadAfter = await textOf('gymscreen-strikes-lead');
+  const anyStrikeRowDrawn = (await testIdsStartingWith('gymscreen-strike-')).length;
+  if (
+    ledgerConditionAfter !== null &&
+    ledgerConditionBefore !== null &&
+    ledgerConditionAfter < ledgerConditionBefore &&
+    ledgerPhaseBefore === 'sound' &&
+    ledgerPhaseAfter === 'sound' &&
+    ledgerStrikesBefore === 0 &&
+    ledgerStrikesAfter === 0 &&
+    anyStrikeRowDrawn === 0 &&
+    ledgerLeadBefore === ledgerLeadAfter
+  ) {
+    ok(
+      `S4b (9c): ${S4B_MAX_CLOCK_PRESSES} clock presses with no decision took condition ${ledgerConditionBefore} -> ${ledgerConditionAfter} and left the failure ledger byte-identical — phase "${ledgerPhaseAfter}", 0 counted decisions, 0 strike rows drawn, same lead sentence. Absence and elapsed time move no strike on the screen a player touches.`,
+    );
+  } else {
+    fail(
+      `S4b (9c): the ledger moved on clock presses alone, or condition did not — phase ${ledgerPhaseBefore} -> ${ledgerPhaseAfter}, strikes ${ledgerStrikesBefore} -> ${ledgerStrikesAfter}, condition ${ledgerConditionBefore} -> ${ledgerConditionAfter}, strike rows drawn ${anyStrikeRowDrawn}, lead "${ledgerLeadBefore}" -> "${ledgerLeadAfter}"`,
+    );
+  }
+
+  // 9d/9e. The standing maintenance review: reach one by pressing the clock,
+  // read the item it names and the price it quotes off the DOM, then press
+  // repair and check the purse moved by exactly the quoted price.
+  let reviewText = null;
+  let reviewPresses = 0;
+  while (reviewPresses < S4B_MAX_CLOCK_PRESSES) {
+    reviewText = await textOf('gymscreen-prompt-item');
+    if (reviewText !== null) break;
+    await pressById(advanceId);
+    reviewPresses += 1;
+  }
+  if (reviewText === null) {
+    fail(`S4b (9d): no maintenance review was raised inside ${S4B_MAX_CLOCK_PRESSES} clock presses — the standing repair order never opened`);
+  } else {
+    const named = reviewText.match(/maintenance review: ([\w-]+) is at condition ([\d.]+) and repairing it costs ([\d.]+) gym bucks/);
+    if (named === null) {
+      fail(`S4b (9d): the review is drawn but does not name an item and a price — "${reviewText}"`);
+    } else {
+      const [, reviewItem, reviewCondition, reviewPriceText] = named;
+      const reviewPrice = Number.parseFloat(reviewPriceText);
+      ok(
+        `S4b (9d): a standing maintenance review is raised and NAMES its subject and its price before anything is decided — "${reviewItem}" at condition ${reviewCondition}, ${reviewPrice} gym bucks, after ${reviewPresses} clock press(es)`,
+      );
+      const stakes = await textOf('gymscreen-prompt-stakes');
+      if (stakes !== null && stakes.length > 0) {
+        ok(`S4b (9d): the review also says what refusing it is worth — "${stakes}"`);
+      } else {
+        fail('S4b (9d): the review draws no line saying what refusing it costs');
+      }
+      // 9e. The price was on screen BEFORE the press. Now press repair.
+      const purseBeforeRepair = await purseNow();
+      await pressById('gymscreen-prompt-repair');
+      const purseAfterRepair = await purseNow();
+      const itemRowAfter = numberIn(
+        await textOf(`gymscreen-condition-${reviewItem}`),
+        /condition ([\d.]+)/,
+      );
+      const charged = purseBeforeRepair === null || purseAfterRepair === null ? null : purseBeforeRepair - purseAfterRepair;
+      if (charged !== null && Math.abs(charged - reviewPrice) < S4B_PURSE_EPSILON && itemRowAfter === 1) {
+        ok(
+          `S4b (9e): pressing repair charged exactly the price the screen had already quoted — purse ${purseBeforeRepair} -> ${purseAfterRepair} (${charged.toFixed(2)} against a quoted ${reviewPrice}), and ${reviewItem}'s own row now reads condition 1`,
+        );
+      } else {
+        fail(
+          `S4b (9e): the repair did not charge the quoted price or did not restore the item — purse ${purseBeforeRepair} -> ${purseAfterRepair} (charged ${charged}), quoted ${reviewPrice}, ${reviewItem} row now ${itemRowAfter}`,
+        );
+      }
+      const strikesAfterRepair = await strikeCountNow();
+      if (strikesAfterRepair === 0) {
+        ok('S4b (9e): answering a review by repairing costs nothing on the ledger — still 0 counted decisions');
+      } else {
+        fail(`S4b (9e): repairing a review put ${strikesAfterRepair} counted decision(s) on the ledger`);
+      }
+    }
+  }
+
+  // 9f. Staffing: hire, read the wage and the auto-repair threshold the tier
+  // carries, then let them go — all through the real controls.
+  const managerBefore = await textOf('gymscreen-manager-state');
+  const tierRow = await textOf('gymscreen-manager-tier-novice');
+  const hireQuote = numberIn(tierRow, /([\d.]+) gym bucks to hire/);
+  const purseBeforeHire = await purseNow();
+  await pressById('gymscreen-hire-novice');
+  const managerAfter = await textOf('gymscreen-manager-state');
+  const purseAfterHire = await purseNow();
+  const hireCharged = purseBeforeHire === null || purseAfterHire === null ? null : purseBeforeHire - purseAfterHire;
+  if (
+    managerBefore !== null &&
+    managerBefore.includes('no manager') &&
+    managerAfter !== null &&
+    /manager: novice — [\d.]+ gym bucks per banked hour, repairs on their own below condition [\d.]+/.test(managerAfter) &&
+    hireQuote !== null &&
+    hireCharged !== null &&
+    Math.abs(hireCharged - hireQuote) < S4B_PURSE_EPSILON
+  ) {
+    ok(
+      `S4b (9f): hiring goes through the real control, at the price the tier row already quoted — "${managerBefore}" -> "${managerAfter}", purse charged ${hireCharged.toFixed(2)} against a quoted ${hireQuote}`,
+    );
+  } else {
+    fail(
+      `S4b (9f): the hire did not land or did not charge the quoted price — before "${managerBefore}", after "${managerAfter}", quoted ${hireQuote}, charged ${hireCharged}`,
+    );
+  }
+  await pressById('gymscreen-dismiss-manager');
+  const managerDismissed = await textOf('gymscreen-manager-state');
+  if (managerDismissed !== null && managerDismissed.includes('no manager')) {
+    ok(`S4b (9f): letting the manager go goes back through the same section — "${managerDismissed}"`);
+  } else {
+    fail(`S4b (9f): dismissing the manager left the screen reading "${managerDismissed}"`);
+  }
+
+  // 9g. Dormancy, reached ONLY by refusing shown repairs, and the way back out.
+  // Each round: press the clock until a review is raised, read what it quotes,
+  // press decline, and read the ledger row it wrote.
+  let rounds = 0;
+  const declined = [];
+  while (rounds < S4B_MAX_REVIEW_ROUNDS && (await phaseNow()) !== 'failed') {
+    rounds += 1;
+    let waited = 0;
+    while (waited < S4B_MAX_CLOCK_PRESSES && (await textOf('gymscreen-prompt-item')) === null) {
+      await pressById(advanceId);
+      waited += 1;
+    }
+    const offered = await textOf('gymscreen-prompt-item');
+    if (offered === null) break;
+    const quoted = numberIn(offered, /repairing it costs ([\d.]+) gym bucks/);
+    const before = await strikeCountNow();
+    await pressById('gymscreen-prompt-decline');
+    const after = await strikeCountNow();
+    if (after !== null && before !== null && after > before) declined.push({ quoted, row: after - 1 });
+  }
+  const finalPhase = await phaseNow();
+  const strikeRows = await testIdsStartingWith('gymscreen-strike-');
+  if (finalPhase === 'failed' && declined.length > 0 && strikeRows.length === declined.length) {
+    ok(
+      `S4b (9g): the gym goes dormant ONLY after ${declined.length} shown repair(s) were actively declined — phase now "${finalPhase}", with exactly ${strikeRows.length} strike row(s) drawn`,
+    );
+  } else {
+    fail(
+      `S4b (9g): expected dormancy after declining shown repairs — phase "${finalPhase}", ${declined.length} decline(s) counted, ${strikeRows.length} strike row(s) drawn, ${rounds} round(s) used`,
+    );
+  }
+  // Every strike row on screen names a decision and carries the price that was
+  // quoted before it was taken — §5.7's "told the cost of", read back.
+  let rowsMatched = 0;
+  for (let index = 0; index < declined.length; index += 1) {
+    const rowText = await textOf(`gymscreen-strike-${index}`);
+    const priced = rowText === null ? null : rowText.match(/^repair-declined at [\d.]+s, price shown ([\d.]+) gym bucks$/);
+    if (priced !== null && Math.abs(Number.parseFloat(priced[1]) - declined[index].quoted) < S4B_PURSE_EPSILON) {
+      rowsMatched += 1;
+    } else {
+      fail(`S4b (9g): strike row ${index} reads "${rowText}", which does not carry the ${declined[index].quoted} the review had quoted before the press`);
+    }
+  }
+  if (rowsMatched === declined.length && rowsMatched > 0) {
+    ok(`S4b (9g): all ${rowsMatched} strike row(s) name the decision and carry the exact price the screen quoted before the press`);
+  }
+  const dormantText = await textOf('gymscreen-recovery-state');
+  const recoveryQuote = numberIn(
+    await textOf('gymscreen-recovery-cost'),
+    /reopening would cost ([\d.]+) gym bucks/,
+  );
+  if (dormantText !== null && dormantText.startsWith('dormant') && recoveryQuote !== null && recoveryQuote > 0) {
+    ok(`S4b (9g): the dormant gym says so and quotes the way out before any of it is spent — "${dormantText}", ${recoveryQuote} gym bucks`);
+  } else {
+    fail(`S4b (9g): expected a dormant readout with a costed recovery — "${dormantText}", quote ${recoveryQuote}`);
+  }
+  // The recovery investment, item by item, then reopen.
+  const purseBeforeRecovery = await purseNow();
+  const conditionRows = await testIdsStartingWith('gymscreen-condition-');
+  for (const rowId of conditionRows) {
+    const item = rowId.replace('gymscreen-condition-', '');
+    const at = numberIn(await textOf(rowId), /condition ([\d.]+)/);
+    if (at === null || at >= 1) continue;
+    await pressById(`gymscreen-repair-${item}`);
+  }
+  const purseAfterRecovery = await purseNow();
+  await pressById('gymscreen-recover');
+  const reopenedState = await textOf('gymscreen-recovery-state');
+  const reopenedCount = await textOf('gymscreen-recovery-cost');
+  const phaseAfterRecovery = await phaseNow();
+  const strikeRowsAfter = await testIdsStartingWith('gymscreen-strike-');
+  if (
+    reopenedState === 'open for business — sound' &&
+    phaseAfterRecovery === 'sound' &&
+    strikeRowsAfter.length === 0 &&
+    reopenedCount !== null &&
+    reopenedCount.includes('reopened 1 time(s)')
+  ) {
+    ok(
+      `S4b (9g): the repair investment (${purseBeforeRecovery} -> ${purseAfterRecovery} gym bucks) plus the reopen control brings the gym back — "${reopenedState}", ledger cleared to 0 rows, "${reopenedCount}"`,
+    );
+  } else {
+    fail(
+      `S4b (9g): the gym did not reopen — recovery state "${reopenedState}", phase "${phaseAfterRecovery}", ${strikeRowsAfter.length} strike row(s) still drawn, cost line "${reopenedCount}"`,
+    );
   }
 
   if (pageErrors.length > 0) {
