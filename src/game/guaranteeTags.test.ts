@@ -996,7 +996,15 @@ const GUARANTEE_COVERAGE = {
   // 302 -> 303 on the 2026-08-27 working-rung bench lever: the new tuning
   // constants and the floor-edge pins added several capitalised runs and the
   // re-derived tables removed several, net one.
-  TREE_WIDE: 303,
+  //
+  // 303 -> 304 on the domination analysis written into `FLOOR_EDGES` and
+  // `WORKING_FLOOR` two commits later, which is this constant catching the
+  // thing it is for and catching it against the session that had just been
+  // told about it: a prose-only commit was pushed after running the tests it
+  // obviously touched (`lift.test.ts`) and not the one it actually moved. The
+  // suite went red on origin for one commit. CLAUDE.md's "a prose edit can
+  // change the suite's result" paragraph names exactly this pair of files.
+  TREE_WIDE: 304,
 } as const;
 
 // ---------------------------------------------------------------------------
