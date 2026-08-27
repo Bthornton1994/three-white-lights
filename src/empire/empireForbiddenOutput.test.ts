@@ -3060,8 +3060,24 @@ describe('instrument C — a raw string becomes a brand in a countable number of
  *
  * Both are pinned as zero-cut counts below rather than trusted. A walker that
  * truncates reports a clean scan, which is the reassuring direction.
+ *
+ * 16 -> 24 WITH S4b, AND THE PIN IS WHAT FOUND IT. §5.11 stage 4's section on
+ * `GymScreen.tsx` nests one JSX level deeper than anything this directory
+ * rendered before, and at 16 the walk started cutting: `DRIVE_CENSUS.DEPTH_CUTS`
+ * came back 81 against a pinned 0 — the walk was declining to look at the
+ * bottom of the newest element tree in the directory and reporting a clean
+ * scan while it did. Re-pinning that 81 would have bought a green suite and
+ * sold the guarantee, which is what the paragraph above is about.
+ *
+ * 24 is set from a MEASUREMENT rather than chosen: a probe walked
+ * `GymScreen`'s returned tree at the opening state and at every state a run of
+ * thirty clock advances, a veteran hire and three declined repair orders
+ * reaches — through the warned phase and into dormancy — and the deepest path
+ * anywhere in that set is 19. (`GymView`'s, for comparison, is 13.) So there
+ * are five levels of headroom, and `DEPTH_CUTS` stays pinned at zero, which is
+ * the thing that says the budget is still enough rather than this sentence.
  */
-const VALUE_WALK_MAX_DEPTH = 16;
+const VALUE_WALK_MAX_DEPTH = 24;
 
 interface ScannedString {
   /** Where the string sat, e.g. `[0].visits[0].gymId` or `[0].{key}kind`. */
@@ -14642,10 +14658,12 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // nodes to a file the channel walk scans whole. A file-changed counter, in
   // the class this file's own verdict log already names. Read from this pin's
   // own failure value.
-  // 59_280 -> 61_001: S4b's six new reducer arms and the screen's stage-4
-  // section are more AST for the channel scan to walk. Read from this pin's
-  // own failure value.
-  NODES_EXAMINED: 61_001,
+  // 59_280 -> 60_995: S4b's six new reducer arms and the screen's stage-4
+  // section are more AST for the channel scan to walk, less the three dead
+  // import specifiers the same round removed from `ladderView.tsx`. Read from
+  // this pin's own failure value AFTER that removal — an earlier reading of
+  // 61_001, taken before it, is what this correction is.
+  NODES_EXAMINED: 60_995,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
