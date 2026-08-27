@@ -2155,10 +2155,98 @@ export const LIFT_TUNING = Object.freeze({
    * chosen round: 0.045 is the magnitude the ramped lever averaged across the
    * working band, so the RPE 8 row above moves by at most one tick per cell
    * against the version a critic measured.
+   *
+   * -------------------------------------------------------------------------
+   * RAISED 0.045 -> 0.100 ON 2026-08-27, ON A THIRD PHONE REJECTION — AND THE
+   * SIZE IS DECIDED BY THE CEILING BELOW, NOT BY TASTE
+   * -------------------------------------------------------------------------
+   * Verbatim: *"this doesnt feel harder at all, there is no challenge even for
+   * an rpe 9."* The floors above are what the previous two rounds moved, and
+   * they moved; the complaint did not. What this step buys, same sweep, same
+   * `WORKING_FLOOR` domain, taps a second, 0.045 against 0.100:
+   *
+   *     RPE 8    1.07 1.58 1.36 1.07  ->  2.00 2.50 2.22 2.00
+   *     RPE 9    1.82 2.31 2.07 1.94  ->  2.73 3.53 3.16 2.86
+   *     RPE 10   3.53 3.33 3.00 2.86  ->  5.00 4.62 4.29 4.00
+   *     RPE 6, 7   no cadence costs the rep, before or after. Zero addition.
+   *
+   * THE STEP IS CAPPED BY `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`, WHICH IS
+   * CAPPED BY THE FALSE-START RULE, and that chain is the whole reason this is
+   * 0.100 rather than the number that would answer the ruling. Read that
+   * constant's header before moving this one: past an effective margin of
+   * roughly 0.26 a bar that ate the capped false-start lockout can no longer be
+   * ground back, so raising this pushes cells INTO the ceiling rather than past
+   * it, and every cell it pushes in loses the spread the lever was adding. At
+   * 0.100 seven meet cells sit on the ceiling; at 0.145 twenty-six do and the
+   * meet's attempt ladder is flat.
+   *
+   * -------------------------------------------------------------------------
+   * WHAT IT DOES NOT BUY, MEASURED, AND IT IS THE THING THE RULING ASKED FOR
+   * -------------------------------------------------------------------------
+   * `MAX_EFFORT` in `lift.test.ts` measures a player tapping at the sim's own
+   * ceiling. At 0.045 it reads **0 lost of every reachable cell**; at 0.100 it
+   * still reads 0. That is not a tuning shortfall, it is a wall — see
+   * `MAX_EFFORT_WALLS` in that file, which drives both edges: a realistic
+   * max-effort player does not start losing until an effective margin of about
+   * 0.36, and the false-start rule stops holding at about 0.26. No value of
+   * this constant puts a rep between them. The one number that moves both walls
+   * at once is `GRIND_BOOST_FORCE_MAX`, and the 2026-08-27 ruling refuses it as
+   * this lever.
    */
-  BENCH_WORKING_RUNG_DEMAND_ONSET: 0.045,
+  BENCH_WORKING_RUNG_DEMAND_ONSET: 0.1,
 
-  BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING: 0.27,
+  /**
+   * -------------------------------------------------------------------------
+   * THE WORKING-RUNG LEVER, PART 2 OF 2: THE EFFECTIVE MARGIN THE LEVER MAY
+   * RAISE A BAR TOWARD AND NEVER PAST
+   * -------------------------------------------------------------------------
+   * PLACEHOLDER. Nobody has played it — GDD §12.1, and this file's own rule.
+   *
+   * `benchWorkingRungDemand` adds `min(ONSET, max(0, this - baseMargin))`, so a
+   * bar the BASE curve already puts at or past this line gets exactly zero and
+   * is byte-identical with the lever and without it.
+   *
+   * IT IS NOT A SAFETY CLAMP, IT IS WHERE ANOTHER RULE IN §6.2 STOPS HOLDING.
+   * `LIFT_COPY.SUBTITLE.bench` says a false start *"holds your press back, up
+   * to half a second"* — never the rep. `GRIND_FALSE_START.MAX_LOCKOUT_TICKS`
+   * is 30 and the launch beat is 18 ticks, so a maximally false-started rep
+   * spends its first ~12 ascent ticks with the grind still shut: no boost, only
+   * `LIFTER_CAPACITY` against the demand curve. Past some effective margin
+   * those twelve unpowered ticks are enough to start the stall spiral, and the
+   * copy becomes false.
+   *
+   * -------------------------------------------------------------------------
+   * IT WAS 0.27 FOR ONE ROUND AND 0.27 SHIPPED A REGRESSION — MEASURED, AND THE
+   * §6.2 SENTENCE SAYING OTHERWISE WAS FALSE WHEN IT WAS WRITTEN
+   * -------------------------------------------------------------------------
+   * That round's own note reads *"The lever does not make it worse"* about the
+   * one cell where the false-start rule already fails. Driven over all 40
+   * reachable cells with a real 10-tap false start:
+   *
+   *     lever off (ONSET 0)          1 cell loses the rep — meet/aggressive/att3/wrecked
+   *     ONSET 0.045, ceiling 0.27    2 — meet/aggressive/att2/wrecked joins it
+   *     ONSET 0.100, ceiling 0.27    4
+   *     ONSET 0.100, ceiling 0.26    1 — back to the inherited cell alone
+   *
+   * `meet/aggressive/att2/wrecked` has a base margin of 0.2270 and was CLIPPED
+   * to 0.2700 by the old ceiling, which is on the far side of the wall. So the
+   * ceiling was set above the thing it existed to protect. The earlier reading
+   * that put the wall at 0.2826 was taken at the meet ceiling LOAD, at the
+   * default capacity; the wall is cell-dependent and sits lower on a wrecked
+   * check-in, which is exactly the axis that reading could not see.
+   *
+   * 0.26 IS THE LAST SAFE HUNDREDTH ON THE REACHABLE DOMAIN, not a midpoint:
+   * every cell this clips survives a 10-tap and a 30-tap false start at 0.26,
+   * and `meet/aggressive/att2/wrecked` does not at 0.27. `lift.test.ts`'s
+   * `MAX_EFFORT_WALLS` drives the wall itself over a synthetic load ladder so
+   * the two are compared rather than both asserted.
+   *
+   * LOWERING IT DOES NOT TOUCH THE INHERITED HOLE. `meet/aggressive/att3/wrecked`
+   * sits at 0.3066 on the BASE curve, above 0.27 and above 0.26 alike, so its
+   * addition is zero either way and the disclosed defect there is neither fixed
+   * nor worsened by this change.
+   */
+  BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING: 0.26,
 
   /**
    * Ticks standing at lockout before the rep resolves, per kind. bench

@@ -912,12 +912,20 @@ export function benchWorkingRungDemand(kind: PlayableLiftKind, workingExcess: nu
   // THE CEILING, AND IT IS NOT A SAFETY CLAMP — IT IS THE PLACE ANOTHER RULE
   // IN THIS FILE STOPS HOLDING. See
   // `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`: past an effective margin of
-  // 0.2826 a rep that ate the false-start rule's own capped lockout can no
-  // longer be ground back, so the copy's "holds your press back" would become
-  // "ends the rep". The lever raises a bar TOWARD that line and never past it,
-  // and adds exactly nothing to a bar already beyond it — so a cell the
-  // shipped tree already puts past the line is byte-identical with this lever
-  // and without it.
+  // roughly 0.26 a rep that ate the false-start rule's own capped lockout can
+  // no longer be ground back, so the copy's "holds your press back" would
+  // become "ends the rep". The lever raises a bar TOWARD that line and never
+  // past it, and adds exactly nothing to a bar already beyond it — so a cell
+  // the shipped tree already puts past the line is byte-identical with this
+  // lever and without it.
+  //
+  // THAT NUMBER WAS 0.2826 AND THE CEILING WAS SET ABOVE THE WALL IT PROTECTS.
+  // The 0.2826 reading was taken at the meet ceiling LOAD at the default
+  // capacity; the wall is cell-dependent and lower on a wrecked check-in, so a
+  // ceiling of 0.27 clipped `meet/aggressive/att2/wrecked` to the far side of
+  // it and the lever broke the copy at a second cell. The constant's own
+  // header carries the four-row measurement. `lift.test.ts` drives the wall
+  // now rather than quoting it.
   //
   // IT IS ALSO THE ONLY PLACE THE ADDITION DEPENDS ON THE LOAD AT ALL, since
   // the ramp was deleted. That is the whole use `workingExcess` has left here:
