@@ -14268,9 +14268,9 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // freshly assembled object. All three then shifted +18 with the ten rows in
   // `SHIPPED_SCREEN_DISAGREEMENTS` below, for the same reason and re-read the
   // same way.
-  'ladderView.tsx:520 returned=unfollowable:state',
-  'ladderView.tsx:548 returned=unfollowable:state',
-  'ladderView.tsx:612 returned=unfollowable:state',
+  'ladderView.tsx:525 returned=unfollowable:state',
+  'ladderView.tsx:553 returned=unfollowable:state',
+  'ladderView.tsx:617 returned=unfollowable:state',
   // §5.11 stage 4: `withWear`'s condition map is built in a loop and returned
   // through a fresh object the screen cannot follow into, the same shape as
   // every other row here.
@@ -14377,16 +14377,16 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   // rather than ten sequential replaces — a sequential pass had already
   // produced a collision in this list when a new line number equalled an old
   // one still waiting to be rewritten.
-  'ladderView.tsx:520 readonly GymWeekReport[] asked=true walked=false',
-  'ladderView.tsx:548 FloorState asked=true walked=false',
-  'ladderView.tsx:612 FloorState asked=true walked=false',
-  'ladderView.tsx:624 FloorState asked=true walked=false',
-  'ladderView.tsx:657 ManagedGym asked=true walked=false',
-  'ladderView.tsx:670 ManagedGym asked=true walked=false',
-  'ladderView.tsx:684 ManagedGym asked=true walked=false',
-  'ladderView.tsx:694 ManagedGym asked=true walked=false',
-  'ladderView.tsx:702 ManagedGym asked=true walked=false',
-  'ladderView.tsx:710 ManagedGym asked=true walked=false',
+  'ladderView.tsx:525 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:553 FloorState asked=true walked=false',
+  'ladderView.tsx:617 FloorState asked=true walked=false',
+  'ladderView.tsx:629 FloorState asked=true walked=false',
+  'ladderView.tsx:662 ManagedGym asked=true walked=false',
+  'ladderView.tsx:675 ManagedGym asked=true walked=false',
+  'ladderView.tsx:689 ManagedGym asked=true walked=false',
+  'ladderView.tsx:699 ManagedGym asked=true walked=false',
+  'ladderView.tsx:707 ManagedGym asked=true walked=false',
+  'ladderView.tsx:715 ManagedGym asked=true walked=false',
   // §5.11 stage 4's fifteen rows, every one the same shape as the rows above:
   // the screen asks about a named state type and the control declines to walk
   // into it, so the census over-approximates rather than going quiet.
