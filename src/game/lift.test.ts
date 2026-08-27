@@ -2962,6 +2962,24 @@ const REACHABLE_WARMUP = {
   /** Seeds per cell in the never-answered arm. The seed moves the command tick. */
   NO_ANSWER_SEEDS: 8,
   /**
+   * The deepest point in a session a rep can be taken at, as `LiftMoment`.
+   *
+   * THE FOURTH AXIS, AND IT WAS UNSWEPT WHILE A COMMENT NEARBY CLAIMED THERE
+   * WAS NOWHERE LEFT TO HIDE. `moment` narrows `PRESS_LAUNCH_MS` by roughly a
+   * tenth — the launch beat tightens as the session wears on — and every other
+   * bench sweep in this file leaves it undefined, so they all measure the
+   * WIDEST launch window the game ever gives. A guarantee about warm-ups that
+   * only holds on the first rep of the first set is not the guarantee anyone
+   * means.
+   *
+   * A full moment sweep is not run here: the axis is monotone in the direction
+   * that matters (later is tighter), so the deepest reachable point is the
+   * worst case, and driving the worst case is what a floor claim needs. The
+   * session prescribes three work sets of three reps, so the last rep of the
+   * last set has two of each behind it.
+   */
+  DEEPEST_MOMENT: { workSetsCompleted: 2, repsCompletedInSet: 2 } as const,
+  /**
    * -------------------------------------------------------------------------
    * THE HOLE THIS BLOCK USED TO RECORD, AND THE RULING THAT CLOSED IT
    * -------------------------------------------------------------------------
@@ -3018,6 +3036,49 @@ const REACHABLE_WARMUP = {
    * between the two, and that reading is what says the floor moved this at all.
    */
   NO_ANSWER_KEPT_AFTER_A_SLIP: 88,
+} as const;
+
+/**
+ * ---------------------------------------------------------------------------
+ * THE CRASH-PENALTY COMPARISON'S OWN PARAMETERS, BECAUSE PROSE IS NOT A DOMAIN
+ * ---------------------------------------------------------------------------
+ * `DEMAND_BASE.bench`'s header and GDD §6.2 both carry a five-row table
+ * comparing warm-up losses across `BENCH_TOUCH_DEMAND_PENALTY`, and its domain
+ * was described in prose as "a coarser slip ladder, six release instants
+ * against four". THAT IS NOT A PARAMETERISATION. A reader can reach exactly
+ * 4860 reps by many different routes and get a different answer down each one,
+ * which is the failure `streakSweep.ts` exists for: a measurement whose inputs
+ * are not written down is an anecdote, however carefully it was taken.
+ *
+ * The numbers were right — every row re-derived unchanged when these constants
+ * were written — and they were unreproducible by anyone but their author, which
+ * is a defect on its own and is the one being fixed here.
+ *
+ * ONLY THE SHIPPED ROW IS DRIVEN IN-TREE. The other four need a different value
+ * of a frozen constant, so they stay in the header as counterfactuals; what
+ * this domain makes reproducible is the row the argument rests on and the grid
+ * every row was taken over.
+ */
+const PENALTY_DOMAIN = {
+  /** Ticks after DESCENT opens at which the finger comes off. `null` holds it. */
+  SLIPS: [null, 1, 4, 10, 20, 34] as const,
+  /** Cadences the quitting player taps at: 15, 10 and 6 a second. */
+  GAP_TICKS: [4, 6, 10] as const,
+  /** Quit instants, in ticks after the command. Coarse on purpose — this is a
+   * comparison ACROSS TUNINGS, not the shipped measurement, which is
+   * `REACHABLE_WARMUP`'s whole-quit sweep. */
+  QUIT_TICKS: [1, 2, 4, 8, 16, 32, 64, 128, 180] as const,
+  /** Seeds per (cell, slip, cadence, quit). The seed moves the command tick. */
+  SEEDS: 3,
+  /** Measured: the product of the parameters above and `REACHABLE_WARMUP.CELLS`. */
+  CASES: 4860,
+  /**
+   * Measured at the shipped `BENCH_TOUCH_DEMAND_PENALTY` on the shipped tree,
+   * warm-up reps lost. The other rows of the header's table, for reference and
+   * NOT driven here: 0.10 -> 1164, 0.05 -> 423, 0.02 -> 0, 0.00 -> 0, against
+   * `bench-touch-decides-the-rep`'s 120 / 100 / 40 / 0 / 0 outcome flips.
+   */
+  SHIPPED_LOST: 1785,
 } as const;
 
 const REACHABLE_COUPLING = {
@@ -3441,10 +3502,18 @@ describe('the grind decides the lift', () => {
     //
     // A WIDER GRID FIXES THAT TABLE AND IS STILL A GRID. This sweeps the quit
     // instant WHOLE — every tick from the command to past the ascent timeout —
-    // at three cadences, so there is no offset for the next regression to hide
-    // between. The count is pinned at ZERO and the domain is pinned beside it,
-    // because a sweep that stopped generating cases would otherwise report the
-    // same zero.
+    // at three cadences, so there is no QUIT INSTANT for the next regression to
+    // hide between. The count is pinned at ZERO and the domain is pinned beside
+    // it, because a sweep that stopped generating cases would report the same
+    // zero.
+    //
+    // "NO OFFSET" IS WHAT THIS USED TO SAY AND IT CLAIMED AN AXIS IT DOES NOT
+    // SWEEP. `LiftConfig.moment` narrows `PRESS_LAUNCH_MS` by about a tenth on
+    // every rep after the first — deeper into the session, tighter launch beat —
+    // and every rep here leaves it undefined, so all of this is measured at the
+    // WIDEST launch window the game ever gives. The claim is true of the quit
+    // tick and was false of the launch-beat width. `leaves a warm-up alone`
+    // drives the deepest moment a session can reach; see `DEEPEST_MOMENT`.
     const cells = reachableSessionCells().filter((c) => /^session\/rpe[67]\//.test(c.label));
     expect(cells.length, 'warm-up cells the ladder can prescribe').toBe(
       REACHABLE_WARMUP.CELLS,
@@ -3709,6 +3778,54 @@ describe('the grind decides the lift', () => {
     ).toBe('miss');
   });
 
+  it('re-derives the crash-penalty comparison\u2019s shipped row on its own named domain', () => {
+    // WHY THIS TEST EXISTS AT ALL: the row it drives is quoted in two shipped
+    // documents as the evidence for "no retune closes the descent axis", and
+    // for three rounds its domain lived in prose. A critic drove sixteen
+    // plausible readings that all land on exactly 4860 reps and got sixteen
+    // different answers; the quoted one was not among them. The number was
+    // right and nobody but its author could reach it, which is its own defect.
+    //
+    // It is the SAME `driveGrind` the rest of this file uses, so the domain is
+    // the constants and nothing else.
+    const cells = reachableSessionCells().filter((c) => /^session\/rpe[67]\//.test(c.label));
+    expect(cells.length, 'warm-up cells the comparison covers').toBe(REACHABLE_WARMUP.CELLS);
+    let lost = 0;
+    let driven = 0;
+    for (const cell of cells) {
+      for (const slip of PENALTY_DOMAIN.SLIPS) {
+        for (const gap of PENALTY_DOMAIN.GAP_TICKS) {
+          for (const quitAt of PENALTY_DOMAIN.QUIT_TICKS) {
+            for (let seed = 1; seed <= PENALTY_DOMAIN.SEEDS; seed += 1) {
+              const rep = driveGrind(
+                { kind: BENCH, loadRatio: cell.loadRatio, seed, feel: cell.feel },
+                gap,
+                quitAt,
+                Number.POSITIVE_INFINITY,
+                slip,
+              );
+              driven += 1;
+              if (rep.resolution?.outcome === 'miss') lost += 1;
+            }
+          }
+        }
+      }
+    }
+    // THE DOMAIN AS A LITERAL, so an emptied sweep reports itself...
+    expect(driven, 'crash-penalty comparison reps driven').toBe(4860);
+    // ...and as the parameters' own product, so a ladder quietly shortened is
+    // red here rather than silently re-scoped.
+    expect(
+      REACHABLE_WARMUP.CELLS
+        * PENALTY_DOMAIN.SLIPS.length
+        * PENALTY_DOMAIN.GAP_TICKS.length
+        * PENALTY_DOMAIN.QUIT_TICKS.length
+        * PENALTY_DOMAIN.SEEDS,
+      'the comparison domain and its parameters disagree',
+    ).toBe(PENALTY_DOMAIN.CASES);
+    expect(lost, 'the row two documents quote as evidence').toBe(PENALTY_DOMAIN.SHIPPED_LOST);
+  }, 600_000);
+
   it('leaves a warm-up alone — nobody answers at all [a-warm-up-makes-it-unanswered]', () => {
     // -----------------------------------------------------------------------
     // RETARGETED 2026-08-26 FROM `LOAD_PRESETS.LIGHT` ONTO THE LOADS THE
@@ -3803,6 +3920,35 @@ describe('the grind decides the lift', () => {
     expect(workingLost, 'the same unanswered rep one rung up still costs the rep').toBe(
       REACHABLE_WARMUP.WORKING_CELLS * REACHABLE_WARMUP.NO_ANSWER_SEEDS,
     );
+    // ...AND THE SAME ZERO AT THE DEEPEST POINT OF THE SESSION, which is the
+    // axis every other bench sweep in this file leaves at its widest. See
+    // `DEEPEST_MOMENT`: `moment` tightens the launch beat as the session wears
+    // on, so a warm-up guarantee measured only on a fresh rep is measured where
+    // the game is most forgiving.
+    let deepLost = 0;
+    let deepDriven = 0;
+    const deepOffenders: string[] = [];
+    for (const cell of cells) {
+      for (let seed = 1; seed <= REACHABLE_WARMUP.NO_ANSWER_SEEDS; seed += 1) {
+        const rep = driveGrind(
+          {
+            kind: BENCH,
+            loadRatio: cell.loadRatio,
+            seed,
+            feel: cell.feel,
+            moment: REACHABLE_WARMUP.DEEPEST_MOMENT,
+          },
+          REACHABLE_WARMUP.GAP_TICKS[0] ?? 6,
+          0,
+          Number.POSITIVE_INFINITY,
+        );
+        deepDriven += 1;
+        if (rep.resolution?.outcome === 'miss') deepOffenders.push(`${cell.label} seed ${seed}`);
+      }
+    }
+    deepLost = deepOffenders.length;
+    expect(deepDriven, 'deepest-moment warm-up reps driven').toBe(80);
+    expect(deepLost, `warm-up reps lost unanswered at the session's end: ${deepOffenders.join(' | ')}`).toBe(0);
     // ...and the price of ALSO letting the bar go, which the floor does not pay
     // off in full. Pinned as a count rather than asserted away, because it is
     // what the descent still charges and a tuner needs to see it move.

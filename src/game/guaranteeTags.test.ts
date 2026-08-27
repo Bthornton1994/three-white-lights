@@ -990,7 +990,10 @@ const GUARANTEE_COVERAGE = {
   // headers, and two deleted "last safe step" claims — several capitalised runs
   // added and several removed, which is the third measurement of the same
   // warning this constant carries: it counts a SHAPE, not prose volume.
-  TREE_WIDE: 301,
+  // 301 -> 302 on the round that re-derived the wall table after the floor:
+  // net one, across a corrected timeout mechanism, a re-derived wall table, a
+  // named penalty domain, a demand-ceiling tripwire and a fourth swept axis.
+  TREE_WIDE: 302,
 } as const;
 
 // ---------------------------------------------------------------------------

@@ -1297,21 +1297,42 @@ export const LIFT_TUNING = Object.freeze({
    * and saying so is the point of having measured it rather than assumed it.
    *
    *     rise     lost (held)   lost (finger off at descent tick 1)
-   *     +0.000       0                1542        (the pre-retune curve)
-   *     +0.015       0                1974
-   *     +0.020       0                2154        <- shipped
-   *     +0.025      60                2274
-   *     +0.030      60                2508
-   *     +0.040     132                2838
-   *     +0.060     330                3654        <- shipped for one commit
+   *     +0.000       0                1218        (the pre-retune curve)
+   *     +0.015       0                1674
+   *     +0.020       0                1818        <- shipped
+   *     +0.025       0                1998
+   *     +0.030      60                2214
+   *     +0.040      72                2550
+   *     +0.060     330                3432        <- shipped for one commit
    *
-   * THE SECOND COLUMN IS NEW AND IT IS THE ONE THAT CHANGES WHAT THIS BLOCK
-   * MEANS. It is never zero — not even at the pre-retune curve — so the "wall"
-   * this table locates is a property of the HELD descent only. See
+   * -------------------------------------------------------------------------
+   * RE-DERIVED A SECOND TIME AFTER THE WARM-UP FLOOR, AND FIVE OF EIGHT ROWS
+   * HAD MOVED. THIS TABLE WAS THE FOURTH PLACE A PRE-FLOOR NUMBER WAS CARRIED
+   * ACROSS THE FLOOR
+   * -------------------------------------------------------------------------
+   * The round that added `BENCH_WARMUP_FLOOR_MARGIN` re-took the crash-penalty
+   * table for exactly this reason and wrote the hazard down one docstring away
+   * — and then left this table alone. Every row above reproduces with the floor
+   * DISABLED and five are wrong with it enabled, which is the signature of a
+   * measurement carried across a change rather than re-run on it. The stale
+   * readings were `+0.020` finger-off 2154, `+0.025` held 60, `+0.040` held 132
+   * and finger-off 2838, `+0.060` finger-off 3654.
+   *
+   * THE FLOOR MOVED THE WALL, AND IT MOVED IT THE USEFUL WAY. The held wall was
+   * between +0.020 and +0.025; it is now between **+0.025 and +0.030**. At
+   * +0.025 the held column is **0** where it used to be 60 — so a rise this
+   * document spent two rounds calling the first unsafe step now costs nothing,
+   * and the floor bought one more step of headroom on precisely the axis the
+   * 2026-08-26 ruling was about. Whether to SPEND that step is a human's call
+   * and is not taken here.
+   *
+   * THE SECOND COLUMN IS THE ONE THAT CHANGES WHAT THIS BLOCK MEANS. It is
+   * never zero — not even at the pre-retune curve — so the "wall" this table
+   * locates is a property of the HELD descent only. See
    * `REACHABLE_WARMUP.SLIP_TICKS` for why that column exists and what it is
    * pinned at.
    *
-   * THE HELD WALL IS BETWEEN +0.020 AND +0.025, which is where it was measured
+   * THE HELD WALL IS BETWEEN +0.025 AND +0.030, which is where it was measured
    * rather than the "+0.022" this block used to interpolate to. Widening
    * `STICK_WIDTH.bench` moves it DOWN rather than up (that header has the
    * table); narrowing it does not move it up either.
@@ -1339,14 +1360,22 @@ export const LIFT_TUNING = Object.freeze({
    * into a general claim; the measurement was fine and the sentence around it
    * was not.
    *
-   * SO THERE IS NO "LAST SAFE STEP" AND THIS BLOCK NO LONGER NAMES ONE. What
-   * +0.02 is the last step before is the ANSWER-ONCE-AND-STOP guarantee, at the
-   * shipped width and boost. On the never-answered axis the same sweep turned
-   * at +0.010 — four steps lower — and the fix for that was not a smaller step
-   * but `BENCH_WARMUP_FLOOR_MARGIN`, because the reps it was losing were being
-   * ended by a clock rather than by the curve. A wall quoted without its axis
-   * is a reading wearing a limit's clothes, and this one sent two rounds
-   * looking for a step size that would fix a timeout.
+   * SO THERE IS NO "LAST SAFE STEP" AND THIS BLOCK NO LONGER NAMES ONE. It named
+   * +0.02, on the ANSWER-ONCE-AND-STOP axis, at the shipped width and boost —
+   * and on the never-answered axis the same sweep turned at +0.010, four steps
+   * lower. The fix for that was not a smaller step but
+   * `BENCH_WARMUP_FLOOR_MARGIN`, because the reps being lost were ended by a
+   * clock rather than by the curve. A wall quoted without its axis is a reading
+   * wearing a limit's clothes, and this one sent two rounds looking for a step
+   * size that would fix a timeout.
+   *
+   * AND THE FLOOR THEN MOVED BOTH AXES, WHICH IS WHY EVEN THE AXIS-QUALIFIED
+   * VERSION HAD TO BE RE-MEASURED RATHER THAN RE-WORDED. On the held axis the
+   * first costing step is now +0.030, not +0.025. On the never-answered axis
+   * the turn is gone entirely — `leaves a warm-up alone` pins zero lost at the
+   * shipped rise. Naming an axis is necessary and is not sufficient: a wall is
+   * a reading of a TREE, and this one has been re-read on every tree that moved
+   * it.
    *
    * WHY THE WALL IS THERE, WHICH IS THE PART THAT GENERALISES. The rungs are
    * stacked 0.044-0.060 apart in margin, because the bar-speed cue is worth
@@ -1855,16 +1884,39 @@ export const LIFT_TUNING = Object.freeze({
    * those reps.
    *
    * WHY 170 IS STILL RIGHT FOR SQUAT AND DEADLIFT AND WAS NOT FOR A LIGHT BENCH
-   * BAR, which is the part worth keeping. Squat and deadlift are driven by
-   * `DRIVE_BOOST_FORCE_MAX` — an impulse thrown at a cue and decaying from it.
-   * A rep that has not made it by 170 ticks on those lifts has spent its cues
-   * and is not going to get another: there is no channel left through which it
-   * could still complete, so the cap ends a rep that was already over. Bench
-   * since the replay steer has no cues at all; its ascent is a continuous
-   * balance between capacity and demand, and a light bar sits on the winning
-   * side of that balance for as long as it takes. It does not run out of a
-   * resource, it runs slowly — 193 ticks at the slowest reachable warm-up. So
-   * on bench the cap was ending reps that had lost nothing.
+   * BAR. It is a LOAD-CURVE fact, and the first version of this paragraph got
+   * the mechanism wrong in a way worth recording, because the wrong mechanism
+   * was reassuring and the right one is a warning.
+   *
+   * IT SAID squat and deadlift are cue-driven, so a rep that has not made it by
+   * 170 ticks "has spent its cues and is not going to get another — there is no
+   * channel left through which it could still complete". THAT IS FALSE.
+   * `stepLift` opens the ascent with `let drive = capacity - m.stallCapacityLoss`
+   * UNCONDITIONALLY, for every kind, before any cue or grind term is added. So
+   * squat and deadlift have exactly bench's continuous balance between capacity
+   * and demand; what bench adds on top is a maintained boost, not the balance
+   * itself. A squat that has not locked out by 170 ticks is still being pushed
+   * by the same term a bench is.
+   *
+   * WHAT ACTUALLY DIFFERS IS THE CEILING OF THE DEMAND CURVE. `DEMAND_BASE`
+   * tops out at **0.86** on squat and **0.84** on deadlift against bench's
+   * **1.27**. A bench bar can therefore sit far closer to capacity, for far
+   * longer, than either of the other two can be made to; squat and deadlift
+   * never produce an ascent slow enough to approach this cap, so it never binds
+   * on them. Measured longest successful ascents run bench > squat > deadlift
+   * on every harness that has driven them, though the digits depend on the
+   * drive grammar and are quoted as a range rather than pinned: two independent
+   * harnesses got squat 118 and 127, deadlift 51 and 108, bench 163 and 207.
+   *
+   * WHY THE DISTINCTION IS NOT PEDANTRY: the wrong version told a future tuner
+   * that this defect cannot be recreated on squat, because squat has cues and
+   * cues run out. It can. Raise `DEMAND_BASE.squat.MAXIMAL` toward bench's and
+   * squat gets bench's problem, cues or no cues. `liftTuning.test.ts` pins all
+   * three ceilings so that move reddens and asks whoever makes it to re-check
+   * this clock.
+   *
+   * On bench, then, the cap was ending reps that had lost nothing — 193 ticks
+   * at the slowest reachable warm-up, against a cap of 170.
    *
    * THE CLOCK IS "RAN OUT OF AIR", NOT A SECOND CRASH PENALTY. Ruled 2026-08-26
    * when the floor was made blind to how the rep was played: a crashed warm-up

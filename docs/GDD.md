@@ -2177,8 +2177,18 @@ they were reverted is the finding below rather than a change of mind.
 
 **WHAT THE RETUNE COULD NOT DO, RECORDED BECAUSE IT IS A REAL LIMIT AND A FUTURE
 TUNER WILL OTHERWISE TRY IT.** RPE 8 cannot be made to demand a fast tap RATE.
-The wall is GDD §12.3's warm-up protection, and it is measured: a uniform demand
-rise of +0.025 starts costing RPE 7 reps **on the answer-once-and-stop axis**.
+The wall is GDD §12.3's warm-up protection, and it is measured on the shipped
+tree: a uniform demand rise of **+0.030** is the first that costs RPE 7 reps on
+the answer-once-and-stop axis. At +0.025 the held column is **zero**.
+
+**THAT NUMBER WAS +0.025 UNTIL THE WARM-UP FLOOR LANDED, AND THIS PARAGRAPH SAID
+SO FOR A ROUND AFTER IT STOPPED BEING TRUE.** The floor lengthened the ascent
+clock for bars the lifter comfortably clears, so reps that used to be called on
+the clock at +0.025 now complete: the whole wall table moved and five of its
+eight rows with it. **The floor bought one more step of headroom on exactly the
+axis the ruling was about** — which is worth stating plainly, because a heading
+written to stop a future tuner trying was telling them the opposite of what the
+tree does. Whether to SPEND that step is a design call and is not taken here.
 
 **"+0.02 IS THE LAST SAFE STEP" USED TO BE THE SENTENCE HERE, AND IT IS DELETED
 RATHER THAN QUALIFIED.** It named no axis, and it was false on the axis that
@@ -2196,6 +2206,7 @@ properly, the same sweep turns four steps earlier:
 
 | uniform rise | warm-ups kept, held descent, never answered, of 80 |
 |---|---|
+| *(pre-floor readings — see the ruling below)* | |
 | +0.000 | **80** |
 | +0.005 | **80** |
 | +0.010 | 72 |
@@ -2364,11 +2375,15 @@ sentence above it leaned on exactly that — no penalty emptied the column. Now
 decides nothing there. Carried across instead of re-taken, this would have been
 a table that was false of its own tree.
 
-*(Warm-up losses in this table are taken on a coarser slip ladder than the
-64800-rep pin above — six release instants against four, one quit ladder rather
-than the whole sweep — because it is a comparison across five tunings rather
-than the shipped measurement. The shipped row's own number on the pinned
-domain is 5124.)*
+**The domain is named, not described, and that is a correction.** It used to be
+characterised in prose here — "a coarser slip ladder, six release instants
+against four" — which is not a parameterisation: a reader can land on 4860 reps
+by a dozen different routes and get a dozen different answers. It is now
+`PENALTY_DOMAIN` in `lift.test.ts`, with the slip ladder, the cadences, the quit
+instants and the seeds as named constants, and the shipped row is **driven and
+pinned by a test** rather than quoted. That is `streakSweep.ts`'s rule applied to
+this table: *a measurement whose inputs are not written down is an anecdote.*
+The shipped row's own number on the larger pinned domain is 5124 of 64800.
 
 The descent stops deciding anything at `0.02`, where warm-ups are still losing
 reps. The only value that empties the left column is the one that deletes the
