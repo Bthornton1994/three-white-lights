@@ -2678,12 +2678,24 @@ const perfectCadence = (): number => LIFT_TUNING.GRIND_TAP_REFRACTORY_TICKS;
  * `prng.ts`: this generates the HARNESS's cadence, not anything the game rolls,
  * and borrowing the game's generator would make a sweep parameter look like a
  * game value. Seeds are named in `MAX_EFFORT`.
+ *
+ * SPLITMIX32 RATHER THAN AN LCG, AND THE FIRST DRAFT'S LCG WAS CAUGHT BY THIS
+ * FILE'S OWN NON-VACUITY ARM. `s = 1664525 s + 1013904223` gives CONSECUTIVE
+ * SEEDS almost the same stream — 1000 and 1001 differ by 0.0004 on their first
+ * draw — and `MAX_EFFORT.CADENCE_SEED_BASE + draw` walks consecutive seeds by
+ * construction. Six "independent" draws produced tap counts of 23, 23, 23, 23,
+ * 23, 23: a hundred realistic players who were all the same player. The sweep
+ * would have reported a population it did not have, and the arm that reddened
+ * is the one asserting the draws disagree.
  */
 function cadenceDraws(seed: number): () => number {
   let s = (seed >>> 0) || 1;
   return () => {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-    return s / 4294967296;
+    s = (s + 0x9e3779b9) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
 
@@ -3560,12 +3572,30 @@ const MAX_EFFORT_WALLS = {
    * Measured: the least effective margin on the ladder at which the REALISTIC
    * max-effort arm loses at least one rep, to four decimals.
    */
-  MAX_EFFORT_WALL: 0,
+  MAX_EFFORT_WALL: 0.3764,
   /**
-   * Measured: the greatest effective margin on the ladder at which the
-   * false-start arm loses NOTHING, to four decimals.
+   * Measured: the least effective margin ON THIS LADDER at which the false-start
+   * arm loses at least one rep, to four decimals.
+   *
+   * "ON THIS LADDER" IS LOAD-BEARING AND IS NOT A HEDGE — IT IS THE BLIND SPOT
+   * THAT HID THE 0.27 REGRESSION, MET AGAIN ONE LAYER OUT. Two reps at the SAME
+   * effective margin are not the same rep: the peak is `base + stick`, and a
+   * heavier bar carries more of that peak in the stick and less in the base, so
+   * it has more net force everywhere except the notch. A bar the LEVER lifted to
+   * a margin is therefore harder than a bar whose own load put it there.
+   * Measured: `meet/aggressive/att2/wrecked`, lifted to 0.2700 by the old
+   * ceiling, loses a 10-tap false start — while this ladder's own rung at 0.2723
+   * does not.
+   *
+   * SO THIS NUMBER IS NOT A SAFE BOUND FOR THE CEILING, AND NOTHING HERE USES IT
+   * AS ONE. Asserting `MARGIN_CEILING <= FALSE_START_WALL` was in the first
+   * draft of this file and is deleted: it passes at 0.27, which is the
+   * configuration measured broken. What guards the ceiling is
+   * "keeps every cell the ceiling clips inside the false-start rule", which
+   * drives the reachable cells themselves. What this number is for is the
+   * comparison beside it, where both walls are read off the same family.
    */
-  FALSE_START_WALL: 0,
+  FALSE_START_WALL: 0.2777,
   /**
    * Measured: the greatest effective margin any reachable cell reaches.
    * `meet/aggressive/att3/wrecked`, which the lever adds nothing to.
@@ -4933,10 +4963,20 @@ describe('the grind decides the lift', () => {
         ) - lifterCapacity(config);
       rungs.push({ load: l, margin: scrubProbe(margin) });
     }
-    // The ladder rises, or a search over it means nothing.
+    // THE LADDER NEVER FALLS, or "the first rung that loses" is not a wall.
+    // NON-DECREASING RATHER THAN RISING, and the flat part is the ceiling
+    // rather than a defect: `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` pins a
+    // run of loads at exactly one effective margin, which is the same
+    // compression it applies to the meet's top attempts.
     for (let i = 1; i < rungs.length; i += 1) {
-      expect(rungs[i]?.margin ?? 0, `ladder rung ${i}`).toBeGreaterThan(rungs[i - 1]?.margin ?? 0);
+      expect(rungs[i]?.margin ?? 0, `ladder rung ${i}`).toBeGreaterThanOrEqual(
+        rungs[i - 1]?.margin ?? 0,
+      );
     }
+    // ...and it does rise overall, or the whole search is inside the plateau.
+    expect(rungs[rungs.length - 1]?.margin ?? 0, 'the ladder spans nothing').toBeGreaterThan(
+      (rungs[0]?.margin ?? 0) + LIFT_TUNING.GRIND_BOOST_FORCE_MAX / 2,
+    );
 
     const loses = (load: number, gapFor: () => number, early: number): boolean => {
       for (let seed = 1; seed <= MAX_EFFORT.SEEDS; seed += 1) {
@@ -4988,16 +5028,13 @@ describe('the grind decides the lift', () => {
       maxEffortWall,
     );
 
-    // ...AND THE LEVER IS HELD UNDER THE LOWER WALL, WHICH IS WHY `MAX_EFFORT`
-    // READS ZERO. Not a claim about today's tuning — the ceiling is compared to
-    // the wall the search just produced.
-    expect(
-      LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING,
-      'the ceiling is above the false-start wall',
-    ).toBeLessThanOrEqual(falseStartWall);
-
-    // The one reachable cell that IS past both is the inherited hole, and it is
-    // past them on the BASE curve with the lever adding it nothing.
+    // NOT ASSERTED HERE: `MARGIN_CEILING <= falseStartWall`. It was in the first
+    // draft and it is deleted rather than kept as a weaker check, because it
+    // PASSES AT 0.27 — the value measured to break the rule at a real cell. The
+    // ladder runs on naturally-heavy bars and the ceiling clips lever-lifted
+    // ones, and at equal peak margin those are not the same rep. See
+    // `MAX_EFFORT_WALLS.FALSE_START_WALL`. The ceiling's guard is the test
+    // directly below, which drives the reachable cells themselves.
     const cells = [...reachableSessionCells(), ...reachableMeetCells()];
     const marginOf = (cell: ReachableCell): number => {
       const config: LiftConfig = {
@@ -5021,10 +5058,10 @@ describe('the grind decides the lift', () => {
     expect(Number(highest.toFixed(4)), 'the highest reachable effective margin').toBe(
       MAX_EFFORT_WALLS.HIGHEST_REACHABLE_MARGIN,
     );
-    expect(
-      cells.filter((c) => marginOf(c) > falseStartWall).map((c) => c.label),
-      'cells past the false-start wall',
-    ).toEqual([...FLOOR_EDGES.CELLS_ALREADY_PAST_THE_CEILING]);
+    // AND THIS IS WHY `MAX_EFFORT` IS ZERO AND NOT MERELY MEASURED ZERO: the
+    // hardest bar the game can hand a player is a fifth of the grind's whole
+    // force budget short of the margin where a realistic max-effort player
+    // begins to lose. Nothing about the tuning gets between those two numbers.
     expect(highest, 'a reachable cell reached the max-effort wall').toBeLessThan(maxEffortWall);
   }, 900_000);
 
@@ -5041,6 +5078,12 @@ describe('the grind decides the lift', () => {
     // ladder runs at the default capacity and cannot reach a wrecked check-in.
     // ------------------------------------------------------------------
     const cells = [...reachableSessionCells(), ...reachableMeetCells()];
+    // THE COUNT THAT SATURATES THE LOCKOUT, DERIVED RATHER THAN WRITTEN DOWN.
+    // Past `ceil(MAX_LOCKOUT_TICKS / PER_EARLY_TAP_TICKS)` taps the delay is at
+    // its cap and more mashing buys the same rep, which is what makes the two
+    // arms below a real pair rather than the same arm twice.
+    const { PER_EARLY_TAP_TICKS, MAX_LOCKOUT_TICKS } = LIFT_TUNING.GRIND_FALSE_START;
+    const saturating = Math.ceil(MAX_LOCKOUT_TICKS / PER_EARLY_TAP_TICKS);
     const brokenAt = (early: number): string[] =>
       cells
         .filter((cell) => {
@@ -5050,7 +5093,15 @@ describe('the grind decides the lift', () => {
               perfectCadence,
               early,
             );
-            expect(rep.grindEarlyTaps, `${cell.label} early taps`).toBe(early);
+            // THE TAPS ACTUALLY LANDED. Not `toBe(early)`: the pause is
+            // `PRESS_COMMAND_DELAY_TICKS` long and its short end cannot hold 30
+            // alternating presses, so a strict equality here would be an
+            // assertion about the seed's draw rather than about the rule. What
+            // matters is that the lockout is saturated, and that is asserted.
+            expect(
+              rep.grindEarlyTaps,
+              `${cell.label} threw ${rep.grindEarlyTaps} of ${early} early taps`,
+            ).toBeGreaterThanOrEqual(Math.min(early, saturating));
             if (rep.resolution?.outcome === 'miss') return true;
           }
           return false;
