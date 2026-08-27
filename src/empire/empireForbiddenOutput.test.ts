@@ -14134,9 +14134,9 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // freshly assembled object. All three then shifted +18 with the ten rows in
   // `SHIPPED_SCREEN_DISAGREEMENTS` below, for the same reason and re-read the
   // same way.
-  'ladderView.tsx:509 returned=unfollowable:state',
-  'ladderView.tsx:537 returned=unfollowable:state',
-  'ladderView.tsx:592 returned=unfollowable:state',
+  'ladderView.tsx:506 returned=unfollowable:state',
+  'ladderView.tsx:534 returned=unfollowable:state',
+  'ladderView.tsx:589 returned=unfollowable:state',
   // §5.11 stage 4: `withWear`'s condition map is built in a loop and returned
   // through a fresh object the screen cannot follow into, the same shape as
   // every other row here.
@@ -14233,17 +14233,26 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   // COMMENT MOVING A LINE-KEYED CENSUS is the hazard this list's own history
   // is about, so the shift was re-read off the source rather than added: the
   // ten expected source lines were grepped for by text in the edited file and
-  // each landed at exactly its old number plus eighteen.
-  'ladderView.tsx:509 readonly GymWeekReport[] asked=true walked=false',
-  'ladderView.tsx:537 FloorState asked=true walked=false',
-  'ladderView.tsx:592 FloorState asked=true walked=false',
-  'ladderView.tsx:604 FloorState asked=true walked=false',
-  'ladderView.tsx:637 ManagedGym asked=true walked=false',
-  'ladderView.tsx:650 ManagedGym asked=true walked=false',
-  'ladderView.tsx:664 ManagedGym asked=true walked=false',
-  'ladderView.tsx:674 ManagedGym asked=true walked=false',
-  'ladderView.tsx:682 ManagedGym asked=true walked=false',
-  'ladderView.tsx:690 ManagedGym asked=true walked=false',
+  // each landed at exactly its old number plus eighteen. Then all ten moved
+  // -3 again when three dead import specifiers came out of the same file
+  // (`GymState`, `createGymState` and `gymCheckInAfter` had stopped being
+  // bound to anything once the check-in moved to `managedCheckIn`, and
+  // leaving `gymCheckInAfter` imported beside a header that says the arm no
+  // longer calls it is the misleading kind of dead weight). Re-read the same
+  // way, and the replacement was done as ONE atomic pass over the whole list
+  // rather than ten sequential replaces — a sequential pass had already
+  // produced a collision in this list when a new line number equalled an old
+  // one still waiting to be rewritten.
+  'ladderView.tsx:506 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:534 FloorState asked=true walked=false',
+  'ladderView.tsx:589 FloorState asked=true walked=false',
+  'ladderView.tsx:601 FloorState asked=true walked=false',
+  'ladderView.tsx:634 ManagedGym asked=true walked=false',
+  'ladderView.tsx:647 ManagedGym asked=true walked=false',
+  'ladderView.tsx:661 ManagedGym asked=true walked=false',
+  'ladderView.tsx:671 ManagedGym asked=true walked=false',
+  'ladderView.tsx:679 ManagedGym asked=true walked=false',
+  'ladderView.tsx:687 ManagedGym asked=true walked=false',
   // §5.11 stage 4's fifteen rows, every one the same shape as the rows above:
   // the screen asks about a named state type and the control declines to walk
   // into it, so the census over-approximates rather than going quiet.

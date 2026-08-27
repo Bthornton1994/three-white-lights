@@ -312,16 +312,13 @@ import {
 } from './management';
 import {
   type FlexibleSlot,
-  type GymState,
   type GymWeekReport,
   type SessionBuyResult,
   type SessionEquipmentItem,
   type WeekAllocation,
   availableActivities,
   buySessionEquipment,
-  createGymState,
   createRestAllocation,
-  gymCheckInAfter,
   resolveWeek,
   secondsUntilNextWeekBoundary,
   sessionEquipmentCost,
