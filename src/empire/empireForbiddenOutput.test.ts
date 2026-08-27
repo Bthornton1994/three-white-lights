@@ -1672,7 +1672,12 @@ const SURFACE_CENSUS = Object.freeze({
 // management.ts — the two new wiring keys inside ManagementWiringKey and every
 // signature that takes one, plus the ReviewGate union. Read from this pin's
 // own failure value.
-LITERAL_POSITIONS: 3691,
+// 3691 -> 3791: S4b. `ladderView.tsx`'s six new `GymViewAction` arms and the
+// five new members of `GymViewRefusal` are closed literal unions, and they
+// arrive at every exported position the walk reaches through `GymViewState`,
+// `GymViewProps` and `gymViewReduce` — plus `GymScreen`'s own props. Read from
+// this pin's own failure value.
+LITERAL_POSITIONS: 3791,
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -2809,7 +2814,12 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // `isNeglected(next, item)` in the manager's autonomous repair loop, which
   // counts the re-armed standing orders `management.ts` header §3e is about.
   // Read from this pin's own failure value.
-  CALLS_EXAMINED: 2798,
+  // 2798 -> 2848: S4b. `ladderView.tsx` and `GymScreen.tsx` both gained calls
+  // — the reducer's six new arms, one `management.ts` call each, and the
+  // screen's per-item and per-tier reads. Read from this pin's own failure
+  // value. The set of CONSTRUCTORS below is unchanged, which is the half of
+  // this instrument that is about brands rather than about volume.
+  CALLS_EXAMINED: 2848,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -9521,7 +9531,10 @@ const DRIVE_CENSUS = Object.freeze({
   // Stage 4: read from this pin's own failure value.
   // 6416062 -> 6416250: the widened COUNT domain and the five new driven
   // exports. Read from this pin's own failure value.
-  NODES: 6416250,
+  // 6416250 -> 6417384: S4b's larger element tree. The drive walks every
+  // node of every rendered screen, so a screen with a stage-4 section in it
+  // is a bigger walk. Read from this pin's own failure value.
+  NODES: 6417384,
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -13513,7 +13526,12 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'members.ts': 13,
       // 18 -> 20: `GymView`'s reducer gained the two new arms
       // (`floor-place`, `floor-remove`), each ending in a `return`.
-      'ladderView.tsx': 20,
+      // 20 -> 26: S4b — `gymViewReduce` gained the six §5.11 stage-4 arms
+      // (`answer-prompt`, `repair-item`, `decline-repair`, `hire-manager`,
+      // `dismiss-manager`, `recover-gym`), each ending in exactly one
+      // `return`, the same one-call-per-arm shape the arms above have. Read
+      // from this table's own failure value.
+      'ladderView.tsx': 26,
       // §5.11 stage 4's sixty-four `return` sites — eight discriminated
       // results with two to four arms each, plus the read models.
       'management.ts': 89,
@@ -14088,9 +14106,22 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // :370 -> :394/:421/:465: the `floor` field's addition shifted the one
   // existing site down, and the reducer's two new arms (`floor-place`,
   // `floor-remove`) each return an unfollowable `FloorState`.
-  'ladderView.tsx:394 returned=unfollowable:state',
-  'ladderView.tsx:421 returned=unfollowable:state',
-  'ladderView.tsx:465 returned=unfollowable:state',
+  //
+  // S4b: :394/:421/:465 -> :491/:519/:574. SAME THREE SITES, three different
+  // shifts (+97, +98, +109) because the file grew in three places, which is
+  // exactly the shape a line-keyed census can hide a real relocation inside.
+  // Verified by CONTENT rather than by arithmetic, the way this file's own
+  // history says to: the previous commit's `ladderView.tsx` was extracted and
+  // the source text at each old line compared against the text at each new
+  // line — `let weekLog = state.weekLog;`, `floor: state.floor,` and
+  // `outcome.kind === 'moved' ? relocateFloorState(outcome.state.rung) :
+  // state.floor,`, byte-identical in all three pairs. The list's LENGTH is
+  // unchanged at 37, so S4b's six new reducer arms added no fresh receiver:
+  // each returns `outcome.state`, a `ManagedGym` the walk follows, not a
+  // freshly assembled object.
+  'ladderView.tsx:491 returned=unfollowable:state',
+  'ladderView.tsx:519 returned=unfollowable:state',
+  'ladderView.tsx:574 returned=unfollowable:state',
   // §5.11 stage 4: `withWear`'s condition map is built in a loop and returned
   // through a fresh object the screen cannot follow into, the same shape as
   // every other row here.
@@ -14158,13 +14189,39 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   // Renumbered by the `floor` field's addition, and widened by it: two new
   // `GymState`/`FloorState` reads for the `floor-place`/`floor-remove` arms
   // (:412/:413 unchanged in kind, :421/:448/:465/:477 new).
-  'ladderView.tsx:394 readonly GymWeekReport[] asked=true walked=false',
-  'ladderView.tsx:412 GymState asked=true walked=false',
-  'ladderView.tsx:413 LadderAccrual asked=true walked=false',
-  'ladderView.tsx:421 FloorState asked=true walked=false',
-  'ladderView.tsx:448 GymState asked=true walked=false',
-  'ladderView.tsx:465 FloorState asked=true walked=false',
-  'ladderView.tsx:477 FloorState asked=true walked=false',
+  //
+  // S4b: 7 rows -> 10, and it is NOT a shift plus three additions — three rows
+  // left and six arrived, which a total of +3 would have hidden. Every row was
+  // mapped by SOURCE TEXT against the previous commit's file, not by
+  // arithmetic, because a line-keyed census is exactly where a relocation can
+  // render as unchanged context:
+  //
+  //   :394 -> :491  `let weekLog = state.weekLog;`
+  //   :421 -> :519  `floor: state.floor,`
+  //   :465 -> :574  the move-up arm's relocate-or-keep ternary
+  //   :477 -> :586  `floor: outcome.state,`
+  //   :412 GONE     was `gym: checkedIn.state,`; the arm destructures
+  //                 `managedCheckIn`'s return now, so the assigned value is a
+  //                 local binding rather than a member read and the screen
+  //                 stops asking about it
+  //   :413 GONE     was `lastAccrual: checkedIn.accrual,`, same reason
+  //   :448 GONE     was `gym: outcome.state,` in `buy-session`; that value is
+  //                 an ARGUMENT to `withUpdatedGym` now, not the assigned one
+  //   six NEW       `managed: outcome.state,` once per §5.11 stage-4 arm
+  //
+  // The six new rows are the same shape as every row above them: the screen
+  // asks about a named state type, the control declines to walk into it, and
+  // the census over-approximates rather than going quiet.
+  'ladderView.tsx:491 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:519 FloorState asked=true walked=false',
+  'ladderView.tsx:574 FloorState asked=true walked=false',
+  'ladderView.tsx:586 FloorState asked=true walked=false',
+  'ladderView.tsx:619 ManagedGym asked=true walked=false',
+  'ladderView.tsx:632 ManagedGym asked=true walked=false',
+  'ladderView.tsx:646 ManagedGym asked=true walked=false',
+  'ladderView.tsx:656 ManagedGym asked=true walked=false',
+  'ladderView.tsx:664 ManagedGym asked=true walked=false',
+  'ladderView.tsx:672 ManagedGym asked=true walked=false',
   // §5.11 stage 4's fifteen rows, every one the same shape as the rows above:
   // the screen asks about a named state type and the control declines to walk
   // into it, so the census over-approximates rather than going quiet.
@@ -14214,7 +14271,11 @@ const SCREEN_AGREEMENT = Object.freeze({
   /** Rows in `SHIPPED_SCREEN_DISAGREEMENTS`, so a shorter list is red too. */
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // 40 -> 55: stage 4's fifteen rows above.
-  SHIPPED_DISAGREEMENTS: 55,
+  // 55 -> 58: S4b's net movement in `ladderView.tsx` — three rows left and six
+  // arrived, each mapped by source text at the list itself rather than by this
+  // total, because a net of +3 is the same number a pure shift plus three
+  // additions would have produced.
+  SHIPPED_DISAGREEMENTS: 58,
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
@@ -14323,7 +14384,11 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1334 -> 1335: the same one call as `CALLS_EXAMINED` above.
   // 1372 -> 1373: the knob-margin round's `isNeglected(next, item)` in the
   // autonomous repair loop — the same one call as `CALLS_EXAMINED` above.
-  function: 1373,
+  // 1373 -> 1410: S4b's calls through module-level bindings and imports —
+  // `GymScreen.tsx`'s eighteen `management.ts` reads (several of them once
+  // per owned item and once per manager tier) and `ladderView.tsx`'s nine.
+  // Read from this pin's own failure value.
+  function: 1410,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -14343,11 +14408,18 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // `stationActivity.get` at the occupied call sites. Read from this pin's
   // own failure value.
   // 1180 -> 1296: the same.
-  member: 1314,
+  // 1314 -> 1325: S4b's member calls on this directory's own values — the
+  // screen's `.map()` over owned items, manager tiers and strike records, and
+  // the reducer's own. Read from this pin's own failure value.
+  member: 1325,
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
-  'member-of-parameter': 21,
+  // 21 -> 23: S4b's two `.map()` calls on values reached THROUGH a parameter —
+  // `props.state.managed.strikes.map(...)` and
+  // `props.state.lastManagementReport.autoRepairs.map(...)` in `GymScreen`.
+  // Read from this pin's own failure value.
+  'member-of-parameter': 23,
   // Phase 4: FLOOR_SPRITE_PALETTES' construction calls a fresh arrow (the
   // palette-row map), the same site DECLARED_FRESH_RECEIVERS names.
   fresh: 1,
@@ -14620,7 +14692,12 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // 861 -> 871: the §5.7 chain-break round's five new exported functions and
   // the widened `PromptResult` reason union. Read from this pin's own failure
   // value.
-  POSITIONS: 871,
+  // 871 -> 872: S4b's one new exported type in `ladderView.tsx`,
+  // `ManagedCheckInReport`, reached as `GymViewState.lastManagementReport`.
+  // The six new action arms and the five new refusal members add no exported
+  // POSITION — they widen unions that already had one. Read from this pin's
+  // own failure value.
+  POSITIONS: 872,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -15531,6 +15608,38 @@ const GYM_VIEW_CONTROLS =
   EMPIRE_TUNING.FLEXIBLE_SESSIONS_PER_WEEK * (EMPIRE_TUNING.FLEXIBLE_ACTIVITIES.length + 1);
 
 /**
+ * `GymScreen`'s control count on the same opening screen. It USED to be
+ * `GYM_VIEW_CONTROLS` exactly, because the native screen was a tag-for-tag
+ * port of `GymView`. S4b broke that: §5.11 stage 4 is surfaced on
+ * `GymScreen.tsx` and NOT on `GymView`, which stays the closed stage-2 DOM
+ * dev harness. So the two counts are now different numbers and each is
+ * derived from the vocabulary its own screen draws from.
+ *
+ * The three additions, on an OPENING screen specifically:
+ *
+ *   - one repair control per owned item. An opening gym owns exactly
+ *     `LADDER_STARTING_EQUIPMENT` and no session equipment, which is what
+ *     `ownedItemsOf` returns for it.
+ *   - one hire control per manager tier, drawn only while unstaffed — which
+ *     an opening gym is.
+ *   - the reopen control, drawn in every phase (it refuses on a gym that is
+ *     not dormant, and the refusal is shown).
+ *
+ * The three maintenance-review answers are NOT here, and the reason is the
+ * review cadence rather than an omission: an opening gym has taken zero
+ * check-ins, `orderOpensAt` puts the first review at
+ * `MAINTENANCE_ORDER_FIRST_CHECK_IN`, so the prompt is quiet and draws no
+ * controls at all. Neither is `dismiss-manager`, for the same kind of reason
+ * — there is no manager to let go. Both are driven on the played path by
+ * `GymScreen.test.ts` and by `tools/verify-floor-reachability.mjs` instead.
+ */
+const GYM_SCREEN_CONTROLS =
+  GYM_VIEW_CONTROLS +
+  EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT.length +
+  EMPIRE_TUNING.MANAGER_TIERS.length +
+  1; // reopen the gym
+
+/**
  * Every onClick OR onPress in an element tree, pressed in tree order.
  *
  * CROSSING 6: `onPress` joined `onClick` here rather than getting a second,
@@ -15600,7 +15709,7 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
         name: 'GymScreen.tsx#GymScreen#props.dispatch#gymBucks',
         domain: 'NUMBER',
         means:
-          'the settled purse the rendered screen shows — the identical claim `ladderView.tsx#GymView#props.dispatch#gymBucks` makes for the DOM twin, reused here because GymScreen ports GymView’s shape tag for tag: same control set (GYM_VIEW_CONTROLS), same "every control dispatches regardless of balance" rule, same one-call-per-control wrap through GymScreen’s own local `dispatch`.',
+          'the settled purse the rendered screen shows. It USED to be the identical claim `ladderView.tsx#GymView#props.dispatch#gymBucks` makes for the DOM twin, because GymScreen ported GymView’s shape tag for tag. S4b ended that: §5.11 stage 4 is surfaced here and not on GymView, so the control set is GYM_SCREEN_CONTROLS and not GYM_VIEW_CONTROLS. What is unchanged is the RULE the axis is about — every control dispatches whatever the balance, one call per control through GymScreen’s own local `dispatch`, and refusals are the reducer’s to report.',
         drive: (record: (args: readonly unknown[]) => void, point: number): void => {
           pressEveryControl(
             gymScreenModule.GymScreen({
@@ -15621,7 +15730,7 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
             }),
           );
         },
-        callsAt: (): number => GYM_VIEW_CONTROLS,
+        callsAt: (): number => GYM_SCREEN_CONTROLS,
         argumentsPerCall: 1,
       }),
     ]),
@@ -15999,11 +16108,19 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
   // #gymBucks` below — same `NUMBER` domain, same `GYM_VIEW_CONTROLS`
   // constant callsAt (does not vary with the point), so the same domain
   // produces the same points/calls/recorded on the ported screen.
+  // S4b: NO LONGER byte-identical, and that is the point. The two screens
+  // draw different control sets now — `GYM_SCREEN_CONTROLS` against
+  // `GYM_VIEW_CONTROLS` — because §5.11 stage 4 is surfaced on the native
+  // screen a player reaches and not on the DOM dev harness.
   'GymScreen.tsx#GymScreen#props.dispatch#gymBucks': Object.freeze({
     points: 402,
     refusedPoints: 0,
-    calls: 14070,
-    recorded: 14070,
+    // 14070 -> 16884: S4b. Seven more controls per point (three repair, three
+    // hire, one reopen), 402 points, 402 x 7 = 2814. This is no longer equal
+    // to the `GymView` row below, and that inequality is the measurement that
+    // says stage 4 is on one screen and not the other.
+    calls: 16884,
+    recorded: 16884,
   }),
   'engagement.ts#historyFrom#attended#slots': Object.freeze({
     points: 239,
@@ -18615,7 +18732,9 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // 207 -> 236: stage 4's type declarations join the walk. Read from this
   // pin's own failure value.
   // 237 -> 238: the §5.7 chain-break round's `ReviewGate` type alias.
-  DECLARATIONS: 238,
+  // 238 -> 239: S4b's `ManagedCheckInReport` type alias in `ladderView.tsx`.
+  // Read from this pin's own failure value.
+  DECLARATIONS: 239,
   /** Those carrying type parameters. An instantiation depth needs one. */
   // Phase 4: `MemberTable<Leaf>` in floorSprites.ts.
   GENERIC: 13,
