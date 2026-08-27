@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "press-full-2-2026-08-27T18-31-16-335Z-17059",
+  "label": "press-full-2",
+  "command": [
+    "node",
+    "tools/verify-lift-press.mjs",
+    "--url",
+    "http://localhost:8098",
+    "--out",
+    ".gauntlet/shots/lift-press",
+    "--arms",
+    "all"
+  ],
+  "budgetSeconds": 1500,
+  "startedAtIso": "2026-08-27T18:31:16.335Z",
+  "startedAtMs": 1787855476335,
+  "cwd": "/home/user/wt-bench-drivers",
+  "commit": "ca83deeec446b6291258270778c4265908e95c53",
+  "branch": "claude/bench-working-lever-drivers",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 17059,
+    "startTick": "349084",
+    "cmdline": "node tools/watchdog.mjs --budget 1500 --label press-full-2 -- node tools/verify-lift-press.mjs --url http://localhost:8098 --out .gauntlet/shots/lift-press --arms all",
+    "bootId": "0ea1bac6-cfc2-4139-b180-9a706152a24b",
+    "bootEpochSeconds": 1787851985,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 2,
+    "okCount": 0,
+    "errors": [
+      {
+        "at": "2026-08-27T18:31:36.375Z",
+        "why": "Command failed: git -C /home/user/wt-bench-drivers ls-remote --exit-code origin refs/heads/verify-markers/vm"
+      }
+    ],
+    "lastAttemptIso": "2026-08-27T18:32:16.395Z",
+    "lastReason": "heartbeat",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm",
+    "ok": false,
+    "lastOkIso": null
+  }
+}
