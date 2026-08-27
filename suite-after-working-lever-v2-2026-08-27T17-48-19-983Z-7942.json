@@ -28,14 +28,19 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 4,
-    "okCount": 3,
-    "errors": [],
-    "lastAttemptIso": "2026-08-27T17:51:20.119Z",
+    "count": 6,
+    "okCount": 4,
+    "errors": [
+      {
+        "at": "2026-08-27T17:52:40.180Z",
+        "why": "Command failed: git -C /home/user/three-white-lights ls-remote --exit-code origin refs/heads/verify-markers/vm"
+      }
+    ],
+    "lastAttemptIso": "2026-08-27T17:53:20.199Z",
     "lastReason": "heartbeat",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
-    "ok": true,
-    "lastOkIso": "2026-08-27T17:50:23.408Z"
+    "ok": false,
+    "lastOkIso": "2026-08-27T17:51:24.096Z"
   }
 }
