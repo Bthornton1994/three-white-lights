@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-27T02-13-47-132Z-6229",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/game/guaranteeTags.test.ts"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-27T02:13:47.132Z",
+  "startedAtMs": 1787796827132,
+  "cwd": "/home/user/wt-bench-floor",
+  "commit": "7bea7b8b348a156c6b7a85be9c036a020444e332",
+  "branch": "claude/bench-difficulty",
+  "dirty": 6,
+  "dirtyPaths": [
+    "src/game/guaranteeTags.test.ts",
+    "src/game/lift.test.ts",
+    "src/game/lift.ts",
+    "src/game/liftTuning.ts",
+    "src/game/zzpen.test.ts",
+    "src/game/zzprobe.test.ts"
+  ],
+  "runner": {
+    "pid": 6229,
+    "startTick": "221173",
+    "cmdline": "node tools/watchdog.mjs --budget 900 -- npx vitest run src/game/guaranteeTags.test.ts",
+    "bootId": "6ead00c8-1b9a-4538-8f56-b6d21a822aac",
+    "bootEpochSeconds": 1787794615,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-27T02:13:47.149Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
