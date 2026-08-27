@@ -2194,16 +2194,53 @@ properly, the same sweep turns four steps earlier:
 | +0.015 | 72 |
 | **+0.020 — shipped** | **72** |
 
-The eight are one cell, `rpe7/0.8250/as-expected`, at every seed — a load over
-the line rather than a boundary a seed straddles, which is why the cell count is
-pinned beside the rep count in `lift.test.ts`. **Whether that is a §12.3 breach
-turns on a reading this document leaves open**: the warm-up protection is stated
-here conditioned on the player answering — "a rep the player answered at all, one
-tap is enough" — and a player who presses nothing after the command has not
-played the rep. Under that reading it is legal. Under "a warm-up never takes a
-rep for any reason" it is not, and the fix is to back the rise down to +0.005,
-which returns most of the difficulty this retune was asked for. It is recorded
-with the number in front of it rather than settled by whoever noticed it.
+The eight were one cell, `rpe7/0.8250/as-expected`, at every seed — a load over
+the line rather than a boundary a seed straddles.
+
+**RULED 2026-08-26, AND THE TABLE ABOVE IS NOW HISTORY RATHER THAN A LIVE
+TRADE.** The question was left open here for one round: the warm-up protection
+was stated conditioned on the player answering — "a rep the player answered at
+all, one tap is enough" — so a player who pressed nothing had, on that reading,
+not played the rep. That reading was refused. Verbatim: *"Never answering PRESS!
+on a held descent must still make every RPE 6 and RPE 7 cell, including
+rpe7/0.8250. That is §12.3 warm-up protection, not a nicety. +0.02 stays on
+RPE 8 / 9 / 10 and meet. Do not undo the phone difficulty pass to save one light
+cell."* Both cheap escapes went with it — dropping to +0.005 restores the curve
+the replay rejected, and calling that cell a working set is calling a warm-up a
+working set so that a global step size can stay dumb.
+
+**What closed it was a clock, not a curve, and the constant's own header had
+been carrying the defect the whole time.** The miss was never a strength
+failure: at that cell the lifter's capacity clears the bar's peak demand by
+0.048 and the bar was at 80.8% of the way up when the rep was called. It ran out
+of `ASCENT_TIMEOUT_TICKS`, which is 170 — while the docstring directly above
+that constant records "successful ascents ran to a maximum of **201** ticks",
+and the sentence below it says that cutting off grinds that were going to make
+it "is the worse failure". The number and the reasoning were both already there
+and disagreed with each other.
+
+**`BENCH_WARMUP_FLOOR_MARGIN` and `BENCH_WARMUP_FLOOR_ASCENT_TICKS`** are the
+mechanism, and both are scoped so they cannot reach a working rung. A bench bar
+whose peak demand sits at least `0.04` BELOW the lifter's capacity runs its
+ascent on a longer clock; nothing else changes — no added force, no velocity
+change, no grade change, and a rep that reaches lockout on its own is
+byte-identical with the floor and without it. Two independent measurements put
+the rungs on opposite sides of both numbers:
+
+| | every RPE 6/7 cell | nearest RPE 8 cell | the floor sits at |
+|---|---|---|---|
+| margin (`peak − capacity`) | ≤ **−0.0483** | ≥ **−0.0323** | **−0.040** |
+| unaided ascent, ticks | ≤ **193** | **247** | **220** |
+
+Both are midpoints of measured gaps rather than thresholds tuned until the
+tests passed, and `lift.test.ts` pins both edges so a retune that closes either
+gap reddens instead of letting the floor spread into the grind.
+
+**A single global clock was tried first and is refused, measured.** At 220 for
+every lift the reachable rescue table moves and RPE 8's own non-vacuity control
+halves from **12** to **6** — the unanswered reps the phone replay asked to cost
+the rep start making again. That is the experiment that says the floor has to be
+scoped, and it is why there are two constants instead of a bigger one.
 
 Widening the sticking point moves that wall the wrong way, and
 narrowing it does not move it back.
@@ -2272,34 +2309,58 @@ GOOD LIFT into a GRINDER there, and a rep the player answered at all — one tap
 enough — can never be taken away *by stopping*. What changed at those rungs is
 that the grade moved, not the outcome.
 
+**AND SINCE 2026-08-26 IT CANNOT BE TAKEN AWAY BY NOT ANSWERING AT ALL EITHER.**
+That is the second condition, and it was ruled after this document had already
+carried the first for a round: *"Never answering PRESS! on a held descent must
+still make every RPE 6 and RPE 7 cell, including rpe7/0.8250. That is §12.3
+warm-up protection, not a nicety."* So the warm-up guarantee is now two
+sentences and both are swept — a warm-up carried down under control cannot be
+lost by stopping, and cannot be lost by never starting. The rung above is
+covered by neither, deliberately.
+
 **THE ITALICS ON "BY STOPPING" ARE LOAD-BEARING AND WERE ADDED AFTER THE
 SENTENCE WAS CAUGHT BEING READ AS MORE.** Stopping is one mistake and the
 descent is another. Every rep behind the zeros above carries the bar down with
 the finger held, which is the correct play and was also, for a round, the only
 play the sweep contained. Take the finger off on the way down and the warm-up
-rungs lose **6234** reps of 64800 across **9** of their **10** cells — pinned
+rungs lose **5124** reps of 64800 across **9** of their **10** cells — pinned
 per cell in `lift.test.ts`'s `LOST_WITH_THE_FINGER_OFF`, beside the held arm's
 unchanged **0** of 16200. A player who does both things wrong is not covered by
 a protection written about one of them.
 
+*(It read 6234 before the warm-up floor; the floor is keyed on the bar and the
+lifter rather than on how the rep was played, so a crashed warm-up gets the same
+longer clock and some of those reps now make it. That is a side effect of
+keeping the floor un-gameable, recorded rather than tuned away — the alternative
+is a floor a crash can switch off, which is a path back to a warm-up losing the
+rep.)*
+
 **No retune closes that, and the range was swept before the sentence was
 reworded rather than after.** The descent is charged through exactly one
 constant, and against it sits `bench-touch-decides-the-rep`'s count of outcomes
-the descent moves, out of 240:
+the descent moves, out of 240 — re-taken after the warm-up floor landed, because
+the floor moved these:
 
 | `BENCH_TOUCH_DEMAND_PENALTY` | warm-up reps lost, of 4860 | outcomes the descent moves, of 240 |
 |---|---|---|
-| **0.15 — shipped** | 1926 | **120** |
-| 0.10 | 1389 | 100 |
-| 0.05 | 675 | 40 |
-| 0.02 | 270 | **0** |
+| **0.15 — shipped** | 1785 | **120** |
+| 0.10 | 1164 | 100 |
+| 0.05 | 423 | 40 |
+| 0.02 | **0** | **0** |
 | 0.00 | **0** | **0** |
+
+**The `0.02` row changed character when the floor landed, and re-running is the
+only reason this table is not lying.** It used to read `270` lost, and the
+sentence above it leaned on exactly that — no penalty emptied the column. Now
+`0.02` does empty it, and the claim survives anyway, because the descent still
+decides nothing there. Carried across instead of re-taken, this would have been
+a table that was false of its own tree.
 
 *(Warm-up losses in this table are taken on a coarser slip ladder than the
 64800-rep pin above — six release instants against four, one quit ladder rather
 than the whole sweep — because it is a comparison across five tunings rather
 than the shipped measurement. The shipped row's own number on the pinned
-domain is 6234.)*
+domain is 5124.)*
 
 The descent stops deciding anything at `0.02`, where warm-ups are still losing
 reps. The only value that empties the left column is the one that deletes the

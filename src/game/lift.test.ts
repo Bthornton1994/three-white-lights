@@ -2905,11 +2905,22 @@ const REACHABLE_WARMUP = {
    * NINE OF TEN CELLS LOSE REPS AND THAT IS THE HONEST STATEMENT OF THE
    * MECHANIC, not a defect this pass left standing. There is no value of
    * `BENCH_TOUCH_DEMAND_PENALTY` that empties this list and leaves the descent
-   * deciding anything: at 0.15 it is the numbers below against 120 outcome
-   * flips of 240 in `bench-touch-decides-the-rep`; at 0.05, 675 of 4860 lost
-   * against 40 flips; at 0.02, still 270 lost against **zero** flips; and only
-   * at 0.00 — the descent deleted — does the list go empty. The trade was
-   * measured across the whole range before the sentence was reworded.
+   * deciding anything, against `bench-touch-decides-the-rep`'s 240 cases — on
+   * a coarser six-slip ladder of 4860 reps, RE-TAKEN after the warm-up floor
+   * landed rather than carried across it:
+   *
+   *     0.15 shipped  1785 lost / 120 flips      0.10  1164 / 100
+   *     0.05           423 / 40                  0.02     0 / **0**
+   *     0.00             0 / **0**
+   *
+   * THE 0.02 ROW CHANGED CHARACTER WHEN THE FLOOR LANDED, WHICH IS WHY THESE
+   * WERE RE-RUN RATHER THAN COPIED. Before the floor it read "270 lost", and
+   * the sentence above leaned on exactly that: no penalty emptied the column.
+   * Now 0.02 DOES empty it — and the claim survives anyway, because the descent
+   * decides nothing there either. Carried across instead of re-taken, this
+   * docstring would have shipped a row that was false of its own tree, which is
+   * the defect the two rounds before this one spent their length removing from
+   * three other places.
    *
    * HOW MANY OF THESE ARE ZERO IS A LITERAL IN THE BODY AND HAS NO CONSTANT
    * HERE, ON PURPOSE. It had one, and that version was DOMINATED by the equality
@@ -2920,7 +2931,7 @@ const REACHABLE_WARMUP = {
    * equality and fails the literal — which is the one failure an equality cannot
    * notice about itself. Same idiom as `TOUCH_SWEEP.OUTCOME_CASES`, same reason.
    */
-  LOST_WITH_THE_FINGER_OFF: [222, 0, 594, 576, 594, 672, 192, 1170, 1116, 1098] as const,
+  LOST_WITH_THE_FINGER_OFF: [180, 0, 492, 420, 432, 510, 150, 1026, 1008, 906] as const,
   /**
    * Measured: warm-up cells where SOME entry in `SLIP_TICKS` lands the bar at
    * touch quality exactly 0 — fully crashed, not merely degraded.
@@ -2952,59 +2963,61 @@ const REACHABLE_WARMUP = {
   NO_ANSWER_SEEDS: 8,
   /**
    * -------------------------------------------------------------------------
-   * Measured: warm-up reps kept on a HELD descent by a player who never answers
-   * the command at all, out of `CELLS * NO_ANSWER_SEEDS`.
-   *
-   * IT IS NOT THE FULL COUNT, AND THE MISSING EIGHT ARE THIS RETUNE'S DOING —
-   * FLAGGED FOR A HUMAN RATHER THAN RESOLVED HERE
+   * THE HOLE THIS BLOCK USED TO RECORD, AND THE RULING THAT CLOSED IT
    * -------------------------------------------------------------------------
-   * One cell — `session/rpe7/0.8250/as-expected`, the hardest cell of the
-   * heavier warm-up rung — loses the rep at every seed if the command is never
-   * answered. At the pre-retune curve it kept all of them. Swept on the base
-   * alone, one line changed at a time, the turn is between a uniform rise of
-   * `0.005` and one of `0.010`:
+   * Two constants stood here — `NO_ANSWER_KEPT_ON_A_HELD_DESCENT: 72` and
+   * `CELLS_LOSING_THE_UNANSWERED_REP: 1` — measuring a player who carried a
+   * warm-up bar down properly, never answered the command, and lost the rep at
+   * `session/rpe7/0.8250/as-expected` on every seed. They were pinned rather
+   * than fixed, with both readings of GDD §12.3 written out and the trade left
+   * to a human, because closing it looked like it needed the difficulty pass
+   * reverted.
    *
-   *     +0.000  80    +0.005  80    +0.010  72    +0.015  72    +0.020  72
+   * RULED 2026-08-26, AND BOTH CHEAP ESCAPES WERE REFUSED. Verbatim: "Never
+   * answering PRESS! on a held descent must still make every RPE 6 and RPE 7
+   * cell, including rpe7/0.8250. That is §12.3 warm-up protection, not a
+   * nicety. +0.02 stays on RPE 8 / 9 / 10 and meet." Not a smaller step — that
+   * restores the curve the phone replay rejected. And not "that cell costs the
+   * rep" — that is calling a warm-up a working set so a global step size can
+   * stay dumb.
    *
-   * So the shipped rise is four steps past this axis's wall, and the wall GDD
-   * §6.2 names — "+0.025 starts costing RPE 7 reps" — is a different axis's.
-   * That number was taken with the player answering once and then stopping;
-   * this one has them never answering. Backing off to `0.005` would clear it
-   * and would also undo the difficulty the 2026-08-26 replay asked for, which
-   * is a design trade and not a builder's call.
-   *
-   * WHY IT IS PINNED HERE RATHER THAN CALLED A BREACH OR CALLED FINE. GDD
-   * §12.3's warm-up protection is stated in this repository conditioned on the
-   * player answering — "a rep the player answered at all, one tap is enough,
-   * can never be taken away by stopping" — and a player who presses nothing
-   * after the command has not played the rep. That reading makes this legal.
-   * The reading that makes it a breach is that a warm-up should never take a
-   * rep for any reason. Both are defensible from the shipped text, the choice
-   * changes the tuning, and it is recorded here so the number is in front of
-   * whoever makes it instead of behind a green suite.
+   * SO THE COUNT IS A ZERO IN THE BODY NOW, not a constant here, and it is
+   * asserted against `CELLS * NO_ANSWER_SEEDS` with the offending cells named
+   * in the message. `BENCH_WARMUP_FLOOR_MARGIN` is what closed it and
+   * `WORKING_CELLS` below is what stops the closure from being a global clock
+   * bump. The two deleted constants are described rather than kept because a
+   * pin at 72 would now be a pin on a defect that no longer exists.
    */
-  NO_ANSWER_KEPT_ON_A_HELD_DESCENT: 72,
   /**
-   * Measured: cells that lose the unanswered rep on a held descent. One.
+   * Working-rung cells the ladder can prescribe, and why they are counted here
+   * rather than left to the rescue table.
    *
-   * PINNED BESIDE THE COUNT because 72 of 80 could be eight cells losing one
-   * seed each — a boundary the seed happens to straddle — or one cell losing
-   * all eight, which is a load over the line. It is the second, and that is
-   * the difference between a flake and a wall.
+   * A WARM-UP LOWERED UNDER CONTROL GOES UP EVEN IF THE PLAYER NEVER ANSWERS
+   * THE COMMAND, AND A WORKING RUNG DOES NOT. Both halves are the guarantee.
+   * The clock may not be what decides a bar the lifter is comfortably stronger
+   * than; and the floor that arranges this may not reach a rung the phone
+   * replay asked to stay hard. If the count taken over these cells ever goes
+   * quiet, the floor has spread into the grind rather than protecting the
+   * warm-up, and the zero beside it stops meaning anything.
+   * `@guarantee a-warm-up-makes-it-unanswered`
    */
-  CELLS_LOSING_THE_UNANSWERED_REP: 1,
+  WORKING_CELLS: 12,
   /**
-   * Measured: unanswered warm-up reps kept after the finger came off, out of
-   * `CELLS * NO_ANSWER_SEEDS * SLIP_TICKS.length`.
+   * Measured: unanswered warm-up reps kept after the finger ALSO came off, out
+   * of `CELLS * NO_ANSWER_SEEDS * SLIP_TICKS.length`.
    *
-   * THE PRICE OF DOING BOTH THINGS WRONG, PINNED RATHER THAN ASSERTED AWAY.
-   * Carrying the bar down is worth most of the rung even when nothing else is
-   * done right — `NO_ANSWER_KEPT_ON_A_HELD_DESCENT` against this — and letting
-   * it go as well is not covered by anything. At the pre-retune curve this read
-   * `88`, so the rise cost it too; unlike the count above, it did not cross a
-   * boundary, because there was never a clean sweep here to lose.
+   * THE PRICE OF DOING BOTH THINGS WRONG, AND THE FLOOR ONLY PAYS PART OF IT.
+   * Carrying the bar down is worth the whole rung now — that is the zero in the
+   * body — and letting it go as well is covered by nothing.
+   *
+   * IT READS 88, WHICH IS ALSO WHAT THE PRE-RETUNE CURVE READ, and the equality
+   * is recorded as a COINCIDENCE OF COUNTS rather than as a claim: the floor
+   * hands back clock headroom on the same axis the +0.02 took it from, so
+   * landing on the old number is plausible — but nobody has checked it is the
+   * same 88 REPS, and this file does not get to imply that it is. It read 40
+   * between the two, and that reading is what says the floor moved this at all.
    */
-  NO_ANSWER_KEPT_AFTER_A_SLIP: 40,
+  NO_ANSWER_KEPT_AFTER_A_SLIP: 88,
 } as const;
 
 const REACHABLE_COUPLING = {
@@ -3696,7 +3709,7 @@ describe('the grind decides the lift', () => {
     ).toBe('miss');
   });
 
-  it('leaves a warm-up alone — the player who never answers at all', () => {
+  it('leaves a warm-up alone — nobody answers at all [a-warm-up-makes-it-unanswered]', () => {
     // -----------------------------------------------------------------------
     // RETARGETED 2026-08-26 FROM `LOAD_PRESETS.LIGHT` ONTO THE LOADS THE
     // LADDER ACTUALLY PRESCRIBES, AND THE OLD VERSION IS WHY
@@ -3749,26 +3762,50 @@ describe('the grind decides the lift', () => {
         }
       }
     }
-    expect(driven, 'unanswered warm-up reps driven').toBe(
-      REACHABLE_WARMUP.CELLS
-        * REACHABLE_WARMUP.NO_ANSWER_SEEDS
-        * (1 + REACHABLE_WARMUP.SLIP_TICKS.length),
+    // THE DOMAIN FIRST, as a literal, so an emptied sweep reports itself.
+    expect(driven, 'unanswered warm-up reps driven').toBe(400);
+    // ...and the literal is the parameters' own product, so a parameter moved
+    // without the literal is red rather than silently re-scoped.
+    const arms = 1 + REACHABLE_WARMUP.SLIP_TICKS.length;
+    const seeds = REACHABLE_WARMUP.NO_ANSWER_SEEDS;
+    expect(REACHABLE_WARMUP.CELLS * seeds * arms, 'the domain and its parameters').toBe(400);
+    // ------------------------------------------------------------------
+    // THE RULING'S OWN SENTENCE, AS A ZERO: "Never answering PRESS! on a held
+    // descent must still make every RPE 6 and RPE 7 cell, including
+    // rpe7/0.8250." Ruled 2026-08-26 after this test — retargeted off
+    // `LOAD_PRESETS.LIGHT` onto the reachable cells the round before — first
+    // measured 72 of 80, with the eight being that one cell at every seed.
+    // ------------------------------------------------------------------
+    const unanswered = REACHABLE_WARMUP.CELLS * REACHABLE_WARMUP.NO_ANSWER_SEEDS - carriedDown;
+    expect(unanswered, `warm-up reps lost unanswered: ${offenders.join(' | ')}`).toBe(0);
+    // ...AND THE ZERO IS NOT A SCHEDULE TOO GENTLE TO LOSE ANYTHING. The same
+    // drive one rung up must still cost the rep — that is the grind the phone
+    // replay asked for and the ruling explicitly kept. Without this the floor
+    // could be a global clock bump and nothing here would notice; a global bump
+    // is exactly what was tried first and it took this number from
+    // `WORKING_RUNGS` down as well, which is how it was refused.
+    const working = reachableSessionCells().filter((c) => /^session\/rpe(8|9|10)\//.test(c.label));
+    expect(working.length, 'working-rung cells the ladder can prescribe').toBe(
+      REACHABLE_WARMUP.WORKING_CELLS,
     );
-    // THE COUNT THE RETARGETING CHANGED. At `LOAD_PRESETS.LIGHT` this was a
-    // clean sweep and the assertion was `not.toBe('miss')` with no count at
-    // all; over the reachable cells it is 72 of 80 and the eight are one cell.
-    // See `NO_ANSWER_KEPT_ON_A_HELD_DESCENT` — the reason it is a pin and not
-    // a verdict is written there.
-    expect(carriedDown, `warm-ups kept without answering: ${offenders.join(' | ')}`).toBe(
-      REACHABLE_WARMUP.NO_ANSWER_KEPT_ON_A_HELD_DESCENT,
+    let workingLost = 0;
+    for (const cell of working) {
+      for (let seed = 1; seed <= REACHABLE_WARMUP.NO_ANSWER_SEEDS; seed += 1) {
+        const rep = driveGrind(
+          { kind: BENCH, loadRatio: cell.loadRatio, seed, feel: cell.feel },
+          REACHABLE_WARMUP.GAP_TICKS[0] ?? 6,
+          0,
+          Number.POSITIVE_INFINITY,
+        );
+        if (rep.resolution?.outcome === 'miss') workingLost += 1;
+      }
+    }
+    expect(workingLost, 'the same unanswered rep one rung up still costs the rep').toBe(
+      REACHABLE_WARMUP.WORKING_CELLS * REACHABLE_WARMUP.NO_ANSWER_SEEDS,
     );
-    expect(
-      new Set(offenders.map((o) => o.split(' seed ')[0])).size,
-      'cells losing the unanswered rep on a held descent',
-    ).toBe(REACHABLE_WARMUP.CELLS_LOSING_THE_UNANSWERED_REP);
-    // ...and the one that did not. Pinned as a count rather than asserted away,
-    // because it is the price the descent charges and a tuner needs to see it
-    // move.
+    // ...and the price of ALSO letting the bar go, which the floor does not pay
+    // off in full. Pinned as a count rather than asserted away, because it is
+    // what the descent still charges and a tuner needs to see it move.
     expect(letGo, 'warm-ups kept after letting the bar go and never answering').toBe(
       REACHABLE_WARMUP.NO_ANSWER_KEPT_AFTER_A_SLIP,
     );

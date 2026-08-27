@@ -1828,6 +1828,72 @@ export const LIFT_TUNING = Object.freeze({
   ASCENT_TIMEOUT_TICKS: 170,
 
   /**
+   * -------------------------------------------------------------------------
+   * BENCH WARM-UP FLOOR, RULED 2026-08-26: HOW FAR UNDER THE LIFTER A BAR HAS
+   * TO SIT BEFORE THE CLOCK STOPS BEING ALLOWED TO DECIDE IT
+   * -------------------------------------------------------------------------
+   * `peakDemand - capacity` at the sticking point, both known before the rep
+   * starts and neither touched by anything the player does. At or below this,
+   * a bench bar is a warm-up MECHANICALLY rather than by which rung prescribed
+   * it, and its ascent runs on `BENCH_WARMUP_FLOOR_ASCENT_TICKS` instead.
+   *
+   * THE RULING IT SERVES: "Never answering PRESS! on a held descent must still
+   * make every RPE 6 and RPE 7 cell, including rpe7/0.8250. That is §12.3
+   * warm-up protection, not a nicety. +0.02 stays on RPE 8 / 9 / 10 and meet."
+   * So this floor may not reach a working rung, and the number is chosen to
+   * make that structural rather than hoped for.
+   *
+   * MEASURED WINDOW, over the reachable cells at the shipped tuning — the
+   * hardest cell of each rung, as `peakDemand - capacity`:
+   *
+   *     rpe6 -0.0923   rpe7 -0.0483 | rpe8 -0.0025   rpe9 0.0448  rpe10 0.1048
+   *
+   * Every RPE 6/7 cell sits at or below **-0.0483** and every RPE 8+ cell at or
+   * above **-0.0323**, so the rungs are separated by a gap of 0.0160 and this
+   * value is its midpoint. It is not a threshold tuned until the tests passed:
+   * anything strictly inside that gap gives the same partition, and the gap is
+   * what the choice rests on rather than the digit.
+   *
+   * PLACEHOLDER, like every feel value here. It is a boundary in a window, not
+   * a number anybody has played, and if a future retune narrows the window this
+   * sits in, that is the thing to notice — `lift.test.ts` pins both edges.
+   */
+  BENCH_WARMUP_FLOOR_MARGIN: -0.04,
+
+  /**
+   * The ascent clock for a bar under `BENCH_WARMUP_FLOOR_MARGIN`, in ticks.
+   *
+   * WHY A SECOND CLOCK RATHER THAN A BIGGER `ASCENT_TIMEOUT_TICKS`: measured,
+   * and the global version is refuted. At 220 for every lift the reachable
+   * rescue table moves and RPE 8's own non-vacuity control halves from 12 to 6
+   * — the unanswered reps the phone replay asked to COST the rep start making
+   * again. A shared clock cannot separate the rungs; this one does, because
+   * nothing above the floor margin ever reads it.
+   *
+   * MEASURED WINDOW, unaided ascents with the clock lifted out of the way —
+   * ticks of ascent needed to reach lockout with ZERO taps after the command:
+   *
+   *     rpe6  87..129     rpe7 103..**193** | rpe8 **247**, 256, and two that
+   *     never make it at all (they collapse at 0.119 and 0.178)
+   *
+   * The slowest warm-up needs 193 and the fastest working-rung completion needs
+   * 247, so this is the midpoint of a 54-tick gap. Both edges are pinned in
+   * `lift.test.ts`; a retune that closes the gap reddens there rather than
+   * silently letting the floor reach RPE 8.
+   *
+   * AND `ASCENT_TIMEOUT_TICKS`'s OWN HEADER ALREADY CARRIED THIS DEFECT. It
+   * records "successful ascents ran to a maximum of 201 ticks" and then caps at
+   * 170 — below its own measured maximum — while the sentence beneath it says
+   * that cutting off grinds that were going to make it "is the worse failure".
+   * The number and the reasoning were both right there and disagreed with each
+   * other, which is why the warm-up hole read as a difficulty question for a
+   * whole round instead of a clock that was documented too short.
+   *
+   * PLACEHOLDER. Nobody has felt 3.67 s of concentric on a warm-up.
+   */
+  BENCH_WARMUP_FLOOR_ASCENT_TICKS: 220,
+
+  /**
    * Ticks standing at lockout before the rep resolves, per kind. bench
    * reuses squat's pair unchanged — no reasoned basis to differ found while
    * building bench's other constants, so kept equal rather than invented.

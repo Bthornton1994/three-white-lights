@@ -982,7 +982,10 @@ const GUARANTEE_COVERAGE = {
   // with two more measurements behind it: the number is a shape count, not a
   // volume gauge, and a reader reconciling it against a diff will conclude the
   // scan is broken when it is doing exactly what it says.
-  TREE_WIDE: 297,
+  // +1 ON THE WARM-UP FLOOR ROUND: `a-warm-up-makes-it-unanswered`, whose
+  // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
+  // is therefore the tree as it stood before the 2026-08-26 ruling.
+  TREE_WIDE: 300,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1354,7 +1357,10 @@ const NUMBER_COVERAGE = {
   // did not have — the sweep it names is what catches a difficulty pass that
   // costs a warm-up its rep, which is the regression this whole re-fix exists
   // for. The count below moved too, and its own note says why.
-  TAGGED_PARAGRAPHS: 85,
+  // +1 ON THE WARM-UP FLOOR ROUND: `a-warm-up-makes-it-unanswered`, whose
+  // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
+  // is therefore the tree as it stood before the 2026-08-26 ruling.
+  TAGGED_PARAGRAPHS: 86,
   /**
    * ...of which this many state a number as prose.
    *
@@ -1441,14 +1447,20 @@ const NUMBER_COVERAGE = {
   //
   // 69 -> 72 with the command beat's three tags, whose named tests are the
   // three new bodies.
-  NAMED_BODIES: 76,
+  NAMED_BODIES: 77,
   // 53 -> 55 with the command beat's three tag-named bodies; two of the three
   // state a bare 0 (the wash before the call, the pip row's first frame) and
   // the third does not.
-  NAMED_BODIES_HOLDING_ZERO: 58,
+  // 58 -> 59: the warm-up floor's own body, whose central assertion IS a zero
+  // — `warm-up reps lost unanswered` — so it joins this population by saying
+  // exactly the thing this count is about.
+  NAMED_BODIES_HOLDING_ZERO: 59,
   // 52 -> 54 with the command beat's three tag-named bodies, two of which
   // state a bare 1.
-  NAMED_BODIES_HOLDING_ONE: 56,
+  // 56 -> 57, same body as the zero above: it holds a bare 1 in the slip-arm
+  // count `1 + REACHABLE_WARMUP.SLIP_TICKS.length`. Both censuses move together
+  // when a body arrives holding both, and neither is evidence about the other.
+  NAMED_BODIES_HOLDING_ONE: 57,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
@@ -1456,7 +1468,11 @@ const NUMBER_COVERAGE = {
    * 27 -> 28 with Sprint 1c: `careerMeet.ts`'s id paragraph is in both scopes;
    * its rules paragraph is tagged only.
    */
-  TAGGED_AND_TRIGGERING: 29,
+  // 29 -> 30 on the warm-up floor round. Its tagged paragraph opens with a
+  // capitalised run — "A WARM-UP LOWERED UNDER CONTROL GOES UP EVEN IF THE
+  // PLAYER NEVER ANSWERS THE COMMAND, AND A WORKING RUNG DOES NOT" — so it is
+  // in both populations, which is the ordinary case rather than a finding.
+  TAGGED_AND_TRIGGERING: 30,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1775,7 +1791,10 @@ const TRANSCRIPT_BAR = {
   // 40 -> 41 on the press-delay witness. Its transcript quotes no bare scalar
   // — the reddened assertion names a FILE — so `WITH_A_MEASURED_NUMBER` stays
   // where it is.
-  GRADED: 44,
+  // +1 ON THE WARM-UP FLOOR ROUND: `a-warm-up-makes-it-unanswered`, whose
+  // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
+  // is therefore the tree as it stood before the 2026-08-26 ruling.
+  GRADED: 45,
   /** ...and rows excused because their transcript predates it. */
   // 37 -> 36 when the placeholder's witness retired with its subject
   // (Sprint 1c): its transcript predated the rule, so the excused count is
@@ -1796,7 +1815,10 @@ const TRANSCRIPT_BAR = {
    * both directions, which is a stronger statement than an anchored scalar
    * and is why the row is not being pushed back into this set artificially.
    */
-  WITH_A_MEASURED_NUMBER: 23,
+  // +1 ON THE WARM-UP FLOOR ROUND: `a-warm-up-makes-it-unanswered`, whose
+  // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
+  // is therefore the tree as it stood before the 2026-08-26 ruling.
+  WITH_A_MEASURED_NUMBER: 24,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -2029,10 +2051,15 @@ const TRANSPLANTED_NUMERIC_RULE = {
   // readings of the MUTATED tree — the four cells that broke and how many reps
   // each lost — and no assertion in the shipped body pins any of them, because
   // the shipped body's whole claim is that the number is zero.
-  rows: 72,
-  flagged: 59,
-  numerals: 283,
-  unresolved: 168,
+  // +1 row / +1 flagged / +12 numerals / +7 unresolved on the warm-up floor
+  // round, and the shape is the one this constant exists to demonstrate: the
+  // new row's transcript names `rpe7/0.8250/as-expected` and eight seeds, all
+  // readings of the MUTATED tree, and the shipped body pins none of them
+  // because its whole claim is that the count is zero.
+  rows: 73,
+  flagged: 60,
+  numerals: 295,
+  unresolved: 175,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -2401,7 +2428,10 @@ const REPLACEMENT_BAR = {
   // 25 -> 28 on the three command-beat witnesses, every one of which records
   // both halves: what it removed and what it put there.
   // 28 -> 29 on the press-delay witness, which records both halves.
-  REPRODUCIBLE: 32,
+  // +1 ON THE WARM-UP FLOOR ROUND: `a-warm-up-makes-it-unanswered`, whose
+  // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
+  // is therefore the tree as it stood before the 2026-08-26 ruling.
+  REPRODUCIBLE: 33,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2558,7 +2588,7 @@ const SECTION_4A_KILL_LIST = {
  * by construction. It moves with every row added or removed, and updating it
  * is part of recording a witness.
  */
-const WITNESS_ROWS = 80;
+const WITNESS_ROWS = 81;
 
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
   // -------------------------------------------------------------------------
@@ -2737,6 +2767,37 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + 'Tests  1 failed | 147 skipped (148)',
     measuredOver:
       "    expect(driven, 'warm-up reps driven').toBe(16200);",
+  },
+  // THE WARM-UP FLOOR, AND THE MUTANT IS THE ONE LINE THAT SCOPES IT. Reverting
+  // the timeout comparison to the shared `ASCENT_TIMEOUT_TICKS` is exactly the
+  // tree before the 2026-08-26 ruling, so this is a real past state rather than
+  // a constructed one. It reddens with the offending cell named at every seed,
+  // which is what makes the transcript a repro instead of a colour.
+  //
+  // THE OTHER DIRECTION IS COVERED BY A DIFFERENT ASSERTION IN THE SAME BODY:
+  // a floor wide enough to reach RPE 8 reddens `the same unanswered rep one
+  // rung up still costs the rep`, which is the count over `WORKING_CELLS`. One
+  // mutant per row, so that one is described here rather than filed twice — it
+  // was run, and a global clock of 220 is what runs it: the reachable rescue
+  // table moves and RPE 8's own control halves from 12 to 6.
+  {
+    guarantee: 'a-warm-up-makes-it-unanswered',
+    mutatedFile: 'src/game/lift.ts',
+    mutated: '    } else if (m.ascentTicks >= ascentTimeoutTicksFor(state.config)) {',
+    mutatedTo: '    } else if (m.ascentTicks >= LIFT_TUNING.ASCENT_TIMEOUT_TICKS) {',
+    testFile: 'src/game/lift.test.ts',
+    redAssertion:
+      "    expect(unanswered, `warm-up reps lost unanswered: ${offenders.join(' | ')}`).toBe(0);",
+    observed:
+      'FAIL  src/game/lift.test.ts > the grind decides the lift > leaves a warm-up alone — '
+      + 'nobody answers at all [a-warm-up-makes-it-unanswered]\n'
+      + 'AssertionError: warm-up reps lost unanswered: '
+      + 'session/rpe7/0.8250/as-expected seed 1 lost the rep on a HELD descent | '
+      + '...seeds 2 through 8, the same cell and nothing else: '
+      + 'expected 8 to be +0 // Object.is equality\n'
+      + 'Tests  1 failed | 147 skipped (148)   [whole file: 2 failed | 146 passed (148)]',
+    measuredOver:
+      "    expect(driven, 'unanswered warm-up reps driven').toBe(400);",
   },
   // THE DESCENT'S ARITHMETIC BOUND, AND THE MUTANT IS THE FLOOR THAT MAKES IT.
   // Restoring the 0 floor `benchDescentRate` used to have — the beat before the
