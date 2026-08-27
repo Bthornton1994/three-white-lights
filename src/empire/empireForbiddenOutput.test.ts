@@ -14131,10 +14131,12 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // state.floor,`, byte-identical in all three pairs. The list's LENGTH is
   // unchanged at 37, so S4b's six new reducer arms added no fresh receiver:
   // each returns `outcome.state`, a `ManagedGym` the walk follows, not a
-  // freshly assembled object.
-  'ladderView.tsx:491 returned=unfollowable:state',
-  'ladderView.tsx:519 returned=unfollowable:state',
-  'ladderView.tsx:574 returned=unfollowable:state',
+  // freshly assembled object. All three then shifted +18 with the ten rows in
+  // `SHIPPED_SCREEN_DISAGREEMENTS` below, for the same reason and re-read the
+  // same way.
+  'ladderView.tsx:509 returned=unfollowable:state',
+  'ladderView.tsx:537 returned=unfollowable:state',
+  'ladderView.tsx:592 returned=unfollowable:state',
   // §5.11 stage 4: `withWear`'s condition map is built in a loop and returned
   // through a fresh object the screen cannot follow into, the same shape as
   // every other row here.
@@ -14225,16 +14227,23 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   // The six new rows are the same shape as every row above them: the screen
   // asks about a named state type, the control declines to walk into it, and
   // the census over-approximates rather than going quiet.
-  'ladderView.tsx:491 readonly GymWeekReport[] asked=true walked=false',
-  'ladderView.tsx:519 FloorState asked=true walked=false',
-  'ladderView.tsx:574 FloorState asked=true walked=false',
-  'ladderView.tsx:586 FloorState asked=true walked=false',
-  'ladderView.tsx:619 ManagedGym asked=true walked=false',
-  'ladderView.tsx:632 ManagedGym asked=true walked=false',
-  'ladderView.tsx:646 ManagedGym asked=true walked=false',
-  'ladderView.tsx:656 ManagedGym asked=true walked=false',
+  //
+  // Then all ten shifted +18 in the same round, uniformly, when the routing
+  // disclosure was added to `advanceGymClock`'s doc comment above them. A
+  // COMMENT MOVING A LINE-KEYED CENSUS is the hazard this list's own history
+  // is about, so the shift was re-read off the source rather than added: the
+  // ten expected source lines were grepped for by text in the edited file and
+  // each landed at exactly its old number plus eighteen.
+  'ladderView.tsx:509 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:537 FloorState asked=true walked=false',
+  'ladderView.tsx:592 FloorState asked=true walked=false',
+  'ladderView.tsx:604 FloorState asked=true walked=false',
+  'ladderView.tsx:637 ManagedGym asked=true walked=false',
+  'ladderView.tsx:650 ManagedGym asked=true walked=false',
   'ladderView.tsx:664 ManagedGym asked=true walked=false',
-  'ladderView.tsx:672 ManagedGym asked=true walked=false',
+  'ladderView.tsx:674 ManagedGym asked=true walked=false',
+  'ladderView.tsx:682 ManagedGym asked=true walked=false',
+  'ladderView.tsx:690 ManagedGym asked=true walked=false',
   // §5.11 stage 4's fifteen rows, every one the same shape as the rows above:
   // the screen asks about a named state type and the control declines to walk
   // into it, so the census over-approximates rather than going quiet.

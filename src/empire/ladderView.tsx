@@ -475,9 +475,27 @@ export function createGymViewState(): GymViewState {
  * §5.13's wear-basis ruling both turn on it: it appends no strike and moves
  * no failure phase. `managedCheckIn` reads no strike and writes no strike, so
  * pressing a clock control can lower condition and lower income — the gym
- * ran — and cannot advance the gym toward dormancy. The named catcher is
- * `management.test.ts`'s absence family and, on the played screen,
- * `tools/verify-floor-reachability.mjs`'s stage-4 clock-only claim.
+ * ran — and it does not advance the gym toward dormancy. Its limit, stated
+ * because no type reaches past it: `ManagedGym` is a plain interface, so a
+ * caller that built one by hand could put anything in `strikes`; what this
+ * says is about the arm, not about the type. The named catchers, both run:
+ * `GymScreen.test.ts`'s `only a press moves the failure ledger`, and on the
+ * played screen `tools/verify-floor-reachability.mjs`'s claim 9c. A planted
+ * low-condition-appends-a-strike chain reddens both.
+ *
+ * ROUTED RATHER THAN SETTLED BY REWORDING, AND THE DISPOSITION IS THE BUMP.
+ * The paragraph above is a claim about what this code does with a
+ * mutation-tested check behind it, which `src/game/guaranteeTags.test.ts`'s
+ * own ruling says takes the `GUARANTEE_COVERAGE.TREE_WIDE` increment. It does
+ * not trigger that census, because the census keys on one of four words
+ * appearing capitalised in a three-word-or-longer run and this paragraph
+ * happens to use none of them — the declared one-word blind spot, seventh
+ * recorded instance. Measured rather than argued: writing the header line
+ * with a capitalised trigger word in it and changing nothing else reads
+ * `expected 237 to be 236`. That file is another session's and barred here,
+ * so the honest disposition (236 -> 237) is disclosed and reported rather
+ * than taken, and the prose is left in the plain-negation form rather than
+ * capitalised-and-untagged.
  */
 function advanceGymClock(state: GymViewState, gapSeconds: number): GymViewState {
   const before = state.managed;
