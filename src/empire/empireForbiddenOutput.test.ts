@@ -9614,7 +9614,9 @@ const DRIVE_CENSUS = Object.freeze({
   // 3632 -> 3633: the knob-margin round's one new reported key on
   // `ManagedCheckIn`, `autoRepairsReopeningRefusedOrders`, is a string the
   // walk had not seen before. Read from this pin's own failure value.
-  DISTINCT_STRINGS: 3633,
+  // 3633 -> 3699: S4b's new player-facing sentences and testIDs reach the
+  // drive's scan as distinct strings. Read from this pin's own failure value.
+  DISTINCT_STRINGS: 3699,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -14640,7 +14642,10 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // nodes to a file the channel walk scans whole. A file-changed counter, in
   // the class this file's own verdict log already names. Read from this pin's
   // own failure value.
-  NODES_EXAMINED: 59_280,
+  // 59_280 -> 61_001: S4b's six new reducer arms and the screen's stage-4
+  // section are more AST for the channel scan to walk. Read from this pin's
+  // own failure value.
+  NODES_EXAMINED: 61_001,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -16269,7 +16274,10 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // GDD §5.13 presentation Phase 3: re-measured (5496920 -> 5618662), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (5618662 -> 5620716).
-  RECORDED: 5665085, // P4b, measured off this assertion.
+  // P4b, measured off this assertion.
+  // 5665085 -> 5667899: S4b. The same 402 x 7 = 2814 the `CALLS` pin above
+  // moves by, which is what says the pass recorded every call it made.
+  RECORDED: 5667899,
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
