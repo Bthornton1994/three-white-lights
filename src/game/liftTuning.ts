@@ -2189,6 +2189,41 @@ export const LIFT_TUNING = Object.freeze({
    * chosen round: 0.045 is the magnitude the ramped lever averaged across the
    * working band, so the RPE 8 row above moves by at most one tick per cell
    * against the version a critic measured.
+   *
+   * -------------------------------------------------------------------------
+   * RAISING THIS TO 0.100 WAS TRIED AND DELIBERATELY NOT SHIPPED, ON THE
+   * 2026-08-27 LOCKOUT RULING'S OWN TERMS
+   * -------------------------------------------------------------------------
+   * That ruling's item 5 permits 0.100 to "ride" once the lockout change is in
+   * and re-measured, "only if it does not reopen either floor-edge gap" — and
+   * it does not: at 0.100 (ceiling unchanged, 0.27) the false-start rule still
+   * holds with zero violations over all 40 reachable cells, and
+   * `MAX_EFFORT_WALLS` is unmoved (both walls are set on the ladder's TOP,
+   * past the ceiling, where the lever adds nothing regardless of `ONSET`).
+   *
+   * BUT THE RULING'S OWN ADMISSION STANDS: 0.100 "does not by itself meet this
+   * round's bar (max-effort failure rate was still 0 everywhere under it)" —
+   * confirmed again here. `MAX_EFFORT` reads 0 losses at every rung at 0.100,
+   * identically to 0.045, because `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`
+   * (0.27) caps every cell the lever touches well under the 0.3764 max-effort
+   * wall regardless of `ONSET`'s value — see that constant's own header.
+   *
+   * WHAT SHIPPING IT WOULD HAVE COST, MEASURED RATHER THAN ESTIMATED: applying
+   * 0.100 alone (ceiling untouched) reddens `TOUCH_SWEEP.SOFT_VS_CRASH_FLIPS`
+   * (160 -> 180), `REACHABLE_RESCUE` (roughly a dozen of 40 cells move, in
+   * both directions — some warm-side session cells get EASIER as the ceiling
+   * absorbs more of the lever, some meet cells get HARDER as they are pushed
+   * onto the ceiling), the two `REACHABLE_LADDER` counts derived from it, both
+   * `WORKING_FLOOR` vectors (22 session + 18 meet entries), and
+   * `MAX_EFFORT_WALLS.CELLS_THE_CEILING_REDUCES` (more cells land in the
+   * "clipped but nonzero" band as `ONSET` widens). That is a real re-pinning
+   * surface, each entry needing independent re-measurement, in service of a
+   * change that does not itself close the round's gap.
+   *
+   * SO IT STAYS AT 0.045. A future round that wants 0.100 should take it
+   * together with whatever closes the max-effort gap for real — most likely a
+   * higher `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`, which this round does
+   * not authorise moving — rather than re-deriving this whole surface twice.
    */
   BENCH_WORKING_RUNG_DEMAND_ONSET: 0.045,
 
