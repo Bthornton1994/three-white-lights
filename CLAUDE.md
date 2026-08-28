@@ -943,6 +943,109 @@ change in isolation.
 **`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not a
 crossing.
 
+### RULED 2026-08-28 (THIRD): A MARGIN-BAND CUT REPLACES THE RPE KEY — SAME CLASS OF FACT AS THE WARM-UP FLOOR
+
+The RPE-keyed round against the second 2026-08-28 ruling was worked entirely
+in scratch space and reverted clean — confirmed independently, tree matched
+origin at `7ea9fb1c` throughout. It found two things worth keeping even though
+nothing shipped. First, a real, independent defect: `createLift` rebuilds
+`LiftConfig` from an explicit field allowlist (`kind`/`loadRatio`/`seed`/
+`feel`/`moment`), so any new field added to the type is silently dropped in
+the live simulation unless that allowlist is extended in the same commit —
+this is now a **hard gate** on any future `LiftConfig` field addition, not
+just this round's. Second, and the reason nothing shipped: with global
+`ONSET` correctly held at its shipped `0.045` (per that round's own
+instruction), the ceiling move cannot give RPE 10/meet any realistic-cadence
+risk at all. The formula is `boosted = base + min(ONSET, max(0, CEILING -
+base))` — no cell can ever be boosted past `base + ONSET`, regardless of the
+ceiling's value. The hardest meet cell (base 0.3066) tops out at `0.3516` at
+`ONSET 0.045`, permanently below the `0.3764` wall. **The "0% -> 62%" meet
+number from the prior probe was measured at `ONSET 0.100`, not from the
+ceiling alone — the two instructions in that round's own ruling
+contradicted each other, and the contradiction is confirmed real, not a
+builder error.**
+
+**Ruled: the mechanism changes shape. Global `ONSET` does not move. RPE 10 and
+meet get their difficulty from the SAME overlay RPE 9 does, not from the
+ceiling. The ceiling's job is now stated correctly: a clip, not a grant.**
+
+1. **Do not raise global `BENCH_WORKING_RUNG_DEMAND_ONSET` to 0.100.** That was
+   the fifth ruling's tool for a world where RPE 9 and RPE 10/meet still
+   shared one `ONSET`. It would move RPE 8's floors (refused, unchanged since
+   the fourth ruling), and it would still leave light RPE 10 cells at
+   `base + 0.100` against an RPE 9 cell pushed toward `base + ~0.36`,
+   inverting stop-condition 3 the other direction (RPE 10 below RPE 9). RPE 8
+   stays on the shipped `ONSET` (0.045), unconditionally.
+2. **A single large addend applies to RPE 9 AND to RPE 10/meet working
+   cells** — not an RPE-9-only addend. Size it against measured `MAX_EFFORT`
+   on RPE 9's actual four cells so RPE 9's realistic-cadence (57-81ms) loss
+   rate is non-zero and not-total. The prior round's `~0.32` estimate was
+   loose — the lightest RPE 9 cell (base `~0.012`) needs roughly `~0.364` of
+   addend just to reach the `0.3764` wall, so search/measure the real
+   magnitude against the four cells directly rather than trusting either
+   estimate as a target.
+3. **The ceiling still moves into `(0.3764, 0.3990)`, in the same piece, but
+   its role is corrected: it clips the large addend for cells whose base
+   margin already sits close to or past it, so those cells sit above RPE 9
+   without every one of them saturating to 100% loss.** It is not what grants
+   RPE 10/meet their difficulty — the large addend from item 2 is. Same
+   `min(addend, max(0, CEILING - base))` structure as before, just applied to
+   the new larger addend for cells above the cut in item 4, not to `ONSET`.
+4. **Keying is corrected: no RPE field on `LiftConfig`, and the reason is
+   structural, not incidental.** `LiftConfig` deliberately carries no RPE —
+   the engine asks what the bar physically is (`benchClearsTheClock` already
+   works this way, off base margin, not off a label), not what a session
+   happened to call it. Meet attempts have no RPE concept at all, which is
+   exactly why an "RPE 9 only" key left RPE 10/meet with no path to the new
+   addend in the previous round. **Prefer a margin-band cut, the same class
+   of fact `BENCH_WARMUP_FLOOR_MARGIN` already is:**
+   - Measure RPE 8's four base margins and compare them, as sets, against RPE
+     9's four (`~0.012-0.045`).
+   - **If the two sets are disjoint**, cut in the gap between them. Below the
+     cut: the shipped `ONSET` (RPE 8's existing behaviour, unchanged). At or
+     above the cut: the new large addend from item 2 — which covers RPE 9's
+     cells, RPE 10's cells, and every meet cell whose base margin clears the
+     cut, all by the same rule, with no RPE or prescription label anywhere.
+     The ceiling from item 3 still clips whichever addend applies.
+   - **If the two sets overlap** (some RPE 8 cell's base margin sits at or
+     above some RPE 9 cell's), the rung genuinely cannot be recovered from
+     margin alone. Only in that case may an explicit prescription label be
+     added to `LiftConfig` — and per item on `createLift` above, it must be
+     copied through `createLift` in the SAME commit, not left to silently
+     drop. Meet still has no such label, so that world needs its own explicit
+     rule for which meet cells take the large addend (most likely margin-keyed
+     for meet specifically even if session cells use the label) — state
+     whichever design is chosen, don't leave meet unspecified again.
+   - **No ramp on `workingExcess`, in either world.** The addition is a flat
+     step at the cut, the same shape as every prior round's flat-step
+     decisions — not a function of how far past the cut a cell sits.
+
+**Stop-and-report, unchanged from the previous ruling, still hard, still six,
+still forbidding `GRIND_BOOST_FORCE_MAX`/`DEMAND_BASE.bench`/the Tuchscherer
+chart/`MAX_LOCKOUT_TICKS`/the warm-up floor as workarounds:**
+
+1. RPE 9 `MAX_EFFORT` non-zero and not-total at 57-81ms, four cells, old (0)
+   pinned beside new.
+2. RPE 8 `MAX_EFFORT` stays at 0, or strictly below RPE 9's.
+3. RPE 10 / meet `MAX_EFFORT` stays at or above RPE 9's, and RPE 9 does not
+   reach 100%. Both saturating to total loss together is still a stop, not a
+   fix-by-raising-RPE-10.
+4. `WORKING_FLOOR` still orders 8 < 9 < 10 after the change.
+5. The false-start guarantee re-pins at 0 of 40 reachable cells at the
+   (unchanged) 12-tick lockout, against the new addend AND ceiling together.
+6. Warm-up floor edges unchanged; RPE ≤ 7 unanswered on a held descent still
+   makes, zero taps, every cell, every seed; RPE 8+ unanswered still loses.
+
+**Do not mint any commit from this round for a phone replay until RPE 9's
+`MAX_EFFORT` has actually, measurably moved off zero.** Squat and deadlift
+stay byte-identical. GDD §6.2 moves in the same commit as code, and must
+state the margin-band cut (or the prescription-label fallback, whichever
+world applies) and the real measured cut value and addend magnitude — not the
+prior rounds' estimates.
+
+**`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not a
+crossing.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
