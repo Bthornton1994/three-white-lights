@@ -1007,7 +1007,14 @@ const GUARANTEE_COVERAGE = {
   //
   // 304 -> 306 on deleting the lever's ramp: the refutation is longer than the
   // thing it refutes, which is the trade this file's own doctrine asks for.
-  TREE_WIDE: 306,
+  //
+  // 306 -> 307 on the 2026-08-27 lockout ruling: `GRIND_FALSE_START`'s header
+  // in `liftTuning.ts` grew a new dated section explaining the false-start
+  // wall / max-effort wall conflict and its repair, adding one net new
+  // capitalised-absolute run beyond what the round's other edits (the "half a
+  // second" -> "a fifth of a second" copy fix, the re-derived false-start and
+  // max-effort test comments) removed or left flat.
+  TREE_WIDE: 307,
 } as const;
 
 // ---------------------------------------------------------------------------

@@ -2124,8 +2124,9 @@ moved, and both are inversions rather than retunes.
   capacity decay, which all three lifts share.
 - **Jumping the call costs the launch and never the rep.** Taps before the
   command count for nothing and each one delays the tick your taps start
-  counting, up to half a second — so mashing the pause leaves the chest slowly
-  and is never fatal, because the grind is available for the whole rest of the
+  counting, up to a fifth of a second (dropped from half a second on the
+  2026-08-27 ruling below) — so mashing the pause leaves the chest slowly and
+  is never fatal, because the grind is available for the whole rest of the
   rep and the rest of the rep is where a continuous grind is decided. That is
   the same rule the drive cue already states: a mistimed tap costs velocity and
   never ends the rep on its own.
@@ -2418,30 +2419,36 @@ between "I ran out of time" and "the bar beat me", and it is the half a tap-rate
 figure does not say.
 
 **THE CEILING IS NOT A SAFETY CLAMP — IT IS WHERE ANOTHER RULE IN THIS SECTION
-STOPS HOLDING.** The false-start rule's own sentence, on screen, is *"each one
-holds your press back, up to half a second"* — never the rep. Driven at the meet
-ceiling load, 20 seeds, mashed at the refractory limit, that stops being true
-between an effective margin of **0.2816** (0 of 20 lost) and **0.2826** (20 of
-20 lost, at 10 early taps). The edge is one thousandth wide. `MARGIN_CEILING` is
-**0.27**, about twelve edge-widths under it, and it is a ceiling on where the bar
-*ends up* rather than a cap on the lever's output — so a bar the base curve
-already puts past the line gets exactly zero. Without it an early pass took
-`meet/aggressive/att3/wrecked` from 10.00 taps a second to **20.00**, which is
-`60 / GRIND_TAP_REFRACTORY_TICKS` — the hardest attempt in the game winnable only
-by a literally perfect mash with no headroom at all.
+STOPS HOLDING.** The false-start rule's own sentence, on screen, was *"each one
+holds your press back, up to half a second"* — never the rep — at the time this
+paragraph was written. Driven at the meet ceiling load, 20 seeds, mashed at the
+refractory limit, at the THEN-SHIPPED `MAX_LOCKOUT_TICKS` of 30, that stopped
+being true between an effective margin of **0.2816** (0 of 20 lost) and
+**0.2826** (20 of 20 lost, at 10 early taps). The edge is one thousandth wide.
+`MARGIN_CEILING` is **0.27**, about twelve edge-widths under it, and it is a
+ceiling on where the bar *ends up* rather than a cap on the lever's output — so
+a bar the base curve already puts past the line gets exactly zero. Without it an
+early pass took `meet/aggressive/att3/wrecked` from 10.00 taps a second to
+**20.00**, which is `60 / GRIND_TAP_REFRACTORY_TICKS` — the hardest attempt in
+the game winnable only by a literally perfect mash with no headroom at all.
+**These two numbers (0.2816/0.2826) are historical, taken at the 30-tick cap,
+and are not re-derived below — the 2026-08-27 entry measures the wall on a
+different, wider ladder (a synthetic load sweep at a wrecked check-in) and gets
+a different number (0.3990) for a reason stated there. `MARGIN_CEILING` itself
+is unmoved by that round and stays 0.27.**
 
-**A PRE-EXISTING HOLE THIS FOUND AND DID NOT FIX, RECORDED BECAUSE IT NEEDS A
-HUMAN'S RULING.** That same cell — `meet/aggressive/att3/wrecked`, base margin
-0.3066 — **already breaks the false-start rule on the shipped tree**, with this
-lever set to zero: 20 of 20 lost at 10 early taps. The test that guards the rule
-drives its load ladder at the default capacity only, and the reachable domain
-reaches that margin through a *wrecked check-in*, which no load in that ladder
-produces. So the rule and its guard disagree about a cell a player can be handed.
-The two ways out are both design calls — lower the meet ceiling, which this
-replay asked against, or exempt the top attempt from the false-start rule, which
-makes the on-screen sentence false a different way — so neither was taken here.
-The lever does not make it worse: the ceiling adds that cell nothing, and
-`FLOOR_EDGES.CELLS_ALREADY_PAST_THE_CEILING` names it.
+**A PRE-EXISTING HOLE THIS FOUND AND DID NOT FIX WAS RECORDED HERE, AND IT IS
+NOW REPAIRED — SEE THE 2026-08-27 ENTRY BELOW.** `meet/aggressive/att3/wrecked`
+— base margin 0.3066 — used to break the false-start rule on the shipped tree,
+with this lever set to zero: 20 of 20 lost at 10 early taps, at the then-shipped
+30-tick lockout cap. The test that guards the rule drove its load ladder at the
+default capacity only, and the reachable domain reached that margin through a
+*wrecked check-in*, which no load in that ladder produced — so the rule and its
+guard disagreed about a cell a player could be handed. That disagreement is
+closed, not by lowering the meet ceiling or exempting the top attempt (the two
+design calls this paragraph originally weighed and took neither of), but by
+shortening the lockout cap itself, which moved the false-start wall past this
+cell's margin. See the 2026-08-27 entry for the mechanism and the numbers.
 
 **WHAT IT COSTS, stated rather than discovered later.** Three meet cells are
 clipped to the ceiling and share one effective margin
@@ -2466,6 +2473,77 @@ byte-identical, and spends half the remaining margin on the "never fatal"
 guarantee above (138 → 154 of 170 ascent ticks) to do it. It stays at 0.42. The
 headroom that knob offers is real and is not headroom for the rung the ruling
 named.
+
+**2026-08-27, A FOURTH PHONE REPLAY: "no challenge even for an rpe 9" — AND A
+GENUINE CONFLICT BETWEEN TWO GUARANTEES, NOT A RETUNE.** Verbatim: *"this
+doesnt feel harder at all, there is no challenge even for an rpe 9."* The
+diagnosis this round is different in kind from the three before it.
+`grindForce` saturates at exactly 1 once charge reaches `GRIND_CHARGE.CEILING`
+— tapping at the sim's own countable floor (`GRIND_TAP_REFRACTORY_TICKS`)
+reaches maximum force within about five taps, so a player going flat out is at
+the force ceiling almost immediately and holds it the rest of the rep. Every
+retune to this point moved `WORKING_FLOOR` — the SLOWEST cadence that still
+makes the rep — which is the wrong subject for "no challenge at max effort":
+raising the floor does nothing to someone who was never near it.
+
+**The two walls, both driven from source rather than guessed.** A MAX-EFFORT
+WALL is the least effective margin (`peakDemand - capacity`, after the
+working-rung lever) at which a REALISTIC max-effort cadence (57-81ms per tap,
+the range a real phone produced through a tunnel in an earlier round's driver,
+not the engine's theoretical 50ms floor) starts losing reps — measured at
+**0.3764**. A FALSE-START WALL is the greatest effective margin at which a
+10-tap false start still makes the rep — at the then-shipped 30-tick
+`MAX_LOCKOUT_TICKS`, measured at **0.2777**. The false-start wall sat BELOW the
+max-effort wall, so no margin could satisfy both `a-false-start-can-never-pay`
+("holds your press back, never ends the rep") and the replay's ask ("RPE 9 can
+lose someone who is actually trying") at once — any cell hard enough to
+challenge a maxing-out player was already past the point where a false start
+ended the rep outright.
+
+**Ruled: shorten the lockout, not the onset.** `GRIND_FALSE_START.
+MAX_LOCKOUT_TICKS` drops 30 → 12 (200ms, "a fifth of a second" — the shipped
+copy sentence changes to match, see above). Twelve ticks sits at or under
+`PRESS_LAUNCH_MS`'s own 18-tick beat, so a maximally false-started rep still
+reaches the chest with some grind boost already live, and this moves the
+false-start wall to **0.3990** — past the max-effort wall, so a margin band
+(0.3764 to 0.3990) now exists where both guarantees COULD be satisfied by the
+same cell. `GRIND_BOOST_FORCE_MAX` is untouched — it sets the force ceiling,
+not demand, and moving it would blur which lever did the work.
+
+**Two direct, measured repairs from the shorter cap, both re-verified over the
+real reachable domain rather than assumed:** the false-start rule now holds
+with **zero** violations across all 40 reachable cells at both 10 and 30 early
+taps — `meet/aggressive/att3/wrecked`, the one disclosed hole two paragraphs
+above, now makes the rep at every one of 20 seeds, because its own effective
+margin (0.3066) sits below the new wall (0.3990). And because a maximally
+false-started launch no longer always reads exactly 0 force (some charge
+survives a 12-tick delay when the mash rate is fast enough to partly refill
+it), the "never kills the rep" sweep's assertion changed from "launch force is
+exactly 0" to "launch force is strictly less than a clean launch's" — the
+actual rule the copy states, rather than a stronger claim the old cap happened
+to make true as well.
+
+**AND NOTHING REACHABLE ACTUALLY LANDS IN THE NEW BAND, WHICH IS A GAP THIS
+ROUND REPORTS RATHER THAN CLOSES.** The highest effective margin any reachable
+cell reaches is **0.3066** (the same cell above, which the working-rung lever
+adds nothing to, since it already sits past `BENCH_WORKING_RUNG_DEMAND_MARGIN_
+CEILING` at 0.27) — short of the 0.3764 max-effort wall by more than a fifth of
+the grind's whole force budget. Raising `BENCH_WORKING_RUNG_DEMAND_ONSET` to
+0.100 (its own headroom, see above) does not change this: the ceiling caps how
+far the lever can push ANY cell at 0.27, which is 0.1 below the band's own
+floor. `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` — not the lockout, not
+`ONSET` — is the binding constraint on this axis, and moving it is outside
+this round's authorisation (as is `GRIND_BOOST_FORCE_MAX`, refused above for
+the same reason). So `MAX_EFFORT` — the new per-rung sweep in `lift.test.ts`
+measuring failure rate at a realistic max-effort cadence — reads **0 losses at
+every rung, RPE 6 through the meet ceiling**, unchanged from before this round
+and unchanged by `ONSET` 0.100. **The replay's literal ask — "RPE 9 can lose
+someone who is actually trying" — is not met by this round's authorised
+levers**, and closing it for real needs either a higher
+`BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` or a different mechanism, neither
+decided here. §12.1 stays open on both axes: whether the repaired false-start
+rule reads correctly, and whether RPE 9's continued lack of a real ceiling is
+itself acceptable or needs a further round.
 
 **None of the numbers has been played (§12.1), and §12.1 stays open on this beat
 until a human replays it on a phone.** The open question is exactly two things:

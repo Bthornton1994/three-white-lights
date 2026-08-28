@@ -488,10 +488,10 @@ describe('the press command and the grind (GDD §6.2; ruled 2026-08-25, steered 
     expect(PER_EARLY_TAP_TICKS).toBeGreaterThan(0);
     expect(MAX_LOCKOUT_TICKS).toBeGreaterThan(PER_EARLY_TAP_TICKS);
     // THE COPY'S OWN NUMBER. `LIFT_COPY.SUBTITLE.bench` says the delay runs
-    // "up to half a second", which is only true if the cap is exactly 500ms at
-    // this tick rate. Changing the constant means changing the sentence, and
-    // this is what makes that a red test rather than a hope.
-    expect(MAX_LOCKOUT_TICKS * TICK_MS).toBeCloseTo(500, 9);
+    // "up to a fifth of a second", which is only true if the cap is exactly
+    // 200ms at this tick rate. Changing the constant means changing the
+    // sentence, and this is what makes that a red test rather than a hope.
+    expect(MAX_LOCKOUT_TICKS * TICK_MS).toBeCloseTo(200, 9);
     // The cap has to be reachable by a plausible number of early taps, or the
     // rule's second clause describes a case nobody meets.
     expect(MAX_LOCKOUT_TICKS / PER_EARLY_TAP_TICKS).toBeLessThan(12);
@@ -1091,9 +1091,10 @@ describe('copy', () => {
     expect(bench).toMatch(/holds your press back/);
     // The cap, spelled out — the copy carries no digits (the test above pins
     // that), so the duration is words and the words have to be true of the
-    // constant. 30 ticks at 60Hz is exactly 500ms.
-    expect(LIFT_TUNING.GRIND_FALSE_START.MAX_LOCKOUT_TICKS * TICK_MS).toBeCloseTo(500, 9);
-    expect(bench).toMatch(/up to half a second/);
+    // constant. 12 ticks at 60Hz is exactly 200ms, a fifth of a second —
+    // dropped from 30/500ms on the 2026-08-27 ruling.
+    expect(LIFT_TUNING.GRIND_FALSE_START.MAX_LOCKOUT_TICKS * TICK_MS).toBeCloseTo(200, 9);
+    expect(bench).toMatch(/up to a fifth of a second/);
     // ...and the prompt that says it happened is a real line, distinct from
     // the waiting line it replaces.
     expect(LIFT_COPY.PROMPT.HOLE_FALSE_START).not.toBe(LIFT_COPY.PROMPT.HOLE.bench);

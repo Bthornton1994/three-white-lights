@@ -2603,6 +2603,106 @@ function driveGrind(
   return state;
 }
 
+/**
+ * A bench rep played FLAT OUT: the descent held, then a tap every `gapFor()`
+ * ticks from the command until the rep resolves. Used by `MAX_EFFORT` and the
+ * false-start sweep below — see `MAX_EFFORT`'s header for why this exists
+ * beside `driveGrind` rather than reusing it.
+ *
+ * WHY IT IS NOT `driveGrind` WITH AN INFINITE IDLE SPAN. Two things this needs
+ * that one cannot express:
+ *
+ *   A CADENCE THAT VARIES WITHIN THE REP. `driveGrind` takes one integer gap,
+ *   so it can only model a metronome. `MAX_EFFORT`'s realistic arm's whole
+ *   subject is that a human's intervals wander inside `MAX_EFFORT.HUMAN_MS`,
+ *   and a metronome at the mean of that range is a different player:
+ *   `grindForce` is read every tick off a decaying charge, so it is the SLOW
+ *   draws that decide a rep, not the average.
+ *
+ *   A REAL FALSE START. `driveGrind` has no early-tap arm at all. Gating early
+ *   taps on `state.pressCommandTick !== null` would be wrong here — that field
+ *   is set when the bar SETTLES, naming a tick still in the future, so a gate
+ *   on it alone closes before a single early tap is thrown. The gate below is
+ *   `state.tick >= pressCommandTick`, and callers read `grindEarlyTaps` back
+ *   off the resolved state rather than trusting that the requested taps landed.
+ */
+function maxEffortRep(config: LiftConfig, gapFor: () => number, earlyTaps = 0): LiftState {
+  let state = createLift(config);
+  let commanded = false;
+  let nextTapTick: number | null = null;
+  let releaseNext = false;
+  let thrown = 0;
+  let onTheChest = false;
+  for (let i = 0; i < TOUCH_SWEEP.MAX_TICKS; i += 1) {
+    const tick = state.tick + 1;
+    let input: LiftInput | null = null;
+    if (!commanded) {
+      // Hold the bar down through the whole descent — the correct play since
+      // the 2026-08-25 replay steer, and not what this sweep is about.
+      if (tick === 1) input = { kind: 'press' };
+      else if (onTheChest && thrown < earlyTaps) {
+        input = releaseNext ? { kind: 'release' } : { kind: 'press' };
+        if (!releaseNext) thrown += 1;
+        releaseNext = !releaseNext;
+      }
+    } else if (releaseNext) {
+      input = { kind: 'release' };
+      releaseNext = false;
+    } else if (nextTapTick !== null && tick >= nextTapTick) {
+      input = { kind: 'press' };
+      releaseNext = true;
+      nextTapTick = tick + gapFor();
+    }
+    state = stepLift(state, input);
+    if (state.phase === 'HOLE') onTheChest = true;
+    const command = state.pressCommandTick;
+    if (!commanded && command !== null && state.tick >= command) {
+      commanded = true;
+      nextTapTick = state.tick + 1;
+      releaseNext = false;
+    }
+    if (state.phase === 'RESOLVED') break;
+  }
+  return state;
+}
+
+/** The fastest cadence the engine can COUNT. A machine, not a person. */
+const perfectCadence = (): number => LIFT_TUNING.GRIND_TAP_REFRACTORY_TICKS;
+
+/**
+ * A deterministic uniform draw, declared here rather than reached for from
+ * `prng.ts`: this generates the HARNESS's cadence, not anything the game
+ * rolls, and borrowing the game's generator would make a sweep parameter look
+ * like a game value. Seeds are named in `MAX_EFFORT`.
+ *
+ * SPLITMIX32, NOT AN LCG. An LCG (`s = 1664525 s + 1013904223`) gives
+ * consecutive seeds almost the same stream, which defeats the whole point of
+ * drawing "independent" players — measured: six draws at consecutive seeds
+ * produced tap counts of 23, 23, 23, 23, 23, 23, a hundred realistic players
+ * who were all the same player.
+ */
+function cadenceDraws(seed: number): () => number {
+  let s = (seed >>> 0) || 1;
+  return () => {
+    s = (s + 0x9e3779b9) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Intervals uniform in `MAX_EFFORT.HUMAN_MS`, quantised the way an input is. */
+function humanCadence(seed: number): () => number {
+  const draw = cadenceDraws(seed);
+  const { MIN, MAX } = MAX_EFFORT.HUMAN_MS;
+  return () =>
+    Math.max(
+      LIFT_TUNING.GRIND_TAP_REFRACTORY_TICKS,
+      Math.round((MIN + draw() * (MAX - MIN)) / TICK_MS),
+    );
+}
+
 /** What one cell of the reachable sweep measured: `[rescued, fromMiss, stalled]`. */
 type RescueRow = readonly [number, number, number];
 
@@ -3323,13 +3423,216 @@ const FLOOR_EDGES = {
    *
    * ONE, AND WHICH ONE IS THE WHOLE VALUE OF THIS ENTRY. `meet/aggressive/
    * att3/wrecked` is the ceiling of the game — GDD §6.2 calls it "the one row
-   * where coming back does not help at all" — and it is the cell where the
-   * false-start rule ALREADY fails on the shipped tree, before this lever
-   * existed. Pinning the list rather than a count is what stops a future
+   * where coming back does not help at all" — and it is the cell that carried
+   * the false-start rule's one disclosed violation, before the 2026-08-27
+   * lockout ruling. Pinning the list rather than a count is what stops a future
    * retune quietly pushing a second cell past the ceiling and reading the
    * unchanged count as evidence that nothing moved.
+   *
+   * THE DISCLOSED VIOLATION IS GONE, MEASURED RATHER THAN ASSUMED — see
+   * `MAX_EFFORT_WALLS` and the false-start sweep below. `MAX_LOCKOUT_TICKS`
+   * dropped 30 -> 12 moved the false-start wall from 0.2777 to 0.3990, past
+   * this cell's own effective margin of 0.3066 (unchanged by the lever, since
+   * it is the cell this list names as getting none of it), so a 10-tap and a
+   * 30-tap false start both make the rep here now, at every one of 20 seeds.
+   * This constant is kept — the cell is still the one the lever adds nothing
+   * to, which is a fact about the ceiling and not about the false-start rule —
+   * but nothing downstream may read its presence here as "and therefore the
+   * false-start rule fails here" any more.
    */
   CELLS_ALREADY_PAST_THE_CEILING: ['meet/aggressive/att3/wrecked'] as readonly string[],
+} as const;
+
+/**
+ * ---------------------------------------------------------------------------
+ * THE MAX-EFFORT SWEEP — A SECOND METRIC, BECAUSE `WORKING_FLOOR` IS THE WRONG
+ * SUBJECT FOR "THERE IS NO CHALLENGE EVEN FOR AN RPE 9"
+ * ---------------------------------------------------------------------------
+ * `WORKING_FLOOR` measures the SLOWEST sustained cadence that still makes the
+ * rep — a statement about a lazy thumb. The third phone replay's complaint was
+ * about a thumb going flat out, which `WORKING_FLOOR` says nothing about.
+ *
+ * WHY THE TWO COME APART, FROM THE SOURCE RATHER THAN A GUESS. `grindForce`
+ * saturates at exactly 1 once `grindCharge` reaches `GRIND_CHARGE.CEILING`
+ * (2.9). Tapping every `GRIND_TAP_REFRACTORY_TICKS` the charge settles between
+ * 2.89 and 3.89, so force is pinned at 1 from about the fifth tap onward and
+ * the whole rest of the rep is played at the ceiling of what tapping can buy.
+ * Everything between "the floor" and "the ceiling" is dead space the demand
+ * curve has never been tested in.
+ *
+ * TWO CADENCE MODELS:
+ *   PERFECT     a tap every `GRIND_TAP_REFRACTORY_TICKS`, exactly, forever —
+ *               the fastest cadence the ENGINE can count. "Is this rep
+ *               possible at all."
+ *   REALISTIC   inter-tap intervals drawn uniformly from `HUMAN_MS`, the range
+ *               a real phone produced in browser captures during an earlier
+ *               round (57-81 ms), quantised to whole ticks the way a real
+ *               input is. "Can a person do it."
+ *
+ * The rep seed does NOT vary the ascent — it moves the press command's delay
+ * and nothing else — so a fixed cadence gives the same rep at every seed and a
+ * failure count from seeds alone is 0 or all. The variation that matters is in
+ * the CADENCE, which is why the realistic arm carries its own generator and its
+ * own seed list rather than leaning on the rep seed.
+ *
+ * -------------------------------------------------------------------------
+ * WHAT THIS SWEEP MEASURES ON THE SHIPPED TREE, AND WHY IT IS STILL ZERO
+ * -------------------------------------------------------------------------
+ * `MAX_LOCKOUT_TICKS` 30 -> 12 moves the FALSE-START wall — see
+ * `MAX_EFFORT_WALLS` — and does nothing whatsoever to a max-effort rep, because
+ * a max-effort rep throws zero early taps by definition and never touches
+ * `grindStartTick`'s cap at all. So `PERFECT_LOST` and `REALISTIC_LOST` are
+ * identical before and after that change, which is why this file pins "old"
+ * and "new" as the same number rather than two different ones — the change
+ * that fixed the false-start/max-effort wall ORDERING did not and could not
+ * move where any reachable cell's effective margin sits.
+ *
+ * No reachable cell's effective margin gets within 0.07 of the max-effort
+ * wall (0.3764) even at `BENCH_WORKING_RUNG_DEMAND_ONSET` 0.100 — see
+ * `MAX_EFFORT_WALLS`'s header for the reason, which is
+ * `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` (0.27), unmoved and out of this
+ * round's scope. This is recorded as a finding rather than silently patched
+ * around: the 2026-08-27 ruling's item 3 asks that RPE 9 show "a real,
+ * non-zero, non-total failure rate" at the realistic cadence, and this sweep
+ * shows that requirement is NOT met by the lockout change alone, nor by
+ * lockout + `ONSET` 0.100 together, because the ceiling — not the lockout, not
+ * `ONSET` — is what actually bounds how far any reachable cell can be pushed.
+ * Reaching the ruling's literal ask would require raising
+ * `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` well past 0.3764, or moving
+ * `GRIND_BOOST_FORCE_MAX`, both outside what this round authorises.
+ */
+const MAX_EFFORT = {
+  /** Rep seeds per cell, per cadence draw. Moves the command tick only. */
+  SEEDS: 20,
+  /** Independent cadence draws for the realistic arm, per cell. */
+  DRAWS: 100,
+  /**
+   * The realistic human's inter-tap interval, milliseconds, uniform.
+   *
+   * MEASURED ON A PHONE RATHER THAN CHOSEN. A driver from an earlier round
+   * captured recorded achieved cadences of 57-81 ms on a real device through a
+   * tunnel. Both ends are at or above the rate that saturates `grindForce`.
+   */
+  HUMAN_MS: { MIN: 57, MAX: 81 },
+  /** Seeds for the realistic arm's own cadence generator. */
+  CADENCE_SEED_BASE: 1000,
+  /**
+   * Measured: reps lost at the PERFECT cadence, per rung, summed over every
+   * seed and every cell of that rung, in `RUNGS` order. Zero at every rung —
+   * see the header above for why.
+   */
+  PERFECT_LOST: [0, 0, 0, 0, 0, 0] as const,
+  /** Measured: the same for the REALISTIC arm, over every cell and every draw. */
+  REALISTIC_LOST: [0, 0, 0, 0, 0, 0] as const,
+  /**
+   * The domain size each `PERFECT_LOST` / `REALISTIC_LOST` entry is over, in
+   * `RUNGS` order: `cellsInRung * SEEDS` and `cellsInRung * DRAWS`.
+   */
+  PERFECT_CASES: [100, 100, 80, 80, 80, 360] as const,
+  REALISTIC_CASES: [500, 500, 400, 400, 400, 1800] as const,
+  /** The six rungs this sweep reports separately, in the order the arrays above use. */
+  RUNGS: ['rpe6', 'rpe7', 'rpe8', 'rpe9', 'rpe10', 'meet'] as const,
+  /**
+   * -------------------------------------------------------------------------
+   * THE NON-VACUITY ARM, AND IT IS NOT OPTIONAL HERE
+   * -------------------------------------------------------------------------
+   * Six zeros pinned over 40 cells look exactly like a driver that never taps,
+   * never reaches ASCENT, or reads the wrong field. This arm drives the SAME
+   * driver at a synthetic load past the wall and pins that it loses everything,
+   * so the zeros above are a fact about the reachable ladder rather than about
+   * the instrument.
+   *
+   * The load is deliberately NOT one a producer emits — `REACHABLE`'s own
+   * header records that a preset is not a domain — and it is labelled as a
+   * probe rather than smuggled into the reachable list.
+   */
+  BEYOND_THE_WALL_LOAD: 1.05,
+  /** Measured: the probe load loses every rep at both cadences. */
+  BEYOND_THE_WALL_LOST: 20,
+} as const;
+
+/**
+ * ---------------------------------------------------------------------------
+ * THE TWO WALLS THE DEMAND CURVE SITS BETWEEN, AND WHY NEITHER LEVER THIS
+ * ROUND AUTHORISES CAN CLOSE THE REMAINING GAP
+ * ---------------------------------------------------------------------------
+ * The 2026-08-27 ruling asks that RPE 9 "be able to lose someone who is
+ * actually trying". Mechanically that is a request to place RPE 9's effective
+ * margin (`peakDemand - capacity`, after the working-rung lever) above the
+ * margin at which a realistic max-effort player starts losing. Two walls:
+ *
+ *   MAX-EFFORT WALL   the least effective margin at which the REALISTIC arm
+ *                     loses a rep. Below it, no cadence a human can throw ever
+ *                     costs the rep.
+ *   FALSE-START WALL  the greatest effective margin at which a rep that ate a
+ *                     10-tap false start (past `GRIND_FALSE_START`'s cap)
+ *                     still makes it. Above it, `LIFT_COPY.SUBTITLE.bench`'s
+ *                     "holds your press back" is false: the mistake ends the
+ *                     rep.
+ *
+ * BEFORE THIS ROUND'S LOCKOUT CHANGE the false-start wall (0.2777, at the old
+ * 30-tick cap) sat BELOW the max-effort wall (0.3764) — no margin could honour
+ * both guarantees, which is the conflict the 2026-08-27 ruling exists to
+ * settle. `MAX_LOCKOUT_TICKS` 30 -> 12 moves the false-start wall to 0.3990,
+ * PAST the max-effort wall, so a margin BAND now exists (0.3764 to 0.3990)
+ * where both guarantees could be satisfied by the same cell.
+ *
+ * NOTHING PUTS A REACHABLE CELL IN THAT BAND, AND THAT IS THE FINDING THIS
+ * ROUND REPORTS RATHER THAN PATCHES AROUND. The highest reachable effective
+ * margin on the shipped tree is 0.3066 (`meet/aggressive/att3/wrecked`,
+ * `FLOOR_EDGES.CELLS_ALREADY_PAST_THE_CEILING`'s one entry), which the
+ * working-rung lever adds nothing to because it already sits past
+ * `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` (0.27). Every other reachable
+ * cell is lower still. Raising `BENCH_WORKING_RUNG_DEMAND_ONSET` to 0.100 (the
+ * one lever this round authorises trying) does not change this: the ceiling
+ * caps how far the lever can push ANY cell at 0.27, which is 0.1 below the
+ * band's own floor. `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` — not the
+ * lockout, not `ONSET` — is the binding constraint, and it is out of this
+ * round's scope (`GRIND_BOOST_FORCE_MAX` is refused explicitly; the ceiling is
+ * not mentioned as available either).
+ *
+ * BOTH WALLS ARE DRIVEN, NOT PINNED FROM PROSE. The ladder below walks
+ * `loadRatio` under a fixed wrecked check-in and reads each rung's real
+ * effective margin off `ascentDemand`, so the numbers here are the search's
+ * OUTPUT and a retune that moves either wall reddens rather than being
+ * described.
+ *
+ * "ON THIS LADDER" IS LOAD-BEARING FOR THE FALSE-START WALL, AND IS NOT A
+ * HEDGE. Two reps at the same effective margin are not the same rep: the peak
+ * is `base + stick`, and a heavier bar carries more of that peak in the stick
+ * and less in the base, so it has more net force everywhere except the notch.
+ * A bar the LEVER lifted to a margin can therefore differ from a bar whose own
+ * load put it there. This number is not used as a safe bound for the ceiling
+ * anywhere in this file — the false-start sweep below drives the actual
+ * reachable cells directly rather than trusting this ladder's wall as a proxy
+ * for them.
+ */
+const MAX_EFFORT_WALLS = {
+  /** The check-in the synthetic ladder runs at: the weakest one a meet can carry. */
+  LADDER_LOADS: { FROM: 0.8, TO: 1.05, STEP: 0.005 },
+  /** Early taps the false-start arm throws. 10 is past the shipped cap either way. */
+  FALSE_START_TAPS: 10,
+  /**
+   * Measured: the least effective margin on the ladder at which the REALISTIC
+   * max-effort arm loses at least one rep, to four decimals. Unaffected by the
+   * lockout change (a max-effort rep throws no early taps) or by `ONSET` up to
+   * 0.100 (no ladder rung this sweep reaches is pushed by the lever at all,
+   * since the ladder's loads already sit past the ceiling by the point the
+   * realistic arm starts losing).
+   */
+  MAX_EFFORT_WALL: 0.3764,
+  /**
+   * Measured: the least effective margin ON THIS LADDER at which a 10-tap
+   * false start loses at least one rep, to four decimals, AT THE SHIPPED
+   * `MAX_LOCKOUT_TICKS` (12). 0.2777 at the old 30-tick cap; 0.3990 now.
+   */
+  FALSE_START_WALL: 0.399,
+  /**
+   * Measured: the greatest effective margin any reachable cell reaches, to
+   * four decimals. `meet/aggressive/att3/wrecked`, which the lever adds
+   * nothing to.
+   */
+  HIGHEST_REACHABLE_MARGIN: 0.3066,
 } as const;
 
 const REACHABLE_COUPLING = {
@@ -4571,13 +4874,315 @@ describe('the grind decides the lift', () => {
     expect(Math.min(...meetFloors), 'the meet ceiling').toBeLessThan(Math.min(...ten));
   }, 300_000);
 
+  it('never costs a rep to a player at the sim\'s own tap ceiling, per rung', () => {
+    // ------------------------------------------------------------------
+    // THE METRIC THE 2026-08-27 RULING'S ITEM 3 ASKS FOR. See `MAX_EFFORT` for
+    // why `WORKING_FLOOR` above cannot answer "no challenge even for an rpe 9"
+    // and what the two cadence arms are.
+    //
+    // THIS PINS ZEROS AND THE ZEROS ARE THE FINDING RATHER THAN THE GOAL. The
+    // test below it is what shows WHY, and it is a genuine gap against the
+    // ruling's literal ask — see `MAX_EFFORT_WALLS`'s header.
+    // ------------------------------------------------------------------
+    const session = reachableSessionCells();
+    const meet = reachableMeetCells();
+    expect(session.length + meet.length, 'the cells this sweep covers').toBe(40);
+
+    const rungOf = (cell: ReachableCell): string => {
+      if (cell.label.startsWith('meet/')) return 'meet';
+      const m = /^session\/(rpe\d+)\//.exec(cell.label);
+      return m?.[1] ?? 'unknown';
+    };
+    const byRung = new Map<string, ReachableCell[]>();
+    for (const cell of [...session, ...meet]) {
+      const list = byRung.get(rungOf(cell)) ?? [];
+      list.push(cell);
+      byRung.set(rungOf(cell), list);
+    }
+    expect([...byRung.keys()].sort(), 'the rungs this sweep found').toEqual(
+      [...MAX_EFFORT.RUNGS].sort(),
+    );
+
+    const perfectLost: number[] = [];
+    const realisticLost: number[] = [];
+    const perfectCases: number[] = [];
+    const realisticCases: number[] = [];
+    for (const rung of MAX_EFFORT.RUNGS) {
+      const cells = byRung.get(rung) ?? [];
+      let pLost = 0;
+      let rLost = 0;
+      let pCases = 0;
+      let rCases = 0;
+      for (const cell of cells) {
+        for (let seed = 1; seed <= MAX_EFFORT.SEEDS; seed += 1) {
+          pCases += 1;
+          const rep = maxEffortRep(
+            { kind: BENCH, loadRatio: cell.loadRatio, seed, feel: cell.feel },
+            perfectCadence,
+          );
+          if (rep.resolution?.outcome === 'miss') pLost += 1;
+        }
+        for (let draw = 0; draw < MAX_EFFORT.DRAWS; draw += 1) {
+          rCases += 1;
+          const rep = maxEffortRep(
+            {
+              kind: BENCH,
+              loadRatio: cell.loadRatio,
+              seed: 1 + (draw % MAX_EFFORT.SEEDS),
+              feel: cell.feel,
+            },
+            humanCadence(MAX_EFFORT.CADENCE_SEED_BASE + draw),
+          );
+          if (rep.resolution?.outcome === 'miss') rLost += 1;
+        }
+      }
+      perfectLost.push(pLost);
+      realisticLost.push(rLost);
+      perfectCases.push(pCases);
+      realisticCases.push(rCases);
+    }
+    expect(perfectCases, 'the perfect-arm domain per rung').toEqual([
+      ...MAX_EFFORT.PERFECT_CASES,
+    ]);
+    expect(realisticCases, 'the realistic-arm domain per rung').toEqual([
+      ...MAX_EFFORT.REALISTIC_CASES,
+    ]);
+    expect(perfectLost, `perfect cadence lost, by rung: ${MAX_EFFORT.RUNGS.join(', ')}`).toEqual([
+      ...MAX_EFFORT.PERFECT_LOST,
+    ]);
+    expect(
+      realisticLost,
+      `realistic cadence lost, by rung: ${MAX_EFFORT.RUNGS.join(', ')}`,
+    ).toEqual([...MAX_EFFORT.REALISTIC_LOST]);
+
+    // THE NON-VACUITY ARM. Same driver, same fields, a load past the wall — so
+    // the zeros above are about the ladder and not about a harness that taps
+    // into the void. See `MAX_EFFORT.BEYOND_THE_WALL_LOAD`.
+    const wrecked = sessionFeel(EMPTY_FATIGUE_STATE, REACHABLE.WORK_SETS + 2, {
+      sleep: 'poor',
+      soreness: 'sore',
+      motivation: 'flat',
+    });
+    let probeLostPerfect = 0;
+    let probeLostRealistic = 0;
+    for (let seed = 1; seed <= MAX_EFFORT.SEEDS; seed += 1) {
+      const probe: LiftConfig = {
+        kind: BENCH,
+        loadRatio: MAX_EFFORT.BEYOND_THE_WALL_LOAD,
+        seed,
+        feel: wrecked,
+      };
+      if (maxEffortRep(probe, perfectCadence).resolution?.outcome === 'miss') {
+        probeLostPerfect += 1;
+      }
+      if (
+        maxEffortRep(probe, humanCadence(MAX_EFFORT.CADENCE_SEED_BASE + seed)).resolution
+          ?.outcome === 'miss'
+      ) {
+        probeLostRealistic += 1;
+      }
+    }
+    expect(probeLostPerfect, 'the probe load at the perfect cadence').toBe(
+      MAX_EFFORT.BEYOND_THE_WALL_LOST,
+    );
+    expect(probeLostRealistic, 'the probe load at the realistic cadence').toBe(
+      MAX_EFFORT.BEYOND_THE_WALL_LOST,
+    );
+    // ...and the realistic arm really did vary its cadence, or it is a
+    // metronome wearing a generator's name. Two draws, different tap counts.
+    const tapsOf = (draw: number): number =>
+      maxEffortRep(
+        { kind: BENCH, loadRatio: 0.9, seed: 1, feel: wrecked },
+        humanCadence(MAX_EFFORT.CADENCE_SEED_BASE + draw),
+      ).grindTaps;
+    const drawnTaps = [0, 1, 2, 3, 4, 5].map(tapsOf);
+    expect(
+      new Set(drawnTaps).size,
+      `cadence draws all agreed: ${drawnTaps.join(',')}`,
+    ).toBeGreaterThan(1);
+  }, 300_000);
+
+  it('cannot put a reachable cell above the max-effort wall without raising the ceiling', () => {
+    // ------------------------------------------------------------------
+    // THE FINDING, DRIVEN RATHER THAN QUOTED. See `MAX_EFFORT_WALLS`. Both
+    // walls are searched over the same synthetic load ladder at the same
+    // check-in, so the comparison is between two numbers this test produced,
+    // not between two literals somebody wrote on different days.
+    // ------------------------------------------------------------------
+    const wrecked = sessionFeel(EMPTY_FATIGUE_STATE, REACHABLE.WORK_SETS + 2, {
+      sleep: 'poor',
+      soreness: 'sore',
+      motivation: 'flat',
+    });
+    const { FROM, TO, STEP } = MAX_EFFORT_WALLS.LADDER_LOADS;
+    const rungs: { load: number; margin: number }[] = [];
+    for (let load = FROM; load <= TO + STEP / 2; load += STEP) {
+      const l = scrubProbe(load);
+      const config: LiftConfig = { kind: BENCH, loadRatio: l, seed: 1, feel: wrecked };
+      const margin =
+        ascentDemand(STICK_HEIGHT_FRAC.bench, l, BENCH, 0, 0, benchWorkingExcess(config)) -
+        lifterCapacity(config);
+      rungs.push({ load: l, margin: scrubProbe(margin) });
+    }
+    // THE LADDER NEVER FALLS, or "the first rung that loses" is not a wall.
+    // NON-DECREASING RATHER THAN RISING: `BENCH_WORKING_RUNG_DEMAND_MARGIN_
+    // CEILING` pins a run of loads at exactly one effective margin, which is
+    // the same compression it applies to the meet's top attempts.
+    for (let i = 1; i < rungs.length; i += 1) {
+      expect(rungs[i]?.margin ?? 0, `ladder rung ${i}`).toBeGreaterThanOrEqual(
+        rungs[i - 1]?.margin ?? 0,
+      );
+    }
+    expect(rungs[rungs.length - 1]?.margin ?? 0, 'the ladder spans nothing').toBeGreaterThan(
+      (rungs[0]?.margin ?? 0) + LIFT_TUNING.GRIND_BOOST_FORCE_MAX / 2,
+    );
+
+    const realisticLoses = (load: number): boolean => {
+      for (let draw = 0; draw < MAX_EFFORT.SEEDS; draw += 1) {
+        const rep = maxEffortRep(
+          { kind: BENCH, loadRatio: load, seed: 1 + draw, feel: wrecked },
+          humanCadence(MAX_EFFORT.CADENCE_SEED_BASE + draw),
+        );
+        if (rep.resolution?.outcome === 'miss') return true;
+      }
+      return false;
+    };
+    const falseStartLoses = (load: number): boolean => {
+      for (let seed = 1; seed <= MAX_EFFORT.SEEDS; seed += 1) {
+        const rep = maxEffortRep(
+          { kind: BENCH, loadRatio: load, seed, feel: wrecked },
+          perfectCadence,
+          MAX_EFFORT_WALLS.FALSE_START_TAPS,
+        );
+        expect(rep.grindEarlyTaps, `early taps at load ${load}`).toBe(
+          MAX_EFFORT_WALLS.FALSE_START_TAPS,
+        );
+        if (rep.resolution?.outcome === 'miss') return true;
+      }
+      return false;
+    };
+
+    const firstRung = (fails: (load: number) => boolean): number | null => {
+      for (const rung of rungs) if (fails(rung.load)) return rung.margin;
+      return null;
+    };
+    const maxEffortWall = firstRung(realisticLoses);
+    const falseStartWall = firstRung(falseStartLoses);
+    expect(maxEffortWall, 'the ladder never reached the max-effort wall').not.toBeNull();
+    expect(falseStartWall, 'the ladder never reached the false-start wall').not.toBeNull();
+    if (maxEffortWall === null || falseStartWall === null) return;
+    expect(Number(maxEffortWall.toFixed(4)), 'the max-effort wall').toBe(
+      MAX_EFFORT_WALLS.MAX_EFFORT_WALL,
+    );
+    expect(Number(falseStartWall.toFixed(4)), 'the false-start wall').toBe(
+      MAX_EFFORT_WALLS.FALSE_START_WALL,
+    );
+
+    // THE ORDERING THE 2026-08-27 RULING'S ITEM 1 EXISTS TO PRODUCE: the
+    // false-start wall is now the HIGHER of the two, so a margin band exists
+    // where both guarantees could in principle be satisfied by the same cell.
+    expect(falseStartWall, 'the false-start wall is not the higher one').toBeGreaterThan(
+      maxEffortWall,
+    );
+
+    // ...AND NOTHING REACHABLE IS IN THAT BAND, WHICH IS THE GAP THIS ROUND
+    // REPORTS RATHER THAN CLOSES. The highest reachable effective margin is
+    // capped by `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`, unmoved this round,
+    // and it sits below the max-effort wall — so `MAX_EFFORT.PERFECT_LOST` and
+    // `REALISTIC_LOST` are structurally zero at every rung, and no value of
+    // `BENCH_WORKING_RUNG_DEMAND_ONSET` up to 0.100 changes that.
+    const cells = [...reachableSessionCells(), ...reachableMeetCells()];
+    const marginOf = (cell: ReachableCell): number => {
+      const config: LiftConfig = { kind: BENCH, loadRatio: cell.loadRatio, seed: 1, feel: cell.feel };
+      return (
+        ascentDemand(
+          STICK_HEIGHT_FRAC.bench,
+          cell.loadRatio,
+          BENCH,
+          0,
+          0,
+          benchWorkingExcess(config),
+        ) - lifterCapacity(config)
+      );
+    };
+    const highest = Math.max(...cells.map(marginOf));
+    expect(Number(highest.toFixed(4)), 'the highest reachable effective margin').toBe(
+      MAX_EFFORT_WALLS.HIGHEST_REACHABLE_MARGIN,
+    );
+    expect(highest, 'a reachable cell reached the max-effort wall').toBeLessThan(maxEffortWall);
+  }, 300_000);
+
+  it(
+    'keeps the false-start rule inside every reachable cell at the shipped cap',
+    () => {
+      // ------------------------------------------------------------------
+      // A SECOND TEST OF THE SAME NAMED GUARANTEE, DELIBERATELY WITHOUT A
+      // BRACKETED TAG MARKER IN ITS TITLE. `guaranteeTags.test.ts` resolves
+      // each tag id to EXACTLY ONE live test — by searching the raw source for
+      // the bracketed marker text, so writing that text ANYWHERE in this file,
+      // even in a comment, is enough to break that one-to-one resolution. The
+      // real declaring test already exists below ('cannot hand a player who
+      // mashed the pause an earlier start'); this test is additional evidence
+      // over the REAL reachable domain rather than a second declaration.
+      //
+      // THE DISCLOSED DEFECT, RE-VERIFIED RATHER THAN CARRIED FORWARD. The
+      // 2026-08-27 ruling's item 4: "the false-start guarantee is re-verified
+      // at the new cap, not assumed." Driven over the whole reachable domain,
+      // which is the blind spot that hid the original regression — the
+      // synthetic ladder above runs at the default capacity and cannot reach a
+      // wrecked check-in on its own.
+      // ------------------------------------------------------------------
+      const cells = [...reachableSessionCells(), ...reachableMeetCells()];
+      expect(cells.length, 'the cells this sweep covers').toBe(40);
+      const { PER_EARLY_TAP_TICKS, MAX_LOCKOUT_TICKS } = LIFT_TUNING.GRIND_FALSE_START;
+      const saturating = Math.ceil(MAX_LOCKOUT_TICKS / PER_EARLY_TAP_TICKS);
+
+      const brokenAt = (early: number): string[] =>
+        cells
+          .filter((cell) => {
+            for (let seed = 1; seed <= MAX_EFFORT.SEEDS; seed += 1) {
+              const rep = maxEffortRep(
+                { kind: BENCH, loadRatio: cell.loadRatio, seed, feel: cell.feel },
+                perfectCadence,
+                early,
+              );
+              // THE TAPS ACTUALLY LANDED, not merely requested — the pause is
+              // shorter than the cap divided by the tap rate at some cells, so
+              // a strict equality would be an assertion about the seed's draw
+              // rather than about the rule.
+              expect(
+                rep.grindEarlyTaps,
+                `${cell.label} threw ${rep.grindEarlyTaps} of ${early} early taps`,
+              ).toBeGreaterThanOrEqual(Math.min(early, saturating));
+              if (rep.resolution?.outcome === 'miss') return true;
+            }
+            return false;
+          })
+          .map((cell) => cell.label);
+
+      // EMPTY, WHICH IS THE REPAIR THIS ROUND MEASURED RATHER THAN ASSUMED.
+      // `FLOOR_EDGES.CELLS_ALREADY_PAST_THE_CEILING` names the one cell that
+      // used to be here — its own header records why it no longer is.
+      expect(brokenAt(10), 'cells a 10-tap false start costs, at the new cap').toEqual([]);
+      expect(brokenAt(30), 'cells a 30-tap false start costs, at the new cap').toEqual([]);
+    },
+    300_000,
+  );
 });
 
 describe('the false-start rule, exactly as the copy states it', () => {
   // The sentence, verbatim, from `LIFT_COPY.SUBTITLE.bench`:
   //
   //   "Taps before the call count for nothing, and each one holds your press
-  //    back, up to half a second."
+  //    back, up to a fifth of a second."
+  //
+  // "UP TO A FIFTH OF A SECOND" REPLACED "UP TO HALF A SECOND" ON THE
+  // 2026-08-27 RULING, WHEN `MAX_LOCKOUT_TICKS` DROPPED 30 -> 12. See
+  // `LIFT_TUNING.GRIND_FALSE_START`'s header for the structural reason: the
+  // longer cap put the false-start wall below the max-effort wall a realistic
+  // player at the sim's own tap ceiling could reach, so no reachable margin
+  // could satisfy both "a false start never ends the rep" and "RPE 9 can lose
+  // someone who is actually trying".
   //
   // EACH CLAUSE IS DRIVEN SEPARATELY THROUGH THE SIM. A test that only checked
   // `grindStartTick`'s arithmetic would be checking the same expression the
@@ -4615,13 +5220,14 @@ describe('the false-start rule, exactly as the copy states it', () => {
     expect(charged, `${charged} rungs were charged`).toBe(3);
   });
 
-  it('holds the press back per early tap, up to the half second the copy names', () => {
+  it('holds the press back per early tap, up to the fifth of a second the copy names', () => {
     const { PER_EARLY_TAP_TICKS, MAX_LOCKOUT_TICKS } = LIFT_TUNING.GRIND_FALSE_START;
-    // THE COPY'S OWN NUMBER, DERIVED RATHER THAN RESTATED. "Half a second" is
-    // only true if the cap is exactly 500ms at this tick rate, so the sentence
-    // is checked against the clock rather than against a second literal.
-    expect(MAX_LOCKOUT_TICKS * TICK_MS).toBeCloseTo(500, 9);
-    expect(LIFT_COPY.SUBTITLE.bench).toContain('up to half a second');
+    // THE COPY'S OWN NUMBER, DERIVED RATHER THAN RESTATED. "A fifth of a
+    // second" is only true if the cap is exactly 200ms at this tick rate, so
+    // the sentence is checked against the clock rather than against a second
+    // literal.
+    expect(MAX_LOCKOUT_TICKS * TICK_MS).toBeCloseTo(200, 9);
+    expect(LIFT_COPY.SUBTITLE.bench).toContain('up to a fifth of a second');
 
     // Driven through the SIM and compared against the rule, so a mechanic that
     // stopped charging would redden even though `grindStartTick` still
@@ -4649,17 +5255,21 @@ describe('the false-start rule, exactly as the copy states it', () => {
     // as a count so a charge that stopped charging, or a cap that stopped
     // capping, reports itself instead of passing.
     //
-    // FOUR, AND NOT `MAX_LOCKOUT_TICKS / PER_EARLY_TAP_TICKS`. The binding
-    // constraint is the launch beat (18 ticks) rather than the cap (30 ticks),
-    // and the two are different numbers for a reason: the cap is what stops
-    // the rule ever reaching into the ASCENT grind, which is what makes it
-    // "costs the launch and never the rep", while the launch beat is what the
-    // delay has to eat through before the launch reads zero. It is FOUR rather
-    // than the launch beat's own 18/4 = 5 because the charge decays while the
-    // delay runs (`GRIND_CHARGE_DECAY_PER_TICK`), so the last rung before the
-    // beat is exhausted has already been pushed to zero. A tuner who lengthens
-    // `PRESS_LAUNCH_MS` or slows the decay moves this count and not the cap.
-    expect(strictDrops, `${strictDrops} rungs actually delayed the grind`).toBe(4);
+    // TWO, DOWN FROM FOUR AT THE OLD 30-TICK CAP — AND THE FIRST RUNG NO
+    // LONGER DROPS AT ALL, MEASURED RATHER THAN ASSUMED. At `MASH_GAP_TICKS`
+    // (the fastest countable rate) the charge refills fast enough that a
+    // single early tap's 4-tick head-start loss is fully recovered before the
+    // launch fires — `forces[0]` and `forces[1]` are both exactly 1, the
+    // ceiling. The drop only starts once the delay eats enough of the launch
+    // beat that a mash-rate refill can no longer reach the ceiling in what is
+    // left: rungs 2 and 3 (delays of 8 and 12 ticks) both read below 1, and
+    // rung 3 is where `MAX_LOCKOUT_TICKS` itself caps the delay, so nothing
+    // past it can drop further. This is the same mechanism as the old 30-tick
+    // reading, just measured on a shorter cap: whether a given rung drops
+    // depends on the mash rate the launch fires into, not on the cap alone,
+    // which is why this count is re-measured rather than derived from
+    // `MAX_LOCKOUT_TICKS / PER_EARLY_TAP_TICKS` by arithmetic.
+    expect(strictDrops, `${strictDrops} rungs actually delayed the grind`).toBe(2);
     // The cap really is a cap: past it, more mashing changes nothing at all.
     expect(forces[capRung] ?? -1).toBe(forces[capRung + 4] ?? -2);
     expect(grindStartTick(100, capRung)).toBe(grindStartTick(100, capRung + 40));
@@ -4697,34 +5307,30 @@ describe('the false-start rule, exactly as the copy states it', () => {
     // lost launch is a slower rep rather than a lost one.
     //
     // -----------------------------------------------------------------------
-    // WHAT THIS DOMAIN REACHES, AND THE CELL IT DOES NOT — MEASURED 2026-08-27,
-    // AND THE RULE IS ALREADY FALSE THERE ON THE SHIPPED TREE
+    // WHAT THIS DOMAIN REACHES, AND THE CELL IT USED TO MISS — MEASURED
+    // 2026-08-27, AND THE DISCLOSED DEFECT IS NOW REPAIRED RATHER THAN STILL
+    // OPEN
     // -----------------------------------------------------------------------
     // `GRIND_SWEEP.LOADS` is driven at the DEFAULT capacity, because
     // `benchGrindRep` takes no `feel`. So the hardest bar this loop ever asks
     // about sits at a margin of 0.2466, while the reachable domain reaches
     // 0.3066 — `meet/aggressive/att3/wrecked`, where a wrecked check-in cuts
-    // capacity by 6% under a load no ladder in this sweep produces.
+    // capacity by 6% under a load no ladder in this sweep produces. THIS TEST
+    // STILL DOES NOT COVER THAT CELL — see the whole-domain sweep in
+    // `'the grind decides the lift'` for the one that does.
     //
-    // Driven by hand at that cell, 20 seeds, mashed at the refractory limit,
-    // with the 2026-08-27 working-rung lever set to ZERO so the reading is of
-    // the tree as it shipped: 10 early taps lose the rep at 20 of 20 seeds, and
-    // so do 30. The rule this test states, and the sentence
-    // `LIFT_COPY.SUBTITLE.bench` puts on the screen — "each one holds your
-    // press back, up to half a second" — is not true of that cell and has not
-    // been.
-    //
-    // NOT WIDENED HERE, AND NOT PINNED EITHER, ON PURPOSE. Widening the domain
-    // ships this file red; pinning the exception writes "the copy is false at
-    // one cell" into the tree as though that were a decision somebody took. It
-    // is a human's ruling and the two ways out are both design calls: lower the
-    // meet ceiling, which the 2026-08-27 phone replay asked AGAINST, or exempt
-    // the top attempt from the false-start rule, which makes the on-screen
-    // sentence false in a different way. What IS enforced is that the
-    // working-rung lever does not make it worse:
-    // `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` adds that cell exactly zero,
-    // and `FLOOR_EDGES.CELLS_ALREADY_PAST_THE_CEILING` names it.
+    // BEFORE THE 2026-08-27 RULING'S LOCKOUT CHANGE, that cell was a real,
+    // disclosed violation: 20 seeds, mashed at the refractory limit, 10 early
+    // taps lost the rep at 20 of 20 seeds and so did 30. `MAX_LOCKOUT_TICKS`
+    // dropping 30 -> 12 moved the false-start wall (0.3990) past that cell's
+    // effective margin (0.3066), and it is now measured to make the rep at
+    // every seed, at both tap counts — see `MAX_EFFORT_WALLS` and the
+    // whole-domain sweep two tests below this one. This comment used to record
+    // the violation as still open; it is not, and carrying the old paragraph
+    // forward once the tree had moved past it would be exactly the stale-claim
+    // hazard CLAUDE.md warns about.
     for (const sweepLoad of GRIND_SWEEP.LOADS) {
+      const clean = benchGrindRep(sweepLoad, 5, { gapTicks: GRIND_SWEEP.MASH_GAP_TICKS });
       const mashed = benchGrindRep(sweepLoad, 5, {
         gapTicks: GRIND_SWEEP.MASH_GAP_TICKS,
         earlyTaps: 30,
@@ -4735,9 +5341,17 @@ describe('the false-start rule, exactly as the copy states it', () => {
       expect(mashed.ascentTicks, `load ${sweepLoad}`).toBeGreaterThan(0);
       expect(mashed.resolution?.missReason, `load ${sweepLoad}`).not.toBe('buried');
       expect(mashed.resolution?.outcome, `load ${sweepLoad}`).not.toBe('miss');
-      // It really did cost the launch, or the assertion above is about a rep
-      // that was never charged.
-      expect(mashed.launchForce, `load ${sweepLoad}`).toBe(0);
+      // IT REALLY DID COST THE LAUNCH, BUT NOT ALL THE WAY TO ZERO ANY MORE.
+      // At the old 30-tick cap the delay outlasted the whole launch beat, so a
+      // maximally mashed launch always read exactly 0. At the new 12-tick cap
+      // — chosen because it is AT OR UNDER the 18-tick launch beat, per the
+      // 2026-08-27 ruling — the delay runs out before the beat does, so some
+      // charge survives to the launch tick and the force is reduced rather
+      // than annihilated. `launchForce` still strictly less than a clean
+      // launch's is the actual guarantee; `toBe(0)` was a stronger claim than
+      // the rule ever made and stopped being true when the cap shrank.
+      expect(mashed.launchForce, `load ${sweepLoad}`).toBeLessThan(clean.launchForce);
+      expect(mashed.launchForce, `load ${sweepLoad}`).toBeGreaterThanOrEqual(0);
       // ...and the grind still ran, which is the thing that saved it.
       expect(mashed.grindTaps, `load ${sweepLoad}`).toBeGreaterThan(4);
     }

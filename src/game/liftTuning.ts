@@ -1000,11 +1000,45 @@ export const LIFT_TUNING = Object.freeze({
    * still grind the bar through its sticking point; they just leave the chest
    * slowly. `lift.test.ts` sweeps that at every load rather than asserting it.
    *
-   * 30 ticks is half a second at 60Hz, exactly, which is what the copy says in
-   * words. Changing this number means changing that sentence. Unplayed
-   * placeholders.
+   * 12 ticks is a fifth of a second at 60Hz, exactly, which is what the copy
+   * says in words. Changing this number means changing that sentence.
+   *
+   * -------------------------------------------------------------------------
+   * `MAX_LOCKOUT_TICKS` DROPPED 30 -> 12 ON THE 2026-08-27 RULING, AND THE
+   * REASON IS A STRUCTURAL CONFLICT BETWEEN TWO GUARANTEES, NOT A DIFFICULTY
+   * PASS
+   * -------------------------------------------------------------------------
+   * The third phone replay asked that RPE 9 be able to lose a player who is
+   * "actually trying" — see `MAX_EFFORT` in `lift.test.ts`. Measured from the
+   * source rather than guessed: a maximally false-started rep spends its first
+   * `MAX_LOCKOUT_TICKS` of ascent with the grind shut, powered by nothing but
+   * `LIFTER_CAPACITY` against the demand curve, and past some effective margin
+   * those unpowered ticks alone are enough to start the stall spiral — the
+   * false-start rule's own promise, "holds your press back", becomes "ends the
+   * rep" there. That gives a FALSE-START WALL: the least effective margin at
+   * which a 10-tap false start costs the rep. A separate MAX-EFFORT WALL is the
+   * least effective margin at which a REALISTIC max-effort player (a real
+   * captured cadence, not the engine's own countable floor) starts losing.
+   * `a-false-start-can-never-pay` needs every reachable cell under the first
+   * wall; the phone's ask needs some reachable cell at or above the second. At
+   * 30 ticks the false-start wall (0.2777) sat BELOW the max-effort wall
+   * (0.3764) — no margin threads both needles, because anything hard enough to
+   * challenge a maxing-out player was already past where a false start ends
+   * the rep outright.
+   *
+   * Twelve ticks is at or under `PRESS_LAUNCH_MS`'s own 18-tick beat, so a
+   * maximally false-started rep still reaches the chest with SOME grind boost
+   * already live rather than none. That moves the false-start wall to 0.3990 —
+   * PAST the max-effort wall — so a margin exists (RPE 9's) that both walls can
+   * agree on. `lift.test.ts`'s `MAX_EFFORT_WALLS` drives both numbers over the
+   * shipped tree rather than quoting them, so a future retune that moves either
+   * wall reddens there instead of leaving this paragraph quietly wrong.
+   *
+   * `GRIND_BOOST_FORCE_MAX` is refused as the lever here, per the ruling: it
+   * sets the ceiling on what tapping is worth at all, and moving it would blur
+   * which lever did the work.
    */
-  GRIND_FALSE_START: { PER_EARLY_TAP_TICKS: 4, MAX_LOCKOUT_TICKS: 30 },
+  GRIND_FALSE_START: { PER_EARLY_TAP_TICKS: 4, MAX_LOCKOUT_TICKS: 12 },
 
   /**
    * Thresholds a 0..1 QUALITY — not an offset — is turned into a `TimingGrade`
@@ -3238,9 +3272,9 @@ export const LIFT_COPY = Object.freeze({
      * before the command.
      *
      * THE ONE PROMPT IN THIS TABLE THAT EXISTS TO TEACH A RULE AT THE MOMENT
-     * IT IS BROKEN. A false start holds the grind back for up to half a second
-     * after the call, and a player who never learns why their presses start
-     * flat will read that cost as the game being arbitrary. `SUBTITLE.bench`
+     * IT IS BROKEN. A false start holds the grind back for up to a fifth of a
+     * second after the call, and a player who never learns why their presses
+     * start flat will read that cost as the game being arbitrary. `SUBTITLE.bench`
      * states the rule up front; this says it happened.
      */
     HOLE_FALSE_START: 'TOO SOON — WAIT FOR THE CALL',
@@ -3324,12 +3358,12 @@ export const LIFT_COPY = Object.freeze({
     squat: 'Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.',
     // BENCH'S LINE IS THE ONLY ONE CARRYING A PENALTY RULE, and it carries it
     // because the penalty is otherwise invisible: a grind that starts late
-    // because of taps thrown thirty ticks earlier is not something a player
-    // can see happening. The last sentence is the false-start rule verbatim,
-    // and `lift.test.ts` drives the sim against each of its clauses separately
-    // — early taps add nothing to the charge, each one delays the tick taps
-    // start counting, and the delay never exceeds the half second the sentence
-    // names in words.
+    // because of taps thrown before the call is not something a player can see
+    // happening. The last sentence is the false-start rule verbatim, and
+    // `lift.test.ts` drives the sim against each of its clauses separately —
+    // early taps add nothing to the charge, each one delays the tick taps
+    // start counting, and the delay never exceeds the fifth of a second the
+    // sentence names in words.
     //
     // REWRITTEN WHOLE FOR THE 2026-08-25 REPLAY STEER, not patched. Every
     // clause of the previous line described a mechanic that no longer exists:
@@ -3339,7 +3373,16 @@ export const LIFT_COPY = Object.freeze({
     // three" was arithmetic over a tap count that is gone. A sentence half
     // true of the code is this repository's oldest defect class, so the rule
     // was re-derived from the new mechanic rather than reworded to fit it.
-    bench: 'Hold all the way down and the bar reaches your chest under control; let go and it drops on you. Wait for the call, then tap fast and keep tapping — your tap rate is your press for as long as the bar is moving. Taps before the call count for nothing, and each one holds your press back, up to half a second.',
+    //
+    // "UP TO HALF A SECOND" BECAME "UP TO A FIFTH OF A SECOND" ON THE
+    // 2026-08-27 RULING, WHEN `MAX_LOCKOUT_TICKS` DROPPED 30 -> 12. See that
+    // constant's own header in `LIFT_TUNING.GRIND_FALSE_START` for why: the
+    // longer cap put the false-start wall below the max-effort wall, so no
+    // margin could both honour this sentence and lose a player who was
+    // actually trying. The shorter cap is a truer number, not a softer rule —
+    // the rule itself (taps before the call count for nothing, never ends the
+    // rep) is unchanged.
+    bench: 'Hold all the way down and the bar reaches your chest under control; let go and it drops on you. Wait for the call, then tap fast and keep tapping — your tap rate is your press for as long as the bar is moving. Taps before the call count for nothing, and each one holds your press back, up to a fifth of a second.',
     // DEADLIFT'S LINE HAS TO TEACH THE HOLD, because the hold is the only
     // moment in this game where the correct input is no input, and a player
     // who has learned squat and bench has learned the opposite twice. It names

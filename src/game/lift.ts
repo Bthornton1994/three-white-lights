@@ -1107,12 +1107,14 @@ export function grindForce(charge: number): number {
  *
  * THE WHOLE FALSE-START RULE, AND IT IS ONE LINE BECAUSE THE SENTENCE THE
  * PLAYER IS GIVEN IS ONE LINE. `LIFT_COPY.SUBTITLE.bench` says "Taps before
- * the call count for nothing, and each one holds your press back, up to half a
- * second", and this is that: `PER_EARLY_TAP_TICKS` per early tap, capped at
- * `MAX_LOCKOUT_TICKS`, which is 30 ticks and therefore exactly half a second
- * at 60Hz. `lift.test.ts` drives the sim against each clause of the sentence
- * separately rather than against this function, so the copy and the mechanic
- * cannot drift apart quietly.
+ * the call count for nothing, and each one holds your press back, up to a
+ * fifth of a second", and this is that: `PER_EARLY_TAP_TICKS` per early tap,
+ * capped at `MAX_LOCKOUT_TICKS`, which is 12 ticks and therefore exactly a
+ * fifth of a second at 60Hz — dropped from 30 on the 2026-08-27 ruling; see
+ * `LIFT_TUNING.GRIND_FALSE_START`'s header for why the cap itself had to
+ * shrink rather than merely be reworded. `lift.test.ts` drives the sim
+ * against each clause of the sentence separately rather than against this
+ * function, so the copy and the mechanic cannot drift apart quietly.
  *
  * ---------------------------------------------------------------------------
  * WHY THE RULE HAD TO BE REWRITTEN RATHER THAN REWORDED
