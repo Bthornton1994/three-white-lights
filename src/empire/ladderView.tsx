@@ -416,6 +416,19 @@ export type GymViewRefusal =
  *
  * `'OPEN UP FOR THE DAY' IS GONE, BY HUMAN RULING, AND `advance-clock` IS
  * NOW THE ONLY WAY IN.` The mint that used to live here fed a flat
+ *
+ * A CENSUS DISPOSITION, ROUTED RATHER THAN SETTLED BY REWORDING. The
+ * sentence above is a claim about what this module's action union does —
+ * `advance-clock` is the sole reducer arm that can move the clock, `'open-up'`
+ * having been deleted outright rather than gutted. It is checkable: no other
+ * arm in `GymViewAction` reaches `advanceGymClock`, and the file's own header
+ * a few lines above already carries the mutation-tested claim that no arm
+ * here is reachable from elapsed time. By CLAUDE.md's rule that a claim with
+ * a check behind it takes the census bump and a method note declines it,
+ * the honest disposition is `GUARANTEE_COVERAGE.TREE_WIDE` +1.
+ * `src/game/guaranteeTags.test.ts` is another session's file and barred to
+ * this one, so the bump is NOT taken here — routed instead, per the standing
+ * precedent for a builder barred from a file it believes owes a crossing.
  * `OFFLINE_EARNINGS_CAP_HOURS`-hour block into `advanceGymClock` on every
  * press, regardless of how much real time had actually passed — a
  * "check-in" a player could mash for free money, which a human playing the

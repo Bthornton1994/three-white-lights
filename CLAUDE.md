@@ -915,6 +915,43 @@ is about. Recorded rather than avoided — the report is worth more than the
 freshness, and a bundle whose whole-suite section is unobtainable was not going
 to be clean anyway.
 
+### CROSSING 8, APPROVED DIRECTLY BY THE HUMAN, TAKEN: `src/licensing/realIp.ts`, FOR THE REAL DESIGN INSPIRATION
+
+Written here after the edit rather than before, because the human's own ruling
+message carried the approval in the same breath as the instruction: *"If the
+real game's name goes in GDD/CLAUDE.md, add a REVIEWABLE_CITATIONS row.
+Player-facing copy never says it."* That is the Crossing 5 shape again — a
+real name a design document needs to cite structurally, approved directly
+rather than requested and granted in two steps.
+
+**GDD §5.7A names the real, published mobile game Gym Empire takes direct
+design inspiration from** — a wall-clock idle loop with an offline cap, no
+IAP bypass of that cap, no gacha, no forced ads — structural citation only, in
+the same register `src/career/flight.ts`'s rulebook citation uses, one
+occurrence, never player-facing. Verified independently before pinning:
+`grep -c` on `docs/GDD.md` returns exactly 1, and `grep -rn` across every
+`src/empire/*.tsx`/`*.ts` drawn string returns zero.
+
+**The row alone would have been vacuous, and doing only what was literally
+asked would have shipped a dead check.** `REVIEWABLE_CITATIONS` is not itself
+scanned — `scanSourceText` only ever looks for names already in
+`REAL_IP_WATCHLIST`, and `findWatchedNames` is what actually walks the tree.
+A `REVIEWABLE_CITATIONS` row for a name absent from the watchlist is
+never consulted by anything: exactly the self-referential-assertion shape
+this file's own vacuity section warns about, one file over. Confirmed by
+precedent rather than by argument: `'IPF'`, the citation this exact document
+already points to as the worked example, sits in `REAL_IP_WATCHLIST` at
+`kind: 'federation'` as well as in `REVIEWABLE_CITATIONS` — every existing
+citation row has a matching watchlist entry.
+
+So the edit is two additions, not one: a `REAL_IP_WATCHLIST` entry
+(`kind: 'game-industry'`, the same category `SNES`/`Genesis`/`Game Boy`/`Ryu`
+already sit under, for the same reason — a real product name a design
+document is allowed to cite once it is tracked) and the `REVIEWABLE_CITATIONS`
+row the ruling asked for by name. `realIp.test.ts` — 48 tests — passed
+immediately against both, meaning the pinned count matched an independent
+`grep` rather than the other way around.
+
 ### CROSSING 7, TAKEN AND RECORDED AFTER THE FACT: `tools/verify-floor-reachability.mjs`
 
 Recorded here because this section's rule is that a crossing is written down
@@ -1192,6 +1229,52 @@ third claim. This has now caught two agents in this session, mine included.
 **A paragraph discussing a capitalised guarantee must quote the REWORDED form,
 or describe the sentence instead of reproducing it.** The census cannot tell a
 claim from a quotation of one.
+
+### THE UNDERCOUNT CONTINUES: TWO MORE FROM THE "KILL THE MINT" ROUND, BOTH DISPOSITIONED AND NEITHER TAKEN
+
+The pin at time of writing is 236 (crossing 12 above took it 234 → 235; a
+later P4c round took it 235 → 236, recorded in its own place rather than
+here). The S4d round — killing the tap-to-earn mint and replacing it with a
+real wall-clock, `docs/GDD.md`'s commit `7efb9e5` — moved the live count to
+239, three new triggering paragraphs. Verified by a standalone reimplementation
+of the census's own scanning functions (paragraph splitter, caps-run regex,
+trigger list), checked against both the pre-round and post-round trees before
+being trusted: it reproduces 236 and 239 exactly, then names the three new
+sites by file and line, distinguishing them from eight other hits that only
+*moved* line number (pure drift from the round's edits, not new triggers).
+
+**One of the three was a method note and was reworded — `management.test.ts`,
+"THE ENGAGEMENT DOMAIN IS WHERE THE OTHER RESIDUAL ALWAYS LIVED."** It
+describes where a residual has sat across every round this sweep has measured
+— a historical/comparative observation about measurement, not a claim about
+what the code currently guarantees with a check behind it. Reworded to lower
+case, disclosed at the site. Live count: 238.
+
+**The other two are genuine claims and are routed, not reworded — the
+undercount is now SEVEN.**
+
+- `ladderView.tsx`: *"`'OPEN UP FOR THE DAY'` is gone, by human ruling, and
+  `advance-clock` is now the only way in."* Checkable — `advance-clock` is
+  the sole reducer arm reaching `advanceGymClock` after `'open-up'`'s
+  deletion — and the paragraph immediately above it already carries a
+  mutation-tested claim on the same subject. Disclosed at the site; the bump
+  is owed.
+- `AppShell.tsx`: *"Why this component is now always mounted, rather than
+  mounted only while `route.surface === 'gym'`."* Checkable — `GymHost` sits
+  in unconditional JSX, confirmed independently by a fresh critic reading the
+  same source — but no dedicated mutation-tested witness exists for this
+  specific shape (plant a conditional unmount, name the assertion that
+  reddens). Disclosed at the site as an unverified structural claim rather
+  than a settled guarantee, and as a task for whichever round builds the
+  witness.
+
+`src/game/guaranteeTags.test.ts` is barred to this session. Live count 238
+against a pin of 236 means **that test is red on origin**, deliberately: the
+alternative was either rewording two true claims to dodge the census (this
+file's own named evasion) or silently re-pinning a file this session may not
+edit. Whoever owns that file should take the two-row bump, or say why either
+paragraph is a method note rather than a claim — the reasoning above is
+written so that judgement can be made without re-deriving it.
 
 ### CROSSING 6, APPROVED BY THE HUMAN DIRECTLY: WIRING GYM EMPIRE INTO
 ### `src/shell/**`, AND WHY THE THING BEING WIRED IS NOT `GymView`

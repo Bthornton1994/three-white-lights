@@ -4967,7 +4967,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 385 -> 386: "kill the mint" adds one numeric leaf,
     // WALL_CLOCK_TICK_INTERVAL_SECONDS. Read from this assertion's own
     // failure value.
-    ).toBe(386);
+    // 386 -> 387: the same round's harness fix adds one more,
+    // MILLISECONDS_PER_SECOND. Read from this assertion's own failure value.
+    ).toBe(387);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

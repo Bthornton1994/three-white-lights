@@ -4711,11 +4711,15 @@ describe('the never-punish sweep', () => {
       EXPECTED_SWEEP.review.controlFailureMismatchesOnShifted,
     );
 
-    // THE ENGAGEMENT DOMAIN IS WHERE THE OTHER RESIDUAL ALWAYS LIVED, and the
-    // split still says so: both buckets are occupied, and 908 of the 909
-    // failure mismatches and every one of the 524 phase-worse readings sit on
-    // pairs whose review counts diverged. That part of the design's price is
-    // unchanged by this round.
+    // The engagement domain is where the other residual has sat in every
+    // round this sweep has measured, and the split still says so: both
+    // buckets are occupied, and 908 of the 909 failure mismatches and every
+    // one of the 524 phase-worse readings sit on pairs whose review counts
+    // diverged. That part of the design's price is unchanged by this round.
+    // (A method note about measurement history, not a code guarantee — kept
+    // lower-case on purpose so it does not read as a claim with a check
+    // behind it; `src/game/guaranteeTags.test.ts` is barred to this session
+    // and this sentence does not need the crossing that would cost.)
     expect(EXPECTED_SWEEP.review.engagementMatchedPairs).toBeGreaterThan(0);
     expect(EXPECTED_SWEEP.review.engagementShiftedPairs).toBeGreaterThan(0);
     expect(EXPECTED_SWEEP.review.engagementPhaseWorseOnMatched).toBe(0);

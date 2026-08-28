@@ -1688,7 +1688,7 @@ const SURFACE_CENSUS = Object.freeze({
 // arrive at every exported position the walk reaches through `GymViewState`,
 // `GymViewProps` and `gymViewReduce` — plus `GymScreen`'s own props. Read from
 // this pin's own failure value.
-LITERAL_POSITIONS: 3792, // 3791 -> 3792: "kill the mint", re-measured
+LITERAL_POSITIONS: 3793, // 3791 -> 3792: "kill the mint", re-measured; 3792 -> 3793: its harness fix, re-measured
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -3877,6 +3877,10 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
     '"KILL THE MINT" ROUND. A real-time polling interval, consumed only OUTSIDE this directory — by `src/shell/AppShell.tsx`\'s `GymHost`, the Crossing 6 seam — so no shipped module under `src/empire/` itself ever reads or compares against it, and nothing in this directory can branch on it. Deliberately NOT worded "NO CONSUMER" like the two rows above: a consumer genuinely exists, it is simply outside this scan\'s reach, which is the same declared blind spot `empireTuning.test.ts`\'s own `AWAITING_CONSUMER` list states in words about the identical constant. Claiming "no consumer" here would be false, not merely unproven.',
   ),
   ...exemptTable(
+    'MILLISECONDS_PER_SECOND',
+    'THE SAME ROUND\'S HARNESS FIX, THE SAME SHAPE AS THE ROW ABOVE. A units-conversion constant consumed only OUTSIDE this directory, by the identical `AppShell.tsx` `GymHost` seam that reads `WALL_CLOCK_TICK_INTERVAL_SECONDS` — so this row is exempt for the same declared-blind-spot reason, not "NO CONSUMER". `empireTuning.test.ts`\'s `AWAITING_CONSUMER` list states the identical fact in words about this identical constant.',
+  ),
+  ...exemptTable(
     'OFFLINE_EARNINGS_FRACTION',
     'A MULTIPLIER. The share of the online rate that accrues while away, multiplied into an amount. Dimensionless, and between 0 and 1 by design.',
   ),
@@ -5040,6 +5044,11 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   'COUNT/LADDER_DEV_TIME_STEPS_SECONDS[2]=259200',
   'COUNT/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
   'COUNT/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
+  // "kill the mint"'s harness fix — MILLISECONDS_PER_SECOND is 1000, above the
+  // count/day/roster-shape ceilings its own domains carry (not the day/second
+  // domain itself, since it is a units-conversion constant rather than a
+  // duration).
+  'COUNT/MILLISECONDS_PER_SECOND=1000',
   'DAY/AMBIENT_MEMBER_BOB_HALF_CYCLE_MS=900',
   'DAY/FLOOR_OVERLAP_REFUSAL_FLASH_MS=1200',
   'DAY/FLOOR_SIM_MAX_RUN_TICKS=20000',
@@ -5049,6 +5058,7 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   'DAY/LADDER_DEV_TIME_STEPS_SECONDS[2]=259200',
   'DAY/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
   'DAY/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
+  'DAY/MILLISECONDS_PER_SECOND=1000',
   // GDD §5.13 presentation Phase 2: two of AMBIENT_MEMBER_COUNT_BY_RUNG's four
   // values (18 and 40, the strip-mall-unit and warehouse counts) sit above
   // ROSTER_SHAPE's ceiling (ROSTER_SLOTS_MAX + 1 = 17); the garage (3) and
@@ -5204,6 +5214,7 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   'ROSTER_SHAPE/MEMBER_DUES_GYM_BUCKS_PER_DAY.casual=60',
   'ROSTER_SHAPE/MEMBER_DUES_GYM_BUCKS_PER_DAY.powerlifter=130',
   'ROSTER_SHAPE/MEMBER_DUES_GYM_BUCKS_PER_DAY.serious-lifter=220',
+  'ROSTER_SHAPE/MILLISECONDS_PER_SECOND=1000',
   'ROSTER_SHAPE/NPC_GYM_BUCKS_PER_HOUR_BASE=40',
   // §5.11 stage 4's repair rate, 400, above ROSTER_SHAPE's ceiling. The three
   // manager hire prices are FILED rather than exempt, so they are dropped by
@@ -5288,7 +5299,8 @@ const DOMAIN_CENSUS = Object.freeze({
   // rate, the repair rate, and the two income multipliers. Measured.
   // 330 -> 331: "kill the mint" adds one exempt leaf,
   // WALL_CLOCK_TICK_INTERVAL_SECONDS.
-  EXEMPT: 331,
+  // 331 -> 332: the same round's harness fix adds one more, MILLISECONDS_PER_SECOND.
+  EXEMPT: 332,
   // 154 -> 196: the same 42 new leaves. 251 -> 264: the same 13 new leaves.
   // 264 -> 266: the same 2 new leaves.
   // 266 -> 273: the same 7 new leaves.
@@ -5309,7 +5321,8 @@ const DOMAIN_CENSUS = Object.freeze({
   // 411 -> 430: stage 4's nineteen numeric leaves (12 filed + 7 exempt).
   // Read from this pin's own failure value.
   // 430 -> 432: the two ordinal review knobs, one numeric leaf each.
-  TUNING_NUMERIC_LEAVES: 433, // 432 -> 433: "kill the mint" adds WALL_CLOCK_TICK_INTERVAL_SECONDS
+  // 433 -> 434: the same round's harness fix adds MILLISECONDS_PER_SECOND.
+  TUNING_NUMERIC_LEAVES: 434, // 432 -> 433: "kill the mint" adds WALL_CLOCK_TICK_INTERVAL_SECONDS
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -5334,7 +5347,8 @@ const DOMAIN_CENSUS = Object.freeze({
   // 413 -> 432: the same nineteen. Measured off this assertion.
   // 432 -> 434: the two ordinal review knobs.
   // 434 -> 435: "kill the mint"'s one new exempt leaf.
-  BRANCH_POINTS: 435,
+  // 435 -> 436: the same round's harness fix, MILLISECONDS_PER_SECOND.
+  BRANCH_POINTS: 436,
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
@@ -5362,7 +5376,10 @@ const DOMAIN_CENSUS = Object.freeze({
 // that carries the count unit. Read from this pin's own failure value.
 // 2264 -> 2270: "kill the mint"'s one new exempt leaf, straddled in every one
 // of the six domains. Read from this pin's own failure value.
-CONTAINMENT_CHECKS: 2270,
+// 2270 -> 2273: the same round's harness fix adds one more exempt leaf,
+// straddled in three of the six domains rather than all six — read from
+// this pin's own failure value, not assumed to match the row above.
+CONTAINMENT_CHECKS: 2273,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -5380,8 +5397,10 @@ CONTAINMENT_CHECKS: 2270,
     // 64 -> 65 (DAY and COUNT both): §5.11 stage 4's
     // REPAIR_COST_GYM_BUCKS_PER_CONDITION_POINT=400 sits above both ceilings.
     // The other eighteen new leaves do not. Measured off this assertion.
-    DAY: 65,
-    COUNT: 65,
+    // 65 -> 66 (DAY and COUNT both): the same round's harness fix,
+    // MILLISECONDS_PER_SECOND.
+    DAY: 66,
+    COUNT: 66,
     LEVEL: 0,
     // 84 -> 89: the five MEMBER_DUES_GYM_BUCKS_PER_DAY rates.
     // 84 -> 88: four of GDD §5.13 presentation Phase 1's 42 new exempt
@@ -5412,7 +5431,8 @@ CONTAINMENT_CHECKS: 2270,
     // Measured by running the assertion and reading its failure value.
     // 206 -> 210: the repair rate above plus the three manager hire prices,
     // all four above ROSTER_SHAPE's ceiling. Measured off this assertion.
-    ROSTER_SHAPE: 210,
+    // 210 -> 211: the same round's harness fix, MILLISECONDS_PER_SECOND.
+    ROSTER_SHAPE: 211,
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -8975,7 +8995,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 334 -> 340: §5.11 stage 4's four newly dropped ROSTER_SHAPE points and
   // the one newly dropped DAY/COUNT point (counted once per domain that
   // drops it). Measured off this assertion.
-  POINTS: 340,
+  // 340 -> 343: the same round's harness fix, MILLISECONDS_PER_SECOND,
+  // dropped in three domains. Measured off this assertion.
+  POINTS: 343,
   /** Of those, how many at least one subject was driven at. */
   // Tracks POINTS 1:1 again (218), confirmed by running the assertion below
   // rather than assumed. PLAYTEST 4: tracks POINTS 1:1 again (222), confirmed
@@ -8987,7 +9009,8 @@ const OVERFLOW_CENSUS = Object.freeze({
   // Phase 4: 236 -> 335, the palette components above the ceilings.
   // 334 -> 340: the same five newly dropped points as POINTS above.
   // 334 -> 340: stage 4's newly dropped points, with POINTS above. Measured.
-  POINTS_DRIVEN: 340,
+  // 340 -> 343: the same round's harness fix, with POINTS above. Measured.
+  POINTS_DRIVEN: 343,
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
@@ -9016,7 +9039,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // Phase 4: read from this pin's own failure value.
   // 5885 -> 6003: stage 4's newly dropped points, driven one at a time by the
   // overflow pass. Measured off this assertion.
-  PAIRS_DRIVEN: 6003,
+  // 6003 -> 6052: the same round's harness fix, driven the same way.
+  // Measured off this assertion.
+  PAIRS_DRIVEN: 6052,
   // GDD §5.13 presentation Phase 3: PAIRS_SKIPPED re-measured (495 -> 517),
   // a real failure value this round's own run produced.
   PAIRS_SKIPPED: 517,
@@ -9085,17 +9110,23 @@ const OVERFLOW_CENSUS = Object.freeze({
   // Phase 4: the ceilings drop 99 more points (the palette components), each
   // driven here. Read from this pin's own failure value.
   // Stage 4: read from this pin's own failure value.
-  ROWS: 6848,
+  // "Kill the mint" round's harness fix, MILLISECONDS_PER_SECOND: read from
+  // this pin's own failure value.
+  ROWS: 6910,
   // GDD §5.13 presentation Phase 3: re-measured (942486 -> 947983), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (947983 -> 960248).
   // Stage 4: read from this pin's own failure value.
-  NODES: 1303664,
+  // "Kill the mint" round's harness fix: read from this pin's own failure
+  // value.
+  NODES: 1341578,
   // GDD §5.13 presentation Phase 3: re-measured (6413124 -> 6446099), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (6446099 -> 6540148).
   // Stage 4: read from this pin's own failure value.
-  STRINGS: 9057348,
+  // "Kill the mint" round's harness fix: read from this pin's own failure
+  // value.
+  STRINGS: 9312304,
   // GDD §5.13 presentation Phase 3: re-measured (4366 -> 4378), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (4378 -> 4381).
@@ -9162,7 +9193,8 @@ const OVERFLOW_CENSUS = Object.freeze({
   // pulse half-cycle) at the same per-point closure count.
   // 1272 -> 1304: stage 4's five newly dropped points, at the same per-point
   // closure count. Measured off this assertion.
-  CLOSURES_DECLINED: 1304,
+  // 1304 -> 1312: the same round's harness fix. Measured off this assertion.
+  CLOSURES_DECLINED: 1312,
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -9207,7 +9239,9 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // 206 -> 210: §5.11 stage 4's four newly dropped ROSTER_SHAPE points (the
   // repair rate and the three hire prices), refused the same way. Measured
   // off this assertion.
-  ['beginRecruitment#refused', 210],
+  // 210 -> 211: the same round's harness fix, MILLISECONDS_PER_SECOND.
+  // Measured off this assertion.
+  ['beginRecruitment#refused', 211],
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
@@ -9220,8 +9254,10 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // §5.11 stage 4: 384 -> 390, 128 -> 130, the one new dropped DAY/COUNT
   // point (REPAIR_COST_GYM_BUCKS_PER_CONDITION_POINT=400), measured by
   // running this exact assertion.
-  ['recordFriendVisit#refused', 390],
-  ['recordFriendVisit#visited', 130],
+  // 390 -> 396, 130 -> 132: the same round's harness fix, measured by
+  // running this exact assertion.
+  ['recordFriendVisit#refused', 396],
+  ['recordFriendVisit#visited', 132],
 ]);
 
 // ---------------------------------------------------------------------------
@@ -9664,7 +9700,10 @@ const DRIVE_CENSUS = Object.freeze({
   // 29_625_423 -> 29_625_358: "kill the mint" — the removed `'open-up'`
   // control's label and note are gone from every driven `GymScreen` render.
   // Read from this pin's own failure value.
-  STRINGS: 29_625_358,
+  // 29_625_358 -> 29_625_361: the same round's harness fix and census
+  // disclosures add source text under this walk's reach. Read from this
+  // pin's own failure value.
+  STRINGS: 29_625_361,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -9719,7 +9758,9 @@ const DRIVE_CENSUS = Object.freeze({
   // own failure value.
   // 3728 -> 3708: "kill the mint" removes the check-in control and its note
   // from the driven screen. Read from this pin's own failure value.
-  DISTINCT_STRINGS: 3708,
+  // 3708 -> 3709: the same round's harness fix, re-measured. Read from this
+  // pin's own failure value, not attributed by argument.
+  DISTINCT_STRINGS: 3709,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -14306,9 +14347,9 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // freshly assembled object. All three then shifted +18 with the ten rows in
   // `SHIPPED_SCREEN_DISAGREEMENTS` below, for the same reason and re-read the
   // same way.
-  'ladderView.tsx:518 returned=unfollowable:state',
-  'ladderView.tsx:546 returned=unfollowable:state',
-  'ladderView.tsx:601 returned=unfollowable:state',
+  'ladderView.tsx:531 returned=unfollowable:state',
+  'ladderView.tsx:559 returned=unfollowable:state',
+  'ladderView.tsx:614 returned=unfollowable:state',
   // §5.11 stage 4: `withWear`'s condition map is built in a loop and returned
   // through a fresh object the screen cannot follow into, the same shape as
   // every other row here.
@@ -14425,16 +14466,16 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   // rather than ten sequential replaces — a sequential pass had already
   // produced a collision in this list when a new line number equalled an old
   // one still waiting to be rewritten.
-  'ladderView.tsx:518 readonly GymWeekReport[] asked=true walked=false',
-  'ladderView.tsx:546 FloorState asked=true walked=false',
-  'ladderView.tsx:601 FloorState asked=true walked=false',
-  'ladderView.tsx:613 FloorState asked=true walked=false',
-  'ladderView.tsx:646 ManagedGym asked=true walked=false',
+  'ladderView.tsx:531 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:559 FloorState asked=true walked=false',
+  'ladderView.tsx:614 FloorState asked=true walked=false',
+  'ladderView.tsx:626 FloorState asked=true walked=false',
   'ladderView.tsx:659 ManagedGym asked=true walked=false',
-  'ladderView.tsx:673 ManagedGym asked=true walked=false',
-  'ladderView.tsx:683 ManagedGym asked=true walked=false',
-  'ladderView.tsx:691 ManagedGym asked=true walked=false',
-  'ladderView.tsx:699 ManagedGym asked=true walked=false',
+  'ladderView.tsx:672 ManagedGym asked=true walked=false',
+  'ladderView.tsx:686 ManagedGym asked=true walked=false',
+  'ladderView.tsx:696 ManagedGym asked=true walked=false',
+  'ladderView.tsx:704 ManagedGym asked=true walked=false',
+  'ladderView.tsx:712 ManagedGym asked=true walked=false',
   // §5.11 stage 4's fifteen rows, every one the same shape as the rows above:
   // the screen asks about a named state type and the control declines to walk
   // into it, so the census over-approximates rather than going quiet.
@@ -14865,7 +14906,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 61_584 -> 61_533: "kill the mint" removes `playerCheckInGapSeconds` and
   // the `'open-up'` arm outright — source shrinks rather than grows this
   // time. Read from this pin's own failure value.
-  NODES_EXAMINED: 61_533,
+  // 61_533 -> 61_539: the same round's harness fix and census disclosures
+  // grow the source again. Read from this pin's own failure value.
+  NODES_EXAMINED: 61_539,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

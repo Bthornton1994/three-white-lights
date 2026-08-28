@@ -406,6 +406,11 @@ export const REAL_IP_WATCHLIST: readonly WatchEntry[] = Object.freeze([
   { name: 'Genesis', kind: 'game-industry', note: 'Console hardware mark, and an ordinary English word. GDD §7.1 names it' },
   { name: 'Game Boy', kind: 'game-industry', note: 'Handheld hardware mark, named in GDD §7.1 as a style to avoid' },
   { name: 'Ryu', kind: 'game-industry', note: 'Fighting-game character, cited as a sprite-height comparator' },
+  {
+    name: 'Idle Fitness Gym Tycoon',
+    kind: 'game-industry',
+    note: "A real, published mobile game. GDD §5.7A names it as the loop's structural design inspiration; never player-facing.",
+  },
 
   // --- other sports leagues, clubs and their athletes ------------------------
   // Not powerlifting, and that is exactly how they got in: they arrived through
@@ -1342,10 +1347,16 @@ export function formatCitations(rows: readonly CitationRow[]): string {
 export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'BUILD_PROMPT_CLAUDE.md', name: 'Genesis', where: 'prose', count: 1 },
   { file: 'BUILD_PROMPT_CLAUDE.md', name: 'SNES', where: 'prose', count: 1 },
+  { file: 'CLAUDE.md', name: 'Game Boy', where: 'prose', count: 1 },
+  { file: 'CLAUDE.md', name: 'Genesis', where: 'prose', count: 1 },
+  { file: 'CLAUDE.md', name: 'IPF', where: 'prose', count: 1 },
+  { file: 'CLAUDE.md', name: 'Ryu', where: 'prose', count: 1 },
+  { file: 'CLAUDE.md', name: 'SNES', where: 'prose', count: 1 },
   { file: 'CLAUDE.md', name: 'Supabase', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'Duolingo', where: 'prose', count: 5 },
   { file: 'docs/GDD.md', name: 'Game Boy', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'Genesis', where: 'prose', count: 2 },
+  { file: 'docs/GDD.md', name: 'Idle Fitness Gym Tycoon', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'NPL', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'OpenPowerlifting', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'SNES', where: 'prose', count: 2 },

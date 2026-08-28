@@ -246,6 +246,14 @@ export const EMPIRE_TUNING = Object.freeze({
   TICK_SECONDS: 1,
 
   /**
+   * `Date.now()` is milliseconds; every real-time-derived gap in
+   * `src/shell/AppShell.tsx`'s `GymHost` divides or multiplies by this to
+   * move between milliseconds and seconds. Structural, not a knob — this is
+   * a units conversion, not a game-feel value, and it has one correct value.
+   */
+  MILLISECONDS_PER_SECOND: 1000,
+
+  /**
    * The check-in the loop is designed around, in seconds. GDD §5.1 states the
    * range in prose, so these two are that sentence as a value.
    *
@@ -2316,6 +2324,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   PRECISION_DECIMALS: 'structural',
 
   TICK_SECONDS: 'structural',
+  MILLISECONDS_PER_SECOND: 'structural',
   CHECK_IN_TARGET_SECONDS_MIN: 'budget',
   CHECK_IN_TARGET_SECONDS_MAX: 'budget',
   OFFLINE_EARNINGS_NO_PUNISH_HOURS: 'budget',

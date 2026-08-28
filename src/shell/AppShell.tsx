@@ -176,7 +176,21 @@ function ShellNav({
  * reads `src/empire/`.
  *
  * WHY THIS COMPONENT IS NOW ALWAYS MOUNTED, RATHER THAN MOUNTED ONLY WHILE
- * `route.surface === 'gym'`. Before this round, leaving the gym surface
+ * `route.surface === 'gym'`.
+ *
+ * A CENSUS DISPOSITION. The claim above is checkable — `GymHost` sits in an
+ * unconditional JSX position below, not inside the surface-selection
+ * ternary, so no branch of that ternary can un-render it — but the tree has
+ * no dedicated mutation-tested test for exactly this shape (planting a
+ * conditional unmount and watching a named assertion redden). By
+ * CLAUDE.md's rule, an unverified structural claim without a named catcher
+ * is closer to a pointer than a guarantee, and the honest move is neither
+ * to weaken the sentence to dodge the census nor to claim a witness that
+ * was not built this round. `src/game/guaranteeTags.test.ts` is barred to
+ * this session, so `GUARANTEE_COVERAGE.TREE_WIDE`'s bump is routed rather
+ * than taken. A future round should either build the witness (plant the
+ * unmount, name the assertion that reddens) or downgrade this paragraph to
+ * a plain description once it is clear no test covers it. Before this round, leaving the gym surface
  * unmounted `GymHost` and destroyed its `useReducer` state outright — so
  * "the gym runs while open and away" was impossible to build honestly: there
  * was no state left to catch up when the player came back. `AppShell`
@@ -239,7 +253,9 @@ function GymHost({ visible }: { readonly visible: boolean }): React.ReactElement
 
   const catchUpOnRealTime = useCallback((): void => {
     const nowMs = Date.now();
-    const gapSeconds = Math.floor((nowMs - lastAnchorMsRef.current) / 1000);
+    const gapSeconds = Math.floor(
+      (nowMs - lastAnchorMsRef.current) / EMPIRE_TUNING.MILLISECONDS_PER_SECOND,
+    );
     // Collapse a near-zero gap into a no-op: no reducer churn, no zero-value
     // report noise, matching the "collapse t=0 no-ops" ruling this build
     // already follows elsewhere. The anchor is NOT moved on this path, so a
@@ -258,7 +274,7 @@ function GymHost({ visible }: { readonly visible: boolean }): React.ReactElement
     catchUpOnRealTime();
     const intervalId = setInterval(
       catchUpOnRealTime,
-      EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS * 1000,
+      EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS * EMPIRE_TUNING.MILLISECONDS_PER_SECOND,
     );
     return () => clearInterval(intervalId);
   }, [visible, catchUpOnRealTime]);

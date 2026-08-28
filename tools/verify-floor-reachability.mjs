@@ -385,6 +385,77 @@ const WALL_CLOCK_READ_SETTLE_MS = 300;
 const WALL_CLOCK_NAV_SETTLE_MS = PILL_FADE_BUDGET_MS + 300;
 const S4B_MAX_CLOCK_PRESSES = 12;
 const S4B_MAX_REVIEW_ROUNDS = 10;
+
+/**
+ * THE RACE THIS TOOL'S OWN "KILL THE MINT" ROUND INTRODUCED, AND WHY
+ * `S4B_PURSE_EPSILON` ALONE IS NO LONGER ENOUGH FOR 9e/9f.
+ *
+ * `GymHost` now ticks real income into the purse on a real interval while
+ * the gym surface is visible (`WALL_CLOCK_TICK_INTERVAL_SECONDS`, above) —
+ * the whole point of this round. 9e and 9f each read the purse, press a
+ * real control, and read the purse again, and until now compared the
+ * difference to a quoted price at `S4B_PURSE_EPSILON` tolerance alone. A
+ * tick landing in the real time between the two reads adds real income to
+ * that difference, and nothing bounded how much. Reproduced: a ~0.04 gym
+ * bucks mismatch was observed in 9e on a live run under this exact
+ * mechanism, diagnosed but not fixed at the time.
+ *
+ * The fix is not a wider guess — it is the actual maximum one tick can add,
+ * read from the same tuning values that produce it, at the rung sections 9
+ * and 10 never leave (`garage` — confirmed by this section's own history:
+ * "9c drives one dev step at the garage rung"). A charge within
+ * `[quoted - S4B_PURSE_EPSILON, quoted + S4B_PURSE_EPSILON +
+ * S4B_MAX_TICK_INCOME_GYM_BUCKS]` is accepted, and 9e/9f say EXPLICITLY
+ * whether the tight band or the widened one is what matched — a check that
+ * passes for two different reasons must say which one, or a genuine
+ * overcharge bug sitting inside the widened band would read identically to
+ * a clean match.
+ */
+const S4B_MAX_TICK_INCOME_GYM_BUCKS = (() => {
+  const sourcePath = join(
+    dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'src',
+    'empire',
+    'empireTuning.ts',
+  );
+  const source = readFileSync(sourcePath, 'utf8');
+  // `garage:` recurs three times in empireTuning.ts (income rate, floor
+  // dimensions, an unrelated slot count) — anchored to the income block by
+  // name rather than trusting document order to put the right one first.
+  const incomeBlock = /LADDER_INCOME_GYM_BUCKS_PER_HOUR:\s*Object\.freeze\(\{([^}]*)\}\)/.exec(
+    source,
+  );
+  const rate = incomeBlock === null ? null : /garage:\s*(\d+(?:\.\d+)?)/.exec(incomeBlock[1]);
+  const fraction = /OFFLINE_EARNINGS_FRACTION:\s*(\d+(?:\.\d+)?)/.exec(source);
+  const secondsPerHour = /SECONDS_PER_HOUR:\s*(\d+(?:\.\d+)?)/.exec(source);
+  if (rate === null || fraction === null || secondsPerHour === null) {
+    throw new Error(
+      'could not derive the maximum single-tick income from empireTuning.ts — the ' +
+        'rate, the offline fraction, or SECONDS_PER_HOUR has moved or been renamed; ' +
+        'refusing to run on a guess',
+    );
+  }
+  return (
+    (Number.parseFloat(rate[1]) *
+      Number.parseFloat(fraction[1]) *
+      WALL_CLOCK_TICK_INTERVAL_SECONDS) /
+    Number.parseFloat(secondsPerHour[1])
+  );
+})();
+
+/**
+ * A quoted-vs-charged purse comparison, tolerant of at most one real wall-
+ * clock tick's income landing between the two reads — see the header above
+ * this constant block. Returns which band matched, or null if neither did,
+ * so the caller can report the reason rather than a bare pass/fail.
+ */
+function purseMatchBand(chargedOrQuoted, quotedOrCharged) {
+  const delta = Math.abs(chargedOrQuoted - quotedOrCharged);
+  if (delta < S4B_PURSE_EPSILON) return 'exact';
+  if (delta < S4B_PURSE_EPSILON + S4B_MAX_TICK_INCOME_GYM_BUCKS) return 'tick-widened';
+  return null;
+}
 /**
  * 9c's OWN press budget, and it is NOT `S4B_MAX_CLOCK_PRESSES`.
  *
@@ -2287,9 +2358,10 @@ try {
         /condition ([\d.]+)/,
       );
       const charged = purseBeforeRepair === null || purseAfterRepair === null ? null : purseBeforeRepair - purseAfterRepair;
-      if (charged !== null && Math.abs(charged - reviewPrice) < S4B_PURSE_EPSILON && itemRowAfter === 1) {
+      const repairBand = charged === null ? null : purseMatchBand(charged, reviewPrice);
+      if (repairBand !== null && itemRowAfter === 1) {
         ok(
-          `S4b (9e): pressing repair charged exactly the price the screen had already quoted — purse ${purseBeforeRepair} -> ${purseAfterRepair} (${charged.toFixed(2)} against a quoted ${reviewPrice}), and ${reviewItem}'s own row now reads condition 1`,
+          `S4b (9e): pressing repair charged the price the screen had already quoted (${repairBand} match) — purse ${purseBeforeRepair} -> ${purseAfterRepair} (${charged.toFixed(2)} against a quoted ${reviewPrice}), and ${reviewItem}'s own row now reads condition 1`,
         );
       } else {
         fail(
@@ -2323,10 +2395,11 @@ try {
     /manager: novice — [\d.]+ gym bucks per banked hour, repairs on their own below condition [\d.]+/.test(managerAfter) &&
     hireQuote !== null &&
     hireCharged !== null &&
-    Math.abs(hireCharged - hireQuote) < S4B_PURSE_EPSILON
+    purseMatchBand(hireCharged, hireQuote) !== null
   ) {
+    const hireBand = purseMatchBand(hireCharged, hireQuote);
     ok(
-      `S4b (9f): hiring goes through the real control, at the price the tier row already quoted — "${managerBefore}" -> "${managerAfter}", purse charged ${hireCharged.toFixed(2)} against a quoted ${hireQuote}`,
+      `S4b (9f): hiring goes through the real control, at the price the tier row already quoted (${hireBand} match) — "${managerBefore}" -> "${managerAfter}", purse charged ${hireCharged.toFixed(2)} against a quoted ${hireQuote}`,
     );
   } else {
     fail(
