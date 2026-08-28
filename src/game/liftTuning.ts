@@ -2213,12 +2213,16 @@ export const LIFT_TUNING = Object.freeze({
    * (160 -> 180), `REACHABLE_RESCUE` (roughly a dozen of 40 cells move, in
    * both directions — some warm-side session cells get EASIER as the ceiling
    * absorbs more of the lever, some meet cells get HARDER as they are pushed
-   * onto the ceiling), the two `REACHABLE_LADDER` counts derived from it, both
-   * `WORKING_FLOOR` vectors (22 session + 18 meet entries), and
-   * `MAX_EFFORT_WALLS.CELLS_THE_CEILING_REDUCES` (more cells land in the
-   * "clipped but nonzero" band as `ONSET` widens). That is a real re-pinning
-   * surface, each entry needing independent re-measurement, in service of a
-   * change that does not itself close the round's gap.
+   * onto the ceiling), the two `REACHABLE_LADDER` counts derived from it, and
+   * both `WORKING_FLOOR` vectors (22 session + 18 meet entries). No named
+   * field currently censuses the "clipped but nonzero" population directly —
+   * only `FLOOR_EDGES.CELLS_ALREADY_PAST_THE_CEILING` exists, and that names
+   * the opposite group (cells the ceiling already zeroes out entirely, not
+   * ones it clips to a smaller nonzero addition). A round that moves `ONSET`
+   * for real would need to add that census rather than assume one exists.
+   * That is a real re-pinning surface, each entry needing independent
+   * re-measurement, in service of a change that does not itself close the
+   * round's gap.
    *
    * SO IT STAYS AT 0.045. A future round that wants 0.100 should take it
    * together with whatever closes the max-effort gap for real — most likely a
