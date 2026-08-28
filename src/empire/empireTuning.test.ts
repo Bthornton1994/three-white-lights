@@ -698,7 +698,10 @@ describe('§5.5 social', () => {
     // 166 -> 167: `MILLISECONDS_PER_SECOND`, the units-conversion constant the
     // same round's harness fix reads instead of a bare 1000 — structural, not
     // a cadence in any unit training moves.
-    expect(examined).toBe(167);
+    // 167 -> 168: `DUST_REPAIR_COST_GYM_BUCKS`, the "chrome vs paid" bug-fix
+    // round's one new knob — a Gym Bucks threshold below which a repair
+    // quote is shown as dust, not a cadence in any unit training moves.
+    expect(examined).toBe(168);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -712,7 +715,8 @@ describe('§5.5 social', () => {
     // 815 -> 825 (165 keys x 5 banned units).
     // 825 -> 830 (166 keys x 5 banned units).
     // 830 -> 835 (167 keys x 5 banned units).
-    expect(probed).toBe(835);
+    // 835 -> 840 (168 keys x 5 banned units).
+    expect(probed).toBe(840);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

@@ -3296,7 +3296,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'under',
       'condition:',
       '— of those, not yet refused:',
-      '. the review below is raised by your check-in count, not by this list.',
+      '. the review below is raised by banked operating time, not by this list.',
       ': condition',
       ', repairing it costs',
       'gym bucks',
@@ -3312,8 +3312,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'needs',
       'gym bucks — you have',
       'repair for',
-      'no maintenance review open —',
-      'check-in(s) taken, the next review is raised at check-in',
+      'no maintenance review open — the gym has banked',
+      'hour(s) of operation,',
+      'more until the next review is raised',
       'maintenance review:',
       'is at condition',
       'and repairing it costs',
@@ -3360,7 +3361,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'reopen the gym',
       'this gym has reopened',
       'time(s)',
-      'last check-in: condition took',
+      'since the last update: condition took',
       'gym bucks off the accrual and paid',
       'at',
       ', wore the gym down by',
@@ -3665,7 +3666,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // own review-is-open sentence
     // (`'a maintenance review is waiting for you further down this screen'`).
     // Nothing was added.
-    expect(singleQuoted.size).toBe(501);
+    // 501 -> 503: the "chrome vs paid" bug-fix round's `EarningsMode` type,
+    // `'online' | 'offline'` — two new distinct single-quoted literals,
+    // spelled once each in `ladder.ts` and read as default-parameter values
+    // across the functions it threads through.
+    expect(singleQuoted.size).toBe(503);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4066,6 +4071,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'npcId',
       'number',
       'offered',
+      // The "chrome vs paid" bug-fix round's `EarningsMode` — 'offline' is
+      // the default (every pre-existing call site), 'online' is the one
+      // real periodic-tick call site in `AppShell.tsx`'s `GymHost`. No
+      // manufacturer, athlete or brand.
+      'offline',
+      'online',
       // 'open-up' — the reducer arm for the player's own check-in — is gone,
       // by human ruling ("kill the mint"): no tap anywhere on this screen
       // advances the clock any more.
@@ -4279,7 +4290,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // is what the note above this line asks for.
     // 804 -> 799: "kill the mint" removes exactly 5 single-quoted literals
     // (enumerated above) and 0 templates.
-    expect(stringsChecked).toBe(799);
+    // 799 -> 801: the "chrome vs paid" bug-fix round's 2 new single-quoted
+    // literals ('online', 'offline'), enumerated above.
+    expect(stringsChecked).toBe(801);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -4373,7 +4386,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // sum of the two above.
     // 439 -> 435: "kill the mint" removes exactly four `spaceFree` tokens
     // ('open-up', 'gymscreen-open-up', '-note', '-press'), each a probe.
-    expect(probes).toBe(435);
+    // 435 -> 437: the "chrome vs paid" bug-fix round's two new `spaceFree`
+    // tokens, 'offline' and 'online', each a probe.
+    expect(probes).toBe(437);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -4969,7 +4984,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // failure value.
     // 386 -> 387: the same round's harness fix adds one more,
     // MILLISECONDS_PER_SECOND. Read from this assertion's own failure value.
-    ).toBe(387);
+    // 387 -> 388: the "chrome vs paid" bug-fix round's one new tuning
+    // literal, DUST_REPAIR_COST_GYM_BUCKS (0.01). Read from this assertion's
+    // own failure value.
+    ).toBe(388);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

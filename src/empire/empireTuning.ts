@@ -2180,6 +2180,34 @@ export const EMPIRE_TUNING = Object.freeze({
   REPAIR_COST_GYM_BUCKS_PER_CONDITION_POINT: 400,
 
   /**
+   * Below this many Gym Bucks, a repair's quoted cost is treated as dust and
+   * the screen shows "nothing to repair" instead of a live repair control.
+   *
+   * PROVISIONAL — a game-feel/UX threshold (CLAUDE.md, "Game Feel Values
+   * Must Be Tunable"), unverified by playtest. Needed because condition now
+   * decays continuously with real wall-clock operation (the "kill the mint"
+   * round): a freshly repaired item's cost is exactly 0 only for the instant
+   * after the repair lands, and the very next real tick already wears it a
+   * measurable float amount, so `cost === 0` almost never holds and a player
+   * sees a live "repair for 0.000048" control that reads as broken.
+   *
+   * Derived from the real per-tick wear rather than picked freely: one
+   * `WALL_CLOCK_TICK_INTERVAL_SECONDS` tick of operation wears
+   * `EQUIPMENT_WEAR_PER_BANKED_HOUR x (WALL_CLOCK_TICK_INTERVAL_SECONDS /
+   * SECONDS_PER_HOUR)` condition points, which costs that times
+   * `REPAIR_COST_GYM_BUCKS_PER_CONDITION_POINT` to repair — at the shipped
+   * values, 0.002 x (5 / 3600) x 400 ~= 0.0011 Gym Bucks per online tick.
+   * 0.01 is about nine of those ticks (~45 real seconds), which is comfortable
+   * margin against flicker on a single tick while staying two to four orders
+   * of magnitude below any real repair price (`repairCostGymBucks` runs from
+   * single digits to hundreds of Gym Bucks on the garage's own equipment
+   * list). The exact multiple of a tick is a feel choice, not a derived
+   * necessity, and is exactly the kind of number this file's own rule says a
+   * human tunes by hand later.
+   */
+  DUST_REPAIR_COST_GYM_BUCKS: 0.01,
+
+  /**
    * The fraction of the raw accrual a dormant (failed) gym still earns.
    * §5.7 says a failed location's income stops, and it also says failure is
    * recoverable rather than a permanent loss; on the single-gym ladder — the
@@ -2491,6 +2519,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   EQUIPMENT_WEAR_PER_BANKED_HOUR: 'knob',
   CONDITION_INCOME_MULTIPLIER_FLOOR: 'budget',
   REPAIR_COST_GYM_BUCKS_PER_CONDITION_POINT: 'knob',
+  DUST_REPAIR_COST_GYM_BUCKS: 'knob',
   DORMANT_INCOME_MULTIPLIER: 'budget',
   MAINTENANCE_PROMPT_CONDITION: 'knob',
   MAINTENANCE_ORDER_FIRST_CHECK_IN: 'knob',

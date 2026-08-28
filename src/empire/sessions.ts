@@ -145,6 +145,7 @@
 
 import { refuseWith } from './empireCore';
 import {
+  type EarningsMode,
   type LadderAccrual,
   type LadderDestination,
   type LadderEquipmentItem,
@@ -678,13 +679,19 @@ export function grantAcceleratedGymBucks(state: GymState, gymBucks: number): Gym
   });
 }
 
-/** A check-in: the settled purse accrues the gap through stage 1's mechanism. */
+/**
+ * A check-in: the settled purse accrues the gap through stage 1's mechanism.
+ *
+ * `mode` defaults to `'offline'`, unchanged from every pre-existing caller —
+ * see `ladder.ts`'s `EarningsMode`.
+ */
 export function gymCheckIn(
   state: GymState,
   atSeconds: number,
+  mode: EarningsMode = 'offline',
 ): { readonly state: GymState; readonly accrual: LadderAccrual } {
   requireGymState(state);
-  const checkedIn = ladderCheckIn(state.ladder, atSeconds);
+  const checkedIn = ladderCheckIn(state.ladder, atSeconds, mode);
   return Object.freeze({
     state: Object.freeze({ ...state, ladder: checkedIn.state }),
     accrual: checkedIn.accrual,
@@ -958,12 +965,13 @@ function trainingWeekLengthSeconds(): number {
 export function gymCheckInAfter(
   state: GymState,
   gapSeconds: number,
+  mode: EarningsMode = 'offline',
 ): { readonly state: GymState; readonly accrual: LadderAccrual } {
   requireGymState(state);
   if (!Number.isFinite(gapSeconds) || gapSeconds < 0) {
     refuseWith(`a check-in gap must be finite and at or above zero, received ${gapSeconds}`);
   }
-  return gymCheckIn(state, state.ladder.collectedAt + gapSeconds);
+  return gymCheckIn(state, state.ladder.collectedAt + gapSeconds, mode);
 }
 
 /**

@@ -410,6 +410,16 @@ const S4B_MAX_REVIEW_ROUNDS = 10;
  * passes for two different reasons must say which one, or a genuine
  * overcharge bug sitting inside the widened band would read identically to
  * a clean match.
+ *
+ * UPDATED FOR THE "CHROME VS PAID" FIX. A tick landing between 9e/9f's two
+ * reads fires while the gym screen is on screen — the ONLINE case, per
+ * `ladder.ts`'s `EarningsMode` — and now pays the nominal rate in full
+ * rather than at `OFFLINE_EARNINGS_FRACTION`. The race band this constant
+ * bounds must widen to match, or a genuine overcharge exactly one
+ * (now-doubled) tick over quote would sit inside a band still sized for the
+ * old, discounted tick and read as a clean match. No `fraction` term below
+ * on purpose — see the docstring on `EarningsMode` for why the multiplier
+ * is 1 in the online case.
  */
 const S4B_MAX_TICK_INCOME_GYM_BUCKS = (() => {
   const sourcePath = join(
@@ -427,21 +437,82 @@ const S4B_MAX_TICK_INCOME_GYM_BUCKS = (() => {
     source,
   );
   const rate = incomeBlock === null ? null : /garage:\s*(\d+(?:\.\d+)?)/.exec(incomeBlock[1]);
-  const fraction = /OFFLINE_EARNINGS_FRACTION:\s*(\d+(?:\.\d+)?)/.exec(source);
   const secondsPerHour = /SECONDS_PER_HOUR:\s*(\d+(?:\.\d+)?)/.exec(source);
-  if (rate === null || fraction === null || secondsPerHour === null) {
+  if (rate === null || secondsPerHour === null) {
     throw new Error(
       'could not derive the maximum single-tick income from empireTuning.ts — the ' +
-        'rate, the offline fraction, or SECONDS_PER_HOUR has moved or been renamed; ' +
-        'refusing to run on a guess',
+        'rate or SECONDS_PER_HOUR has moved or been renamed; refusing to run on a guess',
     );
   }
   return (
-    (Number.parseFloat(rate[1]) *
-      Number.parseFloat(fraction[1]) *
-      WALL_CLOCK_TICK_INTERVAL_SECONDS) /
+    (Number.parseFloat(rate[1]) * WALL_CLOCK_TICK_INTERVAL_SECONDS) /
     Number.parseFloat(secondsPerHour[1])
   );
+})();
+
+/**
+ * `GARAGE_RATE_GYM_BUCKS_PER_HOUR`, `SECONDS_PER_HOUR_CONST` and
+ * `OFFLINE_EARNINGS_FRACTION_CONST` — derived, not transcribed, the same
+ * discipline every constant in this section already uses. Section 10a's
+ * "chrome vs paid" claim below needs the real nominal rate and the real
+ * discount fraction to compute BOTH what the fix should produce (full rate)
+ * and what the bug it replaces would have produced (half rate), so it can
+ * assert the measured purse delta is close to one and decisively not the
+ * other, rather than merely non-zero.
+ */
+const GARAGE_RATE_GYM_BUCKS_PER_HOUR = (() => {
+  const sourcePath = join(
+    dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'src',
+    'empire',
+    'empireTuning.ts',
+  );
+  const source = readFileSync(sourcePath, 'utf8');
+  const incomeBlock = /LADDER_INCOME_GYM_BUCKS_PER_HOUR:\s*Object\.freeze\(\{([^}]*)\}\)/.exec(
+    source,
+  );
+  const rate = incomeBlock === null ? null : /garage:\s*(\d+(?:\.\d+)?)/.exec(incomeBlock[1]);
+  if (rate === null) {
+    throw new Error(
+      'could not derive the garage income rate from empireTuning.ts — refusing to run on a guess',
+    );
+  }
+  return Number.parseFloat(rate[1]);
+})();
+const SECONDS_PER_HOUR_CONST = (() => {
+  const sourcePath = join(
+    dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'src',
+    'empire',
+    'empireTuning.ts',
+  );
+  const source = readFileSync(sourcePath, 'utf8');
+  const match = /SECONDS_PER_HOUR:\s*(\d+(?:\.\d+)?)/.exec(source);
+  if (match === null) {
+    throw new Error(
+      'could not derive SECONDS_PER_HOUR from empireTuning.ts — refusing to run on a guess',
+    );
+  }
+  return Number.parseFloat(match[1]);
+})();
+const OFFLINE_EARNINGS_FRACTION_CONST = (() => {
+  const sourcePath = join(
+    dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'src',
+    'empire',
+    'empireTuning.ts',
+  );
+  const source = readFileSync(sourcePath, 'utf8');
+  const match = /OFFLINE_EARNINGS_FRACTION:\s*(\d+(?:\.\d+)?)/.exec(source);
+  if (match === null) {
+    throw new Error(
+      'could not derive OFFLINE_EARNINGS_FRACTION from empireTuning.ts — refusing to run on a guess',
+    );
+  }
+  return Number.parseFloat(match[1]);
 })();
 
 /**
@@ -1007,11 +1078,14 @@ try {
   // and read both again.
   const gymBucksOf = (text) => numberInText(text, /gym bucks: ([\d.]+)/);
   const clockOf = (text) => text;
+  const rateAt10a0 = numberInText(await textOf('gymscreen-rate'), /earning ([\d.]+) gym bucks per hour/);
   const purseAt10a0 = gymBucksOf(await textOf('gymscreen-gym-bucks'));
   const clockAt10a0 = clockOf(await textOf('gymscreen-clock'));
   const waitMs10a = WALL_CLOCK_WAIT_TICKS * WALL_CLOCK_TICK_INTERVAL_SECONDS * 1000;
+  const onlineWaitStartMs = Date.now();
   await page.waitForTimeout(waitMs10a + WALL_CLOCK_READ_SETTLE_MS);
   const purseAt10a1 = gymBucksOf(await textOf('gymscreen-gym-bucks'));
+  const onlineWaitRealSeconds = (Date.now() - onlineWaitStartMs) / 1000;
   const clockAt10a1 = clockOf(await textOf('gymscreen-clock'));
   readAddress('10a: after a real wait, zero presses');
   if (
@@ -1028,6 +1102,45 @@ try {
   } else {
     fail(
       `wall clock (10a): expected the purse and the clock to both move after a real ${(waitMs10a / 1000).toFixed(1)}s wait with zero presses — gym bucks ${purseAt10a0} -> ${purseAt10a1}, clock "${clockAt10a0}" -> "${clockAt10a1}"`,
+    );
+  }
+
+  // 10a-CHROME-VS-PAID. The reported bug, driven and read the same way a
+  // player on a phone would see it: does the WATCHED purse increase match
+  // the NOMINAL rate drawn on screen (full, undiscounted, `mode: 'online'`)
+  // or only half of it (the pre-fix bug, `OFFLINE_EARNINGS_FRACTION`
+  // wrongly applied to a visible tick)? `onlineWaitRealSeconds` is the real
+  // wall-clock span actually measured around the wait (Node's own clock,
+  // bracketing the same interval `GymHost`'s `Date.now()` reads inside the
+  // page), not the nominal `waitMs10a` target, so Playwright/timer slop does
+  // not get read as a rate error. The tolerance is generous on purpose —
+  // several seconds of read/settle latency — because what this claim needs
+  // to resolve is a 2x gap (full rate vs half), not a tight quantity.
+  if (rateAt10a0 !== null && purseAt10a0 !== null && purseAt10a1 !== null) {
+    const actualDeltaGymBucks = purseAt10a1 - purseAt10a0;
+    const expectedFullRateGymBucks =
+      (rateAt10a0 * onlineWaitRealSeconds) / SECONDS_PER_HOUR_CONST;
+    const expectedHalfRateGymBucks = expectedFullRateGymBucks * OFFLINE_EARNINGS_FRACTION_CONST;
+    const midpointGymBucks = (expectedFullRateGymBucks + expectedHalfRateGymBucks) / 2;
+    // Generous relative-plus-absolute tolerance: this is a live real-time
+    // measurement, not a deterministic replay, and the two hypotheses being
+    // told apart (full vs half rate) are 2x apart, so a tolerance well
+    // inside that gap is still decisive.
+    const toleranceGymBucks = Math.max(0.05, expectedFullRateGymBucks * 0.3);
+    const closeToFull = Math.abs(actualDeltaGymBucks - expectedFullRateGymBucks) <= toleranceGymBucks;
+    const aboveMidpoint = actualDeltaGymBucks > midpointGymBucks;
+    if (closeToFull && aboveMidpoint) {
+      ok(
+        `wall clock (10a, chrome vs paid): watched purse gained ${actualDeltaGymBucks.toFixed(6)} gym bucks over a real ${onlineWaitRealSeconds.toFixed(2)}s at the nominal ${rateAt10a0}/hr rate — full-rate prediction ${expectedFullRateGymBucks.toFixed(6)}, half-rate (the fixed bug) would have been ${expectedHalfRateGymBucks.toFixed(6)}; the player is paid the number chrome shows, not half of it`,
+      );
+    } else {
+      fail(
+        `wall clock (10a, chrome vs paid): watched purse gained ${actualDeltaGymBucks.toFixed(6)} gym bucks over a real ${onlineWaitRealSeconds.toFixed(2)}s at the nominal ${rateAt10a0}/hr rate — expected close to the FULL-rate prediction ${expectedFullRateGymBucks.toFixed(6)} (tolerance ${toleranceGymBucks.toFixed(6)}) and strictly above the full/half midpoint ${midpointGymBucks.toFixed(6)}; the half-rate (bug) prediction was ${expectedHalfRateGymBucks.toFixed(6)}`,
+      );
+    }
+  } else {
+    fail(
+      `wall clock (10a, chrome vs paid): could not read the nominal rate and both purse readings — rate ${rateAt10a0}, purse ${purseAt10a0} -> ${purseAt10a1}`,
     );
   }
 

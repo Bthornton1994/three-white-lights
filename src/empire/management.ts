@@ -765,7 +765,7 @@
  */
 
 import { refuseWith } from './empireCore';
-import { type LadderAccrual, type LadderEquipmentItem } from './ladder';
+import { type EarningsMode, type LadderAccrual, type LadderEquipmentItem } from './ladder';
 import { offlineBankingHorizonSeconds, scrubPrecision } from './production';
 import {
   type GymState,
@@ -1148,6 +1148,34 @@ export function orderOpensAt(state: ManagedGym): number {
   const taken = state.checkInsTaken;
   if (taken <= first) return first;
   return first + Math.ceil((taken - first) / stride) * stride;
+}
+
+/** `reviewBankedTime`'s return: what a player reads instead of an ordinal. */
+export interface ReviewBankedTime {
+  /** Total real hours of gym operation banked so far — `bankedOperationSeconds` in hours. */
+  readonly bankedHours: number;
+  /** Hours still needed, at the current pace, before the next review opens. Zero once it has. */
+  readonly hoursUntilNextReview: number;
+}
+
+/**
+ * `checkInsTaken` / `orderOpensAt`'s window-ordinal arithmetic, re-expressed
+ * in the unit a player actually reads: real banked hours, not an abstract
+ * "check-in" count that no tap on this screen produces any more (this file's
+ * own header, §5.7A of the GDD). A pure read — no new state, no new
+ * mechanism, and `orderOpensAt`'s own derivation is unchanged; this only
+ * multiplies its window-ordinal answer back out into seconds and re-reads it
+ * in hours.
+ */
+export function reviewBankedTime(state: ManagedGym): ReviewBankedTime {
+  const nextReviewSeconds = orderOpensAt(state) * REVIEW_ORDINAL_WINDOW_SECONDS;
+  return Object.freeze({
+    bankedHours: scrubPrecision(state.bankedOperationSeconds / EMPIRE_TUNING.SECONDS_PER_HOUR),
+    hoursUntilNextReview: scrubPrecision(
+      Math.max(0, nextReviewSeconds - state.bankedOperationSeconds) /
+        EMPIRE_TUNING.SECONDS_PER_HOUR,
+    ),
+  });
 }
 
 /**
@@ -1567,9 +1595,17 @@ function withWear(state: ManagedGym, wearSeconds: number): ManagedGym {
  *
  * The private wear-basis seam is what the run's wall-clock-wear control
  * reaches through; this export is pinned to the banked reading.
+ *
+ * `mode` defaults to `'offline'`, unchanged from every pre-existing caller —
+ * see `ladder.ts`'s `EarningsMode`. `AppShell.tsx`'s `GymHost` is the one
+ * caller that passes `'online'`, for its real periodic visible-screen tick.
  */
-export function managedCheckIn(state: ManagedGym, atSeconds: number): ManagedCheckIn {
-  return checkInWithWearBasis(state, atSeconds, 'banked-operation');
+export function managedCheckIn(
+  state: ManagedGym,
+  atSeconds: number,
+  mode: EarningsMode = 'offline',
+): ManagedCheckIn {
+  return checkInWithWearBasis(state, atSeconds, 'banked-operation', mode);
 }
 
 /** The wear bases the composed run can drive. Only the first ships. */
@@ -1579,10 +1615,11 @@ function checkInWithWearBasis(
   state: ManagedGym,
   atSeconds: number,
   basis: WearBasis,
+  mode: EarningsMode = 'offline',
 ): ManagedCheckIn {
   requireManagedGym(state);
   const dormant = failurePhase(state) === 'failed';
-  const checkedIn = gymCheckIn(state.gym, atSeconds);
+  const checkedIn = gymCheckIn(state.gym, atSeconds, mode);
   const accrual = checkedIn.accrual;
   // `bankedOperationSeconds` and `checkInsTaken` advance here, together, in
   // this one expression and nowhere else — one writer for both, so header

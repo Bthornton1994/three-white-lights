@@ -163,11 +163,11 @@ import {
   managerWageRatePerBankedHour,
   maintenancePrompt,
   meanCondition,
-  orderOpensAt,
   ownedItemsOf,
   recoveryRepairCostGymBucks,
   recoveryRequirement,
   repairCostGymBucks,
+  reviewBankedTime,
   unansweredItems,
   warningSigns,
   wornItems,
@@ -208,6 +208,29 @@ function describeSlotOutcome(outcome: GymWeekReport['slots'][number]): string {
 }
 
 /**
+ * Is a quoted repair cost below `DUST_REPAIR_COST_GYM_BUCKS` — the "kill the
+ * mint" continuous-wear fix. `repairCostGymBucks === 0` used to be the whole
+ * gate; under real-time wear a freshly repaired item's cost is a genuine tiny
+ * positive float within moments, not exactly zero, so a `<` comparison
+ * against a named threshold replaces the equality everywhere the screen used
+ * to test it. `empireTuning.ts`'s own doc comment on that constant has the
+ * derivation from the real per-tick wear rate.
+ */
+function isDustRepairCost(costGymBucks: number): boolean {
+  return costGymBucks < EMPIRE_TUNING.DUST_REPAIR_COST_GYM_BUCKS;
+}
+
+/**
+ * A repair cost as shown in running text, rounded down to 0 once it is dust —
+ * so the number in "repairing it costs X gym bucks" never contradicts the
+ * "as new — nothing to repair" line drawn beside it. Only display rounds;
+ * `repairCostGymBucks` itself, and every real spend, is unchanged.
+ */
+function displayRepairCost(costGymBucks: number): number {
+  return isDustRepairCost(costGymBucks) ? 0 : costGymBucks;
+}
+
+/**
  * The native stage-1+2+4 screen. Prop-taking on purpose, the same reason
  * `GymView` gives: a pure function of its props, so a render test can invoke
  * it directly, and so the one stateful hook stays outside `src/empire/`.
@@ -233,6 +256,7 @@ export function GymScreen(props: GymViewProps) {
   const recovery = recoveryRequirement(managed);
   const worn = wornItems(managed);
   const unanswered = unansweredItems(managed);
+  const bankedTime = reviewBankedTime(managed);
   const destination = nextLadderRung(gym.ladder.rung);
   const ownedLadder = new Set<string>(gym.ladder.equipment);
   const ownedSession = new Set<string>(gym.sessionEquipment);
@@ -352,7 +376,7 @@ export function GymScreen(props: GymViewProps) {
           under {EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION} condition:{' '}
           {worn.length === 0 ? 'nothing' : worn.join(', ')} — of those, not yet refused:{' '}
           {unanswered.length === 0 ? 'none' : unanswered.join(', ')}. the review below is raised by
-          your check-in count, not by this list.
+          banked operating time, not by this list.
         </Text>
         {/*
           A CONTROL IS NOT DRAWN WHERE PRESSING IT COULD DO NOTHING (plain
@@ -373,9 +397,9 @@ export function GymScreen(props: GymViewProps) {
           <View key={item}>
             <Text testID={`gymscreen-condition-${item}`}>
               {item}: condition {itemCondition(managed, item)}, repairing it costs{' '}
-              {repairCostGymBucks(managed, item)} gym bucks
+              {displayRepairCost(repairCostGymBucks(managed, item))} gym bucks
             </Text>
-            {repairCostGymBucks(managed, item) === 0 ? (
+            {isDustRepairCost(repairCostGymBucks(managed, item)) ? (
               <Text testID={`gymscreen-repair-${item}-unavailable`}>
                 as new — nothing to repair
               </Text>
@@ -396,14 +420,14 @@ export function GymScreen(props: GymViewProps) {
         ))}
         {prompt.kind === 'quiet' ? (
           <Text testID={'gymscreen-prompt'}>
-            no maintenance review open — {managed.checkInsTaken} check-in(s) taken, the next review
-            is raised at check-in {orderOpensAt(managed)}
+            no maintenance review open — the gym has banked {bankedTime.bankedHours} hour(s) of
+            operation, {bankedTime.hoursUntilNextReview} more until the next review is raised
           </Text>
         ) : (
           <View testID={'gymscreen-prompt'}>
             <Text testID={'gymscreen-prompt-item'}>
               maintenance review: {prompt.item} is at condition {itemCondition(managed, prompt.item)}{' '}
-              and repairing it costs {prompt.repairCostGymBucks} gym bucks
+              and repairing it costs {displayRepairCost(prompt.repairCostGymBucks)} gym bucks
             </Text>
             <Text testID={'gymscreen-prompt-stakes'}>
               {prompt.alreadyRefused
@@ -412,7 +436,7 @@ export function GymScreen(props: GymViewProps) {
                   ? '“not now” and “decline the repair” both count against the gym now. only a press moves the ledger; leaving this open does not.'
                   : '“not now” is free this once; “decline the repair” counts. only a press moves the ledger; leaving this open does not.'}
             </Text>
-            {prompt.repairCostGymBucks === 0 ? (
+            {isDustRepairCost(prompt.repairCostGymBucks) ? (
               <Text testID={'gymscreen-prompt-repair-unavailable'}>
                 this one is already as new — there is nothing to pay for
               </Text>
@@ -568,7 +592,7 @@ export function GymScreen(props: GymViewProps) {
         </View>
         {lastManagementReport === null ? null : (
           <Text testID={'gymscreen-check-in-costs'}>
-            last check-in: condition took {lastManagementReport.incomeDeductedGymBucks} gym bucks off
+            since the last update: condition took {lastManagementReport.incomeDeductedGymBucks} gym bucks off
             the accrual and paid {lastManagementReport.incomePaidGymBucks} at{' '}
             {lastManagementReport.incomeMultiplier}, wore the gym down by{' '}
             {lastManagementReport.meanConditionWear}, paid {lastManagementReport.wagePaidGymBucks} in

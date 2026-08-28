@@ -112,6 +112,7 @@ import {
   repairCostGymBucks,
   repairEquipment,
   respondToPrompt,
+  reviewBankedTime,
   unansweredItems,
   warningSigns,
   withUpdatedGym,
@@ -265,6 +266,20 @@ function expectOutcomeInText(text: string, outcome: SlotOutcome): void {
  * reason line that named the wrong number would pass this; the copy is graded
  * separately, by the tests that read each line's text.
  */
+/**
+ * Mirrors `GymScreen.tsx`'s private `isDustRepairCost` / `displayRepairCost`
+ * — re-derived here rather than imported, the same discipline this file's
+ * own header states for every other displayed quantity: compared against the
+ * pure tuning value, not against the component's internals.
+ */
+function isDustRepairCost(costGymBucks: number): boolean {
+  return costGymBucks < EMPIRE_TUNING.DUST_REPAIR_COST_GYM_BUCKS;
+}
+
+function displayRepairCost(costGymBucks: number): number {
+  return isDustRepairCost(costGymBucks) ? 0 : costGymBucks;
+}
+
 function expectGatedControl(
   root: Rendered,
   id: string,
@@ -416,18 +431,24 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
   const worn = wornItems(managed);
   const unanswered = unansweredItems(managed);
   expect(textOf(findByTestId(root, 'gymscreen-worn'))).toBe(
-    `under ${EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION} condition: ${worn.length === 0 ? 'nothing' : worn.join(', ')} — of those, not yet refused: ${unanswered.length === 0 ? 'none' : unanswered.join(', ')}. the review below is raised by your check-in count, not by this list.`,
+    `under ${EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION} condition: ${worn.length === 0 ? 'nothing' : worn.join(', ')} — of those, not yet refused: ${unanswered.length === 0 ? 'none' : unanswered.join(', ')}. the review below is raised by banked operating time, not by this list.`,
   );
   compared += 2;
   const owned = ownedItemsOf(managed.gym);
   for (const item of owned) {
+    const itemCost = repairCostGymBucks(managed, item);
     expect(textOf(findByTestId(root, `gymscreen-condition-${item}`))).toBe(
-      `${item}: condition ${itemCondition(managed, item)}, repairing it costs ${repairCostGymBucks(managed, item)} gym bucks`,
+      `${item}: condition ${itemCondition(managed, item)}, repairing it costs ${displayRepairCost(itemCost)} gym bucks`,
     );
+    // The button is hidden below `DUST_REPAIR_COST_GYM_BUCKS`, not only at an
+    // exact zero (the "kill the mint" continuous-wear fix) — a wider gate than
+    // `repairEquipment`'s own exact-zero "already-sound" refusal, so the
+    // expectation is re-derived from the same threshold the screen renders
+    // against rather than from the mutation function's refusal reason.
     compared += expectGatedControl(
       root,
       `gymscreen-repair-${item}`,
-      repairEquipment(managed, item).kind === 'refused',
+      isDustRepairCost(itemCost) || itemCost > managed.gym.ladder.gymBucks,
       `repairEquipment ${item}`,
     );
     compared += 3;
@@ -446,24 +467,27 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
   const promptText = textOf(findByTestId(root, 'gymscreen-prompt'));
   const answerControls = ['gymscreen-prompt-repair', 'gymscreen-prompt-dismiss', 'gymscreen-prompt-decline'];
   if (prompt.kind === 'quiet') {
+    const bankedTime = reviewBankedTime(managed);
     expect(promptText).toBe(
-      `no maintenance review open — ${managed.checkInsTaken} check-in(s) taken, the next review is raised at check-in ${orderOpensAt(managed)}`,
+      `no maintenance review open — the gym has banked ${bankedTime.bankedHours} hour(s) of operation, ${bankedTime.hoursUntilNextReview} more until the next review is raised`,
     );
     for (const id of answerControls) expect(findAllByTestId(root, id).length, id).toBe(0);
     expect(findAllByTestId(root, 'gymscreen-prompt-repair-unavailable').length).toBe(0);
     compared += 6;
   } else {
     expect(textOf(findByTestId(root, 'gymscreen-prompt-item'))).toBe(
-      `maintenance review: ${prompt.item} is at condition ${itemCondition(managed, prompt.item)} and repairing it costs ${prompt.repairCostGymBucks} gym bucks`,
+      `maintenance review: ${prompt.item} is at condition ${itemCondition(managed, prompt.item)} and repairing it costs ${displayRepairCost(prompt.repairCostGymBucks)} gym bucks`,
     );
     for (const id of answerControls.slice(1)) expect(findAllByTestId(root, id).length, id).toBe(1);
-    // The review's own repair control is gated on the same transition answering
-    // it would take, so an order the purse cannot cover shows the price it
-    // cannot meet rather than a button that would refuse.
+    // The review's own repair control is gated on the dust threshold or on
+    // affordability, mirroring the same widened gate the per-item loop above
+    // uses — not `respondToPrompt`'s own exact-zero "already-sound" refusal,
+    // which the screen no longer matches one-for-one since the dust fix.
     compared += expectGatedControl(
       root,
       'gymscreen-prompt-repair',
-      respondToPrompt(managed, 'repair', managed.gym.ladder.collectedAt).kind === 'repair-refused',
+      isDustRepairCost(prompt.repairCostGymBucks) ||
+        prompt.repairCostGymBucks > managed.gym.ladder.gymBucks,
       'respondToPrompt repair',
     );
     // §5.7's "told the cost of": what the screen says a refusal is worth has
@@ -597,7 +621,7 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
     compared += 1;
   } else {
     expect(textOf(findByTestId(root, 'gymscreen-check-in-costs'))).toBe(
-      `last check-in: condition took ${report.incomeDeductedGymBucks} gym bucks off the accrual and paid ${report.incomePaidGymBucks} at ${report.incomeMultiplier}, wore the gym down by ${report.meanConditionWear}, paid ${report.wagePaidGymBucks} in wages (unpaid ${report.wageShortfallGymBucks}), and the manager repaired ${report.autoRepairs.length} item(s) for ${report.autoRepairSpendGymBucks}`,
+      `since the last update: condition took ${report.incomeDeductedGymBucks} gym bucks off the accrual and paid ${report.incomePaidGymBucks} at ${report.incomeMultiplier}, wore the gym down by ${report.meanConditionWear}, paid ${report.wagePaidGymBucks} in wages (unpaid ${report.wageShortfallGymBucks}), and the manager repaired ${report.autoRepairs.length} item(s) for ${report.autoRepairSpendGymBucks}`,
     );
     for (const repair of report.autoRepairs) {
       expect(textOf(findByTestId(root, `gymscreen-auto-repair-${repair.item}`))).toBe(
@@ -1285,14 +1309,17 @@ describe('the gym real-time loop reaches the stage-4 machinery, and nothing on t
     expect(played.managed.checkInsTaken).toBe(T.MAINTENANCE_ORDER_FIRST_CHECK_IN * 3);
   });
 
-  it('the no-open-review note reports the real check-in count and the real next review, off the clock alone', () => {
+  it('the no-open-review note reports banked time and the real next review, off the clock alone', () => {
     let played = createGymViewState();
     const oneWindowSeconds = T.OFFLINE_EARNINGS_CAP_HOURS * T.SECONDS_PER_HOUR;
     for (let shift = 0; shift <= T.MAINTENANCE_ORDER_FIRST_CHECK_IN; shift += 1) {
       const note = textOf(findByTestId(render(played, []), 'gymscreen-prompt'));
       if (maintenancePrompt(played.managed).kind === 'quiet') {
-        expect(note).toContain(`${played.managed.checkInsTaken} check-in(s) taken`);
-        expect(note).toContain(`the next review is raised at check-in ${orderOpensAt(played.managed)}`);
+        const bankedTime = reviewBankedTime(played.managed);
+        expect(note).toContain(`banked ${bankedTime.bankedHours} hour(s) of operation`);
+        expect(note).toContain(
+          `${bankedTime.hoursUntilNextReview} more until the next review is raised`,
+        );
       }
       played = dispatchThrough(played, { kind: 'advance-clock', gapSeconds: oneWindowSeconds });
     }

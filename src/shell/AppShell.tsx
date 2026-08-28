@@ -73,6 +73,7 @@ import Animated, {
 
 import { EMPIRE_TUNING } from '../empire/empireTuning';
 import { GymScreen } from '../empire/GymScreen';
+import { type EarningsMode } from '../empire/ladder';
 import { createGymViewState, gymViewReduce } from '../empire/ladderView';
 import { LIFT_PALETTE } from '../lift/liftPalette';
 import { LiftScreen } from '../lift/LiftScreen';
@@ -251,7 +252,17 @@ function GymHost({ visible }: { readonly visible: boolean }): React.ReactElement
   // the gym", because `GymHost` stays mounted for the whole app run.
   const lastAnchorMsRef = useRef<number>(Date.now());
 
-  const catchUpOnRealTime = useCallback((): void => {
+  // `mode` distinguishes the two call sites below, and is the whole fix for
+  // "chrome shows the nominal rate, the purse banks half of it": a gap the
+  // player is watching happen (the interval, while `visible`) pays the
+  // nominal rate in full (`'online'`); a gap read on return from elsewhere
+  // (the effect's immediate call, on mount and on every false->true
+  // transition of `visible`) pays the existing discounted rate (`'offline'`).
+  // Nothing about the gap arithmetic below changes with `mode` — same
+  // `Date.now()` read, same anchor, same collapse-near-zero guard; only the
+  // dispatched action's `mode` field differs, and `ladder.ts`'s
+  // `accrueLadderGymBucks` is the one place that reads it.
+  const catchUpOnRealTime = useCallback((mode: EarningsMode): void => {
     const nowMs = Date.now();
     const gapSeconds = Math.floor(
       (nowMs - lastAnchorMsRef.current) / EMPIRE_TUNING.MILLISECONDS_PER_SECOND,
@@ -263,17 +274,21 @@ function GymHost({ visible }: { readonly visible: boolean }): React.ReactElement
     // than being silently dropped.
     if (gapSeconds < EMPIRE_TUNING.TICK_SECONDS) return;
     lastAnchorMsRef.current = nowMs;
-    dispatch({ kind: 'advance-clock', gapSeconds });
+    dispatch({ kind: 'advance-clock', gapSeconds, mode });
   }, []);
 
   useEffect(() => {
     if (!visible) return;
     // Catch up immediately on becoming visible — including the very first
     // paint, if `visible` starts `true` — rather than waiting for the first
-    // tick of the interval below.
-    catchUpOnRealTime();
+    // tick of the interval below. This is the "returning after a gap" case:
+    // 'offline', discounted, exactly as before this round.
+    catchUpOnRealTime('offline');
+    // The periodic tick, running only while the screen is actually on top:
+    // this is genuinely "watching it run", so it pays the nominal rate —
+    // 'online', undiscounted.
     const intervalId = setInterval(
-      catchUpOnRealTime,
+      () => catchUpOnRealTime('online'),
       EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS * EMPIRE_TUNING.MILLISECONDS_PER_SECOND,
     );
     return () => clearInterval(intervalId);

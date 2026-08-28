@@ -1595,7 +1595,10 @@ const SURFACE_CENSUS = Object.freeze({
   // `wiring.key === ...` comparisons in `runManagedGym`, so every control is
   // now identified by a named predicate and `management.test.ts` can assert
   // the seven controls partition. Read from this pin's own failure value.
-  EXPORTS: 366, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
+  // 366 -> 367: the "chrome vs paid" bug-fix round's one new runtime export,
+  // `management.ts#reviewBankedTime` (its `ReviewBankedTime` return type is
+  // type-only and does not count, the same rule as every other export here).
+  EXPORTS: 367, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1688,7 +1691,15 @@ const SURFACE_CENSUS = Object.freeze({
 // arrive at every exported position the walk reaches through `GymViewState`,
 // `GymViewProps` and `gymViewReduce` — plus `GymScreen`'s own props. Read from
 // this pin's own failure value.
-LITERAL_POSITIONS: 3793, // 3791 -> 3792: "kill the mint", re-measured; 3792 -> 3793: its harness fix, re-measured
+// 3793 -> 3794: the "chrome vs paid" bug-fix round. `DISTINCT_LITERAL_MEMBERS`
+// below is UNCHANGED at this same round, which is the check that says
+// `EarningsMode` ('online'/'offline') is not what moved this — that type is
+// carried on function PARAMETERS (`accrueLadderGymBucks` and five callers),
+// and this walk's own entry point is the RETURN type of an exported function
+// (or the VALUE type of an exported non-function), so a parameter-only type
+// is never reached. Read from this pin's own failure value rather than
+// hand-traced to the specific export.
+LITERAL_POSITIONS: 3794, // 3791 -> 3792: "kill the mint", re-measured; 3792 -> 3793: its harness fix, re-measured
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -2838,7 +2849,13 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // `orderOpensAt` at the new control's note. Read from this pin's own failure
   // value. The set of CONSTRUCTORS below is unchanged, which is the half of
   // this instrument that is about brands rather than about volume.
-  CALLS_EXAMINED: 2871,
+  // 2871 -> 2881: the "chrome vs paid" bug-fix round — `GymScreen.tsx`'s two
+  // dust-gate reads per item (`isDustRepairCost`/`displayRepairCost`, each
+  // reading `repairCostGymBucks` a second time), the prompt's own dust-gate
+  // read, and `management.ts`'s new `reviewBankedTime` calling `orderOpensAt`
+  // a second time. Read from this pin's own failure value rather than
+  // hand-counted. The set of CONSTRUCTORS below is unchanged.
+  CALLS_EXAMINED: 2881,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3794,6 +3811,12 @@ const UNIT_THRESHOLDS: Readonly<Record<AxisUnit, Readonly<Record<string, number>
     // balance against the rung for the tier, the same `balance < price` branch
     // as every other price in this table.
     ...tuningTable('MANAGER_HIRE_COST_GYM_BUCKS'),
+    // The "chrome vs paid" bug-fix round's one new price-axis branch point.
+    // `GymScreen.tsx` compares a live `repairCostGymBucks` reading against
+    // this constant (`isDustRepairCost`) to decide whether to draw a repair
+    // control at all — a real `<` branch on the Gym Bucks axis, filed on
+    // arrival like every other price above.
+    ...tuningTable('DUST_REPAIR_COST_GYM_BUCKS'),
   }),
   trainingIq: Object.freeze({
     ...tuningTable('TRAINING_IQ_DAILY_CEILING'),
@@ -5246,11 +5269,14 @@ const DOMAIN_CENSUS = Object.freeze({
   // 90 -> 102: stage 4's twelve filed leaves — six condition lines, three
   // hire prices, three counted ladders. Measured off this assertion.
   // 102 -> 104: the two ordinal review knobs, filed under `count`.
-  THRESHOLDS: 104,
+  // 104 -> 105: the "chrome vs paid" bug-fix round's one new filed leaf,
+  // DUST_REPAIR_COST_GYM_BUCKS, filed under `gymBucks`.
+  THRESHOLDS: 105,
   /** Numeric leaves of EMPIRE_TUNING filed under a unit. */
   // 88 -> 100: the same twelve. Measured off this assertion.
   // 100 -> 102: the two ordinal review knobs, filed under `count`.
-  FILED: 102,
+  // 102 -> 103: the same new filed leaf, DUST_REPAIR_COST_GYM_BUCKS.
+  FILED: 103,
   // 66 -> 121: members.ts's nine tables (§5.11 stage 3), 55 numeric leaves,
   // all exempt (RATE/MULTIPLIER, none compared against a live value).
   /** Numeric leaves on `NOT_A_BRANCH_POINT`. */
@@ -5322,7 +5348,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // Read from this pin's own failure value.
   // 430 -> 432: the two ordinal review knobs, one numeric leaf each.
   // 433 -> 434: the same round's harness fix adds MILLISECONDS_PER_SECOND.
-  TUNING_NUMERIC_LEAVES: 434, // 432 -> 433: "kill the mint" adds WALL_CLOCK_TICK_INTERVAL_SECONDS
+  // 434 -> 435: the "chrome vs paid" bug-fix round's one new numeric leaf,
+  // DUST_REPAIR_COST_GYM_BUCKS.
+  TUNING_NUMERIC_LEAVES: 435, // 432 -> 433: "kill the mint" adds WALL_CLOCK_TICK_INTERVAL_SECONDS
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -5348,7 +5376,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // 432 -> 434: the two ordinal review knobs.
   // 434 -> 435: "kill the mint"'s one new exempt leaf.
   // 435 -> 436: the same round's harness fix, MILLISECONDS_PER_SECOND.
-  BRANCH_POINTS: 436,
+  // 436 -> 437: the "chrome vs paid" bug-fix round's one new filed leaf,
+  // DUST_REPAIR_COST_GYM_BUCKS.
+  BRANCH_POINTS: 437,
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
@@ -5379,7 +5409,10 @@ const DOMAIN_CENSUS = Object.freeze({
 // 2270 -> 2273: the same round's harness fix adds one more exempt leaf,
 // straddled in three of the six domains rather than all six — read from
 // this pin's own failure value, not assumed to match the row above.
-CONTAINMENT_CHECKS: 2273,
+// 2273 -> 2279: the "chrome vs paid" bug-fix round's one new FILED leaf,
+// DUST_REPAIR_COST_GYM_BUCKS, straddled in all six domains — read from this
+// pin's own failure value.
+CONTAINMENT_CHECKS: 2279,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -7325,6 +7358,9 @@ function driveEverything(): readonly DrivenRow[] {
       );
       drive('maintenancePrompt', label, () => managementModule.maintenancePrompt(state), [state]);
       drive('orderOpensAt', label, () => managementModule.orderOpensAt(state), [state]);
+      // The "chrome vs paid" bug-fix round's one new export — the banked-time
+      // translation of `orderOpensAt`, driven on the same states.
+      drive('reviewBankedTime', label, () => managementModule.reviewBankedTime(state), [state]);
       drive('recoveryRequirement', label, () =>
         managementModule.recoveryRequirement(state), [state],
       );
@@ -9580,7 +9616,9 @@ const DRIVE_CENSUS = Object.freeze({
   // 582208 -> 582209: one more driven row, the new zero-arg
   // `playerCheckInGapSeconds` — the span the player's own check-in feeds to
   // the shipped accrual.
-  ROWS: 582208, // 582209 -> 582208: "kill the mint", re-measured
+  // 582208 -> 582214: the "chrome vs paid" bug-fix round's `reviewBankedTime`,
+  // driven once per label in `MANAGED_STATES` (six), beside `orderOpensAt`.
+  ROWS: 582214, // 582209 -> 582208: "kill the mint", re-measured
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -9594,7 +9632,10 @@ const DRIVE_CENSUS = Object.freeze({
   // every one of stage 4's exports is driven below.
   // 361 -> 366: tracks SURFACE_CENSUS.EXPORTS 1:1 again — the chain-break
   // round's five exports are all driven above.
-  EXPORTS_DRIVEN: 366, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
+  // 366 -> 367: tracks SURFACE_CENSUS.EXPORTS 1:1 again — the "chrome vs
+  // paid" bug-fix round's `reviewBankedTime`, driven above beside
+  // `orderOpensAt`.
+  EXPORTS_DRIVEN: 367, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -9642,7 +9683,12 @@ const DRIVE_CENSUS = Object.freeze({
   // 6417204 -> 6417077: "kill the mint" — one fewer control (the removed
   // `'open-up'` press) on every driven `GymScreen` render, the same shape as
   // the move above. Read from this pin's own failure value.
-  NODES: 6417077, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
+  // 6417077 -> 6417148: the "chrome vs paid" bug-fix round — six new
+  // `reviewBankedTime` reads (one per `MANAGED_STATES` label, each a small
+  // returned object) plus the quiet-prompt line's extra JSX text child on
+  // the driven `GymScreen` renders that reach it. Read from this pin's own
+  // failure value.
+  NODES: 6417148, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -9703,7 +9749,17 @@ const DRIVE_CENSUS = Object.freeze({
   // 29_625_358 -> 29_625_361: the same round's harness fix and census
   // disclosures add source text under this walk's reach. Read from this
   // pin's own failure value.
-  STRINGS: 29_625_361,
+  // 29_625_361 -> 29_625_563: the "chrome vs paid" bug-fix round. An
+  // intermediate estimate of 29_625_367 (attributing the whole move to one
+  // extra JSX text child on the quiet-prompt line) was wrong — the real
+  // measured value, from re-running this assertion after `ROWS`/`NODES`
+  // above were corrected, is 196 higher. The six new `reviewBankedTime`
+  // reads (`ROWS`/`NODES` above) are numbers, not strings, so they are not
+  // the source; the quiet-prompt and dust-gate copy changes reach more of
+  // the driven `GymScreen` fixture/point combinations than the first
+  // estimate accounted for. Not independently re-attributed by hand —
+  // recorded as measured rather than guessed a second time.
+  STRINGS: 29_625_563,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -9760,7 +9816,15 @@ const DRIVE_CENSUS = Object.freeze({
   // from the driven screen. Read from this pin's own failure value.
   // 3708 -> 3709: the same round's harness fix, re-measured. Read from this
   // pin's own failure value, not attributed by argument.
-  DISTINCT_STRINGS: 3709,
+  // 3709 -> 3713: the "chrome vs paid" bug-fix round's new copy — "since the
+  // last update" (replacing "last check-in"), "banked operating time"
+  // (replacing "your check-in count"), and the quiet-prompt line's rewrite
+  // ("the gym has banked ... hour(s) of operation, ... more until the next
+  // review is raised"). Four new distinct strings rather than the five a
+  // naive per-string count would predict, because at least one of the new
+  // JSX text chunks already existed elsewhere in the driven corpus. Read
+  // from this pin's own failure value, not attributed further by hand.
+  DISTINCT_STRINGS: 3713,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -13700,7 +13764,9 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // (`allocationOptions`, `describeSlotOutcome`, the latter with three
       // return statements across its three arms) plus the component's own
       // JSX return.
-      'GymScreen.tsx': 5,
+      // 5 -> 7: the "chrome vs paid" bug-fix round's two new helpers,
+      // `isDustRepairCost` and `displayRepairCost`, one return each.
+      'GymScreen.tsx': 7,
       // GDD §5.13 presentation Phase 1: floor.ts's own eighteen `return`
       // statements across its ten exported functions and their helpers.
       // 18 -> 20: PLAYTEST 2's `fixedFloorFurniture` — its own top-level
@@ -13753,7 +13819,9 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'ladderView.tsx': 26,
       // §5.11 stage 4's sixty-four `return` sites — eight discriminated
       // results with two to four arms each, plus the read models.
-      'management.ts': 89,
+      // 89 -> 90: the "chrome vs paid" bug-fix round's `reviewBankedTime`,
+      // one return statement.
+      'management.ts': 90,
       'npc.ts': 12,
       'production.ts': 11,
       'recruitment.ts': 9,
@@ -14322,13 +14390,19 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'floorSprites.ts:363 receiver=NewExpression',
   'floorSprites.ts:422 receiver=NewExpression',
   'floorSprites.ts:435 receiver=NewExpression',
-  'ladder.ts:333 receiver=ArrayLiteralExpression',
+  // "chrome vs paid" bug-fix round: 333 -> 349, a pure line shift (new
+  // parameter, docstring and header prose added above it in `ladder.ts`).
+  // Content verified byte-identical at the old and new line before re-pinning.
+  'ladder.ts:349 receiver=ArrayLiteralExpression',
   // "KILL THE MINT" ROUND: re-measured, same shape as `SHIPPED_SCREEN_
   // DISAGREEMENTS`' own note on this — a comment/removal moving a line-keyed
   // census, not a behaviour change. `playerCheckInGapSeconds`'s removal and
   // the `'open-up'` reducer arm's removal shift these two up by one each.
-  'ladderView.tsx:115 returned=unfollowable:state',
-  'ladderView.tsx:123 returned=unfollowable:state',
+  // "chrome vs paid" bug-fix round: 115 -> 116, 123 -> 124 — a pure +1 line
+  // shift from the `EarningsMode` import added to the shared header import
+  // block. Content verified byte-identical before re-pinning.
+  'ladderView.tsx:116 returned=unfollowable:state',
+  'ladderView.tsx:124 returned=unfollowable:state',
   // :370 -> :394/:421/:465: the `floor` field's addition shifted the one
   // existing site down, and the reducer's two new arms (`floor-place`,
   // `floor-remove`) each return an unfollowable `FloorState`.
@@ -14347,19 +14421,30 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // freshly assembled object. All three then shifted +18 with the ten rows in
   // `SHIPPED_SCREEN_DISAGREEMENTS` below, for the same reason and re-read the
   // same way.
-  'ladderView.tsx:531 returned=unfollowable:state',
-  'ladderView.tsx:559 returned=unfollowable:state',
-  'ladderView.tsx:614 returned=unfollowable:state',
+  // "chrome vs paid" bug-fix round: 531 -> 547, 559 -> 575, 614 -> 630, a
+  // pure +16 line shift from the `mode` field/doc comment added to
+  // `GymViewAction`'s `advance-clock` arm and `advanceGymClock`'s new `mode`
+  // parameter. Content verified byte-identical before re-pinning.
+  'ladderView.tsx:547 returned=unfollowable:state',
+  'ladderView.tsx:575 returned=unfollowable:state',
+  'ladderView.tsx:630 returned=unfollowable:state',
   // §5.11 stage 4: `withWear`'s condition map is built in a loop and returned
   // through a fresh object the screen cannot follow into, the same shape as
   // every other row here.
   // "KILL THE MINT" ROUND: 1274 -> 1445, prose only (§3g), re-measured.
-  'management.ts:1445 returned=unfollowable:state',
+  // "chrome vs paid" bug-fix round: 1445 -> 1473, a pure line shift from the
+  // new `mode` parameters and doc comments added above it in
+  // `management.ts`. Content verified byte-identical before re-pinning.
+  'management.ts:1473 returned=unfollowable:state',
   'recruitment.ts:388 returned=unfollowable:state',
-  'sessions.ts:562 receiver=ArrayLiteralExpression',
-  'sessions.ts:655 returned=unfollowable:state',
-  'sessions.ts:791 returned=unfollowable:item',
-  'sessions.ts:802 returned=unfollowable:item',
+  // "chrome vs paid" bug-fix round: 562 -> 563, 655 -> 656, 791 -> 798,
+  // 802 -> 809 — pure line shifts from the `EarningsMode` import and the new
+  // `mode` parameters/doc comments added to `gymCheckIn`/`gymCheckInAfter`
+  // in `sessions.ts`. Content verified byte-identical before re-pinning.
+  'sessions.ts:563 receiver=ArrayLiteralExpression',
+  'sessions.ts:656 returned=unfollowable:state',
+  'sessions.ts:798 returned=unfollowable:item',
+  'sessions.ts:809 returned=unfollowable:item',
   'social.ts:345 receiver=ArrayLiteralExpression',
   'social.ts:535 returned=unfollowable:context',
 ]);
@@ -14406,9 +14491,18 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'floorSim.ts:882 GridPosition asked=true walked=false',
   'floorSim.ts:883 GridPosition | null asked=true walked=false',
   'floorSim.ts:903 GridPosition asked=true walked=false',
-  'ladder.ts:594 LadderState asked=true walked=false',
-  'ladder.ts:605 LadderState asked=true walked=false',
-  'ladder.ts:611 LadderState asked=true walked=false',
+  // "chrome vs paid" bug-fix round: ALL rows in this list moved again — one
+  // atomic pass, verified against `git show HEAD:` at several representative
+  // old/new line pairs (`ladder.ts:333`->`349`, `management.ts:1445`->`1473`,
+  // `sessions.ts:791`->`798`/`802`->`809`) before re-pinning, the same
+  // discipline this list's own history already documents. The count of rows
+  // is UNCHANGED at fifteen for `management.ts` and unchanged everywhere
+  // else; every shift is new parameters/doc comments for the `mode:
+  // EarningsMode` threading, none of it a behaviour change the relation
+  // itself would care about.
+  'ladder.ts:632 LadderState asked=true walked=false',
+  'ladder.ts:643 LadderState asked=true walked=false',
+  'ladder.ts:649 LadderState asked=true walked=false',
   // "KILL THE MINT" ROUND: every line number in this block moved again, and
   // the count of rows is UNCHANGED — verified the way this list's own history
   // says to, by re-running the assertion and reading its own failure value
@@ -14418,12 +14512,12 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   // shift everything after them up by a small constant; the header this round
   // added to `management.ts` (§3g, the ordinal re-keying's own retraction)
   // shifts everything in that file down by a much larger one.
-  'ladderView.tsx:106 LadderState asked=true walked=false',
-  'ladderView.tsx:107 LadderAccrual asked=true walked=false',
-  'ladderView.tsx:114 LadderState asked=true walked=false',
-  'ladderView.tsx:115 LadderAccrual | null asked=true walked=false',
-  'ladderView.tsx:122 LadderState asked=true walked=false',
-  'ladderView.tsx:123 LadderAccrual | null asked=true walked=false',
+  'ladderView.tsx:107 LadderState asked=true walked=false',
+  'ladderView.tsx:108 LadderAccrual asked=true walked=false',
+  'ladderView.tsx:115 LadderState asked=true walked=false',
+  'ladderView.tsx:116 LadderAccrual | null asked=true walked=false',
+  'ladderView.tsx:123 LadderState asked=true walked=false',
+  'ladderView.tsx:124 LadderAccrual | null asked=true walked=false',
   // Renumbered by the `floor` field's addition, and widened by it: two new
   // `GymState`/`FloorState` reads for the `floor-place`/`floor-remove` arms
   // (:412/:413 unchanged in kind, :421/:448/:465/:477 new).
@@ -14466,16 +14560,16 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   // rather than ten sequential replaces — a sequential pass had already
   // produced a collision in this list when a new line number equalled an old
   // one still waiting to be rewritten.
-  'ladderView.tsx:531 readonly GymWeekReport[] asked=true walked=false',
-  'ladderView.tsx:559 FloorState asked=true walked=false',
-  'ladderView.tsx:614 FloorState asked=true walked=false',
-  'ladderView.tsx:626 FloorState asked=true walked=false',
-  'ladderView.tsx:659 ManagedGym asked=true walked=false',
-  'ladderView.tsx:672 ManagedGym asked=true walked=false',
-  'ladderView.tsx:686 ManagedGym asked=true walked=false',
-  'ladderView.tsx:696 ManagedGym asked=true walked=false',
-  'ladderView.tsx:704 ManagedGym asked=true walked=false',
+  'ladderView.tsx:547 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:575 FloorState asked=true walked=false',
+  'ladderView.tsx:630 FloorState asked=true walked=false',
+  'ladderView.tsx:642 FloorState asked=true walked=false',
+  'ladderView.tsx:675 ManagedGym asked=true walked=false',
+  'ladderView.tsx:688 ManagedGym asked=true walked=false',
+  'ladderView.tsx:702 ManagedGym asked=true walked=false',
   'ladderView.tsx:712 ManagedGym asked=true walked=false',
+  'ladderView.tsx:720 ManagedGym asked=true walked=false',
+  'ladderView.tsx:728 ManagedGym asked=true walked=false',
   // §5.11 stage 4's fifteen rows, every one the same shape as the rows above:
   // the screen asks about a named state type and the control declines to walk
   // into it, so the census over-approximates rather than going quiet.
@@ -14494,27 +14588,27 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   // entry expire when its subject moves, which is the property the list is
   // for. A reader who sees these numbers move should check the diff for prose
   // before looking for a behaviour change.
-  'management.ts:1445 readonly CountedDecisionRecord[] asked=true walked=false',
-  'management.ts:1586 LadderAccrual asked=true walked=false',
-  'management.ts:1596 GymState asked=true walked=false',
-  'management.ts:1871 ManagedGym asked=true walked=false',
-  'management.ts:2430 ManagedGym asked=true walked=false',
-  'management.ts:2474 ManagedGym asked=true walked=false',
-  'management.ts:2495 ManagedGym asked=true walked=false',
-  'management.ts:2502 ManagedGym asked=true walked=false',
-  'management.ts:2512 ManagedGym asked=true walked=false',
-  'management.ts:2538 ManagedGym asked=true walked=false',
-  'management.ts:2563 ManagedGym asked=true walked=false',
-  'management.ts:2582 ManagedGym asked=true walked=false',
-  'management.ts:2593 ManagedGym asked=true walked=false',
-  'management.ts:2613 ManagedGym asked=true walked=false',
-  'management.ts:2629 ManagedGym asked=true walked=false',
+  'management.ts:1473 readonly CountedDecisionRecord[] asked=true walked=false',
+  'management.ts:1623 LadderAccrual asked=true walked=false',
+  'management.ts:1633 GymState asked=true walked=false',
+  'management.ts:1908 ManagedGym asked=true walked=false',
+  'management.ts:2467 ManagedGym asked=true walked=false',
+  'management.ts:2511 ManagedGym asked=true walked=false',
+  'management.ts:2532 ManagedGym asked=true walked=false',
+  'management.ts:2539 ManagedGym asked=true walked=false',
+  'management.ts:2549 ManagedGym asked=true walked=false',
+  'management.ts:2575 ManagedGym asked=true walked=false',
+  'management.ts:2600 ManagedGym asked=true walked=false',
+  'management.ts:2619 ManagedGym asked=true walked=false',
+  'management.ts:2630 ManagedGym asked=true walked=false',
+  'management.ts:2650 ManagedGym asked=true walked=false',
+  'management.ts:2666 ManagedGym asked=true walked=false',
   'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
-  'sessions.ts:655 LadderState asked=true walked=false',
-  'sessions.ts:689 LadderState asked=true walked=false',
-  'sessions.ts:690 LadderAccrual asked=true walked=false',
-  'sessions.ts:872 GymState asked=true walked=false',
-  'sessions.ts:888 GymState asked=true walked=false',
+  'sessions.ts:656 LadderState asked=true walked=false',
+  'sessions.ts:696 LadderState asked=true walked=false',
+  'sessions.ts:697 LadderAccrual asked=true walked=false',
+  'sessions.ts:879 GymState asked=true walked=false',
+  'sessions.ts:895 GymState asked=true walked=false',
   'social.ts:535 readonly FriendVisit[] asked=true walked=false',
 ]);
 
@@ -14659,7 +14753,9 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // above found — `advanceGymClock` and `playerCheckInGapSeconds` — because
   // the `'open-up'` arm that made them is now permanently gone rather than
   // merely gutted. Read from this pin's own failure value.
-  function: 1431,
+  // 1431 -> 1439: the "chrome vs paid" bug-fix round. Read from this pin's
+  // own failure value rather than hand-counted.
+  function: 1439,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -14684,7 +14780,9 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // the reducer's own. Read from this pin's own failure value.
   // "KILL THE MINT" ROUND: 1325 -> 1327. Read from this pin's own failure
   // value rather than attributed by hand-count against the diff.
-  member: 1327,
+  // 1327 -> 1329: the "chrome vs paid" bug-fix round. Read from this pin's
+  // own failure value rather than attributed by hand-count against the diff.
+  member: 1329,
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -14825,7 +14923,11 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // return. Both are counted in `CHANNEL_SITE_COUNTS` above, which is the
   // check that says WHICH module they arrived in.
   // 728 -> 726: "kill the mint" removes both of those sites outright.
-  SITES: 726,
+  // 726 -> 729: the "chrome vs paid" bug-fix round's three new `return`
+  // sites — `GymScreen.tsx`'s `isDustRepairCost`/`displayRepairCost` and
+  // `management.ts`'s `reviewBankedTime`, all on the `return` channel, per
+  // the byModule rows above.
+  SITES: 729,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -14908,7 +15010,12 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // time. Read from this pin's own failure value.
   // 61_533 -> 61_539: the same round's harness fix and census disclosures
   // grow the source again. Read from this pin's own failure value.
-  NODES_EXAMINED: 61_539,
+  // 61_539 -> 61_737: the "chrome vs paid" bug-fix round's new source —
+  // `EarningsMode`, the `mode` parameters and doc comments threaded through
+  // `ladder.ts`/`sessions.ts`/`management.ts`/`ladderView.tsx`, the dust-gate
+  // helpers and `reviewBankedTime` in `GymScreen.tsx`/`management.ts`. Read
+  // from this pin's own failure value.
+  NODES_EXAMINED: 61_737,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -15011,7 +15118,15 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // gone) and `GymViewAction` loses the `'open-up'` member, narrowing
   // `gymViewReduce`'s parameter position back to what it was. Read from this
   // pin's own failure value, not derived by symmetry with the round above.
-  POSITIONS: 872,
+  // 872 -> 876: the "chrome vs paid" bug-fix round's new `mode: EarningsMode`
+  // parameter, threaded through several exported functions
+  // (`accrueLadderGymBucks`, `ladderCheckIn`, `ladderCheckInAfter`,
+  // `gymCheckIn`, `gymCheckInAfter`, `managedCheckIn`) plus the widened
+  // `GymViewAction` reached through `gymViewReduce`'s parameter, the same
+  // route the player check-in round's own +2 used above. Read from this
+  // pin's own failure value; the exact count of new positions per function
+  // is not independently hand-derived.
+  POSITIONS: 876,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -19161,7 +19276,10 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // 237 -> 238: the §5.7 chain-break round's `ReviewGate` type alias.
   // 238 -> 239: S4b's `ManagedCheckInReport` type alias in `ladderView.tsx`.
   // Read from this pin's own failure value.
-  DECLARATIONS: 239,
+  // 239 -> 241: the "chrome vs paid" bug-fix round's two new type
+  // declarations — `EarningsMode` (ladder.ts) and `ReviewBankedTime`
+  // (management.ts).
+  DECLARATIONS: 241,
   /** Those carrying type parameters. An instantiation depth needs one. */
   // Phase 4: `MemberTable<Leaf>` in floorSprites.ts.
   GENERIC: 13,

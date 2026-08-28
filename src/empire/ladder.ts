@@ -148,6 +148,22 @@ export type CompetitionLift = (typeof EMPIRE_TUNING.LADDER_LIFTS)[number];
 export type LadderEquipmentItem = (typeof EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS)[number];
 
 /**
+ * Which rate a check-in's gap accrues at — the online/offline split.
+ *
+ * `'offline'` pays `OFFLINE_EARNINGS_FRACTION` of the nominal rate, exactly
+ * the pre-existing behaviour: a gap the player was not watching. `'online'`
+ * pays the nominal rate in full: a gap the player IS watching, tick by tick,
+ * on screen. Before this round every accrual path was conceptually a
+ * check-in after a gap, so the discount applied unconditionally and the
+ * distinction had no code to attach to; `AppShell.tsx`'s `GymHost` now drives
+ * a genuine repeating tick while the gym screen is visible, and that tick is
+ * the online case. Every existing call site keeps meaning what it meant
+ * before this type existed, because every parameter that carries it defaults
+ * to `'offline'` — see each function's own doc comment for the default.
+ */
+export type EarningsMode = 'online' | 'offline';
+
+/**
  * The decision policies `runLadder` composes with. Vocabulary, not injection:
  * a policy is a name for a deterministic rule below, so the composed loop
  * stays a pure function of its arguments and the sweep can vary the axis
@@ -395,23 +411,29 @@ export function createLadderState(): LadderState {
  *
  * The rate is a SUM input on purpose: stage 1 passes one rung's rate, stage 4
  * passes the portfolio's total, and the mechanism — quantise, bank up to the
- * horizon, discount by the offline fraction — is `production.ts`'s and is not
- * restated here.
+ * horizon — is `production.ts`'s and is not restated here.
+ *
+ * `mode` decides the multiplier and nothing else: `'offline'` (the default,
+ * matching every call site that existed before this parameter did) applies
+ * `OFFLINE_EARNINGS_FRACTION`; `'online'` pays the nominal rate, undiscounted.
+ * `secondsElapsed`, `secondsBanked` and `secondsDiscarded` — the cap and
+ * quantisation `production.ts` already specified — are read identically under
+ * both modes; this parameter touches only the money multiplier.
  */
 export function accrueLadderGymBucks(
   ratePerHourSum: number,
   gapSeconds: number,
   policy: OfflineBankingPolicy = SHIPPED_OFFLINE_BANKING_POLICY,
+  mode: EarningsMode = 'offline',
 ): LadderAccrual {
   if (!Number.isFinite(ratePerHourSum) || ratePerHourSum < 0) {
     refuseWith(`a summed income rate must be finite and at or above zero, received ${ratePerHourSum}`);
   }
   const secondsElapsed = quantiseElapsedSeconds(gapSeconds);
   const secondsBanked = bankableOfflineSeconds(gapSeconds, policy);
+  const rateFraction = mode === 'online' ? 1 : EMPIRE_TUNING.OFFLINE_EARNINGS_FRACTION;
   const gymBucks = scrubPrecision(
-    ratePerHourSum *
-      EMPIRE_TUNING.OFFLINE_EARNINGS_FRACTION *
-      (secondsBanked / EMPIRE_TUNING.SECONDS_PER_HOUR),
+    ratePerHourSum * rateFraction * (secondsBanked / EMPIRE_TUNING.SECONDS_PER_HOUR),
   );
   return Object.freeze({
     gymBucks,
@@ -425,8 +447,16 @@ export function accrueLadderGymBucks(
  * A check-in at `atSeconds`: accrue the gap since the last mark and advance
  * the mark. Refuses a mark that runs backwards and an off-tick time (§4 of
  * the header says why the tick contract is load-bearing).
+ *
+ * `mode` defaults to `'offline'`, so every call site written before this
+ * parameter existed — the sweeps in `ladder.test.ts`, `runLadder` below, and
+ * every composed caller that does not pass it explicitly — is unaffected.
  */
-export function ladderCheckIn(state: LadderState, atSeconds: number): LadderCheckIn {
+export function ladderCheckIn(
+  state: LadderState,
+  atSeconds: number,
+  mode: EarningsMode = 'offline',
+): LadderCheckIn {
   requireLadderState(state);
   if (
     !Number.isFinite(atSeconds) ||
@@ -443,6 +473,8 @@ export function ladderCheckIn(state: LadderState, atSeconds: number): LadderChec
   const accrual = accrueLadderGymBucks(
     ladderIncomeRatePerHour(state.rung),
     atSeconds - state.collectedAt,
+    SHIPPED_OFFLINE_BANKING_POLICY,
+    mode,
   );
   return Object.freeze({
     state: Object.freeze({
@@ -461,13 +493,19 @@ export function ladderCheckIn(state: LadderState, atSeconds: number): LadderChec
  * contract and the backwards-mark refusal are one implementation; the one
  * refusal added here is a gap that is not a finite non-negative number, named
  * in the gap's own terms before it is folded into an absolute time.
+ *
+ * `mode` defaults to `'offline'`, unchanged from every pre-existing caller.
  */
-export function ladderCheckInAfter(state: LadderState, gapSeconds: number): LadderCheckIn {
+export function ladderCheckInAfter(
+  state: LadderState,
+  gapSeconds: number,
+  mode: EarningsMode = 'offline',
+): LadderCheckIn {
   requireLadderState(state);
   if (!Number.isFinite(gapSeconds) || gapSeconds < 0) {
     refuseWith(`a clock advance must be finite and at or above zero, received ${gapSeconds}`);
   }
-  return ladderCheckIn(state, state.collectedAt + gapSeconds);
+  return ladderCheckIn(state, state.collectedAt + gapSeconds, mode);
 }
 
 // ---------------------------------------------------------------------------

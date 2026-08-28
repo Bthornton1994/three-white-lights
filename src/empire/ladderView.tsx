@@ -34,6 +34,7 @@
 
 import { EMPIRE_TUNING } from './empireTuning';
 import {
+  type EarningsMode,
   type LadderAccrual,
   type LadderBuyResult,
   type LadderEquipmentItem,
@@ -440,7 +441,18 @@ export type GymViewRefusal =
  * strike, for the reason stated below.
  */
 export type GymViewAction =
-  | { readonly kind: 'advance-clock'; readonly gapSeconds: number }
+  | {
+      readonly kind: 'advance-clock';
+      readonly gapSeconds: number;
+      /**
+       * `'online'` for a real, watched wall-clock tick (paid at the nominal
+       * rate); `'offline'` (the default — every dev control below omits this
+       * field on purpose, and an omitted field means the pre-existing dev
+       * behaviour) for a gap the player was away for. `AppShell.tsx`'s
+       * `GymHost` is the only caller that ever sets this to `'online'`.
+       */
+      readonly mode?: EarningsMode;
+    }
   | { readonly kind: 'advance-to-next-week' }
   | { readonly kind: 'buy-ladder'; readonly item: LadderEquipmentItem }
   | { readonly kind: 'buy-session'; readonly item: SessionEquipmentItem }
@@ -519,13 +531,17 @@ export function createGymViewState(): GymViewState {
  * than taken, and the prose is left in the plain-negation form rather than
  * capitalised-and-untagged.
  */
-function advanceGymClock(state: GymViewState, gapSeconds: number): GymViewState {
+function advanceGymClock(
+  state: GymViewState,
+  gapSeconds: number,
+  mode: EarningsMode = 'offline',
+): GymViewState {
   const before = state.managed;
   const {
     state: checkedInManaged,
     accrual,
     ...report
-  } = managedCheckIn(before, before.gym.ladder.collectedAt + gapSeconds);
+  } = managedCheckIn(before, before.gym.ladder.collectedAt + gapSeconds, mode);
   const previousWeekIndex = trainingWeekIndexAt(before.gym.ladder.collectedAt);
   const newWeekIndex = trainingWeekIndexAt(checkedInManaged.gym.ladder.collectedAt);
   let weekLog = state.weekLog;
@@ -576,7 +592,7 @@ function advanceGymClock(state: GymViewState, gapSeconds: number): GymViewState 
 export function gymViewReduce(state: GymViewState, action: GymViewAction): GymViewState {
   switch (action.kind) {
     case 'advance-clock':
-      return advanceGymClock(state, action.gapSeconds);
+      return advanceGymClock(state, action.gapSeconds, action.mode);
     case 'advance-to-next-week':
       return advanceGymClock(
         state,
