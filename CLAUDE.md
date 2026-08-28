@@ -845,6 +845,104 @@ and must be re-measured, not asserted).
 **`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not a
 crossing.
 
+### RULED 2026-08-28 (SECOND): A RUNG-SPECIFIC ADDEND FOR RPE 9, KEYED ON RPE — NOT ON EXCESS
+
+The ceiling-raise round (`39a8b2e0`'s brief, worked entirely in scratch space,
+nothing committed) confirmed the ceiling move independently and found it does
+nothing for RPE 9: `MARGIN_CEILING` in `(0.3764, 0.3990)` takes the top meet
+cell from 0% to 62% realistic-cadence loss — the mechanism works exactly as
+intended for cells near the top of the ladder — but RPE 9's four reachable
+cells sit at base margin 0.012–0.045, so the ceiling term never binds for them
+(headroom to any ceiling in the band is always ≳0.33, far past `ONSET`'s 0.100
+cap). Boosted margin for RPE 9 is `base + ONSET`, topping out around
+0.11–0.14, while realistic max-effort losses start around 0.35–0.38. Global
+`ONSET` would need to reach roughly 0.32 to give RPE 9 any risk at all — over
+3x this arc's authorized cap — and by that point RPE 10 and every meet cell
+have already saturated to total loss. **This is magnitude, not a guarantee
+conflict: the false-start rule held cleanly throughout the whole probed
+range.** Independently re-verified: the formula in `benchWorkingRungDemand`
+was read from source and its arithmetic reproduces the probe's numbers
+exactly given RPE 9's four cells' base margins.
+
+**Ruled: a rung-specific working-rung addend for RPE 9 only, keyed on RPE —
+not on `workingExcess`.**
+
+1. **Add a new constant in `liftTuning.ts`, sized so RPE 9's `MAX_EFFORT`
+   realistic-cadence (57–81ms) failure rate is non-zero and NOT total, across
+   all four RPE 9 cells.** The probe's own measurement puts the needed
+   magnitude near 0.32 above RPE 9's base margins — treat that as the
+   starting estimate, not a mandate to hit exactly. Name it clearly (it is a
+   sibling of `BENCH_WORKING_RUNG_DEMAND_ONSET`, not a replacement for it).
+   No bare literal in `lift.ts` — the constant lives in `liftTuning.ts`, same
+   as every other tunable here. Flag it in its own header as an unplayed
+   knob, same convention as every other constant in this arc's §12.1-open
+   comments — nobody has played this specific number yet.
+2. **Also ship the ceiling move**, `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`
+   raised into `(0.3764, 0.3990)`, in the SAME piece. It is the RPE 10 / meet
+   half of this ask and is already measured working; shipping the RPE 9
+   addend without it risks a boosted RPE 9 sitting above a still-capped
+   RPE 10, which is exactly the ordering violation item 4 below forbids.
+3. **The addition is keyed on RPE / check-in rung, explicitly passed into
+   `benchWorkingRungDemand` — not reconstructed from `workingExcess`.** A
+   function of excess is the shape of the deleted ramp, and excess is smaller
+   at RPE 9 than at RPE 10, so keying on excess cannot target RPE 9
+   specifically without also moving RPE 10. Change the function's signature
+   to take the rung explicitly; do not infer RPE from excess or load.
+4. **Global `BENCH_WORKING_RUNG_DEMAND_ONSET` stays at its shipped value —
+   do NOT raise it to ~0.32 or any other value this round.** RPE 8 gets no
+   new addend and stays on the shipped `ONSET` alone — do not widen RPE 8
+   "while the function already takes a rung parameter." RPE 10 and meet take
+   their difficulty entirely from the ceiling move in item 2, not from any
+   new rung-specific term.
+5. **The working-band addition is no longer uniform across working rungs, and
+   the header must say so, with this round's measurement as the stated
+   reason** — not asserted, cited to the specific magnitude gap measured
+   above (RPE 9 base margins 0.012–0.045 vs. the ~0.35–0.38 wall).
+
+**Refused, explicitly, both repeated from the fork report and not to be
+re-litigated:** raising `DEMAND_BASE.bench` (already measured spent); any
+touch to the Tuchscherer RPE→%1RM chart or any prescribed-load input at RPE 9
+check-ins; an `if (rpe === 9)` branch on the base ascent-demand curve (the
+overlay exists precisely so the base curve and the warm-up floor stay
+unchanged — a base-curve branch defeats that). Shipping the ceiling alone and
+calling RPE 9 architecturally safe is also refused — the phone complaint named
+RPE 9 on the daily session specifically.
+
+**Stop and report — do not reach further — if any of the following fail, and
+do not use `GRIND_BOOST_FORCE_MAX`, `MAX_LOCKOUT_TICKS`, or the warm-up floor
+to force any of them through:**
+
+1. RPE 9 `MAX_EFFORT` at 57–81ms: non-zero and not total, across all four
+   cells, old (0) pinned beside new.
+2. RPE 8 `MAX_EFFORT` stays at 0, or strictly below RPE 9's — do not raise
+   RPE 8's difficulty as a side effect.
+3. RPE 10 / meet `MAX_EFFORT` stays at or above RPE 9's, and RPE 9 does not
+   reach 100%. If RPE 9 and RPE 10 both saturate to total loss, stop and
+   report — do not raise RPE 10 to "restore" a ladder that broke, and do not
+   flatten the two rungs to match.
+4. `WORKING_FLOOR` (the slowest-cadence-that-still-makes-it metric from prior
+   rounds) still orders 8 < 9 < 10. A ~0.32-scale addend will move RPE 9's
+   floors hard — if RPE 9 overtakes RPE 10, stop and report both vectors in
+   full, old beside new. Do not raise RPE 10's floors to compensate, and do
+   not touch `GRIND_BOOST_FORCE_MAX` under any circumstance.
+5. The false-start guarantee re-pins at 0 of 40 reachable cells at the shipped
+   12-tick lockout, against the new ceiling AND the new RPE 9 addend
+   together. If any cell reopens, stop and report — do not shorten the
+   lockout further to compensate.
+6. The warm-up floor edges (margin −0.0483/−0.0323, ascent 193/247) are
+   unchanged. RPE ≤ 7 unanswered on a held descent still makes, zero taps,
+   every cell, every seed. RPE 8+ unanswered still loses.
+
+**Still binding from every prior round:** squat and deadlift stay
+byte-identical. GDD §6.2 moves in the same commit as code. The prior round's
+own re-pinning list (`TOUCH_SWEEP.SOFT_VS_CRASH_FLIPS`, `REACHABLE_RESCUE`,
+both `REACHABLE_LADDER` counts, both `WORKING_FLOOR` vectors) must be
+re-measured against BOTH new constants together, not assumed from either
+change in isolation.
+
+**`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not a
+crossing.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
