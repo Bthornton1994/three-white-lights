@@ -703,6 +703,86 @@ non-zero, non-total failure rate for a realistic max-effort player.
 **`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not a
 crossing.
 
+### RULED 2026-08-27: THE LOCKOUT CAP SHORTENS — RPE 9 MOVES PAST THE MASH WALL, NOT THE ONSET
+
+The builder dispatched against the third replay found a genuine structural
+conflict rather than shipping a retune, and did the right thing by refusing to
+pick a side unilaterally. Both readings of the conflict were laid out and a
+human ruled on it directly, rather than the builder or Session A choosing.
+
+**The conflict, restated exactly as measured on `claude/bench-max-effort` at
+`91afab4e`.** Two margin thresholds exist in the raw mechanics, independent of
+this round's own tuning: the **false-start wall** (0.2777 at the shipped
+`MAX_LOCKOUT_TICKS: 30` — the margin above which a 10-tap false start costs the
+rep, breaking `@guarantee a-false-start-can-never-pay`) and the **max-effort
+wall** (0.3764 — the margin above which even perfect flat-out mashing can
+fail). The false-start wall sits *below* the max-effort wall, and the hardest
+reachable cell in the game (`meet/aggressive/att3/wrecked`, base margin
+`0.3066`) sits between them: already past the false-start wall (a disclosed
+pre-existing defect from an earlier round) but still short of the max-effort
+wall. No margin value threads both needles unchanged.
+
+**Ruled: shorten the lockout, not the onset.**
+
+1. **`GRIND_FALSE_START.MAX_LOCKOUT_TICKS` drops 30 → 12.** Measured on the
+   builder's own probe, this moves the false-start wall to `0.3990` — past the
+   max-effort wall (`0.3764`), which is what makes both guarantees satisfiable
+   at once. Re-verify this number against the shipped code before relying on
+   it; the builder's figure was taken on an unmerged branch.
+2. **The shipped copy sentence changes to match.** *"Taps before the call
+   count for nothing, and each one holds your press back, up to half a
+   second"* is false at 12 ticks (200ms). Rewrite it to state the real cap
+   truthfully — do not leave a promise the mechanic no longer keeps.
+3. **RPE 9's effective margin then has to land past the (re-verified)
+   max-effort wall.** This is the actual difficulty lever this round — not
+   `BENCH_WORKING_RUNG_DEMAND_ONSET`. Pin the new max-effort metric old
+   (0, i.e. today's shipped build) beside new, specifically at the realistic
+   57–81ms captured cadence range, and RPE 9 must show a real, non-zero,
+   **non-total** failure rate there. RPE 8/10/meet follow whatever the same
+   mechanism naturally does to them — report the shape rather than hand-tuning
+   each rung separately unless the ordering breaks.
+4. **The false-start guarantee is re-verified at the new cap, not assumed.**
+   Pin the exact cell set (still just the one disclosed pre-existing defect
+   cell, or empty, or something else) at `MAX_LOCKOUT_TICKS: 12` — do not carry
+   forward the old cell set or the old wall numbers without re-deriving them
+   against the shipped tree.
+5. **`ONSET` may ride at `0.100` after the wall-crossing work is verified, not
+   before.** The `bench-max-effort` branch's own `0.100`/`MARGIN_CEILING 0.26`
+   change is a floor-only improvement and does not by itself meet this round's
+   bar (max-effort failure rate was still 0 everywhere under it). It ships
+   only once the lockout change is in and re-measured alongside it, and only if
+   it does not reopen either floor-edge gap.
+6. **`GRIND_BOOST_FORCE_MAX` stays untouched this round**, as already refused
+   in the prior entry — it sets the force ceiling, not demand, and moving it
+   here would blur which lever did the work.
+
+**`claude/bench-max-effort` at `91afab4e` is explicitly NOT the answer to this
+ruling.** It may be reused as a starting point for its test infrastructure
+(`MAX_EFFORT`/`MAX_EFFORT_WALLS`, the splitmix32 cadence generator, the
+false-start driver) — all confirmed to make zero non-comment changes to
+`src/game/lift.ts` — but new commits past that tip are required, and it is not
+merged as-is.
+
+**Still binding, unchanged from every prior round:** `BENCH_WARMUP_FLOOR_MARGIN
+-0.04` / `BENCH_WARMUP_FLOOR_ASCENT_TICKS 220` untouched; RPE ≤ 7 unanswered on
+a held descent still makes, zero taps, every cell, every seed; RPE 8+
+unanswered still loses; if this lever closes either floor-edge gap (margin
+−0.0483/−0.0323, ascent 193/247), **stop and report — do not renumber the
+floor to compensate.** Squat and deadlift stay byte-identical (85 baseline
+digests). GDD §6.2 moves in the same commit as code, and must describe the
+false-start cap and its copy truthfully rather than carrying the old "half a
+second" claim forward.
+
+**Bar before a URL:** `MAX_LOCKOUT_TICKS` at 12, re-measured wall values beside
+the old ones. False-start-never-costs-the-rep re-verified with its cell set
+pinned at the new cap. RPE 9's max-effort failure rate non-zero and non-total
+at the realistic captured cadence, old (0) shown beside new. Floor-edge gaps
+unchanged or the round stops. `ONSET 0.100` ships only after the above is
+green, in the same piece or a clearly sequenced follow-up — not instead of it.
+
+**`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not a
+crossing.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
