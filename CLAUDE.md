@@ -783,6 +783,68 @@ green, in the same piece or a clearly sequenced follow-up — not instead of it.
 **`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not a
 crossing.
 
+### RULED 2026-08-28: THE CEILING RISES INTO THE BAND — NOT THE ONSET AT 0.27
+
+The lockout-shortening round (`a5c6939f`, critic-graded, all 13 bar items
+passed with an independent mutation test confirming the wall re-derivation)
+closed the guarantee conflict but not the round's actual ask: `MAX_EFFORT`
+still read 0 losses at every rung, because `BENCH_WORKING_RUNG_DEMAND_MARGIN_
+CEILING` (0.27, untouched by that round) caps every reachable cell's boosted
+margin at 0.3066 — 0.07 short of the 0.3764 max-effort wall — regardless of
+`ONSET`. That gap, and the re-pinning cost of closing it, was reported rather
+than closed, correctly, since neither lever was authorised.
+
+**Ruled: the ceiling moves this round.**
+
+1. **Raise `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` into the open band**:
+   strictly greater than `0.3764` (the max-effort wall) and strictly less than
+   `0.3990` (the false-start wall, at the shipped 12-tick lockout). This is the
+   band the 2026-08-27 lockout ruling opened but did not use. Pick the
+   smallest value inside the band that the rest of this ruling's bar needs —
+   do not overshoot for headroom that isn't asked for.
+2. **`ONSET` may then also rise, up to 0.100**, but only after the ceiling
+   change is in place and only as far as needed to clear the bar in item 3.
+   **Do not raise `ONSET` while leaving the ceiling at 0.27** — that combination
+   was already measured this arc to leave `MAX_EFFORT` at zero everywhere, and
+   shipping it again would not be new information.
+3. **Bar: RPE 9's `MAX_EFFORT` realistic-cadence (57–81ms) failure rate must be
+   non-zero and non-total.** Re-derive `MAX_EFFORT` and `MAX_EFFORT_WALLS`
+   against the new constants — do not carry forward the 0/0/0/0/0/0 pinned
+   under the old ceiling. RPE 8/10/meet follow whatever the mechanism
+   naturally does; only intervene further if 8 < 9 < 10 breaks or a rung
+   saturates to 0% or 100%.
+4. **Re-pin the false-start guarantee at 0 of 40 reachable cells, at the
+   shipped 12-tick lockout, against the NEW ceiling/onset values.** The
+   `a5c6939f` round proved 0-of-40 holds at the old ceiling (0.27); a ceiling
+   raised into the band changes which cells clip and by how much, so this is
+   not assumed to still be zero — it is measured again, the same way the
+   12-tick change was measured against 30, not carried forward.
+5. **`claude/agent-config-setup-m2r6ny` at `a5c6939f` is not minted for a
+   phone replay.** This round's own commits are the candidate for the next
+   replay once the bar above is met.
+6. **`GRIND_BOOST_FORCE_MAX` stays off this round, unconditionally — repeated
+   from every prior round for the same reason (it sets the force ceiling, not
+   demand).** If raising `MARGIN_CEILING` into the band and `ONSET` up to 0.100
+   together still cannot make RPE 9's `MAX_EFFORT` non-zero-non-total while
+   simultaneously holding the false-start guarantee at 0-of-40, **stop and
+   report the measured conflict — do not reach for `GRIND_BOOST_FORCE_MAX` or
+   any other lever not named here to force it through.**
+
+**Still binding, unchanged from every prior round:** `BENCH_WARMUP_FLOOR_
+MARGIN -0.04` / `BENCH_WARMUP_FLOOR_ASCENT_TICKS 220` untouched; RPE ≤ 7
+unanswered on a held descent still makes, zero taps, every cell, every seed;
+RPE 8+ unanswered still loses; the floor-edge gaps (margin −0.0483/−0.0323,
+ascent 193/247) must not close — stop and report rather than renumber the
+floor. Squat and deadlift stay byte-identical. GDD §6.2 moves in the same
+commit as code and must describe the raised ceiling and its real cost
+(the re-pinning surface `a5c6939f`'s own comment already names —
+`TOUCH_SWEEP.SOFT_VS_CRASH_FLIPS`, `REACHABLE_RESCUE`, both `REACHABLE_LADDER`
+counts, both `WORKING_FLOOR` vectors — all of which move for real this round
+and must be re-measured, not asserted).
+
+**`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not a
+crossing.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
