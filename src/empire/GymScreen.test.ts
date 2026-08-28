@@ -280,6 +280,22 @@ function displayRepairCost(costGymBucks: number): number {
   return isDustRepairCost(costGymBucks) ? 0 : costGymBucks;
 }
 
+/**
+ * Mirrors `GymScreen.tsx`'s private `isSoundCondition` — S4f's condition gate
+ * for the per-item repair row, re-derived here rather than imported, same
+ * discipline as `isDustRepairCost`/`displayRepairCost` above. This is the
+ * gate the per-item row switched to; `isDustRepairCost` above stays the
+ * mirror for the scheduled review's own control only, which S4f did not
+ * touch.
+ */
+function isSoundCondition(condition: number): boolean {
+  return condition >= EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION;
+}
+
+function displayRepairCostBySoundness(costGymBucks: number, condition: number): number {
+  return isSoundCondition(condition) ? 0 : costGymBucks;
+}
+
 function expectGatedControl(
   root: Rendered,
   id: string,
@@ -424,12 +440,18 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
     `equipment condition ${meanCondition(managed)} — income paid at ${conditionIncomeMultiplier(managed)} of the rate`,
   );
   compared += 2;
-  expect(textOf(findByTestId(root, 'gymscreen-full-repair'))).toBe(
-    `everything back to new: ${fullRepairCostGymBucks(managed)} gym bucks`,
-  );
-  compared += 1;
+  // S4f: `worn` is computed here, ahead of the full-repair line, because that
+  // line now rounds to 0 under the SAME predicate the worn line already uses
+  // (`worn.length === 0`) rather than under `fullRepairCostGymBucks`'s own
+  // raw, cost-based sum — the human's 518s-watch report found the raw sum
+  // still positive (`0.3456`) on a gym at 0.999712 mean condition, where every
+  // individual item already read "as new".
   const worn = wornItems(managed);
   const unanswered = unansweredItems(managed);
+  expect(textOf(findByTestId(root, 'gymscreen-full-repair'))).toBe(
+    `everything back to new: ${worn.length === 0 ? 0 : fullRepairCostGymBucks(managed)} gym bucks`,
+  );
+  compared += 1;
   expect(textOf(findByTestId(root, 'gymscreen-worn'))).toBe(
     `under ${EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION} condition: ${worn.length === 0 ? 'nothing' : worn.join(', ')} — of those, not yet refused: ${unanswered.length === 0 ? 'none' : unanswered.join(', ')}. the review below is raised by banked operating time, not by this list.`,
   );
@@ -437,18 +459,22 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
   const owned = ownedItemsOf(managed.gym);
   for (const item of owned) {
     const itemCost = repairCostGymBucks(managed, item);
+    const condition = itemCondition(managed, item);
     expect(textOf(findByTestId(root, `gymscreen-condition-${item}`))).toBe(
-      `${item}: condition ${itemCondition(managed, item)}, repairing it costs ${displayRepairCost(itemCost)} gym bucks`,
+      `${item}: condition ${condition}, repairing it costs ${displayRepairCostBySoundness(itemCost, condition)} gym bucks`,
     );
-    // The button is hidden below `DUST_REPAIR_COST_GYM_BUCKS`, not only at an
-    // exact zero (the "kill the mint" continuous-wear fix) — a wider gate than
-    // `repairEquipment`'s own exact-zero "already-sound" refusal, so the
-    // expectation is re-derived from the same threshold the screen renders
-    // against rather than from the mutation function's refusal reason.
+    // S4f: the per-item row's control is gated on the item's OWN condition
+    // against `MAINTENANCE_PROMPT_CONDITION` — the same threshold
+    // `gymscreen-worn` prints — not on the quoted cost. A cost-based gate
+    // (`isDustRepairCost`, "kill the mint") is what the human's 518s-watch
+    // report found still positive and pressable at condition 0.999712, so the
+    // expectation is re-derived from `isSoundCondition` instead; affordability
+    // (`itemCost > purse`) is unchanged, still `repairEquipment`'s own
+    // `'not-enough-gym-bucks'` arm.
     compared += expectGatedControl(
       root,
       `gymscreen-repair-${item}`,
-      isDustRepairCost(itemCost) || itemCost > managed.gym.ladder.gymBucks,
+      isSoundCondition(condition) || itemCost > managed.gym.ladder.gymBucks,
       `repairEquipment ${item}`,
     );
     compared += 3;
@@ -796,6 +822,24 @@ function advanceTimes(state: GymViewState, times: number): GymViewState {
   return next;
 }
 
+/**
+ * How many `advanceTimes` presses, from a fresh (condition-1) gym, it takes
+ * to cross `MAINTENANCE_PROMPT_CONDITION` — derived from the tuning rather
+ * than hand-picked, mirroring the identical derivation
+ * `stage 4: only a press moves the failure ledger` below already uses. The
+ * wear per press is `EQUIPMENT_WEAR_PER_BANKED_HOUR * OFFLINE_EARNINGS_CAP_
+ * HOURS`, not the largest dev step's own raw seconds: the largest step
+ * (`ladderDevTimeSteps`'s +3d) is well past the offline banking cap, so what
+ * actually banks — and therefore wears — per press is the capped 12h, which
+ * that other test's own assertion pins (`step` is only ever asserted `>=`
+ * the capped span, never equal to it).
+ */
+function checkInsToCrossWornLine(): number {
+  const wearPerPress =
+    EMPIRE_TUNING.EQUIPMENT_WEAR_PER_BANKED_HOUR * EMPIRE_TUNING.OFFLINE_EARNINGS_CAP_HOURS;
+  return Math.ceil((1 - EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION) / wearPerPress);
+}
+
 describe('stage 4: every new control dispatches exactly the action it names', () => {
   it('drives repair and hire on a state where each one would actually go through', () => {
     // THIS TEST USED TO PRESS ALL OF THESE ON THE OPENING SCREEN, which is
@@ -804,8 +848,16 @@ describe('stage 4: every new control dispatches exactly the action it names', ()
     // anyway. They are gated on their own transition's refusal now, so the
     // state that offers them is the state a player could have pressed them
     // in — reached here by taking check-ins, not by hand-building a gym.
+    //
+    // S4f widened the per-item row's own gate from cost to condition, so a
+    // single check-in (condition ~0.976, well above the 0.5 worn line) no
+    // longer offers a repair control at all — it never affected `worn`,
+    // which took its name from the fixture affording the top manager tier,
+    // not from the equipment being worn. `checkInsToCrossWornLine` gets the
+    // fixture past the line the control is now actually gated on, and
+    // `fundedEnoughFor` only ever wears it further from there.
     const worn = fundedEnoughFor(
-      advanceTimes(createGymViewState(), 1),
+      advanceTimes(createGymViewState(), checkInsToCrossWornLine()),
       managerHireCostGymBucks(
         EMPIRE_TUNING.MANAGER_TIERS[EMPIRE_TUNING.MANAGER_TIERS.length - 1] as ManagerTier,
       ),
@@ -1061,6 +1113,92 @@ describe('stage 4: the sentence drawn over a standing review', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// S4f: a human watched one gym continuously for 518s (no skip-row, no
+// mint-tap) and found every per-item row still offering a live "repair for
+// 0.1152" and the bulk line still reading "everything back to new: 0.3456",
+// at mean condition 0.999712. The cost-based gate (`isDustRepairCost`, "kill
+// the mint") cannot hide this: condition falls continuously the whole time
+// the gym runs, so cost climbs past any fixed threshold given enough elapsed
+// real time. The ruling repointed the per-item row and the bulk line onto
+// the same condition-based worn line `gymscreen-worn` already prints, and
+// left the scheduled review's own control alone. Both fixtures below are
+// driven through the real reducer, not hand-built.
+// ---------------------------------------------------------------------------
+describe('stage 4: the per-item repair row and the bulk line are gated on condition, not cost', () => {
+  it('reproduces the reported defect: draws no live control and no positive total on a gym merely worn by real time, comfortably above the worn line', () => {
+    // A single small, positive tick of continuous wear — the same shape the
+    // played report measured, reproduced directly rather than by looping
+    // 518s of real ticks. 1000s of banked operation is comfortably under
+    // every offline cap in this file (so it banks in full) and small enough
+    // that condition stays comfortably above `MAINTENANCE_PROMPT_CONDITION`.
+    const worn = dispatchThrough(createGymViewState(), {
+      kind: 'advance-clock',
+      gapSeconds: 1000,
+    });
+    const owned = ownedItemsOf(worn.managed.gym);
+    expect(owned.length).toBeGreaterThan(0);
+    for (const item of owned) {
+      const condition = itemCondition(worn.managed, item);
+      const cost = repairCostGymBucks(worn.managed, item);
+      // Non-vacuity: this really is the reported shape — worn enough that the
+      // quoted cost clears dust, not worn enough to cross the worn line —
+      // rather than an edge the fix happens not to touch.
+      expect(condition, item).toBeLessThan(1);
+      expect(condition, item).toBeGreaterThanOrEqual(EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION);
+      expect(cost, item).toBeGreaterThan(EMPIRE_TUNING.DUST_REPAIR_COST_GYM_BUCKS);
+    }
+    expect(wornItems(worn.managed).length).toBe(0);
+    const root = render(worn, []);
+    for (const item of owned) {
+      expect(findAllByTestId(root, `gymscreen-repair-${item}`).length, item).toBe(0);
+      expect(textOf(findByTestId(root, `gymscreen-repair-${item}-unavailable`))).toBe(
+        'as new — nothing to repair',
+      );
+      expect(textOf(findByTestId(root, `gymscreen-condition-${item}`))).toContain(
+        'repairing it costs 0 gym bucks',
+      );
+    }
+    expect(textOf(findByTestId(root, 'gymscreen-full-repair'))).toBe(
+      'everything back to new: 0 gym bucks',
+    );
+    expectManagementMatchesState(root, worn);
+  });
+
+  it('offers the real control at the real price, and a real positive bulk total, once an item has genuinely crossed the worn line', () => {
+    const worn = advanceTimes(createGymViewState(), checkInsToCrossWornLine());
+    const owned = ownedItemsOf(worn.managed.gym);
+    const wornList = wornItems(worn.managed);
+    // Non-vacuity: the crossing this fixture is built to reach really was
+    // reached.
+    expect(wornList.length).toBeGreaterThan(0);
+    const root = render(worn, []);
+    let sawLiveControl = false;
+    for (const item of owned) {
+      const condition = itemCondition(worn.managed, item);
+      const cost = repairCostGymBucks(worn.managed, item);
+      if (condition >= EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION) continue;
+      expect(cost, item).toBeGreaterThan(0);
+      if (cost > worn.managed.gym.ladder.gymBucks) {
+        expect(findAllByTestId(root, `gymscreen-repair-${item}`).length, item).toBe(0);
+        continue;
+      }
+      sawLiveControl = true;
+      expect(textOf(findByTestId(root, `gymscreen-repair-${item}`))).toBe(`repair for ${cost}`);
+      expect(findAllByTestId(root, `gymscreen-repair-${item}-unavailable`).length, item).toBe(0);
+    }
+    expect(sawLiveControl, 'at least one owned item offered a live, affordable repair control').toBe(
+      true,
+    );
+    const totalCost = fullRepairCostGymBucks(worn.managed);
+    expect(totalCost).toBeGreaterThan(0);
+    expect(textOf(findByTestId(root, 'gymscreen-full-repair'))).toBe(
+      `everything back to new: ${totalCost} gym bucks`,
+    );
+    expectManagementMatchesState(root, worn);
+  });
+});
+
 describe('stage 4: the repair decision, priced before it is taken', () => {
   it('shows the cost, then charges exactly it and restores the item', () => {
     const reviewed = advanceTimes(createGymViewState(), EMPIRE_TUNING.MAINTENANCE_ORDER_FIRST_CHECK_IN);
@@ -1072,9 +1210,25 @@ describe('stage 4: the repair decision, priced before it is taken', () => {
     // The price is on the screen BEFORE the press — read it off the drawn tree.
     const before = render(reviewed, []);
     expect(textOf(findByTestId(before, 'gymscreen-prompt-item'))).toContain(`${quoted} gym bucks`);
-    expect(textOf(findByTestId(before, `gymscreen-condition-${item}`))).toContain(
-      `repairing it costs ${quoted} gym bucks`,
-    );
+    // S4f: the per-item row and the scheduled review read DIFFERENT pools —
+    // `gymscreen-worn`'s own text says so, and this fixture drives the
+    // disagreement rather than assuming it away. At the FIRST review
+    // (`MAINTENANCE_ORDER_FIRST_CHECK_IN` check-ins) the named item has not
+    // yet crossed `MAINTENANCE_PROMPT_CONDITION`, so the per-item row shows
+    // "as new" and rounds its own cost to 0 even though the review above
+    // quotes a real, positive price for the SAME item.
+    const itemConditionAtReview = itemCondition(reviewed.managed, item);
+    if (isSoundCondition(itemConditionAtReview)) {
+      expect(textOf(findByTestId(before, `gymscreen-condition-${item}`))).toContain(
+        'repairing it costs 0 gym bucks',
+      );
+      expect(findAllByTestId(before, `gymscreen-repair-${item}`).length).toBe(0);
+      expect(findAllByTestId(before, `gymscreen-repair-${item}-unavailable`).length).toBe(1);
+    } else {
+      expect(textOf(findByTestId(before, `gymscreen-condition-${item}`))).toContain(
+        `repairing it costs ${quoted} gym bucks`,
+      );
+    }
     const purseBefore = reviewed.managed.gym.ladder.gymBucks;
     const repaired = dispatchThrough(reviewed, { kind: 'answer-prompt', response: 'repair' });
     expect(repaired.lastRefusal).toBeNull();

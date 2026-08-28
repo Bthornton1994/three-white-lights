@@ -2855,7 +2855,16 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // read, and `management.ts`'s new `reviewBankedTime` calling `orderOpensAt`
   // a second time. Read from this pin's own failure value rather than
   // hand-counted. The set of CONSTRUCTORS below is unchanged.
-  CALLS_EXAMINED: 2881,
+  // 2881 -> 2883: the S4f condition-gate round — the per-item row's own two
+  // reads moved from `isDustRepairCost`/`displayRepairCost` (each wrapping
+  // one `repairCostGymBucks` call) to `isSoundCondition`/
+  // `displayRepairCostBySoundness` (the latter wrapping both
+  // `repairCostGymBucks` and `itemCondition`), a like-for-like swap that adds
+  // one net call in the JSX; the new `displayRepairCostBySoundness` function
+  // body itself adds one more, calling `isSoundCondition`. Read from this
+  // pin's own failure value rather than hand-counted. The set of
+  // CONSTRUCTORS below is unchanged.
+  CALLS_EXAMINED: 2883,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -9688,7 +9697,16 @@ const DRIVE_CENSUS = Object.freeze({
   // returned object) plus the quiet-prompt line's extra JSX text child on
   // the driven `GymScreen` renders that reach it. Read from this pin's own
   // failure value.
-  NODES: 6417148, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
+  // 6417148 -> 6417127: the S4f condition-gate round, and the number went
+  // DOWN again, the same shape as the two moves above it. The per-item row's
+  // gate widened from cost (`isDustRepairCost`) to condition
+  // (`isSoundCondition`), which is STRICTER on some of `MANAGED_STATES`'
+  // fixtures — a state whose condition sits above `MAINTENANCE_PROMPT_
+  // CONDITION` but whose quoted cost already cleared the old dust threshold
+  // now draws the "as new" text instead of the live `Pressable`, so those
+  // driven renders have fewer nodes on them. Read from this pin's own
+  // failure value.
+  NODES: 6417127, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -9759,7 +9777,15 @@ const DRIVE_CENSUS = Object.freeze({
   // the driven `GymScreen` fixture/point combinations than the first
   // estimate accounted for. Not independently re-attributed by hand —
   // recorded as measured rather than guessed a second time.
-  STRINGS: 29_625_563,
+  // 29_625_563 -> 29_625_497: the S4f condition-gate round, and the number
+  // went DOWN — the same shape `NODES` above moved in for the identical
+  // reason: the per-item row's gate widened from cost to condition, so a
+  // driven `GymScreen` fixture that used to draw a live "repair for X"
+  // control (and the string that Text node carries) now draws "as new —
+  // nothing to repair" instead, on some of `MANAGED_STATES`. Fewer live
+  // controls is fewer string-carrying nodes. Read from this pin's own
+  // failure value.
+  STRINGS: 29_625_497,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -9824,7 +9850,14 @@ const DRIVE_CENSUS = Object.freeze({
   // naive per-string count would predict, because at least one of the new
   // JSX text chunks already existed elsewhere in the driven corpus. Read
   // from this pin's own failure value, not attributed further by hand.
-  DISTINCT_STRINGS: 3713,
+  // 3713 -> 3709: the S4f condition-gate round, and the number went DOWN —
+  // the per-item row's own "as new — nothing to repair" and "repairing it
+  // costs 0 gym bucks" strings were already in the driven corpus (the
+  // scheduled review's own dust-gated arm already draws them), so hiding a
+  // live "repair for X"/"needs X gym bucks — you have Y" control on some of
+  // `MANAGED_STATES` removes distinct strings without adding any new ones.
+  // Read from this pin's own failure value.
+  DISTINCT_STRINGS: 3709,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -9894,7 +9927,12 @@ const DRIVE_CENSUS = Object.freeze({
   // 192 -> 184: "kill the mint" removes the check-in control's `onPress`
   // closure from every driven `GymScreen` render. Read from this pin's own
   // failure value.
-  CLOSURES_INVOKED: 184,
+  // 184 -> 181: the S4f condition-gate round, the same direction and cause
+  // as the NODES/STRINGS/DISTINCT_STRINGS moves above — the per-item row's
+  // gate widened from cost to condition, so a live "repair for X" `Pressable`
+  // (and its `onPress` closure) is gone on some of `MANAGED_STATES` where it
+  // used to be drawn. Read from this pin's own failure value.
+  CLOSURES_INVOKED: 181,
   CLOSURE_THROWS: 0,
   // 2046 -> 2052: GDD §5.13 presentation Phase 1's two new declined closures
   // (FloorGrid's `type` and `dispatch`, embedded in GymScreen's own return),
@@ -9950,7 +9988,13 @@ const DRIVE_CENSUS = Object.freeze({
   // value.
   // 5999 -> 5972: "kill the mint" removes the check-in control's element and
   // closure entirely. Read from this pin's own failure value.
-  STACKS: 5972,
+  // 5972 -> 5969: the S4f condition-gate round, the fifth reading of the same
+  // cause — a live "repair for X" `Pressable` (and its onPress closure) is
+  // gone on some of `MANAGED_STATES` where it used to be drawn, so those
+  // driven return trees carry three fewer Error-shaped `stack`
+  // own-properties of the react dev-mode kind. Read from this pin's own
+  // failure value.
+  STACKS: 5969,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -13766,7 +13810,12 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // JSX return.
       // 5 -> 7: the "chrome vs paid" bug-fix round's two new helpers,
       // `isDustRepairCost` and `displayRepairCost`, one return each.
-      'GymScreen.tsx': 7,
+      // 7 -> 9: the S4f condition-gate round's two new helpers,
+      // `isSoundCondition` and `displayRepairCostBySoundness`, one return
+      // each — the per-item row's own gate, kept beside the two above rather
+      // than replacing them, since `isDustRepairCost`/`displayRepairCost`
+      // stay the scheduled review's own mirror.
+      'GymScreen.tsx': 9,
       // GDD §5.13 presentation Phase 1: floor.ts's own eighteen `return`
       // statements across its ten exported functions and their helpers.
       // 18 -> 20: PLAYTEST 2's `fixedFloorFurniture` — its own top-level
@@ -14755,7 +14804,11 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // merely gutted. Read from this pin's own failure value.
   // 1431 -> 1439: the "chrome vs paid" bug-fix round. Read from this pin's
   // own failure value rather than hand-counted.
-  function: 1439,
+  // 1439 -> 1441: the S4f condition-gate round — `displayRepairCostBySoundness`
+  // calling `isSoundCondition` (one), plus the per-item row's own ternary
+  // gaining one net call target the same way `CALLS_EXAMINED` above did.
+  // Read from this pin's own failure value rather than hand-counted.
+  function: 1441,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -14927,7 +14980,10 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // sites — `GymScreen.tsx`'s `isDustRepairCost`/`displayRepairCost` and
   // `management.ts`'s `reviewBankedTime`, all on the `return` channel, per
   // the byModule rows above.
-  SITES: 729,
+  // 729 -> 731: the S4f condition-gate round's two new `return` sites —
+  // `GymScreen.tsx`'s `isSoundCondition`/`displayRepairCostBySoundness`,
+  // both on the `return` channel, per the byModule row above.
+  SITES: 731,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -15015,7 +15071,11 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // `ladder.ts`/`sessions.ts`/`management.ts`/`ladderView.tsx`, the dust-gate
   // helpers and `reviewBankedTime` in `GymScreen.tsx`/`management.ts`. Read
   // from this pin's own failure value.
-  NODES_EXAMINED: 61_737,
+  // 61_737 -> 61_786: the S4f condition-gate round's new source in
+  // `GymScreen.tsx` — `isSoundCondition`/`displayRepairCostBySoundness` and
+  // the repointed per-item-row expressions. Read from this pin's own failure
+  // value.
+  NODES_EXAMINED: 61_786,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

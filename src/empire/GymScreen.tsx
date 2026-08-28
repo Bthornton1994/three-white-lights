@@ -215,6 +215,24 @@ function describeSlotOutcome(outcome: GymWeekReport['slots'][number]): string {
  * against a named threshold replaces the equality everywhere the screen used
  * to test it. `empireTuning.ts`'s own doc comment on that constant has the
  * derivation from the real per-tick wear rate.
+ *
+ * S4f NARROWED WHERE THIS IS READ, RATHER THAN RETUNING THE CONSTANT ITSELF.
+ * A human watching a gym continuously for 518s — no skip-row, no mint-tap —
+ * found condition at 0.999712 and every per-item row still offering "repair
+ * for 0.1152", with the bulk line reading "everything back to new: 0.3456".
+ * `0.1152` is `(1 - 0.999712) × REPAIR_COST_GYM_BUCKS_PER_CONDITION_POINT`
+ * (400) — arithmetically correct and, at 0.01, well clear of dust. A
+ * cost-based gate cannot hide this: condition falls continuously the whole
+ * time the gym runs, so cost climbs past any fixed threshold given enough
+ * elapsed real time, and raising the constant only buys a longer watch
+ * before the same shape recurs. So the per-item row below no longer reads
+ * this function at all — it is now the ONE remaining reader, on the
+ * scheduled review's own control (`prompt.kind !== 'quiet'`, further down),
+ * where dust is arithmetically unreachable in practice: a review is raised
+ * on an item worn enough to be shown, whose cost floor is
+ * `(1 - MAINTENANCE_PROMPT_CONDITION) × REPAIR_COST_GYM_BUCKS_PER_CONDITION_POINT`
+ * = 0.5 × 400 = 200, far above 0.01 — so the check still runs, still reads
+ * the constant, and is kept rather than deleted.
  */
 function isDustRepairCost(costGymBucks: number): boolean {
   return costGymBucks < EMPIRE_TUNING.DUST_REPAIR_COST_GYM_BUCKS;
@@ -225,9 +243,39 @@ function isDustRepairCost(costGymBucks: number): boolean {
  * so the number in "repairing it costs X gym bucks" never contradicts the
  * "as new — nothing to repair" line drawn beside it. Only display rounds;
  * `repairCostGymBucks` itself, and every real spend, is unchanged.
+ *
+ * Read only by the scheduled review's own control now — see `isDustRepairCost`
+ * above for why the per-item row switched to `isSoundCondition` /
+ * `displayRepairCostBySoundness` instead.
  */
 function displayRepairCost(costGymBucks: number): number {
   return isDustRepairCost(costGymBucks) ? 0 : costGymBucks;
+}
+
+/**
+ * Is `condition` at or above the worn-line threshold this screen already
+ * prints (`gymscreen-worn`'s own `MAINTENANCE_PROMPT_CONDITION`) — the
+ * per-item repair row's gate, S4f onward. `isDustRepairCost` gates on the
+ * quoted COST, which a gym watched continuously for long enough always beats
+ * (see that function's own comment for the measured 518s/0.1152 case); this
+ * gates on the item's OWN condition instead, the same quantity the worn line
+ * and the review cadence are both already keyed to, so an item that has not
+ * crossed the line the screen names never shows a live control regardless of
+ * how long the gym has been running.
+ */
+function isSoundCondition(condition: number): boolean {
+  return condition >= EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION;
+}
+
+/**
+ * A per-item repair cost as shown in running text, rounded down to 0 once the
+ * item's OWN condition clears the worn-line threshold — so the number in
+ * "repairing it costs X gym bucks" never contradicts the "as new — nothing to
+ * repair" line drawn beside it on the per-item row. Only display rounds;
+ * `repairCostGymBucks` itself, and every real spend, is unchanged.
+ */
+function displayRepairCostBySoundness(costGymBucks: number, condition: number): number {
+  return isSoundCondition(condition) ? 0 : costGymBucks;
 }
 
 /**
@@ -356,8 +404,21 @@ export function GymScreen(props: GymViewProps) {
           {conditionIncomeMultiplier(managed)} of the rate. condition falls with the hours your gym
           runs, which are the same hours that pay you.
         </Text>
+        {/*
+          S4f: rounded to 0 whenever nothing is worn (`worn.length === 0`,
+          the exact same `wornItems` call the worn line below already makes),
+          rather than left to `fullRepairCostGymBucks`'s raw sum. Continuous
+          wear means that sum is a genuine tiny positive float within moments
+          of any repair — the played 12s case measured `0.0084` shown here
+          while every individual item already read "as new" — and it keeps
+          climbing the longer the gym runs, so a fixed-cost threshold on the
+          SUM cannot hide it the way it could not hide the per-item rows
+          either (see `isDustRepairCost`'s comment). Rounding on `worn`
+          instead makes this line agree with the per-item rows below by
+          construction: both read the same predicate over the same list.
+        */}
         <Text testID={'gymscreen-full-repair'}>
-          everything back to new: {fullRepairCostGymBucks(managed)} gym bucks
+          everything back to new: {worn.length === 0 ? 0 : fullRepairCostGymBucks(managed)} gym bucks
         </Text>
         {/*
           This line and the maintenance review below it read DIFFERENT pools,
@@ -381,25 +442,45 @@ export function GymScreen(props: GymViewProps) {
         {/*
           A CONTROL IS NOT DRAWN WHERE PRESSING IT COULD DO NOTHING (plain
           negation on purpose — see this file's header for the census this
-          wording is working around and the disposition that was reported), and
-          the two arms below are `repairEquipment`'s own refusal order read
-          off the same pure calls the row above already makes — `cost === 0`
-          is its `'already-sound'` arm and `cost > purse` is its
-          `'not-enough-gym-bucks'` arm, in that order. On a cold gym every
-          item is at condition 1, so this section used to draw three
-          "repair for 0" buttons whose only possible outcome was a refusal; a
-          human on a phone named all three. What replaces a dead button is the
-          reason it would have refused, not silence — a player who wonders why
-          there is nothing to press gets an answer in the same place the
-          button was.
+          wording is working around and the disposition that was reported).
+
+          S4f REPOINTED THE FIRST ARM FROM COST TO CONDITION, AND THIS IS WHY.
+          The two arms below used to read as `repairEquipment`'s own refusal
+          order, cost-first: `cost === 0` (widened to `isDustRepairCost`, "kill
+          the mint") for `'already-sound'`, then `cost > purse` for
+          `'not-enough-gym-bucks'`. A human watching one gym for 518s with no
+          skip-row and no mint-tap found that gate does not hold: condition
+          falls continuously while the gym runs, so cost climbs past any fixed
+          dust threshold given enough elapsed real time, and every item still
+          drew a live "repair for 0.1152" at condition 0.999712. Raising the
+          constant only buys a longer watch before the same shape recurs
+          (`isDustRepairCost`'s own comment has the full measurement).
+
+          So the first arm below is `isSoundCondition`, not `isDustRepairCost`
+          — the item's OWN condition against the exact `MAINTENANCE_PROMPT_
+          CONDITION` threshold `gymscreen-worn` already prints a few lines up,
+          not a reading of the quoted cost at all. This is WIDER than
+          `repairEquipment`'s own exact-zero `'already-sound'` refusal (an item
+          can sit above the worn line with a real, nonzero quoted cost — see
+          `isSoundCondition`'s own comment) and than the old dust gate too, on
+          purpose: §5.7's split leaves the per-item row to the worn line and
+          leaves the scheduled review, further down, to name individual items
+          worth a decision before that line is crossed. `cost > purse` keeps
+          its place as the second arm, `repairEquipment`'s
+          `'not-enough-gym-bucks'` arm, unchanged. On a cold gym every item is
+          at condition 1, so this section used to draw three "repair for 0"
+          buttons whose only possible outcome was a refusal; a human on a
+          phone named all three. What replaces a dead button is the reason it
+          would have refused, not silence — a player who wonders why there is
+          nothing to press gets an answer in the same place the button was.
         */}
         {ownedItemsOf(gym).map((item) => (
           <View key={item}>
             <Text testID={`gymscreen-condition-${item}`}>
               {item}: condition {itemCondition(managed, item)}, repairing it costs{' '}
-              {displayRepairCost(repairCostGymBucks(managed, item))} gym bucks
+              {displayRepairCostBySoundness(repairCostGymBucks(managed, item), itemCondition(managed, item))} gym bucks
             </Text>
-            {isDustRepairCost(repairCostGymBucks(managed, item)) ? (
+            {isSoundCondition(itemCondition(managed, item)) ? (
               <Text testID={`gymscreen-repair-${item}-unavailable`}>
                 as new — nothing to repair
               </Text>
