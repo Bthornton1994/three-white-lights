@@ -1324,6 +1324,83 @@ gap.
 **`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not a
 crossing.
 
+### PHONE REPLAY OF THE RETUNE, 2026-08-29: 8 STILL EASY, 9 AND 10 BOTH IMPOSSIBLE — THE IMPOSSIBLE BAND IS ≤6 TICKS, NOT ONLY 4
+
+Verbatim, phone at `a007512b`: *"8 is still way too easy. 9 and 10 are
+impossible. Not a feel-bar close."* Both retuned values missed, and RPE 10 —
+which the last two rulings deliberately left on the ceiling clip to preserve
+its mash-risk — is now separately named as impossible for the first time.
+The mechanism (margin-band cut, two shared addends, ceiling as a clip) is not
+reopened; the magnitude is wrong on both knobs, further than the last round
+moved them, and the working definition of "impossible" widens: `WORKING_FLOOR
+≤ 6 ticks` reads as impossible on a phone, not only the literal 4-tick
+refractory-adjacent floor this arc had been treating as the line.
+
+**Ruled: same two knobs, moved further. RPE 9's mash-risk withdrawal (ruled
+2026-08-29, first entry) stands. RPE 10/meet's mash-risk is now ALSO
+withdrawn if unclipping them from the ceiling costs it — playability in tick
+space outranks preserving a loss percentage nobody can feel.**
+
+1. **`BENCH_WORKING_RUNG_DEMAND_ONSET` (RPE 8) rises past `0.15`.** The
+   shipped value (floors `20/18/19/20`, ~3 taps/s) is still read as too easy.
+   Target a grind clearly harder than 3 taps/second and still slower than RPE
+   9's — the phone's own words put the SHAPE in the mid-teens of ticks, not a
+   literal to hit in `lift.ts`. Pin old (`20/18/19/20`) beside new. RPE 8's
+   `MAX_EFFORT` stays 0. **Stop and report if RPE 8's mash-loss goes non-zero
+   at any cell, or if RPE 8's hardest cell (lowest ticks) meets or beats RPE
+   9's easiest cell (highest ticks) — the ordering test, not a feel guess.**
+2. **`BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` (RPE 9, RPE 10, meet — one
+   shared addend, still) falls past `0.30`.** Lower it until every RPE 9 cell
+   AND every RPE 10/meet cell reads `WORKING_FLOOR ≥ 7` ticks. **Accept RPE
+   9's mash-loss staying 0** (already true at 0.30 and will not un-happen as
+   the addend falls further). **Accept RPE 10's and meet's mash-loss dropping
+   toward 0 if unclipping them from the ceiling costs that** — pin old
+   (`69.75%` RPE 10, `66.4%` meet) beside whatever the new numbers read,
+   honestly, even if that number is small or zero. **Do not hold RPE 10 on
+   the ceiling to preserve its mash-risk** — the two rulings that did that are
+   superseded by this phone verdict, not still binding.
+3. **8 < 9 < 10 in tick space is still hard, all three vectors pinned.** If
+   no pair of `(ONSET, WALL_ADDEND)` values makes RPE 8 harder than 3
+   taps/second, RPE 9 and RPE 10 both `≥ 7` ticks at every cell, AND the
+   strict ordering hold simultaneously — **stop and report exactly that,
+   the same honest-stop shape three earlier rounds in this arc already used
+   correctly.** Do not flatten RPE 9 into RPE 8's territory to force an
+   ordering pass. Do not put RPE 9 or RPE 10 back on `≤ 6` ticks to rescue a
+   mash-risk percentage — that trade is explicitly closed by this ruling.
+
+**`BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` (0.005) does not move. Two knobs
+only — no third addend, no ramp on either.** Refused, explicitly, repeated
+from every round in this arc: `GRIND_BOOST_FORCE_MAX`, `DEMAND_BASE.bench`,
+the Tuchscherer RPE→%1RM chart, an RPE field on `LiftConfig`,
+`MAX_LOCKOUT_TICKS` / the false-start wall, the warm-up floor constants.
+
+**Still hard, five conditions:**
+
+1. RPE 8's `WORKING_FLOOR` harder than the shipped `20/18/19/20`, easier than
+   RPE 9's, `MAX_EFFORT` still 0. Pin old beside new.
+2. RPE 9's `WORKING_FLOOR` at or above 7 ticks on all four cells, sitting
+   between RPE 8's and RPE 10's vectors. `MAX_EFFORT` stays 0, pinned
+   explicitly against the arc's original `122/400`.
+3. RPE 10's and meet's `WORKING_FLOOR` at or above 7 ticks on every cell.
+   Mash-loss may fall — pin old (`69.75%`/`66.4%`) beside new, whatever it
+   reads.
+4. The false-start guarantee re-pins at 0 of 40 reachable cells at the
+   (unchanged) 12-tick lockout, against both retuned addends together.
+5. Warm-up unchanged; RPE ≤ 7 unanswered on a held descent still makes, zero
+   taps, every cell, every seed; RPE 8+ unanswered still loses; jumping the
+   press still costs the launch, never the rep.
+
+**Do not mint any commit from this round until conditions 1, 2 and 3 are true
+in the measured `WORKING_FLOOR` vectors.** Squat and deadlift stay
+byte-identical. GDD §6.2 moves in the same commit as code, stating both
+retuned values, their real measured consequences on all four rungs, and the
+now-complete withdrawal of mash-risk as the deliberate design this arc has
+converged on for the bench working-rung overlay — difficulty above the cut is
+carried by tick-space cadence alone, not by loss probability.
+
+**`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
+a crossing.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
