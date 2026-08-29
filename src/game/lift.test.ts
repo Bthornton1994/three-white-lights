@@ -3045,9 +3045,15 @@ const REACHABLE_LADDER = {
    * rather than being left as a number that got smaller.
    *
    * -------------------------------------------------------------------------
-   * 35 -> 13 AND 26 -> 4 ON THE 2026-08-28 (FOURTH) MARGIN-BAND CUT, AND THIS
+   * 36 -> 13 AND 27 -> 4 ON THE 2026-08-28 (FOURTH) MARGIN-BAND CUT, AND THIS
    * TIME EVERY RPE 9/10/MEET CELL CROSSED THE LINE AT ONCE
    * -------------------------------------------------------------------------
+   * (36 and 27 are what this round started from, not the transient 35/26 the
+   * 2026-08-27 note above records — that pair was true for one round while a
+   * since-deleted ramp was shipped, and came back up when the ramp was
+   * removed and `meet/conservative/att3/wrecked` came off the floor. GDD's
+   * account of this same transition already says 36 -> 13 and 27 -> 4; this
+   * comment previously cited the transient figure instead.)
    * The 2026-08-27 lever moved a handful of the heaviest meet cells past
    * moderate-cadence rescue. `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` (0.34,
    * clipped at the raised 0.378 ceiling) is large enough that EVERY cell at or
