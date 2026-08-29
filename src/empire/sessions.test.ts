@@ -1185,9 +1185,15 @@ describe('purchased or accelerated currency buys no training outcome, element-wi
     expect(tally.weeksMoved).toBeGreaterThan(0);
     expect(tally.movesMoved).toBeGreaterThan(0);
     // Attribution, pinned exactly so a weakening of the control is loud.
-    expect(tally.purchasesMoved).toBe(126);
-    expect(tally.movesMoved).toBe(125);
-    expect(tally.weeksMoved).toBe(71);
+    // S4g re-pin: `mats` dropped from 200 to 10 (see `empireTuning.ts`'s
+    // own comment for the derivation), which is one of `grantSizes()`'s own
+    // rows, so the swept grant-size domain changed and every count below
+    // moved with it. Measured directly rather than guessed: isolated the
+    // failing assertion, read the real tally off a forced mismatch, then
+    // pinned these three. 126/125/71 was the pre-S4g measurement.
+    expect(tally.purchasesMoved).toBe(130);
+    expect(tally.movesMoved).toBe(128);
+    expect(tally.weeksMoved).toBe(75);
   });
 
   it('derives the grant domain from every price the subject branches on', () => {

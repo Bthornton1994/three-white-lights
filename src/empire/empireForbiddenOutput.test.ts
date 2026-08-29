@@ -5421,7 +5421,15 @@ const DOMAIN_CENSUS = Object.freeze({
 // 2273 -> 2279: the "chrome vs paid" bug-fix round's one new FILED leaf,
 // DUST_REPAIR_COST_GYM_BUCKS, straddled in all six domains — read from this
 // pin's own failure value.
-CONTAINMENT_CHECKS: 2279,
+// 2279 -> 2280: S4g retuned SESSION_EQUIPMENT_COST_GYM_BUCKS.mats from 200 to
+// 10 (see `empireTuning.ts`'s own comment for the derivation). ROSTER_SHAPE's
+// ceiling is ROSTER_SLOTS_MAX + 1 = 17: at 200 the branch point sat above it
+// (omitted); at 10 it sits at or below it, so ROSTER_SHAPE's `required` set
+// gained exactly this one entry. DAY/COUNT (ceiling 600) and NUMBER/SECONDS/
+// LEVEL (no ceiling or already 0) are unaffected — 10 and 200 are both inside
+// or both outside their obligation the same way. Read off this pin's own
+// failure value; see OMITTED_ABOVE_CEILING.ROSTER_SHAPE below for the mirror.
+CONTAINMENT_CHECKS: 2280,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -5474,7 +5482,11 @@ CONTAINMENT_CHECKS: 2279,
     // 206 -> 210: the repair rate above plus the three manager hire prices,
     // all four above ROSTER_SHAPE's ceiling. Measured off this assertion.
     // 210 -> 211: the same round's harness fix, MILLISECONDS_PER_SECOND.
-    ROSTER_SHAPE: 211,
+    // 211 -> 210: S4g retuned SESSION_EQUIPMENT_COST_GYM_BUCKS.mats from 200
+    // to 10. At 200 it sat above ROSTER_SHAPE's ceiling (17) and was omitted;
+    // at 10 it no longer does, so this domain omits one fewer branch point.
+    // See CONTAINMENT_CHECKS above for the mirror image of this same move.
+    ROSTER_SHAPE: 210,
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -9042,7 +9054,10 @@ const OVERFLOW_CENSUS = Object.freeze({
   // drops it). Measured off this assertion.
   // 340 -> 343: the same round's harness fix, MILLISECONDS_PER_SECOND,
   // dropped in three domains. Measured off this assertion.
-  POINTS: 343,
+  // 343 -> 342: S4g's SESSION_EQUIPMENT_COST_GYM_BUCKS.mats retune (200 ->
+  // 10) moves one branch point out from above ROSTER_SHAPE's ceiling, so one
+  // fewer point is dropped overall. Measured off this assertion.
+  POINTS: 342,
   /** Of those, how many at least one subject was driven at. */
   // Tracks POINTS 1:1 again (218), confirmed by running the assertion below
   // rather than assumed. PLAYTEST 4: tracks POINTS 1:1 again (222), confirmed
@@ -9055,7 +9070,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 334 -> 340: the same five newly dropped points as POINTS above.
   // 334 -> 340: stage 4's newly dropped points, with POINTS above. Measured.
   // 340 -> 343: the same round's harness fix, with POINTS above. Measured.
-  POINTS_DRIVEN: 343,
+  // 343 -> 342: tracks POINTS 1:1 again, confirmed by running this exact
+  // assertion.
+  POINTS_DRIVEN: 342,
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
@@ -9086,7 +9103,10 @@ const OVERFLOW_CENSUS = Object.freeze({
   // overflow pass. Measured off this assertion.
   // 6003 -> 6052: the same round's harness fix, driven the same way.
   // Measured off this assertion.
-  PAIRS_DRIVEN: 6052,
+  // 6052 -> 6029: S4g's mats retune drops one FEWER point (see ROWS above),
+  // driven 23 fewer times — the one point x ARGUMENT_HEAVY_SUBJECTS (23).
+  // Measured off this assertion.
+  PAIRS_DRIVEN: 6029,
   // GDD §5.13 presentation Phase 3: PAIRS_SKIPPED re-measured (495 -> 517),
   // a real failure value this round's own run produced.
   PAIRS_SKIPPED: 517,
@@ -9157,21 +9177,29 @@ const OVERFLOW_CENSUS = Object.freeze({
   // Stage 4: read from this pin's own failure value.
   // "Kill the mint" round's harness fix, MILLISECONDS_PER_SECOND: read from
   // this pin's own failure value.
-  ROWS: 6910,
+  // S4g: SESSION_EQUIPMENT_COST_GYM_BUCKS.mats retuned 200 -> 10 moved one
+  // branch point out from above ROSTER_SHAPE's ceiling (see DOMAIN_CENSUS
+  // above), which drops one FEWER row here — read from this pin's own
+  // failure value.
+  ROWS: 6887,
   // GDD §5.13 presentation Phase 3: re-measured (942486 -> 947983), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (947983 -> 960248).
   // Stage 4: read from this pin's own failure value.
   // "Kill the mint" round's harness fix: read from this pin's own failure
   // value.
-  NODES: 1341578,
+  // S4g: mats retune drops one fewer point (see ROWS above), one fewer
+  // subtree of nodes walked. Read from this pin's own failure value.
+  NODES: 1336723,
   // GDD §5.13 presentation Phase 3: re-measured (6413124 -> 6446099), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (6446099 -> 6540148).
   // Stage 4: read from this pin's own failure value.
   // "Kill the mint" round's harness fix: read from this pin's own failure
   // value.
-  STRINGS: 9312304,
+  // S4g: mats retune drops one fewer point (see ROWS above), one fewer
+  // subtree of strings walked. Read from this pin's own failure value.
+  STRINGS: 9274821,
   // GDD §5.13 presentation Phase 3: re-measured (4366 -> 4378), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (4378 -> 4381).
@@ -9239,7 +9267,10 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 1272 -> 1304: stage 4's five newly dropped points, at the same per-point
   // closure count. Measured off this assertion.
   // 1304 -> 1312: the same round's harness fix. Measured off this assertion.
-  CLOSURES_DECLINED: 1312,
+  // 1312 -> 1304: S4g drops one fewer point (see ROWS above), 8 fewer
+  // closures declined at the same per-point closure count. Measured off
+  // this assertion.
+  CLOSURES_DECLINED: 1304,
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -9286,7 +9317,10 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // off this assertion.
   // 210 -> 211: the same round's harness fix, MILLISECONDS_PER_SECOND.
   // Measured off this assertion.
-  ['beginRecruitment#refused', 211],
+  // 211 -> 210: S4g's mats retune drops one fewer ROSTER_SHAPE point (see
+  // ROWS/DOMAIN_CENSUS above), refused one fewer time the same way.
+  // Measured off this assertion.
+  ['beginRecruitment#refused', 210],
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
@@ -16697,8 +16731,15 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
     // screen's own predicate — see its header for why that distinction is the
     // whole value of this row. Read from this pin's own failure value and
     // cross-checked against the arithmetic above.
-    calls: 8907,
-    recorded: 8907,
+    // 8907 -> 9049: S4g retuned SESSION_EQUIPMENT_COST_GYM_BUCKS.mats from
+    // 200 to 10 (`empireTuning.ts`'s own comment has the derivation). The
+    // mats buy control is gated on `buySessionEquipment`'s own affordability
+    // refusal (this file's own oracle, not restated), so it is now offered
+    // at every swept purse point at or above 10 instead of at or above 200 —
+    // 142 more (purse points, driven the same way, gain exactly one more
+    // control each). Read from this pin's own failure value.
+    calls: 9049,
+    recorded: 9049,
   }),
   'engagement.ts#historyFrom#attended#slots': Object.freeze({
     points: 239,
@@ -16819,7 +16860,11 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
       // fewer control at every one of the axis's 402 points), matching
       // `gymScreenControlsAt` losing its unconditional "the player's own
       // check-in" term when `'open-up'` was removed by human ruling.
-      CALLS: 3412616,
+      // 3412616 -> 3412758: S4g. The whole move is the same `GymScreen`
+      // dispatch axis alone (8907 -> 9049, exactly +142), matching the mats
+      // buy control becoming affordable at 142 more of the axis's 402 purse
+      // points now that `SESSION_EQUIPMENT_COST_GYM_BUCKS.mats` is 10.
+      CALLS: 3412758,
   // GDD §5.13 presentation Phase 3: re-measured (5496920 -> 5618662), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (5618662 -> 5620716).
@@ -16830,7 +16875,9 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // what says the pass recorded every call it made.
   // 5660324 -> 5659922: "kill the mint", the same -402 the `CALLS` pin above
   // moves by, which is what says the pass recorded every call it made.
-  RECORDED: 5659922,
+  // 5659922 -> 5660064: S4g, the same +142 the `CALLS` pin above moves by,
+  // which is what says the pass recorded every call it made.
+  RECORDED: 5660064,
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,

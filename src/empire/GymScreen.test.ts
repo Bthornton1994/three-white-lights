@@ -88,6 +88,12 @@ import {
   moveUpLadder,
   nextLadderRung,
 } from './ladder';
+import {
+  fixedFloorFurniture,
+  overlapsFixedFurniture,
+  placeFloorItem,
+  sessionItemFootprint,
+} from './floor';
 import { EMPIRE_TUNING } from './empireTuning';
 import {
   type CountedDecisionRecord,
@@ -1502,5 +1508,135 @@ describe('stage 4: the stale stage-four sentence is gone from the top of the lad
       'top of the ladder - staffing, maintenance and the failure state are above; the portfolio stays paused',
     );
     expect(moveText).not.toContain('the portfolio arrives with stage four');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// S4g — a cold garage can afford mats on a short live watch, and place it.
+//
+// The gap three phone dumps named: `SESSION_EQUIPMENT_COST_GYM_BUCKS.mats`'s
+// own doc comment (`empireTuning.ts`) has the derivation and the reachability
+// numbers this battery drives rather than asserts in prose. Every step below
+// runs the real shipped mechanism — never a hand-set balance, never the dev
+// skip-row (`gymscreen-advance-<step>`, labelled "not part of the game" in
+// this file's own header) — and reads the real outcome.
+// ---------------------------------------------------------------------------
+
+describe('S4g: a cold garage can afford mats on a short live watch, and place it', () => {
+  /**
+   * Ten minutes is the length `SESSION_EQUIPMENT_COST_GYM_BUCKS.mats`'s own
+   * doc comment derives the retuned price from. Driving exactly 600 seconds
+   * through the real mechanism lands the purse at 9.99917, a hair under the
+   * 10-Gym-Buck price — condition wear during the watch shaves a fraction of
+   * a Gym Buck off the raw accrual before `management.ts`'s `managedCheckIn`
+   * settles the check-in, an effect the tuning comment's first-order
+   * derivation does not model. So this searches forward one real second at a
+   * time from 600, through the SAME `advance-clock`/`'online'` dispatch a
+   * live watch drives, rather than asserting the round number — "the exact
+   * equivalent the shipped accrual model uses", not a guess.
+   */
+  const SHORT_LIVE_WATCH_TARGET_SECONDS = 600;
+  /** Eleven minutes — a generous ceiling on "short", not a tuned value: if the real mechanism needs longer than this to afford a 10-Gym-Buck item at a 60-Gym-Buck-per-hour rate, that is itself a finding worth surfacing as a failure rather than silently searching further. */
+  const SHORT_LIVE_WATCH_SEARCH_LIMIT_SECONDS = 660;
+
+  it('affords, buys and places mats without ever touching the dev skip-row', () => {
+    const cold = createGymViewState();
+    expect(cold.managed.gym.sessionEquipment).toEqual([]);
+    expect(cold.managed.gym.ladder.gymBucks).toBe(0);
+    expect(cold.floor.placements).toEqual({});
+
+    // Drive the SAME dispatch a real watched tick sends — `advance-clock`,
+    // `mode: 'online'` (`ladderView.tsx`'s own header: "`AppShell.tsx`'s
+    // `GymHost` is the only caller that ever sets this to `'online'`") —
+    // never `gymscreen-advance-<step>`, the dev skip-row.
+    let watched: GymViewState | null = null;
+    let watchedSeconds = SHORT_LIVE_WATCH_TARGET_SECONDS;
+    for (; watchedSeconds <= SHORT_LIVE_WATCH_SEARCH_LIMIT_SECONDS; watchedSeconds += 1) {
+      const candidate = dispatchThrough(cold, {
+        kind: 'advance-clock',
+        gapSeconds: watchedSeconds,
+        mode: 'online',
+      });
+      if (candidate.managed.gym.ladder.gymBucks >= sessionEquipmentCost('mats')) {
+        watched = candidate;
+        break;
+      }
+    }
+    expect(watched, 'a live watch of eleven minutes or less must afford mats').not.toBeNull();
+    const funded = watched as GymViewState;
+    // Comfortably inside "a short live watch" — nowhere near the 3.33-hour
+    // watch the pre-S4g price (200) needed (see `empireTuning.ts`'s own
+    // comment for that derivation), and reached with exactly one
+    // `advance-clock` dispatch, no skip-row press anywhere in this test.
+    expect(watchedSeconds).toBeLessThanOrEqual(SHORT_LIVE_WATCH_SEARCH_LIMIT_SECONDS);
+
+    // (1) The gym can now afford mats.
+    expect(funded.managed.gym.ladder.gymBucks).toBeGreaterThanOrEqual(
+      EMPIRE_TUNING.SESSION_EQUIPMENT_COST_GYM_BUCKS.mats,
+    );
+
+    // (2, 3) `buySessionEquipment` succeeds, and the tray holds one unplaced
+    // mats — re-derived from the pure function, this file's own discipline,
+    // and then driven through the real dispatch path too, compared byte for
+    // byte against the pure call.
+    const bought = buySessionEquipment(funded.managed.gym, 'mats');
+    expect(bought.kind).toBe('bought');
+    if (bought.kind !== 'bought') throw new Error('unreachable — asserted above');
+    expect(bought.state.sessionEquipment).toEqual(['mats']);
+    expect(funded.floor.placements).toEqual({});
+
+    const dispatchedBuy = dispatchThrough(funded, { kind: 'buy-session', item: 'mats' });
+    expect(dispatchedBuy.lastRefusal).toBeNull();
+    expect(dispatchedBuy.managed.gym).toEqual(bought.state);
+
+    // (4) Dropping it on an empty floor cell succeeds — the real placement
+    // function (`floor.ts`'s `placeFloorItem`), not a stub, driven directly
+    // and then through the real `floor-place` dispatch.
+    const emptyCell = { x: 5, y: 0 }; // clear of every fixed-furniture row on a garage — floor.test.ts uses the same geometry
+    const placedDirect = placeFloorItem(
+      dispatchedBuy.floor,
+      dispatchedBuy.managed.gym.sessionEquipment,
+      'mats',
+      emptyCell,
+    );
+    expect(placedDirect.kind).toBe('placed');
+    if (placedDirect.kind !== 'placed') throw new Error('unreachable — asserted above');
+    expect(placedDirect.state.placements['mats']).toEqual(emptyCell);
+
+    const placedViaDispatch = dispatchThrough(dispatchedBuy, {
+      kind: 'floor-place',
+      item: 'mats',
+      position: emptyCell,
+    });
+    expect(placedViaDispatch.lastRefusal).toBeNull();
+    expect(placedViaDispatch.floor).toEqual(placedDirect.state);
+
+    // (5) A cell occupied by fixed furniture is refused — but not by
+    // `placeFloorItem` itself, which `floor.ts`'s own header says never
+    // learns about fixed furniture on purpose; the refusal lives one layer
+    // up, at the one place a real drag can originate. `FloorGrid.tsx`'s drop
+    // handler checks `overlapsFixedFurniture` BEFORE ever dispatching
+    // `floor-place`, so a drop there never reaches the reducer at all — that
+    // is the mechanism this drives, unchanged, rather than a claim about
+    // `placeFloorItem` the code does not make.
+    const fixed = fixedFloorFurniture(dispatchedBuy.managed.gym.ladder.equipment);
+    const furnitureCell = { x: 0, y: 0 }; // power-bar's fixed position, garage rung
+    expect(overlapsFixedFurniture(furnitureCell, sessionItemFootprint('mats'), fixed)).toBe(
+      true,
+    );
+
+    // (6) A `recovery`-category flexible slot is actually available, read
+    // through the real reader (`availableActivities`) rather than
+    // re-derived from the tuning table by hand.
+    expect(sessionEquipmentGroup('mats')).toBe('recovery');
+    expect(availableActivities(dispatchedBuy.managed.gym.sessionEquipment)).toContain(
+      'stretching-yoga',
+    );
+    // `other-recovery` additionally needs an `ADVANCED_RECOVERY_ITEMS` item
+    // (sauna); mats alone does not unlock it — driving that boundary too,
+    // rather than only the positive case.
+    expect(availableActivities(dispatchedBuy.managed.gym.sessionEquipment)).not.toContain(
+      'other-recovery',
+    );
   });
 });

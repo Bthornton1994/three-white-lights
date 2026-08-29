@@ -978,6 +978,37 @@ export const EMPIRE_TUNING = Object.freeze({
    * pricing argument; the strip-mall rows are the stage-2 decisions the gate
    * asked for, and the two garage rows plus four storage rows give the earlier
    * rungs one small decision each without eating the jump-3 band.
+   *
+   * S4g retuned `mats` from 200 to 10, and the reason is a measured
+   * reachability gap, not a reprice of the band. `mats` is the cheapest row
+   * on this table and, with `wrist-wraps`, one of only two items whose
+   * `SESSION_EQUIPMENT_MIN_RUNG` is `garage` — so it is the cold-garage
+   * player's earliest-reachable stage-2 buy, the first step of §5.13's
+   * "direct placement" loop (drag equipment onto the floor grid) once
+   * something is actually ownable. At 200 against the garage's own
+   * `LADDER_INCOME_GYM_BUCKS_PER_HOUR` of 60, affording it needed a
+   * 200 / 60 = 3.33-hour live watch — every phone dump since Playtest 2
+   * named this specific buy as the one a cold-garage player could not reach
+   * inside a real session, with the dev skip-row
+   * (`LADDER_DEV_TIME_STEPS_SECONDS`) the only faster route, and that row is
+   * explicitly labelled "not part of the game" in `GymScreen.tsx`'s own
+   * header rather than a legitimate buy path.
+   *
+   * PROVISIONAL — a game-feel/UX threshold (CLAUDE.md, "Game Feel Values
+   * Must Be Tunable"), unverified by playtest. Derived rather than picked
+   * freely, the same way `DUST_REPAIR_COST_GYM_BUCKS` derives from a real
+   * rate rather than a round number: ten minutes is the target length of a
+   * short live watch, so the new price is exactly what the garage's own
+   * listed rate affords inside that window —
+   * `LADDER_INCOME_GYM_BUCKS_PER_HOUR.garage x (10 / 60) = 60 x (10 / 60) =
+   * 10`. The exact target length (ten minutes rather than five or fifteen)
+   * is the feel choice this file's own rule says a human tunes by hand
+   * later; the arithmetic that turns a chosen length into a price is not.
+   * `wrist-wraps`, the garage's other item, is untouched at 400 and stays a
+   * multi-session goal rather than a first buy — only `mats` moved, because
+   * only `mats` was the reported blocker, and `LADDER_INCOME_GYM_BUCKS_PER_HOUR.
+   * garage` (60) is out of scope for this round: it is the closed S4e
+   * online-tick-rate pin, not a lever this retune touches.
    */
   SESSION_EQUIPMENT_COST_GYM_BUCKS: Object.freeze({
     bike: 1600,
@@ -987,7 +1018,8 @@ export const EMPIRE_TUNING = Object.freeze({
     dumbbells: 1200,
     cables: 9000,
     machines: 22000,
-    mats: 200,
+    // 10 — S4g, see the block comment above for the derivation.
+    mats: 10,
     'foam-rollers': 500,
     sauna: 28000,
     'wrist-wraps': 400,
