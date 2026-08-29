@@ -1401,6 +1401,94 @@ carried by tick-space cadence alone, not by loss probability.
 **`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
 a crossing.
 
+### RULED 2026-08-29 (SECOND): THE WRECKED MEET THIRD IS A NAMED, PINNED EXCEPTION — THE SESSION LADDER IS NOT HOSTAGE TO IT
+
+The second retune round found a genuine, well-corroborated structural wall,
+narrower than any this arc has hit before: 39 of the 40 reachable cells clear
+`WORKING_FLOOR ≥ 7` comfortably even at `WALL_ADDEND`'s most lenient legal
+value (0, contributing nothing) — RPE 9 lands at 37-57 ticks, RPE 10 at
+23-29, and 17 of 18 meet cells at 9-25. The one holdout, `meet/aggressive/
+att3/wrecked` (base margin `0.3066`, the highest in the entire reachable
+domain), floors at exactly 6 ticks from the base curve alone. This is not new
+information the addend obscured — the SAME cell read 6 ticks three rounds ago
+under a completely different mechanism (the original uniform-`ONSET` lever,
+before the margin-band cut existed), for the identical underlying reason:
+this cell's base margin has exceeded every ceiling this arc has shipped, so
+the working-rung lever has contributed it exactly zero at every stage. Since
+`WALL_ADDEND` can only ADD demand and `DEMAND_BASE.bench` is off-limits, no
+value of either authorized knob reaches this one cell.
+
+**Ruled: the phone's complaint was the session ladder — "9 and 10 are
+impossible" named RPE 9 and RPE 10, not a specific meet attempt. Do not hold
+the session fix hostage to one meet third. Pin the wrecked meet third as a
+named, accepted, permanent exception instead.**
+
+1. **`BENCH_WORKING_RUNG_DEMAND_ONSET` ships in the `0.20-0.25` band** the
+   last round already measured for "mid-teens of ticks" (`0.20` → session RPE
+   8 floors `16/12/14/15`; `0.25` → `11/9/10/10` — pick the value inside that
+   band that best satisfies the shape asked for, verify it fresh rather than
+   copying either number blindly). RPE 8's `MAX_EFFORT` stays 0. RPE 8 stays
+   strictly easier than RPE 9. Pin old (`20/18/19/20`) beside new.
+2. **`BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` falls until all four RPE 9
+   session cells, all four RPE 10 session cells, AND the 17 non-exception
+   meet cells all read `WORKING_FLOOR ≥ 7`.** Accept RPE 9's mash-loss
+   staying 0. Accept RPE 10's and meet's mash-loss dropping — pin old
+   (`122/400` RPE 9's original baseline, `69.75%` RPE 10, `66.4%` meet)
+   beside whatever the new numbers read.
+3. **`meet/aggressive/att3/wrecked` is a named, permanent, pinned exception
+   at 6 ticks — pin old (6) beside new (6, unchanged by construction).** Its
+   header (wherever this cell's floor is asserted in `lift.test.ts`, and in
+   `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND`'s own header) must state plainly:
+   the working-rung lever adds this cell exactly nothing regardless of
+   `WALL_ADDEND`'s value, because its base margin already exceeds every
+   ceiling this mechanism has ever shipped, so retuning the addend can never
+   "fix" it — and it is accepted here because the phone's "impossible"
+   verdict was never measured against this cell specifically. **Do not
+   invent a per-cell overlay, a third addend, or any mechanism that reaches
+   this one cell — it stays exactly what the base curve already hands a
+   player, named as the one deliberately brutal edge case in the game.**
+4. **8 < 9 < 10 ordering applies to the SESSION cells only, still hard, all
+   three vectors pinned.** If no pair of `(ONSET, WALL_ADDEND)` values gets
+   session RPE 8 into the mid-teens shape, session RPE 9 and RPE 10 all `≥ 7`
+   ticks, the strict ordering, AND RPE 8's mash-loss still 0 — **stop and
+   report exactly that.** Do not then reach for `DEMAND_BASE.bench`,
+   `GRIND_BOOST_FORCE_MAX`, `MAX_LOCKOUT_TICKS` / the false-start wall, the
+   Tuchscherer chart, or an RPE field on `LiftConfig` — all still refused,
+   unconditionally.
+
+**`BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` (0.005) does not move. Warm-up (RPE
+≤ 7) stays byte-identical.** The mechanism is now: two knobs, plus one named,
+permanently pinned exception cell — not a design gap, a documented fact of
+the base curve at its own most extreme configuration.
+
+**Still hard, six conditions:**
+
+1. RPE 8's `WORKING_FLOOR` harder than `20/18/19/20`, strictly easier than
+   RPE 9's, `MAX_EFFORT` still 0. Pin old beside new.
+2. RPE 9's `WORKING_FLOOR` at or above 7 ticks on all four SESSION cells,
+   between RPE 8's and RPE 10's vectors. `MAX_EFFORT` stays 0, pinned
+   explicitly against the arc's original `122/400`.
+3. RPE 10's `WORKING_FLOOR` at or above 7 ticks on all four SESSION cells.
+   Mash-loss may fall — pin old (`69.75%`) beside new.
+4. The 17 non-exception meet cells all read `WORKING_FLOOR ≥ 7`. The wrecked
+   meet third is pinned at 6, old beside new, with the base-curve reason
+   stated in its own header. Meet's aggregate mash-loss may fall — pin old
+   (`66.4%`) beside new.
+5. The false-start guarantee re-pins at 0 of 40 reachable cells at the
+   (unchanged) 12-tick lockout, against both retuned addends together.
+6. Warm-up unchanged; RPE ≤ 7 unanswered on a held descent still makes, zero
+   taps, every cell, every seed; RPE 8+ unanswered still loses; jumping the
+   press still costs the launch, never the rep.
+
+**Do not mint any commit from this round until conditions 1, 2 and 3 are true
+in the measured SESSION `WORKING_FLOOR` vectors.** Squat and deadlift stay
+byte-identical. GDD §6.2 moves in the same commit as code, stating both
+retuned values, the wrecked-meet-third exception and its reasoning, and the
+final shape of the bench working-rung overlay this arc has converged on.
+
+**`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
+a crossing.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
