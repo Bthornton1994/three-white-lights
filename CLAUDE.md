@@ -1046,6 +1046,96 @@ prior rounds' estimates.
 **`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not a
 crossing.
 
+### RULED 2026-08-28 (FOURTH): SHIP THE PROBE — ACCEPT THE 9/10 FLOOR TIE AS THE COST OF THE WALL
+
+The margin-band-cut round against the third 2026-08-28 ruling was independently
+verified (base margins reproduced from a from-scratch computation against the
+real engine, matching to four decimal places: RPE 8 `{-0.0323, -0.0025,
+-0.0152, -0.0262}`, RPE 9 `{0.0117, 0.0448, 0.0338, 0.0243}` — disjoint,
+`max(RPE8) = -0.0025 < min(RPE9) = 0.0117`). At cut `0.0050`, addend `0.34`,
+ceiling `0.378`, five of the six stop conditions passed cleanly (RPE 9
+`MAX_EFFORT` 122/400 = 30.5%; RPE 8 at 0; RPE 10/meet at or above RPE 9 without
+saturating; false-start 0 of 40; warm-up floor untouched). The sixth —
+`WORKING_FLOOR` ordering 8 < 9 < 10 — failed **tightly, not loosely**: any
+addend large enough to give RPE 10/meet's ceiling-clipped cells a floor at all
+collapses that floor to `GRIND_TAP_REFRACTORY_TICKS` (3-4 ticks), and RPE 9
+stays strictly above that only below addend `~0.303`, where its own
+`MAX_EFFORT` is still exactly 0. Loss turns non-zero around addend `~0.32`,
+already inside the tie. This is the stop the fifth ruling asked for — no
+further probing of that gap is authorised, RPE 10 is not raised to reopen it,
+`GRIND_BOOST_FORCE_MAX` is not touched, the mash wall is not lowered, global
+`ONSET` does not move to 0.100.
+
+**Ruled: ship it. The floor tie is accepted as the cost of putting RPE 9 on
+the wall, not a defect to chase further.** The phone complaint was mashers on
+RPE 9 specifically; `MAX_EFFORT` reading `RPE 8 = 0 < RPE 9 ≈ 30% < RPE
+10/meet (not 100%)` is the ladder a player feels, and it is worth the 9-vs-10
+tie in raw tick space.
+
+**Ship exactly the configuration already measured to pass five of six gates:**
+
+1. **Named cut inside the pinned 8/9 gap** (`max(RPE8) = -0.0025`,
+   `min(RPE9) = 0.0117`) — any value strictly inside is legal, name it as a
+   constant. Below the cut: the shipped `ONSET` (`0.045`, RPE 8's unchanged
+   behaviour). At or above: one large addend covering RPE 9's cells, RPE 10's
+   cells, and every meet cell whose base margin clears the cut — all by the
+   same rule.
+2. **Size the addend against measured RPE 9 `MAX_EFFORT`** — non-zero and
+   not-total at 57-81ms realistic cadence, across all four cells. `0.34`,
+   giving `30.5%`, is a known-good point from this round's own probe and may
+   be used directly. Flag it in its header as a knob, unverified by playtest,
+   same convention as every other bench constant in this arc.
+3. **Ceiling in `(0.3764, 0.3990)`** as a clip on whichever addend applies —
+   `0.378` already measured working, may be used directly.
+4. **No RPE field on `LiftConfig`.** The margin-band cut is the whole
+   mechanism. `createLift`'s field allowlist stays a standing gate for any
+   future addition, but nothing is added to it this round.
+
+**Condition 4 (`WORKING_FLOOR` ordering) is REPLACED this round, not silently
+dropped — the replacement is itself a hard requirement:**
+
+- RPE 8 must stay strictly easier than RPE 9 in `WORKING_FLOOR` — unchanged,
+  not weakened. RPE 8's `MAX_EFFORT` stays at 0. Do not bump RPE 8 in any way
+  "while the mechanism is already touching this area."
+- **RPE 9 vs RPE 10's floor tie at the ceiling-clipped 3-4 tick band is
+  accepted, not fixed.** Pin BOTH old and new `WORKING_FLOOR.
+  SESSION_FLOOR_GAP_TICKS` and `.MEET_FLOOR_GAP_TICKS` explicitly, so the tie
+  is visible in the pinned data rather than hidden by a widened tolerance.
+  Write the `0.303` (addend where mash loss is still 0) vs `~0.32` (addend
+  where the tie appears and mash loss starts) gap directly into the
+  constant's own header comment, so a future retune reads the reason before
+  trying to "fix" the tie by pushing RPE 10 — that edit is refused in
+  advance, named here.
+- Do not add demand to RPE 10 to restore a tick-space gap between 9 and 10.
+  Do not require `WORKING_FLOOR`'s RPE 9 value to exceed RPE 10's — that
+  requirement is gone this round, replaced by the `MAX_EFFORT` ordering in
+  stop condition 3 below, which is what actually carries the "9 easier than
+  10" fact from here on for the working rungs above the cut.
+
+**Still hard, unchanged in number and wording from the third round, minus the
+old condition 4:**
+
+1. RPE 9 `MAX_EFFORT` at 57-81ms: non-zero and not-total, across all four
+   cells, old (0) pinned beside new.
+2. RPE 8 `MAX_EFFORT` stays at 0.
+3. RPE 10 / meet `MAX_EFFORT` stays at or above RPE 9's, and RPE 9 does not
+   reach 100%.
+5. The false-start guarantee re-pins at 0 of 40 reachable cells at the
+   (unchanged) 12-tick lockout, against the shipped addend and ceiling
+   together.
+6. Warm-up floor edges unchanged; RPE ≤ 7 unanswered on a held descent still
+   makes, zero taps, every cell, every seed; RPE 8+ unanswered still loses.
+
+**Do not mint any commit for a phone replay until RPE 9's `MAX_EFFORT` has
+actually, measurably moved off zero in a committed, pushed tree — `8e4249f0`
+is a filed ruling, not a playable tip.** Squat and deadlift stay
+byte-identical. GDD §6.2 moves in the same commit as code and must state the
+cut, the addend, the ceiling, and the accepted 9/10 floor tie with its
+reasoning — not any prior round's provisional numbers.
+
+**`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not a
+crossing.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
