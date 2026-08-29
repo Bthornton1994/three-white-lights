@@ -1028,7 +1028,26 @@ const GUARANTEE_COVERAGE = {
   // than appended to). Measured directly against the live tree rather than
   // reasoned from the diff, the same discipline this comment block asks for
   // every time.
-  TREE_WIDE: 308,
+  //
+  // 308 -> 309 ON THE 2026-08-29 ONSET/WALL_ADDEND RETUNE ("SHIP ONSET 0.15,
+  // WITHDRAW MASH-RISK ON RPE 9"). MEASURED PER FILE, not reasoned from the
+  // diff: `liftTuning.ts` moved 18 -> 18 (net zero — the ONSET and WALL_ADDEND
+  // headers were substantially rewritten, and the new capitalised runs REPLACE
+  // ones the prose they superseded already carried, the same pattern this
+  // constant keeps recording); `lift.test.ts` moved 13 -> 14 (net one). The
+  // single new paragraph is the whole "where the grind begins, in the terms a
+  // player would use" bulleted block in `REACHABLE_RESCUE`'s header — one
+  // contiguous comment paragraph by this scanner's own rule (no blank line or
+  // dash rule breaks it), so editing any one bullet inside it can flip the
+  // whole block. The RPE 8 bullet's rewrite, describing the RPE 8 rescue
+  // rows' move to a uniform `[160,160,160]`, is what crossed the threshold —
+  // its two new capitalised runs each carry the fourth trigger word, not
+  // quoted here for the same reason the 205 -> 206 entry above gives: quoting
+  // it makes THIS paragraph trigger too. The RPE 6/7 and RPE 9/10 bullets are
+  // unchanged text and carried no trigger either before or after. Verified by
+  // diffing the full triggering-paragraph list before and after, not just the
+  // counts either side.
+  TREE_WIDE: 309,
 } as const;
 
 // ---------------------------------------------------------------------------

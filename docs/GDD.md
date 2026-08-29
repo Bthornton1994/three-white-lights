@@ -2795,6 +2795,132 @@ still read as an escalating ladder given the tie is in raw tick space rather
 than felt difficulty, and does the RPE 9-vs-RPE 10 tie register as "similar"
 or as a seam.
 
+#### The 2026-08-29 retune — RPE 8 raised, RPE 9's mash-risk withdrawn
+
+**A phone replay of the margin-band cut above answered the tie question, and
+it was not "similar" or "a seam" — it was two separate complaints at two
+separate rungs.** Verbatim: *"8 is still WAY too easy. 9 is next to
+impossible. Not a feel-bar close."* Not a rejection of the mechanism (the
+margin-band cut, the two-addend split, the ceiling as a clip are all
+confirmed and not reopened) — a magnitude replay, in opposite directions on
+the two constants the cut introduced.
+
+**Diagnosis: RPE 9's 4-tick `WORKING_FLOOR` — not its 30.5% `MAX_EFFORT`
+aggregate — was the actual complaint.** A 4-tick floor (one tick above
+`GRIND_TAP_REFRACTORY_TICKS`, the fastest cadence the engine can even count)
+asks for a tap roughly every 67ms sustained; a real thumb at or above that
+rate loses outright, which reads as "impossible" regardless of what the
+400-draw realistic-cadence aggregate says about the average player.
+
+**Ruled 2026-08-29: raise `BENCH_WORKING_RUNG_DEMAND_ONSET`, lower
+`BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND`, and withdraw RPE 9's mash-risk as the
+deliberate cost of clearing its floor — not an unresolved gap.**
+
+**RPE 8 — `BENCH_WORKING_RUNG_DEMAND_ONSET`, `0.045` → `0.15`, named directly
+rather than searched for.** The phone said "WAY too easy," not "a bit easy,"
+and a swept `0.09` (which gives 1.82-2.31 taps/s) is the exact rate the OLD,
+pre-arc RPE 9 sat at before this whole run of retunes began — a rate that had
+already read as "no challenge" once, under a different rung. `0.15` is shipped
+directly. Measured fresh against the real engine, `WORKING_FLOOR`'s RPE 8 row
+(taps a second, `reachableSessionCells()` order):
+
+| | 2026-08-27 (`0.045`) | 2026-08-29 (`0.15`) |
+|---|---|---|
+| `rpe8/0.8000/slower-than-expected` | 1.07 | **3.00** |
+| `rpe8/0.8500/as-expected` | 1.58 | **3.33** |
+| `rpe8/0.8750/crisp` | 1.36 | **3.16** |
+| `rpe8/0.9000/popping` | 1.07 | **3.00** |
+
+RPE 8's realistic-cadence (`MAX_EFFORT`) loss rate stays exactly **0 of 500**
+— a harder floor, not a rep put out of reach. RPE 8 stays strictly easier than
+RPE 9 in tick space with a wide margin (fastest RPE 8 floor 18 ticks against
+slowest RPE 9 floor 6 ticks), so the `0.09` fallback the ruling authorised
+never fired.
+
+**RPE 9/10/meet — `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND`, `0.34` → `0.30`,
+clearing RPE 9's floor and deliberately losing its realistic-cadence risk.**
+`WORKING_FLOOR`'s RPE 9 cells move from a uniform 4 ticks to `6, 5, 5, 6` —
+clear of the refractory band at all four cells — while RPE 10 and every meet
+cell stay at exactly 4 ticks (their base margins sit closer to
+`BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`, unchanged at `0.378`, and still
+clip there at the lower addend). `MAX_EFFORT`'s realistic-cadence sweep:
+
+| rung | 2026-08-28 (FOURTH), addend `0.34` | 2026-08-29, addend `0.30` |
+|---|---|---|
+| RPE 8 | 0 of 500 | 0 of 500 |
+| RPE 9 | 122 of 400 (30.5%) | **0 of 400** |
+| RPE 10 | 279 of 400 (69.75%) | 252 of 400 (63.0%) |
+| meet | 1195 of 1800 (66.4%) | 1195 of 1800 (66.4%, unchanged) |
+
+RPE 9 returning to **0 of 400 is the ruled, deliberate outcome of this
+round**, not a regression to fix in a future one: the arc measured that "RPE 9
+clear of the 4-tick floor" and "RPE 9 has a non-zero realistic-cadence loss
+rate" cannot both hold once `WALL_ADDEND` climbs back past roughly `0.318`
+(see below), and the ruling chose the floor. `MAX_EFFORT_WALLS.
+HIGHEST_REACHABLE_MARGIN` stays `0.378` — RPE 10 and meet still clip there —
+but membership in that ceiling-clipped set falls from 22 of 40 reachable
+cells to 21, because the one RPE 9 cell that used to clip
+(`session/rpe9/0.8750/as-expected`) no longer does at the lower addend, which
+is exactly why its floor cleared.
+
+**The `0.318`-vs-`0.320` boundary, re-measured directly against the live
+engine this round rather than carried from an earlier round's uncommitted
+sweep:**
+
+| `WALL_ADDEND` | RPE 9 `WORKING_FLOOR` | RPE 9 `MAX_EFFORT` (of 400) |
+|---|---|---|
+| `0.318` | `[5, 4, 4, 5]` — two cells already back on the floor | 0 |
+| `0.320` | `[5, 4, 4, 5]` — same two cells | 2 |
+
+The floor re-collapses onto two of RPE 9's four cells at `0.318` while the
+realistic-cadence loss rate is still a heavily-sampled zero — the floor breaks
+*before* the aggregate notices anything — and only at `0.320` does the
+aggregate turn non-zero, by which point the same two cells are already back on
+the refractory floor. Creeping `WALL_ADDEND` back up toward that window in a
+future round to "get a little more RPE 9 mash-risk" silently reopens the
+refractory-floor problem this round exists to close, before it buys back any
+measurable risk. The shipped `0.30` sits `0.018` clear of where the floor
+starts breaking, not at the edge of it.
+
+**RPE 9 easier than RPE 10 in tick space is now expected and allowed, not a
+gap to close.** The 2026-08-28 (FOURTH) tie was the addend forcing both rungs
+onto the same ceiling-clipped floor, not a fact about the rungs themselves —
+RPE 9's base margins sit below RPE 10's, so the same lower addend naturally
+separates them again once neither is pinned to the ceiling. **Putting
+mash-risk back onto RPE 9 by raising this addend after its floor has cleared
+is closed by this ruling, not a goal to still chase.** A future round that
+wants either the tie or RPE 9's realistic-cadence risk back needs a new phone
+sentence asking for it, not a reopening of this one.
+
+**Still binding, re-verified against both retuned constants together:**
+`BENCH_WARMUP_FLOOR_MARGIN` and `BENCH_WARMUP_FLOOR_ASCENT_TICKS` are
+untouched — RPE ≤ 7 unanswered on a held descent still makes every cell, zero
+taps, every seed; RPE 8+ unanswered still loses. The false-start guarantee
+(`a-false-start-can-never-pay`) re-pins at **0 of 40** reachable cells at the
+shipped 12-tick lockout. Squat and deadlift are byte-identical.
+`BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` (`0.005`) and
+`BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` (`0.378`) did not move.
+
+**A real, measured side effect worth naming: RPE 8's rescue profile
+changed shape, not just its floor.** `REACHABLE_RESCUE`'s four RPE 8 rows move
+from a mixed partial-rescue picture (`[160,100,60]`, `[160,120,100]`,
+`[160,100,100]`, `[160,100,100]`) to a uniform `[160,160,160]` at every cell —
+an idle (never-tapped) RPE 8 rep now always misses, and resuming at a moderate
+cadence after a stall always saves it, rather than sometimes.
+`TOUCH_SWEEP.SOFT_VS_CRASH_FLIPS` (how often a crashed touch flips the
+outcome, across a fixed load/cadence sweep) moves `100` → `120` — the lower
+`WALL_ADDEND` pulls some of the sweep's heavier cells back off the
+realistic max-effort wall, where the 2026-08-28 (FOURTH) cut had pushed them
+into miss-or-miss regardless of the touch.
+
+**§12.1 STAYS OPEN. Nobody has played this retune.** `BENCH_WORKING_RUNG_
+DEMAND_ONSET` (`0.15`) and `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` (`0.30`)
+are both unplayed placeholders, flagged as knobs the same way every prior
+constant in this arc was. The next phone question is narrower than it has
+been: does RPE 8 now read as a real grind rather than a cutscene, and does
+RPE 9 read as beatable rather than a wall, with RPE 8 < RPE 9 < RPE 10/meet
+still an escalating ladder.
+
 3. Sim-mode readiness/fatigue silently adjusts the timing window width
 4. Three-light judging call (red/white), with a brief "judges deliberating" beat
    on close calls

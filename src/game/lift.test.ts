@@ -1546,31 +1546,32 @@ const TOUCH_SWEEP = {
   /**
    * Measured: outcome flips between a controlled touch and an abandoned one.
    *
-   * 120 BEFORE THE 2026-08-27 WORKING-RUNG LEVER, 160 AFTER IT, AND 100 SINCE
-   * THE 2026-08-28 (FOURTH) MARGIN-BAND CUT — RE-DERIVED EACH TIME, NEVER
-   * CARRIED. This test's own `GRIND_SWEEP.LOADS` — NOT `TOUCH_SWEEP.LOADS` —
-   * are played at DEFAULT capacity (`benchGrindRep` takes no `feel`), and their
-   * base margins are `-0.0923, -0.0025, 0.0448, 0.0938, 0.1871, 0.2466`. The
-   * first is actually below `BENCH_WARMUP_FLOOR_MARGIN` (a warm-up: zero
-   * addend either way), the second sits just below the cut (`ONSET`, 0.045,
-   * unchanged from the 2026-08-27 reading), and the remaining FOUR now clear
+   * 120 BEFORE THE 2026-08-27 WORKING-RUNG LEVER, 160 AFTER IT, 100 SINCE THE
+   * 2026-08-28 (FOURTH) MARGIN-BAND CUT, AND 120 AGAIN SINCE THE 2026-08-29
+   * ONSET/WALL_ADDEND RETUNE — RE-DERIVED EACH TIME, NEVER CARRIED. This
+   * test's own `GRIND_SWEEP.LOADS` — NOT `TOUCH_SWEEP.LOADS` — are played at
+   * DEFAULT capacity (`benchGrindRep` takes no `feel`), and their base margins
+   * are `-0.0923, -0.0025, 0.0448, 0.0938, 0.1871, 0.2466`. The first is below
+   * `BENCH_WARMUP_FLOOR_MARGIN` (a warm-up: zero addend either way), the
+   * second sits just below the cut (`ONSET`, now 0.15, up from 0.045 at the
+   * 2026-08-28 reading), and the remaining FOUR clear
    * `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` and take
-   * `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` instead — up to 0.34, clipped by
-   * the raised ceiling.
+   * `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` instead — now 0.30, down from
+   * 0.34, clipped by the unchanged ceiling.
    *
-   * FEWER FLIPS, NOT MORE, WHICH IS THE OPPOSITE DIRECTION OF THE 2026-08-27
-   * READING AND WORTH STATING WHY. A bigger base curve does not automatically
-   * mean more outcomes flip on a crash — once a cell's UNCRASHED demand
-   * already sits near or past the realistic max-effort wall, both the soft and
-   * the crashed version of that rep miss regardless of the touch, so the touch
-   * stops being what decides the outcome AT THAT CELL even though the crash
-   * penalty is still being charged. That is what the four cells whose base
-   * margin cleared the cut did here: `bench-touch-decides-the-rep` still holds
-   * — the touch still moves the outcome in a substantial share of cases — but
-   * fewer of them, because the top of this sweep's load ladder is now often
-   * miss-or-miss rather than make-or-miss.
+   * BACK UP RATHER THAN DOWN AGAIN, WHICH IS THE OPPOSITE DIRECTION OF THE
+   * 2026-08-28 (FOURTH) READING AND WORTH STATING WHY. That round's fall to
+   * 100 was explained by cells pushed near or past the realistic max-effort
+   * wall going miss-or-miss regardless of the touch. This round moves both
+   * addends in the direction that PULLS cells back off that wall — `ONSET`
+   * rises (further from the warm-up floor, still nowhere near the wall) and
+   * `WALL_ADDEND` falls (closer to the cut, further from the ceiling) — so
+   * more of the sweep's loads return to being decided by the touch rather than
+   * lost either way. `bench-touch-decides-the-rep` still holds either way —
+   * the touch still moves the outcome in a substantial share of cases — this
+   * is a real measured shift in how many, not a re-tuning of the guarantee.
    */
-  SOFT_VS_CRASH_FLIPS: 100,
+  SOFT_VS_CRASH_FLIPS: 120,
   /** Cases the flip count above is taken over. */
   OUTCOME_CASES: 240,
   /**
@@ -2789,15 +2790,39 @@ type RescueRow = readonly [number, number, number];
  * question from `MAX_EFFORT`'s realistic-cadence sweep: not "can a human
  * mashing flat out make this rep" but "does resuming at a normal pace after
  * an 18-tick silence save a rep that was already stalling". At the new
- * addend, above the cut, the answer is uniformly NO: every one of RPE 9's,
- * RPE 10's and every meet cell's 160 (idle-start, seed) pairs now reads
+ * addend, above the cut, the answer was uniformly NO: every one of RPE 9's,
+ * RPE 10's and every meet cell's 160 (idle-start, seed) pairs read
  * `[0, 0, 160]` — the idle arm still always stalls (unchanged from before),
- * but resuming at a moderate cadence no longer ever changes the outcome,
- * because the boosted demand at these cells now sits close enough to the
+ * but resuming at a moderate cadence no longer ever changed the outcome,
+ * because the boosted demand at these cells sat close enough to the
  * max-effort wall that only a near-continuous, near-max-effort cadence (see
- * `MAX_EFFORT`'s realistic arm) has any chance of finishing at all. RPE 8's
- * four rows are untouched, because `ONSET` did not move and the cut sits
- * below every RPE 8 cell's base margin.
+ * `MAX_EFFORT`'s realistic arm) had any chance of finishing at all. RPE 8's
+ * four rows were untouched that round, because `ONSET` did not move and the
+ * cut sits below every RPE 8 cell's base margin.
+ *
+ * -------------------------------------------------------------------------
+ * RE-DERIVED AGAIN 2026-08-29 — THIS TIME THE RPE 8 ROWS ARE WHERE THE CHANGE
+ * LIVES, AND RPE 9's ROWS STAY EXACTLY WHERE THEY WERE
+ * -------------------------------------------------------------------------
+ * `BENCH_WORKING_RUNG_DEMAND_ONSET` rose 0.045 -> 0.15 (RPE 8's own addend,
+ * unchanged by the 2026-08-28 (FOURTH) cut) and `BENCH_WORKING_RUNG_DEMAND_
+ * WALL_ADDEND` fell 0.34 -> 0.30 (RPE 9/10/meet's addend) in the same round —
+ * see the entry titled "SHIP ONSET 0.15, WITHDRAW MASH-RISK ON RPE 9" in
+ * CLAUDE.md. RPE 8's four rows move from `[160,100,60] [160,120,100]
+ * [160,100,100] [160,100,100]` to a uniform `[160,160,160]` at every cell:
+ * with the higher onset, an idle (never-tapped) RPE 8 rep now ALWAYS misses
+ * (`stalled` saturates at 160, up from 60-100), and resuming at
+ * `REACHABLE.GAP_TICKS` ALWAYS rescues it (`rescued`/`fromMiss` both
+ * saturate at 160 too) — RPE 8 is now a rung where an idle rep never
+ * survives on its own and a moderate resumption never fails to save it,
+ * rather than the old mixed partial-rescue picture. RPE 9's, RPE 10's and
+ * every meet cell's rows are BYTE-IDENTICAL to the 2026-08-28 (FOURTH)
+ * table, re-measured rather than assumed: `WALL_ADDEND` falling from 0.34 to
+ * 0.30 still keeps every one of those cells' boosted margins close enough to
+ * the max-effort wall that a moderate resumed cadence never rescues them —
+ * only `WORKING_FLOOR` (a much slower, sustained cadence) and `MAX_EFFORT`
+ * (a near-continuous one) tell RPE 9 apart from RPE 10 after this round; this
+ * moderate-resumption table does not.
  *
  * WHERE THE GRIND BEGINS, IN THE TERMS A PLAYER WOULD USE — RE-STATED FOR THE
  * TABLE BELOW RATHER THAN CARRIED FROM THE PARAGRAPH IT REPLACES:
@@ -2808,22 +2833,25 @@ type RescueRow = readonly [number, number, number];
  *                       instant whole and pins that at zero; the one residue,
  *                       a single cell that misses on literally NO input, is
  *                       measured under `DEMAND_BASE.bench`.
- *   RPE 8               STOPPING COSTS THE REP, AND RESUMING AT A MODERATE
- *                       PACE CAN STILL SAVE IT. All four cells lose reps and
- *                       all four stall on the way, and all four still show
- *                       `rescued`/`fromMiss` > 0 — a slow grind still makes
- *                       it, as a GRINDER rather than a GOOD LIFT.
+ *   RPE 8               STOPPING ALWAYS COSTS THE REP, AND RESUMING AT A
+ *                       MODERATE PACE ALWAYS SAVES IT. Since the 2026-08-29
+ *                       `ONSET` rise, all four cells lose EVERY idle rep and
+ *                       stall on EVERY one (`[160,160,160]`, not a partial
+ *                       rescue) — a slow grind still always makes it, as a
+ *                       GRINDER rather than a GOOD LIFT, but standing still
+ *                       never does any more.
  *   RPE 9, 10           EVERY CELL STALLS AND NONE IS RESCUABLE AT A MODERATE
  *                       CADENCE. `[0, 0, 160]` at all eight cells: the idle
  *                       arm always stalls, and coming back at
  *                       `REACHABLE.GAP_TICKS` never changes the outcome any
- *                       more. Only a near-max-effort cadence has a real,
- *                       partial chance — see `MAX_EFFORT`'s 30.5% (RPE 9) and
- *                       higher (RPE 10) realistic-cadence loss rates, which
- *                       measure the SAME wall from the other side: continuous
- *                       tapping with no idle window at all.
+ *                       more. Only a much slower sustained cadence (RPE 9's
+ *                       `WORKING_FLOOR`, cleared of the refractory band this
+ *                       round) or a near-max-effort one (`MAX_EFFORT`) has a
+ *                       real chance any more — RPE 9's own realistic-cadence
+ *                       loss rate returned to 0 this round, RULED, and RPE
+ *                       10's stayed real (252 of 400).
  *   meet, every attempt `[0, 0, 160]` at all 18 cells, including attempt 1
- *                       and every strategy — the whole meet now sits above
+ *                       and every strategy — the whole meet still sits above
  *                       the cut, so an idle window is unrescuable at this
  *                       cadence everywhere on meet day, not only at the top
  *                       attempt.
@@ -2862,10 +2890,16 @@ const REACHABLE_RESCUE: Readonly<Record<string, RescueRow>> = {
   // -0.0025; the boundary at which a quiet rep starts losing the rep is between
   // them. `DEMAND_BASE.bench`'s header holds what that window costs and why it
   // cannot be widened.
-  'session/rpe8/0.8000/slower-than-expected': [160, 100, 60],
-  'session/rpe8/0.8500/as-expected': [160, 120, 100],
-  'session/rpe8/0.8750/crisp': [160, 100, 100],
-  'session/rpe8/0.9000/popping': [160, 100, 100],
+  //
+  // UNIFORM [160, 160, 160] SINCE THE 2026-08-29 ONSET RISE (0.045 -> 0.15),
+  // UP FROM A MIXED [160,100,60] [160,120,100] [160,100,100] [160,100,100].
+  // See this table's own header for the reading: an idle RPE 8 rep now always
+  // misses and a moderate resumption always saves it, at every one of the
+  // four cells, rather than the old partial-rescue picture.
+  'session/rpe8/0.8000/slower-than-expected': [160, 160, 160],
+  'session/rpe8/0.8500/as-expected': [160, 160, 160],
+  'session/rpe8/0.8750/crisp': [160, 160, 160],
+  'session/rpe8/0.9000/popping': [160, 160, 160],
   // RPE 9, RPE 10 AND EVERY MEET CELL ARE `[0, 0, 160]`, UNIFORMLY, SINCE
   // 2026-08-28 (FOURTH). Every one of these cells now sits at or above
   // `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN`, so `BENCH_WORKING_RUNG_DEMAND_
@@ -3399,61 +3433,76 @@ const WORKING_FLOOR = {
    * RPE 7 cell, before this lever and after it.
    *
    * -------------------------------------------------------------------------
-   * THE ROW THIS ROUND IS ABOUT IS THE RPE 8 ONE, AND IT IS PINNED BESIDE WHAT
-   * IT REPLACED
+   * THE RPE 8 ROW, PINNED BESIDE ITS FULL HISTORY THROUGH THREE ROUNDS
    * -------------------------------------------------------------------------
-   * As taps a second (`60 / gap`), before the 2026-08-27 working-rung lever
-   * against after:
+   * As taps a second (`60 / gap`), 2026-08-27's flat step, through the
+   * 2026-08-28 (FOURTH) margin-band cut (unchanged, `ONSET` did not move that
+   * round), to the 2026-08-29 `ONSET` rise (0.045 -> 0.15):
    *
-   *     rpe8/0.8000/slower-than-expected   0.48  ->  1.07
-   *     rpe8/0.8500/as-expected            0.86  ->  1.58
-   *     rpe8/0.8750/crisp                  0.67  ->  1.36
-   *     rpe8/0.9000/popping                0.53  ->  1.07
-   *     rpe9,  the four cells    1.05 1.62 1.40 1.18 -> 1.82 2.31 2.07 1.94
-   *     rpe10, the four cells    2.61 2.40 2.14 2.07 -> 3.53 3.33 3.00 2.86
+   *     rpe8/0.8000/slower-than-expected   0.48  ->  1.07  ->  3.00
+   *     rpe8/0.8500/as-expected            0.86  ->  1.58  ->  3.33
+   *     rpe8/0.8750/crisp                  0.67  ->  1.36  ->  3.16
+   *     rpe8/0.9000/popping                0.53  ->  1.07  ->  3.00
    *
-   * A phone replay called RPE 8 "way too easy" twice; a tap every 1.2 to 2.1
-   * seconds still made the rep, which is why. It is now a tap every 0.63 to
-   * 0.93 seconds, sustained, and the rungs above moved with it.
-   *
-   * RE-DERIVED 2026-08-27 WHEN THE RAMP WAS DELETED, not carried across it. The
-   * ramped lever read 1.02 / 1.62 / 1.36 / 1.03 at RPE 8; the flat step that
-   * replaced it reads 1.07 / 1.58 / 1.36 / 1.07 — at most one tick of cadence
-   * per cell, which is the whole measured difference the two deleted constants
-   * were buying. See `BENCH_WORKING_RUNG_DEMAND_ONSET`'s header.
+   * A phone replay called RPE 8 "way too easy" three times — once before the
+   * 2026-08-27 lever ("no challenge"), once at 1.07-1.58 taps/s ("still WAY
+   * too easy"), and the 2026-08-28 (FOURTH) cut left RPE 8 untouched at that
+   * same rate because it moved a different addend. `ONSET` 0.045 -> 0.15 is
+   * this round's answer: a tap every 0.30 to 0.33 seconds, sustained, roughly
+   * twice the prior rate and clearly a real grind rather than a cutscene.
+   * `MAX_EFFORT` (below) confirms RPE 8's `REALISTIC_LOST` is still exactly 0
+   * at this onset — a real floor, not a rep put out of reach.
    *
    * -------------------------------------------------------------------------
-   * 2026-08-28 (FOURTH): RPE 9 AND RPE 10 COLLAPSE TO THE REFRACTORY FLOOR,
-   * TOGETHER — THE ACCEPTED TIE, OLD VECTOR KEPT BESIDE THE NEW ONE RATHER
-   * THAN OVERWRITTEN
+   * 2026-08-29: RPE 9 IS PULLED OFF THE REFRACTORY FLOOR, RPE 8 STAYS
+   * STRICTLY EASIER, AND THE 2026-08-28 (FOURTH) RPE 9-vs-RPE 10 TIE IS GONE
    * -------------------------------------------------------------------------
-   * `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` applies to every RPE 9 and RPE 10
-   * cell now (RPE 8 keeps `ONSET`, untouched, still 56/38/44/56). At this
-   * addend, RPE 9's and RPE 10's tap floors both collapse to EXACTLY 4 ticks —
-   * one tick above `GRIND_TAP_REFRACTORY_TICKS` (3), the fastest cadence the
-   * engine can even count — at all eight cells. This is the RPE 9-vs-RPE 10
-   * floor tie the 2026-08-28 (FOURTH) ruling names and accepts; see
-   * `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND`'s own header for the 0.303-vs-0.32
-   * tradeoff that forces it. The vector this round replaced, taps a second in
-   * the same cell order (RPE 9 then RPE 10):
+   * The 2026-08-28 (FOURTH) ship put RPE 9 and RPE 10 on the same
+   * `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` (0.34) and both collapsed to
+   * EXACTLY 4 ticks — one tick above `GRIND_TAP_REFRACTORY_TICKS` (3), the
+   * fastest cadence the engine can even count. A phone replay called that
+   * rung "next to impossible", and the 2026-08-29 ruling ("SHIP ONSET 0.15,
+   * WITHDRAW MASH-RISK ON RPE 9" in CLAUDE.md) named the 4-tick floor, not the
+   * realistic-cadence loss rate, as the actual complaint. `WALL_ADDEND` fell
+   * 0.34 -> 0.30, which lifts all four RPE 9 cells clear of the floor (6, 5,
+   * 5, 6 ticks) while RPE 10 stays exactly where it was (4, 4, 4, 4) — RPE
+   * 10's base margins sit closer to `BENCH_WORKING_RUNG_DEMAND_MARGIN_
+   * CEILING` (0.378) than RPE 9's, so the same lower addend still clips every
+   * RPE 10 cell at the ceiling. See `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND`'s
+   * own header for the 0.318-vs-0.320 boundary this value was chosen inside.
    *
-   *     OLD (2026-08-27, ONSET applied uniformly)
+   * The vector history, taps a second, in the same cell order (RPE 9 then
+   * RPE 10):
+   *
+   *     2026-08-27 (ONSET applied uniformly)
    *       rpe9   1.82 2.31 2.07 1.94  ->  gaps 33 26 29 31
    *       rpe10  3.53 3.33 3.00 2.86  ->  gaps 17 18 20 21
-   *     NEW (2026-08-28 (FOURTH), WALL_ADDEND applied at/above the cut)
+   *     2026-08-28 (FOURTH) (WALL_ADDEND 0.34 applied at/above the cut)
    *       rpe9   15.00 15.00 15.00 15.00  ->  gaps 4 4 4 4
    *       rpe10  15.00 15.00 15.00 15.00  ->  gaps 4 4 4 4
+   *     2026-08-29 (WALL_ADDEND 0.30)
+   *       rpe9   10.00 12.00 12.00 10.00  ->  gaps 6 5 5 6
+   *       rpe10  15.00 15.00 15.00 15.00  ->  gaps 4 4 4 4 (unchanged)
+   *
+   * NO LONGER A TIE, AND THE ORDERING TEST BELOW IS RE-STATED RATHER THAN
+   * WEAKENED. RPE 9 is now measurably easier (higher tick count) than RPE 10
+   * — a "9-easier-than-10 floor gap" the 2026-08-29 ruling names as EXPECTED
+   * and ALLOWED, because RPE 9's base margins sit below RPE 10's and the same
+   * addend naturally separates them again once neither is pinned to the
+   * ceiling. RPE 8 stays strictly easier than RPE 9 with a wider margin than
+   * before (min RPE 8 18 ticks vs max RPE 9 6 ticks, against 38 vs 4
+   * previously).
    *
    * PINNED AS THE WHOLE VECTOR RATHER THAN AS A MINIMUM, STILL. A bound is
    * satisfied by a ladder that collapsed at one end, and this table's whole job
-   * is to say exactly where the rungs land — including a tie, honestly, rather
-   * than a bound a tie would also satisfy.
+   * is to say exactly where the rungs land, including a tie or its absence,
+   * honestly, rather than a bound either shape would also satisfy.
    */
   SESSION_FLOOR_GAP_TICKS: [
     240, 240, 240, 240, 240,
     240, 240, 240, 240, 240,
-    56, 38, 44, 56,
-    4, 4, 4, 4,
+    20, 18, 19, 20,
+    6, 5, 5, 6,
     4, 4, 4, 4,
   ] as const,
   /**
@@ -3479,8 +3528,15 @@ const WORKING_FLOOR = {
    *
    *     OLD (2026-08-27, ONSET applied uniformly, ceiling 0.27)
    *       18 17 13 18 14 10 18 12 8, 13 10 9 13 9 8 13 8 6
-   *     NEW (2026-08-28 (FOURTH), WALL_ADDEND applied, ceiling 0.378)
+   *     2026-08-28 (FOURTH) (WALL_ADDEND 0.34, ceiling 0.378)
    *       4 4 4 4 4 4 4 4 4, 4 4 4 4 4 4 4 4 4
+   *
+   * UNCHANGED BY THE 2026-08-29 RETUNE, RE-MEASURED RATHER THAN ASSUMED. Every
+   * meet cell's base margin still clears `BENCH_WORKING_RUNG_DEMAND_MARGIN_
+   * CEILING` (0.378, unmoved) at the lower `WALL_ADDEND` (0.30), so all
+   * eighteen still clip at the ceiling and read 4 ticks — the same shape that
+   * keeps RPE 10 at 4 (see `SESSION_FLOOR_GAP_TICKS`'s own header) while RPE 9
+   * clears it.
    */
   MEET_FLOOR_GAP_TICKS: [
     4, 4, 4, 4, 4, 4, 4, 4, 4,
@@ -3659,22 +3715,38 @@ const FLOOR_EDGES = {
  * reachable 0.378) still sit well under what a perfectly-timed mash can
  * overcome.
  *
- * `REALISTIC_LOST` IS NO LONGER ZERO, AND THAT IS THE POINT OF THIS ROUND.
+ * `REALISTIC_LOST` WAS NON-ZERO AT RPE 9 FOR ONE ROUND (2026-08-28, FOURTH) AND
+ * IS DELIBERATELY BACK TO ZERO THERE, RULED RATHER THAN REGRESSED.
  * Before 2026-08-27's lockout change AND through the whole 2026-08-27/THIRD
  * working-rung lever, no reachable cell's effective margin got within 0.07 of
  * the max-effort wall — `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` (0.27 then)
  * capped every cell well under it regardless of `ONSET`'s value, which is why
  * this constant was pinned all-zero across six prior measurements. The
  * 2026-08-28 (THIRD) ruling traced that to the addend's SIZE rather than the
- * ceiling, and the (FOURTH) ruling shipped the fix: `BENCH_WORKING_RUNG_
- * DEMAND_WALL_ADDEND` (0.34) applied at/above `BENCH_WORKING_RUNG_DEMAND_
- * CUT_MARGIN`, with the ceiling raised to 0.378 to clip it. Measured fresh
- * against the real engine: RPE 9 loses 122 of 400 (30.5%), RPE 10 loses 279 of
- * 400 (69.75%), meet loses 1195 of 1800 (66.4%) — all non-zero, none
- * saturating, RPE 8 still exactly 0. See `MAX_EFFORT_WALLS`'s header for the
- * wall arithmetic behind these numbers and `BENCH_WORKING_RUNG_DEMAND_WALL_
- * ADDEND`'s own header for what this addend cost `WORKING_FLOOR`'s tick-space
- * ordering in exchange.
+ * ceiling, and the (FOURTH) ruling shipped a fix that gave RPE 9 a real
+ * realistic-cadence loss rate: `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` (0.34)
+ * applied at/above `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN`, with the ceiling
+ * raised to 0.378 to clip it — RPE 9 lost 122 of 400 (30.5%), RPE 10 lost 279
+ * of 400 (69.75%), meet lost 1195 of 1800 (66.4%).
+ *
+ * A PHONE REPLAY OF THAT SHIP CALLED RPE 9 "NEXT TO IMPOSSIBLE" — the 4-tick
+ * `WORKING_FLOOR` that addend forced (see `BENCH_WORKING_RUNG_DEMAND_WALL_
+ * ADDEND`'s own header), not the 30.5% aggregate — and the 2026-08-29 ruling
+ * withdrew RPE 9's mash-risk to fix it: `WALL_ADDEND` fell 0.34 -> 0.30, which
+ * clears all four RPE 9 cells off the refractory floor (`WORKING_FLOOR` now
+ * 6/5/5/6, against 4/4/4/4) and returns RPE 9's realistic-cadence loss rate to
+ * 0 of 400 as a DELIBERATE, RULED consequence — see the entry titled "SHIP
+ * ONSET 0.15, WITHDRAW MASH-RISK ON RPE 9" in CLAUDE.md. This is not a
+ * regression to chase: the arc measured that "RPE 9 floor clear of 4 ticks"
+ * and "RPE 9 has a non-zero realistic-cadence loss rate" cannot both hold past
+ * `WALL_ADDEND` ~0.318-0.320 (see that constant's header for the boundary),
+ * and the ruling chose the floor over the aggregate. RPE 10 and meet, which
+ * stay on the same addend, keep a real loss rate (252 of 400 and 1195 of 1800)
+ * because their base margins sit closer to the ceiling and clip there
+ * regardless. RPE 8 stays exactly 0, unaffected by `WALL_ADDEND` at all — see
+ * `MAX_EFFORT_WALLS`'s header for the wall arithmetic and
+ * `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND`'s own header for what the fall cost
+ * (nothing measured — see that header) and bought (the floor) in exchange.
  */
 const MAX_EFFORT = {
   /** Rep seeds per cell, per cadence draw. Moves the command tick only. */
@@ -3702,13 +3774,21 @@ const MAX_EFFORT = {
    * Measured: the same for the REALISTIC arm, over every cell and every draw.
    *
    * OLD (every round through 2026-08-27/THIRD): `[0, 0, 0, 0, 0, 0]`.
-   * NEW, 2026-08-28 (FOURTH): `[0, 0, 0, 122, 279, 1195]` — RPE 6/7/8 stay at
-   * 0 (RPE 8 keeps `ONSET`, unmoved); RPE 9 is 122 of `REALISTIC_CASES[3]`
-   * (400) = 30.5%; RPE 10 is 279 of 400 = 69.75%; meet is 1195 of 1800 =
-   * 66.4%. See this block's own header for the mechanism and
-   * `MAX_EFFORT_WALLS` for the wall values that produce these rates.
+   * 2026-08-28 (FOURTH), `WALL_ADDEND` 0.34: `[0, 0, 0, 122, 279, 1195]` — RPE
+   * 9 30.5%, RPE 10 69.75%, meet 66.4%.
+   * NOW, 2026-08-29, `ONSET` 0.15 / `WALL_ADDEND` 0.30: `[0, 0, 0, 0, 252,
+   * 1195]`. RPE 8 (`ONSET`) stays exactly 0 — its floor got harder (see
+   * `WORKING_FLOOR`) but never gets close to the max-effort wall. RPE 9
+   * (`WALL_ADDEND`) returns to 0 of 400 — RULED, not a regression, see this
+   * block's own header. RPE 10 falls 279 -> 252 of 400 (still real, not
+   * saturating) because the same lower addend also softens its cells a
+   * little; meet is unchanged at 1195 of 1800 because every meet cell still
+   * clips at `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` (0.378) regardless of
+   * which of the two addends produced it. See this block's own header for the
+   * ruling and `MAX_EFFORT_WALLS` for the wall values that produce these
+   * rates.
    */
-  REALISTIC_LOST: [0, 0, 0, 122, 279, 1195] as const,
+  REALISTIC_LOST: [0, 0, 0, 0, 252, 1195] as const,
   /**
    * The domain size each `PERFECT_LOST` / `REALISTIC_LOST` entry is over, in
    * `RUNGS` order: `cellsInRung * SEEDS` and `cellsInRung * DRAWS`.
@@ -3781,22 +3861,31 @@ const MAX_EFFORT = {
  * and the new one (0.378), so `boosted = base` there in both regimes and the
  * search finds the same rung.
  *
- * THE OLD FINDING — "NOTHING PUTS A REACHABLE CELL IN THAT BAND" — IS NOW
- * FALSE, BY DESIGN, AND THAT IS THE WHOLE POINT OF THIS ROUND. The highest
- * reachable effective margin is now 0.378 — the raised
- * `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` itself, not a single isolated
- * cell's base margin. Nearly the whole top of the ladder is clipped there:
- * all four RPE 10 cells, all eighteen meet cells, and one RPE 9 cell
- * (`session/rpe9/0.8750/as-expected`) sit at exactly 0.378; a second RPE 9
- * cell (`session/rpe9/0.9000/crisp`) sits just under it at 0.373757. That
- * plateau (0.378) is ABOVE the max-effort wall (0.3698) and BELOW the
- * false-start wall (0.3990) — which is exactly the band the 2026-08-27
- * ruling opened and the 2026-08-28 (THIRD) ruling asked to actually fill.
- * `MAX_EFFORT.REALISTIC_LOST` is the direct evidence: RPE 9 loses 122 of 400
- * (30.5%), RPE 10 loses 279 of 400 (69.75%), meet loses 1195 of 1800 (66.4%)
- * — all non-zero, none saturating to 100%, and the false-start guarantee (see
- * the sweep below) still holds at 0 of 40 reachable cells, because every one
- * of them stays below 0.3990.
+ * THE OLD FINDING — "NOTHING PUTS A REACHABLE CELL IN THAT BAND" — WENT FALSE
+ * BY DESIGN ON 2026-08-28 (FOURTH), THIS ACCOUNT IS KEPT AS HISTORY, AND
+ * 2026-08-29 WITHDRAWS RPE 9 FROM THE BAND WITHOUT REOPENING THE OLD FINDING.
+ * The 2026-08-28 (FOURTH) highest reachable effective margin was 0.378 — the
+ * raised `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` itself, not a single
+ * isolated cell's base margin — and nearly the whole top of the ladder
+ * clipped there: all four RPE 10 cells, all eighteen meet cells, and one RPE
+ * 9 cell (`session/rpe9/0.8750/as-expected`) sat at exactly 0.378. That
+ * plateau was ABOVE the max-effort wall (0.3698 then) and BELOW the
+ * false-start wall (0.3990) — the band the 2026-08-27 ruling opened and the
+ * 2026-08-28 (THIRD) ruling asked to fill. `MAX_EFFORT.REALISTIC_LOST` was
+ * the direct evidence then: RPE 9 lost 122 of 400 (30.5%), RPE 10 lost 279 of
+ * 400 (69.75%), meet lost 1195 of 1800 (66.4%).
+ *
+ * A phone replay called RPE 9's floor (not this aggregate) "next to
+ * impossible", and the 2026-08-29 ruling lowered `WALL_ADDEND` (0.34 -> 0.30)
+ * to pull RPE 9's cells back OFF the ceiling plateau — `HIGHEST_REACHABLE_
+ * MARGIN` stays 0.378 (RPE 10 and meet still clip there; see that constant's
+ * own header) but RPE 9's own effective margins now sit below it, and RPE 9's
+ * `REALISTIC_LOST` returns to 0 of 400 as a RULED, deliberate consequence —
+ * see `MAX_EFFORT`'s own header. RPE 10 and meet stay in the band (252 of 400
+ * and 1195 of 1800), so the band itself is not empty again, only RPE 9's
+ * membership in it. The false-start guarantee (see the sweep below) still
+ * holds at 0 of 40 reachable cells, because every one of them stays below
+ * `FALSE_START_WALL` (0.3990, unmoved by this round).
  *
  * BOTH WALLS ARE DRIVEN, NOT PINNED FROM PROSE. The ladder below walks
  * `loadRatio` under a fixed wrecked check-in and reads each rung's real
@@ -3825,12 +3914,18 @@ const MAX_EFFORT_WALLS = {
    *
    * MOVED 0.3764 -> 0.3698 ON THE 2026-08-28 (FOURTH) MARGIN-BAND CUT. See this
    * constant's block header for why: the search now walks a curve with a jump
-   * discontinuity at `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN`, and 0.3698 is
-   * where this ladder's fixed 0.005 load step first lands a realistic loss
-   * inside the addend's climbing region. Unaffected by the lockout change (a
-   * max-effort rep throws no early taps).
+   * discontinuity at `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN`, and 0.3698 was
+   * where this ladder's fixed 0.005 load step first landed a realistic loss
+   * inside the addend's climbing region then. Unaffected by the lockout change
+   * (a max-effort rep throws no early taps).
+   *
+   * MOVED AGAIN, 0.3698 -> 0.3668, ON THE 2026-08-29 `WALL_ADDEND` FALL (0.34
+   * -> 0.30). The addend's climbing region is now smaller and sits at a lower
+   * base margin, so the same fixed load ladder finds the realistic arm's
+   * first loss one step earlier. Re-driven, not derived — see this
+   * constant's block header for what this round changed and did not.
    */
-  MAX_EFFORT_WALL: 0.3698,
+  MAX_EFFORT_WALL: 0.3668,
   /**
    * Measured: the least effective margin ON THIS LADDER at which a 10-tap
    * false start loses at least one rep, to four decimals, AT THE SHIPPED
@@ -3845,16 +3940,24 @@ const MAX_EFFORT_WALLS = {
    * Measured: the greatest effective margin any reachable cell reaches, to
    * four decimals.
    *
-   * MOVED 0.3066 -> 0.378 ON THE 2026-08-28 (FOURTH) MARGIN-BAND CUT, AND IT IS
-   * NOW THE CEILING ITSELF RATHER THAN ONE CELL'S UNLEVERED BASE MARGIN.
-   * `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` (0.34) is large enough that every
-   * RPE 10 cell, every meet cell, and one RPE 9 cell
-   * (`session/rpe9/0.8750/as-expected`) now clip exactly at
-   * `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` — roughly 22 of the 40 reachable
-   * cells share this exact value. It sits above `MAX_EFFORT_WALL` (0.3698, by
-   * design — this is what gives those rungs a real, non-zero, non-total
-   * realistic-cadence loss rate) and below `FALSE_START_WALL` (0.3990, so the
-   * false-start guarantee still holds everywhere reachable).
+   * MOVED 0.3066 -> 0.378 ON THE 2026-08-28 (FOURTH) MARGIN-BAND CUT, AND IT
+   * BECAME THE CEILING ITSELF RATHER THAN ONE CELL'S UNLEVERED BASE MARGIN.
+   * At that round's `WALL_ADDEND` (0.34), every RPE 10 cell, every meet cell,
+   * and one RPE 9 cell (`session/rpe9/0.8750/as-expected`) clipped exactly at
+   * `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` — 22 of the 40 reachable cells
+   * shared this exact value.
+   *
+   * STILL 0.378 AFTER THE 2026-08-29 `WALL_ADDEND` FALL (0.34 -> 0.30) —
+   * MEASURED, NOT ASSUMED CARRIED — BUT THE MEMBERSHIP SHRANK TO 21 OF 40. The
+   * one RPE 9 cell that used to clip no longer does (its boosted margin at
+   * the lower addend, ~0.3448, sits under the ceiling — this is exactly why
+   * RPE 9's `WORKING_FLOOR` cleared the refractory band, see that constant's
+   * own header), and every RPE 10 and meet cell still clips, so membership
+   * fell by exactly one. The value itself sits above `MAX_EFFORT_WALL`
+   * (0.3668, moved this round too — by design, this is what still gives RPE
+   * 10 and meet a real, non-zero, non-total realistic-cadence loss rate) and
+   * below `FALSE_START_WALL` (0.3990, unmoved, so the false-start guarantee
+   * still holds everywhere reachable).
    */
   HIGHEST_REACHABLE_MARGIN: 0.378,
 } as const;
@@ -5101,29 +5204,32 @@ describe('the grind decides the lift', () => {
     );
 
     // -------------------------------------------------------------------
-    // THE LADDER'S ORDERING, RE-STATED FOR THE 2026-08-28 (FOURTH) RULING,
-    // WHICH REPLACES RATHER THAN WEAKENS THE OLD STRICT 8 < 9 < 10
+    // THE LADDER'S ORDERING, RE-STATED AGAIN FOR THE 2026-08-29 RULING, WHICH
+    // WITHDRAWS THE 2026-08-28 (FOURTH) RPE 9-vs-RPE 10 TIE RATHER THAN
+    // RE-JUSTIFYING IT
     // -------------------------------------------------------------------
-    // RPE 8 IS STILL STRICTLY EASIER THAN RPE 9 IN TICK SPACE — UNCHANGED,
-    // NOT WEAKENED. RPE 8 keeps `ONSET` (unmoved); every RPE 9 cell now takes
-    // `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND`, which is what makes this gap
-    // WIDER than it was, not narrower — RPE 8's floors read 38-56 ticks, every
-    // RPE 9 cell now reads exactly 4.
+    // RPE 8 IS STILL STRICTLY EASIER THAN RPE 9 IN TICK SPACE — THE ONE
+    // ORDERING FACT CARRIED THROUGH EVERY ROUND OF THIS ARC, SAME SHAPE OF
+    // ASSERTION THROUGHOUT (`Math.min(eight) > Math.max(nine)`). `ONSET` rose
+    // (0.045 -> 0.15) and `WALL_ADDEND` fell (0.34 -> 0.30) in the same round,
+    // and the gap survived both moving at once: RPE 8's floors now read 18-20
+    // ticks, RPE 9's read 5-6 — a comfortable margin, not a near miss.
     //
-    // RPE 9 vs RPE 10 IS NO LONGER A STRICT INEQUALITY — IT IS A MEASURED TIE
-    // AT THE CEILING-CLIPPED FLOOR, ACCEPTED BY THE RULING RATHER THAN FIXED.
-    // Both rungs' floors collapse to exactly `GRIND_TAP_REFRACTORY_TICKS + 1`
-    // (4 ticks — the fastest cadence a HELD tap-every-tick rhythm can express
-    // is `GRIND_TAP_REFRACTORY_TICKS` itself, 3, and this is one tick above
-    // that floor) at every one of the eight cells. This is measured EQUALITY,
-    // not an assumed one — see `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND`'s own
-    // header for why an addend large enough to give RPE 9 a real `MAX_EFFORT`
-    // loss rate necessarily collapses both rungs' tick-space floors together,
-    // and why raising RPE 10 to reopen the gap is refused there by name. The
-    // "9 easier than 10" fact for working rungs above the cut now lives in
-    // `MAX_EFFORT`'s ordering (RPE 9 ≈30%, RPE 10 higher, neither saturating)
-    // rather than in this tick-space vector — see that sweep, two tests below
-    // this one.
+    // RPE 9 vs RPE 10 IS NO LONGER A TIE — THE 2026-08-28 (FOURTH) TIE IS
+    // WITHDRAWN, MEASURED RATHER THAN ASSUMED GONE. That round's `WALL_ADDEND`
+    // (0.34) collapsed both rungs to `GRIND_TAP_REFRACTORY_TICKS + 1` (4
+    // ticks) at every one of the eight cells; a phone replay called that rung
+    // "next to impossible" and the 2026-08-29 ruling ("SHIP ONSET 0.15,
+    // WITHDRAW MASH-RISK ON RPE 9" in CLAUDE.md) named the 4-tick floor as the
+    // actual complaint and lowered `WALL_ADDEND` to 0.30 to clear it. RPE 9's
+    // floor is no longer uniform across its own four cells (5, 5, 6, 6) and no
+    // longer ties RPE 10's (still uniform at 4) — RPE 9 is now measurably
+    // EASIER than RPE 10 in tick space, which the ruling names as an EXPECTED
+    // and ALLOWED consequence of the same addend falling, not a gap to close
+    // by raising RPE 10. The "9 easier than 10" fact this round withdraws from
+    // `MAX_EFFORT` (whose ordering carried it while the tie stood) and puts
+    // back into this tick-space vector, where it lived before 2026-08-28
+    // (FOURTH) ever shipped.
     const rungFloors = (rpe: string): number[] =>
       session.filter((c) => c.label.startsWith(`session/${rpe}/`)).map((c, i, arr) => {
         void i;
@@ -5135,19 +5241,32 @@ describe('the grind decides the lift', () => {
     const ten = rungFloors('rpe10');
     expect(eight.length, 'RPE 8 cells').toBe(4);
     expect(Math.min(...eight), 'RPE 8 fastest floor').toBeGreaterThan(Math.max(...nine));
-    // THE TIE, PINNED EXACTLY RATHER THAN BOUNDED. Every RPE 9 and RPE 10 cell
-    // reads the identical floor — `GRIND_TAP_REFRACTORY_TICKS + 1` — so both
-    // the min and the max of each rung agree with each other AND across rungs.
-    expect(new Set(nine).size, 'RPE 9 floors are not uniform').toBe(1);
+    // RPE 9 CLEARS THE REFRACTORY BAND AT EVERY CELL — THE STOP CONDITION THE
+    // 2026-08-29 RULING NAMES, DRIVEN RATHER THAN ASSUMED FROM THE VECTOR
+    // ABOVE. `Math.min` covers the worst (fastest-required, hardest) of the
+    // four cells, so this is the whole rung, not a favourable sample of it.
+    expect(
+      Math.min(...nine),
+      'RPE 9 floor clears the refractory band at every cell',
+    ).toBeGreaterThan(LIFT_TUNING.GRIND_TAP_REFRACTORY_TICKS + 1);
+    // RPE 10 STAYS UNIFORM AT THE CEILING-CLIPPED FLOOR — UNCHANGED BY THIS
+    // ROUND, RE-MEASURED. Every RPE 10 cell's base margin still sits close
+    // enough to `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` that the lower
+    // `WALL_ADDEND` still clips there.
     expect(new Set(ten).size, 'RPE 10 floors are not uniform').toBe(1);
-    expect(Math.min(...nine), 'RPE 9 floor').toBe(Math.min(...ten));
-    expect(Math.min(...nine), 'the tie point').toBe(LIFT_TUNING.GRIND_TAP_REFRACTORY_TICKS + 1);
-    // ...and the meet ties the same floor rather than riding strictly above
-    // it — every meet cell now shares RPE 9/RPE 10's ceiling-clipped floor,
-    // which is the same tie one rung further up the ladder, measured rather
-    // than assumed to still be a strict "meet is hardest of all" ordering.
+    expect(Math.min(...ten), 'RPE 10 floor').toBe(LIFT_TUNING.GRIND_TAP_REFRACTORY_TICKS + 1);
+    // ...AND RPE 9 IS NOW STRICTLY EASIER THAN RPE 10, THE DIRECTION THE
+    // RULING NAMES AS ALLOWED. Both the worst RPE 9 cell and the best RPE 10
+    // cell sit at the same value in `ten` (it is uniform), so this single
+    // comparison is the whole ordering.
+    expect(Math.min(...nine), 'RPE 9 floor is easier than RPE 10').toBeGreaterThan(
+      Math.max(...ten),
+    );
+    // ...and the meet still ties RPE 10's floor rather than riding above it —
+    // every meet cell still clips at the same ceiling, unaffected by this
+    // round's fall in `WALL_ADDEND` (see `MEET_FLOOR_GAP_TICKS`'s own header).
     expect(new Set(meetFloors).size, 'meet floors are not uniform').toBe(1);
-    expect(Math.min(...meetFloors), 'the meet floor ties RPE 9/10').toBe(Math.min(...ten));
+    expect(Math.min(...meetFloors), 'the meet floor ties RPE 10').toBe(Math.min(...ten));
   }, 300_000);
 
   it('never costs a rep to a player at the sim\'s own tap ceiling, per rung', () => {
