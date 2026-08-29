@@ -1136,6 +1136,108 @@ reasoning — not any prior round's provisional numbers.
 **`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not a
 crossing.
 
+### PHONE REPLAY OF THE MARGIN-BAND CUT, 2026-08-29: 8 STILL A CUTSCENE, 9 IMPOSSIBLE — RETUNE BOTH ADDENDS
+
+Verbatim, phone at `8703082b`: *"8 is still WAY too easy. 9 is next to
+impossible. Not a feel-bar close."* The mechanism itself — the margin-band
+cut, the two-addend split, the ceiling as a clip — is confirmed and not
+reopened. This is a magnitude replay: both shipped values are wrong, in
+opposite directions, and the sim's own aggregate number did not predict the
+feel.
+
+**Why 30.5% didn't transfer, diagnosed rather than merely observed.** RPE 9's
+`WORKING_FLOOR` collapsed to `GRIND_TAP_REFRACTORY_TICKS + 1` — 4 ticks — the
+same value RPE 10/meet's ceiling-clipped cells sit at. A 4-tick floor asks for
+a tap roughly every 67ms sustained, and the sim's own captured realistic
+range (57-81ms) straddles that line from above: a real thumb at or above
+~67ms per tap loses outright, not "sometimes." The 400-draw aggregate
+(122/400) is real and reproducible, but it is an average over a jittered
+cadence distribution most of which sits on the losing side of a wall that
+tight — which is a different thing from "a player who mashes has a fighting
+chance," the property the phone is actually grading.
+
+**Ruled: retune the two named addends. Do not touch anything else the arc has
+already settled.**
+
+1. **`BENCH_WORKING_RUNG_DEMAND_ONSET` (RPE 8's addend) rises.** *"Do not bump
+   8"* from the 2026-08-28 (THIRD) ruling is withdrawn by this phone sentence
+   — that refusal was about not moving RPE 8 "while the mechanism is already
+   touching this area" for no reason; there is now a reason. RPE 8 is still a
+   cutscene at 1.07-1.58 taps/second (`WORKING_FLOOR` 56/38/44/56 ticks) and
+   must ask for a real grind — `WORKING_FLOOR` clearly harder than that
+   range, pinned old beside new. RPE 8 must stay strictly easier than RPE 9
+   in `WORKING_FLOOR`. RPE 8's `MAX_EFFORT` stays at 0, or strictly below RPE
+   9's if a nonzero sliver appears. **If the onset needed to make RPE 8 stop
+   reading as "way too easy" pushes RPE 8's mash-loss rate to or past RPE
+   9's, stop and report — do not ship that combination.**
+2. **`BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` (RPE 9/10/meet's addend) falls.**
+   Lower it until RPE 9's `WORKING_FLOOR` sits several ticks clear of 4 — the
+   refractory-adjacent floor is what made it feel impossible, and that is the
+   number to move, not the 30.5%. Pin old (4) beside new for every RPE 9
+   cell. **Size against the phone's verdict, not against reproducing a
+   particular `MAX_EFFORT` percentage.**
+3. **Accept that RPE 9's `MAX_EFFORT` will fall from 122/400 — pin old (122)
+   beside whatever it reads now, honestly, even if that number is small.**
+   Two outcomes are distinguished, and only one is acceptable:
+   - If `MAX_EFFORT` returns to 0 before the floor has actually left the
+     refractory band (4 ticks), **stop and report** — that means no value of
+     this one lever gives RPE 9 both "not a 4-tick wall" and "still real risk"
+     at once, which is new information the arc needs a human's read on.
+   - If the floor leaves the refractory band AND `MAX_EFFORT` is still
+     non-zero and not-total, **that is the win** — ship it.
+4. **RPE 10 and meet stay on the same `WALL_ADDEND`, unchanged from RPE 9's —
+   there is no third addend.** The ceiling stays a clip at `0.378` unless one
+   of the stop conditions below fires. Do not add demand to RPE 10 to
+   "restore" a floor gap. **A 9-easier-than-10 floor gap reappearing as
+   `WALL_ADDEND` falls is expected and allowed** — RPE 9's base margins sit
+   below RPE 10's, so the same smaller addend naturally separates them again
+   once neither is pinned to the ceiling. **A 9-harder-than-10 mash inversion
+   (RPE 9's floor below RPE 10's, or RPE 9's `MAX_EFFORT` above RPE 10's) is
+   not allowed** — verify the direction explicitly rather than assuming it.
+5. **`BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` (0.005) does not move.** Two
+   knobs only — `ONSET` and `WALL_ADDEND`. No third addend, no ramp on either
+   one, no new constant, unless the round finds that two knobs genuinely
+   cannot make RPE 8 a real grind, RPE 9 not refractory, and RPE 8 < RPE 9
+   simultaneously — in which case stop and report exactly that finding rather
+   than inventing a third lever unilaterally.
+
+**Refused, explicitly, repeated from every prior round in this arc:** do not
+re-probe the old 0.02-wide gap as a 9-vs-10 floor question — that question is
+closed, this round is a magnitude retune of the two shipped addends, not a
+re-opening of the wall-crossing structural conflict. Do not touch
+`GRIND_BOOST_FORCE_MAX`, the false-start wall / `MAX_LOCKOUT_TICKS`,
+`DEMAND_BASE.bench`, the Tuchscherer RPE→%1RM chart, or `LiftConfig` (no new
+field). RPE ≤ 7 (warm-up) stays byte-identical — literally untouched, not
+merely unaffected in outcome.
+
+**Still hard, six conditions:**
+
+1. RPE 8's `WORKING_FLOOR` strictly easier (higher tick count) than RPE 9's,
+   both full vectors pinned old beside new.
+2. RPE 8's `MAX_EFFORT` stays at 0, or strictly below RPE 9's.
+3. RPE 9's `WORKING_FLOOR` sits above 4 ticks — clear of the refractory band
+   — at every one of its four cells.
+4. The false-start guarantee re-pins at 0 of 40 reachable cells at the
+   (unchanged) 12-tick lockout, against both retuned addends together.
+5. Warm-up floor edges unchanged; RPE ≤ 7 unanswered on a held descent still
+   makes, zero taps, every cell, every seed; RPE 8+ unanswered still loses.
+6. **Jumping the press still costs the launch, never the rep.** This is
+   understood to be the same guarantee item 4 already re-verifies
+   (`a-false-start-can-never-pay` — a false start delays the grind's launch,
+   it does not end the rep) restated in the phone's own words; if a builder
+   finds a genuinely distinct guarantee this phrase points at instead, name
+   it explicitly in the report rather than silently picking one reading.
+
+**Do not mint any commit from this round until BOTH "RPE 8 is a grind" and
+"RPE 9 is not a 4-tick wall" are true in the measured `WORKING_FLOOR`
+vectors, with `MAX_EFFORT` old (122/400) pinned beside whatever RPE 9 reads
+under the new addend.** Squat and deadlift stay byte-identical. GDD §6.2
+moves in the same commit as code, and must state both retuned values with
+their real measured consequences — not the numbers this entry estimates.
+
+**`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
+a crossing.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
