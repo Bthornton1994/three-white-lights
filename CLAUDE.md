@@ -1238,6 +1238,92 @@ their real measured consequences — not the numbers this entry estimates.
 **`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
 a crossing.
 
+### RULED 2026-08-29: SHIP ONSET 0.15, WITHDRAW MASH-RISK ON RPE 9 — THE GAP IS CLOSED, NOT REOPENED
+
+The retune round found the exact same wall CLAUDE.md already pinned from the
+margin-band-cut round — the `~0.303` (floor still clear, mash loss a
+heavily-sampled zero) versus `~0.32` (loss turns real, but by then the floor
+has already re-collapsed onto two of RPE 9's four cells) gap — and correctly
+reported it as a real stop rather than forcing a value through. Independently
+confirmed against the already-shipped, critic-mutation-tested comment on
+`BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND`, not merely against this round's own
+unverified sweep. **Ruled: do not re-probe this gap. Split the ask instead —
+ship RPE 8's fix as asked, and withdraw the mash-risk half of RPE 9's ask,
+which is what the phone actually named as the problem.**
+
+**RPE 8 / `BENCH_WORKING_RUNG_DEMAND_ONSET` — ship it, at the named value, not
+a search.** The phone said *"WAY too easy,"* not *"a bit easy"* — and the
+retune round's own `ONSET 0.09` probe (floors 33/26/29/32, 1.82-2.31 taps/s)
+is the SAME rate the OLD, pre-retune RPE 9 sat at before this arc began, and
+that rate already read as *"no challenge"* on an earlier phone replay. Ship
+**`ONSET: 0.15`** (floors 20/18/19/20, 3.00-3.33 taps/s) directly — flag it as
+a knob, unverified by playtest, same convention as every other constant in
+this arc. RPE 8's `MAX_EFFORT` stays at 0. Pin the old vector (56/38/44/56)
+beside the new. **If `0.15` inverts or ties RPE 8 against a grindable RPE 9 in
+tick space, stop and report that exactly — do not silently fall back to `0.09`
+to make the numbers agree.** `0.09` is the fallback only after that stop is
+written down, not a quiet substitute for it.
+
+**RPE 9 / `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` — grindable wins; mash-risk
+is withdrawn for this overlay.** *"Next to impossible"* was the 4-tick floor,
+not the 122/400 aggregate — the phone never complained about the number, it
+complained about a rung that could not be beaten by any real cadence. Lower
+`WALL_ADDEND` until all four RPE 9 cells read `WORKING_FLOOR` strictly above 4
+— the retune round's own sweep puts this around `≲0.304`, use that as the
+region to search, not a mandate to hit a specific tick count. **Accept that
+RPE 9's `MAX_EFFORT` returns to 0 — this is now the correct outcome, not a
+stop condition.** Pin old (`122/400`) beside new (`0`), and write the
+`0.318`-vs-`0.320` gap directly into the constant's own header, so a future
+round reads why a value in that narrow window silently reopens the
+refractory-floor problem instead of "fixing" the zero by creeping back toward
+it.
+
+**RPE 9 stays strictly harder than RPE 8 in tick space — pin both vectors.**
+This is the one ordering fact carried forward from every prior round: whatever
+`WALL_ADDEND` value clears RPE 9's floor, its tick count must still be lower
+(harder) than RPE 8's new floor under `ONSET: 0.15` (or `0.09`, if that
+fallback fires). RPE 10 and meet stay on the exact same `WALL_ADDEND` — no
+third addend. The ceiling stays a clip at `0.378`. **A 9-easier-than-10 floor
+gap reappearing as `WALL_ADDEND` falls is expected and allowed.** Do not add
+demand to RPE 10 to restore a tie the lower addend naturally undoes. **Do not
+put mash-risk back on RPE 9 after its floor has cleared** — that door is
+closed by this ruling, not left open to be reopened by a clever combination.
+
+**`BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` (0.005) does not move. Two knobs
+only.** No third addend, no ramp on either, no new constant.
+
+**Refused, explicitly:** `GRIND_BOOST_FORCE_MAX`, an RPE field on
+`LiftConfig`, `DEMAND_BASE.bench`, the Tuchscherer chart, a ramp, a third
+addend — all repeated, unconditional, from every round in this arc. RPE ≤ 7
+(warm-up) stays byte-identical. The false-start guarantee at the shipped
+12-tick lockout stays hard.
+
+**Still hard, six conditions:**
+
+1. RPE 8's `WORKING_FLOOR` clearly harder than the shipped 56/38/44/56 (1.07-
+   1.58 taps/s) and strictly easier than RPE 9's, both vectors pinned old
+   beside new.
+2. RPE 8's `MAX_EFFORT` stays at 0.
+3. RPE 9's `WORKING_FLOOR` sits above 4 ticks at every one of its four cells.
+4. RPE 9's `MAX_EFFORT` reads 0, pinned explicitly against the old `122/400`.
+5. The false-start guarantee re-pins at 0 of 40 reachable cells at the
+   (unchanged) 12-tick lockout, against both retuned addends together.
+6. Warm-up unchanged; RPE ≤ 7 unanswered on a held descent still makes, zero
+   taps, every cell, every seed; RPE 8+ unanswered still loses; jumping the
+   press still costs the launch, never the rep.
+
+**Do not mint any commit for a phone replay until conditions 1 and 3 are true
+in the measured `WORKING_FLOOR` vectors.** Mash-risk on RPE 9 is closed for
+this overlay mechanism — a future round that wants it back needs a new phone
+sentence asking for it, not a reopening of this stop. Squat and deadlift stay
+byte-identical. GDD §6.2 moves in the same commit as code, describing both
+retuned values and their real measured consequences, including the withdrawal
+of RPE 9's mash-risk as a deliberate, ruled outcome rather than an unresolved
+gap.
+
+**`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not a
+crossing.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
