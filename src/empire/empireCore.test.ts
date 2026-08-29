@@ -2610,7 +2610,17 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `ladder.ts -> GymScreen.tsx`, from `playerCheckInGapSeconds`'s header
     // naming the screen whose "open up" control feeds it. Nothing was
     // removed.
-    expect(pairs).toBe(119);
+    // 119 -> 120: S4g's `mats` retune. The new derivation block in
+    // `empireTuning.ts`'s `SESSION_EQUIPMENT_COST_GYM_BUCKS` comment names
+    // `GymScreen.tsx` for the first time — the aside noting that the dev
+    // skip-row is "explicitly labelled 'not part of the game' in
+    // `GymScreen.tsx`'s own header rather than a legitimate buy path". ONE
+    // new pair, `empireTuning.ts -> GymScreen.tsx`, and it was ENUMERATED
+    // rather than read off the failure count — the whole pair list was
+    // diffed against the previous commit (2d0daebe vs 7e91e088) rather than
+    // trusting the total, because a re-pin that only matches a total can
+    // absorb a pair arriving while another leaves. Nothing was removed.
+    expect(pairs).toBe(120);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
