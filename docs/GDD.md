@@ -2579,6 +2579,19 @@ wrecked meet cells slightly less demand and `conservative/att3/wrecked` came bac
 off the floor.) `REACHABLE_LADDER` in `lift.test.ts` counts all
 four from the driven table, so this paragraph cannot drift from it.
 
+**AND THE FIRST TWO MOVED A SECOND TIME — 36 → 13 AND 27 → 4 — ON THE 2026-08-28
+(FOURTH) MARGIN-BAND CUT, IN THE SAME DIRECTION AND FOR THE SAME REASON, JUST
+FURTHER.** `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` is large enough that EVERY
+RPE 9 cell, EVERY RPE 10 cell and EVERY meet cell now crosses the line "coming
+back no longer saves it" at once, rather than the handful the 2026-08-27 lever
+pushed across it. "Coming back changes the outcome" now holds only at RPE 6 (4
+of 5), RPE 7 (5 of 5) and RPE 8 (4 of 4) — 13 of 40 — and "a miss becomes a
+make" only at RPE 8 — 4 of 40. The third count, **30**, is unchanged again: the
+set of cells whose idle arm stalls at all has not moved, only whether resuming
+at a moderate pace still rescues it once it has. See
+**[the margin-band cut](#the-margin-band-cut--rpe-9-finally-reaches-the-max-effort-wall)**
+further down this section for the mechanism and the full accounting.
+
 **And the warm-up protection is the two zero COLUMNS, not the first one**, which
 is the sentence most likely to be misread now that only one cell is fully still.
 Every RPE 6 and RPE 7 cell reads `[flips, 0, 0]`: stopping the grind can change a
@@ -2685,6 +2698,102 @@ asked for that question to be removed, so the honest replacement is not a
 smaller number of the same kind — it is a different claim: a held descent
 arrives at quality 1 at every load, derived from the constants and played, and
 the one mistake that remains costs something real and small.
+
+#### The margin-band cut — RPE 9 finally reaches the max-effort wall
+
+**RULED 2026-08-28, IN FOUR STEPS, THE FIRST THREE WORKED AND REVERTED IN
+SCRATCH SPACE AND THE FOURTH SHIPPED.** The 2026-08-27 entry above ends on an
+open gap: `MAX_EFFORT` — the sweep measuring a realistic max-effort cadence
+(57-81ms per tap, measured on a real phone) — read **0 losses at every rung**,
+because `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` (0.27) capped every
+reachable cell well under the 0.3764 max-effort wall no matter how far
+`BENCH_WORKING_RUNG_DEMAND_ONSET` was raised. Two attempts at closing it were
+tried and refuted in the same round, and both are worth keeping as history
+because the reasoning generalises:
+
+- **An RPE-9-only addend, keyed on the rung rather than the bar.** Refused
+  structurally — `LiftConfig` deliberately carries no RPE, because the engine
+  asks what the bar physically IS, not what a session called it, and an
+  RPE-keyed addend has no path to meet attempts (which have no RPE at all).
+- **A single large addend applied uniformly to every working cell.** This is
+  what a bigger `ONSET` would be, and it cannot move RPE 9 without moving
+  RPE 8 by the same amount — which every ruling in this arc, including this
+  one, refuses. RPE 8 keeps the difficulty the 2026-08-26/27 rounds gave it and
+  is not raised again "while the mechanism is already touching this area".
+
+**The mechanism that survived: a margin-band cut, the same class of fact
+`BENCH_WARMUP_FLOOR_MARGIN` already is, applied a second time one gap further
+up the ladder.** RPE 8's and RPE 9's base margins are disjoint sets — measured
+fresh against the real engine: RPE 8 `{-0.0323, -0.0025, -0.0152, -0.0262}`,
+RPE 9 `{0.0117, 0.0448, 0.0338, 0.0243}`, so `max(RPE 8) = -0.0025 <
+min(RPE 9) = 0.0117`. A cut anywhere strictly inside that gap partitions the
+two rungs identically, so `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` (`0.005`) is a
+boundary rather than a threshold hand-tuned until a test passed. Below the cut:
+`BENCH_WORKING_RUNG_DEMAND_ONSET` (`0.045`, unmoved — RPE 8's behaviour is
+byte-identical to the 2026-08-27 round). At or above it:
+`BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` (`0.34`) — covering RPE 9's four cells,
+RPE 10's four cells, and every meet cell whose base margin clears the cut, all
+by the same margin-keyed rule, with no RPE or prescription label anywhere.
+`BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` moves from `0.27` to `0.378` in the
+same round, still a clip on whichever addend applies rather than a grant — a
+cell whose boosted margin already sits under it is unaffected either way.
+
+**What this actually buys, measured against the real engine rather than
+estimated.** `MAX_EFFORT`'s realistic-cadence sweep: RPE 8 stays at **0** lost
+of 500; RPE 9 loses **122 of 400 (30.5%)**; RPE 10 loses **279 of 400
+(69.75%)**; meet loses **1195 of 1800 (66.4%)** — all non-zero, none
+saturating to 100%. `MAX_EFFORT_WALLS.HIGHEST_REACHABLE_MARGIN` moves from
+`0.3066` (one isolated cell's unlevered base margin, the old ceiling's
+casualty) to `0.378` — the ceiling itself, now shared by roughly half the
+reachable domain (every RPE 10 cell, every meet cell, and one RPE 9 cell). That
+plateau sits above the max-effort wall (which itself moved slightly, `0.3764`
+→ `0.3698`, because the cut introduces a jump discontinuity in effective
+margin and the wall search now lands inside it rather than on a smooth curve)
+and below the false-start wall (`0.3990`, unmoved — the load that produces it
+sits past both the old and the new ceiling, so it is unaffected by the cut).
+
+**The cost, and it is real: RPE 9 and RPE 10's tick-space tap floors tie.**
+`WORKING_FLOOR` — the slowest sustained cadence that still makes the rep —
+used to order 8 < 9 < 10 strictly. An addend large enough to give RPE 10 and
+meet's ceiling-clipped cells a floor at all collapses that floor to
+`GRIND_TAP_REFRACTORY_TICKS + 1` (4 ticks, one above the fastest cadence the
+engine can even count), and RPE 9 stays strictly above that floor only while
+its own realistic-cadence loss is still exactly 0 — which holds up to an
+addend of roughly `0.303`. Loss turns non-zero around `0.32`, already inside
+the tie. **The two asks this arc has chased — "RPE 9 loses to a realistic
+max-effort player" and "RPE 9's tick-space floor stays strictly below RPE
+10's" — are mutually exclusive past that point, at this ceiling.** RPE 9 and
+RPE 10 (and every meet cell) now read the identical 4-tick floor.
+
+**Ruled: ship it, and accept the tie as the cost of putting RPE 9 on the wall
+rather than a defect to chase further.** The phone complaint that opened this
+whole arc was mashers finding no challenge at RPE 9 specifically; `MAX_EFFORT`
+reading `RPE 8 = 0 < RPE 9 ≈ 30% < RPE 10/meet (not 100%)` is the ladder a
+player actually feels, and it is worth the 9-vs-10 tie in raw tick space. The
+old strict `WORKING_FLOOR` ordering requirement is **replaced**, not silently
+dropped, by the `MAX_EFFORT` ordering above — that is what carries the "9
+easier than 10" fact for the working rungs above the cut from here on.
+**Raising RPE 10's demand to reopen a tick-space gap between RPE 9 and RPE 10
+is refused, by name, in advance:** it either flattens the `MAX_EFFORT` ladder
+this addend exists to create, or pushes RPE 10/meet toward total saturation,
+both already refused elsewhere in this section.
+
+**Still binding, unchanged and re-verified against the shipped mechanism:**
+`BENCH_WARMUP_FLOOR_MARGIN` and `BENCH_WARMUP_FLOOR_ASCENT_TICKS` are
+untouched — RPE ≤ 7 unanswered on a held descent still makes every cell, zero
+taps, every seed; RPE 8+ unanswered still loses. The false-start guarantee
+(`a-false-start-can-never-pay`) re-pins at **0 of 40** reachable cells at the
+shipped 12-tick lockout, against the new cut, addend and ceiling together.
+Squat and deadlift are byte-identical.
+
+**§12.1 STAYS OPEN. Nobody has played any of this.** `BENCH_WORKING_RUNG_
+DEMAND_CUT_MARGIN` and `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` are both
+unplayed placeholders, same as every other constant in this arc. The next
+phone question is the same two it has been since the last replay, plus a
+third the tie itself raises: does RPE 8 feel like work, does 8 < 9 < 10/meet
+still read as an escalating ladder given the tie is in raw tick space rather
+than felt difficulty, and does the RPE 9-vs-RPE 10 tie register as "similar"
+or as a seam.
 
 3. Sim-mode readiness/fatigue silently adjusts the timing window width
 4. Three-light judging call (red/white), with a brief "judges deliberating" beat

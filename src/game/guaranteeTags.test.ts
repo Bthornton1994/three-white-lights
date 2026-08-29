@@ -1014,7 +1014,21 @@ const GUARANTEE_COVERAGE = {
   // capitalised-absolute run beyond what the round's other edits (the "half a
   // second" -> "a fifth of a second" copy fix, the re-derived false-start and
   // max-effort test comments) removed or left flat.
-  TREE_WIDE: 307,
+  //
+  // 307 -> 308 ON THE 2026-08-28 (FOURTH) MARGIN-BAND CUT: a genuinely large
+  // amount of prose moved — a two-addend split replacing the single working-
+  // rung lever, two new tuning constants with full headers, a rewritten
+  // `MAX_EFFORT_WALLS` block, a re-derived `WORKING_FLOOR` pair, a re-derived
+  // `REACHABLE_RESCUE`/`REACHABLE_LADDER`, a GDD §6.2 subsection — and the
+  // census still moved by exactly one, which is this constant's own repeated
+  // warning showing up a fifth time: most of the new capitalised runs REPLACE
+  // ones the prose they superseded already carried (the ONSET header's
+  // "RAISING THIS TO 0.100..." section, the old MAX_EFFORT_WALLS header, the
+  // old WORKING_FLOOR ceiling-cell paragraph, and others were rewritten rather
+  // than appended to). Measured directly against the live tree rather than
+  // reasoned from the diff, the same discipline this comment block asks for
+  // every time.
+  TREE_WIDE: 308,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -3072,7 +3086,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + '{ depth: 0.7774066666666667, …(2) } to be null\n'
       + 'Tests  1 failed | 58 passed (59)',
     measuredOver:
-      "    expect(stalledFrames.length, 'stalled frames this pair is drawn from').toBe(17);",
+      "    expect(stalledFrames.length, 'stalled frames this pair is drawn from').toBe(15);",
   },
   // -------------------------------------------------------------------------
   // THE FOURTH PRESS GUARD, AND THE ONE THAT WAS SWALLOWING WHOLE INPUTS.

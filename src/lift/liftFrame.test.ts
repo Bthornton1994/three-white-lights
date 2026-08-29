@@ -1105,10 +1105,23 @@ describe('the grind readout', () => {
 
     // FACT 3: it moves, and it moves at the TAP rate rather than on a timer.
     // A kick that decayed from one event, or one hardcoded on, would give a
-    // single peak; six taps `spacing` ticks apart give six.
+    // single peak; six taps `spacing` ticks apart give six — or fewer, if the
+    // rep itself ends before the last one lands, which is what happens here
+    // since the 2026-08-28 (FOURTH) margin-band cut.
+    //
+    // 6 -> 5. `LOAD_PRESETS.HEAVY` (0.88) is played here at DEFAULT capacity
+    // (`benchHistory` passes no `feel`), and its base margin now clears
+    // `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN`, so this rep takes
+    // `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` (clipped by the raised ceiling)
+    // in place of the old `ONSET` — a much larger boosted demand than before.
+    // The ascent still runs long enough to register five of the six scripted
+    // taps as live-frame kicks; the sixth lands after the rep has already
+    // resolved (a miss, at this much harder margin), so it produces no live
+    // `grindReadout` frame to count. This is a real consequence of the new
+    // mechanism, not a narrowed sweep — `live.length` (43) is unchanged.
     const kicks = live.map((r) => r.kick);
     const peaks = kicks.filter((k, i) => k === 1).length;
-    expect(peaks, `full-strength kicks over ${live.length} live frames`).toBe(6);
+    expect(peaks, `full-strength kicks over ${live.length} live frames`).toBe(5);
     expect(Math.min(...kicks), 'the rail never went dark between taps').toBe(0);
     // ...and it is the COUNTED tap, not the dispatched one: a rep tapped inside
     // the refractory floor lands more presses and cannot land more kicks.
@@ -1175,11 +1188,28 @@ describe('the stall band', () => {
     // the reason both kinds of check are in this test rather than one. An exact
     // count tracks the tuning and has to be re-taken with it; a rank holds
     // across every tuning that keeps the band meaning what it says.
+    //
+    // -------------------------------------------------------------------
+    // 17 -> 15 AGAIN ON THE 2026-08-28 (FOURTH) MARGIN-BAND CUT, FOR THE SAME
+    // REASON AS BOTH EARLIER MOVES: THE DEMAND CURVE AT THIS LOAD GOT HARDER
+    // -------------------------------------------------------------------
+    // `LOAD_PRESETS.MAXIMAL` (1.0) at default capacity now clears
+    // `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` by a wide margin, so this rep
+    // takes `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` (clipped to the raised
+    // ceiling, 0.378) in place of the old `ONSET` (0.045, itself already
+    // clipped by the old 0.27 ceiling) — a large jump in boosted demand. The
+    // rep still MISSES, as it did in every prior world, but this time the
+    // UNBANDED count moves too — 6 -> 5, measured rather than assumed to hold
+    // at 6 the way it did across the first two moves. The much larger boosted
+    // demand shortens the moving (unbanded) portion of the ascent as well as
+    // the stalled (banded) portion, unlike either prior retune, which only
+    // ever shortened the dying half. Re-measured against the real engine
+    // rather than pattern-matched to the earlier note this replaces.
     // -----------------------------------------------------------------------
     const ascent = history.filter((s) => s.phase === 'ASCENT');
     const unbanded = ascent.filter((s) => stallBand(s) === null);
-    expect(banded.length, 'banded frames of the driven rep').toBe(17);
-    expect(unbanded.length, 'moving ascent frames of the driven rep').toBe(6);
+    expect(banded.length, 'banded frames of the driven rep').toBe(15);
+    expect(unbanded.length, 'moving ascent frames of the driven rep').toBe(5);
     const fastestFirst = [...ascent].sort((a, b) => b.velocity - a.velocity);
     const topQuartile = fastestFirst.slice(0, Math.floor(ascent.length / 4));
     expect(
@@ -1216,8 +1246,10 @@ describe('the stall band', () => {
     const stalledFrames = history.filter((s) => stallBand(s) !== null);
     // AN EXACT COUNT, NOT A BOUND — the rep is a pure function of its inputs,
     // and a bound is what let the first version of the test above stay green
-    // while its subject changed shape underneath it.
-    expect(stalledFrames.length, 'stalled frames this pair is drawn from').toBe(17);
+    // while its subject changed shape underneath it. 17 -> 15 on the
+    // 2026-08-28 (FOURTH) margin-band cut, same domain and same reason as the
+    // sibling test above — see its header rather than restating it here.
+    expect(stalledFrames.length, 'stalled frames this pair is drawn from').toBe(15);
     const stalledAt = stalledFrames[0];
     expect(stalledAt, 'the bar never stalled').toBeDefined();
     if (stalledAt === undefined) return;
@@ -1237,7 +1269,9 @@ describe('the stall band', () => {
       .map((s) => stallBand(s))
       .filter((b) => b !== null);
     // Exact for the reason the pair test's count is: a bound is not a domain.
-    expect(bands.length, 'no band to measure').toBe(17);
+    // 17 -> 15 on the 2026-08-28 (FOURTH) margin-band cut — see 'draws while
+    // the bar is losing and on no other lift', above, for the mechanism.
+    expect(bands.length, 'no band to measure').toBe(15);
     const alphas = bands.map((b) => b.alpha);
     // A floor, because a frame at alpha 0 is indistinguishable from a stage
     // that draws no stall at all — which is what the browser check reads.

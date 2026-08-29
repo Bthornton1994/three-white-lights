@@ -875,20 +875,27 @@ export function benchWorkingExcess(config: LiftConfig): number {
  * BENCH ONLY: what a WORKING bar costs on top of the base demand curve.
  * ---------------------------------------------------------------------------
  *
- *     working(excess) = min(ONSET, max(0, MARGIN_CEILING - baseMargin))
+ *     addend(baseMargin) = baseMargin < CUT_MARGIN ? ONSET : WALL_ADDEND
+ *     working(excess)    = min(addend(baseMargin), max(0, MARGIN_CEILING - baseMargin))
  *
- * for `excess > 0`, and exactly 0 otherwise. See
- * `BENCH_WORKING_RUNG_DEMAND_ONSET` for the measurement that forced it: the
- * uniform `DEMAND_BASE.bench` lever is spent at +0.005, and a second phone
- * replay still called RPE 8 "way too easy".
+ * for `excess > 0`, and exactly 0 otherwise. TWO ADDENDS, NOT ONE, SINCE
+ * 2026-08-28 (FOURTH). See `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` for the
+ * measured RPE 8/RPE 9 base-margin gap the cut sits inside, and
+ * `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` for why a single global addend
+ * (`ONSET`, still 0.045, still what RPE 8 alone gets) cannot give RPE 9 any
+ * realistic-cadence risk at any ceiling — a global addend cannot move RPE 9
+ * without moving RPE 8 in lockstep, which every ruling in this arc refuses.
  *
  * NOT `DEMAND_BASE` WITH AN `if` IN FRONT OF IT, AND THE DIFFERENCE IS THE STEP
  * AT THE LINE RATHER THAN ANY SLOPE. A uniform rise adds the same number at
  * every load INCLUDING the warm-up rungs, and the warm-up rungs are where it is
- * spent. This adds `ONSET` above the line and exactly nothing below it, so the
- * demand curve stops being a continuous function of load — and the place it
- * breaks is one `loadRatio` cannot locate, because the rungs overlap in load.
- * Inside the working band the addition is uniform on purpose.
+ * spent. This adds an addend above the warm-up line and exactly nothing below
+ * it, so the demand curve stops being a continuous function of load — and the
+ * place it breaks is one `loadRatio` cannot locate, because the rungs overlap
+ * in load. NOW THERE IS A SECOND STEP, at the margin-band cut, for the same
+ * reason: `loadRatio` cannot locate that boundary either (RPE 8 and RPE 9
+ * overlap there too), so it is placed by base margin exactly as the first step
+ * is. Inside each band the addition is uniform on purpose.
  *
  * A RAMP STOOD HERE FOR ONE ROUND AND IS DELETED. `ONSET + SPAN * excess /
  * (excess + HALF)` was justified as being what compressed the ladder, and a
@@ -896,7 +903,11 @@ export function benchWorkingExcess(config: LiftConfig): number {
  * twelve working cells' tap floors to a spread of 3.294 against the ramped
  * version's 3.471, from 5.391 with no lever at all. Two constants and a
  * confounded mutation test, in service of a property they did not have. The
- * full reading is in `BENCH_WORKING_RUNG_DEMAND_ONSET`'s header.
+ * full reading is in `BENCH_WORKING_RUNG_DEMAND_ONSET`'s header. The 2026-08-28
+ * split keeps that lesson: within each band (below the cut, at/above it) the
+ * addend is still a flat step, not a ramp — `workingExcess` is not a variable
+ * this function scales anything by, only the input the base margin is
+ * reconstructed from.
  *
  * THE KIND GUARD IS NOT DEFENSIVE, IT IS THE `launchShortfall` LESSON. That
  * parameter was deleted from `ascentDemand` partly because its default made it
@@ -909,27 +920,29 @@ export function benchWorkingExcess(config: LiftConfig): number {
 export function benchWorkingRungDemand(kind: PlayableLiftKind, workingExcess: number): number {
   if (kind !== 'bench') return 0;
   if (!Number.isFinite(workingExcess) || workingExcess <= 0) return 0;
-  // THE CEILING, AND IT IS NOT A SAFETY CLAMP — IT IS THE PLACE ANOTHER RULE
-  // IN THIS FILE STOPS HOLDING. See
-  // `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`: past an effective margin of
-  // 0.2826 a rep that ate the false-start rule's own capped lockout can no
-  // longer be ground back, so the copy's "holds your press back" would become
-  // "ends the rep". The lever raises a bar TOWARD that line and never past it,
-  // and adds exactly nothing to a bar already beyond it — so a cell the
-  // shipped tree already puts past the line is byte-identical with this lever
-  // and without it.
-  //
   // IT IS ALSO THE ONLY PLACE THE ADDITION DEPENDS ON THE LOAD AT ALL, since
   // the ramp was deleted. That is the whole use `workingExcess` has left here:
   // `workingExcess + BENCH_WARMUP_FLOOR_MARGIN` reconstructs the base margin
   // rather than taking it as a second parameter, because for a positive excess
   // the two are the same number by `benchWorkingExcess`'s own definition and a
-  // second parameter is a second thing that can be passed wrong.
+  // second parameter is a second thing that can be passed wrong. The same
+  // reconstructed margin now also decides WHICH addend applies, against
+  // `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` — see that constant's header for the
+  // measured RPE 8/RPE 9 gap it sits inside.
   const baseMargin = workingExcess + LIFT_TUNING.BENCH_WARMUP_FLOOR_MARGIN;
+  const addend =
+    baseMargin >= LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN
+      ? LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND
+      : LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_ONSET;
+  // THE CEILING, AND IT IS NOT A SAFETY CLAMP — IT IS THE PLACE ANOTHER RULE
+  // IN THIS FILE STOPS HOLDING. See `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`
+  // for the two walls (max-effort, false-start) it is sized between. The lever
+  // raises a bar TOWARD that line and never past it, and adds exactly nothing
+  // to a bar already beyond it — so a cell the shipped tree already puts past
+  // the line is byte-identical with this lever and without it, whichever
+  // addend it would otherwise have taken.
   const headroom = LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING - baseMargin;
-  return scrub(
-    Math.min(LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_ONSET, Math.max(0, headroom)),
-  );
+  return scrub(Math.min(addend, Math.max(0, headroom)));
 }
 
 /** The ascent clock this rep runs on. See `benchClearsTheClock`. */
