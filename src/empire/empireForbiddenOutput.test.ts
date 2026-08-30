@@ -2946,7 +2946,14 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // set of CONSTRUCTORS below is unchanged: stationView.ts calls none of the
   // four brand constructors — it reshapes floorSim.ts's/management.ts's
   // already-derived values, per its own header.
-  CALLS_EXAMINED: 2958,
+  // 2958 -> 2947: GDD §5.14 Stage C.1 removed `GymScreen.tsx`'s duplicate
+  // per-item repair loop — every one of its own reads
+  // (`itemCondition`/`repairCostGymBucks`/`isSoundCondition`/
+  // `displayRepairCostBySoundness`, called per owned item, per ternary arm)
+  // is gone with it, a net decrease. Read from this pin's own failure value
+  // rather than hand-counted. The set of CONSTRUCTORS below is unchanged:
+  // nothing this round touched calls any of the four brand constructors.
+  CALLS_EXAMINED: 2947,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -10307,7 +10314,13 @@ const DRIVE_CENSUS = Object.freeze({
   // Read from this pin's own failure value.
   // 6490275 -> 6490467: GDD §5.14 Stage C's own stationView.ts drive rows.
   // Read from this pin's own failure value.
-  NODES: 6490467, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
+  // 6490467 -> 6490365: GDD §5.14 Stage C.1, and the number went DOWN again,
+  // the same shape as every prior round that deleted or narrowed a control on
+  // the driven `GymScreen` render: the per-item repair loop (a condition
+  // line plus a three-way ternary, per owned item) is gone from this screen
+  // entirely, so every one of `MANAGED_STATES`' driven renders has fewer
+  // nodes on it. Read from this pin's own failure value.
+  NODES: 6490365, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -10408,7 +10421,14 @@ const DRIVE_CENSUS = Object.freeze({
   // NODES above.
   // 29_956_058 -> 29_956_870: GDD §5.14 Stage C's own stationView.ts drive
   // rows, the same cascade as ROWS/NODES above.
-  STRINGS: 29_956_870,
+  // 29_956_870 -> 29_956_435: GDD §5.14 Stage C.1, and the number went DOWN
+  // again, the same shape as the "chrome vs paid"/S4f moves above it and for
+  // the identical reason `NODES` above records: the deleted per-item loop no
+  // longer draws a condition line or a repair-or-reason control per owned
+  // item on any of `MANAGED_STATES`' driven `GymScreen` fixtures, so every
+  // string those nodes carried is gone from the walk. Read from this pin's
+  // own failure value.
+  STRINGS: 29_956_435,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -10497,7 +10517,15 @@ const DRIVE_CENSUS = Object.freeze({
   // 3785 -> 3797: GDD §5.14 Stage C's own stationView.ts drive rows — new
   // distinct station identity/operation/condition/manager-effect strings.
   // Read from this pin's own failure value.
-  DISTINCT_STRINGS: 3797,
+  // 3797 -> 3790: GDD §5.14 Stage C.1, and the number went DOWN — the same
+  // shape as the S4f condition-gate round's own move above, for the same
+  // reason: the deleted per-item loop's "as new — nothing to repair" and
+  // "repairing it costs 0 gym bucks" strings were already in the driven
+  // corpus (the scheduled review's own dust-gated arm, and the station
+  // panel's own copy, already draw them), so removing the loop drops
+  // distinct strings without adding any new ones. Read from this pin's own
+  // failure value.
+  DISTINCT_STRINGS: 3790,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -10523,7 +10551,12 @@ const DRIVE_CENSUS = Object.freeze({
   // react's getters and not this directory's, which is what the paragraph
   // above is about; the number is pinned rather than bounded so a getter from
   // any other module is a red line.
-  GETTERS_INVOKED: 277,
+  // 277 -> 268: GDD §5.14 Stage C.1 deleted the per-item condition list's own
+  // keyed `.map()` — the same keyed row the move above named — so its react
+  // `key` getters are gone from the drive across `MANAGED_STATES`. The
+  // manager-tier list's own keyed getters are untouched. Read from this
+  // pin's own failure value.
+  GETTERS_INVOKED: 268,
   PROXIES: 0,
   /**
    * Nullary functions the walk CALLED, how many threw, and how many
@@ -10643,7 +10676,13 @@ const DRIVE_CENSUS = Object.freeze({
   // 6003 -> 6039: GDD §5.14 Stage B's own PACING_REPORT_HORIZONS_SECONDS
   // exempt leaves widening NUMBER_DOMAIN. Read from this pin's own failure
   // value.
-  STACKS: 6039,
+  // 6039 -> 6018: GDD §5.14 Stage C.1, the same shape as the S4f
+  // condition-gate round's own move above (5972 -> 5969) and for the
+  // identical cause: the deleted per-item loop's live "repair for X"
+  // `Pressable` (and its `onPress` closure) is gone from every one of
+  // `MANAGED_STATES`' driven return trees it used to be drawn on. Read from
+  // this pin's own failure value.
+  STACKS: 6018,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -14485,7 +14524,13 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // each — the per-item row's own gate, kept beside the two above rather
       // than replacing them, since `isDustRepairCost`/`displayRepairCost`
       // stay the scheduled review's own mirror.
-      'GymScreen.tsx': 9,
+      // 9 -> 7: GDD §5.14 Stage C.1 deleted both of those two helpers —
+      // `isSoundCondition`/`displayRepairCostBySoundness` moved to
+      // `stationView.ts` when Stage C first wrote the station panel, and this
+      // file's own local copies had no reader left once the per-item loop
+      // that called them was removed. `isDustRepairCost`/`displayRepairCost`
+      // stay, unchanged, still the scheduled review's own mirror.
+      'GymScreen.tsx': 7,
       // GDD §5.13 presentation Phase 1: floor.ts's own eighteen `return`
       // statements across its ten exported functions and their helpers.
       // 18 -> 20: PLAYTEST 2's `fixedFloorFurniture` — its own top-level
@@ -15482,7 +15527,11 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 7 -> 12: GDD §5.14 Stage C — FloorGrid.tsx's new station panel and
   // stationView.ts. Read from this pin's own failure value; the exact call
   // sites are not independently hand-derived.
-  local: 12,
+  // 12 -> 13: GDD §5.14 Stage C.1 — one new call through a local binding,
+  // `setShowDiagnostics((previous) => !previous)` in FloorGrid.tsx's new
+  // diagnostics toggle, the same class of site `toggleSelectedStation`'s own
+  // `setSelectedStation` call already contributes a row for.
+  local: 13,
   // GDD §5.13 presentation Phase 3: function 827 -> 918, member 810 -> 889,
   // member-of-parameter 21 -> 27, all floorSim.ts's own call targets. Read
   // from this table's own failure value.
@@ -15537,7 +15586,13 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // management.ts/sessions.ts, plus FloorGrid.tsx's new station panel. Read
   // from this pin's own failure value; the exact call sites are not
   // independently hand-derived.
-  function: 1473,
+  // 1473 -> 1462: GDD §5.14 Stage C.1 deleted `GymScreen.tsx`'s duplicate
+  // per-item repair loop — its own condition/repair-cost reads
+  // (`itemCondition`, `repairCostGymBucks`, `isSoundCondition`,
+  // `displayRepairCostBySoundness`), each called at least once per owned
+  // item across the three-way ternary. Read from this pin's own failure
+  // value; the exact call sites are not independently hand-derived.
+  function: 1462,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -15574,7 +15629,11 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // (`Object.freeze`, `.map()` and the like) and stationView.ts. Read from
   // this pin's own failure value; the exact call sites are not independently
   // hand-derived.
-  member: 1363,
+  // 1363 -> 1362: GDD §5.14 Stage C.1 — the deleted per-item loop's own
+  // `.map()` over owned items is gone from `GymScreen.tsx`. Read from this
+  // pin's own failure value; the exact call sites are not independently
+  // hand-derived.
+  member: 1362,
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -15737,7 +15796,11 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 743 -> 756: GDD §5.14 Stage C — two new `callback-invocation` sites and
   // one new `return` site in FloorGrid.tsx, plus stationView.ts's own ten
   // `return` sites, per the byModule rows above (2 + 1 + 10 = 13).
-  SITES: 756,
+  // 756 -> 754: GDD §5.14 Stage C.1 deleted `GymScreen.tsx`'s
+  // `isSoundCondition`/`displayRepairCostBySoundness` — the same two
+  // `return` sites the S4f condition-gate round's own comment above added,
+  // now removed with the per-item loop that was their only caller.
+  SITES: 754,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -15847,7 +15910,21 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // (header included), FloorGrid.tsx's new station panel, and
   // empireTuning.ts's four new entries and their doc comments. Read from
   // this pin's own failure value.
-  NODES_EXAMINED: 64_731,
+  // 64_731 -> 64_621: GDD §5.14 Stage C.1, net DOWN despite this round's own
+  // substantial new header/comment prose in both `GymScreen.tsx` and
+  // `FloorGrid.tsx` (documenting the deletion, the relocation, and the new
+  // diagnostics surface) — the deleted per-item loop and its two helper
+  // functions (`isSoundCondition`/`displayRepairCostBySoundness`, each with
+  // its own doc comment) were larger AST surface than what replaced them.
+  // Read from this pin's own failure value rather than hand-derived.
+  // 64_621 -> 64_629: GDD §5.14 Stage C.1's own click-interception fix —
+  // `pointerEvents={'none'}` on the station highlight `View` and on
+  // `AmbientMemberBody`'s own root, found and fixed while driving this
+  // round's new browser claims (a purely decorative overlay was found
+  // capable of swallowing a real tap meant for the station chip beneath
+  // it), plus their own doc comments. Read from this pin's own failure
+  // value.
+  NODES_EXAMINED: 64_629,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

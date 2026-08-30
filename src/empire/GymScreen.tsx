@@ -196,6 +196,56 @@
  * `empireTuning.ts` for the derivation and its drift risk; this file does
  * not, and by its own import fence cannot, read `src/shell/` directly to
  * keep the two numbers live-linked.
+ *
+ * GDD §5.14 STAGE C.1 — THE WORLD-FIRST TRANSITION, COMPLETED RATHER THAN
+ * ONLY REORDERED. Stage C (the paragraph above the render function that
+ * begins "WORLD FIRST") moved the floor above the report and built the
+ * contextual station panel (`FloorGrid.tsx`'s `floorgrid-station-panel`), but
+ * left the OLD per-item report — condition, quoted repair cost, and a live
+ * repair-or-reason control, one row per owned item — standing directly
+ * beneath it, permanently visible, duplicating exactly what a tap on the
+ * floor now shows. A human playtest found this: the player can manage
+ * through the world, but the spreadsheet was still there underneath it. This
+ * round deletes that loop. `stationView.ts`'s own `isSoundCondition`/
+ * `displayRepairCostBySoundness` already carried the identical predicates
+ * (Stage C wrote them there for the panel from the start), so nothing about
+ * the mechanic moved — only this screen's permanent copy of it.
+ *
+ * What ALSO moved this round, on the same "player information vs.
+ * verification information" reasoning: `gymscreen-accrual` (the raw
+ * secondsBanked/secondsElapsed/secondsDiscarded of the last real-time
+ * catch-up), `gymscreen-check-in-costs` (the same kind of raw delta report
+ * for the last check-in) and the manager's own per-item auto-repair log
+ * (`gymscreen-auto-repair-<item>`) are real, useful-to-verify numbers that do
+ * not belong permanently between the floor and the controls a player is
+ * actually choosing among. They are relocated — not deleted, not gated
+ * behind a hook this hook-free file cannot hold — to a single
+ * `gymscreen-diagnostics` block just above the dev-only clock-skip row at the
+ * very bottom, at the SAME testIDs, so every existing reader (this file's own
+ * render test, `tools/verify-floor-reachability.mjs`) finds them exactly as
+ * before. `FloorGrid.tsx`'s own header documents the matching move it makes
+ * for the floor-simulation readout (tick number, state census, legend) and
+ * the raw grid-dimensions caption, behind a real collapsed-by-default toggle
+ * — this file has no hook to hold that toggle's state in, so relocation
+ * rather than collapse is the mechanism here.
+ *
+ * WHAT DID NOT MOVE, AND WHY, stated because "make the gym the interface"
+ * could be over-read as "delete everything else": `gymscreen-condition` (mean
+ * condition), `gymscreen-full-repair` (the whole-gym repair total — an
+ * aggregate naming no single item, so it duplicates nothing the station panel
+ * shows) and `gymscreen-worn` (which items are worn — a bottleneck POINTER
+ * telling a player which station is worth a tap, not that station's own
+ * numbers restated) stay exactly where Stage C put them, because none of the
+ * three is the per-item duplicate this round is about. The standing
+ * maintenance review (`gymscreen-prompt`) is unchanged for the same reason
+ * this file's own header already gives it its own paragraph: it is gym-level
+ * state even when it names an item, and Stage C already built the one
+ * cross-reference the brief asks for — `floorgrid-station-panel-review-note`
+ * reads whether the tapped station is the review's own subject and says so,
+ * without a second maintenance state. The manager, strikes ledger, recovery
+ * flow, both shops and relocation are equally untouched: every one of them
+ * was already correctly gym-level before this round and none of them
+ * duplicated the station panel.
  */
 
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -213,10 +263,8 @@ import {
   managerWageRatePerBankedHour,
   maintenancePrompt,
   meanCondition,
-  ownedItemsOf,
   recoveryRepairCostGymBucks,
   recoveryRequirement,
-  repairCostGymBucks,
   reviewBankedTime,
   unansweredItems,
   warningSigns,
@@ -340,20 +388,20 @@ function describeSlotOutcome(outcome: GymWeekReport['slots'][number]): string {
  * to test it. `empireTuning.ts`'s own doc comment on that constant has the
  * derivation from the real per-tick wear rate.
  *
- * S4f NARROWED WHERE THIS IS READ, RATHER THAN RETUNING THE CONSTANT ITSELF.
- * A human watching a gym continuously for 518s — no skip-row, no mint-tap —
- * found condition at 0.999712 and every per-item row still offering "repair
- * for 0.1152", with the bulk line reading "everything back to new: 0.3456".
- * `0.1152` is `(1 - 0.999712) × REPAIR_COST_GYM_BUCKS_PER_CONDITION_POINT`
- * (400) — arithmetically correct and, at 0.01, well clear of dust. A
- * cost-based gate cannot hide this: condition falls continuously the whole
- * time the gym runs, so cost climbs past any fixed threshold given enough
- * elapsed real time, and raising the constant only buys a longer watch
- * before the same shape recurs. So the per-item row below no longer reads
- * this function at all — it is now the ONE remaining reader, on the
- * scheduled review's own control (`prompt.kind !== 'quiet'`, further down),
- * where dust is arithmetically unreachable in practice: a review is raised
- * on an item worn enough to be shown, whose cost floor is
+ * GDD §5.14 STAGE C.1 NARROWED WHERE THIS IS READ A SECOND TIME. Stage C's own
+ * S4f round narrowed this from every per-item row down to the scheduled
+ * review's own control, because a gym watched continuously for 518s (no
+ * skip-row, no mint-tap) found condition at 0.999712 and every per-item row
+ * still offering "repair for 0.1152" against a cost-based gate that a long
+ * enough watch always beats. Stage C.1 removed that per-item row from this
+ * screen entirely (§5.14 Stage C.1 — "the world is the interface"; a tapped
+ * station is the new owner of that exact question, via `stationView.ts`'s own
+ * `isSoundCondition`/`displayRepairCostBySoundness`, condition-gated for the
+ * identical S4f reason). So this function is now read in exactly one place
+ * left on this screen: the scheduled review's own control
+ * (`prompt.kind !== 'quiet'`, further down), where dust is arithmetically
+ * unreachable in practice — a review is raised on an item worn enough to be
+ * shown, whose cost floor is
  * `(1 - MAINTENANCE_PROMPT_CONDITION) × REPAIR_COST_GYM_BUCKS_PER_CONDITION_POINT`
  * = 0.5 × 400 = 200, far above 0.01 — so the check still runs, still reads
  * the constant, and is kept rather than deleted.
@@ -368,38 +416,13 @@ function isDustRepairCost(costGymBucks: number): boolean {
  * "as new — nothing to repair" line drawn beside it. Only display rounds;
  * `repairCostGymBucks` itself, and every real spend, is unchanged.
  *
- * Read only by the scheduled review's own control now — see `isDustRepairCost`
- * above for why the per-item row switched to `isSoundCondition` /
- * `displayRepairCostBySoundness` instead.
+ * Read only by the scheduled review's own control — see `isDustRepairCost`
+ * above. The per-item row this used to also serve is gone from this screen
+ * (Stage C.1); `stationView.ts`'s own condition-gated pair covers that
+ * question now, on the tapped station.
  */
 function displayRepairCost(costGymBucks: number): number {
   return isDustRepairCost(costGymBucks) ? 0 : costGymBucks;
-}
-
-/**
- * Is `condition` at or above the worn-line threshold this screen already
- * prints (`gymscreen-worn`'s own `MAINTENANCE_PROMPT_CONDITION`) — the
- * per-item repair row's gate, S4f onward. `isDustRepairCost` gates on the
- * quoted COST, which a gym watched continuously for long enough always beats
- * (see that function's own comment for the measured 518s/0.1152 case); this
- * gates on the item's OWN condition instead, the same quantity the worn line
- * and the review cadence are both already keyed to, so an item that has not
- * crossed the line the screen names never shows a live control regardless of
- * how long the gym has been running.
- */
-function isSoundCondition(condition: number): boolean {
-  return condition >= EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION;
-}
-
-/**
- * A per-item repair cost as shown in running text, rounded down to 0 once the
- * item's OWN condition clears the worn-line threshold — so the number in
- * "repairing it costs X gym bucks" never contradicts the "as new — nothing to
- * repair" line drawn beside it on the per-item row. Only display rounds;
- * `repairCostGymBucks` itself, and every real spend, is unchanged.
- */
-function displayRepairCostBySoundness(costGymBucks: number, condition: number): number {
-  return isSoundCondition(condition) ? 0 : costGymBucks;
 }
 
 /**
@@ -487,12 +510,6 @@ export function GymScreen(props: GymViewProps) {
         gym's status; it does not cause it to change.
       */}
       <Text testID={'gymscreen-lifts'}>lifts unlocked: {unlockedLifts(gym.ladder.equipment).join(', ')}</Text>
-      {lastAccrual === null ? null : (
-        <Text testID={'gymscreen-accrual'}>
-          last advance banked {lastAccrual.secondsBanked}s of {lastAccrual.secondsElapsed}s, paid{' '}
-          {lastAccrual.gymBucks} gym bucks, cap discarded {lastAccrual.secondsDiscarded}s
-        </Text>
-      )}
       {lastRefusal === null ? null : (
         <Text testID={'gymscreen-refusal'}>refused: {lastRefusal}</Text>
       )}
@@ -541,6 +558,21 @@ export function GymScreen(props: GymViewProps) {
           runs, which are the same hours that pay you.
         </Text>
         {/*
+          GDD §5.14 STAGE C.1 REMOVED THE PER-ITEM REPAIR LOOP THAT USED TO SIT
+          HERE. Every owned item's condition, quoted repair cost and a live
+          repair-or-reason control now lives ONLY on the contextual station
+          panel (`FloorGrid.tsx`'s `floorgrid-station-panel`, reached by
+          tapping the item on the floor) — `stationView.ts`'s own
+          `isSoundCondition`/`displayRepairCostBySoundness` are the same S4f
+          condition-gated predicates this block used to call directly, moved
+          rather than re-derived. Stage C already built the station panel and
+          left this global loop standing beside it, duplicating the same
+          per-item numbers on two permanent surfaces; this round is the
+          deletion half of that move. The two lines below (an already
+          gym-level mean condition, and an aggregate repair cost) are what
+          stays, because neither names a single item the way the deleted loop
+          did.
+
           S4f: rounded to 0 whenever nothing is worn (`worn.length === 0`,
           the exact same `wornItems` call the worn line below already makes),
           rather than left to `fullRepairCostGymBucks`'s raw sum. Continuous
@@ -548,10 +580,18 @@ export function GymScreen(props: GymViewProps) {
           of any repair — the played 12s case measured `0.0084` shown here
           while every individual item already read "as new" — and it keeps
           climbing the longer the gym runs, so a fixed-cost threshold on the
-          SUM cannot hide it the way it could not hide the per-item rows
-          either (see `isDustRepairCost`'s comment). Rounding on `worn`
-          instead makes this line agree with the per-item rows below by
-          construction: both read the same predicate over the same list.
+          SUM cannot hide it (see `isDustRepairCost`'s comment). Rounding on
+          `worn` instead makes this line agree with `stationView.ts`'s own
+          per-station gate by construction: both read the same predicate over
+          the same list, one on the gym's own aggregate and the other on
+          whichever item a thumb has tapped.
+
+          KEPT AS A GYM-LEVEL LINE, NOT A DUPLICATE OF THE STATION PANEL: this
+          is one aggregate number naming no single item, unlike the per-item
+          loop this round deleted — "how much to bring the WHOLE gym back to
+          new" is a question the station panel cannot answer one tap at a
+          time, and there is no bulk-repair control anywhere in this
+          directory for it to duplicate.
         */}
         <Text testID={'gymscreen-full-repair'}>
           everything back to new: {worn.length === 0 ? 0 : fullRepairCostGymBucks(managed)} gym bucks
@@ -568,6 +608,12 @@ export function GymScreen(props: GymViewProps) {
           unanswered") claimed both were the review's, and drew "nothing" and
           "none" directly above an open review naming an item and a price at
           condition ~0.9 — measured on the played path, not argued.
+
+          KEPT AS A GYM-LEVEL LINE, on the same reasoning as `gymscreen-full-
+          repair` above: this NAMES worn items (an actionable bottleneck
+          pointer, telling a player which station on the floor is worth a tap)
+          rather than showing each one's own condition/cost/control a second
+          time — the numbers themselves are the station panel's job now.
         */}
         <Text testID={'gymscreen-worn'}>
           under {EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION} condition:{' '}
@@ -575,68 +621,6 @@ export function GymScreen(props: GymViewProps) {
           {unanswered.length === 0 ? 'none' : unanswered.join(', ')}. the review below is raised by
           banked operating time, not by this list.
         </Text>
-        {/*
-          A CONTROL IS NOT DRAWN WHERE PRESSING IT COULD DO NOTHING (plain
-          negation on purpose — see this file's header for the census this
-          wording is working around and the disposition that was reported).
-
-          S4f REPOINTED THE FIRST ARM FROM COST TO CONDITION, AND THIS IS WHY.
-          The two arms below used to read as `repairEquipment`'s own refusal
-          order, cost-first: `cost === 0` (widened to `isDustRepairCost`, "kill
-          the mint") for `'already-sound'`, then `cost > purse` for
-          `'not-enough-gym-bucks'`. A human watching one gym for 518s with no
-          skip-row and no mint-tap found that gate does not hold: condition
-          falls continuously while the gym runs, so cost climbs past any fixed
-          dust threshold given enough elapsed real time, and every item still
-          drew a live "repair for 0.1152" at condition 0.999712. Raising the
-          constant only buys a longer watch before the same shape recurs
-          (`isDustRepairCost`'s own comment has the full measurement).
-
-          So the first arm below is `isSoundCondition`, not `isDustRepairCost`
-          — the item's OWN condition against the exact `MAINTENANCE_PROMPT_
-          CONDITION` threshold `gymscreen-worn` already prints a few lines up,
-          not a reading of the quoted cost at all. This is WIDER than
-          `repairEquipment`'s own exact-zero `'already-sound'` refusal (an item
-          can sit above the worn line with a real, nonzero quoted cost — see
-          `isSoundCondition`'s own comment) and than the old dust gate too, on
-          purpose: §5.7's split leaves the per-item row to the worn line and
-          leaves the scheduled review, further down, to name individual items
-          worth a decision before that line is crossed. `cost > purse` keeps
-          its place as the second arm, `repairEquipment`'s
-          `'not-enough-gym-bucks'` arm, unchanged. On a cold gym every item is
-          at condition 1, so this section used to draw three "repair for 0"
-          buttons whose only possible outcome was a refusal; a human on a
-          phone named all three. What replaces a dead button is the reason it
-          would have refused, not silence — a player who wonders why there is
-          nothing to press gets an answer in the same place the button was.
-        */}
-        {ownedItemsOf(gym).map((item) => (
-          <View key={item}>
-            <Text testID={`gymscreen-condition-${item}`}>
-              {item}: condition {itemCondition(managed, item)}, repairing it costs{' '}
-              {displayRepairCostBySoundness(repairCostGymBucks(managed, item), itemCondition(managed, item))} gym bucks
-            </Text>
-            {isSoundCondition(itemCondition(managed, item)) ? (
-              <Text testID={`gymscreen-repair-${item}-unavailable`}>
-                as new — nothing to repair
-              </Text>
-            ) : repairCostGymBucks(managed, item) > gym.ladder.gymBucks ? (
-              <Text testID={`gymscreen-repair-${item}-unavailable`}>
-                needs {repairCostGymBucks(managed, item)} gym bucks — you have{' '}
-                {gym.ladder.gymBucks}
-              </Text>
-            ) : (
-              <Pressable
-                testID={`gymscreen-repair-${item}`}
-                accessibilityRole={'button'}
-                style={styles.button}
-                onPress={() => dispatch({ kind: 'repair-item', item })}
-              >
-                <Text style={styles.buttonText}>repair for {repairCostGymBucks(managed, item)}</Text>
-              </Pressable>
-            )}
-          </View>
-        ))}
         {prompt.kind === 'quiet' ? (
           <Text testID={'gymscreen-prompt'}>
             no maintenance review open — the gym has banked {bankedTime.bankedHours} hour(s) of
@@ -824,24 +808,6 @@ export function GymScreen(props: GymViewProps) {
             </Text>
           )}
         </View>
-        {lastManagementReport === null ? null : (
-          <Text testID={'gymscreen-check-in-costs'}>
-            since the last update: condition took {lastManagementReport.incomeDeductedGymBucks} gym bucks off
-            the accrual and paid {lastManagementReport.incomePaidGymBucks} at{' '}
-            {lastManagementReport.incomeMultiplier}, wore the gym down by{' '}
-            {lastManagementReport.meanConditionWear}, paid {lastManagementReport.wagePaidGymBucks} in
-            wages (unpaid {lastManagementReport.wageShortfallGymBucks}), and the manager repaired{' '}
-            {lastManagementReport.autoRepairs.length} item(s) for{' '}
-            {lastManagementReport.autoRepairSpendGymBucks}
-          </Text>
-        )}
-        {lastManagementReport === null
-          ? null
-          : lastManagementReport.autoRepairs.map((repair) => (
-              <Text testID={`gymscreen-auto-repair-${repair.item}`} key={repair.item}>
-                your manager repaired {repair.item} for {repair.costGymBucks} gym bucks
-              </Text>
-            ))}
       </View>
       {/*
         NEITHER SHOP BELOW DRAWS A BUY CONTROL WHERE A BUY WOULD BE REFUSED,
@@ -1006,6 +972,52 @@ export function GymScreen(props: GymViewProps) {
             {week.effects.ceilingGrowthPerWeek}
           </Text>
         ))}
+      </View>
+      {/*
+        GDD §5.14 STAGE C.1 — verification/engine detail, moved here rather
+        than deleted. CLAUDE.md's own Stage C.1 brief: "separate PLAYER
+        INFORMATION... from VERIFICATION/DEVELOPER INFORMATION... preserve the
+        latter through tests, selectors, instrumentation, or an explicitly
+        secondary/debug surface." The three quantities below (the raw
+        banked/elapsed/discarded seconds of the last catch-up, the raw delta
+        report of what the last check-in cost, and the manager's own per-item
+        auto-repair log) are exactly that: real, reported numbers nobody
+        should have to scroll past to find the gym, but nobody is asked to
+        make a decision from either — every actionable consequence they
+        describe (a lower purse, a repaired item, a moved condition number) is
+        already visible elsewhere on this screen or on the tapped station.
+        Kept at the SAME testIDs they always had (`gymscreen-accrual`,
+        `gymscreen-check-in-costs`, `gymscreen-auto-repair-<item>`) — every
+        existing reader of those three (this file's own render test, the
+        browser reachability tool) finds them by testID, not by position, so
+        relocating them costs no rewritten assertion.
+      */}
+      <View testID={'gymscreen-diagnostics'}>
+        <Text>engine detail — not needed to play, kept here for verification</Text>
+        {lastAccrual === null ? null : (
+          <Text testID={'gymscreen-accrual'}>
+            last advance banked {lastAccrual.secondsBanked}s of {lastAccrual.secondsElapsed}s, paid{' '}
+            {lastAccrual.gymBucks} gym bucks, cap discarded {lastAccrual.secondsDiscarded}s
+          </Text>
+        )}
+        {lastManagementReport === null ? null : (
+          <Text testID={'gymscreen-check-in-costs'}>
+            since the last update: condition took {lastManagementReport.incomeDeductedGymBucks} gym bucks off
+            the accrual and paid {lastManagementReport.incomePaidGymBucks} at{' '}
+            {lastManagementReport.incomeMultiplier}, wore the gym down by{' '}
+            {lastManagementReport.meanConditionWear}, paid {lastManagementReport.wagePaidGymBucks} in
+            wages (unpaid {lastManagementReport.wageShortfallGymBucks}), and the manager repaired{' '}
+            {lastManagementReport.autoRepairs.length} item(s) for{' '}
+            {lastManagementReport.autoRepairSpendGymBucks}
+          </Text>
+        )}
+        {lastManagementReport === null
+          ? null
+          : lastManagementReport.autoRepairs.map((repair) => (
+              <Text testID={`gymscreen-auto-repair-${repair.item}`} key={repair.item}>
+                your manager repaired {repair.item} for {repair.costGymBucks} gym bucks
+              </Text>
+            ))}
       </View>
       <View testID={'gymscreen-dev-controls'}>
         <Text>

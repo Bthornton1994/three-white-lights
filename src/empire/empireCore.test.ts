@@ -2652,7 +2652,18 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // stationView.ts` and `FloorGrid.tsx -> management.ts` (both new import
     // edges) and `empireTuning.ts -> stationView.ts` (the new Stage C tuning
     // block's own section-header comment). Nothing was removed.
-    expect(pairs).toBe(139);
+    // 139 -> 140: GDD §5.14 Stage C.1, the world-first management transition
+    // completed — the duplicate global per-item repair loop was deleted from
+    // `GymScreen.tsx`, and its own header/inline comments now say where that
+    // logic lives instead: `stationView.ts`'s `isSoundCondition`/
+    // `displayRepairCostBySoundness`. ONE new pair, `GymScreen.tsx ->
+    // stationView.ts` — confirmed by diffing this file-name scan's output
+    // against `git show 9d4b3cd8:src/empire/GymScreen.tsx` rather than
+    // assumed: that was the only new distinct `.ts`/`.tsx` name the file
+    // gained. `FloorGrid.tsx` gained no new mentioned name over the same
+    // diff (its new diagnostics-toggle section names only files it already
+    // named). Nothing was removed.
+    expect(pairs).toBe(140);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3230,16 +3241,20 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // run of this exact census (`jsxCensus.chunks.join(' | ')` on the
       // failing assertion), not typed by hand against the source, for the
       // same reason the GymScreen.tsx note below gives.
+      //
+      // GDD §5.14 STAGE C.1 REORDERED THIS FILE'S TOP TWO CHUNKS, AND MOVED
+      // THE DIAGNOSTIC BREAKDOWN DOWN. `floorgrid-caption` used to be the
+      // ONE chunk-producing caption, both identity and diagnostic in one
+      // Text; it is now a short identity-only line (`'floor ('`, `')'`,
+      // straddling `{floor.rung}` with nothing after it) and the raw
+      // tile/fixed/placed/unplaced breakdown moved into the new
+      // `floorgrid-diagnostics` block, behind the `floorgrid-diagnostics-
+      // toggle` control — see that chunk's own arrival further down. This
+      // census reads the SOURCE AST, not a runtime render, so the
+      // diagnostics block's chunks are present here regardless of the
+      // toggle's default-collapsed state; only their POSITION moved.
       'floor (',
-      ') —',
-      'x',
-      'tiles,',
-      // GDD §5.13's PLAYTEST 3 ruling: the caption now also states the fixed
-      // count, closing the gap where '0 placed, 0 unplaced' sat beside three
-      // visible fixed items and said nothing about them.
-      'fixed,',
-      'placed,',
-      'unplaced',
+      ')',
       // GDD §5.13's PLAYTEST 2 ruling, gap 1: the one new JsxText chunk this
       // file gains — the fixed-furniture label. The ternary in the tray
       // section below (gap 2's empty state) contributes NOTHING here: both
@@ -3262,6 +3277,25 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // which is why it lands between the placed-item remove control's 'x'
       // and the tray's own empty/non-empty text.
       'member(s) around the gym',
+      // GDD §5.14 STAGE C.1 — the diagnostics block, gated behind
+      // `floorgrid-diagnostics-toggle` (whose own "show diagnostics"/"hide
+      // diagnostics" text sits inside a `{showDiagnostics ? … : …}`
+      // expression container, so it contributes NOTHING here — same
+      // discipline as every ternary this list already documents). Four
+      // chunks byte-identical to the ORIGINAL, single `floorgrid-caption`
+      // this census used to pin at the top of this file, now under
+      // `floorgrid-diagnostic-caption` instead: nothing about the raw
+      // grid-dimensions sentence changed, only where it sits in the tree.
+      'floor (',
+      ') —',
+      'x',
+      'tiles,',
+      // GDD §5.13's PLAYTEST 3 ruling: the caption now also states the fixed
+      // count, closing the gap where '0 placed, 0 unplaced' sat beside three
+      // visible fixed items and said nothing about them.
+      'fixed,',
+      'placed,',
+      'unplaced',
       'unplaced equipment — drag onto the floor above',
       // GDD §5.14 Stage C: the contextual station panel, the last thing
       // FloorGrid.tsx's own JSX returns, so its chunks land after every
@@ -3327,12 +3361,15 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // on this screen advances the clock any more. `AppShell.tsx`'s
       // `GymHost` reaches the same stage-4 loop from genuine elapsed real
       // time instead, off-screen from every string this census can see.
+      //
+      // GDD §5.14 STAGE C.1 REMOVED THE FIVE CHUNKS THAT USED TO SIT HERE A
+      // SECOND TIME, and for a different reason than the round above: not
+      // deleted, RELOCATED. `gymscreen-accrual` (raw
+      // secondsBanked/secondsElapsed/secondsDiscarded) is verification detail
+      // now living in the new `gymscreen-diagnostics` block near the bottom
+      // of this file's chunks, below — see that arrival for the same five
+      // chunks, byte-identical, in the same relative order.
       'lifts unlocked:',
-      'last advance banked',
-      's of',
-      's, paid',
-      'gym bucks, cap discarded',
-      's',
       'refused:',
       // S4b — §5.11 stage 4 on the garage floor. Fifty-two new chunks, all
       // in `GymScreen.tsx`'s new management section, transcribed from a driven
@@ -3371,21 +3408,17 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'condition:',
       '— of those, not yet refused:',
       '. the review below is raised by banked operating time, not by this list.',
-      ': condition',
-      ', repairing it costs',
-      'gym bucks',
-      // THE REASON IN PLACE OF A DEAD CONTROL, and these are the sentences the
-      // human's report was about: a cold gym drew three "repair for 0" buttons
-      // whose only possible outcome was `repairEquipment`'s own
-      // `'already-sound'` refusal. The control is gated on that refusal now
-      // and these three chunks are what a player reads instead — the first is
-      // the already-sound arm, the second and third the not-enough arm.
-      // Neither tells a player that being away cost them anything; both are
-      // statements about the gym's condition and their own purse.
-      'as new — nothing to repair',
-      'needs',
-      'gym bucks — you have',
-      'repair for',
+      // THE REASON IN PLACE OF A DEAD CONTROL used to be seven chunks here —
+      // a per-item condition/repair-cost line and its own three-way repair
+      // gate, the sentences the human's original report was about (a cold
+      // gym drawing three "repair for 0" buttons whose only possible outcome
+      // was `repairEquipment`'s own `'already-sound'` refusal). GDD §5.14
+      // STAGE C.1 DELETED THE WHOLE LOOP THIS BLOCK WAS PART OF, because the
+      // contextual station panel (`FloorGrid.tsx`, above in this list) already
+      // carries the identical four-chunk gate ('as new — nothing to repair',
+      // 'needs', 'gym bucks — you have', 'repair for') — this was the exact
+      // permanent duplicate the round's own brief named. Nothing about the
+      // sentence changed; the second, redundant copy is simply gone.
       'no maintenance review open — the gym has banked',
       'hour(s) of operation,',
       'more until the next review is raised',
@@ -3435,17 +3468,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'reopen the gym',
       'this gym has reopened',
       'time(s)',
-      'since the last update: condition took',
-      'gym bucks off the accrual and paid',
-      'at',
-      ', wore the gym down by',
-      ', paid',
-      'in wages (unpaid',
-      '), and the manager repaired',
-      'item(s) for',
-      'your manager repaired',
-      'for',
-      'gym bucks',
+      // GDD §5.14 STAGE C.1: the eleven chunks that used to sit here
+      // (`gymscreen-check-in-costs` and its own auto-repair `.map`) are
+      // relocated, not deleted — see the new `gymscreen-diagnostics` block,
+      // byte-identical, right before this file's dev-controls chunk below.
       'costs',
       'gym bucks, fits from',
       // BOTH SHOPS' BUY CONTROLS ARE GATED ON THEIR OWN TRANSITION'S REFUSAL
@@ -3499,6 +3525,31 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       ', injury chance',
       ', technique bonus',
       ', ceiling growth',
+      // GDD §5.14 STAGE C.1 — the new `gymscreen-diagnostics` block, directly
+      // above this file's dev-controls chunk (also unmoved: already correctly
+      // last). The five `gymscreen-accrual` chunks and the eleven
+      // `gymscreen-check-in-costs`/auto-repair chunks are BYTE-IDENTICAL to
+      // where this list used to carry them, earlier in this same file's
+      // section above — relocated, not reworded, per this round's own "kept
+      // here for verification" heading chunk, which is the one genuinely new
+      // string this round adds anywhere in `GymScreen.tsx`.
+      'engine detail — not needed to play, kept here for verification',
+      'last advance banked',
+      's of',
+      's, paid',
+      'gym bucks, cap discarded',
+      's',
+      'since the last update: condition took',
+      'gym bucks off the accrual and paid',
+      'at',
+      ', wore the gym down by',
+      ', paid',
+      'in wages (unpaid',
+      '), and the manager repaired',
+      'item(s) for',
+      'your manager repaired',
+      'for',
+      'gym bucks',
       'not part of the game: each button feeds that many elapsed seconds to the shipped accrual, so a player checks in without waiting it out. The last one jumps straight to the next weekly-allocation boundary.',
       '+1 week boundary',
       // ladderView.tsx, in tree order: the header line, the money line, the
@@ -3784,7 +3835,18 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // a single-quoted literal — `'repair-item'`, `'floor-remove'`,
     // `'session'`, `'fixed'`, `'button'` among them — already ships
     // elsewhere in this directory and adds nothing new to the set.
-    expect(singleQuoted.size).toBe(527);
+    // 527 -> 533: GDD §5.14 Stage C.1, the world-first management transition
+    // completed. Six new distinct values, measured by diffing this exact
+    // collector against `9d4b3cd8` rather than hand-counted: four new
+    // testIDs for the new collapsed-by-default diagnostics surface
+    // (`'gymscreen-diagnostics'`, `'floorgrid-diagnostics'`,
+    // `'floorgrid-diagnostics-toggle'`, `'floorgrid-diagnostic-caption'`) and
+    // the toggle's own two-word vocabulary (`'show diagnostics'`,
+    // `'hide diagnostics'`). Nothing was removed — every other literal this
+    // round touched (`'gymscreen-condition-${item}'` and its siblings, the
+    // whole deleted per-item loop) was already a TEMPLATE literal, which this
+    // collector counts separately, below.
+    expect(singleQuoted.size).toBe(533);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3874,7 +3936,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // plain JSX text now (see `singleQuoted.size`'s own comment above), so
     // it does not land here. Measured by diffing this exact collector
     // against the pre-round tree rather than hand-counted.
-    expect(templateChunks.size).toBe(307);
+    // 307 -> 304: GDD §5.14 Stage C.1. THREE templates REMOVED, none added,
+    // measured the same way — diffing this exact collector against
+    // `9d4b3cd8`. All three were the deleted per-item loop's own testIDs
+    // (`gymscreen-condition-${item}`, `gymscreen-repair-${item}`,
+    // `gymscreen-repair-${item}-unavailable`), confirmed absent from every
+    // other shipped file both before and after this round, so their removal
+    // here is a real shrink rather than a dedupe against a copy elsewhere.
+    expect(templateChunks.size).toBe(304);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4041,6 +4110,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorUris',
       'floorgrid-ambient-caption',
       'floorgrid-caption',
+      // GDD §5.14 Stage C.1: the collapsed-by-default diagnostics surface's
+      // three new testIDs.
+      'floorgrid-diagnostic-caption',
+      'floorgrid-diagnostics',
+      'floorgrid-diagnostics-toggle',
       'floorgrid-drop-refused',
       'floorgrid-floor-texture',
       'floorgrid-grid',
@@ -4112,6 +4186,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-clock',
       'gymscreen-condition',
       'gymscreen-dev-controls',
+      // GDD §5.14 Stage C.1: the diagnostics block's own container testID.
+      'gymscreen-diagnostics',
       'gymscreen-dismiss-manager',
       'gymscreen-floor',
       'gymscreen-full-repair',
@@ -4467,7 +4543,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 812 -> 834: GDD §5.14 Stage C — singleQuoted 511 -> 527 and
     // templateChunks 301 -> 307, both enumerated above; doubleQuoted
     // unchanged.
-    expect(stringsChecked).toBe(834);
+    // 834 -> 837: GDD §5.14 Stage C.1 — singleQuoted 527 -> 533 (+6) and
+    // templateChunks 307 -> 304 (-3), both enumerated above; doubleQuoted
+    // unchanged. Net +3.
+    expect(stringsChecked).toBe(837);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -4571,7 +4650,15 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 445 -> 458: GDD §5.14 Stage C's thirteen new `spaceFree` tokens
     // ('./stationView', ten `floorgrid-station-panel*` testIDs, 'gold',
     // 'tray'), each clearing the two-letter guard below, each a probe.
-    expect(probes).toBe(458);
+    // 458 -> 462: GDD §5.14 Stage C.1's four new `spaceFree` tokens
+    // ('floorgrid-diagnostic-caption', 'floorgrid-diagnostics',
+    // 'floorgrid-diagnostics-toggle', 'gymscreen-diagnostics') — the
+    // collapsed-by-default diagnostics surface's testIDs. Its other two new
+    // single-quoted literals ('show diagnostics', 'hide diagnostics') both
+    // contain a space, so neither clears this filter and neither is a probe
+    // here — measured by diffing `spaceFree` against the pre-round tree
+    // rather than hand-counted.
+    expect(probes).toBe(462);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);

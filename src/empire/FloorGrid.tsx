@@ -838,6 +838,17 @@ function AmbientMemberBody({
   return (
     <Animated.View
       testID={`floorgrid-ambient-${index}`}
+      // GDD §5.14 Stage C.1 — the same fix as the station highlight just
+      // above, for the same discovered reason: this component's own header
+      // already states a member is "still non-draggable, still
+      // non-collidable... still dispatching nothing" — it has never been
+      // interactive — but carried no `pointerEvents` before this round, so
+      // it could sit on top of a real station chip (most of all while
+      // `using` one, when P4b's own anchor logic draws it AT the station's
+      // position) and silently swallow a tap meant for the control beneath
+      // it. `pointerEvents="none"` makes that structural rather than
+      // incidental.
+      pointerEvents={'none'}
       style={{
         position: 'absolute',
         left: 0,
@@ -1033,6 +1044,16 @@ export function FloorGrid(props: FloorGridProps) {
   // sim, the drag/placement state, or anything the reducer owns: this is a
   // second, independent `useState`, not a write through any of the others.
   const [selectedStation, setSelectedStation] = useState<FloorStationRef | null>(null);
+
+  // GDD §5.14 Stage C.1 — whether the verification-flavoured diagnostics
+  // (the sim tick/state-census readout, its legend, and the raw grid-
+  // dimensions caption) are expanded. Collapsed by default: CLAUDE.md's own
+  // Stage C.1 brief separates PLAYER information from VERIFICATION/DEVELOPER
+  // information and asks that the latter not permanently dominate the normal
+  // screen. The same class of purely-visual, component-local state as
+  // `selectedStation` above — it carries no economic meaning, dispatches
+  // nothing, and is gone the instant this component unmounts.
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   /** Select `ref`, or deselect it if it is already the selected one — a second tap on the same station closes its own panel. */
   const toggleSelectedStation = (ref: FloorStationRef): void => {
@@ -1264,10 +1285,18 @@ export function FloorGrid(props: FloorGridProps) {
 
   return (
     <View testID={'floorgrid-root'}>
-      <Text testID={'floorgrid-caption'}>
-        floor ({floor.rung}) — {grid.width}x{grid.height} tiles, {fixed.length} fixed,{' '}
-        {placed.length} placed, {unplaced.length} unplaced
-      </Text>
+      {/*
+        GDD §5.14 Stage C.1 — this used to be the full diagnostic line (grid
+        dimensions, fixed/placed/unplaced counts), permanently visible above
+        the grid it names. The counts are verification detail rather than a
+        decision a player makes from this line specifically — the grid itself
+        already shows what is fixed/placed, and `floorgrid-tray` already names
+        what is unplaced — so only the identity half stays here, and the full
+        count line moves into the diagnostics panel below, as
+        `floorgrid-diagnostic-caption`, same text, gated the same way the sim
+        readout is.
+      */}
+      <Text testID={'floorgrid-caption'}>floor ({floor.rung})</Text>
       <ScrollView horizontal testID={'floorgrid-scroll-x'}>
         <ScrollView testID={'floorgrid-scroll-y'}>
           <View
@@ -1505,6 +1534,26 @@ export function FloorGrid(props: FloorGridProps) {
                   <View
                     key={`station-${station.ref.kind}-${station.ref.item}`}
                     testID={`floorsim-${activity}-${station.ref.kind}-${station.ref.item}`}
+                    // GDD §5.14 Stage C.1 — REGRESSION FOUND AND FIXED, NAMED
+                    // RATHER THAN WORKED AROUND. This highlight sits directly
+                    // over the station it decorates (same position/footprint,
+                    // painted after the chip in DOM order, and with an
+                    // explicit z-index above it) and, before this fix, carried
+                    // no `pointerEvents`, so on a real device it would have
+                    // intercepted a tap on the exact station a player is most
+                    // likely to want to inspect: one that is currently
+                    // claimed or in use. Found driving GDD §5.14 Stage C.1's
+                    // own new browser claims (9g's recovery walk, tapping a
+                    // station after real elapsed operation time rather than
+                    // on an untouched cold gym the way every pre-existing
+                    // Stage C claim did) — `locator.click` timed out at
+                    // `floorgrid-fixed-flat-bench`, Playwright's own
+                    // interception log naming this exact testID as the
+                    // blocker. This View is purely decorative — an outline
+                    // and a translucent fill, never an `onPress` — so
+                    // `pointerEvents="none"` takes it out of hit-testing
+                    // entirely without changing anything drawn.
+                    pointerEvents={'none'}
                     style={{
                       position: 'absolute',
                       left: station.position.x * tile,
@@ -1565,27 +1614,50 @@ export function FloorGrid(props: FloorGridProps) {
       </ScrollView>
       <Text testID={'floorgrid-ambient-caption'}>{sim.members.length} member(s) around the gym</Text>
       {/*
-        GDD §5.13 presentation Phase 3 — the sim readout. The tick number is
-        here because it is the cheapest way for a human OR a driven check to
-        tell a running gym from a frozen one, and the state census because it
-        says what the floor is doing in one line. Neither is what the gate
-        asks about; see `FLOOR_SIM_STATE_LEGEND`'s own comment.
+        GDD §5.14 Stage C.1 — the sim readout (tick number, state census),
+        its legend, and the raw grid-dimensions caption are verification
+        detail: real, useful for proving the simulator, and not something a
+        player needs permanently visible to decide anything on this screen.
+        CLAUDE.md's own Stage C.1 brief asks for exactly this treatment —
+        "preserve [verification information] through tests, selectors,
+        instrumentation, or an explicitly secondary/debug surface" — and this
+        is that surface: collapsed by default, one plain toggle, the same
+        content at the same testIDs once opened, so nothing this file's own
+        header calls Phase 3's motion/liveness evidence (`floorsim-caption`'s
+        tick, `floorsim-legend-<state>`'s boxes) stops existing — it stops
+        being permanently drawn over the gym a player is looking at.
       */}
-      <Text testID={'floorsim-caption'}>
-        {`tick ${sim.tick} — `}
-        {FLOOR_SIM_MEMBER_STATES.map((each) => `${stateCounts[each]} ${each}`).join(', ')}
-      </Text>
-      <View testID={'floorsim-legend'}>
-        {FLOOR_SIM_MEMBER_STATES.map((each) => (
-          <Text
-            key={each}
-            testID={`floorsim-legend-${each}`}
-            style={{ color: FLOOR_SIM_STATE_COLOR[each] }}
-          >
-            {`${each}: ${FLOOR_SIM_STATE_LEGEND[each]}`}
+      <Pressable
+        testID={'floorgrid-diagnostics-toggle'}
+        accessibilityRole={'button'}
+        onPress={() => setShowDiagnostics((previous) => !previous)}
+        style={{ cursor: 'pointer' } as WebSelectableViewStyle}
+      >
+        <Text>{showDiagnostics ? 'hide diagnostics' : 'show diagnostics'}</Text>
+      </Pressable>
+      {showDiagnostics ? (
+        <View testID={'floorgrid-diagnostics'}>
+          <Text testID={'floorgrid-diagnostic-caption'}>
+            floor ({floor.rung}) — {grid.width}x{grid.height} tiles, {fixed.length} fixed,{' '}
+            {placed.length} placed, {unplaced.length} unplaced
           </Text>
-        ))}
-      </View>
+          <Text testID={'floorsim-caption'}>
+            {`tick ${sim.tick} — `}
+            {FLOOR_SIM_MEMBER_STATES.map((each) => `${stateCounts[each]} ${each}`).join(', ')}
+          </Text>
+          <View testID={'floorsim-legend'}>
+            {FLOOR_SIM_MEMBER_STATES.map((each) => (
+              <Text
+                key={each}
+                testID={`floorsim-legend-${each}`}
+                style={{ color: FLOOR_SIM_STATE_COLOR[each] }}
+              >
+                {`${each}: ${FLOOR_SIM_STATE_LEGEND[each]}`}
+              </Text>
+            ))}
+          </View>
+        </View>
+      ) : null}
       <View testID={'floorgrid-tray'}>
         {unplaced.length === 0 ? (
           // GDD §5.13's PLAYTEST 2 ruling, gap 2: "drag onto the floor above"

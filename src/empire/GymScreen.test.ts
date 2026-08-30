@@ -134,6 +134,7 @@ import {
   wornItems,
 } from './management';
 import { scrubPrecision } from './production';
+import { stationConditionView } from './stationView';
 import { GymScreen } from './GymScreen';
 
 const T = EMPIRE_TUNING;
@@ -543,36 +544,22 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
     `under ${EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION} condition: ${worn.length === 0 ? 'nothing' : worn.join(', ')} — of those, not yet refused: ${unanswered.length === 0 ? 'none' : unanswered.join(', ')}. the review below is raised by banked operating time, not by this list.`,
   );
   compared += 2;
-  const owned = ownedItemsOf(managed.gym);
-  for (const item of owned) {
-    const itemCost = repairCostGymBucks(managed, item);
-    const condition = itemCondition(managed, item);
-    expect(textOf(findByTestId(root, `gymscreen-condition-${item}`))).toBe(
-      `${item}: condition ${condition}, repairing it costs ${displayRepairCostBySoundness(itemCost, condition)} gym bucks`,
-    );
-    // S4f: the per-item row's control is gated on the item's OWN condition
-    // against `MAINTENANCE_PROMPT_CONDITION` — the same threshold
-    // `gymscreen-worn` prints — not on the quoted cost. A cost-based gate
-    // (`isDustRepairCost`, "kill the mint") is what the human's 518s-watch
-    // report found still positive and pressable at condition 0.999712, so the
-    // expectation is re-derived from `isSoundCondition` instead; affordability
-    // (`itemCost > purse`) is unchanged, still `repairEquipment`'s own
-    // `'not-enough-gym-bucks'` arm.
-    compared += expectGatedControl(
-      root,
-      `gymscreen-repair-${item}`,
-      isSoundCondition(condition) || itemCost > managed.gym.ladder.gymBucks,
-      `repairEquipment ${item}`,
-    );
-    compared += 3;
-  }
-  // The screen shows a condition row for exactly what the gym owns.
+  // GDD §5.14 STAGE C.1: the per-item condition/repair-cost/repair-control
+  // loop that used to be driven here (`gymscreen-condition-<item>`,
+  // `gymscreen-repair-<item>`) is gone from this screen — it duplicated
+  // exactly what the contextual station panel already shows for a tapped
+  // item. The claim itself (an item's own condition, its real repair cost,
+  // and the SAME `isSoundCondition`/`displayRepairCostBySoundness` gate)
+  // is not weakened by the deletion; it moved with the code, to
+  // `stationView.ts`'s `stationConditionView`, and is driven there —
+  // `stationView.test.ts`'s "stationConditionView reads the real condition
+  // and repair cost" and "...reports a sound item as 0 to repair even if the
+  // raw cost is a tiny positive float" cover the exact two shapes this loop
+  // used to prove on screen. The UI wiring half (a tap opening the panel, its
+  // own repair button dispatching `repair-item`) is proven at the browser
+  // level, where the panel actually renders —
+  // `tools/verify-floor-reachability.mjs` §13c/§13e.
   expect(findAllByTestId(root, 'gymscreen-management')[0]).toBeDefined();
-  for (const item of EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS) {
-    if (owned.includes(item as ManagedEquipmentItem)) continue;
-    expect(findAllByTestId(root, `gymscreen-condition-${item}`).length, item).toBe(0);
-    compared += 1;
-  }
   // The maintenance review: WHETHER one is open is the check-in ordinal, and
   // WHICH item it names is condition — `management.ts` header §3a. Both are
   // read back off the screen against `maintenancePrompt` called directly.
@@ -928,7 +915,7 @@ function checkInsToCrossWornLine(): number {
 }
 
 describe('stage 4: every new control dispatches exactly the action it names', () => {
-  it('drives repair and hire on a state where each one would actually go through', () => {
+  it('drives hire on a state where it would actually go through, and proves repair-item the same way the deleted per-item row used to', () => {
     // THIS TEST USED TO PRESS ALL OF THESE ON THE OPENING SCREEN, which is
     // exactly the state the human's report was about: nothing worn, nothing
     // in the purse, nothing shut, and every one of these controls drawn
@@ -952,9 +939,26 @@ describe('stage 4: every new control dispatches exactly the action it names', ()
     const dispatched: GymViewAction[] = [];
     const root = render(worn, dispatched);
     const owned = ownedItemsOf(worn.managed.gym);
+    // GDD §5.14 STAGE C.1: `gymscreen-repair-<item>` is gone from this
+    // screen — that control is the contextual station panel's now
+    // (`floorgrid-station-panel-repair`, `FloorGrid.tsx`), which this file
+    // cannot render (`GymScreen({state, dispatch})` never expands the
+    // `<FloorGrid .../>` element descriptor — see this file's own header).
+    // What stays checkable here, on the SAME `worn` fixture the deleted press
+    // loop used, is that `repair-item` is still a real, correctly-wired
+    // reducer arm: driven directly through `dispatchThrough` (the same
+    // pattern this file already uses elsewhere for `repair-item`, e.g. the
+    // "priced before it is taken" test below) rather than through a press,
+    // because there is no press left on this screen to make it with. The UI
+    // wiring — a tap opens the panel, the panel's own repair button
+    // dispatches this exact action — is proven at the browser level, where
+    // the panel actually renders: `tools/verify-floor-reachability.mjs`
+    // §13e ("CONTEXTUAL REPAIR DISPATCHES THROUGH THE REAL REDUCER").
     for (const item of owned) {
       expect(repairEquipment(worn.managed, item).kind, item).toBe('repaired');
-      press(findByTestId(root, `gymscreen-repair-${item}`));
+      const repaired = dispatchThrough(worn, { kind: 'repair-item', item });
+      expect(repaired.lastRefusal, item).toBeNull();
+      expect(itemCondition(repaired.managed, item), item).toBe(1);
     }
     for (const tier of EMPIRE_TUNING.MANAGER_TIERS) {
       expect(hireManager(worn.managed, tier, worn.managed.gym.ladder.collectedAt).kind, tier).toBe(
@@ -962,10 +966,9 @@ describe('stage 4: every new control dispatches exactly the action it names', ()
       );
       press(findByTestId(root, `gymscreen-hire-${tier}`));
     }
-    expect(dispatched).toEqual([
-      ...owned.map((item) => ({ kind: 'repair-item', item })),
-      ...EMPIRE_TUNING.MANAGER_TIERS.map((tier) => ({ kind: 'hire-manager', tier })),
-    ]);
+    expect(dispatched).toEqual(
+      EMPIRE_TUNING.MANAGER_TIERS.map((tier) => ({ kind: 'hire-manager', tier })),
+    );
   });
 
   it('drives the three answers to a standing maintenance review, and the dismiss control', () => {
@@ -1211,9 +1214,17 @@ describe('stage 4: the sentence drawn over a standing review', () => {
 // the same condition-based worn line `gymscreen-worn` already prints, and
 // left the scheduled review's own control alone. Both fixtures below are
 // driven through the real reducer, not hand-built.
+//
+// GDD §5.14 STAGE C.1: the per-item row itself is gone from this screen (it
+// duplicated the contextual station panel). What these two tests proved about
+// it — that it agrees with `isSoundCondition`, not a cost-based gate — is now
+// asked of `stationView.ts`'s `stationConditionView` directly, the pure
+// function the panel calls; the bulk line (`gymscreen-full-repair`, still a
+// real GymScreen control, kept as a gym-level aggregate — this file's own
+// header explains why) is unchanged and still asserted here.
 // ---------------------------------------------------------------------------
 describe('stage 4: the per-item repair row and the bulk line are gated on condition, not cost', () => {
-  it('reproduces the reported defect: draws no live control and no positive total on a gym merely worn by real time, comfortably above the worn line', () => {
+  it('reproduces the reported defect: no live station repair and no positive bulk total on a gym merely worn by real time, comfortably above the worn line', () => {
     // A single small, positive tick of continuous wear — the same shape the
     // played report measured, reproduced directly rather than by looping
     // 518s of real ticks. 1000s of banked operation is comfortably under
@@ -1234,49 +1245,47 @@ describe('stage 4: the per-item repair row and the bulk line are gated on condit
       expect(condition, item).toBeLessThan(1);
       expect(condition, item).toBeGreaterThanOrEqual(EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION);
       expect(cost, item).toBeGreaterThan(EMPIRE_TUNING.DUST_REPAIR_COST_GYM_BUCKS);
+      // What the (now deleted) per-item row used to draw for this exact
+      // state, read instead off the pure function the station panel calls.
+      const station = stationConditionView(worn.managed, item);
+      expect(station.isSound, item).toBe(true);
+      expect(station.displayRepairCostGymBucks, item).toBe(0);
+      expect(station.repairCostGymBucks, item).toBe(cost);
     }
     expect(wornItems(worn.managed).length).toBe(0);
     const root = render(worn, []);
-    for (const item of owned) {
-      expect(findAllByTestId(root, `gymscreen-repair-${item}`).length, item).toBe(0);
-      expect(textOf(findByTestId(root, `gymscreen-repair-${item}-unavailable`))).toBe(
-        'as new — nothing to repair',
-      );
-      expect(textOf(findByTestId(root, `gymscreen-condition-${item}`))).toContain(
-        'repairing it costs 0 gym bucks',
-      );
-    }
     expect(textOf(findByTestId(root, 'gymscreen-full-repair'))).toBe(
       'everything back to new: 0 gym bucks',
     );
     expectManagementMatchesState(root, worn);
   });
 
-  it('offers the real control at the real price, and a real positive bulk total, once an item has genuinely crossed the worn line', () => {
+  it('the real per-station price, and a real positive bulk total, once an item has genuinely crossed the worn line', () => {
     const worn = advanceTimes(createGymViewState(), checkInsToCrossWornLine());
     const owned = ownedItemsOf(worn.managed.gym);
     const wornList = wornItems(worn.managed);
     // Non-vacuity: the crossing this fixture is built to reach really was
     // reached.
     expect(wornList.length).toBeGreaterThan(0);
-    const root = render(worn, []);
-    let sawLiveControl = false;
+    let sawRepairableStation = false;
     for (const item of owned) {
       const condition = itemCondition(worn.managed, item);
       const cost = repairCostGymBucks(worn.managed, item);
-      if (condition >= EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION) continue;
-      expect(cost, item).toBeGreaterThan(0);
-      if (cost > worn.managed.gym.ladder.gymBucks) {
-        expect(findAllByTestId(root, `gymscreen-repair-${item}`).length, item).toBe(0);
+      const station = stationConditionView(worn.managed, item);
+      if (condition >= EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION) {
+        expect(station.isSound, item).toBe(true);
         continue;
       }
-      sawLiveControl = true;
-      expect(textOf(findByTestId(root, `gymscreen-repair-${item}`))).toBe(`repair for ${cost}`);
-      expect(findAllByTestId(root, `gymscreen-repair-${item}-unavailable`).length, item).toBe(0);
+      expect(cost, item).toBeGreaterThan(0);
+      expect(station.isSound, item).toBe(false);
+      expect(station.displayRepairCostGymBucks, item).toBe(cost);
+      sawRepairableStation = true;
     }
-    expect(sawLiveControl, 'at least one owned item offered a live, affordable repair control').toBe(
-      true,
-    );
+    expect(
+      sawRepairableStation,
+      'at least one owned item reads as a real, priced repair on the station panel',
+    ).toBe(true);
+    const root = render(worn, []);
     const totalCost = fullRepairCostGymBucks(worn.managed);
     expect(totalCost).toBeGreaterThan(0);
     expect(textOf(findByTestId(root, 'gymscreen-full-repair'))).toBe(
@@ -1297,24 +1306,24 @@ describe('stage 4: the repair decision, priced before it is taken', () => {
     // The price is on the screen BEFORE the press — read it off the drawn tree.
     const before = render(reviewed, []);
     expect(textOf(findByTestId(before, 'gymscreen-prompt-item'))).toContain(`${quoted} gym bucks`);
-    // S4f: the per-item row and the scheduled review read DIFFERENT pools —
+    // S4f: the station panel and the scheduled review read DIFFERENT pools —
     // `gymscreen-worn`'s own text says so, and this fixture drives the
     // disagreement rather than assuming it away. At the FIRST review
     // (`MAINTENANCE_ORDER_FIRST_CHECK_IN` check-ins) the named item has not
-    // yet crossed `MAINTENANCE_PROMPT_CONDITION`, so the per-item row shows
-    // "as new" and rounds its own cost to 0 even though the review above
-    // quotes a real, positive price for the SAME item.
+    // yet crossed `MAINTENANCE_PROMPT_CONDITION`, so the station panel (were
+    // it open on this item — `stationConditionView` is the pure function it
+    // calls, driven directly here since this file cannot render `FloorGrid`)
+    // reads "as new" and rounds its own cost to 0 even though the review
+    // above quotes a real, positive price for the SAME item.
     const itemConditionAtReview = itemCondition(reviewed.managed, item);
+    const stationAtReview = stationConditionView(reviewed.managed, item);
+    expect(stationAtReview.condition).toBe(itemConditionAtReview);
     if (isSoundCondition(itemConditionAtReview)) {
-      expect(textOf(findByTestId(before, `gymscreen-condition-${item}`))).toContain(
-        'repairing it costs 0 gym bucks',
-      );
-      expect(findAllByTestId(before, `gymscreen-repair-${item}`).length).toBe(0);
-      expect(findAllByTestId(before, `gymscreen-repair-${item}-unavailable`).length).toBe(1);
+      expect(stationAtReview.isSound).toBe(true);
+      expect(stationAtReview.displayRepairCostGymBucks).toBe(0);
     } else {
-      expect(textOf(findByTestId(before, `gymscreen-condition-${item}`))).toContain(
-        `repairing it costs ${quoted} gym bucks`,
-      );
+      expect(stationAtReview.isSound).toBe(false);
+      expect(stationAtReview.displayRepairCostGymBucks).toBe(quoted);
     }
     const purseBefore = reviewed.managed.gym.ladder.gymBucks;
     const repaired = dispatchThrough(reviewed, { kind: 'answer-prompt', response: 'repair' });
@@ -1787,13 +1796,25 @@ describe('S4h: every rendered Pressable is visibly a control', () => {
       expect(count, `${label} drew at least one Pressable`).toBeGreaterThan(0);
     }
     const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+    // GDD §5.14 STAGE C.1: 'heavily operated gym' and 'staffed gym' both lost
+    // exactly 3 Pressables from their pre-Stage-C.1 counts (28 -> 25,
+    // 26 -> 23) — the three live, affordable per-item repair buttons the
+    // deleted loop used to draw for the gym's three always-owned fixed
+    // items (power-bar, comp-plates, flat-bench). 'dormant gym' and
+    // 'ready-to-reopen gym' are unchanged at 28: by the time either state is
+    // reached in this fixture, the same items are either already repaired
+    // (ready-to-reopen) or worn but priced past what the declining purse
+    // could afford (dormant) — the deleted loop drew unavailable TEXT there,
+    // never a Pressable, so removing it costs this census nothing in those
+    // two states. 'cold garage' is unchanged (a cold gym owns nothing worn,
+    // so the deleted loop only ever drew "as new" text there too).
     expect(counts).toEqual({
       'cold garage': 21,
-      'heavily operated gym': 28,
-      'staffed gym': 26,
+      'heavily operated gym': 25,
+      'staffed gym': 23,
       'dormant gym': 28,
       'ready-to-reopen gym': 28,
     });
-    expect(total).toBe(131);
+    expect(total).toBe(125);
   });
 });

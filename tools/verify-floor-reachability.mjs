@@ -344,17 +344,22 @@
  *           panel-identity` at two different values.
  *      13c. TRUTHFULNESS. The panel's condition line
  *           (`floorgrid-station-panel-condition`) is compared, not merely
- *           read, against the existing `gymscreen-condition-mats` line the
- *           old per-item report already draws for the same item from the
- *           same `management.ts` state — both must quote the same
- *           condition and the same repair cost. The gym is then worn down a
- *           REAL, DERIVED amount — the same discipline section 9c already
- *           uses for the identical problem: one press to read the real
- *           per-press wear, then enough more presses (derived from the real
- *           worn-line threshold and mats' own current condition, both read
- *           off the drawn screen) to cross it, not a fixed guessed count —
- *           and the comparison is repeated, so it holds at two different
- *           conditions and not only at a fresh gym's condition of 1.
+ *           read, against `gymscreen-worn` — GDD §5.14 STAGE C.1 DELETED the
+ *           per-item report this claim originally read a second time
+ *           (`gymscreen-condition-mats`); the replacement cross-checks
+ *           against a genuinely different code path instead
+ *           (`wornItems`/`management.ts`, rendered as the gym-level
+ *           bottleneck-pointer list Stage C.1 kept rather than removed):
+ *           whether mats is named under the worn-list's threshold must
+ *           agree with whether the panel's own condition number is below
+ *           it. The gym is then worn down a REAL, DERIVED amount — the same
+ *           discipline section 9c already uses for the identical problem:
+ *           one press to read the real per-press wear, then enough more
+ *           presses (derived from the real worn-line threshold and mats'
+ *           own current condition, both read off the drawn screen) to cross
+ *           it, not a fixed guessed count — and the comparison is repeated,
+ *           so it holds at two different conditions and not only at a fresh
+ *           gym's condition of 1.
  *      13d. THE NOVICE MANAGER NEVER AUTO-REPAIRS. `gymscreen-hire-novice`
  *           is pressed (CLAUDE.md's own Stage C finding:
  *           `MANAGER_AUTO_REPAIR_CONDITION.novice` is 0), and the panel's
@@ -363,11 +368,12 @@
  *      13e. CONTEXTUAL REPAIR DISPATCHES THROUGH THE REAL REDUCER. With
  *           mats worn and the panel's own `floorgrid-station-panel-repair`
  *           control pressed, the purse falls by exactly the quoted cost and
- *           `gymscreen-condition-mats` — the OLD report, a different
- *           element entirely — reads condition 1 afterwards. Two
- *           independent readers of one state agreeing is the claim; a
- *           parallel UI-only mutation would move the panel's own number and
- *           leave the old report's stale.
+ *           `gymscreen-worn` — the same independent second reader 13c uses,
+ *           since Stage C.1 deleted the original `gymscreen-condition-mats`
+ *           one — no longer names mats afterwards. Two independent readers
+ *           of one state agreeing is the claim; a parallel UI-only mutation
+ *           would move the panel's own number and leave the worn-list
+ *           unchanged.
  *      13f. REMOVE FROM THE PANEL DISPATCHES THE SAME ACTION THE ON-CHIP
  *           CONTROL DOES. Pressing `floorgrid-station-panel-remove` takes
  *           mats off the grid and back into the tray — `floorgrid-placed-
@@ -393,6 +399,19 @@
  *           does not overlap it — the same geometry discipline section 12
  *           already applies to the rest of this screen, applied to the one
  *           new surface this stage adds.
+ *
+ *      GDD §5.14 STAGE C.1's OWN NEW CLAIM, INSIDE `reachGymScreen` (so it
+ *      covers every section, not only the ones numbered 13): the
+ *      collapsed-by-default diagnostics surface (the floor-sim tick/state
+ *      readout, its legend, and the raw grid-dimensions caption) is reached
+ *      by a real `page.click()` on `floorgrid-diagnostics-toggle`, and
+ *      `floorgrid-diagnostics` is confirmed attached afterwards — a real
+ *      played path to the surface every earlier section of this file already
+ *      depended on being visible, now pressed once per fresh gym visit
+ *      rather than assumed open. Sections 9b/9d/9e/9g/13c/13e also read
+ *      `floorgrid-station-panel-condition` in place of the deleted global
+ *      `gymscreen-condition-<item>`/`gymscreen-repair-<item>` report — see
+ *      each section's own comment for what replaced it.
  *
  *       THE LIMIT, STATED THE SAME WAY SECTIONS 11 AND 12 STATE THEIRS: this
  *       certifies Chromium-clickable and structurally correct against the
@@ -1284,6 +1303,35 @@ async function reachGymScreen(report) {
     throw new Error('unreachable');
   }
   if (report) ok('pressing GYM EMPIRE reaches the gym screen (gymscreen-root attached)');
+
+  // GDD §5.14 STAGE C.1 — the floor-sim tick/state-census readout, its
+  // legend, and the raw grid-dimensions caption are now behind
+  // `floorgrid-diagnostics-toggle`, collapsed by default (CLAUDE.md's own
+  // Stage C.1 brief: verification detail should not permanently dominate the
+  // player's default screen). Every section below this point that reads
+  // `floorsim-caption`/`floorsim-legend-*`/`floorgrid-diagnostic-caption`
+  // was written against those testIDs always being attached, so — since
+  // `reachGymScreen` runs at the start of every fresh gym visit this whole
+  // script makes — the toggle is pressed exactly once here, immediately
+  // after confirming the screen is reached, so every later read in this file
+  // keeps working unchanged rather than needing its own toggle press. This
+  // is itself a played path (a real `page.click()` on a real control), not a
+  // debug bypass — see CLAUDE.md's "a screen a player reaches needs a check
+  // that reaches it the way a player does".
+  const diagnosticsToggleDrawn = await waitUntilDrawn(page, 'floorgrid-diagnostics-toggle', BEAT_TIMEOUT_MS);
+  if (!diagnosticsToggleDrawn.drawn) {
+    fail(`floorgrid-diagnostics-toggle never drawn — ${diagnosticsToggleDrawn.why} — the diagnostics surface this whole run depends on cannot be opened`);
+    throw new Error('unreachable');
+  }
+  await page.getByTestId('floorgrid-diagnostics-toggle').click({ timeout: 10000 });
+  const diagnosticsOpen = await waitUntilDrawn(page, 'floorgrid-diagnostics', BEAT_TIMEOUT_MS);
+  if (!diagnosticsOpen.drawn) {
+    fail(`pressing floorgrid-diagnostics-toggle did not open floorgrid-diagnostics — ${diagnosticsOpen.why}`);
+    throw new Error('unreachable');
+  }
+  if (report) {
+    ok('pressing floorgrid-diagnostics-toggle opens the diagnostics surface (floorgrid-diagnostics attached)');
+  }
 }
 
 try {
@@ -1503,11 +1551,17 @@ try {
   // Gap 5 (PLAYTEST 3): the caption states the fixed-furniture count
   // alongside placed/unplaced, so "0 placed, 0 unplaced" no longer reads as
   // if the three (fixed) items on the grid do not exist.
-  const captionText = await textOf('floorgrid-caption');
+  //
+  // GDD §5.14 STAGE C.1 moved this exact sentence from `floorgrid-caption`
+  // (now a short identity-only line, "floor (garage)") into
+  // `floorgrid-diagnostic-caption`, behind `floorgrid-diagnostics-toggle` —
+  // already pressed once by `reachGymScreen`, so this testID is attached the
+  // same way it always was at this point in the run.
+  const captionText = await textOf('floorgrid-diagnostic-caption');
   if (captionText !== null && /\b3 fixed,/.test(captionText)) {
-    ok(`gap 5: the caption states the fixed count ("${captionText}")`);
+    ok(`gap 5: the diagnostic caption states the fixed count ("${captionText}")`);
   } else {
-    fail(`gap 5: expected the caption to state "3 fixed," on a cold garage — got "${captionText}"`);
+    fail(`gap 5: expected floorgrid-diagnostic-caption to state "3 fixed," on a cold garage — got "${captionText}"`);
   }
 
   // -------------------------------------------------------------------------
@@ -2525,6 +2579,30 @@ try {
     await page.waitForTimeout(S4B_PRESS_SETTLE_MS);
   };
 
+  /**
+   * GDD §5.14 STAGE C.1 — the replacement for the deleted global
+   * `gymscreen-condition-<item>`/`gymscreen-repair-<item>` report. Selects
+   * `kind`/`item`'s station on the floor (skipping the tap if it is already
+   * the one showing — a second tap on an already-selected station TOGGLES
+   * its panel closed, the same disambiguation section 13d already drives
+   * around) and reads `floorgrid-station-panel-condition`'s real DOM text,
+   * the played path a tap on the floor actually produces rather than a
+   * global row that no longer exists.
+   */
+  /** Barbell-group furniture is always `'fixed'`; everything else this run ever owns is a placed `'session'` item — `FIXED_FURNITURE_ITEMS` (section 1a) is the same list the fixed-furniture gap check already drives. */
+  const stationKindFor = (item) => (FIXED_FURNITURE_ITEMS.includes(item) ? 'fixed' : 'session');
+  const stationConditionText = async (kind, item) => {
+    const testId = kind === 'fixed' ? `floorgrid-fixed-${item}` : `floorgrid-placed-${item}`;
+    const alreadySelected =
+      (await textOf('floorgrid-station-panel-identity'))?.includes(item) ?? false;
+    if (!alreadySelected) {
+      await page.getByTestId(testId).scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
+      await page.getByTestId(testId).click({ timeout: 10000 });
+      await page.waitForTimeout(150);
+    }
+    return textOf('floorgrid-station-panel-condition');
+  };
+
   // 9a. The section is reachable within the existing gym surface, by scrolling
   // — no new route, no query string, same screen the floor is on.
   readAddress('9a: the stage-4 section');
@@ -2541,15 +2619,26 @@ try {
   // Read the mean and one item's own row before and after a single clock
   // press; both must fall, and the per-item row must be a real number rather
   // than a label.
+  //
+  // GDD §5.14 STAGE C.1: "one item's own row" used to be the deleted global
+  // `gymscreen-condition-power-bar` report. It is the tapped station's own
+  // panel now — `stationConditionText('fixed', 'power-bar')` opens it (or
+  // reads it, if 9a's own scrolling already left a station selected from an
+  // earlier drive on this same fresh gym — it has not, this is the first tap
+  // of this run) and reads `floorgrid-station-panel-condition`, the played
+  // path a tap on the floor actually produces.
   readAddress('9b: condition is live state');
   const conditionBefore = await meanConditionNow();
   const powerBarBefore = numberIn(
-    await textOf('gymscreen-condition-power-bar'),
+    await stationConditionText('fixed', 'power-bar'),
     /condition ([\d.]+)/,
   );
   await pressById(advanceId);
   const conditionAfter = await meanConditionNow();
-  const powerBarAfter = numberIn(await textOf('gymscreen-condition-power-bar'), /condition ([\d.]+)/);
+  const powerBarAfter = numberIn(
+    await stationConditionText('fixed', 'power-bar'),
+    /condition ([\d.]+)/,
+  );
   if (
     conditionBefore !== null &&
     conditionAfter !== null &&
@@ -2690,11 +2779,18 @@ try {
         fail('S4b (9d): the review draws no line saying what refusing it costs');
       }
       // 9e. The price was on screen BEFORE the press. Now press repair.
+      //
+      // GDD §5.14 STAGE C.1: "the item's own row, read back" used to be the
+      // deleted global `gymscreen-condition-<item>` report. It is the tapped
+      // station's own panel now — `stationConditionText` opens (or reads) it,
+      // dispatching nothing itself, so this is a second, independent read of
+      // the SAME `reviewItem` the review just named, off the real floor tap
+      // a player would actually make.
       const purseBeforeRepair = await purseNow();
       await pressById('gymscreen-prompt-repair');
       const purseAfterRepair = await purseNow();
       const itemRowAfter = numberIn(
-        await textOf(`gymscreen-condition-${reviewItem}`),
+        await stationConditionText(stationKindFor(reviewItem), reviewItem),
         /condition ([\d.]+)/,
       );
       const charged = purseBeforeRepair === null || purseAfterRepair === null ? null : purseBeforeRepair - purseAfterRepair;
@@ -2812,24 +2908,86 @@ try {
     fail(`S4b (9g): expected a dormant readout with a costed recovery — "${dormantText}", quote ${recoveryQuote}`);
   }
   // The recovery investment, item by item, then reopen.
+  //
+  // GDD §5.14 STAGE C.1: this loop used to walk the deleted global
+  // `gymscreen-condition-<item>` census, which named every owned item
+  // regardless of floor placement. The station panel can only be opened by
+  // tapping a real chip ON THE FLOOR, so this walks a KNOWN list instead —
+  // `FIXED_FURNITURE_ITEMS` (always present, never removable — this file's
+  // own header) plus `'mats'`, the one session item this whole run ever
+  // owns. mats is a genuine edge case worth naming rather than quietly
+  // working around: section 5 took it off the floor (to drive the
+  // interruption-cue claim) and nothing since has put it back, so at this
+  // exact point in this run mats is OWNED but UNPLACED — no floor chip
+  // exists for it, and there is no longer a global report that could reach
+  // it either. A REAL PLAYER IN THIS EXACT STATE WOULD HAVE THE SAME
+  // PROBLEM: an owned-but-unplaced item's condition still falls in the
+  // background (`management.ts` tracks it independently of floor placement)
+  // but nothing on this screen can manage it until it is back on the floor.
+  // That is a real, reachable consequence of this round's own change,
+  // reported in the handoff rather than silently designed around. What this
+  // block does about it is exactly what a player holding that same problem
+  // would do — drag it back onto the floor first — because that is the only
+  // played path back to a station panel for it.
   const purseBeforeRecovery = await purseNow();
-  const conditionRows = await testIdsStartingWith('gymscreen-condition-');
-  for (const rowId of conditionRows) {
-    const item = rowId.replace('gymscreen-condition-', '');
-    const at = numberIn(await textOf(rowId), /condition ([\d.]+)/);
+  const matsPlacedForRecovery = await page
+    .getByTestId('floorgrid-placed-mats')
+    .count()
+    .then((n) => n > 0)
+    .catch(() => false);
+  if (!matsPlacedForRecovery) {
+    const matsOwnedForRecovery = await page
+      .getByTestId('floorgrid-tray-item-mats')
+      .count()
+      .then((n) => n > 0)
+      .catch(() => false);
+    if (matsOwnedForRecovery) {
+      await page.getByTestId('floorgrid-grid').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
+      const trayBoxForRecovery = await boxOf('floorgrid-tray-item-mats');
+      const gridBoxForRecovery = await boxOf('floorgrid-grid');
+      if (trayBoxForRecovery !== null && gridBoxForRecovery !== null) {
+        // The same clear-of-every-fixed-row target cell section 3/13/13h all
+        // use — tile (5,0).
+        await dragBox(
+          trayBoxForRecovery,
+          gridBoxForRecovery.x + FLOOR_TILE_PIXELS * 5.25,
+          gridBoxForRecovery.y + FLOOR_TILE_PIXELS * 0.25,
+        );
+        await page.waitForTimeout(250);
+        const matsReplaced = await waitUntilDrawn(page, 'floorgrid-placed-mats', BEAT_TIMEOUT_MS);
+        if (matsReplaced.drawn) {
+          ok('S4b (9g): mats, unplaced since section 5, is dragged back onto the floor so its station panel can be reached — the same recovery a player holding this exact state would need');
+        } else {
+          fail(`S4b (9g): dragging mats back onto the floor for the recovery walk did not land — ${matsReplaced.why}`);
+        }
+      } else {
+        fail('S4b (9g): could not read the tray/grid boxes to re-place mats for the recovery walk');
+      }
+    }
+  }
+  const RECOVERY_WALK_ITEMS = [...FIXED_FURNITURE_ITEMS, 'mats'];
+  for (const item of RECOVERY_WALK_ITEMS) {
+    const kind = stationKindFor(item);
+    const stillOnFloor = await page
+      .getByTestId(kind === 'fixed' ? `floorgrid-fixed-${item}` : `floorgrid-placed-${item}`)
+      .count()
+      .then((n) => n > 0)
+      .catch(() => false);
+    if (!stillOnFloor) continue;
+    const at = numberIn(await stationConditionText(kind, item), /condition ([\d.]+)/);
     if (at === null || at >= 1) continue;
     // The repair control is gated on `repairEquipment`'s own refusal now, so
     // a worn item with an unaffordable repair draws the reason instead of the
     // button. That is a real state and this loop would otherwise time out
     // inside a click with nothing said about why.
-    const repairDrawn = await page.getByTestId(`gymscreen-repair-${item}`).count();
+    const repairDrawn = await page.getByTestId('floorgrid-station-panel-repair').count();
     if (repairDrawn === 0) {
       fail(
-        `S4b (9g): ${item} is at condition ${at} and its repair control is not offered — the screen says "${await textOf(`gymscreen-repair-${item}-unavailable`)}"`,
+        `S4b (9g): ${item} is at condition ${at} and its station repair control is not offered — the panel says "${await textOf('floorgrid-station-panel-repair-unavailable')}"`,
       );
       continue;
     }
-    await pressById(`gymscreen-repair-${item}`);
+    await pressById('floorgrid-station-panel-repair');
   }
   const purseAfterRecovery = await purseNow();
   await pressById('gymscreen-recover');
@@ -3284,31 +3442,57 @@ try {
 
   // -------------------------------------------------------------------------
   // 13c. TRUTHFULNESS. The panel's condition line is compared, not merely
-  // read, against `gymscreen-condition-mats` — the OLD per-item report, a
-  // different element entirely, reading the same `management.ts` state.
-  // Checked twice: once at a fresh condition and once after real wear.
+  // read, against an INDEPENDENT second reader of the same underlying
+  // `management.ts` state.
+  //
+  // GDD §5.14 STAGE C.1 REMOVED THE ORIGINAL SECOND READER
+  // (`gymscreen-condition-mats`, the deleted global per-item report), so this
+  // now cross-checks against `gymscreen-worn` instead — a different code
+  // path (`wornItems`, `management.ts`) naming every item below
+  // `MAINTENANCE_PROMPT_CONDITION`, which stayed on the screen because it is
+  // a gym-level bottleneck POINTER rather than a per-item duplicate (this
+  // round's own report explains the distinction). The claim is narrower than
+  // the deleted comparison — a threshold-crossing boolean rather than two
+  // matching floats — but it is still a genuine second signal from a
+  // genuinely different render path, not a restatement of the panel's own
+  // predicate: `stationConditionView.isSound` and `wornItems` are two
+  // separate functions in `stationView.ts`/`management.ts` that both read
+  // `itemCondition` and could disagree if either drifted from
+  // `MAINTENANCE_PROMPT_CONDITION`. Checked twice: once at a fresh condition
+  // (expected NOT listed) and once after real wear (expected listed).
   // -------------------------------------------------------------------------
   readAddress('13c: condition truthfulness');
   const checkConditionAgreement13 = async (label) => {
-    const panelText = await textOf('floorgrid-station-panel-condition');
-    const oldText = await textOf('gymscreen-condition-mats');
+    const panelText = await stationConditionText('session', 'mats');
     const panelMatch =
       panelText === null
         ? null
         : panelText.match(/condition ([\d.]+) — repairing it costs ([\d.]+) gym bucks/);
-    const oldMatch =
-      oldText === null ? null : oldText.match(/condition ([\d.]+), repairing it costs ([\d.]+) gym bucks/);
-    if (
-      panelMatch !== null &&
-      oldMatch !== null &&
-      panelMatch[1] === oldMatch[1] &&
-      panelMatch[2] === oldMatch[2]
-    ) {
+    const wornText = await textOf('gymscreen-worn');
+    const wornThreshold = numberInText(wornText, /under ([\d.]+) condition:/);
+    const wornListedMatch = wornText === null ? null : wornText.match(/condition: (.+?) — of those/);
+    const matsListedAsWorn =
+      wornListedMatch !== null &&
+      wornListedMatch[1]
+        .trim()
+        .split(', ')
+        .includes('mats');
+    if (panelMatch === null || wornThreshold === null || wornListedMatch === null) {
+      fail(
+        `13c (${label}): could not read both the panel and the independent worn-list — panel "${panelText}", worn-list "${wornText}"`,
+      );
+      return;
+    }
+    const panelCondition = Number.parseFloat(panelMatch[1]);
+    const expectedWorn = panelCondition < wornThreshold;
+    if (expectedWorn === matsListedAsWorn) {
       ok(
-        `13c (${label}): the panel and the old per-item report agree — both read condition ${panelMatch[1]}, repair cost ${panelMatch[2]} — panel "${panelText}", old report "${oldText}"`,
+        `13c (${label}): the panel's condition and the independently-derived worn-list agree — panel reads condition ${panelCondition} against a ${wornThreshold} threshold, and mats is ${matsListedAsWorn ? '' : 'NOT '}named in "${wornText}"`,
       );
     } else {
-      fail(`13c (${label}): the panel and the old report disagree — panel "${panelText}", old report "${oldText}"`);
+      fail(
+        `13c (${label}): the panel and the worn-list disagree about whether mats is worn — panel "${panelText}" (threshold ${wornThreshold}), worn-list "${wornText}"`,
+      );
     }
   };
   await checkConditionAgreement13('fresh');
@@ -3319,7 +3503,8 @@ try {
   // condition 0.856, still "sound" against the real 0.5 line, so 13e never
   // saw a live repair control — a domain miss, not an app defect). One press
   // first, to read the real per-press wear; the real worn-line threshold and
-  // mats' own current condition read off the drawn screen; then enough more
+  // mats' own current condition read off the drawn screen (the station
+  // panel, GDD §5.14 Stage C.1 — see 13c's own header); then enough more
   // presses to cross it, with the same margin/ceiling section 9c uses.
   await pressById(advanceId);
   const wearPerPress13 = numberInText(
@@ -3327,7 +3512,10 @@ try {
     /wore the gym down by ([\d.]+)/,
   );
   const promptCondition13 = numberInText(await textOf('gymscreen-worn'), /under ([\d.]+) condition:/);
-  const matsConditionNow13 = numberInText(await textOf('gymscreen-condition-mats'), /condition ([\d.]+),/);
+  const matsConditionNow13 = numberInText(
+    await stationConditionText('session', 'mats'),
+    /condition ([\d.]+)/,
+  );
   if (
     wearPerPress13 !== null &&
     wearPerPress13 > 0 &&
@@ -3390,21 +3578,36 @@ try {
 
   // -------------------------------------------------------------------------
   // 13e. CONTEXTUAL REPAIR DISPATCHES THROUGH THE REAL REDUCER. Pressing the
-  // panel's own repair control moves the purse by the quoted cost AND the
-  // OLD report reads condition 1 afterwards — two independent readers of
-  // one state agreeing, which a parallel UI-only mutation could not fake.
+  // panel's own repair control moves the purse by the quoted cost AND an
+  // INDEPENDENT reader confirms the item is sound afterwards — two
+  // independent readers of one state agreeing, which a parallel UI-only
+  // mutation could not fake.
+  //
+  // GDD §5.14 STAGE C.1 REPLACED THE SECOND READER — the deleted
+  // `gymscreen-condition-mats` global report is gone, so this now reads
+  // `gymscreen-worn`'s watch-list instead (the same independent-second-signal
+  // swap 13c makes, and the same reasoning: a different function,
+  // `wornItems` in `management.ts`, reading the same underlying condition).
+  // Mats should be named in that list before the repair (it was driven worn
+  // to reach this state) and absent from it after.
   // -------------------------------------------------------------------------
   readAddress('13e: contextual repair');
   const repairQuote13 = numberInText(
     await textOf('floorgrid-station-panel-condition'),
     /repairing it costs ([\d.]+) gym bucks/,
   );
+  const wornBeforeRepair13 = await textOf('gymscreen-worn');
+  const matsWornBeforeRepair13 =
+    wornBeforeRepair13 !== null &&
+    (wornBeforeRepair13.match(/condition: (.+?) — of those/)?.[1].trim().split(', ') ?? []).includes(
+      'mats',
+    );
   const purseBeforeRepair13 = numberInText(await textOf('gymscreen-gym-bucks'), /gym bucks: ([\d.]+)/);
   const repairButton13 = page.getByTestId('floorgrid-station-panel-repair');
   const repairButtonExists13 = await repairButton13.count().then((n) => n > 0).catch(() => false);
-  if (!repairButtonExists13 || repairQuote13 === null || purseBeforeRepair13 === null) {
+  if (!repairButtonExists13 || repairQuote13 === null || purseBeforeRepair13 === null || !matsWornBeforeRepair13) {
     fail(
-      `13e: expected a live repair control with a quoted cost on a worn item — button present=${repairButtonExists13}, quote=${repairQuote13}, purse=${purseBeforeRepair13}`,
+      `13e: expected a live repair control with a quoted cost on a worn item, named on the independent worn-list — button present=${repairButtonExists13}, quote=${repairQuote13}, purse=${purseBeforeRepair13}, mats on worn-list=${matsWornBeforeRepair13} ("${wornBeforeRepair13}")`,
     );
   } else {
     await repairButton13.click({ timeout: 10000 });
@@ -3412,15 +3615,19 @@ try {
     const purseAfterRepair13 = numberInText(await textOf('gymscreen-gym-bucks'), /gym bucks: ([\d.]+)/);
     const charged13 = purseAfterRepair13 === null ? null : purseBeforeRepair13 - purseAfterRepair13;
     const band13 = charged13 === null ? null : purseMatchBand(charged13, repairQuote13);
-    const oldReportAfter13 = await textOf('gymscreen-condition-mats');
-    const oldConditionAfter13 = numberInText(oldReportAfter13, /condition ([\d.]+),/);
-    if (band13 !== null && oldConditionAfter13 === 1) {
+    const wornAfterRepair13 = await textOf('gymscreen-worn');
+    const matsWornAfterRepair13 =
+      wornAfterRepair13 !== null &&
+      (wornAfterRepair13.match(/condition: (.+?) — of those/)?.[1].trim().split(', ') ?? []).includes(
+        'mats',
+      );
+    if (band13 !== null && !matsWornAfterRepair13) {
       ok(
-        `13e: the panel's repair control dispatches through the real reducer — purse charged ${charged13.toFixed(2)} against a quoted ${repairQuote13} (${band13} match), and the OLD report independently reads condition 1 afterwards ("${oldReportAfter13}")`,
+        `13e: the panel's repair control dispatches through the real reducer — purse charged ${charged13.toFixed(2)} against a quoted ${repairQuote13} (${band13} match), and the independent worn-list no longer names mats afterwards ("${wornAfterRepair13}")`,
       );
     } else {
       fail(
-        `13e: the repair press did not land as expected — charged ${charged13}, quoted ${repairQuote13}, old report "${oldReportAfter13}"`,
+        `13e: the repair press did not land as expected — charged ${charged13}, quoted ${repairQuote13}, worn-list after "${wornAfterRepair13}"`,
       );
     }
   }
@@ -3487,7 +3694,32 @@ try {
     await page.getByTestId('floorgrid-fixed-power-bar').click({ timeout: 10000 });
   }
   await page.waitForTimeout(150);
+  // GDD §5.14 STAGE C.1 — READ AN OFFSET FROM THE GRID, NOT AN ABSOLUTE
+  // VIEWPORT BOX, THE SAME TECHNIQUE 13F ALREADY USES ONE SECTION ABOVE, AND
+  // FOR THE SAME STATED REASON: "an absolute-viewport box comparison would
+  // read a scroll as a move, which is not the claim this is making."
+  // `DISMISS_UNMOVED_TOLERANCE_PIXELS`'s own measured drift (6px, comfortably
+  // under one `FLOOR_TILE_PIXELS`) was taken against the PRE-Stage-C.1 page,
+  // which had no diagnostics content sitting between the grid/tray and the
+  // panel; that content is now open for this whole run (`reachGymScreen`'s
+  // own toggle press), making the page taller and Playwright's own
+  // actionability auto-scroll (bringing the dismiss control, near the
+  // panel's bottom edge, into view) correspondingly larger — measured at 38px
+  // on this build, which is no longer comfortably under a real single-tile
+  // move and would have made the OLD absolute-box comparison the wrong
+  // instrument here (widening its tolerance past 28px risks masking a real
+  // one-tile drift). power-bar is FIXED FURNITURE — `floor.ts`'s own
+  // `fixedFloorFurniture` has no writer that ever moves it — so its offset
+  // from the grid is a claim scroll cannot touch either way, unlike the
+  // absolute box either read used.
   const gridBoxBeforeDismiss13 = await boxOf('floorgrid-grid');
+  const powerBarOffsetBeforeDismiss13 =
+    gridBoxBeforeDismiss13 === null || powerBarBoxForDismiss13 === null
+      ? null
+      : {
+          x: powerBarBoxForDismiss13.x - gridBoxBeforeDismiss13.x,
+          y: powerBarBoxForDismiss13.y - gridBoxBeforeDismiss13.y,
+        };
   const dismissButton13 = page.getByTestId('floorgrid-station-panel-dismiss');
   const dismissExists13 = await dismissButton13.count().then((n) => n > 0).catch(() => false);
   if (!dismissExists13) {
@@ -3501,24 +3733,28 @@ try {
       .then((n) => n === 0)
       .catch(() => false);
     const gridBoxAfterDismiss13 = await boxOf('floorgrid-grid');
-    // A TOLERANCE, NOT EXACT EQUALITY — measured why: `.click()` on the
-    // dismiss control (near the panel's own bottom edge) can nudge the
-    // page's own scroll position by a few pixels as part of Playwright's
-    // actionability auto-scroll, which is the TEST reaching for the
-    // control, not the app moving anything. See
-    // `DISMISS_UNMOVED_TOLERANCE_PIXELS`'s own comment for the measurement.
-    const gridUnmoved13 =
-      gridBoxBeforeDismiss13 !== null &&
-      gridBoxAfterDismiss13 !== null &&
-      Math.abs(gridBoxBeforeDismiss13.x - gridBoxAfterDismiss13.x) <= DISMISS_UNMOVED_TOLERANCE_PIXELS &&
-      Math.abs(gridBoxBeforeDismiss13.y - gridBoxAfterDismiss13.y) <= DISMISS_UNMOVED_TOLERANCE_PIXELS;
-    if (panelGoneAfterDismiss13 && gridUnmoved13) {
+    const powerBarBoxAfterDismiss13 = await boxOf('floorgrid-fixed-power-bar');
+    const powerBarOffsetAfterDismiss13 =
+      gridBoxAfterDismiss13 === null || powerBarBoxAfterDismiss13 === null
+        ? null
+        : {
+            x: powerBarBoxAfterDismiss13.x - gridBoxAfterDismiss13.x,
+            y: powerBarBoxAfterDismiss13.y - gridBoxAfterDismiss13.y,
+          };
+    const floorUnmoved13 =
+      powerBarOffsetBeforeDismiss13 !== null &&
+      powerBarOffsetAfterDismiss13 !== null &&
+      Math.abs(powerBarOffsetBeforeDismiss13.x - powerBarOffsetAfterDismiss13.x) <=
+        DISMISS_UNMOVED_TOLERANCE_PIXELS &&
+      Math.abs(powerBarOffsetBeforeDismiss13.y - powerBarOffsetAfterDismiss13.y) <=
+        DISMISS_UNMOVED_TOLERANCE_PIXELS;
+    if (panelGoneAfterDismiss13 && floorUnmoved13) {
       ok(
-        `13g: dismissing the panel closes it and moves nothing else on the floor — the grid's own box before ${JSON.stringify(gridBoxBeforeDismiss13)} and after ${JSON.stringify(gridBoxAfterDismiss13)} are within ${DISMISS_UNMOVED_TOLERANCE_PIXELS}px`,
+        `13g: dismissing the panel closes it and moves nothing else on the floor — power-bar's own offset from the grid before ${JSON.stringify(powerBarOffsetBeforeDismiss13)} and after ${JSON.stringify(powerBarOffsetAfterDismiss13)} are within ${DISMISS_UNMOVED_TOLERANCE_PIXELS}px, unaffected by whatever the dismiss press's own auto-scroll did to the viewport (grid box before ${JSON.stringify(gridBoxBeforeDismiss13)}, after ${JSON.stringify(gridBoxAfterDismiss13)})`,
       );
     } else {
       fail(
-        `13g: dismiss did not behave as expected — panel gone=${panelGoneAfterDismiss13}, grid box before ${JSON.stringify(gridBoxBeforeDismiss13)} after ${JSON.stringify(gridBoxAfterDismiss13)}`,
+        `13g: dismiss did not behave as expected — panel gone=${panelGoneAfterDismiss13}, power-bar offset from grid before ${JSON.stringify(powerBarOffsetBeforeDismiss13)} after ${JSON.stringify(powerBarOffsetAfterDismiss13)}`,
       );
     }
   }
