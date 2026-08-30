@@ -704,7 +704,9 @@ describe('§5.5 social', () => {
     // 168 -> 174: S4h's `GYM_SCREEN_BUTTON_*` block — six new screen-chrome
     // knobs (padding x2, border radius, border width, min height, disabled
     // opacity), none of them a cadence in any unit training moves.
-    expect(examined).toBe(174);
+    // 174 -> 175: S4i's `GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS`, a UI
+    // clearance amount, not a cadence in any unit training moves.
+    expect(examined).toBe(175);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -720,7 +722,8 @@ describe('§5.5 social', () => {
     // 830 -> 835 (167 keys x 5 banned units).
     // 835 -> 840 (168 keys x 5 banned units).
     // 840 -> 870 (174 keys x 5 banned units, S4h's six new knobs).
-    expect(probed).toBe(870);
+    // 870 -> 875 (175 keys x 5 banned units, S4i's one new knob).
+    expect(probed).toBe(875);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

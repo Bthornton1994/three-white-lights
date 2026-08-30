@@ -1713,7 +1713,10 @@ const SURFACE_CENSUS = Object.freeze({
 // (`EMPIRE_TUNING_CLASSIFICATION`'s `Record<keyof typeof EMPIRE_TUNING,
 // EmpireTuningClass>` and the exported functions parameterised over it).
 // Read from this pin's own failure value.
-LITERAL_POSITIONS: 3800, // 3791 -> 3792: "kill the mint", re-measured; 3792 -> 3793: its harness fix, re-measured
+// 3800 -> 3801: S4i's one new EMPIRE_TUNING key,
+// GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS, the same 1:1 shape. Read from this
+// pin's own failure value.
+LITERAL_POSITIONS: 3801, // 3791 -> 3792: "kill the mint", re-measured; 3792 -> 3793: its harness fix, re-measured
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -4412,6 +4415,15 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
     'GYM_SCREEN_DISABLED_OPACITY',
     'A MULTIPLIER, dimensionless and in [0, 1]: how much dimmer the S4h Fix 2 disabled-but-visible control reads than a live one. Applied as a style value (`opacity`), never compared against an input — the same shape as `CONDITION_INCOME_MULTIPLIER_FLOOR` above.',
   ),
+  // S4i — clearance for the shell's own nav pill, which this directory cannot
+  // import and so cannot compare against live: read once into
+  // `styles.root`'s `marginBottom`, the same "paint/layout scale, applied and
+  // never compared against a caller-supplied number" shape as the six S4h
+  // rows above it.
+  ...exemptTable(
+    'GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS',
+    'A PAINT SCALE: how much of `GymScreen.tsx`\'s own `ScrollView` box is reserved so it never extends under the shell\'s absolutely-positioned nav pill, read once into `styles.root`\'s `marginBottom` and never compared against a caller-supplied number. Derived by reading two constants in `src/shell/shellTuning.ts` at the time this was written (see `empireTuning.ts`\'s own doc comment for the derivation and the drift risk), not by importing them — this directory\'s import fence forbids that.',
+  ),
 ]);
 
 /**
@@ -4970,7 +4982,9 @@ const FIXTURE_LISTS: readonly FixtureList[] = Object.freeze([
     // assertion.
     // 344 -> 341: P4b's retired pulse half-cycle took its straddle points
     // with it. Measured the same way.
-    size: 341,
+    // 341 -> 343: S4i's one new exempt leaf widened the SECONDS domain by
+    // two points, measured by running the size assertion.
+    size: 343,
     why: 'One clock per point of the seconds domain, at a fixed skip. Derived, so the seconds domain losing its ceiling this round widened this list without anybody touching it.',
   }),
   Object.freeze({
@@ -5287,6 +5301,10 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   // 16, a border radius of 8, a border width of 1, and an opacity of 0.5)
   // all sit below it.
   'ROSTER_SHAPE/GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS=44',
+  // S4i: GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS=82 sits above ROSTER_SHAPE's
+  // ceiling too, the same shape as MIN_HEIGHT_PIXELS=44 immediately above —
+  // a real pill-footprint figure rather than a roster count.
+  'ROSTER_SHAPE/GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS=82',
   'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
   'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[1]=28800',
   'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[2]=259200',
@@ -5393,7 +5411,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // 332 -> 338: S4h's six GYM_SCREEN_BUTTON_*/GYM_SCREEN_DISABLED_OPACITY
   // leaves, all exempt (paint scales and one dimensionless multiplier, none
   // compared against a caller-supplied value) — see NOT_A_BRANCH_POINT above.
-  EXEMPT: 338,
+  // 338 -> 339: S4i's one new exempt leaf,
+  // GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS — see NOT_A_BRANCH_POINT above.
+  EXEMPT: 339,
   // 154 -> 196: the same 42 new leaves. 251 -> 264: the same 13 new leaves.
   // 264 -> 266: the same 2 new leaves.
   // 266 -> 273: the same 7 new leaves.
@@ -5421,7 +5441,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // VERTICAL_PIXELS, _HORIZONTAL_PIXELS, _BORDER_RADIUS_PIXELS, _BORDER_
   // WIDTH_PIXELS, _MIN_HEIGHT_PIXELS, and GYM_SCREEN_DISABLED_OPACITY), all
   // exempt — see EXEMPT above. Read from this pin's own failure value.
-  TUNING_NUMERIC_LEAVES: 441, // 432 -> 433: "kill the mint" adds WALL_CLOCK_TICK_INTERVAL_SECONDS
+  // 441 -> 442: S4i's one new numeric leaf, GYM_SCREEN_LEAVE_PILL_CLEARANCE_
+  // PIXELS, exempt — see EXEMPT above. Read from this pin's own failure value.
+  TUNING_NUMERIC_LEAVES: 442, // 432 -> 433: "kill the mint" adds WALL_CLOCK_TICK_INTERVAL_SECONDS
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -5451,7 +5473,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // DUST_REPAIR_COST_GYM_BUCKS.
   // 437 -> 443: S4h's six new exempt leaves (GYM_SCREEN_BUTTON_*,
   // GYM_SCREEN_DISABLED_OPACITY) — see NOT_A_BRANCH_POINT above.
-  BRANCH_POINTS: 443,
+  // 443 -> 444: S4i's one new exempt leaf, GYM_SCREEN_LEAVE_PILL_CLEARANCE_
+  // PIXELS — see NOT_A_BRANCH_POINT above.
+  BRANCH_POINTS: 444,
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
@@ -5501,7 +5525,12 @@ const DOMAIN_CENSUS = Object.freeze({
 // ROSTER_SHAPE's (17), so it adds a `required` obligation in five domains
 // rather than six — +5. 30 + 5 = 35; see OMITTED_ABOVE_CEILING.ROSTER_SHAPE
 // below for the mirror of the one dropped pair.
-CONTAINMENT_CHECKS: 2315,
+// 2315 -> 2320: S4i's one new exempt leaf, GYM_SCREEN_LEAVE_PILL_CLEARANCE_
+// PIXELS=82, the same shape as MIN_HEIGHT_PIXELS=44 above — below NUMBER/
+// SECONDS/DAY/COUNT/LEVEL's ceilings but above ROSTER_SHAPE's (17), so it
+// adds a `required` obligation in five domains rather than six — +5. See
+// OMITTED_ABOVE_CEILING.ROSTER_SHAPE below for the mirror.
+CONTAINMENT_CHECKS: 2320,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -5562,7 +5591,10 @@ CONTAINMENT_CHECKS: 2315,
     // ROSTER_SHAPE's ceiling (17); the other five new leaves do not. See
     // CONTAINMENT_CHECKS above and EXEMPT_LEAVES_ABOVE_A_CEILING's own new
     // row for the mirror of this same leaf.
-    ROSTER_SHAPE: 211,
+    // 211 -> 212: S4i's GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS=82 sits above
+    // ROSTER_SHAPE's ceiling (17) too. See CONTAINMENT_CHECKS above and
+    // EXEMPT_LEAVES_ABOVE_A_CEILING's own new row for the mirror.
+    ROSTER_SHAPE: 212,
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -5612,15 +5644,21 @@ CONTAINMENT_CHECKS: 2315,
   // rounds of single scalars.
   // 1491 -> 1476: P4b — the retired 260ms leaf took its straddle points
   // with it and the new fractions mostly landed on existing points. Measured.
-  NUMBER_CONTAINMENT_CHECKS: 1476,
+  // 1476 -> 1486: S4i's one new exempt leaf (82), read from this pin's own
+  // failure value.
+  NUMBER_CONTAINMENT_CHECKS: 1486,
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 297 -> 300, read the same way.
   // Phase 4: 300 -> 405, read the same way.
-  NUMBER_POINTS: 402, // 405 -> 402: P4b, measured off this assertion.
+  // 402 -> 404: S4i's one new exempt leaf (82), read from this pin's own
+  // failure value.
+  NUMBER_POINTS: 404, // 405 -> 402: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 230 -> 233, read the same way.
   // Phase 4: 233 -> 344, read from this pin's own failure value.
-  SECONDS_POINTS: 341, // 344 -> 341: P4b, measured off this assertion.
+  // 341 -> 343: S4i's one new exempt leaf (82), measured off the CLOCKS
+  // fixture list's own size failure (CLOCKS is one clock per SECONDS point).
+  SECONDS_POINTS: 343, // 344 -> 341: P4b, measured off this assertion.
   // 74 -> 76: GDD §5.13 presentation Phase 2's exempt tuning leaves widened
   // the COUNT domain by two points, cross-checked directly against
   // `NUMERIC_DOMAINS.COUNT.points.length` by running the assertion below.
@@ -5634,16 +5672,23 @@ CONTAINMENT_CHECKS: 2315,
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 80 -> 83, read the same way.
   // Phase 4: 83 -> 196, read from this pin's own failure value.
-  DAY_POINTS: 193, // 196 -> 193: P4b, measured off this assertion.
+  // 193 -> 195: S4i's one new exempt leaf (82), read from this pin's own
+  // failure value.
+  DAY_POINTS: 195, // 196 -> 193: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 84 -> 87, read the same way.
   // Phase 4: 87 -> 197, read from this pin's own failure value — the RGB
   // components are mostly distinct new values at or under COUNT's ceiling.
-  COUNT_POINTS: 194, // 197 -> 194: P4b, measured off this assertion.
+  // 194 -> 196: S4i's one new exempt leaf (82), measured off the "drives the
+  // callback subjects over the registry domain" assertion's own failure
+  // value.
+  COUNT_POINTS: 196, // 197 -> 194: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 216 -> 219, read the same way.
   // Phase 4: 219 -> 331, read from this pin's own failure value.
-  LEVEL_POINTS: 328, // 331 -> 328: P4b, measured off this assertion.
+  // 328 -> 330: S4i's one new exempt leaf (82), read from this pin's own
+  // failure value.
+  LEVEL_POINTS: 330, // 331 -> 328: P4b, measured off this assertion.
   // Phase 4: 17 -> 18 — FLOOR_SPRITE_NATIVE_PIXELS_PER_TILE=14 arrives as a
   // foreign point under the roster ceiling. Read from this pin's own failure.
   ROSTER_SHAPE_POINTS: 18,
@@ -8689,10 +8734,15 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
 // P4b moved every row again (retired pulse leaves, new sub-ceiling knobs):
 // COUNT 1962 -> 1932, DAY 32986 -> 32479, ROSTER_SHAPE 132336 -> 131364.
 // Measured by running the assertion below rather than derived.
+// S4i: 1932 -> 1952 (COUNT), 32479 -> 32817 (DAY), 131364 -> 132012
+// (ROSTER_SHAPE) — the one new exempt leaf widened NUMBER (and, via its own
+// straddle points, COUNT/DAY/ROSTER_SHAPE's overflow sets), which multiplies
+// out across every export driven under one of these axes' ceiling. Read from
+// this pin's own failure value.
 const MAIN_DRIVE_ROWS_BY_AXIS: Readonly<Record<string, number>> = Object.freeze({
-  COUNT: 1932,
-  DAY: 32479,
-  ROSTER_SHAPE: 131364,
+  COUNT: 1952,
+  DAY: 32817,
+  ROSTER_SHAPE: 132012,
 });
 
 /**
@@ -9136,7 +9186,10 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 342 -> 343: S4h's GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS=44 moves one branch
   // point above ROSTER_SHAPE's ceiling (the opposite direction of S4g's
   // move), dropped in that one domain. Measured off this assertion.
-  POINTS: 343,
+  // 343 -> 344: S4i's GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS=82 moves one
+  // more branch point above ROSTER_SHAPE's ceiling, the same shape as S4h's
+  // move. Measured off this assertion.
+  POINTS: 344,
   /** Of those, how many at least one subject was driven at. */
   // Tracks POINTS 1:1 again (218), confirmed by running the assertion below
   // rather than assumed. PLAYTEST 4: tracks POINTS 1:1 again (222), confirmed
@@ -9153,7 +9206,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // assertion.
   // 342 -> 343: S4h, tracks POINTS 1:1 again (see POINTS above), confirmed
   // by running this exact assertion.
-  POINTS_DRIVEN: 343,
+  // 343 -> 344: S4i, tracks POINTS 1:1 again (see POINTS above), confirmed
+  // by running this exact assertion.
+  POINTS_DRIVEN: 344,
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
@@ -9191,7 +9246,10 @@ const OVERFLOW_CENSUS = Object.freeze({
   // point (see POINTS/ROWS above), driven 23 more times — the same one point
   // x ARGUMENT_HEAVY_SUBJECTS (23) shape as the row above, in reverse.
   // Measured off this assertion.
-  PAIRS_DRIVEN: 6052,
+  // 6052 -> 6075: S4i's GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS=82 drops one
+  // more point the same way — another 23 (ARGUMENT_HEAVY_SUBJECTS). Measured
+  // off this assertion.
+  PAIRS_DRIVEN: 6075,
   // GDD §5.13 presentation Phase 3: PAIRS_SKIPPED re-measured (495 -> 517),
   // a real failure value this round's own run produced.
   PAIRS_SKIPPED: 517,
@@ -9272,7 +9330,13 @@ const OVERFLOW_CENSUS = Object.freeze({
   // drives one more dropped point — and, at every subject this pass builds
   // for that point, more than one row. Read from this pin's own failure
   // value rather than hand-derived.
-  ROWS: 6910,
+  // S4i: GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS=82 moves one more branch
+  // point ABOVE ROSTER_SHAPE's ceiling (DOMAIN_CENSUS.OMITTED_ABOVE_CEILING
+  // 211 -> 212), the same shape as S4h's move above. NODES/STRINGS/
+  // DISTINCT_STRINGS below are UNCONFIRMED for this round — the test throws
+  // at ROWS first — left at their pre-round pins to be corrected from the
+  // next run's real failure.
+  ROWS: 6933,
   // GDD §5.13 presentation Phase 3: re-measured (942486 -> 947983), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (947983 -> 960248).
@@ -9285,7 +9349,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // ROWS/DOMAIN_CENSUS above), and every `Pressable` the resulting driven
   // `GymScreen` states render now carries a `style` object the walk
   // descends into. Read from this pin's own failure value.
-  NODES: 1337990,
+  // S4i: GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS=82 drops one more point the
+  // same way. Read from this pin's own failure value.
+  NODES: 1340131,
   // GDD §5.13 presentation Phase 3: re-measured (6413124 -> 6446099), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (6446099 -> 6540148).
@@ -9299,12 +9365,15 @@ const OVERFLOW_CENSUS = Object.freeze({
   // `GymScreen` states render now carries an `accessibilityRole` string and
   // a `style` object whose own values the walk descends into. Read from
   // this pin's own failure value.
-  STRINGS: 9283600,
+  // S4i: GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS=82 drops one more point the
+  // same way. Read from this pin's own failure value.
+  STRINGS: 9299371,
   // GDD §5.13 presentation Phase 3: re-measured (4366 -> 4378), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (4378 -> 4381).
   // Stage 4: read from this pin's own failure value.
-  DISTINCT_STRINGS: 4534,
+  // S4i: read from this pin's own failure value.
+  DISTINCT_STRINGS: 4537,
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
   /**
@@ -9373,7 +9442,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 1304 -> 1312: S4h drops one MORE point (see ROWS/DOMAIN_CENSUS above), 8
   // more closures declined at the same per-point closure count — the same
   // shape as the row above, in reverse. Measured off this assertion.
-  CLOSURES_DECLINED: 1312,
+  // 1312 -> 1320: S4i drops one more point the same way, 8 more closures
+  // declined. Measured off this assertion.
+  CLOSURES_DECLINED: 1320,
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -9426,7 +9497,9 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // 210 -> 211: S4h's GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS=44 drops one more
   // ROSTER_SHAPE point (see ROWS/DOMAIN_CENSUS.OMITTED_ABOVE_CEILING above),
   // refused one more time the same way. Measured off this assertion.
-  ['beginRecruitment#refused', 211],
+  // 211 -> 212: S4i's GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS=82 drops one
+  // more ROSTER_SHAPE point the same way. Measured off this assertion.
+  ['beginRecruitment#refused', 212],
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
@@ -9767,7 +9840,11 @@ const DRIVE_CENSUS = Object.freeze({
   // the shipped accrual.
   // 582208 -> 582214: the "chrome vs paid" bug-fix round's `reviewBankedTime`,
   // driven once per label in `MANAGED_STATES` (six), beside `orderOpensAt`.
-  ROWS: 582214, // 582209 -> 582208: "kill the mint", re-measured
+  // 582214 -> 586924: S4i's one new exempt leaf widened the NUMBER domain by
+  // two points (402 -> 404), which multiplies out across every loop keyed on
+  // it — the same shape as the two ordinal knobs joining COUNT above. Read
+  // from this pin's own failure value.
+  ROWS: 586924, // 582209 -> 582208: "kill the mint", re-measured
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -9852,7 +9929,12 @@ const DRIVE_CENSUS = Object.freeze({
   // — so the node count moves with how many Pressables the drive's fixtures
   // actually render, not with a fixed per-control amount. Read from this
   // pin's own failure value rather than hand-derived.
-  NODES: 6417177, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
+  // 6417177 -> 6456687: S4i. The one new exempt leaf widens the NUMBER
+  // domain (402 -> 404), so `GymScreen` and `GymView`/`LadderView` are each
+  // driven and walked at two more purse points — and the `ScrollView`'s own
+  // new `style={styles.root}` prop adds a small style-object subtree to
+  // EVERY driven `GymScreen` render. Read from this pin's own failure value.
+  NODES: 6456687, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -9938,7 +10020,13 @@ const DRIVE_CENSUS = Object.freeze({
   // is itself a new string per Pressable, on top of the style-object
   // traversal `NODES` above already accounts for). Read from this pin's own
   // failure value rather than hand-derived.
-  STRINGS: 29_625_996,
+  // 29_625_996 -> 29_801_442: S4i. The widened NUMBER domain (402 -> 404)
+  // drives two more purse points across `GymScreen`/`GymView`/`LadderView`,
+  // and every string-carrying node on those extra renders joins the walk.
+  // DISTINCT_STRINGS below is still UNCONFIRMED for this round — the test
+  // throws at STRINGS first — left at its pre-round pin to be corrected from
+  // the next run's real failure rather than guessed.
+  STRINGS: 29_801_442,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -10015,7 +10103,10 @@ const DRIVE_CENSUS = Object.freeze({
   // strings) are new distinct strings the walk had not reached before,
   // across the drive's fixture/point combinations. Read from this pin's own
   // failure value.
-  DISTINCT_STRINGS: 3739,
+  // 3739 -> 3753: S4i. Two more driven purse points (NUMBER 402 -> 404) on
+  // `GymScreen`/`GymView`/`LadderView` reach new distinct string values.
+  // Read from this pin's own failure value.
+  DISTINCT_STRINGS: 3753,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -10156,7 +10247,9 @@ const DRIVE_CENSUS = Object.freeze({
   // draw now carries a `style` object, which the value walk descends into —
   // the same class of new territory `NODES`/`STRINGS` above moved for. Read
   // from this pin's own failure value.
-  STACKS: 5977,
+  // 5977 -> 6003: S4i. Two more driven purse points (NUMBER 402 -> 404)
+  // widen this walk the same way. Read from this pin's own failure value.
+  STACKS: 6003,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -10853,7 +10946,10 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   // PLAYTEST 4's eight new exempt tuning leaves widened the domains again,
   // moving four of these arms further — measured by running this exact
   // assertion rather than derived.
-  ['buyLadderEquipment#refused', 15672],
+  // S4i's one new exempt leaf widened NUMBER (and its dependent domains)
+  // again, moving four of these arms further — measured by running this
+  // exact assertion rather than derived.
+  ['buyLadderEquipment#refused', 15768],
   ['buySessionEquipment#bought', 76],
   ['buySessionEquipment#refused', 260],
   // §5.11 stage 4's nineteen arms, every one produced by the six named
@@ -10879,11 +10975,13 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   ['maintenancePrompt#offered', 5],
   ['maintenancePrompt#quiet', 1],
   ['moveUpLadder#moved', 759],
-  ['moveUpLadder#refused', 4065],
+  // S4i: measured by running this exact assertion rather than derived.
+  ['moveUpLadder#refused', 4089],
   ['placeFloorItem#placed', 2],
   ['placeFloorItem#refused', 3],
-  ['recordFriendVisit#refused', 1160],
-  ['recordFriendVisit#visited', 384],
+  // S4i: measured by running this exact assertion rather than derived.
+  ['recordFriendVisit#refused', 1172],
+  ['recordFriendVisit#visited', 388],
   ['recoverGym#recovered', 1],
   ['recoverGym#refused', 5],
   ['recoveryRequirement#blocked', 2],
@@ -15248,7 +15346,12 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // elements) and `empireTuning.ts` (the six new `GYM_SCREEN_BUTTON_*` /
   // `GYM_SCREEN_DISABLED_OPACITY` entries and their doc comments). Read from
   // this pin's own failure value.
-  NODES_EXAMINED: 62_173,
+  // 62_173 -> 62_193: S4i — new source in `GymScreen.tsx` (the header
+  // paragraphs on the pill-clearance fix, the `styles.root` block, and the
+  // one new JSX attribute, `style`, on the `ScrollView`) and `empireTuning.ts`
+  // (the one new `GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS` entry and its doc
+  // comment). Read from this pin's own failure value.
+  NODES_EXAMINED: 62_193,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -16833,9 +16936,12 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
   // P4b: the retired pulse leaves narrowed them slightly — NUMBER 405 -> 402,
   // the engagement domain 242 -> 239, ROSTER_SHAPE 138 -> 137 — and every
   // count below moved with them. Re-measured the same way.
+  // S4i: one new exempt leaf widened NUMBER 402 -> 404 and the engagement
+  // domain 239 -> 241 — every count below moved with them. Re-measured by
+  // running this exact assertion rather than derived.
   'FloorGrid.tsx#FloorGrid#props#owned': Object.freeze({
-    points: 402,
-    refusedPoints: 402,
+    points: 404,
+    refusedPoints: 404,
     calls: 0,
     recorded: 0,
   }),
@@ -16848,7 +16954,6 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
   // `GYM_VIEW_CONTROLS` — because §5.11 stage 4 is surfaced on the native
   // screen a player reaches and not on the DOM dev harness.
   'GymScreen.tsx#GymScreen#props.dispatch#gymBucks': Object.freeze({
-    points: 402,
     refusedPoints: 0,
     // 16884 -> 9309 -> 8907: THE PLAYER CHECK-IN ROUND'S GATING, THEN THE
     // "KILL THE MINT" ROUND'S REMOVAL OF THE CONTROL THAT GATING WAS ABOUT.
@@ -16877,44 +16982,52 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
     // at every swept purse point at or above 10 instead of at or above 200 —
     // 142 more (purse points, driven the same way, gain exactly one more
     // control each). Read from this pin's own failure value.
-    calls: 9049,
-    recorded: 9049,
+    // S4i: NUMBER 402 -> 404, 40 more calls at the two new purse points.
+    // Read from this pin's own failure value.
+    points: 404,
+    calls: 9089,
+    recorded: 9089,
   }),
+  // S4i: NUMBER's own engagement domain 239 -> 241. Read from this pin's own
+  // failure value.
   'engagement.ts#historyFrom#attended#slots': Object.freeze({
-    points: 239,
+    points: 241,
     refusedPoints: 1,
-    calls: 1139606,
-    recorded: 1139606,
+    calls: 1139769,
+    recorded: 1139769,
   }),
   'engagement.ts#historyFrom#attended#trainedDays': Object.freeze({
-    points: 239,
+    points: 241,
     refusedPoints: 0,
-    calls: 717,
-    recorded: 717,
+    calls: 723,
+    recorded: 723,
   }),
+  // S4i: NUMBER 402 -> 404. Read from this pin's own failure value.
   'ladderView.tsx#GymView#props.dispatch#gymBucks': Object.freeze({
-    points: 402,
+    points: 404,
     refusedPoints: 0,
-    calls: 14070,
-    recorded: 14070,
+    calls: 14140,
+    recorded: 14140,
   }),
   'ladderView.tsx#LadderView#props.dispatch#gymBucks': Object.freeze({
-    points: 402,
+    points: 404,
     refusedPoints: 0,
-    calls: 2010,
-    recorded: 2010,
+    calls: 2020,
+    recorded: 2020,
   }),
+  // S4i: ROSTER_SHAPE's own rosterSize domain 137 -> 138. Read from this
+  // pin's own failure value.
   'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour#rosterSize': Object.freeze({
-    points: 137,
+    points: 138,
     refusedPoints: 0,
-    calls: 1123653,
-    recorded: 2247306,
+    calls: 1123735,
+    recorded: 2247470,
   }),
   'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay#rosterSize': Object.freeze({
-    points: 137,
+    points: 138,
     refusedPoints: 0,
-    calls: 1123653,
-    recorded: 2247306,
+    calls: 1123735,
+    recorded: 2247470,
   }),
 });
 
@@ -16972,12 +17085,21 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (1614 -> 1634).
   // Phase 4: re-measured (1634 -> 2380), read from this pin's own failure.
-  POINTS: 2360, // 2380 -> 2360: P4b, measured off this assertion.
+  // 2360 -> 2374: S4i. A plain sum over DECLARED_CALLBACK_AXES's own now-
+  // measured `points` fields (404x4 + 241x2 + 138x2), not a second
+  // independent derivation — this test throws at CALLS before reaching this
+  // assertion, so it is not yet confirmed by this test's own failure output;
+  // the same arithmetic independently reproduces CALLS below exactly, which
+  // is the cross-check this file's own convention relies on elsewhere.
+  POINTS: 2374, // 2380 -> 2360: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3: re-measured (288 -> 298), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (298 -> 301).
   // Phase 4: re-measured (301 -> 406), read from this pin's own failure.
-  REFUSED_POINTS: 403, // 406 -> 403: P4b, measured off this assertion.
+  // 403 -> 405: S4i. FloorGrid's refusedPoints tracks its own `points` 1:1
+  // (402 -> 404 above), the engagement axis's refusedPoints is unchanged (1).
+  // Same derivation caveat as POINTS above.
+  REFUSED_POINTS: 405, // 406 -> 403: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3: re-measured (3310026 -> 3383424), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (3383424 -> 3384958).
@@ -17003,7 +17125,11 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
       // dispatch axis alone (8907 -> 9049, exactly +142), matching the mats
       // buy control becoming affordable at 142 more of the axis's 402 purse
       // points now that `SESSION_EQUIPMENT_COST_GYM_BUCKS.mats` is 10.
-      CALLS: 3412758,
+      // 3412758 -> 3413211: S4i. Read from this pin's own failure value —
+      // independently reproduced by summing DECLARED_CALLBACK_AXES's own
+      // now-measured `calls` fields, which is the cross-check for POINTS
+      // above.
+      CALLS: 3413211,
   // GDD §5.13 presentation Phase 3: re-measured (5496920 -> 5618662), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (5618662 -> 5620716).
@@ -17016,7 +17142,12 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // moves by, which is what says the pass recorded every call it made.
   // 5659922 -> 5660064: S4g, the same +142 the `CALLS` pin above moves by,
   // which is what says the pass recorded every call it made.
-  RECORDED: 5660064,
+  // 5660064 -> 5660681: S4i. A plain sum over DECLARED_CALLBACK_AXES's own
+  // now-measured `recorded` fields — this test throws at CALLS before
+  // reaching RECORDED, so unlike CALLS this is not yet confirmed by a real
+  // failure value; the derivation is the same one this comment history
+  // already uses for RECORDED elsewhere.
+  RECORDED: 5660681,
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,

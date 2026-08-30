@@ -5034,7 +5034,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `FLOOR_SIM_RENDER_SEED: 1` above (239 -> 256) reported no finding for
     // its own literal. Read from this assertion's own failure value, not
     // hand-summed.
-    ).toBe(393);
+    // 393 -> 394: S4i's one new tuning literal,
+    // GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS (82). Read from this
+    // assertion's own failure value.
+    ).toBe(394);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

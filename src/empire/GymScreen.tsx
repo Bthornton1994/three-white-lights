@@ -180,6 +180,22 @@
  * `testID` to the DOM `data-testid` attribute, so a Playwright check can
  * select on `[data-testid="gymscreen-..."]` exactly as the existing
  * `tools/verify-*.mjs` scripts select on the DOM screens.
+ *
+ * S4i — CLEARANCE FOR THE SHELL'S OWN NAV PILL. A real iPhone Safari
+ * playtest found `AppShell.tsx`'s absolutely-positioned `shell-leave-gym`
+ * pill ("BACK TO TRAINING") sitting on top of this screen's scrollport,
+ * covering slot 2's `stretching-yoga` and `rest` week-slot buttons — the
+ * pill is a sibling overlay drawn on top of everything, not part of this
+ * `ScrollView`'s own document flow, so it covers whatever happens to be
+ * underneath its fixed band regardless of scroll position. `styles.root`'s
+ * `marginBottom` below reserves exactly that band by shrinking THIS
+ * `ScrollView`'s own outer layout box — not by padding its scrollable
+ * content, which would only ever help once a reader has scrolled to the
+ * maximum scroll position, and would not stop the pill covering content at
+ * any position short of that. See `GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS` in
+ * `empireTuning.ts` for the derivation and its drift risk; this file does
+ * not, and by its own import fence cannot, read `src/shell/` directly to
+ * keep the two numbers live-linked.
  */
 
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -263,6 +279,20 @@ const GYM_SCREEN_BUTTON_DISABLED_TEXT_COLOR = 'silver';
  * addresses from the semantics side and this addresses from the CSS side.
  */
 const styles = StyleSheet.create({
+  /**
+   * S4i — the whole fix. `marginBottom` on the `ScrollView` itself (not
+   * `contentContainerStyle`) shrinks the SCROLLPORT'S OWN LAYOUT BOX, so the
+   * shell's absolutely-positioned nav pill — drawn on top of this screen at
+   * a fixed band from the viewport's bottom edge, regardless of this
+   * `ScrollView`'s scroll offset — never has anything to cover: the box it
+   * would cover no longer extends into that band at any scroll position.
+   * `contentContainerStyle` padding would only affect the reachable END of
+   * the scrollable content, which helps at max-scroll and not otherwise —
+   * see this file's header for the fuller comparison.
+   */
+  root: {
+    marginBottom: EMPIRE_TUNING.GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS,
+  },
   button: {
     paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
     paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
@@ -409,7 +439,7 @@ export function GymScreen(props: GymViewProps) {
   const dispatch = (action: GymViewAction): void => props.dispatch(action);
 
   return (
-    <ScrollView testID={'gymscreen-root'}>
+    <ScrollView testID={'gymscreen-root'} style={styles.root}>
       <View testID={'gymscreen-week'}>
         <Text>
           week {weekIndex} ({shape.fixed} fixed + {shape.flexible} flexible = {shape.total}{' '}

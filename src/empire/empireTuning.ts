@@ -2404,6 +2404,40 @@ export const EMPIRE_TUNING = Object.freeze({
    * enabled/disabled colour pair can express either state.
    */
   GYM_SCREEN_DISABLED_OPACITY: 0.5,
+
+  /**
+   * S4i — how much room `GymScreen.tsx`'s own `ScrollView` box reserves at
+   * its bottom edge so its scrollport frame never extends under
+   * `src/shell/AppShell.tsx`'s absolutely-positioned `BACK TO TRAINING` /
+   * `shell-leave-gym` nav pill, at ANY scroll position — not only at
+   * max-scroll, which is what `contentContainerStyle` padding alone would
+   * buy and why this is a `marginBottom` on the box itself instead. A real
+   * iPhone Safari playtest found the pill covering slot 2's
+   * `stretching-yoga` and `rest` week-slot buttons; this is that clearance.
+   *
+   * THE NUMBER, AND WHERE IT CAME FROM. 82 = `NAV_BOTTOM_INSET` (44) +
+   * `NAV_HEIGHT` (38), both read directly out of `src/shell/shellTuning.ts`
+   * at the time this constant was written — NOT imported: `src/empire/`'s
+   * own import fence (`empireCore.test.ts`, walked and pinned) permits
+   * imports only from within this directory, so `src/shell/` cannot be a
+   * live dependency here. This is therefore a CROSS-SESSION, READ-ONLY
+   * OBSERVATION of another session's file, not a coupling — the same shape
+   * as this file's own frozen `WALLET_CURRENCIES` and `FATIGUE_TUNING`
+   * references. STATED PLAINLY: if Session A changes `NAV_BOTTOM_INSET` or
+   * `NAV_HEIGHT`, this constant silently drifts out of sync with the real
+   * pill footprint until someone notices the mismatch on a device and
+   * re-derives it by hand. Nothing here re-checks the two source numbers
+   * automatically.
+   *
+   * CLASSIFICATION AND CONFIDENCE. `'knob'`, same as every other
+   * `GYM_SCREEN_*` layout value in this block — a UI clearance amount, not a
+   * domain-correctness number, and PROVISIONAL: it is sized to exactly
+   * cover the pill's own box with zero margin of its own, un-playtested
+   * beyond the geometry check `tools/verify-floor-reachability.mjs` runs
+   * under Chromium. CLAUDE.md's "Game Feel Values Must Be Tunable" applies
+   * — this is the tunable version, not an asserted-correct one.
+   */
+  GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS: 82,
 } satisfies EmpireTuningRecord);
 
 /**
@@ -2603,4 +2637,5 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS: 'knob',
   GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS: 'knob',
   GYM_SCREEN_DISABLED_OPACITY: 'knob',
+  GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS: 'knob',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

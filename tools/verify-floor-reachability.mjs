@@ -262,6 +262,64 @@
  *      phone playtest is what actually closes this; see `GymScreen.tsx`'s
  *      own header for the same limit stated about the fix itself.
  *
+ *   12. S4I — THE SHELL NAV PILL NO LONGER COVERS GYMSCREEN CONTROLS. A real
+ *       iPhone Safari playtest (a fifth round, after S4h) found
+ *       `AppShell.tsx`'s absolutely-positioned `shell-leave-gym` pill sitting
+ *       on top of slot 2's `stretching-yoga` and `rest` week-slot buttons,
+ *       at the bottom of `GymScreen.tsx`'s scrollport. The fix is a
+ *       `marginBottom` on the `ScrollView` box itself
+ *       (`GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS`), not
+ *       `contentContainerStyle` padding, specifically because a margin on
+ *       the box shrinks the scrollport's own layout frame at every scroll
+ *       position, where content padding would only ever help at max-scroll.
+ *       Four claims, all read from the live DOM:
+ *
+ *      12a. AT THE NATURAL RESTING SCROLL POSITION (`scrollTop === 0`,
+ *           confirmed rather than assumed): `gymscreen-root`'s own bounding
+ *           box never extends below the pill's top edge — the structural
+ *           claim the fix actually makes, since nothing the scrollport
+ *           clips can ever paint past its own box regardless of which
+ *           control is scrolled to. The two named controls are read too,
+ *           but at this scroll position they sit below the scrollport's
+ *           visible band (off-screen, clipped) — the overlap claim about
+ *           THEM is correctly SKIPPED here rather than asserted vacuously
+ *           true of an invisible element, and 12c is where it is asserted
+ *           for real.
+ *      12b. THE REAL DOM ORDER, DRIVEN RATHER THAN ASSUMED FROM SOURCE: of
+ *           every `role="button"` control under this screen OUTSIDE the
+ *           dev-only `gymscreen-advance-*` row (labelled "not part of the
+ *           game" in `GymScreen.tsx` itself, and not pressed anywhere in
+ *           this section), the last one in document order is asserted to be
+ *           `gymscreen-slot-2-set-rest` — which is one of the two controls
+ *           the human named, so this is a real measurement rather than an
+ *           assumption standing in for a third site.
+ *      12c. SCROLLED TO THE MAXIMUM SCROLL EXTENT of `gymscreen-root`
+ *           (`scrollTop` set to an arbitrarily large value and read back as
+ *           whatever the browser itself clamped it to, rather than a
+ *           `scrollHeight` this tool computed): the same structural
+ *           container claim as 12a, re-read to confirm scrolling the inner
+ *           content does not move the scrollport's own outer box — and now
+ *           that `gymscreen-slot-2-set-stretching-yoga` and
+ *           `gymscreen-slot-2-set-rest` are genuinely within the visible
+ *           band, a real overlap assertion against the pill's box for both:
+ *           each control's bottom edge must sit at or above the pill's top
+ *           edge, read from real `y`/`height` numbers rather than compared
+ *           for literal inequality alone.
+ *
+ *      THE LIMIT, STATED RATHER THAN IMPLIED, AND IT IS A DIFFERENT SHAPE OF
+ *      LIMIT FROM SECTION 11's. This is pure CSS box-model geometry — a
+ *      `marginBottom` shrinking a scrollport's layout box and an absolutely
+ *      positioned sibling's own box, both read via real `getBoundingClientRect`
+ *      values under Chromium at a phone-sized (390x844) viewport — not a
+ *      WebKit-specific touch-dispatch quirk like section 11's. Chromium's box
+ *      model math is standards-conformant and trustworthy evidence for a
+ *      layout claim in a way it could not be for section 11's click-
+ *      delegation claim. It is still not the literal device: font metrics,
+ *      the real Safari UI chrome (address bar show/hide, the home
+ *      indicator), and any WebKit-specific layout quirk are outside what
+ *      this can see, so the honest claim is "the geometry holds under
+ *      Chromium at this viewport", not "verified on iPhone".
+ *
  * USAGE. Start the web build first (`npx expo start --web`), then:
  *
  *     node tools/verify-floor-reachability.mjs [--url http://localhost:8081]
@@ -665,6 +723,38 @@ async function boxOf(id) {
   const count = await locator.count().catch(() => 0);
   if (count === 0) return null;
   return locator.boundingBox().catch(() => null);
+}
+
+/**
+ * Section 12's tolerance for a box-edge comparison, in real CSS pixels — sub-
+ * pixel rounding from `deviceScaleFactor: 2` (this tool's own context option),
+ * not a game-feel value, so it lives here rather than in `empireTuning.ts`
+ * beside the constant it is checking.
+ */
+const PILL_OVERLAP_EPSILON_PIXELS = 0.5;
+
+/** `gymscreen-root`'s own `scrollTop`, or null if not attached. */
+async function gymScreenScrollTop() {
+  const locator = page.getByTestId('gymscreen-root');
+  const count = await locator.count().catch(() => 0);
+  if (count === 0) return null;
+  return locator.evaluate((node) => node.scrollTop).catch(() => null);
+}
+
+/**
+ * Sets `gymscreen-root`'s `scrollTop` to `value` and reads back what the
+ * browser actually clamped it to — never trusted to be `value` itself, since
+ * the maximum-scroll claim (12c) needs the browser's own clamp
+ * (`scrollHeight - clientHeight`), not a number this tool computed.
+ */
+async function setGymScreenScrollTop(value) {
+  return page
+    .getByTestId('gymscreen-root')
+    .evaluate((node, v) => {
+      node.scrollTop = v;
+      return node.scrollTop;
+    }, value)
+    .catch(() => null);
 }
 
 const skip = (text) => log.push(`  SKIP  ${text}`);
@@ -2788,6 +2878,133 @@ try {
   }
 
   readAddress('11: S4h, done');
+
+  // -------------------------------------------------------------------------
+  // 12. S4I — THE SHELL NAV PILL NO LONGER COVERS GYMSCREEN CONTROLS. See
+  //     this file's own header for the four claims and the stated limit —
+  //     pure CSS box-model geometry under Chromium at a phone-sized
+  //     viewport, a different (stronger, for a layout claim) shape of
+  //     evidence than section 11's WebKit touch-dispatch limit.
+  // -------------------------------------------------------------------------
+  await reachGymScreen(false);
+  readAddress('12: S4i, a fresh cold gym');
+
+  const pillDrawnS4i = await waitUntilDrawn(page, 'shell-leave-gym', BEAT_TIMEOUT_MS);
+  if (!pillDrawnS4i.drawn) {
+    fail(`S4i (12): shell-leave-gym never drawn — ${pillDrawnS4i.why}`);
+  } else {
+    // 12a. The natural resting scroll position — confirmed, not assumed.
+    const scrollTopNatural = await gymScreenScrollTop();
+    const rootBoxNatural = await boxOf('gymscreen-root');
+    const pillBoxNatural = await boxOf('shell-leave-gym');
+    if (scrollTopNatural !== 0 || rootBoxNatural === null || pillBoxNatural === null) {
+      fail(
+        `S4i (12a): expected gymscreen-root at scrollTop 0 with real boxes on both the scrollport and the pill — scrollTop ${scrollTopNatural}, root ${JSON.stringify(rootBoxNatural)}, pill ${JSON.stringify(pillBoxNatural)}`,
+      );
+    } else if (
+      rootBoxNatural.y + rootBoxNatural.height <=
+      pillBoxNatural.y + PILL_OVERLAP_EPSILON_PIXELS
+    ) {
+      ok(
+        `S4i (12a): at the natural resting scroll position (scrollTop 0), gymscreen-root's own box (y ${rootBoxNatural.y}, height ${rootBoxNatural.height}, bottom ${rootBoxNatural.y + rootBoxNatural.height}) sits at or above shell-leave-gym's top edge (y ${pillBoxNatural.y}) — the scrollport cannot paint into the pill's band`,
+      );
+    } else {
+      fail(
+        `S4i (12a): gymscreen-root's own box extends into the pill's band at the natural resting scroll position — root bottom ${rootBoxNatural.y + rootBoxNatural.height}, pill top ${pillBoxNatural.y}`,
+      );
+    }
+
+    // The two human-named controls, read at this same scroll position —
+    // SKIPPED rather than asserted where they sit below gymscreen-root's own
+    // visible band (clipped, off-screen at scrollTop 0): an overlap claim
+    // about an element that is not currently rendered on screen would be
+    // vacuously true regardless of the fix. 12c below asserts these for real
+    // once they are genuinely scrolled into view, which is the state the
+    // human's report was actually about.
+    if (rootBoxNatural !== null && pillBoxNatural !== null) {
+      for (const controlId of ['gymscreen-slot-2-set-stretching-yoga', 'gymscreen-slot-2-set-rest']) {
+        const controlBox = await boxOf(controlId);
+        if (controlBox === null) {
+          fail(`S4i (12a): ${controlId} has no box at all at the natural resting scroll position`);
+        } else if (controlBox.y >= rootBoxNatural.y + rootBoxNatural.height) {
+          skip(
+            `S4i (12a): ${controlId} sits below gymscreen-root's visible band at the natural resting scroll position (control box y ${controlBox.y}, root bottom ${rootBoxNatural.y + rootBoxNatural.height}) — not currently on screen, so a pill-overlap claim here would be vacuous; 12c re-checks this control once it is scrolled into view`,
+          );
+        } else if (controlBox.y + controlBox.height <= pillBoxNatural.y + PILL_OVERLAP_EPSILON_PIXELS) {
+          ok(
+            `S4i (12a): ${controlId} is on screen at the natural resting scroll position and clear of the pill — control bottom ${controlBox.y + controlBox.height}, pill top ${pillBoxNatural.y}`,
+          );
+        } else {
+          fail(
+            `S4i (12a): ${controlId} overlaps shell-leave-gym at the natural resting scroll position — control box ${JSON.stringify(controlBox)}, pill box ${JSON.stringify(pillBoxNatural)}`,
+          );
+        }
+      }
+    }
+  }
+
+  // 12b. The real DOM order, driven rather than assumed from source: every
+  // role="button" GymScreen control, outside the dev-only "not part of the
+  // game" `gymscreen-advance-*` row (never pressed in this section), in
+  // document order — the last one is the genuinely bottom-most reachable
+  // control a thumb could scroll to.
+  const gameButtonsS4i = (
+    await page
+      .locator('[data-testid^="gymscreen-"][role="button"]')
+      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')))
+  ).filter((id) => !id.startsWith('gymscreen-advance'));
+  const lastGameButtonS4i = gameButtonsS4i.length === 0 ? null : gameButtonsS4i[gameButtonsS4i.length - 1];
+  if (lastGameButtonS4i === 'gymscreen-slot-2-set-rest') {
+    ok(
+      `S4i (12b): the last role="button" GymScreen control in real document order, outside the dev-only row, is gymscreen-slot-2-set-rest — one of the two controls the human named, driven from the live DOM rather than assumed from source (${gameButtonsS4i.length} non-dev game controls total)`,
+    );
+  } else {
+    fail(
+      `S4i (12b): expected the last non-dev role="button" GymScreen control to be gymscreen-slot-2-set-rest — the real DOM order found "${lastGameButtonS4i}" instead, of ${gameButtonsS4i.length} non-dev game controls`,
+    );
+  }
+
+  // 12c. Scrolled to the maximum scroll extent — the browser's own clamp
+  // (`setGymScreenScrollTop`'s own comment), not a number this tool computed.
+  const scrollTopMax = await setGymScreenScrollTop(1e9);
+  await page.waitForTimeout(300);
+  const rootBoxMax = await boxOf('gymscreen-root');
+  const pillBoxMax = await boxOf('shell-leave-gym');
+  if (scrollTopMax === null || scrollTopMax <= 0 || rootBoxMax === null || pillBoxMax === null) {
+    fail(
+      `S4i (12c): expected a genuine, positive, browser-clamped max scrollTop with real boxes on both the scrollport and the pill — scrollTop ${scrollTopMax}, root ${JSON.stringify(rootBoxMax)}, pill ${JSON.stringify(pillBoxMax)}`,
+    );
+  } else if (rootBoxMax.y + rootBoxMax.height <= pillBoxMax.y + PILL_OVERLAP_EPSILON_PIXELS) {
+    ok(
+      `S4i (12c): at the maximum scroll extent (scrollTop clamped by the browser to ${scrollTopMax}), gymscreen-root's own box (bottom ${rootBoxMax.y + rootBoxMax.height}) still sits at or above shell-leave-gym's top edge (y ${pillBoxMax.y}) — unmoved from 12a's reading, as the fix predicts (the scrollport's OWN box does not move when its inner content scrolls)`,
+    );
+  } else {
+    fail(
+      `S4i (12c): gymscreen-root's own box extends into the pill's band at the maximum scroll extent — root bottom ${rootBoxMax.y + rootBoxMax.height}, pill top ${pillBoxMax.y}`,
+    );
+  }
+
+  if (pillBoxMax !== null) {
+    for (const controlId of ['gymscreen-slot-2-set-stretching-yoga', 'gymscreen-slot-2-set-rest']) {
+      const controlBox = await boxOf(controlId);
+      if (controlBox === null) {
+        fail(`S4i (12c): ${controlId} has no box at the maximum scroll extent`);
+        continue;
+      }
+      const clear = controlBox.y + controlBox.height <= pillBoxMax.y + PILL_OVERLAP_EPSILON_PIXELS;
+      if (clear) {
+        ok(
+          `S4i (12c): ${controlId} is clear of shell-leave-gym at the maximum scroll extent — control box y ${controlBox.y} height ${controlBox.height} (bottom ${controlBox.y + controlBox.height}), pill top ${pillBoxMax.y}`,
+        );
+      } else {
+        fail(
+          `S4i (12c): ${controlId} overlaps shell-leave-gym at the maximum scroll extent — control box ${JSON.stringify(controlBox)}, pill box ${JSON.stringify(pillBoxMax)}`,
+        );
+      }
+    }
+  }
+
+  readAddress('12: S4i, done');
 
   readAddress('the end of the run');
 } catch (e) {
