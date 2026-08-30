@@ -385,6 +385,13 @@ vi.mock('react-native', () => ({
   Text: 'Text',
   Pressable: 'Pressable',
   ScrollView: 'ScrollView',
+  // S4h: `GymScreen.tsx` now calls `StyleSheet.create` at module scope (the
+  // button-chrome fix for the iOS Safari click-delegation gap a real phone
+  // playtest found). Same identity stub `GymScreen.test.ts`'s own mock uses,
+  // for the same reason — without it the import above resolves `StyleSheet`
+  // to `undefined` and the module throws at load time, before any census in
+  // this file runs.
+  StyleSheet: { create: (styles: Record<string, unknown>) => styles },
 }));
 
 import {
@@ -1699,7 +1706,14 @@ const SURFACE_CENSUS = Object.freeze({
 // (or the VALUE type of an exported non-function), so a parameter-only type
 // is never reached. Read from this pin's own failure value rather than
 // hand-traced to the specific export.
-LITERAL_POSITIONS: 3794, // 3791 -> 3792: "kill the mint", re-measured; 3792 -> 3793: its harness fix, re-measured
+// 3794 -> 3800: S4h's six new EMPIRE_TUNING keys (GYM_SCREEN_BUTTON_*,
+// GYM_SCREEN_DISABLED_OPACITY), the same 1:1 shape the Phase 3 RENDER half
+// note above records — each new top-level key adds one literal position
+// wherever the walk reaches EMPIRE_TUNING's own key union
+// (`EMPIRE_TUNING_CLASSIFICATION`'s `Record<keyof typeof EMPIRE_TUNING,
+// EmpireTuningClass>` and the exported functions parameterised over it).
+// Read from this pin's own failure value.
+LITERAL_POSITIONS: 3800, // 3791 -> 3792: "kill the mint", re-measured; 3792 -> 3793: its harness fix, re-measured
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -2864,7 +2878,11 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // body itself adds one more, calling `isSoundCondition`. Read from this
   // pin's own failure value rather than hand-counted. The set of
   // CONSTRUCTORS below is unchanged.
-  CALLS_EXAMINED: 2883,
+  // 2883 -> 2884: S4h's one new call expression, `StyleSheet.create({...})`
+  // in `GymScreen.tsx` — nothing else in the round adds or removes a call.
+  // Read from this pin's own failure value. The set of CONSTRUCTORS below is
+  // unchanged.
+  CALLS_EXAMINED: 2884,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -4364,6 +4382,36 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
     'DORMANT_INCOME_MULTIPLIER',
     'A MULTIPLIER, the sibling of the row above for a failed gym: returned from `conditionIncomeMultiplier` and multiplied into an accrual, never compared against an input. Its ORDERING against the floor above is asserted in `management.test.ts` (dormancy is worse than the worst live gym), which is a relation between two constants and not a branch on a caller-supplied value.',
   ),
+  // S4h — GymScreen.tsx's button chrome, the iOS Safari click-delegation fix.
+  // Five paint/layout scales, the same class as FLOOR_TILE_PIXELS and the
+  // FLOOR_SIM_* rendering constants above: every one is read once, into a
+  // `StyleSheet.create` block, and applied as a style value on a `Pressable`.
+  // None of them is ever compared against a caller-supplied number — there is
+  // no "is this padding big enough" branch anywhere in this directory.
+  ...exemptTable(
+    'GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS',
+    'A PAINT SCALE: vertical padding inside every button on GymScreen.tsx, read once into `styles.button` and never compared against anything.',
+  ),
+  ...exemptTable(
+    'GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS',
+    'A PAINT SCALE, the horizontal sibling of the row above: same `styles.button` block, same "read once into a style value, never compared against a caller-supplied number" shape.',
+  ),
+  ...exemptTable(
+    'GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS',
+    'A PAINT SCALE: the corner radius on every button on GymScreen.tsx, read once into `styles.button` and never compared against anything.',
+  ),
+  ...exemptTable(
+    'GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS',
+    'A PAINT SCALE: the border width on every button on GymScreen.tsx. Its value is 1, which is a shape point every domain in the file carries anyway — the same fact `TICK_SECONDS`\'s row above states for its own value of 1.',
+  ),
+  ...exemptTable(
+    'GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS',
+    'A PAINT SCALE: the minimum tap-target height on every button on GymScreen.tsx (the Apple Human Interface Guidelines\' 44pt figure), read once into `styles.button` and never compared against anything a caller supplies.',
+  ),
+  ...exemptTable(
+    'GYM_SCREEN_DISABLED_OPACITY',
+    'A MULTIPLIER, dimensionless and in [0, 1]: how much dimmer the S4h Fix 2 disabled-but-visible control reads than a live one. Applied as a style value (`opacity`), never compared against an input — the same shape as `CONDITION_INCOME_MULTIPLIER_FLOOR` above.',
+  ),
 ]);
 
 /**
@@ -5232,6 +5280,13 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   'ROSTER_SHAPE/FLOOR_SPRITE_OUTFIT_PALETTE.serious-lifter.top[2]=196',
   'ROSTER_SHAPE/FLOOR_TILE_PIXELS=28',
   'ROSTER_SHAPE/GYM_BUCKS_BASE_PER_HOUR=120',
+  // S4h: the one exempt leaf of the six GYM_SCREEN_BUTTON_*/GYM_SCREEN_
+  // DISABLED_OPACITY additions that sits above ROSTER_SHAPE's ceiling
+  // (ROSTER_SLOTS_MAX + 1 = 17) — the 44pt minimum tap target, a real-device
+  // sizing figure rather than a roster count. The other five (padding 10 and
+  // 16, a border radius of 8, a border width of 1, and an opacity of 0.5)
+  // all sit below it.
+  'ROSTER_SHAPE/GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS=44',
   'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
   'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[1]=28800',
   'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[2]=259200',
@@ -5335,7 +5390,10 @@ const DOMAIN_CENSUS = Object.freeze({
   // 330 -> 331: "kill the mint" adds one exempt leaf,
   // WALL_CLOCK_TICK_INTERVAL_SECONDS.
   // 331 -> 332: the same round's harness fix adds one more, MILLISECONDS_PER_SECOND.
-  EXEMPT: 332,
+  // 332 -> 338: S4h's six GYM_SCREEN_BUTTON_*/GYM_SCREEN_DISABLED_OPACITY
+  // leaves, all exempt (paint scales and one dimensionless multiplier, none
+  // compared against a caller-supplied value) — see NOT_A_BRANCH_POINT above.
+  EXEMPT: 338,
   // 154 -> 196: the same 42 new leaves. 251 -> 264: the same 13 new leaves.
   // 264 -> 266: the same 2 new leaves.
   // 266 -> 273: the same 7 new leaves.
@@ -5359,7 +5417,11 @@ const DOMAIN_CENSUS = Object.freeze({
   // 433 -> 434: the same round's harness fix adds MILLISECONDS_PER_SECOND.
   // 434 -> 435: the "chrome vs paid" bug-fix round's one new numeric leaf,
   // DUST_REPAIR_COST_GYM_BUCKS.
-  TUNING_NUMERIC_LEAVES: 435, // 432 -> 433: "kill the mint" adds WALL_CLOCK_TICK_INTERVAL_SECONDS
+  // 435 -> 441: S4h's six new numeric leaves (GYM_SCREEN_BUTTON_PADDING_
+  // VERTICAL_PIXELS, _HORIZONTAL_PIXELS, _BORDER_RADIUS_PIXELS, _BORDER_
+  // WIDTH_PIXELS, _MIN_HEIGHT_PIXELS, and GYM_SCREEN_DISABLED_OPACITY), all
+  // exempt — see EXEMPT above. Read from this pin's own failure value.
+  TUNING_NUMERIC_LEAVES: 441, // 432 -> 433: "kill the mint" adds WALL_CLOCK_TICK_INTERVAL_SECONDS
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -5387,7 +5449,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // 435 -> 436: the same round's harness fix, MILLISECONDS_PER_SECOND.
   // 436 -> 437: the "chrome vs paid" bug-fix round's one new filed leaf,
   // DUST_REPAIR_COST_GYM_BUCKS.
-  BRANCH_POINTS: 437,
+  // 437 -> 443: S4h's six new exempt leaves (GYM_SCREEN_BUTTON_*,
+  // GYM_SCREEN_DISABLED_OPACITY) — see NOT_A_BRANCH_POINT above.
+  BRANCH_POINTS: 443,
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
@@ -5429,7 +5493,15 @@ const DOMAIN_CENSUS = Object.freeze({
 // LEVEL (no ceiling or already 0) are unaffected — 10 and 200 are both inside
 // or both outside their obligation the same way. Read off this pin's own
 // failure value; see OMITTED_ABOVE_CEILING.ROSTER_SHAPE below for the mirror.
-CONTAINMENT_CHECKS: 2280,
+// 2280 -> 2315: S4h's six new exempt tuning leaves (GYM_SCREEN_BUTTON_*,
+// GYM_SCREEN_DISABLED_OPACITY). Five of the six (padding 10/16, radius 8,
+// border width 1, opacity 0.5) sit at or below every domain's ceiling — six
+// domains x five leaves = 30. The sixth, MIN_HEIGHT_PIXELS=44, sits below
+// NUMBER/SECONDS/DAY/COUNT/LEVEL's ceilings (none, or 600) but above
+// ROSTER_SHAPE's (17), so it adds a `required` obligation in five domains
+// rather than six — +5. 30 + 5 = 35; see OMITTED_ABOVE_CEILING.ROSTER_SHAPE
+// below for the mirror of the one dropped pair.
+CONTAINMENT_CHECKS: 2315,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -5486,7 +5558,11 @@ CONTAINMENT_CHECKS: 2280,
     // to 10. At 200 it sat above ROSTER_SHAPE's ceiling (17) and was omitted;
     // at 10 it no longer does, so this domain omits one fewer branch point.
     // See CONTAINMENT_CHECKS above for the mirror image of this same move.
-    ROSTER_SHAPE: 210,
+    // 210 -> 211: S4h's GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS=44 sits above
+    // ROSTER_SHAPE's ceiling (17); the other five new leaves do not. See
+    // CONTAINMENT_CHECKS above and EXEMPT_LEAVES_ABOVE_A_CEILING's own new
+    // row for the mirror of this same leaf.
+    ROSTER_SHAPE: 211,
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -9057,7 +9133,10 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 343 -> 342: S4g's SESSION_EQUIPMENT_COST_GYM_BUCKS.mats retune (200 ->
   // 10) moves one branch point out from above ROSTER_SHAPE's ceiling, so one
   // fewer point is dropped overall. Measured off this assertion.
-  POINTS: 342,
+  // 342 -> 343: S4h's GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS=44 moves one branch
+  // point above ROSTER_SHAPE's ceiling (the opposite direction of S4g's
+  // move), dropped in that one domain. Measured off this assertion.
+  POINTS: 343,
   /** Of those, how many at least one subject was driven at. */
   // Tracks POINTS 1:1 again (218), confirmed by running the assertion below
   // rather than assumed. PLAYTEST 4: tracks POINTS 1:1 again (222), confirmed
@@ -9072,7 +9151,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 340 -> 343: the same round's harness fix, with POINTS above. Measured.
   // 343 -> 342: tracks POINTS 1:1 again, confirmed by running this exact
   // assertion.
-  POINTS_DRIVEN: 342,
+  // 342 -> 343: S4h, tracks POINTS 1:1 again (see POINTS above), confirmed
+  // by running this exact assertion.
+  POINTS_DRIVEN: 343,
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
@@ -9106,7 +9187,11 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 6052 -> 6029: S4g's mats retune drops one FEWER point (see ROWS above),
   // driven 23 fewer times — the one point x ARGUMENT_HEAVY_SUBJECTS (23).
   // Measured off this assertion.
-  PAIRS_DRIVEN: 6029,
+  // 6029 -> 6052: S4h's GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS=44 drops one MORE
+  // point (see POINTS/ROWS above), driven 23 more times — the same one point
+  // x ARGUMENT_HEAVY_SUBJECTS (23) shape as the row above, in reverse.
+  // Measured off this assertion.
+  PAIRS_DRIVEN: 6052,
   // GDD §5.13 presentation Phase 3: PAIRS_SKIPPED re-measured (495 -> 517),
   // a real failure value this round's own run produced.
   PAIRS_SKIPPED: 517,
@@ -9181,7 +9266,13 @@ const OVERFLOW_CENSUS = Object.freeze({
   // branch point out from above ROSTER_SHAPE's ceiling (see DOMAIN_CENSUS
   // above), which drops one FEWER row here — read from this pin's own
   // failure value.
-  ROWS: 6887,
+  // S4h: GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS=44 moves one branch point
+  // ABOVE ROSTER_SHAPE's ceiling (see DOMAIN_CENSUS.OMITTED_ABOVE_CEILING
+  // above, 210 -> 211), the opposite direction of S4g's move, so this pass
+  // drives one more dropped point — and, at every subject this pass builds
+  // for that point, more than one row. Read from this pin's own failure
+  // value rather than hand-derived.
+  ROWS: 6910,
   // GDD §5.13 presentation Phase 3: re-measured (942486 -> 947983), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (947983 -> 960248).
@@ -9190,7 +9281,11 @@ const OVERFLOW_CENSUS = Object.freeze({
   // value.
   // S4g: mats retune drops one fewer point (see ROWS above), one fewer
   // subtree of nodes walked. Read from this pin's own failure value.
-  NODES: 1336723,
+  // S4h: GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS=44 drops one MORE point (see
+  // ROWS/DOMAIN_CENSUS above), and every `Pressable` the resulting driven
+  // `GymScreen` states render now carries a `style` object the walk
+  // descends into. Read from this pin's own failure value.
+  NODES: 1337990,
   // GDD §5.13 presentation Phase 3: re-measured (6413124 -> 6446099), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (6446099 -> 6540148).
@@ -9199,7 +9294,12 @@ const OVERFLOW_CENSUS = Object.freeze({
   // value.
   // S4g: mats retune drops one fewer point (see ROWS above), one fewer
   // subtree of strings walked. Read from this pin's own failure value.
-  STRINGS: 9274821,
+  // S4h: GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS=44 drops one MORE point (see
+  // ROWS/DOMAIN_CENSUS above), and every `Pressable` the resulting driven
+  // `GymScreen` states render now carries an `accessibilityRole` string and
+  // a `style` object whose own values the walk descends into. Read from
+  // this pin's own failure value.
+  STRINGS: 9283600,
   // GDD §5.13 presentation Phase 3: re-measured (4366 -> 4378), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (4378 -> 4381).
@@ -9270,7 +9370,10 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 1312 -> 1304: S4g drops one fewer point (see ROWS above), 8 fewer
   // closures declined at the same per-point closure count. Measured off
   // this assertion.
-  CLOSURES_DECLINED: 1304,
+  // 1304 -> 1312: S4h drops one MORE point (see ROWS/DOMAIN_CENSUS above), 8
+  // more closures declined at the same per-point closure count — the same
+  // shape as the row above, in reverse. Measured off this assertion.
+  CLOSURES_DECLINED: 1312,
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -9320,7 +9423,10 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // 211 -> 210: S4g's mats retune drops one fewer ROSTER_SHAPE point (see
   // ROWS/DOMAIN_CENSUS above), refused one fewer time the same way.
   // Measured off this assertion.
-  ['beginRecruitment#refused', 210],
+  // 210 -> 211: S4h's GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS=44 drops one more
+  // ROSTER_SHAPE point (see ROWS/DOMAIN_CENSUS.OMITTED_ABOVE_CEILING above),
+  // refused one more time the same way. Measured off this assertion.
+  ['beginRecruitment#refused', 211],
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
@@ -9740,7 +9846,13 @@ const DRIVE_CENSUS = Object.freeze({
   // now draws the "as new" text instead of the live `Pressable`, so those
   // driven renders have fewer nodes on them. Read from this pin's own
   // failure value.
-  NODES: 6417127, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
+  // 6417127 -> 6417177: S4h. Every driven `GymScreen` render now carries a
+  // `style` object (and an `accessibilityRole` string) on every `Pressable`
+  // it draws, and the value walk descends into each style object's own keys
+  // — so the node count moves with how many Pressables the drive's fixtures
+  // actually render, not with a fixed per-control amount. Read from this
+  // pin's own failure value rather than hand-derived.
+  NODES: 6417177, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -9819,7 +9931,14 @@ const DRIVE_CENSUS = Object.freeze({
   // nothing to repair" instead, on some of `MANAGED_STATES`. Fewer live
   // controls is fewer string-carrying nodes. Read from this pin's own
   // failure value.
-  STRINGS: 29_625_497,
+  // 29_625_497 -> 29_625_996: S4h. Every driven `GymScreen` render's
+  // `Pressable`s now carry a `style` object and an `accessibilityRole`
+  // string, and the string-carrying subtree the walk finds grows with how
+  // many Pressables each drive fixture actually renders (accessibilityRole
+  // is itself a new string per Pressable, on top of the style-object
+  // traversal `NODES` above already accounts for). Read from this pin's own
+  // failure value rather than hand-derived.
+  STRINGS: 29_625_996,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -9891,7 +10010,12 @@ const DRIVE_CENSUS = Object.freeze({
   // live "repair for X"/"needs X gym bucks — you have Y" control on some of
   // `MANAGED_STATES` removes distinct strings without adding any new ones.
   // Read from this pin's own failure value.
-  DISTINCT_STRINGS: 3709,
+  // 3709 -> 3739: S4h. `accessibilityRole` is a new string ('button') on
+  // every driven `Pressable`, and the style objects' own values (colour
+  // strings) are new distinct strings the walk had not reached before,
+  // across the drive's fixture/point combinations. Read from this pin's own
+  // failure value.
+  DISTINCT_STRINGS: 3739,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -10028,7 +10152,11 @@ const DRIVE_CENSUS = Object.freeze({
   // driven return trees carry three fewer Error-shaped `stack`
   // own-properties of the react dev-mode kind. Read from this pin's own
   // failure value.
-  STACKS: 5969,
+  // 5969 -> 5977: S4h. Every `Pressable` this drive's `GymScreen` fixtures
+  // draw now carries a `style` object, which the value walk descends into —
+  // the same class of new territory `NODES`/`STRINGS` above moved for. Read
+  // from this pin's own failure value.
+  STACKS: 5977,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -14869,7 +14997,11 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // value rather than attributed by hand-count against the diff.
   // 1327 -> 1329: the "chrome vs paid" bug-fix round. Read from this pin's
   // own failure value rather than attributed by hand-count against the diff.
-  member: 1329,
+  // 1329 -> 1330: S4h's one new call, `StyleSheet.create({...})` in
+  // `GymScreen.tsx` — the same call `CALLS_EXAMINED` above counts, its
+  // target classified `member` because the callee is a member expression
+  // (`StyleSheet.create`). Read from this pin's own failure value.
+  member: 1330,
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -15109,7 +15241,14 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // `GymScreen.tsx` — `isSoundCondition`/`displayRepairCostBySoundness` and
   // the repointed per-item-row expressions. Read from this pin's own failure
   // value.
-  NODES_EXAMINED: 61_786,
+  // 61_786 -> 62_173: S4h — the iOS Safari button-chrome fix. New source in
+  // both `GymScreen.tsx` (the header paragraphs on the fix and its limit, the
+  // colour/style constants, the `StyleSheet.create` block, and two new JSX
+  // attributes — `accessibilityRole`/`style` — on all fourteen `Pressable`
+  // elements) and `empireTuning.ts` (the six new `GYM_SCREEN_BUTTON_*` /
+  // `GYM_SCREEN_DISABLED_OPACITY` entries and their doc comments). Read from
+  // this pin's own failure value.
+  NODES_EXAMINED: 62_173,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

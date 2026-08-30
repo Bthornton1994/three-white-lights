@@ -2369,6 +2369,41 @@ export const EMPIRE_TUNING = Object.freeze({
    * recovery quote is computed from.
    */
   RECOVERY_CONDITION_MIN: 0.8,
+
+  /**
+   * S4h — GymScreen.tsx's own chrome, on the same terms as every other
+   * screen-layout knob in this file: an untuned placeholder, legible and
+   * self-consistent, not a value anybody has judged.
+   *
+   * WHY THIS BLOCK EXISTS AT ALL, rather than a bare number written into the
+   * component: `src/tuning/audit.ts` classifies every `.tsx` file as a
+   * `renderer` and refuses to let ANY file outside `SOURCE_RULES` hold a
+   * named constant, `.tsx` included by that rule's own text — so a chrome
+   * value belongs here on exactly the same terms `FLOOR_TILE_PIXELS` and
+   * `FLOOR_GRID_BORDER_WIDTH_PIXELS` already do, not because GymScreen.tsx's
+   * button chrome is "feel" in the animation-timing sense.
+   *
+   * The finding this round closes: a real phone playtest reported the screen
+   * as non-interactive — every one of GymScreen.tsx's thirteen `Pressable`
+   * elements shipped with no `style`, no `accessibilityRole`, and no
+   * `cursor`, which is a known iOS Safari click-delegation gap for a
+   * non-natively-interactive element. These sizes are what makes a control
+   * visibly a control; `MIN_HEIGHT_PIXELS` is the Apple Human Interface
+   * Guidelines' 44pt minimum tap target, the one number here with a real
+   * external reference rather than a made-up round figure.
+   */
+  GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS: 10,
+  GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS: 16,
+  GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS: 8,
+  GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS: 1,
+  GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS: 44,
+  /**
+   * The disabled-but-visible shortfall control's opacity (S4h Fix 2, the
+   * buy-session row's unaffordable-but-reached arm) — how much dimmer than a
+   * live control it reads. A fraction rather than a colour, so the same
+   * enabled/disabled colour pair can express either state.
+   */
+  GYM_SCREEN_DISABLED_OPACITY: 0.5,
 } satisfies EmpireTuningRecord);
 
 /**
@@ -2561,4 +2596,11 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FAILURE_WARNING_STRIKES: 'budget',
   FAILURE_STRIKES: 'budget',
   RECOVERY_CONDITION_MIN: 'budget',
+
+  GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS: 'knob',
+  GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS: 'knob',
+  GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS: 'knob',
+  GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS: 'knob',
+  GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS: 'knob',
+  GYM_SCREEN_DISABLED_OPACITY: 'knob',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

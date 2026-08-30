@@ -238,6 +238,30 @@
  *      wait is measured wall-clock time on the tool's own reported runtime,
  *      not a bound guessed in advance.
  *
+ *   11. S4H — THE iOS SAFARI BUTTON-CHROME FIX. A real phone playtest
+ *       reported the whole screen as non-interactive: every `Pressable`
+ *       shipped with no `style`, no `accessibilityRole`, no `cursor` — a
+ *       known iOS Safari click-delegation gap for a non-natively-interactive
+ *       element. Three claims, all read from the live DOM:
+ *
+ *      11a. A live control's computed `cursor` is `pointer` and it carries
+ *           DOM `role="button"` — react-native-web's own mapping of
+ *           `accessibilityRole="button"`.
+ *      11b. THE MINIMUM PLAYER PROBE: a real `page.click()` on a week-slot
+ *           option changes the drawn "slot 0: ..." text, read from the DOM
+ *           before and after — not from React state.
+ *      11c. S4h Fix 2 — the buy-session row's unaffordable-but-reached arm
+ *           (mats, on a cold garage) renders as a real, visible, disabled
+ *           control — dimmer chrome, `role="button"`, the shortfall copy —
+ *           rather than plain text.
+ *
+ *      THE LIMIT, STATED RATHER THAN IMPLIED: this section proves the fix is
+ *      correct and Chromium-clickable. It does NOT and CANNOT verify iOS
+ *      Safari's own click-delegation behaviour on a real device — Chromium
+ *      is the only real browser installed in this environment. The next
+ *      phone playtest is what actually closes this; see `GymScreen.tsx`'s
+ *      own header for the same limit stated about the fix itself.
+ *
  * USAGE. Start the web build first (`npx expo start --web`), then:
  *
  *     node tools/verify-floor-reachability.mjs [--url http://localhost:8081]
@@ -2631,6 +2655,139 @@ try {
       `S4b (9g): the gym did not reopen cleanly — recovery state "${reopenedState}", phase "${phaseAfterRecovery}", ${strikeRowsAfter.length} strike row(s) still drawn, history line "${reopenedCount}", ${reopenedPriceDrawn} reopening-price line(s) still drawn on an open gym`,
     );
   }
+
+  // -------------------------------------------------------------------------
+  // 11. S4H — THE iOS SAFARI BUTTON-CHROME FIX. A real phone playtest found
+  //     every control on this screen untappable: no `style`, no
+  //     `accessibilityRole`, no `cursor`. This section drives the played
+  //     path under Chromium and reads what actually differs from before the
+  //     fix. IT DOES NOT AND CANNOT VERIFY iOS SAFARI'S OWN CLICK-DELEGATION
+  //     BEHAVIOUR — Chromium is the only real browser installed in this
+  //     environment, and `GymScreen.tsx`'s own header states that limit in
+  //     full; a claim below passing is evidence the fix is correct and
+  //     Chromium-clickable, not evidence it is fixed on a real iPhone.
+  // -------------------------------------------------------------------------
+  await reachGymScreen(false);
+  readAddress('11: S4h, a fresh cold gym');
+
+  // 11a. A live control's computed `cursor` is `pointer` — the specific CSS
+  // fix for the flagged WebKit click-delegation gap — and it carries DOM
+  // `role="button"`, react-native-web's mapping of `accessibilityRole=
+  // "button"` (confirmed in `propsToAriaRole.js` before writing this claim,
+  // not assumed).
+  const slot0CardioId = 'gymscreen-slot-0-set-cardio';
+  const slot0CardioDrawn = await waitUntilDrawn(page, slot0CardioId, BEAT_TIMEOUT_MS);
+  if (!slot0CardioDrawn.drawn) {
+    fail(`S4h (11a): ${slot0CardioId} never drawn — ${slot0CardioDrawn.why}`);
+  } else {
+    const styleRead = await page
+      .getByTestId(slot0CardioId)
+      .evaluate((node) => ({
+        cursor: getComputedStyle(node).cursor,
+        role: node.getAttribute('role'),
+      }))
+      .catch(() => null);
+    if (styleRead !== null && styleRead.cursor === 'pointer' && styleRead.role === 'button') {
+      ok(
+        `S4h (11a): a live GymScreen Pressable (${slot0CardioId}) reads computed cursor "pointer" and DOM role "button"`,
+      );
+    } else {
+      fail(
+        `S4h (11a): expected computed cursor "pointer" and role "button" on ${slot0CardioId} — read ${JSON.stringify(styleRead)}`,
+      );
+    }
+  }
+
+  // 11b. THE HUMAN'S OWN NAMED MINIMUM PROBE: a real Playwright click on a
+  // week-slot option changes the drawn "slot 0: ..." text, read from the
+  // live DOM before and after the press — not from React state, and not the
+  // dev skip-row (`gymscreen-advance-<step>`, "not part of the game", never
+  // used by this section).
+  const slot0TextBefore = await textOf('gymscreen-slot-0');
+  await page.getByTestId(slot0CardioId).click({ timeout: 10000 }).catch(() => {});
+  await page.waitForTimeout(300);
+  const slot0TextAfter = await textOf('gymscreen-slot-0');
+  if (
+    slot0TextBefore !== null &&
+    slot0TextAfter !== null &&
+    slot0TextAfter !== slot0TextBefore &&
+    slot0TextAfter.includes('cardio')
+  ) {
+    ok(
+      `S4h (11b): a real page.click() on ${slot0CardioId} changed the drawn slot 0 text — "${slot0TextBefore}" -> "${slot0TextAfter}"`,
+    );
+  } else {
+    fail(
+      `S4h (11b): a real page.click() on ${slot0CardioId} did not change the drawn slot 0 text — before "${slot0TextBefore}", after "${slot0TextAfter}"`,
+    );
+  }
+
+  // 11c. FIX 2 — the buy-session row's unaffordable-but-reached arm renders
+  // a real, disabled control (dimmer chrome, `role="button"`, `disabled`)
+  // rather than plain text, on the exact cold-garage fixture the human
+  // played: mats fits the garage rung (`SESSION_EQUIPMENT_MIN_RUNG.mats`)
+  // and costs more than the 0 gym bucks a fresh gym starts with.
+  //
+  // NOT `waitUntilDrawn` HERE, ON PURPOSE, AND THE REASON IS WORTH RECORDING
+  // — it was tried first and failed for the right structural reason. That
+  // helper's `ON_SCREEN_MIN_OPACITY` (0.9) is calibrated to tell a genuinely
+  // faded-in element apart from one still animating in; this control's
+  // RESTING state is deliberately `GYM_SCREEN_DISABLED_OPACITY` (0.5), not a
+  // transient fade, so it can never cross that threshold and the shared
+  // helper reports it as never drawn — a false negative from applying the
+  // wrong instrument, not a defect in the screen. Presence and real
+  // visibility are checked directly instead: a non-null, non-zero-area
+  // bounding box (the same "presence is not visibility" standard, applied
+  // with a threshold that fits a deliberately dimmed control rather than the
+  // fade-in one).
+  const matsShortfallId = 'gymscreen-buy-session-mats-unavailable';
+  const matsShortfallBox = await boxOf(matsShortfallId);
+  if (matsShortfallBox === null || matsShortfallBox.width <= 0 || matsShortfallBox.height <= 0) {
+    fail(
+      `S4h (11c): ${matsShortfallId} has no real drawn box on a cold gym — ${JSON.stringify(matsShortfallBox)}`,
+    );
+  } else {
+    const matsRead = await page
+      .getByTestId(matsShortfallId)
+      .evaluate((node) => ({
+        role: node.getAttribute('role'),
+        ariaDisabled: node.getAttribute('aria-disabled'),
+        cursor: getComputedStyle(node).cursor,
+        backgroundColor: getComputedStyle(node).backgroundColor,
+        opacity: getComputedStyle(node).opacity,
+      }))
+      .catch(() => null);
+    const matsText = await textOf(matsShortfallId);
+    const realChrome =
+      matsRead !== null &&
+      matsRead.backgroundColor !== 'rgba(0, 0, 0, 0)' &&
+      matsRead.backgroundColor !== 'transparent';
+    // Genuinely dimmed rather than invisible: strictly between 0 and 1, not
+    // the enabled control's full 1.
+    const dimmedNotInvisible =
+      matsRead !== null &&
+      Number.parseFloat(matsRead.opacity) > 0 &&
+      Number.parseFloat(matsRead.opacity) < 1;
+    const shortfallCopy =
+      matsText !== null && matsText.includes('needs') && matsText.includes('gym bucks');
+    if (
+      matsRead !== null &&
+      matsRead.role === 'button' &&
+      realChrome &&
+      dimmedNotInvisible &&
+      shortfallCopy
+    ) {
+      ok(
+        `S4h (11c): the mats buy-session row's unaffordable-but-reached arm is a real, visible, disabled control on a cold garage — box ${matsShortfallBox.width}x${matsShortfallBox.height}, role "${matsRead.role}", aria-disabled "${matsRead.ariaDisabled}", opacity ${matsRead.opacity}, background ${matsRead.backgroundColor}, cursor "${matsRead.cursor}", text "${matsText}"`,
+      );
+    } else {
+      fail(
+        `S4h (11c): expected mats' buy-session shortfall control to read role "button", real background chrome, opacity strictly between 0 and 1, and shortfall text on a cold garage — read ${JSON.stringify(matsRead)}, text "${matsText}"`,
+      );
+    }
+  }
+
+  readAddress('11: S4h, done');
 
   readAddress('the end of the run');
 } catch (e) {

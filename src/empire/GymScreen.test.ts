@@ -62,6 +62,15 @@ vi.mock('react-native', () => ({
   Text: 'Text',
   Pressable: 'Pressable',
   ScrollView: 'ScrollView',
+  // S4h: `GymScreen.tsx` now calls `StyleSheet.create` at module scope, so the
+  // mock needs a stand-in or the import resolves to `undefined` and the
+  // module throws before a single test runs. The real `StyleSheet.create`
+  // on native returns opaque numeric style IDs; this stub is intentionally
+  // simpler — the identity function — because nothing here needs to resolve
+  // an ID back to a style object, only to see that `style` was passed a
+  // truthy, non-empty value. See "every rendered Pressable is visibly a
+  // control" below for what that buys.
+  StyleSheet: { create: (styles: Record<string, unknown>) => styles },
 }));
 import {
   type GymViewAction,
@@ -176,6 +185,13 @@ function findByTestId(root: unknown, id: string): Rendered {
   const found = findAllByTestId(root, id);
   expect(found.length, `expected exactly one element with testID ${id}`).toBe(1);
   return found[0] as Rendered;
+}
+
+/** Every element anywhere under `root` (root included) whose `type` is `typeName`. */
+function allNodesOfType(root: unknown, typeName: string): readonly Rendered[] {
+  if (!isRendered(root)) return [];
+  const own = root.type === typeName ? [root] : [];
+  return [...own, ...childrenOf(root).flatMap((child) => allNodesOfType(child, typeName))];
 }
 
 /** Every `testID` anywhere under `node` (node included), in tree order. */
@@ -316,6 +332,46 @@ function expectGatedControl(
   return 2;
 }
 
+/**
+ * S4h's own non-vacuity guard: every `Pressable` this component ACTUALLY
+ * RENDERS, for a given props/state, carries `accessibilityRole="button"` and
+ * a non-empty `style` — the two things a real phone playtest found missing
+ * from all thirteen. Returns the count it checked, so the caller pins a
+ * number rather than a boolean; a `Pressable` added later without the
+ * treatment reddens a specific count instead of silently passing an
+ * existential check over an empty domain.
+ *
+ * Walks the RENDERED tree rather than the source, on purpose: a Pressable
+ * only reachable down a branch this fixture's state does not take is not
+ * "checked" by this call, which is why the tests below drive several
+ * distinct states rather than one.
+ */
+function expectEveryPressableIsAControl(root: Rendered, label: string): number {
+  const pressables = allNodesOfType(root, 'Pressable');
+  for (const node of pressables) {
+    expect(node.props['accessibilityRole'], `${label}: a Pressable's accessibilityRole`).toBe(
+      'button',
+    );
+    const style = node.props['style'];
+    expect(style, `${label}: a Pressable's style`).toBeTruthy();
+    const styleEntries = Array.isArray(style) ? style : [style];
+    expect(styleEntries.length, `${label}: a Pressable's style array`).toBeGreaterThan(0);
+    for (const entry of styleEntries) {
+      expect(entry, `${label}: one entry of a Pressable's style`).toBeTruthy();
+      expect(
+        Object.keys(entry as object).length,
+        `${label}: one entry of a Pressable's style has keys`,
+      ).toBeGreaterThan(0);
+    }
+    // A disabled control (S4h Fix 2) must SAY it is disabled — otherwise the
+    // accessibility tree reads it as a live control that happens not to fire.
+    if (node.props['disabled'] === true) {
+      expect(style, `${label}: a disabled Pressable's style still carries chrome`).toBeTruthy();
+    }
+  }
+  return pressables.length;
+}
+
 /** Every displayed-quantity comparison for one `GymViewState`, counted. */
 function expectScreenMatchesState(root: Rendered, state: GymViewState): number {
   let compared = 0;
@@ -372,12 +428,37 @@ function expectScreenMatchesState(root: Rendered, state: GymViewState): number {
       expect(findAllByTestId(root, `gymscreen-buy-session-${item}-unavailable`).length, item).toBe(0);
       compared += 2;
     } else {
+      const outcome = buySessionEquipment(gym, item);
       compared += expectGatedControl(
         root,
         `gymscreen-buy-session-${item}`,
-        buySessionEquipment(gym, item).kind === 'refused',
+        outcome.kind === 'refused',
         `buySessionEquipment ${item}`,
       );
+      if (outcome.kind === 'refused') {
+        // S4h Fix 2. Both refusal reasons draw the SAME `-unavailable`
+        // testID (they are mutually exclusive per item, so there is no
+        // collision) but no longer the same element: the unaffordable-but-
+        // reached arm (`'not-enough-gym-bucks'`) is now a real, disabled
+        // `Pressable` — dimmer chrome, `disabled`, `accessibilityRole`,
+        // non-empty `style` — so a shortfall still reads as an upcoming
+        // control rather than as nothing; the not-here-yet arm
+        // (`'rung-too-low'`) stays plain, non-interactive `Text`, unchanged.
+        // Checking the node's `type` (not just its presence) is what stops
+        // Fix 2 from silently regressing back to Text-only.
+        const unavailable = findByTestId(root, `gymscreen-buy-session-${item}-unavailable`);
+        if (outcome.reason === 'not-enough-gym-bucks') {
+          expect(unavailable.type, `${item} unavailable node type`).toBe('Pressable');
+          expect(unavailable.props['disabled'], `${item} unavailable disabled`).toBe(true);
+          expect(unavailable.props['accessibilityRole'], `${item} unavailable role`).toBe(
+            'button',
+          );
+          expect(unavailable.props['style'], `${item} unavailable style`).toBeTruthy();
+        } else {
+          expect(unavailable.type, `${item} unavailable node type`).toBe('Text');
+        }
+        compared += 1;
+      }
     }
     compared += 1;
   }
@@ -1638,5 +1719,81 @@ describe('S4g: a cold garage can afford mats on a short live watch, and place it
     expect(availableActivities(dispatchedBuy.managed.gym.sessionEquipment)).not.toContain(
       'other-recovery',
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// S4h — a real phone playtest found every Pressable on this screen untappable:
+// no `style`, no `accessibilityRole`, no `cursor`. Fix 1 puts real chrome and
+// `accessibilityRole="button"` on all thirteen (now fourteen — see Fix 2
+// below); this battery is the non-vacuity guard `GymScreen.tsx`'s own header
+// promises: every Pressable a state ACTUALLY DRAWS carries the treatment, on
+// several distinct states rather than one, with the count pinned rather than
+// only asserted non-zero.
+// ---------------------------------------------------------------------------
+
+describe('S4h: every rendered Pressable is visibly a control', () => {
+  it('a cold garage, a heavily operated gym, a staffed gym and a dormant-then-ready gym', () => {
+    const counts: Record<string, number> = {};
+
+    const cold = createGymViewState();
+    counts['cold garage'] = expectEveryPressableIsAControl(render(cold, []), 'cold garage');
+
+    // Advancing the clock a long way affords buys/relocation and wears
+    // equipment past the review line, so this state is the one most likely to
+    // draw a live shop, repair and prompt control all at once — including the
+    // S4h Fix 2 disabled-but-visible session-shop control, if any session item
+    // is reachable but still short of its price at this point.
+    const worked = advanceTimes(cold, 30);
+    counts['heavily operated gym'] = expectEveryPressableIsAControl(
+      render(worked, []),
+      'heavily operated gym',
+    );
+
+    // A manager on staff draws the dismiss-manager control, which neither
+    // state above is guaranteed to reach.
+    const staffAttempt = dispatchThrough(worked, { kind: 'hire-manager', tier: 'novice' });
+    expect(staffAttempt.lastRefusal, 'a heavily operated gym can afford the cheapest tier').toBeNull();
+    counts['staffed gym'] = expectEveryPressableIsAControl(render(staffAttempt, []), 'staffed gym');
+
+    // Walk a fresh gym to `'failed'` the same way the dormancy test does, then
+    // repair it back to `'ready'` — the only state that draws
+    // `gymscreen-recover`.
+    let played = createGymViewState();
+    let guard = 0;
+    while (failurePhase(played.managed) !== 'failed' && guard < 60) {
+      played = advanceTimes(played, 1);
+      guard += 1;
+      const prompt = maintenancePrompt(played.managed);
+      if (prompt.kind !== 'offered' || prompt.alreadyRefused) continue;
+      played = dispatchThrough(played, { kind: 'decline-repair', item: prompt.item });
+    }
+    expect(failurePhase(played.managed), 'a fresh gym can be walked to failed').toBe('failed');
+    counts['dormant gym'] = expectEveryPressableIsAControl(render(played, []), 'dormant gym');
+    for (const item of ownedItemsOf(played.managed.gym)) {
+      if (itemCondition(played.managed, item) >= EMPIRE_TUNING.RECOVERY_CONDITION_MIN) continue;
+      played = dispatchThrough(played, { kind: 'repair-item', item });
+      expect(played.lastRefusal).toBeNull();
+    }
+    expect(recoveryRequirement(played.managed).kind, 'the repairs reach ready').toBe('ready');
+    counts['ready-to-reopen gym'] = expectEveryPressableIsAControl(
+      render(played, []),
+      'ready-to-reopen gym',
+    );
+
+    // Non-vacuity, per state and in total: an empty or truncated domain would
+    // make every assertion above pass by having nothing to check.
+    for (const [label, count] of Object.entries(counts)) {
+      expect(count, `${label} drew at least one Pressable`).toBeGreaterThan(0);
+    }
+    const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+    expect(counts).toEqual({
+      'cold garage': 21,
+      'heavily operated gym': 28,
+      'staffed gym': 26,
+      'dormant gym': 28,
+      'ready-to-reopen gym': 28,
+    });
+    expect(total).toBe(131);
   });
 });

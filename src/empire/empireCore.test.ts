@@ -2620,7 +2620,15 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // diffed against the previous commit (2d0daebe vs 7e91e088) rather than
     // trusting the total, because a re-pin that only matches a total can
     // absorb a pair arriving while another leaves. Nothing was removed.
-    expect(pairs).toBe(120);
+    // 120 -> 121: S4h's button-chrome fix. `GymScreen.tsx`'s new header
+    // paragraph names `empireCore.test.ts`'s import fence (to say the fence
+    // still reads `StyleSheet` as the same `react-native` specifier, not a
+    // new dependency edge) and, separately, its no-real-name census (to say
+    // the new colours are reused rather than invented). Two new textual
+    // mentions of the same target dedupe to ONE new pair,
+    // `GymScreen.tsx -> empireCore.ts` — confirmed absent from the pre-round
+    // file by `git show`, not assumed. Nothing was removed.
+    expect(pairs).toBe(121);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -2635,7 +2643,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // names `empireCore.test.ts`'s import fence in its header §5.
     // 15 -> 16: `management.ts` imports `refuseWith` from `./empireCore` and
     // names the file in its own header.
-    expect(mentionersOf('empireCore.ts').length).toBe(16);
+    // 16 -> 17: S4h. `GymScreen.tsx` names `empireCore.test.ts`'s import
+    // fence and its no-real-name census in its new header paragraphs — its
+    // first mention of `empireCore.ts` by either key, confirmed absent from
+    // the pre-round file by `git show` rather than assumed.
+    expect(mentionersOf('empireCore.ts').length).toBe(17);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -3680,7 +3692,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `'online' | 'offline'` — two new distinct single-quoted literals,
     // spelled once each in `ladder.ts` and read as default-parameter values
     // across the functions it threads through.
-    expect(singleQuoted.size).toBe(503);
+    // 503 -> 507: S4h's button-chrome fix. Four new words, none a colour —
+    // every colour `GymScreen.tsx` reaches for (`'darkslateblue'`,
+    // `'deepskyblue'`, `'white'`, `'darkslategray'`, `'gray'`, `'silver'`) was
+    // already in this directory's vocabulary and adds nothing new. The four:
+    // `'auto'` and `'pointer'` (the CSS `cursor` values the iOS Safari fix
+    // needs), `'button'` (`accessibilityRole`), and `'center'`
+    // (`alignItems`/`justifyContent` on the new button style).
+    expect(singleQuoted.size).toBe(507);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3827,6 +3846,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'at-ceiling',
       'at-the-top',
       'athlete',
+      'auto',
       'axes',
       'banked-operation',
       'bar',
@@ -3841,6 +3861,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'bought',
       'brace',
       'budget',
+      'button',
       'buy',
       'buy-ladder',
       'buy-session',
@@ -3850,6 +3871,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'casual',
       'ceiling-growth',
       'ceiling-growth-per-week',
+      'center',
       'chalk',
       'chance-draw',
       'cheapest-affordable-first',
@@ -4102,6 +4124,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'physio-days-saved',
       'pixelated',
       'placed',
+      'pointer',
       'power-bar',
       'powerlifter',
       'progression-reaching',
@@ -4302,7 +4325,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // (enumerated above) and 0 templates.
     // 799 -> 801: the "chrome vs paid" bug-fix round's 2 new single-quoted
     // literals ('online', 'offline'), enumerated above.
-    expect(stringsChecked).toBe(801);
+    // 801 -> 805: S4h's four new single-quoted literals ('auto', 'button',
+    // 'center', 'pointer'), enumerated in `singleQuoted.size`'s own comment
+    // above; templateChunks and doubleQuoted unchanged.
+    expect(stringsChecked).toBe(805);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -4398,7 +4424,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // ('open-up', 'gymscreen-open-up', '-note', '-press'), each a probe.
     // 435 -> 437: the "chrome vs paid" bug-fix round's two new `spaceFree`
     // tokens, 'offline' and 'online', each a probe.
-    expect(probes).toBe(437);
+    // 437 -> 441: S4h's four new `spaceFree` tokens ('auto', 'button',
+    // 'center', 'pointer'), all clearing the two-letter guard below, each a
+    // probe.
+    expect(probes).toBe(441);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -4997,7 +5026,15 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 387 -> 388: the "chrome vs paid" bug-fix round's one new tuning
     // literal, DUST_REPAIR_COST_GYM_BUCKS (0.01). Read from this assertion's
     // own failure value.
-    ).toBe(388);
+    // 388 -> 393: S4h's GYM_SCREEN_BUTTON_* block, six new entries but FIVE
+    // new findings — PADDING_VERTICAL_PIXELS (10), PADDING_HORIZONTAL_PIXELS
+    // (16), BORDER_RADIUS_PIXELS (8), MIN_HEIGHT_PIXELS (44) and
+    // DISABLED_OPACITY (0.5). BORDER_WIDTH_PIXELS is `1`, which
+    // `ALWAYS_STRUCTURAL` already exempts everywhere — the same reason
+    // `FLOOR_SIM_RENDER_SEED: 1` above (239 -> 256) reported no finding for
+    // its own literal. Read from this assertion's own failure value, not
+    // hand-summed.
+    ).toBe(393);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

@@ -71,9 +71,13 @@
  * directory already uses: no `react` import is needed for JSX itself (the
  * project's `jsx: react-jsx` transform supplies it at build time), and the
  * only external import this file adds is `react-native`, for the primitives
- * used as values (`View`, `Text`, `Pressable`, `ScrollView`) rather than as
- * JSX intrinsics — RN component references are not ambient the way a DOM tag
- * name is, so they must be imported explicitly, unlike `GymView`.
+ * used as values (`View`, `Text`, `Pressable`, `ScrollView`, `StyleSheet`)
+ * rather than as JSX intrinsics — RN component references are not ambient the
+ * way a DOM tag name is, so they must be imported explicitly, unlike
+ * `GymView`. `StyleSheet` is the same primitive class as the other four, not
+ * a new dependency edge — `EXTERNAL_PACKAGE_IMPORTS['GymScreen.tsx']` in
+ * `empireCore.test.ts`'s import fence still reads `['react-native']`, one
+ * specifier, because the fence counts packages, not named imports from one.
  *
  * WHAT IS DELIBERATELY NOT HERE: a "move down" control. GDD §5.1 states the
  * ladder is "linear and one-way" — `ladder.ts` ships `moveUpLadder` and no
@@ -138,6 +142,36 @@
  * does and every one has a check behind it — so it is REPORTED to whoever
  * owns that file instead of being settled here by choosing different words.
  *
+ * S4h — EVERY CONTROL ON THIS SCREEN WAS UNTAPPABLE ON A REAL PHONE, AND WHY.
+ * A human played the shipped build on iPhone Safari and reported, verbatim,
+ * "i cant even interact with the game" — every state was correct (repair
+ * refusals, shop prices, the empty floor tray all read right) and nothing
+ * responded to a tap. Root cause, confirmed before this paragraph was
+ * written rather than guessed at: every one of this file's `Pressable`
+ * elements carried no `style`, no `accessibilityRole` and no `cursor` — a
+ * real, documented iOS Safari gap where a non-natively-interactive element
+ * needs one of those two (native a11y semantics, or an explicit `cursor`
+ * declaration) for a tap to reliably dispatch through a JS listener at all.
+ * `AppShell.tsx`'s own nav pill, confirmed BY THE SAME HUMAN ON THE SAME
+ * DEVICE to register taps, has both — `styles.nav` and
+ * `accessibilityRole="button"`. Every `Pressable` below now carries the same
+ * two things, plus an explicit `cursor: 'pointer'` in its style, which is the
+ * specific fix for the flagged gap. `GYM_SCREEN_BUTTON_*` in
+ * `empireTuning.ts` is the sizing; `GYM_SCREEN_BUTTON_BACKGROUND_COLOR` and
+ * its siblings just below are the colours, all reused from elsewhere in this
+ * directory's already-audited vocabulary rather than invented fresh, so this
+ * fix adds no new colour string except by way of a comment class of its own.
+ *
+ * WHAT THIS PARAGRAPH DOES NOT CLAIM, on purpose, and its limit is the same
+ * one two paragraphs up already states for the rest of this file: nothing
+ * here is verified on iOS Safari. `GymScreen.test.ts`'s new census proves
+ * every rendered `Pressable` carries the treatment; `tools/verify-floor-
+ * reachability.mjs`'s new section proves the computed `cursor` is `pointer`
+ * and `role="button"` reaches the real DOM under Chromium, and that a real
+ * `page.click()` on a slot option changes the on-screen text. Neither is a
+ * claim about WebKit's own click-delegation behaviour, which only a phone can
+ * settle.
+ *
  * TESTIDs. Every interactive or reported element carries a `testID`, prefixed
  * `gymscreen-` to stay distinct from `GymView`'s own `data-testid` values
  * (the two are never mounted at once, but the prefix keeps a browser-driven
@@ -148,7 +182,7 @@
  * `tools/verify-*.mjs` scripts select on the DOM screens.
  */
 
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { EMPIRE_TUNING } from './empireTuning';
 import { FloorGrid } from './FloorGrid';
@@ -194,6 +228,66 @@ import {
   trainingWeekShape,
   weeklyAttributeEffects,
 } from './sessions';
+
+/**
+ * S4h button chrome — the colours a Pressable needs to read as a control on a
+ * real device, not the sizes (those are `GYM_SCREEN_BUTTON_*` in
+ * `empireTuning.ts`, a registered constants home; `src/tuning/audit.ts`
+ * refuses a bare numeric literal in ANY `.tsx` file, no exception for this
+ * one). Colours are exempt from that scan — it only matches hex/`rgba()`
+ * forms — but every one below is reused from elsewhere in this directory's
+ * already-audited, already-reviewed vocabulary (`FloorGrid.tsx`'s tray chip,
+ * its floor-sim state cues) rather than invented fresh, so this fix adds
+ * exactly one new space-free literal to `empireCore.test.ts`'s no-real-name
+ * census per NEW word it needed (`'pointer'`, `'auto'`, `'button'`) and none
+ * for a colour.
+ */
+const GYM_SCREEN_BUTTON_BACKGROUND_COLOR = 'darkslateblue';
+const GYM_SCREEN_BUTTON_BORDER_COLOR = 'deepskyblue';
+const GYM_SCREEN_BUTTON_TEXT_COLOR = 'white';
+const GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR = 'darkslategray';
+const GYM_SCREEN_BUTTON_DISABLED_BORDER_COLOR = 'gray';
+const GYM_SCREEN_BUTTON_DISABLED_TEXT_COLOR = 'silver';
+
+/**
+ * The one `StyleSheet.create` block this file needs. `button` is the shape
+ * every live control on this screen shares; `buttonDisabled` /
+ * `buttonTextDisabled` are the S4h Fix 2 look for the one control that is
+ * drawn deliberately inert (the buy-session row's unaffordable-but-reached
+ * arm, further down) — dimmer chrome plus `cursor: 'auto'`, so a control that
+ * cannot be pressed does not also look like one that can.
+ *
+ * `cursor: 'pointer'` on `button` is the specific fix for the iOS Safari gap
+ * this file's own header names: WebKit's click-delegation quirk on a
+ * non-natively-interactive element, which `accessibilityRole="button"` below
+ * addresses from the semantics side and this addresses from the CSS side.
+ */
+const styles = StyleSheet.create({
+  button: {
+    paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
+    paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
+    minHeight: EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS,
+    borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS,
+    borderWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
+    borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
+    cursor: 'pointer',
+  },
+  buttonText: {
+    color: GYM_SCREEN_BUTTON_TEXT_COLOR,
+  },
+  buttonDisabled: {
+    backgroundColor: GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR,
+    borderColor: GYM_SCREEN_BUTTON_DISABLED_BORDER_COLOR,
+    opacity: EMPIRE_TUNING.GYM_SCREEN_DISABLED_OPACITY,
+    cursor: 'auto',
+  },
+  buttonTextDisabled: {
+    color: GYM_SCREEN_BUTTON_DISABLED_TEXT_COLOR,
+  },
+});
 
 /** Every slot value a player may choose, in the fixed §5.5 order plus rest — the same list `GymView` derives, ported rather than imported (it is a private helper there, not exported). */
 function allocationOptions(): readonly FlexibleSlot[] {
@@ -492,9 +586,11 @@ export function GymScreen(props: GymViewProps) {
             ) : (
               <Pressable
                 testID={`gymscreen-repair-${item}`}
+                accessibilityRole={'button'}
+                style={styles.button}
                 onPress={() => dispatch({ kind: 'repair-item', item })}
               >
-                <Text>repair for {repairCostGymBucks(managed, item)}</Text>
+                <Text style={styles.buttonText}>repair for {repairCostGymBucks(managed, item)}</Text>
               </Pressable>
             )}
           </View>
@@ -528,22 +624,28 @@ export function GymScreen(props: GymViewProps) {
             ) : (
               <Pressable
                 testID={'gymscreen-prompt-repair'}
+                accessibilityRole={'button'}
+                style={styles.button}
                 onPress={() => dispatch({ kind: 'answer-prompt', response: 'repair' })}
               >
-                <Text>repair for {prompt.repairCostGymBucks}</Text>
+                <Text style={styles.buttonText}>repair for {prompt.repairCostGymBucks}</Text>
               </Pressable>
             )}
             <Pressable
               testID={'gymscreen-prompt-dismiss'}
+              accessibilityRole={'button'}
+              style={styles.button}
               onPress={() => dispatch({ kind: 'answer-prompt', response: 'dismiss' })}
             >
-              <Text>not now</Text>
+              <Text style={styles.buttonText}>not now</Text>
             </Pressable>
             <Pressable
               testID={'gymscreen-prompt-decline'}
+              accessibilityRole={'button'}
+              style={styles.button}
               onPress={() => dispatch({ kind: 'decline-repair', item: prompt.item })}
             >
-              <Text>decline the repair</Text>
+              <Text style={styles.buttonText}>decline the repair</Text>
             </Pressable>
           </View>
         )}
@@ -588,9 +690,11 @@ export function GymScreen(props: GymViewProps) {
                   ) : (
                     <Pressable
                       testID={`gymscreen-hire-${tier}`}
+                      accessibilityRole={'button'}
+                      style={styles.button}
                       onPress={() => dispatch({ kind: 'hire-manager', tier })}
                     >
-                      <Text>hire</Text>
+                      <Text style={styles.buttonText}>hire</Text>
                     </Pressable>
                   )}
                 </View>
@@ -610,9 +714,11 @@ export function GymScreen(props: GymViewProps) {
               </Text>
               <Pressable
                 testID={'gymscreen-dismiss-manager'}
+                accessibilityRole={'button'}
+                style={styles.button}
                 onPress={() => dispatch({ kind: 'dismiss-manager' })}
               >
-                <Text>let them go</Text>
+                <Text style={styles.buttonText}>let them go</Text>
               </Pressable>
             </>
           )}
@@ -661,8 +767,13 @@ export function GymScreen(props: GymViewProps) {
             </Text>
           )}
           {recovery.kind === 'ready' ? (
-            <Pressable testID={'gymscreen-recover'} onPress={() => dispatch({ kind: 'recover-gym' })}>
-              <Text>reopen the gym</Text>
+            <Pressable
+              testID={'gymscreen-recover'}
+              accessibilityRole={'button'}
+              style={styles.button}
+              onPress={() => dispatch({ kind: 'recover-gym' })}
+            >
+              <Text style={styles.buttonText}>reopen the gym</Text>
             </Pressable>
           ) : null}
           {managed.recoveries === 0 ? null : (
@@ -725,9 +836,11 @@ export function GymScreen(props: GymViewProps) {
             ) : (
               <Pressable
                 testID={`gymscreen-buy-ladder-${item}`}
+                accessibilityRole={'button'}
+                style={styles.button}
                 onPress={() => dispatch({ kind: 'buy-ladder', item })}
               >
-                <Text>buy</Text>
+                <Text style={styles.buttonText}>buy</Text>
               </Pressable>
             )}
           </View>
@@ -748,15 +861,41 @@ export function GymScreen(props: GymViewProps) {
                 {gym.ladder.rung}
               </Text>
             ) : sessionEquipmentCost(item) > gym.ladder.gymBucks ? (
-              <Text testID={`gymscreen-buy-session-${item}-unavailable`}>
-                needs {sessionEquipmentCost(item)} gym bucks — you have {gym.ladder.gymBucks}
-              </Text>
+              /*
+                S4h Fix 2 — scoped to this one arm, not the not-here-yet arm
+                just above it and not the ladder-shop's identical shape a few
+                lines up. The rung is reached; the purse alone is short of a
+                real, near-term purchase (`SESSION_EQUIPMENT_COST_GYM_BUCKS.
+                mats`'s own comment and S4g's battery both size this shop for
+                a ten-minute live watch). A human on a phone read "no controls
+                anywhere" from a cold garage where this was the closest shop
+                to being reachable, so this arm stays a real, disabled
+                `Pressable` — dimmer chrome, `disabled`, no `onPress` — rather
+                than collapsing back to plain text. It still states the
+                shortfall; it now also reads as "not yet, here is the target"
+                rather than as nothing. `repairEquipment`/hire/relocate's
+                not-drawn-when-refused discipline (this file's header) stays
+                the same for every other row — this is a deliberate, narrow
+                exception, not a rule change.
+              */
+              <Pressable
+                testID={`gymscreen-buy-session-${item}-unavailable`}
+                disabled
+                accessibilityRole={'button'}
+                style={[styles.button, styles.buttonDisabled]}
+              >
+                <Text style={styles.buttonTextDisabled}>
+                  needs {sessionEquipmentCost(item)} gym bucks — you have {gym.ladder.gymBucks}
+                </Text>
+              </Pressable>
             ) : (
               <Pressable
                 testID={`gymscreen-buy-session-${item}`}
+                accessibilityRole={'button'}
+                style={styles.button}
                 onPress={() => dispatch({ kind: 'buy-session', item })}
               >
-                <Text>buy</Text>
+                <Text style={styles.buttonText}>buy</Text>
               </Pressable>
             )}
           </View>
@@ -776,8 +915,13 @@ export function GymScreen(props: GymViewProps) {
                 needs {ladderMoveCost(destination)} gym bucks — you have {gym.ladder.gymBucks}
               </Text>
             ) : (
-              <Pressable testID={'gymscreen-move-up'} onPress={() => dispatch({ kind: 'move-up' })}>
-                <Text>relocate</Text>
+              <Pressable
+                testID={'gymscreen-move-up'}
+                accessibilityRole={'button'}
+                style={styles.button}
+                onPress={() => dispatch({ kind: 'move-up' })}
+              >
+                <Text style={styles.buttonText}>relocate</Text>
               </Pressable>
             )}
           </>
@@ -796,9 +940,11 @@ export function GymScreen(props: GymViewProps) {
               <Pressable
                 key={option}
                 testID={`gymscreen-slot-${slotIndex}-set-${option}`}
+                accessibilityRole={'button'}
+                style={styles.button}
                 onPress={() => dispatch({ kind: 'set-allocation-slot', slotIndex, slot: option })}
               >
-                <Text>{option}</Text>
+                <Text style={styles.buttonText}>{option}</Text>
               </Pressable>
             ))}
           </View>
@@ -829,16 +975,20 @@ export function GymScreen(props: GymViewProps) {
           <Pressable
             key={step.label}
             testID={`gymscreen-advance-${step.seconds}`}
+            accessibilityRole={'button'}
+            style={styles.button}
             onPress={() => dispatch({ kind: 'advance-clock', gapSeconds: step.seconds })}
           >
-            <Text>{step.label}</Text>
+            <Text style={styles.buttonText}>{step.label}</Text>
           </Pressable>
         ))}
         <Pressable
           testID={'gymscreen-advance-next-week'}
+          accessibilityRole={'button'}
+          style={styles.button}
           onPress={() => dispatch({ kind: 'advance-to-next-week' })}
         >
-          <Text>+1 week boundary</Text>
+          <Text style={styles.buttonText}>+1 week boundary</Text>
         </Pressable>
       </View>
     </ScrollView>
