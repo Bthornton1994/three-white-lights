@@ -221,8 +221,15 @@ as an open question rather than reading e1RM into this row by analogy.
 
 ### 2.4 Gym Empire — The Idle Layer
 
-See §5. Passive Gym Bucks + Training IQ generation, cosmetic sink, monetization
-on-ramp.
+See §5 for the full spec and §5.14 for the tycoon-depth direction and its
+staged plan. A wall-clock idle loop, run as a real management sim — staffing,
+equipment condition, capacity and throughput, reputation — around the one gym
+the lifter actually trains at. Pays Gym Bucks and a small Training IQ trickle;
+never buys Total, e1RM, training pace, or meet performance (§8.1). This line
+previously read "passive generation, cosmetic sink, monetization on-ramp,"
+which undersold what §5 already specified even before §5.14 existed;
+corrected for the reason §5.0 gives for replacing v1 outright — a summary
+that stops matching its own section is worse than no summary.
 
 ---
 
@@ -2992,6 +2999,199 @@ suite result and a driven browser check, which §5.11's own standing rule says i
 not the same thing as a gate pass.
 ---
 
+### 5.14 The idle-tycoon depth pass — human-directed redirection, staged
+
+By explicit human ruling, delivered as a full product-direction brief citing
+*Idle Fitness Gym Tycoon* as the primary mechanical reference (a real
+published mobile game, cited the same structural way §5.7A already cites it —
+for its interaction grammar, never its art, copy, or numbers, and never
+player-facing). The ruling's own stated reasoning: §5 as specified through
+§5.13 is "directionally correct, but too thin for the opportunity" — a menu
+of numbers rather than a place the player watches and manages — and the
+stronger shape is *"powerlifting career game on top, actual idle gym tycoon
+underneath, meet day as the payoff,"* not four disconnected modes. This
+section records that redirection, reconciles it against what §5.0–§5.13
+actually specify and what `src/empire/` actually ships today, and lays out a
+staged plan — because the ruling's own §22 asks for exactly that: *"do not
+overbuild content before the system works... prefer a small but complete
+vertical slice."* This document's own history is the sharper version of the
+same lesson — §5.0 replaced v1 wholesale because a large system was built
+before any of it was played; §5.14 exists so that does not happen twice at a
+larger scale.
+
+**Nothing here weakens a standing hard constraint.** Every rule the ruling
+itself names — no purchasable effect on Total/e1RM/training pace/meet
+performance (§8.1), no gacha/random-chance recruitment (§5.3, §12.3), no
+visible fatigue meter (§3.4), no forced/interstitial ads (§8.3D), no
+elapsed-time-punishing setback (§3.5, §5.7), fictional-only naming for every
+new facility/staff/NPC archetype (§7.3), server-authoritative mutation once
+wired to real progression (§9.2) — restates rather than revises §5's own
+existing text. Where the ruling's vocabulary and this document's differ (its
+"Quality/Capacity/Throughput" reads as a naming of what §5.2's "Money vs.
+Capability" split and §5.4's condition/capability model already do, seen from
+the station's side rather than the item's), §5.2 and §5.4 remain the
+authoritative model; §5.14 extends them, it does not replace them the way
+§5.0 replaced v1.
+
+**What the ruling asks for that already exists, verified by a from-source
+audit rather than assumed — build on this, do not rebuild it:**
+
+- **A real capacity-limited queue/throughput simulation already exists**, in
+  `floorSim.ts`, and it is not a stub: one member per station, a FIFO queue
+  *recomputed every tick* from the members themselves (no stored queue
+  table), deterministic tie-breaks, three named interruption causes, a
+  bounded liveness guarantee, and a stranded/wander fallback for a member
+  sealed off from every reachable station. This is precisely the mechanism
+  the ruling's §2/§8 (*"identify the bottleneck," "8 athletes waiting, 2
+  racks"*) describes wanting — it is built, pure, tested, and its Phase 3
+  gate is **met** (§5.13, "the people move around and the queueing works,"
+  verbatim). What is missing is not the simulation; it is a station-level
+  *upgrade axis* that changes its parameters (below), and a UI that lets a
+  player read and act on a bottleneck rather than only watch one.
+- **The rendering is top-down/orthogonal, not isometric — and that already
+  cleared its own human gate.** §5.13 never specifies isometric; the ruling's
+  own §5 hedges the same way (*"isometric or similarly readable perspective
+  compatible with the existing visual identity"*). A top-down grid with
+  16-bit sprites is that existing, played, gated identity (§5.13 Phases 1–3;
+  §7.1's fixed-resolution nearest-neighbor pipeline). **Lead scoping call:**
+  this stays top-down. Rebuilding the projection would restart Phase 1–3's
+  playtest history for a change nothing in the ruling requires by name, and
+  §5.13's own Phase-4 direction verdict (*"stickfigure RPG style...
+  simplicity"*) already asked for restraint over fidelity once — an
+  isometric rebuild pulls the opposite way. Overrulable, same as every
+  scoping call in this document.
+- **Named, one-way facility tiers already exist** — `ladder.ts`'s Garage →
+  Storage Unit → Strip-Mall Unit → Warehouse (§5.1) — matching the ruling's
+  §11 ask in shape if not yet in count. Naming beyond Warehouse is new work
+  (below).
+- **A real staff mechanic exists** (§5.7, `management.ts`): hire cost, an
+  ongoing wage drawn per banked operating hour, and a tier-gated auto-repair
+  threshold. Thin against the ruling's staff-role list (§7) but real, not a
+  percentage multiplier with no subject.
+- **Fictional-only naming, the identity tier system, and the real-name
+  refusal condition** (§7.3, §12.3) already bind every new facility, staff
+  archetype, or NPC name §5.14 or a later round adds. Nothing new needed
+  here beyond following the existing rule — search every invented name
+  before adoption, against the sector-refusal bar CLAUDE.md's own trademark
+  history for `src/career/` recorded (strength/fitness/supplements/apparel/
+  coaching/games sectors and any famous mark refused; small out-of-sector
+  hits accepted with the hits recorded).
+
+**What is genuinely missing — the real staged work:**
+
+1. **Station-tap management.** `GymScreen.tsx` today is one long scrolling
+   list (`gymscreen-root`, every subsystem in document order) — S4i's own
+   round just finished clearing its bottom edge of the shell's nav pill, on
+   exactly that screen shape. The ruling's §3/§14 ("tapping a station should
+   produce a compact management surface rather than replacing the entire
+   game with a spreadsheet") is real, unbuilt UX work, buildable on top of
+   what `floor.ts`/`management.ts` already hold without new simulation.
+2. **A Quality/Capacity/Throughput axis per station**, extending §5.4's flat
+   equipment-unlock model into a per-item upgrade ladder, with Capacity
+   specifically required to raise `floorSim.ts`'s current hardcoded
+   one-member-per-station cap — the one place this touches the simulation's
+   own core rather than only its presentation. Scope this to two or three
+   station types first (the ruling's own §22: *"prefer several meaningful
+   station types... over dozens of shallow entries"*); Barbell — squat,
+   bench, deadlift, the sessions the lifter's own career runs on and the
+   only equipment group already wired to the shipped ladder — is the
+   candidate with the most existing floor presence and the highest
+   powerlifting-authenticity payoff (ruling §4: *"generic fitness content
+   should not dominate"*). Overrulable; a human may prefer a different
+   first station.
+3. **A day-1/hour-1/day-N economy pacing simulator (ruling §19) does not
+   exist and should.** What exists — `engagement.ts`, `empireInvariant.ts`,
+   `empireSweep.test.ts` — proves a monotonicity invariant (more engagement
+   never produces a worse outcome), pinning violation *counts*, not
+   progression pacing. `ladderView.tsx`'s own header already names the real
+   gap: *"whether the four income magnitudes pace well... is the gate's open
+   question"* — stated, untested. This is pure logic, zero UI risk, zero
+   crossing risk, and its output should inform whether (2)'s upgrade curve
+   is sane *before* it is built into a screen — so it is sequenced first
+   among the new-code stages below, not last.
+4. **Career ↔ Empire reinforcement (ruling §12) does not exist in code at
+   all today**, beyond the one sanctioned physio-days hook (§3.5,
+   `physioDaysSavedFor`, read-only from `src/game/fatigue.ts`). §6.4 already
+   specifies the missing half as a standing (never-built) contract — *"Result
+   feeds Career progression (qualifying totals) and Gym Empire
+   (reputation)"* — so this is not a new design decision, it is an
+   unimplemented one. It is also the single largest cross-session
+   architecture item in this ruling: a real meet-result-to-reputation feed
+   needs a seam across `src/career/`/`src/game/` and `src/empire/` that does
+   not exist. **Following the precedent CLAUDE.md already set for the
+   progression-wallet wiring** ("ruled out until the tuning registry is
+   verified complete," recorded rather than attempted early), this is
+   deferred as its own later, deliberately serialised, explicitly authorised
+   crossing — built as a pure function of a meet result on the Empire side
+   first (ready, not yet wired), with the actual cross-directory wiring
+   requiring its own sign-off when the rest of this plan has landed. Trophy
+   *display* inside the gym (presentation-only, reads a result the way
+   `floor.ts` reads ownership) is lower-risk and can move earlier once (1)
+   exists.
+5. **Portfolio (multiple acquired locations beyond the Home Gym) stays
+   paused per §5.11's own gate discipline until unpaused by a human.** The
+   ruling's monumental-expansion fantasy ("own the greatest powerlifting gym
+   on Earth") and its named tier list running past a single Warehouse both
+   read as wanting more than one gym. **Reading this ruling as that
+   unpause** — it is explicit about wanting scale the current four-rung
+   ladder alone cannot produce — but recorded as an interpretation rather
+   than silently assumed, since §5.11 requires a human ruling specifically
+   to lift this pause and the ruling itself does not use the word
+   "portfolio." Sequenced last: everything above should exist and be played
+   on one gym before multiplying the loop.
+6. **NPC individuality/tenure beyond a type-and-tenure multiplier.**
+   `members.ts` is a pure, stateless satisfaction function today — no
+   roster, no arrival/departure, no history, and its equipment-condition
+   input is hardcoded to `1` everywhere because nothing yet produces a real
+   value. The ruling's *"that lifter has been with my gym since the
+   garage"* needs an actual roster with persistence, which is new state, not
+   a new formula — the largest data-model change on this list after
+   Career↔Empire wiring.
+
+**Staged build order — each stage gated exactly as §5.11/§5.13 already gate
+every stage of this spec: it must be playable, and a human must have played
+it before the next stage starts.** Order, and why it is this order rather
+than the ruling's own §1–§23 sequence:
+
+- **Stage A (this section).** Reconcile the ruling against the shipped spec;
+  fix two stale entries this reconciliation surfaced (§2.4's undersold
+  one-liner; §11's stale "nothing a player can reach" framing, corrected
+  above rather than silently left).
+- **Stage B.** The economy pacing simulator (item 3) — pure logic, no
+  screen, informs every later number.
+- **Stage C.** Station-tap management (item 1), built against the existing
+  floor/management data with no new simulation.
+- **Stage D.** Quality/Capacity/Throughput on Barbell first (item 2),
+  touching `floorSim.ts`'s capacity constant — the one piece of this pass
+  that changes the simulation's own core rather than its surface, so it
+  gets its own dedicated build-and-critic round rather than riding with (C).
+- **Stage E.** Career-side of the reputation feed (item 4), built and
+  proven as a pure function first; the cross-directory wiring itself stays a
+  separate, later, explicitly-authorised crossing.
+- **Stage F.** Portfolio unpause (item 5) — multiple acquired locations,
+  remote management, full unattended staffing.
+- **Stage G.** NPC roster/tenure depth (item 6).
+
+**Explicitly not reopened by this section:** §5.13 Phase 4's art gate, which
+stands exactly where its own text leaves it — *"holds/stops here until a
+human names the next thing"* — this ruling's emphasis on mechanical depth
+(its own §22 lists visual customization under *improve*, not under *build
+first*) reads as leaving that gate closed for now, not as the human naming
+the next art round; if that reading is wrong, say so and it reopens. Nor
+does this section touch S4b's own still-unrun gate, S4f's condition-vs-review
+split, S4g/S4h/S4i's device fixes, or the 1401 within-horizon trade-off — all
+stand exactly as their own sections already record them.
+
+**The one thing this section cannot do, stated because the ruling itself
+asked for it to be checked honestly rather than assumed:** the whole-game
+gate — *"proven fun,"* the lift mechanic, Sim Mode and meet day — is still
+shut, per §11's own text, corrected above only to say Gym Empire's *own* feel
+has since been played repeatedly, not that the lift has. This section adds
+staged work inside an already-overridden mode; it does not and cannot lift
+that gate, and no critic on any stage below may claim otherwise.
+
+---
+
 ## 6. Meet Day
 
 The emotional centerpiece. Deserves the most design care and polish budget.
@@ -4142,6 +4342,28 @@ work.
       **Career, Arcade and cut-in *art* remain unbuilt**, and the playtesting
       question above remains genuinely open for all three. Grading and closing
       what already exists continues without waiting on this answer.
+
+      **And the presentation layer has since been played, repeatedly, on a
+      real device — which this entry also did not say.** The paragraph above
+      was written when §5 was "pure logic — zero React, no shell route, no
+      component, nothing a player can reach." That stopped being true at
+      Crossing 6 (shell wiring) and has moved further since: §5.13's Phases
+      1–4 each cleared a human-playtest gate on a real device (quoted
+      verbatim in that section), and — not reflected anywhere else in this
+      document — a further run of real-device playtests, recorded in
+      CLAUDE.md as S4c through S4i, found and closed a check-in tap nobody
+      needed, an offline-versus-watched accrual-rate bug, an unreachable
+      first purchase, an untappable screen, and a shell overlay covering real
+      controls, each re-verified on the same device after its fix. None of
+      that lifts the gate this entry is about — "proven fun" names the lift
+      mechanic, Sim Mode and meet day, and nothing above touches it; that
+      stays unproven, by design, because nobody has judged it. What actually
+      changed is narrower and real: Gym Empire's own feel, as a screen a
+      thumb presses, has now been checked against a person holding a phone
+      more than once — a different, stronger claim than "pure logic, nothing
+      reachable," and one worth recording here rather than leaving for a
+      reader to reconstruct from git history, for the same reason this entry
+      gives for correcting rather than deleting its own stale sentence above.
 
 - [x] **The licensing screen is not a "mode", so the shell does not have to
       reach it — lead scoping call, overrulable.** A critic grading N1 flagged

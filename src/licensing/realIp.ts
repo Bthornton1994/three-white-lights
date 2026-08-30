@@ -1356,7 +1356,7 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'docs/GDD.md', name: 'Duolingo', where: 'prose', count: 5 },
   { file: 'docs/GDD.md', name: 'Game Boy', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'Genesis', where: 'prose', count: 2 },
-  { file: 'docs/GDD.md', name: 'Idle Fitness Gym Tycoon', where: 'prose', count: 1 },
+  { file: 'docs/GDD.md', name: 'Idle Fitness Gym Tycoon', where: 'prose', count: 2 },
   { file: 'docs/GDD.md', name: 'NPL', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'OpenPowerlifting', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'SNES', where: 'prose', count: 2 },
