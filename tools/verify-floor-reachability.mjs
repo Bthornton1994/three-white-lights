@@ -2965,6 +2965,24 @@ try {
       }
     }
   }
+  // GDD §5.14 STAGE C.1 FIX: `at >= 1` used to gate this loop, which is a
+  // NARROWER threshold than the station panel's own — the panel (via
+  // `stationConditionView.isSound`, `stationView.ts`) reads condition
+  // against `MAINTENANCE_PROMPT_CONDITION` (§5.14 Stage C's own S4f
+  // widening, the same line `gymscreen-worn` prints), not against exactly 1,
+  // and ON PURPOSE (`GymScreen.tsx`'s own S4f comment: the per-item/panel
+  // gate is deliberately WIDER than `repairEquipment`'s own exact-zero
+  // refusal, leaving the band between the two to the scheduled review
+  // rather than the tapped station). An item can sit above that line with a
+  // real condition under 1 — measured directly, on this build, at
+  // 0.999997 — and the panel correctly reads it as sound and draws "as new
+  // — nothing to repair" rather than a live repair control. `at >= 1` read
+  // that CORRECT refusal as a bug and failed the run over it. The fix does
+  // not try to precompute a threshold at all — it reads the panel's own
+  // ACTUAL unavailable reason and treats "as new" as the benign skip it is,
+  // while still failing loudly on the one case this section was written
+  // for: an item genuinely worn but priced past what the purse can reach,
+  // which would otherwise stall the walk with nothing said about why.
   const RECOVERY_WALK_ITEMS = [...FIXED_FURNITURE_ITEMS, 'mats'];
   for (const item of RECOVERY_WALK_ITEMS) {
     const kind = stationKindFor(item);
@@ -2976,14 +2994,18 @@ try {
     if (!stillOnFloor) continue;
     const at = numberIn(await stationConditionText(kind, item), /condition ([\d.]+)/);
     if (at === null || at >= 1) continue;
-    // The repair control is gated on `repairEquipment`'s own refusal now, so
-    // a worn item with an unaffordable repair draws the reason instead of the
-    // button. That is a real state and this loop would otherwise time out
-    // inside a click with nothing said about why.
     const repairDrawn = await page.getByTestId('floorgrid-station-panel-repair').count();
     if (repairDrawn === 0) {
+      const unavailableText = await textOf('floorgrid-station-panel-repair-unavailable');
+      if (unavailableText === 'as new — nothing to repair') {
+        // The panel's own condition-gated refusal, correctly reached — this
+        // item sits above MAINTENANCE_PROMPT_CONDITION even though its raw
+        // condition is under 1, and the panel is not offering a control
+        // because pressing one would do nothing, exactly as designed.
+        continue;
+      }
       fail(
-        `S4b (9g): ${item} is at condition ${at} and its station repair control is not offered — the panel says "${await textOf('floorgrid-station-panel-repair-unavailable')}"`,
+        `S4b (9g): ${item} is at condition ${at} and its station repair control is not offered — the panel says "${unavailableText}"`,
       );
       continue;
     }
@@ -3774,6 +3796,19 @@ try {
   } else {
     await dragBox(trayBox13h, gridBox13h.x + FLOOR_TILE_PIXELS * 5.25, gridBox13h.y + FLOOR_TILE_PIXELS * 0.25);
     await page.waitForTimeout(250);
+    // GDD §5.14 STAGE C.1 — SCROLL THE GRID BACK INTO VIEW BEFORE READING
+    // EITHER BOX FOR THE SECOND DRAG, RATHER THAN TRUSTING WHEREVER THE
+    // FIRST DRAG LEFT THE PAGE. This is the same "ancestor ScrollView can
+    // move" hazard the comment below already names, taken one step further:
+    // it is not enough to re-read the grid's box FRESH if the page has
+    // scrolled the grid OFF SCREEN entirely (measured on this build, after
+    // the diagnostics toggle's own chrome fix made the page taller: grid box
+    // y as low as -320, i.e. above the visible viewport) — a synthetic mouse
+    // sequence aimed at a point the browser is not actually painting cannot
+    // land. `scrollIntoViewIfNeeded` first, then re-read BOTH the source
+    // (mats' own box) and the target (the grid's box) fresh against that
+    // SAME scroll position, so the two stay consistent with each other.
+    await page.getByTestId('floorgrid-grid').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
     const placedBoxBeforeDrag13h = await boxOf('floorgrid-placed-mats');
     if (placedBoxBeforeDrag13h === null) {
       fail('13h: mats did not re-place for the drag claim');

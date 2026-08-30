@@ -15924,7 +15924,14 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // capable of swallowing a real tap meant for the station chip beneath
   // it), plus their own doc comments. Read from this pin's own failure
   // value.
-  NODES_EXAMINED: 64_629,
+  // 64_629 -> 64_636: GDD §5.14 Stage C.1's own visibility fix — the
+  // diagnostics toggle's style went from a bare `{ cursor: 'pointer' }` to
+  // `panelStyles.button`/`buttonText` (the station panel's own chrome,
+  // reused rather than invented), found and fixed the same way S4h's own
+  // defect was: by looking at a real screenshot, where the toggle read as
+  // plain text indistinguishable from the informational lines around it.
+  // Read from this pin's own failure value.
+  NODES_EXAMINED: 64_636,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

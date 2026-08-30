@@ -1626,14 +1626,24 @@ export function FloorGrid(props: FloorGridProps) {
         header calls Phase 3's motion/liveness evidence (`floorsim-caption`'s
         tick, `floorsim-legend-<state>`'s boxes) stops existing — it stops
         being permanently drawn over the gym a player is looking at.
+
+        `panelStyles.button`/`buttonText` — the station panel's own chrome,
+        reused rather than invented — on purpose, per S4h's own finding one
+        file over: an `accessibilityRole="button"` `Pressable` with no visible
+        chrome reads, on a real screenshot, as plain text indistinguishable
+        from every informational line around it. Caught the same way S4h's
+        own defect was — by looking at a real screenshot, not by trusting the
+        accessibility tree.
       */}
       <Pressable
         testID={'floorgrid-diagnostics-toggle'}
         accessibilityRole={'button'}
         onPress={() => setShowDiagnostics((previous) => !previous)}
-        style={{ cursor: 'pointer' } as WebSelectableViewStyle}
+        style={panelStyles.button as WebSelectableViewStyle}
       >
-        <Text>{showDiagnostics ? 'hide diagnostics' : 'show diagnostics'}</Text>
+        <Text style={panelStyles.buttonText}>
+          {showDiagnostics ? 'hide diagnostics' : 'show diagnostics'}
+        </Text>
       </Pressable>
       {showDiagnostics ? (
         <View testID={'floorgrid-diagnostics'}>
