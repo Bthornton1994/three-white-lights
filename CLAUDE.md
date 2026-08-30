@@ -1556,6 +1556,73 @@ arc's minting decision.
 **`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
 a crossing.
 
+### RULED 2026-08-29 (FOURTH): SPEND THE 0.0035 ON ONSET BELOW THE BAND — NAMED FALLBACK IF IT FAILS
+
+The session-only search against the thirteenth ruling found the pairing is a
+genuine 0.0035-wide dead zone, not a structural wall: at `ONSET: 0.20`,
+`min(RPE 8 floor) > max(RPE 9 floor)` needs `WALL_ADDEND ≳ 0.1955`, while
+`min(RPE 10 floor) ≥ 7` needs `WALL_ADDEND ≲ 0.1920` — two clean,
+independently-confirmed boundaries pointing opposite directions, with nothing
+between them. RPE 9's own `≥ 7` floor and 9-vs-10 ordering held throughout the
+searched range; only the RPE 8-vs-9 boundary and the RPE 10 floor conflict.
+
+**`WORKING_FLOOR ≤ 6` is still impossible on the session ladder — that binds
+RPE 10's hardest cell, unconditionally (per the eleventh ruling). Ruled:
+spend the gap on `ONSET`, below the shipped band, not on `WALL_ADDEND`.**
+
+**Primary path.** `ONSET: 0.20` gives the LEAST ordering headroom of the two
+values this arc has already shipped-adjacent to (`0.20` vs `0.25`) — probe
+`ONSET` in `[0.18, 0.20)`, holding `WALL_ADDEND ≲ 0.1920` (the RPE-10-safe
+value), searching ONLY as far as needed to move RPE 8's hardest session cell
+from 12 ticks to 13 — one extra tick of separation, not a broad re-search.
+**Ship the pair if all of the following hold:**
+
+- RPE 8's `MAX_EFFORT` still 0.
+- RPE 8's `WORKING_FLOOR` still strictly harder than the arc's `20/18/19/20`
+  baseline — pulling `ONSET` back down must not regress RPE 8 toward "too
+  easy" again, only buy the one tick of ordering room needed.
+- All four RPE 9 session cells `≥ 7`.
+- All four RPE 10 session cells `≥ 7`.
+- `min(RPE 8 floors) > max(RPE 9 floors)`, strict.
+- RPE 9's hardest cell still strictly easier than RPE 10's easiest —
+  `min(RPE 9 floors) > max(RPE 10 floors)`, preserving 9-vs-10 ordering.
+
+Pin old (`20/18/19/20`) beside new. **If no `ONSET` value in `[0.18, 0.20)`
+clears all six, stop the probe there — do not walk `ONSET` back to the
+shipped `0.15`, and do not raise `WALL_ADDEND` to `0.1955` to try closing the
+gap from the other side.**
+
+**Fallback, named and shipped explicitly if the primary path fails — not a
+silent non-ship:** `ONSET: 0.20`, `WALL_ADDEND: 0.1920`. All four RPE 10
+cells `≥ 7`. All four RPE 9 cells `≥ 7`. RPE 8's hardest cell (12 ticks)
+EQUALS RPE 9's easiest cell (12 ticks) — an accepted, pinned tie, both
+vectors in the source. **In the header near this tie, state it explicitly:
+same class of accepted boundary as the eighth ruling's RPE 9/RPE 10 floor
+tie — a single cell touching, with RPE 9's other three cells (10, 10, 11)
+staying clearly separated from RPE 8's range.** Do not then raise
+`WALL_ADDEND` to try to break this tie — it is accepted, not a gap to keep
+chasing. No third knob, in either path: `DEMAND_BASE.bench`,
+`GRIND_BOOST_FORCE_MAX`, an RPE field on `LiftConfig`, `MAX_LOCKOUT_TICKS` /
+the false-start wall, and the Tuchscherer chart are all still refused,
+unconditionally.
+
+**Meet's census stays exactly as the thirteenth ruling recorded it — no
+re-opening.** `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` (0.005) does not move.
+Warm-up (RPE ≤ 7) stays byte-identical. The false-start guarantee at the
+shipped 12-tick lockout stays hard.
+
+**Do not mint until the session RPE 8/9/10 floors match whichever of these
+two outcomes actually ships** — the primary win with full separation, or the
+named fallback with its one pinned boundary tie. Squat and deadlift stay
+byte-identical. GDD §6.2 moves in the same commit as code, stating which
+path shipped and the real measured numbers, not either path's estimate.
+
+**This session is not minting bench off this round regardless of outcome —
+that decision stays with the human.**
+
+**`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
+a crossing.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
