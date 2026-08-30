@@ -2251,17 +2251,58 @@ export const LIFT_TUNING = Object.freeze({
    * fallback never fired and `0.09` was never shipped.
    *
    * PLACEHOLDER, LIKE EVERY FEEL VALUE HERE — GDD §12.1, this file's own rule,
-   * and this constant's own header three paragraphs up. `0.15` is unverified
+   * and this constant's own header three paragraphs up. `0.15` was unverified
    * by playtest, the same as `0.045` was and `0.34`/`0.30` on the sibling
-   * constant are. RPE 8's `MAX_EFFORT` realistic-cadence loss rate stays
-   * exactly 0 at this value (see `lift.test.ts`'s `MAX_EFFORT.REALISTIC_LOST`)
+   * constant are. RPE 8's `MAX_EFFORT` realistic-cadence loss rate stayed
+   * exactly 0 at that value (see `lift.test.ts`'s `MAX_EFFORT.REALISTIC_LOST`)
    * — a harder floor, not a rep put out of reach — and `WORKING_FLOOR`'s old
-   * vector (56, 38, 44, 56 ticks; 1.07-1.58 taps/s) is pinned beside the new
-   * one (20, 18, 19, 20 ticks; 3.00-3.33 taps/s) in that constant's own header
-   * rather than only here, so a reader lands on the real measurement whichever
-   * constant they started from.
+   * vector (56, 38, 44, 56 ticks; 1.07-1.58 taps/s) is pinned beside the 0.15
+   * one (20, 18, 19, 20 ticks; 3.00-3.33 taps/s) in that constant's own
+   * header, so a reader lands on the real measurement whichever constant they
+   * started from.
+   *
+   * -------------------------------------------------------------------------
+   * 2026-08-29 (FOURTH RULING): FALLEN 0.15 -> 0.195, SPENDING A NAMED
+   * 0.0035-WIDE DEAD ZONE ON THIS CONSTANT RATHER THAN ON THE SIBLING
+   * -------------------------------------------------------------------------
+   * A prior round's fine search (independently re-verified this round) found
+   * that at `ONSET: 0.20`, `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND >= ~0.1955`
+   * is needed for strict RPE-8-vs-RPE-9 separation in `WORKING_FLOOR`, while
+   * `WALL_ADDEND <= ~0.1920` is needed to keep every RPE 10 session cell
+   * `>= 7` — two boundaries pointing opposite directions with nothing between
+   * them. RPE 9's own `>= 7` floor and the RPE-9-vs-RPE-10 ordering held
+   * cleanly across the whole searched range; only this one RPE-8-vs-RPE-9
+   * boundary conflicted with the RPE 10 floor requirement.
+   *
+   * RULED: SPEND THE GAP HERE, NOT ON THE SIBLING. `WORKING_FLOOR <= 6` is
+   * structurally impossible on the session ladder (see the eleventh ruling in
+   * this arc), which pins RPE 10's hardest cell and rules out raising
+   * `WALL_ADDEND` toward 0.1955 to close the gap from the other side — that
+   * was already shown to fail RPE 10. `WALL_ADDEND` holds at the RPE-10-safe
+   * `0.192` (see that constant's own header) and this constant is probed
+   * downward from `0.20` instead, narrowly, only as far as needed to move RPE
+   * 8's hardest session cell from 12 ticks (a TIE with RPE 9's easiest floor
+   * at `WALL_ADDEND: 0.192`) to 13 (strict separation):
+   *
+   *     ONSET 0.20     RPE 8 floors  16, 12, 14, 15   (min 12, TIES RPE 9)
+   *     ONSET 0.199    RPE 8 floors  16, 13, 14, 15   (min 13, clears)
+   *     ONSET 0.1995   RPE 8 floors  16, 12, 14, 15   (min 12, still ties)
+   *     ONSET 0.195    RPE 8 floors  16, 13, 14, 16   (min 13, clears, SHIPPED)
+   *
+   * The 12-to-13 transition sits inside a razor-thin ~0.0005 band between
+   * 0.199 and 0.1995. `0.195` is chosen with real clearance under that
+   * boundary — the same reasoning `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND`'s
+   * own header used for choosing 0.30 "well clear" of its own breaking point
+   * rather than at its edge — while still moving only 0.005 off `ONSET:
+   * 0.20`, the narrow probe the ruling authorised rather than a broad
+   * re-search back toward the shipped `0.15`.
+   *
+   * `MAX_EFFORT.REALISTIC_LOST` for RPE 8 stays exactly 0 at `0.195` (see
+   * `lift.test.ts`). `WORKING_FLOOR`'s full history (56/38/44/56 at 0.045,
+   * 20/18/19/20 at 0.15, 16/13/14/16 now) is pinned in that constant's own
+   * header. PLACEHOLDER, unverified by playtest, same as every value above.
    */
-  BENCH_WORKING_RUNG_DEMAND_ONSET: 0.15,
+  BENCH_WORKING_RUNG_DEMAND_ONSET: 0.195,
 
   /**
    * -------------------------------------------------------------------------
@@ -2310,8 +2351,8 @@ export const LIFT_TUNING = Object.freeze({
    * `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` COSTS, IN `ONSET`'s PLACE
    * -------------------------------------------------------------------------
    * PLACEHOLDER, unverified by playtest — GDD §12.1, and this file's own rule.
-   * Nobody has played RPE 10/meet's 63.0%/66.4% realistic-cadence loss rate;
-   * nobody has played RPE 9's 5-6 tick `WORKING_FLOOR`.
+   * Nobody has played meet's 23.5% realistic-cadence loss rate; nobody has
+   * played RPE 9's 10-12 tick `WORKING_FLOOR` or RPE 10's 7-8 tick one.
    *
    * WHY THIS EXISTS RATHER THAN A BIGGER `ONSET`: see `ONSET`'s own header,
    * "RAISING THIS TO 0.100... DELIBERATELY NOT SHIPPED". No value of a SINGLE
@@ -2388,8 +2429,42 @@ export const LIFT_TUNING = Object.freeze({
    * that wants either property back needs a new phone sentence asking for it
    * — not a bigger `DEMAND_BASE`, not a bigger ceiling, and not creeping this
    * addend back toward the boundary above.
+   *
+   * -------------------------------------------------------------------------
+   * 2026-08-29 (FOURTH RULING): LOWERED AGAIN, 0.30 -> 0.192, HELD FIXED WHILE
+   * `ONSET` WAS PROBED INSTEAD — SEE THAT CONSTANT'S OWN HEADER FOR THE FULL
+   * DEAD-ZONE ACCOUNT
+   * -------------------------------------------------------------------------
+   * A prior round's fine search found `WALL_ADDEND` cannot both clear
+   * `min(RPE 8 floor) > max(RPE 9 floor)` (needs `>= ~0.1955` at `ONSET:
+   * 0.20`) and keep every RPE 10 session cell `>= 7` (needs `<= ~0.1920`) —
+   * the two boundaries do not overlap. `0.192` is the RPE-10-safe end of
+   * that pair, re-verified this round rather than assumed: all four RPE 10
+   * session cells read `7, 7, 8, 8` (all `>= 7`) and all four RPE 9 cells
+   * read `12, 10, 10, 11` (all `>= 7`, and RPE 9's own floor stays strictly
+   * easier than RPE 10's, `min(nine) = 10 > max(ten) = 8`). The fourth
+   * ruling's Step 1 held this constant here and probed `ONSET` down from
+   * 0.20 to buy the RPE-8-vs-RPE-9 separation the un-probed pair would have
+   * tied at 12; see `BENCH_WORKING_RUNG_DEMAND_ONSET`'s own header for that
+   * search.
+   *
+   * KNOCK-ON EFFECTS OF THE FURTHER FALL, MEASURED RATHER THAN ASSUMED: no
+   * RPE 9 or RPE 10 cell's boosted margin reaches
+   * `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` any more at 0.192 — RPE 10
+   * still did, uniformly, at 0.30 (RPE 9 had already come off the ceiling at
+   * 0.30, see the paragraph above) — so `MAX_EFFORT.REALISTIC_LOST` falls to
+   * `[0, 0, 0, 0, 0, 423]` — RPE 10
+   * joins RPE 9 at 0 of 400, and meet falls from 1195 to 423 of 1800 as its
+   * eighteen cells stop sharing one ceiling-clipped value and split by base
+   * margin instead (see `lift.test.ts`'s `MEET_FLOOR_GAP_TICKS` for the
+   * full 18-cell census this produces — a census, not a bar, per the
+   * thirteenth 2026-08-29 ruling "DROP THE 17-MEET-CELLS BAR"). The
+   * `meet/aggressive/att3/wrecked` exception (the second 2026-08-29 ruling)
+   * stays pinned at 4 ticks, unmoved by this fall — its base margin (0.3066)
+   * still clears the ceiling's headroom at this magnitude of addend either
+   * way, the same as it has since the 2026-08-28 (FOURTH) margin-band cut.
    */
-  BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND: 0.3,
+  BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND: 0.192,
 
   /**
    * -------------------------------------------------------------------------

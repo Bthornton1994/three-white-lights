@@ -2921,6 +2921,110 @@ been: does RPE 8 now read as a real grind rather than a cutscene, and does
 RPE 9 read as beatable rather than a wall, with RPE 8 < RPE 9 < RPE 10/meet
 still an escalating ladder.
 
+#### The 2026-08-29 (fourth ruling) retune — closing the ONSET/WALL_ADDEND dead zone
+
+**A prior round's fine-grained search, independently re-verified against the
+real engine before this round began, found a genuine `~0.0035`-wide dead
+zone rather than a structural wall.** At `ONSET: 0.20`, `WALL_ADDEND >=
+~0.1955` was needed for `min(RPE 8 floor) > max(RPE 9 floor)` (strict
+RPE-8-vs-RPE-9 separation), while `WALL_ADDEND <= ~0.1920` was needed for
+`min(RPE 10 floor) >= 7` — two boundaries pointing opposite directions with
+nothing between them. RPE 9's own `>= 7` floor and the RPE-9-vs-RPE-10
+ordering held cleanly across the whole searched range; only this one
+boundary conflicted.
+
+**Ruled: spend the gap on `ONSET`, held below the un-shipped `0.20`, with
+`WALL_ADDEND` fixed at the RPE-10-safe `0.192` — not by raising `WALL_ADDEND`
+toward the RPE-8 side, which was already shown to fail RPE 10's floor.**
+`WORKING_FLOOR <= 6` is structurally impossible on the session ladder (the
+eleventh ruling in this arc), which pins RPE 10's hardest cell and rules
+that side out.
+
+**`ONSET` fell `0.15` → `0.195`**, a narrow probe rather than a broad
+re-search, targeted only at buying one extra tick of separation between RPE
+8's hardest floor and RPE 9's easiest at the fixed `WALL_ADDEND`:
+
+| `ONSET` | RPE 8 `WORKING_FLOOR` | min |
+|---|---|---|
+| `0.20` (never shipped) | 16, 12, 14, 15 | 12 — TIES RPE 9's easiest floor (12) |
+| `0.199` | 16, 13, 14, 15 | 13 — clears |
+| `0.1995` | 16, 12, 14, 15 | 12 — still ties |
+| **`0.195` (shipped)** | **16, 13, 14, 16** | **13 — clears, chosen with real clearance under the razor-thin `~0.0005` boundary between `0.199` and `0.1995`** |
+
+**`WALL_ADDEND` fell `0.30` → `0.192`**, the fixed value this round's Step 1
+held constant while `ONSET` was the one being probed. Full session
+`WORKING_FLOOR` census, ticks between taps, `reachableSessionCells()` order:
+
+| rung | 2026-08-29 (`ONSET` 0.15 / `WALL_ADDEND` 0.30) | NOW (`ONSET` 0.195 / `WALL_ADDEND` 0.192) |
+|---|---|---|
+| RPE 6, 7 | unchanged — no cadence costs the rep | unchanged |
+| RPE 8 | 20, 18, 19, 20 (3.00-3.33 taps/s) | **16, 13, 14, 16 (3.75-4.62 taps/s)** |
+| RPE 9 | 6, 5, 5, 6 | **12, 10, 10, 11** |
+| RPE 10 | 4, 4, 4, 4 (uniform, ceiling-clipped) | **7, 7, 8, 8 (no longer uniform, off the ceiling)** |
+
+All six of this round's Step 1 stop conditions hold, driven directly against
+the real engine rather than estimated:
+
+- RPE 8's `MAX_EFFORT.REALISTIC_LOST` stays exactly **0 of 400**.
+- RPE 8's `WORKING_FLOOR` (13-16 ticks) is strictly harder than the arc's
+  `20/18/19/20` baseline at every cell.
+- All four RPE 9 session cells read **`>= 7`** (10, 10, 11, 12).
+- All four RPE 10 session cells read **`>= 7`** (7, 7, 8, 8).
+- `min(RPE 8) = 13 > max(RPE 9) = 12`, **strict**.
+- `min(RPE 9) = 10 > max(RPE 10) = 8`, **strict** — the 9-easier-than-10
+  ordering the 2026-08-29 ruling named as expected and allowed, preserved.
+
+**RPE 9 and RPE 10's `MAX_EFFORT` realistic-cadence loss rates both land at 0
+of 400** (RPE 10 down from 252; RPE 9 stayed at 0) as the lower `WALL_ADDEND`
+pulls both rungs' boosted margins clear of the max-effort wall (`0.3668` →
+`0.3759`, re-driven) — the same mechanism that breaks RPE 10's
+ceiling-clipped uniformity. Meet's aggregate falls from 1195 to **423 of
+1800**, and `MAX_EFFORT_WALLS.HIGHEST_REACHABLE_MARGIN` stays `0.378` but its
+membership shrinks from 21 of 40 reachable cells to **7 of 40, every survivor
+now a meet cell** — no session cell clips the ceiling any more.
+
+**The 18-cell meet census, re-measured at this round's `WALL_ADDEND` rather
+than assumed unchanged — it lands at different numbers than the thirteenth
+ruling's own census, since `WALL_ADDEND` itself is different this round:**
+
+| | att1 | att2 | att3 |
+|---|---|---|---|
+| conservative, rested | 7 | 6 | 5 |
+| standard, rested | 7 | 5 | 4 |
+| aggressive, rested | 7 | 4 | 4 |
+| conservative, wrecked | 5 | 4 | 4 |
+| standard, wrecked | 5 | 4 | 4 |
+| aggressive, wrecked | 5 | 4 | **4** |
+
+This is a census, not a bar — the thirteenth 2026-08-29 ruling ("DROP THE
+17-MEET-CELLS BAR") already withdrew any pass/fail requirement on the 17
+non-exception cells, and this round does not reopen it. Every cell reads
+`>= 4`, one tick above `GRIND_TAP_REFRACTORY_TICKS`.
+
+**The `meet/aggressive/att3/wrecked` exception — the second 2026-08-29
+ruling's pinned wrecked third — stays at 4, not the 6 a stale reading of this
+arc's own history would suggest.** That cell read 6 ticks back in
+2026-08-27, before the margin-band cut existed at all. The 2026-08-28
+(FOURTH) cut raised the ceiling, cleared this cell's base margin (`0.3066`),
+and dropped its floor to 4 — where it has independently re-verified to stay,
+unmoved, through every `WALL_ADDEND` this arc has shipped since (`0.34`,
+`0.30`, and this round's `0.192`).
+
+**Still binding, re-verified against both retuned constants together:**
+`BENCH_WARMUP_FLOOR_MARGIN`/`BENCH_WARMUP_FLOOR_ASCENT_TICKS` are
+byte-identical. The false-start guarantee (`a-false-start-can-never-pay`)
+re-pins at **0 of 40** reachable cells at the shipped 12-tick lockout. Squat
+and deadlift are byte-identical (`lift.ts` itself has zero diff this round —
+only the two `liftTuning.ts` constants moved).
+`BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` (`0.005`) and
+`BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` (`0.378`) did not move.
+
+**§12.1 STAYS OPEN. Nobody has played this retune.** `BENCH_WORKING_RUNG_
+DEMAND_ONSET` (`0.195`) and `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` (`0.192`)
+are both unplayed placeholders, the same as every constant in this arc. This
+round is not minting bench off this retune regardless of outcome — that
+decision stays with the human.
+
 3. Sim-mode readiness/fatigue silently adjusts the timing window width
 4. Three-light judging call (red/white), with a brief "judges deliberating" beat
    on close calls

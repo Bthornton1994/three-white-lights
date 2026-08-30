@@ -1106,22 +1106,26 @@ describe('the grind readout', () => {
     // FACT 3: it moves, and it moves at the TAP rate rather than on a timer.
     // A kick that decayed from one event, or one hardcoded on, would give a
     // single peak; six taps `spacing` ticks apart give six — or fewer, if the
-    // rep itself ends before the last one lands, which is what happens here
-    // since the 2026-08-28 (FOURTH) margin-band cut.
+    // rep itself ends before the last one lands.
     //
-    // 6 -> 5. `LOAD_PRESETS.HEAVY` (0.88) is played here at DEFAULT capacity
-    // (`benchHistory` passes no `feel`), and its base margin now clears
+    // 6 -> 5 ON THE 2026-08-28 (FOURTH) MARGIN-BAND CUT, 5 -> 6 ON THE
+    // 2026-08-29 (FOURTH RULING) `WALL_ADDEND` FALL (0.30 -> 0.192).
+    // `LOAD_PRESETS.HEAVY` (0.88) is played here at DEFAULT capacity
+    // (`benchHistory` passes no `feel`), and its base margin clears
     // `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN`, so this rep takes
-    // `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` (clipped by the raised ceiling)
-    // in place of the old `ONSET` — a much larger boosted demand than before.
-    // The ascent still runs long enough to register five of the six scripted
-    // taps as live-frame kicks; the sixth lands after the rep has already
-    // resolved (a miss, at this much harder margin), so it produces no live
-    // `grindReadout` frame to count. This is a real consequence of the new
-    // mechanism, not a narrowed sweep — `live.length` (43) is unchanged.
+    // `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` in place of `ONSET` either way.
+    // From 2026-08-28 (FOURTH) through the 2026-08-29 retune (`WALL_ADDEND`
+    // 0.34, then 0.30) the boosted demand was large enough that the rep
+    // resolved (a miss) before the sixth scripted tap landed, so only five
+    // taps produced a live `grindReadout` frame to count. At this round's
+    // lower `WALL_ADDEND` (0.192) the boosted demand is well clear of that —
+    // the rep now survives long enough for all six taps to register, so
+    // every one of them counts. This is a real consequence of the mechanism,
+    // not a narrowed sweep — the rep runs longer, not shorter: `live.length`
+    // rose from 43 to 59, still comfortably clearing the `> 10` floor above.
     const kicks = live.map((r) => r.kick);
     const peaks = kicks.filter((k, i) => k === 1).length;
-    expect(peaks, `full-strength kicks over ${live.length} live frames`).toBe(5);
+    expect(peaks, `full-strength kicks over ${live.length} live frames`).toBe(6);
     expect(Math.min(...kicks), 'the rail never went dark between taps').toBe(0);
     // ...and it is the COUNTED tap, not the dispatched one: a rep tapped inside
     // the refractory floor lands more presses and cannot land more kicks.
