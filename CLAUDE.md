@@ -1489,6 +1489,73 @@ final shape of the bench working-rung overlay this arc has converged on.
 **`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
 a crossing.
 
+### RULED 2026-08-29 (THIRD): DROP THE 17-MEET-CELLS BAR — THE PHONE NEVER ASKED FOR IT
+
+The third retune round measured the pairing the second retune ruling asked
+for and found it genuinely does not exist: one shared `WALL_ADDEND` is added
+to two populations whose base margins differ by roughly `2-20x` (session RPE
+9: `0.0117-0.0448`; meet excluding the pinned wrecked third: `0.0938-0.2470`,
+independently re-verified against the real engine, not taken on the round's
+own word). The addend range that keeps session ordering intact
+(`roughly ≥0.20`) and the range that lifts meet's lightest non-exception
+cells to `≥7` (`roughly ≤0.05-0.08`) do not overlap anywhere on `[0, 0.30]` —
+at the session-correct addend the lightest meet cells are nowhere near 7; at
+the meet-correct addend RPE 9's floor blows out to 25-32 ticks, more than
+double RPE 8's best achievable floor.
+
+**The bar that created this conflict was never what the phone asked for.**
+*"9 and 10 are impossible"* named the session ladder. `"17 meet cells ≥ 7"`
+was this session's own addition, written into the twelfth ruling's ship
+conditions, not a phone verdict. **Ruled: drop it as a ship gate. Meet rides
+whatever addend the session fix produces, recorded as a census, not held to a
+bar nobody asked for. Do not authorise a third knob to satisfy a bar this
+session invented — a meet-specific addend, `DEMAND_BASE.bench`, an RPE field
+on `LiftConfig`, the lockout, or the Tuchscherer chart are all still
+refused, for the same reason as ever: they are levers to solve a problem that
+does not exist once the invented bar is removed.**
+
+1. **`BENCH_WORKING_RUNG_DEMAND_ONSET` ships in the `0.20-0.25` band**,
+   unchanged from the last two rulings — mid-teens session RPE 8 floors,
+   mash-loss 0, strictly easier than RPE 9. Pin old (`20/18/19/20`) beside
+   new.
+2. **`BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` falls until all four SESSION RPE
+   9 cells and all four SESSION RPE 10 cells read `WORKING_FLOOR ≥ 7`, and
+   8 < 9 < 10 holds on the session cells.** Meet is not part of this
+   requirement — it rides the same shared addend, whatever that produces.
+   Pin mash-loss old beside new for every rung whose loss changes.
+3. **Meet gets a full 18-cell census, not a second bar.** Pin the whole
+   vector. The wrecked third stays 6, from the base curve, unchanged — it was
+   already a permanent exception per the twelfth ruling and stays one. The
+   other 17 read whatever the session-correct addend produces; do not chase
+   them toward 7, do not report a gap if they land below it.
+4. **One safety stop, narrower than the twelfth ruling's dropped bar: if any
+   meet cell OTHER than the wrecked third lands at `≤ 4` ticks — back inside
+   the arc's original refractory-adjacent "impossible" line — stop and name
+   those cells specifically.** A meet cell reading `5` or `6` is allowed and
+   must be pinned honestly, not treated as a problem to solve.
+
+**`BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` (0.005) does not move.
+`BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` (0.378) does not move.** Two
+knobs, one named exception — nothing else. Warm-up (RPE ≤ 7) stays
+byte-identical. The false-start guarantee at the shipped 12-tick lockout
+stays hard, unconditionally.
+
+**Do not mint until session conditions (1), (2) and (3) from the twelfth
+ruling — RPE 8 harder and easier than 9, RPE 9 ≥ 7 all four session cells
+between RPE 8 and RPE 10, RPE 10 ≥ 7 all four session cells — hold in the
+measured session `WORKING_FLOOR` vectors.** Squat and deadlift stay
+byte-identical. GDD §6.2 moves in the same commit as code, stating both
+retuned values, the full 18-cell meet census (not framed as a passed or
+failed bar), and the wrecked-third exception's standing reasoning.
+
+**This session is not minting bench off this round regardless of outcome —
+that decision stays with the human.** Note for the record: Empire's own S4h
+work is a separate track with its own URL and is not part of this bench
+arc's minting decision.
+
+**`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
+a crossing.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
