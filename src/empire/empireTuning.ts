@@ -2467,6 +2467,50 @@ export const EMPIRE_TUNING = Object.freeze({
    * answers, not how easy or hard the game is.
    */
   PACING_REPORT_HORIZONS_SECONDS: Object.freeze([600, 3600, 86400, 259200, 604800] as const),
+
+  // -------------------------------------------------------------------------
+  // GDD §5.14 Stage C — station-tap management. `FloorGrid.tsx`, `stationView.ts`.
+  // -------------------------------------------------------------------------
+
+  /**
+   * The tap/drag disambiguation threshold, in pixels: a release whose total
+   * accumulated movement (`PanResponderGestureState.dx`/`.dy`, via
+   * `Math.hypot`) is at or under this is read as a TAP — selecting the
+   * station under the finger rather than attempting a placement — and
+   * anything past it is read as the drag `FloorGrid.tsx` already handled
+   * before this round.
+   *
+   * SIZED AGAINST THE REAL DRAGS THIS DIRECTORY'S OWN BROWSER TOOL DRIVES,
+   * NOT GUESSED: `tools/verify-floor-reachability.mjs`'s `dragBox` always
+   * moves the pointer by at least `FLOOR_TILE_PIXELS * 0.25` (its smallest
+   * targeted move, section 4's second drag) before release, several tiles in
+   * the common case — so this threshold sits at a quarter of one tile,
+   * comfortably under every real drag that tool drives and comfortably over
+   * the few pixels of wobble a real finger's own touch-down has, without
+   * having watched a real finger do it. PROVISIONAL, per CLAUDE.md's "Game
+   * Feel Values Must Be Tunable": this is the tunable version, not a
+   * playtested one.
+   *
+   * 7 = `FLOOR_TILE_PIXELS` (28) × 0.25, written as the literal because this
+   * object cannot reference its own other keys while it is being built. Not
+   * independently re-derived by a test — if `FLOOR_TILE_PIXELS` moves, this
+   * value does not move with it, which is a real drift risk stated rather
+   * than hidden.
+   */
+  STATION_TAP_MAX_DRAG_PIXELS: 7,
+
+  /** The contextual station panel's own inner padding, on every edge. */
+  FLOOR_STATION_PANEL_PADDING_PIXELS: 10,
+
+  /**
+   * The contextual station panel's outer border width — visually distinct
+   * from `FLOOR_ITEM_BORDER_WIDTH_PIXELS`'s thin chip edges, since the panel
+   * is a whole surface rather than a floor chip.
+   */
+  FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS: 2,
+
+  /** Vertical gap between the panel and the grid/tray it sits below. */
+  FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS: 8,
 } satisfies EmpireTuningRecord);
 
 /**
@@ -2669,4 +2713,9 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS: 'knob',
 
   PACING_REPORT_HORIZONS_SECONDS: 'structural',
+
+  STATION_TAP_MAX_DRAG_PIXELS: 'knob',
+  FLOOR_STATION_PANEL_PADDING_PIXELS: 'knob',
+  FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS: 'knob',
+  FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS: 'knob',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

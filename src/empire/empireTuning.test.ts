@@ -711,7 +711,13 @@ describe('§5.5 social', () => {
     // 175 -> 176: GDD §5.14 Stage B's `PACING_REPORT_HORIZONS_SECONDS` — a
     // fixed measurement checkpoint list, not a cadence in any unit training
     // moves.
-    expect(examined).toBe(176);
+    // 176 -> 180: GDD §5.14 Stage C's four station-panel entries
+    // (STATION_TAP_MAX_DRAG_PIXELS, FLOOR_STATION_PANEL_PADDING_PIXELS,
+    // FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS,
+    // FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS) — a gesture-disambiguation
+    // distance and three layout knobs, none of them a cadence in any unit
+    // training moves.
+    expect(examined).toBe(180);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -729,7 +735,8 @@ describe('§5.5 social', () => {
     // 840 -> 870 (174 keys x 5 banned units, S4h's six new knobs).
     // 870 -> 875 (175 keys x 5 banned units, S4i's one new knob).
     // 875 -> 880 (176 keys x 5 banned units, Stage B's one new knob).
-    expect(probed).toBe(880);
+    // 880 -> 900 (180 keys x 5 banned units, Stage C's four new entries).
+    expect(probed).toBe(900);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

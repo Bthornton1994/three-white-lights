@@ -440,12 +440,17 @@ export function GymScreen(props: GymViewProps) {
 
   return (
     <ScrollView testID={'gymscreen-root'} style={styles.root}>
-      <View testID={'gymscreen-week'}>
-        <Text>
-          week {weekIndex} ({shape.fixed} fixed + {shape.flexible} flexible = {shape.total}{' '}
-          sessions) — {allocationSetThisWeek ? 'allocated this week' : 'not yet allocated this week'}
-        </Text>
-      </View>
+      {/*
+        GDD §5.14 Stage C — WORLD FIRST. The old order put six blocks of
+        report text (week, rung, money, lifts, the last accrual, the last
+        refusal) between the top of this scroll and the floor. This is
+        Stage C's own reordering, not a rewrite: every one of those six
+        blocks is still here, byte-identical, with the same testID — they
+        moved DOWN, and only two compact status lines (rung/rate, money)
+        stay ahead of the floor now. "See gym -> notice something -> tap
+        station" (this file's own header, Stage C) needs the gym to be the
+        first substantial thing on the screen, not the fourth.
+      */}
       <View>
         <Text testID={'gymscreen-rung'}>rung {gym.ladder.rung}</Text>
         <Text testID={'gymscreen-rate'}>
@@ -456,6 +461,22 @@ export function GymScreen(props: GymViewProps) {
         <Text testID={'gymscreen-gym-bucks'}>gym bucks: {gym.ladder.gymBucks}</Text>
         <Text testID={'gymscreen-accelerated-bucks'}>accelerated: {gym.acceleratedGymBucks}</Text>
         <Text testID={'gymscreen-clock'}>clock: {describeLadderClock(gym.ladder.collectedAt)}</Text>
+      </View>
+      <View testID={'gymscreen-floor'}>
+        <Text>the floor — your gym, live: touch a machine to manage it</Text>
+        <FloorGrid
+          owned={gym.sessionEquipment}
+          barbellOwned={gym.ladder.equipment}
+          floor={floor}
+          dispatch={dispatch}
+          managed={managed}
+        />
+      </View>
+      <View testID={'gymscreen-week'}>
+        <Text>
+          week {weekIndex} ({shape.fixed} fixed + {shape.flexible} flexible = {shape.total}{' '}
+          sessions) — {allocationSetThisWeek ? 'allocated this week' : 'not yet allocated this week'}
+        </Text>
       </View>
       {/*
         NO TAP ANYWHERE ON THIS SCREEN ADVANCES THE GYM CLOCK. `checkInsTaken`
@@ -475,15 +496,6 @@ export function GymScreen(props: GymViewProps) {
       {lastRefusal === null ? null : (
         <Text testID={'gymscreen-refusal'}>refused: {lastRefusal}</Text>
       )}
-      <View testID={'gymscreen-floor'}>
-        <Text>the floor — your gym, live: place equipment, watch members train</Text>
-        <FloorGrid
-          owned={gym.sessionEquipment}
-          barbellOwned={gym.ladder.equipment}
-          floor={floor}
-          dispatch={dispatch}
-        />
-      </View>
       {/*
         §5.11 stage 4 on the garage floor — GDD §5.7's staffing, maintenance,
         equipment condition and recoverable failure, placed directly under the

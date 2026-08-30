@@ -2478,6 +2478,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'reputation.ts',
       'sessions.ts',
       'social.ts',
+      // GDD §5.14 Stage C: the station-tap management selector.
+      'stationView.ts',
     ]);
   });
 
@@ -2639,7 +2641,18 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // direction: `empireTuning.ts`'s own new `PACING_REPORT_HORIZONS_SECONDS`
     // doc comment names `pacing.ts` by file name, so `empireTuning.ts ->
     // pacing.ts` is the seventh. Nothing was removed.
-    expect(pairs).toBe(128);
+    // 128 -> 139: GDD §5.14 Stage C's `stationView.ts`. Eleven new pairs,
+    // enumerated by diffing this exact walk against the pre-round tree
+    // rather than hand-counted: `stationView.ts` outward to `FloorGrid.tsx`,
+    // `GymScreen.tsx`, `empireTuning.ts`, `floor.ts`, `floorSim.ts`,
+    // `management.ts`, `members.ts` and `sessions.ts` (eight — its own
+    // import list plus its header prose naming the two screens by their real
+    // extension, which this scan's substring match reads as a mention of the
+    // `.ts` key), and three the other direction — `FloorGrid.tsx ->
+    // stationView.ts` and `FloorGrid.tsx -> management.ts` (both new import
+    // edges) and `empireTuning.ts -> stationView.ts` (the new Stage C tuning
+    // block's own section-header comment). Nothing was removed.
+    expect(pairs).toBe(139);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3250,21 +3263,59 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // and the tray's own empty/non-empty text.
       'member(s) around the gym',
       'unplaced equipment — drag onto the floor above',
+      // GDD §5.14 Stage C: the contextual station panel, the last thing
+      // FloorGrid.tsx's own JSX returns, so its chunks land after every
+      // other chunk in this file rather than interleaved with them.
+      // Transcribed from a driven run of this exact census, same discipline
+      // as every entry above. Most of the panel's text sits inside `{...}`
+      // expression containers (a ternary or a template literal) rather than
+      // as plain JsxText, so this collector — bare JsxText only — sees far
+      // fewer chunks than the panel's own JSX has lines; the `{' '}`-joined
+      // static fragments are what land here.
+      'condition',
+      '— repairing it costs',
+      'gym bucks',
+      'the standing maintenance review is currently about this item',
+      // GDD §5.14 Stage C — the repair arm's own gate, S4f-consistent
+      // (`isSound` then a purse comparison), written as plain JSX text with
+      // `{}` expressions rather than a template literal, which is why these
+      // three land here rather than in `templateChunks` below.
+      'as new — nothing to repair',
+      'needs',
+      'gym bucks — you have',
+      'repair for',
+      'remove from the floor',
+      'close',
       // GymScreen.tsx, in tree order — second, because a capital `G` sorts
       // before every lowercase shipped module name, GymScreen.tsx's chunks
       // come before ladderView.tsx's below rather than after it. Transcribed
       // the same way as the block above.
-      'week',
-      '(',
-      'fixed +',
-      'flexible =',
-      'sessions) —',
+      //
+      // GDD §5.14 Stage C reordered this file's AST, which is what moves
+      // every chunk below rather than only the ones whose TEXT changed —
+      // read that as this census doing its job (a position move is a real
+      // finding) rather than as churn. The rung/rate and money group now
+      // leads (it was fourth and fifth before), the floor caption follows
+      // immediately (new text, see below), and the week/lifts/accrual/
+      // refusal chunks that used to lead now trail it. Transcribed from a
+      // driven run of this exact census, same discipline as every entry in
+      // this list.
       'rung',
       'earning',
       'gym bucks per hour',
       'gym bucks:',
       'accelerated:',
       'clock:',
+      // Reworded for Stage C's own reordering: the old chunk ("place
+      // equipment, watch members train") described Phase 1's placement-only
+      // floor; the floor is now also a management surface a tap opens, and
+      // the caption says so.
+      'the floor — your gym, live: touch a machine to manage it',
+      'week',
+      '(',
+      'fixed +',
+      'flexible =',
+      'sessions) —',
       // THE PLAYER'S OWN CHECK-IN used to be five chunks here, and the reason
       // they existed was the round before this one: a human on a real phone
       // reported that they could not open a maintenance review, and that was
@@ -3283,18 +3334,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gym bucks, cap discarded',
       's',
       'refused:',
-      // GDD §5.13's PLAYTEST 2 ruling, gap 4: this chunk moved here, from
-      // between the week log and the dev controls (its position before this
-      // round), because `GymScreen.tsx`'s render order moved — the floor
-      // section is now the first thing after the compact status readouts,
-      // above the shop/allocator text. The AST-order census reads that move
-      // exactly: same string, new position, nothing about the text itself
-      // changed.
-      // Reworded after the P4c phone pass: the old chunk ("no members, no
-      // final art yet") was flagged stale by the Playtest 4 player and by the
-      // P4c pass's own screenshot was false twice over — three members
-      // training on finished sprites, under a caption denying both.
-      'the floor — your gym, live: place equipment, watch members train',
       // S4b — §5.11 stage 4 on the garage floor. Fifty-two new chunks, all
       // in `GymScreen.tsx`'s new management section, transcribed from a driven
       // run of this exact census rather than typed against the source, the
@@ -3725,7 +3764,27 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `LadderMoveResult`'s own `kind`. Measured by running the collector
     // above directly against this file's own comment-stripped source rather
     // than hand-counted.
-    expect(singleQuoted.size).toBe(511);
+    // 511 -> 527: GDD §5.14 Stage C. Sixteen new distinct values, measured by
+    // diffing this exact collector against the pre-round tree rather than
+    // hand-counted: ten new `floorgrid-station-panel*` testIDs, the new
+    // `'./stationView'` import specifier, the new selection-outline colour
+    // `'gold'` (reused from `AMBIENT_MEMBER_PALETTE` at the STRING level —
+    // this collector counts distinct VALUES across the directory regardless
+    // of which constant holds them, so a value already spelled once
+    // elsewhere would not have moved this count; `'gold'` was not), the new
+    // `'tray'` tap-origin literal (`'placed'`, its sibling, already shipped
+    // elsewhere and added nothing), and three new copy sentences (' — fixed
+    // barbell equipment', 'idle — nobody is using it right now', 'no manager
+    // hired — nothing repairs this automatically'). The repair arm's own
+    // "as new — nothing to repair" and the queue-count ternary's else arm are
+    // plain JSX text and `null` respectively — neither is single-quoted, so
+    // neither lands in this collector; see the bare-JsxText list above and
+    // `panelCondition`'s own comment on why the repair gate reads `isSound`
+    // rather than a fourth reason string. Everything else the panel writes as
+    // a single-quoted literal — `'repair-item'`, `'floor-remove'`,
+    // `'session'`, `'fixed'`, `'button'` among them — already ships
+    // elsewhere in this directory and adds nothing new to the set.
+    expect(singleQuoted.size).toBe(527);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3805,7 +3864,17 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // reading recorded at the …-second horizon". Measured by running the
     // collector above directly against this file's own comment-stripped
     // source.
-    expect(templateChunks.size).toBe(301);
+    // 301 -> 307: GDD §5.14 Stage C. Six new templates, all in the station
+    // panel's own copy — the operation line ("in use by a", the queue-count
+    // line), the session-identity line ("— session equipment ("), and the
+    // three manager-effect lines ("your … manager repairs this
+    // automatically below condition …", "…automatically below condition …,
+    // and this item is above that line", "…never repairs equipment
+    // automatically — their threshold is 0"). The repair-shortfall line is
+    // plain JSX text now (see `singleQuoted.size`'s own comment above), so
+    // it does not land here. Measured by diffing this exact collector
+    // against the pre-round tree rather than hand-counted.
+    expect(templateChunks.size).toBe(307);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3849,6 +3918,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './reputation',
       './sessions',
       './social',
+      // GDD §5.14 Stage C's own import specifier — `FloorGrid.tsx`'s new
+      // edge to `stationView.ts`.
+      './stationView',
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
       'IDAT',
       'IEND',
@@ -3975,6 +4047,17 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-root',
       'floorgrid-scroll-x',
       'floorgrid-scroll-y',
+      // GDD §5.14 Stage C: the contextual station panel's ten new testIDs.
+      'floorgrid-station-panel',
+      'floorgrid-station-panel-condition',
+      'floorgrid-station-panel-dismiss',
+      'floorgrid-station-panel-identity',
+      'floorgrid-station-panel-manager',
+      'floorgrid-station-panel-operation',
+      'floorgrid-station-panel-remove',
+      'floorgrid-station-panel-repair',
+      'floorgrid-station-panel-repair-unavailable',
+      'floorgrid-station-panel-review-note',
       'floorgrid-tray',
       'floorgrid-tray-empty',
       'floorgrid-tray-scroll',
@@ -3987,6 +4070,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'garage',
       'generic',
       'global',
+      // GDD §5.14 Stage C: the selected-station outline colour, reused from
+      // `AMBIENT_MEMBER_PALETTE` — see this file's own header note above.
+      'gold',
       'gray',
       'gym-accelerated-bucks',
       'gym-accrual',
@@ -4271,6 +4357,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'trainingIq',
       'trainingIqPerDay',
       'transparent',
+      // GDD §5.14 Stage C: the tap-origin literal `releaseAt`/
+      // `panResponderFor` use to tell a tray chip from a placed one. Its
+      // sibling `'placed'` already shipped elsewhere in this directory and
+      // added nothing new to the set.
+      'tray',
       'treadmill',
       'unaccelerated-seconds',
       'unacceleratedSeconds',
@@ -4373,7 +4464,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 805 -> 812: GDD §5.14 Stage B's `pacing.ts` — singleQuoted 507 -> 511
     // and templateChunks 298 -> 301, both enumerated above; doubleQuoted
     // unchanged.
-    expect(stringsChecked).toBe(812);
+    // 812 -> 834: GDD §5.14 Stage C — singleQuoted 511 -> 527 and
+    // templateChunks 301 -> 307, both enumerated above; doubleQuoted
+    // unchanged.
+    expect(stringsChecked).toBe(834);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -4474,7 +4568,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // probe.
     // 441 -> 445: GDD §5.14 Stage B's four new `spaceFree` tokens
     // ('few-times-a-day', 'once-a-day', 'sporadic', 'watcher'), each a probe.
-    expect(probes).toBe(445);
+    // 445 -> 458: GDD §5.14 Stage C's thirteen new `spaceFree` tokens
+    // ('./stationView', ten `floorgrid-station-panel*` testIDs, 'gold',
+    // 'tray'), each clearing the two-letter guard below, each a probe.
+    expect(probes).toBe(458);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -4730,8 +4827,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './floorSprites',
         './ladder',
         './ladderView',
+        // GDD §5.14 Stage C: the contextual station panel reads condition,
+        // manager capability and the standing maintenance review straight
+        // out of `management.ts`, and calls `repairEquipment` itself to
+        // decide whether a press would succeed — never a second copy of
+        // that arithmetic.
+        './management',
         './members',
         './sessions',
+        // Stage C's own small selector — see that file's header.
+        './stationView',
         'react',
         'react-native',
       ],
@@ -4778,6 +4883,18 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'reputation.ts': ['./empireCore', './empireTuning', './expansion', './production'],
       'sessions.ts': ['./empireCore', './empireTuning', './ladder', './production'],
       'social.ts': ['./empireCore', './empireTuning'],
+      // GDD §5.14 Stage C: the station-tap management selector. Five edges —
+      // the tuning block, the floor sim's own vocabulary (`FloorStationRef`,
+      // `FloorSimMember`), `management.ts`'s condition/repair/manager
+      // functions, `members.ts`'s `MemberType`, and `sessions.ts`'s
+      // `sessionEquipmentGroup` for a session station's identity.
+      'stationView.ts': [
+        './empireTuning',
+        './floorSim',
+        './management',
+        './members',
+        './sessions',
+      ],
     };
     let fenced = 0;
     for (const name of SHIPPED_MODULES) {
@@ -4797,7 +4914,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 18 -> 19: Phase 4's floorSprites.ts.
     // 20 -> 21: GDD §5.14 Stage B's pacing.ts. Read from this assertion's own
     // failure value.
-    expect(fenced).toBe(21);
+    // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
+    expect(fenced).toBe(22);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -4900,7 +5018,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 77 -> 82: GDD §5.14 Stage B's pacing.ts — five intra-directory edges
     // (./empireCore, ./empireTuning, ./ladder, ./management, ./production).
     // Read from this assertion's own failure value.
-    expect(specifiers).toBe(82);
+    // 82 -> 89: GDD §5.14 Stage C — two new edges on `FloorGrid.tsx`
+    // (./management, ./stationView) plus `stationView.ts`'s own five
+    // (./empireTuning, ./floorSim, ./management, ./members, ./sessions).
+    // Read from this assertion's own failure value.
+    expect(specifiers).toBe(89);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
@@ -5099,7 +5221,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 86400, 259200, 604800), so FIVE new findings under the synthetic
     // unregistered path rather than one. Read from this assertion's own
     // failure value.
-    ).toBe(399);
+    // 399 -> 403: GDD §5.14 Stage C's four new tuning entries
+    // (STATION_TAP_MAX_DRAG_PIXELS: 7, FLOOR_STATION_PANEL_PADDING_PIXELS: 10,
+    // FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS: 2,
+    // FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS: 8) — four new findings, none of
+    // them 0 or 1. Read from this assertion's own failure value.
+    ).toBe(403);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

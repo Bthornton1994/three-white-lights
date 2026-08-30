@@ -146,6 +146,7 @@ import {
   type PanResponderGestureState,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   type ViewStyle,
   View,
@@ -186,18 +187,33 @@ import {
 } from './floorSim';
 import { type LadderEquipmentItem } from './ladder';
 import { type GymViewAction } from './ladderView';
+import { type ManagedGym, maintenancePrompt } from './management';
 import { type MemberType } from './members';
 import { type SessionEquipmentItem } from './sessions';
+import {
+  type StationConditionView,
+  type StationIdentityView,
+  type StationManagerEffectView,
+  type StationOperationView,
+  stationConditionView,
+  stationIdentityView,
+  stationManagerEffectView,
+  stationOperationView,
+} from './stationView';
 
 /**
- * `userSelect` is a real react-native-web style extension (it maps straight
- * to the CSS property of the same name) that the core `react-native` types
- * `tsc` checks against do not declare, because native has no such concept.
- * This widens `ViewStyle` by exactly that one field rather than reaching for
- * `any` anywhere in this file — see the two call sites below for why the
- * property is load-bearing rather than decorative.
+ * `userSelect` and `cursor` are real react-native-web style extensions (they
+ * map straight to the CSS properties of the same names) that the core
+ * `react-native` types `tsc` checks against do not declare, because native
+ * has no such concept. This widens `ViewStyle` by exactly those two fields
+ * rather than reaching for `any` anywhere in this file — see the call sites
+ * below for why the properties are load-bearing rather than decorative.
+ * `cursor` joined this type in GDD §5.14 Stage C, for the same S4h reason
+ * `GymScreen.tsx`'s own button chrome already states: WebKit's click-
+ * delegation quirk on a non-natively-interactive element wants an explicit
+ * `cursor` declaration.
  */
-type WebSelectableViewStyle = ViewStyle & { readonly userSelect?: 'none' };
+type WebSelectableViewStyle = ViewStyle & { readonly userSelect?: 'none'; readonly cursor?: 'pointer' };
 
 /**
  * GDD §5.13 presentation Phase 4: `imageRendering` is a real react-native-web
@@ -227,6 +243,17 @@ export interface FloorGridProps {
   readonly barbellOwned: readonly LadderEquipmentItem[];
   readonly floor: FloorState;
   readonly dispatch: (action: GymViewAction) => void;
+  /**
+   * GDD §5.14 Stage C: the composed §5.11 stage-4 state — condition, the
+   * manager, the failure ledger. Read only, the same "client is a renderer"
+   * discipline `owned`/`barbellOwned` already carry: the contextual station
+   * panel reads condition, repair cost and manager capability straight out of
+   * `management.ts`'s own functions through `stationView.ts`'s selectors, and
+   * every action it offers (repair, remove) dispatches through the same
+   * reducer arms `GymScreen.tsx`'s own per-item report already uses. Nothing
+   * about this prop's arithmetic is duplicated here.
+   */
+  readonly managed: ManagedGym;
 }
 
 const FLOOR_BACKGROUND_COLOR = 'darkslategray';
@@ -254,6 +281,55 @@ const FLOOR_LABEL_STYLE = Object.freeze({
 /** The tray chip's backing — a quiet dark slate the sprites read against, one class for every item now that the sprite carries the identity the old colour cycle used to. */
 const FLOOR_TRAY_CHIP_COLOR = 'darkslateblue';
 const AMBIENT_MEMBER_BORDER_COLOR = 'black';
+/**
+ * GDD §5.14 Stage C: the outline a station carries while it is the selected
+ * one — the same colour `AMBIENT_MEMBER_PALETTE` already uses for the
+ * `'athlete'` member type below, reused here rather than adding a new word to
+ * this directory's string vocabulary (the string census this file's own
+ * header already explains). Distinct from `FLOOR_OVERLAP_REFUSAL_OUTLINE_
+ * COLOR` (a warning) and from every `FLOOR_SIM_STATE_COLOR` (a behavioural
+ * cue) — selection is neither.
+ */
+const FLOOR_STATION_SELECTED_OUTLINE_COLOR = 'gold';
+/** The contextual station panel's own backing, the same quiet slate the tray chip already reads against. */
+const FLOOR_STATION_PANEL_BACKGROUND_COLOR = 'darkslateblue';
+/** The panel's action-button chrome — the identical literals `GymScreen.tsx`'s own `styles.button` already uses, so a control looks like the same control on both screens. */
+const FLOOR_STATION_PANEL_BUTTON_BACKGROUND_COLOR = 'darkslateblue';
+const FLOOR_STATION_PANEL_BUTTON_BORDER_COLOR = 'deepskyblue';
+const FLOOR_STATION_PANEL_BUTTON_TEXT_COLOR = 'white';
+
+/**
+ * The station panel's own `StyleSheet.create` block — GDD §5.14 Stage C.
+ * Static, unlike a floor chip's per-row geometry, so it is registered here
+ * rather than built inline the way a placed item's absolute position is.
+ * `cursor: 'pointer'` is the same S4h fix `GymScreen.tsx`'s own `styles.
+ * button` carries, for the identical WebKit click-delegation reason.
+ */
+const panelStyles = StyleSheet.create({
+  panel: {
+    marginTop: EMPIRE_TUNING.FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS,
+    padding: EMPIRE_TUNING.FLOOR_STATION_PANEL_PADDING_PIXELS,
+    borderWidth: EMPIRE_TUNING.FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS,
+    borderColor: FLOOR_STATION_SELECTED_OUTLINE_COLOR,
+    backgroundColor: FLOOR_STATION_PANEL_BACKGROUND_COLOR,
+  },
+  button: {
+    marginTop: EMPIRE_TUNING.FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS,
+    paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
+    paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
+    minHeight: EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS,
+    borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS,
+    borderWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: FLOOR_STATION_PANEL_BUTTON_BACKGROUND_COLOR,
+    borderColor: FLOOR_STATION_PANEL_BUTTON_BORDER_COLOR,
+    cursor: 'pointer',
+  },
+  buttonText: {
+    color: FLOOR_STATION_PANEL_BUTTON_TEXT_COLOR,
+  },
+});
 
 /**
  * GDD §5.13 presentation Phase 3 — one named colour per behavioural state, so
@@ -875,7 +951,7 @@ function AmbientMemberBody({
 }
 
 export function FloorGrid(props: FloorGridProps) {
-  const { owned, barbellOwned, floor, dispatch } = props;
+  const { owned, barbellOwned, floor, dispatch, managed } = props;
   const grid = floorGridSize(floor.rung);
   const placed = floorLayout(floor);
   const unplaced = unplacedOwnedFloorItems(floor, owned);
@@ -947,6 +1023,24 @@ export function FloorGrid(props: FloorGridProps) {
   const [draggingItem, setDraggingItem] = useState<SessionEquipmentItem | null>(null);
   const dragOffset = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
 
+  // GDD §5.14 Stage C — the one selected station, if any. The same class of
+  // purely-visual, component-local state as `draggingItem`/`overlapRefusalItem`
+  // above: it carries no economic meaning (which station is being LOOKED AT is
+  // not part of `GymState`), so it does not go through `GymViewState`/
+  // `GymViewAction` the way a repair or a removal does — it is never
+  // dispatched, never persisted, and gone the instant this component unmounts.
+  // Selecting or dismissing a station therefore cannot reset the floor, the
+  // sim, the drag/placement state, or anything the reducer owns: this is a
+  // second, independent `useState`, not a write through any of the others.
+  const [selectedStation, setSelectedStation] = useState<FloorStationRef | null>(null);
+
+  /** Select `ref`, or deselect it if it is already the selected one — a second tap on the same station closes its own panel. */
+  const toggleSelectedStation = (ref: FloorStationRef): void => {
+    setSelectedStation((previous) =>
+      previous !== null && previous.kind === ref.kind && previous.item === ref.item ? null : ref,
+    );
+  };
+
   // GDD §5.13's PLAYTEST 3 ruling on the furniture/session-item overlap gap:
   // which fixed row, if any, a drop was just refused for landing on — purely
   // visual, cleared by its own timeout, never persisted and never read by
@@ -992,6 +1086,13 @@ export function FloorGrid(props: FloorGridProps) {
     if (simRung.current === floor.rung) return;
     simRung.current = floor.rung;
     setSim(createFloorSimState(simContextRef.current, EMPIRE_TUNING.FLOOR_SIM_RENDER_SEED));
+    // GDD §5.14 Stage C: a relocation is a full move (`floor.ts`'s own header
+    // — "you leave the old place behind"), so whatever was selected on the
+    // old floor has no reading on the new one. Cleared here rather than left
+    // to the panel's own "does this station still exist" guard below, so a
+    // relocation does not draw one frame of a panel naming equipment that is
+    // no longer this gym's.
+    setSelectedStation(null);
   }, [floor.rung]);
 
   // THE TICK. One `stepFloorSim` per `FLOOR_SIM_TICK_INTERVAL_MS`, against
@@ -1038,10 +1139,29 @@ export function FloorGrid(props: FloorGridProps) {
   }
   const stateCounts = floorSimStateCounts(sim);
 
+  /**
+   * GDD §5.14 Stage C — item 9's tap/drag disambiguation. `origin` says
+   * whether this responder is attached to a TRAY chip (not yet a station —
+   * nothing to select) or an already-PLACED chip (a real `FloorStationRef`).
+   * A release whose total accumulated movement is at or under
+   * `STATION_TAP_MAX_DRAG_PIXELS` is read as a TAP: it selects the placed
+   * chip's station (toggling it closed on a second tap of the same one) and
+   * dispatches nothing, so a stationary press can never be misread as a
+   * same-cell placement attempt. Anything past that threshold is the drag
+   * this file already handled before this round, byte-identical below.
+   */
   const releaseAt = (
     item: SessionEquipmentItem,
     gestureState: PanResponderGestureState,
+    origin: 'tray' | 'placed',
   ): void => {
+    const travelledPixels = Math.hypot(gestureState.dx, gestureState.dy);
+    if (travelledPixels <= EMPIRE_TUNING.STATION_TAP_MAX_DRAG_PIXELS) {
+      setDraggingItem(null);
+      dragOffset.setValue({ x: 0, y: 0 });
+      if (origin === 'placed') toggleSelectedStation({ kind: 'session', item });
+      return;
+    }
     const position: GridPosition = {
       x: pixelsToTile(gestureState.moveX - gridOrigin.current.x, tile),
       y: pixelsToTile(gestureState.moveY - gridOrigin.current.y, tile),
@@ -1063,7 +1183,7 @@ export function FloorGrid(props: FloorGridProps) {
     dragOffset.setValue({ x: 0, y: 0 });
   };
 
-  const panResponderFor = (item: SessionEquipmentItem) =>
+  const panResponderFor = (item: SessionEquipmentItem, origin: 'tray' | 'placed') =>
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
@@ -1075,12 +1195,72 @@ export function FloorGrid(props: FloorGridProps) {
       onPanResponderMove: Animated.event([null, { dx: dragOffset.x, dy: dragOffset.y }], {
         useNativeDriver: false,
       }),
-      onPanResponderRelease: (_event, gestureState) => releaseAt(item, gestureState),
+      onPanResponderRelease: (_event, gestureState) => releaseAt(item, gestureState, origin),
       onPanResponderTerminate: () => {
         setDraggingItem(null);
         dragOffset.setValue({ x: 0, y: 0 });
       },
     });
+
+  // ---------------------------------------------------------------------
+  // GDD §5.14 Stage C — the contextual station panel's own derived data.
+  // ---------------------------------------------------------------------
+  //
+  // A station may have been selected on an earlier render and then taken off
+  // the floor since — the on-chip `floorgrid-remove-*` control still removes
+  // a session item directly, independently of this panel's own remove
+  // button. So the panel is drawn only for a selection that still names a
+  // real chip on THIS render's own `fixed`/`placed` lists, computed fresh
+  // every time rather than trusted from state. `panelStation` is null both
+  // when nothing is selected and when the selected item just stopped
+  // existing; either way, no panel is drawn and no dispatch happens.
+  const panelStation: FloorStationRef | null =
+    selectedStation === null
+      ? null
+      : selectedStation.kind === 'fixed'
+        ? fixed.some((row) => row.item === selectedStation.item)
+          ? selectedStation
+          : null
+        : placed.some((row) => row.item === selectedStation.item)
+          ? selectedStation
+          : null;
+
+  // Every derived read the panel needs, computed only when a station is
+  // actually selected — each one a call into `stationView.ts` (which is
+  // itself a thin composition of `management.ts`/`floorSim.ts`, see that
+  // file's own header).
+  //
+  // REPAIR ACTIONABILITY DELIBERATELY DOES NOT CALL `repairEquipment` FOR
+  // ITS GATE, AND THIS IS A NARROWER CHOICE THAN IT LOOKS. Calling the real
+  // transition to decide whether to draw a button — `GymScreen.tsx`'s own
+  // header names this as the discipline a gated control should use — was
+  // the first version of this panel, and it was wrong: `repairEquipment`'s
+  // `'already-sound'` arm refuses only at EXACT-ZERO cost (condition exactly
+  // 1), so a barely-worn item (condition 0.999998, say) reads `'repaired'`
+  // and the panel would draw a live "repair for 0.0000123" button — the
+  // precise "chrome vs paid" dust-repair defect `GymScreen.tsx`'s own
+  // `isDustRepairCost`/`isSoundCondition` split (S4f, that file's header)
+  // already fixed once, for its per-item report. `stationConditionView`'s
+  // `isSound` is `MAINTENANCE_PROMPT_CONDITION`-gated, the SAME predicate
+  // `GymScreen.tsx`'s per-item row uses, so the two surfaces cannot disagree
+  // about when a repair control is worth drawing — and the shown cost still
+  // comes from `repairCostGymBucks` untouched; only the display rounding and
+  // the gate are shared with the older, already-fixed surface.
+  let panelIdentity: StationIdentityView | null = null;
+  let panelOperation: StationOperationView | null = null;
+  let panelCondition: StationConditionView | null = null;
+  let panelManagerEffect: StationManagerEffectView | null = null;
+  if (panelStation !== null) {
+    panelIdentity = stationIdentityView(panelStation);
+    panelOperation = stationOperationView(sim.members, panelStation);
+    panelCondition = stationConditionView(managed, panelStation.item);
+    panelManagerEffect = stationManagerEffectView(managed, panelStation.item);
+  }
+  // Whether the gym's one standing maintenance review currently names the
+  // selected item — GDD §5.14 Stage C item 6's "staff relationship... where
+  // the actual state makes the relationship clear", read from
+  // `management.ts`'s own function rather than re-derived.
+  const standingPrompt = maintenancePrompt(managed);
 
   return (
     <View testID={'floorgrid-root'}>
@@ -1170,10 +1350,19 @@ export function FloorGrid(props: FloorGridProps) {
               const isRefusalTarget = overlapRefusalItem === row.item;
               const isOccupied =
                 stationActivity.get(stationKey('fixed', row.item)) === 'using';
+              // GDD §5.14 Stage C: fixed furniture is always a station — it
+              // is owned from the moment a gym exists — so it is directly
+              // tappable, the same way a placed session item is.
+              const isSelected =
+                selectedStation !== null &&
+                selectedStation.kind === 'fixed' &&
+                selectedStation.item === row.item;
               return (
-                <View
+                <Pressable
                   key={row.item}
                   testID={`floorgrid-fixed-${row.item}`}
+                  accessibilityRole={'button'}
+                  onPress={() => toggleSelectedStation({ kind: 'fixed', item: row.item })}
                   style={{
                     position: 'absolute',
                     left: row.position.x * tile,
@@ -1185,12 +1374,20 @@ export function FloorGrid(props: FloorGridProps) {
                     // the resting state so the sprite's own baked outline is
                     // the edge — which is also what makes fixed furniture
                     // read as part of the floor rather than as a draggable
-                    // chip (those keep their black chip border below).
+                    // chip (those keep their black chip border below). GDD
+                    // §5.14 Stage C: a refusal in flight still wins over a
+                    // selection outline — the refusal is transient and more
+                    // urgent than "this is the tapped station".
                     borderWidth: isRefusalTarget
                       ? EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS
-                      : 0,
-                    borderColor: FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR,
-                  }}
+                      : isSelected
+                        ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
+                        : 0,
+                    borderColor: isRefusalTarget
+                      ? FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR
+                      : FLOOR_STATION_SELECTED_OUTLINE_COLOR,
+                    cursor: 'pointer',
+                  } as WebSelectableViewStyle}
                 >
                   {fixedSpriteUriFor(row.item, isOccupied) === null ? null : (
                     <Image
@@ -1215,16 +1412,21 @@ export function FloorGrid(props: FloorGridProps) {
                     // never dispatched.
                     <Text testID={'floorgrid-drop-refused'}>can&apos;t place here</Text>
                   ) : null}
-                </View>
+                </Pressable>
               );
             })}
             {placed.map((row) => {
               const isDragging = draggingItem === row.item;
-              const responder = panResponderFor(row.item);
+              const isSelected =
+                selectedStation !== null &&
+                selectedStation.kind === 'session' &&
+                selectedStation.item === row.item;
+              const responder = panResponderFor(row.item, 'placed');
               return (
                 <Animated.View
                   key={row.item}
                   testID={`floorgrid-placed-${row.item}`}
+                  accessibilityRole={'button'}
                   {...responder.panHandlers}
                   style={{
                     position: 'absolute',
@@ -1236,9 +1438,17 @@ export function FloorGrid(props: FloorGridProps) {
                     // floor texture shows through the sprite's own
                     // transparent pixels. The black chip border stays, as
                     // the affordance that separates a draggable session item
-                    // from the borderless fixed furniture.
-                    borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
-                    borderColor: FLOOR_ITEM_BORDER_COLOR,
+                    // from the borderless fixed furniture. GDD §5.14 Stage
+                    // C: the selected station's own outline replaces it,
+                    // reusing `FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS`
+                    // rather than adding a new width knob for a highlight
+                    // this file already draws elsewhere.
+                    borderWidth: isSelected
+                      ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
+                      : EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
+                    borderColor: isSelected
+                      ? FLOOR_STATION_SELECTED_OUTLINE_COLOR
+                      : FLOOR_ITEM_BORDER_COLOR,
                     transform: isDragging
                       ? [{ translateX: dragOffset.x }, { translateY: dragOffset.y }]
                       : [],
@@ -1250,6 +1460,10 @@ export function FloorGrid(props: FloorGridProps) {
                     // moving the chip. Native has no such race — a touch
                     // responder there is granted by the RN runtime directly.
                     userSelect: 'none',
+                    // GDD §5.14 Stage C, same S4h reason as every other new
+                    // control this round: a real WebKit click-delegation gap
+                    // on a non-natively-interactive element.
+                    cursor: 'pointer',
                   } as WebSelectableViewStyle}
                 >
                   <Image
@@ -1402,7 +1616,7 @@ export function FloorGrid(props: FloorGridProps) {
         <ScrollView horizontal testID={'floorgrid-tray-scroll'}>
           {unplaced.map((item) => {
             const isDragging = draggingItem === item;
-            const responder = panResponderFor(item);
+            const responder = panResponderFor(item, 'tray');
             const footprint = sessionItemFootprint(item);
             const chipWidth =
               Math.max(footprint.width, EMPIRE_TUNING.FLOOR_TRAY_ITEM_MIN_TILES) * tile;
@@ -1448,6 +1662,134 @@ export function FloorGrid(props: FloorGridProps) {
           })}
         </ScrollView>
       </View>
+      {/*
+        GDD §5.14 Stage C — the contextual station panel. An ANCHORED PANEL
+        (CLAUDE.md's brief names "bottom sheet, anchored panel, compact
+        overlay" as the acceptable shapes) sitting in this file's own normal
+        document flow, directly below the grid/tray it is about, rather than
+        a `position: 'fixed'` sheet — chosen because `GymScreen.tsx`'s
+        `ScrollView` already nests this component inside another scroll
+        surface, and a fixed-position sheet is exactly the shape that risks
+        landing under `AppShell.tsx`'s absolutely-positioned `BACK TO
+        TRAINING` pill (S4i's own defect, one layer up) unless it is given
+        its own clearance maths. An inline panel cannot make that mistake by
+        construction: it has no fixed position to conflict with anything.
+
+        Dismissing this panel dispatches nothing — `setSelectedStation(null)`
+        is the only thing any control inside it does when it does not touch
+        `management.ts`, so closing it can never move a piece of equipment,
+        change the floor, or touch anything `GymViewState` owns.
+      */}
+      {panelStation === null ||
+      panelIdentity === null ||
+      panelOperation === null ||
+      panelCondition === null ||
+      panelManagerEffect === null ? null : (
+        <View testID={'floorgrid-station-panel'} style={panelStyles.panel}>
+          <Text testID={'floorgrid-station-panel-identity'}>
+            {panelIdentity.item}
+            {panelIdentity.kind === 'fixed'
+              ? ' — fixed barbell equipment'
+              : ` — session equipment (${panelIdentity.sessionGroup})`}
+          </Text>
+          {/*
+            Live operation — GDD §5.14 Stage C item 6: "currently in use /
+            idle, active member, queue count". Read straight off
+            `stationOperationView`, which counts the exact two states
+            `floorSim.ts`'s own header defines the queue by; no fake
+            "efficiency score" is computed here.
+          */}
+          <Text testID={'floorgrid-station-panel-operation'}>
+            {panelOperation.occupied
+              ? `in use by a ${panelOperation.activeMemberType}`
+              : 'idle — nobody is using it right now'}
+            {panelOperation.queueCount > 0 ? `, ${panelOperation.queueCount} waiting` : null}
+          </Text>
+          <Text testID={'floorgrid-station-panel-condition'}>
+            condition {panelCondition.condition} — repairing it costs{' '}
+            {panelCondition.displayRepairCostGymBucks} gym bucks
+          </Text>
+          {/*
+            Staff relationship — item 6's third bullet. This states what the
+            HIRED manager, if any, actually does to THIS item, rather than a
+            generic staffing blurb. The novice tier's registered 0 threshold
+            (Stage B's own measurement, CLAUDE.md) reads here as "never
+            repairs automatically", not as a vague "management" line.
+          */}
+          <Text testID={'floorgrid-station-panel-manager'}>
+            {panelManagerEffect.hired
+              ? panelManagerEffect.wouldAutoRepairNow
+                ? `your ${panelManagerEffect.tier} manager repairs this automatically below condition ${panelManagerEffect.autoRepairCondition}`
+                : panelManagerEffect.autoRepairCondition === 0
+                  ? `your ${panelManagerEffect.tier} manager never repairs equipment automatically — their threshold is 0`
+                  : `your ${panelManagerEffect.tier} manager repairs automatically below condition ${panelManagerEffect.autoRepairCondition}, and this item is above that line`
+              : 'no manager hired — nothing repairs this automatically'}
+          </Text>
+          {standingPrompt.kind === 'offered' && standingPrompt.item === panelStation.item ? (
+            <Text testID={'floorgrid-station-panel-review-note'}>
+              the standing maintenance review is currently about this item
+            </Text>
+          ) : null}
+          {/*
+            Contextual repair — dispatches through the exact reducer arm
+            `GymScreen.tsx`'s own per-item report already uses
+            (`repair-item`), never a parallel mutation. The gate is
+            `panelCondition.isSound` then a purse comparison, BYTE FOR BYTE
+            the same two-arm order `GymScreen.tsx`'s own per-item row uses —
+            see the comment above `panelCondition` for why this reads
+            `isSound` rather than calling `repairEquipment` itself.
+          */}
+          {panelCondition.isSound ? (
+            <Text testID={'floorgrid-station-panel-repair-unavailable'}>
+              as new — nothing to repair
+            </Text>
+          ) : panelCondition.repairCostGymBucks > managed.gym.ladder.gymBucks ? (
+            <Text testID={'floorgrid-station-panel-repair-unavailable'}>
+              needs {panelCondition.repairCostGymBucks} gym bucks — you have{' '}
+              {managed.gym.ladder.gymBucks}
+            </Text>
+          ) : (
+            <Pressable
+              testID={'floorgrid-station-panel-repair'}
+              accessibilityRole={'button'}
+              style={panelStyles.button}
+              onPress={() => dispatch({ kind: 'repair-item', item: panelStation.item })}
+            >
+              <Text style={panelStyles.buttonText}>
+                repair for {panelCondition.repairCostGymBucks}
+              </Text>
+            </Pressable>
+          )}
+          {/*
+            Placement/removal — item 6's second example. Fixed Barbell
+            furniture has no `sell`/remove instrument anywhere in this
+            directory (`GymScreen.tsx`'s own header: the ladder is one-way),
+            so this arm is session-only, dispatching the same `floor-remove`
+            action the chip's own on-floor "x" control already uses.
+          */}
+          {panelStation.kind === 'session' ? (
+            <Pressable
+              testID={'floorgrid-station-panel-remove'}
+              accessibilityRole={'button'}
+              style={panelStyles.button}
+              onPress={() => {
+                dispatch({ kind: 'floor-remove', item: panelStation.item });
+                setSelectedStation(null);
+              }}
+            >
+              <Text style={panelStyles.buttonText}>remove from the floor</Text>
+            </Pressable>
+          ) : null}
+          <Pressable
+            testID={'floorgrid-station-panel-dismiss'}
+            accessibilityRole={'button'}
+            style={panelStyles.button}
+            onPress={() => setSelectedStation(null)}
+          >
+            <Text style={panelStyles.buttonText}>close</Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }

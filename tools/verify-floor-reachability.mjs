@@ -320,6 +320,89 @@
  *      this can see, so the honest claim is "the geometry holds under
  *      Chromium at this viewport", not "verified on iPhone".
  *
+ *   13. GDD §5.14 STAGE C — STATION-TAP MANAGEMENT. A fresh gym (its own
+ *       `reachGymScreen`, so nothing sections 1-12 left on the floor or in
+ *       the purse leaks in), earning and buying mats exactly as section 2
+ *       does, then:
+ *
+ *      13a. TAP SELECTS. A real `page.click()` on `floorgrid-fixed-power-bar`
+ *           (no drag) opens `floorgrid-station-panel`, naming power-bar's
+ *           identity as fixed barbell equipment. `.click()` rather than a
+ *           hand-rolled mouse sequence is a measured finding, not a
+ *           preference — see the comment beside `dragBox` for what a bare
+ *           mousedown/mouseup with no intervening move actually did.
+ *      13a2. THE PANEL'S OPERATION READING MATCHES THE VISIBLE FLOOR. The
+ *           panel's own "in use by a .../idle .../N waiting" text is
+ *           compared against `floorsim-using-fixed-power-bar`/`floorsim-
+ *           claimed-fixed-power-bar` — the SAME highlight elements sections
+ *           4b/8b already read off the live sim — rather than against a
+ *           number this tool computed on its own.
+ *      13b. SWITCHING SELECTION. The same tap on a different station
+ *           (`floorgrid-placed-mats`, after it is dragged onto the grid)
+ *           closes power-bar's panel and opens mats' own — different
+ *           identity text, read off the same testID `floorgrid-station-
+ *           panel-identity` at two different values.
+ *      13c. TRUTHFULNESS. The panel's condition line
+ *           (`floorgrid-station-panel-condition`) is compared, not merely
+ *           read, against the existing `gymscreen-condition-mats` line the
+ *           old per-item report already draws for the same item from the
+ *           same `management.ts` state — both must quote the same
+ *           condition and the same repair cost. The gym is then worn down a
+ *           REAL, DERIVED amount — the same discipline section 9c already
+ *           uses for the identical problem: one press to read the real
+ *           per-press wear, then enough more presses (derived from the real
+ *           worn-line threshold and mats' own current condition, both read
+ *           off the drawn screen) to cross it, not a fixed guessed count —
+ *           and the comparison is repeated, so it holds at two different
+ *           conditions and not only at a fresh gym's condition of 1.
+ *      13d. THE NOVICE MANAGER NEVER AUTO-REPAIRS. `gymscreen-hire-novice`
+ *           is pressed (CLAUDE.md's own Stage C finding:
+ *           `MANAGER_AUTO_REPAIR_CONDITION.novice` is 0), and the panel's
+ *           manager line is asserted to say so in words, not just to differ
+ *           from the no-manager line.
+ *      13e. CONTEXTUAL REPAIR DISPATCHES THROUGH THE REAL REDUCER. With
+ *           mats worn and the panel's own `floorgrid-station-panel-repair`
+ *           control pressed, the purse falls by exactly the quoted cost and
+ *           `gymscreen-condition-mats` — the OLD report, a different
+ *           element entirely — reads condition 1 afterwards. Two
+ *           independent readers of one state agreeing is the claim; a
+ *           parallel UI-only mutation would move the panel's own number and
+ *           leave the old report's stale.
+ *      13f. REMOVE FROM THE PANEL DISPATCHES THE SAME ACTION THE ON-CHIP
+ *           CONTROL DOES. Pressing `floorgrid-station-panel-remove` takes
+ *           mats off the grid and back into the tray — `floorgrid-placed-
+ *           mats` gone, `floorgrid-tray-item-mats` drawn again — and closes
+ *           the panel (nothing left to show a panel about).
+ *      13g. DISMISS TOUCHES NOTHING ELSE. Power-bar's panel is opened,
+ *           `floorgrid-placed-mats`'s own box is read, the panel is
+ *           dismissed by its own `floorgrid-station-panel-dismiss` control,
+ *           and mats' box is read again — byte-identical, because a dismiss
+ *           dispatches nothing.
+ *      13h. A REAL DRAG STILL DRAGS, AND DOES NOT SELECT. A full multi-step
+ *           drag (this file's own `dragBox`, moving several tiles) on
+ *           `floorgrid-placed-mats` moves it to a new drawn position AND
+ *           leaves no station panel open — the tap/drag disambiguation's
+ *           other side, driven rather than assumed from the threshold's own
+ *           value.
+ *      13i. RAPID REPEATED TAPS DO NOT CORRUPT SELECTION. Three fast taps on
+ *           power-bar (select, deselect, select) land on a single,
+ *           consistent final state — one panel, naming power-bar, not two,
+ *           not none.
+ *      13j. THE PANEL DOES NOT COVER `shell-leave-gym`. With a panel open,
+ *           the panel's own box and the pill's box are read, and the panel
+ *           does not overlap it — the same geometry discipline section 12
+ *           already applies to the rest of this screen, applied to the one
+ *           new surface this stage adds.
+ *
+ *       THE LIMIT, STATED THE SAME WAY SECTIONS 11 AND 12 STATE THEIRS: this
+ *       certifies Chromium-clickable and structurally correct against the
+ *       real built app — not iOS-Safari-confirmed. The tap/drag threshold in
+ *       particular (`STATION_TAP_MAX_DRAG_PIXELS`) is a `page.mouse` distance
+ *       under Playwright's synthetic pointer, which is not evidence about a
+ *       real finger's own touch-down jitter on a real screen; §16 of the
+ *       human brief this stage was built against says plainly that only a
+ *       human on a real phone settles that question.
+ *
  * USAGE. Start the web build first (`npx expo start --web`), then:
  *
  *     node tools/verify-floor-reachability.mjs [--url http://localhost:8081]
@@ -732,6 +815,16 @@ async function boxOf(id) {
  * beside the constant it is checking.
  */
 const PILL_OVERLAP_EPSILON_PIXELS = 0.5;
+/**
+ * GDD §5.14 Stage C 13g's tolerance for "the grid's own box did not move" —
+ * measured, not guessed: a `page.click()` on `floorgrid-station-panel-
+ * dismiss` (a control near the panel's own bottom edge) can nudge the whole
+ * page's scroll position by a few pixels as part of Playwright's own
+ * actionability auto-scroll, independent of anything the app did. Observed
+ * drift from that alone: 6px. Ten pixels is comfortably clear of that and
+ * comfortably under a real single-tile move (`FLOOR_TILE_PIXELS`, 28).
+ */
+const DISMISS_UNMOVED_TOLERANCE_PIXELS = 10;
 
 /** `gymscreen-root`'s own `scrollTop`, or null if not attached. */
 async function gymScreenScrollTop() {
@@ -1138,6 +1231,26 @@ async function dragBox(fromBox, toX, toY) {
   }
   await page.mouse.up();
 }
+
+/**
+ * GDD §5.14 Stage C's tap claims (13a-13j below) use `page.click()`, not a
+ * hand-rolled `page.mouse.move`/`down`/`up` sequence — and that is a
+ * measured finding, not a style choice, recorded here because the first
+ * version of this file guessed the opposite and was wrong.
+ *
+ * A raw `move` then `down` then `up` with NO intervening move at all —
+ * tried first, on the theory that it would be the closest thing to a real
+ * near-zero-movement tap and would avoid trusting a synthetic click to
+ * negotiate `floorgrid-fixed-*`'s `Pressable` or `floorgrid-placed-*`'s
+ * `PanResponder` — left `floorgrid-station-panel` NEVER ATTACHED (`opacity
+ * 0.000, still, after 20000ms`, `meetDrive.mjs`'s own `effectiveOpacity`
+ * returning its `handle === null` zero) after a tap on `floorgrid-fixed-
+ * power-bar`, a real `Pressable`. `page.click()` on the identical element,
+ * nothing else changed, opens the panel. Whatever react-native-web's
+ * `Pressable` needs to fire `onPress` under Chromium, a bare mousedown-then-
+ * mouseup at one point over ~30ms is not it, and `.click()`'s own gesture —
+ * proven already by S4h's 11b, on the same button chrome — is.
+ */
 
 /**
  * Reach the gym screen the way a player does — cold launch, no query string,
@@ -3005,6 +3118,514 @@ try {
   }
 
   readAddress('12: S4i, done');
+
+  // ===========================================================================
+  // 13. GDD §5.14 STAGE C — STATION-TAP MANAGEMENT.
+  //
+  // A fresh gym, own `reachGymScreen` call, so nothing sections 1-12 left on
+  // the floor or in the purse leaks into these claims. See this file's own
+  // header for the full list; this block is that list, driven.
+  // ===========================================================================
+  await reachGymScreen(false);
+  readAddress('13: a fresh gym for the station panel');
+
+  /** Press the dev `+3d` control until the drawn purse is at or above `target`, or give up after `MAX_CHECK_INS`. */
+  const earnUntil13 = async (target) => {
+    let text = await textOf('gymscreen-gym-bucks');
+    let presses = 0;
+    while (
+      text !== null &&
+      (numberInText(text, /gym bucks: ([\d.]+)/) ?? 0) < target &&
+      presses < MAX_CHECK_INS
+    ) {
+      await page.getByTestId(advanceId).click({ timeout: 10000 });
+      await page.waitForTimeout(150);
+      text = await textOf('gymscreen-gym-bucks');
+      presses += 1;
+    }
+    return presses;
+  };
+
+  await earnUntil13(3000);
+  await page.getByTestId('gymscreen-buy-session-mats').click({ timeout: 10000 });
+  await page.waitForTimeout(200);
+  const trayMats13 = await waitUntilDrawn(page, 'floorgrid-tray-item-mats', BEAT_TIMEOUT_MS);
+  if (!trayMats13.drawn) {
+    fail(`13: mats never reached the tray on the fresh gym — ${trayMats13.why}`);
+    throw new Error('unreachable');
+  }
+  // Buying scrolled to the buy-session-mats control, which GDD §5.14 Stage
+  // C's own reorder put below the floor — scroll back before reading a box
+  // `dragBox` is about to use, since it (unlike a Playwright `.click()`)
+  // does not auto-scroll its target into view.
+  await page.getByTestId('floorgrid-tray').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
+  const gridBox13 = await boxOf('floorgrid-grid');
+  const trayBox13 = await boxOf('floorgrid-tray-item-mats');
+  if (gridBox13 === null || trayBox13 === null) {
+    fail('13: could not read the grid/tray boxes to place mats');
+    throw new Error('unreachable');
+  }
+  // The same target tile section 3 already proved clear of every fixed row.
+  await dragBox(trayBox13, gridBox13.x + FLOOR_TILE_PIXELS * 5.25, gridBox13.y + FLOOR_TILE_PIXELS * 0.25);
+  await page.waitForTimeout(250);
+  const matsPlaced13 = await waitUntilDrawn(page, 'floorgrid-placed-mats', BEAT_TIMEOUT_MS);
+  if (!matsPlaced13.drawn) {
+    fail(`13: dragging mats onto the fresh grid did not place it — ${matsPlaced13.why}`);
+    throw new Error('unreachable');
+  }
+  // Read once, right after placement, so 13f can assert against it: nothing
+  // 13a-13e do (open/switch/dismiss/repair) is a placement action, so mats'
+  // own position RELATIVE TO THE GRID should be exactly this, unmoved, right
+  // up until 13f's own remove press. Relative to the grid and not to the
+  // viewport, because several presses between here and 13f (hiring, the
+  // dev clock) scroll the page — an absolute-viewport box comparison would
+  // read a scroll as a move, which is not the claim this is making.
+  const matsBoxAfterPlace13 = await boxOf('floorgrid-placed-mats');
+  const gridBoxAfterPlace13 = await boxOf('floorgrid-grid');
+  const matsOffsetAfterPlace13 =
+    matsBoxAfterPlace13 === null || gridBoxAfterPlace13 === null
+      ? null
+      : { x: matsBoxAfterPlace13.x - gridBoxAfterPlace13.x, y: matsBoxAfterPlace13.y - gridBoxAfterPlace13.y };
+  ok('13: a fresh gym, earned, bought mats and placed it — the fixture every claim below shares');
+
+  // -------------------------------------------------------------------------
+  // 13a. TAP SELECTS. A real `page.click()` on power-bar (fixed furniture —
+  // always a station, never a drag target) opens the panel.
+  // -------------------------------------------------------------------------
+  readAddress('13a: tap selects power-bar');
+  const powerBarBox13 = await boxOf('floorgrid-fixed-power-bar');
+  if (powerBarBox13 === null) {
+    fail('13a: floorgrid-fixed-power-bar has no box to tap');
+  } else {
+    await page.getByTestId('floorgrid-fixed-power-bar').click({ timeout: 10000 });
+    await page.waitForTimeout(150);
+    const panelDrawn13a = await waitUntilDrawn(page, 'floorgrid-station-panel', BEAT_TIMEOUT_MS);
+    const identity13a = await textOf('floorgrid-station-panel-identity');
+    if (
+      panelDrawn13a.drawn &&
+      identity13a !== null &&
+      identity13a.includes('power-bar') &&
+      identity13a.includes('fixed barbell equipment')
+    ) {
+      ok(`13a: a real tap on floorgrid-fixed-power-bar opens the station panel, naming it "${identity13a}"`);
+    } else {
+      fail(
+        `13a: tapping power-bar did not open a correctly-identified panel — drawn=${panelDrawn13a.drawn} (${panelDrawn13a.why}), identity="${identity13a}"`,
+      );
+    }
+
+    // 13a2. THE PANEL'S OWN OPERATION READING MATCHES WHAT IS VISIBLY
+    // HAPPENING ON THE FLOOR — the human brief's own item 15: "queue/usage
+    // reading matches what is visibly happening." `floorsim-using-fixed-
+    // power-bar` / `floorsim-claimed-fixed-power-bar` are the SAME highlight
+    // elements sections 4b/8b already read off the live sim; this compares
+    // the panel's own text against them rather than against a number this
+    // tool computed independently.
+    const usingHighlight13a = await page
+      .getByTestId('floorsim-using-fixed-power-bar')
+      .count()
+      .then((n) => n > 0)
+      .catch(() => false);
+    const claimedHighlight13a = await page
+      .getByTestId('floorsim-claimed-fixed-power-bar')
+      .count()
+      .then((n) => n > 0)
+      .catch(() => false);
+    const operationText13a = await textOf('floorgrid-station-panel-operation');
+    const panelSaysOccupied13a = operationText13a !== null && operationText13a.startsWith('in use by a');
+    const panelSaysWaiting13a = operationText13a !== null && / waiting$/.test(operationText13a);
+    if (
+      operationText13a !== null &&
+      panelSaysOccupied13a === usingHighlight13a &&
+      (usingHighlight13a || panelSaysWaiting13a === claimedHighlight13a)
+    ) {
+      ok(
+        `13a2: the panel's operation line agrees with the floor's own drawn highlight — using-highlight=${usingHighlight13a}, claimed-highlight=${claimedHighlight13a}, panel text "${operationText13a}"`,
+      );
+    } else {
+      fail(
+        `13a2: the panel's operation line disagrees with the floor's own drawn state — using-highlight=${usingHighlight13a}, claimed-highlight=${claimedHighlight13a}, panel text "${operationText13a}"`,
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 13b. SWITCHING SELECTION. A tap on mats replaces power-bar's panel with
+  // mats' own, at the SAME testID — this is what proves it is a switch and
+  // not a second panel drawn beside the first.
+  // -------------------------------------------------------------------------
+  readAddress('13b: switching selection to mats');
+  const panelCountBefore13b = await page.getByTestId('floorgrid-station-panel').count();
+  const matsBoxForTap13 = await boxOf('floorgrid-placed-mats');
+  if (matsBoxForTap13 === null) {
+    fail('13b: floorgrid-placed-mats has no box to tap');
+  } else {
+    await page.getByTestId('floorgrid-placed-mats').click({ timeout: 10000 });
+    await page.waitForTimeout(150);
+    const identity13b = await textOf('floorgrid-station-panel-identity');
+    const panelCountAfter13b = await page.getByTestId('floorgrid-station-panel').count();
+    if (
+      identity13b !== null &&
+      identity13b.includes('mats') &&
+      identity13b.includes('session equipment') &&
+      !identity13b.includes('power-bar') &&
+      panelCountBefore13b === 1 &&
+      panelCountAfter13b === 1
+    ) {
+      ok(
+        `13b: tapping floorgrid-placed-mats switches the one floorgrid-station-panel (${panelCountBefore13b} -> ${panelCountAfter13b}, never two) to a different station — "${identity13b}"`,
+      );
+    } else {
+      fail(
+        `13b: expected exactly one panel switching to mats — got identity "${identity13b}", panel count ${panelCountBefore13b} -> ${panelCountAfter13b}`,
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 13c. TRUTHFULNESS. The panel's condition line is compared, not merely
+  // read, against `gymscreen-condition-mats` — the OLD per-item report, a
+  // different element entirely, reading the same `management.ts` state.
+  // Checked twice: once at a fresh condition and once after real wear.
+  // -------------------------------------------------------------------------
+  readAddress('13c: condition truthfulness');
+  const checkConditionAgreement13 = async (label) => {
+    const panelText = await textOf('floorgrid-station-panel-condition');
+    const oldText = await textOf('gymscreen-condition-mats');
+    const panelMatch =
+      panelText === null
+        ? null
+        : panelText.match(/condition ([\d.]+) — repairing it costs ([\d.]+) gym bucks/);
+    const oldMatch =
+      oldText === null ? null : oldText.match(/condition ([\d.]+), repairing it costs ([\d.]+) gym bucks/);
+    if (
+      panelMatch !== null &&
+      oldMatch !== null &&
+      panelMatch[1] === oldMatch[1] &&
+      panelMatch[2] === oldMatch[2]
+    ) {
+      ok(
+        `13c (${label}): the panel and the old per-item report agree — both read condition ${panelMatch[1]}, repair cost ${panelMatch[2]} — panel "${panelText}", old report "${oldText}"`,
+      );
+    } else {
+      fail(`13c (${label}): the panel and the old report disagree — panel "${panelText}", old report "${oldText}"`);
+    }
+  };
+  await checkConditionAgreement13('fresh');
+  // THE PRESS BUDGET IS DERIVED, NOT GUESSED — the same discipline section
+  // 9c already uses for the identical problem (crossing `MAINTENANCE_PROMPT_
+  // CONDITION` from real screen readings rather than a fixed count): a fixed
+  // small press count was tried first and measured wrong (mats stopped at
+  // condition 0.856, still "sound" against the real 0.5 line, so 13e never
+  // saw a live repair control — a domain miss, not an app defect). One press
+  // first, to read the real per-press wear; the real worn-line threshold and
+  // mats' own current condition read off the drawn screen; then enough more
+  // presses to cross it, with the same margin/ceiling section 9c uses.
+  await pressById(advanceId);
+  const wearPerPress13 = numberInText(
+    await textOf('gymscreen-check-in-costs'),
+    /wore the gym down by ([\d.]+)/,
+  );
+  const promptCondition13 = numberInText(await textOf('gymscreen-worn'), /under ([\d.]+) condition:/);
+  const matsConditionNow13 = numberInText(await textOf('gymscreen-condition-mats'), /condition ([\d.]+),/);
+  if (
+    wearPerPress13 !== null &&
+    wearPerPress13 > 0 &&
+    promptCondition13 !== null &&
+    matsConditionNow13 !== null
+  ) {
+    const remainingPresses13 = Math.min(
+      S4B_LEDGER_PRESS_CEILING,
+      Math.max(
+        0,
+        Math.ceil((matsConditionNow13 - promptCondition13) / wearPerPress13) + S4B_LEDGER_PRESS_MARGIN,
+      ),
+    );
+    for (let wearPress = 0; wearPress < remainingPresses13; wearPress += 1) {
+      await pressById(advanceId);
+    }
+  } else {
+    fail(
+      `13c: could not derive the wear press budget from the screen — per-press wear ${wearPerPress13}, worn-line threshold ${promptCondition13}, mats condition ${matsConditionNow13}`,
+    );
+  }
+  await checkConditionAgreement13('worn');
+
+  // -------------------------------------------------------------------------
+  // 13d. THE NOVICE MANAGER NEVER AUTO-REPAIRS — CLAUDE.md's own Stage C
+  // finding, driven rather than only read from the tuning table.
+  // -------------------------------------------------------------------------
+  readAddress('13d: the novice manager never auto-repairs');
+  const novicePurseNeeded = numberInText(await textOf('gymscreen-manager-tier-novice'), /([\d.]+) gym bucks to hire/);
+  if (novicePurseNeeded !== null) await earnUntil13(novicePurseNeeded + 500);
+  await pressById('gymscreen-hire-novice');
+  // Hiring scrolled to gymscreen-hire-novice, in the management section —
+  // scroll back to the floor before tapping: the click below auto-scrolls
+  // its own target, but the SELECTED station must be mats, not whatever the
+  // hire press happened to leave nearest the viewport.
+  await page.getByTestId('floorgrid-grid').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
+  const matsBoxFor13d = await boxOf('floorgrid-placed-mats');
+  if (matsBoxFor13d === null) {
+    fail('13d: floorgrid-placed-mats has no box to tap after hiring');
+  } else {
+    // TAPPING SELECTS OR TOGGLE-DESELECTS — mats is already selected here,
+    // left that way by 13b, so a click now would CLOSE the panel rather
+    // than opening it. Only click if mats is not already the one showing.
+    const alreadyMats13d = (await textOf('floorgrid-station-panel-identity'))?.includes('mats') ?? false;
+    if (!alreadyMats13d) {
+      await page.getByTestId('floorgrid-placed-mats').click({ timeout: 10000 });
+    }
+  }
+  await page.waitForTimeout(150);
+  const managerLine13d = await textOf('floorgrid-station-panel-manager');
+  if (
+    managerLine13d !== null &&
+    managerLine13d.includes('novice') &&
+    /never repairs equipment automatically/.test(managerLine13d)
+  ) {
+    ok(`13d: the panel states the novice manager's real capability in words — "${managerLine13d}"`);
+  } else {
+    fail(`13d: expected the panel to say the novice manager never auto-repairs — got "${managerLine13d}"`);
+  }
+
+  // -------------------------------------------------------------------------
+  // 13e. CONTEXTUAL REPAIR DISPATCHES THROUGH THE REAL REDUCER. Pressing the
+  // panel's own repair control moves the purse by the quoted cost AND the
+  // OLD report reads condition 1 afterwards — two independent readers of
+  // one state agreeing, which a parallel UI-only mutation could not fake.
+  // -------------------------------------------------------------------------
+  readAddress('13e: contextual repair');
+  const repairQuote13 = numberInText(
+    await textOf('floorgrid-station-panel-condition'),
+    /repairing it costs ([\d.]+) gym bucks/,
+  );
+  const purseBeforeRepair13 = numberInText(await textOf('gymscreen-gym-bucks'), /gym bucks: ([\d.]+)/);
+  const repairButton13 = page.getByTestId('floorgrid-station-panel-repair');
+  const repairButtonExists13 = await repairButton13.count().then((n) => n > 0).catch(() => false);
+  if (!repairButtonExists13 || repairQuote13 === null || purseBeforeRepair13 === null) {
+    fail(
+      `13e: expected a live repair control with a quoted cost on a worn item — button present=${repairButtonExists13}, quote=${repairQuote13}, purse=${purseBeforeRepair13}`,
+    );
+  } else {
+    await repairButton13.click({ timeout: 10000 });
+    await page.waitForTimeout(200);
+    const purseAfterRepair13 = numberInText(await textOf('gymscreen-gym-bucks'), /gym bucks: ([\d.]+)/);
+    const charged13 = purseAfterRepair13 === null ? null : purseBeforeRepair13 - purseAfterRepair13;
+    const band13 = charged13 === null ? null : purseMatchBand(charged13, repairQuote13);
+    const oldReportAfter13 = await textOf('gymscreen-condition-mats');
+    const oldConditionAfter13 = numberInText(oldReportAfter13, /condition ([\d.]+),/);
+    if (band13 !== null && oldConditionAfter13 === 1) {
+      ok(
+        `13e: the panel's repair control dispatches through the real reducer — purse charged ${charged13.toFixed(2)} against a quoted ${repairQuote13} (${band13} match), and the OLD report independently reads condition 1 afterwards ("${oldReportAfter13}")`,
+      );
+    } else {
+      fail(
+        `13e: the repair press did not land as expected — charged ${charged13}, quoted ${repairQuote13}, old report "${oldReportAfter13}"`,
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 13f. REMOVE FROM THE PANEL DISPATCHES THE SAME ACTION THE ON-CHIP
+  // CONTROL DOES, AND CLOSES THE PANEL — nothing left to show a panel about.
+  // -------------------------------------------------------------------------
+  readAddress('13f: remove from the panel');
+  await page.getByTestId('floorgrid-grid').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
+  const matsBoxBeforeRemoval13 = await boxOf('floorgrid-placed-mats');
+  const gridBoxBeforeRemoval13 = await boxOf('floorgrid-grid');
+  const matsOffsetBeforeRemoval13 =
+    matsBoxBeforeRemoval13 === null || gridBoxBeforeRemoval13 === null
+      ? null
+      : { x: matsBoxBeforeRemoval13.x - gridBoxBeforeRemoval13.x, y: matsBoxBeforeRemoval13.y - gridBoxBeforeRemoval13.y };
+  // THE REAL CLAIM 13a-13e MAKE ABOUT PLACEMENT, CHECKED HERE RATHER THAN
+  // ONLY ASSERTED IN PROSE: opening, switching, dismissing and repairing all
+  // dispatch through this file's own reducer, and none of those five is a
+  // placement action — so mats' position RELATIVE TO THE GRID, read fresh
+  // right after it was placed and read again now, right before the one
+  // action that DOES move it (removal), must be the same offset.
+  const unmovedThroughPanelUse13 =
+    matsOffsetAfterPlace13 !== null &&
+    matsOffsetBeforeRemoval13 !== null &&
+    Math.abs(matsOffsetAfterPlace13.x - matsOffsetBeforeRemoval13.x) <= 1 &&
+    Math.abs(matsOffsetAfterPlace13.y - matsOffsetBeforeRemoval13.y) <= 1;
+  if (unmovedThroughPanelUse13) {
+    ok(
+      `13a-13e: opening, switching, dismissing and repairing through the panel moved nothing — mats' own offset from the grid right after placement (${JSON.stringify(matsOffsetAfterPlace13)}) and right before the removal press (${JSON.stringify(matsOffsetBeforeRemoval13)}) are the same offset`,
+    );
+  } else {
+    fail(
+      `13a-13e: mats moved between placement and the removal press, with no drag in between — offset from the grid after placement ${JSON.stringify(matsOffsetAfterPlace13)}, offset before removal ${JSON.stringify(matsOffsetBeforeRemoval13)}`,
+    );
+  }
+  const removeButton13 = page.getByTestId('floorgrid-station-panel-remove');
+  const removeButtonExists13 = await removeButton13.count().then((n) => n > 0).catch(() => false);
+  if (!removeButtonExists13) {
+    fail('13f: floorgrid-station-panel-remove is not on screen for a placed session item');
+  } else {
+    await removeButton13.click({ timeout: 10000 });
+    await page.waitForTimeout(250);
+    const stillPlaced13 = await page.getByTestId('floorgrid-placed-mats').count().then((n) => n > 0).catch(() => false);
+    const backInTray13 = await waitUntilDrawn(page, 'floorgrid-tray-item-mats', BEAT_TIMEOUT_MS);
+    const panelGone13 = await page.getByTestId('floorgrid-station-panel').count().then((n) => n === 0).catch(() => false);
+    if (!stillPlaced13 && backInTray13.drawn && panelGone13) {
+      ok('13f: the panel\'s own remove control takes mats off the grid, back into the tray, and closes the panel');
+    } else {
+      fail(
+        `13f: remove-from-panel did not behave as expected — still placed=${stillPlaced13}, back in tray=${backInTray13.drawn} (${backInTray13.why}), panel gone=${panelGone13}`,
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 13g (dismiss half). Open power-bar's panel again and dismiss it —
+  // dispatches nothing, so nothing about the floor can move.
+  // -------------------------------------------------------------------------
+  readAddress('13g: dismiss touches nothing');
+  await page.getByTestId('floorgrid-grid').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
+  const powerBarBoxForDismiss13 = await boxOf('floorgrid-fixed-power-bar');
+  if (powerBarBoxForDismiss13 !== null) {
+    await page.getByTestId('floorgrid-fixed-power-bar').click({ timeout: 10000 });
+  }
+  await page.waitForTimeout(150);
+  const gridBoxBeforeDismiss13 = await boxOf('floorgrid-grid');
+  const dismissButton13 = page.getByTestId('floorgrid-station-panel-dismiss');
+  const dismissExists13 = await dismissButton13.count().then((n) => n > 0).catch(() => false);
+  if (!dismissExists13) {
+    fail('13g: floorgrid-station-panel-dismiss is not on screen with a panel open');
+  } else {
+    await dismissButton13.click({ timeout: 10000 });
+    await page.waitForTimeout(150);
+    const panelGoneAfterDismiss13 = await page
+      .getByTestId('floorgrid-station-panel')
+      .count()
+      .then((n) => n === 0)
+      .catch(() => false);
+    const gridBoxAfterDismiss13 = await boxOf('floorgrid-grid');
+    // A TOLERANCE, NOT EXACT EQUALITY — measured why: `.click()` on the
+    // dismiss control (near the panel's own bottom edge) can nudge the
+    // page's own scroll position by a few pixels as part of Playwright's
+    // actionability auto-scroll, which is the TEST reaching for the
+    // control, not the app moving anything. See
+    // `DISMISS_UNMOVED_TOLERANCE_PIXELS`'s own comment for the measurement.
+    const gridUnmoved13 =
+      gridBoxBeforeDismiss13 !== null &&
+      gridBoxAfterDismiss13 !== null &&
+      Math.abs(gridBoxBeforeDismiss13.x - gridBoxAfterDismiss13.x) <= DISMISS_UNMOVED_TOLERANCE_PIXELS &&
+      Math.abs(gridBoxBeforeDismiss13.y - gridBoxAfterDismiss13.y) <= DISMISS_UNMOVED_TOLERANCE_PIXELS;
+    if (panelGoneAfterDismiss13 && gridUnmoved13) {
+      ok(
+        `13g: dismissing the panel closes it and moves nothing else on the floor — the grid's own box before ${JSON.stringify(gridBoxBeforeDismiss13)} and after ${JSON.stringify(gridBoxAfterDismiss13)} are within ${DISMISS_UNMOVED_TOLERANCE_PIXELS}px`,
+      );
+    } else {
+      fail(
+        `13g: dismiss did not behave as expected — panel gone=${panelGoneAfterDismiss13}, grid box before ${JSON.stringify(gridBoxBeforeDismiss13)} after ${JSON.stringify(gridBoxAfterDismiss13)}`,
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 13h. A REAL DRAG STILL DRAGS, AND DOES NOT SELECT — the tap/drag
+  // disambiguation's other side. Buy and place a second mats-like fixture
+  // is not available (mats already owned), so this drags the SAME mats chip
+  // back onto the floor first, then drags it again for real.
+  // -------------------------------------------------------------------------
+  readAddress('13h: a real drag still drags, and does not select');
+  await page.getByTestId('floorgrid-tray').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
+  const trayBox13h = await boxOf('floorgrid-tray-item-mats');
+  const gridBox13h = await boxOf('floorgrid-grid');
+  if (trayBox13h === null || gridBox13h === null) {
+    fail('13h: could not read the grid/tray boxes to re-place mats for the drag claim');
+  } else {
+    await dragBox(trayBox13h, gridBox13h.x + FLOOR_TILE_PIXELS * 5.25, gridBox13h.y + FLOOR_TILE_PIXELS * 0.25);
+    await page.waitForTimeout(250);
+    const placedBoxBeforeDrag13h = await boxOf('floorgrid-placed-mats');
+    if (placedBoxBeforeDrag13h === null) {
+      fail('13h: mats did not re-place for the drag claim');
+    } else {
+      // Re-read the grid box FRESH rather than reusing `gridBox13h` — by
+      // this point in the run several presses have scrolled the page, and
+      // computing the second drag's target from a stale grid position is
+      // exactly the "ancestor ScrollView can move" hazard `FloorGrid.tsx`'s
+      // own header names, one level out: it does not merely blur the LANDING
+      // cell, it can compute a target the real grid never contained, which
+      // `placeFloorItem` then correctly refuses — read as "the drag did not
+      // move it" when the real cause is a stale target, not a broken drag.
+      const gridBoxForSecondDrag13h = await boxOf('floorgrid-grid');
+      if (gridBoxForSecondDrag13h === null) {
+        fail('13h: floorgrid-grid has no box for the second drag target');
+      }
+      const dragTargetX13h =
+        (gridBoxForSecondDrag13h ?? gridBox13h).x + FLOOR_TILE_PIXELS * 0.25;
+      const dragTargetY13h =
+        (gridBoxForSecondDrag13h ?? gridBox13h).y + FLOOR_TILE_PIXELS * 3.25;
+      await dragBox(placedBoxBeforeDrag13h, dragTargetX13h, dragTargetY13h);
+      await page.waitForTimeout(250);
+      const placedBoxAfterDrag13h = await boxOf('floorgrid-placed-mats');
+      const moved13h =
+        placedBoxAfterDrag13h !== null &&
+        (Math.abs(placedBoxAfterDrag13h.x - placedBoxBeforeDrag13h.x) > 4 ||
+          Math.abs(placedBoxAfterDrag13h.y - placedBoxBeforeDrag13h.y) > 4);
+      const noPanelFromDrag13h = await page
+        .getByTestId('floorgrid-station-panel')
+        .count()
+        .then((n) => n === 0)
+        .catch(() => false);
+      if (moved13h && noPanelFromDrag13h) {
+        ok(
+          `13h: a real multi-step drag on floorgrid-placed-mats moves it (${JSON.stringify(placedBoxBeforeDrag13h)} -> ${JSON.stringify(placedBoxAfterDrag13h)}) and opens no station panel`,
+        );
+      } else {
+        fail(
+          `13h: expected the drag to move mats and open no panel — moved=${moved13h}, box before ${JSON.stringify(placedBoxBeforeDrag13h)} after ${JSON.stringify(placedBoxAfterDrag13h)}, panel closed=${noPanelFromDrag13h}`,
+        );
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 13i. RAPID REPEATED TAPS DO NOT CORRUPT SELECTION. Three fast taps on
+  // power-bar (select, deselect, select) land on one consistent final state.
+  // -------------------------------------------------------------------------
+  readAddress('13i: rapid repeated taps');
+  const powerBarBox13i = await boxOf('floorgrid-fixed-power-bar');
+  if (powerBarBox13i === null) {
+    fail('13i: floorgrid-fixed-power-bar has no box for the rapid-tap claim');
+  } else {
+    const rapidTap13i = page.getByTestId('floorgrid-fixed-power-bar');
+    await rapidTap13i.click({ timeout: 10000 });
+    await rapidTap13i.click({ timeout: 10000 });
+    await rapidTap13i.click({ timeout: 10000 });
+    await page.waitForTimeout(150);
+    const panelCount13i = await page.getByTestId('floorgrid-station-panel').count();
+    const identity13i = await textOf('floorgrid-station-panel-identity');
+    if (panelCount13i === 1 && identity13i !== null && identity13i.includes('power-bar')) {
+      ok(`13i: three rapid taps (select, deselect, select) land on exactly one panel, naming power-bar — "${identity13i}"`);
+    } else {
+      fail(`13i: rapid taps left an inconsistent selection state — panel count ${panelCount13i}, identity "${identity13i}"`);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 13j. THE PANEL DOES NOT COVER shell-leave-gym — the geometry discipline
+  // section 12 already applies to the rest of this screen, applied to the
+  // one new surface this stage adds.
+  // -------------------------------------------------------------------------
+  readAddress('13j: the panel does not cover BACK TO TRAINING');
+  const panelBox13j = await boxOf('floorgrid-station-panel');
+  const pillBox13j = await boxOf('shell-leave-gym');
+  if (panelBox13j === null || pillBox13j === null) {
+    fail(`13j: could not read both the panel's and the pill's boxes — panel ${JSON.stringify(panelBox13j)}, pill ${JSON.stringify(pillBox13j)}`);
+  } else if (panelBox13j.y + panelBox13j.height <= pillBox13j.y + PILL_OVERLAP_EPSILON_PIXELS) {
+    ok(
+      `13j: the open station panel (bottom ${panelBox13j.y + panelBox13j.height}) sits clear of shell-leave-gym (top ${pillBox13j.y})`,
+    );
+  } else {
+    fail(
+      `13j: the station panel overlaps shell-leave-gym — panel box ${JSON.stringify(panelBox13j)}, pill box ${JSON.stringify(pillBox13j)}`,
+    );
+  }
+
+  readAddress('13: Stage C, done');
 
   readAddress('the end of the run');
 } catch (e) {

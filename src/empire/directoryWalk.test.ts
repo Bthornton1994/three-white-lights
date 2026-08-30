@@ -162,7 +162,9 @@ export const DIRECTORY_WALK = Object.freeze({
   // equipment condition and recoverable failure. Read from this pin's own
   // failure value.
   // 20 -> 21: GDD §5.14 Stage B's `pacing.ts` — the economy pacing simulator.
-  SHIPPED_MODULES: 21,
+  // 21 -> 22: GDD §5.14 Stage C's `stationView.ts` — the station-tap
+  // management selector. Read from this pin's own failure value.
+  SHIPPED_MODULES: 22,
   /**
    * Files the shared walk hands the censuses today, tests included.
    *
@@ -179,7 +181,8 @@ export const DIRECTORY_WALK = Object.freeze({
   // 38 -> 40: Phase 4's `floorSprites.ts` and `floorSprites.test.ts`.
   // 40 -> 42: stage 4's `management.ts` and `management.test.ts`.
   // 42 -> 44: Stage B's `pacing.ts` and `pacing.test.ts`.
-  DIRECTORY_FILES: 44,
+  // 44 -> 46: Stage C's `stationView.ts` and `stationView.test.ts`.
+  DIRECTORY_FILES: 46,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**
@@ -961,6 +964,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'reputation.ts',
       'sessions.ts',
       'social.ts',
+      'stationView.ts',
     ]);
     expect(shippedModuleNames().length).toBe(DIRECTORY_WALK.SHIPPED_MODULES);
     // And the test files are in the wider list and out of the narrower one, so

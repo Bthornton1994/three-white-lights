@@ -422,6 +422,7 @@ import * as recruitmentModule from './recruitment';
 import * as reputationModule from './reputation';
 import * as sessionsModule from './sessions';
 import * as socialModule from './social';
+import * as stationViewModule from './stationView';
 
 import { EMPIRE_TUNING } from './empireTuning';
 import type {
@@ -1545,7 +1546,8 @@ const SURFACE_CENSUS = Object.freeze({
   // 18 -> 19: GDD §5.13 presentation Phase 4's floorSprites.ts.
   // 19 -> 20: §5.11 stage 4's management.ts.
   // 20 -> 21: GDD §5.14 Stage B's pacing.ts.
-  MODULES: 21,
+  // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
+  MODULES: 22,
   // 273 -> 280: GymView's four new exports (createGymViewState, GymViewState,
   // GymViewAction, GymViewRefusal don't count as runtime exports — the seven
   // that do are createGymViewState, gymViewReduce, GymView from ladderView.tsx
@@ -1618,7 +1620,13 @@ const SURFACE_CENSUS = Object.freeze({
   // exports (PacingCheckInPolicy, PacingScheduleEntry, PacingLadderReading,
   // PacingLadderRun) do not count as runtime exports, the same rule stated
   // above for GymView's.
-  EXPORTS: 374, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
+  // 374 -> 380: GDD §5.14 Stage C's stationView.ts — six new runtime exports
+  // (stationIdentityView, stationOperationView, isSoundCondition,
+  // displayRepairCostBySoundness, stationConditionView,
+  // stationManagerEffectView). Its interface exports (StationIdentityView,
+  // StationOperationView, StationConditionView, StationManagerEffectView) do
+  // not count as runtime exports, the same rule stated above.
+  EXPORTS: 380, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1739,7 +1747,12 @@ const SURFACE_CENSUS = Object.freeze({
 // `ManagementPolicy`/`FailurePhase` (via `runPacingManagedGym`'s parameter
 // and `ManagedRun`'s already-known return shape). Read from this pin's own
 // failure value.
-LITERAL_POSITIONS: 3916, // 3791 -> 3792: "kill the mint", re-measured; 3792 -> 3793: its harness fix, re-measured
+// 3916 -> 3952: GDD §5.14 Stage C's stationView.ts — six new exported
+// functions each become a new walk entry point via their RETURN type
+// (StationIdentityView.kind/StationOperationView.activeMemberType/
+// StationConditionView/StationManagerEffectView.tier all reach pre-existing
+// closed unions at new positions). Read from this pin's own failure value.
+LITERAL_POSITIONS: 3952, // 3791 -> 3792: "kill the mint", re-measured; 3792 -> 3793: its harness fix, re-measured
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -2806,7 +2819,9 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // constructor either.
   // 20 -> 21: GDD §5.14 Stage B's pacing.ts joins the walk; it calls no
   // brand constructor either.
-  MODULES: 21,
+  // 21 -> 22: GDD §5.14 Stage C's stationView.ts joins the walk; it calls no
+  // brand constructor either.
+  MODULES: 22,
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -2926,7 +2941,12 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // schedule generator and composed runs. Read from this pin's own failure
   // value. The set of CONSTRUCTORS below is unchanged: pacing.ts calls none
   // of the four brand constructors.
-  CALLS_EXAMINED: 2923,
+  // 2923 -> 2958: GDD §5.14 Stage C's stationView.ts, plus this file's own
+  // new drive block calling it. Read from this pin's own failure value. The
+  // set of CONSTRUCTORS below is unchanged: stationView.ts calls none of the
+  // four brand constructors — it reshapes floorSim.ts's/management.ts's
+  // already-derived values, per its own header.
+  CALLS_EXAMINED: 2958,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3486,6 +3506,7 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'recruitment.ts': recruitmentModule as unknown as Readonly<Record<string, unknown>>,
   'reputation.ts': reputationModule as unknown as Readonly<Record<string, unknown>>,
   'social.ts': socialModule as unknown as Readonly<Record<string, unknown>>,
+  'stationView.ts': stationViewModule as unknown as Readonly<Record<string, unknown>>,
 });
 
 // ---------------------------------------------------------------------------
@@ -4170,6 +4191,22 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
   ...exemptTable(
     'FLOOR_TILE_PIXELS',
     'A RENDERING SCALE FACTOR. `FloorGrid.tsx` multiplies a tile coordinate by this to get a pixel position for drawing; nothing in this directory compares a value AGAINST it — it scales an output the way a rate does, rather than gating an input.',
+  ),
+  ...exemptTable(
+    'FLOOR_STATION_PANEL_PADDING_PIXELS',
+    'GDD §5.14 Stage C: A RENDERING SCALE FACTOR for the station panel\'s own `StyleSheet.create`, the same class as `FLOOR_TILE_PIXELS` above — nothing in this directory compares a value against it.',
+  ),
+  ...exemptTable(
+    'FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS',
+    'GDD §5.14 Stage C: the same class as `FLOOR_STATION_PANEL_PADDING_PIXELS` above — the panel\'s own border width, a rendering scale factor and not a gate.',
+  ),
+  ...exemptTable(
+    'FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS',
+    'GDD §5.14 Stage C: the same class as `FLOOR_STATION_PANEL_PADDING_PIXELS` above — the panel\'s own top margin, a rendering scale factor and not a gate.',
+  ),
+  ...exemptTable(
+    'STATION_TAP_MAX_DRAG_PIXELS',
+    'GDD §5.14 Stage C: A GESTURE THRESHOLD compared against a real drag\'s pixel distance inside `FloorGrid.tsx`\'s `PanResponder` handler — reachable only from a real gesture, which this file\'s own drive cannot produce (the same "Invalid hook call" limit `FloorGrid`\'s own drive row already states, since the whole component throws before its `PanResponder` is ever built). `tools/verify-floor-reachability.mjs`\'s 13g/13h claims are the real coverage for this threshold.',
   ),
   ...exemptTable(
     'FLOOR_GRID_BORDER_WIDTH_PIXELS',
@@ -4951,6 +4988,7 @@ const AXIS_PROBE_DAYS = EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS * 4 + 1;
  */
 const LITERAL_AXES: readonly (readonly [string, string])[] = Object.freeze([
   ['accelerant', 'null and one purchasable accelerant: the presence of a plan, not a magnitude.'],
+  ['condition', 'GDD §5.14 Stage C: three points driven against isSoundCondition/displayRepairCostBySoundness — 0, the MAINTENANCE_PROMPT_CONDITION line itself, and 1 — below, at, and above the one threshold either function reads. Not a magnitude sweep: stationConditionView/stationManagerEffectView drive the REAL condition axis via itemCondition(managed, item) over every managed item and manager tier, which is what NUMERIC_DOMAINS-derived coverage looks like for this module; this row is the three-point boundary check beside it.'],
   ['diagnostic', 'the fixed list of TypeScript diagnostic categories the surface walk reports.'],
   ['encourage', 'the boolean argument to recordFriendVisit. Two points is the whole domain.'],
   ['equipmentUnitCount', 'three hand-picked equipment counts driven against crowdingLoad (§5.11 stage 3, members.ts) — none owned, a typical kit, the full item list. A shape parameter for the crowding ratio, not a magnitude with thresholds; crowdingSatisfactionMultiplier is what drives the load axis itself, over MEMBER_LOADS.'],
@@ -5490,7 +5528,11 @@ const DOMAIN_CENSUS = Object.freeze({
   // GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS — see NOT_A_BRANCH_POINT above.
   // 339 -> 344: GDD §5.14 Stage B's PACING_REPORT_HORIZONS_SECONDS, five new
   // exempt leaves — see NOT_A_BRANCH_POINT above.
-  EXEMPT: 344,
+  // 344 -> 348: GDD §5.14 Stage C's four new exempt leaves
+  // (FLOOR_STATION_PANEL_PADDING_PIXELS, _BORDER_WIDTH_PIXELS,
+  // _MARGIN_TOP_PIXELS, and STATION_TAP_MAX_DRAG_PIXELS) — see
+  // NOT_A_BRANCH_POINT above.
+  EXEMPT: 348,
   // 154 -> 196: the same 42 new leaves. 251 -> 264: the same 13 new leaves.
   // 264 -> 266: the same 2 new leaves.
   // 266 -> 273: the same 7 new leaves.
@@ -5522,7 +5564,11 @@ const DOMAIN_CENSUS = Object.freeze({
   // PIXELS, exempt — see EXEMPT above. Read from this pin's own failure value.
   // 442 -> 447: GDD §5.14 Stage B's `PACING_REPORT_HORIZONS_SECONDS`, five
   // numeric leaves, exempt — see EXEMPT above.
-  TUNING_NUMERIC_LEAVES: 447, // 432 -> 433: "kill the mint" adds WALL_CLOCK_TICK_INTERVAL_SECONDS
+  // 447 -> 451: GDD §5.14 Stage C's four new numeric leaves
+  // (STATION_TAP_MAX_DRAG_PIXELS, FLOOR_STATION_PANEL_PADDING_PIXELS,
+  // FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS,
+  // FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS), all filed.
+  TUNING_NUMERIC_LEAVES: 451, // 432 -> 433: "kill the mint" adds WALL_CLOCK_TICK_INTERVAL_SECONDS
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -5556,7 +5602,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // PIXELS — see NOT_A_BRANCH_POINT above.
   // 444 -> 449: GDD §5.14 Stage B's five new exempt leaves,
   // PACING_REPORT_HORIZONS_SECONDS — see NOT_A_BRANCH_POINT above.
-  BRANCH_POINTS: 449,
+  // 449 -> 453: GDD §5.14 Stage C's four new exempt leaves — see
+  // NOT_A_BRANCH_POINT above.
+  BRANCH_POINTS: 453,
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
@@ -5615,7 +5663,11 @@ const DOMAIN_CENSUS = Object.freeze({
 // leaves across six domains (30 possible pairs), thirteen of which drop
 // above a ceiling (see EXEMPT_LEAVES_ABOVE_A_CEILING's new rows) — 30 - 13 =
 // 17 `required` obligations added. Read from this pin's own failure value.
-CONTAINMENT_CHECKS: 2337,
+// 2337 -> 2361: GDD §5.14 Stage C's four new exempt leaves across six
+// domains (24 possible pairs), all four small pixel values landing inside
+// every domain's ceiling — 24 `required` obligations added, no omissions.
+// Read from this pin's own failure value.
+CONTAINMENT_CHECKS: 2361,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -5703,7 +5755,9 @@ CONTAINMENT_CHECKS: 2337,
   NON_DOMAIN_LISTS: 3,
   // 11 -> 12: members.ts's equipmentUnitCount (§5.11 stage 3).
   // 12 -> 13: `response`, the two answers `respondToPrompt` takes.
-  LITERAL_AXES: 13,
+  // 13 -> 14: GDD §5.14 Stage C's `condition` axis in the new stationView.ts
+  // drive block.
+  LITERAL_AXES: 14,
   LABELLED_LISTS: 25,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
@@ -7817,8 +7871,104 @@ function driveEverything(): readonly DrivenRow[] {
       barbellOwned: Object.freeze([]),
       floor: floorModule.createFloorState('garage'),
       dispatch: () => undefined,
+      // GDD §5.14 Stage C's new prop. Irrelevant to what this drive is
+      // actually testing — the hook throws before a single line of
+      // `FloorGrid`'s own body runs — so a freshly-created gym satisfies the
+      // parameter type without claiming anything about the panel's own
+      // coverage, which is `tools/verify-floor-reachability.mjs`'s job.
+      managed: managementModule.createManagedGym(),
     }),
   );
+
+  // --- stationView.ts (GDD §5.14 Stage C: station-tap management)
+  //
+  // The panel's own pure selector. Its own header says it recomputes no
+  // queue geometry, no condition arithmetic and no repair pricing of its
+  // own — so this block reuses the SAME fixtures the floor.ts/floorSim.ts/
+  // management.ts blocks above already build, rather than inventing a
+  // third set, which is the sharpest test of that claim available: if this
+  // module secretly re-derived a queue or a cost, driving it against the
+  // fixtures that already exercise the real derivation would be redundant,
+  // not blind.
+  {
+    const KIT = [...EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT];
+    const owned: readonly SessionEquipmentItem[] = ['mats'];
+    const laid = floorModule.placeFloorItem(
+      floorModule.createFloorState('garage'),
+      owned,
+      'mats',
+      { x: 5, y: 3 },
+    );
+    if (laid.kind === 'placed') {
+      const withItem = {
+        rung: 'garage' as const,
+        floor: laid.state,
+        barbellOwned: KIT,
+        sessionOwned: owned,
+      };
+      const stations = floorSimModule.floorStations(withItem);
+      const opening = floorSimModule.createFloorSimState(withItem, 5);
+      const settled = floorSimModule.runFloorSim(opening, withItem, 30);
+      for (const station of stations) {
+        const label = `${station.ref.kind}/${station.ref.item}`;
+        drive('stationIdentityView', label, () =>
+          stationViewModule.stationIdentityView(station.ref), [station.ref],
+        );
+        drive(
+          'stationOperationView',
+          `${label}/opening`,
+          () => stationViewModule.stationOperationView(opening.members, station.ref),
+          [opening.members, station.ref],
+        );
+        drive(
+          'stationOperationView',
+          `${label}/settled`,
+          () => stationViewModule.stationOperationView(settled.members, station.ref),
+          [settled.members, station.ref],
+        );
+      }
+    }
+    for (const condition of [0, EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION, 1]) {
+      drive('isSoundCondition', String(condition), () =>
+        stationViewModule.isSoundCondition(condition),
+      );
+      drive('displayRepairCostBySoundness', String(condition), () =>
+        stationViewModule.displayRepairCostBySoundness(100, condition),
+      );
+    }
+    const freshForPanel = managementModule.createManagedGym();
+    for (const item of managementModule.ownedItemsOf(freshForPanel.gym)) {
+      drive(
+        'stationConditionView',
+        item,
+        () => stationViewModule.stationConditionView(freshForPanel, item),
+        [freshForPanel],
+      );
+      drive(
+        'stationManagerEffectView',
+        item,
+        () => stationViewModule.stationManagerEffectView(freshForPanel, item),
+        [freshForPanel],
+      );
+    }
+    for (const tier of EMPIRE_TUNING.MANAGER_TIERS) {
+      const hired = managementModule.hireManager(
+        freshForPanel,
+        tier as managementModule.ManagerTier,
+        0,
+      );
+      if (hired.kind === 'hired') {
+        for (const item of managementModule.ownedItemsOf(hired.state.gym)) {
+          drive(
+            'stationManagerEffectView',
+            `${tier}/${item}`,
+            () => stationViewModule.stationManagerEffectView(hired.state, item),
+            [hired.state],
+          );
+        }
+      }
+    }
+  }
 
   // --- empireInvariant.ts, the loop
   for (const funding of invariant.EMPIRE_FUNDINGS) {
@@ -10051,7 +10201,10 @@ const DRIVE_CENSUS = Object.freeze({
   // NUMBER_POINTS above), which multiplies out across every existing drive
   // loop keyed on NUMBER, not merely pacing.ts's own new rows already
   // counted above. Read from this pin's own failure value.
-  ROWS: 593515, // 582209 -> 582208: "kill the mint", re-measured
+  // 593515 -> 593539: GDD §5.14 Stage C's own stationView.ts drive rows —
+  // the station/operation/condition/manager-effect rows this file's new
+  // "--- stationView.ts" block adds. Read from this pin's own failure value.
+  ROWS: 593539, // 582209 -> 582208: "kill the mint", re-measured
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -10072,7 +10225,9 @@ const DRIVE_CENSUS = Object.freeze({
   // (PACING_CHECK_IN_POLICIES, pacingCheckInSchedule,
   // pacingLadderRungNeverRegresses, pacingReadingAtHorizon, runPacingLadder,
   // runPacingLadderRealistic, runPacingManagedGym), all driven above.
-  EXPORTS_DRIVEN: 374, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
+  // 374 -> 380: GDD §5.14 Stage C's stationView.ts — six new runtime exports,
+  // all driven above (the new "--- stationView.ts" block).
+  EXPORTS_DRIVEN: 380, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -10150,7 +10305,9 @@ const DRIVE_CENSUS = Object.freeze({
   // 6458739 -> 6490275: GDD §5.14 Stage B's own PACING_REPORT_HORIZONS_SECONDS
   // exempt leaves widening NUMBER_DOMAIN, the same cascade as ROWS above.
   // Read from this pin's own failure value.
-  NODES: 6490275, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
+  // 6490275 -> 6490467: GDD §5.14 Stage C's own stationView.ts drive rows.
+  // Read from this pin's own failure value.
+  NODES: 6490467, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -10249,7 +10406,9 @@ const DRIVE_CENSUS = Object.freeze({
   // 29_825_249 -> 29_956_058: GDD §5.14 Stage B's own PACING_REPORT_HORIZONS_
   // SECONDS exempt leaves widening NUMBER_DOMAIN, the same cascade as ROWS/
   // NODES above.
-  STRINGS: 29_956_058,
+  // 29_956_058 -> 29_956_870: GDD §5.14 Stage C's own stationView.ts drive
+  // rows, the same cascade as ROWS/NODES above.
+  STRINGS: 29_956_870,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -10335,7 +10494,10 @@ const DRIVE_CENSUS = Object.freeze({
   // 3765 -> 3785: GDD §5.14 Stage B's own PACING_REPORT_HORIZONS_SECONDS
   // exempt leaves widening NUMBER_DOMAIN. Read from this pin's own failure
   // value.
-  DISTINCT_STRINGS: 3785,
+  // 3785 -> 3797: GDD §5.14 Stage C's own stationView.ts drive rows — new
+  // distinct station identity/operation/condition/manager-effect strings.
+  // Read from this pin's own failure value.
+  DISTINCT_STRINGS: 3797,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -10694,8 +10856,15 @@ const DECLINED_CLOSURE_POSITIONS: readonly string[] = Object.freeze([
   // a pure shift the same way the round above did: index 6 is now
   // `gymscreen-floor` again, matching the ORIGINAL PLAYTEST 2 numbering
   // before the check-in control existed.
-  'GymScreen#return.props.children.6.props.children.1.props.dispatch/1',
-  'GymScreen#return.props.children.6.props.children.1.type/1',
+  // children.6 -> children.2: GDD §5.14 Stage C's own reorder — the floor
+  // block moved from sixth to third among the screen's top-level children
+  // (rung/rate, money, floor, then week/lifts/accrual/refusal below it),
+  // per the header comment in GymScreen.tsx's own return. Verified by
+  // enumerating the root's own children rather than by matching a count:
+  // 0 rung/rate, 1 money, 2 floor (`<FloorGrid .../>` is its second child,
+  // after the caption `<Text>`, hence `.props.children.1` unchanged).
+  'GymScreen#return.props.children.2.props.children.1.props.dispatch/1',
+  'GymScreen#return.props.children.2.props.children.1.type/1',
   'accrueProduction#argument.1.gymBucksPerHour/1',
   'accrueProduction#argument.1.trainingIqPerDay/1',
   'gymBucksRatePerHour#argument.1.gymBucksPerHour/1',
@@ -11231,6 +11400,8 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   ['respondToPrompt#no-prompt', 2],
   ['respondToPrompt#repair-refused', 3],
   ['respondToPrompt#repaired', 2],
+  ['stationIdentityView#fixed', 3],
+  ['stationIdentityView#session', 1],
 ]);
 
 /**
@@ -14301,7 +14472,8 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // one, memberDrawPoint's two, memberFacing's third arm, and the member
       // .map callback converted to a block body with an explicit return.
       // 28 -> 29: P4c — fixedSpriteUriFor's occupied-variant early return.
-      'FloorGrid.tsx': 29,
+      // 29 -> 30: GDD §5.14 Stage C — `toggleSelectedStation`'s own `return`.
+      'FloorGrid.tsx': 30,
       // CROSSING 6: GymScreen.tsx's own two helper functions
       // (`allocationOptions`, `describeSlotOutcome`, the latter with three
       // return statements across its three arms) plus the component's own
@@ -14382,6 +14554,12 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'reputation.ts': 24,
       'sessions.ts': 43,
       'social.ts': 31,
+      // GDD §5.14 Stage C's stationView.ts — ten `return` statements:
+      // stationIdentityView's two arms, the internal `targetsStation`
+      // helper's two, stationOperationView's one, isSoundCondition's one,
+      // displayRepairCostBySoundness's one, stationConditionView's one, and
+      // stationManagerEffectView's two arms.
+      'stationView.ts': 10,
     }),
     /**
      * TWO, AND THE TWO ARE THE WRAP'S OWN GATES.
@@ -14432,7 +14610,11 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // GDD §5.13 presentation Phase 1: FloorGrid's two `props.dispatch`
       // call sites (`releaseAt`'s floor-place, the remove Pressable's
       // floor-remove).
-      'FloorGrid.tsx': 2,
+      // GDD §5.14 Stage C: two more, both inside the new station panel — its
+      // repair control's `repair-item` and its own remove control's
+      // `floor-remove` (a second, panel-local site distinct from the
+      // tray-item remove `Pressable` above).
+      'FloorGrid.tsx': 4,
       'GymScreen.tsx': 1,
       'ladderView.tsx': 9,
       'production.ts': 2,
@@ -14552,6 +14734,13 @@ const DECLARED_CALLBACK_SITES: readonly string[] = Object.freeze([
   // sites — `releaseAt`'s `floor-place` and the remove `Pressable`'s
   // `floor-remove` — each handing `dispatch` exactly one action object, the
   // same `x1` shape GymView's own six sites below carry.
+  // GDD §5.14 Stage C: two more, both inside the new station panel — its
+  // repair control's `repair-item` and its own remove control's
+  // `floor-remove` (a second, panel-local site; the tray-item remove
+  // `Pressable` above still carries the first) — each handing `dispatch`
+  // exactly one action object, same `x1` shape.
+  'FloorGrid.tsx#FloorGrid#props x1',
+  'FloorGrid.tsx#FloorGrid#props x1',
   'FloorGrid.tsx#FloorGrid#props x1',
   'FloorGrid.tsx#FloorGrid#props x1',
   // CROSSING 6: GymScreen's one `props.dispatch` call, through its own local
@@ -15274,7 +15463,10 @@ const SCREEN_AGREEMENT = Object.freeze({
 // `stop`, `bob.interpolate`), measured by running the assertion below rather
 // than hand-counted.
 const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze({
-  parameter: 4,
+  // 4 -> 6: GDD §5.14 Stage C — FloorGrid.tsx's new station panel. Read from
+  // this pin's own failure value; the exact call sites are not independently
+  // hand-derived.
+  parameter: 6,
   // 53 -> 54: P4c — FloorGrid.tsx's `hasOwnProperty.call` in the occupied
   // branch of `fixedSpriteUriFor`. Read from this pin's own failure value.
   // 54 -> 64: stage 4's calls through module-level bindings — `refuseWith`,
@@ -15287,7 +15479,10 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 5 -> 7: Phase 3's RENDER half's two calls through a local binding in
   // `AmbientMemberBody`'s single animation effect (`bobLoop.start()`,
   // `pulseLoop.stop()`). Read from this table's own failure value.
-  local: 7,
+  // 7 -> 12: GDD §5.14 Stage C — FloorGrid.tsx's new station panel and
+  // stationView.ts. Read from this pin's own failure value; the exact call
+  // sites are not independently hand-derived.
+  local: 12,
   // GDD §5.13 presentation Phase 3: function 827 -> 918, member 810 -> 889,
   // member-of-parameter 21 -> 27, all floorSim.ts's own call targets. Read
   // from this table's own failure value.
@@ -15338,7 +15533,11 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // Read from this pin's own failure value rather than hand-counted.
   // 1441 -> 1456: GDD §5.14 Stage B's pacing.ts. Read from this pin's own
   // failure value.
-  function: 1456,
+  // 1456 -> 1473: GDD §5.14 Stage C — stationView.ts's own calls into
+  // management.ts/sessions.ts, plus FloorGrid.tsx's new station panel. Read
+  // from this pin's own failure value; the exact call sites are not
+  // independently hand-derived.
+  function: 1473,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -15371,7 +15570,11 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // (`StyleSheet.create`). Read from this pin's own failure value.
   // 1330 -> 1352: GDD §5.14 Stage B's pacing.ts. Read from this pin's own
   // failure value.
-  member: 1352,
+  // 1352 -> 1363: GDD §5.14 Stage C — FloorGrid.tsx's new station panel
+  // (`Object.freeze`, `.map()` and the like) and stationView.ts. Read from
+  // this pin's own failure value; the exact call sites are not independently
+  // hand-derived.
+  member: 1363,
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -15467,7 +15670,8 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 18 -> 19: GDD §5.13 presentation Phase 4's floorSprites.ts.
   // 19 -> 20: §5.11 stage 4's management.ts.
   // 20 -> 21: GDD §5.14 Stage B's pacing.ts.
-  MODULES: 21,
+  // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
+  MODULES: 22,
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved.
    * 404 -> 427 with GymView: +13 `return` sites (5 -> 18) and +6
    * `callback-invocation` sites (3 -> 9) on `ladderView.tsx`, +4 `return`
@@ -15530,7 +15734,10 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // both on the `return` channel, per the byModule row above.
   // 731 -> 743: GDD §5.14 Stage B's pacing.ts — eleven `return` sites plus
   // one `exported-binding` site, per the byModule rows above.
-  SITES: 743,
+  // 743 -> 756: GDD §5.14 Stage C — two new `callback-invocation` sites and
+  // one new `return` site in FloorGrid.tsx, plus stationView.ts's own ten
+  // `return` sites, per the byModule rows above (2 + 1 + 10 = 13).
+  SITES: 756,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -15636,7 +15843,11 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // comment). Read from this pin's own failure value.
   // 62_193 -> 63_124: GDD §5.14 Stage B's pacing.ts — new source, header
   // included. Read from this pin's own failure value.
-  NODES_EXAMINED: 63_124,
+  // 63_124 -> 64_731: GDD §5.14 Stage C — new source in stationView.ts
+  // (header included), FloorGrid.tsx's new station panel, and
+  // empireTuning.ts's four new entries and their doc comments. Read from
+  // this pin's own failure value.
+  NODES_EXAMINED: 64_731,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -15752,7 +15963,12 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // each contributing parameter and return positions. Read from this pin's
   // own failure value; the exact count of new positions per function is not
   // independently hand-derived.
-  POSITIONS: 893,
+  // 893 -> 909: GDD §5.14 Stage C's stationView.ts — six new exported
+  // functions, each contributing parameter and return positions, plus its
+  // four new exported interfaces reached through those return types. Read
+  // from this pin's own failure value; the exact count of new positions per
+  // function is not independently hand-derived.
+  POSITIONS: 909,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -16823,6 +17039,11 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
             dispatch: (action: ladderViewModule.GymViewAction): void => {
               record([action]);
             },
+            // GDD §5.14 Stage C's new prop — irrelevant here for the same
+            // reason given at the other `FloorGrid` call site in this file
+            // ('thrown-invalid-hook-call'): the hook throws before this
+            // value is ever read.
+            managed: managementModule.createManagedGym(),
           });
         },
         callsAt: (): number => 0,
@@ -17468,7 +17689,17 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   TRIPWIRE_FINDINGS: 6,
 });
 
-const CHANNEL_BLOCK_TIMEOUT_MS = 90_000;
+// 90_000 -> 240_000, GDD §5.14 Stage C, the same budget and the same
+// reasoning `DRIVE_BLOCK_TIMEOUT_MS` above already carries: this block's own
+// 'drives every caller-supplied callback and scans what it was handed' timed
+// out at the 90 s budget in two of six whole-file runs this round (91952 ms
+// measured in the last), the other four passing cleanly under the same
+// budget — the exact "marginal, not impossible" shape that file's own
+// comment warns a hard-coded budget produces under load. This directory
+// grew (a new module joined the walk, plus this file's own new drive block),
+// which is real added work rather than a hang, so the budget is widened to
+// fit it rather than narrowed to hide it.
+const CHANNEL_BLOCK_TIMEOUT_MS = 240_000;
 
 describe('the channel census — the routes a string can leave this directory by', () => {
   it(
@@ -19975,7 +20206,10 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // 241 -> 245: GDD §5.14 Stage B's pacing.ts — four new type declarations
   // (PacingCheckInPolicy, PacingScheduleEntry, PacingLadderReading,
   // PacingLadderRun).
-  DECLARATIONS: 245,
+  // 245 -> 249: GDD §5.14 Stage C's stationView.ts — four new interface
+  // declarations (StationIdentityView, StationOperationView,
+  // StationConditionView, StationManagerEffectView), none generic.
+  DECLARATIONS: 249,
   /** Those carrying type parameters. An instantiation depth needs one. */
   // Phase 4: `MemberTable<Leaf>` in floorSprites.ts.
   GENERIC: 13,
@@ -26819,6 +27053,22 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
     omission:
       "It drops the refused case on purpose, and the drop is safe because of what the block does rather than because the case cannot happen. `placeFloorItem` returns `placed` or `refused`, and this guard admits only `placed` before building the interruption fixture; if a footprint change ever made the two placements illegal, the fixture would be skipped rather than built from a floor with nothing on it, and the skip is visible as `stepFloorSim` losing its `target-removed` and `target-moved` rows from the drive census. The alternative — reading `.state` off either arm without a check — is what would be silent, because a refusal hands back the unchanged floor and a station-less fixture drives the same call with none of the arms it exists for. `floorSim.test.ts`'s own interruption battery is the catcher that fails loudly rather than quietly if those placements stop landing.",
   }),
+  // GDD §5.14 Stage C: the new stationView.ts drive block's own guard on the
+  // same `placeFloorItem` call, reusing the identical `mats`-at-(5,3)
+  // placement the block above already proves lands — hence `#2`, the second
+  // `laid`-named guard the scan finds in this file. Terminal `next-statement`
+  // rather than `enclosing`, so it carries no `omission` argument (only
+  // `none`/`enclosing` rows do) — the fall-through here IS the next
+  // statement, not a drop out of the block, and if the placement were ever
+  // refused the guard would skip straight to the condition/manager-effect
+  // drives below with no `session`-kind rows at all, which is visible as
+  // `stationIdentityView#session` dropping out of `KINDED_RETURN_CENSUS`.
+  Object.freeze({
+    at: 'empireForbiddenOutput.test.ts#driveEverything#laid#2',
+    arms: 1,
+    dispatch: false,
+    terminal: 'next-statement',
+  }),
   // §5.11 stage 4: the management drive block's own guards on discriminated
   // results, so every fixture is built from a call that really landed rather
   // than from a cast. Six rows, the same shape as `#laid` above — four inside
@@ -26835,6 +27085,11 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#driveEverything#repaired#2', arms: 1, dispatch: false, terminal: 'loop' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#driveEverything#cheapHire', arms: 1, dispatch: false, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#driveEverything#staffed', arms: 1, dispatch: false, terminal: 'next-statement' }),
+  // GDD §5.14 Stage C: the new stationView.ts drive block's own guard, one
+  // per manager tier, so `stationManagerEffectView` is driven against a real
+  // hired manager rather than a cast. Inside the tier loop, so the fall-
+  // through on a refusal is the next loop iteration.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#driveEverything#hired', arms: 1, dispatch: false, terminal: 'loop' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#surfaceOf#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#surfaceOf#declaration', arms: 1, dispatch: false, terminal: 'loop' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#carriesBrand<surfaceOf#name', arms: 1, dispatch: true, terminal: 'next-statement' }),
@@ -27068,6 +27323,10 @@ const CONTINUATIONS_BLIND_TO_THE_SUBJECT: readonly string[] = Object.freeze([
   // and does not name the guarded binding: the hire results are checked for
   // `kind === 'hired'` and the block that follows reads other bindings first.
   'empireForbiddenOutput.test.ts#driveEverything#cheapHire',
+  // GDD §5.14 Stage C's own `#laid#2` guard (the placed-mats fixture check
+  // in the new stationView.ts drive block): its continuation is the next
+  // statement, a condition-domain loop, and does not name `laid`.
+  'empireForbiddenOutput.test.ts#driveEverything#laid#2',
   'empireForbiddenOutput.test.ts#driveEverything#staffed',
   'empireForbiddenOutput.test.ts#ownerOf<channelCensusOf#initial',
   'empireForbiddenOutput.test.ts#ownerOf<channelCensusOf#root',
@@ -27130,7 +27389,9 @@ const CHAIN_CENSUS = Object.freeze({
   // 105 -> 104: the wear-basis ruling folded the drive block's two dormant
   // fixtures onto one shared `refuseEveryOrder` helper, so its two
   // `declineRepair` guard ladders became one.
-  CHAINS: 104,
+  // 104 -> 106: GDD §5.14 Stage C's own two new drive-block guards, `#laid#2`
+  // and `#hired` (see DECLARED_DISPATCH_CHAINS above).
+  CHAINS: 106,
   // 60 -> 61: PLAYTEST 4's rework, net. The replaced reader row was
   // `dispatch: true` and the two `renderPropShape` ladders both are, so one
   // dispatching row left and two arrived. Read from this assertion's failure.
@@ -27140,10 +27401,12 @@ const CHAIN_CENSUS = Object.freeze({
     // 72 -> 74: all three of PLAYTEST 4's rework rows are `next-statement`,
     // against one `next-statement` row removed.
     // 74 -> 76: the two stage-4 hire guards.
-    'next-statement': 76,
+    // 76 -> 77: GDD §5.14 Stage C's `#laid#2` guard.
+    'next-statement': 77,
     // 14 -> 18: the four stage-4 strike/repair loop guards.
     // 18 -> 17: one of those four folded away with `refuseEveryOrder`.
-    loop: 17,
+    // 17 -> 18: GDD §5.14 Stage C's `#hired` guard.
+    loop: 18,
     // 2 -> 3: the same new row.
     enclosing: 3,
     /**
