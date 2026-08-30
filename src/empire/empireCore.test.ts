@@ -2471,6 +2471,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'management.ts',
       'members.ts',
       'npc.ts',
+      // GDD §5.14 Stage B: the economy pacing simulator.
+      'pacing.ts',
       'production.ts',
       'recruitment.ts',
       'reputation.ts',
@@ -2628,7 +2630,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // mentions of the same target dedupe to ONE new pair,
     // `GymScreen.tsx -> empireCore.ts` — confirmed absent from the pre-round
     // file by `git show`, not assumed. Nothing was removed.
-    expect(pairs).toBe(121);
+    // 121 -> 128: GDD §5.14 Stage B's `pacing.ts`. SEVEN new pairs, enumerated
+    // rather than read off the failure count: `pacing.ts` mentions six other
+    // modules — `empireCore.ts`, `empireTuning.ts` and `ladder.ts` via both an
+    // import specifier and prose, `management.ts` and `production.ts` the
+    // same way, and `ladderView.tsx` in prose only (header §6's stage-gate
+    // reference) — for six `pacing.ts -> X` pairs, plus one the other
+    // direction: `empireTuning.ts`'s own new `PACING_REPORT_HORIZONS_SECONDS`
+    // doc comment names `pacing.ts` by file name, so `empireTuning.ts ->
+    // pacing.ts` is the seventh. Nothing was removed.
+    expect(pairs).toBe(128);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -2647,7 +2658,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // fence and its no-real-name census in its new header paragraphs — its
     // first mention of `empireCore.ts` by either key, confirmed absent from
     // the pre-round file by `git show` rather than assumed.
-    expect(mentionersOf('empireCore.ts').length).toBe(17);
+    // 17 -> 18: GDD §5.14 Stage B. `pacing.ts` imports `refuseWith` from
+    // `./empireCore`.
+    expect(mentionersOf('empireCore.ts').length).toBe(18);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -3699,7 +3712,20 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `'auto'` and `'pointer'` (the CSS `cursor` values the iOS Safari fix
     // needs), `'button'` (`accessibilityRole`), and `'center'`
     // (`alignItems`/`justifyContent` on the new button style).
-    expect(singleQuoted.size).toBe(507);
+    // 507 -> 511: GDD §5.14 Stage B's `pacing.ts`. FOUR new distinct values —
+    // its own `PacingCheckInPolicy` vocabulary: `'watcher'`,
+    // `'few-times-a-day'`, `'once-a-day'`, `'sporadic'`. Everything else the
+    // module writes as a single-quoted literal already ships elsewhere in
+    // this directory and adds nothing new to the set: its five import
+    // specifiers (`'./empireCore'`, `'./empireTuning'`, `'./ladder'`,
+    // `'./management'`, `'./production'`) are each already imported by some
+    // other shipped module, `'online'`/`'offline'` are `ladder.ts`'s own
+    // `EarningsMode` literals, `'cheapest-affordable-first'` is
+    // `LADDER_POLICIES`'s own member, and `'moved'` is
+    // `LadderMoveResult`'s own `kind`. Measured by running the collector
+    // above directly against this file's own comment-stripped source rather
+    // than hand-counted.
+    expect(singleQuoted.size).toBe(511);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3773,7 +3799,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `gymscreen-hire-${tier}-unavailable`,
     // `gymscreen-buy-ladder-${item}-unavailable`,
     // `gymscreen-buy-session-${item}-unavailable`). Nothing was removed.
-    expect(templateChunks.size).toBe(298);
+    // 298 -> 301: GDD §5.14 Stage B's `pacing.ts`. THREE new templates, its
+    // own `refuseWith` messages: "… is not a pacing check-in policy", "a
+    // pacing horizon must be finite and above zero, received …", and "no
+    // reading recorded at the …-second horizon". Measured by running the
+    // collector above directly against this file's own comment-stripped
+    // source.
+    expect(templateChunks.size).toBe(301);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3922,6 +3954,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'failure-slump-control',
       'fault-message',
       'faultMessage',
+      'few-times-a-day',
       'fill',
       'fixed',
       'fixed-order-no-rotation',
@@ -4108,6 +4141,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // real periodic-tick call site in `AppShell.tsx`'s `GymHost`. No
       // manufacturer, athlete or brand.
       'offline',
+      // GDD §5.14 Stage B's `pacing.ts` — one of its four `PacingCheckInPolicy`
+      // members. No manufacturer, athlete or brand.
+      'once-a-day',
       'online',
       // 'open-up' — the reducer arm for the player's own check-in — is gone,
       // by human ruling ("kill the mint"): no tap anywhere on this screen
@@ -4200,6 +4236,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'specialty-bars',
       'spend-once-per-calendar-day',
       'sponsorship',
+      // GDD §5.14 Stage B's `pacing.ts` — one of its four `PacingCheckInPolicy`
+      // members. No manufacturer, athlete or brand.
+      'sporadic',
       'spotter',
       'springgreen',
       'squat',
@@ -4253,6 +4292,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'wall-clock-wear-control',
       'warehouse',
       'warned',
+      // GDD §5.14 Stage B's `pacing.ts` — one of its four `PacingCheckInPolicy`
+      // members. No manufacturer, athlete or brand.
+      'watcher',
       'white',
       'wide',
       'wrist-wraps',
@@ -4328,7 +4370,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 801 -> 805: S4h's four new single-quoted literals ('auto', 'button',
     // 'center', 'pointer'), enumerated in `singleQuoted.size`'s own comment
     // above; templateChunks and doubleQuoted unchanged.
-    expect(stringsChecked).toBe(805);
+    // 805 -> 812: GDD §5.14 Stage B's `pacing.ts` — singleQuoted 507 -> 511
+    // and templateChunks 298 -> 301, both enumerated above; doubleQuoted
+    // unchanged.
+    expect(stringsChecked).toBe(812);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -4427,7 +4472,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 437 -> 441: S4h's four new `spaceFree` tokens ('auto', 'button',
     // 'center', 'pointer'), all clearing the two-letter guard below, each a
     // probe.
-    expect(probes).toBe(441);
+    // 441 -> 445: GDD §5.14 Stage B's four new `spaceFree` tokens
+    // ('few-times-a-day', 'once-a-day', 'sporadic', 'watcher'), each a probe.
+    expect(probes).toBe(445);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -4721,6 +4768,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       ],
       'members.ts': ['./empireCore', './empireTuning', './production', './sessions'],
       'npc.ts': ['./empireCore', './empireTuning'],
+      // GDD §5.14 Stage B: the economy pacing simulator. Composes the ladder
+      // (stage 1) and management (stage 4) engines whole rather than
+      // reimplementing their arithmetic, and reads `offlineBankingHorizonSeconds`
+      // straight from `production.ts` for the sporadic-policy gap cap.
+      'pacing.ts': ['./empireCore', './empireTuning', './ladder', './management', './production'],
       'production.ts': ['./empireCore', './empireTuning'],
       'recruitment.ts': ['./empireCore', './empireTuning'],
       'reputation.ts': ['./empireCore', './empireTuning', './expansion', './production'],
@@ -4743,7 +4795,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 17 -> 18: GDD §5.13 presentation Phase 3's floorSim.ts. Read from this
     // assertion's own failure value.
     // 18 -> 19: Phase 4's floorSprites.ts.
-    expect(fenced).toBe(20);
+    // 20 -> 21: GDD §5.14 Stage B's pacing.ts. Read from this assertion's own
+    // failure value.
+    expect(fenced).toBe(21);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -4843,7 +4897,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // one from `ladderView.tsx` (the reducer writes them). Both are named in
     // `EXPECTED` above, which is the per-file assertion this total is only the
     // sum of; the total moving alone would be caught there first.
-    expect(specifiers).toBe(77);
+    // 77 -> 82: GDD §5.14 Stage B's pacing.ts — five intra-directory edges
+    // (./empireCore, ./empireTuning, ./ladder, ./management, ./production).
+    // Read from this assertion's own failure value.
+    expect(specifiers).toBe(82);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
@@ -5037,7 +5094,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 393 -> 394: S4i's one new tuning literal,
     // GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS (82). Read from this
     // assertion's own failure value.
-    ).toBe(394);
+    // 394 -> 399: GDD §5.14 Stage B's one new tuning entry,
+    // PACING_REPORT_HORIZONS_SECONDS — an array of five literals (600, 3600,
+    // 86400, 259200, 604800), so FIVE new findings under the synthetic
+    // unregistered path rather than one. Read from this assertion's own
+    // failure value.
+    ).toBe(399);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

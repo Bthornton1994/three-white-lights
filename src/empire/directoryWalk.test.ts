@@ -161,7 +161,8 @@ export const DIRECTORY_WALK = Object.freeze({
   // 19 -> 20: §5.11 stage 4's `management.ts` — staffing, maintenance,
   // equipment condition and recoverable failure. Read from this pin's own
   // failure value.
-  SHIPPED_MODULES: 20,
+  // 20 -> 21: GDD §5.14 Stage B's `pacing.ts` — the economy pacing simulator.
+  SHIPPED_MODULES: 21,
   /**
    * Files the shared walk hands the censuses today, tests included.
    *
@@ -177,7 +178,8 @@ export const DIRECTORY_WALK = Object.freeze({
   // floorSim.test.ts. Read from this pin's own failure value.
   // 38 -> 40: Phase 4's `floorSprites.ts` and `floorSprites.test.ts`.
   // 40 -> 42: stage 4's `management.ts` and `management.test.ts`.
-  DIRECTORY_FILES: 42,
+  // 42 -> 44: Stage B's `pacing.ts` and `pacing.test.ts`.
+  DIRECTORY_FILES: 44,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**
@@ -953,6 +955,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'management.ts',
       'members.ts',
       'npc.ts',
+      'pacing.ts',
       'production.ts',
       'recruitment.ts',
       'reputation.ts',

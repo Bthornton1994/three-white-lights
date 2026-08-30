@@ -2438,6 +2438,35 @@ export const EMPIRE_TUNING = Object.freeze({
    * — this is the tunable version, not an asserted-correct one.
    */
   GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS: 82,
+
+  // -------------------------------------------------------------------------
+  // GDD §5.14 Stage B — the economy pacing simulator. `pacing.ts`.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Stage B's own fixed sampling grid, in seconds: ten simulated minutes, one
+   * hour, day 1, day 3, day 7 — the five horizons CLAUDE.md's brief for this
+   * round names by name. `pacing.ts`'s `pacingCheckInSchedule` reads this
+   * once and forces a check-in at every mark at or under the run's own
+   * horizon into EVERY simulated player's schedule, regardless of that
+   * policy's own natural cadence, so a reading exists at exactly these five
+   * real-elapsed-time marks for every check-in policy the sweep drives —
+   * without this, a policy whose natural cadence never lands on, say, the
+   * 10-minute or 1-hour mark (`once-a-day`, `few-times-a-day`, `sporadic`)
+   * would have no reading to report there at all.
+   *
+   * NOT A FELT TUNING NUMBER AND NOT A BRANCH POINT: nothing in this
+   * directory ever compares a caller-supplied quantity against one of these
+   * five numbers. They are read whole, as gap targets folded into the same
+   * schedule `ladderCheckIn`/`managedCheckIn`/`gymCheckIn` already take a
+   * plain list of check-in seconds for — the identical shape
+   * `LADDER_DEV_TIME_STEPS_SECONDS` already carries in this file, and for the
+   * same reason: a sampling grain fed whole to a real check-in call, not a
+   * threshold anything is measured against. Classified `structural` rather
+   * than `knob`: moving one of these changes what question the simulator
+   * answers, not how easy or hard the game is.
+   */
+  PACING_REPORT_HORIZONS_SECONDS: Object.freeze([600, 3600, 86400, 259200, 604800] as const),
 } satisfies EmpireTuningRecord);
 
 /**
@@ -2638,4 +2667,6 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS: 'knob',
   GYM_SCREEN_DISABLED_OPACITY: 'knob',
   GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS: 'knob',
+
+  PACING_REPORT_HORIZONS_SECONDS: 'structural',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

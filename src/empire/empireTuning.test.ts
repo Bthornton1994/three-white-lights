@@ -127,6 +127,8 @@ describe('the block is frozen and every entry is classified', () => {
       'NPC_RECRUIT_SECONDS',
       'NPC_TIERS',
       'NPC_TIER_OUTPUT_MULTIPLIER',
+      // GDD §5.14 Stage B's pacing simulator — the five report horizons.
+      'PACING_REPORT_HORIZONS_SECONDS',
       'REPUTATION_TIER_THRESHOLDS',
       'SESSION_ACTIVITY_EQUIPMENT_GROUP',
       'SESSION_ACTIVITY_GROUPS',
@@ -706,7 +708,10 @@ describe('§5.5 social', () => {
     // opacity), none of them a cadence in any unit training moves.
     // 174 -> 175: S4i's `GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS`, a UI
     // clearance amount, not a cadence in any unit training moves.
-    expect(examined).toBe(175);
+    // 175 -> 176: GDD §5.14 Stage B's `PACING_REPORT_HORIZONS_SECONDS` — a
+    // fixed measurement checkpoint list, not a cadence in any unit training
+    // moves.
+    expect(examined).toBe(176);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -723,7 +728,8 @@ describe('§5.5 social', () => {
     // 835 -> 840 (168 keys x 5 banned units).
     // 840 -> 870 (174 keys x 5 banned units, S4h's six new knobs).
     // 870 -> 875 (175 keys x 5 banned units, S4i's one new knob).
-    expect(probed).toBe(875);
+    // 875 -> 880 (176 keys x 5 banned units, Stage B's one new knob).
+    expect(probed).toBe(880);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {
@@ -753,15 +759,13 @@ describe('§5.5 social', () => {
 const AWAITING_CONSUMER: readonly string[] = [
   'CHECK_IN_TARGET_SECONDS_MAX',
   'CHECK_IN_TARGET_SECONDS_MIN',
-  // NOT actually unconsumed — this is the scan's own declared blind spot,
-  // read literally rather than assumed away. `WALL_CLOCK_TICK_INTERVAL_SECONDS`
-  // is read by `src/shell/AppShell.tsx`'s `GymHost` (Crossing 6's seam: "the
-  // only thing in `src/shell/` that reads `src/empire/`"), which is outside
-  // `shippedModuleNames()`'s reach — that walk covers this directory only, by
-  // its own header's design ("an unseen consumer makes a key look UNCONSUMED,
-  // which puts it on `AWAITING_CONSUMER` where it reads as honest
-  // bookkeeping"). Listed here for that reason, not because nothing reads it.
-  'WALL_CLOCK_TICK_INTERVAL_SECONDS',
+  // `WALL_CLOCK_TICK_INTERVAL_SECONDS` LEFT THIS LIST, GDD §5.14 STAGE B. It
+  // used to be here only for the scan's own declared blind spot — read by
+  // `src/shell/AppShell.tsx`'s `GymHost`, outside `shippedModuleNames()`'s
+  // reach. `pacing.ts`'s `naturalOffsetsSeconds` now reads it directly
+  // (`EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS`, the watcher policy's
+  // step), which IS inside this directory's own walk, so the key is a real
+  // consumed entry now rather than one this list has to carry as a footnote.
   // Same blind spot, same round: `MILLISECONDS_PER_SECOND` is read only by
   // `AppShell.tsx`'s `GymHost`, for the harness's ms<->s conversion — outside
   // `shippedModuleNames()`'s reach for the identical reason.

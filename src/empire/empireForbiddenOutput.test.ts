@@ -416,6 +416,7 @@ import * as ladderViewModule from './ladderView';
 import * as managementModule from './management';
 import * as membersModule from './members';
 import * as npcModule from './npc';
+import * as pacingModule from './pacing';
 import * as productionModule from './production';
 import * as recruitmentModule from './recruitment';
 import * as reputationModule from './reputation';
@@ -1525,6 +1526,10 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   // surface, which this list's own precedent prefers to another driver.
   'members.ts#crowdingLoad#roster.reduce x2',
   'members.ts#reputationFromMembers#roster.reduce x2',
+  // GDD §5.14 Stage B: `pacingReadingAtHorizon`'s `readings.find(...)` — a
+  // member call on the caller-supplied `readings` parameter, the same shape
+  // as `members.ts`'s `roster.reduce` rows above.
+  'pacing.ts#pacingReadingAtHorizon#readings.find x1',
   'social.ts#rankLeaderboard#entries.map x1',
   'social.ts#visitRefusals#context.some x1',
   'social.ts#visitRefusals#context.some x1',
@@ -1539,7 +1544,8 @@ const SURFACE_CENSUS = Object.freeze({
   // 17 -> 18: GDD §5.13 presentation Phase 3's floorSim.ts.
   // 18 -> 19: GDD §5.13 presentation Phase 4's floorSprites.ts.
   // 19 -> 20: §5.11 stage 4's management.ts.
-  MODULES: 20,
+  // 20 -> 21: GDD §5.14 Stage B's pacing.ts.
+  MODULES: 21,
   // 273 -> 280: GymView's four new exports (createGymViewState, GymViewState,
   // GymViewAction, GymViewRefusal don't count as runtime exports — the seven
   // that do are createGymViewState, gymViewReduce, GymView from ladderView.tsx
@@ -1605,7 +1611,14 @@ const SURFACE_CENSUS = Object.freeze({
   // 366 -> 367: the "chrome vs paid" bug-fix round's one new runtime export,
   // `management.ts#reviewBankedTime` (its `ReviewBankedTime` return type is
   // type-only and does not count, the same rule as every other export here).
-  EXPORTS: 367, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
+  // 367 -> 374: GDD §5.14 Stage B's pacing.ts — seven new runtime exports
+  // (PACING_CHECK_IN_POLICIES, pacingCheckInSchedule,
+  // pacingLadderRungNeverRegresses, pacingReadingAtHorizon, runPacingLadder,
+  // runPacingLadderRealistic, runPacingManagedGym). Its type/interface
+  // exports (PacingCheckInPolicy, PacingScheduleEntry, PacingLadderReading,
+  // PacingLadderRun) do not count as runtime exports, the same rule stated
+  // above for GymView's.
+  EXPORTS: 374, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1716,7 +1729,17 @@ const SURFACE_CENSUS = Object.freeze({
 // 3800 -> 3801: S4i's one new EMPIRE_TUNING key,
 // GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS, the same 1:1 shape. Read from this
 // pin's own failure value.
-LITERAL_POSITIONS: 3801, // 3791 -> 3792: "kill the mint", re-measured; 3792 -> 3793: its harness fix, re-measured
+// 3801 -> 3916: GDD §5.14 Stage B's pacing.ts. Six new exported functions
+// each become a new walk entry point via their RETURN type — unlike
+// `EarningsMode` on `accrueLadderGymBucks`'s PARAMETERS (never reached, per
+// the note above), `PacingLadderReading.mode`/`.rung` and
+// `PacingLadderRun.firstMovedAtSeconds` are RETURNED fields, so
+// `EarningsMode`/`LadderRung`/`LadderDestination` (all pre-existing unions)
+// arrive at genuinely new positions here, plus `PacingCheckInPolicy` and
+// `ManagementPolicy`/`FailurePhase` (via `runPacingManagedGym`'s parameter
+// and `ManagedRun`'s already-known return shape). Read from this pin's own
+// failure value.
+LITERAL_POSITIONS: 3916, // 3791 -> 3792: "kill the mint", re-measured; 3792 -> 3793: its harness fix, re-measured
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -1741,7 +1764,19 @@ LITERAL_POSITIONS: 3801, // 3791 -> 3792: "kill the mint", re-measured; 3792 -> 
   // 222 -> 224: the two new wiring keys. The two `ReviewGate` members
   // contribute nothing — `'condition'` and `'ordinal'` sit on a module-private
   // type and reach no exported position.
-  DISTINCT_LITERAL_MEMBERS: 224,
+  // 224 -> 230: GDD §5.14 Stage B's pacing.ts, SIX new distinct members —
+  // `PacingCheckInPolicy`'s own four ('watcher', 'few-times-a-day',
+  // 'once-a-day', 'sporadic'), plus `EarningsMode`'s two ('online',
+  // 'offline') REACHED FOR THE FIRST TIME: the "chrome vs paid" note above
+  // this block records that `EarningsMode` sat only on function PARAMETERS
+  // before this round (`accrueLadderGymBucks` and its callers), which this
+  // walk's RETURN-type entry point never reaches — `PacingLadderReading.mode`
+  // is the first place `EarningsMode` is a RETURNED field, so its two members
+  // arrive here for the first time. `LadderRung`/`LadderDestination` (also on
+  // `PacingLadderReading`/`PacingLadderRun`) contribute nothing new: both
+  // were already reached through `ladder.ts`'s own `runLadder`/`moveUpLadder`
+  // exports. Read from this pin's own failure value.
+  DISTINCT_LITERAL_MEMBERS: 230,
   DEPTH_CUTS: 0,
 });
 
@@ -2769,7 +2804,9 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // brand, so SITES and MINTS above are unchanged.
   // 19 -> 20: stage 4's management.ts joins the walk; it calls no brand
   // constructor either.
-  MODULES: 20,
+  // 20 -> 21: GDD §5.14 Stage B's pacing.ts joins the walk; it calls no
+  // brand constructor either.
+  MODULES: 21,
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -2885,7 +2922,11 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // in `GymScreen.tsx` — nothing else in the round adds or removes a call.
   // Read from this pin's own failure value. The set of CONSTRUCTORS below is
   // unchanged.
-  CALLS_EXAMINED: 2884,
+  // 2884 -> 2923: GDD §5.14 Stage B's pacing.ts — call expressions across its
+  // schedule generator and composed runs. Read from this pin's own failure
+  // value. The set of CONSTRUCTORS below is unchanged: pacing.ts calls none
+  // of the four brand constructors.
+  CALLS_EXAMINED: 2923,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3440,6 +3481,7 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'members.ts': membersModule as unknown as Readonly<Record<string, unknown>>,
   'sessions.ts': sessionsModule as unknown as Readonly<Record<string, unknown>>,
   'npc.ts': npcModule as unknown as Readonly<Record<string, unknown>>,
+  'pacing.ts': pacingModule as unknown as Readonly<Record<string, unknown>>,
   'production.ts': productionModule as unknown as Readonly<Record<string, unknown>>,
   'recruitment.ts': recruitmentModule as unknown as Readonly<Record<string, unknown>>,
   'reputation.ts': reputationModule as unknown as Readonly<Record<string, unknown>>,
@@ -4424,6 +4466,14 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
     'GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS',
     'A PAINT SCALE: how much of `GymScreen.tsx`\'s own `ScrollView` box is reserved so it never extends under the shell\'s absolutely-positioned nav pill, read once into `styles.root`\'s `marginBottom` and never compared against a caller-supplied number. Derived by reading two constants in `src/shell/shellTuning.ts` at the time this was written (see `empireTuning.ts`\'s own doc comment for the derivation and the drift risk), not by importing them — this directory\'s import fence forbids that.',
   ),
+  // GDD §5.14 Stage B — the same shape `LADDER_DEV_TIME_STEPS_SECONDS` above
+  // already has: five sampling grains, in seconds, fed WHOLE to the same
+  // check-in machinery that constant feeds. Nothing in this directory
+  // compares a value against one of them.
+  ...exemptTable(
+    'PACING_REPORT_HORIZONS_SECONDS',
+    'FIVE SPANS, in seconds, that `pacing.ts`\'s `pacingCheckInSchedule` folds whole into every simulated check-in schedule as forced report-horizon marks — the same "sampling grain fed whole to a real check-in call" shape `LADDER_DEV_TIME_STEPS_SECONDS` above is exempt for, and for the identical reason: nothing in this directory compares a caller-supplied value against one of these five numbers. They enter `EVERY_BRANCH_POINT` like every exempt leaf, so the domains still straddle them as foreign points within each ceiling.',
+  ),
 ]);
 
 /**
@@ -4984,7 +5034,10 @@ const FIXTURE_LISTS: readonly FixtureList[] = Object.freeze([
     // with it. Measured the same way.
     // 341 -> 343: S4i's one new exempt leaf widened the SECONDS domain by
     // two points, measured by running the size assertion.
-    size: 343,
+    // 343 -> 346: GDD §5.14 Stage B's five new exempt leaves widened the
+    // SECONDS domain by three points, measured by running the size
+    // assertion.
+    size: 346,
     why: 'One clock per point of the seconds domain, at a fixed skip. Derived, so the seconds domain losing its ceiling this round widened this list without anybody touching it.',
   }),
   Object.freeze({
@@ -5143,6 +5196,13 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   // domain itself, since it is a units-conversion constant rather than a
   // duration).
   'COUNT/MILLISECONDS_PER_SECOND=1000',
+  // GDD §5.14 Stage B: PACING_REPORT_HORIZONS_SECONDS[0]=600 sits AT the
+  // count/day ceiling (600), so it is not dropped; the other four
+  // (3600/86400/259200/604800) all sit above it.
+  'COUNT/PACING_REPORT_HORIZONS_SECONDS[1]=3600',
+  'COUNT/PACING_REPORT_HORIZONS_SECONDS[2]=86400',
+  'COUNT/PACING_REPORT_HORIZONS_SECONDS[3]=259200',
+  'COUNT/PACING_REPORT_HORIZONS_SECONDS[4]=604800',
   'DAY/AMBIENT_MEMBER_BOB_HALF_CYCLE_MS=900',
   'DAY/FLOOR_OVERLAP_REFUSAL_FLASH_MS=1200',
   'DAY/FLOOR_SIM_MAX_RUN_TICKS=20000',
@@ -5153,6 +5213,12 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   'DAY/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
   'DAY/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
   'DAY/MILLISECONDS_PER_SECOND=1000',
+  // GDD §5.14 Stage B: the same shape as the COUNT rows above — [0]=600 sits
+  // at the ceiling, the other four sit above it.
+  'DAY/PACING_REPORT_HORIZONS_SECONDS[1]=3600',
+  'DAY/PACING_REPORT_HORIZONS_SECONDS[2]=86400',
+  'DAY/PACING_REPORT_HORIZONS_SECONDS[3]=259200',
+  'DAY/PACING_REPORT_HORIZONS_SECONDS[4]=604800',
   // GDD §5.13 presentation Phase 2: two of AMBIENT_MEMBER_COUNT_BY_RUNG's four
   // values (18 and 40, the strip-mall-unit and warehouse counts) sit above
   // ROSTER_SHAPE's ceiling (ROSTER_SLOTS_MAX + 1 = 17); the garage (3) and
@@ -5321,6 +5387,15 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   'ROSTER_SHAPE/MEMBER_DUES_GYM_BUCKS_PER_DAY.serious-lifter=220',
   'ROSTER_SHAPE/MILLISECONDS_PER_SECOND=1000',
   'ROSTER_SHAPE/NPC_GYM_BUCKS_PER_HOUR_BASE=40',
+  // GDD §5.14 Stage B: ROSTER_SHAPE's ceiling (ROSTER_SLOTS_MAX + 1 = 17) is
+  // far below every one of the five report horizons, so all five drop here —
+  // unlike COUNT/DAY above, where the smallest (600) sits exactly at the
+  // ceiling and survives.
+  'ROSTER_SHAPE/PACING_REPORT_HORIZONS_SECONDS[0]=600',
+  'ROSTER_SHAPE/PACING_REPORT_HORIZONS_SECONDS[1]=3600',
+  'ROSTER_SHAPE/PACING_REPORT_HORIZONS_SECONDS[2]=86400',
+  'ROSTER_SHAPE/PACING_REPORT_HORIZONS_SECONDS[3]=259200',
+  'ROSTER_SHAPE/PACING_REPORT_HORIZONS_SECONDS[4]=604800',
   // §5.11 stage 4's repair rate, 400, above ROSTER_SHAPE's ceiling. The three
   // manager hire prices are FILED rather than exempt, so they are dropped by
   // the same ceiling but counted in OMITTED_ABOVE_CEILING instead of here.
@@ -5413,7 +5488,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // compared against a caller-supplied value) — see NOT_A_BRANCH_POINT above.
   // 338 -> 339: S4i's one new exempt leaf,
   // GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS — see NOT_A_BRANCH_POINT above.
-  EXEMPT: 339,
+  // 339 -> 344: GDD §5.14 Stage B's PACING_REPORT_HORIZONS_SECONDS, five new
+  // exempt leaves — see NOT_A_BRANCH_POINT above.
+  EXEMPT: 344,
   // 154 -> 196: the same 42 new leaves. 251 -> 264: the same 13 new leaves.
   // 264 -> 266: the same 2 new leaves.
   // 266 -> 273: the same 7 new leaves.
@@ -5443,7 +5520,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // exempt — see EXEMPT above. Read from this pin's own failure value.
   // 441 -> 442: S4i's one new numeric leaf, GYM_SCREEN_LEAVE_PILL_CLEARANCE_
   // PIXELS, exempt — see EXEMPT above. Read from this pin's own failure value.
-  TUNING_NUMERIC_LEAVES: 442, // 432 -> 433: "kill the mint" adds WALL_CLOCK_TICK_INTERVAL_SECONDS
+  // 442 -> 447: GDD §5.14 Stage B's `PACING_REPORT_HORIZONS_SECONDS`, five
+  // numeric leaves, exempt — see EXEMPT above.
+  TUNING_NUMERIC_LEAVES: 447, // 432 -> 433: "kill the mint" adds WALL_CLOCK_TICK_INTERVAL_SECONDS
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -5475,7 +5554,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // GYM_SCREEN_DISABLED_OPACITY) — see NOT_A_BRANCH_POINT above.
   // 443 -> 444: S4i's one new exempt leaf, GYM_SCREEN_LEAVE_PILL_CLEARANCE_
   // PIXELS — see NOT_A_BRANCH_POINT above.
-  BRANCH_POINTS: 444,
+  // 444 -> 449: GDD §5.14 Stage B's five new exempt leaves,
+  // PACING_REPORT_HORIZONS_SECONDS — see NOT_A_BRANCH_POINT above.
+  BRANCH_POINTS: 449,
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
@@ -5530,7 +5611,11 @@ const DOMAIN_CENSUS = Object.freeze({
 // SECONDS/DAY/COUNT/LEVEL's ceilings but above ROSTER_SHAPE's (17), so it
 // adds a `required` obligation in five domains rather than six — +5. See
 // OMITTED_ABOVE_CEILING.ROSTER_SHAPE below for the mirror.
-CONTAINMENT_CHECKS: 2320,
+// 2320 -> 2337: GDD §5.14 Stage B's five new PACING_REPORT_HORIZONS_SECONDS
+// leaves across six domains (30 possible pairs), thirteen of which drop
+// above a ceiling (see EXEMPT_LEAVES_ABOVE_A_CEILING's new rows) — 30 - 13 =
+// 17 `required` obligations added. Read from this pin's own failure value.
+CONTAINMENT_CHECKS: 2337,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -5550,8 +5635,12 @@ CONTAINMENT_CHECKS: 2320,
     // The other eighteen new leaves do not. Measured off this assertion.
     // 65 -> 66 (DAY and COUNT both): the same round's harness fix,
     // MILLISECONDS_PER_SECOND.
-    DAY: 66,
-    COUNT: 66,
+    // 66 -> 70 (DAY and COUNT both): GDD §5.14 Stage B's
+    // PACING_REPORT_HORIZONS_SECONDS[1..4] (3600/86400/259200/604800) all
+    // sit above both ceilings (600); [0]=600 sits AT the ceiling and is not
+    // omitted. Measured by running the assertion below.
+    DAY: 70,
+    COUNT: 70,
     LEVEL: 0,
     // 84 -> 89: the five MEMBER_DUES_GYM_BUCKS_PER_DAY rates.
     // 84 -> 88: four of GDD §5.13 presentation Phase 1's 42 new exempt
@@ -5594,7 +5683,11 @@ CONTAINMENT_CHECKS: 2320,
     // 211 -> 212: S4i's GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS=82 sits above
     // ROSTER_SHAPE's ceiling (17) too. See CONTAINMENT_CHECKS above and
     // EXEMPT_LEAVES_ABOVE_A_CEILING's own new row for the mirror.
-    ROSTER_SHAPE: 212,
+    // 212 -> 217: GDD §5.14 Stage B's five PACING_REPORT_HORIZONS_SECONDS
+    // entries all sit above ROSTER_SHAPE's ceiling (17), including [0]=600
+    // unlike the DAY/COUNT rows above. See CONTAINMENT_CHECKS above and
+    // EXEMPT_LEAVES_ABOVE_A_CEILING's own new rows for the mirror.
+    ROSTER_SHAPE: 217,
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -5646,19 +5739,29 @@ CONTAINMENT_CHECKS: 2320,
   // with it and the new fractions mostly landed on existing points. Measured.
   // 1476 -> 1486: S4i's one new exempt leaf (82), read from this pin's own
   // failure value.
-  NUMBER_CONTAINMENT_CHECKS: 1486,
+  // 1486 -> 1495: GDD §5.14 Stage B's five new PACING_REPORT_HORIZONS_SECONDS
+  // leaves, read from this pin's own failure value.
+  NUMBER_CONTAINMENT_CHECKS: 1495,
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 297 -> 300, read the same way.
   // Phase 4: 300 -> 405, read the same way.
   // 402 -> 404: S4i's one new exempt leaf (82), read from this pin's own
   // failure value.
-  NUMBER_POINTS: 404, // 405 -> 402: P4b, measured off this assertion.
+  // 404 -> 407: GDD §5.14 Stage B's five new PACING_REPORT_HORIZONS_SECONDS
+  // leaves — only three are genuinely new distinct NUMBER points, the other
+  // two already sitting in the domain from existing branch points. Read from
+  // this pin's own failure value; which two overlap is not independently
+  // hand-derived.
+  NUMBER_POINTS: 407, // 405 -> 402: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 230 -> 233, read the same way.
   // Phase 4: 233 -> 344, read from this pin's own failure value.
   // 341 -> 343: S4i's one new exempt leaf (82), measured off the CLOCKS
   // fixture list's own size failure (CLOCKS is one clock per SECONDS point).
-  SECONDS_POINTS: 343, // 344 -> 341: P4b, measured off this assertion.
+  // 343 -> 346: GDD §5.14 Stage B's five new PACING_REPORT_HORIZONS_SECONDS
+  // leaves, three of which are genuinely new SECONDS points (mirroring
+  // NUMBER_POINTS' own +3 above). Read from this pin's own failure value.
+  SECONDS_POINTS: 346, // 344 -> 341: P4b, measured off this assertion.
   // 74 -> 76: GDD §5.13 presentation Phase 2's exempt tuning leaves widened
   // the COUNT domain by two points, cross-checked directly against
   // `NUMERIC_DOMAINS.COUNT.points.length` by running the assertion below.
@@ -5688,7 +5791,11 @@ CONTAINMENT_CHECKS: 2320,
   // Phase 4: 219 -> 331, read from this pin's own failure value.
   // 328 -> 330: S4i's one new exempt leaf (82), read from this pin's own
   // failure value.
-  LEVEL_POINTS: 330, // 331 -> 328: P4b, measured off this assertion.
+  // 330 -> 333: GDD §5.14 Stage B's five new PACING_REPORT_HORIZONS_SECONDS
+  // leaves, three genuinely new distinct values (mirroring NUMBER_POINTS'
+  // and SECONDS_POINTS' own +3 above — LEVEL, like them, carries no
+  // ceiling). Read from this pin's own failure value.
+  LEVEL_POINTS: 333, // 331 -> 328: P4b, measured off this assertion.
   // Phase 4: 17 -> 18 — FLOOR_SPRITE_NATIVE_PIXELS_PER_TILE=14 arrives as a
   // foreign point under the roster ceiling. Read from this pin's own failure.
   ROSTER_SHAPE_POINTS: 18,
@@ -6354,6 +6461,27 @@ const LADDER_DRIVE_SCHEDULES: readonly (readonly number[])[] = Object.freeze(
 const MANAGEMENT_DRIVE_SCHEDULE: readonly number[] = Object.freeze(
   Array.from({ length: 40 }, (_unused, at) => (at + 1) * EMPIRE_TUNING.SECONDS_PER_DAY),
 );
+
+/**
+ * GDD §5.14 Stage B's own drive horizon, per check-in policy — deliberately
+ * NOT the module's own `EMPIRE_TUNING.PACING_REPORT_HORIZONS_SECONDS[4]`
+ * (seven days) for every policy. `'watcher'` steps every
+ * `WALL_CLOCK_TICK_INTERVAL_SECONDS`, so a seven-day horizon is a
+ * 120 960-entry schedule this census would then deep-scan for strings at
+ * every node — the ten-minute horizon keeps that policy's schedule at 120
+ * entries, small and tractable, while still exercising real accrual and
+ * (at the smaller three-day horizon the other three policies drive at) real
+ * relocation arms, so `runPacingLadder`'s move-up branch is produced rather
+ * than merely possible.
+ */
+const PACING_DRIVE_HORIZON_SECONDS: Readonly<
+  Record<pacingModule.PacingCheckInPolicy, number>
+> = Object.freeze({
+  watcher: EMPIRE_TUNING.PACING_REPORT_HORIZONS_SECONDS[0],
+  'few-times-a-day': EMPIRE_TUNING.PACING_REPORT_HORIZONS_SECONDS[3],
+  'once-a-day': EMPIRE_TUNING.PACING_REPORT_HORIZONS_SECONDS[3],
+  sporadic: EMPIRE_TUNING.PACING_REPORT_HORIZONS_SECONDS[3],
+});
 
 let drivenMemo = false;
 
@@ -7597,6 +7725,40 @@ function driveEverything(): readonly DrivenRow[] {
     }
   }
 
+  // --- pacing.ts (GDD §5.14 Stage B: the economy pacing simulator)
+  //
+  // Composes ladder.ts and management.ts whole rather than reimplementing
+  // their arithmetic, so this block drives the four check-in policies at
+  // `PACING_DRIVE_HORIZON_SECONDS` (see that constant's own doc comment for
+  // why the horizon is per-policy rather than the module's own seven-day
+  // report ceiling) crossed with the composed-run functions and, for
+  // `runPacingManagedGym`, every real `management.ts` policy too.
+  for (const policy of pacingModule.PACING_CHECK_IN_POLICIES) {
+    const horizon = PACING_DRIVE_HORIZON_SECONDS[policy];
+    drive('pacingCheckInSchedule', policy, () =>
+      pacingModule.pacingCheckInSchedule(policy, horizon),
+    );
+    const ladderRun = pacingModule.runPacingLadder(policy, horizon);
+    drive('runPacingLadder', policy, () => ladderRun);
+    drive('runPacingLadderRealistic', policy, () =>
+      pacingModule.runPacingLadderRealistic(policy, horizon),
+    );
+    drive('pacingLadderRungNeverRegresses', policy, () =>
+      pacingModule.pacingLadderRungNeverRegresses(ladderRun.readings), [ladderRun.readings],
+    );
+    drive('pacingReadingAtHorizon', policy, () =>
+      pacingModule.pacingReadingAtHorizon(
+        ladderRun.readings,
+        EMPIRE_TUNING.PACING_REPORT_HORIZONS_SECONDS[0],
+      ), [ladderRun.readings],
+    );
+    for (const managementPolicy of managementModule.MANAGEMENT_POLICIES) {
+      drive('runPacingManagedGym', `${policy}/${managementPolicy}`, () =>
+        pacingModule.runPacingManagedGym(policy, managementPolicy, horizon),
+      );
+    }
+  }
+
   // --- floorSprites.ts (GDD §5.13 presentation Phase 4)
   //
   // Pure data on purpose: every export is a frozen constant with no branch
@@ -8739,10 +8901,13 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
 // straddle points, COUNT/DAY/ROSTER_SHAPE's overflow sets), which multiplies
 // out across every export driven under one of these axes' ceiling. Read from
 // this pin's own failure value.
+// ROSTER_SHAPE: 132012 -> 132984, GDD §5.14 Stage B's new dropped ROSTER_SHAPE
+// points widening how many main-drive rows land in that axis. Read from this
+// pin's own failure value.
 const MAIN_DRIVE_ROWS_BY_AXIS: Readonly<Record<string, number>> = Object.freeze({
   COUNT: 1952,
   DAY: 32817,
-  ROSTER_SHAPE: 132012,
+  ROSTER_SHAPE: 132984,
 });
 
 /**
@@ -9057,48 +9222,54 @@ function residual(
 // these domains. Measured by running the set-equality assertion below and
 // reading its failure value.
 const OVERFLOW_RESIDUAL: readonly OverflowResidualRow[] = Object.freeze([
+  // GDD §5.14 Stage B: every row's `skipped`/`largestSkipped` moved uniformly
+  // (47 -> 51, 259200 -> 604800) — the same DAY domain now carries four new
+  // dropped points topping out at PACING_REPORT_HORIZONS_SECONDS' own
+  // largest value, and the ROSTER_SHAPE rows track it identically (both axes
+  // share DOMAIN_CENSUS.OMITTED_ABOVE_CEILING's own new counts). Read from
+  // this pin's own failure value.
   // COUNT has no rows. Its ceiling was deleted by the measurement, so all four
   // of its return-heavy subjects are driven at all thirty-nine dropped points.
   //
   // The eleven DAY rows: the pair is not driven at all, and the price of
   // driving it is in `OVERFLOW_COST_SECONDS`.
-  residual('DAY', 'amountSeries', 'the pair', 47, 259200),
-  residual('DAY', 'arrivalDays', 'the pair', 47, 259200),
-  residual('DAY', 'compareDayLists', 'the pair', 47, 259200),
-  residual('DAY', 'compareLedgers', 'the pair', 47, 259200),
-  residual('DAY', 'empireRunFaults', 'the pair', 47, 259200),
-  residual('DAY', 'idleDayLedger', 'the pair', 47, 259200),
-  residual('DAY', 'outputSeries', 'the pair', 47, 259200),
-  residual('DAY', 'progressionDayLedger', 'the pair', 47, 259200),
-  residual('DAY', 'rivalPeriodCloseDays', 'the pair', 47, 259200),
-  residual('DAY', 'runEmpire', 'the pair', 47, 259200),
-  residual('DAY', 'socialRewardSchedule', 'the pair', 47, 259200),
+  residual('DAY', 'amountSeries', 'the pair', 51, 604800),
+  residual('DAY', 'arrivalDays', 'the pair', 51, 604800),
+  residual('DAY', 'compareDayLists', 'the pair', 51, 604800),
+  residual('DAY', 'compareLedgers', 'the pair', 51, 604800),
+  residual('DAY', 'empireRunFaults', 'the pair', 51, 604800),
+  residual('DAY', 'idleDayLedger', 'the pair', 51, 604800),
+  residual('DAY', 'outputSeries', 'the pair', 51, 604800),
+  residual('DAY', 'progressionDayLedger', 'the pair', 51, 604800),
+  residual('DAY', 'rivalPeriodCloseDays', 'the pair', 51, 604800),
+  residual('DAY', 'runEmpire', 'the pair', 51, 604800),
+  residual('DAY', 'socialRewardSchedule', 'the pair', 51, 604800),
   // The twenty-three ROSTER_SHAPE rows: the pair IS driven at all thirty of
   // these points and its return is scanned; the state handed in is not walked a
   // second time afterwards. See `FROZEN_ARGUMENT_WITNESS` for what covers that.
-  residual('ROSTER_SHAPE', 'accrueProduction', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'accrueReputation', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'accrueSponsorship', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'assertEmpireState', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'beginRecruitment', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'completeRecruitment', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'composeTrainingIqRate', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'empireStateFaults', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'expansionContext', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'gymBucksRatePerHour', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'mayRecruit', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'npcTierUnlocks', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'productionRates', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'recruitmentBoard', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'recruitmentOffer', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'recruitmentRefusals', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'reputationRates', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'rosterGymBucksPerHour', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'rosterOutputRates', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'rosterTrainingIqPerDay', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'topNpcTierUnlocked', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'trainingIqRatePerDay', 'the argument re-read', 47, 259200),
-  residual('ROSTER_SHAPE', 'unlockedNpcTiers', 'the argument re-read', 47, 259200),
+  residual('ROSTER_SHAPE', 'accrueProduction', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'accrueReputation', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'accrueSponsorship', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'assertEmpireState', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'beginRecruitment', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'completeRecruitment', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'composeTrainingIqRate', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'empireStateFaults', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'expansionContext', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'gymBucksRatePerHour', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'mayRecruit', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'npcTierUnlocks', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'productionRates', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'recruitmentBoard', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'recruitmentOffer', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'recruitmentRefusals', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'reputationRates', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'rosterGymBucksPerHour', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'rosterOutputRates', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'rosterTrainingIqPerDay', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'topNpcTierUnlocked', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'trainingIqRatePerDay', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'unlockedNpcTiers', 'the argument re-read', 51, 604800),
 ]);
 
 /**
@@ -9189,7 +9360,10 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 343 -> 344: S4i's GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS=82 moves one
   // more branch point above ROSTER_SHAPE's ceiling, the same shape as S4h's
   // move. Measured off this assertion.
-  POINTS: 344,
+  // 344 -> 357: GDD §5.14 Stage B's thirteen new dropped (domain, leaf)
+  // pairs (COUNT +4, DAY +4, ROSTER_SHAPE +5) — sum of
+  // DOMAIN_CENSUS.OMITTED_ABOVE_CEILING's own new totals above.
+  POINTS: 357,
   /** Of those, how many at least one subject was driven at. */
   // Tracks POINTS 1:1 again (218), confirmed by running the assertion below
   // rather than assumed. PLAYTEST 4: tracks POINTS 1:1 again (222), confirmed
@@ -9208,7 +9382,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // by running this exact assertion.
   // 343 -> 344: S4i, tracks POINTS 1:1 again (see POINTS above), confirmed
   // by running this exact assertion.
-  POINTS_DRIVEN: 344,
+  // 344 -> 357: GDD §5.14 Stage B, tracks POINTS 1:1 again (see POINTS
+  // above), confirmed by running this exact assertion.
+  POINTS_DRIVEN: 357,
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
@@ -9249,17 +9425,24 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 6052 -> 6075: S4i's GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS=82 drops one
   // more point the same way — another 23 (ARGUMENT_HEAVY_SUBJECTS). Measured
   // off this assertion.
-  PAIRS_DRIVEN: 6075,
+  // 6075 -> 6250: GDD §5.14 Stage B's thirteen new dropped points across
+  // COUNT/DAY/ROSTER_SHAPE. Measured off this assertion rather than
+  // hand-derived per domain.
+  PAIRS_DRIVEN: 6250,
   // GDD §5.13 presentation Phase 3: PAIRS_SKIPPED re-measured (495 -> 517),
   // a real failure value this round's own run produced.
-  PAIRS_SKIPPED: 517,
+  // GDD §5.14 Stage B: re-measured (517 -> 561), a real failure value this
+  // round's own run produced.
+  PAIRS_SKIPPED: 561,
   /** Of the driven, how many had the re-read argument region left unscanned. */
   // PLAYTEST 3: held at 1035, confirmed by running this exact assertion.
   // PLAYTEST 4: re-confirmed at 1035, unchanged, cross-checked independently
   // against `OVERFLOW_RESIDUAL`'s own summed 'the argument re-read' rows.
   // GDD §5.13 presentation Phase 3: re-measured (1035 -> 1081), a real
   // failure value this round's own run produced.
-  PAIRS_ARGUMENT_SKIPPED: 1081,
+  // GDD §5.14 Stage B: re-measured (1081 -> 1173), a real failure value this
+  // round's own run produced.
+  PAIRS_ARGUMENT_SKIPPED: 1173,
   /**
    * ROSTER_SHAPE points above its allocation ceiling.
    *
@@ -9269,7 +9452,9 @@ const OVERFLOW_CENSUS = Object.freeze({
    */
   // GDD §5.13 presentation Phase 3: re-measured by running this assertion
   // and reading its failure value.
-  ROSTER_POINTS_ABOVE_THE_CEILING: 47,
+  // GDD §5.14 Stage B: re-measured (47 -> 51), five new dropped ROSTER_SHAPE
+  // points.
+  ROSTER_POINTS_ABOVE_THE_CEILING: 51,
   /**
    * DERIVED INDEPENDENTLY RATHER THAN READ OFF A FAILURE, where possible — not
    * possible here. members.ts (§5.11 stage 3) measured this pass at 3892
@@ -9336,7 +9521,11 @@ const OVERFLOW_CENSUS = Object.freeze({
   // DISTINCT_STRINGS below are UNCONFIRMED for this round — the test throws
   // at ROWS first — left at their pre-round pins to be corrected from the
   // next run's real failure.
-  ROWS: 6933,
+  // GDD §5.14 Stage B: thirteen new dropped points widen this pass. NODES/
+  // STRINGS/DISTINCT_STRINGS below are UNCONFIRMED for this round — the test
+  // throws at ROWS first — left at their pre-round pins to be corrected from
+  // the next run's real failure.
+  ROWS: 7160,
   // GDD §5.13 presentation Phase 3: re-measured (942486 -> 947983), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (947983 -> 960248).
@@ -9351,7 +9540,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // descends into. Read from this pin's own failure value.
   // S4i: GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS=82 drops one more point the
   // same way. Read from this pin's own failure value.
-  NODES: 1340131,
+  // GDD §5.14 Stage B: thirteen new dropped points. Read from this pin's own
+  // failure value.
+  NODES: 1355914,
   // GDD §5.13 presentation Phase 3: re-measured (6413124 -> 6446099), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (6446099 -> 6540148).
@@ -9367,13 +9558,16 @@ const OVERFLOW_CENSUS = Object.freeze({
   // this pin's own failure value.
   // S4i: GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS=82 drops one more point the
   // same way. Read from this pin's own failure value.
-  STRINGS: 9299371,
+  // GDD §5.14 Stage B: thirteen new dropped points. Read from this pin's own
+  // failure value.
+  STRINGS: 9415846,
   // GDD §5.13 presentation Phase 3: re-measured (4366 -> 4378), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (4378 -> 4381).
   // Stage 4: read from this pin's own failure value.
   // S4i: read from this pin's own failure value.
-  DISTINCT_STRINGS: 4537,
+  // GDD §5.14 Stage B: read from this pin's own failure value.
+  DISTINCT_STRINGS: 4540,
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
   /**
@@ -9444,7 +9638,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // shape as the row above, in reverse. Measured off this assertion.
   // 1312 -> 1320: S4i drops one more point the same way, 8 more closures
   // declined. Measured off this assertion.
-  CLOSURES_DECLINED: 1320,
+  // 1320 -> 1328: GDD §5.14 Stage B's thirteen new dropped points. Measured
+  // off this assertion.
+  CLOSURES_DECLINED: 1328,
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -9499,7 +9695,9 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // refused one more time the same way. Measured off this assertion.
   // 211 -> 212: S4i's GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS=82 drops one
   // more ROSTER_SHAPE point the same way. Measured off this assertion.
-  ['beginRecruitment#refused', 212],
+  // 212 -> 217: GDD §5.14 Stage B's five new dropped ROSTER_SHAPE points,
+  // refused the same way. Measured off this assertion.
+  ['beginRecruitment#refused', 217],
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
@@ -9514,8 +9712,10 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // running this exact assertion.
   // 390 -> 396, 130 -> 132: the same round's harness fix, measured by
   // running this exact assertion.
-  ['recordFriendVisit#refused', 396],
-  ['recordFriendVisit#visited', 132],
+  // 396 -> 420, 132 -> 140: GDD §5.14 Stage B's eight new dropped DAY/COUNT
+  // points, measured by running this exact assertion.
+  ['recordFriendVisit#refused', 420],
+  ['recordFriendVisit#visited', 140],
 ]);
 
 // ---------------------------------------------------------------------------
@@ -9844,7 +10044,14 @@ const DRIVE_CENSUS = Object.freeze({
   // two points (402 -> 404), which multiplies out across every loop keyed on
   // it — the same shape as the two ordinal knobs joining COUNT above. Read
   // from this pin's own failure value.
-  ROWS: 586924, // 582209 -> 582208: "kill the mint", re-measured
+  // 586924 -> 586969: GDD §5.14 Stage B's pacing.ts drive rows. Read from
+  // this pin's own failure value.
+  // 586969 -> 593515: GDD §5.14 Stage B's own PACING_REPORT_HORIZONS_SECONDS
+  // exempt leaves widen NUMBER_DOMAIN by three points (see DOMAIN_CENSUS.
+  // NUMBER_POINTS above), which multiplies out across every existing drive
+  // loop keyed on NUMBER, not merely pacing.ts's own new rows already
+  // counted above. Read from this pin's own failure value.
+  ROWS: 593515, // 582209 -> 582208: "kill the mint", re-measured
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -9861,7 +10068,11 @@ const DRIVE_CENSUS = Object.freeze({
   // 366 -> 367: tracks SURFACE_CENSUS.EXPORTS 1:1 again — the "chrome vs
   // paid" bug-fix round's `reviewBankedTime`, driven above beside
   // `orderOpensAt`.
-  EXPORTS_DRIVEN: 367, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
+  // 367 -> 374: GDD §5.14 Stage B's pacing.ts — seven new runtime exports
+  // (PACING_CHECK_IN_POLICIES, pacingCheckInSchedule,
+  // pacingLadderRungNeverRegresses, pacingReadingAtHorizon, runPacingLadder,
+  // runPacingLadderRealistic, runPacingManagedGym), all driven above.
+  EXPORTS_DRIVEN: 374, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -9934,7 +10145,12 @@ const DRIVE_CENSUS = Object.freeze({
   // driven and walked at two more purse points — and the `ScrollView`'s own
   // new `style={styles.root}` prop adds a small style-object subtree to
   // EVERY driven `GymScreen` render. Read from this pin's own failure value.
-  NODES: 6456687, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
+  // 6456687 -> 6458739: GDD §5.14 Stage B's pacing.ts drive rows. Read from
+  // this pin's own failure value.
+  // 6458739 -> 6490275: GDD §5.14 Stage B's own PACING_REPORT_HORIZONS_SECONDS
+  // exempt leaves widening NUMBER_DOMAIN, the same cascade as ROWS above.
+  // Read from this pin's own failure value.
+  NODES: 6490275, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -10026,7 +10242,14 @@ const DRIVE_CENSUS = Object.freeze({
   // DISTINCT_STRINGS below is still UNCONFIRMED for this round — the test
   // throws at STRINGS first — left at its pre-round pin to be corrected from
   // the next run's real failure rather than guessed.
-  STRINGS: 29_801_442,
+  // 29_801_442 -> 29_825_249: GDD §5.14 Stage B's pacing.ts drive rows.
+  // DISTINCT_STRINGS below is still UNCONFIRMED for this round — the test
+  // throws at STRINGS first — left at its pre-round pin to be corrected from
+  // the next run's real failure rather than guessed.
+  // 29_825_249 -> 29_956_058: GDD §5.14 Stage B's own PACING_REPORT_HORIZONS_
+  // SECONDS exempt leaves widening NUMBER_DOMAIN, the same cascade as ROWS/
+  // NODES above.
+  STRINGS: 29_956_058,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -10106,7 +10329,13 @@ const DRIVE_CENSUS = Object.freeze({
   // 3739 -> 3753: S4i. Two more driven purse points (NUMBER 402 -> 404) on
   // `GymScreen`/`GymView`/`LadderView` reach new distinct string values.
   // Read from this pin's own failure value.
-  DISTINCT_STRINGS: 3753,
+  // 3753 -> 3765: GDD §5.14 Stage B's pacing.ts drive rows — new distinct
+  // `rung`/`mode`/refusal-message strings its readings and schedules carry.
+  // Read from this pin's own failure value.
+  // 3765 -> 3785: GDD §5.14 Stage B's own PACING_REPORT_HORIZONS_SECONDS
+  // exempt leaves widening NUMBER_DOMAIN. Read from this pin's own failure
+  // value.
+  DISTINCT_STRINGS: 3785,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -10249,7 +10478,10 @@ const DRIVE_CENSUS = Object.freeze({
   // from this pin's own failure value.
   // 5977 -> 6003: S4i. Two more driven purse points (NUMBER 402 -> 404)
   // widen this walk the same way. Read from this pin's own failure value.
-  STACKS: 6003,
+  // 6003 -> 6039: GDD §5.14 Stage B's own PACING_REPORT_HORIZONS_SECONDS
+  // exempt leaves widening NUMBER_DOMAIN. Read from this pin's own failure
+  // value.
+  STACKS: 6039,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -10933,7 +11165,11 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   // millisecond points, so five arm counts rose with the domain rather than
   // with any change to the functions themselves. Each was re-measured by
   // running this assertion and reading its failure value.
-  ['buyLadderEquipment#bought', 3624],
+  // GDD §5.14 Stage B's own PACING_REPORT_HORIZONS_SECONDS exempt leaves
+  // widened NUMBER (and its dependent domains) again, moving four of these
+  // arms further — measured by running this exact assertion rather than
+  // derived.
+  ['buyLadderEquipment#bought', 3678],
   // The ROSTER_SHAPE domain widened by members.ts's five new distinct dues
   // values (§5.11 stage 3) independently of GDD §5.13 presentation Phase 1's
   // 42 new exempt tuning leaves widening it again — every arm count driven
@@ -10949,7 +11185,7 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   // S4i's one new exempt leaf widened NUMBER (and its dependent domains)
   // again, moving four of these arms further — measured by running this
   // exact assertion rather than derived.
-  ['buyLadderEquipment#refused', 15768],
+  ['buyLadderEquipment#refused', 15858],
   ['buySessionEquipment#bought', 76],
   ['buySessionEquipment#refused', 260],
   // §5.11 stage 4's nineteen arms, every one produced by the six named
@@ -10974,9 +11210,11 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   ['hireManager#refused', 10],
   ['maintenancePrompt#offered', 5],
   ['maintenancePrompt#quiet', 1],
-  ['moveUpLadder#moved', 759],
+  // GDD §5.14 Stage B: measured by running this exact assertion rather than
+  // derived.
+  ['moveUpLadder#moved', 786],
   // S4i: measured by running this exact assertion rather than derived.
-  ['moveUpLadder#refused', 4089],
+  ['moveUpLadder#refused', 4098],
   ['placeFloorItem#placed', 2],
   ['placeFloorItem#refused', 3],
   // S4i: measured by running this exact assertion rather than derived.
@@ -14132,6 +14370,13 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // one return statement.
       'management.ts': 90,
       'npc.ts': 12,
+      // GDD §5.14 Stage B's pacing.ts — eleven `return` statements across
+      // `naturalOffsetsSeconds`'s four policy arms, `pacingCheckInSchedule`,
+      // `runPacingLadder`, `runPacingLadderRealistic`,
+      // `runPacingManagedGym`, `pacingReadingAtHorizon`, and
+      // `pacingLadderRungNeverRegresses`'s two. Read from this table's own
+      // failure value.
+      'pacing.ts': 11,
       'production.ts': 11,
       'recruitment.ts': 9,
       'reputation.ts': 24,
@@ -14169,6 +14414,8 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // §5.11 stage 4's six exported const bindings — the phase, decision,
       // policy, wiring and decision-kind vocabularies plus the shipped wiring.
       'management.ts': 6,
+      // GDD §5.14 Stage B's one exported const binding, `PACING_CHECK_IN_POLICIES`.
+      'pacing.ts': 1,
       'production.ts': 1,
       'recruitment.ts': 2,
       'reputation.ts': 7,
@@ -14280,6 +14527,10 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   // from.
   'management.ts': 27,
   'members.ts': 9,
+  // GDD §5.14 Stage B: three named refusals — an unknown check-in policy, a
+  // non-positive horizon, and a horizon `pacingReadingAtHorizon` has no
+  // reading recorded for.
+  'pacing.ts': 3,
   'production.ts': 9,
   'recruitment.ts': 1,
   'reputation.ts': 6,
@@ -14745,6 +14996,11 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // new `mode` parameters and doc comments added above it in
   // `management.ts`. Content verified byte-identical before re-pinning.
   'management.ts:1473 returned=unfollowable:state',
+  // GDD §5.14 Stage B: `pacingCheckInSchedule`'s `Array.from(new Set(...))
+  // .sort(...)` — the receiver is a freshly constructed array nothing
+  // outside the function holds, the same shape as every `receiver=
+  // ArrayLiteralExpression`/`receiver=NewExpression` row here.
+  'pacing.ts:255 receiver=CallExpression',
   'recruitment.ts:388 returned=unfollowable:state',
   // "chrome vs paid" bug-fix round: 562 -> 563, 655 -> 656, 791 -> 798,
   // 802 -> 809 — pure line shifts from the `EarningsMode` import and the new
@@ -14912,6 +15168,12 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'management.ts:2630 ManagedGym asked=true walked=false',
   'management.ts:2650 ManagedGym asked=true walked=false',
   'management.ts:2666 ManagedGym asked=true walked=false',
+  // GDD §5.14 Stage B: `runPacingLadder`'s two `state = ....state;`
+  // assignments (from `ladderCheckIn`'s and `moveUpLadder`'s own
+  // `LadderState` results), the same shape as `sessions.ts`'s
+  // `LadderState`-typed rows below.
+  'pacing.ts:301 LadderState asked=true walked=false',
+  'pacing.ts:307 LadderState asked=true walked=false',
   'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
   'sessions.ts:656 LadderState asked=true walked=false',
   'sessions.ts:696 LadderState asked=true walked=false',
@@ -14932,7 +15194,10 @@ const SCREEN_AGREEMENT = Object.freeze({
   // arrived, each mapped by source text at the list itself rather than by this
   // total, because a net of +3 is the same number a pure shift plus three
   // additions would have produced.
-  SHIPPED_DISAGREEMENTS: 58,
+  // 58 -> 60: GDD §5.14 Stage B's two new pacing.ts rows
+  // (`state = checkedIn.state;` / `state = outcome.state;`, both
+  // `LadderState asked=true walked=false`).
+  SHIPPED_DISAGREEMENTS: 60,
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
@@ -15015,7 +15280,10 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 54 -> 64: stage 4's calls through module-level bindings — `refuseWith`,
   // `scrubPrecision`, `Object.freeze` on the module's own helpers, and the
   // composed run's calls into this module's own exported functions.
-  'module-variable': 66,
+  // 66 -> 67: GDD §5.14 Stage B's pacing.ts — one call through a
+  // module-level import (`offlineBankingHorizonSeconds()` in the sporadic
+  // gap cycle). Read from this pin's own failure value.
+  'module-variable': 67,
   // 5 -> 7: Phase 3's RENDER half's two calls through a local binding in
   // `AmbientMemberBody`'s single animation effect (`bobLoop.start()`,
   // `pulseLoop.stop()`). Read from this table's own failure value.
@@ -15068,7 +15336,9 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // calling `isSoundCondition` (one), plus the per-item row's own ternary
   // gaining one net call target the same way `CALLS_EXAMINED` above did.
   // Read from this pin's own failure value rather than hand-counted.
-  function: 1441,
+  // 1441 -> 1456: GDD §5.14 Stage B's pacing.ts. Read from this pin's own
+  // failure value.
+  function: 1456,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -15099,7 +15369,9 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // `GymScreen.tsx` — the same call `CALLS_EXAMINED` above counts, its
   // target classified `member` because the callee is a member expression
   // (`StyleSheet.create`). Read from this pin's own failure value.
-  member: 1330,
+  // 1330 -> 1352: GDD §5.14 Stage B's pacing.ts. Read from this pin's own
+  // failure value.
+  member: 1352,
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -15107,7 +15379,9 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // `props.state.managed.strikes.map(...)` and
   // `props.state.lastManagementReport.autoRepairs.map(...)` in `GymScreen`.
   // Read from this pin's own failure value.
-  'member-of-parameter': 23,
+  // 23 -> 24: GDD §5.14 Stage B's `pacingReadingAtHorizon`'s
+  // `readings.find(...)`, the same shape as S4b's rows above.
+  'member-of-parameter': 24,
   // Phase 4: FLOOR_SPRITE_PALETTES' construction calls a fresh arrow (the
   // palette-row map), the same site DECLARED_FRESH_RECEIVERS names.
   fresh: 1,
@@ -15165,7 +15439,10 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // loop's writes into its two fresh tables. Read from this pin's own
   // failure value.
   // 373 -> 389: stage 4's sixteen local bindings the write scan owns.
-  local: 391,
+  // 391 -> 397: GDD §5.14 Stage B's pacing.ts — `naturalOffsetsSeconds`'s
+  // four `offsets.push(at)` calls (one per policy arm) and `runPacingLadder`'s
+  // two `state = ...` reassignments. Read from this pin's own failure value.
+  local: 397,
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -15174,7 +15451,10 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // individually in `DECLARED_FRESH_RECEIVERS`.
   // 5 -> 8: floorSim.ts's three fresh mutating receivers, the same three
   // named individually in `DECLARED_FRESH_RECEIVERS`.
-  fresh: 11,
+  // 11 -> 12: GDD §5.14 Stage B's `pacingCheckInSchedule` — the
+  // `Array.from(new Set(...)).sort(...)` fresh mutating receiver, the same
+  // site `DECLARED_FRESH_RECEIVERS` names (`pacing.ts:255`).
+  fresh: 12,
   unclassified: 0,
 });
 
@@ -15186,7 +15466,8 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 17 -> 18: GDD §5.13 presentation Phase 3's floorSim.ts.
   // 18 -> 19: GDD §5.13 presentation Phase 4's floorSprites.ts.
   // 19 -> 20: §5.11 stage 4's management.ts.
-  MODULES: 20,
+  // 20 -> 21: GDD §5.14 Stage B's pacing.ts.
+  MODULES: 21,
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved.
    * 404 -> 427 with GymView: +13 `return` sites (5 -> 18) and +6
    * `callback-invocation` sites (3 -> 9) on `ladderView.tsx`, +4 `return`
@@ -15247,7 +15528,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 729 -> 731: the S4f condition-gate round's two new `return` sites —
   // `GymScreen.tsx`'s `isSoundCondition`/`displayRepairCostBySoundness`,
   // both on the `return` channel, per the byModule row above.
-  SITES: 731,
+  // 731 -> 743: GDD §5.14 Stage B's pacing.ts — eleven `return` sites plus
+  // one `exported-binding` site, per the byModule rows above.
+  SITES: 743,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -15351,7 +15634,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // one new JSX attribute, `style`, on the `ScrollView`) and `empireTuning.ts`
   // (the one new `GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS` entry and its doc
   // comment). Read from this pin's own failure value.
-  NODES_EXAMINED: 62_193,
+  // 62_193 -> 63_124: GDD §5.14 Stage B's pacing.ts — new source, header
+  // included. Read from this pin's own failure value.
+  NODES_EXAMINED: 63_124,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -15367,7 +15652,8 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 147 -> 148: `requireManagedGym`'s check-ins-taken refusal.
   // 148 -> 149: "kill the mint" — `requireManagedGym`'s banked-operation-
   // seconds refusal.
-  WRAP_CALLS: 149,
+  // 149 -> 152: GDD §5.14 Stage B's pacing.ts, three `refuseWith` calls.
+  WRAP_CALLS: 152,
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,
@@ -15462,7 +15748,11 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // route the player check-in round's own +2 used above. Read from this
   // pin's own failure value; the exact count of new positions per function
   // is not independently hand-derived.
-  POSITIONS: 876,
+  // 876 -> 893: GDD §5.14 Stage B's pacing.ts — six new exported functions,
+  // each contributing parameter and return positions. Read from this pin's
+  // own failure value; the exact count of new positions per function is not
+  // independently hand-derived.
+  POSITIONS: 893,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -16939,9 +17229,12 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
   // S4i: one new exempt leaf widened NUMBER 402 -> 404 and the engagement
   // domain 239 -> 241 — every count below moved with them. Re-measured by
   // running this exact assertion rather than derived.
+  // GDD §5.14 Stage B: NUMBER 404 -> 407, the engagement domain 241 -> 242,
+  // ROSTER_SHAPE 138 -> 139 — every count below moved with them. Re-measured
+  // by running this exact assertion rather than derived.
   'FloorGrid.tsx#FloorGrid#props#owned': Object.freeze({
-    points: 404,
-    refusedPoints: 404,
+    points: 407,
+    refusedPoints: 407,
     calls: 0,
     recorded: 0,
   }),
@@ -16984,50 +17277,58 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
     // control each). Read from this pin's own failure value.
     // S4i: NUMBER 402 -> 404, 40 more calls at the two new purse points.
     // Read from this pin's own failure value.
-    points: 404,
-    calls: 9089,
-    recorded: 9089,
+    // GDD §5.14 Stage B: NUMBER 404 -> 407. Read from this pin's own failure
+    // value.
+    points: 407,
+    calls: 9164,
+    recorded: 9164,
   }),
   // S4i: NUMBER's own engagement domain 239 -> 241. Read from this pin's own
   // failure value.
+  // GDD §5.14 Stage B: the engagement domain 241 -> 242. Read from this
+  // pin's own failure value.
   'engagement.ts#historyFrom#attended#slots': Object.freeze({
-    points: 241,
+    points: 242,
     refusedPoints: 1,
-    calls: 1139769,
-    recorded: 1139769,
+    calls: 1744569,
+    recorded: 1744569,
   }),
   'engagement.ts#historyFrom#attended#trainedDays': Object.freeze({
-    points: 241,
+    points: 242,
     refusedPoints: 0,
-    calls: 723,
-    recorded: 723,
+    calls: 726,
+    recorded: 726,
   }),
   // S4i: NUMBER 402 -> 404. Read from this pin's own failure value.
+  // GDD §5.14 Stage B: NUMBER 404 -> 407. Read from this pin's own failure
+  // value.
   'ladderView.tsx#GymView#props.dispatch#gymBucks': Object.freeze({
-    points: 404,
+    points: 407,
     refusedPoints: 0,
-    calls: 14140,
-    recorded: 14140,
+    calls: 14245,
+    recorded: 14245,
   }),
   'ladderView.tsx#LadderView#props.dispatch#gymBucks': Object.freeze({
-    points: 404,
+    points: 407,
     refusedPoints: 0,
-    calls: 2020,
-    recorded: 2020,
+    calls: 2035,
+    recorded: 2035,
   }),
   // S4i: ROSTER_SHAPE's own rosterSize domain 137 -> 138. Read from this
   // pin's own failure value.
+  // GDD §5.14 Stage B: ROSTER_SHAPE 138 -> 139. Read from this pin's own
+  // failure value.
   'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour#rosterSize': Object.freeze({
-    points: 138,
+    points: 139,
     refusedPoints: 0,
-    calls: 1123735,
-    recorded: 2247470,
+    calls: 1728535,
+    recorded: 3457070,
   }),
   'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay#rosterSize': Object.freeze({
-    points: 138,
+    points: 139,
     refusedPoints: 0,
-    calls: 1123735,
-    recorded: 2247470,
+    calls: 1728535,
+    recorded: 3457070,
   }),
 });
 
@@ -17091,7 +17392,10 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // assertion, so it is not yet confirmed by this test's own failure output;
   // the same arithmetic independently reproduces CALLS below exactly, which
   // is the cross-check this file's own convention relies on elsewhere.
-  POINTS: 2374, // 2380 -> 2360: P4b, measured off this assertion.
+  // 2374 -> 2390: GDD §5.14 Stage B. A plain sum over DECLARED_CALLBACK_AXES's
+  // own now-measured `points` fields (407x4 + 242x2 + 139x2), same
+  // derivation caveat as the S4i row above.
+  POINTS: 2390, // 2380 -> 2360: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3: re-measured (288 -> 298), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (298 -> 301).
@@ -17099,7 +17403,10 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // 403 -> 405: S4i. FloorGrid's refusedPoints tracks its own `points` 1:1
   // (402 -> 404 above), the engagement axis's refusedPoints is unchanged (1).
   // Same derivation caveat as POINTS above.
-  REFUSED_POINTS: 405, // 406 -> 403: P4b, measured off this assertion.
+  // 405 -> 408: GDD §5.14 Stage B. FloorGrid's refusedPoints tracks its own
+  // `points` 1:1 (404 -> 407 above), the engagement axis's refusedPoints is
+  // unchanged (1). Same derivation caveat as POINTS above.
+  REFUSED_POINTS: 408, // 406 -> 403: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3: re-measured (3310026 -> 3383424), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (3383424 -> 3384958).
@@ -17129,7 +17436,9 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
       // independently reproduced by summing DECLARED_CALLBACK_AXES's own
       // now-measured `calls` fields, which is the cross-check for POINTS
       // above.
-      CALLS: 3413211,
+      // 3413211 -> 5227809: GDD §5.14 Stage B. Independently reproduced by
+      // summing DECLARED_CALLBACK_AXES's own now-measured `calls` fields.
+      CALLS: 5227809,
   // GDD §5.13 presentation Phase 3: re-measured (5496920 -> 5618662), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (5618662 -> 5620716).
@@ -17147,7 +17456,11 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // reaching RECORDED, so unlike CALLS this is not yet confirmed by a real
   // failure value; the derivation is the same one this comment history
   // already uses for RECORDED elsewhere.
-  RECORDED: 5660681,
+  // 5660681 -> 8684879: GDD §5.14 Stage B. A plain sum over
+  // DECLARED_CALLBACK_AXES's own now-measured `recorded` fields, same
+  // derivation as above; not yet independently confirmed by a real failure
+  // value since the test throws at CALLS first.
+  RECORDED: 8684879,
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
@@ -17688,10 +18001,13 @@ describe('the channel census — the routes a string can leave this directory by
     // GDD §5.13 presentation Phase 3: 43 -> 45 and 44 -> 46, the two FLOOR_SIM
     // guard ceilings dropping into COUNT. Read from these assertions' own
     // failure values.
-    expect(distinct(countDropped.map((point) => String(point.value))).length).toBe(45);
-    expect(countPoints.filter((point) => point > FOREIGN_CEILINGS.COUNT).length).toBe(46);
+    // GDD §5.14 Stage B: 45 -> 46 and 46 -> ?, the four new PACING_REPORT_
+    // HORIZONS_SECONDS points dropping into COUNT. Read from these
+    // assertions' own failure values.
+    expect(distinct(countDropped.map((point) => String(point.value))).length).toBe(46);
+    expect(countPoints.filter((point) => point > FOREIGN_CEILINGS.COUNT).length).toBe(47);
     expect(count.points.length).toBe(DOMAIN_CENSUS.COUNT_POINTS);
-    expect(countPoints.length).toBe(DOMAIN_CENSUS.COUNT_POINTS + 45);
+    expect(countPoints.length).toBe(DOMAIN_CENSUS.COUNT_POINTS + 46);
     // Every axis names a domain the registry has, and every axis name is
     // distinct — a duplicate would let two axes share one census row.
     expect(distinct(axes.map((axis) => axis.name)).length).toBe(axes.length);
@@ -19656,7 +19972,10 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // 239 -> 241: the "chrome vs paid" bug-fix round's two new type
   // declarations — `EarningsMode` (ladder.ts) and `ReviewBankedTime`
   // (management.ts).
-  DECLARATIONS: 241,
+  // 241 -> 245: GDD §5.14 Stage B's pacing.ts — four new type declarations
+  // (PacingCheckInPolicy, PacingScheduleEntry, PacingLadderReading,
+  // PacingLadderRun).
+  DECLARATIONS: 245,
   /** Those carrying type parameters. An instantiation depth needs one. */
   // Phase 4: `MemberTable<Leaf>` in floorSprites.ts.
   GENERIC: 13,
@@ -23262,6 +23581,24 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
       membersModule.reputationFromMembers(roster);
     },
   }),
+  // GDD §5.14 Stage B: `pacingReadingAtHorizon`'s `readings.find(...)` — the
+  // predicate runs on both entries (600 !== 3600, then 3600 === 3600, which
+  // short-circuits the search), so `verdicts=falsex1,truex1` is the same
+  // shape `MEMBER_CALL_TRIPWIRE`'s predicate-return row uses. Neither the
+  // one non-function argument (the target horizon, a number) nor either
+  // returned boolean carries a string, so HANDED/RETURNED are unmoved by
+  // this site — what it pins is the call and callback counts.
+  Object.freeze({
+    site: 'pacing.ts#pacingReadingAtHorizon#readings.find x1',
+    run: (record: MemberCallRecord): void => {
+      const readings = recordOn(
+        [Object.freeze({ atSeconds: 600 }), Object.freeze({ atSeconds: 3600 })],
+        'find',
+        record,
+      );
+      pacingModule.pacingReadingAtHorizon(readings, 3600);
+    },
+  }),
 ]);
 
 /**
@@ -23350,10 +23687,13 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // `GymScreen`, both on the `props.map` key that already had one, each with
   // one call and one callback invocation (a one-element instrumented array).
   // Every number in this block re-measured by running the assertions below.
-  SUBJECTS: 23,
+  // GDD §5.14 Stage B: one more subject, `pacing.ts#pacingReadingAtHorizon
+  // #readings.find x1`.
+  SUBJECTS: 24,
   /** One call of the instrumented method per subject, two at the ladder site. */
   // 22 -> 24: S4b's two new subjects, one call each.
-  CALLS: 24,
+  // 24 -> 25: GDD §5.14 Stage B's one new subject, one call.
+  CALLS: 25,
   /**
    * Callback invocations across every subject: 4 + 33, the second number being
    * E23's ten sites. Per site — and per ARM, which is the half a total cannot
@@ -23366,7 +23706,8 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // callback per roster row, two rows, on each of the two sites).
   // 49 -> 50 above; 50 -> 52: S4b's two new sites, one callback invocation
   // each (a one-element array per site).
-  CALLBACK_CALLS: 52,
+  // 52 -> 54: GDD §5.14 Stage B's one new site, two callback invocations.
+  CALLBACK_CALLS: 54,
   /**
    * Strings reachable from the non-function arguments.
    *
@@ -23506,6 +23847,13 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   // `handed`/`returned` are both zero and every verdict shape is `number`.
   'members.ts#crowdingLoad#roster.reduce x2 calls=1 callbacks=2 handed=0 returned=0 verdicts=numberx2',
   'members.ts#reputationFromMembers#roster.reduce x2 calls=1 callbacks=2 handed=0 returned=0 verdicts=numberx2',
+  // GDD §5.14 Stage B: `.find(...)` is one call, with the predicate invoked
+  // once per entry checked before it matches — the first entry (600) fails,
+  // the second (3600) matches and the search stops, so two callback calls
+  // and a `falsex1,truex1` verdict shape, the same predicate-return
+  // structure `MEMBER_CALL_TRIPWIRE` uses. Measured by running this exact
+  // assertion.
+  'pacing.ts#pacingReadingAtHorizon#readings.find x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
 ]);
 
 /** One site's drive, as the line `MEMBER_CALL_SITE_OBSERVATIONS` pins. */
