@@ -270,6 +270,7 @@ import {
   warningSigns,
   wornItems,
 } from './management';
+import { recoveryBlockingItems } from './stationView';
 import {
   describeLadderClock,
   ladderDevTimeSteps,
@@ -449,6 +450,12 @@ export function GymScreen(props: GymViewProps) {
   const signs = warningSigns(managed);
   const prompt = maintenancePrompt(managed);
   const recovery = recoveryRequirement(managed);
+  // GDD §5.14 Stage C.1a: WHICH stations are keeping a dormant gym shut, not
+  // only the aggregate cost `recoveryRepairCostGymBucks` already quotes below
+  // — `stationView.ts`'s `recoveryBlockingItems` reuses `management.ts`'s own
+  // `ownedItemsOf`/`itemCondition`, the same shape `wornItems` already uses
+  // at the maintenance threshold instead of the recovery one.
+  const recoveryBlocking = recoveryBlockingItems(managed);
   const worn = wornItems(managed);
   const unanswered = unansweredItems(managed);
   const bankedTime = reviewBankedTime(managed);
@@ -792,6 +799,27 @@ export function GymScreen(props: GymViewProps) {
               reopening would cost {recoveryRepairCostGymBucks(managed)} gym bucks in repairs
             </Text>
           )}
+          {/*
+            GDD §5.14 Stage C.1a: the actionable remedy the human's brief
+            asked for. The cost line above states an amount with no way to
+            spend it from this screen; this line names WHICH stations are
+            the reason (`recoveryBlockingItems`, same threshold
+            `recoveryRepairCostGymBucks` already sums), so a dormant player
+            does not have to tap every machine at random. The real remedy —
+            repairing one of these — is the station panel's own contextual
+            repair control (`FloorGrid.tsx`'s `floorgrid-station-panel-
+            repair`), reached by tapping the item on the floor this line
+            points at. Drawn only in the `blocked` arm with equipment still
+            below the minimum; once every listed item is repaired,
+            `recoveryRequirement` moves to `ready` and this line stops
+            drawing on its own, the same way `gymscreen-worn` above already
+            reacts to real state rather than to a flag.
+          */}
+          {recovery.kind === 'blocked' && recovery.equipmentBelowMinimum ? (
+            <Text testID={'gymscreen-recovery-blocking'}>
+              blocking reopening: {recoveryBlocking.join(', ')} — tap one on the floor to repair it
+            </Text>
+          ) : null}
           {recovery.kind === 'ready' ? (
             <Pressable
               testID={'gymscreen-recover'}

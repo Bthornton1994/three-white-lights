@@ -3314,7 +3314,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // (`isSound` then a purse comparison), written as plain JSX text with
       // `{}` expressions rather than a template literal, which is why these
       // three land here rather than in `templateChunks` below.
-      'as new — nothing to repair',
+      // GDD §5.14 STAGE C.1a: reworded from 'as new — nothing to repair'.
+      // The human's brief named this exact wording as overstating the
+      // routine-maintenance threshold — an item can be well below full
+      // condition and still read "as new" here, and did — so the text now
+      // describes the actual mechanic (no routine repair is currently
+      // offered) instead of claiming a condition the threshold does not
+      // establish.
+      'no routine maintenance needed — nothing to repair',
       'needs',
       'gym bucks — you have',
       'repair for',
@@ -3465,6 +3472,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // not refuse, and the reopen COUNT — history rather than an offer — is
       // its own sentence now, drawn once there is one.
       'gym bucks in repairs',
+      // GDD §5.14 STAGE C.1a: the two new chunks this round adds anywhere in
+      // the tree. `gymscreen-recovery-blocking`, drawn only in the `blocked`
+      // arm with equipment still below `RECOVERY_CONDITION_MIN` — the
+      // actionable-remedy pointer the human's brief asked for, naming which
+      // stations are keeping the gym shut and where to go fix them, rather
+      // than only quoting a total the screen has no control to spend.
+      'blocking reopening:',
+      '— tap one on the floor to repair it',
       'reopen the gym',
       'this gym has reopened',
       'time(s)',
@@ -3846,7 +3861,19 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // round touched (`'gymscreen-condition-${item}'` and its siblings, the
     // whole deleted per-item loop) was already a TEMPLATE literal, which this
     // collector counts separately, below.
-    expect(singleQuoted.size).toBe(533);
+    // 533 -> 535: GDD §5.14 Stage C.1a, the recovery-path UX contradiction
+    // fix. Two new testIDs, measured by diffing this exact collector against
+    // `90d7eb5` rather than hand-counted: `'floorgrid-station-panel-recovery'`
+    // (the station panel's new dormant-only recovery reading) and
+    // `'gymscreen-recovery-blocking'` (the gym-level pointer naming which
+    // stations are keeping a dormant gym shut). Every other new player-facing
+    // sentence this round adds is a TEMPLATE literal (the two
+    // `floorgrid-station-panel-recovery` sentences themselves) or plain JSX
+    // text (`'no routine maintenance needed — nothing to repair'`,
+    // `'blocking reopening:'`, `'— tap one on the floor to repair it'`),
+    // neither of which this collector counts here — see the bare-JsxText
+    // list above.
+    expect(singleQuoted.size).toBe(535);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3943,7 +3970,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `gymscreen-repair-${item}-unavailable`), confirmed absent from every
     // other shipped file both before and after this round, so their removal
     // here is a real shrink rather than a dedupe against a copy elsewhere.
-    expect(templateChunks.size).toBe(304);
+    // 304 -> 306: GDD §5.14 Stage C.1a. Two new templates, both
+    // `floorgrid-station-panel-recovery`'s own dormant-only sentences —
+    // "recovery repair required — condition … is below the reopening
+    // minimum of …" and "condition … clears the reopening minimum of … —
+    // not blocking recovery". Measured by diffing this exact collector
+    // against `90d7eb5` rather than hand-counted.
+    expect(templateChunks.size).toBe(306);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4128,6 +4161,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-station-panel-identity',
       'floorgrid-station-panel-manager',
       'floorgrid-station-panel-operation',
+      // GDD §5.14 Stage C.1a: the panel's dormant-only recovery reading.
+      'floorgrid-station-panel-recovery',
       'floorgrid-station-panel-remove',
       'floorgrid-station-panel-repair',
       'floorgrid-station-panel-repair-unavailable',
@@ -4219,6 +4254,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-rate',
       'gymscreen-recover',
       'gymscreen-recovery',
+      // GDD §5.14 Stage C.1a: the actionable-remedy pointer, naming which
+      // stations are keeping a dormant gym shut.
+      'gymscreen-recovery-blocking',
       'gymscreen-recovery-cost',
       // The reopen COUNT, split out of the cost line: history rather than an
       // offer, so it survives on an open gym where the price does not.
@@ -4546,7 +4584,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 834 -> 837: GDD §5.14 Stage C.1 — singleQuoted 527 -> 533 (+6) and
     // templateChunks 307 -> 304 (-3), both enumerated above; doubleQuoted
     // unchanged. Net +3.
-    expect(stringsChecked).toBe(837);
+    // 837 -> 841: GDD §5.14 Stage C.1a — singleQuoted 533 -> 535 (+2) and
+    // templateChunks 304 -> 306 (+2), both enumerated above; doubleQuoted
+    // unchanged. Net +4.
+    expect(stringsChecked).toBe(841);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -4658,7 +4699,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // contain a space, so neither clears this filter and neither is a probe
     // here — measured by diffing `spaceFree` against the pre-round tree
     // rather than hand-counted.
-    expect(probes).toBe(462);
+    // 462 -> 464: GDD §5.14 Stage C.1a's two new `spaceFree` tokens
+    // ('floorgrid-station-panel-recovery', 'gymscreen-recovery-blocking'),
+    // each clearing the two-letter guard below, each a probe.
+    expect(probes).toBe(464);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -4940,6 +4984,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         // `management.ts`; nothing about stage 4 is recomputed here.
         './management',
         './sessions',
+        // GDD §5.14 Stage C.1a: `recoveryBlockingItems`, the same per-item
+        // recovery predicate the station panel now reads, so a dormant
+        // gym's own screen can point at which stations are blocking it —
+        // one new edge, no new arithmetic.
+        './stationView',
         'react-native',
       ],
       'ladder.ts': ['./empireCore', './empireTuning', './production'],
@@ -5109,7 +5158,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // (./management, ./stationView) plus `stationView.ts`'s own five
     // (./empireTuning, ./floorSim, ./management, ./members, ./sessions).
     // Read from this assertion's own failure value.
-    expect(specifiers).toBe(89);
+    // 89 -> 90: GDD §5.14 Stage C.1a — one new edge, `GymScreen.tsx ->
+    // ./stationView` (`recoveryBlockingItems`). Read from this assertion's
+    // own failure value.
+    expect(specifiers).toBe(90);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external

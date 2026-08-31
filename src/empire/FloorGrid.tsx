@@ -1787,10 +1787,40 @@ export function FloorGrid(props: FloorGridProps) {
               : 'idle — nobody is using it right now'}
             {panelOperation.queueCount > 0 ? `, ${panelOperation.queueCount} waiting` : null}
           </Text>
+          {/*
+            GDD §5.14 Stage C.1a: the shown cost switches to the real,
+            unrounded `repairCostGymBucks` whenever THIS item is a recovery
+            blocker — `displayRepairCostGymBucks` rounds to 0 once
+            `isSoundCondition` clears (the routine-maintenance question,
+            S4f's dust-repair fix), and an item can be routine-sound while
+            still below `RECOVERY_CONDITION_MIN` (Stage C.1's own disclosed
+            gap). Outside dormancy `blocksRecovery` is always false, so this
+            line reads exactly as it did before for every already-tested
+            non-dormant state — see `stationConditionView`'s own comment.
+          */}
           <Text testID={'floorgrid-station-panel-condition'}>
             condition {panelCondition.condition} — repairing it costs{' '}
-            {panelCondition.displayRepairCostGymBucks} gym bucks
+            {panelCondition.blocksRecovery
+              ? panelCondition.repairCostGymBucks
+              : panelCondition.displayRepairCostGymBucks}{' '}
+            gym bucks
           </Text>
+          {/*
+            GDD §5.14 Stage C.1a: the recovery-specific reading of this same
+            item, drawn only while the gym is actually dormant
+            (`panelCondition.dormant`) — a station tapped on a healthy gym
+            has nothing to say about reopening. Written as one ternary
+            expression, the same shape `floorgrid-station-panel-manager`
+            below already uses for a fully dynamic sentence, so this adds no
+            new plain-JSX-text chunk to `empireCore.test.ts`'s JSX census.
+          */}
+          {panelCondition.dormant ? (
+            <Text testID={'floorgrid-station-panel-recovery'}>
+              {panelCondition.blocksRecovery
+                ? `recovery repair required — condition ${panelCondition.condition} is below the reopening minimum of ${EMPIRE_TUNING.RECOVERY_CONDITION_MIN}`
+                : `condition ${panelCondition.condition} clears the reopening minimum of ${EMPIRE_TUNING.RECOVERY_CONDITION_MIN} — not blocking recovery`}
+            </Text>
+          ) : null}
           {/*
             Staff relationship — item 6's third bullet. This states what the
             HIRED manager, if any, actually does to THIS item, rather than a
@@ -1815,15 +1845,33 @@ export function FloorGrid(props: FloorGridProps) {
           {/*
             Contextual repair — dispatches through the exact reducer arm
             `GymScreen.tsx`'s own per-item report already uses
-            (`repair-item`), never a parallel mutation. The gate is
-            `panelCondition.isSound` then a purse comparison, BYTE FOR BYTE
-            the same two-arm order `GymScreen.tsx`'s own per-item row uses —
-            see the comment above `panelCondition` for why this reads
-            `isSound` rather than calling `repairEquipment` itself.
+            (`repair-item`), never a parallel mutation, never a new formula
+            and never an automatic charge. The gate is `panelCondition.
+            isSound` then a purse comparison, BYTE FOR BYTE the same two-arm
+            order `GymScreen.tsx`'s own per-item row uses — see the comment
+            above `panelCondition` for why this reads `isSound` rather than
+            calling `repairEquipment` itself.
+
+            GDD §5.14 STAGE C.1a WIDENS THE GATE BY EXACTLY ONE DISJUNCT:
+            `panelCondition.isSound && !panelCondition.blocksRecovery`, not
+            `panelCondition.isSound` alone. This is the fix the whole round
+            is about — an item can be routine-sound (above
+            `MAINTENANCE_PROMPT_CONDITION`) and still be a recovery blocker
+            (below `RECOVERY_CONDITION_MIN`), and Stage C.1 shipped a panel
+            that read "as new — nothing to repair" over exactly that item
+            while the gym-level recovery surface, one screen up, refused to
+            reopen because of it. `blocksRecovery` is `false` whenever the
+            gym is not dormant (`stationConditionView`'s own definition), so
+            this disjunct changes NOTHING for any already-tested non-dormant
+            state — it only widens the surface where dormancy already made
+            the old gate wrong. The unaffordable and available arms below
+            are untouched: same two checks, same order, now reachable for a
+            recovery-blocking item exactly when they would already be
+            reachable for a routine-worn one.
           */}
-          {panelCondition.isSound ? (
+          {panelCondition.isSound && !panelCondition.blocksRecovery ? (
             <Text testID={'floorgrid-station-panel-repair-unavailable'}>
-              as new — nothing to repair
+              no routine maintenance needed — nothing to repair
             </Text>
           ) : panelCondition.repairCostGymBucks > managed.gym.ladder.gymBucks ? (
             <Text testID={'floorgrid-station-panel-repair-unavailable'}>

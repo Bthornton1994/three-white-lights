@@ -2983,6 +2983,21 @@ try {
   // while still failing loudly on the one case this section was written
   // for: an item genuinely worn but priced past what the purse can reach,
   // which would otherwise stall the walk with nothing said about why.
+  //
+  // GDD §5.14 STAGE C.1a: the benign-skip text this loop watches for is
+  // "no routine maintenance needed — nothing to repair", NOT "as new —
+  // nothing to repair" — that wording is gone from the shipped screen
+  // (`FloorGrid.tsx`'s own repair-unavailable arm), reworded because it
+  // overstated what the routine threshold means. This loop also now
+  // benefits from the round's real fix: an item sound by the routine
+  // reading but still below `RECOVERY_CONDITION_MIN` (a real, disclosed gap
+  // between the two thresholds) used to read the SAME benign "as new" text
+  // here and be silently skipped, which would have left `gymscreen-recover`
+  // refused with nothing in this loop explaining why. The panel now offers
+  // a real repair control for that item too (`stationConditionView`'s new
+  // `blocksRecovery` field), so this loop's own gate on the unavailable
+  // text is the live regression check for that fix: if it ever reads the
+  // old string again, it is a sign the panel regressed, not a benign skip.
   const RECOVERY_WALK_ITEMS = [...FIXED_FURNITURE_ITEMS, 'mats'];
   for (const item of RECOVERY_WALK_ITEMS) {
     const kind = stationKindFor(item);
@@ -2997,10 +3012,11 @@ try {
     const repairDrawn = await page.getByTestId('floorgrid-station-panel-repair').count();
     if (repairDrawn === 0) {
       const unavailableText = await textOf('floorgrid-station-panel-repair-unavailable');
-      if (unavailableText === 'as new — nothing to repair') {
+      if (unavailableText === 'no routine maintenance needed — nothing to repair') {
         // The panel's own condition-gated refusal, correctly reached — this
-        // item sits above MAINTENANCE_PROMPT_CONDITION even though its raw
-        // condition is under 1, and the panel is not offering a control
+        // item sits above MAINTENANCE_PROMPT_CONDITION AND above
+        // RECOVERY_CONDITION_MIN (or the gym is not dormant) even though its
+        // raw condition is under 1, and the panel is not offering a control
         // because pressing one would do nothing, exactly as designed.
         continue;
       }
@@ -3037,6 +3053,359 @@ try {
     fail(
       `S4b (9g): the gym did not reopen cleanly — recovery state "${reopenedState}", phase "${phaseAfterRecovery}", ${strikeRowsAfter.length} strike row(s) still drawn, history line "${reopenedCount}", ${reopenedPriceDrawn} reopening-price line(s) still drawn on an open gym`,
     );
+  }
+
+  // -------------------------------------------------------------------------
+  // 9h. GDD §5.14 STAGE C.1a — THE RECOVERY/ROUTINE-MAINTENANCE
+  //     CONTRADICTION, DRIVEN LIVE RATHER THAN ONLY AT THE UNIT LEVEL.
+  //
+  // Stage C.1 shipped `stationConditionView.isSound` as the ONLY question
+  // the station panel asked about an item's condition —
+  // `MAINTENANCE_PROMPT_CONDITION` (0.5) gated. `RECOVERY_CONDITION_MIN`
+  // (0.8) gates a different question, `recoveryRequirement`'s, and nothing
+  // joined the two: an item between the two thresholds — sound by the
+  // routine reading, still below the recovery minimum — read "as new" on
+  // its own panel while the gym-level recovery surface, reading the same
+  // condition, refused to reopen over it. This section engineers exactly
+  // that gap condition on a real, running gym reached through 9g's own
+  // reopen, and drives the human's brief's §10 claims against it — real DOM
+  // reads before and after a real press, not a fixture.
+  //
+  // WHY A DELIBERATE BANK RATHER THAN TRUSTING 9g's OWN WEAR TO LAND THERE.
+  // §5.7's wear model (`management.ts#withWear`) subtracts the identical
+  // amount from every owned item on every advance, so all four items this
+  // run owns (the three `FIXED_FURNITURE_ITEMS` plus `mats`) stay tied at
+  // all times unless one is individually repaired — and 9g's own decline
+  // loop never repairs anything before reaching dormancy. So 9g's own
+  // dormancy is reached at whatever condition band happened to accumulate
+  // in sections 9b-9f, which is not under this section's control and is not
+  // guaranteed to land inside the 0.5-0.8 gap on any given run. This section
+  // reads `MAINTENANCE_PROMPT_CONDITION` off `gymscreen-worn`'s own drawn
+  // text (the same "read a threshold rather than hand-derive it" discipline
+  // `FLOOR_TILE_PIXELS`'s own comment states above) and banks a KNOWN,
+  // bounded number of `+8h` presses (`LADDER_DEV_TIME_STEPS_SECONDS[1]`,
+  // under `OFFLINE_EARNINGS_CAP_HOURS` so each press's wear is uncapped and
+  // additive — 9c's own header derives that same cap interaction for the
+  // `+3d` step, which is why this section deliberately does NOT reuse it),
+  // stopping once every item's real, re-read condition sits inside a target
+  // band with margin on both sides of the gap. `RECOVERY_CONDITION_MIN` is
+  // cross-checked against the panel's own dormant-only text once reachable
+  // (below) rather than only asserted from a literal.
+  readAddress('9h: the recovery/routine-maintenance contradiction');
+  const GAP_ADVANCE_ID = 'gymscreen-advance-28800'; // +8h, LADDER_DEV_TIME_STEPS_SECONDS[1]
+  const GAP_SMALL_ADVANCE_ID = 'gymscreen-advance-3600'; // +1h, LADDER_DEV_TIME_STEPS_SECONDS[0]
+  const GAP_TARGET_LOW = 0.55;
+  const GAP_TARGET_HIGH = 0.72;
+  const GAP_MAX_PRESSES = 40;
+  const GAP_TRACKED_ITEM = 'power-bar';
+  // The recovery minimum this section expects to cross-check against the
+  // panel's own text below — the shipped value, read from `empireTuning.ts`
+  // at the time this section was written, not trusted blind (see the
+  // cross-check assertion after dormancy is reached).
+  const RECOVERY_CONDITION_MIN_REFERENCE = 0.8;
+
+  const maintenancePromptLineBeforeGap = await textOf('gymscreen-worn');
+  const maintenanceThresholdBeforeGap = numberIn(
+    maintenancePromptLineBeforeGap,
+    /under ([\d.]+) condition:/,
+  );
+  const phaseBeforeGap = await phaseNow();
+  if (maintenanceThresholdBeforeGap === null || phaseBeforeGap !== 'sound') {
+    fail(
+      `9h: expected a sound gym with a readable maintenance threshold before banking the gap — phase "${phaseBeforeGap}", threshold line "${maintenancePromptLineBeforeGap}"`,
+    );
+  }
+
+  let gapCondition = null;
+  let gapPresses = 0;
+  while (gapPresses < GAP_MAX_PRESSES) {
+    const current = numberIn(
+      await stationConditionText(stationKindFor(GAP_TRACKED_ITEM), GAP_TRACKED_ITEM),
+      /condition ([\d.]+)/,
+    );
+    if (current !== null && current <= GAP_TARGET_HIGH && current >= GAP_TARGET_LOW) {
+      gapCondition = current;
+      break;
+    }
+    if (current !== null && current < GAP_TARGET_LOW) break; // overshot — reported below, not silently retried
+    await pressById(GAP_ADVANCE_ID);
+    gapPresses += 1;
+  }
+  const gapReached =
+    gapCondition !== null &&
+    maintenanceThresholdBeforeGap !== null &&
+    gapCondition >= maintenanceThresholdBeforeGap &&
+    gapCondition < RECOVERY_CONDITION_MIN_REFERENCE;
+  if (gapReached) {
+    ok(
+      `9h: banked ${gapPresses} press(es) of +8h to land ${GAP_TRACKED_ITEM} at condition ${gapCondition} — at or above the routine-maintenance threshold (${maintenanceThresholdBeforeGap}) and below the recovery minimum (${RECOVERY_CONDITION_MIN_REFERENCE})`,
+    );
+  } else {
+    fail(
+      `9h: could not bank the gap condition live inside ${GAP_MAX_PRESSES} presses — landed at ${gapCondition} after ${gapPresses} press(es) (maintenance threshold ${maintenanceThresholdBeforeGap}); the remainder of this section reports on whatever it can from this state`,
+    );
+  }
+
+  // Sanity check on the OUTSIDE-dormancy case, live, before dormancy is
+  // reached — the panel must still read the routine question correctly and
+  // must draw no recovery-specific line at all while the gym is open. This
+  // is CLAUDE.md's "verify normal operation did not change" (item 9 of the
+  // brief), read off the same tapped panel this section is about to put
+  // into the contradiction state, not off a different fixture.
+  const soundUnavailableText = await textOf('floorgrid-station-panel-repair-unavailable');
+  const recoveryLineWhileSoundCount = await page
+    .getByTestId('floorgrid-station-panel-recovery')
+    .count();
+  if (
+    soundUnavailableText === 'no routine maintenance needed — nothing to repair' &&
+    recoveryLineWhileSoundCount === 0
+  ) {
+    ok(
+      `9h: while the gym is open, ${GAP_TRACKED_ITEM}'s panel reads the routine question correctly ("${soundUnavailableText}") and draws no recovery-specific line at all`,
+    );
+  } else {
+    fail(
+      `9h: expected the routine-sound reading and no recovery line on an open gym — unavailable text "${soundUnavailableText}", recovery line count ${recoveryLineWhileSoundCount}`,
+    );
+  }
+
+  // Now reach dormancy — the SAME shape as 9g's own decline loop, reused
+  // here rather than factored out (this file's own convention: each section
+  // is self-contained), but with the SMALL +1h step as its own wait
+  // fallback rather than 9g's own `advanceId` (+3d) — this run's own
+  // banking above should already have carried `checkInsTaken` well past the
+  // next review ordinal, so no further press should be needed at all before
+  // the first review is offered; the small step is a low-risk fallback in
+  // case that assumption is wrong on some other tree, not the expected path.
+  let gapRounds = 0;
+  const gapDeclined = [];
+  while (gapRounds < S4B_MAX_REVIEW_ROUNDS && (await phaseNow()) !== 'failed') {
+    gapRounds += 1;
+    let waited = 0;
+    while (waited < S4B_MAX_CLOCK_PRESSES && (await textOf('gymscreen-prompt-item')) === null) {
+      await pressById(GAP_SMALL_ADVANCE_ID);
+      waited += 1;
+    }
+    const offered = await textOf('gymscreen-prompt-item');
+    if (offered === null) break;
+    const before = await strikeCountNow();
+    await pressById('gymscreen-prompt-decline');
+    const after = await strikeCountNow();
+    if (after !== null && before !== null && after > before) gapDeclined.push(offered);
+  }
+  const phaseAfterGapDecline = await phaseNow();
+  const gapConditionAfterDormancy = numberIn(
+    await stationConditionText(stationKindFor(GAP_TRACKED_ITEM), GAP_TRACKED_ITEM),
+    /condition ([\d.]+)/,
+  );
+  const stillInGapAfterDormancy =
+    gapConditionAfterDormancy !== null &&
+    maintenanceThresholdBeforeGap !== null &&
+    gapConditionAfterDormancy >= maintenanceThresholdBeforeGap &&
+    gapConditionAfterDormancy < RECOVERY_CONDITION_MIN_REFERENCE;
+  // (1) The gym is genuinely dormant, reached the same way 9g reaches it —
+  // declined shown repairs, never elapsed time alone.
+  if (phaseAfterGapDecline === 'failed' && gapDeclined.length > 0) {
+    ok(
+      `9h (claim 1): the gym went dormant after ${gapDeclined.length} declined review(s), the same played route 9g uses — phase "${phaseAfterGapDecline}"`,
+    );
+  } else {
+    fail(
+      `9h (claim 1): expected dormancy after declining — phase "${phaseAfterGapDecline}", ${gapDeclined.length} decline(s), ${gapRounds} round(s) used`,
+    );
+  }
+  // (2) The selected station's condition is STILL between the two
+  // thresholds, read fresh rather than trusted from before dormancy — this
+  // is the one number the whole section depends on staying true.
+  if (stillInGapAfterDormancy) {
+    ok(
+      `9h (claim 2): ${GAP_TRACKED_ITEM} is still at condition ${gapConditionAfterDormancy}, between ${maintenanceThresholdBeforeGap} and ${RECOVERY_CONDITION_MIN_REFERENCE}, after the decline loop added no further bank`,
+    );
+  } else {
+    fail(
+      `9h (claim 2): ${GAP_TRACKED_ITEM} drifted out of the gap during the decline loop — now ${gapConditionAfterDormancy}`,
+    );
+  }
+  // (3) The global recovery state says equipment blocks reopening.
+  const dormantRecoveryState = await textOf('gymscreen-recovery-state');
+  const dormantRecoveryBlocking = await textOf('gymscreen-recovery-blocking');
+  const globalBlockedByEquipment =
+    dormantRecoveryState !== null &&
+    dormantRecoveryState.startsWith('dormant — still needed:') &&
+    dormantRecoveryState.includes('equipment back to condition');
+  if (globalBlockedByEquipment) {
+    ok(
+      `9h (claim 3): the gym-level recovery surface says equipment blocks reopening — "${dormantRecoveryState}", and the blocking pointer reads "${dormantRecoveryBlocking}"`,
+    );
+  } else {
+    fail(`9h (claim 3): expected equipment to be named as blocking recovery — "${dormantRecoveryState}"`);
+  }
+  // (4) The station panel does NOT call the item "as new" / routine-clear —
+  // the exact contradiction this round exists to make unreachable.
+  const gapUnavailableText = await textOf('floorgrid-station-panel-repair-unavailable');
+  const gapRepairButtonCount = await page.getByTestId('floorgrid-station-panel-repair').count();
+  const contradictionAbsent =
+    gapUnavailableText !== 'no routine maintenance needed — nothing to repair' &&
+    gapUnavailableText !== 'as new — nothing to repair';
+  if (contradictionAbsent) {
+    ok(
+      `9h (claim 4): the tapped panel does NOT read "nothing to repair" while recovery names this item as blocking — unavailable text "${gapUnavailableText}", repair button present=${gapRepairButtonCount > 0}`,
+    );
+  } else {
+    fail(
+      `9h (claim 4): THE CONTRADICTION IS REACHABLE — recovery blocks on ${GAP_TRACKED_ITEM} while its own panel says "${gapUnavailableText}"`,
+    );
+  }
+  // (5) The station panel identifies the recovery requirement explicitly,
+  // and the number it names cross-checks against the reference this section
+  // assumed going in.
+  const gapRecoveryLineText = await textOf('floorgrid-station-panel-recovery');
+  const gapRecoveryMinFromPanel = numberIn(gapRecoveryLineText, /reopening minimum of ([\d.]+)/);
+  const recoveryLineCorrect =
+    gapRecoveryLineText !== null &&
+    gapRecoveryLineText.startsWith('recovery repair required') &&
+    gapRecoveryMinFromPanel === RECOVERY_CONDITION_MIN_REFERENCE;
+  if (recoveryLineCorrect) {
+    ok(
+      `9h (claim 5): the panel identifies the recovery requirement in its own words — "${gapRecoveryLineText}", and its own quoted minimum (${gapRecoveryMinFromPanel}) matches the reference this section assumed`,
+    );
+  } else {
+    fail(
+      `9h (claim 5): expected an explicit recovery-repair-required line naming ${RECOVERY_CONDITION_MIN_REFERENCE} — got "${gapRecoveryLineText}"`,
+    );
+  }
+  // (6)-(9) Repair, priced and dispatched through the real reducer — driven
+  // if affordable, reported honestly if not, matching the human's own
+  // brief's "also test the unaffordable variant" without pretending a
+  // shortfall away.
+  const gapConditionLineText = await textOf('floorgrid-station-panel-condition');
+  const gapQuoteFromConditionLine = numberIn(
+    gapConditionLineText,
+    /repairing it costs ([\d.]+) gym bucks/,
+  );
+  const gapQuoteFromButton =
+    gapRepairButtonCount > 0
+      ? numberIn(await textOf('floorgrid-station-panel-repair'), /repair for ([\d.]+)/)
+      : null;
+  const purseBeforeGapRepair = await purseNow();
+  if (gapRepairButtonCount > 0) {
+    // (7) Both on-screen numbers — the condition line's "repairing it
+    // costs" and the button's own "repair for" — are independently
+    // rendered from the SAME `stationConditionView.repairCostGymBucks`
+    // this round's fix threads through, so agreeing here is the live
+    // cross-check that the quoted price really is the real, unrounded
+    // repair cost `management.ts#repairCostGymBucks` computes, not the
+    // display-rounded-to-0 figure the routine reading alone would show.
+    const quotesAgree =
+      gapQuoteFromConditionLine !== null &&
+      gapQuoteFromButton !== null &&
+      Math.abs(gapQuoteFromConditionLine - gapQuoteFromButton) < S4B_PURSE_EPSILON;
+    if (quotesAgree) {
+      ok(
+        `9h (claim 7): the condition line and the repair button independently quote the same real price — ${gapQuoteFromConditionLine} vs ${gapQuoteFromButton}`,
+      );
+    } else {
+      fail(
+        `9h (claim 7): the two on-screen prices disagree — condition line ${gapQuoteFromConditionLine}, button ${gapQuoteFromButton}`,
+      );
+    }
+    await pressById('floorgrid-station-panel-repair');
+    const purseAfterGapRepair = await purseNow();
+    const gapConditionAfterRepair = numberIn(
+      await stationConditionText(stationKindFor(GAP_TRACKED_ITEM), GAP_TRACKED_ITEM),
+      /condition ([\d.]+)/,
+    );
+    const charged =
+      purseBeforeGapRepair !== null && purseAfterGapRepair !== null
+        ? purseBeforeGapRepair - purseAfterGapRepair
+        : null;
+    const band =
+      charged !== null && gapQuoteFromButton !== null ? purseMatchBand(charged, gapQuoteFromButton) : null;
+    // (6) the button appeared and was pressed; (8) it deducted the quoted
+    // price; (9) the station condition became the real repair mechanic's
+    // own output.
+    if (band !== null && gapConditionAfterRepair === 1) {
+      ok(
+        `9h (claims 6, 8, 9): the affordable repair control was pressed, charged ${charged.toFixed(2)} against a quoted ${gapQuoteFromButton} (${band} match), and ${GAP_TRACKED_ITEM}'s own condition is now ${gapConditionAfterRepair}`,
+      );
+    } else {
+      fail(
+        `9h (claims 6, 8, 9): the repair press did not land as expected — charged ${charged}, quoted ${gapQuoteFromButton}, condition after ${gapConditionAfterRepair}`,
+      );
+    }
+    // (10) recovery requirement updates: the blocking pointer no longer
+    // names this item (others may still, since this run wore every owned
+    // item into the gap together — repairing one does not clear the rest).
+    const dormantRecoveryBlockingAfter = await textOf('gymscreen-recovery-blocking');
+    const clearedFromBlockingList =
+      dormantRecoveryBlockingAfter === null || !dormantRecoveryBlockingAfter.includes(GAP_TRACKED_ITEM);
+    if (clearedFromBlockingList) {
+      ok(
+        `9h (claim 10): the recovery-blocking pointer no longer names ${GAP_TRACKED_ITEM} after its repair — "${dormantRecoveryBlockingAfter}"`,
+      );
+    } else {
+      fail(
+        `9h (claim 10): ${GAP_TRACKED_ITEM} is still named as blocking recovery after being repaired to full — "${dormantRecoveryBlockingAfter}"`,
+      );
+    }
+    // (11) Reopen becomes available once every requirement is satisfied —
+    // repair whatever else this run's uniform wear also put in the gap
+    // (the same RECOVERY_WALK_ITEMS shape 9g's own loop uses), then press
+    // reopen and confirm.
+    for (const item of RECOVERY_WALK_ITEMS) {
+      if (item === GAP_TRACKED_ITEM) continue;
+      const kind = stationKindFor(item);
+      const onFloor = await page
+        .getByTestId(kind === 'fixed' ? `floorgrid-fixed-${item}` : `floorgrid-placed-${item}`)
+        .count()
+        .then((n) => n > 0)
+        .catch(() => false);
+      if (!onFloor) continue;
+      const at = numberIn(await stationConditionText(kind, item), /condition ([\d.]+)/);
+      if (at === null || at >= 1) continue;
+      const buttonPresent = await page.getByTestId('floorgrid-station-panel-repair').count();
+      if (buttonPresent === 0) {
+        const reason = await textOf('floorgrid-station-panel-repair-unavailable');
+        if (reason === 'no routine maintenance needed — nothing to repair') continue;
+        fail(`9h (claim 11): ${item} at ${at} has no repair control and no benign reason — "${reason}"`);
+        continue;
+      }
+      await pressById('floorgrid-station-panel-repair');
+    }
+    const readyToReopen = await textOf('gymscreen-recovery-state');
+    if (readyToReopen === 'dormant — everything reopening asks for is done') {
+      await pressById('gymscreen-recover');
+      const reopenedGapState = await textOf('gymscreen-recovery-state');
+      const reopenedGapPhase = await phaseNow();
+      if (reopenedGapState === 'open for business — sound' && reopenedGapPhase === 'sound') {
+        ok(
+          `9h (claim 11): once every requirement was satisfied, reopen became available and landed the gym back at "${reopenedGapState}"`,
+        );
+      } else {
+        fail(
+          `9h (claim 11): reopen was offered but did not land cleanly — state "${reopenedGapState}", phase "${reopenedGapPhase}"`,
+        );
+      }
+    } else {
+      fail(`9h (claim 11): expected "ready" after repairing every recovery-blocking item — "${readyToReopen}"`);
+    }
+  } else {
+    // The unaffordable variant, reported honestly rather than forced —
+    // §10's own allowance. The price is still real and still refuses
+    // exactly the way an unaffordable routine repair already does
+    // elsewhere in this file (13c/13e's own shape).
+    const priceRefusalText = gapUnavailableText;
+    const looksLikeAPricedRefusal =
+      priceRefusalText !== null && /^needs [\d.]+ gym bucks — you have [\d.]+$/.test(priceRefusalText);
+    if (looksLikeAPricedRefusal) {
+      ok(
+        `9h (claims 6-11, unaffordable variant): the repair-blocking item's own panel quotes a real, unaffordable price rather than "nothing to repair" — "${priceRefusalText}" (purse ${purseBeforeGapRepair}). Claims 6-11 (the affordable repair/reopen chain) are not driven this run because this state is genuinely unaffordable; the unaffordable path itself is verified at the unit level in stationView.test.ts's own dedicated negative control.`,
+      );
+    } else {
+      fail(
+        `9h (claims 6-11): no repair control and no recognisable priced refusal either — "${priceRefusalText}", purse ${purseBeforeGapRepair}`,
+      );
+    }
   }
 
   // -------------------------------------------------------------------------

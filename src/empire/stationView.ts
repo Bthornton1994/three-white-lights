@@ -42,8 +42,10 @@ import {
   type ManagedEquipmentItem,
   type ManagedGym,
   type ManagerTier,
+  failurePhase,
   itemCondition,
   managerAutoRepairCondition,
+  ownedItemsOf,
   repairCostGymBucks,
 } from './management';
 import { type MemberType } from './members';
@@ -151,26 +153,78 @@ export function displayRepairCostBySoundness(costGymBucks: number, condition: nu
   return isSoundCondition(condition) ? 0 : costGymBucks;
 }
 
+/**
+ * Whether `condition` is below `RECOVERY_CONDITION_MIN` — the identical
+ * per-item test `management.ts`'s `recoveryRepairCostGymBucks` already runs
+ * inside its own summing loop, exposed here at the single-item level rather
+ * than only as that function's gym-wide total. No new arithmetic: the
+ * comparison is byte-for-byte the one `recoveryRepairCostGymBucks` performs.
+ *
+ * WHY THIS IS A SEPARATE QUESTION FROM `isSoundCondition`, STATED BECAUSE
+ * STAGE C.1 SHIPPED A PANEL THAT ANSWERED ONLY ONE OF THEM. Routine
+ * maintenance (`isSoundCondition`, gated on `MAINTENANCE_PROMPT_CONDITION`,
+ * 0.5) and recovery eligibility (this function, gated on
+ * `RECOVERY_CONDITION_MIN`, 0.8) are two thresholds over the same condition
+ * axis with a real design gap between them — an item can sit at, say, 0.65:
+ * above the routine line, below the recovery line. Routing both questions
+ * through one boolean made that item's own panel say "as new" while the
+ * gym-level recovery surface, reading the true condition, refused to reopen
+ * over it. Neither threshold moved to fix this; the panel now asks both
+ * questions instead of one.
+ */
+export function isRecoveryBlocking(condition: number): boolean {
+  return condition < EMPIRE_TUNING.RECOVERY_CONDITION_MIN;
+}
+
+/**
+ * Every item `managed` owns that is currently below `RECOVERY_CONDITION_MIN`
+ * — `management.ts`'s own `wornItems` shape (a filter over `ownedItemsOf` at
+ * a condition threshold), read at the recovery threshold instead of the
+ * maintenance one, so a dormant gym has a pointer to WHICH stations are
+ * blocking reopening rather than only the aggregate cost
+ * `recoveryRepairCostGymBucks` already quotes. `ownedItemsOf`/`itemCondition`
+ * are `management.ts`'s; nothing here recomputes what either already answers.
+ */
+export function recoveryBlockingItems(managed: ManagedGym): readonly ManagedEquipmentItem[] {
+  return Object.freeze(
+    ownedItemsOf(managed.gym).filter((item) => isRecoveryBlocking(itemCondition(managed, item))),
+  );
+}
+
 /** One item's condition, as the station panel reads it: the real condition, the real repair cost, and the display-rounded cost beside it. */
 export interface StationConditionView {
   readonly condition: number;
   readonly repairCostGymBucks: number;
   readonly displayRepairCostGymBucks: number;
   readonly isSound: boolean;
+  /** Whether the gym is currently dormant (`failurePhase(managed) === 'failed'`) — read here so the panel can ask the recovery question only when it is live. */
+  readonly dormant: boolean;
+  /**
+   * Whether THIS item, at its current condition, is one of the things
+   * keeping a dormant gym from reopening — `dormant && isRecoveryBlocking
+   * (condition)`. False for every item while the gym is not dormant, which
+   * is what keeps every existing routine-maintenance reading (`isSound`,
+   * `displayRepairCostGymBucks`) byte-identical outside dormancy: this field
+   * is additive, not a replacement for either.
+   */
+  readonly blocksRecovery: boolean;
 }
 
-/** `item`'s condition view in `managed` — two calls into `management.ts`, reshaped for the panel. */
+/** `item`'s condition view in `managed` — reshaped for the panel from calls already answered elsewhere in this module and in `management.ts`. */
 export function stationConditionView(
   managed: ManagedGym,
   item: ManagedEquipmentItem,
 ): StationConditionView {
   const condition = itemCondition(managed, item);
   const cost = repairCostGymBucks(managed, item);
+  const dormant = failurePhase(managed) === 'failed';
   return Object.freeze({
     condition,
     repairCostGymBucks: cost,
     displayRepairCostGymBucks: displayRepairCostBySoundness(cost, condition),
     isSound: isSoundCondition(condition),
+    dormant,
+    blocksRecovery: dormant && isRecoveryBlocking(condition),
   });
 }
 

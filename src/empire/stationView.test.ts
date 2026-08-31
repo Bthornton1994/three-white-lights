@@ -3,17 +3,23 @@ import { describe, expect, it } from 'vitest';
 import { EMPIRE_TUNING } from './empireTuning';
 import { type FloorSimMember, type FloorSimMemberState, type FloorStationRef } from './floorSim';
 import {
+  COUNTED_DECISIONS,
   type ManagedGym,
   createManagedGym,
+  failurePhase,
   hireManager,
+  itemCondition,
   ownedItemsOf,
+  recoveryRequirement,
   repairEquipment,
   withUpdatedGym,
 } from './management';
 import { buySessionEquipment, withLadder } from './sessions';
 import {
   displayRepairCostBySoundness,
+  isRecoveryBlocking,
   isSoundCondition,
+  recoveryBlockingItems,
   stationConditionView,
   stationIdentityView,
   stationManagerEffectView,
@@ -222,5 +228,146 @@ describe('stationView.ts — GDD §5.14 Stage C', () => {
     const sound = withCondition(hired.state, 1);
     expect(stationManagerEffectView(worn, 'mats').wouldAutoRepairNow).toBe(true);
     expect(stationManagerEffectView(sound, 'mats').wouldAutoRepairNow).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GDD §5.14 Stage C.1a — the recovery/routine-maintenance contradiction
+//
+// Stage C.1 shipped `stationConditionView.isSound` as the ONLY question the
+// station panel asked of an item's condition — `MAINTENANCE_PROMPT_CONDITION`
+// (0.5) gated. `RECOVERY_CONDITION_MIN` (0.8) gates a completely different
+// question, `recoveryRequirement`'s, and nothing joined the two. So an item
+// between the two thresholds — sound by the routine reading, still below the
+// recovery minimum — read "as new" on its own panel while the gym-level
+// recovery surface, reading the SAME condition, refused to reopen over it.
+// Neither threshold moved; `stationConditionView` now answers both questions.
+// ---------------------------------------------------------------------------
+
+describe('GDD §5.14 Stage C.1a — recovery blocks on a routine-sound item, and the panel now says so', () => {
+  /** The exact midpoint of the real gap, derived from the two shipped thresholds rather than hardcoded — this is the condition Stage C.1's own disclosed contradiction was about. */
+  const GAP_CONDITION =
+    (EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION + EMPIRE_TUNING.RECOVERY_CONDITION_MIN) / 2;
+
+  /**
+   * A dormant (`failurePhase(state) === 'failed'`) gym with `mats` worn to
+   * `condition` and the purse set to `gymBucks` — the same direct
+   * strike-ledger construction `management.test.ts`'s own
+   * `derives the failure phase from the strike count alone` test uses, not a
+   * hand-waved dormancy flag: `failurePhase` is a pure function of
+   * `state.strikes.length`, so this really is the failed state, reached the
+   * same way the shipped app reaches it.
+   */
+  function dormantAt(condition: number, gymBucks: number): ManagedGym {
+    const worn = withCondition(withMatsOwned(), condition);
+    const record = Object.freeze({
+      decision: COUNTED_DECISIONS[2] as (typeof COUNTED_DECISIONS)[number],
+      atSeconds: 0,
+      shownCostGymBucks: 10,
+    });
+    const failed: ManagedGym = Object.freeze({
+      ...worn,
+      gym: withLadder(worn.gym, Object.freeze({ ...worn.gym.ladder, gymBucks })),
+      strikes: Object.freeze(Array.from({ length: EMPIRE_TUNING.FAILURE_STRIKES }, () => record)),
+    });
+    if (failurePhase(failed) !== 'failed') throw new Error('fixture did not reach dormancy');
+    return failed;
+  }
+
+  it('the gap is real: the midpoint sits at-or-above the routine threshold and strictly below the recovery minimum', () => {
+    expect(GAP_CONDITION).toBeGreaterThanOrEqual(EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION);
+    expect(GAP_CONDITION).toBeLessThan(EMPIRE_TUNING.RECOVERY_CONDITION_MIN);
+    expect(isSoundCondition(GAP_CONDITION)).toBe(true);
+    expect(isRecoveryBlocking(GAP_CONDITION)).toBe(true);
+  });
+
+  it('REQUIRED NEGATIVE CONTROL, affordable case: recovery is blocked by a gap-condition item, the panel identifies it as a recovery blocker rather than "nothing to repair", the real repair action is offered, and repairing it through the real reducer clears exactly that item from the recovery-blocking list', () => {
+    const dormant = dormantAt(GAP_CONDITION, 100000);
+
+    // (1) Recovery is genuinely blocked, and `mats` is genuinely one of the
+    // reasons — read off the real gym-level function, not asserted.
+    const requirementBefore = recoveryRequirement(dormant);
+    expect(requirementBefore.kind).toBe('blocked');
+    if (requirementBefore.kind === 'blocked') {
+      expect(requirementBefore.equipmentBelowMinimum).toBe(true);
+    }
+    expect(recoveryBlockingItems(dormant)).toContain('mats');
+
+    // (2) The station panel's own read of this item: routine-sound (so the
+    // OLD gate would have drawn "as new — nothing to repair"), dormant, and
+    // a real recovery blocker. This is the exact state the human's brief
+    // named as reachable before the fix and forbidden after it.
+    const view = stationConditionView(dormant, 'mats');
+    expect(view.isSound).toBe(true);
+    expect(view.dormant).toBe(true);
+    expect(view.blocksRecovery).toBe(true);
+
+    // (3) `FloorGrid.tsx`'s own repair-availability gate, reproduced exactly
+    // (`isSound && !blocksRecovery` draws "nothing to repair"; anything else
+    // reaches the price/afford check). With `blocksRecovery` true this must
+    // NOT read as "nothing to repair" — that is the contradiction the
+    // acceptance bar (§11) forbids as a reachable state.
+    const repairWithheldAsNothingToDo = view.isSound && !view.blocksRecovery;
+    expect(repairWithheldAsNothingToDo).toBe(false);
+    // And the quoted price is the REAL, unrounded repair cost — not the
+    // display-rounded 0 the routine reading alone would have shown, and
+    // affordable against this fixture's purse.
+    expect(view.repairCostGymBucks).toBeGreaterThan(0);
+    expect(view.repairCostGymBucks).toBeLessThanOrEqual(dormant.gym.ladder.gymBucks);
+
+    // (4) Drive the SAME action the panel's button dispatches
+    // (`repair-item` -> `repairEquipment`) — no new formula, no recovery
+    // discount, no automatic charge.
+    const repaired = repairEquipment(dormant, 'mats');
+    expect(repaired.kind).toBe('repaired');
+    if (repaired.kind !== 'repaired') throw new Error('unreachable');
+    expect(repaired.cost).toBe(view.repairCostGymBucks);
+    // The real price was deducted, exactly.
+    expect(repaired.state.gym.ladder.gymBucks).toBe(
+      dormant.gym.ladder.gymBucks - view.repairCostGymBucks,
+    );
+    // The real repair mechanic's own output: full condition, not a
+    // to-the-minimum figure no function charges (`repairCostGymBucks`'s own
+    // header).
+    expect(itemCondition(repaired.state, 'mats')).toBe(1);
+
+    // (5) Recovery re-evaluates from the real post-repair state: `mats` is
+    // no longer one of the blockers (every OTHER owned item was worn to the
+    // same gap condition by this fixture's `withCondition`, so they remain —
+    // this asserts the one thing the repair actually changed, not a false
+    // claim that the whole gym is now ready).
+    expect(recoveryBlockingItems(repaired.state)).not.toContain('mats');
+    expect(stationConditionView(repaired.state, 'mats').blocksRecovery).toBe(false);
+  });
+
+  it('REQUIRED NEGATIVE CONTROL, unaffordable case: the same gap-condition item under a purse below the real repair cost — recovery still names it, the panel quotes the real (unaffordable) price rather than "nothing to repair", and no repair happens', () => {
+    const dormant = dormantAt(GAP_CONDITION, 0);
+    const view = stationConditionView(dormant, 'mats');
+    expect(view.blocksRecovery).toBe(true);
+    expect(view.repairCostGymBucks).toBeGreaterThan(0);
+    expect(view.repairCostGymBucks).toBeGreaterThan(dormant.gym.ladder.gymBucks);
+
+    // `FloorGrid.tsx`'s gate reaches the unaffordable arm, not the
+    // "nothing to repair" arm — this item is not routine-sound-and-clear,
+    // it is a priced refusal.
+    expect(view.isSound && !view.blocksRecovery).toBe(false);
+
+    const outcome = repairEquipment(dormant, 'mats');
+    expect(outcome.kind).toBe('refused');
+    if (outcome.kind === 'refused') expect(outcome.reason).toBe('not-enough-gym-bucks');
+    // State is unchanged by a refusal.
+    expect(itemCondition(outcome.state, 'mats')).toBe(GAP_CONDITION);
+    expect(recoveryBlockingItems(outcome.state)).toContain('mats');
+  });
+
+  it('outside dormancy, a gap-condition item is routine-sound and reads as nothing-to-repair, byte-identically to before this round — `blocksRecovery` never fires on a live gym', () => {
+    const live = withCondition(withMatsOwned(), GAP_CONDITION);
+    expect(failurePhase(live)).toBe('sound');
+    const view = stationConditionView(live, 'mats');
+    expect(view.isSound).toBe(true);
+    expect(view.dormant).toBe(false);
+    expect(view.blocksRecovery).toBe(false);
+    expect(view.displayRepairCostGymBucks).toBe(0);
+    expect(view.isSound && !view.blocksRecovery).toBe(true);
   });
 });

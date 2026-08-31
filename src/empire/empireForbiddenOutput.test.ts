@@ -1626,7 +1626,11 @@ const SURFACE_CENSUS = Object.freeze({
   // stationManagerEffectView). Its interface exports (StationIdentityView,
   // StationOperationView, StationConditionView, StationManagerEffectView) do
   // not count as runtime exports, the same rule stated above.
-  EXPORTS: 380, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
+  // 380 -> 382: GDD §5.14 Stage C.1a's stationView.ts — two new runtime
+  // exports (isRecoveryBlocking, recoveryBlockingItems), the recovery-side
+  // twin of `isSoundCondition`/`wornItems` at the recovery threshold instead
+  // of the maintenance one.
+  EXPORTS: 382, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1752,7 +1756,18 @@ const SURFACE_CENSUS = Object.freeze({
 // (StationIdentityView.kind/StationOperationView.activeMemberType/
 // StationConditionView/StationManagerEffectView.tier all reach pre-existing
 // closed unions at new positions). Read from this pin's own failure value.
-LITERAL_POSITIONS: 3952, // 3791 -> 3792: "kill the mint", re-measured; 3792 -> 3793: its harness fix, re-measured
+// 3952 -> 3970: GDD §5.14 Stage C.1a's stationView.ts —
+// `recoveryBlockingItems`'s return type, `readonly ManagedEquipmentItem[]`,
+// is a genuinely new walk entry point (`stationView.ts#recoveryBlockingItems
+// #return[]`) reaching `ManagedEquipmentItem`'s eighteen members (four
+// `LADDER_EQUIPMENT_ITEMS` plus fourteen `SESSION_EQUIPMENT_ITEMS`) — one new
+// 'literal' position push per member, at a NEW export's path, even though
+// every one of the eighteen VALUES is already known elsewhere (hence
+// `DISTINCT_LITERAL_MEMBERS` below does not move). `isRecoveryBlocking`'s
+// return type is `boolean`, a primitive the walk never pushes a position
+// for, the same as `isSoundCondition`'s addition above. Read from this pin's
+// own failure value.
+LITERAL_POSITIONS: 3970, // 3791 -> 3792: "kill the mint", re-measured; 3792 -> 3793: its harness fix, re-measured
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -1789,6 +1804,10 @@ LITERAL_POSITIONS: 3952, // 3791 -> 3792: "kill the mint", re-measured; 3792 -> 
   // `PacingLadderReading`/`PacingLadderRun`) contribute nothing new: both
   // were already reached through `ladder.ts`'s own `runLadder`/`moveUpLadder`
   // exports. Read from this pin's own failure value.
+  // UNCHANGED at GDD §5.14 Stage C.1a: `recoveryBlockingItems`'s eighteen new
+  // `LITERAL_POSITIONS` pushes above are all `ManagedEquipmentItem` members
+  // already reached elsewhere in the directory (`wornItems` and others carry
+  // the identical union already), so no VALUE is new — only the position.
   DISTINCT_LITERAL_MEMBERS: 230,
   DEPTH_CUTS: 0,
 });
@@ -2953,7 +2972,17 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // is gone with it, a net decrease. Read from this pin's own failure value
   // rather than hand-counted. The set of CONSTRUCTORS below is unchanged:
   // nothing this round touched calls any of the four brand constructors.
-  CALLS_EXAMINED: 2947,
+  // 2947 -> 2956: GDD §5.14 Stage C.1a — nine new call expressions, all in
+  // shipped (non-test) source: `stationView.ts#recoveryBlockingItems`'s own
+  // body (`Object.freeze`, `ownedItemsOf`, `.filter`, `isRecoveryBlocking`,
+  // `itemCondition` — five), `stationView.ts#stationConditionView`'s two new
+  // calls (`failurePhase`, `isRecoveryBlocking`), and `GymScreen.tsx`'s two
+  // (`recoveryBlockingItems(managed)`, `recoveryBlocking.join(', ')`).
+  // `FloorGrid.tsx`'s edits add none — every new expression there is a
+  // property read or a ternary, no new call. Read from this pin's own
+  // failure value rather than hand-counted. The set of CONSTRUCTORS below is
+  // unchanged: none of these nine calls any of the four brand constructors.
+  CALLS_EXAMINED: 2956,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -7943,6 +7972,14 @@ function driveEverything(): readonly DrivenRow[] {
         stationViewModule.displayRepairCostBySoundness(100, condition),
       );
     }
+    // GDD §5.14 Stage C.1a: `isRecoveryBlocking`'s own threshold, the same
+    // three-point boundary shape as `isSoundCondition` above — below, at, and
+    // above `RECOVERY_CONDITION_MIN`, the one threshold the function reads.
+    for (const condition of [0, EMPIRE_TUNING.RECOVERY_CONDITION_MIN, 1]) {
+      drive('isRecoveryBlocking', String(condition), () =>
+        stationViewModule.isRecoveryBlocking(condition),
+      );
+    }
     const freshForPanel = managementModule.createManagedGym();
     for (const item of managementModule.ownedItemsOf(freshForPanel.gym)) {
       drive(
@@ -7958,6 +7995,32 @@ function driveEverything(): readonly DrivenRow[] {
         [freshForPanel],
       );
     }
+    // GDD §5.14 Stage C.1a: `recoveryBlockingItems`, driven over both a
+    // sound gym (empty domain) and a gym worn below the recovery minimum
+    // (non-empty domain) — the same "sound and worn" pairing
+    // `stationConditionView`'s own boundary drive already uses one level up.
+    drive(
+      'recoveryBlockingItems',
+      'sound',
+      () => stationViewModule.recoveryBlockingItems(freshForPanel),
+      [freshForPanel],
+    );
+    const wornForPanel: managementModule.ManagedGym = {
+      ...freshForPanel,
+      condition: Object.freeze(
+        Object.fromEntries(
+          managementModule
+            .ownedItemsOf(freshForPanel.gym)
+            .map((item) => [item, EMPIRE_TUNING.RECOVERY_CONDITION_MIN - 0.1]),
+        ),
+      ) as managementModule.ManagedGym['condition'],
+    };
+    drive(
+      'recoveryBlockingItems',
+      'worn',
+      () => stationViewModule.recoveryBlockingItems(wornForPanel),
+      [wornForPanel],
+    );
     for (const tier of EMPIRE_TUNING.MANAGER_TIERS) {
       const hired = managementModule.hireManager(
         freshForPanel,
@@ -10211,7 +10274,11 @@ const DRIVE_CENSUS = Object.freeze({
   // 593515 -> 593539: GDD §5.14 Stage C's own stationView.ts drive rows —
   // the station/operation/condition/manager-effect rows this file's new
   // "--- stationView.ts" block adds. Read from this pin's own failure value.
-  ROWS: 593539, // 582209 -> 582208: "kill the mint", re-measured
+  // 593539 -> 593544: GDD §5.14 Stage C.1a's own new drive rows — the
+  // `isRecoveryBlocking` three-point boundary loop (3) plus the two
+  // `recoveryBlockingItems` calls (sound, worn). Read from this pin's own
+  // failure value.
+  ROWS: 593544, // 582209 -> 582208: "kill the mint", re-measured
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -10234,7 +10301,9 @@ const DRIVE_CENSUS = Object.freeze({
   // runPacingLadderRealistic, runPacingManagedGym), all driven above.
   // 374 -> 380: GDD §5.14 Stage C's stationView.ts — six new runtime exports,
   // all driven above (the new "--- stationView.ts" block).
-  EXPORTS_DRIVEN: 380, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
+  // 380 -> 382: GDD §5.14 Stage C.1a's stationView.ts — two new runtime
+  // exports (isRecoveryBlocking, recoveryBlockingItems), both driven above.
+  EXPORTS_DRIVEN: 382, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -10320,7 +10389,12 @@ const DRIVE_CENSUS = Object.freeze({
   // line plus a three-way ternary, per owned item) is gone from this screen
   // entirely, so every one of `MANAGED_STATES`' driven renders has fewer
   // nodes on it. Read from this pin's own failure value.
-  NODES: 6490365, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
+  // 6490365 -> 6490388: GDD §5.14 Stage C.1a — the `isRecoveryBlocking`
+  // three-point drive, the two `recoveryBlockingItems` calls, and the
+  // widened `GymScreen`/`FloorGrid` render nodes the new condition/recovery
+  // JSX adds across every driven managed state. Read from this pin's own
+  // failure value.
+  NODES: 6490388, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -10428,7 +10502,11 @@ const DRIVE_CENSUS = Object.freeze({
   // item on any of `MANAGED_STATES`' driven `GymScreen` fixtures, so every
   // string those nodes carried is gone from the walk. Read from this pin's
   // own failure value.
-  STRINGS: 29_956_435,
+  // 29_956_435 -> 29_956_490: GDD §5.14 Stage C.1a — the new drive rows plus
+  // the strings the new condition/recovery JSX carries on every one of
+  // `MANAGED_STATES`' driven renders. Read from this pin's own failure
+  // value.
+  STRINGS: 29_956_490,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -10525,7 +10603,14 @@ const DRIVE_CENSUS = Object.freeze({
   // panel's own copy, already draw them), so removing the loop drops
   // distinct strings without adding any new ones. Read from this pin's own
   // failure value.
-  DISTINCT_STRINGS: 3790,
+  // 3790 -> 3792: GDD §5.14 Stage C.1a — two new distinct strings reach the
+  // driven corpus for the first time: the reworded "no routine maintenance
+  // needed — nothing to repair" (its predecessor "as new — nothing to
+  // repair" is gone from the source entirely, so this is a net swap, not an
+  // addition, on that one string) and the new "blocking reopening:"/recovery
+  // copy the `blocked`-arm `MANAGED_STATES` fixtures now reach. Read from
+  // this pin's own failure value.
+  DISTINCT_STRINGS: 3792,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -14604,7 +14689,9 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // helper's two, stationOperationView's one, isSoundCondition's one,
       // displayRepairCostBySoundness's one, stationConditionView's one, and
       // stationManagerEffectView's two arms.
-      'stationView.ts': 10,
+      // 10 -> 12: GDD §5.14 Stage C.1a's two new one-return functions,
+      // `isRecoveryBlocking` and `recoveryBlockingItems`.
+      'stationView.ts': 12,
     }),
     /**
      * TWO, AND THE TWO ARE THE WRAP'S OWN GATES.
@@ -15592,7 +15679,13 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // `displayRepairCostBySoundness`), each called at least once per owned
   // item across the three-way ternary. Read from this pin's own failure
   // value; the exact call sites are not independently hand-derived.
-  function: 1462,
+  // 1462 -> 1468: GDD §5.14 Stage C.1a — six new calls through a
+  // module-level import: `stationView.ts#recoveryBlockingItems`'s own
+  // `ownedItemsOf`/`isRecoveryBlocking`/`itemCondition` (three),
+  // `stationConditionView`'s two new calls (`failurePhase`,
+  // `isRecoveryBlocking`), and `GymScreen.tsx`'s `recoveryBlockingItems
+  // (managed)`. Read from this pin's own failure value.
+  function: 1468,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -15633,7 +15726,11 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // `.map()` over owned items is gone from `GymScreen.tsx`. Read from this
   // pin's own failure value; the exact call sites are not independently
   // hand-derived.
-  member: 1362,
+  // 1362 -> 1365: GDD §5.14 Stage C.1a — three new member calls:
+  // `stationView.ts#recoveryBlockingItems`'s own `Object.freeze`/`.filter`
+  // (two) and `GymScreen.tsx`'s `recoveryBlocking.join(', ')`. Read from
+  // this pin's own failure value.
+  member: 1365,
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -15800,7 +15897,10 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // `isSoundCondition`/`displayRepairCostBySoundness` — the same two
   // `return` sites the S4f condition-gate round's own comment above added,
   // now removed with the per-item loop that was their only caller.
-  SITES: 754,
+  // 754 -> 756: GDD §5.14 Stage C.1a — two new `return` sites in
+  // stationView.ts (`isRecoveryBlocking`, `recoveryBlockingItems`), per the
+  // byModule row above. No other channel moved.
+  SITES: 756,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -15931,7 +16031,10 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // defect was: by looking at a real screenshot, where the toggle read as
   // plain text indistinguishable from the informational lines around it.
   // Read from this pin's own failure value.
-  NODES_EXAMINED: 64_636,
+  // GDD §5.14 Stage C.1a: re-measured (64_636 -> 64_843) by running this
+  // assertion and reading its failure value, per the rest of this table's
+  // own discipline.
+  NODES_EXAMINED: 64_843,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -16052,7 +16155,11 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // four new exported interfaces reached through those return types. Read
   // from this pin's own failure value; the exact count of new positions per
   // function is not independently hand-derived.
-  POSITIONS: 909,
+  // 909 -> 913: GDD §5.14 Stage C.1a's two new exported functions
+  // (isRecoveryBlocking, recoveryBlockingItems), each contributing one
+  // parameter position and one return position — four, no new exported
+  // interface. Read from this pin's own failure value.
+  POSITIONS: 913,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
