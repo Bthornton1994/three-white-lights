@@ -727,6 +727,11 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
     expect(directMoved.kind).toBe('placed');
     expect(moved.floor).toEqual(directMoved.state);
     expect(Object.keys(moved.floor.placements)).toEqual(['mats']);
+    expect(moved.floor.placements['mats']).toEqual({ x: 5, y: 2 });
+    expect(placed.floor.placements['mats']).toEqual({ x: 5, y: 3 });
+    expect(moved.managed.gym.sessionEquipment).toEqual(placed.managed.gym.sessionEquipment);
+    expect(moved.managed.gym.ladder.gymBucks).toBe(placed.managed.gym.ladder.gymBucks);
+    expect(moved.managed.gym).toEqual(placed.managed.gym);
   });
 
   it('floor-remove: removes a placed item, comparing against removeFloorItem called directly, and clears any refusal', () => {

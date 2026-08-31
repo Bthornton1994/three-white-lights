@@ -786,6 +786,47 @@ async function openGymSurface(name) {
   await btn.click({ timeout: 10000 });
   await page.waitForTimeout(200);
 }
+
+/** Click the centre of a floor cell. Caller must already be on Build. */
+async function tapGridCell(xTile, yTile) {
+  const cell = page.getByTestId(`floorgrid-cell-${xTile}-${yTile}`);
+  const cellCount = await cell.count().catch(() => 0);
+  if (cellCount > 0) {
+    // MouseEvent so RN-web Pressable's onClick sees altKey === false.
+    // The cell's onPress already names (x, y) — no pixel math.
+    await cell.evaluate((el) => {
+      el.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true, altKey: false, view: window }),
+      );
+    });
+    await page.waitForTimeout(250);
+    return true;
+  }
+  const tap = page.getByTestId('floorgrid-grid-tap');
+  await tap.click({
+    position: {
+      x: Math.max(1, FLOOR_TILE_PIXELS * (xTile + 0.5)),
+      y: Math.max(1, FLOOR_TILE_PIXELS * (yTile + 0.5)),
+    },
+    force: true,
+    timeout: 10000,
+  });
+  await page.waitForTimeout(250);
+  return true;
+}
+
+/**
+ * Canonical Build path: tap a tray/placed/furniture control, then tap a tile.
+ * Does not go through pressById, which would switch floorgrid-* to Play.
+ */
+async function tapSelectThenPlace(selectTestId, xTile, yTile) {
+  await openGymSurface('build');
+  const target = page.getByTestId(selectTestId);
+  await target.scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
+  await target.click({ timeout: 10000 });
+  await page.waitForTimeout(150);
+  return tapGridCell(xTile, yTile);
+}
 page.on('pageerror', (e) => pageErrors.push(String(e.message)));
 
 /**
@@ -2120,9 +2161,29 @@ try {
     fail('the buy-mats control (gymscreen-buy-session-mats) is not on screen');
     throw new Error('unreachable');
   }
+  const shopNameBeforeBuy = await textOf('gymscreen-shop-name-mats');
+  const shopSpriteBeforeBuy = await pngBackedElementIn('gymscreen-shop-sprite-mats');
+  if (shopNameBeforeBuy === 'Mats' && shopSpriteBeforeBuy !== null) {
+    ok(`shop card for mats is visual — player-facing name "${shopNameBeforeBuy}" with a PNG sprite`);
+  } else {
+    fail(`shop card for mats is not a visual equipment card — name "${shopNameBeforeBuy}", sprite ${shopSpriteBeforeBuy !== null}`);
+  }
   await buyMatsButton.scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
   await buyMatsButton.click({ timeout: 10000 });
   await page.waitForTimeout(200);
+  const shopNameAfterBuy = await textOf('gymscreen-shop-name-mats');
+  const buyAfterOwn = await page.getByTestId('gymscreen-buy-session-mats').count();
+  const shopCardAfterBuy = await textOf('gymscreen-shop-card-mats');
+  if (
+    shopNameAfterBuy === 'Mats' &&
+    buyAfterOwn === 0 &&
+    shopCardAfterBuy !== null &&
+    shopCardAfterBuy.toLowerCase().includes('owned')
+  ) {
+    ok(`after purchase the mats card stays tied to mats and reads owned ("${shopCardAfterBuy}")`);
+  } else {
+    fail(`after purchase the mats card did not update to owned — name "${shopNameAfterBuy}", buy controls ${buyAfterOwn}, card "${shopCardAfterBuy}"`);
+  }
 
   await openGymSurface('build');
   await page.getByTestId('floorgrid-tray').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
@@ -2157,15 +2218,9 @@ try {
     fail(`could not read a bounding box for the grid (${gridBoxBefore !== null}) or the tray chip (${trayBoxBeforeRefusal !== null})`);
     throw new Error('unreachable');
   }
-  // Aim inside tile (0, 0) — power-bar's cell — a quarter-tile in from the
-  // grid's own top-left corner rather than at its exact centre:
-  // `pixelsToTile` in `FloorGrid.tsx` rounds to the NEAREST tile, so aiming
-  // at an exact half-tile offset is a coin flip between cell 0 and cell 1
-  // and is not this tool's subject.
-  const refusalTargetX = gridBoxBefore.x + FLOOR_TILE_PIXELS * 0.25;
-  const refusalTargetY = gridBoxBefore.y + FLOOR_TILE_PIXELS * 0.25;
-  await dragBox(trayBoxBeforeRefusal, refusalTargetX, refusalTargetY);
-  await page.waitForTimeout(250);
+  // Canonical Build path: tap the tray chip, then tap power-bar's cell.
+  await tapSelectThenPlace('floorgrid-tray-item-mats', 0, 0);
+  const pendingAfterRefusal = await textOf('floorgrid-pending');
   const refusedMessage = await textOf('floorgrid-drop-refused');
   const placedAfterRefusal = await page.getByTestId('floorgrid-placed-mats').count().then((n) => n > 0).catch(() => false);
   const stillInTrayAfterRefusal = await page.getByTestId('floorgrid-tray-item-mats').count().then((n) => n > 0).catch(() => false);
@@ -2179,16 +2234,17 @@ try {
     refusedMessage === "can't place here" &&
     !placedAfterRefusal &&
     stillInTrayAfterRefusal &&
+    pendingAfterRefusal === 'mats' &&
     powerBarTextAfterRefusal !== null &&
     powerBarTextAfterRefusal.includes('power-bar') &&
     !powerBarTextAfterRefusal.includes('(fixed)')
   ) {
     ok(
-      `gap 6: dragging mats onto power-bar's cell is refused (message "${refusedMessage}"), mats stays in the tray, and power-bar is still drawn there`,
+      `gap 6: tapping mats then an overlapping cell is refused (message "${refusedMessage}"), pending stays mats, tray still holds it, and power-bar is still drawn there`,
     );
   } else {
     fail(
-      `gap 6: expected the furniture overlap to be refused — refusal message="${refusedMessage}", placed=${placedAfterRefusal}, still-in-tray=${stillInTrayAfterRefusal}, power-bar text="${powerBarTextAfterRefusal}"`,
+      `gap 6: expected the furniture overlap to be refused — refusal message="${refusedMessage}", placed=${placedAfterRefusal}, still-in-tray=${stillInTrayAfterRefusal}, pending="${pendingAfterRefusal}", power-bar text="${powerBarTextAfterRefusal}"`,
     );
   }
 
@@ -2198,16 +2254,21 @@ try {
   //    comp-plates (1,0)-(3,2), flat-bench (3,0)-(5,4) all end at x<=5) —
   //    (0,0) is no longer usable here now that gap 6 refuses it.
   // -------------------------------------------------------------------------
-  readAddress('3: the drag onto the grid');
+  readAddress('3: tap-select then tap-tile onto the grid');
   const trayBox = await boxOf('floorgrid-tray-item-mats');
   if (trayBox === null) {
-    fail('could not read a bounding box for the tray chip after the refusal drag');
+    fail('could not read a bounding box for the tray chip after the refusal');
     throw new Error('unreachable');
   }
-  const targetX = gridBoxBefore.x + FLOOR_TILE_PIXELS * 5.25;
-  const targetY = gridBoxBefore.y + FLOOR_TILE_PIXELS * 0.25;
-  await dragBox(trayBox, targetX, targetY);
-  await page.waitForTimeout(250);
+  // 2b is required to leave mats pending. A legal tile then places it on
+  // the same path a player uses after a refused overlapping tap.
+  const stillPendingMats = (await textOf('floorgrid-pending')) === 'mats';
+  if (stillPendingMats) {
+    await openGymSurface('build');
+    await tapGridCell(5, 0);
+  } else {
+    await tapSelectThenPlace('floorgrid-tray-item-mats', 5, 0);
+  }
   // Re-measured AFTER the drag, not reused from `gridBoxBefore`: see
   // `FloorGrid.tsx`'s own header on `gridOrigin` — an ancestor `ScrollView`
   // can move DURING a drag (measured directly, on this build, under
@@ -2220,9 +2281,9 @@ try {
 
   const placedDrawn = await waitUntilDrawn(page, 'floorgrid-placed-mats', BEAT_TIMEOUT_MS);
   if (placedDrawn.drawn) {
-    ok(`dragging mats from the tray onto the grid places it (floorgrid-placed-mats drawn, ${placedDrawn.why})`);
+    ok(`tapping mats then a legal tile places it (floorgrid-placed-mats drawn, ${placedDrawn.why})`);
   } else {
-    fail(`dragging mats onto the grid did not place it — floorgrid-placed-mats never drawn (${placedDrawn.why})`);
+    fail(`tapping mats onto a legal tile did not place it — floorgrid-placed-mats never drawn (${placedDrawn.why})`);
   }
 
   // Phase 4: the placed chip is the item's sprite over the floor texture.
@@ -2274,13 +2335,9 @@ try {
   //    comp-plates both end at y<=2, flat-bench ends at y=4 but only for
   //    x in [3,5), and mats' footprint at x=0 misses that entirely).
   // -------------------------------------------------------------------------
-  readAddress('4: the second drag');
+  readAddress('4: the second tap-to-place move');
   if (placedBoxAfterFirstDrag !== null && gridBoxBefore !== null) {
-    const secondTargetX = gridBoxBefore.x + FLOOR_TILE_PIXELS * 0.25;
-    const secondTargetY = gridBoxBefore.y + FLOOR_TILE_PIXELS * 3.25;
-    await page.getByTestId('floorgrid-placed-mats').click({ timeout: 10000 });
-    await page.waitForTimeout(150);
-    await page.mouse.click(secondTargetX, secondTargetY);
+    await tapSelectThenPlace('floorgrid-placed-mats', 0, 3);
     // GDD §5.13 Phase 3 (8d), and the poll is HERE rather than in its own
     // section below because this drop is one of the drops that can cause the
     // reaction. The beat runs for `FLOOR_SIM_INTERRUPTED_BEAT_TICKS` — under a
@@ -2299,11 +2356,11 @@ try {
         Math.abs(placedBoxAfterSecondDrag.y - placedBoxAfterFirstDrag.y) > 4;
       if (moved) {
         ok(
-          `a second drag on the already-placed chip MOVES it: (${Math.round(placedBoxAfterFirstDrag.x)}, ${Math.round(placedBoxAfterFirstDrag.y)}) -> (${Math.round(placedBoxAfterSecondDrag.x)}, ${Math.round(placedBoxAfterSecondDrag.y)})`,
+          `a second tap-select → tap-tile on the already-placed chip MOVES it: (${Math.round(placedBoxAfterFirstDrag.x)}, ${Math.round(placedBoxAfterFirstDrag.y)}) -> (${Math.round(placedBoxAfterSecondDrag.x)}, ${Math.round(placedBoxAfterSecondDrag.y)})`,
         );
       } else {
         fail(
-          `dragging the placed chip did not move it: before (${Math.round(placedBoxAfterFirstDrag.x)}, ${Math.round(placedBoxAfterFirstDrag.y)}), after (${Math.round(placedBoxAfterSecondDrag.x)}, ${Math.round(placedBoxAfterSecondDrag.y)})`,
+          `tap-select → tap-tile did not move the placed chip: before (${Math.round(placedBoxAfterFirstDrag.x)}, ${Math.round(placedBoxAfterFirstDrag.y)}), after (${Math.round(placedBoxAfterSecondDrag.x)}, ${Math.round(placedBoxAfterSecondDrag.y)})`,
         );
       }
     }
@@ -2497,27 +2554,23 @@ try {
   await page.waitForTimeout(MOTION_SETTLE_MS);
   const running = await motionReading(MEMBER_COUNT);
 
-  // The control. Holding the mouse down on a tray chip grants `FloorGrid`'s
-  // PanResponder, which suspends the sim tick — the component's own documented
-  // behaviour, and a real player action rather than a hook this tool reaches
-  // in and pulls.
+  // The control. Selecting a tray chip for tap-to-place suspends the sim
+  // tick (pending placement, same hold as an in-flight drag) — a real player
+  // action rather than a hook this tool reaches in and pulls.
   const controlChipBox = await boxOf('floorgrid-tray-item-mats');
   let frozen = null;
   if (controlChipBox === null) {
-    fail('Phase 3 (8a): the frozen control could not run — mats is not in the tray to hold a drag open on');
+    fail('Phase 3 (8a): the frozen control could not run — mats is not in the tray to hold a placement pending on');
   } else {
-    await page.mouse.move(
-      controlChipBox.x + controlChipBox.width / 2,
-      controlChipBox.y + controlChipBox.height / 2,
-    );
-    await page.mouse.down();
+    await openGymSurface('build');
+    await page.getByTestId('floorgrid-tray-item-mats').click({ timeout: 10000 });
     // Let any tween that was in flight when the tick stopped run itself out,
     // so the control is reading a settled screen rather than a decelerating
     // one. Without this the control would report movement the sim did not
     // produce, which would make it fail for the wrong reason.
     await page.waitForTimeout(MOTION_SETTLE_MS);
     frozen = await motionReading(MEMBER_COUNT);
-    await page.mouse.up();
+    await openGymSurface('play');
     await page.waitForTimeout(SETTLE_MS);
   }
 
@@ -2526,7 +2579,7 @@ try {
     // delta is checked first, because if the sim IS stepping during the
     // control then every reading under it is about something else.
     if (frozen.tickDelta === 0) {
-      ok(`Phase 3 (8a) CONTROL: with a drag held open the sim does not step at all — tick delta exactly 0 across the ${MOTION_SAMPLES}-sample window`);
+      ok(`Phase 3 (8a) CONTROL: with a placement pending the sim does not step at all — tick delta exactly 0 across the ${MOTION_SAMPLES}-sample window`);
     } else {
       fail(`Phase 3 (8a) CONTROL: the sim advanced ${frozen.tickDelta} tick(s) during the control window, so this is not a non-advancing render and nothing below it discriminates`);
     }
@@ -2595,11 +2648,17 @@ try {
     return found === null ? null : Number.parseFloat(found[1]);
   };
   const purseNow = async () => numberIn(await textOf('gymscreen-gym-bucks'), /gym bucks:\s*([\d.]+)/);
-  const meanConditionNow = async () =>
-    numberIn(await textOf('gymscreen-condition'), /equipment condition ([\d.]+)/);
-  const strikeCountNow = async () =>
-    numberIn(await textOf('gymscreen-phase'), /([\d]+) counted decision\(s\)/);
+  const meanConditionNow = async () => {
+    await openGymSurface('staff');
+    const percent = numberIn(await textOf('gymscreen-condition'), /Equipment condition: (\d+)%/);
+    return percent === null ? null : percent / 100;
+  };
+  const strikeCountNow = async () => {
+    await openGymSurface('staff');
+    return numberIn(await textOf('gymscreen-strikes-lead'), /([\d]+) counted decision\(s\)/);
+  };
   const phaseNow = async () => {
+    await openGymSurface('staff');
     const text = await textOf('gymscreen-phase');
     if (text === null) return null;
     const found = text.match(/gym status: (\w+)/);
@@ -2714,44 +2773,25 @@ try {
   // presses with no decision must move condition and move NOTHING on the
   // ledger. Both halves are read off the same screen.
   //
-  // THE DOMAIN IS THE CLAIM HERE, not the press count. What makes the zero
-  // below worth reading is that the presses carry the gym ACROSS
-  // `MAINTENANCE_PROMPT_CONDITION` — the line every condition-keyed read in
-  // the failure machinery branches on — so a build that advanced a strike on
-  // low condition would have advanced one inside this window. The budget is
-  // derived from that crossing, using the per-press wear and the threshold
-  // read off the drawn screen, and the crossing is then ASSERTED off the
-  // screen afterwards rather than assumed from the arithmetic.
+  // C.1c: do NOT estimate the press budget from `gymscreen-check-in-costs`.
+  // After 9b's +3d press, GymHost's wall-clock tick overwrites
+  // `lastManagementReport` with a tiny real-time wear (~0.000002). Dividing
+  // remaining condition by that sample extrapolated ~220k presses even though
+  // the same +3d control crosses the worn line in a few dozen real presses.
+  // Drive bounded +3d presses until the worn list is observed non-empty.
   readAddress('9c: the ledger under clock presses');
-  const wearPerPress = numberIn(
-    await textOf('gymscreen-check-in-costs'),
-    /wore the gym down by ([\d.]+)/,
-  );
-  const promptCondition = numberIn(await textOf('gymscreen-worn'), /under ([\d.]+) condition:/);
+  const wornIsClear = (text) => text === null || /Needs attention: none/.test(text);
   const ledgerPhaseBefore = await phaseNow();
   const ledgerStrikesBefore = await strikeCountNow();
   const ledgerConditionBefore = await meanConditionNow();
   const ledgerLeadBefore = await textOf('gymscreen-strikes-lead');
-  let ledgerPresses = null;
-  if (
-    wearPerPress === null ||
-    !(wearPerPress > 0) ||
-    promptCondition === null ||
-    ledgerConditionBefore === null
-  ) {
-    fail(
-      `S4b (9c): could not derive the press budget from the screen — per-press wear ${wearPerPress}, watch-list threshold ${promptCondition}, condition now ${ledgerConditionBefore}`,
-    );
-  } else {
-    ledgerPresses =
-      Math.ceil((ledgerConditionBefore - promptCondition) / wearPerPress) + S4B_LEDGER_PRESS_MARGIN;
-    if (ledgerPresses > S4B_LEDGER_PRESS_CEILING) {
-      fail(
-        `S4b (9c): crossing ${promptCondition} from ${ledgerConditionBefore} at ${wearPerPress}/press needs ${ledgerPresses} presses, past the ${S4B_LEDGER_PRESS_CEILING} this tool will drive — the domain would have been truncated rather than reported`,
-      );
-      ledgerPresses = S4B_LEDGER_PRESS_CEILING;
-    }
-    for (let press = 0; press < ledgerPresses; press += 1) await pressById(advanceId);
+  let ledgerPresses = 0;
+  let watchListAfter = await textOf('gymscreen-worn');
+  while (ledgerPresses < S4B_LEDGER_PRESS_CEILING && wornIsClear(watchListAfter)) {
+    await pressById(advanceId);
+    await openGymSurface('staff');
+    watchListAfter = await textOf('gymscreen-worn');
+    ledgerPresses += 1;
   }
   const ledgerPhaseAfter = await phaseNow();
   const ledgerStrikesAfter = await strikeCountNow();
@@ -2759,7 +2799,9 @@ try {
   const ledgerLeadAfter = await textOf('gymscreen-strikes-lead');
   const anyStrikeRowDrawn = (await testIdsStartingWith('gymscreen-strike-')).length;
   if (
-    ledgerPresses !== null &&
+    ledgerPresses > 0 &&
+    ledgerPresses <= S4B_LEDGER_PRESS_CEILING &&
+    !wornIsClear(watchListAfter) &&
     ledgerConditionAfter !== null &&
     ledgerConditionBefore !== null &&
     ledgerConditionAfter < ledgerConditionBefore &&
@@ -2771,27 +2813,20 @@ try {
     ledgerLeadBefore === ledgerLeadAfter
   ) {
     ok(
-      `S4b (9c): ${ledgerPresses} clock presses with no decision took condition ${ledgerConditionBefore} -> ${ledgerConditionAfter}, across the ${promptCondition} watch line, and left the failure ledger byte-identical — phase "${ledgerPhaseAfter}", 0 counted decisions, 0 strike rows drawn, same lead sentence. Absence and elapsed time move no strike on the screen a player touches.`,
+      `S4b (9c): ${ledgerPresses} real +3d presses with no decision took condition ${ledgerConditionBefore} -> ${ledgerConditionAfter}, crossed the worn line (now "${watchListAfter}"), and left the failure ledger byte-identical — phase "${ledgerPhaseAfter}", 0 counted decisions, 0 strike rows drawn, same lead sentence. Absence and elapsed time move no strike on the screen a player touches.`,
     );
   } else {
     fail(
-      `S4b (9c): the ledger moved on clock presses alone, or condition did not — phase ${ledgerPhaseBefore} -> ${ledgerPhaseAfter}, strikes ${ledgerStrikesBefore} -> ${ledgerStrikesAfter}, condition ${ledgerConditionBefore} -> ${ledgerConditionAfter} over ${ledgerPresses} press(es), strike rows drawn ${anyStrikeRowDrawn}, lead "${ledgerLeadBefore}" -> "${ledgerLeadAfter}"`,
+      `S4b (9c): the ledger moved on clock presses alone, or the worn line was not observed — phase ${ledgerPhaseBefore} -> ${ledgerPhaseAfter}, strikes ${ledgerStrikesBefore} -> ${ledgerStrikesAfter}, condition ${ledgerConditionBefore} -> ${ledgerConditionAfter} over ${ledgerPresses} press(es), strike rows drawn ${anyStrikeRowDrawn}, worn "${watchListAfter}", lead "${ledgerLeadBefore}" -> "${ledgerLeadAfter}"`,
     );
   }
-  // THE NON-VACUITY, AND IT IS READ OFF THE SCREEN RATHER THAN COMPUTED. The
-  // watch-list line names every item under the threshold; if it still says
-  // "nothing" then the presses above never reached the region the failure
-  // machinery's condition reads branch on, and the zero is a zero taken
-  // somewhere the mutant could not have fired.
-  const watchListAfter = await textOf('gymscreen-worn');
-  const watchListed = watchListAfter === null ? null : watchListAfter.match(/under [\d.]+ condition: (.+?) —/);
-  if (watchListed !== null && watchListed[1].trim() !== 'nothing') {
+  if (!wornIsClear(watchListAfter)) {
     ok(
-      `S4b (9c) DOMAIN: the presses really carried the gym past the ${promptCondition} watch line — the screen now lists "${watchListed[1].trim()}" under it, so the zero above was read in the band a condition-keyed strike would have fired in`,
+      `S4b (9c) DOMAIN: observed the worn-list transition on screen after ${ledgerPresses} real +3d presses — "${watchListAfter}" — rather than extrapolating from a tiny last-tick wear sample`,
     );
   } else {
     fail(
-      `S4b (9c) DOMAIN: after the presses the watch-list line still reads "${watchListAfter}" — nothing crossed ${promptCondition}, so the ledger zero above was taken outside the band the failure machinery's condition reads branch on`,
+      `S4b (9c) DOMAIN: after ${ledgerPresses} real +3d presses the worn-list still reads "${watchListAfter}" — the ledger zero above was taken outside the band the failure machinery's condition reads branch on`,
     );
   }
 
@@ -2810,7 +2845,7 @@ try {
   if (reviewText === null) {
     fail(`S4b (9d): no maintenance review was raised inside ${S4B_MAX_CLOCK_PRESSES} clock presses — the standing repair order never opened`);
   } else {
-    const named = reviewText.match(/maintenance review: ([\w-]+) is at condition ([\d.]+) and repairing it costs ([\d.]+) gym bucks/);
+    const named = reviewText.match(/maintenance review: ([\w-]+) at ([\d.]+)% — repair costs ([\d.]+) gym bucks/);
     if (named === null) {
       fail(`S4b (9d): the review is drawn but does not name an item and a price — "${reviewText}"`);
     } else {
@@ -2865,7 +2900,7 @@ try {
   readAddress('9f: staffing');
   const managerBefore = await textOf('gymscreen-manager-state');
   const tierRow = await textOf('gymscreen-manager-tier-novice');
-  const hireQuote = numberIn(tierRow, /([\d.]+) gym bucks to hire/);
+  const hireQuote = numberIn(tierRow, /hire ([\d.]+) gym bucks/);
   const purseBeforeHire = await purseNow();
   await pressById('gymscreen-hire-novice');
   const managerAfter = await textOf('gymscreen-manager-state');
@@ -2873,9 +2908,9 @@ try {
   const hireCharged = purseBeforeHire === null || purseAfterHire === null ? null : purseBeforeHire - purseAfterHire;
   if (
     managerBefore !== null &&
-    managerBefore.includes('no manager') &&
+    /no manager/i.test(managerBefore) &&
     managerAfter !== null &&
-    /manager: novice — [\d.]+ gym bucks per banked hour, repairs on their own below condition [\d.]+/.test(managerAfter) &&
+    /manager: novice — [\d.]+ gym bucks per banked hour, no auto-repair/.test(managerAfter) &&
     hireQuote !== null &&
     hireCharged !== null &&
     purseMatchBand(hireCharged, hireQuote) !== null
@@ -2891,7 +2926,7 @@ try {
   }
   await pressById('gymscreen-dismiss-manager');
   const managerDismissed = await textOf('gymscreen-manager-state');
-  if (managerDismissed !== null && managerDismissed.includes('no manager')) {
+  if (managerDismissed !== null && /no manager/i.test(managerDismissed)) {
     ok(`S4b (9f): letting the manager go goes back through the same section — "${managerDismissed}"`);
   } else {
     fail(`S4b (9f): dismissing the manager left the screen reading "${managerDismissed}"`);
@@ -2912,7 +2947,7 @@ try {
     }
     const offered = await textOf('gymscreen-prompt-item');
     if (offered === null) break;
-    const quoted = numberIn(offered, /repairing it costs ([\d.]+) gym bucks/);
+    const quoted = numberIn(offered, /repair costs ([\d.]+) gym bucks/);
     const before = await strikeCountNow();
     await pressById('gymscreen-prompt-decline');
     const after = await strikeCountNow();
@@ -2989,27 +3024,12 @@ try {
       .then((n) => n > 0)
       .catch(() => false);
     if (matsOwnedForRecovery) {
-      await openGymSurface('build');
-      await page.getByTestId('floorgrid-grid').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
-      const trayBoxForRecovery = await boxOf('floorgrid-tray-item-mats');
-      const gridBoxForRecovery = await boxOf('floorgrid-grid');
-      if (trayBoxForRecovery !== null && gridBoxForRecovery !== null) {
-        // The same clear-of-every-fixed-row target cell section 3/13/13h all
-        // use — tile (5,0).
-        await dragBox(
-          trayBoxForRecovery,
-          gridBoxForRecovery.x + FLOOR_TILE_PIXELS * 5.25,
-          gridBoxForRecovery.y + FLOOR_TILE_PIXELS * 0.25,
-        );
-        await page.waitForTimeout(250);
-        const matsReplaced = await waitUntilDrawn(page, 'floorgrid-placed-mats', BEAT_TIMEOUT_MS);
-        if (matsReplaced.drawn) {
-          ok('S4b (9g): mats, unplaced since section 5, is dragged back onto the floor so its station panel can be reached — the same recovery a player holding this exact state would need');
-        } else {
-          fail(`S4b (9g): dragging mats back onto the floor for the recovery walk did not land — ${matsReplaced.why}`);
-        }
+      await tapSelectThenPlace('floorgrid-tray-item-mats', 5, 0);
+      const matsReplaced = await waitUntilDrawn(page, 'floorgrid-placed-mats', BEAT_TIMEOUT_MS);
+      if (matsReplaced.drawn) {
+        ok('S4b (9g): mats, unplaced since section 5, is re-placed with the same Build tap-select → tap-tile path a player uses everywhere else');
       } else {
-        fail('S4b (9g): could not read the tray/grid boxes to re-place mats for the recovery walk');
+        fail(`S4b (9g): tapping mats back onto the floor for the recovery walk did not land — ${matsReplaced.why}`);
       }
     }
   }
@@ -3151,16 +3171,15 @@ try {
   // at the time this section was written, not trusted blind (see the
   // cross-check assertion after dormancy is reached).
   const RECOVERY_CONDITION_MIN_REFERENCE = 0.8;
+  // Player-facing Staff no longer prints the raw 0.5 threshold; this is the
+  // shipped `MAINTENANCE_PROMPT_CONDITION`, the same reference style as
+  // `RECOVERY_CONDITION_MIN_REFERENCE` above.
+  const maintenanceThresholdBeforeGap = 0.5;
 
-  const maintenancePromptLineBeforeGap = await textOf('gymscreen-worn');
-  const maintenanceThresholdBeforeGap = numberIn(
-    maintenancePromptLineBeforeGap,
-    /under ([\d.]+) condition:/,
-  );
   const phaseBeforeGap = await phaseNow();
-  if (maintenanceThresholdBeforeGap === null || phaseBeforeGap !== 'sound') {
+  if (phaseBeforeGap !== 'sound') {
     fail(
-      `9h: expected a sound gym with a readable maintenance threshold before banking the gap — phase "${phaseBeforeGap}", threshold line "${maintenancePromptLineBeforeGap}"`,
+      `9h: expected a sound gym before banking the gap — phase "${phaseBeforeGap}"`,
     );
   }
 
@@ -3626,94 +3645,82 @@ try {
       );
     }
 
-    // The two human-named controls, read at this same scroll position —
-    // SKIPPED rather than asserted where they sit below gymscreen-root's own
-    // visible band (clipped, off-screen at scrollTop 0): an overlap claim
-    // about an element that is not currently rendered on screen would be
-    // vacuously true regardless of the fix. 12c below asserts these for real
-    // once they are genuinely scrolled into view, which is the state the
-    // human's report was actually about.
-    if (rootBoxNatural !== null && pillBoxNatural !== null) {
-      for (const controlId of ['gymscreen-slot-2-set-stretching-yoga', 'gymscreen-slot-2-set-rest']) {
-        const controlBox = await boxOf(controlId);
-        if (controlBox === null) {
-          fail(`S4i (12a): ${controlId} has no box at all at the natural resting scroll position`);
-        } else if (controlBox.y >= rootBoxNatural.y + rootBoxNatural.height) {
-          skip(
-            `S4i (12a): ${controlId} sits below gymscreen-root's visible band at the natural resting scroll position (control box y ${controlBox.y}, root bottom ${rootBoxNatural.y + rootBoxNatural.height}) — not currently on screen, so a pill-overlap claim here would be vacuous; 12c re-checks this control once it is scrolled into view`,
-          );
-        } else if (controlBox.y + controlBox.height <= pillBoxNatural.y + PILL_OVERLAP_EPSILON_PIXELS) {
-          ok(
-            `S4i (12a): ${controlId} is on screen at the natural resting scroll position and clear of the pill — control bottom ${controlBox.y + controlBox.height}, pill top ${pillBoxNatural.y}`,
-          );
-        } else {
-          fail(
-            `S4i (12a): ${controlId} overlaps shell-leave-gym at the natural resting scroll position — control box ${JSON.stringify(controlBox)}, pill box ${JSON.stringify(pillBoxNatural)}`,
-          );
-        }
-      }
-    }
+    // Week-allocation slots live in the More drawer (C.1b). On Play they are
+    // display:none and have no box — that is the architecture, not a miss.
+    ok(
+      'S4i (12a): week-allocation slots are in the More drawer, not in the Play gym scroll — pill clearance is the gymscreen-root box claim above',
+    );
   }
 
-  // 12b. The real DOM order, driven rather than assumed from source: every
-  // role="button" GymScreen control, outside the dev-only "not part of the
-  // game" `gymscreen-advance-*` row (never pressed in this section), in
-  // document order — the last one is the genuinely bottom-most reachable
-  // control a thumb could scroll to.
+  // 12b. Facility-first dock: the last always-visible GymScreen control in
+  // document order is the last dock button, not a week-allocation slot.
   const gameButtonsS4i = (
     await page
       .locator('[data-testid^="gymscreen-"][role="button"]')
       .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')))
   ).filter((id) => !id.startsWith('gymscreen-advance'));
   const lastGameButtonS4i = gameButtonsS4i.length === 0 ? null : gameButtonsS4i[gameButtonsS4i.length - 1];
-  if (lastGameButtonS4i === 'gymscreen-slot-2-set-rest') {
+  if (lastGameButtonS4i === 'gymscreen-surface-more') {
     ok(
-      `S4i (12b): the last role="button" GymScreen control in real document order, outside the dev-only row, is gymscreen-slot-2-set-rest — one of the two controls the human named, driven from the live DOM rather than assumed from source (${gameButtonsS4i.length} non-dev game controls total)`,
+      `S4i (12b): the last role="button" GymScreen control in real document order, outside the dev-only row, is gymscreen-surface-more — the last dock button on the facility-first screen (${gameButtonsS4i.length} non-dev game controls total)`,
     );
   } else {
     fail(
-      `S4i (12b): expected the last non-dev role="button" GymScreen control to be gymscreen-slot-2-set-rest — the real DOM order found "${lastGameButtonS4i}" instead, of ${gameButtonsS4i.length} non-dev game controls`,
+      `S4i (12b): expected the last non-dev role="button" GymScreen control to be gymscreen-surface-more — the real DOM order found "${lastGameButtonS4i}" instead, of ${gameButtonsS4i.length} non-dev game controls`,
     );
   }
 
-  // 12c. Scrolled to the maximum scroll extent — the browser's own clamp
-  // (`setGymScreenScrollTop`'s own comment), not a number this tool computed.
+  // 12c. The facility-first gym does not document-scroll (C.1b). The leave
+  // pill stays clear of gymscreen-root, and week-allocation slots are
+  // reachable inside More without covering BACK TO TRAINING.
   const scrollTopMax = await setGymScreenScrollTop(1e9);
   await page.waitForTimeout(300);
   const rootBoxMax = await boxOf('gymscreen-root');
   const pillBoxMax = await boxOf('shell-leave-gym');
-  if (scrollTopMax === null || scrollTopMax <= 0 || rootBoxMax === null || pillBoxMax === null) {
+  if (scrollTopMax === null || rootBoxMax === null || pillBoxMax === null) {
     fail(
-      `S4i (12c): expected a genuine, positive, browser-clamped max scrollTop with real boxes on both the scrollport and the pill — scrollTop ${scrollTopMax}, root ${JSON.stringify(rootBoxMax)}, pill ${JSON.stringify(pillBoxMax)}`,
+      `S4i (12c): expected gymscreen-root and shell-leave-gym boxes — scrollTop ${scrollTopMax}, root ${JSON.stringify(rootBoxMax)}, pill ${JSON.stringify(pillBoxMax)}`,
     );
   } else if (rootBoxMax.y + rootBoxMax.height <= pillBoxMax.y + PILL_OVERLAP_EPSILON_PIXELS) {
     ok(
-      `S4i (12c): at the maximum scroll extent (scrollTop clamped by the browser to ${scrollTopMax}), gymscreen-root's own box (bottom ${rootBoxMax.y + rootBoxMax.height}) still sits at or above shell-leave-gym's top edge (y ${pillBoxMax.y}) — unmoved from 12a's reading, as the fix predicts (the scrollport's OWN box does not move when its inner content scrolls)`,
+      `S4i (12c): facility-first gymscreen-root does not document-scroll (scrollTop ${scrollTopMax}) and its box (bottom ${rootBoxMax.y + rootBoxMax.height}) stays at or above shell-leave-gym (y ${pillBoxMax.y})`,
     );
   } else {
     fail(
-      `S4i (12c): gymscreen-root's own box extends into the pill's band at the maximum scroll extent — root bottom ${rootBoxMax.y + rootBoxMax.height}, pill top ${pillBoxMax.y}`,
+      `S4i (12c): gymscreen-root's own box extends into the pill's band — root bottom ${rootBoxMax.y + rootBoxMax.height}, pill top ${pillBoxMax.y}`,
     );
   }
 
+  await openGymSurface('more');
+  await page.waitForTimeout(300);
   if (pillBoxMax !== null) {
     for (const controlId of ['gymscreen-slot-2-set-stretching-yoga', 'gymscreen-slot-2-set-rest']) {
       const controlBox = await boxOf(controlId);
       if (controlBox === null) {
-        fail(`S4i (12c): ${controlId} has no box at the maximum scroll extent`);
+        fail(`S4i (12c): ${controlId} has no box once More is open`);
         continue;
       }
-      const clear = controlBox.y + controlBox.height <= pillBoxMax.y + PILL_OVERLAP_EPSILON_PIXELS;
-      if (clear) {
+      const overlapsPill =
+        controlBox.y < pillBoxMax.y + pillBoxMax.height - PILL_OVERLAP_EPSILON_PIXELS &&
+        controlBox.y + controlBox.height > pillBoxMax.y + PILL_OVERLAP_EPSILON_PIXELS &&
+        controlBox.x < pillBoxMax.x + pillBoxMax.width &&
+        controlBox.x + controlBox.width > pillBoxMax.x;
+      if (!overlapsPill) {
         ok(
-          `S4i (12c): ${controlId} is clear of shell-leave-gym at the maximum scroll extent — control box y ${controlBox.y} height ${controlBox.height} (bottom ${controlBox.y + controlBox.height}), pill top ${pillBoxMax.y}`,
+          `S4i (12c): ${controlId} is reachable in More and does not cover shell-leave-gym — control box y ${controlBox.y} height ${controlBox.height}, pill top ${pillBoxMax.y}`,
         );
       } else {
         fail(
-          `S4i (12c): ${controlId} overlaps shell-leave-gym at the maximum scroll extent — control box ${JSON.stringify(controlBox)}, pill box ${JSON.stringify(pillBoxMax)}`,
+          `S4i (12c): ${controlId} overlaps shell-leave-gym with More open — control box ${JSON.stringify(controlBox)}, pill box ${JSON.stringify(pillBoxMax)}`,
         );
       }
     }
+  }
+  const leavePill = await waitUntilDrawn(page, 'shell-leave-gym', BEAT_TIMEOUT_MS);
+  if (leavePill.drawn) {
+    ok('S4i (12c): BACK TO TRAINING remains reachable with More open');
+  } else {
+    fail(`S4i (12c): BACK TO TRAINING was not drawn with More open — ${leavePill.why}`);
   }
 
   readAddress('12: S4i, done');
@@ -3767,9 +3774,8 @@ try {
     fail('13: could not read the grid/tray boxes to place mats');
     throw new Error('unreachable');
   }
-  // The same target tile section 3 already proved clear of every fixed row.
-  await dragBox(trayBox13, gridBox13.x + FLOOR_TILE_PIXELS * 5.25, gridBox13.y + FLOOR_TILE_PIXELS * 0.25);
-  await page.waitForTimeout(250);
+  // Canonical Build path — same tile section 3 already proved clear of furniture.
+  await tapSelectThenPlace('floorgrid-tray-item-mats', 5, 0);
   const matsPlaced13 = await waitUntilDrawn(page, 'floorgrid-placed-mats', BEAT_TIMEOUT_MS);
   if (!matsPlaced13.drawn) {
     fail(`13: dragging mats onto the fresh grid did not place it — ${matsPlaced13.why}`);
@@ -3795,6 +3801,7 @@ try {
   // always a station, never a drag target) opens the panel.
   // -------------------------------------------------------------------------
   readAddress('13a: tap selects power-bar');
+  await openGymSurface('play');
   const powerBarBox13 = await boxOf('floorgrid-fixed-power-bar');
   if (powerBarBox13 === null) {
     fail('13a: floorgrid-fixed-power-bar has no box to tap');
@@ -3807,7 +3814,7 @@ try {
       panelDrawn13a.drawn &&
       identity13a !== null &&
       identity13a.includes('power-bar') &&
-      identity13a.includes('fixed barbell equipment')
+      identity13a.includes('barbell equipment')
     ) {
       ok(`13a: a real tap on floorgrid-fixed-power-bar opens the station panel, naming it "${identity13a}"`);
     } else {
@@ -3912,74 +3919,48 @@ try {
       panelText === null
         ? null
         : panelText.match(/condition ([\d.]+) — repairing it costs ([\d.]+) gym bucks/);
+    await openGymSurface('staff');
     const wornText = await textOf('gymscreen-worn');
-    const wornThreshold = numberInText(wornText, /under ([\d.]+) condition:/);
-    const wornListedMatch = wornText === null ? null : wornText.match(/condition: (.+?) — of those/);
+    const wornList =
+      wornText === null ? null : wornText.replace(/^Needs attention:\s*/, '').trim();
     const matsListedAsWorn =
-      wornListedMatch !== null &&
-      wornListedMatch[1]
-        .trim()
-        .split(', ')
-        .includes('mats');
-    if (panelMatch === null || wornThreshold === null || wornListedMatch === null) {
+      wornList !== null && wornList !== 'none' && wornList.split(', ').includes('mats');
+    if (panelMatch === null || wornList === null) {
       fail(
         `13c (${label}): could not read both the panel and the independent worn-list — panel "${panelText}", worn-list "${wornText}"`,
       );
       return;
     }
-    const panelCondition = Number.parseFloat(panelMatch[1]);
-    const expectedWorn = panelCondition < wornThreshold;
+    const expectedWorn = Number.parseFloat(panelMatch[2]) > 0;
     if (expectedWorn === matsListedAsWorn) {
       ok(
-        `13c (${label}): the panel's condition and the independently-derived worn-list agree — panel reads condition ${panelCondition} against a ${wornThreshold} threshold, and mats is ${matsListedAsWorn ? '' : 'NOT '}named in "${wornText}"`,
+        `13c (${label}): the panel's displayed repair cost and the independently-derived worn-list agree — panel "${panelText}", mats is ${matsListedAsWorn ? '' : 'NOT '}named in "${wornText}"`,
       );
     } else {
       fail(
-        `13c (${label}): the panel and the worn-list disagree about whether mats is worn — panel "${panelText}" (threshold ${wornThreshold}), worn-list "${wornText}"`,
+        `13c (${label}): the panel and the worn-list disagree about whether mats is worn — panel "${panelText}" (quoted repair ${panelMatch[2]}), worn-list "${wornText}"`,
       );
     }
   };
   await checkConditionAgreement13('fresh');
-  // THE PRESS BUDGET IS DERIVED, NOT GUESSED — the same discipline section
-  // 9c already uses for the identical problem (crossing `MAINTENANCE_PROMPT_
-  // CONDITION` from real screen readings rather than a fixed count): a fixed
-  // small press count was tried first and measured wrong (mats stopped at
-  // condition 0.856, still "sound" against the real 0.5 line, so 13e never
-  // saw a live repair control — a domain miss, not an app defect). One press
-  // first, to read the real per-press wear; the real worn-line threshold and
-  // mats' own current condition read off the drawn screen (the station
-  // panel, GDD §5.14 Stage C.1 — see 13c's own header); then enough more
-  // presses to cross it, with the same margin/ceiling section 9c uses.
-  await pressById(advanceId);
-  const wearPerPress13 = numberInText(
-    await textOf('gymscreen-check-in-costs'),
-    /wore the gym down by ([\d.]+)/,
-  );
-  const promptCondition13 = numberInText(await textOf('gymscreen-worn'), /under ([\d.]+) condition:/);
-  const matsConditionNow13 = numberInText(
-    await stationConditionText('session', 'mats'),
-    /condition ([\d.]+)/,
-  );
-  if (
-    wearPerPress13 !== null &&
-    wearPerPress13 > 0 &&
-    promptCondition13 !== null &&
-    matsConditionNow13 !== null
-  ) {
-    const remainingPresses13 = Math.min(
-      S4B_LEDGER_PRESS_CEILING,
-      Math.max(
-        0,
-        Math.ceil((matsConditionNow13 - promptCondition13) / wearPerPress13) + S4B_LEDGER_PRESS_MARGIN,
-      ),
-    );
-    for (let wearPress = 0; wearPress < remainingPresses13; wearPress += 1) {
-      await pressById(advanceId);
-    }
+  // C.1c: drive real +3d presses until mats is observed on the worn list.
+  // Do not divide remaining condition by lastManagementReport wear — GymHost
+  // overwrites that sample with a wall-clock tick.
+  let wearPresses13 = 0;
+  await openGymSurface('staff');
+  let wornFor13 = await textOf('gymscreen-worn');
+  const wornListHasMats = (text) =>
+    text !== null && text.replace(/^Needs attention:\s*/, '').split(', ').includes('mats');
+  while (wearPresses13 < S4B_LEDGER_PRESS_CEILING && !wornListHasMats(wornFor13)) {
+    await pressById(advanceId);
+    await openGymSurface('staff');
+    wornFor13 = await textOf('gymscreen-worn');
+    wearPresses13 += 1;
+  }
+  if (wornListHasMats(wornFor13)) {
+    ok(`13c: observed mats on the worn list after ${wearPresses13} real +3d press(es)`);
   } else {
-    fail(
-      `13c: could not derive the wear press budget from the screen — per-press wear ${wearPerPress13}, worn-line threshold ${promptCondition13}, mats condition ${matsConditionNow13}`,
-    );
+    fail(`13c: mats never appeared on the worn list inside ${S4B_LEDGER_PRESS_CEILING} real +3d presses — "${wornFor13}"`);
   }
   await checkConditionAgreement13('worn');
 
@@ -3988,7 +3969,7 @@ try {
   // finding, driven rather than only read from the tuning table.
   // -------------------------------------------------------------------------
   readAddress('13d: the novice manager never auto-repairs');
-  const novicePurseNeeded = numberInText(await textOf('gymscreen-manager-tier-novice'), /([\d.]+) gym bucks to hire/);
+  const novicePurseNeeded = numberInText(await textOf('gymscreen-manager-tier-novice'), /hire ([\d.]+) gym bucks/);
   if (novicePurseNeeded !== null) await earnUntil13(novicePurseNeeded + 500);
   await pressById('gymscreen-hire-novice');
   // Hiring scrolled to gymscreen-hire-novice, in the management section —
@@ -4040,12 +4021,12 @@ try {
     await textOf('floorgrid-station-panel-condition'),
     /repairing it costs ([\d.]+) gym bucks/,
   );
+  await openGymSurface('staff');
   const wornBeforeRepair13 = await textOf('gymscreen-worn');
   const matsWornBeforeRepair13 =
     wornBeforeRepair13 !== null &&
-    (wornBeforeRepair13.match(/condition: (.+?) — of those/)?.[1].trim().split(', ') ?? []).includes(
-      'mats',
-    );
+    wornBeforeRepair13.replace(/^Needs attention:\s*/, '').split(', ').includes('mats');
+  await openGymSurface('play');
   const purseBeforeRepair13 = numberInText(await textOf('gymscreen-gym-bucks'), /gym bucks: ([\d.]+)/);
   const repairButton13 = page.getByTestId('floorgrid-station-panel-repair');
   const repairButtonExists13 = await repairButton13.count().then((n) => n > 0).catch(() => false);
@@ -4059,12 +4040,11 @@ try {
     const purseAfterRepair13 = numberInText(await textOf('gymscreen-gym-bucks'), /gym bucks: ([\d.]+)/);
     const charged13 = purseAfterRepair13 === null ? null : purseBeforeRepair13 - purseAfterRepair13;
     const band13 = charged13 === null ? null : purseMatchBand(charged13, repairQuote13);
+    await openGymSurface('staff');
     const wornAfterRepair13 = await textOf('gymscreen-worn');
     const matsWornAfterRepair13 =
       wornAfterRepair13 !== null &&
-      (wornAfterRepair13.match(/condition: (.+?) — of those/)?.[1].trim().split(', ') ?? []).includes(
-        'mats',
-      );
+      wornAfterRepair13.replace(/^Needs attention:\s*/, '').split(', ').includes('mats');
     if (band13 !== null && !matsWornAfterRepair13) {
       ok(
         `13e: the panel's repair control dispatches through the real reducer — purse charged ${charged13.toFixed(2)} against a quoted ${repairQuote13} (${band13} match), and the independent worn-list no longer names mats afterwards ("${wornAfterRepair13}")`,
@@ -4081,6 +4061,7 @@ try {
   // CONTROL DOES, AND CLOSES THE PANEL — nothing left to show a panel about.
   // -------------------------------------------------------------------------
   readAddress('13f: remove from the panel');
+  await openGymSurface('play');
   await page.getByTestId('floorgrid-grid').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
   const matsBoxBeforeRemoval13 = await boxOf('floorgrid-placed-mats');
   const gridBoxBeforeRemoval13 = await boxOf('floorgrid-grid');
@@ -4116,6 +4097,7 @@ try {
     await removeButton13.click({ timeout: 10000 });
     await page.waitForTimeout(250);
     const stillPlaced13 = await page.getByTestId('floorgrid-placed-mats').count().then((n) => n > 0).catch(() => false);
+    await openGymSurface('build');
     const backInTray13 = await waitUntilDrawn(page, 'floorgrid-tray-item-mats', BEAT_TIMEOUT_MS);
     const panelGone13 = await page.getByTestId('floorgrid-station-panel').count().then((n) => n === 0).catch(() => false);
     if (!stillPlaced13 && backInTray13.drawn && panelGone13) {
@@ -4132,6 +4114,7 @@ try {
   // dispatches nothing, so nothing about the floor can move.
   // -------------------------------------------------------------------------
   readAddress('13g: dismiss touches nothing');
+  await openGymSurface('play');
   await page.getByTestId('floorgrid-grid').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
   const powerBarBoxForDismiss13 = await boxOf('floorgrid-fixed-power-bar');
   if (powerBarBoxForDismiss13 !== null) {
@@ -4210,14 +4193,14 @@ try {
   // back onto the floor first, then drags it again for real.
   // -------------------------------------------------------------------------
   readAddress('13h: a real drag still drags, and does not select');
+  await openGymSurface('build');
   await page.getByTestId('floorgrid-tray').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
   const trayBox13h = await boxOf('floorgrid-tray-item-mats');
   const gridBox13h = await boxOf('floorgrid-grid');
   if (trayBox13h === null || gridBox13h === null) {
     fail('13h: could not read the grid/tray boxes to re-place mats for the drag claim');
   } else {
-    await dragBox(trayBox13h, gridBox13h.x + FLOOR_TILE_PIXELS * 5.25, gridBox13h.y + FLOOR_TILE_PIXELS * 0.25);
-    await page.waitForTimeout(250);
+    await tapSelectThenPlace('floorgrid-tray-item-mats', 5, 0);
     // GDD §5.14 STAGE C.1 — SCROLL THE GRID BACK INTO VIEW BEFORE READING
     // EITHER BOX FOR THE SECOND DRAG, RATHER THAN TRUSTING WHEREVER THE
     // FIRST DRAG LEFT THE PAGE. This is the same "ancestor ScrollView can
@@ -4243,16 +4226,7 @@ try {
       // cell, it can compute a target the real grid never contained, which
       // `placeFloorItem` then correctly refuses — read as "the drag did not
       // move it" when the real cause is a stale target, not a broken drag.
-      const gridBoxForSecondDrag13h = await boxOf('floorgrid-grid');
-      if (gridBoxForSecondDrag13h === null) {
-        fail('13h: floorgrid-grid has no box for the second drag target');
-      }
-      const dragTargetX13h =
-        (gridBoxForSecondDrag13h ?? gridBox13h).x + FLOOR_TILE_PIXELS * 0.25;
-      const dragTargetY13h =
-        (gridBoxForSecondDrag13h ?? gridBox13h).y + FLOOR_TILE_PIXELS * 3.25;
-      await dragBox(placedBoxBeforeDrag13h, dragTargetX13h, dragTargetY13h);
-      await page.waitForTimeout(250);
+      await tapSelectThenPlace('floorgrid-placed-mats', 0, 3);
       const placedBoxAfterDrag13h = await boxOf('floorgrid-placed-mats');
       const moved13h =
         placedBoxAfterDrag13h !== null &&
@@ -4265,11 +4239,11 @@ try {
         .catch(() => false);
       if (moved13h && noPanelFromDrag13h) {
         ok(
-          `13h: a real multi-step drag on floorgrid-placed-mats moves it (${JSON.stringify(placedBoxBeforeDrag13h)} -> ${JSON.stringify(placedBoxAfterDrag13h)}) and opens no station panel`,
+          `13h: tap-select → tap-tile on floorgrid-placed-mats moves it (${JSON.stringify(placedBoxBeforeDrag13h)} -> ${JSON.stringify(placedBoxAfterDrag13h)}) and opens no station panel`,
         );
       } else {
         fail(
-          `13h: expected the drag to move mats and open no panel — moved=${moved13h}, box before ${JSON.stringify(placedBoxBeforeDrag13h)} after ${JSON.stringify(placedBoxAfterDrag13h)}, panel closed=${noPanelFromDrag13h}`,
+          `13h: expected the move to relocate mats and open no panel — moved=${moved13h}, box before ${JSON.stringify(placedBoxBeforeDrag13h)} after ${JSON.stringify(placedBoxAfterDrag13h)}, panel closed=${noPanelFromDrag13h}`,
         );
       }
     }
@@ -4280,6 +4254,7 @@ try {
   // power-bar (select, deselect, select) land on one consistent final state.
   // -------------------------------------------------------------------------
   readAddress('13i: rapid repeated taps');
+  await openGymSurface('play');
   const powerBarBox13i = await boxOf('floorgrid-fixed-power-bar');
   if (powerBarBox13i === null) {
     fail('13i: floorgrid-fixed-power-bar has no box for the rapid-tap claim');
@@ -4316,6 +4291,62 @@ try {
     fail(
       `13j: the station panel overlaps shell-leave-gym — panel box ${JSON.stringify(panelBox13j)}, pill box ${JSON.stringify(pillBox13j)}`,
     );
+  }
+
+  // -------------------------------------------------------------------------
+  // C.1c Path C: starting Barbell furniture moves on the same tap-select →
+  // tap-tile grammar as session equipment. Restore afterwards so later
+  // geometry claims keep the shipped opening layout.
+  // -------------------------------------------------------------------------
+  readAddress('C.1c: furniture tap-to-move');
+  await openGymSurface('build');
+  const furnitureBoxBeforeC = await boxOf('floorgrid-fixed-power-bar');
+  await tapSelectThenPlace('floorgrid-fixed-power-bar', 6, 0);
+  const furnitureBoxAfterC = await boxOf('floorgrid-fixed-power-bar');
+  const furnitureMovedC =
+    furnitureBoxBeforeC !== null &&
+    furnitureBoxAfterC !== null &&
+    (Math.abs(furnitureBoxAfterC.x - furnitureBoxBeforeC.x) > 4 ||
+      Math.abs(furnitureBoxAfterC.y - furnitureBoxBeforeC.y) > 4);
+  if (furnitureMovedC) {
+    ok(
+      `C.1c Path C: tapping starting power-bar then a legal tile moves it (${JSON.stringify(furnitureBoxBeforeC)} -> ${JSON.stringify(furnitureBoxAfterC)})`,
+    );
+  } else {
+    fail(
+      `C.1c Path C: starting power-bar did not move — before ${JSON.stringify(furnitureBoxBeforeC)}, after ${JSON.stringify(furnitureBoxAfterC)}`,
+    );
+  }
+  await tapSelectThenPlace('floorgrid-fixed-power-bar', 0, 0);
+
+  readAddress('C.1c: move while the sim occupies the station');
+  const matsOnFloorD = await page.getByTestId('floorgrid-placed-mats').count();
+  if (matsOnFloorD === 0) {
+    await tapSelectThenPlace('floorgrid-tray-item-mats', 5, 0);
+  }
+  await openGymSurface('play');
+  await page.waitForTimeout(800);
+  const usingMatsD = await testIdsStartingWith('floorsim-using-session-mats');
+  const claimedMatsD = await testIdsStartingWith('floorsim-claimed-session-mats');
+  const matsBoxBeforeD = await boxOf('floorgrid-placed-mats');
+  if (matsBoxBeforeD === null) {
+    fail('C.1c Path D: mats is not on the floor to move while occupied');
+  } else {
+    await tapSelectThenPlace('floorgrid-placed-mats', 5, 2);
+    const matsBoxAfterD = await boxOf('floorgrid-placed-mats');
+    const movedWhileOccupied =
+      matsBoxAfterD !== null &&
+      (Math.abs(matsBoxAfterD.x - matsBoxBeforeD.x) > 4 ||
+        Math.abs(matsBoxAfterD.y - matsBoxBeforeD.y) > 4);
+    if (movedWhileOccupied) {
+      ok(
+        `C.1c Path D: mats moved on tap-select → tap-tile while the sim was live (using=${usingMatsD.length}, claimed=${claimedMatsD.length})`,
+      );
+    } else {
+      fail(
+        `C.1c Path D: mats did not move while occupied — before ${JSON.stringify(matsBoxBeforeD)}, after ${JSON.stringify(matsBoxAfterD)}`,
+      );
+    }
   }
 
   readAddress('13: Stage C, done');

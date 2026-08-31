@@ -3172,6 +3172,37 @@ than the ruling's own §1–§23 sequence:
   remote management, full unattended staffing.
 - **Stage G.** NPC roster/tenure depth (item 6).
 
+### Human Stage C rejection at `f097695b`
+
+The human personally played the build and found:
+
+- the gym was visually subordinate to textual UI;
+- equipment placement did not work reliably;
+- starting Barbell equipment could not be rearranged;
+- members were not interactive;
+- Empire felt like a text/debug screen with a video playing in it.
+
+Therefore Stage C remained open. Automated checks at that SHA correctly proved mechanical paths (buy, repair, hire, fail, recover) but did not prove game feel. Those historical checks are not rewritten as failures.
+
+### C.1b direction
+
+The human ruling authorized, and C.1b implemented:
+
+- a viewport-first Empire screen (HUD + gym stage + bottom dock);
+- explicit Build mode;
+- deterministic tap-to-place (tap a piece, then tap a tile);
+- movable starting Barbell layout state;
+- transient member inspection;
+- Shop / Staff / More as secondary drawers over the gym.
+
+C.1b is **not** human-approved. It remains pending the human gate.
+
+### C.1c
+
+C.1c closes implementation defects and contract misses from the C.1b handoff before the second human playtest: already-placed equipment must move on the tap-select → tap-tile path even while the simulator occupies it; recovery re-placement uses that same Build path; the Shop is a visual equipment-card drawer; Staff is player-facing rather than diagnostic; the 9c verifier no longer extrapolates a huge press budget from a tiny overwritten wear sample.
+
+Stage C stays open until the human's second playtest. C.2 / Stage D are not started.
+
 **Explicitly not reopened by this section:** §5.13 Phase 4's art gate, which
 stands exactly where its own text leaves it — *"holds/stops here until a
 human names the next thing"* — this ruling's emphasis on mechanical depth

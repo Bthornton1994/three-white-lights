@@ -248,29 +248,32 @@
  * duplicated the station panel.
  */
 
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { EMPIRE_TUNING } from './empireTuning';
 import { FloorGrid } from './FloorGrid';
 import { GYM_SURFACES, type GymViewAction, type GymViewProps } from './ladderView';
 import {
-  conditionIncomeMultiplier,
   failurePhase,
   fullRepairCostGymBucks,
   itemCondition,
-  managerAutoRepairCondition,
   managerHireCostGymBucks,
   managerWageRatePerBankedHour,
   maintenancePrompt,
   meanCondition,
   recoveryRepairCostGymBucks,
   recoveryRequirement,
-  reviewBankedTime,
-  unansweredItems,
   warningSigns,
   wornItems,
 } from './management';
-import { recoveryBlockingItems } from './stationView';
+import { FLOOR_SPRITE_URIS } from './floorSprites';
+import {
+  displayConditionPercent,
+  playerFacingActivityGroupLabel,
+  playerFacingEquipmentLabel,
+  playerFacingManagerCapability,
+  recoveryBlockingItems,
+} from './stationView';
 import {
   describeLadderClock,
   ladderDevTimeSteps,
@@ -394,6 +397,25 @@ const styles = StyleSheet.create({
   dockButtonActive: {
     backgroundColor: GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR,
   },
+  shopCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    padding: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
+    borderWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
+    borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
+    borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS,
+    backgroundColor: GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR,
+  },
+  shopSprite: {
+    width: EMPIRE_TUNING.FLOOR_TILE_PIXELS_MAX,
+    height: EMPIRE_TUNING.FLOOR_TILE_PIXELS_MAX,
+    marginRight: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+  },
+  shopCardBody: {
+    flexGrow: 1,
+    flexShrink: 1,
+  },
   button: {
     paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
     paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
@@ -426,6 +448,14 @@ function allocationOptions(): readonly FlexibleSlot[] {
 }
 
 /** One `SlotOutcome`, in words a player reads without decoding the union — ported from `GymView`'s private `describeSlotOutcome`. */
+function shopSpriteUri(item: string): string | null {
+  const sessionUris = FLOOR_SPRITE_URIS.session as Readonly<Record<string, string>>;
+  if (sessionUris[item] !== undefined) return sessionUris[item] as string;
+  const fixedUris = FLOOR_SPRITE_URIS.fixed as Readonly<Record<string, string>>;
+  if (fixedUris[item] !== undefined) return fixedUris[item] as string;
+  return null;
+}
+
 function describeSlotOutcome(outcome: GymWeekReport['slots'][number]): string {
   if (outcome.kind === 'rested') return 'rested';
   if (outcome.kind === 'trained') return `trained: ${outcome.activity}`;
@@ -510,8 +540,6 @@ export function GymScreen(props: GymViewProps) {
   // at the maintenance threshold instead of the recovery one.
   const recoveryBlocking = recoveryBlockingItems(managed);
   const worn = wornItems(managed);
-  const unanswered = unansweredItems(managed);
-  const bankedTime = reviewBankedTime(managed);
   const destination = nextLadderRung(gym.ladder.rung);
   const ownedLadder = new Set<string>(gym.ladder.equipment);
   const ownedSession = new Set<string>(gym.sessionEquipment);
@@ -595,14 +623,57 @@ export function GymScreen(props: GymViewProps) {
         style={surface === 'staff' ? styles.drawer : styles.drawerHidden}
       >
       <View testID={'gymscreen-management'}>
+        <View testID={'gymscreen-manager'}>
+          {managed.manager === null ? (
+            <>
+              <Text testID={'gymscreen-manager-state'}>No manager hired</Text>
+              {EMPIRE_TUNING.MANAGER_TIERS.map((tier) => (
+                <View key={tier}>
+                  <Text testID={`gymscreen-manager-tier-${tier}`}>
+                    {tier}: hire {managerHireCostGymBucks(tier)} gym bucks, wage{' '}
+                    {managerWageRatePerBankedHour(tier)}/hour, {playerFacingManagerCapability(tier)}
+                  </Text>
+                  {managerHireCostGymBucks(tier) > gym.ladder.gymBucks ? (
+                    <Text testID={`gymscreen-hire-${tier}-unavailable`}>
+                      needs {managerHireCostGymBucks(tier)} gym bucks — you have{' '}
+                      {gym.ladder.gymBucks}
+                    </Text>
+                  ) : (
+                    <Pressable
+                      testID={`gymscreen-hire-${tier}`}
+                      accessibilityRole={'button'}
+                      style={styles.button}
+                      onPress={() => dispatch({ kind: 'hire-manager', tier })}
+                    >
+                      <Text style={styles.buttonText}>hire {tier}</Text>
+                    </Pressable>
+                  )}
+                </View>
+              ))}
+            </>
+          ) : (
+            <>
+              <Text testID={'gymscreen-manager-state'}>
+                manager: {managed.manager.tier} — {managerWageRatePerBankedHour(managed.manager.tier)}{' '}
+                gym bucks per banked hour, {playerFacingManagerCapability(managed.manager.tier)}
+                {managed.manager.hiredUnderWarning ? ' — hired while the gym was already warned' : null}
+              </Text>
+              <Pressable
+                testID={'gymscreen-dismiss-manager'}
+                accessibilityRole={'button'}
+                style={styles.button}
+                onPress={() => dispatch({ kind: 'dismiss-manager' })}
+              >
+                <Text style={styles.buttonText}>let them go</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
         <Text testID={'gymscreen-phase'}>
-          gym status: {signs.phase} — {signs.strikeCount} counted decision(s) on the ledger,{' '}
-          {signs.strikesUntilFailure} more would close it
+          gym status: {signs.phase}
         </Text>
         <Text testID={'gymscreen-condition'}>
-          equipment condition {meanCondition(managed)} — income paid at{' '}
-          {conditionIncomeMultiplier(managed)} of the rate. condition falls with the hours your gym
-          runs, which are the same hours that pay you.
+          Equipment condition: {displayConditionPercent(meanCondition(managed))}%
         </Text>
         {/*
           GDD §5.14 STAGE C.1 REMOVED THE PER-ITEM REPAIR LOOP THAT USED TO SIT
@@ -641,7 +712,7 @@ export function GymScreen(props: GymViewProps) {
           directory for it to duplicate.
         */}
         <Text testID={'gymscreen-full-repair'}>
-          everything back to new: {worn.length === 0 ? 0 : fullRepairCostGymBucks(managed)} gym bucks
+          Full repair: {worn.length === 0 ? 0 : fullRepairCostGymBucks(managed)} gym bucks
         </Text>
         {/*
           This line and the maintenance review below it read DIFFERENT pools,
@@ -663,21 +734,16 @@ export function GymScreen(props: GymViewProps) {
           time — the numbers themselves are the station panel's job now.
         */}
         <Text testID={'gymscreen-worn'}>
-          under {EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION} condition:{' '}
-          {worn.length === 0 ? 'nothing' : worn.join(', ')} — of those, not yet refused:{' '}
-          {unanswered.length === 0 ? 'none' : unanswered.join(', ')}. the review below is raised by
-          banked operating time, not by this list.
+          Needs attention: {worn.length === 0 ? 'none' : worn.join(', ')}
         </Text>
         {prompt.kind === 'quiet' ? (
-          <Text testID={'gymscreen-prompt'}>
-            no maintenance review open — the gym has banked {bankedTime.bankedHours} hour(s) of
-            operation, {bankedTime.hoursUntilNextReview} more until the next review is raised
-          </Text>
+          <Text testID={'gymscreen-prompt'}>no maintenance review open</Text>
         ) : (
           <View testID={'gymscreen-prompt'}>
             <Text testID={'gymscreen-prompt-item'}>
-              maintenance review: {prompt.item} is at condition {itemCondition(managed, prompt.item)}{' '}
-              and repairing it costs {displayRepairCost(prompt.repairCostGymBucks)} gym bucks
+              maintenance review: {prompt.item} at{' '}
+              {displayConditionPercent(itemCondition(managed, prompt.item))}% — repair costs{' '}
+              {displayRepairCost(prompt.repairCostGymBucks)} gym bucks
             </Text>
             <Text testID={'gymscreen-prompt-stakes'}>
               {prompt.alreadyRefused
@@ -724,9 +790,7 @@ export function GymScreen(props: GymViewProps) {
         )}
         <View testID={'gymscreen-strikes'}>
           <Text testID={'gymscreen-strikes-lead'}>
-            {managed.strikes.length === 0
-              ? 'nothing counted against this gym yet — a decision you take here is the only thing that can'
-              : 'counted decisions, each with the price that was on screen when you took it:'}
+            {managed.strikes.length} counted decision(s)
           </Text>
           {managed.strikes.map((record, index) => (
             <Text testID={`gymscreen-strike-${index}`} key={`${record.decision}-${index}`}>
@@ -734,67 +798,6 @@ export function GymScreen(props: GymViewProps) {
               bucks
             </Text>
           ))}
-        </View>
-        <View testID={'gymscreen-manager'}>
-          {managed.manager === null ? (
-            <>
-              <Text testID={'gymscreen-manager-state'}>
-                no manager — you run this gym yourself, which the home gym never needs staff for
-              </Text>
-              {EMPIRE_TUNING.MANAGER_TIERS.map((tier) => (
-                <View key={tier}>
-                  <Text testID={`gymscreen-manager-tier-${tier}`}>
-                    {tier}: {managerHireCostGymBucks(tier)} gym bucks to hire,{' '}
-                    {managerWageRatePerBankedHour(tier)} per banked hour, repairs on their own below
-                    condition {managerAutoRepairCondition(tier)}
-                  </Text>
-                  {/*
-                    `hireManager`'s `'not-enough-gym-bucks'` arm, drawn rather
-                    than left for a press to discover. On a cold gym the purse
-                    is 0 against three tiers at 150 / 600 / 2000, so all three
-                    hire controls were unpressable and said nothing about it —
-                    a human on a phone named this row.
-                  */}
-                  {managerHireCostGymBucks(tier) > gym.ladder.gymBucks ? (
-                    <Text testID={`gymscreen-hire-${tier}-unavailable`}>
-                      needs {managerHireCostGymBucks(tier)} gym bucks — you have{' '}
-                      {gym.ladder.gymBucks}
-                    </Text>
-                  ) : (
-                    <Pressable
-                      testID={`gymscreen-hire-${tier}`}
-                      accessibilityRole={'button'}
-                      style={styles.button}
-                      onPress={() => dispatch({ kind: 'hire-manager', tier })}
-                    >
-                      <Text style={styles.buttonText}>hire</Text>
-                    </Pressable>
-                  )}
-                </View>
-              ))}
-              <Text testID={'gymscreen-manager-note'}>
-                a repair threshold of 0 means that manager repairs nothing on their own. hiring the
-                cheapest one while the ledger already shows a warning is itself a counted decision.
-              </Text>
-            </>
-          ) : (
-            <>
-              <Text testID={'gymscreen-manager-state'}>
-                manager: {managed.manager.tier} — {managerWageRatePerBankedHour(managed.manager.tier)}{' '}
-                gym bucks per banked hour, repairs on their own below condition{' '}
-                {managerAutoRepairCondition(managed.manager.tier)}
-                {managed.manager.hiredUnderWarning ? ' — hired while the gym was already warned' : null}
-              </Text>
-              <Pressable
-                testID={'gymscreen-dismiss-manager'}
-                accessibilityRole={'button'}
-                style={styles.button}
-                onPress={() => dispatch({ kind: 'dismiss-manager' })}
-              >
-                <Text style={styles.buttonText}>let them go</Text>
-              </Pressable>
-            </>
-          )}
         </View>
         <View testID={'gymscreen-recovery'}>
           {recovery.kind === 'not-dormant' ? (
@@ -897,90 +900,112 @@ export function GymScreen(props: GymViewProps) {
         rung; what it no longer does is offer a press that cannot land.
       */}
       <View testID={'gymscreen-ladder-shop'}>
-        {EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS.map((item) => (
-          <View key={item}>
-            <Text>
-              {item} costs {ladderEquipmentCost(item)} gym bucks, fits from{' '}
-              {ladderEquipmentMinRung(item)}
-              {ownedLadder.has(item) ? ' - owned' : null}
-            </Text>
-            {ownedLadder.has(item) ? null : ladderRungIndex(gym.ladder.rung) <
-              ladderRungIndex(ladderEquipmentMinRung(item)) ? (
-              <Text testID={`gymscreen-buy-ladder-${item}-unavailable`}>
-                not here yet — fits from {ladderEquipmentMinRung(item)} and this gym is a{' '}
-                {gym.ladder.rung}
-              </Text>
-            ) : ladderEquipmentCost(item) > gym.ladder.gymBucks ? (
-              <Text testID={`gymscreen-buy-ladder-${item}-unavailable`}>
-                needs {ladderEquipmentCost(item)} gym bucks — you have {gym.ladder.gymBucks}
-              </Text>
-            ) : (
-              <Pressable
-                testID={`gymscreen-buy-ladder-${item}`}
-                accessibilityRole={'button'}
-                style={styles.button}
-                onPress={() => dispatch({ kind: 'buy-ladder', item })}
-              >
-                <Text style={styles.buttonText}>buy</Text>
-              </Pressable>
-            )}
-          </View>
-        ))}
+        {EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS.map((item) => {
+          const sprite = shopSpriteUri(item);
+          const owned = ownedLadder.has(item);
+          const tooLow =
+            !owned &&
+            ladderRungIndex(gym.ladder.rung) < ladderRungIndex(ladderEquipmentMinRung(item));
+          const tooPoor = !owned && !tooLow && ladderEquipmentCost(item) > gym.ladder.gymBucks;
+          return (
+            <View key={item} testID={`gymscreen-shop-card-${item}`} style={styles.shopCard}>
+              {sprite === null ? null : (
+                <Image
+                  testID={`gymscreen-shop-sprite-${item}`}
+                  source={{ uri: sprite }}
+                  resizeMode={'stretch'}
+                  style={styles.shopSprite}
+                />
+              )}
+              <View style={styles.shopCardBody}>
+                <Text testID={`gymscreen-shop-name-${item}`}>{playerFacingEquipmentLabel(item)}</Text>
+                <Text>
+                  {ladderEquipmentCost(item)} gym bucks · {ladderEquipmentMinRung(item)}
+                  {owned ? ' · owned' : null}
+                </Text>
+                {owned ? (
+                  <Text>owned</Text>
+                ) : tooLow ? (
+                  <Text testID={`gymscreen-buy-ladder-${item}-unavailable`}>
+                    not here yet — fits from {ladderEquipmentMinRung(item)} and this gym is a{' '}
+                    {gym.ladder.rung}
+                  </Text>
+                ) : tooPoor ? (
+                  <Text testID={`gymscreen-buy-ladder-${item}-unavailable`}>
+                    needs {ladderEquipmentCost(item)} gym bucks — you have {gym.ladder.gymBucks}
+                  </Text>
+                ) : (
+                  <Pressable
+                    testID={`gymscreen-buy-ladder-${item}`}
+                    accessibilityRole={'button'}
+                    style={styles.button}
+                    onPress={() => dispatch({ kind: 'buy-ladder', item })}
+                  >
+                    <Text style={styles.buttonText}>buy</Text>
+                  </Pressable>
+                )}
+              </View>
+            </View>
+          );
+        })}
       </View>
       <View testID={'gymscreen-session-shop'}>
-        {EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS.map((item) => (
-          <View key={item}>
-            <Text>
-              {item} ({sessionEquipmentGroup(item)}) costs {sessionEquipmentCost(item)} gym bucks,
-              fits from {sessionEquipmentMinRung(item)}
-              {ownedSession.has(item) ? ' - owned' : null}
-            </Text>
-            {ownedSession.has(item) ? null : ladderRungIndex(gym.ladder.rung) <
-              ladderRungIndex(sessionEquipmentMinRung(item)) ? (
-              <Text testID={`gymscreen-buy-session-${item}-unavailable`}>
-                not here yet — fits from {sessionEquipmentMinRung(item)} and this gym is a{' '}
-                {gym.ladder.rung}
-              </Text>
-            ) : sessionEquipmentCost(item) > gym.ladder.gymBucks ? (
-              /*
-                S4h Fix 2 — scoped to this one arm, not the not-here-yet arm
-                just above it and not the ladder-shop's identical shape a few
-                lines up. The rung is reached; the purse alone is short of a
-                real, near-term purchase (`SESSION_EQUIPMENT_COST_GYM_BUCKS.
-                mats`'s own comment and S4g's battery both size this shop for
-                a ten-minute live watch). A human on a phone read "no controls
-                anywhere" from a cold garage where this was the closest shop
-                to being reachable, so this arm stays a real, disabled
-                `Pressable` — dimmer chrome, `disabled`, no `onPress` — rather
-                than collapsing back to plain text. It still states the
-                shortfall; it now also reads as "not yet, here is the target"
-                rather than as nothing. `repairEquipment`/hire/relocate's
-                not-drawn-when-refused discipline (this file's header) stays
-                the same for every other row — this is a deliberate, narrow
-                exception, not a rule change.
-              */
-              <Pressable
-                testID={`gymscreen-buy-session-${item}-unavailable`}
-                disabled
-                accessibilityRole={'button'}
-                style={[styles.button, styles.buttonDisabled]}
-              >
-                <Text style={styles.buttonTextDisabled}>
-                  needs {sessionEquipmentCost(item)} gym bucks — you have {gym.ladder.gymBucks}
+        {EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS.map((item) => {
+          const sprite = shopSpriteUri(item);
+          const owned = ownedSession.has(item);
+          const tooLow =
+            !owned &&
+            ladderRungIndex(gym.ladder.rung) < ladderRungIndex(sessionEquipmentMinRung(item));
+          const tooPoor = !owned && !tooLow && sessionEquipmentCost(item) > gym.ladder.gymBucks;
+          return (
+            <View key={item} testID={`gymscreen-shop-card-${item}`} style={styles.shopCard}>
+              {sprite === null ? null : (
+                <Image
+                  testID={`gymscreen-shop-sprite-${item}`}
+                  source={{ uri: sprite }}
+                  resizeMode={'stretch'}
+                  style={styles.shopSprite}
+                />
+              )}
+              <View style={styles.shopCardBody}>
+                <Text testID={`gymscreen-shop-name-${item}`}>{playerFacingEquipmentLabel(item)}</Text>
+                <Text>
+                  {playerFacingActivityGroupLabel(sessionEquipmentGroup(item))} ·{' '}
+                  {sessionEquipmentCost(item)} gym bucks · {sessionEquipmentMinRung(item)}
+                  {owned ? ' · owned' : null}
                 </Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                testID={`gymscreen-buy-session-${item}`}
-                accessibilityRole={'button'}
-                style={styles.button}
-                onPress={() => dispatch({ kind: 'buy-session', item })}
-              >
-                <Text style={styles.buttonText}>buy</Text>
-              </Pressable>
-            )}
-          </View>
-        ))}
+                {owned ? (
+                  <Text>owned</Text>
+                ) : tooLow ? (
+                  <Text testID={`gymscreen-buy-session-${item}-unavailable`}>
+                    not here yet — fits from {sessionEquipmentMinRung(item)} and this gym is a{' '}
+                    {gym.ladder.rung}
+                  </Text>
+                ) : tooPoor ? (
+                  <Pressable
+                    testID={`gymscreen-buy-session-${item}-unavailable`}
+                    disabled
+                    accessibilityRole={'button'}
+                    style={[styles.button, styles.buttonDisabled]}
+                  >
+                    <Text style={styles.buttonTextDisabled}>
+                      needs {sessionEquipmentCost(item)} gym bucks — you have {gym.ladder.gymBucks}
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    testID={`gymscreen-buy-session-${item}`}
+                    accessibilityRole={'button'}
+                    style={styles.button}
+                    onPress={() => dispatch({ kind: 'buy-session', item })}
+                  >
+                    <Text style={styles.buttonText}>buy</Text>
+                  </Pressable>
+                )}
+              </View>
+            </View>
+          );
+        })}
       </View>
       <View testID={'gymscreen-move'}>
         {destination === null ? (

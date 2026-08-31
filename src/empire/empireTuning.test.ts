@@ -718,7 +718,8 @@ describe('§5.5 social', () => {
     // distance and three layout knobs, none of them a cadence in any unit
     // training moves.
     // 180 -> 182: Stage C.1b FLOOR_TILE_PIXELS_MAX and FLOOR_STAGE_PADDING_PIXELS.
-    expect(examined).toBe(182);
+    // 182 -> 183: Stage C.1c CONDITION_PERCENT_SCALE.
+    expect(examined).toBe(183);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -738,7 +739,8 @@ describe('§5.5 social', () => {
     // 875 -> 880 (176 keys x 5 banned units, Stage B's one new knob).
     // 880 -> 900 (180 keys x 5 banned units, Stage C's four new entries).
     // 900 -> 910: Stage C.1b two new knobs × 5 banned units.
-    expect(probed).toBe(910);
+    // 910 -> 915: Stage C.1c CONDITION_PERCENT_SCALE × 5 banned units.
+    expect(probed).toBe(915);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

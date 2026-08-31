@@ -49,7 +49,64 @@ import {
   repairCostGymBucks,
 } from './management';
 import { type MemberType } from './members';
-import { type SessionActivityGroup, sessionEquipmentGroup } from './sessions';
+import { type LadderEquipmentItem } from './ladder';
+import { type SessionActivityGroup, type SessionEquipmentItem, sessionEquipmentGroup } from './sessions';
+
+/**
+ * Player-facing names for shop/staff copy. Domain tokens stay the identifiers
+ * tests and reducers use; this map is presentation only.
+ */
+const EQUIPMENT_PLAYER_LABELS: Readonly<Record<string, string>> = Object.freeze({
+  'power-bar': 'Power bar',
+  'comp-plates': 'Competition plates',
+  'flat-bench': 'Flat bench',
+  'squat-rack': 'Squat rack',
+  bike: 'Bike',
+  treadmill: 'Treadmill',
+  rower: 'Rower',
+  sled: 'Sled',
+  dumbbells: 'Dumbbells',
+  cables: 'Cables',
+  machines: 'Machines',
+  mats: 'Mats',
+  'foam-rollers': 'Foam rollers',
+  sauna: 'Sauna',
+  'wrist-wraps': 'Wrist wraps',
+  belts: 'Belts',
+  sleeves: 'Sleeves',
+  'specialty-bars': 'Specialty bars',
+});
+
+const ACTIVITY_GROUP_PLAYER_LABELS: Readonly<Record<SessionActivityGroup, string>> = Object.freeze({
+  conditioning: 'Conditioning',
+  accessory: 'Accessory',
+  recovery: 'Recovery',
+  support: 'Support',
+});
+
+/** Concise player-facing name for a ladder or session equipment token. */
+export function playerFacingEquipmentLabel(
+  item: LadderEquipmentItem | SessionEquipmentItem | string,
+): string {
+  return EQUIPMENT_PLAYER_LABELS[item] ?? item;
+}
+
+/** Player-facing name for a §5.4 session activity group. */
+export function playerFacingActivityGroupLabel(group: SessionActivityGroup): string {
+  return ACTIVITY_GROUP_PLAYER_LABELS[group];
+}
+
+/** Whole-percent display of a 0–1 condition. Does not change the stored value. */
+export function displayConditionPercent(condition: number): number {
+  return Math.round(condition * EMPIRE_TUNING.CONDITION_PERCENT_SCALE);
+}
+
+/** Concise player-facing manager capability. Novice's 0 threshold means none. */
+export function playerFacingManagerCapability(tier: ManagerTier): string {
+  const threshold = managerAutoRepairCondition(tier);
+  if (threshold <= 0) return 'no auto-repair';
+  return `auto-repair below ${displayConditionPercent(threshold)}%`;
+}
 
 // ---------------------------------------------------------------------------
 // Identity

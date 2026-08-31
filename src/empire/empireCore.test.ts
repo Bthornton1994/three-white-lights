@@ -2665,7 +2665,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // named). Nothing was removed.
     // 140 -> 141: Stage C.1b, one new distinct file-name mention across the
     // gym-screen / floor-layout rewrite.
-    expect(pairs).toBe(141);
+    expect(pairs).toBe(144);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3266,26 +3266,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // which is why it lands between the placed-item remove control's 'x'
       // and the tray's own empty/non-empty text.
       'member(s) around the gym',
-      // GDD §5.14 STAGE C.1 — the diagnostics block, gated behind
-      // `floorgrid-diagnostics-toggle` (whose own "show diagnostics"/"hide
-      // diagnostics" text sits inside a `{showDiagnostics ? … : …}`
-      // expression container, so it contributes NOTHING here — same
-      // discipline as every ternary this list already documents). Four
-      // chunks byte-identical to the ORIGINAL, single `floorgrid-caption`
-      // this census used to pin at the top of this file, now under
-      // `floorgrid-diagnostic-caption` instead: nothing about the raw
-      // grid-dimensions sentence changed, only where it sits in the tree.
+      // C.1c: the Build tray now sits above the diagnostics block so the
+      // inventory is next to the gym rather than under a developer readout.
+      'unplaced — tap a piece, then tap a tile on the gym',
       'floor (',
       ') —',
       'x',
       'tiles,',
-      // GDD §5.13's PLAYTEST 3 ruling: the caption now also states the fixed
-      // count, closing the gap where '0 placed, 0 unplaced' sat beside three
-      // visible fixed items and said nothing about them.
       'furniture,',
       'placed,',
       'unplaced',
-      'unplaced — tap a piece, then tap a tile on the gym',
       'close',
       // GDD §5.14 Stage C: the contextual station panel, the last thing
       // FloorGrid.tsx's own JSX returns, so its chunks land after every
@@ -3354,75 +3344,38 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // cost them anything — `docs/GDD.md` §5.7's clarification forbids the
       // second, and this list is where a sentence that broke it would have to
       // arrive in the open.
-      'gym status:',
+      'No manager hired',
+      ': hire',
+      'gym bucks, wage',
+      '/hour,',
+      'needs',
+      'gym bucks — you have',
+      'hire',
+      'manager:',
       '—',
-      'counted decision(s) on the ledger,',
-      'more would close it',
-      'equipment condition',
-      '— income paid at',
-      'of the rate. condition falls with the hours your gym runs, which are the same hours that pay you.',
-      'everything back to new:',
+      'gym bucks per banked hour,',
+      'let them go',
+      'gym status:',
+      'Equipment condition:',
+      '%',
+      'Full repair:',
       'gym bucks',
-      // S4b's second pass: these two chunks used to read 'worn past the
-      // review line:' and '— repair orders still unanswered:'. Both named the
-      // shipped review, and neither list is the shipped review's — it is
-      // raised on the check-in ordinal and picks from everything the gym
-      // owns, while these two are condition-keyed (`wornItems`, and that list
-      // minus the orders already refused). On the played path the old wording
-      // drew "nothing" and "none" directly above an open review naming an
-      // item and quoting a price. Four chunks now instead of two, because the
-      // threshold is drawn as an expression and the disclaimer is a sentence
-      // of its own. Transcribed from a driven run of this census.
-      'under',
-      'condition:',
-      '— of those, not yet refused:',
-      '. the review below is raised by banked operating time, not by this list.',
-      // THE REASON IN PLACE OF A DEAD CONTROL used to be seven chunks here —
-      // a per-item condition/repair-cost line and its own three-way repair
-      // gate, the sentences the human's original report was about (a cold
-      // gym drawing three "repair for 0" buttons whose only possible outcome
-      // was `repairEquipment`'s own `'already-sound'` refusal). GDD §5.14
-      // STAGE C.1 DELETED THE WHOLE LOOP THIS BLOCK WAS PART OF, because the
-      // contextual station panel (`FloorGrid.tsx`, above in this list) already
-      // carries the identical four-chunk gate ('as new — nothing to repair',
-      // 'needs', 'gym bucks — you have', 'repair for') — this was the exact
-      // permanent duplicate the round's own brief named. Nothing about the
-      // sentence changed; the second, redundant copy is simply gone.
-      'no maintenance review open — the gym has banked',
-      'hour(s) of operation,',
-      'more until the next review is raised',
+      'Needs attention:',
+      'no maintenance review open',
       'maintenance review:',
-      'is at condition',
-      'and repairing it costs',
+      'at',
+      '% — repair costs',
       'gym bucks',
-      // The same gate on the REVIEW's own repair answer. `respondToPrompt`
-      // refuses `'already-sound'` and `'not-enough-gym-bucks'`, and the review
-      // is raised on the ordinal rather than on wear, so a review naming an
-      // item at full condition is reachable and used to draw "repair for 0".
       'this one is already as new — there is nothing to pay for',
       'needs',
       'gym bucks — you have',
       'repair for',
       'not now',
       'decline the repair',
+      'counted decision(s)',
       'at',
       's, price shown',
       'gym bucks',
-      'no manager — you run this gym yourself, which the home gym never needs staff for',
-      ':',
-      'gym bucks to hire,',
-      'per banked hour, repairs on their own below condition',
-      // The third of the human's three: 150 / 600 / 2000 against a purse of 0.
-      // `hireManager`'s `'not-enough-gym-bucks'` arm, drawn rather than left
-      // for a press to discover.
-      'needs',
-      'gym bucks — you have',
-      'hire',
-      'a repair threshold of 0 means that manager repairs nothing on their own. hiring the cheapest one while the ledger already shows a warning is itself a counted decision.',
-      'manager:',
-      '—',
-      'gym bucks per banked hour, repairs on their own below condition',
-      'let them go',
       'open for business —',
       'dormant — everything reopening asks for is done',
       'dormant — still needed:',
@@ -3449,25 +3402,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // (`gymscreen-check-in-costs` and its own auto-repair `.map`) are
       // relocated, not deleted — see the new `gymscreen-diagnostics` block,
       // byte-identical, right before this file's dev-controls chunk below.
-      'costs',
-      'gym bucks, fits from',
-      // BOTH SHOPS' BUY CONTROLS ARE GATED ON THEIR OWN TRANSITION'S REFUSAL
-      // NOW, so the four chunks under each row are the two reasons a buy
-      // would have been refused — `'rung-too-low'` and
-      // `'not-enough-gym-bucks'`, in `buyLadderEquipment`'s and
-      // `buySessionEquipment`'s own order. On the state a new player actually
-      // opens in (garage, 0 gym bucks) that is seventeen rows of which every
-      // buy control was a refusal waiting to happen. The rows still state the
-      // price and the rung; the eight chunks here are what stands where the
-      // press used to be. None of them is about being away.
+      'gym bucks ·',
+      'owned',
       'not here yet — fits from',
       'and this gym is a',
       'needs',
       'gym bucks — you have',
       'buy',
-      '(',
-      ') costs',
-      'gym bucks, fits from',
+      '·',
+      'gym bucks ·',
+      'owned',
       'not here yet — fits from',
       'and this gym is a',
       'needs',
@@ -3843,7 +3787,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // list above.
     // 535 -> 563: Stage C.1b dock/drawer/member-panel testIDs, GymSurface
     // names, furniture place/remove action kinds, and Build-mode copy.
-    expect(singleQuoted.size).toBe(562);
+    expect(singleQuoted.size).toBe(583);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3948,7 +3892,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // against `90d7eb5` rather than hand-counted.
     // 306 -> 316: Stage C.1b templated testIDs (dock surface, member hits) and
     // Build-mode caption interpolation.
-    expect(templateChunks.size).toBe(317);
+    // 322 -> 324: Stage C.1c per-tile Build hit targets (`floorgrid-cell-${x}-${y}`
+    // and its React `key`).
+    expect(templateChunks.size).toBe(324);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3996,12 +3942,27 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // edge to `stationView.ts`.
       './stationView',
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
+      'Accessory',
+      'Belts',
+      'Bike',
+      'Cables',
+      'Conditioning',
+      'Dumbbells',
       'IDAT',
       'IEND',
       'IHDR',
       'KSTHJDPZBWLMERQUVONCGFAXY',
+      'Machines',
+      'Mats',
       'PLTE',
       'Placeholder',
+      'Recovery',
+      'Rower',
+      'Sauna',
+      'Sled',
+      'Sleeves',
+      'Support',
+      'Treadmill',
       'absence-strike-control',
       'absolute',
       'accelerated',
@@ -4132,6 +4093,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-member-panel-dismiss',
       'floorgrid-member-panel-identity',
       'floorgrid-member-panel-state',
+      'floorgrid-pending',
       'floorgrid-root',
       'floorgrid-scroll-x',
       'floorgrid-scroll-y',
@@ -4217,7 +4179,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-lifts',
       'gymscreen-management',
       'gymscreen-manager',
-      'gymscreen-manager-note',
       'gymscreen-manager-state',
       'gymscreen-more-drawer',
       'gymscreen-move',
@@ -4321,7 +4282,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'not-enough-wall-clock-earnings',
       'not-offered',
       'not-owned',
-      'nothing',
       'novice',
       'npc-id',
       'npcId',
@@ -4585,7 +4545,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // templateChunks 304 -> 306 (+2), both enumerated above; doubleQuoted
     // unchanged. Net +4.
     // 841 -> 878: Stage C.1b singleQuoted + templateChunks growth.
-    expect(stringsChecked).toBe(879);
+    // 905 -> 907: Stage C.1c per-tile Build hit-target templates.
+    expect(stringsChecked).toBe(907);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -4976,6 +4937,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'GymScreen.tsx': [
         './empireTuning',
         './FloorGrid',
+        './floorSprites',
         './ladder',
         './ladderView',
         // S4b: §5.11 stage 4 reaching the screen. Every condition, cost,
@@ -5026,6 +4988,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'stationView.ts': [
         './empireTuning',
         './floorSim',
+        './ladder',
         './management',
         './members',
         './sessions',
@@ -5160,7 +5123,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 89 -> 90: GDD §5.14 Stage C.1a — one new edge, `GymScreen.tsx ->
     // ./stationView` (`recoveryBlockingItems`). Read from this assertion's
     // own failure value.
-    expect(specifiers).toBe(90);
+    expect(specifiers).toBe(92);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
@@ -5364,7 +5327,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS: 2,
     // FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS: 8) — four new findings, none of
     // them 0 or 1. Read from this assertion's own failure value.
-    ).toBe(405);
+    ).toBe(406);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

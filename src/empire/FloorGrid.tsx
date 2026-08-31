@@ -282,6 +282,33 @@ function tilePixelsForStage(
   return raw;
 }
 
+/**
+ * RN-web `Pressable.onPress` is a DOM `click`, not a responder touch.
+ * `nativeEvent.locationX` is therefore often missing; `offsetX` is the
+ * click's local pixel. Without this, empty-tile placement computed NaN
+ * tiles and refused, while occupied-tile taps still worked because those
+ * chips call `tryPlaceAt` with an explicit cell.
+ */
+function pressLocalPixels(nativeEvent: {
+  readonly locationX?: number;
+  readonly locationY?: number;
+  readonly offsetX?: number;
+  readonly offsetY?: number;
+}): { readonly x: number; readonly y: number } | null {
+  const x =
+    typeof nativeEvent.locationX === 'number' && Number.isFinite(nativeEvent.locationX)
+      ? nativeEvent.locationX
+      : nativeEvent.offsetX;
+  const y =
+    typeof nativeEvent.locationY === 'number' && Number.isFinite(nativeEvent.locationY)
+      ? nativeEvent.locationY
+      : nativeEvent.offsetY;
+  if (typeof x !== 'number' || typeof y !== 'number' || !Number.isFinite(x) || !Number.isFinite(y)) {
+    return null;
+  }
+  return { x, y };
+}
+
 type PendingPlace =
   | { readonly kind: 'session'; readonly item: SessionEquipmentItem }
   | { readonly kind: 'furniture'; readonly item: LadderEquipmentItem };
@@ -932,6 +959,7 @@ function AmbientMemberBody({
           width: footprintWidth,
           height: footprintHeight,
         }}
+        {...({ pointerEvents: 'none' } as object)}
       />
       {/*
         GDD §5.13 presentation Phase 3 — the state cue, in the register §5.13
@@ -944,6 +972,7 @@ function AmbientMemberBody({
       */}
       <View
         testID={`floorsim-cue-${index}-${state}`}
+        pointerEvents={'none'}
         style={{
           position: 'absolute',
           left: (footprintWidth - cueDiameter) / 2,
@@ -965,6 +994,7 @@ function AmbientMemberBody({
         // `FLOOR_SIM_INTERRUPTED_BEAT_TICKS` and then resolves.
         <Text
           testID={`floorsim-cue-word-${index}`}
+          pointerEvents={'none'}
           style={{
             position: 'absolute',
             left: 0,
@@ -986,6 +1016,7 @@ function AmbientMemberBody({
       {stranded ? (
         <View
           testID={`floorsim-stranded-${index}`}
+          pointerEvents={'none'}
           style={{
             position: 'absolute',
             left: 0,
@@ -1040,6 +1071,8 @@ export function FloorGrid(props: FloorGridProps) {
   // own registered rationale.
   const verticalLines = Array.from({ length: Math.max(grid.width - 1, 0) }, (_unused, i) => i + 1);
   const horizontalLines = Array.from({ length: Math.max(grid.height - 1, 0) }, (_unused, j) => j + 1);
+  const tileXs = Array.from({ length: grid.width }, (_unused, x) => x);
+  const tileYs = Array.from({ length: grid.height }, (_unused, y) => y);
 
   // The grid container's own page position. `.measure()` returns it relative
   // to the SCREEN, including whatever the page has scrolled to at the moment
@@ -1100,56 +1133,6 @@ export function FloorGrid(props: FloorGridProps) {
   // nothing, and is gone the instant this component unmounts.
   const [showDiagnostics, setShowDiagnostics] = useState(false);
 
-  /** Select `ref`, or deselect it if it is already the selected one — a second tap on the same station closes its own panel. */
-  const toggleSelectedStation = (ref: FloorStationRef): void => {
-    setSelectedMemberIndex(null);
-    setSelectedStation((previous) =>
-      previous !== null && previous.kind === ref.kind && previous.item === ref.item ? null : ref,
-    );
-  };
-
-  const tryPlaceAt = (position: GridPosition): void => {
-    if (pendingPlace === null) return;
-    if (pendingPlace.kind === 'session') {
-      const overlapped = furniture.find((row) =>
-        overlapsFixedFurniture(position, sessionItemFootprint(pendingPlace.item), [row]),
-      );
-      if (overlapped !== undefined) {
-        if (overlapRefusalTimeout.current !== null) clearTimeout(overlapRefusalTimeout.current);
-        setOverlapRefusalItem(overlapped.item);
-        overlapRefusalTimeout.current = setTimeout(() => {
-          setOverlapRefusalItem(null);
-          overlapRefusalTimeout.current = null;
-        }, EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_FLASH_MS);
-      } else {
-        dispatch({ kind: 'floor-place', item: pendingPlace.item, position });
-      }
-    } else {
-      dispatch({ kind: 'floor-place-furniture', item: pendingPlace.item, position });
-    }
-    setPendingPlace(null);
-  };
-
-  const handleGridPress = (locationX: number, locationY: number): void => {
-    if (tile < 1) return;
-    const position: GridPosition = {
-      x: Math.floor(locationX / tile),
-      y: Math.floor(locationY / tile),
-    };
-    if (buildMode && pendingPlace !== null) {
-      tryPlaceAt(position);
-      return;
-    }
-    setSelectedStation(null);
-    setSelectedMemberIndex(null);
-  };
-
-  const toggleSelectedMember = (index: number): void => {
-    if (buildMode) return;
-    setSelectedStation(null);
-    setSelectedMemberIndex((previous) => (previous === index ? null : index));
-  };
-
   // GDD §5.13's PLAYTEST 3 ruling on the furniture/session-item overlap gap:
   // which fixed row, if any, a drop was just refused for landing on — purely
   // visual, cleared by its own timeout, never persisted and never read by
@@ -1159,6 +1142,7 @@ export function FloorGrid(props: FloorGridProps) {
   // in the shipped app that ever dispatches `floor-place` (grepped, not
   // assumed), so refusing here is refusing for the whole app.
   const [overlapRefusalItem, setOverlapRefusalItem] = useState<LadderEquipmentItem | null>(null);
+  const [placementRefused, setPlacementRefused] = useState(false);
   const overlapRefusalTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
@@ -1166,6 +1150,130 @@ export function FloorGrid(props: FloorGridProps) {
     },
     [],
   );
+
+  useEffect(() => {
+    setSelectedStation(null);
+    setSelectedMemberIndex(null);
+    setPendingPlace(null);
+  }, [buildMode]);
+
+  /** Select `ref`, or deselect it if it is already the selected one — a second tap on the same station closes its own panel. */
+  const toggleSelectedStation = (ref: FloorStationRef): void => {
+    setSelectedMemberIndex(null);
+    setSelectedStation((previous) =>
+      previous !== null && previous.kind === ref.kind && previous.item === ref.item ? null : ref,
+    );
+  };
+
+  const flashRefusal = (furnitureItem: LadderEquipmentItem | null): void => {
+    if (overlapRefusalTimeout.current !== null) clearTimeout(overlapRefusalTimeout.current);
+    setOverlapRefusalItem(furnitureItem);
+    setPlacementRefused(true);
+    overlapRefusalTimeout.current = setTimeout(() => {
+      setOverlapRefusalItem(null);
+      setPlacementRefused(false);
+      overlapRefusalTimeout.current = null;
+    }, EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_FLASH_MS);
+  };
+
+  const footprintFits = (position: GridPosition, footprint: { width: number; height: number }): boolean =>
+    position.x >= 0 &&
+    position.y >= 0 &&
+    position.x + footprint.width <= grid.width &&
+    position.y + footprint.height <= grid.height;
+
+  const tryPlaceAt = (position: GridPosition): void => {
+    if (pendingPlace === null) return;
+    if (pendingPlace.kind === 'session') {
+      const footprint = sessionItemFootprint(pendingPlace.item);
+      if (!footprintFits(position, footprint)) {
+        flashRefusal(null);
+        return;
+      }
+      const overlappedFurniture = furniture.find((row) =>
+        overlapsFixedFurniture(position, footprint, [row]),
+      );
+      if (overlappedFurniture !== undefined) {
+        flashRefusal(overlappedFurniture.item);
+        return;
+      }
+      const overlappedSession = placed.find(
+        (row) =>
+          row.item !== pendingPlace.item &&
+          overlapsFixedFurniture(position, footprint, [
+            { item: 'power-bar', position: row.position, footprint: row.footprint },
+          ]),
+      );
+      if (overlappedSession !== undefined) {
+        flashRefusal(null);
+        return;
+      }
+      dispatch({ kind: 'floor-place', item: pendingPlace.item, position });
+    } else {
+      const footprint = furnitureItemFootprint(pendingPlace.item);
+      if (!footprintFits(position, footprint)) {
+        flashRefusal(null);
+        return;
+      }
+      const overlappedFurniture = furniture.find(
+        (row) =>
+          row.item !== pendingPlace.item && overlapsFixedFurniture(position, footprint, [row]),
+      );
+      if (overlappedFurniture !== undefined) {
+        flashRefusal(overlappedFurniture.item);
+        return;
+      }
+      const overlappedSession = placed.find((row) =>
+        overlapsFixedFurniture(position, footprint, [
+          { item: 'power-bar', position: row.position, footprint: row.footprint },
+        ]),
+      );
+      if (overlappedSession !== undefined) {
+        flashRefusal(null);
+        return;
+      }
+      dispatch({ kind: 'floor-place-furniture', item: pendingPlace.item, position });
+    }
+    setPendingPlace(null);
+  };
+
+  const pressTile = (position: GridPosition): void => {
+    if (
+      position.x < 0 ||
+      position.y < 0 ||
+      position.x >= grid.width ||
+      position.y >= grid.height
+    ) {
+      if (buildMode && pendingPlace !== null) flashRefusal(null);
+      return;
+    }
+    if (buildMode && pendingPlace !== null) {
+      tryPlaceAt(position);
+      return;
+    }
+    setSelectedStation(null);
+    setSelectedMemberIndex(null);
+  };
+
+  const handleGridPress = (locationX: number, locationY: number): void => {
+    if (tile < 1) return;
+    pressTile({
+      x: Math.floor(locationX / tile),
+      y: Math.floor(locationY / tile),
+    });
+  };
+
+  const handleGridPressEvent = (event: { nativeEvent: Parameters<typeof pressLocalPixels>[0] }): void => {
+    const point = pressLocalPixels(event.nativeEvent);
+    if (point === null) return;
+    handleGridPress(point.x, point.y);
+  };
+
+  const toggleSelectedMember = (index: number): void => {
+    if (buildMode) return;
+    setSelectedStation(null);
+    setSelectedMemberIndex((previous) => (previous === index ? null : index));
+  };
 
   // The latest context, for the tick callback. `setInterval`'s callback closes
   // over the render it was created in, so without this a tick would go on
@@ -1207,22 +1315,22 @@ export function FloorGrid(props: FloorGridProps) {
   // THE TICK. One `stepFloorSim` per `FLOOR_SIM_TICK_INTERVAL_MS`, against
   // whatever the props say the floor is at that moment.
   //
-  // IT IS SUSPENDED WHILE A DRAG IS IN FLIGHT, and the reason is mechanical
-  // rather than a design preference. A tick re-renders this component, which
-  // rebuilds every chip's `PanResponder` — and a gesture that was granted to
-  // one responder instance would then be released against a different one,
-  // whose own `gestureState` was never granted. The drag is the interaction
-  // GDD §5.13's Phase 1 gate was passed on, so it wins over the sim running
-  // for the second or two a drop takes. The visible consequence is that the
-  // gym holds still while the player is placing something, which is honest
-  // about what is happening rather than hidden.
+  // IT IS SUSPENDED WHILE A DRAG IS IN FLIGHT OR A TILE IS PENDING, and the
+  // reason is mechanical rather than a design preference. A tick re-renders
+  // this component, which rebuilds every chip's `PanResponder` — and a
+  // gesture that was granted to one responder instance would then be
+  // released against a different one, whose own `gestureState` was never
+  // granted. The same hold is true of tap-to-place: the gym must not keep
+  // walking onto the tile the player is about to use. The visible
+  // consequence is that the gym holds still while the player is placing
+  // something, which is honest about what is happening rather than hidden.
   useEffect(() => {
-    if (draggingItem !== null) return undefined;
+    if (draggingItem !== null || pendingPlace !== null) return undefined;
     const timer = setInterval(() => {
       setSim((previous) => stepFloorSim(previous, simContextRef.current));
     }, EMPIRE_TUNING.FLOOR_SIM_TICK_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [draggingItem]);
+  }, [draggingItem, pendingPlace]);
 
   // The stations the sim can send a member to, and what is happening at each.
   // A derived read: `floorStations` recomputes from the same context every
@@ -1288,12 +1396,9 @@ export function FloorGrid(props: FloorGridProps) {
       overlapsFixedFurniture(position, sessionItemFootprint(item), [row]),
     );
     if (overlappedFixedRow !== undefined) {
-      if (overlapRefusalTimeout.current !== null) clearTimeout(overlapRefusalTimeout.current);
-      setOverlapRefusalItem(overlappedFixedRow.item);
-      overlapRefusalTimeout.current = setTimeout(() => {
-        setOverlapRefusalItem(null);
-        overlapRefusalTimeout.current = null;
-      }, EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_FLASH_MS);
+      flashRefusal(overlappedFixedRow.item);
+    } else if (!footprintFits(position, sessionItemFootprint(item))) {
+      flashRefusal(null);
     } else {
       dispatch({ kind: 'floor-place', item, position });
     }
@@ -1303,6 +1408,10 @@ export function FloorGrid(props: FloorGridProps) {
 
   const panResponderFor = (item: SessionEquipmentItem, origin: 'tray' | 'placed') =>
     PanResponder.create({
+      // C.1c: grant on mousedown so a tap (zero travel) still reaches
+      // `releaseAt`'s select path, and so a web mouse drag keeps tracking
+      // after the pointer leaves the chip. Empty-tile taps never hit this
+      // responder — they land on `floorgrid-grid-tap` instead.
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
@@ -1401,6 +1510,9 @@ export function FloorGrid(props: FloorGridProps) {
       <Text testID={'floorgrid-caption'}>
         {buildMode ? 'build — tap a piece, then tap a tile' : `floor (${floor.rung})`}
       </Text>
+      {pendingPlace === null ? null : (
+        <Text testID={'floorgrid-pending'}>{pendingPlace.item}</Text>
+      )}
       <View testID={'floorgrid-scroll-x'} style={{ flex: 1 }}>
         <View testID={'floorgrid-scroll-y'} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <View
@@ -1439,26 +1551,8 @@ export function FloorGrid(props: FloorGridProps) {
               flat background colour above stays as the fallback a failed
               image load would reveal.
             */}
-            <Pressable
-              testID={'floorgrid-grid-tap'}
-              accessibilityRole={'button'}
-              onPress={(event) =>
-                handleGridPress(event.nativeEvent.locationX, event.nativeEvent.locationY)
-              }
-              pointerEvents={pendingPlace === null ? 'none' : 'auto'}
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                width: grid.width * tile,
-                height: grid.height * tile,
-                cursor: 'pointer',
-              } as WebSelectableViewStyle}
-            />
-            <Image
-              testID={'floorgrid-floor-texture'}
-              source={{ uri: FLOOR_SPRITE_URIS.floor[floor.rung] }}
-              resizeMode={'stretch'}
+            <View
+              pointerEvents={'none'}
               style={{
                 position: 'absolute',
                 left: 0,
@@ -1466,7 +1560,17 @@ export function FloorGrid(props: FloorGridProps) {
                 width: grid.width * tile,
                 height: grid.height * tile,
               }}
-            />
+            >
+              <Image
+                testID={'floorgrid-floor-texture'}
+                source={{ uri: FLOOR_SPRITE_URIS.floor[floor.rung] }}
+                resizeMode={'stretch'}
+                style={{
+                  width: grid.width * tile,
+                  height: grid.height * tile,
+                }}
+              />
+            </View>
             {verticalLines.map((i) => (
               <View
                 key={`v${i}`}
@@ -1497,6 +1601,54 @@ export function FloorGrid(props: FloorGridProps) {
                 }}
               />
             ))}
+            <Pressable
+              testID={'floorgrid-grid-tap'}
+              accessibilityRole={'button'}
+              onPress={handleGridPressEvent}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: grid.width * tile,
+                height: grid.height * tile,
+                cursor: 'pointer',
+              } as WebSelectableViewStyle}
+            />
+            {buildMode
+              ? tileYs.flatMap((y) =>
+                  tileXs.map((x) => (
+                    <Pressable
+                      key={`cell-${x}-${y}`}
+                      testID={`floorgrid-cell-${x}-${y}`}
+                      accessibilityRole={'button'}
+                      onPress={() => pressTile({ x, y })}
+                      style={{
+                        position: 'absolute',
+                        left: x * tile,
+                        top: y * tile,
+                        width: tile,
+                        height: tile,
+                        cursor: 'pointer',
+                      } as WebSelectableViewStyle}
+                    />
+                  )),
+                )
+              : null}
+            {placementRefused ? (
+              <Text
+                testID={'floorgrid-drop-refused'}
+                pointerEvents={'none'}
+                style={{
+                  position: 'absolute',
+                  left: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+                  top: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+                  color: FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR,
+                  zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
+                }}
+              >
+                can&apos;t place here
+              </Text>
+            ) : null}
             {furniture.map((row) => {
               const isRefusalTarget = overlapRefusalItem === row.item;
               const isOccupied =
@@ -1515,6 +1667,10 @@ export function FloorGrid(props: FloorGridProps) {
                   testID={`floorgrid-fixed-${row.item}`}
                   accessibilityRole={'button'}
                   onPress={() => {
+                    if (buildMode && pendingPlace !== null) {
+                      tryPlaceAt(row.position);
+                      return;
+                    }
                     if (buildMode) {
                       setSelectedStation(null);
                       setSelectedMemberIndex(null);
@@ -1529,6 +1685,9 @@ export function FloorGrid(props: FloorGridProps) {
                     top: row.position.y * tile,
                     width: row.footprint.width * tile,
                     height: row.footprint.height * tile,
+                    zIndex: buildMode
+                      ? EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX - 1
+                      : 0,
                     // Phase 4: the sprite is the body of the chip; the
                     // refusal outline still draws over it, and no border in
                     // the resting state so the sprite's own baked outline is
@@ -1566,14 +1725,6 @@ export function FloorGrid(props: FloorGridProps) {
                     />
                   )}
                   <Text style={FLOOR_LABEL_STYLE}>{row.item}</Text>
-                  {isRefusalTarget ? (
-                    // GDD §5.13's PLAYTEST 3 ruling: a clear "can't place
-                    // here" signal on the cell a drop was just refused for,
-                    // not a silent reject — the drag itself already snapped
-                    // back to the tray/its prior position, since `releaseAt`
-                    // never dispatched.
-                    <Text testID={'floorgrid-drop-refused'}>can&apos;t place here</Text>
-                  ) : null}
                 </Pressable>
               );
             })}
@@ -1614,7 +1765,11 @@ export function FloorGrid(props: FloorGridProps) {
                     transform: isDragging
                       ? [{ translateX: dragOffset.x }, { translateY: dragOffset.y }]
                       : [],
-                    zIndex: isDragging ? EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX : 1,
+                    zIndex: isDragging
+                      ? EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX
+                      : buildMode
+                        ? EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX - 1
+                        : 1,
                     // Web only, and load-bearing rather than cosmetic: without
                     // it, a browser's own text/drag selection races the
                     // PanResponder negotiation for the mousedown and wins,
@@ -1646,6 +1801,13 @@ export function FloorGrid(props: FloorGridProps) {
                       testID={`floorgrid-build-select-${row.item}`}
                       accessibilityRole={'button'}
                       onPress={() => {
+                        if (
+                          pendingPlace !== null &&
+                          !(pendingPlace.kind === 'session' && pendingPlace.item === row.item)
+                        ) {
+                          tryPlaceAt(row.position);
+                          return;
+                        }
                         setSelectedStation(null);
                         setPendingPlace({ kind: 'session', item: row.item });
                       }}
@@ -1799,61 +1961,6 @@ export function FloorGrid(props: FloorGridProps) {
         </View>
       </View>
       <Text testID={'floorgrid-ambient-caption'}>{sim.members.length} member(s) around the gym</Text>
-      {/*
-        GDD §5.14 Stage C.1 — the sim readout (tick number, state census),
-        its legend, and the raw grid-dimensions caption are verification
-        detail: real, useful for proving the simulator, and not something a
-        player needs permanently visible to decide anything on this screen.
-        CLAUDE.md's own Stage C.1 brief asks for exactly this treatment —
-        "preserve [verification information] through tests, selectors,
-        instrumentation, or an explicitly secondary/debug surface" — and this
-        is that surface: collapsed by default, one plain toggle, the same
-        content at the same testIDs once opened, so nothing this file's own
-        header calls Phase 3's motion/liveness evidence (`floorsim-caption`'s
-        tick, `floorsim-legend-<state>`'s boxes) stops existing — it stops
-        being permanently drawn over the gym a player is looking at.
-
-        `panelStyles.button`/`buttonText` — the station panel's own chrome,
-        reused rather than invented — on purpose, per S4h's own finding one
-        file over: an `accessibilityRole="button"` `Pressable` with no visible
-        chrome reads, on a real screenshot, as plain text indistinguishable
-        from every informational line around it. Caught the same way S4h's
-        own defect was — by looking at a real screenshot, not by trusting the
-        accessibility tree.
-      */}
-      <Pressable
-        testID={'floorgrid-diagnostics-toggle'}
-        accessibilityRole={'button'}
-        onPress={() => setShowDiagnostics((previous) => !previous)}
-        style={panelStyles.diagnosticsToggle as WebSelectableViewStyle}
-      >
-        <Text style={panelStyles.buttonText}>
-          {showDiagnostics ? 'hide diagnostics' : 'show diagnostics'}
-        </Text>
-      </Pressable>
-      {showDiagnostics ? (
-        <View testID={'floorgrid-diagnostics'}>
-          <Text testID={'floorgrid-diagnostic-caption'}>
-            floor ({floor.rung}) — {grid.width}x{grid.height} tiles, {furniture.length} furniture,{' '}
-            {placed.length} placed, {unplaced.length} unplaced
-          </Text>
-          <Text testID={'floorsim-caption'}>
-            {`tick ${sim.tick} — `}
-            {FLOOR_SIM_MEMBER_STATES.map((each) => `${stateCounts[each]} ${each}`).join(', ')}
-          </Text>
-          <View testID={'floorsim-legend'}>
-            {FLOOR_SIM_MEMBER_STATES.map((each) => (
-              <Text
-                key={each}
-                testID={`floorsim-legend-${each}`}
-                style={{ color: FLOOR_SIM_STATE_COLOR[each] }}
-              >
-                {`${each}: ${FLOOR_SIM_STATE_LEGEND[each]}`}
-              </Text>
-            ))}
-          </View>
-        </View>
-      ) : null}
       <View
         testID={'floorgrid-tray'}
         style={buildMode ? undefined : { display: 'none' }}
@@ -1894,6 +2001,20 @@ export function FloorGrid(props: FloorGridProps) {
                   cursor: 'pointer',
                 } as WebSelectableViewStyle}
               >
+                {fixedSpriteUriFor(item, false) === null ? null : (
+                  <Image
+                    testID={`floorgrid-tray-sprite-${item}`}
+                    source={{ uri: fixedSpriteUriFor(item, false) as string }}
+                    resizeMode={'stretch'}
+                    style={{
+                      position: 'absolute',
+                      left: (chipWidth - footprint.width * tile) / 2,
+                      top: (chipHeight - footprint.height * tile) / 2,
+                      width: footprint.width * tile,
+                      height: footprint.height * tile,
+                    }}
+                  />
+                )}
                 <Text style={FLOOR_LABEL_STYLE}>{item}</Text>
               </Pressable>
             );
@@ -1944,11 +2065,64 @@ export function FloorGrid(props: FloorGridProps) {
                   }}
                 />
                 <Text style={FLOOR_LABEL_STYLE}>{item}</Text>
+                {buildMode ? (
+                  <Pressable
+                    testID={`floorgrid-tray-select-${item}`}
+                    accessibilityRole={'button'}
+                    onPress={() => setPendingPlace({ kind: 'session', item })}
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      right: 0,
+                      bottom: 0,
+                      cursor: 'pointer',
+                    } as WebSelectableViewStyle}
+                  />
+                ) : null}
               </Animated.View>
             );
           })}
         </ScrollView>
       </View>
+      {/*
+        Developer readout, below the tray so it does not sit between the gym
+        and the Build inventory. Collapsed by default; the dock Play/Build/
+        Shop/Staff/More controls stay the primary chrome.
+      */}
+      <Pressable
+        testID={'floorgrid-diagnostics-toggle'}
+        accessibilityRole={'button'}
+        onPress={() => setShowDiagnostics((previous) => !previous)}
+        style={panelStyles.diagnosticsToggle as WebSelectableViewStyle}
+      >
+        <Text style={panelStyles.buttonText}>
+          {showDiagnostics ? 'hide diagnostics' : 'show diagnostics'}
+        </Text>
+      </Pressable>
+      {showDiagnostics ? (
+        <View testID={'floorgrid-diagnostics'}>
+          <Text testID={'floorgrid-diagnostic-caption'}>
+            floor ({floor.rung}) — {grid.width}x{grid.height} tiles, {furniture.length} furniture,{' '}
+            {placed.length} placed, {unplaced.length} unplaced
+          </Text>
+          <Text testID={'floorsim-caption'}>
+            {`tick ${sim.tick} — `}
+            {FLOOR_SIM_MEMBER_STATES.map((each) => `${stateCounts[each]} ${each}`).join(', ')}
+          </Text>
+          <View testID={'floorsim-legend'}>
+            {FLOOR_SIM_MEMBER_STATES.map((each) => (
+              <Text
+                key={each}
+                testID={`floorsim-legend-${each}`}
+                style={{ color: FLOOR_SIM_STATE_COLOR[each] }}
+              >
+                {`${each}: ${FLOOR_SIM_STATE_LEGEND[each]}`}
+              </Text>
+            ))}
+          </View>
+        </View>
+      ) : null}
       {/*
         GDD §5.14 Stage C — the contextual station panel. An ANCHORED PANEL
         (CLAUDE.md's brief names "bottom sheet, anchored panel, compact

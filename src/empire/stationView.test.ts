@@ -16,9 +16,13 @@ import {
 } from './management';
 import { buySessionEquipment, withLadder } from './sessions';
 import {
+  displayConditionPercent,
   displayRepairCostBySoundness,
   isRecoveryBlocking,
   isSoundCondition,
+  playerFacingActivityGroupLabel,
+  playerFacingEquipmentLabel,
+  playerFacingManagerCapability,
   recoveryBlockingItems,
   stationConditionView,
   stationIdentityView,
@@ -75,6 +79,49 @@ function memberAt(
 }
 
 describe('stationView.ts — GDD §5.14 Stage C', () => {
+  // -------------------------------------------------------------------------
+  // Player-facing presentation (Stage C.1c) — labels, not domain tokens
+  // -------------------------------------------------------------------------
+
+  it('projects every ladder and session equipment token to a player-facing label without renaming the enum', () => {
+    for (const item of EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS) {
+      const label = playerFacingEquipmentLabel(item);
+      expect(label.length, item).toBeGreaterThan(0);
+      expect(label.includes('-'), `${item} should not be the hyphenated token`).toBe(false);
+    }
+    for (const item of EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS) {
+      const label = playerFacingEquipmentLabel(item);
+      expect(label.length, item).toBeGreaterThan(0);
+      expect(label.includes('-'), `${item} should not be the hyphenated token`).toBe(false);
+    }
+    expect(playerFacingEquipmentLabel('comp-plates')).toBe('Competition plates');
+    expect(playerFacingEquipmentLabel('wrist-wraps')).toBe('Wrist wraps');
+    expect(playerFacingEquipmentLabel('mats')).toBe('Mats');
+  });
+
+  it('projects session activity groups to player-facing labels', () => {
+    for (const group of EMPIRE_TUNING.SESSION_ACTIVITY_GROUPS) {
+      expect(playerFacingActivityGroupLabel(group).includes('-')).toBe(false);
+    }
+    expect(playerFacingActivityGroupLabel('conditioning')).toBe('Conditioning');
+  });
+
+  it('formats condition as a whole percent without changing the stored 0–1 value', () => {
+    expect(displayConditionPercent(1)).toBe(100);
+    expect(displayConditionPercent(0.5)).toBe(50);
+    expect(displayConditionPercent(0.966)).toBe(97);
+  });
+
+  it('describes manager capability without raw 0–1 thresholds', () => {
+    expect(playerFacingManagerCapability('novice')).toBe('no auto-repair');
+    expect(playerFacingManagerCapability('steady')).toBe(
+      `auto-repair below ${displayConditionPercent(EMPIRE_TUNING.MANAGER_AUTO_REPAIR_CONDITION.steady)}%`,
+    );
+    expect(playerFacingManagerCapability('veteran')).toBe(
+      `auto-repair below ${displayConditionPercent(EMPIRE_TUNING.MANAGER_AUTO_REPAIR_CONDITION.veteran)}%`,
+    );
+  });
+
   // -------------------------------------------------------------------------
   // Identity
   // -------------------------------------------------------------------------

@@ -1537,6 +1537,12 @@ export const EMPIRE_TUNING = Object.freeze({
    */
   FLOOR_STAGE_PADDING_PIXELS: 8,
 
+  /**
+   * Presentation only: `condition` (0–1) shown as a whole percent. Does not
+   * change wear, income, or any failure threshold.
+   */
+  CONDITION_PERCENT_SCALE: 100,
+
   /** Border thickness, in pixels, of the floor grid's own outer frame. Read by `FloorGrid.tsx` only. */
   FLOOR_GRID_BORDER_WIDTH_PIXELS: 1,
 
@@ -2651,6 +2657,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_TILE_PIXELS: 'knob',
   FLOOR_TILE_PIXELS_MAX: 'knob',
   FLOOR_STAGE_PADDING_PIXELS: 'knob',
+  CONDITION_PERCENT_SCALE: 'knob',
   FLOOR_GRID_BORDER_WIDTH_PIXELS: 'knob',
   FLOOR_GRID_LINE_WIDTH_PIXELS: 'knob',
   FLOOR_ITEM_BORDER_WIDTH_PIXELS: 'knob',
