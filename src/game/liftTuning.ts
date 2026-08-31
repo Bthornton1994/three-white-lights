@@ -2091,9 +2091,10 @@ export const LIFT_TUNING = Object.freeze({
 
   /**
    * -------------------------------------------------------------------------
-   * THE WORKING-RUNG LEVER, PART 1 OF 3: WHAT RPE 8 — THE ONE WORKING RUNG
-   * BELOW THE MARGIN-BAND CUT — COSTS FOR BEING A WORKING BAR, IN CAPACITY
-   * UNITS
+   * THE WORKING-RUNG LEVER, PART 1 OF 3 (SINCE 2026-08-31; THREE ADDENDS NOW,
+   * NOT TWO — SEE `BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND`): WHAT RPE 8 — THE
+   * ONE WORKING RUNG BELOW THE FIRST MARGIN-BAND CUT — COSTS FOR BEING A
+   * WORKING BAR, IN CAPACITY UNITS
    * -------------------------------------------------------------------------
    * PLACEHOLDER. Nobody has played it — GDD §12.1, and this file's own rule.
    *
@@ -2302,7 +2303,7 @@ export const LIFT_TUNING = Object.freeze({
    * 20/18/19/20 at 0.15, 16/13/14/16 now) is pinned in that constant's own
    * header. PLACEHOLDER, unverified by playtest, same as every value above.
    */
-  BENCH_WORKING_RUNG_DEMAND_ONSET: 0.195,
+  BENCH_WORKING_RUNG_DEMAND_ONSET: 0.199,
 
   /**
    * -------------------------------------------------------------------------
@@ -2337,9 +2338,20 @@ export const LIFT_TUNING = Object.freeze({
    *
    * BELOW THIS CUT: `BENCH_WORKING_RUNG_DEMAND_ONSET` — RPE 8's unchanged
    * behaviour, the flat step this arc shipped on 2026-08-27.
-   * AT OR ABOVE: `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` — covers RPE 9's four
-   * cells, RPE 10's four cells, and every meet cell whose base margin clears
-   * the cut, all by the same rule, with no RPE or prescription label anywhere.
+   * AT OR ABOVE THIS CUT, AND BELOW `BENCH_WORKING_RUNG_DEMAND_WALL_CUT_
+   * MARGIN`: `BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND` — RPE 9's four cells,
+   * and RPE 9's alone.
+   * AT OR ABOVE THE SECOND CUT: `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` —
+   * RPE 10's four cells and every meet cell whose base margin clears it, all
+   * by the same rule, with no RPE or prescription label anywhere.
+   *
+   * WHY THIS CONSTANT ITSELF STAYS 0.005, UNCHANGED SINCE 2026-08-31. This is
+   * the RPE 8 / RPE 9 boundary and the 2026-08-31 ruling ("THE TWO-KNOB SEARCH
+   * HAS PROVEN A STRUCTURAL WALL") is entirely about the RPE 9 / RPE 10
+   * boundary — see `BENCH_WORKING_RUNG_DEMAND_WALL_CUT_MARGIN` for the new
+   * cut. Nothing about this one's own measurement changed: the RPE 8/RPE 9 gap
+   * it sits inside is unaffected by where the SECOND cut lands, because base
+   * margins are a fact about the bar and the lifter, not about the tuning.
    *
    * PLACEHOLDER, like every feel value here. Nobody has played it — GDD §12.1.
    */
@@ -2347,19 +2359,121 @@ export const LIFT_TUNING = Object.freeze({
 
   /**
    * -------------------------------------------------------------------------
-   * THE WORKING-RUNG LEVER, PART 2 OF 3: WHAT A BAR AT OR ABOVE
-   * `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` COSTS, IN `ONSET`'s PLACE
+   * THE SECOND MARGIN-BAND CUT, ADDED 2026-08-31: WHERE
+   * `BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND` STOPS AND
+   * `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` STARTS
+   * -------------------------------------------------------------------------
+   * RULED 2026-08-31 ("THE TWO-KNOB SEARCH HAS PROVEN A STRUCTURAL WALL — ONE
+   * NARROW THIRD LEVER, FOR RPE 9 ONLY", CLAUDE.md). Six rounds of phone replay
+   * against the two-addend model (`ONSET` for RPE 8, one shared
+   * `WALL_ADDEND` for RPE 9 + RPE 10 + meet) converged on a measured
+   * structural fact rather than a tuning miss: RPE 10's own `WORKING_FLOOR >=
+   * 7` requirement pins `WALL_ADDEND`'s usable range so tightly (a
+   * ~0.0004-wide window, per the fifteenth round's own search) that RPE 9
+   * cannot be pushed into a visibly harder band inside it. Sharing one addend
+   * between RPE 9 and RPE 10 was the coupling that made every prior round's
+   * search fail, not the magnitude either constant landed on.
+   *
+   * SAME CLASS OF FACT AS `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN`, ONE GAP
+   * FURTHER UP THE LADDER, FOUND BY THE SAME METHOD: `LiftConfig` carries no
+   * RPE, so the boundary is placed by BASE MARGIN
+   * (`peakDemand - capacity` on the base curve), never by a rung label.
+   *
+   * -------------------------------------------------------------------------
+   * MEASURED: RPE 9's AND RPE 10's BASE MARGINS ARE DISJOINT SETS, WITH A
+   * WIDER GAP THAN THE RPE 8 / RPE 9 CUT ABOVE
+   * -------------------------------------------------------------------------
+   * At the shipped tuning, over the four reachable cells of each rung, driven
+   * directly against the live engine:
+   *
+   *     RPE 9    {  0.0117,  0.0448,  0.0338,  0.0243 }
+   *     RPE 10   {  0.1048,  0.0938,  0.0843,  0.0764 }
+   *
+   *     max(RPE 9) = 0.0448   <   min(RPE 10) = 0.0764
+   *
+   * Any cut strictly inside that 0.0316-wide gap partitions the two rungs
+   * identically. `lift.test.ts` drives both rungs' real margins and checks the
+   * cut sits between them, rather than trusting this comment.
+   *
+   * MEET DOES NOT DIP INTO THIS GAP EITHER, MEASURED RATHER THAN ASSUMED: the
+   * lightest reachable meet cell (the opener, both feels) reads a base margin
+   * of 0.0938 — inside RPE 10's own set, well clear of the 0.0448-0.0764 gap —
+   * so every meet cell stays on the `WALL_ADDEND` side of this cut regardless
+   * of exactly where inside the gap it is placed. This is what keeps the new
+   * middle band from becoming "another meet lever", which the ruling forbids.
+   *
+   * CHOSEN AT THE MIDPOINT, THE SAME RULE `BENCH_WARMUP_FLOOR_MARGIN` USED:
+   * `(0.0448 + 0.0764) / 2 = 0.0606`, rounded to `0.06` — 0.0152 of clearance
+   * under RPE 9's hardest cell and 0.0164 of clearance over RPE 10's easiest,
+   * close to even on both sides rather than hugging either edge.
+   *
+   * PLACEHOLDER, like every feel value here. Nobody has played it — GDD §12.1.
+   */
+  BENCH_WORKING_RUNG_DEMAND_WALL_CUT_MARGIN: 0.06,
+
+  /**
+   * -------------------------------------------------------------------------
+   * THE WORKING-RUNG LEVER, PART 2 OF 3, ADDED 2026-08-31: WHAT A BAR AT OR
+   * ABOVE `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` AND BELOW
+   * `BENCH_WORKING_RUNG_DEMAND_WALL_CUT_MARGIN` COSTS — RPE 9's FOUR CELLS,
+   * AND RPE 9's ALONE
    * -------------------------------------------------------------------------
    * PLACEHOLDER, unverified by playtest — GDD §12.1, and this file's own rule.
-   * Nobody has played meet's 23.5% realistic-cadence loss rate; nobody has
-   * played RPE 9's 10-12 tick `WORKING_FLOOR` or RPE 10's 7-8 tick one.
+   * This is the "one narrow third lever, for RPE 9 only" the 2026-08-31 ruling
+   * authorises, superseding the "no third addend" rule every earlier round in
+   * this arc correctly held to. See `lift.ts`'s `benchWorkingRungDemand` for
+   * the full three-band formula and `BENCH_WORKING_RUNG_DEMAND_WALL_CUT_
+   * MARGIN` for the measured RPE 9 / RPE 10 base-margin gap this band lives
+   * inside.
    *
-   * WHY THIS EXISTS RATHER THAN A BIGGER `ONSET`: see `ONSET`'s own header,
-   * "RAISING THIS TO 0.100... DELIBERATELY NOT SHIPPED". No value of a SINGLE
-   * addend applied to every working cell can move RPE 9/10 without also
-   * raising RPE 8 in lockstep, which every ruling in this arc refuses.
-   * Splitting the addend by the margin-band cut is what lets RPE 9/10 move
-   * without RPE 8 moving at all.
+   * WHY THIS EXISTS RATHER THAN MOVING `WALL_ADDEND` FURTHER: measured, not
+   * guessed. Six rounds probed `WALL_ADDEND` — the one knob RPE 9 and RPE 10
+   * shared — and the fifteenth round's search found RPE 10's own `>= 7`
+   * `WORKING_FLOOR` requirement pins `WALL_ADDEND` to a window roughly 0.0004
+   * wide, inside which RPE 9 barely moves at all. RPE 9 cannot be pushed into
+   * a visibly harder band while sharing that one knob with RPE 10 — the
+   * coupling itself was the wall, not the magnitude either constant landed on.
+   * See `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND`'s own header for that search's
+   * history, kept there since it predates this split.
+   *
+   * SIZED AGAINST A DIRECT SEARCH OVER RPE 9's OWN FOUR CELLS, DRIVEN ON THIS
+   * ROUND'S OWN CONSTANTS RATHER THAN ESTIMATED. See `BUILD_NOTES_2026_08_31`
+   * in `lift.test.ts`'s selectivity block for the searched values this round
+   * tried and the `WORKING_FLOOR`/`MAX_EFFORT` readings each produced; the
+   * value below is the one that lands RPE 8 (`ONSET`, unmoved by this split)
+   * strictly harder than RPE 9 in tick space, RPE 9 strictly harder than
+   * RPE 10 (`WALL_ADDEND`, also unmoved), and RPE 9's `WORKING_FLOOR` clear of
+   * the refractory band this arc has spent five rounds pulling every rung off.
+   *
+   * `WALL_CUT_MARGIN` GUARANTEES THIS NEVER REACHES RPE 10 OR MEET, NOT AN
+   * OBSERVATION ABOUT TODAY'S VALUE. RPE 9's heaviest base margin (0.0448)
+   * sits strictly below `WALL_CUT_MARGIN` (0.06) by construction — see that
+   * constant's own header — so this addend applies to exactly RPE 9's four
+   * cells among every reachable cell in the game, at any magnitude this
+   * constant could hold, not merely at the one shipped here.
+   *
+   * PLACEHOLDER, unverified by playtest — GDD §12.1, and this file's own rule.
+   * Nobody has played it.
+   */
+  BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND: 0.20,
+
+  /**
+   * -------------------------------------------------------------------------
+   * THE WORKING-RUNG LEVER, PART 3 OF 3: WHAT A BAR AT OR ABOVE
+   * `BENCH_WORKING_RUNG_DEMAND_WALL_CUT_MARGIN` COSTS — RPE 10's FOUR CELLS
+   * AND EVERY MEET CELL WHOSE BASE MARGIN CLEARS IT
+   * -------------------------------------------------------------------------
+   * NARROWED 2026-08-31, VALUE UNCHANGED. Before the 2026-08-31 ruling this
+   * constant also covered RPE 9's four cells — see the paragraph immediately
+   * below, "2026-08-29: LOWERED 0.34 -> 0.30", and everything under it, which
+   * is the true history of this constant while it still did. The ruling's
+   * item 7 explicitly allows leaving this value exactly where it was ("retain
+   * `WALL_ADDEND` at or extremely near the value that preserves RPE 10/meet
+   * behaviour... Do not assume all three levers must move"), and this round
+   * did not move it: RPE 10's session vector and meet's 18-cell census are
+   * measured byte-identical to the pre-split tree — see `lift.test.ts` for the
+   * re-pin. RPE 9 now reads `BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND` instead,
+   * which is a different constant with its own history above.
    *
    * -------------------------------------------------------------------------
    * 2026-08-29: LOWERED 0.34 -> 0.30, WITHDRAWING RPE 9's MASH-RISK TO PULL
@@ -2472,9 +2586,11 @@ export const LIFT_TUNING = Object.freeze({
    * PAST THIS LINE
    * -------------------------------------------------------------------------
    * `boosted = base + min(addend, max(0, this - base))`, where `addend` is
-   * `BENCH_WORKING_RUNG_DEMAND_ONSET` below
-   * `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` and `BENCH_WORKING_RUNG_DEMAND_
-   * WALL_ADDEND` at or above it. NOT A GRANT — raising this alone does nothing
+   * `BENCH_WORKING_RUNG_DEMAND_ONSET` below `BENCH_WORKING_RUNG_DEMAND_
+   * CUT_MARGIN`, `BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND` (since 2026-08-31)
+   * at or above that cut and below `BENCH_WORKING_RUNG_DEMAND_WALL_CUT_
+   * MARGIN`, and `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` at or above the
+   * second cut. NOT A GRANT — raising this alone does nothing
    * for a cell whose boosted margin already sits under it, which is why the
    * 2026-08-27 round's attempt to reach RPE 9 through `ONSET` alone, ceiling
    * unmoved, measured 0 losses everywhere: no reachable cell got within 0.1 of

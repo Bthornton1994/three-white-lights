@@ -875,16 +875,26 @@ export function benchWorkingExcess(config: LiftConfig): number {
  * BENCH ONLY: what a WORKING bar costs on top of the base demand curve.
  * ---------------------------------------------------------------------------
  *
- *     addend(baseMargin) = baseMargin < CUT_MARGIN ? ONSET : WALL_ADDEND
- *     working(excess)    = min(addend(baseMargin), max(0, MARGIN_CEILING - baseMargin))
+ *     band(baseMargin) = baseMargin <  CUT_MARGIN       ? 'onset'
+ *                       : baseMargin <  WALL_CUT_MARGIN  ? 'middle'
+ *                       :                                  'wall'
+ *     addend(band)      = onset -> ONSET, middle -> MIDDLE_ADDEND, wall -> WALL_ADDEND
+ *     working(excess)    = min(addend(band), max(0, MARGIN_CEILING - baseMargin))
  *
- * for `excess > 0`, and exactly 0 otherwise. TWO ADDENDS, NOT ONE, SINCE
- * 2026-08-28 (FOURTH). See `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` for the
- * measured RPE 8/RPE 9 base-margin gap the cut sits inside, and
- * `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` for why a single global addend
- * (`ONSET`, still 0.045, still what RPE 8 alone gets) cannot give RPE 9 any
- * realistic-cadence risk at any ceiling — a global addend cannot move RPE 9
- * without moving RPE 8 in lockstep, which every ruling in this arc refuses.
+ * for `excess > 0`, and exactly 0 otherwise. THREE ADDENDS, NOT TWO, SINCE THE
+ * 2026-08-31 RULING ("THE TWO-KNOB SEARCH HAS PROVEN A STRUCTURAL WALL"). The
+ * two-addend split (2026-08-28 FOURTH) gave RPE 9 and RPE 10 exactly one shared
+ * knob (`WALL_ADDEND`), and six rounds of phone replay against that shape found
+ * a genuine structural wall rather than a tuning miss: RPE 10's own `>= 7`
+ * floor requirement pins `WALL_ADDEND`'s usable range so tightly that RPE 9
+ * cannot be pushed into a visibly harder band without RPE 10 falling below it.
+ * A THIRD band — `WALL_CUT_MARGIN` to `CUT_MARGIN` at the low end and
+ * `WALL_CUT_MARGIN` itself at the high end — gives RPE 9 its own addend,
+ * `MIDDLE_ADDEND`, so it can move without RPE 10 or meet moving at all. See
+ * `BENCH_WORKING_RUNG_DEMAND_WALL_CUT_MARGIN` for the measured RPE 9/RPE 10
+ * base-margin gap this second cut sits inside — the same class of fact
+ * `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` already is, one gap further up the
+ * ladder, found by the same method.
  *
  * NOT `DEMAND_BASE` WITH AN `if` IN FRONT OF IT, AND THE DIFFERENCE IS THE STEP
  * AT THE LINE RATHER THAN ANY SLOPE. A uniform rise adds the same number at
@@ -892,21 +902,24 @@ export function benchWorkingExcess(config: LiftConfig): number {
  * spent. This adds an addend above the warm-up line and exactly nothing below
  * it, so the demand curve stops being a continuous function of load — and the
  * place it breaks is one `loadRatio` cannot locate, because the rungs overlap
- * in load. NOW THERE IS A SECOND STEP, at the margin-band cut, for the same
- * reason: `loadRatio` cannot locate that boundary either (RPE 8 and RPE 9
- * overlap there too), so it is placed by base margin exactly as the first step
- * is. Inside each band the addition is uniform on purpose.
+ * in load. THERE ARE NOW TWO SUCH STEPS, for the same reason each time:
+ * `loadRatio` cannot locate either boundary, because RPE 8/RPE 9 overlap in
+ * load and RPE 9/RPE 10 overlap in load too (see `WALL_CUT_MARGIN`'s header).
+ * Both are placed by base margin exactly as the first step is. Inside each
+ * band the addition is uniform on purpose — still no ramp, for the reason the
+ * next paragraph records.
  *
- * A RAMP STOOD HERE FOR ONE ROUND AND IS DELETED. `ONSET + SPAN * excess /
- * (excess + HALF)` was justified as being what compressed the ladder, and a
- * magnitude-matched control measured the opposite: the flat step compresses the
- * twelve working cells' tap floors to a spread of 3.294 against the ramped
- * version's 3.471, from 5.391 with no lever at all. Two constants and a
- * confounded mutation test, in service of a property they did not have. The
- * full reading is in `BENCH_WORKING_RUNG_DEMAND_ONSET`'s header. The 2026-08-28
- * split keeps that lesson: within each band (below the cut, at/above it) the
- * addend is still a flat step, not a ramp — `workingExcess` is not a variable
- * this function scales anything by, only the input the base margin is
+ * A RAMP STOOD HERE FOR ONE ROUND (2026-08-27 through 2026-08-28) AND WAS
+ * DELETED. `ONSET + SPAN * excess / (excess + HALF)` was justified as being
+ * what compressed the ladder, and a magnitude-matched control measured the
+ * opposite: the flat step compresses the twelve working cells' tap floors to a
+ * spread of 3.294 against the ramped version's 3.471, from 5.391 with no lever
+ * at all. Two constants and a confounded mutation test, in service of a
+ * property they did not have. The full reading is in
+ * `BENCH_WORKING_RUNG_DEMAND_ONSET`'s header. Every split since (2026-08-28
+ * FOURTH's two bands, this round's three) keeps that lesson: within each band
+ * the addend is still a flat step, not a ramp — `workingExcess` is not a
+ * variable this function scales anything by, only the input the base margin is
  * reconstructed from.
  *
  * THE KIND GUARD IS NOT DEFENSIVE, IT IS THE `launchShortfall` LESSON. That
@@ -916,6 +929,23 @@ export function benchWorkingExcess(config: LiftConfig): number {
  * the guard is inside the function rather than at the call sites, and
  * `lift.test.ts` drives a non-zero excess into a squat and a deadlift curve and
  * asserts both are byte-identical to the undriven ones.
+ *
+ * `LiftConfig` STILL CARRIES NO RPE FIELD, AND THAT IS BY DESIGN RATHER THAN AN
+ * OMISSION THIS FUNCTION WORKS AROUND. All three bands, including the new one,
+ * are selected by the same physical quantity `benchClearsTheClock` already
+ * reads (`peakDemand - capacity` on the base curve, fixed before the rep
+ * starts) — never by a rung label, a prescription, or anything a session
+ * "called" the set.
+ *
+ * THE SELECTIVITY THIS ROUND'S RULING ASKS FOR — THE MIDDLE BAND CANNOT MOVE
+ * RPE 8, RPE 10 OR MEET — IS A STRUCTURAL CONSEQUENCE OF THE PARTITION ABOVE,
+ * NOT A SEPARATE CHECK BOLTED ON. Every reachable cell falls into exactly one
+ * of the three bands by its own base margin (this function does not consult
+ * anything else), so a cell outside the `[CUT_MARGIN, WALL_CUT_MARGIN)` band
+ * can be reached by changing `MIDDLE_ADDEND` only if its base margin sits
+ * inside that band, which `lift.test.ts` measures directly against the real
+ * reachable domain rather than trusting this paragraph — see the test naming
+ * "the middle band" for the two-probe-value drive.
  */
 export function benchWorkingRungDemand(kind: PlayableLiftKind, workingExcess: number): number {
   if (kind !== 'bench') return 0;
@@ -926,21 +956,25 @@ export function benchWorkingRungDemand(kind: PlayableLiftKind, workingExcess: nu
   // rather than taking it as a second parameter, because for a positive excess
   // the two are the same number by `benchWorkingExcess`'s own definition and a
   // second parameter is a second thing that can be passed wrong. The same
-  // reconstructed margin now also decides WHICH addend applies, against
-  // `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` — see that constant's header for the
-  // measured RPE 8/RPE 9 gap it sits inside.
+  // reconstructed margin now decides which of THREE addends applies, against
+  // `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` (RPE 8 / RPE 9 boundary) and
+  // `BENCH_WORKING_RUNG_DEMAND_WALL_CUT_MARGIN` (RPE 9 / RPE 10 boundary) — see
+  // each constant's own header for the measured gap it sits inside.
   const baseMargin = workingExcess + LIFT_TUNING.BENCH_WARMUP_FLOOR_MARGIN;
   const addend =
-    baseMargin >= LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN
+    baseMargin >= LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_WALL_CUT_MARGIN
       ? LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND
-      : LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_ONSET;
+      : baseMargin >= LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN
+        ? LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND
+        : LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_ONSET;
   // THE CEILING, AND IT IS NOT A SAFETY CLAMP — IT IS THE PLACE ANOTHER RULE
   // IN THIS FILE STOPS HOLDING. See `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`
   // for the two walls (max-effort, false-start) it is sized between. The lever
   // raises a bar TOWARD that line and never past it, and adds exactly nothing
   // to a bar already beyond it — so a cell the shipped tree already puts past
   // the line is byte-identical with this lever and without it, whichever
-  // addend it would otherwise have taken.
+  // addend it would otherwise have taken. UNCHANGED BY THE THIRD BAND: the
+  // clip applies to whichever addend was selected, the same way it always has.
   const headroom = LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING - baseMargin;
   return scrub(Math.min(addend, Math.max(0, headroom)));
 }

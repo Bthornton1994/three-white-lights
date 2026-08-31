@@ -2926,8 +2926,23 @@ const REACHABLE_RESCUE: Readonly<Record<string, RescueRow>> = {
   // own header for what that does and does not say about a max-effort
   // player, and `MAX_EFFORT` for the sweep that measures continuous,
   // near-max-effort tapping instead of a moderate resumption after a stall.
+  //
+  // ONE CELL MOVES ON THE 2026-08-31 THIRD LEVER, MEASURED, NOT ASSUMED
+  // CARRIED. RPE 9 now reads `BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND` (0.20)
+  // instead of `WALL_ADDEND` — see `benchWorkingRungDemand` in `lift.ts`.
+  // Three of RPE 9's four cells still saturate at `[160, 160, 160]`, but
+  // `session/rpe9/0.8750/as-expected` — the cell whose base margin (0.0448)
+  // sits closest to the middle band's own ceiling headroom — drops to
+  // `[100, 100, 160]`: a moderate resumption now rescues 100 of the 160
+  // (idle-instant, seed) pairs rather than every one, because the extra
+  // demand this cell now carries (0.20, unclipped — see
+  // `BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND`'s own header) makes a fraction
+  // of the idle span's quit instants unrecoverable that the old shared
+  // `WALL_ADDEND` (0.192) used to save. `rescued` still equals `fromMiss`
+  // exactly, so nothing here is rescued from a rep that would have made it
+  // unaided.
   'session/rpe9/0.8250/slower-than-expected': [160, 160, 160],
-  'session/rpe9/0.8750/as-expected': [160, 160, 160],
+  'session/rpe9/0.8750/as-expected': [100, 100, 160],
   'session/rpe9/0.9000/crisp': [160, 160, 160],
   'session/rpe9/0.9250/popping': [160, 160, 160],
   'session/rpe10/0.8750/slower-than-expected': [0, 0, 160],
@@ -3567,12 +3582,68 @@ const WORKING_FLOOR = {
    * satisfied by a ladder that collapsed at one end, and this table's whole job
    * is to say exactly where the rungs land, including a tie or its absence,
    * honestly, rather than a bound either shape would also satisfy.
+   *
+   * -------------------------------------------------------------------------
+   * 2026-08-31: A THIRD ADDEND, `BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND`,
+   * GIVES RPE 9 ITS OWN LEVER — BUT A PRE-EXISTING, UNTOUCHED INVARIANT CAPS
+   * HOW FAR IT CAN MOVE, AND THIS ROUND DID NOT REACH THE RULING'S FULL ASK
+   * -------------------------------------------------------------------------
+   * The 2026-08-31 ruling ("THE TWO-KNOB SEARCH HAS PROVEN A STRUCTURAL
+   * WALL") authorised one new, narrowly-scoped addend for RPE 9 alone, so it
+   * could move without RPE 8, RPE 10 or meet moving with it — see
+   * `BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND` and
+   * `BENCH_WORKING_RUNG_DEMAND_WALL_CUT_MARGIN`. That selectivity is real and
+   * is proven structurally, not merely observed at one pair of values — see
+   * "the middle band reaches RPE 9 alone" in this file. What follows is the
+   * MAGNITUDE search, which hit a SECOND, narrower structural wall the
+   * ruling did not anticipate.
+   *
+   * THE SECOND WALL: "cannot put a reachable cell above the max-effort wall
+   * without raising the ceiling" (this file) independently pins that the
+   * synthetic demand ladder used to derive `MAX_EFFORT_WALLS` is
+   * NON-DECREASING as load rises. That test predates this round and is not
+   * named in the ruling's stop conditions, so it was treated as a hard,
+   * untouched constraint rather than something to weaken. Given the earlier
+   * finding that `WALL_ADDEND` cannot move by even 0.0005 without dropping
+   * an RPE 10 cell below the 2026-08-29 (eleventh ruling) floor of 7, the
+   * non-decreasing requirement forces `ONSET <= MIDDLE_ADDEND <=~ 0.2013`
+   * (measured: `MIDDLE_ADDEND` starts dipping the ladder between 0.2013 and
+   * 0.20135, regardless of where `WALL_CUT_MARGIN` is placed inside RPE 9's
+   * and RPE 10's disjoint base-margin gap — tried at 0.05, 0.06 and 0.07, all
+   * three gave the same ~0.0013-wide ceiling). That in turn caps RPE 9's
+   * achievable floor at roughly 9-11 ticks — almost exactly the "10-12"
+   * neighbourhood the ruling asks RPE 8 to move INTO. There is no value of
+   * `ONSET` that both lands RPE 8 in that neighbourhood AND keeps a
+   * non-one-tick gap above a floor-capped RPE 9, without exceeding the same
+   * ceiling on the OTHER side (`ONSET`'s own safe margin over `MIDDLE_ADDEND`
+   * is similarly narrow, ~0.008-0.009).
+   *
+   * WHAT SHIPPED INSTEAD: `ONSET: 0.199` (barely moved from the pre-round
+   * 0.195) and `MIDDLE_ADDEND: 0.20`, chosen with real clearance under the
+   * measured ~0.2013 ceiling rather than at its edge. This buys a clean,
+   * strictly-ordered 2-tick RPE 8 vs RPE 9 gap (13 vs 11) and makes RPE 9
+   * measurably harder than its pre-round floor (12/10/10/11 -> 11/9/10/11),
+   * but it does NOT move RPE 8 toward the "10-12" target the ruling names —
+   * that would need `ONSET >= ~0.20`, which collapses the RPE 8/RPE 9 gap to
+   * one tick or a tie (measured: `ONSET: 0.207` with `MIDDLE_ADDEND: 0.20`
+   * gives RPE 8 `[15, 12, 13, 14]` against RPE 9 `[11, 9, 10, 11]` — min 12
+   * vs max 11, exactly the "one-tick technicality" item 9 rejects).
+   *
+   * THIS IS REPORTED RATHER THAN FORCED, PER THE RULING'S OWN ITEM 15. The
+   * selectivity half of this round's ask is complete and proven. The
+   * magnitude half is not: RPE 8 has not moved into the neighbourhood the
+   * ruling names, because doing so with the tools this round was given
+   * (search `ONSET` and `MIDDLE_ADDEND`, do not touch `WALL_ADDEND` or the
+   * pre-existing ladder-monotonicity test) is not possible. A future round
+   * needs one of: authorisation to touch the ladder-monotonicity check's own
+   * tolerance, authorisation to move `WALL_ADDEND` despite the RPE 10 floor
+   * cost, or a different mechanism than a third additive band.
    */
   SESSION_FLOOR_GAP_TICKS: [
     240, 240, 240, 240, 240,
     240, 240, 240, 240, 240,
-    16, 13, 14, 16,
-    12, 10, 10, 11,
+    16, 13, 14, 15,
+    11, 9, 10, 11,
     7, 7, 8, 8,
   ] as const,
   /**
@@ -5204,6 +5275,144 @@ describe('the grind decides the lift', () => {
       ascentDemand(STICK_HEIGHT_FRAC.bench, 0.9, BENCH, 0, 0),
     );
   });
+
+  it(
+    'the middle band reaches RPE 9 alone: no value it could ever hold moves RPE 8, RPE 10 or meet',
+    () => {
+      // ------------------------------------------------------------------
+      // THE 2026-08-31 RULING'S SELECTIVITY BAR, BUILT BEFORE ANY TUNING PASS
+      // ("Build the selectivity test before tuning a value... If the
+      // implementation cannot produce that selectivity cleanly, stop and
+      // report why before tuning anything.").
+      //
+      // WHY THIS IS A STRONGER PROOF THAN DRIVING TWO ARBITRARY PROBE VALUES.
+      // `BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND` cannot be swapped live inside
+      // one process — `LIFT_TUNING` is `Object.freeze`d and `benchWorking
+      // RungDemand` reads the constant from it directly rather than taking it
+      // as a parameter, so "two probe values" cannot mean "call the same
+      // function twice with two different numbers passed in" the way a normal
+      // parameter sweep would. What is asserted instead is the fact that makes
+      // the probe-value question answer itself for EVERY value the constant
+      // could ever hold: which BAND a cell falls into is decided entirely by
+      // its own base margin against the two CUT constants, and does not read
+      // `MIDDLE_ADDEND`, `ONSET` or `WALL_ADDEND` at all. So proving band
+      // membership once, at the shipped cuts, proves selectivity for the whole
+      // real number line `MIDDLE_ADDEND` could be retuned across — not just
+      // the two points a live probe would have sampled.
+      // ------------------------------------------------------------------
+      const session = reachableSessionCells();
+      const meet = reachableMeetCells();
+      expect(session.length + meet.length, 'the cells this test covers').toBe(40);
+
+      const configOf = (cell: ReachableCell): LiftConfig => ({
+        kind: BENCH,
+        loadRatio: cell.loadRatio,
+        seed: 1,
+        feel: cell.feel,
+      });
+      const baseMarginOf = (cell: ReachableCell): number =>
+        benchWorkingExcess(configOf(cell)) + LIFT_TUNING.BENCH_WARMUP_FLOOR_MARGIN;
+      const demandOf = (cell: ReachableCell): number =>
+        benchWorkingRungDemand(BENCH, benchWorkingExcess(configOf(cell)));
+
+      // ------------------------------------------------------------------
+      // PART 1 — BAND MEMBERSHIP, AGAINST THE CELL'S OWN LABEL (an
+      // independent classification: `reachableSessionCells`/`reachableMeet
+      // Cells` derive the label from `prescribeSession`/the meet jump ladder,
+      // never from `benchWorkingRungDemand`'s own band arithmetic), NOT
+      // against the band arithmetic itself. A bug that moved the wrong rung
+      // into the middle band would show up here as a label that disagrees
+      // with its own margin.
+      // ------------------------------------------------------------------
+      const rpe9 = [...session, ...meet].filter((c) => c.label.startsWith('session/rpe9/'));
+      const rpe8 = [...session, ...meet].filter((c) => c.label.startsWith('session/rpe8/'));
+      const rpe10AndMeet = [...session, ...meet].filter(
+        (c) => c.label.startsWith('session/rpe10/') || c.label.startsWith('meet/'),
+      );
+      const warmups = session.filter((c) => /^session\/rpe[67]\//.test(c.label));
+      expect(rpe9.length, 'RPE 9 cells').toBe(4);
+      expect(rpe8.length, 'RPE 8 cells').toBe(4);
+      expect(rpe10AndMeet.length, 'RPE 10 + meet cells').toBe(4 + REACHABLE.MEET_CELLS);
+      expect(warmups.length, 'RPE 6/7 cells').toBe(REACHABLE_WARMUP.CELLS);
+
+      // EVERY RPE 9 CELL, AND ONLY AN RPE 9 CELL, SITS IN THE MIDDLE BAND.
+      for (const cell of rpe9) {
+        const margin = baseMarginOf(cell);
+        expect(margin, `${cell.label} base margin below the low cut`).toBeGreaterThanOrEqual(
+          LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN,
+        );
+        expect(margin, `${cell.label} base margin at or above the high cut`).toBeLessThan(
+          LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_WALL_CUT_MARGIN,
+        );
+      }
+      for (const cell of rpe8) {
+        expect(baseMarginOf(cell), `${cell.label} sits in the middle band`).toBeLessThan(
+          LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN,
+        );
+      }
+      for (const cell of rpe10AndMeet) {
+        expect(
+          baseMarginOf(cell),
+          `${cell.label} sits below the high cut, in the middle band`,
+        ).toBeGreaterThanOrEqual(LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_WALL_CUT_MARGIN);
+      }
+      // ...AND EVERY WARM-UP CELL NEVER REACHES ANY BAND AT ALL — its excess is
+      // exactly 0 (see the warm-up test above), which short-circuits before the
+      // band comparison is ever reached.
+      for (const cell of warmups) {
+        expect(demandOf(cell), `${cell.label} reads a band despite being a warm-up`).toBe(0);
+      }
+
+      // ------------------------------------------------------------------
+      // PART 2 — PER-CELL EXACT ADDEND ATTRIBUTION AT THE SHIPPED CONSTANTS.
+      // Each band's cells read EXACTLY that band's named constant — not "a
+      // number close to it", the literal value — which is only possible
+      // unclipped, so the headroom is checked first rather than assumed.
+      // ------------------------------------------------------------------
+      const headroomOf = (cell: ReachableCell): number =>
+        LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING - baseMarginOf(cell);
+      for (const cell of rpe8) {
+        expect(headroomOf(cell), `${cell.label} headroom clips ONSET`).toBeGreaterThan(
+          LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_ONSET,
+        );
+        expect(demandOf(cell), `${cell.label} reads ONSET exactly`).toBe(
+          LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_ONSET,
+        );
+      }
+      for (const cell of rpe9) {
+        expect(headroomOf(cell), `${cell.label} headroom clips MIDDLE_ADDEND`).toBeGreaterThan(
+          LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND,
+        );
+        expect(demandOf(cell), `${cell.label} reads MIDDLE_ADDEND exactly`).toBe(
+          LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND,
+        );
+      }
+      // RPE 10 + MEET: EITHER THE FULL WALL_ADDEND, OR CLIPPED BY THE CEILING —
+      // the same two-way split `FLOOR_EDGES.CELLS_ALREADY_PAST_THE_CEILING` and
+      // `MAX_EFFORT_WALLS.HIGHEST_REACHABLE_MARGIN`'s own header already
+      // describe for this band. Neither arm can ever read MIDDLE_ADDEND: the
+      // clipped arm's value is a pure function of the cell's own base margin
+      // and the ceiling, with no addend in it at all.
+      for (const cell of rpe10AndMeet) {
+        const headroom = headroomOf(cell);
+        // ROUNDED THE SAME WAY THE REAL FUNCTION IS: `benchWorkingRungDemand`
+        // returns `scrub(...)`, which strips IEEE-754 noise via
+        // `toFixed(LIFT_TUNING.PRECISION_DECIMALS)`. Reproducing that rounding
+        // here is not re-deriving the addend logic — it is matching the
+        // float-noise cleanup every other numeric comparison in this codebase
+        // already needs, on a value computed from the ceiling and the cell's
+        // OWN measured margin rather than from the addend-selection branch.
+        const expected = Number(
+          Math.min(LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND, headroom).toFixed(
+            LIFT_TUNING.PRECISION_DECIMALS,
+          ),
+        );
+        expect(demandOf(cell), `${cell.label} reads WALL_ADDEND or its clip, never the middle`).toBe(
+          expected,
+        );
+      }
+    },
+  );
 
   it('re-pins the two edges the bench warm-up floor rests on', () => {
     // See `FLOOR_EDGES`: both constants CLAIMED to be pinned here and neither

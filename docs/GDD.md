@@ -3104,6 +3104,95 @@ the distinction matters, so it is spelled out under the rule itself:
 None of the numbers has been played (§12.1). What is settled here is the shape
 of the first two rules; the third is a placeholder held steady for a tuner.
 
+#### The 2026-08-31 round — a third addend for RPE 9 alone, and the wall it hit
+
+**The ruling this responds to** ("THE TWO-KNOB SEARCH HAS PROVEN A
+STRUCTURAL WALL — ONE NARROW THIRD LEVER, FOR RPE 9 ONLY", CLAUDE.md). Six
+rounds of phone replay against the two-addend model above found that sharing
+one addend (`WALL_ADDEND`) between RPE 9 and RPE 10 was itself the blocker:
+RPE 10's own `WORKING_FLOOR >= 7` floor pins `WALL_ADDEND`'s usable range so
+tightly (measured this round at roughly `0.0005` wide around `0.192`) that
+RPE 9 cannot be pushed into a visibly harder band inside it. The ruling
+authorised exactly one new, narrowly-scoped addend, `BENCH_WORKING_RUNG_
+DEMAND_MIDDLE_ADDEND`, whose entire purpose is moving RPE 9 without moving
+RPE 8, RPE 10 or meet.
+
+**The mechanism: a third band, cut by the same kind of fact as the first.**
+`benchWorkingRungDemand` now selects among three addends by the bar's own
+base margin (`peakDemand - capacity` on the base curve, fixed before the rep
+starts — never by an RPE label, which `LiftConfig` still does not carry):
+
+    band(baseMargin) = baseMargin <  CUT_MARGIN       ? 'onset'
+                      : baseMargin <  WALL_CUT_MARGIN  ? 'middle'
+                      :                                  'wall'
+    addend(band)      = onset -> ONSET, middle -> MIDDLE_ADDEND, wall -> WALL_ADDEND
+    working(excess)    = min(addend(band), max(0, MARGIN_CEILING - baseMargin))
+
+**Why the new cut is structurally selective, measured rather than assumed.**
+RPE 9's and RPE 10's base margins are disjoint sets, driven directly against
+the live engine at the shipped tuning:
+
+    RPE 9    { 0.0117, 0.0448, 0.0338, 0.0243 }   max = 0.0448
+    RPE 10   { 0.1048, 0.0938, 0.0843, 0.0764 }   min = 0.0764
+
+`BENCH_WORKING_RUNG_DEMAND_WALL_CUT_MARGIN` sits at `0.06`, the midpoint of
+that `0.0316`-wide gap. Meet's lightest reachable cell (the opener, either
+feel) reads a base margin of `0.0938` — inside RPE 10's own set, nowhere near
+the gap — so meet cannot be reached by the new band regardless of where
+inside the gap the cut sits. `lift.test.ts`'s "the middle band reaches RPE 9
+alone" test drives this directly: every RPE 9 cell's base margin is checked
+against both cuts, every RPE 8 and RPE 10/meet cell's demand is checked to
+read *exactly* its own band's named constant (not merely "close to it"), and
+a planted mutation moving either cut is confirmed to redden the test.
+
+**The magnitude search hit a second, narrower wall the ruling did not
+anticipate, and this round reports it rather than forcing a value past it.**
+A pre-existing, unrelated invariant — "the [synthetic max-effort/false-start]
+ladder never falls" (`lift.test.ts`, predating this round, not named in the
+ruling's stop conditions) — requires the three addends to be non-decreasing
+as load rises, or the wall-derivation methodology `MAX_EFFORT_WALLS` depends
+on stops being meaningful. Since `WALL_ADDEND` cannot move at all (raising it
+by even `0.0005` drops an RPE 10 cell below the eleventh ruling's `>= 7`
+floor — reconfirmed this round), that invariant caps `MIDDLE_ADDEND` at
+roughly `0.2013` regardless of where `WALL_CUT_MARGIN` is placed inside the
+gap (tried at `0.05`, `0.06` and `0.07`; the ceiling did not move materially).
+A capped `MIDDLE_ADDEND` caps RPE 9's achievable floor at roughly 9-11
+ticks — almost exactly the "10-12" neighbourhood the ruling asks RPE 8 to
+move INTO, so there is no pair of `(ONSET, MIDDLE_ADDEND)` that both lands
+RPE 8 in that neighbourhood and keeps a real (more than one tick) gap above a
+floor-capped RPE 9.
+
+**What shipped: `ONSET: 0.199` (essentially unmoved from the pre-round
+`0.195`), `MIDDLE_ADDEND: 0.20`, `WALL_ADDEND` unchanged at `0.192`.** Full
+session `WORKING_FLOOR` census, ticks between taps:
+
+| rung | before this round | after (shipped) |
+|---|---|---|
+| RPE 6, 7 | unchanged | unchanged |
+| RPE 8 | 16, 13, 14, 16 | **16, 13, 14, 15** |
+| RPE 9 | 12, 10, 10, 11 | **11, 9, 10, 11** |
+| RPE 10 | 7, 7, 8, 8 | **7, 7, 8, 8 (byte-identical, as intended)** |
+
+`min(RPE 8) = 13 > max(RPE 9) = 11`, a clean, strict 2-tick gap, and RPE 9 is
+measurably harder than before it. **This does not meet the ruling's full
+ask** — RPE 8 has not moved toward "10-12", because doing so (measured:
+`ONSET: 0.207` gives RPE 8 `12, 12, 13, 14` against RPE 9's `9, 9, 10, 11`,
+a minimum gap of one tick) reopens exactly the "one-tick technicality" item 9
+of the ruling refuses. The false-start guarantee re-pins at 0 of 40
+reachable cells at the shipped 12-tick lockout; `REACHABLE_RESCUE` moves at
+exactly one cell (`session/rpe9/0.8750/as-expected`, `[160,160,160] ->
+[100,100,160]`); squat and deadlift stay byte-identical; the 18-cell meet
+census is unchanged, including the `meet/aggressive/att3/wrecked` exception,
+because the new band structurally cannot reach any meet cell.
+
+**§12.1 stays open, and this round is explicitly NOT minting bench for a
+phone replay — the human decides whether to authorise touching
+`WALL_ADDEND` despite the RPE 10 floor cost, relaxing the ladder-monotonicity
+invariant's tolerance, or a different mechanism than a third additive band.**
+`BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` (`0.005`) and `BENCH_WORKING_RUNG_
+DEMAND_MARGIN_CEILING` (`0.378`) did not move. Every constant here is an
+unplayed placeholder, the same as every other value in this arc.
+
 ### 6.3 Attempt Selection — The Real Tension
 
 **Attempts within a lift never decrease.** This is the competition rule, not a

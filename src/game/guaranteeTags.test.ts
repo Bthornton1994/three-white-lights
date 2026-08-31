@@ -1047,7 +1047,38 @@ const GUARANTEE_COVERAGE = {
   // unchanged text and carried no trigger either before or after. Verified by
   // diffing the full triggering-paragraph list before and after, not just the
   // counts either side.
-  TREE_WIDE: 309,
+  //
+  // 309 -> 313 ON THE 2026-08-31 THIRD-ADDEND ROUND (`BENCH_WORKING_RUNG_
+  // DEMAND_MIDDLE_ADDEND`). MEASURED PER FILE, by restoring each of the three
+  // touched files to its pre-round text in turn and re-reading this count:
+  // `lift.ts` +1, `liftTuning.ts` +1, `lift.test.ts` +2, summing to the
+  // measured total rather than assumed to. Each new triggering paragraph, by
+  // file, not quoted verbatim for the reason every entry above gives —
+  // quoting a capitalised run makes the QUOTING paragraph trigger too:
+  //
+  //   - `lift.ts`: the one paragraph in `benchWorkingRungDemand`'s header
+  //     stating the middle band's isolation property carries the second
+  //     trigger word.
+  //   - `liftTuning.ts`: the paragraph in `BENCH_WORKING_RUNG_DEMAND_MIDDLE_
+  //     ADDEND`'s header stating that `WALL_CUT_MARGIN` — not this round's
+  //     tuning — is what keeps the band from reaching RPE 10 or meet carries
+  //     the first trigger word.
+  //   - `lift.test.ts`: two paragraphs in the new selectivity test, split by
+  //     the `for` loops between them rather than by a blank comment line —
+  //     one stating that an RPE 9 cell is the only cell in the middle band
+  //     (fourth trigger word), one stating that a warm-up cell never reaches
+  //     any band (first trigger word).
+  //
+  // ALL FOUR ARE ON THE BETTER SIDE OF THIS FILE'S OWN COMPLAINT: every one
+  // sits directly above, or is itself, an assertion that drives the real
+  // engine rather than trusting the sentence — the selectivity test's own
+  // band-membership and per-cell-attribution checks, and the `MIDDLE_ADDEND`
+  // header's cross-reference to that same test. None of the four is tagged
+  // with a formal `@guarantee` id, on purpose: this round's magnitude search
+  // did not reach a shipped conclusion (see `SESSION_FLOOR_GAP_TICKS`'s own
+  // 2026-08-31 header in `lift.test.ts`), and a tag on a claim whose numbers
+  // are still contested is a tag with nothing settled to bite.
+  TREE_WIDE: 313,
 } as const;
 
 // ---------------------------------------------------------------------------
