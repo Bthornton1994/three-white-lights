@@ -1699,6 +1699,132 @@ the human either way.
 **`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
 a crossing.
 
+### RULED 2026-08-31: THE TWO-KNOB SEARCH HAS PROVEN A STRUCTURAL WALL — ONE NARROW THIRD LEVER, FOR RPE 9 ONLY
+
+Current clean ruling HEAD: `a4eafe51ff5dcee274c97aa978aa54d41e5da7a5`. The
+fifteenth ruling's search returned no shippable tuning change, and that
+result is accepted — **do not repeat the same two-dimensional search, and do
+not relax a constraint merely to manufacture a result.**
+
+**1. The problem is now architectural, not numerical.** `ONSET` effectively
+controls RPE 8 alone. `WALL_ADDEND` controls RPE 9, RPE 10, and every meet
+cell above the cut, all at once. The fifteenth search found that RPE 10's
+existing `≥ 7` floor pins `WALL_ADDEND`'s usable range so tightly (a `~0.0004`
+window) that RPE 9 does not meaningfully move inside it. RPE 8 therefore
+cannot move into RPE 9's current feel band while holding both strict
+RPE 8 → RPE 9 ordering and RPE 10 `≥ 7` — that is now a measured property of
+the mechanism, not a tuning miss.
+
+**2. Do not relax RPE 10.** Every RPE 10 session cell stays `WORKING_FLOOR
+≥ 7`. Do not lower it to 6. Do not use meet behaviour as justification. Do
+not make RPE 10 mechanically harsher merely because RPE 9 lacks its own
+actuator — the prior search showed that only hides the coupling problem.
+
+**3. One new, narrowly scoped degree of freedom is authorised.** Its purpose
+is singular: move the RPE 9 working rung without moving RPE 10, meet, or
+RPE ≤ 8. Use a semantically explicit name — preferred shape
+`BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND`, or another name that clearly
+describes the structural band it modifies. Do not name it merely
+`RPE9_ADDEND` if the implementation can express the distinction through the
+existing demand/margin structure without hardcoding an RPE field. It lives
+beside the existing working-rung demand controls in `liftTuning.ts`.
+
+**4. `LiftConfig` still carries no RPE field, unconditionally.** Do not add
+`rpe` to `LiftConfig`, an RPE switch through the lift machine, a second copy
+of the Tuchscherer table, or special cases scattered through the renderer or
+session layer. The lift machine still derives behaviour from the existing
+authoritative prescription/demand inputs. The new degree of freedom lives at
+the smallest existing seam that already separates the working-rung demand
+bands — the margin-band cut's own structure.
+
+**5. Refactor the piecewise demand model cleanly, using the seam the fifteenth
+finding exposed.** `ONSET` and `WALL_ADDEND` are currently mutually exclusive
+because a cell's base margin selects one branch or the other — use that
+existing distinction rather than inventing a new one. The resulting model:
+warm-up/RPE ≤ 7 unchanged; RPE 8's working band on the existing `ONSET`; a new
+RPE 9 middle working band on the newly authorised control; RPE 10/wall band on
+the existing `WALL_ADDEND`; meet continues on its existing wall path unless
+the architecture already distinguishes it. **The new middle lever must not
+become another meet lever.**
+
+**6. Build the selectivity test before tuning a value.** At two different
+probe values for the new control, assert: it MUST move all intended RPE 9
+session cells; it MUST NOT move any RPE ≤ 7 cell, any RPE 8 cell, any RPE 10
+session cell, any meet cell, false-start behaviour, or max-lockout behaviour.
+If the implementation cannot produce that selectivity cleanly, stop and
+report why before tuning anything. Do not tune a poorly isolated lever.
+
+**7. Then search the three-lever model.** Once selectivity is proven, search
+`ONSET` for RPE 8, the new middle-band control for RPE 9, and retain
+`WALL_ADDEND` at or extremely near the value that preserves RPE 10/meet
+behaviour — the fifteenth search suggests `WALL_ADDEND` is now best treated
+as effectively pinned, which is acceptable. Do not assume all three levers
+must move.
+
+**8. Target RPE 8 toward the old RPE 9 neighbourhood — approximately
+`12/10/10/11`, not a sacred fingerprint.** A nearby vector that preserves
+clean ordering and avoids new pathologies is preferred over exact equality.
+RPE 8 must retain `MAX_EFFORT = 0` unless the search proves that impossible —
+if impossible, stop and report rather than silently accepting it.
+
+**9. Target RPE 9 for a visible band separation, not a one-tick technicality.**
+The prior human replay already rejected a mechanically valid one-tick
+separation as insufficient in feel — do not define success as
+`min(RPE 8) > max(RPE 9)` by a single tick and stop there. A reasonable first
+search objective: RPE 8 centred near 10-12 ticks; RPE 9 centred below that
+while staying above RPE 10's floor; RPE 10 stays the hardest session rung,
+never below 7. Do not pre-bake an exact RPE 9 vector if a nearby one produces
+a cleaner progression — report the full vectors.
+
+**10. Ordering must be cellwise and feel-meaningful, not merely aggregate.**
+For corresponding prescribed cells where the comparison is meaningful:
+RPE 8 ticks > RPE 9 ticks > RPE 10 ticks (lower ticks = harder). Report the
+full RPE 8/9/10 vectors, the minimum and maximum adjacent-rung gap, and — if
+one anomalous cell prevents strict ordering — name that cell specifically.
+
+**11. RPE 10 remains an anchor, not collateral.** Do not chase it harder. All
+four session cells stay `≥ 7`, unconditionally. Prefer leaving the currently
+accepted RPE 10 vector unchanged if possible — the whole point of the new
+lever is to stop RPE 10 paying for RPE 9's tuning.
+
+**12. Meet is not a tuning target this round.** Measure the full 18-cell
+census, do not chase it. Because the new middle-band lever is required not to
+reach meet cells, the meet vector should read byte-for-byte identical to the
+last shipped tuning when only the new lever changes. If meet moves because of
+the new lever, the implementation has failed its own selectivity requirement.
+
+**13. Still refused, unconditionally:** `DEMAND_BASE.bench`,
+`GRIND_BOOST_FORCE_MAX`, the Tuchscherer percentages, `MAX_LOCKOUT_TICKS`, the
+false-start wall, `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN`,
+`BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`, warm-up behaviour, the
+daily-engagement guarantee, and anything in Career/Empire or another session's
+territory. No RPE field on `LiftConfig`.
+
+**14. The "no third addend" rule is superseded, narrowly.** Earlier rounds
+correctly refused a third lever before the existing two-dimensional mechanism
+had been exhausted. It has now been exhausted — the fifteenth search is the
+evidence. The prohibition is superseded only for this one isolated middle-band
+degree of freedom. It is not blanket permission to add a knob whenever a
+target is hard to hit; the bar for this new lever is its selectivity proof.
+
+**15. Required report:** the exact implementation seam used for the middle
+band and why it isolates RPE 9 structurally; selectivity test results; old and
+new RPE 8 vectors; old and new RPE 9 vectors; RPE 10's vector before/after;
+minimum RPE 8→9 separation; minimum RPE 9→10 separation; RPE 8's `MAX_EFFORT`
+count; the full 18-cell meet vector before/after; warm-up/RPE ≤ 7 proof; full
+test results; the exact tuning constants changed. **If no clean selective
+middle band can be implemented at the existing seam, stop without shipping
+and report the structural reason — do not invent a broader mechanism without
+another ruling.**
+
+**16. Do not mint, even if the vectors look mechanically perfect.** This arc
+is calibrated by human phone feel end to end. Return the candidate for human
+replay; the human decides whether the new RPE 8 actually feels like 8, RPE 9
+feels meaningfully harder, and RPE 10 stays appropriately maximal.
+
+**`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
+a crossing.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
