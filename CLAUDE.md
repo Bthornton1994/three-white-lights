@@ -1623,6 +1623,82 @@ that decision stays with the human.**
 **`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
 a crossing.
 
+### PHONE REPLAY OF THE ONSET/WALL_ADDEND CLOSE, 2026-08-31: "9 IS WHAT 8 SHOULD BE" — THE WHOLE LADDER SHIFTS UP ONE NOTCH
+
+Verbatim, phone at `732273d0`: *"Current 9 is the 8 they want. Current 8 is
+still a 7."* The fourteenth ruling's fix — RPE 8 at `16/13/14/16` ticks
+(~3.75-4.6 taps/s), strictly separated from RPE 9 at `12/10/10/11`
+(~5-6 taps/s) by 13-vs-12 — is confirmed mechanically correct and still felt
+as one whole rung too soft. This is a magnitude replay of the shape this arc
+has run before, not a reopened mechanism: the separation the fourteenth
+ruling bought is real in tick space and is being called insufficient in feel
+space.
+
+**The target: RPE 8 lands in RPE 9's CURRENT band (roughly `12/10/10/11`),
+not one tick off `16/13/14/16`.**
+
+**RPE 7 is NOT reopened.** *"Current 8 is what 7 should be"* is gym-speak for
+*this 8 undershoots*, not a request to touch the warm-up curve. GDD §12.3's
+never-punish-daily-engagement guarantee — RPE ≤ 7 unanswered on a held
+descent still makes, zero taps, every cell, every seed — stays byte-identical,
+unconditionally. If a future round genuinely wants RPE 7 itself to move, that
+needs its own explicit sentence, not an inference from this one.
+
+**RPE 9 and RPE 10 were not named, but the ladder cannot flatten.** If RPE 8
+moves into RPE 9's current band, RPE 9 has to move harder too, or the two
+rungs become indistinguishable. `WORKING_FLOOR ≤ 6` is still impossible on
+the session ladder (per the eleventh ruling) — RPE 10 must stay `≥ 7`,
+unconditionally. **This is not a request to make RPE 9 into today's RPE 10** —
+only that RPE 9 keeps separation from a harder RPE 8 while RPE 10 keeps its
+own floor.
+
+**Ruled: same two knobs, both move further than any round in this arc has
+tried.**
+
+1. **`BENCH_WORKING_RUNG_DEMAND_ONSET` rises, likely past `0.20`** — RPE 8 is
+   the only rung this constant touches. Search for a value that lands RPE 8's
+   `WORKING_FLOOR` in the neighbourhood of RPE 9's current `12/10/10/11`, not
+   a token step past `16/13/14/16`. Pin old beside new. RPE 8's `MAX_EFFORT`
+   stays 0 unless the search genuinely cannot avoid it — if it can't, that is
+   itself part of the report.
+2. **`BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` moves — likely rises** — this is
+   the RPE 9/RPE 10/meet lever. Raising it to keep RPE 9 harder than a
+   tougher RPE 8 is exactly the move that, in the fourteenth round's own
+   search, pushed RPE 10 toward the `≤6` line. Search for a value that keeps
+   RPE 9 strictly harder (lower ticks) than the new RPE 8 AND keeps all four
+   RPE 10 session cells `≥ 7`.
+3. **The fourteenth round's dead zone is the LIKELY landing here, and that is
+   an acceptable, expected outcome, not a failure.** If no pair of
+   `(ONSET, WALL_ADDEND)` gives RPE 8 in RPE 9's current band, RPE 9 strictly
+   harder than that RPE 8, and RPE 10 all four `≥ 7` — **stop and report
+   exactly that, with the narrowest gap found, the same shape the fourteenth
+   round used correctly.** Do not reach for a third addend, do not let RPE 10
+   fall to `6` or below to force RPE 9 harder, and do not flatten RPE 8 into
+   RPE 9's band by weakening the ordering requirement instead of actually
+   moving RPE 8.
+
+**Refused, unconditionally, repeated from every round in this arc:**
+`DEMAND_BASE.bench`, `GRIND_BOOST_FORCE_MAX`, an RPE field on `LiftConfig`,
+`MAX_LOCKOUT_TICKS` / the false-start wall, the Tuchscherer chart.
+`BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` (0.005) does not move.
+`BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` (0.378) does not move. Warm-up
+(RPE ≤ 7) stays byte-identical — literally untouched.
+
+**Meet's census is recorded, not chased**, per the thirteenth ruling — pin
+the full 18-cell vector at whatever the final `WALL_ADDEND` produces. The
+wrecked third (`meet/aggressive/att3/wrecked`) is a permanent exception at
+whatever the ceiling-clipped value actually is — pin it honestly (it read 4
+at the last shipped tuning, not the `6` two earlier rulings mistakenly
+carried forward from an unshipped scratch probe; re-derive it fresh against
+the real shipped constants rather than trusting either number).
+
+**Do not mint from `732273d0` — it is the rejected 8.** Do not mint from
+whatever this round produces either, win or stop; that decision stays with
+the human either way.
+
+**`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
+a crossing.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
