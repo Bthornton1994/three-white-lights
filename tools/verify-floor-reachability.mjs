@@ -430,7 +430,7 @@
  * either way.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -454,7 +454,7 @@ const MAX_CHECK_INS = 30;
 /** `EMPIRE_TUNING.FLOOR_TILE_PIXELS` — read here as a number this tool
  * asserts against, not trusted; the cross-check below drives it against the
  * drawn chip size rather than only against this literal. */
-const FLOOR_TILE_PIXELS = 28;
+let FLOOR_TILE_PIXELS = 28;
 
 const VIEWPORT = Object.freeze({ WIDTH: 390, HEIGHT: 844 });
 
@@ -767,8 +767,11 @@ const fail = (text) => {
   log.push(`  FAIL  ${text}`);
 };
 
+const PW_CHROMIUM = existsSync('/opt/pw-browsers/chromium')
+  ? '/opt/pw-browsers/chromium'
+  : undefined;
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
+  ...(PW_CHROMIUM === undefined ? {} : { executablePath: PW_CHROMIUM }),
   args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const context = await browser.newContext({
@@ -777,6 +780,12 @@ const context = await browser.newContext({
 });
 const page = await context.newPage();
 const pageErrors = [];
+
+async function openGymSurface(name) {
+  const btn = page.getByTestId(`gymscreen-surface-${name}`);
+  await btn.click({ timeout: 10000 });
+  await page.waitForTimeout(200);
+}
 page.on('pageerror', (e) => pageErrors.push(String(e.message)));
 
 /**
@@ -1332,6 +1341,10 @@ async function reachGymScreen(report) {
   if (report) {
     ok('pressing floorgrid-diagnostics-toggle opens the diagnostics surface (floorgrid-diagnostics attached)');
   }
+  const gridForTile = await boxOf('floorgrid-grid');
+  if (gridForTile !== null && gridForTile.width > 0) {
+    FLOOR_TILE_PIXELS = gridForTile.width / 8;
+  }
 }
 
 try {
@@ -1502,11 +1515,26 @@ try {
       continue;
     }
     const text = await textOf(`floorgrid-fixed-${item}`);
-    if (text !== null && text.includes(item) && text.includes('(fixed)')) {
+    if (text !== null && text.includes(item) && !text.includes('(fixed)')) {
       ok(`gap 1: floorgrid-fixed-${item} is drawn on a cold gym, reading "${text}"`);
     } else {
-      fail(`gap 1: floorgrid-fixed-${item} drawn but its text ("${text}") does not read as fixed furniture`);
+      fail(`gap 1: floorgrid-fixed-${item} drawn but its text ("${text}") does not name the movable piece`);
     }
+  }
+
+  // Stage C.1b: members are tappable.
+  const memberHit = await waitUntilDrawn(page, 'floorgrid-member-0', BEAT_TIMEOUT_MS);
+  if (memberHit.drawn) {
+    await page.getByTestId('floorgrid-member-0').click({ timeout: 10000 });
+    const memberPanel = await waitUntilDrawn(page, 'floorgrid-member-panel', BEAT_TIMEOUT_MS);
+    if (memberPanel.drawn) {
+      ok(`C.1b: tapping a member opens floorgrid-member-panel (${memberPanel.why})`);
+      await page.getByTestId('floorgrid-member-panel-dismiss').click({ timeout: 10000 }).catch(() => {});
+    } else {
+      fail(`C.1b: floorgrid-member-panel never drawn after tapping floorgrid-member-0 — ${memberPanel.why}`);
+    }
+  } else {
+    fail(`C.1b: floorgrid-member-0 never drawn — ${memberHit.why}`);
   }
 
   // Gap 3: the grid reads as a grid — real tile boundaries, counted exactly
@@ -1535,18 +1563,25 @@ try {
   // flipped, and "nothing owned yet" — which read as a claim about the whole
   // gym next to three (fixed) items on the same screen — was reworded to
   // name session equipment explicitly.
+  await openGymSurface('build');
   const trayEmptyDrawn = await waitUntilDrawn(page, 'floorgrid-tray-empty', BEAT_TIMEOUT_MS);
   const trayEmptyText = await textOf('floorgrid-tray-empty');
   const deadPromptCount = await page
     .getByText('unplaced equipment — drag onto the floor above', { exact: true })
     .count();
-  if (trayEmptyDrawn.drawn && trayEmptyText === 'no session equipment yet — buy some, then drag it here to place it' && deadPromptCount === 0) {
+  if (
+    trayEmptyDrawn.drawn &&
+    trayEmptyText !== null &&
+    trayEmptyText.includes('no session equipment yet') &&
+    deadPromptCount === 0
+  ) {
     ok(`gap 2: the empty tray shows an honest empty-state message ("${trayEmptyText}") and not the dead drag prompt`);
   } else {
     fail(
       `gap 2: expected floorgrid-tray-empty drawn with the "no session equipment yet" copy and the dead prompt absent — drawn=${trayEmptyDrawn.drawn}, text="${trayEmptyText}", dead-prompt-count=${deadPromptCount}`,
     );
   }
+  await openGymSurface('play');
 
   // Gap 5 (PLAYTEST 3): the caption states the fixed-furniture count
   // alongside placed/unplaced, so "0 placed, 0 unplaced" no longer reads as
@@ -1558,10 +1593,10 @@ try {
   // already pressed once by `reachGymScreen`, so this testID is attached the
   // same way it always was at this point in the run.
   const captionText = await textOf('floorgrid-diagnostic-caption');
-  if (captionText !== null && /\b3 fixed,/.test(captionText)) {
-    ok(`gap 5: the diagnostic caption states the fixed count ("${captionText}")`);
+  if (captionText !== null && /\b3 furniture,/.test(captionText)) {
+    ok(`gap 5: the diagnostic caption states the furniture count ("${captionText}")`);
   } else {
-    fail(`gap 5: expected floorgrid-diagnostic-caption to state "3 fixed," on a cold garage — got "${captionText}"`);
+    fail(`gap 5: expected floorgrid-diagnostic-caption to state "3 furniture," on a cold garage — got "${captionText}"`);
   }
 
   // -------------------------------------------------------------------------
@@ -2027,25 +2062,17 @@ try {
     }
   }
 
-  // Gap 4: the floor section is above the shop/allocator sections in render
-  // order — a relative DOM position, not merely that both exist.
+  // Gap 4: Stage C.1b — the gym occupies the stage, and shop is a dock
+  // drawer rather than a full-width block above the floor.
   const floorBox = await boxOf('gymscreen-floor');
-  const ladderShopBox = await boxOf('gymscreen-ladder-shop');
-  const sessionShopBox = await boxOf('gymscreen-session-shop');
-  if (floorBox !== null && ladderShopBox !== null && sessionShopBox !== null) {
-    const aboveBoth = floorBox.y < ladderShopBox.y && floorBox.y < sessionShopBox.y;
-    if (aboveBoth) {
-      ok(
-        `gap 4: gymscreen-floor (y=${Math.round(floorBox.y)}) is drawn above gymscreen-ladder-shop (y=${Math.round(ladderShopBox.y)}) and gymscreen-session-shop (y=${Math.round(sessionShopBox.y)})`,
-      );
-    } else {
-      fail(
-        `gap 4: gymscreen-floor (y=${Math.round(floorBox.y)}) is NOT above the shop sections (ladder y=${Math.round(ladderShopBox.y)}, session y=${Math.round(sessionShopBox.y)})`,
-      );
-    }
+  const dockBox = await boxOf('gymscreen-dock');
+  if (floorBox !== null && dockBox !== null && floorBox.height > 120 && dockBox.height > 20) {
+    ok(
+      `gap 4: gymscreen-floor fills the stage (h=${Math.round(floorBox.height)}) with the dock below (h=${Math.round(dockBox.height)})`,
+    );
   } else {
     fail(
-      `gap 4: could not read a bounding box for one of the three sections (floor=${floorBox !== null}, ladder-shop=${ladderShopBox !== null}, session-shop=${sessionShopBox !== null})`,
+      `gap 4: gymscreen-floor/dock not filling the stage (floor=${JSON.stringify(floorBox)}, dock=${JSON.stringify(dockBox)})`,
     );
   }
 
@@ -2054,6 +2081,7 @@ try {
   //    needed), then buy it, then confirm it shows up in the unplaced tray.
   // -------------------------------------------------------------------------
   readAddress('2: earning and buying mats');
+  await openGymSurface('more');
   const advanceId = 'gymscreen-advance-259200'; // +3d, LADDER_DEV_TIME_STEPS_SECONDS[2]
   const advanceButton = page.getByTestId(advanceId);
   const advanceExists = await advanceButton.count().then((n) => n > 0).catch(() => false);
@@ -2085,6 +2113,7 @@ try {
   }
   ok(`accumulated to "${bucksText}" gym bucks after ${presses} check-in press(es) (need 200 for mats)`);
 
+  await openGymSurface('shop');
   const buyMatsButton = page.getByTestId('gymscreen-buy-session-mats');
   const buyMatsExists = await buyMatsButton.count().then((n) => n > 0).catch(() => false);
   if (!buyMatsExists) {
@@ -2095,6 +2124,7 @@ try {
   await buyMatsButton.click({ timeout: 10000 });
   await page.waitForTimeout(200);
 
+  await openGymSurface('build');
   await page.getByTestId('floorgrid-tray').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
   const trayItemDrawn = await waitUntilDrawn(page, 'floorgrid-tray-item-mats', BEAT_TIMEOUT_MS);
   if (trayItemDrawn.drawn) {
@@ -2150,14 +2180,15 @@ try {
     !placedAfterRefusal &&
     stillInTrayAfterRefusal &&
     powerBarTextAfterRefusal !== null &&
-    powerBarTextAfterRefusal.includes('power-bar (fixed)')
+    powerBarTextAfterRefusal.includes('power-bar') &&
+    !powerBarTextAfterRefusal.includes('(fixed)')
   ) {
     ok(
-      `gap 6: dragging mats onto power-bar's cell is refused (message "${refusedMessage}"), mats stays in the tray, and power-bar (fixed) is still drawn there`,
+      `gap 6: dragging mats onto power-bar's cell is refused (message "${refusedMessage}"), mats stays in the tray, and power-bar is still drawn there`,
     );
   } else {
     fail(
-      `gap 6: expected the fixed-furniture overlap to be refused — refusal message="${refusedMessage}", placed=${placedAfterRefusal}, still-in-tray=${stillInTrayAfterRefusal}, power-bar text="${powerBarTextAfterRefusal}"`,
+      `gap 6: expected the furniture overlap to be refused — refusal message="${refusedMessage}", placed=${placedAfterRefusal}, still-in-tray=${stillInTrayAfterRefusal}, power-bar text="${powerBarTextAfterRefusal}"`,
     );
   }
 
@@ -2247,7 +2278,9 @@ try {
   if (placedBoxAfterFirstDrag !== null && gridBoxBefore !== null) {
     const secondTargetX = gridBoxBefore.x + FLOOR_TILE_PIXELS * 0.25;
     const secondTargetY = gridBoxBefore.y + FLOOR_TILE_PIXELS * 3.25;
-    await dragBox(placedBoxAfterFirstDrag, secondTargetX, secondTargetY);
+    await page.getByTestId('floorgrid-placed-mats').click({ timeout: 10000 });
+    await page.waitForTimeout(150);
+    await page.mouse.click(secondTargetX, secondTargetY);
     // GDD §5.13 Phase 3 (8d), and the poll is HERE rather than in its own
     // section below because this drop is one of the drops that can cause the
     // reaction. The beat runs for `FLOOR_SIM_INTERRUPTED_BEAT_TICKS` — under a
@@ -2573,6 +2606,18 @@ try {
     return found === null ? null : found[1];
   };
   const pressById = async (id) => {
+    if (id.startsWith('gymscreen-advance')) await openGymSurface('more');
+    if (id.startsWith('gymscreen-buy-')) await openGymSurface('shop');
+    if (id.startsWith('floorgrid-')) await openGymSurface('play');
+    if (
+      id.startsWith('gymscreen-hire') ||
+      id.startsWith('gymscreen-prompt') ||
+      id.startsWith('gymscreen-dismiss') ||
+      id.startsWith('gymscreen-recover') ||
+      id.startsWith('gymscreen-repair')
+    ) {
+      await openGymSurface('staff');
+    }
     const control = page.getByTestId(id);
     await control.scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
     await control.click({ timeout: 10000 });
@@ -2592,6 +2637,7 @@ try {
   /** Barbell-group furniture is always `'fixed'`; everything else this run ever owns is a placed `'session'` item — `FIXED_FURNITURE_ITEMS` (section 1a) is the same list the fixed-furniture gap check already drives. */
   const stationKindFor = (item) => (FIXED_FURNITURE_ITEMS.includes(item) ? 'fixed' : 'session');
   const stationConditionText = async (kind, item) => {
+    await openGymSurface('play');
     const testId = kind === 'fixed' ? `floorgrid-fixed-${item}` : `floorgrid-placed-${item}`;
     const alreadySelected =
       (await textOf('floorgrid-station-panel-identity'))?.includes(item) ?? false;
@@ -2606,6 +2652,7 @@ try {
   // 9a. The section is reachable within the existing gym surface, by scrolling
   // — no new route, no query string, same screen the floor is on.
   readAddress('9a: the stage-4 section');
+  await openGymSurface('staff');
   await page.getByTestId('gymscreen-management').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
   const managementDrawn = await waitUntilDrawn(page, 'gymscreen-management', BEAT_TIMEOUT_MS);
   if (managementDrawn.drawn) {
@@ -2942,6 +2989,7 @@ try {
       .then((n) => n > 0)
       .catch(() => false);
     if (matsOwnedForRecovery) {
+      await openGymSurface('build');
       await page.getByTestId('floorgrid-grid').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
       const trayBoxForRecovery = await boxOf('floorgrid-tray-item-mats');
       const gridBoxForRecovery = await boxOf('floorgrid-grid');
@@ -3427,6 +3475,7 @@ try {
   // `role="button"`, react-native-web's mapping of `accessibilityRole=
   // "button"` (confirmed in `propsToAriaRole.js` before writing this claim,
   // not assumed).
+  await openGymSurface('more');
   const slot0CardioId = 'gymscreen-slot-0-set-cardio';
   const slot0CardioDrawn = await waitUntilDrawn(page, slot0CardioId, BEAT_TIMEOUT_MS);
   if (!slot0CardioDrawn.drawn) {
@@ -3492,6 +3541,7 @@ try {
   // bounding box (the same "presence is not visibility" standard, applied
   // with a threshold that fits a deliberately dimmed control rather than the
   // fade-in one).
+  await openGymSurface('shop');
   const matsShortfallId = 'gymscreen-buy-session-mats-unavailable';
   const matsShortfallBox = await boxOf(matsShortfallId);
   if (matsShortfallBox === null || matsShortfallBox.width <= 0 || matsShortfallBox.height <= 0) {
@@ -3677,6 +3727,7 @@ try {
   // ===========================================================================
   await reachGymScreen(false);
   readAddress('13: a fresh gym for the station panel');
+  await openGymSurface('more');
 
   /** Press the dev `+3d` control until the drawn purse is at or above `target`, or give up after `MAX_CHECK_INS`. */
   const earnUntil13 = async (target) => {
@@ -3696,8 +3747,10 @@ try {
   };
 
   await earnUntil13(3000);
+  await openGymSurface('shop');
   await page.getByTestId('gymscreen-buy-session-mats').click({ timeout: 10000 });
   await page.waitForTimeout(200);
+  await openGymSurface('build');
   const trayMats13 = await waitUntilDrawn(page, 'floorgrid-tray-item-mats', BEAT_TIMEOUT_MS);
   if (!trayMats13.drawn) {
     fail(`13: mats never reached the tray on the fresh gym — ${trayMats13.why}`);

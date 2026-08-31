@@ -17,6 +17,7 @@
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -55,7 +56,7 @@ import {
   trainingIqRatePerDay,
 } from './production';
 
-const HERE = path.dirname(new URL(import.meta.url).pathname);
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 const HOUR = EMPIRE_TUNING.SECONDS_PER_HOUR;
 const DAY = EMPIRE_TUNING.SECONDS_PER_DAY;

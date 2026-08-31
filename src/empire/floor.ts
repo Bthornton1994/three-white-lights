@@ -146,6 +146,25 @@ export function sessionItemFootprint(item: SessionEquipmentItem): GridSize {
   return footprint;
 }
 
+/**
+ * Starting-Barbell footprint, in tiles. Read from
+ * `FLOOR_FIXED_FURNITURE_LAYOUT` — the same table that seeds the opening
+ * layout. Only `LADDER_STARTING_EQUIPMENT` has a row; a purchased
+ * squat-rack is still shop-only (no floor body in this stage).
+ */
+export function furnitureItemFootprint(item: LadderEquipmentItem): GridSize {
+  const layout = Object.prototype.hasOwnProperty.call(
+    EMPIRE_TUNING.FLOOR_FIXED_FURNITURE_LAYOUT,
+    item,
+  )
+    ? EMPIRE_TUNING.FLOOR_FIXED_FURNITURE_LAYOUT[
+        item as keyof typeof EMPIRE_TUNING.FLOOR_FIXED_FURNITURE_LAYOUT
+      ]
+    : undefined;
+  if (layout === undefined) refuseWith(`${String(item)} has no registered furniture footprint`);
+  return layout.footprint;
+}
+
 // ---------------------------------------------------------------------------
 // Fixed furniture — GDD §5.13's PLAYTEST 2 ruling, gap 1
 // ---------------------------------------------------------------------------
@@ -228,19 +247,53 @@ export function fixedFloorFurniture(
 // ---------------------------------------------------------------------------
 
 /**
- * The whole of Phase 1's layout state: which rung's floor this is, and a
- * position per placed item. `placements` carries no entry for an owned but
- * unplaced item — presence in the record IS "placed", the same closed-world
- * reading `GymState.sessionEquipment` uses for ownership.
+ * The whole of Phase 1's layout state: which rung's floor this is, a
+ * position per placed session item, and a position per placed starting
+ * Barbell piece.
+ *
+ * `placements` carries no entry for an owned but unplaced session item —
+ * presence in the record IS "placed", the same closed-world reading
+ * `GymState.sessionEquipment` uses for ownership.
+ *
+ * `furniture` is Stage C.1b's layout-state authorization: the Barbell
+ * opening kit (`LADDER_STARTING_EQUIPMENT`) is player-positionable. It is
+ * still not ownership — `LadderState.equipment` remains the source of
+ * truth for what the gym owns, and there is still no sell. A missing
+ * furniture key means that owned starting piece is in the tray, waiting
+ * to be placed. This is layout, not economy: wear, repair, income and
+ * manager behaviour are untouched.
  */
 export interface FloorState {
   readonly rung: LadderRung;
   readonly placements: Readonly<Partial<Record<SessionEquipmentItem, GridPosition>>>;
+  readonly furniture: Readonly<Partial<Record<LadderEquipmentItem, GridPosition>>>;
 }
 
-/** A fresh, empty floor at `rung` — the opening state, and what a relocation resets to. */
+/** The opening Barbell layout, read from `FLOOR_FIXED_FURNITURE_LAYOUT`. */
+function startingFurniturePositions(): Readonly<Partial<Record<LadderEquipmentItem, GridPosition>>> {
+  const next: Partial<Record<LadderEquipmentItem, GridPosition>> = {};
+  for (const item of EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT) {
+    const layout = EMPIRE_TUNING.FLOOR_FIXED_FURNITURE_LAYOUT[item];
+    if (layout === undefined) {
+      refuseWith(`${String(item)} has no registered furniture layout`);
+    }
+    next[item] = Object.freeze({ x: layout.position.x, y: layout.position.y });
+  }
+  return Object.freeze(next);
+}
+
+/**
+ * A fresh floor at `rung` — session placements empty, starting Barbell
+ * furniture seeded at the default layout so opening day is a gym, not an
+ * empty grid. Relocation uses the same seed: a new room, laid out with
+ * the opening kit, session gear unplaced.
+ */
 export function createFloorState(rung: LadderRung): FloorState {
-  return Object.freeze({ rung, placements: Object.freeze({}) });
+  return Object.freeze({
+    rung,
+    placements: Object.freeze({}),
+    furniture: startingFurniturePositions(),
+  });
 }
 
 /** The floor a relocation to `rung` produces — header note above: a new room, nothing carried forward but ownership (which this module never held). */
@@ -280,6 +333,50 @@ export function floorLayout(floor: FloorState): readonly FloorPlacement[] {
         footprint: sessionItemFootprint(item),
       }),
     ),
+  );
+}
+
+/** Every starting-Barbell piece this floor has a position for, in `LADDER_STARTING_EQUIPMENT` order. */
+export function placedFurnitureItems(floor: FloorState): readonly LadderEquipmentItem[] {
+  return Object.freeze(
+    EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT.filter((item) => floor.furniture[item] !== undefined),
+  );
+}
+
+/** Owned starting-Barbell pieces with no floor position yet — the Build-mode furniture tray. */
+export function unplacedOwnedFurnitureItems(
+  floor: FloorState,
+  owned: readonly LadderEquipmentItem[],
+): readonly LadderEquipmentItem[] {
+  const ownedSet = new Set<string>(owned);
+  return Object.freeze(
+    EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT.filter(
+      (item) => ownedSet.has(item) && floor.furniture[item] === undefined,
+    ),
+  );
+}
+
+/**
+ * Live furniture positions, filtered against real `LadderState.equipment`.
+ * Same shape as `fixedFloorFurniture` (the default-layout reader) so
+ * `floorSim.ts` can treat Barbell stations as stations without caring that
+ * the player can now move them.
+ */
+export function floorFurnitureLayout(
+  floor: FloorState,
+  owned: readonly LadderEquipmentItem[],
+): readonly FixedFurniturePlacement[] {
+  const ownedSet = new Set<string>(owned);
+  return Object.freeze(
+    placedFurnitureItems(floor)
+      .filter((item) => ownedSet.has(item))
+      .map((item) =>
+        Object.freeze({
+          item,
+          position: floor.furniture[item] as GridPosition,
+          footprint: furnitureItemFootprint(item),
+        }),
+      ),
   );
 }
 
@@ -361,6 +458,33 @@ export function requireFloorState(
       }
     }
   }
+  const furnitureRows = floorFurnitureLayout(
+    floor,
+    EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT.filter((item) => floor.furniture[item] !== undefined),
+  );
+  for (const row of furnitureRows) {
+    if (!withinGrid(row.position, row.footprint, grid)) {
+      refuseWith(`the floor's furniture position for ${String(row.item)} does not fit its rung's grid`);
+    }
+  }
+  for (let i = 0; i < furnitureRows.length; i += 1) {
+    for (let j = i + 1; j < furnitureRows.length; j += 1) {
+      const left = furnitureRows[i] as FixedFurniturePlacement;
+      const right = furnitureRows[j] as FixedFurniturePlacement;
+      if (footprintsOverlap(left.position, left.footprint, right.position, right.footprint)) {
+        refuseWith(
+          `the floor places furniture ${String(left.item)} and ${String(right.item)} overlapping each other`,
+        );
+      }
+    }
+  }
+  for (const [item, position] of entries) {
+    if (
+      overlapsFixedFurniture(position, sessionItemFootprint(item), furnitureRows)
+    ) {
+      refuseWith(`the floor places ${String(item)} overlapping furniture`);
+    }
+  }
   return floor;
 }
 
@@ -419,6 +543,13 @@ export function placeFloorItem(
       return Object.freeze({ kind: 'refused', state: floor, item, position, reason: 'overlaps' });
     }
   }
+  const furniture = floorFurnitureLayout(
+    floor,
+    EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT.filter((each) => floor.furniture[each] !== undefined),
+  );
+  if (overlapsFixedFurniture(position, footprint, furniture)) {
+    return Object.freeze({ kind: 'refused', state: floor, item, position, reason: 'overlaps' });
+  }
   return Object.freeze({
     kind: 'placed',
     state: Object.freeze({
@@ -428,6 +559,81 @@ export function placeFloorItem(
     item,
     position,
   });
+}
+
+export type FloorFurniturePlaceResult =
+  | {
+      readonly kind: 'placed';
+      readonly state: FloorState;
+      readonly item: LadderEquipmentItem;
+      readonly position: GridPosition;
+    }
+  | {
+      readonly kind: 'refused';
+      readonly state: FloorState;
+      readonly item: LadderEquipmentItem;
+      readonly position: GridPosition;
+      readonly reason: 'not-owned' | 'out-of-bounds' | 'overlaps';
+    };
+
+/**
+ * Place (or move) starting Barbell furniture. Ownership is the real
+ * `LadderState.equipment` list — this never writes it. A piece not in
+ * `LADDER_STARTING_EQUIPMENT` has no furniture footprint and is not owned
+ * as layout, so it refuses as `not-owned`.
+ */
+export function placeFloorFurniture(
+  floor: FloorState,
+  owned: readonly LadderEquipmentItem[],
+  item: LadderEquipmentItem,
+  position: GridPosition,
+): FloorFurniturePlaceResult {
+  requireFloorState(floor, placedFloorItems(floor));
+  const ownedSet = new Set<string>(owned);
+  const isStarting = (EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT as readonly string[]).includes(item);
+  if (!ownedSet.has(item) || !isStarting) {
+    return Object.freeze({ kind: 'refused', state: floor, item, position, reason: 'not-owned' });
+  }
+  const grid = floorGridSize(floor.rung);
+  const footprint = furnitureItemFootprint(item);
+  if (!withinGrid(position, footprint, grid)) {
+    return Object.freeze({
+      kind: 'refused',
+      state: floor,
+      item,
+      position,
+      reason: 'out-of-bounds',
+    });
+  }
+  const otherFurniture = floorFurnitureLayout(
+    floor,
+    EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT.filter((each) => each !== item && floor.furniture[each] !== undefined),
+  );
+  if (overlapsFixedFurniture(position, footprint, otherFurniture)) {
+    return Object.freeze({ kind: 'refused', state: floor, item, position, reason: 'overlaps' });
+  }
+  for (const row of floorLayout(floor)) {
+    if (footprintsOverlap(position, footprint, row.position, row.footprint)) {
+      return Object.freeze({ kind: 'refused', state: floor, item, position, reason: 'overlaps' });
+    }
+  }
+  return Object.freeze({
+    kind: 'placed',
+    state: Object.freeze({
+      ...floor,
+      furniture: Object.freeze({ ...floor.furniture, [item]: Object.freeze(position) }),
+    }),
+    item,
+    position,
+  });
+}
+
+/** Take starting Barbell furniture off the floor. Always succeeds — a no-op if it was never placed. Ownership is untouched. */
+export function removeFloorFurniture(floor: FloorState, item: LadderEquipmentItem): FloorState {
+  if (floor.furniture[item] === undefined) return floor;
+  const next = { ...floor.furniture };
+  delete next[item];
+  return Object.freeze({ ...floor, furniture: Object.freeze(next) });
 }
 
 /** Take `item` off the floor. Always succeeds — a no-op if it was never placed. */

@@ -1796,25 +1796,16 @@ describe('S4h: every rendered Pressable is visibly a control', () => {
       expect(count, `${label} drew at least one Pressable`).toBeGreaterThan(0);
     }
     const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
-    // GDD §5.14 STAGE C.1: 'heavily operated gym' and 'staffed gym' both lost
-    // exactly 3 Pressables from their pre-Stage-C.1 counts (28 -> 25,
-    // 26 -> 23) — the three live, affordable per-item repair buttons the
-    // deleted loop used to draw for the gym's three always-owned fixed
-    // items (power-bar, comp-plates, flat-bench). 'dormant gym' and
-    // 'ready-to-reopen gym' are unchanged at 28: by the time either state is
-    // reached in this fixture, the same items are either already repaired
-    // (ready-to-reopen) or worn but priced past what the declining purse
-    // could afford (dormant) — the deleted loop drew unavailable TEXT there,
-    // never a Pressable, so removing it costs this census nothing in those
-    // two states. 'cold garage' is unchanged (a cold gym owns nothing worn,
-    // so the deleted loop only ever drew "as new" text there too).
+    // Stage C.1b added five dock surfaces (play/build/shop/staff/more) on
+    // every gym, and a HUD review chip on gyms that have a standing
+    // maintenance review (dormant and ready-to-reopen in this fixture).
     expect(counts).toEqual({
-      'cold garage': 21,
-      'heavily operated gym': 25,
-      'staffed gym': 23,
-      'dormant gym': 28,
-      'ready-to-reopen gym': 28,
+      'cold garage': 26,
+      'heavily operated gym': 30,
+      'staffed gym': 28,
+      'dormant gym': 34,
+      'ready-to-reopen gym': 34,
     });
-    expect(total).toBe(125);
+    expect(total).toBe(152);
   });
 });

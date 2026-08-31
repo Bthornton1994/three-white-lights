@@ -1472,10 +1472,11 @@ export const EMPIRE_TUNING = Object.freeze({
 
   /**
    * GDD §5.13's PLAYTEST 2 ruling, gap 1: the Barbell-group starting baseline
-   * (`LADDER_STARTING_EQUIPMENT` — "a bar, some plates, a bench") drawn as
-   * FIXED, NON-DRAGGABLE floor furniture from the moment a gym exists, rather
-   * than a floor that opens genuinely empty. Read by `floor.ts`'s
-   * `fixedFloorFurniture` only.
+   * (`LADDER_STARTING_EQUIPMENT` — "a bar, some plates, a bench") as the
+   * DEFAULT opening layout from the moment a gym exists. Stage C.1b made
+   * those three items player-positionable layout state (`FloorState.
+   * furniture`); this table is the seed and the footprint source, not a
+   * claim that the items cannot move. Read by `floor.ts`.
    *
    * ONE ARRANGEMENT FOR EVERY RUNG, NOT A TABLE PER RUNG — the judgement call
    * this piece's own report names and reasons about. Every rung's grid
@@ -1514,12 +1515,27 @@ export const EMPIRE_TUNING = Object.freeze({
   }),
 
   /**
-   * Pixels per grid tile the floor renders at — a rendering/legibility knob,
-   * not game math, but a felt one (spacing, tap-target size, how fiddly a
-   * drag reads), so it lives here rather than as a magic number in
-   * `FloorGrid.tsx`. Read by `FloorGrid.tsx` only.
+   * Fallback pixels per grid tile when the gym stage has not been measured
+   * yet (`onLayout` has not fired). Stage C.1b sizes the live tile from the
+   * available stage so a garage fills the viewport rather than sitting in a
+   * 28px corner; this constant is the pre-measure fallback only, not the
+   * displayed size after layout. Read by `FloorGrid.tsx` only.
    */
   FLOOR_TILE_PIXELS: 28,
+
+  /**
+   * Upper bound on a live tile, in pixels, after the gym stage is measured.
+   * Stops a desktop viewport from blowing an 8x6 garage into unreadable
+   * sprites. Read by `FloorGrid.tsx` only.
+   */
+  FLOOR_TILE_PIXELS_MAX: 72,
+
+  /**
+   * Inset, in pixels, reserved on every edge of the gym stage before the
+   * tile size is chosen so the grid does not kiss the HUD/dock. Read by
+   * `FloorGrid.tsx` only.
+   */
+  FLOOR_STAGE_PADDING_PIXELS: 8,
 
   /** Border thickness, in pixels, of the floor grid's own outer frame. Read by `FloorGrid.tsx` only. */
   FLOOR_GRID_BORDER_WIDTH_PIXELS: 1,
@@ -2633,6 +2649,8 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   SESSION_EQUIPMENT_FOOTPRINT: 'knob',
   FLOOR_FIXED_FURNITURE_LAYOUT: 'knob',
   FLOOR_TILE_PIXELS: 'knob',
+  FLOOR_TILE_PIXELS_MAX: 'knob',
+  FLOOR_STAGE_PADDING_PIXELS: 'knob',
   FLOOR_GRID_BORDER_WIDTH_PIXELS: 'knob',
   FLOOR_GRID_LINE_WIDTH_PIXELS: 'knob',
   FLOOR_ITEM_BORDER_WIDTH_PIXELS: 'knob',

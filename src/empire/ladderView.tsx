@@ -281,12 +281,15 @@ export function LadderView(props: LadderViewProps) {
 // ===========================================================================
 
 import {
+  type FloorFurniturePlaceResult,
   type FloorPlaceResult,
   type FloorState,
   type GridPosition,
   createFloorState,
+  placeFloorFurniture,
   placeFloorItem,
   relocateFloorState,
+  removeFloorFurniture,
   removeFloorItem,
 } from './floor';
 import {
@@ -367,6 +370,20 @@ export type ManagedCheckInReport = Omit<ManagedCheckIn, 'state' | 'accrual'>;
  * own functions). Nothing here stores which items are owned a second time —
  * only where the owned ones currently sit.
  */
+/**
+ * Which Empire surface is in front of the gym. `play` is the default
+ * facility-first view; `build` is place/move; the others are drawers over
+ * the gym rather than replacement pages. Stage C.1b — presentation only.
+ */
+export const GYM_SURFACES = Object.freeze([
+  'play',
+  'build',
+  'shop',
+  'staff',
+  'more',
+] as const);
+export type GymSurface = (typeof GYM_SURFACES)[number];
+
 export interface GymViewState {
   readonly managed: ManagedGym;
   readonly lastAccrual: LadderAccrual | null;
@@ -377,6 +394,7 @@ export interface GymViewState {
   readonly allocationSetThisWeek: boolean;
   readonly weekLog: readonly GymWeekReport[];
   readonly floor: FloorState;
+  readonly surface: GymSurface;
 }
 
 /**
@@ -394,6 +412,7 @@ export type GymViewRefusal =
   | Extract<LadderMoveResult, { readonly kind: 'refused' }>['reason']
   | Extract<SessionBuyResult, { readonly kind: 'refused' }>['reason']
   | Extract<FloorPlaceResult, { readonly kind: 'refused' }>['reason']
+  | Extract<FloorFurniturePlaceResult, { readonly kind: 'refused' }>['reason']
   | Extract<RepairResult, { readonly kind: 'refused' }>['reason']
   | Extract<DeclineRepairResult, { readonly kind: 'refused' }>['reason']
   | Extract<HireResult, { readonly kind: 'refused' }>['reason']
@@ -468,6 +487,13 @@ export type GymViewAction =
       readonly position: GridPosition;
     }
   | { readonly kind: 'floor-remove'; readonly item: SessionEquipmentItem }
+  | {
+      readonly kind: 'floor-place-furniture';
+      readonly item: LadderEquipmentItem;
+      readonly position: GridPosition;
+    }
+  | { readonly kind: 'floor-remove-furniture'; readonly item: LadderEquipmentItem }
+  | { readonly kind: 'set-gym-surface'; readonly surface: GymSurface }
   | { readonly kind: 'answer-prompt'; readonly response: PromptResponse }
   | { readonly kind: 'repair-item'; readonly item: ManagedEquipmentItem }
   | { readonly kind: 'decline-repair'; readonly item: ManagedEquipmentItem }
@@ -488,6 +514,7 @@ export function createGymViewState(): GymViewState {
     allocationSetThisWeek: false,
     weekLog: Object.freeze([]),
     floor: createFloorState(managed.gym.ladder.rung),
+    surface: 'play',
   });
 }
 
@@ -573,6 +600,7 @@ function advanceGymClock(
     // A clock advance never relocates and never touches ownership, so the
     // floor layout is untouched — only a successful `move-up` resets it.
     floor: state.floor,
+    surface: state.surface,
   });
 }
 
@@ -648,6 +676,32 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
         ...state,
         floor: removeFloorItem(state.floor, action.item),
         lastRefusal: null,
+      });
+    }
+    case 'floor-place-furniture': {
+      const outcome = placeFloorFurniture(
+        state.floor,
+        state.managed.gym.ladder.equipment,
+        action.item,
+        action.position,
+      );
+      return Object.freeze({
+        ...state,
+        floor: outcome.state,
+        lastRefusal: outcome.kind === 'refused' ? outcome.reason : null,
+      });
+    }
+    case 'floor-remove-furniture': {
+      return Object.freeze({
+        ...state,
+        floor: removeFloorFurniture(state.floor, action.item),
+        lastRefusal: null,
+      });
+    }
+    case 'set-gym-surface': {
+      return Object.freeze({
+        ...state,
+        surface: action.surface,
       });
     }
     case 'set-allocation-slot': {

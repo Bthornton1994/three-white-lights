@@ -703,11 +703,11 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
     const placed = dispatchGymThrough(withMats, {
       kind: 'floor-place',
       item: 'mats',
-      position: { x: 0, y: 0 },
+      position: { x: 5, y: 3 },
     });
     const directPlaced = placeFloorItem(withMats.floor, withMats.managed.gym.sessionEquipment, 'mats', {
-      x: 0,
-      y: 0,
+      x: 5,
+      y: 3,
     });
     expect(directPlaced.kind).toBe('placed');
     expect(placed.floor).toEqual(directPlaced.state);
@@ -718,11 +718,11 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
     const moved = dispatchGymThrough(placed, {
       kind: 'floor-place',
       item: 'mats',
-      position: { x: 1, y: 1 },
+      position: { x: 5, y: 2 },
     });
     const directMoved = placeFloorItem(placed.floor, withMats.managed.gym.sessionEquipment, 'mats', {
-      x: 1,
-      y: 1,
+      x: 5,
+      y: 2,
     });
     expect(directMoved.kind).toBe('placed');
     expect(moved.floor).toEqual(directMoved.state);
@@ -740,8 +740,8 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
       lastRefusal: 'not-enough-gym-bucks',
     });
     const placeResult = placeFloorItem(withMats.floor, withMats.managed.gym.sessionEquipment, 'mats', {
-      x: 0,
-      y: 0,
+      x: 5,
+      y: 3,
     });
     expect(placeResult.kind).toBe('placed');
     const withPlaced: GymViewState = Object.freeze({ ...withMats, floor: placeResult.state });
@@ -767,8 +767,8 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
       ),
     });
     const placeResult = placeFloorItem(withMats.floor, withMats.managed.gym.sessionEquipment, 'mats', {
-      x: 0,
-      y: 0,
+      x: 5,
+      y: 3,
     });
     expect(placeResult.kind).toBe('placed');
     const withPlacedFloor: GymViewState = Object.freeze({ ...withMats, floor: placeResult.state });

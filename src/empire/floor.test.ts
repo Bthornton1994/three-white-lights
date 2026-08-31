@@ -26,11 +26,15 @@ import {
   createFloorState,
   fixedFloorFurniture,
   floorGridSize,
+  floorFurnitureLayout,
   floorLayout,
   overlapsFixedFurniture,
+  placeFloorFurniture,
   placeFloorItem,
   placedFloorItems,
+  placedFurnitureItems,
   relocateFloorState,
+  removeFloorFurniture,
   removeFloorItem,
   requireFloorState,
   sessionItemFootprint,
@@ -38,6 +42,9 @@ import {
 } from './floor';
 
 const T = EMPIRE_TUNING;
+
+/** A 3x3-safe cell on a garage that already holds the opening Barbell layout. */
+const OPEN_MATS: GridPosition = Object.freeze({ x: 5, y: 3 });
 
 // ---------------------------------------------------------------------------
 // Tuning shape
@@ -112,11 +119,12 @@ describe('createFloorState / relocateFloorState', () => {
     const floor = createFloorState('garage');
     expect(floor.rung).toBe('garage');
     expect(Object.keys(floor.placements)).toEqual([]);
+    expect(Object.keys(floor.furniture).sort()).toEqual([...T.LADDER_STARTING_EQUIPMENT].sort());
   });
 
   it('relocating always returns a fresh empty floor at the destination — GDD §5.1, "you leave the old place behind"', () => {
     const garage = createFloorState('garage');
-    const placed = placeFloorItem(garage, ['mats'], 'mats', { x: 0, y: 0 });
+    const placed = placeFloorItem(garage, ['mats'], 'mats', OPEN_MATS);
     expect(placed.kind).toBe('placed');
     const relocated = relocateFloorState('storage-unit');
     expect(relocated.rung).toBe('storage-unit');
@@ -134,10 +142,10 @@ describe('createFloorState / relocateFloorState', () => {
 describe('placeFloorItem', () => {
   it('places an owned item at a legal position', () => {
     const floor = createFloorState('garage');
-    const result = placeFloorItem(floor, ['mats'], 'mats', { x: 1, y: 1 });
+    const result = placeFloorItem(floor, ['mats'], 'mats', OPEN_MATS);
     expect(result.kind).toBe('placed');
     if (result.kind !== 'placed') throw new Error('unreachable');
-    expect(result.state.placements['mats']).toEqual({ x: 1, y: 1 });
+    expect(result.state.placements['mats']).toEqual(OPEN_MATS);
     // The input floor is untouched — every transition in this directory
     // returns a new object rather than mutating.
     expect(Object.keys(floor.placements)).toEqual([]);
@@ -190,40 +198,40 @@ describe('placeFloorItem', () => {
 
   it('refuses a position overlapping another placed item, and accepts one that merely touches', () => {
     const floor = createFloorState('garage');
-    const withMats = placeFloorItem(floor, ['mats', 'wrist-wraps'], 'mats', { x: 0, y: 0 });
+    const withMats = placeFloorItem(floor, ['mats', 'wrist-wraps'], 'mats', OPEN_MATS);
     expect(withMats.kind).toBe('placed');
     if (withMats.kind !== 'placed') throw new Error('unreachable');
-    // mats occupies (0,0)-(3,3). wrist-wraps (1x1) at (2,2) overlaps it.
+    // mats occupies (5,3)-(8,6). wrist-wraps (1x1) at (6,4) overlaps it.
     const overlapping = placeFloorItem(
       withMats.state,
       ['mats', 'wrist-wraps'],
       'wrist-wraps',
-      { x: 2, y: 2 },
+      { x: 6, y: 4 },
     );
     expect(overlapping.kind).toBe('refused');
     if (overlapping.kind === 'refused') expect(overlapping.reason).toBe('overlaps');
-    // Touching, not overlapping: wrist-wraps at (3,0) shares an edge with
+    // Touching, not overlapping: wrist-wraps at (5,2) shares an edge with
     // mats but no area — legal, the discriminating half of the check above.
     const touching = placeFloorItem(
       withMats.state,
       ['mats', 'wrist-wraps'],
       'wrist-wraps',
-      { x: 3, y: 0 },
+      { x: 5, y: 2 },
     );
     expect(touching.kind).toBe('placed');
   });
 
   it('placing an already-placed item MOVES it, excluding its own prior footprint from the overlap check — the one function serves place and move', () => {
     const floor = createFloorState('garage');
-    const first = placeFloorItem(floor, ['mats'], 'mats', { x: 0, y: 0 });
+    const first = placeFloorItem(floor, ['mats'], 'mats', OPEN_MATS);
     expect(first.kind).toBe('placed');
     if (first.kind !== 'placed') throw new Error('unreachable');
     // Move mats to overlap its OWN old position — must succeed, because the
     // old footprint is excluded from the collision check for this exact item.
-    const moved = placeFloorItem(first.state, ['mats'], 'mats', { x: 1, y: 1 });
+    const moved = placeFloorItem(first.state, ['mats'], 'mats', { x: 5, y: 2 });
     expect(moved.kind).toBe('placed');
     if (moved.kind !== 'placed') throw new Error('unreachable');
-    expect(moved.state.placements['mats']).toEqual({ x: 1, y: 1 });
+    expect(moved.state.placements['mats']).toEqual({ x: 5, y: 2 });
     // Still exactly one placement — moving never leaves a stale second entry.
     expect(Object.keys(moved.state.placements)).toEqual(['mats']);
   });
@@ -240,13 +248,13 @@ describe('placeFloorItem', () => {
     expect(notOwned.state).toBe(floor);
     const outOfBounds = placeFloorItem(floor, ['mats'], 'mats', { x: 99, y: 99 });
     expect(outOfBounds.state).toBe(floor);
-    const withMats = placeFloorItem(floor, ['mats', 'wrist-wraps'], 'mats', { x: 0, y: 0 });
+    const withMats = placeFloorItem(floor, ['mats', 'wrist-wraps'], 'mats', OPEN_MATS);
     if (withMats.kind !== 'placed') throw new Error('unreachable');
     const overlapping = placeFloorItem(
       withMats.state,
       ['mats', 'wrist-wraps'],
       'wrist-wraps',
-      { x: 1, y: 1 },
+      { x: 6, y: 4 },
     );
     expect(overlapping.state).toBe(withMats.state);
   });
@@ -259,7 +267,7 @@ describe('placeFloorItem', () => {
 describe('removeFloorItem', () => {
   it('removes a placed item', () => {
     const floor = createFloorState('garage');
-    const placed = placeFloorItem(floor, ['mats'], 'mats', { x: 0, y: 0 });
+    const placed = placeFloorItem(floor, ['mats'], 'mats', OPEN_MATS);
     if (placed.kind !== 'placed') throw new Error('unreachable');
     const removed = removeFloorItem(placed.state, 'mats');
     expect(Object.keys(removed.placements)).toEqual([]);
@@ -273,18 +281,18 @@ describe('removeFloorItem', () => {
 
   it('removing one item leaves every other placement untouched', () => {
     const floor = createFloorState('garage');
-    const withMats = placeFloorItem(floor, ['mats', 'wrist-wraps'], 'mats', { x: 0, y: 0 });
+    const withMats = placeFloorItem(floor, ['mats', 'wrist-wraps'], 'mats', OPEN_MATS);
     if (withMats.kind !== 'placed') throw new Error('unreachable');
     const withBoth = placeFloorItem(
       withMats.state,
       ['mats', 'wrist-wraps'],
       'wrist-wraps',
-      { x: 4, y: 4 },
+      { x: 0, y: 5 },
     );
     if (withBoth.kind !== 'placed') throw new Error('unreachable');
     const removed = removeFloorItem(withBoth.state, 'mats');
     expect(Object.keys(removed.placements)).toEqual(['wrist-wraps']);
-    expect(removed.placements['wrist-wraps']).toEqual({ x: 4, y: 4 });
+    expect(removed.placements['wrist-wraps']).toEqual({ x: 0, y: 5 });
   });
 });
 
@@ -297,6 +305,7 @@ describe('requireFloorState refuses a floor that disagrees with owned, or with i
     const stale: FloorState = Object.freeze({
       rung: 'garage',
       placements: Object.freeze({ mats: { x: 0, y: 0 } }),
+      furniture: Object.freeze({}),
     });
     expect(() => requireFloorState(stale, [])).toThrow(/not owned/);
   });
@@ -304,7 +313,8 @@ describe('requireFloorState refuses a floor that disagrees with owned, or with i
   it('accepts a floor whose every placement IS owned', () => {
     const floor: FloorState = Object.freeze({
       rung: 'garage',
-      placements: Object.freeze({ mats: { x: 0, y: 0 } }),
+      placements: Object.freeze({ mats: { x: 5, y: 3 } }),
+      furniture: Object.freeze({}),
     });
     expect(() => requireFloorState(floor, ['mats'])).not.toThrow();
   });
@@ -317,6 +327,7 @@ describe('requireFloorState refuses a floor that disagrees with owned, or with i
     const stale: FloorState = Object.freeze({
       rung: 'garage',
       placements: Object.freeze({ sled: { x: 0, y: 0 } }), // sled is 3x12, never fits a garage
+      furniture: Object.freeze({}),
     });
     expect(() => requireFloorState(stale, ['sled'])).toThrow(/does not fit/);
   });
@@ -328,6 +339,7 @@ describe('requireFloorState refuses a floor that disagrees with owned, or with i
         mats: { x: 0, y: 0 },
         'wrist-wraps': { x: 1, y: 1 }, // inside mats' 3x3 footprint
       }),
+      furniture: Object.freeze({}),
     });
     expect(() => requireFloorState(stale, ['mats', 'wrist-wraps'])).toThrow(/overlapping/);
   });
@@ -346,6 +358,7 @@ describe('requireFloorState refuses a floor that disagrees with owned, or with i
     const stale: FloorState = Object.freeze({
       rung: 'garage',
       placements: Object.freeze({ mats: { x: 0, y: 0 } }),
+      furniture: Object.freeze({}),
     });
     expect(() => placeFloorItem(stale, [], 'wrist-wraps', { x: 5, y: 5 })).toThrow(/not owned/);
   });
@@ -359,7 +372,7 @@ describe('the read model composes placements with ownership, never storing owner
   it('placedFloorItems / unplacedOwnedFloorItems partition owned into placed and not, in SESSION_EQUIPMENT_ITEMS order', () => {
     const floor = createFloorState('warehouse');
     const owned: readonly SessionEquipmentItem[] = ['sled', 'bike', 'mats'];
-    const withBike = placeFloorItem(floor, owned, 'bike', { x: 0, y: 0 });
+    const withBike = placeFloorItem(floor, owned, 'bike', { x: 6, y: 4 });
     if (withBike.kind !== 'placed') throw new Error('unreachable');
 
     expect(placedFloorItems(withBike.state)).toEqual(['bike']);
@@ -380,9 +393,9 @@ describe('the read model composes placements with ownership, never storing owner
   it('floorLayout returns exactly the placed items, each with its position and its real footprint', () => {
     const floor = createFloorState('storage-unit');
     const owned: readonly SessionEquipmentItem[] = ['bike', 'dumbbells'];
-    const withBike = placeFloorItem(floor, owned, 'bike', { x: 0, y: 0 });
+    const withBike = placeFloorItem(floor, owned, 'bike', { x: 6, y: 4 });
     if (withBike.kind !== 'placed') throw new Error('unreachable');
-    const withBoth = placeFloorItem(withBike.state, owned, 'dumbbells', { x: 4, y: 0 });
+    const withBoth = placeFloorItem(withBike.state, owned, 'dumbbells', { x: 6, y: 0 });
     if (withBoth.kind !== 'placed') throw new Error('unreachable');
 
     const layout = floorLayout(withBoth.state);
@@ -408,9 +421,9 @@ describe('a played sequence', () => {
     let floor = createFloorState('strip-mall-unit');
     const owned: readonly SessionEquipmentItem[] = ['treadmill', 'cables', 'sauna', 'sleeves'];
     const positions: Record<string, GridPosition> = {
-      treadmill: { x: 0, y: 0 },
-      cables: { x: 4, y: 0 },
-      sauna: { x: 8, y: 0 },
+      treadmill: { x: 6, y: 0 },
+      cables: { x: 10, y: 0 },
+      sauna: { x: 8, y: 6 },
       sleeves: { x: 0, y: 6 },
     };
     for (const item of owned) {
@@ -754,5 +767,49 @@ describe('ambientMemberRoster', () => {
     expect(() =>
       ambientMemberRoster('nonexistent-rung' as LadderRung, barbellOwned, []),
     ).toThrow(/no registered ambient member count/);
+  });
+});
+
+describe('Stage C.1b furniture is player-positionable layout state', () => {
+  const kit = [...T.LADDER_STARTING_EQUIPMENT];
+
+  it('createFloorState seeds the opening Barbell layout, and relocate reseeds it', () => {
+    const floor = createFloorState('garage');
+    expect(placedFurnitureItems(floor)).toEqual(kit);
+    const layout = floorFurnitureLayout(floor, kit);
+    expect(layout.map((row) => row.item)).toEqual(kit);
+    const relocated = relocateFloorState('storage-unit');
+    expect(relocated.rung).toBe('storage-unit');
+    expect(placedFurnitureItems(relocated)).toEqual(kit);
+  });
+
+  it('moving a barbell piece updates only layout, and overlapping a session item is refused', () => {
+    const floor = createFloorState('garage');
+    const moved = placeFloorFurniture(floor, kit, 'power-bar', { x: 6, y: 0 });
+    expect(moved.kind).toBe('placed');
+    if (moved.kind !== 'placed') throw new Error('unreachable');
+    expect(moved.state.furniture['power-bar']).toEqual({ x: 6, y: 0 });
+    const withMats = placeFloorItem(moved.state, ['mats'], 'mats', OPEN_MATS);
+    expect(withMats.kind).toBe('placed');
+    if (withMats.kind !== 'placed') throw new Error('unreachable');
+    const ontoMats = placeFloorFurniture(withMats.state, kit, 'flat-bench', { x: 5, y: 2 });
+    expect(ontoMats.kind).toBe('refused');
+    if (ontoMats.kind === 'refused') expect(ontoMats.reason).toBe('overlaps');
+  });
+
+  it('removing furniture leaves ownership with the caller and puts the piece in the unplaced set', () => {
+    const floor = createFloorState('garage');
+    const removed = removeFloorFurniture(floor, 'flat-bench');
+    expect(removed.furniture['flat-bench']).toBeUndefined();
+    expect(placedFurnitureItems(removed)).toEqual(['power-bar', 'comp-plates']);
+    const back = placeFloorFurniture(removed, kit, 'flat-bench', { x: 5, y: 0 });
+    expect(back.kind).toBe('placed');
+  });
+
+  it('placing a session item onto seeded furniture is refused as overlaps', () => {
+    const floor = createFloorState('garage');
+    const ontoBar = placeFloorItem(floor, ['mats'], 'mats', { x: 0, y: 0 });
+    expect(ontoBar.kind).toBe('refused');
+    if (ontoBar.kind === 'refused') expect(ontoBar.reason).toBe('overlaps');
   });
 });

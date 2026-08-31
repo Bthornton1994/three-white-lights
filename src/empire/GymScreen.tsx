@@ -252,7 +252,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { EMPIRE_TUNING } from './empireTuning';
 import { FloorGrid } from './FloorGrid';
-import { type GymViewAction, type GymViewProps } from './ladderView';
+import { GYM_SURFACES, type GymViewAction, type GymViewProps } from './ladderView';
 import {
   conditionIncomeMultiplier,
   failurePhase,
@@ -340,7 +340,59 @@ const styles = StyleSheet.create({
    * see this file's header for the fuller comparison.
    */
   root: {
+    flex: 1,
     marginBottom: EMPIRE_TUNING.GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS,
+  },
+  hud: {
+    paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
+    paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
+  },
+  hudText: {
+    color: GYM_SCREEN_BUTTON_TEXT_COLOR,
+  },
+  stage: {
+    flex: 1,
+    position: 'relative',
+  },
+  floor: {
+    flex: 1,
+  },
+  drawer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    maxHeight:
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS * EMPIRE_TUNING.FLOOR_GRID_SIZE.garage.height,
+    backgroundColor: GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR,
+    borderTopWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
+    borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
+    zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
+  },
+  drawerHidden: {
+    display: 'none',
+  },
+  dock: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
+    paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
+  },
+  dockButton: {
+    flex: 1,
+    marginHorizontal: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
+    minHeight: EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS,
+    borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS,
+    borderWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
+    borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
+    cursor: 'pointer',
+  },
+  dockButtonActive: {
+    backgroundColor: GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR,
   },
   button: {
     paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
@@ -442,6 +494,7 @@ export function GymScreen(props: GymViewProps) {
     allocationSetThisWeek,
     weekLog,
     floor,
+    surface,
   } = props.state;
   // Stage 1/2's own `GymState`, read out of the managed state that holds it.
   // There is one `GymState` in this screen's props (`ladderView.tsx`'s
@@ -469,57 +522,40 @@ export function GymScreen(props: GymViewProps) {
   const dispatch = (action: GymViewAction): void => props.dispatch(action);
 
   return (
-    <ScrollView testID={'gymscreen-root'} style={styles.root}>
-      {/*
-        GDD §5.14 Stage C — WORLD FIRST. The old order put six blocks of
-        report text (week, rung, money, lifts, the last accrual, the last
-        refusal) between the top of this scroll and the floor. This is
-        Stage C's own reordering, not a rewrite: every one of those six
-        blocks is still here, byte-identical, with the same testID — they
-        moved DOWN, and only two compact status lines (rung/rate, money)
-        stay ahead of the floor now. "See gym -> notice something -> tap
-        station" (this file's own header, Stage C) needs the gym to be the
-        first substantial thing on the screen, not the fourth.
-      */}
-      <View>
-        <Text testID={'gymscreen-rung'}>rung {gym.ladder.rung}</Text>
-        <Text testID={'gymscreen-rate'}>
+    <View testID={'gymscreen-root'} style={styles.root}>
+      <View testID={'gymscreen-hud'} style={styles.hud}>
+        <Text testID={'gymscreen-rung'} style={styles.hudText}>rung {gym.ladder.rung}</Text>
+        <Text testID={'gymscreen-rate'} style={styles.hudText}>
           earning {ladderIncomeRatePerHour(gym.ladder.rung)} gym bucks per hour
         </Text>
+        <Text testID={'gymscreen-gym-bucks'} style={styles.hudText}>gym bucks: {gym.ladder.gymBucks}</Text>
+        <Text testID={'gymscreen-accelerated-bucks'} style={styles.hudText}>accelerated: {gym.acceleratedGymBucks}</Text>
+        <Text testID={'gymscreen-clock'} style={styles.hudText}>clock: {describeLadderClock(gym.ladder.collectedAt)}</Text>
+        {prompt.kind === 'quiet' ? null : (
+          <Pressable
+            testID={'gymscreen-hud-review'}
+            accessibilityRole={'button'}
+            style={styles.button}
+            onPress={() => dispatch({ kind: 'set-gym-surface', surface: 'staff' })}
+          >
+            <Text style={styles.buttonText}>maintenance review</Text>
+          </Pressable>
+        )}
+        {lastRefusal === null ? null : (
+          <Text testID={'gymscreen-refusal'} style={styles.hudText}>refused: {lastRefusal}</Text>
+        )}
       </View>
-      <View>
-        <Text testID={'gymscreen-gym-bucks'}>gym bucks: {gym.ladder.gymBucks}</Text>
-        <Text testID={'gymscreen-accelerated-bucks'}>accelerated: {gym.acceleratedGymBucks}</Text>
-        <Text testID={'gymscreen-clock'}>clock: {describeLadderClock(gym.ladder.collectedAt)}</Text>
-      </View>
-      <View testID={'gymscreen-floor'}>
-        <Text>the floor — your gym, live: touch a machine to manage it</Text>
+      <View testID={'gymscreen-stage'} style={styles.stage}>
+      <View testID={'gymscreen-floor'} style={styles.floor}>
         <FloorGrid
           owned={gym.sessionEquipment}
           barbellOwned={gym.ladder.equipment}
           floor={floor}
           dispatch={dispatch}
           managed={managed}
+          buildMode={surface === 'build'}
         />
       </View>
-      <View testID={'gymscreen-week'}>
-        <Text>
-          week {weekIndex} ({shape.fixed} fixed + {shape.flexible} flexible = {shape.total}{' '}
-          sessions) — {allocationSetThisWeek ? 'allocated this week' : 'not yet allocated this week'}
-        </Text>
-      </View>
-      {/*
-        NO TAP ANYWHERE ON THIS SCREEN ADVANCES THE GYM CLOCK. `checkInsTaken`
-        and everything downstream of it (the standing review, a strike,
-        dormancy, a recovery) now moves only from real elapsed wall-clock
-        time, driven by `AppShell.tsx`'s `GymHost` — see this file's own
-        header and that file's for the mechanism. This screen reports the
-        gym's status; it does not cause it to change.
-      */}
-      <Text testID={'gymscreen-lifts'}>lifts unlocked: {unlockedLifts(gym.ladder.equipment).join(', ')}</Text>
-      {lastRefusal === null ? null : (
-        <Text testID={'gymscreen-refusal'}>refused: {lastRefusal}</Text>
-      )}
       {/*
         §5.11 stage 4 on the garage floor — GDD §5.7's staffing, maintenance,
         equipment condition and recoverable failure, placed directly under the
@@ -554,6 +590,10 @@ export function GymScreen(props: GymViewProps) {
         ledger back, rather than comparing the branch to the flag it branched
         on.
       */}
+      <ScrollView
+        testID={'gymscreen-staff-drawer'}
+        style={surface === 'staff' ? styles.drawer : styles.drawerHidden}
+      >
       <View testID={'gymscreen-management'}>
         <Text testID={'gymscreen-phase'}>
           gym status: {signs.phase} — {signs.strikeCount} counted decision(s) on the ledger,{' '}
@@ -837,6 +877,11 @@ export function GymScreen(props: GymViewProps) {
           )}
         </View>
       </View>
+      </ScrollView>
+      <ScrollView
+        testID={'gymscreen-shop-drawer'}
+        style={surface === 'shop' ? styles.drawer : styles.drawerHidden}
+      >
       {/*
         NEITHER SHOP BELOW DRAWS A BUY CONTROL WHERE A BUY WOULD BE REFUSED,
         and the arms are `buyLadderEquipment`'s and
@@ -963,6 +1008,18 @@ export function GymScreen(props: GymViewProps) {
           </>
         )}
       </View>
+      </ScrollView>
+      <ScrollView
+        testID={'gymscreen-more-drawer'}
+        style={surface === 'more' ? styles.drawer : styles.drawerHidden}
+      >
+      <View testID={'gymscreen-week'}>
+        <Text>
+          week {weekIndex} ({shape.fixed} fixed + {shape.flexible} flexible = {shape.total}{' '}
+          sessions) — {allocationSetThisWeek ? 'allocated this week' : 'not yet allocated this week'}
+        </Text>
+      </View>
+      <Text testID={'gymscreen-lifts'}>lifts unlocked: {unlockedLifts(gym.ladder.equipment).join(', ')}</Text>
       <View testID={'gymscreen-allocation'}>
         <Text testID={'gymscreen-available-now'}>
           available now: {available.length === 0 ? 'none' : available.join(', ')}
@@ -1073,6 +1130,21 @@ export function GymScreen(props: GymViewProps) {
           <Text style={styles.buttonText}>+1 week boundary</Text>
         </Pressable>
       </View>
-    </ScrollView>
+      </ScrollView>
+      </View>
+      <View testID={'gymscreen-dock'} style={styles.dock}>
+        {GYM_SURFACES.map((name) => (
+          <Pressable
+            key={name}
+            testID={`gymscreen-surface-${name}`}
+            accessibilityRole={'button'}
+            style={surface === name ? [styles.dockButton, styles.dockButtonActive] : styles.dockButton}
+            onPress={() => dispatch({ kind: 'set-gym-surface', surface: name })}
+          >
+            <Text style={styles.buttonText}>{name}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
   );
 }

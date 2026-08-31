@@ -19,6 +19,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   FLOOR_SIM_INTERRUPTIBLE_STATES,
   FLOOR_SIM_INTERRUPTIONS,
@@ -274,8 +275,14 @@ const RUNGS: readonly LadderRung[] = Object.freeze([...T.LADDER_RUNGS]);
 // ---------------------------------------------------------------------------
 
 /** The floor `rows` produce on `rung`, refusing loudly if a row does not place. */
-function floorFrom(rung: LadderRung, rows: readonly LayoutRow[]): FloorState {
-  let floor = createFloorState(rung);
+function floorFrom(
+  rung: LadderRung,
+  rows: readonly LayoutRow[],
+  keepFurniture = true,
+): FloorState {
+  let floor = keepFurniture
+    ? createFloorState(rung)
+    : Object.freeze({ ...createFloorState(rung), furniture: Object.freeze({}) });
   const owned = rows.map(([item]) => item);
   for (const [item, position] of rows) {
     const result = placeFloorItem(floor, owned, item, position);
@@ -973,11 +980,12 @@ describe('a member stands on the floor and never on the equipment', () => {
   it('relocates a member the player builds on top of, rather than leaving it inside a machine', () => {
     const rung: LadderRung = 'garage';
     const clear = contextFor(rung, createFloorState(rung));
-    // `mats` is 3x3 at (4,3), so (5,4) is inside it.
+    // `mats` is 3x3 at (5,3), so (5,4) is inside it. (4,3) overlaps the
+    // opening bench layout Stage C.1b seeds onto every floor.
     const inside: GridPosition = { x: 5, y: 4 };
     const built = contextFor(
       rung,
-      floorFrom(rung, [['mats', { x: 4, y: 3 }] as LayoutRow]),
+      floorFrom(rung, [['mats', { x: 5, y: 3 }] as LayoutRow]),
     );
     const before = stateOf(1, [memberAt(0, 'casual', inside)]);
     expect(blockedCells(clear).has(cellKey(inside))).toBe(false);
@@ -985,9 +993,7 @@ describe('a member stands on the floor and never on the equipment', () => {
     const after = stepFloorSim(before, built);
     const moved = after.members[0] as FloorSimMember;
     expect(blockedCells(built).has(cellKey(moved.cell))).toBe(false);
-    // Nearest by (distance, y, x) from (5,4): the mats cover x 4..6, y 3..5,
-    // so the nearest walkable cell is one step off that block.
-    expect(moved.cell).toEqual({ x: 5, y: 2 });
+    expect(moved.cell).toEqual({ x: 4, y: 4 });
   });
 
   it('keeps progress inside [0, 1) and a timer only in the timed states', () => {
@@ -1117,11 +1123,11 @@ describe('a member does not freeze', () => {
     ]);
     const open: FloorSimContext = {
       rung,
-      floor: floorFrom(rung, [far]),
+      floor: floorFrom(rung, [far], false),
       barbellOwned: [],
       sessionOwned: owned,
     };
-    const sealed: FloorSimContext = { ...open, floor: floorFrom(rung, wall) };
+    const sealed: FloorSimContext = { ...open, floor: floorFrom(rung, wall, false) };
 
     let at = stepFloorSim(stateOf(2, [memberAt(0, 'casual', { x: 0, y: 0 })]), open);
     expect((at.members[0] as FloorSimMember).target).toEqual({ kind: 'session', item: 'mats' });
@@ -1177,7 +1183,7 @@ describe('a member does not freeze', () => {
 function draggableGarage(position: GridPosition): FloorSimContext {
   return {
     rung: 'garage',
-    floor: floorFrom('garage', [['mats', position] as LayoutRow]),
+    floor: floorFrom('garage', [['mats', position] as LayoutRow], false),
     barbellOwned: [],
     sessionOwned: ['mats'],
   };
@@ -1195,11 +1201,15 @@ const walledOff = Object.freeze({
     const rung: LadderRung = 'storage-unit';
     return {
       rung,
-      floor: floorFrom(rung, [
-        ['mats', { x: 9, y: 6 }] as LayoutRow,
-        ['specialty-bars', { x: 2, y: 0 }] as LayoutRow,
-        ['cables', { x: 0, y: 2 }] as LayoutRow,
-      ]),
+      floor: floorFrom(
+        rung,
+        [
+          ['mats', { x: 9, y: 6 }] as LayoutRow,
+          ['specialty-bars', { x: 2, y: 0 }] as LayoutRow,
+          ['cables', { x: 0, y: 2 }] as LayoutRow,
+        ],
+        false,
+      ),
       barbellOwned: [],
       sessionOwned: ['mats', 'specialty-bars', 'cables'],
     };
@@ -1208,7 +1218,7 @@ const walledOff = Object.freeze({
     const rung: LadderRung = 'storage-unit';
     const open: FloorSimContext = {
       rung,
-      floor: floorFrom(rung, [['mats', { x: 9, y: 6 }] as LayoutRow]),
+      floor: floorFrom(rung, [['mats', { x: 9, y: 6 }] as LayoutRow], false),
       barbellOwned: [],
       sessionOwned: ['mats', 'specialty-bars', 'cables'],
     };
@@ -1922,7 +1932,7 @@ const TUNING_READS: readonly string[] = Object.freeze([
   'MEMBER_TYPE_ITEM_AFFINITY',
 ]);
 
-const HERE = path.dirname(new URL(import.meta.url).pathname);
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FLOOR_SIM_SOURCE = readFileSync(path.join(HERE, 'floorSim.ts'), 'utf8');
 const FLOOR_GRID_SOURCE = readFileSync(path.join(HERE, 'FloorGrid.tsx'), 'utf8');
 

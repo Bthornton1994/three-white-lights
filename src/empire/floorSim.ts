@@ -245,7 +245,7 @@
 import { refuseWith } from './empireCore';
 import {
   ambientMemberRoster,
-  fixedFloorFurniture,
+  floorFurnitureLayout,
   floorGridSize,
   floorLayout,
   type GridPosition,
@@ -624,11 +624,11 @@ function routePlan(context: FloorSimContext): RoutePlan {
   const cells = grid.width * grid.height;
   const blocked = new Array<boolean>(cells).fill(false);
 
-  const fixed = fixedFloorFurniture(context.barbellOwned);
+  const furniture = floorFurnitureLayout(context.floor, context.barbellOwned);
   const placed = floorLayout(context.floor);
   const occupants: { readonly ref: FloorStationRef; readonly position: GridPosition; readonly footprint: GridSize }[] =
     [];
-  for (const row of fixed) {
+  for (const row of furniture) {
     occupants.push({ ref: { kind: 'fixed', item: row.item }, position: row.position, footprint: row.footprint });
   }
   for (const row of placed) {

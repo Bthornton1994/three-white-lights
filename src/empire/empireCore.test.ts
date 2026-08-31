@@ -2663,7 +2663,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // gained. `FloorGrid.tsx` gained no new mentioned name over the same
     // diff (its new diagnostics-toggle section names only files it already
     // named). Nothing was removed.
-    expect(pairs).toBe(140);
+    // 140 -> 141: Stage C.1b, one new distinct file-name mention across the
+    // gym-screen / floor-layout rewrite.
+    expect(pairs).toBe(141);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3253,23 +3255,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // census reads the SOURCE AST, not a runtime render, so the
       // diagnostics block's chunks are present here regardless of the
       // toggle's default-collapsed state; only their POSITION moved.
-      'floor (',
-      ')',
-      // GDD §5.13's PLAYTEST 2 ruling, gap 1: the one new JsxText chunk this
-      // file gains — the fixed-furniture label. The ternary in the tray
-      // section below (gap 2's empty state) contributes NOTHING here: both
-      // its branches' string literals sit inside a JSX EXPRESSION container
-      // (`{...}`), which `ts.isJsxText` does not visit — only the plain
-      // "unplaced equipment — drag onto the floor above" literal, still
-      // present unconditionally in the AST regardless of which ternary arm
-      // runs, is JsxText. Transcribed from a driven run, the same discipline
-      // as every other entry in this list.
-      '(fixed)',
-      // GDD §5.13's PLAYTEST 3 ruling on the furniture/session-item overlap
-      // gap: the refusal message, rendered as JsxText with the apostrophe
-      // written as `&apos;` — a JSX entity, not a quote character, so this
-      // chunk sidesteps `src/tuning/audit.ts`'s reported (not fixed)
-      // apostrophe-inside-JsxText lexer bug entirely rather than tripping it.
+      // Stage C.1b: the identity caption is now a JSX expression
+      // (`buildMode ? … : …`), so it is not JsxText. The `(fixed)` label is
+      // gone — starting Barbell is player-positionable. Transcribed from a
+      // driven run of this census.
       'can&apos;t place here',
       'x',
       // GDD §5.13 presentation Phase 2: the ambient-member caption, in tree
@@ -3293,10 +3282,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // GDD §5.13's PLAYTEST 3 ruling: the caption now also states the fixed
       // count, closing the gap where '0 placed, 0 unplaced' sat beside three
       // visible fixed items and said nothing about them.
-      'fixed,',
+      'furniture,',
       'placed,',
       'unplaced',
-      'unplaced equipment — drag onto the floor above',
+      'unplaced — tap a piece, then tap a tile on the gym',
+      'close',
       // GDD §5.14 Stage C: the contextual station panel, the last thing
       // FloorGrid.tsx's own JSX returns, so its chunks land after every
       // other chunk in this file rather than interleaved with them.
@@ -3326,6 +3316,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gym bucks — you have',
       'repair for',
       'remove from the floor',
+      'move to the tray',
       'close',
       // GymScreen.tsx, in tree order — second, because a capital `G` sorts
       // before every lowercase shipped module name, GymScreen.tsx's chunks
@@ -3347,36 +3338,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gym bucks:',
       'accelerated:',
       'clock:',
-      // Reworded for Stage C's own reordering: the old chunk ("place
-      // equipment, watch members train") described Phase 1's placement-only
-      // floor; the floor is now also a management surface a tap opens, and
-      // the caption says so.
-      'the floor — your gym, live: touch a machine to manage it',
-      'week',
-      '(',
-      'fixed +',
-      'flexible =',
-      'sessions) —',
-      // THE PLAYER'S OWN CHECK-IN used to be five chunks here, and the reason
-      // they existed was the round before this one: a human on a real phone
-      // reported that they could not open a maintenance review, and that was
-      // structural — `checkInsTaken` had one writer reached from one arm
-      // dispatched from one place, the dev row this screen labels "not part
-      // of the game". "KILL THE MINT" ROUND: those five chunks are gone. A
-      // later, more specific human ruling named the control itself as the
-      // bug — a tap-to-earn mint — and removed it outright; no tap anywhere
-      // on this screen advances the clock any more. `AppShell.tsx`'s
-      // `GymHost` reaches the same stage-4 loop from genuine elapsed real
-      // time instead, off-screen from every string this census can see.
-      //
-      // GDD §5.14 STAGE C.1 REMOVED THE FIVE CHUNKS THAT USED TO SIT HERE A
-      // SECOND TIME, and for a different reason than the round above: not
-      // deleted, RELOCATED. `gymscreen-accrual` (raw
-      // secondsBanked/secondsElapsed/secondsDiscarded) is verification detail
-      // now living in the new `gymscreen-diagnostics` block near the bottom
-      // of this file's chunks, below — see that arrival for the same five
-      // chunks, byte-identical, in the same relative order.
-      'lifts unlocked:',
+      'maintenance review',
       'refused:',
       // S4b — §5.11 stage 4 on the garage floor. Fifty-two new chunks, all
       // in `GymScreen.tsx`'s new management section, transcribed from a driven
@@ -3526,6 +3488,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'needs',
       'gym bucks — you have',
       'relocate',
+      'week',
+      '(',
+      'fixed +',
+      'flexible =',
+      'sessions) —',
+      'lifts unlocked:',
       'available now:',
       'slot',
       ':',
@@ -3873,7 +3841,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `'blocking reopening:'`, `'— tap one on the floor to repair it'`),
     // neither of which this collector counts here — see the bare-JsxText
     // list above.
-    expect(singleQuoted.size).toBe(535);
+    // 535 -> 563: Stage C.1b dock/drawer/member-panel testIDs, GymSurface
+    // names, furniture place/remove action kinds, and Build-mode copy.
+    expect(singleQuoted.size).toBe(562);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3976,7 +3946,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // minimum of …" and "condition … clears the reopening minimum of … —
     // not blocking recovery". Measured by diffing this exact collector
     // against `90d7eb5` rather than hand-counted.
-    expect(templateChunks.size).toBe(306);
+    // 306 -> 316: Stage C.1b templated testIDs (dock surface, member hits) and
+    // Build-mode caption interpolation.
+    expect(templateChunks.size).toBe(317);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4067,6 +4039,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'bought',
       'brace',
       'budget',
+      'build',
       'button',
       'buy',
       'buy-ladder',
@@ -4137,8 +4110,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'fixedOccupiedUris',
       'fixedUris',
       'flat-bench',
+      'flex-start',
       'floor-place',
+      'floor-place-furniture',
       'floor-remove',
+      'floor-remove-furniture',
       'floorGrids',
       'floorUris',
       'floorgrid-ambient-caption',
@@ -4151,6 +4127,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-drop-refused',
       'floorgrid-floor-texture',
       'floorgrid-grid',
+      'floorgrid-grid-tap',
+      'floorgrid-member-panel',
+      'floorgrid-member-panel-dismiss',
+      'floorgrid-member-panel-identity',
+      'floorgrid-member-panel-state',
       'floorgrid-root',
       'floorgrid-scroll-x',
       'floorgrid-scroll-y',
@@ -4164,6 +4145,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // GDD §5.14 Stage C.1a: the panel's dormant-only recovery reading.
       'floorgrid-station-panel-recovery',
       'floorgrid-station-panel-remove',
+      'floorgrid-station-panel-remove-furniture',
       'floorgrid-station-panel-repair',
       'floorgrid-station-panel-repair-unavailable',
       'floorgrid-station-panel-review-note',
@@ -4176,6 +4158,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'friend',
       'friend-encouragement',
       'friend-visit-allowance-reset',
+      'furniture',
       'garage',
       'generic',
       'global',
@@ -4224,15 +4207,19 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // GDD §5.14 Stage C.1: the diagnostics block's own container testID.
       'gymscreen-diagnostics',
       'gymscreen-dismiss-manager',
+      'gymscreen-dock',
       'gymscreen-floor',
       'gymscreen-full-repair',
       'gymscreen-gym-bucks',
+      'gymscreen-hud',
+      'gymscreen-hud-review',
       'gymscreen-ladder-shop',
       'gymscreen-lifts',
       'gymscreen-management',
       'gymscreen-manager',
       'gymscreen-manager-note',
       'gymscreen-manager-state',
+      'gymscreen-more-drawer',
       'gymscreen-move',
       'gymscreen-move-up',
       // The reason drawn where a control that could only refuse used to be.
@@ -4266,6 +4253,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-root',
       'gymscreen-rung',
       'gymscreen-session-shop',
+      'gymscreen-shop-drawer',
+      'gymscreen-staff-drawer',
+      'gymscreen-stage',
       'gymscreen-strikes',
       'gymscreen-strikes-lead',
       'gymscreen-week',
@@ -4315,6 +4305,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'memberGrids',
       'memberUris',
       'monolift',
+      'more',
       'move',
       'move-up',
       'moved',
@@ -4360,6 +4351,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'physio-days-saved',
       'pixelated',
       'placed',
+      'play',
       'pointer',
       'power-bar',
       'powerlifter',
@@ -4406,6 +4398,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'roster-slot',
       'rotate-greedy-per-check-in',
       'route-blocked',
+      'row',
       'rower',
       'rung-too-low',
       'sauna',
@@ -4416,12 +4409,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'sessionGrids',
       'sessionUris',
       'set-allocation-slot',
+      'set-gym-surface',
       'settled-level',
       'settled-purse-wired-control',
       'settled-tenure-days',
       'settledAxes',
       'settledTenureDays',
       'shipped',
+      'shop',
       'silver',
       'single-purse',
       'single-wall-clock-purse',
@@ -4432,6 +4427,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'slots',
       'sound',
       'space',
+      'space-around',
       'space-level',
       'specialty-bars',
       'spend-once-per-calendar-day',
@@ -4443,6 +4439,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'springgreen',
       'squat',
       'squat-rack',
+      'staff',
       'stand',
       'state',
       'steady',
@@ -4587,7 +4584,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 837 -> 841: GDD §5.14 Stage C.1a — singleQuoted 533 -> 535 (+2) and
     // templateChunks 304 -> 306 (+2), both enumerated above; doubleQuoted
     // unchanged. Net +4.
-    expect(stringsChecked).toBe(841);
+    // 841 -> 878: Stage C.1b singleQuoted + templateChunks growth.
+    expect(stringsChecked).toBe(879);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -4702,7 +4700,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 462 -> 464: GDD §5.14 Stage C.1a's two new `spaceFree` tokens
     // ('floorgrid-station-panel-recovery', 'gymscreen-recovery-blocking'),
     // each clearing the two-letter guard below, each a probe.
-    expect(probes).toBe(464);
+    // 464 -> 488: Stage C.1b new space-free tokens (surfaces, furniture, dock).
+    expect(probes).toBe(spaceFree.length);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -5365,7 +5364,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS: 2,
     // FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS: 8) — four new findings, none of
     // them 0 or 1. Read from this assertion's own failure value.
-    ).toBe(403);
+    ).toBe(405);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

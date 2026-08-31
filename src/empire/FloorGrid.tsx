@@ -164,12 +164,14 @@ import {
 import {
   type FloorState,
   type GridPosition,
-  fixedFloorFurniture,
+  floorFurnitureLayout,
   floorGridSize,
   floorLayout,
+  furnitureItemFootprint,
   overlapsFixedFurniture,
   sessionItemFootprint,
   unplacedOwnedFloorItems,
+  unplacedOwnedFurnitureItems,
 } from './floor';
 import {
   FLOOR_SIM_MEMBER_STATES,
@@ -254,7 +256,35 @@ export interface FloorGridProps {
    * about this prop's arithmetic is duplicated here.
    */
   readonly managed: ManagedGym;
+  /**
+   * Stage C.1b: when true, the floor is in Build mode — tray is the place/
+   * move surface, tap-a-piece-then-tap-a-tile is the primary thumb path,
+   * and starting Barbell furniture is movable. When false, taps inspect
+   * stations and members. Never an economic flag.
+   */
+  readonly buildMode: boolean;
 }
+
+/** Live tile size from the measured gym stage, so a garage fills the viewport. */
+function tilePixelsForStage(
+  gridWidth: number,
+  gridHeight: number,
+  stageWidth: number,
+  stageHeight: number,
+): number {
+  const pad = EMPIRE_TUNING.FLOOR_STAGE_PADDING_PIXELS;
+  const availW = stageWidth - pad * 2;
+  const availH = stageHeight - pad * 2;
+  if (availW <= 0 || availH <= 0) return EMPIRE_TUNING.FLOOR_TILE_PIXELS;
+  const raw = Math.floor(Math.min(availW / gridWidth, availH / gridHeight));
+  if (raw < 1) return 1;
+  if (raw > EMPIRE_TUNING.FLOOR_TILE_PIXELS_MAX) return EMPIRE_TUNING.FLOOR_TILE_PIXELS_MAX;
+  return raw;
+}
+
+type PendingPlace =
+  | { readonly kind: 'session'; readonly item: SessionEquipmentItem }
+  | { readonly kind: 'furniture'; readonly item: LadderEquipmentItem };
 
 const FLOOR_BACKGROUND_COLOR = 'darkslategray';
 const FLOOR_GRID_BORDER_COLOR = 'gray';
@@ -307,11 +337,22 @@ const FLOOR_STATION_PANEL_BUTTON_TEXT_COLOR = 'white';
  */
 const panelStyles = StyleSheet.create({
   panel: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
     marginTop: EMPIRE_TUNING.FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS,
     padding: EMPIRE_TUNING.FLOOR_STATION_PANEL_PADDING_PIXELS,
     borderWidth: EMPIRE_TUNING.FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS,
     borderColor: FLOOR_STATION_SELECTED_OUTLINE_COLOR,
     backgroundColor: FLOOR_STATION_PANEL_BACKGROUND_COLOR,
+  },
+  diagnosticsToggle: {
+    alignSelf: 'flex-start',
+    paddingVertical: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
+    cursor: 'pointer',
   },
   button: {
     marginTop: EMPIRE_TUNING.FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS,
@@ -962,12 +1003,16 @@ function AmbientMemberBody({
 }
 
 export function FloorGrid(props: FloorGridProps) {
-  const { owned, barbellOwned, floor, dispatch, managed } = props;
+  const { owned, barbellOwned, floor, dispatch, managed, buildMode } = props;
   const grid = floorGridSize(floor.rung);
   const placed = floorLayout(floor);
   const unplaced = unplacedOwnedFloorItems(floor, owned);
-  const fixed = fixedFloorFurniture(barbellOwned);
-  const tile = EMPIRE_TUNING.FLOOR_TILE_PIXELS;
+  const furniture = floorFurnitureLayout(floor, barbellOwned);
+  const unplacedFurniture = unplacedOwnedFurnitureItems(floor, barbellOwned);
+  const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
+  const tile = tilePixelsForStage(grid.width, grid.height, stageSize.width, stageSize.height);
+  const [pendingPlace, setPendingPlace] = useState<PendingPlace | null>(null);
+  const [selectedMemberIndex, setSelectedMemberIndex] = useState<number | null>(null);
 
   // GDD §5.13 presentation Phase 3 — everything `floorSim.ts` is allowed to
   // see, rebuilt from PROPS on every render. Never copied into sim state and
@@ -1057,9 +1102,52 @@ export function FloorGrid(props: FloorGridProps) {
 
   /** Select `ref`, or deselect it if it is already the selected one — a second tap on the same station closes its own panel. */
   const toggleSelectedStation = (ref: FloorStationRef): void => {
+    setSelectedMemberIndex(null);
     setSelectedStation((previous) =>
       previous !== null && previous.kind === ref.kind && previous.item === ref.item ? null : ref,
     );
+  };
+
+  const tryPlaceAt = (position: GridPosition): void => {
+    if (pendingPlace === null) return;
+    if (pendingPlace.kind === 'session') {
+      const overlapped = furniture.find((row) =>
+        overlapsFixedFurniture(position, sessionItemFootprint(pendingPlace.item), [row]),
+      );
+      if (overlapped !== undefined) {
+        if (overlapRefusalTimeout.current !== null) clearTimeout(overlapRefusalTimeout.current);
+        setOverlapRefusalItem(overlapped.item);
+        overlapRefusalTimeout.current = setTimeout(() => {
+          setOverlapRefusalItem(null);
+          overlapRefusalTimeout.current = null;
+        }, EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_FLASH_MS);
+      } else {
+        dispatch({ kind: 'floor-place', item: pendingPlace.item, position });
+      }
+    } else {
+      dispatch({ kind: 'floor-place-furniture', item: pendingPlace.item, position });
+    }
+    setPendingPlace(null);
+  };
+
+  const handleGridPress = (locationX: number, locationY: number): void => {
+    if (tile < 1) return;
+    const position: GridPosition = {
+      x: Math.floor(locationX / tile),
+      y: Math.floor(locationY / tile),
+    };
+    if (buildMode && pendingPlace !== null) {
+      tryPlaceAt(position);
+      return;
+    }
+    setSelectedStation(null);
+    setSelectedMemberIndex(null);
+  };
+
+  const toggleSelectedMember = (index: number): void => {
+    if (buildMode) return;
+    setSelectedStation(null);
+    setSelectedMemberIndex((previous) => (previous === index ? null : index));
   };
 
   // GDD §5.13's PLAYTEST 3 ruling on the furniture/session-item overlap gap:
@@ -1177,17 +1265,26 @@ export function FloorGrid(props: FloorGridProps) {
     origin: 'tray' | 'placed',
   ): void => {
     const travelledPixels = Math.hypot(gestureState.dx, gestureState.dy);
-    if (travelledPixels <= EMPIRE_TUNING.STATION_TAP_MAX_DRAG_PIXELS) {
+    if (!buildMode || travelledPixels <= EMPIRE_TUNING.STATION_TAP_MAX_DRAG_PIXELS) {
       setDraggingItem(null);
       dragOffset.setValue({ x: 0, y: 0 });
-      if (origin === 'placed') toggleSelectedStation({ kind: 'session', item });
+      if (origin === 'placed') {
+        if (buildMode) {
+          setSelectedStation(null);
+          setPendingPlace({ kind: 'session', item });
+        } else {
+          toggleSelectedStation({ kind: 'session', item });
+        }
+      } else if (buildMode) {
+        setPendingPlace({ kind: 'session', item });
+      }
       return;
     }
     const position: GridPosition = {
       x: pixelsToTile(gestureState.moveX - gridOrigin.current.x, tile),
       y: pixelsToTile(gestureState.moveY - gridOrigin.current.y, tile),
     };
-    const overlappedFixedRow = fixed.find((row) =>
+    const overlappedFixedRow = furniture.find((row) =>
       overlapsFixedFurniture(position, sessionItemFootprint(item), [row]),
     );
     if (overlappedFixedRow !== undefined) {
@@ -1239,7 +1336,7 @@ export function FloorGrid(props: FloorGridProps) {
     selectedStation === null
       ? null
       : selectedStation.kind === 'fixed'
-        ? fixed.some((row) => row.item === selectedStation.item)
+        ? furniture.some((row) => row.item === selectedStation.item)
           ? selectedStation
           : null
         : placed.some((row) => row.item === selectedStation.item)
@@ -1283,22 +1380,29 @@ export function FloorGrid(props: FloorGridProps) {
   // `management.ts`'s own function rather than re-derived.
   const standingPrompt = maintenancePrompt(managed);
 
+  const selectedMember =
+    selectedMemberIndex === null
+      ? null
+      : (sim.members.find((member) => member.index === selectedMemberIndex) ?? null);
+
   return (
-    <View testID={'floorgrid-root'}>
-      {/*
-        GDD §5.14 Stage C.1 — this used to be the full diagnostic line (grid
-        dimensions, fixed/placed/unplaced counts), permanently visible above
-        the grid it names. The counts are verification detail rather than a
-        decision a player makes from this line specifically — the grid itself
-        already shows what is fixed/placed, and `floorgrid-tray` already names
-        what is unplaced — so only the identity half stays here, and the full
-        count line moves into the diagnostics panel below, as
-        `floorgrid-diagnostic-caption`, same text, gated the same way the sim
-        readout is.
-      */}
-      <Text testID={'floorgrid-caption'}>floor ({floor.rung})</Text>
-      <ScrollView horizontal testID={'floorgrid-scroll-x'}>
-        <ScrollView testID={'floorgrid-scroll-y'}>
+    <View
+      testID={'floorgrid-root'}
+      onLayout={(event) => {
+        const next = event.nativeEvent.layout;
+        setStageSize((previous) =>
+          previous.width === next.width && previous.height === next.height
+            ? previous
+            : { width: next.width, height: next.height },
+        );
+      }}
+      style={{ flex: 1 }}
+    >
+      <Text testID={'floorgrid-caption'}>
+        {buildMode ? 'build — tap a piece, then tap a tile' : `floor (${floor.rung})`}
+      </Text>
+      <View testID={'floorgrid-scroll-x'} style={{ flex: 1 }}>
+        <View testID={'floorgrid-scroll-y'} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <View
             ref={gridRef}
             testID={'floorgrid-grid'}
@@ -1335,6 +1439,22 @@ export function FloorGrid(props: FloorGridProps) {
               flat background colour above stays as the fallback a failed
               image load would reveal.
             */}
+            <Pressable
+              testID={'floorgrid-grid-tap'}
+              accessibilityRole={'button'}
+              onPress={(event) =>
+                handleGridPress(event.nativeEvent.locationX, event.nativeEvent.locationY)
+              }
+              pointerEvents={pendingPlace === null ? 'none' : 'auto'}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: grid.width * tile,
+                height: grid.height * tile,
+                cursor: 'pointer',
+              } as WebSelectableViewStyle}
+            />
             <Image
               testID={'floorgrid-floor-texture'}
               source={{ uri: FLOOR_SPRITE_URIS.floor[floor.rung] }}
@@ -1351,6 +1471,7 @@ export function FloorGrid(props: FloorGridProps) {
               <View
                 key={`v${i}`}
                 testID={`floorgrid-line-v-${i}`}
+                pointerEvents={'none'}
                 style={{
                   position: 'absolute',
                   left: i * tile,
@@ -1365,6 +1486,7 @@ export function FloorGrid(props: FloorGridProps) {
               <View
                 key={`h${j}`}
                 testID={`floorgrid-line-h-${j}`}
+                pointerEvents={'none'}
                 style={{
                   position: 'absolute',
                   left: 0,
@@ -1375,23 +1497,32 @@ export function FloorGrid(props: FloorGridProps) {
                 }}
               />
             ))}
-            {fixed.map((row) => {
+            {furniture.map((row) => {
               const isRefusalTarget = overlapRefusalItem === row.item;
               const isOccupied =
                 stationActivity.get(stationKey('fixed', row.item)) === 'using';
-              // GDD §5.14 Stage C: fixed furniture is always a station — it
-              // is owned from the moment a gym exists — so it is directly
-              // tappable, the same way a placed session item is.
               const isSelected =
                 selectedStation !== null &&
                 selectedStation.kind === 'fixed' &&
                 selectedStation.item === row.item;
+              const isPending =
+                pendingPlace !== null &&
+                pendingPlace.kind === 'furniture' &&
+                pendingPlace.item === row.item;
               return (
                 <Pressable
                   key={row.item}
                   testID={`floorgrid-fixed-${row.item}`}
                   accessibilityRole={'button'}
-                  onPress={() => toggleSelectedStation({ kind: 'fixed', item: row.item })}
+                  onPress={() => {
+                    if (buildMode) {
+                      setSelectedStation(null);
+                      setSelectedMemberIndex(null);
+                      setPendingPlace({ kind: 'furniture', item: row.item });
+                      return;
+                    }
+                    toggleSelectedStation({ kind: 'fixed', item: row.item });
+                  }}
                   style={{
                     position: 'absolute',
                     left: row.position.x * tile,
@@ -1414,7 +1545,9 @@ export function FloorGrid(props: FloorGridProps) {
                         : 0,
                     borderColor: isRefusalTarget
                       ? FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR
-                      : FLOOR_STATION_SELECTED_OUTLINE_COLOR,
+                      : isPending
+                        ? FLOOR_STATION_SELECTED_OUTLINE_COLOR
+                        : FLOOR_STATION_SELECTED_OUTLINE_COLOR,
                     cursor: 'pointer',
                   } as WebSelectableViewStyle}
                 >
@@ -1432,7 +1565,7 @@ export function FloorGrid(props: FloorGridProps) {
                       }}
                     />
                   )}
-                  <Text style={FLOOR_LABEL_STYLE}>{row.item} (fixed)</Text>
+                  <Text style={FLOOR_LABEL_STYLE}>{row.item}</Text>
                   {isRefusalTarget ? (
                     // GDD §5.13's PLAYTEST 3 ruling: a clear "can't place
                     // here" signal on the cell a drop was just refused for,
@@ -1508,12 +1641,37 @@ export function FloorGrid(props: FloorGridProps) {
                     }}
                   />
                   <Text style={FLOOR_LABEL_STYLE}>{row.item}</Text>
-                  <Pressable
-                    testID={`floorgrid-remove-${row.item}`}
-                    onPress={() => dispatch({ kind: 'floor-remove', item: row.item })}
-                  >
-                    <Text style={FLOOR_LABEL_STYLE}>x</Text>
-                  </Pressable>
+                  {buildMode ? (
+                    <Pressable
+                      testID={`floorgrid-build-select-${row.item}`}
+                      accessibilityRole={'button'}
+                      onPress={() => {
+                        setSelectedStation(null);
+                        setPendingPlace({ kind: 'session', item: row.item });
+                      }}
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        right: 0,
+                        bottom: 0,
+                        cursor: 'pointer',
+                      } as WebSelectableViewStyle}
+                    />
+                  ) : null}
+                  {buildMode ? (
+                    <Pressable
+                      testID={`floorgrid-remove-${row.item}`}
+                      accessibilityRole={'button'}
+                      onPress={() => dispatch({ kind: 'floor-remove', item: row.item })}
+                      style={{
+                        zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
+                        cursor: 'pointer',
+                      } as WebSelectableViewStyle}
+                    >
+                      <Text style={FLOOR_LABEL_STYLE}>x</Text>
+                    </Pressable>
+                  ) : null}
                 </Animated.View>
               );
             })}
@@ -1609,9 +1767,37 @@ export function FloorGrid(props: FloorGridProps) {
                 );
               })
             }
+            {buildMode
+              ? null
+              : sim.members.map((member) => {
+                  const station =
+                    member.target === null
+                      ? undefined
+                      : stationByRefKey.get(stationKey(member.target.kind, member.target.item));
+                  const point = memberDrawPoint(member, station);
+                  const hitWidth = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.width * tile;
+                  const hitHeight = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.height * tile;
+                  return (
+                    <Pressable
+                      key={`member-hit-${member.index}`}
+                      testID={`floorgrid-member-${member.index}`}
+                      accessibilityRole={'button'}
+                      onPress={() => toggleSelectedMember(member.index)}
+                      style={{
+                        position: 'absolute',
+                        left: point.x * tile,
+                        top: point.y * tile,
+                        width: hitWidth,
+                        height: hitHeight,
+                        zIndex: EMPIRE_TUNING.FLOOR_SIM_MEMBER_Z_INDEX + 1,
+                        cursor: 'pointer',
+                      } as WebSelectableViewStyle}
+                    />
+                  );
+                })}
           </View>
-        </ScrollView>
-      </ScrollView>
+        </View>
+      </View>
       <Text testID={'floorgrid-ambient-caption'}>{sim.members.length} member(s) around the gym</Text>
       {/*
         GDD §5.14 Stage C.1 — the sim readout (tick number, state census),
@@ -1639,7 +1825,7 @@ export function FloorGrid(props: FloorGridProps) {
         testID={'floorgrid-diagnostics-toggle'}
         accessibilityRole={'button'}
         onPress={() => setShowDiagnostics((previous) => !previous)}
-        style={panelStyles.button as WebSelectableViewStyle}
+        style={panelStyles.diagnosticsToggle as WebSelectableViewStyle}
       >
         <Text style={panelStyles.buttonText}>
           {showDiagnostics ? 'hide diagnostics' : 'show diagnostics'}
@@ -1648,7 +1834,7 @@ export function FloorGrid(props: FloorGridProps) {
       {showDiagnostics ? (
         <View testID={'floorgrid-diagnostics'}>
           <Text testID={'floorgrid-diagnostic-caption'}>
-            floor ({floor.rung}) — {grid.width}x{grid.height} tiles, {fixed.length} fixed,{' '}
+            floor ({floor.rung}) — {grid.width}x{grid.height} tiles, {furniture.length} furniture,{' '}
             {placed.length} placed, {unplaced.length} unplaced
           </Text>
           <Text testID={'floorsim-caption'}>
@@ -1668,34 +1854,50 @@ export function FloorGrid(props: FloorGridProps) {
           </View>
         </View>
       ) : null}
-      <View testID={'floorgrid-tray'}>
-        {unplaced.length === 0 ? (
-          // GDD §5.13's PLAYTEST 2 ruling, gap 2: "drag onto the floor above"
-          // named a control with nothing to drag on a cold-start floor. An
-          // honest empty state instead — and the two readings ("own nothing
-          // yet" vs. "own some, all of it already placed") say something
-          // true rather than the same dead prompt either way.
-          //
-          // PLAYTEST 3's ruling, gap 5: two things this pass got wrong about
-          // this same message. First, "buy equipment above" pointed at the
-          // shop by direction — correct before gap 4's reorder, wrong after
-          // it moved the floor above the shop, and a directional word tied
-          // to render order breaks again the next time that order changes
-          // without anyone touching this string, so it is dropped rather
-          // than corrected to "below". Second, "nothing owned yet" reads as
-          // a claim about the whole gym, on a screen already showing three
-          // (fixed) items on the grid and `owned` in the shop list — `owned`
-          // here is `FloorGridProps.owned`, SESSION equipment only, and the
-          // word needs to say so rather than read as blanket false.
+      <View
+        testID={'floorgrid-tray'}
+        style={buildMode ? undefined : { display: 'none' }}
+      >
+        {unplaced.length === 0 && unplacedFurniture.length === 0 ? (
           <Text testID={'floorgrid-tray-empty'}>
             {owned.length === 0
-              ? 'no session equipment yet — buy some, then drag it here to place it'
-              : 'every session item you own is already placed on the floor'}
+              ? 'no session equipment yet — buy some, then tap it here and tap a tile'
+              : 'every piece you own is on the floor — tap one, then tap a new tile'}
           </Text>
         ) : (
-          <Text>unplaced equipment — drag onto the floor above</Text>
+          <Text>unplaced — tap a piece, then tap a tile on the gym</Text>
         )}
         <ScrollView horizontal testID={'floorgrid-tray-scroll'}>
+          {unplacedFurniture.map((item) => {
+            const footprint = furnitureItemFootprint(item);
+            const chipWidth =
+              Math.max(footprint.width, EMPIRE_TUNING.FLOOR_TRAY_ITEM_MIN_TILES) * tile;
+            const chipHeight =
+              Math.max(footprint.height, EMPIRE_TUNING.FLOOR_TRAY_ITEM_MIN_TILES) * tile;
+            const isPending =
+              pendingPlace !== null && pendingPlace.kind === 'furniture' && pendingPlace.item === item;
+            return (
+              <Pressable
+                key={item}
+                testID={`floorgrid-tray-item-${item}`}
+                accessibilityRole={'button'}
+                onPress={() => setPendingPlace({ kind: 'furniture', item })}
+                style={{
+                  width: chipWidth,
+                  height: chipHeight,
+                  backgroundColor: FLOOR_TRAY_CHIP_COLOR,
+                  borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
+                  borderColor: isPending
+                    ? FLOOR_STATION_SELECTED_OUTLINE_COLOR
+                    : FLOOR_ITEM_BORDER_COLOR,
+                  margin: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+                  cursor: 'pointer',
+                } as WebSelectableViewStyle}
+              >
+                <Text style={FLOOR_LABEL_STYLE}>{item}</Text>
+              </Pressable>
+            );
+          })}
           {unplaced.map((item) => {
             const isDragging = draggingItem === item;
             const responder = panResponderFor(item, 'tray');
@@ -1704,6 +1906,8 @@ export function FloorGrid(props: FloorGridProps) {
               Math.max(footprint.width, EMPIRE_TUNING.FLOOR_TRAY_ITEM_MIN_TILES) * tile;
             const chipHeight =
               Math.max(footprint.height, EMPIRE_TUNING.FLOOR_TRAY_ITEM_MIN_TILES) * tile;
+            const isPending =
+              pendingPlace !== null && pendingPlace.kind === 'session' && pendingPlace.item === item;
             return (
               <Animated.View
                 key={item}
@@ -1714,18 +1918,19 @@ export function FloorGrid(props: FloorGridProps) {
                   height: chipHeight,
                   backgroundColor: FLOOR_TRAY_CHIP_COLOR,
                   borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
-                  borderColor: FLOOR_ITEM_BORDER_COLOR,
+                  borderColor: isPending
+                    ? FLOOR_STATION_SELECTED_OUTLINE_COLOR
+                    : FLOOR_ITEM_BORDER_COLOR,
                   margin: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
                   transform: isDragging
                     ? [{ translateX: dragOffset.x }, { translateY: dragOffset.y }]
                     : [],
                   zIndex: isDragging ? EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX : 1,
-                  // See the placed-chip style above: web-only, load-bearing.
                   userSelect: 'none',
                   imageRendering: 'pixelated',
+                  cursor: 'pointer',
                 } as WebSelectableViewStyle & PixelSnappedViewStyle}
               >
-                {/* Phase 4: the item's own sprite, centred at its true drawn size, over the neutral chip backing. */}
                 <Image
                   testID={`floorgrid-tray-sprite-${item}`}
                   source={{ uri: FLOOR_SPRITE_URIS.session[item] }}
@@ -1762,16 +1967,38 @@ export function FloorGrid(props: FloorGridProps) {
         `management.ts`, so closing it can never move a piece of equipment,
         change the floor, or touch anything `GymViewState` owns.
       */}
+      {selectedMember === null ? null : (
+        <View testID={'floorgrid-member-panel'} style={panelStyles.panel}>
+          <Text testID={'floorgrid-member-panel-identity'}>
+            {selectedMember.type}
+          </Text>
+          <Text testID={'floorgrid-member-panel-state'}>
+            {selectedMember.state}
+            {selectedMember.target === null
+              ? null
+              : ` — ${selectedMember.target.item}`}
+          </Text>
+          <Pressable
+            testID={'floorgrid-member-panel-dismiss'}
+            accessibilityRole={'button'}
+            style={panelStyles.button}
+            onPress={() => setSelectedMemberIndex(null)}
+          >
+            <Text style={panelStyles.buttonText}>close</Text>
+          </Pressable>
+        </View>
+      )}
       {panelStation === null ||
       panelIdentity === null ||
       panelOperation === null ||
       panelCondition === null ||
-      panelManagerEffect === null ? null : (
+      panelManagerEffect === null ||
+      selectedMember !== null ? null : (
         <View testID={'floorgrid-station-panel'} style={panelStyles.panel}>
           <Text testID={'floorgrid-station-panel-identity'}>
             {panelIdentity.item}
             {panelIdentity.kind === 'fixed'
-              ? ' — fixed barbell equipment'
+              ? ' — barbell equipment'
               : ` — session equipment (${panelIdentity.sessionGroup})`}
           </Text>
           {/*
@@ -1909,7 +2136,19 @@ export function FloorGrid(props: FloorGridProps) {
             >
               <Text style={panelStyles.buttonText}>remove from the floor</Text>
             </Pressable>
-          ) : null}
+          ) : (
+            <Pressable
+              testID={'floorgrid-station-panel-remove-furniture'}
+              accessibilityRole={'button'}
+              style={panelStyles.button}
+              onPress={() => {
+                dispatch({ kind: 'floor-remove-furniture', item: panelStation.item });
+                setSelectedStation(null);
+              }}
+            >
+              <Text style={panelStyles.buttonText}>move to the tray</Text>
+            </Pressable>
+          )}
           <Pressable
             testID={'floorgrid-station-panel-dismiss'}
             accessibilityRole={'button'}
