@@ -733,12 +733,12 @@ export function GymScreen(props: GymViewProps) {
           rather than showing each one's own condition/cost/control a second
           time — the numbers themselves are the station panel's job now.
         */}
-        <Text testID={'gymscreen-worn'}>
-          Needs attention: {worn.length === 0 ? 'none' : worn.join(', ')}
-        </Text>
-        {prompt.kind === 'quiet' ? (
-          <Text testID={'gymscreen-prompt'}>no maintenance review open</Text>
-        ) : (
+        {worn.length === 0 ? null : (
+          <Text testID={'gymscreen-worn'}>
+            Needs attention: {worn.join(', ')}
+          </Text>
+        )}
+        {prompt.kind === 'quiet' ? null : (
           <View testID={'gymscreen-prompt'}>
             <Text testID={'gymscreen-prompt-item'}>
               maintenance review: {prompt.item} at{' '}
@@ -788,6 +788,7 @@ export function GymScreen(props: GymViewProps) {
             </Pressable>
           </View>
         )}
+        {managed.strikes.length === 0 ? null : (
         <View testID={'gymscreen-strikes'}>
           <Text testID={'gymscreen-strikes-lead'}>
             {managed.strikes.length} counted decision(s)
@@ -799,6 +800,7 @@ export function GymScreen(props: GymViewProps) {
             </Text>
           ))}
         </View>
+        )}
         <View testID={'gymscreen-recovery'}>
           {recovery.kind === 'not-dormant' ? (
             <Text testID={'gymscreen-recovery-state'}>
@@ -1104,6 +1106,17 @@ export function GymScreen(props: GymViewProps) {
       */}
       <View testID={'gymscreen-diagnostics'}>
         <Text>engine detail — not needed to play, kept here for verification</Text>
+        {prompt.kind === 'quiet' ? (
+          <Text testID={'gymscreen-prompt'}>no maintenance review open</Text>
+        ) : null}
+        {worn.length === 0 ? (
+          <Text testID={'gymscreen-worn'}>Needs attention: none</Text>
+        ) : null}
+        {managed.strikes.length === 0 ? (
+          <View testID={'gymscreen-strikes'}>
+            <Text testID={'gymscreen-strikes-lead'}>0 counted decision(s)</Text>
+          </View>
+        ) : null}
         {lastAccrual === null ? null : (
           <Text testID={'gymscreen-accrual'}>
             last advance banked {lastAccrual.secondsBanked}s of {lastAccrual.secondsElapsed}s, paid{' '}

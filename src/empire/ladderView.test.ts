@@ -732,6 +732,44 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
     expect(moved.managed.gym.sessionEquipment).toEqual(placed.managed.gym.sessionEquipment);
     expect(moved.managed.gym.ladder.gymBucks).toBe(placed.managed.gym.ladder.gymBucks);
     expect(moved.managed.gym).toEqual(placed.managed.gym);
+
+    const third = dispatchGymThrough(moved, {
+      kind: 'floor-place',
+      item: 'mats',
+      position: { x: 5, y: 1 },
+    });
+    expect(third.floor.placements['mats']).toEqual({ x: 5, y: 1 });
+    expect(third.managed.gym.sessionEquipment).toEqual(placed.managed.gym.sessionEquipment);
+    expect(third.managed.gym.ladder.gymBucks).toBe(placed.managed.gym.ladder.gymBucks);
+  });
+
+  it('floor-place-furniture moves the same starting Barbell piece three times without touching ownership or purse', () => {
+    const opened = createGymViewState();
+    const original = opened.floor.furniture['power-bar'];
+    expect(original).toEqual({ x: 0, y: 0 });
+    const owned = opened.managed.gym.ladder.equipment;
+    const purse = opened.managed.gym.ladder.gymBucks;
+    const a = dispatchGymThrough(opened, {
+      kind: 'floor-place-furniture',
+      item: 'power-bar',
+      position: { x: 6, y: 0 },
+    });
+    expect(a.floor.furniture['power-bar']).toEqual({ x: 6, y: 0 });
+    const b = dispatchGymThrough(a, {
+      kind: 'floor-place-furniture',
+      item: 'power-bar',
+      position: { x: 5, y: 2 },
+    });
+    expect(b.floor.furniture['power-bar']).toEqual({ x: 5, y: 2 });
+    const c = dispatchGymThrough(b, {
+      kind: 'floor-place-furniture',
+      item: 'power-bar',
+      position: { x: 0, y: 3 },
+    });
+    expect(c.floor.furniture['power-bar']).toEqual({ x: 0, y: 3 });
+    expect(c.managed.gym.ladder.equipment).toEqual(owned);
+    expect(c.managed.gym.ladder.gymBucks).toBe(purse);
+    expect(c.lastRefusal).toBeNull();
   });
 
   it('floor-remove: removes a placed item, comparing against removeFloorItem called directly, and clears any refusal', () => {

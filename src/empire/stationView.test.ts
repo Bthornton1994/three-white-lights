@@ -23,6 +23,9 @@ import {
   playerFacingActivityGroupLabel,
   playerFacingEquipmentLabel,
   playerFacingManagerCapability,
+  playerFacingMemberActivityLine,
+  playerFacingMemberTypeLabel,
+  playerFacingPlacementRefuse,
   recoveryBlockingItems,
   stationConditionView,
   stationIdentityView,
@@ -120,6 +123,21 @@ describe('stationView.ts — GDD §5.14 Stage C', () => {
     expect(playerFacingManagerCapability('veteran')).toBe(
       `auto-repair below ${displayConditionPercent(EMPIRE_TUNING.MANAGER_AUTO_REPAIR_CONDITION.veteran)}%`,
     );
+  });
+
+  it('projects member types and live activity without raw enums', () => {
+    expect(playerFacingMemberTypeLabel('powerlifter')).toBe('Powerlifter');
+    expect(playerFacingMemberTypeLabel('bodybuilder')).toBe('Bodybuilder');
+    expect(playerFacingMemberActivityLine('using', 'flat-bench')).toBe('Training on Flat bench');
+    expect(playerFacingMemberActivityLine('queuing', 'mats')).toBe('Waiting for Mats');
+    expect(playerFacingMemberActivityLine('leaving', null)).toBe('Leaving');
+    expect(playerFacingMemberActivityLine('seeking', null)).toBe('Walking');
+  });
+
+  it('states placement refusals as player-facing reasons, not enums', () => {
+    expect(playerFacingPlacementRefuse('occupied')).toBe('Space occupied');
+    expect(playerFacingPlacementRefuse('doesnt-fit')).toBe("Doesn't fit here");
+    expect(playerFacingPlacementRefuse('outside')).toBe('Outside the gym');
   });
 
   // -------------------------------------------------------------------------

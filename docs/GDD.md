@@ -3201,7 +3201,29 @@ C.1b is **not** human-approved. It remains pending the human gate.
 
 C.1c closes implementation defects and contract misses from the C.1b handoff before the second human playtest: already-placed equipment must move on the tap-select → tap-tile path even while the simulator occupies it; recovery re-placement uses that same Build path; the Shop is a visual equipment-card drawer; Staff is player-facing rather than diagnostic; the 9c verifier no longer extrapolates a huge press budget from a tiny overwritten wear sample.
 
-Stage C stays open until the human's second playtest. C.2 / Stage D are not started.
+C.1c is **not** human-approved. Stage C stayed open for a second playtest. C.2 / Stage D were not started.
+
+### Human Stage C rejection at `47f27b39`
+
+The human personally played C.1c and found:
+
+- the floor and dock were visible;
+- the station card on the power bar worked and felt substantially more game-like;
+- Shop was a real catalog;
+- first move of the power bar worked;
+- **second move of the same power bar failed repeatedly**;
+- tapping visible lifters did not reliably open a member card;
+- an invalid placement refused without understandable feedback;
+- Staff remained too text-heavy;
+- the simulation was visible, but interaction with what is visible was unreliable.
+
+Therefore C.1c improved the product but did not close Stage C.
+
+Engineering conclusion: Stage C interaction verification must prove that visible pixels and interactive hit regions are the same spatial object, not merely that an independently-addressable testID can be clicked. A testID-driven harness can target an invisible helper even when a human clicking the drawn sprite cannot.
+
+### C.1d
+
+C.1d makes the visible game object the interactive object: one member body, one station root, two explicit Build phases (select, then place). Drag is not the canonical path. Invalid placement states a player-facing reason and keeps the piece selected. Stage C stays open pending another human playtest. C.2 / Stage D are not started.
 
 **Explicitly not reopened by this section:** §5.13 Phase 4's art gate, which
 stands exactly where its own text leaves it — *"holds/stops here until a

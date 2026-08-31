@@ -1233,6 +1233,9 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'stationView.ts#playerFacingActivityGroupLabel#return',
       'stationView.ts#playerFacingEquipmentLabel#return',
       'stationView.ts#playerFacingManagerCapability#return',
+      'stationView.ts#playerFacingMemberActivityLine#return',
+      'stationView.ts#playerFacingMemberTypeLabel#return',
+      'stationView.ts#playerFacingPlacementRefuse#return',
     ]),
   }),
 ]);
@@ -1648,7 +1651,9 @@ const SURFACE_CENSUS = Object.freeze({
   // 389 -> 393: Stage C.1c stationView presentation exports
   // (playerFacingEquipmentLabel, playerFacingActivityGroupLabel,
   // displayConditionPercent, playerFacingManagerCapability).
-  EXPORTS: 393, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
+  // 393 -> 396: Stage C.1d playerFacingMemberTypeLabel,
+  // playerFacingMemberActivityLine, playerFacingPlacementRefuse.
+  EXPORTS: 396, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1663,7 +1668,8 @@ const SURFACE_CENSUS = Object.freeze({
   // because the occupied table's type is a closed record over its own keys
   // rather than a Partial over every fixed item (see FIXED_OCCUPIED_PAINTERS
   // in floorSprites.ts for why the census forced that shape).
-  BARE_POSITIONS: 119,
+  // 119 -> 122: Stage C.1d three playerFacing* returns in stationView.ts.
+  BARE_POSITIONS: 122,
   BARE_FIELDS: 3,
   BRANDED_POSITIONS: 34,
   /**
@@ -3005,7 +3011,9 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // unchanged: none of these nine calls any of the four brand constructors.
   // 2956 -> 3071: Stage C.1b floor furniture helpers, GymScreen dock/drawers, FloorGrid tap-to-place.
   // 3107 -> 3118: Stage C.1c pressLocalPixels / pressTile / per-tile hits.
-  CALLS_EXAMINED: 3118,
+  // 3118 -> 3088: Stage C.1d removed PanResponder/pixel-math call sites,
+  // then recovery-line percent projection added four displayConditionPercent calls.
+  CALLS_EXAMINED: 3088,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -4273,7 +4281,7 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
   ),
   ...exemptTable(
     'STATION_TAP_MAX_DRAG_PIXELS',
-    'GDD §5.14 Stage C: A GESTURE THRESHOLD compared against a real drag\'s pixel distance inside `FloorGrid.tsx`\'s `PanResponder` handler — reachable only from a real gesture, which this file\'s own drive cannot produce (the same "Invalid hook call" limit `FloorGrid`\'s own drive row already states, since the whole component throws before its `PanResponder` is ever built). `tools/verify-floor-reachability.mjs`\'s 13g/13h claims are the real coverage for this threshold.',
+    'GDD §5.14 Stage C.1d: leftover gesture threshold after PanResponder was removed from the canonical tap-piece-then-tap-tile path. No shipped module under src/empire/ reads it; empireTuning.test.ts lists it in AWAITING_CONSUMER. Kept as an unused knob rather than deleted mid-round.',
   ),
   ...exemptTable(
     'FLOOR_GRID_BORDER_WIDTH_PIXELS',
@@ -8129,6 +8137,24 @@ function driveEverything(): readonly DrivenRow[] {
         stationViewModule.playerFacingManagerCapability(tier),
       );
     }
+    for (const type of EMPIRE_TUNING.MEMBER_TYPES) {
+      drive('playerFacingMemberTypeLabel', type, () =>
+        stationViewModule.playerFacingMemberTypeLabel(type),
+      );
+    }
+    for (const state of floorSimModule.FLOOR_SIM_MEMBER_STATES) {
+      drive('playerFacingMemberActivityLine', state, () =>
+        stationViewModule.playerFacingMemberActivityLine(state, 'mats'),
+      );
+      drive('playerFacingMemberActivityLine', `${state}/none`, () =>
+        stationViewModule.playerFacingMemberActivityLine(state, null),
+      );
+    }
+    for (const kind of ['occupied', 'doesnt-fit', 'outside'] as const) {
+      drive('playerFacingPlacementRefuse', kind, () =>
+        stationViewModule.playerFacingPlacementRefuse(kind),
+      );
+    }
     for (const tier of EMPIRE_TUNING.MANAGER_TIERS) {
       const hired = managementModule.hireManager(
         freshForPanel,
@@ -10402,7 +10428,8 @@ const DRIVE_CENSUS = Object.freeze({
   // failure value.
   // 593544 -> 595928: Stage C.1b furniture-layout exports, GYM_SURFACES, and
   // the larger GymScreen tree. Re-measured by running this assertion.
-  ROWS: 595954, // 582209 -> 582208: "kill the mint", re-measured
+  // 595954 -> 595972: Stage C.1d playerFacing* drives.
+  ROWS: 595972, // 582209 -> 582208: "kill the mint", re-measured
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -10428,7 +10455,8 @@ const DRIVE_CENSUS = Object.freeze({
   // 380 -> 382: GDD §5.14 Stage C.1a's stationView.ts — two new runtime
   // exports (isRecoveryBlocking, recoveryBlockingItems), both driven above.
   // 382 -> 389: Stage C.1b six floor furniture exports + GYM_SURFACES.
-  EXPORTS_DRIVEN: 393, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
+  // 393 -> 396: Stage C.1d three playerFacing* drives.
+  EXPORTS_DRIVEN: 396, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -10520,7 +10548,8 @@ const DRIVE_CENSUS = Object.freeze({
   // JSX adds across every driven managed state. Read from this pin's own
   // failure value.
   // 6490388 -> 6510102: Stage C.1b furniture/dock GymScreen trees. Measured.
-  NODES: 6510907, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
+  // 6510907 -> 6510913: Stage C.1d playerFacing* drive rows.
+  NODES: 6510913, // DRIVE_CENSUS.NODES — NOT the same constant as CHANNEL_CENSUS_TOTALS.NODES_EXAMINED below.
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -10634,7 +10663,8 @@ const DRIVE_CENSUS = Object.freeze({
   // value.
   // 29_956_490 -> 30_042_395: Stage C.1b furniture/dock copy and trees. Measured.
   // 30_042_395 -> 30_045_757: Stage C.1c shop/staff copy and new drive rows.
-  STRINGS: 30_045_757,
+  // 30_045_757 -> 30_045_772: Stage C.1d playerFacing* drive strings.
+  STRINGS: 30_045_772,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -10739,7 +10769,8 @@ const DRIVE_CENSUS = Object.freeze({
   // copy the `blocked`-arm `MANAGED_STATES` fixtures now reach. Read from
   // this pin's own failure value.
   // 3792 -> 3824: Stage C.1b dock/surface/furniture labels. Measured.
-  DISTINCT_STRINGS: 3904,
+  // 3904 -> 3917: Stage C.1d player-facing member/refuse labels.
+  DISTINCT_STRINGS: 3917,
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
   DEPTH_CUTS: 7,
   /**
@@ -14736,7 +14767,8 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // 29 -> 30: GDD §5.14 Stage C — `toggleSelectedStation`'s own `return`.
       // 30 -> 41: Stage C.1b tap-to-place / member-select / furniture helpers.
       // 50 -> 53: Stage C.1c pressLocalPixels / pressTile / handleGridPressEvent.
-      'FloorGrid.tsx': 53,
+      // 53 -> 45: Stage C.1d removed PanResponder/pixel-math helpers.
+      'FloorGrid.tsx': 45,
       // CROSSING 6: GymScreen.tsx's own two helper functions
       // (`allocationOptions`, `describeSlotOutcome`, the latter with three
       // return statements across its three arms) plus the component's own
@@ -14832,7 +14864,9 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // stationManagerEffectView's two arms.
       // 10 -> 12: GDD §5.14 Stage C.1a's two new one-return functions,
       // `isRecoveryBlocking` and `recoveryBlockingItems`.
-      'stationView.ts': 17,
+      // 17 -> 26: Stage C.1d playerFacingMemberTypeLabel (1),
+      // playerFacingMemberActivityLine (5), playerFacingPlacementRefuse (3).
+      'stationView.ts': 26,
     }),
     /**
      * TWO, AND THE TWO ARE THE WRAP'S OWN GATES.
@@ -14890,7 +14924,10 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // `floor-remove` (a second, panel-local site distinct from the
       // tray-item remove `Pressable` above).
       // 4 -> 7: Stage C.1b furniture place/remove and tap-to-place dispatch sites.
-      'FloorGrid.tsx': 7,
+      // 7 -> 5: Stage C.1d removed on-chip remove and PanResponder place
+      // dispatch sites; place/repair/remove remain on the two-phase path
+      // and the station panel.
+      'FloorGrid.tsx': 5,
       'GymScreen.tsx': 1,
       'ladderView.tsx': 9,
       'production.ts': 2,
@@ -15016,8 +15053,6 @@ const DECLARED_CALLBACK_SITES: readonly string[] = Object.freeze([
   // `floor-remove` (a second, panel-local site; the tray-item remove
   // `Pressable` above still carries the first) — each handing `dispatch`
   // exactly one action object, same `x1` shape.
-  'FloorGrid.tsx#FloorGrid#props x1',
-  'FloorGrid.tsx#FloorGrid#props x1',
   'FloorGrid.tsx#FloorGrid#props x1',
   'FloorGrid.tsx#FloorGrid#props x1',
   'FloorGrid.tsx#FloorGrid#props x1',
@@ -15755,7 +15790,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // hand-derived.
   // 6 -> 9: Stage C.1b FloorGrid/GymScreen call sites through parameters
   // (tap-to-place, dock, member hit). Re-measured by running this assertion.
-  parameter: 9,
+  // 9 -> 7: Stage C.1d PanResponder grant/release callbacks gone.
+  parameter: 7,
   // 53 -> 54: P4c — FloorGrid.tsx's `hasOwnProperty.call` in the occupied
   // branch of `fixedSpriteUriFor`. Read from this pin's own failure value.
   // 54 -> 64: stage 4's calls through module-level bindings — `refuseWith`,
@@ -15777,7 +15813,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // `setSelectedStation` call already contributes a row for.
   // 13 -> 31: Stage C.1b FloorGrid local calls (tryPlaceAt, member/station
   // hit handlers, build-mode tray). Re-measured by running this assertion.
-  local: 37,
+  // 37 -> 32: Stage C.1d dropped PanResponder-local call sites.
+  local: 32,
   // GDD §5.13 presentation Phase 3: function 827 -> 918, member 810 -> 889,
   // member-of-parameter 21 -> 27, all floorSim.ts's own call targets. Read
   // from this table's own failure value.
@@ -15847,7 +15884,9 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1468 -> 1511: Stage C.1b furniture helpers + GymScreen dock/drawers +
   // FloorGrid tap-to-place. Re-measured by running this assertion.
   // 1538 -> 1541: Stage C.1c pressLocalPixels / pressTile / handleGridPressEvent.
-  function: 1541,
+  // 1541 -> 1531: Stage C.1d PanResponder/pixel-math helpers removed.
+  // 1531 -> 1535: recovery-line percent projection.
+  function: 1535,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -15895,7 +15934,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1365 -> 1410: Stage C.1b FloorGrid/GymScreen member calls (.map on
   // surfaces, furniture, members). Re-measured by running this assertion.
   // 1413 -> 1421: Stage C.1c Number.isFinite / flatMap / per-tile Pressable.
-  member: 1421,
+  // 1421 -> 1404: Stage C.1d PanResponder/member-call sites removed.
+  member: 1404,
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -15968,7 +16008,8 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // two `state = ...` reassignments. Read from this pin's own failure value.
   // 397 -> 401: Stage C.1b FloorGrid pending-place / stage-size / member-select writes.
   // 401 -> 399: Stage C.1c overlap-flash writes consolidated.
-  local: 399,
+  // 399 -> 398: Stage C.1d dropped the unused grid-origin write.
+  local: 398,
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -16070,7 +16111,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 756 -> 787: Stage C.1b FloorGrid/floor.ts/ladderView return and callback sites.
   // 787 -> 806: Stage C.1c FloorGrid/GymScreen/stationView return sites.
   // 806 -> 809: Stage C.1c per-tile Build hits add three FloorGrid return sites.
-  SITES: 809,
+  // 809 -> 808: Stage C.1d FloorGrid returns 53->45 and callbacks 7->5,
+  // stationView returns 17->26.
+  SITES: 808,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -16208,7 +16251,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 67_700 -> 67_730: compact diagnostics-toggle style object.
   // 68_975 -> 69_328: Stage C.1c per-tile Build hits and press coordinate helper.
   // 69_328 -> 69_335: Stage C.1c freeze sim while a tile is pending.
-  NODES_EXAMINED: 69_335,
+  // 69_335 -> 68_752: Stage C.1d PanResponder/pixel-math source removed.
+  // 68_752 -> 68_760: recovery-line percent projection calls.
+  NODES_EXAMINED: 68_760,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -16335,7 +16380,9 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // parameter position and one return position — four, no new exported
   // interface. Read from this pin's own failure value.
   // 913 -> 928: Stage C.1b FloorState.furniture and furniture helpers.
-  POSITIONS: 936,
+  // 936 -> 943: Stage C.1d three playerFacing* signatures plus
+  // PlacementRefuseKind.
+  POSITIONS: 943,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -20592,7 +20639,8 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // declarations (StationIdentityView, StationOperationView,
   // StationConditionView, StationManagerEffectView), none generic.
   // 249 -> 252: Stage C.1b GymSurface, FloorFurniturePlaceResult, PendingPlace.
-  DECLARATIONS: 252,
+  // 252 -> 253: Stage C.1d PlacementRefuseKind.
+  DECLARATIONS: 253,
   /** Those carrying type parameters. An instantiation depth needs one. */
   // Phase 4: `MemberTable<Leaf>` in floorSprites.ts.
   GENERIC: 13,
@@ -21119,6 +21167,11 @@ const DECLARED_AMBIENT_MEMBER_BODY_PROPS: readonly AmbientPropReading[] = Object
     name: 'interruptedBy',
     shape: 'union["route-blocked"|"target-moved"|"target-removed"|null]',
   }),
+  // Stage C.1d: a presentation tap, not a GymViewAction. Play mode only.
+  Object.freeze({
+    name: 'onPress',
+    shape: 'union[callable|undefined]',
+  }),
   // P4b: the pose union carries the six station-class rep frames in place of
   // the one generic `using` — nine literals, still a closed vocabulary, still
   // no bare number, object or callable.
@@ -21177,6 +21230,7 @@ const PROP_SURFACE_CENSUS = Object.freeze({
    * this list's non-emptiness as a signal by itself.
    */
   HOLDS_A_FUNCTION: Object.freeze([
+    'onPress: union[callable|undefined]',
     'position: object{x:number,y:number}',
   ] as readonly string[]),
   /** Render cuts at the depth ceiling. Zero, so the ceiling is verified. */

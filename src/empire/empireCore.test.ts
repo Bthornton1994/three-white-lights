@@ -3259,8 +3259,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // (`buildMode ? … : …`), so it is not JsxText. The `(fixed)` label is
       // gone — starting Barbell is player-positionable. Transcribed from a
       // driven run of this census.
-      'can&apos;t place here',
-      'x',
+      // Stage C.1d: the silent `can't place here` overlay and on-chip `x`
+      // remove control are gone. Placement chrome is the Moving banner and
+      // Cancel, and refusal copy is an expression from stationView.ts.
+      'Moving:',
+      'Cancel',
       // GDD §5.13 presentation Phase 2: the ambient-member caption, in tree
       // order — rendered after the grid's ScrollView and before the tray,
       // which is why it lands between the placed-item remove control's 'x'
@@ -3286,8 +3289,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // as plain JsxText, so this collector — bare JsxText only — sees far
       // fewer chunks than the panel's own JSX has lines; the `{' '}`-joined
       // static fragments are what land here.
-      'condition',
-      '— repairing it costs',
+      'Condition',
+      '% — repair',
       'gym bucks',
       'the standing maintenance review is currently about this item',
       // GDD §5.14 Stage C — the repair arm's own gate, S4f-consistent
@@ -3361,7 +3364,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Full repair:',
       'gym bucks',
       'Needs attention:',
-      'no maintenance review open',
       'maintenance review:',
       'at',
       '% — repair costs',
@@ -3461,6 +3463,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // here for verification" heading chunk, which is the one genuinely new
       // string this round adds anywhere in `GymScreen.tsx`.
       'engine detail — not needed to play, kept here for verification',
+      'no maintenance review open',
+      'Needs attention: none',
+      '0 counted decision(s)',
       'last advance banked',
       's of',
       's, paid',
@@ -3787,7 +3792,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // list above.
     // 535 -> 563: Stage C.1b dock/drawer/member-panel testIDs, GymSurface
     // names, furniture place/remove action kinds, and Build-mode copy.
-    expect(singleQuoted.size).toBe(583);
+    // 583 -> 597: Stage C.1d placement-phase chrome, player-facing member
+    // labels, and refuse-kind tokens. `floorgrid-grid-tap` left the set.
+    expect(singleQuoted.size).toBe(597);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3894,7 +3901,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // Build-mode caption interpolation.
     // 322 -> 324: Stage C.1c per-tile Build hit targets (`floorgrid-cell-${x}-${y}`
     // and its React `key`).
-    expect(templateChunks.size).toBe(324);
+    // 324 -> 320: Stage C.1d dropped PanResponder/remove-chip templates.
+    expect(templateChunks.size).toBe(320);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3943,19 +3951,26 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './stationView',
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
       'Accessory',
+      'Athlete',
       'Belts',
       'Bike',
+      'Bodybuilder',
       'Cables',
+      'Casual',
       'Conditioning',
       'Dumbbells',
       'IDAT',
       'IEND',
       'IHDR',
+      'Idle',
+      'Interrupted',
       'KSTHJDPZBWLMERQUVONCGFAXY',
+      'Leaving',
       'Machines',
       'Mats',
       'PLTE',
       'Placeholder',
+      'Powerlifter',
       'Recovery',
       'Rower',
       'Sauna',
@@ -3963,6 +3978,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Sleeves',
       'Support',
       'Treadmill',
+      'Walking',
       'absence-strike-control',
       'absolute',
       'accelerated',
@@ -3998,6 +4014,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'blocked',
       'bodybuilder',
       'bought',
+      'box-none',
       'brace',
       'budget',
       'build',
@@ -4051,6 +4068,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'dismissed',
       'display-name',
       'displayName',
+      'doesnt-fit',
       'dot',
       'dumbbells',
       'e1rm',
@@ -4088,12 +4106,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-drop-refused',
       'floorgrid-floor-texture',
       'floorgrid-grid',
-      'floorgrid-grid-tap',
       'floorgrid-member-panel',
       'floorgrid-member-panel-dismiss',
       'floorgrid-member-panel-identity',
       'floorgrid-member-panel-state',
       'floorgrid-pending',
+      'floorgrid-place-banner',
+      'floorgrid-place-cancel',
       'floorgrid-root',
       'floorgrid-scroll-x',
       'floorgrid-scroll-y',
@@ -4286,6 +4305,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'npc-id',
       'npcId',
       'number',
+      'occupied',
       'offered',
       // The "chrome vs paid" bug-fix round's `EarningsMode` — 'offline' is
       // the default (every pre-existing call site), 'online' is the one
@@ -4302,6 +4322,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'ordinal',
       'other-recovery',
       'out-of-bounds',
+      'outside',
       'overlaps',
       'own-gym',
       'paid-pull',
@@ -4428,11 +4449,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'trainingIq',
       'trainingIqPerDay',
       'transparent',
-      // GDD §5.14 Stage C: the tap-origin literal `releaseAt`/
-      // `panResponderFor` use to tell a tray chip from a placed one. Its
-      // sibling `'placed'` already shipped elsewhere in this directory and
-      // added nothing new to the set.
-      'tray',
       'treadmill',
       'unaccelerated-seconds',
       'unacceleratedSeconds',
@@ -4546,7 +4562,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // unchanged. Net +4.
     // 841 -> 878: Stage C.1b singleQuoted + templateChunks growth.
     // 905 -> 907: Stage C.1c per-tile Build hit-target templates.
-    expect(stringsChecked).toBe(907);
+    // 907 -> 917: Stage C.1d singleQuoted 583 -> 597, templateChunks 324 -> 320.
+    expect(stringsChecked).toBe(917);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were

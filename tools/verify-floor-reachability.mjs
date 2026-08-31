@@ -787,29 +787,17 @@ async function openGymSurface(name) {
   await page.waitForTimeout(200);
 }
 
-/** Click the centre of a floor cell. Caller must already be on Build. */
+/** Click the centre of a floor cell. Caller must already be in PLACE phase. */
 async function tapGridCell(xTile, yTile) {
-  const cell = page.getByTestId(`floorgrid-cell-${xTile}-${yTile}`);
-  const cellCount = await cell.count().catch(() => 0);
-  if (cellCount > 0) {
-    // MouseEvent so RN-web Pressable's onClick sees altKey === false.
-    // The cell's onPress already names (x, y) — no pixel math.
-    await cell.evaluate((el) => {
-      el.dispatchEvent(
-        new MouseEvent('click', { bubbles: true, cancelable: true, altKey: false, view: window }),
-      );
-    });
-    await page.waitForTimeout(250);
-    return true;
-  }
-  const tap = page.getByTestId('floorgrid-grid-tap');
-  await tap.click({
-    position: {
-      x: Math.max(1, FLOOR_TILE_PIXELS * (xTile + 0.5)),
-      y: Math.max(1, FLOOR_TILE_PIXELS * (yTile + 0.5)),
-    },
-    force: true,
-    timeout: 10000,
+  const id = `floorgrid-cell-${xTile}-${yTile}`;
+  const cell = page.getByTestId(id);
+  await cell.waitFor({ state: 'attached', timeout: 8000 });
+  // MouseEvent so RN-web Pressable's onClick sees altKey === false.
+  // The cell's onPress already names (x, y) — no pixel math.
+  await cell.evaluate((el) => {
+    el.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true, altKey: false, view: window }),
+    );
   });
   await page.waitForTimeout(250);
   return true;
@@ -821,6 +809,11 @@ async function tapGridCell(xTile, yTile) {
  */
 async function tapSelectThenPlace(selectTestId, xTile, yTile) {
   await openGymSurface('build');
+  const cancel = page.getByTestId('floorgrid-place-cancel');
+  if ((await cancel.count().catch(() => 0)) > 0) {
+    await cancel.click({ timeout: 3000 }).catch(() => {});
+    await page.waitForTimeout(150);
+  }
   const target = page.getByTestId(selectTestId);
   await target.scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
   await target.click({ timeout: 10000 });
@@ -1564,18 +1557,26 @@ try {
   }
 
   // Stage C.1b: members are tappable.
-  const memberHit = await waitUntilDrawn(page, 'floorgrid-member-0', BEAT_TIMEOUT_MS);
+  const memberHit = await waitUntilDrawn(page, 'floorgrid-ambient-0', BEAT_TIMEOUT_MS);
   if (memberHit.drawn) {
-    await page.getByTestId('floorgrid-member-0').click({ timeout: 10000 });
+    // The visible body is the animated root. Playwright's locator.click
+    // waits for layout stability, which a walking sprite never has.
+    // Click the currently drawn pixels instead.
+    const memberBox = await boxOf('floorgrid-ambient-0');
+    if (memberBox === null) {
+      fail('C.1b: floorgrid-ambient-0 is attached but has no bounding box');
+    } else {
+      await page.mouse.click(memberBox.x + memberBox.width / 2, memberBox.y + memberBox.height / 2);
+    }
     const memberPanel = await waitUntilDrawn(page, 'floorgrid-member-panel', BEAT_TIMEOUT_MS);
     if (memberPanel.drawn) {
-      ok(`C.1b: tapping a member opens floorgrid-member-panel (${memberPanel.why})`);
+      ok(`C.1b: tapping a visible member opens floorgrid-member-panel (${memberPanel.why})`);
       await page.getByTestId('floorgrid-member-panel-dismiss').click({ timeout: 10000 }).catch(() => {});
     } else {
-      fail(`C.1b: floorgrid-member-panel never drawn after tapping floorgrid-member-0 — ${memberPanel.why}`);
+      fail(`C.1b: floorgrid-member-panel never drawn after tapping floorgrid-ambient-0 — ${memberPanel.why}`);
     }
   } else {
-    fail(`C.1b: floorgrid-member-0 never drawn — ${memberHit.why}`);
+    fail(`C.1b: floorgrid-ambient-0 never drawn — ${memberHit.why}`);
   }
 
   // Gap 3: the grid reads as a grid — real tile boundaries, counted exactly
@@ -2231,10 +2232,11 @@ try {
   // `floorgrid-placed-*` chip exists at all (asserted above), which is the
   // actual "nothing else landed on this cell" claim.
   if (
-    refusedMessage === "can't place here" &&
+    refusedMessage === 'Space occupied' &&
     !placedAfterRefusal &&
     stillInTrayAfterRefusal &&
-    pendingAfterRefusal === 'mats' &&
+    pendingAfterRefusal !== null &&
+    pendingAfterRefusal.includes('Mats') &&
     powerBarTextAfterRefusal !== null &&
     powerBarTextAfterRefusal.includes('power-bar') &&
     !powerBarTextAfterRefusal.includes('(fixed)')
@@ -2262,7 +2264,8 @@ try {
   }
   // 2b is required to leave mats pending. A legal tile then places it on
   // the same path a player uses after a refused overlapping tap.
-  const stillPendingMats = (await textOf('floorgrid-pending')) === 'mats';
+  const pendingNow = await textOf('floorgrid-pending');
+  const stillPendingMats = pendingNow !== null && pendingNow.includes('Mats');
   if (stillPendingMats) {
     await openGymSurface('build');
     await tapGridCell(5, 0);
@@ -2363,6 +2366,22 @@ try {
           `tap-select → tap-tile did not move the placed chip: before (${Math.round(placedBoxAfterFirstDrag.x)}, ${Math.round(placedBoxAfterFirstDrag.y)}), after (${Math.round(placedBoxAfterSecondDrag.x)}, ${Math.round(placedBoxAfterSecondDrag.y)})`,
         );
       }
+      const boxBeforeThird = placedBoxAfterSecondDrag;
+      await tapSelectThenPlace('floorgrid-placed-mats', 5, 1);
+      const boxAfterThird = await boxOf('floorgrid-placed-mats');
+      const thirdMoved =
+        boxAfterThird !== null &&
+        (Math.abs(boxAfterThird.x - boxBeforeThird.x) > 4 ||
+          Math.abs(boxAfterThird.y - boxBeforeThird.y) > 4);
+      if (thirdMoved) {
+        ok(
+          `a third tap-select → tap-tile on the same mats chip MOVES it again: (${Math.round(boxBeforeThird.x)}, ${Math.round(boxBeforeThird.y)}) -> (${Math.round(boxAfterThird.x)}, ${Math.round(boxAfterThird.y)})`,
+        );
+      } else {
+        fail(
+          `third mats move did not relocate: before ${JSON.stringify(boxBeforeThird)}, after ${JSON.stringify(boxAfterThird)}`,
+        );
+      }
     }
   } else {
     fail('skipped the move-drag — no valid position after the first drag');
@@ -2454,10 +2473,13 @@ try {
 
   let captionAtPress = null;
   let stillClaimedAtPress = [];
-  const removeButton = page.getByTestId('floorgrid-remove-mats');
+  await openGymSurface('play');
+  await page.getByTestId('floorgrid-placed-mats').click({ timeout: 10000 }).catch(() => {});
+  await page.waitForTimeout(150);
+  const removeButton = page.getByTestId('floorgrid-station-panel-remove');
   const removeExists = await removeButton.count().then((n) => n > 0).catch(() => false);
   if (!removeExists) {
-    fail('the remove control (floorgrid-remove-mats) is not on screen');
+    fail('the panel remove control (floorgrid-station-panel-remove) is not on screen');
   } else {
     // Captured immediately before the press, so a failure below can say what
     // the floor was doing at the instant the machine was taken away rather
@@ -2480,6 +2502,8 @@ try {
     interruptedCue = interruptedCue ?? (await pollForInterruptedCue(REACTION_POLL_MS));
     await page.waitForTimeout(250);
     const stillPlaced = await page.getByTestId('floorgrid-placed-mats').count().then((n) => n > 0).catch(() => false);
+    // The tray is Play-hidden. Open Build to see the returned chip.
+    await openGymSurface('build');
     const backInTray = await waitUntilDrawn(page, 'floorgrid-tray-item-mats', BEAT_TIMEOUT_MS);
     if (!stillPlaced && backInTray.drawn) {
       ok('pressing remove takes mats off the grid and back into the unplaced tray');
@@ -2699,7 +2723,7 @@ try {
     await openGymSurface('play');
     const testId = kind === 'fixed' ? `floorgrid-fixed-${item}` : `floorgrid-placed-${item}`;
     const alreadySelected =
-      (await textOf('floorgrid-station-panel-identity'))?.includes(item) ?? false;
+      (await textOf('floorgrid-station-panel-identity'))?.toLowerCase().includes(item.replace(/-/g, ' ')) ?? false;
     if (!alreadySelected) {
       await page.getByTestId(testId).scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
       await page.getByTestId(testId).click({ timeout: 10000 });
@@ -2737,13 +2761,13 @@ try {
   const conditionBefore = await meanConditionNow();
   const powerBarBefore = numberIn(
     await stationConditionText('fixed', 'power-bar'),
-    /condition ([\d.]+)/,
+    /Condition ([\d.]+)%/,
   );
   await pressById(advanceId);
   const conditionAfter = await meanConditionNow();
   const powerBarAfter = numberIn(
     await stationConditionText('fixed', 'power-bar'),
-    /condition ([\d.]+)/,
+    /Condition ([\d.]+)%/,
   );
   if (
     conditionBefore !== null &&
@@ -2873,13 +2897,13 @@ try {
       const purseAfterRepair = await purseNow();
       const itemRowAfter = numberIn(
         await stationConditionText(stationKindFor(reviewItem), reviewItem),
-        /condition ([\d.]+)/,
+        /Condition ([\d.]+)%/,
       );
       const charged = purseBeforeRepair === null || purseAfterRepair === null ? null : purseBeforeRepair - purseAfterRepair;
       const repairBand = charged === null ? null : purseMatchBand(charged, reviewPrice);
-      if (repairBand !== null && itemRowAfter === 1) {
+      if (repairBand !== null && itemRowAfter === 100) {
         ok(
-          `S4b (9e): pressing repair charged the price the screen had already quoted (${repairBand} match) — purse ${purseBeforeRepair} -> ${purseAfterRepair} (${charged.toFixed(2)} against a quoted ${reviewPrice}), and ${reviewItem}'s own row now reads condition 1`,
+          `S4b (9e): pressing repair charged the price the screen had already quoted (${repairBand} match) — purse ${purseBeforeRepair} -> ${purseAfterRepair} (${charged.toFixed(2)} against a quoted ${reviewPrice}), and ${reviewItem}'s own row now reads Condition 100%`,
         );
       } else {
         fail(
@@ -3075,8 +3099,8 @@ try {
       .then((n) => n > 0)
       .catch(() => false);
     if (!stillOnFloor) continue;
-    const at = numberIn(await stationConditionText(kind, item), /condition ([\d.]+)/);
-    if (at === null || at >= 1) continue;
+    const at = numberIn(await stationConditionText(kind, item), /Condition ([\d.]+)%/);
+    if (at === null || at >= 100) continue;
     const repairDrawn = await page.getByTestId('floorgrid-station-panel-repair').count();
     if (repairDrawn === 0) {
       const unavailableText = await textOf('floorgrid-station-panel-repair-unavailable');
@@ -3162,19 +3186,19 @@ try {
   readAddress('9h: the recovery/routine-maintenance contradiction');
   const GAP_ADVANCE_ID = 'gymscreen-advance-28800'; // +8h, LADDER_DEV_TIME_STEPS_SECONDS[1]
   const GAP_SMALL_ADVANCE_ID = 'gymscreen-advance-3600'; // +1h, LADDER_DEV_TIME_STEPS_SECONDS[0]
-  const GAP_TARGET_LOW = 0.55;
-  const GAP_TARGET_HIGH = 0.72;
+  const GAP_TARGET_LOW = 55;
+  const GAP_TARGET_HIGH = 72;
   const GAP_MAX_PRESSES = 40;
   const GAP_TRACKED_ITEM = 'power-bar';
   // The recovery minimum this section expects to cross-check against the
   // panel's own text below — the shipped value, read from `empireTuning.ts`
   // at the time this section was written, not trusted blind (see the
   // cross-check assertion after dormancy is reached).
-  const RECOVERY_CONDITION_MIN_REFERENCE = 0.8;
+  const RECOVERY_CONDITION_MIN_REFERENCE = 80;
   // Player-facing Staff no longer prints the raw 0.5 threshold; this is the
-  // shipped `MAINTENANCE_PROMPT_CONDITION`, the same reference style as
-  // `RECOVERY_CONDITION_MIN_REFERENCE` above.
-  const maintenanceThresholdBeforeGap = 0.5;
+  // shipped `MAINTENANCE_PROMPT_CONDITION` as a whole percent, matching the
+  // station card's Condition N% line.
+  const maintenanceThresholdBeforeGap = 50;
 
   const phaseBeforeGap = await phaseNow();
   if (phaseBeforeGap !== 'sound') {
@@ -3188,7 +3212,7 @@ try {
   while (gapPresses < GAP_MAX_PRESSES) {
     const current = numberIn(
       await stationConditionText(stationKindFor(GAP_TRACKED_ITEM), GAP_TRACKED_ITEM),
-      /condition ([\d.]+)/,
+      /Condition ([\d.]+)%/,
     );
     if (current !== null && current <= GAP_TARGET_HIGH && current >= GAP_TARGET_LOW) {
       gapCondition = current;
@@ -3263,7 +3287,7 @@ try {
   const phaseAfterGapDecline = await phaseNow();
   const gapConditionAfterDormancy = numberIn(
     await stationConditionText(stationKindFor(GAP_TRACKED_ITEM), GAP_TRACKED_ITEM),
-    /condition ([\d.]+)/,
+    /Condition ([\d.]+)%/,
   );
   const stillInGapAfterDormancy =
     gapConditionAfterDormancy !== null &&
@@ -3348,7 +3372,7 @@ try {
   const gapConditionLineText = await textOf('floorgrid-station-panel-condition');
   const gapQuoteFromConditionLine = numberIn(
     gapConditionLineText,
-    /repairing it costs ([\d.]+) gym bucks/,
+    /repair ([\d.]+) gym bucks/,
   );
   const gapQuoteFromButton =
     gapRepairButtonCount > 0
@@ -3380,7 +3404,7 @@ try {
     const purseAfterGapRepair = await purseNow();
     const gapConditionAfterRepair = numberIn(
       await stationConditionText(stationKindFor(GAP_TRACKED_ITEM), GAP_TRACKED_ITEM),
-      /condition ([\d.]+)/,
+      /Condition ([\d.]+)%/,
     );
     const charged =
       purseBeforeGapRepair !== null && purseAfterGapRepair !== null
@@ -3391,7 +3415,7 @@ try {
     // (6) the button appeared and was pressed; (8) it deducted the quoted
     // price; (9) the station condition became the real repair mechanic's
     // own output.
-    if (band !== null && gapConditionAfterRepair === 1) {
+    if (band !== null && gapConditionAfterRepair === 100) {
       ok(
         `9h (claims 6, 8, 9): the affordable repair control was pressed, charged ${charged.toFixed(2)} against a quoted ${gapQuoteFromButton} (${band} match), and ${GAP_TRACKED_ITEM}'s own condition is now ${gapConditionAfterRepair}`,
       );
@@ -3428,8 +3452,8 @@ try {
         .then((n) => n > 0)
         .catch(() => false);
       if (!onFloor) continue;
-      const at = numberIn(await stationConditionText(kind, item), /condition ([\d.]+)/);
-      if (at === null || at >= 1) continue;
+      const at = numberIn(await stationConditionText(kind, item), /Condition ([\d.]+)%/);
+      if (at === null || at >= 100) continue;
       const buttonPresent = await page.getByTestId('floorgrid-station-panel-repair').count();
       if (buttonPresent === 0) {
         const reason = await textOf('floorgrid-station-panel-repair-unavailable');
@@ -3813,8 +3837,7 @@ try {
     if (
       panelDrawn13a.drawn &&
       identity13a !== null &&
-      identity13a.includes('power-bar') &&
-      identity13a.includes('barbell equipment')
+      identity13a.includes('Power bar')
     ) {
       ok(`13a: a real tap on floorgrid-fixed-power-bar opens the station panel, naming it "${identity13a}"`);
     } else {
@@ -3841,7 +3864,7 @@ try {
       .then((n) => n > 0)
       .catch(() => false);
     const operationText13a = await textOf('floorgrid-station-panel-operation');
-    const panelSaysOccupied13a = operationText13a !== null && operationText13a.startsWith('in use by a');
+    const panelSaysOccupied13a = operationText13a !== null && operationText13a.startsWith('In use by');
     const panelSaysWaiting13a = operationText13a !== null && / waiting$/.test(operationText13a);
     if (
       operationText13a !== null &&
@@ -3875,9 +3898,8 @@ try {
     const panelCountAfter13b = await page.getByTestId('floorgrid-station-panel').count();
     if (
       identity13b !== null &&
-      identity13b.includes('mats') &&
-      identity13b.includes('session equipment') &&
-      !identity13b.includes('power-bar') &&
+      identity13b.includes('Mats') &&
+      !identity13b.includes('Power bar') &&
       panelCountBefore13b === 1 &&
       panelCountAfter13b === 1
     ) {
@@ -3918,7 +3940,7 @@ try {
     const panelMatch =
       panelText === null
         ? null
-        : panelText.match(/condition ([\d.]+) — repairing it costs ([\d.]+) gym bucks/);
+        : panelText.match(/Condition ([\d.]+)% — repair ([\d.]+) gym bucks/);
     await openGymSurface('staff');
     const wornText = await textOf('gymscreen-worn');
     const wornList =
@@ -3984,7 +4006,7 @@ try {
     // TAPPING SELECTS OR TOGGLE-DESELECTS — mats is already selected here,
     // left that way by 13b, so a click now would CLOSE the panel rather
     // than opening it. Only click if mats is not already the one showing.
-    const alreadyMats13d = (await textOf('floorgrid-station-panel-identity'))?.includes('mats') ?? false;
+    const alreadyMats13d = (await textOf('floorgrid-station-panel-identity'))?.includes('Mats') ?? false;
     if (!alreadyMats13d) {
       await page.getByTestId('floorgrid-placed-mats').click({ timeout: 10000 });
     }
@@ -4019,7 +4041,7 @@ try {
   readAddress('13e: contextual repair');
   const repairQuote13 = numberInText(
     await textOf('floorgrid-station-panel-condition'),
-    /repairing it costs ([\d.]+) gym bucks/,
+    /repair ([\d.]+) gym bucks/,
   );
   await openGymSurface('staff');
   const wornBeforeRepair13 = await textOf('gymscreen-worn');
@@ -4266,7 +4288,7 @@ try {
     await page.waitForTimeout(150);
     const panelCount13i = await page.getByTestId('floorgrid-station-panel').count();
     const identity13i = await textOf('floorgrid-station-panel-identity');
-    if (panelCount13i === 1 && identity13i !== null && identity13i.includes('power-bar')) {
+    if (panelCount13i === 1 && identity13i !== null && identity13i.includes('Power bar')) {
       ok(`13i: three rapid taps (select, deselect, select) land on exactly one panel, naming power-bar — "${identity13i}"`);
     } else {
       fail(`13i: rapid taps left an inconsistent selection state — panel count ${panelCount13i}, identity "${identity13i}"`);
@@ -4316,6 +4338,37 @@ try {
     fail(
       `C.1c Path C: starting power-bar did not move — before ${JSON.stringify(furnitureBoxBeforeC)}, after ${JSON.stringify(furnitureBoxAfterC)}`,
     );
+  }
+  await tapSelectThenPlace('floorgrid-fixed-power-bar', 0, 0);
+
+  readAddress('C.1d: three consecutive power-bar moves, no remount');
+  await openGymSurface('build');
+  const powerBarMoveTiles = [
+    [6, 0],
+    [5, 2],
+    [7, 0],
+  ];
+  let powerBarPrev = await boxOf('floorgrid-fixed-power-bar');
+  let powerBarMovesOk = true;
+  for (let i = 0; i < powerBarMoveTiles.length; i += 1) {
+    const [x, y] = powerBarMoveTiles[i];
+    await tapSelectThenPlace('floorgrid-fixed-power-bar', x, y);
+    const next = await boxOf('floorgrid-fixed-power-bar');
+    const relocated =
+      powerBarPrev !== null &&
+      next !== null &&
+      (Math.abs(next.x - powerBarPrev.x) > 4 || Math.abs(next.y - powerBarPrev.y) > 4);
+    if (!relocated) {
+      fail(
+        `C.1d power-bar move ${i + 1} did not relocate — before ${JSON.stringify(powerBarPrev)}, after ${JSON.stringify(next)}`,
+      );
+      powerBarMovesOk = false;
+      break;
+    }
+    powerBarPrev = next;
+  }
+  if (powerBarMovesOk) {
+    ok('C.1d: the same starting power bar moved to three legal tiles in a row with no remount');
   }
   await tapSelectThenPlace('floorgrid-fixed-power-bar', 0, 0);
 

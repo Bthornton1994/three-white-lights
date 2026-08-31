@@ -37,7 +37,7 @@
  */
 
 import { EMPIRE_TUNING } from './empireTuning';
-import { type FloorSimMember, type FloorStationRef } from './floorSim';
+import { type FloorSimMember, type FloorSimMemberState, type FloorStationRef } from './floorSim';
 import {
   type ManagedEquipmentItem,
   type ManagedGym,
@@ -106,6 +106,44 @@ export function playerFacingManagerCapability(tier: ManagerTier): string {
   const threshold = managerAutoRepairCondition(tier);
   if (threshold <= 0) return 'no auto-repair';
   return `auto-repair below ${displayConditionPercent(threshold)}%`;
+}
+
+const MEMBER_TYPE_PLAYER_LABELS: Readonly<Record<MemberType, string>> = Object.freeze({
+  casual: 'Casual',
+  bodybuilder: 'Bodybuilder',
+  powerlifter: 'Powerlifter',
+  athlete: 'Athlete',
+  'serious-lifter': 'Serious lifter',
+});
+
+/** Player-facing member type. Domain tokens stay the identifiers. */
+export function playerFacingMemberTypeLabel(type: MemberType): string {
+  return MEMBER_TYPE_PLAYER_LABELS[type];
+}
+
+/** One-line activity for the member card. No names, tenure, or stats. */
+export function playerFacingMemberActivityLine(
+  state: FloorSimMemberState,
+  targetItem: string | null,
+): string {
+  if (state === 'using' && targetItem !== null) {
+    return `Training on ${playerFacingEquipmentLabel(targetItem)}`;
+  }
+  if ((state === 'seeking' || state === 'queuing') && targetItem !== null) {
+    return `Waiting for ${playerFacingEquipmentLabel(targetItem)}`;
+  }
+  if (state === 'leaving') return 'Leaving';
+  if (state === 'interrupted') return 'Interrupted';
+  return 'Walking';
+}
+
+/** Player-facing placement refusal. Underlying legality is unchanged. */
+export type PlacementRefuseKind = 'occupied' | 'doesnt-fit' | 'outside';
+
+export function playerFacingPlacementRefuse(kind: PlacementRefuseKind): string {
+  if (kind === 'occupied') return 'Space occupied';
+  if (kind === 'doesnt-fit') return `Doesn't fit here`;
+  return 'Outside the gym';
 }
 
 // ---------------------------------------------------------------------------

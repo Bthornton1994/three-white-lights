@@ -770,6 +770,9 @@ describe('§5.5 social', () => {
 const AWAITING_CONSUMER: readonly string[] = [
   'CHECK_IN_TARGET_SECONDS_MAX',
   'CHECK_IN_TARGET_SECONDS_MIN',
+  // Stage C.1d: drag is no longer the canonical Build path, so this
+  // tap/drag disambiguation distance has no shipped reader.
+  'STATION_TAP_MAX_DRAG_PIXELS',
   // `WALL_CLOCK_TICK_INTERVAL_SECONDS` LEFT THIS LIST, GDD §5.14 STAGE B. It
   // used to be here only for the scan's own declared blind spot — read by
   // `src/shell/AppShell.tsx`'s `GymHost`, outside `shippedModuleNames()`'s
