@@ -1514,8 +1514,8 @@ async function untilLoop(page, predicate, timeoutMs) {
  * one total function, and the strings are per-kind and mutually exclusive:
  * "TAP TO PULL" is printable ONLY from (deadlift, BRACE), "DON'T LET GO" only
  * from (deadlift, LOCKOUT) before the command, "DOWN" only from (deadlift,
- * LOCKOUT) after it, and "RELEASE AT DEPTH" / "OUT OF THE HOLE" /
- * "EASE IT DOWN" / "WAIT FOR IT" / "PRESS — TAP FAST" only from a DESCENT or a
+ * LOCKOUT) after it, and "KEEP DESCENDING" / "OUT OF THE HOLE" /
+ * "STAY TIGHT" / "WAIT FOR IT" / "PRESS — TAP FAST" only from a DESCENT or a
  * HOLE —
  * phases `stepLift` REFUSES to a deadlift outright.
  *

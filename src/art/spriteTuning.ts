@@ -1203,6 +1203,25 @@ export const BENCH_PRESS = {
 } as const;
 
 /**
+ * DEADLIFT_PULL — feel knobs for the side-on conventional pull drawing.
+ *
+ * Joint coordinates live in `deadliftPull.ts`, same class as `benchPress.ts`:
+ * an anchor cannot be moved without redrawing the pose it names. What lives
+ * here is what a playtester turns without redrawing: how coarse the bar-height
+ * sheet is, and how much a strained lockout fails to finish.
+ */
+export const DEADLIFT_PULL = {
+  /** Distinct bar-height steps. Same job BENCH_PRESS.HEIGHT_STEPS does for bench. */
+  HEIGHT_STEPS: 12,
+  /**
+   * How many sprite pixels a fully-strained lockout sits short of the authored
+   * lockout. Zero at strain 0. A heavy pull that has not finished looks
+   * unfinished without moving the SETUP / LOCKOUT anchors.
+   */
+  STRAIN_LOCKOUT_DROP_PX: 3,
+} as const;
+
+/**
  * Everything above, in one object, for callers that want to pass the whole
  * tuning set around (a debug tuner UI, a playtest build with hot-reloaded
  * values). The individual exports stay because tree-shaken imports read better
@@ -1218,6 +1237,7 @@ export const SPRITE_TUNING = {
   BRACE_SETTLE_DEPTH,
   BAR,
   BENCH_PRESS,
+  DEADLIFT_PULL,
   LOAD_PRESETS,
   LOAD_RANGE,
   TIMING,

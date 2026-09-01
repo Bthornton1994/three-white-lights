@@ -100,6 +100,7 @@ import {
 import { applyMarks, type MarkPlacement } from './spriteMarks';
 import type { SquatFrame } from './squatAnimation';
 import { renderBenchFrame } from './benchPress';
+import { renderDeadliftFrame } from './deadliftPull';
 
 const DEG = Math.PI / 180;
 
@@ -125,9 +126,9 @@ const BACKDROP_BAND_H = 18;
 export interface LifterFrameSpec {
   /**
    * Which drawing. Omitted = squat, so every existing caller is unchanged.
-   * Bench is a second camera (side-on recumbent press), not a new squat pose.
+   * Bench is a side-on recumbent press. Deadlift is a side-on conventional pull.
    */
-  readonly kind?: 'squat' | 'bench';
+  readonly kind?: 'squat' | 'bench' | 'deadlift';
   /** 0 = standing, 1 = bottom of the hole. Quantised by the animation. */
   readonly depth: number;
   /**
@@ -813,6 +814,19 @@ export function renderLifterFrame(spec: LifterFrameSpec): RenderedFrame {
       grid: bench.grid,
       pose: bench.pose,
       barCenterY: bench.barCenterY,
+      sleeve: layoutSleeve(stack),
+      strain: strainForLevel(spec.strainLevel),
+      pitch: pitchForLevel(spec.pitchLevel ?? 0),
+      marks: [],
+    };
+  }
+  if (spec.kind === 'deadlift') {
+    const pull = renderDeadliftFrame(spec);
+    const stack = visualPlateStack(spec.totalKg, spec.barKg ?? BAR_AND_COLLARS_KG);
+    return {
+      grid: pull.grid,
+      pose: pull.pose,
+      barCenterY: pull.barCenterY,
       sleeve: layoutSleeve(stack),
       strain: strainForLevel(spec.strainLevel),
       pitch: pitchForLevel(spec.pitchLevel ?? 0),

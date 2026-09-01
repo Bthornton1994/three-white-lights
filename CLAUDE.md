@@ -2042,8 +2042,8 @@ This entry is measurement and a design recommendation. **No mechanic shipped.
 No constant moved. No fourth addend. No mint.**
 
 **HEAD at investigation:** `474ef4b1` on `grok/session-a-main-loop`, branched
-from `948da38f`. Tree clean except `tools/grind-response-probe.test.ts`
-(measurement only; not in the suite contract).
+from `948da38f`. Tree clean except the grind-response probe measurement
+(tools only; not in the suite contract; deleted after the C3 mint).
 
 **Shipped three-band (unchanged):**
 
@@ -2113,8 +2113,8 @@ shipped. No additive constant moved. No mint.** Production
 `lift.ts` / `liftTuning.ts` byte-identical to `2f1e1e04`.
 
 **HEAD at probe:** `2f1e1e04` on `grok/session-a-main-loop`. Tools only:
-`tools/grindResponsePrototype.ts` (isolated re-integrator) and
-`tools/grind-response-probe.test.ts` (measurement). Identity pin
+the isolated grind-response re-integrator and its measurement tests
+(deleted after the C3 mint). Identity pin
 `compress=1` vs `stepLift`: 0 mismatches. Squat/deadlift prototype
 no-op: 0 mismatches.
 
@@ -2236,7 +2236,10 @@ pushing `main`.
 
 Human played the unshipped `c8=0.35/c9=0.2` prototype. RPE 8 and 9 moved the right way; RPE 9 overshot unchanged RPE 10 (phone ~2.64 s vs ~2.30 s). On screen, 9 was the fight and 10 was the relief. **Prototype not shipped. Not minted. Production `lift.ts` / `liftTuning.ts` still frozen at `55781923`.** Additive constants unmoved. RPE 10 identity held.
 
-**HEAD at search:** `55781923`. Tools: `tools/grind-monotonic-search.test.ts` plus `stickBreakEvenForce` on the isolated prototype. 12×12 compress grid × two derived-floor kinds, RPE 10 `compress=1` on every cell.
+**HEAD at search:** `55781923`. Tools: the monotonic-search measurement
+plus `stickBreakEvenForce` on the isolated prototype (deleted after
+the C3 mint). 12×12 compress grid × two derived-floor kinds, RPE 10
+`compress=1` on every cell.
 
 **floorForce is derivable.** Two defensible quantities, neither a free knob:
 
@@ -2361,6 +2364,41 @@ addend. No RPE field on `LiftConfig`.
 
 **Not done by this mint:** start A1–A7; implement Career; retune squat or
 deadlift; touch Session B; merge `main`.
+
+### RULED 2026-09-01: A0 FINALIZATION CANDIDATE (NOT CLOSED)
+
+Human ordinary-session phone play after A0.2. Verbatim squat: *"It feels
+good. I think we should keep the current squat mechanic."* Verbatim
+deadlift: *"The deadlift mechanics are good. I think the only thing is
+making it look more like a deadlift rather than a squat."*
+
+**Mechanics frozen.** No retune of squat, deadlift, or minted C3 bench.
+Freeze tests live in `src/game/a0LiftFreeze.test.ts`; the 85-case baseline
+in `lift.test.ts` is untouched.
+
+**Copy, squat DESCENT:** `KEEP DESCENDING`. A first-time player treated
+"RELEASE AT DEPTH" as "the text appearing means let go now". The caption
+is not a release cue. `SUBTITLE.squat` ("release at the bottom") and the
+gauge stay the teaching. Histories are byte-identical because `promptFor`
+is a read model.
+
+**Art:** `src/art/deadliftPull.ts` is a side-on conventional pull. Hands
+ARE the bar. Setup hips are high and back. The squat fallback
+(`DEADLIFT_ART_FALLBACK_KIND`) is gone. This is sprite identity, not a
+new lift engine.
+
+**C3 leftover:** `tools/grindResponsePrototype.ts` and its two HISTORICAL
+tests deleted after the mint. Cleanup, not a retune.
+
+**CROSSING FILED BY SESSION A, 2026-09-01 — `src/tuning/audit.ts` and
+`src/tuning/audit.test.ts` only.** A new authored drawing cannot pass the
+magic-number audit without a `SOURCE_RULES` row. One row, `kind: 'data'`,
+same class as `benchPress.ts`. One allowlist pin. `src/tuning/index.ts`
+is NOT touched — this is not `feel`.
+
+**Not done, and not claimed:** A1–A7; A0 PLAYABLE SPORT CLOSED (awaits a
+physical-phone three-lift smoke of squat keep + deadlift figure + bench
+C3 still itself); merge `main`.
 
 ### If scope shifts
 

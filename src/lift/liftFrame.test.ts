@@ -641,10 +641,10 @@ describe('cueRing', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The deadlift's borrowed drawing (GDD §6.2's third lift, with no third figure)
+// The deadlift's own figure (side-on conventional pull; the squat fallback is gone)
 // ---------------------------------------------------------------------------
 
-describe('a deadlift is drawn with the squat figure, on purpose', () => {
+describe('a deadlift is drawn with its own figure', () => {
   /** A deadlift driven up and held at the lockout. */
   function deadliftHistory(load: number): readonly LiftState[] {
     const config = { kind: 'deadlift' as const, loadRatio: load, seed: 4 };
@@ -665,65 +665,54 @@ describe('a deadlift is drawn with the squat figure, on purpose', () => {
     return runLift(config, script).history;
   }
 
-  it('borrows the kind named in the tuning file, not a literal buried here', () => {
-    // THE FALLBACK IS A DECLARATION, NOT A COINCIDENCE. There is no deadlift
-    // figure — building one was out of the phase model's scope — so a deadlift
-    // renders as the squat. What this pins is that the borrowing goes through
-    // `LIFT_TUNING.DEADLIFT_ART_FALLBACK_KIND`, so the day a third figure
-    // exists there is one constant to change and this test names it.
+  it('tags a deadlift as deadlift, not as a borrowed squat', () => {
     const state = createLift({ kind: 'deadlift', loadRatio: 0.9, seed: 4 });
-    expect(drawnKindFor(state)).toBe(LIFT_TUNING.DEADLIFT_ART_FALLBACK_KIND);
-    expect(liftFrameSpec(state, DEMO_KG).kind).toBe(LIFT_TUNING.DEADLIFT_ART_FALLBACK_KIND);
-    // The other two are drawn as themselves, which is what makes this a fact
-    // about the deadlift rather than about the adapter.
+    expect(drawnKindFor(state)).toBe('deadlift');
+    expect(liftFrameSpec(state, DEMO_KG).kind).toBe('deadlift');
     for (const kind of ['squat', 'bench'] as const) {
       expect(drawnKindFor(createLift({ kind, loadRatio: 0.9, seed: 4 }))).toBe(kind);
     }
   });
 
-  it('folds the figure over at the floor and stands it up as the bar rises', () => {
-    // THE ONE THING THE BORROWED DRAWING GETS RIGHT, and it was a sentence in a
-    // comment until this test existed. `lift.ts` derives a deadlift's `depth`
-    // as `1 - height`, so the squat figure's pose tracks the bar: doubled over
-    // when the bar is on the ground, upright at lockout.
-    //
-    // What it gets WRONG is not testable here and is not claimed: the bar is
-    // drawn on the lifter's back rather than in their hands. That is tracked
-    // debt for an art piece.
+  it('keys the concentric on height so the bar leaves the floor', () => {
     const history = deadliftHistory(0.9);
     const first = history[0];
     expect(first, 'no history').toBeDefined();
     if (first === undefined) return;
-    // On the floor: fully folded.
-    expect(liftFrameSpec(first, DEMO_KG).depth).toBe(1);
+    const floor = liftFrameSpec(first, DEMO_KG);
+    expect(floor.height).toBe(0);
+    expect(floor.kind).toBe('deadlift');
 
     const lockedOut = history.find((state) => state.phase === 'LOCKOUT');
     expect(lockedOut, 'the pull never locked out').toBeDefined();
     if (lockedOut === undefined) return;
-    // At lockout: standing.
-    expect(liftFrameSpec(lockedOut, DEMO_KG).depth).toBe(0);
+    const lock = liftFrameSpec(lockedOut, DEMO_KG);
+    expect(lock.height).toBe(1);
 
-    // ...and it is monotone in between rather than jumping between the two,
-    // which is what makes it a pose that TRACKS the bar rather than two poses.
-    // Counts, not bounds: an empty ascent would pass a monotonicity loop.
     const ascent = history.filter((state) => state.phase === 'ASCENT');
     expect(ascent.length, 'no ascent frames to check').toBeGreaterThan(10);
-    let previous = Infinity;
+    let previous = -Infinity;
     for (const state of ascent) {
-      const depth = liftFrameSpec(state, DEMO_KG).depth;
-      expect(depth, `tick ${state.tick}`).toBeLessThanOrEqual(previous);
-      previous = depth;
+      const height = liftFrameSpec(state, DEMO_KG).height ?? 0;
+      expect(height, `tick ${state.tick}`).toBeGreaterThanOrEqual(previous);
+      previous = height;
     }
-    expect(previous, 'the figure never stood up').toBeLessThan(1);
+    expect(previous, 'the bar never left the floor').toBeGreaterThan(0);
   });
 
-  it('gives a deadlift a cache key that names the drawing it borrowed', () => {
-    // `frameKey` folds the borrowed kind in, which is correct — two frames that
-    // draw identically SHOULD share an image. This pins that the borrowing is
-    // what makes them share, rather than a deadlift silently keying as
-    // something the renderer cannot draw.
+  it('gives a deadlift a cache key that names the deadlift drawing', () => {
     const spec = liftFrameSpec(createLift({ kind: 'deadlift', loadRatio: 0.9, seed: 4 }), DEMO_KG);
-    expect(frameKey(spec).startsWith(`${LIFT_TUNING.DEADLIFT_ART_FALLBACK_KIND}|`)).toBe(true);
+    expect(frameKey(spec).startsWith('deadlift|')).toBe(true);
+  });
+
+  it('draws that spec as a pull, not as a squat', () => {
+    const squat = renderLifterFrame(
+      liftFrameSpec(createLift({ kind: 'squat', loadRatio: 1, seed: 1 }), DEMO_KG),
+    );
+    const deadlift = renderLifterFrame(
+      liftFrameSpec(createLift({ kind: 'deadlift', loadRatio: 1, seed: 1 }), DEMO_KG),
+    );
+    expect(bodyPixelDiff(squat.grid, deadlift.grid).silhouette).toBeGreaterThan(0);
   });
 });
 

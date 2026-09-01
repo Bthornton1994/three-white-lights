@@ -21,6 +21,8 @@
  *   sheet-MAXIMAL.png            every animation frame of a maximal rep
  *   contact-sheet.png            light vs. maximal side by side, plus the
  *                                bar-height-over-time and bar-path graphs
+ *   bench-sheet.png              side-on press at nine bar heights, two loads
+ *   deadlift-sheet.png           side-on conventional pull at nine bar heights
  *   frames/1x/*.png              individual frames, native resolution
  *   frames/6x/*.png              individual frames, nearest-neighbour x6
  *
@@ -881,6 +883,89 @@ function benchSheet(lightKg, maxKg) {
   return c;
 }
 
+function deadliftSheet(lightKg, maxKg) {
+  const SCALE = 3;
+  const STEPS = 9;
+  const cw = CELL_W * SCALE + 6;
+  const ch = CELL_H * SCALE + 34;
+  const c = canvas(24 + STEPS * cw, 96 + 4 * ch, BG);
+
+  text(c, 'DEADLIFT: DOES IT READ AS A PULL? (NOT A SQUAT WITH THE BAR MOVED DOWN)', 12, 12, INK, 3);
+  text(
+    c,
+    'EACH CELL IS ONE DRAWING AT A BAR HEIGHT. H0 = BAR ON THE FLOOR, H100 = LOCKED OUT AT THE HIP.',
+    12,
+    36,
+    INK_DIM,
+    1,
+  );
+  text(
+    c,
+    'ROWS 1-2 ARE WHAT A PLAYER SEES. ROWS 3-4 HOLD THE BAR IDENTICAL AND MOVE ONLY STRAIN.',
+    12,
+    48,
+    INK_DIM,
+    1,
+  );
+
+  const rows = [
+    { label: `LIGHT ${lightKg}KG`, strainLevel: 0, pitchLevel: 0, totalKg: lightKg },
+    {
+      label: `MAXIMAL ${maxKg}KG`,
+      strainLevel: STRAIN.LEVELS - 1,
+      pitchLevel: PITCH.LEVELS - 1,
+      totalKg: maxKg,
+    },
+    {
+      label: `CONTROL: ${maxKg}KG BAR, STRAIN 0 — MATCHED`,
+      strainLevel: 0,
+      pitchLevel: 0,
+      totalKg: maxKg,
+    },
+    {
+      label: `CONTROL: ${maxKg}KG BAR, STRAIN ${STRAIN.LEVELS - 1} — ONLY THING MOVED`,
+      strainLevel: STRAIN.LEVELS - 1,
+      pitchLevel: PITCH.LEVELS - 1,
+      totalKg: maxKg,
+    },
+  ];
+
+  rows.forEach((row, r) => {
+    const y0 = 68 + r * ch;
+    for (let i = 0; i < STEPS; i += 1) {
+      const height = i / (STEPS - 1);
+      const spec = {
+        kind: 'deadlift',
+        height,
+        depth: 1 - height,
+        direction: 'ASCENT',
+        strainLevel: row.strainLevel,
+        pitchLevel: row.pitchLevel,
+        barLateralPx: 0,
+        barTiltDeg: 0,
+        barBendPx: 0,
+        chalkMotes: 0,
+        totalKg: row.totalKg,
+      };
+      const rendered = renderLifterFrame(spec);
+      const x = 12 + i * cw;
+      blit(c, gridToRgba(rendered.grid), CELL_W, CELL_H, x, y0, SCALE);
+      text(c, `H${Math.round(height * 100)}`, x, y0 + CELL_H * SCALE + 4, INK_DIM, 1);
+      text(
+        c,
+        `BARY ${Math.round(rendered.barCenterY)}`,
+        x,
+        y0 + CELL_H * SCALE + 12,
+        INK_DIM,
+        1,
+      );
+    }
+    text(c, row.label, 12, y0 - 10, r % 2 === 0 ? LIGHT_C : MAX_C, 2);
+  });
+
+  return c;
+}
+
 function graphPanel(c, x, y, w, h, title) {
   rect(c, x, y, w, h, PANEL);
   for (let i = 1; i < 4; i += 1) {
@@ -1156,6 +1241,7 @@ written.push(save('sheet-LIGHT.png', frameSheet(light, `LIGHT ${LIGHT_KG}KG`, LI
 written.push(save('sheet-MAXIMAL.png', frameSheet(maximal, `MAXIMAL ${MAX_KG}KG`, MAX_KG)));
 written.push(save('contact-sheet.png', contactSheet(light, maximal, LIGHT_KG, MAX_KG)));
 written.push(save('bench-sheet.png', benchSheet(LIGHT_KG, MAX_KG)));
+written.push(save('deadlift-sheet.png', deadliftSheet(LIGHT_KG, MAX_KG)));
 
 // Individual frames at 1x and the integer upscale.
 const UP = RESOLUTION.DEFAULT_UPSCALE;

@@ -127,7 +127,7 @@ import {
 export const LIFT_PROMPTS = Object.freeze({
   squat: Object.freeze({
     BRACE: 'TAP AND HOLD TO DESCEND',
-    DESCENT: 'RELEASE AT DEPTH',
+    DESCENT: 'KEEP DESCENDING',
     HOLE: 'OUT OF THE HOLE',
     /** BENCH ONLY — the press command. Squat's HOLE beat asks for nothing. */
     COMMAND: null,

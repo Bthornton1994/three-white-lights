@@ -307,8 +307,14 @@ const PINNED = Object.freeze({
    * The note above about untracked files applies and was paid here too — the
    * new test was written, run green, and only reddened this census once it was
    * `git add`ed, which is the census reading the tracked tree as designed.
+   *
+   * 307 -> 312, catching a pin that five files behind HEAD never moved:
+   * `VISION.md`, `src/game/benchSurplus.test.ts`, and the C3 grind-response
+   * probe trio. This commit then swaps that trio for `src/art/deadliftPull.ts`,
+   * `src/art/deadliftPull.test.ts` and `src/game/a0LiftFreeze.test.ts`, so the
+   * net of the swap is 0 and the number that remains is the catch-up.
    */
-  SCANNED_FILES: 307,
+  SCANNED_FILES: 312,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -342,8 +348,14 @@ const PINNED = Object.freeze({
    * rather than one — it is a test with no module beside it — so the masking
    * hazard the entry above records does not arise here, and both were bumped
    * together anyway because that is what the census asks for.
+   *
+   * 97 -> 100 with the same catch-up as `SCANNED_FILES` 307 -> 312:
+   * `src/game/benchSurplus.test.ts` and the two C3 probe tests landed without
+   * a bump. This commit then swaps those two probe tests for
+   * `src/art/deadliftPull.test.ts` and `src/game/a0LiftFreeze.test.ts`, so
+   * the net of the swap is 0 and the number that remains is the catch-up.
    */
-  TEST_FILES: 97,
+  TEST_FILES: 100,
 });
 
 /**

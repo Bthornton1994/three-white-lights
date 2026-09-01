@@ -2593,13 +2593,11 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
       clamp(m.height + m.velocity, -LIFT_TUNING.ASCENT_COLLAPSE_DROP, 1),
     );
     if (m.height > m.peakHeight) m.peakHeight = m.height;
-    // DEADLIFT'S DERIVED DEPTH IS WHAT THE ART FALLBACK READS, so it is
-    // clamped to 0..1 rather than to an eccentric lift's collapse point (which
-    // deadlift has no row for, and which describes being buried under a bar
-    // that is on the floor here anyway). `1 - height` folds the drawn figure
-    // over at the floor and stands it up at lockout — see
-    // `DEADLIFT_ART_FALLBACK_KIND` for what that drawing does and does not get
-    // right.
+    // DEADLIFT'S DERIVED DEPTH STAYS THE INVERSE OF HEIGHT, so HUD/gauge
+    // readers that still look at `depth` stay consistent with the bar. The
+    // figure itself now keys on `height` (`deadliftPull.ts`). Clamped to 0..1
+    // rather than to an eccentric lift's collapse point (which deadlift has
+    // no row for).
     m.depth =
       kind === 'deadlift'
         ? scrub(clamp01(1 - m.height))

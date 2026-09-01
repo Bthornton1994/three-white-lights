@@ -46,6 +46,7 @@
 import {
   BENCH_PRESS,
   CHALK,
+  DEADLIFT_PULL,
   QUANTISE,
   RESOLUTION,
   byLoad,
@@ -129,36 +130,15 @@ export function directionFor(phase: LiftPhase): 'DESCENT' | 'ASCENT' {
 }
 
 /**
- * Which of the two authored figures this rep is drawn with.
+ * Which of the three authored figures this rep is drawn with.
  *
- * ---------------------------------------------------------------------------
- * A DEADLIFT IS DRAWN AS A SQUAT, AND THIS FUNCTION EXISTS SO THAT IS A
- * DECISION RATHER THAN A COINCIDENCE
- * ---------------------------------------------------------------------------
- * `renderLifterFrame` draws two figures: a front-on back squat and a side-on
- * bench press. There is no deadlift figure, and building one was out of scope
- * for the piece that made deadlift playable — so a deadlift borrows the squat
- * drawing.
- *
- * WHAT IS AND IS NOT RIGHT ABOUT THE BORROWED DRAWING, stated here rather than
- * left for somebody to find on a phone:
- *
- *   RIGHT   The silhouette tracks the bar. `lift.ts` derives `depth` as
- *           `1 - height` through a deadlift's ascent and lockout, so the figure
- *           is folded over when the bar is on the floor and stands up as it
- *           rises. Strain, chalk, bar bend and the plate stack are all real.
- *   WRONG   The bar is on the lifter's BACK, not in their hands. A deadlift
- *           drawn this way reads as a squat that started at the bottom.
- *
- * That is tracked debt for an art piece, not a claim that a deadlift is drawn.
- * The fallback target is `LIFT_TUNING.DEADLIFT_ART_FALLBACK_KIND` rather than a
- * literal `'squat'` here, so the day a third figure exists there is one
- * constant to change and a test that names it — and so that a reader grepping
- * for what deadlift borrows finds a declaration instead of an anonymous string.
+ * A deadlift used to borrow the squat sheet, bar on the back. That fallback
+ * is gone: `renderLifterFrame` has a side-on conventional pull, and this
+ * function returns the lift's own kind so a deadlift can never silently
+ * render as a squat again.
  */
-export function drawnKindFor(state: LiftState): 'squat' | 'bench' {
-  const kind = state.config.kind;
-  return kind === 'deadlift' ? LIFT_TUNING.DEADLIFT_ART_FALLBACK_KIND : kind;
+export function drawnKindFor(state: LiftState): 'squat' | 'bench' | 'deadlift' {
+  return state.config.kind;
 }
 
 /** Total on the bar for a load ratio, rounded to something loadable-looking. */
@@ -177,10 +157,11 @@ export function totalKgFor(loadRatio: number, bestSingleKg: number): number {
  * image cache useless, because every tick would be a new drawing.
  */
 export function liftFrameSpec(state: LiftState, totalKg: number): LifterFrameSpec {
+  const kind = drawnKindFor(state);
   const depthSteps = QUANTISE.DEPTH_STEPS;
-  const heightSteps = BENCH_PRESS.HEIGHT_STEPS;
+  const heightSteps = kind === 'deadlift' ? DEADLIFT_PULL.HEIGHT_STEPS : BENCH_PRESS.HEIGHT_STEPS;
   return {
-    kind: drawnKindFor(state),
+    kind,
     depth: Math.round(clamp01(state.depth) * depthSteps) / depthSteps,
     height: Math.round(clamp01(state.height) * heightSteps) / heightSteps,
     direction: directionFor(state.phase),
@@ -208,7 +189,7 @@ export function liftFrameSpec(state: LiftState, totalKg: number): LifterFrameSpe
  */
 export function frameKey(spec: LifterFrameSpec): string {
   const kind = spec.kind ?? 'squat';
-  const pose = kind === 'bench' ? (spec.height ?? 0) : spec.depth;
+  const pose = kind === 'bench' || kind === 'deadlift' ? (spec.height ?? 0) : spec.depth;
   return [
     kind,
     pose,

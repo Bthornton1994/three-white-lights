@@ -17,6 +17,7 @@ export * from './rgba';
 export * from './squatAnimation';
 export * from './lifterSprite';
 export * from './benchPress';
+export * from './deadliftPull';
 
 // The gym / environment layer (GDD §12.2 "Gym / environment art").
 export * from './gymPalette';

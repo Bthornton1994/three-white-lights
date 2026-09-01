@@ -378,6 +378,11 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     kind: 'data',
     why: 'BENCH landmarks / pad geometry — side-on recumbent press, same class as rig.ts. Feel knobs (height steps, strain lockout drop) are BENCH_PRESS in spriteTuning.ts.',
   }),
+  'src/art/deadliftPull.ts': Object.freeze({
+    role: 'constants',
+    kind: 'data',
+    why: 'DEADLIFT landmarks / conventional pull geometry — side-on floor pull, same class as benchPress.ts. Feel knobs (height steps, strain lockout drop) are DEADLIFT_PULL in spriteTuning.ts.',
+  }),
   'src/art/spriteMarks.ts': Object.freeze({
     role: 'constants',
     kind: 'data',

@@ -3059,29 +3059,6 @@ export const LIFT_TUNING = Object.freeze({
    */
   FLOOR_BREAK_VELOCITY: { LIGHT: 0.011, MAXIMAL: 0.0016 },
 
-  /**
-   * The drawing a deadlift borrows, because there is no deadlift sprite.
-   *
-   * AN EXPLICIT FALLBACK, DECLARED HERE SO IT CANNOT BE SILENT.
-   * `LifterFrameSpec` in `src/art/lifterSprite.ts` draws two figures — a
-   * front-on back squat and a side-on bench press — and building a third was
-   * out of this piece's scope. A deadlift therefore renders as the SQUAT
-   * figure.
-   *
-   * WHAT THAT LOOKS LIKE, STATED PLAINLY RATHER THAN LEFT TO BE DISCOVERED: the
-   * pose tracks the bar correctly, because `lift.ts` derives `depth` as
-   * `1 - height` through a deadlift's ascent, so the figure is folded over at
-   * the floor and stands up as the bar rises — the right silhouette. But the
-   * bar is drawn ON THE LIFTER'S BACK rather than in their hands. It is wrong,
-   * it is known to be wrong, and it is tracked debt for an art piece, not a
-   * claim that a deadlift is drawn.
-   *
-   * `liftFrame.ts` reads this constant rather than hardcoding `'squat'`, so the
-   * day a deadlift figure exists there is one line to change and a test that
-   * names it.
-   */
-  DEADLIFT_ART_FALLBACK_KIND: 'squat',
-
   // -------------------------------------------------------------------------
   // Grind classification — a make that was ugly
   // -------------------------------------------------------------------------
@@ -3869,7 +3846,15 @@ export const LIFT_COPY = Object.freeze({
     // instruction to keep holding, in two words a player can read while
     // watching the bar. `SUBTITLE.bench` says what letting go costs.
     DESCENT: {
-      squat: 'RELEASE AT DEPTH',
+      // SQUAT'S LINE STAYS A CONTINUOUS INSTRUCTION, NOT A RELEASE CUE.
+      // A0 phone play: a first-time player treated "RELEASE AT DEPTH" as
+      // "the text appearing means let go now" and released before legal
+      // depth. The mechanic is frozen — hold through the eccentric, release
+      // at the bottom, the gauge is the source of truth. This line tells
+      // them to keep going; `SUBTITLE.squat` ("release at the bottom") is
+      // the teaching, not a mid-rep flip. Histories are byte-identical
+      // because `promptFor` is a read model, not a BASELINE_FIELDS input.
+      squat: 'KEEP DESCENDING',
       bench: 'STAY TIGHT',
     } satisfies PerEccentricKind<string>,
     // Per kind: "OUT OF THE HOLE" is squat/deadlift jargon for the bottom

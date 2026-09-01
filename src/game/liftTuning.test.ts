@@ -1116,10 +1116,12 @@ describe('copy', () => {
   it('does not tell a bench player to descend to depth', () => {
     // Same phone finding as the subtitle pin above: BRACE and DESCENT were
     // still squat sentences on a bench rep ("TAP AND HOLD TO DESCEND" /
-    // "RELEASE AT DEPTH"), so the controls read as a squat even after the
-    // press command existed. Squat's wording is unchanged and exact-pinned.
+    // "KEEP DESCENDING"), so the controls read as a squat even after the
+    // press command existed. Squat DESCENT is KEEP DESCENDING on purpose
+    // (A0 teaching: the caption appearing is not a release cue; the
+    // subtitle and the gauge teach the bottom). Exact-pinned.
     expect(LIFT_COPY.PROMPT.BRACE.squat).toBe('TAP AND HOLD TO DESCEND');
-    expect(LIFT_COPY.PROMPT.DESCENT.squat).toBe('RELEASE AT DEPTH');
+    expect(LIFT_COPY.PROMPT.DESCENT.squat).toBe('KEEP DESCENDING');
     expect(LIFT_COPY.PROMPT.BRACE.bench).not.toBe(LIFT_COPY.PROMPT.BRACE.squat);
     expect(LIFT_COPY.PROMPT.DESCENT.bench).not.toBe(LIFT_COPY.PROMPT.DESCENT.squat);
     expect(LIFT_COPY.PROMPT.BRACE.bench).not.toMatch(/descend/i);
