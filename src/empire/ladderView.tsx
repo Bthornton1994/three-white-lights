@@ -333,6 +333,15 @@ import {
   weeklyAttributeEffects,
   withLadder,
 } from './sessions';
+import { floorStations } from './floorSim';
+import {
+  stockStationCapability,
+  upgradeStation,
+  withStationAxis,
+  type StationCapabilityState,
+  type StationUpgradeAxis,
+  type StationUpgradeRefuseReason,
+} from './stationCapability';
 
 /**
  * What one managed check-in COST, without the state it produced.
@@ -395,6 +404,7 @@ export interface GymViewState {
   readonly weekLog: readonly GymWeekReport[];
   readonly floor: FloorState;
   readonly surface: GymSurface;
+  readonly capability: StationCapabilityState;
 }
 
 /**
@@ -419,7 +429,8 @@ export type GymViewRefusal =
   | Extract<DismissManagerResult, { readonly kind: 'refused' }>['reason']
   | Extract<RecoveryResult, { readonly kind: 'refused' }>['reason']
   | Extract<PromptResult, { readonly kind: 'repair-refused' }>['reason']
-  | Extract<PromptResult, { readonly kind: 'no-prompt' }>['kind'];
+  | Extract<PromptResult, { readonly kind: 'no-prompt' }>['kind']
+  | StationUpgradeRefuseReason;
 
 /**
  * The fourteen things a player can do on this screen — six from stage 1/2,
@@ -499,7 +510,12 @@ export type GymViewAction =
   | { readonly kind: 'decline-repair'; readonly item: ManagedEquipmentItem }
   | { readonly kind: 'hire-manager'; readonly tier: ManagerTier }
   | { readonly kind: 'dismiss-manager' }
-  | { readonly kind: 'recover-gym' };
+  | { readonly kind: 'recover-gym' }
+  | {
+      readonly kind: 'upgrade-station';
+      readonly item: LadderEquipmentItem;
+      readonly axis: StationUpgradeAxis;
+    };
 
 /** The opening screen: a fresh managed gym, an all-rest plan, an empty floor, nothing yet to report. */
 export function createGymViewState(): GymViewState {
@@ -515,6 +531,7 @@ export function createGymViewState(): GymViewState {
     weekLog: Object.freeze([]),
     floor: createFloorState(managed.gym.ladder.rung),
     surface: 'play',
+    capability: stockStationCapability(),
   });
 }
 
@@ -601,6 +618,7 @@ function advanceGymClock(
     // floor layout is untouched — only a successful `move-up` resets it.
     floor: state.floor,
     surface: state.surface,
+    capability: state.capability,
   });
 }
 
@@ -781,6 +799,55 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
         ...state,
         managed: outcome.state,
         lastRefusal: outcome.kind === 'refused' ? outcome.reason : null,
+      });
+    }
+    case 'upgrade-station': {
+      const placed = state.floor.furniture[action.item] !== undefined;
+      let realizesCapacity = true;
+      if (action.axis === 'capacity' && placed) {
+        // Preview the purchased capacity map directly. Going through
+        // `upgradeStation` with the live purse would refuse a short purse as
+        // `upgraded` failure, fall back to stock, and then mis-report a
+        // boxed station (`no-second-position`) when the real reason is money.
+        const previewCapability = withStationAxis(state.capability, action.item, 'capacity', 1);
+        const stations = floorStations({
+          rung: state.floor.rung,
+          floor: state.floor,
+          barbellOwned: state.managed.gym.ladder.equipment,
+          sessionOwned: state.managed.gym.sessionEquipment,
+          capability: previewCapability,
+        });
+        const station = stations.find(
+          (row) => row.ref.kind === 'fixed' && row.ref.item === action.item,
+        );
+        realizesCapacity = station !== undefined && station.useCells.length >= 2;
+      }
+      const outcome = upgradeStation(
+        state.capability,
+        action.item,
+        action.axis,
+        state.managed.gym.ladder.gymBucks,
+        placed,
+        realizesCapacity,
+      );
+      if (outcome.kind === 'refused') {
+        return Object.freeze({
+          ...state,
+          lastRefusal: outcome.reason,
+        });
+      }
+      const nextBucks = state.managed.gym.ladder.gymBucks - outcome.costGymBucks;
+      return Object.freeze({
+        ...state,
+        managed: withUpdatedGym(
+          state.managed,
+          withLadder(
+            state.managed.gym,
+            Object.freeze({ ...state.managed.gym.ladder, gymBucks: nextBucks }),
+          ),
+        ),
+        capability: outcome.capability,
+        lastRefusal: null,
       });
     }
   }

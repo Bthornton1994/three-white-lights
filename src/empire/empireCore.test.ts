@@ -2478,6 +2478,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'reputation.ts',
       'sessions.ts',
       'social.ts',
+      // GDD §5.14 Stage D: Quality / Capacity / Throughput algebra.
+      'stationCapability.ts',
       // GDD §5.14 Stage C: the station-tap management selector.
       'stationView.ts',
     ]);
@@ -2665,7 +2667,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // named). Nothing was removed.
     // 140 -> 141: Stage C.1b, one new distinct file-name mention across the
     // gym-screen / floor-layout rewrite.
-    expect(pairs).toBe(144);
+    expect(pairs).toBe(153);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -2686,7 +2688,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // the pre-round file by `git show` rather than assumed.
     // 17 -> 18: GDD §5.14 Stage B. `pacing.ts` imports `refuseWith` from
     // `./empireCore`.
-    expect(mentionersOf('empireCore.ts').length).toBe(18);
+    expect(mentionersOf('empireCore.ts').length).toBe(19);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -3794,7 +3796,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // names, furniture place/remove action kinds, and Build-mode copy.
     // 583 -> 597: Stage C.1d placement-phase chrome, player-facing member
     // labels, and refuse-kind tokens. `floorgrid-grid-tap` left the set.
-    expect(singleQuoted.size).toBe(598);
+    // 614 -> 624: Stage D critic pass — item-aware upgrade labels, upgrade
+    // refuse copy, goldenrod/darkkhaki rest-cues.
+    expect(singleQuoted.size).toBe(624);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3902,7 +3906,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 322 -> 324: Stage C.1c per-tile Build hit targets (`floorgrid-cell-${x}-${y}`
     // and its React `key`).
     // 324 -> 320: Stage C.1d dropped PanResponder/remove-chip templates.
-    expect(templateChunks.size).toBe(320);
+    // 332 -> 333: Stage D critic pass `Can't upgrade this` escape.
+    expect(templateChunks.size).toBe(333);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3946,6 +3951,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './reputation',
       './sessions',
       './social',
+      './stationCapability',
       // GDD §5.14 Stage C's own import specifier — `FloorGrid.tsx`'s new
       // edge to `stationView.ts`.
       './stationView',
@@ -3996,6 +4002,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'already-owned',
       'already-sound',
       'already-staffed',
+      'already-upgraded',
       'already-visited-today',
       'answer-prompt',
       'at-ceiling',
@@ -4024,6 +4031,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'buy-session',
       'cables',
       'calendar-day',
+      'capacity',
       'cardio',
       'casual',
       'ceiling-growth',
@@ -4053,6 +4061,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'crimson',
       'currency-purchase',
       'daily-allowance-spent',
+      'darkkhaki',
       'darkslateblue',
       'darkslategray',
       'data:image/png;base64,',
@@ -4147,6 +4156,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // GDD §5.14 Stage C: the selected-station outline colour, reused from
       // `AMBIENT_MEMBER_PALETTE` — see this file's own header note above.
       'gold',
+      'goldenrod',
       'gray',
       'gym-accelerated-bucks',
       'gym-accrual',
@@ -4294,6 +4304,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'negligent',
       'no-manager',
       'no-prompt',
+      'no-second-position',
       'none',
       'not-a-friend-gym',
       'not-dormant',
@@ -4302,6 +4313,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'not-enough-wall-clock-earnings',
       'not-offered',
       'not-owned',
+      'not-placed',
+      'not-upgradable',
       'novice',
       'npc-id',
       'npcId',
@@ -4341,6 +4354,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'prompt-dismiss',
       'prompt-dismissed-again',
       'prompt-repair',
+      'quality',
       'queuing',
       'quiet',
       'react',
@@ -4442,6 +4456,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'target-removed',
       'technique-quality',
       'technique-quality-bonus',
+      'throughput',
       'thrownMessage',
       'trained',
       'trained-day-upkeep',
@@ -4455,6 +4470,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'unacceleratedSeconds',
       'under',
       'unequipped',
+      'upgrade-station',
+      'upgraded',
       'using',
       'using-bar-a',
       'using-bar-b',
@@ -4564,7 +4581,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 841 -> 878: Stage C.1b singleQuoted + templateChunks growth.
     // 905 -> 907: Stage C.1c per-tile Build hit-target templates.
     // 907 -> 917: Stage C.1d singleQuoted 583 -> 597, templateChunks 324 -> 320.
-    expect(stringsChecked).toBe(918);
+    // 946 -> 957: Stage D critic pass singleQuoted 614 -> 624, templates 332 -> 333.
+    expect(stringsChecked).toBe(957);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -4927,6 +4945,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './ladder',
         './members',
         './sessions',
+        './stationCapability',
       ],
       'FloorGrid.tsx': [
         './empireTuning',
@@ -4946,6 +4965,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './sessions',
         // Stage C's own small selector — see that file's header.
         './stationView',
+        // GDD §5.14 Stage D: Q/C/T levels the panel upgrades and the
+        // floor pads/marks read.
+        './stationCapability',
         'react',
         'react-native',
       ],
@@ -4974,7 +4996,15 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // S4b: `./management` joined the reducer's edges — `GymViewState.managed`
       // is a `ManagedGym` now, and every stage-4 arm is one call into that
       // module, the same one-call-per-arm shape the stage-1/2 arms already had.
-      'ladderView.tsx': ['./empireTuning', './floor', './ladder', './management', './sessions'],
+      'ladderView.tsx': [
+        './empireTuning',
+        './floor',
+        './floorSim',
+        './ladder',
+        './management',
+        './sessions',
+        './stationCapability',
+      ],
       // §5.11 stage 4. Five edges: the throw gate, the tuning block, the
       // equipment vocabulary and accrual type from stage 1, `scrubPrecision`,
       // and stage 2's composed gym state — composed whole rather than
@@ -5010,7 +5040,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './management',
         './members',
         './sessions',
+        './stationCapability',
       ],
+      'stationCapability.ts': ['./empireCore', './empireTuning', './ladder'],
     };
     let fenced = 0;
     for (const name of SHIPPED_MODULES) {
@@ -5031,7 +5063,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 20 -> 21: GDD §5.14 Stage B's pacing.ts. Read from this assertion's own
     // failure value.
     // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
-    expect(fenced).toBe(22);
+    // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
+    expect(fenced).toBe(23);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -5141,7 +5174,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 89 -> 90: GDD §5.14 Stage C.1a — one new edge, `GymScreen.tsx ->
     // ./stationView` (`recoveryBlockingItems`). Read from this assertion's
     // own failure value.
-    expect(specifiers).toBe(92);
+    // 92 -> 100: GDD §5.14 Stage D — stationCapability.ts's three edges
+    // plus floorSim/FloorGrid/ladderView/stationView reading it, and
+    // ladderView's new floorSim edge for realised-capacity preview.
+    expect(specifiers).toBe(100);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
@@ -5345,7 +5381,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS: 2,
     // FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS: 8) — four new findings, none of
     // them 0 or 1. Read from this assertion's own failure value.
-    ).toBe(406);
+    // 411 -> 412: Stage D STATION_QUALITY_AFFINITY_BONUS 0.25.
+    ).toBe(412);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

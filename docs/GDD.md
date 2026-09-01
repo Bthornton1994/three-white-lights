@@ -3165,7 +3165,7 @@ than the ruling's own §1–§23 sequence:
   C.1d at `460f794a` — Empire now feels like a primitive gym-management
   game rather than controls around an animation. Carry-forward debts
   (C-DEBT-01..04) do not reopen it. C.2 simulator fidelity is recorded in
-  §5.16. Stage D is not started.
+  §5.16. Stage D is recorded in §5.17.
 - **Stage D.** Quality/Capacity/Throughput on Barbell first (item 2),
   touching `floorSim.ts`'s capacity constant — the one piece of this pass
   that changes the simulation's own core rather than its surface, so it
@@ -3532,12 +3532,12 @@ operating multiple locations. This is not an unpause of §5.11 Stage F.
 Current sequence remains:
 
 Stage C human close (done at `460f794a`) → C.2 simulator fidelity (done,
-§5.16) → Stage D Q/C/T → D2 balance verdict → reputation seam → persistent
+§5.16) → Stage D Q/C/T (done, §5.17) → D2 balance verdict → reputation seam → persistent
 NPC roster / tenure → deeper staff policy → portfolio only after explicit
 human unpause.
 
 The doctrine does not authorize implementing future stages early. It defines
-their quality bar. C.2 is recorded below. Stage D is not started by C.2.
+their quality bar. C.2 is recorded in §5.16. Stage D is recorded in §5.17.
 
 ### 5.16 Stage C.2 — simulator fidelity (online vs offline in aggregate pacing)
 
@@ -3598,6 +3598,104 @@ than to once daily. That is a measurement, not a retune.
 **Novice / cheapskate, re-measured, not retuned.** Hire cost 150 Gym Bucks. Wage 2 Gym Bucks per banked hour. Auto-repair threshold 0 (never fires). Cheapskate never pays off vs hands-off inside 7d in any of the four cadences. Watcher, few-times-a-day, and sporadic still fail with a hired novice by day 7; once-a-day does not hire and does not fail inside 7d. Leave the tuning decision for D2.
 
 C.2 does not start Stage D / the Living Gym Q-C-T vertical slice.
+
+### 5.17 Stage D — Living Gym Quality / Capacity / Throughput vertical slice
+
+Stage D is a mechanism proof, not a balance pass. D2 tunes it. No facility
+pacing, offline fraction, offline cap, manager wages, hire costs, novice
+threshold, general wear, failure thresholds, or full-economy rates were
+changed. C.2's measured numbers in §5.16 are unchanged. Reputation, persistent
+NPCs, and Portfolio stay paused.
+
+**The problem.** A garage with only the flat bench on the floor and three
+powerlifters wanting it is an obvious bottleneck: one simultaneous seat,
+members arriving, a standing queue. The player can see the queue on the floor
+and can respond on three distinct axes, or can leave the queue standing.
+
+**The slice.** Only the three starting Barbell pieces — power-bar,
+comp-plates, flat-bench — can be upgraded. Session equipment and squat-rack
+stay at stock. One upgrade per axis (`STATION_UPGRADE_LEVEL_MAX` 1). New
+prices, not a retune of existing SKUs: Quality 120 / Capacity 180 /
+Throughput 150 Gym Bucks.
+
+**Where the state lives.** `GymViewState.capability`, not `ManagedGym`. Wear,
+wages, repair and failure stay on `ManagedGym` and were not re-keyed. Stock
+capability is the empty map — Stage C's machine, unaltered, until a purchase.
+
+**The three mechanisms, in the real sim, not as income multipliers.**
+
+- **Quality — Competition pads / Aggressive knurl / Tight tolerances.**
+  Training-experience value of a completed use goes from
+  `STATION_STOCK_TRAINING_EXPERIENCE` 1 to
+  `STATION_QUALITY_TRAINING_EXPERIENCE` 2. Members treat a Quality station as
+  more appealing: `stationQualityAffinityBonus` adds
+  `STATION_QUALITY_AFFINITY_BONUS` (0.25) inside `affinityFor`, so demand
+  shifts onto the upgraded piece when another station is available. Does not
+  add a simultaneous slot. Does not shorten `FLOOR_SIM_USE_TICKS_BY_TYPE`.
+  Does not credit Gym Bucks. Does not raise the Career player's e1RM, Total,
+  or meet performance (§8.1). The goldenrod rest-edge on the chip is the
+  world cue; members walking there more is the living-gym cue. Stage E's
+  reputation loop can read the experience value later; Stage D does not fake
+  that loop.
+- **Capacity — Second position.** `stationCapacitySlots` becomes 2. The
+  floor sim assigns that many approach-cell use slots and seats two members
+  at once. Extra standing pads draw on those cells (`floorgrid-capacity-pad-*`).
+  A boxed-in station that cannot realise a second approach cell is refused
+  (`no-second-position`) rather than silently clamped. Consumes approach
+  space, not a new furniture SKU.
+- **Throughput — Plate tree / Collar kit.** `stationUseTicksFactor` becomes
+  `STATION_THROUGHPUT_USE_TICKS_FACTOR` 0.65 on the real use-tick duration.
+  One slot remains one slot. The darkkhaki mark on the chip is the world cue.
+  Members cycle the same seat faster.
+
+**Deterministic bottleneck experiment.** Garage, only the flat bench placed,
+three powerlifters, seed 1, 240 ticks. Standing `queuing` counted, not
+`seeking`. Same demand, four capability maps.
+
+| Axis | slots | completions | maxQueue | maxUsing | meanUseTicks | experience |
+|---|---|---|---|---|---|---|
+| stock | 1 | 5 | 2 | 1 | 35.8 | 5 |
+| Quality | 1 | 5 | 2 | 1 | 35.8 | 10 |
+| Capacity | 2 | 8 | 1 | 2 | 35.125 | 8 |
+| Throughput | 1 | 8 | 2 | 1 | 24.25 | 8 |
+
+Quality is identical to stock on every physical number in the one-station
+bottleneck (there is no other station to prefer) and doubles experience.
+On a two-station garage (far bench at (6,0), near bar at (0,3), seed 1,
+240 ticks), Quality on the bench inverts demand: stock 205 bench-target
+ticks / 5 completions vs 440 bar-target ticks / 6 completions; Quality 440
+bench-target ticks / 6 completions vs 205 bar-target ticks / 5 completions.
+No extra seat, no shorter hold. Capacity adds a
+real second seat, cuts the standing queue, and does not apply the 0.65
+factor (the 35.125 vs 35.8 drift is start-tick hash spread, not a
+throughput change). Throughput shortens real service time without adding a
+seat. Completions rose under both Capacity and Throughput, by different
+physical means. The three axes do not collapse to one "better station"
+scalar.
+
+**World presentation.** Numbers exist in the station panel. The consequence
+is on the floor: extra pads, goldenrod rest-edge, darkkhaki mark, occupancy
+line (`occupantCount`), members cycling and preferring the nicer station.
+Panel copy is the physical thing, not Q=1/C=1/T=1: "Competition pads —
+better training experience (120)". Power-bar Quality is "Aggressive knurl";
+plates Quality is "Tight tolerances"; bar Throughput is "Collar kit".
+
+**D-DEBT — stored / unplaced equipment currently wears.** Reproduced, not
+shipped. `ManagedGym` has no `FloorState`. `withWear` keys `ownedItemsOf`.
+Unplaced session mats wear identically to the placed flat bench over the
+same check-in. That contradicts the Living Gym Doctrine (a piece in storage
+is not being used). The smallest correction is to wear placed-and-used
+items, not owned items. Not shipped in D: a wear-path change would
+contaminate C.2's measured wear/failure timing and this round's Q/C/T
+proof. D2's first explicit balance verdict should include it.
+
+**What Stage D did not do.** Did not retune C.2. Did not "fix" the novice
+manager. Did not start reputation, persistent NPCs, or Portfolio. Did not
+touch Session A (`src/career`, `src/lift`, `src/game`, `src/shell`,
+`src/art`). Quality does not raise Career strength.
+
+Stage D implementation is complete. Awaiting human Living Gym playtest
+before D2.
 
 ---
 

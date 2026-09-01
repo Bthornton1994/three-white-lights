@@ -2533,6 +2533,77 @@ export const EMPIRE_TUNING = Object.freeze({
 
   /** Vertical gap between the panel and the grid/tray it sits below. */
   FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS: 8,
+
+  // -------------------------------------------------------------------------
+  // GDD §5.14 Stage D / §5.15 Living Gym — Quality / Capacity / Throughput
+  // -------------------------------------------------------------------------
+
+  /**
+   * The three station-upgrade axes Stage D proves as distinct mechanisms.
+   * Order is the station panel's order: experience, then space, then speed.
+   */
+  STATION_UPGRADE_AXES: Object.freeze(['quality', 'capacity', 'throughput'] as const),
+
+  /**
+   * Stage D slice: the three starting Barbell pieces. Session equipment and
+   * squat-rack stay at stock. Not a catalog expansion.
+   */
+  STATION_UPGRADE_SLICE: Object.freeze(['power-bar', 'comp-plates', 'flat-bench'] as const),
+
+  /**
+   * First-pass Gym Bucks cost of one axis on a stock slice station. D2 tunes
+   * these. They are new prices, not a retune of existing equipment SKUs.
+   * Garage income is 60/hour, so a player who advances the clock a few hours
+   * can afford one — Stage D proves the mechanism, not the ROI.
+   */
+  STATION_UPGRADE_COST_GYM_BUCKS: Object.freeze({
+    quality: 120,
+    capacity: 180,
+    throughput: 150,
+  }),
+
+  /** Stage D is one upgrade per axis. Not a tree. */
+  STATION_UPGRADE_LEVEL_MAX: 1,
+
+  /**
+   * Extra simultaneous slots one capacity level adds. Stock is 1; a purchased
+   * capacity level makes 1 + this. The floor sim assigns that many use cells
+   * from the station's approach cells, so a boxed-in station may realise fewer.
+   */
+  STATION_CAPACITY_BONUS_SLOTS: 1,
+
+  /**
+   * Multiplier on `FLOOR_SIM_USE_TICKS_BY_TYPE` (plus spread) when throughput
+   * is purchased. Strictly below 1 so a use is shorter, strictly above 0 so a
+   * use still takes time. Capacity is unchanged. D2 may retune the magnitude;
+   * the mechanism is "real service duration drops".
+   */
+  STATION_THROUGHPUT_USE_TICKS_FACTOR: 0.65,
+
+  /**
+   * Training-experience value of one completed use at a stock station. Quality
+   * does not change this station's slots or duration; it changes this number.
+   * Not Gym Bucks. Not Career e1RM.
+   */
+  STATION_STOCK_TRAINING_EXPERIENCE: 1,
+
+  /**
+   * Training-experience value of one completed use at a Quality-upgraded
+   * station. Distinct from stock so the Stage D experiment can see Quality
+   * without looking at queue length. Stage E's reputation loop reads this;
+   * Stage D's own causal reader is the affinity bonus below.
+   */
+  STATION_QUALITY_TRAINING_EXPERIENCE: 2,
+
+  /**
+   * Extra affinity a Quality-upgraded slice station adds on top of the
+   * published type tables. Dimensionless, same unit as
+   * `MEMBER_TYPE_BARBELL_AFFINITY`. Quality does not add a seat and does
+   * not shorten a hold; it makes the station more appealing, so demand
+   * shifts onto it when another station is available. D2 may retune the
+   * magnitude. Zero would make Quality a paint-only axis.
+   */
+  STATION_QUALITY_AFFINITY_BONUS: 0.25,
 } satisfies EmpireTuningRecord);
 
 /**
@@ -2743,4 +2814,14 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_STATION_PANEL_PADDING_PIXELS: 'knob',
   FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS: 'knob',
   FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS: 'knob',
+
+  STATION_UPGRADE_AXES: 'structural',
+  STATION_UPGRADE_SLICE: 'structural',
+  STATION_UPGRADE_COST_GYM_BUCKS: 'knob',
+  STATION_UPGRADE_LEVEL_MAX: 'budget',
+  STATION_CAPACITY_BONUS_SLOTS: 'budget',
+  STATION_THROUGHPUT_USE_TICKS_FACTOR: 'knob',
+  STATION_STOCK_TRAINING_EXPERIENCE: 'knob',
+  STATION_QUALITY_TRAINING_EXPERIENCE: 'knob',
+  STATION_QUALITY_AFFINITY_BONUS: 'knob',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

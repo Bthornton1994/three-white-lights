@@ -132,12 +132,12 @@
  * `floorSim.ts`'s, and what happens here is tile-to-pixel conversion,
  * interpolation and style. It reads no wallet, no Gym Bucks, no chalk, no
  * Total, no e1RM, no streak, no covered day and no reputation —
- * `FloorSimContext` carries four fields and this file builds all four from
+ * `FloorSimContext` carries five fields and this file builds all five from
  * props it already had. And it writes nothing back: the sim is a function of
  * the floor, never the other way round.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import {
   Animated,
   Easing,
@@ -191,6 +191,13 @@ import { type ManagedGym, maintenancePrompt } from './management';
 import { type MemberType } from './members';
 import { type SessionEquipmentItem } from './sessions';
 import {
+  isStationUpgradeSlice,
+  stationLevels,
+  stationUpgradeCostGymBucks,
+  type StationCapabilityState,
+  type StationUpgradeAxis,
+} from './stationCapability';
+import {
   type PlacementRefuseKind,
   type StationConditionView,
   type StationIdentityView,
@@ -201,6 +208,8 @@ import {
   playerFacingMemberActivityLine,
   playerFacingMemberTypeLabel,
   playerFacingPlacementRefuse,
+  playerFacingUpgradeEffect,
+  playerFacingUpgradeLabel,
   stationConditionView,
   stationIdentityView,
   stationManagerEffectView,
@@ -260,6 +269,8 @@ export interface FloorGridProps {
    * about this prop's arithmetic is duplicated here.
    */
   readonly managed: ManagedGym;
+  /** Stage D Q/C/T levels. Stock is `{}`. */
+  readonly capability: StationCapabilityState;
   /**
    * Stage C.1b: when true, the floor is in Build mode — tray is the place/
    * move surface, tap-a-piece-then-tap-a-tile is the primary thumb path,
@@ -325,6 +336,16 @@ const AMBIENT_MEMBER_BORDER_COLOR = 'black';
  * cue) — selection is neither.
  */
 const FLOOR_STATION_SELECTED_OUTLINE_COLOR = 'gold';
+/**
+ * Stage D Quality rest-cue — a darker gold than selection, so a Quality
+ * station at rest is not readable as "this is the tapped station".
+ */
+const FLOOR_QUALITY_MARK_COLOR = 'goldenrod';
+/**
+ * Stage D Throughput rest-cue — darker than the queue-state khaki, so a
+ * faster station is not readable as "someone is waiting here".
+ */
+const FLOOR_THROUGHPUT_MARK_COLOR = 'darkkhaki';
 /** The contextual station panel's own backing, the same quiet slate the tray chip already reads against. */
 const FLOOR_STATION_PANEL_BACKGROUND_COLOR = 'darkslateblue';
 /** The panel's action-button chrome — the identical literals `GymScreen.tsx`'s own `styles.button` already uses, so a control looks like the same control on both screens. */
@@ -1022,7 +1043,7 @@ function AmbientMemberBody({
 }
 
 export function FloorGrid(props: FloorGridProps) {
-  const { owned, barbellOwned, floor, dispatch, managed, buildMode } = props;
+  const { owned, barbellOwned, floor, dispatch, managed, capability, buildMode } = props;
   const grid = floorGridSize(floor.rung);
   const placed = floorLayout(floor);
   const unplaced = unplacedOwnedFloorItems(floor, owned);
@@ -1053,6 +1074,7 @@ export function FloorGrid(props: FloorGridProps) {
     floor,
     barbellOwned,
     sessionOwned: owned,
+    capability,
   };
   // GDD §5.13's PLAYTEST 2 ruling, gap 3: the grid's own internal tile
   // boundaries, one line per interior column/row edge — `grid.width - 1`
@@ -1345,6 +1367,43 @@ export function FloorGrid(props: FloorGridProps) {
       stationActivity.set(key, 'claimed');
     }
   }
+  // Stage D — Capacity is simultaneous usable slots, drawn as extra standing
+  // pads on the approach cells the sim actually seats. Stock stations have
+  // one use cell and draw nothing extra; a purchased second position is
+  // visible on the floor before it is occupied. pointerEvents none: the pad
+  // is a world cue, not a second tap target.
+  //
+  // Explicit loops rather than `stations.flatMap` / `station.useCells.map`:
+  // `station` would be a callback parameter, which is a
+  // `member-of-parameter` site this directory's census has to drive. FloorGrid
+  // cannot be called outside a React tree (hooks), so the cheaper surface is
+  // a loop, matching floorSim.ts / floorSprites.ts / runManagedGym.
+  const capacityPads: ReactElement[] = [];
+  for (const station of stations) {
+    if (station.useCells.length <= 1) continue;
+    for (let index = 0; index < station.useCells.length; index += 1) {
+      const cell = station.useCells[index];
+      if (cell === undefined) continue;
+      capacityPads.push(
+        <View
+          key={`capacity-${station.ref.kind}-${station.ref.item}-${index}`}
+          testID={`floorgrid-capacity-pad-${station.ref.item}-${index}`}
+          pointerEvents={'none'}
+          style={{
+            position: 'absolute',
+            left: cell.x * tile,
+            top: cell.y * tile,
+            width: tile,
+            height: tile,
+            borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
+            borderColor: FLOOR_SIM_STATE_COLOR.using,
+            backgroundColor: FLOOR_SIM_HIGHLIGHT_FILL,
+            zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
+          }}
+        />,
+      );
+    }
+  }
   const stateCounts = floorSimStateCounts(sim);
 
   /**
@@ -1598,10 +1657,11 @@ export function FloorGrid(props: FloorGridProps) {
                 selectedStation !== null &&
                 selectedStation.kind === 'fixed' &&
                 selectedStation.item === row.item;
-              const isPending =
-                pendingPlace !== null &&
-                pendingPlace.kind === 'furniture' &&
-                pendingPlace.item === row.item;
+              const levels = isStationUpgradeSlice(row.item)
+                ? stationLevels(capability, row.item)
+                : null;
+              const qualityMark = levels !== null && levels.quality > 0;
+              const throughputMark = levels !== null && levels.throughput > 0;
               return (
                 <Pressable
                   key={row.item}
@@ -1630,17 +1690,22 @@ export function FloorGrid(props: FloorGridProps) {
                     // chip (those keep their black chip border below). GDD
                     // §5.14 Stage C: a refusal in flight still wins over a
                     // selection outline — the refusal is transient and more
-                    // urgent than "this is the tapped station".
+                    // urgent than "this is the tapped station". Stage D:
+                    // a Quality upgrade keeps a goldenrod edge at rest so the
+                    // better training surface is visible without opening
+                    // the panel — distinct from selection gold.
                     borderWidth: isRefusalTarget
                       ? EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS
                       : isSelected
                         ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
-                        : 0,
+                        : qualityMark
+                          ? EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS
+                          : 0,
                     borderColor: isRefusalTarget
                       ? FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR
-                      : isPending
+                      : isSelected
                         ? FLOOR_STATION_SELECTED_OUTLINE_COLOR
-                        : FLOOR_STATION_SELECTED_OUTLINE_COLOR,
+                        : FLOOR_QUALITY_MARK_COLOR,
                     cursor: 'pointer',
                   } as WebSelectableViewStyle}
                 >
@@ -1659,6 +1724,46 @@ export function FloorGrid(props: FloorGridProps) {
                       {...({ pointerEvents: 'none' } as object)}
                     />
                   )}
+                  {qualityMark ? (
+                    <View
+                      testID={`floorgrid-quality-mark-${row.item}`}
+                      pointerEvents={'none'}
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: 0,
+                        width: Math.max(
+                          tile * EMPIRE_TUNING.FLOOR_SIM_CUE_DIAMETER_FRACTION,
+                          1,
+                        ),
+                        height: Math.max(
+                          tile * EMPIRE_TUNING.FLOOR_SIM_CUE_DIAMETER_FRACTION,
+                          1,
+                        ),
+                        backgroundColor: FLOOR_QUALITY_MARK_COLOR,
+                      }}
+                    />
+                  ) : null}
+                  {throughputMark ? (
+                    <View
+                      testID={`floorgrid-throughput-mark-${row.item}`}
+                      pointerEvents={'none'}
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        bottom: 0,
+                        width: Math.max(
+                          tile * EMPIRE_TUNING.FLOOR_SIM_CUE_DIAMETER_FRACTION,
+                          1,
+                        ),
+                        height: Math.max(
+                          tile * EMPIRE_TUNING.FLOOR_SIM_CUE_DIAMETER_FRACTION,
+                          1,
+                        ),
+                        backgroundColor: FLOOR_THROUGHPUT_MARK_COLOR,
+                      }}
+                    />
+                  ) : null}
                   <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
                     {row.item}
                   </Text>
@@ -1779,6 +1884,7 @@ export function FloorGrid(props: FloorGridProps) {
                 );
               })
             }
+            {capacityPads}
             {
               // GDD §5.13 presentation Phase 3: the members, at the position
               // the sim puts them at this instant. Still non-draggable, still
@@ -2026,7 +2132,9 @@ export function FloorGrid(props: FloorGridProps) {
           */}
           <Text testID={'floorgrid-station-panel-operation'}>
             {panelOperation.occupied && panelOperation.activeMemberType !== null
-              ? `In use by ${playerFacingMemberTypeLabel(panelOperation.activeMemberType)}`
+              ? panelOperation.occupantCount > 1
+                ? `${panelOperation.occupantCount} training`
+                : `In use by ${playerFacingMemberTypeLabel(panelOperation.activeMemberType)}`
               : 'Idle'}
             {panelOperation.queueCount > 0
               ? `, ${panelOperation.queueCount} waiting`
@@ -2087,6 +2195,50 @@ export function FloorGrid(props: FloorGridProps) {
               the standing maintenance review is currently about this item
             </Text>
           ) : null}
+          {panelStation.kind === 'fixed' && isStationUpgradeSlice(panelStation.item)
+            ? EMPIRE_TUNING.STATION_UPGRADE_AXES.map((axis: StationUpgradeAxis) => {
+                const item = panelStation.item;
+                if (!isStationUpgradeSlice(item)) return null;
+                const levels = stationLevels(capability, item);
+                const owned = levels[axis] > 0;
+                const cost = stationUpgradeCostGymBucks(axis);
+                if (owned) {
+                  return (
+                    <Text
+                      key={axis}
+                      testID={`floorgrid-station-panel-upgrade-${axis}-done`}
+                    >
+                      {`${playerFacingUpgradeLabel(axis, item)} — ${playerFacingUpgradeEffect(axis)}`}
+                    </Text>
+                  );
+                }
+                if (cost > managed.gym.ladder.gymBucks) {
+                  return (
+                    <Text
+                      key={axis}
+                      testID={`floorgrid-station-panel-upgrade-${axis}-unavailable`}
+                    >
+                      {`${playerFacingUpgradeLabel(axis, item)} needs ${cost} gym bucks — you have ${managed.gym.ladder.gymBucks}`}
+                    </Text>
+                  );
+                }
+                return (
+                  <Pressable
+                    key={axis}
+                    testID={`floorgrid-station-panel-upgrade-${axis}`}
+                    accessibilityRole={'button'}
+                    style={panelStyles.button}
+                    onPress={() =>
+                      dispatch({ kind: 'upgrade-station', item, axis })
+                    }
+                  >
+                    <Text style={panelStyles.buttonText}>
+                      {`${playerFacingUpgradeLabel(axis, item)} — ${playerFacingUpgradeEffect(axis)} (${cost})`}
+                    </Text>
+                  </Pressable>
+                );
+              })
+            : null}
           {/*
             Contextual repair — dispatches through the exact reducer arm
             `GymScreen.tsx`'s own per-item report already uses

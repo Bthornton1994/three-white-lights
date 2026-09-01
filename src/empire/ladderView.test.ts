@@ -1144,3 +1144,145 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
     expect(refusedView.managed.gym).toEqual(view.managed.gym);
   });
 });
+
+// ---------------------------------------------------------------------------
+// GDD §5.14 Stage D — upgrade-station on GymViewState.capability
+// ---------------------------------------------------------------------------
+
+describe('gymViewReduce upgrade-station — Stage D Q/C/T', () => {
+  function withPurse(state: GymViewState, gymBucks: number): GymViewState {
+    return Object.freeze({
+      ...state,
+      managed: withUpdatedGym(
+        state.managed,
+        withLadder(
+          state.managed.gym,
+          Object.freeze({ ...state.managed.gym.ladder, gymBucks }),
+        ),
+      ),
+    });
+  }
+
+  it('createGymViewState opens at stock capability', () => {
+    const opened = createGymViewState();
+    expect(opened.capability).toEqual({});
+  });
+
+  it('purchases Quality on a placed starting bench and deducts the new SKU, not an equipment price', () => {
+    const opened = withPurse(createGymViewState(), 1000);
+    const next = gymViewReduce(opened, {
+      kind: 'upgrade-station',
+      item: 'flat-bench',
+      axis: 'quality',
+    });
+    expect(next.lastRefusal).toBeNull();
+    expect(next.capability['flat-bench']?.quality).toBe(1);
+    expect(next.capability['flat-bench']?.capacity).toBe(0);
+    expect(next.capability['flat-bench']?.throughput).toBe(0);
+    expect(next.managed.gym.ladder.gymBucks).toBe(1000 - T.STATION_UPGRADE_COST_GYM_BUCKS.quality);
+    expect(next.managed.gym.ladder.equipment).toEqual(opened.managed.gym.ladder.equipment);
+  });
+
+  it('purchases Capacity and Throughput as independent axes on the same station', () => {
+    let state = withPurse(createGymViewState(), 1000);
+    state = gymViewReduce(state, { kind: 'upgrade-station', item: 'flat-bench', axis: 'capacity' });
+    expect(state.lastRefusal).toBeNull();
+    expect(state.capability['flat-bench']?.capacity).toBe(1);
+    state = gymViewReduce(state, {
+      kind: 'upgrade-station',
+      item: 'flat-bench',
+      axis: 'throughput',
+    });
+    expect(state.lastRefusal).toBeNull();
+    expect(state.capability['flat-bench']?.throughput).toBe(1);
+    expect(state.capability['flat-bench']?.quality).toBe(0);
+  });
+
+  it('refuses a non-slice item, a second purchase of the same axis, an unplaced station, and a short purse', () => {
+    const opened = withPurse(createGymViewState(), 1000);
+    expect(
+      gymViewReduce(opened, { kind: 'upgrade-station', item: 'squat-rack', axis: 'quality' })
+        .lastRefusal,
+    ).toBe('not-upgradable');
+
+    const once = gymViewReduce(opened, {
+      kind: 'upgrade-station',
+      item: 'flat-bench',
+      axis: 'quality',
+    });
+    expect(
+      gymViewReduce(once, { kind: 'upgrade-station', item: 'flat-bench', axis: 'quality' })
+        .lastRefusal,
+    ).toBe('already-upgraded');
+
+    const unplaced = gymViewReduce(opened, {
+      kind: 'floor-remove-furniture',
+      item: 'flat-bench',
+    });
+    expect(unplaced.floor.furniture['flat-bench']).toBeUndefined();
+    expect(
+      gymViewReduce(unplaced, { kind: 'upgrade-station', item: 'flat-bench', axis: 'quality' })
+        .lastRefusal,
+    ).toBe('not-placed');
+
+    const broke = createGymViewState();
+    expect(broke.managed.gym.ladder.gymBucks).toBeLessThan(T.STATION_UPGRADE_COST_GYM_BUCKS.quality);
+    expect(
+      gymViewReduce(broke, { kind: 'upgrade-station', item: 'flat-bench', axis: 'quality' })
+        .lastRefusal,
+    ).toBe('not-enough-gym-bucks');
+  });
+
+  it('carries capability across a clock advance — the store is GymViewState, not ManagedGym', () => {
+    const upgraded = gymViewReduce(withPurse(createGymViewState(), 1000), {
+      kind: 'upgrade-station',
+      item: 'power-bar',
+      axis: 'throughput',
+    });
+    expect(upgraded.capability['power-bar']?.throughput).toBe(1);
+    const advanced = gymViewReduce(upgraded, { kind: 'advance-clock', gapSeconds: 3600 });
+    expect(advanced.capability).toEqual(upgraded.capability);
+    expect('capability' in advanced.managed).toBe(false);
+  });
+
+  it('a short purse on Capacity is not-enough-gym-bucks, not a fake boxed station', () => {
+    const broke = createGymViewState();
+    expect(broke.managed.gym.ladder.gymBucks).toBeLessThan(
+      T.STATION_UPGRADE_COST_GYM_BUCKS.capacity,
+    );
+    expect(
+      gymViewReduce(broke, { kind: 'upgrade-station', item: 'flat-bench', axis: 'capacity' })
+        .lastRefusal,
+    ).toBe('not-enough-gym-bucks');
+  });
+
+  it('refuses Capacity when the floor cannot realise a second approach cell', () => {
+    let state = withPurse(createGymViewState(), 1000);
+    state = gymViewReduce(state, {
+      kind: 'floor-place-furniture',
+      item: 'flat-bench',
+      position: { x: 6, y: 2 },
+    });
+    expect(state.lastRefusal).toBeNull();
+    state = gymViewReduce(state, {
+      kind: 'floor-place-furniture',
+      item: 'power-bar',
+      position: { x: 5, y: 2 },
+    });
+    expect(state.lastRefusal).toBeNull();
+    state = gymViewReduce(state, {
+      kind: 'floor-place-furniture',
+      item: 'comp-plates',
+      position: { x: 6, y: 0 },
+    });
+    expect(state.lastRefusal).toBeNull();
+    const refused = gymViewReduce(state, {
+      kind: 'upgrade-station',
+      item: 'flat-bench',
+      axis: 'capacity',
+    });
+    expect(refused.lastRefusal).toBe('no-second-position');
+    expect(refused.capability).toEqual({});
+    expect(refused.managed.gym.ladder.gymBucks).toBe(1000);
+  });
+});

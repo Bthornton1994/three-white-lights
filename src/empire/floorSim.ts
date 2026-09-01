@@ -177,8 +177,10 @@
  * 5. What this module may not read, and why the type is the fence
  * ===========================================================================
  *
- * `FloorSimContext` has exactly four fields: a rung, a `FloorState`, the
- * Barbell-group ownership list and the session-equipment ownership list. There
+ * `FloorSimContext` has exactly five fields: a rung, a `FloorState`, the
+ * Barbell-group ownership list, the session-equipment ownership list, and
+ * Stage D station capability. Stock capability is the Stage C machine.
+ * There
  * is no wallet here, no Gym Bucks, no chalk, no Total, no e1RM, no streak
  * state, no covered-day concept and — the one this piece's brief called out
  * specifically — no reputation. Phase 2's `ambientMemberRoster` header already
@@ -189,9 +191,9 @@
  * exact about which mechanism catches which widening, because an earlier
  * version of this paragraph named one check for a route it did not cover.
  *
- * A fifth field on `FloorSimContext` is caught by `floorSim.test.ts`'s `carries
- * exactly the four presentation inputs on its context`. That check used to read
- * `Object.keys` over a VALUE, which sees a required fifth field (the value could
+ * A sixth field on `FloorSimContext` is caught by `floorSim.test.ts`'s `carries
+ * exactly the five presentation inputs on its context`. That check used to read
+ * `Object.keys` over a VALUE, which sees a required sixth field (the value could
  * not be built without it) and is blind to an OPTIONAL one. It now also carries
  * a `Record<keyof FloorSimContext, true>`, so the catcher for an optional field
  * is `tsc` rather than vitest: `keyof` includes optional keys, the literal is
@@ -256,6 +258,13 @@ import { type LadderEquipmentItem, type LadderRung } from './ladder';
 import { type MemberType } from './members';
 import { type SessionEquipmentItem } from './sessions';
 import { EMPIRE_TUNING } from './empireTuning';
+import {
+  stationCapacitySlots,
+  stationQualityAffinityBonus,
+  stationUseTicksFactor,
+  stockStationCapability,
+  type StationCapabilityState,
+} from './stationCapability';
 
 // ---------------------------------------------------------------------------
 // Vocabulary
@@ -356,7 +365,10 @@ export interface FloorStation {
   readonly ref: FloorStationRef;
   readonly position: GridPosition;
   readonly footprint: GridSize;
+  /** Primary standing cell — `useCells[0]`. Capacity seats more on `useCells[1..]`. */
   readonly useCell: GridPosition;
+  /** Simultaneous standing positions. Length is the realised capacity. */
+  readonly useCells: readonly GridPosition[];
   readonly queueCells: readonly GridPosition[];
 }
 
@@ -416,14 +428,16 @@ export interface FloorSimState {
 }
 
 /**
- * Everything the sim is allowed to see — header §5. Four fields, and the test
- * that pins them is a set equality over this type's own keys.
+ * Everything the sim is allowed to see — header §5. Five fields, and the test
+ * that pins them is a set equality over this type's own keys. The fifth is
+ * Stage D capability; stock (`{}`) is the Stage C four-field machine.
  */
 export interface FloorSimContext {
   readonly rung: LadderRung;
   readonly floor: FloorState;
   readonly barbellOwned: readonly LadderEquipmentItem[];
   readonly sessionOwned: readonly SessionEquipmentItem[];
+  readonly capability: StationCapabilityState;
 }
 
 // ---------------------------------------------------------------------------
@@ -507,6 +521,7 @@ interface RoutePlan {
   readonly grid: GridSize;
   readonly blocked: readonly boolean[];
   readonly stations: readonly FloorStation[];
+  readonly capability: StationCapabilityState;
   /**
    * `fields[station][goal]` is the distance field to that goal cell, where
    * goal 0 is the station's use cell and goal k+1 is `queueCells[k]`.
@@ -620,6 +635,7 @@ function approachCells(
  * instead of sending a member at a wall`.
  */
 function routePlan(context: FloorSimContext): RoutePlan {
+  const capability = context.capability ?? stockStationCapability();
   const grid = floorGridSize(context.rung);
   const cells = grid.width * grid.height;
   const blocked = new Array<boolean>(cells).fill(false);
@@ -676,23 +692,35 @@ function routePlan(context: FloorSimContext): RoutePlan {
   // registered rung after the two-pass reservation` pins that the shipped rungs
   // lose none.
   const takenUseCells = new Set<number>();
-  const seated: { readonly occupant: (typeof occupants)[number]; readonly useCell: GridPosition }[] =
-    [];
+  const seated: {
+    readonly occupant: (typeof occupants)[number];
+    readonly useCells: readonly GridPosition[];
+  }[] = [];
   for (const occupant of occupants) {
     const approaches = approachCells(occupant.position, occupant.footprint, grid, blocked);
-    const useCell =
-      approaches.find((candidate) => !takenUseCells.has(cellIndex(candidate, grid))) ??
-      approaches[0];
-    if (useCell === undefined) continue;
-    takenUseCells.add(cellIndex(useCell, grid));
-    seated.push({ occupant, useCell });
+    const wanted = stationCapacitySlots(capability, occupant.ref.kind, occupant.ref.item);
+    const useCells: GridPosition[] = [];
+    for (const candidate of approaches) {
+      if (useCells.length >= wanted) break;
+      const at = cellIndex(candidate, grid);
+      if (takenUseCells.has(at)) continue;
+      takenUseCells.add(at);
+      useCells.push(candidate);
+    }
+    if (useCells.length === 0) {
+      const fallback = approaches[0];
+      if (fallback === undefined) continue;
+      useCells.push(fallback);
+    }
+    seated.push({ occupant, useCells: Object.freeze(useCells) });
   }
 
   const takenQueueCells = new Set<number>();
   const stations: FloorStation[] = [];
   const fields: (readonly (readonly number[])[])[] = [];
-  for (const { occupant, useCell } of seated) {
-    const useField = distanceField(useCell, grid, blocked);
+  for (const { occupant, useCells } of seated) {
+    const primary = useCells[0] as GridPosition;
+    const useField = distanceField(primary, grid, blocked);
     const scored: { readonly cell: GridPosition; readonly steps: number }[] = [];
     for (let y = 0; y < grid.height; y += 1) {
       for (let x = 0; x < grid.width; x += 1) {
@@ -719,12 +747,16 @@ function routePlan(context: FloorSimContext): RoutePlan {
         ref: Object.freeze(occupant.ref),
         position: occupant.position,
         footprint: occupant.footprint,
-        useCell,
+        useCell: primary,
+        useCells,
         queueCells,
       }),
     );
     fields.push(
-      Object.freeze([useField, ...queueCells.map((cell) => distanceField(cell, grid, blocked))]),
+      Object.freeze([
+        ...useCells.map((cell) => distanceField(cell, grid, blocked)),
+        ...queueCells.map((cell) => distanceField(cell, grid, blocked)),
+      ]),
     );
   }
 
@@ -733,6 +765,7 @@ function routePlan(context: FloorSimContext): RoutePlan {
     blocked: Object.freeze(blocked),
     stations: Object.freeze(stations),
     fields: Object.freeze(fields),
+    capability,
   };
 }
 
@@ -806,13 +839,17 @@ function claimantsOf(
   });
 }
 
-/** Whether somebody is currently using `ref`. Capacity is one member per station. */
-function isOccupied(members: readonly FloorSimMember[], ref: FloorStationRef): boolean {
+/** How many members are currently using `ref`. Capacity is `station.useCells.length`. */
+export function stationOccupancy(
+  members: readonly FloorSimMember[],
+  ref: FloorStationRef,
+): number {
+  let count = 0;
   for (const member of members) {
     if (member.state !== 'using') continue;
-    if (member.target !== null && refsEqual(member.target, ref)) return true;
+    if (member.target !== null && refsEqual(member.target, ref)) count += 1;
   }
-  return false;
+  return count;
 }
 
 /**
@@ -836,13 +873,20 @@ function isOccupied(members: readonly FloorSimMember[], ref: FloorStationRef): b
  * their source files so that raising an affinity reddens instead of quietly
  * making two comments wrong again.
  */
-function affinityFor(type: MemberType, station: FloorStation): number {
-  if (station.ref.kind === 'fixed') {
-    return EMPIRE_TUNING.MEMBER_TYPE_BARBELL_AFFINITY[type];
-  }
-  const table: Readonly<Partial<Record<SessionEquipmentItem, number>>> =
-    EMPIRE_TUNING.MEMBER_TYPE_ITEM_AFFINITY[type];
-  return table[station.ref.item] ?? 0;
+function affinityFor(
+  type: MemberType,
+  station: FloorStation,
+  capability: StationCapabilityState,
+): number {
+  const base =
+    station.ref.kind === 'fixed'
+      ? EMPIRE_TUNING.MEMBER_TYPE_BARBELL_AFFINITY[type]
+      : ((
+          EMPIRE_TUNING.MEMBER_TYPE_ITEM_AFFINITY[type] as Readonly<
+            Partial<Record<SessionEquipmentItem, number>>
+          >
+        )[station.ref.item] ?? 0);
+  return base + stationQualityAffinityBonus(capability, station.ref.kind, station.ref.item);
 }
 
 /** One member's own walking speed, in tiles per tick — the base rate with its seeded jitter. */
@@ -854,13 +898,18 @@ function speedOf(seed: number, member: FloorSimMember): number {
   );
 }
 
-/** How long one member of `type` holds a station this time — the per-type base plus seeded spread. */
-function useTicksFor(seed: number, member: FloorSimMember, tick: number): number {
+/** How long one member of `type` holds a station this time — the per-type base plus seeded spread, scaled by the station's throughput factor. */
+function useTicksFor(
+  seed: number,
+  member: FloorSimMember,
+  tick: number,
+  factor: number,
+): number {
   const base = EMPIRE_TUNING.FLOOR_SIM_USE_TICKS_BY_TYPE[member.type];
   const spread = Math.floor(
     hashUnit([seed, member.index, tick]) * EMPIRE_TUNING.FLOOR_SIM_USE_TICKS_SPREAD,
   );
-  return base + spread;
+  return Math.max(1, Math.round((base + spread) * factor));
 }
 
 // ---------------------------------------------------------------------------
@@ -1077,7 +1126,7 @@ function applyClaims(
       const score =
         distance +
         waiting * EMPIRE_TUNING.FLOOR_SIM_QUEUE_AVERSION_TILES -
-        affinityFor(member.type, station) * EMPIRE_TUNING.FLOOR_SIM_AFFINITY_PULL_TILES +
+        affinityFor(member.type, station, plan.capability) * EMPIRE_TUNING.FLOOR_SIM_AFFINITY_PULL_TILES +
         hashUnit([seed, member.index, tick, slot]) * EMPIRE_TUNING.FLOOR_SIM_TARGET_NOISE_TILES;
       if (score < chosenScore) {
         chosenScore = score;
@@ -1195,14 +1244,26 @@ function advanceMember(
   const order = claimantsOf(claimed, station.ref).findIndex(
     (claimant) => claimant.index === relocated.index,
   );
-  const occupied = isOccupied(claimed, station.ref);
-  const head = order <= 0 && !occupied;
-  const goalCell = head
-    ? station.useCell
-    : (station.queueCells[Math.min(Math.max(order, 0), station.queueCells.length - 1)] as GridPosition);
+  const occupiedCells = new Set<string>();
+  for (const member of claimed) {
+    if (member.state !== 'using') continue;
+    if (member.target === null || !refsEqual(member.target, station.ref)) continue;
+    occupiedCells.add(`${member.cell.x},${member.cell.y}`);
+  }
+  const freeCells = station.useCells.filter(
+    (cell) => !occupiedCells.has(`${cell.x},${cell.y}`),
+  );
+  const canServe = order >= 0 && order < freeCells.length;
+  const queueIndex = Math.min(Math.max(order, 0), station.queueCells.length - 1);
+  const goalCell = canServe
+    ? (freeCells[order] as GridPosition)
+    : (station.queueCells[queueIndex] as GridPosition);
   const goals = plan.fields[slot] as readonly (readonly number[])[];
+  const useIndex = canServe
+    ? station.useCells.findIndex((cell) => sameCell(cell, freeCells[order] as GridPosition))
+    : -1;
   const goalField = goals[
-    head ? 0 : Math.min(Math.max(order, 0), station.queueCells.length - 1) + 1
+    canServe ? Math.max(useIndex, 0) : station.useCells.length + queueIndex
   ] as readonly number[];
 
   const walked = continueStep(relocated, plan, speed);
@@ -1251,12 +1312,17 @@ function advanceMember(
       timer: EMPIRE_TUNING.FLOOR_SIM_INTERRUPTED_BEAT_TICKS,
     });
   }
-  if (head && walked.next === null && sameCell(walked.cell, station.useCell)) {
+  if (canServe && walked.next === null && sameCell(walked.cell, goalCell)) {
+    const factor = stationUseTicksFactor(
+      plan.capability,
+      station.ref.kind,
+      station.ref.item,
+    );
     return Object.freeze({
       ...relocated,
       ...walked,
       state: 'using',
-      timer: useTicksFor(seed, relocated, tick),
+      timer: useTicksFor(seed, relocated, tick, factor),
       queuedAt: null,
     });
   }

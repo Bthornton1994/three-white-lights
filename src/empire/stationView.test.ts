@@ -26,6 +26,9 @@ import {
   playerFacingMemberActivityLine,
   playerFacingMemberTypeLabel,
   playerFacingPlacementRefuse,
+  playerFacingUpgradeEffect,
+  playerFacingUpgradeLabel,
+  playerFacingUpgradeRefuse,
   recoveryBlockingItems,
   stationConditionView,
   stationIdentityView,
@@ -140,6 +143,25 @@ describe('stationView.ts — GDD §5.14 Stage C', () => {
     expect(playerFacingPlacementRefuse('outside')).toBe('Outside the gym');
   });
 
+  it('names Stage D upgrades as equipment, not as Q/C/T scalars', () => {
+    expect(playerFacingUpgradeLabel('quality', 'flat-bench')).toBe('Competition pads');
+    expect(playerFacingUpgradeLabel('quality', 'power-bar')).toBe('Aggressive knurl');
+    expect(playerFacingUpgradeLabel('quality', 'comp-plates')).toBe('Tight tolerances');
+    expect(playerFacingUpgradeLabel('capacity', 'flat-bench')).toBe('Second position');
+    expect(playerFacingUpgradeLabel('throughput', 'flat-bench')).toBe('Plate tree');
+    expect(playerFacingUpgradeLabel('throughput', 'power-bar')).toBe('Collar kit');
+    expect(playerFacingUpgradeEffect('quality')).toBe('better training experience');
+    expect(playerFacingUpgradeEffect('capacity')).toBe('two can train at once');
+    expect(playerFacingUpgradeEffect('throughput')).toBe('faster changeovers');
+    expect(playerFacingUpgradeRefuse('not-upgradable')).toBe("Can't upgrade this");
+    expect(playerFacingUpgradeRefuse('already-upgraded')).toBe('Already fitted');
+    expect(playerFacingUpgradeRefuse('not-placed')).toBe('Place it first');
+    expect(playerFacingUpgradeRefuse('no-second-position')).toBe(
+      'No room for a second position',
+    );
+    expect(playerFacingUpgradeRefuse('not-enough-gym-bucks')).toBe('Not enough gym bucks');
+  });
+
   // -------------------------------------------------------------------------
   // Identity
   // -------------------------------------------------------------------------
@@ -167,13 +189,14 @@ describe('stationView.ts — GDD §5.14 Stage C', () => {
   it('reports idle when nobody targets the station', () => {
     const members = [memberAt(0, 'seeking', OTHER_SESSION_REF)];
     const view = stationOperationView(members, SESSION_REF);
-    expect(view).toEqual({ occupied: false, activeMemberType: null, queueCount: 0 });
+    expect(view).toEqual({ occupied: false, occupantCount: 0, activeMemberType: null, queueCount: 0 });
   });
 
   it('reports occupied and the using member type when somebody is using it', () => {
     const members = [memberAt(0, 'using', SESSION_REF)];
     const view = stationOperationView(members, SESSION_REF);
     expect(view.occupied).toBe(true);
+    expect(view.occupantCount).toBe(1);
     expect(view.activeMemberType).toBe('powerlifter');
     expect(view.queueCount).toBe(0);
   });
@@ -190,7 +213,16 @@ describe('stationView.ts — GDD §5.14 Stage C', () => {
     ];
     const view = stationOperationView(members, SESSION_REF);
     expect(view.occupied).toBe(true);
+    expect(view.occupantCount).toBe(1);
     expect(view.queueCount).toBe(2);
+  });
+
+  it('counts two members using the same station as occupantCount 2', () => {
+    const members = [memberAt(0, 'using', SESSION_REF), memberAt(1, 'using', SESSION_REF)];
+    const view = stationOperationView(members, SESSION_REF);
+    expect(view.occupied).toBe(true);
+    expect(view.occupantCount).toBe(2);
+    expect(view.queueCount).toBe(0);
   });
 
   it('distinguishes a fixed station from a session item of the same shape', () => {
@@ -203,6 +235,7 @@ describe('stationView.ts — GDD §5.14 Stage C', () => {
   it('is non-vacuous: an empty member list reports idle with zero queue', () => {
     expect(stationOperationView([], SESSION_REF)).toEqual({
       occupied: false,
+      occupantCount: 0,
       activeMemberType: null,
       queueCount: 0,
     });

@@ -51,6 +51,7 @@ import {
 import { type MemberType } from './members';
 import { type LadderEquipmentItem } from './ladder';
 import { type SessionActivityGroup, type SessionEquipmentItem, sessionEquipmentGroup } from './sessions';
+import { type StationUpgradeAxis, type StationUpgradeRefuseReason } from './stationCapability';
 
 /**
  * Player-facing names for shop/staff copy. Domain tokens stay the identifiers
@@ -146,6 +147,37 @@ export function playerFacingPlacementRefuse(kind: PlacementRefuseKind): string {
   return 'Outside the gym';
 }
 
+/** Player-facing name of a Stage D upgrade. Numbers stay in the cost line. */
+export function playerFacingUpgradeLabel(
+  axis: StationUpgradeAxis,
+  item: LadderEquipmentItem,
+): string {
+  if (axis === 'quality') {
+    if (item === 'flat-bench') return 'Competition pads';
+    if (item === 'power-bar') return 'Aggressive knurl';
+    return 'Tight tolerances';
+  }
+  if (axis === 'capacity') return 'Second position';
+  if (item === 'power-bar') return 'Collar kit';
+  return 'Plate tree';
+}
+
+/** Why this upgrade exists, as a player reads it on the station — not an income multiplier. */
+export function playerFacingUpgradeEffect(axis: StationUpgradeAxis): string {
+  if (axis === 'quality') return 'better training experience';
+  if (axis === 'capacity') return 'two can train at once';
+  return 'faster changeovers';
+}
+
+/** Player-facing upgrade refusal. Domain tokens stay the identifiers. */
+export function playerFacingUpgradeRefuse(reason: StationUpgradeRefuseReason): string {
+  if (reason === 'not-upgradable') return 'Can\'t upgrade this';
+  if (reason === 'already-upgraded') return 'Already fitted';
+  if (reason === 'not-placed') return 'Place it first';
+  if (reason === 'no-second-position') return 'No room for a second position';
+  return 'Not enough gym bucks';
+}
+
 // ---------------------------------------------------------------------------
 // Identity
 // ---------------------------------------------------------------------------
@@ -177,7 +209,7 @@ export function stationIdentityView(ref: FloorStationRef): StationIdentityView {
 /** What the floor sim reports about one station, right now: is it in use, by whom, and how many members are still waiting on it. */
 export interface StationOperationView {
   readonly occupied: boolean;
-  /** The type of the member currently using this station, or null while idle. */
+  readonly occupantCount: number;
   readonly activeMemberType: MemberType | null;
   /**
    * Everyone whose target is this station and whose state is `seeking` or
@@ -203,18 +235,20 @@ export function stationOperationView(
   ref: FloorStationRef,
 ): StationOperationView {
   let occupied = false;
+  let occupantCount = 0;
   let activeMemberType: MemberType | null = null;
   let queueCount = 0;
   for (const member of members) {
     if (!targetsStation(member, ref)) continue;
     if (member.state === 'using') {
       occupied = true;
-      activeMemberType = member.type;
+      occupantCount += 1;
+      if (activeMemberType === null) activeMemberType = member.type;
     } else if (member.state === 'seeking' || member.state === 'queuing') {
       queueCount += 1;
     }
   }
-  return Object.freeze({ occupied, activeMemberType, queueCount });
+  return Object.freeze({ occupied, occupantCount, activeMemberType, queueCount });
 }
 
 // ---------------------------------------------------------------------------

@@ -14,5 +14,5 @@
     }
   },
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules", "dist", ".expo"]
+  "exclude": ["node_modules", "dist", ".expo", "server", "scripts", "vite.config.ts", "migrations"]
 }

@@ -144,6 +144,9 @@ describe('the block is frozen and every entry is classified', () => {
       'STAFF_LEVEL_COST_GYM_BUCKS',
       'STAFF_LEVEL_MAX',
       'STAFF_ROLES',
+      'STATION_UPGRADE_AXES',
+      'STATION_UPGRADE_COST_GYM_BUCKS',
+      'STATION_UPGRADE_SLICE',
       'SUPPORT_ITEM_AMPLIFIER',
       'SUPPORT_ITEM_CHANNEL',
     ]);
@@ -719,7 +722,9 @@ describe('§5.5 social', () => {
     // training moves.
     // 180 -> 182: Stage C.1b FLOOR_TILE_PIXELS_MAX and FLOOR_STAGE_PADDING_PIXELS.
     // 182 -> 183: Stage C.1c CONDITION_PERCENT_SCALE.
-    expect(examined).toBe(183);
+    // 183 -> 191: Stage D eight Q/C/T entries.
+    // 191 -> 192: Stage D Quality affinity bonus.
+    expect(examined).toBe(192);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -740,7 +745,9 @@ describe('§5.5 social', () => {
     // 880 -> 900 (180 keys x 5 banned units, Stage C's four new entries).
     // 900 -> 910: Stage C.1b two new knobs × 5 banned units.
     // 910 -> 915: Stage C.1c CONDITION_PERCENT_SCALE × 5 banned units.
-    expect(probed).toBe(915);
+    // 915 -> 955: Stage D eight Q/C/T entries × 5 banned units.
+    // 955 -> 960: Stage D Quality affinity bonus, one more entry × 5.
+    expect(probed).toBe(960);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

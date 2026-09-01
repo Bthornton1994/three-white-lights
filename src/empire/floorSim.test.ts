@@ -28,6 +28,7 @@ import {
   floorSimStateCounts,
   floorStations,
   runFloorSim,
+  stationOccupancy,
   stepFloorSim,
   type FloorSimContext,
   type FloorSimInterruptibleState,
@@ -53,6 +54,7 @@ import { type LadderEquipmentItem, type LadderRung } from './ladder';
 import { type MemberType } from './members';
 import { type SessionEquipmentItem } from './sessions';
 import { EMPIRE_TUNING } from './empireTuning';
+import { stockStationCapability, upgradeStation } from './stationCapability';
 
 const T = EMPIRE_TUNING;
 const KIT: readonly LadderEquipmentItem[] = Object.freeze([...T.LADDER_STARTING_EQUIPMENT]);
@@ -328,6 +330,7 @@ function contextFor(rung: LadderRung, floor: FloorState): FloorSimContext {
     floor,
     barbellOwned: KIT,
     sessionOwned: ownedFor(rung),
+    capability: stockStationCapability(),
   };
 }
 
@@ -567,6 +570,7 @@ function sealedSweep(omit: SessionEquipmentItem | null): SealedReading {
       floor: floorFrom(rung, rows),
       barbellOwned: KIT,
       sessionOwned: rows.map(([item]) => item),
+      capability: stockStationCapability(),
     };
     stations += floorStations(context).length;
     for (const seed of SEALED_SWEEP.SEEDS) {
@@ -1077,6 +1081,7 @@ describe('a member does not freeze', () => {
       floor: createFloorState(rung),
       barbellOwned: [],
       sessionOwned: [],
+      capability: stockStationCapability(),
     };
     expect(floorStations(bare)).toEqual([]);
     let at = createFloorSimState(bare, 3);
@@ -1126,6 +1131,7 @@ describe('a member does not freeze', () => {
       floor: floorFrom(rung, [far], false),
       barbellOwned: [],
       sessionOwned: owned,
+      capability: stockStationCapability(),
     };
     const sealed: FloorSimContext = { ...open, floor: floorFrom(rung, wall, false) };
 
@@ -1186,6 +1192,7 @@ function draggableGarage(position: GridPosition): FloorSimContext {
     floor: floorFrom('garage', [['mats', position] as LayoutRow], false),
     barbellOwned: [],
     sessionOwned: ['mats'],
+    capability: stockStationCapability(),
   };
 }
 
@@ -1212,6 +1219,7 @@ const walledOff = Object.freeze({
       ),
       barbellOwned: [],
       sessionOwned: ['mats', 'specialty-bars', 'cables'],
+      capability: stockStationCapability(),
     };
   })(),
   before: (): FloorSimState => {
@@ -1221,6 +1229,7 @@ const walledOff = Object.freeze({
       floor: floorFrom(rung, [['mats', { x: 9, y: 6 }] as LayoutRow], false),
       barbellOwned: [],
       sessionOwned: ['mats', 'specialty-bars', 'cables'],
+      capability: stockStationCapability(),
     };
     return stepFloorSim(stateOf(2, [memberAt(0, 'casual', { x: 0, y: 0 })]), open);
   },
@@ -1561,6 +1570,7 @@ describe('a member type changes where a member goes', () => {
       floor: floorFrom(rung, rows),
       barbellOwned: KIT,
       sessionOwned: rows.map(([item]) => item),
+      capability: stockStationCapability(),
     };
     expect(floorStations(context).length).toBe(9);
     const starts: readonly GridPosition[] = Object.freeze([
@@ -1851,6 +1861,7 @@ describe('floorStations reports somewhere real to stand', () => {
       floor: sealed,
       barbellOwned: KIT,
       sessionOwned: ['foam-rollers', 'wrist-wraps', 'belts'],
+      capability: stockStationCapability(),
     };
     expect(floorLayout(sealed).map((row) => row.item)).toEqual([
       'foam-rollers',
@@ -1875,10 +1886,10 @@ describe('floorStations reports somewhere real to stand', () => {
  * off a value.
  *
  * The check below used to be `Object.keys` over a value `contextFor` built,
- * which sees a REQUIRED fifth field — the value could not be constructed
+ * which sees a REQUIRED sixth field — the value could not be constructed
  * without one — and is blind to an OPTIONAL one, which is the shape a widening
  * would most plausibly take. `keyof` includes optional keys, so this literal
- * stops compiling the moment a fifth field of either kind is declared.
+ * stops compiling the moment a sixth field of either kind is declared.
  *
  * Both mutants were run rather than argued, and the interesting one is the
  * second. `readonly reputation: number` on `FloorSimContext` gives `npx tsc
@@ -1887,10 +1898,10 @@ describe('floorStations reports somewhere real to stand', () => {
  * context any more. `readonly reputation?: number` gives exit 2 with exactly
  * ONE error, and it is this literal — "Property 'reputation' is missing in type
  * 'Readonly<{ rung: true; floor: true; barbellOwned: true; sessionOwned: true;
- * }>' but required in type 'Readonly<Record<keyof FloorSimContext, true>>'".
+ * capability: true; }>' but required in type 'Readonly<Record<keyof FloorSimContext, true>>'".
  *
  * Under that same optional mutant `npx vitest run src/empire/floorSim.test.ts`
- * is 52 of 52 green, which is the honest statement of where the catcher lives:
+ * is 58 of 58 green, which is the honest statement of where the catcher lives:
  * it is `tsc`, and a run of this file alone does not see it.
  *
  * Its own limit, and the catcher for it: this says which keys the type has and
@@ -1902,6 +1913,7 @@ const CONTEXT_KEYS: Readonly<Record<keyof FloorSimContext, true>> = Object.freez
   floor: true,
   barbellOwned: true,
   sessionOwned: true,
+  capability: true,
 });
 
 /**
@@ -1958,20 +1970,21 @@ const readByTheSim: readonly string[] = Object.keys(T)
 const EMPIRE_TUNING_SOURCE = readFileSync(path.join(HERE, 'empireTuning.ts'), 'utf8');
 
 describe('the sim reads presentation inputs and nothing economic', () => {
-  it('carries exactly the four presentation inputs on its context', () => {
+  it('carries exactly the five presentation inputs on its context', () => {
     // Two directions and two mechanisms. The runtime half says the value
-    // `contextFor` builds carries these four keys and no others; the type half
+    // `contextFor` builds carries these five keys and no others; the type half
     // is `CONTEXT_KEYS` above, whose catcher is `tsc` rather than vitest and
-    // which is what covers an optional fifth field.
+    // which is what covers an optional sixth field.
     const context = contextFor('garage', createFloorState('garage'));
     expect(Object.keys(CONTEXT_KEYS).sort()).toEqual([
       'barbellOwned',
+      'capability',
       'floor',
       'rung',
       'sessionOwned',
     ]);
     expect(Object.keys(context).sort()).toEqual(Object.keys(CONTEXT_KEYS).sort());
-    expect(Object.keys(CONTEXT_KEYS).length).toBe(4);
+    expect(Object.keys(CONTEXT_KEYS).length).toBe(5);
   });
 
   it('reads exactly the fifteen tuning entries it declares', () => {
@@ -2101,5 +2114,109 @@ describe('the sim reads presentation inputs and nothing economic', () => {
     }
     // 16 -> 18: the two corner items above.
     expect(placed).toBe(18);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 11. Stage D — Quality / Capacity / Throughput change different sim quantities
+// ---------------------------------------------------------------------------
+
+describe('Stage D Q/C/T on the real floor sim', () => {
+  const KIT_OWNED: readonly LadderEquipmentItem[] = Object.freeze([...T.LADDER_STARTING_EQUIPMENT]);
+
+  function benchOnlyContext() {
+    const opening = createFloorState('garage');
+    const floor: FloorState = Object.freeze({
+      ...opening,
+      furniture: Object.freeze({ 'flat-bench': opening.furniture['flat-bench'] }),
+    });
+    return (capability: ReturnType<typeof stockStationCapability>): FloorSimContext => ({
+      rung: 'garage',
+      floor,
+      barbellOwned: KIT_OWNED,
+      sessionOwned: [],
+      capability,
+    });
+  }
+
+  function purchased(axis: 'quality' | 'capacity' | 'throughput') {
+    const outcome = upgradeStation(
+      stockStationCapability(),
+      'flat-bench',
+      axis,
+      10_000,
+      true,
+      true,
+    );
+    if (outcome.kind !== 'upgraded') throw new Error(`fixture could not purchase ${axis}`);
+    return outcome.capability;
+  }
+
+  it('stock realises exactly one use cell on the garage bench', () => {
+    const context = benchOnlyContext()(stockStationCapability());
+    const bench = floorStations(context).find((row) => row.ref.item === 'flat-bench');
+    expect(bench?.useCells.length).toBe(1);
+    expect(bench?.useCell).toEqual(bench?.useCells[0]);
+  });
+
+  it('the opening garage layout can realise a second bench position', () => {
+    const context: FloorSimContext = {
+      rung: 'garage',
+      floor: createFloorState('garage'),
+      barbellOwned: KIT_OWNED,
+      sessionOwned: [],
+      capability: purchased('capacity'),
+    };
+    const bench = floorStations(context).find((row) => row.ref.item === 'flat-bench');
+    expect(bench?.useCells.length).toBe(2);
+  });
+
+  it('Capacity realises two use cells from approach cells, Quality and Throughput do not', () => {
+    const make = benchOnlyContext();
+    expect(
+      floorStations(make(purchased('capacity'))).find((row) => row.ref.item === 'flat-bench')
+        ?.useCells.length,
+    ).toBe(2);
+    expect(
+      floorStations(make(purchased('quality'))).find((row) => row.ref.item === 'flat-bench')
+        ?.useCells.length,
+    ).toBe(1);
+    expect(
+      floorStations(make(purchased('throughput'))).find((row) => row.ref.item === 'flat-bench')
+        ?.useCells.length,
+    ).toBe(1);
+  });
+
+  it('Capacity can seat two members at once; stock cannot', () => {
+    const make = benchOnlyContext();
+    const stock = make(stockStationCapability());
+    const dual = make(purchased('capacity'));
+    const stockRun = runFloorSim(createFloorSimState(stock, 1), stock, 80);
+    const dualRun = runFloorSim(createFloorSimState(dual, 1), dual, 80);
+    const ref = { kind: 'fixed' as const, item: 'flat-bench' as const };
+    expect(stationOccupancy(stockRun.members, ref)).toBeLessThanOrEqual(1);
+    expect(stationOccupancy(dualRun.members, ref)).toBe(2);
+  });
+
+  it('Throughput shortens the use timer the sim actually writes; Quality does not', () => {
+    const make = benchOnlyContext();
+    const stock = make(stockStationCapability());
+    const fast = make(purchased('throughput'));
+    const fancy = make(purchased('quality'));
+    const readUseTimer = (context: FloorSimContext): number => {
+      let at = createFloorSimState(context, 1);
+      for (let i = 0; i < 80; i += 1) {
+        at = stepFloorSim(at, context);
+        const using = at.members.find((member) => member.state === 'using');
+        if (using !== undefined) return using.timer;
+      }
+      throw new Error('nobody started using');
+    };
+    const stockTimer = readUseTimer(stock);
+    const fastTimer = readUseTimer(fast);
+    const fancyTimer = readUseTimer(fancy);
+    expect(fancyTimer).toBe(stockTimer);
+    expect(fastTimer).toBeLessThan(stockTimer);
+    expect(fastTimer).toBeGreaterThan(0);
   });
 });

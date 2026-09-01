@@ -272,6 +272,7 @@ import {
   playerFacingActivityGroupLabel,
   playerFacingEquipmentLabel,
   playerFacingManagerCapability,
+  playerFacingUpgradeRefuse,
   recoveryBlockingItems,
 } from './stationView';
 import {
@@ -525,6 +526,7 @@ export function GymScreen(props: GymViewProps) {
     weekLog,
     floor,
     surface,
+    capability,
   } = props.state;
   // Stage 1/2's own `GymState`, read out of the managed state that holds it.
   // There is one `GymState` in this screen's props (`ladderView.tsx`'s
@@ -570,7 +572,15 @@ export function GymScreen(props: GymViewProps) {
           </Pressable>
         )}
         {lastRefusal === null ? null : (
-          <Text testID={'gymscreen-refusal'} style={styles.hudText}>refused: {lastRefusal}</Text>
+          <Text testID={'gymscreen-refusal'} style={styles.hudText}>
+            refused:{' '}
+            {lastRefusal === 'not-upgradable' ||
+            lastRefusal === 'already-upgraded' ||
+            lastRefusal === 'not-placed' ||
+            lastRefusal === 'no-second-position'
+              ? playerFacingUpgradeRefuse(lastRefusal)
+              : lastRefusal}
+          </Text>
         )}
       </View>
       <View testID={'gymscreen-stage'} style={styles.stage}>
@@ -581,6 +591,7 @@ export function GymScreen(props: GymViewProps) {
           floor={floor}
           dispatch={dispatch}
           managed={managed}
+          capability={capability}
           buildMode={surface === 'build'}
         />
       </View>
