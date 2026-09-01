@@ -3164,7 +3164,8 @@ than the ruling's own §1–§23 sequence:
   floor/management data with no new simulation. **Closed** by human play of
   C.1d at `460f794a` — Empire now feels like a primitive gym-management
   game rather than controls around an animation. Carry-forward debts
-  (C-DEBT-01..03) do not reopen it. Next is C.2 simulator fidelity.
+  (C-DEBT-01..04) do not reopen it. C.2 simulator fidelity is recorded in
+  §5.16. Stage D is not started.
 - **Stage D.** Quality/Capacity/Throughput on Barbell first (item 2),
   touching `floorSim.ts`'s capacity constant — the one piece of this pass
   that changes the simulation's own core rather than its surface, so it
@@ -3277,9 +3278,11 @@ Closing Stage C does not mean the remaining defects do not exist. These are debt
 
 **C-DEBT-02 — buy → place human verification.** The human could not test purchase → Build → placement because the live purse was roughly 2–5 Gym Bucks and the cheapest relevant SKU was 350 / already owned. Automated coverage exists. Future human verification of this path needs an explicit funded QA fixture or deterministic test state. Do not modify production prices or earnings merely to make the test convenient.
 
-**C-DEBT-03 — occupied-station move completion.** The human successfully selected an occupied Flat bench for movement, proving the old pointer/hit issue is gone. The human cancelled rather than completing the relocation. Completing that occupied move (select occupied station → place on a legal tile, ownership and purse unchanged) remains a carry-forward verification item. It does not reopen Stage C.
+**C-DEBT-03 — occupied-station move completion.** The human successfully selected an occupied Flat bench for movement, proving the old pointer/hit issue is gone. The human cancelled rather than completing the relocation. Completing that occupied move (select occupied station → place on a legal tile, member simulation remains valid) is verified by the human-surface coordinate harness. It does not reopen Stage C.
 
-C.2 simulator fidelity is now the next authorized Empire stage. It is not started by this record. Stage D is not started.
+**C-DEBT-04 — invalid placement feedback.** Overlap placement was refused correctly but appeared silent: the reason sat on the grid under the Cancel chrome. Carry-forward UX only: selection stays active; the attempted cells outline; the banner shows `Space occupied` / `Doesn't fit here` / `Outside the gym`. Placement mechanics are unchanged. Fixed as isolated presentation work alongside C.2. Desktop and mobile-sized viewports both show the banner reason and the attempted-cell outline. Does not reopen Stage C.
+
+C.2 simulator fidelity follows this Stage C close. Stage D is not started by C-DEBT-04. The Living Gym Doctrine (§5.15) does not authorize Stage D during C.2.
 
 ### 5.15 The Living Gym Doctrine
 
@@ -3528,13 +3531,73 @@ operating multiple locations. This is not an unpause of §5.11 Stage F.
 
 Current sequence remains:
 
-Stage C human close (done at `460f794a`) → C.2 simulator fidelity → Stage D
-Q/C/T → D2 balance verdict → reputation seam → persistent NPC roster /
-tenure → deeper staff policy → portfolio only after explicit human unpause.
+Stage C human close (done at `460f794a`) → C.2 simulator fidelity (done,
+§5.16) → Stage D Q/C/T → D2 balance verdict → reputation seam → persistent
+NPC roster / tenure → deeper staff policy → portfolio only after explicit
+human unpause.
 
 The doctrine does not authorize implementing future stages early. It defines
-their quality bar. C.2 is next and is not started by the Stage C close
-record.
+their quality bar. C.2 is recorded below. Stage D is not started by C.2.
+
+### 5.16 Stage C.2 — simulator fidelity (online vs offline in aggregate pacing)
+
+C.2 is a simulator-fidelity correction. It is not a balance pass. It is not
+Stage D. No Gym Bucks rates, equipment costs, facility costs, offline
+fraction, offline cap, wear rates, repair costs, manager wages, hire costs,
+auto-repair thresholds, failure thresholds, Q/C/T, reputation, or member
+persistence were changed.
+
+**The defect.** `accrueLadderGymBucks` / `ladderCheckIn` / `gymCheckIn` /
+`managedCheckIn` already distinguished `'online'` from `'offline'`.
+`pacingCheckInSchedule` already tagged `'watcher'` `'online'` and every
+other policy `'offline'`. `runPacingLadder` already forwarded `entry.mode`
+into `ladderCheckIn`, so the relocate-instantly Garage → Storage / Warehouse
+numbers were already mode-aware. `runLadder` and `runManagedGym` did not
+accept a mode and always called check-in at the `'offline'` default, so
+`runPacingLadderRealistic('watcher')` and every `runPacingManagedGym('watcher')`
+measured a watching player at the offline fraction.
+
+**The correction.** Optional `mode: EarningsMode = 'offline'` on `runLadder`
+and `runManagedGym`. Pacing wrappers take `schedule[0]?.mode ?? 'offline'`
+and pass it through. Accrual, cap, wear, wages, repair, and failure still
+go through the existing functions. One economic truth.
+
+**Relocate-instantly (already mode-aware; unchanged by C.2).**
+
+| Policy | Garage → Storage | Garage → Warehouse |
+|---|---|---|
+| watcher | 1.74d | 10.42d |
+| few-times-a-day | 3.50d | 21.00d |
+| once-a-day | 7.00d | 43.00d |
+| sporadic | 3.83d | 21.33d |
+
+The ~22-day warehouse target remains closer to few-times-a-day / sporadic
+than to once daily. That is a measurement, not a retune.
+
+**Realistic `runLadder` (`cheapest-affordable-first`) at 7d — watcher was the contaminated cell.**
+
+| Policy | Old aggregate rating | 7d rung | 7d Gym Bucks |
+|---|---|---|---|
+| watcher | offline (wrong) | storage-unit | 8660.04 |
+| watcher | online (corrected) | strip-mall-unit | 40573.80 |
+| few-times-a-day | offline (already correct) | storage-unit | 8600.00 |
+| once-a-day | offline (already correct) | storage-unit | 50.00 |
+| sporadic | offline (already correct) | storage-unit | 7880.00 |
+
+**Management 7d, watcher — reconstructed old contamination vs corrected online.** Wear/condition/failure timing match because those axes key off banked seconds, not the money multiplier. Net position roughly doubles, as the 0.5 offline fraction predicts, minus flat hire/repair cash.
+
+| Policy | Mode | 7d netPosition | phase | meanCondition | hires | failedAt |
+|---|---|---|---|---|---|---|
+| hands-off | offline (old) | 4375.97 | sound | 0.637 | 0 | — |
+| hands-off | online (corrected) | 9187.27 | sound | 0.637 | 0 | — |
+| diligent | offline (old) | 4563.75 | sound | 0.974 | 0 | — |
+| diligent | online (corrected) | 9562.84 | sound | 0.974 | 0 | — |
+| cheapskate | offline (old) | 1657.03 | failed | 0.896 | 1 | 34561 |
+| cheapskate | online (corrected) | 3438.36 | failed | 0.896 | 1 | 34561 |
+
+**Novice / cheapskate, re-measured, not retuned.** Hire cost 150 Gym Bucks. Wage 2 Gym Bucks per banked hour. Auto-repair threshold 0 (never fires). Cheapskate never pays off vs hands-off inside 7d in any of the four cadences. Watcher, few-times-a-day, and sporadic still fail with a hired novice by day 7; once-a-day does not hire and does not fail inside 7d. Leave the tuning decision for D2.
+
+C.2 does not start Stage D / the Living Gym Q-C-T vertical slice.
 
 ---
 

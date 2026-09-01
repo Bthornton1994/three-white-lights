@@ -608,10 +608,17 @@ function cheapestAffordable(
  * after each check-in until nothing is affordable. Both exist so the
  * never-punish sweeps can compare engagement under a spending rule and under
  * none — the pair the v1 engagement measurement used.
+ *
+ * `mode` is GDD §5.14 Stage C.2: the aggregate runner must not silently
+ * offline-rate a watching player. Defaults to `'offline'` so every caller
+ * written before this parameter is unchanged. Accrual still goes through
+ * `ladderCheckIn` → `accrueLadderGymBucks`; this file does not reimplement
+ * the rate, fraction, or cap.
  */
 export function runLadder(
   checkInsSeconds: readonly number[],
   policy: LadderPolicy,
+  mode: EarningsMode = 'offline',
 ): LadderRun {
   if (!LADDER_POLICIES.includes(policy)) {
     refuseWith(`${String(policy)} is not a ladder policy`);
@@ -628,7 +635,7 @@ export function runLadder(
       refuseWith(`check-ins must be strictly ascending, received ${at} after ${previous}`);
     }
     previous = at;
-    const checkedIn = ladderCheckIn(state, at);
+    const checkedIn = ladderCheckIn(state, at, mode);
     state = checkedIn.state;
     accruedGymBucks = scrubPrecision(accruedGymBucks + checkedIn.accrual.gymBucks);
     secondsBanked += checkedIn.accrual.secondsBanked;

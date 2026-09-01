@@ -2409,11 +2409,18 @@ function hireKindOf(tier: ManagerTier): ManagedDecisionKind {
  * policy and wiring. Deterministic by construction: no draw, no clock read,
  * fixed item order, fixed decision order per check-in. The schedule must be
  * strictly ascending whole ticks, as `ladderCheckIn` requires.
+ *
+ * `mode` is GDD §5.14 Stage C.2: watching check-ins must accrue `'online'`.
+ * Defaults to `'offline'` so every pre-existing caller is unchanged. Wear,
+ * wages, repair and failure still go through `checkInWithWearBasis` /
+ * `managedCheckIn`; this parameter only reaches the existing `gymCheckIn`
+ * mode argument.
  */
 export function runManagedGym(
   checkInsSeconds: readonly number[],
   policy: ManagementPolicy,
   wiring: ManagementWiring = shippedManagementWiring(),
+  mode: EarningsMode = 'offline',
 ): ManagedRun {
   if (!MANAGEMENT_POLICIES.includes(policy)) {
     refuseWith(`${String(policy)} is not a management policy`);
@@ -2463,7 +2470,7 @@ export function runManagedGym(
 
     const basis: WearBasis =
       wearsOnWallClock(wiring.key) ? 'wall-clock-elapsed' : 'banked-operation';
-    const outcome = checkInWithWearBasis(state, at, basis);
+    const outcome = checkInWithWearBasis(state, at, basis, mode);
     state = outcome.state;
     autoRepairCount += outcome.autoRepairs.length;
     autoRepairsReopeningRefusedOrders += outcome.autoRepairsReopeningRefusedOrders;

@@ -101,16 +101,10 @@
  * equipment along the way. Comparing the two shows what equipment purchases
  * cost a real player in relocation time.
  *
- * THE LIMIT OF BOTH, STATED BECAUSE THE ENGINE HAS IT AND THIS FILE DOES NOT
- * PATCH AROUND IT: `runLadder` calls `ladderCheckIn` with no `mode` argument,
- * so it is `'offline'`-rated on every check-in regardless of the schedule's
- * own policy — there is no `'online'`-mode variant of the shipped composed
- * ladder run. So `runPacingLadderRealistic('watcher', …)` under-reports what
- * a true always-online player would earn, by the same online/offline gap
- * `runPacingLadder`'s own mode-aware loop measures directly. Fixing this
- * means adding a `mode` parameter to `runLadder` itself, which is a
- * `ladder.ts` edit and out of this round's scope; it is reported here rather
- * than silently worked around.
+ * GDD §5.14 Stage C.2: `runLadder` now accepts the schedule's earnings mode
+ * and forwards it to `ladderCheckIn`. `runPacingLadderRealistic` therefore
+ * rates `'watcher'` `'online'` and every other policy `'offline'`, matching
+ * `runPacingLadder`. It still does not reimplement accrual.
  *
  * ===========================================================================
  * 4. Management pacing: three REAL shipped policies, zero reimplementation
@@ -134,13 +128,10 @@
  *     instant it is affordable, before there is any visible reason to".
  *
  * `runPacingManagedGym` is a thin wrapper: build the schedule, take its
- * seconds (mode carries no meaning for `runManagedGym` — see the limit
- * below), call the real `runManagedGym`.
- *
- * THE SAME LIMIT AS §3's, IN THE SAME MECHANISM: `runManagedGym` also calls
- * its check-ins with no `mode` argument, so every management reading below —
- * `'watcher'` included — is computed at the `'offline'` income fraction.
- * Reported, not patched around, for the identical reason.
+ * seconds and its uniform earnings mode, call the real `runManagedGym`.
+ * Stage C.2 forwards that mode so a watching player is `'online'`-rated
+ * through wear, wages, repair and failure, not only through the
+ * relocate-instantly ladder loop.
  */
 
 import { refuseWith } from './empireCore';
@@ -331,19 +322,18 @@ export function runPacingLadder(
 }
 
 /**
- * Header §3's secondary ladder measurement: the real, unmodified
- * `runLadder(schedule, 'cheapest-affordable-first')` — a player who also
- * buys equipment along the way. Offline-rated throughout regardless of
- * `checkInPolicy`; see header §3's limit paragraph.
+ * Header §3's secondary ladder measurement: the real `runLadder` under
+ * `'cheapest-affordable-first'` — a player who also buys equipment along
+ * the way. Stage C.2 forwards the schedule's earnings mode.
  */
 export function runPacingLadderRealistic(
   checkInPolicy: PacingCheckInPolicy,
   horizonSeconds: number,
 ): LadderRun {
-  const seconds = pacingCheckInSchedule(checkInPolicy, horizonSeconds).map(
-    (entry) => entry.atSeconds,
-  );
-  return runLadder(seconds, 'cheapest-affordable-first');
+  const schedule = pacingCheckInSchedule(checkInPolicy, horizonSeconds);
+  const seconds = schedule.map((entry) => entry.atSeconds);
+  const mode = schedule[0]?.mode ?? 'offline';
+  return runLadder(seconds, 'cheapest-affordable-first', mode);
 }
 
 // ---------------------------------------------------------------------------
@@ -351,19 +341,18 @@ export function runPacingLadderRealistic(
 // ---------------------------------------------------------------------------
 
 /**
- * Header §4's management measurement: the real, unmodified
- * `runManagedGym(schedule, managementPolicy)`. Offline-rated throughout
- * regardless of `checkInPolicy`; see header §4's limit paragraph.
+ * Header §4's management measurement: the real `runManagedGym` under the
+ * named management policy, with the schedule's earnings mode forwarded.
  */
 export function runPacingManagedGym(
   checkInPolicy: PacingCheckInPolicy,
   managementPolicy: ManagementPolicy,
   horizonSeconds: number,
 ): ManagedRun {
-  const seconds = pacingCheckInSchedule(checkInPolicy, horizonSeconds).map(
-    (entry) => entry.atSeconds,
-  );
-  return runManagedGym(seconds, managementPolicy);
+  const schedule = pacingCheckInSchedule(checkInPolicy, horizonSeconds);
+  const seconds = schedule.map((entry) => entry.atSeconds);
+  const mode = schedule[0]?.mode ?? 'offline';
+  return runManagedGym(seconds, managementPolicy, undefined, mode);
 }
 
 // ---------------------------------------------------------------------------

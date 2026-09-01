@@ -3013,7 +3013,10 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 3107 -> 3118: Stage C.1c pressLocalPixels / pressTile / per-tile hits.
   // 3118 -> 3088: Stage C.1d removed PanResponder/pixel-math call sites,
   // then recovery-line percent projection added four displayConditionPercent calls.
-  CALLS_EXAMINED: 3088,
+  // 3088 -> 3104: Stage C.2 EarningsMode on runLadder/runManagedGym plus
+  // C-DEBT-04 refusal-region helpers (clipRefusalRegion Math.max/min,
+  // overlay View). Read from this pin's own failure value.
+  CALLS_EXAMINED: 3104,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -14768,7 +14771,8 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // 30 -> 41: Stage C.1b tap-to-place / member-select / furniture helpers.
       // 50 -> 53: Stage C.1c pressLocalPixels / pressTile / handleGridPressEvent.
       // 53 -> 45: Stage C.1d removed PanResponder/pixel-math helpers.
-      'FloorGrid.tsx': 45,
+      // 45 -> 47: C-DEBT-04 clipRefusalRegion's two returns.
+      'FloorGrid.tsx': 47,
       // CROSSING 6: GymScreen.tsx's own two helper functions
       // (`allocationOptions`, `describeSlotOutcome`, the latter with three
       // return statements across its three arms) plus the component's own
@@ -15506,7 +15510,7 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // .sort(...)` — the receiver is a freshly constructed array nothing
   // outside the function holds, the same shape as every `receiver=
   // ArrayLiteralExpression`/`receiver=NewExpression` row here.
-  'pacing.ts:255 receiver=CallExpression',
+  'pacing.ts:246 receiver=CallExpression',
   'recruitment.ts:388 returned=unfollowable:state',
   // "chrome vs paid" bug-fix round: 562 -> 563, 655 -> 656, 791 -> 798,
   // 802 -> 809 — pure line shifts from the `EarningsMode` import and the new
@@ -15573,9 +15577,9 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   // else; every shift is new parameters/doc comments for the `mode:
   // EarningsMode` threading, none of it a behaviour change the relation
   // itself would care about.
-  'ladder.ts:632 LadderState asked=true walked=false',
-  'ladder.ts:643 LadderState asked=true walked=false',
-  'ladder.ts:649 LadderState asked=true walked=false',
+  'ladder.ts:639 LadderState asked=true walked=false',
+  'ladder.ts:650 LadderState asked=true walked=false',
+  'ladder.ts:656 LadderState asked=true walked=false',
   // "KILL THE MINT" ROUND: every line number in this block moved again, and
   // the count of rows is UNCHANGED — verified the way this list's own history
   // says to, by re-running the assertion and reading its own failure value
@@ -15666,23 +15670,23 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'management.ts:1623 LadderAccrual asked=true walked=false',
   'management.ts:1633 GymState asked=true walked=false',
   'management.ts:1908 ManagedGym asked=true walked=false',
-  'management.ts:2467 ManagedGym asked=true walked=false',
-  'management.ts:2511 ManagedGym asked=true walked=false',
-  'management.ts:2532 ManagedGym asked=true walked=false',
+  'management.ts:2474 ManagedGym asked=true walked=false',
+  'management.ts:2518 ManagedGym asked=true walked=false',
   'management.ts:2539 ManagedGym asked=true walked=false',
-  'management.ts:2549 ManagedGym asked=true walked=false',
-  'management.ts:2575 ManagedGym asked=true walked=false',
-  'management.ts:2600 ManagedGym asked=true walked=false',
-  'management.ts:2619 ManagedGym asked=true walked=false',
-  'management.ts:2630 ManagedGym asked=true walked=false',
-  'management.ts:2650 ManagedGym asked=true walked=false',
-  'management.ts:2666 ManagedGym asked=true walked=false',
+  'management.ts:2546 ManagedGym asked=true walked=false',
+  'management.ts:2556 ManagedGym asked=true walked=false',
+  'management.ts:2582 ManagedGym asked=true walked=false',
+  'management.ts:2607 ManagedGym asked=true walked=false',
+  'management.ts:2626 ManagedGym asked=true walked=false',
+  'management.ts:2637 ManagedGym asked=true walked=false',
+  'management.ts:2657 ManagedGym asked=true walked=false',
+  'management.ts:2673 ManagedGym asked=true walked=false',
   // GDD §5.14 Stage B: `runPacingLadder`'s two `state = ....state;`
   // assignments (from `ladderCheckIn`'s and `moveUpLadder`'s own
   // `LadderState` results), the same shape as `sessions.ts`'s
   // `LadderState`-typed rows below.
-  'pacing.ts:301 LadderState asked=true walked=false',
-  'pacing.ts:307 LadderState asked=true walked=false',
+  'pacing.ts:292 LadderState asked=true walked=false',
+  'pacing.ts:298 LadderState asked=true walked=false',
   'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
   'sessions.ts:656 LadderState asked=true walked=false',
   'sessions.ts:696 LadderState asked=true walked=false',
@@ -15814,7 +15818,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 13 -> 31: Stage C.1b FloorGrid local calls (tryPlaceAt, member/station
   // hit handlers, build-mode tray). Re-measured by running this assertion.
   // 37 -> 32: Stage C.1d dropped PanResponder-local call sites.
-  local: 32,
+  // 32 -> 37: C-DEBT-04 clipRefusalRegion / flashRefusal region calls.
+  local: 37,
   // GDD §5.13 presentation Phase 3: function 827 -> 918, member 810 -> 889,
   // member-of-parameter 21 -> 27, all floorSim.ts's own call targets. Read
   // from this table's own failure value.
@@ -15886,7 +15891,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1538 -> 1541: Stage C.1c pressLocalPixels / pressTile / handleGridPressEvent.
   // 1541 -> 1531: Stage C.1d PanResponder/pixel-math helpers removed.
   // 1531 -> 1535: recovery-line percent projection.
-  function: 1535,
+  // 1535 -> 1542: Stage C.2 mode forwarding plus C-DEBT-04 helpers.
+  function: 1542,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -15935,7 +15941,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // surfaces, furniture, members). Re-measured by running this assertion.
   // 1413 -> 1421: Stage C.1c Number.isFinite / flatMap / per-tile Pressable.
   // 1421 -> 1404: Stage C.1d PanResponder/member-call sites removed.
-  member: 1404,
+  // 1404 -> 1408: C-DEBT-04 Math.max/min and overlay style members.
+  member: 1408,
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -16020,7 +16027,7 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // named individually in `DECLARED_FRESH_RECEIVERS`.
   // 11 -> 12: GDD §5.14 Stage B's `pacingCheckInSchedule` — the
   // `Array.from(new Set(...)).sort(...)` fresh mutating receiver, the same
-  // site `DECLARED_FRESH_RECEIVERS` names (`pacing.ts:255`).
+  // site `DECLARED_FRESH_RECEIVERS` names (`pacing.ts:246`).
   fresh: 12,
   unclassified: 0,
 });
@@ -16113,7 +16120,8 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 806 -> 809: Stage C.1c per-tile Build hits add three FloorGrid return sites.
   // 809 -> 808: Stage C.1d FloorGrid returns 53->45 and callbacks 7->5,
   // stationView returns 17->26.
-  SITES: 808,
+  // 808 -> 810: C-DEBT-04 clipRefusalRegion two returns (FloorGrid 45->47).
+  SITES: 810,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -16253,7 +16261,8 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 69_328 -> 69_335: Stage C.1c freeze sim while a tile is pending.
   // 69_335 -> 68_752: Stage C.1d PanResponder/pixel-math source removed.
   // 68_752 -> 68_760: recovery-line percent projection calls.
-  NODES_EXAMINED: 68_760,
+  // 68_760 -> 69_089: Stage C.2 mode docs/args plus C-DEBT-04 refusal region.
+  NODES_EXAMINED: 69_089,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

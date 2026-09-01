@@ -31,7 +31,9 @@ import {
   runPacingManagedGym,
 } from './pacing';
 import { EMPIRE_TUNING } from './empireTuning';
-import { offlineBankingHorizonSeconds } from './production';
+import { accrueLadderGymBucks, ladderIncomeRatePerHour, runLadder } from './ladder';
+import { runManagedGym, shippedManagementWiring } from './management';
+import { offlineBankingHorizonSeconds, SHIPPED_OFFLINE_BANKING_POLICY } from './production';
 
 const HORIZONS = EMPIRE_TUNING.PACING_REPORT_HORIZONS_SECONDS;
 const MAX_HORIZON_SECONDS = HORIZONS[HORIZONS.length - 1] as number;
@@ -342,6 +344,30 @@ describe('the pacing report — real numbers, printed', () => {
       }
     }
     expect(extracted).toBe(20);
+
+    const warehouseLines: string[] = [
+      '=== Garage → Warehouse, relocate-instantly, longer horizon (not a 7-day pin) ===',
+    ];
+    const longHorizonByPolicy: Readonly<Record<PacingCheckInPolicy, number>> = Object.freeze({
+      watcher: 15 * SECONDS_PER_DAY,
+      'few-times-a-day': 45 * SECONDS_PER_DAY,
+      'once-a-day': 60 * SECONDS_PER_DAY,
+      sporadic: 45 * SECONDS_PER_DAY,
+    });
+    for (const policy of PACING_CHECK_IN_POLICIES) {
+      const run = runPacingLadder(policy, longHorizonByPolicy[policy]);
+      const storageAt = run.firstMovedAtSeconds['storage-unit'];
+      const warehouseAt = run.firstMovedAtSeconds['warehouse'];
+      warehouseLines.push(
+        `${policy}: storage-unit ${
+          storageAt === undefined ? 'not reached' : `${(storageAt / SECONDS_PER_DAY).toFixed(2)}d`
+        }; warehouse ${
+          warehouseAt === undefined ? 'not reached' : `${(warehouseAt / SECONDS_PER_DAY).toFixed(2)}d`
+        } (horizon ${(longHorizonByPolicy[policy] / SECONDS_PER_DAY).toFixed(0)}d)`,
+      );
+    }
+    // eslint-disable-next-line no-console
+    console.log(warehouseLines.join('\n'));
   });
 
   it('measures management payback: cheapskate (hires cheapest tier) vs diligent (manual repair) vs hands-off', () => {
@@ -440,5 +466,166 @@ describe('the pacing report — real numbers, printed', () => {
     // failure of this tool, per the brief. No assertion on the number beyond
     // it being a valid non-negative count actually computed.
     expect(deadPeriods).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('Stage C.2 — aggregate runners propagate EarningsMode', () => {
+  const hour = EMPIRE_TUNING.SECONDS_PER_HOUR;
+  const garageRate = ladderIncomeRatePerHour('garage');
+
+  it('runLadder online vs offline diverge when the authoritative model says they should', () => {
+    const schedule = Object.freeze([hour]);
+    const online = runLadder(schedule, 'hoard', 'online');
+    const offline = runLadder(schedule, 'hoard', 'offline');
+    const expectedOnline = accrueLadderGymBucks(
+      garageRate,
+      hour,
+      SHIPPED_OFFLINE_BANKING_POLICY,
+      'online',
+    );
+    const expectedOffline = accrueLadderGymBucks(
+      garageRate,
+      hour,
+      SHIPPED_OFFLINE_BANKING_POLICY,
+      'offline',
+    );
+    expect(expectedOnline.gymBucks).not.toBe(expectedOffline.gymBucks);
+    expect(online.accruedGymBucks).toBe(expectedOnline.gymBucks);
+    expect(offline.accruedGymBucks).toBe(expectedOffline.gymBucks);
+    expect(runLadder(schedule, 'hoard').accruedGymBucks).toBe(offline.accruedGymBucks);
+  });
+
+  it('runLadder does not manufacture an online/offline difference when no time elapses', () => {
+    const online = runLadder([], 'hoard', 'online');
+    const offline = runLadder([], 'hoard', 'offline');
+    expect(online.accruedGymBucks).toBe(0);
+    expect(offline.accruedGymBucks).toBe(0);
+    expect(online.state.gymBucks).toBe(offline.state.gymBucks);
+    expect(JSON.stringify(online)).toBe(JSON.stringify(offline));
+  });
+
+  it('runLadder check-in at the opening mark does not manufacture a mode difference', () => {
+    // A real check-in fires (the aggregate path is exercised) but the
+    // authoritative gap is zero, so both modes must pay nothing.
+    const schedule = Object.freeze([0]);
+    const online = runLadder(schedule, 'hoard', 'online');
+    const offline = runLadder(schedule, 'hoard', 'offline');
+    expect(online.checkIns).toBe(1);
+    expect(offline.checkIns).toBe(1);
+    expect(online.accruedGymBucks).toBe(0);
+    expect(offline.accruedGymBucks).toBe(0);
+    expect(JSON.stringify(online)).toBe(JSON.stringify(offline));
+    expect(
+      accrueLadderGymBucks(garageRate, 0, SHIPPED_OFFLINE_BANKING_POLICY, 'online').gymBucks,
+    ).toBe(
+      accrueLadderGymBucks(garageRate, 0, SHIPPED_OFFLINE_BANKING_POLICY, 'offline').gymBucks,
+    );
+  });
+
+  it('runManagedGym online vs offline diverge, and still wear, wage and phase through the real loop', () => {
+    const wiring = shippedManagementWiring();
+    const schedule = Object.freeze([
+      hour,
+      EMPIRE_TUNING.SECONDS_PER_DAY,
+      3 * EMPIRE_TUNING.SECONDS_PER_DAY,
+    ]);
+    const online = runManagedGym(schedule, 'diligent', wiring, 'online');
+    const offline = runManagedGym(schedule, 'diligent', wiring, 'offline');
+    const lastOnline = online.readings[online.readings.length - 1];
+    const lastOffline = offline.readings[offline.readings.length - 1];
+    expect(lastOnline).toBeDefined();
+    expect(lastOffline).toBeDefined();
+    if (lastOnline === undefined || lastOffline === undefined) return;
+    expect(lastOnline.netPosition).not.toBe(lastOffline.netPosition);
+    expect(lastOnline.meanCondition).toBeLessThan(1);
+    expect(lastOffline.meanCondition).toBeLessThan(1);
+    expect(lastOnline.phase).toBe('sound');
+    expect(lastOffline.phase).toBe('sound');
+    expect(runManagedGym(schedule, 'diligent', wiring).readings[schedule.length - 1]?.netPosition).toBe(
+      lastOffline.netPosition,
+    );
+  });
+
+  it('runManagedGym does not manufacture a mode difference when the authoritative gap is zero', () => {
+    const wiring = shippedManagementWiring();
+    const online = runManagedGym(Object.freeze([0]), 'diligent', wiring, 'online');
+    const offline = runManagedGym(Object.freeze([0]), 'diligent', wiring, 'offline');
+    expect(online.census.checkIns).toBe(1);
+    expect(offline.census.checkIns).toBe(1);
+    expect(JSON.stringify(online.readings)).toBe(JSON.stringify(offline.readings));
+    expect(online.state.gym.ladder.gymBucks).toBe(offline.state.gym.ladder.gymBucks);
+    expect(online.census.repairs).toBe(offline.census.repairs);
+  });
+
+  it('runManagedGym cheapskate still hires, wears and can fail under both modes', () => {
+    const wiring = shippedManagementWiring();
+    const schedule = Object.freeze(
+      pacingCheckInSchedule('few-times-a-day', EMPIRE_TUNING.SECONDS_PER_DAY * 7).map(
+        (entry) => entry.atSeconds,
+      ),
+    );
+    const online = runManagedGym(schedule, 'cheapskate', wiring, 'online');
+    const offline = runManagedGym(schedule, 'cheapskate', wiring, 'offline');
+    expect(online.census.hires).toBeGreaterThan(0);
+    expect(offline.census.hires).toBeGreaterThan(0);
+    expect(online.readings[online.readings.length - 1]?.meanCondition).toBeLessThan(1);
+    expect(offline.readings[offline.readings.length - 1]?.meanCondition).toBeLessThan(1);
+    expect(online.census.checkIns).toBe(schedule.length);
+    expect(offline.census.checkIns).toBe(schedule.length);
+    expect(online.census.failedAtCheckIn).not.toBeNull();
+    expect(offline.census.failedAtCheckIn).not.toBeNull();
+    expect(online.census.declines + online.census.repairs + online.census.autoRepairs).toBeGreaterThan(
+      0,
+    );
+    expect(offline.census.declines + offline.census.repairs + offline.census.autoRepairs).toBeGreaterThan(
+      0,
+    );
+  });
+
+  it('prints the Stage C.2 watcher correction against the old offline-rated aggregate path', () => {
+    const horizon = EMPIRE_TUNING.PACING_REPORT_HORIZONS_SECONDS[
+      EMPIRE_TUNING.PACING_REPORT_HORIZONS_SECONDS.length - 1
+    ] as number;
+    const watcherSeconds = pacingCheckInSchedule('watcher', horizon).map((entry) => entry.atSeconds);
+    const realisticOnline = runPacingLadderRealistic('watcher', horizon);
+    const realisticOffline = runLadder(watcherSeconds, 'cheapest-affordable-first', 'offline');
+    const lines: string[] = [
+      '=== Stage C.2 — watcher previously offline-rated through runLadder/runManagedGym ===',
+      `realistic ONLINE (corrected): rung ${realisticOnline.state.rung} gymBucks ${realisticOnline.state.gymBucks.toFixed(2)} moved [${realisticOnline.movedTo.join(', ') || 'none'}] bought [${realisticOnline.bought.join(', ') || 'none'}]`,
+      `realistic OFFLINE (old contamination): rung ${realisticOffline.state.rung} gymBucks ${realisticOffline.state.gymBucks.toFixed(2)} moved [${realisticOffline.movedTo.join(', ') || 'none'}] bought [${realisticOffline.bought.join(', ') || 'none'}]`,
+    ];
+    for (const managementPolicy of ['hands-off', 'diligent', 'cheapskate'] as const) {
+      const online = runPacingManagedGym('watcher', managementPolicy, horizon);
+      const offline = runManagedGym(watcherSeconds, managementPolicy, undefined, 'offline');
+      const lastOnline = online.readings[online.readings.length - 1];
+      const lastOffline = offline.readings[offline.readings.length - 1];
+      lines.push(
+        `managed ${managementPolicy} 7d ONLINE net=${lastOnline?.netPosition.toFixed(2)} phase=${lastOnline?.phase} condition=${lastOnline?.meanCondition.toFixed(3)} hires=${online.census.hires} failedAt=${String(online.census.failedAtCheckIn)}`,
+      );
+      lines.push(
+        `managed ${managementPolicy} 7d OFFLINE (old) net=${lastOffline?.netPosition.toFixed(2)} phase=${lastOffline?.phase} condition=${lastOffline?.meanCondition.toFixed(3)} hires=${offline.census.hires} failedAt=${String(offline.census.failedAtCheckIn)}`,
+      );
+    }
+    // eslint-disable-next-line no-console
+    console.log(lines.join('\n'));
+    expect(realisticOnline.state.gymBucks).toBeGreaterThan(realisticOffline.state.gymBucks);
+  });
+
+  it('runPacingLadderRealistic watcher is online-rated, once-a-day is offline-rated', () => {
+    const watcher = runPacingLadderRealistic('watcher', hour);
+    const once = runPacingLadderRealistic('once-a-day', hour);
+    const watcherOffline = runLadder(
+      pacingCheckInSchedule('watcher', hour).map((entry) => entry.atSeconds),
+      'cheapest-affordable-first',
+      'offline',
+    );
+    expect(watcher.accruedGymBucks).toBeGreaterThan(watcherOffline.accruedGymBucks);
+    expect(once.accruedGymBucks).toBe(
+      runLadder(
+        pacingCheckInSchedule('once-a-day', hour).map((entry) => entry.atSeconds),
+        'cheapest-affordable-first',
+        'offline',
+      ).accruedGymBucks,
+    );
   });
 });
