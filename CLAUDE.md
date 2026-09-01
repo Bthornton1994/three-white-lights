@@ -2227,6 +2227,33 @@ presentation-only as the answer; `DEMAND_BASE.bench`;
 `GRIND_BOOST_FORCE_MAX`; an RPE field on `LiftConfig`; squat/deadlift;
 pushing `main`.
 
+### RULED 2026-09-01: MONOTONIC SURPLUS-COMPRESSION SEARCH (PHONE PROTOTYPE REJECTED FOR MAGNITUDE, NOT FOR THE FAMILY)
+
+Human played the unshipped `c8=0.35/c9=0.2` prototype. RPE 8 and 9 moved the right way; RPE 9 overshot unchanged RPE 10 (phone ~2.64 s vs ~2.30 s). On screen, 9 was the fight and 10 was the relief. **Prototype not shipped. Not minted. Production `lift.ts` / `liftTuning.ts` still frozen at `55781923`.** Additive constants unmoved. RPE 10 identity held.
+
+**HEAD at search:** `55781923`. Tools: `tools/grind-monotonic-search.test.ts` plus `stickBreakEvenForce` on the isolated prototype. 12×12 compress grid × two derived-floor kinds, RPE 10 `compress=1` on every cell.
+
+**floorForce is derivable.** Two defensible quantities, neither a free knob:
+
+    breakEven     = (demand_stick − capacity) / GRIND_BOOST_FORCE_MAX
+                    ordinary 0.522 / 0.616 / 0.760
+    floorCadence  = mean grindForce at that cell's WORKING_FLOOR gap
+                    ordinary 0.626 / 0.741 / 0.842  (gaps 11 / 8 / 6)
+
+**CASE A — a monotonic region exists without touching RPE 10.** 33 coarse A∧B∧C∧D hits, 9 confirmed A–G at 16 seeds. One-global-c hits exist in both floor kinds. The phone-rejected `(0.35, 0.20)` is outside the region (9 at 122.9 t / feel~2.58 s vs 10 at 101.9 t / 2.23 s).
+
+Live 70 ms (16 seeds): 67.4 t good-lift / 77.3 t good-lift / 101.9 t grind. feel~ 1.65 / 1.82 / 2.23.
+
+**Three phone candidates, not shipped:**
+
+1. `breakEven / c8=0.65 / c9=0.70` — two knobs, derived stall-hold floor. 70 ms 86.3 / 93.9 / 101.9 t, feel~ 1.97 / 2.10 / 2.23, minVel ordered, fast-48 miss 8 and 9, 100% grind, 100% make. Mash 40 ms also grind, not a better class.
+2. `floorCadence / c=0.50` global — one knob, floor = WORKING_FLOOR force. 88.4 / 94.8 / 101.9 t, feel~ 2.00 / 2.11 / 2.23.
+3. `floorCadence / c=0.55` global — one knob, more 10−9 margin. 85.7 / 92.6 / 101.9 t, feel~ 1.96 / 2.07 / 2.23.
+
+**Pips:** `grindProgress` lights `round(grindForce * 14)`. Raw force, not useful force. At a compressed 70 ms RPE 8 the row reads 13.5/14 while useful is 0.83 (would be 11.7/14). Rail kick already tracks counted taps. Smallest truthful fix, when a compressor ships: `force`/`lit` read the same useful value the boost multiplies. Not done this pass.
+
+**Still refused:** production `stepLift`; ONSET/MIDDLE/WALL; fourth addend; RPE 10 response; quality-window; RPE on `LiftConfig`; squat/deadlift; mint; pushing `main`. Stall not required and not manufactured.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a

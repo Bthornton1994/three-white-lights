@@ -29,7 +29,6 @@ import {
   STICK_HEIGHT_FRAC,
   STICK_WIDTH,
 } from '../src/game/liftTuning';
-
 export interface SurplusCompressSpec {
   /** Below this grindForce, useful force is unchanged. */
   readonly floorForce: number;
@@ -52,6 +51,20 @@ export function surplusCompress(force: number, height: number, spec: SurplusComp
   const g = stickGauss(height);
   const w = spec.stickWeight * g;
   return f * (1 - w) + compressed * w;
+}
+
+/**
+ * Force that holds net = 0 at a given demand. Derived from capacity, demand,
+ * and GRIND_BOOST_FORCE_MAX — not a probe knob. Surplus compression with this
+ * as floorForce keeps the force that prevents a stall and taxes only the rest.
+ */
+export function stickBreakEvenForce(demand: number, capacity: number): number {
+  const boost = LIFT_TUNING.GRIND_BOOST_FORCE_MAX;
+  if (!(boost > 0)) return 1;
+  const need = (demand - capacity) / boost;
+  if (need <= 0) return 0;
+  if (need >= 1) return 1;
+  return need;
 }
 
 function scrub(value: number): number {
