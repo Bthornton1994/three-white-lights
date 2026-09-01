@@ -1825,6 +1825,132 @@ feels meaningfully harder, and RPE 10 stays appropriately maximal.
 **`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
 a crossing.
 
+### RULED 2026-08-31 (SECOND): PROTECT MONOTONIC DIFFICULTY, NOT A PROXY SCALAR
+
+Current implementation HEAD: `327a516c3645ceb9edee5d1ccf9eb0ef851469d4`. **The
+three-band architecture is accepted** — `CUT_MARGIN`, `WALL_CUT_MARGIN`,
+`ONSET`, `MIDDLE_ADDEND` and `WALL_ADDEND` all stay, and the middle band has
+proven the intended structural selectivity. **The magnitude result has not met
+the human target. Do not mint. Do not request another phone replay from the
+current `16/13/14/15` RPE 8 vector.**
+
+**1. The current candidate does not clear the human bar.** The prior ruling
+was *"current RPE 9 is what RPE 8 should feel like"* — pre-round RPE 9 was
+`12/10/10/11`, current RPE 8 is `16/13/14/15`. One cell moved by one tick.
+That is not a meaningful implementation of the requested magnitude. The
+cleaner two-tick RPE 8 → RPE 9 separation is useful mechanically and does not
+substitute for moving RPE 8 into the intended feel region.
+
+**2. The new question is about the monotonicity test itself.** The blocker is
+the pre-existing synthetic-ladder assertion that effective demand margin never
+decreases as synthetic load rises. **Do not simply delete it. Do not add an
+epsilon and call it solved.** First determine whether it is **(A)** a true
+gameplay invariant or **(B)** an analytical proxy that became over-strong once
+`benchWorkingRungDemand` became intentionally piecewise. **The permanent
+gameplay invariant is: holding lifter state and player-input model fixed,
+adding weight must never make the bench rep easier. That is non-negotiable.**
+Whether the intermediate scalar `effectiveMargin` must itself be
+non-decreasing is now open for measurement.
+
+**3. Build a direct behavioural load ladder.** Reuse the existing fixed
+wrecked check-in and synthetic load domain (`0.80 → 1.05` in `0.005` steps)
+unless evidence requires expanding it. At every load, measure actual rep
+behaviour directly — never inferred from effective margin:
+
+- **A. Sustainable cadence floor** — the largest inter-tap gap at which every
+  test seed makes the rep. Same meaning as `WORKING_FLOOR`; lower gap = harder.
+- **B. Realistic max-effort outcome** — the existing real-phone-derived cadence
+  generator, success/loss across the existing seed/draw domain.
+- **C. Perfect cadence** — preserve the existing non-vacuity/upper-performance
+  measurement.
+- **D. False-start behaviour** — the existing false-start input, driven
+  directly.
+
+**4. New behavioural monotonicity bar, across ascending synthetic load.**
+Sustainable cadence may remain equal or become harder; it may NOT become
+easier — in gap ticks, `floor(load[i+1]) <= floor(load[i])`, a smaller gap
+meaning a faster required tap rate. A heavier load must never permit a slower
+sustained cadence than the immediately lighter load under the same lifter
+state. For realistic max effort: once the arm begins losing at some synthetic
+load, a higher load must not return to an unequivocally easier success regime —
+prefer checking the full loss-rate sequence over a single boolean; at minimum
+no `loses → later makes everything` reversal. **If sampling noise makes strict
+rate monotonicity inappropriate, define and justify the smallest stable rule
+BEFORE tuning — do not invent a tolerance after seeing the desired
+candidate.** Perfect cadence must stay coherent; if heavier loads become
+easier there, report it. Every actual reachable cell must continue satisfying
+the existing false-start guarantee, via the existing direct reachable-cell
+sweep.
+
+**5. Effective-margin monotonicity becomes a diagnostic this round.**
+Temporarily treat `margin[i+1] >= margin[i]` as a measured diagnostic rather
+than an unquestioned stop condition while evaluating candidates. **Do not
+permanently remove or weaken it yet.** For every candidate report: where
+effective margin falls, if anywhere; the size of each fall; whether actual
+cadence difficulty also falls there; whether max-effort behaviour reverses
+there. This separates mathematical discontinuity from player-facing
+regression.
+
+**6. Search the newly testable space.** Hold `WALL_ADDEND = 0.192` initially —
+it remains the RPE 10 anchor. Search `MIDDLE_ADDEND` above the old `~0.2013`
+proxy ceiling, and `ONSET` high enough to materially move RPE 8. Objective:
+RPE 8 moves meaningfully toward the previous RPE 9 neighbourhood
+(`~12/10/10/11`, exact equality not required); RPE 9 meaningfully harder than
+RPE 8, not a one-tick technicality at one limiting cell; RPE 10 keeps
+`WORKING_FLOOR >= 7` on all four cells, preferring the existing `7/7/8/8`
+absent a measured reason to change.
+
+**7. Do not force the result — two legitimate outcomes.**
+
+- **Outcome A: behavioural monotonicity survives.** If a candidate with
+  `MIDDLE_ADDEND > ~0.2013` produces a small effective-margin downward step
+  BUT sustainable cadence never gets easier with added load, realistic
+  max-effort does not reverse, perfect cadence stays coherent, false-start
+  holds, and RPE 10 stays `>= 7` — then the old scalar assertion is
+  over-constraining the game. **Replace it with the direct behavioural
+  invariant and document why. Do not merely loosen it numerically.**
+- **Outcome B: actual difficulty falls too.** If crossing the middle→wall
+  boundary lets a heavier bar permit a slower tap rate, a recovery in
+  max-effort success, or another genuine easing — the old test was protecting
+  a real property. **Restore/retain it, stop the tuning search, and report
+  that the additive-band mechanism is exhausted for magnitude and needs a
+  different gameplay lever. Do not ship a non-monotonic difficulty curve.**
+
+**8. Still refused, to save the search:** warm-up / RPE ≤ 7 behaviour,
+`DEMAND_BASE.bench`, the Tuchscherer prescription, `GRIND_BOOST_FORCE_MAX`,
+`GRIND_TAP_REFRACTORY_TICKS`, `MAX_LOCKOUT_TICKS`, false-start semantics,
+Career, Empire, unrelated lifts. No `rpe` on `LiftConfig`.
+
+**9. If the three-addend model still cannot do it, STOP — do not add a fourth
+demand addend.** The next design investigation should move away from raw
+demand magnitude and examine the continuous-grind response itself. Candidate
+seam to investigate, **NOT authorised to ship this round**: the relationship
+between sustained tap charge and the bar's usable grind response. The reason
+is that the player's complaint is about required sustained exertion, and the
+physical load-demand curve should not be distorted indefinitely to tune that
+experience. Any future lever there must preserve: same thumb input means same
+player action; heavier load never gets easier; continuous grind remains
+rescuable; no hidden stamina meter; no input budget; no pay-to-win or
+progression dependency. **Return for another ruling before implementing such
+a mechanism.**
+
+**10. Required report, twenty items:** current three-band constants; synthetic
+load domain; current effective-margin vector; current sustainable-cadence
+vector; current max-effort loss-rate vector; candidate effective-margin
+vector; candidate sustainable-cadence vector; candidate max-effort vector;
+every effective-margin downward step; whether each downward step corresponded
+to actually easier gameplay; RPE 8 floor vector; RPE 9 floor vector; RPE 10
+floor vector; RPE 8→9 minimum separation; RPE 9→10 minimum separation;
+false-start reachable-cell result; warm-up result; meet census; full test
+result; and a recommendation on whether the old scalar-monotonicity assertion
+should survive.
+
+**Do not mint. Human phone replay only after the candidate materially changes
+RPE 8.**
+
+**`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
+a crossing.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
