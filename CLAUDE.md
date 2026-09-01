@@ -61,23 +61,27 @@ Coordination lives here, in the tree, because that is the only channel the
 sessions actually share. If you are a session that has just started and has no
 history, this section tells you which half of the repo is yours.
 
-**Session C is a Cursor cloud agent.** Sessions A and B are Claude Code
-sessions. C cannot see A or B except through this section and git history; A and
-B cannot see C the same way. C's harness does **not** support the isolated
-builder-then-fresh-critic pattern A and B use. C therefore does not claim a bar
-is met the way they do — C's increments are **ready for review** until a human
-or an A/B critic has actually looked. Do not treat C's own pass as verification.
+**Session C is a Cursor cloud agent.** Session A is now Grok Build on
+`grok/session-a-main-loop`. Session B is a separate Grok workstream on
+`grok/session-b-stage-c1b-playable-gym`. One model owning both sessions does
+**not** erase the concurrency boundary. C cannot see A or B except through this
+section and git history; A and B cannot see C the same way. C's harness does
+**not** support the isolated builder-then-fresh-critic pattern A uses. C
+therefore does not claim a bar is met the way A does — C's increments are
+**ready for review** until a human or an A critic has actually looked. Do not
+treat C's own pass as verification.
 
 ### The split
 
 | | Session A — the main loop | Session B — the parallel scope |
 |---|---|---|
 | Owns | everything not listed to the right | **GDD §5 — Gym Empire, the idle layer** |
-| Branch | `claude/agent-config-setup-m2r6ny` | its own `claude/*` branch, in its own worktree |
+| Branch | `grok/session-a-main-loop` | `grok/session-b-stage-c1b-playable-gym` (do not merge into A) |
 | Files | `src/game`, `src/meet`, `src/cutin`, `src/session`, `src/shell`, `src/lift`, `src/art`, `src/card`, `src/licensing`, `src/audio`, `tools/` | `src/empire/**` (new), plus the three registry rows named below |
 
-**Neither session pushes to `main`, ever.** Both push only to their own
-`claude/*` branch. Merging into `main` is a human's call, not a session's.
+**Neither session pushes to `main`, ever.** Session A pushes only
+`grok/session-a-main-loop`. Session B pushes only its own branch. Merging into
+`main` is a human's call, not a session's.
 
 ### Session B's scope, stated exactly
 
@@ -1947,6 +1951,80 @@ should survive.
 
 **Do not mint. Human phone replay only after the candidate materially changes
 RPE 8.**
+
+**`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
+a crossing.
+
+### GROK BUILD TAKEOVER, 2026-09-01: SESSION A MOVES TO `grok/session-a-main-loop`
+
+The Grok Build handoff named `a4eafe51` as the takeover base and asked for
+independent verification before any new mechanic. Verification found a newer
+human-authorized Session A head. This entry records that finding. It does not
+mint, retune, or add a lever.
+
+**Verified:**
+
+1. `a4eafe51` exists. Its parent is exactly `732273d0`. The commit changes
+   `CLAUDE.md` only (the 2026-08-31 phone replay: "9 is what 8 should be").
+2. `732273d0` is the last playable two-knob mint:
+   `ONSET 0.195`, `WALL_ADDEND 0.192`, no `MIDDLE_ADDEND`. Formula at that SHA
+   is two-way: `baseMargin >= CUT_MARGIN ? WALL : ONSET`.
+3. Four later Session A commits sit on `claude/agent-config-setup-m2r6ny`,
+   all descendants of `a4eafe51`:
+   - `172f4afa` — sixteenth ruling: authorize one narrow third lever for RPE 9
+   - `327a516c` — `MIDDLE_ADDEND` ships; magnitude does not fully clear the bar
+   - `caf37a1e` — seventeenth ruling: replace the scalar monotonicity proxy
+     with a behavioural invariant, or stop
+   - `948da38f` — Outcome A of that ruling. Current implementation HEAD.
+4. No commit after `948da38f` is a later human Session A ruling. Verify-marker
+   and Session B (`grok/session-b-stage-c1b-playable-gym`) commits are not
+   Session A heads.
+5. Therefore `grok/session-a-main-loop` is branched from `948da38f`, not from
+   `a4eafe51`. Starting at `a4eafe51` would discard two human rulings.
+
+**Current unminted constants at `948da38f`:**
+
+    ONSET         0.22
+    MIDDLE_ADDEND 0.214
+    WALL_ADDEND   0.192
+    CUT_MARGIN    0.005
+    WALL_CUT      0.06
+    CEILING       0.378
+
+**Current session `WORKING_FLOOR` (ticks between taps, lower = harder),
+re-driven on this checkout rather than carried:**
+
+    RPE 8    13 / 11 / 12 / 13    (4.62–5.45 taps/s)
+    RPE 9    10 /  9 /  9 / 10    (6.00–6.67 taps/s)
+    RPE 10    7 /  7 /  8 /  8    (7.50–8.57 taps/s, unchanged)
+
+RPE ≤ 7 still never costs a cadence. Meet census unchanged
+(`7,6,5,7,5,4,7,4,4,5,4,4,5,4,4,5,4,4`), wrecked-third still 4. RPE 8
+`MAX_EFFORT` still 0. False-start reachable sweep still 0 of 40. Squat and
+deadlift byte-identical.
+
+**What is closed, and what is not.**
+
+- The two-knob wall is closed as an architectural fact (sixteenth ruling).
+  Do not repeat the `(ONSET, WALL_ADDEND)` 2-D search.
+- The third lever is authorized, implemented, and selectivity-proven.
+  Do not smuggle a fourth addend. The seventeenth ruling forbids it; a future
+  grind-response lever needs its own ruling.
+- `948da38f` is **not minted**. The seventeenth ruling's gate still holds:
+  human phone replay only after the candidate materially changes RPE 8. This
+  candidate did (every RPE 8 cell moved two or three ticks). That replay is
+  the next Session A action. Builder does not grade feel.
+
+**Cost already on the table, for the replay, not to be papered over:**
+`min(RPE 8) = 11` against `max(RPE 9) = 10` — a one-tick gap, down from two.
+RPE 8 lands one tick short of the named `~12/10/10/11` neighbourhood because
+each rung's own four-cell spread now binds, not the deleted scalar proxy.
+
+**Still refused, unchanged:** `src/empire/**`; `src/tuning/audit.ts`,
+`audit.test.ts`, `index.ts` without a filed crossing; `DEMAND_BASE.bench`;
+`GRIND_BOOST_FORCE_MAX`; Tuchscherer percentages; `MAX_LOCKOUT_TICKS`;
+`CUT_MARGIN`; `MARGIN_CEILING`; RPE ≤ 7; an RPE field on `LiftConfig`;
+pushing `main`.
 
 **`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
 a crossing.

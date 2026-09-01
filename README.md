@@ -11,12 +11,12 @@ contract. This file is only how to run it.
 
 ## Run it
 
-You need **Node 22+** and npm. The branch is `claude/agent-config-setup-m2r6ny`.
+You need **Node 22+** and npm. Session A's branch is `grok/session-a-main-loop`.
 
 ```bash
 git clone https://github.com/bthornton1994/three-white-lights.git
 cd three-white-lights
-git checkout claude/agent-config-setup-m2r6ny
+git checkout grok/session-a-main-loop
 npm install
 bash tools/dev-web.sh          # serves on http://localhost:8081
 ```
