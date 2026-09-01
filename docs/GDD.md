@@ -3161,7 +3161,10 @@ than the ruling's own §1–§23 sequence:
 - **Stage B.** The economy pacing simulator (item 3) — pure logic, no
   screen, informs every later number.
 - **Stage C.** Station-tap management (item 1), built against the existing
-  floor/management data with no new simulation.
+  floor/management data with no new simulation. **Closed** by human play of
+  C.1d at `460f794a` — Empire now feels like a primitive gym-management
+  game rather than controls around an animation. Carry-forward debts
+  (C-DEBT-01..03) do not reopen it. Next is C.2 simulator fidelity.
 - **Stage D.** Quality/Capacity/Throughput on Barbell first (item 2),
   touching `floorSim.ts`'s capacity constant — the one piece of this pass
   that changes the simulation's own core rather than its surface, so it
@@ -3224,7 +3227,7 @@ Engineering conclusion: Stage C interaction verification must prove that visible
 
 ### C.1d
 
-C.1d makes the visible game object the interactive object: one member body, one station root, two explicit Build phases (select, then place). Drag is not the canonical path. Invalid placement states a player-facing reason and keeps the piece selected. Stage C stays open pending another human playtest. C.2 / Stage D are not started.
+C.1d makes the visible game object the interactive object: one member body, one station root, two explicit Build phases (select, then place). Drag is not the canonical path. Invalid placement states a player-facing reason and keeps the piece selected. `460f794a` is the accepted Stage C implementation. C.2 / Stage D are not started by C.1d itself.
 
 **Explicitly not reopened by this section:** §5.13 Phase 4's art gate, which
 stands exactly where its own text leaves it — *"holds/stops here until a
@@ -3244,12 +3247,47 @@ has since been played repeatedly, not that the lift has. This section adds
 staged work inside an already-overridden mode; it does not and cannot lift
 that gate, and no critic on any stage below may claim otherwise.
 
+### Human Stage C acceptance at `460f794a`
+
+The human personally played C.1d at `460f794a`. Stage C passes.
+
+Accepted product statement:
+
+> Empire now feels like a primitive gym-management game rather than controls around an animation.
+
+Human evidence:
+
+- a visible moving member opened `Powerlifter` / `Leaving`;
+- a visible member using a station opened `Powerlifter` / `Training on Flat bench`;
+- visible equipment opened contextual station information (`Power bar`, `Idle`, condition, move / close);
+- Build mode was discoverable;
+- Competition plates were selected and moved, then selected again and moved a second time — the C.1b/C.1c second-move failure did not reproduce;
+- a Flat bench occupied by a member could be picked up into `Moving: Flat bench`;
+- Shop remained a catalog over the live gym;
+- Staff remained a drawer over the live gym;
+- mode switching remained stable.
+
+This closes the architectural Stage C human gate. Do not phrase Stage C as pending another playtest. The whole-game gate in §11 remains shut; this close is Empire Stage C only.
+
+### Stage C carry-forward
+
+Closing Stage C does not mean the remaining defects do not exist. These are debts, not reopeners.
+
+**C-DEBT-01 — real thumb verification.** The accepted replay was Chromium rather than literal touchscreen input. The mobile layout has automated coverage. A real-thumb smoke test remains required before a production/mobile release gate. Do not reopen Stage C solely for this.
+
+**C-DEBT-02 — buy → place human verification.** The human could not test purchase → Build → placement because the live purse was roughly 2–5 Gym Bucks and the cheapest relevant SKU was 350 / already owned. Automated coverage exists. Future human verification of this path needs an explicit funded QA fixture or deterministic test state. Do not modify production prices or earnings merely to make the test convenient.
+
+**C-DEBT-03 — occupied-station move completion.** The human successfully selected an occupied Flat bench for movement, proving the old pointer/hit issue is gone. The human cancelled rather than completing the relocation. Completing that occupied move (select occupied station → place on a legal tile, ownership and purse unchanged) remains a carry-forward verification item. It does not reopen Stage C.
+
+C.2 simulator fidelity is now the next authorized Empire stage. It is not started by this record. Stage D is not started.
+
 ### 5.15 The Living Gym Doctrine
 
 Human product-direction ruling, GDD-only, recorded against Session B head
-`460f794a`. This section does **not** change the C.1d implementation
-candidate. It does **not** start C.2 or Stage D. It does **not** close Stage
-C. It does **not** reopen §5.13 Phase 4's art gate, unpause Portfolio
+`460f794a`. This section did not change the C.1d implementation and did not
+itself close Stage C. A subsequent human play of `460f794a` closed Stage C
+(acceptance record above). This section does **not** start C.2 or Stage D.
+It does **not** reopen §5.13 Phase 4's art gate, unpause Portfolio
 (§5.11 / §5.14 Stage F), or authorize persistent NPCs before Stage G. It
 defines the quality bar later Empire stages must meet.
 
@@ -3490,12 +3528,13 @@ operating multiple locations. This is not an unpause of §5.11 Stage F.
 
 Current sequence remains:
 
-Stage C human close → C.2 simulator fidelity → Stage D Q/C/T → D2 balance
-verdict → reputation seam → persistent NPC roster / tenure → deeper staff
-policy → portfolio only after explicit human unpause.
+Stage C human close (done at `460f794a`) → C.2 simulator fidelity → Stage D
+Q/C/T → D2 balance verdict → reputation seam → persistent NPC roster /
+tenure → deeper staff policy → portfolio only after explicit human unpause.
 
 The doctrine does not authorize implementing future stages early. It defines
-their quality bar.
+their quality bar. C.2 is next and is not started by the Stage C close
+record.
 
 ---
 
