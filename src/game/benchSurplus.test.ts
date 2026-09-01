@@ -1,8 +1,8 @@
 /**
  * C3 surplus compression — derivation, identity, truthful pips, 8 < 9 < 10.
  *
- * Production candidate, not a mint. Additive bands are frozen; this file
- * checks the compressor on top of them.
+ * Minted 2026-09-01 after ordinary-bench phone replay. Additive bands are
+ * frozen; this file checks the compressor on top of them.
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';

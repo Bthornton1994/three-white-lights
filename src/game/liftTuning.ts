@@ -1193,7 +1193,9 @@ export const LIFT_TUNING = Object.freeze({
    * C3 SURPLUS COMPRESSION — HOW MUCH OF THE FORCE ABOVE THE FLOOR-CADENCE
    * MEAN THE BAR ACTUALLY RECEIVES, ON ONSET AND MIDDLE ONLY
    * -------------------------------------------------------------------------
-   * RULED 2026-09-01: SHIP C3 AS THE FINAL BENCH CANDIDATE. Not a mint.
+   * RULED 2026-09-01: SHIP C3 AS THE FINAL BENCH CANDIDATE.
+   * MINTED 2026-09-01 after the ordinary-bench phone replay. Human
+   * verbatim: "Yes this feels good lets move on." Constants frozen.
    * Phone replay of the isolated prototype chose C3 over C1 and C2, and over
    * the rejected `c8=0.35 / c9=0.2` probe. One global coefficient, not a
    * per-rung pair.

@@ -2,7 +2,10 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-09-01 (§13 — Powerlifting Sports Universe Doctrine
+**Last updated:** 2026-09-01 (§6.2 — C3 surplus compression minted as the
+accepted bench feel after ordinary-bench phone replay. Human verbatim:
+"Yes this feels good lets move on." Constants frozen. No A1–A7 start, no
+Session B touch, no merge to main.) Earlier: 2026-09-01 (§13 — Powerlifting Sports Universe Doctrine
 filed. North star in `VISION.md`. The daily-habit one-line pitch is demoted
 from product identity and kept as the retention mechanism. A0–A7 recorded as
 directional sequencing, not present authorization. Lift production
@@ -3326,7 +3329,7 @@ RPE 9 cells. Squat and deadlift stay byte-identical.
 `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` (`0.378`) did not move. Both retuned
 values are unplayed placeholders, the same as every other value in this arc.
 
-#### The 2026-09-01 round — C3 surplus compression, production candidate, not a mint
+#### The 2026-09-01 round — C3 surplus compression, minted as accepted bench feel
 
 **The three-band addends placed the thresholds. They could not write the
 sentence the human asked for on a committed thumb.** A 2026-09-01 investigation
@@ -3359,7 +3362,7 @@ RPE 10 grinder ~2.30 s — 8 still flew. C3: RPE 8 grinder ×2 ~1.85 s, RPE 9
 grinder ~2.13 s, RPE 10 grinder ~2.33 s. RPE 8 no longer flies. 9 is clearly
 harder than 8. 10 remains the hardest rung. Zero misses. Zero inversions.
 
-**What shipped, production, not minted.** On bench ASCENT only:
+**What shipped, then minted 2026-09-01.** On bench ASCENT only:
 
     useful = force                                    if force <= floor
            = floor + (force - floor) * 0.55           otherwise
@@ -3414,10 +3417,13 @@ byte-identical. `REACHABLE_RESCUE` RPE 9 rows move (a moderate resumption
 rescues less of a compressed middle band): coming-back-helps 18 → 17, a-rep
 is-saved 9 → 8. RPE 8 still saturates; RPE 10 and meet stay identity.
 
-**§12.1 stays open. This is the production candidate for a final human phone
-replay, not a mint.** Do not copy 0.35 / 0.20. Do not ship C1 or C2. Do not
-start a stall mechanic or a quality window. The additive bands have done
-their job.
+**§12.1 CLOSED FOR THIS BENCH GRIND, 2026-09-01.** Final ordinary-bench
+phone replay of production C3. Human verbatim: "Yes this feels good lets
+move on." C3 is the accepted bench feel. Constants frozen. Do not copy
+0.35 / 0.20. Do not ship C1 or C2. Do not start a stall mechanic or a
+quality window. The additive bands have done their job. This mint does
+not retune squat or deadlift, does not start A1–A7, does not implement
+Career, does not touch Session B, and does not merge `main`.
 
 ### 6.3 Attempt Selection — The Real Tension
 
@@ -6302,9 +6308,11 @@ design constraints:
 
 ### 13.9 Current work is not derailed
 
-The immediate Session A task remains the already-authorized C3 production
-bench candidate and its final human phone gate.
+C3 surplus compression is the accepted bench feel (minted 2026-09-01 after
+ordinary-bench phone replay). That mint closed the bench grind gate. It did
+not start A1–A7, retune squat or deadlift, implement Career, or touch
+Session B.
 
-This doctrine governs **what comes after** and **how future features are
-judged**. It does not broaden the current lift diff. It does not mint. It
-does not retune. It does not implement Career. It does not touch Session B.
+This doctrine still governs **what comes after** and **how future features
+are judged**. It is not authorization to build those stages from this
+section.

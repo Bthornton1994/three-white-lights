@@ -2341,6 +2341,27 @@ candidate; this filing does not broaden that diff.
 **Not authorization** to start A1–A7, implement Career, retune lifts, or
 mint.
 
+### RULED 2026-09-01: C3 MINTED AS ACCEPTED BENCH FEEL
+
+Human ordinary-bench phone replay of production C3 at
+`c514bdd04d56a28b352e7583088da9b394374c0a`. Verbatim: *"Yes this feels
+good lets move on."*
+
+**This is the mint.** §12.1 is closed for this bench grind. C3 constants
+stay frozen:
+
+    BENCH_SURPLUS_COMPRESS                 0.55
+    BENCH_SURPLUS_FLOOR_GAP_TICKS          onset 11 / middle 8
+    BENCH_SURPLUS_FLOOR_CUT_MARGIN         0.025
+    ONSET / MIDDLE / WALL                  0.22 / 0.214 / 0.192  (unmoved)
+
+Wall / warm-up / squat / deadlift remain identity. Truthful pips remain
+`grindUsefulForce`. No stall mechanic. No quality window. No fourth
+addend. No RPE field on `LiftConfig`.
+
+**Not done by this mint:** start A1–A7; implement Career; retune squat or
+deadlift; touch Session B; merge `main`.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
