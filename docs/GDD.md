@@ -3823,8 +3823,38 @@ persistent NPCs, or Portfolio. Did not retune C.2. Did not build the rest
 of the station catalog. Did not touch Session A. Did not silently fix
 D-DEBT.
 
-Stage D.1 implementation is complete. Awaiting human Living Gym playtest
-before D2.
+Stage D.1 implementation is complete.
+
+**Stage D.1b — world legibility + interaction close.** Human playtest of
+D.1 found the architecture sound and the Living Gym gate still open:
+Capacity was physically legible; Quality and Throughput were primarily
+panel/marker legible; occupied-station tapping was frictional; panel
+selection required an explicit close; Capacity's spatial refusal was
+reactive rather than preflight-visible.
+
+Correction, presentation and interaction only. Q/C/T numbers, C.2
+economy, and the D.1 station model are unchanged. Opening purse and
+stored/unplaced wear remain deferred (D2).
+
+- **Quality.** The Competition Bench Bay's benches swap to a
+  competition-spec pad (black leather, chrome rails, heavier feet). The
+  goldenrod corner mark remains a secondary cue. Same one bay, same
+  capacity, same service duration. Experience 1→2, affinity +0.25.
+- **Throughput.** A plate-tree fitting is drawn on the same bay, no extra
+  collision, no extra seat. The 0.65 use-duration factor is still the
+  sim. The darkkhaki corner mark remains a secondary cue.
+- **Occupied bay.** The visible "bench bay" / "second bench" world labels
+  are explicit station tap targets stacked above members. Member bodies
+  still select the member.
+- **Panel.** Sits in document flow below the floor, not as an absolute
+  overlay. A single tap on another visible world object selects it. No
+  full-screen backdrop.
+- **Capacity preflight.** When a second 2×4 cannot fit, the station panel
+  shows "No room for a second bench" instead of a live purchase. The
+  reducer still refuses `no-second-position` if invoked.
+
+Stage D.1b implementation is complete. Do not mark Stage D human-close
+until the next human playtest. Do not start D2.
 
 ---
 

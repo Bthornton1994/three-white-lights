@@ -325,8 +325,9 @@
  *       the purse leaks in), earning and buying mats exactly as section 2
  *       does, then:
  *
- *      13a. TAP SELECTS. A real `page.click()` on `floorgrid-fixed-flat-bench`
- *           (the Competition Bench Bay's primary surface) opens
+ *      13a. TAP SELECTS. Stage D.1b: a real `page.click()` on
+ *           `floorgrid-bay-label-competition-bench-bay` (the visible
+ *           "bench bay" world label stacked above members) opens
  *           `floorgrid-station-panel`, naming the bay. Tapping power-bar
  *           inspects equipment instead (13a-eq). `.click()` rather than a
  *           hand-rolled mouse sequence is a measured finding, not a
@@ -1555,14 +1556,26 @@ try {
       continue;
     }
     const text = await textOf(`floorgrid-fixed-${item}`);
-    const namesThePiece =
-      item === 'flat-bench'
-        ? text !== null && text.includes('bench bay') && !text.includes('(fixed)')
-        : text !== null && text.includes(item) && !text.includes('(fixed)');
+    // Stage D.1b: the Competition Bench Bay's world name sits on the raised
+    // "bench bay" label, not as inner text of the bench frame (members would
+    // intercept a frame-only label). Power-bar / plates keep their own item
+    // text because they are equipment, not the bay.
+    if (item === 'flat-bench') {
+      const label = await textOf('floorgrid-bay-label-competition-bench-bay');
+      if (label !== null && label.includes('bench bay') && !label.includes('(fixed)')) {
+        ok(`gap 1: floorgrid-fixed-flat-bench is drawn on a cold gym, world label "${label}"`);
+      } else {
+        fail(
+          `gap 1: floorgrid-fixed-flat-bench drawn but the visible "bench bay" label is missing ("${label}")`,
+        );
+      }
+      continue;
+    }
+    const namesThePiece = text !== null && text.includes(item) && !text.includes('(fixed)');
     if (namesThePiece) {
       ok(`gap 1: floorgrid-fixed-${item} is drawn on a cold gym, reading "${text}"`);
     } else {
-      fail(`gap 1: floorgrid-fixed-${item} drawn but its text ("${text}") does not name the ${item === 'flat-bench' ? 'Competition Bench Bay' : 'movable piece'}`);
+      fail(`gap 1: floorgrid-fixed-${item} drawn but its text ("${text}") does not name the movable piece`);
     }
   }
 
@@ -3841,19 +3854,19 @@ try {
   ok('13: a fresh gym, earned, bought mats and placed it — the fixture every claim below shares');
 
   // -------------------------------------------------------------------------
-  // 13a. TAP SELECTS. A real `page.click()` on the Competition Bench Bay's
-  // primary surface (`floorgrid-fixed-flat-bench`) opens the station panel.
-  // Tapping power-bar inspects equipment, not the station — that is 13a-eq
-  // immediately below. `.click()` rather than a hand-rolled mouse sequence
-  // is a measured finding, not a preference.
+  // 13a. TAP SELECTS. Stage D.1b: the visible "bench bay" world label is the
+  // station tap target stacked above members. A locator.click on the bench
+  // frame itself is intercepted whenever a member is using it — that is the
+  // friction D.1b closed. `.click()` on the label rather than a hand-rolled
+  // mouse sequence is a measured finding, not a preference.
   // -------------------------------------------------------------------------
   readAddress('13a: tap selects the Competition Bench Bay');
   await openGymSurface('play');
-  const bayBox13 = await boxOf('floorgrid-fixed-flat-bench');
+  const bayBox13 = await boxOf('floorgrid-bay-label-competition-bench-bay');
   if (bayBox13 === null) {
-    fail('13a: floorgrid-fixed-flat-bench has no box to tap');
+    fail('13a: floorgrid-bay-label-competition-bench-bay has no box to tap');
   } else {
-    await page.getByTestId('floorgrid-fixed-flat-bench').click({ timeout: 10000 });
+    await page.getByTestId('floorgrid-bay-label-competition-bench-bay').click({ timeout: 10000 });
     await page.waitForTimeout(150);
     const panelDrawn13a = await waitUntilDrawn(page, 'floorgrid-station-panel', BEAT_TIMEOUT_MS);
     const identity13a = await textOf('floorgrid-station-panel-identity');
@@ -3862,10 +3875,10 @@ try {
       identity13a !== null &&
       identity13a.includes('Competition bench bay')
     ) {
-      ok(`13a: a real tap on floorgrid-fixed-flat-bench opens the station panel, naming it "${identity13a}"`);
+      ok(`13a: a real tap on the visible "bench bay" label opens the station panel, naming it "${identity13a}"`);
     } else {
       fail(
-        `13a: tapping the bay's primary surface did not open a correctly-identified panel — drawn=${panelDrawn13a.drawn} (${panelDrawn13a.why}), identity="${identity13a}"`,
+        `13a: tapping the visible "bench bay" label did not open a correctly-identified panel — drawn=${panelDrawn13a.drawn} (${panelDrawn13a.why}), identity="${identity13a}"`,
       );
     }
 
@@ -3873,24 +3886,42 @@ try {
     // HAPPENING ON THE FLOOR. Stage D.1 highlight ids are dash-stable
     // `floorsim-using-training-competition-bench-bay` /
     // `floorsim-claimed-training-competition-bench-bay`.
-    const usingHighlight13a = await page
-      .getByTestId('floorsim-using-training-competition-bench-bay')
-      .count()
-      .then((n) => n > 0)
-      .catch(() => false);
-    const claimedHighlight13a = await page
-      .getByTestId('floorsim-claimed-training-competition-bench-bay')
-      .count()
-      .then((n) => n > 0)
-      .catch(() => false);
-    const operationText13a = await textOf('floorgrid-station-panel-operation');
-    const panelSaysOccupied13a = operationText13a !== null && operationText13a.startsWith('In use by');
-    const panelSaysWaiting13a = operationText13a !== null && / waiting$/.test(operationText13a);
-    if (
-      operationText13a !== null &&
-      panelSaysOccupied13a === usingHighlight13a &&
-      (usingHighlight13a || panelSaysWaiting13a === claimedHighlight13a)
-    ) {
+    //
+    // Polled rather than sampled once: the D.1b label click lands on whatever
+    // tick the sim is in, and a single 150ms snapshot can catch the panel
+    // one tick ahead of the highlight paint. The claim is agreement, not a
+    // particular occupancy.
+    let usingHighlight13a = false;
+    let claimedHighlight13a = false;
+    let operationText13a = null;
+    let agreed13a2 = false;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      usingHighlight13a = await page
+        .getByTestId('floorsim-using-training-competition-bench-bay')
+        .count()
+        .then((n) => n > 0)
+        .catch(() => false);
+      claimedHighlight13a = await page
+        .getByTestId('floorsim-claimed-training-competition-bench-bay')
+        .count()
+        .then((n) => n > 0)
+        .catch(() => false);
+      operationText13a = await textOf('floorgrid-station-panel-operation');
+      const panelSaysOccupied13a =
+        operationText13a !== null &&
+        (operationText13a.startsWith('In use by') || /^\d+ training/.test(operationText13a));
+      const panelSaysWaiting13a = operationText13a !== null && / waiting$/.test(operationText13a);
+      if (
+        operationText13a !== null &&
+        panelSaysOccupied13a === usingHighlight13a &&
+        (usingHighlight13a || panelSaysWaiting13a === claimedHighlight13a)
+      ) {
+        agreed13a2 = true;
+        break;
+      }
+      await page.waitForTimeout(250);
+    }
+    if (agreed13a2) {
       ok(
         `13a2: the panel's operation line agrees with the floor's own drawn highlight — using-highlight=${usingHighlight13a}, claimed-highlight=${claimedHighlight13a}, panel text "${operationText13a}"`,
       );
@@ -3935,7 +3966,7 @@ try {
   }
 
   // Restore the bay station panel so 13b can switch it to mats.
-  await page.getByTestId('floorgrid-fixed-flat-bench').click({ timeout: 10000 }).catch(() => {});
+  await page.getByTestId('floorgrid-bay-label-competition-bench-bay').click({ timeout: 10000 }).catch(() => {});
   await page.waitForTimeout(150);
 
 
@@ -4197,9 +4228,9 @@ try {
   readAddress('13g: dismiss touches nothing');
   await openGymSurface('play');
   await page.getByTestId('floorgrid-grid').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
-  const bayBoxForDismiss13 = await boxOf('floorgrid-fixed-flat-bench');
+  const bayBoxForDismiss13 = await boxOf('floorgrid-bay-label-competition-bench-bay');
   if (bayBoxForDismiss13 !== null) {
-    await page.getByTestId('floorgrid-fixed-flat-bench').click({ timeout: 10000 });
+    await page.getByTestId('floorgrid-bay-label-competition-bench-bay').click({ timeout: 10000 });
   }
   await page.waitForTimeout(150);
   const powerBarBoxForDismiss13 = await boxOf('floorgrid-fixed-power-bar');
@@ -4338,11 +4369,11 @@ try {
   // -------------------------------------------------------------------------
   readAddress('13i: rapid repeated taps');
   await openGymSurface('play');
-  const bayBox13i = await boxOf('floorgrid-fixed-flat-bench');
+  const bayBox13i = await boxOf('floorgrid-bay-label-competition-bench-bay');
   if (bayBox13i === null) {
-    fail('13i: floorgrid-fixed-flat-bench has no box for the rapid-tap claim');
+    fail('13i: floorgrid-bay-label-competition-bench-bay has no box for the rapid-tap claim');
   } else {
-    const rapidTap13i = page.getByTestId('floorgrid-fixed-flat-bench');
+    const rapidTap13i = page.getByTestId('floorgrid-bay-label-competition-bench-bay');
     await rapidTap13i.click({ timeout: 10000 });
     await rapidTap13i.click({ timeout: 10000 });
     await rapidTap13i.click({ timeout: 10000 });

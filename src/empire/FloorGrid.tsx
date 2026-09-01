@@ -213,6 +213,7 @@ import {
   playerFacingPlacementRefuse,
   playerFacingUpgradeEffect,
   playerFacingUpgradeLabel,
+  playerFacingUpgradeRefuse,
   stationConditionView,
   stationIdentityView,
   stationManagerEffectView,
@@ -221,6 +222,7 @@ import {
 import {
   COMPETITION_BENCH_BAY,
   COMPETITION_BENCH_BAY_PRIMARY,
+  capacityRealizesOn,
   competitionBenchBay,
   overlapsBayExpansion,
   type BayBench,
@@ -373,11 +375,6 @@ const FLOOR_STATION_PANEL_BUTTON_TEXT_COLOR = 'white';
  */
 const panelStyles = StyleSheet.create({
   panel: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
     marginTop: EMPIRE_TUNING.FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS,
     padding: EMPIRE_TUNING.FLOOR_STATION_PANEL_PADDING_PIXELS,
     borderWidth: EMPIRE_TUNING.FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS,
@@ -663,6 +660,17 @@ function fixedSpriteUriFor(item: LadderEquipmentItem, occupied: boolean): string
   return Object.prototype.hasOwnProperty.call(FLOOR_SPRITE_URIS.fixed, item)
     ? FLOOR_SPRITE_URIS.fixed[item as FixedFurnitureItem]
     : null;
+}
+
+/**
+ * Stage D.1b: Quality swaps the bay's benches to the competition-spec pad.
+ * Occupied stock benches still use the resting flat-bench sprite (the lying
+ * pose brings its own bar); the Quality pad has no occupied variant because
+ * it is the surface, not a loaded bar.
+ */
+function bayBenchSpriteUri(quality: boolean, occupied: boolean): string | null {
+  if (quality) return FLOOR_SPRITE_URIS.bay.qualityBench;
+  return fixedSpriteUriFor(COMPETITION_BENCH_BAY_PRIMARY, occupied);
 }
 
 /** A station's identity as a map key — matching `floorStationRefKey` in `floorSim.ts`. */
@@ -1559,6 +1567,7 @@ export function FloorGrid(props: FloorGridProps) {
   const bayLevels = stationLevels(capability, COMPETITION_BENCH_BAY);
   const bayQualityMark = bay.complete && bayLevels.quality > 0;
   const bayThroughputMark = bay.complete && bayLevels.throughput > 0;
+  const capacityFits = capacityRealizesOn(floor, barbellOwned);
   const stateCounts = floorSimStateCounts(sim);
 
   /**
@@ -1865,30 +1874,30 @@ export function FloorGrid(props: FloorGridProps) {
                     // chip (those keep their black chip border below). GDD
                     // §5.14 Stage C: a refusal in flight still wins over a
                     // selection outline — the refusal is transient and more
-                    // urgent than "this is the tapped station". Stage D.1:
-                    // a Quality upgrade keeps a goldenrod edge on the bay
-                    // so the better training surface is visible without
-                    // opening the panel — distinct from selection gold.
+                    // urgent than "this is the tapped station". Stage D.1b:
+                    // Quality is the competition-spec pad itself, not a
+                    // goldenrod rest-edge around the bay.
                     borderWidth: isRefusalTarget
                       ? EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS
                       : isSelected
                         ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
-                        : qualityMark
-                          ? EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS
-                          : 0,
+                        : 0,
                     borderColor: isRefusalTarget
                       ? FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR
-                      : isSelected
-                        ? FLOOR_STATION_SELECTED_OUTLINE_COLOR
-                        : FLOOR_QUALITY_MARK_COLOR,
+                      : FLOOR_STATION_SELECTED_OUTLINE_COLOR,
                     cursor: 'pointer',
                   } as WebSelectableViewStyle}
                 >
-                  {fixedSpriteUriFor(row.item, isOccupied) === null ? null : (
-                    <Image
-                      testID={`floorgrid-fixed-sprite-${row.item}`}
-                      source={{ uri: fixedSpriteUriFor(row.item, isOccupied) as string }}
-                      resizeMode={'stretch'}
+                  {(isBayPrimary
+                    ? bayBenchSpriteUri(qualityMark, isOccupied)
+                    : fixedSpriteUriFor(row.item, isOccupied)) === null ? null : (
+                    <View
+                      testID={
+                        qualityMark
+                          ? 'floorgrid-quality-bench-competition-bench-bay'
+                          : undefined
+                      }
+                      pointerEvents={'none'}
                       style={{
                         position: 'absolute',
                         left: 0,
@@ -1896,8 +1905,25 @@ export function FloorGrid(props: FloorGridProps) {
                         width: row.footprint.width * tile,
                         height: row.footprint.height * tile,
                       }}
-                      {...({ pointerEvents: 'none' } as object)}
-                    />
+                    >
+                      <Image
+                        testID={`floorgrid-fixed-sprite-${row.item}`}
+                        source={{
+                          uri: (isBayPrimary
+                            ? bayBenchSpriteUri(qualityMark, isOccupied)
+                            : fixedSpriteUriFor(row.item, isOccupied)) as string,
+                        }}
+                        resizeMode={'stretch'}
+                        style={{
+                          position: 'absolute',
+                          left: 0,
+                          top: 0,
+                          width: row.footprint.width * tile,
+                          height: row.footprint.height * tile,
+                        }}
+                        {...({ pointerEvents: 'none' } as object)}
+                      />
+                    </View>
                   )}
                   {qualityMark ? (
                     <View
@@ -1939,9 +1965,11 @@ export function FloorGrid(props: FloorGridProps) {
                       }}
                     />
                   ) : null}
-                  <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
-                    {isBayPrimary ? 'bench bay' : row.item}
-                  </Text>
+                  {isBayPrimary ? null : (
+                    <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
+                      {row.item}
+                    </Text>
+                  )}
                 </Pressable>
               );
             })}
@@ -1969,26 +1997,16 @@ export function FloorGrid(props: FloorGridProps) {
                     selectedStation.kind === 'training' &&
                     selectedStation.station === COMPETITION_BENCH_BAY
                       ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
-                      : bayQualityMark
-                        ? EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS
-                        : 0,
-                  borderColor:
-                    selectedStation !== null &&
-                    selectedStation.kind === 'training' &&
-                    selectedStation.station === COMPETITION_BENCH_BAY
-                      ? FLOOR_STATION_SELECTED_OUTLINE_COLOR
-                      : FLOOR_QUALITY_MARK_COLOR,
+                      : 0,
+                  borderColor: FLOOR_STATION_SELECTED_OUTLINE_COLOR,
                   cursor: 'pointer',
                 } as WebSelectableViewStyle}
               >
-                {fixedSpriteUriFor(COMPETITION_BENCH_BAY_PRIMARY, expansionOccupied) === null ? null : (
+                {bayBenchSpriteUri(bayQualityMark, expansionOccupied) === null ? null : (
                   <Image
                     testID={'floorgrid-bay-expansion-sprite'}
                     source={{
-                      uri: fixedSpriteUriFor(
-                        COMPETITION_BENCH_BAY_PRIMARY,
-                        expansionOccupied,
-                      ) as string,
+                      uri: bayBenchSpriteUri(bayQualityMark, expansionOccupied) as string,
                     }}
                     resizeMode={'stretch'}
                     style={{
@@ -2001,11 +2019,24 @@ export function FloorGrid(props: FloorGridProps) {
                     {...({ pointerEvents: 'none' } as object)}
                   />
                 )}
-                <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
-                  second bench
-                </Text>
               </Pressable>
             )}
+            {bay.complete && bay.primary !== null && bayThroughputMark ? (
+              <Image
+                testID={'floorgrid-plate-tree-competition-bench-bay'}
+                source={{ uri: FLOOR_SPRITE_URIS.bay.plateTree }}
+                resizeMode={'stretch'}
+                style={{
+                  position: 'absolute',
+                  left: (bay.primary.position.x + bay.primary.footprint.width - 1) * tile,
+                  top: (bay.primary.position.y + bay.primary.footprint.height - 2) * tile,
+                  width: tile,
+                  height: tile * 2,
+                  zIndex: 1,
+                }}
+                {...({ pointerEvents: 'none' } as object)}
+              />
+            ) : null}
             {placed.map((row) => {
               const isSelected =
                 selectedStation !== null &&
@@ -2162,6 +2193,66 @@ export function FloorGrid(props: FloorGridProps) {
                 );
               })
             }
+            {buildMode || !bay.complete || bay.primary === null
+              ? null
+              : (
+                <Pressable
+                  testID={'floorgrid-bay-label-competition-bench-bay'}
+                  accessibilityRole={'button'}
+                  pointerEvents={placing ? 'none' : 'auto'}
+                  onPress={() =>
+                    toggleSelectedStation({
+                      kind: 'training',
+                      station: COMPETITION_BENCH_BAY,
+                    })
+                  }
+                  style={{
+                    position: 'absolute',
+                    left: bay.primary.position.x * tile,
+                    top: bay.primary.position.y * tile,
+                    width: bay.primary.footprint.width * tile,
+                    height: tile,
+                    zIndex: EMPIRE_TUNING.FLOOR_SIM_MEMBER_Z_INDEX + 1,
+                    backgroundColor: FLOOR_STATION_PANEL_BACKGROUND_COLOR,
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                  } as WebSelectableViewStyle}
+                >
+                  <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
+                    bench bay
+                  </Text>
+                </Pressable>
+              )}
+            {buildMode || bay.expansion === null
+              ? null
+              : (
+                <Pressable
+                  testID={'floorgrid-bay-label-second-bench'}
+                  accessibilityRole={'button'}
+                  pointerEvents={placing ? 'none' : 'auto'}
+                  onPress={() =>
+                    toggleSelectedStation({
+                      kind: 'training',
+                      station: COMPETITION_BENCH_BAY,
+                    })
+                  }
+                  style={{
+                    position: 'absolute',
+                    left: bay.expansion.position.x * tile,
+                    top: bay.expansion.position.y * tile,
+                    width: bay.expansion.footprint.width * tile,
+                    height: tile,
+                    zIndex: EMPIRE_TUNING.FLOOR_SIM_MEMBER_Z_INDEX + 1,
+                    backgroundColor: FLOOR_STATION_PANEL_BACKGROUND_COLOR,
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                  } as WebSelectableViewStyle}
+                >
+                  <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
+                    second bench
+                  </Text>
+                </Pressable>
+              )}
           </View>
         </View>
       </View>
@@ -2324,6 +2415,11 @@ export function FloorGrid(props: FloorGridProps) {
         its own clearance maths. An inline panel cannot make that mistake by
         construction: it has no fixed position to conflict with anything.
 
+        Stage D.1b: the panel is NOT `position: 'absolute'` over the floor.
+        An overlay forced a close-first ritual (taps on other world objects
+        hit the panel). Document flow keeps the floor as the primary
+        interaction surface, so one tap on another visible object selects it.
+
         Dismissing this panel dispatches nothing — `setSelectedStation(null)`
         is the only thing any control inside it does when it does not touch
         `management.ts`, so closing it can never move a piece of equipment,
@@ -2450,6 +2546,16 @@ export function FloorGrid(props: FloorGridProps) {
                       testID={`floorgrid-station-panel-upgrade-${axis}-done`}
                     >
                       {`${playerFacingUpgradeLabel(axis)} — ${playerFacingUpgradeEffect(axis)}`}
+                    </Text>
+                  );
+                }
+                if (axis === 'capacity' && !capacityFits) {
+                  return (
+                    <Text
+                      key={axis}
+                      testID={`floorgrid-station-panel-upgrade-${axis}-unavailable`}
+                    >
+                      {`${playerFacingUpgradeLabel(axis)} — ${playerFacingUpgradeRefuse('no-second-position')}`}
                     </Text>
                   );
                 }

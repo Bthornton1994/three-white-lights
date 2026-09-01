@@ -1111,8 +1111,10 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
   Object.freeze({
     field: 'FLOOR_SPRITE_URIS — one PNG data URI per sprite, GDD §5.13 Phase 4',
     why:
-      'A base64 image payload is free-form text by construction, so there is no closed union to narrow these to, and a brand would add a constructor without adding a check that means anything (the payload cannot be validated as art by a type). What holds the line instead is the shape of the module: floorSprites.ts exports frozen CONSTANTS and no functions, so these one hundred and twelve positions have no branch point, no caller-supplied input and no domain — instrument B reads the finished values on every run and containment-scans every byte of every URI against the ban list unconditionally. A forbidden name cannot be conditionally present in a static string. The colocated floorSprites.test.ts additionally decodes every URI and pins it byte-for-byte to its source index grid, so the strings cannot drift from the art they claim to be.',
+      'A base64 image payload is free-form text by construction, so there is no closed union to narrow these to, and a brand would add a constructor without adding a check that means anything (the payload cannot be validated as art by a type). What holds the line instead is the shape of the module: floorSprites.ts exports frozen CONSTANTS and no functions, so these one hundred and fourteen positions have no branch point, no caller-supplied input and no domain — instrument B reads the finished values on every run and containment-scans every byte of every URI against the ban list unconditionally. A forbidden name cannot be conditionally present in a static string. The colocated floorSprites.test.ts additionally decodes every URI and pins it byte-for-byte to its source index grid, so the strings cannot drift from the art they claim to be.',
     positions: Object.freeze([
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.bay.plateTree',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.bay.qualityBench',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.fixed.comp-plates',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.fixed.flat-bench',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.fixed.power-bar',
@@ -1674,7 +1676,9 @@ const SURFACE_CENSUS = Object.freeze({
   // stationView upgrade copy and floorSim stationOccupancy.
   // 410 -> 422: GDD §5.18 Stage D.1 — trainingStation.ts ten runtime
   // exports, stationView playerFacingBayRole, floorSim floorStationRefKey.
-  EXPORTS: 422, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
+  // 422 -> 423: Stage D.1b capacityRealizesOn preview, used by the reducer
+  // and the station panel so a boxed layout cannot offer a live buy.
+  EXPORTS: 423, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1691,7 +1695,8 @@ const SURFACE_CENSUS = Object.freeze({
   // in floorSprites.ts for why the census forced that shape).
   // 119 -> 122: Stage C.1d three playerFacing* returns in stationView.ts.
   // 122 -> 125: Stage D playerFacingUpgradeLabel/Effect/Refuse.
-  BARE_POSITIONS: 128,
+  // 128 -> 130: Stage D.1b bay qualityBench + plateTree URI leaves.
+  BARE_POSITIONS: 130,
   BARE_FIELDS: 4,
   BRANDED_POSITIONS: 34,
   /**
@@ -3049,7 +3054,9 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 3180 -> 3290: GDD §5.18 Stage D.1's trainingStation.ts plus FloorGrid
   // per-bench helpers. Read from this pin's own failure value.
   // 3290 -> 3289: parameter member-calls rewritten as loops (net -1).
-  CALLS_EXAMINED: 3289,
+  // 3289 -> 3343: Stage D.1b competition-spec bench / plate-tree painters
+  // and FloorGrid presentation helpers. Read from this pin's own failure.
+  CALLS_EXAMINED: 3343,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3261,7 +3268,7 @@ describe('instrument C — a raw string becomes a brand in a countable number of
     const uriGroup = DECLARED_BARE_STRING_FIELDS.find((group) =>
       group.field.includes('FLOOR_SPRITE_URIS'),
     );
-    expect(uriGroup?.positions.length).toBe(112); // 61 -> 111: P4b; 112: P4c's occupied power-bar. Measured.
+    expect(uriGroup?.positions.length).toBe(114); // 112 -> 114: Stage D.1b qualityBench + plateTree URI leaves.
     const reopened = CLOSED_BARE_STRING_FIELDS.flatMap((group) => [...group.positions]).filter(
       (position) => DECLARED_BARE_STRING_FIELDS.some((group) => group.positions.includes(position)),
     );
@@ -8487,6 +8494,20 @@ function driveEverything(): readonly DrivenRow[] {
     drive('competitionBenchBay', 'capacity', () =>
       trainingStationModule.competitionBenchBay(opening, KIT, 1), [opening],
     );
+    drive('capacityRealizesOn', 'opening', () =>
+      trainingStationModule.capacityRealizesOn(opening, KIT), [opening],
+    );
+    const boxed = Object.freeze({
+      ...opening,
+      furniture: Object.freeze({
+        'flat-bench': Object.freeze({ x: 6, y: 2 }),
+        'power-bar': Object.freeze({ x: 5, y: 2 }),
+        'comp-plates': Object.freeze({ x: 6, y: 0 }),
+      }),
+    });
+    drive('capacityRealizesOn', 'boxed', () =>
+      trainingStationModule.capacityRealizesOn(boxed, KIT), [boxed],
+    );
     const stockBay = trainingStationModule.competitionBenchBay(opening, KIT, 0);
     const capBay = trainingStationModule.competitionBenchBay(opening, KIT, 1);
     drive('bayOccupiedCells', 'stock', () => trainingStationModule.bayOccupiedCells(stockBay), [
@@ -10809,7 +10830,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 593544 -> 595928: Stage C.1b furniture-layout exports, GYM_SURFACES, and
   // the larger GymScreen tree. Re-measured by running this assertion.
   // 595954 -> 595972: Stage C.1d playerFacing* drives.
-  ROWS: 598183, // Stage D.1 leftover equipment identity drives (+3 on 598180)
+  ROWS: 598185, // Stage D.1b capacityRealizesOn opening + boxed drives (+2 on 598183)
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -10836,7 +10857,7 @@ const DRIVE_CENSUS = Object.freeze({
   // exports (isRecoveryBlocking, recoveryBlockingItems), both driven above.
   // 382 -> 389: Stage C.1b six floor furniture exports + GYM_SURFACES.
   // 393 -> 396: Stage C.1d three playerFacing* drives.
-  EXPORTS_DRIVEN: 422, // 410 -> 422: Stage D.1 trainingStation + bayRole + floorStationRefKey
+  EXPORTS_DRIVEN: 423, // 422 -> 423: Stage D.1b capacityRealizesOn
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -10929,7 +10950,7 @@ const DRIVE_CENSUS = Object.freeze({
   // failure value.
   // 6490388 -> 6510102: Stage C.1b furniture/dock GymScreen trees. Measured.
   // 6510907 -> 6510913: Stage C.1d playerFacing* drive rows.
-  NODES: 6521223, // D.1 drive: bay targeting replaced three SKU stations; leftover equipment identity is three small rows.
+  NODES: 6521249, // D.1b capacityRealizesOn drives + competition-spec / plate-tree trees (+26 on 6521223)
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -11046,7 +11067,9 @@ const DRIVE_CENSUS = Object.freeze({
   // 30_045_757 -> 30_045_772: Stage C.1d playerFacing* drive strings.
   // 30_090_132 -> 30_086_393: GDD §5.18 Stage D.1 bay targeting + leftover
   // equipment identity. Read from this pin's own failure value.
-  STRINGS: 30_086_393,
+  // 30_086_393 -> 30_086_447: Stage D.1b quality/throughput/capacity world
+  // strings on driven FloorGrid trees. Read from this pin's own failure.
+  STRINGS: 30_086_447,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -11153,7 +11176,8 @@ const DRIVE_CENSUS = Object.freeze({
   // 3792 -> 3824: Stage C.1b dock/surface/furniture labels. Measured.
   // 3904 -> 3917: Stage C.1d player-facing member/refuse labels.
   // 3957 -> 3968: GDD §5.18 Stage D.1 bay/equipment/panel copy.
-  DISTINCT_STRINGS: 3968,
+  // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
+  DISTINCT_STRINGS: 3973,
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
   DEPTH_CUTS: 7,
   /**
@@ -15155,7 +15179,8 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // 53 -> 45: Stage C.1d removed PanResponder/pixel-math helpers.
       // 45 -> 47: C-DEBT-04 clipRefusalRegion's two returns.
       // 51 -> 67: GDD §5.18 Stage D.1 per-bench occupancy / highlight helpers.
-      'FloorGrid.tsx': 67,
+      // 67 -> 70: Stage D.1b bayBenchSpriteUri + raised-label onPress returns.
+      'FloorGrid.tsx': 70,
       // CROSSING 6: GymScreen.tsx's own two helper functions
       // (`allocationOptions`, `describeSlotOutcome`, the latter with three
       // return statements across its three arms) plus the component's own
@@ -15204,7 +15229,8 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // 43 -> 50: P4b — three using-pose ops builders, usingBaseGrid, and
       // memberGrid's three new early returns. Read off this table's failure.
       // 50 -> 52: P4c — the `under` op helper and opsPowerBarOccupied.
-      'floorSprites.ts': 52,
+      // 52 -> 54: Stage D.1b opsCompetitionBench and opsPlateTree.
+      'floorSprites.ts': 54,
       // 25 -> 26: `playerCheckInGapSeconds`'s own `return` — the span the
       // player's "open up" control fed to the shipped accrual.
       // 26 -> 25: "kill the mint" — `playerCheckInGapSeconds` is removed by
@@ -15261,7 +15287,8 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'stationCapability.ts': 24,
       // GDD §5.18 Stage D.1: trainingStation.ts's own returns across the
       // bay derivation and its helpers. Read from this table's own failure.
-      'trainingStation.ts': 17,
+      // 17 -> 18: Stage D.1b capacityRealizesOn.
+      'trainingStation.ts': 18,
     }),
     /**
      * TWO, AND THE TWO ARE THE WRAP'S OWN GATES.
@@ -15796,10 +15823,10 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:725 returned=unfollowable:station',
-  'FloorGrid.tsx:725 returned=unfollowable:station',
-  'FloorGrid.tsx:726 returned=unfollowable:station',
-  'FloorGrid.tsx:726 returned=unfollowable:station',
+  'FloorGrid.tsx:733 returned=unfollowable:station',
+  'FloorGrid.tsx:733 returned=unfollowable:station',
+  'FloorGrid.tsx:734 returned=unfollowable:station',
+  'FloorGrid.tsx:734 returned=unfollowable:station',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -15862,7 +15889,7 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // rewrite and the sled residual's sharpened pointer sit above the arrow
   // (+33). Re-measured from this assertion's own failure value, per this
   // list's own rule.
-  'floorSprites.ts:1207 callee=fresh:ArrowFunction',
+  'floorSprites.ts:1256 callee=fresh:ArrowFunction',
   'floorSprites.ts:363 receiver=NewExpression',
   'floorSprites.ts:422 receiver=NewExpression',
   'floorSprites.ts:435 receiver=NewExpression',
@@ -15948,11 +15975,11 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
  * a type that the control finds a function inside.
  */
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:725 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:725 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:726 GridSize asked=true walked=false',
-  'FloorGrid.tsx:726 GridSize asked=true walked=false',
-  'FloorGrid.tsx:738 BayBench | undefined asked=true walked=false',
+  'FloorGrid.tsx:733 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:733 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:734 GridSize asked=true walked=false',
+  'FloorGrid.tsx:734 GridSize asked=true walked=false',
+  'FloorGrid.tsx:746 BayBench | undefined asked=true walked=false',
   'empireInvariant.ts:1084 GymAxes asked=true walked=false',
   'empireInvariant.ts:1137 GymAxes asked=true walked=false',
   'empireInvariant.ts:1168 readonly ExpansionBuild[] asked=true walked=false',
@@ -16063,7 +16090,7 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'ladderView.tsx:788 ManagedGym asked=true walked=false',
   'ladderView.tsx:796 ManagedGym asked=true walked=false',
   'ladderView.tsx:804 ManagedGym asked=true walked=false',
-  'ladderView.tsx:853 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'ladderView.tsx:839 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
   // §5.11 stage 4's fifteen rows, every one the same shape as the rows above:
   // the screen asks about a named state type and the control declines to walk
   // into it, so the census over-approximates rather than going quiet.
@@ -16326,7 +16353,9 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1535 -> 1542: Stage C.2 mode forwarding plus C-DEBT-04 helpers.
   // 1542 -> 1582: Stage D stationCapability/FloorGrid/stationView function calls.
   // 1582 -> 1640: GDD §5.18 Stage D.1 trainingStation + FloorGrid per-bench.
-  function: 1640,
+  // 1640 -> 1674: Stage D.1b competition-spec painters, bayBenchSpriteUri,
+  // capacityRealizesOn, raised-label handlers. Read from this pin's own failure.
+  function: 1674,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16379,7 +16408,9 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1408 -> 1443: Stage D stationCapability/FloorGrid/stationView member calls.
   // 1443 -> 1479: GDD §5.18 Stage D.1 FloorGrid/stationView/trainingStation members.
   // 1479 -> 1482: per-bench helpers rewritten as loops (push/length).
-  member: 1482,
+  // 1482 -> 1502: Stage D.1b FloorGrid/floorSprites member calls (Image/View
+  // wrappers, ops.push in the two new painters). Read from this pin's failure.
+  member: 1502,
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -16456,7 +16487,8 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 398 -> 402: Stage D local writes in stationCapability/FloorGrid upgrade path.
   // 402 -> 409: GDD §5.18 Stage D.1 FloorGrid per-bench occupancy writes.
   // 409 -> 413: loop-counter writes after rewriting parameter member-calls.
-  local: 413,
+  // 413 -> 430: Stage D.1b FloorGrid/floorSprites local writes.
+  local: 430,
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -16566,7 +16598,8 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 851 -> 853: Stage D ladderView return 29->31 (upgrade-station + capability).
   // 853 -> 903: GDD §5.18 Stage D.1 trainingStation + FloorGrid/floorSim/
   // stationView return sites, FloorGrid callbacks, trainingStation bindings.
-  SITES: 903,
+  // 903 -> 909: Stage D.1b FloorGrid +3, floorSprites +2, trainingStation +1.
+  SITES: 909,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -16710,7 +16743,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 71_407 -> 74_336: GDD §5.18 Stage D.1 trainingStation + FloorGrid per-bench
   // helpers. Re-measured after rewriting parameter member-calls as loops.
   // 74_336 -> 74_395: the loop rewrite's own extra AST nodes.
-  NODES_EXAMINED: 74_395,
+  // 74_395 -> 75_422: Stage D.1b competition-spec / plate-tree painters,
+  // capacityRealizesOn, raised labels, panel flow. Read from this pin last.
+  NODES_EXAMINED: 75_422,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -16844,7 +16879,8 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // GymViewState.capability widening.
   // 976 -> 1001: GDD §5.18 Stage D.1 trainingStation exported positions
   // plus capability keyed by TrainingStationKind.
-  POSITIONS: 1001,
+  // 1001 -> 1003: Stage D.1b capacityRealizesOn + bay sprite table leaves.
+  POSITIONS: 1003,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',

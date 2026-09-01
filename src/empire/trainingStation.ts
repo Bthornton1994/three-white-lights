@@ -248,6 +248,20 @@ export function competitionBenchBay(
 }
 
 /**
+ * Whether purchasing Capacity on this layout would place a second 2×4.
+ * The reducer's preview and the station panel's preflight both read this
+ * so the UI cannot offer a live buy the domain will refuse. Not a second
+ * placement search — it is `competitionBenchBay` at capacity 1.
+ */
+export function capacityRealizesOn(
+  floor: FloorState,
+  barbellOwned: readonly LadderEquipmentItem[],
+): boolean {
+  const preview = competitionBenchBay(floor, barbellOwned, 1);
+  return preview.expansion !== null && preview.benches.length >= 2;
+}
+
+/**
  * Whether placing something of `footprint` at `position` would land on the
  * bay's expansion bench. The primary is ordinary furniture and is already
  * refused by `overlapsFixedFurniture`. Moving the primary itself does not

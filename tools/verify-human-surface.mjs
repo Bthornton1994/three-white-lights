@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Stage C.1d / C-DEBT-04 human-surface verifier.
+ * Stage C.1d / C-DEBT-04 / D.1b human-surface verifier.
  *
  * Clicks the bounding box of the VISIBLE sprite/station/member root, not an
  * invisible helper Pressable. A testID is used only to FIND the drawn object
@@ -8,8 +8,13 @@
  *
  * C-DEBT-04 and the occupied-station completion claim run on both a
  * mobile-sized viewport and a desktop viewport.
+ *
+ * Stage D.1b adds world-legibility and interaction-close claims: Quality
+ * changes the bench sprite, Throughput shows a plate tree, occupied bay
+ * stays inspectable via the world label, one tap switches selection, and
+ * boxed Capacity is refused in the panel before purchase.
  */
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { chromium } from 'playwright';
 
 const url = process.argv.includes('--url')
@@ -215,6 +220,56 @@ async function runSurface(page, viewportName) {
     fail(`${tag}: floorgrid-fixed-power-bar has no box to inspect as equipment`);
   }
 
+  // Stage D.1b — one-press cross-object selection. No close between taps.
+  const bayLabelClicked = await clickVisible('floorgrid-bay-label-competition-bench-bay');
+  await page.waitForTimeout(300);
+  const stationAfterLabel = await page.getByTestId('floorgrid-station-panel').count();
+  if (bayLabelClicked && stationAfterLabel === 1) {
+    ok(`${tag}: tapping the visible "bench bay" label opens the station panel`);
+  } else {
+    fail(
+      `${tag}: bay label tap did not open the station panel — clicked=${bayLabelClicked}, panels=${stationAfterLabel}`,
+    );
+  }
+  const powerClickedOnce = await clickVisible('floorgrid-fixed-power-bar');
+  await page.waitForTimeout(300);
+  const equipmentAfterStation = await textOf('floorgrid-equipment-panel-identity');
+  const stationAfterPower = await page.getByTestId('floorgrid-station-panel').count();
+  if (
+    powerClickedOnce &&
+    equipmentAfterStation !== null &&
+    equipmentAfterStation.includes('Power bar') &&
+    stationAfterPower === 0
+  ) {
+    ok(`${tag}: one tap switches station → Power Bar equipment (no close)`);
+  } else {
+    fail(
+      `${tag}: station → equipment was not one tap — equipment="${equipmentAfterStation}", station=${stationAfterPower}`,
+    );
+  }
+  const memberSwitchClicked = await clickVisible('floorgrid-ambient-0');
+  await page.waitForTimeout(300);
+  const memberAfterEquipment = await page.getByTestId('floorgrid-member-panel').count();
+  const equipmentAfterMember = await page.getByTestId('floorgrid-equipment-panel').count();
+  if (memberSwitchClicked && memberAfterEquipment === 1 && equipmentAfterMember === 0) {
+    ok(`${tag}: one tap switches equipment → member (no close)`);
+  } else {
+    fail(
+      `${tag}: equipment → member was not one tap — member=${memberAfterEquipment}, equipment=${equipmentAfterMember}`,
+    );
+  }
+  const bayFromMember = await clickVisible('floorgrid-bay-label-competition-bench-bay');
+  await page.waitForTimeout(300);
+  const stationAfterMember = await page.getByTestId('floorgrid-station-panel').count();
+  const memberAfterBay = await page.getByTestId('floorgrid-member-panel').count();
+  if (bayFromMember && stationAfterMember === 1 && memberAfterBay === 0) {
+    ok(`${tag}: one tap switches member → station (no close)`);
+  } else {
+    fail(
+      `${tag}: member → station was not one tap — station=${stationAfterMember}, member=${memberAfterBay}`,
+    );
+  }
+  await page.getByText('close', { exact: true }).click().catch(() => {});
 
   await page.getByText('build', { exact: true }).click();
   await page.waitForTimeout(300);
@@ -292,6 +347,35 @@ async function runSurface(page, viewportName) {
   if (occupiedStation === null) {
     fail(`${tag}: no occupied fixed station to move while a member is using it`);
   } else {
+    const occupiedLabel = await clickVisible('floorgrid-bay-label-competition-bench-bay');
+    await page.waitForTimeout(300);
+    const occupiedStationPanel = await page.getByTestId('floorgrid-station-panel').count();
+    const occupiedMemberPanel = await page.getByTestId('floorgrid-member-panel').count();
+    if (occupiedLabel && occupiedStationPanel === 1 && occupiedMemberPanel === 0) {
+      ok(`${tag}: occupied bay remains inspectable via the visible "bench bay" label`);
+    } else {
+      fail(
+        `${tag}: occupied bay label did not open the station — clicked=${occupiedLabel}, station=${occupiedStationPanel}, member=${occupiedMemberPanel}`,
+      );
+    }
+    await page.getByText('close', { exact: true }).click().catch(() => {});
+    const usingMember = await page.locator('[data-testid^="floorsim-cue-"][data-testid*="-using"]').first();
+    const usingCount = await page.locator('[data-testid^="floorsim-cue-"][data-testid*="-using"]').count();
+    if (usingCount > 0) {
+      const usingId = await usingMember.getAttribute('data-testid');
+      const usingIndex = usingId === null ? null : usingId.split('-')[2];
+      if (usingIndex !== null) {
+        const memberClicked = await clickVisible(`floorgrid-ambient-${usingIndex}`);
+        await page.waitForTimeout(300);
+        const memberPanel = await page.getByTestId('floorgrid-member-panel').count();
+        if (memberClicked && memberPanel === 1) {
+          ok(`${tag}: visible using member remains inspectable`);
+        } else {
+          fail(`${tag}: using member tap did not open the member panel — clicked=${memberClicked}, panels=${memberPanel}`);
+        }
+        await page.getByText('close', { exact: true }).click().catch(() => {});
+      }
+    }
     const before = await boxOf(occupiedStation);
     await page.getByText('build', { exact: true }).click();
     await page.waitForTimeout(200);
@@ -336,6 +420,190 @@ async function runSurface(page, viewportName) {
   }
 }
 
+function purseAmount(text) {
+  const match = /gym bucks:\s*([\d.]+)/i.exec(text ?? '');
+  return match === null ? Number.NaN : Number.parseFloat(match[1] ?? '');
+}
+
+async function enterGym(page) {
+  await page.goto(url, { waitUntil: 'load', timeout: 120000 });
+  await page.waitForTimeout(1800);
+  await page.getByText('GYM EMPIRE').click({ timeout: 15000 });
+  await page.getByTestId('gymscreen-root').waitFor({ state: 'attached', timeout: 20000 });
+  await page.waitForTimeout(800);
+}
+
+async function afford(page, amount) {
+  await page.getByTestId('gymscreen-surface-more').click();
+  await page.waitForTimeout(200);
+  let purse = Number.NaN;
+  for (let i = 0; i < 16; i += 1) {
+    purse = purseAmount(await page.getByTestId('gymscreen-gym-bucks').innerText({ timeout: 2000 }).catch(() => ''));
+    if (Number.isFinite(purse) && purse >= amount) return purse;
+    await page.getByTestId('gymscreen-advance-259200').click();
+    await page.waitForTimeout(250);
+  }
+  return purse;
+}
+
+async function shot(page, name) {
+  mkdirSync('/workspace/screenshots', { recursive: true });
+  await page.screenshot({ path: `/workspace/screenshots/${name}.png`, fullPage: false });
+}
+
+async function runD1b(page, viewportName) {
+  const { clickVisible, textOf } = helpers(page);
+  const tag = viewportName;
+
+  await enterGym(page);
+  await page.getByText('play', { exact: true }).click();
+  await page.waitForTimeout(400);
+  await shot(page, `d1b-stock-${tag}`);
+  const stockQuality = await page.getByTestId('floorgrid-quality-bench-competition-bench-bay').count();
+  const stockTree = await page.getByTestId('floorgrid-plate-tree-competition-bench-bay').count();
+  const stockSecond = await page.getByTestId('floorgrid-bay-expansion').count();
+  if (stockQuality === 0 && stockTree === 0 && stockSecond === 0) {
+    ok(`${tag}: stock bay is one ordinary bench — no quality pad, no plate tree, no second bench`);
+  } else {
+    fail(
+      `${tag}: stock bay already shows fittings — quality=${stockQuality}, tree=${stockTree}, second=${stockSecond}`,
+    );
+  }
+
+  const purseBeforeQuality = await afford(page, 120);
+  await page.getByTestId('gymscreen-surface-play').click();
+  await page.waitForTimeout(300);
+  await clickVisible('floorgrid-bay-label-competition-bench-bay');
+  await page.waitForTimeout(300);
+  const qualityBuy = await page.getByTestId('floorgrid-station-panel-upgrade-quality').count();
+  if (qualityBuy === 1) {
+    await page.getByTestId('floorgrid-station-panel-upgrade-quality').click();
+    await page.waitForTimeout(400);
+  } else {
+    fail(`${tag}: Quality buy was not offered — purse=${purseBeforeQuality}, buttons=${qualityBuy}`);
+  }
+  await page.getByText('close', { exact: true }).click().catch(() => {});
+  await page.waitForTimeout(200);
+  await shot(page, `d1b-quality-${tag}`);
+  const qualityPresent = await page.getByTestId('floorgrid-quality-bench-competition-bench-bay').count();
+  const qualitySecond = await page.getByTestId('floorgrid-bay-expansion').count();
+  if (qualityPresent === 1 && qualitySecond === 0) {
+    ok(`${tag}: Quality changes the visible bench pad and still has one physical bench`);
+  } else {
+    fail(`${tag}: Quality world cue missing or added a bench — pad=${qualityPresent}, second=${qualitySecond}`);
+  }
+
+  await enterGym(page);
+  await page.getByText('play', { exact: true }).click();
+  await page.waitForTimeout(400);
+  await afford(page, 150);
+  await page.getByTestId('gymscreen-surface-play').click();
+  await page.waitForTimeout(300);
+  await clickVisible('floorgrid-bay-label-competition-bench-bay');
+  await page.waitForTimeout(300);
+  const throughputBuy = await page.getByTestId('floorgrid-station-panel-upgrade-throughput').count();
+  if (throughputBuy === 1) {
+    await page.getByTestId('floorgrid-station-panel-upgrade-throughput').click();
+    await page.waitForTimeout(400);
+  } else {
+    fail(`${tag}: Throughput buy was not offered — buttons=${throughputBuy}`);
+  }
+  await page.getByText('close', { exact: true }).click().catch(() => {});
+  await page.waitForTimeout(200);
+  await shot(page, `d1b-throughput-${tag}`);
+  const treePresent = await page.getByTestId('floorgrid-plate-tree-competition-bench-bay').count();
+  const treeSecond = await page.getByTestId('floorgrid-bay-expansion').count();
+  if (treePresent === 1 && treeSecond === 0) {
+    ok(`${tag}: Throughput shows a plate tree on the same one-bench bay`);
+  } else {
+    fail(`${tag}: Throughput world cue missing or added a bench — tree=${treePresent}, second=${treeSecond}`);
+  }
+
+  await enterGym(page);
+  await page.getByText('play', { exact: true }).click();
+  await page.waitForTimeout(400);
+  const purseBeforeBox = await afford(page, 180);
+  await page.getByTestId('gymscreen-surface-build').click();
+  await page.waitForTimeout(300);
+  await clickVisible('floorgrid-fixed-sprite-flat-bench');
+  await page.waitForTimeout(200);
+  await helpers(page).clickGridTile(6, 2);
+  await page.waitForTimeout(200);
+  await clickVisible('floorgrid-fixed-sprite-power-bar');
+  await page.waitForTimeout(200);
+  await helpers(page).clickGridTile(5, 2);
+  await page.waitForTimeout(200);
+  await clickVisible('floorgrid-fixed-sprite-comp-plates');
+  await page.waitForTimeout(200);
+  await helpers(page).clickGridTile(6, 0);
+  await page.waitForTimeout(300);
+  await page.getByTestId('gymscreen-surface-play').click();
+  await page.waitForTimeout(400);
+  await clickVisible('floorgrid-bay-label-competition-bench-bay');
+  await page.waitForTimeout(300);
+  const boxedUnavailable = await textOf('floorgrid-station-panel-upgrade-capacity-unavailable');
+  const boxedLive = await page.getByTestId('floorgrid-station-panel-upgrade-capacity').count();
+  const purseAfterBox = purseAmount(
+    await page.getByTestId('gymscreen-gym-bucks').innerText({ timeout: 2000 }).catch(() => ''),
+  );
+  // Exact purse equality is the wrong proxy: C.2 earnings keep ticking while
+  // the boxed layout is assembled. The claim is that the player was not
+  // charged the Second-bench price for a silent no-op.
+  const capacityCost = 180;
+  const didNotPay =
+    Number.isFinite(purseAfterBox) &&
+    Number.isFinite(purseBeforeBox) &&
+    purseAfterBox > purseBeforeBox - capacityCost / 2;
+  if (
+    boxedUnavailable !== null &&
+    boxedUnavailable.includes('No room for a second bench') &&
+    boxedLive === 0 &&
+    didNotPay
+  ) {
+    ok(`${tag}: boxed Capacity shows "No room for a second bench" before purchase; purse not charged`);
+  } else {
+    fail(
+      `${tag}: boxed Capacity preflight failed — text="${boxedUnavailable}", live=${boxedLive}, purse ${purseBeforeBox}→${purseAfterBox}`,
+    );
+  }
+  await page.getByText('close', { exact: true }).click().catch(() => {});
+
+  await page.getByTestId('gymscreen-surface-build').click();
+  await page.waitForTimeout(300);
+  await clickVisible('floorgrid-fixed-sprite-flat-bench');
+  await page.waitForTimeout(200);
+  await helpers(page).clickGridTile(3, 0);
+  await page.waitForTimeout(200);
+  await clickVisible('floorgrid-fixed-sprite-power-bar');
+  await page.waitForTimeout(200);
+  await helpers(page).clickGridTile(0, 0);
+  await page.waitForTimeout(200);
+  await clickVisible('floorgrid-fixed-sprite-comp-plates');
+  await page.waitForTimeout(200);
+  await helpers(page).clickGridTile(1, 0);
+  await page.waitForTimeout(300);
+  await page.getByTestId('gymscreen-surface-play').click();
+  await page.waitForTimeout(400);
+  await clickVisible('floorgrid-bay-label-competition-bench-bay');
+  await page.waitForTimeout(300);
+  const openedLive = await page.getByTestId('floorgrid-station-panel-upgrade-capacity').count();
+  if (openedLive === 1) {
+    ok(`${tag}: rearranging to a legal layout re-enables the Second bench purchase`);
+    await page.getByTestId('floorgrid-station-panel-upgrade-capacity').click();
+    await page.waitForTimeout(400);
+    await page.getByText('close', { exact: true }).click().catch(() => {});
+    await shot(page, `d1b-capacity-${tag}`);
+    const second = await page.getByTestId('floorgrid-bay-expansion').count();
+    if (second === 1) {
+      ok(`${tag}: Capacity still realises a second physical bench`);
+    } else {
+      fail(`${tag}: Capacity purchase did not draw the second bench`);
+    }
+  } else {
+    fail(`${tag}: Capacity did not become purchasable after rearranging`);
+  }
+}
+
 const browser = await chromium.launch({
   ...(PW_CHROMIUM === undefined ? {} : { executablePath: PW_CHROMIUM }),
   args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-gl=swiftshader'],
@@ -356,6 +624,20 @@ try {
       );
     } finally {
       await context.close();
+    }
+    const d1bContext = await browser.newContext({
+      viewport: { width: viewport.width, height: viewport.height },
+      deviceScaleFactor: viewport.deviceScaleFactor,
+    });
+    const d1bPage = await d1bContext.newPage();
+    try {
+      await runD1b(d1bPage, viewport.name);
+    } catch (err) {
+      fail(
+        `${viewport.name}: D.1b unexpected error: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    } finally {
+      await d1bContext.close();
     }
   }
 } finally {

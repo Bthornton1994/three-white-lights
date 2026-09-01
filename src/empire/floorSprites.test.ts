@@ -298,11 +298,14 @@ describe('the vocabularies and dimensions agree with the registered tables', () 
       everyGrid.push(FLOOR_SPRITE_GRIDS.fixedOccupied[item]);
     }
     for (const rung of T.LADDER_RUNGS) everyGrid.push(FLOOR_SPRITE_GRIDS.floor[rung]);
+    everyGrid.push(FLOOR_SPRITE_GRIDS.bay.qualityBench);
+    everyGrid.push(FLOOR_SPRITE_GRIDS.bay.plateTree);
     // 90 member grids (5 types x 9 poses x 2 facings, P4b's six using poses
     // included) + 14 session + 3 fixed + 1 occupied variant + 4 floors.
     // Pinned so an empty walk cannot make the loop below a pass over
     // nothing. 61 -> 111 with P4b, 111 -> 112 with P4c's occupied power-bar.
-    expect(everyGrid.length).toBe(112);
+    // 112 -> 114: Stage D.1b quality bench + plate tree.
+    expect(everyGrid.length).toBe(114);
     let inspected = 0;
     for (const grid of everyGrid) {
       for (const index of grid.data) {
@@ -608,6 +611,49 @@ describe('the equipment and the floor', () => {
     expect(barPaint.some((index) => restingDistinct.has(index))).toBe(true);
   });
 
+  it('Stage D.1b: Quality paints a competition-spec pad, not a recolour of the stock bench', () => {
+    const stock = FLOOR_SPRITE_GRIDS.fixed['flat-bench'];
+    const quality = FLOOR_SPRITE_GRIDS.bay.qualityBench;
+    expect(quality.w).toBe(stock.w);
+    expect(quality.h).toBe(stock.h);
+    expect(differingPixels(quality, stock)).toBeGreaterThanOrEqual(80);
+    const legend = FLOOR_SPRITE_PALETTES.legend;
+    const rubber = legend.indexOf('R') + 1;
+    const pad = legend.indexOf('U') + 1;
+    let qualityRubber = 0;
+    let qualityPad = 0;
+    let stockPad = 0;
+    for (const index of quality.data) {
+      if (index === rubber) qualityRubber += 1;
+      if (index === pad) qualityPad += 1;
+    }
+    for (const index of stock.data) {
+      if (index === pad) stockPad += 1;
+    }
+    expect(qualityRubber).toBeGreaterThan(0);
+    expect(stockPad).toBeGreaterThan(0);
+    expect(qualityPad).toBe(0);
+  });
+
+  it('Stage D.1b: Throughput paints a plate tree, not a second bench and not the plate stack', () => {
+    const tree = FLOOR_SPRITE_GRIDS.bay.plateTree;
+    expect(tree.w).toBe(NATIVE);
+    expect(tree.h).toBe(NATIVE * 2);
+    const legend = FLOOR_SPRITE_PALETTES.legend;
+    const plate = legend.indexOf('C') + 1;
+    const steelDark = legend.indexOf('E') + 1;
+    let platePixels = 0;
+    let spinePixels = 0;
+    for (const index of tree.data) {
+      if (index === plate) platePixels += 1;
+      if (index === steelDark) spinePixels += 1;
+    }
+    expect(platePixels).toBeGreaterThan(0);
+    expect(spinePixels).toBeGreaterThan(0);
+    expect(FLOOR_SPRITE_URIS.bay.plateTree).not.toBe(FLOOR_SPRITE_URIS.fixed['comp-plates']);
+    expect(FLOOR_SPRITE_URIS.bay.qualityBench).not.toBe(FLOOR_SPRITE_URIS.fixed['flat-bench']);
+  });
+
   it('paints the floor fully opaque, from exactly the four floor tones', () => {
     // The floor palette occupies the last four legend slots by construction.
     const paletteSize = FLOOR_SPRITE_PALETTES.base.length;
@@ -696,9 +742,24 @@ describe('the PNGs are exactly the grids', () => {
         h: grid.h,
       });
     }
+    cases.push({
+      name: 'bay qualityBench',
+      uri: FLOOR_SPRITE_URIS.bay.qualityBench,
+      expected: upscaledData(FLOOR_SPRITE_GRIDS.bay.qualityBench, SCALE),
+      w: FLOOR_SPRITE_GRIDS.bay.qualityBench.w * SCALE,
+      h: FLOOR_SPRITE_GRIDS.bay.qualityBench.h * SCALE,
+    });
+    cases.push({
+      name: 'bay plateTree',
+      uri: FLOOR_SPRITE_URIS.bay.plateTree,
+      expected: upscaledData(FLOOR_SPRITE_GRIDS.bay.plateTree, SCALE),
+      w: FLOOR_SPRITE_GRIDS.bay.plateTree.w * SCALE,
+      h: FLOOR_SPRITE_GRIDS.bay.plateTree.h * SCALE,
+    });
     // 61 -> 111 with P4b's six using poses (90 member sprites now);
     // 111 -> 112 with P4c's occupied power-bar variant.
-    expect(cases.length).toBe(112);
+    // 112 -> 114: Stage D.1b quality bench + plate tree.
+    expect(cases.length).toBe(114);
 
     for (const each of cases) {
       const decoded = decodePngUri(each.uri);

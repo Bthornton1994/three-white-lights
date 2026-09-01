@@ -16,6 +16,7 @@ import {
   COMPETITION_BENCH_BAY_REQUIRED,
   TRAINING_STATION_KINDS,
   bayOccupiedCells,
+  capacityRealizesOn,
   competitionBenchBay,
   isCompetitionBenchBayComponent,
   overlapsBayExpansion,
@@ -99,6 +100,8 @@ describe('trainingStation.ts — Competition Bench Bay', () => {
     expect(capacity.expansion).toBeNull();
     expect(capacity.benches).toHaveLength(1);
     expect(bayOccupiedCells(capacity)).toBe(8);
+    expect(capacityRealizesOn(boxed, OWNED)).toBe(false);
+    expect(capacityRealizesOn(opening, OWNED)).toBe(true);
   });
 
   it('overlapsBayExpansion is true only for the realised second bench', () => {

@@ -337,12 +337,12 @@ import {
   stationLevels,
   stockStationCapability,
   upgradeStation,
-  withStationAxis,
   type StationCapabilityState,
   type StationUpgradeAxis,
   type StationUpgradeRefuseReason,
 } from './stationCapability';
 import {
+  capacityRealizesOn,
   competitionBenchBay,
   type TrainingStationKind,
 } from './trainingStation';
@@ -812,27 +812,13 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
         stationLevels(state.capability, action.station).capacity,
       );
       const placed = bay.complete;
-      let realizesCapacity = true;
-      if (action.axis === 'capacity' && placed) {
-        // Preview the purchased capacity map directly. Going through
-        // `upgradeStation` with the live purse would refuse a short purse as
-        // `upgraded` failure, fall back to stock, and then mis-report a
-        // boxed station (`no-second-position`) when the real reason is money.
-        const previewCapability = withStationAxis(state.capability, action.station, 'capacity', 1);
-        const previewBay = competitionBenchBay(
-          state.floor,
-          state.managed.gym.ladder.equipment,
-          stationLevels(previewCapability, action.station).capacity,
-        );
-        realizesCapacity = previewBay.expansion !== null && previewBay.benches.length >= 2;
-      }
       const outcome = upgradeStation(
         state.capability,
         action.station,
         action.axis,
         state.managed.gym.ladder.gymBucks,
         placed,
-        realizesCapacity,
+        capacityRealizesOn(state.floor, state.managed.gym.ladder.equipment),
       );
       if (outcome.kind === 'refused') {
         return Object.freeze({

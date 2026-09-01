@@ -3271,10 +3271,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // Cancel, and refusal copy is an expression from stationView.ts.
       'Moving:',
       'Cancel',
-      // GDD §5.18 Stage D.1: the realised second bench is a real 2×4
-      // sprite on the floor, labelled in the world, not a capacity pad.
-      // AST order: the expansion lives in the grid, after Moving/Cancel
-      // and before the ambient-member caption.
+      // GDD §5.18 Stage D.1b: the "bench bay" / "second bench" world labels
+      // are explicit station tap targets (raised above members). AST order:
+      // both live in the grid after Moving/Cancel, before the ambient caption.
+      'bench bay',
       'second bench',
       // GDD §5.13 presentation Phase 2: the ambient-member caption, in tree
       // order — rendered after the grid's ScrollView and before the tray,
@@ -3818,7 +3818,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // refuse copy, goldenrod/darkkhaki rest-cues.
     // 624 -> 640: GDD §5.18 Stage D.1 — trainingStation tokens, bay
     // testIDs, equipment-panel copy, training-kind station refs.
-    expect(singleQuoted.size).toBe(640);
+    // 640 -> 643: Stage D.1b world-legibility testIDs (quality bench, plate
+    // tree, raised bay labels).
+    expect(singleQuoted.size).toBe(643);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4135,6 +4137,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-ambient-caption',
       'floorgrid-bay-expansion',
       'floorgrid-bay-expansion-sprite',
+      'floorgrid-bay-label-competition-bench-bay',
+      'floorgrid-bay-label-second-bench',
       'floorgrid-caption',
       // GDD §5.14 Stage C.1: the collapsed-by-default diagnostics surface's
       // three new testIDs.
@@ -4159,6 +4163,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-pending',
       'floorgrid-place-banner',
       'floorgrid-place-cancel',
+      'floorgrid-plate-tree-competition-bench-bay',
+      'floorgrid-quality-bench-competition-bench-bay',
       'floorgrid-quality-mark-competition-bench-bay',
       'floorgrid-root',
       'floorgrid-scroll-x',
@@ -4624,7 +4630,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 946 -> 957: Stage D critic pass singleQuoted 614 -> 624, templates 332 -> 333.
     // 957 -> 973: GDD §5.18 Stage D.1 singleQuoted 624 -> 640; templateChunks unchanged.
     // 973 -> 975: D.1 highlight ids, templateChunks 333 -> 335.
-    expect(stringsChecked).toBe(975);
+    // 975 -> 978: Stage D.1b singleQuoted 640 -> 643.
+    expect(stringsChecked).toBe(978);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were

@@ -1145,6 +1145,55 @@ function opsFlatBench(w: number, h: number): PaintOp[] {
   return ops;
 }
 
+/**
+ * Stage D.1b Quality — the same 2×4 footprint as `opsFlatBench`, painted as a
+ * competition-spec bench: black leather pad, chrome side rails, heavier
+ * feet. Not a gold-tier recolour of the stock red pad. Members already
+ * prefer the nicer bay; this is the physical reason a player can see from
+ * the floor without opening a panel.
+ */
+function opsCompetitionBench(w: number, h: number): PaintOp[] {
+  const ops: PaintOp[] = [];
+  const rail = 2;
+  const padLeft = rail + 1;
+  const padWidth = w - padLeft * 2;
+  ops.push(fill(1, 2, rail, h - INSET, PX_STEEL_LIGHT));
+  ops.push(fill(w - 1 - rail, 2, rail, h - INSET, PX_STEEL_MID));
+  ops.push(fill(padLeft, QUARTER, padWidth, h - INSET - 2, PX_RUBBER));
+  ops.push(fill(w - padLeft - 2, QUARTER, 2, h - INSET - 2, PX_RUBBER_DARK));
+  ops.push(hatch(padLeft, HALF, padWidth, h - NATIVE, QUARTER, PX_RUBBER_DARK));
+  ops.push(fill((w >> 1) - 1, INSET, 1, h - INSET * 2, PX_STEEL_LIGHT));
+  ops.push(fill(1, 1, w - 2, QUARTER, PX_STEEL_LIGHT));
+  ops.push(fill(2, 2, w - INSET, 1, PX_STEEL_MID));
+  ops.push(fill(1, h - INSET, w - 2, QUARTER, PX_STEEL_DARK));
+  ops.push(fill(2, h - QUARTER, w - INSET, 1, PX_STEEL_MID));
+  return ops;
+}
+
+/**
+ * Stage D.1b Throughput — a plate tree / loading-organization fitting.
+ * Decorative: FloorGrid draws it on the existing bay with no extra collision
+ * and no extra seat. Distinct from `opsCompPlates` (a nested stack): this is
+ * a steel spine with pegs and plates, the reason changeovers are faster.
+ */
+function opsPlateTree(w: number, h: number): PaintOp[] {
+  const ops: PaintOp[] = [];
+  const midX = w >> 1;
+  ops.push(fill(midX, 1, 2, h - 2, PX_STEEL_DARK));
+  ops.push(fill(midX, 1, 1, h - 2, PX_STEEL_LIGHT));
+  const pegCount = QUARTER;
+  const span = h - INSET;
+  for (let i = 0; i < pegCount; i += 1) {
+    const y = QUARTER + Math.floor((span * i) / pegCount);
+    ops.push(fill(1, y, w - 2, 1, PX_STEEL_MID));
+    ops.push(disc(QUARTER + 1, y, QUARTER, PX_PLATE));
+    ops.push(disc(w - QUARTER - 1, y, QUARTER, PX_PLATE_SHADE));
+    ops.push(disc(QUARTER + 1, y, 1, PX_STEEL_LIGHT));
+    ops.push(disc(w - QUARTER - 1, y, 1, PX_STEEL_LIGHT));
+  }
+  return ops;
+}
+
 type EquipmentPainter = (w: number, h: number) => PaintOp[];
 
 const SESSION_PAINTERS: Readonly<Record<SessionEquipmentItem, EquipmentPainter>> = {
@@ -1322,6 +1371,14 @@ interface SpriteTables {
   readonly fixedOccupiedUris: Readonly<Record<keyof typeof FIXED_OCCUPIED_PAINTERS, string>>;
   readonly floorGrids: Readonly<Record<LadderRung, FloorSpriteGrid>>;
   readonly floorUris: Readonly<Record<LadderRung, string>>;
+  readonly bayGrids: {
+    readonly qualityBench: FloorSpriteGrid;
+    readonly plateTree: FloorSpriteGrid;
+  };
+  readonly bayUris: {
+    readonly qualityBench: string;
+    readonly plateTree: string;
+  };
 }
 
 function buildTables(): SpriteTables {
@@ -1388,6 +1445,22 @@ function buildTables(): SpriteTables {
     floorUris[rung] = gridToPngUri(grid, gearPalette);
   }
 
+  const benchFootprint = EMPIRE_TUNING.FLOOR_FIXED_FURNITURE_LAYOUT['flat-bench'].footprint;
+  const qualityW = benchFootprint.width * NATIVE;
+  const qualityH = benchFootprint.height * NATIVE;
+  const qualityGrid = render(qualityW, qualityH, opsCompetitionBench(qualityW, qualityH), true);
+  const treeW = NATIVE;
+  const treeH = NATIVE * 2;
+  const treeGrid = render(treeW, treeH, opsPlateTree(treeW, treeH), true);
+  const bayGrids = Object.freeze({
+    qualityBench: frozenGrid(qualityGrid),
+    plateTree: frozenGrid(treeGrid),
+  });
+  const bayUris = Object.freeze({
+    qualityBench: gridToPngUri(upscaled(qualityGrid, SCALE), gearPalette),
+    plateTree: gridToPngUri(upscaled(treeGrid, SCALE), gearPalette),
+  });
+
   return {
     memberGrids: Object.freeze(memberGrids) as SpriteTables['memberGrids'],
     memberUris: Object.freeze(memberUris) as SpriteTables['memberUris'],
@@ -1399,6 +1472,8 @@ function buildTables(): SpriteTables {
     fixedOccupiedUris: Object.freeze(fixedOccupiedUris) as SpriteTables['fixedOccupiedUris'],
     floorGrids: Object.freeze(floorGrids) as SpriteTables['floorGrids'],
     floorUris: Object.freeze(floorUris) as SpriteTables['floorUris'],
+    bayGrids,
+    bayUris,
   };
 }
 
@@ -1411,6 +1486,7 @@ export const FLOOR_SPRITE_GRIDS = Object.freeze({
   fixed: TABLES.fixedGrids,
   fixedOccupied: TABLES.fixedOccupiedGrids,
   floor: TABLES.floorGrids,
+  bay: TABLES.bayGrids,
 });
 
 /** One PNG data URI per sprite — what `FloorGrid.tsx` actually draws. */
@@ -1420,6 +1496,7 @@ export const FLOOR_SPRITE_URIS = Object.freeze({
   fixed: TABLES.fixedUris,
   fixedOccupied: TABLES.fixedOccupiedUris,
   floor: TABLES.floorUris,
+  bay: TABLES.bayUris,
 });
 
 /** The resolved palettes, in legend order, for tests that re-derive colours. */
