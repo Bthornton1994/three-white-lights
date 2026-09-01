@@ -2941,9 +2941,23 @@ const REACHABLE_RESCUE: Readonly<Record<string, RescueRow>> = {
   // `WALL_ADDEND` (0.192) used to save. `rescued` still equals `fromMiss`
   // exactly, so nothing here is rescued from a rep that would have made it
   // unaided.
+  //
+  // A SECOND RPE 9 CELL JOINS IT ON THE 2026-09-01 RETUNE, AND THE FIRST ONE
+  // FALLS FURTHER — RE-MEASURED, NOT PROJECTED FROM THE PARAGRAPH ABOVE.
+  // `BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND` rises 0.20 -> 0.214 (see that
+  // constant for why the ceiling it used to sit under was a measurement
+  // artefact), so the same mechanism the paragraph above describes reaches one
+  // cell further down the rung: `session/rpe9/0.8750/as-expected` falls
+  // 100 -> 40 and `session/rpe9/0.9000/crisp` leaves saturation at
+  // 160 -> 100. The two lightest RPE 9 cells still saturate, RPE 8's four rows
+  // are unmoved despite `ONSET` rising in the same commit — this sweep taps at
+  // `REACHABLE.GAP_TICKS` (6), far faster than any RPE 8 floor before or after
+  // the rise, so the rung's rescue behaviour is not what that constant moved —
+  // and every RPE 10 and meet row is byte-identical, which is the selectivity
+  // claim `WALL_CUT_MARGIN` makes, measured rather than restated.
   'session/rpe9/0.8250/slower-than-expected': [160, 160, 160],
-  'session/rpe9/0.8750/as-expected': [100, 100, 160],
-  'session/rpe9/0.9000/crisp': [160, 160, 160],
+  'session/rpe9/0.8750/as-expected': [40, 40, 160],
+  'session/rpe9/0.9000/crisp': [100, 100, 160],
   'session/rpe9/0.9250/popping': [160, 160, 160],
   'session/rpe10/0.8750/slower-than-expected': [0, 0, 160],
   'session/rpe10/0.9000/as-expected': [0, 0, 160],
@@ -3638,12 +3652,55 @@ const WORKING_FLOOR = {
    * needs one of: authorisation to touch the ladder-monotonicity check's own
    * tolerance, authorisation to move `WALL_ADDEND` despite the RPE 10 floor
    * cost, or a different mechanism than a third additive band.
+   *
+   * -------------------------------------------------------------------------
+   * 2026-09-01: THE FIRST OF THOSE THREE IS WHAT HAPPENED, AND THE LADDER TEST
+   * WAS REPLACED RATHER THAN LOOSENED — SEE `LOAD_LADDER`
+   * -------------------------------------------------------------------------
+   * The paragraph above named the ladder-monotonicity check as the thing
+   * capping the magnitude, and it was right. The 2026-08-31 (SECOND) ruling
+   * asked whether that check was protecting a real gameplay property or was an
+   * analytical proxy that went over-strong once the demand curve was
+   * deliberately made piecewise, and required the answer be MEASURED. It was:
+   * `LOAD_LADDER` drives real reps at every load on the same synthetic domain
+   * and finds the scalar and the behaviour part company by about `0.019` of
+   * addend. The scalar assertion is gone; a direct behavioural one — a heavier
+   * bar never permits a slower sustained cadence — stands where it was.
+   *
+   * WHAT MOVED AS A RESULT, WHOLE VECTORS, OLD BESIDE NEW:
+   *
+   *     RPE 8   16, 13, 14, 15  ->  13, 11, 12, 13   (ONSET  0.199 -> 0.22)
+   *     RPE 9   11,  9, 10, 11  ->  10,  9,  9, 10   (MIDDLE 0.20  -> 0.214)
+   *     RPE 10   7,  7,  8,  8  ->   7,  7,  8,  8   (WALL   0.192, UNMOVED)
+   *
+   * As taps a second, which is the axis the phone replays have been graded on:
+   * RPE 8 goes from 3.75-4.62 to 4.62-5.45, RPE 9 from 5.45-6.00 to
+   * 6.00-6.67, RPE 10 unchanged at 7.50-8.57. Every RPE 8 cell moves by two or
+   * three ticks; the round before this one moved one cell by one tick.
+   *
+   * THE ORDERING COST IS REAL AND IS STATED RATHER THAN BURIED. RPE 8 vs RPE 9
+   * separation falls from two ticks to one (`min(RPE 8) = 11` against
+   * `max(RPE 9) = 10`); RPE 9 vs RPE 10 stays at one (`min(RPE 9) = 9` against
+   * `max(RPE 10) = 8`). Both are strict, and the assertions below are
+   * unchanged `Math.min(...) > Math.max(...)` comparisons rather than anything
+   * weakened to fit. The 2026-08-31 (SECOND) ruling's own item 1 is why the
+   * trade was taken in this direction: "the cleaner two-tick RPE 8 -> RPE 9
+   * separation is useful mechanically and does not substitute for moving RPE 8
+   * into the intended feel region."
+   *
+   * AND THE ORDERING IS NOW THE BINDING CONSTRAINT ON BOTH ADDENDS, WHICH IS
+   * THE ROUND'S OTHER FINDING. With the ladder no longer capping them, `ONSET`
+   * stops at the value where `min(RPE 8)` would tie `max(RPE 9)` and
+   * `MIDDLE_ADDEND` stops at the value where `min(RPE 9)` would tie
+   * `max(RPE 10)` — both roughly `0.004` above what shipped, and both a
+   * property of how far apart a rung's own four cells sit rather than of
+   * either constant. Each constant's own header carries its search.
    */
   SESSION_FLOOR_GAP_TICKS: [
     240, 240, 240, 240, 240,
     240, 240, 240, 240, 240,
-    16, 13, 14, 15,
-    11, 9, 10, 11,
+    13, 11, 12, 13,
+    10, 9, 9, 10,
     7, 7, 8, 8,
   ] as const,
   /**
@@ -4177,6 +4234,197 @@ const MAX_EFFORT_WALLS = {
    * unmoved, so the false-start guarantee still holds everywhere reachable).
    */
   HIGHEST_REACHABLE_MARGIN: 0.378,
+} as const;
+
+/**
+ * ---------------------------------------------------------------------------
+ * THE BEHAVIOURAL LOAD LADDER — WHAT REPLACED A SCALAR MONOTONICITY ASSERTION
+ * ON 2026-09-01, AND WHY REPLACING IT WAS NOT LOOSENING IT
+ * ---------------------------------------------------------------------------
+ * THE INVARIANT, STATED IN THE ONLY TERMS THAT ARE NOT NEGOTIABLE: holding the
+ * lifter's state and the player's input model fixed, adding weight must never
+ * make the bench rep easier. That is a claim about REPS, and until this round
+ * nothing in this repository measured it as one.
+ *
+ * WHAT USED TO STAND HERE INSTEAD. `MAX_EFFORT_WALLS`'s test walked this same
+ * synthetic load ladder and asserted the EFFECTIVE DEMAND MARGIN — an
+ * intermediate scalar, `ascentDemand(...) - lifterCapacity(...)` — never
+ * decreases as load rises. That is a fine proxy for a demand curve that is a
+ * continuous function of load, and `benchWorkingRungDemand` deliberately is
+ * not one: it adds a different flat addend inside each of three base-margin
+ * bands, so the scalar necessarily steps DOWN at a boundary the moment the
+ * addend a bar leaves exceeds the addend it enters by more than one load
+ * step's worth of base margin.
+ *
+ * THE TWO THINGS COME APART BY A MEASURED AMOUNT, WHICH IS THE WHOLE ROUND.
+ * On this ladder a load step is worth about `0.0093` of base margin, so the
+ * scalar starts falling once `BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND` clears
+ * `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND` by more than that — near `0.2013`.
+ * Driving real reps at every rung instead, nothing gets easier anywhere until
+ * that constant reaches about `0.2203`. Between those two numbers the scalar
+ * is falling and the game is not: the sustainable cadence floor either side of
+ * the boundary reads the same eight ticks, and no seed at any cadence makes a
+ * rep it would have missed one rung lighter. That gap is roughly `0.019` of
+ * addend, and it is what the round before this one was stopped by while
+ * believing it was stopped by the game.
+ *
+ * SO THE SCALAR ASSERTION WAS DELETED RATHER THAN GIVEN A TOLERANCE, WHICH IS
+ * A DISTINCTION WORTH KEEPING. An epsilon on the old check would have been a
+ * number chosen to admit the candidate in hand — the shape this repository
+ * refuses everywhere else. What is asserted below is not a weaker version of
+ * the old predicate; it is a different predicate, over a different quantity,
+ * that goes red on mutants the old one also caught AND on the one thing the
+ * old one could never distinguish: a fall that costs nothing from a fall that
+ * costs a rep.
+ *
+ * ---------------------------------------------------------------------------
+ * ONLY ONE OF THE FOUR ARMS CAN SEE THE BOUNDARY, AND SAYING SO IS THE POINT
+ * ---------------------------------------------------------------------------
+ * The 2026-08-31 (SECOND) ruling asks for four measurements at every load, and
+ * all four are taken below. THREE OF THEM ARE SILENT WHERE THE QUESTION IS.
+ * The realistic max-effort arm, the perfect-cadence arm and the false-start
+ * arm all read a flat zero across the entire middle band and well past it —
+ * their first losses land at rungs far heavier than any band boundary — so at
+ * the rung where the scalar falls they report "no loss either side", which is
+ * agreement with the invariant and evidence about nothing. Only the
+ * sustainable cadence floor is sensitive there.
+ *
+ * That is recorded here rather than left for a reader to infer, because three
+ * green arms flanking one real one look like corroboration and are not. If the
+ * cadence arm were ever deleted, weakened, or scoped away from the band
+ * boundaries, this test would keep passing while measuring nothing about its
+ * own subject — which is the exact vacuity shape CLAUDE.md names. The other
+ * three arms are kept because the ruling asks for them and because they pin
+ * that the ladder still spans a real difficulty range; they are not what
+ * carries the invariant.
+ *
+ * ---------------------------------------------------------------------------
+ * THE MONOTONICITY RULE WAS WRITTEN DOWN BEFORE ANY CANDIDATE WAS SEARCHED
+ * ---------------------------------------------------------------------------
+ * Required by the ruling, and the order matters more than the content. The
+ * cadence rule is STRICT with no tolerance, and that is defensible precisely
+ * because the measurement is deterministic: the engine is seeded, the driver
+ * is a metronome, and re-running gives the same integers. A tolerance there
+ * would be absorbing a real effect, not sampling noise.
+ *
+ * The realistic arm is the one genuinely sampled — independent cadence draws
+ * per rung — so it is the one that gets a stated tolerance, and the tolerance
+ * is derived from the ESTIMATOR rather than from any candidate's numbers. With
+ * `MAX_EFFORT.DRAWS` draws the standard error of a difference of two
+ * proportions is at most `Math.sqrt(2 * 0.25 / MAX_EFFORT.DRAWS)`, and
+ * `REALISTIC_FALL_TOLERANCE` is a shade over one and a third of that: wide
+ * enough to absorb wobble between two rungs whose true rates are equal,
+ * narrow enough that a regime change cannot hide inside it. The shipped tree
+ * BEFORE this round's retune satisfies all three realistic-arm rules with its
+ * largest single fall at four, so the rule is not one this round's candidate
+ * was measured into.
+ *
+ * A FINER RULE THAN THE ONE DECLARED WAS ADDED AFTERWARDS, ON PURPOSE, AND IT
+ * IS STRICTLY STRONGER. The declared rule compared floors — an integer per
+ * rung — and an integer tie can hide an easing inside it. What is asserted is
+ * the make-count at EVERY cadence in the window, which implies the floor rule
+ * and cannot be satisfied by a tie that is hiding something. Adding a stricter
+ * check after seeing the candidate is safe in the direction the ruling cares
+ * about: it can only reject candidates the declared rule would have admitted,
+ * never admit one it would have refused.
+ */
+const LOAD_LADDER = {
+  /** Rungs on `MAX_EFFORT_WALLS.LADDER_LOADS`. Derived, then pinned. */
+  RUNGS: 51,
+  /**
+   * Cadences probed per rung, starting at `WORKING_FLOOR.FASTEST_GAP_TICKS`.
+   *
+   * WIDE ENOUGH TO BRACKET EVERY FLOOR ON THE LADDER, WHICH THE TEST ASSERTS
+   * RATHER THAN ASSUMES: the last column must be a clean zero at every rung, so
+   * a retune that pushed a floor past the window would report itself instead of
+   * silently deriving a floor from a row that never fails.
+   */
+  GAP_WINDOW: 24,
+  /**
+   * Measured: the sustainable cadence floor at each rung, in ticks between
+   * taps, ascending in load. Same meaning as `WORKING_FLOOR`; lower is harder.
+   *
+   * NON-INCREASING IS THE INVARIANT AND THE VECTOR IS THE NON-VACUITY GUARD.
+   * A ladder that had collapsed to one number would satisfy "never rises"
+   * perfectly, so the whole vector is pinned rather than a bound, the way
+   * `WORKING_FLOOR` pins its own.
+   */
+  CADENCE_FLOOR_GAP_TICKS: [
+    13, 12, 12, 11, 10, 10, 9, 9, 8, 8,
+    8, 8, 8, 8, 7, 7, 6, 6, 5, 5,
+    5, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 3, 2, 2, 2, 2, 2, 2,
+    2,
+  ] as const,
+  /** Measured: distinct values in the vector above. The ladder really moves. */
+  DISTINCT_FLOORS: 12,
+  /**
+   * Measured: reps the REALISTIC max-effort arm loses per rung, out of
+   * `MAX_EFFORT.DRAWS`.
+   *
+   * UNCHANGED BY THIS ROUND'S RETUNE, MEASURED RATHER THAN ASSUMED — and the
+   * reason is the same one that makes this arm blind at the band boundary. Its
+   * first loss lands at rung 23, deep inside the band `BENCH_WORKING_RUNG_
+   * DEMAND_WALL_ADDEND` governs, and neither addend this round moved reaches
+   * that far up the ladder.
+   */
+  REALISTIC_LOST: [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 57, 74, 72, 68, 65, 62, 59,
+    57, 54, 53, 49, 48, 45, 44, 43, 39, 37,
+    33, 31, 95, 100, 100, 100, 100, 100, 100, 100,
+    100,
+  ] as const,
+  /**
+   * The largest fall in the realistic arm's loss count that is read as
+   * sampling noise rather than as a rung getting easier. See the block header
+   * for the derivation from `MAX_EFFORT.DRAWS`; it is not fitted to a
+   * candidate, and the pre-retune tree's largest fall is well inside it.
+   */
+  REALISTIC_FALL_TOLERANCE: 10,
+  /**
+   * Measured: reps the PERFECT-cadence arm loses per rung, out of
+   * `MAX_EFFORT.SEEDS`. Zero until the ladder's top, which is why this arm
+   * says nothing about the band boundaries.
+   */
+  PERFECT_LOST: [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 20, 20, 20, 20, 20, 20,
+    20,
+  ] as const,
+  /**
+   * Measured: reps lost per rung after a `MAX_EFFORT_WALLS.FALSE_START_TAPS`
+   * false start at the perfect cadence, out of `MAX_EFFORT.SEEDS`. Also zero
+   * across every band boundary; the reachable-cell sweep elsewhere in this
+   * file is what actually guards `a-false-start-can-never-pay`.
+   */
+  FALSE_START_LOST: [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 20, 20, 20, 20, 20, 20, 20,
+    20,
+  ] as const,
+  /**
+   * Measured: rungs where the EFFECTIVE MARGIN falls below the rung below it,
+   * as `[rung, from, to]` — the diagnostic the deleted assertion used to be,
+   * kept as a reported quantity rather than as a stop condition.
+   *
+   * ONE FALL, AT THE MIDDLE-TO-WALL BOUNDARY, AND THE ROW IS PINNED SO THAT A
+   * SECOND ONE APPEARING SOMEWHERE ELSE IS A FINDING RATHER THAN A SHRUG. The
+   * cadence floor at rung 10 and at rung 11 both read eight ticks, and no
+   * make-count anywhere on the ladder rises with load — so this fall is a
+   * discontinuity in an intermediate scalar and not a rep anybody can feel.
+   * That sentence is the round's finding, and it is measured on the two lines
+   * below rather than asserted here.
+   */
+  MARGIN_FALLS: [[11, 0.2715, 0.2588]] as const,
 } as const;
 
 const REACHABLE_COUPLING = {
@@ -5791,15 +6039,34 @@ describe('the grind decides the lift', () => {
         lifterCapacity(config);
       rungs.push({ load: l, margin: scrubProbe(margin) });
     }
-    // THE LADDER NEVER FALLS, or "the first rung that loses" is not a wall.
-    // NON-DECREASING RATHER THAN RISING: `BENCH_WORKING_RUNG_DEMAND_MARGIN_
-    // CEILING` pins a run of loads at exactly one effective margin, which is
-    // the same compression it applies to the meet's top attempts.
-    for (let i = 1; i < rungs.length; i += 1) {
-      expect(rungs[i]?.margin ?? 0, `ladder rung ${i}`).toBeGreaterThanOrEqual(
-        rungs[i - 1]?.margin ?? 0,
-      );
-    }
+    // -------------------------------------------------------------------
+    // A NON-DECREASING-MARGIN LOOP STOOD HERE UNTIL 2026-09-01 AND IS GONE.
+    // IT IS NOT LOOSENED, MOVED OR EPSILONED — IT IS REPLACED TWICE OVER, BY
+    // TWO DIFFERENT CHECKS THAT SPLIT THE TWO JOBS IT WAS DOING AT ONCE.
+    // -------------------------------------------------------------------
+    // What it said: `margin[i] >= margin[i - 1]` at every rung. What its own
+    // comment said it was FOR: "the ladder never falls, or 'the first rung
+    // that loses' is not a wall." Those are two claims, and it was the only
+    // thing carrying either.
+    //
+    // JOB ONE — the gameplay invariant, that a heavier bar is never easier.
+    // The scalar was a PROXY for that, and the 2026-08-31 (SECOND) ruling
+    // asked whether the proxy had gone over-strong now that
+    // `benchWorkingRungDemand` is deliberately piecewise. Measured, it had:
+    // the effective margin steps down at a band boundary about `0.019` of
+    // addend before any rep actually gets easier there. That job now belongs
+    // to `LOAD_LADDER` and the test named for it, which drives real reps
+    // rather than reading this scalar, and which reddens on two separate
+    // mutants that DO make a heavier bar easier.
+    //
+    // JOB TWO — well-formedness of the two walls this test derives. A wall is
+    // defined by its own constant's docstring as "the LEAST effective margin
+    // at which ..." and the loop was standing in for that: under a
+    // non-decreasing margin the first LOSING rung in load order also has the
+    // least margin among losing rungs. It does not have to be stood in for.
+    // `wallOf` below takes the least margin among the losing rungs directly,
+    // which is the definition itself, holds whether the margin is monotone or
+    // not, and is strictly stronger than the premise it replaces.
     expect(rungs[rungs.length - 1]?.margin ?? 0, 'the ladder spans nothing').toBeGreaterThan(
       (rungs[0]?.margin ?? 0) + LIFT_TUNING.GRIND_BOOST_FORCE_MAX / 2,
     );
@@ -5829,12 +6096,25 @@ describe('the grind decides the lift', () => {
       return false;
     };
 
-    const firstRung = (fails: (load: number) => boolean): number | null => {
-      for (const rung of rungs) if (fails(rung.load)) return rung.margin;
-      return null;
+    // THE LEAST MARGIN AMONG THE LOSING RUNGS, WHICH IS THE DEFINITION BOTH
+    // WALL CONSTANTS STATE, RATHER THAN THE FIRST LOSING RUNG IN LOAD ORDER,
+    // WHICH ONLY EQUALS IT WHEN THE MARGIN IS MONOTONE. See the block above
+    // the span check for why that premise is gone and why this is the
+    // stronger replacement rather than a weaker one. It also reddens on a
+    // second failure the old shape could not see: a rung ANYWHERE on the
+    // ladder that loses at a lower margin than the pinned wall.
+    const wallOf = (fails: (load: number) => boolean): number | null => {
+      const losing = rungs.filter((rung) => fails(rung.load));
+      // NON-VACUITY IN BOTH DIRECTIONS, because "no rung loses" and "every
+      // rung loses" both produce a wall-shaped answer that means nothing: the
+      // first is `null` and caught below, and the second would put the wall at
+      // the ladder's own lightest rung and quietly pass.
+      expect(losing.length, 'rungs that lose').toBeLessThan(rungs.length);
+      if (losing.length === 0) return null;
+      return Math.min(...losing.map((rung) => rung.margin));
     };
-    const maxEffortWall = firstRung(realisticLoses);
-    const falseStartWall = firstRung(falseStartLoses);
+    const maxEffortWall = wallOf(realisticLoses);
+    const falseStartWall = wallOf(falseStartLoses);
     expect(maxEffortWall, 'the ladder never reached the max-effort wall').not.toBeNull();
     expect(falseStartWall, 'the ladder never reached the false-start wall').not.toBeNull();
     if (maxEffortWall === null || falseStartWall === null) return;
@@ -5888,6 +6168,259 @@ describe('the grind decides the lift', () => {
       maxEffortWall,
     );
     expect(highest, 'a reachable cell reached the false-start wall').toBeLessThan(falseStartWall);
+  }, 300_000);
+
+  it('never lets a heavier bench bar play easier [a-heavier-bench-is-never-easier]', () => {
+    // ------------------------------------------------------------------
+    // THE MEASUREMENT THAT REPLACED A SCALAR MONOTONICITY ASSERTION. Read
+    // `LOAD_LADDER`'s header first: it states the invariant, why the scalar
+    // was a proxy, how far the two come apart in measured addend, which of the
+    // four arms below can actually see a band boundary, and the fact that the
+    // rule was written down before any candidate was searched.
+    // ------------------------------------------------------------------
+    const wrecked = sessionFeel(EMPTY_FATIGUE_STATE, REACHABLE.WORK_SETS + 2, {
+      sleep: 'poor',
+      soreness: 'sore',
+      motivation: 'flat',
+    });
+    const { FROM, TO, STEP } = MAX_EFFORT_WALLS.LADDER_LOADS;
+    const loads: number[] = [];
+    for (let load = FROM; load <= TO + STEP / 2; load += STEP) loads.push(scrubProbe(load));
+    expect(loads.length, 'rungs on the ladder').toBe(LOAD_LADDER.RUNGS);
+    // THE DOMAIN, AS A LITERAL RATHER THAN A PRODUCT OF TWO CONSTANTS, because
+    // the two constants can be edited together and this cannot be edited by
+    // accident: every (load, cadence) cell the invariant below compares.
+    expect(
+      LOAD_LADDER.RUNGS * LOAD_LADDER.GAP_WINDOW,
+      'load-and-cadence cells this ladder drives',
+    ).toBe(1224);
+
+    // -------------------------------------------------------------------
+    // ARM A — SUSTAINABLE CADENCE. `makes[rung][gap]` is how many seeds MAKE
+    // the rep at that load tapping at that metronome. This is the one arm
+    // sensitive at a band boundary; see `LOAD_LADDER`'s header.
+    // -------------------------------------------------------------------
+    const gapAt = (column: number): number => WORKING_FLOOR.FASTEST_GAP_TICKS + column;
+    const makes = loads.map((load) => {
+      const row: number[] = [];
+      for (let column = 0; column < LOAD_LADDER.GAP_WINDOW; column += 1) {
+        let made = 0;
+        for (let seed = 1; seed <= WORKING_FLOOR.SEEDS; seed += 1) {
+          const rep = driveGrind(
+            { kind: BENCH, loadRatio: load, seed, feel: wrecked },
+            gapAt(column),
+            Number.POSITIVE_INFINITY,
+            0,
+          );
+          if (rep.resolution?.outcome !== 'miss') made += 1;
+        }
+        row.push(made);
+      }
+      return row;
+    });
+
+    // THE WINDOW BRACKETS EVERY FLOOR, ASSERTED RATHER THAN ASSUMED. Without
+    // this the floor derived below would silently become "at least the window"
+    // for any rung the window failed to reach, and the vector would still
+    // compare equal to a pin somebody re-took at the same time.
+    expect(
+      makes.filter((row) => (row[LOAD_LADDER.GAP_WINDOW - 1] ?? 0) !== 0).length,
+      'rungs still making the rep at the slowest probed cadence',
+    ).toBe(0);
+    // ...AND TAPPING FASTER IS NEVER WORSE, WITHIN A RUNG. The floor below is
+    // derived from the FIRST failing column, which only names a floor if the
+    // row is a single step rather than something that fails and recovers.
+    const gapFaults = makes.flatMap((row, rung) =>
+      row
+        .map((made, column) => ({ made, column }))
+        .filter(({ made, column }) => column > 0 && made > (row[column - 1] ?? 0))
+        .map(({ column }) => `rung ${rung} recovered at gap ${gapAt(column)}`),
+    );
+    expect(gapFaults, 'a slower cadence made a rep a faster one missed').toEqual([]);
+
+    // -------------------------------------------------------------------
+    // THE INVARIANT ITSELF, AND IT IS ASSERTED FIRST ON PURPOSE. At EVERY
+    // probed cadence, a heavier rung may never make a rep the rung below it
+    // missed.
+    // -------------------------------------------------------------------
+    // ORDER IS LOAD-BEARING HERE, AND IT WAS GOT WRONG ONCE BEFORE BEING
+    // FIXED. The floor-vector pin below reddens on the same mutants this does,
+    // because a mutant that eases a rung also moves that rung's floor — so
+    // with the pin first, the transcript recorded in `MUTATION_WITNESSES`
+    // would have been evidence that a pinned number moved rather than that the
+    // guarantee broke. `a-stalled-bench-can-be-ground-through`'s own row
+    // records the identical correction on a different test.
+    //
+    // THIS DOMINATES THE FLOOR-ORDERING RULE THAT WAS DECLARED BEFORE THE
+    // SEARCH, AND THE OLDER RULE IS DELIBERATELY NOT ALSO ASSERTED. If no
+    // make-count rises with load then the first failing column cannot move
+    // later either, so `floors[i + 1] <= floors[i]` is implied — asserting it
+    // beside this would be a check no state of the engine could redden on its
+    // own, which is the vacuity CLAUDE.md names. The floor vector below is
+    // kept as a PIN, which is a different job: it says where the rungs are,
+    // not that they are ordered.
+    const easings = loads.flatMap((load, rung) => {
+      if (rung === 0) return [];
+      return (makes[rung] ?? [])
+        .map((made, column) => ({ made, column }))
+        .filter(({ made, column }) => made > (makes[rung - 1]?.[column] ?? 0))
+        .map(
+          ({ made, column }) =>
+            `load ${load} at gap ${gapAt(column)}: ${makes[rung - 1]?.[column]} -> ${made}`,
+        );
+    });
+    expect(easings, 'a heavier bar made reps a lighter one missed').toEqual([]);
+
+    const floors = makes.map((row) => {
+      const firstMiss = row.findIndex((made) => made < WORKING_FLOOR.SEEDS);
+      return gapAt(firstMiss) - 1;
+    });
+    expect(floors, 'the ladder\'s cadence floors, in ticks between taps').toEqual([
+      ...LOAD_LADDER.CADENCE_FLOOR_GAP_TICKS,
+    ]);
+    // NON-VACUITY: a ladder collapsed to one number satisfies "never easier"
+    // perfectly and measures nothing.
+    expect(new Set(floors).size, 'distinct cadence floors on the ladder').toBe(
+      LOAD_LADDER.DISTINCT_FLOORS,
+    );
+
+    // -------------------------------------------------------------------
+    // ARM B — REALISTIC MAX EFFORT. Sampled, so this is the arm with a stated
+    // tolerance, and the tolerance comes from the estimator: see
+    // `LOAD_LADDER.REALISTIC_FALL_TOLERANCE`.
+    // -------------------------------------------------------------------
+    const realistic = loads.map((load) => {
+      let lost = 0;
+      for (let draw = 0; draw < MAX_EFFORT.DRAWS; draw += 1) {
+        const rep = maxEffortRep(
+          { kind: BENCH, loadRatio: load, seed: 1 + draw, feel: wrecked },
+          humanCadence(MAX_EFFORT.CADENCE_SEED_BASE + draw),
+        );
+        if (rep.resolution?.outcome === 'miss') lost += 1;
+      }
+      return lost;
+    });
+    expect(realistic, 'realistic max-effort reps lost per rung').toEqual([
+      ...LOAD_LADDER.REALISTIC_LOST,
+    ]);
+    // THE TOLERANCE IS A SHADE OVER ONE AND A THIRD WORST-CASE STANDARD ERRORS
+    // OF A DIFFERENCE OF TWO PROPORTIONS AT THIS DRAW COUNT, DERIVED HERE SO
+    // IT CANNOT DRIFT AWAY FROM THE DRAW COUNT IT WAS SIZED AGAINST.
+    const worstCaseStandardError = Math.sqrt(2 * 0.25 / MAX_EFFORT.DRAWS) * MAX_EFFORT.DRAWS;
+    expect(
+      LOAD_LADDER.REALISTIC_FALL_TOLERANCE,
+      'the stated tolerance is not sampling-sized any more',
+    ).toBeGreaterThan(worstCaseStandardError);
+    expect(
+      LOAD_LADDER.REALISTIC_FALL_TOLERANCE,
+      'the stated tolerance is wide enough to hide a regime change',
+    ).toBeLessThan(worstCaseStandardError * 2);
+    // B1, the ruling's own minimum: once this arm starts losing, no heavier
+    // rung returns to making everything.
+    const firstLoss = realistic.findIndex((lost) => lost > 0);
+    expect(firstLoss, 'the realistic arm never lost a rep').toBeGreaterThan(-1);
+    expect(
+      realistic.slice(firstLoss).filter((lost) => lost === 0).length,
+      'a heavier rung went back to making every rep',
+    ).toBe(0);
+    // B2, the bounded-dip rule.
+    expect(
+      realistic
+        .map((lost, rung) => ({ lost, rung }))
+        .filter(
+          ({ lost, rung }) =>
+            rung > 0 && (realistic[rung - 1] ?? 0) - lost > LOAD_LADDER.REALISTIC_FALL_TOLERANCE,
+        )
+        .map(({ rung }) => `rung ${rung}`),
+      'the realistic arm fell further than sampling explains',
+    ).toEqual([]);
+    // B3, net rise: a sequence that climbs and then genuinely collapses fails
+    // this even when every single step sits inside the tolerance.
+    const moved = (sign: number): number =>
+      realistic.reduce(
+        (total, lost, rung) =>
+          rung === 0 ? total : total + Math.max(0, sign * (lost - (realistic[rung - 1] ?? 0))),
+        0,
+      );
+    expect(moved(-1), 'the realistic arm fell further overall than it rose').toBeLessThan(
+      moved(1),
+    );
+
+    // -------------------------------------------------------------------
+    // ARMS C AND D — PERFECT CADENCE AND FALSE START. Both pinned as whole
+    // vectors, both flat zero across every band boundary. See `LOAD_LADDER`'s
+    // header: they are the ruling's requested measurements and they are not
+    // what carries the invariant.
+    // -------------------------------------------------------------------
+    const lostAt = (load: number, early: number): number => {
+      let lost = 0;
+      for (let seed = 1; seed <= MAX_EFFORT.SEEDS; seed += 1) {
+        const rep = maxEffortRep(
+          { kind: BENCH, loadRatio: load, seed, feel: wrecked },
+          perfectCadence,
+          early,
+        );
+        if (rep.resolution?.outcome === 'miss') lost += 1;
+      }
+      return lost;
+    };
+    const perfect = loads.map((load) => lostAt(load, 0));
+    const falseStart = loads.map((load) => lostAt(load, MAX_EFFORT_WALLS.FALSE_START_TAPS));
+    expect(perfect, 'perfect-cadence reps lost per rung').toEqual([...LOAD_LADDER.PERFECT_LOST]);
+    expect(falseStart, 'false-started reps lost per rung').toEqual([
+      ...LOAD_LADDER.FALSE_START_LOST,
+    ]);
+    // B1's analogue on the perfect arm, which the ruling asks stays coherent.
+    const firstPerfectLoss = perfect.findIndex((lost) => lost > 0);
+    expect(firstPerfectLoss, 'the perfect arm never lost a rep').toBeGreaterThan(-1);
+    expect(
+      perfect.slice(firstPerfectLoss).filter((lost) => lost === 0).length,
+      'a heavier rung went back to making every rep at the perfect cadence',
+    ).toBe(0);
+
+    // -------------------------------------------------------------------
+    // THE DIAGNOSTIC THE DELETED ASSERTION USED TO BE. Reported and pinned,
+    // never a stop condition — the two lines above are what decide whether a
+    // fall here costs a player anything.
+    // -------------------------------------------------------------------
+    const margins = loads.map((load) => {
+      const config: LiftConfig = { kind: BENCH, loadRatio: load, seed: 1, feel: wrecked };
+      return scrubProbe(
+        ascentDemand(STICK_HEIGHT_FRAC.bench, load, BENCH, 0, 0, benchWorkingExcess(config)) -
+          lifterCapacity(config),
+      );
+    });
+    const marginFalls = margins
+      .map((margin, rung) => ({ margin, rung }))
+      .filter(({ margin, rung }) => rung > 0 && margin < (margins[rung - 1] ?? 0))
+      .map(({ margin, rung }) => [
+        rung,
+        Number((margins[rung - 1] ?? 0).toFixed(4)),
+        Number(margin.toFixed(4)),
+      ]);
+    expect(marginFalls, 'where the effective margin falls as load rises').toEqual(
+      LOAD_LADDER.MARGIN_FALLS.map((fall) => [...fall]),
+    );
+    // EACH FALL IS TIED TO THE MECHANISM THAT CAUSES IT RATHER THAN LEFT AS A
+    // BARE ROW, so "the scalar dips at a band boundary" is measured instead of
+    // asserted: the rung below must sit under `WALL_CUT_MARGIN` on the BASE
+    // curve and the rung itself at or above it. A fall appearing anywhere else
+    // would be a different phenomenon wearing this row's clothes.
+    const baseMarginAt = (load: number): number =>
+      ascentDemand(STICK_HEIGHT_FRAC.bench, load, BENCH, 0, 0, 0) -
+      lifterCapacity({ kind: BENCH, loadRatio: load, seed: 1, feel: wrecked });
+    for (const [rung] of LOAD_LADDER.MARGIN_FALLS) {
+      const cut = LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_WALL_CUT_MARGIN;
+      expect(baseMarginAt(loads[rung - 1] ?? 0), `rung ${rung - 1} is below the wall cut`)
+        .toBeLessThan(cut);
+      expect(baseMarginAt(loads[rung] ?? 0), `rung ${rung} is at or above the wall cut`)
+        .toBeGreaterThanOrEqual(cut);
+      // ...AND THE BEHAVIOUR DID NOT FOLLOW THE SCALAR DOWN. This is the whole
+      // finding, on the rung it happens at, beside the fall it happens at.
+      expect(floors[rung] ?? 0, `rung ${rung} got easier where the margin fell`).toBeLessThanOrEqual(
+        floors[rung - 1] ?? 0,
+      );
+    }
   }, 300_000);
 
   it(

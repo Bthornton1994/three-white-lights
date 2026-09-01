@@ -3185,6 +3185,12 @@ exactly one cell (`session/rpe9/0.8750/as-expected`, `[160,160,160] ->
 census is unchanged, including the `meet/aggressive/att3/wrecked` exception,
 because the new band structurally cannot reach any meet cell.
 
+**Superseded on 2026-09-01 — see the next subsection.** The
+ladder-monotonicity invariant this round treated as a hard constraint was
+measured and found to be a proxy, and replacing it with a direct behavioural
+one moved RPE 8 three ticks. The account above is kept as the record of what
+was true and believed at the time, not as a live description of the tree.
+
 **§12.1 stays open, and this round is explicitly NOT minting bench for a
 phone replay — the human decides whether to authorise touching
 `WALL_ADDEND` despite the RPE 10 floor cost, relaxing the ladder-monotonicity
@@ -3192,6 +3198,110 @@ invariant's tolerance, or a different mechanism than a third additive band.**
 `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` (`0.005`) and `BENCH_WORKING_RUNG_
 DEMAND_MARGIN_CEILING` (`0.378`) did not move. Every constant here is an
 unplayed placeholder, the same as every other value in this arc.
+
+#### The 2026-09-01 round — the ladder invariant was a proxy, and replacing it moved RPE 8
+
+**The ruling this responds to** ("PROTECT MONOTONIC DIFFICULTY, NOT A PROXY
+SCALAR", CLAUDE.md). The round above reported being stopped by a pre-existing
+assertion that the *effective demand margin* — an intermediate scalar — never
+decreases as load rises along a synthetic ladder. The ruling accepted the
+three-band mechanism, refused to delete or epsilon that assertion, and asked a
+sharper question instead: is it protecting a real gameplay property, or is it
+an analytical proxy that went over-strong once the demand curve was
+deliberately made piecewise?
+
+**The permanent invariant is behavioural and is not negotiable: holding lifter
+state and player-input model fixed, adding weight must never make the bench rep
+easier.** Whether the scalar itself must be monotone was the open question, and
+it was settled by measurement rather than argument.
+
+**Why the scalar necessarily falls, which is arithmetic and not a defect.**
+Each band contributes a flat addend, so a bar crossing up into a band with a
+*smaller* addend loses that difference at the same instant its own base margin
+rises by one load step. On this ladder a step is worth about `0.0093` of base
+margin, so the scalar starts falling once `MIDDLE_ADDEND` exceeds
+`WALL_ADDEND` (`0.192`) by more than that — at roughly `0.2013`, which is
+exactly the cap the previous round hit.
+
+**The measurement, over the same domain (`0.80 → 1.05` in `0.005` steps, 51
+rungs, the same fixed wrecked check-in), driving real reps at every rung
+rather than reading the scalar.** Four arms: the sustainable cadence floor, the
+realistic max-effort loss rate over the phone-derived 57–81 ms cadence, the
+perfect-cadence arm, and the false-start arm. Where the two part company:
+
+| `MIDDLE_ADDEND` | effective margin at the band boundary | real behaviour |
+|---|---|---|
+| `0.2013` | stops rising — the old assertion's edge | nothing eases |
+| `0.205` | falls `0.0037` | nothing eases |
+| **`0.214` (shipped)** | falls `0.0127` | nothing eases; floor `8 → 8` |
+| `0.2202` | falls `0.0189` | nothing eases |
+| `0.2205` | falls `0.0192` | **floor `7 → 8` — a heavier bar plays easier** |
+
+So the scalar put the wall roughly `0.019` of addend below where the game
+actually puts it. **This is Outcome A in the ruling's own terms**: the scalar
+assertion was over-constraining, so it was **replaced** by the direct
+behavioural invariant — not loosened, not given a tolerance. The new check
+asserts, at *every* probed cadence rather than only at the floor, that a
+heavier rung never makes a rep the rung below it missed. It is
+`@guarantee`-tagged (`a-heavier-bench-is-never-easier`) and mutation-checked at
+both band boundaries.
+
+**An honesty note that belongs in the design record.** Three of the four arms
+the ruling asked for are *silent* at the band boundaries — the realistic,
+perfect and false-start arms all read a flat zero there, because their first
+losses land far heavier up the ladder. Only the cadence arm can see the
+question at all. They are still measured and pinned, but they are not what
+carries the invariant, and three green arms flanking one real one must not be
+read as corroboration.
+
+**What the wall derivation lost, and what replaced it.** The deleted assertion
+was also standing in for the claim that `MAX_EFFORT_WALLS`' two walls are the
+*least* margin at which each arm loses — true of the first losing rung in load
+order only when the margin is monotone. That is now taken directly as the
+minimum over losing rungs, which is the definition itself and needs no
+monotonicity premise.
+
+**What shipped: `ONSET: 0.199 → 0.22`, `MIDDLE_ADDEND: 0.20 → 0.214`,
+`WALL_ADDEND` unchanged at `0.192`.** Full session `WORKING_FLOOR` census,
+ticks between taps (lower is harder), with taps/second beside it:
+
+| rung | before this round | after (shipped) | taps/s before → after |
+|---|---|---|---|
+| RPE 6, 7 | unchanged | unchanged | never costs a rep at any cadence |
+| RPE 8 | 16, 13, 14, 15 | **13, 11, 12, 13** | 3.75–4.62 → 4.62–5.45 |
+| RPE 9 | 11, 9, 10, 11 | **10, 9, 9, 10** | 5.45–6.00 → 6.00–6.67 |
+| RPE 10 | 7, 7, 8, 8 | **7, 7, 8, 8 (unchanged)** | 7.50–8.57 |
+
+Every RPE 8 cell moves by two or three ticks, against the previous round's one
+cell by one tick. **The cost, stated plainly: the RPE 8 → RPE 9 separation
+falls from two ticks to one** (`min(RPE 8) = 11` against `max(RPE 9) = 10`);
+RPE 9 → RPE 10 stays at one (`9` against `8`). Both are strict. The trade was
+taken in this direction on the ruling's own item 1 — the cleaner two-tick gap
+"does not substitute for moving RPE 8 into the intended feel region."
+
+**The binding constraint is no longer the ladder — it is the rungs' own
+internal spread.** With the proxy gone, `ONSET` stops where `min(RPE 8)` would
+tie `max(RPE 9)` (between `0.223` and `0.2235`) and `MIDDLE_ADDEND` stops where
+`min(RPE 9)` would tie `max(RPE 10)` (between `0.218` and `0.2185`). RPE 9's
+four cells never all sit at one tick value: the cell that would have to move
+last is still at 10 when the first has already fallen to 8. That is why RPE 8
+lands one tick short of the ruling's `~12/10/10/11` target rather than on it,
+and it is a property of the rung rather than of either constant.
+
+**Everything else re-measured rather than assumed carried.** The false-start
+guarantee re-pins at 0 of 40 reachable cells at the unchanged 12-tick lockout.
+Both `MAX_EFFORT_WALLS` walls (`0.3759`, `0.3990`) and
+`HIGHEST_REACHABLE_MARGIN` (`0.378`) are unchanged. `MAX_EFFORT.REALISTIC_LOST`
+is unchanged, RPE 8 still exactly 0. The 18-cell meet census is unchanged,
+including the `meet/aggressive/att3/wrecked` exception, because neither moved
+band structurally reaches a meet cell. `REACHABLE_RESCUE` moves at exactly two
+RPE 9 cells. Squat and deadlift stay byte-identical.
+
+**§12.1 stays open and this round does not mint for a phone replay.**
+`BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` (`0.005`),
+`BENCH_WORKING_RUNG_DEMAND_WALL_CUT_MARGIN` (`0.06`) and
+`BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` (`0.378`) did not move. Both retuned
+values are unplayed placeholders, the same as every other value in this arc.
 
 ### 6.3 Attempt Selection — The Real Tension
 

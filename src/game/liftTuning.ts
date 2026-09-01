@@ -2302,8 +2302,62 @@ export const LIFT_TUNING = Object.freeze({
    * `lift.test.ts`). `WORKING_FLOOR`'s full history (56/38/44/56 at 0.045,
    * 20/18/19/20 at 0.15, 16/13/14/16 now) is pinned in that constant's own
    * header. PLACEHOLDER, unverified by playtest, same as every value above.
+   *
+   * -------------------------------------------------------------------------
+   * 2026-09-01: RISEN 0.199 -> 0.22, BECAUSE THE THING THAT WAS CAPPING THIS
+   * CONSTANT TURNED OUT TO BE A PROXY RATHER THAN A GAMEPLAY PROPERTY
+   * -------------------------------------------------------------------------
+   * The round before this one could only move RPE 8 by one tick at one cell.
+   * The reason was never this constant's own ceiling: it was that a synthetic
+   * load ladder in `lift.test.ts` asserted the EFFECTIVE DEMAND MARGIN — an
+   * intermediate scalar — never decreases as load rises, and a piecewise
+   * addend necessarily steps that scalar DOWN at a band boundary whenever the
+   * addend it leaves is bigger than the addend it enters by more than one load
+   * step's worth of base margin.
+   *
+   * The 2026-08-31 (SECOND) ruling asked whether that scalar assertion was
+   * protecting a real property or over-constraining the game, and required the
+   * question be settled by measuring rep BEHAVIOUR directly rather than by
+   * arguing. It was, and the answer is that it was over-constraining: see
+   * `LOAD_LADDER` in `lift.test.ts` for the measurement, the rule it is graded
+   * against, and the two mutants that redden it. The scalar assertion is gone
+   * and a direct behavioural one stands in its place.
+   *
+   * WHAT THAT BOUGHT THIS CONSTANT, MEASURED. Under the scalar rule this and
+   * the sibling middle addend were pinned within about `0.0093` of
+   * `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND`. Under the behavioural rule the
+   * binding constraint on BOTH is no longer the ladder at all — it is the
+   * cellwise rung ordering in `WORKING_FLOOR` — and this constant's own
+   * ladder ceiling sits above `0.23`, well past where the ordering stops it.
+   *
+   *     ONSET 0.199  RPE 8 floors  16, 13, 14, 15   (3.75-4.62 taps/s, SHIPPED BEFORE)
+   *     ONSET 0.215  RPE 8 floors  14, 11, 12, 13
+   *     ONSET 0.22   RPE 8 floors  13, 11, 12, 13   (4.62-5.45 taps/s, SHIPPED)
+   *     ONSET 0.223  RPE 8 floors  13, 11, 12, 13   (last value holding min 11)
+   *     ONSET 0.2235 RPE 8 floors  13, 10, 12, 13   (min 10 TIES RPE 9's max)
+   *
+   * `0.22` sits inside the measured `13, 11, 12, 13` plateau rather than at
+   * either edge, the same reasoning every choice in this arc has used. The
+   * edges are bracketed rather than pinpointed, because a sweep names an
+   * interval and pretending otherwise is how a measured number becomes a
+   * guessed one: the ordering boundary above is between `0.223` and `0.2235`,
+   * and the softer plateau below ends between `0.215` and `0.218`.
+   *
+   * WHY NOT FURTHER, SINCE THE LADDER NO LONGER STOPS IT. The ruling's target
+   * for RPE 8 was the old RPE 9 neighbourhood, near `12, 10, 10, 11`, and this
+   * lands one tick short of it at the two limiting cells. Going further needs
+   * `min(RPE 8) = 10`, which ties `max(RPE 9)`, and RPE 9 cannot be compressed
+   * out of the way: its four cells never all sit at 9: the rung's own internal
+   * spread means the cell that would have to move last is still at 10 when the
+   * cell that moves first has already fallen to 8 and tied RPE 10. That is a
+   * property of the rung, not of either addend, and it is what now caps this
+   * constant. See `BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND` for the same
+   * search from RPE 9's side.
+   *
+   * `MAX_EFFORT.REALISTIC_LOST` for RPE 8 is still exactly 0 here. PLACEHOLDER,
+   * unverified by playtest, same as every value above: nobody has played 0.22.
    */
-  BENCH_WORKING_RUNG_DEMAND_ONSET: 0.199,
+  BENCH_WORKING_RUNG_DEMAND_ONSET: 0.22,
 
   /**
    * -------------------------------------------------------------------------
@@ -2452,10 +2506,70 @@ export const LIFT_TUNING = Object.freeze({
    * cells among every reachable cell in the game, at any magnitude this
    * constant could hold, not merely at the one shipped here.
    *
+   * -------------------------------------------------------------------------
+   * 2026-09-01: RISEN 0.20 -> 0.214, PAST A CEILING THAT WAS AN ARTEFACT OF
+   * THE MEASUREMENT RATHER THAN OF THE GAME
+   * -------------------------------------------------------------------------
+   * THIS IS THE CONSTANT THE PROXY-SCALAR QUESTION WAS REALLY ABOUT, so the
+   * arithmetic is written out here rather than left to be re-derived. This
+   * band's addend is bigger than `BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND`, so a
+   * bar crossing `WALL_CUT_MARGIN` LOSES `MIDDLE_ADDEND - WALL_ADDEND` of
+   * addend at the same instant it gains one load step's worth of base margin.
+   * On the synthetic ladder in `lift.test.ts` a load step is worth about
+   * `0.0093` of base margin, so the effective margin steps DOWN at that
+   * boundary once this constant exceeds `WALL_ADDEND` by more than that — at
+   * roughly `0.2013`, measured, which is exactly where the round before this
+   * one found itself stopped.
+   *
+   * IT WAS STOPPED BY A SCALAR ASSERTION, NOT BY THE GAME, AND THE DIFFERENCE
+   * WAS MEASURED RATHER THAN ARGUED. A pre-existing test required that scalar
+   * to be non-decreasing along the ladder. The 2026-08-31 (SECOND) ruling
+   * required the question be settled by driving real reps instead. Driven, at
+   * every load on the same ladder, the sustainable cadence floor does not get
+   * easier anywhere until this constant reaches about `0.2203` — roughly
+   * `0.019` above the scalar's own boundary:
+   *
+   *     MIDDLE 0.2013  scalar boundary: margin stops rising at the band edge
+   *     MIDDLE 0.205   margin falls 0.0037 there; no rung on the ladder eases
+   *     MIDDLE 0.214   margin falls 0.0127 there; no rung eases, floor 8 -> 8
+   *     MIDDLE 0.2202  margin falls 0.0189 there; no rung on the ladder eases
+   *     MIDDLE 0.2205  margin falls 0.0192 there; floor 7 -> 8, A REP EASES
+   *
+   * The rows say "no rung eases" rather than quoting a floor at each one
+   * because that is the quantity actually swept at every value: the whole
+   * 51-rung floor vector was compared against its own predecessor at each, and
+   * the two rows that do quote a floor are the two whose boundary rungs were
+   * read off directly. A row that claimed a number nobody read would be the
+   * defect this file's own headers keep recording.
+   *
+   * The last row is the point the scalar was standing in for, and it is `0.019`
+   * away from where the scalar put it. `LOAD_LADDER` in `lift.test.ts` holds
+   * the replacement measurement, the rule it is graded against, and that same
+   * `0.2205` as one of the two mutants that redden it.
+   *
+   * WHAT CAPS THIS CONSTANT NOW IS RPE 9's OWN INTERNAL SPREAD, NOT THE LADDER.
+   * RPE 9's four cells do not move together: raising this addend drives the
+   * hardest of them into a tie with RPE 10's easiest floor while the softest is
+   * still a tick clear of RPE 8's hardest.
+   *
+   *     MIDDLE 0.20    RPE 9 floors  11, 9, 10, 11   (SHIPPED BEFORE)
+   *     MIDDLE 0.208   RPE 9 floors  11, 9, 9, 10    (max 11 ties RPE 8's min)
+   *     MIDDLE 0.214   RPE 9 floors  10, 9, 9, 10    (SHIPPED)
+   *     MIDDLE 0.218   RPE 9 floors  10, 9, 9, 9
+   *     MIDDLE 0.2185  RPE 9 floors  10, 8, 9, 9     (min 8 TIES RPE 10's max)
+   *
+   * So the usable band for this constant is bounded BELOW by RPE 8's ordering
+   * and ABOVE by RPE 10's, both bracketed by the sweep rather than pinpointed:
+   * the lower edge sits between `0.208` and `0.21`, the upper between `0.218`
+   * and `0.2185`. `0.214` is near the middle of that band — chosen for the
+   * clearance rather than for the extra tick `0.218` would buy at one cell,
+   * since the failure above the upper edge is an ordering tie and the
+   * "failure" below the lower one is only a softer rung.
+   *
    * PLACEHOLDER, unverified by playtest — GDD §12.1, and this file's own rule.
    * Nobody has played it.
    */
-  BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND: 0.20,
+  BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND: 0.214,
 
   /**
    * -------------------------------------------------------------------------

@@ -1078,7 +1078,45 @@ const GUARANTEE_COVERAGE = {
   // did not reach a shipped conclusion (see `SESSION_FLOOR_GAP_TICKS`'s own
   // 2026-08-31 header in `lift.test.ts`), and a tag on a claim whose numbers
   // are still contested is a tag with nothing settled to bite.
-  TREE_WIDE: 313,
+  //
+  // 313 -> 317 on the 2026-09-01 round that settled what the paragraph above
+  // says was still contested. IT IS NOT FOUR NEW PARAGRAPHS — it is FIVE new
+  // ones and ONE DELETED, and the arithmetic is written out because a net
+  // figure hides a deletion, which is the one direction this census can move
+  // without anybody meaning it to.
+  //
+  // The deleted one is the point of the round: the comment in `lift.test.ts`
+  // that opened by asserting the synthetic load ladder never falls, sitting on
+  // the scalar monotonicity assertion that a direct behavioural measurement
+  // replaced. It carried the first trigger word and its subject no longer
+  // exists.
+  //
+  // THAT SENTENCE IS PARAPHRASED RATHER THAN QUOTED, DELIBERATELY, AND THE
+  // REASON IS THIS CENSUS ITSELF. A verbatim quote of the deleted heading
+  // carries its trigger word into this file, which is also under `src`, so
+  // quoting it here re-creates the very paragraph it reports as deleted and
+  // takes this count to 318. Measured, not theorised — it happened on the
+  // first draft of this comment. Same shape as the witness anchor elsewhere in
+  // this file whose text necessarily contains a test declaration line.
+  //
+  // The five added are all in `lift.test.ts`, verified one at a time by
+  // lower-casing each trigger word and watching this count fall to 316:
+  //   - `LOAD_LADDER`'s opening statement of the invariant (fourth trigger
+  //     word) and its "only one of the four arms can see the boundary" heading
+  //     (fourth again) — the second is the honest caveat that three of the
+  //     four measured arms are silent where the question is.
+  //   - the `wallOf` comment saying the first losing rung in load order only
+  //     equals the least losing margin under a premise that is now gone.
+  //   - the gap-monotonicity comment (first trigger word) and the realistic
+  //     arm's tolerance comment (second).
+  // NONE of the five is tagged, and neither is the one tagged paragraph this
+  // round added — `a-heavier-bench-is-never-easier`, on
+  // `benchWorkingRungDemand` in `lift.ts`, contains no trigger word at all —
+  // which is why `TAGGED_AND_TRIGGERING` does not move. That is this scan's
+  // own declared blind spot landing on the round's most load-bearing sentence,
+  // and it is worth recording rather than tidying the sentence to trip a word
+  // list.
+  TREE_WIDE: 317,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1453,7 +1491,7 @@ const NUMBER_COVERAGE = {
   // +1 ON THE WARM-UP FLOOR ROUND: `a-warm-up-makes-it-unanswered`, whose
   // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
   // is therefore the tree as it stood before the 2026-08-26 ruling.
-  TAGGED_PARAGRAPHS: 87,
+  TAGGED_PARAGRAPHS: 88,
   /**
    * ...of which this many state a number as prose.
    *
@@ -1540,20 +1578,28 @@ const NUMBER_COVERAGE = {
   //
   // 69 -> 72 with the command beat's three tags, whose named tests are the
   // three new bodies.
-  NAMED_BODIES: 78,
+  //
+  // 78 -> 79 with the 2026-09-01 load ladder's tag. Its named body holds a bare
+  // 0 (`toBe(0)` on the rungs still making the rep at the slowest probed
+  // cadence) and a bare 1 (`rung > 0` and the `rung - 1` lookbacks), so both
+  // weakness counts below move with it — the same shape the warm-up sweep's
+  // note two paragraphs up records.
+  NAMED_BODIES: 79,
   // 53 -> 55 with the command beat's three tag-named bodies; two of the three
   // state a bare 0 (the wash before the call, the pip row's first frame) and
   // the third does not.
   // 58 -> 59: the warm-up floor's own body, whose central assertion IS a zero
   // — `warm-up reps lost unanswered` — so it joins this population by saying
   // exactly the thing this count is about.
-  NAMED_BODIES_HOLDING_ZERO: 60,
+  // 60 -> 61: the load ladder's body, per the note on `NAMED_BODIES`.
+  NAMED_BODIES_HOLDING_ZERO: 61,
   // 52 -> 54 with the command beat's three tag-named bodies, two of which
   // state a bare 1.
   // 56 -> 57, same body as the zero above: it holds a bare 1 in the slip-arm
   // count `1 + REACHABLE_WARMUP.SLIP_TICKS.length`. Both censuses move together
   // when a body arrives holding both, and neither is evidence about the other.
-  NAMED_BODIES_HOLDING_ONE: 58,
+  // 58 -> 59: the same body, same reason.
+  NAMED_BODIES_HOLDING_ONE: 59,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
@@ -1887,7 +1933,7 @@ const TRANSCRIPT_BAR = {
   // +1 ON THE WARM-UP FLOOR ROUND: `a-warm-up-makes-it-unanswered`, whose
   // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
   // is therefore the tree as it stood before the 2026-08-26 ruling.
-  GRADED: 46,
+  GRADED: 47,
   /** ...and rows excused because their transcript predates it. */
   // 37 -> 36 when the placeholder's witness retired with its subject
   // (Sprint 1c): its transcript predated the rule, so the excused count is
@@ -2149,10 +2195,10 @@ const TRANSPLANTED_NUMERIC_RULE = {
   // new row's transcript names `rpe7/0.8250/as-expected` and eight seeds, all
   // readings of the MUTATED tree, and the shipped body pins none of them
   // because its whole claim is that the count is zero.
-  rows: 74,
-  flagged: 61,
-  numerals: 309,
-  unresolved: 183,
+  rows: 75,
+  flagged: 62,
+  numerals: 316,
+  unresolved: 188,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -2524,7 +2570,7 @@ const REPLACEMENT_BAR = {
   // +1 ON THE WARM-UP FLOOR ROUND: `a-warm-up-makes-it-unanswered`, whose
   // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
   // is therefore the tree as it stood before the 2026-08-26 ruling.
-  REPRODUCIBLE: 34,
+  REPRODUCIBLE: 35,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2688,7 +2734,20 @@ const SECTION_4A_KILL_LIST = {
 // that tag's paragraph states the six loads that make a `loadRatio` threshold
 // impossible, and its named test pins all six as real assertions rather than
 // as prose. Nothing moved onto UNPINNED_PROSE_NUMBERS.
-const WITNESS_ROWS = 82;
+//
+// 82 -> 83 on the 2026-09-01 bench load ladder's one new tag,
+// `a-heavier-bench-is-never-easier`, which replaced a scalar monotonicity
+// assertion with a direct behavioural one. `TAGGED_PARAGRAPHS` 87 -> 88 and
+// `GUARANTEE_COVERAGE.TREE_WIDE` 313 -> 317 move with it — the tag adds one
+// tagged paragraph and the round's write-up adds three more that the
+// capitalised-absolute heuristic flags and nothing claims, which is the honest
+// direction for that fraction to move rather than a silent one. The
+// NUMBER_COVERAGE arithmetic below does NOT move: the tagged paragraph is
+// written without numerals on purpose, so it claims none and resolves none.
+// `TRANSCRIPT_BAR.GRADED` 46 -> 47 and `REPLACEMENT_BAR.REPRODUCIBLE` 34 -> 35
+// because the new row carries both a transcript naming its test and a
+// `mutatedTo`.
+const WITNESS_ROWS = 83;
 
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
   // -------------------------------------------------------------------------
@@ -2802,6 +2861,56 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + 'Tests  1 failed | 151 skipped (152)',
     measuredOver:
       "    expect(session.length + meet.length, 'the cells this scoping covers').toBe(40);",
+  },
+  // -------------------------------------------------------------------------
+  // THE 2026-09-01 BEHAVIOURAL LOAD LADDER, AND THE MUTANT IS THE TUNING VALUE
+  // THAT THE SCALAR ASSERTION THIS TEST REPLACED WOULD HAVE CAUGHT TOO — WHICH
+  // IS THE POINT, NOT A WEAKNESS OF THE ROW.
+  //
+  // The check this replaced asserted an intermediate scalar never falls as load
+  // rises. It was deleted rather than loosened because it was a PROXY: measured,
+  // that scalar starts falling about 0.019 of addend before any rep gets easier,
+  // and the round before this one was blocked by the gap while believing it was
+  // blocked by the game. So the interesting property of this row is not that the
+  // mutant reddens — the old check reddened on it too — but WHERE it reddens:
+  // the shipped value and the mutant sit on opposite sides of the point a rep
+  // actually changes hands, which is a line the old check could not locate.
+  //
+  // A SECOND MUTANT WAS RUN AT THE OTHER BAND BOUNDARY AND IS RECORDED HERE
+  // BECAUSE THE SCHEMA HOLDS ONE ROW. Leaving
+  // `BENCH_WORKING_RUNG_DEMAND_ONSET` at the shipped 0.22 while reverting
+  // `BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND` to its pre-round 0.20 — a
+  // half-applied retune, which is a thing somebody really does — reddens the
+  // same assertion at the ONSET-to-MIDDLE boundary instead:
+  // 'a heavier bar made reps a lighter one missed: expected
+  // [ 'load 0.825 at gap 11: 0 -> 20' ] to deeply equal []'. The two attack
+  // different halves: the row below says the middle band cannot outrun the wall
+  // band, the second says the onset band cannot outrun the middle one.
+  //
+  // THE ASSERTION ORDER IN THE NAMED TEST WAS CHANGED FOR THIS ROW, and it is
+  // recorded rather than done quietly — the same correction, for the same
+  // reason, as the rescue row below. The ladder's floor-vector PIN reddens on
+  // this mutant too and originally sat first, so the first transcript taken was
+  // evidence that a pinned number had moved rather than that the guarantee had
+  // broken. The invariant is asserted first now.
+  {
+    guarantee: 'a-heavier-bench-is-never-easier',
+    mutatedFile: 'src/game/liftTuning.ts',
+    mutated: '  BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND: 0.214,',
+    mutatedTo: '  BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND: 0.2205,',
+    testFile: 'src/game/lift.test.ts',
+    redAssertion:
+      "    expect(easings, 'a heavier bar made reps a lighter one missed').toEqual([]);",
+    observed:
+      'FAIL  src/game/lift.test.ts > the grind decides the lift > never lets a heavier bench '
+      + 'bar play easier [a-heavier-bench-is-never-easier]\n'
+      + 'AssertionError: a heavier bar made reps a lighter one missed: expected '
+      + "[ 'load 0.855 at gap 8: 0 -> 20' ] to deeply equal []\n"
+      + 'Tests  1 failed | 156 skipped (157)',
+    measuredOver:
+      "      LOAD_LADDER.RUNGS * LOAD_LADDER.GAP_WINDOW,\n"
+      + "      'load-and-cadence cells this ladder drives',\n"
+      + '    ).toBe(1224);',
   },
   // THE RESCUE, AND THE MUTANT IS THE RETUNE PUT BACK.
   //

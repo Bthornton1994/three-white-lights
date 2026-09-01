@@ -946,6 +946,22 @@ export function benchWorkingExcess(config: LiftConfig): number {
  * inside that band, which `lift.test.ts` measures directly against the real
  * reachable domain rather than trusting this paragraph — see the test naming
  * "the middle band" for the two-probe-value drive.
+ *
+ * THE PIECEWISE SHAPE MAKES THE EFFECTIVE DEMAND MARGIN FALL AT A BAND
+ * BOUNDARY, AND THAT IS ALLOWED WHILE THE REP GETTING EASIER IS NOT. Each band
+ * adds a flat addend, so a bar crossing upward into a band whose addend is
+ * smaller loses that difference at the same instant its own base margin rises.
+ * The margin is an intermediate scalar and no player experiences it; what a
+ * player experiences is whether the rep can still be ground out at the cadence
+ * they can hold. Adding weight must never make that easier, whatever the
+ * scalar does in between. `lift.test.ts` measured the two apart on purpose
+ * once a scalar assertion here had blocked a retune the game itself did not
+ * object to — see `LOAD_LADDER` there for the finding, the rule and the
+ * mutants — and this is now the claim that is checked, over every cadence at
+ * every load on that ladder, rather than the scalar that used to stand in for
+ * it. A tuning change that steps this function's addends far enough apart to
+ * cost a rep at a boundary reddens there.
+ * `@guarantee a-heavier-bench-is-never-easier`
  */
 export function benchWorkingRungDemand(kind: PlayableLiftKind, workingExcess: number): number {
   if (kind !== 'bench') return 0;
