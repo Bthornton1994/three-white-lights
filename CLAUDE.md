@@ -2099,6 +2099,134 @@ MIDDLE 0.218 as a token fix; `DEMAND_BASE.bench`; `GRIND_BOOST_FORCE_MAX`;
 an RPE field on `LiftConfig`; squat/deadlift unless later broadened;
 tuning around meet (census only); pushing `main`.
 
+### RULED 2026-09-01: GRIND-RESPONSE PROBE (AUTHORIZED INVESTIGATION, NOT A SHIP)
+
+Human ruling after `2f1e1e04`: reproduce the ordinary 120 kg check-in,
+measure the response once the player is already tapping, evaluate
+families A–F, build the smallest isolated prototype. **No mechanic
+shipped. No additive constant moved. No mint.** Production
+`lift.ts` / `liftTuning.ts` byte-identical to `2f1e1e04`.
+
+**HEAD at probe:** `2f1e1e04` on `grok/session-a-main-loop`. Tools only:
+`tools/grindResponsePrototype.ts` (isolated re-integrator) and
+`tools/grind-response-probe.test.ts` (measurement). Identity pin
+`compress=1` vs `stepLift`: 0 mismatches. Squat/deadlift prototype
+no-op: 0 mismatches.
+
+**Shipped three-band (unchanged):** ONSET 0.22 / MIDDLE 0.214 / WALL 0.192.
+Refractory 3 ticks = 50 ms, so 40 ms mash ≡ 55 ms in-engine.
+
+**Ordinary check-in, 120 kg e1RM, jitter ±8 ms, 16 seeds — reproduction
+of the human result:**
+
+    RPE 8  102.5 kg  70 ms  100% GOOD LIFT  ascent 67.9 t  stall 0
+    RPE 8           100 ms  100% GRINDER    ascent 86.0 t  stall 0
+    RPE 9  105 kg    70 ms  100% make, 13% grind / 88% good  ascent 78.0 t
+    RPE 9           100 ms  100% GRINDER    ascent 104 t   stall 0
+    RPE 10 110 kg    70 ms  100% GRINDER    ascent 103.3 t stall 0
+    RPE 10          100 ms  100% GRINDER    ascent 167 t   stall 3.0
+
+Human 19/19 lockouts, 0 misses. Engine matches make/miss on every
+ordinary cell. Grind-call mismatch: human RPE 9 ~71 ms was GRINDER;
+engine sits at 78 ticks, two under `GRIND_ASCENT_TICKS` 80, so 88%
+good-lift. Relative duration deltas match (8→9 +0.17 s, 9→10 +0.42 s).
+
+**Useful cadence band (reachable periodic, corrected heuristic):**
+
+    RPE 8   miss wall beyond 150 ms; mash flatten 55 ms; make-band ≥95 ms
+            GOOD→GRIND ~85–100 ms. 150 ms still 100% make.
+    RPE 9   slowest 95% make 130 ms; flatten 55 ms; useful 75 ms
+            150 ms 0% make (jittered ordinary).
+    RPE 10  slowest 95% make 100 ms; flatten 55 ms; useful 45 ms
+            115 ms 0% make.
+
+40 ms and 55 ms are the same 3-tick input. 40 vs 70 ms on RPE 8 is
++6 ascent ticks, same good-lift class — mash does not dominate as extra.
+
+**Shape:** force rapidly saturating (C). Make probability threshold-like
+(B). Duration gradual in the making band. Not binary, not gradual on
+success — threshold-plus-saturation, as the human evidence suggested.
+
+**Saturation:** 40 ms launch force 0.975, ceiling in 13 ticks, 97–98% of
+ascent at ceiling. 70 ms launch 0.944, ceiling in 25 ticks, 23% at
+ceiling, mean force 0.95. 100 ms never reaches ceiling, mean 0.84.
+**RPE 8 and RPE 9 spend the rep at the same force state.** Difference is
+demand / duration only.
+
+**Sustained effort:** stop after 12 or 24 mash ticks misses every rung
+— maintenance already exists. **Fast-48-then-stop still makes RPE 8
+(good-lift) and RPE 9 (grind).** That is the "enough tapping then
+guarantee" the ruling asked about. Committed 70 ms never drops off the
+ceiling, so the existing decay never taxes them.
+
+**Sticking region:** demand 1.219 / 1.259 / 1.319. Stick minVel at 70 ms
+0.0127 / 0.0105 / 0.0068 vs stall 0.0025. RPE 8/9 never enter the stall
+band at human cadence. They differ in margin and duration, not in a
+distinct fight shape. RPE 10 100 ms is the first cell that kisses stall
+(minVel 0.0023, stall 3.0).
+
+**Realistic-thumb miss at ~70 ms:** 0/96 RPE 8, 0/96 RPE 9, 0/96 RPE 10
+(ordinary 16 + reachable 80). Guarantee: 70 ms force ≈ 0.95, stick net
++0.201 / +0.161 / +0.101, minVel 4–5× stall. Not RNG. Not a coin flip
+waiting to happen.
+
+**Ordinary WORKING_FLOOR (probe, 8/8 make, 3–20 ticks):** 11 / 8 / 6.
+Production pinned vector unchanged: RPE 8 13/11/12/13, RPE 9 10/9/9/10,
+RPE 10 7/7/8/8. Probe zero-tap RPE 7 at ordinary 0.8333 lost 12/12 is
+**not** the warmup guarantee — that cell sits above the warmup floor;
+reachable RPE ≤ 7 still never costs a cadence.
+
+**Candidates:**
+- A decay / E maintenance: already true. Committed thumbs never meet them.
+- B diminishing charge: already Michaelis–Menten + refractory. Mash vs
+  70 ms is already flat on outcome.
+- C dynamic stick / surplus compress: this prototype.
+- D momentum: not first; velocity lag already exists.
+- F combination: stick-local hard cap tested in the stall search.
+
+**Prototype** (`surplusCompress` after `stepLift`, bench ascent only):
+`useful = floor + (force − floor) * compress` above `floorForce`.
+Winner for duration-grind, identity on RPE 10:
+`c8=0.35 / c9=0.2 / c10=1 / stickWeight=0`, floors 0.62 / 0.70 / 0.79.
+
+**CURRENT vs PROTO, ordinary jittered 16 seeds:**
+
+    RPE 8  70 ms   CUR 100% good  67.9 t   PROTO 100% grind 100.3 t  stall 0
+    RPE 8 100 ms   CUR 100% grind 86.0 t   PROTO 100% grind 120.0 t  stall 0
+    RPE 9  70 ms   CUR 13% grind  78.0 t   PROTO 100% grind 124.4 t  stall 0
+    RPE 9 100 ms   CUR 100% grind 104 t    PROTO 100% grind 148.0 t  stall 0
+    RPE 10 70 ms   CUR = PROTO (identity)
+    RPE 8  40 ms   CUR 100% good  62 t     PROTO 100% grind  95 t
+    PROTO fast-48-stop now MISSES RPE 8 and RPE 9 (CUR made both).
+
+Duration-grind: yes. Mash no longer a good-lift bonus vs 70 ms. Coasting
+closed. **RPE 9 70 ms stall still 0.** 70 ms miss still 0.
+
+**Stall search (RPE 9 hard surplus cap):** a global cap that stalls
+70 ms also stalls 100 ms, because both sit above the cap (70 ms force
+0.95, 100 ms force 0.84, stall-break-even useful ≲ 0.62). The only
+cell that stalls at 70 ms *and* keeps 100 ms making is
+`r9floor=0.66 / compress=0 / stickWeight=1` (stall 4.3, under
+`GRIND_STALL_TICKS` 6). The surplus-knee is spent for a stall-fight
+the same way additive bands were spent for a mash-tax.
+
+**Recommended, not authorised to implement:** surplus compression
+keyed off the existing three-band (onset/middle/wall), not an RPE
+field on `LiftConfig` (`createLift` strips unknown fields). Bench
+ascent only. RPE 10 identity. Do not touch ONSET/MIDDLE/WALL.
+Do not add a fourth addend. Do not implement quality-window.
+Do not ship presentation-only. Do not mint.
+
+If the next sentence is "RPE 9 70 ms must be able to stall while
+staying on the input", that is a new mechanism and a new ruling.
+Surplus compression will not buy it.
+
+**Still refused, unchanged:** fourth addend; touching WALL; relaxing
+RPE 10 `>= 7`; spending the RPE 8/9 ordering tick; quality-window;
+presentation-only as the answer; `DEMAND_BASE.bench`;
+`GRIND_BOOST_FORCE_MAX`; an RPE field on `LiftConfig`; squat/deadlift;
+pushing `main`.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
