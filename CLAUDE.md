@@ -2029,6 +2029,76 @@ pushing `main`.
 **`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not
 a crossing.
 
+### RULED 2026-08-31 / FILED 2026-09-01: GRIND-RESPONSE INVESTIGATION (OPTION 3)
+
+Human rejected the latest playable three-band candidate. RPE 8 and RPE 9
+"a little too easy"; RPE 10 not criticised. Additive-band retune refused.
+This entry is measurement and a design recommendation. **No mechanic shipped.
+No constant moved. No fourth addend. No mint.**
+
+**HEAD at investigation:** `474ef4b1` on `grok/session-a-main-loop`, branched
+from `948da38f`. Tree clean except `tools/grind-response-probe.test.ts`
+(measurement only; not in the suite contract).
+
+**Shipped three-band (unchanged):**
+
+    ONSET 0.22   MIDDLE 0.214   WALL 0.192
+    CUT 0.005    WALL_CUT 0.06  MARGIN_CEILING 0.378
+
+**WORKING_FLOOR, re-driven, matches the reject vector:**
+
+    RPE 8    13 / 11 / 12 / 13
+    RPE 9    10 /  9 /  9 / 10
+    RPE 10    7 /  7 /  8 /  8
+
+**The question, answered from the current engine:** additional player effort
+above WORKING_FLOOR does not produce differentiated challenge at RPE 8/9
+because a committed thumb is already on the flat top of `grindForce` before
+the bar leaves the chest, and mash surplus at the stick is larger than the
+force-gap from floor cadence to mash. Raising demand eats the floor before
+it can make mash a fight. That is why ONSET 0.223 / MIDDLE 0.218 could not
+buy the human sentence.
+
+**Structural numbers (12 cells × 12 seeds, current engine):**
+
+- Charge ceiling 2.9 is met at 14.1 t/s. Captured human cadence is 57–81ms
+  (12.3–17.5 t/s). Mash (50ms) is on the ceiling in 1.5 ascent ticks; human
+  in 12.3. The 300ms launch beat pre-charges mash to force ~0.975, so
+  saturation is a launch event, not a mid-ascent event.
+- Human force 0.954, pips 14/14, stall 0, make 100% on every working rung.
+- Mash ascent 59.3 / 66.5 / 76.3 ticks (RPE 8/9/10). Δ9−8 = 7.3 ticks =
+  121ms. Both RPE 8 and 9 sit under `GRIND_ASCENT_TICKS` 80, so both grade
+  `good-lift` (grind% 0 / 0 / 25 at mash; 0 / 6 / 75 at human).
+- Stick minVel at mash 0.0149 / 0.0127 / 0.0104 against stall 0.0025 —
+  4–6× the stall band. The stall band and `STALL_PULSE` never fire.
+- Mash stick net +0.20..+0.23 / +0.16..+0.19 / +0.12..+0.15. Break-even
+  force 0.45–0.52 / 0.54–0.62 / 0.64–0.71 against human force 0.95.
+- Spike-then-coast: mash 32 ascent ticks then stop misses every rung
+  (RPE 8 peak 0.936). Maintenance already exists. A committed player never
+  meets it, because they never drop off the ceiling.
+- Mash surplus / floor surplus ≈ 4.7×; mash force / floor force ≈ 1.7×.
+  Any demand-like tax linear in `grindForce` (flat addend, stick-shaped
+  addend, or `k * grindForce`) eats the floor before mash stalls. This is
+  the same wall as the three-band search, restated on the response curve.
+
+**Problem class:** mechanical first, presentation second. The 121ms
+duration gap is real and the readout/haptic/stall-band stack has nothing
+to show, because there is no stall, no pip drop, and no grind call on
+RPE 8/9 at human cadence. Presentation-only cannot invent a fight.
+
+**Recommended next mechanism, not authorised to implement:** surplus
+compression above each rung's floor force, strongest in the stick.
+Floors, warm-ups, false-start, RPE 10 `>= 7`, and squat/deadlift stay
+on the uncompressed side of the knee. Full design, risks, and the
+smallest discriminating prototype are in the Session A report this
+entry records. Await a human mechanism ruling.
+
+**Still refused, unchanged:** a fourth additive band; touching WALL;
+relaxing RPE 10 `>= 7`; spending the RPE 8/9 ordering tick; shipping
+MIDDLE 0.218 as a token fix; `DEMAND_BASE.bench`; `GRIND_BOOST_FORCE_MAX`;
+an RPE field on `LiftConfig`; squat/deadlift unless later broadened;
+tuning around meet (census only); pushing `main`.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
