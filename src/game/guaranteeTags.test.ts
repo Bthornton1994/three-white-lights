@@ -1116,7 +1116,12 @@ const GUARANTEE_COVERAGE = {
   // own declared blind spot landing on the round's most load-bearing sentence,
   // and it is worth recording rather than tidying the sentence to trip a word
   // list.
-  TREE_WIDE: 317,
+  // 317 -> 318 ON C3: `grindUsefulForce` / `grindProgress` added a triggering
+  // paragraph in `lift.ts` (useful-force pips). The two new tagged claims
+  // (`bench-surplus-wall-is-identity`, `the-grind-readout-reads-useful-force`)
+  // sit on paragraphs that already triggered or that do not trip the word
+  // list, so IN_SCOPE does not move with TAGGED_PARAGRAPHS.
+  TREE_WIDE: 318,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1244,7 +1249,9 @@ const NUMBER_EXCLUSIONS: Readonly<ExclusionCensus> = {
   // count back. Worth reading as a reminder that this census tracks where TAGS
   // sit, not what the file says — the sentences either side never moved.
   'section-coordinate': 17,
-  'inside-an-identifier': 3,
+  // 3 -> 6 ON C3: three tagged paragraphs mention `C3` as a candidate name.
+  // The digit is part of the identifier, not a cited measurement.
+  'inside-an-identifier': 6,
   'quoted-code': 2,
   'list-ordinal': 1,
 };
@@ -1491,7 +1498,10 @@ const NUMBER_COVERAGE = {
   // +1 ON THE WARM-UP FLOOR ROUND: `a-warm-up-makes-it-unanswered`, whose
   // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
   // is therefore the tree as it stood before the 2026-08-26 ruling.
-  TAGGED_PARAGRAPHS: 88,
+  // 88 -> 91 ON C3: three tagged paragraphs (`bench-surplus-wall-is-identity`
+  // twice, `the-grind-readout-reads-useful-force` once). Two unique ids, so
+  // NAMED_BODIES moves by two, not three.
+  TAGGED_PARAGRAPHS: 91,
   /**
    * ...of which this many state a number as prose.
    *
@@ -1584,7 +1594,10 @@ const NUMBER_COVERAGE = {
   // cadence) and a bare 1 (`rung > 0` and the `rung - 1` lookbacks), so both
   // weakness counts below move with it — the same shape the warm-up sweep's
   // note two paragraphs up records.
-  NAMED_BODIES: 79,
+  // 79 -> 81 ON C3: `bench-surplus-wall-is-identity` and
+  // `the-grind-readout-reads-useful-force`. Both bodies hold a bare 0 and a
+  // bare 1, so the two weakness counts below move with them.
+  NAMED_BODIES: 81,
   // 53 -> 55 with the command beat's three tag-named bodies; two of the three
   // state a bare 0 (the wash before the call, the pip row's first frame) and
   // the third does not.
@@ -1592,14 +1605,16 @@ const NUMBER_COVERAGE = {
   // — `warm-up reps lost unanswered` — so it joins this population by saying
   // exactly the thing this count is about.
   // 60 -> 61: the load ladder's body, per the note on `NAMED_BODIES`.
-  NAMED_BODIES_HOLDING_ZERO: 61,
+  // 61 -> 63 ON C3, same two bodies as NAMED_BODIES.
+  NAMED_BODIES_HOLDING_ZERO: 63,
   // 52 -> 54 with the command beat's three tag-named bodies, two of which
   // state a bare 1.
   // 56 -> 57, same body as the zero above: it holds a bare 1 in the slip-arm
   // count `1 + REACHABLE_WARMUP.SLIP_TICKS.length`. Both censuses move together
   // when a body arrives holding both, and neither is evidence about the other.
   // 58 -> 59: the same body, same reason.
-  NAMED_BODIES_HOLDING_ONE: 59,
+  // 59 -> 61 ON C3, same two bodies as NAMED_BODIES.
+  NAMED_BODIES_HOLDING_ONE: 61,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
@@ -1933,7 +1948,9 @@ const TRANSCRIPT_BAR = {
   // +1 ON THE WARM-UP FLOOR ROUND: `a-warm-up-makes-it-unanswered`, whose
   // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
   // is therefore the tree as it stood before the 2026-08-26 ruling.
-  GRADED: 47,
+  // 47 -> 49 ON C3's two new witnesses. Both transcripts name their test
+  // and quote a measured scalar, so WITH_A_MEASURED_NUMBER moves with them.
+  GRADED: 49,
   /** ...and rows excused because their transcript predates it. */
   // 37 -> 36 when the placeholder's witness retired with its subject
   // (Sprint 1c): its transcript predated the rule, so the excused count is
@@ -1957,7 +1974,9 @@ const TRANSCRIPT_BAR = {
   // +1 ON THE WARM-UP FLOOR ROUND: `a-warm-up-makes-it-unanswered`, whose
   // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
   // is therefore the tree as it stood before the 2026-08-26 ruling.
-  WITH_A_MEASURED_NUMBER: 24,
+  // 24 -> 26 ON C3: both new transcripts match MEASURED_SCALAR
+  // (`expected 0.774945 to be`, `expected 0.975191 to be`).
+  WITH_A_MEASURED_NUMBER: 26,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -2195,10 +2214,15 @@ const TRANSPLANTED_NUMERIC_RULE = {
   // new row's transcript names `rpe7/0.8250/as-expected` and eight seeds, all
   // readings of the MUTATED tree, and the shipped body pins none of them
   // because its whole claim is that the count is zero.
-  rows: 75,
-  flagged: 62,
-  numerals: 316,
-  unresolved: 188,
+  // 75/62/316/188 -> 77/64/329/195 ON C3's two witnesses. Both flagged:
+  // the compressed wall force 0.774945 and the mashed pip readings
+  // 0.975191 / 0.819427 are MUTATED-tree numbers, plus the skip-line
+  // digits the transcript rule itself demands. The shipped bodies pin
+  // identity and useful-force equality, not those mutated readings.
+  rows: 77,
+  flagged: 64,
+  numerals: 329,
+  unresolved: 195,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -2570,7 +2594,8 @@ const REPLACEMENT_BAR = {
   // +1 ON THE WARM-UP FLOOR ROUND: `a-warm-up-makes-it-unanswered`, whose
   // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
   // is therefore the tree as it stood before the 2026-08-26 ruling.
-  REPRODUCIBLE: 35,
+  // 35 -> 37 ON C3: both new rows carry a `mutatedTo`.
+  REPRODUCIBLE: 37,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2747,7 +2772,11 @@ const SECTION_4A_KILL_LIST = {
 // `TRANSCRIPT_BAR.GRADED` 46 -> 47 and `REPLACEMENT_BAR.REPRODUCIBLE` 34 -> 35
 // because the new row carries both a transcript naming its test and a
 // `mutatedTo`.
-const WITNESS_ROWS = 83;
+// 83 -> 85 ON C3: `bench-surplus-wall-is-identity` (compress the wall)
+// and `the-grind-readout-reads-useful-force` (light the row from raw
+// grindForce). GRADED 47 -> 49, WITH_A_MEASURED_NUMBER 24 -> 26,
+// REPRODUCIBLE 35 -> 37. Both transcripts quote a scalar.
+const WITNESS_ROWS = 85;
 
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
   // -------------------------------------------------------------------------
@@ -2813,7 +2842,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
   {
     guarantee: 'bench-grind-decides-the-rep',
     mutatedFile: 'src/game/lift.ts',
-    mutated: '      drive += LIFT_TUNING.GRIND_BOOST_FORCE_MAX * m.grindForce;',
+    mutated: '      drive += LIFT_TUNING.GRIND_BOOST_FORCE_MAX * grindUsefulForce(m.grindForce, state.config);',
     mutatedTo: '      drive += LIFT_TUNING.GRIND_BOOST_FORCE_MAX * m.launchForce;',
     testFile: 'src/game/lift.test.ts',
     redAssertion:
@@ -2911,6 +2940,54 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       "      LOAD_LADDER.RUNGS * LOAD_LADDER.GAP_WINDOW,\n"
       + "      'load-and-cadence cells this ladder drives',\n"
       + '    ).toBe(1224);',
+  },
+  // -------------------------------------------------------------------------
+  // C3 SURPLUS COMPRESSION. Two mutants, both one-token ways to undo the
+  // ruling: compress the wall (RPE 10 identity), and light the pip row
+  // from raw grindForce (the lie the human named).
+  // -------------------------------------------------------------------------
+  // THE MUTANT DROPS THE WALL FROM THE IDENTITY GATE. Onset and middle still
+  // compress; warm-up / squat / deadlift still return raw because their
+  // band is null. Only wall — RPE 10 — starts discarding surplus, which is
+  // the frozen identity the ruling named. Compiles, tsc is clean, and the
+  // additive (WALL 0.192) is untouched. Taken 2026-09-01 against this tree.
+  {
+    guarantee: 'bench-surplus-wall-is-identity',
+    mutatedFile: 'src/game/lift.ts',
+    mutated: '  if (band === null || band === \'wall\') return raw;',
+    mutatedTo: '  if (band === null) return raw;',
+    testFile: 'src/game/benchSurplus.test.ts',
+    redAssertion:
+      '      expect(grindUsefulForce(force, wall), `wall force ${force}`).toBe(force);',
+    observed:
+      'FAIL  src/game/benchSurplus.test.ts > C3 surplus compression > leaves wall, warm-up, '
+      + 'squat and deadlift byte-identical to raw force [bench-surplus-wall-is-identity]\n'
+      + 'AssertionError: wall force 0.8: expected 0.774945 to be 0.8 // Object.is equality\n'
+      + 'Tests  1 failed | 3 skipped (4)',
+    measuredOver:
+      "    expect(identityForces.length, 'the forces identity is checked at').toBe(5);",
+  },
+  // THE MUTANT IS THE BUG THE HUMAN REPORTED. grindProgress lights
+  // grindForce, so a mashed RPE 8 row reads nearly full while the bar
+  // receives the compressed surplus. Compiles, tsc is clean, and the
+  // boost still multiplies useful force — only the rail lies. Taken
+  // 2026-09-01 against this tree.
+  {
+    guarantee: 'the-grind-readout-reads-useful-force',
+    mutatedFile: 'src/game/lift.ts',
+    mutated:
+      '  const force = clamp01(grindUsefulForce(state.grindForce, state.config));',
+    mutatedTo: '  const force = clamp01(state.grindForce);',
+    testFile: 'src/game/benchSurplus.test.ts',
+    redAssertion: '        expect(progress.force).toBeCloseTo(useful, 9);',
+    observed:
+      'FAIL  src/game/benchSurplus.test.ts > C3 surplus compression > lights the pip row from '
+      + 'useful force, not raw grindForce [the-grind-readout-reads-useful-force]\n'
+      + 'AssertionError: expected 0.975191 to be close to 0.819427, received difference is '
+      + '0.155764, but expected 5e-10\n'
+      + 'Tests  1 failed | 3 skipped (4)',
+    measuredOver:
+      "    expect(sawAscent, 'never saw a mashed ascent tick').toBeGreaterThan(10);",
   },
   // THE RESCUE, AND THE MUTANT IS THE RETUNE PUT BACK.
   //
@@ -5583,6 +5660,9 @@ describe('the guarantee-tag convention', () => {
       // guarantees and no witnesses at all until these.
       'src/empire/empireInvariant.test.ts',
       'src/empire/engagement.test.ts',
+      // C3 surplus compression: wall identity and truthful pips, witnessed
+      // where they are driven rather than folded into lift.test.ts.
+      'src/game/benchSurplus.test.ts',
       // Sprint 1c: the CareerMeet → MeetDefinition seam — the verbatim id and
       // the by-reference rules, witnessed where the adapter is driven.
       'src/game/careerMeet.test.ts',

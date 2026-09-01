@@ -753,12 +753,13 @@ export const LIFT_TUNING = Object.freeze({
   //     counted tap     charge += 1
   //     always          force   = grindForce(charge)      // 0..1, saturating
   //
-  // `force` is read TWICE and both readings are the same number seen at
-  // different moments: at `PRESS_LAUNCH_MS` after the command it sets the
-  // velocity the bar leaves the chest at (`PRESS_VELOCITY`), and on EVERY
-  // ascent tick it adds `GRIND_BOOST_FORCE_MAX * force` to what the lifter has
-  // (`lift.ts`'s ASCENT branch). There is no window to run out of and no cap on
-  // how many taps a rep may contain — the ceiling is on the RATE.
+  // `force` is read TWICE and they are no longer the same number on a working
+  // onset/middle bar: at `PRESS_LAUNCH_MS` after the command it sets the
+  // velocity the bar leaves the chest at (`PRESS_VELOCITY`, still raw), and
+  // on EVERY ascent tick it adds `GRIND_BOOST_FORCE_MAX * grindUsefulForce`
+  // to what the lifter has (`lift.ts`'s ASCENT branch, C3). There is no
+  // window to run out of and no cap on how many taps a rep may contain — the
+  // ceiling is on the RATE. Wall / warm-up keep the two readings identical.
   //
   // WHY THE CEILING IS ON THE RATE AND NOT ON A BUDGET, which is the
   // thumb-fatigue question the steer left open. A budget that runs down is a
@@ -1097,11 +1098,12 @@ export const LIFT_TUNING = Object.freeze({
    * THE HALF THAT MAKES "GRIND THROUGH" MEAN FORCE, AND IT IS READ EVERY TICK
    * ---------------------------------------------------------------------------
    * `PRESS_VELOCITY` gives the bar SPEED off the chest and that is a transient.
-   * This is the lifter PUSHING, and it is live: `drive += this * grindForce` on
-   * every ascent tick, where `grindForce` is what the player's tap rate is
-   * worth at that instant. Stop tapping and it falls away with the charge;
-   * start again and it comes back. That is the rescue-from-stall property the
-   * replay steer asked for, and it is arithmetic rather than a special case.
+   * This is the lifter PUSHING, and it is live: `drive += this * grindUsefulForce`
+   * on every ascent tick, where `grindUsefulForce` is the C3-compressed
+   * tap-rate (identity on wall / warm-up). Stop tapping and it falls away
+   * with the charge; start again and it comes back. That is the rescue-from-
+   * stall property the replay steer asked for, and it is arithmetic rather
+   * than a special case.
    *
    * NOT AN IMPULSE THAT DECAYS FROM ITS OWN TICK, which is what
    * `PRESS_BURST_BOOST_FORCE_MAX`/`_TICKS` were and why they are deleted. An
@@ -1185,6 +1187,80 @@ export const LIFT_TUNING = Object.freeze({
    * `@guarantee bench-grind-decides-the-rep`
    */
   GRIND_BOOST_FORCE_MAX: 0.42,
+
+  /**
+   * -------------------------------------------------------------------------
+   * C3 SURPLUS COMPRESSION — HOW MUCH OF THE FORCE ABOVE THE FLOOR-CADENCE
+   * MEAN THE BAR ACTUALLY RECEIVES, ON ONSET AND MIDDLE ONLY
+   * -------------------------------------------------------------------------
+   * RULED 2026-09-01: SHIP C3 AS THE FINAL BENCH CANDIDATE. Not a mint.
+   * Phone replay of the isolated prototype chose C3 over C1 and C2, and over
+   * the rejected `c8=0.35 / c9=0.2` probe. One global coefficient, not a
+   * per-rung pair.
+   *
+   *     useful = force                                         if force <= floor
+   *            = floor + (force - floor) * COMPRESS            otherwise
+   *
+   * `floor` is `meanGrindForceAtGap` at `BENCH_SURPLUS_FLOOR_GAP_TICKS` for
+   * the working band. Wall-band, warm-up, squat and deadlift are identity
+   * (`compress` is not consulted). RPE 10's additive (`WALL_ADDEND` 0.192)
+   * and its `WORKING_FLOOR >= 7` stop condition are untouched.
+   *
+   * 0.55 IS THE PHONE-CHOSEN C3 VALUE. Coarser (0.50) was C2; the rejected
+   * probe's 0.35 / 0.20 inverted RPE 9 past RPE 10 and is history, not a
+   * candidate. Do not copy the search's measured floor forces (0.626 / 0.741)
+   * as literals — those are what the derivation produces, and they move if
+   * decay / HALF / CEILING move.
+   */
+  BENCH_SURPLUS_COMPRESS: 0.55,
+
+  /**
+   * -------------------------------------------------------------------------
+   * C3 FLOOR CADENCE — THE METRONOME WHOSE MEAN `grindForce` IS THE COMPRESSOR
+   * FLOOR, FROZEN AT THE PRE-C3 ORDINARY WORKING-FLOOR GAPS
+   * -------------------------------------------------------------------------
+   * C3's floor is "the mean grindForce associated with the existing
+   * working-floor cadence for that working band", not a free force knob.
+   * A runtime WORKING_FLOOR sweep cannot be that derivation: once the
+   * compressor ships it moves the floors it would read, which is circular,
+   * and the sweep is the 120-second census in `lift.test.ts`.
+   *
+   * Smallest deterministic equivalent: the charge-cycle mean of `grindForce`
+   * at a metronome (`meanGrindForceAtGap` in `lift.ts`). Two frozen
+   * cadences, both pre-C3 ordinary WORKING_FLOOR gaps from the monotonic
+   * search (8/8 make, 8 seeds): 11 below `BENCH_SURPLUS_FLOOR_CUT_MARGIN`,
+   * 8 above it and still inside the middle band. Wall is unused because
+   * wall is identity. These are CADENCE INPUTS, not force literals.
+   * Production's 20-seed session vector is re-driven after C3, not fed
+   * back into the compressor.
+   *
+   * Keyed off base margin — the same quantity the three-band addends
+   * already read — never off an RPE field on `LiftConfig`. The extra cut
+   * is required because ordinary RPE 8 at starting e1RM sits in the
+   * middle addend band; see `BENCH_SURPLUS_FLOOR_CUT_MARGIN`.
+   */
+  BENCH_SURPLUS_FLOOR_GAP_TICKS: { onset: 11, middle: 8 },
+
+  /**
+   * -------------------------------------------------------------------------
+   * C3 FLOOR-GAP CUT — WHERE THE ONSET METRONOME STOPS AND THE MIDDLE
+   * METRONOME STARTS, ON THE SAME BASE-MARGIN AXIS AS THE ADDENDS
+   * -------------------------------------------------------------------------
+   * The three-band addend cut (`CUT_MARGIN` 0.005) cannot carry C3's floor.
+   * Ordinary RPE 8 at `STARTING_E1RM` sits 0.0002 above that cut, in the
+   * middle band. Keying the floor off the addend band then gives that cell
+   * the RPE 9 metronome (gap 8): 70 ms stays a good-lift and RPE 8 flies,
+   * which is the sentence C3 was chosen to stop. Sharing gap 11 across the
+   * whole middle band instead inverts RPE 9 past unchanged RPE 10
+   * (104.3 t vs 101.9 t).
+   *
+   * This cut sits in the measured ordinary RPE 8 / RPE 9 base-margin gap
+   * (0.0052 vs 0.0448 at starting e1RM) and chooses only which frozen
+   * metronome `meanGrindForceAtGap` reads. It is not a fourth addend, not
+   * an RPE field, and it does not move ONSET / MIDDLE / WALL. Wall-band
+   * cells never consult it.
+   */
+  BENCH_SURPLUS_FLOOR_CUT_MARGIN: 0.025,
 
   /**
    * Velocity the bar leaves the chest with, at grind force 0 and 1.
@@ -3468,10 +3544,12 @@ export const LIFT_TUNING = Object.freeze({
        * pip per counted tap out of a per-rep tap cap, and both halves of that
        * are gone: there is no cap to be a denominator, and a running total
        * would rise forever on a continuous grind. `GRIND_READOUT_UNITS` pips
-       * light in proportion to `grindForce`, so the row says HOW HARD YOU ARE
-       * GRINDING RIGHT NOW and falls back when the player slows down. That is
-       * the honest reading of a rolling rate, and it is what makes the row
-       * move both ways.
+       * light in proportion to `grindUsefulForce` — the same number the
+       * ascent multiplies into the bar — so the row says HOW HARD THE BAR
+       * IS BEING PUSHED RIGHT NOW and falls back when the player slows
+       * down. That is the honest reading of a rolling rate after C3, and
+       * it is what makes the row move both ways. The rail kick still
+       * flashes on a counted tap.
        *
        * EVERY NAME IN THIS SUB-BLOCK SAID `BURST_` UNTIL THE RENDER PIECE, and
        * they named a beat that had already been deleted. `liftFrame.ts`'s

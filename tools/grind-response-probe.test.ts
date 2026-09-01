@@ -1,6 +1,8 @@
 /**
  * Session A grind-response probe. Measurement + isolated prototype.
- * Does not change production tuning. Does not ship a mechanic.
+ * HISTORICAL. Production C3 now lives in `lift.ts`; this probe's identity pin
+ * (`compress = 1` byte-identical to `stepLift`) is false against the shipped
+ * compressor, so the test is skipped rather than re-run as live physics.
  *
  *   npx vitest run tools/grind-response-probe.test.ts
  */
@@ -435,7 +437,7 @@ function sampleCadence(
   return samples;
 }
 
-it(
+it.skip(
   'grind-response probe: reproduce, curve, prototype [investigation]',
   () => {
     const lines: string[] = [];

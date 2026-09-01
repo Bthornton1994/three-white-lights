@@ -1,7 +1,8 @@
 /**
  * Session A monotonic surplus-compression search.
- * Isolated prototype only. Production lift.ts / liftTuning.ts are not imported
- * for mutation. RPE 10 is identity (compress = 1) on every candidate.
+ * HISTORICAL. C3 (`floorCadence / c=0.55`) shipped into production `lift.ts`.
+ * This search measured the isolated prototype against pre-C3 `stepLift` and
+ * is skipped so it cannot be mistaken for a live census.
  *
  *   npx vitest run tools/grind-monotonic-search.test.ts
  */
@@ -323,7 +324,7 @@ interface NamedSpec {
   byRung: Record<Rung, SurplusCompressSpec>;
 }
 
-it(
+it.skip(
   'monotonic surplus-compress search [investigation]',
   () => {
     const lines: string[] = [];

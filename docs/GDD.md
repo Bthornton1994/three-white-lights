@@ -3303,6 +3303,99 @@ RPE 9 cells. Squat and deadlift stay byte-identical.
 `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` (`0.378`) did not move. Both retuned
 values are unplayed placeholders, the same as every other value in this arc.
 
+#### The 2026-09-01 round — C3 surplus compression, production candidate, not a mint
+
+**The three-band addends placed the thresholds. They could not write the
+sentence the human asked for on a committed thumb.** A 2026-09-01 investigation
+measured why: at ordinary 70 ms the grind is already on the flat top of
+`grindForce` before the bar leaves the chest, mash surplus at the stick is
+larger than the floor-to-mash force gap, and raising demand eats the floor
+before mash becomes a fight. ONSET / MIDDLE / WALL stay frozen at `0.22` /
+`0.214` / `0.192`. No fourth addend.
+
+**A strong surplus-compression prototype was built in isolation and rejected
+for magnitude, not for the family.** `c8=0.35 / c9=0.20 / c10=1` overshot:
+phone RPE 9 ~2.64 s against unchanged RPE 10 ~2.30 s. On screen, 9 was the
+fight and 10 was the relief. History, not a candidate.
+
+**A monotonic search then found CASE A — a region that orders 8 < 9 < 10
+without touching RPE 10.** Floor force is derivable, not a free knob. Two
+kinds: stick break-even, and `floorCadence` (mean `grindForce` at that cell's
+working-floor metronome). One-global-compress hits exist in both. Three phone
+candidates, not shipped until played:
+
+| candidate | 70 ms ascent ticks (RPE 8 / 9 / 10) |
+|---|---|
+| C1 `breakEven / c8=0.65 / c9=0.70` | 86.3 / 93.9 / 101.9 |
+| C2 `floorCadence / c=0.50` global | 88.4 / 94.8 / 101.9 |
+| C3 `floorCadence / c=0.55` global | 85.7 / 92.6 / 101.9 |
+
+**The human played LIVE, C1, C2, and C3 on a real ordinary bench session and
+chose C3.** Live at ~71 ms: RPE 8 good-lift ~1.66 s, RPE 9 grinder ~1.87 s,
+RPE 10 grinder ~2.30 s — 8 still flew. C3: RPE 8 grinder ×2 ~1.85 s, RPE 9
+grinder ~2.13 s, RPE 10 grinder ~2.33 s. RPE 8 no longer flies. 9 is clearly
+harder than 8. 10 remains the hardest rung. Zero misses. Zero inversions.
+
+**What shipped, production, not minted.** On bench ASCENT only:
+
+    useful = force                                    if force <= floor
+           = floor + (force - floor) * 0.55           otherwise
+
+`floor` is the charge-cycle mean of `grindForce` at a frozen pre-C3
+working-floor metronome (`meanGrindForceAtGap`): gap 11 below a base-margin
+cut of `0.025`, gap 8 above it and still inside the middle addend band. Wall,
+warm-up, squat and deadlift are identity (`compress` is not consulted). The
+search's measured floors `0.626` / `0.741` are not copied as literals.
+
+**The extra floor-gap cut is required because ordinary RPE 8 at starting e1RM
+sits in the middle addend band** (`baseMargin` 0.0052, 0.0002 above
+`CUT_MARGIN` 0.005). Keying the metronome off the addend band alone gave that
+cell gap 8 and 70 ms stayed a good-lift. Sharing gap 11 across the whole
+middle band inverted RPE 9 past unchanged RPE 10. The cut sits in the
+measured ordinary RPE 8 / RPE 9 gap and chooses only which frozen metronome
+the compressor reads. It is not a fourth addend and not an RPE field on
+`LiftConfig`.
+
+**Truthful pips ship in the same piece.** `grindProgress` previously lit raw
+`grindForce`, so a mashed RPE 8 rail read nearly full while the bar received
+~0.83 useful. The pip COUNT now reads the same useful force the ascent
+multiplies. The kick still flashes on a counted tap. No second meter, no
+player-facing "compression" number.
+
+**Production 70 ms census, ordinary 120 kg, jitter ±8 ms, 16 seeds:**
+
+| rung | 40 ms | 70 ms | 100 ms |
+|---|---|---|---|
+| RPE 8 | grind 80.0 t, useful 0.833, pips 12.0 | grind 85.4 t, useful 0.806, pips 11.3 | grind 105.0 t |
+| RPE 9 | grind 86.0 t, useful 0.885, pips 12.0 | grind 92.1 t, useful 0.858, pips 12.0 | grind 116.0 t |
+| RPE 10 | grind 90.0 t, useful = raw, pips 14.0 | grind 101.9 t, useful = raw, pips 13.4 | grind 167.0 t, stall 3.0 |
+
+Make 100% and grind 100% on every working rung at 40 / 70 / 100 ms. 8 < 9 <
+10 at committed ~70 ms. Fast-48-then-stop now misses RPE 8 and RPE 9
+(intentional: continued effort is required). 40 ms is not a better outcome
+class than 70 ms. RPE 10 is identity.
+
+**Session `WORKING_FLOOR`, re-driven, ticks between taps:**
+
+| rung | before C3 | after C3 |
+|---|---|---|
+| RPE 6, 7 | 240 | 240 |
+| RPE 8 | 13, 11, 12, 13 | **13, 10, 11, 12** |
+| RPE 9 | 10, 9, 9, 10 | **9, 9, 9, 9** |
+| RPE 10 | 7, 7, 8, 8 | **7, 7, 8, 8 (unchanged)** |
+
+`min(RPE 8) = 10 > max(RPE 9) = 9 > max(RPE 10) = 8`. RPE 10's `>= 7` stop
+condition holds. Meet census unchanged (`7,6,5,7,5,4,7,4,4,5,4,4,5,4,4,5,4,4`).
+RPE 8 `MAX_EFFORT` still 0. False-start still 0 of 40. Squat and deadlift
+byte-identical. `REACHABLE_RESCUE` RPE 9 rows move (a moderate resumption
+rescues less of a compressed middle band): coming-back-helps 18 → 17, a-rep
+is-saved 9 → 8. RPE 8 still saturates; RPE 10 and meet stay identity.
+
+**§12.1 stays open. This is the production candidate for a final human phone
+replay, not a mint.** Do not copy 0.35 / 0.20. Do not ship C1 or C2. Do not
+start a stall mechanic or a quality window. The additive bands have done
+their job.
+
 ### 6.3 Attempt Selection — The Real Tension
 
 **Attempts within a lift never decrease.** This is the competition rule, not a

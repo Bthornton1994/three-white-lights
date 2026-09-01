@@ -131,12 +131,14 @@
  *
  *             ON BENCH THERE IS NO CUE AND THE GRIND JUST CONTINUES. Every tap
  *             that clears the refractory gap adds to a rolling charge that
- *             decays every tick, and `GRIND_BOOST_FORCE_MAX * grindForce` is
- *             added to what the lifter has ON EVERY TICK. Stop tapping and the
- *             charge falls away and the bar stalls; start again and it comes
- *             back and the bar can be rescued. That is the whole of the
- *             2026-08-25 replay steer, and it is arithmetic rather than a
- *             special case.
+ *             decays every tick, and `GRIND_BOOST_FORCE_MAX * grindUsefulForce`
+ *             is added to what the lifter has ON EVERY TICK. Stop tapping and
+ *             the charge falls away and the bar stalls; start again and it
+ *             comes back and the bar can be rescued. Onset and middle working
+ *             bands compress surplus above the floor-cadence mean (C3); wall
+ *             is identity. That is the whole of the 2026-08-25 replay steer,
+ *             plus the 2026-09-01 C3 ruling, and it is arithmetic rather than
+ *             a special case.
  *
  *   LOCKOUT   h reached 1. On squat and bench, a short fixed beat and then
  *             resolution — nothing is asked for, the rep is already decided.
@@ -640,9 +642,11 @@ export interface LiftState {
   /**
    * BENCH ONLY. What the charge is worth right now, 0..1. `grindForce(charge)`.
    *
-   * READ EVERY ASCENT TICK, which is what makes the grind continuous:
-   * `GRIND_BOOST_FORCE_MAX * this` is added to the lifter's capacity on every
-   * tick the bar is going up.
+   * RAW TAP-RESPONSE STATE, not what the bar receives. The ascent multiplies
+   * `GRIND_BOOST_FORCE_MAX` by `grindUsefulForce(this, config)`, which is
+   * this value on wall / warm-up and the C3-compressed surplus on onset and
+   * middle. The pip row reads the same useful number. This field stays raw
+   * so a replay can still see the charge curve.
    */
   readonly grindForce: number;
   /**
@@ -870,6 +874,29 @@ export function benchWorkingExcess(config: LiftConfig): number {
   return scrub(Math.max(0, margin - LIFT_TUNING.BENCH_WARMUP_FLOOR_MARGIN));
 }
 
+export type BenchWorkingBand = 'onset' | 'middle' | 'wall';
+
+/**
+ * BENCH ONLY: which of the three working-rung bands this bar sits in, or
+ * null when the bar is not a working bench (warm-up, squat, deadlift).
+ *
+ * THE SAME PARTITION `benchWorkingRungDemand` USES. C3's surplus compressor
+ * keys off this — never off an RPE field on `LiftConfig`, which `createLift`
+ * still strips. Wall stays identity; onset and middle compress surplus
+ * above the frozen floor-cadence mean. `@guarantee bench-surplus-wall-is-identity`
+ */
+export function benchWorkingBand(
+  kind: PlayableLiftKind,
+  workingExcess: number,
+): BenchWorkingBand | null {
+  if (kind !== 'bench') return null;
+  if (!Number.isFinite(workingExcess) || workingExcess <= 0) return null;
+  const baseMargin = workingExcess + LIFT_TUNING.BENCH_WARMUP_FLOOR_MARGIN;
+  if (baseMargin >= LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_WALL_CUT_MARGIN) return 'wall';
+  if (baseMargin >= LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN) return 'middle';
+  return 'onset';
+}
+
 /**
  * ---------------------------------------------------------------------------
  * BENCH ONLY: what a WORKING bar costs on top of the base demand curve.
@@ -975,14 +1002,16 @@ export function benchWorkingRungDemand(kind: PlayableLiftKind, workingExcess: nu
   // reconstructed margin now decides which of THREE addends applies, against
   // `BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN` (RPE 8 / RPE 9 boundary) and
   // `BENCH_WORKING_RUNG_DEMAND_WALL_CUT_MARGIN` (RPE 9 / RPE 10 boundary) — see
-  // each constant's own header for the measured gap it sits inside.
-  const baseMargin = workingExcess + LIFT_TUNING.BENCH_WARMUP_FLOOR_MARGIN;
+  // each constant's own header for the measured gap it sits inside. C3's
+  // surplus compressor reads the same partition through `benchWorkingBand`.
+  const band = benchWorkingBand(kind, workingExcess);
   const addend =
-    baseMargin >= LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_WALL_CUT_MARGIN
+    band === 'wall'
       ? LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_WALL_ADDEND
-      : baseMargin >= LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_CUT_MARGIN
+      : band === 'middle'
         ? LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_MIDDLE_ADDEND
         : LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_ONSET;
+  const baseMargin = workingExcess + LIFT_TUNING.BENCH_WARMUP_FLOOR_MARGIN;
   // THE CEILING, AND IT IS NOT A SAFETY CLAMP — IT IS THE PLACE ANOTHER RULE
   // IN THIS FILE STOPS HOLDING. See `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`
   // for the two walls (max-effort, false-start) it is sized between. The lever
@@ -1223,6 +1252,63 @@ export function grindStartTick(commandTick: number, earlyTaps: number): number {
 export function grindChargeNext(charge: number, tapped: boolean): number {
   const held = Number.isFinite(charge) && charge > 0 ? charge : 0;
   return scrub(held * LIFT_TUNING.GRIND_CHARGE_DECAY_PER_TICK + (tapped ? 1 : 0));
+}
+
+/**
+ * Mean `grindForce` of the charge recurrence at a metronome of `gapTicks`
+ * between taps, in the periodic regime.
+ *
+ * THIS IS C3's FLOOR DERIVATION, AND IT IS NOT A WORKING_FLOOR SWEEP. A tap
+ * every `gapTicks` ticks drives `grindChargeNext` to a unique period; this
+ * averages `grindForce` over that period. The search's measured ascent-means
+ * (0.626 at gap 11, 0.741 at gap 8) included launch transients and are not
+ * copied as literals — if decay / HALF / CEILING move, this moves. Cached by
+ * gap because the boost reads it every ascent tick.
+ */
+const meanGrindForceAtGapCache = new Map<number, number>();
+
+export function meanGrindForceAtGap(gapTicks: number): number {
+  if (!Number.isFinite(gapTicks) || gapTicks < 1) return 0;
+  const gap = Math.round(gapTicks);
+  const cached = meanGrindForceAtGapCache.get(gap);
+  if (cached !== undefined) return cached;
+  const decay = LIFT_TUNING.GRIND_CHARGE_DECAY_PER_TICK;
+  const decayOverCycle = decay ** gap;
+  const afterTap = decayOverCycle >= 1 ? Number.POSITIVE_INFINITY : 1 / (1 - decayOverCycle);
+  let charge = afterTap;
+  let sum = 0;
+  for (let t = 0; t < gap; t += 1) {
+    sum += grindForce(charge);
+    charge = grindChargeNext(charge, false);
+  }
+  const mean = scrub(sum / gap);
+  meanGrindForceAtGapCache.set(gap, mean);
+  return mean;
+}
+
+/**
+ * BENCH ASCENT: the grind force the bar actually receives this tick.
+ *
+ * Raw `grindForce` is the tap-response state. Onset and middle working bands
+ * compress the surplus above the floor-cadence mean by
+ * `BENCH_SURPLUS_COMPRESS`; wall, warm-up, squat and deadlift are identity.
+ * Launch velocity still reads raw `grindForce` — C3 applies on ascent only.
+ * `@guarantee bench-surplus-wall-is-identity`
+ */
+export function grindUsefulForce(force: number, config: LiftConfig): number {
+  const raw = clamp01(Number.isFinite(force) ? force : 0);
+  if (config.kind !== 'bench') return raw;
+  const excess = benchWorkingExcess(config);
+  const band = benchWorkingBand(config.kind, excess);
+  if (band === null || band === 'wall') return raw;
+  const baseMargin = excess + LIFT_TUNING.BENCH_WARMUP_FLOOR_MARGIN;
+  const gap =
+    band === 'onset' || baseMargin < LIFT_TUNING.BENCH_SURPLUS_FLOOR_CUT_MARGIN
+      ? LIFT_TUNING.BENCH_SURPLUS_FLOOR_GAP_TICKS.onset
+      : LIFT_TUNING.BENCH_SURPLUS_FLOOR_GAP_TICKS.middle;
+  const floor = meanGrindForceAtGap(gap);
+  if (raw <= floor) return raw;
+  return scrub(floor + (raw - floor) * LIFT_TUNING.BENCH_SURPLUS_COMPRESS);
 }
 
 /**
@@ -2333,8 +2419,9 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     // BENCH: THE GRIND CONTINUES, AND IT IS THE ONLY TAP LAYER (2026-08-25
     // replay steer). Every tap that clears the refractory gap feeds the same
     // rolling charge that was running on the chest; the charge decays every
-    // tick whether or not one landed. `GRIND_BOOST_FORCE_MAX * grindForce` is
-    // added to the lifter's capacity in the physics below, LIVE.
+    // tick whether or not one landed. `GRIND_BOOST_FORCE_MAX * grindUsefulForce`
+    // is added to the lifter's capacity in the physics below, LIVE. Onset and
+    // middle compress surplus; wall is identity.
     //
     // This runs BEFORE the drive block so that on bench there is exactly one
     // thing a press can mean. `cueDriven` then shuts the drive machinery off
@@ -2477,6 +2564,9 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     // player MAINTAINS: `grindForce` is what their tap rate is worth right
     // now, recomputed every tick from a charge that decays on its own, so
     // stopping costs force immediately and starting again buys it back.
+    // C3 then maps that raw force to `grindUsefulForce` on onset and middle
+    // (wall identity), which is what the bar receives and what the pip row
+    // lights. The kick still flashes on a counted tap.
     //
     // THAT ASYMMETRY IS THE 2026-08-25 REPLAY STEER IN ONE EXPRESSION. The
     // burst this replaces used the impulse shape — `PRESS_BURST_BOOST_TICKS`
@@ -2485,7 +2575,7 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     // discrete tap layer behind it and why the steer asked for one grind
     // instead of two.
     if (kind === 'bench' && m.grindForce > 0) {
-      drive += LIFT_TUNING.GRIND_BOOST_FORCE_MAX * m.grindForce;
+      drive += LIFT_TUNING.GRIND_BOOST_FORCE_MAX * grindUsefulForce(m.grindForce, state.config);
     }
     m.netForce = scrub(drive - demand);
     const targetVelocity = m.netForce * LIFT_TUNING.VELOCITY_PER_NET_FORCE;
@@ -3022,7 +3112,11 @@ export function chestApproach(state: LiftState): number | null {
 export interface GrindProgress {
   /** Counted taps this rep so far. A running total; it only rises. */
   readonly taps: number;
-  /** What the player's CURRENT tap rate is worth, 0..1. Falls when they slow. */
+  /**
+   * What the bar actually receives this tick, 0..1. Useful force after C3
+   * surplus compression on onset/middle; identity on wall / warm-up. Falls
+   * when the player slows. Not a player-facing number — the pip row is.
+   */
   readonly force: number;
   /**
    * How many of `units` to light, by `force`. Recent-rate semantics: the row
@@ -3058,14 +3152,21 @@ export interface GrindProgress {
  * `lit` is `force` scaled onto the row, so it falls back when the rate does.
  *
  * IT STILL CARRIES NO FATIGUE-TOUCHED DENOMINATOR, which is the §12.3 argument
- * `BurstProgress` made and this one keeps. `force` comes off `grindForce`,
- * whose curve is load- and fatigue-independent; the only fatigue-adjusted
- * quantity in this beat is the LAUNCH BEAT's length, and that is not here.
+ * `BurstProgress` made and this one keeps. `force` comes off
+ * `grindUsefulForce`, whose curve is the same charge curve as `grindForce`
+ * (load- and fatigue-independent) with C3's band-keyed surplus compression
+ * on top. The only fatigue-adjusted quantity in this beat is the LAUNCH
+ * BEAT's length, and that is not here.
+ *
+ * THE ROW READS USEFUL FORCE, NOT RAW. C3 discards part of a mashed charge
+ * on onset and middle; lighting the row from `grindForce` would show a full
+ * rail while the bar received less. The kick still flashes on a counted
+ * tap. `@guarantee the-grind-readout-reads-useful-force`
  */
 export function grindProgress(state: LiftState): GrindProgress | null {
   if (!grindIsLive(state)) return null;
   const units = LIFT_TUNING.FEEDBACK.STAGE_COMMAND.GRIND_READOUT_UNITS;
-  const force = clamp01(state.grindForce);
+  const force = clamp01(grindUsefulForce(state.grindForce, state.config));
   return {
     taps: state.grindTaps,
     force: scrub(force),

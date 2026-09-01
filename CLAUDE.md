@@ -2254,6 +2254,75 @@ Live 70 ms (16 seeds): 67.4 t good-lift / 77.3 t good-lift / 101.9 t grind. feel
 
 **Still refused:** production `stepLift`; ONSET/MIDDLE/WALL; fourth addend; RPE 10 response; quality-window; RPE on `LiftConfig`; squat/deadlift; mint; pushing `main`. Stall not required and not manufactured.
 
+### RULED 2026-09-01: SHIP C3 AS THE PRODUCTION CANDIDATE (NOT A MINT)
+
+Human played C1, C2, and C3 on a real ordinary bench session after the
+monotonic search. **SELECT C3.** Do not ship C1, C2, or the rejected
+`c8=0.35 / c9=0.20` prototype. This is a production implementation ruling.
+It is not a mint. Phone replay of the isolated prototype chose C3; this
+entry records the production piece that followed. Additive bands stay
+frozen. RPE 10 stays identity.
+
+**HEAD at ship:** on `grok/session-a-main-loop`, parent `3dac51d2` (the
+search filing). Production `lift.ts` / `liftTuning.ts` now carry C3.
+
+**Mechanism, exactly:**
+
+    useful = force                                    if force <= floor
+           = floor + (force - floor) * 0.55           otherwise
+
+Bench ASCENT only. One global compress `0.55` on onset and middle. Wall /
+warm-up / squat / deadlift are identity. Floor is `meanGrindForceAtGap` at
+frozen pre-C3 ordinary WORKING_FLOOR gaps (11 / 8), not copied probe
+forces `0.626` / `0.741`. Keyed off the existing three-band partition plus
+one extra base-margin cut `BENCH_SURPLUS_FLOOR_CUT_MARGIN` `0.025`,
+because ordinary RPE 8 at starting e1RM sits in the middle addend band
+(`0.0052`, 0.0002 above `CUT_MARGIN`). That cut chooses which metronome
+the compressor reads. It is not a fourth addend and not an RPE field on
+`LiftConfig`. `createLift` still strips unknown fields.
+
+**Truthful pips, same piece.** `grindProgress.force` / `.lit` read
+`grindUsefulForce`, the same number the ascent boost multiplies. Raw
+`LiftState.grindForce` stays the tap-response state. Rail kick still
+flashes on a counted tap. No player-facing compression readout.
+
+**Production 70 ms, ordinary 120 kg, jitter ±8 ms, 16 seeds:**
+
+    RPE 8   40 ms grind  80.0 t  U=0.833 pips=12.0
+            70 ms grind  85.4 t  U=0.806 pips=11.3   100% make, 100% grind
+           100 ms grind 105.0 t  U=0.745
+    RPE 9   40 ms grind  86.0 t  U=0.885 pips=12.0
+            70 ms grind  92.1 t  U=0.858 pips=12.0   100% make, 100% grind
+           100 ms grind 116.0 t  U=0.797
+    RPE 10  40 ms grind  90.0 t  U=1.000 pips=14.0   identity
+            70 ms grind 101.9 t  U=0.953 pips=13.4   identity
+           100 ms grind 167.0 t  stall 3.0           identity
+
+8 < 9 < 10 at committed ~70 ms. Fast-48-then-stop misses RPE 8 and RPE 9.
+40 ms is not a better class than 70 ms.
+
+**Session WORKING_FLOOR, re-driven:**
+
+    RPE 8    13 / 10 / 11 / 12
+    RPE 9     9 /  9 /  9 /  9
+    RPE 10    7 /  7 /  8 /  8    (unchanged; >= 7 holds)
+
+`min(RPE 8)=10 > max(RPE 9)=9 > max(RPE 10)=8`. Meet census unchanged.
+RPE 8 MAX_EFFORT still 0. False-start 0 of 40. Squat and deadlift
+byte-identical. REACHABLE_RESCUE RPE 9: slower 160→100, as-expected 40→0,
+crisp 100→60, popping 160→100. Coming-back-helps 18→17; a-rep-is-saved
+9→8.
+
+**What is closed, and what is not.** C3 is the production candidate. The
+human still has to replay it on the phone before anyone mints bench feel.
+Do not start a stall mechanic. Do not implement a quality window. Do not
+retune ONSET / MIDDLE / WALL. Do not mint. Do not push `main`.
+
+**Still refused, unchanged:** a fourth additive band; touching WALL;
+relaxing RPE 10 `>= 7`; `DEMAND_BASE.bench`; `GRIND_BOOST_FORCE_MAX`; an
+RPE field on `LiftConfig`; squat/deadlift; Session B files; pushing
+`main`.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a

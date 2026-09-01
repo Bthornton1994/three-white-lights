@@ -2955,10 +2955,17 @@ const REACHABLE_RESCUE: Readonly<Record<string, RescueRow>> = {
   // the rise, so the rung's rescue behaviour is not what that constant moved —
   // and every RPE 10 and meet row is byte-identical, which is the selectivity
   // claim `WALL_CUT_MARGIN` makes, measured rather than restated.
-  'session/rpe9/0.8250/slower-than-expected': [160, 160, 160],
-  'session/rpe9/0.8750/as-expected': [40, 40, 160],
-  'session/rpe9/0.9000/crisp': [100, 100, 160],
-  'session/rpe9/0.9250/popping': [160, 160, 160],
+  // C3 (2026-09-01) COMPRESSES SURPLUS ON THE MIDDLE BAND, SO A MODERATE
+  // RESUMPTION RESCUES LESS OF RPE 9. Re-measured: slower 160 -> 100,
+  // as-expected 40 -> 0, crisp 100 -> 60, popping 160 -> 100. The
+  // as-expected cell drops out of "coming back helps" entirely. RPE 8,
+  // RPE 10 and every meet row are re-measured rather than assumed: RPE 8
+  // still saturates, RPE 10 and meet stay `[0, 0, 160]` except RPE 10
+  // popping's partial 40, wall identity.
+  'session/rpe9/0.8250/slower-than-expected': [100, 100, 160],
+  'session/rpe9/0.8750/as-expected': [0, 0, 160],
+  'session/rpe9/0.9000/crisp': [60, 60, 160],
+  'session/rpe9/0.9250/popping': [100, 100, 160],
   'session/rpe10/0.8750/slower-than-expected': [0, 0, 160],
   'session/rpe10/0.9000/as-expected': [0, 0, 160],
   'session/rpe10/0.9250/crisp': [0, 0, 160],
@@ -3175,8 +3182,8 @@ const REACHABLE_LADDER = {
    * moved — their base margins stay far enough above RPE 9's and RPE 10's
    * lightest cell's that this addend still leaves them past rescue.
    */
-  CELLS_WHERE_COMING_BACK_HELPS: 18,
-  CELLS_WHERE_A_REP_IS_SAVED: 9,
+  CELLS_WHERE_COMING_BACK_HELPS: 17,
+  CELLS_WHERE_A_REP_IS_SAVED: 8,
   CELLS_WHERE_THE_IDLE_REP_STALLS: 30,
   /**
    * ...and the cells where none of the three happens.
@@ -3695,12 +3702,17 @@ const WORKING_FLOOR = {
    * `max(RPE 10)` — both roughly `0.004` above what shipped, and both a
    * property of how far apart a rung's own four cells sit rather than of
    * either constant. Each constant's own header carries its search.
+   * C3 (2026-09-01): surplus compression on onset/middle, wall identity.
+   * RPE 8 13/11/12/13 -> 13/10/11/12; RPE 9 10/9/9/10 -> 9/9/9/9; RPE 10
+   * unchanged 7/7/8/8. Ordering still strict: min(RPE 8)=10 > max(RPE 9)=9
+   * > max(RPE 10)=8, and min(RPE 10)=7 still clears the stop condition.
+   * Warm-ups still 240. Re-derived, not carried.
    */
   SESSION_FLOOR_GAP_TICKS: [
     240, 240, 240, 240, 240,
     240, 240, 240, 240, 240,
-    13, 11, 12, 13,
-    10, 9, 9, 10,
+    13, 10, 11, 12,
+    9, 9, 9, 9,
     7, 7, 8, 8,
   ] as const,
   /**
@@ -4348,9 +4360,14 @@ const LOAD_LADDER = {
    * A ladder that had collapsed to one number would satisfy "never rises"
    * perfectly, so the whole vector is pinned rather than a bound, the way
    * `WORKING_FLOOR` pins its own.
+   *
+   * C3 (2026-09-01) COMPRESSES SURPLUS ON ONSET/MIDDLE, so the light end of
+   * this synthetic ladder reads a harder floor. Re-measured: 13,12,12,11,10,10,9,9
+   * -> 13,12,11,10,9,9,9,9. The wall-band tail (from the first 8 onward) is
+   * byte-identical, which is the identity the ruling named, on this ladder.
    */
   CADENCE_FLOOR_GAP_TICKS: [
-    13, 12, 12, 11, 10, 10, 9, 9, 8, 8,
+    13, 12, 11, 10, 9, 9, 9, 9, 8, 8,
     8, 8, 8, 8, 7, 7, 6, 6, 5, 5,
     5, 4, 4, 4, 4, 4, 4, 4, 4, 4,
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
