@@ -3166,6 +3166,8 @@ than the ruling's own §1–§23 sequence:
   game rather than controls around an animation. Carry-forward debts
   (C-DEBT-01..04) do not reopen it. C.2 simulator fidelity is recorded in
   §5.16. Stage D is recorded in §5.17. Stage D.1 is recorded in §5.18.
+  Stage D human-close is `ff8721a`. D2 is the PARTIAL balance verdict under
+  §5.18.
 - **Stage D.** Quality/Capacity/Throughput on Barbell first (item 2),
   touching `floorSim.ts`'s capacity constant — the one piece of this pass
   that changes the simulation's own core rather than its surface, so it
@@ -3535,13 +3537,15 @@ Current sequence remains:
 
 Stage C human close (done at `460f794a`) → C.2 simulator fidelity (done,
 §5.16) → Stage D Q/C/T (done, §5.17) → Stage D.1 training-station semantics
-(done, §5.18) → D2 balance verdict → reputation seam → persistent
-NPC roster / tenure → deeper staff policy → portfolio only after explicit
-human unpause.
+(done, §5.18) → Stage D.1b world legibility (done, human-close of Stage D
+at `ff8721a`) → D2 balance verdict (this subsection, PARTIAL) → reputation
+seam → persistent NPC roster / tenure → deeper staff policy → portfolio
+only after explicit human unpause.
 
 The doctrine does not authorize implementing future stages early. It defines
 their quality bar. C.2 is recorded in §5.16. Stage D is recorded in §5.17.
-Stage D.1 is recorded in §5.18.
+Stage D.1 / D.1b are recorded in §5.18. D2 is recorded in the D2 ruling
+under §5.18.
 
 ### 5.16 Stage C.2 — simulator fidelity (online vs offline in aggregate pacing)
 
@@ -3807,9 +3811,9 @@ bay first" / "No room for a second bench".
 **D-DEBT — stored / unplaced equipment currently wears.** Kept visible,
 not stealth-fixed. `ManagedGym` still has no `FloorState`. Unplaced
 session mats still wear identically to the placed flat bench over the same
-check-in. The corrected station model does not by itself give wear a
-placed-and-used seam: wear still keys `ownedItemsOf`. D2's first explicit
-balance verdict should include it.
+check-in. The corrected station model did not by itself give wear a
+placed-and-used seam: wear still keyed `ownedItemsOf`. D2 closed that as
+D2-TRUTH-01 (`placedOwnedItems` / optional `inService`).
 
 **Cloud-scope cleanup.** Stage D added a `dev` script to `package.json` and
 excluded App Builder files from `tsconfig.json` so a cloud sandbox would
@@ -3853,8 +3857,179 @@ stored/unplaced wear remain deferred (D2).
   shows "No room for a second bench" instead of a live purchase. The
   reducer still refuses `no-second-position` if invoked.
 
-Stage D.1b implementation is complete. Do not mark Stage D human-close
-until the next human playtest. Do not start D2.
+Stage D.1b implementation is complete.
+
+**Stage D human Living Gym gate = PASS at `ff8721a`.** Human play of D.1b
+in Chromium 390×844 accepted Quality (competition-spec pad, still one bay /
+one position / same duration), Capacity (real second bench, spatial
+consequence, boxed preflight), Throughput (visible plate tree, shorter
+turnover), and interaction (occupied bay inspectable, one tap between
+station/equipment/member, no close-first ritual). Do not reopen D.1b merely
+because later balance changes numbers.
+
+**Stage D2 — Living Gym balance verdict (PARTIAL).** Authorized at
+`ff8721a`. A verdict, not a tuning mandate. Reputation, persistent NPCs,
+and Portfolio were not started.
+
+*D2-TRUTH-01 — stored / unplaced wear.* Defect: `ManagedGym` wear keyed
+owned equipment, so unplaced session mats wore like actively used kit.
+Correction: `floor.ts#placedOwnedItems` derives owned ∩ placed. `withWear` /
+`managedCheckIn` take optional `inService`. Omitted = all owned (C.2 /
+`runManagedGym` unchanged). The played composition (`advanceGymClock`)
+passes `placedOwnedItems`. FloorState is not copied onto ManagedGym. No
+mats special-case: an unplaced bench and an unplaced mat are the same kind
+of absence. Owned ≠ placed ≠ used; this seam is owned ∩ placed. Live
+FloorSim utilization is not the wear key (React-local, does not run during
+offline banked gaps).
+
+C.2 numbers did not move. Opening kit is placed by `createFloorState`, so
+the C.2 path and the opening played path wear the same set. Old vs
+corrected C.2 7d ONLINE (hands-off / diligent / cheapskate) is identical:
+
+- hands-off: net 9187.27, condition 0.637, phase sound, hires 0
+- diligent: net 9562.84, condition 0.974, phase sound, hires 0
+- cheapskate: net 3438.36, condition 0.896, phase failed, hires 1, failedAt 34561
+
+Played-path difference: buying mats (or pulling a bench to the tray)
+without placing it no longer wears that item. That was the false semantic.
+
+*D2-UI-DEBT-01 — occupancy panel vs world.* After Capacity the panel could
+read "2 training, 1 waiting" while one body sat on one bench. Cause:
+`stationOperationView` counted `state==='using'` with no seat cap; the
+floor lights `member.cell ∈ useCells`. Capacity rebuilds geometry without
+stepping the sim, so leftover users at a blocked cell still counted.
+Fix: optional `seats` (`useCells`) on `stationOperationView`; unique per
+seat, same snapshot. FloorGrid passes the selected station's `useCells`.
+Capacity slot algebra, routePlan, and upgradeStation were not changed.
+Simulator stepping was not delayed to hide the discrepancy.
+
+*Time to first meaningful decision* (C.2 `runPacingManagedGym` hands-off,
+opening purse 0, garage 60/h):
+
+| cadence | mats 10 | Quality 120 | Throughput 150 | Capacity 180 | novice hire 150 |
+| --- | --- | --- | --- | --- | --- |
+| watcher | 0.007d (~10 min) | 0.083d (2h) | 0.104d | 0.125d (3h) | 0.104d |
+| few-times-a-day | 0.042d | 0.250d | 0.250d | 0.500d | 0.250d |
+| once-a-day | 0.042d | 1.000d (purse 387.65) | 1.000d | 1.000d | 1.000d |
+| sporadic | 0.021d | 0.604d | 0.604d | 0.604d | 0.604d |
+
+Cheapest alternative action is mats at 10 Gym Bucks (ten-minute live
+watch). Layout rearrange is free. Q/C/T are a 2–3 hour live watch or the
+first once-a-day check-in. The More-drawer +3d is a labeled **dev skip**
+(12h banked = 360 GB), not production time. Opening is not "wait for
+currency" if mats/layout count; it is wait-for-currency for the first
+Q/C/T axis unless the player watches ~2h or checks in the next day.
+D2 does **not** grant opening purse, does **not** cut SKU prices, does
+**not** make one axis free. Mats already is the budgeted first
+intervention. Layout is the free first action.
+
+3d / 7d hands-off purse (C.2, unchanged): watcher 4236 / 9623; few-times
+2118 / 4821; once-a-day 1096 / 2488; sporadic 2117 / 4817.
+
+*Q/C/T non-domination.* Opening 3-powerlifter fixture (seed 1, 240 ticks)
+is unchanged from §5.18: STOCK 6/2/1/6, QUALITY 6/2/1/12, CAPACITY 9/1/2/9,
+THROUGHPUT 9/2/1/9. Completions-only, Throughput looks strictly better
+(same 9 completions, 150 vs 180, no extra cells). That is not the only
+outcome.
+
+- Capacity is the rational choice when the floor can fit a second 2×4,
+  queue pressure is the felt bottleneck, and two simultaneous users
+  matter. Boxed layouts refuse `no-second-position`; rearranging restores
+  it. That is the honest Capacity region.
+- Throughput is the rational choice when space is tight, one seat is
+  acceptable, and turnover is the felt bottleneck. It never adds a
+  position.
+- Quality does not add completions or seats on the opening fixture. It
+  doubles experience (6→12) and, when another station exists, pulls
+  demand onto the bay (5→6 bay completions, 205→440 bay target ticks).
+- Neither C nor T is mandatory: the player can accept the queue.
+
+*Quality durable consequence.* Present-tense: experience 1→2, affinity
++0.25, demand shift onto the upgraded bay. It does not add Gym Bucks,
+capacity, or duration, and it does not raise Career e1RM / Total / meet
+performance. Verdict **B**: mechanically sound, strategically incomplete
+until the authorized reputation / member-outcome seam. Not dominated as
+a present-tense "better training" buy; not yet a rational long-horizon
+investment. Do not invent a Gym Bucks multiplier. Do not start
+reputation here.
+
+*Infinite money.* Unlimited Gym Bucks does not collapse the slice to a
+single button. Capacity still faces space/layout. Throughput still does
+not add simultaneous positions. Quality still faces preference context.
+Buying Q+C+T on the one slice station is possible on an unboxed garage —
+acceptable as the first rung only. Later station specialization is the
+bar that must create real tradeoffs. Stated rather than hidden.
+
+*Agency.* Current legitimate responses to the opening bench bottleneck:
+accept the queue; rearrange layout; Quality; Capacity; Throughput; buy
+and place mats; inspect / repair. Staff (novice manager) is a current
+control but not a useful policy in 7d (below). Q/C/T are not merely three
+purchase buttons: Capacity can be refused by the floor; Throughput and
+Quality stay available when Capacity is boxed.
+
+*No-guide.* Player-visible causal sentences, demonstrated by the world
+after D.1b:
+
+- Capacity: "People are waiting. I add another bench. Two people can train."
+- Throughput: "One bench turns over slowly. I add loading organization.
+  People clear it faster."
+- Quality: "Members prefer / have a better experience on this competition
+  setup."
+
+*Price sensitivity.* Current prices Quality 120 / Throughput 150 /
+Capacity 180 are **unchanged**. Mechanism-level distinction exists
+without equalizing ROI. Throughput being cheaper than Capacity while
+matching opening-fixture completions is acceptable because Capacity
+costs space and buys simultaneous users. Quality is a different good.
+Do not require equal payback.
+
+*Manager / maintenance.* After wear truth, C.2 manager numbers are
+unchanged (no floor on that path). Novice hire 150, auto-repair
+threshold 0, never pays off vs hands-off inside 7 days, can still fail
+(`failedAt` 34561). The role is supposed to solve unattended wear and
+standing repair. It does not, at novice. D2 does **not** buff the
+manager and does **not** convert staff into a percentage multiplier.
+Reported as a D2 staff-policy failure, deferred rather than patched.
+
+*Facility pacing.* Q/C/T now compete with the 2500 storage-unit move.
+Watcher 7d ~9600 still affords relocation and the three axes. Do not
+force the old ~22-day Warehouse target; do not retune facility prices
+this round. Facility-first, Q/C/T-first, and mixed remain player
+choices.
+
+*Constants changed.* None of: Q/C/T prices, earnings, offline fraction /
+cap, facility prices, wear *rate*, repair costs, manager wages / hire
+cost, failure thresholds, member affinities, service durations,
+experience reward, opening purse. Production candidates shipped: wear
+in-service seam; occupancy same-snapshot seats; More-drawer **reset gym**
+(labeled not-part-of-the-game, starts a new opening garage).
+
+*§5.15 permanent tests.*
+
+- WORLD: PASS. Queues, second bench, plate tree, competition pad, wear,
+  and occupancy are on the floor. Occupancy panel now reads the same
+  snapshot as the floor.
+- AGENCY: PASS for the opening bottleneck's available responses;
+  PARTIAL for Quality's long-horizon reason-to-exist.
+- INFINITE MONEY: PARTIAL. Space/layout still constrain Capacity;
+  Q+C+T-on-one-station is a checklist at this rung.
+- NO-GUIDE: PASS. D.1b made each axis's sentence visible.
+- INSTITUTION: PARTIAL. A living gym exists. Reputation, tenure, and
+  durable member outcomes are explicitly not this stage.
+
+Overall D2: **PARTIAL**. Ship the truth correction and the occupancy
+read. Keep current Q/C/T numbers. Do not start reputation.
+
+Human play windows (production economy, More-drawer +1h / +8h / +3d,
+reset gym):
+
+- QUEUE-PRESSURE: opening garage, Capacity when a second bench fits.
+- TURNOVER-PRESSURE: boxed layout (Capacity preflight refuses),
+  Throughput.
+- EXPERIENCE / PREFERENCE: Quality on the bay.
+
+Await the human management verdict. Do not start D3 / reputation /
+persistent NPCs / Portfolio.
 
 ---
 

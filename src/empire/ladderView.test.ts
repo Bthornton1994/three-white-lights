@@ -78,6 +78,7 @@ import {
 import {
   createFloorState,
   placeFloorItem,
+  placedOwnedItems,
   relocateFloorState,
   removeFloorItem,
 } from './floor';
@@ -989,7 +990,17 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
 
     const pureAdvance = (gapSeconds: number): void => {
       const before = pureManaged;
-      const direct = managedCheckIn(before, before.gym.ladder.collectedAt + gapSeconds);
+      const inService = placedOwnedItems(
+        view.floor,
+        before.gym.ladder.equipment,
+        before.gym.sessionEquipment,
+      );
+      const direct = managedCheckIn(
+        before,
+        before.gym.ladder.collectedAt + gapSeconds,
+        'offline',
+        inService,
+      );
       const previousWeek = trainingWeekIndexAt(before.gym.ladder.collectedAt);
       const newWeek = trainingWeekIndexAt(direct.state.gym.ladder.collectedAt);
       if (newWeek > previousWeek) {
@@ -1284,5 +1295,34 @@ describe('gymViewReduce upgrade-station — Stage D Q/C/T', () => {
     expect(refused.lastRefusal).toBe('no-second-position');
     expect(refused.capability).toEqual({});
     expect(refused.managed.gym.ladder.gymBucks).toBe(1000);
+  });
+});
+
+describe('gymViewReduce reset-gym and unplaced wear — Stage D2', () => {
+  it('reset-gym returns a fresh opening garage', () => {
+    let state = createGymViewState();
+    state = gymViewReduce(state, { kind: 'advance-clock', gapSeconds: 3600, mode: 'online' });
+    expect(state.managed.gym.ladder.gymBucks).toBeGreaterThan(0);
+    const reset = gymViewReduce(state, { kind: 'reset-gym' });
+    expect(reset).toEqual(createGymViewState());
+  });
+
+  it('advance-clock does not wear unplaced session gear', () => {
+    let state = createGymViewState();
+    state = Object.freeze({
+      ...state,
+      managed: withUpdatedGym(
+        state.managed,
+        withLadder(
+          state.managed.gym,
+          Object.freeze({ ...state.managed.gym.ladder, gymBucks: 100000 }),
+        ),
+      ),
+    });
+    state = gymViewReduce(state, { kind: 'buy-session', item: 'mats' });
+    expect(state.floor.placements.mats).toBeUndefined();
+    const advanced = gymViewReduce(state, { kind: 'advance-clock', gapSeconds: 3600, mode: 'online' });
+    expect(itemCondition(advanced.managed, 'mats')).toBe(1);
+    expect(itemCondition(advanced.managed, 'flat-bench')).toBeLessThan(1);
   });
 });

@@ -343,6 +343,35 @@ export function placedFurnitureItems(floor: FloorState): readonly LadderEquipmen
   );
 }
 
+/**
+ * Owned items that currently have a floor position — the wear in-service set
+ * for the played composition (GDD §5.18 D2-TRUTH-01). FloorState remains a
+ * VIEW of ownership; this reads placement rather than copying it into
+ * ManagedGym. Barbell furniture first (`LADDER_STARTING_EQUIPMENT` order),
+ * then session items (`SESSION_EQUIPMENT_ITEMS` order), matching
+ * `ownedItemsOf`'s ladder-then-session concatenation restricted to the floor.
+ * No mats special-case: an unplaced bench and an unplaced mat are the same
+ * kind of absence.
+ */
+export function placedOwnedItems(
+  floor: FloorState,
+  barbellOwned: readonly LadderEquipmentItem[],
+  sessionOwned: readonly SessionEquipmentItem[],
+): readonly (LadderEquipmentItem | SessionEquipmentItem)[] {
+  const barbellSet = new Set<string>(barbellOwned);
+  const sessionSet = new Set<string>(sessionOwned);
+  const placed: (LadderEquipmentItem | SessionEquipmentItem)[] = [];
+  const furniture = placedFurnitureItems(floor);
+  for (const item of furniture) {
+    if (barbellSet.has(item)) placed.push(item);
+  }
+  const session = placedFloorItems(floor);
+  for (const item of session) {
+    if (sessionSet.has(item)) placed.push(item);
+  }
+  return Object.freeze(placed);
+}
+
 /** Owned starting-Barbell pieces with no floor position yet — the Build-mode furniture tray. */
 export function unplacedOwnedFurnitureItems(
   floor: FloorState,

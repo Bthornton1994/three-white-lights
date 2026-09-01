@@ -1574,14 +1574,29 @@ function withPurse(state: ManagedGym, gymBucks: number): ManagedGym {
   });
 }
 
-/** Wear every item by `wearSeconds` of operation, clamped at zero. */
-function withWear(state: ManagedGym, wearSeconds: number): ManagedGym {
+/** Wear in-service items by `wearSeconds` of operation, clamped at zero.
+ * Omitted `inService` wears every owned item — the C.2 / management-module
+ * path, which has no FloorState. Provided `inService` wears only the
+ * intersection with ownership; unplaced owned items keep their previous
+ * condition. The played composition (`advanceGymClock`) passes
+ * `placedOwnedItems`. Do not special-case mats. */
+function withWear(
+  state: ManagedGym,
+  wearSeconds: number,
+  inService?: readonly ManagedEquipmentItem[],
+): ManagedGym {
   if (wearSeconds === 0) return state;
   const wear =
     EMPIRE_TUNING.EQUIPMENT_WEAR_PER_BANKED_HOUR *
     (wearSeconds / EMPIRE_TUNING.SECONDS_PER_HOUR);
+  const restrict = inService !== undefined;
+  const service = new Set<string>(restrict ? inService : []);
   const condition: Partial<Record<ManagedEquipmentItem, number>> = {};
   for (const item of ownedItemsOf(state.gym)) {
+    if (restrict && !service.has(item)) {
+      condition[item] = itemCondition(state, item);
+      continue;
+    }
     condition[item] = scrubPrecision(Math.max(0, itemCondition(state, item) - wear));
   }
   return Object.freeze({ ...state, condition: Object.freeze(condition) });
@@ -1604,8 +1619,9 @@ export function managedCheckIn(
   state: ManagedGym,
   atSeconds: number,
   mode: EarningsMode = 'offline',
+  inService?: readonly ManagedEquipmentItem[],
 ): ManagedCheckIn {
-  return checkInWithWearBasis(state, atSeconds, 'banked-operation', mode);
+  return checkInWithWearBasis(state, atSeconds, 'banked-operation', mode, inService);
 }
 
 /** The wear bases the composed run can drive. Only the first ships. */
@@ -1616,6 +1632,7 @@ function checkInWithWearBasis(
   atSeconds: number,
   basis: WearBasis,
   mode: EarningsMode = 'offline',
+  inService?: readonly ManagedEquipmentItem[],
 ): ManagedCheckIn {
   requireManagedGym(state);
   const dormant = failurePhase(state) === 'failed';
@@ -1643,7 +1660,7 @@ function checkInWithWearBasis(
       ? accrual.secondsBanked
       : accrual.secondsElapsed;
   const meanBefore = meanCondition(next);
-  next = withWear(next, wearSeconds);
+  next = withWear(next, wearSeconds, inService);
   const meanConditionWear = scrubPrecision(meanBefore - meanCondition(next));
 
   // Income at the post-wear multiplier: the purse was credited the raw

@@ -1157,7 +1157,7 @@ export function GymScreen(props: GymViewProps) {
         <Text>
           not part of the game: each button feeds that many elapsed seconds to the shipped accrual,
           so a player checks in without waiting it out. The last one jumps straight to the next
-          weekly-allocation boundary.
+          weekly-allocation boundary. Reset gym starts a new opening garage.
         </Text>
         {ladderDevTimeSteps().map((step) => (
           <Pressable
@@ -1177,6 +1177,14 @@ export function GymScreen(props: GymViewProps) {
           onPress={() => dispatch({ kind: 'advance-to-next-week' })}
         >
           <Text style={styles.buttonText}>+1 week boundary</Text>
+        </Pressable>
+        <Pressable
+          testID={'gymscreen-reset-gym'}
+          accessibilityRole={'button'}
+          style={styles.button}
+          onPress={() => dispatch({ kind: 'reset-gym' })}
+        >
+          <Text style={styles.buttonText}>reset gym</Text>
         </Pressable>
       </View>
       </ScrollView>

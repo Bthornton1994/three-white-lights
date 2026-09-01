@@ -765,6 +765,7 @@ describe('the opening screen displays ladder.ts / sessions.ts on every displayed
       expect(findAllByTestId(root, `gymscreen-advance-${step.seconds}`).length).toBe(1);
     }
     expect(findAllByTestId(root, 'gymscreen-advance-next-week').length).toBe(1);
+    expect(findAllByTestId(root, 'gymscreen-reset-gym').length).toBe(1);
     // THE OPENING FRAME'S OWN CLAIM, and the one this round changed. A cold
     // gym holds 0 gym bucks against a 2500 relocation, so the relocate
     // control is not offered and the price it could not meet is drawn in its
@@ -790,6 +791,7 @@ describe('every control dispatches exactly the action it names', () => {
       press(findByTestId(root, `gymscreen-advance-${step.seconds}`));
     }
     press(findByTestId(root, 'gymscreen-advance-next-week'));
+    press(findByTestId(root, 'gymscreen-reset-gym'));
     press(findByTestId(root, 'gymscreen-slot-0-set-cardio'));
     // The buy control is gated on `buySessionEquipment`'s own refusal now, so
     // a cold gym does not draw one — the press below is taken on a state that
@@ -800,10 +802,11 @@ describe('every control dispatches exactly the action it names', () => {
     expect(dispatched).toEqual([
       ...ladderDevTimeSteps().map((step) => ({ kind: 'advance-clock', gapSeconds: step.seconds })),
       { kind: 'advance-to-next-week' },
+      { kind: 'reset-gym' },
       { kind: 'set-allocation-slot', slotIndex: 0, slot: 'cardio' },
       { kind: 'buy-session', item: 'mats' },
     ]);
-    expect(dispatched.length).toBe(ladderDevTimeSteps().length + 3);
+    expect(dispatched.length).toBe(ladderDevTimeSteps().length + 4);
   });
 
   it('the move-up control dispatches move-up, and refused presses change nothing displayed', () => {
@@ -1805,12 +1808,12 @@ describe('S4h: every rendered Pressable is visibly a control', () => {
     // every gym, and a HUD review chip on gyms that have a standing
     // maintenance review (dormant and ready-to-reopen in this fixture).
     expect(counts).toEqual({
-      'cold garage': 26,
-      'heavily operated gym': 30,
-      'staffed gym': 28,
-      'dormant gym': 34,
-      'ready-to-reopen gym': 34,
+      'cold garage': 27,
+      'heavily operated gym': 31,
+      'staffed gym': 29,
+      'dormant gym': 35,
+      'ready-to-reopen gym': 35,
     });
-    expect(total).toBe(152);
+    expect(total).toBe(157);
   });
 });

@@ -65,12 +65,13 @@ function memberAt(
   index: number,
   state: FloorSimMemberState,
   target: FloorStationRef | null,
+  cell: { readonly x: number; readonly y: number } = Object.freeze({ x: 0, y: 0 }),
 ): FloorSimMember {
   return Object.freeze({
     index,
     type: 'powerlifter',
     state,
-    cell: Object.freeze({ x: 0, y: 0 }),
+    cell,
     next: null,
     progress: 0,
     target,
@@ -231,6 +232,32 @@ describe('stationView.ts — GDD §5.14 Stage C', () => {
     expect(view.occupied).toBe(true);
     expect(view.occupantCount).toBe(2);
     expect(view.queueCount).toBe(0);
+  });
+
+  it('with seats, counts unique current-useCells occupants only — same snapshot as the floor', () => {
+    const primary = Object.freeze({ x: 5, y: 0 });
+    const expansion = Object.freeze({ x: 7, y: 0 });
+    const leftover = Object.freeze({ x: 4, y: 0 });
+    const members = [
+      memberAt(0, 'using', FIXED_REF, leftover),
+      memberAt(1, 'using', FIXED_REF, leftover),
+      memberAt(2, 'queuing', FIXED_REF, Object.freeze({ x: 3, y: 0 })),
+    ];
+    const uncapped = stationOperationView(members, FIXED_REF);
+    expect(uncapped.occupantCount).toBe(2);
+    expect(uncapped.queueCount).toBe(1);
+    const afterCapacity = stationOperationView(members, FIXED_REF, [primary, expansion]);
+    expect(afterCapacity.occupied).toBe(false);
+    expect(afterCapacity.occupantCount).toBe(0);
+    expect(afterCapacity.queueCount).toBe(1);
+    const twoSeats = [
+      memberAt(0, 'using', FIXED_REF, primary),
+      memberAt(1, 'using', FIXED_REF, expansion),
+      memberAt(2, 'using', FIXED_REF, primary),
+    ];
+    const seated = stationOperationView(twoSeats, FIXED_REF, [primary, expansion]);
+    expect(seated.occupied).toBe(true);
+    expect(seated.occupantCount).toBe(2);
   });
 
   it('distinguishes a fixed station from a session item of the same shape', () => {

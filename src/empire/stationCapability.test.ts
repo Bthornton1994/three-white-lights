@@ -5,13 +5,19 @@
  * Proves the three axes are distinct mechanisms, not one "better station"
  * scalar. The bottleneck experiment runs the opening garage / complete bay /
  * three powerlifters under stock, Quality-only, Capacity-only and
- * Throughput-only. Wear-on-unplaced is reproduced here as D-DEBT, not fixed.
+ * Throughput-only. D2-TRUTH-01: unplaced owned equipment does not wear on
+ * the played composition; the management module without a floor still wears
+ * all owned when `inService` is omitted.
  */
 
 import { describe, expect, it } from 'vitest';
 
 import { EMPIRE_TUNING } from './empireTuning';
-import { createFloorState, placeFloorItem, type FloorState } from './floor';
+import { createFloorState, placeFloorItem, placedOwnedItems, type FloorState } from './floor';
+import {
+  createGymViewState,
+  gymViewReduce,
+} from './ladderView';
 import {
   createFloorSimState,
   floorStations,
@@ -532,8 +538,8 @@ describe('Stage D.1 Quality appeal — demand shifts when another station exists
   });
 });
 
-describe('Stage D D-DEBT — stored / unplaced equipment currently wears', () => {
-  it('withWear keys off ownership, not placement: the management model never sees the floor', () => {
+describe('Stage D2-TRUTH-01 — stored / unplaced equipment does not wear like placed', () => {
+  it('management module without a floor still wears every owned item when inService is omitted', () => {
     const opening = createManagedGym();
     const richGym = withLadder(
       opening.gym,
@@ -554,9 +560,75 @@ describe('Stage D D-DEBT — stored / unplaced equipment currently wears', () =>
     expect(matDelta).toBeGreaterThan(0);
     expect(benchDelta).toBeGreaterThan(0);
     expect(matDelta).toBeCloseTo(benchDelta);
-    // ManagedGym has no FloorState field. Unplaced session gear cannot be
-    // spared, because wear never asks whether the item is on the floor.
     expect('floor' in after.state).toBe(false);
+  });
+
+  it('unplaced equipment does not wear when inService is the placed set, and mats are not special-cased', () => {
+    const opening = createManagedGym();
+    const richGym = withLadder(
+      opening.gym,
+      Object.freeze({ ...opening.gym.ladder, gymBucks: 100000 }),
+    );
+    const bought = buySessionEquipment(richGym, 'mats');
+    if (bought.kind !== 'bought') throw new Error('fixture could not buy mats');
+    const owned = withUpdatedGym(opening, bought.state);
+    const floor = createFloorState('garage');
+    const inService = placedOwnedItems(floor, owned.gym.ladder.equipment, owned.gym.sessionEquipment);
+    expect(inService).toContain('flat-bench');
+    expect(inService).not.toContain('mats');
+    const after = managedCheckIn(owned, owned.gym.ladder.collectedAt + 3600, 'online', inService);
+    expect(itemCondition(after.state, 'mats')).toBe(1);
+    expect(itemCondition(after.state, 'flat-bench')).toBeLessThan(1);
+    const benchOff = Object.freeze({
+      ...floor,
+      furniture: Object.freeze({
+        'power-bar': floor.furniture['power-bar'],
+        'comp-plates': floor.furniture['comp-plates'],
+      }),
+    });
+    const withoutBench = placedOwnedItems(
+      benchOff,
+      owned.gym.ladder.equipment,
+      owned.gym.sessionEquipment,
+    );
+    expect(withoutBench).not.toContain('flat-bench');
+    expect(withoutBench).not.toContain('mats');
+    const afterBenchOff = managedCheckIn(
+      owned,
+      owned.gym.ladder.collectedAt + 3600,
+      'online',
+      withoutBench,
+    );
+    expect(itemCondition(afterBenchOff.state, 'flat-bench')).toBe(1);
+    expect(itemCondition(afterBenchOff.state, 'mats')).toBe(1);
+    expect(itemCondition(afterBenchOff.state, 'power-bar')).toBeLessThan(1);
+  });
+
+  it('gymViewReduce advance-clock wears placed kit and spares unplaced mats', () => {
+    const opened = createGymViewState();
+    const funded = Object.freeze({
+      ...opened,
+      managed: withUpdatedGym(
+        opened.managed,
+        withLadder(
+          opened.managed.gym,
+          Object.freeze({ ...opened.managed.gym.ladder, gymBucks: 100000 }),
+        ),
+      ),
+    });
+    const state = gymViewReduce(funded, { kind: 'buy-session', item: 'mats' });
+    expect(state.lastRefusal).toBeNull();
+    expect(state.managed.gym.sessionEquipment).toContain('mats');
+    expect(state.floor.placements.mats).toBeUndefined();
+    const beforeMats = itemCondition(state.managed, 'mats');
+    const beforeBench = itemCondition(state.managed, 'flat-bench');
+    const advanced = gymViewReduce(state, {
+      kind: 'advance-clock',
+      gapSeconds: 3600,
+      mode: 'online',
+    });
+    expect(itemCondition(advanced.managed, 'mats')).toBe(beforeMats);
+    expect(itemCondition(advanced.managed, 'flat-bench')).toBeLessThan(beforeBench);
   });
 });
 

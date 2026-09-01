@@ -288,6 +288,7 @@ import {
   createFloorState,
   placeFloorFurniture,
   placeFloorItem,
+  placedOwnedItems,
   relocateFloorState,
   removeFloorFurniture,
   removeFloorItem,
@@ -519,7 +520,8 @@ export type GymViewAction =
       readonly kind: 'upgrade-station';
       readonly station: TrainingStationKind;
       readonly axis: StationUpgradeAxis;
-    };
+    }
+  | { readonly kind: 'reset-gym' };
 
 /** The opening screen: a fresh managed gym, an all-rest plan, an empty floor, nothing yet to report. */
 export function createGymViewState(): GymViewState {
@@ -585,11 +587,16 @@ function advanceGymClock(
   mode: EarningsMode = 'offline',
 ): GymViewState {
   const before = state.managed;
+  const inService = placedOwnedItems(
+    state.floor,
+    before.gym.ladder.equipment,
+    before.gym.sessionEquipment,
+  );
   const {
     state: checkedInManaged,
     accrual,
     ...report
-  } = managedCheckIn(before, before.gym.ladder.collectedAt + gapSeconds, mode);
+  } = managedCheckIn(before, before.gym.ladder.collectedAt + gapSeconds, mode, inService);
   const previousWeekIndex = trainingWeekIndexAt(before.gym.ladder.collectedAt);
   const newWeekIndex = trainingWeekIndexAt(checkedInManaged.gym.ladder.collectedAt);
   let weekLog = state.weekLog;
@@ -840,6 +847,8 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
         lastRefusal: null,
       });
     }
+    case 'reset-gym':
+      return createGymViewState();
   }
 }
 

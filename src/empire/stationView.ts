@@ -244,11 +244,24 @@ function targetsStation(member: FloorSimMember, ref: FloorStationRef): boolean {
   return target.item === ref.item;
 }
 
-/** `ref`'s live operation, read straight off the sim's own member list — no queue geometry, no ordering, a filter and a count. */
+/** `ref`'s live operation, read straight off the sim's own member list — no queue geometry, no ordering, a filter and a count.
+ * Optional `seats` is the current station's `useCells` (D2-UI-DEBT-01): a
+ * using member counts only when their cell is one of those seats, unique per
+ * seat, so the panel and the floor light the same snapshot. Omitted `seats`
+ * keeps the prior using-state count. Do not change Capacity slot algebra. */
 export function stationOperationView(
   members: readonly FloorSimMember[],
   ref: FloorStationRef,
+  seats?: readonly { readonly x: number; readonly y: number }[],
 ): StationOperationView {
+  const restrict = seats !== undefined;
+  const seatKeys = new Set<string>();
+  if (restrict) {
+    for (const seat of seats) {
+      seatKeys.add(`${seat.x},${seat.y}`);
+    }
+  }
+  const occupiedSeats = new Set<string>();
   let occupied = false;
   let occupantCount = 0;
   let activeMemberType: MemberType | null = null;
@@ -256,6 +269,12 @@ export function stationOperationView(
   for (const member of members) {
     if (!targetsStation(member, ref)) continue;
     if (member.state === 'using') {
+      if (restrict) {
+        const key = `${member.cell.x},${member.cell.y}`;
+        if (!seatKeys.has(key)) continue;
+        if (occupiedSeats.has(key)) continue;
+        occupiedSeats.add(key);
+      }
       occupied = true;
       occupantCount += 1;
       if (activeMemberType === null) activeMemberType = member.type;

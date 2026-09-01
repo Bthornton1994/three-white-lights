@@ -1644,7 +1644,12 @@ export function FloorGrid(props: FloorGridProps) {
     const conditionItem =
       panelStation.kind === 'training' ? COMPETITION_BENCH_BAY_PRIMARY : panelStation.item;
     panelIdentity = stationIdentityView(panelStation);
-    panelOperation = stationOperationView(sim.members, panelStation);
+    const selectedStationRow = stationByRefKey.get(stationKey(panelStation));
+    panelOperation = stationOperationView(
+      sim.members,
+      panelStation,
+      selectedStationRow === undefined ? undefined : selectedStationRow.useCells,
+    );
     panelCondition = stationConditionView(managed, conditionItem);
     panelManagerEffect = stationManagerEffectView(managed, conditionItem);
   }
@@ -2459,8 +2464,8 @@ export function FloorGrid(props: FloorGridProps) {
           {/*
             Live operation — GDD §5.14 Stage C item 6: "currently in use /
             idle, active member, queue count". Read straight off
-            `stationOperationView`, which counts the exact two states
-            `floorSim.ts`'s own header defines the queue by; no fake
+            `stationOperationView` against this render's `useCells`, so the
+            panel and the floor light the same snapshot; no fake
             "efficiency score" is computed here.
           */}
           <Text testID={'floorgrid-station-panel-operation'}>

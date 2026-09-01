@@ -3502,8 +3502,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'your manager repaired',
       'for',
       'gym bucks',
-      'not part of the game: each button feeds that many elapsed seconds to the shipped accrual, so a player checks in without waiting it out. The last one jumps straight to the next weekly-allocation boundary.',
+      'not part of the game: each button feeds that many elapsed seconds to the shipped accrual, so a player checks in without waiting it out. The last one jumps straight to the next weekly-allocation boundary. Reset gym starts a new opening garage.',
       '+1 week boundary',
+      'reset gym',
       // ladderView.tsx, in tree order: the header line, the money line, the
       // capability line, the accrual report, the refusal line, the shop, the
       // relocation line, and the visibly-labelled dev control.
@@ -3820,7 +3821,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // testIDs, equipment-panel copy, training-kind station refs.
     // 640 -> 643: Stage D.1b world-legibility testIDs (quality bench, plate
     // tree, raised bay labels).
-    expect(singleQuoted.size).toBe(643);
+    // 643 -> 645: Stage D2 gymscreen-reset-gym + reset-gym action kind.
+    expect(singleQuoted.size).toBe(645);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4285,6 +4287,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-recovery-history',
       'gymscreen-recovery-state',
       'gymscreen-refusal',
+      'gymscreen-reset-gym',
       'gymscreen-root',
       'gymscreen-rung',
       'gymscreen-session-shop',
@@ -4427,6 +4430,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'reputation-below-threshold',
       'reputation-milestone',
       'reputation-tier',
+      'reset-gym',
       'residual-carry-multiplier',
       'rest',
       'rested',
@@ -4631,7 +4635,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 957 -> 973: GDD §5.18 Stage D.1 singleQuoted 624 -> 640; templateChunks unchanged.
     // 973 -> 975: D.1 highlight ids, templateChunks 333 -> 335.
     // 975 -> 978: Stage D.1b singleQuoted 640 -> 643.
-    expect(stringsChecked).toBe(978);
+    // 978 -> 980: Stage D2 singleQuoted 643 -> 645.
+    expect(stringsChecked).toBe(980);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were

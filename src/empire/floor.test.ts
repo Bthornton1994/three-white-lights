@@ -33,6 +33,7 @@ import {
   placeFloorItem,
   placedFloorItems,
   placedFurnitureItems,
+  placedOwnedItems,
   relocateFloorState,
   removeFloorFurniture,
   removeFloorItem,
@@ -804,6 +805,20 @@ describe('Stage C.1b furniture is player-positionable layout state', () => {
     expect(placedFurnitureItems(removed)).toEqual(['power-bar', 'comp-plates']);
     const back = placeFloorFurniture(removed, kit, 'flat-bench', { x: 5, y: 0 });
     expect(back.kind).toBe('placed');
+  });
+
+  it('placedOwnedItems is owned ∩ placed, no mats special-case, never a second ownership list', () => {
+    const opening = createFloorState('garage');
+    expect(placedOwnedItems(opening, kit, [])).toEqual(kit);
+    expect(placedOwnedItems(opening, kit, ['mats'])).toEqual(kit);
+    const withMats = placeFloorItem(opening, ['mats'], 'mats', OPEN_MATS);
+    expect(withMats.kind).toBe('placed');
+    if (withMats.kind !== 'placed') throw new Error('unreachable');
+    expect(placedOwnedItems(withMats.state, kit, ['mats'])).toEqual([...kit, 'mats']);
+    const benchOff = removeFloorFurniture(withMats.state, 'flat-bench');
+    expect(placedOwnedItems(benchOff, kit, ['mats'])).toEqual(['power-bar', 'comp-plates', 'mats']);
+    expect(placedOwnedItems(benchOff, kit, [])).toEqual(['power-bar', 'comp-plates']);
+    expect(placedOwnedItems(opening, [], [])).toEqual([]);
   });
 
   it('placing a session item onto seeded furniture is refused as overlaps', () => {

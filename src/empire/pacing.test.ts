@@ -467,6 +467,48 @@ describe('the pacing report — real numbers, printed', () => {
     // it being a valid non-negative count actually computed.
     expect(deadPeriods).toBeGreaterThanOrEqual(0);
   });
+
+  it('Stage D2 — time-to-first-choice and 3d/7d snapshots after wear truth (C.2 path, no floor)', () => {
+    const SECONDS_PER_DAY = EMPIRE_TUNING.SECONDS_PER_DAY;
+    const quality = EMPIRE_TUNING.STATION_UPGRADE_COST_GYM_BUCKS.quality;
+    const throughput = EMPIRE_TUNING.STATION_UPGRADE_COST_GYM_BUCKS.throughput;
+    const capacity = EMPIRE_TUNING.STATION_UPGRADE_COST_GYM_BUCKS.capacity;
+    const mats = EMPIRE_TUNING.SESSION_EQUIPMENT_COST_GYM_BUCKS.mats;
+    const noviceHire = EMPIRE_TUNING.MANAGER_HIRE_COST_GYM_BUCKS[EMPIRE_TUNING.MANAGER_TIERS[0]];
+    const lines: string[] = ['=== Stage D2 — time to first afford (C.2 runManagedGym, inService omitted) ==='];
+    let watcherHitsQuality = false;
+    for (const policy of PACING_CHECK_IN_POLICIES) {
+      const run = runPacingManagedGym(policy, 'hands-off', MAX_HORIZON_SECONDS);
+      const firstAt = (cost: number): string => {
+        for (const reading of run.readings) {
+          if (reading.settledGymBucks >= cost) {
+            return `${(reading.atSeconds / SECONDS_PER_DAY).toFixed(3)}d purse=${reading.settledGymBucks.toFixed(2)}`;
+          }
+        }
+        return 'not within 7d';
+      };
+      lines.push(`${policy}:`);
+      lines.push(`  mats ${mats}: ${firstAt(mats)}`);
+      lines.push(`  Quality ${quality}: ${firstAt(quality)}`);
+      lines.push(`  Throughput ${throughput}: ${firstAt(throughput)}`);
+      lines.push(`  Capacity ${capacity}: ${firstAt(capacity)}`);
+      lines.push(`  novice hire ${noviceHire}: ${firstAt(noviceHire)}`);
+      const day3 = pacingReadingAtHorizon(run.readings, HORIZONS[3] as number);
+      const day7 = pacingReadingAtHorizon(run.readings, HORIZONS[4] as number);
+      lines.push(
+        `  3d: purse=${day3.settledGymBucks.toFixed(2)} net=${day3.netPosition.toFixed(2)} condition=${day3.meanCondition.toFixed(4)} phase=${day3.phase}`,
+      );
+      lines.push(
+        `  7d: purse=${day7.settledGymBucks.toFixed(2)} net=${day7.netPosition.toFixed(2)} condition=${day7.meanCondition.toFixed(4)} phase=${day7.phase}`,
+      );
+      if (policy === 'watcher') {
+        watcherHitsQuality = run.readings.some((reading) => reading.settledGymBucks >= quality);
+      }
+    }
+    // eslint-disable-next-line no-console
+    console.log(lines.join('\n'));
+    expect(watcherHitsQuality).toBe(true);
+  });
 });
 
 describe('Stage C.2 — aggregate runners propagate EarningsMode', () => {
