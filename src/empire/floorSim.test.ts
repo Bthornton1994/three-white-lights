@@ -26,6 +26,7 @@ import {
   FLOOR_SIM_MEMBER_STATES,
   createFloorSimState,
   floorSimStateCounts,
+  floorStationRefKey,
   floorStations,
   runFloorSim,
   stationOccupancy,
@@ -37,6 +38,7 @@ import {
   type FloorSimMemberState,
   type FloorSimState,
   type FloorStation,
+  type FloorStationRef,
 } from './floorSim';
 import {
   ambientMemberRoster,
@@ -485,7 +487,7 @@ function sweep(): SweepReading {
               member.state === 'interrupted';
             if (timed !== member.timer > 0) badTimer += 1;
             if (member.target !== null && (member.state === 'seeking' || member.state === 'queuing')) {
-              const key = `${member.target.kind}:${member.target.item}`;
+              const key = floorStationRefKey(member.target);
               claims.set(key, (claims.get(key) ?? 0) + 1);
             }
             const held =
@@ -619,14 +621,14 @@ const SEALED_CENSUS = Object.freeze({
     REACTIONS: 8,
     CLAIMS: 0,
     CELLS: 32,
-    STATIONS: 19,
+    STATIONS: 11,
   }),
   CONTROL: Object.freeze({
     STRANDED: 0,
     REACTIONS: 0,
     CLAIMS: 20,
     CELLS: 66,
-    STATIONS: 16,
+    STATIONS: 8,
   }),
 });
 
@@ -647,30 +649,30 @@ const SWEEP_CENSUS = Object.freeze({
   // four-phase values, kept so the deltas are legible rather than asserted:
   // seeking 904, queuing 511, using 542, leaving 452, interrupted 183.
   ENTRIES: Object.freeze({
-    seeking: 967,
-    queuing: 575,
-    using: 579,
-    leaving: 479,
-    interrupted: 216,
+    seeking: 885,
+    queuing: 467,
+    using: 439,
+    leaving: 354,
+    interrupted: 256,
   }),
   // Four-phase values: 'target-removed' 150, 'target-moved' 33, and
   // 'route-blocked' did not exist. Instrumented on the shipped four-phase
   // sweep, the branch that now raises 'route-blocked' fired 0 times across all
   // 66240 observations, which is why the fifth phase exists.
   CAUSES: Object.freeze({
-    'target-removed': 174,
-    'target-moved': 32,
-    'route-blocked': 10,
+    'target-removed': 208,
+    'target-moved': 36,
+    'route-blocked': 12,
   }),
   // The source arms of the beat, measured for the first time this round.
   SOURCES: Object.freeze({
-    seeking: 79,
-    queuing: 76,
-    using: 61,
+    seeking: 101,
+    queuing: 85,
+    using: 70,
   }),
   STRANDED_OBSERVATIONS: 18,
   STRANDED_MEMBERS: 2,
-  LONGEST_STILL: 48,
+  LONGEST_STILL: 47,
   LONGEST_QUEUE: 3,
 });
 
@@ -1139,7 +1141,7 @@ describe('a member does not freeze', () => {
     expect((at.members[0] as FloorSimMember).target).toEqual({ kind: 'session', item: 'mats' });
 
     // The station is still there — this is not a removal.
-    expect(floorStations(sealed).some((station) => station.ref.item === 'mats')).toBe(true);
+    expect(floorStations(sealed).some((station) => station.ref.kind === 'session' && station.ref.item === 'mats')).toBe(true);
     const after = stepFloorSim(at, sealed);
     const walker = after.members[0] as FloorSimMember;
     expect(walker.state).toBe('interrupted');
@@ -1485,13 +1487,13 @@ describe('the sim is deterministic, and the seed is doing work', () => {
   it('moves a pinned number of FIRST TARGETS when only the seed changes', () => {
     // The finer reading the check above needs: which station each member
     // claims on its first tick isolates `FLOOR_SIM_TARGET_NOISE_TILES` from
-    // the speed jitter, and it has real resolution — 4, 6 and 3 of 8 rather
+    // the speed jitter, and it has real resolution — 5, 5 and 4 of 8 rather
     // than the ceiling of 8. A noise knob turned to zero collapses all three
     // to the control's 0, which is exactly what this exists to catch.
     const context = contextFor('storage-unit', phaseFloors('storage-unit')[0] as FloorState);
     const firstTargets = (seed: number): readonly string[] =>
       runFloorSim(createFloorSimState(context, seed), context, 1).members.map((member) =>
-        member.target === null ? 'none' : `${member.target.kind}:${member.target.item}`,
+        member.target === null ? 'none' : floorStationRefKey(member.target),
       );
     const base = firstTargets(FLOOR_SIM_SWEEP.SEEDS[0] as number);
     expect(base.length).toBe(8);
@@ -1499,9 +1501,9 @@ describe('the sim is deterministic, and the seed is doing work', () => {
     const moved = (seed: number): number =>
       firstTargets(seed).filter((choice, index) => choice !== base[index]).length;
     expect(moved(FLOOR_SIM_SWEEP.SEEDS[0] as number)).toBe(0);
-    expect(moved(FLOOR_SIM_SWEEP.SEEDS[1] as number)).toBe(4);
-    expect(moved(FLOOR_SIM_SWEEP.SEEDS[2] as number)).toBe(6);
-    expect(moved(FLOOR_SIM_SWEEP.SEEDS[3] as number)).toBe(3);
+    expect(moved(FLOOR_SIM_SWEEP.SEEDS[1] as number)).toBe(5);
+    expect(moved(FLOOR_SIM_SWEEP.SEEDS[2] as number)).toBe(5);
+    expect(moved(FLOOR_SIM_SWEEP.SEEDS[3] as number)).toBe(4);
     // The ceiling, recorded so the three numbers above read against something.
     expect(base.length).toBe(8);
   });
@@ -1572,7 +1574,7 @@ describe('a member type changes where a member goes', () => {
       sessionOwned: rows.map(([item]) => item),
       capability: stockStationCapability(),
     };
-    expect(floorStations(context).length).toBe(9);
+    expect(floorStations(context).length).toBe(7);
     const starts: readonly GridPosition[] = Object.freeze([
       { x: 0, y: 25 },
       { x: 8, y: 25 },
@@ -1591,7 +1593,7 @@ describe('a member type changes where a member goes', () => {
       starts.map((cell, index) => {
         const at = stepFloorSim(stateOf(23, [memberAt(index, type, cell)]), context);
         const target = (at.members[0] as FloorSimMember).target;
-        return target === null ? 'none' : `${target.kind}:${target.item}`;
+        return target === null ? 'none' : floorStationRefKey(target);
       });
     const control = choicesFor('casual');
     expect(control.length).toBe(12);
@@ -1600,10 +1602,17 @@ describe('a member type changes where a member goes', () => {
       choicesFor(type).filter((choice, index) => choice !== control[index]).length;
     // The control first, so a reader sees what zero means here.
     expect(disagreements('casual')).toBe(0);
-    expect(disagreements('bodybuilder')).toBe(4);
-    expect(disagreements('powerlifter')).toBe(3);
-    expect(disagreements('athlete')).toBe(5);
-    expect(disagreements('serious-lifter')).toBe(1);
+    expect({
+      bodybuilder: disagreements('bodybuilder'),
+      powerlifter: disagreements('powerlifter'),
+      athlete: disagreements('athlete'),
+      'serious-lifter': disagreements('serious-lifter'),
+    }).toEqual({
+      bodybuilder: 8,
+      powerlifter: 4,
+      athlete: 2,
+      'serious-lifter': 1,
+    });
     // The ceiling, so the four numbers above read against a maximum rather
     // than against nothing. `serious-lifter`'s 1 is the flattest affinity row
     // in §5.6's table (0.2-0.3 on fourteen items), which is the table's own
@@ -1684,14 +1693,14 @@ describe('floorStations reports somewhere real to stand', () => {
         const stations = floorStations(context);
         const spokenFor = new Map<string, string>();
         for (const station of stations) {
-          spokenFor.set(cellKey(station.useCell), `use:${station.ref.kind}:${station.ref.item}`);
+          spokenFor.set(cellKey(station.useCell), `use:${floorStationRefKey(station.ref)}`);
         }
         for (const station of stations) {
           stationsChecked += 1;
           for (const cell of station.queueCells) {
             cellsChecked += 1;
             const held = spokenFor.get(cellKey(cell));
-            const mine = `queue:${station.ref.kind}:${station.ref.item}`;
+            const mine = `queue:${floorStationRefKey(station.ref)}`;
             if (held !== undefined) {
               collisions += 1;
               expect(held, `${rung} phase ${phase} ${cellKey(cell)}`).toBe(mine);
@@ -1703,8 +1712,8 @@ describe('floorStations reports somewhere real to stand', () => {
     }
     expect(collisions).toBe(0);
     // Counts rather than bounds, so an empty enumeration reports itself.
-    expect(stationsChecked).toBe(131);
-    expect(cellsChecked).toBe(387);
+    expect(stationsChecked).toBe(91);
+    expect(cellsChecked).toBe(267);
   });
 
   it('orders every queue nearest-first from its own use cell', () => {
@@ -1745,21 +1754,21 @@ describe('floorStations reports somewhere real to stand', () => {
           }
           const steps = station.queueCells.map((cell) => distance.get(cellKey(cell)));
           for (const value of steps) {
-            expect(value, `${rung} ${station.ref.item}`).not.toBe(undefined);
+            expect(value, `${rung} ${floorStationRefKey(station.ref)}`).not.toBe(undefined);
             inspected += 1;
           }
           for (let k = 1; k < steps.length; k += 1) {
             expect(
               (steps[k] as number) >= (steps[k - 1] as number),
-              `${rung} ${station.ref.item} slot ${k}`,
+              `${rung} ${floorStationRefKey(station.ref)} slot ${k}`,
             ).toBe(true);
           }
           queues += 1;
         }
       }
     }
-    expect(queues).toBe(131);
-    expect(inspected).toBe(387);
+    expect(queues).toBe(91);
+    expect(inspected).toBe(267);
   });
 
   it('posts every station on every registered rung after the two-pass reservation', () => {
@@ -1790,7 +1799,7 @@ describe('floorStations reports somewhere real to stand', () => {
     // them, so `specialty-bars` is left with nowhere to queue and is dropped the
     // same way a station with no walkable approach is. The pocket's own station
     // survives, which is what the phase is for.
-    expect(JSON.stringify(counted)).toBe('[5,5,4,5,3,6,6,5,7,3,9,9,8,10,3,10,10,9,11,3]');
+    expect(JSON.stringify(counted)).toBe('[3,3,2,3,1,4,4,3,5,1,7,7,6,8,1,8,8,7,9,1]');
   });
 
   it('puts every use cell and queue cell on a free tile beside the equipment', () => {
@@ -1800,18 +1809,18 @@ describe('floorStations reports somewhere real to stand', () => {
       const blocked = blockedCells(context);
       const grid = floorGridSize(rung);
       for (const station of floorStations(context)) {
-        expect(blocked.has(cellKey(station.useCell)), `${rung} ${station.ref.item}`).toBe(false);
+        expect(blocked.has(cellKey(station.useCell)), `${rung} ${floorStationRefKey(station.ref)}`).toBe(false);
         // Adjacent to the footprint, not merely somewhere on the floor.
         const touching =
           station.useCell.x >= station.position.x - 1 &&
           station.useCell.x <= station.position.x + station.footprint.width &&
           station.useCell.y >= station.position.y - 1 &&
           station.useCell.y <= station.position.y + station.footprint.height;
-        expect(touching, `${rung} ${station.ref.item} use cell adjacency`).toBe(true);
+        expect(touching, `${rung} ${floorStationRefKey(station.ref)} use cell adjacency`).toBe(true);
         expect(station.queueCells.length).toBeGreaterThan(0);
         expect(station.queueCells.length).toBeLessThanOrEqual(T.FLOOR_SIM_QUEUE_MAX_LENGTH);
         for (const cell of station.queueCells) {
-          expect(blocked.has(cellKey(cell)), `${rung} ${station.ref.item} queue cell`).toBe(false);
+          expect(blocked.has(cellKey(cell)), `${rung} ${floorStationRefKey(station.ref)} queue cell`).toBe(false);
           expect(cell.x >= 0 && cell.y >= 0 && cell.x < grid.width && cell.y < grid.height).toBe(
             true,
           );
@@ -1822,28 +1831,25 @@ describe('floorStations reports somewhere real to stand', () => {
     }
     // 28 -> 30: strip-mall-unit and warehouse each gained a corner item, so
     // each posts one more station on its laid-out floor.
-    expect(inspected).toBe(30);
+    expect(inspected).toBe(22);
   });
 
-  it('reports the fixed Barbell baseline and the placed session items, and nothing else', () => {
+  it('reports the Competition Bench Bay and the placed session items, and nothing else', () => {
     const rung: LadderRung = 'storage-unit';
     const context = contextFor(rung, phaseFloors(rung)[0] as FloorState);
-    const refs = floorStations(context).map((station) => `${station.ref.kind}:${station.ref.item}`);
+    const refs = floorStations(context).map((station) => floorStationRefKey(station.ref));
     expect(refs).toEqual([
-      'fixed:power-bar',
-      'fixed:comp-plates',
-      'fixed:flat-bench',
+      'training:competition-bench-bay',
       'session:bike',
       'session:mats',
       'session:belts',
     ]);
     // An item that is owned but not placed has no station — placement is what
-    // puts something on the floor, which is `floor.ts`'s own rule.
+    // puts something on the floor, which is `floor.ts`'s own rule. Starting
+    // Barbell still assembles the bay on the opening furniture layout.
     const unplaced = floorStations({ ...context, floor: createFloorState(rung) });
-    expect(unplaced.map((station) => station.ref.item)).toEqual([
-      'power-bar',
-      'comp-plates',
-      'flat-bench',
+    expect(unplaced.map((station) => floorStationRefKey(station.ref))).toEqual([
+      'training:competition-bench-bay',
     ]);
   });
 
@@ -1868,12 +1874,12 @@ describe('floorStations reports somewhere real to stand', () => {
       'wrist-wraps',
       'belts',
     ]);
-    const reported = floorStations(context).map((station) => station.ref.item);
-    expect(reported).not.toContain('foam-rollers');
+    const reported = floorStations(context).map((station) => floorStationRefKey(station.ref));
+    expect(reported).not.toContain('session:foam-rollers');
     // Its two neighbours are still targetable, so the drop is about this item
     // and not about the whole corner.
-    expect(reported).toContain('wrist-wraps');
-    expect(reported).toContain('belts');
+    expect(reported).toContain('session:wrist-wraps');
+    expect(reported).toContain('session:belts');
   });
 });
 
@@ -2121,28 +2127,27 @@ describe('the sim reads presentation inputs and nothing economic', () => {
 // 11. Stage D — Quality / Capacity / Throughput change different sim quantities
 // ---------------------------------------------------------------------------
 
-describe('Stage D Q/C/T on the real floor sim', () => {
+describe('Stage D.1 Q/C/T on the real floor sim', () => {
   const KIT_OWNED: readonly LadderEquipmentItem[] = Object.freeze([...T.LADDER_STARTING_EQUIPMENT]);
+  const BAY_REF: FloorStationRef = Object.freeze({
+    kind: 'training',
+    station: 'competition-bench-bay',
+  });
 
-  function benchOnlyContext() {
-    const opening = createFloorState('garage');
-    const floor: FloorState = Object.freeze({
-      ...opening,
-      furniture: Object.freeze({ 'flat-bench': opening.furniture['flat-bench'] }),
-    });
-    return (capability: ReturnType<typeof stockStationCapability>): FloorSimContext => ({
+  function openingContext(capability: ReturnType<typeof stockStationCapability>): FloorSimContext {
+    return {
       rung: 'garage',
-      floor,
+      floor: createFloorState('garage'),
       barbellOwned: KIT_OWNED,
       sessionOwned: [],
       capability,
-    });
+    };
   }
 
   function purchased(axis: 'quality' | 'capacity' | 'throughput') {
     const outcome = upgradeStation(
       stockStationCapability(),
-      'flat-bench',
+      'competition-bench-bay',
       axis,
       10_000,
       true,
@@ -2152,57 +2157,44 @@ describe('Stage D Q/C/T on the real floor sim', () => {
     return outcome.capability;
   }
 
-  it('stock realises exactly one use cell on the garage bench', () => {
-    const context = benchOnlyContext()(stockStationCapability());
-    const bench = floorStations(context).find((row) => row.ref.item === 'flat-bench');
-    expect(bench?.useCells.length).toBe(1);
-    expect(bench?.useCell).toEqual(bench?.useCells[0]);
+  function bayStation(context: FloorSimContext) {
+    return floorStations(context).find(
+      (row) => row.ref.kind === 'training' && row.ref.station === 'competition-bench-bay',
+    );
+  }
+
+  it('stock realises exactly one use cell on the garage bay', () => {
+    const context = openingContext(stockStationCapability());
+    const bay = bayStation(context);
+    expect(bay?.useCells.length).toBe(1);
+    expect(bay?.useCell).toEqual(bay?.useCells[0]);
   });
 
-  it('the opening garage layout can realise a second bench position', () => {
-    const context: FloorSimContext = {
-      rung: 'garage',
-      floor: createFloorState('garage'),
-      barbellOwned: KIT_OWNED,
-      sessionOwned: [],
-      capability: purchased('capacity'),
-    };
-    const bench = floorStations(context).find((row) => row.ref.item === 'flat-bench');
-    expect(bench?.useCells.length).toBe(2);
+  it('the opening garage layout can realise a second physical bench', () => {
+    const context = openingContext(purchased('capacity'));
+    const bay = bayStation(context);
+    expect(bay?.useCells.length).toBe(2);
   });
 
-  it('Capacity realises two use cells from approach cells, Quality and Throughput do not', () => {
-    const make = benchOnlyContext();
-    expect(
-      floorStations(make(purchased('capacity'))).find((row) => row.ref.item === 'flat-bench')
-        ?.useCells.length,
-    ).toBe(2);
-    expect(
-      floorStations(make(purchased('quality'))).find((row) => row.ref.item === 'flat-bench')
-        ?.useCells.length,
-    ).toBe(1);
-    expect(
-      floorStations(make(purchased('throughput'))).find((row) => row.ref.item === 'flat-bench')
-        ?.useCells.length,
-    ).toBe(1);
+  it('Capacity realises two use cells from two benches, Quality and Throughput do not', () => {
+    expect(bayStation(openingContext(purchased('capacity')))?.useCells.length).toBe(2);
+    expect(bayStation(openingContext(purchased('quality')))?.useCells.length).toBe(1);
+    expect(bayStation(openingContext(purchased('throughput')))?.useCells.length).toBe(1);
   });
 
   it('Capacity can seat two members at once; stock cannot', () => {
-    const make = benchOnlyContext();
-    const stock = make(stockStationCapability());
-    const dual = make(purchased('capacity'));
+    const stock = openingContext(stockStationCapability());
+    const dual = openingContext(purchased('capacity'));
     const stockRun = runFloorSim(createFloorSimState(stock, 1), stock, 80);
     const dualRun = runFloorSim(createFloorSimState(dual, 1), dual, 80);
-    const ref = { kind: 'fixed' as const, item: 'flat-bench' as const };
-    expect(stationOccupancy(stockRun.members, ref)).toBeLessThanOrEqual(1);
-    expect(stationOccupancy(dualRun.members, ref)).toBe(2);
+    expect(stationOccupancy(stockRun.members, BAY_REF)).toBeLessThanOrEqual(1);
+    expect(stationOccupancy(dualRun.members, BAY_REF)).toBe(2);
   });
 
   it('Throughput shortens the use timer the sim actually writes; Quality does not', () => {
-    const make = benchOnlyContext();
-    const stock = make(stockStationCapability());
-    const fast = make(purchased('throughput'));
-    const fancy = make(purchased('quality'));
+    const stock = openingContext(stockStationCapability());
+    const fast = openingContext(purchased('throughput'));
+    const fancy = openingContext(purchased('quality'));
     const readUseTimer = (context: FloorSimContext): number => {
       let at = createFloorSimState(context, 1);
       for (let i = 0; i < 80; i += 1) {

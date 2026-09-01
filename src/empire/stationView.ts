@@ -58,6 +58,7 @@ import { type StationUpgradeAxis, type StationUpgradeRefuseReason } from './stat
  * tests and reducers use; this map is presentation only.
  */
 const EQUIPMENT_PLAYER_LABELS: Readonly<Record<string, string>> = Object.freeze({
+  'competition-bench-bay': 'Competition bench bay',
   'power-bar': 'Power bar',
   'comp-plates': 'Competition plates',
   'flat-bench': 'Flat bench',
@@ -147,18 +148,10 @@ export function playerFacingPlacementRefuse(kind: PlacementRefuseKind): string {
   return 'Outside the gym';
 }
 
-/** Player-facing name of a Stage D upgrade. Numbers stay in the cost line. */
-export function playerFacingUpgradeLabel(
-  axis: StationUpgradeAxis,
-  item: LadderEquipmentItem,
-): string {
-  if (axis === 'quality') {
-    if (item === 'flat-bench') return 'Competition pads';
-    if (item === 'power-bar') return 'Aggressive knurl';
-    return 'Tight tolerances';
-  }
-  if (axis === 'capacity') return 'Second position';
-  if (item === 'power-bar') return 'Collar kit';
+/** Player-facing name of a Stage D.1 upgrade. Numbers stay in the cost line. Attached to the bay, not to a SKU. */
+export function playerFacingUpgradeLabel(axis: StationUpgradeAxis): string {
+  if (axis === 'quality') return 'Competition pads';
+  if (axis === 'capacity') return 'Second bench';
   return 'Plate tree';
 }
 
@@ -173,9 +166,23 @@ export function playerFacingUpgradeEffect(axis: StationUpgradeAxis): string {
 export function playerFacingUpgradeRefuse(reason: StationUpgradeRefuseReason): string {
   if (reason === 'not-upgradable') return 'Can\'t upgrade this';
   if (reason === 'already-upgraded') return 'Already fitted';
-  if (reason === 'not-placed') return 'Place it first';
-  if (reason === 'no-second-position') return 'No room for a second position';
+  if (reason === 'not-placed') return 'Place the bay first';
+  if (reason === 'no-second-position') return 'No room for a second bench';
   return 'Not enough gym bucks';
+}
+
+/** How a piece of equipment relates to the Competition Bench Bay. */
+export function playerFacingBayRole(
+  complete: boolean,
+  missing: readonly string[],
+): string {
+  if (complete) return 'Part of Competition bench bay';
+  if (missing.length === 0) return 'Part of Competition bench bay';
+  const labels: string[] = [];
+  for (const item of missing) {
+    labels.push(playerFacingEquipmentLabel(item));
+  }
+  return `Needs ${labels.join(', ')} for a Competition bench bay`;
 }
 
 // ---------------------------------------------------------------------------
@@ -185,13 +192,16 @@ export function playerFacingUpgradeRefuse(reason: StationUpgradeRefuseReason): s
 /** A tapped station's identity: which vocabulary it is drawn from, and (for a session item) which §5.4 activity group it belongs to. */
 export interface StationIdentityView {
   readonly kind: FloorStationRef['kind'];
-  readonly item: ManagedEquipmentItem;
-  /** Null for `kind: 'fixed'` — the Barbell-baseline furniture carries no session activity group. */
+  readonly item: string;
+  /** Null for `kind: 'fixed'` and `kind: 'training'` — those carry no session activity group. */
   readonly sessionGroup: SessionActivityGroup | null;
 }
 
 /** `ref`'s identity, read straight off `sessions.ts`'s own group table for a session item. */
 export function stationIdentityView(ref: FloorStationRef): StationIdentityView {
+  if (ref.kind === 'training') {
+    return Object.freeze({ kind: ref.kind, item: ref.station, sessionGroup: null });
+  }
   if (ref.kind === 'session') {
     return Object.freeze({
       kind: ref.kind,
@@ -222,11 +232,16 @@ export interface StationOperationView {
   readonly queueCount: number;
 }
 
-/** Whether `member` is currently targeting `ref` — the same `kind`+`item` equality `floorSim.ts`'s own (unexported) `refsEqual` uses. */
+/** Whether `member` is currently targeting `ref` — the same kind+identity equality `floorSim.ts`'s own (unexported) `refsEqual` uses. */
 function targetsStation(member: FloorSimMember, ref: FloorStationRef): boolean {
   const target = member.target;
   if (target === null) return false;
-  return target.kind === ref.kind && target.item === ref.item;
+  if (target.kind !== ref.kind) return false;
+  if (target.kind === 'training' && ref.kind === 'training') {
+    return target.station === ref.station;
+  }
+  if (target.kind === 'training' || ref.kind === 'training') return false;
+  return target.item === ref.item;
 }
 
 /** `ref`'s live operation, read straight off the sim's own member list — no queue geometry, no ordering, a filter and a count. */

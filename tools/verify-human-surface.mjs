@@ -74,7 +74,13 @@ function helpers(page) {
 }
 
 function stationIdFromUsing(usingIds) {
-  if (usingIds.some((id) => typeof id === 'string' && id.includes('flat-bench'))) {
+  if (
+    usingIds.some(
+      (id) =>
+        typeof id === 'string' &&
+        (id.includes('flat-bench') || id.includes('competition-bench-bay')),
+    )
+  ) {
     return 'floorgrid-fixed-flat-bench';
   }
   if (usingIds.some((id) => typeof id === 'string' && id.includes('power-bar'))) {
@@ -88,7 +94,7 @@ function stationIdFromUsing(usingIds) {
 
 async function waitForOccupiedStation(page) {
   for (let attempt = 0; attempt < 24; attempt += 1) {
-    const usingIds = await page.locator('[data-testid^="floorsim-using-fixed-"]').evaluateAll((nodes) =>
+    const usingIds = await page.locator('[data-testid^="floorsim-using-"]').evaluateAll((nodes) =>
       nodes.map((node) => node.getAttribute('data-testid')),
     );
     const occupied = stationIdFromUsing(usingIds);
@@ -97,6 +103,7 @@ async function waitForOccupiedStation(page) {
   }
   return null;
 }
+
 
 async function runSurface(page, viewportName) {
   const { boxOf, clickVisible, clickGridTile, textOf } = helpers(page);
@@ -173,6 +180,41 @@ async function runSurface(page, viewportName) {
       `${tag}: clicking uncovered pixels of a visible station did not open its card — identity="${stationIdentity}"`,
     );
   }
+
+  const equipmentBox = await boxOf('floorgrid-fixed-power-bar');
+  if (equipmentBox !== null && equipmentBox.width >= 4 && equipmentBox.height >= 4) {
+    const eqCandidates = [
+      { x: equipmentBox.x + equipmentBox.width * 0.2, y: equipmentBox.y + equipmentBox.height * 0.2 },
+      { x: equipmentBox.x + equipmentBox.width * 0.8, y: equipmentBox.y + equipmentBox.height * 0.2 },
+      { x: equipmentBox.x + equipmentBox.width * 0.5, y: equipmentBox.y + equipmentBox.height * 0.5 },
+    ];
+    const eqPoint = eqCandidates.find((candidate) => !pointHitsMember(candidate.x, candidate.y));
+    if (eqPoint !== undefined) {
+      await page.mouse.click(eqPoint.x, eqPoint.y);
+      await page.waitForTimeout(300);
+      const equipmentIdentity = await textOf('floorgrid-equipment-panel-identity');
+      const stationCountAfterEq = await page.getByTestId('floorgrid-station-panel').count();
+      if (
+        equipmentIdentity !== null &&
+        equipmentIdentity.includes('Power bar') &&
+        stationCountAfterEq === 0
+      ) {
+        ok(
+          `${tag}: tapping power-bar inspects equipment ("${equipmentIdentity}"), not the Competition Bench Bay`,
+        );
+      } else {
+        fail(
+          `${tag}: tapping power-bar collapsed into the station — equipment="${equipmentIdentity}", station panels=${stationCountAfterEq}`,
+        );
+      }
+      await page.getByText('close', { exact: true }).click().catch(() => {});
+    } else {
+      fail(`${tag}: power-bar bbox was fully covered by a member; equipment-vs-station tap could not be aimed`);
+    }
+  } else {
+    fail(`${tag}: floorgrid-fixed-power-bar has no box to inspect as equipment`);
+  }
+
 
   await page.getByText('build', { exact: true }).click();
   await page.waitForTimeout(300);

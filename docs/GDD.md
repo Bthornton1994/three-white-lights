@@ -3165,11 +3165,13 @@ than the ruling's own §1–§23 sequence:
   C.1d at `460f794a` — Empire now feels like a primitive gym-management
   game rather than controls around an animation. Carry-forward debts
   (C-DEBT-01..04) do not reopen it. C.2 simulator fidelity is recorded in
-  §5.16. Stage D is recorded in §5.17.
+  §5.16. Stage D is recorded in §5.17. Stage D.1 is recorded in §5.18.
 - **Stage D.** Quality/Capacity/Throughput on Barbell first (item 2),
   touching `floorSim.ts`'s capacity constant — the one piece of this pass
   that changes the simulation's own core rather than its surface, so it
   gets its own dedicated build-and-critic round rather than riding with (C).
+  The mechanism proof is §5.17. The physical abstraction is corrected in
+  §5.18: equipment is not a training station.
 - **Stage E.** Career-side of the reputation feed (item 4), built and
   proven as a pure function first; the cross-directory wiring itself stays a
   separate, later, explicitly-authorised crossing.
@@ -3532,12 +3534,14 @@ operating multiple locations. This is not an unpause of §5.11 Stage F.
 Current sequence remains:
 
 Stage C human close (done at `460f794a`) → C.2 simulator fidelity (done,
-§5.16) → Stage D Q/C/T (done, §5.17) → D2 balance verdict → reputation seam → persistent
+§5.16) → Stage D Q/C/T (done, §5.17) → Stage D.1 training-station semantics
+(done, §5.18) → D2 balance verdict → reputation seam → persistent
 NPC roster / tenure → deeper staff policy → portfolio only after explicit
 human unpause.
 
 The doctrine does not authorize implementing future stages early. It defines
 their quality bar. C.2 is recorded in §5.16. Stage D is recorded in §5.17.
+Stage D.1 is recorded in §5.18.
 
 ### 5.16 Stage C.2 — simulator fidelity (online vs offline in aggregate pacing)
 
@@ -3694,7 +3698,132 @@ manager. Did not start reputation, persistent NPCs, or Portfolio. Did not
 touch Session A (`src/career`, `src/lift`, `src/game`, `src/shell`,
 `src/art`). Quality does not raise Career strength.
 
-Stage D implementation is complete. Awaiting human Living Gym playtest
+Stage D's mechanism proof stands. A design review found the physical
+abstraction wrong: Stage D treated power-bar / comp-plates / flat-bench as
+independent member-service stations. They are equipment. Stage D.1 (§5.18)
+retargets Q/C/T onto the Competition Bench Bay without reverting the
+distinct-axis proof.
+
+### 5.18 Stage D.1 — equipment is not a training station
+
+Stage D.1 is a semantic correction of Stage D, not a revert, not D2, and not
+a catalog. Q/C/T remain three distinct mechanisms. They now attach to a
+functional training station, not to a piece of equipment.
+
+**The defect.** Stage D keyed `StationCapabilityState` per
+`LadderEquipmentItem`. Members pathing to competition plates or a power bar
+as if each were a training destination is not a credible powerlifting gym.
+Capacity 2 then meant two approach cells around one physical bench. That is
+mathematically distinct from Throughput. It is not a second bench.
+
+**Equipment ≠ training station.** Equipment is a physical thing the gym
+owns (a bar, plates, a bench surface). A training station / bay is a
+functional place a member trains. Future stations named here and not built:
+Squat Rack, Deadlift Platform, Combo Rack, Warm-up Bench, Accessory
+Station, Recovery Area.
+
+**The first functional station.** Competition Bench Bay. Assembled
+deterministically from the opening garage's required starting equipment:
+
+- power-bar
+- comp-plates
+- flat-bench (primary surface)
+
+All three must be on the floor or the bay is incomplete: members cannot
+train there, and anyone targeting it interrupts with `target-removed`.
+Component equipment stays owned and movable. Tapping the primary surface of
+a complete bay is tapping the station; tapping the bar or plates is
+inspecting equipment. No crafting UX.
+
+**Where the state lives.** Still `GymViewState.capability`. Keys are now
+`TrainingStationKind` (`competition-bench-bay`), not SKUs. Stock is still
+the empty map. `ManagedGym` is still untouched. Costs, max level,
+experience, affinity, and throughput factor are unchanged: Quality 120 /
+Capacity 180 / Throughput 150; `STATION_UPGRADE_LEVEL_MAX` 1; experience
+1 → 2; affinity bonus 0.25; throughput factor 0.65. C.2 economy is
+unchanged.
+
+**The three mechanisms, retargeted.**
+
+- **Quality — Competition pads.** A property of the bay. May be painted on
+  its equipment (better bench surface, competition bar, calibrated plates)
+  but members demand the nicer BAY, not "tighter plates" as an activity.
+  Same one bay, same capacity, same service duration. Training-experience
+  1 → 2. Affinity bonus 0.25. Does not credit Gym Bucks. Does not raise
+  Career e1RM / Total / meet performance (§8.1). Goldenrod rest-edge on the
+  bay is the world cue.
+- **Capacity — Second bench.** A second actual 2×4 bench position,
+  orthogonally adjacent to the primary (right, down, left, up — in that
+  search order). Opening garage realises it at (5,0). It occupies eight
+  more floor cells, has its own use position, and seats a second member
+  simultaneously. Not two cells around one bench. If the current layout
+  cannot fit the second 2×4, Capacity refuses (`no-second-position`) rather
+  than silently clamping. Space is a strategic constraint. The world cue
+  is a second bench sprite labelled "second bench", not a capacity pad.
+- **Throughput — Plate tree.** The same bay, the same footprints, shorter
+  real service / handover (`STATION_THROUGHPUT_USE_TICKS_FACTOR` 0.65).
+  Does not add a bench. Does not change Quality. Darkkhaki mark on the
+  bay is the world cue.
+
+**Deterministic bottleneck experiment.** Opening garage, complete
+Competition Bench Bay, three powerlifters, seed 1, 240 ticks. Standing
+`queuing` counted, not `seeking`. Same demand, four capability maps.
+
+| Axis | bays | positions | cells | completions | maxQueue | maxUsing | meanUseTicks | experience | demand |
+|---|---|---|---|---|---|---|---|---|---|
+| stock | 1 | 1 | 8 | 6 | 2 | 1 | 35.67 | 6 | 679 |
+| Quality | 1 | 1 | 8 | 6 | 2 | 1 | 35.67 | 12 | 679 |
+| Capacity | 2 | 2 | 16 | 9 | 1 | 2 | 37.11 | 9 | 657 |
+| Throughput | 1 | 1 | 8 | 9 | 2 | 1 | 23.00 | 9 | 663 |
+
+Quality matches stock on every physical number (there is no other station
+to prefer in this fixture) and doubles experience. Capacity adds a real
+second bench, doubles occupied cells, raises peak occupancy to 2, cuts the
+standing queue, and does not apply the 0.65 factor (the 37.11 vs 35.67
+drift is start-tick hash spread, not a throughput change). Throughput
+shortens real service time without adding a bench. Completions rose under
+both Capacity and Throughput, by different physical means.
+
+**Quality appeal, two-station garage.** Opening garage plus specialty-bars
+at (7,3), three powerlifters, seed 1, 240 ticks. Powerlifter published
+affinity is 0.5 on the bay and 0.7 on specialty-bars; Quality's +0.25
+inverts that.
+
+| Map | bay ticks | bay completions | bars ticks | bars completions |
+|---|---|---|---|---|
+| stock | 205 | 5 | 445 | 5 |
+| Quality | 440 | 6 | 212 | 4 |
+
+No extra seat. No shorter hold. Members walk to the nicer bay.
+
+**World presentation.** Tap equipment (bar, plates, incomplete bench) →
+inspect / move / condition. Tap the complete bay's primary surface or the
+second bench → station operation / queue / Q/C/T. Do not collapse these.
+Panel copy is the physical fitting, not Q=1/C=1/T=1: "Competition pads —
+better training experience (120)"; "Second bench — two can train at once
+(180)"; "Plate tree — faster changeovers (150)". Refuse copy is "Place the
+bay first" / "No room for a second bench".
+
+**D-DEBT — stored / unplaced equipment currently wears.** Kept visible,
+not stealth-fixed. `ManagedGym` still has no `FloorState`. Unplaced
+session mats still wear identically to the placed flat bench over the same
+check-in. The corrected station model does not by itself give wear a
+placed-and-used seam: wear still keys `ownedItemsOf`. D2's first explicit
+balance verdict should include it.
+
+**Cloud-scope cleanup.** Stage D added a `dev` script to `package.json` and
+excluded App Builder files from `tsconfig.json` so a cloud sandbox would
+typecheck. Those were not repository-level requirements. Reverted to the
+834dbbf7 contents: no `dev` script; `tsconfig.json` excludes only
+`node_modules`, `dist`, `.expo`. Cloud-only files stay outside tracked
+project configuration.
+
+**What Stage D.1 did not do.** Did not start D2. Did not start reputation,
+persistent NPCs, or Portfolio. Did not retune C.2. Did not build the rest
+of the station catalog. Did not touch Session A. Did not silently fix
+D-DEBT.
+
+Stage D.1 implementation is complete. Awaiting human Living Gym playtest
 before D2.
 
 ---

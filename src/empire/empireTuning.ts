@@ -2545,10 +2545,11 @@ export const EMPIRE_TUNING = Object.freeze({
   STATION_UPGRADE_AXES: Object.freeze(['quality', 'capacity', 'throughput'] as const),
 
   /**
-   * Stage D slice: the three starting Barbell pieces. Session equipment and
-   * squat-rack stay at stock. Not a catalog expansion.
+   * Stage D.1 slice: the one functional station the opening garage can
+   * assemble. Equipment SKUs are not stations. Session equipment and a
+   * future squat-rack stay at stock. Not a catalog expansion.
    */
-  STATION_UPGRADE_SLICE: Object.freeze(['power-bar', 'comp-plates', 'flat-bench'] as const),
+  STATION_UPGRADE_SLICE: Object.freeze(['competition-bench-bay'] as const),
 
   /**
    * First-pass Gym Bucks cost of one axis on a stock slice station. D2 tunes
@@ -2567,8 +2568,10 @@ export const EMPIRE_TUNING = Object.freeze({
 
   /**
    * Extra simultaneous slots one capacity level adds. Stock is 1; a purchased
-   * capacity level makes 1 + this. The floor sim assigns that many use cells
-   * from the station's approach cells, so a boxed-in station may realise fewer.
+   * capacity level makes 1 + this. Stage D.1 realises those slots as a
+   * second physical bench footprint adjacent to the primary, not as two
+   * approach cells around one bench. A garage that cannot fit the second
+   * bench is refused (`no-second-position`) rather than silently clamped.
    */
   STATION_CAPACITY_BONUS_SLOTS: 1,
 

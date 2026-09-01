@@ -1,28 +1,27 @@
 /**
- * stationCapability.test.ts — GDD §5.14 Stage D / §5.15 Living Gym Q/C/T.
+ * stationCapability.test.ts — GDD §5.18 Stage D.1 Q/C/T on the Competition
+ * Bench Bay, not on equipment SKUs.
  *
  * Proves the three axes are distinct mechanisms, not one "better station"
- * scalar. The bottleneck experiment runs the same garage / one-bench /
- * three-powerlifter demand under stock, Quality-only, Capacity-only and
+ * scalar. The bottleneck experiment runs the opening garage / complete bay /
+ * three powerlifters under stock, Quality-only, Capacity-only and
  * Throughput-only. Wear-on-unplaced is reproduced here as D-DEBT, not fixed.
  */
 
 import { describe, expect, it } from 'vitest';
 
 import { EMPIRE_TUNING } from './empireTuning';
-import {
-  createFloorState,
-  type FloorState,
-} from './floor';
+import { createFloorState, placeFloorItem, type FloorState } from './floor';
 import {
   createFloorSimState,
   floorStations,
   stationOccupancy,
   stepFloorSim,
   type FloorSimContext,
+  type FloorSimMember,
+  type FloorSimState,
   type FloorStationRef,
 } from './floorSim';
-import { type LadderEquipmentItem } from './ladder';
 import {
   createManagedGym,
   itemCondition,
@@ -45,38 +44,33 @@ import {
   type StationCapabilityState,
   type StationUpgradeAxis,
 } from './stationCapability';
+import {
+  COMPETITION_BENCH_BAY,
+  bayOccupiedCells,
+  competitionBenchBay,
+} from './trainingStation';
 
 const T = EMPIRE_TUNING;
-const BENCH: LadderEquipmentItem = 'flat-bench';
-const BENCH_REF: FloorStationRef = Object.freeze({ kind: 'fixed', item: BENCH });
+const BAY = COMPETITION_BENCH_BAY;
+const BAY_REF: FloorStationRef = Object.freeze({ kind: 'training', station: BAY });
 const EXPERIMENT_TICKS = 240;
 const EXPERIMENT_SEED = 1;
+const OWNED = Object.freeze([...T.LADDER_STARTING_EQUIPMENT]);
 
-/** Garage with only the flat bench on the floor — one obvious bottleneck. */
-function benchOnlyFloor(): FloorState {
-  const opening = createFloorState('garage');
-  return Object.freeze({
-    ...opening,
-    furniture: Object.freeze({ [BENCH]: opening.furniture[BENCH] }),
-  });
-}
-
-function contextWith(capability: StationCapabilityState): FloorSimContext {
+function openingContext(capability: StationCapabilityState): FloorSimContext {
   return {
     rung: 'garage',
-    floor: benchOnlyFloor(),
-    barbellOwned: [...T.LADDER_STARTING_EQUIPMENT],
+    floor: createFloorState('garage'),
+    barbellOwned: OWNED,
     sessionOwned: [],
     capability,
   };
 }
 
-function capabilityWith(
-  axis: StationUpgradeAxis,
-): StationCapabilityState {
+function capabilityWith(axis: StationUpgradeAxis): StationCapabilityState {
   const preview = upgradeStation(
     stockStationCapability(),
-    BENCH,
+    BAY,
     axis,
     10_000,
     true,
@@ -88,32 +82,50 @@ function capabilityWith(
   return preview.capability;
 }
 
+function asPowerlifters(state: FloorSimState): FloorSimState {
+  const members: FloorSimMember[] = [];
+  for (const member of state.members) {
+    members.push(Object.freeze({ ...member, type: 'powerlifter' }));
+  }
+  return Object.freeze({ ...state, members: Object.freeze(members) });
+}
+
 interface BottleneckReport {
-  readonly slots: number;
+  readonly physicalBays: number;
+  readonly usablePositions: number;
+  readonly floorCellsOccupied: number;
   readonly completions: number;
   readonly maxQueue: number;
   readonly maxUsing: number;
   readonly meanUseTicks: number;
   readonly experience: number;
+  readonly targetDemand: number;
 }
 
 function runBottleneck(capability: StationCapabilityState): BottleneckReport {
-  const context = contextWith(capability);
+  const context = openingContext(capability);
   const stations = floorStations(context);
-  const bench = stations.find(
-    (row) => row.ref.kind === 'fixed' && row.ref.item === BENCH,
+  const bayStation = stations.find(
+    (row) => row.ref.kind === 'training' && row.ref.station === BAY,
   );
-  if (bench === undefined) throw new Error('fixture lost the flat bench');
-  let state = createFloorSimState(context, EXPERIMENT_SEED);
+  if (bayStation === undefined) throw new Error('fixture lost the Competition Bench Bay');
+  const bay = competitionBenchBay(
+    context.floor,
+    context.barbellOwned,
+    stationLevels(capability, BAY).capacity,
+  );
+  let state = asPowerlifters(createFloorSimState(context, EXPERIMENT_SEED));
   let completions = 0;
   let maxQueue = 0;
   let maxUsing = 0;
   let useTicksSum = 0;
   let useTicksCount = 0;
+  let targetDemand = 0;
   const opened = new Map<number, number>();
   for (let i = 0; i < EXPERIMENT_TICKS; i += 1) {
-    const next = stepFloorSim(state, context);
+    const next = asPowerlifters(stepFloorSim(state, context));
     for (const member of next.members) {
+      if (member.target !== null && member.target.kind === 'training') targetDemand += 1;
       const previous = state.members[member.index];
       if (previous === undefined) continue;
       if (member.state === 'using' && previous.state !== 'using') {
@@ -128,53 +140,56 @@ function runBottleneck(capability: StationCapabilityState): BottleneckReport {
         }
       }
     }
-    maxUsing = Math.max(maxUsing, stationOccupancy(next.members, BENCH_REF));
+    maxUsing = Math.max(maxUsing, stationOccupancy(next.members, BAY_REF));
     let standing = 0;
     for (const member of next.members) {
       if (member.state !== 'queuing') continue;
-      if (member.target === null || member.target.kind !== 'fixed') continue;
-      if (member.target.item !== BENCH) continue;
+      if (member.target === null || member.target.kind !== 'training') continue;
       standing += 1;
     }
     maxQueue = Math.max(maxQueue, standing);
     state = next;
   }
   return Object.freeze({
-    slots: bench.useCells.length,
+    physicalBays: bay.benches.length,
+    usablePositions: bayStation.useCells.length,
+    floorCellsOccupied: bayOccupiedCells(bay),
     completions,
     maxQueue,
     maxUsing,
     meanUseTicks: useTicksCount === 0 ? 0 : useTicksSum / useTicksCount,
-    experience: completions * stationTrainingExperience(capability, 'fixed', BENCH),
+    experience: completions * stationTrainingExperience(capability, 'training', BAY),
+    targetDemand,
   });
 }
 
-describe('stationCapability.ts — GDD §5.14 Stage D algebra', () => {
+describe('stationCapability.ts — GDD §5.18 Stage D.1 algebra', () => {
   it('opens at stock: empty map, one slot, identity duration, stock experience', () => {
     const stock = stockStationCapability();
     expect(stock).toEqual({});
-    expect(stationLevels(stock, BENCH)).toEqual({
+    expect(stationLevels(stock, BAY)).toEqual({
       quality: 0,
       capacity: 0,
       throughput: 0,
     });
-    expect(stationCapacitySlots(stock, 'fixed', BENCH)).toBe(1);
-    expect(stationUseTicksFactor(stock, 'fixed', BENCH)).toBe(1);
-    expect(stationTrainingExperience(stock, 'fixed', BENCH)).toBe(
+    expect(stationCapacitySlots(stock, 'training', BAY)).toBe(1);
+    expect(stationUseTicksFactor(stock, 'training', BAY)).toBe(1);
+    expect(stationTrainingExperience(stock, 'training', BAY)).toBe(
       T.STATION_STOCK_TRAINING_EXPERIENCE,
     );
   });
 
-  it('the Stage D slice is exactly the three starting Barbell pieces', () => {
-    expect([...T.STATION_UPGRADE_SLICE]).toEqual([...T.LADDER_STARTING_EQUIPMENT]);
-    for (const item of T.STATION_UPGRADE_SLICE) {
-      expect(isStationUpgradeSlice(item)).toBe(true);
-    }
+  it('the Stage D.1 slice is the Competition Bench Bay, not the starting SKUs', () => {
+    expect([...T.STATION_UPGRADE_SLICE]).toEqual([BAY]);
+    expect(isStationUpgradeSlice(BAY)).toBe(true);
+    expect(isStationUpgradeSlice('flat-bench')).toBe(false);
+    expect(isStationUpgradeSlice('power-bar')).toBe(false);
+    expect(isStationUpgradeSlice('comp-plates')).toBe(false);
     expect(isStationUpgradeSlice('squat-rack')).toBe(false);
     expect(isStationUpgradeSlice('mats')).toBe(false);
   });
 
-  it('session stations and non-slice Barbell stay at stock even if a map is handed in', () => {
+  it('session stations and leftover Barbell stay at stock even if a map is handed in', () => {
     const quality = capabilityWith('quality');
     expect(stationCapacitySlots(quality, 'session', 'mats')).toBe(1);
     expect(stationUseTicksFactor(quality, 'session', 'mats')).toBe(1);
@@ -188,6 +203,8 @@ describe('stationCapability.ts — GDD §5.14 Stage D algebra', () => {
       T.STATION_STOCK_TRAINING_EXPERIENCE,
     );
     expect(stationQualityAffinityBonus(quality, 'fixed', 'squat-rack')).toBe(0);
+    expect(stationCapacitySlots(quality, 'fixed', 'flat-bench')).toBe(1);
+    expect(stationQualityAffinityBonus(quality, 'fixed', 'flat-bench')).toBe(0);
   });
 
   it('each axis has a distinct first-pass Gym Bucks cost, not a retune of existing SKUs', () => {
@@ -203,9 +220,9 @@ describe('stationCapability.ts — GDD §5.14 Stage D algebra', () => {
 
   it('Quality raises experience and does not add a slot or shorten duration', () => {
     const quality = capabilityWith('quality');
-    expect(stationCapacitySlots(quality, 'fixed', BENCH)).toBe(1);
-    expect(stationUseTicksFactor(quality, 'fixed', BENCH)).toBe(1);
-    expect(stationTrainingExperience(quality, 'fixed', BENCH)).toBe(
+    expect(stationCapacitySlots(quality, 'training', BAY)).toBe(1);
+    expect(stationUseTicksFactor(quality, 'training', BAY)).toBe(1);
+    expect(stationTrainingExperience(quality, 'training', BAY)).toBe(
       T.STATION_QUALITY_TRAINING_EXPERIENCE,
     );
     expect(T.STATION_QUALITY_TRAINING_EXPERIENCE).toBeGreaterThan(
@@ -215,24 +232,24 @@ describe('stationCapability.ts — GDD §5.14 Stage D algebra', () => {
 
   it('Capacity adds a real simultaneous slot and does not change duration or experience', () => {
     const capacity = capabilityWith('capacity');
-    expect(stationCapacitySlots(capacity, 'fixed', BENCH)).toBe(
+    expect(stationCapacitySlots(capacity, 'training', BAY)).toBe(
       1 + T.STATION_CAPACITY_BONUS_SLOTS,
     );
-    expect(stationUseTicksFactor(capacity, 'fixed', BENCH)).toBe(1);
-    expect(stationTrainingExperience(capacity, 'fixed', BENCH)).toBe(
+    expect(stationUseTicksFactor(capacity, 'training', BAY)).toBe(1);
+    expect(stationTrainingExperience(capacity, 'training', BAY)).toBe(
       T.STATION_STOCK_TRAINING_EXPERIENCE,
     );
   });
 
   it('Throughput shortens real service duration and does not add a slot or raise experience', () => {
     const throughput = capabilityWith('throughput');
-    expect(stationCapacitySlots(throughput, 'fixed', BENCH)).toBe(1);
-    expect(stationUseTicksFactor(throughput, 'fixed', BENCH)).toBe(
+    expect(stationCapacitySlots(throughput, 'training', BAY)).toBe(1);
+    expect(stationUseTicksFactor(throughput, 'training', BAY)).toBe(
       T.STATION_THROUGHPUT_USE_TICKS_FACTOR,
     );
     expect(T.STATION_THROUGHPUT_USE_TICKS_FACTOR).toBeLessThan(1);
     expect(T.STATION_THROUGHPUT_USE_TICKS_FACTOR).toBeGreaterThan(0);
-    expect(stationTrainingExperience(throughput, 'fixed', BENCH)).toBe(
+    expect(stationTrainingExperience(throughput, 'training', BAY)).toBe(
       T.STATION_STOCK_TRAINING_EXPERIENCE,
     );
   });
@@ -240,7 +257,7 @@ describe('stationCapability.ts — GDD §5.14 Stage D algebra', () => {
   it('upgradeStation grants the axis when the purse, placement and realised capacity allow it', () => {
     const outcome = upgradeStation(
       stockStationCapability(),
-      BENCH,
+      BAY,
       'quality',
       120,
       true,
@@ -249,15 +266,15 @@ describe('stationCapability.ts — GDD §5.14 Stage D algebra', () => {
     expect(outcome.kind).toBe('upgraded');
     if (outcome.kind !== 'upgraded') return;
     expect(outcome.costGymBucks).toBe(120);
-    expect(stationLevels(outcome.capability, BENCH).quality).toBe(1);
-    expect(stationLevels(outcome.capability, BENCH).capacity).toBe(0);
-    expect(stationLevels(outcome.capability, BENCH).throughput).toBe(0);
+    expect(stationLevels(outcome.capability, BAY).quality).toBe(1);
+    expect(stationLevels(outcome.capability, BAY).capacity).toBe(0);
+    expect(stationLevels(outcome.capability, BAY).throughput).toBe(0);
   });
 
-  it('refuses a non-slice item, a second purchase, an unplaced station, an unrealised second position, and a short purse', () => {
+  it('refuses a non-slice item, a second purchase, an unplaced station, an unrealised second bench, and a short purse', () => {
     const notSlice = upgradeStation(
       stockStationCapability(),
-      'squat-rack',
+      'flat-bench',
       'quality',
       10_000,
       true,
@@ -268,7 +285,7 @@ describe('stationCapability.ts — GDD §5.14 Stage D algebra', () => {
 
     const once = upgradeStation(
       stockStationCapability(),
-      BENCH,
+      BAY,
       'quality',
       10_000,
       true,
@@ -276,13 +293,13 @@ describe('stationCapability.ts — GDD §5.14 Stage D algebra', () => {
     );
     expect(once.kind).toBe('upgraded');
     if (once.kind !== 'upgraded') return;
-    const twice = upgradeStation(once.capability, BENCH, 'quality', 10_000, true, true);
+    const twice = upgradeStation(once.capability, BAY, 'quality', 10_000, true, true);
     expect(twice.kind).toBe('refused');
     if (twice.kind === 'refused') expect(twice.reason).toBe('already-upgraded');
 
     const unplaced = upgradeStation(
       stockStationCapability(),
-      BENCH,
+      BAY,
       'quality',
       10_000,
       false,
@@ -293,7 +310,7 @@ describe('stationCapability.ts — GDD §5.14 Stage D algebra', () => {
 
     const boxed = upgradeStation(
       stockStationCapability(),
-      BENCH,
+      BAY,
       'capacity',
       10_000,
       true,
@@ -304,7 +321,7 @@ describe('stationCapability.ts — GDD §5.14 Stage D algebra', () => {
 
     const broke = upgradeStation(
       stockStationCapability(),
-      BENCH,
+      BAY,
       'quality',
       119,
       true,
@@ -315,22 +332,26 @@ describe('stationCapability.ts — GDD §5.14 Stage D algebra', () => {
   });
 });
 
-describe('Stage D living-gym bottleneck — Quality vs Capacity vs Throughput vs stock', () => {
+describe('Stage D.1 living-gym bottleneck — Quality vs Capacity vs Throughput vs stock', () => {
   const baseline = runBottleneck(stockStationCapability());
   const quality = runBottleneck(capabilityWith('quality'));
   const capacity = runBottleneck(capabilityWith('capacity'));
   const throughput = runBottleneck(capabilityWith('throughput'));
 
-  it('stock is a real queue: one slot, somebody waiting, uses completing', () => {
-    expect(baseline.slots).toBe(1);
+  it('stock is a real queue: one bay, one position, somebody waiting, uses completing', () => {
+    expect(baseline.physicalBays).toBe(1);
+    expect(baseline.usablePositions).toBe(1);
+    expect(baseline.floorCellsOccupied).toBe(8);
     expect(baseline.maxUsing).toBe(1);
     expect(baseline.maxQueue).toBeGreaterThan(0);
     expect(baseline.completions).toBeGreaterThan(0);
     expect(baseline.meanUseTicks).toBeGreaterThan(0);
   });
 
-  it('Quality matches stock on queue, occupancy, duration and completions, and doubles experience', () => {
-    expect(quality.slots).toBe(baseline.slots);
+  it('Quality matches stock on bays, occupancy, duration and completions, and doubles experience', () => {
+    expect(quality.physicalBays).toBe(baseline.physicalBays);
+    expect(quality.usablePositions).toBe(baseline.usablePositions);
+    expect(quality.floorCellsOccupied).toBe(baseline.floorCellsOccupied);
     expect(quality.maxUsing).toBe(baseline.maxUsing);
     expect(quality.maxQueue).toBe(baseline.maxQueue);
     expect(quality.completions).toBe(baseline.completions);
@@ -342,16 +363,15 @@ describe('Stage D living-gym bottleneck — Quality vs Capacity vs Throughput vs
     expect(quality.experience).toBeGreaterThan(baseline.experience);
   });
 
-  it('Capacity adds a real second seat, raises peak occupancy, and does not shorten a use', () => {
-    expect(capacity.slots).toBe(2);
+  it('Capacity adds a real second bench, raises peak occupancy, and does not shorten a use', () => {
+    expect(capacity.physicalBays).toBe(2);
+    expect(capacity.usablePositions).toBe(2);
+    expect(capacity.floorCellsOccupied).toBe(16);
     expect(capacity.maxUsing).toBe(2);
     expect(capacity.maxUsing).toBeGreaterThan(baseline.maxUsing);
     expect(capacity.completions).toBeGreaterThan(baseline.completions);
     expect(capacity.maxQueue).toBeLessThan(baseline.maxQueue);
-    // Start-tick hash spread moves a little when two seats fill on different
-    // ticks; Capacity does not apply the throughput factor. The mean stays
-    // near stock and far from Throughput's shortened service.
-    expect(stationUseTicksFactor(capabilityWith('capacity'), 'fixed', BENCH)).toBe(1);
+    expect(stationUseTicksFactor(capabilityWith('capacity'), 'training', BAY)).toBe(1);
     expect(Math.abs(capacity.meanUseTicks - baseline.meanUseTicks)).toBeLessThan(
       (baseline.meanUseTicks - throughput.meanUseTicks) / 2,
     );
@@ -360,8 +380,10 @@ describe('Stage D living-gym bottleneck — Quality vs Capacity vs Throughput vs
     );
   });
 
-  it('Throughput shortens real service time without adding a seat', () => {
-    expect(throughput.slots).toBe(1);
+  it('Throughput shortens real service time without adding a bench', () => {
+    expect(throughput.physicalBays).toBe(1);
+    expect(throughput.usablePositions).toBe(1);
+    expect(throughput.floorCellsOccupied).toBe(8);
     expect(throughput.maxUsing).toBe(1);
     expect(throughput.meanUseTicks).toBeLessThan(baseline.meanUseTicks);
     expect(throughput.completions).toBeGreaterThan(baseline.completions);
@@ -374,127 +396,139 @@ describe('Stage D living-gym bottleneck — Quality vs Capacity vs Throughput vs
   it('Capacity and Throughput relieve the queue by different physical means', () => {
     expect(capacity.maxUsing).toBeGreaterThan(throughput.maxUsing);
     expect(throughput.meanUseTicks).toBeLessThan(capacity.meanUseTicks);
-    expect(capacity.slots).toBeGreaterThan(throughput.slots);
+    expect(capacity.physicalBays).toBeGreaterThan(throughput.physicalBays);
+    expect(capacity.floorCellsOccupied).toBeGreaterThan(throughput.floorCellsOccupied);
   });
 
-  it('records the four reports for the GDD Stage D experiment', () => {
+  it('records the four reports for the GDD Stage D.1 experiment', () => {
     expect({ baseline, quality, capacity, throughput }).toEqual({
       baseline: {
-        slots: 1,
-        completions: 5,
+        physicalBays: 1,
+        usablePositions: 1,
+        floorCellsOccupied: 8,
+        completions: 6,
         maxQueue: 2,
         maxUsing: 1,
-        meanUseTicks: 35.8,
-        experience: 5,
+        meanUseTicks: 35.666666666666664,
+        experience: 6,
+        targetDemand: 679,
       },
       quality: {
-        slots: 1,
-        completions: 5,
+        physicalBays: 1,
+        usablePositions: 1,
+        floorCellsOccupied: 8,
+        completions: 6,
         maxQueue: 2,
         maxUsing: 1,
-        meanUseTicks: 35.8,
-        experience: 10,
+        meanUseTicks: 35.666666666666664,
+        experience: 12,
+        targetDemand: 679,
       },
       capacity: {
-        slots: 2,
-        completions: 8,
+        physicalBays: 2,
+        usablePositions: 2,
+        floorCellsOccupied: 16,
+        completions: 9,
         maxQueue: 1,
         maxUsing: 2,
-        meanUseTicks: 35.125,
-        experience: 8,
+        meanUseTicks: 37.111111111111114,
+        experience: 9,
+        targetDemand: 657,
       },
       throughput: {
-        slots: 1,
-        completions: 8,
+        physicalBays: 1,
+        usablePositions: 1,
+        floorCellsOccupied: 8,
+        completions: 9,
         maxQueue: 2,
         maxUsing: 1,
-        meanUseTicks: 24.25,
-        experience: 8,
+        meanUseTicks: 23,
+        experience: 9,
+        targetDemand: 663,
       },
     });
   });
 });
 
-describe('Stage D Quality appeal — demand shifts when another station exists', () => {
-  function twoStationFloor(): FloorState {
-    return Object.freeze({
-      rung: 'garage' as const,
-      placements: Object.freeze({}),
-      furniture: Object.freeze({
-        'flat-bench': Object.freeze({ x: 6, y: 0 }),
-        'power-bar': Object.freeze({ x: 0, y: 3 }),
-      }),
-    });
+describe('Stage D.1 Quality appeal — demand shifts when another station exists', () => {
+  function withBars(): FloorState {
+    const opening = createFloorState('garage');
+    const placed = placeFloorItem(opening, ['specialty-bars'], 'specialty-bars', { x: 7, y: 3 });
+    if (placed.kind !== 'placed') throw new Error('fixture could not place specialty-bars');
+    return placed.state;
   }
 
-  function twoStationContext(capability: StationCapabilityState): FloorSimContext {
+  function barsContext(capability: StationCapabilityState): FloorSimContext {
     return {
       rung: 'garage',
-      floor: twoStationFloor(),
-      barbellOwned: [...T.LADDER_STARTING_EQUIPMENT],
-      sessionOwned: [],
+      floor: withBars(),
+      barbellOwned: OWNED,
+      sessionOwned: ['specialty-bars'],
       capability,
     };
   }
 
   function demandByStation(capability: StationCapabilityState): {
-    readonly benchCompletions: number;
+    readonly bayCompletions: number;
     readonly barCompletions: number;
-    readonly benchTargetTicks: number;
+    readonly bayTargetTicks: number;
     readonly barTargetTicks: number;
   } {
-    const context = twoStationContext(capability);
-    let state = createFloorSimState(context, EXPERIMENT_SEED);
-    let benchCompletions = 0;
+    const context = barsContext(capability);
+    let state = asPowerlifters(createFloorSimState(context, EXPERIMENT_SEED));
+    let bayCompletions = 0;
     let barCompletions = 0;
-    let benchTargetTicks = 0;
+    let bayTargetTicks = 0;
     let barTargetTicks = 0;
     for (let i = 0; i < EXPERIMENT_TICKS; i += 1) {
-      const next = stepFloorSim(state, context);
+      const next = asPowerlifters(stepFloorSim(state, context));
       for (const member of next.members) {
-        if (member.target !== null && member.target.kind === 'fixed') {
-          if (member.target.item === BENCH) benchTargetTicks += 1;
-          if (member.target.item === 'power-bar') barTargetTicks += 1;
+        if (member.target !== null && member.target.kind === 'training') bayTargetTicks += 1;
+        if (
+          member.target !== null &&
+          member.target.kind === 'session' &&
+          member.target.item === 'specialty-bars'
+        ) {
+          barTargetTicks += 1;
         }
         const previous = state.members[member.index];
         if (previous === undefined || previous.target === null) continue;
         if (previous.state !== 'using' || member.state === 'using') continue;
-        if (previous.target.kind !== 'fixed') continue;
-        if (previous.target.item === BENCH) benchCompletions += 1;
-        if (previous.target.item === 'power-bar') barCompletions += 1;
+        if (previous.target.kind === 'training') bayCompletions += 1;
+        if (previous.target.kind === 'session' && previous.target.item === 'specialty-bars') {
+          barCompletions += 1;
+        }
       }
       state = next;
     }
     return Object.freeze({
-      benchCompletions,
+      bayCompletions,
       barCompletions,
-      benchTargetTicks,
+      bayTargetTicks,
       barTargetTicks,
     });
   }
 
-  it('Quality on the far bench pulls demand onto the bench without adding a seat', () => {
+  it('Quality on the bay pulls demand onto the bay without adding a bench', () => {
     const stock = demandByStation(stockStationCapability());
     const quality = demandByStation(capabilityWith('quality'));
-    expect(stationCapacitySlots(capabilityWith('quality'), 'fixed', BENCH)).toBe(1);
-    expect(stationUseTicksFactor(capabilityWith('quality'), 'fixed', BENCH)).toBe(1);
+    expect(stationCapacitySlots(capabilityWith('quality'), 'training', BAY)).toBe(1);
+    expect(stationUseTicksFactor(capabilityWith('quality'), 'training', BAY)).toBe(1);
     expect(stock.barTargetTicks).toBeGreaterThan(0);
-    expect(quality.benchTargetTicks).toBeGreaterThan(stock.benchTargetTicks);
-    expect({ stock, quality }).toEqual({
-      stock: {
-        benchCompletions: 5,
-        barCompletions: 6,
-        benchTargetTicks: 205,
-        barTargetTicks: 440,
-      },
-      quality: {
-        benchCompletions: 6,
-        barCompletions: 5,
-        benchTargetTicks: 440,
-        barTargetTicks: 205,
-      },
+    expect(quality.bayTargetTicks).toBeGreaterThan(stock.bayTargetTicks);
+    expect(quality.bayCompletions + quality.barCompletions).toBeGreaterThan(0);
+    expect(stock).toEqual({
+      bayCompletions: 5,
+      barCompletions: 5,
+      bayTargetTicks: 205,
+      barTargetTicks: 445,
     });
-    expect(quality.benchCompletions + quality.barCompletions).toBeGreaterThan(0);
+    expect(quality).toEqual({
+      bayCompletions: 6,
+      barCompletions: 4,
+      bayTargetTicks: 440,
+      barTargetTicks: 212,
+    });
   });
 });
 
@@ -523,5 +557,36 @@ describe('Stage D D-DEBT — stored / unplaced equipment currently wears', () =>
     // ManagedGym has no FloorState field. Unplaced session gear cannot be
     // spared, because wear never asks whether the item is on the floor.
     expect('floor' in after.state).toBe(false);
+  });
+});
+
+describe('Stage D.1 incomplete bay — members interrupt honestly', () => {
+  it('removing a required component drops the bay and interrupts anyone targeting it', () => {
+    const complete = openingContext(stockStationCapability());
+    let state = asPowerlifters(createFloorSimState(complete, EXPERIMENT_SEED));
+    for (let i = 0; i < 80; i += 1) {
+      state = asPowerlifters(stepFloorSim(state, complete));
+    }
+    const targeting = state.members.some(
+      (member) => member.target !== null && member.target.kind === 'training',
+    );
+    expect(targeting).toBe(true);
+    const opening = complete.floor;
+    const incompleteFloor: FloorState = Object.freeze({
+      ...opening,
+      furniture: Object.freeze({
+        'flat-bench': opening.furniture['flat-bench'],
+        'power-bar': opening.furniture['power-bar'],
+      }),
+    });
+    const incomplete: FloorSimContext = {
+      ...complete,
+      floor: incompleteFloor,
+    };
+    expect(floorStations(incomplete).some((row) => row.ref.kind === 'training')).toBe(false);
+    const next = asPowerlifters(stepFloorSim(state, incomplete));
+    const interrupted = next.members.filter((member) => member.state === 'interrupted');
+    expect(interrupted.length).toBeGreaterThan(0);
+    expect(interrupted.some((member) => member.interruptedBy === 'target-removed')).toBe(true);
   });
 });

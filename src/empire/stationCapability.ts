@@ -1,33 +1,36 @@
 /**
- * stationCapability.ts — GDD §5.14 Stage D / §5.15 Living Gym Q/C/T.
+ * stationCapability.ts — GDD §5.14 Stage D / §5.15 Living Gym Q/C/T,
+ * retargeted by GDD §5.18 Stage D.1 onto a training station, not an item.
  *
  * Pure module (CLAUDE.md, "Pure logic is separate from UI"): zero React, zero
  * side effects, zero I/O, no clock, no randomness. Its imports are
- * `./empireCore` (`refuseWith`), `./empireTuning` and `./ladder` (the Barbell
- * item vocabulary). It does not import `floorSim.ts` — capacity and throughput
- * are quoted here as numbers the sim applies; the sim remains the only writer
- * of occupancy, queues and use duration.
+ * `./empireCore` (`refuseWith`), `./empireTuning` and `./trainingStation`
+ * (the functional-station vocabulary). It does not import `floorSim.ts` —
+ * capacity and throughput are quoted here as numbers the sim applies; the
+ * sim remains the only writer of occupancy, queues and use duration.
  *
  * ===========================================================================
  * 1. Three axes, three different mechanisms, not one "better station" scalar
  * ===========================================================================
  *
  * GDD §5.15: Quality, Capacity and Throughput must be causally distinct.
+ * GDD §5.18: they attach to a TRAINING STATION, not to a piece of equipment.
  *
  *   Quality     — training-experience value of a completed use, AND extra
  *                 appeal (`stationQualityAffinityBonus`) so members prefer
- *                 the upgraded station when they have a choice. Does not add
+ *                 the upgraded bay when they have a choice. Does not add
  *                 a simultaneous slot and does not shorten service duration.
  *   Capacity    — simultaneous usable slots the floor sim actually seats.
  *                 Default 1; one upgrade adds `STATION_CAPACITY_BONUS_SLOTS`.
+ *                 Stage D.1 realises the extra slot as a second physical
+ *                 bench, not as two approach cells around one bench.
  *   Throughput  — a multiplier on `FLOOR_SIM_USE_TICKS_BY_TYPE` service
  *                 duration. One station slot remains one station slot.
  *
- * Stage D is a vertical slice, not a catalog. Only
- * `STATION_UPGRADE_SLICE` (the three starting Barbell pieces) can be
- * upgraded. Session equipment stays at stock. Levels are 0 or 1 — one
- * upgrade per axis, no tree. D2 tunes the numbers; this file proves the
- * mechanisms.
+ * Stage D.1 is a vertical slice, not a catalog. Only
+ * `STATION_UPGRADE_SLICE` (`competition-bench-bay`) can be upgraded.
+ * Session equipment stays at stock. Levels are 0 or 1 — one upgrade per
+ * axis, no tree. D2 tunes the numbers; this file proves the mechanisms.
  *
  * Quality does not raise the Career player's e1RM, Total, or meet
  * performance (GDD §8.1). It does not credit Gym Bucks. The experience
@@ -42,16 +45,20 @@
  * Wear, wages, repair and failure stay on `ManagedGym`. Putting Q/C/T there
  * would re-key those paths for a mechanic that does not yet touch them.
  * `GymViewState.capability` is the store; this module is the algebra.
+ * Keys are `TrainingStationKind`, not `LadderEquipmentItem`.
  */
 
 import { refuseWith } from './empireCore';
 import { EMPIRE_TUNING } from './empireTuning';
-import { type LadderEquipmentItem } from './ladder';
+import {
+  type TrainingStationKind,
+  isTrainingStationKind,
+} from './trainingStation';
 
 /** The three Stage D axes, in the order the station panel names them. */
 export type StationUpgradeAxis = (typeof EMPIRE_TUNING.STATION_UPGRADE_AXES)[number];
 
-/** One station's purchased levels. Missing item / missing field = stock (0). */
+/** One station's purchased levels. Missing station / missing field = stock (0). */
 export interface StationAxisLevels {
   readonly quality: number;
   readonly capacity: number;
@@ -59,12 +66,12 @@ export interface StationAxisLevels {
 }
 
 /**
- * Per-item Q/C/T levels for the Stage D slice. Absence is stock. Never a
- * second ownership list — an item not in `LadderState.equipment` has no
- * business here, and the reducer refuses that before it writes.
+ * Per-training-station Q/C/T levels for the Stage D.1 slice. Absence is
+ * stock. Never a second ownership list — a station whose bay is not on
+ * the floor is refused by the reducer before this map is written.
  */
 export type StationCapabilityState = Readonly<
-  Partial<Record<LadderEquipmentItem, StationAxisLevels>>
+  Partial<Record<TrainingStationKind, StationAxisLevels>>
 >;
 
 const STOCK_LEVELS: StationAxisLevels = Object.freeze({
@@ -78,18 +85,18 @@ export function stockStationCapability(): StationCapabilityState {
   return Object.freeze({});
 }
 
-/** Whether `item` is in the Stage D upgrade slice. */
-export function isStationUpgradeSlice(item: string): item is LadderEquipmentItem {
-  return (EMPIRE_TUNING.STATION_UPGRADE_SLICE as readonly string[]).includes(item);
+/** Whether `value` is in the Stage D.1 upgrade slice. */
+export function isStationUpgradeSlice(value: string): value is TrainingStationKind {
+  return (EMPIRE_TUNING.STATION_UPGRADE_SLICE as readonly string[]).includes(value);
 }
 
-/** `item`'s levels in `capability`, stock if absent. */
+/** `station`'s levels in `capability`, stock if absent. */
 export function stationLevels(
   capability: StationCapabilityState | null | undefined,
-  item: LadderEquipmentItem,
+  station: TrainingStationKind,
 ): StationAxisLevels {
   if (capability == null) return STOCK_LEVELS;
-  const stored = capability[item];
+  const stored = capability[station];
   if (stored === undefined) return STOCK_LEVELS;
   return stored;
 }
@@ -102,18 +109,24 @@ export function stationUpgradeCostGymBucks(axis: StationUpgradeAxis): number {
 }
 
 /**
- * Simultaneous usable slots `ref` should have, given purchased capacity.
- * Session stations and non-slice Barbell stay at 1. The floor sim may
- * realise fewer slots than this if the station has too few approach cells —
- * that is a physical consequence, not a silent clamp in this function.
+ * Simultaneous usable slots `kind`/`key` should have, given purchased
+ * capacity. Training stations in the slice read the purchased level;
+ * session stations, leftover Barbell, and unknown keys stay at 1. The
+ * floor sim may realise fewer slots than this if the second bench has
+ * nowhere to stand — that is a physical consequence, not a silent clamp
+ * in this function.
+ *
+ * `kind` is the FloorStationRef kind; `key` is the station kind for
+ * `training` and the item id otherwise. This module does not import
+ * `floorSim.ts`, so the pair is passed as two strings.
  */
 export function stationCapacitySlots(
   capability: StationCapabilityState,
-  kind: 'fixed' | 'session',
-  item: string,
+  kind: 'training' | 'fixed' | 'session',
+  key: string,
 ): number {
-  if (kind !== 'fixed' || !isStationUpgradeSlice(item)) return 1;
-  const level = stationLevels(capability, item).capacity;
+  if (kind !== 'training' || !isStationUpgradeSlice(key)) return 1;
+  const level = stationLevels(capability, key).capacity;
   return 1 + level * EMPIRE_TUNING.STATION_CAPACITY_BONUS_SLOTS;
 }
 
@@ -123,11 +136,11 @@ export function stationCapacitySlots(
  */
 export function stationUseTicksFactor(
   capability: StationCapabilityState,
-  kind: 'fixed' | 'session',
-  item: string,
+  kind: 'training' | 'fixed' | 'session',
+  key: string,
 ): number {
-  if (kind !== 'fixed' || !isStationUpgradeSlice(item)) return 1;
-  if (stationLevels(capability, item).throughput <= 0) return 1;
+  if (kind !== 'training' || !isStationUpgradeSlice(key)) return 1;
+  if (stationLevels(capability, key).throughput <= 0) return 1;
   return EMPIRE_TUNING.STATION_THROUGHPUT_USE_TICKS_FACTOR;
 }
 
@@ -138,13 +151,13 @@ export function stationUseTicksFactor(
  */
 export function stationTrainingExperience(
   capability: StationCapabilityState,
-  kind: 'fixed' | 'session',
-  item: string,
+  kind: 'training' | 'fixed' | 'session',
+  key: string,
 ): number {
-  if (kind !== 'fixed' || !isStationUpgradeSlice(item)) {
+  if (kind !== 'training' || !isStationUpgradeSlice(key)) {
     return EMPIRE_TUNING.STATION_STOCK_TRAINING_EXPERIENCE;
   }
-  if (stationLevels(capability, item).quality <= 0) {
+  if (stationLevels(capability, key).quality <= 0) {
     return EMPIRE_TUNING.STATION_STOCK_TRAINING_EXPERIENCE;
   }
   return EMPIRE_TUNING.STATION_QUALITY_TRAINING_EXPERIENCE;
@@ -152,28 +165,28 @@ export function stationTrainingExperience(
 
 /**
  * Extra affinity a Quality station adds on top of the published type tables.
- * Stock, session, and non-slice stations return 0. The floor sim adds this
- * inside `affinityFor`; it is how Quality is visible as demand, not as a
- * shorter hold or a second seat.
+ * Stock, session, leftover Barbell, and non-slice stations return 0. The
+ * floor sim adds this inside `affinityFor`; it is how Quality is visible
+ * as demand, not as a shorter hold or a second seat.
  */
 export function stationQualityAffinityBonus(
   capability: StationCapabilityState,
-  kind: 'fixed' | 'session',
-  item: string,
+  kind: 'training' | 'fixed' | 'session',
+  key: string,
 ): number {
-  if (kind !== 'fixed' || !isStationUpgradeSlice(item)) return 0;
-  if (stationLevels(capability, item).quality <= 0) return 0;
+  if (kind !== 'training' || !isStationUpgradeSlice(key)) return 0;
+  if (stationLevels(capability, key).quality <= 0) return 0;
   return EMPIRE_TUNING.STATION_QUALITY_AFFINITY_BONUS;
 }
 
 /**
  * Write one axis level without a purse or placement check. The reducer uses
- * this to preview Capacity's realised slots; `upgradeStation` remains the
+ * this to preview Capacity's realised benches; `upgradeStation` remains the
  * only purchase path.
  */
 export function withStationAxis(
   capability: StationCapabilityState,
-  item: LadderEquipmentItem,
+  station: TrainingStationKind,
   axis: StationUpgradeAxis,
   level: number,
 ): StationCapabilityState {
@@ -182,10 +195,13 @@ export function withStationAxis(
       `station axis level ${level} is outside 0..${EMPIRE_TUNING.STATION_UPGRADE_LEVEL_MAX}`,
     );
   }
-  const current = stationLevels(capability, item);
+  if (!isTrainingStationKind(station)) {
+    refuseWith(`${station} is not a training station`);
+  }
+  const current = stationLevels(capability, station);
   return Object.freeze({
     ...capability,
-    [item]: Object.freeze({
+    [station]: Object.freeze({
       quality: axis === 'quality' ? level : current.quality,
       capacity: axis === 'capacity' ? level : current.capacity,
       throughput: axis === 'throughput' ? level : current.throughput,
@@ -218,19 +234,21 @@ export type StationUpgradeResult =
  * allow it. Placement and realised-capacity checks are the reducer's: this
  * module does not import the floor sim.
  *
- * `alreadyPlaced` is the reducer's reading of `FloorState.furniture`.
- * `realizesCapacity` is the reducer's reading of the sim after a preview
- * upgrade — only consulted on the capacity axis.
+ * `alreadyPlaced` is the reducer's reading of bay completeness — all
+ * required equipment currently on the floor. `realizesCapacity` is the
+ * reducer's reading of the derived bay after a preview upgrade — only
+ * consulted on the capacity axis, and it means a second physical bench
+ * actually fits, not that two approach cells exist around one bench.
  */
 export function upgradeStation(
   capability: StationCapabilityState,
-  item: LadderEquipmentItem,
+  station: TrainingStationKind | string,
   axis: StationUpgradeAxis,
   gymBucks: number,
   alreadyPlaced: boolean,
   realizesCapacity: boolean,
 ): StationUpgradeResult {
-  if (!isStationUpgradeSlice(item)) {
+  if (!isStationUpgradeSlice(station)) {
     return Object.freeze({
       kind: 'refused',
       reason: 'not-upgradable',
@@ -238,7 +256,7 @@ export function upgradeStation(
       costGymBucks: 0,
     });
   }
-  const current = stationLevels(capability, item);
+  const current = stationLevels(capability, station);
   const level = current[axis];
   if (level >= EMPIRE_TUNING.STATION_UPGRADE_LEVEL_MAX) {
     return Object.freeze({
@@ -280,7 +298,7 @@ export function upgradeStation(
   });
   return Object.freeze({
     kind: 'upgraded',
-    capability: Object.freeze({ ...capability, [item]: nextLevels }),
+    capability: Object.freeze({ ...capability, [station]: nextLevels }),
     costGymBucks,
   });
 }

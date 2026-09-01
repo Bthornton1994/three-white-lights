@@ -71,6 +71,7 @@
  * either way.
  */
 
+import { existsSync } from 'node:fs';
 import { chromium } from 'playwright';
 
 import { waitUntilDrawn } from './meetDrive.mjs';
@@ -108,8 +109,11 @@ const fail = (text) => {
   log.push(`  FAIL  ${text}`);
 };
 
+const PW_CHROMIUM = existsSync('/opt/pw-browsers/chromium')
+  ? '/opt/pw-browsers/chromium'
+  : undefined;
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
+  ...(PW_CHROMIUM === undefined ? {} : { executablePath: PW_CHROMIUM }),
   args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const context = await browser.newContext({
@@ -122,6 +126,18 @@ page.on('pageerror', (e) => pageErrors.push(String(e.message)));
 
 async function textOf(id) {
   return page.getByTestId(id).innerText({ timeout: 5000 }).catch(() => null);
+}
+
+/** Facility-first dock: advance lives in More, relocate lives in Shop. */
+async function openGymSurface(name) {
+  const btn = page.getByTestId(`gymscreen-surface-${name}`);
+  await btn.click({ timeout: 10000 });
+  await page.waitForTimeout(200);
+}
+
+function purseAmount(text) {
+  const match = /gym bucks:\s*([\d.]+)/i.exec(text ?? '');
+  return match === null ? Number.NaN : Number.parseFloat(match[1] ?? '');
 }
 
 try {
@@ -206,6 +222,7 @@ try {
   if (!advanceExists) {
     fail(`the +3d dev check-in control (${advanceId}) is not on screen — cannot drive the interaction`);
   } else {
+    await openGymSurface('more');
     const before = await textOf('gymscreen-gym-bucks');
     await advanceButton.click({ timeout: 10000 });
     await page.waitForTimeout(200);
@@ -222,7 +239,7 @@ try {
     let bucksText = after;
     while (
       bucksText !== null &&
-      Number.parseInt(bucksText.replace(/[^\d]/g, ''), 10) < 2500 &&
+      purseAmount(bucksText) < 2500 &&
       presses < MAX_CHECK_INS
     ) {
       await advanceButton.click({ timeout: 10000 });
@@ -232,6 +249,7 @@ try {
     }
     ok(`accumulated to "${bucksText}" gym bucks after ${presses} check-in press(es) (need 2500 for storage-unit)`);
 
+    await openGymSurface('shop');
     const moveButton = page.getByTestId('gymscreen-move-up');
     const moveExists = await moveButton.count().then((n) => n > 0).catch(() => false);
     if (!moveExists) {

@@ -137,7 +137,7 @@
  * the floor, never the other way round.
  */
 
-import { useEffect, useRef, useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -162,6 +162,7 @@ import {
 import {
   type FloorState,
   type GridPosition,
+  type GridSize,
   floorFurnitureLayout,
   floorGridSize,
   floorLayout,
@@ -182,6 +183,7 @@ import {
   type FloorStationRef,
   createFloorSimState,
   floorSimStateCounts,
+  floorStationRefKey,
   floorStations,
   stepFloorSim,
 } from './floorSim';
@@ -204,6 +206,7 @@ import {
   type StationManagerEffectView,
   type StationOperationView,
   displayConditionPercent,
+  playerFacingBayRole,
   playerFacingEquipmentLabel,
   playerFacingMemberActivityLine,
   playerFacingMemberTypeLabel,
@@ -215,6 +218,14 @@ import {
   stationManagerEffectView,
   stationOperationView,
 } from './stationView';
+import {
+  COMPETITION_BENCH_BAY,
+  COMPETITION_BENCH_BAY_PRIMARY,
+  competitionBenchBay,
+  overlapsBayExpansion,
+  type BayBench,
+  type CompetitionBenchBay,
+} from './trainingStation';
 
 /**
  * `userSelect` and `cursor` are real react-native-web style extensions (they
@@ -507,6 +518,7 @@ function memberTilePoint(member: FloorSimMember): FloorTilePoint {
  * with no row falls back to the engaged generic stance rather than throwing.
  */
 function stationUseClassFor(ref: FloorStationRef): FloorStationUseClass {
+  if (ref.kind === 'training') return 'bench';
   if (ref.kind === 'session') return FLOOR_STATION_USE_CLASS.session[ref.item];
   return Object.prototype.hasOwnProperty.call(FLOOR_STATION_USE_CLASS.fixed, ref.item)
     ? FLOOR_STATION_USE_CLASS.fixed[ref.item as FixedFurnitureItem]
@@ -568,14 +580,14 @@ function memberPose(member: FloorSimMember, tick: number): FloorSpritePose {
  * smaller than that. So the sentence above is bounded to the current
  * derivation, not enforced against future ones.
  */
-function stationAnchor(station: FloorStation): FloorTilePoint {
+function stationAnchor(position: GridPosition, footprint: GridSize): FloorTilePoint {
   return {
     x:
-      station.position.x +
-      (station.footprint.width - EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.width) / 2,
+      position.x +
+      (footprint.width - EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.width) / 2,
     y:
-      station.position.y +
-      (station.footprint.height - EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.height) / 2,
+      position.y +
+      (footprint.height - EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.height) / 2,
   };
 }
 
@@ -583,20 +595,24 @@ function stationAnchor(station: FloorStation): FloorTilePoint {
  * GDD §5.13 P4b: where to DRAW a member this instant. For everything except
  * `using` it is the sim's own interpolated tile point, exactly as Phase 3
  * wired it. While `using`, the drawn position is pulled from the sim's use
- * cell toward the station's anchor by the class's
+ * cell toward THAT bench's anchor by the class's
  * `FLOOR_SIM_USING_ANCHOR_BIAS` fraction, so the body meets the furniture
  * (on the bench, under the bar, at the machine face) instead of standing on
- * the adjacent cell beside a green box. RENDERER ONLY, the same additive
- * register as the walk tween: the sim's `cell` is never touched, no state is
- * kept, and the offset exists only while the sim says `using` — the instant
- * the state changes, the walk tween carries the body back from the anchor to
- * wherever the sim says it really is.
+ * the adjacent cell beside a green box. Capacity's second user is pulled
+ * onto the second bench, not onto the primary. RENDERER ONLY, the same
+ * additive register as the walk tween: the sim's `cell` is never touched,
+ * no state is kept, and the offset exists only while the sim says `using`.
  */
-function memberDrawPoint(member: FloorSimMember, station: FloorStation | undefined): FloorTilePoint {
+function memberDrawPoint(
+  member: FloorSimMember,
+  station: FloorStation | undefined,
+  bay: CompetitionBenchBay,
+): FloorTilePoint {
   const base = memberTilePoint(member);
   if (member.state !== 'using' || member.target === null || station === undefined) return base;
   const bias = EMPIRE_TUNING.FLOOR_SIM_USING_ANCHOR_BIAS[stationUseClassFor(member.target)];
-  const anchor = stationAnchor(station);
+  const bench = usingBenchFor(member, station, bay);
+  const anchor = stationAnchor(bench.position, bench.footprint);
   return {
     x: base.x + (anchor.x - base.x) * bias,
     y: base.y + (anchor.y - base.y) * bias,
@@ -604,23 +620,27 @@ function memberDrawPoint(member: FloorSimMember, station: FloorStation | undefin
 }
 
 /**
- * Phase 4: sprite facing. While `using`, the member faces its station — the
- * pose is a body working a machine, so it orients toward the anchor it is
- * drawn against (strictly-left mirrors; ties and everything else keep the
+ * Phase 4: sprite facing. While `using`, the member faces its own bench —
+ * the pose is a body working a machine, so it orients toward the anchor it
+ * is drawn against (strictly-left mirrors; ties and everything else keep the
  * authored right facing). Otherwise, from the step in flight alone: a member
  * stepping leftward mirrors; standing and vertical steps face right.
  * Stateless on purpose — deriving a persistent facing would mean this file
  * keeping sim-adjacent state of its own, which the Phase 3 wiring rules out.
- * The cost is that a member snaps back to right-facing when it stops, which
- * is a felt nuance for the phone pass to judge.
  */
-function memberFacing(member: FloorSimMember, station: FloorStation | undefined): FloorSpriteFacing {
+function memberFacing(
+  member: FloorSimMember,
+  station: FloorStation | undefined,
+  bay: CompetitionBenchBay,
+): FloorSpriteFacing {
   if (member.state === 'using' && station !== undefined) {
-    return stationAnchor(station).x < member.cell.x ? 'left' : 'right';
+    const bench = usingBenchFor(member, station, bay);
+    return stationAnchor(bench.position, bench.footprint).x < member.cell.x ? 'left' : 'right';
   }
   if (member.next !== null && member.next.x < member.cell.x) return 'left';
   return 'right';
 }
+
 
 /**
  * Phase 4: the fixed-furniture sprite for a Barbell-baseline item, or null
@@ -628,13 +648,13 @@ function memberFacing(member: FloorSimMember, station: FloorStation | undefined)
  * only ever emits the three baseline rows today, so the null arm is a guard
  * for a future ladder item arriving, not a path anything reaches now.
  *
- * P4c: while the station is `using` (per the same `stationActivity` read the
- * highlights draw from), an item with an occupied variant draws that
- * instead. Today that is only `power-bar` — its resting sprite is a loaded
- * bar, the bar-class member pose draws its own loaded bar, and the two
- * composited as crossed barbells on one cell. The occupied sprite is the
- * bar's resting marks with no bar in them: the bar is in the member's
- * hands. Renderer only, like every P4b/P4c change — the sim never sees it.
+ * P4c: leftover non-bay Barbell still swaps an occupied variant while a
+ * member is `using` that furniture. Today that painter exists only for
+ * `power-bar`. Stage D.1's opening garage does not send members at the bar
+ * — they train at the Competition Bench Bay — so the bar stays at rest and
+ * the double-bar composite cannot arise there. The bay's benches use
+ * per-position occupancy instead: a using member on `useCells[i]` marks
+ * `benches[i]`, not the whole bay.
  */
 function fixedSpriteUriFor(item: LadderEquipmentItem, occupied: boolean): string | null {
   if (occupied && Object.prototype.hasOwnProperty.call(FLOOR_SPRITE_URIS.fixedOccupied, item)) {
@@ -645,10 +665,139 @@ function fixedSpriteUriFor(item: LadderEquipmentItem, occupied: boolean): string
     : null;
 }
 
-/** A station's identity as a map key — kind and item, matching `refsEqual` in `floorSim.ts`. */
-function stationKey(kind: string, item: string): string {
-  return `${kind}:${item}`;
+/** A station's identity as a map key — matching `floorStationRefKey` in `floorSim.ts`. */
+function stationKey(ref: FloorStationRef): string {
+  return floorStationRefKey(ref);
 }
+
+function refsMatch(left: FloorStationRef, right: FloorStationRef): boolean {
+  return floorStationRefKey(left) === floorStationRefKey(right);
+}
+
+function refToken(ref: FloorStationRef): string {
+  return ref.kind === 'training' ? ref.station : ref.item;
+}
+
+function cellsEqual(left: GridPosition, right: GridPosition): boolean {
+  return left.x === right.x && left.y === right.y;
+}
+
+/**
+ * Verifier-stable highlight id. Dashes, never `floorStationRefKey`'s colon,
+ * so `floorsim-using-session-mats` and `floorsim-using-training-competition-
+ * bench-bay` stay the form `tools/verify-floor-reachability.mjs` already
+ * reads. Capacity's second bench is a second element (`-expansion`).
+ */
+function highlightTestId(
+  activity: 'using' | 'claimed',
+  ref: FloorStationRef,
+  expansion: boolean,
+): string {
+  if (ref.kind === 'training' && expansion) {
+    return `floorsim-${activity}-training-${ref.station}-expansion`;
+  }
+  if (ref.kind === 'training') {
+    return `floorsim-${activity}-training-${ref.station}`;
+  }
+  return `floorsim-${activity}-${ref.kind}-${ref.item}`;
+}
+
+function memberUsesCell(
+  members: readonly FloorSimMember[],
+  ref: FloorStationRef,
+  cell: GridPosition | undefined,
+): boolean {
+  if (cell === undefined) return false;
+  for (const member of members) {
+    if (member.state !== 'using') continue;
+    if (member.target === null || !refsMatch(member.target, ref)) continue;
+    if (cellsEqual(member.cell, cell)) return true;
+  }
+  return false;
+}
+
+function usingBenchFor(
+  member: FloorSimMember,
+  station: FloorStation,
+  bay: CompetitionBenchBay,
+): BayBench {
+  const fallback: BayBench = {
+    position: station.position,
+    footprint: station.footprint,
+    source: 'primary',
+  };
+  if (station.ref.kind !== 'training' || bay.benches.length === 0) return fallback;
+  let index = -1;
+  for (let i = 0; i < station.useCells.length; i += 1) {
+    const cell = station.useCells[i];
+    if (cell !== undefined && cellsEqual(cell, member.cell)) {
+      index = i;
+      break;
+    }
+  }
+  return index >= 0 ? (bay.benches[index] ?? fallback) : fallback;
+}
+
+interface StationHighlightBox {
+  readonly key: string;
+  readonly testID: string;
+  readonly activity: 'using' | 'claimed';
+  readonly position: GridPosition;
+  readonly footprint: GridSize;
+}
+
+/**
+ * One outline per realised physical position. Capacity's second bench is a
+ * second box, not a second approach cell around the primary.
+ */
+function stationHighlightBoxes(
+  station: FloorStation,
+  bay: CompetitionBenchBay,
+  members: readonly FloorSimMember[],
+): readonly StationHighlightBox[] {
+  const targeting: FloorSimMember[] = [];
+  for (const member of members) {
+    if (member.target !== null && refsMatch(member.target, station.ref)) targeting.push(member);
+  }
+  if (targeting.length === 0) return [];
+  let waiting = false;
+  for (const member of targeting) {
+    if (member.state !== 'using') waiting = true;
+  }
+  const benches: { readonly bench: BayBench; readonly expansion: boolean }[] = [];
+  if (station.ref.kind === 'training' && bay.benches.length > 0) {
+    for (const bench of bay.benches) {
+      benches.push({ bench, expansion: bench.source === 'expansion' });
+    }
+  } else {
+    benches.push({
+      bench: {
+        position: station.position,
+        footprint: station.footprint,
+        source: 'primary',
+      },
+      expansion: false,
+    });
+  }
+  const boxes: StationHighlightBox[] = [];
+  for (let index = 0; index < benches.length; index += 1) {
+    const row = benches[index];
+    if (row === undefined) continue;
+    const usingHere = memberUsesCell(members, station.ref, station.useCells[index]);
+    const activity: 'using' | 'claimed' | null = usingHere ? 'using' : waiting ? 'claimed' : null;
+    if (activity === null) continue;
+    const testID = highlightTestId(activity, station.ref, row.expansion);
+    boxes.push({
+      key: `station-${testID}`,
+      testID,
+      activity,
+      position: row.bench.position,
+      footprint: row.bench.footprint,
+    });
+  }
+  return boxes;
+}
+
 
 interface AmbientMemberBodyProps {
   readonly index: number;
@@ -1049,6 +1198,11 @@ export function FloorGrid(props: FloorGridProps) {
   const unplaced = unplacedOwnedFloorItems(floor, owned);
   const furniture = floorFurnitureLayout(floor, barbellOwned);
   const unplacedFurniture = unplacedOwnedFurnitureItems(floor, barbellOwned);
+  const bay = competitionBenchBay(
+    floor,
+    barbellOwned,
+    stationLevels(capability, COMPETITION_BENCH_BAY).capacity,
+  );
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const tile = tilePixelsForStage(grid.width, grid.height, stageSize.width, stageSize.height);
   const [pendingPlace, setPendingPlace] = useState<PendingPlace | null>(null);
@@ -1101,6 +1255,7 @@ export function FloorGrid(props: FloorGridProps) {
   // sim, the drag/placement state, or anything the reducer owns: this is a
   // second, independent `useState`, not a write through any of the others.
   const [selectedStation, setSelectedStation] = useState<FloorStationRef | null>(null);
+  const [selectedEquipment, setSelectedEquipment] = useState<LadderEquipmentItem | null>(null);
 
   // GDD §5.14 Stage C.1 — whether the verification-flavoured diagnostics
   // (the sim tick/state-census readout, its legend, and the raw grid-
@@ -1138,6 +1293,7 @@ export function FloorGrid(props: FloorGridProps) {
 
   useEffect(() => {
     setSelectedStation(null);
+    setSelectedEquipment(null);
     setSelectedMemberIndex(null);
     setPendingPlace(null);
     setPlacementRefuseKind(null);
@@ -1148,13 +1304,21 @@ export function FloorGrid(props: FloorGridProps) {
   /** Select `ref`, or deselect it if it is already the selected one — a second tap on the same station closes its own panel. */
   const toggleSelectedStation = (ref: FloorStationRef): void => {
     setSelectedMemberIndex(null);
+    setSelectedEquipment(null);
     setSelectedStation((previous) =>
-      previous !== null && previous.kind === ref.kind && previous.item === ref.item ? null : ref,
+      previous !== null && refsMatch(previous, ref) ? null : ref,
     );
+  };
+
+  const toggleSelectedEquipment = (item: LadderEquipmentItem): void => {
+    setSelectedMemberIndex(null);
+    setSelectedStation(null);
+    setSelectedEquipment((previous) => (previous === item ? null : item));
   };
 
   const beginPlace = (next: PendingPlace): void => {
     setSelectedStation(null);
+    setSelectedEquipment(null);
     setSelectedMemberIndex(null);
     setPlacementRefuseKind(null);
     setOverlapRefusalItem(null);
@@ -1226,6 +1390,10 @@ export function FloorGrid(props: FloorGridProps) {
         flashRefusal('occupied', overlappedFurniture.item, clipRefusalRegion(position, footprint));
         return;
       }
+      if (overlapsBayExpansion(position, footprint, bay)) {
+        flashRefusal('occupied', COMPETITION_BENCH_BAY_PRIMARY, clipRefusalRegion(position, footprint));
+        return;
+      }
       const overlappedSession = placed.find(
         (row) =>
           row.item !== pendingPlace.item &&
@@ -1256,6 +1424,13 @@ export function FloorGrid(props: FloorGridProps) {
       );
       if (overlappedFurniture !== undefined) {
         flashRefusal('occupied', overlappedFurniture.item, clipRefusalRegion(position, footprint));
+        return;
+      }
+      if (
+        pendingPlace.item !== COMPETITION_BENCH_BAY_PRIMARY &&
+        overlapsBayExpansion(position, footprint, bay)
+      ) {
+        flashRefusal('occupied', COMPETITION_BENCH_BAY_PRIMARY, clipRefusalRegion(position, footprint));
         return;
       }
       const overlappedSession = placed.find((row) =>
@@ -1292,6 +1467,7 @@ export function FloorGrid(props: FloorGridProps) {
   const toggleSelectedMember = (index: number): void => {
     if (buildMode) return;
     setSelectedStation(null);
+    setSelectedEquipment(null);
     setSelectedMemberIndex((previous) => (previous === index ? null : index));
   };
 
@@ -1330,6 +1506,7 @@ export function FloorGrid(props: FloorGridProps) {
     // relocation does not draw one frame of a panel naming equipment that is
     // no longer this gym's.
     setSelectedStation(null);
+    setSelectedEquipment(null);
   }, [floor.rung]);
 
   // THE TICK. One `stepFloorSim` per `FLOOR_SIM_TICK_INTERVAL_MS`, against
@@ -1355,55 +1532,33 @@ export function FloorGrid(props: FloorGridProps) {
   // sim was stepped with this render — one derivation, no second copy.
   const stationByRefKey = new Map<string, FloorStation>();
   for (const station of stations) {
-    stationByRefKey.set(stationKey(station.ref.kind, station.ref.item), station);
+    stationByRefKey.set(stationKey(station.ref), station);
   }
   const stationActivity = new Map<string, 'using' | 'claimed'>();
   for (const member of sim.members) {
     if (member.target === null) continue;
-    const key = stationKey(member.target.kind, member.target.item);
+    const key = stationKey(member.target);
     if (member.state === 'using') {
       stationActivity.set(key, 'using');
     } else if (!stationActivity.has(key)) {
       stationActivity.set(key, 'claimed');
     }
   }
-  // Stage D — Capacity is simultaneous usable slots, drawn as extra standing
-  // pads on the approach cells the sim actually seats. Stock stations have
-  // one use cell and draw nothing extra; a purchased second position is
-  // visible on the floor before it is occupied. pointerEvents none: the pad
-  // is a world cue, not a second tap target.
-  //
-  // Explicit loops rather than `stations.flatMap` / `station.useCells.map`:
-  // `station` would be a callback parameter, which is a
-  // `member-of-parameter` site this directory's census has to drive. FloorGrid
-  // cannot be called outside a React tree (hooks), so the cheaper surface is
-  // a loop, matching floorSim.ts / floorSprites.ts / runManagedGym.
-  const capacityPads: ReactElement[] = [];
-  for (const station of stations) {
-    if (station.useCells.length <= 1) continue;
-    for (let index = 0; index < station.useCells.length; index += 1) {
-      const cell = station.useCells[index];
-      if (cell === undefined) continue;
-      capacityPads.push(
-        <View
-          key={`capacity-${station.ref.kind}-${station.ref.item}-${index}`}
-          testID={`floorgrid-capacity-pad-${station.ref.item}-${index}`}
-          pointerEvents={'none'}
-          style={{
-            position: 'absolute',
-            left: cell.x * tile,
-            top: cell.y * tile,
-            width: tile,
-            height: tile,
-            borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
-            borderColor: FLOOR_SIM_STATE_COLOR.using,
-            backgroundColor: FLOOR_SIM_HIGHLIGHT_FILL,
-            zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
-          }}
-        />,
-      );
-    }
-  }
+  // Stage D.1 — Capacity is a second physical bench, drawn as a real
+  // bench sprite (`floorgrid-bay-expansion`), not as approach-cell pads.
+  // Occupancy is per realised bench: a using member on `useCells[i]` marks
+  // `benches[i]`, so two simultaneous users light two benches.
+  const bayStation = stations.find(
+    (station) => station.ref.kind === 'training' && station.ref.station === COMPETITION_BENCH_BAY,
+  );
+  const bayRef: FloorStationRef = { kind: 'training', station: COMPETITION_BENCH_BAY };
+  const primaryOccupied =
+    bayStation !== undefined && memberUsesCell(sim.members, bayRef, bayStation.useCells[0]);
+  const expansionOccupied =
+    bayStation !== undefined && memberUsesCell(sim.members, bayRef, bayStation.useCells[1]);
+  const bayLevels = stationLevels(capability, COMPETITION_BENCH_BAY);
+  const bayQualityMark = bay.complete && bayLevels.quality > 0;
+  const bayThroughputMark = bay.complete && bayLevels.throughput > 0;
   const stateCounts = floorSimStateCounts(sim);
 
   /**
@@ -1433,13 +1588,23 @@ export function FloorGrid(props: FloorGridProps) {
   const panelStation: FloorStationRef | null =
     selectedStation === null
       ? null
-      : selectedStation.kind === 'fixed'
-        ? furniture.some((row) => row.item === selectedStation.item)
+      : selectedStation.kind === 'training'
+        ? bay.complete
           ? selectedStation
           : null
-        : placed.some((row) => row.item === selectedStation.item)
-          ? selectedStation
-          : null;
+        : selectedStation.kind === 'fixed'
+          ? furniture.some((row) => row.item === selectedStation.item)
+            ? selectedStation
+            : null
+          : placed.some((row) => row.item === selectedStation.item)
+            ? selectedStation
+            : null;
+  const panelEquipment: LadderEquipmentItem | null =
+    selectedEquipment === null
+      ? null
+      : furniture.some((row) => row.item === selectedEquipment)
+        ? selectedEquipment
+        : null;
 
   // Every derived read the panel needs, computed only when a station is
   // actually selected — each one a call into `stationView.ts` (which is
@@ -1467,10 +1632,12 @@ export function FloorGrid(props: FloorGridProps) {
   let panelCondition: StationConditionView | null = null;
   let panelManagerEffect: StationManagerEffectView | null = null;
   if (panelStation !== null) {
+    const conditionItem =
+      panelStation.kind === 'training' ? COMPETITION_BENCH_BAY_PRIMARY : panelStation.item;
     panelIdentity = stationIdentityView(panelStation);
     panelOperation = stationOperationView(sim.members, panelStation);
-    panelCondition = stationConditionView(managed, panelStation.item);
-    panelManagerEffect = stationManagerEffectView(managed, panelStation.item);
+    panelCondition = stationConditionView(managed, conditionItem);
+    panelManagerEffect = stationManagerEffectView(managed, conditionItem);
   }
   // Whether the gym's one standing maintenance review currently names the
   // selected item — GDD §5.14 Stage C item 6's "staff relationship... where
@@ -1651,17 +1818,18 @@ export function FloorGrid(props: FloorGridProps) {
             )}
             {furniture.map((row) => {
               const isRefusalTarget = overlapRefusalItem === row.item;
-              const isOccupied =
-                stationActivity.get(stationKey('fixed', row.item)) === 'using';
-              const isSelected =
-                selectedStation !== null &&
-                selectedStation.kind === 'fixed' &&
-                selectedStation.item === row.item;
-              const levels = isStationUpgradeSlice(row.item)
-                ? stationLevels(capability, row.item)
-                : null;
-              const qualityMark = levels !== null && levels.quality > 0;
-              const throughputMark = levels !== null && levels.throughput > 0;
+              const isBayPrimary =
+                bay.complete && row.item === COMPETITION_BENCH_BAY_PRIMARY;
+              const isOccupied = isBayPrimary
+                ? primaryOccupied
+                : stationActivity.get(`fixed:${row.item}`) === 'using';
+              const isSelected = isBayPrimary
+                ? selectedStation !== null &&
+                  selectedStation.kind === 'training' &&
+                  selectedStation.station === COMPETITION_BENCH_BAY
+                : selectedEquipment === row.item;
+              const qualityMark = isBayPrimary && bayQualityMark;
+              const throughputMark = isBayPrimary && bayThroughputMark;
               return (
                 <Pressable
                   key={row.item}
@@ -1673,7 +1841,14 @@ export function FloorGrid(props: FloorGridProps) {
                       beginPlace({ kind: 'furniture', item: row.item });
                       return;
                     }
-                    toggleSelectedStation({ kind: 'fixed', item: row.item });
+                    if (isBayPrimary) {
+                      toggleSelectedStation({
+                        kind: 'training',
+                        station: COMPETITION_BENCH_BAY,
+                      });
+                      return;
+                    }
+                    toggleSelectedEquipment(row.item);
                   }}
                   style={{
                     position: 'absolute',
@@ -1690,10 +1865,10 @@ export function FloorGrid(props: FloorGridProps) {
                     // chip (those keep their black chip border below). GDD
                     // §5.14 Stage C: a refusal in flight still wins over a
                     // selection outline — the refusal is transient and more
-                    // urgent than "this is the tapped station". Stage D:
-                    // a Quality upgrade keeps a goldenrod edge at rest so the
-                    // better training surface is visible without opening
-                    // the panel — distinct from selection gold.
+                    // urgent than "this is the tapped station". Stage D.1:
+                    // a Quality upgrade keeps a goldenrod edge on the bay
+                    // so the better training surface is visible without
+                    // opening the panel — distinct from selection gold.
                     borderWidth: isRefusalTarget
                       ? EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS
                       : isSelected
@@ -1726,7 +1901,7 @@ export function FloorGrid(props: FloorGridProps) {
                   )}
                   {qualityMark ? (
                     <View
-                      testID={`floorgrid-quality-mark-${row.item}`}
+                      testID={'floorgrid-quality-mark-competition-bench-bay'}
                       pointerEvents={'none'}
                       style={{
                         position: 'absolute',
@@ -1746,7 +1921,7 @@ export function FloorGrid(props: FloorGridProps) {
                   ) : null}
                   {throughputMark ? (
                     <View
-                      testID={`floorgrid-throughput-mark-${row.item}`}
+                      testID={'floorgrid-throughput-mark-competition-bench-bay'}
                       pointerEvents={'none'}
                       style={{
                         position: 'absolute',
@@ -1765,11 +1940,72 @@ export function FloorGrid(props: FloorGridProps) {
                     />
                   ) : null}
                   <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
-                    {row.item}
+                    {isBayPrimary ? 'bench bay' : row.item}
                   </Text>
                 </Pressable>
               );
             })}
+            {bay.expansion === null ? null : (
+              <Pressable
+                testID={'floorgrid-bay-expansion'}
+                accessibilityRole={'button'}
+                pointerEvents={placing ? 'none' : 'auto'}
+                onPress={() => {
+                  if (buildMode) return;
+                  toggleSelectedStation({
+                    kind: 'training',
+                    station: COMPETITION_BENCH_BAY,
+                  });
+                }}
+                style={{
+                  position: 'absolute',
+                  left: bay.expansion.position.x * tile,
+                  top: bay.expansion.position.y * tile,
+                  width: bay.expansion.footprint.width * tile,
+                  height: bay.expansion.footprint.height * tile,
+                  zIndex: 0,
+                  borderWidth:
+                    selectedStation !== null &&
+                    selectedStation.kind === 'training' &&
+                    selectedStation.station === COMPETITION_BENCH_BAY
+                      ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
+                      : bayQualityMark
+                        ? EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS
+                        : 0,
+                  borderColor:
+                    selectedStation !== null &&
+                    selectedStation.kind === 'training' &&
+                    selectedStation.station === COMPETITION_BENCH_BAY
+                      ? FLOOR_STATION_SELECTED_OUTLINE_COLOR
+                      : FLOOR_QUALITY_MARK_COLOR,
+                  cursor: 'pointer',
+                } as WebSelectableViewStyle}
+              >
+                {fixedSpriteUriFor(COMPETITION_BENCH_BAY_PRIMARY, expansionOccupied) === null ? null : (
+                  <Image
+                    testID={'floorgrid-bay-expansion-sprite'}
+                    source={{
+                      uri: fixedSpriteUriFor(
+                        COMPETITION_BENCH_BAY_PRIMARY,
+                        expansionOccupied,
+                      ) as string,
+                    }}
+                    resizeMode={'stretch'}
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      width: bay.expansion.footprint.width * tile,
+                      height: bay.expansion.footprint.height * tile,
+                    }}
+                    {...({ pointerEvents: 'none' } as object)}
+                  />
+                )}
+                <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
+                  second bench
+                </Text>
+              </Pressable>
+            )}
             {placed.map((row) => {
               const isSelected =
                 selectedStation !== null &&
@@ -1837,15 +2073,16 @@ export function FloorGrid(props: FloorGridProps) {
               // "that machine is running" reads from the floor without
               // reading a caption. Drawn only for stations that are actually
               // claimed, so an empty gym draws none of these at all.
-              stations.map((station) => {
-                const activity = stationActivity.get(
-                  stationKey(station.ref.kind, station.ref.item),
-                );
-                if (activity === undefined) return null;
-                return (
+              //
+              // Stage D.1: one outline per realised bench. Capacity's second
+              // physical bench gets its own using highlight when a second
+              // member is on it. testIDs are dash-stable (`floorsim-using-
+              // training-competition-bench-bay`), never colon keys.
+              stations.flatMap((station) =>
+                stationHighlightBoxes(station, bay, sim.members).map((box) => (
                   <View
-                    key={`station-${station.ref.kind}-${station.ref.item}`}
-                    testID={`floorsim-${activity}-${station.ref.kind}-${station.ref.item}`}
+                    key={box.key}
+                    testID={box.testID}
                     // GDD §5.14 Stage C.1 — REGRESSION FOUND AND FIXED, NAMED
                     // RATHER THAN WORKED AROUND. This highlight sits directly
                     // over the station it decorates (same position/footprint,
@@ -1868,23 +2105,23 @@ export function FloorGrid(props: FloorGridProps) {
                     pointerEvents={'none'}
                     style={{
                       position: 'absolute',
-                      left: station.position.x * tile,
-                      top: station.position.y * tile,
-                      width: station.footprint.width * tile,
-                      height: station.footprint.height * tile,
+                      left: box.position.x * tile,
+                      top: box.position.y * tile,
+                      width: box.footprint.width * tile,
+                      height: box.footprint.height * tile,
                       borderWidth: EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS,
                       borderColor:
-                        activity === 'using'
+                        box.activity === 'using'
                           ? FLOOR_SIM_STATE_COLOR.using
                           : FLOOR_SIM_STATE_COLOR.seeking,
                       backgroundColor: FLOOR_SIM_HIGHLIGHT_FILL,
                       zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
                     }}
                   />
-                );
-              })
+                )),
+              )
             }
-            {capacityPads}
+            {null}
             {
               // GDD §5.13 presentation Phase 3: the members, at the position
               // the sim puts them at this instant. Still non-draggable, still
@@ -1905,19 +2142,19 @@ export function FloorGrid(props: FloorGridProps) {
                 const station =
                   member.target === null
                     ? undefined
-                    : stationByRefKey.get(stationKey(member.target.kind, member.target.item));
+                    : stationByRefKey.get(stationKey(member.target));
                 return (
                   <AmbientMemberBody
                     key={`ambient-${member.index}`}
                     index={member.index}
                     type={member.type}
-                    position={memberDrawPoint(member, station)}
+                    position={memberDrawPoint(member, station, bay)}
                     tile={tile}
                     state={member.state}
                     interruptedBy={member.interruptedBy}
                     stranded={member.strandedAt !== null}
                     pose={memberPose(member, sim.tick)}
-                    facing={memberFacing(member, station)}
+                    facing={memberFacing(member, station, bay)}
                     onPress={
                       buildMode ? undefined : () => toggleSelectedMember(member.index)
                     }
@@ -2100,7 +2337,7 @@ export function FloorGrid(props: FloorGridProps) {
           <Text testID={'floorgrid-member-panel-state'}>
             {playerFacingMemberActivityLine(
               selectedMember.state,
-              selectedMember.target === null ? null : selectedMember.target.item,
+              selectedMember.target === null ? null : refToken(selectedMember.target),
             )}
           </Text>
           <Pressable
@@ -2190,16 +2427,20 @@ export function FloorGrid(props: FloorGridProps) {
                   : `your ${panelManagerEffect.tier} manager repairs automatically below condition ${panelManagerEffect.autoRepairCondition}, and this item is above that line`
               : 'no manager hired — nothing repairs this automatically'}
           </Text>
-          {standingPrompt.kind === 'offered' && standingPrompt.item === panelStation.item ? (
+          {standingPrompt.kind === 'offered' &&
+          standingPrompt.item ===
+            (panelStation.kind === 'training'
+              ? COMPETITION_BENCH_BAY_PRIMARY
+              : panelStation.item) ? (
             <Text testID={'floorgrid-station-panel-review-note'}>
               the standing maintenance review is currently about this item
             </Text>
           ) : null}
-          {panelStation.kind === 'fixed' && isStationUpgradeSlice(panelStation.item)
+          {panelStation.kind === 'training' && isStationUpgradeSlice(panelStation.station)
             ? EMPIRE_TUNING.STATION_UPGRADE_AXES.map((axis: StationUpgradeAxis) => {
-                const item = panelStation.item;
-                if (!isStationUpgradeSlice(item)) return null;
-                const levels = stationLevels(capability, item);
+                const station = panelStation.station;
+                if (!isStationUpgradeSlice(station)) return null;
+                const levels = stationLevels(capability, station);
                 const owned = levels[axis] > 0;
                 const cost = stationUpgradeCostGymBucks(axis);
                 if (owned) {
@@ -2208,7 +2449,7 @@ export function FloorGrid(props: FloorGridProps) {
                       key={axis}
                       testID={`floorgrid-station-panel-upgrade-${axis}-done`}
                     >
-                      {`${playerFacingUpgradeLabel(axis, item)} — ${playerFacingUpgradeEffect(axis)}`}
+                      {`${playerFacingUpgradeLabel(axis)} — ${playerFacingUpgradeEffect(axis)}`}
                     </Text>
                   );
                 }
@@ -2218,7 +2459,7 @@ export function FloorGrid(props: FloorGridProps) {
                       key={axis}
                       testID={`floorgrid-station-panel-upgrade-${axis}-unavailable`}
                     >
-                      {`${playerFacingUpgradeLabel(axis, item)} needs ${cost} gym bucks — you have ${managed.gym.ladder.gymBucks}`}
+                      {`${playerFacingUpgradeLabel(axis)} needs ${cost} gym bucks — you have ${managed.gym.ladder.gymBucks}`}
                     </Text>
                   );
                 }
@@ -2229,11 +2470,11 @@ export function FloorGrid(props: FloorGridProps) {
                     accessibilityRole={'button'}
                     style={panelStyles.button}
                     onPress={() =>
-                      dispatch({ kind: 'upgrade-station', item, axis })
+                      dispatch({ kind: 'upgrade-station', station, axis })
                     }
                   >
                     <Text style={panelStyles.buttonText}>
-                      {`${playerFacingUpgradeLabel(axis, item)} — ${playerFacingUpgradeEffect(axis)} (${cost})`}
+                      {`${playerFacingUpgradeLabel(axis)} — ${playerFacingUpgradeEffect(axis)} (${cost})`}
                     </Text>
                   </Pressable>
                 );
@@ -2280,7 +2521,15 @@ export function FloorGrid(props: FloorGridProps) {
               testID={'floorgrid-station-panel-repair'}
               accessibilityRole={'button'}
               style={panelStyles.button}
-              onPress={() => dispatch({ kind: 'repair-item', item: panelStation.item })}
+              onPress={() =>
+                dispatch({
+                  kind: 'repair-item',
+                  item:
+                    panelStation.kind === 'training'
+                      ? COMPETITION_BENCH_BAY_PRIMARY
+                      : panelStation.item,
+                })
+              }
             >
               <Text style={panelStyles.buttonText}>
                 repair for {panelCondition.repairCostGymBucks}
@@ -2312,7 +2561,13 @@ export function FloorGrid(props: FloorGridProps) {
               accessibilityRole={'button'}
               style={panelStyles.button}
               onPress={() => {
-                dispatch({ kind: 'floor-remove-furniture', item: panelStation.item });
+                dispatch({
+                  kind: 'floor-remove-furniture',
+                  item:
+                    panelStation.kind === 'training'
+                      ? COMPETITION_BENCH_BAY_PRIMARY
+                      : panelStation.item,
+                });
                 setSelectedStation(null);
               }}
             >
@@ -2324,6 +2579,48 @@ export function FloorGrid(props: FloorGridProps) {
             accessibilityRole={'button'}
             style={panelStyles.button}
             onPress={() => setSelectedStation(null)}
+          >
+            <Text style={panelStyles.buttonText}>close</Text>
+          </Pressable>
+        </View>
+      )}
+      {panelEquipment === null || selectedMember !== null || panelStation !== null ? null : (
+        <View testID={'floorgrid-equipment-panel'} style={panelStyles.panel}>
+          <Text testID={'floorgrid-equipment-panel-identity'}>
+            {playerFacingEquipmentLabel(panelEquipment)}
+          </Text>
+          <Text testID={'floorgrid-equipment-panel-role'}>
+            {playerFacingBayRole(bay.complete, bay.missing)}
+          </Text>
+          <Text testID={'floorgrid-equipment-panel-condition'}>
+            Condition {displayConditionPercent(stationConditionView(managed, panelEquipment).condition)}%
+          </Text>
+          <Pressable
+            testID={'floorgrid-equipment-panel-repair'}
+            accessibilityRole={'button'}
+            style={panelStyles.button}
+            onPress={() => dispatch({ kind: 'repair-item', item: panelEquipment })}
+          >
+            <Text style={panelStyles.buttonText}>
+              repair for {stationConditionView(managed, panelEquipment).repairCostGymBucks}
+            </Text>
+          </Pressable>
+          <Pressable
+            testID={'floorgrid-equipment-panel-remove'}
+            accessibilityRole={'button'}
+            style={panelStyles.button}
+            onPress={() => {
+              dispatch({ kind: 'floor-remove-furniture', item: panelEquipment });
+              setSelectedEquipment(null);
+            }}
+          >
+            <Text style={panelStyles.buttonText}>move to the tray</Text>
+          </Pressable>
+          <Pressable
+            testID={'floorgrid-equipment-panel-dismiss'}
+            accessibilityRole={'button'}
+            style={panelStyles.button}
+            onPress={() => setSelectedEquipment(null)}
           >
             <Text style={panelStyles.buttonText}>close</Text>
           </Pressable>

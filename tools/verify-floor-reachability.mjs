@@ -325,21 +325,21 @@
  *       the purse leaks in), earning and buying mats exactly as section 2
  *       does, then:
  *
- *      13a. TAP SELECTS. A real `page.click()` on `floorgrid-fixed-power-bar`
- *           (no drag) opens `floorgrid-station-panel`, naming power-bar's
- *           identity as fixed barbell equipment. `.click()` rather than a
+ *      13a. TAP SELECTS. A real `page.click()` on `floorgrid-fixed-flat-bench`
+ *           (the Competition Bench Bay's primary surface) opens
+ *           `floorgrid-station-panel`, naming the bay. Tapping power-bar
+ *           inspects equipment instead (13a-eq). `.click()` rather than a
  *           hand-rolled mouse sequence is a measured finding, not a
  *           preference — see the comment beside `dragBox` for what a bare
  *           mousedown/mouseup with no intervening move actually did.
  *      13a2. THE PANEL'S OPERATION READING MATCHES THE VISIBLE FLOOR. The
  *           panel's own "in use by a .../idle .../N waiting" text is
- *           compared against `floorsim-using-fixed-power-bar`/`floorsim-
- *           claimed-fixed-power-bar` — the SAME highlight elements sections
- *           4b/8b already read off the live sim — rather than against a
- *           number this tool computed on its own.
+ *           compared against `floorsim-using-training-competition-bench-bay`
+ *           / `floorsim-claimed-training-competition-bench-bay` — the SAME
+ *           highlight elements sections 4b/8b already read off the live sim.
  *      13b. SWITCHING SELECTION. The same tap on a different station
  *           (`floorgrid-placed-mats`, after it is dragged onto the grid)
- *           closes power-bar's panel and opens mats' own — different
+ *           closes the bay's panel and opens mats' own — different
  *           identity text, read off the same testID `floorgrid-station-
  *           panel-identity` at two different values.
  *      13c. TRUTHFULNESS. The panel's condition line
@@ -1243,8 +1243,14 @@ const P4B_STATION_USE_CLASS = (() => {
       `the FLOOR_STATION_USE_CLASS parse came back incomplete (missing: ${missing.join(', ') || 'none'}; fixed rows: ${rowCounts.fixed}, session rows: ${rowCounts.session}) — refusing to run on a partial table`,
     );
   }
+  // Stage D.1: members train at the Competition Bench Bay, not at SKUs.
+  // Highlight ids are `floorsim-using-training-competition-bench-bay` and
+  // the Capacity second-bench sibling `-expansion`. Both are bench class.
+  table['training-competition-bench-bay'] = 'bench';
+  table['training-competition-bench-bay-expansion'] = 'bench';
   return Object.freeze(table);
 })();
+
 
 /**
  * GDD §5.13 P4b — every (using member, using-highlighted station) box pair
@@ -1549,10 +1555,14 @@ try {
       continue;
     }
     const text = await textOf(`floorgrid-fixed-${item}`);
-    if (text !== null && text.includes(item) && !text.includes('(fixed)')) {
+    const namesThePiece =
+      item === 'flat-bench'
+        ? text !== null && text.includes('bench bay') && !text.includes('(fixed)')
+        : text !== null && text.includes(item) && !text.includes('(fixed)');
+    if (namesThePiece) {
       ok(`gap 1: floorgrid-fixed-${item} is drawn on a cold gym, reading "${text}"`);
     } else {
-      fail(`gap 1: floorgrid-fixed-${item} drawn but its text ("${text}") does not name the movable piece`);
+      fail(`gap 1: floorgrid-fixed-${item} drawn but its text ("${text}") does not name the ${item === 'flat-bench' ? 'Competition Bench Bay' : 'movable piece'}`);
     }
   }
 
@@ -1690,11 +1700,12 @@ try {
   //
   // WHY THESE ARE NOT HOPEFUL POLLS. The shipped sim is deterministic and its
   // seed is a shipped constant, so what a cold garage does was measured by
-  // stepping `floorSim.ts` directly before this check was written: at tick 1,
-  // member 0 is USING flat-bench, member 1 is QUEUING behind it, and member 2
-  // is USING power-bar. `leaving` first appears at tick 31 and `seeking` at
-  // tick 37. So `using` and `queuing` are there from the first frame and the
-  // poll below is a wait for the browser to catch up, not a wait for luck.
+  // stepping `floorSim.ts` directly before this check was written. Stage D.1
+  // collapsed the three starting SKUs into one Competition Bench Bay, so
+  // tick 1 now has one using member on that bay and a queue behind it —
+  // not a second member on power-bar. `using` and `queuing` are still there
+  // from the first frame and the poll below is a wait for the browser to
+  // catch up, not a wait for luck.
   // -------------------------------------------------------------------------
   readAddress('1c: Phase 3 member states');
   const cueBudgetMs = BEAT_TIMEOUT_MS;
@@ -1726,7 +1737,7 @@ try {
       fail(`Phase 3 (8b): ${usingCueId} is attached but not drawn with a real box (${cueDrawn.why}, box=${JSON.stringify(cueBox)})`);
     }
   } else {
-    fail(`Phase 3 (8b): no member ever showed a 'using' cue within ${cueBudgetMs}ms — the shipped sim puts two members on machines at tick 1, so this is a render gap or a stopped tick`);
+    fail(`Phase 3 (8b): no member ever showed a 'using' cue within ${cueBudgetMs}ms — the shipped sim puts a member on the Competition Bench Bay at tick 1, so this is a render gap or a stopped tick`);
   }
   if (usingHighlightId !== null) {
     const highlightBox = await boxOf(usingHighlightId);
@@ -1736,7 +1747,7 @@ try {
       fail(`Phase 3 (8b): ${usingHighlightId} is attached but has no real box (${JSON.stringify(highlightBox)})`);
     }
   } else {
-    fail(`Phase 3 (8b): no station was ever highlighted as in use within ${cueBudgetMs}ms, on a floor where two members are on machines from tick 1`);
+    fail(`Phase 3 (8b): no station was ever highlighted as in use within ${cueBudgetMs}ms, on a floor where a member is on the Competition Bench Bay from tick 1`);
   }
 
   // 8c: QUEUE — someone waiting behind a machine somebody else is on.
@@ -1749,71 +1760,47 @@ try {
       fail(`Phase 3 (8c): ${queuingCueId} is attached but not drawn with a real box (${queueDrawn.why}, box=${JSON.stringify(queueBox)})`);
     }
   } else {
-    fail(`Phase 3 (8c): no member ever showed a 'queuing' cue within ${cueBudgetMs}ms — the shipped sim queues member 1 behind member 0 at flat-bench on tick 1`);
+    fail(`Phase 3 (8c): no member ever showed a 'queuing' cue within ${cueBudgetMs}ms — the shipped sim queues member 1 behind member 0 at the Competition Bench Bay on tick 1`);
   }
 
   // -------------------------------------------------------------------------
-  // P4c: THE OCCUPIED SWAP. While `fixed:power-bar` is in use, its chip draws
-  // a DIFFERENT sprite than while it is free — the double-bar fix (the
-  // resting sprite is a loaded bar seen from above, the bar-class member pose
-  // draws its own loaded bar, and before this fix a using member composited
-  // two crossed barbells on one cell; `floorSprites.test.ts` pins the pixel
-  // half, that the occupied variant holds zero bar/plate paint).
-  //
-  // WHY THIS IS A POLL FOR TWO MOMENTS AND NOT ONE READING. Both states
-  // recur on the shipped seed — measured by stepping `floorSim.ts` directly,
-  // power-bar is in use on ticks 1-30, 44-80, 94-127, 141-173, 232-262, then
-  // in shorter runs (512-543, 880-912, ...) separated by free stretches up
-  // to ~76s long. This claim runs early (right after 8c, minutes before the
-  // drag sections), so on a typical run both moments occur inside the
-  // budget; if the sim happens to be deep in a free stretch, the occupied
-  // moment is reported as a named SKIP rather than flaked, the same policy
-  // as the stranded ring. Each sample re-reads the highlight AFTER reading
-  // the sprite, so a tick boundary landing between the two reads discards
-  // the sample instead of attributing a frame to the wrong state.
+  // P4c: THE OCCUPIED BAY. Stage D.1 members train at the Competition Bench
+  // Bay, not at power-bar. Power-bar is equipment; its occupied-sprite swap
+  // is unused on the opening garage because nobody stands on it. The claim
+  // that must not skip is: a using highlight sits over the bay's primary
+  // bench (`floorgrid-fixed-sprite-flat-bench`), and power-bar is never
+  // highlighted as a destination.
   // -------------------------------------------------------------------------
   {
-    const readPowerBarSample = async () => {
-      const before = await boxOf('floorsim-using-fixed-power-bar');
-      const png = await pngBackedElementIn('floorgrid-fixed-sprite-power-bar');
-      const after = await boxOf('floorsim-using-fixed-power-bar');
-      const beforeInUse = before !== null && before.width > 0;
-      const afterInUse = after !== null && after.width > 0;
-      if (beforeInUse !== afterInUse || png === null) return null;
-      return { inUse: beforeInUse, uriHash: png.uriHash, uriLength: png.uriLength };
-    };
+    const bayUsingId = 'floorsim-using-training-competition-bench-bay';
     const swapDeadline = Date.now() + P4C_OCCUPIED_SWAP_POLL_MS;
-    let freeSample = null;
-    let occupiedSample = null;
-    while (Date.now() < swapDeadline && (freeSample === null || occupiedSample === null)) {
-      const sample = await readPowerBarSample();
-      if (sample !== null) {
-        if (sample.inUse) occupiedSample = occupiedSample ?? sample;
-        else freeSample = freeSample ?? sample;
-      }
+    let bayUsingBox = null;
+    let benchSprite = null;
+    let powerBarUsingSeen = false;
+    while (Date.now() < swapDeadline && (bayUsingBox === null || benchSprite === null)) {
+      const using = await boxOf(bayUsingId);
+      if (using !== null && using.width > 0 && using.height > 0) bayUsingBox = using;
+      const png = await pngBackedElementIn('floorgrid-fixed-sprite-flat-bench');
+      if (png !== null) benchSprite = png;
+      const powerBarUsing = await boxOf('floorsim-using-fixed-power-bar');
+      if (powerBarUsing !== null && powerBarUsing.width > 0) powerBarUsingSeen = true;
+      if (bayUsingBox !== null && benchSprite !== null) break;
       await page.waitForTimeout(REACTION_POLL_INTERVAL_MS);
     }
-    if (freeSample !== null && occupiedSample !== null) {
-      if (occupiedSample.uriHash !== freeSample.uriHash) {
-        ok(
-          `P4c: power-bar swaps its sprite while in use — free uri hash ${freeSample.uriHash} (${freeSample.uriLength} chars) vs occupied ${occupiedSample.uriHash} (${occupiedSample.uriLength} chars)`,
-        );
-      } else {
-        fail(
-          `P4c: power-bar draws the SAME sprite in use as free (uri hash ${occupiedSample.uriHash} both ways) — the occupied swap is not wired, so a using member composites a second loaded bar over the station's own`,
-        );
-      }
-    } else if (freeSample !== null) {
-      skip(
-        `P4c: power-bar was never observed in use within ${P4C_OCCUPIED_SWAP_POLL_MS}ms (free sprite read, hash ${freeSample.uriHash}) — the sim is in one of its measured long free stretches; the swap claim did not arise this run`,
-      );
-    } else if (occupiedSample !== null) {
-      skip(
-        `P4c: power-bar was never observed free within ${P4C_OCCUPIED_SWAP_POLL_MS}ms (occupied sprite read, hash ${occupiedSample.uriHash}) — the swap claim's other half did not arise this run`,
-      );
-    } else {
+    const powerBarSprite = await pngBackedElementIn('floorgrid-fixed-sprite-power-bar');
+    if (bayUsingBox === null) {
       fail(
-        `P4c: no clean sample of the power-bar chip's sprite was ever taken within ${P4C_OCCUPIED_SWAP_POLL_MS}ms — the chip's PNG element is missing, which is a render gap rather than a sim choice`,
+        `P4c: the Competition Bench Bay was never highlighted in use within ${P4C_OCCUPIED_SWAP_POLL_MS}ms — members should occupy the bay from tick 1`,
+      );
+    } else if (benchSprite === null) {
+      fail('P4c: floorgrid-fixed-sprite-flat-bench has no PNG while the bay is in use');
+    } else if (powerBarUsingSeen) {
+      fail('P4c: floorsim-using-fixed-power-bar appeared — power-bar is equipment, not a training destination');
+    } else if (powerBarSprite === null) {
+      fail('P4c: power-bar equipment disappeared from the floor while members trained at the bay');
+    } else {
+      ok(
+        `P4c: members occupy the Competition Bench Bay, not the power-bar — using highlight ${Math.round(bayUsingBox.width)}x${Math.round(bayUsingBox.height)} over the primary bench, power-bar remains equipment (sprite ${powerBarSprite.uriLength} chars)`,
       );
     }
   }
@@ -2084,9 +2071,19 @@ try {
       const seen = [...framesByMemberClass.entries()].map(
         ([index, byClass]) => `${index}:${[...byClass.keys()].join('+')}`,
       );
-      skip(
-        `P4b: the cross-class sprite claim — no member was seen using stations of two different use classes inside the ${P4B_CLASS_SAMPLES}-sample window (observed ${seen.join(', ') || 'none'}); which stations a member visits is the sim's own seeded choice, and the per-class grid distinctness is pinned unconditionally in floorSprites.test.ts`,
-      );
+      const classesSeen = new Set();
+      for (const byClass of framesByMemberClass.values()) {
+        for (const useClass of byClass.keys()) classesSeen.add(useClass);
+      }
+      if (classesSeen.size === 1 && classesSeen.has('bench')) {
+        ok(
+          `P4b: opening-garage members train at the Competition Bench Bay (bench class) — observed ${seen.join(', ') || 'none'}; power-bar is equipment, not a destination, so two-class distinctness is the floorSprites.test.ts pin`,
+        );
+      } else {
+        skip(
+          `P4b: the cross-class sprite claim — no member was seen using stations of two different use classes inside the ${P4B_CLASS_SAMPLES}-sample window (observed ${seen.join(', ') || 'none'}); which stations a member visits is the sim's own seeded choice, and the per-class grid distinctness is pinned unconditionally in floorSprites.test.ts`,
+        );
+      }
     } else {
       const [classA, classB] = witness.classes;
       const framesA = witness.byClass.get(classA);
@@ -2709,28 +2706,46 @@ try {
 
   /**
    * GDD §5.14 STAGE C.1 — the replacement for the deleted global
-   * `gymscreen-condition-<item>`/`gymscreen-repair-<item>` report. Selects
-   * `kind`/`item`'s station on the floor (skipping the tap if it is already
-   * the one showing — a second tap on an already-selected station TOGGLES
-   * its panel closed, the same disambiguation section 13d already drives
-   * around) and reads `floorgrid-station-panel-condition`'s real DOM text,
-   * the played path a tap on the floor actually produces rather than a
-   * global row that no longer exists.
+   * `gymscreen-condition-<item>`/`gymscreen-repair-<item>` report.
+   *
+   * Stage D.1: tapping a complete bay's primary (`flat-bench`) opens the
+   * STATION panel. Tapping power-bar / comp-plates inspects EQUIPMENT.
+   * Session items stay on the station panel. A second tap on an already-
+   * selected target toggles its panel closed, so this skips the tap when
+   * the matching identity is already showing.
    */
   /** Barbell-group furniture is always `'fixed'`; everything else this run ever owns is a placed `'session'` item — `FIXED_FURNITURE_ITEMS` (section 1a) is the same list the fixed-furniture gap check already drives. */
   const stationKindFor = (item) => (FIXED_FURNITURE_ITEMS.includes(item) ? 'fixed' : 'session');
+  const inspectsAsEquipment = (kind, item) =>
+    kind === 'fixed' && (item === 'power-bar' || item === 'comp-plates');
+  const identityNeedle = (item) =>
+    item === 'flat-bench' ? 'competition bench bay' : item.replace(/-/g, ' ');
   const stationConditionText = async (kind, item) => {
     await openGymSurface('play');
     const testId = kind === 'fixed' ? `floorgrid-fixed-${item}` : `floorgrid-placed-${item}`;
+    const equipment = inspectsAsEquipment(kind, item);
+    const identityId = equipment
+      ? 'floorgrid-equipment-panel-identity'
+      : 'floorgrid-station-panel-identity';
+    const conditionId = equipment
+      ? 'floorgrid-equipment-panel-condition'
+      : 'floorgrid-station-panel-condition';
     const alreadySelected =
-      (await textOf('floorgrid-station-panel-identity'))?.toLowerCase().includes(item.replace(/-/g, ' ')) ?? false;
+      (await textOf(identityId))?.toLowerCase().includes(identityNeedle(item)) ?? false;
     if (!alreadySelected) {
       await page.getByTestId(testId).scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
       await page.getByTestId(testId).click({ timeout: 10000 });
       await page.waitForTimeout(150);
     }
-    return textOf('floorgrid-station-panel-condition');
+    return textOf(conditionId);
   };
+  const panelRepairId = (kind, item) =>
+    inspectsAsEquipment(kind, item)
+      ? 'floorgrid-equipment-panel-repair'
+      : 'floorgrid-station-panel-repair';
+  const panelRepairUnavailableId = (kind, item) =>
+    inspectsAsEquipment(kind, item) ? null : 'floorgrid-station-panel-repair-unavailable';
+
 
   // 9a. The section is reachable within the existing gym surface, by scrolling
   // — no new route, no query string, same screen the floor is on.
@@ -3101,9 +3116,12 @@ try {
     if (!stillOnFloor) continue;
     const at = numberIn(await stationConditionText(kind, item), /Condition ([\d.]+)%/);
     if (at === null || at >= 100) continue;
-    const repairDrawn = await page.getByTestId('floorgrid-station-panel-repair').count();
+    const repairId = panelRepairId(kind, item);
+    const repairDrawn = await page.getByTestId(repairId).count();
     if (repairDrawn === 0) {
-      const unavailableText = await textOf('floorgrid-station-panel-repair-unavailable');
+      const unavailableId = panelRepairUnavailableId(kind, item);
+      const unavailableText =
+        unavailableId === null ? null : await textOf(unavailableId);
       if (unavailableText === 'no routine maintenance needed — nothing to repair') {
         // The panel's own condition-gated refusal, correctly reached — this
         // item sits above MAINTENANCE_PROMPT_CONDITION AND above
@@ -3113,11 +3131,11 @@ try {
         continue;
       }
       fail(
-        `S4b (9g): ${item} is at condition ${at} and its station repair control is not offered — the panel says "${unavailableText}"`,
+        `S4b (9g): ${item} is at condition ${at} and its repair control is not offered — the panel says "${unavailableText}"`,
       );
       continue;
     }
-    await pressById('floorgrid-station-panel-repair');
+    await pressById(repairId);
   }
   const purseAfterRecovery = await purseNow();
   await pressById('gymscreen-recover');
@@ -3189,7 +3207,7 @@ try {
   const GAP_TARGET_LOW = 55;
   const GAP_TARGET_HIGH = 72;
   const GAP_MAX_PRESSES = 40;
-  const GAP_TRACKED_ITEM = 'power-bar';
+  const GAP_TRACKED_ITEM = 'flat-bench';
   // The recovery minimum this section expects to cross-check against the
   // panel's own text below — the shipped value, read from `empireTuning.ts`
   // at the time this section was written, not trusted blind (see the
@@ -3454,14 +3472,16 @@ try {
       if (!onFloor) continue;
       const at = numberIn(await stationConditionText(kind, item), /Condition ([\d.]+)%/);
       if (at === null || at >= 100) continue;
-      const buttonPresent = await page.getByTestId('floorgrid-station-panel-repair').count();
+      const repairId = panelRepairId(kind, item);
+      const buttonPresent = await page.getByTestId(repairId).count();
       if (buttonPresent === 0) {
-        const reason = await textOf('floorgrid-station-panel-repair-unavailable');
+        const unavailableId = panelRepairUnavailableId(kind, item);
+        const reason = unavailableId === null ? null : await textOf(unavailableId);
         if (reason === 'no routine maintenance needed — nothing to repair') continue;
         fail(`9h (claim 11): ${item} at ${at} has no repair control and no benign reason — "${reason}"`);
         continue;
       }
-      await pressById('floorgrid-station-panel-repair');
+      await pressById(repairId);
     }
     const readyToReopen = await textOf('gymscreen-recovery-state');
     if (readyToReopen === 'dormant — everything reopening asks for is done') {
@@ -3821,45 +3841,45 @@ try {
   ok('13: a fresh gym, earned, bought mats and placed it — the fixture every claim below shares');
 
   // -------------------------------------------------------------------------
-  // 13a. TAP SELECTS. A real `page.click()` on power-bar (fixed furniture —
-  // always a station, never a drag target) opens the panel.
+  // 13a. TAP SELECTS. A real `page.click()` on the Competition Bench Bay's
+  // primary surface (`floorgrid-fixed-flat-bench`) opens the station panel.
+  // Tapping power-bar inspects equipment, not the station — that is 13a-eq
+  // immediately below. `.click()` rather than a hand-rolled mouse sequence
+  // is a measured finding, not a preference.
   // -------------------------------------------------------------------------
-  readAddress('13a: tap selects power-bar');
+  readAddress('13a: tap selects the Competition Bench Bay');
   await openGymSurface('play');
-  const powerBarBox13 = await boxOf('floorgrid-fixed-power-bar');
-  if (powerBarBox13 === null) {
-    fail('13a: floorgrid-fixed-power-bar has no box to tap');
+  const bayBox13 = await boxOf('floorgrid-fixed-flat-bench');
+  if (bayBox13 === null) {
+    fail('13a: floorgrid-fixed-flat-bench has no box to tap');
   } else {
-    await page.getByTestId('floorgrid-fixed-power-bar').click({ timeout: 10000 });
+    await page.getByTestId('floorgrid-fixed-flat-bench').click({ timeout: 10000 });
     await page.waitForTimeout(150);
     const panelDrawn13a = await waitUntilDrawn(page, 'floorgrid-station-panel', BEAT_TIMEOUT_MS);
     const identity13a = await textOf('floorgrid-station-panel-identity');
     if (
       panelDrawn13a.drawn &&
       identity13a !== null &&
-      identity13a.includes('Power bar')
+      identity13a.includes('Competition bench bay')
     ) {
-      ok(`13a: a real tap on floorgrid-fixed-power-bar opens the station panel, naming it "${identity13a}"`);
+      ok(`13a: a real tap on floorgrid-fixed-flat-bench opens the station panel, naming it "${identity13a}"`);
     } else {
       fail(
-        `13a: tapping power-bar did not open a correctly-identified panel — drawn=${panelDrawn13a.drawn} (${panelDrawn13a.why}), identity="${identity13a}"`,
+        `13a: tapping the bay's primary surface did not open a correctly-identified panel — drawn=${panelDrawn13a.drawn} (${panelDrawn13a.why}), identity="${identity13a}"`,
       );
     }
 
     // 13a2. THE PANEL'S OWN OPERATION READING MATCHES WHAT IS VISIBLY
-    // HAPPENING ON THE FLOOR — the human brief's own item 15: "queue/usage
-    // reading matches what is visibly happening." `floorsim-using-fixed-
-    // power-bar` / `floorsim-claimed-fixed-power-bar` are the SAME highlight
-    // elements sections 4b/8b already read off the live sim; this compares
-    // the panel's own text against them rather than against a number this
-    // tool computed independently.
+    // HAPPENING ON THE FLOOR. Stage D.1 highlight ids are dash-stable
+    // `floorsim-using-training-competition-bench-bay` /
+    // `floorsim-claimed-training-competition-bench-bay`.
     const usingHighlight13a = await page
-      .getByTestId('floorsim-using-fixed-power-bar')
+      .getByTestId('floorsim-using-training-competition-bench-bay')
       .count()
       .then((n) => n > 0)
       .catch(() => false);
     const claimedHighlight13a = await page
-      .getByTestId('floorsim-claimed-fixed-power-bar')
+      .getByTestId('floorsim-claimed-training-competition-bench-bay')
       .count()
       .then((n) => n > 0)
       .catch(() => false);
@@ -3881,8 +3901,46 @@ try {
     }
   }
 
+  // 13a-eq. TAP EQUIPMENT. Power-bar is a component of the bay, not a
+  // training destination. Tapping it opens the equipment panel and must
+  // not open the station panel.
+  readAddress('13a-eq: tap power-bar inspects equipment');
+  await page.getByTestId('floorgrid-station-panel-dismiss').click({ timeout: 5000 }).catch(() => {});
+  await page.waitForTimeout(100);
+  const powerBarBox13eq = await boxOf('floorgrid-fixed-power-bar');
+  if (powerBarBox13eq === null) {
+    fail('13a-eq: floorgrid-fixed-power-bar has no box to tap');
+  } else {
+    await page.getByTestId('floorgrid-fixed-power-bar').click({ timeout: 10000 });
+    await page.waitForTimeout(150);
+    const equipmentDrawn13eq = await waitUntilDrawn(page, 'floorgrid-equipment-panel', BEAT_TIMEOUT_MS);
+    const equipmentIdentity13eq = await textOf('floorgrid-equipment-panel-identity');
+    const stationCount13eq = await page.getByTestId('floorgrid-station-panel').count().catch(() => -1);
+    if (
+      equipmentDrawn13eq.drawn &&
+      equipmentIdentity13eq !== null &&
+      equipmentIdentity13eq.includes('Power bar') &&
+      stationCount13eq === 0
+    ) {
+      ok(
+        `13a-eq: tapping power-bar opens the equipment panel ("${equipmentIdentity13eq}") and not the station`,
+      );
+    } else {
+      fail(
+        `13a-eq: tapping power-bar did not inspect equipment — drawn=${equipmentDrawn13eq.drawn} (${equipmentDrawn13eq.why}), identity="${equipmentIdentity13eq}", station panels=${stationCount13eq}`,
+      );
+    }
+    await page.getByTestId('floorgrid-equipment-panel-dismiss').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(100);
+  }
+
+  // Restore the bay station panel so 13b can switch it to mats.
+  await page.getByTestId('floorgrid-fixed-flat-bench').click({ timeout: 10000 }).catch(() => {});
+  await page.waitForTimeout(150);
+
+
   // -------------------------------------------------------------------------
-  // 13b. SWITCHING SELECTION. A tap on mats replaces power-bar's panel with
+  // 13b. SWITCHING SELECTION. A tap on mats replaces the bay's panel with
   // mats' own, at the SAME testID — this is what proves it is a switch and
   // not a second panel drawn beside the first.
   // -------------------------------------------------------------------------
@@ -3899,6 +3957,7 @@ try {
     if (
       identity13b !== null &&
       identity13b.includes('Mats') &&
+      !identity13b.includes('Competition bench bay') &&
       !identity13b.includes('Power bar') &&
       panelCountBefore13b === 1 &&
       panelCountAfter13b === 1
@@ -4132,17 +4191,18 @@ try {
   }
 
   // -------------------------------------------------------------------------
-  // 13g (dismiss half). Open power-bar's panel again and dismiss it —
+  // 13g (dismiss half). Open the bay's panel again and dismiss it —
   // dispatches nothing, so nothing about the floor can move.
   // -------------------------------------------------------------------------
   readAddress('13g: dismiss touches nothing');
   await openGymSurface('play');
   await page.getByTestId('floorgrid-grid').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
-  const powerBarBoxForDismiss13 = await boxOf('floorgrid-fixed-power-bar');
-  if (powerBarBoxForDismiss13 !== null) {
-    await page.getByTestId('floorgrid-fixed-power-bar').click({ timeout: 10000 });
+  const bayBoxForDismiss13 = await boxOf('floorgrid-fixed-flat-bench');
+  if (bayBoxForDismiss13 !== null) {
+    await page.getByTestId('floorgrid-fixed-flat-bench').click({ timeout: 10000 });
   }
   await page.waitForTimeout(150);
+  const powerBarBoxForDismiss13 = await boxOf('floorgrid-fixed-power-bar');
   // GDD §5.14 STAGE C.1 — READ AN OFFSET FROM THE GRID, NOT AN ABSOLUTE
   // VIEWPORT BOX, THE SAME TECHNIQUE 13F ALREADY USES ONE SECTION ABOVE, AND
   // FOR THE SAME STATED REASON: "an absolute-viewport box comparison would
@@ -4273,23 +4333,24 @@ try {
 
   // -------------------------------------------------------------------------
   // 13i. RAPID REPEATED TAPS DO NOT CORRUPT SELECTION. Three fast taps on
-  // power-bar (select, deselect, select) land on one consistent final state.
+  // the bay's primary (select, deselect, select) land on one consistent
+  // final state.
   // -------------------------------------------------------------------------
   readAddress('13i: rapid repeated taps');
   await openGymSurface('play');
-  const powerBarBox13i = await boxOf('floorgrid-fixed-power-bar');
-  if (powerBarBox13i === null) {
-    fail('13i: floorgrid-fixed-power-bar has no box for the rapid-tap claim');
+  const bayBox13i = await boxOf('floorgrid-fixed-flat-bench');
+  if (bayBox13i === null) {
+    fail('13i: floorgrid-fixed-flat-bench has no box for the rapid-tap claim');
   } else {
-    const rapidTap13i = page.getByTestId('floorgrid-fixed-power-bar');
+    const rapidTap13i = page.getByTestId('floorgrid-fixed-flat-bench');
     await rapidTap13i.click({ timeout: 10000 });
     await rapidTap13i.click({ timeout: 10000 });
     await rapidTap13i.click({ timeout: 10000 });
     await page.waitForTimeout(150);
     const panelCount13i = await page.getByTestId('floorgrid-station-panel').count();
     const identity13i = await textOf('floorgrid-station-panel-identity');
-    if (panelCount13i === 1 && identity13i !== null && identity13i.includes('Power bar')) {
-      ok(`13i: three rapid taps (select, deselect, select) land on exactly one panel, naming power-bar — "${identity13i}"`);
+    if (panelCount13i === 1 && identity13i !== null && identity13i.includes('Competition bench bay')) {
+      ok(`13i: three rapid taps (select, deselect, select) land on exactly one panel, naming the bay — "${identity13i}"`);
     } else {
       fail(`13i: rapid taps left an inconsistent selection state — panel count ${panelCount13i}, identity "${identity13i}"`);
     }

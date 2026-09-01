@@ -333,8 +333,8 @@ import {
   weeklyAttributeEffects,
   withLadder,
 } from './sessions';
-import { floorStations } from './floorSim';
 import {
+  stationLevels,
   stockStationCapability,
   upgradeStation,
   withStationAxis,
@@ -342,6 +342,10 @@ import {
   type StationUpgradeAxis,
   type StationUpgradeRefuseReason,
 } from './stationCapability';
+import {
+  competitionBenchBay,
+  type TrainingStationKind,
+} from './trainingStation';
 
 /**
  * What one managed check-in COST, without the state it produced.
@@ -513,7 +517,7 @@ export type GymViewAction =
   | { readonly kind: 'recover-gym' }
   | {
       readonly kind: 'upgrade-station';
-      readonly item: LadderEquipmentItem;
+      readonly station: TrainingStationKind;
       readonly axis: StationUpgradeAxis;
     };
 
@@ -802,29 +806,29 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
       });
     }
     case 'upgrade-station': {
-      const placed = state.floor.furniture[action.item] !== undefined;
+      const bay = competitionBenchBay(
+        state.floor,
+        state.managed.gym.ladder.equipment,
+        stationLevels(state.capability, action.station).capacity,
+      );
+      const placed = bay.complete;
       let realizesCapacity = true;
       if (action.axis === 'capacity' && placed) {
         // Preview the purchased capacity map directly. Going through
         // `upgradeStation` with the live purse would refuse a short purse as
         // `upgraded` failure, fall back to stock, and then mis-report a
         // boxed station (`no-second-position`) when the real reason is money.
-        const previewCapability = withStationAxis(state.capability, action.item, 'capacity', 1);
-        const stations = floorStations({
-          rung: state.floor.rung,
-          floor: state.floor,
-          barbellOwned: state.managed.gym.ladder.equipment,
-          sessionOwned: state.managed.gym.sessionEquipment,
-          capability: previewCapability,
-        });
-        const station = stations.find(
-          (row) => row.ref.kind === 'fixed' && row.ref.item === action.item,
+        const previewCapability = withStationAxis(state.capability, action.station, 'capacity', 1);
+        const previewBay = competitionBenchBay(
+          state.floor,
+          state.managed.gym.ladder.equipment,
+          stationLevels(previewCapability, action.station).capacity,
         );
-        realizesCapacity = station !== undefined && station.useCells.length >= 2;
+        realizesCapacity = previewBay.expansion !== null && previewBay.benches.length >= 2;
       }
       const outcome = upgradeStation(
         state.capability,
-        action.item,
+        action.station,
         action.axis,
         state.managed.gym.ladder.gymBucks,
         placed,

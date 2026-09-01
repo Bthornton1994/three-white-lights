@@ -2482,6 +2482,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'stationCapability.ts',
       // GDD §5.14 Stage C: the station-tap management selector.
       'stationView.ts',
+      // GDD §5.18 Stage D.1: equipment is not a training station.
+      'trainingStation.ts',
     ]);
   });
 
@@ -2667,7 +2669,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // named). Nothing was removed.
     // 140 -> 141: Stage C.1b, one new distinct file-name mention across the
     // gym-screen / floor-layout rewrite.
-    expect(pairs).toBe(153);
+    // 153 -> 159: GDD §5.18 Stage D.1's trainingStation.ts. Six new pairs
+    // from the bay module naming its neighbours and from floorSim /
+    // stationCapability / FloorGrid / ladderView / empireTuning naming it.
+    expect(pairs).toBe(159);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3266,6 +3271,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // Cancel, and refusal copy is an expression from stationView.ts.
       'Moving:',
       'Cancel',
+      // GDD §5.18 Stage D.1: the realised second bench is a real 2×4
+      // sprite on the floor, labelled in the world, not a capacity pad.
+      // AST order: the expansion lives in the grid, after Moving/Cancel
+      // and before the ambient-member caption.
+      'second bench',
       // GDD §5.13 presentation Phase 2: the ambient-member caption, in tree
       // order — rendered after the grid's ScrollView and before the tray,
       // which is why it lands between the placed-item remove control's 'x'
@@ -3311,6 +3321,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gym bucks — you have',
       'repair for',
       'remove from the floor',
+      'move to the tray',
+      'close',
+      // GDD §5.18 Stage D.1: the equipment panel, distinct from the
+      // station panel. Tap bar/plates → inspect/move/condition; tap the
+      // bay → Q/C/T. Transcribed from this census.
+      'Condition',
+      '%',
+      'repair for',
       'move to the tray',
       'close',
       // GymScreen.tsx, in tree order — second, because a capital `G` sorts
@@ -3798,7 +3816,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // labels, and refuse-kind tokens. `floorgrid-grid-tap` left the set.
     // 614 -> 624: Stage D critic pass — item-aware upgrade labels, upgrade
     // refuse copy, goldenrod/darkkhaki rest-cues.
-    expect(singleQuoted.size).toBe(624);
+    // 624 -> 640: GDD §5.18 Stage D.1 — trainingStation tokens, bay
+    // testIDs, equipment-panel copy, training-kind station refs.
+    expect(singleQuoted.size).toBe(640);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3907,7 +3927,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // and its React `key`).
     // 324 -> 320: Stage C.1d dropped PanResponder/remove-chip templates.
     // 332 -> 333: Stage D critic pass `Can't upgrade this` escape.
-    expect(templateChunks.size).toBe(333);
+    // 333 -> 335: GDD §5.18 Stage D.1 highlight ids — dash-stable
+    // `floorsim-${activity}-training-${ref.station}` and the Capacity
+    // second-bench sibling `-expansion`, replacing the colon-keyed
+    // `floorStationRefKey` form the verifiers cannot read.
+    expect(templateChunks.size).toBe(335);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3955,6 +3979,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // GDD §5.14 Stage C's own import specifier — `FloorGrid.tsx`'s new
       // edge to `stationView.ts`.
       './stationView',
+      './trainingStation',
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
       'Accessory',
       'Athlete',
@@ -4049,6 +4074,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'coach-staff-level',
       'combined-total',
       'comp-plates',
+      'competition-bench-bay',
       'competition-total',
       'composed-gym',
       'condition',
@@ -4085,6 +4111,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'elapsedSeconds',
       'equipment',
       'equipment-below-recovery-minimum',
+      'expansion',
       'failed',
       'failure-slump-control',
       'fault-message',
@@ -4106,6 +4133,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorGrids',
       'floorUris',
       'floorgrid-ambient-caption',
+      'floorgrid-bay-expansion',
+      'floorgrid-bay-expansion-sprite',
       'floorgrid-caption',
       // GDD §5.14 Stage C.1: the collapsed-by-default diagnostics surface's
       // three new testIDs.
@@ -4114,6 +4143,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-diagnostics-toggle',
       'floorgrid-drop-refused',
       'floorgrid-drop-refused-area',
+      'floorgrid-equipment-panel',
+      'floorgrid-equipment-panel-condition',
+      'floorgrid-equipment-panel-dismiss',
+      'floorgrid-equipment-panel-identity',
+      'floorgrid-equipment-panel-remove',
+      'floorgrid-equipment-panel-repair',
+      'floorgrid-equipment-panel-role',
       'floorgrid-floor-texture',
       'floorgrid-grid',
       'floorgrid-member-panel',
@@ -4123,6 +4159,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-pending',
       'floorgrid-place-banner',
       'floorgrid-place-cancel',
+      'floorgrid-quality-mark-competition-bench-bay',
       'floorgrid-root',
       'floorgrid-scroll-x',
       'floorgrid-scroll-y',
@@ -4140,6 +4177,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-station-panel-repair',
       'floorgrid-station-panel-repair-unavailable',
       'floorgrid-station-panel-review-note',
+      'floorgrid-throughput-mark-competition-bench-bay',
       'floorgrid-tray',
       'floorgrid-tray-empty',
       'floorgrid-tray-scroll',
@@ -4350,6 +4388,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'pointer',
       'power-bar',
       'powerlifter',
+      'primary',
       'progression-reaching',
       'prompt-dismiss',
       'prompt-dismissed-again',
@@ -4460,6 +4499,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'thrownMessage',
       'trained',
       'trained-day-upkeep',
+      'training',
       'training-iq',
       'training-pace',
       'trainingIq',
@@ -4582,7 +4622,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 905 -> 907: Stage C.1c per-tile Build hit-target templates.
     // 907 -> 917: Stage C.1d singleQuoted 583 -> 597, templateChunks 324 -> 320.
     // 946 -> 957: Stage D critic pass singleQuoted 614 -> 624, templates 332 -> 333.
-    expect(stringsChecked).toBe(957);
+    // 957 -> 973: GDD §5.18 Stage D.1 singleQuoted 624 -> 640; templateChunks unchanged.
+    // 973 -> 975: D.1 highlight ids, templateChunks 333 -> 335.
+    expect(stringsChecked).toBe(975);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -4946,6 +4988,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './members',
         './sessions',
         './stationCapability',
+        './trainingStation',
       ],
       'FloorGrid.tsx': [
         './empireTuning',
@@ -4965,9 +5008,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './sessions',
         // Stage C's own small selector — see that file's header.
         './stationView',
-        // GDD §5.14 Stage D: Q/C/T levels the panel upgrades and the
-        // floor pads/marks read.
+        // GDD §5.14 Stage D / §5.18 Stage D.1: Q/C/T levels the panel
+        // upgrades and the bay expansion/marks read.
         './stationCapability',
+        './trainingStation',
         'react',
         'react-native',
       ],
@@ -4999,11 +5043,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'ladderView.tsx': [
         './empireTuning',
         './floor',
-        './floorSim',
         './ladder',
         './management',
         './sessions',
         './stationCapability',
+        './trainingStation',
       ],
       // §5.11 stage 4. Five edges: the throw gate, the tuning block, the
       // equipment vocabulary and accrual type from stage 1, `scrubPrecision`,
@@ -5042,7 +5086,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './sessions',
         './stationCapability',
       ],
-      'stationCapability.ts': ['./empireCore', './empireTuning', './ladder'],
+      'stationCapability.ts': ['./empireCore', './empireTuning', './trainingStation'],
+      'trainingStation.ts': ['./floor', './ladder'],
     };
     let fenced = 0;
     for (const name of SHIPPED_MODULES) {
@@ -5064,7 +5109,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // failure value.
     // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
     // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
-    expect(fenced).toBe(23);
+    // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
+    expect(fenced).toBe(24);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -5177,7 +5223,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 92 -> 100: GDD §5.14 Stage D — stationCapability.ts's three edges
     // plus floorSim/FloorGrid/ladderView/stationView reading it, and
     // ladderView's new floorSim edge for realised-capacity preview.
-    expect(specifiers).toBe(100);
+    // 100 -> 104: GDD §5.18 Stage D.1 — trainingStation.ts's two edges
+    // (./floor, ./ladder), floorSim and FloorGrid reading it, ladderView
+    // swapping floorSim for trainingStation, stationCapability swapping
+    // ladder for trainingStation.
+    expect(specifiers).toBe(104);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external

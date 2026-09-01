@@ -211,7 +211,8 @@
  * its one import.
  *
  * A seventh import edge is caught by `empireCore.test.ts`'s per-file import
- * fence, which pins this module's six edges exactly.
+ * fence, which pins this module's edges exactly. Stage D.1 adds
+ * `./trainingStation` so members target a bay, not a SKU.
  *
  * Phase 2 deliberately took no `FloorState`; Phase 3 does, and the widening is
  * the pathing job itself — a member walking to equipment has to know where the
@@ -260,11 +261,18 @@ import { type SessionEquipmentItem } from './sessions';
 import { EMPIRE_TUNING } from './empireTuning';
 import {
   stationCapacitySlots,
+  stationLevels,
   stationQualityAffinityBonus,
   stationUseTicksFactor,
   stockStationCapability,
   type StationCapabilityState,
 } from './stationCapability';
+import {
+  COMPETITION_BENCH_BAY,
+  competitionBenchBay,
+  isCompetitionBenchBayComponent,
+  type TrainingStationKind,
+} from './trainingStation';
 
 // ---------------------------------------------------------------------------
 // Vocabulary
@@ -335,20 +343,28 @@ export type FloorSimInterruptibleState = (typeof FLOOR_SIM_INTERRUPTIBLE_STATES)
 /**
  * A reference to something on the floor a member can walk to and use.
  *
- * Two kinds, and the split is the one the floor already draws: `fixed` is the
- * Barbell-group baseline `fixedFloorFurniture` reports, `session` is a placed
- * `SESSION_EQUIPMENT_ITEMS` member out of `floorLayout`. Both `item` fields are
- * closed vocabularies derived from `EMPIRE_TUNING`, so nothing here is a bare
- * string a caller can drift.
+ * Three kinds. `training` is a functional station — Stage D.1's Competition
+ * Bench Bay, assembled from required equipment rather than pretending each
+ * SKU is a destination. `session` is a placed `SESSION_EQUIPMENT_ITEMS`
+ * member out of `floorLayout`. `fixed` remains for leftover Barbell that is
+ * not a bay component (none in the opening garage; kept so a future squat
+ * rack can join without a third rewrite of the ref).
  *
- * Identified by kind and item rather than by an index into the station list,
- * on purpose: an index would silently re-point at a different station when an
- * earlier one is removed, and re-pointing is exactly the event this piece
- * exists to make visible as an interruption.
+ * Identified by kind and identity rather than by an index into the station
+ * list, on purpose: an index would silently re-point at a different station
+ * when an earlier one is removed, and re-pointing is exactly the event this
+ * piece exists to make visible as an interruption.
  */
 export type FloorStationRef =
+  | { readonly kind: 'training'; readonly station: TrainingStationKind }
   | { readonly kind: 'fixed'; readonly item: LadderEquipmentItem }
   | { readonly kind: 'session'; readonly item: SessionEquipmentItem };
+
+/** Stable identity for a ref — kind plus the station or item it names. */
+export function floorStationRefKey(ref: FloorStationRef): string {
+  if (ref.kind === 'training') return `training:${ref.station}`;
+  return `${ref.kind}:${ref.item}`;
+}
 
 /**
  * One usable station: what it is, where it sits, the cell a member stands in
@@ -501,7 +517,17 @@ function manhattan(left: GridPosition, right: GridPosition): number {
 }
 
 function refsEqual(left: FloorStationRef, right: FloorStationRef): boolean {
-  return left.kind === right.kind && left.item === right.item;
+  if (left.kind !== right.kind) return false;
+  if (left.kind === 'training' && right.kind === 'training') {
+    return left.station === right.station;
+  }
+  if (left.kind === 'fixed' && right.kind === 'fixed') return left.item === right.item;
+  if (left.kind === 'session' && right.kind === 'session') return left.item === right.item;
+  return false;
+}
+
+function refKeyOf(ref: FloorStationRef): string {
+  return ref.kind === 'training' ? ref.station : ref.item;
 }
 
 // ---------------------------------------------------------------------------
@@ -642,23 +668,62 @@ function routePlan(context: FloorSimContext): RoutePlan {
 
   const furniture = floorFurnitureLayout(context.floor, context.barbellOwned);
   const placed = floorLayout(context.floor);
-  const occupants: { readonly ref: FloorStationRef; readonly position: GridPosition; readonly footprint: GridSize }[] =
-    [];
+  const bay = competitionBenchBay(
+    context.floor,
+    context.barbellOwned,
+    stationLevels(capability, COMPETITION_BENCH_BAY).capacity,
+  );
+
+  const occupants: {
+    readonly ref: FloorStationRef;
+    readonly position: GridPosition;
+    readonly footprint: GridSize;
+    readonly benches: readonly { readonly position: GridPosition; readonly footprint: GridSize }[];
+  }[] = [];
+
   for (const row of furniture) {
-    occupants.push({ ref: { kind: 'fixed', item: row.item }, position: row.position, footprint: row.footprint });
+    for (const covered of coveredCells(row.position, row.footprint)) {
+      if (!insideGrid(covered, grid)) continue;
+      blocked[cellIndex(covered, grid)] = true;
+    }
+  }
+  for (const row of placed) {
+    for (const covered of coveredCells(row.position, row.footprint)) {
+      if (!insideGrid(covered, grid)) continue;
+      blocked[cellIndex(covered, grid)] = true;
+    }
+  }
+  if (bay.expansion !== null) {
+    for (const covered of coveredCells(bay.expansion.position, bay.expansion.footprint)) {
+      if (!insideGrid(covered, grid)) continue;
+      blocked[cellIndex(covered, grid)] = true;
+    }
+  }
+
+  if (bay.complete && bay.primary !== null) {
+    occupants.push({
+      ref: Object.freeze({ kind: 'training', station: COMPETITION_BENCH_BAY }),
+      position: bay.primary.position,
+      footprint: bay.primary.footprint,
+      benches: bay.benches,
+    });
+  }
+  for (const row of furniture) {
+    if (isCompetitionBenchBayComponent(row.item)) continue;
+    occupants.push({
+      ref: { kind: 'fixed', item: row.item },
+      position: row.position,
+      footprint: row.footprint,
+      benches: Object.freeze([{ position: row.position, footprint: row.footprint }]),
+    });
   }
   for (const row of placed) {
     occupants.push({
       ref: { kind: 'session', item: row.item },
       position: row.position,
       footprint: row.footprint,
+      benches: Object.freeze([{ position: row.position, footprint: row.footprint }]),
     });
-  }
-  for (const occupant of occupants) {
-    for (const covered of coveredCells(occupant.position, occupant.footprint)) {
-      if (!insideGrid(covered, grid)) continue;
-      blocked[cellIndex(covered, grid)] = true;
-    }
   }
 
   // CELL RESERVATION RUNS IN TWO PASSES, AND THE ORDER IS THE WHOLE POINT.
@@ -674,6 +739,11 @@ function routePlan(context: FloorSimContext): RoutePlan {
   // sweep has since grown a phase and two layouts, so that pair of numbers is
   // history rather than something a run today re-derives; what a run today
   // measures is 0 collisions over 131 stations.
+  //
+  // Stage D.1: a training bay gets one use cell per physical bench, each
+  // adjacent to THAT bench's footprint. Capacity 2 is a second bench, not
+  // two approaches around one. Session and leftover Barbell stay at one
+  // use cell.
   //
   // A cell already spoken for is now INELIGIBLE rather than merely sorted last,
   // which is what makes `queueCells` genuinely nearest-first from `useCell` —
@@ -697,21 +767,26 @@ function routePlan(context: FloorSimContext): RoutePlan {
     readonly useCells: readonly GridPosition[];
   }[] = [];
   for (const occupant of occupants) {
-    const approaches = approachCells(occupant.position, occupant.footprint, grid, blocked);
-    const wanted = stationCapacitySlots(capability, occupant.ref.kind, occupant.ref.item);
+    const wanted = stationCapacitySlots(capability, occupant.ref.kind, refKeyOf(occupant.ref));
     const useCells: GridPosition[] = [];
-    for (const candidate of approaches) {
+    for (const bench of occupant.benches) {
       if (useCells.length >= wanted) break;
-      const at = cellIndex(candidate, grid);
-      if (takenUseCells.has(at)) continue;
-      takenUseCells.add(at);
-      useCells.push(candidate);
+      const approaches = approachCells(bench.position, bench.footprint, grid, blocked);
+      let seatedHere = false;
+      for (const candidate of approaches) {
+        const at = cellIndex(candidate, grid);
+        if (takenUseCells.has(at)) continue;
+        takenUseCells.add(at);
+        useCells.push(candidate);
+        seatedHere = true;
+        break;
+      }
+      if (!seatedHere) {
+        const fallback = approaches[0];
+        if (fallback !== undefined && useCells.length === 0) useCells.push(fallback);
+      }
     }
-    if (useCells.length === 0) {
-      const fallback = approaches[0];
-      if (fallback === undefined) continue;
-      useCells.push(fallback);
-    }
+    if (useCells.length === 0) continue;
     seated.push({ occupant, useCells: Object.freeze(useCells) });
   }
 
@@ -771,8 +846,10 @@ function routePlan(context: FloorSimContext): RoutePlan {
 
 /**
  * The stations a member could walk to on this floor, in the order the sim
- * itself ranks them — fixed Barbell furniture first, then placed session
- * equipment in `SESSION_EQUIPMENT_ITEMS` order.
+ * itself ranks them — the complete Competition Bench Bay first, then leftover
+ * Barbell that is not a bay component, then placed session equipment in
+ * `SESSION_EQUIPMENT_ITEMS` order. Starting-kit pieces are never independent
+ * destinations: a bar and plates are equipment, not a training station.
  *
  * A plain read model, computed fresh on every call, never stored — the same
  * pattern `fixedFloorFurniture` and `ambientMemberRoster` already use. A
@@ -879,14 +956,14 @@ function affinityFor(
   capability: StationCapabilityState,
 ): number {
   const base =
-    station.ref.kind === 'fixed'
-      ? EMPIRE_TUNING.MEMBER_TYPE_BARBELL_AFFINITY[type]
-      : ((
+    station.ref.kind === 'session'
+      ? ((
           EMPIRE_TUNING.MEMBER_TYPE_ITEM_AFFINITY[type] as Readonly<
             Partial<Record<SessionEquipmentItem, number>>
           >
-        )[station.ref.item] ?? 0);
-  return base + stationQualityAffinityBonus(capability, station.ref.kind, station.ref.item);
+        )[station.ref.item] ?? 0)
+      : EMPIRE_TUNING.MEMBER_TYPE_BARBELL_AFFINITY[type];
+  return base + stationQualityAffinityBonus(capability, station.ref.kind, refKeyOf(station.ref));
 }
 
 /** One member's own walking speed, in tiles per tick — the base rate with its seeded jitter. */
@@ -1316,7 +1393,7 @@ function advanceMember(
     const factor = stationUseTicksFactor(
       plan.capability,
       station.ref.kind,
-      station.ref.item,
+      refKeyOf(station.ref),
     );
     return Object.freeze({
       ...relocated,

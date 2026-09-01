@@ -101,6 +101,7 @@ describe('stationView.ts — GDD §5.14 Stage C', () => {
       expect(label.includes('-'), `${item} should not be the hyphenated token`).toBe(false);
     }
     expect(playerFacingEquipmentLabel('comp-plates')).toBe('Competition plates');
+    expect(playerFacingEquipmentLabel('competition-bench-bay')).toBe('Competition bench bay');
     expect(playerFacingEquipmentLabel('wrist-wraps')).toBe('Wrist wraps');
     expect(playerFacingEquipmentLabel('mats')).toBe('Mats');
   });
@@ -132,6 +133,9 @@ describe('stationView.ts — GDD §5.14 Stage C', () => {
     expect(playerFacingMemberTypeLabel('powerlifter')).toBe('Powerlifter');
     expect(playerFacingMemberTypeLabel('bodybuilder')).toBe('Bodybuilder');
     expect(playerFacingMemberActivityLine('using', 'flat-bench')).toBe('Training on Flat bench');
+    expect(playerFacingMemberActivityLine('using', 'competition-bench-bay')).toBe(
+      'Training on Competition bench bay',
+    );
     expect(playerFacingMemberActivityLine('queuing', 'mats')).toBe('Waiting for Mats');
     expect(playerFacingMemberActivityLine('leaving', null)).toBe('Leaving');
     expect(playerFacingMemberActivityLine('seeking', null)).toBe('Walking');
@@ -143,21 +147,18 @@ describe('stationView.ts — GDD §5.14 Stage C', () => {
     expect(playerFacingPlacementRefuse('outside')).toBe('Outside the gym');
   });
 
-  it('names Stage D upgrades as equipment, not as Q/C/T scalars', () => {
-    expect(playerFacingUpgradeLabel('quality', 'flat-bench')).toBe('Competition pads');
-    expect(playerFacingUpgradeLabel('quality', 'power-bar')).toBe('Aggressive knurl');
-    expect(playerFacingUpgradeLabel('quality', 'comp-plates')).toBe('Tight tolerances');
-    expect(playerFacingUpgradeLabel('capacity', 'flat-bench')).toBe('Second position');
-    expect(playerFacingUpgradeLabel('throughput', 'flat-bench')).toBe('Plate tree');
-    expect(playerFacingUpgradeLabel('throughput', 'power-bar')).toBe('Collar kit');
+  it('names Stage D.1 upgrades as bay fittings, not as Q/C/T scalars', () => {
+    expect(playerFacingUpgradeLabel('quality')).toBe('Competition pads');
+    expect(playerFacingUpgradeLabel('capacity')).toBe('Second bench');
+    expect(playerFacingUpgradeLabel('throughput')).toBe('Plate tree');
     expect(playerFacingUpgradeEffect('quality')).toBe('better training experience');
     expect(playerFacingUpgradeEffect('capacity')).toBe('two can train at once');
     expect(playerFacingUpgradeEffect('throughput')).toBe('faster changeovers');
     expect(playerFacingUpgradeRefuse('not-upgradable')).toBe("Can't upgrade this");
     expect(playerFacingUpgradeRefuse('already-upgraded')).toBe('Already fitted');
-    expect(playerFacingUpgradeRefuse('not-placed')).toBe('Place it first');
+    expect(playerFacingUpgradeRefuse('not-placed')).toBe('Place the bay first');
     expect(playerFacingUpgradeRefuse('no-second-position')).toBe(
-      'No room for a second position',
+      'No room for a second bench',
     );
     expect(playerFacingUpgradeRefuse('not-enough-gym-bucks')).toBe('Not enough gym bucks');
   });
@@ -165,6 +166,13 @@ describe('stationView.ts — GDD §5.14 Stage C', () => {
   // -------------------------------------------------------------------------
   // Identity
   // -------------------------------------------------------------------------
+
+  it('reads a training station identity with no session group', () => {
+    const identity = stationIdentityView({ kind: 'training', station: 'competition-bench-bay' });
+    expect(identity.kind).toBe('training');
+    expect(identity.item).toBe('competition-bench-bay');
+    expect(identity.sessionGroup).toBeNull();
+  });
 
   it('reads a fixed station identity with no session group', () => {
     const identity = stationIdentityView(FIXED_REF);
