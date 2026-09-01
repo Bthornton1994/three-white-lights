@@ -83,6 +83,12 @@ async function run(name, viewport) {
   await clickBox(page, '[data-testid="floorgrid-fixed-sprite-power-bar"]');
   await clickGrid(page, 1, 0);
   await shot(page, `${name}-invalid`);
+  const refused = await page.getByTestId('floorgrid-drop-refused').innerText({ timeout: 2000 }).catch(() => '');
+  const refusedArea = await page.locator('[data-testid="floorgrid-drop-refused-area"]').boundingBox();
+  if (!refused || refusedArea === null || refusedArea.width < 2) {
+    throw new Error(`${name}: invalid placement stayed silent — refused="${refused}"`);
+  }
+  console.log(`${name}: invalid placement "${refused}" with ${Math.round(refusedArea.width)}x${Math.round(refusedArea.height)} outline`);
   await clickGrid(page, 6, 0);
 
   await page.getByText('shop', { exact: true }).click();

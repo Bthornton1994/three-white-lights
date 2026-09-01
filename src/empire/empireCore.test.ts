@@ -3794,7 +3794,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // names, furniture place/remove action kinds, and Build-mode copy.
     // 583 -> 597: Stage C.1d placement-phase chrome, player-facing member
     // labels, and refuse-kind tokens. `floorgrid-grid-tap` left the set.
-    expect(singleQuoted.size).toBe(597);
+    expect(singleQuoted.size).toBe(598);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4104,6 +4104,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-diagnostics',
       'floorgrid-diagnostics-toggle',
       'floorgrid-drop-refused',
+      'floorgrid-drop-refused-area',
       'floorgrid-floor-texture',
       'floorgrid-grid',
       'floorgrid-member-panel',
@@ -4563,7 +4564,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 841 -> 878: Stage C.1b singleQuoted + templateChunks growth.
     // 905 -> 907: Stage C.1c per-tile Build hit-target templates.
     // 907 -> 917: Stage C.1d singleQuoted 583 -> 597, templateChunks 324 -> 320.
-    expect(stringsChecked).toBe(917);
+    expect(stringsChecked).toBe(918);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were

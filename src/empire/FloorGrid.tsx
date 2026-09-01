@@ -1099,8 +1099,13 @@ export function FloorGrid(props: FloorGridProps) {
   // in the shipped app that ever dispatches `floor-place` (grepped, not
   // assumed), so refusing here is refusing for the whole app.
   const [overlapRefusalItem, setOverlapRefusalItem] = useState<LadderEquipmentItem | null>(null);
-  const [placementRefused, setPlacementRefused] = useState(false);
   const [placementRefuseKind, setPlacementRefuseKind] = useState<PlacementRefuseKind | null>(null);
+  const [refusalRegion, setRefusalRegion] = useState<{
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+  } | null>(null);
   const overlapRefusalTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
@@ -1114,6 +1119,8 @@ export function FloorGrid(props: FloorGridProps) {
     setSelectedMemberIndex(null);
     setPendingPlace(null);
     setPlacementRefuseKind(null);
+    setOverlapRefusalItem(null);
+    setRefusalRegion(null);
   }, [buildMode]);
 
   /** Select `ref`, or deselect it if it is already the selected one — a second tap on the same station closes its own panel. */
@@ -1128,6 +1135,8 @@ export function FloorGrid(props: FloorGridProps) {
     setSelectedStation(null);
     setSelectedMemberIndex(null);
     setPlacementRefuseKind(null);
+    setOverlapRefusalItem(null);
+    setRefusalRegion(null);
     setPendingPlace(next);
   };
 
@@ -1135,20 +1144,35 @@ export function FloorGrid(props: FloorGridProps) {
     setPendingPlace(null);
     setPlacementRefuseKind(null);
     setOverlapRefusalItem(null);
-    setPlacementRefused(false);
+    setRefusalRegion(null);
+  };
+
+  const clipRefusalRegion = (
+    position: GridPosition,
+    footprint: { width: number; height: number },
+  ): { readonly x: number; readonly y: number; readonly width: number; readonly height: number } | null => {
+    const x = Math.max(0, position.x);
+    const y = Math.max(0, position.y);
+    const right = Math.min(grid.width, position.x + footprint.width);
+    const bottom = Math.min(grid.height, position.y + footprint.height);
+    if (right <= x || bottom <= y) return null;
+    return { x, y, width: right - x, height: bottom - y };
   };
 
   const flashRefusal = (
     kind: PlacementRefuseKind,
     furnitureItem: LadderEquipmentItem | null,
+    region: { readonly x: number; readonly y: number; readonly width: number; readonly height: number } | null,
   ): void => {
     if (overlapRefusalTimeout.current !== null) clearTimeout(overlapRefusalTimeout.current);
     setOverlapRefusalItem(furnitureItem);
     setPlacementRefuseKind(kind);
-    setPlacementRefused(true);
+    setRefusalRegion(region);
+    // Cell/furniture flash is transient; the banner reason stays until the
+    // next attempt, a successful place, or Cancel. C-DEBT-04: a reason that
+    // only lives on the grid is covered by the Cancel chrome.
     overlapRefusalTimeout.current = setTimeout(() => {
       setOverlapRefusalItem(null);
-      setPlacementRefused(false);
       overlapRefusalTimeout.current = null;
     }, EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_FLASH_MS);
   };
@@ -1169,6 +1193,7 @@ export function FloorGrid(props: FloorGridProps) {
             ? 'outside'
             : 'doesnt-fit',
           null,
+          clipRefusalRegion(position, footprint),
         );
         return;
       }
@@ -1176,7 +1201,7 @@ export function FloorGrid(props: FloorGridProps) {
         overlapsFixedFurniture(position, footprint, [row]),
       );
       if (overlappedFurniture !== undefined) {
-        flashRefusal('occupied', overlappedFurniture.item);
+        flashRefusal('occupied', overlappedFurniture.item, clipRefusalRegion(position, footprint));
         return;
       }
       const overlappedSession = placed.find(
@@ -1187,7 +1212,7 @@ export function FloorGrid(props: FloorGridProps) {
           ]),
       );
       if (overlappedSession !== undefined) {
-        flashRefusal('occupied', null);
+        flashRefusal('occupied', null, clipRefusalRegion(position, footprint));
         return;
       }
       dispatch({ kind: 'floor-place', item: pendingPlace.item, position });
@@ -1199,6 +1224,7 @@ export function FloorGrid(props: FloorGridProps) {
             ? 'outside'
             : 'doesnt-fit',
           null,
+          clipRefusalRegion(position, footprint),
         );
         return;
       }
@@ -1207,7 +1233,7 @@ export function FloorGrid(props: FloorGridProps) {
           row.item !== pendingPlace.item && overlapsFixedFurniture(position, footprint, [row]),
       );
       if (overlappedFurniture !== undefined) {
-        flashRefusal('occupied', overlappedFurniture.item);
+        flashRefusal('occupied', overlappedFurniture.item, clipRefusalRegion(position, footprint));
         return;
       }
       const overlappedSession = placed.find((row) =>
@@ -1216,13 +1242,15 @@ export function FloorGrid(props: FloorGridProps) {
         ]),
       );
       if (overlappedSession !== undefined) {
-        flashRefusal('occupied', null);
+        flashRefusal('occupied', null, clipRefusalRegion(position, footprint));
         return;
       }
       dispatch({ kind: 'floor-place-furniture', item: pendingPlace.item, position });
     }
     setPendingPlace(null);
     setPlacementRefuseKind(null);
+    setRefusalRegion(null);
+    setOverlapRefusalItem(null);
   };
 
   const pressTile = (position: GridPosition): void => {
@@ -1233,7 +1261,7 @@ export function FloorGrid(props: FloorGridProps) {
       position.x >= grid.width ||
       position.y >= grid.height
     ) {
-      flashRefusal('outside', null);
+      flashRefusal('outside', null, clipRefusalRegion(position, { width: 1, height: 1 }));
       return;
     }
     tryPlaceAt(position);
@@ -1421,6 +1449,14 @@ export function FloorGrid(props: FloorGridProps) {
           <Text testID={'floorgrid-pending'}>
             Moving: {playerFacingEquipmentLabel(pendingPlace.item)}
           </Text>
+          {placementRefuseKind === null ? null : (
+            <Text
+              testID={'floorgrid-drop-refused'}
+              style={{ color: FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR }}
+            >
+              {playerFacingPlacementRefuse(placementRefuseKind)}
+            </Text>
+          )}
           <Pressable
             testID={'floorgrid-place-cancel'}
             accessibilityRole={'button'}
@@ -1538,21 +1574,22 @@ export function FloorGrid(props: FloorGridProps) {
                   )),
                 )
               : null}
-            {placementRefused && placementRefuseKind !== null ? (
-              <Text
-                testID={'floorgrid-drop-refused'}
+            {refusalRegion === null ? null : (
+              <View
+                testID={'floorgrid-drop-refused-area'}
                 pointerEvents={'none'}
                 style={{
                   position: 'absolute',
-                  left: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
-                  top: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
-                  color: FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR,
+                  left: refusalRegion.x * tile,
+                  top: refusalRegion.y * tile,
+                  width: refusalRegion.width * tile,
+                  height: refusalRegion.height * tile,
+                  borderWidth: EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS,
+                  borderColor: FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR,
                   zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
                 }}
-              >
-                {playerFacingPlacementRefuse(placementRefuseKind)}
-              </Text>
-            ) : null}
+              />
+            )}
             {furniture.map((row) => {
               const isRefusalTarget = overlapRefusalItem === row.item;
               const isOccupied =
