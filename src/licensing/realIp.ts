@@ -438,6 +438,8 @@ export const REAL_IP_WATCHLIST: readonly WatchEntry[] = Object.freeze([
   // dependency-graph rule in `DELIBERATELY_NOT_WATCHED`.
   { name: 'Duolingo', kind: 'brand', note: 'GDD §12.2 makes it the daily-loop bar by name' },
   { name: 'Supabase', kind: 'brand', note: 'CLAUDE.md names it as the server-authoritative backend' },
+  { name: 'NBA 2K', kind: 'game-industry', note: 'Named sports-sim category comparator in VISION.md and GDD §13. The doctrine forbids copying the franchise' },
+  { name: 'Madden', kind: 'game-industry', note: 'Named sports-sim category comparator in VISION.md and GDD §13. The doctrine forbids copying the franchise' },
 
   // --- equipment and apparel brands ----------------------------------------
   { name: 'SBD', kind: 'brand', note: 'SBD Apparel — belts, sleeves, wraps' },
@@ -1730,9 +1732,10 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'BUILD_PROMPT_CLAUDE.md', name: 'Genesis', where: 'prose', count: 1 },
   { file: 'BUILD_PROMPT_CLAUDE.md', name: 'SNES', where: 'prose', count: 1 },
   { file: 'CLAUDE.md', name: 'Supabase', where: 'prose', count: 2 },
-  { file: 'docs/GDD.md', name: 'Duolingo', where: 'prose', count: 5 },
-  { file: 'docs/GDD.md', name: 'Game Boy', where: 'prose', count: 1 },
+  { file: 'docs/GDD.md', name: 'Duolingo', where: 'prose', count: 5 },  { file: 'docs/GDD.md', name: 'Game Boy', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'Genesis', where: 'prose', count: 2 },
+  { file: 'docs/GDD.md', name: 'Madden', where: 'prose', count: 1 },
+  { file: 'docs/GDD.md', name: 'NBA 2K', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'NPL', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'OpenPowerlifting', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'SNES', where: 'prose', count: 2 },
@@ -1963,4 +1966,6 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'src/tuning/audit.ts', name: 'IPF', where: 'code', count: 2 },
   { file: 'src/tuning/index.ts', name: 'Duolingo', where: 'comment', count: 1 },
   { file: 'src/tuning/index.ts', name: 'IPF', where: 'comment', count: 1 },
+  { file: 'VISION.md', name: 'Madden', where: 'prose', count: 1 },
+  { file: 'VISION.md', name: 'NBA 2K', where: 'prose', count: 1 },
 ]);

@@ -32,6 +32,11 @@ whether to change the design or the request — do not silently pick one.
 If a design decision genuinely needs to change, update `docs/GDD.md` in the same
 commit as the code. The doc and the code never diverge.
 
+`VISION.md` is the product north star. The Powerlifting Sports Universe
+Doctrine is GDD §13. Future Session A feature work must satisfy that
+doctrine. It does not authorize A1–A7, does not lift the current lift-feel
+gate, and does not change Session B's ownership of GDD §5.
+
 ## Run Mode
 
 **MODE: Gauntlet Loop (one-shot build)**
@@ -2322,6 +2327,19 @@ retune ONSET / MIDDLE / WALL. Do not mint. Do not push `main`.
 relaxing RPE 10 `>= 7`; `DEMAND_BASE.bench`; `GRIND_BOOST_FORCE_MAX`; an
 RPE field on `LiftConfig`; squat/deadlift; Session B files; pushing
 `main`.
+
+### FILED 2026-09-01: POWERLIFTING SPORTS UNIVERSE DOCTRINE (DOCUMENTATION ONLY)
+
+North star in `VISION.md`. Detailed doctrine in GDD §13. Source of Truth
+carries the pointer. Future Session A feature work is judged against that
+doctrine.
+
+**Not a crossing.** No Session B file, no `src/empire/**`, no `src/tuning/`
+shared surface. No lift production edit. C3 remains the production
+candidate; this filing does not broaden that diff.
+
+**Not authorization** to start A1–A7, implement Career, retune lifts, or
+mint.
 
 ### If scope shifts
 

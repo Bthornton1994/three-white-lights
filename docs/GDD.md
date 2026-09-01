@@ -2,7 +2,11 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-08-05 (§7.2 — the cut-in's "no Tier 2 at all" cost is
+**Last updated:** 2026-09-01 (§13 — Powerlifting Sports Universe Doctrine
+filed. North star in `VISION.md`. The daily-habit one-line pitch is demoted
+from product identity and kept as the retention mechanism. A0–A7 recorded as
+directional sequencing, not present authorization. Lift production
+untouched; Session B's §5 ownership untouched.) Earlier: 2026-08-05 (§7.2 — the cut-in's "no Tier 2 at all" cost is
 **two costs, not one**. It was stated as an identification cost only; the surface
 also loses `tier2.shortName`, which is the panel's remedy for a name too wide for
 it, and the cut-in's substitute — wrap, then overflow, then widen the grid —
@@ -143,6 +147,11 @@ document needs an explicit update commit. Do not silently diverge.
 lift mechanic is proven fun. Do not build monetization before retention is
 validated.
 
+**Product identity is §13.** `VISION.md` is the concise north star. Feature
+work after the current lift gate is judged against the Powerlifting Sports
+Universe Doctrine. That doctrine does not replace this section's build-order
+rule, §10's prototype gates, or Session B's ownership of §5.
+
 ---
 
 ## 1. Core Concept
@@ -151,8 +160,19 @@ A powerlifting game with four interlocking modes sharing one persistent lifter.
 Casual players enter through fast arcade/idle loops; real lifters find genuine
 depth in training simulation and meet-day tension.
 
-**One-line pitch:** Duolingo's daily habit loop applied to a powerlifting career,
-with a competitive meet as the payoff.
+**North star:** Three White Lights is the definitive powerlifting sports game:
+build a lifter, master the three lifts, navigate a living competitive career,
+and chase totals, records, championships, and a legacy in a world that
+remembers every platform moment.
+
+**Shorthand:** Build a lifter. Enter the sport. Leave a legacy.
+
+**The daily habit loop is retained, not the identity.** The previous one-line
+pitch was "Duolingo's daily habit loop applied to a powerlifting career, with
+a competitive meet as the payoff." That loop remains the retention mechanism
+(§3, §4, §12.2 daily-session bar). It is no longer the product identity.
+The Powerlifting Sports Universe Doctrine is §13. The concise north star is
+`VISION.md`.
 
 ### Design Pillars
 
@@ -165,7 +185,10 @@ with a competitive meet as the payoff.
 3. **Never sell power.** Cosmetics, convenience, and time-savers only. Zero
    pay-to-win. This is a hard rule, not a preference.
 4. **Daily, not weekly.** Sessions are 60–90 seconds. Real training arcs live in
-   Career mode; the daily loop is a game, not a training log.
+   Career mode; the daily loop is a game, not a training log. This pillar is
+   retention, not identity — see §13.
+5. **The world remembers.** Results, records, rivals, and titles persist.
+   Presentation frames authentic events; it does not invent them.
 
 ---
 
@@ -4912,6 +4935,12 @@ because it allocates work across sessions. The working assumption that gated
 Career, Arcade and cut-in art is superseded for **Career** by this scope (the
 campaign ladder IS the beta); Arcade and cut-in art remain out unless ruled in.
 
+**Powerlifting Sports Universe sequence (A0–A7) is recorded in §13.** It is
+directional product sequencing for *after* the lift gate, not an authorization
+to start those stages, and it does not replace this section's prototype
+questions. The current Session A task remains the authorized lift candidate
+and its human phone replay.
+
 > **Two execution modes.** This section describes the *human-paced* build, where
 > each phase gates spend on the next. If running a Gauntlet Loop one-shot (§12),
 > the phases collapse — the agent builds broadly and the gates become critic bars
@@ -6070,3 +6099,212 @@ checking it constantly rather than once:
 - **Do not prescribe decomposition.** The lead agent decides how to split the
   goal. This document supplies the *what* and the *bar*; the route is the agent's
   to choose.
+
+---
+
+## 13. Powerlifting Sports Universe Doctrine
+
+**Ruled 2026-09-01. Documentation of product identity.** This section does not
+authorize A1–A7, does not retune lifts, does not implement Career, and does not
+change Session B's ownership of §5. The concise north star is `VISION.md`.
+The current Session A task remains the authorized lift candidate and its
+human phone replay.
+
+### 13.0 North star
+
+Three White Lights is the definitive powerlifting sports game: build a
+lifter, master the three lifts, navigate a living competitive career, and
+chase totals, records, championships, and a legacy in a world that remembers
+every platform moment.
+
+**Shorthand:** Build a lifter. Enter the sport. Leave a legacy.
+
+**Category ambition.** Category-defining for powerlifting in the same sense
+the leading basketball and American-football sports simulators are for those
+sports. Named comparators: NBA 2K, Madden. Those names describe the
+ambition. They are not a license to copy proprietary systems, UI,
+terminology, assets, currencies, monetization, or an annual-release model.
+
+**Retention, demoted from identity.** The daily habit loop (§3, §4, §12.2)
+is preserved as a retention mechanism. It is no longer the product pitch.
+A player who only ever trains and never enters the sport has not played
+this game; they have used the practice tool.
+
+### 13.1 The player is not in a vacuum
+
+The long-term game contains a persistent competition ecosystem:
+
+lifter → training → meet → results → rankings / records / qualification →
+rivals / opportunities → next training decision → future meet → career
+history → legacy.
+
+Important events are remembered. A total that only exists on the recap
+screen is not a career. A rival who is not produced by results is not a
+rival.
+
+### 13.2 One statistical universe
+
+**Permanent rule.** Player results and simulated NPC results inhabit the
+same statistical and regulatory universe.
+
+NPC simulation may be cheaper internally. It may not use a different
+meaning for:
+
+- Total
+- DOTS
+- weight class
+- records
+- qualifying totals
+- attempt legality
+- meet placing
+
+A believable player performance must remain believable relative to NPC
+performance. A fake statistical universe — one set of meanings for the
+player and another for the field — is an anti-pattern, not a performance
+optimization. §2's Total rule (meet results only) and §6.4's attempt
+structure are the player-side of this universe; NPC totals must be
+readable against the same definitions.
+
+### 13.3 Sporting hierarchy
+
+| Layer | What it is | What it is not |
+|---|---|---|
+| **THE LIFT ENGINE** | The atomic gameplay layer. If the lift is not the sport, nothing else is. | A minigame attached to a career sim. |
+| **MY LIFTER** | Persistent athlete identity — the body, the class, the history. | A session token. |
+| **CAREER** | Training context that feeds the next meet. | An infinite chore list. |
+| **POWERLIFTING UNIVERSE** | Rankings, rivals, records, qualification, a living field. | A leaderboard pasted on at the end. |
+| **MEET DAY** | The emotional payoff. The platform moment the world remembers. | A results screen with extra animation. |
+| **GYM EMPIRE** | A supporting off-platform ecosystem. | The product identity. |
+
+Gym Empire remains **§5, owned by Session B**. This doctrine does not
+claim it, rewrite it, or wire it. It names the layer so later feature
+work cannot quietly promote the idle loop into the sport.
+
+### 13.4 Emergent story
+
+Prefer stories produced by game state:
+
+- repeated rivals
+- record chases
+- close placings
+- bomb-outs
+- qualification
+- weight-class moves
+- championship rematches
+
+over mandatory scripted narrative.
+
+Presentation may frame an authentic event. It must not manufacture
+importance the game state does not support. A cut-in, a broadcast line, or
+a rival speech that the results cannot justify has failed this section
+even if it looks expensive.
+
+### 13.5 Career memory
+
+The long-term game requires a Career Ledger — or an equivalent persistent
+history — capable of supporting:
+
+- training milestones
+- competition attempts
+- meet results
+- placings
+- records
+- qualifications
+- rankings
+- rival meetings
+- titles
+- career milestones
+
+**This piece does not architect the persistence implementation.** It
+records the requirement. Schema, storage, and the `progression.ts` seam
+are later, serialized work, and they stay off this diff.
+
+### 13.6 Permanent design tests
+
+Every later Session A feature is judged against these. A piece that cannot
+answer them is not done, even if it is green.
+
+**SPORT TEST.** Is the lift still the atomic gameplay layer? If a player
+could skip the platform and still "play the game," this fails.
+
+**PLAYER TEST.** Does the athlete persist as an identity — body, class,
+history — rather than as a session token that resets when the app closes?
+
+**WORLD TEST.** Does the player exist inside a competition ecosystem that
+produces rankings, rivals, records, and future opportunities from results,
+or in a vacuum with a score?
+
+**MEMORY TEST.** Can the career remember the events §13.5 names, or does
+the last recap screen replace the last one?
+
+**STORY TEST.** Is any story this piece tells produced by game state, or
+did presentation invent the stakes?
+
+**BROADCAST TEST.** Does presentation frame an authentic sporting event,
+or manufacture importance the state does not support?
+
+**STATISTICAL-UNIVERSE TEST.** Would the same Total, DOTS, class, record,
+qualifying total, attempt legality, and placing mean the same thing if an
+NPC produced them?
+
+**INFINITE-PROGRESSION TEST.** Can a long career keep producing new
+sporting questions — records, rivals, qualification, weight-class moves,
+rematches — without a mandatory prestige reset or a meaningless daily
+chore as the only loop?
+
+**POWERLIFTER-CREDIBILITY TEST.** Would a competitive lifter believe this
+is their sport — rules, attempts, totals, the platform — rather than a
+generic RPG wearing a barbell?
+
+**LEGACY TEST.** Can a career leave a record that outlasts a single meet:
+titles, records, rivalries, a history the world still knows?
+
+### 13.7 Session A sequence
+
+Directional product sequencing, **not authorization to build these stages
+now**:
+
+| Stage | Name | What it is |
+|---|---|---|
+| **A0** | Playable sport | The lift engine, proven on a phone. Current work. |
+| **A1** | Authentic Meet | Meet day as the sport's emotional payoff, not a results overlay. |
+| **A2** | My Lifter | Persistent athlete identity. |
+| **A3** | Career Calendar | Training context and the meet calendar that gives it somewhere to go. |
+| **A4** | Powerlifting Universe v1 | Rankings, records, qualification, a living field. |
+| **A5** | Rivalries / Legacy | Repeated opponents and a career the world remembers. |
+| **A6** | Broadcast depth | Presentation that frames authentic events. |
+| **A7** | Social competition | Real people in the same universe, not a second game. |
+
+**Current lift work retains priority until its human gates close.** A0 is
+not finished because a later letter exists. Do not start A1–A7 from this
+section. Do not treat this table as a sprint plan; the sprint plan lives
+in CLAUDE.md and still runs through the authorized lift candidate.
+
+### 13.8 Anti-patterns
+
+Permanent refusals, including and in addition to §8 and CLAUDE.md's hard
+design constraints:
+
+- no pay-to-win strength
+- no random-card power economy
+- no mandatory prestige reset
+- no meaningless daily chore design
+- no generic RPG attributes without gameplay meaning
+- no scripted rivalry unsupported by results
+- no spectacle unsupported by sporting stakes
+- no fake statistical universe
+- no copying proprietary systems, UI, terminology, assets, currencies,
+  monetization, or annual-release models from the named sports-sim
+  comparators
+- no licensed federation claims without rights — player-facing federation
+  identity stays fictional until a human rules otherwise with rights in
+  hand; structural citation of real rules remains the existing §12.3 split
+
+### 13.9 Current work is not derailed
+
+The immediate Session A task remains the already-authorized C3 production
+bench candidate and its final human phone gate.
+
+This doctrine governs **what comes after** and **how future features are
+judged**. It does not broaden the current lift diff. It does not mint. It
+does not retune. It does not implement Career. It does not touch Session B.
