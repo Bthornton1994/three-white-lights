@@ -221,8 +221,9 @@ as an open question rather than reading e1RM into this row by analogy.
 
 ### 2.4 Gym Empire — The Idle Layer
 
-See §5 for the full spec and §5.14 for the tycoon-depth direction and its
-staged plan. A wall-clock idle loop, run as a real management sim — staffing,
+See §5 for the full spec, §5.14 for the tycoon-depth direction and its staged
+plan, and §5.15 for the Living Gym Doctrine (the quality bar later stages
+must meet). A wall-clock idle loop, run as a real management sim — staffing,
 equipment condition, capacity and throughput, reputation — around the one gym
 the lifter actually trains at. Pays Gym Bucks and a small Training IQ trickle;
 never buys Total, e1RM, training pace, or meet performance (§8.1). This line
@@ -3242,6 +3243,259 @@ shut, per §11's own text, corrected above only to say Gym Empire's *own* feel
 has since been played repeatedly, not that the lift has. This section adds
 staged work inside an already-overridden mode; it does not and cannot lift
 that gate, and no critic on any stage below may claim otherwise.
+
+### 5.15 The Living Gym Doctrine
+
+Human product-direction ruling, GDD-only, recorded against Session B head
+`460f794a`. This section does **not** change the C.1d implementation
+candidate. It does **not** start C.2 or Stage D. It does **not** close Stage
+C. It does **not** reopen §5.13 Phase 4's art gate, unpause Portfolio
+(§5.11 / §5.14 Stage F), or authorize persistent NPCs before Stage G. It
+defines the quality bar later Empire stages must meet.
+
+Idle Fitness Gym Tycoon and similar idle-gym games remain useful interaction
+references. They are **not the quality ceiling**. Three White Lights Empire
+must deliberately exceed the weaknesses common to the category rather than
+reproduce them with powerlifting artwork.
+
+The long-term fantasy is:
+
+> I started lifting in a rough garage and built one of the greatest
+> powerlifting institutions in the world.
+
+The player is not primarily building an idle money machine. The player is
+building a **living powerlifting institution**.
+
+The core causal loop is:
+
+member mix → training intentions → station demand → queues / utilization /
+wear → training experience → member outcomes → retention / reputation →
+future member mix.
+
+The player's interventions are layout, equipment, station capability,
+staffing, maintenance, scheduling, specialization, and facility expansion.
+
+Gym Bucks are fuel for this system. Gym Bucks are not the final objective of
+the system.
+
+#### Five permanent Empire design tests
+
+Every major Empire mechanic must be reviewed against these five questions.
+
+**1. The world test.** Can the important consequence be understood by looking
+at the gym? Examples: a queue is physically visible; a station with high
+utilization visibly stays busy; added capacity physically appears; a moved
+station actually moves; wear is visible; a member waiting for equipment
+visibly waits for that equipment; a throughput improvement visibly increases
+turnover. The world should communicate system state before prose does.
+Diagnostic numbers may exist underneath. They are not the primary game
+interface.
+
+This is the same interaction ruling Stage C already made permanent at C.1d:
+visible member = interactive member; visible station = interactive station;
+visible floor = build surface. Future systems attach to the physical world.
+Do not create a parallel menu-only simulation that turns Empire back into a
+spreadsheet.
+
+**2. The agency test.** Does an important bottleneck permit multiple
+legitimate responses? A good bottleneck must not always reduce to "buy the
+next upgrade." Possible response classes include: change layout; increase
+capacity; increase throughput; improve quality; change staffing; change
+scheduling; change specialization; accept the bottleneck as a deliberate
+strategic tradeoff. Not every problem needs every answer. Meaningful
+problems should not have one mandatory button.
+
+**3. The infinite money test.** If Gym Bucks were unlimited, would this still
+be an interesting management problem? Empire must contain meaningful
+non-money constraints. Legitimate examples: physical space; station
+capacity; time; movement/flow; staff attention; equipment condition; member
+fit; peak-hour demand; scheduling conflicts; reputation; specialization
+tradeoffs. Do not invent arbitrary currencies merely to simulate depth. If
+unlimited Gym Bucks solves almost everything, Empire is too shallow.
+
+**4. The no-guide test.** Can a reasonable player understand the tradeoff
+without reading an optimal-build guide? Avoid false choice, deliberately bad
+purchases, strictly dominated upgrades, opaque multipliers, and giant
+upgrade trees whose real challenge is discovering the one mathematically
+correct route. The gym itself should help teach the consequences of the
+player's decisions.
+
+**5. The institution test.** Does the mechanic reinforce the fantasy of
+building a real powerlifting institution? If a major system could be moved
+unchanged into an airport tycoon, a supermarket idle game, a theme-park
+clicker, or a generic factory idle game, examine whether it is sufficiently
+connected to powerlifting. The generic economic skeleton may be shared. The
+decisions and consequences should not be generic.
+
+#### Members are not money particles
+
+Long-term member simulation must not treat NPCs as anonymous tokens walking
+toward revenue generators. Members should eventually enter the gym with
+training intentions. Example: Powerlifter A (squat rack → specialty bar →
+accessory station → recovery); Powerlifter B (competition bench → dumbbells
+→ cables). A member's path through the gym should interact with the facility
+the player has actually built. That creates meaningful consequences: queue,
+rerouting, waiting, incomplete training, better or worse training
+experience, attraction to certain gym identities, eventual retention /
+reputation consequences.
+
+Do not implement persistent NPCs before the planned NPC stage (Stage G).
+This doctrine defines what that future system must become.
+
+#### Stations are not cash machines
+
+A station's purpose is to satisfy training demand. Revenue is a consequence
+of running a valuable gym. Do not reduce stations to "purchase object →
+object produces Gym Bucks/sec." Later station depth should answer: who wants
+this; how many can use it; how long does use take; what happens when demand
+exceeds capacity; how reliable is it; what kind of gym does owning it help
+create.
+
+#### Quality / Capacity / Throughput
+
+Stage D remains the first vertical slice of this doctrine. The three axes
+must be causally distinct. §5.2 and §5.4 remain the authoritative economic
+model; this names the station-side axes Stage D will cut, it does not
+replace those sections.
+
+**Quality** changes training value / attractiveness / member experience. It
+must not simply be another income multiplier. Possible visible consequences:
+stronger appeal to certain member types; better experience/outcomes;
+stronger contribution to reputation; visual equipment improvement. Quality
+must not increase the Career player's e1RM, Total, or meet performance
+(§8.1).
+
+**Capacity** changes simultaneous usable slots. Capacity should physically
+manifest (another rack, another bench position, another platform, additional
+warm-up area). It consumes space where appropriate. Capacity should actually
+alter queue behavior in `floorSim`.
+
+**Throughput** changes how quickly users complete the station cycle.
+Possible causes: better organization, plate storage, assistance, improved
+station design, reduced handover time. It should shorten real
+service/transition time in the simulation. It must not be a detached
+`income x1.2` scalar.
+
+#### Multiple solutions to bottlenecks
+
+Example: a competition bench develops a long queue. Potential future
+responses may include: add bench capacity; improve turnover; change layout;
+improve staffing; change schedule; create another training zone;
+intentionally remain a specialized high-demand gym and accept the wait. No
+one solution should automatically dominate all others. This is one of the
+main ways Three White Lights must exceed shallow idle-game progression.
+
+#### Gym identity should emerge
+
+The player should not simply click "Choose specialization: +25% powerlifting
+revenue." Gym identity should emerge from what the player builds and
+operates. Examples may eventually include: serious competition-prep gym;
+technical-development gym; high-volume strength club; highly coached small
+facility; broad strength facility; recovery-rich performance gym. The system
+should infer that identity from equipment mix, member mix, staff, layout,
+training demand, outcomes, and operating decisions.
+
+Do not implement this inference during Stage C or C.2.
+
+#### Facility progression unlocks decisions
+
+The facility ladder (Garage → Storage Unit → Strip-Mall Unit → Warehouse)
+must not become "same loop → bigger floor → larger numbers." Each step
+should increasingly unlock new kinds of management decisions.
+
+Broad long-term intent:
+
+- **Garage:** learn the physical gym; placement; queues; basic equipment.
+- **Storage Unit:** stronger staffing/maintenance tradeoffs; meaningful
+  capacity choices.
+- **Strip-Mall:** specialization; larger member mix; scheduling; stronger
+  local reputation.
+- **Warehouse:** multiple training areas; serious club operations; major
+  competitive/reputation systems.
+
+Exact implementation remains subject to future human rulings.
+
+#### Offline time is not failure
+
+The player should never feel punished for sleeping, working, or leaving the
+app (§5.7). Long-term offline return should become a causal report.
+Preferred eventual form:
+
+WHILE YOU WERE AWAY
+
+- 42 training sessions completed
+- 248 Gym Bucks earned
+- Competition bench was busiest
+- Average bench wait increased
+- 2 stations need maintenance
+- Gym remained operational
+
+The return screen should create the next interesting decision. It should not
+exist merely to display a pile of currency or sell an ad multiplier.
+
+#### Staff automates chores, not strategy
+
+Staff progression should eventually transform repeated manual operations
+into policies. Early: the player manually handles maintenance. Later: the
+player establishes rules / delegates. Example policy shape: "Repair
+equipment below 65% unless reserves would fall below 500 Gym Bucks." The
+player's strategic decision remains. The repetitive click disappears. Do not
+reduce staff to passive generic `+X% income`.
+
+#### No deliberately bad upgrades
+
+Do not ship choices whose only purpose is to punish a player who did not
+consult a guide. At the same decision tier, avoid equipment/options that are
+strictly dominated across all meaningful dimensions. A choice may be worse
+economically if it is better in space, member fit, throughput, quality,
+specialization, maintenance, or another meaningful axis. Tradeoffs are good.
+Trap choices are not.
+
+#### Major progression should be visible
+
+If the player spends heavily on a meaningful station improvement, the game
+world should acknowledge it. The consequence may be a new sprite / equipment
+state, additional capacity, a different footprint, a changed queue, changed
+member behavior, changed staff interaction, or a changed use animation.
+Avoid upgrades whose only observable result is `1.44 → 1.51` on a hidden or
+abstract multiplier.
+
+#### Money must eventually stop being the only problem
+
+Empire should remain interesting after cash becomes abundant. Long-term
+strategic constraints include space, utilization, member mix, reputation,
+staffing, scheduling, specialization, competitive outcomes, layout, and
+equipment reliability. This is why reputation must not become merely another
+spendable currency. It should change what kind of gym the world believes the
+player operates and who therefore wants to join it.
+
+#### Competition is the unique payoff
+
+Generic gym tycoons do not have Three White Lights' central advantage: the
+gym can produce competitive lifters. Long-term causal loop: gym decisions →
+member development → competition participation → outcomes → gym reputation
+→ member demand → new management problems. This must remain separated from
+the Career player's own progression. Empire may not purchase player e1RM,
+player Total, Career training pace, or meet success (§8.1).
+
+#### Portfolio remains last
+
+Do not multiply shallow gyms. Build one living gym first. Portfolio remains
+paused until one facility demonstrates meaningful member behavior, visible
+bottlenecks, multiple management responses, station depth, reputation,
+useful staff delegation, and durable strategic play. Only then reconsider
+operating multiple locations. This is not an unpause of §5.11 Stage F.
+
+#### Development sequence under this doctrine
+
+Current sequence remains:
+
+Stage C human close → C.2 simulator fidelity → Stage D Q/C/T → D2 balance
+verdict → reputation seam → persistent NPC roster / tenure → deeper staff
+policy → portfolio only after explicit human unpause.
+
+The doctrine does not authorize implementing future stages early. It defines
+their quality bar.
 
 ---
 
