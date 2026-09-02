@@ -3166,8 +3166,9 @@ than the ruling's own §1–§23 sequence:
   game rather than controls around an animation. Carry-forward debts
   (C-DEBT-01..04) do not reopen it. C.2 simulator fidelity is recorded in
   §5.16. Stage D is recorded in §5.17. Stage D.1 is recorded in §5.18.
-  Stage D human-close is `ff8721a`. D2 is the PARTIAL balance verdict under
-  §5.18.
+  Stage D human-close is `ff8721a`. D2 is CLOSED — PARTIAL BY DESIGN /
+  CONSEQUENCE BOUNDARY REACHED — by human play of `83a8ed4` at Chromium
+  390×844. Stage E is the next authorized stage.
 - **Stage D.** Quality/Capacity/Throughput on Barbell first (item 2),
   touching `floorSim.ts`'s capacity constant — the one piece of this pass
   that changes the simulation's own core rather than its surface, so it
@@ -3538,19 +3539,19 @@ Current sequence remains:
 Stage C human close (done at `460f794a`) → C.2 simulator fidelity (done,
 §5.16) → Stage D Q/C/T (done, §5.17) → Stage D.1 training-station semantics
 (done, §5.18) → Stage D.1b world legibility (done, human-close of Stage D
-at `ff8721a`) → D2 balance verdict (PARTIAL, open) → D2.1A live Capacity
-transition (CONFIRMED AND FIXED at `0ded7fe`) → D2.1B Throughput changeover
-+ opening agency (human: mechanism real, opening agency not closed) → D2.2
-balance closeout / consequence boundary (this subsection, D2 remains OPEN)
-→ reputation seam → persistent NPC roster / tenure → deeper staff policy →
-portfolio only after explicit human unpause.
+at `ff8721a`) → D2 CLOSED — PARTIAL BY DESIGN / CONSEQUENCE BOUNDARY
+REACHED (human play of `83a8ed4` at Chromium 390×844) → Stage E reputation
+feed foundation (authorized; Career-result → reputation as a pure Empire
+function first; cross-directory wiring blocked) → persistent NPC roster /
+tenure (Stage G) → deeper staff policy → portfolio only after explicit
+human unpause.
 
 The doctrine does not authorize implementing future stages early. It defines
 their quality bar. C.2 is recorded in §5.16. Stage D is recorded in §5.17.
 Stage D.1 / D.1b are recorded in §5.18. D2 is recorded in the D2 ruling
-under §5.18. D2 remains OPEN. D2.1A is CONFIRMED AND FIXED at `0ded7fe`.
-D2.1B is recorded immediately after D2.1A. D2.2 is recorded immediately
-after D2.1B. D2 remains OPEN.
+under §5.18 and is CLOSED at `83a8ed4`. D2.1A is CONFIRMED AND FIXED at
+`0ded7fe`. D2.1B is recorded immediately after D2.1A. D2.2 is recorded
+immediately after D2.1B. Stage E is recorded immediately after the D2 mint.
 
 ### 5.16 Stage C.2 — simulator fidelity (online vs offline in aggregate pacing)
 
@@ -4295,6 +4296,62 @@ PARTIAL (one missing consumer: durable member outcomes):
 
 Do not disguise those partials with price changes. Do not start reputation
 until a human explicitly closes D2 and authorizes the next stage.
+
+**Stage D2 human close — CLOSED at `83a8ed4`.** Human world-truth gate at
+Chromium 390×844 passed. Permanent ruling:
+
+**D2 CLOSED — PARTIAL BY DESIGN / CONSEQUENCE BOUNDARY REACHED.**
+
+Human findings (station panel closed first):
+
+- Stock changeover: crimson competition-plate discs travel stack → sleeve;
+  the floor independently reads as plates being changed; visible loading
+  ~2.1 seconds; the final visible frame places every disc on the sleeve;
+  remaining=0 removes the loading layer.
+- Throughput: bought with the labelled `+1h watched` helper; same three
+  discs, same physical loading path, same sleeve; ~0.7 seconds; human read
+  is "same loading job faster", not a different or magical effect.
+- QA clock: `+1h watched` paid ~+59.97 Gym Bucks; `+1h away` paid ~+29.97.
+  Production garage rate remains 60/hour. Offline fraction remains 0.5.
+
+No Capacity-vs-Throughput ROI retest was required.
+
+PASS:
+
+- Quality mechanism truth
+- Capacity mechanism truth
+- Throughput mechanism truth
+- Capacity live transition
+- distinct physical Q/C/T identities
+- Capacity spatial refusal
+- simulator/world synchronization
+- stored/unplaced wear truth
+- truthful plate-changeover semantics
+- closed-panel plate-loading legibility
+- watched/away QA-clock truth
+
+PARTIAL / CARRY FORWARD:
+
+- D2-OPENING-01 — PARTIAL / DOWNSTREAM-DEPENDENT
+- Quality strategic payoff — PARTIAL
+- Throughput strategic payoff — PARTIAL
+- Infinite-money depth — PARTIAL
+- Institutional consequences — PARTIAL
+- D2-TRUTH-01B — DEFERRED
+- Novice-manager policy — DEFERRED
+
+D2-CONSEQUENCE-01 remains authoritative. D2 closed because this boundary is
+now proven, not because a downstream member/business consequence appeared.
+Frozen at mint: Quality 120 / Capacity 180 / Throughput 30; Quality
+experience 1→2 and affinity +0.25; stock changeover 18 / plate-tree 6;
+garage 60/hour; offline fraction 0.5; Capacity live-transition; plate-loading
+path and geometry; QA watched/away modes; panel ScrollView/maxHeight
+reachability correction. No further Q/C/T tuning is authorized before a
+real downstream consumer exists.
+
+Stage E (reputation feed foundation) is authorized from this SHA.
+Persistent NPC roster/tenure (Stage G) and Portfolio remain blocked. The
+cross-directory Career→Empire wiring remains a later explicit crossing.
 
 ---
 

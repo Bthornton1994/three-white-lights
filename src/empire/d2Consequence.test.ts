@@ -45,8 +45,13 @@ describe('D2-CONSEQUENCE-01 — played floor does not fund the institution', () 
     expect(gdd.includes(D2_CONSEQUENCE_01)).toBe(true);
     expect(gdd.includes('D2-CONSEQUENCE-01')).toBe(true);
     expect(gdd.includes('D2 — PARTIAL BY DESIGN / CONSEQUENCE BOUNDARY REACHED')).toBe(true);
+    expect(gdd.includes('D2 CLOSED — PARTIAL BY DESIGN / CONSEQUENCE BOUNDARY REACHED')).toBe(true);
+    expect(gdd.includes('83a8ed4')).toBe(true);
     expect(gdd.includes('D2-OPENING-01')).toBe(true);
     expect(gdd).toMatch(/D2-OPENING-01[\s\S]{0,400}PARTIAL \/ DOWNSTREAM-DEPENDENT/);
+    expect(gdd).toMatch(
+      /Current sequence remains:[\s\S]{0,900}D2 CLOSED — PARTIAL BY DESIGN \/ CONSEQUENCE BOUNDARY\s+REACHED \(human play of `83a8ed4`/,
+    );
   });
 
   it('keeps Q/C/T prices, changeover ticks, garage rate, and offline fraction frozen', () => {
@@ -55,6 +60,8 @@ describe('D2-CONSEQUENCE-01 — played floor does not fund the institution', () 
     expect(T.STATION_UPGRADE_COST_GYM_BUCKS.throughput).toBe(30);
     expect(T.FLOOR_SIM_STATION_CHANGEOVER_TICKS).toBe(18);
     expect(T.STATION_THROUGHPUT_CHANGEOVER_TICKS).toBe(6);
+    expect(T.STATION_STOCK_TRAINING_EXPERIENCE).toBe(1);
+    expect(T.STATION_QUALITY_TRAINING_EXPERIENCE).toBe(2);
     expect(T.STATION_QUALITY_AFFINITY_BONUS).toBe(0.25);
     expect(T.LADDER_INCOME_GYM_BUCKS_PER_HOUR.garage).toBe(60);
     expect(T.OFFLINE_EARNINGS_FRACTION).toBe(0.5);
