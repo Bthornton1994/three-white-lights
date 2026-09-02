@@ -74,6 +74,11 @@
  * gives: confined to the ladder, the exemption's answer is zero with it and zero
  * without it.
  *
+ * Stage E's per-result sporting contributor lives in `sportingReputation.ts`.
+ * This file still accrues the check-in / tenure reputation that already
+ * existed; it does not import or call the sporting calculator. The Career
+ * result → persistent `EmpireState.reputation` write is a later crossing.
+ *
  * The test is `!== 'idle-only'` rather than `=== 'progression-reaching'`, which
  * is the conservative direction: a third reach verdict added later is treated as
  * gate-forbidden until somebody decides otherwise.

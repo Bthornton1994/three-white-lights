@@ -4353,6 +4353,54 @@ Stage E (reputation feed foundation) is authorized from this SHA.
 Persistent NPC roster/tenure (Stage G) and Portfolio remain blocked. The
 cross-directory Career→Empire wiring remains a later explicit crossing.
 
+#### Stage E — reputation feed foundation (pure function; wiring blocked)
+
+Reputation is the institution's sporting credibility, not another currency
+bar. Stage E builds the Career-result → Empire reputation calculator as a
+pure Empire-owned function. It does not import Career UI, mutate Career
+state, write `EmpireState.reputation`, start a persistent NPC roster, or
+open Portfolio.
+
+**Input contract** (neutral result shape; Career fills this later):
+
+- `kind` — GDD §6.1 ladder: local / regional / nationals / worlds
+- `totalKg` and `place` — posted together, or both null on a bomb-out
+- `fieldSize` — the flight/field the placing is in
+- `isTotalPr` — this meet raised the published best total
+- `newlyQualifiedFor` — rungs the crossing already decided were newly earned
+
+**Refused or deferred** (the current meet model cannot supply them truthfully,
+or they would give an existing quantity a second meaning):
+
+- entering a meet, completing nine attempts, opening the app, a streak
+- Total kilograms as a reputation scalar (Total already means Total)
+- DOTS, e1RM, per-lift PRs as extra gym credit
+- fictional opponent prestige, federation rank, hidden performance score
+- Gym Bucks, Training IQ, member satisfaction (those stay other axes)
+
+**Two contributors, two grains:**
+
+- sporting: per-result, `sportingReputationFromResult`
+- members: per-day, existing `reputationFromMembers`
+
+`composeGymReputationContributions` adds two already-computed
+`ReputationPoints` values. Stage E does not pass sporting points through
+`reputationFromMembers`'s optional bonus argument: that argument is the same
+grain as a per-day member rate, and a meet is not a day of dues.
+
+**Evidence obligation** (presentation later): when reputation is eventually
+wired, the player must be able to tell why it changed. Each sporting term
+carries a reason `kind` and a `text` line. No unexplained +12 REP toast.
+
+**D2-CONSEQUENCE-01 remains true.** Quality / Capacity / Throughput have
+truthful physical mechanisms, but the current played floor does not yet
+convert service quality into a durable member/business outcome. Stage E
+does not implement that member-outcome contribution; it leaves a named
+compose slot beside the sporting function.
+
+**Wiring remains blocked.** Career/Meet result → Empire persistent reputation
+state is a later explicit crossing.
+
 ---
 
 ## 6. Meet Day

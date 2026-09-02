@@ -143,6 +143,7 @@ describe('the block is frozen and every entry is classified', () => {
       'SPACE_LEVEL_COST_GYM_BUCKS',
       'SPACE_PASSIVE_CEILING_MULTIPLIER',
       'SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER',
+      'SPORTING_REPUTATION',
       'STAFF_LEVEL_COST_GYM_BUCKS',
       'STAFF_LEVEL_MAX',
       'STAFF_ROLES',
@@ -732,7 +733,7 @@ describe('§5.5 social', () => {
     // (replace, count unchanged).
     // 193 -> 196: Stage D2.2 SECONDS_PER_MINUTE, LADDER_DEV_WATCHED_TIME_
     // STEPS_SECONDS, FLOOR_PLATE_LOADING.
-    expect(examined).toBe(196);
+    expect(examined).toBe(197);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -757,7 +758,7 @@ describe('§5.5 social', () => {
     // 955 -> 960: Stage D Quality affinity bonus, one more entry × 5.
     // 960 -> 965: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS × 5.
     // 965 -> 980: Stage D2.2 three new entries × 5 banned units.
-    expect(probed).toBe(980);
+    expect(probed).toBe(985);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

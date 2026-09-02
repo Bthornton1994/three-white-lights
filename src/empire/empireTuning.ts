@@ -658,6 +658,39 @@ export const EMPIRE_TUNING = Object.freeze({
    */
   SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER: Object.freeze([0, 250, 900, 2600, 7000] as const),
 
+  /**
+   * Stage E sporting-result → reputation formula. Read by `sportingReputation.ts`.
+   *
+   * Magnitudes were chosen against the shipped reputation ladder so one
+   * ordinary local placing stays under the club recruit unlock (50), a worlds
+   * win plus published-total record stays under the regional recruit unlock
+   * (200) and the first sponsor tier (250), and a year of ordinary local wins
+   * does not outrun a year of daily check-ins or three powerlifter members.
+   * `sportingReputation.test.ts` pins those comparisons.
+   *
+   * `kindScale` is the GDD §6.1 ladder the current meet model actually has.
+   * There is no extra prestige table: invented opponent rank would be fake.
+   */
+  SPORTING_REPUTATION: Object.freeze({
+    meetKinds: Object.freeze(['local', 'regional', 'nationals', 'worlds'] as const),
+    qualifyRungs: Object.freeze(['regional', 'nationals', 'worlds'] as const),
+    kindScale: Object.freeze({
+      local: 1,
+      regional: 2,
+      nationals: 4,
+      worlds: 8,
+    } as const),
+    placingUnit: 12,
+    totalPrUnit: 8,
+    qualifyUnit: 8,
+    copy: Object.freeze({
+      noTotal: 'No total posted',
+      placing: 'Placed {place} of {field} at a {kind} meet',
+      totalPr: 'Raised published best total at a {kind} meet',
+      qualified: 'Newly qualified for {rung}',
+    } as const),
+  }),
+
   /** Seconds the first level of any axis takes to build. */
   BUILD_SECONDS_BASE: 120,
 
@@ -1407,9 +1440,9 @@ export const EMPIRE_TUNING = Object.freeze({
   /**
    * §5.6: "Reputation is earned mostly by powerlifter and serious-lifter
    * members." Reputation points contributed per member of a type, per day,
-   * before `reputationFromMembers` sums a roster and adds the (currently
-   * always-zero) competition-result extension point — see `members.ts`
-   * header §4 for why that second input has no producer yet.
+   * before `reputationFromMembers` sums a roster. Stage E's sporting
+   * contributor is a separate per-result function in `sportingReputation.ts`;
+   * it is not this table's second argument. See `members.ts` header §4.
    */
   MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY: Object.freeze({
     casual: 0,
@@ -2706,6 +2739,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   REPUTATION_PER_NPC_TENURE_DAY: 'knob',
   REPUTATION_TIER_THRESHOLDS: 'knob',
   SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER: 'knob',
+  SPORTING_REPUTATION: 'knob',
   BUILD_SECONDS_BASE: 'knob',
   BUILD_SECONDS_GROWTH_PER_LEVEL: 'knob',
   BUILD_SECONDS_MAX: 'budget',

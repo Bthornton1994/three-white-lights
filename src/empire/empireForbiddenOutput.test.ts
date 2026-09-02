@@ -423,6 +423,7 @@ import * as recruitmentModule from './recruitment';
 import * as reputationModule from './reputation';
 import * as sessionsModule from './sessions';
 import * as socialModule from './social';
+import * as sportingReputationModule from './sportingReputation';
 import * as stationViewModule from './stationView';
 import * as stationCapabilityModule from './stationCapability';
 import * as trainingStationModule from './trainingStation';
@@ -1232,7 +1233,7 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
   Object.freeze({
     field: 'player-facing presentation labels',
     why:
-      'Stage C.1c display maps from closed domain tokens (equipment items, session groups, manager tiers) onto player-facing copy. The domain enums stay the identifiers; these returns are presentation-only generic nouns already on the space-free census. Tests join each displayed card to the underlying token via testID.',
+      'Player-facing copy mapped from closed domain tokens (equipment, groups, manager tiers, Stage E sporting-result reason kinds). The domain enums stay the identifiers; these returns are presentation-only generic nouns already on the space-free census. Tests join each displayed card or reason row to the underlying token.',
     positions: Object.freeze([
       'stationView.ts#playerFacingActivityGroupLabel#return',
       'stationView.ts#playerFacingBayRole#return',
@@ -1245,6 +1246,7 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'stationView.ts#playerFacingUpgradeEffect#return',
       'stationView.ts#playerFacingUpgradeLabel#return',
       'stationView.ts#playerFacingUpgradeRefuse#return',
+      'sportingReputation.ts#sportingReputationFromResult#return.reasons[].text',
     ]),
   }),
   Object.freeze({
@@ -1593,7 +1595,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 24,
+  MODULES: 25,
   // 273 -> 280: GymView's four new exports (createGymViewState, GymViewState,
   // GymViewAction, GymViewRefusal don't count as runtime exports — the seven
   // that do are createGymViewState, gymViewReduce, GymView from ladderView.tsx
@@ -1696,7 +1698,7 @@ const SURFACE_CENSUS = Object.freeze({
   // stationChangeoverSeats, stationChangeoverTicks, playerFacingStationOperation.
   // 429 -> 432: Stage D2.2 plateLoadingProgress, plateLoadingDiscs,
   // ladderDevClockTestId.
-  EXPORTS: 432, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
+  EXPORTS: 434, // 432 -> 434: sportingReputationFromResult, composeGymReputationContributions
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1715,7 +1717,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 122 -> 125: Stage D playerFacingUpgradeLabel/Effect/Refuse.
   // 128 -> 130: Stage D.1b bay qualityBench + plateTree URI leaves.
   // 130 -> 132: Stage D2.1B changeoverSeatKey + playerFacingStationOperation.
-  BARE_POSITIONS: 132,
+  BARE_POSITIONS: 133,
   BARE_FIELDS: 4,
   BRANDED_POSITIONS: 34,
   /**
@@ -2921,7 +2923,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // calls no brand constructor either.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts joins the walk; it
   // calls no brand constructor either.
-  MODULES: 24,
+  MODULES: 25,
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -3637,6 +3639,7 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'recruitment.ts': recruitmentModule as unknown as Readonly<Record<string, unknown>>,
   'reputation.ts': reputationModule as unknown as Readonly<Record<string, unknown>>,
   'social.ts': socialModule as unknown as Readonly<Record<string, unknown>>,
+  'sportingReputation.ts': sportingReputationModule as unknown as Readonly<Record<string, unknown>>,
   'stationView.ts': stationViewModule as unknown as Readonly<Record<string, unknown>>,
   'stationCapability.ts': stationCapabilityModule as unknown as Readonly<Record<string, unknown>>,
   'trainingStation.ts': trainingStationModule as unknown as Readonly<Record<string, unknown>>,
@@ -4307,6 +4310,10 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
   ...exemptTable(
     'MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY',
     'A RATE, in reputation points per member per day, summed across a roster by `reputationFromMembers` and compared with nothing — the ceiling it accumulates towards, `REPUTATION_MAX`, is a v1 (`reputation.ts`) constant this module does not read.',
+  ),
+  ...exemptTable(
+    'SPORTING_REPUTATION',
+    'Stage E formula units, kind scales, and copy templates for the per-result sporting contributor. placingUnit, totalPrUnit, qualifyUnit and kindScale are multiplied into a meet result; copy strings are templates. Nothing in this directory compares a live reputation total against one of these leaves — the ceiling that contribution still has to fit under is REPUTATION_MAX, filed under reputation.',
   ),
   ...exemptTable(
     'MEMBER_EQUIPMENT_BIAS_TIE_TOLERANCE',
@@ -5673,7 +5680,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 154 -> 209.
   // 99 -> 104: members.ts's MEMBER_TYPES, five string leaves.
   // 104 -> 107: `MANAGER_TIERS`'s three tokens.
-  TUNING_STRING_LEAVES: 111,
+  TUNING_STRING_LEAVES: 122,
   // 156 -> 211.
   /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
   // 732 -> 1057: every domain straddles the 55 new exempt leaves too.
@@ -5734,7 +5741,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // (replace, exempt count unchanged).
   // 357 -> 365: Stage D2.2 LADDER_DEV_WATCHED_TIME_STEPS_SECONDS (2) plus
   // FLOOR_PLATE_LOADING (6).
-  EXEMPT: 365,
+  EXEMPT: 372,
   // 154 -> 196: the same 42 new leaves. 251 -> 264: the same 13 new leaves.
   // 264 -> 266: the same 2 new leaves.
   // 266 -> 273: the same 7 new leaves.
@@ -5771,7 +5778,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS,
   // FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS), all filed.
   // 451 -> 453: Stage C.1b FLOOR_TILE_PIXELS_MAX and FLOOR_STAGE_PADDING_PIXELS.
-  TUNING_NUMERIC_LEAVES: 473, // 464 -> 473: Stage D2.2 SECONDS_PER_MINUTE + watched steps + plate loading
+  TUNING_NUMERIC_LEAVES: 480, // 464 -> 473: Stage D2.2 SECONDS_PER_MINUTE + watched steps + plate loading
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -5811,7 +5818,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 455 -> 456: Stage C.1c CONDITION_PERCENT_SCALE.
   // 456 -> 457: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS.
   // 466 -> 475: Stage D2.2 nine new numeric leaves (1 filed + 8 exempt).
-  BRANCH_POINTS: 475,
+  BRANCH_POINTS: 482,
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
@@ -5878,7 +5885,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 2372 -> 2377: Stage C.1c CONDITION_PERCENT_SCALE in five domains.
   // 2428 -> 2433: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS across
   // five domains that carry it under their ceiling; ROSTER_SHAPE omits it.
-  CONTAINMENT_CHECKS: 2480, // 2433 -> 2480: Stage D2.2 watched grains + plate-loading + SECONDS_PER_MINUTE
+  CONTAINMENT_CHECKS: 2522, // 2433 -> 2480: Stage D2.2 watched grains + plate-loading + SECONDS_PER_MINUTE
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -7497,6 +7504,47 @@ function driveEverything(): readonly DrivenRow[] {
         }
       }
     }
+  }
+
+  // --- sportingReputation.ts (Stage E reputation feed foundation)
+  {
+    const localWin = Object.freeze({
+      kind: 'local' as const,
+      totalKg: 500,
+      place: 1,
+      fieldSize: 16,
+      isTotalPr: false,
+      newlyQualifiedFor: Object.freeze([] as const),
+    });
+    drive('sportingReputationFromResult', 'local-win', () =>
+      sportingReputationModule.sportingReputationFromResult(localWin),
+      [localWin],
+    );
+    drive('sportingReputationFromResult', 'bomb-out', () =>
+      sportingReputationModule.sportingReputationFromResult({
+        kind: 'local',
+        totalKg: null,
+        place: null,
+        fieldSize: 8,
+        isTotalPr: false,
+        newlyQualifiedFor: [],
+      }),
+    );
+    drive('sportingReputationFromResult', 'worlds-pr', () =>
+      sportingReputationModule.sportingReputationFromResult({
+        kind: 'worlds',
+        totalKg: 800,
+        place: 1,
+        fieldSize: 16,
+        isTotalPr: true,
+        newlyQualifiedFor: [],
+      }),
+    );
+    const sporting = sportingReputationModule.sportingReputationFromResult(localWin).points;
+    const fromMembers = core.asReputation(0);
+    drive('composeGymReputationContributions', 'local-plus-members', () =>
+      sportingReputationModule.composeGymReputationContributions({ sporting, fromMembers }),
+    );
   }
 
   // --- floor.ts (GDD §5.13 presentation Phase 1)
@@ -15431,6 +15479,11 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'reputation.ts': 24,
       'sessions.ts': 43,
       'social.ts': 31,
+      // Stage E — sportingReputation.ts: isSportingMeetKind (2),
+      // isSportingQualifyRung (2), applySlots (1), requireSportingMeetResult
+      // (1), reason (1), sportingReputationFromResult (1),
+      // composeGymReputationContributions (1).
+      'sportingReputation.ts': 9,
       // GDD §5.14 Stage C's stationView.ts — ten `return` statements:
       // stationIdentityView's two arms, the internal `targetsStation`
       // helper's two, stationOperationView's one, isSoundCondition's one,
@@ -15620,6 +15673,10 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'reputation.ts': 6,
   'sessions.ts': 24,
   'social.ts': 6,
+  // Stage E — sportingReputation.ts: kind, total/place mismatch, fieldSize,
+  // posted-total mismatch, totalKg, place, bomb-out PR, bomb-out qualify,
+  // unknown rung, duplicate rung.
+  'sportingReputation.ts': 10,
   // 2 -> 3: GDD §5.18 Stage D.1 stationCapability refuseWith for the bay.
   'stationCapability.ts': 3,
 });
@@ -16698,7 +16755,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 24,
+  MODULES: 25,
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved.
    * 404 -> 427 with GymView: +13 `return` sites (5 -> 18) and +6
    * `callback-invocation` sites (3 -> 9) on `ladderView.tsx`, +4 `return`
@@ -16785,7 +16842,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 911 -> 916: Stage D2.1A floorSim return 63 -> 68.
   // 916 -> 925: Stage D2.1B floorSim 68→72, stationCapability 24→27,
   // stationView 44→46.
-  SITES: 939, // 938 -> 939: stationView plateLoadingProgress total<=1 return
+  SITES: 948, // 939 -> 948: Stage E sportingReputation.ts nine return sites
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -16957,7 +17014,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 149 -> 152: GDD §5.14 Stage B's pacing.ts, three `refuseWith` calls.
   // 152 -> 157: Stage C.1b floor.ts furniture refusals.
   // 159 -> 160: GDD §5.18 Stage D.1 stationCapability refuseWith.
-  WRAP_CALLS: 160,
+  WRAP_CALLS: 170, // 160 -> 170: Stage E sportingReputation.ts ten refuseWith calls
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,

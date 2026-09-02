@@ -103,25 +103,21 @@
  * done.
  *
  * ===========================================================================
- * 4. Reputation contribution: members only; competition results are a typed,
- *    unread extension point
+ * 4. Reputation contribution: members only, as a per-day rate
  * ===========================================================================
  *
  * §5.6: "Reputation is earned mostly by powerlifter and serious-lifter
- * members, and by your own competition results." `grep -rn
- * "CompetitionResult|competitionResult" src/empire/` before this piece finds
- * nothing — no meet-result hook exists anywhere in `src/empire/`, and a real
- * one lives in `src/game`/`src/meet` (a different session's territory; GDD
- * §6 is Meet Day). Rather than invent an input with no producer,
- * `reputationFromMembers` takes the members' contribution as its whole
- * required argument and a second, OPTIONAL, already-typed argument —
- * `competitionResultReputationBonus: ReputationPoints`, defaulted to zero —
- * so a later piece can compose `reputationFromMembers(roster,
- * competitionBonus)` without this module changing shape. Nothing in this
- * codebase produces a non-zero value for that argument today; the default
- * makes that an explicit, testable fact (`members.test.ts` drives both the
- * zero-default and a nonzero value and asserts the composition is additive)
- * rather than a silent omission.
+ * members, and by your own competition results." The members half is this
+ * file: `reputationFromMembers` sums a per-day rate from a roster.
+ *
+ * The competition-results half is `sportingReputation.ts`, a per-result
+ * contribution. That is a different grain. `reputationFromMembers` still
+ * takes an optional `competitionResultReputationBonus` defaulted to zero —
+ * additive into the same per-day return — and Stage E does not pass sporting
+ * points through it. Mixing a meet into a daily member rate would hide the
+ * grain mismatch inside this function. `members.test.ts` still drives the
+ * zero-default and a nonzero bonus so the argument stays additive; the
+ * sporting composer sits beside this function rather than inside it.
  *
  * ===========================================================================
  * 5. Crowding: a real ratio, from real state, with two type-keyed shape terms
