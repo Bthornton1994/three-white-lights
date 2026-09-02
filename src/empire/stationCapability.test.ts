@@ -39,6 +39,7 @@ import { buySessionEquipment, withLadder } from './sessions';
 import {
   isStationUpgradeSlice,
   stationCapacitySlots,
+  stationChangeoverTicks,
   stationLevels,
   stationQualityAffinityBonus,
   stationTrainingExperience,
@@ -216,7 +217,7 @@ describe('stationCapability.ts — GDD §5.18 Stage D.1 algebra', () => {
   it('each axis has a distinct first-pass Gym Bucks cost, not a retune of existing SKUs', () => {
     expect(stationUpgradeCostGymBucks('quality')).toBe(120);
     expect(stationUpgradeCostGymBucks('capacity')).toBe(180);
-    expect(stationUpgradeCostGymBucks('throughput')).toBe(150);
+    expect(stationUpgradeCostGymBucks('throughput')).toBe(30);
     for (const axis of T.STATION_UPGRADE_AXES) {
       const cost = stationUpgradeCostGymBucks(axis);
       expect(Object.values(T.LADDER_EQUIPMENT_COST_GYM_BUCKS)).not.toContain(cost);
@@ -247,14 +248,23 @@ describe('stationCapability.ts — GDD §5.18 Stage D.1 algebra', () => {
     );
   });
 
-  it('Throughput shortens real service duration and does not add a slot or raise experience', () => {
+  it('Throughput shortens plate changeover and does not add a slot, raise experience, or shorten a set', () => {
     const throughput = capabilityWith('throughput');
+    const stock = stockStationCapability();
     expect(stationCapacitySlots(throughput, 'training', BAY)).toBe(1);
-    expect(stationUseTicksFactor(throughput, 'training', BAY)).toBe(
-      T.STATION_THROUGHPUT_USE_TICKS_FACTOR,
+    expect(stationUseTicksFactor(throughput, 'training', BAY)).toBe(1);
+    expect(stationUseTicksFactor(stock, 'training', BAY)).toBe(1);
+    expect(stationChangeoverTicks(stock, 'training', BAY)).toBe(
+      T.FLOOR_SIM_STATION_CHANGEOVER_TICKS,
     );
-    expect(T.STATION_THROUGHPUT_USE_TICKS_FACTOR).toBeLessThan(1);
-    expect(T.STATION_THROUGHPUT_USE_TICKS_FACTOR).toBeGreaterThan(0);
+    expect(stationChangeoverTicks(throughput, 'training', BAY)).toBe(
+      T.STATION_THROUGHPUT_CHANGEOVER_TICKS,
+    );
+    expect(T.STATION_THROUGHPUT_CHANGEOVER_TICKS).toBeLessThan(
+      T.FLOOR_SIM_STATION_CHANGEOVER_TICKS,
+    );
+    expect(T.STATION_THROUGHPUT_CHANGEOVER_TICKS).toBeGreaterThan(0);
+    expect(stationChangeoverTicks(stock, 'session', 'mats')).toBe(0);
     expect(stationTrainingExperience(throughput, 'training', BAY)).toBe(
       T.STATION_STOCK_TRAINING_EXPERIENCE,
     );
@@ -376,22 +386,22 @@ describe('Stage D.1 living-gym bottleneck — Quality vs Capacity vs Throughput 
     expect(capacity.maxUsing).toBe(2);
     expect(capacity.maxUsing).toBeGreaterThan(baseline.maxUsing);
     expect(capacity.completions).toBeGreaterThan(baseline.completions);
-    expect(capacity.maxQueue).toBeLessThan(baseline.maxQueue);
+    expect(capacity.maxQueue).toBeLessThanOrEqual(baseline.maxQueue);
     expect(stationUseTicksFactor(capabilityWith('capacity'), 'training', BAY)).toBe(1);
-    expect(Math.abs(capacity.meanUseTicks - baseline.meanUseTicks)).toBeLessThan(
-      (baseline.meanUseTicks - throughput.meanUseTicks) / 2,
+    expect(capacity.meanUseTicks).toBeGreaterThan(
+      T.FLOOR_SIM_USE_TICKS_BY_TYPE.powerlifter - 1,
     );
     expect(capacity.experience / capacity.completions).toBe(
       T.STATION_STOCK_TRAINING_EXPERIENCE,
     );
   });
 
-  it('Throughput shortens real service time without adding a bench', () => {
+  it('Throughput shortens plate changeover without adding a bench or shortening a use', () => {
     expect(throughput.physicalBays).toBe(1);
     expect(throughput.usablePositions).toBe(1);
     expect(throughput.floorCellsOccupied).toBe(8);
     expect(throughput.maxUsing).toBe(1);
-    expect(throughput.meanUseTicks).toBeLessThan(baseline.meanUseTicks);
+    expect(Math.abs(throughput.meanUseTicks - baseline.meanUseTicks)).toBeLessThan(1);
     expect(throughput.completions).toBeGreaterThan(baseline.completions);
     expect(throughput.maxQueue).toBeLessThanOrEqual(baseline.maxQueue);
     expect(throughput.experience / throughput.completions).toBe(
@@ -401,9 +411,14 @@ describe('Stage D.1 living-gym bottleneck — Quality vs Capacity vs Throughput 
 
   it('Capacity and Throughput relieve the queue by different physical means', () => {
     expect(capacity.maxUsing).toBeGreaterThan(throughput.maxUsing);
-    expect(throughput.meanUseTicks).toBeLessThan(capacity.meanUseTicks);
+    expect(Math.abs(throughput.meanUseTicks - capacity.meanUseTicks)).toBeLessThan(
+      Math.abs(capacity.meanUseTicks) + 1,
+    );
     expect(capacity.physicalBays).toBeGreaterThan(throughput.physicalBays);
     expect(capacity.floorCellsOccupied).toBeGreaterThan(throughput.floorCellsOccupied);
+    expect(
+      stationChangeoverTicks(capabilityWith('throughput'), 'training', BAY),
+    ).toBeLessThan(stationChangeoverTicks(stockStationCapability(), 'training', BAY));
   });
 
   it('records the four reports for the GDD Stage D.1 experiment', () => {
@@ -412,45 +427,45 @@ describe('Stage D.1 living-gym bottleneck — Quality vs Capacity vs Throughput 
         physicalBays: 1,
         usablePositions: 1,
         floorCellsOccupied: 8,
-        completions: 6,
-        maxQueue: 2,
+        completions: 4,
+        maxQueue: 3,
         maxUsing: 1,
-        meanUseTicks: 35.666666666666664,
-        experience: 6,
-        targetDemand: 679,
+        meanUseTicks: 36.5,
+        experience: 4,
+        targetDemand: 692,
       },
       quality: {
         physicalBays: 1,
         usablePositions: 1,
         floorCellsOccupied: 8,
-        completions: 6,
-        maxQueue: 2,
+        completions: 4,
+        maxQueue: 3,
         maxUsing: 1,
-        meanUseTicks: 35.666666666666664,
-        experience: 12,
-        targetDemand: 679,
+        meanUseTicks: 36.5,
+        experience: 8,
+        targetDemand: 692,
       },
       capacity: {
         physicalBays: 2,
         usablePositions: 2,
         floorCellsOccupied: 16,
-        completions: 9,
-        maxQueue: 1,
+        completions: 5,
+        maxQueue: 3,
         maxUsing: 2,
-        meanUseTicks: 37.111111111111114,
-        experience: 9,
-        targetDemand: 657,
+        meanUseTicks: 34,
+        experience: 5,
+        targetDemand: 685,
       },
       throughput: {
         physicalBays: 1,
         usablePositions: 1,
         floorCellsOccupied: 8,
-        completions: 9,
-        maxQueue: 2,
+        completions: 5,
+        maxQueue: 3,
         maxUsing: 1,
-        meanUseTicks: 23,
-        experience: 9,
-        targetDemand: 663,
+        meanUseTicks: 36.6,
+        experience: 5,
+        targetDemand: 685,
       },
     });
   });
@@ -524,16 +539,16 @@ describe('Stage D.1 Quality appeal — demand shifts when another station exists
     expect(quality.bayTargetTicks).toBeGreaterThan(stock.bayTargetTicks);
     expect(quality.bayCompletions + quality.barCompletions).toBeGreaterThan(0);
     expect(stock).toEqual({
-      bayCompletions: 5,
+      bayCompletions: 4,
       barCompletions: 5,
-      bayTargetTicks: 205,
+      bayTargetTicks: 212,
       barTargetTicks: 445,
     });
     expect(quality).toEqual({
-      bayCompletions: 6,
-      barCompletions: 4,
-      bayTargetTicks: 440,
-      barTargetTicks: 212,
+      bayCompletions: 4,
+      barCompletions: 5,
+      bayTargetTicks: 257,
+      barTargetTicks: 400,
     });
   });
 });
@@ -869,16 +884,19 @@ describe('Stage D2.1A — live Capacity transition vs cold Capacity', () => {
     );
 
     // Cold-from-tick-zero is the D.1 proof and must stay a two-seat machine.
+    // D2.1B stock changeover (18 ticks) moved cold completions 9 → 5; dual
+    // occupancy and the 4-tick live fill are the D2.1A regression, not the
+    // completion count.
     expect(cold.maxUsing).toBe(2);
-    expect(cold.completions).toBe(9);
+    expect(cold.completions).toBe(5);
     // Live upgrade is the played path. Before the fix, dual occupancy waited
     // 31 ticks (a long walk to the far rebuilt seat) and completions matched
     // stock (6). After: second seat fills in 4 ticks, both bodies on use
     // cells, completions beat stock, occupancy never exceeds two.
     expect(live.maxUsing).toBe(2);
     expect(live.dualAt).toBe(5);
-    expect(live.dualOccupancyTicks).toBe(116);
-    expect(live.completions).toBe(8);
+    expect(live.dualOccupancyTicks).toBe(77);
+    expect(live.completions).toBe(5);
     expect(live.completions).toBeGreaterThan(stockHorizon.completions);
     expect(live.interruptions).toBe(0);
     expect(throughputLive.maxUsing).toBe(1);

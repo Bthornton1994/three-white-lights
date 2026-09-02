@@ -24,8 +24,13 @@
  *                 Default 1; one upgrade adds `STATION_CAPACITY_BONUS_SLOTS`.
  *                 Stage D.1 realises the extra slot as a second physical
  *                 bench, not as two approach cells around one bench.
- *   Throughput  — a multiplier on `FLOOR_SIM_USE_TICKS_BY_TYPE` service
- *                 duration. One station slot remains one station slot.
+ *   Throughput  — ticks the bay holds a seat empty between users while
+ *                 plates are changed. Stock is
+ *                 `FLOOR_SIM_STATION_CHANGEOVER_TICKS`; a purchased plate
+ *                 tree writes `STATION_THROUGHPUT_CHANGEOVER_TICKS`. The
+ *                 lifter's set duration is unchanged. One slot remains one
+ *                 slot. D2.1B: this used to shorten `useTicksFor`; that
+ *                 made training itself shorter and was not a changeover.
  *
  * Stage D.1 is a vertical slice, not a catalog. Only
  * `STATION_UPGRADE_SLICE` (`competition-bench-bay`) can be upgraded.
@@ -131,8 +136,10 @@ export function stationCapacitySlots(
 }
 
 /**
- * Multiplier on a member's use-tick duration at this station. Stock and
- * non-slice stations return 1. Throughput never changes slot count.
+ * Multiplier on a member's use-tick duration at this station. Stock, Quality,
+ * Capacity, and Throughput all return 1. D2.1B: a plate tree does not
+ * shorten the set. Use duration is the lifter's. Throughput shortens
+ * `stationChangeoverTicks`.
  */
 export function stationUseTicksFactor(
   capability: StationCapabilityState,
@@ -140,8 +147,29 @@ export function stationUseTicksFactor(
   key: string,
 ): number {
   if (kind !== 'training' || !isStationUpgradeSlice(key)) return 1;
+  // Throughput used to return a shorter-set factor here. D2.1B: the plate
+  // tree does not shorten the set. Both arms return 1; the level is read so
+  // a mutant that restores a shorter-set branch has a live input.
   if (stationLevels(capability, key).throughput <= 0) return 1;
-  return EMPIRE_TUNING.STATION_THROUGHPUT_USE_TICKS_FACTOR;
+  return 1;
+}
+
+/**
+ * Ticks a seat stays empty after a completed use, while plates are changed.
+ * Non-slice stations (mats, leftover Barbell) have no plate changeover.
+ * Stock slice stations use `FLOOR_SIM_STATION_CHANGEOVER_TICKS`. A purchased
+ * plate tree uses `STATION_THROUGHPUT_CHANGEOVER_TICKS`.
+ */
+export function stationChangeoverTicks(
+  capability: StationCapabilityState,
+  kind: 'training' | 'fixed' | 'session',
+  key: string,
+): number {
+  if (kind !== 'training' || !isStationUpgradeSlice(key)) return 0;
+  if (stationLevels(capability, key).throughput <= 0) {
+    return EMPIRE_TUNING.FLOOR_SIM_STATION_CHANGEOVER_TICKS;
+  }
+  return EMPIRE_TUNING.STATION_THROUGHPUT_CHANGEOVER_TICKS;
 }
 
 /**

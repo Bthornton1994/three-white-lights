@@ -3822,7 +3822,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 640 -> 643: Stage D.1b world-legibility testIDs (quality bench, plate
     // tree, raised bay labels).
     // 643 -> 645: Stage D2 gymscreen-reset-gym + reset-gym action kind.
-    expect(singleQuoted.size).toBe(645);
+    // 645 -> 647: Stage D2.1B — `'loading'` (station highlight activity)
+    // and `'Loading plates'` (player-facing empty-seat changeover).
+    // `'faster changeovers'` became `'faster plate changes'` (replace,
+    // size unchanged); `'Idle'` already shipped.
+    expect(singleQuoted.size).toBe(647);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3935,7 +3939,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `floorsim-${activity}-training-${ref.station}` and the Capacity
     // second-bench sibling `-expansion`, replacing the colon-keyed
     // `floorStationRefKey` form the verifiers cannot read.
-    expect(templateChunks.size).toBe(335);
+    // 335 -> 336: Stage D2.1B `changeoverSeatKey`
+    // (`${floorStationRefKey(ref)}:${cell.x},${cell.y}`) adds the `:`
+    // chunk; the operation-line templates moved from FloorGrid to
+    // `playerFacingStationOperation` without a new unique chunk besides
+    // that key. Read from this assertion's own failure value.
+    expect(templateChunks.size).toBe(336);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4337,6 +4346,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'left',
       'legendary',
       'level',
+      'loading',
       'machines',
       'manager-hired-under-warning',
       'mats',
@@ -4636,7 +4646,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 973 -> 975: D.1 highlight ids, templateChunks 333 -> 335.
     // 975 -> 978: Stage D.1b singleQuoted 640 -> 643.
     // 978 -> 980: Stage D2 singleQuoted 643 -> 645.
-    expect(stringsChecked).toBe(980);
+    // 980 -> 983: Stage D2.1B singleQuoted 645 -> 647 and templateChunks
+    // 335 -> 336. Read from this assertion's own failure value.
+    expect(stringsChecked).toBe(983);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5444,7 +5456,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS: 8) — four new findings, none of
     // them 0 or 1. Read from this assertion's own failure value.
     // 411 -> 412: Stage D STATION_QUALITY_AFFINITY_BONUS 0.25.
-    ).toBe(412);
+    // 412 -> 413: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS (18).
+    // STATION_THROUGHPUT_USE_TICKS_FACTOR (0.65) was replaced by
+    // STATION_THROUGHPUT_CHANGEOVER_TICKS (6) — replace, count unchanged.
+    ).toBe(413);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

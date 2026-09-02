@@ -26,6 +26,7 @@ import {
   playerFacingMemberActivityLine,
   playerFacingMemberTypeLabel,
   playerFacingPlacementRefuse,
+  playerFacingStationOperation,
   playerFacingUpgradeEffect,
   playerFacingUpgradeLabel,
   playerFacingUpgradeRefuse,
@@ -154,7 +155,7 @@ describe('stationView.ts — GDD §5.14 Stage C', () => {
     expect(playerFacingUpgradeLabel('throughput')).toBe('Plate tree');
     expect(playerFacingUpgradeEffect('quality')).toBe('better training experience');
     expect(playerFacingUpgradeEffect('capacity')).toBe('two can train at once');
-    expect(playerFacingUpgradeEffect('throughput')).toBe('faster changeovers');
+    expect(playerFacingUpgradeEffect('throughput')).toBe('faster plate changes');
     expect(playerFacingUpgradeRefuse('not-upgradable')).toBe("Can't upgrade this");
     expect(playerFacingUpgradeRefuse('already-upgraded')).toBe('Already fitted');
     expect(playerFacingUpgradeRefuse('not-placed')).toBe('Place the bay first');
@@ -274,6 +275,26 @@ describe('stationView.ts — GDD §5.14 Stage C', () => {
       activeMemberType: null,
       queueCount: 0,
     });
+  });
+
+  it('playerFacingStationOperation names occupied, loading plates, idle, and the waiting clause', () => {
+    const idle = stationOperationView([], SESSION_REF);
+    expect(playerFacingStationOperation(idle, 0)).toBe('Idle');
+    expect(playerFacingStationOperation(idle, 1)).toBe('Loading plates');
+    const waiting = stationOperationView(
+      [memberAt(0, 'queuing', SESSION_REF), memberAt(1, 'seeking', SESSION_REF)],
+      SESSION_REF,
+    );
+    expect(playerFacingStationOperation(waiting, 0)).toBe('Idle, 2 waiting');
+    expect(playerFacingStationOperation(waiting, 1)).toBe('Loading plates, 2 waiting');
+    const using = stationOperationView([memberAt(0, 'using', SESSION_REF)], SESSION_REF);
+    expect(playerFacingStationOperation(using, 0)).toBe('In use by Powerlifter');
+    expect(playerFacingStationOperation(using, 1)).toBe('In use by Powerlifter');
+    const dual = stationOperationView(
+      [memberAt(0, 'using', SESSION_REF), memberAt(1, 'using', SESSION_REF)],
+      SESSION_REF,
+    );
+    expect(playerFacingStationOperation(dual, 0)).toBe('2 training');
   });
 
   // -------------------------------------------------------------------------

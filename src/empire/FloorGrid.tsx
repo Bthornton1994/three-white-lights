@@ -185,6 +185,8 @@ import {
   floorSimStateCounts,
   floorStationRefKey,
   floorStations,
+  seatChangeoverTicks,
+  stationChangeoverSeats,
   stepFloorSim,
 } from './floorSim';
 import { type LadderEquipmentItem } from './ladder';
@@ -211,6 +213,7 @@ import {
   playerFacingMemberActivityLine,
   playerFacingMemberTypeLabel,
   playerFacingPlacementRefuse,
+  playerFacingStationOperation,
   playerFacingUpgradeEffect,
   playerFacingUpgradeLabel,
   playerFacingUpgradeRefuse,
@@ -697,7 +700,7 @@ function cellsEqual(left: GridPosition, right: GridPosition): boolean {
  * reads. Capacity's second bench is a second element (`-expansion`).
  */
 function highlightTestId(
-  activity: 'using' | 'claimed',
+  activity: 'using' | 'claimed' | 'loading',
   ref: FloorStationRef,
   expansion: boolean,
 ): string {
@@ -749,7 +752,7 @@ function usingBenchFor(
 interface StationHighlightBox {
   readonly key: string;
   readonly testID: string;
-  readonly activity: 'using' | 'claimed';
+  readonly activity: 'using' | 'claimed' | 'loading';
   readonly position: GridPosition;
   readonly footprint: GridSize;
 }
@@ -762,6 +765,7 @@ function stationHighlightBoxes(
   station: FloorStation,
   bay: CompetitionBenchBay,
   members: readonly FloorSimMember[],
+  changeovers: Readonly<Record<string, number>>,
 ): readonly StationHighlightBox[] {
   const targeting: FloorSimMember[] = [];
   for (const member of members) {
@@ -792,7 +796,16 @@ function stationHighlightBoxes(
     const row = benches[index];
     if (row === undefined) continue;
     const usingHere = memberUsesCell(members, station.ref, station.useCells[index]);
-    const activity: 'using' | 'claimed' | null = usingHere ? 'using' : waiting ? 'claimed' : null;
+    const loadingHere =
+      station.useCells[index] !== undefined &&
+      seatChangeoverTicks(changeovers, station.ref, station.useCells[index] as GridPosition) > 0;
+    const activity: 'using' | 'claimed' | 'loading' | null = usingHere
+      ? 'using'
+      : loadingHere
+        ? 'loading'
+        : waiting
+          ? 'claimed'
+          : null;
     if (activity === null) continue;
     const testID = highlightTestId(activity, station.ref, row.expansion);
     boxes.push({
@@ -1638,6 +1651,7 @@ export function FloorGrid(props: FloorGridProps) {
   // the gate are shared with the older, already-fixed surface.
   let panelIdentity: StationIdentityView | null = null;
   let panelOperation: StationOperationView | null = null;
+  let panelLoadingSeats = 0;
   let panelCondition: StationConditionView | null = null;
   let panelManagerEffect: StationManagerEffectView | null = null;
   if (panelStation !== null) {
@@ -1650,6 +1664,14 @@ export function FloorGrid(props: FloorGridProps) {
       panelStation,
       selectedStationRow === undefined ? undefined : selectedStationRow.useCells,
     );
+    panelLoadingSeats =
+      selectedStationRow === undefined
+        ? 0
+        : stationChangeoverSeats(
+            sim.changeovers,
+            selectedStationRow.ref,
+            selectedStationRow.useCells,
+          );
     panelCondition = stationConditionView(managed, conditionItem);
     panelManagerEffect = stationManagerEffectView(managed, conditionItem);
   }
@@ -2115,7 +2137,7 @@ export function FloorGrid(props: FloorGridProps) {
               // member is on it. testIDs are dash-stable (`floorsim-using-
               // training-competition-bench-bay`), never colon keys.
               stations.flatMap((station) =>
-                stationHighlightBoxes(station, bay, sim.members).map((box) => (
+                stationHighlightBoxes(station, bay, sim.members, sim.changeovers).map((box) => (
                   <View
                     key={box.key}
                     testID={box.testID}
@@ -2149,7 +2171,9 @@ export function FloorGrid(props: FloorGridProps) {
                       borderColor:
                         box.activity === 'using'
                           ? FLOOR_SIM_STATE_COLOR.using
-                          : FLOOR_SIM_STATE_COLOR.seeking,
+                          : box.activity === 'loading'
+                            ? FLOOR_THROUGHPUT_MARK_COLOR
+                            : FLOOR_SIM_STATE_COLOR.seeking,
                       backgroundColor: FLOOR_SIM_HIGHLIGHT_FILL,
                       zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
                     }}
@@ -2469,14 +2493,7 @@ export function FloorGrid(props: FloorGridProps) {
             "efficiency score" is computed here.
           */}
           <Text testID={'floorgrid-station-panel-operation'}>
-            {panelOperation.occupied && panelOperation.activeMemberType !== null
-              ? panelOperation.occupantCount > 1
-                ? `${panelOperation.occupantCount} training`
-                : `In use by ${playerFacingMemberTypeLabel(panelOperation.activeMemberType)}`
-              : 'Idle'}
-            {panelOperation.queueCount > 0
-              ? `, ${panelOperation.queueCount} waiting`
-              : null}
+            {playerFacingStationOperation(panelOperation, panelLoadingSeats)}
           </Text>
           {/*
             GDD §5.14 Stage C.1a: the shown cost switches to the real,

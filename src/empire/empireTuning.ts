@@ -1835,6 +1835,18 @@ export const EMPIRE_TUNING = Object.freeze({
   FLOOR_SIM_LEAVING_TICKS: 6,
 
   /**
+   * How many ticks a Competition Bench Bay seat stays unavailable after a
+   * lifter finishes, while plates are changed. This is the stock changeover
+   * D2.1B made explicit: it is not the lifter's set, and it is not the
+   * member `leaving` walk. Session equipment has none. Throughput replaces
+   * this duration with `STATION_THROUGHPUT_CHANGEOVER_TICKS`. Must be at or
+   * above 1 — a changeover of zero ticks is not a beat, and the plate tree
+   * would have nothing to shorten.
+   */
+  FLOOR_SIM_STATION_CHANGEOVER_TICKS: 18,
+
+
+  /**
    * How many ticks a member with nowhere to go holds one wander direction
    * before drawing another. A gym with no reachable equipment (an empty
    * garage before anything is placed, or a member walled off from every
@@ -2552,15 +2564,16 @@ export const EMPIRE_TUNING = Object.freeze({
   STATION_UPGRADE_SLICE: Object.freeze(['competition-bench-bay'] as const),
 
   /**
-   * First-pass Gym Bucks cost of one axis on a stock slice station. D2 tunes
-   * these. They are new prices, not a retune of existing equipment SKUs.
-   * Garage income is 60/hour, so a player who advances the clock a few hours
-   * can afford one — Stage D proves the mechanism, not the ROI.
+   * First-pass Gym Bucks cost of one axis on a stock slice station.
+   * Quality 120 is closed (verdict B). Capacity 180 is the 3-hour garage
+   * expansion at 60/hour. Throughput 30 is D2.1B's opening-agency price:
+   * 30 watched minutes, the first action that addresses the visible queue.
+   * They are not a retune of existing equipment SKUs.
    */
   STATION_UPGRADE_COST_GYM_BUCKS: Object.freeze({
     quality: 120,
     capacity: 180,
-    throughput: 150,
+    throughput: 30,
   }),
 
   /** Stage D is one upgrade per axis. Not a tree. */
@@ -2576,12 +2589,13 @@ export const EMPIRE_TUNING = Object.freeze({
   STATION_CAPACITY_BONUS_SLOTS: 1,
 
   /**
-   * Multiplier on `FLOOR_SIM_USE_TICKS_BY_TYPE` (plus spread) when throughput
-   * is purchased. Strictly below 1 so a use is shorter, strictly above 0 so a
-   * use still takes time. Capacity is unchanged. D2 may retune the magnitude;
-   * the mechanism is "real service duration drops".
+   * Ticks a plate-tree bay holds a seat empty between users. Strictly below
+   * `FLOOR_SIM_STATION_CHANGEOVER_TICKS` so the tree shortens loading, strictly
+   * above 0 so a changeover still exists. The lifter's set
+   * (`FLOOR_SIM_USE_TICKS_BY_TYPE`) is unchanged. D2.1B: this is Throughput's
+   * mechanism, replacing the old use-duration factor.
    */
-  STATION_THROUGHPUT_USE_TICKS_FACTOR: 0.65,
+  STATION_THROUGHPUT_CHANGEOVER_TICKS: 6,
 
   /**
    * Training-experience value of one completed use at a stock station. Quality
@@ -2759,6 +2773,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_SIM_TARGET_NOISE_TILES: 'knob',
   FLOOR_SIM_INTERRUPTED_BEAT_TICKS: 'knob',
   FLOOR_SIM_LEAVING_TICKS: 'knob',
+  FLOOR_SIM_STATION_CHANGEOVER_TICKS: 'knob',
   FLOOR_SIM_WANDER_HOLD_TICKS: 'knob',
   FLOOR_SIM_ROUTE_VISIT_BUDGET: 'budget',
   FLOOR_SIM_MAX_RUN_TICKS: 'budget',
@@ -2823,7 +2838,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   STATION_UPGRADE_COST_GYM_BUCKS: 'knob',
   STATION_UPGRADE_LEVEL_MAX: 'budget',
   STATION_CAPACITY_BONUS_SLOTS: 'budget',
-  STATION_THROUGHPUT_USE_TICKS_FACTOR: 'knob',
+  STATION_THROUGHPUT_CHANGEOVER_TICKS: 'knob',
   STATION_STOCK_TRAINING_EXPERIENCE: 'knob',
   STATION_QUALITY_TRAINING_EXPERIENCE: 'knob',
   STATION_QUALITY_AFFINITY_BONUS: 'knob',

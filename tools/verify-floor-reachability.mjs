@@ -334,9 +334,10 @@
  *           preference — see the comment beside `dragBox` for what a bare
  *           mousedown/mouseup with no intervening move actually did.
  *      13a2. THE PANEL'S OPERATION READING MATCHES THE VISIBLE FLOOR. The
- *           panel's own "in use by a .../idle .../N waiting" text is
+ *           panel's own "in use by a .../loading plates/idle .../N waiting" text is
  *           compared against `floorsim-using-training-competition-bench-bay`
- *           / `floorsim-claimed-training-competition-bench-bay` — the SAME
+ *           / `floorsim-claimed-training-competition-bench-bay` /
+ *           `floorsim-loading-training-competition-bench-bay` — the SAME
  *           highlight elements sections 4b/8b already read off the live sim.
  *      13b. SWITCHING SELECTION. The same tap on a different station
  *           (`floorgrid-placed-mats`, after it is dragged onto the grid)
@@ -3885,14 +3886,16 @@ try {
     // 13a2. THE PANEL'S OWN OPERATION READING MATCHES WHAT IS VISIBLY
     // HAPPENING ON THE FLOOR. Stage D.1 highlight ids are dash-stable
     // `floorsim-using-training-competition-bench-bay` /
-    // `floorsim-claimed-training-competition-bench-bay`.
+    // `floorsim-claimed-training-competition-bench-bay` /
+    // `floorsim-loading-training-competition-bench-bay`.
     //
     // Polled rather than sampled once: the D.1b label click lands on whatever
     // tick the sim is in, and a single 150ms snapshot can catch the panel
     // one tick ahead of the highlight paint. The claim is agreement, not a
-    // particular occupancy.
+    // particular occupancy. D2.1B added the loading/changeover beat.
     let usingHighlight13a = false;
     let claimedHighlight13a = false;
+    let loadingHighlight13a = false;
     let operationText13a = null;
     let agreed13a2 = false;
     for (let attempt = 0; attempt < 8; attempt += 1) {
@@ -3906,15 +3909,25 @@ try {
         .count()
         .then((n) => n > 0)
         .catch(() => false);
+      loadingHighlight13a = await page
+        .getByTestId('floorsim-loading-training-competition-bench-bay')
+        .count()
+        .then((n) => n > 0)
+        .catch(() => false);
       operationText13a = await textOf('floorgrid-station-panel-operation');
       const panelSaysOccupied13a =
         operationText13a !== null &&
         (operationText13a.startsWith('In use by') || /^\d+ training/.test(operationText13a));
+      const panelSaysLoading13a =
+        operationText13a !== null && operationText13a.startsWith('Loading plates');
       const panelSaysWaiting13a = operationText13a !== null && / waiting$/.test(operationText13a);
       if (
         operationText13a !== null &&
         panelSaysOccupied13a === usingHighlight13a &&
-        (usingHighlight13a || panelSaysWaiting13a === claimedHighlight13a)
+        panelSaysLoading13a === loadingHighlight13a &&
+        (usingHighlight13a ||
+          loadingHighlight13a ||
+          panelSaysWaiting13a === claimedHighlight13a)
       ) {
         agreed13a2 = true;
         break;
@@ -3923,11 +3936,11 @@ try {
     }
     if (agreed13a2) {
       ok(
-        `13a2: the panel's operation line agrees with the floor's own drawn highlight — using-highlight=${usingHighlight13a}, claimed-highlight=${claimedHighlight13a}, panel text "${operationText13a}"`,
+        `13a2: the panel's operation line agrees with the floor's own drawn highlight — using-highlight=${usingHighlight13a}, claimed-highlight=${claimedHighlight13a}, loading-highlight=${loadingHighlight13a}, panel text "${operationText13a}"`,
       );
     } else {
       fail(
-        `13a2: the panel's operation line disagrees with the floor's own drawn state — using-highlight=${usingHighlight13a}, claimed-highlight=${claimedHighlight13a}, panel text "${operationText13a}"`,
+        `13a2: the panel's operation line disagrees with the floor's own drawn state — using-highlight=${usingHighlight13a}, claimed-highlight=${claimedHighlight13a}, loading-highlight=${loadingHighlight13a}, panel text "${operationText13a}"`,
       );
     }
   }

@@ -130,6 +130,15 @@
  * is a local replan, not a gym reset. `stationCapability.test.ts`'s
  * live-upgrade regression is the catcher.
  *
+ * LIVE THROUGHPUT, D2.1B. Buying a plate tree does not shorten a set already
+ * in progress and does not recreate members. Throughput is a station-level
+ * changeover on `FloorSimState.changeovers`, keyed per seat: after a use
+ * completes the seat stays reserved for `stationChangeoverTicks` (stock 18,
+ * plate tree 6) while plates are changed. `useTicksFor` still writes the
+ * lifter's duration. A live purchase caps an in-flight changeover at the
+ * new duration and leaves a current user's timer alone. There is no
+ * parallel timer in the renderer.
+ *
  * ===========================================================================
  * 4. Liveness — what this file guarantees about "a member does not freeze"
  * ===========================================================================
@@ -183,7 +192,7 @@
  *
  * The behavioural half of the same claim is `holds no member in one state on
  * one cell longer than the derived bound`, driven over the sweep, with the
- * bound derived from the tuning values rather than picked — 46 ticks measured
+ * bound derived from the tuning values rather than picked — 57 ticks measured
  * against a derived ceiling of 272.
  *
  * ===========================================================================
@@ -214,7 +223,7 @@
  * argued — the mutant and its error are recorded at the check.
  *
  * A tuning value this module has no business reading — reputation is the one
- * this piece's brief named — is caught by `reads exactly the fifteen tuning
+ * this piece's brief named — is caught by `reads exactly the sixteen tuning
  * entries it declares`, a set equality over every `EMPIRE_TUNING.KEY` this
  * file's source names. Its limits, and each has a catcher beside it: a computed
  * `EMPIRE_TUNING[key]` access would not match the dotted pattern, so bracket
@@ -274,6 +283,7 @@ import { type SessionEquipmentItem } from './sessions';
 import { EMPIRE_TUNING } from './empireTuning';
 import {
   stationCapacitySlots,
+  stationChangeoverTicks,
   stationLevels,
   stationQualityAffinityBonus,
   stationUseTicksFactor,
@@ -379,6 +389,34 @@ export function floorStationRefKey(ref: FloorStationRef): string {
   return `${ref.kind}:${ref.item}`;
 }
 
+/** Per-seat changeover map key: the station plus the use cell. */
+export function changeoverSeatKey(ref: FloorStationRef, cell: GridPosition): string {
+  return `${floorStationRefKey(ref)}:${cell.x},${cell.y}`;
+}
+
+/** Remaining changeover ticks on `cell` of `ref`, or 0. */
+export function seatChangeoverTicks(
+  changeovers: Readonly<Record<string, number>>,
+  ref: FloorStationRef,
+  cell: GridPosition,
+): number {
+  const remaining = changeovers[changeoverSeatKey(ref, cell)];
+  return remaining === undefined ? 0 : remaining;
+}
+
+/** How many of `useCells` currently hold a plate changeover. */
+export function stationChangeoverSeats(
+  changeovers: Readonly<Record<string, number>>,
+  ref: FloorStationRef,
+  useCells: readonly GridPosition[],
+): number {
+  let count = 0;
+  for (const cell of useCells) {
+    if (seatChangeoverTicks(changeovers, ref, cell) > 0) count += 1;
+  }
+  return count;
+}
+
 /**
  * One usable station: what it is, where it sits, the cell a member stands in
  * to use it, and the cells the queue behind it stands on.
@@ -454,6 +492,12 @@ export interface FloorSimState {
   readonly tick: number;
   readonly seed: number;
   readonly members: readonly FloorSimMember[];
+  /**
+   * Per-seat plate-changeover remaining, keyed by `changeoverSeatKey`.
+   * A positive value reserves that use cell: nobody starts using it until
+   * the count reaches zero. Session stations never appear here.
+   */
+  readonly changeovers: Readonly<Record<string, number>>;
 }
 
 /**
@@ -1164,6 +1208,7 @@ function nearestWalkableAvoiding(
 function reservedUseCells(
   station: FloorStation,
   claimed: readonly FloorSimMember[],
+  changeovers: Readonly<Record<string, number>>,
 ): ReadonlySet<string> {
   const reserved = new Set<string>();
   let ghosts = 0;
@@ -1178,6 +1223,10 @@ function reservedUseCells(
       break;
     }
     if (!onSeat) ghosts += 1;
+  }
+  for (const cell of station.useCells) {
+    if (seatChangeoverTicks(changeovers, station.ref, cell) <= 0) continue;
+    reserved.add(`${cell.x},${cell.y}`);
   }
   for (let i = 0; i < ghosts; i += 1) {
     for (const cell of station.useCells) {
@@ -1201,8 +1250,9 @@ function assignedSeat(
   station: FloorStation,
   claimed: readonly FloorSimMember[],
   order: number,
+  changeovers: Readonly<Record<string, number>>,
 ): GridPosition | null {
-  const reserved = reservedUseCells(station, claimed);
+  const reserved = reservedUseCells(station, claimed, changeovers);
   const remaining: GridPosition[] = [];
   for (const cell of station.useCells) {
     if (reserved.has(`${cell.x},${cell.y}`)) continue;
@@ -1356,6 +1406,7 @@ function advanceMember(
   plan: RoutePlan,
   seed: number,
   tick: number,
+  changeovers: Readonly<Record<string, number>>,
 ): FloorSimMember {
   const speed = speedOf(seed, member);
   let standing = nearestWalkable(member.cell, plan);
@@ -1441,7 +1492,7 @@ function advanceMember(
   const order = claimantsOf(claimed, station.ref).findIndex(
     (claimant) => claimant.index === relocated.index,
   );
-  const seat = assignedSeat(station, claimed, order);
+  const seat = assignedSeat(station, claimed, order, changeovers);
   const canServe = seat !== null;
   const queueIndex = Math.min(Math.max(order, 0), station.queueCells.length - 1);
   const goalCell = canServe ? seat : (station.queueCells[queueIndex] as GridPosition);
@@ -1569,6 +1620,7 @@ export function createFloorSimState(context: FloorSimContext, seed: number): Flo
         }),
       ),
     ),
+    changeovers: Object.freeze({}),
   });
 }
 
@@ -1582,13 +1634,89 @@ function stepAgainstPlan(state: FloorSimState, plan: RoutePlan): FloorSimState {
   requireSeed(state.seed);
   const interrupted = applyInterruptions(state.members, plan);
   const claimed = applyClaims(interrupted, plan, state.seed, state.tick);
+  const nextMembers = Object.freeze(
+    claimed.map((member) =>
+      advanceMember(member, claimed, plan, state.seed, state.tick, state.changeovers),
+    ),
+  );
   return Object.freeze({
     tick: state.tick + 1,
     seed: state.seed,
-    members: Object.freeze(
-      claimed.map((member) => advanceMember(member, claimed, plan, state.seed, state.tick)),
-    ),
+    members: nextMembers,
+    changeovers: nextChangeovers(state, nextMembers, plan),
   });
+}
+
+/**
+ * Per-seat plate-changeover remaining after this tick.
+ *
+ * Order, load-bearing: decrement live seats and drop at 0, drop keys whose
+ * seat no longer exists (live Capacity geometry), cap remaining to the
+ * current capability duration (live Throughput shortens an in-flight load),
+ * then arm a fresh duration on `using` → `leaving`. Newly armed keys are
+ * not decremented on the arming tick, so the seat is reserved for exactly
+ * `stationChangeoverTicks` ticks. Do not arm on interrupt — a yanked
+ * lifter did not finish a set, so nobody is changing plates for them.
+ */
+function nextChangeovers(
+  previous: FloorSimState,
+  nextMembers: readonly FloorSimMember[],
+  plan: RoutePlan,
+): Readonly<Record<string, number>> {
+  const stockCeiling = EMPIRE_TUNING.FLOOR_SIM_STATION_CHANGEOVER_TICKS;
+  const valid = new Set<string>();
+  const durationByKey = new Map<string, number>();
+  for (const station of plan.stations) {
+    const duration = stationChangeoverTicks(
+      plan.capability,
+      station.ref.kind,
+      refKeyOf(station.ref),
+    );
+    for (const cell of station.useCells) {
+      const key = changeoverSeatKey(station.ref, cell);
+      valid.add(key);
+      durationByKey.set(key, duration);
+    }
+  }
+  const next: Record<string, number> = {};
+  for (const [key, remaining] of Object.entries(previous.changeovers)) {
+    if (!valid.has(key)) continue;
+    const decremented = remaining - 1;
+    if (decremented <= 0) continue;
+    const duration = durationByKey.get(key) ?? 0;
+    if (duration <= 0) continue;
+    next[key] = Math.min(decremented, duration, stockCeiling);
+  }
+  const previousByIndex = new Map<number, FloorSimMember>();
+  for (const member of previous.members) previousByIndex.set(member.index, member);
+  for (const member of nextMembers) {
+    const was = previousByIndex.get(member.index);
+    if (was === undefined) continue;
+    if (was.state !== 'using' || member.state !== 'leaving') continue;
+    if (was.target === null) continue;
+    const station = stationFor(plan, was.target);
+    if (station === undefined) continue;
+    const duration = stationChangeoverTicks(
+      plan.capability,
+      station.ref.kind,
+      refKeyOf(station.ref),
+    );
+    if (duration <= 0) continue;
+    let cell = was.cell;
+    let onSeat = false;
+    for (const use of station.useCells) {
+      if (!sameCell(use, cell)) continue;
+      onSeat = true;
+      break;
+    }
+    if (!onSeat) {
+      const primary = station.useCells[0];
+      if (primary === undefined) continue;
+      cell = primary;
+    }
+    next[changeoverSeatKey(station.ref, cell)] = Math.min(duration, stockCeiling);
+  }
+  return Object.freeze(next);
 }
 
 /**

@@ -724,7 +724,10 @@ describe('§5.5 social', () => {
     // 182 -> 183: Stage C.1c CONDITION_PERCENT_SCALE.
     // 183 -> 191: Stage D eight Q/C/T entries.
     // 191 -> 192: Stage D Quality affinity bonus.
-    expect(examined).toBe(192);
+    // 192 -> 193: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS. The
+    // 0.65 use-factor was replaced by STATION_THROUGHPUT_CHANGEOVER_TICKS
+    // (replace, count unchanged).
+    expect(examined).toBe(193);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -747,7 +750,8 @@ describe('§5.5 social', () => {
     // 910 -> 915: Stage C.1c CONDITION_PERCENT_SCALE × 5 banned units.
     // 915 -> 955: Stage D eight Q/C/T entries × 5 banned units.
     // 955 -> 960: Stage D Quality affinity bonus, one more entry × 5.
-    expect(probed).toBe(960);
+    // 960 -> 965: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS × 5.
+    expect(probed).toBe(965);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

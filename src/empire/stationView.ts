@@ -159,7 +159,7 @@ export function playerFacingUpgradeLabel(axis: StationUpgradeAxis): string {
 export function playerFacingUpgradeEffect(axis: StationUpgradeAxis): string {
   if (axis === 'quality') return 'better training experience';
   if (axis === 'capacity') return 'two can train at once';
-  return 'faster changeovers';
+  return 'faster plate changes';
 }
 
 /** Player-facing upgrade refusal. Domain tokens stay the identifiers. */
@@ -283,6 +283,31 @@ export function stationOperationView(
     }
   }
   return Object.freeze({ occupied, occupantCount, activeMemberType, queueCount });
+}
+
+/**
+ * Player-facing operation line. Occupied wins over loading so two bodies
+ * training still read as training. An empty seat with remaining changeover
+ * is "Loading plates" — the D2.1B Throughput sentence — not Idle. Waiting
+ * is a clause, never the head.
+ */
+export function playerFacingStationOperation(
+  view: StationOperationView,
+  loadingSeats: number,
+): string {
+  let head: string;
+  if (view.occupied && view.activeMemberType !== null) {
+    head =
+      view.occupantCount > 1
+        ? `${view.occupantCount} training`
+        : `In use by ${playerFacingMemberTypeLabel(view.activeMemberType)}`;
+  } else if (loadingSeats > 0) {
+    head = 'Loading plates';
+  } else {
+    head = 'Idle';
+  }
+  if (view.queueCount > 0) return `${head}, ${view.queueCount} waiting`;
+  return head;
 }
 
 // ---------------------------------------------------------------------------

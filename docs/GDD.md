@@ -3539,14 +3539,16 @@ Stage C human close (done at `460f794a`) → C.2 simulator fidelity (done,
 §5.16) → Stage D Q/C/T (done, §5.17) → Stage D.1 training-station semantics
 (done, §5.18) → Stage D.1b world legibility (done, human-close of Stage D
 at `ff8721a`) → D2 balance verdict (PARTIAL, open) → D2.1A live Capacity
-transition (this subsection) → D2.1B C-vs-T / opening agency after human
-replay → reputation seam → persistent NPC roster / tenure → deeper staff
-policy → portfolio only after explicit human unpause.
+transition (CONFIRMED AND FIXED at `0ded7fe`) → D2.1B Throughput changeover
++ opening agency (this subsection) → reputation seam → persistent NPC
+roster / tenure → deeper staff policy → portfolio only after explicit
+human unpause.
 
 The doctrine does not authorize implementing future stages early. It defines
 their quality bar. C.2 is recorded in §5.16. Stage D is recorded in §5.17.
 Stage D.1 / D.1b are recorded in §5.18. D2 is recorded in the D2 ruling
-under §5.18. D2 remains OPEN. D2.1A is recorded immediately after it.
+under §5.18. D2 remains OPEN. D2.1A is CONFIRMED AND FIXED at `0ded7fe`.
+D2.1B is recorded immediately after D2.1A.
 
 ### 5.16 Stage C.2 — simulator fidelity (online vs offline in aggregate pacing)
 
@@ -3806,7 +3808,7 @@ inspect / move / condition. Tap the complete bay's primary surface or the
 second bench → station operation / queue / Q/C/T. Do not collapse these.
 Panel copy is the physical fitting, not Q=1/C=1/T=1: "Competition pads —
 better training experience (120)"; "Second bench — two can train at once
-(180)"; "Plate tree — faster changeovers (150)". Refuse copy is "Place the
+(180)"; "Plate tree — faster plate changes (30)". Refuse copy is "Place the
 bay first" / "No room for a second bench".
 
 **D-DEBT — stored / unplaced equipment currently wears.** Kept visible,
@@ -4048,8 +4050,10 @@ to owned ∩ placed ∩ actually-used in this piece.
 *D2-OPENING-01.* The opening garage presents a bench-capacity problem
 (queue visible, purse ~0) before the player can act on that problem.
 Mats at 10 GB is not the decision the visible bottleneck is asking for.
-Do not treat "mats is affordable first" as proof the opening loop is
-healthy. Not fixed in D2.1A.
+D2.1B addresses this by making Throughput the first queue-response at
+30 GB (30 watched minutes at 60/hour). Capacity stays 180 (3 watched
+hours). Quality stays 120 and closed. Human opening-economy replay is
+the remaining verdict; do not mark D2 closed.
 
 *QUALITY VERDICT B CONFIRMED BY HUMAN.* Physical meaning readable
 (competition pad). No compelling present-tense reason to spend 120 in
@@ -4102,6 +4106,62 @@ Capacity fixture. They prove different things.
 D2.1A does not retune Capacity 180 / Throughput 150. C-vs-T strategic
 balance and opening agency are D2.1B, after human replay of this
 transition. Do not start reputation.
+
+**Stage D2.1A human replay — CONFIRMED AND FIXED at `0ded7fe`.**
+Human at 390×844: second bench appeared immediately, original user stayed,
+waiting lifter sat, two simultaneous users, queue 2→1, ~4 seconds. No
+presentation snap worth fixing. Capacity live-transition is closed.
+Do not reopen it.
+
+**Stage D2.1B — Throughput changeover + opening agency.** Authorized
+after that replay. Throughput at 0.65 use-shortening was not a real
+alternative: after ~26s the panel still read "In use by Powerlifter, 2
+waiting". Copy said "faster changeovers"; the implementation shortened
+the set and did not affect the current user. There was no explicit
+station-turnover interval. Occupancy-from-previous-snapshot is 1 tick;
+leaving is the member walking away and does not hold the seat.
+
+Design matrix (chosen **B**):
+
+| Option | Mechanism | Visibility | Opening | Why |
+|---|---|---|---|---|
+| A keep 0.65 use-shortening | shorter sets | closed 1+2 loop | price-only | copy was a lie; live buy ignores current user |
+| **B explicit changeover** | stock 18 ticks / plate tree 6; set duration unchanged | empty bench + "Loading plates" | T=30 is first queue action | honest plate-tree sentence |
+| C derive from leaving/walk | distort walking | unbelievable | n/a | leaving is the body leaving, not plates |
+
+Old mechanism: `stationUseTicksFactor` 0.65 on `useTicksFor` at use
+entry. New: `FloorSimState.changeovers` per seat. Stock
+`FLOOR_SIM_STATION_CHANGEOVER_TICKS` 18 (~2.16s). Plate tree
+`STATION_THROUGHPUT_CHANGEOVER_TICKS` 6 (~0.72s). `stationUseTicksFactor`
+always 1. Live buy: current set untouched; in-flight changeover capped
+at the new duration; next completion uses the new duration. Renderer
+has no parallel timer. Panel: "Loading plates, N waiting". Highlight
+`floorsim-loading-training-competition-bench-bay` (darkkhaki).
+
+Prices: Quality 120 closed. Capacity 180 = 3 watched hours. Throughput
+30 = 30 watched minutes. +1h QA helper affords T, not C. Buying T
+delays C by 30 minutes. Floor-space cost of Capacity's 8 extra cells
+is mostly future option value on the opening garage (33 free cells;
+mats 3×3 can go elsewhere). Boxed layout still refuses Capacity and
+leaves Throughput legal.
+
+Measured 240-tick opening garage (seed 1, 3 powerlifters, 120ms tick):
+
+| | completions | maxUsing | dualUsingTicks | loadingTicks | waitingPersonTicks |
+|---|---|---|---|---|---|
+| stock | 4 | 1 | 0 | 72 | 540 |
+| plate tree | 5 | 1 | 0 | 30 | 495 |
+| Capacity | 5 | 2 | 72 | 78 | 448 |
+
+C vs T at this horizon is not completions (both 5). Capacity is the
+second body. Throughput is shorter loading (72→30) and lower wait.
+Do not claim T beats C on completions. Live T: current timer −1;
+next changeover arms at 6; in-flight 18 capped to 6.
+
+D2 remains OPEN. Quality verdict B confirmed. D2-TRUTH-01A closed.
+D2-TRUTH-01B deferred. Novice manager unchanged. Do not start D3 /
+reputation / persistent NPCs / Portfolio. Awaiting human opening-economy
+and fully-funded C-vs-T replay.
 
 ---
 

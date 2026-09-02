@@ -188,7 +188,10 @@ export const DIRECTORY_WALK = Object.freeze({
   // 44 -> 46: Stage C's `stationView.ts` and `stationView.test.ts`.
   // 46 -> 48: Stage D's `stationCapability.ts` and `stationCapability.test.ts`.
   // 48 -> 50: Stage D.1's `trainingStation.ts` and `trainingStation.test.ts`.
-  DIRECTORY_FILES: 50,
+  // 50 -> 51: Stage D2.1B's `throughputSemantics.test.ts` — closed-loop,
+  // live-purchase, C-vs-T, and opening-agency catcher. One test file, no
+  // new shipped module. Read from this pin's own failure value.
+  DIRECTORY_FILES: 51,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**

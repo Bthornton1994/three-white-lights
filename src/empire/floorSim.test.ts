@@ -376,7 +376,12 @@ function memberAt(index: number, type: MemberType, cell: GridPosition): FloorSim
 }
 
 function stateOf(seed: number, members: readonly FloorSimMember[]): FloorSimState {
-  return Object.freeze({ tick: 0, seed, members: Object.freeze([...members]) });
+  return Object.freeze({
+    tick: 0,
+    seed,
+    members: Object.freeze([...members]),
+    changeovers: Object.freeze({}),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -649,30 +654,30 @@ const SWEEP_CENSUS = Object.freeze({
   // four-phase values, kept so the deltas are legible rather than asserted:
   // seeking 904, queuing 511, using 542, leaving 452, interrupted 183.
   ENTRIES: Object.freeze({
-    seeking: 885,
-    queuing: 467,
-    using: 439,
-    leaving: 354,
-    interrupted: 256,
+    seeking: 872,
+    queuing: 457,
+    using: 413,
+    leaving: 326,
+    interrupted: 270,
   }),
   // Four-phase values: 'target-removed' 150, 'target-moved' 33, and
   // 'route-blocked' did not exist. Instrumented on the shipped four-phase
   // sweep, the branch that now raises 'route-blocked' fired 0 times across all
   // 66240 observations, which is why the fifth phase exists.
   CAUSES: Object.freeze({
-    'target-removed': 208,
-    'target-moved': 36,
-    'route-blocked': 12,
+    'target-removed': 215,
+    'target-moved': 39,
+    'route-blocked': 16,
   }),
   // The source arms of the beat, measured for the first time this round.
   SOURCES: Object.freeze({
-    seeking: 101,
-    queuing: 85,
-    using: 70,
+    seeking: 99,
+    queuing: 99,
+    using: 72,
   }),
   STRANDED_OBSERVATIONS: 18,
   STRANDED_MEMBERS: 2,
-  LONGEST_STILL: 47,
+  LONGEST_STILL: 57,
   LONGEST_QUEUE: 3,
 });
 
@@ -747,7 +752,7 @@ describe('the Phase 3 tuning block is shaped the way `floorSim.ts` reads it', ()
     );
   });
 
-  it('classifies the two guards apart from the eleven knobs', () => {
+  it('classifies the two guards apart from the twelve knobs', () => {
     const block = Object.keys(T).filter((key) => key.startsWith('FLOOR_SIM_'));
     // 13 -> 25: the `FLOOR_SIM_` prefix is TWO blocks since Phase 3's render
     // half landed — thirteen entries this module reads, denominated in sim
@@ -758,7 +763,8 @@ describe('the Phase 3 tuning block is shaped the way `floorSim.ts` reads it', ()
     // sentence to it rather than leaving it as prose.
     // 25 -> 24: P4b retired the two `using`-pulse knobs and added the
     // renderer-side FLOOR_SIM_USING_ANCHOR_BIAS. Measured off this assertion.
-    expect(block.length).toBe(24);
+    // 24 -> 25: D2.1B stock plate-changeover duration joined the sim block.
+    expect(block.length).toBe(25);
     const guards = block.filter((key) => key.endsWith('BUDGET') || key.endsWith('MAX_RUN_TICKS'));
     expect(guards.sort()).toEqual(['FLOOR_SIM_MAX_RUN_TICKS', 'FLOOR_SIM_ROUTE_VISIT_BUDGET']);
     // And both guards are on the sim's side of the split, which is what makes
@@ -779,11 +785,11 @@ describe('the Phase 3 tuning block is shaped the way `floorSim.ts` reads it', ()
     // a dotted-source scan of two files, so an alias or a computed access
     // reads keys it cannot see. That route already has a catcher on the sim's
     // side — the alias-count and bracket-access bans in `reads exactly the
-    // fifteen tuning entries it declares` below — and none on the renderer's,
+    // sixteen tuning entries it declares` below — and none on the renderer's,
     // which is stated here rather than implied away.
     const block = Object.keys(T).filter((key) => key.startsWith('FLOOR_SIM_'));
     const readByTheRenderer = block.filter((key) => namedIn(FLOOR_GRID_SOURCE).has(key));
-    expect(readByTheSim.length).toBe(13);
+    expect(readByTheSim.length).toBe(14);
     // 12 -> 11: P4b — the two pulse knobs left the renderer block and the
     // anchor-bias table joined it. Measured off this assertion.
     expect(readByTheRenderer.length).toBe(11);
@@ -1941,6 +1947,7 @@ const TUNING_READS: readonly string[] = Object.freeze([
   'FLOOR_SIM_QUEUE_MAX_LENGTH',
   'FLOOR_SIM_ROUTE_VISIT_BUDGET',
   'FLOOR_SIM_SPEED_JITTER_FRACTION',
+  'FLOOR_SIM_STATION_CHANGEOVER_TICKS',
   'FLOOR_SIM_STEP_PROGRESS_PER_TICK',
   'FLOOR_SIM_TARGET_NOISE_TILES',
   'FLOOR_SIM_USE_TICKS_BY_TYPE',
@@ -1956,7 +1963,7 @@ const FLOOR_GRID_SOURCE = readFileSync(path.join(HERE, 'FloorGrid.tsx'), 'utf8')
 
 /**
  * Which `EMPIRE_TUNING` entries a body of source actually reads, comments
- * stripped first — the same reading `reads exactly the fifteen tuning entries
+ * stripped first — the same reading `reads exactly the sixteen tuning entries
  * it declares` does, lifted out so the sim's source and the renderer's are
  * scanned by one function rather than two copies of one.
  */
@@ -1993,7 +2000,7 @@ describe('the sim reads presentation inputs and nothing economic', () => {
     expect(Object.keys(CONTEXT_KEYS).length).toBe(5);
   });
 
-  it('reads exactly the fifteen tuning entries it declares', () => {
+  it('reads exactly the sixteen tuning entries it declares', () => {
     // A set equality over the tuning keys this module's own source names, in
     // both directions, so reading a new entry is a red line somebody looks at
     // rather than a quiet widening.
@@ -2007,7 +2014,7 @@ describe('the sim reads presentation inputs and nothing economic', () => {
       named.add(match[1] as string);
     }
     expect([...named].sort()).toEqual([...TUNING_READS].sort());
-    expect(named.size).toBe(15);
+    expect(named.size).toBe(16);
     // And the keys are real, so a typo cannot pass by matching a list entry
     // that names nothing.
     for (const key of TUNING_READS) {
@@ -2023,7 +2030,7 @@ describe('the sim reads presentation inputs and nothing economic', () => {
     const occurrences = code.match(/EMPIRE_TUNING/g) ?? [];
     const dotted = code.match(/EMPIRE_TUNING\.[A-Z][A-Z0-9_]*/g) ?? [];
     expect(occurrences.length - dotted.length).toBe(1);
-    expect(dotted.length).toBe(19);
+    expect(dotted.length).toBe(20);
   });
 
   it('pins the realised affinity pull in tiles, derived from both published tables', () => {
@@ -2186,12 +2193,17 @@ describe('Stage D.1 Q/C/T on the real floor sim', () => {
     const stock = openingContext(stockStationCapability());
     const dual = openingContext(purchased('capacity'));
     const stockRun = runFloorSim(createFloorSimState(stock, 1), stock, 80);
-    const dualRun = runFloorSim(createFloorSimState(dual, 1), dual, 80);
     expect(stationOccupancy(stockRun.members, BAY_REF)).toBeLessThanOrEqual(1);
-    expect(stationOccupancy(dualRun.members, BAY_REF)).toBe(2);
+    let at = createFloorSimState(dual, 1);
+    let peak = 0;
+    for (let i = 0; i < 80; i += 1) {
+      at = stepFloorSim(at, dual);
+      peak = Math.max(peak, stationOccupancy(at.members, BAY_REF));
+    }
+    expect(peak).toBe(2);
   });
 
-  it('Throughput shortens the use timer the sim actually writes; Quality does not', () => {
+  it('Throughput does not shorten the use timer the sim writes; Quality does not either', () => {
     const stock = openingContext(stockStationCapability());
     const fast = openingContext(purchased('throughput'));
     const fancy = openingContext(purchased('quality'));
@@ -2208,7 +2220,7 @@ describe('Stage D.1 Q/C/T on the real floor sim', () => {
     const fastTimer = readUseTimer(fast);
     const fancyTimer = readUseTimer(fancy);
     expect(fancyTimer).toBe(stockTimer);
-    expect(fastTimer).toBeLessThan(stockTimer);
+    expect(fastTimer).toBe(stockTimer);
     expect(fastTimer).toBeGreaterThan(0);
   });
 });
