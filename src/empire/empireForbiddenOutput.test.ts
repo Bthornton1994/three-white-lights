@@ -15983,10 +15983,10 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:759 returned=unfollowable:station',
-  'FloorGrid.tsx:759 returned=unfollowable:station',
-  'FloorGrid.tsx:760 returned=unfollowable:station',
-  'FloorGrid.tsx:760 returned=unfollowable:station',
+  'FloorGrid.tsx:765 returned=unfollowable:station',
+  'FloorGrid.tsx:765 returned=unfollowable:station',
+  'FloorGrid.tsx:766 returned=unfollowable:station',
+  'FloorGrid.tsx:766 returned=unfollowable:station',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -16135,11 +16135,11 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
  * a type that the control finds a function inside.
  */
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:759 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:759 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:760 GridSize asked=true walked=false',
-  'FloorGrid.tsx:760 GridSize asked=true walked=false',
-  'FloorGrid.tsx:772 BayBench | undefined asked=true walked=false',
+  'FloorGrid.tsx:765 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:765 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:766 GridSize asked=true walked=false',
+  'FloorGrid.tsx:766 GridSize asked=true walked=false',
+  'FloorGrid.tsx:778 BayBench | undefined asked=true walked=false',
   'empireInvariant.ts:1084 GymAxes asked=true walked=false',
   'empireInvariant.ts:1137 GymAxes asked=true walked=false',
   'empireInvariant.ts:1168 readonly ExpansionBuild[] asked=true walked=false',
@@ -16935,7 +16935,8 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 75_810 -> 76_242: Stage D2.1A live-Capacity relocate / assignedSeat AST.
   // Read from this pin last.
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
-  NODES_EXAMINED: 78_280,
+  // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
+  NODES_EXAMINED: 78_294,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
