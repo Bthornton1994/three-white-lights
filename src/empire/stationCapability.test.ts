@@ -662,3 +662,226 @@ describe('Stage D.1 incomplete bay — members interrupt honestly', () => {
     expect(interrupted.some((member) => member.interruptedBy === 'target-removed')).toBe(true);
   });
 });
+
+describe('Stage D2.1A — live Capacity transition vs cold Capacity', () => {
+  const LIVE_UPGRADE_TIMEOUT_TICKS = 80;
+
+  function bayStationOf(context: FloorSimContext) {
+    return floorStations(context).find(
+      (row) => row.ref.kind === 'training' && row.ref.station === BAY,
+    );
+  }
+
+  function occupancySnapshot(state: FloorSimState) {
+    let using = 0;
+    let waiting = 0;
+    for (const member of state.members) {
+      if (member.target === null || member.target.kind !== 'training') continue;
+      if (member.state === 'using') using += 1;
+      if (member.state === 'seeking' || member.state === 'queuing') waiting += 1;
+    }
+    return Object.freeze({ tick: state.tick, using, waiting });
+  }
+
+  function cellsOf(cells: readonly { readonly x: number; readonly y: number }[]) {
+    return cells.map((cell) => `${cell.x},${cell.y}`);
+  }
+
+  function stepUntilStockQueue(
+    stock: FloorSimContext,
+  ): { readonly state: FloorSimState; readonly foundAt: number } | null {
+    let state = asPowerlifters(createFloorSimState(stock, EXPERIMENT_SEED));
+    for (let i = 0; i < 240; i += 1) {
+      state = asPowerlifters(stepFloorSim(state, stock));
+      const snap = occupancySnapshot(state);
+      if (snap.using === 1 && snap.waiting >= 2) {
+        return Object.freeze({ state, foundAt: state.tick });
+      }
+    }
+    return null;
+  }
+
+  it('stock opening garage reaches 1 using / 2 waiting before a live Capacity buy', () => {
+    const stock = openingContext(stockStationCapability());
+    const queued = stepUntilStockQueue(stock);
+    expect(queued).not.toBeNull();
+    if (queued === null) return;
+    const snap = occupancySnapshot(queued.state);
+    expect(snap.using).toBe(1);
+    expect(snap.waiting).toBeGreaterThanOrEqual(2);
+    expect(queued.state.members).toHaveLength(3);
+  });
+
+  it('stock queue → buy Capacity live → second seat becomes occupied', () => {
+    const stock = openingContext(stockStationCapability());
+    const capacity = openingContext(capabilityWith('capacity'));
+    const queued = stepUntilStockQueue(stock);
+    expect(queued).not.toBeNull();
+    if (queued === null) return;
+    const beforeStation = bayStationOf(stock);
+    const afterStation = bayStationOf(capacity);
+    expect(beforeStation).toBeDefined();
+    expect(afterStation).toBeDefined();
+    if (beforeStation === undefined || afterStation === undefined) return;
+
+    const purchaseTick = queued.state.tick;
+    const purchaseWaiting = occupancySnapshot(queued.state).waiting;
+    const originalUser = queued.state.members.find((member) => member.state === 'using');
+    expect(originalUser).toBeDefined();
+    let state = queued.state;
+    let dualAt: number | null = null;
+    let queueFellAt: number | null = null;
+    let secondUser: number | null = null;
+    let maxUsing = occupancySnapshot(state).using;
+    let interrupted = 0;
+    for (let i = 0; i < LIVE_UPGRADE_TIMEOUT_TICKS; i += 1) {
+      state = asPowerlifters(stepFloorSim(state, capacity));
+      const snap = occupancySnapshot(state);
+      maxUsing = Math.max(maxUsing, snap.using);
+      for (const member of state.members) {
+        if (member.state === 'interrupted') interrupted += 1;
+      }
+      if (dualAt === null && snap.using >= 2) {
+        dualAt = state.tick;
+        for (const member of state.members) {
+          const previous = queued.state.members[member.index];
+          if (
+            member.state === 'using' &&
+            previous !== undefined &&
+            previous.state !== 'using' &&
+            member.target !== null &&
+            member.target.kind === 'training'
+          ) {
+            secondUser = member.index;
+            break;
+          }
+        }
+      }
+      if (queueFellAt === null && snap.waiting < purchaseWaiting) queueFellAt = state.tick;
+      if (dualAt !== null && queueFellAt !== null) break;
+    }
+
+    let onSeat = 0;
+    for (const member of state.members) {
+      if (member.state !== 'using') continue;
+      if (afterStation.useCells.some((cell) => cell.x === member.cell.x && cell.y === member.cell.y)) {
+        onSeat += 1;
+      }
+    }
+
+    const ticksToDual = dualAt === null ? null : dualAt - purchaseTick;
+    const ticksToQueueFall = queueFellAt === null ? null : queueFellAt - purchaseTick;
+    const originalStillUsing =
+      dualAt !== null &&
+      originalUser !== undefined &&
+      ticksToDual !== null &&
+      ticksToDual < originalUser.timer;
+
+    expect({
+      purchaseTick,
+      beforeUseCells: cellsOf(beforeStation.useCells),
+      afterUseCells: cellsOf(afterStation.useCells),
+      stationPositionUnchanged: afterStation.position,
+      ticksToDual,
+      ticksToQueueFall,
+      secondUser,
+      maxUsing,
+      onSeat,
+      interrupted,
+      originalStillUsing,
+    }).toEqual({
+      purchaseTick: 1,
+      beforeUseCells: ['5,0'],
+      afterUseCells: ['2,2', '7,0'],
+      stationPositionUnchanged: { x: 3, y: 0 },
+      ticksToDual: 4,
+      ticksToQueueFall: 4,
+      secondUser: 1,
+      maxUsing: 2,
+      onSeat: 2,
+      interrupted: 0,
+      originalStillUsing: true,
+    });
+  });
+
+  it('compares cold Capacity against live-upgrade Capacity over 240 ticks', () => {
+    const stock = openingContext(stockStationCapability());
+    const capacity = openingContext(capabilityWith('capacity'));
+    const queued = stepUntilStockQueue(stock);
+    expect(queued).not.toBeNull();
+    if (queued === null) return;
+
+    function horizonFrom(start: FloorSimState, context: FloorSimContext, ticks: number) {
+      let state = start;
+      let dualAt: number | null = null;
+      let dualOccupancyTicks = 0;
+      let completions = 0;
+      let maxQueue = 0;
+      let queueSum = 0;
+      let maxUsing = 0;
+      let usingSum = 0;
+      let interruptions = 0;
+      let emptySeatWhileWaitTicks = 0;
+      const station = bayStationOf(context);
+      const seats = station === undefined ? 1 : station.useCells.length;
+      for (let i = 0; i < ticks; i += 1) {
+        const next = asPowerlifters(stepFloorSim(state, context));
+        const snap = occupancySnapshot(next);
+        if (dualAt === null && snap.using >= 2) dualAt = next.tick;
+        if (snap.using >= 2) dualOccupancyTicks += 1;
+        maxQueue = Math.max(maxQueue, snap.waiting);
+        queueSum += snap.waiting;
+        maxUsing = Math.max(maxUsing, snap.using);
+        usingSum += snap.using;
+        if (snap.waiting > 0 && snap.using < seats) emptySeatWhileWaitTicks += 1;
+        for (const member of next.members) {
+          if (member.state === 'interrupted') interruptions += 1;
+          const previous = state.members[member.index];
+          if (previous === undefined) continue;
+          if (previous.state === 'using' && member.state !== 'using') completions += 1;
+        }
+        state = next;
+      }
+      return Object.freeze({
+        dualAt,
+        dualOccupancyTicks,
+        completions,
+        maxQueue,
+        meanQueue: queueSum / ticks,
+        maxUsing,
+        meanUsing: usingSum / ticks,
+        interruptions,
+        emptySeatWhileWaitTicks,
+      });
+    }
+
+    const live = horizonFrom(queued.state, capacity, EXPERIMENT_TICKS);
+    const cold = horizonFrom(
+      asPowerlifters(createFloorSimState(capacity, EXPERIMENT_SEED)),
+      capacity,
+      EXPERIMENT_TICKS,
+    );
+    const stockHorizon = horizonFrom(queued.state, stock, EXPERIMENT_TICKS);
+    const throughputLive = horizonFrom(
+      queued.state,
+      openingContext(capabilityWith('throughput')),
+      EXPERIMENT_TICKS,
+    );
+
+    // Cold-from-tick-zero is the D.1 proof and must stay a two-seat machine.
+    expect(cold.maxUsing).toBe(2);
+    expect(cold.completions).toBe(9);
+    // Live upgrade is the played path. Before the fix, dual occupancy waited
+    // 31 ticks (a long walk to the far rebuilt seat) and completions matched
+    // stock (6). After: second seat fills in 4 ticks, both bodies on use
+    // cells, completions beat stock, occupancy never exceeds two.
+    expect(live.maxUsing).toBe(2);
+    expect(live.dualAt).toBe(5);
+    expect(live.dualOccupancyTicks).toBe(116);
+    expect(live.completions).toBe(8);
+    expect(live.completions).toBeGreaterThan(stockHorizon.completions);
+    expect(live.interruptions).toBe(0);
+    expect(throughputLive.maxUsing).toBe(1);
+    expect(stockHorizon.maxUsing).toBe(1);
+  });
+});

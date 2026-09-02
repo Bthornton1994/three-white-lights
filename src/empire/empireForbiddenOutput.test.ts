@@ -3057,7 +3057,8 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 3290 -> 3289: parameter member-calls rewritten as loops (net -1).
   // 3289 -> 3343: Stage D.1b competition-spec bench / plate-tree painters
   // and FloorGrid presentation helpers. Read from this pin's own failure.
-  CALLS_EXAMINED: 3361,
+  // 3361 -> 3375: Stage D2.1A live-Capacity seat assignment / relocate helpers.
+  CALLS_EXAMINED: 3375,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -15254,7 +15255,8 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // reads a declared list instead of a two-armed condition. Read from this
       // table's own failure value.
       // 56 -> 63: GDD §5.18 Stage D.1 bay targeting / per-bench use cells.
-      'floorSim.ts': 63,
+      // 63 -> 68: Stage D2.1A assignedSeat / reservedUseCells / relocate returns.
+      'floorSim.ts': 68,
       // GDD §5.13 presentation Phase 4: floorSprites.ts's own `return`
       // statements across its parse/render/mirror/upscale/encode helpers,
       // the seventeen ops builders and the table construction. Read from
@@ -15890,14 +15892,14 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // The three returns are member accesses the walk cannot see past, the same
   // shape as every other `returned=unfollowable` row here. Read from this
   // assertion's own failure value rather than hand-counted.
-  'floorSim.ts:1008 returned=unfollowable:member',
-  'floorSim.ts:1009 returned=unfollowable:member',
-  'floorSim.ts:1029 returned=unfollowable:walk',
-  'floorSim.ts:592 receiver=NewExpression',
-  'floorSim.ts:664 returned=unfollowable:context',
-  'floorSim.ts:667 receiver=NewExpression',
-  'floorSim.ts:814 receiver=ArrayLiteralExpression',
-  'floorSim.ts:868 returned=unfollowable:plan',
+  'floorSim.ts:1021 returned=unfollowable:member',
+  'floorSim.ts:1022 returned=unfollowable:member',
+  'floorSim.ts:1042 returned=unfollowable:walk',
+  'floorSim.ts:605 receiver=NewExpression',
+  'floorSim.ts:677 returned=unfollowable:context',
+  'floorSim.ts:680 receiver=NewExpression',
+  'floorSim.ts:827 receiver=ArrayLiteralExpression',
+  'floorSim.ts:881 returned=unfollowable:plan',
   // GDD §5.13 presentation Phase 4: floorSprites.ts's three `new Array`
   // fills — `render`'s pixel array and the mirrored/upscaled copies — plus
   // the palette-map arrow inside FLOOR_SPRITE_PALETTES' own construction,
@@ -16036,13 +16038,23 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   // `plan.stations`, the walk's `member.cell`/`member.next`, and two
   // `GridPosition` returns from the step helpers. Read from this list's own
   // failure value rather than hand-counted.
-  'floorSim.ts:1008 GridPosition asked=true walked=false',
-  'floorSim.ts:1009 GridPosition | null asked=true walked=false',
-  'floorSim.ts:1029 GridPosition asked=true walked=false',
-  'floorSim.ts:1279 GridPosition asked=true walked=false',
-  'floorSim.ts:664 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'floorSim.ts:859 readonly FloorStation[] asked=true walked=false',
-  'floorSim.ts:868 readonly FloorStation[] asked=true walked=false',
+  'floorSim.ts:1021 GridPosition asked=true walked=false',
+  'floorSim.ts:1022 GridPosition | null asked=true walked=false',
+  'floorSim.ts:1042 GridPosition asked=true walked=false',
+  'floorSim.ts:1212 GridPosition | undefined asked=true walked=false',
+  'floorSim.ts:1370 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1370 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1370 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1370 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1370 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1370 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1370 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1370 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1370 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1399 GridPosition asked=true walked=false',
+  'floorSim.ts:677 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'floorSim.ts:872 readonly FloorStation[] asked=true walked=false',
+  'floorSim.ts:881 readonly FloorStation[] asked=true walked=false',
   // "chrome vs paid" bug-fix round: ALL rows in this list moved again — one
   // atomic pass, verified against `git show HEAD:` at several representative
   // old/new line pairs (`ladder.ts:333`->`349`, `management.ts:1445`->`1473`,
@@ -16202,7 +16214,9 @@ const SCREEN_AGREEMENT = Object.freeze({
   // stationCapability.ts:92.
   // 67 -> 79: GDD §5.18 Stage D.1 FloorGrid per-bench returns, trainingStation
   // GridPosition/GridSize returns, capability keyed by competition-bench-bay.
-  SHIPPED_DISAGREEMENTS: 79,
+  // 79 -> 89: Stage D2.1A assignedSeat remaining[order] plus live-Capacity
+  // relocate useCells walk (nine rows at the same for-of) and awayFrom cell.
+  SHIPPED_DISAGREEMENTS: 89,
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
@@ -16390,7 +16404,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1640 -> 1674: Stage D.1b competition-spec painters, bayBenchSpriteUri,
   // capacityRealizesOn, raised-label handlers. Read from this pin's own failure.
   // 1674 -> 1681: Stage D2 placedOwnedItems / withWear / stationOperationView / reset.
-  function: 1681,
+  // 1681 -> 1691: Stage D2.1A assignedSeat / reservedUseCells / relocate helpers.
+  function: 1691,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16446,7 +16461,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1482 -> 1502: Stage D.1b FloorGrid/floorSprites member calls (Image/View
   // wrappers, ops.push in the two new painters). Read from this pin's failure.
   // 1502 -> 1513: Stage D2 Set.has / Object.freeze / stationByRefKey.get.
-  member: 1513,
+  // 1513 -> 1517: Stage D2.1A useCells/blocked/has member calls on live relocate.
+  member: 1517,
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -16525,7 +16541,8 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 409 -> 413: loop-counter writes after rewriting parameter member-calls.
   // 413 -> 430: Stage D.1b FloorGrid/floorSprites local writes.
   // 430 -> 435: Stage D2 withWear restrict / stationOperationView seats / placedOwnedItems loops.
-  local: 435,
+  // 435 -> 438: Stage D2.1A reservedUseCells / assignedSeat / relocate locals.
+  local: 438,
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -16637,7 +16654,8 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // stationView return sites, FloorGrid callbacks, trainingStation bindings.
   // 903 -> 909: Stage D.1b FloorGrid +3, floorSprites +2, trainingStation +1.
   // 909 -> 911: Stage D2 placedOwnedItems return + reset-gym return.
-  SITES: 911,
+  // 911 -> 916: Stage D2.1A floorSim return 63 -> 68.
+  SITES: 916,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -16785,7 +16803,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // capacityRealizesOn, raised labels, panel flow. Read from this pin last.
   // 75_422 -> 75_810: Stage D2 placedOwnedItems + inService + seats occupancy
   // + reset-gym. Read from this pin last.
-  NODES_EXAMINED: 75_810,
+  // 75_810 -> 76_242: Stage D2.1A live-Capacity relocate / assignedSeat AST.
+  // Read from this pin last.
+  NODES_EXAMINED: 76_242,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

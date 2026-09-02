@@ -3538,14 +3538,15 @@ Current sequence remains:
 Stage C human close (done at `460f794a`) → C.2 simulator fidelity (done,
 §5.16) → Stage D Q/C/T (done, §5.17) → Stage D.1 training-station semantics
 (done, §5.18) → Stage D.1b world legibility (done, human-close of Stage D
-at `ff8721a`) → D2 balance verdict (this subsection, PARTIAL) → reputation
-seam → persistent NPC roster / tenure → deeper staff policy → portfolio
-only after explicit human unpause.
+at `ff8721a`) → D2 balance verdict (PARTIAL, open) → D2.1A live Capacity
+transition (this subsection) → D2.1B C-vs-T / opening agency after human
+replay → reputation seam → persistent NPC roster / tenure → deeper staff
+policy → portfolio only after explicit human unpause.
 
 The doctrine does not authorize implementing future stages early. It defines
 their quality bar. C.2 is recorded in §5.16. Stage D is recorded in §5.17.
 Stage D.1 / D.1b are recorded in §5.18. D2 is recorded in the D2 ruling
-under §5.18.
+under §5.18. D2 remains OPEN. D2.1A is recorded immediately after it.
 
 ### 5.16 Stage C.2 — simulator fidelity (online vs offline in aggregate pacing)
 
@@ -3813,7 +3814,8 @@ not stealth-fixed. `ManagedGym` still has no `FloorState`. Unplaced
 session mats still wear identically to the placed flat bench over the same
 check-in. The corrected station model did not by itself give wear a
 placed-and-used seam: wear still keyed `ownedItemsOf`. D2 closed that as
-D2-TRUTH-01 (`placedOwnedItems` / optional `inService`).
+D2-TRUTH-01A (`placedOwnedItems` / optional `inService`). D2-TRUTH-01B
+(utilization-sensitive wear) remains deferred.
 
 **Cloud-scope cleanup.** Stage D added a `dev` script to `package.json` and
 excluded App Builder files from `tsconfig.json` so a cloud sandbox would
@@ -3871,7 +3873,7 @@ because later balance changes numbers.
 `ff8721a`. A verdict, not a tuning mandate. Reputation, persistent NPCs,
 and Portfolio were not started.
 
-*D2-TRUTH-01 — stored / unplaced wear.* Defect: `ManagedGym` wear keyed
+*D2-TRUTH-01A — stored / unplaced wear (CLOSED).* Defect: `ManagedGym` wear keyed
 owned equipment, so unplaced session mats wore like actively used kit.
 Correction: `floor.ts#placedOwnedItems` derives owned ∩ placed. `withWear` /
 `managedCheckIn` take optional `inService`. Omitted = all owned (C.2 /
@@ -4030,6 +4032,76 @@ reset gym):
 
 Await the human management verdict. Do not start D3 / reputation /
 persistent NPCs / Portfolio.
+
+**D2 remains OPEN.** Human play of `b7c09b3` at Chromium 390×844 found
+Throughput obviously preferable whenever both axes were legal: Capacity
+drew a second bench but did not visibly serve the second waiter within
+the observation window. Quality verdict **B confirmed**. Opening agency
+is a separate recorded failure (D2-OPENING-01). Do not mark D2 closed.
+
+*D2-TRUTH-01A — unplaced-equipment wear.* CLOSED in D2 (`placedOwnedItems`
+/ optional `inService`). Owned ∩ placed. Not utilization-sensitive.
+
+*D2-TRUTH-01B — utilization-sensitive wear.* DEFERRED. Do not widen wear
+to owned ∩ placed ∩ actually-used in this piece.
+
+*D2-OPENING-01.* The opening garage presents a bench-capacity problem
+(queue visible, purse ~0) before the player can act on that problem.
+Mats at 10 GB is not the decision the visible bottleneck is asking for.
+Do not treat "mats is affordable first" as proof the opening loop is
+healthy. Not fixed in D2.1A.
+
+*QUALITY VERDICT B CONFIRMED BY HUMAN.* Physical meaning readable
+(competition pad). No compelling present-tense reason to spend 120 in
+the one-station opening gym. Durable payoff awaits the authorized
+reputation / member-outcome seam. Quality 120, experience 1→2, affinity
++0.25. No Gym Bucks multiplier. Do not reopen Quality in D2.1.
+
+Novice manager remains a known failed 7d policy. Not buffed.
+
+**Stage D2.1A — live Capacity transition.** Authorized at `b7c09b3`.
+Correctness, not a retune. Q/C/T prices, Throughput 0.65, arrivals,
+queue aversion, use durations, and facility size are unchanged.
+
+The D.1 Capacity proof constructed the sim WITH Capacity already active
+(cold). The played path is: stock FloorSim with 1 using / 2 waiting, then
+`capability` flips, then the same component-local members continue
+against a newly-derived two-seat plan. FloorGrid does not recreate
+FloorSim on a capability change (only on rung change). `applyInterruptions`
+does not fire: station identity and `position` stay the primary.
+
+Opening-garage measurement (seed 1, three powerlifters):
+
+- Stock useCells `[(5,0)]`. Capacity expansion lands at `(5,0)` and
+  eats that approach. After: useCells `[(2,2), (7,0)]`, queue cells
+  move from the east of the bay to the west.
+- Unfixed live upgrade: displaced user snapped onto the NEW seat
+  `(7,0)`; the queue head walked to the far rebuilt primary approach
+  `(2,2)`. Dual occupancy at **31 ticks**. Next 240 ticks: completions
+  6 (same as stock), dual occupancy 57, empty-seat-while-wait 183,
+  mean using 1.02. Cold Capacity from tick 0: completions 9, dual
+  occupancy 132, dualAt 11. The D.1 proof did not cover the played
+  transition.
+- Fix, local replan, not a gym reset: a using member whose cell is
+  now blocked relocates onto the first walkable use cell (the primary
+  approach), so they keep the original bench; remaining seats stay in
+  `useCells` order for the FIFO queue. No member recreation, no
+  teleport of the room, no queue clear.
+- Fixed live upgrade: dual occupancy at **4 ticks** (~0.5 s at the
+  shipped 120 ms tick), queue falls at 4 ticks, the second user is
+  the waiting member (index 1), both bodies stand on use cells,
+  occupancy never exceeds 2, no interruptions. Next 240 ticks:
+  completions 8 (beats stock 6), dual occupancy 116, maxUsing 2.
+  Cold-from-tick-zero Capacity is unchanged (completions 9,
+  maxUsing 2).
+
+Regression: `stationCapability.test.ts` "stock queue → buy Capacity
+live → second seat becomes occupied", kept beside the cold-from-tick-zero
+Capacity fixture. They prove different things.
+
+D2.1A does not retune Capacity 180 / Throughput 150. C-vs-T strategic
+balance and opening agency are D2.1B, after human replay of this
+transition. Do not start reputation.
 
 ---
 

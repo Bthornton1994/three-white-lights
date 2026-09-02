@@ -117,6 +117,19 @@
  * handover gap the driven fixture produces` measures what that costs rather
  * than letting this paragraph imply one tick.
  *
+ * LIVE CAPACITY, D2.1A. Buying a second bench does not recreate members, does
+ * not clear the queue, and does not move `FloorStation.position` (still the
+ * primary), so `applyInterruptions` does not fire. What does change is
+ * `useCells` / `queueCells` / the blocked map: the expansion can land on the
+ * stock approach. A using member standing in the new footprint is relocated
+ * by `nearestWalkable`, and must not steal a newly-created seat from the
+ * people already waiting. They keep consuming one slot (ghost-reserve the
+ * primary if they are no longer on any use cell). Waiting members then take
+ * remaining seats in `useCells` order, FIFO by claimant order — the same
+ * assignment the cold-from-tick-zero Capacity fixture already proved. That
+ * is a local replan, not a gym reset. `stationCapability.test.ts`'s
+ * live-upgrade regression is the catcher.
+ *
  * ===========================================================================
  * 4. Liveness — what this file guarantees about "a member does not freeze"
  * ===========================================================================
@@ -1108,6 +1121,97 @@ function nearestWalkable(from: GridPosition, plan: RoutePlan): GridPosition {
   return best;
 }
 
+/**
+ * Nearest walkable cell that is not in `avoided`. Falls back to ordinary
+ * `nearestWalkable` if every walkable cell is avoided — a boxed floor still
+ * has to put the body somewhere. Used when a using member's standing cell
+ * becomes the Capacity expansion: they must leave the new footprint without
+ * landing on a brand-new seat the queue is about to take.
+ */
+function nearestWalkableAvoiding(
+  from: GridPosition,
+  plan: RoutePlan,
+  avoided: readonly GridPosition[],
+): GridPosition {
+  const avoid = new Set<string>();
+  for (const cell of avoided) avoid.add(`${cell.x},${cell.y}`);
+  let best: GridPosition | null = null;
+  let bestKey = UNREACHABLE;
+  for (let y = 0; y < plan.grid.height; y += 1) {
+    for (let x = 0; x < plan.grid.width; x += 1) {
+      const candidate: GridPosition = { x, y };
+      if (plan.blocked[cellIndex(candidate, plan.grid)] === true) continue;
+      if (avoid.has(`${candidate.x},${candidate.y}`)) continue;
+      const key = manhattan(candidate, from);
+      if (key < bestKey) {
+        bestKey = key;
+        best = candidate;
+      }
+    }
+  }
+  if (best !== null) return best;
+  return nearestWalkable(from, plan);
+}
+
+/**
+ * Use cells currently consumed by `using` members of `station`.
+ *
+ * A body standing on a use cell occupies that cell. A body still `using` but
+ * no longer on any use cell — the live-Capacity case where the expansion
+ * ate their approach — still consumes one slot, reserved primary-first so
+ * the NEW seat is the one the queue can take.
+ */
+function reservedUseCells(
+  station: FloorStation,
+  claimed: readonly FloorSimMember[],
+): ReadonlySet<string> {
+  const reserved = new Set<string>();
+  let ghosts = 0;
+  for (const member of claimed) {
+    if (member.state !== 'using') continue;
+    if (member.target === null || !refsEqual(member.target, station.ref)) continue;
+    let onSeat = false;
+    for (const cell of station.useCells) {
+      if (!sameCell(cell, member.cell)) continue;
+      reserved.add(`${cell.x},${cell.y}`);
+      onSeat = true;
+      break;
+    }
+    if (!onSeat) ghosts += 1;
+  }
+  for (let i = 0; i < ghosts; i += 1) {
+    for (const cell of station.useCells) {
+      const key = `${cell.x},${cell.y}`;
+      if (reserved.has(key)) continue;
+      reserved.add(key);
+      break;
+    }
+  }
+  return reserved;
+}
+
+/**
+ * The use cell claimant `order` should walk to, or null if they are not yet
+ * served. FIFO by claimant order over the seats `reservedUseCells` has not
+ * consumed, in `useCells` order. Live Capacity relies on the ghost-reserve
+ * putting the displaced user on the primary so the NEW seat is remaining[0]
+ * for the queue head; cold Capacity has no ghosts and is unchanged.
+ */
+function assignedSeat(
+  station: FloorStation,
+  claimed: readonly FloorSimMember[],
+  order: number,
+): GridPosition | null {
+  const reserved = reservedUseCells(station, claimed);
+  const remaining: GridPosition[] = [];
+  for (const cell of station.useCells) {
+    if (reserved.has(`${cell.x},${cell.y}`)) continue;
+    remaining.push(cell);
+  }
+  if (order < 0 || order >= remaining.length) return null;
+  return remaining[order] as GridPosition;
+}
+
 // ---------------------------------------------------------------------------
 // The tick
 // ---------------------------------------------------------------------------
@@ -1254,7 +1358,23 @@ function advanceMember(
   tick: number,
 ): FloorSimMember {
   const speed = speedOf(seed, member);
-  const standing = nearestWalkable(member.cell, plan);
+  let standing = nearestWalkable(member.cell, plan);
+  if (
+    member.state === 'using' &&
+    member.target !== null &&
+    !sameCell(standing, member.cell)
+  ) {
+    const currentStation = stationFor(plan, member.target);
+    if (currentStation !== undefined) {
+      let seated: GridPosition | null = null;
+      for (const cell of currentStation.useCells) {
+        if (plan.blocked[cellIndex(cell, plan.grid)] === true) continue;
+        seated = cell;
+        break;
+      }
+      standing = seated ?? nearestWalkableAvoiding(member.cell, plan, currentStation.useCells);
+    }
+  }
   const relocated = sameCell(standing, member.cell)
     ? member
     : Object.freeze({ ...member, cell: standing, next: null, progress: 0 });
@@ -1321,28 +1441,15 @@ function advanceMember(
   const order = claimantsOf(claimed, station.ref).findIndex(
     (claimant) => claimant.index === relocated.index,
   );
-  const occupiedCells = new Set<string>();
-  for (const member of claimed) {
-    if (member.state !== 'using') continue;
-    if (member.target === null || !refsEqual(member.target, station.ref)) continue;
-    occupiedCells.add(`${member.cell.x},${member.cell.y}`);
-  }
-  const freeCells = station.useCells.filter(
-    (cell) => !occupiedCells.has(`${cell.x},${cell.y}`),
-  );
-  const canServe = order >= 0 && order < freeCells.length;
+  const seat = assignedSeat(station, claimed, order);
+  const canServe = seat !== null;
   const queueIndex = Math.min(Math.max(order, 0), station.queueCells.length - 1);
-  const goalCell = canServe
-    ? (freeCells[order] as GridPosition)
-    : (station.queueCells[queueIndex] as GridPosition);
+  const goalCell = canServe ? seat : (station.queueCells[queueIndex] as GridPosition);
   const goals = plan.fields[slot] as readonly (readonly number[])[];
-  const useIndex = canServe
-    ? station.useCells.findIndex((cell) => sameCell(cell, freeCells[order] as GridPosition))
-    : -1;
+  const useIndex = canServe ? station.useCells.findIndex((cell) => sameCell(cell, seat)) : -1;
   const goalField = goals[
     canServe ? Math.max(useIndex, 0) : station.useCells.length + queueIndex
   ] as readonly number[];
-
   const walked = continueStep(relocated, plan, speed);
   if ((goalField[cellIndex(walked.cell, plan.grid)] as number) === UNREACHABLE) {
     // ROUTE LOST — the liveness hole this file found in itself, and the §5.13
