@@ -3077,7 +3077,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // and FloorGrid presentation helpers. Read from this pin's own failure.
   // 3361 -> 3375: Stage D2.1A live-Capacity seat assignment / relocate helpers.
   // 3375 -> 3405: Stage D2.1B changeover helpers + FloorGrid loading path.
-  CALLS_EXAMINED: 3435, // 3405 -> 3435: Stage D2.2 plate-loading + QA helper calls
+  CALLS_EXAMINED: 3436, // 3435 -> 3436: plateLoadingDiscViews
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -10249,7 +10249,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 344 -> 357: GDD §5.14 Stage B, tracks POINTS 1:1 again (see POINTS
   // above), confirmed by running this exact assertion.
   // Stage C.1b: FLOOR_TILE_PIXELS_MAX drop is now driven; tracks POINTS 1:1.
-  POINTS_DRIVEN: 363,
+  POINTS_DRIVEN: 370,
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
@@ -10308,7 +10308,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // failure value this round's own run produced.
   // GDD §5.14 Stage B: re-measured (1081 -> 1173), a real failure value this
   // round's own run produced.
-  PAIRS_ARGUMENT_SKIPPED: 1173,
+  PAIRS_ARGUMENT_SKIPPED: 1196, // 1173 -> 1196: Stage D2.2 extra dropped-point argument re-reads
   /**
    * ROSTER_SHAPE points above its allocation ceiling.
    *
@@ -11214,7 +11214,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_086_922,
+  STRINGS: 30_087_862,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -15332,7 +15332,8 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // 51 -> 67: GDD §5.18 Stage D.1 per-bench occupancy / highlight helpers.
       // 67 -> 70: Stage D.1b bayBenchSpriteUri + raised-label onPress returns.
       // 70 -> 76: Stage D2.2 plateLoadingTestId (3) + plateLoadingLayers (3).
-      'FloorGrid.tsx': 76,
+      // 76 -> 77: plateLoadingDiscViews.
+      'FloorGrid.tsx': 77,
       // CROSSING 6: GymScreen.tsx's own two helper functions
       // (`allocationOptions`, `describeSlotOutcome`, the latter with three
       // return statements across its three arms) plus the component's own
@@ -16668,7 +16669,7 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 430 -> 435: Stage D2 withWear restrict / stationOperationView seats / placedOwnedItems loops.
   // 435 -> 438: Stage D2.1A reservedUseCells / assignedSeat / relocate locals.
   // 438 -> 444: Stage D2.1B nextChangeovers / loading-path locals.
-  local: 448, // 444 -> 448: Stage D2.2 plate-loading loop locals
+  local: 449, // 448 -> 449: plateLoadingDiscViews loop local
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -16783,7 +16784,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 911 -> 916: Stage D2.1A floorSim return 63 -> 68.
   // 916 -> 925: Stage D2.1B floorSim 68→72, stationCapability 24→27,
   // stationView 44→46.
-  SITES: 937, // 925 -> 937: Stage D2.2 ladder/FloorGrid/stationView escape sites
+  SITES: 938, // 937 -> 938: FloorGrid plateLoadingDiscViews return
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
