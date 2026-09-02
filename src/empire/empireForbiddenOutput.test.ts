@@ -10227,7 +10227,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 358 -> 359: Stage C.1c CONDITION_PERCENT_SCALE=100 dropped above ROSTER_SHAPE.
   // 362 -> 363: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS=18 dropped
   // above ROSTER_SHAPE.
-  POINTS: 363,
+  POINTS: 370, // 363 -> 370: Stage D2.2 five more omitted points driven (COUNT+2 DAY+2 ROSTER+1).
   /** Of those, how many at least one subject was driven at. */
   // Tracks POINTS 1:1 again (218), confirmed by running the assertion below
   // rather than assumed. PLAYTEST 4: tracks POINTS 1:1 again (222), confirmed
@@ -10294,12 +10294,12 @@ const OVERFLOW_CENSUS = Object.freeze({
   // COUNT/DAY/ROSTER_SHAPE. Measured off this assertion rather than
   // hand-derived per domain.
   // 6250 -> 6273: Stage C.1b one more dropped point × argument-heavy subjects.
-  PAIRS_DRIVEN: 6388,
+  PAIRS_DRIVEN: 6498, // 6388 -> 6498: Stage D2.2 overflow pairs at the extra dropped points.
   // GDD §5.13 presentation Phase 3: PAIRS_SKIPPED re-measured (495 -> 517),
   // a real failure value this round's own run produced.
   // GDD §5.14 Stage B: re-measured (517 -> 561), a real failure value this
   // round's own run produced.
-  PAIRS_SKIPPED: 561,
+  PAIRS_SKIPPED: 572, // 561 -> 572: Stage D2.2 residual skipped sum after extra dropped points.
   /** Of the driven, how many had the re-read argument region left unscanned. */
   // PLAYTEST 3: held at 1035, confirmed by running this exact assertion.
   // PLAYTEST 4: re-confirmed at 1035, unchanged, cross-checked independently
@@ -11093,7 +11093,7 @@ const DRIVE_CENSUS = Object.freeze({
   // failure value.
   // 6490388 -> 6510102: Stage C.1b furniture/dock GymScreen trees. Measured.
   // 6510907 -> 6510913: Stage C.1d playerFacing* drive rows.
-  NODES: 6521448, // Stage D2.1B: four new drive rows walk more nodes.
+  NODES: 6521687, // 6521448 -> 6521687: Stage D2.2 plateLoading* + ladderDev* drive rows.
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -16783,7 +16783,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 911 -> 916: Stage D2.1A floorSim return 63 -> 68.
   // 916 -> 925: Stage D2.1B floorSim 68→72, stationCapability 24→27,
   // stationView 44→46.
-  SITES: 927, // 925 -> 927: Stage D2.2 ladder.ts return +2
+  SITES: 937, // 925 -> 937: Stage D2.2 ladder/FloorGrid/stationView escape sites
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two

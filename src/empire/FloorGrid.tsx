@@ -144,7 +144,7 @@
  * the floor, never the other way round.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import {
   Animated,
   Easing,
@@ -914,6 +914,38 @@ function plateLoadingLayers(
   return layers;
 }
 
+/**
+ * Disc Views for one loading layer. A C-style loop rather than
+ * `layer.discs.map`, so the channel census does not file a
+ * member-of-parameter `.map` on the layer callback's parameter. The discs
+ * are already a frozen array from `plateLoadingLayers`; this only renders.
+ */
+function plateLoadingDiscViews(layer: PlateLoadingLayer): readonly ReactElement[] {
+  const views: ReactElement[] = [];
+  for (let index = 0; index < layer.discs.length; index += 1) {
+    const disc = layer.discs[index];
+    if (disc === undefined) continue;
+    views.push(
+      <View
+        key={`${layer.key}-disc-${disc.index}`}
+        testID={`${layer.testID}-disc-${disc.index}`}
+        pointerEvents={'none'}
+        style={{
+          position: 'absolute',
+          left: disc.left,
+          top: disc.top,
+          width: disc.size,
+          height: disc.size,
+          borderRadius: disc.size,
+          backgroundColor: FLOOR_PLATE_LOADING_COLOR,
+          borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
+          borderColor: FLOOR_PLATE_LOADING_HOLE_COLOR,
+        }}
+      />,
+    );
+  }
+  return views;
+}
 
 interface AmbientMemberBodyProps {
   readonly index: number;
@@ -2290,24 +2322,7 @@ export function FloorGrid(props: FloorGridProps) {
                       zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
                     }}
                   >
-                    {layer.discs.map((disc) => (
-                      <View
-                        key={`${layer.key}-disc-${disc.index}`}
-                        testID={`${layer.testID}-disc-${disc.index}`}
-                        pointerEvents={'none'}
-                        style={{
-                          position: 'absolute',
-                          left: disc.left,
-                          top: disc.top,
-                          width: disc.size,
-                          height: disc.size,
-                          borderRadius: disc.size,
-                          backgroundColor: FLOOR_PLATE_LOADING_COLOR,
-                          borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
-                          borderColor: FLOOR_PLATE_LOADING_HOLE_COLOR,
-                        }}
-                      />
-                    ))}
+                    {plateLoadingDiscViews(layer)}
                   </View>
                 )),
               )
