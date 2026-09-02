@@ -1,11 +1,15 @@
 /**
  * A0 freeze — accepted squat / bench C3 / deadlift mechanics.
  *
+ * A0 PLAYABLE SPORT is CLOSED (2026-09-02). Baseline runtime `39400d97`.
+ * Physical-device touch smoke is A0-DEVICE-01 release QA debt, not an A0
+ * design blocker. These assertions pin the accepted lift runtime. Visual
+ * or meet-day work must leave every assertion here green.
+ *
  * Histories are already hash-pinned in `lift.test.ts` ("squat and deadlift
  * are untouched by the bench redesign", 85 cases at `BASELINE_COMMIT`). This
  * file is the A0 ruling's extra anchors: C3 constants, the deadlift phase
- * sentence, squat miss shapes, and committed play up the load ladder. Visual
- * identity work must leave every assertion here green.
+ * sentence, squat miss shapes, and committed play up the load ladder.
  *
  * NOTHING BELOW ASSERTS FEEL. The human already ruled the mechanics in.
  */

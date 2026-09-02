@@ -2,7 +2,11 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-09-01 (§6.2 — C3 surplus compression minted as the
+**Last updated:** 2026-09-02 (A0 PLAYABLE SPORT CLOSED. Baseline runtime
+`39400d97`. Squat / bench C3 / deadlift accepted and frozen. Three-Lift
+Identity Test PASS. Physical glass smoke is A0-DEVICE-01 release QA debt,
+not a design blocker. A1 Authentic Meet is authorized. No lift runtime
+change in the mint commit. No merge to main.) Earlier: 2026-09-01 (§6.2 — C3 surplus compression minted as the
 accepted bench feel after ordinary-bench phone replay. Human verbatim:
 "Yes this feels good lets move on." Constants frozen. No A1–A7 start, no
 Session B touch, no merge to main.) Earlier: 2026-09-01 (§13 — Powerlifting Sports Universe Doctrine
@@ -4941,11 +4945,10 @@ because it allocates work across sessions. The working assumption that gated
 Career, Arcade and cut-in art is superseded for **Career** by this scope (the
 campaign ladder IS the beta); Arcade and cut-in art remain out unless ruled in.
 
-**Powerlifting Sports Universe sequence (A0–A7) is recorded in §13.** It is
-directional product sequencing for *after* the lift gate, not an authorization
-to start those stages, and it does not replace this section's prototype
-questions. The current Session A task remains the authorized lift candidate
-and its human phone replay.
+**Powerlifting Sports Universe sequence (A0–A7) is recorded in §13.** A0
+PLAYABLE SPORT is CLOSED (2026-09-02, runtime `39400d97`). A1 Authentic
+Meet is authorized by that ruling. This section does not replace the
+prototype questions below, and it does not authorize A2–A7.
 
 > **Two execution modes.** This section describes the *human-paced* build, where
 > each phase gates spend on the next. If running a Gauntlet Loop one-shot (§12),
@@ -6110,11 +6113,11 @@ checking it constantly rather than once:
 
 ## 13. Powerlifting Sports Universe Doctrine
 
-**Ruled 2026-09-01. Documentation of product identity.** This section does not
-authorize A1–A7, does not retune lifts, does not implement Career, and does not
-change Session B's ownership of §5. The concise north star is `VISION.md`.
-The current Session A task remains the authorized lift candidate and its
-human phone replay.
+**Ruled 2026-09-01. Documentation of product identity.** A0 PLAYABLE SPORT
+is CLOSED as of 2026-09-02 (baseline runtime `39400d97`). A1 Authentic
+Meet is authorized by that same ruling. This section does not retune
+lifts, does not implement Career, and does not change Session B's
+ownership of §5. The concise north star is `VISION.md`.
 
 ### 13.0 North star
 
@@ -6272,8 +6275,8 @@ now**:
 
 | Stage | Name | What it is |
 |---|---|---|
-| **A0** | Playable sport | The lift engine, proven on a phone. Current work. |
-| **A1** | Authentic Meet | Meet day as the sport's emotional payoff, not a results overlay. |
+| **A0** | Playable sport | The lift engine, proven. CLOSED 2026-09-02 at `39400d97`. |
+| **A1** | Authentic Meet | Meet day as the sport's emotional payoff, not a results overlay. Current work. |
 | **A2** | My Lifter | Persistent athlete identity. |
 | **A3** | Career Calendar | Training context and the meet calendar that gives it somewhere to go. |
 | **A4** | Powerlifting Universe v1 | Rankings, records, qualification, a living field. |
@@ -6281,10 +6284,12 @@ now**:
 | **A6** | Broadcast depth | Presentation that frames authentic events. |
 | **A7** | Social competition | Real people in the same universe, not a second game. |
 
-**Current lift work retains priority until its human gates close.** A0 is
-not finished because a later letter exists. Do not start A1–A7 from this
-section. Do not treat this table as a sprint plan; the sprint plan lives
-in CLAUDE.md and still runs through the authorized lift candidate.
+**A0 is CLOSED.** Do not reopen accepted squat / bench C3 / deadlift
+mechanics without new human evidence, an explicit ruling, a targeted
+change, and a replay. A1 is authorized by the 2026-09-02 ruling; do not
+start A2–A7 from this section. Do not treat this table as a sprint plan;
+the sprint plan lives in CLAUDE.md. Physical-device touch smoke is
+release QA debt (`A0-DEVICE-01`), not an A0 design blocker.
 
 ### 13.8 Anti-patterns
 
@@ -6309,10 +6314,12 @@ design constraints:
 ### 13.9 Current work is not derailed
 
 C3 surplus compression is the accepted bench feel (minted 2026-09-01 after
-ordinary-bench phone replay). That mint closed the bench grind gate. It did
-not start A1–A7, retune squat or deadlift, implement Career, or touch
-Session B.
+ordinary-bench phone replay). A0 PLAYABLE SPORT is CLOSED (2026-09-02)
+at baseline runtime `39400d97`: squat, bench C3, and deadlift are
+accepted and frozen. Physical-device touch smoke is A0-DEVICE-01 release
+QA debt, not a design blocker. A1 Authentic Meet is the current Session A
+task. This doctrine still does not retune lifts, implement Career, or
+touch Session B.
 
 This doctrine still governs **what comes after** and **how future features
-are judged**. It is not authorization to build those stages from this
-section.
+are judged**. A2–A7 are not authorized from this section.

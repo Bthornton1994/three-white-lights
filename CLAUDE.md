@@ -34,8 +34,9 @@ commit as the code. The doc and the code never diverge.
 
 `VISION.md` is the product north star. The Powerlifting Sports Universe
 Doctrine is GDD §13. Future Session A feature work must satisfy that
-doctrine. It does not authorize A1–A7, does not lift the current lift-feel
-gate, and does not change Session B's ownership of GDD §5.
+doctrine. **A0 PLAYABLE SPORT is CLOSED** (baseline runtime `39400d97`).
+A1 Authentic Meet is authorized by the 2026-09-02 human ruling. The
+doctrine does not change Session B's ownership of GDD §5.
 
 ## Run Mode
 
@@ -2399,6 +2400,60 @@ is NOT touched — this is not `feel`.
 **Not done, and not claimed:** A1–A7; A0 PLAYABLE SPORT CLOSED (awaits a
 physical-phone three-lift smoke of squat keep + deadlift figure + bench
 C3 still itself); merge `main`.
+
+### RULED 2026-09-02: A0 PLAYABLE SPORT CLOSED
+
+Human ruling after interactive three-lift replay of the final candidate
+at mobile viewport 390×844 from exact SHA
+`39400d9790597f53a1665d8bf6eea76736d2e9cb`. Verbatim: *"On this smoke:
+yes."*
+
+**This is the mint.** A0 PLAYABLE SPORT is CLOSED.
+
+    Baseline runtime          39400d97
+    SQUAT                     accepted / frozen
+    BENCH C3                  accepted / frozen
+    DEADLIFT                  accepted / frozen
+    Three-Lift Identity Test  PASS
+    Physical glass smoke      A0-DEVICE-01  (release QA debt, not a
+                                            design blocker)
+
+Observed on the mint replay, recorded so a later reader does not reopen
+them as rumours:
+
+- Squat: KEEP DESCENDING no longer acts like a false release instruction.
+  Gauge remains depth truth. Accepted reversal/drive mechanic preserved.
+  Visual identity unmistakably squat.
+- Bench: accepted C3 preserved. Same sustained grind identity.
+  Unmistakably bench.
+- Deadlift: accepted pull preserved. Authored side-on conventional pull
+  now reads correctly. Bar begins on floor / in hands. Lockout ends with
+  bar at hip. DOWN readable. Unmistakably deadlift.
+- No regression was observed.
+
+**A0-DEVICE-01.** The final three-lift smoke was NOT performed on
+physical glass. Do not misstate that. Physical-device touch smoke remains
+release QA debt. It is no longer an A0 design blocker: the final mobile
+viewport interaction passed; mechanics were already independently
+human-accepted; the deadlift correction was presentation, not physics;
+no final-candidate regression was observed; continuing to hold the
+sports-game roadmap behind unavailable hardware evidence is no longer
+proportionate.
+
+A future physical-device test may fix touch target, pointer/touch
+responder, viewport, safe-area, command visibility, or device-specific
+rendering. It may NOT casually reopen accepted lift mechanics.
+
+Mechanic reopening still requires: new human evidence → explicit ruling
+→ targeted change → replay.
+
+**A1 IS AUTHORIZED.** Start it in a new commit after this mint. Do not
+mix A0 mint and A1 implementation. Do not retune squat, deadlift, or C3
+bench. Do not merge `main`.
+
+The 2026-09-01 A0 FINALIZATION CANDIDATE entry above is left standing as
+the record of what was pending at that SHA. Current-authority text is
+this ruling.
 
 ### If scope shifts
 
