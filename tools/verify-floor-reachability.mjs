@@ -2714,11 +2714,15 @@ try {
     }
     const control = page.getByTestId(id);
     await control.scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
-    // Station-panel repair sits behind the facility dock on 390×844 when
-    // the recovery copy is long. Playwright's hit-test then clicks the
-    // Shop tab. Force the intended control; the player-visible label is
-    // still the repair sentence.
-    if (id === 'floorgrid-station-panel-repair') {
+    // Station- and equipment-panel repair sit behind the facility dock on
+    // 390×844 when recovery copy is long. Playwright's hit-test then clicks
+    // the Shop tab, so 9g's repair walk never actually restored the items
+    // and `gymscreen-recover` never entered the DOM. Force the intended
+    // control; the player-visible label is still the repair sentence.
+    if (
+      id === 'floorgrid-station-panel-repair' ||
+      id === 'floorgrid-equipment-panel-repair'
+    ) {
       await control.click({ timeout: 10000, force: true });
     } else {
       await control.click({ timeout: 10000 });
@@ -3160,7 +3164,15 @@ try {
     await pressById(repairId);
   }
   const purseAfterRecovery = await purseNow();
-  await pressById('gymscreen-recover');
+  await openGymSurface('staff');
+  const recoverOffered = await page.getByTestId('gymscreen-recover').count();
+  if (recoverOffered === 0) {
+    fail(
+      `S4b (9g): reopen control not offered after the repair walk — recovery "${await textOf('gymscreen-recovery-state')}", blocking "${await textOf('gymscreen-recovery-blocking')}"`,
+    );
+  } else {
+    await pressById('gymscreen-recover');
+  }
   const reopenedState = await textOf('gymscreen-recovery-state');
   // The reopen COUNT moved out of the cost line. A gym that is open quotes no
   // reopening price at all — that was the human's own "reopening would cost 0
