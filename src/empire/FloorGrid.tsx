@@ -396,6 +396,12 @@ const panelStyles = StyleSheet.create({
     borderWidth: EMPIRE_TUNING.FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS,
     borderColor: FLOOR_STATION_SELECTED_OUTLINE_COLOR,
     backgroundColor: FLOOR_STATION_PANEL_BACKGROUND_COLOR,
+    // Same cap the facility drawers already use. Without it the open panel
+    // grows through gymscreen-dock and shell-leave-gym (13j measured the
+    // overlap at 390×844: panel bottom 787, pill top 762).
+    maxHeight:
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS *
+      EMPIRE_TUNING.FLOOR_GRID_SIZE.garage.height,
   },
   diagnosticsToggle: {
     alignSelf: 'flex-start',
@@ -2600,7 +2606,7 @@ export function FloorGrid(props: FloorGridProps) {
         change the floor, or touch anything `GymViewState` owns.
       */}
       {selectedMember === null ? null : (
-        <View testID={'floorgrid-member-panel'} style={panelStyles.panel}>
+        <ScrollView testID={'floorgrid-member-panel'} style={panelStyles.panel}>
           <Text testID={'floorgrid-member-panel-identity'}>
             {playerFacingMemberTypeLabel(selectedMember.type)}
           </Text>
@@ -2618,7 +2624,7 @@ export function FloorGrid(props: FloorGridProps) {
           >
             <Text style={panelStyles.buttonText}>close</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       )}
       {panelStation === null ||
       panelIdentity === null ||
@@ -2626,7 +2632,7 @@ export function FloorGrid(props: FloorGridProps) {
       panelCondition === null ||
       panelManagerEffect === null ||
       selectedMember !== null ? null : (
-        <View testID={'floorgrid-station-panel'} style={panelStyles.panel}>
+        <ScrollView testID={'floorgrid-station-panel'} style={panelStyles.panel}>
           <Text testID={'floorgrid-station-panel-identity'}>
             {playerFacingEquipmentLabel(panelIdentity.item)}
           </Text>
@@ -2855,10 +2861,10 @@ export function FloorGrid(props: FloorGridProps) {
           >
             <Text style={panelStyles.buttonText}>close</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       )}
       {panelEquipment === null || selectedMember !== null || panelStation !== null ? null : (
-        <View testID={'floorgrid-equipment-panel'} style={panelStyles.panel}>
+        <ScrollView testID={'floorgrid-equipment-panel'} style={panelStyles.panel}>
           <Text testID={'floorgrid-equipment-panel-identity'}>
             {playerFacingEquipmentLabel(panelEquipment)}
           </Text>
@@ -2897,7 +2903,7 @@ export function FloorGrid(props: FloorGridProps) {
           >
             <Text style={panelStyles.buttonText}>close</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       )}
     </View>
   );
