@@ -462,3 +462,46 @@ export function stationManagerEffectView(
     wouldAutoRepairNow: condition < threshold,
   });
 }
+
+/**
+ * How far through a plate-changeover the seat is, in [0, 1].
+ * 0 = just armed (remaining === total). Approaches 1 as remaining ticks down.
+ * Stock (18) and plate-tree (6) share this progress, so the same loading job
+ * plays faster when total is smaller. Remaining 0 is not a loading beat.
+ */
+export function plateLoadingProgress(remainingTicks: number, totalTicks: number): number {
+  if (!(totalTicks > 0) || remainingTicks <= 0) return 0;
+  const remaining = remainingTicks > totalTicks ? totalTicks : remainingTicks;
+  return (totalTicks - remaining) / totalTicks;
+}
+
+/** One plate disc inside a bench footprint, fractions in [0, 1]. */
+export interface PlateLoadingDisc {
+  readonly index: number;
+  readonly xFraction: number;
+  readonly yFraction: number;
+}
+
+/**
+ * Disc positions for one changeover. Same path at every duration; only
+ * `progress` (from remaining/total ticks) moves the discs. Geometry comes
+ * from `FLOOR_PLATE_LOADING`.
+ */
+export function plateLoadingDiscs(progress: number): readonly PlateLoadingDisc[] {
+  const layout = EMPIRE_TUNING.FLOOR_PLATE_LOADING;
+  const count = layout.discCount;
+  const clamped = progress < 0 ? 0 : progress > 1 ? 1 : progress;
+  const discs: PlateLoadingDisc[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const start = index / count;
+    const end = (index + 1) / count;
+    const local =
+      clamped <= start ? 0 : clamped >= end ? 1 : (clamped - start) / (end - start);
+    const stack = (index - (count - 1) / 2) * layout.stackSpreadFraction;
+    const x =
+      layout.sourceXFraction + (layout.sleeveXFraction - layout.sourceXFraction) * local;
+    const y = layout.railYFraction + stack;
+    discs.push(Object.freeze({ index, xFraction: x, yFraction: y }));
+  }
+  return Object.freeze(discs);
+}

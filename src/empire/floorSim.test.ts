@@ -802,6 +802,15 @@ describe('the Phase 3 tuning block is shaped the way `floorSim.ts` reads it', ()
     expect(namedIn(FLOOR_GRID_SOURCE).size).toBeGreaterThan(0);
     expect(namedIn(FLOOR_SIM_SOURCE).size).toBeGreaterThan(0);
   });
+
+  it('draws plate loading from FloorSimState.changeovers, with one sim tick timer', () => {
+    const code = FLOOR_GRID_SOURCE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(code.includes('seatChangeoverTicks(changeovers')).toBe(true);
+    expect(code.includes('plateLoadingDiscs')).toBe(true);
+    expect(code.includes('sim.changeovers')).toBe(true);
+    expect((code.match(/setInterval/g) ?? []).length).toBe(1);
+    expect(code.includes('createFloorSimState')).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------

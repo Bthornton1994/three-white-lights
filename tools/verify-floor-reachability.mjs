@@ -2135,7 +2135,7 @@ try {
   // -------------------------------------------------------------------------
   readAddress('2: earning and buying mats');
   await openGymSurface('more');
-  const advanceId = 'gymscreen-advance-259200'; // +3d, LADDER_DEV_TIME_STEPS_SECONDS[2]
+  const advanceId = 'gymscreen-advance-offline-259200'; // +3d away
   const advanceButton = page.getByTestId(advanceId);
   const advanceExists = await advanceButton.count().then((n) => n > 0).catch(() => false);
   if (!advanceExists) {
@@ -3216,8 +3216,8 @@ try {
   // cross-checked against the panel's own dormant-only text once reachable
   // (below) rather than only asserted from a literal.
   readAddress('9h: the recovery/routine-maintenance contradiction');
-  const GAP_ADVANCE_ID = 'gymscreen-advance-28800'; // +8h, LADDER_DEV_TIME_STEPS_SECONDS[1]
-  const GAP_SMALL_ADVANCE_ID = 'gymscreen-advance-3600'; // +1h, LADDER_DEV_TIME_STEPS_SECONDS[0]
+  const GAP_ADVANCE_ID = 'gymscreen-advance-offline-28800'; // +8h away
+  const GAP_SMALL_ADVANCE_ID = 'gymscreen-advance-offline-3600'; // +1h away
   const GAP_TARGET_LOW = 55;
   const GAP_TARGET_HIGH = 72;
   const GAP_MAX_PRESSES = 40;

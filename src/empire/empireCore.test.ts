@@ -2672,7 +2672,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 153 -> 159: GDD §5.18 Stage D.1's trainingStation.ts. Six new pairs
     // from the bay module naming its neighbours and from floorSim /
     // stationCapability / FloorGrid / ladderView / empireTuning naming it.
-    expect(pairs).toBe(159);
+    // 159 -> 158: Stage D2.2 re-measured. One mention pair left the graph
+    // (the D2.1B QA-helper copy in GymScreen/ladderView no longer named a
+    // shipped module it used to). Pin is the live walk, not a guess.
+    expect(pairs).toBe(158);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3502,7 +3505,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'your manager repaired',
       'for',
       'gym bucks',
-      'not part of the game: each button feeds that many elapsed seconds to the shipped accrual, so a player checks in without waiting it out. The last one jumps straight to the next weekly-allocation boundary. Reset gym starts a new opening garage.',
+      'not part of the game. Watched buttons pay the online garage rate. Away buttons pay the offline fraction, the same as leaving the app. The week-boundary jump is away. Reset gym starts a new opening garage.',
       '+1 week boundary',
       'reset gym',
       // ladderView.tsx, in tree order: the header line, the money line, the
@@ -3530,7 +3533,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gym bucks',
       'relocate',
       'dev control',
-      'not part of the game: each button feeds that many elapsed seconds to the shipped accrual, so a human can judge the pacing without waiting it out.',
+      'not part of the game. Watched buttons pay the online garage rate. Away buttons pay the offline fraction. Neither is a player mechanic.',
       // GymView, in tree order, appended below `LadderView` rather than
       // interleaved — the file is grown by addition (this component's own
       // header explains why), and the walk reads the file top to bottom.
@@ -3581,7 +3584,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       ', technique bonus',
       ', ceiling growth',
       'dev control',
-      'not part of the game: each button feeds that many elapsed seconds to the shipped accrual, so a human can judge the pacing without waiting it out. The last one jumps straight to the next weekly-allocation boundary, computed from the shipped week length, so a human can feel the allocation decision without grinding every check-in between.',
+      'not part of the game. Watched buttons pay the online garage rate. Away buttons pay the offline fraction. The week-boundary jump is away (offline). Neither is a player mechanic.',
       '+1 week boundary',
     ]);
     expect(jsxCensus.chunks, jsxCensus.chunks.join(' | ')).toEqual(SIGNED_JSX_TEXT_CHUNKS);
@@ -3826,14 +3829,15 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // and `'Loading plates'` (player-facing empty-seat changeover).
     // `'faster changeovers'` became `'faster plate changes'` (replace,
     // size unchanged); `'Idle'` already shipped.
-    expect(singleQuoted.size).toBe(647);
+    // 647 -> 652: Stage D2.2 QA-mode labels and clock testID prefixes.
+    expect(singleQuoted.size).toBe(652);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
     // 188 -> 194: GymScreen.tsx's six templated testID literals
     // (`gymscreen-buy-ladder-${item}`, `gymscreen-buy-session-${item}`,
     // `gymscreen-slot-${slotIndex}`, `gymscreen-slot-${slotIndex}-set-
-    // ${option}`, `gymscreen-advance-${step.seconds}`, `gymscreen-week-log-
+    // ${option}`, `gymscreen-advance-${step.mode}-${step.seconds}`, `gymscreen-week-log-
     // ${week.weekIndex}`), measured the same way as the count above.
     // 194 -> merged: members.ts's nine refuseWith template messages landed
     // independently of floor.ts's templated refusal messages and
@@ -3944,7 +3948,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // chunk; the operation-line templates moved from FloorGrid to
     // `playerFacingStationOperation` without a new unique chunk besides
     // that key. Read from this assertion's own failure value.
-    expect(templateChunks.size).toBe(336);
+    // 336 -> 348: Stage D2.2 plate-loading and mode-labelled clock templates.
+    expect(templateChunks.size).toBe(348);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4032,6 +4037,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'accepted',
       'accessory',
       'accrual',
+      'advance',
       'advance-clock',
       'advance-to-next-week',
       'advanced-recovery',
@@ -4215,6 +4221,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gray',
       'gym-accelerated-bucks',
       'gym-accrual',
+      'gym-advance',
       'gym-advance-next-week',
       'gym-allocation',
       'gym-available-now',
@@ -4244,6 +4251,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymId',
       'gymscreen-accelerated-bucks',
       'gymscreen-accrual',
+      'gymscreen-advance',
       'gymscreen-advance-next-week',
       'gymscreen-allocation',
       'gymscreen-available-now',
@@ -4648,7 +4656,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 978 -> 980: Stage D2 singleQuoted 643 -> 645.
     // 980 -> 983: Stage D2.1B singleQuoted 645 -> 647 and templateChunks
     // 335 -> 336. Read from this assertion's own failure value.
-    expect(stringsChecked).toBe(983);
+    // 983 -> 1000: Stage D2.2 singleQuoted 647 -> 652 and templateChunks
+    // 336 -> 348.
+    expect(stringsChecked).toBe(1000);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5459,7 +5469,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 412 -> 413: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS (18).
     // STATION_THROUGHPUT_USE_TICKS_FACTOR (0.65) was replaced by
     // STATION_THROUGHPUT_CHANGEOVER_TICKS (6) — replace, count unchanged.
-    ).toBe(413);
+    // 413 -> 422: Stage D2.2 nine new tuning literals (SECONDS_PER_MINUTE,
+    // two watched grains, six FLOOR_PLATE_LOADING leaves).
+    ).toBe(422);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

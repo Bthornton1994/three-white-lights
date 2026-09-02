@@ -93,6 +93,7 @@ import {
 } from './sessions';
 import {
   buyLadderEquipment,
+  ladderDevClockTestId,
   ladderDevTimeSteps,
   ladderEquipmentCost,
   ladderIncomeRatePerHour,
@@ -762,7 +763,7 @@ describe('the opening screen displays ladder.ts / sessions.ts on every displayed
     expect(findAllByTestId(root, 'gymscreen-accrual').length).toBe(0);
     expect(findAllByTestId(root, 'gymscreen-refusal').length).toBe(0);
     for (const step of ladderDevTimeSteps()) {
-      expect(findAllByTestId(root, `gymscreen-advance-${step.seconds}`).length).toBe(1);
+      expect(findAllByTestId(root, ladderDevClockTestId('gymscreen-advance', step)).length).toBe(1);
     }
     expect(findAllByTestId(root, 'gymscreen-advance-next-week').length).toBe(1);
     expect(findAllByTestId(root, 'gymscreen-reset-gym').length).toBe(1);
@@ -788,7 +789,7 @@ describe('every control dispatches exactly the action it names', () => {
     const dispatched: GymViewAction[] = [];
     const root = render(state, dispatched);
     for (const step of ladderDevTimeSteps()) {
-      press(findByTestId(root, `gymscreen-advance-${step.seconds}`));
+      press(findByTestId(root, ladderDevClockTestId('gymscreen-advance', step)));
     }
     press(findByTestId(root, 'gymscreen-advance-next-week'));
     press(findByTestId(root, 'gymscreen-reset-gym'));
@@ -800,13 +801,57 @@ describe('every control dispatches exactly the action it names', () => {
     const funded = fundedEnoughFor(state, sessionEquipmentCost('mats'));
     press(findByTestId(render(funded, dispatched), 'gymscreen-buy-session-mats'));
     expect(dispatched).toEqual([
-      ...ladderDevTimeSteps().map((step) => ({ kind: 'advance-clock', gapSeconds: step.seconds })),
+      ...ladderDevTimeSteps().map((step) => ({
+        kind: 'advance-clock',
+        gapSeconds: step.seconds,
+        mode: step.mode,
+      })),
       { kind: 'advance-to-next-week' },
       { kind: 'reset-gym' },
       { kind: 'set-allocation-slot', slotIndex: 0, slot: 'cardio' },
       { kind: 'buy-session', item: 'mats' },
     ]);
     expect(dispatched.length).toBe(ladderDevTimeSteps().length + 4);
+  });
+
+  it('watched QA helpers dispatch online; away helpers dispatch offline', () => {
+    const watched = ladderDevTimeSteps().filter((step) => step.mode === 'online');
+    const away = ladderDevTimeSteps().filter((step) => step.mode === 'offline');
+    expect(watched.map((step) => step.label)).toEqual(['+30m watched', '+1h watched']);
+    expect(away.map((step) => step.label)).toEqual(['+1h away', '+8h away', '+3d away']);
+    const state = createGymViewState();
+    const dispatched: GymViewAction[] = [];
+    const root = render(state, dispatched);
+    press(findByTestId(root, 'gymscreen-advance-online-3600'));
+    press(findByTestId(root, 'gymscreen-advance-offline-3600'));
+    expect(dispatched).toEqual([
+      { kind: 'advance-clock', gapSeconds: T.SECONDS_PER_HOUR, mode: 'online' },
+      { kind: 'advance-clock', gapSeconds: T.SECONDS_PER_HOUR, mode: 'offline' },
+    ]);
+  });
+
+  it('one hour watched pays the online garage rate; one hour away pays the offline fraction', () => {
+    const opened = createGymViewState();
+    const hour = T.SECONDS_PER_HOUR;
+    const watched = dispatchThrough(opened, {
+      kind: 'advance-clock',
+      gapSeconds: hour,
+      mode: 'online',
+    });
+    const away = dispatchThrough(opened, {
+      kind: 'advance-clock',
+      gapSeconds: hour,
+      mode: 'offline',
+    });
+    expect(T.OFFLINE_EARNINGS_FRACTION).toBe(0.5);
+    expect(watched.lastAccrual).not.toBeNull();
+    expect(away.lastAccrual).not.toBeNull();
+    expect(watched.lastAccrual?.secondsBanked).toBe(away.lastAccrual?.secondsBanked);
+    expect(watched.lastAccrual?.gymBucks).toBeCloseTo(
+      (away.lastAccrual?.gymBucks as number) / T.OFFLINE_EARNINGS_FRACTION,
+      5,
+    );
+    expect(watched.managed.gym.ladder.gymBucks).toBeGreaterThan(away.managed.gym.ladder.gymBucks);
   });
 
   it('the move-up control dispatches move-up, and refused presses change nothing displayed', () => {
@@ -1808,12 +1853,12 @@ describe('S4h: every rendered Pressable is visibly a control', () => {
     // every gym, and a HUD review chip on gyms that have a standing
     // maintenance review (dormant and ready-to-reopen in this fixture).
     expect(counts).toEqual({
-      'cold garage': 27,
-      'heavily operated gym': 31,
-      'staffed gym': 29,
-      'dormant gym': 35,
-      'ready-to-reopen gym': 35,
+      'cold garage': 29,
+      'heavily operated gym': 33,
+      'staffed gym': 31,
+      'dormant gym': 37,
+      'ready-to-reopen gym': 37,
     });
-    expect(total).toBe(157);
+    expect(total).toBe(167);
   });
 });

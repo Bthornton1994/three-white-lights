@@ -48,6 +48,7 @@ import {
   describeLadderClock,
   ladderCheckIn,
   ladderCheckInAfter,
+  ladderDevClockTestId,
   ladderDevTimeSteps,
   ladderEquipmentCost,
   ladderEquipmentMinRung,
@@ -900,30 +901,49 @@ describe('the view-facing helpers compute what the view will only render', () =>
     // Derived from the tuning entry rather than restated: same order, same
     // seconds, and each label re-derived here with the same unit rule.
     expect(steps.map((step) => step.seconds)).toEqual([
+      ...T.LADDER_DEV_WATCHED_TIME_STEPS_SECONDS,
       ...T.LADDER_DEV_TIME_STEPS_SECONDS,
+    ]);
+    expect(steps.map((step) => step.mode)).toEqual([
+      'online',
+      'online',
+      'offline',
+      'offline',
+      'offline',
     ]);
     for (const step of steps) {
       expect(Number.isInteger(step.seconds)).toBe(true);
       expect(step.seconds).toBeGreaterThan(0);
       expect(step.seconds % T.TICK_SECONDS).toBe(0);
-      const expected =
+      const suffix = step.mode === 'online' ? ' watched' : ' away';
+      const unit =
         step.seconds % T.SECONDS_PER_DAY === 0
-          ? `+${step.seconds / T.SECONDS_PER_DAY}d`
+          ? `${step.seconds / T.SECONDS_PER_DAY}d`
           : step.seconds % T.SECONDS_PER_HOUR === 0
-            ? `+${step.seconds / T.SECONDS_PER_HOUR}h`
-            : `+${step.seconds}s`;
-      expect(step.label).toBe(expected);
+            ? `${step.seconds / T.SECONDS_PER_HOUR}h`
+            : step.seconds % T.SECONDS_PER_MINUTE === 0
+              ? `${step.seconds / T.SECONDS_PER_MINUTE}m`
+              : `${step.seconds}s`;
+      expect(step.label).toBe(`+${unit}${suffix}`);
     }
-    // The shipped values, named, so a tuning change is a visible diff here:
-    // one hour, eight hours, three days.
-    expect(steps.map((step) => step.label)).toEqual(['+1h', '+8h', '+3d']);
+    // The shipped values, named, so a tuning change is a visible diff here.
+    expect(steps.map((step) => step.label)).toEqual([
+      '+30m watched',
+      '+1h watched',
+      '+1h away',
+      '+8h away',
+      '+3d away',
+    ]);
     // And every step is walkable by the check-in it will be fed to.
     let advanced = createLadderState();
     for (const step of steps) {
-      advanced = ladderCheckInAfter(advanced, step.seconds).state;
+      advanced = ladderCheckInAfter(advanced, step.seconds, step.mode).state;
     }
     expect(advanced.collectedAt).toBe(
-      T.LADDER_DEV_TIME_STEPS_SECONDS.reduce((sum, seconds) => sum + seconds, 0),
+      [...T.LADDER_DEV_WATCHED_TIME_STEPS_SECONDS, ...T.LADDER_DEV_TIME_STEPS_SECONDS].reduce(
+        (sum, seconds) => sum + seconds,
+        0,
+      ),
     );
   });
 

@@ -127,6 +127,13 @@
  *    deliberately not what Phase 3's gate is asking about — that question is
  *    whether the motion reads as behaviour.
  *
+ * 5. Stage D2.2 plate loading. While `FloorSimState.changeovers` holds a
+ *    seat, crimson plate discs travel from a stack position to the bar
+ *    sleeve on that bench. Progress is remaining/total ticks from the same
+ *    sim field the loading highlight already reads. Stock 18 and plate-tree
+ *    6 share the path; only duration differs. No second `setInterval`, no
+ *    loader body, no staff system.
+ *
  * WHAT THIS HALF DOES NOT DO, since the list is the point. It computes no
  * behaviour: every state, target, queue position and interruption is
  * `floorSim.ts`'s, and what happens here is tile-to-pixel conversion,
@@ -197,6 +204,7 @@ import { type SessionEquipmentItem } from './sessions';
 import {
   isStationUpgradeSlice,
   stationLevels,
+  stationChangeoverTicks,
   stationUpgradeCostGymBucks,
   type StationCapabilityState,
   type StationUpgradeAxis,
@@ -217,6 +225,8 @@ import {
   playerFacingUpgradeEffect,
   playerFacingUpgradeLabel,
   playerFacingUpgradeRefuse,
+  plateLoadingDiscs,
+  plateLoadingProgress,
   stationConditionView,
   stationIdentityView,
   stationManagerEffectView,
@@ -362,6 +372,9 @@ const FLOOR_QUALITY_MARK_COLOR = 'goldenrod';
  * faster station is not readable as "someone is waiting here".
  */
 const FLOOR_THROUGHPUT_MARK_COLOR = 'darkkhaki';
+/** Stage D2.2 plate discs during a changeover — competition-plate red, named CSS so no palette-module crossing. */
+const FLOOR_PLATE_LOADING_COLOR = 'crimson';
+const FLOOR_PLATE_LOADING_HOLE_COLOR = 'white';
 /** The contextual station panel's own backing, the same quiet slate the tray chip already reads against. */
 const FLOOR_STATION_PANEL_BACKGROUND_COLOR = 'darkslateblue';
 /** The panel's action-button chrome — the identical literals `GymScreen.tsx`'s own `styles.button` already uses, so a control looks like the same control on both screens. */
@@ -713,6 +726,16 @@ function highlightTestId(
   return `floorsim-${activity}-${ref.kind}-${ref.item}`;
 }
 
+function plateLoadingTestId(ref: FloorStationRef, expansion: boolean): string {
+  if (ref.kind === 'training' && expansion) {
+    return `floorsim-plate-loading-training-${ref.station}-expansion`;
+  }
+  if (ref.kind === 'training') {
+    return `floorsim-plate-loading-training-${ref.station}`;
+  }
+  return `floorsim-plate-loading-${ref.kind}-${ref.item}`;
+}
+
 function memberUsesCell(
   members: readonly FloorSimMember[],
   ref: FloorStationRef,
@@ -817,6 +840,78 @@ function stationHighlightBoxes(
     });
   }
   return boxes;
+}
+
+interface PlateLoadingLayer {
+  readonly key: string;
+  readonly testID: string;
+  readonly discs: readonly {
+    readonly index: number;
+    readonly left: number;
+    readonly top: number;
+    readonly size: number;
+  }[];
+}
+
+/**
+ * Stage D2.2: plate discs on the bench while `changeovers` holds the seat.
+ * Progress is remaining/total ticks from the same sim state the loading
+ * highlight already reads. No parallel timer.
+ */
+function plateLoadingLayers(
+  station: FloorStation,
+  bay: CompetitionBenchBay,
+  changeovers: Readonly<Record<string, number>>,
+  capability: StationCapabilityState,
+  tile: number,
+): readonly PlateLoadingLayer[] {
+  if (station.ref.kind !== 'training') return [];
+  const total = stationChangeoverTicks(capability, station.ref.kind, station.ref.station);
+  if (total <= 0) return [];
+  const layout = EMPIRE_TUNING.FLOOR_PLATE_LOADING;
+  const layers: PlateLoadingLayer[] = [];
+  const benches: { readonly bench: BayBench; readonly expansion: boolean }[] = [];
+  if (bay.benches.length > 0) {
+    for (const bench of bay.benches) {
+      benches.push({ bench, expansion: bench.source === 'expansion' });
+    }
+  } else {
+    benches.push({
+      bench: {
+        position: station.position,
+        footprint: station.footprint,
+        source: 'primary',
+      },
+      expansion: false,
+    });
+  }
+  for (let index = 0; index < benches.length; index += 1) {
+    const row = benches[index];
+    if (row === undefined) continue;
+    const cell = station.useCells[index];
+    if (cell === undefined) continue;
+    const remaining = seatChangeoverTicks(changeovers, station.ref, cell);
+    if (remaining <= 0) continue;
+    const progress = plateLoadingProgress(remaining, total);
+    const shortSide = Math.min(row.bench.footprint.width, row.bench.footprint.height);
+    const size = shortSide * tile * layout.discSizeFraction;
+    const half = size / 2;
+    const discs = plateLoadingDiscs(progress).map((disc) =>
+      Object.freeze({
+        index: disc.index,
+        left: (row.bench.position.x + disc.xFraction * row.bench.footprint.width) * tile - half,
+        top: (row.bench.position.y + disc.yFraction * row.bench.footprint.height) * tile - half,
+        size,
+      }),
+    );
+    const testID = plateLoadingTestId(station.ref, row.expansion);
+    layers.push({
+      key: testID,
+      testID,
+      discs: Object.freeze(discs),
+    });
+  }
+  return layers;
 }
 
 
@@ -2181,7 +2276,42 @@ export function FloorGrid(props: FloorGridProps) {
                 )),
               )
             }
-            {null}
+            {
+              stations.flatMap((station) =>
+                plateLoadingLayers(station, bay, sim.changeovers, capability, tile).map((layer) => (
+                  <View
+                    key={layer.key}
+                    testID={layer.testID}
+                    pointerEvents={'none'}
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
+                    }}
+                  >
+                    {layer.discs.map((disc) => (
+                      <View
+                        key={`${layer.key}-disc-${disc.index}`}
+                        testID={`${layer.testID}-disc-${disc.index}`}
+                        pointerEvents={'none'}
+                        style={{
+                          position: 'absolute',
+                          left: disc.left,
+                          top: disc.top,
+                          width: disc.size,
+                          height: disc.size,
+                          borderRadius: disc.size,
+                          backgroundColor: FLOOR_PLATE_LOADING_COLOR,
+                          borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
+                          borderColor: FLOOR_PLATE_LOADING_HOLE_COLOR,
+                        }}
+                      />
+                    ))}
+                  </View>
+                )),
+              )
+            }
             {
               // GDD §5.13 presentation Phase 3: the members, at the position
               // the sim puts them at this instant. Still non-draggable, still

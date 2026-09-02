@@ -3540,15 +3540,17 @@ Stage C human close (done at `460f794a`) → C.2 simulator fidelity (done,
 (done, §5.18) → Stage D.1b world legibility (done, human-close of Stage D
 at `ff8721a`) → D2 balance verdict (PARTIAL, open) → D2.1A live Capacity
 transition (CONFIRMED AND FIXED at `0ded7fe`) → D2.1B Throughput changeover
-+ opening agency (this subsection) → reputation seam → persistent NPC
-roster / tenure → deeper staff policy → portfolio only after explicit
-human unpause.
++ opening agency (human: mechanism real, opening agency not closed) → D2.2
+balance closeout / consequence boundary (this subsection, D2 remains OPEN)
+→ reputation seam → persistent NPC roster / tenure → deeper staff policy →
+portfolio only after explicit human unpause.
 
 The doctrine does not authorize implementing future stages early. It defines
 their quality bar. C.2 is recorded in §5.16. Stage D is recorded in §5.17.
 Stage D.1 / D.1b are recorded in §5.18. D2 is recorded in the D2 ruling
 under §5.18. D2 remains OPEN. D2.1A is CONFIRMED AND FIXED at `0ded7fe`.
-D2.1B is recorded immediately after D2.1A.
+D2.1B is recorded immediately after D2.1A. D2.2 is recorded immediately
+after D2.1B. D2 remains OPEN.
 
 ### 5.16 Stage C.2 — simulator fidelity (online vs offline in aggregate pacing)
 
@@ -4160,8 +4162,130 @@ next changeover arms at 6; in-flight 18 capped to 6.
 
 D2 remains OPEN. Quality verdict B confirmed. D2-TRUTH-01A closed.
 D2-TRUTH-01B deferred. Novice manager unchanged. Do not start D3 /
-reputation / persistent NPCs / Portfolio. Awaiting human opening-economy
-and fully-funded C-vs-T replay.
+reputation / persistent NPCs / Portfolio.
+
+RECORD CORRECTION (written in D2.2, applying to this SHA's QA helper):
+the `+1h` control dispatched `advance-clock` with no `mode`, so
+`advanceGymClock` defaulted to `'offline'` and `OFFLINE_EARNINGS_FRACTION`
+0.5 applied. One hour from reset paid ~30 Gym Bucks — one hour away — not
+one hour of watched garage income at 60/hour. The sentence above that
+"+1h QA helper affords T" is true of the *away* helper at T=30, and must
+not be read as a watched-hour claim. D2.2 splits the instrument.
+
+---
+
+**Stage D2.2 — balance closeout / consequence boundary.** Authorized after
+human play of `aefa31d5` at Chromium 390×844. Not a Capacity-vs-Throughput
+price search. Q/C/T prices stay Quality 120 / Capacity 180 / Throughput 30.
+Stock changeover 18 ticks / plate-tree 6 ticks stay until a human judges
+the loading duration *after* the world presentation is truthful.
+
+*QA clock diagnosis.* GymScreen `+1h` → `advance-clock` with no mode →
+`advanceGymClock` default `'offline'` → `OFFLINE_EARNINGS_FRACTION` 0.5.
+So the old helper meant one hour of offline elapsed time, not one hour of
+watched online operation. Garage 60/hour, offline fraction 0.5, offline
+cap, and production accrual are unchanged. The QA instrument is not part
+of the game.
+
+New QA labels and modes (exact, from `ladderDevTimeSteps`):
+
+| label | seconds | mode |
+|---|---|---|
+| +30m watched | 1800 | online |
+| +1h watched | 3600 | online |
+| +1h away | 3600 | offline |
+| +8h away | 28800 | offline |
+| +3d away | 259200 | offline |
+
+The week-boundary jump remains away (offline). Reset gym is unchanged.
+
+*D2-CONSEQUENCE-01.* Quality / Capacity / Throughput have truthful physical mechanisms, but the current played floor does not yet convert service quality into a durable member/business outcome.
+
+Source trace (not inferred):
+
+- Gym Bucks on the played path are `ladderIncomeRatePerHour(rung)` × banked
+  seconds × online/offline fraction, via `advanceGymClock` → `managedCheckIn`
+  → `gymCheckIn` → `ladderCheckIn` → `accrueLadderGymBucks`. FloorSim
+  completions, queue length, wait, changeover duration, station training
+  experience, and station utilization are not inputs to that rate.
+- `memberSatisfaction`, `memberDuesGymBucks`, and `reputationFromMembers`
+  exist as pure functions in `members.ts`. `management.ts` does not import
+  `members.ts`. No shipped `src/empire/` module other than `members.ts`
+  itself calls those three functions. There is no persistent live-floor
+  member-outcome composition consuming actual queue / changeover /
+  training-experience history.
+
+Consequences of that graph, not of prices:
+
+- Quality can improve experience / affinity and has no durable played outcome.
+- Throughput can shorten real loading; the wait reduction has no durable
+  played outcome.
+- Capacity has the strongest immediate human consequence because a second
+  physical training position is itself visible.
+
+A price can change WHEN a player buys a mechanism. A price cannot create a
+missing downstream consequence. At the current graph: lowering Throughput
+risks a compulsory starter; raising it makes saving for Capacity more
+rational; lowering Capacity makes Capacity more dominant; raising Capacity
+can manufacture delay but does not make Throughput's service-quality
+improvement matter more to the institution. No further Q/C/T balance search
+until the next authorized member-outcome consumer exists. Do not implement
+reputation in this piece.
+
+*World-truth: plate loading.* With the station panel closed, an active
+changeover must read as plates being changed from the floor. The overlay
+reads `FloorSimState.changeovers` remaining ticks against the station's
+total (`stationChangeoverTicks`). No parallel presentation timer. Stock and
+plate-tree share the same disc-travel job; the tree is the same job faster.
+No loader NPC, no staff system. Panel copy "Loading plates" remains
+supporting confirmation. 18 / 6 remain human-open until this presentation
+is played — the prior complaint was that loading was not visible, not that
+2.16 seconds was categorically the wrong duration.
+
+*D2-OPENING-01 — PARTIAL / DOWNSTREAM-DEPENDENT.* Not closed. The player
+now reaches a queue-relevant purchase sooner than before. At the first
+relevant affordability band, Throughput is the only live queue-response
+button. Saving toward Capacity is economically possible but is represented
+as inaction, and the service-quality benefit Throughput creates does not
+yet feed a durable member/business consequence. This cannot be honestly
+solved by another arbitrary price movement.
+
+*Quality verdict B — frozen.* 120, experience 1→2, affinity +0.25. Physical
+meaning readable; strategic consequence incomplete. Evidence for the same
+consequence boundary, not a separate anomaly. Do not touch it.
+
+*Capacity D2.1A — remains CLOSED.* Live purchase → second bench → waiter
+occupies it → two simultaneous users → visible queue reduction. Do not
+reopen.
+
+*Wear / manager debts unchanged.* D2-TRUTH-01A CLOSED. D2-TRUTH-01B
+utilization-sensitive wear DEFERRED. Novice manager: known later
+staff-policy debt. No work on either.
+
+**Candidate D2 permanent-test verdict — D2 — PARTIAL BY DESIGN / CONSEQUENCE BOUNDARY REACHED.** Do not mark D2 closed before human approval.
+
+PASS:
+
+- Quality mechanism truth
+- Capacity mechanism truth
+- Throughput mechanism truth
+- Capacity live transition
+- distinct physical Q/C/T identities
+- space refusal
+- simulator/world synchronization
+- stored/unplaced wear truth
+- truthful changeover semantics
+
+PARTIAL (one missing consumer: durable member outcomes):
+
+- opening agency
+- Quality strategic payoff
+- Throughput strategic payoff
+- infinite-money depth
+- institution consequences
+
+Do not disguise those partials with price changes. Do not start reputation
+until a human explicitly closes D2 and authorizes the next stage.
 
 ---
 

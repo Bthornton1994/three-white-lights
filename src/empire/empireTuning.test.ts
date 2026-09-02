@@ -86,6 +86,7 @@ describe('the block is frozen and every entry is classified', () => {
       'FLEXIBLE_ACTIVITIES',
       'FLOOR_FIXED_FURNITURE_LAYOUT',
       'FLOOR_GRID_SIZE',
+      'FLOOR_PLATE_LOADING',
       'FLOOR_SIM_USE_TICKS_BY_TYPE',
       // GDD §5.13 P4b — the per-use-class draw bias a `using` member is
       // pulled toward its station's anchor by.
@@ -98,6 +99,7 @@ describe('the block is frozen and every entry is classified', () => {
       'FLOOR_SPRITE_GEAR_PALETTE',
       'FLOOR_SPRITE_OUTFIT_PALETTE',
       'LADDER_DEV_TIME_STEPS_SECONDS',
+      'LADDER_DEV_WATCHED_TIME_STEPS_SECONDS',
       'LADDER_EQUIPMENT_COST_GYM_BUCKS',
       'LADDER_EQUIPMENT_ITEMS',
       'LADDER_EQUIPMENT_MIN_RUNG',
@@ -203,6 +205,7 @@ describe('the block is frozen and every entry is classified', () => {
 describe('units', () => {
   it('agrees with itself about how long a day is', () => {
     expect(T.SECONDS_PER_DAY).toBe(T.SECONDS_PER_HOUR * 24);
+    expect(T.SECONDS_PER_HOUR).toBe(T.SECONDS_PER_MINUTE * 60);
     expect(T.PRECISION_DECIMALS).toBeGreaterThan(0);
   });
 
@@ -727,7 +730,9 @@ describe('§5.5 social', () => {
     // 192 -> 193: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS. The
     // 0.65 use-factor was replaced by STATION_THROUGHPUT_CHANGEOVER_TICKS
     // (replace, count unchanged).
-    expect(examined).toBe(193);
+    // 193 -> 196: Stage D2.2 SECONDS_PER_MINUTE, LADDER_DEV_WATCHED_TIME_
+    // STEPS_SECONDS, FLOOR_PLATE_LOADING.
+    expect(examined).toBe(196);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -751,7 +756,8 @@ describe('§5.5 social', () => {
     // 915 -> 955: Stage D eight Q/C/T entries × 5 banned units.
     // 955 -> 960: Stage D Quality affinity bonus, one more entry × 5.
     // 960 -> 965: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS × 5.
-    expect(probed).toBe(965);
+    // 965 -> 980: Stage D2.2 three new entries × 5 banned units.
+    expect(probed).toBe(980);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

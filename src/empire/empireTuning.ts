@@ -216,6 +216,9 @@ export const EMPIRE_TUNING = Object.freeze({
   /** Seconds in an hour. Arithmetic, not a knob. */
   SECONDS_PER_HOUR: 3600,
 
+  /** Seconds in a minute. Arithmetic, not a knob. Used to label the 30-minute watched QA step. */
+  SECONDS_PER_MINUTE: 60,
+
   /** Seconds in a day. Arithmetic, not a knob. */
   SECONDS_PER_DAY: 86400,
 
@@ -872,16 +875,21 @@ export const EMPIRE_TUNING = Object.freeze({
   }),
 
   /**
-   * The dev-only time steps of the stage-1 ladder view, in seconds: one hour,
-   * eight hours, three days. `ladder.ts`'s `ladderDevTimeSteps` labels them and
-   * `ladderView.tsx`'s visibly-marked dev control feeds them to the shipped
-   * accrual functions, so the §5.11 stage-gate human can feel the pacing
-   * without waiting a real week. Each step must be a positive whole multiple
-   * of `TICK_SECONDS`, which `ladderDevTimeSteps` refuses loudly rather than
-   * trusting. Knobs: the gate's open question is the income magnitudes, and
-   * the sampling grain a human judges them at is tuned with the same hand.
+   * Dev-only AWAY (offline) time steps, in seconds: one hour, eight hours,
+   * three days. Stage D2.2 split the QA instrument from watched time: these
+   * grains dispatch `mode: 'offline'` and are labelled "+Nh away" / "+Nd away".
+   * They are NOT one hour of online garage income. `OFFLINE_EARNINGS_FRACTION`
+   * still applies. Not part of the game.
    */
   LADDER_DEV_TIME_STEPS_SECONDS: Object.freeze([3600, 28800, 259200] as const),
+
+  /**
+   * Dev-only WATCHED (online) time steps, in seconds: thirty minutes and one
+   * hour. Dispatch `mode: 'online'` and are labelled "+Nm watched" /
+   * "+Nh watched". The garage listed rate is paid in full. Not part of the
+   * game. Does not change production economy, the offline fraction, or the cap.
+   */
+  LADDER_DEV_WATCHED_TIME_STEPS_SECONDS: Object.freeze([1800, 3600] as const),
 
   // -------------------------------------------------------------------------
   // §5 (v2) stage 2 — sessions and equipment groups. Read by `sessions.ts`.
@@ -1932,6 +1940,22 @@ export const EMPIRE_TUNING = Object.freeze({
    */
   FLOOR_SIM_CUE_DIAMETER_FRACTION: 0.5,
 
+  /**
+   * Stage D2.2 plate-loading overlay. Drawn from `FloorSimState.changeovers`
+   * remaining ticks (same job at stock 18 and plate-tree 6). Geometry is
+   * fractions of the bench footprint. Disc count is how many plate discs
+   * travel from the stack to the bar sleeve. `discSizeFraction` is of the
+   * bench's shorter side in tiles. Not a parallel timer.
+   */
+  FLOOR_PLATE_LOADING: Object.freeze({
+    discCount: 3,
+    sourceXFraction: 0.2,
+    sleeveXFraction: 0.72,
+    railYFraction: 0.22,
+    stackSpreadFraction: 0.12,
+    discSizeFraction: 0.45,
+  }),
+
   /** The gap, in pixels, between the top of a member's head and the bottom of its state cue. */
   FLOOR_SIM_CUE_GAP_PIXELS: 2,
 
@@ -2632,6 +2656,7 @@ export const EMPIRE_TUNING = Object.freeze({
  */
 export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   SECONDS_PER_HOUR: 'structural',
+  SECONDS_PER_MINUTE: 'structural',
   SECONDS_PER_DAY: 'structural',
   PRECISION_DECIMALS: 'structural',
 
@@ -2703,6 +2728,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   LADDER_EQUIPMENT_MIN_RUNG: 'structural',
   LADDER_LIFT_REQUIREMENTS: 'structural',
   LADDER_DEV_TIME_STEPS_SECONDS: 'knob',
+  LADDER_DEV_WATCHED_TIME_STEPS_SECONDS: 'knob',
 
   SESSION_ACTIVITY_GROUPS: 'structural',
   SESSION_EQUIPMENT_ITEMS: 'structural',
@@ -2782,6 +2808,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_SIM_MOVE_TWEEN_MS: 'knob',
   FLOOR_SIM_RENDER_SEED: 'knob',
   FLOOR_SIM_CUE_DIAMETER_FRACTION: 'knob',
+  FLOOR_PLATE_LOADING: 'knob',
   FLOOR_SIM_CUE_GAP_PIXELS: 'knob',
   FLOOR_SIM_INTERRUPTED_CUE_SCALE: 'knob',
   FLOOR_SIM_LEAVING_OPACITY: 'knob',

@@ -27,6 +27,7 @@ import {
   createLadderState,
   describeLadderClock,
   ladderCheckInAfter,
+  ladderDevClockTestId,
   ladderDevTimeSteps,
   ladderEquipmentCost,
   ladderEquipmentMinRung,
@@ -235,7 +236,7 @@ describe('every control dispatches exactly the action it names', () => {
     const root = render(state, dispatched);
     // The three dev steps, in tuning order.
     for (const step of ladderDevTimeSteps()) {
-      press(findByTestId(root, `advance-${step.seconds}`));
+      press(findByTestId(root, ladderDevClockTestId('advance', step)));
     }
     // The one item the opening kit does not hold.
     press(findByTestId(root, 'buy-squat-rack'));
@@ -245,11 +246,12 @@ describe('every control dispatches exactly the action it names', () => {
       ...ladderDevTimeSteps().map((step) => ({
         kind: 'advance-clock',
         gapSeconds: step.seconds,
+        mode: step.mode,
       })),
       { kind: 'buy', item: 'squat-rack' },
       { kind: 'move-up' },
     ]);
-    expect(dispatched.length).toBe(5);
+    expect(dispatched.length).toBe(ladderDevTimeSteps().length + 2);
   });
 });
 
@@ -319,13 +321,17 @@ describe('a played run: press, reduce, re-render, and the numbers stay the pure 
     let pure = createLadderState();
     let screensGraded = 0;
     let quantitiesCompared = 0;
-    const threeDays = ladderDevTimeSteps()[2]?.seconds as number;
+    const threeDays = T.LADDER_DEV_TIME_STEPS_SECONDS[2];
     expect(threeDays).toBe(259200);
+    const threeDayAway = ladderDevTimeSteps().find(
+      (step) => step.mode === 'offline' && step.seconds === threeDays,
+    );
+    expect(threeDayAway).toBeDefined();
 
     const playAdvance = (): void => {
       const dispatched: LadderViewAction[] = [];
       const root = render(view, dispatched);
-      press(findByTestId(root, `advance-${threeDays}`));
+      press(findByTestId(root, ladderDevClockTestId('advance', threeDayAway!)));
       expect(dispatched.length).toBe(1);
       view = dispatchThrough(view, dispatched[0] as LadderViewAction);
       const direct = ladderCheckInAfter(pure, threeDays);
@@ -529,7 +535,7 @@ describe('GymView: the opening screen displays sessions.ts on every displayed qu
     expect(textOf(findByTestId(root, 'gym-dev-controls'))).toContain('dev control');
     // Every fixed dev step plus the new week-boundary jump.
     for (const step of ladderDevTimeSteps()) {
-      expect(findAllByTestId(root, `gym-advance-${step.seconds}`).length).toBe(1);
+      expect(findAllByTestId(root, ladderDevClockTestId('gym-advance', step)).length).toBe(1);
     }
     expect(findAllByTestId(root, 'gym-advance-next-week').length).toBe(1);
   });
@@ -541,13 +547,17 @@ describe('GymView: every control dispatches exactly the action it names', () => 
     const dispatched: GymViewAction[] = [];
     const root = renderGym(state, dispatched);
     for (const step of ladderDevTimeSteps()) {
-      press(findByTestId(root, `gym-advance-${step.seconds}`));
+      press(findByTestId(root, ladderDevClockTestId('gym-advance', step)));
     }
     press(findByTestId(root, 'gym-advance-next-week'));
     press(findByTestId(root, 'gym-buy-session-mats'));
     press(findByTestId(root, 'gym-slot-0-set-cardio'));
     expect(dispatched).toEqual([
-      ...ladderDevTimeSteps().map((step) => ({ kind: 'advance-clock', gapSeconds: step.seconds })),
+      ...ladderDevTimeSteps().map((step) => ({
+        kind: 'advance-clock',
+        gapSeconds: step.seconds,
+        mode: step.mode,
+      })),
       { kind: 'advance-to-next-week' },
       { kind: 'buy-session', item: 'mats' },
       { kind: 'set-allocation-slot', slotIndex: 0, slot: 'cardio' },
@@ -985,8 +995,12 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
     let pureWeekLog: GymWeekReport[] = [];
     let screensGraded = 0;
     let quantitiesCompared = 0;
-    const threeDays = ladderDevTimeSteps()[2]?.seconds as number;
+    const threeDays = T.LADDER_DEV_TIME_STEPS_SECONDS[2];
     expect(threeDays).toBe(259200);
+    const threeDayAway = ladderDevTimeSteps().find(
+      (step) => step.mode === 'offline' && step.seconds === threeDays,
+    );
+    expect(threeDayAway).toBeDefined();
 
     const pureAdvance = (gapSeconds: number): void => {
       const before = pureManaged;
@@ -1024,7 +1038,7 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
     const playAdvance = (): void => {
       const dispatched: GymViewAction[] = [];
       const root = renderGym(view, dispatched);
-      press(findByTestId(root, `gym-advance-${threeDays}`));
+      press(findByTestId(root, ladderDevClockTestId('gym-advance', threeDayAway!)));
       expect(dispatched.length).toBe(1);
       view = dispatchGymThrough(view, dispatched[0] as GymViewAction);
       pureAdvance(threeDays);

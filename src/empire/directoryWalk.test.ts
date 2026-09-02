@@ -191,7 +191,9 @@ export const DIRECTORY_WALK = Object.freeze({
   // 50 -> 51: Stage D2.1B's `throughputSemantics.test.ts` — closed-loop,
   // live-purchase, C-vs-T, and opening-agency catcher. One test file, no
   // new shipped module. Read from this pin's own failure value.
-  DIRECTORY_FILES: 51,
+  // 51 -> 52: Stage D2.2 `d2Consequence.test.ts` — consequence-boundary
+  // source trace. One test file, no new shipped module.
+  DIRECTORY_FILES: 52,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**

@@ -29,7 +29,10 @@
  * is reimplemented and no arithmetic happens in this file. The dev time
  * control is labelled in the rendered output as a dev control, feeds elapsed
  * seconds to the shipped accrual path unchanged, and its step sizes are the
- * `LADDER_DEV_TIME_STEPS_SECONDS` knob — not values a player could reach.
+ * `LADDER_DEV_WATCHED_TIME_STEPS_SECONDS` (online) and
+ * `LADDER_DEV_TIME_STEPS_SECONDS` (offline) knobs — not values a player
+ * could reach. Labels name the earnings mode so `+1h watched` and `+1h away`
+ * cannot be confused.
  */
 
 import { EMPIRE_TUNING } from './empireTuning';
@@ -44,6 +47,7 @@ import {
   createLadderState,
   describeLadderClock,
   ladderCheckInAfter,
+  ladderDevClockTestId,
   ladderDevTimeSteps,
   ladderEquipmentCost,
   ladderEquipmentMinRung,
@@ -81,7 +85,11 @@ export type LadderViewRefusal =
 
 /** The three things a player can do on this screen. */
 export type LadderViewAction =
-  | { readonly kind: 'advance-clock'; readonly gapSeconds: number }
+  | {
+      readonly kind: 'advance-clock';
+      readonly gapSeconds: number;
+      readonly mode?: EarningsMode;
+    }
   | { readonly kind: 'buy'; readonly item: LadderEquipmentItem }
   | { readonly kind: 'move-up' };
 
@@ -102,7 +110,7 @@ export function ladderViewReduce(
 ): LadderViewState {
   switch (action.kind) {
     case 'advance-clock': {
-      const checkedIn = ladderCheckInAfter(state.ladder, action.gapSeconds);
+      const checkedIn = ladderCheckInAfter(state.ladder, action.gapSeconds, action.mode);
       return Object.freeze({
         ladder: checkedIn.state,
         lastAccrual: checkedIn.accrual,
@@ -199,14 +207,16 @@ export function LadderView(props: LadderViewProps) {
       <section data-testid={'ladder-dev-controls'}>
         <h2>dev control</h2>
         <p>
-          not part of the game: each button feeds that many elapsed seconds to the shipped
-          accrual, so a human can judge the pacing without waiting it out.
+          not part of the game. Watched buttons pay the online garage rate. Away
+          buttons pay the offline fraction. Neither is a player mechanic.
         </p>
         {ladderDevTimeSteps().map((step) => (
           <button
             key={step.label}
-            data-testid={`advance-${step.seconds}`}
-            onClick={() => props.dispatch({ kind: 'advance-clock', gapSeconds: step.seconds })}
+            data-testid={ladderDevClockTestId('advance', step)}
+            onClick={() =>
+              props.dispatch({ kind: 'advance-clock', gapSeconds: step.seconds, mode: step.mode })
+            }
           >
             {step.label}
           </button>
@@ -480,11 +490,13 @@ export type GymViewAction =
       readonly kind: 'advance-clock';
       readonly gapSeconds: number;
       /**
-       * `'online'` for a real, watched wall-clock tick (paid at the nominal
-       * rate); `'offline'` (the default — every dev control below omits this
-       * field on purpose, and an omitted field means the pre-existing dev
-       * behaviour) for a gap the player was away for. `AppShell.tsx`'s
-       * `GymHost` is the only caller that ever sets this to `'online'`.
+       * `'online'` for a watched wall-clock tick (paid at the nominal
+       * rate); `'offline'` (the default) for a gap the player was away for.
+       * `AppShell.tsx`'s `GymHost` sets `'online'` on a visible interval and
+       * `'offline'` on return-from-away. Stage D2.2 QA helpers also set the
+       * field explicitly: watched buttons pass `'online'`, away buttons pass
+       * `'offline'`. An omitted field remains offline, matching every pre-
+       * existing caller.
        */
       readonly mode?: EarningsMode;
     }
@@ -1000,16 +1012,17 @@ export function GymView(props: GymViewProps) {
       <section data-testid={'gym-dev-controls'}>
         <h2>dev control</h2>
         <p>
-          not part of the game: each button feeds that many elapsed seconds to the shipped
-          accrual, so a human can judge the pacing without waiting it out. The last one jumps
-          straight to the next weekly-allocation boundary, computed from the shipped week length,
-          so a human can feel the allocation decision without grinding every check-in between.
+          not part of the game. Watched buttons pay the online garage rate. Away
+          buttons pay the offline fraction. The week-boundary jump is away
+          (offline). Neither is a player mechanic.
         </p>
         {ladderDevTimeSteps().map((step) => (
           <button
             key={step.label}
-            data-testid={`gym-advance-${step.seconds}`}
-            onClick={() => props.dispatch({ kind: 'advance-clock', gapSeconds: step.seconds })}
+            data-testid={ladderDevClockTestId('gym-advance', step)}
+            onClick={() =>
+              props.dispatch({ kind: 'advance-clock', gapSeconds: step.seconds, mode: step.mode })
+            }
           >
             {step.label}
           </button>

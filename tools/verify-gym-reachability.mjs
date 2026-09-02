@@ -215,7 +215,7 @@ try {
   // 4 & 5. Press the dev check-in control repeatedly, see the figure move;
   // then press move-up and see the rung change.
   // -------------------------------------------------------------------------
-  const advanceId = 'gymscreen-advance-259200'; // the +3d step, LADDER_DEV_TIME_STEPS_SECONDS[2]
+  const advanceId = 'gymscreen-advance-offline-259200'; // +3d away
   const advanceButton = page.getByTestId(advanceId);
   const advanceExists = await advanceButton.count().then((n) => n > 0).catch(() => false);
 

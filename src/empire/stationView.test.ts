@@ -30,6 +30,8 @@ import {
   playerFacingUpgradeEffect,
   playerFacingUpgradeLabel,
   playerFacingUpgradeRefuse,
+  plateLoadingDiscs,
+  plateLoadingProgress,
   recoveryBlockingItems,
   stationConditionView,
   stationIdentityView,
@@ -525,3 +527,41 @@ describe('GDD §5.14 Stage C.1a — recovery blocks on a routine-sound item, and
     expect(view.isSound && !view.blocksRecovery).toBe(true);
   });
 });
+
+describe('Stage D2.2 plate-loading progress — same job, duration-scaled', () => {
+  it('is 0 when remaining is 0 or total is 0, and 0 at a just-armed seat', () => {
+    expect(plateLoadingProgress(0, 18)).toBe(0);
+    expect(plateLoadingProgress(18, 0)).toBe(0);
+    expect(plateLoadingProgress(18, 18)).toBe(0);
+    expect(plateLoadingProgress(6, 6)).toBe(0);
+  });
+
+  it('shares the same 0-to-1 path at stock 18 and plate-tree 6', () => {
+    const stockTotal = EMPIRE_TUNING.FLOOR_SIM_STATION_CHANGEOVER_TICKS;
+    const treeTotal = EMPIRE_TUNING.STATION_THROUGHPUT_CHANGEOVER_TICKS;
+    expect(stockTotal).toBe(18);
+    expect(treeTotal).toBe(6);
+    expect(plateLoadingProgress(stockTotal, stockTotal)).toBe(plateLoadingProgress(treeTotal, treeTotal));
+    expect(plateLoadingProgress(1, stockTotal)).toBeCloseTo((stockTotal - 1) / stockTotal, 10);
+    expect(plateLoadingProgress(1, treeTotal)).toBeCloseTo((treeTotal - 1) / treeTotal, 10);
+    expect(plateLoadingProgress(stockTotal / 2, stockTotal)).toBeCloseTo(0.5, 10);
+    expect(plateLoadingProgress(treeTotal / 2, treeTotal)).toBeCloseTo(0.5, 10);
+  });
+
+  it('emits the tuned disc count and moves them from source x toward sleeve x', () => {
+    const layout = EMPIRE_TUNING.FLOOR_PLATE_LOADING;
+    const start = plateLoadingDiscs(0);
+    const end = plateLoadingDiscs(1);
+    expect(start.length).toBe(layout.discCount);
+    expect(end.length).toBe(layout.discCount);
+    expect(start[0]?.xFraction).toBeCloseTo(layout.sourceXFraction, 10);
+    expect(end[0]?.xFraction).toBeCloseTo(layout.sleeveXFraction, 10);
+    expect(end[0]?.xFraction).toBeGreaterThan(start[0]?.xFraction as number);
+    // Same path, sequential discs: at halfway the first disc has arrived and
+    // the last has not left the stack. Stock 18 and tree 6 share this shape.
+    const mid = plateLoadingDiscs(0.5);
+    expect(mid[0]?.xFraction).toBeCloseTo(layout.sleeveXFraction, 10);
+    expect(mid[layout.discCount - 1]?.xFraction).toBeCloseTo(layout.sourceXFraction, 10);
+  });
+});
+
