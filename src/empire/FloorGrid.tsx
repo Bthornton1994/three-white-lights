@@ -861,8 +861,8 @@ interface PlateLoadingLayer {
 
 /**
  * Stage D2.2: plate discs on the bench while `changeovers` holds the seat.
- * Progress is remaining/total ticks from the same sim state the loading
- * highlight already reads. No parallel timer.
+ * Progress maps remaining=total..1 onto 0..1 so the last drawn frame
+ * reaches the sleeve. No parallel timer.
  */
 function plateLoadingLayers(
   station: FloorStation,

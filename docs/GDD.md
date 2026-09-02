@@ -4235,12 +4235,21 @@ reputation in this piece.
 *World-truth: plate loading.* With the station panel closed, an active
 changeover must read as plates being changed from the floor. The overlay
 reads `FloorSimState.changeovers` remaining ticks against the station's
-total (`stationChangeoverTicks`). No parallel presentation timer. Stock and
-plate-tree share the same disc-travel job; the tree is the same job faster.
-No loader NPC, no staff system. Panel copy "Loading plates" remains
-supporting confirmation. 18 / 6 remain human-open until this presentation
-is played — the prior complaint was that loading was not visible, not that
-2.16 seconds was categorically the wrong duration.
+total (`stationChangeoverTicks`). Visible remaining=total..1 maps onto
+progress 0..1 (`(total - remaining) / (total - 1)` when total > 1), so the
+last drawn frame puts every disc on the sleeve. Remaining 0 is not drawn.
+No parallel presentation timer. Stock and plate-tree share the same
+disc-travel job; the tree is the same job faster. No loader NPC, no staff
+system. Panel copy "Loading plates" remains supporting confirmation. 18 / 6
+remain human-open until this presentation is played — the prior complaint
+was that loading was not visible, not that 2.16 seconds was categorically
+the wrong duration.
+
+*Incidental, already in this closeout, not expanded:* member / station /
+equipment detail panels are `ScrollView`s with `maxHeight` (the same
+min-height × garage-height cap the facility drawers already use) so an
+open panel cannot grow through `gymscreen-dock` into `shell-leave-gym`.
+Floor-reachability 13j is the existing evidence. Do not grow that change.
 
 *D2-OPENING-01 — PARTIAL / DOWNSTREAM-DEPENDENT.* Not closed. The player
 now reaches a queue-relevant purchase sooner than before. At the first

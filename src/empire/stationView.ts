@@ -464,15 +464,28 @@ export function stationManagerEffectView(
 }
 
 /**
- * How far through a plate-changeover the seat is, in [0, 1].
- * 0 = just armed (remaining === total). Approaches 1 as remaining ticks down.
- * Stock (18) and plate-tree (6) share this progress, so the same loading job
- * plays faster when total is smaller. Remaining 0 is not a loading beat.
+ * How far through a plate-changeover the seat is, in [0, 1], across the
+ * discrete ticks the loading layer actually draws.
+ *
+ * The layer renders only while remaining > 0, so mapping
+ * `(total - remaining) / total` never reached 1: the last visible stock
+ * frame was 17/18 and the last visible tree frame was 5/6, which left the
+ * last sequential disc short of the sleeve. Visible remaining=total..1
+ * therefore maps onto 0..1:
+ *
+ *   remaining = total → 0 (just armed, discs on the stack)
+ *   remaining = 1     → 1 (last drawn frame, discs on the sleeve)
+ *
+ * Stock (18) and plate-tree (6) share this path; only the number of
+ * visible frames differs. Remaining 0 is not a loading beat. Total <= 1
+ * cannot span both endpoints; the one visible frame sits at the sleeve
+ * rather than dividing by zero.
  */
 export function plateLoadingProgress(remainingTicks: number, totalTicks: number): number {
   if (!(totalTicks > 0) || remainingTicks <= 0) return 0;
   const remaining = remainingTicks > totalTicks ? totalTicks : remainingTicks;
-  return (totalTicks - remaining) / totalTicks;
+  if (totalTicks <= 1) return 1;
+  return (totalTicks - remaining) / (totalTicks - 1);
 }
 
 /** One plate disc inside a bench footprint, fractions in [0, 1]. */
