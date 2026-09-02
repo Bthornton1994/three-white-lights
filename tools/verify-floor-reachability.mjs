@@ -806,6 +806,21 @@ async function tapGridCell(xTile, yTile) {
 }
 
 /**
+ * Click an RN-web Pressable whose box may sit under `gymscreen-dock`.
+ * Playwright's hit-test then clicks the Shop tab. `force: true` still does
+ * not fire `onPress` — measured in 9h: purse moved by −0.008 (clock
+ * accrual), not the quoted repair. Dispatch the same MouseEvent
+ * `tapGridCell` already uses, on the element itself.
+ */
+async function pressRnWeb(locator) {
+  await locator.evaluate((el) => {
+    el.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true, altKey: false, view: window }),
+    );
+  });
+}
+
+/**
  * Canonical Build path: tap a tray/placed/furniture control, then tap a tile.
  * Does not go through pressById, which would switch floorgrid-* to Play.
  */
@@ -2500,7 +2515,7 @@ try {
       ...(await testIdsStartingWith('floorsim-claimed-session-mats')),
       ...(await testIdsStartingWith('floorsim-using-session-mats')),
     ];
-    await removeButton.click({ timeout: 10000 });
+    await pressRnWeb(removeButton);
     // GDD §5.13 Phase 3 (8d), the reaction itself, polled with nothing in
     // front of it. Taking a machine off the floor while a member is walking to
     // it or standing on it is `target-removed` — the first of the two causes
@@ -2714,16 +2729,15 @@ try {
     }
     const control = page.getByTestId(id);
     await control.scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
-    // Station- and equipment-panel repair sit behind the facility dock on
-    // 390×844 when recovery copy is long. Playwright's hit-test then clicks
-    // the Shop tab, so 9g's repair walk never actually restored the items
-    // and `gymscreen-recover` never entered the DOM. Force the intended
-    // control; the player-visible label is still the repair sentence.
+    // Station- and equipment-panel chrome sit behind the facility dock on
+    // 390×844 when recovery copy is long. Playwright's hit-test clicks the
+    // Shop tab; `force: true` still does not fire RN-web `onPress`. Use the
+    // same element-targeted MouseEvent as `tapGridCell`.
     if (
-      id === 'floorgrid-station-panel-repair' ||
-      id === 'floorgrid-equipment-panel-repair'
+      id.startsWith('floorgrid-station-panel-') ||
+      id.startsWith('floorgrid-equipment-panel-')
     ) {
-      await control.click({ timeout: 10000, force: true });
+      await pressRnWeb(control);
     } else {
       await control.click({ timeout: 10000 });
     }
@@ -3969,7 +3983,8 @@ try {
   // training destination. Tapping it opens the equipment panel and must
   // not open the station panel.
   readAddress('13a-eq: tap power-bar inspects equipment');
-  await page.getByTestId('floorgrid-station-panel-dismiss').click({ timeout: 5000 }).catch(() => {});
+  const dismissBefore13eq = page.getByTestId('floorgrid-station-panel-dismiss');
+  if ((await dismissBefore13eq.count()) > 0) await pressRnWeb(dismissBefore13eq).catch(() => {});
   await page.waitForTimeout(100);
   const powerBarBox13eq = await boxOf('floorgrid-fixed-power-bar');
   if (powerBarBox13eq === null) {
@@ -3994,7 +4009,8 @@ try {
         `13a-eq: tapping power-bar did not inspect equipment — drawn=${equipmentDrawn13eq.drawn} (${equipmentDrawn13eq.why}), identity="${equipmentIdentity13eq}", station panels=${stationCount13eq}`,
       );
     }
-    await page.getByTestId('floorgrid-equipment-panel-dismiss').click({ timeout: 5000 }).catch(() => {});
+    const dismissEquipment13eq = page.getByTestId('floorgrid-equipment-panel-dismiss');
+    if ((await dismissEquipment13eq.count()) > 0) await pressRnWeb(dismissEquipment13eq).catch(() => {});
     await page.waitForTimeout(100);
   }
 
@@ -4180,7 +4196,7 @@ try {
       `13e: expected a live repair control with a quoted cost on a worn item, named on the independent worn-list — button present=${repairButtonExists13}, quote=${repairQuote13}, purse=${purseBeforeRepair13}, mats on worn-list=${matsWornBeforeRepair13} ("${wornBeforeRepair13}")`,
     );
   } else {
-    await repairButton13.click({ timeout: 10000, force: true });
+    await pressRnWeb(repairButton13);
     await page.waitForTimeout(200);
     const purseAfterRepair13 = numberInText(await textOf('gymscreen-gym-bucks'), /gym bucks: ([\d.]+)/);
     const charged13 = purseAfterRepair13 === null ? null : purseBeforeRepair13 - purseAfterRepair13;
@@ -4239,7 +4255,7 @@ try {
   if (!removeButtonExists13) {
     fail('13f: floorgrid-station-panel-remove is not on screen for a placed session item');
   } else {
-    await removeButton13.click({ timeout: 10000 });
+    await pressRnWeb(removeButton13);
     await page.waitForTimeout(250);
     const stillPlaced13 = await page.getByTestId('floorgrid-placed-mats').count().then((n) => n > 0).catch(() => false);
     await openGymSurface('build');
@@ -4298,7 +4314,7 @@ try {
   if (!dismissExists13) {
     fail('13g: floorgrid-station-panel-dismiss is not on screen with a panel open');
   } else {
-    await dismissButton13.click({ timeout: 10000 });
+    await pressRnWeb(dismissButton13);
     await page.waitForTimeout(150);
     const panelGoneAfterDismiss13 = await page
       .getByTestId('floorgrid-station-panel')
