@@ -10430,7 +10430,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // GDD §5.14 Stage B: thirteen new dropped points. Read from this pin's own
   // failure value.
   // 9415846 -> 9429777: Stage C.1b overflow strings. Measured.
-  STRINGS: 9515624,
+  STRINGS: 9985596,
   // GDD §5.13 presentation Phase 3: re-measured (4366 -> 4378), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (4378 -> 4381).
@@ -11357,7 +11357,7 @@ const DRIVE_CENSUS = Object.freeze({
   // manager-tier list's own keyed getters are untouched. Read from this
   // pin's own failure value.
   // 268 -> 283: Stage C.1b keyed dock/surface/furniture children. Measured.
-  GETTERS_INVOKED: 283,
+  GETTERS_INVOKED: 301,
   PROXIES: 0,
   /**
    * Nullary functions the walk CALLED, how many threw, and how many
@@ -16935,7 +16935,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 75_810 -> 76_242: Stage D2.1A live-Capacity relocate / assignedSeat AST.
   // Read from this pin last.
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
-  NODES_EXAMINED: 77_029,
+  NODES_EXAMINED: 78_280,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
