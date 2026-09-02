@@ -15443,7 +15443,8 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // 40 -> 44: GDD §5.18 Stage D.1 training-station identity / refuse copy.
       // 44 -> 46: Stage D2.1B playerFacingStationOperation.
       // 46 -> 49: Stage D2.2 plateLoadingProgress (2) + plateLoadingDiscs (1).
-      'stationView.ts': 49,
+      // 49 -> 50: last-visible-frame sleeve map, total<=1 return.
+      'stationView.ts': 50,
       'stationCapability.ts': 27,
       // GDD §5.18 Stage D.1: trainingStation.ts's own returns across the
       // bay derivation and its helpers. Read from this table's own failure.
@@ -16784,7 +16785,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 911 -> 916: Stage D2.1A floorSim return 63 -> 68.
   // 916 -> 925: Stage D2.1B floorSim 68→72, stationCapability 24→27,
   // stationView 44→46.
-  SITES: 938, // 937 -> 938: FloorGrid plateLoadingDiscViews return
+  SITES: 939, // 938 -> 939: stationView plateLoadingProgress total<=1 return
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -16936,7 +16937,8 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // Read from this pin last.
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
   // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
-  NODES_EXAMINED: 78_294,
+  // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
+  NODES_EXAMINED: 78_305,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
