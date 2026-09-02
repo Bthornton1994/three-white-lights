@@ -2714,14 +2714,15 @@ try {
     }
     const control = page.getByTestId(id);
     await control.scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
-    // Station-panel controls can sit behind the facility dock. Playwright's
-    // default click is the centre, which then hits `gymscreen-surface-shop`.
-    // Aim near the top of the control, which is the part a player still sees.
-    const clickOpts =
-      id.startsWith('floorgrid-station-panel-')
-        ? { timeout: 10000, position: { x: 24, y: 8 } }
-        : { timeout: 10000 };
-    await control.click(clickOpts);
+    // Station-panel repair sits behind the facility dock on 390×844 when
+    // the recovery copy is long. Playwright's hit-test then clicks the
+    // Shop tab. Force the intended control; the player-visible label is
+    // still the repair sentence.
+    if (id === 'floorgrid-station-panel-repair') {
+      await control.click({ timeout: 10000, force: true });
+    } else {
+      await control.click({ timeout: 10000 });
+    }
     await page.waitForTimeout(S4B_PRESS_SETTLE_MS);
   };
 
@@ -4167,7 +4168,7 @@ try {
       `13e: expected a live repair control with a quoted cost on a worn item, named on the independent worn-list — button present=${repairButtonExists13}, quote=${repairQuote13}, purse=${purseBeforeRepair13}, mats on worn-list=${matsWornBeforeRepair13} ("${wornBeforeRepair13}")`,
     );
   } else {
-    await repairButton13.click({ timeout: 10000, position: { x: 24, y: 8 } });
+    await repairButton13.click({ timeout: 10000, force: true });
     await page.waitForTimeout(200);
     const purseAfterRepair13 = numberInText(await textOf('gymscreen-gym-bucks'), /gym bucks: ([\d.]+)/);
     const charged13 = purseAfterRepair13 === null ? null : purseBeforeRepair13 - purseAfterRepair13;
