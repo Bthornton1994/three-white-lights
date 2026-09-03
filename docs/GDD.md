@@ -3185,8 +3185,9 @@ than the ruling's own §1–§23 sequence:
 - **Stage F.** Portfolio unpause (item 5) — multiple acquired locations,
   remote management, full unattended staffing.
 - **Stage G.** NPC roster/tenure depth (item 6). **G.1** (living floor-member
-  identity + service outcome foundation) pre-human authority closed at
-  `8fc4fcbf` — awaiting human identity/consequence gate at 390×844.
+  identity + service outcome foundation) remains OPEN after G.1C presentation
+  correction — awaiting targeted identity / Throughput / Capacity replay at
+  390×844. G.1A architecture accepted; N=5 accepted.
 
 ### Human Stage C rejection at `f097695b`
 
@@ -4474,12 +4475,27 @@ state is a later explicit crossing.
 
 #### Stage G.1 — Living Member Identity + Service Outcome Foundation
 
-**STAGE G.1 PRE-HUMAN AUTHORITY CLOSED. READY FOR HUMAN IDENTITY / CONSEQUENCE
-GATE.** Closeout candidate HEAD `8fc4fcbf9d36f829252d35d0e642c5cc3482cce2` on
-branch `cursor/d2-2-closeout-8f47` after D2 close and Stage E close. G.1A
-corrected identity authority; this section is the current authority. Historical
-G.1 rejection notes below remain accurate where they record what was wrong
-before G.1A — they are not rewritten.
+**STAGE G.1 REMAINS OPEN pending targeted identity / Throughput / Capacity
+replay.** G.1A identity/service architecture is accepted. G.1B closed
+pre-human authority at `8fc4fcbf9d36f829252d35d0e642c5cc3482cce2`. Human
+gate at `7c25074e770896428bcfda6f41787fb13b52f167` (390×844 Expo player
+surface) produced:
+
+| Leg | Verdict |
+|---|---|
+| IDENTITY | PARTIAL — persistence real; opening Garage members were three numbered Powerlifters |
+| MEMORY | PASS |
+| QUALITY | PASS |
+| CAPACITY | HUMAN INCONCLUSIVE |
+| THROUGHPUT | FAILED PLAYER LEGIBILITY — 95 and 128 ticks both read "long wait" |
+| PERSISTENCE | PASS |
+| N=5 | ACCEPTED |
+
+G.1C is a **presentation translation** correction on that HEAD. It does not
+redesign LivingMemberRoster authority, gym-local ids, relocation
+reconciliation, memberId observation routing, true `queueWaitTicks`, FloorSim
+observations, bounded history, or offline behaviour. Historical G.1 / G.1A /
+G.1B notes below stay as they were.
 
 **Three populations stay separate:**
 
@@ -4493,10 +4509,11 @@ before G.1A — they are not rewritten.
 
 - `GymMemberId` is **gym-local**: `member:n{identityNonce}:{ordinal}`. Facility
   rung is **not** part of identity.
-- Facility **relocation** preserves every existing member exactly: `id`, `type`,
-  `joinedAtSeconds`, `recentVisits`. Larger facilities deterministically
-  **append** new members only (`reconcileLivingMemberRosterOnRelocation`); a
-  destination that would require fewer members is refused.
+- Facility **relocation** preserves every existing member exactly: `id`,
+  `displayName`, `type`, `joinedAtSeconds`, `recentVisits`. Larger facilities
+  deterministically **append** new members only
+  (`reconcileLivingMemberRosterOnRelocation`); a destination that would require
+  fewer members is refused.
 - Existing `LivingGymMember.type` is **frozen** during G.1 — equipment purchases
   may change what *new* members would attract, not retag people already on the
   floor.
@@ -4523,13 +4540,55 @@ before G.1A — they are not rewritten.
   panel shows short id, tenure, and recent service (`no recent service yet`
   when empty).
 - `empireTuning.ts` — `LIVING_MEMBER_SERVICE_HISTORY_WINDOWS` candidates [3, 5,
-  8]; **shipped candidate 5** (provisional — see below).
+  8]; **shipped window 5** (human-accepted — see G.1C).
 
-**Service-history window (provisional, not retuned in G.1B):** Measured roll-off
+**Service-history window (G.1B measurement, G.1C ruling):** Measured roll-off
 shows the first good visit is visible immediately at all three candidate
 windows; complete bad-history roll-off requires **N** subsequent good visits.
-**N = 5** is therefore a provisional product choice pending human card-density /
-memory judgment — not justified by "middle option" alone.
+**N = 5 is accepted.** Five rows fit and scan at 390×844; one new good visit
+is visible immediately; N=3 would feel too disposable; N=8 would crowd the
+card before later member UI. The flatness of five identical "long wait" rows
+was a wait-copy granularity failure, not a history-length failure. Do not
+retune N.
+
+**G.1C wait copy (presentation only):** Player-facing wait labels remain a
+function of `queueWaitTicks` alone — no upgrade name, no Q/C/T ownership, no
+fake baseline, no raw ticks as primary UX.
+
+| ticks | label |
+|---|---|
+| 0 | no wait |
+| 1…15 (`SHORT_MAX`) | short wait |
+| 16…39 | waited a while |
+| 40…99 (`LONG_MIN` … `VERY_LONG_MIN − 1`) | long wait |
+| ≥ 100 (`VERY_LONG_MIN`) | very long wait |
+
+`SHORT_MAX = 15` and `LONG_MIN = 40` are unchanged. `VERY_LONG_MIN = 100`
+was chosen from the Garage service study (same roster, seed, one-bench
+layout, 1000-tick budget):
+
+| condition | n | min | median | mean | p75 | p90 | max |
+|---|---|---|---|---|---|---|---|
+| stock | 17 | 0 | 132 | 116.59 | 133 | 134 | 134 |
+| Quality | 17 | 0 | 132 | 116.59 | 133 | 134 | 134 |
+| Capacity | 25 | 0 | 49 | 52.52 | 65 | 93 | 94 |
+| Throughput | 22 | 0 | 94 | 86.36 | 96 | 100 | 101 |
+
+Matched `member:n1:0` second completion: stock 128 / Throughput 95.
+Candidates 80 and 90 still mapped both to the same phrase. 100 is the
+lowest candidate that keeps 95 in "long wait" (not short) and 128 in
+"very long wait", with Capacity's whole distribution below the upper tail.
+Throughput changeover remains 18 → 6; set duration unchanged.
+
+**G.1C display names (presentation identity only):** `LivingGymMember` carries
+a stored `displayName` from a 64-entry curated given-name pool (warehouse
+max is 40). Assigned once at creation from the member ordinal; relocation,
+observations, Q/C/T purchases, session-equipment changes, navigation, and
+offline clock do not rename anyone. New arrivals on expansion get the next
+ordinal's name. Names never enter FloorSim, station choice, dues, reputation,
+retention, Training IQ, Career, or meet results. Member cards lead with the
+given name, then type, then `member N`. The floor does not float names over
+every sprite — only the selected member may show a compact name cue.
 
 **Explicitly NOT built (later G stages):**
 

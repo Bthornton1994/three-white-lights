@@ -2,6 +2,9 @@
  * livingMembers.test.ts — Stage G.1 / G.1A living identity and service outcomes.
  */
 
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { createFloorState } from './floor';
@@ -21,15 +24,19 @@ import {
   applyServiceObservations,
   createLivingMemberRoster,
   deriveMemberId,
+  displayNameForCreation,
   floorSimPopulationFromRoster,
   livingMemberAtIndex,
   livingMemberById,
+  LIVING_MEMBER_GIVEN_NAMES,
   memberIdForIndex,
   memberOrdinalFromId,
   playerFacingServiceVisitLine,
   playerFacingTenureLine,
   playerFacingWaitExperience,
+  reconcileLivingMemberRosterOnRelocation,
   SERVICE_HISTORY_WINDOWS,
+  SERVICE_WAIT_VERY_LONG_MIN_TICKS,
   SHIPPED_SERVICE_HISTORY_WINDOW,
   type LivingGymMember,
   type LivingMemberRoster,
@@ -50,6 +57,7 @@ const KIT = Object.freeze([...T.LADDER_STARTING_EQUIPMENT]);
 
 interface MemberSnapshot {
   readonly id: string;
+  readonly displayName: string;
   readonly type: LivingGymMember['type'];
   readonly joinedAtSeconds: number;
   readonly recentVisits: readonly ServiceVisitRecord[];
@@ -60,6 +68,7 @@ function snapshotMembers(roster: LivingMemberRoster): readonly MemberSnapshot[] 
     roster.members.map((member) =>
       Object.freeze({
         id: member.id,
+        displayName: member.displayName,
         type: member.type,
         joinedAtSeconds: member.joinedAtSeconds,
         recentVisits: Object.freeze([...member.recentVisits]),
@@ -159,9 +168,10 @@ describe('Stage G.1A — gym-local member identity', () => {
     expect(memberIdForIndex(roster, 0)).toBe(roster.members[0]?.id ?? null);
   });
 
-  it('keeps member ids across capability upgrades in GymViewState', () => {
+  it('keeps member ids and display names across capability upgrades in GymViewState', () => {
     let state = createGymViewState();
-    const before = state.livingMembers.members.map((member) => member.id);
+    const beforeIds = state.livingMembers.members.map((member) => member.id);
+    const beforeNames = state.livingMembers.members.map((member) => member.displayName);
     state = Object.freeze({
       ...state,
       managed: withUpdatedGym(
@@ -175,13 +185,17 @@ describe('Stage G.1A — gym-local member identity', () => {
         }),
       ),
     });
-    state = gymViewReduce(state, {
-      kind: 'upgrade-station',
-      station: COMPETITION_BENCH_BAY,
-      axis: 'quality',
-    });
-    const after = state.livingMembers.members.map((member) => member.id);
-    expect(after).toEqual(before);
+    for (const axis of ['quality', 'capacity', 'throughput'] as const) {
+      state = gymViewReduce(state, {
+        kind: 'upgrade-station',
+        station: COMPETITION_BENCH_BAY,
+        axis,
+      });
+    }
+    const afterIds = state.livingMembers.members.map((member) => member.id);
+    const afterNames = state.livingMembers.members.map((member) => member.displayName);
+    expect(afterIds).toEqual(beforeIds);
+    expect(afterNames).toEqual(beforeNames);
   });
 });
 
@@ -558,7 +572,7 @@ describe('Stage G.1A — service history window evidence', () => {
     });
   }
 
-  it('reports roll-off timing for windows 3, 5 and 8 — shipped candidate 5 stays provisional', () => {
+  it('reports roll-off timing for windows 3, 5 and 8 — shipped window 5 is frozen', () => {
     const table = SERVICE_HISTORY_WINDOWS.map((window) => rollOffReport(window));
     expect(table).toEqual([
       {
@@ -581,9 +595,11 @@ describe('Stage G.1A — service history window evidence', () => {
       },
     ]);
     expect(SHIPPED_SERVICE_HISTORY_WINDOW).toBe(5);
+    expect(T.LIVING_MEMBER_SERVICE_HISTORY_WINDOW).toBe(5);
+    expect(T.LIVING_MEMBER_SERVICE_HISTORY_WINDOWS).toEqual([3, 5, 8]);
     // First good visit is visible immediately at every candidate window; clearing
-    // bad history fully requires N subsequent good visits. N=5 is provisional
-    // pending human card-density / memory judgment — not "middle option" alone.
+    // bad history fully requires N subsequent good visits. N=5 is the accepted
+    // card-density choice — not "middle option" alone, and not retuned.
     expect(table.every((row) => row.improvementVisibleAfterGoodVisits === 1)).toBe(true);
     expect(table.every((row) => row.goodVisitsToClearBad === row.window)).toBe(true);
   });
@@ -608,5 +624,267 @@ describe('Stage G.1 — player-facing copy', () => {
     const roster = createLivingMemberRoster('garage', KIT, [], 100, T.FLOOR_SIM_RENDER_SEED);
     const member = livingMemberAtIndex(roster, 0);
     expect(member?.joinedAtSeconds).toBe(100);
+  });
+});
+
+const WAIT_LABEL_RANK = Object.freeze([
+  'no wait',
+  'short wait',
+  'waited a while',
+  'long wait',
+  'very long wait',
+] as const);
+
+function waitRank(queueWaitTicks: number): number {
+  const label = playerFacingWaitExperience(queueWaitTicks);
+  const rank = WAIT_LABEL_RANK.indexOf(label as (typeof WAIT_LABEL_RANK)[number]);
+  expect(rank, `unranked wait label ${label} at ${queueWaitTicks}`).toBeGreaterThanOrEqual(0);
+  return rank;
+}
+
+describe('Stage G.1C — wait copy resolution', () => {
+  it('pins the accepted bucket edges, including no-wait and very-long', () => {
+    expect(T.LIVING_MEMBER_WAIT_SHORT_MAX_TICKS).toBe(15);
+    expect(T.LIVING_MEMBER_WAIT_LONG_MIN_TICKS).toBe(40);
+    expect(T.LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS).toBe(100);
+    expect(SERVICE_WAIT_VERY_LONG_MIN_TICKS).toBe(100);
+    expect(playerFacingWaitExperience(0)).toBe('no wait');
+    expect(playerFacingWaitExperience(T.LIVING_MEMBER_WAIT_SHORT_MAX_TICKS)).toBe('short wait');
+    expect(playerFacingWaitExperience(T.LIVING_MEMBER_WAIT_SHORT_MAX_TICKS + 1)).toBe(
+      'waited a while',
+    );
+    expect(playerFacingWaitExperience(T.LIVING_MEMBER_WAIT_LONG_MIN_TICKS)).toBe('long wait');
+    expect(playerFacingWaitExperience(T.LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS - 1)).toBe(
+      'long wait',
+    );
+    expect(playerFacingWaitExperience(T.LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS)).toBe(
+      'very long wait',
+    );
+  });
+
+  it('is monotonic across 0..200 ticks: a longer wait never gets a better label', () => {
+    let previous = waitRank(0);
+    for (let ticks = 1; ticks <= 200; ticks += 1) {
+      const next = waitRank(ticks);
+      expect(next, `ticks ${ticks}`).toBeGreaterThanOrEqual(previous);
+      previous = next;
+    }
+  });
+
+  it('keeps the measured 95-vs-128 Throughput delta visible after translation', () => {
+    const at95 = playerFacingWaitExperience(95);
+    const at128 = playerFacingWaitExperience(128);
+    expect(at95).not.toBe(at128);
+    expect(waitRank(95)).toBeLessThan(waitRank(128));
+  });
+
+  it('rejects VERY_LONG candidates that still collapse the measured 95-vs-128 pair', () => {
+    const veryLongMin = T.LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS;
+    const longMin = T.LIVING_MEMBER_WAIT_LONG_MIN_TICKS;
+    expect(longMin).toBe(40);
+    expect(veryLongMin).toBe(100);
+    // Both measured waits sit above LONG_MIN, so the only thing that can
+    // separate them is the upper band. Candidates 80 and 90 still put both
+    // ticks in the same band; 100 is the lowest listed candidate that does not.
+    expect(95 >= 80 && 128 >= 80).toBe(true);
+    expect(95 >= 90 && 128 >= 90).toBe(true);
+    expect(95 < veryLongMin && 128 >= veryLongMin).toBe(true);
+    expect(95 < 110 && 128 >= 110).toBe(true);
+    expect(95 < 120 && 128 >= 120).toBe(true);
+    // 95 remains a long wait, not a short or empty one — the upper band does
+    // not pretend Throughput's measured wait is a good wait.
+    expect(95).toBeGreaterThan(longMin);
+    expect(waitRank(95)).toBe(WAIT_LABEL_RANK.indexOf('long wait'));
+    expect(waitRank(128)).toBe(WAIT_LABEL_RANK.indexOf('very long wait'));
+  });
+
+  it('derives wait copy from queueWaitTicks only — no Q/C/T-aware branch', () => {
+    const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'livingMembers.ts'), 'utf8');
+    const start = source.indexOf('export function playerFacingWaitExperience');
+    const end = source.indexOf('export function playerFacingTrainingExperience');
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+    const body = source.slice(start, end);
+    expect(body).not.toMatch(/throughput/i);
+    expect(body).not.toMatch(/capacity/i);
+    expect(body).not.toMatch(/quality/i);
+    expect(body).not.toMatch(/upgrade/i);
+  });
+});
+
+describe('Stage G.1C — persistent display names', () => {
+  it('assigns deterministic unique names from a pool at least as large as warehouse', () => {
+    expect(LIVING_MEMBER_GIVEN_NAMES.length).toBe(64);
+    expect(LIVING_MEMBER_GIVEN_NAMES.length).toBeGreaterThanOrEqual(
+      T.AMBIENT_MEMBER_COUNT_BY_RUNG.warehouse,
+    );
+    expect(new Set(LIVING_MEMBER_GIVEN_NAMES).size).toBe(LIVING_MEMBER_GIVEN_NAMES.length);
+    expect(displayNameForCreation(T.FLOOR_SIM_RENDER_SEED, 0)).toBe(LIVING_MEMBER_GIVEN_NAMES[0]);
+    const garage = createLivingMemberRoster('garage', KIT, [], 0, T.FLOOR_SIM_RENDER_SEED);
+    expect(garage.members.map((member) => member.displayName)).toEqual(
+      garage.members.map((_, index) => LIVING_MEMBER_GIVEN_NAMES[index]),
+    );
+    const warehouse = createLivingMemberRoster('warehouse', KIT, [], 0, T.FLOOR_SIM_RENDER_SEED);
+    expect(warehouse.members.length).toBe(T.AMBIENT_MEMBER_COUNT_BY_RUNG.warehouse);
+    const names = warehouse.members.map((member) => member.displayName);
+    expect(new Set(names).size).toBe(names.length);
+    expect(names).toEqual(
+      [...LIVING_MEMBER_GIVEN_NAMES].slice(0, T.AMBIENT_MEMBER_COUNT_BY_RUNG.warehouse),
+    );
+  });
+
+  it('stores the chosen name so observations, clock, and equipment cannot rename anyone', () => {
+    const roster = createLivingMemberRoster('garage', KIT, [], 0, T.FLOOR_SIM_RENDER_SEED);
+    const original = roster.members.map((member) => member.displayName);
+    const { observations } = collectObservations(
+      contextWithRoster(roster, stockStationCapability()),
+      400,
+    );
+    const afterVisits = applyServiceObservations(roster, observations);
+    expect(afterVisits.members.map((member) => member.displayName)).toEqual(original);
+    expect(afterVisits.members.some((member) => member.recentVisits.length > 0)).toBe(true);
+
+    let state = createGymViewState();
+    const openingNames = state.livingMembers.members.map((member) => member.displayName);
+    state = gymViewReduce(state, { kind: 'advance-clock', gapSeconds: T.SECONDS_PER_DAY * 3 });
+    expect(state.livingMembers.members.map((member) => member.displayName)).toEqual(openingNames);
+
+    state = Object.freeze({
+      ...state,
+      managed: withUpdatedGym(
+        state.managed,
+        Object.freeze({
+          ...state.managed.gym,
+          ladder: Object.freeze({
+            ...state.managed.gym.ladder,
+            gymBucks: 10_000,
+          }),
+        }),
+      ),
+    });
+    const mats = buySessionEquipment(state.managed.gym, 'mats');
+    state = gymViewReduce(state, { kind: 'buy-session', item: 'mats' });
+    expect(mats.kind === 'bought' || state.livingMembers.members.length > 0).toBe(true);
+    expect(state.livingMembers.members.map((member) => member.displayName)).toEqual(openingNames);
+  });
+
+  it('preserves existing names through every facility move and gives unique names to arrivals', () => {
+    let state = createGymViewState();
+    const opening = snapshotMembers(state.livingMembers);
+    expect(new Set(opening.map((member) => member.displayName)).size).toBe(opening.length);
+
+    for (let step = 1; step < RUNGS.length; step += 1) {
+      state = fundForNextMove(state);
+      const before = snapshotMembers(state.livingMembers);
+      state = gymViewReduce(state, { kind: 'move-up' });
+      const after = snapshotMembers(state.livingMembers);
+      expect(state.managed.gym.ladder.rung).toBe(RUNGS[step]);
+      for (let index = 0; index < before.length; index += 1) {
+        expect(after[index]?.displayName).toBe(before[index]?.displayName);
+        expect(after[index]?.id).toBe(before[index]?.id);
+      }
+      const names = after.map((member) => member.displayName);
+      expect(new Set(names).size).toBe(names.length);
+      const arrivals = after.slice(before.length);
+      arrivals.forEach((member, offset) => {
+        expect(member.displayName).toBe(LIVING_MEMBER_GIVEN_NAMES[before.length + offset]);
+      });
+    }
+  });
+
+  it('does not hand displayName to FloorSim population or floorSim.ts', () => {
+    const roster = createLivingMemberRoster('garage', KIT, [], 0, T.FLOOR_SIM_RENDER_SEED);
+    const population = floorSimPopulationFromRoster(roster);
+    expect(population.map((row) => Object.keys(row).sort())).toEqual(
+      population.map(() => ['memberId', 'type']),
+    );
+    const simSource = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'floorSim.ts'), 'utf8');
+    expect(simSource).not.toMatch(/displayName/);
+  });
+
+  it('keeps a stored displayName even when it no longer matches the pool', () => {
+    const roster = createLivingMemberRoster('garage', KIT, [], 0, T.FLOOR_SIM_RENDER_SEED);
+    const first = roster.members[0];
+    expect(first).toBeDefined();
+    const held = Object.freeze({
+      ...roster,
+      members: Object.freeze(
+        roster.members.map((member, index) =>
+          index === 0
+            ? Object.freeze({ ...member, displayName: 'HeldName' })
+            : member,
+        ),
+      ),
+    });
+    const afterClock = applyServiceObservations(held, []);
+    expect(afterClock.members[0]?.displayName).toBe('HeldName');
+    const relocated = reconcileLivingMemberRosterOnRelocation(
+      held,
+      'storage-unit',
+      [],
+      T.SECONDS_PER_DAY,
+    );
+    expect(relocated.members[0]?.displayName).toBe('HeldName');
+    expect(relocated.members[0]?.id).toBe(first?.id);
+    expect(relocated.members.slice(1).every((member) => member.displayName !== 'HeldName')).toBe(
+      true,
+    );
+  });
+
+  it('survives a GymViewState remount that keeps the living roster', () => {
+    let state = createGymViewState();
+    const { observations } = collectObservations(garageContext(), 400);
+    state = gymViewReduce(state, {
+      kind: 'apply-living-member-observations',
+      observations,
+    });
+    const names = state.livingMembers.members.map((member) => member.displayName);
+    const remounted = Object.freeze({ ...state });
+    expect(remounted.livingMembers).toBe(state.livingMembers);
+    expect(remounted.livingMembers.members.map((member) => member.displayName)).toEqual(names);
+  });
+
+  it('puts displayName first on the member card and names only the selected sprite', () => {
+    const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'FloorGrid.tsx'), 'utf8');
+    const panel = source.indexOf("testID={'floorgrid-member-panel'}");
+    const displayName = source.indexOf("testID={'floorgrid-member-panel-display-name'}", panel);
+    const typeLine = source.indexOf("testID={'floorgrid-member-panel-identity'}", panel);
+    const shortId = source.indexOf("testID={'floorgrid-member-panel-short-id'}", panel);
+    expect(panel).toBeGreaterThanOrEqual(0);
+    expect(displayName).toBeGreaterThan(panel);
+    expect(typeLine).toBeGreaterThan(displayName);
+    expect(shortId).toBeGreaterThan(typeLine);
+    expect(source).toMatch(/selectedName === undefined \? null/);
+    expect(source).toContain("testID={'floorgrid-selected-member-name'}");
+    expect(source.includes('members.map((member) => member.displayName)')).toBe(false);
+  });
+
+  it('does not let mechanics consume living displayName', () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const isolated = Object.freeze([
+      'floorSim.ts',
+      'stationCapability.ts',
+      'production.ts',
+      'reputation.ts',
+      'sportingReputation.ts',
+      'sessions.ts',
+      'members.ts',
+    ]);
+    for (const file of isolated) {
+      const source = readFileSync(join(here, file), 'utf8');
+      expect(source, file).not.toMatch(/LIVING_MEMBER_GIVEN_NAMES/);
+      expect(source, file).not.toMatch(/displayNameForCreation/);
+    }
+    const living = readFileSync(join(here, 'livingMembers.ts'), 'utf8');
+    expect(living).not.toMatch(/memberSatisfaction\(/);
+    expect(living).not.toMatch(/reputationFromMembers\(/);
+    expect(living).not.toMatch(/memberDues|duesGymBucks/);
+    expect(living).not.toMatch(/Math\.random\(/);
+  });
+
+  it('never prints raw queueWaitTicks as the player-facing wait phrase', () => {
+    for (let ticks = 0; ticks <= 200; ticks += 1) {
+      expect(playerFacingWaitExperience(ticks)).not.toMatch(/\d/);
+    }
   });
 });

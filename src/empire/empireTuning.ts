@@ -1984,6 +1984,16 @@ export const EMPIRE_TUNING = Object.freeze({
   /** Wait-label buckets on member cards, in floor-sim ticks. */
   LIVING_MEMBER_WAIT_SHORT_MAX_TICKS: 15,
   LIVING_MEMBER_WAIT_LONG_MIN_TICKS: 40,
+  /**
+   * Stage G.1C — upper wait band. Garage service study (same roster, seed,
+   * layout, 1000-tick budget): stock mean 116.59 / matched second wait 128;
+   * Throughput mean 86.36 / matched second wait 95; Capacity mean 52.52 /
+   * max 94. Candidates 80 and 90 still mapped 95 and 128 to the same phrase.
+   * 100 is the lowest candidate that keeps 95 in "long wait" (not short),
+   * puts 128 in "very long wait", and leaves Capacity's whole distribution
+   * below the upper tail.
+   */
+  LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS: 100,
 
   /**
    * as a fraction of the smaller of its footprint's two rendered dimensions.
@@ -2862,6 +2872,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   LIVING_MEMBER_SERVICE_HISTORY_WINDOW: 'knob',
   LIVING_MEMBER_WAIT_SHORT_MAX_TICKS: 'knob',
   LIVING_MEMBER_WAIT_LONG_MIN_TICKS: 'knob',
+  LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS: 'knob',
   FLOOR_SIM_CUE_DIAMETER_FRACTION: 'knob',
   FLOOR_PLATE_LOADING: 'knob',
   FLOOR_SIM_CUE_GAP_PIXELS: 'knob',

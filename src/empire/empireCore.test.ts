@@ -3847,7 +3847,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // space-free token.
     // 671 -> 672: Stage G.1 member panel — `no recent service yet`.
     // 672 -> 688: Stage G.1 `livingMembers.ts` refuseWith and id-template strings.
-    expect(singleQuoted.size).toBe(688);
+    // 688 -> 756: Stage G.1C 64 given names plus wait-copy and selected-name testIDs.
+    expect(singleQuoted.size).toBe(756);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3970,7 +3971,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 354 -> 353: Stage E.1 dropped totalKg / fieldSize / duplicate-qualify
     // templates and added outcome / categoryFieldSize ones; net −1 unique chunk.
     // 353 -> 364 -> 370: Stage G.1A livingMembers refuseWith / id templates.
-    expect(templateChunks.size).toBe(370);
+    // 370 -> 372: Stage G.1C display-name pool and wait-copy refuse templates.
+    expect(templateChunks.size).toBe(372);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4023,35 +4025,99 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       ':',
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
       'Accessory',
+      'Anya',
+      'Arlo',
       'Athlete',
+      'Bec',
       'Belts',
       'Bike',
+      'Blair',
       'Bodybuilder',
       'Cables',
       'Casual',
+      'Cole',
       'Conditioning',
+      'Cora',
+      'Dara',
+      'Dove',
+      'Drew',
       'Dumbbells',
+      'Elke',
+      'Ellis',
+      'Enzo',
+      'Farah',
+      'Felix',
+      'Fern',
+      'Galen',
+      'Gray',
       'GymMemberId',
+      'Hale',
+      'Hana',
+      'Hugo',
       'IDAT',
       'IEND',
       'IHDR',
       'Idle',
+      'Ines',
       'Interrupted',
+      'Ivo',
+      'Jonas',
+      'Joss',
       'KSTHJDPZBWLMERQUVONCGFAXY',
+      'Kade',
+      'Kai',
+      'Kian',
       'Leaving',
+      'Leif',
+      'Lila',
       'Machines',
+      'Mara',
       'Mats',
+      'Miles',
+      'Mira',
+      'Nia',
+      'Nils',
+      'Noor',
+      'Olin',
+      'Omar',
+      'Orla',
       'PLTE',
+      'Paz',
+      'Petra',
+      'Pia',
       'Placeholder',
       'Powerlifter',
+      'Priya',
+      'Quinn',
+      'Rafi',
       'Recovery',
+      'Reid',
+      'Remy',
+      'Rina',
+      'Rowan',
       'Rower',
       'Sauna',
+      'Shae',
+      'Skye',
       'Sled',
       'Sleeves',
+      'Soren',
+      'Suki',
       'Support',
+      'Tessa',
+      'Theo',
+      'Toni',
+      'Tove',
       'Treadmill',
+      'Uma',
+      'Veda',
+      'Vera',
       'Walking',
+      'Wren',
+      'Wynn',
+      'Yara',
+      'Yves',
+      'Zora',
       'absence-strike-control',
       'absolute',
       'accelerated',
@@ -4203,6 +4269,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-grid',
       'floorgrid-member-panel',
       'floorgrid-member-panel-dismiss',
+      'floorgrid-member-panel-display-name',
       'floorgrid-member-panel-identity',
       'floorgrid-member-panel-no-history',
       'floorgrid-member-panel-short-id',
@@ -4217,6 +4284,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-root',
       'floorgrid-scroll-x',
       'floorgrid-scroll-y',
+      'floorgrid-selected-member-name',
       // GDD §5.14 Stage C: the contextual station panel's ten new testIDs.
       'floorgrid-station-panel',
       'floorgrid-station-panel-condition',
@@ -4707,7 +4775,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 364 -> 374 — ten new space-free tokens plus eighteen new template
     // chunks from livingMembers refuseWith / member-card copy. Read from this
     // assertion's own failure value.
-    expect(stringsChecked).toBe(1058);
+    // 1058 -> 1128: Stage G.1C — 68 new single-quoted literals (64 given
+    // names, two wait phrases, two selected/card testIDs) plus two template
+    // chunks. Read from this assertion's own failure value.
+    expect(stringsChecked).toBe(1128);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5542,7 +5613,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 413 -> 422: Stage D2.2 nine new tuning literals (SECONDS_PER_MINUTE,
     // two watched grains, six FLOOR_PLATE_LOADING leaves).
     // 428 -> 434: Stage G.1 four living-member service-history knobs.
-    ).toBe(434);
+    // 434 -> 435: Stage G.1C LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS.
+    ).toBe(435);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

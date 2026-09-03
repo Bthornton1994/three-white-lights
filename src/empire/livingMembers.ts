@@ -10,6 +10,10 @@
  * (`member:n1:0`) and do NOT encode the current facility rung. Facility
  * relocation reconciles the roster — it never recreates existing members.
  *
+ * G.1C PRESENTATION: `displayName` is a stored given name assigned once at
+ * creation. It does not enter FloorSim, station choice, or any G.2 quantity.
+ * Wait copy uses `queueWaitTicks` only — no upgrade-name branch.
+ *
  * NOT BUILT HERE, ON PURPOSE — later stages:
  *
  *   - No retention/departure, no dues wiring, no `reputationFromMembers`
@@ -48,6 +52,8 @@ export interface ServiceVisitRecord {
 /** One persistent member the player can recognise across sim resets. */
 export interface LivingGymMember {
   readonly id: GymMemberId;
+  /** Presentation identity only. Assigned once at creation and stored. */
+  readonly displayName: string;
   /** Frozen for this member's lifetime during G.1 — equipment purchases do not retag. */
   readonly type: MemberType;
   /** Gym clock seconds when this member joined the floor roster. */
@@ -67,6 +73,81 @@ export const SERVICE_HISTORY_WINDOWS = EMPIRE_TUNING.LIVING_MEMBER_SERVICE_HISTO
 export const SHIPPED_SERVICE_HISTORY_WINDOW = EMPIRE_TUNING.LIVING_MEMBER_SERVICE_HISTORY_WINDOW;
 export const SERVICE_WAIT_SHORT_MAX_TICKS = EMPIRE_TUNING.LIVING_MEMBER_WAIT_SHORT_MAX_TICKS;
 export const SERVICE_WAIT_LONG_MIN_TICKS = EMPIRE_TUNING.LIVING_MEMBER_WAIT_LONG_MIN_TICKS;
+export const SERVICE_WAIT_VERY_LONG_MIN_TICKS =
+  EMPIRE_TUNING.LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS;
+
+/**
+ * Curated given-name pool. Generic first names only — no surnames, no real
+ * athletes, no federation references. Sized above warehouse (40) for
+ * headroom. Assignment indexes by creation ordinal and stores the chosen
+ * string on the member so a later pool reorder cannot rename anyone.
+ */
+export const LIVING_MEMBER_GIVEN_NAMES: readonly string[] = Object.freeze([
+  'Nia',
+  'Omar',
+  'Wren',
+  'Lila',
+  'Theo',
+  'Mara',
+  'Enzo',
+  'Priya',
+  'Cole',
+  'Anya',
+  'Reid',
+  'Suki',
+  'Hugo',
+  'Elke',
+  'Jonas',
+  'Rina',
+  'Miles',
+  'Yara',
+  'Felix',
+  'Noor',
+  'Arlo',
+  'Tessa',
+  'Ivo',
+  'Hana',
+  'Quinn',
+  'Dara',
+  'Leif',
+  'Mira',
+  'Skye',
+  'Olin',
+  'Vera',
+  'Joss',
+  'Kian',
+  'Petra',
+  'Rowan',
+  'Tove',
+  'Ellis',
+  'Zora',
+  'Hale',
+  'Ines',
+  'Kai',
+  'Bec',
+  'Cora',
+  'Drew',
+  'Farah',
+  'Galen',
+  'Pia',
+  'Remy',
+  'Soren',
+  'Uma',
+  'Yves',
+  'Blair',
+  'Dove',
+  'Fern',
+  'Gray',
+  'Kade',
+  'Nils',
+  'Orla',
+  'Paz',
+  'Rafi',
+  'Shae',
+  'Toni',
+  'Veda',
+  'Wynn',
+]);
 
 // ---------------------------------------------------------------------------
 // Identity
@@ -112,6 +193,38 @@ function memberTypeForIndex(
   return biased[index % biased.length] as MemberType;
 }
 
+/**
+ * Stored presentation name for a newly created member. Indexed by ordinal so
+ * a warehouse-sized roster is unique; identityNonce is validated with the id
+ * so a bad nonce cannot mint a name. The chosen string is copied onto the
+ * member — later pool edits do not rename existing people.
+ */
+export function displayNameForCreation(identityNonce: number, ordinal: number): string {
+  deriveMemberId(identityNonce, ordinal);
+  const name = LIVING_MEMBER_GIVEN_NAMES[ordinal];
+  if (name === undefined) {
+    refuseWith(
+      `living-member given-name pool (${LIVING_MEMBER_GIVEN_NAMES.length}) has no name for ordinal ${ordinal}`,
+    );
+  }
+  return name;
+}
+
+function createLivingMember(
+  identityNonce: number,
+  ordinal: number,
+  type: MemberType,
+  joinedAtSeconds: number,
+): LivingGymMember {
+  return Object.freeze({
+    id: deriveMemberId(identityNonce, ordinal),
+    displayName: displayNameForCreation(identityNonce, ordinal),
+    type,
+    joinedAtSeconds,
+    recentVisits: Object.freeze([]),
+  });
+}
+
 /** Opening roster: one living member per ambient placement, empty history. */
 export function createLivingMemberRoster(
   rung: LadderRung,
@@ -126,12 +239,7 @@ export function createLivingMemberRoster(
   const placements = ambientMemberRoster(rung, barbellOwned, sessionOwned);
   const members = Object.freeze(
     placements.map((row, index) =>
-      Object.freeze({
-        id: deriveMemberId(identityNonce, index),
-        type: row.type,
-        joinedAtSeconds,
-        recentVisits: Object.freeze([]),
-      }),
+      createLivingMember(identityNonce, index, row.type, joinedAtSeconds),
     ),
   );
   return Object.freeze({ rung, identityNonce, members });
@@ -166,12 +274,12 @@ export function reconcileLivingMemberRosterOnRelocation(
   const appended = Object.freeze(
     Array.from({ length: targetCount - existing.length }, (_unused, offset) => {
       const index = existing.length + offset;
-      return Object.freeze({
-        id: deriveMemberId(roster.identityNonce, index),
-        type: memberTypeForIndex(sessionOwned, index),
-        joinedAtSeconds: relocationMarkSeconds,
-        recentVisits: Object.freeze([]),
-      });
+      return createLivingMember(
+        roster.identityNonce,
+        index,
+        memberTypeForIndex(sessionOwned, index),
+        relocationMarkSeconds,
+      );
     }),
   );
   return Object.freeze({
@@ -316,11 +424,20 @@ export function playerFacingTenureLine(joinedAtSeconds: number, nowSeconds: numb
   return `${days} days as a member`;
 }
 
-/** Player-facing wait copy keyed on true queue wait, not claim-to-use approach time. */
+/**
+ * Player-facing wait copy keyed only on true queue wait. No upgrade name,
+ * no Q/C/T ownership, no fake baseline. G.1C adds the upper band so a
+ * measured 95-vs-128 tick improvement is not both "long wait".
+ */
 export function playerFacingWaitExperience(queueWaitTicks: number): string {
+  if (!Number.isFinite(queueWaitTicks) || queueWaitTicks < 0) {
+    refuseWith(`queue wait ticks must be a non-negative number, received ${queueWaitTicks}`);
+  }
+  if (queueWaitTicks === 0) return 'no wait';
   if (queueWaitTicks <= SERVICE_WAIT_SHORT_MAX_TICKS) return 'short wait';
-  if (queueWaitTicks >= SERVICE_WAIT_LONG_MIN_TICKS) return 'long wait';
-  return 'waited a while';
+  if (queueWaitTicks < SERVICE_WAIT_LONG_MIN_TICKS) return 'waited a while';
+  if (queueWaitTicks < SERVICE_WAIT_VERY_LONG_MIN_TICKS) return 'long wait';
+  return 'very long wait';
 }
 
 export function playerFacingTrainingExperience(trainingExperience: number): string {

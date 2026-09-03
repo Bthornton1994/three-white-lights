@@ -998,6 +998,11 @@ interface AmbientMemberBodyProps {
   /** Phase 4: which way the sprite faces — the mirror is baked into the sprite table, not computed here. */
   readonly facing: FloorSpriteFacing;
   /**
+   * Compact selected-member cue only. Warehouse can hold 40 living members;
+   * permanent floating names over every sprite would cover the room.
+   */
+  readonly selectedName?: string;
+  /**
    * Play-mode tap on this visible body. Presentation only — not a
    * `GymViewAction`. Absent in Build, where the same animated root is
    * `pointerEvents none`. Stage C.1d: the animated root owns the hit
@@ -1131,6 +1136,7 @@ function AmbientMemberBody({
   stranded,
   pose,
   facing,
+  selectedName,
   onPress,
 }: AmbientMemberBodyProps) {
   const footprintWidth = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.width * tile;
@@ -1313,6 +1319,27 @@ function AmbientMemberBody({
           }}
         >
           {FLOOR_SIM_INTERRUPTION_WORD[interruptedBy]}
+        </Text>
+      )}
+      {selectedName === undefined ? null : (
+        <Text
+          testID={'floorgrid-selected-member-name'}
+          pointerEvents={'none'}
+          style={{
+            position: 'absolute',
+            left: -tile,
+            top: -(
+              cueDiameter +
+              EMPIRE_TUNING.FLOOR_SIM_CUE_GAP_PIXELS * 2 +
+              EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE
+            ),
+            width: footprintWidth + tile * 2,
+            color: AMBIENT_MEMBER_BORDER_COLOR,
+            fontSize: EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE,
+            textAlign: 'center',
+          }}
+        >
+          {selectedName}
         </Text>
       )}
       {/*
@@ -2389,6 +2416,12 @@ export function FloorGrid(props: FloorGridProps) {
                     stranded={member.strandedAt !== null}
                     pose={memberPose(member, sim.tick)}
                     facing={memberFacing(member, station, bay)}
+                    selectedName={
+                      selectedMemberIndex === member.index
+                        ? (livingMemberAtIndex(livingMembers, member.index)?.displayName ??
+                          undefined)
+                        : undefined
+                    }
                     onPress={
                       buildMode ? undefined : () => toggleSelectedMember(member.index)
                     }
@@ -2634,6 +2667,9 @@ export function FloorGrid(props: FloorGridProps) {
             const living = livingMemberAtIndex(livingMembers, selectedMember.index);
             return (
               <>
+                {living === null ? null : (
+                  <Text testID={'floorgrid-member-panel-display-name'}>{living.displayName}</Text>
+                )}
                 <Text testID={'floorgrid-member-panel-identity'}>
                   {playerFacingMemberTypeLabel(selectedMember.type)}
                 </Text>
