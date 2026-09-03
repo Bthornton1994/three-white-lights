@@ -4474,36 +4474,62 @@ state is a later explicit crossing.
 
 #### Stage G.1 — Living Member Identity + Service Outcome Foundation
 
-**STAGE G.1 LIVING MEMBER OUTCOME FOUNDATION READY. AWAITING HUMAN IDENTITY /
-CONSEQUENCE VERDICT.** Built on branch `cursor/d2-2-closeout-8f47` after D2
-close and Stage E close. This is the first authorized downstream consumer of
-D2-CONSEQUENCE-01's missing seam — not the full business outcome, but the
-foundation: persistent floor-member identity and service truth recorded from
-real `floorSim.ts` steps.
+**STAGE G.1 PRE-HUMAN AUTHORITY CLOSED. READY FOR HUMAN IDENTITY / CONSEQUENCE
+GATE.** Closeout candidate HEAD `8fc4fcbf9d36f829252d35d0e642c5cc3482cce2` on
+branch `cursor/d2-2-closeout-8f47` after D2 close and Stage E close. G.1A
+corrected identity authority; this section is the current authority. Historical
+G.1 rejection notes below remain accurate where they record what was wrong
+before G.1A — they are not rewritten.
 
 **Three populations stay separate:**
 
 | Population | Module | Persistent? | On played floor? |
 |---|---|---|---|
-| `MemberType` / `MemberRoster` | `members.ts` | No | Via `ambientMemberRoster()` only |
+| `MemberType` / `MemberRoster` | `members.ts` | No | Via `ambientMemberRoster()` placement geometry only on the played G.1 path |
 | `NpcLifter` | `empireCore.ts` | Yes (idle roster) | Not on floor |
 | Living floor members | `livingMembers.ts` | Yes | Yes — `GymViewState.livingMembers` |
 
-**Shipped in G.1:**
+**Identity authority (G.1A, current):**
 
-- `livingMembers.ts` — deterministic `GymMemberId`, `LivingMemberRoster`,
-  `ServiceVisitRecord`, `applyServiceObservations`, player-facing tenure /
-  wait / training-experience copy. IDs derive from rung, roster index and
-  `FLOOR_SIM_RENDER_SEED` — no `Math.random`, no gacha.
+- `GymMemberId` is **gym-local**: `member:n{identityNonce}:{ordinal}`. Facility
+  rung is **not** part of identity.
+- Facility **relocation** preserves every existing member exactly: `id`, `type`,
+  `joinedAtSeconds`, `recentVisits`. Larger facilities deterministically
+  **append** new members only (`reconcileLivingMemberRosterOnRelocation`); a
+  destination that would require fewer members is refused.
+- Existing `LivingGymMember.type` is **frozen** during G.1 — equipment purchases
+  may change what *new* members would attract, not retag people already on the
+  floor.
+- `FloorSim` receives authoritative `memberId` + `type` from
+  `GymViewState.livingMembers` (`livingPopulation`). `ambientMemberRoster()`
+  supplies placement geometry only on the played G.1 path — not member identity
+  or type.
+- Service observations carry `memberId`; `applyServiceObservations` resolves by
+  id and refuses unknown id / type mismatch.
+- `queueWaitTicks` means **true queue-cell-arrival → use-start wait**
+  (`queueArrivedAt` preserved), not claim-to-use approach time.
+
+**Shipped in G.1 / G.1A:**
+
+- `livingMembers.ts` — `LivingMemberRoster`, `ServiceVisitRecord`,
+  `applyServiceObservations`, player-facing tenure / wait / training-experience
+  copy. IDs are deterministic from `identityNonce` + ordinal — no
+  `Math.random`, no gacha.
 - `floorSim.ts` — `stepFloorSimWithObservations` emits observations when a
-  member leaves `using` (completed or interrupted), carrying wait ticks and
-  `stationTrainingExperience`.
+  member leaves `using` (completed or interrupted), carrying `memberId`,
+  `queueWaitTicks`, and `stationTrainingExperience`.
 - `ladderView.tsx` / `FloorGrid.tsx` / `GymScreen.tsx` — `livingMembers` on
   `GymViewState`, `apply-living-member-observations` reducer arm, member
   panel shows short id, tenure, and recent service (`no recent service yet`
   when empty).
-- `empireTuning.ts` — `LIVING_MEMBER_SERVICE_HISTORY_WINDOWS` [3, 5, 8],
-  shipped window 5, wait-copy thresholds for short/long waits.
+- `empireTuning.ts` — `LIVING_MEMBER_SERVICE_HISTORY_WINDOWS` candidates [3, 5,
+  8]; **shipped candidate 5** (provisional — see below).
+
+**Service-history window (provisional, not retuned in G.1B):** Measured roll-off
+shows the first good visit is visible immediately at all three candidate
+windows; complete bad-history roll-off requires **N** subsequent good visits.
+**N = 5** is therefore a provisional product choice pending human card-density /
+memory judgment — not justified by "middle option" alone.
 
 **Explicitly NOT built (later G stages):**
 
@@ -4517,14 +4543,19 @@ real `floorSim.ts` steps.
   30; garage 60/hour; offline fraction 0.5).
 
 **What G.1 proves mechanically:** Quality raises completed-use training
-experience; Capacity lowers average wait on the same tick budget — measured
-from real sim observations, not aggregate proxies. That is causality truth
-for the player-facing member card, not yet institution consequences.
+experience; Capacity lowers average queue wait; Throughput shortens changeover
+(18 → 6 on the competition bench) so at least one stable `memberId` completes
+training with strictly lower `queueWaitTicks` than stock on the same roster,
+seed, garage, one-bench layout, and tick budget — all measured from real sim
+observations matched by `memberId`, not aggregate proxies or array index. That
+is causality truth for the player-facing member card, not yet institution
+consequences.
 
 **Human gate:** identity legibility (can the player recognise the same member
-across taps and upgrades?) and whether service history reads as meaningful
-consequence on a real device at 390×844. Until that verdict lands, do not
-wire satisfaction/dues/reputation or start Stage G.2 portfolio/NPC depth.
+across taps, upgrades, navigation away and back, and facility relocation?) and
+whether service history reads as meaningful consequence on the **actual Gym
+Empire player surface** at 390×844. Until that verdict lands, do not wire
+satisfaction/dues/reputation or start Stage G.2 portfolio/NPC depth.
 
 ---
 

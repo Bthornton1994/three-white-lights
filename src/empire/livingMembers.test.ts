@@ -448,7 +448,25 @@ describe('Stage G.1A — Q/C/T causality via service truth', () => {
     expect(capacityMean).toBeLessThan(stockMean);
   });
 
-  it('shortens changeover (18 → 6) so the next service starts earlier with lower queue wait', () => {
+  function completedTrainingByMember(
+    observations: readonly FloorSimServiceObservation[],
+  ): ReadonlyMap<string, readonly FloorSimServiceObservation[]> {
+    const byMember = new Map<string, FloorSimServiceObservation[]>();
+    for (const row of observations) {
+      if (row.outcome !== 'completed' || row.stationKind !== 'training') continue;
+      const list = byMember.get(row.memberId) ?? [];
+      list.push(row);
+      byMember.set(row.memberId, list);
+    }
+    const frozen = new Map<string, readonly FloorSimServiceObservation[]>();
+    for (const [memberId, list] of byMember) {
+      list.sort((left, right) => left.observedAtTick - right.observedAtTick);
+      frozen.set(memberId, Object.freeze(list));
+    }
+    return frozen;
+  }
+
+  it('shortens changeover (18 → 6) so at least one stable memberId waits less', () => {
     const roster = createLivingMemberRoster('garage', KIT, [], 0, T.FLOOR_SIM_RENDER_SEED);
     const stock = contextWithRoster(roster, stockStationCapability());
     const throughput = contextWithRoster(
@@ -472,11 +490,38 @@ describe('Stage G.1A — Q/C/T causality via service truth', () => {
     const throughputMean =
       throughputRuns.reduce((sum, row) => sum + row.queueWaitTicks, 0) / throughputRuns.length;
     expect(throughputMean).toBeLessThan(stockMean);
-    expect(
-      throughputRuns.some(
-        (row, index) => row.queueWaitTicks < (stockRuns[index]?.queueWaitTicks ?? Infinity),
-      ),
-    ).toBe(true);
+
+    const stockByMember = completedTrainingByMember(stockRuns);
+    const throughputByMember = completedTrainingByMember(throughputRuns);
+    let matchedMemberId: string | null = null;
+    let matchedStockWait: number | null = null;
+    let matchedThroughputWait: number | null = null;
+    for (const [memberId, stockCompletions] of stockByMember) {
+      const throughputCompletions = throughputByMember.get(memberId);
+      if (throughputCompletions === undefined) continue;
+      const comparableCount = Math.min(stockCompletions.length, throughputCompletions.length);
+      for (let index = 0; index < comparableCount; index += 1) {
+        const stockWait = stockCompletions[index]?.queueWaitTicks;
+        const throughputWait = throughputCompletions[index]?.queueWaitTicks;
+        if (
+          stockWait !== undefined &&
+          throughputWait !== undefined &&
+          throughputWait < stockWait
+        ) {
+          matchedMemberId = memberId;
+          matchedStockWait = stockWait;
+          matchedThroughputWait = throughputWait;
+          break;
+        }
+      }
+      if (matchedMemberId !== null) break;
+    }
+    expect(matchedMemberId).not.toBeNull();
+    expect(matchedStockWait).not.toBeNull();
+    expect(matchedThroughputWait).not.toBeNull();
+    if (matchedMemberId !== null && matchedStockWait !== null && matchedThroughputWait !== null) {
+      expect(matchedThroughputWait).toBeLessThan(matchedStockWait);
+    }
   });
 });
 
@@ -513,7 +558,7 @@ describe('Stage G.1A — service history window evidence', () => {
     });
   }
 
-  it('reports roll-off timing for windows 3, 5 and 8 — shipped window stays 5', () => {
+  it('reports roll-off timing for windows 3, 5 and 8 — shipped candidate 5 stays provisional', () => {
     const table = SERVICE_HISTORY_WINDOWS.map((window) => rollOffReport(window));
     expect(table).toEqual([
       {
@@ -536,6 +581,11 @@ describe('Stage G.1A — service history window evidence', () => {
       },
     ]);
     expect(SHIPPED_SERVICE_HISTORY_WINDOW).toBe(5);
+    // First good visit is visible immediately at every candidate window; clearing
+    // bad history fully requires N subsequent good visits. N=5 is provisional
+    // pending human card-density / memory judgment — not "middle option" alone.
+    expect(table.every((row) => row.improvementVisibleAfterGoodVisits === 1)).toBe(true);
+    expect(table.every((row) => row.goodVisitsToClearBad === row.window)).toBe(true);
   });
 });
 
