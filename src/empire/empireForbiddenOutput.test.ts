@@ -8353,6 +8353,8 @@ function driveEverything(): readonly DrivenRow[] {
       managed: managementModule.createManagedGym(),
       capability: stationCapabilityModule.stockStationCapability(),
       buildMode: false,
+      livingMembers: censusLivingMembers(),
+      gymClockSeconds: 0,
     }),
   );
 
@@ -17890,6 +17892,8 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
             managed: managementModule.createManagedGym(),
             capability: stationCapabilityModule.stockStationCapability(),
             buildMode: false,
+            livingMembers: censusLivingMembers(),
+            gymClockSeconds: 0,
           });
         },
         callsAt: (): number => 0,
@@ -17920,6 +17924,7 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
                 floor: floorModule.createFloorState(EMPIRE_TUNING.LADDER_RUNGS[0]),
                 surface: 'play',
                 capability: stationCapabilityModule.stockStationCapability(),
+                livingMembers: censusLivingMembers(),
               }),
               dispatch: (action: ladderViewModule.GymViewAction): void => {
                 record([action]);
@@ -17996,6 +18001,7 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
                 floor: floorModule.createFloorState(EMPIRE_TUNING.LADDER_RUNGS[0]),
                 surface: 'play',
                 capability: stationCapabilityModule.stockStationCapability(),
+                livingMembers: censusLivingMembers(),
               }),
               dispatch: (action: ladderViewModule.GymViewAction): void => {
                 record([action]);
@@ -24390,6 +24396,7 @@ function memberCallGymViewState(weekLog: readonly GymWeekReport[]): ladderViewMo
     floor: floorModule.createFloorState(EMPIRE_TUNING.LADDER_RUNGS[0]),
     surface: 'play',
     capability: stationCapabilityModule.stockStationCapability(),
+    livingMembers: censusLivingMembers(),
   });
 }
 

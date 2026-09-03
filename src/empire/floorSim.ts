@@ -286,6 +286,7 @@ import {
   stationChangeoverTicks,
   stationLevels,
   stationQualityAffinityBonus,
+  stationTrainingExperience,
   stationUseTicksFactor,
   stockStationCapability,
   type StationCapabilityState,
@@ -485,6 +486,32 @@ export interface FloorSimMember {
    * with this field null. `floorSim.test.ts` drives both.
    */
   readonly strandedAt: number | null;
+  /**
+   * Tick this member entered `using`, or null otherwise. Stage G.1 reads it to
+   * compute wait-before-use without storing history inside `FloorSimState`.
+   */
+  readonly usingStartedAt: number | null;
+}
+
+/**
+ * One service event emitted when a member finishes or is yanked off a station.
+ * Observations are returned from `stepFloorSimWithObservations`; nothing here
+ * stores them — `livingMembers.ts` owns durable history.
+ */
+export interface FloorSimServiceObservation {
+  readonly memberIndex: number;
+  readonly memberType: MemberType;
+  readonly stationKind: 'training' | 'fixed' | 'session';
+  readonly stationKey: string;
+  readonly waitTicks: number;
+  readonly trainingExperience: number;
+  readonly outcome: 'completed' | 'interrupted';
+  readonly observedAtTick: number;
+}
+
+export interface FloorSimStepResult {
+  readonly state: FloorSimState;
+  readonly observations: readonly FloorSimServiceObservation[];
 }
 
 /** The whole simulation: a tick counter, the seed every choice is drawn from, and the members. */
@@ -1277,6 +1304,7 @@ function interrupt(member: FloorSimMember, cause: FloorSimInterruption): FloorSi
     targetPosition: null,
     claimedAt: null,
     queuedAt: null,
+    usingStartedAt: null,
     // ARMED WITH ONE MORE THAN THE BEAT, deliberately. The tick that arms the
     // beat also runs the advance pass, which decrements — so arming with the
     // beat itself would show the member interrupted for one tick fewer than the
@@ -1400,6 +1428,32 @@ function applyClaims(
 }
 
 /** Pass three: one member's own transition, computed against the snapshot `claimed`. */
+function makeServiceObservation(
+  member: FloorSimMember,
+  stationRef: FloorStationRef,
+  plan: RoutePlan,
+  tick: number,
+  outcome: 'completed' | 'interrupted',
+): FloorSimServiceObservation {
+  const queueStart = member.queuedAt ?? member.claimedAt;
+  const useStart = member.usingStartedAt ?? tick;
+  const waitTicks = queueStart === null ? 0 : Math.max(0, useStart - queueStart);
+  return Object.freeze({
+    memberIndex: member.index,
+    memberType: member.type,
+    stationKind: stationRef.kind,
+    stationKey: floorStationRefKey(stationRef),
+    waitTicks,
+    trainingExperience: stationTrainingExperience(
+      plan.capability,
+      stationRef.kind,
+      refKeyOf(stationRef),
+    ),
+    outcome,
+    observedAtTick: tick,
+  });
+}
+
 function advanceMember(
   member: FloorSimMember,
   claimed: readonly FloorSimMember[],
@@ -1407,6 +1461,7 @@ function advanceMember(
   seed: number,
   tick: number,
   changeovers: Readonly<Record<string, number>>,
+  observations: FloorSimServiceObservation[],
 ): FloorSimMember {
   const speed = speedOf(seed, member);
   let standing = nearestWalkable(member.cell, plan);
@@ -1439,6 +1494,11 @@ function advanceMember(
   if (relocated.state === 'using') {
     const timer = relocated.timer - 1;
     if (timer > 0) return Object.freeze({ ...relocated, timer });
+    if (relocated.target !== null) {
+      observations.push(
+        makeServiceObservation(relocated, relocated.target, plan, tick, 'completed'),
+      );
+    }
     return Object.freeze({
       ...relocated,
       state: 'leaving',
@@ -1447,6 +1507,7 @@ function advanceMember(
       targetPosition: null,
       claimedAt: null,
       queuedAt: null,
+      usingStartedAt: null,
       awayFrom: relocated.cell,
     });
   }
@@ -1559,6 +1620,7 @@ function advanceMember(
       state: 'using',
       timer: useTicksFor(seed, relocated, tick, factor),
       queuedAt: null,
+      usingStartedAt: tick,
     });
   }
   const stepped = beginStep(walked, stepDownField(walked.cell, goalField, plan));
@@ -1617,6 +1679,7 @@ export function createFloorSimState(context: FloorSimContext, seed: number): Flo
           interruptedBy: null,
           awayFrom: null,
           strandedAt: null,
+          usingStartedAt: null,
         }),
       ),
     ),
@@ -1626,24 +1689,61 @@ export function createFloorSimState(context: FloorSimContext, seed: number): Flo
 
 /** One tick, against a context that may have changed since the last one. */
 export function stepFloorSim(state: FloorSimState, context: FloorSimContext): FloorSimState {
+  return stepFloorSimWithObservations(state, context).state;
+}
+
+/** Like `stepFloorSim`, but also returns service observations for Stage G.1. */
+export function stepFloorSimWithObservations(
+  state: FloorSimState,
+  context: FloorSimContext,
+): FloorSimStepResult {
   return stepAgainstPlan(state, routePlan(context));
 }
 
 /** The tick's three passes, sharing one derived plan. */
-function stepAgainstPlan(state: FloorSimState, plan: RoutePlan): FloorSimState {
+function stepAgainstPlan(
+  state: FloorSimState,
+  plan: RoutePlan,
+): FloorSimStepResult {
   requireSeed(state.seed);
+  const observations: FloorSimServiceObservation[] = [];
+  const beforeInterrupt = state.members;
   const interrupted = applyInterruptions(state.members, plan);
+  for (let i = 0; i < beforeInterrupt.length; i += 1) {
+    const before = beforeInterrupt[i] as FloorSimMember;
+    const after = interrupted[i] as FloorSimMember;
+    if (
+      before.state === 'using' &&
+      after.state === 'interrupted' &&
+      before.target !== null
+    ) {
+      observations.push(
+        makeServiceObservation(before, before.target, plan, state.tick, 'interrupted'),
+      );
+    }
+  }
   const claimed = applyClaims(interrupted, plan, state.seed, state.tick);
   const nextMembers = Object.freeze(
     claimed.map((member) =>
-      advanceMember(member, claimed, plan, state.seed, state.tick, state.changeovers),
+      advanceMember(
+        member,
+        claimed,
+        plan,
+        state.seed,
+        state.tick,
+        state.changeovers,
+        observations,
+      ),
     ),
   );
   return Object.freeze({
-    tick: state.tick + 1,
-    seed: state.seed,
-    members: nextMembers,
-    changeovers: nextChangeovers(state, nextMembers, plan),
+    state: Object.freeze({
+      tick: state.tick + 1,
+      seed: state.seed,
+      members: nextMembers,
+      changeovers: nextChangeovers(state, nextMembers, plan),
+    }),
+    observations: Object.freeze([...observations]),
   });
 }
 
@@ -1744,7 +1844,7 @@ export function runFloorSim(
   const plan = routePlan(context);
   let at = state;
   for (let i = 0; i < ticks; i += 1) {
-    at = stepAgainstPlan(at, plan);
+    at = stepAgainstPlan(at, plan).state;
   }
   return at;
 }

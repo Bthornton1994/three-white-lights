@@ -372,6 +372,7 @@ function memberAt(index: number, type: MemberType, cell: GridPosition): FloorSim
     interruptedBy: null,
     awayFrom: null,
     strandedAt: null,
+    usingStartedAt: null,
   });
 }
 

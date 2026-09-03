@@ -303,6 +303,12 @@ import {
   removeFloorFurniture,
   removeFloorItem,
 } from './floor';
+import type { FloorSimServiceObservation } from './floorSim';
+import {
+  applyServiceObservations,
+  createLivingMemberRoster,
+  type LivingMemberRoster,
+} from './livingMembers';
 import {
   type DeclineRepairResult,
   type DismissManagerResult,
@@ -420,6 +426,8 @@ export interface GymViewState {
   readonly floor: FloorState;
   readonly surface: GymSurface;
   readonly capability: StationCapabilityState;
+  /** Stage G.1 — persistent floor members, separate from `NpcLifter` roster. */
+  readonly livingMembers: LivingMemberRoster;
 }
 
 /**
@@ -533,7 +541,23 @@ export type GymViewAction =
       readonly station: TrainingStationKind;
       readonly axis: StationUpgradeAxis;
     }
-  | { readonly kind: 'reset-gym' };
+  | { readonly kind: 'reset-gym' }
+  | {
+      readonly kind: 'apply-living-member-observations';
+      readonly observations: readonly FloorSimServiceObservation[];
+    };
+
+/** Opening living roster aligned with the floor-sim seed the renderer uses. */
+function openingLivingMembers(managed: ManagedGym): LivingMemberRoster {
+  const gym = managed.gym;
+  return createLivingMemberRoster(
+    gym.ladder.rung,
+    gym.ladder.equipment,
+    gym.sessionEquipment,
+    gym.ladder.collectedAt,
+    EMPIRE_TUNING.FLOOR_SIM_RENDER_SEED,
+  );
+}
 
 /** The opening screen: a fresh managed gym, an all-rest plan, an empty floor, nothing yet to report. */
 export function createGymViewState(): GymViewState {
@@ -550,6 +574,7 @@ export function createGymViewState(): GymViewState {
     floor: createFloorState(managed.gym.ladder.rung),
     surface: 'play',
     capability: stockStationCapability(),
+    livingMembers: openingLivingMembers(managed),
   });
 }
 
@@ -642,6 +667,7 @@ function advanceGymClock(
     floor: state.floor,
     surface: state.surface,
     capability: state.capability,
+    livingMembers: state.livingMembers,
   });
 }
 
@@ -697,6 +723,16 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
         // is a no-op on refusal and a real reset only when the move landed.
         floor:
           outcome.kind === 'moved' ? relocateFloorState(outcome.state.rung) : state.floor,
+        livingMembers:
+          outcome.kind === 'moved'
+            ? createLivingMemberRoster(
+                outcome.state.rung,
+                outcome.state.equipment,
+                state.managed.gym.sessionEquipment,
+                outcome.state.collectedAt,
+                EMPIRE_TUNING.FLOOR_SIM_RENDER_SEED,
+              )
+            : state.livingMembers,
       });
     }
     case 'floor-place': {
@@ -861,6 +897,11 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
     }
     case 'reset-gym':
       return createGymViewState();
+    case 'apply-living-member-observations':
+      return Object.freeze({
+        ...state,
+        livingMembers: applyServiceObservations(state.livingMembers, action.observations),
+      });
   }
 }
 

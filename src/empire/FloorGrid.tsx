@@ -194,10 +194,17 @@ import {
   floorStations,
   seatChangeoverTicks,
   stationChangeoverSeats,
-  stepFloorSim,
+  stepFloorSimWithObservations,
 } from './floorSim';
 import { type LadderEquipmentItem } from './ladder';
 import { type GymViewAction } from './ladderView';
+import {
+  livingMemberAtIndex,
+  playerFacingMemberShortId,
+  playerFacingServiceVisitLine,
+  playerFacingTenureLine,
+  type LivingMemberRoster,
+} from './livingMembers';
 import { type ManagedGym, maintenancePrompt } from './management';
 import { type MemberType } from './members';
 import { type SessionEquipmentItem } from './sessions';
@@ -304,6 +311,10 @@ export interface FloorGridProps {
    * stations and members. Never an economic flag.
    */
   readonly buildMode: boolean;
+  /** Stage G.1 — persistent member identities and service history. */
+  readonly livingMembers: LivingMemberRoster;
+  /** Gym clock seconds for tenure copy. */
+  readonly gymClockSeconds: number;
 }
 
 /** Live tile size from the measured gym stage, so a garage fills the viewport. */
@@ -1346,7 +1357,8 @@ function AmbientMemberBody({
 }
 
 export function FloorGrid(props: FloorGridProps) {
-  const { owned, barbellOwned, floor, dispatch, managed, capability, buildMode } = props;
+  const { owned, barbellOwned, floor, dispatch, managed, capability, buildMode, livingMembers, gymClockSeconds } =
+    props;
   const grid = floorGridSize(floor.rung);
   const placed = floorLayout(floor);
   const unplaced = unplacedOwnedFloorItems(floor, owned);
@@ -1671,7 +1683,16 @@ export function FloorGrid(props: FloorGridProps) {
   useEffect(() => {
     if (pendingPlace !== null) return undefined;
     const timer = setInterval(() => {
-      setSim((previous) => stepFloorSim(previous, simContextRef.current));
+      setSim((previous) => {
+        const stepped = stepFloorSimWithObservations(previous, simContextRef.current);
+        if (stepped.observations.length > 0) {
+          dispatch({
+            kind: 'apply-living-member-observations',
+            observations: stepped.observations,
+          });
+        }
+        return stepped.state;
+      });
     }, EMPIRE_TUNING.FLOOR_SIM_TICK_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [pendingPlace]);
@@ -2607,9 +2628,38 @@ export function FloorGrid(props: FloorGridProps) {
       */}
       {selectedMember === null ? null : (
         <ScrollView testID={'floorgrid-member-panel'} style={panelStyles.panel}>
-          <Text testID={'floorgrid-member-panel-identity'}>
-            {playerFacingMemberTypeLabel(selectedMember.type)}
-          </Text>
+          {(() => {
+            const living = livingMemberAtIndex(livingMembers, selectedMember.index);
+            return (
+              <>
+                <Text testID={'floorgrid-member-panel-identity'}>
+                  {playerFacingMemberTypeLabel(selectedMember.type)}
+                </Text>
+                {living === null ? null : (
+                  <>
+                    <Text testID={'floorgrid-member-panel-short-id'}>
+                      {playerFacingMemberShortId(living.id)}
+                    </Text>
+                    <Text testID={'floorgrid-member-panel-tenure'}>
+                      {playerFacingTenureLine(living.joinedAtSeconds, gymClockSeconds)}
+                    </Text>
+                    {living.recentVisits.length === 0 ? (
+                      <Text testID={'floorgrid-member-panel-no-history'}>no recent service yet</Text>
+                    ) : (
+                      living.recentVisits.map((visit, visitIndex) => (
+                        <Text
+                          key={`visit-${visit.observedAtTick}-${visitIndex}`}
+                          testID={`floorgrid-member-panel-visit-${visitIndex}`}
+                        >
+                          {playerFacingServiceVisitLine(visit)}
+                        </Text>
+                      ))
+                    )}
+                  </>
+                )}
+              </>
+            );
+          })()}
           <Text testID={'floorgrid-member-panel-state'}>
             {playerFacingMemberActivityLine(
               selectedMember.state,

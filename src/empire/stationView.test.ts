@@ -85,6 +85,7 @@ function memberAt(
     interruptedBy: null,
     awayFrom: null,
     strandedAt: null,
+    usingStartedAt: null,
   });
 }
 

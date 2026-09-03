@@ -594,6 +594,8 @@ export function GymScreen(props: GymViewProps) {
           managed={managed}
           capability={capability}
           buildMode={surface === 'build'}
+          livingMembers={props.state.livingMembers}
+          gymClockSeconds={gym.ladder.collectedAt}
         />
       </View>
       {/*

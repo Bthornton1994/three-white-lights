@@ -1975,7 +1975,17 @@ export const EMPIRE_TUNING = Object.freeze({
   FLOOR_SIM_RENDER_SEED: 1,
 
   /**
-   * The diameter of a member's state cue — the bubble drawn above its head —
+   * Stage G.1 — living floor-member service history. The shipped window is the
+   * middle option; the other two exist so tests can compare bounds without
+   * retuning the live card.
+   */
+  LIVING_MEMBER_SERVICE_HISTORY_WINDOWS: Object.freeze([3, 5, 8] as const),
+  LIVING_MEMBER_SERVICE_HISTORY_WINDOW: 5,
+  /** Wait-label buckets on member cards, in floor-sim ticks. */
+  LIVING_MEMBER_WAIT_SHORT_MAX_TICKS: 15,
+  LIVING_MEMBER_WAIT_LONG_MIN_TICKS: 40,
+
+  /**
    * as a fraction of the smaller of its footprint's two rendered dimensions.
    */
   FLOOR_SIM_CUE_DIAMETER_FRACTION: 0.5,
@@ -2848,6 +2858,10 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_SIM_TICK_INTERVAL_MS: 'knob',
   FLOOR_SIM_MOVE_TWEEN_MS: 'knob',
   FLOOR_SIM_RENDER_SEED: 'knob',
+  LIVING_MEMBER_SERVICE_HISTORY_WINDOWS: 'knob',
+  LIVING_MEMBER_SERVICE_HISTORY_WINDOW: 'knob',
+  LIVING_MEMBER_WAIT_SHORT_MAX_TICKS: 'knob',
+  LIVING_MEMBER_WAIT_LONG_MIN_TICKS: 'knob',
   FLOOR_SIM_CUE_DIAMETER_FRACTION: 'knob',
   FLOOR_PLATE_LOADING: 'knob',
   FLOOR_SIM_CUE_GAP_PIXELS: 'knob',

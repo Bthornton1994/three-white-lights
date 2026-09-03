@@ -4470,6 +4470,60 @@ does not implement that member-outcome contribution.
 **Wiring remains blocked.** Career/Meet result → Empire persistent reputation
 state is a later explicit crossing.
 
+#### Stage G.1 — Living Member Identity + Service Outcome Foundation
+
+**STAGE G.1 LIVING MEMBER OUTCOME FOUNDATION READY. AWAITING HUMAN IDENTITY /
+CONSEQUENCE VERDICT.** Built on branch `cursor/d2-2-closeout-8f47` after D2
+close and Stage E close. This is the first authorized downstream consumer of
+D2-CONSEQUENCE-01's missing seam — not the full business outcome, but the
+foundation: persistent floor-member identity and service truth recorded from
+real `floorSim.ts` steps.
+
+**Three populations stay separate:**
+
+| Population | Module | Persistent? | On played floor? |
+|---|---|---|---|
+| `MemberType` / `MemberRoster` | `members.ts` | No | Via `ambientMemberRoster()` only |
+| `NpcLifter` | `empireCore.ts` | Yes (idle roster) | Not on floor |
+| Living floor members | `livingMembers.ts` | Yes | Yes — `GymViewState.livingMembers` |
+
+**Shipped in G.1:**
+
+- `livingMembers.ts` — deterministic `GymMemberId`, `LivingMemberRoster`,
+  `ServiceVisitRecord`, `applyServiceObservations`, player-facing tenure /
+  wait / training-experience copy. IDs derive from rung, roster index and
+  `FLOOR_SIM_RENDER_SEED` — no `Math.random`, no gacha.
+- `floorSim.ts` — `stepFloorSimWithObservations` emits observations when a
+  member leaves `using` (completed or interrupted), carrying wait ticks and
+  `stationTrainingExperience`.
+- `ladderView.tsx` / `FloorGrid.tsx` / `GymScreen.tsx` — `livingMembers` on
+  `GymViewState`, `apply-living-member-observations` reducer arm, member
+  panel shows short id, tenure, and recent service (`no recent service yet`
+  when empty).
+- `empireTuning.ts` — `LIVING_MEMBER_SERVICE_HISTORY_WINDOWS` [3, 5, 8],
+  shipped window 5, wait-copy thresholds for short/long waits.
+
+**Explicitly NOT built (later G stages):**
+
+- No `reputationFromMembers`, `memberSatisfaction`, or dues wiring.
+- No retention / departure.
+- No offline-fabricated service visits — advancing the gym clock offline does
+  not append history.
+- No Career/Meet → `EmpireState.reputation` path (Stage E wiring still
+  blocked).
+- No Q/C/T retune — D2 mint frozen (Quality 120 / Capacity 180 / Throughput
+  30; garage 60/hour; offline fraction 0.5).
+
+**What G.1 proves mechanically:** Quality raises completed-use training
+experience; Capacity lowers average wait on the same tick budget — measured
+from real sim observations, not aggregate proxies. That is causality truth
+for the player-facing member card, not yet institution consequences.
+
+**Human gate:** identity legibility (can the player recognise the same member
+across taps and upgrades?) and whether service history reads as meaningful
+consequence on a real device at 390×844. Until that verdict lands, do not
+wire satisfaction/dues/reputation or start Stage G.2 portfolio/NPC depth.
+
 ---
 
 ## 6. Meet Day

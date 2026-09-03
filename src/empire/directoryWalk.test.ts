@@ -168,7 +168,7 @@ export const DIRECTORY_WALK = Object.freeze({
   // Capacity / Throughput algebra.
   // 23 -> 24: GDD §5.18 Stage D.1's `trainingStation.ts` — the Competition
   // Bench Bay, equipment is not a training station.
-  SHIPPED_MODULES: 25,
+  SHIPPED_MODULES: 26,
   /**
    * Files the shared walk hands the censuses today, tests included.
    *
@@ -193,7 +193,8 @@ export const DIRECTORY_WALK = Object.freeze({
   // new shipped module. Read from this pin's own failure value.
   // 51 -> 52: Stage D2.2 `d2Consequence.test.ts` — consequence-boundary
   // source trace. One test file, no new shipped module.
-  DIRECTORY_FILES: 54,
+  // 54 -> 56: Stage G.1 `livingMembers.ts` and `livingMembers.test.ts`.
+  DIRECTORY_FILES: 56,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**
@@ -966,6 +967,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'floorSprites.ts',
       'ladder.ts',
       'ladderView.tsx',
+      'livingMembers.ts',
       'management.ts',
       'members.ts',
       'npc.ts',
