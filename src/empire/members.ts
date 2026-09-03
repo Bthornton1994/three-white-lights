@@ -111,13 +111,11 @@
  * file: `reputationFromMembers` sums a per-day rate from a roster.
  *
  * The competition-results half is `sportingReputation.ts`, a per-result
- * contribution. That is a different grain. `reputationFromMembers` still
- * takes an optional `competitionResultReputationBonus` defaulted to zero —
- * additive into the same per-day return — and Stage E does not pass sporting
- * points through it. Mixing a meet into a daily member rate would hide the
- * grain mismatch inside this function. `members.test.ts` still drives the
- * zero-default and a nonzero bonus so the argument stays additive; the
- * sporting composer sits beside this function rather than inside it.
+ * event delta. That is a different grain. Stage E.1 removed the old
+ * optional competition-result bonus argument: folding a meet into a daily
+ * member rate hid the mismatch inside this function. This function returns
+ * member reputation only. A later accounting boundary may compose grains
+ * once both operands share one; that boundary is not this file.
  *
  * ===========================================================================
  * 5. Crowding: a real ratio, from real state, with two type-keyed shape terms
@@ -410,19 +408,14 @@ export function memberSatisfaction(input: MemberSatisfactionInput): MemberSatisf
 /**
  * §5.6: "Reputation is earned mostly by powerlifter and serious-lifter
  * members, and by your own competition results." This is the members' half:
- * one day's reputation contribution from `roster`, plus
- * `competitionResultReputationBonus` — a typed, OPTIONAL extension point for
- * the second half, defaulted to zero because nothing in this codebase
- * produces a non-zero value yet (header §4).
+ * one day's reputation contribution from `roster`. The competition-results
+ * half is `sportingReputationFromResult` and is not an argument here.
  */
-export function reputationFromMembers(
-  roster: MemberRoster,
-  competitionResultReputationBonus: ReputationPoints = asReputation(0),
-): ReputationPoints {
+export function reputationFromMembers(roster: MemberRoster): ReputationPoints {
   requireMemberRoster(roster);
   const fromMembers = roster.reduce(
     (sum, row) => sum + row.count * EMPIRE_TUNING.MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY[row.type],
     0,
   );
-  return asReputation(scrubPrecision(fromMembers + competitionResultReputationBonus));
+  return asReputation(scrubPrecision(fromMembers));
 }

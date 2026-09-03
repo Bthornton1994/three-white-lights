@@ -659,14 +659,17 @@ export const EMPIRE_TUNING = Object.freeze({
   SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER: Object.freeze([0, 250, 900, 2600, 7000] as const),
 
   /**
-   * Stage E sporting-result → reputation formula. Read by `sportingReputation.ts`.
+   * Stage E.1 sporting-result → reputation formula. Read by `sportingReputation.ts`.
    *
-   * Magnitudes were chosen against the shipped reputation ladder so one
-   * ordinary local placing stays under the club recruit unlock (50), a worlds
-   * win plus published-total record stays under the regional recruit unlock
-   * (200) and the first sponsor tier (250), and a year of ordinary local wins
-   * does not outrun a year of daily check-ins or three powerlifter members.
-   * `sportingReputation.test.ts` pins those comparisons.
+   * Shipped band is CONSERVATIVE: a worlds first-in-category plus published-total
+   * record crosses the first sponsor tier (250) and regional recruit (200) and
+   * stays under national recruit (600). A SPORT-HEAVY alternative (worlds
+   * kindScale 16, same units) is pinned in `sportingReputation.test.ts` and is
+   * not shipped — choosing it is a product call, not a silent default.
+   *
+   * Ordinary local first-in-category stays under club recruit (50). Last place
+   * and a one-person category pay zero placing points. Check-in reputation is
+   * not a cap on sporting credit; see E-REP-01 in `sportingReputation.ts`.
    *
    * `kindScale` is the GDD §6.1 ladder the current meet model actually has.
    * There is no extra prestige table: invented opponent rank would be fake.
@@ -680,12 +683,12 @@ export const EMPIRE_TUNING = Object.freeze({
       nationals: 4,
       worlds: 8,
     } as const),
-    placingUnit: 12,
-    totalPrUnit: 8,
-    qualifyUnit: 8,
+    placingUnit: 24,
+    totalPrUnit: 16,
+    qualifyUnit: 16,
     copy: Object.freeze({
       noTotal: 'No total posted',
-      placing: 'Placed {place} of {field} at a {kind} meet',
+      placing: 'Placed {place} of {field} in category at a {kind} meet',
       totalPr: 'Raised published best total at a {kind} meet',
       qualified: 'Newly qualified for {rung}',
     } as const),
@@ -1442,7 +1445,7 @@ export const EMPIRE_TUNING = Object.freeze({
    * members." Reputation points contributed per member of a type, per day,
    * before `reputationFromMembers` sums a roster. Stage E's sporting
    * contributor is a separate per-result function in `sportingReputation.ts`;
-   * it is not this table's second argument. See `members.ts` header §4.
+   * it is not an argument of `reputationFromMembers`. See `members.ts` header §4.
    */
   MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY: Object.freeze({
     casual: 0,

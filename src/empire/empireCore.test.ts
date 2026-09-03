@@ -3834,7 +3834,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // size unchanged); `'Idle'` already shipped.
     // 647 -> 652: Stage D2.2 QA-mode labels and clock testID prefixes.
     // 652 -> 666: Stage E sportingReputation copy, meet-kind tokens, refuse lines.
-    expect(singleQuoted.size).toBe(666);
+    // 666 -> 670: Stage E.1 outcome tokens `'bombed-out'` / `'total'` and
+    // typeof checks `'object'` / `'boolean'`. Copy/refuse strings with spaces
+    // swapped four-for-four and do not move this pin.
+    expect(singleQuoted.size).toBe(670);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3954,7 +3957,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // that key. Read from this assertion's own failure value.
     // 336 -> 348: Stage D2.2 plate-loading and mode-labelled clock templates.
     // 348 -> 354: Stage E sportingReputation refuseWith templates.
-    expect(templateChunks.size).toBe(354);
+    // 354 -> 353: Stage E.1 dropped totalKg / fieldSize / duplicate-qualify
+    // templates and added outcome / categoryFieldSize ones; net −1 unique chunk.
+    expect(templateChunks.size).toBe(353);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4069,6 +4074,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'black',
       'blocked',
       'bodybuilder',
+      'bombed-out',
+      'boolean',
       'bought',
       'box-none',
       'brace',
@@ -4392,6 +4399,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'npc-id',
       'npcId',
       'number',
+      'object',
       'occupied',
       'offered',
       // The "chrome vs paid" bug-fix round's `EarningsMode` — 'offline' is
@@ -4535,6 +4543,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'technique-quality-bonus',
       'throughput',
       'thrownMessage',
+      'total',
       'total-pr',
       'trained',
       'trained-day-upkeep',
@@ -4670,7 +4679,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 335 -> 336. Read from this assertion's own failure value.
     // 983 -> 1000: Stage D2.2 singleQuoted 647 -> 652 and templateChunks
     // 336 -> 348.
-    expect(stringsChecked).toBe(1020);
+    // 1020 -> 1023: Stage E.1 singleQuoted 666 -> 670 and templateChunks
+    // 354 -> 353.
+    expect(stringsChecked).toBe(1023);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were

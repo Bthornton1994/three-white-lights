@@ -4361,13 +4361,23 @@ pure Empire-owned function. It does not import Career UI, mutate Career
 state, write `EmpireState.reputation`, start a persistent NPC roster, or
 open Portfolio.
 
-**Input contract** (neutral result shape; Career fills this later):
+**Input contract** (neutral result shape; the later crossing composes
+already-decided facts from several modules — there is no single current
+Meet result object that already carries all of these):
 
 - `kind` — GDD §6.1 ladder: local / regional / nationals / worlds
-- `totalKg` and `place` — posted together, or both null on a bomb-out
-- `fieldSize` — the flight/field the placing is in
-- `isTotalPr` — this meet raised the published best total
-- `newlyQualifiedFor` — rungs the crossing already decided were newly earned
+- `outcome` — `'total'` or `'bombed-out'`. No numerical Total. game/meet
+  owns posted-total vs bomb-out.
+- `placement` — on a posted total only: `place` and `categoryFieldSize`.
+  `categoryFieldSize` is the number of competitors in the same award
+  category the place is in. A flight is not an award category
+  (`src/career/flight.ts`). The crossing owns deriving this from Career's
+  category-aware result sheet.
+- `isTotalPr` — this meet raised the published best total (result/record
+  comparison, not a kg scalar)
+- `newlyQualifiedFor` — one new standing (`regional` / `nationals` /
+  `worlds`) or null, matching `tierUnlockBetween`'s single `to` tier.
+  No stacked rungs. No `local` qualification.
 
 **Refused or deferred** (the current meet model cannot supply them truthfully,
 or they would give an existing quantity a second meaning):
@@ -4380,23 +4390,32 @@ or they would give an existing quantity a second meaning):
 
 **Two contributors, two grains:**
 
-- sporting: per-result, `sportingReputationFromResult`
-- members: per-day, existing `reputationFromMembers`
+- sporting: per-result event delta, `sportingReputationFromResult`
+- members: per-day rate, existing `reputationFromMembers` (member
+  reputation only; no competition-result bonus argument)
 
-`composeGymReputationContributions` adds two already-computed
-`ReputationPoints` values. Stage E does not pass sporting points through
-`reputationFromMembers`'s optional bonus argument: that argument is the same
-grain as a per-day member rate, and a meet is not a day of dues.
+Stage E does not add those grains together. A later accounting boundary
+may compose an integrated member delta over a defined period with a
+sporting event delta once both operands share a grain.
+
+**Placing share:** first of N>1 → full placing unit; last of N>1 → 0;
+one-person category → 0. Beating nobody is not a placing accomplishment.
+PR and qualification remain independent terms.
+
+**E-REP-01 CHECK-IN REPUTATION SEMANTIC DEBT.** The consumed model still
+awards 2 reputation per check-in (730 per year of daily check-ins). That
+is inherited activity reputation and has not been reconciled with sporting
+credibility. Stage E does not retune `REPUTATION_PER_CHECK_IN`. World-level
+sporting credit is not held below that inherited source.
 
 **Evidence obligation** (presentation later): when reputation is eventually
 wired, the player must be able to tell why it changed. Each sporting term
-carries a reason `kind` and a `text` line. No unexplained +12 REP toast.
+carries a reason `kind` and a `text` line. No unexplained +REP toast.
 
 **D2-CONSEQUENCE-01 remains true.** Quality / Capacity / Throughput have
 truthful physical mechanisms, but the current played floor does not yet
 convert service quality into a durable member/business outcome. Stage E
-does not implement that member-outcome contribution; it leaves a named
-compose slot beside the sporting function.
+does not implement that member-outcome contribution.
 
 **Wiring remains blocked.** Career/Meet result → Empire persistent reputation
 state is a later explicit crossing.

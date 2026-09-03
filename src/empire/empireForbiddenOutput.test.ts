@@ -1698,7 +1698,7 @@ const SURFACE_CENSUS = Object.freeze({
   // stationChangeoverSeats, stationChangeoverTicks, playerFacingStationOperation.
   // 429 -> 432: Stage D2.2 plateLoadingProgress, plateLoadingDiscs,
   // ladderDevClockTestId.
-  EXPORTS: 434, // 432 -> 434: sportingReputationFromResult, composeGymReputationContributions
+  EXPORTS: 433, // 434 -> 433: Stage E.1 removed composeGymReputationContributions
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1840,7 +1840,7 @@ const SURFACE_CENSUS = Object.freeze({
 // for, the same as `isSoundCondition`'s addition above. Read from this pin's
 // own failure value.
   // 3970 -> 4024: Stage C.1b GymSurface / furniture-place unions and FloorState.furniture.
-  LITERAL_POSITIONS: 4113, // 4092 -> 4113: Stage E sporting meet/reason/qualify unions
+  LITERAL_POSITIONS: 4110, // 4113 -> 4110: Stage E.1 discriminated outcome union, no totalKg/fieldSize
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -3079,7 +3079,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // and FloorGrid presentation helpers. Read from this pin's own failure.
   // 3361 -> 3375: Stage D2.1A live-Capacity seat assignment / relocate helpers.
   // 3375 -> 3405: Stage D2.1B changeover helpers + FloorGrid loading path.
-  CALLS_EXAMINED: 3493, // 3436 -> 3493: Stage E sportingReputation.ts calls
+  CALLS_EXAMINED: 3487, // 3493 -> 3487: Stage E.1 removed composeGymReputationContributions
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -5640,6 +5640,10 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   // manager hire prices are FILED rather than exempt, so they are dropped by
   // the same ceiling but counted in OMITTED_ABOVE_CEILING instead of here.
   'ROSTER_SHAPE/REPAIR_COST_GYM_BUCKS_PER_CONDITION_POINT=400',
+  // Stage E.1: placingUnit 12 -> 24 sits above ROSTER_SHAPE's ceiling (17).
+  // totalPrUnit and qualifyUnit stay at 16, under it. kindScale values are
+  // small. The leaf is already exempt (formula unit, not a live-axis threshold).
+  'ROSTER_SHAPE/SPORTING_REPUTATION.placingUnit=24',
 ]);
 
 /**
@@ -5885,7 +5889,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 2372 -> 2377: Stage C.1c CONDITION_PERCENT_SCALE in five domains.
   // 2428 -> 2433: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS across
   // five domains that carry it under their ceiling; ROSTER_SHAPE omits it.
-  CONTAINMENT_CHECKS: 2522, // 2433 -> 2480: Stage D2.2 watched grains + plate-loading + SECONDS_PER_MINUTE
+  CONTAINMENT_CHECKS: 2521, // 2522 -> 2521: Stage E.1 placingUnit 24 left ROSTER_SHAPE's required set
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -5963,7 +5967,7 @@ const DOMAIN_CENSUS = Object.freeze({
     // above ROSTER_SHAPE's ceiling (17); STATION_THROUGHPUT_CHANGEOVER_TICKS=6
     // does not.
     // 223 -> 225: Stage D2.2 two watched QA grains (1800, 3600).
-    ROSTER_SHAPE: 226, // 225 -> 226: Stage D2.2 SECONDS_PER_MINUTE=60 above roster ceiling
+    ROSTER_SHAPE: 227, // 226 -> 227: Stage E.1 placingUnit=24 above roster ceiling
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -7510,11 +7514,10 @@ function driveEverything(): readonly DrivenRow[] {
   {
     const localWin = Object.freeze({
       kind: 'local' as const,
-      totalKg: 500,
-      place: 1,
-      fieldSize: 16,
+      outcome: 'total' as const,
+      placement: Object.freeze({ place: 1, categoryFieldSize: 16 }),
       isTotalPr: false,
-      newlyQualifiedFor: Object.freeze([] as const),
+      newlyQualifiedFor: null,
     });
     drive('sportingReputationFromResult', 'local-win', () =>
       sportingReputationModule.sportingReputationFromResult(localWin),
@@ -7523,27 +7526,17 @@ function driveEverything(): readonly DrivenRow[] {
     drive('sportingReputationFromResult', 'bomb-out', () =>
       sportingReputationModule.sportingReputationFromResult({
         kind: 'local',
-        totalKg: null,
-        place: null,
-        fieldSize: 8,
-        isTotalPr: false,
-        newlyQualifiedFor: [],
+        outcome: 'bombed-out',
       }),
     );
     drive('sportingReputationFromResult', 'worlds-pr', () =>
       sportingReputationModule.sportingReputationFromResult({
         kind: 'worlds',
-        totalKg: 800,
-        place: 1,
-        fieldSize: 16,
+        outcome: 'total',
+        placement: { place: 1, categoryFieldSize: 16 },
         isTotalPr: true,
-        newlyQualifiedFor: [],
+        newlyQualifiedFor: null,
       }),
-    );
-    const sporting = sportingReputationModule.sportingReputationFromResult(localWin).points;
-    const fromMembers = core.asReputation(0);
-    drive('composeGymReputationContributions', 'local-plus-members', () =>
-      sportingReputationModule.composeGymReputationContributions({ sporting, fromMembers }),
     );
   }
 
@@ -10275,7 +10268,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 358 -> 359: Stage C.1c CONDITION_PERCENT_SCALE=100 dropped above ROSTER_SHAPE.
   // 362 -> 363: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS=18 dropped
   // above ROSTER_SHAPE.
-  POINTS: 370, // 363 -> 370: Stage D2.2 five more omitted points driven (COUNT+2 DAY+2 ROSTER+1).
+  POINTS: 371, // 370 -> 371: Stage E.1 placingUnit dropped above ROSTER_SHAPE
   /** Of those, how many at least one subject was driven at. */
   // Tracks POINTS 1:1 again (218), confirmed by running the assertion below
   // rather than assumed. PLAYTEST 4: tracks POINTS 1:1 again (222), confirmed
@@ -10297,7 +10290,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 344 -> 357: GDD §5.14 Stage B, tracks POINTS 1:1 again (see POINTS
   // above), confirmed by running this exact assertion.
   // Stage C.1b: FLOOR_TILE_PIXELS_MAX drop is now driven; tracks POINTS 1:1.
-  POINTS_DRIVEN: 370,
+  POINTS_DRIVEN: 371,
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
@@ -10342,7 +10335,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // COUNT/DAY/ROSTER_SHAPE. Measured off this assertion rather than
   // hand-derived per domain.
   // 6250 -> 6273: Stage C.1b one more dropped point × argument-heavy subjects.
-  PAIRS_DRIVEN: 6498, // 6388 -> 6498: Stage D2.2 overflow pairs at the extra dropped points.
+  PAIRS_DRIVEN: 6521, // 6498 -> 6521: Stage E.1 one more dropped point × 23 argument-heavy subjects
   // GDD §5.13 presentation Phase 3: PAIRS_SKIPPED re-measured (495 -> 517),
   // a real failure value this round's own run produced.
   // GDD §5.14 Stage B: re-measured (517 -> 561), a real failure value this
@@ -10368,7 +10361,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // and reading its failure value.
   // GDD §5.14 Stage B: re-measured (47 -> 51), five new dropped ROSTER_SHAPE
   // points.
-  ROSTER_POINTS_ABOVE_THE_CEILING: 52, // 51 -> 52: Stage D2.2 one more roster overflow point
+  ROSTER_POINTS_ABOVE_THE_CEILING: 52, // placingUnit is exempt, not a filed roster bound
   /**
    * DERIVED INDEPENDENTLY RATHER THAN READ OFF A FAILURE, where possible — not
    * possible here. members.ts (§5.11 stage 3) measured this pass at 3892
@@ -10441,7 +10434,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // the next run's real failure.
   // Stage C.1b: furniture layout + dock-driven GymScreen trees add overflow
   // rows. Re-measured by running this assertion.
-  ROWS: 7434, // 7298 -> 7434: Stage D2.2 overflow walk at the extra dropped points
+  ROWS: 7457, // 7434 -> 7457: Stage E.1 one more dropped point × 23 argument-heavy subjects
   // GDD §5.13 presentation Phase 3: re-measured (942486 -> 947983), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (947983 -> 960248).
@@ -10459,7 +10452,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // GDD §5.14 Stage B: thirteen new dropped points. Read from this pin's own
   // failure value.
   // 1355914 -> 1357825: Stage C.1b overflow GymScreen trees. Measured.
-  NODES: 1439100,
+  NODES: 1439907, // 1439100 -> 1439907: Stage E.1 overflow walk at placingUnit=24
   // GDD §5.13 presentation Phase 3: re-measured (6413124 -> 6446099), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (6446099 -> 6540148).
@@ -10478,7 +10471,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // GDD §5.14 Stage B: thirteen new dropped points. Read from this pin's own
   // failure value.
   // 9415846 -> 9429777: Stage C.1b overflow strings. Measured.
-  STRINGS: 9985596,
+  STRINGS: 9990695, // 9985596 -> 9990695: Stage E.1 overflow walk at placingUnit=24
   // GDD §5.13 presentation Phase 3: re-measured (4366 -> 4378), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (4378 -> 4381).
@@ -10562,7 +10555,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 1328 -> 1336: Stage C.1b overflow declined closures. Measured.
   // 1344 -> 1368: Stage D overflow declined closures. Measured.
   // 1368 -> 1376: Stage D2.1B four new overflow drive invocations.
-  CLOSURES_DECLINED: 1392,
+  CLOSURES_DECLINED: 1400, // 1392 -> 1400: Stage E.1 overflow at placingUnit=24
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -10621,7 +10614,7 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // refused the same way. Measured off this assertion.
   // Stage C.1b: one more refused overflow arm from the widened ROSTER_SHAPE
   // drop (FLOOR_TILE_PIXELS_MAX). Re-measured by running this assertion.
-  ['beginRecruitment#refused', 226], // 223 -> 226: Stage D2.2 three more dropped ROSTER_SHAPE points
+  ['beginRecruitment#refused', 227], // 226 -> 227: Stage E.1 placingUnit dropped above ROSTER_SHAPE
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
@@ -11021,7 +11014,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 593544 -> 595928: Stage C.1b furniture-layout exports, GYM_SURFACES, and
   // the larger GymScreen tree. Re-measured by running this assertion.
   // 595954 -> 595972: Stage C.1d playerFacing* drives.
-  ROWS: 598235, // 598231 -> 598235: Stage E sportingReputationFromResult + composeGymReputationContributions drives
+  ROWS: 598234, // 598235 -> 598234: Stage E.1 removed composeGymReputationContributions drive
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -11048,7 +11041,7 @@ const DRIVE_CENSUS = Object.freeze({
   // exports (isRecoveryBlocking, recoveryBlockingItems), both driven above.
   // 382 -> 389: Stage C.1b six floor furniture exports + GYM_SURFACES.
   // 393 -> 396: Stage C.1d three playerFacing* drives.
-  EXPORTS_DRIVEN: 434, // 432 -> 434: Stage E sportingReputationFromResult, composeGymReputationContributions
+  EXPORTS_DRIVEN: 433, // 434 -> 433: Stage E.1 removed composeGymReputationContributions
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -11141,7 +11134,7 @@ const DRIVE_CENSUS = Object.freeze({
   // failure value.
   // 6490388 -> 6510102: Stage C.1b furniture/dock GymScreen trees. Measured.
   // 6510907 -> 6510913: Stage C.1d playerFacing* drive rows.
-  NODES: 6521709, // 6521687 -> 6521709: Stage E sportingReputation drive rows
+  NODES: 6521707, // 6521709 -> 6521707: Stage E.1 removed compose drive row
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -11262,7 +11255,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_087_927, // 30_087_862 -> 30_087_927: Stage E sportingReputation drive strings
+  STRINGS: 30_087_926, // 30_087_927 -> 30_087_926: Stage E.1 removed compose drive strings
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -11372,7 +11365,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
   // 3973 -> 3975: Stage D2 reset-gym copy / wear-truth strings. Read from
   // this pin's own failure value.
-  DISTINCT_STRINGS: 4034, // 4000 -> 4034: Stage E sporting reason/copy strings
+  DISTINCT_STRINGS: 4032, // 4034 -> 4032: Stage E.1 removed compose drive strings
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
   DEPTH_CUTS: 7,
   /**
@@ -15479,11 +15472,10 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'reputation.ts': 24,
       'sessions.ts': 43,
       'social.ts': 31,
-      // Stage E — sportingReputation.ts: isSportingMeetKind (2),
+      // Stage E.1 — sportingReputation.ts: isSportingMeetKind (2),
       // isSportingQualifyRung (2), applySlots (1), requireSportingMeetResult
-      // (1), reason (1), sportingReputationFromResult (1),
-      // composeGymReputationContributions (1).
-      'sportingReputation.ts': 9,
+      // (2), reason (1), categoryPlacingShare (2), sportingReputationFromResult (1).
+      'sportingReputation.ts': 11,
       // GDD §5.14 Stage C's stationView.ts — ten `return` statements:
       // stationIdentityView's two arms, the internal `targetsStation`
       // helper's two, stationOperationView's one, isSoundCondition's one,
@@ -15673,10 +15665,9 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'reputation.ts': 6,
   'sessions.ts': 24,
   'social.ts': 6,
-  // Stage E — sportingReputation.ts: kind, total/place mismatch, fieldSize,
-  // posted-total mismatch, totalKg, place, bomb-out PR, bomb-out qualify,
-  // unknown rung, duplicate rung.
-  'sportingReputation.ts': 10,
+  // Stage E.1 — sportingReputation.ts: kind, outcome, bomb-out extra fields,
+  // missing placement, categoryFieldSize, place, isTotalPr, qualify rung.
+  'sportingReputation.ts': 8,
   // 2 -> 3: GDD §5.18 Stage D.1 stationCapability refuseWith for the bay.
   'stationCapability.ts': 3,
 });
@@ -16492,7 +16483,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 66 -> 67: GDD §5.14 Stage B's pacing.ts — one call through a
   // module-level import (`offlineBankingHorizonSeconds()` in the sporadic
   // gap cycle). Read from this pin's own failure value.
-  'module-variable': 77, // 73 -> 77: Stage E sportingReputation.ts module-variable calls
+  'module-variable': 79, // 77 -> 79: Stage E.1 requireSportingMeetResult typeof checks
   // 5 -> 7: Phase 3's RENDER half's two calls through a local binding in
   // `AmbientMemberBody`'s single animation effect (`bobLoop.start()`,
   // `pulseLoop.stop()`). Read from this table's own failure value.
@@ -16588,7 +16579,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1674 -> 1681: Stage D2 placedOwnedItems / withWear / stationOperationView / reset.
   // 1681 -> 1691: Stage D2.1A assignedSeat / reservedUseCells / relocate helpers.
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
-  function: 1749, // 1723 -> 1749: Stage E sportingReputation.ts function calls
+  function: 1745, // 1749 -> 1745: Stage E.1 removed composeGymReputationContributions
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16646,7 +16637,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1502 -> 1513: Stage D2 Set.has / Object.freeze / stationByRefKey.get.
   // 1513 -> 1517: Stage D2.1A useCells/blocked/has member calls on live relocate.
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
-  member: 1573, // 1546 -> 1573: Stage E sportingReputation.ts member calls
+  member: 1569, // 1573 -> 1569: Stage E.1 removed composeGymReputationContributions
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -16727,7 +16718,7 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 430 -> 435: Stage D2 withWear restrict / stationOperationView seats / placedOwnedItems loops.
   // 435 -> 438: Stage D2.1A reservedUseCells / assignedSeat / relocate locals.
   // 438 -> 444: Stage D2.1B nextChangeovers / loading-path locals.
-  local: 454, // 449 -> 454: Stage E sportingReputation.ts applySlots / total locals
+  local: 453, // 454 -> 453: Stage E.1 removed composeGymReputationContributions locals
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -16842,7 +16833,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 911 -> 916: Stage D2.1A floorSim return 63 -> 68.
   // 916 -> 925: Stage D2.1B floorSim 68→72, stationCapability 24→27,
   // stationView 44→46.
-  SITES: 948, // 939 -> 948: Stage E sportingReputation.ts nine return sites
+  SITES: 950, // 948 -> 950: Stage E.1 sportingReputation.ts eleven return sites
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -16995,7 +16986,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
   // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
   // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
-  NODES_EXAMINED: 79_353, // 78_305 -> 79_353: Stage E sportingReputation.ts AST
+  NODES_EXAMINED: 79_336, // 79_353 -> 79_336: Stage E.1 sportingReputation.ts AST
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -17014,7 +17005,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 149 -> 152: GDD §5.14 Stage B's pacing.ts, three `refuseWith` calls.
   // 152 -> 157: Stage C.1b floor.ts furniture refusals.
   // 159 -> 160: GDD §5.18 Stage D.1 stationCapability refuseWith.
-  WRAP_CALLS: 170, // 160 -> 170: Stage E sportingReputation.ts ten refuseWith calls
+  WRAP_CALLS: 168, // 170 -> 168: Stage E.1 sportingReputation.ts eight refuseWith calls
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,
@@ -17132,7 +17123,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // 1001 -> 1003: Stage D.1b capacityRealizesOn + bay sprite table leaves.
   // 1003 -> 1005: Stage D2 placedOwnedItems + reset-gym signatures.
   // 1005 -> 1015: Stage D2.1B five new exported functions' signatures.
-  POSITIONS: 1033, // 1022 -> 1033: Stage E sportingReputation exported positions
+  POSITIONS: 1032, // 1033 -> 1032: Stage E.1 removed composeGymReputationContributions
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -21406,7 +21397,7 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // 252 -> 253: Stage C.1d PlacementRefuseKind.
   // 253 -> 258: Stage D stationCapability type declarations.
   // 258 -> 264: GDD §5.18 Stage D.1 trainingStation type declarations.
-  DECLARATIONS: 273, // 266 -> 273: Stage E sportingReputation type declarations
+  DECLARATIONS: 274, // 273 -> 274: Stage E.1 SportingOutcome / SportingCategoryPlacement, dropped Composed
   /** Those carrying type parameters. An instantiation depth needs one. */
   // Phase 4: `MemberTable<Leaf>` in floorSprites.ts.
   GENERIC: 13,

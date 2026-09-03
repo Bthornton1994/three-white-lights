@@ -1,5 +1,5 @@
 /**
- * sportingReputation.ts — Stage E reputation feed foundation.
+ * sportingReputation.ts — Stage E.1 sporting reputation contract.
  *
  * GDD: Career-side of the reputation feed, built as a pure function first;
  * the Career/Meet → Empire persistent write stays a later, explicitly
@@ -12,54 +12,71 @@
  * attempts, or a maintained streak are not, by themselves, a contribution.
  *
  * ===========================================================================
- * 1. Two contributors, two grains
+ * 1. Two contributors, two grains — not added here
  * ===========================================================================
  *
  * `reputationFromMembers` is the member/institution half: a per-day rate
- * from a roster. This file is the sporting half: a per-result contribution
- * from a competition outcome. `composeGymReputationContributions` adds two
- * already-computed `ReputationPoints` values when a caller has chosen an
- * accounting grain. It does not convert a meet into a daily rate.
- *
- * `reputationFromMembers`'s optional `competitionResultReputationBonus` is
- * left unused on purpose. That argument adds a bonus into a per-day member
- * rate. A meet result is not a day of dues. Folding one into the other
- * would mix grains inside the member function. Stage E reports that
- * mismatch rather than widening the argument.
+ * from a roster. This file is the sporting half: a per-result event delta.
+ * Those grains are not interchangeable. Stage E.1 does not ship a composer
+ * that adds them. A later persistence/accounting boundary may add an
+ * integrated member delta over a defined period to a sporting event delta
+ * once both operands share a grain. That boundary does not exist yet.
  *
  * ===========================================================================
- * 2. Input contract (neutral result shape)
+ * 2. Input contract — facts the later crossing will compose
  * ===========================================================================
  *
- * Accepted, because the current meet/Career model can supply them as facts:
+ * The facts are distributed today. No single current Meet/Career object
+ * already carries outcome, category placing, published-total PR, and
+ * standing unlock together. The crossing will fill this shape from:
+ *
+ *   - game/meet: posted a total vs bombed out
+ *   - career/flight: place within an award category (`categoryId`), not a
+ *     logistical flight
+ *   - career/careerRecord: `tierUnlockBetween` yields one `to` tier or none
+ *   - the appropriate result/record comparison: whether this meet raised
+ *     the published best total
+ *
+ * Accepted here:
  *
  *   - `kind` — GDD §6.1 ladder words, owned here, not imported from Career
- *   - `totalKg` / `place` / `fieldSize` — posted total and placing; both
- *     null together on a bomb-out
+ *   - `outcome` — `'total'` or `'bombed-out'`; no numerical Total
+ *   - `placement` — place and `categoryFieldSize` on a posted total; absent
+ *     on a bomb-out. `categoryFieldSize` is the number of competitors in
+ *     the SAME award category the place is in. It is not flight size,
+ *     session size, bar-sharing count, or overall meet attendance.
  *   - `isTotalPr` — this meet raised the published best total
- *   - `newlyQualifiedFor` — rungs the crossing already decided were newly
- *     earned; Empire does not re-derive Career qualifying-total tables
+ *   - `newlyQualifiedFor` — the single new standing actually achieved, or
+ *     null. Not a stack of rungs. No `local` qualification.
  *
- * Refused or deferred, because they would fabricate prestige or give an
- * existing quantity a second meaning:
+ * Refused or deferred:
  *
  *   - entering a meet, completing nine attempts, opening the app, streak
- *   - Total kilograms as a scalar into reputation (Total already means Total)
+ *   - Total kilograms (or any unit) as a reputation scalar
  *   - DOTS, e1RM, per-lift PRs as extra gym credit
  *   - fictional opponent prestige, federation rank, hidden performance score
  *   - Gym Bucks, Training IQ, member satisfaction (those stay other axes)
  *
- * A later member-outcome contribution composes beside this function the
- * same way `fromMembers` already does. Persistent roster history is Stage G
- * and is not started here.
+ * Persistent roster history is Stage G and is not started here.
  *
  * ===========================================================================
- * 3. Why the number moved
+ * 3. E-REP-01 — check-in reputation semantic debt
+ * ===========================================================================
+ *
+ * The consumed reputation model still awards `REPUTATION_PER_CHECK_IN`
+ * (2) per check-in. That is inherited activity reputation. It has not been
+ * reconciled with the doctrine that reputation is institutional sporting
+ * credibility. Stage E.1 does not retune that constant. World-level
+ * sporting credit is not held below a year of check-ins (730) merely to
+ * protect that inherited source.
+ *
+ * ===========================================================================
+ * 4. Why the number moved
  * ===========================================================================
  *
  * Each non-zero term carries a `kind` and a `text` line so a later screen
- * can say "placed 1 of 16 at a local meet" rather than toasting +12 REP
- * with no cause. Wiring that screen is not this piece.
+ * can say why reputation changed rather than toasting a bare +REP.
+ * Wiring that screen is not this piece.
  */
 
 import { asReputation, refuseWith, type ReputationPoints } from './empireCore';
@@ -70,6 +87,7 @@ const SPORTING = EMPIRE_TUNING.SPORTING_REPUTATION;
 
 export type SportingMeetKind = (typeof SPORTING.meetKinds)[number];
 export type SportingQualifyRung = (typeof SPORTING.qualifyRungs)[number];
+export type SportingOutcome = 'total' | 'bombed-out';
 
 export type SportingReputationReasonKind =
   | 'no-total'
@@ -77,14 +95,23 @@ export type SportingReputationReasonKind =
   | 'total-pr'
   | 'qualify';
 
-export interface SportingMeetResult {
-  readonly kind: SportingMeetKind;
-  readonly totalKg: number | null;
-  readonly place: number | null;
-  readonly fieldSize: number;
-  readonly isTotalPr: boolean;
-  readonly newlyQualifiedFor: readonly SportingQualifyRung[];
+export interface SportingCategoryPlacement {
+  readonly place: number;
+  readonly categoryFieldSize: number;
 }
+
+export type SportingMeetResult =
+  | {
+      readonly kind: SportingMeetKind;
+      readonly outcome: 'bombed-out';
+    }
+  | {
+      readonly kind: SportingMeetKind;
+      readonly outcome: 'total';
+      readonly placement: SportingCategoryPlacement;
+      readonly isTotalPr: boolean;
+      readonly newlyQualifiedFor: SportingQualifyRung | null;
+    };
 
 export interface SportingReputationReason {
   readonly kind: SportingReputationReasonKind;
@@ -95,12 +122,6 @@ export interface SportingReputationReason {
 export interface SportingReputationContribution {
   readonly points: ReputationPoints;
   readonly reasons: readonly SportingReputationReason[];
-}
-
-export interface ComposedGymReputationContribution {
-  readonly points: ReputationPoints;
-  readonly sporting: ReputationPoints;
-  readonly fromMembers: ReputationPoints;
 }
 
 function isSportingMeetKind(value: string): value is SportingMeetKind {
@@ -150,47 +171,59 @@ function applySlots(template: string, slots: Readonly<Record<string, string>>): 
   return out;
 }
 
+/**
+ * First of N>1 → 1; last of N>1 → 0; one-person category → 0.
+ * Beating nobody is not a placing accomplishment.
+ */
+function categoryPlacingShare(place: number, categoryFieldSize: number): number {
+  if (categoryFieldSize <= 1) return 0;
+  return (categoryFieldSize - place) / (categoryFieldSize - 1);
+}
+
 function requireSportingMeetResult(result: SportingMeetResult): SportingMeetResult {
   if (!isSportingMeetKind(result.kind)) {
     refuseWith(`${String(result.kind)} is not a sporting meet kind`);
   }
-  const bombed = result.totalKg === null;
-  if (bombed !== (result.place === null)) {
-    refuseWith('a posted total and a placing arrive together, or neither does');
+  const outcome = (result as { readonly outcome?: unknown }).outcome;
+  if (outcome !== 'total' && outcome !== 'bombed-out') {
+    refuseWith(`${String(outcome)} is not a sporting outcome`);
   }
+  if (outcome === 'bombed-out') {
+    const bag = result as Record<string, unknown>;
+    if (
+      bag.placement !== undefined ||
+      bag.isTotalPr !== undefined ||
+      bag.newlyQualifiedFor !== undefined
+    ) {
+      refuseWith('a bomb-out cannot place, raise a published best total, or newly qualify');
+    }
+    return result;
+  }
+  const posted = result as Extract<SportingMeetResult, { readonly outcome: 'total' }>;
+  const placement = posted.placement;
+  if (placement === null || typeof placement !== 'object') {
+    refuseWith('a posted total carries a category placement');
+  }
+  const place = placement.place;
+  const categoryFieldSize = placement.categoryFieldSize;
   if (
-    !Number.isFinite(result.fieldSize) ||
-    !Number.isInteger(result.fieldSize) ||
-    result.fieldSize < 1
+    !Number.isFinite(categoryFieldSize) ||
+    !Number.isInteger(categoryFieldSize) ||
+    categoryFieldSize < 1
   ) {
-    refuseWith(`fieldSize must be a positive whole number, received ${result.fieldSize}`);
+    refuseWith(
+      `categoryFieldSize must be a positive whole number, received ${categoryFieldSize}`,
+    );
   }
-  if (!bombed) {
-    const totalKg = result.totalKg;
-    const place = result.place;
-    if (totalKg === null || place === null) {
-      refuseWith('a posted total and a placing arrive together, or neither does');
-    }
-    if (!Number.isFinite(totalKg) || totalKg < 0) {
-      refuseWith(`totalKg must be finite and at or above zero, received ${totalKg}`);
-    }
-    if (!Number.isInteger(place) || place < 1 || place > result.fieldSize) {
-      refuseWith(`place must be a whole number from 1 to fieldSize, received ${place}`);
-    }
+  if (!Number.isInteger(place) || place < 1 || place > categoryFieldSize) {
+    refuseWith(`place must be a whole number from 1 to categoryFieldSize, received ${place}`);
   }
-  if (bombed && result.isTotalPr) {
-    refuseWith('a bomb-out cannot raise a published best total');
+  if (typeof posted.isTotalPr !== 'boolean') {
+    refuseWith('isTotalPr must be a boolean');
   }
-  if (bombed && result.newlyQualifiedFor.length > 0) {
-    refuseWith('a bomb-out cannot newly qualify for a higher rung');
-  }
-  const seen = new Set<string>();
-  for (const rung of result.newlyQualifiedFor) {
-    if (!isSportingQualifyRung(rung)) {
-      refuseWith(`${String(rung)} is not a sporting qualify rung`);
-    }
-    if (seen.has(rung)) refuseWith(`${rung} appears twice in newlyQualifiedFor`);
-    seen.add(rung);
+  const rung = posted.newlyQualifiedFor;
+  if (rung !== null && !isSportingQualifyRung(String(rung))) {
+    refuseWith(`${String(rung)} is not a sporting qualify rung`);
   }
   return result;
 }
@@ -217,20 +250,23 @@ export function sportingReputationFromResult(
   result: SportingMeetResult,
 ): SportingReputationContribution {
   requireSportingMeetResult(result);
-  const scale = SPORTING.kindScale[result.kind];
   const reasons: SportingReputationReason[] = [];
 
-  if (result.totalKg === null || result.place === null) {
+  if (result.outcome === 'bombed-out') {
     reasons.push(reason('no-total', SPORTING.copy.noTotal, 0));
   } else {
-    const placingShare = (result.fieldSize - result.place + 1) / result.fieldSize;
-    const placingPoints = scale * SPORTING.placingUnit * placingShare;
+    const scale = SPORTING.kindScale[result.kind];
+    const share = categoryPlacingShare(
+      result.placement.place,
+      result.placement.categoryFieldSize,
+    );
+    const placingPoints = scale * SPORTING.placingUnit * share;
     reasons.push(
       reason(
         'placing',
         applySlots(SPORTING.copy.placing, {
-          place: String(result.place),
-          field: String(result.fieldSize),
+          place: String(result.placement.place),
+          field: String(result.placement.categoryFieldSize),
           kind: result.kind,
         }),
         placingPoints,
@@ -245,16 +281,16 @@ export function sportingReputationFromResult(
         ),
       );
     }
-  }
-
-  for (const rung of result.newlyQualifiedFor) {
-    reasons.push(
-      reason(
-        'qualify',
-        applySlots(SPORTING.copy.qualified, { rung }),
-        SPORTING.kindScale[rung] * SPORTING.qualifyUnit,
-      ),
-    );
+    const rung = result.newlyQualifiedFor;
+    if (rung !== null) {
+      reasons.push(
+        reason(
+          'qualify',
+          applySlots(SPORTING.copy.qualified, { rung }),
+          SPORTING.kindScale[rung] * SPORTING.qualifyUnit,
+        ),
+      );
+    }
   }
 
   let total = 0;
@@ -262,21 +298,5 @@ export function sportingReputationFromResult(
   return Object.freeze({
     points: asReputation(scrubPrecision(total)),
     reasons: Object.freeze(reasons),
-  });
-}
-
-/**
- * Named sum of the sporting per-result contribution and the members per-day
- * contribution. The caller supplies both already computed; this does not
- * read a roster or a meet.
- */
-export function composeGymReputationContributions(input: {
-  readonly sporting: ReputationPoints;
-  readonly fromMembers: ReputationPoints;
-}): ComposedGymReputationContribution {
-  return Object.freeze({
-    sporting: input.sporting,
-    fromMembers: input.fromMembers,
-    points: asReputation(scrubPrecision(input.sporting + input.fromMembers)),
   });
 }
