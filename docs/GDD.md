@@ -3185,8 +3185,8 @@ than the ruling's own §1–§23 sequence:
 - **Stage F.** Portfolio unpause (item 5) — multiple acquired locations,
   remote management, full unattended staffing.
 - **Stage G.** NPC roster/tenure depth (item 6). **G.1** (living floor-member
-  identity + service outcome foundation) is built and awaiting human verdict —
-  recorded after Stage E below.
+  identity + service outcome foundation) pre-human authority closed at
+  `8fc4fcbf` — awaiting human identity/consequence gate at 390×844.
 
 ### Human Stage C rejection at `f097695b`
 
