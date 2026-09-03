@@ -199,9 +199,9 @@
  * 5. What this module may not read, and why the type is the fence
  * ===========================================================================
  *
- * `FloorSimContext` has exactly five fields: a rung, a `FloorState`, the
- * Barbell-group ownership list, the session-equipment ownership list, and
- * Stage D station capability. Stock capability is the Stage C machine.
+ * `FloorSimContext` has exactly six fields: a rung, a `FloorState`, the
+ * Barbell-group ownership list, the session-equipment ownership list, Stage D
+ * station capability, and the authoritative living population (G.1A). Stock
  * There
  * is no wallet here, no Gym Bucks, no chalk, no Total, no e1RM, no streak
  * state, no covered-day concept and — the one this piece's brief called out
@@ -214,7 +214,7 @@
  * version of this paragraph named one check for a route it did not cover.
  *
  * A sixth field on `FloorSimContext` is caught by `floorSim.test.ts`'s `carries
- * exactly the five presentation inputs on its context`. That check used to read
+ * exactly the six presentation inputs on its context`. That check used to read
  * `Object.keys` over a VALUE, which sees a required sixth field (the value could
  * not be built without it) and is blind to an OPTIONAL one. It now also carries
  * a `Record<keyof FloorSimContext, true>`, so the catcher for an optional field
@@ -440,8 +440,16 @@ export interface FloorStation {
   readonly queueCells: readonly GridPosition[];
 }
 
+/** Authoritative member facts the played path hands to the sim — types and ids only. */
+export interface FloorSimPopulationEntry {
+  readonly memberId: string;
+  readonly type: MemberType;
+}
+
 /** One member, mid-behaviour. Everything a renderer needs and nothing it does not. */
 export interface FloorSimMember {
+  /** Stable living-member id from `FloorSimContext.livingPopulation`. */
+  readonly memberId: string;
   /** Its roster index — stable for the life of a sim, and the deterministic tie-break everywhere. */
   readonly index: number;
   readonly type: MemberType;
@@ -460,6 +468,11 @@ export interface FloorSimMember {
   readonly claimedAt: number | null;
   /** The tick it reached the queue, or null while it is still walking there — the queue's primary ordering key. */
   readonly queuedAt: number | null;
+  /**
+   * The tick this member first stood in a station queue, preserved through
+   * `using` so G.1 can measure true queue wait (queue arrival → use start).
+   */
+  readonly queueArrivedAt: number | null;
   /** Ticks left in `using`, `leaving` or `interrupted`. Zero in the other two states. */
   readonly timer: number;
   /** Set for the length of an `interrupted` beat, so a reaction cue can name the cause. */
@@ -499,11 +512,13 @@ export interface FloorSimMember {
  * stores them — `livingMembers.ts` owns durable history.
  */
 export interface FloorSimServiceObservation {
+  readonly memberId: string;
   readonly memberIndex: number;
   readonly memberType: MemberType;
   readonly stationKind: 'training' | 'fixed' | 'session';
   readonly stationKey: string;
-  readonly waitTicks: number;
+  /** True queue wait in ticks: queue arrival → use start. Not claim-to-use approach time. */
+  readonly queueWaitTicks: number;
   readonly trainingExperience: number;
   readonly outcome: 'completed' | 'interrupted';
   readonly observedAtTick: number;
@@ -538,6 +553,8 @@ export interface FloorSimContext {
   readonly barbellOwned: readonly LadderEquipmentItem[];
   readonly sessionOwned: readonly SessionEquipmentItem[];
   readonly capability: StationCapabilityState;
+  /** Authoritative living members for the played path — not recomputed from ambient types. */
+  readonly livingPopulation: readonly FloorSimPopulationEntry[];
 }
 
 // ---------------------------------------------------------------------------
@@ -1304,6 +1321,7 @@ function interrupt(member: FloorSimMember, cause: FloorSimInterruption): FloorSi
     targetPosition: null,
     claimedAt: null,
     queuedAt: null,
+    queueArrivedAt: null,
     usingStartedAt: null,
     // ARMED WITH ONE MORE THAN THE BEAT, deliberately. The tick that arms the
     // beat also runs the advance pass, which decrements — so arming with the
@@ -1435,15 +1453,16 @@ function makeServiceObservation(
   tick: number,
   outcome: 'completed' | 'interrupted',
 ): FloorSimServiceObservation {
-  const queueStart = member.queuedAt ?? member.claimedAt;
   const useStart = member.usingStartedAt ?? tick;
-  const waitTicks = queueStart === null ? 0 : Math.max(0, useStart - queueStart);
+  const queueWaitTicks =
+    member.queueArrivedAt === null ? 0 : Math.max(0, useStart - member.queueArrivedAt);
   return Object.freeze({
+    memberId: member.memberId,
     memberIndex: member.index,
     memberType: member.type,
     stationKind: stationRef.kind,
     stationKey: floorStationRefKey(stationRef),
-    waitTicks,
+    queueWaitTicks,
     trainingExperience: stationTrainingExperience(
       plan.capability,
       stationRef.kind,
@@ -1507,6 +1526,7 @@ function advanceMember(
       targetPosition: null,
       claimedAt: null,
       queuedAt: null,
+      queueArrivedAt: null,
       usingStartedAt: null,
       awayFrom: relocated.cell,
     });
@@ -1518,7 +1538,7 @@ function advanceMember(
     const stepped = beginStep(walked, stepAwayFrom(walked.cell, away, plan));
     const timer = relocated.timer - 1;
     if (timer > 0) return Object.freeze({ ...relocated, ...stepped, timer });
-    return Object.freeze({ ...relocated, ...stepped, state: 'seeking', timer: 0, awayFrom: null });
+    return Object.freeze({ ...relocated, ...stepped, state: 'seeking', timer: 0, awayFrom: null, queueArrivedAt: null });
   }
 
   // seeking or queuing, with or without a target.
@@ -1631,6 +1651,7 @@ function advanceMember(
     ...stepped,
     state: queuing ? 'queuing' : 'seeking',
     queuedAt: queuing ? relocated.queuedAt ?? tick : null,
+    queueArrivedAt: queuing ? relocated.queueArrivedAt ?? tick : relocated.queueArrivedAt,
   });
 }
 
@@ -1646,35 +1667,71 @@ function requireSeed(seed: number): number {
   return seed;
 }
 
+/** Test-only population derived from ambient placement — not the played G.1 path. */
+export function ambientLivingPopulation(
+  rung: LadderRung,
+  barbellOwned: readonly LadderEquipmentItem[],
+  sessionOwned: readonly SessionEquipmentItem[],
+  identityNonce = 0,
+): readonly FloorSimPopulationEntry[] {
+  const roster = ambientMemberRoster(rung, barbellOwned, sessionOwned);
+  return Object.freeze(
+    roster.map((row, index) =>
+      Object.freeze({
+        memberId: `member:n${identityNonce}:${index}`,
+        type: row.type,
+      }),
+    ),
+  );
+}
+
+/** Attach ambient-derived living population for floor-sim unit tests. */
+export function withAmbientLivingPopulation(
+  context: Omit<FloorSimContext, 'livingPopulation'>,
+  identityNonce = 0,
+): FloorSimContext {
+  return Object.freeze({
+    ...context,
+    livingPopulation: ambientLivingPopulation(
+      context.rung,
+      context.barbellOwned,
+      context.sessionOwned,
+      identityNonce,
+    ),
+  });
+}
+
 /**
- * The opening state: Phase 2's real roster — same count per rung, same
- * equipment-biased type mix — standing on the floor, everybody seeking.
- *
- * `ambientMemberRoster` places bodies clear of fixed furniture but knows
- * nothing about placed session equipment (its own header says so, and says
- * why). This function therefore moves any body that would open standing
- * inside a placed item to the nearest walkable cell, by (distance, y, x).
+ * The opening state: authoritative member ids/types from `livingPopulation`,
+ * starting POSITIONS from `ambientMemberRoster`.
  */
 export function createFloorSimState(context: FloorSimContext, seed: number): FloorSimState {
   requireSeed(seed);
   const plan = routePlan(context);
-  const roster = ambientMemberRoster(context.rung, context.barbellOwned, context.sessionOwned);
+  const placements = ambientMemberRoster(context.rung, context.barbellOwned, context.sessionOwned);
+  if (context.livingPopulation.length !== placements.length) {
+    refuseWith(
+      `living population count ${context.livingPopulation.length} does not match ambient placement count ${placements.length}`,
+    );
+  }
   return Object.freeze({
     tick: 0,
     seed,
     members: Object.freeze(
-      roster.map((row, index) =>
+      context.livingPopulation.map((entry, index) =>
         Object.freeze({
+          memberId: entry.memberId,
           index,
-          type: row.type,
+          type: entry.type,
           state: 'seeking' as FloorSimMemberState,
-          cell: nearestWalkable(row.position, plan),
+          cell: nearestWalkable(placements[index]?.position ?? { x: 0, y: 0 }, plan),
           next: null,
           progress: 0,
           target: null,
           targetPosition: null,
           claimedAt: null,
           queuedAt: null,
+          queueArrivedAt: null,
           timer: 0,
           interruptedBy: null,
           awayFrom: null,

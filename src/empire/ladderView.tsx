@@ -307,6 +307,8 @@ import type { FloorSimServiceObservation } from './floorSim';
 import {
   applyServiceObservations,
   createLivingMemberRoster,
+  floorSimPopulationFromRoster,
+  reconcileLivingMemberRosterOnRelocation,
   type LivingMemberRoster,
 } from './livingMembers';
 import {
@@ -725,12 +727,11 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
           outcome.kind === 'moved' ? relocateFloorState(outcome.state.rung) : state.floor,
         livingMembers:
           outcome.kind === 'moved'
-            ? createLivingMemberRoster(
+            ? reconcileLivingMemberRosterOnRelocation(
+                state.livingMembers,
                 outcome.state.rung,
-                outcome.state.equipment,
                 state.managed.gym.sessionEquipment,
                 outcome.state.collectedAt,
-                EMPIRE_TUNING.FLOOR_SIM_RENDER_SEED,
               )
             : state.livingMembers,
       });

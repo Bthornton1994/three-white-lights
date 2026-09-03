@@ -199,6 +199,7 @@ import {
 import { type LadderEquipmentItem } from './ladder';
 import { type GymViewAction } from './ladderView';
 import {
+  floorSimPopulationFromRoster,
   livingMemberAtIndex,
   playerFacingMemberShortId,
   playerFacingServiceVisitLine,
@@ -1395,6 +1396,7 @@ export function FloorGrid(props: FloorGridProps) {
     barbellOwned,
     sessionOwned: owned,
     capability,
+    livingPopulation: floorSimPopulationFromRoster(livingMembers),
   };
   // GDD §5.13's PLAYTEST 2 ruling, gap 3: the grid's own internal tile
   // boundaries, one line per interior column/row edge — `grid.width - 1`

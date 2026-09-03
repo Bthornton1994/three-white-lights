@@ -1,10 +1,14 @@
 /**
- * livingMembers.ts — Stage G.1: living floor-member identity and service outcomes.
+ * livingMembers.ts — Stage G.1 / G.1A: living floor-member identity and service outcomes.
  *
  * Pure module: zero React, zero side effects, zero I/O, no `Math.random`.
  * Persists the bodies the player sees on the played floor — NOT `NpcLifter`
  * (`empireCore.ts`'s idle roster), NOT `MemberRoster` (`members.ts`'s
  * aggregate satisfaction inputs). Those populations stay separate.
+ *
+ * G.1A IDENTITY AUTHORITY: member ids are gym-local ordinals under a nonce
+ * (`member:n1:0`) and do NOT encode the current facility rung. Facility
+ * relocation reconciles the roster — it never recreates existing members.
  *
  * NOT BUILT HERE, ON PURPOSE — later stages:
  *
@@ -17,9 +21,9 @@
 
 import { refuseWith } from './empireCore';
 import { ambientMemberRoster } from './floor';
-import type { FloorSimServiceObservation } from './floorSim';
+import type { FloorSimPopulationEntry, FloorSimServiceObservation } from './floorSim';
 import type { LadderEquipmentItem, LadderRung } from './ladder';
-import type { MemberType } from './members';
+import { equipmentBiasedMemberTypes, type MemberType } from './members';
 import type { SessionEquipmentItem } from './sessions';
 import { EMPIRE_TUNING } from './empireTuning';
 
@@ -34,7 +38,8 @@ export type GymMemberId = string & { readonly __brand: 'GymMemberId' };
 export interface ServiceVisitRecord {
   readonly stationKind: FloorSimServiceObservation['stationKind'];
   readonly stationKey: string;
-  readonly waitTicks: number;
+  /** True queue wait: arrival at the queue cell → use start, in sim ticks. */
+  readonly queueWaitTicks: number;
   readonly trainingExperience: number;
   readonly outcome: 'completed' | 'interrupted';
   readonly observedAtTick: number;
@@ -43,6 +48,7 @@ export interface ServiceVisitRecord {
 /** One persistent member the player can recognise across sim resets. */
 export interface LivingGymMember {
   readonly id: GymMemberId;
+  /** Frozen for this member's lifetime during G.1 — equipment purchases do not retag. */
   readonly type: MemberType;
   /** Gym clock seconds when this member joined the floor roster. */
   readonly joinedAtSeconds: number;
@@ -66,17 +72,44 @@ export const SERVICE_WAIT_LONG_MIN_TICKS = EMPIRE_TUNING.LIVING_MEMBER_WAIT_LONG
 // Identity
 // ---------------------------------------------------------------------------
 
-/** Deterministic id from rung, roster index and the floor-sim render nonce. */
-export function deriveMemberId(rung: LadderRung, index: number, identityNonce: number): GymMemberId {
-  if (!Number.isInteger(index) || index < 0) {
-    refuseWith(`member index must be a non-negative whole number, received ${index}`);
+/**
+ * Deterministic gym-local id from the roster nonce and a monotonic ordinal.
+ * Does NOT encode the current facility rung — relocation must not change it.
+ */
+export function deriveMemberId(identityNonce: number, ordinal: number): GymMemberId {
+  if (!Number.isInteger(ordinal) || ordinal < 0) {
+    refuseWith(`member ordinal must be a non-negative whole number, received ${ordinal}`);
   }
   if (!Number.isInteger(identityNonce) || identityNonce < 0) {
     refuseWith(
       `living-member identity nonce must be a non-negative whole number, received ${identityNonce}`,
     );
   }
-  return `member:${rung}:${index}:n${identityNonce}` as GymMemberId;
+  return `member:n${identityNonce}:${ordinal}` as GymMemberId;
+}
+
+/** The ordinal encoded in a shipped member id, for display and reconciliation. */
+export function memberOrdinalFromId(id: GymMemberId): number {
+  const parts = id.split(':');
+  const ordinal = Number(parts[2]);
+  if (!Number.isInteger(ordinal) || ordinal < 0) {
+    refuseWith(`member id ${id} does not encode a valid ordinal`);
+  }
+  return ordinal;
+}
+
+function ambientCountForRung(rung: LadderRung): number {
+  const count = EMPIRE_TUNING.AMBIENT_MEMBER_COUNT_BY_RUNG[rung];
+  if (count === undefined) refuseWith(`${String(rung)} has no registered ambient member count`);
+  return count;
+}
+
+function memberTypeForIndex(
+  sessionOwned: readonly SessionEquipmentItem[],
+  index: number,
+): MemberType {
+  const biased = equipmentBiasedMemberTypes(sessionOwned);
+  return biased[index % biased.length] as MemberType;
 }
 
 /** Opening roster: one living member per ambient placement, empty history. */
@@ -94,7 +127,7 @@ export function createLivingMemberRoster(
   const members = Object.freeze(
     placements.map((row, index) =>
       Object.freeze({
-        id: deriveMemberId(rung, index, identityNonce),
+        id: deriveMemberId(identityNonce, index),
         type: row.type,
         joinedAtSeconds,
         recentVisits: Object.freeze([]),
@@ -102,6 +135,64 @@ export function createLivingMemberRoster(
     ),
   );
   return Object.freeze({ rung, identityNonce, members });
+}
+
+/**
+ * Facility relocation: preserve every existing member exactly; append only when
+ * the destination ambient count is larger. Refuses when the destination would
+ * require fewer members than already live on the floor.
+ */
+export function reconcileLivingMemberRosterOnRelocation(
+  roster: LivingMemberRoster,
+  newRung: LadderRung,
+  sessionOwned: readonly SessionEquipmentItem[],
+  relocationMarkSeconds: number,
+): LivingMemberRoster {
+  if (!Number.isFinite(relocationMarkSeconds) || relocationMarkSeconds < 0) {
+    refuseWith(
+      `relocation mark seconds must be a non-negative number, received ${relocationMarkSeconds}`,
+    );
+  }
+  const targetCount = ambientCountForRung(newRung);
+  const existing = roster.members;
+  if (targetCount < existing.length) {
+    refuseWith(
+      `relocation to ${String(newRung)} allows ${targetCount} members but roster already has ${existing.length}`,
+    );
+  }
+  if (targetCount === existing.length) {
+    return Object.freeze({ ...roster, rung: newRung });
+  }
+  const appended = Object.freeze(
+    Array.from({ length: targetCount - existing.length }, (_unused, offset) => {
+      const index = existing.length + offset;
+      return Object.freeze({
+        id: deriveMemberId(roster.identityNonce, index),
+        type: memberTypeForIndex(sessionOwned, index),
+        joinedAtSeconds: relocationMarkSeconds,
+        recentVisits: Object.freeze([]),
+      });
+    }),
+  );
+  return Object.freeze({
+    rung: newRung,
+    identityNonce: roster.identityNonce,
+    members: Object.freeze([...existing, ...appended]),
+  });
+}
+
+/** Authoritative population facts for `createFloorSimState` on the played path. */
+export function floorSimPopulationFromRoster(
+  roster: LivingMemberRoster,
+): readonly FloorSimPopulationEntry[] {
+  return Object.freeze(
+    roster.members.map((member) =>
+      Object.freeze({
+        memberId: member.id,
+        type: member.type,
+      }),
+    ),
+  );
 }
 
 /** Resolve a sim member index to its persistent id. */
@@ -119,6 +210,15 @@ export function livingMemberAtIndex(
   return row === undefined ? null : row;
 }
 
+/** Read one living member by stable id. */
+export function livingMemberById(
+  roster: LivingMemberRoster,
+  id: GymMemberId,
+): LivingGymMember | null {
+  const found = roster.members.find((member) => member.id === id);
+  return found ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // Service outcomes
 // ---------------------------------------------------------------------------
@@ -127,7 +227,7 @@ function visitFromObservation(observation: FloorSimServiceObservation): ServiceV
   return Object.freeze({
     stationKind: observation.stationKind,
     stationKey: observation.stationKey,
-    waitTicks: observation.waitTicks,
+    queueWaitTicks: observation.queueWaitTicks,
     trainingExperience: observation.trainingExperience,
     outcome: observation.outcome,
     observedAtTick: observation.observedAtTick,
@@ -159,10 +259,16 @@ export function applyServiceObservations(
     byId.set(member.id, member);
   }
   for (const observation of observations) {
-    const id = memberIdForIndex(roster, observation.memberIndex);
-    if (id === null) continue;
+    const id = observation.memberId as GymMemberId;
     const current = byId.get(id);
-    if (current === undefined) continue;
+    if (current === undefined) {
+      refuseWith(`service observation names unknown member ${observation.memberId}`);
+    }
+    if (observation.memberType !== current.type) {
+      refuseWith(
+        `service observation type ${observation.memberType} does not match member ${current.id} type ${current.type}`,
+      );
+    }
     const nextVisits = truncateHistory(
       Object.freeze([...current.recentVisits, visitFromObservation(observation)]),
       historyLimit,
@@ -196,11 +302,9 @@ export function advanceLivingMemberTenure(
 // Player-facing copy
 // ---------------------------------------------------------------------------
 
-/** Short stable label derived from the id, not the sim index. */
+/** Short stable label derived from the id ordinal, not the sim index. */
 export function playerFacingMemberShortId(id: GymMemberId): string {
-  const parts = id.split(':');
-  const index = parts[2] ?? '?';
-  return `member ${index}`;
+  return `member ${memberOrdinalFromId(id)}`;
 }
 
 /** Plain-language tenure from gym-clock seconds. */
@@ -212,9 +316,10 @@ export function playerFacingTenureLine(joinedAtSeconds: number, nowSeconds: numb
   return `${days} days as a member`;
 }
 
-export function playerFacingWaitExperience(waitTicks: number): string {
-  if (waitTicks <= SERVICE_WAIT_SHORT_MAX_TICKS) return 'short wait';
-  if (waitTicks >= SERVICE_WAIT_LONG_MIN_TICKS) return 'long wait';
+/** Player-facing wait copy keyed on true queue wait, not claim-to-use approach time. */
+export function playerFacingWaitExperience(queueWaitTicks: number): string {
+  if (queueWaitTicks <= SERVICE_WAIT_SHORT_MAX_TICKS) return 'short wait';
+  if (queueWaitTicks >= SERVICE_WAIT_LONG_MIN_TICKS) return 'long wait';
   return 'waited a while';
 }
 
@@ -226,7 +331,7 @@ export function playerFacingTrainingExperience(trainingExperience: number): stri
 }
 
 export function playerFacingServiceVisitLine(visit: ServiceVisitRecord): string {
-  const wait = playerFacingWaitExperience(visit.waitTicks);
+  const wait = playerFacingWaitExperience(visit.queueWaitTicks);
   const training = playerFacingTrainingExperience(visit.trainingExperience);
   if (visit.outcome === 'interrupted') {
     return `${wait}, ${training}, interrupted`;

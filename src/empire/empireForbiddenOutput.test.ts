@@ -1277,14 +1277,33 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'livingMembers.ts#createLivingMemberRoster#return.members[].id',
       'livingMembers.ts#createLivingMemberRoster#return.members[].recentVisits[].stationKey',
       'livingMembers.ts#deriveMemberId#return',
+      'livingMembers.ts#floorSimPopulationFromRoster#return[].memberId',
       'livingMembers.ts#livingMemberAtIndex#return.id',
       'livingMembers.ts#livingMemberAtIndex#return.recentVisits[].stationKey',
+      'livingMembers.ts#livingMemberById#return.id',
+      'livingMembers.ts#livingMemberById#return.recentVisits[].stationKey',
       'livingMembers.ts#memberIdForIndex#return',
       'livingMembers.ts#playerFacingMemberShortId#return',
       'livingMembers.ts#playerFacingServiceVisitLine#return',
       'livingMembers.ts#playerFacingTenureLine#return',
       'livingMembers.ts#playerFacingTrainingExperience#return',
       'livingMembers.ts#playerFacingWaitExperience#return',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.members[].id',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.members[].recentVisits[].stationKey',
+    ]),
+  }),
+  Object.freeze({
+    field: 'Stage G.1A floorSim member ids on the authoritative living population',
+    why:
+      'G.1A makes memberId the durable identity carried through the sim. These positions are derived member-id strings on FloorSimMember and observation returns, not caller-supplied free text. Instrument B containment-scans every produced value.',
+    positions: Object.freeze([
+      'floorSim.ts#ambientLivingPopulation#return[].memberId',
+      'floorSim.ts#createFloorSimState#return.members[].memberId',
+      'floorSim.ts#runFloorSim#return.members[].memberId',
+      'floorSim.ts#stepFloorSim#return.members[].memberId',
+      'floorSim.ts#stepFloorSimWithObservations#return.observations[].memberId',
+      'floorSim.ts#stepFloorSimWithObservations#return.state.members[].memberId',
+      'floorSim.ts#withAmbientLivingPopulation#return.livingPopulation[].memberId',
     ]),
   }),
 ]);
@@ -1561,6 +1580,7 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   'floor.ts#overlapsFixedFurniture#fixed.some x1',
   // Stage G.1: floorSim observation buffer and livingMembers roster helpers.
   'floorSim.ts#advanceMember#observations.push x1',
+  'floorSim.ts#createFloorSimState#context.map x1',
   // GDD §5.13 presentation Phase 3 adds NO ROW HERE, and that is a decision
   // rather than an absence. floorSim.ts's first draft had six array-method
   // calls whose receiver was a parameter — `members.map`, `members.filter`,
@@ -1594,7 +1614,9 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   'ladderView.tsx#GymView#week.map x1',
   // Stage G.1 livingMembers.ts reads of caller-supplied roster/id/history.
   'livingMembers.ts#applyServiceObservations#roster.map x1',
-  'livingMembers.ts#playerFacingMemberShortId#id.split x1',
+  'livingMembers.ts#floorSimPopulationFromRoster#roster.map x1',
+  'livingMembers.ts#livingMemberById#roster.find x1',
+  'livingMembers.ts#memberOrdinalFromId#id.split x1',
   'livingMembers.ts#truncateHistory#visits.slice x1',
   // members.ts's two reads of a caller-supplied roster: `crowdingLoad` and
   // `reputationFromMembers` each sum a caller-supplied `MemberRoster` with
@@ -1732,7 +1754,7 @@ const SURFACE_CENSUS = Object.freeze({
   // stationChangeoverSeats, stationChangeoverTicks, playerFacingStationOperation.
   // 429 -> 432: Stage D2.2 plateLoadingProgress, plateLoadingDiscs,
   // ladderDevClockTestId.
-  EXPORTS: 449, // Stage G.1 livingMembers.ts + stepFloorSimWithObservations
+  EXPORTS: 455, // Stage G.1A identity helpers + floorSim livingPopulation
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1751,8 +1773,8 @@ const SURFACE_CENSUS = Object.freeze({
   // 122 -> 125: Stage D playerFacingUpgradeLabel/Effect/Refuse.
   // 128 -> 130: Stage D.1b bay qualityBench + plateTree URI leaves.
   // 130 -> 132: Stage D2.1B changeoverSeatKey + playerFacingStationOperation.
-  BARE_POSITIONS: 153, // Stage G.1 livingMembers.ts + floorSim observation exports
-  BARE_FIELDS: 5, // Stage G.1 living member id/station-key group
+  BARE_POSITIONS: 165, // Stage G.1A memberId positions on floorSim + livingMembers
+  BARE_FIELDS: 6, // Stage G.1A floorSim memberId group added
   BRANDED_POSITIONS: 34,
   /**
    * Zero, and the zero is the sixteenth bypass's repair rather than a fact
@@ -1874,7 +1896,7 @@ const SURFACE_CENSUS = Object.freeze({
 // for, the same as `isSoundCondition`'s addition above. Read from this pin's
 // own failure value.
   // 3970 -> 4024: Stage C.1b GymSurface / furniture-place unions and FloorState.furniture.
-  LITERAL_POSITIONS: 4247, // Stage G.1
+  LITERAL_POSITIONS: 4314, // Stage G.1A
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -3113,7 +3135,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // and FloorGrid presentation helpers. Read from this pin's own failure.
   // 3361 -> 3375: Stage D2.1A live-Capacity seat assignment / relocate helpers.
   // 3375 -> 3405: Stage D2.1B changeover helpers + FloorGrid loading path.
-  CALLS_EXAMINED: 3547, // Stage G.1 livingMembers.ts call expressions join the walk
+  CALLS_EXAMINED: 3581, // Stage G.1A livingMembers + floorSim helpers
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3312,7 +3334,7 @@ describe('instrument C — a raw string becomes a brand in a countable number of
     // (static frozen data with no branch point, read and containment-scanned
     // unconditionally) lives at the group.
     expect(DECLARED_BARE_STRING_FIELDS.length).toBe(SURFACE_CENSUS.BARE_FIELDS);
-    expect(SURFACE_CENSUS.BARE_FIELDS).toBe(5); // Stage G.1 living member id/station-key group
+    expect(SURFACE_CENSUS.BARE_FIELDS).toBe(6); // Stage G.1A floorSim memberId group added
     const keyGroup = DECLARED_BARE_STRING_FIELDS.find((group) =>
       group.field.includes('ReactElement.key'),
     );
@@ -7810,6 +7832,18 @@ function driveEverything(): readonly DrivenRow[] {
     const KIT = [...EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT];
     drive('FLOOR_SIM_MEMBER_STATES', 'value', () => floorSimModule.FLOOR_SIM_MEMBER_STATES);
     drive('FLOOR_SIM_INTERRUPTIONS', 'value', () => floorSimModule.FLOOR_SIM_INTERRUPTIONS);
+    drive('withAmbientLivingPopulation', 'garage', () =>
+      floorSimModule.withAmbientLivingPopulation({
+        rung: 'garage',
+        floor: floorModule.createFloorState('garage'),
+        barbellOwned: KIT,
+        sessionOwned: [] as readonly SessionEquipmentItem[],
+        capability: {},
+      }),
+    );
+    drive('ambientLivingPopulation', 'garage', () =>
+      floorSimModule.ambientLivingPopulation('garage', KIT, []),
+    );
     drive('floorStationRefKey', 'training', () =>
       floorSimModule.floorStationRefKey({ kind: 'training', station: 'competition-bench-bay' }),
     );
@@ -7839,13 +7873,13 @@ function driveEverything(): readonly DrivenRow[] {
       );
     }
     for (const rung of EMPIRE_TUNING.LADDER_RUNGS) {
-      const context = {
+      const context = floorSimModule.withAmbientLivingPopulation({
         rung,
         floor: floorModule.createFloorState(rung),
         barbellOwned: KIT,
         sessionOwned: [] as readonly SessionEquipmentItem[],
         capability: {},
-      };
+      });
       drive('floorStations', rung, () => floorSimModule.floorStations(context), [context]);
       drive(
         'createFloorSimState',
@@ -7907,13 +7941,13 @@ function driveEverything(): readonly DrivenRow[] {
         { x: 5, y: 3 },
       );
       if (laid.kind === 'placed' && moved.kind === 'placed') {
-        const withItem = {
+        const withItem = floorSimModule.withAmbientLivingPopulation({
           rung: 'garage' as const,
           floor: laid.state,
           barbellOwned: [] as readonly LadderEquipmentItem[],
           sessionOwned: owned,
           capability: {},
-        };
+        });
         const settled = floorSimModule.runFloorSim(
           floorSimModule.createFloorSimState(withItem, 5),
           withItem,
@@ -7946,11 +7980,37 @@ function driveEverything(): readonly DrivenRow[] {
   {
     const roster = censusLivingMembers();
     drive('deriveMemberId', 'garage/0', () =>
-      livingMembersModule.deriveMemberId('garage', 0, EMPIRE_TUNING.FLOOR_SIM_RENDER_SEED),
+      livingMembersModule.deriveMemberId(1, 0),
     );
     drive('createLivingMemberRoster', 'garage', () => roster, [roster]);
     drive('memberIdForIndex', 'garage/0', () => livingMembersModule.memberIdForIndex(roster, 0), [roster]);
     drive('livingMemberAtIndex', 'garage/0', () => livingMembersModule.livingMemberAtIndex(roster, 0), [roster]);
+    const firstMember = roster.members[0];
+    if (firstMember !== undefined) {
+      drive('livingMemberById', 'garage/0', () => livingMembersModule.livingMemberById(roster, firstMember.id), [
+        roster,
+        firstMember.id,
+      ]);
+      drive('memberOrdinalFromId', 'garage/0', () =>
+        livingMembersModule.memberOrdinalFromId(firstMember.id),
+        [firstMember.id],
+      );
+      drive('playerFacingMemberShortId', 'garage', () =>
+        livingMembersModule.playerFacingMemberShortId(firstMember.id),
+        [firstMember.id],
+      );
+    }
+    drive('floorSimPopulationFromRoster', 'garage', () =>
+      livingMembersModule.floorSimPopulationFromRoster(roster),
+      [roster],
+    );
+    const relocated = livingMembersModule.reconcileLivingMemberRosterOnRelocation(
+      roster,
+      'storage-unit',
+      [],
+      3600,
+    );
+    drive('reconcileLivingMemberRosterOnRelocation', 'garage->storage', () => relocated, [roster, relocated]);
     drive('applyServiceObservations', 'empty', () =>
       livingMembersModule.applyServiceObservations(roster, []),
       [roster],
@@ -7959,13 +8019,6 @@ function driveEverything(): readonly DrivenRow[] {
       livingMembersModule.advanceLivingMemberTenure(roster, 60),
       [roster],
     );
-    const firstMember = roster.members[0];
-    if (firstMember !== undefined) {
-      drive('playerFacingMemberShortId', 'garage', () =>
-        livingMembersModule.playerFacingMemberShortId(firstMember.id),
-        [firstMember.id],
-      );
-    }
     drive('playerFacingTenureLine', 'garage', () => livingMembersModule.playerFacingTenureLine(0, 3600));
     drive('playerFacingWaitExperience', 'short', () => livingMembersModule.playerFacingWaitExperience(5));
     drive('playerFacingTrainingExperience', 'light', () =>
@@ -7974,7 +8027,7 @@ function driveEverything(): readonly DrivenRow[] {
     const visit = Object.freeze({
       stationKind: 'session' as const,
       stationKey: 'mats',
-      waitTicks: 5,
+      queueWaitTicks: 5,
       trainingExperience: 0,
       outcome: 'completed' as const,
       observedAtTick: 1,
@@ -8378,13 +8431,13 @@ function driveEverything(): readonly DrivenRow[] {
       { x: 5, y: 3 },
     );
     if (laid.kind === 'placed') {
-      const withItem = {
+      const withItem = floorSimModule.withAmbientLivingPopulation({
         rung: 'garage' as const,
         floor: laid.state,
         barbellOwned: KIT,
         sessionOwned: owned,
         capability: {},
-      };
+      });
       const stations = floorSimModule.floorStations(withItem);
       const opening = floorSimModule.createFloorSimState(withItem, 5);
       const settled = floorSimModule.runFloorSim(opening, withItem, 30);
@@ -11130,7 +11183,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 593544 -> 595928: Stage C.1b furniture-layout exports, GYM_SURFACES, and
   // the larger GymScreen tree. Re-measured by running this assertion.
   // 595954 -> 595972: Stage C.1d playerFacing* drives.
-  ROWS: 598253, // Stage G.1 livingMembers.ts drive rows
+  ROWS: 598259, // Stage G.1A livingMembers + floorSim drive rows
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -11157,7 +11210,7 @@ const DRIVE_CENSUS = Object.freeze({
   // exports (isRecoveryBlocking, recoveryBlockingItems), both driven above.
   // 382 -> 389: Stage C.1b six floor furniture exports + GYM_SURFACES.
   // 393 -> 396: Stage C.1d three playerFacing* drives.
-  EXPORTS_DRIVEN: 449, // Stage G.1 livingMembers.ts + stepFloorSimWithObservations
+  EXPORTS_DRIVEN: 455, // Stage G.1A identity helpers + floorSim livingPopulation
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -11250,7 +11303,7 @@ const DRIVE_CENSUS = Object.freeze({
   // failure value.
   // 6490388 -> 6510102: Stage C.1b furniture/dock GymScreen trees. Measured.
   // 6510907 -> 6510913: Stage C.1d playerFacing* drive rows.
-  NODES: 6523035, // Stage G.1 livingMembers.ts drive
+  NODES: 6523492, // Stage G.1A livingMembers + floorSim drive
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -11371,7 +11424,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_093_924, // Stage G.1 livingMembers.ts drive strings
+  STRINGS: 30_097_549, // Stage G.1A identity-authority livingMembers + floorSim drives
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -11481,7 +11534,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
   // 3973 -> 3975: Stage D2 reset-gym copy / wear-truth strings. Read from
   // this pin's own failure value.
-  DISTINCT_STRINGS: 4065, // Stage G.1 livingMembers.ts drive strings
+  DISTINCT_STRINGS: 4105, // Stage G.1A identity-authority drives
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
   DEPTH_CUTS: 7,
   /**
@@ -15488,12 +15541,12 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'expansion.ts': 47,
       'floor.ts': 38,
       'FloorGrid.tsx': 79,
-      'floorSim.ts': 74,
+      'floorSim.ts': 76,
       'floorSprites.ts': 54,
       'GymScreen.tsx': 12,
       'ladder.ts': 28,
       'ladderView.tsx': 34,
-      'livingMembers.ts': 21, // Stage G.1
+      'livingMembers.ts': 29, // Stage G.1A
       'management.ts': 90,
       'members.ts': 13,
       'npc.ts': 12,
@@ -15560,9 +15613,9 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'engagement.ts': 13,
   'expansion.ts': 3,
   'floor.ts': 13,
-  'floorSim.ts': 6,
+  'floorSim.ts': 7,
   'ladder.ts': 20,
-  'livingMembers.ts': 4,
+  'livingMembers.ts': 10,
   'management.ts': 27,
   'members.ts': 9,
   'pacing.ts': 3,
@@ -15904,11 +15957,11 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:2631 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:776 returned=unfollowable:station',
-  'FloorGrid.tsx:776 returned=unfollowable:station',
+  'FloorGrid.tsx:2633 callee=fresh:ArrowFunction',
   'FloorGrid.tsx:777 returned=unfollowable:station',
   'FloorGrid.tsx:777 returned=unfollowable:station',
+  'FloorGrid.tsx:778 returned=unfollowable:station',
+  'FloorGrid.tsx:778 returned=unfollowable:station',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -15923,14 +15976,14 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'floor.ts:653 returned=unfollowable:floor',
   'floor.ts:663 returned=unfollowable:floor',
   'floor.ts:671 returned=unfollowable:floor',
-  'floorSim.ts:1092 returned=unfollowable:member',
-  'floorSim.ts:1093 returned=unfollowable:member',
-  'floorSim.ts:1113 returned=unfollowable:walk',
-  'floorSim.ts:676 receiver=NewExpression',
-  'floorSim.ts:748 returned=unfollowable:context',
-  'floorSim.ts:751 receiver=NewExpression',
-  'floorSim.ts:898 receiver=ArrayLiteralExpression',
-  'floorSim.ts:952 returned=unfollowable:plan',
+  'floorSim.ts:1109 returned=unfollowable:member',
+  'floorSim.ts:1110 returned=unfollowable:member',
+  'floorSim.ts:1130 returned=unfollowable:walk',
+  'floorSim.ts:693 receiver=NewExpression',
+  'floorSim.ts:765 returned=unfollowable:context',
+  'floorSim.ts:768 receiver=NewExpression',
+  'floorSim.ts:915 receiver=ArrayLiteralExpression',
+  'floorSim.ts:969 returned=unfollowable:plan',
   'floorSprites.ts:1256 callee=fresh:ArrowFunction',
   'floorSprites.ts:363 receiver=NewExpression',
   'floorSprites.ts:422 receiver=NewExpression',
@@ -15938,12 +15991,13 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'ladder.ts:349 receiver=ArrayLiteralExpression',
   'ladderView.tsx:124 returned=unfollowable:state',
   'ladderView.tsx:132 returned=unfollowable:state',
-  'ladderView.tsx:639 returned=unfollowable:state',
-  'ladderView.tsx:667 returned=unfollowable:state',
+  'ladderView.tsx:641 returned=unfollowable:state',
   'ladderView.tsx:669 returned=unfollowable:state',
-  'ladderView.tsx:670 returned=unfollowable:state',
-  'ladderView.tsx:725 returned=unfollowable:state',
-  'ladderView.tsx:735 returned=unfollowable:state',
+  'ladderView.tsx:671 returned=unfollowable:state',
+  'ladderView.tsx:672 returned=unfollowable:state',
+  'ladderView.tsx:727 returned=unfollowable:state',
+  'ladderView.tsx:736 returned=unfollowable:state',
+  'livingMembers.ts:157 returned=unfollowable:roster',
   'management.ts:1473 returned=unfollowable:state',
   'pacing.ts:246 receiver=CallExpression',
   'recruitment.ts:388 returned=unfollowable:state',
@@ -15956,12 +16010,12 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'stationCapability.ts:104 returned=unfollowable:capability',
 ]);
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1694 FloorSimState asked=true walked=false',
-  'FloorGrid.tsx:776 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:776 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:777 GridSize asked=true walked=false',
-  'FloorGrid.tsx:777 GridSize asked=true walked=false',
-  'FloorGrid.tsx:789 BayBench | undefined asked=true walked=false',
+  'FloorGrid.tsx:1696 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:777 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:777 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:778 GridSize asked=true walked=false',
+  'FloorGrid.tsx:778 GridSize asked=true walked=false',
+  'FloorGrid.tsx:790 BayBench | undefined asked=true walked=false',
   'empireInvariant.ts:1084 GymAxes asked=true walked=false',
   'empireInvariant.ts:1137 GymAxes asked=true walked=false',
   'empireInvariant.ts:1168 readonly ExpansionBuild[] asked=true walked=false',
@@ -15975,25 +16029,25 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'floor.ts:653 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
   'floor.ts:663 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
   'floor.ts:671 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
-  'floorSim.ts:1092 GridPosition asked=true walked=false',
-  'floorSim.ts:1093 GridPosition | null asked=true walked=false',
-  'floorSim.ts:1113 GridPosition asked=true walked=false',
-  'floorSim.ts:1289 GridPosition | undefined asked=true walked=false',
-  'floorSim.ts:1476 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1476 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1476 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1476 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1476 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1476 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1476 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1476 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1476 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1511 GridPosition asked=true walked=false',
-  'floorSim.ts:1692 FloorSimState asked=true walked=false',
-  'floorSim.ts:1847 FloorSimState asked=true walked=false',
-  'floorSim.ts:748 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'floorSim.ts:943 readonly FloorStation[] asked=true walked=false',
-  'floorSim.ts:952 readonly FloorStation[] asked=true walked=false',
+  'floorSim.ts:1109 GridPosition asked=true walked=false',
+  'floorSim.ts:1110 GridPosition | null asked=true walked=false',
+  'floorSim.ts:1130 GridPosition asked=true walked=false',
+  'floorSim.ts:1306 GridPosition | undefined asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1531 GridPosition asked=true walked=false',
+  'floorSim.ts:1749 FloorSimState asked=true walked=false',
+  'floorSim.ts:1904 FloorSimState asked=true walked=false',
+  'floorSim.ts:765 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'floorSim.ts:960 readonly FloorStation[] asked=true walked=false',
+  'floorSim.ts:969 readonly FloorStation[] asked=true walked=false',
   'ladder.ts:639 LadderState asked=true walked=false',
   'ladder.ts:650 LadderState asked=true walked=false',
   'ladder.ts:656 LadderState asked=true walked=false',
@@ -16003,22 +16057,23 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'ladderView.tsx:124 LadderAccrual | null asked=true walked=false',
   'ladderView.tsx:131 LadderState asked=true walked=false',
   'ladderView.tsx:132 LadderAccrual | null asked=true walked=false',
-  'ladderView.tsx:639 readonly GymWeekReport[] asked=true walked=false',
-  'ladderView.tsx:667 FloorState asked=true walked=false',
-  'ladderView.tsx:669 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'ladderView.tsx:670 LivingMemberRoster asked=true walked=false',
-  'ladderView.tsx:725 FloorState asked=true walked=false',
-  'ladderView.tsx:735 LivingMemberRoster asked=true walked=false',
-  'ladderView.tsx:747 FloorState asked=true walked=false',
-  'ladderView.tsx:767 FloorState asked=true walked=false',
-  'ladderView.tsx:806 ManagedGym asked=true walked=false',
-  'ladderView.tsx:819 ManagedGym asked=true walked=false',
-  'ladderView.tsx:833 ManagedGym asked=true walked=false',
-  'ladderView.tsx:843 ManagedGym asked=true walked=false',
-  'ladderView.tsx:851 ManagedGym asked=true walked=false',
-  'ladderView.tsx:859 ManagedGym asked=true walked=false',
-  'ladderView.tsx:894 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'livingMembers.ts:118 LivingGymMember | undefined asked=true walked=false',
+  'ladderView.tsx:641 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:669 FloorState asked=true walked=false',
+  'ladderView.tsx:671 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'ladderView.tsx:672 LivingMemberRoster asked=true walked=false',
+  'ladderView.tsx:727 FloorState asked=true walked=false',
+  'ladderView.tsx:736 LivingMemberRoster asked=true walked=false',
+  'ladderView.tsx:748 FloorState asked=true walked=false',
+  'ladderView.tsx:768 FloorState asked=true walked=false',
+  'ladderView.tsx:807 ManagedGym asked=true walked=false',
+  'ladderView.tsx:820 ManagedGym asked=true walked=false',
+  'ladderView.tsx:834 ManagedGym asked=true walked=false',
+  'ladderView.tsx:844 ManagedGym asked=true walked=false',
+  'ladderView.tsx:852 ManagedGym asked=true walked=false',
+  'ladderView.tsx:860 ManagedGym asked=true walked=false',
+  'ladderView.tsx:895 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'livingMembers.ts:157 readonly LivingGymMember[] asked=true walked=false',
+  'livingMembers.ts:209 LivingGymMember | undefined asked=true walked=false',
   'management.ts:1473 readonly CountedDecisionRecord[] asked=true walked=false',
   'management.ts:1640 LadderAccrual asked=true walked=false',
   'management.ts:1650 GymState asked=true walked=false',
@@ -16074,7 +16129,7 @@ const SCREEN_AGREEMENT = Object.freeze({
   // GridPosition/GridSize returns, capability keyed by competition-bench-bay.
   // 79 -> 89: Stage D2.1A assignedSeat remaining[order] plus live-Capacity
   // relocate useCells walk (nine rows at the same for-of) and awayFrom cell.
-  SHIPPED_DISAGREEMENTS: 95, // Stage G.1
+  SHIPPED_DISAGREEMENTS: 96, // Stage G.1A livingMembers roster unfollowable
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
@@ -16168,7 +16223,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 66 -> 67: GDD §5.14 Stage B's pacing.ts — one call through a
   // module-level import (`offlineBankingHorizonSeconds()` in the sporadic
   // gap cycle). Read from this pin's own failure value.
-  'module-variable': 77, // 79 -> 77: Stage E.2 dropped String(rung) qualify coercion
+  'module-variable': 80, // Stage G.1A livingMembers + floorSim module-variable targets
   // 5 -> 7: Phase 3's RENDER half's two calls through a local binding in
   // `AmbientMemberBody`'s single animation effect (`bobLoop.start()`,
   // `pulseLoop.stop()`). Read from this table's own failure value.
@@ -16264,7 +16319,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1674 -> 1681: Stage D2 placedOwnedItems / withWear / stationOperationView / reset.
   // 1681 -> 1691: Stage D2.1A assignedSeat / reservedUseCells / relocate helpers.
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
-  function: 1771, // Stage G.1 livingMembers.ts function call targets
+  function: 1785, // Stage G.1A livingMembers + floorSim function call targets
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16322,7 +16377,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1502 -> 1513: Stage D2 Set.has / Object.freeze / stationByRefKey.get.
   // 1513 -> 1517: Stage D2.1A useCells/blocked/has member calls on live relocate.
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
-  member: 1599, // Stage G.1 livingMembers.ts member call targets
+  member: 1613, // Stage G.1A livingMembers + floorSim member call targets
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -16332,7 +16387,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // Read from this pin's own failure value.
   // 23 -> 24: GDD §5.14 Stage B's `pacingReadingAtHorizon`'s
   // `readings.find(...)`, the same shape as S4b's rows above.
-  'member-of-parameter': 28, // Stage G.1 livingMembers.ts member-of-parameter targets
+  'member-of-parameter': 31, // Stage G.1A livingMembers + floorSim member-of-parameter targets
   // Phase 4: FLOOR_SPRITE_PALETTES' construction calls a fresh arrow (the
   // palette-row map), the same site DECLARED_FRESH_RECEIVERS names.
   fresh: 2, // Stage G.1 livingMembers.ts unclassified call target
@@ -16518,7 +16573,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 911 -> 916: Stage D2.1A floorSim return 63 -> 68.
   // 916 -> 925: Stage D2.1B floorSim 68→72, stationCapability 24→27,
   // stationView 44→46.
-  SITES: 983, // Stage G.1 livingMembers.ts + floorSim/ladderView/FloorGrid observation exports
+  SITES: 993, // Stage G.1A livingMembers + floorSim return sites
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -16671,7 +16726,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
   // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
   // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
-  NODES_EXAMINED: 81_073, // Stage G.1 livingMembers.ts + floorSim observation export
+  NODES_EXAMINED: 81_707, // Stage G.1A livingMembers relocation + floorSim population
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -16690,7 +16745,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 149 -> 152: GDD §5.14 Stage B's pacing.ts, three `refuseWith` calls.
   // 152 -> 157: Stage C.1b floor.ts furniture refusals.
   // 159 -> 160: GDD §5.18 Stage D.1 stationCapability refuseWith.
-  WRAP_CALLS: 173, // Stage G.1 livingMembers.ts four refuseWith calls
+  WRAP_CALLS: 180, // Stage G.1A livingMembers + floorSim refuseWith
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 7, // Stage G.1 argument-mutation on floorSim observation export
@@ -16808,7 +16863,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // 1001 -> 1003: Stage D.1b capacityRealizesOn + bay sprite table leaves.
   // 1003 -> 1005: Stage D2 placedOwnedItems + reset-gym signatures.
   // 1005 -> 1015: Stage D2.1B five new exported functions' signatures.
-  POSITIONS: 1066, // Stage G.1 livingMembers.ts + floorSim/ladderView type surfaces
+  POSITIONS: 1079, // Stage G.1A livingMembers + floorSim type surfaces
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -21086,7 +21141,7 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // 252 -> 253: Stage C.1d PlacementRefuseKind.
   // 253 -> 258: Stage D stationCapability type declarations.
   // 258 -> 264: GDD §5.18 Stage D.1 trainingStation type declarations.
-  DECLARATIONS: 280, // Stage G.1 livingMembers.ts type declarations
+  DECLARATIONS: 281, // Stage G.1A livingMembers.ts type declarations
   /** Those carrying type parameters. An instantiation depth needs one. */
   // Phase 4: `MemberTable<Leaf>` in floorSprites.ts.
   GENERIC: 13,
@@ -24719,6 +24774,80 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
       pacingModule.pacingReadingAtHorizon(readings, 3600);
     },
   }),
+  // Stage G.1A: livingMembers and floorSim member-of-parameter sites.
+  Object.freeze({
+    site: 'floorSim.ts#createFloorSimState#context.map x1',
+    run: (record: MemberCallRecord): void => {
+      const base = floorSimModule.withAmbientLivingPopulation({
+        rung: 'garage',
+        floor: floorModule.createFloorState('garage'),
+        barbellOwned: [...EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT],
+        sessionOwned: [] as readonly SessionEquipmentItem[],
+        capability: {},
+      });
+      const context = Object.freeze({
+        ...base,
+        livingPopulation: recordOn([...base.livingPopulation], 'map', record),
+      });
+      floorSimModule.createFloorSimState(context, 1);
+    },
+  }),
+  Object.freeze({
+    site: 'livingMembers.ts#applyServiceObservations#roster.map x1',
+    run: (record: MemberCallRecord): void => {
+      const roster = censusLivingMembers();
+      const member = roster.members[0] as livingMembersModule.LivingGymMember;
+      const instrumented = Object.freeze({
+        ...roster,
+        members: recordOn([...roster.members], 'map', record),
+      });
+      livingMembersModule.applyServiceObservations(instrumented, [
+        Object.freeze({
+          memberId: member.id,
+          memberIndex: 0,
+          memberType: member.type,
+          stationKind: 'training' as const,
+          stationKey: 'training:competition-bench-bay',
+          queueWaitTicks: 0,
+          trainingExperience: 0,
+          outcome: 'completed' as const,
+          observedAtTick: 1,
+        }),
+      ]);
+    },
+  }),
+  Object.freeze({
+    site: 'livingMembers.ts#floorSimPopulationFromRoster#roster.map x1',
+    run: (record: MemberCallRecord): void => {
+      const roster = censusLivingMembers();
+      const instrumented = Object.freeze({
+        ...roster,
+        members: recordOn([...roster.members], 'map', record),
+      });
+      livingMembersModule.floorSimPopulationFromRoster(instrumented);
+    },
+  }),
+  Object.freeze({
+    site: 'livingMembers.ts#livingMemberById#roster.find x1',
+    run: (record: MemberCallRecord): void => {
+      const roster = censusLivingMembers();
+      const member = roster.members[0] as livingMembersModule.LivingGymMember;
+      const instrumented = Object.freeze({
+        ...roster,
+        members: recordOn([...roster.members], 'find', record),
+      });
+      livingMembersModule.livingMemberById(instrumented, member.id);
+    },
+  }),
+  Object.freeze({
+    site: 'livingMembers.ts#memberOrdinalFromId#id.split x1',
+    run: (record: MemberCallRecord): void => {
+      const member = censusLivingMembers().members[0] as livingMembersModule.LivingGymMember;
+      const id = Object.assign(new String(member.id), {}) as unknown as livingMembersModule.GymMemberId;
+      recordOn(id as object, 'split', record);
+      livingMembersModule.memberOrdinalFromId(id);
+    },
+  }),
 ]);
 
 /**
@@ -24743,10 +24872,8 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
  * `memberCallGym` and is nine lines.
  */
 const MEMBER_CALL_PASS_UNDRIVEN: readonly string[] = Object.freeze([
-  // Stage G.1: enumerated by the channel census; not yet given a dedicated drive.
+  // Stage G.1A: private helpers whose parameters are fresh literals at every call site.
   'floorSim.ts#advanceMember#observations.push x1',
-  'livingMembers.ts#applyServiceObservations#roster.map x1',
-  'livingMembers.ts#playerFacingMemberShortId#id.split x1',
   'livingMembers.ts#truncateHistory#visits.slice x1',
 ]);
 
@@ -24815,11 +24942,14 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // Every number in this block re-measured by running the assertions below.
   // GDD §5.14 Stage B: one more subject, `pacing.ts#pacingReadingAtHorizon
   // #readings.find x1`.
-  SUBJECTS: 24,
+  // Stage G.1A: five more subjects — `createFloorSimState#context.map` and
+  // four `livingMembers.ts` roster/id sites.
+  SUBJECTS: 29,
   /** One call of the instrumented method per subject, two at the ladder site. */
   // 22 -> 24: S4b's two new subjects, one call each.
   // 24 -> 25: GDD §5.14 Stage B's one new subject, one call.
-  CALLS: 25,
+  // 25 -> 30: Stage G.1A's five new subjects, one call each.
+  CALLS: 30,
   /**
    * Callback invocations across every subject: 4 + 33, the second number being
    * E23's ten sites. Per site — and per ARM, which is the half a total cannot
@@ -24833,7 +24963,9 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 49 -> 50 above; 50 -> 52: S4b's two new sites, one callback invocation
   // each (a one-element array per site).
   // 52 -> 54: GDD §5.14 Stage B's one new site, two callback invocations.
-  CALLBACK_CALLS: 54,
+  // 54 -> 64: Stage G.1A's five new sites — three garage members on each
+  // `.map` site, one `.find` predicate, and zero on `id.split`.
+  CALLBACK_CALLS: 64,
   /**
    * Strings reachable from the non-function arguments.
    *
@@ -24847,7 +24979,7 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // OWN parameter, not a non-function argument handed to it, so `item:
   // 'power-bar'` does not land in this channel. Confirmed by running the
   // assertion below rather than assumed.
-  HANDED: 3,
+  HANDED: 4,
   /**
    * Values the callbacks RETURNED, deep-scanned for strings. M42's channel.
    *
@@ -24863,7 +24995,7 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 111 -> 159: S4b's two stage-4 sites, +24 each — measured, and the two
   // agreeing at 24 is a coincidence of the two rendered rows rather than a
   // shared derivation.
-  RETURNED: 159,
+  RETURNED: 264,
   FINDINGS: 0,
   TRIPWIRE_SUBJECTS: 2,
   TRIPWIRE_FINDINGS: 2,
@@ -24980,6 +25112,12 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   // structure `MEMBER_CALL_TRIPWIRE` uses. Measured by running this exact
   // assertion.
   'pacing.ts#pacingReadingAtHorizon#readings.find x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
+  // Stage G.1A: five new member-of-parameter sites, measured by running this assertion.
+  'floorSim.ts#createFloorSimState#context.map x1 calls=1 callbacks=3 handed=0 returned=66 verdicts=objectx3',
+  'livingMembers.ts#applyServiceObservations#roster.map x1 calls=1 callbacks=3 handed=0 returned=27 verdicts=objectx3',
+  'livingMembers.ts#floorSimPopulationFromRoster#roster.map x1 calls=1 callbacks=3 handed=0 returned=12 verdicts=objectx3',
+  'livingMembers.ts#livingMemberById#roster.find x1 calls=1 callbacks=1 handed=0 returned=0 verdicts=truex1',
+  'livingMembers.ts#memberOrdinalFromId#id.split x1 calls=1 callbacks=0 handed=1 returned=0 verdicts=none',
 ]);
 
 /** One site's drive, as the line `MEMBER_CALL_SITE_OBSERVATIONS` pins. */
@@ -25063,8 +25201,8 @@ describe('the member-call pass — what a caller-supplied method is actually han
     // the members: an empty excuse list is the one state where the set equality
     // above is a complete statement, so it is worth a line that reddens when it
     // stops being empty.
-    // Stage G.1: four new channel-census sites await dedicated drives.
-    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(4);
+    // Stage G.1A: two private-helper sites await dedicated drives.
+    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(2);
     expect(driven.length).toBe(MEMBER_CALL_PASS_CENSUS.SUBJECTS);
     // Both `visitRefusals` sites are driven, and they share a key. A `Set` of
     // the driven sites would have quietly collapsed them, so the count of that

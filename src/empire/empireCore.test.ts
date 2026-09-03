@@ -3969,8 +3969,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 348 -> 354: Stage E sportingReputation refuseWith templates.
     // 354 -> 353: Stage E.1 dropped totalKg / fieldSize / duplicate-qualify
     // templates and added outcome / categoryFieldSize ones; net −1 unique chunk.
-    // 353 -> 364: Stage G.1 livingMembers refuseWith / id templates.
-    expect(templateChunks.size).toBe(364);
+    // 353 -> 364 -> 370: Stage G.1A livingMembers refuseWith / id templates.
+    expect(templateChunks.size).toBe(370);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4021,7 +4021,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './stationView',
       './trainingStation',
       ':',
-      '?',
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
       'Accessory',
       'Athlete',
@@ -4386,6 +4385,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'left',
       'legendary',
       'level',
+      'livingPopulation',
       'loading',
       'local',
       'machines',
@@ -4707,7 +4707,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 364 -> 374 — ten new space-free tokens plus eighteen new template
     // chunks from livingMembers refuseWith / member-card copy. Read from this
     // assertion's own failure value.
-    expect(stringsChecked).toBe(1052);
+    expect(stringsChecked).toBe(1058);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -4825,14 +4825,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 464 -> 488: Stage C.1b new space-free tokens (surfaces, furniture, dock).
     // 488 -> 498: Stage G.1 — ten new space-free tokens (`./livingMembers`,
     // `apply-living-member-observations`, three member-panel testIDs,
-    // `stationKind`, `completed`, `GymMemberId`, `:` and `?` from
-    // `livingMembers.ts`'s id split/fallback). The last two clear the
-    // two-letter guard below and are not probes — measured by running this
-    // assertion.
-    expect(probes).toBe(spaceFree.length - 2);
-    // `:` and `?` from `livingMembers.ts`'s id split/fallback clear the `< 2`
-    // guard and are intentionally unprobed — every other shipped token is.
-    expect(probes + 2).toBe(spaceFree.length);
+    // `stationKind`, `completed`, `GymMemberId`, `:` from
+    // `livingMembers.ts`'s id split). G.1A removes the `?` fallback from
+    // `memberOrdinalFromId` and adds no new space-free single-quoted tokens.
+    expect(probes).toBe(spaceFree.length - 1);
+    // `:` from `livingMembers.ts`'s id split clears the `< 2` guard and is
+    // intentionally unprobed — every other shipped token is.
+    expect(probes + 1).toBe(spaceFree.length);
 
     // JSX text gets a SIGNED-PAIR census rather than the flat ban above, and
     // the difference is a measurement, not a taste (E39): the ban predicate

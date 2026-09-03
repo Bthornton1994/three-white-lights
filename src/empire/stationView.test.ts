@@ -71,6 +71,7 @@ function memberAt(
   cell: { readonly x: number; readonly y: number } = Object.freeze({ x: 0, y: 0 }),
 ): FloorSimMember {
   return Object.freeze({
+    memberId: `member:n0:${index}`,
     index,
     type: 'powerlifter',
     state,
@@ -81,6 +82,7 @@ function memberAt(
     targetPosition: target === null ? null : Object.freeze({ x: 0, y: 0 }),
     claimedAt: target === null ? null : 0,
     queuedAt: null,
+    queueArrivedAt: null,
     timer: 0,
     interruptedBy: null,
     awayFrom: null,
