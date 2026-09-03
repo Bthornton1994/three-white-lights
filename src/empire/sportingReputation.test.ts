@@ -1,10 +1,9 @@
 /**
- * sportingReputation.test.ts — Stage E.2 sporting contributor.
+ * sportingReputation.test.ts — Stage E sporting contributor.
  *
- * Pins the corrected input contract, placing share (beating nobody is
- * zero), qualification type (no coercion) and meet-tier truth, reachable
- * SPORT-HEAVY calibration, title-only vs extras, E-REP-01, and the fences
- * this piece must not cross.
+ * Pins the accepted Stage E contract, placing share, qualification truth,
+ * SPORT-HEAVY calibration, E-REP-01 (still open), the Stage E CLOSED mint,
+ * and the fences this piece must not cross.
  */
 
 import { readFileSync } from 'node:fs';
@@ -598,5 +597,77 @@ describe('fences — Career progression, NPC roster, Portfolio, wiring', () => {
     expect(CODE).not.toMatch(/Math\.random/);
     expect(CODE).not.toMatch(/\bfetch\b/);
     expect(CODE).not.toMatch(/from\s+['"]react['"]/);
+  });
+});
+
+const STAGE_E_RUNTIME_SHA = 'b91a84c19fcf561051ec0d651aeda31addd3e882';
+const GDD = readFileSync(path.join(HERE, '..', '..', 'docs', 'GDD.md'), 'utf8');
+
+describe('Stage E mint — CLOSED; wiring still blocked', () => {
+  it('records Stage E CLOSED at the accepted runtime SHA', () => {
+    expect(GDD).toMatch(/STAGE E CLOSED — SPORTING REPUTATION FOUNDATION ACCEPTED \/ WIRING STILL\s+BLOCKED/);
+    expect(GDD).toContain(STAGE_E_RUNTIME_SHA);
+    expect(GDD).toContain('sportingReputationFromResult');
+    expect(GDD).not.toMatch(/Stage E is the next authorized stage/);
+    expect(GDD).not.toMatch(/Stage E \(reputation feed foundation\) is authorized from this SHA/);
+  });
+
+  it('freezes SPORT-HEAVY as the accepted sporting band', () => {
+    expect(S.kindScale).toEqual({ local: 1, regional: 2, nationals: 4, worlds: 16 });
+    expect(S.placingUnit).toBe(24);
+    expect(S.totalPrUnit).toBe(16);
+    expect(S.qualifyUnit).toBe(16);
+    expect(SHIPPED).toEqual({
+      localWin: 24,
+      localPr: 40,
+      localQualify: 56,
+      localPrQualify: 72,
+      regionalTitle: 48,
+      regionalQualify: 112,
+      regionalNextRungPeak: 144,
+      nationalsTitle: 96,
+      nationalsQualify: 352,
+      nationalsPeak: 416,
+      worldsTitle: 384,
+      worldsPr: 640,
+      twelveLocal: 288,
+    });
+    expect(GDD).toMatch(/12 local titles 288/);
+    expect(GDD).toMatch(/worlds title 384; \+PR 640/);
+  });
+
+  it('leaves E-REP-01 open and does not retune check-in reputation', () => {
+    expect(T.REPUTATION_PER_CHECK_IN).toBe(2);
+    expect(T.REPUTATION_PER_CHECK_IN * 365).toBe(730);
+    expect(GDD).toMatch(/E-REP-01 CHECK-IN REPUTATION SEMANTIC DEBT/);
+    expect(GDD).toMatch(/The Stage E\s+mint leaves E-REP-01 open/);
+    expect(GDD).toMatch(/does not retune `REPUTATION_PER_CHECK_IN`/);
+  });
+
+  it('keeps D2 frozen and D2-CONSEQUENCE-01 authoritative', () => {
+    expect(GDD).toMatch(/D2 CLOSED — PARTIAL BY DESIGN \/ CONSEQUENCE BOUNDARY REACHED/);
+    expect(GDD).toMatch(/D2-CONSEQUENCE-01 remains true/);
+    expect(T.STATION_UPGRADE_COST_GYM_BUCKS.quality).toBe(120);
+    expect(T.STATION_UPGRADE_COST_GYM_BUCKS.capacity).toBe(180);
+    expect(T.STATION_UPGRADE_COST_GYM_BUCKS.throughput).toBe(30);
+    expect(T.FLOOR_SIM_STATION_CHANGEOVER_TICKS).toBe(18);
+    expect(T.STATION_THROUGHPUT_CHANGEOVER_TICKS).toBe(6);
+    expect(T.STATION_STOCK_TRAINING_EXPERIENCE).toBe(1);
+    expect(T.STATION_QUALITY_TRAINING_EXPERIENCE).toBe(2);
+    expect(T.STATION_QUALITY_AFFINITY_BONUS).toBe(0.25);
+    expect(T.LADDER_INCOME_GYM_BUCKS_PER_HOUR.garage).toBe(60);
+    expect(T.OFFLINE_EARNINGS_FRACTION).toBe(0.5);
+  });
+
+  it('keeps Career/Meet write, Portfolio, and persistent NPC roster blocked', () => {
+    expect(GDD).toMatch(/Closing Stage E does not authorize a\s+Career or Meet result writing `EmpireState\.reputation`/);
+    expect(GDD).toMatch(/Wiring remains blocked/);
+    expect(GDD).toMatch(/Portfolio remain blocked/);
+    expect(GDD).toMatch(/Persistent\s+NPC roster\/tenure \(Stage G\) and Portfolio remain blocked/);
+    expect(Object.keys(sportingRuntime).sort()).toEqual(['sportingReputationFromResult']);
+    expect(SOURCE).not.toMatch(/composeGymReputationContributions/);
+    expect(SOURCE).not.toMatch(/EmpireState/);
+    expect(SOURCE).not.toMatch(/portfolio|Portfolio/);
+    expect(SOURCE).not.toMatch(/beginRecruitment|createNpcLifter/);
   });
 });

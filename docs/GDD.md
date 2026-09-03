@@ -3168,16 +3168,20 @@ than the ruling's own §1–§23 sequence:
   §5.16. Stage D is recorded in §5.17. Stage D.1 is recorded in §5.18.
   Stage D human-close is `ff8721a`. D2 is CLOSED — PARTIAL BY DESIGN /
   CONSEQUENCE BOUNDARY REACHED — by human play of `83a8ed4` at Chromium
-  390×844. Stage E is the next authorized stage.
+  390×844. Stage E is CLOSED at `b91a84c19fcf561051ec0d651aeda31addd3e882`.
+  Career/Meet → Empire persistent reputation wiring, Portfolio, and
+  persistent NPC roster remain blocked.
 - **Stage D.** Quality/Capacity/Throughput on Barbell first (item 2),
   touching `floorSim.ts`'s capacity constant — the one piece of this pass
   that changes the simulation's own core rather than its surface, so it
   gets its own dedicated build-and-critic round rather than riding with (C).
   The mechanism proof is §5.17. The physical abstraction is corrected in
   §5.18: equipment is not a training station.
-- **Stage E.** Career-side of the reputation feed (item 4), built and
-  proven as a pure function first; the cross-directory wiring itself stays a
-  separate, later, explicitly-authorised crossing.
+- **Stage E.** CLOSED at `b91a84c19fcf561051ec0d651aeda31addd3e882` —
+  sporting reputation foundation accepted; wiring still blocked. Career-side
+  of the reputation feed (item 4), built and proven as a pure function
+  first. Closing Stage E does not authorize Career/Meet →
+  `EmpireState.reputation`, Portfolio (F), or NPC roster/tenure (G).
 - **Stage F.** Portfolio unpause (item 5) — multiple acquired locations,
   remote management, full unattended staffing.
 - **Stage G.** NPC roster/tenure depth (item 6).
@@ -3540,18 +3544,19 @@ Stage C human close (done at `460f794a`) → C.2 simulator fidelity (done,
 §5.16) → Stage D Q/C/T (done, §5.17) → Stage D.1 training-station semantics
 (done, §5.18) → Stage D.1b world legibility (done, human-close of Stage D
 at `ff8721a`) → D2 CLOSED — PARTIAL BY DESIGN / CONSEQUENCE BOUNDARY
-REACHED (human play of `83a8ed4` at Chromium 390×844) → Stage E reputation
-feed foundation (authorized; Career-result → reputation as a pure Empire
-function first; cross-directory wiring blocked) → persistent NPC roster /
-tenure (Stage G) → deeper staff policy → portfolio only after explicit
-human unpause.
+REACHED (human play of `83a8ed4` at Chromium 390×844) → Stage E CLOSED at
+`b91a84c19fcf561051ec0d651aeda31addd3e882` (sporting reputation foundation
+accepted; Career/Meet → EmpireState.reputation wiring still blocked) →
+persistent NPC roster / tenure (Stage G, still blocked) → deeper staff
+policy → portfolio only after explicit human unpause.
 
 The doctrine does not authorize implementing future stages early. It defines
 their quality bar. C.2 is recorded in §5.16. Stage D is recorded in §5.17.
 Stage D.1 / D.1b are recorded in §5.18. D2 is recorded in the D2 ruling
 under §5.18 and is CLOSED at `83a8ed4`. D2.1A is CONFIRMED AND FIXED at
 `0ded7fe`. D2.1B is recorded immediately after D2.1A. D2.2 is recorded
-immediately after D2.1B. Stage E is recorded immediately after the D2 mint.
+immediately after D2.1B. Stage E is recorded immediately after the D2 mint
+and is CLOSED at `b91a84c19fcf561051ec0d651aeda31addd3e882`.
 
 ### 5.16 Stage C.2 — simulator fidelity (online vs offline in aggregate pacing)
 
@@ -4349,14 +4354,22 @@ path and geometry; QA watched/away modes; panel ScrollView/maxHeight
 reachability correction. No further Q/C/T tuning is authorized before a
 real downstream consumer exists.
 
-Stage E (reputation feed foundation) is authorized from this SHA.
-Persistent NPC roster/tenure (Stage G) and Portfolio remain blocked. The
+**STAGE E CLOSED — SPORTING REPUTATION FOUNDATION ACCEPTED / WIRING STILL
+BLOCKED.** Closed at `b91a84c19fcf561051ec0d651aeda31addd3e882`. Persistent
+NPC roster/tenure (Stage G) and Portfolio remain blocked. The
 cross-directory Career→Empire wiring remains a later explicit crossing.
+Closing Stage E does not authorize any of them.
 
 #### Stage E — reputation feed foundation (pure function; wiring blocked)
 
+**STAGE E CLOSED — SPORTING REPUTATION FOUNDATION ACCEPTED / WIRING STILL
+BLOCKED.** Closed at `b91a84c19fcf561051ec0d651aeda31addd3e882`. The
+accepted runtime is the Empire-owned pure calculator
+`sportingReputationFromResult`. Closing Stage E does not authorize a
+Career or Meet result writing `EmpireState.reputation`.
+
 Reputation is the institution's sporting credibility, not another currency
-bar. Stage E builds the Career-result → Empire reputation calculator as a
+bar. Stage E built the Career-result → Empire reputation calculator as a
 pure Empire-owned function. It does not import Career UI, mutate Career
 state, write `EmpireState.reputation`, start a persistent NPC roster, or
 open Portfolio.
@@ -4420,9 +4433,11 @@ PR and qualification remain independent terms.
 **E-REP-01 CHECK-IN REPUTATION SEMANTIC DEBT.** The consumed model still
 awards 2 reputation per check-in (730 per year of daily check-ins). That
 is inherited activity reputation and has not been reconciled with sporting
-credibility. Stage E does not retune `REPUTATION_PER_CHECK_IN`. World-level
-sporting credit is not held below that inherited source. Closing the debt
-is a later ruling; check-in reputation is not a cap on sporting credit.
+credibility. Stage E does not retune `REPUTATION_PER_CHECK_IN`. The Stage E
+mint leaves E-REP-01 open: closure does not claim that inherited activity
+reputation is now semantically correct. World-level sporting credit is not
+held below that inherited source. Check-in reputation is not a cap on
+sporting credit.
 
 **Shipped calibration is SPORT-HEAVY** (human ruling). kindScale local 1 /
 regional 2 / nationals 4 / worlds 16. placingUnit 24, totalPrUnit 16,
@@ -4433,6 +4448,7 @@ category):
 - regional title 48; +qualify nationals 112; +PR +qualify nationals 144
 - nationals title 96; +qualify worlds 352; +PR +qualify worlds 416
 - worlds title 384; +PR 640
+- 12 local titles 288
 
 A Worlds title without a Total PR (384) crosses regional recruit (200)
 and the first sponsor tier (250). Worlds + PR (640) crosses national
