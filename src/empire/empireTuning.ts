@@ -1975,8 +1975,9 @@ export const EMPIRE_TUNING = Object.freeze({
   FLOOR_SIM_RENDER_SEED: 1,
 
   /**
-   * Stage G.1 — living floor-member service history. The shipped window is the
-   * middle option; the other two exist so tests can compare bounds without
+   * Stage G.1 — living floor-member service history. The shipped window is 5,
+   * accepted at 390×844 for scan density and memory (not because it is the
+   * middle candidate). 3 and 8 remain so tests can compare bounds without
    * retuning the live card.
    */
   LIVING_MEMBER_SERVICE_HISTORY_WINDOWS: Object.freeze([3, 5, 8] as const),

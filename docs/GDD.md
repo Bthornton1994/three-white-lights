@@ -3184,10 +3184,10 @@ than the ruling's own §1–§23 sequence:
   `EmpireState.reputation`, Portfolio (F), or NPC roster/tenure (G).
 - **Stage F.** Portfolio unpause (item 5) — multiple acquired locations,
   remote management, full unattended staffing.
-- **Stage G.** NPC roster/tenure depth (item 6). **G.1** (living floor-member
-  identity + service outcome foundation) remains OPEN after G.1C presentation
-  correction — awaiting targeted identity / Throughput / Capacity replay at
-  390×844. G.1A architecture accepted; N=5 accepted.
+- **Stage G.** NPC roster/tenure depth (item 6). **G.1 CLOSED** at
+  `c27f714c40e3ad7139eaec84ed340f1255c602ea` — living member identity +
+  service outcome foundation accepted (targeted Expo 390×844 replay of
+  G.1C). G.2 remains unstarted.
 
 ### Human Stage C rejection at `f097695b`
 
@@ -4475,11 +4475,16 @@ state is a later explicit crossing.
 
 #### Stage G.1 — Living Member Identity + Service Outcome Foundation
 
-**STAGE G.1 REMAINS OPEN pending targeted identity / Throughput / Capacity
-replay.** G.1A identity/service architecture is accepted. G.1B closed
-pre-human authority at `8fc4fcbf9d36f829252d35d0e642c5cc3482cce2`. Human
-gate at `7c25074e770896428bcfda6f41787fb13b52f167` (390×844 Expo player
-surface) produced:
+**STAGE G.1 CLOSED — LIVING MEMBER IDENTITY + SERVICE OUTCOME FOUNDATION
+ACCEPTED.** Closed at `c27f714c40e3ad7139eaec84ed340f1255c602ea` by the
+targeted Expo 390×844 player-surface replay of G.1C, under the pre-stated
+close standard. G.2 remains unstarted. Historical G.1 / G.1A / G.1B / G.1C
+notes below stay as they were.
+
+G.1A identity/service architecture is accepted. G.1B closed pre-human
+authority at `8fc4fcbf9d36f829252d35d0e642c5cc3482cce2`. Human gate at
+`7c25074e770896428bcfda6f41787fb13b52f167` (390×844 Expo player surface)
+produced:
 
 | Leg | Verdict |
 |---|---|
@@ -4490,6 +4495,15 @@ surface) produced:
 | THROUGHPUT | FAILED PLAYER LEGIBILITY — 95 and 128 ticks both read "long wait" |
 | PERSISTENCE | PASS |
 | N=5 | ACCEPTED |
+
+**Targeted G.1C replay at `c27f714c` (Chromium 390×844 Expo player surface):**
+
+| Leg | Verdict |
+|---|---|
+| IDENTITY PRESENTATION | PASS — Nia / Omar / Wren lead the card and the selected-floor cue; Nia was found by name after Back to Training → Gym Empire and after Garage → Storage Unit |
+| THROUGHPUT PRESENTATION | PASS — Omar stock history filled with `very long wait`; after Plate tree those rows rolled off to five `long wait` visits |
+| CAPACITY | PASS — second bench drawn and serving; Omar stock `very long wait` became `long wait`; Wren's newest visits reached `waited a while` |
+| N=5 | PASS — five history rows still scan at 390×844; not retuned |
 
 G.1C is a **presentation translation** correction on that HEAD. It does not
 redesign LivingMemberRoster authority, gym-local ids, relocation
@@ -4610,11 +4624,10 @@ observations matched by `memberId`, not aggregate proxies or array index. That
 is causality truth for the player-facing member card, not yet institution
 consequences.
 
-**Human gate:** identity legibility (can the player recognise the same member
-across taps, upgrades, navigation away and back, and facility relocation?) and
-whether service history reads as meaningful consequence on the **actual Gym
-Empire player surface** at 390×844. Until that verdict lands, do not wire
-satisfaction/dues/reputation or start Stage G.2 portfolio/NPC depth.
+**Human gate:** landed at `c27f714c`. Identity presentation, Throughput
+copy, and Capacity consequence all passed on the played 390×844 surface.
+Closing G.1 does not wire satisfaction / dues / reputation, and does not
+start Stage G.2.
 
 ---
 
