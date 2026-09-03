@@ -41,3 +41,6 @@ For substantial work:
 - encode repeated lessons into tests, schemas, types, invariants, metadata, verification tooling, or versioned Skills instead of repeating prose instructions.
 
 Automated proof does not replace human playtesting where feel, pacing, clarity, or fun are the actual acceptance criteria. These principles improve execution quality but grant no authority. They do not authorize merges, deployments, live economy or progression changes, external publication, account or permission changes, or any other consequential action not already allowed by `VISION.md`, `docs/GDD.md`, `CLAUDE.md`, and the repository's release rules.
+## Agent-native tooling
+
+When a task involves a CLI, MCP server, API connector, generated adapter, external integration, or agent skill, read .claude/skills/agent-native-tooling/SKILL.md before selecting or enabling it. That skill is review guidance only. It does not override VISION.md, docs/GDD.md, CLAUDE.md, or repository release rules, and it does not authorize installs, credentials, external actions, merges, deployments, or changes to player state.
