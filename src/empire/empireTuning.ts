@@ -659,17 +659,21 @@ export const EMPIRE_TUNING = Object.freeze({
   SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER: Object.freeze([0, 250, 900, 2600, 7000] as const),
 
   /**
-   * Stage E.1 sporting-result → reputation formula. Read by `sportingReputation.ts`.
+   * Stage E.2 sporting-result → reputation formula. Read by `sportingReputation.ts`.
    *
-   * Shipped band is CONSERVATIVE: a worlds first-in-category plus published-total
-   * record crosses the first sponsor tier (250) and regional recruit (200) and
-   * stays under national recruit (600). A SPORT-HEAVY alternative (worlds
-   * kindScale 16, same units) is pinned in `sportingReputation.test.ts` and is
-   * not shipped — choosing it is a product call, not a silent default.
+   * Shipped band is SPORT-HEAVY (human ruling): worlds kindScale 16 so a
+   * Worlds title without a Total PR (384) crosses regional recruit (200)
+   * and the first sponsor tier (250), and a Worlds title plus PR (640)
+   * crosses national recruit (600). Both stay under legendary (1500) and
+   * REPUTATION_MAX (5000). Local win plus PR (40) stays under club recruit
+   * (50). Conservative (worlds 8: title 192, title+PR 320) was investigated
+   * and discarded — a Worlds title that cannot hire a regional NPC is not
+   * institutionally meaningful. Do not treat that band as the shipped
+   * recommendation.
    *
-   * Ordinary local first-in-category stays under club recruit (50). Last place
-   * and a one-person category pay zero placing points. Check-in reputation is
-   * not a cap on sporting credit; see E-REP-01 in `sportingReputation.ts`.
+   * Last place and a one-person category pay zero placing points. Check-in
+   * reputation is not a cap on sporting credit; see E-REP-01 in
+   * `sportingReputation.ts`.
    *
    * `kindScale` is the GDD §6.1 ladder the current meet model actually has.
    * There is no extra prestige table: invented opponent rank would be fake.
@@ -681,7 +685,7 @@ export const EMPIRE_TUNING = Object.freeze({
       local: 1,
       regional: 2,
       nationals: 4,
-      worlds: 8,
+      worlds: 16,
     } as const),
     placingUnit: 24,
     totalPrUnit: 16,

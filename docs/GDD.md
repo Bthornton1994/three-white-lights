@@ -4377,7 +4377,22 @@ Meet result object that already carries all of these):
   comparison, not a kg scalar)
 - `newlyQualifiedFor` — one new standing (`regional` / `nationals` /
   `worlds`) or null, matching `tierUnlockBetween`'s single `to` tier.
-  No stacked rungs. No `local` qualification.
+  No stacked rungs. No `local` qualification. Runtime value is `null`
+  or a string that is already a qualify rung — arrays, objects, numbers,
+  and booleans are refused even when they stringify into a valid rung
+  (`String(['regional']) === 'regional'`). The rung must strictly
+  outrank the meet kind (Career eligibility already requires
+  qualification before a non-local entry):
+
+  - local: regional | nationals | worlds | null
+  - regional: nationals | worlds | null
+  - nationals: worlds | null
+  - worlds: null only
+
+  Jumps (local → nationals or worlds; regional → worlds) are allowed
+  because one Total may cross several thresholds and `tierUnlockBetween`
+  reports the resulting top `to` tier. A result may not newly qualify
+  for its own meet tier or a lower one.
 
 **Refused or deferred** (the current meet model cannot supply them truthfully,
 or they would give an existing quantity a second meaning):
@@ -4406,7 +4421,26 @@ PR and qualification remain independent terms.
 awards 2 reputation per check-in (730 per year of daily check-ins). That
 is inherited activity reputation and has not been reconciled with sporting
 credibility. Stage E does not retune `REPUTATION_PER_CHECK_IN`. World-level
-sporting credit is not held below that inherited source.
+sporting credit is not held below that inherited source. Closing the debt
+is a later ruling; check-in reputation is not a cap on sporting credit.
+
+**Shipped calibration is SPORT-HEAVY** (human ruling). kindScale local 1 /
+regional 2 / nationals 4 / worlds 16. placingUnit 24, totalPrUnit 16,
+qualifyUnit 16. Reachable title-only versus extras (first of 16 in
+category):
+
+- local win 24; +PR 40; +qualify regional 56; +PR +qualify regional 72
+- regional title 48; +qualify nationals 112; +PR +qualify nationals 144
+- nationals title 96; +qualify worlds 352; +PR +qualify worlds 416
+- worlds title 384; +PR 640
+
+A Worlds title without a Total PR (384) crosses regional recruit (200)
+and the first sponsor tier (250). Worlds + PR (640) crosses national
+recruit (600). Both stay under legendary (1500) and REPUTATION_MAX
+(5000). Local + PR (40) stays under club recruit (50). Conservative
+(worlds 8: title 192, title+PR 320) was investigated and discarded — a
+Worlds title that cannot hire a regional NPC is not institutionally
+meaningful, and is not the shipped recommendation.
 
 **Evidence obligation** (presentation later): when reputation is eventually
 wired, the player must be able to tell why it changed. Each sporting term

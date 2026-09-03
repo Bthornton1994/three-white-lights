@@ -3079,7 +3079,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // and FloorGrid presentation helpers. Read from this pin's own failure.
   // 3361 -> 3375: Stage D2.1A live-Capacity seat assignment / relocate helpers.
   // 3375 -> 3405: Stage D2.1B changeover helpers + FloorGrid loading path.
-  CALLS_EXAMINED: 3487, // 3493 -> 3487: Stage E.1 removed composeGymReputationContributions
+  CALLS_EXAMINED: 3486, // 3487 -> 3486: Stage E.2 dropped two String(rung) calls, added one refuseWith
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -15665,9 +15665,10 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'reputation.ts': 6,
   'sessions.ts': 24,
   'social.ts': 6,
-  // Stage E.1 — sportingReputation.ts: kind, outcome, bomb-out extra fields,
-  // missing placement, categoryFieldSize, place, isTotalPr, qualify rung.
-  'sportingReputation.ts': 8,
+  // Stage E.2 — sportingReputation.ts: kind, outcome, bomb-out extra fields,
+  // missing placement, categoryFieldSize, place, isTotalPr, qualify type,
+  // qualify standing above meet kind.
+  'sportingReputation.ts': 9,
   // 2 -> 3: GDD §5.18 Stage D.1 stationCapability refuseWith for the bay.
   'stationCapability.ts': 3,
 });
@@ -16483,7 +16484,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 66 -> 67: GDD §5.14 Stage B's pacing.ts — one call through a
   // module-level import (`offlineBankingHorizonSeconds()` in the sporadic
   // gap cycle). Read from this pin's own failure value.
-  'module-variable': 79, // 77 -> 79: Stage E.1 requireSportingMeetResult typeof checks
+  'module-variable': 77, // 79 -> 77: Stage E.2 dropped String(rung) qualify coercion
   // 5 -> 7: Phase 3's RENDER half's two calls through a local binding in
   // `AmbientMemberBody`'s single animation effect (`bobLoop.start()`,
   // `pulseLoop.stop()`). Read from this table's own failure value.
@@ -16579,7 +16580,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1674 -> 1681: Stage D2 placedOwnedItems / withWear / stationOperationView / reset.
   // 1681 -> 1691: Stage D2.1A assignedSeat / reservedUseCells / relocate helpers.
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
-  function: 1745, // 1749 -> 1745: Stage E.1 removed composeGymReputationContributions
+  function: 1746, // 1745 -> 1746: Stage E.2 extra refuseWith on qualify standing
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16986,7 +16987,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
   // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
   // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
-  NODES_EXAMINED: 79_336, // 79_353 -> 79_336: Stage E.1 sportingReputation.ts AST
+  NODES_EXAMINED: 79_407, // 79_336 -> 79_407: Stage E.2 qualify standing loop AST
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -17005,7 +17006,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 149 -> 152: GDD §5.14 Stage B's pacing.ts, three `refuseWith` calls.
   // 152 -> 157: Stage C.1b floor.ts furniture refusals.
   // 159 -> 160: GDD §5.18 Stage D.1 stationCapability refuseWith.
-  WRAP_CALLS: 168, // 170 -> 168: Stage E.1 sportingReputation.ts eight refuseWith calls
+  WRAP_CALLS: 169, // 168 -> 169: Stage E.2 sportingReputation.ts nine refuseWith calls
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,

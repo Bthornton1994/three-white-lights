@@ -3837,7 +3837,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 666 -> 670: Stage E.1 outcome tokens `'bombed-out'` / `'total'` and
     // typeof checks `'object'` / `'boolean'`. Copy/refuse strings with spaces
     // swapped four-for-four and do not move this pin.
-    expect(singleQuoted.size).toBe(670);
+    // 670 -> 671: Stage E.2 `'newlyQualifiedFor must be null or a sporting
+    // qualify rung'` — the no-coercion refuse, spaced so it is not a
+    // space-free token.
+    expect(singleQuoted.size).toBe(671);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4681,7 +4684,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 336 -> 348.
     // 1020 -> 1023: Stage E.1 singleQuoted 666 -> 670 and templateChunks
     // 354 -> 353.
-    expect(stringsChecked).toBe(1023);
+    // 1023 -> 1024: Stage E.2 singleQuoted 670 -> 671; templateChunks unchanged.
+    expect(stringsChecked).toBe(1024);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were

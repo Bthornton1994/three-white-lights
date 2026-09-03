@@ -1,9 +1,10 @@
 /**
- * sportingReputation.test.ts — Stage E.1 sporting contributor.
+ * sportingReputation.test.ts — Stage E.2 sporting contributor.
  *
  * Pins the corrected input contract, placing share (beating nobody is
- * zero), single qualification, refused inputs, calibration bands, E-REP-01,
- * and the fences this piece must not cross.
+ * zero), qualification type (no coercion) and meet-tier truth, reachable
+ * SPORT-HEAVY calibration, title-only vs extras, E-REP-01, and the fences
+ * this piece must not cross.
  */
 
 import { readFileSync } from 'node:fs';
@@ -168,7 +169,7 @@ describe('sportingReputationFromResult — sporting accomplishment, not particip
     expect(SOURCE).toMatch(/newlyQualifiedFor:\s*SportingQualifyRung \| null/);
   });
 
-  it('refuses invented kinds, empty categories, qualify-local, and stacked qualify arrays', () => {
+  it('refuses invented kinds, empty categories, and qualify-local', () => {
     expect(() => sportingReputationFromResult(posted({ kind: 'open' as never }))).toThrow(
       /meet kind/,
     );
@@ -177,11 +178,6 @@ describe('sportingReputationFromResult — sporting accomplishment, not particip
     ).toThrow(/positive whole number/);
     expect(() =>
       sportingReputationFromResult(posted({ newlyQualifiedFor: 'local' as never })),
-    ).toThrow(/qualify rung/);
-    expect(() =>
-      sportingReputationFromResult(
-        posted({ newlyQualifiedFor: ['regional', 'nationals'] as never }),
-      ),
     ).toThrow(/qualify rung/);
   });
 
@@ -195,6 +191,90 @@ describe('sportingReputationFromResult — sporting accomplishment, not particip
     expect(a.reasons.every((row) => row.text.length > 0)).toBe(true);
     const named = a.reasons.reduce((sum, row) => sum + row.points, 0);
     expect(a.points).toBeCloseTo(named, 6);
+  });
+});
+
+describe('qualification runtime — no coercion, rung strictly outranks meet kind', () => {
+  it('does not coerce newlyQualifiedFor through String()', () => {
+    const code = SOURCE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(code).not.toMatch(/isSportingQualifyRung\(\s*String\s*\(/);
+    expect(code).toMatch(/typeof rung !== 'string'/);
+  });
+
+  it('refuses a single-element array that would stringify into a valid rung', () => {
+    expect(String(['regional'])).toBe('regional');
+    expect(() =>
+      sportingReputationFromResult(posted({ newlyQualifiedFor: ['regional'] as never })),
+    ).toThrow(/must be null or a sporting qualify rung/);
+  });
+
+  it('refuses a multi-element qualification array', () => {
+    expect(() =>
+      sportingReputationFromResult(
+        posted({ newlyQualifiedFor: ['regional', 'nationals'] as never }),
+      ),
+    ).toThrow(/must be null or a sporting qualify rung/);
+  });
+
+  it('refuses object, number, and boolean qualification values', () => {
+    expect(() =>
+      sportingReputationFromResult(posted({ newlyQualifiedFor: {} as never })),
+    ).toThrow(/must be null or a sporting qualify rung/);
+    expect(() =>
+      sportingReputationFromResult(posted({ newlyQualifiedFor: 1 as never })),
+    ).toThrow(/must be null or a sporting qualify rung/);
+    expect(() =>
+      sportingReputationFromResult(posted({ newlyQualifiedFor: true as never })),
+    ).toThrow(/must be null or a sporting qualify rung/);
+  });
+
+  it('refuses every illegal same-tier or lower-tier qualification pair', () => {
+    const illegal: readonly (readonly [SportingMeetKind, unknown])[] = [
+      ['regional', 'regional'],
+      ['regional', 'local'],
+      ['nationals', 'regional'],
+      ['nationals', 'nationals'],
+      ['worlds', 'regional'],
+      ['worlds', 'nationals'],
+      ['worlds', 'worlds'],
+    ];
+    expect(illegal).toHaveLength(7);
+    for (const [kind, rung] of illegal) {
+      expect(
+        () => sportingReputationFromResult(posted({ kind, newlyQualifiedFor: rung as never })),
+        `${kind} → ${String(rung)} must refuse`,
+      ).toThrow(/qualify rung|not a new standing/);
+    }
+  });
+
+  it('accepts next-rung qualification and legal jumps', () => {
+    const legal: readonly (readonly [SportingMeetKind, SportingQualifyRung, number])[] = [
+      ['local', 'regional', S.kindScale.regional * S.qualifyUnit],
+      ['local', 'nationals', S.kindScale.nationals * S.qualifyUnit],
+      ['local', 'worlds', S.kindScale.worlds * S.qualifyUnit],
+      ['regional', 'nationals', S.kindScale.nationals * S.qualifyUnit],
+      ['regional', 'worlds', S.kindScale.worlds * S.qualifyUnit],
+      ['nationals', 'worlds', S.kindScale.worlds * S.qualifyUnit],
+    ];
+    expect(legal).toHaveLength(6);
+    for (const [kind, rung, qualifyPoints] of legal) {
+      const contribution = sportingReputationFromResult(
+        posted({ kind, newlyQualifiedFor: rung }),
+      );
+      expect(contribution.reasons.map((row) => row.kind)).toEqual(['placing', 'qualify']);
+      expect(contribution.reasons[1]?.points).toBeCloseTo(qualifyPoints, 6);
+      expect(contribution.points).toBeCloseTo(S.kindScale[kind] * S.placingUnit + qualifyPoints, 6);
+    }
+  });
+
+  it('a worlds result may only qualify as null', () => {
+    const title = sportingReputationFromResult(
+      posted({ kind: 'worlds', newlyQualifiedFor: null }),
+    );
+    expect(title.reasons.map((row) => row.kind)).toEqual(['placing']);
+    expect(() =>
+      sportingReputationFromResult(posted({ kind: 'worlds', newlyQualifiedFor: 'worlds' })),
+    ).toThrow(/not a new standing/);
   });
 });
 
@@ -230,93 +310,131 @@ describe('no grain-mixing composer, no member-bonus trap', () => {
 });
 
 /**
- * Shipped band is CONSERVATIVE. SPORT-HEAVY is pinned as the viable
- * alternative a human may still choose; it is not silent defaulting.
+ * Shipped band is SPORT-HEAVY (human ruling). Conservative (worlds 8)
+ * is investigation history, not a recommendation.
  *
- * Peak = first of 16 in category, plus Total PR, plus at most one qualify.
+ * Title-only and extras are pinned separately. PR and qualification are
+ * contingent; a championship must have coherent value on its own.
+ * Fixtures are reachable under Career eligibility (a result may not newly
+ * qualify for its own meet tier or a lower one).
  */
-const CONSERVATIVE_PEAK = Object.freeze({
-  local: 24,
+const SHIPPED = Object.freeze({
+  localWin: 24,
   localPr: 40,
-  regional: 112,
-  nationals: 288,
-  worlds: 320,
+  localQualify: 56,
+  localPrQualify: 72,
+  regionalTitle: 48,
+  regionalQualify: 112,
+  regionalNextRungPeak: 144,
+  nationalsTitle: 96,
+  nationalsQualify: 352,
+  nationalsPeak: 416,
+  worldsTitle: 384,
+  worldsPr: 640,
   twelveLocal: 288,
 });
 
-const SPORT_HEAVY_WORLDS_SCALE = 16;
-const SPORT_HEAVY_PEAK = Object.freeze({
-  local: 24,
-  localPr: 40,
-  regional: 112,
-  nationals: 416,
-  worlds: 640,
-  twelveLocal: 288,
-});
+const DISCARDED_CONSERVATIVE_WORLDS_SCALE = 8;
 
-describe('calibration — conservative shipped, sport-heavy documented', () => {
+describe('calibration — SPORT-HEAVY shipped; title-only distinct from extras', () => {
   const club = T.NPC_RECRUIT_REPUTATION_THRESHOLD.club;
   const regionalRecruit = T.NPC_RECRUIT_REPUTATION_THRESHOLD.regional;
   const nationalRecruit = T.NPC_RECRUIT_REPUTATION_THRESHOLD.national;
   const legendary = T.NPC_RECRUIT_REPUTATION_THRESHOLD.legendary;
   const firstTier = T.REPUTATION_TIER_THRESHOLDS[1] as number;
 
-  it('ships the conservative band: worlds crosses 250 and stays under national recruit', () => {
-    const local = sportingReputationFromResult(posted()).points;
-    const localPr = sportingReputationFromResult(posted({ isTotalPr: true })).points;
-    const regional = sportingReputationFromResult(
-      posted({
-        kind: 'regional',
-        isTotalPr: true,
-        newlyQualifiedFor: 'regional',
-      }),
-    ).points;
-    const nationals = sportingReputationFromResult(
-      posted({
-        kind: 'nationals',
-        isTotalPr: true,
-        newlyQualifiedFor: 'worlds',
-      }),
-    ).points;
-    const worlds = sportingReputationFromResult(
-      posted({ kind: 'worlds', isTotalPr: true }),
-    ).points;
-    const twelveLocal = 12 * local;
-
-    expect(local).toBeCloseTo(CONSERVATIVE_PEAK.local, 6);
-    expect(localPr).toBeCloseTo(CONSERVATIVE_PEAK.localPr, 6);
-    expect(regional).toBeCloseTo(CONSERVATIVE_PEAK.regional, 6);
-    expect(nationals).toBeCloseTo(CONSERVATIVE_PEAK.nationals, 6);
-    expect(worlds).toBeCloseTo(CONSERVATIVE_PEAK.worlds, 6);
-    expect(twelveLocal).toBeCloseTo(CONSERVATIVE_PEAK.twelveLocal, 6);
-
-    expect(local).toBeLessThan(club);
-    expect(localPr).toBeLessThan(club);
-    expect(regional).toBeGreaterThan(local);
-    expect(worlds).toBeGreaterThan(firstTier);
-    expect(worlds).toBeGreaterThan(regionalRecruit);
-    expect(worlds).toBeLessThan(nationalRecruit);
-    expect(worlds).toBeLessThan(legendary);
-    expect(worlds).toBeLessThan(T.REPUTATION_MAX);
+  it('ships SPORT-HEAVY kindScale and formula units', () => {
+    expect(S.kindScale).toEqual({ local: 1, regional: 2, nationals: 4, worlds: 16 });
+    expect(S.placingUnit).toBe(24);
+    expect(S.totalPrUnit).toBe(16);
+    expect(S.qualifyUnit).toBe(16);
   });
 
-  it('records the sport-heavy band: worlds may cross 600 and stays under legendary', () => {
+  it('pins title-only results separately from PR and qualification', () => {
+    const localWin = sportingReputationFromResult(posted({ kind: 'local' }));
+    const localPr = sportingReputationFromResult(posted({ kind: 'local', isTotalPr: true }));
+    const localQualify = sportingReputationFromResult(
+      posted({ kind: 'local', newlyQualifiedFor: 'regional' }),
+    );
+    const localPrQualify = sportingReputationFromResult(
+      posted({ kind: 'local', isTotalPr: true, newlyQualifiedFor: 'regional' }),
+    );
+    const regionalTitle = sportingReputationFromResult(posted({ kind: 'regional' }));
+    const regionalQualify = sportingReputationFromResult(
+      posted({ kind: 'regional', newlyQualifiedFor: 'nationals' }),
+    );
+    const regionalPeak = sportingReputationFromResult(
+      posted({ kind: 'regional', isTotalPr: true, newlyQualifiedFor: 'nationals' }),
+    );
+    const nationalsTitle = sportingReputationFromResult(posted({ kind: 'nationals' }));
+    const nationalsQualify = sportingReputationFromResult(
+      posted({ kind: 'nationals', newlyQualifiedFor: 'worlds' }),
+    );
+    const nationalsPeak = sportingReputationFromResult(
+      posted({ kind: 'nationals', isTotalPr: true, newlyQualifiedFor: 'worlds' }),
+    );
+    const worldsTitle = sportingReputationFromResult(posted({ kind: 'worlds' }));
+    const worldsPr = sportingReputationFromResult(posted({ kind: 'worlds', isTotalPr: true }));
+
+    expect(localWin.points).toBeCloseTo(SHIPPED.localWin, 6);
+    expect(localPr.points).toBeCloseTo(SHIPPED.localPr, 6);
+    expect(localQualify.points).toBeCloseTo(SHIPPED.localQualify, 6);
+    expect(localPrQualify.points).toBeCloseTo(SHIPPED.localPrQualify, 6);
+    expect(regionalTitle.points).toBeCloseTo(SHIPPED.regionalTitle, 6);
+    expect(regionalQualify.points).toBeCloseTo(SHIPPED.regionalQualify, 6);
+    expect(regionalPeak.points).toBeCloseTo(SHIPPED.regionalNextRungPeak, 6);
+    expect(nationalsTitle.points).toBeCloseTo(SHIPPED.nationalsTitle, 6);
+    expect(nationalsQualify.points).toBeCloseTo(SHIPPED.nationalsQualify, 6);
+    expect(nationalsPeak.points).toBeCloseTo(SHIPPED.nationalsPeak, 6);
+    expect(worldsTitle.points).toBeCloseTo(SHIPPED.worldsTitle, 6);
+    expect(worldsPr.points).toBeCloseTo(SHIPPED.worldsPr, 6);
+    expect(12 * localWin.points).toBeCloseTo(SHIPPED.twelveLocal, 6);
+
+    expect(localWin.reasons.map((row) => row.kind)).toEqual(['placing']);
+    expect(worldsTitle.reasons.map((row) => row.kind)).toEqual(['placing']);
+    expect(worldsPr.reasons.map((row) => row.kind)).toEqual(['placing', 'total-pr']);
+    expect(nationalsTitle.reasons.map((row) => row.kind)).toEqual(['placing']);
+    expect(nationalsQualify.reasons.map((row) => row.kind)).toEqual(['placing', 'qualify']);
+    expect(regionalTitle.reasons.map((row) => row.kind)).toEqual(['placing']);
+    expect(regionalQualify.reasons.map((row) => row.kind)).toEqual(['placing', 'qualify']);
+  });
+
+  it('reason rows sum to the contribution', () => {
+    const peak = sportingReputationFromResult(
+      posted({ kind: 'nationals', isTotalPr: true, newlyQualifiedFor: 'worlds' }),
+    );
+    const named = peak.reasons.reduce((sum, row) => sum + row.points, 0);
+    expect(peak.points).toBeCloseTo(named, 6);
+    expect(peak.points).toBeCloseTo(SHIPPED.nationalsPeak, 6);
+  });
+
+  it('a Worlds title is institutionally meaningful without a Total PR', () => {
+    const worldsTitle = sportingReputationFromResult(posted({ kind: 'worlds' })).points;
+    const worldsPr = sportingReputationFromResult(
+      posted({ kind: 'worlds', isTotalPr: true }),
+    ).points;
+    const localPr = sportingReputationFromResult(posted({ isTotalPr: true })).points;
+
+    expect(worldsTitle).toBe(SHIPPED.worldsTitle);
+    expect(worldsPr).toBe(SHIPPED.worldsPr);
+    expect(worldsTitle).toBeGreaterThan(regionalRecruit);
+    expect(worldsTitle).toBeGreaterThan(firstTier);
+    expect(worldsTitle).toBeLessThan(nationalRecruit);
+    expect(worldsPr).toBeGreaterThan(nationalRecruit);
+    expect(worldsPr).toBeLessThan(legendary);
+    expect(worldsPr).toBeLessThan(T.REPUTATION_MAX);
+    expect(localPr).toBeLessThan(club);
+    expect(legendary).toBe(1500);
+  });
+
+  it('records discarded conservative worldsScale 8 as history, not the shipped band', () => {
     const placing = S.placingUnit;
     const pr = S.totalPrUnit;
-    const qualify = S.qualifyUnit;
-    const localScale = S.kindScale.local;
-    const regionalScale = S.kindScale.regional;
-    const nationalsScale = S.kindScale.nationals;
-    expect(localScale * placing).toBeCloseTo(SPORT_HEAVY_PEAK.local, 6);
-    expect(localScale * (placing + pr)).toBeCloseTo(SPORT_HEAVY_PEAK.localPr, 6);
-    expect(regionalScale * (placing + pr + qualify)).toBeCloseTo(SPORT_HEAVY_PEAK.regional, 6);
-    expect(
-      nationalsScale * (placing + pr) + SPORT_HEAVY_WORLDS_SCALE * qualify,
-    ).toBeCloseTo(SPORT_HEAVY_PEAK.nationals, 6);
-    expect(SPORT_HEAVY_WORLDS_SCALE * (placing + pr)).toBeCloseTo(SPORT_HEAVY_PEAK.worlds, 6);
-    expect(SPORT_HEAVY_PEAK.worlds).toBeGreaterThan(nationalRecruit);
-    expect(SPORT_HEAVY_PEAK.worlds).toBeLessThan(legendary);
-    expect(SPORT_HEAVY_PEAK.worlds).toBeLessThan(T.REPUTATION_MAX);
+    expect(DISCARDED_CONSERVATIVE_WORLDS_SCALE * placing).toBe(192);
+    expect(DISCARDED_CONSERVATIVE_WORLDS_SCALE * (placing + pr)).toBe(320);
+    expect(DISCARDED_CONSERVATIVE_WORLDS_SCALE * placing).toBeLessThan(regionalRecruit);
+    expect(S.kindScale.worlds).not.toBe(DISCARDED_CONSERVATIVE_WORLDS_SCALE);
+    expect(S.kindScale.worlds * placing).toBe(SHIPPED.worldsTitle);
   });
 
   it('records E-REP-01 without retuning check-in reputation', () => {
@@ -324,18 +442,15 @@ describe('calibration — conservative shipped, sport-heavy documented', () => {
     const yearOfCheckIns = T.REPUTATION_PER_CHECK_IN * 365;
     expect(yearOfCheckIns).toBe(730);
     expect(SOURCE).toMatch(/E-REP-01/);
-    const worlds = sportingReputationFromResult(posted({ kind: 'worlds', isTotalPr: true })).points;
-    expect(worlds).toBeGreaterThan(firstTier);
+    const worldsTitle = sportingReputationFromResult(posted({ kind: 'worlds' })).points;
+    const worldsPr = sportingReputationFromResult(
+      posted({ kind: 'worlds', isTotalPr: true }),
+    ).points;
+    expect(worldsTitle).toBe(SHIPPED.worldsTitle);
+    expect(worldsPr).toBe(SHIPPED.worldsPr);
+    expect(worldsTitle).toBeGreaterThan(firstTier);
+    expect(yearOfCheckIns).toBeGreaterThan(worldsPr);
     expect(legendary).toBe(1500);
-  });
-
-  it('cannot cross national recruit at the shipped worlds/local ratio without blowing past club', () => {
-    const worldsLocalRatio = S.kindScale.worlds / S.kindScale.local;
-    expect(worldsLocalRatio).toBe(8);
-    const localPr = S.placingUnit + S.totalPrUnit;
-    expect(worldsLocalRatio * localPr).toBeLessThan(nationalRecruit);
-    expect(nationalRecruit / worldsLocalRatio).toBeGreaterThan(club);
-    expect(SPORT_HEAVY_WORLDS_SCALE / S.kindScale.local).toBeGreaterThan(worldsLocalRatio);
   });
 });
 
@@ -343,8 +458,8 @@ describe('calibration — conservative shipped, sport-heavy documented', () => {
  * Bounded search over kindScale.worlds × placingUnit × totalPrUnit × qualifyUnit.
  * Local/regional/nationals scales stay the GDD §6.1 doubling 1/2/4.
  *
- * Bands:
- *   conservative — worlds peak in (250, 600)
+ * Bands (history of the search; shipped is sport-heavy):
+ *   conservative — worlds peak in (250, 600) — discarded for the product
  *   sport-heavy — worlds peak in [600, 1500)
  * Rejected when local+PR ≥ club 50, worlds ≥ legendary 1500, or worlds ≤ first
  * sponsor tier 250. The grid's placing max is 40 so local-alone never hits
@@ -397,7 +512,7 @@ function classifySensitivityBand(worlds: number, localPr: number): SensitivityBa
   return 'rejected-below-sponsor';
 }
 
-describe('calibration sensitivity grid — both bands remain viable', () => {
+describe('calibration sensitivity grid — conservative discarded, sport-heavy shipped', () => {
   it('enumerates 720 cells and pins the band census, including the empty ones', () => {
     const tallies: Record<SensitivityBand, number> = {
       conservative: 0,
@@ -435,14 +550,18 @@ describe('calibration sensitivity grid — both bands remain viable', () => {
         sensitivityPeaks(S.kindScale.worlds, S.placingUnit, S.totalPrUnit, S.qualifyUnit).worlds,
         S.placingUnit + S.totalPrUnit,
       ),
-    ).toBe('conservative');
+    ).toBe('sport-heavy');
     expect(
       classifySensitivityBand(
-        sensitivityPeaks(SPORT_HEAVY_WORLDS_SCALE, S.placingUnit, S.totalPrUnit, S.qualifyUnit)
-          .worlds,
+        sensitivityPeaks(
+          DISCARDED_CONSERVATIVE_WORLDS_SCALE,
+          S.placingUnit,
+          S.totalPrUnit,
+          S.qualifyUnit,
+        ).worlds,
         S.placingUnit + S.totalPrUnit,
       ),
-    ).toBe('sport-heavy');
+    ).toBe('conservative');
   });
 });
 

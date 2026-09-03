@@ -1,5 +1,5 @@
 /**
- * sportingReputation.ts — Stage E.1 sporting reputation contract.
+ * sportingReputation.ts — Stage E.2 sporting reputation contract.
  *
  * GDD: Career-side of the reputation feed, built as a pure function first;
  * the Career/Meet → Empire persistent write stays a later, explicitly
@@ -17,7 +17,7 @@
  *
  * `reputationFromMembers` is the member/institution half: a per-day rate
  * from a roster. This file is the sporting half: a per-result event delta.
- * Those grains are not interchangeable. Stage E.1 does not ship a composer
+ * Those grains are not interchangeable. Stage E.2 does not ship a composer
  * that adds them. A later persistence/accounting boundary may add an
  * integrated member delta over a defined period to a sporting event delta
  * once both operands share a grain. That boundary does not exist yet.
@@ -47,7 +47,13 @@
  *     session size, bar-sharing count, or overall meet attendance.
  *   - `isTotalPr` — this meet raised the published best total
  *   - `newlyQualifiedFor` — the single new standing actually achieved, or
- *     null. Not a stack of rungs. No `local` qualification.
+ *     null. Runtime value is `null` or a string that is already a qualify
+ *     rung — not an array, object, number, or boolean that stringifies into
+ *     one. The rung must strictly outrank the meet kind (a regional meet
+ *     cannot newly qualify for regional). Jumps (local → worlds) are allowed
+ *     because one Total may cross several thresholds and Career's
+ *     `tierUnlockBetween` reports the resulting top `to` tier. No `local`
+ *     qualification. A worlds result cannot newly qualify.
  *
  * Refused or deferred:
  *
@@ -66,9 +72,9 @@
  * The consumed reputation model still awards `REPUTATION_PER_CHECK_IN`
  * (2) per check-in. That is inherited activity reputation. It has not been
  * reconciled with the doctrine that reputation is institutional sporting
- * credibility. Stage E.1 does not retune that constant. World-level
- * sporting credit is not held below a year of check-ins (730) merely to
- * protect that inherited source.
+ * credibility. Stage E.2 does not retune that constant and does not close
+ * the debt. World-level sporting credit is not held below a year of
+ * check-ins (730) merely to protect that inherited source.
  *
  * ===========================================================================
  * 4. Why the number moved
@@ -221,9 +227,22 @@ function requireSportingMeetResult(result: SportingMeetResult): SportingMeetResu
   if (typeof posted.isTotalPr !== 'boolean') {
     refuseWith('isTotalPr must be a boolean');
   }
-  const rung = posted.newlyQualifiedFor;
-  if (rung !== null && !isSportingQualifyRung(String(rung))) {
-    refuseWith(`${String(rung)} is not a sporting qualify rung`);
+  const rung: unknown = posted.newlyQualifiedFor;
+  if (rung !== null) {
+    if (typeof rung !== 'string' || !isSportingQualifyRung(rung)) {
+      refuseWith('newlyQualifiedFor must be null or a sporting qualify rung');
+    }
+    let meetRank = -1;
+    let rungRank = -1;
+    let rank = 0;
+    for (const step of SPORTING.meetKinds) {
+      if (step === posted.kind) meetRank = rank;
+      if (step === rung) rungRank = rank;
+      rank += 1;
+    }
+    if (rungRank <= meetRank) {
+      refuseWith(`${rung} is not a new standing above a ${posted.kind} meet`);
+    }
   }
   return result;
 }
