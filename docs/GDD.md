@@ -3184,7 +3184,9 @@ than the ruling's own §1–§23 sequence:
   `EmpireState.reputation`, Portfolio (F), or NPC roster/tenure (G).
 - **Stage F.** Portfolio unpause (item 5) — multiple acquired locations,
   remote management, full unattended staffing.
-- **Stage G.** NPC roster/tenure depth (item 6).
+- **Stage G.** NPC roster/tenure depth (item 6). **G.1** (living floor-member
+  identity + service outcome foundation) is built and awaiting human verdict —
+  recorded after Stage E below.
 
 ### Human Stage C rejection at `f097695b`
 
