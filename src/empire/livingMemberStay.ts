@@ -15,8 +15,8 @@
  * floor(5 / 2) + 1 = three consecutive confirmations in the same direction.
  * Neutral evidence breaks the pending streak. That makes the shortest path
  * from Staying to departure eligibility nine qualifying service observations,
- * while preserving a visible, recoverable warning path before any later stage
- * is allowed to remove a member.
+ * while preserving a recoverable warning path before any later stage is
+ * allowed to remove a member.
  *
  * Type treatment is deliberately narrow and GDD-backed:
  * - Casual can accumulate strain at Watching only when accepted G.2B reasons
@@ -38,7 +38,7 @@ import { EMPIRE_TUNING } from './empireTuning';
 import type { LivingMemberRetentionPressure } from './livingMemberRetention';
 import type { MemberType } from './members';
 
-export const LIVING_MEMBER_STAY_STATUSES = Object.freeze([
+const LIVING_MEMBER_STAY_STATUSES = Object.freeze([
   'forming',
   'staying',
   'unsettled',
@@ -55,7 +55,7 @@ export type LivingMemberStayDirection = 'strain' | 'recovery';
  * knob. If the G.2A service-history window changes, this evidence requirement
  * changes with it and must be re-adjudicated with that upstream decision.
  */
-export const LIVING_MEMBER_STAY_CONFIRMATIONS_PER_STEP =
+const STAY_CONFIRMATIONS_PER_STEP =
   Math.floor(EMPIRE_TUNING.LIVING_MEMBER_SERVICE_HISTORY_WINDOW / 2) + 1;
 
 export interface LivingMemberStayState {
@@ -147,7 +147,7 @@ function confirmedState(
 ): LivingMemberStayState {
   const confirmations =
     previous.pendingDirection === direction ? previous.confirmations + 1 : 1;
-  if (confirmations < LIVING_MEMBER_STAY_CONFIRMATIONS_PER_STEP) {
+  if (confirmations < STAY_CONFIRMATIONS_PER_STEP) {
     return Object.freeze({
       status: current,
       lastEvaluatedVisitTick: observedAtTick,
@@ -244,27 +244,4 @@ export function advanceLivingMemberStay(
   // neutral evidence: they neither worsen nor heal the persistent state, and
   // they break a streak so confirmations must actually be consecutive.
   return neutralState(current, observedAtTick, strainCause(retention));
-}
-
-export function isLivingMemberDepartureEligible(state: LivingMemberStayState): boolean {
-  return state.status === 'departure-eligible';
-}
-
-/**
- * Readable state only. Departure-eligible deliberately shares copy with the
- * preceding warning state until a later G.2C slice actually performs a
- * departure; the UI must not claim an event that has not happened.
- */
-export function playerFacingStayResponse(state: LivingMemberStayState): string {
-  switch (state.status) {
-    case 'forming':
-      return 'Still forming';
-    case 'staying':
-      return 'Staying';
-    case 'unsettled':
-      return 'Unsettled';
-    case 'considering-exit':
-    case 'departure-eligible':
-      return 'Considering leaving';
-  }
 }
