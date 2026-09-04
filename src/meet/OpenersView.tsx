@@ -63,6 +63,9 @@ export function OpenersView({
     <View style={styles.root} testID="meet-openers">
       <Text style={styles.eyebrow}>{MEET_COPY.OPENERS_EYEBROW}</Text>
       <Text style={styles.hint}>{MEET_COPY.OPENERS_HINT}</Text>
+      <Text style={styles.getIn} testID="openers-get-in">
+        {MEET_COPY.OPENERS_GET_IN}
+      </Text>
 
       <View style={styles.rows}>
         {LIFT_ORDER.map((lift, index) => (
@@ -125,6 +128,12 @@ const styles = StyleSheet.create({
   },
   hint: {
     color: MEET_PALETTE.TEXT_DIM,
+    fontSize: L.HINT_FONT,
+    textAlign: 'center',
+    paddingBottom: L.ROW_GAP,
+  },
+  getIn: {
+    color: MEET_PALETTE.TEXT,
     fontSize: L.HINT_FONT,
     textAlign: 'center',
     paddingBottom: L.ROW_GAP,

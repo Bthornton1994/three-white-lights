@@ -264,7 +264,9 @@ describe('the bomb-out beat (GDD §6.3)', () => {
 describe('the recap (GDD §6.5)', () => {
   it('lands the Total first — it is the only number meet day exists to move', () => {
     const order = MEET_TUNING.RECAP_ROW_ORDER;
-    expect(order.TOTAL).toBe(Math.min(order.TOTAL, order.LIFTS, order.DOTS, order.PLACE, order.CARD));
+    expect(order.TOTAL).toBe(Math.min(order.TOTAL, order.LIFTS, order.DOTS, order.PLACE, order.WHY, order.CARD));
+    expect(order.WHY).toBeGreaterThan(order.PLACE);
+    expect(order.CARD).toBeGreaterThan(order.WHY);
   });
 });
 
@@ -429,7 +431,7 @@ function sourcesUnder(dir: string): { file: string; source: string }[] {
 
 describe('no feel value lives outside meetTuning.ts', () => {
   const uiSources = sourcesUnder(MEET_UI_DIR);
-  const gameSources = ['meetDay.ts', 'meetServer.ts', 'meetPreview.ts'].map((name) => ({
+  const gameSources = ['meetDay.ts', 'meetServer.ts', 'meetPreview.ts', 'meetField.ts', 'meetBoard.ts', 'meetLedger.ts'].map((name) => ({
     file: name,
     source: readFileSync(path.join(HERE, name), 'utf8'),
   }));

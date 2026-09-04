@@ -50,8 +50,11 @@ import { MEET_COPY } from '../game/meetTuning';
 import { WEIGHT_CLASSES_KG, lifterCategoryText, weightClassString } from '../game/resultCard';
 import {
   attemptDecisionFor,
+  boardFor,
+  flightOnDeckText,
   lastAttempt,
   stageLoadRatio,
+  stakesForDecision,
   weighInFor,
   type MeetDayState,
 } from '../game/meetDay';
@@ -217,6 +220,14 @@ export function MeetScreen({
   const decision = attemptDecisionFor(state.meet, state.context.previousBestByLiftKg);
   const judged = lastAttempt(state);
   const recap = loop.recap;
+  const board = boardFor(state);
+  const onDeckName = flightOnDeckText(state);
+  const stakesByOptionId =
+    decision === null
+      ? {}
+      : Object.fromEntries(
+          decision.options.map((option) => [option.id, stakesForDecision(state, decision, option)]),
+        );
 
   if (cardOpen && recap !== null) {
     return <ResultCardScreen card={recap.card} />;
@@ -254,6 +265,9 @@ export function MeetScreen({
         {state.phase === 'attempt-select' && decision !== null ? (
           <AttemptSelectView
             decision={decision}
+            board={board}
+            onDeckName={onDeckName}
+            stakesByOptionId={stakesByOptionId}
             onChoose={(weightKg) => dispatch({ kind: 'declare', weightKg })}
           />
         ) : null}
@@ -265,6 +279,7 @@ export function MeetScreen({
             barAndCollarsKg={meetLoadingRules(state.meet).barAndCollarsWeight[state.live.lift]}
             loadRatio={state.live.loadRatio}
             holdAtMs={holdWalkoutAtMs}
+            onDeckName={onDeckName}
           />
         ) : null}
 

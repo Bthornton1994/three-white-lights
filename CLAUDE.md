@@ -2455,6 +2455,41 @@ The 2026-09-01 A0 FINALIZATION CANDIDATE entry above is left standing as
 the record of what was pending at that SHA. Current-authority text is
 this ruling.
 
+### FILED 2026-09-02: A1 AUTHENTIC MEET CANDIDATE — NOT CLOSED
+
+A1 started in a new commit after the A0 mint. This is a candidate for
+human Meet Day playtest. **Do not treat A1 as closed.**
+
+What A1 built, in sport-truth order:
+
+- One competition state: player `meet.ts` card + named 5-NPC flight
+  replayed through the same engine + reveal cursor + append-only ledger.
+- Attempt law unchanged (non-decreasing, miss may repeat, bomb → no Total).
+- Attempt selection shows kg and real stakes (projected Total, placing
+  if make/miss, qualifying, meet record) only when true of the board.
+  No easy/medium/hard as the decision.
+- Meet attempts still use frozen A0 squat / C3 bench / deadlift. Commands
+  are overlay only: squat SQUAT/RACK, bench START/PRESS/RACK, deadlift
+  DOWN. PRESS and DOWN go live when the mechanic already requires them.
+- Judging still derives from the attempt; majority still matches the
+  mechanic; lights still reveal after deliberation.
+- Flight of five named fictional lifters. Published kg / best / Total /
+  bomb come from `meet.ts`. Cheaper NPC sim; same quantities.
+- Live board between attempts. Lift screen stays the lift.
+- Deadlift finale stakes emerge from actual board state, not a script.
+- Smallest record/qualifier seam: fixture meet record +
+  `MeetDefinition.qualifyingTotalKg` (null on the local open; career
+  tiers carry theirs).
+- Smallest immutable Meet Day ledger: weigh-in, attempt+lights, bests,
+  Total, placing, record, qualification, bomb-out.
+- Recap answers what happened and why it matters. No XP, no currency.
+
+Not started: A2–A7, Session B, any squat/deadlift/C3 retune, merge to
+`main`. Physical glass remains A0-DEVICE-01.
+
+Human playtest questions stay in the A1 brief. Close A1 only after a
+human plays one complete meet and rules.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a

@@ -183,6 +183,7 @@ export interface WalkoutViewProps {
    * same idiom as `useMeetDay`'s `frozen` and `useLiftLoop`'s `paused`.
    */
   readonly holdAtMs?: number | null | undefined;
+  readonly onDeckName?: string | null | undefined;
 }
 
 export function WalkoutView({
@@ -191,6 +192,7 @@ export function WalkoutView({
   barAndCollarsKg,
   loadRatio,
   holdAtMs = null,
+  onDeckName = null,
 }: WalkoutViewProps): React.ReactElement {
   const plateCount = hallPlateCount(attempt.weightKg, barAndCollarsKg);
   const line = attempt.bombRisk
@@ -343,6 +345,11 @@ export function WalkoutView({
             {line}
           </Text>
         </Animated.View>
+        {onDeckName === null || onDeckName === undefined ? null : (
+          <Text style={styles.eyebrow} testID="walkout-on-deck">
+            {`${MEET_COPY.BOARD_ON_DECK} ${onDeckName}`}
+          </Text>
+        )}
       </View>
 
       <MeetHallView

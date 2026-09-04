@@ -71,9 +71,11 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } fro
 
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
 import type { AttemptDecision, AttemptOption } from '../game/meetDay';
+import type { AttemptStake, MeetBoard } from '../game/meetBoard';
 import { playBeat } from './meetFeedback';
 import { formatWeight } from '../game/resultCard';
 import { MeetHallView } from './MeetHallView';
+import { MeetBoardView } from './MeetBoardView';
 import { MEET_PALETTE } from './meetPalette';
 
 const L = MEET_LAYOUT;
@@ -82,11 +84,13 @@ function OptionCard({
   option,
   index,
   bold,
+  stakes,
   onChoose,
 }: {
   readonly option: AttemptOption;
   readonly index: number;
   readonly bold: boolean;
+  readonly stakes: readonly AttemptStake[];
   readonly onChoose: (weightKg: number) => void;
 }): React.ReactElement {
   const shown = useSharedValue(0);
@@ -124,6 +128,15 @@ function OptionCard({
         <Text style={styles.cardWhy} testID={`attempt-option-why-${option.id}`}>
           {option.why}
         </Text>
+        {stakes.map((stake) => (
+          <Text
+            key={stake.kind}
+            style={styles.cardStake}
+            testID={`attempt-option-stake-${option.id}-${stake.kind}`}
+          >
+            {stake.text}
+          </Text>
+        ))}
       </Pressable>
     </Animated.View>
   );
@@ -131,10 +144,19 @@ function OptionCard({
 
 export interface AttemptSelectViewProps {
   readonly decision: AttemptDecision;
+  readonly board: MeetBoard;
+  readonly onDeckName: string | null;
+  readonly stakesByOptionId: Readonly<Record<string, readonly AttemptStake[]>>;
   readonly onChoose: (weightKg: number) => void;
 }
 
-export function AttemptSelectView({ decision, onChoose }: AttemptSelectViewProps): React.ReactElement {
+export function AttemptSelectView({
+  decision,
+  board,
+  onDeckName,
+  stakesByOptionId,
+  onChoose,
+}: AttemptSelectViewProps): React.ReactElement {
   const raised = decision.floorRaisedByMiss;
 
   // THE FLOOR, FELT ONLY WHEN A MISS RAISED IT.
@@ -167,6 +189,7 @@ export function AttemptSelectView({ decision, onChoose }: AttemptSelectViewProps
       </View>
 
       <Text style={styles.eyebrow}>{MEET_COPY.SELECT_EYEBROW}</Text>
+      <MeetBoardView board={board} onDeckName={onDeckName} />
       <Text style={styles.title} testID="attempt-select-title">
         {`${MEET_COPY.LIFT_LABEL[decision.lift]} · ${MEET_COPY.ATTEMPT_LABEL} ${decision.attemptNumber}`}
       </Text>
@@ -207,6 +230,7 @@ export function AttemptSelectView({ decision, onChoose }: AttemptSelectViewProps
             option={option}
             index={index}
             bold={option.id === 'big'}
+            stakes={stakesByOptionId[option.id] ?? []}
             onChoose={choose}
           />
         ))}
@@ -331,6 +355,11 @@ const styles = StyleSheet.create({
   cardWhy: {
     color: MEET_PALETTE.TEXT_DIM,
     fontSize: L.HINT_FONT,
+  },
+  cardStake: {
+    color: MEET_PALETTE.WALKOUT_URGENT,
+    fontSize: L.LABEL_FONT,
+    fontWeight: '700',
   },
   bombWarning: {
     color: MEET_PALETTE.WALKOUT_URGENT,

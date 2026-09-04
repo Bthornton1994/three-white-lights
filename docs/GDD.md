@@ -2,7 +2,11 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-09-02 (A0 PLAYABLE SPORT CLOSED. Baseline runtime
+**Last updated:** 2026-09-02 (A1 Authentic Meet candidate ready for
+human Meet Day playtest — not closed. A0 PLAYABLE SPORT remains CLOSED
+at baseline runtime `39400d97`. Squat / bench C3 / deadlift accepted
+and frozen. Physical glass smoke is A0-DEVICE-01 release QA debt. No
+lift runtime change in A1. No merge to main.) Earlier: 2026-09-02 (A0 PLAYABLE SPORT CLOSED. Baseline runtime
 `39400d97`. Squat / bench C3 / deadlift accepted and frozen. Three-Lift
 Identity Test PASS. Physical glass smoke is A0-DEVICE-01 release QA debt,
 not a design blocker. A1 Authentic Meet is authorized. No lift runtime
@@ -2019,6 +2023,19 @@ measurement existed and was not revisited when it arrived.
 ## 6. Meet Day
 
 The emotional centerpiece. Deserves the most design care and polish budget.
+
+**A1 AUTHENTIC MEET CANDIDATE (2026-09-02) — NOT CLOSED.** One competition
+state: the player's `meet.ts` card, a named five-NPC flight replayed through
+the same engine, and an append-only Meet Day ledger. Attempt selection is
+kilograms and sport stakes (projected Total, placing if make/miss, qualifying,
+meet record) only when those facts exist on the board — not easy/medium/hard.
+Meet attempts are the frozen A0 squat, C3 bench, and deadlift; competition
+commands (SQUAT/RACK, START/PRESS/RACK, DOWN) are overlay only. Three-light
+judging still derives from the attempt; the majority still matches the
+mechanic. Local live placing is the fixture, not a ghost kilogram list
+(`ghostTotalsKg` remains residual helper data). Recap answers what happened
+and why it matters. No XP, no currency. Close A1 only after a human plays
+one complete meet.
 
 ### 6.1 Pre-Meet
 
@@ -6318,7 +6335,8 @@ ordinary-bench phone replay). A0 PLAYABLE SPORT is CLOSED (2026-09-02)
 at baseline runtime `39400d97`: squat, bench C3, and deadlift are
 accepted and frozen. Physical-device touch smoke is A0-DEVICE-01 release
 QA debt, not a design blocker. A1 Authentic Meet is the current Session A
-task. This doctrine still does not retune lifts, implement Career, or
+task. An A1 Authentic Meet candidate is ready for human Meet Day
+playtest and is not closed from this section. This doctrine still does not retune lifts, implement Career, or
 touch Session B.
 
 This doctrine still governs **what comes after** and **how future features

@@ -51,11 +51,13 @@ import {
   type MeetDayState,
   type MeetRecap,
 } from './meetDay';
+import { lastEventOfKind } from './meetLedger';
 import { applyMeetResult, type AppliedMeetResult } from './meetServer';
 import { newServerRecord, type ServerRecord } from './sessionServer';
 import {
   MEET_COPY,
   MEET_ENTRY,
+  MEET_FIELD_FIXTURE,
   MEET_LOCAL,
   MEET_PREVIEW,
   MEET_TUNING,
@@ -926,6 +928,15 @@ describe('bombing out (GDD §6.3)', () => {
     expect(finalMeetTotal(state.meet)).toBeNull();
   });
 
+  it('records the bomb-out on the immutable ledger, with a null Total', () => {
+    const state = bombedSquat();
+    expect(lastEventOfKind(state.ledger, 'weigh-in')).not.toBeNull();
+    expect(lastEventOfKind(state.ledger, 'total')?.kg).toBeNull();
+    expect(lastEventOfKind(state.ledger, 'bomb-out')?.lift).toBe('squat');
+    expect(lastEventOfKind(state.ledger, 'placing')?.place).toBeNull();
+    expect(lastEventOfKind(state.ledger, 'placing')?.fieldSize).toBe(MEET_FIELD_FIXTURE.length + 1);
+  });
+
   it('is reached the same way from a bench bomb, on a later lift', () => {
     // A bomb-out that only worked on the first lift would be a special case
     // dressed as a rule.
@@ -1082,7 +1093,7 @@ function confirmedFor(meet: MeetState, overrides: Partial<{
     bestByLiftKg,
     previousBestByLiftKg:
       overrides.previousBestByLiftKg ?? { ...MEET_PREVIEW.PREVIOUS_BEST_BY_LIFT_KG },
-    placing: { place: overrides.place ?? 4, fieldSize: overrides.fieldSize ?? 16 },
+    placing: { place: overrides.place ?? 4, fieldSize: overrides.fieldSize ?? MEET_FIELD_FIXTURE.length + 1 },
   };
 }
 
@@ -1112,6 +1123,41 @@ describe('the recap (GDD §6.5)', () => {
       expect(row.attempts[1]?.good).toBe(true);
     }
     expect(cells).toBe(LIFT_ORDER.length * ATTEMPTS_PER_LIFT);
+  });
+
+  it('remembers the meet as weigh-in, attempts, lights, Total and placing', () => {
+    const state = playMeet(ALL_GOOD);
+    expect(state.ledger[0]?.kind).toBe('weigh-in');
+    const attempts = state.ledger.filter((event) => event.kind === 'attempt');
+    expect(attempts.length).toBe(LIFT_ORDER.length * ATTEMPTS_PER_LIFT);
+    expect(attempts.every((event) => event.kind === 'attempt' && event.lights.length === 3)).toBe(
+      true,
+    );
+    expect(lastEventOfKind(state.ledger, 'total')?.kg).toBe(finalMeetTotal(state.meet));
+    expect(lastEventOfKind(state.ledger, 'placing')?.fieldSize).toBe(MEET_FIELD_FIXTURE.length + 1);
+    expect(lastEventOfKind(state.ledger, 'placing')?.place).not.toBeNull();
+  });
+
+  it('answers why the result matters from facts on this meet, not XP', () => {
+    const state = playMeet(ALL_GOOD);
+    const built = buildMeetRecap(
+      state,
+      confirmedFor(state.meet, {
+        place: 2,
+        fieldSize: MEET_FIELD_FIXTURE.length + 1,
+        isTotalPr: true,
+      }),
+    );
+    expect(built.ok).toBe(true);
+    if (!built.ok) throw new Error(built.error.message);
+    expect(built.recap.whyLines).toContain(
+      MEET_COPY.RECAP_WHY_PLACE.replace('{place}', '2').replace(
+        '{field}',
+        String(MEET_FIELD_FIXTURE.length + 1),
+      ),
+    );
+    expect(built.recap.whyLines).toContain(MEET_COPY.RECAP_WHY_PR);
+    expect(built.recap.whyLines.join(' ')).not.toMatch(/XP|xp|currency/i);
   });
 
   it('reads its total, DOTS and place off the card it hands off', () => {
@@ -1236,7 +1282,7 @@ describe('the recap (GDD §6.5)', () => {
       liftPrs: { squat: false, bench: false, deadlift: false },
       bestByLiftKg: { squat: null, bench: state.meet.lifts.bench.best, deadlift: null },
       previousBestByLiftKg: { ...MEET_PREVIEW.PREVIOUS_BEST_BY_LIFT_KG },
-      placing: { place: null, fieldSize: MEET_LOCAL.ghostTotalsKg.length + 1 },
+      placing: { place: null, fieldSize: MEET_FIELD_FIXTURE.length + 1 },
     });
     if (!built.ok) throw new Error(built.error.message);
     for (const counted of [0, 100, 600, Number.NaN]) {
@@ -1257,7 +1303,7 @@ describe('the recap (GDD §6.5)', () => {
       previousBestByLiftKg: { ...MEET_PREVIEW.PREVIOUS_BEST_BY_LIFT_KG },
       // A bombed lifter does not place, and this is what `meetServer.ts`
       // actually returns for one.
-      placing: { place: null, fieldSize: MEET_LOCAL.ghostTotalsKg.length + 1 },
+      placing: { place: null, fieldSize: MEET_FIELD_FIXTURE.length + 1 },
     });
     expect(built.ok).toBe(true);
     if (!built.ok) throw new Error(built.error.message);

@@ -151,7 +151,61 @@ export interface MeetDefinition {
    * past results — and this list does not exist.
    */
   readonly ghostTotalsKg: readonly number[];
+  /**
+   * Qualifying Total for the next rung, kg, or null when this meet does not
+   * gate anything (a local open). Fixture data — never invented mid-attempt.
+   */
+  readonly qualifyingTotalKg: number | null;
 }
+
+/**
+ * One named competitor on the flight. Day-max is the load their attempts are
+ * planned from; published kg still comes out of `meet.ts`.
+ */
+export interface FieldLifterSpec {
+  readonly id: string;
+  readonly name: string;
+  readonly bodyweightKg: number;
+  readonly dayMaxKg: Readonly<Record<LiftKind, number>>;
+}
+
+/**
+ * Five named lifters on the local platform. Day-maxes sit around a first-meet
+ * lifter (starting e1RM 180/120/220) so a third deadlift can move a place.
+ * Names are fictional.
+ */
+export const MEET_FIELD_FIXTURE: readonly FieldLifterSpec[] = Object.freeze([
+  Object.freeze({
+    id: 'ashford',
+    name: 'M. ASHFORD',
+    bodyweightKg: 93.1,
+    dayMaxKg: Object.freeze({ squat: 200, bench: 130, deadlift: 240 }),
+  }),
+  Object.freeze({
+    id: 'quill',
+    name: 'S. QUILL',
+    bodyweightKg: 89.6,
+    dayMaxKg: Object.freeze({ squat: 190, bench: 125, deadlift: 230 }),
+  }),
+  Object.freeze({
+    id: 'harrow',
+    name: 'J. HARROW',
+    bodyweightKg: 92.0,
+    dayMaxKg: Object.freeze({ squat: 180, bench: 120, deadlift: 220 }),
+  }),
+  Object.freeze({
+    id: 'pembroke',
+    name: 'R. PEMBROKE',
+    bodyweightKg: 87.4,
+    dayMaxKg: Object.freeze({ squat: 170, bench: 110, deadlift: 205 }),
+  }),
+  Object.freeze({
+    id: 'linn',
+    name: 'T. LINN',
+    bodyweightKg: 94.8,
+    dayMaxKg: Object.freeze({ squat: 155, bench: 100, deadlift: 185 }),
+  }),
+]);
 
 /**
  * The lifter's own entry details.
@@ -234,6 +288,19 @@ export const MEET_TUNING = Object.freeze({
    * crowd during precisely the beat they were pressing the screen.
    */
   VENUE: 'meet-platform' as GymVenue,
+
+  /**
+   * How fixture NPCs plan attempts. Cheaper than the player's mechanic; the
+   * published kg still comes out of `meet.ts`. Fractions of day-max, rounded
+   * onto the declaration grid. A third-attempt miss is a seeded chance so a
+   * flight is not a wall of identical makes.
+   */
+  FIELD: Object.freeze({
+    OPENER_FRAC: 0.9,
+    SECOND_FRAC: 0.96,
+    MISS_THIRD_CHANCE: 0.28,
+    MISS_SEED_STRIDE: 17,
+  }),
 
   /**
    * HOW FAR THE HALL IS HELD BACK, per beat — 0 is the room at full strength, 1
@@ -1051,7 +1118,7 @@ export const MEET_TUNING = Object.freeze({
    * the number the whole mode exists to move (GDD §2, §3.2: it moves on meet
    * day and on no other day).
    */
-  RECAP_ROW_ORDER: Object.freeze({ TOTAL: 0, LIFTS: 1, DOTS: 2, PLACE: 3, CARD: 4 }),
+  RECAP_ROW_ORDER: Object.freeze({ TOTAL: 0, LIFTS: 1, DOTS: 2, PLACE: 3, WHY: 4, CARD: 5 }),
 
   // -------------------------------------------------------------------------
   // Haptics — what meet day FEELS like
@@ -1557,6 +1624,7 @@ export const MEET_LOCAL: MeetDefinition = Object.freeze({
   ghostTotalsKg: Object.freeze([
     632.5, 610, 597.5, 585, 572.5, 555, 540, 522.5, 505, 487.5, 470, 452.5, 430, 405, 380,
   ]),
+  qualifyingTotalKg: null,
 });
 
 /**
@@ -1628,10 +1696,16 @@ export const MEET_LAYOUT = Object.freeze({
   BOARD_CELL_H: 34,
   BOARD_GAP: 4,
   BOARD_LABEL_W: 74,
+  BOARD_PLACE_W: 18,
+  BOARD_FLIGHT_GAP: 8,
+  BOARD_ROW_PAD: 4,
 
   BUTTON_HEIGHT: 50,
   BUTTON_RADIUS: 10,
   BUTTON_FONT: 13,
+
+  COMMAND_FONT: 42,
+  COMMAND_LIVE_FONT: 52,
 
   DIVIDER_HEIGHT: 1,
 
@@ -1704,6 +1778,7 @@ export const MEET_COPY = Object.freeze({
   OPENERS_HINT: 'Pre-filled from your training. Change anything you like.',
   OPENERS_SUGGESTED: 'suggested',
   OPENERS_CHANGED: 'your call',
+  OPENERS_GET_IN: 'Make these and you are in the meet. The risk is the weight and your lift, not a hidden roll.',
   OPENERS_ACTION: 'TAKE THE PLATFORM',
 
   // --- The attempt loop (GDD §6.2) ----------------------------------------
@@ -1786,6 +1861,32 @@ export const MEET_COPY = Object.freeze({
   OPTION_PUSH_PAST: 'GO PAST IT',
   OPTION_PUSH_PAST_WHY: 'Concede the miss and reach past it. Rescues the lift or spends the last attempt for nothing.',
   OPTION_BOMB_WARNING: 'Miss this and the meet is over with nothing on this lift.',
+
+  BOARD_EYEBROW: 'FLIGHT',
+  BOARD_YOU: 'YOU',
+  BOARD_UP: 'UP',
+  BOARD_ON_DECK: 'ON DECK',
+  BOARD_PLACE: 'PLACE',
+  BOARD_TOTAL: 'BOARD',
+  STAKE_PROJECTED: 'Make this: {total} Total',
+  STAKE_PLACE_MAKE: 'Make this: {place} of {field}',
+  STAKE_PLACE_MISS: 'Miss and stand: {place} of {field}',
+  STAKE_MISS_STANDS: 'Miss and the current result stands.',
+  STAKE_QUALIFYING: 'Make this: qualifying Total ({kg})',
+  STAKE_MEET_RECORD: 'Make this: meet record ({kg})',
+  STAKE_BANKED_TOTAL: 'Banked Total {total}',
+  COMMAND_SQUAT: 'SQUAT',
+  COMMAND_RACK: 'RACK',
+  COMMAND_START: 'START',
+  COMMAND_PRESS: 'PRESS',
+  COMMAND_DOWN: 'DOWN',
+  RECAP_WHY_LABEL: 'WHY IT MATTERS',
+  RECAP_WHY_PLACE: 'You placed {place} of {field}.',
+  RECAP_WHY_PR: 'A competition best moved.',
+  RECAP_WHY_FIRST: 'First Total on the board.',
+  RECAP_WHY_QUALIFY: 'This Total qualifies you for the next rung.',
+  RECAP_WHY_RECORD: 'Meet record.',
+  RECAP_WHY_BOMB: 'No Total. The attempts you made still stand as training.',
 
   // --- Bombing out (GDD §6.3) ---------------------------------------------
   BOMB_OUT_CALL: 'NO TOTAL',

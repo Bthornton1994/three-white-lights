@@ -337,6 +337,9 @@ import type {
 import { snapshotWireFor, type ServerRecord } from './sessionServer';
 import { careerLifterFor, careerMeetOutcome, type CareerMeetOutcome } from './careerServer';
 import type { MeetDefinition } from './meetTuning';
+import { MEET_FIELD_FIXTURE } from './meetTuning';
+import { buildMeetField, fieldTotalsKg } from './meetField';
+import { placingFromFieldTotals } from './meetBoard';
 
 // ---------------------------------------------------------------------------
 // Replaying a reported card
@@ -1070,7 +1073,11 @@ export function applyMeetResult(
       bestByLiftKg,
       previousBestByLiftKg: heldByLift,
       liftPrs,
-      placing: placingFor(totalKg, meet.ghostTotalsKg),
+      placing: (() => {
+        const field = buildMeetField(MEET_FIELD_FIXTURE, meet.rules, day);
+        const ranked = placingFromFieldTotals(totalKg, fieldTotalsKg(field));
+        return { place: ranked.place, fieldSize: ranked.fieldSize };
+      })(),
       bombedLift,
       career,
     },

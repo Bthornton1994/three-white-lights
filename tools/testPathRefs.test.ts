@@ -313,8 +313,12 @@ const PINNED = Object.freeze({
    * probe trio. This commit then swaps that trio for `src/art/deadliftPull.ts`,
    * `src/art/deadliftPull.test.ts` and `src/game/a0LiftFreeze.test.ts`, so the
    * net of the swap is 0 and the number that remains is the catch-up.
+   *
+   * 312 -> 320 with A1 authentic meet: `meetField.ts`, `meetBoard.ts`,
+   * `meetLedger.ts`, `MeetBoardView.tsx`, and the four tests beside them
+   * (`meetField`, `meetBoard`, `meetLedger`, `meetCommand`).
    */
-  SCANNED_FILES: 312,
+  SCANNED_FILES: 320,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -354,8 +358,11 @@ const PINNED = Object.freeze({
    * a bump. This commit then swaps those two probe tests for
    * `src/art/deadliftPull.test.ts` and `src/game/a0LiftFreeze.test.ts`, so
    * the net of the swap is 0 and the number that remains is the catch-up.
+   *
+   * 100 -> 104 with A1: `meetField.test.ts`, `meetBoard.test.ts`,
+   * `meetLedger.test.ts`, `meetCommand.test.ts`.
    */
-  TEST_FILES: 100,
+  TEST_FILES: 104,
 });
 
 /**

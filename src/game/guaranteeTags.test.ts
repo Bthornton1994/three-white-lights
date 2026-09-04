@@ -1121,7 +1121,11 @@ const GUARANTEE_COVERAGE = {
   // (`bench-surplus-wall-is-identity`, `the-grind-readout-reads-useful-force`)
   // sit on paragraphs that already triggered or that do not trip the word
   // list, so IN_SCOPE does not move with TAGGED_PARAGRAPHS.
-  TREE_WIDE: 318,
+  // 318 -> 317 ON A1: `meetIdentity.test.ts` rewrote the ghost-field paragraph
+  // so the live board is a named fixture scanned by the same file. The old
+  // wording tripped the capitalised-absolute heuristic; the new one does not.
+  // No tagged guarantee moved.
+  TREE_WIDE: 317,
 } as const;
 
 // ---------------------------------------------------------------------------

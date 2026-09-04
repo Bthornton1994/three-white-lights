@@ -46,5 +46,6 @@ export function meetDefinitionFor(meet: CareerMeet): MeetDefinition {
     country: venue.country,
     rules: DEFAULT_MEET_RULES,
     ghostTotalsKg: CAREER_TUNING.GHOST_TOTALS_KG[meet.tier],
+    qualifyingTotalKg: CAREER_TUNING.QUALIFYING_TOTAL_KG[meet.tier],
   };
 }

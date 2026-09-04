@@ -235,6 +235,17 @@ export function RecapView({
         </Block>
       </View>
 
+      {recap.whyLines.length === 0 ? null : (
+        <Block index={MEET_TUNING.RECAP_ROW_ORDER.WHY}>
+          <Text style={styles.sectionLabel}>{MEET_COPY.RECAP_WHY_LABEL}</Text>
+          {recap.whyLines.map((line) => (
+            <Text key={line} style={styles.prText} testID="recap-why">
+              {line}
+            </Text>
+          ))}
+        </Block>
+      )}
+
       <Block index={MEET_TUNING.RECAP_ROW_ORDER.CARD}>
         <Pressable
           style={styles.action}

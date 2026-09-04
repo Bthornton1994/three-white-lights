@@ -47,7 +47,7 @@ import {
   replayMeetCard,
 } from './meetServer';
 import { meetAttemptReports, meetResultCard, meetResultProposal, type MeetDayContext } from './meetDay';
-import { MEET_ENTRY, MEET_LOCAL, MEET_PREVIEW, type MeetDefinition, type MeetEntry } from './meetTuning';
+import { MEET_ENTRY, MEET_FIELD_FIXTURE, MEET_LOCAL, MEET_PREVIEW, type MeetDefinition, type MeetEntry } from './meetTuning';
 import { playMeet, previewContext, previewServerRecord, previewStateFor, type RepStyle } from './meetPreview';
 import { WEIGHT_CLASSES_KG, weightClassString } from './resultCard';
 import { SESSION_TUNING } from './sessionTuning';
@@ -436,7 +436,7 @@ describe('a bomb-out takes nothing (GDD §12.3)', () => {
   it('does not place the lifter', () => {
     const result = bombed();
     expect(result.placing.place).toBeNull();
-    expect(result.placing.fieldSize).toBe(MEET_LOCAL.ghostTotalsKg.length + 1);
+    expect(result.placing.fieldSize).toBe(MEET_FIELD_FIXTURE.length + 1);
   });
 
   it('is still recorded — the meet happened', () => {

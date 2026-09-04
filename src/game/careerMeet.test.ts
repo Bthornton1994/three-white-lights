@@ -44,6 +44,9 @@ describe('meetDefinitionFor — the CareerMeet → MeetDefinition seam', () => {
   it('fields each tier’s own NPCs, by reference to the tuning list', () => {
     for (const meet of scheduled) {
       expect(meetDefinitionFor(meet).ghostTotalsKg).toBe(CAREER_TUNING.GHOST_TOTALS_KG[meet.tier]);
+      expect(meetDefinitionFor(meet).qualifyingTotalKg).toBe(
+        CAREER_TUNING.QUALIFYING_TOTAL_KG[meet.tier],
+      );
     }
   });
 

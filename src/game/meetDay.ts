@@ -138,6 +138,7 @@ import {
   bestSuccessfulAttempt,
   currentAttemptContext,
   declareAttempt,
+  finalMeetTotal,
   isCallableWeightNow,
   isGoodLift,
   isSplitDecision,
@@ -160,12 +161,19 @@ import {
 } from './meet';
 import { nextRandom, seedState } from './prng';
 import { sessionFeel, type FatigueState, type LiftMoment, type SessionFeel } from './fatigue';
-import type { LiftConfig, LiftResolution, MissReason } from './lift';
+import {
+  pressCommandIsLive,
+  type LiftConfig,
+  type LiftResolution,
+  type LiftState,
+  type MissReason,
+} from './lift';
 import { type HapticPattern } from './liftTuning';
 import type { MeetAttemptReport, MeetCardReport, MeetResultReport, MeetId } from './progression';
 import { asMeetId } from './progression';
 import {
   NO_VALUE_DISPLAY,
+  WEIGHT_CLASSES_KG,
   buildResultCard,
   formatWeight,
   type ResultCard,
@@ -173,11 +181,31 @@ import {
 } from './resultCard';
 import {
   MEET_COPY,
+  MEET_FIELD_FIXTURE,
   MEET_TUNING,
   type MeetDefinition,
   type KilogramMeetEntry,
   type MeetSoundId,
 } from './meetTuning';
+import {
+  buildMeetField,
+  fieldTotalsKg,
+  initialFieldReveal,
+  onDeckName,
+  revealAfterPlayer,
+  revealForDeclaration,
+  whoJustWent,
+  type FieldReveal,
+  type MeetField,
+} from './meetField';
+import {
+  buildMeetBoard,
+  placingFromFieldTotals,
+  stakesForOption,
+  type AttemptStake,
+  type MeetBoard,
+} from './meetBoard';
+import { appendLedger, lastEventOfKind, type MeetLedgerEvent } from './meetLedger';
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -1085,6 +1113,12 @@ export interface MeetDayState {
   readonly attempts: readonly MeetDayAttempt[];
   /** The last refusal the engine returned, for the UI to surface. */
   readonly lastError: MeetError | null;
+  /** Named flight. Published NPC results are `meet.ts` quantities. */
+  readonly field: MeetField;
+  /** How much of the flight the player has seen. */
+  readonly reveal: FieldReveal;
+  /** Immutable Meet Day events, append-only. */
+  readonly ledger: readonly MeetLedgerEvent[];
 }
 
 // ---------------------------------------------------------------------------
@@ -1205,6 +1239,9 @@ export function createMeetDay(context: MeetDayContext): MeetDayState {
     call: null,
     attempts: [],
     lastError: null,
+    field: buildMeetField(MEET_FIELD_FIXTURE, context.meet.rules, meetSeedFor(context)),
+    reveal: initialFieldReveal(),
+    ledger: [],
   };
 }
 
@@ -1220,20 +1257,49 @@ function afterVerdict(state: MeetDayState): MeetDayState {
   const meet = state.meet;
   if (meet.phase.kind === 'complete') {
     const bombed = meet.phase.outcome.kind === 'bombed-out';
-    return { ...state, phase: bombed ? 'bombed' : 'recap', live: null, call: null };
+    const totalKg = finalMeetTotal(meet);
+    const placing = placingFromFieldTotals(totalKg, fieldTotalsKg(state.field));
+    let ledger = appendLedger(state.ledger, { kind: 'total', kg: totalKg });
+    ledger = appendLedger(ledger, {
+      kind: 'placing',
+      place: placing.place,
+      fieldSize: placing.fieldSize,
+    });
+    if (bombed) {
+      ledger = appendLedger(ledger, { kind: 'bomb-out', lift: meet.phase.outcome.bombedLift });
+    } else if (totalKg !== null) {
+      if (totalKg > state.field.meetRecordTotalKg) {
+        ledger = appendLedger(ledger, { kind: 'record', kg: totalKg });
+      }
+      const qualifying = state.context.meet.qualifyingTotalKg;
+      if (qualifying !== null && totalKg >= qualifying) {
+        ledger = appendLedger(ledger, { kind: 'qualification', kg: qualifying });
+      }
+    }
+    return {
+      ...state,
+      phase: bombed ? 'bombed' : 'recap',
+      live: null,
+      call: null,
+      ledger,
+      reveal: { ...state.reveal, afterPlayer: true },
+    };
   }
   const context = currentAttemptContext(meet);
   if (context === null) return { ...state, phase: 'recap', live: null, call: null };
   if (context.previousWeight === null) {
-    // A new lift has started, so its opener — declared at weigh-in — goes
-    // straight onto the bar. GDD §6.3's choice is between attempts, not before
-    // the first one.
     return declareLive(
       { ...state, live: null, call: null },
       state.openersKg[context.lift],
     );
   }
-  return { ...state, phase: 'attempt-select', live: null, call: null };
+  return {
+    ...state,
+    phase: 'attempt-select',
+    live: null,
+    call: null,
+    reveal: revealAfterPlayer(state.reveal),
+  };
 }
 
 /** Puts a weight on the bar through the engine, or surfaces the refusal. */
@@ -1255,6 +1321,7 @@ function declareLive(state: MeetDayState, weightKg: number): MeetDayState {
     live: liveAttemptFor(state.context, state.meet, attempt.lift, attempt.attemptNumber, attempt.weight),
     call: null,
     lastError: null,
+    reveal: revealForDeclaration(attempt.lift, attempt.attemptNumber, attempt.weight),
   };
 }
 
@@ -1269,7 +1336,19 @@ export function stepMeetDay(state: MeetDayState, event: MeetDayEvent): MeetDaySt
   switch (event.kind) {
     case 'confirm-weigh-in': {
       if (state.phase !== 'weigh-in') return state;
-      return { ...state, phase: 'openers' };
+      const weighIn = weighInFor(
+        state.context.entry,
+        WEIGHT_CLASSES_KG[state.context.entry.sex],
+      );
+      return {
+        ...state,
+        phase: 'openers',
+        ledger: appendLedger(state.ledger, {
+          kind: 'weigh-in',
+          bodyweightKg: weighIn.bodyweightKg,
+          weightClassText: weighIn.weightClassText,
+        }),
+      };
     }
 
     case 'set-opener': {
@@ -1332,6 +1411,20 @@ export function stepMeetDay(state: MeetDayState, event: MeetDayEvent): MeetDaySt
         isPrAttempt: live.isPrAttempt,
         bombRisk: live.bombRisk,
       };
+      let ledger = appendLedger(state.ledger, {
+        kind: 'attempt',
+        lift: attempt.lift,
+        attemptNumber: attempt.attemptNumber,
+        weightKg: attempt.weightKg,
+        good: attempt.good,
+        lights: attempt.lights,
+      });
+      if (attempt.good) {
+        const best = bestSuccessfulAttempt(resolved.value.lifts[attempt.lift]);
+        if (best === attempt.weightKg) {
+          ledger = appendLedger(ledger, { kind: 'best', lift: attempt.lift, kg: attempt.weightKg });
+        }
+      }
       return {
         ...state,
         phase: 'deliberation',
@@ -1339,6 +1432,7 @@ export function stepMeetDay(state: MeetDayState, event: MeetDayEvent): MeetDaySt
         call,
         attempts: [...state.attempts, attempt],
         lastError: null,
+        ledger,
       };
     }
 
@@ -1369,6 +1463,88 @@ export function lastAttempt(state: MeetDayState): MeetDayAttempt | null {
 /** Every finished attempt on this lift, for the board. */
 export function attemptsOnLift(state: MeetDayState, lift: LiftKind): readonly MeetDayAttempt[] {
   return state.attempts.filter((attempt) => attempt.lift === lift);
+}
+
+export function boardFor(state: MeetDayState): MeetBoard {
+  return buildMeetBoard(
+    state.context.entry.name,
+    state.meet,
+    state.field,
+    state.reveal,
+    state.context.meet.qualifyingTotalKg,
+  );
+}
+
+export function stakesForDecision(
+  state: MeetDayState,
+  decision: AttemptDecision,
+  option: AttemptOption,
+): readonly AttemptStake[] {
+  return stakesForOption(
+    boardFor(state),
+    state.meet,
+    decision.lift,
+    option.weightKg,
+    decision.isLastAttempt,
+    decision.bankedKg,
+  );
+}
+
+export function flightOnDeckText(state: MeetDayState): string | null {
+  const live = state.live;
+  const weight = live?.weightKg ?? currentAttemptContext(state.meet)?.minimumWeight ?? null;
+  if (weight === null) return onDeckName(state.field, state.reveal, Number.POSITIVE_INFINITY);
+  return onDeckName(state.field, state.reveal, weight);
+}
+
+export function flightJustWentText(state: MeetDayState): string | null {
+  const live = state.live;
+  const weight = live?.weightKg ?? null;
+  if (weight === null) return null;
+  return whoJustWent(state.field, state.reveal, weight);
+}
+
+export interface MeetCommand {
+  readonly text: string;
+  readonly live: boolean;
+}
+
+/**
+ * Competition commands that belong to the current mechanic. Presentation
+ * overlay only — the lift runtime is unchanged. PRESS and DOWN are live when
+ * the mechanic already requires them.
+ */
+export function meetCommandFor(state: LiftState): MeetCommand | null {
+  const kind = state.config.kind;
+  switch (state.phase) {
+    case 'BRACE':
+      if (kind === 'squat') return { text: MEET_COPY.COMMAND_SQUAT, live: true };
+      if (kind === 'bench') return { text: MEET_COPY.COMMAND_START, live: false };
+      return null;
+    case 'DESCENT':
+      if (kind === 'bench') return { text: MEET_COPY.COMMAND_START, live: false };
+      return null;
+    case 'HOLE':
+      if (kind === 'bench' && pressCommandIsLive(state)) {
+        return { text: MEET_COPY.COMMAND_PRESS, live: true };
+      }
+      return null;
+    case 'ASCENT':
+      if (kind === 'bench') return { text: MEET_COPY.COMMAND_PRESS, live: true };
+      return null;
+    case 'LOCKOUT': {
+      if (kind === 'deadlift') {
+        const downTick = state.downCommandTick;
+        if (downTick !== null && state.tick >= downTick) {
+          return { text: MEET_COPY.COMMAND_DOWN, live: true };
+        }
+        return null;
+      }
+      return { text: MEET_COPY.COMMAND_RACK, live: false };
+    }
+    default:
+      return null;
+  }
 }
 
 /**
@@ -1542,6 +1718,8 @@ export interface MeetRecap {
   readonly fieldSize: number;
   readonly rows: readonly RecapLiftRow[];
   readonly bombedLift: LiftKind | null;
+  /** Why the result matters — only facts that exist on this meet. */
+  readonly whyLines: readonly string[];
 }
 
 /**
@@ -1573,6 +1751,37 @@ export type MeetRecapResult =
  * lift is called a record. `buildMeetRecap` already refuses outright when the
  * card and the server disagree about the total.
  */
+function recapWhyLines(
+  state: MeetDayState,
+  confirmed: ConfirmedMeetFacts,
+): readonly string[] {
+  const lines: string[] = [];
+  const bomb = lastEventOfKind(state.ledger, 'bomb-out');
+  if (bomb !== null) {
+    lines.push(MEET_COPY.RECAP_WHY_BOMB);
+    return lines;
+  }
+  if (confirmed.placing.place !== null) {
+    lines.push(
+      MEET_COPY.RECAP_WHY_PLACE
+        .replace('{place}', String(confirmed.placing.place))
+        .replace('{field}', String(confirmed.placing.fieldSize)),
+    );
+  }
+  if (confirmed.isTotalPr && confirmed.previousBestTotalKg !== null) {
+    lines.push(MEET_COPY.RECAP_WHY_PR);
+  } else if (confirmed.totalKg !== null && confirmed.previousBestTotalKg === null) {
+    lines.push(MEET_COPY.RECAP_WHY_FIRST);
+  }
+  if (lastEventOfKind(state.ledger, 'qualification') !== null) {
+    lines.push(MEET_COPY.RECAP_WHY_QUALIFY);
+  }
+  if (lastEventOfKind(state.ledger, 'record') !== null) {
+    lines.push(MEET_COPY.RECAP_WHY_RECORD);
+  }
+  return lines;
+}
+
 function recapRowsFor(
   state: MeetDayState,
   card: ResultCard,
@@ -1721,6 +1930,7 @@ export function buildMeetRecap(state: MeetDayState, confirmed: ConfirmedMeetFact
       fieldSize: confirmed.placing.fieldSize,
       rows: recapRowsFor(state, card, confirmed),
       bombedLift: card.bombedLift,
+      whyLines: recapWhyLines(state, confirmed),
     },
   };
 }

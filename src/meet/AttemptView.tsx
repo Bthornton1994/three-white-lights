@@ -79,7 +79,7 @@ import { pressCommandIsLive, promptFor, type LiftResolution } from '../game/lift
 import { LIFT_COPY, LIFT_TUNING } from '../game/liftTuning';
 import { ATTEMPTS_PER_LIFT } from '../game/meet';
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
-import { attemptConfigFor, liveAttemptWeightText, type MeetDayState } from '../game/meetDay';
+import { attemptConfigFor, liveAttemptWeightText, meetCommandFor, type MeetDayState } from '../game/meetDay';
 import { settledCrowdRisePx, walkoutRequestFor } from './walkout';
 import { MEET_PALETTE } from './meetPalette';
 import { LIFT_PALETTE } from '../lift/liftPalette';
@@ -147,6 +147,8 @@ export function AttemptView({
 
   if (live === null) return <View style={styles.root} />;
 
+  const command = meetCommandFor(loop.state);
+
   return (
     <View style={styles.root} testID="meet-attempt" {...SUPPRESS_CONTEXT_MENU}>
       <View style={styles.copy}>
@@ -186,6 +188,15 @@ export function AttemptView({
         </Text>
       </View>
       </View>
+
+      {command === null ? null : (
+        <Text
+          style={[styles.command, command.live ? styles.commandLive : null]}
+          testID="meet-command"
+        >
+          {command.text}
+        </Text>
+      )}
 
       <Pressable
         style={styles.stage}
@@ -255,6 +266,18 @@ const styles = StyleSheet.create({
   detail: {
     color: MEET_PALETTE.TEXT_DIM,
     fontSize: L.HINT_FONT,
+  },
+  command: {
+    color: MEET_PALETTE.TEXT,
+    fontSize: L.COMMAND_FONT,
+    fontWeight: '800',
+    letterSpacing: L.WIDE_LETTER_SPACING,
+    textAlign: 'center',
+    paddingBottom: L.ROW_GAP,
+  },
+  commandLive: {
+    color: LIFT_PALETTE.CUE_PERFECT,
+    fontSize: L.COMMAND_LIVE_FONT,
   },
   stage: {
     width: LIFT_TUNING.LAYOUT.STAGE_W,

@@ -29,19 +29,18 @@
  *     licensing open), and both are strings the weigh-in and the result card
  *     print.
  *   - THE LIFTER AND THE FIELD. `MEET_ENTRY.name` reaches the weigh-in, the
- *     recap and the shareable card; `ghostTotalsKg` is the field it places
- *     against. The named failure mode is that nobody does this deliberately —
- *     it arrives as a realistic placeholder because a real athlete came to
- *     mind first. So the ghosts are NUMBERS ONLY and there is no roster to get
- *     wrong.
+ *     recap and the shareable card. A1's named flight (`MEET_FIELD_FIXTURE`)
+ *     is scanned here too — invented initials and surnames, not a real
+ *     athlete roster. `ghostTotalsKg` remains a kilogram list for the residual
+ *     placing helper; live placing is the fixture replayed through `meet.ts`.
  *   - THE SOUND CUES. New in this piece, and named after what they are.
  *
  * ===========================================================================
  * WHAT IT IS NOT
  * ===========================================================================
  * Not a proof of absence: `scanRenderable` catches what is on the watchlist.
- * What makes the surface safe is structural — no text in the room, numbers for
- * the field — and the scan is the backstop.
+ * What makes the surface safe is structural — no text in the room, invented
+ * names on the flight, numbers for residual ghosts — and the scan is the backstop.
  *
  * `meet.ts` and `resultCard.ts` also mention real federations, as structural
  * references to the sport's rules. `realIp.ts` rules on those in one place for
@@ -59,7 +58,7 @@ import {
   type RenderableString,
 } from '../licensing/realIp';
 import { GYM_BANNER, GYM_CROWD, GYM_PROPS_MEET } from '../art/gymTuning';
-import { MEET_COPY, MEET_ENTRY, MEET_LOCAL, MEET_SOUND_IDS } from '../game/meetTuning';
+import { MEET_COPY, MEET_ENTRY, MEET_FIELD_FIXTURE, MEET_LOCAL, MEET_SOUND_IDS } from '../game/meetTuning';
 import { everySoundFileName, fileNameForCue } from './soundAssets';
 
 /**
@@ -98,6 +97,9 @@ function meetRenderableStrings(): readonly RenderableString[] {
     { surface: 'meet', path: 'MEET_ENTRY.division', value: MEET_ENTRY.division },
     { surface: 'meet', path: 'MEET_ENTRY.equipment', value: MEET_ENTRY.equipment },
   ];
+  for (const spec of MEET_FIELD_FIXTURE) {
+    out.push({ surface: 'meet-flight', path: `MEET_FIELD_FIXTURE.${spec.id}.name`, value: spec.name });
+  }
   // Every line of copy the meet screens print.
   for (const [key, value] of Object.entries(MEET_COPY)) {
     if (typeof value === 'string') out.push({ surface: 'meet-copy', path: key, value });
@@ -124,6 +126,7 @@ describe('nothing meet day can draw is a real identity (GDD §12.3)', () => {
     const paths = strings.map((s) => s.path);
     expect(paths).toContain('MEET_LOCAL.federation');
     expect(paths).toContain('MEET_ENTRY.name');
+    expect(paths).toContain(`MEET_FIELD_FIXTURE.${MEET_FIELD_FIXTURE[0]!.id}.name`);
     expect(strings.every((s) => s.value.length >= 0)).toBe(true);
   });
 
@@ -160,14 +163,19 @@ describe('nothing meet day can draw is a real identity (GDD §12.3)', () => {
     expect(MEET_LOCAL.name.length).toBeGreaterThan(0);
   });
 
-  it('fields the ghosts as numbers, so there is no name to get wrong', () => {
-    // GDD §6.6: local meets resolve against ghost data. The named failure mode
-    // is a "realistic" placeholder roster; this shape makes one impossible
-    // without a type change.
+  it('fields the ghosts as numbers, and the live flight as invented names', () => {
+    // GDD §6.6: local meets resolve against ghost data. The residual helper
+    // still takes numbers. A1's live board is a named flight, scanned above
+    // so a realistic athlete placeholder cannot land without this file going
+    // red.
     expect(MEET_LOCAL.ghostTotalsKg.length).toBeGreaterThan(0);
     for (const total of MEET_LOCAL.ghostTotalsKg) {
       expect(typeof total).toBe('number');
       expect(Number.isFinite(total)).toBe(true);
+    }
+    expect(MEET_FIELD_FIXTURE.length).toBeGreaterThan(2);
+    for (const spec of MEET_FIELD_FIXTURE) {
+      expect(spec.name).toMatch(/^[A-Z]\.\s+[A-Z][A-Z-]*$/);
     }
   });
 

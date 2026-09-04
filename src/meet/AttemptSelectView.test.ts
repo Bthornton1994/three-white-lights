@@ -104,8 +104,10 @@ const CARDS_IN_A_WHOLE_MEET = SELECTIONS_IN_A_WHOLE_MEET * CARDS_PER_SELECTION;
  * 68 -> 69 when GDD §6.5's per-lift call-out gained its FIRST state:
  * `RECAP_FIRST_LIFT`, the word the recap prints beside a lift the lifter held
  * no record on. It is the only entry that piece added.
+ *
+ * 69 -> 95 with A1 authentic meet copy: flight, stakes, commands, recap why.
  */
-const MEET_COPY_STRINGS = 69;
+const MEET_COPY_STRINGS = 95;
 
 /**
  * WHAT THE ZEROES BELOW ARE ZERO AGAINST.
