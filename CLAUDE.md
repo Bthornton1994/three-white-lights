@@ -35,8 +35,9 @@ commit as the code. The doc and the code never diverge.
 `VISION.md` is the product north star. The Powerlifting Sports Universe
 Doctrine is GDD §13. Future Session A feature work must satisfy that
 doctrine. **A0 PLAYABLE SPORT is CLOSED** (baseline runtime `39400d97`).
-A1 Authentic Meet is authorized by the 2026-09-02 human ruling. The
-doctrine does not change Session B's ownership of GDD §5.
+**A1.1 competition truth is ACCEPTED** at `9c749ee4`. **A1 Authentic Meet
+remains OPEN**, awaiting a physical-phone human feel gate. A2–A7 stay
+blocked. The doctrine does not change Session B's ownership of GDD §5.
 
 ## Run Mode
 
@@ -76,6 +77,35 @@ section and git history; A and B cannot see C the same way. C's harness does
 therefore does not claim a bar is met the way A does — C's increments are
 **ready for review** until a human or an A critic has actually looked. Do not
 treat C's own pass as verification.
+
+### Current Stage A authority (ruled 2026-09-04)
+
+**A1.1 COMPETITION TRUTH ACCEPTED** at `9c749ee4`.
+**A1 AUTHENTIC MEET remains OPEN — AWAITING PHYSICAL-PHONE HUMAN FEEL GATE.**
+**A0 lift runtime remains frozen** at `39400d97`.
+**A2–A7 remain blocked. Merge to `main` is not authorized.**
+
+Chrome / iPhone-device-mode play at 390×844 closed the remaining
+software-truth questions: fabricated attempt-select ON DECK is gone on
+both make and miss paths; declared-round ON DECK is correct at the key
+checkpoints; the named six-lifter field holds; a zero/bomb-state board
+does not invent placing; the full 470 kg / 5-of-6 recap reconciles with
+the attempt history. `WALK IT OUT` / `ON DECK` is presentation debt, not
+an A1 blocker.
+
+Do **not** change Meet Day presentation before the physical-phone test.
+In particular do not lengthen the walkout, reduce stake copy, change
+`BANKED`, alter the fade, or polish `FIRST`. Those are observations.
+Tuning them against automation artifacts is the failure this freeze
+exists to prevent.
+
+The remaining A1 question is only: does playing all nine attempts by
+hand on an actual phone feel sufficiently like competing in a
+powerlifting meet? Judge walkout anticipation, lift responsiveness under
+Meet Day chrome, and whether nine attempts escalate rather than repeat
+the same UI loop. If yes, close A1 and authorize A2. If something feels
+wrong, describe exactly what and where in the nine-attempt arc; that
+becomes the final A1 correction slice.
 
 ### The split
 
@@ -2458,7 +2488,9 @@ this ruling.
 ### FILED 2026-09-02: A1 AUTHENTIC MEET CANDIDATE — NOT CLOSED
 
 A1 started in a new commit after the A0 mint. This is a candidate for
-human Meet Day playtest. **Do not treat A1 as closed.**
+human Meet Day playtest. **Do not treat A1 as closed.** Current authority
+is **Current Stage A authority** above: A1.1 accepted, A1 awaiting a
+physical-phone feel gate.
 
 What A1 built, in sport-truth order:
 
@@ -2489,12 +2521,14 @@ Not started: A2–A7, Session B, any squat/deadlift/C3 retune, merge to
 `main`. Physical glass remains A0-DEVICE-01.
 
 Human playtest questions stay in the A1 brief. Close A1 only after a
-human plays one complete meet and rules.
+human plays one complete meet **by hand on a physical phone** and rules.
+Device-mode software-truth play does not close A1.
 
-### FILED 2026-09-04: A1.1 COMPETITION TRUTH — NOT CLOSED
+### FILED 2026-09-04: A1.1 COMPETITION TRUTH — ACCEPTED at `9c749ee4`
 
 Narrow correction before the final human Meet Day gate. No lift runtime
-change. A2–A7 remain blocked.
+change. A2–A7 remain blocked. Software-truth accepted in played
+evidence; A1 itself stays open on the physical-phone feel gate above.
 
 - Placing: one comparator. Higher Total, then lighter bodyweight, then
   who achieved the Total first (competition-order seq). Live board and

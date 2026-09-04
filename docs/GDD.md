@@ -2,7 +2,11 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-09-04 (A1.1 competition truth: placing tie-break
+**Last updated:** 2026-09-04 (A1.1 competition truth ACCEPTED at
+`9c749ee4`. A1 Authentic Meet remains OPEN, awaiting a physical-phone
+human feel gate. Do not change Meet Day presentation before that test.
+A0 PLAYABLE SPORT remains CLOSED at baseline runtime `39400d97`. No lift
+runtime change. A2–A7 blocked. Merge not authorized.) Earlier: 2026-09-04 (A1.1 competition truth: placing tie-break
 on Total then bodyweight then who totaled first, lot-ordered platform,
 authored standing record. A1 still not
 closed. A0 PLAYABLE SPORT remains CLOSED at baseline runtime `39400d97`.
@@ -2037,15 +2041,20 @@ Meet attempts are the frozen A0 squat, C3 bench, and deadlift; competition
 commands (SQUAT/RACK, START/PRESS/RACK, DOWN) are overlay only. Three-light
 judging still derives from the attempt; the majority still matches the
 mechanic. Local live placing is the fixture, not a ghost kilogram list
-(`ghostTotalsKg` remains residual helper data). **A1.1 (2026-09-04):** placing
-ties break as higher Total, then lighter bodyweight, then who achieved the
-Total first (competition order: declared weight, then lot). Same-weight
-attempts on the platform use that same lot order — the player occupies one
-real lot and does not win ties. Meet record is an authored pre-meet standing
-record on `MeetDefinition`, never the eventual Total of a current competitor.
-Recap answers what happened
-and why it matters. No XP, no currency. Close A1 only after a human plays
-one complete meet.
+(`ghostTotalsKg` remains residual helper data). **A1.1 (2026-09-04)
+ACCEPTED at `9c749ee4`:** placing ties break as higher Total, then lighter
+bodyweight, then who achieved the Total first (competition order: declared
+weight, then lot). Same-weight attempts on the platform use that same lot
+order — the player occupies one real lot and does not win ties. Meet record
+is an authored pre-meet standing record on `MeetDefinition`, never the
+eventual Total of a current competitor. ON DECK is a declared-attempt fact
+(null on attempt-select). Recap answers what happened
+and why it matters. No XP, no currency. Software-truth questions for A1.1
+are closed in played evidence. **A1 itself stays open** until a human plays
+all nine attempts by hand on a physical phone and rules on feel
+(walkout anticipation, lift responsiveness under Meet Day chrome, whether
+nine attempts escalate rather than repeat). Do not retune Meet Day
+presentation before that test. A2–A7 remain blocked.
 
 ### 6.1 Pre-Meet
 
@@ -6353,10 +6362,11 @@ C3 surplus compression is the accepted bench feel (minted 2026-09-01 after
 ordinary-bench phone replay). A0 PLAYABLE SPORT is CLOSED (2026-09-02)
 at baseline runtime `39400d97`: squat, bench C3, and deadlift are
 accepted and frozen. Physical-device touch smoke is A0-DEVICE-01 release
-QA debt, not a design blocker. A1 Authentic Meet is the current Session A
-task. An A1 Authentic Meet candidate is ready for human Meet Day
-playtest and is not closed from this section. This doctrine still does not retune lifts, implement Career, or
-touch Session B.
+QA debt, not a design blocker. A1.1 competition truth is ACCEPTED
+(2026-09-04) at `9c749ee4`. A1 Authentic Meet remains the current
+Session A task and is not closed: it awaits a physical-phone human feel
+gate, not another software-truth slice. This doctrine still does not
+retune lifts or touch Session B.
 
 This doctrine still governs **what comes after** and **how future features
 are judged**. A2–A7 are not authorized from this section.

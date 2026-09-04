@@ -23,6 +23,7 @@ concise permanent north star only.
 **Now.** A0 PLAYABLE SPORT is CLOSED (2026-09-02). Baseline runtime
 `39400d97`. Squat, bench C3, and deadlift are accepted and frozen.
 Physical-device touch smoke is release QA debt (`A0-DEVICE-01`), not an
-A0 design blocker. A1 Authentic Meet is a candidate for human Meet Day
-playtest and is not closed. This document does
+A0 design blocker. A1.1 competition truth is ACCEPTED (2026-09-04) at
+`9c749ee4`. A1 Authentic Meet remains open, awaiting a physical-phone
+human feel gate. This document does
 not retune lifts and does not change Session B's ownership of GDD §5.
