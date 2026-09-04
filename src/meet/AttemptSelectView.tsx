@@ -66,7 +66,7 @@
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
@@ -188,6 +188,11 @@ export function AttemptSelectView({
         <MeetHallView lifter={null} scrim={MEET_TUNING.HALL.CHOICE_SCRIM} />
       </View>
 
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
       <Text style={styles.eyebrow}>{MEET_COPY.SELECT_EYEBROW}</Text>
       <MeetBoardView board={board} onDeckName={onDeckName} />
       <Text style={styles.title} testID="attempt-select-title">
@@ -241,6 +246,7 @@ export function AttemptSelectView({
           {decision.bombWarningText}
         </Text>
       )}
+      </ScrollView>
     </View>
   );
 }
@@ -248,10 +254,19 @@ export function AttemptSelectView({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    alignSelf: 'stretch',
+  },
+  scroll: {
+    flex: 1,
+    alignSelf: 'stretch',
+  },
+  scrollContent: {
     alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: L.SCREEN_PAD,
+    paddingVertical: L.ROW_GAP,
     gap: L.ROW_GAP,
+    flexGrow: 1,
+    justifyContent: 'center',
   },
   hall: {
     position: 'absolute',
