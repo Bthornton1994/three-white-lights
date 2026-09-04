@@ -3195,11 +3195,11 @@ than the ruling's own §1–§23 sequence:
   half-life) and pinned the real Garage / synthetic tables; the shipped
   wait formula remains `exp(-ticks / 110)`. Independently verified
   mint `ba8561bfd11e9e2a5062923d4054b59e0976dcc0` (docs/comment only;
-  no product-runtime change). G.2B is blocked / unstarted. The
-  recommended consequence sequence (G.2B retention-pressure truth →
-  G.2C arrivals/departures → G.2D dues → G.2E member-side reputation)
-  is recorded under Stage G.2B and is not an authorization. No churn,
-  dues, or reputation wiring.
+  no product-runtime change). **G.2B is authorized** as the
+  retention-pressure foundation (explainable experience →
+  willingness-to-stay pressure). It does not delete members, does not
+  wire dues or reputation, and does not start G.2C arrivals/departures.
+  G.2C / G.2D / G.2E remain blocked.
 
 ### Human Stage C rejection at `f097695b`
 
@@ -4641,8 +4641,9 @@ consequences.
 copy, and Capacity consequence all passed on the played 390×844 surface.
 Closing G.1 does not wire satisfaction / dues / reputation. G.2A derives
 recent-service meaning from that history and is closed below. G.2B is
-blocked / unstarted; the recommended later sequence is recorded there
-and is not an authorization.
+authorized as retention-pressure truth on top of that meaning; G.2C
+arrivals/departures, G.2D dues, and G.2E member-side reputation stay
+blocked.
 
 #### Stage G.2A — Living Member Satisfaction Truth Foundation
 
@@ -4652,7 +4653,8 @@ targeted Expo 390×844 experience replay on that HEAD. No product-code
 change from the architecture / G.2A.1 calibration. Independently
 verified: mint `ba8561bfd11e9e2a5062923d4054b59e0976dcc0` is one
 commit over that HEAD and changes only this document plus four
-comment-only lines in `empireTuning.ts`. G.2B is blocked / unstarted.
+comment-only lines in `empireTuning.ts`. G.2B is authorized as the
+retention-pressure foundation below. G.2C and after stay blocked.
 
 The first human playtest accepted the core semantics (Wren WAIT Rough /
 TRAINING Solid / SERVICE Steady / overall Mixed) and left five
@@ -4727,70 +4729,120 @@ Exact tables live in `livingMemberExperience.test.ts`.
 **Player card:** RECENT EXPERIENCE label + WAIT / TRAINING / SERVICE
 components + reason line, above the five visit rows.
 
-**Still blocked:** G.2B and after — retention pressure, member
+**Still blocked after G.2A:** member
 departures, dues writes, reputation writes, Career/Meet → Empire
 reputation, Portfolio, NpcLifter merge, Q/C/T retune, E-REP-01.
-G2-CONDITION-01, G2-FIT-01, and G2-TYPE-01 stay open.
+G2-CONDITION-01, G2-FIT-01, and G2-TYPE-01 stay open. G.2B
+retention-pressure is authorized separately below; it does not close
+those debts and does not start G.2C.
 
-#### Stage G.2B — Living Member Retention Pressure Foundation (UNAUTHORIZED)
+#### Stage G.2B — Living Member Retention Pressure Foundation
 
-**STAGE G.2B IS NOT AUTHORIZED.** This section records the recommended
-next stage so a later authorization is not a four-system bundle. Do
-not start it from this text.
+**STAGE G.2B AUTHORIZED — RETENTION PRESSURE FOUNDATION BUILT,
+AWAITING HUMAN STAY-RISK VERDICT.** Human authorization superseded
+the previous "unauthorized" sentence for this stage only. G.2C
+arrivals/departures, G.2D dues, G.2E member-side reputation,
+Career/Meet → Empire reputation, Portfolio, and NpcLifter merge stay
+blocked. No member leaves in G.2B. No new member arrives except the
+already-accepted G.1 facility-expansion behavior.
 
-**Current authority (independently verified at mint `ba8561bf`):**
+**Current authority:**
 
 | Item | Status |
 |---|---|
-| G.1 | CLOSED |
+| G.1 | CLOSED at `c27f714c` |
 | G.2A | CLOSED at `255de8a5`; mint `ba8561bf` |
-| G2-CONDITION-01 | OPEN |
-| G2-FIT-01 | OPEN |
-| G2-TYPE-01 | OPEN |
-| G.2B | BLOCKED / UNSTARTED |
+| G.2B | AUTHORIZED; foundation built; awaiting stay-risk verdict |
+| G2-CONDITION-01 | OPEN — service-level condition attribution missing |
+| G2-FIT-01 | OPEN — equipment fit is attraction, not recent service |
+| G2-TYPE-01 | OPEN — no type-specific **satisfaction** interpretation |
+| G2-ATHLETE-SEASON-01 | OPEN — Athlete leave/return needs G.2C |
+| G.2C | BLOCKED |
+| G.2D | BLOCKED |
+| G.2E | BLOCKED |
 | Career → Empire reputation | BLOCKED |
 | Portfolio | BLOCKED |
 
-**Proven causal chain:** physical gym decision → real service →
-durable member history → explainable member experience.
+**Proven causal chain:** physical gym decision → real FloorSim service
+→ persistent N=5 member history → explainable `LivingMemberExperience`
+→ deterministic retention pressure.
 
-**Recommended next link, when authorized:** explainable experience →
-deterministic willingness-to-stay / retention pressure. Not yet:
-actually delete the member. Before anyone can leave, the game should
-prove it can explain *why they are at risk of leaving*, that the
-model is stable over the frozen N=5 history, and that member-type
-quirks do not become arbitrary churn multipliers.
+G.2B consumes accepted G.2A truth. It does not rebuild satisfaction.
+It does not recompute service quality from equipment ownership,
+aggregate crowding, facility size, upgrade names, member count, or
+current station configuration.
 
-**Recommended remaining sequence** (each inherits a verified signal;
-do not bundle):
+**Product target:** "Nia is starting to question whether this gym is
+working for her, and I can see why." Not "Nia has a 34% chance to
+quit today." Pressure is membership strain / willingness-to-stay
+concern. It is not a probability, daily hazard, countdown, churn
+roll, or departure event. The formed `pressure` field is a normalized
+index on `[0, 1]`, not a percent chance of leaving. Player copy has
+no `%`.
 
-| Stage | Scope |
-|---|---|
-| G.2B | retention pressure / stay-risk truth |
-| G.2C | actual arrivals/departures + tenure continuity |
-| G.2D | member dues accounting |
-| G.2E | member-side institutional reputation |
+**Common mapping (compared, then shipped):** linear inverse
+`pressure = 1 - composite`. Convex `(1 - composite)^2` compressed
+Capacity vs Stock in the played band. Logistic
+`1 / (1 + exp(8 * (e - 0.535)))` is centered at the Mixed/Rough
+midpoint 0.535 with k = 8 and does not hit 0 at experience 1. Linear
+is monotone, continuous through Good/Mixed/Rough/Poor presentation
+bands, and hits 0 at experience 1 / 1 at experience 0. Complexity
+was not added to justify the module. G.2B's value is the semantic
+boundary: experience truth → membership consequence input.
 
-**Do not wire the old member-domain functions merely because they
-exist.** `memberDuesGymBucks` and `reputationFromMembers` are
-first-pass, explicitly untuned (`empireTuning.ts` header: every
-magnitude is an untuned placeholder). The crowding × fit ×
-condition `memberSatisfaction` model predates living-member service
-truth. G.2A already recorded them as REAL BUT UNWIRED; G.2A does not
-call them; G.2B must not call them as a shortcut to stay-risk.
+**Forming:** G.2A empty history → experience `forming` → retention
+`forming`, `pressure` `null`, label `Still forming`. No Stable /
+Watching / Strained / At risk claim before there is experience
+evidence.
 
-The same applies to old type-quirk crowding, including Casual's
-"leaves fastest when crowded" (`MEMBER_TYPE_CROWDING_SENSITIVITY` /
-`crowdingSatisfactionMultiplier`). Actual queue/service history now
-owns the service truth. Type may later modify **retention
-behavior**. It must not retroactively reinterpret what happened on
-the floor.
+**Membership labels** (bands on pressure, independent of experience
+labels): Stable if pressure < 0.22; Watching if < 0.42; Strained if
+< 0.55; else At risk. Detail card only; no always-on floor warning
+icon; no countdown.
 
-**When G.2B is authorized, issue it as:** Stage G.2B — Living Member
-Retention Pressure Foundation. Actual departures, dues, reputation
-writes, Portfolio, and Career → Empire reputation stay forbidden
-on that stage; those are G.2C / G.2D / G.2E / existing Stage E and
-F blocks.
+**Type model:** COMMON ships. The function is type-blind. MemberType
+does not alter G.2A WAIT / TRAINING / SERVICE / overall experience.
+NARROW GDD-backed response (Casual extra strain from accepted WAIT,
+Serious Lifter lower pressure at the same experience, no Bodybuilder /
+Powerlifter / Athlete G.2B modifier) is compared in
+`livingMemberRetention.test.ts` and is not applied. That comparison
+is a human decision before freezing type treatment. It does **not**
+close G2-TYPE-01: that debt is type-specific **satisfaction
+interpretation**, a different domain from retention response.
+
+**GDD type-quirk reading used here:**
+
+| Type | GDD quirk | G.2B |
+|---|---|---|
+| Casual | Leaves fastest when crowded | Retention-relevant, but only via accepted WAIT if a type layer ships later. Not `crowdingLoad`. Not shipped. |
+| Bodybuilder | Occupies equipment for a long time | Upstream occupancy. No retention modifier. |
+| Powerlifter | Raises gym reputation fastest | Reputation. No retention modifier. |
+| Athlete | Seasonal — leaves and returns | Deferred as G2-ATHLETE-SEASON-01. Belongs to G.2C. |
+| Serious Lifter | Slow to arrive, very slow to leave | Retention-relevant tolerance only, if a type layer ships later. Must not rewrite G.2A labels. Not shipped. |
+
+**Old crowding-sensitivity verdict:** `MEMBER_TYPE_CROWDING_SENSITIVITY`
+(casual 1.4 / bodybuilder 0.7 / powerlifter 0.7 / athlete 0.8 /
+serious-lifter 0.5) was built for aggregate crowding × fit ×
+condition. G.2B does not import or read it, nor `memberSatisfaction`,
+`crowdingLoad`, `crowdingSatisfactionMultiplier`, `equipmentFitScore`,
+`memberDuesGymBucks`, or `reputationFromMembers`.
+
+**Fences:** no roster mutation, no departure, no dues, no Empire
+reputation write, no Career import, no Portfolio, no NpcLifter merge,
+no RNG, no `Date.now`, no leave probability. G.2A constants frozen.
+Q/C/T frozen (Quality 120 / Capacity 180 / Throughput 30; stock
+changeover 18; Throughput 6; garage 60/hour; offline fraction 0.5).
+N=5 frozen. Offline clock advance and relocation without a new
+service observation leave pressure unchanged. Pressure is derived,
+not persisted.
+
+**Player card:** `MEMBERSHIP` line + reason, under recent experience,
+on the member detail card only.
+
+**Still blocked:** G.2C arrivals/departures + tenure continuity,
+G.2D member dues accounting, G.2E member-side institutional
+reputation, Career/Meet → Empire reputation, Portfolio, NpcLifter
+merge.
 
 ---
 

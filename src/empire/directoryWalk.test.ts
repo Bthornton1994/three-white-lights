@@ -169,7 +169,8 @@ export const DIRECTORY_WALK = Object.freeze({
   // 23 -> 24: GDD §5.18 Stage D.1's `trainingStation.ts` — the Competition
   // Bench Bay, equipment is not a training station.
   // 26 -> 27: Stage G.2A `livingMemberExperience.ts`.
-  SHIPPED_MODULES: 27,
+  // 27 -> 28: Stage G.2B `livingMemberRetention.ts`.
+  SHIPPED_MODULES: 28,
   /**
    * Files the shared walk hands the censuses today, tests included.
    *
@@ -196,7 +197,8 @@ export const DIRECTORY_WALK = Object.freeze({
   // source trace. One test file, no new shipped module.
   // 54 -> 56: Stage G.1 `livingMembers.ts` and `livingMembers.test.ts`.
   // 56 -> 58: Stage G.2A `livingMemberExperience.ts` and its test.
-  DIRECTORY_FILES: 58,
+  // 58 -> 60: Stage G.2B `livingMemberRetention.ts` and its test.
+  DIRECTORY_FILES: 60,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**
@@ -970,6 +972,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'ladder.ts',
       'ladderView.tsx',
       'livingMemberExperience.ts',
+      'livingMemberRetention.ts',
       'livingMembers.ts',
       'management.ts',
       'members.ts',

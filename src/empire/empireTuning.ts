@@ -2007,9 +2007,8 @@ export const EMPIRE_TUNING = Object.freeze({
    * 15 / 40 / 100 so a copy edit cannot silently retune the curve.
    *
    * G.2A closed at 255de8a5 after the Expo 390×844 experience replay.
-   * Stage G.2B is not opened by that close. When later authorized it is
-   * retention-pressure / stay-risk truth, not departures, dues, or
-   * member-side reputation.
+   * G.2B is authorized as retention-pressure truth on top of this block
+   * (`LIVING_MEMBER_RETENTION`). This block's numbers stay frozen.
    */
   LIVING_MEMBER_EXPERIENCE: Object.freeze({
     waitDecayTicks: 110,
@@ -2026,6 +2025,29 @@ export const EMPIRE_TUNING = Object.freeze({
     overallGoodMin: 0.78,
     overallMixedMin: 0.62,
     overallRoughMin: 0.45,
+  }),
+
+  /**
+   * Stage G.2B — living-member retention pressure. Formed pressure is
+   * `1 - composite` on [0, 1]: a normalized strain index, not a chance of
+   * leaving. Label mins are presentation bands on that index, the same
+   * class as G.2A overall bands: they name the card, they are not a
+   * hazard function.
+   *
+   * watchingMin 0.22 / strainedMin 0.42 / atRiskMin 0.55 were chosen so
+   * Garage Capacity mean (~0.20) reads Stable, Stock/Quality/Throughput
+   * Mixed (~0.29–0.36) read Watching, severe Rough (~0.46) reads Strained,
+   * and Poor (composite below 0.45) reads At risk — still a membership
+   * concern, not a departure. G.2C owns actual leave/arrive.
+   *
+   * The shipped mapping is type-blind. Casual wait-tolerance and Serious
+   * Lifter relief are compared in livingMemberRetention.test.ts and are
+   * not applied here.
+   */
+  LIVING_MEMBER_RETENTION: Object.freeze({
+    watchingMin: 0.22,
+    strainedMin: 0.42,
+    atRiskMin: 0.55,
   }),
 
   /**
@@ -2907,6 +2929,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   LIVING_MEMBER_WAIT_LONG_MIN_TICKS: 'knob',
   LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS: 'knob',
   LIVING_MEMBER_EXPERIENCE: 'knob',
+  LIVING_MEMBER_RETENTION: 'knob',
   FLOOR_SIM_CUE_DIAMETER_FRACTION: 'knob',
   FLOOR_PLATE_LOADING: 'knob',
   FLOOR_SIM_CUE_GAP_PIXELS: 'knob',

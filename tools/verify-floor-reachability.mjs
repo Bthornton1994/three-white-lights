@@ -1629,6 +1629,27 @@ try {
           ok(`G.2A: member card shows compact recent-experience (${experienceText})`);
         }
       }
+      const membershipLine = await waitUntilDrawn(
+        page,
+        'floorgrid-member-panel-membership',
+        BEAT_TIMEOUT_MS,
+      );
+      if (!membershipLine.drawn) {
+        fail(
+          `G.2B: floorgrid-member-panel-membership never drawn after the member card opened — ${membershipLine.why}`,
+        );
+      } else {
+        const membershipText = ((await textOf('floorgrid-member-panel-membership')) ?? '').trim();
+        if (/%/.test(membershipText) || /quit|chance|churn/i.test(membershipText)) {
+          fail(`G.2B: membership summary exposes fake precision or a leave chance (${membershipText})`);
+        } else if (membershipText.length === 0) {
+          fail('G.2B: floorgrid-member-panel-membership is drawn but empty');
+        } else if (!/^MEMBERSHIP /.test(membershipText)) {
+          fail(`G.2B: membership summary is missing the MEMBERSHIP prefix (${membershipText})`);
+        } else {
+          ok(`G.2B: member card shows compact membership strain (${membershipText})`);
+        }
+      }
       await page.getByTestId('floorgrid-member-panel-dismiss').click({ timeout: 10000 }).catch(() => {});
     } else {
       fail(`C.1b: floorgrid-member-panel never drawn after tapping floorgrid-ambient-0 — ${memberPanel.why}`);

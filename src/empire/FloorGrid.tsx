@@ -207,6 +207,7 @@ import {
   type LivingMemberRoster,
 } from './livingMembers';
 import { livingMemberExperience } from './livingMemberExperience';
+import { livingMemberRetentionPressure } from './livingMemberRetention';
 import { type ManagedGym, maintenancePrompt } from './management';
 import { type MemberType } from './members';
 import { type SessionEquipmentItem } from './sessions';
@@ -2684,6 +2685,7 @@ export function FloorGrid(props: FloorGridProps) {
                     </Text>
                     {(() => {
                       const experience = livingMemberExperience(living.recentVisits);
+                      const retention = livingMemberRetentionPressure(experience);
                       return (
                         <>
                           <Text testID={'floorgrid-member-panel-experience'}>
@@ -2713,6 +2715,12 @@ export function FloorGrid(props: FloorGridProps) {
                               </Text>
                             </>
                           )}
+                          <Text testID={'floorgrid-member-panel-membership'}>
+                            {`MEMBERSHIP ${retention.label}`}
+                          </Text>
+                          <Text testID={'floorgrid-member-panel-membership-reason'}>
+                            {retention.reasons.map((reason) => reason.text).join(' ')}
+                          </Text>
                         </>
                       );
                     })()}
