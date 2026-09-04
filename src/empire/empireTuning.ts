@@ -2002,11 +2002,12 @@ export const EMPIRE_TUNING = Object.freeze({
    * bands on those scores, the same class as the G.1C wait-copy thresholds:
    * they name the card, they are not a second wait formula.
    *
-   * `waitHalfLifeTicks` is 110 on purpose — distinct from the copy thresholds
-   * 15 / 40 / 100 — so a copy edit cannot silently retune the curve.
+   * `waitDecayTicks` is an e-folding constant: wait = exp(-ticks / 110).
+   * It is not a half-life. 110 is distinct from the copy thresholds
+   * 15 / 40 / 100 so a copy edit cannot silently retune the curve.
    */
   LIVING_MEMBER_EXPERIENCE: Object.freeze({
-    waitHalfLifeTicks: 110,
+    waitDecayTicks: 110,
     trainingStockScore: 0.82,
     trainingQualityScore: 1,
     reliabilityInterrupted: 0.55,

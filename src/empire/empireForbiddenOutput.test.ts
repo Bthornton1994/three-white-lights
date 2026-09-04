@@ -4631,7 +4631,7 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
   ),
   ...exemptTable(
     'LIVING_MEMBER_EXPERIENCE',
-    'G.2A recent-service meaning: a wait half-life, training/reliability maps, and player-facing label bands. The half-life is a divisor on derived queueWaitTicks; the maps are interpolation endpoints; the label mins are presentation bands on already-computed component scores. None of them is a caller-supplied economic axis.',
+    'G.2A recent-service meaning: a wait e-folding decay constant, training/reliability maps, and player-facing label bands. The decay constant is a divisor on derived queueWaitTicks (wait = exp(-ticks / decay)); the maps are interpolation endpoints; the label mins are presentation bands on already-computed component scores. None of them is a caller-supplied economic axis.',
   ),
   ...exemptTable(
     'FLOOR_SIM_LEAVING_TICKS',
@@ -5723,7 +5723,7 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.storage-unit=240',
   'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
   'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
-  'ROSTER_SHAPE/LIVING_MEMBER_EXPERIENCE.waitHalfLifeTicks=110',
+  'ROSTER_SHAPE/LIVING_MEMBER_EXPERIENCE.waitDecayTicks=110',
   // Stage G.1: wait-duration knob above ROSTER_SHAPE's ceiling (40 > 17).
   'ROSTER_SHAPE/LIVING_MEMBER_WAIT_LONG_MIN_TICKS=40',
   // Stage G.1C: upper wait band 100, also above ROSTER_SHAPE's ceiling.
@@ -5999,7 +5999,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 2372 -> 2377: Stage C.1c CONDITION_PERCENT_SCALE in five domains.
   // 2428 -> 2433: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS across
   // five domains that carry it under their ceiling; ROSTER_SHAPE omits it.
-  CONTAINMENT_CHECKS: 2644, // Stage G.2A LIVING_MEMBER_EXPERIENCE waitHalfLifeTicks
+  CONTAINMENT_CHECKS: 2644, // Stage G.2A LIVING_MEMBER_EXPERIENCE waitDecayTicks
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -6077,7 +6077,7 @@ const DOMAIN_CENSUS = Object.freeze({
     // above ROSTER_SHAPE's ceiling (17); STATION_THROUGHPUT_CHANGEOVER_TICKS=6
     // does not.
     // 223 -> 225: Stage D2.2 two watched QA grains (1800, 3600).
-    ROSTER_SHAPE: 230, // Stage G.2A waitHalfLifeTicks=110 above roster ceiling
+    ROSTER_SHAPE: 230, // Stage G.2A waitDecayTicks=110 above roster ceiling
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -6134,7 +6134,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 1486 -> 1495: GDD §5.14 Stage B's five new PACING_REPORT_HORIZONS_SECONDS
   // leaves, read from this pin's own failure value.
   // 1495 -> 1500: Stage C.1b two new rendering knobs, measured.
-  NUMBER_CONTAINMENT_CHECKS: 1506, // Stage G.2A waitHalfLifeTicks=110
+  NUMBER_CONTAINMENT_CHECKS: 1506, // Stage G.2A waitDecayTicks=110
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 297 -> 300, read the same way.
   // Phase 4: 300 -> 405, read the same way.
@@ -6146,7 +6146,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // this pin's own failure value; which two overlap is not independently
   // hand-derived.
   // 407 -> 408: Stage C.1b FLOOR_TILE_PIXELS_MAX=72 is a new distinct NUMBER point.
-  NUMBER_POINTS: 410, // Stage G.2A waitHalfLifeTicks=110
+  NUMBER_POINTS: 410, // Stage G.2A waitDecayTicks=110
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 230 -> 233, read the same way.
   // Phase 4: 233 -> 344, read from this pin's own failure value.
@@ -6156,7 +6156,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // leaves, three of which are genuinely new SECONDS points (mirroring
   // NUMBER_POINTS' own +3 above). Read from this pin's own failure value.
   // 346 -> 347: Stage C.1b FLOOR_TILE_PIXELS_MAX=72 is a new SECONDS-domain point (exempt leaves ride every domain).
-  SECONDS_POINTS: 348, // Stage G.2A waitHalfLifeTicks=110
+  SECONDS_POINTS: 348, // Stage G.2A waitDecayTicks=110
   // 74 -> 76: GDD §5.13 presentation Phase 2's exempt tuning leaves widened
   // the COUNT domain by two points, cross-checked directly against
   // `NUMERIC_DOMAINS.COUNT.points.length` by running the assertion below.
@@ -6173,7 +6173,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 193 -> 195: S4i's one new exempt leaf (82), read from this pin's own
   // failure value.
   // 195 -> 196: Stage C.1b FLOOR_TILE_PIXELS_MAX=72 is a new DAY-domain point.
-  DAY_POINTS: 197, // Stage G.2A waitHalfLifeTicks=110
+  DAY_POINTS: 197, // Stage G.2A waitDecayTicks=110
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 84 -> 87, read the same way.
   // Phase 4: 87 -> 197, read from this pin's own failure value — the RGB
@@ -6182,7 +6182,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // callback subjects over the registry domain" assertion's own failure
   // value.
   // 196 -> 197: Stage C.1b FLOOR_TILE_PIXELS_MAX=72 is a new COUNT-domain point.
-  COUNT_POINTS: 198, // Stage G.2A waitHalfLifeTicks=110
+  COUNT_POINTS: 198, // Stage G.2A waitDecayTicks=110
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 216 -> 219, read the same way.
   // Phase 4: 219 -> 331, read from this pin's own failure value.
@@ -6193,7 +6193,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // and SECONDS_POINTS' own +3 above — LEVEL, like them, carries no
   // ceiling). Read from this pin's own failure value.
   // 333 -> 334: Stage C.1b FLOOR_TILE_PIXELS_MAX=72 is a new LEVEL-domain point.
-  LEVEL_POINTS: 335, // Stage G.2A waitHalfLifeTicks=110
+  LEVEL_POINTS: 335, // Stage G.2A waitDecayTicks=110
   // Phase 4: 17 -> 18 — FLOOR_SPRITE_NATIVE_PIXELS_PER_TILE=14 arrives as a
   // foreign point under the roster ceiling. Read from this pin's own failure.
   ROSTER_SHAPE_POINTS: 18,
@@ -10518,7 +10518,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 358 -> 359: Stage C.1c CONDITION_PERCENT_SCALE=100 dropped above ROSTER_SHAPE.
   // 362 -> 363: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS=18 dropped
   // above ROSTER_SHAPE.
-  POINTS: 374, // Stage G.2A waitHalfLifeTicks=110 dropped above ROSTER_SHAPE
+  POINTS: 374, // Stage G.2A waitDecayTicks=110 dropped above ROSTER_SHAPE
   /** Of those, how many at least one subject was driven at. */
   // Tracks POINTS 1:1 again (218), confirmed by running the assertion below
   // rather than assumed. PLAYTEST 4: tracks POINTS 1:1 again (222), confirmed
@@ -10540,7 +10540,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 344 -> 357: GDD §5.14 Stage B, tracks POINTS 1:1 again (see POINTS
   // above), confirmed by running this exact assertion.
   // Stage C.1b: FLOOR_TILE_PIXELS_MAX drop is now driven; tracks POINTS 1:1.
-  POINTS_DRIVEN: 374, // Stage G.2A waitHalfLifeTicks
+  POINTS_DRIVEN: 374, // Stage G.2A waitDecayTicks
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
@@ -10585,7 +10585,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // COUNT/DAY/ROSTER_SHAPE. Measured off this assertion rather than
   // hand-derived per domain.
   // 6250 -> 6273: Stage C.1b one more dropped point × argument-heavy subjects.
-  PAIRS_DRIVEN: 6590, // Stage G.2A waitHalfLifeTicks overflow pairs
+  PAIRS_DRIVEN: 6590, // Stage G.2A waitDecayTicks overflow pairs
   // GDD §5.13 presentation Phase 3: PAIRS_SKIPPED re-measured (495 -> 517),
   // a real failure value this round's own run produced.
   // GDD §5.14 Stage B: re-measured (517 -> 561), a real failure value this
@@ -10684,7 +10684,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // the next run's real failure.
   // Stage C.1b: furniture layout + dock-driven GymScreen trees add overflow
   // rows. Re-measured by running this assertion.
-  ROWS: 7526, // Stage G.2A waitHalfLifeTicks overflow rows
+  ROWS: 7526, // Stage G.2A waitDecayTicks overflow rows
   // GDD §5.13 presentation Phase 3: re-measured (942486 -> 947983), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (947983 -> 960248).
@@ -10702,7 +10702,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // GDD §5.14 Stage B: thirteen new dropped points. Read from this pin's own
   // failure value.
   // 1355914 -> 1357825: Stage C.1b overflow GymScreen trees. Measured.
-  NODES: 1_446_422, // Stage G.2A waitHalfLifeTicks overflow walk
+  NODES: 1_446_422, // Stage G.2A waitDecayTicks overflow walk
   // GDD §5.13 presentation Phase 3: re-measured (6413124 -> 6446099), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (6446099 -> 6540148).
@@ -10721,7 +10721,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // GDD §5.14 Stage B: thirteen new dropped points. Read from this pin's own
   // failure value.
   // 9415846 -> 9429777: Stage C.1b overflow strings. Measured.
-  STRINGS: 10_038_744, // Stage G.2A waitHalfLifeTicks overflow walk
+  STRINGS: 10_038_744, // Stage G.2A waitDecayTicks overflow walk
   // GDD §5.13 presentation Phase 3: re-measured (4366 -> 4378), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (4378 -> 4381).
@@ -10805,7 +10805,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 1328 -> 1336: Stage C.1b overflow declined closures. Measured.
   // 1344 -> 1368: Stage D overflow declined closures. Measured.
   // 1368 -> 1376: Stage D2.1B four new overflow drive invocations.
-  CLOSURES_DECLINED: 1424, // Stage G.2A waitHalfLifeTicks=110 overflow declined closures
+  CLOSURES_DECLINED: 1424, // Stage G.2A waitDecayTicks=110 overflow declined closures
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -10864,7 +10864,7 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // refused the same way. Measured off this assertion.
   // Stage C.1b: one more refused overflow arm from the widened ROSTER_SHAPE
   // drop (FLOOR_TILE_PIXELS_MAX). Re-measured by running this assertion.
-  ['beginRecruitment#refused', 230], // Stage G.2A waitHalfLifeTicks dropped above ROSTER_SHAPE
+  ['beginRecruitment#refused', 230], // Stage G.2A waitDecayTicks dropped above ROSTER_SHAPE
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
@@ -18667,7 +18667,7 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
       // 5230128 -> 5230196: Stage D, sum of DECLARED_CALLBACK_AXES.calls
       // (GymScreen +28, GymView +35, LadderView +5).
       // 5230196 -> 5230605: Stage D2 reset-gym, +409 (one control × NUMBER 409).
-      CALLS: 5233463, // Stage G.2A waitHalfLifeTicks domain +1
+      CALLS: 5233463, // Stage G.2A waitDecayTicks domain +1
   // GDD §5.13 presentation Phase 3: re-measured (5496920 -> 5618662), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (5618662 -> 5620716).
@@ -18694,7 +18694,7 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // 8686979 -> 8687342: Stage C.1b, sum of DECLARED_CALLBACK_AXES.recorded.
   // 8687342 -> 8687410: Stage D, same +68 as CALLS.
   // 8687410 -> 8687819: Stage D2 reset-gym, same +409 as CALLS.
-  RECORDED: 8690897, // Stage G.2A waitHalfLifeTicks domain +1
+  RECORDED: 8690897, // Stage G.2A waitDecayTicks domain +1
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,

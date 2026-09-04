@@ -3187,8 +3187,10 @@ than the ruling's own §1–§23 sequence:
 - **Stage G.** NPC roster/tenure depth (item 6). **G.1 CLOSED** at
   `c27f714c40e3ad7139eaec84ed340f1255c602ea` — living member identity +
   service outcome foundation accepted (targeted Expo 390×844 replay of
-  G.1C). G.2A (living-member satisfaction truth foundation) is implemented
-  and awaits the architecture / experience verdict. No churn, dues, or
+  G.1C). G.2A architecture is accepted. G.2A.1 closed calibration
+  terminology (`waitDecayTicks` is an e-folding constant, not a
+  half-life) and pinned the real Garage / synthetic tables; the shipped
+  wait formula remains `exp(-ticks / 110)`. No churn, dues, or
   reputation wiring.
 
 ### Human Stage C rejection at `f097695b`
@@ -4649,25 +4651,42 @@ start churn, dues, reputation writes, or Gym Bucks changes.
 | `memberDuesGymBucks` / `reputationFromMembers` | REAL BUT UNWIRED; G.2A does not call them |
 | `itemCondition` / `stationConditionView` | REAL at gym/item grain; MISSING at service-observation grain — G2-CONDITION-01 |
 | FloorSim observation condition field | MISSING |
+| type-specific satisfaction interpretation | NOT BUILT — G2-TYPE-01; common service-experience truth first |
 
 **Condition-at-service:** deferred. Observations name a station but do not
 snapshot `itemCondition` at use time. No fake 1.0 and no gym-wide mean.
+G2-CONDITION-01, G2-FIT-01, and G2-TYPE-01 stay open.
 
 **Wait curve (compared, then frozen):** bounded linear (scale 180),
-hyperbolic (scale 90), exponential (half-life 110) against the G.1 Garage
-means. Exponential 110 won: 95 > 128, Capacity wait clearly above
-Throughput, Throughput above stock, Quality wait identical to stock, no
-step at copy thresholds 15 / 40 / 100.
+hyperbolic (scale 90), exponential decay `exp(-ticks / 110)` against the
+G.1 Garage means. The 110 is `waitDecayTicks`, an e-folding decay
+constant, not a half-life. A true half-life of 110 would be
+`exp(-ln(2) * ticks / 110)` and was compared; the shipped formula stays
+`exp(-ticks / 110)`. Exponential 110 won: 95 > 128, Capacity wait
+clearly above Throughput, Throughput above stock, Quality wait identical
+to stock, no step at copy thresholds 15 / 40 / 100.
 
-**Training map:** stock experience 1 → 0.82 (Solid); Quality 2 → 1.0
-(Excellent). Stock remains a working gym, not a 50% failure.
+**Training map (G.2A.1 compared 0.75 / 0.82 / 0.90 with Quality held at
+1):** stock experience 1 → 0.82 (Solid); Quality 2 → 1.0 (Excellent).
+0.75 maps stock training to Thin and turns Capacity Garage Mixed; 0.90
+shrinks the Quality gap to 0.10. 0.82 kept: stock is a working gym,
+Quality is meaningfully better, Quality does not erase a severe wait,
+Capacity / Throughput do not gain training score.
 
 **Reliability:** interrupted visits exist only for mid-use yank
 (player-moved/removed station). Scored 0.55, not zero.
 
-**Composite:** arithmetic mean rejected (Quality + severe wait still looked
-excellent). Geometric mean of the three equal-weight component averages
-is shipped. Recency is the N=5 window; no extra decay.
+**Composite (G.2A.1 re-evaluated against actual overall bands: Good ≥
+0.78, Mixed ≥ 0.62, Rough ≥ 0.45):** arithmetic mean rejected — five
+interruptions score Good. Bottleneck-sensitive mean rejected — Quality
+Garage overall Rough hides Excellent training, and Throughput's wait
+improvement does not survive as a label. Geometric mean of the three
+equal-weight component averages is shipped. Recency is the N=5 window;
+no extra decay.
+
+**G.2A.1 fixture authority:** living-member scores use the N=5 remembered
+window on the 1000-tick Garage fixtures, not G.1 all-observation means.
+Exact tables live in `livingMemberExperience.test.ts`.
 
 **Player card:** RECENT EXPERIENCE label + WAIT / TRAINING / SERVICE
 components + reason line, above the five visit rows.

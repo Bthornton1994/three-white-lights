@@ -56,9 +56,12 @@
  *
  * Chosen wait curve, after comparing three bounded candidates against the
  * G.1 Garage distributions (see `livingMemberExperience.test.ts`):
- * exponential decay with half-life `waitHalfLifeTicks` (110). Wait 0 is 1;
- * larger wait is never a better score; 95 ticks scores better than 128;
- * there is no step at the G.1C copy thresholds 15 / 40 / 100.
+ * exponential decay `exp(-ticks / waitDecayTicks)` with e-folding 110.
+ * That 110 is a decay constant, not a half-life — a true half-life of 110
+ * would be `exp(-ln(2) * ticks / 110)` and is a compared-and-rejected
+ * alternative, not the shipped formula. Wait 0 is 1; larger wait is never
+ * a better score; 95 ticks scores better than 128; there is no step at the
+ * G.1C copy thresholds 15 / 40 / 100.
  *
  * ===========================================================================
  * 3. Training uses the recorded experience, not upgrade ownership
@@ -161,7 +164,7 @@ export function waitComponentFromTicks(queueWaitTicks: number): number {
   if (!Number.isFinite(queueWaitTicks) || queueWaitTicks < 0) {
     refuseWith(`queue wait ticks must be a non-negative number, received ${queueWaitTicks}`);
   }
-  return clampUnit(Math.exp(-queueWaitTicks / KNOBS.waitHalfLifeTicks));
+  return clampUnit(Math.exp(-queueWaitTicks / KNOBS.waitDecayTicks));
 }
 
 function trainingComponentFromExperience(trainingExperience: number): number {
