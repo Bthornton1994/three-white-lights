@@ -3193,9 +3193,13 @@ than the ruling's own §1–§23 sequence:
   experience replay on that HEAD). G.2A.1 closed calibration
   terminology (`waitDecayTicks` is an e-folding constant, not a
   half-life) and pinned the real Garage / synthetic tables; the shipped
-  wait formula remains `exp(-ticks / 110)`. G.2B (retention, dues,
-  member-side reputation) is not authorized. No churn, dues, or
-  reputation wiring.
+  wait formula remains `exp(-ticks / 110)`. Independently verified
+  mint `ba8561bfd11e9e2a5062923d4054b59e0976dcc0` (docs/comment only;
+  no product-runtime change). G.2B is blocked / unstarted. The
+  recommended consequence sequence (G.2B retention-pressure truth →
+  G.2C arrivals/departures → G.2D dues → G.2E member-side reputation)
+  is recorded under Stage G.2B and is not an authorization. No churn,
+  dues, or reputation wiring.
 
 ### Human Stage C rejection at `f097695b`
 
@@ -4637,15 +4641,18 @@ consequences.
 copy, and Capacity consequence all passed on the played 390×844 surface.
 Closing G.1 does not wire satisfaction / dues / reputation. G.2A derives
 recent-service meaning from that history and is closed below. G.2B is
-not authorized.
+blocked / unstarted; the recommended later sequence is recorded there
+and is not an authorization.
 
 #### Stage G.2A — Living Member Satisfaction Truth Foundation
 
 **STAGE G.2A CLOSED — LIVING MEMBER SATISFACTION TRUTH FOUNDATION
 ACCEPTED.** Closed at `255de8a5cf32b99429bbe864b0dcd01f5201da56` by the
 targeted Expo 390×844 experience replay on that HEAD. No product-code
-change from the architecture / G.2A.1 calibration. G.2B (retention,
-dues, member-side reputation) is not authorized.
+change from the architecture / G.2A.1 calibration. Independently
+verified: mint `ba8561bfd11e9e2a5062923d4054b59e0976dcc0` is one
+commit over that HEAD and changes only this document plus four
+comment-only lines in `empireTuning.ts`. G.2B is blocked / unstarted.
 
 The first human playtest accepted the core semantics (Wren WAIT Rough /
 TRAINING Solid / SERVICE Steady / overall Mixed) and left five
@@ -4720,10 +4727,70 @@ Exact tables live in `livingMemberExperience.test.ts`.
 **Player card:** RECENT EXPERIENCE label + WAIT / TRAINING / SERVICE
 components + reason line, above the five visit rows.
 
-**Still blocked:** G.2B and after — member departures, dues writes,
-reputation writes, Career/Meet → Empire reputation, Portfolio,
-NpcLifter merge, Q/C/T retune, E-REP-01. G2-CONDITION-01, G2-FIT-01,
-and G2-TYPE-01 stay open.
+**Still blocked:** G.2B and after — retention pressure, member
+departures, dues writes, reputation writes, Career/Meet → Empire
+reputation, Portfolio, NpcLifter merge, Q/C/T retune, E-REP-01.
+G2-CONDITION-01, G2-FIT-01, and G2-TYPE-01 stay open.
+
+#### Stage G.2B — Living Member Retention Pressure Foundation (UNAUTHORIZED)
+
+**STAGE G.2B IS NOT AUTHORIZED.** This section records the recommended
+next stage so a later authorization is not a four-system bundle. Do
+not start it from this text.
+
+**Current authority (independently verified at mint `ba8561bf`):**
+
+| Item | Status |
+|---|---|
+| G.1 | CLOSED |
+| G.2A | CLOSED at `255de8a5`; mint `ba8561bf` |
+| G2-CONDITION-01 | OPEN |
+| G2-FIT-01 | OPEN |
+| G2-TYPE-01 | OPEN |
+| G.2B | BLOCKED / UNSTARTED |
+| Career → Empire reputation | BLOCKED |
+| Portfolio | BLOCKED |
+
+**Proven causal chain:** physical gym decision → real service →
+durable member history → explainable member experience.
+
+**Recommended next link, when authorized:** explainable experience →
+deterministic willingness-to-stay / retention pressure. Not yet:
+actually delete the member. Before anyone can leave, the game should
+prove it can explain *why they are at risk of leaving*, that the
+model is stable over the frozen N=5 history, and that member-type
+quirks do not become arbitrary churn multipliers.
+
+**Recommended remaining sequence** (each inherits a verified signal;
+do not bundle):
+
+| Stage | Scope |
+|---|---|
+| G.2B | retention pressure / stay-risk truth |
+| G.2C | actual arrivals/departures + tenure continuity |
+| G.2D | member dues accounting |
+| G.2E | member-side institutional reputation |
+
+**Do not wire the old member-domain functions merely because they
+exist.** `memberDuesGymBucks` and `reputationFromMembers` are
+first-pass, explicitly untuned (`empireTuning.ts` header: every
+magnitude is an untuned placeholder). The crowding × fit ×
+condition `memberSatisfaction` model predates living-member service
+truth. G.2A already recorded them as REAL BUT UNWIRED; G.2A does not
+call them; G.2B must not call them as a shortcut to stay-risk.
+
+The same applies to old type-quirk crowding, including Casual's
+"leaves fastest when crowded" (`MEMBER_TYPE_CROWDING_SENSITIVITY` /
+`crowdingSatisfactionMultiplier`). Actual queue/service history now
+owns the service truth. Type may later modify **retention
+behavior**. It must not retroactively reinterpret what happened on
+the floor.
+
+**When G.2B is authorized, issue it as:** Stage G.2B — Living Member
+Retention Pressure Foundation. Actual departures, dues, reputation
+writes, Portfolio, and Career → Empire reputation stay forbidden
+on that stage; those are G.2C / G.2D / G.2E / existing Stage E and
+F blocks.
 
 ---
 

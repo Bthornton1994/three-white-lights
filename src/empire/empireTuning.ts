@@ -2007,8 +2007,9 @@ export const EMPIRE_TUNING = Object.freeze({
    * 15 / 40 / 100 so a copy edit cannot silently retune the curve.
    *
    * G.2A closed at 255de8a5 after the Expo 390×844 experience replay.
-   * Stage G.2B (retention, dues, member-side reputation) is not opened
-   * by that close.
+   * Stage G.2B is not opened by that close. When later authorized it is
+   * retention-pressure / stay-risk truth, not departures, dues, or
+   * member-side reputation.
    */
   LIVING_MEMBER_EXPERIENCE: Object.freeze({
     waitDecayTicks: 110,
