@@ -12,10 +12,12 @@ import {
   buildMeetField,
   initialFieldReveal,
   officialTotalKg,
+  revealAfterPlayer,
   revealForDeclaration,
 } from './meetField';
 import {
   PLAYER_ID,
+  achievedSeqByLifter,
   buildMeetBoard,
   comparePlacing,
   placeSubjects,
@@ -71,13 +73,22 @@ describe('comparePlacing — standings tie-break', () => {
     expect(ranked.placeById.get('heavy')).toBe(2);
   });
 
-  it('same Total, heavier bodyweight ranks second', () => {
-    expect(
-      comparePlacing(
-        subject({ id: 'you', totalKg: 500, bodyweightKg: 94, lot: 1 }),
-        subject({ id: 'them', totalKg: 500, bodyweightKg: 90, lot: 2 }),
-      ),
-    ).toBeGreaterThan(0);
+  it('same Total, lighter player ranks ahead of the heavier NPC', () => {
+    const ranked = placeSubjects([
+      subject({ id: PLAYER_ID, totalKg: 500, bodyweightKg: 82.4, lot: 3 }),
+      subject({ id: 'npc', totalKg: 500, bodyweightKg: 93.1, lot: 1 }),
+    ]);
+    expect(ranked.placeById.get(PLAYER_ID)).toBe(1);
+    expect(ranked.placeById.get('npc')).toBe(2);
+  });
+
+  it('same Total, heavier player ranks behind the lighter NPC', () => {
+    const ranked = placeSubjects([
+      subject({ id: PLAYER_ID, totalKg: 500, bodyweightKg: 94.8, lot: 3 }),
+      subject({ id: 'npc', totalKg: 500, bodyweightKg: 87.4, lot: 1 }),
+    ]);
+    expect(ranked.placeById.get(PLAYER_ID)).toBe(2);
+    expect(ranked.placeById.get('npc')).toBe(1);
   });
 
   it('same Total + same bodyweight, earlier Total ranks first', () => {
@@ -117,6 +128,20 @@ describe('meetBoard — one competition truth', () => {
     const fromBoard = placingForMeet(meet, PLAYER.bodyweightKg, PLAYER.lot, field);
     expect(fromBoard.fieldSize).toBe(MEET_FIELD_FIXTURE.length + 1);
     expect(fromBoard.place).toBeNull();
+  });
+
+  it('records earlier Total from platform order, not from who is the player', () => {
+    const meet = playerWithSquat(200);
+    const reveal = revealAfterPlayer(revealForDeclaration('squat', 1, 200));
+    const seq = achievedSeqByLifter(field, meet, PLAYER.lot, reveal);
+    const playerSeq = seq[PLAYER_ID] ?? 0;
+    expect(playerSeq).toBeGreaterThan(0);
+    for (const card of field.cards) {
+      const squat1 = card.plan.find((row) => row.lift === 'squat' && row.attemptNumber === 1);
+      if (squat1 !== undefined && squat1.good && squat1.weightKg < 200) {
+        expect(seq[card.lifter.id] ?? 0).toBeLessThan(playerSeq);
+      }
+    }
   });
 
   it('only emits stakes that exist on this board', () => {
