@@ -358,6 +358,17 @@ function visitFromObservation(observation: FloorSimServiceObservation): ServiceV
   });
 }
 
+function sameServiceVisit(a: ServiceVisitRecord, b: ServiceVisitRecord): boolean {
+  return (
+    a.stationKind === b.stationKind &&
+    a.stationKey === b.stationKey &&
+    a.queueWaitTicks === b.queueWaitTicks &&
+    a.trainingExperience === b.trainingExperience &&
+    a.outcome === b.outcome &&
+    a.observedAtTick === b.observedAtTick
+  );
+}
+
 function truncateHistory(
   visits: readonly ServiceVisitRecord[],
   limit: number,
@@ -371,6 +382,10 @@ function truncateHistory(
  * Offline clock does not call this. G.2A/G.2B are consumed whole rather than
  * reimplemented: new history → accepted experience → accepted pressure →
  * type-specific persistent response.
+ *
+ * Exact replay of the latest service event is a whole-roster no-op. If the
+ * same member/tick arrives with different service facts, refuse instead of
+ * choosing which history is true.
  */
 export function applyServiceObservations(
   roster: LivingMemberRoster,
@@ -387,6 +402,7 @@ export function applyServiceObservations(
   for (const member of roster.members) {
     byId.set(member.id, member);
   }
+  let changed = false;
   for (const observation of observations) {
     const id = observation.memberId as GymMemberId;
     const current = byId.get(id);
@@ -398,8 +414,16 @@ export function applyServiceObservations(
         `service observation type ${observation.memberType} does not match member ${current.id} type ${current.type}`,
       );
     }
+    const incomingVisit = visitFromObservation(observation);
+    const latestVisit = current.recentVisits[current.recentVisits.length - 1];
+    if (latestVisit?.observedAtTick === incomingVisit.observedAtTick) {
+      if (!sameServiceVisit(latestVisit, incomingVisit)) {
+        refuseWith(`service observation conflicts with member ${current.id} at tick ${incomingVisit.observedAtTick}`);
+      }
+      continue;
+    }
     const nextVisits = truncateHistory(
-      Object.freeze([...current.recentVisits, visitFromObservation(observation)]),
+      Object.freeze([...current.recentVisits, incomingVisit]),
       historyLimit,
     );
     const experience = livingMemberExperience(nextVisits);
@@ -418,7 +442,9 @@ export function applyServiceObservations(
         stayState,
       }),
     );
+    changed = true;
   }
+  if (!changed) return roster;
   return Object.freeze({
     ...roster,
     members: Object.freeze(roster.members.map((member) => byId.get(member.id) ?? member)),
