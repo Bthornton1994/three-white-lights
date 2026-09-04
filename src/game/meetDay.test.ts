@@ -33,6 +33,7 @@ import {
   deliberates,
   dissentChance,
   feedbackTextFor,
+  flightOnDeckText,
   judgeAttempt,
   judgePanelFor,
   judgeSeedFor,
@@ -65,6 +66,8 @@ import {
 } from './meetTuning';
 import { LOAD_PRESETS } from './liftTuning';
 import type { LiftConfig } from './lift';
+import { SESSION_TUNING } from './sessionTuning';
+import { comparePlatformOrder } from './meetField';
 import {
   MEET_MOMENTS,
   playMeet,
@@ -84,6 +87,19 @@ function openedMeet(context: MeetDayContext = previewContext()): MeetDayState {
   return stepMeetDay(stepMeetDay(createMeetDay(context), { kind: 'confirm-weigh-in' }), {
     kind: 'confirm-openers',
   });
+}
+
+/** Starting e1RM, no competition bests. Suggested squat opener is 160. */
+function startingE1rmMeetContext(): MeetDayContext {
+  return {
+    day: 0,
+    meet: MEET_LOCAL,
+    entry: MEET_ENTRY,
+    bestE1rmKg: SESSION_TUNING.STARTING_E1RM.kilograms,
+    previousBestTotalKg: null,
+    previousBestByLiftKg: { squat: null, bench: null, deadlift: null },
+    fatigue: EMPTY_FATIGUE_STATE,
+  };
 }
 
 /** Take the attempt on the bar with a given style, through to the next screen. */
@@ -1769,6 +1785,54 @@ describe('the ?meet= preview beats', () => {
     const total = finalMeetTotal(recap.meet);
     expect(total).not.toBeNull();
     expect(total ?? 0).toBeGreaterThan(0);
+  });
+});
+
+describe('ON DECK is a declared-attempt fact', () => {
+  it('names nobody on attempt-select, then R. PEMBROKE after squat 2 is declared at 165', () => {
+    const opened = openedMeet(startingE1rmMeetContext());
+    expect(opened.phase).toBe('walkout');
+    expect(opened.live).not.toBeNull();
+    expect(opened.live?.lift).toBe('squat');
+    expect(opened.live?.attemptNumber).toBe(1);
+    expect(opened.live?.weightKg).toBe(160);
+    expect(flightOnDeckText(opened)).toBe('J. HARROW');
+
+    const afterMake = take(opened, 'perfect');
+    expect(afterMake.phase).toBe('attempt-select');
+    expect(afterMake.live).toBeNull();
+    expect(flightOnDeckText(afterMake)).toBeNull();
+    expect(afterMake.reveal.lift).toBe('squat');
+    expect(afterMake.reveal.attemptNumber).toBe(1);
+
+    const decision = decisionOf(afterMake);
+    const small = decision.options.find((option) => option.id === 'small');
+    expect(small, 'conservative option must be on offer after a made opener').toBeDefined();
+    expect(small?.weightKg).toBe(165);
+
+    const declared = stepMeetDay(afterMake, { kind: 'declare', weightKg: small!.weightKg });
+    expect(declared.phase).toBe('walkout');
+    expect(declared.live?.lift).toBe('squat');
+    expect(declared.live?.attemptNumber).toBe(2);
+    expect(declared.live?.weightKg).toBe(165);
+    expect(declared.reveal).toEqual({
+      lift: 'squat',
+      attemptNumber: 2,
+      playerWeightKg: 165,
+      afterPlayer: false,
+    });
+    expect(flightOnDeckText(declared)).toBe('R. PEMBROKE');
+
+    const ordered = [
+      ...declared.field.cards.map((card) => {
+        const attempt = card.plan.find((row) => row.lift === 'squat' && row.attemptNumber === 2);
+        return { name: card.lifter.name, weightKg: attempt?.weightKg ?? 0, lot: card.lifter.lot };
+      }),
+      { name: MEET_ENTRY.name, weightKg: 165, lot: MEET_ENTRY.lot },
+    ].sort(comparePlatformOrder);
+    const playerIndex = ordered.findIndex((slot) => slot.name === MEET_ENTRY.name);
+    expect(ordered[playerIndex + 1]?.name).toBe('R. PEMBROKE');
+    expect(flightOnDeckText(declared)).toBe(ordered[playerIndex + 1]?.name ?? null);
   });
 });
 

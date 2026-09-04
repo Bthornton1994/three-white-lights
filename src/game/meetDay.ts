@@ -1499,11 +1499,17 @@ export function stakesForDecision(
   );
 }
 
+/**
+ * Who follows the player in the CURRENT declared round, or null.
+ *
+ * Attempt-select has no live attempt: the next weight is not declared, so
+ * there is no platform order to report. Mixing the previous round's reveal
+ * with the next attempt's floor invents an ON DECK name.
+ */
 export function flightOnDeckText(state: MeetDayState): string | null {
   const live = state.live;
-  const weight = live?.weightKg ?? currentAttemptContext(state.meet)?.minimumWeight ?? null;
-  if (weight === null) return onDeckName(state.field, state.reveal, Number.POSITIVE_INFINITY, state.context.entry.name);
-  return onDeckName(state.field, state.reveal, weight, state.context.entry.name);
+  if (live === null) return null;
+  return onDeckName(state.field, state.reveal, live.weightKg, state.context.entry.name);
 }
 
 export function flightJustWentText(state: MeetDayState): string | null {

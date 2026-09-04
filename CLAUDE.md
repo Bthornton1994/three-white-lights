@@ -2509,6 +2509,9 @@ change. A2–A7 remain blocked.
   `FIXTURE_REPLAY_FAILED` rather than publishing a partial card.
 - A1-NPC-SIM-01: miss discriminator now includes lift. Not a closure
   blocker; the change was trivial and is pinned deterministic.
+- ON DECK is a declared-attempt fact. `flightOnDeckText` is null while
+  `live` is null (attempt-select). Mixing the previous round's reveal
+  with the next attempt's floor is not a platform-order claim.
 
 ### If scope shifts
 

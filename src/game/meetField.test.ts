@@ -160,13 +160,25 @@ describe('platform order — weight then lot', () => {
   it('names who just went and who is on deck from the same order', () => {
     const field = buildMeetField(MEET_FIELD_FIXTURE, DEFAULT_MEET_RULES, SEED, playerLot);
     const reveal = revealForDeclaration('squat', 1, 160);
-    const just = whoJustWent(field, reveal, 160, MEET_ENTRY.name);
-    const deck = onDeckName(field, reveal, 160, MEET_ENTRY.name);
-    if (just !== null && deck !== null) {
-      expect(just).not.toBe(deck);
-    }
-    expect(just === null || typeof just === 'string').toBe(true);
-    expect(deck === null || typeof deck === 'string').toBe(true);
+    expect(whoJustWent(field, reveal, 160, MEET_ENTRY.name)).toBe('R. PEMBROKE');
+    expect(onDeckName(field, reveal, 160, MEET_ENTRY.name)).toBe('J. HARROW');
+  });
+
+  it('equal-weight later lot is on deck after the player at 165', () => {
+    const field = buildMeetField(MEET_FIELD_FIXTURE, DEFAULT_MEET_RULES, SEED, playerLot);
+    const reveal = revealForDeclaration('squat', 2, 165);
+    const ordered = [
+      ...field.cards.map((card) => {
+        const attempt = card.plan.find((row) => row.lift === 'squat' && row.attemptNumber === 2);
+        return { name: card.lifter.name, weightKg: attempt?.weightKg ?? 0, lot: card.lifter.lot };
+      }),
+      { name: MEET_ENTRY.name, weightKg: 165, lot: playerLot },
+    ].sort(comparePlatformOrder);
+    const playerIndex = ordered.findIndex((slot) => slot.name === MEET_ENTRY.name);
+    expect(playerIndex).toBeGreaterThanOrEqual(0);
+    expect(ordered[playerIndex + 1]?.name).toBe('R. PEMBROKE');
+    expect(onDeckName(field, reveal, 165, MEET_ENTRY.name)).toBe('R. PEMBROKE');
+    expect(whoJustWent(field, reveal, 165, MEET_ENTRY.name)).toBe('T. LINN');
   });
 });
 
