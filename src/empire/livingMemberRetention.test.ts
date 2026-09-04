@@ -549,6 +549,25 @@ describe('Stage G.2B — synthetic boundaries', () => {
     expect(excellentWaitSolidTraining.label).toBe('Stable');
     expect(fiveBreaks.pressure).toBeCloseTo(1 - 0.766876649056906, 10);
     expect(fiveBreaks.label).toBe('Watching');
+
+    const strainedWaitQuality = livingMemberExperience(
+      repeats(
+        visit({
+          queueWaitTicks: 80,
+          trainingExperience: T.STATION_QUALITY_TRAINING_EXPERIENCE,
+        }),
+        5,
+      ),
+    );
+    const strainedWaitRetention = livingMemberRetentionPressure(strainedWaitQuality);
+    expect(strainedWaitQuality.labels.wait).toBe('Strained');
+    expect(strainedWaitQuality.labels.training).toBe('Excellent');
+    expect(strainedWaitRetention.label).toBe('Stable');
+    expect(strainedWaitRetention.pressure ?? 1).toBeLessThan(KNOBS.watchingMin);
+    expect(strainedWaitRetention.reasons.map((reason) => reason.text)).toEqual([
+      'Long waits are testing this membership.',
+      'Recent service has been working well.',
+    ]);
   });
 });
 
