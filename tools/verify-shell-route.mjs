@@ -305,16 +305,16 @@ const BOMB_OUT_SETTLE_MS = BOMB_OUT_EXIT_DRAWN_AT_MS + FADE_GRACE_MS;
 
 /**
  * ===========================================================================
- * AND GDD §6.5'S RECAP, WHICH ARRIVES IN FIVE STAGGERED BLOCKS
+ * AND GDD §6.5'S RECAP, WHICH ARRIVES IN SIX STAGGERED BLOCKS
  * ===========================================================================
  * The same shape of arithmetic as the bomb-out above, restated from
  * `src/game/meetTuning.ts` and CROSS-CHECKED against it by
  * `checkMeetRestatementsMatchTuning` at the end of the run — which the bomb-out
  * numbers are not, and which is the better of the two arrangements.
  *
- *     RECAP_ROW_ORDER.CARD (4) x RECAP_ROW_STAGGER_MS (240)   960
+ *     RECAP_ROW_ORDER.CARD (5) x RECAP_ROW_STAGGER_MS (240)  1200
  *   + RECAP_ROW_FADE_MS                                       280
- *   = the recap's last block is fully drawn at               1240 ms
+ *   = the recap's last block is fully drawn at               1480 ms
  *
  * IT IS HERE BECAUSE OF A PHOTOGRAPH. The first run of section 4 fired its
  * shutter the instant `meet-recap` was in the DOM, and
@@ -325,7 +325,7 @@ const BOMB_OUT_SETTLE_MS = BOMB_OUT_EXIT_DRAWN_AT_MS + FADE_GRACE_MS;
  * mid-arrival, filed under a name that says it is a picture of the recap. That
  * is the `08-set-has-no-nav.png` failure again, one screen over.
  */
-const RECAP_LAST_ROW_DRAWN_AT_MS = 4 * 240 + 280;
+const RECAP_LAST_ROW_DRAWN_AT_MS = 5 * 240 + 280;
 const RECAP_SETTLE_MS = RECAP_LAST_ROW_DRAWN_AT_MS + FADE_GRACE_MS;
 
 /**
@@ -6298,7 +6298,7 @@ const playedOut = { attempted: true };
         // ...AND THE SCREEN HAS FINISHED ARRIVING BEFORE IT IS PHOTOGRAPHED.
         //
         // BOTH ARMS, WRITTEN AS TWO, BECAUSE THEY ARE TWO. §6.5's recap
-        // staggers five blocks in and SEE YOUR CARD is the last of them — which
+        // staggers six blocks in and SEE YOUR CARD is the last of them — which
         // is also the line its shutter identifies it by, so photographing it
         // early files a mid-assembly frame under a name saying it is the recap,
         // and that frame has been committed once already (see the block above
