@@ -2005,6 +2005,10 @@ export const EMPIRE_TUNING = Object.freeze({
    * `waitDecayTicks` is an e-folding constant: wait = exp(-ticks / 110).
    * It is not a half-life. 110 is distinct from the copy thresholds
    * 15 / 40 / 100 so a copy edit cannot silently retune the curve.
+   *
+   * G.2A closed at 255de8a5 after the Expo 390×844 experience replay.
+   * Stage G.2B (retention, dues, member-side reputation) is not opened
+   * by that close.
    */
   LIVING_MEMBER_EXPERIENCE: Object.freeze({
     waitDecayTicks: 110,

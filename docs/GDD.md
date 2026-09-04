@@ -3187,10 +3187,14 @@ than the ruling's own §1–§23 sequence:
 - **Stage G.** NPC roster/tenure depth (item 6). **G.1 CLOSED** at
   `c27f714c40e3ad7139eaec84ed340f1255c602ea` — living member identity +
   service outcome foundation accepted (targeted Expo 390×844 replay of
-  G.1C). G.2A architecture is accepted. G.2A.1 closed calibration
+  G.1C). **G.2A CLOSED** at
+  `255de8a5cf32b99429bbe864b0dcd01f5201da56` — living member
+  satisfaction truth foundation accepted (targeted Expo 390×844
+  experience replay on that HEAD). G.2A.1 closed calibration
   terminology (`waitDecayTicks` is an e-folding constant, not a
   half-life) and pinned the real Garage / synthetic tables; the shipped
-  wait formula remains `exp(-ticks / 110)`. No churn, dues, or
+  wait formula remains `exp(-ticks / 110)`. G.2B (retention, dues,
+  member-side reputation) is not authorized. No churn, dues, or
   reputation wiring.
 
 ### Human Stage C rejection at `f097695b`
@@ -4482,9 +4486,9 @@ state is a later explicit crossing.
 **STAGE G.1 CLOSED — LIVING MEMBER IDENTITY + SERVICE OUTCOME FOUNDATION
 ACCEPTED.** Closed at `c27f714c40e3ad7139eaec84ed340f1255c602ea` by the
 targeted Expo 390×844 player-surface replay of G.1C, under the pre-stated
-close standard. G.2A is implemented as the living-member satisfaction
-truth foundation and awaits the architecture / experience verdict.
-Historical G.1 / G.1A / G.1B / G.1C notes below stay as they were.
+close standard. **G.2A CLOSED** at
+`255de8a5cf32b99429bbe864b0dcd01f5201da56`. Historical G.1 / G.1A /
+G.1B / G.1C notes below stay as they were.
 
 G.1A identity/service architecture is accepted. G.1B closed pre-human
 authority at `8fc4fcbf9d36f829252d35d0e642c5cc3482cce2`. Human gate at
@@ -4631,11 +4635,36 @@ consequences.
 
 **Human gate:** landed at `c27f714c`. Identity presentation, Throughput
 copy, and Capacity consequence all passed on the played 390×844 surface.
-Closing G.1 does not wire satisfaction / dues / reputation. G.2A now
-derives recent-service meaning from that history and still does not wire
-dues, reputation, or retention.
+Closing G.1 does not wire satisfaction / dues / reputation. G.2A derives
+recent-service meaning from that history and is closed below. G.2B is
+not authorized.
 
 #### Stage G.2A — Living Member Satisfaction Truth Foundation
+
+**STAGE G.2A CLOSED — LIVING MEMBER SATISFACTION TRUTH FOUNDATION
+ACCEPTED.** Closed at `255de8a5cf32b99429bbe864b0dcd01f5201da56` by the
+targeted Expo 390×844 experience replay on that HEAD. No product-code
+change from the architecture / G.2A.1 calibration. G.2B (retention,
+dues, member-side reputation) is not authorized.
+
+The first human playtest accepted the core semantics (Wren WAIT Rough /
+TRAINING Solid / SERVICE Steady / overall Mixed) and left five
+translation legs unplayed. The targeted replay on the same SHA closed
+those legs:
+
+| Leg | Verdict |
+|---|---|
+| Service-history truth | PASS (first playtest) |
+| Mixed experience readability | PASS (first playtest) — Wren WAIT Rough / TRAINING Solid / SERVICE Steady / overall Mixed |
+| Stock training calibration | PASS (first playtest) |
+| Wait differentiation | PASS (first playtest) |
+| Overall label coherence | PASS, provisionally (first playtest) |
+| Reliability baseline | PASS (first playtest) |
+| Zero-history presentation | PASS — Omar `RECENT EXPERIENCE Still forming` with no Good/Mixed/Rough claim, first session still in progress |
+| Quality translation | PASS — Nia TRAINING Solid → Excellent after Competition pads only; WAIT stayed a wait story (Manageable → Rough); overall Good → Mixed |
+| Throughput translation | PASS — Wren WAIT Rough → Strained after Plate tree only; TRAINING Solid; overall Mixed; reason "very long" → "long"; no Throughput bonus line |
+| Capacity translation | PASS — second bench drawn and serving; Omar WAIT Strained → Manageable after Second bench only; TRAINING Solid; newest visit reached `waited a while` |
+| Interrupted-service translation | PASS — Nia SERVICE Steady → Uneven; `One session was interrupted.`; visit row ending `interrupted`; TRAINING remained Solid |
 
 G.2A derives what recent service **means** to a living member. It does not
 start churn, dues, reputation writes, or Gym Bucks changes.
@@ -4691,9 +4720,10 @@ Exact tables live in `livingMemberExperience.test.ts`.
 **Player card:** RECENT EXPERIENCE label + WAIT / TRAINING / SERVICE
 components + reason line, above the five visit rows.
 
-**Still blocked:** member departures, dues writes, reputation writes,
-Career/Meet → Empire reputation, Portfolio, NpcLifter merge, Q/C/T
-retune, E-REP-01.
+**Still blocked:** G.2B and after — member departures, dues writes,
+reputation writes, Career/Meet → Empire reputation, Portfolio,
+NpcLifter merge, Q/C/T retune, E-REP-01. G2-CONDITION-01, G2-FIT-01,
+and G2-TYPE-01 stay open.
 
 ---
 
