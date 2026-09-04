@@ -2477,9 +2477,10 @@ What A1 built, in sport-truth order:
   bomb come from `meet.ts`. Cheaper NPC sim; same quantities.
 - Live board between attempts. Lift screen stays the lift.
 - Deadlift finale stakes emerge from actual board state, not a script.
-- Smallest record/qualifier seam: fixture meet record +
+- Smallest record/qualifier seam: authored standing record on
+  `MeetDefinition` (not a current competitor's eventual Total) +
   `MeetDefinition.qualifyingTotalKg` (null on the local open; career
-  tiers carry theirs).
+  tiers carry theirs). A1.1 corrected the false "meet record".
 - Smallest immutable Meet Day ledger: weigh-in, attempt+lights, bests,
   Total, placing, record, qualification, bomb-out.
 - Recap answers what happened and why it matters. No XP, no currency.
@@ -2489,6 +2490,25 @@ Not started: A2–A7, Session B, any squat/deadlift/C3 retune, merge to
 
 Human playtest questions stay in the A1 brief. Close A1 only after a
 human plays one complete meet and rules.
+
+### FILED 2026-09-04: A1.1 COMPETITION TRUTH — NOT CLOSED
+
+Narrow correction before the final human Meet Day gate. No lift runtime
+change. A2–A7 remain blocked.
+
+- Placing: one comparator. Higher Total, then lighter bodyweight, then
+  who achieved the Total first (competition-order seq). Live board and
+  `applyMeetResult` call the same function (`placingForMeet`).
+- Platform order: declared weight ascending, then lot ascending. Player
+  occupies `MEET_ENTRY.lot` (3) among the fixture lots. Equal-weight
+  reveal follows that order — the player does not win ties.
+- Standing record: `MEET_LOCAL.standingRecord` is authored
+  (`K. VAUGHN`, 500 kg), holder not on this flight. Career definitions
+  carry `standingRecord: null` until a tier authors one.
+- Fixture replay fails closed: a short or illegal plan throws
+  `FIXTURE_REPLAY_FAILED` rather than publishing a partial card.
+- A1-NPC-SIM-01: miss discriminator now includes lift. Not a closure
+  blocker; the change was trivial and is pinned deterministic.
 
 ### If scope shifts
 

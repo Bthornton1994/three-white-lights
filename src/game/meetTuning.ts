@@ -156,6 +156,23 @@ export interface MeetDefinition {
    * gate anything (a local open). Fixture data — never invented mid-attempt.
    */
   readonly qualifyingTotalKg: number | null;
+  /**
+   * Pre-meet standing record, or null when this meet does not carry one.
+   *
+   * NOT the eventual Total of anyone currently competing. A1.1: a record
+   * threshold that can move because a fixture NPC will later total more is
+   * not a standing record. Local may author one holder who is not on this
+   * flight; career tiers may later supply their own.
+   */
+  readonly standingRecord: StandingMeetRecord | null;
+}
+
+/**
+ * A record that exists before anyone on this flight has lifted.
+ */
+export interface StandingMeetRecord {
+  readonly totalKg: number;
+  readonly holderName: string;
 }
 
 /**
@@ -166,6 +183,11 @@ export interface FieldLifterSpec {
   readonly id: string;
   readonly name: string;
   readonly bodyweightKg: number;
+  /**
+   * Competition-order identity for this flight. Lower goes first at equal
+   * declared weight. Unique across the player and every fixture NPC.
+   */
+  readonly lot: number;
   readonly dayMaxKg: Readonly<Record<LiftKind, number>>;
 }
 
@@ -179,30 +201,35 @@ export const MEET_FIELD_FIXTURE: readonly FieldLifterSpec[] = Object.freeze([
     id: 'ashford',
     name: 'M. ASHFORD',
     bodyweightKg: 93.1,
+    lot: 1,
     dayMaxKg: Object.freeze({ squat: 200, bench: 130, deadlift: 240 }),
   }),
   Object.freeze({
     id: 'quill',
     name: 'S. QUILL',
     bodyweightKg: 89.6,
+    lot: 2,
     dayMaxKg: Object.freeze({ squat: 190, bench: 125, deadlift: 230 }),
   }),
   Object.freeze({
     id: 'harrow',
     name: 'J. HARROW',
     bodyweightKg: 92.0,
+    lot: 4,
     dayMaxKg: Object.freeze({ squat: 180, bench: 120, deadlift: 220 }),
   }),
   Object.freeze({
     id: 'pembroke',
     name: 'R. PEMBROKE',
     bodyweightKg: 87.4,
+    lot: 5,
     dayMaxKg: Object.freeze({ squat: 170, bench: 110, deadlift: 205 }),
   }),
   Object.freeze({
     id: 'linn',
     name: 'T. LINN',
     bodyweightKg: 94.8,
+    lot: 6,
     dayMaxKg: Object.freeze({ squat: 155, bench: 100, deadlift: 185 }),
   }),
 ]);
@@ -239,6 +266,11 @@ export interface MeetEntry {
   readonly bodyweight: BodyweightReading;
   readonly division: string;
   readonly equipment: string;
+  /**
+   * The player's lot on this flight. Same ordering key as every NPC lot.
+   * Not inferred, not "player wins ties."
+   */
+  readonly lot: number;
 }
 
 /**
@@ -1625,6 +1657,12 @@ export const MEET_LOCAL: MeetDefinition = Object.freeze({
     632.5, 610, 597.5, 585, 572.5, 555, 540, 522.5, 505, 487.5, 470, 452.5, 430, 405, 380,
   ]),
   qualifyingTotalKg: null,
+  /**
+   * Authored before this flight exists. Holder is not a current competitor.
+   * 500 kg sits below a typical Ashford card and above a first-meet Total, so
+   * a record stake can fire without reading anyone's future result.
+   */
+  standingRecord: Object.freeze({ totalKg: 500, holderName: 'K. VAUGHN' }),
 });
 
 /**
@@ -1641,6 +1679,7 @@ export const MEET_ENTRY: KilogramMeetEntry = Object.freeze({
   bodyweight: Object.freeze({ unit: 'kg', kilograms: 92.4 }),
   division: 'Open',
   equipment: 'Raw',
+  lot: 3,
 });
 
 /**

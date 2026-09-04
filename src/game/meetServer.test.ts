@@ -47,6 +47,8 @@ import {
   replayMeetCard,
 } from './meetServer';
 import { meetAttemptReports, meetResultCard, meetResultProposal, type MeetDayContext } from './meetDay';
+import { placingForMeet } from './meetBoard';
+import { buildMeetField } from './meetField';
 import { MEET_ENTRY, MEET_FIELD_FIXTURE, MEET_LOCAL, MEET_PREVIEW, type MeetDefinition, type MeetEntry } from './meetTuning';
 import { playMeet, previewContext, previewServerRecord, previewStateFor, type RepStyle } from './meetPreview';
 import { WEIGHT_CLASSES_KG, weightClassString } from './resultCard';
@@ -383,6 +385,20 @@ describe('what a meet moves', () => {
     const received = receiveProgressionSnapshot(applied.value.wire);
     expect(received.ok, received.ok ? '' : received.error.message).toBe(true);
     expect(asProposalId(PROPOSAL_ID)).toBe(applied.value.wire.acknowledgedProposalId);
+  });
+
+  it('places with the same comparator the live board uses', () => {
+    const applied = applyClean();
+    if (!applied.ok) throw new Error(applied.error.message);
+    const field = buildMeetField(MEET_FIELD_FIXTURE, MEET_LOCAL.rules, DAY, MEET_ENTRY.lot);
+    expect(applied.value.placing).toEqual(
+      placingForMeet(
+        applied.value.meet,
+        MEET_ENTRY.bodyweight.kilograms,
+        MEET_ENTRY.lot,
+        field,
+      ),
+    );
   });
 });
 

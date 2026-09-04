@@ -189,7 +189,6 @@ import {
 } from './meetTuning';
 import {
   buildMeetField,
-  fieldTotalsKg,
   initialFieldReveal,
   onDeckName,
   revealAfterPlayer,
@@ -200,7 +199,7 @@ import {
 } from './meetField';
 import {
   buildMeetBoard,
-  placingFromFieldTotals,
+  placingForMeet,
   stakesForOption,
   type AttemptStake,
   type MeetBoard,
@@ -1239,7 +1238,7 @@ export function createMeetDay(context: MeetDayContext): MeetDayState {
     call: null,
     attempts: [],
     lastError: null,
-    field: buildMeetField(MEET_FIELD_FIXTURE, context.meet.rules, meetSeedFor(context)),
+    field: buildMeetField(MEET_FIELD_FIXTURE, context.meet.rules, meetSeedFor(context), context.entry.lot),
     reveal: initialFieldReveal(),
     ledger: [],
   };
@@ -1258,7 +1257,12 @@ function afterVerdict(state: MeetDayState): MeetDayState {
   if (meet.phase.kind === 'complete') {
     const bombed = meet.phase.outcome.kind === 'bombed-out';
     const totalKg = finalMeetTotal(meet);
-    const placing = placingFromFieldTotals(totalKg, fieldTotalsKg(state.field));
+    const placing = placingForMeet(
+      meet,
+      state.context.entry.bodyweight.kilograms,
+      state.context.entry.lot,
+      state.field,
+    );
     let ledger = appendLedger(state.ledger, { kind: 'total', kg: totalKg });
     ledger = appendLedger(ledger, {
       kind: 'placing',
@@ -1268,7 +1272,7 @@ function afterVerdict(state: MeetDayState): MeetDayState {
     if (bombed) {
       ledger = appendLedger(ledger, { kind: 'bomb-out', lift: meet.phase.outcome.bombedLift });
     } else if (totalKg !== null) {
-      if (totalKg > state.field.meetRecordTotalKg) {
+      if (state.context.meet.standingRecord !== null && totalKg > state.context.meet.standingRecord.totalKg) {
         ledger = appendLedger(ledger, { kind: 'record', kg: totalKg });
       }
       const qualifying = state.context.meet.qualifyingTotalKg;
@@ -1467,11 +1471,16 @@ export function attemptsOnLift(state: MeetDayState, lift: LiftKind): readonly Me
 
 export function boardFor(state: MeetDayState): MeetBoard {
   return buildMeetBoard(
-    state.context.entry.name,
+    {
+      name: state.context.entry.name,
+      bodyweightKg: state.context.entry.bodyweight.kilograms,
+      lot: state.context.entry.lot,
+    },
     state.meet,
     state.field,
     state.reveal,
     state.context.meet.qualifyingTotalKg,
+    state.context.meet.standingRecord,
   );
 }
 
@@ -1493,15 +1502,15 @@ export function stakesForDecision(
 export function flightOnDeckText(state: MeetDayState): string | null {
   const live = state.live;
   const weight = live?.weightKg ?? currentAttemptContext(state.meet)?.minimumWeight ?? null;
-  if (weight === null) return onDeckName(state.field, state.reveal, Number.POSITIVE_INFINITY);
-  return onDeckName(state.field, state.reveal, weight);
+  if (weight === null) return onDeckName(state.field, state.reveal, Number.POSITIVE_INFINITY, state.context.entry.name);
+  return onDeckName(state.field, state.reveal, weight, state.context.entry.name);
 }
 
 export function flightJustWentText(state: MeetDayState): string | null {
   const live = state.live;
   const weight = live?.weightKg ?? null;
   if (weight === null) return null;
-  return whoJustWent(state.field, state.reveal, weight);
+  return whoJustWent(state.field, state.reveal, weight, state.context.entry.name);
 }
 
 export interface MeetCommand {

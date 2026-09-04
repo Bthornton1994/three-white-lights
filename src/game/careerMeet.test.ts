@@ -47,6 +47,7 @@ describe('meetDefinitionFor — the CareerMeet → MeetDefinition seam', () => {
       expect(meetDefinitionFor(meet).qualifyingTotalKg).toBe(
         CAREER_TUNING.QUALIFYING_TOTAL_KG[meet.tier],
       );
+      expect(meetDefinitionFor(meet).standingRecord).toBeNull();
     }
   });
 

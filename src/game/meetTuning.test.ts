@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { LIFT_TUNING } from './liftTuning';
 import { JUDGE_COUNT, LIFT_ORDER, DEFAULT_MEET_RULES } from './meet';
-import { MEET_COPY, MEET_ENTRY, MEET_LAYOUT, MEET_LOCAL, MEET_PREVIEW, MEET_TUNING } from './meetTuning';
+import { MEET_COPY, MEET_ENTRY, MEET_FIELD_FIXTURE, MEET_LAYOUT, MEET_LOCAL, MEET_PREVIEW, MEET_TUNING } from './meetTuning';
 import {
   deliberates,
   deliberationMs,
@@ -319,6 +319,12 @@ describe('MEET_LOCAL', () => {
     expect(MEET_LOCAL.federation.length).toBeGreaterThan(0);
     expect(MEET_LOCAL.federation).not.toBe(MEET_LOCAL.name);
   });
+
+  it('authors a standing record that is not a current competitor', () => {
+    expect(MEET_LOCAL.standingRecord).not.toBeNull();
+    expect(MEET_LOCAL.standingRecord!.totalKg).toBeGreaterThan(0);
+    expect(MEET_LOCAL.standingRecord!.holderName.length).toBeGreaterThan(0);
+  });
 });
 
 describe('MEET_PREVIEW', () => {
@@ -344,6 +350,8 @@ describe('MEET_ENTRY', () => {
     expect(['male', 'female']).toContain(MEET_ENTRY.sex);
     expect(MEET_ENTRY.bodyweight.unit).toBe('kg');
     expect(MEET_ENTRY.bodyweight.kilograms).toBeGreaterThan(0);
+    expect(MEET_ENTRY.lot).toBeGreaterThan(0);
+    expect(new Set(MEET_FIELD_FIXTURE.map((spec) => spec.lot)).has(MEET_ENTRY.lot)).toBe(false);
   });
 });
 

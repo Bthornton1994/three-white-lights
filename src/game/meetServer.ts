@@ -337,9 +337,9 @@ import type {
 import { snapshotWireFor, type ServerRecord } from './sessionServer';
 import { careerLifterFor, careerMeetOutcome, type CareerMeetOutcome } from './careerServer';
 import type { MeetDefinition } from './meetTuning';
-import { MEET_FIELD_FIXTURE } from './meetTuning';
-import { buildMeetField, fieldTotalsKg } from './meetField';
-import { placingFromFieldTotals } from './meetBoard';
+import { MEET_ENTRY, MEET_FIELD_FIXTURE } from './meetTuning';
+import { buildMeetField } from './meetField';
+import { placingForMeet } from './meetBoard';
 
 // ---------------------------------------------------------------------------
 // Replaying a reported card
@@ -661,10 +661,9 @@ export interface MeetPlacing {
  * crash rather than as the honest answer, and the honest answer is that a
  * bombed lifter is absent from the board.
  *
- * Ties: a lifter equal with a ghost places AHEAD of it. Real federations break
- * a tie on bodyweight and the lighter lifter wins; the ghosts carry no
- * bodyweight, so this is the convention rather than the rule, and it is stated
- * rather than hidden.
+ * Ties: official Meet Day placing is `placingForMeet` in meetBoard.ts
+ * (Total, then lighter bodyweight, then earlier Total). This helper remains
+ * the residual GDD §6.6 ghost-list comparison. It is not the live board.
  */
 export function placingFor(totalKg: number | null, ghostTotalsKg: readonly number[]): MeetPlacing {
   const fieldSize = ghostTotalsKg.length + 1;
@@ -1074,9 +1073,8 @@ export function applyMeetResult(
       previousBestByLiftKg: heldByLift,
       liftPrs,
       placing: (() => {
-        const field = buildMeetField(MEET_FIELD_FIXTURE, meet.rules, day);
-        const ranked = placingFromFieldTotals(totalKg, fieldTotalsKg(field));
-        return { place: ranked.place, fieldSize: ranked.fieldSize };
+        const field = buildMeetField(MEET_FIELD_FIXTURE, meet.rules, day, MEET_ENTRY.lot);
+        return placingForMeet(state, bodyweight.kilograms, MEET_ENTRY.lot, field);
       })(),
       bombedLift,
       career,

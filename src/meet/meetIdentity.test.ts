@@ -97,6 +97,13 @@ function meetRenderableStrings(): readonly RenderableString[] {
     { surface: 'meet', path: 'MEET_ENTRY.division', value: MEET_ENTRY.division },
     { surface: 'meet', path: 'MEET_ENTRY.equipment', value: MEET_ENTRY.equipment },
   ];
+  if (MEET_LOCAL.standingRecord !== null) {
+    out.push({
+      surface: 'meet',
+      path: 'MEET_LOCAL.standingRecord.holderName',
+      value: MEET_LOCAL.standingRecord.holderName,
+    });
+  }
   for (const spec of MEET_FIELD_FIXTURE) {
     out.push({ surface: 'meet-flight', path: `MEET_FIELD_FIXTURE.${spec.id}.name`, value: spec.name });
   }

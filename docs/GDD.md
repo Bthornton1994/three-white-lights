@@ -2,7 +2,11 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-09-02 (A1 Authentic Meet candidate ready for
+**Last updated:** 2026-09-04 (A1.1 competition truth: placing tie-break
+on Total then bodyweight then who totaled first, lot-ordered platform,
+authored standing record. A1 still not
+closed. A0 PLAYABLE SPORT remains CLOSED at baseline runtime `39400d97`.
+No lift runtime change.) Earlier: 2026-09-02 (A1 Authentic Meet candidate ready for
 human Meet Day playtest — not closed. A0 PLAYABLE SPORT remains CLOSED
 at baseline runtime `39400d97`. Squat / bench C3 / deadlift accepted
 and frozen. Physical glass smoke is A0-DEVICE-01 release QA debt. No
@@ -2033,7 +2037,13 @@ Meet attempts are the frozen A0 squat, C3 bench, and deadlift; competition
 commands (SQUAT/RACK, START/PRESS/RACK, DOWN) are overlay only. Three-light
 judging still derives from the attempt; the majority still matches the
 mechanic. Local live placing is the fixture, not a ghost kilogram list
-(`ghostTotalsKg` remains residual helper data). Recap answers what happened
+(`ghostTotalsKg` remains residual helper data). **A1.1 (2026-09-04):** placing
+ties break as higher Total, then lighter bodyweight, then who achieved the
+Total first (competition order: declared weight, then lot). Same-weight
+attempts on the platform use that same lot order — the player occupies one
+real lot and does not win ties. Meet record is an authored pre-meet standing
+record on `MeetDefinition`, never the eventual Total of a current competitor.
+Recap answers what happened
 and why it matters. No XP, no currency. Close A1 only after a human plays
 one complete meet.
 
@@ -3523,6 +3533,15 @@ moment — narratively honest, not a generic game-over screen, and not punitive.
 ### 6.4 Scoring
 
 - Total = sum of best successful attempt per lift
+- **Placing** (A1.1): higher Total first; equal Total → lighter bodyweight
+  first; equal Total and bodyweight → the lifter who achieved the Total first
+  (earlier in competition order). Bomb-out has no Total and no place. Live
+  board and final/server placing use the same comparator.
+- **Platform order** (A1.1): declared weight ascending, then lot ascending.
+  The player is one real lot in that order.
+- **Meet record** (A1.1): a standing record that exists before this meet
+  (authored on the meet definition). Not the eventual Total of anyone currently
+  competing.
 - **DOTS** (or Wilks) for cross-weight-class leaderboard comparison. Use the
   correct published formula. Do not homebrew.
 - Result feeds Career progression (qualifying totals) and Gym Empire (reputation)
