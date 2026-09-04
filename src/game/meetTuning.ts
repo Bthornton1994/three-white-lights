@@ -242,8 +242,10 @@ export const MEET_FIELD_FIXTURE: readonly FieldLifterSpec[] = Object.freeze([
  * withholding one of its inputs cannot be checked by the people GDD §6.5 needs
  * to believe it.
  *
- * PLACEHOLDER DATA. With onboarding and a backend these arrive from the
- * lifter's profile.
+ * DETERMINISTIC FIXTURE for tests and the `?meet=` debug preview. A normal
+ * Career Meet does not read this as player authority — `kilogramMeetEntryFrom`
+ * in `lifterEntry.ts` is that seam. Lot stays meet-local and is passed in
+ * from this fixture until an event system owns assignment.
  */
 export interface MeetEntry {
   readonly name: string;
@@ -1762,6 +1764,9 @@ export const MEET_LAYOUT = Object.freeze({
   CAREER_ROW_PAD_V: 12,
   CAREER_ROW_GAP: 12,
   CAREER_FOOT_CLEARANCE: 120,
+
+  /** Extra scroll pad so the Create action stays reachable above a phone keyboard. */
+  LIFTER_KEYBOARD_CLEARANCE: 280,
 
   // THE WALKOUT'S BAR GRAPHIC USED TO BE HERE, and it is gone rather than
   // unused. `BAR_W / BAR_H / PLATE_W / PLATE_GAP / PLATE_MAX_H / PLATE_MIN_H`

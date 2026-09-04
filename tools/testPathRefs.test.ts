@@ -317,8 +317,11 @@ const PINNED = Object.freeze({
    * 312 -> 320 with A1 authentic meet: `meetField.ts`, `meetBoard.ts`,
    * `meetLedger.ts`, `MeetBoardView.tsx`, and the four tests beside them
    * (`meetField`, `meetBoard`, `meetLedger`, `meetCommand`).
+   *
+   * 320 -> 332 with A2 My Lifter: six identity modules, five tests, and
+   * `tools/_capture-a2-lifter.mjs`.
    */
-  SCANNED_FILES: 320,
+  SCANNED_FILES: 332,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -361,8 +364,11 @@ const PINNED = Object.freeze({
    *
    * 100 -> 104 with A1: `meetField.test.ts`, `meetBoard.test.ts`,
    * `meetLedger.test.ts`, `meetCommand.test.ts`.
+   *
+   * 104 -> 109 with A2: `lifterProfile.test.ts`, `lifterEntry.test.ts`,
+   * `lifterPersist.test.ts`, `lifterSurface.test.ts`, `a2LifterFreeze.test.ts`.
    */
-  TEST_FILES: 104,
+  TEST_FILES: 109,
 });
 
 /**

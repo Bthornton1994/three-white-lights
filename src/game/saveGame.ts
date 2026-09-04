@@ -38,8 +38,9 @@
  * refused as `FUTURE_VERSION` — deleting a player's future is worse than
  * asking them to update — and the caller keeps the bytes (see `appServer.ts`'s
  * quarantine) rather than overwriting them. A save from an OLDER version gets
- * a migration arm here when version 2 exists; today there is nothing older
- * than 1, so an unknown lower version is refused as `UNKNOWN_VERSION`.
+ * a migration arm here: version 1 loads as version 2 with `profile: null`,
+ * which is the "needs identity completion" state. An unknown lower version is
+ * refused as `UNKNOWN_VERSION`.
  *
  * BACKEND-LIFTABLE is a property of this shape, not a promise: the payload is
  * the boundary's own wire plus one JSON-safe state, so lifting the store to
@@ -70,6 +71,7 @@ import {
   type ProgressionSnapshotWire,
 } from './progression';
 import { snapshotWireFor, type ServerRecord } from './sessionServer';
+import { decodeLifterProfile, type LifterProfile } from './lifterProfile';
 
 /** The envelope's format tag — what says "this string is ours" before any
  *  version question is asked of it. */
@@ -77,7 +79,7 @@ export const SAVE_FORMAT = 'three-white-lights-save';
 
 /** This build's schema version. Bump it WITH a migration arm in
  *  `decodeSavedGame`, never alone. */
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2 as const;
 
 /** The envelope, as written. `wire` is the progression boundary's own shape. */
 export interface SavedGameV1 {
@@ -87,6 +89,16 @@ export interface SavedGameV1 {
   readonly savedAtIso: string;
   readonly wire: ProgressionSnapshotWire;
   readonly fatigue: FatigueState;
+}
+
+/** Version 2 adds persistent athlete identity beside the progression wire. */
+export interface SavedGameV2 {
+  readonly format: typeof SAVE_FORMAT;
+  readonly version: typeof SAVE_VERSION;
+  readonly savedAtIso: string;
+  readonly wire: ProgressionSnapshotWire;
+  readonly fatigue: FatigueState;
+  readonly profile: LifterProfile | null;
 }
 
 /**
@@ -104,7 +116,7 @@ export const SAVE_REFUSAL_CODES = [
 export type SaveRefusalCode = (typeof SAVE_REFUSAL_CODES)[number];
 
 export type SaveDecodeResult =
-  | { readonly ok: true; readonly record: ServerRecord; readonly savedAtIso: string }
+  | { readonly ok: true; readonly record: ServerRecord; readonly savedAtIso: string; readonly profile: LifterProfile | null }
   | { readonly ok: false; readonly code: SaveRefusalCode; readonly detail: string };
 
 function refused(code: SaveRefusalCode, detail: string): SaveDecodeResult {
@@ -113,13 +125,18 @@ function refused(code: SaveRefusalCode, detail: string): SaveDecodeResult {
 
 /** The record as a save string. `savedAtIso` is caller-supplied — the server
  *  owns the clock the way it owns the row. */
-export function encodeSavedGame(record: ServerRecord, savedAtIso: string): string {
-  const save: SavedGameV1 = {
+export function encodeSavedGame(
+  record: ServerRecord,
+  savedAtIso: string,
+  profile: LifterProfile | null = null,
+): string {
+  const save: SavedGameV2 = {
     format: SAVE_FORMAT,
     version: SAVE_VERSION,
     savedAtIso,
     wire: snapshotWireFor(record, null),
     fatigue: record.fatigue,
+    profile,
   };
   return JSON.stringify(save);
 }
@@ -223,10 +240,9 @@ export function decodeSavedGame(text: string): SaveDecodeResult {
       `save is schema version ${envelope.version} and this build reads up to ${SAVE_VERSION} — refusing rather than guessing at a future shape`,
     );
   }
-  if (envelope.version < SAVE_VERSION) {
-    // The migration arm's home. Version 1 is the first schema, so anything
-    // lower is not an old save, it is not one of ours.
-    return refused('UNKNOWN_VERSION', `save claims schema version ${envelope.version}, and no version below ${SAVE_VERSION} ever existed`);
+  if (envelope.version < 1) {
+    // Nothing older than version 1 ever existed.
+    return refused('UNKNOWN_VERSION', `save claims schema version ${envelope.version}, and no version below 1 ever existed`);
   }
   if (typeof envelope.savedAtIso !== 'string' || envelope.savedAtIso.length === 0) {
     return refused('NOT_A_SAVE', 'savedAtIso must be a non-empty string');
@@ -245,9 +261,19 @@ export function decodeSavedGame(text: string): SaveDecodeResult {
   const fatigue = decodeFatigue(envelope.fatigue);
   if (!fatigue.ok) return refused('BAD_FATIGUE', fatigue.detail);
 
+  const envelopeProfile = (envelope as { profile?: unknown }).profile;
+  let profile: LifterProfile | null = null;
+  if (envelope.version >= 2 && envelopeProfile !== undefined && envelopeProfile !== null) {
+    const decodedProfile = decodeLifterProfile(envelopeProfile);
+    // Corrupt identity fails closed as "needs completion". The progression
+    // wire already proved; refusing the whole save would reset Total.
+    profile = decodedProfile.ok ? decodedProfile.profile : null;
+  }
+
   return {
     ok: true,
     savedAtIso: envelope.savedAtIso,
+    profile,
     // SEALED LIKE EVERY OTHER §7.5 PRODUCER — this is a route into permanent
     // progression (the row a whole career resumes from), and the parsed wire's
     // arrays arrive from JSON.parse thawed, so the deep seal here is doing

@@ -693,6 +693,59 @@ export const CAREER_COPY = Object.freeze({
    */
   RECAP_CAREER_BEST_LABEL: 'CAREER BEST',
   RECAP_QUALIFIED_PREFIX: 'QUALIFIES FOR',
+
+  /**
+   * A2 My Lifter — GDD §2.1's "Create a lifter". Identity copy only.
+   * Progression numbers are never invented here.
+   */
+  LIFTER_CREATE_TITLE: 'CREATE YOUR LIFTER',
+  LIFTER_CREATE_LEAD:
+    'A name, a bodyweight, a sex DOTS can score, and a federation. This is who walks onto the platform.',
+  LIFTER_NAME_LABEL: 'PLATFORM NAME',
+  LIFTER_NAME_HINT: 'How the board and the card will name you.',
+  LIFTER_SEX_LABEL: 'SEX',
+  LIFTER_SEX_MALE: 'MALE',
+  LIFTER_SEX_FEMALE: 'FEMALE',
+  LIFTER_BODYWEIGHT_LABEL: 'BODYWEIGHT',
+  LIFTER_BODYWEIGHT_UNIT: 'KG',
+  LIFTER_FEDERATION_LABEL: 'FEDERATION',
+  LIFTER_CREATE_ACTION: 'CREATE LIFTER',
+  LIFTER_CREATE_PENDING: 'CONFIRMING',
+  LIFTER_CARD_TITLE: 'MY LIFTER',
+  LIFTER_CARD_LEAD: 'The facts the world currently knows.',
+  LIFTER_EDIT_NAME: 'EDIT NAME',
+  LIFTER_EDIT_BODYWEIGHT: 'EDIT BODYWEIGHT',
+  LIFTER_SAVE_EDITS: 'SAVE',
+  LIFTER_CANCEL_EDITS: 'CANCEL',
+  LIFTER_TOTAL_LABEL: 'TOTAL',
+  LIFTER_TOTAL_UNESTABLISHED: 'NOT ESTABLISHED',
+  LIFTER_E1RM_LABEL: 'E1RM',
+  LIFTER_RULESET_LABEL: 'RULESET',
+  LIFTER_FEDERATION_LOCKED:
+    'Federation is chosen once. Switching is a later ruling.',
+  LIFTER_NAME_BLANK: 'A platform name cannot be blank.',
+  LIFTER_NAME_TOO_LONG: 'That name is longer than the board and card can carry.',
+  LIFTER_NAME_INVALID: 'Use letters, spaces, periods, hyphens, or apostrophes.',
+  LIFTER_BODYWEIGHT_MALFORMED: 'Bodyweight must be a kilogram number.',
+  LIFTER_BODYWEIGHT_DOMAIN: 'That bodyweight is outside the scoring domain.',
+  LIFTER_SEX_UNKNOWN: 'Sex must be one DOTS can score.',
+  LIFTER_FEDERATION_UNKNOWN: 'That federation is not one this game holds.',
+});
+
+/**
+ * Persistent-identity constraints. Not progression. Not feel to turn for
+ * difficulty — they exist so every surface shows the same platform name.
+ */
+export const LIFTER_IDENTITY = Object.freeze({
+  /** Longest name the 390 board, weigh-in, and result card can carry whole. */
+  NAME_MAX_CHARS: 18,
+  ID_PREFIX: 'lifter-',
+  ID_HEX_LENGTH: 16,
+  ID_HASH_SEED: 5381,
+  ID_HASH_MUL: 33,
+  ID_HEX_RADIX: 16,
+  /** Meet-boundary division until a real age-class system exists. */
+  OPEN_DIVISION: 'Open',
 });
 
 // ---------------------------------------------------------------------------

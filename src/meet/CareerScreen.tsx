@@ -71,6 +71,8 @@ export interface CareerScreenProps {
    * rather than a dead one.
    */
   readonly onEnterMeet?: (meet: CareerMeet) => void;
+  /** Persistent platform name, when A2 identity exists. */
+  readonly platformName?: string | null;
 }
 
 export function CareerScreen({
@@ -78,6 +80,7 @@ export function CareerScreen({
   onPhase,
   active = true,
   onEnterMeet,
+  platformName = null,
 }: CareerScreenProps): React.ReactElement {
   const loop = useCareer(serverPort, active);
 
@@ -131,6 +134,11 @@ export function CareerScreen({
         <Text style={styles.title} testID="career-title">
           {CAREER_COPY.CALENDAR_TITLE}
         </Text>
+        {platformName === null || platformName.length === 0 ? null : (
+          <Text style={styles.lead} testID="career-lifter-name">
+            {platformName}
+          </Text>
+        )}
         <Text style={styles.lead}>{CAREER_COPY.CALENDAR_LEAD}</Text>
         {(loop.rows ?? []).map((row) => (
           <CalendarRow key={row.tier} row={row} onEnterMeet={onEnterMeet} />

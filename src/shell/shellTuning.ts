@@ -26,6 +26,7 @@
 import type { MeetDayPhaseId } from '../game/meetDay';
 import type { SessionPhase } from '../game/session';
 import type { CareerSurfacePhase } from '../meet/careerSurface';
+import type { LifterSurfacePhase } from '../meet/lifterSurface';
 
 /**
  * WHEN THE SHELL'S CHROME IS ALLOWED ON SCREEN.
@@ -82,6 +83,12 @@ export const SHELL_NAV = Object.freeze({
     'choosing',
     'calendar',
   ] as const satisfies readonly CareerSurfacePhase[]),
+
+  LIFTER_PHASES: Object.freeze([
+    'card',
+    'editing-name',
+    'editing-bodyweight',
+  ] as const satisfies readonly LifterSurfacePhase[]),
 
   /**
    * How long the pill takes to arrive.
@@ -279,6 +286,14 @@ export const SHELL_COPY = Object.freeze({
   /** Career surface -> back to the daily loop. */
   LEAVE_CAREER_LABEL: 'BACK TO TRAINING',
   LEAVE_CAREER_HINT: 'Returns to the daily session.',
+
+  /** Session surface -> My Lifter. */
+  LIFTER_NAV_LABEL: 'LIFTER',
+  LIFTER_NAV_HINT: 'Opens my lifter.',
+
+  /** My Lifter surface -> back to the daily loop. */
+  LEAVE_LIFTER_LABEL: 'BACK TO TRAINING',
+  LEAVE_LIFTER_HINT: 'Returns to the daily session.',
 
   /**
    * Empire floor copy — no federation, brand, or athlete names (§7.3 / §12.3).

@@ -73,6 +73,7 @@
 import { chromium } from 'playwright';
 import { gateDevServer } from './devServerSentinel.mjs';
 import { armFreshLifterPerBoot } from './freshLifterBoundary.mjs';
+import { completeCreateIfNeeded } from './enterMeetFromCalendar.mjs';
 import { mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -507,6 +508,7 @@ let shellNavOverTheInterrupt = 0;
 // `?meet=nonsense` does. It is both the control frame every scrim reading is
 // taken against and the proof that an unrecognised debug route is inert.
 await page.goto(`${url}?cutin=nonsense`, { waitUntil: 'load' });
+await completeCreateIfNeeded(page);
 await page.getByTestId('session-check-in').waitFor({ state: 'visible', timeout: 120000 });
 
 // SAFE TO CLEAR NOW — see the block above `mkdir`. The page loaded and the app
@@ -556,6 +558,7 @@ console.log(
 
 for (const [moment, expectedLine] of MOMENTS) {
   await page.goto(`${url}?cutin=${moment}`, { waitUntil: 'load' });
+  await completeCreateIfNeeded(page);
   let showed = true;
   try {
     await page.getByTestId('cut-in').waitFor({ state: 'visible', timeout: 120000 });
@@ -782,6 +785,7 @@ let timing = 0;
 
 // (1) IT LEAVES ON ITS OWN. §7.2's interrupt is not a modal dialog.
 await page.goto(`${url}?cutin=personal-record&live=1`, { waitUntil: 'load' });
+await completeCreateIfNeeded(page);
 let leavesOnItsOwn = null;
 try {
   await page.getByTestId('cut-in').waitFor({ state: 'visible', timeout: 120000 });
@@ -822,6 +826,7 @@ try {
 // block that reads it. "The tap did it, not the clock" was previously measured
 // against a constant the app could have stopped using.
 await page.goto(`${url}?cutin=bomb-out&live=1`, { waitUntil: 'load' });
+await completeCreateIfNeeded(page);
 let tapDismissed = null;
 try {
   await page.getByTestId('cut-in').waitFor({ state: 'visible', timeout: 120000 });

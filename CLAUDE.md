@@ -36,7 +36,7 @@ commit as the code. The doc and the code never diverge.
 Doctrine is GDD §13. Future Session A feature work must satisfy that
 doctrine. **A0 PLAYABLE SPORT is CLOSED** (baseline runtime `39400d97`).
 **A1 AUTHENTIC MEET is CLOSED** at `9c749ee4` (human ruling 2026-09-04).
-A2 My Lifter is authorized by that same ruling. The doctrine does not
+A2 My Lifter is a freeze candidate awaiting human playtest. The doctrine does not
 change Session B's ownership of GDD §5.
 
 ## Run Mode
@@ -2562,6 +2562,45 @@ A2 authority split (load-bearing):
 registered. Identity copy and layout live in the existing
 `careerTuning.ts` / `shellTuning.ts` homes. `src/empire/**`
 stays off-limits.
+
+### A2 MY LIFTER FREEZE CANDIDATE — 2026-09-04
+
+A2 is implemented and ready for human playtest. Not closed. Do not
+start A3.
+
+    A0 PLAYABLE SPORT          CLOSED at 39400d97
+    A1.1 competition truth     ACCEPTED at 9c749ee4
+    A1 AUTHENTIC MEET          CLOSED at 9c749ee4
+    A2 MY LIFTER               freeze candidate — awaiting human playtest
+    A3–A7                      not started
+    Session B                  untouched (`src/empire/**`)
+    Physical glass             A0-DEVICE-01, not a design blocker
+
+What a player does on a 390×844 Career path with no `?meet=`:
+
+- First launch with no profile is Create Your Lifter. No leave chrome.
+- Create stores a stable id, platform name, DOTS sex, tagged kg
+  bodyweight, and confirms federation once.
+- My Lifter is a persistent shell surface. Total / e1RM are read from
+  progression, never stored on the profile.
+- Career Meet entry is `kilogramMeetEntryFrom`: name/sex/bodyweight
+  from the profile, equipment from the federation ruleset, division
+  Open, lot the event-local fixture (3).
+- Reload keeps the same id. A v1 save loads progression with
+  profile null (needs completion). A corrupt profile fails closed
+  the same way and does not destroy Total.
+
+Residuals, recorded rather than papered over:
+
+- Federation is not switchable after Create.
+- Division is Open at the meet boundary.
+- Lot stays 3 until an event system owns it. `meetServer.ts` still
+  keys field occupancy to `MEET_ENTRY.lot`; AppShell passes the
+  same number so they agree.
+- Equipped is a presentation label from the ruleset, not a lift
+  change.
+- ON DECK / YOUR OPENER chrome overlap is A1 residue.
+- A3–A7 not started. Physical glass remains A0-DEVICE-01.
 
 ### If scope shifts
 

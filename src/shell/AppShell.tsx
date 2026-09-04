@@ -101,12 +101,13 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { CareerScreen } from '../meet/CareerScreen';
+import { LifterScreen } from '../meet/LifterScreen';
 import { EmpireScreen } from './EmpireScreen';
 import { LIFT_PALETTE } from '../lift/liftPalette';
 import { LiftScreen } from '../lift/LiftScreen';
 import { MeetScreen } from '../meet/MeetScreen';
 import { SessionScreen } from '../session/SessionScreen';
-import { appCareerPort, appMeetPort, appSessionPort } from './appServer';
+import { appCareerPort, appLifterPort, appMeetPort, appSessionPort } from './appServer';
 import {
   frozenMeetFor,
   frozenSessionFor,
@@ -116,14 +117,17 @@ import {
   shellAffordanceFor,
   shellCareerAffordanceFor,
   shellEmpireAffordanceFor,
+  shellLifterAffordanceFor,
   type ShellIntent,
 } from './shellRoute';
-import { MEET_LOCAL, type MeetDefinition } from '../game/meetTuning';
+import { MEET_ENTRY, MEET_LOCAL, type KilogramMeetEntry, type MeetDefinition } from '../game/meetTuning';
 import type { CareerMeet } from '../career/calendar';
 import { CAREER_COPY } from '../career/careerTuning';
 import { meetDefinitionFor } from '../game/careerMeet';
+import { kilogramMeetEntryFrom } from '../game/lifterEntry';
 import { SHELL_COPY, SHELL_LAYOUT, SHELL_NAV, type EmpirePhase } from './shellTuning';
 import type { CareerSurfacePhase } from '../meet/careerSurface';
+import type { LifterSurfacePhase } from '../meet/lifterSurface';
 import type { MeetDayPhaseId } from '../game/meetDay';
 import type { SessionPhase } from '../game/session';
 
@@ -160,6 +164,14 @@ const INTENT_COPY: Readonly<Record<ShellIntent, { readonly label: string; readon
     'leave-career': Object.freeze({
       label: SHELL_COPY.LEAVE_CAREER_LABEL,
       hint: SHELL_COPY.LEAVE_CAREER_HINT,
+    }),
+    'open-lifter': Object.freeze({
+      label: SHELL_COPY.LIFTER_NAV_LABEL,
+      hint: SHELL_COPY.LIFTER_NAV_HINT,
+    }),
+    'leave-lifter': Object.freeze({
+      label: SHELL_COPY.LEAVE_LIFTER_LABEL,
+      hint: SHELL_COPY.LEAVE_LIFTER_HINT,
     }),
   });
 
@@ -238,7 +250,13 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   // The launch URL, resolved once. Building a meet preview plays a whole
   // scripted meet, so this must not run per render.
   const entry = useMemo(() => resolveEntry(search), [search]);
-  const [route, setRoute] = useState(entry.route);
+  const [route, setRoute] = useState(() => {
+    if (entry.route.source === 'debug') return entry.route;
+    if (appLifterPort().openingProfile() === null) {
+      return { surface: 'lifter' as const, source: 'player' as const };
+    }
+    return entry.route;
+  });
 
   // What beat the surface underneath is on. The screens report it; the shell
   // does not derive it, because deriving session or meet state in a `.tsx` is
@@ -247,6 +265,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   const [meetPhase, setMeetPhase] = useState<MeetDayPhaseId | null>(null);
   const [empirePhase, setEmpirePhase] = useState<EmpirePhase | null>(null);
   const [careerPhase, setCareerPhase] = useState<CareerSurfacePhase | null>(null);
+  const [lifterPhase, setLifterPhase] = useState<LifterSurfacePhase | null>(null);
 
   // WHETHER A GDD §7.2 CUT-IN IS UP, reported by whichever `CutInHost` is
   // mounted. The shell draws NO chrome while one is — see `shellAffordanceFor`
@@ -283,6 +302,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   // resolves to 'career', so the initializer is the same expression as
   // Empire's and today starts false on every launch.
   const [careerOpened, setCareerOpened] = useState(route.surface === 'career');
+  const [lifterOpened, setLifterOpened] = useState(route.surface === 'lifter');
 
   // WHICH MEET THE PLAYER ENTERED, adapted the moment the row was pressed
   // (Sprint 1c). Route state carries WHERE, this carries WHAT: `navigate` is a
@@ -292,6 +312,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   // surface), cleared by `leaveMeet`, so a finished meet's definition can
   // never leak into a later entry.
   const [enteredMeet, setEnteredMeet] = useState<MeetDefinition | null>(null);
+  const [enteredEntry, setEnteredEntry] = useState<KilogramMeetEntry | null>(null);
 
   // THE DESTINATION'S BEAT IS FORGOTTEN ON THE WAY IN, and that is not tidying.
   // The screen being routed to reports its beat in an effect, which lands a
@@ -311,13 +332,17 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   // `forgetsBeatOnArrival` in `shellRoute.ts` states that rule and
   // `shellWiring.test.ts` pins it against this file in both directions.
   const enterMeet = useCallback((meet: CareerMeet) => {
+    const profile = appLifterPort().openingProfile();
+    if (profile === null) return;
     setEnteredMeet(meetDefinitionFor(meet));
+    setEnteredEntry(kilogramMeetEntryFrom(profile, meet.federationId, MEET_ENTRY.lot));
     setMeetPhase(null);
     setMeetCutIn(false);
     setRoute((current) => navigate(current, 'enter-meet'));
   }, []);
   const leaveMeet = useCallback(() => {
     setEnteredMeet(null);
+    setEnteredEntry(null);
     setSessionPhase(null);
     setSessionCutIn(false);
     setRoute((current) => navigate(current, 'leave-meet'));
@@ -342,6 +367,14 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   const leaveCareer = useCallback(() => {
     setRoute((current) => navigate(current, 'leave-career'));
   }, []);
+  const openLifter = useCallback(() => {
+    setLifterPhase(null);
+    setLifterOpened(true);
+    setRoute((current) => navigate(current, 'open-lifter'));
+  }, []);
+  const leaveLifter = useCallback(() => {
+    setRoute((current) => navigate(current, 'leave-lifter'));
+  }, []);
 
   const surfacePhase =
     route.surface === 'meet'
@@ -352,7 +385,9 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
           ? empirePhase
           : route.surface === 'career'
             ? careerPhase
-            : null;
+            : route.surface === 'lifter'
+              ? lifterPhase
+              : null;
   // The flag belonging to the surface on screen. Empire mounts no host, so a
   // cut-in is never live there and the gate is told so rather than being handed
   // whatever the hidden session last said.
@@ -362,6 +397,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   const affordance = shellAffordanceFor(route, surfacePhase, cutIn);
   const empireAffordance = shellEmpireAffordanceFor(route, surfacePhase, cutIn);
   const careerAffordance = shellCareerAffordanceFor(route, surfacePhase, cutIn);
+  const lifterAffordance = shellLifterAffordanceFor(route, surfacePhase, cutIn);
   const meetFrame = frozenMeetFor(entry, route);
 
   const pressFor = (intent: ShellIntent): (() => void) => {
@@ -383,6 +419,10 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
         return openCareer;
       case 'leave-career':
         return leaveCareer;
+      case 'open-lifter':
+        return openLifter;
+      case 'leave-lifter':
+        return leaveLifter;
     }
   };
 
@@ -397,6 +437,8 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
     route.surface === 'empire' || (isPersistentSurface('empire') && empireOpened);
   const careerMounted =
     route.surface === 'career' || (isPersistentSurface('career') && careerOpened);
+  const lifterMounted =
+    route.surface === 'lifter' || (isPersistentSurface('lifter') && lifterOpened);
 
   return (
     <View style={styles.root} testID="app-shell">
@@ -425,6 +467,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
           // frame's fixture (`meetFrame` implies `source === 'debug'`), the
           // same scripted world its preview state already lives in.
           meet={enteredMeet ?? MEET_LOCAL}
+          entry={enteredEntry ?? undefined}
           preview={meetFrame?.state}
           showCard={meetFrame?.card ?? false}
           holdWalkoutAtMs={meetFrame?.holdWalkoutAtMs ?? null}
@@ -462,11 +505,25 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
             onPhase={setCareerPhase}
             active={route.surface === 'career'}
             onEnterMeet={enterMeet}
+            platformName={appLifterPort().openingProfile()?.name ?? null}
           />
         </View>
       )}
 
-      {affordance === null && empireAffordance === null && careerAffordance === null ? null : (
+      {!lifterMounted ? null : (
+        <View style={route.surface === 'lifter' ? styles.surface : styles.hiddenSurface}>
+          <LifterScreen
+            serverPort={appLifterPort()}
+            onPhase={setLifterPhase}
+            active={route.surface === 'lifter'}
+          />
+        </View>
+      )}
+
+      {affordance === null &&
+      empireAffordance === null &&
+      careerAffordance === null &&
+      lifterAffordance === null ? null : (
         <View style={styles.navSlot} pointerEvents="box-none">
           {affordance === null ? null : (
             <ShellNav key={affordance} intent={affordance} onPress={pressFor(affordance)} />
@@ -483,6 +540,13 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
               key={careerAffordance}
               intent={careerAffordance}
               onPress={pressFor(careerAffordance)}
+            />
+          )}
+          {lifterAffordance === null ? null : (
+            <ShellNav
+              key={lifterAffordance}
+              intent={lifterAffordance}
+              onPress={pressFor(lifterAffordance)}
             />
           )}
         </View>
@@ -530,6 +594,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: L.NAV_GAP,
   },
   nav: {

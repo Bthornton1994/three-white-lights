@@ -46,7 +46,7 @@ export function MeetBoardView({
               {row.place === null ? '—' : String(row.place)}
             </Text>
             <Text style={[styles.name, row.isPlayer ? styles.youText : null]} numberOfLines={1}>
-              {row.isPlayer ? MEET_COPY.BOARD_YOU : row.name}
+              {row.name}
             </Text>
             <Text style={[styles.total, row.isPlayer ? styles.youText : null]}>
               {formatWeight(row.onTheBoardKg)}

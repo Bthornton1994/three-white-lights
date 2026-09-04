@@ -83,6 +83,15 @@ import {
   type ServerRecord,
 } from '../game/sessionServer';
 import { SESSION_BOUNDARY } from '../game/sessionTuning';
+import type { CareerFederationId } from '../career/careerTuning';
+import { CAREER_FEDERATION_IDS } from '../career/federation';
+import type { LifterServerPort, LifterServerResponse } from '../game/lifterClient';
+import {
+  createLifterProfile,
+  editLifterBodyweight,
+  editLifterName,
+  type LifterProfile,
+} from '../game/lifterProfile';
 
 /**
  * The app's one connection, as a type.
@@ -91,7 +100,7 @@ import { SESSION_BOUNDARY } from '../game/sessionTuning';
  * a method the others' implementation does not have to provide. `appServer.ts`
  * hands the same object out under all three halves.
  */
-export type LocalAppServerPort = SessionServerPort & MeetServerPort & CareerServerPort;
+export type LocalAppServerPort = SessionServerPort & MeetServerPort & CareerServerPort & LifterServerPort;
 
 /**
  * How the stand-in waits.
@@ -138,6 +147,14 @@ export interface LocalSessionServerOptions {
   /** The save's clock, for `savedAtIso`. The server owns the clock the way it
    *  owns the row; injected so tests are deterministic. */
   readonly nowIso?: () => string;
+  /**
+   * Persistent identity beside the row. An explicit record wins the row;
+   * this wins the profile when a test hands one in. Omitted, the store's
+   * save is the source, then null.
+   */
+  readonly profile?: LifterProfile | null;
+  /** Entropy for minting a lifter id. Injected so tests are deterministic. */
+  readonly entropy?: () => string;
 }
 
 /**
@@ -161,28 +178,45 @@ export function localSessionServer(options: LocalSessionServerOptions = {}): Loc
    * save is QUARANTINED FIRST — before any mutation can `save()` over it —
    * and the refusal is loud, because a silently discarded save is the exact
    * loss this sprint is named against.
+   *
+   * Profile is a sibling of the row. A v1 save, or a v2 save whose identity
+   * payload was corrupt, opens with `profile: null` and keeps the progression
+   * wire. That is "needs identity completion", not a reset.
    */
-  const openingRecord = (): ServerRecord => {
-    const fresh = () => newServerRecord(options.freshSignupDay ?? SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY);
-    if (options.record !== undefined) return options.record;
-    if (store === null) return fresh();
+  const fresh = () => newServerRecord(options.freshSignupDay ?? SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY);
+  let record: ServerRecord;
+  let profile: LifterProfile | null;
+  if (options.record !== undefined) {
+    record = options.record;
+    profile = options.profile === undefined ? null : options.profile;
+  } else if (store === null) {
+    record = fresh();
+    profile = null;
+  } else {
     const text = store.load();
-    if (text === null) return fresh();
-    const decoded = decodeSavedGame(text);
-    if (!decoded.ok) {
-      store.quarantine?.(text, decoded.code);
-      console.warn(
-        `localSessionServer: the stored save was refused (${decoded.code}: ${decoded.detail}); ` +
-          `starting a fresh lifter — the refused bytes are ${store.quarantine ? 'quarantined' : 'NOT preserved (this store cannot quarantine)'}`,
-      );
-      return fresh();
+    if (text === null) {
+      record = fresh();
+      profile = null;
+    } else {
+      const decoded = decodeSavedGame(text);
+      if (!decoded.ok) {
+        store.quarantine?.(text, decoded.code);
+        console.warn(
+          `localSessionServer: the stored save was refused (${decoded.code}: ${decoded.detail}); ` +
+            `starting a fresh lifter — the refused bytes are ${store.quarantine ? 'quarantined' : 'NOT preserved (this store cannot quarantine)'}`,
+        );
+        record = fresh();
+        profile = null;
+      } else {
+        record = decoded.record;
+        profile = decoded.profile;
+      }
     }
-    return decoded.record;
-  };
+  }
 
-  let record: ServerRecord = openingRecord();
   const latencyMs = options.latencyMs ?? SESSION_BOUNDARY.LOCAL_SERVER_LATENCY_MS;
   const sleep = options.sleep ?? realSleep;
+  const entropy = options.entropy ?? (() => `${nowIso()}`);
 
   /**
    * ONE persist, called after every site that reassigns `record` — three
@@ -194,7 +228,7 @@ export function localSessionServer(options: LocalSessionServerOptions = {}): Loc
   const persist = (): void => {
     if (store === null) return;
     try {
-      store.save(encodeSavedGame(record, nowIso()));
+      store.save(encodeSavedGame(record, nowIso(), profile));
     } catch (error) {
       console.warn(`localSessionServer: persisting the row failed — ${String(error)}`);
     }
@@ -317,6 +351,72 @@ export function localSessionServer(options: LocalSessionServerOptions = {}): Loc
       record = applied.value.record;
       persist();
       return { kind: 'chosen', wire: applied.value.wire };
+    },
+
+    openingProfile(): LifterProfile | null {
+      return profile;
+    },
+
+    async createProfile(draft, federationId: CareerFederationId): Promise<LifterServerResponse> {
+      await sleep(latencyMs);
+      if (!(CAREER_FEDERATION_IDS as readonly string[]).includes(federationId)) {
+        return {
+          kind: 'refused',
+          code: 'FEDERATION_UNKNOWN',
+          detail: `no federation has the id ${JSON.stringify(federationId)}`,
+        };
+      }
+      if (profile !== null) {
+        return { kind: 'saved', profile };
+      }
+      const created = createLifterProfile(draft, entropy());
+      if (!created.ok) {
+        return { kind: 'refused', code: created.code, detail: created.detail };
+      }
+      if (!record.federation.chosen) {
+        const applied = applyFederationChoice(
+          record,
+          { kind: 'choose-federation', report: { federationId } },
+          `lifter-create-${created.profile.id}`,
+        );
+        if (applied.ok) {
+          record = applied.value.record;
+        } else if (applied.error.code === 'UNKNOWN_FEDERATION') {
+          return { kind: 'refused', code: 'FEDERATION_UNKNOWN', detail: applied.error.message };
+        }
+        // already chosen or locked by results: attach identity, keep federation
+      }
+      profile = created.profile;
+      persist();
+      return { kind: 'saved', profile };
+    },
+
+    async editProfileName(name: string): Promise<LifterServerResponse> {
+      await sleep(latencyMs);
+      if (profile === null) {
+        return { kind: 'refused', code: 'PROFILE_CORRUPT', detail: 'no profile to edit' };
+      }
+      const edited = editLifterName(profile, { name });
+      if (!edited.ok) {
+        return { kind: 'refused', code: edited.code, detail: edited.detail };
+      }
+      profile = edited.profile;
+      persist();
+      return { kind: 'saved', profile };
+    },
+
+    async editProfileBodyweight(bodyweightKgText: string): Promise<LifterServerResponse> {
+      await sleep(latencyMs);
+      if (profile === null) {
+        return { kind: 'refused', code: 'PROFILE_CORRUPT', detail: 'no profile to edit' };
+      }
+      const edited = editLifterBodyweight(profile, { bodyweightKgText });
+      if (!edited.ok) {
+        return { kind: 'refused', code: edited.code, detail: edited.detail };
+      }
+      profile = edited.profile;
+      persist();
+      return { kind: 'saved', profile };
     },
   };
 }

@@ -67,6 +67,7 @@ import type { SessionPreviewFrame } from '../session/useSession';
 import { SHELL_NAV } from './shellTuning';
 import type { EmpirePhase } from './shellTuning';
 import type { CareerSurfacePhase } from '../meet/careerSurface';
+import type { LifterSurfacePhase } from '../meet/lifterSurface';
 
 // ---------------------------------------------------------------------------
 // Surfaces
@@ -87,7 +88,7 @@ import type { CareerSurfacePhase } from '../meet/careerSurface';
  * is `choose-federation`, and it has no debug query string — the only way
  * onto it is the player's own.
  */
-export type ShellSurface = 'session' | 'meet' | 'replay' | 'empire' | 'career';
+export type ShellSurface = 'session' | 'meet' | 'replay' | 'empire' | 'career' | 'lifter';
 
 export const SHELL_SURFACES = Object.freeze([
   'session',
@@ -95,6 +96,7 @@ export const SHELL_SURFACES = Object.freeze([
   'replay',
   'empire',
   'career',
+  'lifter',
 ] as const satisfies readonly ShellSurface[]);
 
 /**
@@ -152,6 +154,7 @@ export const PERSISTENT_SURFACES = Object.freeze([
   'session',
   'empire',
   'career',
+  'lifter',
 ] as const satisfies readonly ShellSurface[]);
 
 /** Does the shell keep this surface mounted while another one is on screen? */
@@ -233,7 +236,9 @@ export type ShellIntent =
   | 'open-empire'
   | 'leave-empire'
   | 'open-career'
-  | 'leave-career';
+  | 'leave-career'
+  | 'open-lifter'
+  | 'leave-lifter';
 
 export const SHELL_INTENTS = Object.freeze([
   'enter-meet',
@@ -242,6 +247,8 @@ export const SHELL_INTENTS = Object.freeze([
   'leave-empire',
   'open-career',
   'leave-career',
+  'open-lifter',
+  'leave-lifter',
 ] as const satisfies readonly ShellIntent[]);
 
 /**
@@ -279,6 +286,12 @@ export function navigate(route: ShellRoute, intent: ShellIntent): ShellRoute {
     return { surface: 'career', source: 'player' };
   }
   if (intent === 'leave-career' && route.surface === 'career') {
+    return { surface: 'session', source: 'player' };
+  }
+  if (intent === 'open-lifter' && route.surface === 'session') {
+    return { surface: 'lifter', source: 'player' };
+  }
+  if (intent === 'leave-lifter' && route.surface === 'lifter') {
     return { surface: 'session', source: 'player' };
   }
   return route;
@@ -379,7 +392,7 @@ export type CutInPresence = 'live' | 'none';
  */
 export function shellAffordanceFor(
   route: ShellRoute,
-  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | CareerSurfacePhase | null,
+  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | CareerSurfacePhase | LifterSurfacePhase | null,
   cutIn: CutInPresence = 'none',
 ): ShellIntent | null {
   if (cutIn === 'live') return null;
@@ -404,7 +417,7 @@ export function shellAffordanceFor(
  */
 export function shellEmpireAffordanceFor(
   route: ShellRoute,
-  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | CareerSurfacePhase | null,
+  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | CareerSurfacePhase | LifterSurfacePhase | null,
   cutIn: CutInPresence = 'none',
 ): ShellIntent | null {
   if (cutIn === 'live') return null;
@@ -429,7 +442,7 @@ export function shellEmpireAffordanceFor(
  */
 export function shellCareerAffordanceFor(
   route: ShellRoute,
-  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | CareerSurfacePhase | null,
+  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | CareerSurfacePhase | LifterSurfacePhase | null,
   cutIn: CutInPresence = 'none',
 ): ShellIntent | null {
   if (cutIn === 'live') return null;
@@ -439,6 +452,27 @@ export function shellCareerAffordanceFor(
   }
   if (route.surface === 'career') {
     return (SHELL_NAV.CAREER_PHASES as readonly string[]).includes(phase) ? 'leave-career' : null;
+  }
+  return null;
+}
+
+/**
+ * The My Lifter affordance. Creating has no leave chrome — identity is
+ * required before the rest of the app. The card (and its edit beats) carry
+ * the way back.
+ */
+export function shellLifterAffordanceFor(
+  route: ShellRoute,
+  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | CareerSurfacePhase | LifterSurfacePhase | null,
+  cutIn: CutInPresence = 'none',
+): ShellIntent | null {
+  if (cutIn === 'live') return null;
+  if (phase === null) return null;
+  if (route.surface === 'session') {
+    return (SHELL_NAV.SESSION_PHASES as readonly string[]).includes(phase) ? 'open-lifter' : null;
+  }
+  if (route.surface === 'lifter') {
+    return (SHELL_NAV.LIFTER_PHASES as readonly string[]).includes(phase) ? 'leave-lifter' : null;
   }
   return null;
 }

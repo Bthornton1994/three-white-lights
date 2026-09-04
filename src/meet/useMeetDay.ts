@@ -77,7 +77,7 @@ import {
 import { openingCache, receiveSnapshot } from '../game/sessionClient';
 import { streakDayFromLocalWallClock, type LocalWallClock } from '../game/streak';
 import { SESSION_TUNING } from '../game/sessionTuning';
-import { MEET_ENTRY, type MeetDefinition } from '../game/meetTuning';
+import { MEET_ENTRY, type KilogramMeetEntry, type MeetDefinition } from '../game/meetTuning';
 
 /**
  * The stakes of an attempt that does not exist.
@@ -155,13 +155,19 @@ export interface MeetDayLoop {
  * server round trip still runs when frozen, so a preview of the recap has a real
  * total on it — against the preview's OWN port, which `meetPreview.ts` builds
  * and `shellRoute.ts` only ever attaches to a scripted frame.
+ *
+ * @param entry the athlete who walks onto this platform. Career Meet supplies
+ * the profile-derived seam. Omitted, `MEET_ENTRY` remains the explicit
+ * fixture for tests and debug preview.
  */
 export function useMeetDay(
   serverPort: MeetServerPort,
   meet: MeetDefinition,
   initial?: MeetDayState,
   frozen: boolean = false,
+  entry: KilogramMeetEntry | undefined = MEET_ENTRY,
 ): MeetDayLoop {
+  const athlete = entry ?? MEET_ENTRY;
   const [cache, setCache] = useState<ProgressionCache>(() => openingCache(serverPort));
 
   /**
@@ -179,7 +185,7 @@ export function useMeetDay(
     const context: MeetDayContext = {
       day: facts.day,
       meet,
-      entry: MEET_ENTRY,
+      entry: athlete,
       bestE1rmKg: facts.bestE1rmKg,
       previousBestTotalKg: facts.previousBestTotalKg,
       previousBestByLiftKg: facts.previousBestByLiftKg,
@@ -188,7 +194,7 @@ export function useMeetDay(
       fatigue: serverPort.meetBrief(day).fatigue,
     };
     return createMeetDay(context);
-  }, [serverPort, meet]);
+  }, [serverPort, meet, athlete]);
 
   const [state, setState] = useState<MeetDayState>(() => initial ?? buildMeet());
   const [applied, setApplied] = useState<RecordedMeet | null>(null);

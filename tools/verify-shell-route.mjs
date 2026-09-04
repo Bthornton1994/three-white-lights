@@ -184,7 +184,7 @@
 import { chromium } from 'playwright';
 import { gateDevServer } from './devServerSentinel.mjs';
 import { clearSavedLifter } from './freshLifterBoundary.mjs';
-import { enterMeetFromCalendar } from './enterMeetFromCalendar.mjs';
+import { enterMeetFromCalendar, completeCreateIfNeeded } from './enterMeetFromCalendar.mjs';
 import { decodePng, diffPixels } from './png.mjs';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -1986,6 +1986,10 @@ async function open(search, waitFor, settle = settleMs) {
   APP_RUNS.serial += 1;
   await clearSavedLifter(page);
   await page.goto(`${url}${search}`, { waitUntil: 'load' });
+  // A2: a non-debug launch with no profile is Create Your Lifter. Debug
+  // routes skip it; `?cutin=` is not a debug route and would hang on Create
+  // unless this completes identity first.
+  await completeCreateIfNeeded(page);
   if (waitFor !== undefined) {
     await page.getByTestId(waitFor).waitFor({ state: 'visible', timeout: 120000 });
   }

@@ -71,7 +71,7 @@ import type { MeetServerPort } from '../game/meetClient';
 import { VerdictView } from './VerdictView';
 import { WalkoutView } from './WalkoutView';
 import { WeighInView } from './WeighInView';
-import { MEET_LAYOUT, type MeetDefinition } from '../game/meetTuning';
+import { MEET_LAYOUT, type KilogramMeetEntry, type MeetDefinition } from '../game/meetTuning';
 
 const L = MEET_LAYOUT;
 
@@ -108,6 +108,11 @@ export interface MeetScreenProps {
    * (`careerMeet.ts`'s adapter); the capture path hands its own fixture.
    */
   readonly meet: MeetDefinition;
+  /**
+   * Who walks onto this platform. Career Meet supplies the profile-derived
+   * entry. Omitted, the hook uses the `MEET_ENTRY` fixture (tests and debug).
+   */
+  readonly entry?: KilogramMeetEntry | undefined;
   /**
    * DEBUG ONLY. Freezes the loop on one scripted beat instead of running a
    * played meet (see `meetPreview.ts`). Nothing in the played app passes this;
@@ -170,6 +175,7 @@ export interface MeetScreenProps {
 export function MeetScreen({
   serverPort,
   meet,
+  entry: enteredEntry,
   preview,
   showCard = false,
   holdWalkoutAtMs = null,
@@ -178,7 +184,7 @@ export function MeetScreen({
   onCutIn,
   cutInSearch,
 }: MeetScreenProps): React.ReactElement {
-  const loop = useMeetDay(serverPort, meet, preview, preview !== undefined);
+  const loop = useMeetDay(serverPort, meet, preview, preview !== undefined, enteredEntry);
   const { dispatch, restart } = loop;
   const state = preview ?? loop.state;
   const [cardOpen, setCardOpen] = useState(showCard);

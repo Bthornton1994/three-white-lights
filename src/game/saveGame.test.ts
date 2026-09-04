@@ -131,6 +131,7 @@ describe('the save round-trips every record the server can hold', () => {
       if (!decoded.ok) continue;
       expect(decoded.record, name).toEqual(record);
       expect(decoded.savedAtIso).toBe(SAVED_AT);
+      expect(decoded.profile, name).toBeNull();
     }
   });
 
@@ -140,7 +141,8 @@ describe('the save round-trips every record the server can hold', () => {
     expect(parsed.format).toBe(SAVE_FORMAT);
     expect(parsed.version).toBe(SAVE_VERSION);
     expect(parsed.savedAtIso).toBe(SAVED_AT);
-    expect(Object.keys(parsed).sort()).toEqual(['fatigue', 'format', 'savedAtIso', 'version', 'wire']);
+    expect(Object.keys(parsed).sort()).toEqual(['fatigue', 'format', 'profile', 'savedAtIso', 'version', 'wire']);
+    expect(parsed.profile).toBeNull();
   });
 });
 
@@ -240,18 +242,34 @@ describe('schema stability', () => {
     '"meets":[],"wallet":{"gymBucks":0,"chalk":0},"federation":{"id":"meridian","chosen":false},' +
     '"acknowledgedProposalId":null},"fatigue":{"sessions":[],"injury":null}}';
 
-  it('A GOLDEN SAVE FROM THIS SCHEMA VERSION STAYS READABLE — red here means bump the version and write a migration, never edit the fixture', () => {
+  const GOLDEN_V2 =
+    '{"format":"three-white-lights-save","version":2,"savedAtIso":"2026-08-19T00:00:00.000Z",' +
+    '"wire":{"revision":0,"totalKg":null,"bestE1rmKg":{"squat":180,"bench":120,"deadlift":220},' +
+    '"streak":{"signupDay":20000,"currentStreak":0,"longestStreak":0,"lastTrainedDay":null,' +
+    '"entitlement":{"windowIndex":0,"coveredDaysLeft":2,"purchasedDaysLeft":0},' +
+    '"armedEntitlement":{"windowIndex":0,"coveredDaysLeft":2,"purchasedDaysLeft":0},' +
+    '"entitlementArmed":true,"recoveryDayProtectionEnabled":true,"hasBankedFirstRecoveryDaySave":false},' +
+    '"meets":[],"wallet":{"gymBucks":0,"chalk":0},"federation":{"id":"meridian","chosen":false},' +
+    '"acknowledgedProposalId":null},"fatigue":{"sessions":[],"injury":null},"profile":null}';
+
+  it('A GOLDEN SAVE FROM VERSION 1 STAYS READABLE — identity is missing, progression is intact', () => {
     const decoded = decodeSavedGame(GOLDEN_V1);
     expect(decoded.ok, decoded.ok ? '' : decoded.detail).toBe(true);
     if (decoded.ok) {
       expect(decoded.record).toEqual(newServerRecord(SIGNUP_DAY));
       expect(decoded.savedAtIso).toBe('2026-08-19T00:00:00.000Z');
+      expect(decoded.profile).toBeNull();
     }
-    // CONTROL: the literal is a fixture of the CURRENT encoder too — today the
-    // two agree byte for byte, and the day the encoder moves, THIS line is the
-    // one that reddens first and names the choice: same schema (fix the
-    // encoder) or new schema (bump the version, keep this fixture decoding).
-    expect(encodeSavedGame(newServerRecord(SIGNUP_DAY), '2026-08-19T00:00:00.000Z')).toBe(GOLDEN_V1);
+  });
+
+  it('the current encoder writes version 2 with a profile sibling, and that golden stays readable', () => {
+    expect(encodeSavedGame(newServerRecord(SIGNUP_DAY), '2026-08-19T00:00:00.000Z')).toBe(GOLDEN_V2);
+    const decoded = decodeSavedGame(GOLDEN_V2);
+    expect(decoded.ok, decoded.ok ? '' : decoded.detail).toBe(true);
+    if (decoded.ok) {
+      expect(decoded.record).toEqual(newServerRecord(SIGNUP_DAY));
+      expect(decoded.profile).toBeNull();
+    }
   });
 });
 

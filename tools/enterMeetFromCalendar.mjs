@@ -42,6 +42,69 @@ export const CALENDAR_ENTRY = Object.freeze({
   ENTER_LOCAL: 'career-enter-local',
 });
 
+/** A2 Create Your Lifter — first-run identity, written out by hand. */
+export const CREATE_LIFTER = Object.freeze({
+  SCREEN: 'lifter-create',
+  CARD: 'lifter-card',
+  NAME: 'lifter-name-input',
+  SEX_MALE: 'lifter-sex-male',
+  SEX_FEMALE: 'lifter-sex-female',
+  BODYWEIGHT: 'lifter-bodyweight-input',
+  FED: 'lifter-fed-meridian',
+  ACTION: 'lifter-create-action',
+  LEAVE: 'shell-leave-lifter',
+  /** Playwright Career path. Never `A. LIFTER`. */
+  NAME_VALUE: 'R. VELLUM',
+  BODYWEIGHT_VALUE: '83.5',
+});
+
+/**
+ * Complete Create Your Lifter when it is the surface on screen.
+ *
+ * First-run with no profile forces the creating beat, which has no leave
+ * chrome. Career Playwright tools that used to boot onto the session now
+ * hang there unless this runs first. Debug query strings skip Create
+ * (`source === 'debug'`); `?cutin=` is not one of them.
+ *
+ * @returns `{ created: true }` after the card is up and BACK TO TRAINING
+ *   has been pressed, `{ created: false, why: null }` when Create was not
+ *   showing, or `{ created: false, why }` naming the step that refused.
+ */
+export async function completeCreateIfNeeded(page, options = {}) {
+  const stepMs = options.stepMs ?? 40000;
+  const name = options.name ?? CREATE_LIFTER.NAME_VALUE;
+  const bodyweight = options.bodyweight ?? CREATE_LIFTER.BODYWEIGHT_VALUE;
+  const sexTestId = options.sexTestId ?? CREATE_LIFTER.SEX_MALE;
+  const fedTestId = options.fedTestId ?? CREATE_LIFTER.FED;
+  const leaveAfter = options.leaveAfter !== false;
+
+  const createUp = await page
+    .getByTestId(CREATE_LIFTER.SCREEN)
+    .isVisible()
+    .catch(() => false);
+  if (!createUp) return { created: false, why: null };
+
+  try {
+    await page.getByTestId(CREATE_LIFTER.NAME).fill(name);
+    await page.getByTestId(sexTestId).click({ timeout: stepMs });
+    await page.getByTestId(CREATE_LIFTER.BODYWEIGHT).fill(String(bodyweight));
+    await page.getByTestId(fedTestId).click({ timeout: stepMs });
+    await page.getByTestId(CREATE_LIFTER.ACTION).click({ timeout: stepMs });
+    await page.getByTestId(CREATE_LIFTER.CARD).waitFor({ state: 'visible', timeout: stepMs });
+  } catch {
+    return { created: false, why: 'Create Your Lifter was up but the form refused the press' };
+  }
+  if (!leaveAfter) return { created: true, why: null };
+  try {
+    const leave = page.getByTestId(CREATE_LIFTER.LEAVE);
+    await leave.waitFor({ state: 'visible', timeout: stepMs });
+    await leave.click({ timeout: stepMs });
+  } catch {
+    return { created: false, why: 'the card drew but BACK TO TRAINING never became pressable' };
+  }
+  return { created: true, why: null };
+}
+
 /**
  * Drive session -> career -> (choose if asked) -> ENTER MEET on the local row.
  *
@@ -58,6 +121,9 @@ export const CALENDAR_ENTRY = Object.freeze({
 export async function enterMeetFromCalendar(page, options = {}) {
   const stepMs = options.stepMs ?? 40000;
   const enterTestId = options.enterTestId ?? CALENDAR_ENTRY.ENTER_LOCAL;
+
+  const created = await completeCreateIfNeeded(page, { stepMs });
+  if (created.why) return { entered: false, why: created.why };
 
   // Whichever of the two career beats draws first decides the arm. The
   // chooser is polled alongside the calendar rather than waited on alone, so

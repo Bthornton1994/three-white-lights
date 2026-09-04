@@ -47,6 +47,7 @@
 
 import { localSessionServer, type LocalAppServerPort, type SaveStore } from '../session/localSessionServer';
 import type { CareerServerPort } from '../game/careerClient';
+import type { LifterServerPort } from '../game/lifterClient';
 import type { MeetServerPort } from '../game/meetClient';
 import type { SessionServerPort } from '../game/sessionClient';
 import type { SaveRefusalCode } from '../game/saveGame';
@@ -174,5 +175,15 @@ export function appMeetPort(): MeetServerPort {
  * closure. `shellWiring.test.ts` drives both directions.
  */
 export function appCareerPort(): CareerServerPort {
+  return appConnection();
+}
+
+/**
+ * The app's connection, as MY LIFTER is allowed to see it.
+ *
+ * Same object as the other three accessors. Persistent identity lives beside
+ * the row; Total and e1RM still come back through the snapshot wire.
+ */
+export function appLifterPort(): LifterServerPort {
   return appConnection();
 }

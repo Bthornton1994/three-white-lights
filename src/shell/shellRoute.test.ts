@@ -38,6 +38,7 @@ import {
   shellAffordanceFor,
   shellCareerAffordanceFor,
   shellEmpireAffordanceFor,
+  shellLifterAffordanceFor,
   type ShellIntent,
   type ShellRoute,
   type ShellSurface,
@@ -234,6 +235,24 @@ describe('a player can get from the daily session to a meet, and back', () => {
     for (const intent of pathBetween('career', 'session') ?? []) route = navigate(route, intent);
     expect(route).toEqual({ surface: 'session', source: 'player' });
   });
+
+  it('THE SESSION -> LIFTER ROUTE EXISTS AND IS A PATH, NOT A COMPONENT', () => {
+    const path = pathBetween('session', 'lifter');
+    expect(path, 'a player cannot reach My Lifter at all').not.toBeNull();
+    expect(path).toEqual(['open-lifter']);
+  });
+
+  it('and the way back from My Lifter exists too', () => {
+    expect(pathBetween('lifter', 'session')).toEqual(['leave-lifter']);
+  });
+
+  it('My Lifter round-trips to the daily session without a debug URL', () => {
+    let route = DEFAULT_ROUTE;
+    for (const intent of pathBetween('session', 'lifter') ?? []) route = navigate(route, intent);
+    expect(route.surface).toBe('lifter');
+    for (const intent of pathBetween('lifter', 'session') ?? []) route = navigate(route, intent);
+    expect(route).toEqual({ surface: 'session', source: 'player' });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -260,30 +279,48 @@ describe('the route graph', () => {
       'session --leave-empire-->': 'session',
       'session --open-career-->': 'career',
       'session --leave-career-->': 'session',
+      'session --open-lifter-->': 'lifter',
+      'session --leave-lifter-->': 'session',
       'meet --enter-meet-->': 'meet',
       'meet --leave-meet-->': 'session',
       'meet --open-empire-->': 'meet',
       'meet --leave-empire-->': 'meet',
       'meet --open-career-->': 'meet',
       'meet --leave-career-->': 'meet',
+      'meet --open-lifter-->': 'meet',
+      'meet --leave-lifter-->': 'meet',
       'replay --enter-meet-->': 'replay',
       'replay --leave-meet-->': 'replay',
       'replay --open-empire-->': 'replay',
       'replay --leave-empire-->': 'replay',
       'replay --open-career-->': 'replay',
       'replay --leave-career-->': 'replay',
+      'replay --open-lifter-->': 'replay',
+      'replay --leave-lifter-->': 'replay',
       'empire --enter-meet-->': 'empire',
       'empire --leave-meet-->': 'empire',
       'empire --open-empire-->': 'empire',
       'empire --leave-empire-->': 'session',
       'empire --open-career-->': 'empire',
       'empire --leave-career-->': 'empire',
+      'empire --open-lifter-->': 'empire',
+      'empire --leave-lifter-->': 'empire',
       'career --enter-meet-->': 'meet',
       'career --leave-meet-->': 'career',
       'career --open-empire-->': 'career',
       'career --leave-empire-->': 'career',
       'career --open-career-->': 'career',
       'career --leave-career-->': 'session',
+      'career --open-lifter-->': 'career',
+      'career --leave-lifter-->': 'career',
+      'lifter --enter-meet-->': 'lifter',
+      'lifter --leave-meet-->': 'lifter',
+      'lifter --open-empire-->': 'lifter',
+      'lifter --leave-empire-->': 'lifter',
+      'lifter --open-career-->': 'lifter',
+      'lifter --leave-career-->': 'lifter',
+      'lifter --open-lifter-->': 'lifter',
+      'lifter --leave-lifter-->': 'session',
     });
   });
 
@@ -299,10 +336,12 @@ describe('the route graph', () => {
     expect(playerReachableFrom('meet')).not.toContain('replay');
     expect(playerReachableFrom('empire')).not.toContain('replay');
     expect(playerReachableFrom('career')).not.toContain('replay');
+    expect(playerReachableFrom('lifter')).not.toContain('replay');
     expect(pathBetween('session', 'replay')).toBeNull();
     expect(pathBetween('meet', 'replay')).toBeNull();
     expect(pathBetween('empire', 'replay')).toBeNull();
     expect(pathBetween('career', 'replay')).toBeNull();
+    expect(pathBetween('lifter', 'replay')).toBeNull();
   });
 
   it('a player on the daily session can reach Empire without a URL', () => {
@@ -313,6 +352,11 @@ describe('the route graph', () => {
   it('a player on the daily session can reach Career without a URL', () => {
     expect(playerReachableFrom('session')).toContain('career');
     expect(playerReachableFrom('career')).toContain('session');
+  });
+
+  it('a player on the daily session can reach My Lifter without a URL', () => {
+    expect(playerReachableFrom('session')).toContain('lifter');
+    expect(playerReachableFrom('lifter')).toContain('session');
   });
 
   it('playerReachableFrom is the closure of navigate, not a second list', () => {
@@ -349,18 +393,20 @@ describe('the route graph', () => {
 // ---------------------------------------------------------------------------
 
 describe('the surfaces a side trip may not spend', () => {
-  it('names both ends of the Empire and Career round trips and nothing else', () => {
-    // Typed out rather than derived. A list of two that a loop agrees with is a
-    // list nobody has to read; the point of this one is that adding a third
-    // surface to it changes what `AppShell` mounts, and that is a decision
-    // somebody should have to write down here first.
-    expect([...PERSISTENT_SURFACES]).toEqual(['session', 'empire', 'career']);
+  it('names both ends of the Empire, Career and Lifter round trips and nothing else', () => {
+    // Typed out rather than derived. Adding a fifth surface to it changes what
+    // `AppShell` mounts, and that is a decision somebody should have to write
+    // down here first.
+    expect([...PERSISTENT_SURFACES]).toEqual(['session', 'empire', 'career', 'lifter']);
     expect(isPersistentSurface('session')).toBe(true);
     expect(isPersistentSurface('empire')).toBe(true);
     // Career persists for the reason Empire does — a glance at the calendar is
     // a side trip and may not spend the session — and the decision is written
     // down on `PERSISTENT_SURFACES` itself, because no ruling names it.
     expect(isPersistentSurface('career')).toBe(true);
+    // My Lifter is the same pair: Create / the card is a side trip, and a
+    // side trip may not spend the daily session.
+    expect(isPersistentSurface('lifter')).toBe(true);
     // Meet is deliberately absent — the argument is in `shellRoute.ts`, and the
     // consequence is that a meet still discards the beat under it.
     expect(isPersistentSurface('meet')).toBe(false);
@@ -385,6 +431,7 @@ describe('the surfaces a side trip may not spend', () => {
     // surface whose beat is forgotten must re-report on activation, which
     // `shellWiring.test.ts` pins against `CareerScreen`'s own effect.
     expect(isPersistentSurface('career') && forgetsBeatOnArrival('career')).toBe(true);
+    expect(isPersistentSurface('lifter') && forgetsBeatOnArrival('lifter')).toBe(true);
   });
 });
 
@@ -515,6 +562,32 @@ describe('when the shell may draw a control — pinned, one beat at a time', () 
     expect(shellCareerAffordanceFor(SESSION, 'check-in', 'none')).toBe('open-career');
   });
 
+  it('THE WAY TO MY LIFTER IS ON THE SAME SESSION BEATS AS CAREER', () => {
+    expect(shellLifterAffordanceFor(SESSION, 'check-in')).toBe('open-lifter');
+    expect(shellLifterAffordanceFor(SESSION, 'briefing')).toBe('open-lifter');
+    expect(shellLifterAffordanceFor(SESSION, 'close-out')).toBe('open-lifter');
+    expect(shellLifterAffordanceFor(SESSION, 'set')).toBe(null);
+    expect(shellLifterAffordanceFor(SESSION, 'rest')).toBe(null);
+  });
+
+  it('THE WAY BACK FROM MY LIFTER IS ON THE CARD, NEVER WHILE CREATING', () => {
+    // Creating is blocking identity. Leave chrome on that beat would let a
+    // first-run player walk into a Career Meet with no athlete.
+    expect(shellLifterAffordanceFor(AS_PLAYER('lifter'), 'creating')).toBe(null);
+    expect(shellLifterAffordanceFor(AS_PLAYER('lifter'), 'card')).toBe('leave-lifter');
+    expect(shellLifterAffordanceFor(AS_PLAYER('lifter'), 'editing-name')).toBe('leave-lifter');
+    expect(shellLifterAffordanceFor(AS_PLAYER('lifter'), 'editing-bodyweight')).toBe('leave-lifter');
+    expect(shellLifterAffordanceFor(AS_PLAYER('lifter'), null)).toBe(null);
+    expect(shellLifterAffordanceFor(MEET, 'recap')).toBe(null);
+    expect(shellLifterAffordanceFor(SESSION, 'recap')).toBe(null);
+  });
+
+  it('a live cut-in takes the Lifter chrome off too', () => {
+    expect(shellLifterAffordanceFor(SESSION, 'check-in', 'live')).toBe(null);
+    expect(shellLifterAffordanceFor(AS_PLAYER('lifter'), 'card', 'live')).toBe(null);
+    expect(shellLifterAffordanceFor(SESSION, 'check-in', 'none')).toBe('open-lifter');
+  });
+
   it('every beat of the game is in the answer sheet, and answers as written', () => {
     // Exhaustive sweep, driven by the HAND-WRITTEN table rather than by
     // `SHELL_NAV`. It cannot go vacuous: the table's type is
@@ -612,6 +685,10 @@ describe('the table and SHELL_NAV are two statements of one fact', () => {
   it('SHELL_NAV.MEET_PHASES is exactly the beats the table gives the way out to', () => {
     expect([...SHELL_NAV.MEET_PHASES].sort()).toEqual(tableBeatsFor(ON_A_MEET_BEAT, 'leave-meet'));
     expect(tableBeatsFor(ON_A_MEET_BEAT, 'leave-meet')).toEqual(['recap']);
+  });
+
+  it('SHELL_NAV.LIFTER_PHASES is the card and its edits, never creating', () => {
+    expect([...SHELL_NAV.LIFTER_PHASES]).toEqual(['card', 'editing-name', 'editing-bodyweight']);
   });
 
   it('and neither list is empty, which is the mutation that used to pass', () => {
