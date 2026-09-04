@@ -216,6 +216,9 @@ export const EMPIRE_TUNING = Object.freeze({
   /** Seconds in an hour. Arithmetic, not a knob. */
   SECONDS_PER_HOUR: 3600,
 
+  /** Seconds in a minute. Arithmetic, not a knob. Used to label the 30-minute watched QA step. */
+  SECONDS_PER_MINUTE: 60,
+
   /** Seconds in a day. Arithmetic, not a knob. */
   SECONDS_PER_DAY: 86400,
 
@@ -655,6 +658,46 @@ export const EMPIRE_TUNING = Object.freeze({
    */
   SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER: Object.freeze([0, 250, 900, 2600, 7000] as const),
 
+  /**
+   * Stage E.2 sporting-result → reputation formula. Read by `sportingReputation.ts`.
+   *
+   * Shipped band is SPORT-HEAVY (human ruling): worlds kindScale 16 so a
+   * Worlds title without a Total PR (384) crosses regional recruit (200)
+   * and the first sponsor tier (250), and a Worlds title plus PR (640)
+   * crosses national recruit (600). Both stay under legendary (1500) and
+   * REPUTATION_MAX (5000). Local win plus PR (40) stays under club recruit
+   * (50). Conservative (worlds 8: title 192, title+PR 320) was investigated
+   * and discarded — a Worlds title that cannot hire a regional NPC is not
+   * institutionally meaningful. Do not treat that band as the shipped
+   * recommendation.
+   *
+   * Last place and a one-person category pay zero placing points. Check-in
+   * reputation is not a cap on sporting credit; see E-REP-01 in
+   * `sportingReputation.ts`.
+   *
+   * `kindScale` is the GDD §6.1 ladder the current meet model actually has.
+   * There is no extra prestige table: invented opponent rank would be fake.
+   */
+  SPORTING_REPUTATION: Object.freeze({
+    meetKinds: Object.freeze(['local', 'regional', 'nationals', 'worlds'] as const),
+    qualifyRungs: Object.freeze(['regional', 'nationals', 'worlds'] as const),
+    kindScale: Object.freeze({
+      local: 1,
+      regional: 2,
+      nationals: 4,
+      worlds: 16,
+    } as const),
+    placingUnit: 24,
+    totalPrUnit: 16,
+    qualifyUnit: 16,
+    copy: Object.freeze({
+      noTotal: 'No total posted',
+      placing: 'Placed {place} of {field} in category at a {kind} meet',
+      totalPr: 'Raised published best total at a {kind} meet',
+      qualified: 'Newly qualified for {rung}',
+    } as const),
+  }),
+
   /** Seconds the first level of any axis takes to build. */
   BUILD_SECONDS_BASE: 120,
 
@@ -872,16 +915,21 @@ export const EMPIRE_TUNING = Object.freeze({
   }),
 
   /**
-   * The dev-only time steps of the stage-1 ladder view, in seconds: one hour,
-   * eight hours, three days. `ladder.ts`'s `ladderDevTimeSteps` labels them and
-   * `ladderView.tsx`'s visibly-marked dev control feeds them to the shipped
-   * accrual functions, so the §5.11 stage-gate human can feel the pacing
-   * without waiting a real week. Each step must be a positive whole multiple
-   * of `TICK_SECONDS`, which `ladderDevTimeSteps` refuses loudly rather than
-   * trusting. Knobs: the gate's open question is the income magnitudes, and
-   * the sampling grain a human judges them at is tuned with the same hand.
+   * Dev-only AWAY (offline) time steps, in seconds: one hour, eight hours,
+   * three days. Stage D2.2 split the QA instrument from watched time: these
+   * grains dispatch `mode: 'offline'` and are labelled "+Nh away" / "+Nd away".
+   * They are NOT one hour of online garage income. `OFFLINE_EARNINGS_FRACTION`
+   * still applies. Not part of the game.
    */
   LADDER_DEV_TIME_STEPS_SECONDS: Object.freeze([3600, 28800, 259200] as const),
+
+  /**
+   * Dev-only WATCHED (online) time steps, in seconds: thirty minutes and one
+   * hour. Dispatch `mode: 'online'` and are labelled "+Nm watched" /
+   * "+Nh watched". The garage listed rate is paid in full. Not part of the
+   * game. Does not change production economy, the offline fraction, or the cap.
+   */
+  LADDER_DEV_WATCHED_TIME_STEPS_SECONDS: Object.freeze([1800, 3600] as const),
 
   // -------------------------------------------------------------------------
   // §5 (v2) stage 2 — sessions and equipment groups. Read by `sessions.ts`.
@@ -1399,9 +1447,9 @@ export const EMPIRE_TUNING = Object.freeze({
   /**
    * §5.6: "Reputation is earned mostly by powerlifter and serious-lifter
    * members." Reputation points contributed per member of a type, per day,
-   * before `reputationFromMembers` sums a roster and adds the (currently
-   * always-zero) competition-result extension point — see `members.ts`
-   * header §4 for why that second input has no producer yet.
+   * before `reputationFromMembers` sums a roster. Stage E's sporting
+   * contributor is a separate per-result function in `sportingReputation.ts`;
+   * it is not an argument of `reputationFromMembers`. See `members.ts` header §4.
    */
   MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY: Object.freeze({
     casual: 0,
@@ -1927,10 +1975,101 @@ export const EMPIRE_TUNING = Object.freeze({
   FLOOR_SIM_RENDER_SEED: 1,
 
   /**
-   * The diameter of a member's state cue — the bubble drawn above its head —
+   * Stage G.1 — living floor-member service history. The shipped window is 5,
+   * accepted at 390×844 for scan density and memory (not because it is the
+   * middle candidate). 3 and 8 remain so tests can compare bounds without
+   * retuning the live card.
+   */
+  LIVING_MEMBER_SERVICE_HISTORY_WINDOWS: Object.freeze([3, 5, 8] as const),
+  LIVING_MEMBER_SERVICE_HISTORY_WINDOW: 5,
+  /** Wait-label buckets on member cards, in floor-sim ticks. */
+  LIVING_MEMBER_WAIT_SHORT_MAX_TICKS: 15,
+  LIVING_MEMBER_WAIT_LONG_MIN_TICKS: 40,
+  /**
+   * Stage G.1C — upper wait band. Garage service study (same roster, seed,
+   * layout, 1000-tick budget): stock mean 116.59 / matched second wait 128;
+   * Throughput mean 86.36 / matched second wait 95; Capacity mean 52.52 /
+   * max 94. Candidates 80 and 90 still mapped 95 and 128 to the same phrase.
+   * 100 is the lowest candidate that keeps 95 in "long wait" (not short),
+   * puts 128 in "very long wait", and leaves Capacity's whole distribution
+   * below the upper tail.
+   */
+  LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS: 100,
+
+  /**
+   * Stage G.2A — living-member recent-service meaning. Mechanical scores are
+   * derived from `ServiceVisitRecord` fields only. Label mins are presentation
+   * bands on those scores, the same class as the G.1C wait-copy thresholds:
+   * they name the card, they are not a second wait formula.
+   *
+   * `waitDecayTicks` is an e-folding constant: wait = exp(-ticks / 110).
+   * It is not a half-life. 110 is distinct from the copy thresholds
+   * 15 / 40 / 100 so a copy edit cannot silently retune the curve.
+   *
+   * G.2A closed at 255de8a5 after the Expo 390×844 experience replay.
+   * G.2B is authorized as retention-pressure truth on top of this block
+   * (`LIVING_MEMBER_RETENTION`). This block's numbers stay frozen.
+   */
+  LIVING_MEMBER_EXPERIENCE: Object.freeze({
+    waitDecayTicks: 110,
+    trainingStockScore: 0.82,
+    trainingQualityScore: 1,
+    reliabilityInterrupted: 0.55,
+    waitEasyMin: 0.7,
+    waitManageableMin: 0.5,
+    waitStrainedMin: 0.38,
+    trainingExcellentMin: 0.95,
+    trainingSolidMin: 0.78,
+    reliabilitySteadyMin: 0.95,
+    reliabilityUnevenMin: 0.7,
+    overallGoodMin: 0.78,
+    overallMixedMin: 0.62,
+    overallRoughMin: 0.45,
+  }),
+
+  /**
+   * Stage G.2B — living-member retention pressure. Formed pressure is
+   * `1 - composite` on [0, 1]: a normalized strain index, not a chance of
+   * leaving. Label mins are presentation bands on that index, the same
+   * class as G.2A overall bands: they name the card, they are not a
+   * hazard function.
+   *
+   * watchingMin 0.22 / strainedMin 0.42 / atRiskMin 0.55 were chosen so
+   * Garage Capacity mean (~0.20) reads Stable, Stock/Quality/Throughput
+   * Mixed (~0.29–0.36) read Watching, severe Rough (~0.46) reads Strained,
+   * and Poor (composite below 0.45) reads At risk — still a membership
+   * concern, not a departure. G.2C owns actual leave/arrive.
+   *
+   * The shipped mapping is type-blind. Casual wait-tolerance and Serious
+   * Lifter relief are compared in livingMemberRetention.test.ts and are
+   * not applied here.
+   */
+  LIVING_MEMBER_RETENTION: Object.freeze({
+    watchingMin: 0.22,
+    strainedMin: 0.42,
+    atRiskMin: 0.55,
+  }),
+
+  /**
    * as a fraction of the smaller of its footprint's two rendered dimensions.
    */
   FLOOR_SIM_CUE_DIAMETER_FRACTION: 0.5,
+
+  /**
+   * Stage D2.2 plate-loading overlay. Drawn from `FloorSimState.changeovers`
+   * remaining ticks (same job at stock 18 and plate-tree 6). Geometry is
+   * fractions of the bench footprint. Disc count is how many plate discs
+   * travel from the stack to the bar sleeve. `discSizeFraction` is of the
+   * bench's shorter side in tiles. Not a parallel timer.
+   */
+  FLOOR_PLATE_LOADING: Object.freeze({
+    discCount: 3,
+    sourceXFraction: 0.2,
+    sleeveXFraction: 0.72,
+    railYFraction: 0.22,
+    stackSpreadFraction: 0.12,
+    discSizeFraction: 0.45,
+  }),
 
   /** The gap, in pixels, between the top of a member's head and the bottom of its state cue. */
   FLOOR_SIM_CUE_GAP_PIXELS: 2,
@@ -2632,6 +2771,7 @@ export const EMPIRE_TUNING = Object.freeze({
  */
 export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   SECONDS_PER_HOUR: 'structural',
+  SECONDS_PER_MINUTE: 'structural',
   SECONDS_PER_DAY: 'structural',
   PRECISION_DECIMALS: 'structural',
 
@@ -2681,6 +2821,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   REPUTATION_PER_NPC_TENURE_DAY: 'knob',
   REPUTATION_TIER_THRESHOLDS: 'knob',
   SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER: 'knob',
+  SPORTING_REPUTATION: 'knob',
   BUILD_SECONDS_BASE: 'knob',
   BUILD_SECONDS_GROWTH_PER_LEVEL: 'knob',
   BUILD_SECONDS_MAX: 'budget',
@@ -2703,6 +2844,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   LADDER_EQUIPMENT_MIN_RUNG: 'structural',
   LADDER_LIFT_REQUIREMENTS: 'structural',
   LADDER_DEV_TIME_STEPS_SECONDS: 'knob',
+  LADDER_DEV_WATCHED_TIME_STEPS_SECONDS: 'knob',
 
   SESSION_ACTIVITY_GROUPS: 'structural',
   SESSION_EQUIPMENT_ITEMS: 'structural',
@@ -2781,7 +2923,15 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_SIM_TICK_INTERVAL_MS: 'knob',
   FLOOR_SIM_MOVE_TWEEN_MS: 'knob',
   FLOOR_SIM_RENDER_SEED: 'knob',
+  LIVING_MEMBER_SERVICE_HISTORY_WINDOWS: 'knob',
+  LIVING_MEMBER_SERVICE_HISTORY_WINDOW: 'knob',
+  LIVING_MEMBER_WAIT_SHORT_MAX_TICKS: 'knob',
+  LIVING_MEMBER_WAIT_LONG_MIN_TICKS: 'knob',
+  LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS: 'knob',
+  LIVING_MEMBER_EXPERIENCE: 'knob',
+  LIVING_MEMBER_RETENTION: 'knob',
   FLOOR_SIM_CUE_DIAMETER_FRACTION: 'knob',
+  FLOOR_PLATE_LOADING: 'knob',
   FLOOR_SIM_CUE_GAP_PIXELS: 'knob',
   FLOOR_SIM_INTERRUPTED_CUE_SCALE: 'knob',
   FLOOR_SIM_LEAVING_OPACITY: 'knob',

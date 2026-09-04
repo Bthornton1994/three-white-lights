@@ -1356,7 +1356,9 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'docs/GDD.md', name: 'Duolingo', where: 'prose', count: 5 },
   { file: 'docs/GDD.md', name: 'Game Boy', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'Genesis', where: 'prose', count: 2 },
-  { file: 'docs/GDD.md', name: 'Idle Fitness Gym Tycoon', where: 'prose', count: 2 },
+  // 2 -> 3: D2.1B analog-games paragraph already named the title a third time;
+  // the D2 mint re-measured the pin. No fourth mention was added.
+  { file: 'docs/GDD.md', name: 'Idle Fitness Gym Tycoon', where: 'prose', count: 3 },
   { file: 'docs/GDD.md', name: 'NPL', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'OpenPowerlifting', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'SNES', where: 'prose', count: 2 },

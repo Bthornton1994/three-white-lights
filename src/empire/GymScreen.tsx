@@ -277,6 +277,7 @@ import {
 } from './stationView';
 import {
   describeLadderClock,
+  ladderDevClockTestId,
   ladderDevTimeSteps,
   ladderEquipmentCost,
   ladderEquipmentMinRung,
@@ -593,6 +594,8 @@ export function GymScreen(props: GymViewProps) {
           managed={managed}
           capability={capability}
           buildMode={surface === 'build'}
+          livingMembers={props.state.livingMembers}
+          gymClockSeconds={gym.ladder.collectedAt}
         />
       </View>
       {/*
@@ -1155,17 +1158,19 @@ export function GymScreen(props: GymViewProps) {
       </View>
       <View testID={'gymscreen-dev-controls'}>
         <Text>
-          not part of the game: each button feeds that many elapsed seconds to the shipped accrual,
-          so a player checks in without waiting it out. The last one jumps straight to the next
-          weekly-allocation boundary. Reset gym starts a new opening garage.
+          not part of the game. Watched buttons pay the online garage rate. Away buttons pay the
+          offline fraction, the same as leaving the app. The week-boundary jump is away. Reset gym
+          starts a new opening garage.
         </Text>
         {ladderDevTimeSteps().map((step) => (
           <Pressable
             key={step.label}
-            testID={`gymscreen-advance-${step.seconds}`}
+            testID={ladderDevClockTestId('gymscreen-advance', step)}
             accessibilityRole={'button'}
             style={styles.button}
-            onPress={() => dispatch({ kind: 'advance-clock', gapSeconds: step.seconds })}
+            onPress={() =>
+              dispatch({ kind: 'advance-clock', gapSeconds: step.seconds, mode: step.mode })
+            }
           >
             <Text style={styles.buttonText}>{step.label}</Text>
           </Pressable>

@@ -86,6 +86,7 @@ describe('the block is frozen and every entry is classified', () => {
       'FLEXIBLE_ACTIVITIES',
       'FLOOR_FIXED_FURNITURE_LAYOUT',
       'FLOOR_GRID_SIZE',
+      'FLOOR_PLATE_LOADING',
       'FLOOR_SIM_USE_TICKS_BY_TYPE',
       // GDD §5.13 P4b — the per-use-class draw bias a `using` member is
       // pulled toward its station's anchor by.
@@ -98,6 +99,7 @@ describe('the block is frozen and every entry is classified', () => {
       'FLOOR_SPRITE_GEAR_PALETTE',
       'FLOOR_SPRITE_OUTFIT_PALETTE',
       'LADDER_DEV_TIME_STEPS_SECONDS',
+      'LADDER_DEV_WATCHED_TIME_STEPS_SECONDS',
       'LADDER_EQUIPMENT_COST_GYM_BUCKS',
       'LADDER_EQUIPMENT_ITEMS',
       'LADDER_EQUIPMENT_MIN_RUNG',
@@ -109,6 +111,9 @@ describe('the block is frozen and every entry is classified', () => {
       'LADDER_STARTING_EQUIPMENT',
       'LEADERBOARD_BRACKET_SIZE',
       'LEADERBOARD_SCOPES',
+      'LIVING_MEMBER_EXPERIENCE', // Stage G.2A
+      'LIVING_MEMBER_RETENTION', // Stage G.2B
+      'LIVING_MEMBER_SERVICE_HISTORY_WINDOWS', // Stage G.1
       // §5.11 stage 4's four per-tier manager tables and the tier ladder
       // itself. Read from this pin's own failure value.
       'MANAGER_AUTO_REPAIR_CONDITION',
@@ -141,6 +146,7 @@ describe('the block is frozen and every entry is classified', () => {
       'SPACE_LEVEL_COST_GYM_BUCKS',
       'SPACE_PASSIVE_CEILING_MULTIPLIER',
       'SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER',
+      'SPORTING_REPUTATION',
       'STAFF_LEVEL_COST_GYM_BUCKS',
       'STAFF_LEVEL_MAX',
       'STAFF_ROLES',
@@ -203,6 +209,7 @@ describe('the block is frozen and every entry is classified', () => {
 describe('units', () => {
   it('agrees with itself about how long a day is', () => {
     expect(T.SECONDS_PER_DAY).toBe(T.SECONDS_PER_HOUR * 24);
+    expect(T.SECONDS_PER_HOUR).toBe(T.SECONDS_PER_MINUTE * 60);
     expect(T.PRECISION_DECIMALS).toBeGreaterThan(0);
   });
 
@@ -727,7 +734,13 @@ describe('§5.5 social', () => {
     // 192 -> 193: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS. The
     // 0.65 use-factor was replaced by STATION_THROUGHPUT_CHANGEOVER_TICKS
     // (replace, count unchanged).
-    expect(examined).toBe(193);
+    // 193 -> 196: Stage D2.2 SECONDS_PER_MINUTE, LADDER_DEV_WATCHED_TIME_
+    // STEPS_SECONDS, FLOOR_PLATE_LOADING.
+    // 197 -> 201: Stage G.1 LIVING_MEMBER_* tuning keys (four scalar knobs).
+    // 201 -> 202: Stage G.1C LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS.
+    // 202 -> 203: Stage G.2A LIVING_MEMBER_EXPERIENCE.
+    // 203 -> 204: Stage G.2B LIVING_MEMBER_RETENTION.
+    expect(examined).toBe(204);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -751,7 +764,12 @@ describe('§5.5 social', () => {
     // 915 -> 955: Stage D eight Q/C/T entries × 5 banned units.
     // 955 -> 960: Stage D Quality affinity bonus, one more entry × 5.
     // 960 -> 965: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS × 5.
-    expect(probed).toBe(965);
+    // 965 -> 980: Stage D2.2 three new entries × 5 banned units.
+    // 985 -> 1005: Stage G.1 four LIVING_MEMBER_* entries × 5 banned units.
+    // 1005 -> 1010: Stage G.1C one more wait-band entry × 5 banned units.
+    // 1010 -> 1015: Stage G.2A LIVING_MEMBER_EXPERIENCE × 5 banned units.
+    // 1015 -> 1020: Stage G.2B LIVING_MEMBER_RETENTION × 5 banned units.
+    expect(probed).toBe(1020);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

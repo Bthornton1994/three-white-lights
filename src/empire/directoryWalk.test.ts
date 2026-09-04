@@ -168,7 +168,9 @@ export const DIRECTORY_WALK = Object.freeze({
   // Capacity / Throughput algebra.
   // 23 -> 24: GDD §5.18 Stage D.1's `trainingStation.ts` — the Competition
   // Bench Bay, equipment is not a training station.
-  SHIPPED_MODULES: 24,
+  // 26 -> 27: Stage G.2A `livingMemberExperience.ts`.
+  // 27 -> 28: Stage G.2B `livingMemberRetention.ts`.
+  SHIPPED_MODULES: 28,
   /**
    * Files the shared walk hands the censuses today, tests included.
    *
@@ -191,7 +193,12 @@ export const DIRECTORY_WALK = Object.freeze({
   // 50 -> 51: Stage D2.1B's `throughputSemantics.test.ts` — closed-loop,
   // live-purchase, C-vs-T, and opening-agency catcher. One test file, no
   // new shipped module. Read from this pin's own failure value.
-  DIRECTORY_FILES: 51,
+  // 51 -> 52: Stage D2.2 `d2Consequence.test.ts` — consequence-boundary
+  // source trace. One test file, no new shipped module.
+  // 54 -> 56: Stage G.1 `livingMembers.ts` and `livingMembers.test.ts`.
+  // 56 -> 58: Stage G.2A `livingMemberExperience.ts` and its test.
+  // 58 -> 60: Stage G.2B `livingMemberRetention.ts` and its test.
+  DIRECTORY_FILES: 60,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**
@@ -964,6 +971,9 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'floorSprites.ts',
       'ladder.ts',
       'ladderView.tsx',
+      'livingMemberExperience.ts',
+      'livingMemberRetention.ts',
+      'livingMembers.ts',
       'management.ts',
       'members.ts',
       'npc.ts',
@@ -973,6 +983,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'reputation.ts',
       'sessions.ts',
       'social.ts',
+      'sportingReputation.ts',
       'stationCapability.ts',
       'stationView.ts',
       'trainingStation.ts',

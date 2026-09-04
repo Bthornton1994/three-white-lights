@@ -3166,20 +3166,40 @@ than the ruling's own §1–§23 sequence:
   game rather than controls around an animation. Carry-forward debts
   (C-DEBT-01..04) do not reopen it. C.2 simulator fidelity is recorded in
   §5.16. Stage D is recorded in §5.17. Stage D.1 is recorded in §5.18.
-  Stage D human-close is `ff8721a`. D2 is the PARTIAL balance verdict under
-  §5.18.
+  Stage D human-close is `ff8721a`. D2 is CLOSED — PARTIAL BY DESIGN /
+  CONSEQUENCE BOUNDARY REACHED — by human play of `83a8ed4` at Chromium
+  390×844. Stage E is CLOSED at `b91a84c19fcf561051ec0d651aeda31addd3e882`.
+  Career/Meet → Empire persistent reputation wiring, Portfolio, and
+  persistent NPC roster remain blocked.
 - **Stage D.** Quality/Capacity/Throughput on Barbell first (item 2),
   touching `floorSim.ts`'s capacity constant — the one piece of this pass
   that changes the simulation's own core rather than its surface, so it
   gets its own dedicated build-and-critic round rather than riding with (C).
   The mechanism proof is §5.17. The physical abstraction is corrected in
   §5.18: equipment is not a training station.
-- **Stage E.** Career-side of the reputation feed (item 4), built and
-  proven as a pure function first; the cross-directory wiring itself stays a
-  separate, later, explicitly-authorised crossing.
+- **Stage E.** CLOSED at `b91a84c19fcf561051ec0d651aeda31addd3e882` —
+  sporting reputation foundation accepted; wiring still blocked. Career-side
+  of the reputation feed (item 4), built and proven as a pure function
+  first. Closing Stage E does not authorize Career/Meet →
+  `EmpireState.reputation`, Portfolio (F), or NPC roster/tenure (G).
 - **Stage F.** Portfolio unpause (item 5) — multiple acquired locations,
   remote management, full unattended staffing.
-- **Stage G.** NPC roster/tenure depth (item 6).
+- **Stage G.** NPC roster/tenure depth (item 6). **G.1 CLOSED** at
+  `c27f714c40e3ad7139eaec84ed340f1255c602ea` — living member identity +
+  service outcome foundation accepted (targeted Expo 390×844 replay of
+  G.1C). **G.2A CLOSED** at
+  `255de8a5cf32b99429bbe864b0dcd01f5201da56` — living member
+  satisfaction truth foundation accepted (targeted Expo 390×844
+  experience replay on that HEAD). G.2A.1 closed calibration
+  terminology (`waitDecayTicks` is an e-folding constant, not a
+  half-life) and pinned the real Garage / synthetic tables; the shipped
+  wait formula remains `exp(-ticks / 110)`. Independently verified
+  mint `ba8561bfd11e9e2a5062923d4054b59e0976dcc0` (docs/comment only;
+  no product-runtime change). **G.2B is authorized** as the
+  retention-pressure foundation (explainable experience →
+  willingness-to-stay pressure). It does not delete members, does not
+  wire dues or reputation, and does not start G.2C arrivals/departures.
+  G.2C / G.2D / G.2E remain blocked.
 
 ### Human Stage C rejection at `f097695b`
 
@@ -3538,17 +3558,20 @@ Current sequence remains:
 Stage C human close (done at `460f794a`) → C.2 simulator fidelity (done,
 §5.16) → Stage D Q/C/T (done, §5.17) → Stage D.1 training-station semantics
 (done, §5.18) → Stage D.1b world legibility (done, human-close of Stage D
-at `ff8721a`) → D2 balance verdict (PARTIAL, open) → D2.1A live Capacity
-transition (CONFIRMED AND FIXED at `0ded7fe`) → D2.1B Throughput changeover
-+ opening agency (this subsection) → reputation seam → persistent NPC
-roster / tenure → deeper staff policy → portfolio only after explicit
-human unpause.
+at `ff8721a`) → D2 CLOSED — PARTIAL BY DESIGN / CONSEQUENCE BOUNDARY
+REACHED (human play of `83a8ed4` at Chromium 390×844) → Stage E CLOSED at
+`b91a84c19fcf561051ec0d651aeda31addd3e882` (sporting reputation foundation
+accepted; Career/Meet → EmpireState.reputation wiring still blocked) →
+persistent NPC roster / tenure (Stage G, still blocked) → deeper staff
+policy → portfolio only after explicit human unpause.
 
 The doctrine does not authorize implementing future stages early. It defines
 their quality bar. C.2 is recorded in §5.16. Stage D is recorded in §5.17.
 Stage D.1 / D.1b are recorded in §5.18. D2 is recorded in the D2 ruling
-under §5.18. D2 remains OPEN. D2.1A is CONFIRMED AND FIXED at `0ded7fe`.
-D2.1B is recorded immediately after D2.1A.
+under §5.18 and is CLOSED at `83a8ed4`. D2.1A is CONFIRMED AND FIXED at
+`0ded7fe`. D2.1B is recorded immediately after D2.1A. D2.2 is recorded
+immediately after D2.1B. Stage E is recorded immediately after the D2 mint
+and is CLOSED at `b91a84c19fcf561051ec0d651aeda31addd3e882`.
 
 ### 5.16 Stage C.2 — simulator fidelity (online vs offline in aggregate pacing)
 
@@ -4160,8 +4183,666 @@ next changeover arms at 6; in-flight 18 capped to 6.
 
 D2 remains OPEN. Quality verdict B confirmed. D2-TRUTH-01A closed.
 D2-TRUTH-01B deferred. Novice manager unchanged. Do not start D3 /
-reputation / persistent NPCs / Portfolio. Awaiting human opening-economy
-and fully-funded C-vs-T replay.
+reputation / persistent NPCs / Portfolio.
+
+RECORD CORRECTION (written in D2.2, applying to this SHA's QA helper):
+the `+1h` control dispatched `advance-clock` with no `mode`, so
+`advanceGymClock` defaulted to `'offline'` and `OFFLINE_EARNINGS_FRACTION`
+0.5 applied. One hour from reset paid ~30 Gym Bucks — one hour away — not
+one hour of watched garage income at 60/hour. The sentence above that
+"+1h QA helper affords T" is true of the *away* helper at T=30, and must
+not be read as a watched-hour claim. D2.2 splits the instrument.
+
+---
+
+**Stage D2.2 — balance closeout / consequence boundary.** Authorized after
+human play of `aefa31d5` at Chromium 390×844. Not a Capacity-vs-Throughput
+price search. Q/C/T prices stay Quality 120 / Capacity 180 / Throughput 30.
+Stock changeover 18 ticks / plate-tree 6 ticks stay until a human judges
+the loading duration *after* the world presentation is truthful.
+
+*QA clock diagnosis.* GymScreen `+1h` → `advance-clock` with no mode →
+`advanceGymClock` default `'offline'` → `OFFLINE_EARNINGS_FRACTION` 0.5.
+So the old helper meant one hour of offline elapsed time, not one hour of
+watched online operation. Garage 60/hour, offline fraction 0.5, offline
+cap, and production accrual are unchanged. The QA instrument is not part
+of the game.
+
+New QA labels and modes (exact, from `ladderDevTimeSteps`):
+
+| label | seconds | mode |
+|---|---|---|
+| +30m watched | 1800 | online |
+| +1h watched | 3600 | online |
+| +1h away | 3600 | offline |
+| +8h away | 28800 | offline |
+| +3d away | 259200 | offline |
+
+The week-boundary jump remains away (offline). Reset gym is unchanged.
+
+*D2-CONSEQUENCE-01.* Quality / Capacity / Throughput have truthful physical mechanisms, but the current played floor does not yet convert service quality into a durable member/business outcome.
+
+Source trace (not inferred):
+
+- Gym Bucks on the played path are `ladderIncomeRatePerHour(rung)` × banked
+  seconds × online/offline fraction, via `advanceGymClock` → `managedCheckIn`
+  → `gymCheckIn` → `ladderCheckIn` → `accrueLadderGymBucks`. FloorSim
+  completions, queue length, wait, changeover duration, station training
+  experience, and station utilization are not inputs to that rate.
+- `memberSatisfaction`, `memberDuesGymBucks`, and `reputationFromMembers`
+  exist as pure functions in `members.ts`. `management.ts` does not import
+  `members.ts`. No shipped `src/empire/` module other than `members.ts`
+  itself calls those three functions. There is no persistent live-floor
+  member-outcome composition consuming actual queue / changeover /
+  training-experience history.
+
+Consequences of that graph, not of prices:
+
+- Quality can improve experience / affinity and has no durable played outcome.
+- Throughput can shorten real loading; the wait reduction has no durable
+  played outcome.
+- Capacity has the strongest immediate human consequence because a second
+  physical training position is itself visible.
+
+A price can change WHEN a player buys a mechanism. A price cannot create a
+missing downstream consequence. At the current graph: lowering Throughput
+risks a compulsory starter; raising it makes saving for Capacity more
+rational; lowering Capacity makes Capacity more dominant; raising Capacity
+can manufacture delay but does not make Throughput's service-quality
+improvement matter more to the institution. No further Q/C/T balance search
+until the next authorized member-outcome consumer exists. Do not implement
+reputation in this piece.
+
+*World-truth: plate loading.* With the station panel closed, an active
+changeover must read as plates being changed from the floor. The overlay
+reads `FloorSimState.changeovers` remaining ticks against the station's
+total (`stationChangeoverTicks`). Visible remaining=total..1 maps onto
+progress 0..1 (`(total - remaining) / (total - 1)` when total > 1), so the
+last drawn frame puts every disc on the sleeve. Remaining 0 is not drawn.
+No parallel presentation timer. Stock and plate-tree share the same
+disc-travel job; the tree is the same job faster. No loader NPC, no staff
+system. Panel copy "Loading plates" remains supporting confirmation. 18 / 6
+remain human-open until this presentation is played — the prior complaint
+was that loading was not visible, not that 2.16 seconds was categorically
+the wrong duration.
+
+*Incidental, already in this closeout, not expanded:* member / station /
+equipment detail panels are `ScrollView`s with `maxHeight` (the same
+min-height × garage-height cap the facility drawers already use) so an
+open panel cannot grow through `gymscreen-dock` into `shell-leave-gym`.
+Floor-reachability 13j is the existing evidence. Do not grow that change.
+
+*D2-OPENING-01 — PARTIAL / DOWNSTREAM-DEPENDENT.* Not closed. The player
+now reaches a queue-relevant purchase sooner than before. At the first
+relevant affordability band, Throughput is the only live queue-response
+button. Saving toward Capacity is economically possible but is represented
+as inaction, and the service-quality benefit Throughput creates does not
+yet feed a durable member/business consequence. This cannot be honestly
+solved by another arbitrary price movement.
+
+*Quality verdict B — frozen.* 120, experience 1→2, affinity +0.25. Physical
+meaning readable; strategic consequence incomplete. Evidence for the same
+consequence boundary, not a separate anomaly. Do not touch it.
+
+*Capacity D2.1A — remains CLOSED.* Live purchase → second bench → waiter
+occupies it → two simultaneous users → visible queue reduction. Do not
+reopen.
+
+*Wear / manager debts unchanged.* D2-TRUTH-01A CLOSED. D2-TRUTH-01B
+utilization-sensitive wear DEFERRED. Novice manager: known later
+staff-policy debt. No work on either.
+
+**Candidate D2 permanent-test verdict — D2 — PARTIAL BY DESIGN / CONSEQUENCE BOUNDARY REACHED.** Do not mark D2 closed before human approval.
+
+PASS:
+
+- Quality mechanism truth
+- Capacity mechanism truth
+- Throughput mechanism truth
+- Capacity live transition
+- distinct physical Q/C/T identities
+- space refusal
+- simulator/world synchronization
+- stored/unplaced wear truth
+- truthful changeover semantics
+
+PARTIAL (one missing consumer: durable member outcomes):
+
+- opening agency
+- Quality strategic payoff
+- Throughput strategic payoff
+- infinite-money depth
+- institution consequences
+
+Do not disguise those partials with price changes. Do not start reputation
+until a human explicitly closes D2 and authorizes the next stage.
+
+**Stage D2 human close — CLOSED at `83a8ed4`.** Human world-truth gate at
+Chromium 390×844 passed. Permanent ruling:
+
+**D2 CLOSED — PARTIAL BY DESIGN / CONSEQUENCE BOUNDARY REACHED.**
+
+Human findings (station panel closed first):
+
+- Stock changeover: crimson competition-plate discs travel stack → sleeve;
+  the floor independently reads as plates being changed; visible loading
+  ~2.1 seconds; the final visible frame places every disc on the sleeve;
+  remaining=0 removes the loading layer.
+- Throughput: bought with the labelled `+1h watched` helper; same three
+  discs, same physical loading path, same sleeve; ~0.7 seconds; human read
+  is "same loading job faster", not a different or magical effect.
+- QA clock: `+1h watched` paid ~+59.97 Gym Bucks; `+1h away` paid ~+29.97.
+  Production garage rate remains 60/hour. Offline fraction remains 0.5.
+
+No Capacity-vs-Throughput ROI retest was required.
+
+PASS:
+
+- Quality mechanism truth
+- Capacity mechanism truth
+- Throughput mechanism truth
+- Capacity live transition
+- distinct physical Q/C/T identities
+- Capacity spatial refusal
+- simulator/world synchronization
+- stored/unplaced wear truth
+- truthful plate-changeover semantics
+- closed-panel plate-loading legibility
+- watched/away QA-clock truth
+
+PARTIAL / CARRY FORWARD:
+
+- D2-OPENING-01 — PARTIAL / DOWNSTREAM-DEPENDENT
+- Quality strategic payoff — PARTIAL
+- Throughput strategic payoff — PARTIAL
+- Infinite-money depth — PARTIAL
+- Institutional consequences — PARTIAL
+- D2-TRUTH-01B — DEFERRED
+- Novice-manager policy — DEFERRED
+
+D2-CONSEQUENCE-01 remains authoritative. D2 closed because this boundary is
+now proven, not because a downstream member/business consequence appeared.
+Frozen at mint: Quality 120 / Capacity 180 / Throughput 30; Quality
+experience 1→2 and affinity +0.25; stock changeover 18 / plate-tree 6;
+garage 60/hour; offline fraction 0.5; Capacity live-transition; plate-loading
+path and geometry; QA watched/away modes; panel ScrollView/maxHeight
+reachability correction. No further Q/C/T tuning is authorized before a
+real downstream consumer exists.
+
+**STAGE E CLOSED — SPORTING REPUTATION FOUNDATION ACCEPTED / WIRING STILL
+BLOCKED.** Closed at `b91a84c19fcf561051ec0d651aeda31addd3e882`. Persistent
+NPC roster/tenure (Stage G) and Portfolio remain blocked. The
+cross-directory Career→Empire wiring remains a later explicit crossing.
+Closing Stage E does not authorize any of them.
+
+#### Stage E — reputation feed foundation (pure function; wiring blocked)
+
+**STAGE E CLOSED — SPORTING REPUTATION FOUNDATION ACCEPTED / WIRING STILL
+BLOCKED.** Closed at `b91a84c19fcf561051ec0d651aeda31addd3e882`. The
+accepted runtime is the Empire-owned pure calculator
+`sportingReputationFromResult`. Closing Stage E does not authorize a
+Career or Meet result writing `EmpireState.reputation`.
+
+Reputation is the institution's sporting credibility, not another currency
+bar. Stage E built the Career-result → Empire reputation calculator as a
+pure Empire-owned function. It does not import Career UI, mutate Career
+state, write `EmpireState.reputation`, start a persistent NPC roster, or
+open Portfolio.
+
+**Input contract** (neutral result shape; the later crossing composes
+already-decided facts from several modules — there is no single current
+Meet result object that already carries all of these):
+
+- `kind` — GDD §6.1 ladder: local / regional / nationals / worlds
+- `outcome` — `'total'` or `'bombed-out'`. No numerical Total. game/meet
+  owns posted-total vs bomb-out.
+- `placement` — on a posted total only: `place` and `categoryFieldSize`.
+  `categoryFieldSize` is the number of competitors in the same award
+  category the place is in. A flight is not an award category
+  (`src/career/flight.ts`). The crossing owns deriving this from Career's
+  category-aware result sheet.
+- `isTotalPr` — this meet raised the published best total (result/record
+  comparison, not a kg scalar)
+- `newlyQualifiedFor` — one new standing (`regional` / `nationals` /
+  `worlds`) or null, matching `tierUnlockBetween`'s single `to` tier.
+  No stacked rungs. No `local` qualification. Runtime value is `null`
+  or a string that is already a qualify rung — arrays, objects, numbers,
+  and booleans are refused even when they stringify into a valid rung
+  (`String(['regional']) === 'regional'`). The rung must strictly
+  outrank the meet kind (Career eligibility already requires
+  qualification before a non-local entry):
+
+  - local: regional | nationals | worlds | null
+  - regional: nationals | worlds | null
+  - nationals: worlds | null
+  - worlds: null only
+
+  Jumps (local → nationals or worlds; regional → worlds) are allowed
+  because one Total may cross several thresholds and `tierUnlockBetween`
+  reports the resulting top `to` tier. A result may not newly qualify
+  for its own meet tier or a lower one.
+
+**Refused or deferred** (the current meet model cannot supply them truthfully,
+or they would give an existing quantity a second meaning):
+
+- entering a meet, completing nine attempts, opening the app, a streak
+- Total kilograms as a reputation scalar (Total already means Total)
+- DOTS, e1RM, per-lift PRs as extra gym credit
+- fictional opponent prestige, federation rank, hidden performance score
+- Gym Bucks, Training IQ, member satisfaction (those stay other axes)
+
+**Two contributors, two grains:**
+
+- sporting: per-result event delta, `sportingReputationFromResult`
+- members: per-day rate, existing `reputationFromMembers` (member
+  reputation only; no competition-result bonus argument)
+
+Stage E does not add those grains together. A later accounting boundary
+may compose an integrated member delta over a defined period with a
+sporting event delta once both operands share a grain.
+
+**Placing share:** first of N>1 → full placing unit; last of N>1 → 0;
+one-person category → 0. Beating nobody is not a placing accomplishment.
+PR and qualification remain independent terms.
+
+**E-REP-01 CHECK-IN REPUTATION SEMANTIC DEBT.** The consumed model still
+awards 2 reputation per check-in (730 per year of daily check-ins). That
+is inherited activity reputation and has not been reconciled with sporting
+credibility. Stage E does not retune `REPUTATION_PER_CHECK_IN`. The Stage E
+mint leaves E-REP-01 open: closure does not claim that inherited activity
+reputation is now semantically correct. World-level sporting credit is not
+held below that inherited source. Check-in reputation is not a cap on
+sporting credit.
+
+**Shipped calibration is SPORT-HEAVY** (human ruling). kindScale local 1 /
+regional 2 / nationals 4 / worlds 16. placingUnit 24, totalPrUnit 16,
+qualifyUnit 16. Reachable title-only versus extras (first of 16 in
+category):
+
+- local win 24; +PR 40; +qualify regional 56; +PR +qualify regional 72
+- regional title 48; +qualify nationals 112; +PR +qualify nationals 144
+- nationals title 96; +qualify worlds 352; +PR +qualify worlds 416
+- worlds title 384; +PR 640
+- 12 local titles 288
+
+A Worlds title without a Total PR (384) crosses regional recruit (200)
+and the first sponsor tier (250). Worlds + PR (640) crosses national
+recruit (600). Both stay under legendary (1500) and REPUTATION_MAX
+(5000). Local + PR (40) stays under club recruit (50). Conservative
+(worlds 8: title 192, title+PR 320) was investigated and discarded — a
+Worlds title that cannot hire a regional NPC is not institutionally
+meaningful, and is not the shipped recommendation.
+
+**Evidence obligation** (presentation later): when reputation is eventually
+wired, the player must be able to tell why it changed. Each sporting term
+carries a reason `kind` and a `text` line. No unexplained +REP toast.
+
+**D2-CONSEQUENCE-01 remains true.** Quality / Capacity / Throughput have
+truthful physical mechanisms, but the current played floor does not yet
+convert service quality into a durable member/business outcome. Stage E
+does not implement that member-outcome contribution.
+
+**Wiring remains blocked.** Career/Meet result → Empire persistent reputation
+state is a later explicit crossing.
+
+#### Stage G.1 — Living Member Identity + Service Outcome Foundation
+
+**STAGE G.1 CLOSED — LIVING MEMBER IDENTITY + SERVICE OUTCOME FOUNDATION
+ACCEPTED.** Closed at `c27f714c40e3ad7139eaec84ed340f1255c602ea` by the
+targeted Expo 390×844 player-surface replay of G.1C, under the pre-stated
+close standard. **G.2A CLOSED** at
+`255de8a5cf32b99429bbe864b0dcd01f5201da56`. Historical G.1 / G.1A /
+G.1B / G.1C notes below stay as they were.
+
+G.1A identity/service architecture is accepted. G.1B closed pre-human
+authority at `8fc4fcbf9d36f829252d35d0e642c5cc3482cce2`. Human gate at
+`7c25074e770896428bcfda6f41787fb13b52f167` (390×844 Expo player surface)
+produced:
+
+| Leg | Verdict |
+|---|---|
+| IDENTITY | PARTIAL — persistence real; opening Garage members were three numbered Powerlifters |
+| MEMORY | PASS |
+| QUALITY | PASS |
+| CAPACITY | HUMAN INCONCLUSIVE |
+| THROUGHPUT | FAILED PLAYER LEGIBILITY — 95 and 128 ticks both read "long wait" |
+| PERSISTENCE | PASS |
+| N=5 | ACCEPTED |
+
+**Targeted G.1C replay at `c27f714c` (Chromium 390×844 Expo player surface):**
+
+| Leg | Verdict |
+|---|---|
+| IDENTITY PRESENTATION | PASS — Nia / Omar / Wren lead the card and the selected-floor cue; Nia was found by name after Back to Training → Gym Empire and after Garage → Storage Unit |
+| THROUGHPUT PRESENTATION | PASS — Omar stock history filled with `very long wait`; after Plate tree those rows rolled off to five `long wait` visits |
+| CAPACITY | PASS — second bench drawn and serving; Omar stock `very long wait` became `long wait`; Wren's newest visits reached `waited a while` |
+| N=5 | PASS — five history rows still scan at 390×844; not retuned |
+
+G.1C is a **presentation translation** correction on that HEAD. It does not
+redesign LivingMemberRoster authority, gym-local ids, relocation
+reconciliation, memberId observation routing, true `queueWaitTicks`, FloorSim
+observations, bounded history, or offline behaviour. Historical G.1 / G.1A /
+G.1B notes below stay as they were.
+
+**Three populations stay separate:**
+
+| Population | Module | Persistent? | On played floor? |
+|---|---|---|---|
+| `MemberType` / `MemberRoster` | `members.ts` | No | Via `ambientMemberRoster()` placement geometry only on the played G.1 path |
+| `NpcLifter` | `empireCore.ts` | Yes (idle roster) | Not on floor |
+| Living floor members | `livingMembers.ts` | Yes | Yes — `GymViewState.livingMembers` |
+
+**Identity authority (G.1A, current):**
+
+- `GymMemberId` is **gym-local**: `member:n{identityNonce}:{ordinal}`. Facility
+  rung is **not** part of identity.
+- Facility **relocation** preserves every existing member exactly: `id`,
+  `displayName`, `type`, `joinedAtSeconds`, `recentVisits`. Larger facilities
+  deterministically **append** new members only
+  (`reconcileLivingMemberRosterOnRelocation`); a destination that would require
+  fewer members is refused.
+- Existing `LivingGymMember.type` is **frozen** during G.1 — equipment purchases
+  may change what *new* members would attract, not retag people already on the
+  floor.
+- `FloorSim` receives authoritative `memberId` + `type` from
+  `GymViewState.livingMembers` (`livingPopulation`). `ambientMemberRoster()`
+  supplies placement geometry only on the played G.1 path — not member identity
+  or type.
+- Service observations carry `memberId`; `applyServiceObservations` resolves by
+  id and refuses unknown id / type mismatch.
+- `queueWaitTicks` means **true queue-cell-arrival → use-start wait**
+  (`queueArrivedAt` preserved), not claim-to-use approach time.
+
+**Shipped in G.1 / G.1A:**
+
+- `livingMembers.ts` — `LivingMemberRoster`, `ServiceVisitRecord`,
+  `applyServiceObservations`, player-facing tenure / wait / training-experience
+  copy. IDs are deterministic from `identityNonce` + ordinal — no
+  `Math.random`, no gacha.
+- `floorSim.ts` — `stepFloorSimWithObservations` emits observations when a
+  member leaves `using` (completed or interrupted), carrying `memberId`,
+  `queueWaitTicks`, and `stationTrainingExperience`.
+- `ladderView.tsx` / `FloorGrid.tsx` / `GymScreen.tsx` — `livingMembers` on
+  `GymViewState`, `apply-living-member-observations` reducer arm, member
+  panel shows short id, tenure, and recent service (`no recent service yet`
+  when empty).
+- `empireTuning.ts` — `LIVING_MEMBER_SERVICE_HISTORY_WINDOWS` candidates [3, 5,
+  8]; **shipped window 5** (human-accepted — see G.1C).
+
+**Service-history window (G.1B measurement, G.1C ruling):** Measured roll-off
+shows the first good visit is visible immediately at all three candidate
+windows; complete bad-history roll-off requires **N** subsequent good visits.
+**N = 5 is accepted.** Five rows fit and scan at 390×844; one new good visit
+is visible immediately; N=3 would feel too disposable; N=8 would crowd the
+card before later member UI. The flatness of five identical "long wait" rows
+was a wait-copy granularity failure, not a history-length failure. Do not
+retune N.
+
+**G.1C wait copy (presentation only):** Player-facing wait labels remain a
+function of `queueWaitTicks` alone — no upgrade name, no Q/C/T ownership, no
+fake baseline, no raw ticks as primary UX.
+
+| ticks | label |
+|---|---|
+| 0 | no wait |
+| 1…15 (`SHORT_MAX`) | short wait |
+| 16…39 | waited a while |
+| 40…99 (`LONG_MIN` … `VERY_LONG_MIN − 1`) | long wait |
+| ≥ 100 (`VERY_LONG_MIN`) | very long wait |
+
+`SHORT_MAX = 15` and `LONG_MIN = 40` are unchanged. `VERY_LONG_MIN = 100`
+was chosen from the Garage service study (same roster, seed, one-bench
+layout, 1000-tick budget):
+
+| condition | n | min | median | mean | p75 | p90 | max |
+|---|---|---|---|---|---|---|---|
+| stock | 17 | 0 | 132 | 116.59 | 133 | 134 | 134 |
+| Quality | 17 | 0 | 132 | 116.59 | 133 | 134 | 134 |
+| Capacity | 25 | 0 | 49 | 52.52 | 65 | 93 | 94 |
+| Throughput | 22 | 0 | 94 | 86.36 | 96 | 100 | 101 |
+
+Matched `member:n1:0` second completion: stock 128 / Throughput 95.
+Candidates 80 and 90 still mapped both to the same phrase. 100 is the
+lowest candidate that keeps 95 in "long wait" (not short) and 128 in
+"very long wait", with Capacity's whole distribution below the upper tail.
+Throughput changeover remains 18 → 6; set duration unchanged.
+
+**G.1C display names (presentation identity only):** `LivingGymMember` carries
+a stored `displayName` from a 64-entry curated given-name pool (warehouse
+max is 40). Assigned once at creation from the member ordinal; relocation,
+observations, Q/C/T purchases, session-equipment changes, navigation, and
+offline clock do not rename anyone. New arrivals on expansion get the next
+ordinal's name. Names never enter FloorSim, station choice, dues, reputation,
+retention, Training IQ, Career, or meet results. Member cards lead with the
+given name, then type, then `member N`. The floor does not float names over
+every sprite — only the selected member may show a compact name cue.
+
+**Explicitly NOT built (later G stages):**
+
+- No `reputationFromMembers`, `memberSatisfaction`, or dues wiring.
+- No retention / departure.
+- No offline-fabricated service visits — advancing the gym clock offline does
+  not append history.
+- No Career/Meet → `EmpireState.reputation` path (Stage E wiring still
+  blocked).
+- No Q/C/T retune — D2 mint frozen (Quality 120 / Capacity 180 / Throughput
+  30; garage 60/hour; offline fraction 0.5).
+
+**What G.1 proves mechanically:** Quality raises completed-use training
+experience; Capacity lowers average queue wait; Throughput shortens changeover
+(18 → 6 on the competition bench) so at least one stable `memberId` completes
+training with strictly lower `queueWaitTicks` than stock on the same roster,
+seed, garage, one-bench layout, and tick budget — all measured from real sim
+observations matched by `memberId`, not aggregate proxies or array index. That
+is causality truth for the player-facing member card, not yet institution
+consequences.
+
+**Human gate:** landed at `c27f714c`. Identity presentation, Throughput
+copy, and Capacity consequence all passed on the played 390×844 surface.
+Closing G.1 does not wire satisfaction / dues / reputation. G.2A derives
+recent-service meaning from that history and is closed below. G.2B is
+authorized as retention-pressure truth on top of that meaning; G.2C
+arrivals/departures, G.2D dues, and G.2E member-side reputation stay
+blocked.
+
+#### Stage G.2A — Living Member Satisfaction Truth Foundation
+
+**STAGE G.2A CLOSED — LIVING MEMBER SATISFACTION TRUTH FOUNDATION
+ACCEPTED.** Closed at `255de8a5cf32b99429bbe864b0dcd01f5201da56` by the
+targeted Expo 390×844 experience replay on that HEAD. No product-code
+change from the architecture / G.2A.1 calibration. Independently
+verified: mint `ba8561bfd11e9e2a5062923d4054b59e0976dcc0` is one
+commit over that HEAD and changes only this document plus four
+comment-only lines in `empireTuning.ts`. G.2B is authorized as the
+retention-pressure foundation below. G.2C and after stay blocked.
+
+The first human playtest accepted the core semantics (Wren WAIT Rough /
+TRAINING Solid / SERVICE Steady / overall Mixed) and left five
+translation legs unplayed. The targeted replay on the same SHA closed
+those legs:
+
+| Leg | Verdict |
+|---|---|
+| Service-history truth | PASS (first playtest) |
+| Mixed experience readability | PASS (first playtest) — Wren WAIT Rough / TRAINING Solid / SERVICE Steady / overall Mixed |
+| Stock training calibration | PASS (first playtest) |
+| Wait differentiation | PASS (first playtest) |
+| Overall label coherence | PASS, provisionally (first playtest) |
+| Reliability baseline | PASS (first playtest) |
+| Zero-history presentation | PASS — Omar `RECENT EXPERIENCE Still forming` with no Good/Mixed/Rough claim, first session still in progress |
+| Quality translation | PASS — Nia TRAINING Solid → Excellent after Competition pads only; WAIT stayed a wait story (Manageable → Rough); overall Good → Mixed |
+| Throughput translation | PASS — Wren WAIT Rough → Strained after Plate tree only; TRAINING Solid; overall Mixed; reason "very long" → "long"; no Throughput bonus line |
+| Capacity translation | PASS — second bench drawn and serving; Omar WAIT Strained → Manageable after Second bench only; TRAINING Solid; newest visit reached `waited a while` |
+| Interrupted-service translation | PASS — Nia SERVICE Steady → Uneven; `One session was interrupted.`; visit row ending `interrupted`; TRAINING remained Solid |
+
+G.2A derives what recent service **means** to a living member. It does not
+start churn, dues, reputation writes, or Gym Bucks changes.
+
+**Audit of the existing member domain (at `fee6d636`):**
+
+| Item | Verdict |
+|---|---|
+| `queueWaitTicks` / `recentVisits` / `trainingExperience` / `outcome` | REAL + CONSUMED by G.2A |
+| `memberSatisfaction` crowding × fit × conditionMultiplier | LEGACY / PROXY; superseded for living-floor service |
+| `crowdingLoad` | REAL BUT UNWIRED on the played floor; kept for attraction / aggregate / future offline models |
+| `equipmentFitScore` | SEMANTIC MISMATCH for recent service (attraction / mix, not yesterday's session) — G2-FIT-01 |
+| `memberDuesGymBucks` / `reputationFromMembers` | REAL BUT UNWIRED; G.2A does not call them |
+| `itemCondition` / `stationConditionView` | REAL at gym/item grain; MISSING at service-observation grain — G2-CONDITION-01 |
+| FloorSim observation condition field | MISSING |
+| type-specific satisfaction interpretation | NOT BUILT — G2-TYPE-01; common service-experience truth first |
+
+**Condition-at-service:** deferred. Observations name a station but do not
+snapshot `itemCondition` at use time. No fake 1.0 and no gym-wide mean.
+G2-CONDITION-01, G2-FIT-01, and G2-TYPE-01 stay open.
+
+**Wait curve (compared, then frozen):** bounded linear (scale 180),
+hyperbolic (scale 90), exponential decay `exp(-ticks / 110)` against the
+G.1 Garage means. The 110 is `waitDecayTicks`, an e-folding decay
+constant, not a half-life. A true half-life of 110 would be
+`exp(-ln(2) * ticks / 110)` and was compared; the shipped formula stays
+`exp(-ticks / 110)`. Exponential 110 won: 95 > 128, Capacity wait
+clearly above Throughput, Throughput above stock, Quality wait identical
+to stock, no step at copy thresholds 15 / 40 / 100.
+
+**Training map (G.2A.1 compared 0.75 / 0.82 / 0.90 with Quality held at
+1):** stock experience 1 → 0.82 (Solid); Quality 2 → 1.0 (Excellent).
+0.75 maps stock training to Thin and turns Capacity Garage Mixed; 0.90
+shrinks the Quality gap to 0.10. 0.82 kept: stock is a working gym,
+Quality is meaningfully better, Quality does not erase a severe wait,
+Capacity / Throughput do not gain training score.
+
+**Reliability:** interrupted visits exist only for mid-use yank
+(player-moved/removed station). Scored 0.55, not zero.
+
+**Composite (G.2A.1 re-evaluated against actual overall bands: Good ≥
+0.78, Mixed ≥ 0.62, Rough ≥ 0.45):** arithmetic mean rejected — five
+interruptions score Good. Bottleneck-sensitive mean rejected — Quality
+Garage overall Rough hides Excellent training, and Throughput's wait
+improvement does not survive as a label. Geometric mean of the three
+equal-weight component averages is shipped. Recency is the N=5 window;
+no extra decay.
+
+**G.2A.1 fixture authority:** living-member scores use the N=5 remembered
+window on the 1000-tick Garage fixtures, not G.1 all-observation means.
+Exact tables live in `livingMemberExperience.test.ts`.
+
+**Player card:** RECENT EXPERIENCE label + WAIT / TRAINING / SERVICE
+components + reason line, above the five visit rows.
+
+**Still blocked after G.2A:** member
+departures, dues writes, reputation writes, Career/Meet → Empire
+reputation, Portfolio, NpcLifter merge, Q/C/T retune, E-REP-01.
+G2-CONDITION-01, G2-FIT-01, and G2-TYPE-01 stay open. G.2B
+retention-pressure is authorized separately below; it does not close
+those debts and does not start G.2C.
+
+#### Stage G.2B — Living Member Retention Pressure Foundation
+
+**STAGE G.2B AUTHORIZED — RETENTION PRESSURE FOUNDATION BUILT,
+AWAITING HUMAN STAY-RISK VERDICT.** Human authorization superseded
+the previous "unauthorized" sentence for this stage only. G.2C
+arrivals/departures, G.2D dues, G.2E member-side reputation,
+Career/Meet → Empire reputation, Portfolio, and NpcLifter merge stay
+blocked. No member leaves in G.2B. No new member arrives except the
+already-accepted G.1 facility-expansion behavior.
+
+**Current authority:**
+
+| Item | Status |
+|---|---|
+| G.1 | CLOSED at `c27f714c` |
+| G.2A | CLOSED at `255de8a5`; mint `ba8561bf` |
+| G.2B | AUTHORIZED; foundation built; awaiting stay-risk verdict |
+| G2-CONDITION-01 | OPEN — service-level condition attribution missing |
+| G2-FIT-01 | OPEN — equipment fit is attraction, not recent service |
+| G2-TYPE-01 | OPEN — no type-specific **satisfaction** interpretation |
+| G2-ATHLETE-SEASON-01 | OPEN — Athlete leave/return needs G.2C |
+| G.2C | BLOCKED |
+| G.2D | BLOCKED |
+| G.2E | BLOCKED |
+| Career → Empire reputation | BLOCKED |
+| Portfolio | BLOCKED |
+
+**Proven causal chain:** physical gym decision → real FloorSim service
+→ persistent N=5 member history → explainable `LivingMemberExperience`
+→ deterministic retention pressure.
+
+G.2B consumes accepted G.2A truth. It does not rebuild satisfaction.
+It does not recompute service quality from equipment ownership,
+aggregate crowding, facility size, upgrade names, member count, or
+current station configuration.
+
+**Product target:** "Nia is starting to question whether this gym is
+working for her, and I can see why." Not "Nia has a 34% chance to
+quit today." Pressure is membership strain / willingness-to-stay
+concern. It is not a probability, daily hazard, countdown, churn
+roll, or departure event. The formed `pressure` field is a normalized
+index on `[0, 1]`, not a percent chance of leaving. Player copy has
+no `%`.
+
+**Common mapping (compared, then shipped):** linear inverse
+`pressure = 1 - composite`. Convex `(1 - composite)^2` compressed
+Capacity vs Stock in the played band. Logistic
+`1 / (1 + exp(8 * (e - 0.535)))` is centered at the Mixed/Rough
+midpoint 0.535 with k = 8 and does not hit 0 at experience 1. Linear
+is monotone, continuous through Good/Mixed/Rough/Poor presentation
+bands, and hits 0 at experience 1 / 1 at experience 0. Complexity
+was not added to justify the module. G.2B's value is the semantic
+boundary: experience truth → membership consequence input.
+
+**Forming:** G.2A empty history → experience `forming` → retention
+`forming`, `pressure` `null`, label `Still forming`. No Stable /
+Watching / Strained / At risk claim before there is experience
+evidence.
+
+**Membership labels** (bands on pressure, independent of experience
+labels): Stable if pressure < 0.22; Watching if < 0.42; Strained if
+< 0.55; else At risk. Detail card only; no always-on floor warning
+icon; no countdown.
+
+**Type model:** COMMON ships. The function is type-blind. MemberType
+does not alter G.2A WAIT / TRAINING / SERVICE / overall experience.
+NARROW GDD-backed response (Casual extra strain from accepted WAIT,
+Serious Lifter lower pressure at the same experience, no Bodybuilder /
+Powerlifter / Athlete G.2B modifier) is compared in
+`livingMemberRetention.test.ts` and is not applied. That comparison
+is a human decision before freezing type treatment. It does **not**
+close G2-TYPE-01: that debt is type-specific **satisfaction
+interpretation**, a different domain from retention response.
+
+**GDD type-quirk reading used here:**
+
+| Type | GDD quirk | G.2B |
+|---|---|---|
+| Casual | Leaves fastest when crowded | Retention-relevant, but only via accepted WAIT if a type layer ships later. Not `crowdingLoad`. Not shipped. |
+| Bodybuilder | Occupies equipment for a long time | Upstream occupancy. No retention modifier. |
+| Powerlifter | Raises gym reputation fastest | Reputation. No retention modifier. |
+| Athlete | Seasonal — leaves and returns | Deferred as G2-ATHLETE-SEASON-01. Belongs to G.2C. |
+| Serious Lifter | Slow to arrive, very slow to leave | Retention-relevant tolerance only, if a type layer ships later. Must not rewrite G.2A labels. Not shipped. |
+
+**Old crowding-sensitivity verdict:** `MEMBER_TYPE_CROWDING_SENSITIVITY`
+(casual 1.4 / bodybuilder 0.7 / powerlifter 0.7 / athlete 0.8 /
+serious-lifter 0.5) was built for aggregate crowding × fit ×
+condition. G.2B does not import or read it, nor `memberSatisfaction`,
+`crowdingLoad`, `crowdingSatisfactionMultiplier`, `equipmentFitScore`,
+`memberDuesGymBucks`, or `reputationFromMembers`.
+
+**Fences:** no roster mutation, no departure, no dues, no Empire
+reputation write, no Career import, no Portfolio, no NpcLifter merge,
+no RNG, no `Date.now`, no leave probability. G.2A constants frozen.
+Q/C/T frozen (Quality 120 / Capacity 180 / Throughput 30; stock
+changeover 18; Throughput 6; garage 60/hour; offline fraction 0.5).
+N=5 frozen. Offline clock advance and relocation without a new
+service observation leave pressure unchanged. Pressure is derived,
+not persisted.
+
+**Player card:** `MEMBERSHIP` line + reason, under recent experience,
+on the member detail card only.
+
+**Still blocked:** G.2C arrivals/departures + tenure continuity,
+G.2D member dues accounting, G.2E member-side institutional
+reputation, Career/Meet → Empire reputation, Portfolio, NpcLifter
+merge.
 
 ---
 

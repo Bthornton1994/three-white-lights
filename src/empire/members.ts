@@ -7,6 +7,12 @@
  * quirk (§5.6's table), a satisfaction function driven by crowding, equipment
  * condition and equipment fit, and a reputation-from-members contribution.
  *
+ * Stage G.2A: living-floor recent-service meaning lives in
+ * `livingMemberExperience.ts` and reads `recentVisits` only. This file's
+ * `memberSatisfaction()` remains the aggregate crowding × fit × condition
+ * proxy for later attraction / offline / consequence work. G.2A does not call
+ * it, and does not call `memberDuesGymBucks` or `reputationFromMembers`.
+ *
  * Pure module (CLAUDE.md, "Pure logic is separate from UI"): zero React, zero
  * side effects, zero I/O, no clock reading, no randomness. Its imports are
  * `./empireCore` (`refuseWith`, `ReputationPoints`, `asReputation`), `./sessions`
@@ -103,25 +109,19 @@
  * done.
  *
  * ===========================================================================
- * 4. Reputation contribution: members only; competition results are a typed,
- *    unread extension point
+ * 4. Reputation contribution: members only, as a per-day rate
  * ===========================================================================
  *
  * §5.6: "Reputation is earned mostly by powerlifter and serious-lifter
- * members, and by your own competition results." `grep -rn
- * "CompetitionResult|competitionResult" src/empire/` before this piece finds
- * nothing — no meet-result hook exists anywhere in `src/empire/`, and a real
- * one lives in `src/game`/`src/meet` (a different session's territory; GDD
- * §6 is Meet Day). Rather than invent an input with no producer,
- * `reputationFromMembers` takes the members' contribution as its whole
- * required argument and a second, OPTIONAL, already-typed argument —
- * `competitionResultReputationBonus: ReputationPoints`, defaulted to zero —
- * so a later piece can compose `reputationFromMembers(roster,
- * competitionBonus)` without this module changing shape. Nothing in this
- * codebase produces a non-zero value for that argument today; the default
- * makes that an explicit, testable fact (`members.test.ts` drives both the
- * zero-default and a nonzero value and asserts the composition is additive)
- * rather than a silent omission.
+ * members, and by your own competition results." The members half is this
+ * file: `reputationFromMembers` sums a per-day rate from a roster.
+ *
+ * The competition-results half is `sportingReputation.ts`, a per-result
+ * event delta. That is a different grain. Stage E.1 removed the old
+ * optional competition-result bonus argument: folding a meet into a daily
+ * member rate hid the mismatch inside this function. This function returns
+ * member reputation only. A later accounting boundary may compose grains
+ * once both operands share one; that boundary is not this file.
  *
  * ===========================================================================
  * 5. Crowding: a real ratio, from real state, with two type-keyed shape terms
@@ -414,19 +414,14 @@ export function memberSatisfaction(input: MemberSatisfactionInput): MemberSatisf
 /**
  * §5.6: "Reputation is earned mostly by powerlifter and serious-lifter
  * members, and by your own competition results." This is the members' half:
- * one day's reputation contribution from `roster`, plus
- * `competitionResultReputationBonus` — a typed, OPTIONAL extension point for
- * the second half, defaulted to zero because nothing in this codebase
- * produces a non-zero value yet (header §4).
+ * one day's reputation contribution from `roster`. The competition-results
+ * half is `sportingReputationFromResult` and is not an argument here.
  */
-export function reputationFromMembers(
-  roster: MemberRoster,
-  competitionResultReputationBonus: ReputationPoints = asReputation(0),
-): ReputationPoints {
+export function reputationFromMembers(roster: MemberRoster): ReputationPoints {
   requireMemberRoster(roster);
   const fromMembers = roster.reduce(
     (sum, row) => sum + row.count * EMPIRE_TUNING.MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY[row.type],
     0,
   );
-  return asReputation(scrubPrecision(fromMembers + competitionResultReputationBonus));
+  return asReputation(scrubPrecision(fromMembers));
 }

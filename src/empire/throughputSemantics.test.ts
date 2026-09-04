@@ -16,6 +16,7 @@ import {
   seatChangeoverTicks,
   stationChangeoverSeats,
   stepFloorSim,
+  withAmbientLivingPopulation,
   type FloorSimContext,
   type FloorSimMember,
   type FloorSimState,
@@ -40,13 +41,13 @@ const SEED = 1;
 const OWNED = Object.freeze([...T.LADDER_STARTING_EQUIPMENT]);
 
 function openingContext(capability: StationCapabilityState): FloorSimContext {
-  return {
+  return withAmbientLivingPopulation({
     rung: 'garage',
     floor: createFloorState('garage'),
     barbellOwned: OWNED,
     sessionOwned: [],
     capability,
-  };
+  });
 }
 
 function purchased(axis: StationUpgradeAxis): StationCapabilityState {

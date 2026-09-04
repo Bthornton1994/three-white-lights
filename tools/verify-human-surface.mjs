@@ -440,7 +440,7 @@ async function afford(page, amount) {
   for (let i = 0; i < 16; i += 1) {
     purse = purseAmount(await page.getByTestId('gymscreen-gym-bucks').innerText({ timeout: 2000 }).catch(() => ''));
     if (Number.isFinite(purse) && purse >= amount) return purse;
-    await page.getByTestId('gymscreen-advance-259200').click();
+    await page.getByTestId('gymscreen-advance-offline-259200').click();
     await page.waitForTimeout(250);
   }
   return purse;

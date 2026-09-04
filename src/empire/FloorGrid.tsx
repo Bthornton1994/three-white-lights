@@ -127,6 +127,13 @@
  *    deliberately not what Phase 3's gate is asking about — that question is
  *    whether the motion reads as behaviour.
  *
+ * 5. Stage D2.2 plate loading. While `FloorSimState.changeovers` holds a
+ *    seat, crimson plate discs travel from a stack position to the bar
+ *    sleeve on that bench. Progress is remaining/total ticks from the same
+ *    sim field the loading highlight already reads. Stock 18 and plate-tree
+ *    6 share the path; only duration differs. No second `setInterval`, no
+ *    loader body, no staff system.
+ *
  * WHAT THIS HALF DOES NOT DO, since the list is the point. It computes no
  * behaviour: every state, target, queue position and interruption is
  * `floorSim.ts`'s, and what happens here is tile-to-pixel conversion,
@@ -137,7 +144,7 @@
  * the floor, never the other way round.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import {
   Animated,
   Easing,
@@ -187,16 +194,27 @@ import {
   floorStations,
   seatChangeoverTicks,
   stationChangeoverSeats,
-  stepFloorSim,
+  stepFloorSimWithObservations,
 } from './floorSim';
 import { type LadderEquipmentItem } from './ladder';
 import { type GymViewAction } from './ladderView';
+import {
+  floorSimPopulationFromRoster,
+  livingMemberAtIndex,
+  playerFacingMemberShortId,
+  playerFacingServiceVisitLine,
+  playerFacingTenureLine,
+  type LivingMemberRoster,
+} from './livingMembers';
+import { livingMemberExperience } from './livingMemberExperience';
+import { livingMemberRetentionPressure } from './livingMemberRetention';
 import { type ManagedGym, maintenancePrompt } from './management';
 import { type MemberType } from './members';
 import { type SessionEquipmentItem } from './sessions';
 import {
   isStationUpgradeSlice,
   stationLevels,
+  stationChangeoverTicks,
   stationUpgradeCostGymBucks,
   type StationCapabilityState,
   type StationUpgradeAxis,
@@ -217,6 +235,8 @@ import {
   playerFacingUpgradeEffect,
   playerFacingUpgradeLabel,
   playerFacingUpgradeRefuse,
+  plateLoadingDiscs,
+  plateLoadingProgress,
   stationConditionView,
   stationIdentityView,
   stationManagerEffectView,
@@ -294,6 +314,10 @@ export interface FloorGridProps {
    * stations and members. Never an economic flag.
    */
   readonly buildMode: boolean;
+  /** Stage G.1 — persistent member identities and service history. */
+  readonly livingMembers: LivingMemberRoster;
+  /** Gym clock seconds for tenure copy. */
+  readonly gymClockSeconds: number;
 }
 
 /** Live tile size from the measured gym stage, so a garage fills the viewport. */
@@ -362,6 +386,9 @@ const FLOOR_QUALITY_MARK_COLOR = 'goldenrod';
  * faster station is not readable as "someone is waiting here".
  */
 const FLOOR_THROUGHPUT_MARK_COLOR = 'darkkhaki';
+/** Stage D2.2 plate discs during a changeover — competition-plate red, named CSS so no palette-module crossing. */
+const FLOOR_PLATE_LOADING_COLOR = 'crimson';
+const FLOOR_PLATE_LOADING_HOLE_COLOR = 'white';
 /** The contextual station panel's own backing, the same quiet slate the tray chip already reads against. */
 const FLOOR_STATION_PANEL_BACKGROUND_COLOR = 'darkslateblue';
 /** The panel's action-button chrome — the identical literals `GymScreen.tsx`'s own `styles.button` already uses, so a control looks like the same control on both screens. */
@@ -383,6 +410,12 @@ const panelStyles = StyleSheet.create({
     borderWidth: EMPIRE_TUNING.FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS,
     borderColor: FLOOR_STATION_SELECTED_OUTLINE_COLOR,
     backgroundColor: FLOOR_STATION_PANEL_BACKGROUND_COLOR,
+    // Same cap the facility drawers already use. Without it the open panel
+    // grows through gymscreen-dock and shell-leave-gym (13j measured the
+    // overlap at 390×844: panel bottom 787, pill top 762).
+    maxHeight:
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS *
+      EMPIRE_TUNING.FLOOR_GRID_SIZE.garage.height,
   },
   diagnosticsToggle: {
     alignSelf: 'flex-start',
@@ -713,6 +746,16 @@ function highlightTestId(
   return `floorsim-${activity}-${ref.kind}-${ref.item}`;
 }
 
+function plateLoadingTestId(ref: FloorStationRef, expansion: boolean): string {
+  if (ref.kind === 'training' && expansion) {
+    return `floorsim-plate-loading-training-${ref.station}-expansion`;
+  }
+  if (ref.kind === 'training') {
+    return `floorsim-plate-loading-training-${ref.station}`;
+  }
+  return `floorsim-plate-loading-${ref.kind}-${ref.item}`;
+}
+
 function memberUsesCell(
   members: readonly FloorSimMember[],
   ref: FloorStationRef,
@@ -819,6 +862,110 @@ function stationHighlightBoxes(
   return boxes;
 }
 
+interface PlateLoadingLayer {
+  readonly key: string;
+  readonly testID: string;
+  readonly discs: readonly {
+    readonly index: number;
+    readonly left: number;
+    readonly top: number;
+    readonly size: number;
+  }[];
+}
+
+/**
+ * Stage D2.2: plate discs on the bench while `changeovers` holds the seat.
+ * Progress maps remaining=total..1 onto 0..1 so the last drawn frame
+ * reaches the sleeve. No parallel timer.
+ */
+function plateLoadingLayers(
+  station: FloorStation,
+  bay: CompetitionBenchBay,
+  changeovers: Readonly<Record<string, number>>,
+  capability: StationCapabilityState,
+  tile: number,
+): readonly PlateLoadingLayer[] {
+  if (station.ref.kind !== 'training') return [];
+  const total = stationChangeoverTicks(capability, station.ref.kind, station.ref.station);
+  if (total <= 0) return [];
+  const layout = EMPIRE_TUNING.FLOOR_PLATE_LOADING;
+  const layers: PlateLoadingLayer[] = [];
+  const benches: { readonly bench: BayBench; readonly expansion: boolean }[] = [];
+  if (bay.benches.length > 0) {
+    for (const bench of bay.benches) {
+      benches.push({ bench, expansion: bench.source === 'expansion' });
+    }
+  } else {
+    benches.push({
+      bench: {
+        position: station.position,
+        footprint: station.footprint,
+        source: 'primary',
+      },
+      expansion: false,
+    });
+  }
+  for (let index = 0; index < benches.length; index += 1) {
+    const row = benches[index];
+    if (row === undefined) continue;
+    const cell = station.useCells[index];
+    if (cell === undefined) continue;
+    const remaining = seatChangeoverTicks(changeovers, station.ref, cell);
+    if (remaining <= 0) continue;
+    const progress = plateLoadingProgress(remaining, total);
+    const shortSide = Math.min(row.bench.footprint.width, row.bench.footprint.height);
+    const size = shortSide * tile * layout.discSizeFraction;
+    const half = size / 2;
+    const discs = plateLoadingDiscs(progress).map((disc) =>
+      Object.freeze({
+        index: disc.index,
+        left: (row.bench.position.x + disc.xFraction * row.bench.footprint.width) * tile - half,
+        top: (row.bench.position.y + disc.yFraction * row.bench.footprint.height) * tile - half,
+        size,
+      }),
+    );
+    const testID = plateLoadingTestId(station.ref, row.expansion);
+    layers.push({
+      key: testID,
+      testID,
+      discs: Object.freeze(discs),
+    });
+  }
+  return layers;
+}
+
+/**
+ * Disc Views for one loading layer. A C-style loop rather than
+ * `layer.discs.map`, so the channel census does not file a
+ * member-of-parameter `.map` on the layer callback's parameter. The discs
+ * are already a frozen array from `plateLoadingLayers`; this only renders.
+ */
+function plateLoadingDiscViews(layer: PlateLoadingLayer): readonly ReactElement[] {
+  const views: ReactElement[] = [];
+  for (let index = 0; index < layer.discs.length; index += 1) {
+    const disc = layer.discs[index];
+    if (disc === undefined) continue;
+    views.push(
+      <View
+        key={`${layer.key}-disc-${disc.index}`}
+        testID={`${layer.testID}-disc-${disc.index}`}
+        pointerEvents={'none'}
+        style={{
+          position: 'absolute',
+          left: disc.left,
+          top: disc.top,
+          width: disc.size,
+          height: disc.size,
+          borderRadius: disc.size,
+          backgroundColor: FLOOR_PLATE_LOADING_COLOR,
+          borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
+          borderColor: FLOOR_PLATE_LOADING_HOLE_COLOR,
+        }}
+      />,
+    );
+  }
+  return views;
+}
 
 interface AmbientMemberBodyProps {
   readonly index: number;
@@ -852,6 +999,11 @@ interface AmbientMemberBodyProps {
   readonly pose: FloorSpritePose;
   /** Phase 4: which way the sprite faces — the mirror is baked into the sprite table, not computed here. */
   readonly facing: FloorSpriteFacing;
+  /**
+   * Compact selected-member cue only. Warehouse can hold 40 living members;
+   * permanent floating names over every sprite would cover the room.
+   */
+  readonly selectedName?: string;
   /**
    * Play-mode tap on this visible body. Presentation only — not a
    * `GymViewAction`. Absent in Build, where the same animated root is
@@ -986,6 +1138,7 @@ function AmbientMemberBody({
   stranded,
   pose,
   facing,
+  selectedName,
   onPress,
 }: AmbientMemberBodyProps) {
   const footprintWidth = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.width * tile;
@@ -1170,6 +1323,27 @@ function AmbientMemberBody({
           {FLOOR_SIM_INTERRUPTION_WORD[interruptedBy]}
         </Text>
       )}
+      {selectedName === undefined ? null : (
+        <Text
+          testID={'floorgrid-selected-member-name'}
+          pointerEvents={'none'}
+          style={{
+            position: 'absolute',
+            left: -tile,
+            top: -(
+              cueDiameter +
+              EMPIRE_TUNING.FLOOR_SIM_CUE_GAP_PIXELS * 2 +
+              EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE
+            ),
+            width: footprintWidth + tile * 2,
+            color: AMBIENT_MEMBER_BORDER_COLOR,
+            fontSize: EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE,
+            textAlign: 'center',
+          }}
+        >
+          {selectedName}
+        </Text>
+      )}
       {/*
         The stranded ring. `floorSim.ts`'s own header states why this needs a
         cue of its own: the interruption beat is transient, so a member walled
@@ -1213,7 +1387,8 @@ function AmbientMemberBody({
 }
 
 export function FloorGrid(props: FloorGridProps) {
-  const { owned, barbellOwned, floor, dispatch, managed, capability, buildMode } = props;
+  const { owned, barbellOwned, floor, dispatch, managed, capability, buildMode, livingMembers, gymClockSeconds } =
+    props;
   const grid = floorGridSize(floor.rung);
   const placed = floorLayout(floor);
   const unplaced = unplacedOwnedFloorItems(floor, owned);
@@ -1250,6 +1425,7 @@ export function FloorGrid(props: FloorGridProps) {
     barbellOwned,
     sessionOwned: owned,
     capability,
+    livingPopulation: floorSimPopulationFromRoster(livingMembers),
   };
   // GDD §5.13's PLAYTEST 2 ruling, gap 3: the grid's own internal tile
   // boundaries, one line per interior column/row edge — `grid.width - 1`
@@ -1538,7 +1714,16 @@ export function FloorGrid(props: FloorGridProps) {
   useEffect(() => {
     if (pendingPlace !== null) return undefined;
     const timer = setInterval(() => {
-      setSim((previous) => stepFloorSim(previous, simContextRef.current));
+      setSim((previous) => {
+        const stepped = stepFloorSimWithObservations(previous, simContextRef.current);
+        if (stepped.observations.length > 0) {
+          dispatch({
+            kind: 'apply-living-member-observations',
+            observations: stepped.observations,
+          });
+        }
+        return stepped.state;
+      });
     }, EMPIRE_TUNING.FLOOR_SIM_TICK_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [pendingPlace]);
@@ -2181,7 +2366,25 @@ export function FloorGrid(props: FloorGridProps) {
                 )),
               )
             }
-            {null}
+            {
+              stations.flatMap((station) =>
+                plateLoadingLayers(station, bay, sim.changeovers, capability, tile).map((layer) => (
+                  <View
+                    key={layer.key}
+                    testID={layer.testID}
+                    pointerEvents={'none'}
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
+                    }}
+                  >
+                    {plateLoadingDiscViews(layer)}
+                  </View>
+                )),
+              )
+            }
             {
               // GDD §5.13 presentation Phase 3: the members, at the position
               // the sim puts them at this instant. Still non-draggable, still
@@ -2215,6 +2418,12 @@ export function FloorGrid(props: FloorGridProps) {
                     stranded={member.strandedAt !== null}
                     pose={memberPose(member, sim.tick)}
                     facing={memberFacing(member, station, bay)}
+                    selectedName={
+                      selectedMemberIndex === member.index
+                        ? (livingMemberAtIndex(livingMembers, member.index)?.displayName ??
+                          undefined)
+                        : undefined
+                    }
                     onPress={
                       buildMode ? undefined : () => toggleSelectedMember(member.index)
                     }
@@ -2455,10 +2664,81 @@ export function FloorGrid(props: FloorGridProps) {
         change the floor, or touch anything `GymViewState` owns.
       */}
       {selectedMember === null ? null : (
-        <View testID={'floorgrid-member-panel'} style={panelStyles.panel}>
-          <Text testID={'floorgrid-member-panel-identity'}>
-            {playerFacingMemberTypeLabel(selectedMember.type)}
-          </Text>
+        <ScrollView testID={'floorgrid-member-panel'} style={panelStyles.panel}>
+          {(() => {
+            const living = livingMemberAtIndex(livingMembers, selectedMember.index);
+            return (
+              <>
+                {living === null ? null : (
+                  <Text testID={'floorgrid-member-panel-display-name'}>{living.displayName}</Text>
+                )}
+                <Text testID={'floorgrid-member-panel-identity'}>
+                  {playerFacingMemberTypeLabel(selectedMember.type)}
+                </Text>
+                {living === null ? null : (
+                  <>
+                    <Text testID={'floorgrid-member-panel-short-id'}>
+                      {playerFacingMemberShortId(living.id)}
+                    </Text>
+                    <Text testID={'floorgrid-member-panel-tenure'}>
+                      {playerFacingTenureLine(living.joinedAtSeconds, gymClockSeconds)}
+                    </Text>
+                    {(() => {
+                      const experience = livingMemberExperience(living.recentVisits);
+                      const retention = livingMemberRetentionPressure(experience);
+                      return (
+                        <>
+                          <Text testID={'floorgrid-member-panel-experience'}>
+                            {`RECENT EXPERIENCE ${experience.labels.overall}`}
+                          </Text>
+                          {experience.status === 'forming' ? (
+                            <Text testID={'floorgrid-member-panel-no-history'}>
+                              {experience.reasons[0]?.text}
+                            </Text>
+                          ) : (
+                            <>
+                              <Text testID={'floorgrid-member-panel-experience-components'}>
+                                <Text testID={'floorgrid-member-panel-experience-wait'}>
+                                  {`WAIT ${experience.labels.wait}`}
+                                </Text>
+                                {' / '}
+                                <Text testID={'floorgrid-member-panel-experience-training'}>
+                                  {`TRAINING ${experience.labels.training}`}
+                                </Text>
+                                {' / '}
+                                <Text testID={'floorgrid-member-panel-experience-reliability'}>
+                                  {`SERVICE ${experience.labels.reliability}`}
+                                </Text>
+                              </Text>
+                              <Text testID={'floorgrid-member-panel-experience-reason'}>
+                                {experience.reasons.map((reason) => reason.text).join(' ')}
+                              </Text>
+                            </>
+                          )}
+                          <Text testID={'floorgrid-member-panel-membership'}>
+                            {`MEMBERSHIP ${retention.label}`}
+                          </Text>
+                          <Text testID={'floorgrid-member-panel-membership-reason'}>
+                            {retention.reasons.map((reason) => reason.text).join(' ')}
+                          </Text>
+                        </>
+                      );
+                    })()}
+                    {living.recentVisits.length === 0 ? null : (
+                      living.recentVisits.map((visit, visitIndex) => (
+                        <Text
+                          key={`visit-${visit.observedAtTick}-${visitIndex}`}
+                          testID={`floorgrid-member-panel-visit-${visitIndex}`}
+                        >
+                          {playerFacingServiceVisitLine(visit)}
+                        </Text>
+                      ))
+                    )}
+                  </>
+                )}
+              </>
+            );
+          })()}
           <Text testID={'floorgrid-member-panel-state'}>
             {playerFacingMemberActivityLine(
               selectedMember.state,
@@ -2473,7 +2753,7 @@ export function FloorGrid(props: FloorGridProps) {
           >
             <Text style={panelStyles.buttonText}>close</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       )}
       {panelStation === null ||
       panelIdentity === null ||
@@ -2481,7 +2761,7 @@ export function FloorGrid(props: FloorGridProps) {
       panelCondition === null ||
       panelManagerEffect === null ||
       selectedMember !== null ? null : (
-        <View testID={'floorgrid-station-panel'} style={panelStyles.panel}>
+        <ScrollView testID={'floorgrid-station-panel'} style={panelStyles.panel}>
           <Text testID={'floorgrid-station-panel-identity'}>
             {playerFacingEquipmentLabel(panelIdentity.item)}
           </Text>
@@ -2710,10 +2990,10 @@ export function FloorGrid(props: FloorGridProps) {
           >
             <Text style={panelStyles.buttonText}>close</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       )}
       {panelEquipment === null || selectedMember !== null || panelStation !== null ? null : (
-        <View testID={'floorgrid-equipment-panel'} style={panelStyles.panel}>
+        <ScrollView testID={'floorgrid-equipment-panel'} style={panelStyles.panel}>
           <Text testID={'floorgrid-equipment-panel-identity'}>
             {playerFacingEquipmentLabel(panelEquipment)}
           </Text>
@@ -2752,7 +3032,7 @@ export function FloorGrid(props: FloorGridProps) {
           >
             <Text style={panelStyles.buttonText}>close</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       )}
     </View>
   );

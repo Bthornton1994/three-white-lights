@@ -806,6 +806,21 @@ async function tapGridCell(xTile, yTile) {
 }
 
 /**
+ * Click an RN-web Pressable whose box may sit under `gymscreen-dock`.
+ * Playwright's hit-test then clicks the Shop tab. `force: true` still does
+ * not fire `onPress` — measured in 9h: purse moved by −0.008 (clock
+ * accrual), not the quoted repair. Dispatch the same MouseEvent
+ * `tapGridCell` already uses, on the element itself.
+ */
+async function pressRnWeb(locator) {
+  await locator.evaluate((el) => {
+    el.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true, altKey: false, view: window }),
+    );
+  });
+}
+
+/**
  * Canonical Build path: tap a tray/placed/furniture control, then tap a tile.
  * Does not go through pressById, which would switch floorgrid-* to Play.
  */
@@ -1595,6 +1610,46 @@ try {
     const memberPanel = await waitUntilDrawn(page, 'floorgrid-member-panel', BEAT_TIMEOUT_MS);
     if (memberPanel.drawn) {
       ok(`C.1b: tapping a visible member opens floorgrid-member-panel (${memberPanel.why})`);
+      const experienceLine = await waitUntilDrawn(
+        page,
+        'floorgrid-member-panel-experience',
+        BEAT_TIMEOUT_MS,
+      );
+      if (!experienceLine.drawn) {
+        fail(
+          `G.2A: floorgrid-member-panel-experience never drawn after the member card opened — ${experienceLine.why}`,
+        );
+      } else {
+        const experienceText = ((await textOf('floorgrid-member-panel-experience')) ?? '').trim();
+        if (/\d+\.\d{2,}/.test(experienceText)) {
+          fail(`G.2A: recent-experience summary exposes a raw score (${experienceText})`);
+        } else if (experienceText.length === 0) {
+          fail('G.2A: floorgrid-member-panel-experience is drawn but empty');
+        } else {
+          ok(`G.2A: member card shows compact recent-experience (${experienceText})`);
+        }
+      }
+      const membershipLine = await waitUntilDrawn(
+        page,
+        'floorgrid-member-panel-membership',
+        BEAT_TIMEOUT_MS,
+      );
+      if (!membershipLine.drawn) {
+        fail(
+          `G.2B: floorgrid-member-panel-membership never drawn after the member card opened — ${membershipLine.why}`,
+        );
+      } else {
+        const membershipText = ((await textOf('floorgrid-member-panel-membership')) ?? '').trim();
+        if (/%/.test(membershipText) || /quit|chance|churn/i.test(membershipText)) {
+          fail(`G.2B: membership summary exposes fake precision or a leave chance (${membershipText})`);
+        } else if (membershipText.length === 0) {
+          fail('G.2B: floorgrid-member-panel-membership is drawn but empty');
+        } else if (!/^MEMBERSHIP /.test(membershipText)) {
+          fail(`G.2B: membership summary is missing the MEMBERSHIP prefix (${membershipText})`);
+        } else {
+          ok(`G.2B: member card shows compact membership strain (${membershipText})`);
+        }
+      }
       await page.getByTestId('floorgrid-member-panel-dismiss').click({ timeout: 10000 }).catch(() => {});
     } else {
       fail(`C.1b: floorgrid-member-panel never drawn after tapping floorgrid-ambient-0 — ${memberPanel.why}`);
@@ -2135,7 +2190,7 @@ try {
   // -------------------------------------------------------------------------
   readAddress('2: earning and buying mats');
   await openGymSurface('more');
-  const advanceId = 'gymscreen-advance-259200'; // +3d, LADDER_DEV_TIME_STEPS_SECONDS[2]
+  const advanceId = 'gymscreen-advance-offline-259200'; // +3d away
   const advanceButton = page.getByTestId(advanceId);
   const advanceExists = await advanceButton.count().then((n) => n > 0).catch(() => false);
   if (!advanceExists) {
@@ -2500,7 +2555,7 @@ try {
       ...(await testIdsStartingWith('floorsim-claimed-session-mats')),
       ...(await testIdsStartingWith('floorsim-using-session-mats')),
     ];
-    await removeButton.click({ timeout: 10000 });
+    await pressRnWeb(removeButton);
     // GDD §5.13 Phase 3 (8d), the reaction itself, polled with nothing in
     // front of it. Taking a machine off the floor while a member is walking to
     // it or standing on it is `target-removed` — the first of the two causes
@@ -2714,7 +2769,18 @@ try {
     }
     const control = page.getByTestId(id);
     await control.scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
-    await control.click({ timeout: 10000 });
+    // Station- and equipment-panel chrome sit behind the facility dock on
+    // 390×844 when recovery copy is long. Playwright's hit-test clicks the
+    // Shop tab; `force: true` still does not fire RN-web `onPress`. Use the
+    // same element-targeted MouseEvent as `tapGridCell`.
+    if (
+      id.startsWith('floorgrid-station-panel-') ||
+      id.startsWith('floorgrid-equipment-panel-')
+    ) {
+      await pressRnWeb(control);
+    } else {
+      await control.click({ timeout: 10000 });
+    }
     await page.waitForTimeout(S4B_PRESS_SETTLE_MS);
   };
 
@@ -3152,7 +3218,15 @@ try {
     await pressById(repairId);
   }
   const purseAfterRecovery = await purseNow();
-  await pressById('gymscreen-recover');
+  await openGymSurface('staff');
+  const recoverOffered = await page.getByTestId('gymscreen-recover').count();
+  if (recoverOffered === 0) {
+    fail(
+      `S4b (9g): reopen control not offered after the repair walk — recovery "${await textOf('gymscreen-recovery-state')}", blocking "${await textOf('gymscreen-recovery-blocking')}"`,
+    );
+  } else {
+    await pressById('gymscreen-recover');
+  }
   const reopenedState = await textOf('gymscreen-recovery-state');
   // The reopen COUNT moved out of the cost line. A gym that is open quotes no
   // reopening price at all — that was the human's own "reopening would cost 0
@@ -3216,8 +3290,8 @@ try {
   // cross-checked against the panel's own dormant-only text once reachable
   // (below) rather than only asserted from a literal.
   readAddress('9h: the recovery/routine-maintenance contradiction');
-  const GAP_ADVANCE_ID = 'gymscreen-advance-28800'; // +8h, LADDER_DEV_TIME_STEPS_SECONDS[1]
-  const GAP_SMALL_ADVANCE_ID = 'gymscreen-advance-3600'; // +1h, LADDER_DEV_TIME_STEPS_SECONDS[0]
+  const GAP_ADVANCE_ID = 'gymscreen-advance-offline-28800'; // +8h away
+  const GAP_SMALL_ADVANCE_ID = 'gymscreen-advance-offline-3600'; // +1h away
   const GAP_TARGET_LOW = 55;
   const GAP_TARGET_HIGH = 72;
   const GAP_MAX_PRESSES = 40;
@@ -3949,7 +4023,8 @@ try {
   // training destination. Tapping it opens the equipment panel and must
   // not open the station panel.
   readAddress('13a-eq: tap power-bar inspects equipment');
-  await page.getByTestId('floorgrid-station-panel-dismiss').click({ timeout: 5000 }).catch(() => {});
+  const dismissBefore13eq = page.getByTestId('floorgrid-station-panel-dismiss');
+  if ((await dismissBefore13eq.count()) > 0) await pressRnWeb(dismissBefore13eq).catch(() => {});
   await page.waitForTimeout(100);
   const powerBarBox13eq = await boxOf('floorgrid-fixed-power-bar');
   if (powerBarBox13eq === null) {
@@ -3974,7 +4049,8 @@ try {
         `13a-eq: tapping power-bar did not inspect equipment — drawn=${equipmentDrawn13eq.drawn} (${equipmentDrawn13eq.why}), identity="${equipmentIdentity13eq}", station panels=${stationCount13eq}`,
       );
     }
-    await page.getByTestId('floorgrid-equipment-panel-dismiss').click({ timeout: 5000 }).catch(() => {});
+    const dismissEquipment13eq = page.getByTestId('floorgrid-equipment-panel-dismiss');
+    if ((await dismissEquipment13eq.count()) > 0) await pressRnWeb(dismissEquipment13eq).catch(() => {});
     await page.waitForTimeout(100);
   }
 
@@ -4160,7 +4236,7 @@ try {
       `13e: expected a live repair control with a quoted cost on a worn item, named on the independent worn-list — button present=${repairButtonExists13}, quote=${repairQuote13}, purse=${purseBeforeRepair13}, mats on worn-list=${matsWornBeforeRepair13} ("${wornBeforeRepair13}")`,
     );
   } else {
-    await repairButton13.click({ timeout: 10000 });
+    await pressRnWeb(repairButton13);
     await page.waitForTimeout(200);
     const purseAfterRepair13 = numberInText(await textOf('gymscreen-gym-bucks'), /gym bucks: ([\d.]+)/);
     const charged13 = purseAfterRepair13 === null ? null : purseBeforeRepair13 - purseAfterRepair13;
@@ -4219,7 +4295,7 @@ try {
   if (!removeButtonExists13) {
     fail('13f: floorgrid-station-panel-remove is not on screen for a placed session item');
   } else {
-    await removeButton13.click({ timeout: 10000 });
+    await pressRnWeb(removeButton13);
     await page.waitForTimeout(250);
     const stillPlaced13 = await page.getByTestId('floorgrid-placed-mats').count().then((n) => n > 0).catch(() => false);
     await openGymSurface('build');
@@ -4278,7 +4354,7 @@ try {
   if (!dismissExists13) {
     fail('13g: floorgrid-station-panel-dismiss is not on screen with a panel open');
   } else {
-    await dismissButton13.click({ timeout: 10000 });
+    await pressRnWeb(dismissButton13);
     await page.waitForTimeout(150);
     const panelGoneAfterDismiss13 = await page
       .getByTestId('floorgrid-station-panel')

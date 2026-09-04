@@ -38,6 +38,17 @@ conversation.** Coordination lives here, in the tree, because that is the only
 channel both sessions actually share. If you are a session that has just started
 and has no history, this section tells you which half of the repo is yours.
 
+### Current Stage G authority (independently verified)
+
+G.1 CLOSED. G.2A CLOSED at `255de8a5` (mint `ba8561bf`, docs/comment only).
+G.2B is authorized as the retention-pressure foundation: explainable
+G.2A experience → willingness-to-stay pressure. No member leaves.
+G.2C arrivals/departures, G.2D dues, and G.2E member-side reputation
+stay blocked. Do not wire `memberDuesGymBucks` / `reputationFromMembers`
+/ old crowding satisfaction merely because those functions exist.
+G2-CONDITION-01, G2-FIT-01, G2-TYPE-01, and G2-ATHLETE-SEASON-01 stay
+open. Career → Empire reputation and Portfolio stay blocked.
+
 ### The split
 
 | | Session A — the main loop | Session B — the parallel scope |

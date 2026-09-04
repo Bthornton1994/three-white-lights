@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { EMPIRE_TUNING } from './empireTuning';
-import { asReputation } from './empireCore';
 import type { SessionEquipmentItem } from './sessions';
 import {
   crowdingLoad,
@@ -360,7 +359,7 @@ describe('memberSatisfaction — the composed §5.6 function', () => {
 });
 
 describe('reputationFromMembers — §5.6\'s reputation contribution', () => {
-  it('is zero for an empty roster with no competition bonus', () => {
+  it('is zero for an empty roster', () => {
     expect(reputationFromMembers([])).toBe(0);
   });
 
@@ -392,12 +391,13 @@ describe('reputationFromMembers — §5.6\'s reputation contribution', () => {
     expect(reputationFromMembers(roster)).toBeCloseTo(expected, 6);
   });
 
-  it('the competition-result extension point defaults to zero and composes additively when supplied', () => {
+  it('takes only a roster — no competition-result bonus argument', () => {
+    expect(reputationFromMembers.length).toBe(1);
     const roster: MemberRoster = [{ type: 'powerlifter', count: 4 }];
-    const withoutBonus = reputationFromMembers(roster);
-    const bonus = asReputation(12.5);
-    const withBonus = reputationFromMembers(roster, bonus);
-    expect(withBonus).toBeCloseTo(withoutBonus + 12.5, 6);
+    expect(reputationFromMembers(roster)).toBeCloseTo(
+      4 * EMPIRE_TUNING.MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY.powerlifter,
+      6,
+    );
   });
 
   it('refuses a malformed roster the same way crowdingLoad does', () => {

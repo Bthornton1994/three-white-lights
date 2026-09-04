@@ -74,6 +74,13 @@
  * gives: confined to the ladder, the exemption's answer is zero with it and zero
  * without it.
  *
+ * Stage E.1's per-result sporting contributor lives in `sportingReputation.ts`.
+ * This file still accrues the check-in / tenure reputation that already
+ * existed; it does not import or call the sporting calculator. The Career
+ * result → persistent `EmpireState.reputation` write is a later crossing.
+ * E-REP-01: check-in reputation is inherited activity credit and has not
+ * been reconciled with sporting-credibility doctrine.
+ *
  * The test is `!== 'idle-only'` rather than `=== 'progression-reaching'`, which
  * is the conservative direction: a third reach verdict added later is treated as
  * gate-forbidden until somebody decides otherwise.

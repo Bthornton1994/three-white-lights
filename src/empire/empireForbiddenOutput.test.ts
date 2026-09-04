@@ -414,6 +414,9 @@ import * as floorSpritesModule from './floorSprites';
 import * as gymScreenModule from './GymScreen';
 import * as ladderModule from './ladder';
 import * as ladderViewModule from './ladderView';
+import * as livingMemberExperienceModule from './livingMemberExperience';
+import * as livingMemberRetentionModule from './livingMemberRetention';
+import * as livingMembersModule from './livingMembers';
 import * as managementModule from './management';
 import * as membersModule from './members';
 import * as npcModule from './npc';
@@ -423,6 +426,7 @@ import * as recruitmentModule from './recruitment';
 import * as reputationModule from './reputation';
 import * as sessionsModule from './sessions';
 import * as socialModule from './social';
+import * as sportingReputationModule from './sportingReputation';
 import * as stationViewModule from './stationView';
 import * as stationCapabilityModule from './stationCapability';
 import * as trainingStationModule from './trainingStation';
@@ -1232,7 +1236,7 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
   Object.freeze({
     field: 'player-facing presentation labels',
     why:
-      'Stage C.1c display maps from closed domain tokens (equipment items, session groups, manager tiers) onto player-facing copy. The domain enums stay the identifiers; these returns are presentation-only generic nouns already on the space-free census. Tests join each displayed card to the underlying token via testID.',
+      'Player-facing copy mapped from closed domain tokens (equipment, groups, manager tiers, Stage E sporting-result reason kinds). The domain enums stay the identifiers; these returns are presentation-only generic nouns already on the space-free census. Tests join each displayed card or reason row to the underlying token.',
     positions: Object.freeze([
       'stationView.ts#playerFacingActivityGroupLabel#return',
       'stationView.ts#playerFacingBayRole#return',
@@ -1245,6 +1249,7 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'stationView.ts#playerFacingUpgradeEffect#return',
       'stationView.ts#playerFacingUpgradeLabel#return',
       'stationView.ts#playerFacingUpgradeRefuse#return',
+      'sportingReputation.ts#sportingReputationFromResult#return.reasons[].text',
     ]),
   }),
   Object.freeze({
@@ -1255,6 +1260,69 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'floorSim.ts#changeoverSeatKey#return',
       'floorSim.ts#floorStationRefKey#return',
       'stationView.ts#stationIdentityView#return.item',
+    ]),
+  }),
+  Object.freeze({
+    field: 'Stage G.1 living member ids, station keys, display names and player-facing service copy',
+    why:
+      'livingMembers.ts derives branded member ids and records floor-sim station keys on service visits; ladderView.tsx carries the roster through GymViewState. Display names are stored given names from a closed pool, presentation only. Player-facing tenure/wait/training/visit lines are presentation strings mapped from numeric sim truth. Instrument B containment-scans every produced value; the ids are derived from closed rung/index/nonce inputs rather than random draws.',
+    positions: Object.freeze([
+      'floorSim.ts#stepFloorSimWithObservations#return.observations[].stationKey',
+      'ladderView.tsx#createGymViewState#return.livingMembers.members[].id',
+      'ladderView.tsx#createGymViewState#return.livingMembers.members[].displayName',
+      'ladderView.tsx#createGymViewState#return.livingMembers.members[].recentVisits[].stationKey',
+      'ladderView.tsx#gymViewReduce#return.livingMembers.members[].id',
+      'ladderView.tsx#gymViewReduce#return.livingMembers.members[].displayName',
+      'ladderView.tsx#gymViewReduce#return.livingMembers.members[].recentVisits[].stationKey',
+      'livingMembers.ts#advanceLivingMemberTenure#return.members[].id',
+      'livingMembers.ts#advanceLivingMemberTenure#return.members[].displayName',
+      'livingMembers.ts#advanceLivingMemberTenure#return.members[].recentVisits[].stationKey',
+      'livingMembers.ts#applyServiceObservations#return.members[].id',
+      'livingMembers.ts#applyServiceObservations#return.members[].displayName',
+      'livingMembers.ts#applyServiceObservations#return.members[].recentVisits[].stationKey',
+      'livingMembers.ts#createLivingMemberRoster#return.members[].id',
+      'livingMembers.ts#createLivingMemberRoster#return.members[].displayName',
+      'livingMembers.ts#createLivingMemberRoster#return.members[].recentVisits[].stationKey',
+      'livingMembers.ts#deriveMemberId#return',
+      'livingMembers.ts#displayNameForCreation#return',
+      'livingMembers.ts#LIVING_MEMBER_GIVEN_NAMES#value[]',
+      'livingMembers.ts#floorSimPopulationFromRoster#return[].memberId',
+      'livingMembers.ts#livingMemberAtIndex#return.id',
+      'livingMembers.ts#livingMemberAtIndex#return.displayName',
+      'livingMembers.ts#livingMemberAtIndex#return.recentVisits[].stationKey',
+      'livingMembers.ts#livingMemberById#return.id',
+      'livingMembers.ts#livingMemberById#return.displayName',
+      'livingMembers.ts#livingMemberById#return.recentVisits[].stationKey',
+      'livingMembers.ts#memberIdForIndex#return',
+      'livingMembers.ts#playerFacingMemberShortId#return',
+      'livingMembers.ts#playerFacingServiceVisitLine#return',
+      'livingMembers.ts#playerFacingTenureLine#return',
+      'livingMembers.ts#playerFacingTrainingExperience#return',
+      'livingMembers.ts#playerFacingWaitExperience#return',
+      'livingMemberExperience.ts#livingMemberExperience#return.labels.overall',
+      'livingMemberExperience.ts#livingMemberExperience#return.labels.wait',
+      'livingMemberExperience.ts#livingMemberExperience#return.labels.training',
+      'livingMemberExperience.ts#livingMemberExperience#return.labels.reliability',
+      'livingMemberExperience.ts#livingMemberExperience#return.reasons[].text',
+      'livingMemberRetention.ts#livingMemberRetentionPressure#return.label',
+      'livingMemberRetention.ts#livingMemberRetentionPressure#return.reasons[].text',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.members[].id',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.members[].displayName',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.members[].recentVisits[].stationKey',
+    ]),
+  }),
+  Object.freeze({
+    field: 'Stage G.1A floorSim member ids on the authoritative living population',
+    why:
+      'G.1A makes memberId the durable identity carried through the sim. These positions are derived member-id strings on FloorSimMember and observation returns, not caller-supplied free text. Instrument B containment-scans every produced value.',
+    positions: Object.freeze([
+      'floorSim.ts#ambientLivingPopulation#return[].memberId',
+      'floorSim.ts#createFloorSimState#return.members[].memberId',
+      'floorSim.ts#runFloorSim#return.members[].memberId',
+      'floorSim.ts#stepFloorSim#return.members[].memberId',
+      'floorSim.ts#stepFloorSimWithObservations#return.observations[].memberId',
+      'floorSim.ts#stepFloorSimWithObservations#return.state.members[].memberId',
+      'floorSim.ts#withAmbientLivingPopulation#return.livingPopulation[].memberId',
     ]),
   }),
 ]);
@@ -1462,9 +1530,20 @@ const DECLARED_BRANDED_STRING_POSITIONS: readonly string[] = Object.freeze([
  */
 const DECLARED_PATTERN_POSITIONS: readonly string[] = Object.freeze([
   'ladder.ts#describeLadderClock#return=|d |h |s',
-  'ladder.ts#ladderDevTimeSteps#return[].label=+|d',
-  'ladder.ts#ladderDevTimeSteps#return[].label=+|h',
-  'ladder.ts#ladderDevTimeSteps#return[].label=+|s',
+  'ladder.ts#ladderDevClockTestId#return=advance-offline-|',
+  'ladder.ts#ladderDevClockTestId#return=advance-online-|',
+  'ladder.ts#ladderDevClockTestId#return=gym-advance-offline-|',
+  'ladder.ts#ladderDevClockTestId#return=gym-advance-online-|',
+  'ladder.ts#ladderDevClockTestId#return=gymscreen-advance-offline-|',
+  'ladder.ts#ladderDevClockTestId#return=gymscreen-advance-online-|',
+  'ladder.ts#ladderDevTimeSteps#return[].label=+|d away',
+  'ladder.ts#ladderDevTimeSteps#return[].label=+|d watched',
+  'ladder.ts#ladderDevTimeSteps#return[].label=+|h away',
+  'ladder.ts#ladderDevTimeSteps#return[].label=+|h watched',
+  'ladder.ts#ladderDevTimeSteps#return[].label=+|m away',
+  'ladder.ts#ladderDevTimeSteps#return[].label=+|m watched',
+  'ladder.ts#ladderDevTimeSteps#return[].label=+|s away',
+  'ladder.ts#ladderDevTimeSteps#return[].label=+|s watched',
 ]);
 
 /**
@@ -1518,6 +1597,9 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   // GDD §5.13's PLAYTEST 3 ruling: `overlapsFixedFurniture`'s one read of a
   // caller-supplied `fixed` list.
   'floor.ts#overlapsFixedFurniture#fixed.some x1',
+  // Stage G.1: floorSim observation buffer and livingMembers roster helpers.
+  'floorSim.ts#advanceMember#observations.push x1',
+  'floorSim.ts#createFloorSimState#context.map x1',
   // GDD §5.13 presentation Phase 3 adds NO ROW HERE, and that is a decision
   // rather than an absence. floorSim.ts's first draft had six array-method
   // calls whose receiver was a parameter — `members.map`, `members.filter`,
@@ -1549,6 +1631,18 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   // other row on this list is about.
   'ladderView.tsx#GymView#props.map x1',
   'ladderView.tsx#GymView#week.map x1',
+  // Stage G.2A livingMemberExperience reads of caller-supplied visit history.
+  'livingMemberExperience.ts#geometricMean#values.some x1',
+  'livingMemberExperience.ts#livingMemberExperience#history.filter x1',
+  'livingMemberExperience.ts#livingMemberExperience#history.map x1',
+  'livingMemberExperience.ts#livingMemberExperience#history.map x1',
+  'livingMemberExperience.ts#livingMemberExperience#history.map x1',
+  // Stage G.1 livingMembers.ts reads of caller-supplied roster/id/history.
+  'livingMembers.ts#applyServiceObservations#roster.map x1',
+  'livingMembers.ts#floorSimPopulationFromRoster#roster.map x1',
+  'livingMembers.ts#livingMemberById#roster.find x1',
+  'livingMembers.ts#memberOrdinalFromId#id.split x1',
+  'livingMembers.ts#truncateHistory#visits.slice x1',
   // members.ts's two reads of a caller-supplied roster: `crowdingLoad` and
   // `reputationFromMembers` each sum a caller-supplied `MemberRoster` with
   // `roster.reduce(callback, 0)` — two arguments, the initial value included,
@@ -1582,7 +1676,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 24,
+  MODULES: 28, // Stage G.2B livingMemberRetention.ts
   // 273 -> 280: GymView's four new exports (createGymViewState, GymViewState,
   // GymViewAction, GymViewRefusal don't count as runtime exports — the seven
   // that do are createGymViewState, gymViewReduce, GymView from ladderView.tsx
@@ -1683,7 +1777,9 @@ const SURFACE_CENSUS = Object.freeze({
   // 423 -> 424: Stage D2 placedOwnedItems — wear in-service from floor placement.
   // 424 -> 429: Stage D2.1B — changeoverSeatKey, seatChangeoverTicks,
   // stationChangeoverSeats, stationChangeoverTicks, playerFacingStationOperation.
-  EXPORTS: 429, // 367 -> 366: "kill the mint" removes playerCheckInGapSeconds
+  // 429 -> 432: Stage D2.2 plateLoadingProgress, plateLoadingDiscs,
+  // ladderDevClockTestId.
+  EXPORTS: 463, // Stage G.2B livingMemberRetentionPressure + statuses
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1702,8 +1798,8 @@ const SURFACE_CENSUS = Object.freeze({
   // 122 -> 125: Stage D playerFacingUpgradeLabel/Effect/Refuse.
   // 128 -> 130: Stage D.1b bay qualityBench + plateTree URI leaves.
   // 130 -> 132: Stage D2.1B changeoverSeatKey + playerFacingStationOperation.
-  BARE_POSITIONS: 132,
-  BARE_FIELDS: 4,
+  BARE_POSITIONS: 182, // Stage G.2B retention label + reasons
+  BARE_FIELDS: 6, // Stage G.1A floorSim memberId group added
   BRANDED_POSITIONS: 34,
   /**
    * Zero, and the zero is the sixteenth bypass's repair rather than a fact
@@ -1711,7 +1807,7 @@ const SURFACE_CENSUS = Object.freeze({
    * walk had no arm for; the shipped tree has none, so a first one is a red
    * line in `DECLARED_PATTERN_POSITIONS` naming the export and the shape.
    */
-  PATTERN_POSITIONS: 4,
+  PATTERN_POSITIONS: 15,
   /** Types the walk reached and could not classify at all. */
   UNCLASSIFIED_TYPES: 0,
   /** The banned vocabulary's own length, so an emptied ban list is not a clean sweep. */
@@ -1825,7 +1921,7 @@ const SURFACE_CENSUS = Object.freeze({
 // for, the same as `isSoundCondition`'s addition above. Read from this pin's
 // own failure value.
   // 3970 -> 4024: Stage C.1b GymSurface / furniture-place unions and FloorState.furniture.
-  LITERAL_POSITIONS: 4087, // 4086 -> 4087: Stage D2.1B changeoverSeatKey return literal
+  LITERAL_POSITIONS: 4333, // Stage G.2B livingMemberRetention literal unions
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -1872,7 +1968,7 @@ const SURFACE_CENSUS = Object.freeze({
   // and StationUpgradeRefuseReason.
   // 243 -> 247: Stage D.1 — 'training', 'competition-bench-bay', 'primary',
   // 'expansion'.
-  DISTINCT_LITERAL_MEMBERS: 247,
+  DISTINCT_LITERAL_MEMBERS: 265, // Stage G.2B retention status/kind literals
   DEPTH_CUTS: 0,
 });
 
@@ -2908,7 +3004,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // calls no brand constructor either.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts joins the walk; it
   // calls no brand constructor either.
-  MODULES: 24,
+  MODULES: 28, // Stage G.2B livingMemberRetention.ts
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -3064,7 +3160,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // and FloorGrid presentation helpers. Read from this pin's own failure.
   // 3361 -> 3375: Stage D2.1A live-Capacity seat assignment / relocate helpers.
   // 3375 -> 3405: Stage D2.1B changeover helpers + FloorGrid loading path.
-  CALLS_EXAMINED: 3405,
+  CALLS_EXAMINED: 3662, // Stage G.2B livingMemberRetention
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3263,7 +3359,7 @@ describe('instrument C — a raw string becomes a brand in a countable number of
     // (static frozen data with no branch point, read and containment-scanned
     // unconditionally) lives at the group.
     expect(DECLARED_BARE_STRING_FIELDS.length).toBe(SURFACE_CENSUS.BARE_FIELDS);
-    expect(SURFACE_CENSUS.BARE_FIELDS).toBe(4);
+    expect(SURFACE_CENSUS.BARE_FIELDS).toBe(6); // Stage G.1A floorSim memberId group added
     const keyGroup = DECLARED_BARE_STRING_FIELDS.find((group) =>
       group.field.includes('ReactElement.key'),
     );
@@ -3624,9 +3720,13 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'recruitment.ts': recruitmentModule as unknown as Readonly<Record<string, unknown>>,
   'reputation.ts': reputationModule as unknown as Readonly<Record<string, unknown>>,
   'social.ts': socialModule as unknown as Readonly<Record<string, unknown>>,
+  'sportingReputation.ts': sportingReputationModule as unknown as Readonly<Record<string, unknown>>,
   'stationView.ts': stationViewModule as unknown as Readonly<Record<string, unknown>>,
   'stationCapability.ts': stationCapabilityModule as unknown as Readonly<Record<string, unknown>>,
   'trainingStation.ts': trainingStationModule as unknown as Readonly<Record<string, unknown>>,
+  'livingMemberExperience.ts': livingMemberExperienceModule as unknown as Readonly<Record<string, unknown>>,
+  'livingMemberRetention.ts': livingMemberRetentionModule as unknown as Readonly<Record<string, unknown>>,
+  'livingMembers.ts': livingMembersModule as unknown as Readonly<Record<string, unknown>>,
 });
 
 // ---------------------------------------------------------------------------
@@ -3924,6 +4024,7 @@ function tuningTable(prefix: string): Readonly<Record<string, number>> {
 const UNIT_THRESHOLDS: Readonly<Record<AxisUnit, Readonly<Record<string, number>>>> = Object.freeze({
   second: Object.freeze({
     ...tuningTable('SECONDS_PER_HOUR'),
+    ...tuningTable('SECONDS_PER_MINUTE'),
     ...tuningTable('SECONDS_PER_DAY'),
     ...tuningTable('BUILD_SECONDS_BASE'),
     ...tuningTable('BUILD_SECONDS_MAX'),
@@ -4098,6 +4199,10 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
   ...exemptTable(
     'LADDER_DEV_TIME_STEPS_SECONDS',
     'THREE SPANS, in seconds, that the stage-gate dev view feeds whole to `ladderCheckInAfter` as the gap since the mark. What a gap is compared AGAINST is the offline horizon, filed under `second` as the derived `OFFLINE_EARNINGS_CAP_SECONDS`; these are the sampling grains a human taps while judging the stage-1 pacing, and nothing in this directory compares a value against one of them. They do enter `EVERY_BRANCH_POINT` like every exempt leaf, so the domains still straddle them as foreign points within each ceiling.',
+  ),
+  ...exemptTable(
+    'LADDER_DEV_WATCHED_TIME_STEPS_SECONDS',
+    'TWO SPANS, in seconds, the watched sibling of LADDER_DEV_TIME_STEPS_SECONDS. Stage D2.2 QA instrument: fed whole to `ladderCheckInAfter` with mode online. Nothing in this directory compares a value against one of them. Not part of the game.',
   ),
   ...exemptTable(
     'PRECISION_DECIMALS',
@@ -4289,6 +4394,10 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
   ...exemptTable(
     'MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY',
     'A RATE, in reputation points per member per day, summed across a roster by `reputationFromMembers` and compared with nothing — the ceiling it accumulates towards, `REPUTATION_MAX`, is a v1 (`reputation.ts`) constant this module does not read.',
+  ),
+  ...exemptTable(
+    'SPORTING_REPUTATION',
+    'Stage E formula units, kind scales, and copy templates for the per-result sporting contributor. placingUnit, totalPrUnit, qualifyUnit and kindScale are multiplied into a meet result; copy strings are templates. Nothing in this directory compares a live reputation total against one of these leaves — the ceiling that contribution still has to fit under is REPUTATION_MAX, filed under reputation.',
   ),
   ...exemptTable(
     'MEMBER_EQUIPMENT_BIAS_TIE_TOLERANCE',
@@ -4503,6 +4612,35 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
     'FLOOR_SIM_INTERRUPTED_BEAT_TICKS',
     'A DURATION, in sim ticks, written into a member\'s own countdown when its target moves or is removed. Same class as FLOOR_SIM_USE_TICKS_BY_TYPE: what is compared is the countdown, which this module wrote from this value.',
   ),
+  // Stage G.1: livingMembers.ts service-history and wait-copy knobs.
+  ...exemptTable(
+    'LIVING_MEMBER_SERVICE_HISTORY_WINDOWS',
+    'THREE CAPACITIES, in visit records, compared in tests; the shipped limit is the middle entry on the row below. Nothing in this directory compares a caller-supplied count against a row of this table — the window sizes a slice written into each member\'s own history.',
+  ),
+  ...exemptTable(
+    'LIVING_MEMBER_SERVICE_HISTORY_WINDOW',
+    'A CAPACITY, in visit records, on the shipped service-history slice. Same class as the table above: written into each member\'s own `recentVisits` length cap, not compared against on a caller axis.',
+  ),
+  ...exemptTable(
+    'LIVING_MEMBER_WAIT_SHORT_MAX_TICKS',
+    'A DURATION, in sim ticks, labelling short waits for player-facing copy. Compared only against a wait duration already derived from floor-sim truth, not against a caller-supplied axis.',
+  ),
+  ...exemptTable(
+    'LIVING_MEMBER_WAIT_LONG_MIN_TICKS',
+    'A DURATION, in sim ticks, the sibling of the row above on long waits. Same class: thresholds on a derived wait, not on a caller axis.',
+  ),
+  ...exemptTable(
+    'LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS',
+    'A DURATION, in sim ticks, G.1C\'s upper wait band so a severe queue is not the same player-facing phrase as a merely long one. Same class as the two wait knobs above: compared only against derived floor-sim wait, never against a caller-supplied axis.',
+  ),
+  ...exemptTable(
+    'LIVING_MEMBER_EXPERIENCE',
+    'G.2A recent-service meaning: a wait e-folding decay constant, training/reliability maps, and player-facing label bands. The decay constant is a divisor on derived queueWaitTicks (wait = exp(-ticks / decay)); the maps are interpolation endpoints; the label mins are presentation bands on already-computed component scores. None of them is a caller-supplied economic axis.',
+  ),
+  ...exemptTable(
+    'LIVING_MEMBER_RETENTION',
+    'G.2B retention-pressure presentation bands on an already-derived experience composite. watchingMin/strainedMin/atRiskMin name the membership card; they are not a caller-supplied economic axis and not a departure hazard.',
+  ),
   ...exemptTable(
     'FLOOR_SIM_LEAVING_TICKS',
     'A DURATION, in sim ticks, the sibling of the row above on the leaving arm, listed because a decision taken for one arm is taken for the arm beside it.',
@@ -4673,6 +4811,10 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
   ...exemptTable(
     'STATION_QUALITY_AFFINITY_BONUS',
     'A RATE, dimensionless, added to `affinityFor` when Quality is purchased. `stationQualityAffinityBonus` returns it; the floor sim adds it to the published type tables so members prefer the upgraded station when another station is available. Nothing compares a caller-supplied affinity against the bonus itself. Capacity and duration are unchanged.',
+  ),
+  ...exemptTable(
+    'FLOOR_PLATE_LOADING',
+    'PAINT GEOMETRY for the D2.2 plate-loading overlay: disc count and fractions of a bench footprint. `plateLoadingDiscs` reads them to place discs; nothing compares a caller-supplied value against any of them. Same class as FLOOR_TILE_PIXELS.',
   ),
 ]);
 
@@ -5239,7 +5381,7 @@ const FIXTURE_LISTS: readonly FixtureList[] = Object.freeze([
     // SECONDS domain by three points, measured by running the size
     // assertion.
     // 346 -> 347: Stage C.1b one new seconds-domain-adjacent NUMBER point widened CLOCKS.
-    size: 347,
+    size: 348,
     why: 'One clock per point of the seconds domain, at a fixed skip. Derived, so the seconds domain losing its ceiling this round widened this list without anybody touching it.',
   }),
   Object.freeze({
@@ -5391,6 +5533,8 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   'COUNT/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
   'COUNT/LADDER_DEV_TIME_STEPS_SECONDS[1]=28800',
   'COUNT/LADDER_DEV_TIME_STEPS_SECONDS[2]=259200',
+  'COUNT/LADDER_DEV_WATCHED_TIME_STEPS_SECONDS[0]=1800',
+  'COUNT/LADDER_DEV_WATCHED_TIME_STEPS_SECONDS[1]=3600',
   'COUNT/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
   'COUNT/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
   // "kill the mint"'s harness fix — MILLISECONDS_PER_SECOND is 1000, above the
@@ -5412,6 +5556,8 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   'DAY/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
   'DAY/LADDER_DEV_TIME_STEPS_SECONDS[1]=28800',
   'DAY/LADDER_DEV_TIME_STEPS_SECONDS[2]=259200',
+  'DAY/LADDER_DEV_WATCHED_TIME_STEPS_SECONDS[0]=1800',
+  'DAY/LADDER_DEV_WATCHED_TIME_STEPS_SECONDS[1]=3600',
   'DAY/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
   'DAY/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
   'DAY/MILLISECONDS_PER_SECOND=1000',
@@ -5579,10 +5725,17 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
   'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[1]=28800',
   'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[2]=259200',
+  'ROSTER_SHAPE/LADDER_DEV_WATCHED_TIME_STEPS_SECONDS[0]=1800',
+  'ROSTER_SHAPE/LADDER_DEV_WATCHED_TIME_STEPS_SECONDS[1]=3600',
   'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.garage=60',
   'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.storage-unit=240',
   'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
   'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
+  'ROSTER_SHAPE/LIVING_MEMBER_EXPERIENCE.waitDecayTicks=110',
+  // Stage G.1: wait-duration knob above ROSTER_SHAPE's ceiling (40 > 17).
+  'ROSTER_SHAPE/LIVING_MEMBER_WAIT_LONG_MIN_TICKS=40',
+  // Stage G.1C: upper wait band 100, also above ROSTER_SHAPE's ceiling.
+  'ROSTER_SHAPE/LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS=100',
   // §5 (v2) stage 3's dues table: all five are Gym-Bucks-per-day RATES above
   // the ROSTER_SHAPE ceiling, the same shape as the ladder income rates above.
   'ROSTER_SHAPE/MEMBER_DUES_GYM_BUCKS_PER_DAY.athlete=220',
@@ -5605,6 +5758,10 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   // manager hire prices are FILED rather than exempt, so they are dropped by
   // the same ceiling but counted in OMITTED_ABOVE_CEILING instead of here.
   'ROSTER_SHAPE/REPAIR_COST_GYM_BUCKS_PER_CONDITION_POINT=400',
+  // Stage E.1: placingUnit 12 -> 24 sits above ROSTER_SHAPE's ceiling (17).
+  // totalPrUnit and qualifyUnit stay at 16, under it. kindScale values are
+  // small. The leaf is already exempt (formula unit, not a live-axis threshold).
+  'ROSTER_SHAPE/SPORTING_REPUTATION.placingUnit=24',
 ]);
 
 /**
@@ -5633,19 +5790,19 @@ const DOMAIN_CENSUS = Object.freeze({
   // 102 -> 104: the two ordinal review knobs, filed under `count`.
   // 104 -> 105: the "chrome vs paid" bug-fix round's one new filed leaf,
   // DUST_REPAIR_COST_GYM_BUCKS, filed under `gymBucks`.
-  THRESHOLDS: 109,
+  THRESHOLDS: 110,
   /** Numeric leaves of EMPIRE_TUNING filed under a unit. */
   // 88 -> 100: the same twelve. Measured off this assertion.
   // 100 -> 102: the two ordinal review knobs, filed under `count`.
   // 102 -> 103: the same new filed leaf, DUST_REPAIR_COST_GYM_BUCKS.
-  FILED: 107,
+  FILED: 108,
   // 66 -> 121: members.ts's nine tables (§5.11 stage 3), 55 numeric leaves,
   // all exempt (RATE/MULTIPLIER, none compared against a live value).
   /** Numeric leaves on `NOT_A_BRANCH_POINT`. */
   // 154 -> 209.
   // 99 -> 104: members.ts's MEMBER_TYPES, five string leaves.
   // 104 -> 107: `MANAGER_TIERS`'s three tokens.
-  TUNING_STRING_LEAVES: 111,
+  TUNING_STRING_LEAVES: 122,
   // 156 -> 211.
   /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
   // 732 -> 1057: every domain straddles the 55 new exempt leaves too.
@@ -5704,7 +5861,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // 351 -> 352: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS. The
   // 0.65 use-factor was replaced by STATION_THROUGHPUT_CHANGEOVER_TICKS
   // (replace, exempt count unchanged).
-  EXEMPT: 357,
+  // 357 -> 365: Stage D2.2 LADDER_DEV_WATCHED_TIME_STEPS_SECONDS (2) plus
+  // FLOOR_PLATE_LOADING (6).
+  EXEMPT: 396, // Stage G.2B LIVING_MEMBER_RETENTION nested leaves
   // 154 -> 196: the same 42 new leaves. 251 -> 264: the same 13 new leaves.
   // 264 -> 266: the same 2 new leaves.
   // 266 -> 273: the same 7 new leaves.
@@ -5741,7 +5900,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS,
   // FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS), all filed.
   // 451 -> 453: Stage C.1b FLOOR_TILE_PIXELS_MAX and FLOOR_STAGE_PADDING_PIXELS.
-  TUNING_NUMERIC_LEAVES: 464, // 463 -> 464: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS
+  TUNING_NUMERIC_LEAVES: 504, // Stage G.2B LIVING_MEMBER_RETENTION 3 nested leaves
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -5780,7 +5939,8 @@ const DOMAIN_CENSUS = Object.freeze({
   // 453 -> 455: Stage C.1b two new exempt rendering knobs.
   // 455 -> 456: Stage C.1c CONDITION_PERCENT_SCALE.
   // 456 -> 457: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS.
-  BRANCH_POINTS: 466,
+  // 466 -> 475: Stage D2.2 nine new numeric leaves (1 filed + 8 exempt).
+  BRANCH_POINTS: 506, // Stage G.2B LIVING_MEMBER_RETENTION
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
@@ -5847,7 +6007,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 2372 -> 2377: Stage C.1c CONDITION_PERCENT_SCALE in five domains.
   // 2428 -> 2433: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS across
   // five domains that carry it under their ceiling; ROSTER_SHAPE omits it.
-  CONTAINMENT_CHECKS: 2433,
+  CONTAINMENT_CHECKS: 2662, // Stage G.2B LIVING_MEMBER_RETENTION label mins
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -5871,8 +6031,8 @@ const DOMAIN_CENSUS = Object.freeze({
     // PACING_REPORT_HORIZONS_SECONDS[1..4] (3600/86400/259200/604800) all
     // sit above both ceilings (600); [0]=600 sits AT the ceiling and is not
     // omitted. Measured by running the assertion below.
-    DAY: 70,
-    COUNT: 70,
+    DAY: 72, // 70 -> 72: Stage D2.2 two watched QA grains (1800, 3600)
+    COUNT: 72, // 70 -> 72: same two watched QA grains
     LEVEL: 0,
     // 84 -> 89: the five MEMBER_DUES_GYM_BUCKS_PER_DAY rates.
     // 84 -> 88: four of GDD §5.13 presentation Phase 1's 42 new exempt
@@ -5924,7 +6084,8 @@ const DOMAIN_CENSUS = Object.freeze({
     // 222 -> 223: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS=18 sits
     // above ROSTER_SHAPE's ceiling (17); STATION_THROUGHPUT_CHANGEOVER_TICKS=6
     // does not.
-    ROSTER_SHAPE: 223,
+    // 223 -> 225: Stage D2.2 two watched QA grains (1800, 3600).
+    ROSTER_SHAPE: 230, // Stage G.2A waitDecayTicks=110 above roster ceiling
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -5981,7 +6142,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 1486 -> 1495: GDD §5.14 Stage B's five new PACING_REPORT_HORIZONS_SECONDS
   // leaves, read from this pin's own failure value.
   // 1495 -> 1500: Stage C.1b two new rendering knobs, measured.
-  NUMBER_CONTAINMENT_CHECKS: 1501,
+  NUMBER_CONTAINMENT_CHECKS: 1506, // Stage G.2A waitDecayTicks=110
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 297 -> 300, read the same way.
   // Phase 4: 300 -> 405, read the same way.
@@ -5993,7 +6154,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // this pin's own failure value; which two overlap is not independently
   // hand-derived.
   // 407 -> 408: Stage C.1b FLOOR_TILE_PIXELS_MAX=72 is a new distinct NUMBER point.
-  NUMBER_POINTS: 409, // 405 -> 402: P4b, measured off this assertion.
+  NUMBER_POINTS: 410, // Stage G.2A waitDecayTicks=110
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 230 -> 233, read the same way.
   // Phase 4: 233 -> 344, read from this pin's own failure value.
@@ -6003,7 +6164,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // leaves, three of which are genuinely new SECONDS points (mirroring
   // NUMBER_POINTS' own +3 above). Read from this pin's own failure value.
   // 346 -> 347: Stage C.1b FLOOR_TILE_PIXELS_MAX=72 is a new SECONDS-domain point (exempt leaves ride every domain).
-  SECONDS_POINTS: 347, // 344 -> 341: P4b, measured off this assertion.
+  SECONDS_POINTS: 348, // Stage G.2A waitDecayTicks=110
   // 74 -> 76: GDD §5.13 presentation Phase 2's exempt tuning leaves widened
   // the COUNT domain by two points, cross-checked directly against
   // `NUMERIC_DOMAINS.COUNT.points.length` by running the assertion below.
@@ -6020,7 +6181,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 193 -> 195: S4i's one new exempt leaf (82), read from this pin's own
   // failure value.
   // 195 -> 196: Stage C.1b FLOOR_TILE_PIXELS_MAX=72 is a new DAY-domain point.
-  DAY_POINTS: 196, // 196 -> 193: P4b, measured off this assertion.
+  DAY_POINTS: 197, // Stage G.2A waitDecayTicks=110
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 84 -> 87, read the same way.
   // Phase 4: 87 -> 197, read from this pin's own failure value — the RGB
@@ -6029,7 +6190,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // callback subjects over the registry domain" assertion's own failure
   // value.
   // 196 -> 197: Stage C.1b FLOOR_TILE_PIXELS_MAX=72 is a new COUNT-domain point.
-  COUNT_POINTS: 197, // 197 -> 194: P4b, measured off this assertion.
+  COUNT_POINTS: 198, // Stage G.2A waitDecayTicks=110
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 216 -> 219, read the same way.
   // Phase 4: 219 -> 331, read from this pin's own failure value.
@@ -6040,7 +6201,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // and SECONDS_POINTS' own +3 above — LEVEL, like them, carries no
   // ceiling). Read from this pin's own failure value.
   // 333 -> 334: Stage C.1b FLOOR_TILE_PIXELS_MAX=72 is a new LEVEL-domain point.
-  LEVEL_POINTS: 334, // 331 -> 328: P4b, measured off this assertion.
+  LEVEL_POINTS: 335, // Stage G.2A waitDecayTicks=110
   // Phase 4: 17 -> 18 — FLOOR_SPRITE_NATIVE_PIXELS_PER_TILE=14 arrives as a
   // foreign point under the roster ceiling. Read from this pin's own failure.
   ROSTER_SHAPE_POINTS: 18,
@@ -6730,6 +6891,17 @@ const PACING_DRIVE_HORIZON_SECONDS: Readonly<
 
 let drivenMemo = false;
 
+/** Stage G.1: one garage roster with starting kit for the livingMembers drive block. */
+function censusLivingMembers(): livingMembersModule.LivingMemberRoster {
+  return livingMembersModule.createLivingMemberRoster(
+    'garage',
+    [...EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT],
+    [],
+    0,
+    EMPIRE_TUNING.FLOOR_SIM_RENDER_SEED,
+  );
+}
+
 function driveEverything(): readonly DrivenRow[] {
   if (drivenMemo) return DRIVEN_ROWS;
   drivenMemo = true;
@@ -7061,6 +7233,11 @@ function driveEverything(): readonly DrivenRow[] {
   // so its element tree (copy included) passes through the same string scan
   // as every other returned value.
   drive('ladderDevTimeSteps', 'zero-arg', () => ladderModule.ladderDevTimeSteps());
+  for (const step of ladderModule.ladderDevTimeSteps()) {
+    drive('ladderDevClockTestId', step.label, () =>
+      ladderModule.ladderDevClockTestId('gymscreen-advance', step),
+    );
+  }
   // `playerCheckInGapSeconds` and the mint it fed ('open-up') are gone, by
   // human ruling — see `ladder.ts`'s and `ladderView.tsx`'s own headers.
   // Nothing to drive here any more; instrument B's census (below) no longer
@@ -7462,6 +7639,36 @@ function driveEverything(): readonly DrivenRow[] {
     }
   }
 
+  // --- sportingReputation.ts (Stage E reputation feed foundation)
+  {
+    const localWin = Object.freeze({
+      kind: 'local' as const,
+      outcome: 'total' as const,
+      placement: Object.freeze({ place: 1, categoryFieldSize: 16 }),
+      isTotalPr: false,
+      newlyQualifiedFor: null,
+    });
+    drive('sportingReputationFromResult', 'local-win', () =>
+      sportingReputationModule.sportingReputationFromResult(localWin),
+      [localWin],
+    );
+    drive('sportingReputationFromResult', 'bomb-out', () =>
+      sportingReputationModule.sportingReputationFromResult({
+        kind: 'local',
+        outcome: 'bombed-out',
+      }),
+    );
+    drive('sportingReputationFromResult', 'worlds-pr', () =>
+      sportingReputationModule.sportingReputationFromResult({
+        kind: 'worlds',
+        outcome: 'total',
+        placement: { place: 1, categoryFieldSize: 16 },
+        isTotalPr: true,
+        newlyQualifiedFor: null,
+      }),
+    );
+  }
+
   // --- floor.ts (GDD §5.13 presentation Phase 1)
   {
     for (const rung of EMPIRE_TUNING.LADDER_RUNGS) {
@@ -7667,6 +7874,18 @@ function driveEverything(): readonly DrivenRow[] {
     const KIT = [...EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT];
     drive('FLOOR_SIM_MEMBER_STATES', 'value', () => floorSimModule.FLOOR_SIM_MEMBER_STATES);
     drive('FLOOR_SIM_INTERRUPTIONS', 'value', () => floorSimModule.FLOOR_SIM_INTERRUPTIONS);
+    drive('withAmbientLivingPopulation', 'garage', () =>
+      floorSimModule.withAmbientLivingPopulation({
+        rung: 'garage',
+        floor: floorModule.createFloorState('garage'),
+        barbellOwned: KIT,
+        sessionOwned: [] as readonly SessionEquipmentItem[],
+        capability: {},
+      }),
+    );
+    drive('ambientLivingPopulation', 'garage', () =>
+      floorSimModule.ambientLivingPopulation('garage', KIT, []),
+    );
     drive('floorStationRefKey', 'training', () =>
       floorSimModule.floorStationRefKey({ kind: 'training', station: 'competition-bench-bay' }),
     );
@@ -7696,13 +7915,13 @@ function driveEverything(): readonly DrivenRow[] {
       );
     }
     for (const rung of EMPIRE_TUNING.LADDER_RUNGS) {
-      const context = {
+      const context = floorSimModule.withAmbientLivingPopulation({
         rung,
         floor: floorModule.createFloorState(rung),
         barbellOwned: KIT,
         sessionOwned: [] as readonly SessionEquipmentItem[],
         capability: {},
-      };
+      });
       drive('floorStations', rung, () => floorSimModule.floorStations(context), [context]);
       drive(
         'createFloorSimState',
@@ -7721,6 +7940,12 @@ function driveEverything(): readonly DrivenRow[] {
         'stepFloorSim',
         rung,
         () => floorSimModule.stepFloorSim(opening, context),
+        [opening, context],
+      );
+      drive(
+        'stepFloorSimWithObservations',
+        rung,
+        () => floorSimModule.stepFloorSimWithObservations(opening, context),
         [opening, context],
       );
       drive(
@@ -7758,13 +7983,13 @@ function driveEverything(): readonly DrivenRow[] {
         { x: 5, y: 3 },
       );
       if (laid.kind === 'placed' && moved.kind === 'placed') {
-        const withItem = {
+        const withItem = floorSimModule.withAmbientLivingPopulation({
           rung: 'garage' as const,
           floor: laid.state,
           barbellOwned: [] as readonly LadderEquipmentItem[],
           sessionOwned: owned,
           capability: {},
-        };
+        });
         const settled = floorSimModule.runFloorSim(
           floorSimModule.createFloorSimState(withItem, 5),
           withItem,
@@ -7791,6 +8016,147 @@ function driveEverything(): readonly DrivenRow[] {
         );
       }
     }
+  }
+
+  // --- livingMembers.ts (Stage G.1: living floor-member identity and service outcomes)
+  {
+    const roster = censusLivingMembers();
+    drive('deriveMemberId', 'garage/0', () =>
+      livingMembersModule.deriveMemberId(1, 0),
+    );
+    drive('createLivingMemberRoster', 'garage', () => roster, [roster]);
+    drive('memberIdForIndex', 'garage/0', () => livingMembersModule.memberIdForIndex(roster, 0), [roster]);
+    drive('livingMemberAtIndex', 'garage/0', () => livingMembersModule.livingMemberAtIndex(roster, 0), [roster]);
+    const firstMember = roster.members[0];
+    if (firstMember !== undefined) {
+      drive('livingMemberById', 'garage/0', () => livingMembersModule.livingMemberById(roster, firstMember.id), [
+        roster,
+        firstMember.id,
+      ]);
+      drive('memberOrdinalFromId', 'garage/0', () =>
+        livingMembersModule.memberOrdinalFromId(firstMember.id),
+        [firstMember.id],
+      );
+      drive('playerFacingMemberShortId', 'garage', () =>
+        livingMembersModule.playerFacingMemberShortId(firstMember.id),
+        [firstMember.id],
+      );
+      drive('displayNameForCreation', 'garage/0', () =>
+        livingMembersModule.displayNameForCreation(1, 0),
+      );
+    }
+    drive('floorSimPopulationFromRoster', 'garage', () =>
+      livingMembersModule.floorSimPopulationFromRoster(roster),
+      [roster],
+    );
+    const relocated = livingMembersModule.reconcileLivingMemberRosterOnRelocation(
+      roster,
+      'storage-unit',
+      [],
+      3600,
+    );
+    drive('reconcileLivingMemberRosterOnRelocation', 'garage->storage', () => relocated, [roster, relocated]);
+    drive('applyServiceObservations', 'empty', () =>
+      livingMembersModule.applyServiceObservations(roster, []),
+      [roster],
+    );
+    drive('advanceLivingMemberTenure', 'garage', () =>
+      livingMembersModule.advanceLivingMemberTenure(roster, 60),
+      [roster],
+    );
+    drive('playerFacingTenureLine', 'garage', () => livingMembersModule.playerFacingTenureLine(0, 3600));
+    drive('playerFacingWaitExperience', 'short', () => livingMembersModule.playerFacingWaitExperience(5));
+    drive('playerFacingTrainingExperience', 'light', () =>
+      livingMembersModule.playerFacingTrainingExperience(0),
+    );
+    const visit = Object.freeze({
+      stationKind: 'session' as const,
+      stationKey: 'mats',
+      queueWaitTicks: 5,
+      trainingExperience: 0,
+      outcome: 'completed' as const,
+      observedAtTick: 1,
+    });
+    drive('playerFacingServiceVisitLine', 'completed', () =>
+      livingMembersModule.playerFacingServiceVisitLine(visit),
+      [visit],
+    );
+  }
+
+  // --- livingMemberExperience.ts (Stage G.2A: recent-service meaning)
+  {
+    drive('livingMemberExperience', 'empty', () =>
+      livingMemberExperienceModule.livingMemberExperience([]),
+    );
+    drive('waitComponentFromTicks', 'zero', () =>
+      livingMemberExperienceModule.waitComponentFromTicks(0),
+    );
+    drive('waitComponentFromTicks', 'matched-95', () =>
+      livingMemberExperienceModule.waitComponentFromTicks(95),
+    );
+    drive('waitComponentFromTicks', 'matched-128', () =>
+      livingMemberExperienceModule.waitComponentFromTicks(128),
+    );
+    const formedVisit = Object.freeze({
+      stationKind: 'training' as const,
+      stationKey: 'training:competition-bench-bay',
+      queueWaitTicks: 52,
+      trainingExperience: EMPIRE_TUNING.STATION_STOCK_TRAINING_EXPERIENCE,
+      outcome: 'completed' as const,
+      observedAtTick: 1,
+    });
+    drive('livingMemberExperience', 'one-stock', () =>
+      livingMemberExperienceModule.livingMemberExperience([formedVisit]),
+      [formedVisit],
+    );
+    drive('livingMemberExperience', 'quality', () =>
+      livingMemberExperienceModule.livingMemberExperience([
+        Object.freeze({
+          ...formedVisit,
+          trainingExperience: EMPIRE_TUNING.STATION_QUALITY_TRAINING_EXPERIENCE,
+        }),
+      ]),
+    );
+    drive('livingMemberExperience', 'interrupted', () =>
+      livingMemberExperienceModule.livingMemberExperience([
+        Object.freeze({ ...formedVisit, outcome: 'interrupted' as const }),
+      ]),
+    );
+    drive('LIVING_MEMBER_EXPERIENCE_STATUSES', 'vocab', () =>
+      livingMemberExperienceModule.LIVING_MEMBER_EXPERIENCE_STATUSES,
+    );
+  }
+
+  // --- livingMemberRetention.ts (Stage G.2B: retention pressure)
+  {
+    const formingExperience = livingMemberExperienceModule.livingMemberExperience([]);
+    drive('livingMemberRetentionPressure', 'forming', () =>
+      livingMemberRetentionModule.livingMemberRetentionPressure(formingExperience),
+      [formingExperience],
+    );
+    const formedVisit = Object.freeze({
+      stationKind: 'training' as const,
+      stationKey: 'training:competition-bench-bay',
+      queueWaitTicks: 52,
+      trainingExperience: EMPIRE_TUNING.STATION_STOCK_TRAINING_EXPERIENCE,
+      outcome: 'completed' as const,
+      observedAtTick: 1,
+    });
+    const formedExperience = livingMemberExperienceModule.livingMemberExperience([formedVisit]);
+    drive('livingMemberRetentionPressure', 'formed', () =>
+      livingMemberRetentionModule.livingMemberRetentionPressure(formedExperience),
+      [formedExperience],
+    );
+    const interruptedExperience = livingMemberExperienceModule.livingMemberExperience([
+      Object.freeze({ ...formedVisit, outcome: 'interrupted' as const }),
+    ]);
+    drive('livingMemberRetentionPressure', 'interrupted', () =>
+      livingMemberRetentionModule.livingMemberRetentionPressure(interruptedExperience),
+      [interruptedExperience],
+    );
+    drive('LIVING_MEMBER_RETENTION_STATUSES', 'vocab', () =>
+      livingMemberRetentionModule.LIVING_MEMBER_RETENTION_STATUSES,
+    );
   }
 
   // --- management.ts (GDD §5 v2, stage 4: staffing, maintenance, condition,
@@ -8161,6 +8527,8 @@ function driveEverything(): readonly DrivenRow[] {
       managed: managementModule.createManagedGym(),
       capability: stationCapabilityModule.stockStationCapability(),
       buildMode: false,
+      livingMembers: censusLivingMembers(),
+      gymClockSeconds: 0,
     }),
   );
 
@@ -8184,13 +8552,13 @@ function driveEverything(): readonly DrivenRow[] {
       { x: 5, y: 3 },
     );
     if (laid.kind === 'placed') {
-      const withItem = {
+      const withItem = floorSimModule.withAmbientLivingPopulation({
         rung: 'garage' as const,
         floor: laid.state,
         barbellOwned: KIT,
         sessionOwned: owned,
         capability: {},
-      };
+      });
       const stations = floorSimModule.floorStations(withItem);
       const opening = floorSimModule.createFloorSimState(withItem, 5);
       const settled = floorSimModule.runFloorSim(opening, withItem, 30);
@@ -8370,6 +8738,20 @@ function driveEverything(): readonly DrivenRow[] {
         0,
       ),
     );
+    drive('plateLoadingProgress', 'armed-stock', () =>
+      stationViewModule.plateLoadingProgress(
+        EMPIRE_TUNING.FLOOR_SIM_STATION_CHANGEOVER_TICKS,
+        EMPIRE_TUNING.FLOOR_SIM_STATION_CHANGEOVER_TICKS,
+      ),
+    );
+    drive('plateLoadingProgress', 'armed-tree', () =>
+      stationViewModule.plateLoadingProgress(
+        EMPIRE_TUNING.STATION_THROUGHPUT_CHANGEOVER_TICKS,
+        EMPIRE_TUNING.STATION_THROUGHPUT_CHANGEOVER_TICKS,
+      ),
+    );
+    drive('plateLoadingDiscs', 'stack', () => stationViewModule.plateLoadingDiscs(0));
+    drive('plateLoadingDiscs', 'sleeve', () => stationViewModule.plateLoadingDiscs(1));
     drive('playerFacingBayRole', 'complete', () =>
       stationViewModule.playerFacingBayRole(true, []),
     );
@@ -9714,9 +10096,9 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
 const MAIN_DRIVE_ROWS_BY_AXIS: Readonly<Record<string, number>> = Object.freeze({
   // Stage C.1b: furniture layout exports + GymScreen dock widen the existing
   // COUNT/DAY/ROSTER_SHAPE loops. Re-measured by running this assertion.
-  COUNT: 1962,
-  DAY: 32986,
-  ROSTER_SHAPE: 133578,
+  COUNT: 1972,
+  DAY: 33155,
+  ROSTER_SHAPE: 133902,
 });
 
 /**
@@ -10042,43 +10424,43 @@ const OVERFLOW_RESIDUAL: readonly OverflowResidualRow[] = Object.freeze([
   //
   // The eleven DAY rows: the pair is not driven at all, and the price of
   // driving it is in `OVERFLOW_COST_SECONDS`.
-  residual('DAY', 'amountSeries', 'the pair', 51, 604800),
-  residual('DAY', 'arrivalDays', 'the pair', 51, 604800),
-  residual('DAY', 'compareDayLists', 'the pair', 51, 604800),
-  residual('DAY', 'compareLedgers', 'the pair', 51, 604800),
-  residual('DAY', 'empireRunFaults', 'the pair', 51, 604800),
-  residual('DAY', 'idleDayLedger', 'the pair', 51, 604800),
-  residual('DAY', 'outputSeries', 'the pair', 51, 604800),
-  residual('DAY', 'progressionDayLedger', 'the pair', 51, 604800),
-  residual('DAY', 'rivalPeriodCloseDays', 'the pair', 51, 604800),
-  residual('DAY', 'runEmpire', 'the pair', 51, 604800),
-  residual('DAY', 'socialRewardSchedule', 'the pair', 51, 604800),
+  residual('DAY', 'amountSeries', 'the pair', 52, 604800),
+  residual('DAY', 'arrivalDays', 'the pair', 52, 604800),
+  residual('DAY', 'compareDayLists', 'the pair', 52, 604800),
+  residual('DAY', 'compareLedgers', 'the pair', 52, 604800),
+  residual('DAY', 'empireRunFaults', 'the pair', 52, 604800),
+  residual('DAY', 'idleDayLedger', 'the pair', 52, 604800),
+  residual('DAY', 'outputSeries', 'the pair', 52, 604800),
+  residual('DAY', 'progressionDayLedger', 'the pair', 52, 604800),
+  residual('DAY', 'rivalPeriodCloseDays', 'the pair', 52, 604800),
+  residual('DAY', 'runEmpire', 'the pair', 52, 604800),
+  residual('DAY', 'socialRewardSchedule', 'the pair', 52, 604800),
   // The twenty-three ROSTER_SHAPE rows: the pair IS driven at all thirty of
   // these points and its return is scanned; the state handed in is not walked a
   // second time afterwards. See `FROZEN_ARGUMENT_WITNESS` for what covers that.
-  residual('ROSTER_SHAPE', 'accrueProduction', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'accrueReputation', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'accrueSponsorship', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'assertEmpireState', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'beginRecruitment', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'completeRecruitment', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'composeTrainingIqRate', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'empireStateFaults', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'expansionContext', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'gymBucksRatePerHour', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'mayRecruit', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'npcTierUnlocks', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'productionRates', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'recruitmentBoard', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'recruitmentOffer', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'recruitmentRefusals', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'reputationRates', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'rosterGymBucksPerHour', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'rosterOutputRates', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'rosterTrainingIqPerDay', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'topNpcTierUnlocked', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'trainingIqRatePerDay', 'the argument re-read', 51, 604800),
-  residual('ROSTER_SHAPE', 'unlockedNpcTiers', 'the argument re-read', 51, 604800),
+  residual('ROSTER_SHAPE', 'accrueProduction', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'accrueReputation', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'accrueSponsorship', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'assertEmpireState', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'beginRecruitment', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'completeRecruitment', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'composeTrainingIqRate', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'empireStateFaults', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'expansionContext', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'gymBucksRatePerHour', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'mayRecruit', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'npcTierUnlocks', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'productionRates', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'recruitmentBoard', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'recruitmentOffer', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'recruitmentRefusals', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'reputationRates', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'rosterGymBucksPerHour', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'rosterOutputRates', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'rosterTrainingIqPerDay', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'topNpcTierUnlocked', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'trainingIqRatePerDay', 'the argument re-read', 52, 604800),
+  residual('ROSTER_SHAPE', 'unlockedNpcTiers', 'the argument re-read', 52, 604800),
 ]);
 
 /**
@@ -10176,7 +10558,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 358 -> 359: Stage C.1c CONDITION_PERCENT_SCALE=100 dropped above ROSTER_SHAPE.
   // 362 -> 363: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS=18 dropped
   // above ROSTER_SHAPE.
-  POINTS: 363,
+  POINTS: 374, // Stage G.2A waitDecayTicks=110 dropped above ROSTER_SHAPE
   /** Of those, how many at least one subject was driven at. */
   // Tracks POINTS 1:1 again (218), confirmed by running the assertion below
   // rather than assumed. PLAYTEST 4: tracks POINTS 1:1 again (222), confirmed
@@ -10198,7 +10580,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 344 -> 357: GDD §5.14 Stage B, tracks POINTS 1:1 again (see POINTS
   // above), confirmed by running this exact assertion.
   // Stage C.1b: FLOOR_TILE_PIXELS_MAX drop is now driven; tracks POINTS 1:1.
-  POINTS_DRIVEN: 363,
+  POINTS_DRIVEN: 374, // Stage G.2A waitDecayTicks
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
@@ -10243,12 +10625,12 @@ const OVERFLOW_CENSUS = Object.freeze({
   // COUNT/DAY/ROSTER_SHAPE. Measured off this assertion rather than
   // hand-derived per domain.
   // 6250 -> 6273: Stage C.1b one more dropped point × argument-heavy subjects.
-  PAIRS_DRIVEN: 6388,
+  PAIRS_DRIVEN: 6590, // Stage G.2A waitDecayTicks overflow pairs
   // GDD §5.13 presentation Phase 3: PAIRS_SKIPPED re-measured (495 -> 517),
   // a real failure value this round's own run produced.
   // GDD §5.14 Stage B: re-measured (517 -> 561), a real failure value this
   // round's own run produced.
-  PAIRS_SKIPPED: 561,
+  PAIRS_SKIPPED: 572, // 561 -> 572: Stage D2.2 residual skipped sum after extra dropped points.
   /** Of the driven, how many had the re-read argument region left unscanned. */
   // PLAYTEST 3: held at 1035, confirmed by running this exact assertion.
   // PLAYTEST 4: re-confirmed at 1035, unchanged, cross-checked independently
@@ -10257,7 +10639,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // failure value this round's own run produced.
   // GDD §5.14 Stage B: re-measured (1081 -> 1173), a real failure value this
   // round's own run produced.
-  PAIRS_ARGUMENT_SKIPPED: 1173,
+  PAIRS_ARGUMENT_SKIPPED: 1196, // 1173 -> 1196: Stage D2.2 extra dropped-point argument re-reads
   /**
    * ROSTER_SHAPE points above its allocation ceiling.
    *
@@ -10269,7 +10651,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // and reading its failure value.
   // GDD §5.14 Stage B: re-measured (47 -> 51), five new dropped ROSTER_SHAPE
   // points.
-  ROSTER_POINTS_ABOVE_THE_CEILING: 51,
+  ROSTER_POINTS_ABOVE_THE_CEILING: 52, // placingUnit is exempt, not a filed roster bound
   /**
    * DERIVED INDEPENDENTLY RATHER THAN READ OFF A FAILURE, where possible — not
    * possible here. members.ts (§5.11 stage 3) measured this pass at 3892
@@ -10342,7 +10724,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // the next run's real failure.
   // Stage C.1b: furniture layout + dock-driven GymScreen trees add overflow
   // rows. Re-measured by running this assertion.
-  ROWS: 7298,
+  ROWS: 7526, // Stage G.2A waitDecayTicks overflow rows
   // GDD §5.13 presentation Phase 3: re-measured (942486 -> 947983), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (947983 -> 960248).
@@ -10360,7 +10742,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // GDD §5.14 Stage B: thirteen new dropped points. Read from this pin's own
   // failure value.
   // 1355914 -> 1357825: Stage C.1b overflow GymScreen trees. Measured.
-  NODES: 1369404,
+  NODES: 1_446_422, // Stage G.2A waitDecayTicks overflow walk
   // GDD §5.13 presentation Phase 3: re-measured (6413124 -> 6446099), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (6446099 -> 6540148).
@@ -10379,7 +10761,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // GDD §5.14 Stage B: thirteen new dropped points. Read from this pin's own
   // failure value.
   // 9415846 -> 9429777: Stage C.1b overflow strings. Measured.
-  STRINGS: 9515624,
+  STRINGS: 10_038_744, // Stage G.2A waitDecayTicks overflow walk
   // GDD §5.13 presentation Phase 3: re-measured (4366 -> 4378), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (4378 -> 4381).
@@ -10387,7 +10769,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // S4i: read from this pin's own failure value.
   // GDD §5.14 Stage B: read from this pin's own failure value.
   // 4540 -> 4543: Stage C.1b overflow distinct strings. Measured.
-  DISTINCT_STRINGS: 4543,
+    DISTINCT_STRINGS: 4546,
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
   /**
@@ -10463,7 +10845,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 1328 -> 1336: Stage C.1b overflow declined closures. Measured.
   // 1344 -> 1368: Stage D overflow declined closures. Measured.
   // 1368 -> 1376: Stage D2.1B four new overflow drive invocations.
-  CLOSURES_DECLINED: 1376,
+  CLOSURES_DECLINED: 1424, // Stage G.2A waitDecayTicks=110 overflow declined closures
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -10522,7 +10904,7 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // refused the same way. Measured off this assertion.
   // Stage C.1b: one more refused overflow arm from the widened ROSTER_SHAPE
   // drop (FLOOR_TILE_PIXELS_MAX). Re-measured by running this assertion.
-  ['beginRecruitment#refused', 223],
+  ['beginRecruitment#refused', 230], // Stage G.2A waitDecayTicks dropped above ROSTER_SHAPE
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
@@ -10539,8 +10921,8 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // running this exact assertion.
   // 396 -> 420, 132 -> 140: GDD §5.14 Stage B's eight new dropped DAY/COUNT
   // points, measured by running this exact assertion.
-  ['recordFriendVisit#refused', 420],
-  ['recordFriendVisit#visited', 140],
+  ['recordFriendVisit#refused', 432], // 420 -> 432: Stage D2.2 two more dropped DAY points × visit rows
+  ['recordFriendVisit#visited', 144], // 140 -> 144
 ]);
 
 // ---------------------------------------------------------------------------
@@ -10922,7 +11304,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 593544 -> 595928: Stage C.1b furniture-layout exports, GYM_SURFACES, and
   // the larger GymScreen tree. Re-measured by running this assertion.
   // 595954 -> 595972: Stage C.1d playerFacing* drives.
-  ROWS: 598218, // Stage D2.1B: four new drive rows (changeoverSeatKey, seatChangeoverTicks×2, stationChangeoverSeats×2, playerFacingStationOperation×3 = +8).
+  ROWS: 600657, // Stage G.2B livingMemberRetention drive
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -10949,7 +11331,7 @@ const DRIVE_CENSUS = Object.freeze({
   // exports (isRecoveryBlocking, recoveryBlockingItems), both driven above.
   // 382 -> 389: Stage C.1b six floor furniture exports + GYM_SURFACES.
   // 393 -> 396: Stage C.1d three playerFacing* drives.
-  EXPORTS_DRIVEN: 429, // 424 -> 429: Stage D2.1B five changeover/operation exports
+  EXPORTS_DRIVEN: 463, // Stage G.2B livingMemberRetentionPressure + statuses
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -11042,7 +11424,7 @@ const DRIVE_CENSUS = Object.freeze({
   // failure value.
   // 6490388 -> 6510102: Stage C.1b furniture/dock GymScreen trees. Measured.
   // 6510907 -> 6510913: Stage C.1d playerFacing* drive rows.
-  NODES: 6521448, // Stage D2.1B: four new drive rows walk more nodes.
+  NODES: 6546043, // Stage G.2B livingMemberRetention drive
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -11163,7 +11545,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_086_922,
+  STRINGS: 30_199_722, // Stage G.2B livingMemberRetention drive strings
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -11273,7 +11655,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
   // 3973 -> 3975: Stage D2 reset-gym copy / wear-truth strings. Read from
   // this pin's own failure value.
-  DISTINCT_STRINGS: 3981,
+  DISTINCT_STRINGS: 4224, // Stage G.2B livingMemberRetention labels/reasons
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
   DEPTH_CUTS: 7,
   /**
@@ -11306,7 +11688,7 @@ const DRIVE_CENSUS = Object.freeze({
   // manager-tier list's own keyed getters are untouched. Read from this
   // pin's own failure value.
   // 268 -> 283: Stage C.1b keyed dock/surface/furniture children. Measured.
-  GETTERS_INVOKED: 283,
+  GETTERS_INVOKED: 301,
   PROXIES: 0,
   /**
    * Nullary functions the walk CALLED, how many threw, and how many
@@ -11358,7 +11740,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 181 -> 196: Stage C.1b dock onPress closures on driven GymScreen trees.
   // 196 -> 199: Stage D2 reset-gym onPress on the three driven GymScreen
   // trees. Read from this pin's own failure value.
-  CLOSURES_INVOKED: 199,
+  CLOSURES_INVOKED: 217,
   CLOSURE_THROWS: 0,
   // 2046 -> 2052: GDD §5.13 presentation Phase 1's two new declined closures
   // (FloorGrid's `type` and `dispatch`, embedded in GymScreen's own return),
@@ -11438,7 +11820,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 6018 -> 6070: Stage C.1b GymScreen/FloorGrid Error.stack readings. Measured.
   // 6247 -> 6253: Stage D2 reset-gym Pressable stacks on driven GymScreen
   // trees. Read from this pin's own failure value.
-  STACKS: 6253,
+  STACKS: 6290,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -12151,7 +12533,7 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   // S4i's one new exempt leaf widened NUMBER (and its dependent domains)
   // again, moving four of these arms further — measured by running this
   // exact assertion rather than derived.
-  ['buyLadderEquipment#refused', 15942],
+  ['buyLadderEquipment#refused', 15990],
   ['buySessionEquipment#bought', 76],
   ['buySessionEquipment#refused', 260],
   ['competitionBenchBay#competition-bench-bay', 2],
@@ -12181,14 +12563,14 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   // derived.
   ['moveUpLadder#moved', 786],
   // S4i: measured by running this exact assertion rather than derived.
-  ['moveUpLadder#refused', 4122],
+  ['moveUpLadder#refused', 4134],
   ['placeFloorFurniture#placed', 1],
   ['placeFloorFurniture#refused', 1],
   ['placeFloorItem#placed', 2],
   ['placeFloorItem#refused', 3],
   // S4i: measured by running this exact assertion rather than derived.
-  ['recordFriendVisit#refused', 1178],
-  ['recordFriendVisit#visited', 390],
+  ['recordFriendVisit#refused', 1184],
+  ['recordFriendVisit#visited', 392],
   ['recoverGym#recovered', 1],
   ['recoverGym#refused', 5],
   ['recoveryRequirement#blocked', 2],
@@ -15236,262 +15618,81 @@ function channelCensus(): ChannelCensus {
  */
 const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, number>>>> =
   Object.freeze({
-    return: Object.freeze({
-      'empireCore.ts': 49,
-      'empireInvariant.ts': 60,
-      'engagement.ts': 23,
-      'expansion.ts': 47,
-      // GDD §5.13 presentation Phase 1: FloorGrid.tsx's own five `return`
-      // statements — the component's JSX return and its four internal helper
-      // arrows/branches.
-      // 5 -> 6: PLAYTEST 3's ruling converted the `fixed.map` callback from
-      // an implicit-return arrow to a block body with an explicit `return`,
-      // so it could compute `isRefusalTarget` first.
-      // 6 -> 8: GDD §5.13 presentation Phase 2 — `colorForMemberType`'s own
-      // `return`, plus the `ambient.map` callback's block-body `return`.
-      // 8 -> 9: PLAYTEST 4 — `AmbientMemberBody`'s own JSX `return`.
-      //
-      // THAT ENTRY USED TO SAY the `useEffect` cleanup (`return () =>
-      // loop.stop();`) does not count here because the census files it under
-      // `returned-closure` instead. Measured while adding the row below, that
-      // is not what the census does: a returned arrow is counted on BOTH
-      // rows. At HEAD this file held nine `return` statements including that
-      // cleanup, and this row read nine while `returned-closure` read one. The
-      // sentence is corrected rather than deleted because the arithmetic below
-      // only adds up under the corrected reading.
-      //
-      // 9 -> 17: Phase 3's RENDER half's eight new `return` statements —
-      // `memberTilePoint`'s two, `stationKey`'s one, the sim tick's cleanup
-      // (also on the `returned-closure` row), the two early returns guarding
-      // the rung rebuild and the tick, and the station-highlight `.map`
-      // callback's two. Read from this table's own failure value.
-      // 17 -> 21: GDD §5.13 presentation Phase 4's four new helper returns —
-      // `memberPose`'s two arms and one fall-through, and `memberFacing`'s
-      // two (with `fixedSpriteUriFor`'s single return read off this table's
-      // own failure value alongside them).
-      // 21 -> 28: P4b — stationUseClassFor's two returns, stationAnchor's
-      // one, memberDrawPoint's two, memberFacing's third arm, and the member
-      // .map callback converted to a block body with an explicit return.
-      // 28 -> 29: P4c — fixedSpriteUriFor's occupied-variant early return.
-      // 29 -> 30: GDD §5.14 Stage C — `toggleSelectedStation`'s own `return`.
-      // 30 -> 41: Stage C.1b tap-to-place / member-select / furniture helpers.
-      // 50 -> 53: Stage C.1c pressLocalPixels / pressTile / handleGridPressEvent.
-      // 53 -> 45: Stage C.1d removed PanResponder/pixel-math helpers.
-      // 45 -> 47: C-DEBT-04 clipRefusalRegion's two returns.
-      // 51 -> 67: GDD §5.18 Stage D.1 per-bench occupancy / highlight helpers.
-      // 67 -> 70: Stage D.1b bayBenchSpriteUri + raised-label onPress returns.
-      'FloorGrid.tsx': 70,
-      // CROSSING 6: GymScreen.tsx's own two helper functions
-      // (`allocationOptions`, `describeSlotOutcome`, the latter with three
-      // return statements across its three arms) plus the component's own
-      // JSX return.
-      // 5 -> 7: the "chrome vs paid" bug-fix round's two new helpers,
-      // `isDustRepairCost` and `displayRepairCost`, one return each.
-      // 7 -> 9: the S4f condition-gate round's two new helpers,
-      // `isSoundCondition` and `displayRepairCostBySoundness`, one return
-      // each — the per-item row's own gate, kept beside the two above rather
-      // than replacing them, since `isDustRepairCost`/`displayRepairCost`
-      // stay the scheduled review's own mirror.
-      // 9 -> 7: GDD §5.14 Stage C.1 deleted both of those two helpers —
-      // `isSoundCondition`/`displayRepairCostBySoundness` moved to
-      // `stationView.ts` when Stage C first wrote the station panel, and this
-      // file's own local copies had no reader left once the per-item loop
-      // that called them was removed. `isDustRepairCost`/`displayRepairCost`
-      // stay, unchanged, still the scheduled review's own mirror.
-      'GymScreen.tsx': 12,
-      // GDD §5.13 presentation Phase 1: floor.ts's own eighteen `return`
-      // statements across its ten exported functions and their helpers.
-      // 18 -> 20: PLAYTEST 2's `fixedFloorFurniture` — its own top-level
-      // `return` plus one inside its `.map()` callback.
-      // 20 -> 21: PLAYTEST 3's `overlapsFixedFurniture` — its own single
-      // top-level `return`.
-      // 21 -> 24: GDD §5.13 presentation Phase 2 — `cellKey`'s own `return`,
-      // plus `ambientMemberRoster`'s early `return Object.freeze([])` and its
-      // own final `return`.
-      // 24 -> 37: Stage C.1b furniture layout helpers.
-      // 37 -> 38: Stage D2 placedOwnedItems.
-      'floor.ts': 38,
-      // GDD §5.13 presentation Phase 3: floorSim.ts's own `return`
-      // statements across its seven exported functions and their helpers.
-      // Read from this table's own failure value.
-      // GDD §5.13 presentation Phase 3: floorSim.ts's own `return` statements
-      // across its seven exported functions and its helpers. Read from this
-      // table's own failure value.
-      // 60 -> 58: the route-lost branch stopped assembling its own member
-      // object and now returns one call's result, and the interruption pass
-      // reads a declared list instead of a two-armed condition. Read from this
-      // table's own failure value.
-      // 56 -> 63: GDD §5.18 Stage D.1 bay targeting / per-bench use cells.
-      // 63 -> 68: Stage D2.1A assignedSeat / reservedUseCells / relocate returns.
-      // 68 -> 72: Stage D2.1B changeoverSeatKey / seatChangeoverTicks /
-      // stationChangeoverSeats / nextChangeovers.
-      'floorSim.ts': 72,
-      // GDD §5.13 presentation Phase 4: floorSprites.ts's own `return`
-      // statements across its parse/render/mirror/upscale/encode helpers,
-      // the seventeen ops builders and the table construction. Read from
-      // this table's own failure value.
-      // 43 -> 50: P4b — three using-pose ops builders, usingBaseGrid, and
-      // memberGrid's three new early returns. Read off this table's failure.
-      // 50 -> 52: P4c — the `under` op helper and opsPowerBarOccupied.
-      // 52 -> 54: Stage D.1b opsCompetitionBench and opsPlateTree.
-      'floorSprites.ts': 54,
-      // 25 -> 26: `playerCheckInGapSeconds`'s own `return` — the span the
-      // player's "open up" control fed to the shipped accrual.
-      // 26 -> 25: "kill the mint" — `playerCheckInGapSeconds` is removed by
-      // human ruling; no tap mints or advances the clock any more.
-      'ladder.ts': 25,
-      // members.ts's 13 return statements (§5.11 stage 3).
-      'members.ts': 13,
-      // 18 -> 20: `GymView`'s reducer gained the two new arms
-      // (`floor-place`, `floor-remove`), each ending in a `return`.
-      // 20 -> 26: S4b — `gymViewReduce` gained the six §5.11 stage-4 arms
-      // (`answer-prompt`, `repair-item`, `decline-repair`, `hire-manager`,
-      // `dismiss-manager`, `recover-gym`), each ending in exactly one
-      // `return`, the same one-call-per-arm shape the arms above have. Read
-      // from this table's own failure value.
-      // 26 -> 27: `gymViewReduce`'s new `'open-up'` arm — the player's own
-      // check-in, ending in the same `advanceGymClock` return the dev arm
-      // beside it ends in.
-      // 27 -> 26: "kill the mint" — the `'open-up'` arm is removed by human
-      // ruling; `advance-clock`, now driven by `AppShell.tsx`'s `GymHost`, is
-      // the only arm left that reaches `advanceGymClock`.
-      // 26 -> 29: Stage C.1b furniture/surface reducer arms.
-      // 29 -> 31: Stage D `upgrade-station` reducer arm plus the capability
-      // field's own return on the GymView snapshot path.
-      // 31 -> 32: Stage D2 reset-gym arm.
-      'ladderView.tsx': 32,
-      // §5.11 stage 4's sixty-four `return` sites — eight discriminated
-      // results with two to four arms each, plus the read models.
-      // 89 -> 90: the "chrome vs paid" bug-fix round's `reviewBankedTime`,
-      // one return statement.
-      'management.ts': 90,
-      'npc.ts': 12,
-      // GDD §5.14 Stage B's pacing.ts — eleven `return` statements across
-      // `naturalOffsetsSeconds`'s four policy arms, `pacingCheckInSchedule`,
-      // `runPacingLadder`, `runPacingLadderRealistic`,
-      // `runPacingManagedGym`, `pacingReadingAtHorizon`, and
-      // `pacingLadderRungNeverRegresses`'s two. Read from this table's own
-      // failure value.
-      'pacing.ts': 11,
-      'production.ts': 11,
-      'recruitment.ts': 9,
-      'reputation.ts': 24,
-      'sessions.ts': 43,
-      'social.ts': 31,
-      // GDD §5.14 Stage C's stationView.ts — ten `return` statements:
-      // stationIdentityView's two arms, the internal `targetsStation`
-      // helper's two, stationOperationView's one, isSoundCondition's one,
-      // displayRepairCostBySoundness's one, stationConditionView's one, and
-      // stationManagerEffectView's two arms.
-      // 10 -> 12: GDD §5.14 Stage C.1a's two new one-return functions,
-      // `isRecoveryBlocking` and `recoveryBlockingItems`.
-      // 17 -> 26: Stage C.1d playerFacingMemberTypeLabel (1),
-      // playerFacingMemberActivityLine (5), playerFacingPlacementRefuse (3).
-      // 40 -> 44: GDD §5.18 Stage D.1 training-station identity / refuse copy.
-      // 44 -> 46: Stage D2.1B playerFacingStationOperation.
-      'stationView.ts': 46,
-      'stationCapability.ts': 27,
-      // GDD §5.18 Stage D.1: trainingStation.ts's own returns across the
-      // bay derivation and its helpers. Read from this table's own failure.
-      // 17 -> 18: Stage D.1b capacityRealizesOn.
-      'trainingStation.ts': 18,
+    'ambient-global': Object.freeze({}),
+    'argument-mutation': Object.freeze({
+      'floorSim.ts': 1,
     }),
-    /**
-     * TWO, AND THE TWO ARE THE WRAP'S OWN GATES.
-     *
-     * It was 54 across eight modules until E19 routed every one of them through
-     * `refuseWith`. What is left is `refuseForbiddenName`'s refusal and the
-     * wrap's own last line, both in `empireCore.ts`, and both named in
-     * `THROW_GATE_SITES` so a third is a decision somebody signs.
-     */
-    throw: Object.freeze({
-      'empireCore.ts': 2,
+    'callback-invocation': Object.freeze({
+      'engagement.ts': 1,
+      'FloorGrid.tsx': 9,
+      'GymScreen.tsx': 1,
+      'ladderView.tsx': 9,
+      'production.ts': 2,
     }),
+    'deferred-completion': Object.freeze({}),
     'exported-binding': Object.freeze({
       'empireCore.ts': 20,
       'empireInvariant.ts': 6,
       'empireTuning.ts': 3,
       'engagement.ts': 2,
       'expansion.ts': 7,
-      // GDD §5.13 presentation Phase 3: floorSim.ts's two exported const
-      // bindings, `FLOOR_SIM_MEMBER_STATES` and `FLOOR_SIM_INTERRUPTIONS`.
-      // 2 -> 3: `FLOOR_SIM_INTERRUPTIBLE_STATES`, the beat's declared source
-      // arms. Read from this table's own failure value.
       'floorSim.ts': 3,
-      // GDD §5.13 presentation Phase 4: floorSprites.ts's five exported
-      // const bindings — the pose/facing vocabularies and the three frozen
-      // sprite tables.
-      // 5 -> 7: P4b, read off this table's own failure value.
       'floorSprites.ts': 7,
       'ladder.ts': 1,
-      // Stage C.1b: GYM_SURFACES.
       'ladderView.tsx': 1,
-      // §5.11 stage 4's six exported const bindings — the phase, decision,
-      // policy, wiring and decision-kind vocabularies plus the shipped wiring.
+      'livingMemberExperience.ts': 1,
+      'livingMemberRetention.ts': 1,
+      'livingMembers.ts': 6, // Stage G.1C given-name pool + very-long wait knob
       'management.ts': 6,
-      // GDD §5.14 Stage B's one exported const binding, `PACING_CHECK_IN_POLICIES`.
       'pacing.ts': 1,
       'production.ts': 1,
       'recruitment.ts': 2,
       'reputation.ts': 7,
       'sessions.ts': 2,
       'social.ts': 7,
-      // GDD §5.18 Stage D.1: four exported const bindings
-      // (COMPETITION_BENCH_BAY, TRAINING_STATION_KINDS,
-      // COMPETITION_BENCH_BAY_REQUIRED, COMPETITION_BENCH_BAY_PRIMARY).
       'trainingStation.ts': 4,
     }),
-    'argument-mutation': Object.freeze({}),
-    // CROSSING 6: GymScreen.tsx's one call of `props.dispatch` (wrapped by
-    // its own local `dispatch` helper, called once from the outer scope —
-    // every actual dispatch site below calls THAT local, which is a plain
-    // function call and not a second `props.dispatch` invocation).
-    'callback-invocation': Object.freeze({
-      'engagement.ts': 1,
-      // GDD §5.13 presentation Phase 1: FloorGrid's two `props.dispatch`
-      // call sites (`releaseAt`'s floor-place, the remove Pressable's
-      // floor-remove).
-      // GDD §5.14 Stage C: two more, both inside the new station panel — its
-      // repair control's `repair-item` and its own remove control's
-      // `floor-remove` (a second, panel-local site distinct from the
-      // tray-item remove `Pressable` above).
-      // 4 -> 7: Stage C.1b furniture place/remove and tap-to-place dispatch sites.
-      // 7 -> 5: Stage C.1d removed on-chip remove and PanResponder place
-      // dispatch sites; place/repair/remove remain on the two-phase path
-      // and the station panel.
-      // 6 -> 8: GDD §5.18 Stage D.1 equipment-panel repair/remove dispatch.
-      'FloorGrid.tsx': 8,
-      'GymScreen.tsx': 1,
-      'ladderView.tsx': 9,
-      'production.ts': 2,
+    'internal-callback-invocation': Object.freeze({
+      'expansion.ts': 1,
     }),
-    'internal-callback-invocation': Object.freeze({ 'expansion.ts': 1 }),
-    'module-mutable-state': Object.freeze({}),
-    'ambient-global': Object.freeze({}),
     'lazy-member': Object.freeze({}),
-    /**
-     * TWO, AND THE CHANNEL WAS DECLARED EMPTY UNTIL THIS ROUND.
-     *
-     * `rosterRatesAt` returns a frozen object holding two arrows, which is a
-     * returned closure by any reading — and the scan required the return's
-     * expression to be LITERALLY an arrow, so it counted zero. The zero was a
-     * fact about the scan. Both sites are named in
-     * `DECLARED_RETURNED_CLOSURE_SITES`.
-     *
-     * PLAYTEST 4 adds a third, in a new module: `AmbientMemberBody`'s
-     * `useEffect` cleanup, `return () => loop.stop();` — literally an arrow,
-     * the same shape as the two above. Also named in
-     * `DECLARED_RETURNED_CLOSURE_SITES`.
-     *
-     * Phase 3's RENDER half adds a fourth overall, in the same module and the
-     * same shape: `FloorGrid`'s own sim-tick teardown, `return () =>
-     * clearInterval(timer);`. It is named in
-     * `DECLARED_RETURNED_CLOSURE_SITES` like the others, which is a set
-     * equality in both directions, so a fifth is red before it is ever
-     * called.
-     */
-    'returned-closure': Object.freeze({ 'FloorGrid.tsx': 2, 'empireInvariant.ts': 2 }),
-    'deferred-completion': Object.freeze({}),
+    'module-mutable-state': Object.freeze({}),
+    'return': Object.freeze({
+      'empireCore.ts': 49,
+      'empireInvariant.ts': 60,
+      'engagement.ts': 23,
+      'expansion.ts': 47,
+      'floor.ts': 38,
+      'FloorGrid.tsx': 80,
+      'floorSim.ts': 76,
+      'floorSprites.ts': 54,
+      'GymScreen.tsx': 12,
+      'ladder.ts': 28,
+      'ladderView.tsx': 34,
+      'livingMemberExperience.ts': 36,
+      'livingMemberRetention.ts': 10,
+      'livingMembers.ts': 33, // Stage G.1C displayNameForCreation + wait-copy returns
+      'management.ts': 90,
+      'members.ts': 13,
+      'npc.ts': 12,
+      'pacing.ts': 11,
+      'production.ts': 11,
+      'recruitment.ts': 9,
+      'reputation.ts': 24,
+      'sessions.ts': 43,
+      'social.ts': 31,
+      'sportingReputation.ts': 11,
+      'stationCapability.ts': 27,
+      'stationView.ts': 50,
+      'trainingStation.ts': 18,
+    }),
+    'returned-closure': Object.freeze({
+      'empireInvariant.ts': 2,
+      'FloorGrid.tsx': 2,
+    }),
+    'throw': Object.freeze({
+      'empireCore.ts': 2,
+    }),
   });
 
 /**
@@ -15536,58 +15737,24 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'empireInvariant.ts': 8,
   'engagement.ts': 13,
   'expansion.ts': 3,
-  // 5 -> 6: PLAYTEST 2's `fixedFloorFurniture` adds one `refuseWith` call.
-  // 6 -> 8: GDD §5.13 presentation Phase 2's `ambientMemberRoster` adds two
-  // `refuseWith` calls (unregistered rung, out-of-room refusal).
-  // 8 -> 13: Stage C.1b furnitureItemFootprint / layout refusals.
   'floor.ts': 13,
-  // GDD §5.13 presentation Phase 3: floorSim.ts's `refuseWith` calls — the
-  // route-visit budget, the no-walkable-cell refusal, the seed refusal, the
-  // run-length refusal, the run-budget refusal and the pass-order refusal.
-  'floorSim.ts': 6,
+  'floorSim.ts': 7,
   'ladder.ts': 20,
-  // §5.11 stage 4. Twenty-three named refusals: the tier and wiring
-  // vocabularies, the published-table reads, the state validator's eight
-  // arms, the schedule and policy guards, and the two wiring dials.
-  // 25 -> 26: the §5.7 chain-break round adds `requireManagedGym`'s
-  // check-ins-taken refusal.
-  // 26 -> 27: "kill the mint" adds `requireManagedGym`'s banked-operation-
-  // seconds refusal, alongside the field the review ordinal is now derived
-  // from.
+  'livingMemberExperience.ts': 2,
+  'livingMemberRetention.ts': 1,
+  'livingMembers.ts': 12,
   'management.ts': 27,
   'members.ts': 9,
-  // GDD §5.14 Stage B: three named refusals — an unknown check-in policy, a
-  // non-positive horizon, and a horizon `pacingReadingAtHorizon` has no
-  // reading recorded for.
   'pacing.ts': 3,
   'production.ts': 9,
   'recruitment.ts': 1,
   'reputation.ts': 6,
   'sessions.ts': 24,
   'social.ts': 6,
-  // 2 -> 3: GDD §5.18 Stage D.1 stationCapability refuseWith for the bay.
+  'sportingReputation.ts': 9,
   'stationCapability.ts': 3,
 });
-
-/**
- * The two callback sites, by name and with their ARGUMENT COUNT in the key.
- *
- * The count is the load-bearing part and it is there for the same reason
- * instrument C puts `x1` in a site key: the site already exists, so a set
- * equality over site NAMES would be green while the site starts carrying a
- * payload. M27 is `attended(slot, EMPIRE_FORBIDDEN_OUTPUTS[0])` — the same
- * site, one argument wider — and `x1` going to `x2` is what reddens here.
- */
 const DECLARED_CALLBACK_SITES: readonly string[] = Object.freeze([
-  // GDD §5.13 presentation Phase 1: FloorGrid's two `props.dispatch` call
-  // sites — `releaseAt`'s `floor-place` and the remove `Pressable`'s
-  // `floor-remove` — each handing `dispatch` exactly one action object, the
-  // same `x1` shape GymView's own six sites below carry.
-  // GDD §5.14 Stage C: two more, both inside the new station panel — its
-  // repair control's `repair-item` and its own remove control's
-  // `floor-remove` (a second, panel-local site; the tray-item remove
-  // `Pressable` above still carries the first) — each handing `dispatch`
-  // exactly one action object, same `x1` shape.
   'FloorGrid.tsx#FloorGrid#props x1',
   'FloorGrid.tsx#FloorGrid#props x1',
   'FloorGrid.tsx#FloorGrid#props x1',
@@ -15596,20 +15763,9 @@ const DECLARED_CALLBACK_SITES: readonly string[] = Object.freeze([
   'FloorGrid.tsx#FloorGrid#props x1',
   'FloorGrid.tsx#FloorGrid#props x1',
   'FloorGrid.tsx#FloorGrid#props x1',
-  // CROSSING 6: GymScreen's one `props.dispatch` call, through its own local
-  // `dispatch` helper — every actual dispatch site in the component calls
-  // that local wrapper, a plain function and not `props.dispatch` itself, so
-  // this is the ONE site rather than one per onPress arrow (unlike GymView,
-  // which calls `props.dispatch` directly at each of its six sites below).
+  'FloorGrid.tsx#FloorGrid#props x1',
   'GymScreen.tsx#GymScreen#props.dispatch x1',
   'engagement.ts#historyFrom#attended x1',
-  // Ordered by owner name within a module (`GymView` before `LadderView`),
-  // which is the walk's own order rather than source position. Six onClick
-  // arrows in `GymView` (buy-ladder, buy-session, move-up,
-  // set-allocation-slot, the dev-clock steps, the week-boundary jump) and the
-  // three in `LadderView` above it, each handing `props.dispatch` exactly one
-  // action object. `x1` widening to `x2` at any of them is a payload arriving
-  // one argument wider, which is what this census is for.
   'ladderView.tsx#GymView#props.dispatch x1',
   'ladderView.tsx#GymView#props.dispatch x1',
   'ladderView.tsx#GymView#props.dispatch x1',
@@ -15622,7 +15778,6 @@ const DECLARED_CALLBACK_SITES: readonly string[] = Object.freeze([
   'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour x2',
   'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay x2',
 ]);
-
 const DECLARED_INTERNAL_CALLBACK_SITES: readonly string[] = Object.freeze([
   'expansion.ts#axesWhere#finished x1',
 ]);
@@ -15929,10 +16084,12 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:736 returned=unfollowable:station',
-  'FloorGrid.tsx:736 returned=unfollowable:station',
-  'FloorGrid.tsx:737 returned=unfollowable:station',
-  'FloorGrid.tsx:737 returned=unfollowable:station',
+  'FloorGrid.tsx:2668 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:2686 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:779 returned=unfollowable:station',
+  'FloorGrid.tsx:779 returned=unfollowable:station',
+  'FloorGrid.tsx:780 returned=unfollowable:station',
+  'FloorGrid.tsx:780 returned=unfollowable:station',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -15943,119 +16100,35 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'engagement.ts:437 returned=unfollowable:gym',
   'engagement.ts:455 returned=unfollowable:gym',
   'expansion.ts:549 returned=unfollowable:state',
-  // GDD §5.13 presentation Phase 1: floor.ts's two `Readonly<Partial<Record<…,
-  // GridPosition>>>` returns, unfollowable for the same reason every entry
-  // here is — the walk cannot see past a returned member access.
-  // :423/:433 -> :424/:434 -> :426/:436: GDD §5.13 presentation Phase 2's
-  // new import line and header prose shifted both sites down further.
-  // Measured by running this exact assertion rather than hand-counted.
   'floor.ts:586 returned=unfollowable:floor',
   'floor.ts:653 returned=unfollowable:floor',
   'floor.ts:663 returned=unfollowable:floor',
   'floor.ts:671 returned=unfollowable:floor',
-  // GDD §5.13 presentation Phase 3: floorSim.ts's four fresh mutating
-  // receivers and three unfollowable returns. The four receivers are the two
-  // `new Array(...).fill(...)` allocations (the distance field and the
-  // blocked mask), the `[...scored].sort(...)` copy that ranks queue cells,
-  // and `claimantsOf`'s `.filter(...).sort(...)` — each a receiver nothing
-  // outside the function holds, which is why sorting them in place is safe.
-  // The three returns are member accesses the walk cannot see past, the same
-  // shape as every other `returned=unfollowable` row here. Read from this
-  // assertion's own failure value rather than hand-counted.
-  'floorSim.ts:1065 returned=unfollowable:member',
-  'floorSim.ts:1066 returned=unfollowable:member',
-  'floorSim.ts:1086 returned=unfollowable:walk',
-  'floorSim.ts:649 receiver=NewExpression',
-  'floorSim.ts:721 returned=unfollowable:context',
-  'floorSim.ts:724 receiver=NewExpression',
-  'floorSim.ts:871 receiver=ArrayLiteralExpression',
-  'floorSim.ts:925 returned=unfollowable:plan',
-  // GDD §5.13 presentation Phase 4: floorSprites.ts's three `new Array`
-  // fills — `render`'s pixel array and the mirrored/upscaled copies — plus
-  // the palette-map arrow inside FLOOR_SPRITE_PALETTES' own construction,
-  // fresh at every call by construction. Line-number keyed, like every row
-  // here, so an edit that moves the file reshapes these rows and this list
-  // is re-measured rather than hand-shifted.
-  // :242/:288/:301 -> :318/:371/:384, and :833 -> :1043 — P4b's pose
-  // vocabulary, class table and using-pose draw programs sit above all four
-  // sites. Re-measured, per this list's own rule. (The sort is lexical,
-  // which is why the four-digit row files before :318.)
-  // :1043 -> :1080: the bench pose rotated along the slab — `opsUsingBench`'s
-  // longer draw program and its orientation comment sit above the arrow.
-  // Re-measured, per this list's own rule.
-  // :1080 -> :1174 and :318/:371/:384 -> :339/:398/:411: P4c — the `under`
-  // op and its interpreter arm sit above the three `new Array` sites, and
-  // the occupied painter, its table and the sled repark's audit-clean
-  // arithmetic comment sit above the arrow. Re-measured, per this list's
-  // own rule.
-  // :1174 -> :1207 and :339/:398/:411 -> :363/:422/:435: P4c's critic
-  // round — comments only, no code moved. The `under` op's named-catcher
-  // paragraph and the class table's 1x1-accessory doubt sit above the three
-  // `new Array` sites (+24); those plus the occupied variant's honest-form
-  // rewrite and the sled residual's sharpened pointer sit above the arrow
-  // (+33). Re-measured from this assertion's own failure value, per this
-  // list's own rule.
+  'floorSim.ts:1109 returned=unfollowable:member',
+  'floorSim.ts:1110 returned=unfollowable:member',
+  'floorSim.ts:1130 returned=unfollowable:walk',
+  'floorSim.ts:693 receiver=NewExpression',
+  'floorSim.ts:765 returned=unfollowable:context',
+  'floorSim.ts:768 receiver=NewExpression',
+  'floorSim.ts:915 receiver=ArrayLiteralExpression',
+  'floorSim.ts:969 returned=unfollowable:plan',
   'floorSprites.ts:1256 callee=fresh:ArrowFunction',
   'floorSprites.ts:363 receiver=NewExpression',
   'floorSprites.ts:422 receiver=NewExpression',
   'floorSprites.ts:435 receiver=NewExpression',
-  // "chrome vs paid" bug-fix round: 333 -> 349, a pure line shift (new
-  // parameter, docstring and header prose added above it in `ladder.ts`).
-  // Content verified byte-identical at the old and new line before re-pinning.
   'ladder.ts:349 receiver=ArrayLiteralExpression',
-  // "KILL THE MINT" ROUND: re-measured, same shape as `SHIPPED_SCREEN_
-  // DISAGREEMENTS`' own note on this — a comment/removal moving a line-keyed
-  // census, not a behaviour change. `playerCheckInGapSeconds`'s removal and
-  // the `'open-up'` reducer arm's removal shift these two up by one each.
-  // "chrome vs paid" bug-fix round: 115 -> 116, 123 -> 124 — a pure +1 line
-  // shift from the `EarningsMode` import added to the shared header import
-  // block. Content verified byte-identical before re-pinning.
-  'ladderView.tsx:116 returned=unfollowable:state',
   'ladderView.tsx:124 returned=unfollowable:state',
-  // :370 -> :394/:421/:465: the `floor` field's addition shifted the one
-  // existing site down, and the reducer's two new arms (`floor-place`,
-  // `floor-remove`) each return an unfollowable `FloorState`.
-  //
-  // S4b: :394/:421/:465 -> :491/:519/:574. SAME THREE SITES, three different
-  // shifts (+97, +98, +109) because the file grew in three places, which is
-  // exactly the shape a line-keyed census can hide a real relocation inside.
-  // Verified by CONTENT rather than by arithmetic, the way this file's own
-  // history says to: the previous commit's `ladderView.tsx` was extracted and
-  // the source text at each old line compared against the text at each new
-  // line — `let weekLog = state.weekLog;`, `floor: state.floor,` and
-  // `outcome.kind === 'moved' ? relocateFloorState(outcome.state.rung) :
-  // state.floor,`, byte-identical in all three pairs. The list's LENGTH is
-  // unchanged at 37, so S4b's six new reducer arms added no fresh receiver:
-  // each returns `outcome.state`, a `ManagedGym` the walk follows, not a
-  // freshly assembled object. All three then shifted +18 with the ten rows in
-  // `SHIPPED_SCREEN_DISAGREEMENTS` below, for the same reason and re-read the
-  // same way.
-  // "chrome vs paid" bug-fix round: 531 -> 547, 559 -> 575, 614 -> 630, a
-  // pure +16 line shift from the `mode` field/doc comment added to
-  // `GymViewAction`'s `advance-clock` arm and `advanceGymClock`'s new `mode`
-  // parameter. Content verified byte-identical before re-pinning.
-  'ladderView.tsx:602 returned=unfollowable:state',
-  'ladderView.tsx:630 returned=unfollowable:state',
-  'ladderView.tsx:632 returned=unfollowable:state',
-  'ladderView.tsx:687 returned=unfollowable:state',
-  // §5.11 stage 4: `withWear`'s condition map is built in a loop and returned
-  // through a fresh object the screen cannot follow into, the same shape as
-  // every other row here.
-  // "KILL THE MINT" ROUND: 1274 -> 1445, prose only (§3g), re-measured.
-  // "chrome vs paid" bug-fix round: 1445 -> 1473, a pure line shift from the
-  // new `mode` parameters and doc comments added above it in
-  // `management.ts`. Content verified byte-identical before re-pinning.
+  'ladderView.tsx:132 returned=unfollowable:state',
+  'ladderView.tsx:641 returned=unfollowable:state',
+  'ladderView.tsx:669 returned=unfollowable:state',
+  'ladderView.tsx:671 returned=unfollowable:state',
+  'ladderView.tsx:672 returned=unfollowable:state',
+  'ladderView.tsx:727 returned=unfollowable:state',
+  'ladderView.tsx:736 returned=unfollowable:state',
+  'livingMembers.ts:269 returned=unfollowable:roster',
   'management.ts:1473 returned=unfollowable:state',
-  // GDD §5.14 Stage B: `pacingCheckInSchedule`'s `Array.from(new Set(...))
-  // .sort(...)` — the receiver is a freshly constructed array nothing
-  // outside the function holds, the same shape as every `receiver=
-  // ArrayLiteralExpression`/`receiver=NewExpression` row here.
   'pacing.ts:246 receiver=CallExpression',
   'recruitment.ts:388 returned=unfollowable:state',
-  // "chrome vs paid" bug-fix round: 562 -> 563, 655 -> 656, 791 -> 798,
-  // 802 -> 809 — pure line shifts from the `EarningsMode` import and the new
-  // `mode` parameters/doc comments added to `gymCheckIn`/`gymCheckInAfter`
-  // in `sessions.ts`. Content verified byte-identical before re-pinning.
   'sessions.ts:563 receiver=ArrayLiteralExpression',
   'sessions.ts:656 returned=unfollowable:state',
   'sessions.ts:798 returned=unfollowable:item',
@@ -16064,28 +16137,13 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'social.ts:535 returned=unfollowable:context',
   'stationCapability.ts:104 returned=unfollowable:capability',
 ]);
-
-/**
- * Every site where the screen's two readings disagreed, on the shipped tree.
- *
- * The control is the position-enumerating walk the checker question replaced,
- * kept runnable rather than deleted — `streakSweep.ts`'s shape, where the
- * unfixed variant's numbers stay in the file as the thing the fixed one is
- * measured against. Every row here is `asked=true walked=false`: the relation
- * declines to certify an interface as function-free, and the walk says there is
- * no function in it. The walk is right about the contents and the relation is
- * right about what it can prove, and a screen has to take the cautious one.
- *
- * There is no row in the other direction on the shipped tree, and that is the
- * measurement worth having: nowhere in this directory does the relation certify
- * a type that the control finds a function inside.
- */
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:736 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:736 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:737 GridSize asked=true walked=false',
-  'FloorGrid.tsx:737 GridSize asked=true walked=false',
-  'FloorGrid.tsx:749 BayBench | undefined asked=true walked=false',
+  'FloorGrid.tsx:1725 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:779 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:779 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:780 GridSize asked=true walked=false',
+  'FloorGrid.tsx:780 GridSize asked=true walked=false',
+  'FloorGrid.tsx:792 BayBench | undefined asked=true walked=false',
   'empireInvariant.ts:1084 GymAxes asked=true walked=false',
   'empireInvariant.ts:1137 GymAxes asked=true walked=false',
   'empireInvariant.ts:1168 readonly ExpansionBuild[] asked=true walked=false',
@@ -16095,136 +16153,55 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'engagement.ts:437 EmpireState asked=true walked=false',
   'engagement.ts:455 EmpireState asked=true walked=false',
   'expansion.ts:549 EmpireClock asked=true walked=false',
-  // GDD §5.13 presentation Phase 1: floor.ts's two `Readonly<Partial<Record<…,
-  // GridPosition>>>` returns.
-  // :423/:433 -> :424/:434 -> :426/:436: GDD §5.13 presentation Phase 2's
-  // new import line and header prose shifted both sites down further.
   'floor.ts:586 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
   'floor.ts:653 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
   'floor.ts:663 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
   'floor.ts:671 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
-  // GDD §5.13 presentation Phase 3: floorSim.ts's six returns of a member
-  // access the relation cannot follow past — the two station lookups reading
-  // `plan.stations`, the walk's `member.cell`/`member.next`, and two
-  // `GridPosition` returns from the step helpers. Read from this list's own
-  // failure value rather than hand-counted.
-  'floorSim.ts:1065 GridPosition asked=true walked=false',
-  'floorSim.ts:1066 GridPosition | null asked=true walked=false',
-  'floorSim.ts:1086 GridPosition asked=true walked=false',
-  'floorSim.ts:1262 GridPosition | undefined asked=true walked=false',
-  'floorSim.ts:1421 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1421 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1421 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1421 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1421 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1421 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1421 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1421 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1421 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1450 GridPosition asked=true walked=false',
-  'floorSim.ts:721 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'floorSim.ts:916 readonly FloorStation[] asked=true walked=false',
-  'floorSim.ts:925 readonly FloorStation[] asked=true walked=false',
-  // "chrome vs paid" bug-fix round: ALL rows in this list moved again — one
-  // atomic pass, verified against `git show HEAD:` at several representative
-  // old/new line pairs (`ladder.ts:333`->`349`, `management.ts:1445`->`1473`,
-  // `sessions.ts:791`->`798`/`802`->`809`) before re-pinning, the same
-  // discipline this list's own history already documents. The count of rows
-  // is UNCHANGED at fifteen for `management.ts` and unchanged everywhere
-  // else; every shift is new parameters/doc comments for the `mode:
-  // EarningsMode` threading, none of it a behaviour change the relation
-  // itself would care about.
+  'floorSim.ts:1109 GridPosition asked=true walked=false',
+  'floorSim.ts:1110 GridPosition | null asked=true walked=false',
+  'floorSim.ts:1130 GridPosition asked=true walked=false',
+  'floorSim.ts:1306 GridPosition | undefined asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1531 GridPosition asked=true walked=false',
+  'floorSim.ts:1749 FloorSimState asked=true walked=false',
+  'floorSim.ts:1904 FloorSimState asked=true walked=false',
+  'floorSim.ts:765 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'floorSim.ts:960 readonly FloorStation[] asked=true walked=false',
+  'floorSim.ts:969 readonly FloorStation[] asked=true walked=false',
   'ladder.ts:639 LadderState asked=true walked=false',
   'ladder.ts:650 LadderState asked=true walked=false',
   'ladder.ts:656 LadderState asked=true walked=false',
-  // "KILL THE MINT" ROUND: every line number in this block moved again, and
-  // the count of rows is UNCHANGED — verified the way this list's own history
-  // says to, by re-running the assertion and reading its own failure value
-  // rather than hand-shifting. The mechanism is the same one recorded below at
-  // "ALL FIFTEEN LINE NUMBERS MOVED": `playerCheckInGapSeconds`'s removal from
-  // `ladder.ts` and the `'open-up'` reducer arm's removal from `ladderView.tsx`
-  // shift everything after them up by a small constant; the header this round
-  // added to `management.ts` (§3g, the ordinal re-keying's own retraction)
-  // shifts everything in that file down by a much larger one.
-  'ladderView.tsx:107 LadderState asked=true walked=false',
-  'ladderView.tsx:108 LadderAccrual asked=true walked=false',
   'ladderView.tsx:115 LadderState asked=true walked=false',
-  'ladderView.tsx:116 LadderAccrual | null asked=true walked=false',
+  'ladderView.tsx:116 LadderAccrual asked=true walked=false',
   'ladderView.tsx:123 LadderState asked=true walked=false',
   'ladderView.tsx:124 LadderAccrual | null asked=true walked=false',
-  // Renumbered by the `floor` field's addition, and widened by it: two new
-  // `GymState`/`FloorState` reads for the `floor-place`/`floor-remove` arms
-  // (:412/:413 unchanged in kind, :421/:448/:465/:477 new).
-  //
-  // S4b: 7 rows -> 10, and it is NOT a shift plus three additions — three rows
-  // left and six arrived, which a total of +3 would have hidden. Every row was
-  // mapped by SOURCE TEXT against the previous commit's file, not by
-  // arithmetic, because a line-keyed census is exactly where a relocation can
-  // render as unchanged context:
-  //
-  //   :394 -> :491  `let weekLog = state.weekLog;`
-  //   :421 -> :519  `floor: state.floor,`
-  //   :465 -> :574  the move-up arm's relocate-or-keep ternary
-  //   :477 -> :586  `floor: outcome.state,`
-  //   :412 GONE     was `gym: checkedIn.state,`; the arm destructures
-  //                 `managedCheckIn`'s return now, so the assigned value is a
-  //                 local binding rather than a member read and the screen
-  //                 stops asking about it
-  //   :413 GONE     was `lastAccrual: checkedIn.accrual,`, same reason
-  //   :448 GONE     was `gym: outcome.state,` in `buy-session`; that value is
-  //                 an ARGUMENT to `withUpdatedGym` now, not the assigned one
-  //   six NEW       `managed: outcome.state,` once per §5.11 stage-4 arm
-  //
-  // The six new rows are the same shape as every row above them: the screen
-  // asks about a named state type, the control declines to walk into it, and
-  // the census over-approximates rather than going quiet.
-  //
-  // Then all ten shifted +18 in the same round, uniformly, when the routing
-  // disclosure was added to `advanceGymClock`'s doc comment above them. A
-  // COMMENT MOVING A LINE-KEYED CENSUS is the hazard this list's own history
-  // is about, so the shift was re-read off the source rather than added: the
-  // ten expected source lines were grepped for by text in the edited file and
-  // each landed at exactly its old number plus eighteen. Then all ten moved
-  // -3 again when three dead import specifiers came out of the same file
-  // (`GymState`, `createGymState` and `gymCheckInAfter` had stopped being
-  // bound to anything once the check-in moved to `managedCheckIn`, and
-  // leaving `gymCheckInAfter` imported beside a header that says the arm no
-  // longer calls it is the misleading kind of dead weight). Re-read the same
-  // way, and the replacement was done as ONE atomic pass over the whole list
-  // rather than ten sequential replaces — a sequential pass had already
-  // produced a collision in this list when a new line number equalled an old
-  // one still waiting to be rewritten.
-  'ladderView.tsx:602 readonly GymWeekReport[] asked=true walked=false',
-  'ladderView.tsx:630 FloorState asked=true walked=false',
-  'ladderView.tsx:632 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'ladderView.tsx:687 FloorState asked=true walked=false',
-  'ladderView.tsx:699 FloorState asked=true walked=false',
-  'ladderView.tsx:719 FloorState asked=true walked=false',
-  'ladderView.tsx:758 ManagedGym asked=true walked=false',
-  'ladderView.tsx:771 ManagedGym asked=true walked=false',
-  'ladderView.tsx:785 ManagedGym asked=true walked=false',
-  'ladderView.tsx:795 ManagedGym asked=true walked=false',
-  'ladderView.tsx:803 ManagedGym asked=true walked=false',
-  'ladderView.tsx:811 ManagedGym asked=true walked=false',
-  'ladderView.tsx:846 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  // §5.11 stage 4's fifteen rows, every one the same shape as the rows above:
-  // the screen asks about a named state type and the control declines to walk
-  // into it, so the census over-approximates rather than going quiet.
-  //
-  // ALL FIFTEEN LINE NUMBERS MOVED IN THE STAGE-4 MEASUREMENT ROUND, and the
-  // move was prose: +62 lines of module header before `countDecision` and a
-  // further +15 on `ManagedReading`'s doc comment. Nothing about what the
-  // census found changed. Recorded here because a pin keyed on a line number
-  // reddens on a comment, which is a real cost of this list's shape and is
-  // worth a reader knowing before they go looking for a behaviour change.
-  // AND ALL FIFTEEN MOVED AGAIN IN THE §5.7 CHAIN-BREAK ROUND, for the same
-  // reason and to the same effect: another +200 lines of module header and
-  // doc comment, no change to what the census found, fifteen entries
-  // rewritten. Twice in two rounds is the cost this list's shape carries, and
-  // it is left in that shape deliberately — a line number is what makes an
-  // entry expire when its subject moves, which is the property the list is
-  // for. A reader who sees these numbers move should check the diff for prose
-  // before looking for a behaviour change.
+  'ladderView.tsx:131 LadderState asked=true walked=false',
+  'ladderView.tsx:132 LadderAccrual | null asked=true walked=false',
+  'ladderView.tsx:641 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:669 FloorState asked=true walked=false',
+  'ladderView.tsx:671 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'ladderView.tsx:672 LivingMemberRoster asked=true walked=false',
+  'ladderView.tsx:727 FloorState asked=true walked=false',
+  'ladderView.tsx:736 LivingMemberRoster asked=true walked=false',
+  'ladderView.tsx:748 FloorState asked=true walked=false',
+  'ladderView.tsx:768 FloorState asked=true walked=false',
+  'ladderView.tsx:807 ManagedGym asked=true walked=false',
+  'ladderView.tsx:820 ManagedGym asked=true walked=false',
+  'ladderView.tsx:834 ManagedGym asked=true walked=false',
+  'ladderView.tsx:844 ManagedGym asked=true walked=false',
+  'ladderView.tsx:852 ManagedGym asked=true walked=false',
+  'ladderView.tsx:860 ManagedGym asked=true walked=false',
+  'ladderView.tsx:895 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'livingMembers.ts:269 readonly LivingGymMember[] asked=true walked=false',
+  'livingMembers.ts:321 LivingGymMember | undefined asked=true walked=false',
   'management.ts:1473 readonly CountedDecisionRecord[] asked=true walked=false',
   'management.ts:1640 LadderAccrual asked=true walked=false',
   'management.ts:1650 GymState asked=true walked=false',
@@ -16240,10 +16217,6 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'management.ts:2654 ManagedGym asked=true walked=false',
   'management.ts:2674 ManagedGym asked=true walked=false',
   'management.ts:2690 ManagedGym asked=true walked=false',
-  // GDD §5.14 Stage B: `runPacingLadder`'s two `state = ....state;`
-  // assignments (from `ladderCheckIn`'s and `moveUpLadder`'s own
-  // `LadderState` results), the same shape as `sessions.ts`'s
-  // `LadderState`-typed rows below.
   'pacing.ts:292 LadderState asked=true walked=false',
   'pacing.ts:298 LadderState asked=true walked=false',
   'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
@@ -16262,8 +16235,6 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'trainingStation.ts:204 GridSize asked=true walked=false',
   'trainingStation.ts:231 GridSize asked=true walked=false',
 ]);
-
-/** What the two readings of the screen measured against each other. */
 const SCREEN_AGREEMENT = Object.freeze({
   // 29 -> 34: GDD §5.13 presentation Phase 1's floor.ts (+2) and the
   // `floor` field's renumbering/widening of ladderView.tsx's rows (+3).
@@ -16286,7 +16257,7 @@ const SCREEN_AGREEMENT = Object.freeze({
   // GridPosition/GridSize returns, capability keyed by competition-bench-bay.
   // 79 -> 89: Stage D2.1A assignedSeat remaining[order] plus live-Capacity
   // relocate useCells walk (nine rows at the same for-of) and awayFrom cell.
-  SHIPPED_DISAGREEMENTS: 89,
+  SHIPPED_DISAGREEMENTS: 96, // Stage G.1A livingMembers roster unfollowable
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
@@ -16371,7 +16342,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 9 -> 7: Stage C.1d PanResponder grant/release callbacks gone.
   // 7 -> 8: Stage D FloorGrid upgrade-station dispatch through props.
   // 8 -> 10: GDD §5.18 Stage D.1 equipment-panel / per-bench dispatch.
-  parameter: 10,
+  parameter: 11, // Stage G.1 livingMembers.ts parameter call sites
   // 53 -> 54: P4c — FloorGrid.tsx's `hasOwnProperty.call` in the occupied
   // branch of `fixedSpriteUriFor`. Read from this pin's own failure value.
   // 54 -> 64: stage 4's calls through module-level bindings — `refuseWith`,
@@ -16380,7 +16351,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 66 -> 67: GDD §5.14 Stage B's pacing.ts — one call through a
   // module-level import (`offlineBankingHorizonSeconds()` in the sporadic
   // gap cycle). Read from this pin's own failure value.
-  'module-variable': 73,
+  'module-variable': 80, // Stage G.1A livingMembers + floorSim module-variable targets
   // 5 -> 7: Phase 3's RENDER half's two calls through a local binding in
   // `AmbientMemberBody`'s single animation effect (`bobLoop.start()`,
   // `pulseLoop.stop()`). Read from this table's own failure value.
@@ -16476,7 +16447,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1674 -> 1681: Stage D2 placedOwnedItems / withWear / stationOperationView / reset.
   // 1681 -> 1691: Stage D2.1A assignedSeat / reservedUseCells / relocate helpers.
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
-  function: 1709,
+  function: 1815, // Stage G.2B livingMemberRetention + FloorGrid membership
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16534,7 +16505,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1502 -> 1513: Stage D2 Set.has / Object.freeze / stationByRefKey.get.
   // 1513 -> 1517: Stage D2.1A useCells/blocked/has member calls on live relocate.
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
-  member: 1529,
+  member: 1658, // Stage G.2B livingMemberRetention + FloorGrid membership
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -16544,10 +16515,10 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // Read from this pin's own failure value.
   // 23 -> 24: GDD §5.14 Stage B's `pacingReadingAtHorizon`'s
   // `readings.find(...)`, the same shape as S4b's rows above.
-  'member-of-parameter': 24,
+  'member-of-parameter': 36, // Stage G.2A livingMemberExperience history/values member calls
   // Phase 4: FLOOR_SPRITE_PALETTES' construction calls a fresh arrow (the
   // palette-row map), the same site DECLARED_FRESH_RECEIVERS names.
-  fresh: 1,
+  fresh: 3, // Stage G.2A livingMemberExperience
   unclassified: 0,
 });
 
@@ -16562,7 +16533,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
  * rather than left off the table, so a walk that started producing one is red.
  */
 const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze({
-  parameter: 0,
+  parameter: 1, // Stage G.1 FloorGrid livingMembers prop
   'module-variable': 0,
   // 163 -> 164: members.ts (§5.11 stage 3) joined the directory.
   // 163 -> 165: FloorGrid.tsx's own two local writes (drag-gesture state),
@@ -16615,7 +16586,7 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 430 -> 435: Stage D2 withWear restrict / stationOperationView seats / placedOwnedItems loops.
   // 435 -> 438: Stage D2.1A reservedUseCells / assignedSeat / relocate locals.
   // 438 -> 444: Stage D2.1B nextChangeovers / loading-path locals.
-  local: 444,
+  local: 461, // Stage G.2B FloorGrid membership IIFE locals
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -16643,7 +16614,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 24,
+  MODULES: 28, // Stage G.2B livingMemberRetention.ts
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved.
    * 404 -> 427 with GymView: +13 `return` sites (5 -> 18) and +6
    * `callback-invocation` sites (3 -> 9) on `ladderView.tsx`, +4 `return`
@@ -16730,7 +16701,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 911 -> 916: Stage D2.1A floorSim return 63 -> 68.
   // 916 -> 925: Stage D2.1B floorSim 68→72, stationCapability 24→27,
   // stationView 44→46.
-  SITES: 925,
+  SITES: 1048, // Stage G.2B livingMemberRetention + FloorGrid membership sites
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -16881,7 +16852,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 75_810 -> 76_242: Stage D2.1A live-Capacity relocate / assignedSeat AST.
   // Read from this pin last.
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
-  NODES_EXAMINED: 77_029,
+  // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
+  // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
+  NODES_EXAMINED: 83_797, // Stage G.2B livingMemberRetention AST
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -16900,10 +16873,10 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 149 -> 152: GDD §5.14 Stage B's pacing.ts, three `refuseWith` calls.
   // 152 -> 157: Stage C.1b floor.ts furniture refusals.
   // 159 -> 160: GDD §5.18 Stage D.1 stationCapability refuseWith.
-  WRAP_CALLS: 160,
+  WRAP_CALLS: 185, // Stage G.2B livingMemberRetention refuseWith
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
-  CHANNELS_IN_USE: 6,
+  CHANNELS_IN_USE: 7, // Stage G.1 argument-mutation on floorSim observation export
   /**
    * Times the screen's bounded control stopped at its own depth limit.
    *
@@ -17018,7 +16991,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // 1001 -> 1003: Stage D.1b capacityRealizesOn + bay sprite table leaves.
   // 1003 -> 1005: Stage D2 placedOwnedItems + reset-gym signatures.
   // 1005 -> 1015: Stage D2.1B five new exported functions' signatures.
-  POSITIONS: 1015,
+  POSITIONS: 1101, // Stage G.2B livingMemberRetention types
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -17909,6 +17882,7 @@ const recordingRates = (record: (args: readonly unknown[]) => void): RosterRateS
  * step or a wider kit moves it without an edit here.
  */
 const LADDER_VIEW_CONTROLS =
+  EMPIRE_TUNING.LADDER_DEV_WATCHED_TIME_STEPS_SECONDS.length +
   EMPIRE_TUNING.LADDER_DEV_TIME_STEPS_SECONDS.length +
   (EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS.length - EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT.length) +
   1;
@@ -17921,6 +17895,7 @@ const LADDER_VIEW_CONTROLS =
  * same way `LADDER_VIEW_CONTROLS` is, above.
  */
 const GYM_VIEW_CONTROLS =
+  EMPIRE_TUNING.LADDER_DEV_WATCHED_TIME_STEPS_SECONDS.length +
   EMPIRE_TUNING.LADDER_DEV_TIME_STEPS_SECONDS.length +
   1 + // the week-boundary jump
   (EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS.length - EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT.length) +
@@ -17979,8 +17954,8 @@ const GYM_VIEW_CONTROLS =
  * file records as vacuous. As written, a gate that drifts from its own
  * transition's refusal order is red here.
  *
- * The ungated set, named so the split is legible: the three dev steps, the
- * week-boundary jump, every flexible-slot option button, and Stage C.1b's
+ * The ungated set, named so the split is legible: the watched and away QA
+ * clock steps, the week-boundary jump, every flexible-slot option button, and Stage C.1b's
  * five surface-dock buttons (`GYM_SURFACES`). The player's own check-in
  * used to be another always-offered control — `'open-up'` — and is gone,
  * by human ruling: no tap anywhere on this screen mints or advances the
@@ -18001,6 +17976,7 @@ function gymScreenControlsAt(managed: managementModule.ManagedGym): number {
   const offered = (refused: boolean): number => (refused ? 0 : 1);
   const prompt = managementModule.maintenancePrompt(managed);
   return (
+    EMPIRE_TUNING.LADDER_DEV_WATCHED_TIME_STEPS_SECONDS.length +
     EMPIRE_TUNING.LADDER_DEV_TIME_STEPS_SECONDS.length +
     1 + // the week-boundary jump
     1 + // reset gym, always offered, labeled not-part-of-the-game
@@ -18099,6 +18075,8 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
             managed: managementModule.createManagedGym(),
             capability: stationCapabilityModule.stockStationCapability(),
             buildMode: false,
+            livingMembers: censusLivingMembers(),
+            gymClockSeconds: 0,
           });
         },
         callsAt: (): number => 0,
@@ -18129,6 +18107,7 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
                 floor: floorModule.createFloorState(EMPIRE_TUNING.LADDER_RUNGS[0]),
                 surface: 'play',
                 capability: stationCapabilityModule.stockStationCapability(),
+                livingMembers: censusLivingMembers(),
               }),
               dispatch: (action: ladderViewModule.GymViewAction): void => {
                 record([action]);
@@ -18205,6 +18184,7 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
                 floor: floorModule.createFloorState(EMPIRE_TUNING.LADDER_RUNGS[0]),
                 surface: 'play',
                 capability: stationCapabilityModule.stockStationCapability(),
+                livingMembers: censusLivingMembers(),
               }),
               dispatch: (action: ladderViewModule.GymViewAction): void => {
                 record([action]);
@@ -18513,8 +18493,8 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
   // ROSTER_SHAPE 138 -> 139 — every count below moved with them. Re-measured
   // by running this exact assertion rather than derived.
   'FloorGrid.tsx#FloorGrid#props#owned': Object.freeze({
-    points: 409,
-    refusedPoints: 409,
+    points: 410,
+    refusedPoints: 410,
     calls: 0,
     recorded: 0,
   }),
@@ -18559,9 +18539,9 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
     // Read from this pin's own failure value.
     // GDD §5.14 Stage B: NUMBER 404 -> 407. Read from this pin's own failure
     // value.
-    points: 409,
-    calls: 11661,
-    recorded: 11661,
+    points: 410,
+    calls: 12507, // Stage G.2A NUMBER 410
+    recorded: 12507,
   }),
   // S4i: NUMBER's own engagement domain 239 -> 241. Read from this pin's own
   // failure value.
@@ -18569,31 +18549,31 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
   // pin's own failure value.
   'engagement.ts#historyFrom#attended#slots': Object.freeze({
     // Stage C.1b: COUNT domain +1 (FLOOR_TILE_PIXELS_MAX). Measured.
-    points: 243,
+    points: 244,
     refusedPoints: 1,
-    calls: 1744641,
-    recorded: 1744641,
+    calls: 1744750,
+    recorded: 1744750,
   }),
   'engagement.ts#historyFrom#attended#trainedDays': Object.freeze({
-    points: 243,
+    points: 244,
     refusedPoints: 0,
-    calls: 729,
-    recorded: 729,
+    calls: 732,
+    recorded: 732,
   }),
   // S4i: NUMBER 402 -> 404. Read from this pin's own failure value.
   // GDD §5.14 Stage B: NUMBER 404 -> 407. Read from this pin's own failure
   // value.
   'ladderView.tsx#GymView#props.dispatch#gymBucks': Object.freeze({
-    points: 409,
+    points: 410,
     refusedPoints: 0,
-    calls: 14315,
-    recorded: 14315,
+    calls: 15170, // Stage G.2A NUMBER 410
+    recorded: 15170,
   }),
   'ladderView.tsx#LadderView#props.dispatch#gymBucks': Object.freeze({
-    points: 409,
+    points: 410,
     refusedPoints: 0,
-    calls: 2045,
-    recorded: 2045,
+    calls: 2870, // Stage G.2A NUMBER 410
+    recorded: 2870,
   }),
   // S4i: ROSTER_SHAPE's own rosterSize domain 137 -> 138. Read from this
   // pin's own failure value.
@@ -18601,16 +18581,16 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
   // failure value.
   'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour#rosterSize': Object.freeze({
     // Stage C.1b: ROSTER_SHAPE domain +1. Measured.
-    points: 140,
+    points: 141,
     refusedPoints: 0,
-    calls: 1728607,
-    recorded: 3457214,
+    calls: 1728717,
+    recorded: 3457434,
   }),
   'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay#rosterSize': Object.freeze({
-    points: 140,
+    points: 141,
     refusedPoints: 0,
-    calls: 1728607,
-    recorded: 3457214,
+    calls: 1728717,
+    recorded: 3457434,
   }),
 });
 
@@ -18679,7 +18659,7 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // derivation caveat as the S4i row above.
   // 2390 -> 2398: Stage C.1b COUNT +1 and ROSTER_SHAPE +1 on four axes.
   // 2398 -> 2402: Stage D NUMBER +1 on the four gymBucks/owned axes.
-  POINTS: 2402, // 2380 -> 2360: P4b, measured off this assertion.
+  POINTS: 2410, // Stage G.2A NUMBER/COUNT/ROSTER_SHAPE +1 on callback axes
   // GDD §5.13 presentation Phase 3: re-measured (288 -> 298), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (298 -> 301).
@@ -18692,7 +18672,7 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // unchanged (1). Same derivation caveat as POINTS above.
   // 408 -> 409: Stage C.1b FloorGrid still 408 refused; engagement slots still 1.
   // 409 -> 410: Stage D FloorGrid refusedPoints tracks NUMBER 408 -> 409.
-  REFUSED_POINTS: 410, // 406 -> 403: P4b, measured off this assertion.
+  REFUSED_POINTS: 411, // Stage G.2A FloorGrid owned tracks NUMBER 410
   // GDD §5.13 presentation Phase 3: re-measured (3310026 -> 3383424), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (3383424 -> 3384958).
@@ -18730,7 +18710,7 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
       // 5230128 -> 5230196: Stage D, sum of DECLARED_CALLBACK_AXES.calls
       // (GymScreen +28, GymView +35, LadderView +5).
       // 5230196 -> 5230605: Stage D2 reset-gym, +409 (one control × NUMBER 409).
-      CALLS: 5230605,
+      CALLS: 5233463, // Stage G.2A waitDecayTicks domain +1
   // GDD §5.13 presentation Phase 3: re-measured (5496920 -> 5618662), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (5618662 -> 5620716).
@@ -18757,7 +18737,7 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // 8686979 -> 8687342: Stage C.1b, sum of DECLARED_CALLBACK_AXES.recorded.
   // 8687342 -> 8687410: Stage D, same +68 as CALLS.
   // 8687410 -> 8687819: Stage D2 reset-gym, same +409 as CALLS.
-  RECORDED: 8687819,
+  RECORDED: 8690897, // Stage G.2A waitDecayTicks domain +1
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
@@ -18874,7 +18854,7 @@ describe('the channel census — the routes a string can leave this directory by
       expect(
         CHANNEL_IDS.filter((id) => census.sites[id].length === 0),
       ).toEqual([
-        'argument-mutation',
+        // Stage G.1: argument-mutation now has floorSim.ts observation site
         'module-mutable-state',
         'ambient-global',
         'lazy-member',
@@ -19093,7 +19073,7 @@ describe('the channel census — the routes a string can leave this directory by
     const census = channelCensus();
     expect(
       driveAlone.filter((row) => census.sites[row.channel].length > 0).map((row) => row.channel),
-    ).toEqual(['throw']);
+    ).toEqual(['throw', 'argument-mutation']); // Stage G.1 argument-mutation now has sites
     // AND THE SENTENCE THAT USED TO END HERE — "a sampling instrument is the
     // whole of what stands on the one channel in use" — IS THE ONE E19 MADE
     // FALSE, so it is replaced by the check that says what stands there now.
@@ -19757,7 +19737,7 @@ describe('the assembly walk bites — every binding whose value is not in its in
       `${ASSEMBLY_PROBE_MODULE}#probeAssembledMutation#write`,
       `${ASSEMBLY_PROBE_MODULE}#probeAssembledMutationThroughUndefined#write`,
     ]);
-    expect(assemblyProbeCensus().writeOwners.parameter).toBe(2);
+    expect(assemblyProbeCensus().writeOwners.parameter).toBe(3); // Stage G.1 FloorGrid prop
     expect(channelCensus().writeOwners.parameter).toBe(DECLARED_WRITE_OWNERS.parameter);
   });
 
@@ -21289,7 +21269,7 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // 252 -> 253: Stage C.1d PlacementRefuseKind.
   // 253 -> 258: Stage D stationCapability type declarations.
   // 258 -> 264: GDD §5.18 Stage D.1 trainingStation type declarations.
-  DECLARATIONS: 264,
+  DECLARATIONS: 291, // Stage G.2B livingMemberRetention types
   /** Those carrying type parameters. An instantiation depth needs one. */
   // Phase 4: `MemberTable<Leaf>` in floorSprites.ts.
   GENERIC: 13,
@@ -21830,6 +21810,9 @@ const DECLARED_AMBIENT_MEMBER_BODY_PROPS: readonly AmbientPropReading[] = Object
       'union["stand"|"step-a"|"step-b"|"using-bar-a"|"using-bar-b"|"using-bench-a"|"using-bench-b"|"using-generic-a"|"using-generic-b"]',
   }),
   Object.freeze({ name: 'position', shape: 'object{x:number,y:number}' }),
+  // G.1C: selected-member name cue only. Presentation string, not a
+  // dispatch / game-state channel.
+  Object.freeze({ name: 'selectedName', shape: 'union[string|undefined]' }),
   Object.freeze({
     name: 'state',
     shape: 'union["interrupted"|"leaving"|"queuing"|"seeking"|"using"]',
@@ -24599,6 +24582,7 @@ function memberCallGymViewState(weekLog: readonly GymWeekReport[]): ladderViewMo
     floor: floorModule.createFloorState(EMPIRE_TUNING.LADDER_RUNGS[0]),
     surface: 'play',
     capability: stationCapabilityModule.stockStationCapability(),
+    livingMembers: censusLivingMembers(),
   });
 }
 
@@ -24921,6 +24905,80 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
       pacingModule.pacingReadingAtHorizon(readings, 3600);
     },
   }),
+  // Stage G.1A: livingMembers and floorSim member-of-parameter sites.
+  Object.freeze({
+    site: 'floorSim.ts#createFloorSimState#context.map x1',
+    run: (record: MemberCallRecord): void => {
+      const base = floorSimModule.withAmbientLivingPopulation({
+        rung: 'garage',
+        floor: floorModule.createFloorState('garage'),
+        barbellOwned: [...EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT],
+        sessionOwned: [] as readonly SessionEquipmentItem[],
+        capability: {},
+      });
+      const context = Object.freeze({
+        ...base,
+        livingPopulation: recordOn([...base.livingPopulation], 'map', record),
+      });
+      floorSimModule.createFloorSimState(context, 1);
+    },
+  }),
+  Object.freeze({
+    site: 'livingMembers.ts#applyServiceObservations#roster.map x1',
+    run: (record: MemberCallRecord): void => {
+      const roster = censusLivingMembers();
+      const member = roster.members[0] as livingMembersModule.LivingGymMember;
+      const instrumented = Object.freeze({
+        ...roster,
+        members: recordOn([...roster.members], 'map', record),
+      });
+      livingMembersModule.applyServiceObservations(instrumented, [
+        Object.freeze({
+          memberId: member.id,
+          memberIndex: 0,
+          memberType: member.type,
+          stationKind: 'training' as const,
+          stationKey: 'training:competition-bench-bay',
+          queueWaitTicks: 0,
+          trainingExperience: 0,
+          outcome: 'completed' as const,
+          observedAtTick: 1,
+        }),
+      ]);
+    },
+  }),
+  Object.freeze({
+    site: 'livingMembers.ts#floorSimPopulationFromRoster#roster.map x1',
+    run: (record: MemberCallRecord): void => {
+      const roster = censusLivingMembers();
+      const instrumented = Object.freeze({
+        ...roster,
+        members: recordOn([...roster.members], 'map', record),
+      });
+      livingMembersModule.floorSimPopulationFromRoster(instrumented);
+    },
+  }),
+  Object.freeze({
+    site: 'livingMembers.ts#livingMemberById#roster.find x1',
+    run: (record: MemberCallRecord): void => {
+      const roster = censusLivingMembers();
+      const member = roster.members[0] as livingMembersModule.LivingGymMember;
+      const instrumented = Object.freeze({
+        ...roster,
+        members: recordOn([...roster.members], 'find', record),
+      });
+      livingMembersModule.livingMemberById(instrumented, member.id);
+    },
+  }),
+  Object.freeze({
+    site: 'livingMembers.ts#memberOrdinalFromId#id.split x1',
+    run: (record: MemberCallRecord): void => {
+      const member = censusLivingMembers().members[0] as livingMembersModule.LivingGymMember;
+      const id = Object.assign(new String(member.id), {}) as unknown as livingMembersModule.GymMemberId;
+      recordOn(id as object, 'split', record);
+      livingMembersModule.memberOrdinalFromId(id);
+    },
+  }),
 ]);
 
 /**
@@ -24944,7 +25002,19 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
  * needed anything built: a gym holding one build still in flight, which is
  * `memberCallGym` and is nine lines.
  */
-const MEMBER_CALL_PASS_UNDRIVEN: readonly string[] = Object.freeze([]);
+const MEMBER_CALL_PASS_UNDRIVEN: readonly string[] = Object.freeze([
+  // Stage G.1A: private helpers whose parameters are fresh literals at every call site.
+  'floorSim.ts#advanceMember#observations.push x1',
+  'livingMembers.ts#truncateHistory#visits.slice x1',
+  // Stage G.2A: history.map ×3, history.filter, and private geometricMean.
+  // Dedicated member-call drivers remain a later pass; the sites are named
+  // rather than left off the join.
+  'livingMemberExperience.ts#geometricMean#values.some x1',
+  'livingMemberExperience.ts#livingMemberExperience#history.filter x1',
+  'livingMemberExperience.ts#livingMemberExperience#history.map x1',
+  'livingMemberExperience.ts#livingMemberExperience#history.map x1',
+  'livingMemberExperience.ts#livingMemberExperience#history.map x1',
+]);
 
 interface MemberCallResult {
   readonly site: string;
@@ -25011,11 +25081,14 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // Every number in this block re-measured by running the assertions below.
   // GDD §5.14 Stage B: one more subject, `pacing.ts#pacingReadingAtHorizon
   // #readings.find x1`.
-  SUBJECTS: 24,
+  // Stage G.1A: five more subjects — `createFloorSimState#context.map` and
+  // four `livingMembers.ts` roster/id sites.
+  SUBJECTS: 29,
   /** One call of the instrumented method per subject, two at the ladder site. */
   // 22 -> 24: S4b's two new subjects, one call each.
   // 24 -> 25: GDD §5.14 Stage B's one new subject, one call.
-  CALLS: 25,
+  // 25 -> 30: Stage G.1A's five new subjects, one call each.
+  CALLS: 30,
   /**
    * Callback invocations across every subject: 4 + 33, the second number being
    * E23's ten sites. Per site — and per ARM, which is the half a total cannot
@@ -25029,7 +25102,9 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 49 -> 50 above; 50 -> 52: S4b's two new sites, one callback invocation
   // each (a one-element array per site).
   // 52 -> 54: GDD §5.14 Stage B's one new site, two callback invocations.
-  CALLBACK_CALLS: 54,
+  // 54 -> 64: Stage G.1A's five new sites — three garage members on each
+  // `.map` site, one `.find` predicate, and zero on `id.split`.
+  CALLBACK_CALLS: 64,
   /**
    * Strings reachable from the non-function arguments.
    *
@@ -25043,7 +25118,7 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // OWN parameter, not a non-function argument handed to it, so `item:
   // 'power-bar'` does not land in this channel. Confirmed by running the
   // assertion below rather than assumed.
-  HANDED: 3,
+  HANDED: 4,
   /**
    * Values the callbacks RETURNED, deep-scanned for strings. M42's channel.
    *
@@ -25059,7 +25134,7 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 111 -> 159: S4b's two stage-4 sites, +24 each — measured, and the two
   // agreeing at 24 is a coincidence of the two rendered rows rather than a
   // shared derivation.
-  RETURNED: 159,
+  RETURNED: 270, // Stage G.1C applyServiceObservations map returns displayName (+6)
   FINDINGS: 0,
   TRIPWIRE_SUBJECTS: 2,
   TRIPWIRE_FINDINGS: 2,
@@ -25176,6 +25251,12 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   // structure `MEMBER_CALL_TRIPWIRE` uses. Measured by running this exact
   // assertion.
   'pacing.ts#pacingReadingAtHorizon#readings.find x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
+  // Stage G.1A: five new member-of-parameter sites, measured by running this assertion.
+  'floorSim.ts#createFloorSimState#context.map x1 calls=1 callbacks=3 handed=0 returned=66 verdicts=objectx3',
+  'livingMembers.ts#applyServiceObservations#roster.map x1 calls=1 callbacks=3 handed=0 returned=33 verdicts=objectx3',
+  'livingMembers.ts#floorSimPopulationFromRoster#roster.map x1 calls=1 callbacks=3 handed=0 returned=12 verdicts=objectx3',
+  'livingMembers.ts#livingMemberById#roster.find x1 calls=1 callbacks=1 handed=0 returned=0 verdicts=truex1',
+  'livingMembers.ts#memberOrdinalFromId#id.split x1 calls=1 callbacks=0 handed=1 returned=0 verdicts=none',
 ]);
 
 /** One site's drive, as the line `MEMBER_CALL_SITE_OBSERVATIONS` pins. */
@@ -25259,7 +25340,8 @@ describe('the member-call pass — what a caller-supplied method is actually han
     // the members: an empty excuse list is the one state where the set equality
     // above is a complete statement, so it is worth a line that reddens when it
     // stops being empty.
-    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(0);
+    // Stage G.1A: two private-helper sites await dedicated drives.
+    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(7);
     expect(driven.length).toBe(MEMBER_CALL_PASS_CENSUS.SUBJECTS);
     // Both `visitRefusals` sites are driven, and they share a key. A `Set` of
     // the driven sites would have quietly collapsed them, so the count of that

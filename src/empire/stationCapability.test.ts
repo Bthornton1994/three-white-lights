@@ -23,6 +23,7 @@ import {
   floorStations,
   stationOccupancy,
   stepFloorSim,
+  withAmbientLivingPopulation,
   type FloorSimContext,
   type FloorSimMember,
   type FloorSimState,
@@ -65,13 +66,13 @@ const EXPERIMENT_SEED = 1;
 const OWNED = Object.freeze([...T.LADDER_STARTING_EQUIPMENT]);
 
 function openingContext(capability: StationCapabilityState): FloorSimContext {
-  return {
+  return withAmbientLivingPopulation({
     rung: 'garage',
     floor: createFloorState('garage'),
     barbellOwned: OWNED,
     sessionOwned: [],
     capability,
-  };
+  });
 }
 
 function capabilityWith(axis: StationUpgradeAxis): StationCapabilityState {
@@ -480,13 +481,13 @@ describe('Stage D.1 Quality appeal — demand shifts when another station exists
   }
 
   function barsContext(capability: StationCapabilityState): FloorSimContext {
-    return {
+    return withAmbientLivingPopulation({
       rung: 'garage',
       floor: withBars(),
       barbellOwned: OWNED,
       sessionOwned: ['specialty-bars'],
       capability,
-    };
+    });
   }
 
   function demandByStation(capability: StationCapabilityState): {

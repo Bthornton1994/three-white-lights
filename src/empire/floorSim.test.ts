@@ -31,6 +31,7 @@ import {
   runFloorSim,
   stationOccupancy,
   stepFloorSim,
+  withAmbientLivingPopulation,
   type FloorSimContext,
   type FloorSimInterruptibleState,
   type FloorSimInterruption,
@@ -327,13 +328,13 @@ function ownedFor(rung: LadderRung): readonly SessionEquipmentItem[] {
 }
 
 function contextFor(rung: LadderRung, floor: FloorState): FloorSimContext {
-  return {
+  return withAmbientLivingPopulation({
     rung,
     floor,
     barbellOwned: KIT,
     sessionOwned: ownedFor(rung),
     capability: stockStationCapability(),
-  };
+  });
 }
 
 /** Which cells a context's equipment covers — the cells no member may stand on. */
@@ -358,6 +359,7 @@ function cellKey(position: GridPosition): string {
 /** A member built by hand at `cell` — the only way to drive one arm at a time. */
 function memberAt(index: number, type: MemberType, cell: GridPosition): FloorSimMember {
   return Object.freeze({
+    memberId: `member:n0:${index}`,
     index,
     type,
     state: 'seeking' as FloorSimMemberState,
@@ -368,10 +370,12 @@ function memberAt(index: number, type: MemberType, cell: GridPosition): FloorSim
     targetPosition: null,
     claimedAt: null,
     queuedAt: null,
+    queueArrivedAt: null,
     timer: 0,
     interruptedBy: null,
     awayFrom: null,
     strandedAt: null,
+    usingStartedAt: null,
   });
 }
 
@@ -572,13 +576,13 @@ function sealedSweep(omit: SessionEquipmentItem | null): SealedReading {
   const states = new Set<FloorSimMemberState>();
   for (const rung of RUNGS) {
     const rows = SEALED_LAYOUTS[rung].filter(([item]) => item !== omit);
-    const context: FloorSimContext = {
+    const context: FloorSimContext = withAmbientLivingPopulation({
       rung,
       floor: floorFrom(rung, rows),
       barbellOwned: KIT,
       sessionOwned: rows.map(([item]) => item),
       capability: stockStationCapability(),
-    };
+    });
     stations += floorStations(context).length;
     for (const seed of SEALED_SWEEP.SEEDS) {
       runs += 1;
@@ -801,6 +805,15 @@ describe('the Phase 3 tuning block is shaped the way `floorSim.ts` reads it', ()
     // make both lists empty and the disjointness above vacuous.
     expect(namedIn(FLOOR_GRID_SOURCE).size).toBeGreaterThan(0);
     expect(namedIn(FLOOR_SIM_SOURCE).size).toBeGreaterThan(0);
+  });
+
+  it('draws plate loading from FloorSimState.changeovers, with one sim tick timer', () => {
+    const code = FLOOR_GRID_SOURCE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(code.includes('seatChangeoverTicks(changeovers')).toBe(true);
+    expect(code.includes('plateLoadingDiscs')).toBe(true);
+    expect(code.includes('sim.changeovers')).toBe(true);
+    expect((code.match(/setInterval/g) ?? []).length).toBe(1);
+    expect(code.includes('createFloorSimState')).toBe(true);
   });
 });
 
@@ -1084,13 +1097,13 @@ describe('a member does not freeze', () => {
     // `seeking` falls through to a wander leg. A member that stood still here
     // would be the freeze the rule above is about.
     const rung: LadderRung = 'garage';
-    const bare: FloorSimContext = {
+    const bare: FloorSimContext = withAmbientLivingPopulation({
       rung,
       floor: createFloorState(rung),
       barbellOwned: [],
       sessionOwned: [],
       capability: stockStationCapability(),
-    };
+    });
     expect(floorStations(bare)).toEqual([]);
     let at = createFloorSimState(bare, 3);
     const visited = at.members.map((member) => new Set<string>([cellKey(member.cell)]));
@@ -1134,13 +1147,13 @@ describe('a member does not freeze', () => {
       ['specialty-bars', { x: 2, y: 0 }] as LayoutRow,
       ['cables', { x: 0, y: 2 }] as LayoutRow,
     ]);
-    const open: FloorSimContext = {
+    const open: FloorSimContext = withAmbientLivingPopulation({
       rung,
       floor: floorFrom(rung, [far], false),
       barbellOwned: [],
       sessionOwned: owned,
       capability: stockStationCapability(),
-    };
+    });
     const sealed: FloorSimContext = { ...open, floor: floorFrom(rung, wall, false) };
 
     let at = stepFloorSim(stateOf(2, [memberAt(0, 'casual', { x: 0, y: 0 })]), open);
@@ -1195,13 +1208,13 @@ describe('a member does not freeze', () => {
 
 /** A garage owning no Barbell baseline, so the one station is a session item a player can drag. */
 function draggableGarage(position: GridPosition): FloorSimContext {
-  return {
+  return withAmbientLivingPopulation({
     rung: 'garage',
     floor: floorFrom('garage', [['mats', position] as LayoutRow], false),
     barbellOwned: [],
     sessionOwned: ['mats'],
     capability: stockStationCapability(),
-  };
+  });
 }
 
 /**
@@ -1214,7 +1227,7 @@ function draggableGarage(position: GridPosition): FloorSimContext {
 const walledOff = Object.freeze({
   context: ((): FloorSimContext => {
     const rung: LadderRung = 'storage-unit';
-    return {
+    return withAmbientLivingPopulation({
       rung,
       floor: floorFrom(
         rung,
@@ -1228,17 +1241,17 @@ const walledOff = Object.freeze({
       barbellOwned: [],
       sessionOwned: ['mats', 'specialty-bars', 'cables'],
       capability: stockStationCapability(),
-    };
+    });
   })(),
   before: (): FloorSimState => {
     const rung: LadderRung = 'storage-unit';
-    const open: FloorSimContext = {
+    const open: FloorSimContext = withAmbientLivingPopulation({
       rung,
       floor: floorFrom(rung, [['mats', { x: 9, y: 6 }] as LayoutRow], false),
       barbellOwned: [],
       sessionOwned: ['mats', 'specialty-bars', 'cables'],
       capability: stockStationCapability(),
-    };
+    });
     return stepFloorSim(stateOf(2, [memberAt(0, 'casual', { x: 0, y: 0 })]), open);
   },
 });
@@ -1573,13 +1586,13 @@ describe('a member type changes where a member goes', () => {
       ['bike', { x: 30, y: 8 }] as LayoutRow,
       ['machines', { x: 34, y: 8 }] as LayoutRow,
     ]);
-    const context: FloorSimContext = {
+    const context: FloorSimContext = withAmbientLivingPopulation({
       rung,
       floor: floorFrom(rung, rows),
       barbellOwned: KIT,
       sessionOwned: rows.map(([item]) => item),
       capability: stockStationCapability(),
-    };
+    });
     expect(floorStations(context).length).toBe(7);
     const starts: readonly GridPosition[] = Object.freeze([
       { x: 0, y: 25 },
@@ -1868,13 +1881,13 @@ describe('floorStations reports somewhere real to stand', () => {
       ['wrist-wraps', { x: 6, y: 5 }] as LayoutRow,
       ['belts', { x: 7, y: 4 }] as LayoutRow,
     ]);
-    const context: FloorSimContext = {
+    const context: FloorSimContext = withAmbientLivingPopulation({
       rung,
       floor: sealed,
       barbellOwned: KIT,
       sessionOwned: ['foam-rollers', 'wrist-wraps', 'belts'],
       capability: stockStationCapability(),
-    };
+    });
     expect(floorLayout(sealed).map((row) => row.item)).toEqual([
       'foam-rollers',
       'wrist-wraps',
@@ -1926,6 +1939,7 @@ const CONTEXT_KEYS: Readonly<Record<keyof FloorSimContext, true>> = Object.freez
   barbellOwned: true,
   sessionOwned: true,
   capability: true,
+  livingPopulation: true,
 });
 
 /**
@@ -1989,15 +2003,16 @@ describe('the sim reads presentation inputs and nothing economic', () => {
     // is `CONTEXT_KEYS` above, whose catcher is `tsc` rather than vitest and
     // which is what covers an optional sixth field.
     const context = contextFor('garage', createFloorState('garage'));
-    expect(Object.keys(CONTEXT_KEYS).sort()).toEqual([
+    expect(Object.keys(context).sort()).toEqual([
       'barbellOwned',
       'capability',
       'floor',
+      'livingPopulation',
       'rung',
       'sessionOwned',
     ]);
     expect(Object.keys(context).sort()).toEqual(Object.keys(CONTEXT_KEYS).sort());
-    expect(Object.keys(CONTEXT_KEYS).length).toBe(5);
+    expect(Object.keys(CONTEXT_KEYS).length).toBe(6);
   });
 
   it('reads exactly the sixteen tuning entries it declares', () => {
@@ -2142,13 +2157,13 @@ describe('Stage D.1 Q/C/T on the real floor sim', () => {
   });
 
   function openingContext(capability: ReturnType<typeof stockStationCapability>): FloorSimContext {
-    return {
+    return withAmbientLivingPopulation({
       rung: 'garage',
       floor: createFloorState('garage'),
       barbellOwned: KIT_OWNED,
       sessionOwned: [],
       capability,
-    };
+    });
   }
 
   function purchased(axis: 'quality' | 'capacity' | 'throughput') {

@@ -462,3 +462,59 @@ export function stationManagerEffectView(
     wouldAutoRepairNow: condition < threshold,
   });
 }
+
+/**
+ * How far through a plate-changeover the seat is, in [0, 1], across the
+ * discrete ticks the loading layer actually draws.
+ *
+ * The layer renders only while remaining > 0, so mapping
+ * `(total - remaining) / total` never reached 1: the last visible stock
+ * frame was 17/18 and the last visible tree frame was 5/6, which left the
+ * last sequential disc short of the sleeve. Visible remaining=total..1
+ * therefore maps onto 0..1:
+ *
+ *   remaining = total → 0 (just armed, discs on the stack)
+ *   remaining = 1     → 1 (last drawn frame, discs on the sleeve)
+ *
+ * Stock (18) and plate-tree (6) share this path; only the number of
+ * visible frames differs. Remaining 0 is not a loading beat. Total <= 1
+ * cannot span both endpoints; the one visible frame sits at the sleeve
+ * rather than dividing by zero.
+ */
+export function plateLoadingProgress(remainingTicks: number, totalTicks: number): number {
+  if (!(totalTicks > 0) || remainingTicks <= 0) return 0;
+  const remaining = remainingTicks > totalTicks ? totalTicks : remainingTicks;
+  if (totalTicks <= 1) return 1;
+  return (totalTicks - remaining) / (totalTicks - 1);
+}
+
+/** One plate disc inside a bench footprint, fractions in [0, 1]. */
+export interface PlateLoadingDisc {
+  readonly index: number;
+  readonly xFraction: number;
+  readonly yFraction: number;
+}
+
+/**
+ * Disc positions for one changeover. Same path at every duration; only
+ * `progress` (from remaining/total ticks) moves the discs. Geometry comes
+ * from `FLOOR_PLATE_LOADING`.
+ */
+export function plateLoadingDiscs(progress: number): readonly PlateLoadingDisc[] {
+  const layout = EMPIRE_TUNING.FLOOR_PLATE_LOADING;
+  const count = layout.discCount;
+  const clamped = progress < 0 ? 0 : progress > 1 ? 1 : progress;
+  const discs: PlateLoadingDisc[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const start = index / count;
+    const end = (index + 1) / count;
+    const local =
+      clamped <= start ? 0 : clamped >= end ? 1 : (clamped - start) / (end - start);
+    const stack = (index - (count - 1) / 2) * layout.stackSpreadFraction;
+    const x =
+      layout.sourceXFraction + (layout.sleeveXFraction - layout.sourceXFraction) * local;
+    const y = layout.railYFraction + stack;
+    discs.push(Object.freeze({ index, xFraction: x, yFraction: y }));
+  }
+  return Object.freeze(discs);
+}

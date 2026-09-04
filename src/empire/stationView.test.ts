@@ -30,6 +30,8 @@ import {
   playerFacingUpgradeEffect,
   playerFacingUpgradeLabel,
   playerFacingUpgradeRefuse,
+  plateLoadingDiscs,
+  plateLoadingProgress,
   recoveryBlockingItems,
   stationConditionView,
   stationIdentityView,
@@ -69,6 +71,7 @@ function memberAt(
   cell: { readonly x: number; readonly y: number } = Object.freeze({ x: 0, y: 0 }),
 ): FloorSimMember {
   return Object.freeze({
+    memberId: `member:n0:${index}`,
     index,
     type: 'powerlifter',
     state,
@@ -79,10 +82,12 @@ function memberAt(
     targetPosition: target === null ? null : Object.freeze({ x: 0, y: 0 }),
     claimedAt: target === null ? null : 0,
     queuedAt: null,
+    queueArrivedAt: null,
     timer: 0,
     interruptedBy: null,
     awayFrom: null,
     strandedAt: null,
+    usingStartedAt: null,
   });
 }
 
@@ -525,3 +530,68 @@ describe('GDD §5.14 Stage C.1a — recovery blocks on a routine-sound item, and
     expect(view.isSound && !view.blocksRecovery).toBe(true);
   });
 });
+
+describe('Stage D2.2 plate-loading progress — same job, duration-scaled', () => {
+  it('is 0 when remaining is 0 or total is 0, and 0 at a just-armed seat', () => {
+    expect(plateLoadingProgress(0, 18)).toBe(0);
+    expect(plateLoadingProgress(18, 0)).toBe(0);
+    expect(plateLoadingProgress(0, 0)).toBe(0);
+    expect(plateLoadingProgress(18, 18)).toBe(0);
+    expect(plateLoadingProgress(6, 6)).toBe(0);
+  });
+
+  it('maps remaining=1 to progress 1 at stock 18 and tree 6', () => {
+    const stockTotal = EMPIRE_TUNING.FLOOR_SIM_STATION_CHANGEOVER_TICKS;
+    const treeTotal = EMPIRE_TUNING.STATION_THROUGHPUT_CHANGEOVER_TICKS;
+    expect(stockTotal).toBe(18);
+    expect(treeTotal).toBe(6);
+    expect(plateLoadingProgress(stockTotal, stockTotal)).toBe(0);
+    expect(plateLoadingProgress(1, stockTotal)).toBe(1);
+    expect(plateLoadingProgress(treeTotal, treeTotal)).toBe(0);
+    expect(plateLoadingProgress(1, treeTotal)).toBe(1);
+  });
+
+  it('does not divide by zero when total is 0 or 1', () => {
+    expect(plateLoadingProgress(1, 0)).toBe(0);
+    expect(plateLoadingProgress(0, 1)).toBe(0);
+    expect(plateLoadingProgress(1, 1)).toBe(1);
+    expect(Number.isFinite(plateLoadingProgress(1, 1))).toBe(true);
+    expect(Number.isFinite(plateLoadingProgress(1, 18))).toBe(true);
+  });
+
+  it('puts every disc on the sleeve at the last visible tick, same path at 18 and 6', () => {
+    const layout = EMPIRE_TUNING.FLOOR_PLATE_LOADING;
+    const stockEnd = plateLoadingDiscs(plateLoadingProgress(1, 18));
+    const treeEnd = plateLoadingDiscs(plateLoadingProgress(1, 6));
+    expect(stockEnd).toEqual(treeEnd);
+    expect(stockEnd.length).toBe(layout.discCount);
+    for (const disc of stockEnd) {
+      expect(disc.xFraction).toBe(layout.sleeveXFraction);
+    }
+    const last = stockEnd[layout.discCount - 1];
+    expect(last?.xFraction).toBe(layout.sleeveXFraction);
+    const stockStart = plateLoadingDiscs(plateLoadingProgress(18, 18));
+    const treeStart = plateLoadingDiscs(plateLoadingProgress(6, 6));
+    expect(stockStart).toEqual(treeStart);
+    for (const disc of stockStart) {
+      expect(disc.xFraction).toBe(layout.sourceXFraction);
+    }
+  });
+
+  it('emits the tuned disc count and moves them from source x toward sleeve x', () => {
+    const layout = EMPIRE_TUNING.FLOOR_PLATE_LOADING;
+    const start = plateLoadingDiscs(0);
+    const end = plateLoadingDiscs(1);
+    expect(start.length).toBe(layout.discCount);
+    expect(end.length).toBe(layout.discCount);
+    expect(start[0]?.xFraction).toBeCloseTo(layout.sourceXFraction, 10);
+    expect(end[0]?.xFraction).toBeCloseTo(layout.sleeveXFraction, 10);
+    expect(end[0]?.xFraction).toBeGreaterThan(start[0]?.xFraction as number);
+    // Same path, sequential discs: at halfway the first disc has arrived and
+    // the last has not left the stack. Stock 18 and tree 6 share this shape.
+    const mid = plateLoadingDiscs(0.5);
+    expect(mid[0]?.xFraction).toBeCloseTo(layout.sleeveXFraction, 10);
+    expect(mid[layout.discCount - 1]?.xFraction).toBeCloseTo(layout.sourceXFraction, 10);
+  });
+});
+

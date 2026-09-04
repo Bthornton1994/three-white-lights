@@ -678,41 +678,74 @@ export function runLadder(
  * can read exactly what this field admits — nothing shaped like a vocabulary
  * word fits it.
  */
-export type LadderDevStepLabel = `+${number}d` | `+${number}h` | `+${number}s`;
+export type LadderDevStepLabel =
+  | `+${number}m watched`
+  | `+${number}h watched`
+  | `+${number}d watched`
+  | `+${number}s watched`
+  | `+${number}m away`
+  | `+${number}h away`
+  | `+${number}d away`
+  | `+${number}s away`;
 
-/** One labelled dev-control step: how far a tap advances the clock. */
+/** One labelled dev-control step: how far a tap advances the clock, and in which earnings mode. */
 export interface LadderDevTimeStep {
   readonly seconds: number;
-  /** Derived from the seconds, in the largest whole unit they fill. */
+  readonly mode: EarningsMode;
+  /** Derived from the seconds and mode — never an unlabeled "+1h". */
   readonly label: LadderDevStepLabel;
 }
 
+function requireWholeTickDevStep(seconds: number): void {
+  if (!Number.isInteger(seconds) || seconds <= 0 || seconds % EMPIRE_TUNING.TICK_SECONDS !== 0) {
+    refuseWith(`${seconds} is not a positive whole-tick dev step`);
+  }
+}
+
+function labelDevClockStep(seconds: number, mode: EarningsMode): LadderDevStepLabel {
+  const suffix = mode === 'online' ? ' watched' : ' away';
+  const unit: `${number}d` | `${number}h` | `${number}m` | `${number}s` =
+    seconds % EMPIRE_TUNING.SECONDS_PER_DAY === 0
+      ? `${seconds / EMPIRE_TUNING.SECONDS_PER_DAY}d`
+      : seconds % EMPIRE_TUNING.SECONDS_PER_HOUR === 0
+        ? `${seconds / EMPIRE_TUNING.SECONDS_PER_HOUR}h`
+        : seconds % EMPIRE_TUNING.SECONDS_PER_MINUTE === 0
+          ? `${seconds / EMPIRE_TUNING.SECONDS_PER_MINUTE}m`
+          : `${seconds}s`;
+  return `+${unit}${suffix}`;
+}
+
 /**
- * The dev control's steps, read from `LADDER_DEV_TIME_STEPS_SECONDS` and
- * labelled in the largest whole unit each fills — days, then hours, then bare
- * seconds. Refuses a step that is not a positive whole multiple of the tick,
- * because feeding one to `ladderCheckInAfter` would surface as a confusing
- * check-in refusal two calls away from the value that caused it.
+ * QA clock steps. Watched (online) grains first, then away (offline) grains.
+ * Labels name the earnings mode so a tester cannot mistake +1h away for one
+ * hour of watched garage income. Not part of the game.
  */
 export function ladderDevTimeSteps(): readonly LadderDevTimeStep[] {
-  return Object.freeze(
-    EMPIRE_TUNING.LADDER_DEV_TIME_STEPS_SECONDS.map((seconds) => {
-      if (
-        !Number.isInteger(seconds) ||
-        seconds <= 0 ||
-        seconds % EMPIRE_TUNING.TICK_SECONDS !== 0
-      ) {
-        refuseWith(`${seconds} is not a positive whole-tick dev step`);
-      }
-      const label: LadderDevStepLabel =
-        seconds % EMPIRE_TUNING.SECONDS_PER_DAY === 0
-          ? `+${seconds / EMPIRE_TUNING.SECONDS_PER_DAY}d`
-          : seconds % EMPIRE_TUNING.SECONDS_PER_HOUR === 0
-            ? `+${seconds / EMPIRE_TUNING.SECONDS_PER_HOUR}h`
-            : `+${seconds}s`;
-      return Object.freeze({ seconds, label });
-    }),
-  );
+  const watched = EMPIRE_TUNING.LADDER_DEV_WATCHED_TIME_STEPS_SECONDS.map((seconds) => {
+    requireWholeTickDevStep(seconds);
+    return Object.freeze({
+      seconds,
+      mode: 'online' as const,
+      label: labelDevClockStep(seconds, 'online'),
+    });
+  });
+  const away = EMPIRE_TUNING.LADDER_DEV_TIME_STEPS_SECONDS.map((seconds) => {
+    requireWholeTickDevStep(seconds);
+    return Object.freeze({
+      seconds,
+      mode: 'offline' as const,
+      label: labelDevClockStep(seconds, 'offline'),
+    });
+  });
+  return Object.freeze([...watched, ...away]);
+}
+
+/** Verifier-stable control id: prefix plus mode plus seconds, so +1h watched and +1h away cannot collide. */
+export function ladderDevClockTestId(
+  prefix: 'gymscreen-advance' | 'advance' | 'gym-advance',
+  step: LadderDevTimeStep,
+): `${typeof prefix}-${EarningsMode}-${number}` {
+  return `${prefix}-${step.mode}-${step.seconds}`;
 }
 
 /** The clock readout's shape: whole days, hours, leftover seconds. */
