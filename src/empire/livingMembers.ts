@@ -1,5 +1,5 @@
 /**
- * livingMembers.ts — Stage G.1 / G.1A: living floor-member identity and service outcomes.
+ * livingMembers.ts — Stage G.1 / G.1A identity, G.2 service history, and stay response.
  *
  * Pure module: zero React, zero side effects, zero I/O, no `Math.random`.
  * Persists the bodies the player sees on the played floor — NOT `NpcLifter`
@@ -14,26 +14,35 @@
  * creation. It does not enter FloorSim, station choice, or any G.2 quantity.
  *
  * G.2A derives recent-service meaning in `livingMemberExperience.ts` from
- * `recentVisits`. This file still does not call `memberSatisfaction`, dues, or
- * `reputationFromMembers`. Wait copy uses `queueWaitTicks` only — no
- * upgrade-name branch.
+ * `recentVisits`. G.2B derives type-blind retention pressure from that accepted
+ * experience. G.2C1 persists only the member's response to that pressure in
+ * `stayState`, once per real service observation. This file does not rebuild
+ * satisfaction or retention arithmetic.
  *
  * NOT BUILT HERE, ON PURPOSE — later stages:
  *
- *   - No retention/departure, no dues wiring, no `reputationFromMembers`
- *     wiring, no `memberSatisfaction` calls.
- *   - No offline-fabricated service visits — observations arrive only from
- *     real `floorSim.ts` steps while the sim is running.
- *   - No Career/Meet → `EmpireState.reputation` path.
+ *   - No roster deletion/departure event, no arrival dynamics beyond accepted
+ *     facility expansion, no dues wiring, no `reputationFromMembers` wiring,
+ *     no `memberSatisfaction` calls.
+ *   - No offline-fabricated service visits or stay changes — observations arrive
+ *     only from real `floorSim.ts` steps while the sim is running.
+ *   - No Athlete season calendar and no Career/Meet → `EmpireState.reputation` path.
  */
 
 import { refuseWith } from './empireCore';
+import { EMPIRE_TUNING } from './empireTuning';
 import { ambientMemberRoster } from './floor';
 import type { FloorSimPopulationEntry, FloorSimServiceObservation } from './floorSim';
 import type { LadderEquipmentItem, LadderRung } from './ladder';
+import { livingMemberExperience } from './livingMemberExperience';
+import { livingMemberRetentionPressure } from './livingMemberRetention';
+import {
+  advanceLivingMemberStay,
+  createLivingMemberStayState,
+  type LivingMemberStayState,
+} from './livingMemberStay';
 import { equipmentBiasedMemberTypes, type MemberType } from './members';
 import type { SessionEquipmentItem } from './sessions';
-import { EMPIRE_TUNING } from './empireTuning';
 
 // ---------------------------------------------------------------------------
 // Vocabulary
@@ -63,6 +72,8 @@ export interface LivingGymMember {
   /** Gym clock seconds when this member joined the floor roster. */
   readonly joinedAtSeconds: number;
   readonly recentVisits: readonly ServiceVisitRecord[];
+  /** G.2C1 response state. It is not a probability and does not itself remove this row. */
+  readonly stayState: LivingMemberStayState;
 }
 
 /** The authoritative living roster carried in `GymViewState`. */
@@ -226,6 +237,7 @@ function createLivingMember(
     type,
     joinedAtSeconds,
     recentVisits: Object.freeze([]),
+    stayState: createLivingMemberStayState(),
   });
 }
 
@@ -354,7 +366,12 @@ function truncateHistory(
   return Object.freeze(visits.slice(visits.length - limit));
 }
 
-/** Fold floor-sim observations into the living roster. Offline clock does not call this. */
+/**
+ * Fold real floor-sim observations into history and G.2C1 stay response.
+ * Offline clock does not call this. G.2A/G.2B are consumed whole rather than
+ * reimplemented: new history → accepted experience → accepted pressure →
+ * type-specific persistent response.
+ */
 export function applyServiceObservations(
   roster: LivingMemberRoster,
   observations: readonly FloorSimServiceObservation[],
@@ -385,11 +402,20 @@ export function applyServiceObservations(
       Object.freeze([...current.recentVisits, visitFromObservation(observation)]),
       historyLimit,
     );
+    const experience = livingMemberExperience(nextVisits);
+    const retention = livingMemberRetentionPressure(experience);
+    const stayState = advanceLivingMemberStay(
+      current.stayState,
+      current.type,
+      retention,
+      observation.observedAtTick,
+    );
     byId.set(
       id,
       Object.freeze({
         ...current,
         recentVisits: nextVisits,
+        stayState,
       }),
     );
   }
@@ -400,8 +426,8 @@ export function applyServiceObservations(
 }
 
 /**
- * Clock advance only moves tenure forward. It never fabricates visits — the
- * gym may have been away; service truth stays in the sim.
+ * Clock advance only moves tenure forward. It never fabricates visits or stay
+ * response — the gym may have been away; service truth stays in the sim.
  */
 export function advanceLivingMemberTenure(
   roster: LivingMemberRoster,
