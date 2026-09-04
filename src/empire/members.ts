@@ -7,6 +7,12 @@
  * quirk (§5.6's table), a satisfaction function driven by crowding, equipment
  * condition and equipment fit, and a reputation-from-members contribution.
  *
+ * Stage G.2A: living-floor recent-service meaning lives in
+ * `livingMemberExperience.ts` and reads `recentVisits` only. This file's
+ * `memberSatisfaction()` remains the aggregate crowding × fit × condition
+ * proxy for later attraction / offline / consequence work. G.2A does not call
+ * it, and does not call `memberDuesGymBucks` or `reputationFromMembers`.
+ *
  * Pure module (CLAUDE.md, "Pure logic is separate from UI"): zero React, zero
  * side effects, zero I/O, no clock reading, no randomness. Its imports are
  * `./empireCore` (`refuseWith`, `ReputationPoints`, `asReputation`), `./sessions`

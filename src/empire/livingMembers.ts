@@ -12,7 +12,11 @@
  *
  * G.1C PRESENTATION: `displayName` is a stored given name assigned once at
  * creation. It does not enter FloorSim, station choice, or any G.2 quantity.
- * Wait copy uses `queueWaitTicks` only — no upgrade-name branch.
+ *
+ * G.2A derives recent-service meaning in `livingMemberExperience.ts` from
+ * `recentVisits`. This file still does not call `memberSatisfaction`, dues, or
+ * `reputationFromMembers`. Wait copy uses `queueWaitTicks` only — no
+ * upgrade-name branch.
  *
  * NOT BUILT HERE, ON PURPOSE — later stages:
  *

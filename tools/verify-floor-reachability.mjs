@@ -1610,6 +1610,25 @@ try {
     const memberPanel = await waitUntilDrawn(page, 'floorgrid-member-panel', BEAT_TIMEOUT_MS);
     if (memberPanel.drawn) {
       ok(`C.1b: tapping a visible member opens floorgrid-member-panel (${memberPanel.why})`);
+      const experienceLine = await waitUntilDrawn(
+        page,
+        'floorgrid-member-panel-experience',
+        BEAT_TIMEOUT_MS,
+      );
+      if (!experienceLine.drawn) {
+        fail(
+          `G.2A: floorgrid-member-panel-experience never drawn after the member card opened — ${experienceLine.why}`,
+        );
+      } else {
+        const experienceText = ((await textOf('floorgrid-member-panel-experience')) ?? '').trim();
+        if (/\d+\.\d{2,}/.test(experienceText)) {
+          fail(`G.2A: recent-experience summary exposes a raw score (${experienceText})`);
+        } else if (experienceText.length === 0) {
+          fail('G.2A: floorgrid-member-panel-experience is drawn but empty');
+        } else {
+          ok(`G.2A: member card shows compact recent-experience (${experienceText})`);
+        }
+      }
       await page.getByTestId('floorgrid-member-panel-dismiss').click({ timeout: 10000 }).catch(() => {});
     } else {
       fail(`C.1b: floorgrid-member-panel never drawn after tapping floorgrid-ambient-0 — ${memberPanel.why}`);

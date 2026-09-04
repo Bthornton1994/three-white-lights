@@ -1997,6 +1997,32 @@ export const EMPIRE_TUNING = Object.freeze({
   LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS: 100,
 
   /**
+   * Stage G.2A — living-member recent-service meaning. Mechanical scores are
+   * derived from `ServiceVisitRecord` fields only. Label mins are presentation
+   * bands on those scores, the same class as the G.1C wait-copy thresholds:
+   * they name the card, they are not a second wait formula.
+   *
+   * `waitHalfLifeTicks` is 110 on purpose — distinct from the copy thresholds
+   * 15 / 40 / 100 — so a copy edit cannot silently retune the curve.
+   */
+  LIVING_MEMBER_EXPERIENCE: Object.freeze({
+    waitHalfLifeTicks: 110,
+    trainingStockScore: 0.82,
+    trainingQualityScore: 1,
+    reliabilityInterrupted: 0.55,
+    waitEasyMin: 0.7,
+    waitManageableMin: 0.5,
+    waitStrainedMin: 0.38,
+    trainingExcellentMin: 0.95,
+    trainingSolidMin: 0.78,
+    reliabilitySteadyMin: 0.95,
+    reliabilityUnevenMin: 0.7,
+    overallGoodMin: 0.78,
+    overallMixedMin: 0.62,
+    overallRoughMin: 0.45,
+  }),
+
+  /**
    * as a fraction of the smaller of its footprint's two rendered dimensions.
    */
   FLOOR_SIM_CUE_DIAMETER_FRACTION: 0.5,
@@ -2874,6 +2900,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   LIVING_MEMBER_WAIT_SHORT_MAX_TICKS: 'knob',
   LIVING_MEMBER_WAIT_LONG_MIN_TICKS: 'knob',
   LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS: 'knob',
+  LIVING_MEMBER_EXPERIENCE: 'knob',
   FLOOR_SIM_CUE_DIAMETER_FRACTION: 'knob',
   FLOOR_PLATE_LOADING: 'knob',
   FLOOR_SIM_CUE_GAP_PIXELS: 'knob',

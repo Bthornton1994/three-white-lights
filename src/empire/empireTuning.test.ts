@@ -111,6 +111,7 @@ describe('the block is frozen and every entry is classified', () => {
       'LADDER_STARTING_EQUIPMENT',
       'LEADERBOARD_BRACKET_SIZE',
       'LEADERBOARD_SCOPES',
+      'LIVING_MEMBER_EXPERIENCE', // Stage G.2A
       'LIVING_MEMBER_SERVICE_HISTORY_WINDOWS', // Stage G.1
       // §5.11 stage 4's four per-tier manager tables and the tier ladder
       // itself. Read from this pin's own failure value.
@@ -736,7 +737,8 @@ describe('§5.5 social', () => {
     // STEPS_SECONDS, FLOOR_PLATE_LOADING.
     // 197 -> 201: Stage G.1 LIVING_MEMBER_* tuning keys (four scalar knobs).
     // 201 -> 202: Stage G.1C LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS.
-    expect(examined).toBe(202);
+    // 202 -> 203: Stage G.2A LIVING_MEMBER_EXPERIENCE.
+    expect(examined).toBe(203);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -763,7 +765,8 @@ describe('§5.5 social', () => {
     // 965 -> 980: Stage D2.2 three new entries × 5 banned units.
     // 985 -> 1005: Stage G.1 four LIVING_MEMBER_* entries × 5 banned units.
     // 1005 -> 1010: Stage G.1C one more wait-band entry × 5 banned units.
-    expect(probed).toBe(1010);
+    // 1010 -> 1015: Stage G.2A LIVING_MEMBER_EXPERIENCE × 5 banned units.
+    expect(probed).toBe(1015);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

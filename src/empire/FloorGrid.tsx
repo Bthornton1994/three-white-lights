@@ -206,6 +206,7 @@ import {
   playerFacingTenureLine,
   type LivingMemberRoster,
 } from './livingMembers';
+import { livingMemberExperience } from './livingMemberExperience';
 import { type ManagedGym, maintenancePrompt } from './management';
 import { type MemberType } from './members';
 import { type SessionEquipmentItem } from './sessions';
@@ -2681,9 +2682,41 @@ export function FloorGrid(props: FloorGridProps) {
                     <Text testID={'floorgrid-member-panel-tenure'}>
                       {playerFacingTenureLine(living.joinedAtSeconds, gymClockSeconds)}
                     </Text>
-                    {living.recentVisits.length === 0 ? (
-                      <Text testID={'floorgrid-member-panel-no-history'}>no recent service yet</Text>
-                    ) : (
+                    {(() => {
+                      const experience = livingMemberExperience(living.recentVisits);
+                      return (
+                        <>
+                          <Text testID={'floorgrid-member-panel-experience'}>
+                            {`RECENT EXPERIENCE ${experience.labels.overall}`}
+                          </Text>
+                          {experience.status === 'forming' ? (
+                            <Text testID={'floorgrid-member-panel-no-history'}>
+                              {experience.reasons[0]?.text}
+                            </Text>
+                          ) : (
+                            <>
+                              <Text testID={'floorgrid-member-panel-experience-components'}>
+                                <Text testID={'floorgrid-member-panel-experience-wait'}>
+                                  {`WAIT ${experience.labels.wait}`}
+                                </Text>
+                                {' / '}
+                                <Text testID={'floorgrid-member-panel-experience-training'}>
+                                  {`TRAINING ${experience.labels.training}`}
+                                </Text>
+                                {' / '}
+                                <Text testID={'floorgrid-member-panel-experience-reliability'}>
+                                  {`SERVICE ${experience.labels.reliability}`}
+                                </Text>
+                              </Text>
+                              <Text testID={'floorgrid-member-panel-experience-reason'}>
+                                {experience.reasons.map((reason) => reason.text).join(' ')}
+                              </Text>
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
+                    {living.recentVisits.length === 0 ? null : (
                       living.recentVisits.map((visit, visitIndex) => (
                         <Text
                           key={`visit-${visit.observedAtTick}-${visitIndex}`}

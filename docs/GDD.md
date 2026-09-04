@@ -3187,7 +3187,9 @@ than the ruling's own §1–§23 sequence:
 - **Stage G.** NPC roster/tenure depth (item 6). **G.1 CLOSED** at
   `c27f714c40e3ad7139eaec84ed340f1255c602ea` — living member identity +
   service outcome foundation accepted (targeted Expo 390×844 replay of
-  G.1C). G.2 remains unstarted.
+  G.1C). G.2A (living-member satisfaction truth foundation) is implemented
+  and awaits the architecture / experience verdict. No churn, dues, or
+  reputation wiring.
 
 ### Human Stage C rejection at `f097695b`
 
@@ -4478,8 +4480,9 @@ state is a later explicit crossing.
 **STAGE G.1 CLOSED — LIVING MEMBER IDENTITY + SERVICE OUTCOME FOUNDATION
 ACCEPTED.** Closed at `c27f714c40e3ad7139eaec84ed340f1255c602ea` by the
 targeted Expo 390×844 player-surface replay of G.1C, under the pre-stated
-close standard. G.2 remains unstarted. Historical G.1 / G.1A / G.1B / G.1C
-notes below stay as they were.
+close standard. G.2A is implemented as the living-member satisfaction
+truth foundation and awaits the architecture / experience verdict.
+Historical G.1 / G.1A / G.1B / G.1C notes below stay as they were.
 
 G.1A identity/service architecture is accepted. G.1B closed pre-human
 authority at `8fc4fcbf9d36f829252d35d0e642c5cc3482cce2`. Human gate at
@@ -4626,8 +4629,52 @@ consequences.
 
 **Human gate:** landed at `c27f714c`. Identity presentation, Throughput
 copy, and Capacity consequence all passed on the played 390×844 surface.
-Closing G.1 does not wire satisfaction / dues / reputation, and does not
-start Stage G.2.
+Closing G.1 does not wire satisfaction / dues / reputation. G.2A now
+derives recent-service meaning from that history and still does not wire
+dues, reputation, or retention.
+
+#### Stage G.2A — Living Member Satisfaction Truth Foundation
+
+G.2A derives what recent service **means** to a living member. It does not
+start churn, dues, reputation writes, or Gym Bucks changes.
+
+**Audit of the existing member domain (at `fee6d636`):**
+
+| Item | Verdict |
+|---|---|
+| `queueWaitTicks` / `recentVisits` / `trainingExperience` / `outcome` | REAL + CONSUMED by G.2A |
+| `memberSatisfaction` crowding × fit × conditionMultiplier | LEGACY / PROXY; superseded for living-floor service |
+| `crowdingLoad` | REAL BUT UNWIRED on the played floor; kept for attraction / aggregate / future offline models |
+| `equipmentFitScore` | SEMANTIC MISMATCH for recent service (attraction / mix, not yesterday's session) — G2-FIT-01 |
+| `memberDuesGymBucks` / `reputationFromMembers` | REAL BUT UNWIRED; G.2A does not call them |
+| `itemCondition` / `stationConditionView` | REAL at gym/item grain; MISSING at service-observation grain — G2-CONDITION-01 |
+| FloorSim observation condition field | MISSING |
+
+**Condition-at-service:** deferred. Observations name a station but do not
+snapshot `itemCondition` at use time. No fake 1.0 and no gym-wide mean.
+
+**Wait curve (compared, then frozen):** bounded linear (scale 180),
+hyperbolic (scale 90), exponential (half-life 110) against the G.1 Garage
+means. Exponential 110 won: 95 > 128, Capacity wait clearly above
+Throughput, Throughput above stock, Quality wait identical to stock, no
+step at copy thresholds 15 / 40 / 100.
+
+**Training map:** stock experience 1 → 0.82 (Solid); Quality 2 → 1.0
+(Excellent). Stock remains a working gym, not a 50% failure.
+
+**Reliability:** interrupted visits exist only for mid-use yank
+(player-moved/removed station). Scored 0.55, not zero.
+
+**Composite:** arithmetic mean rejected (Quality + severe wait still looked
+excellent). Geometric mean of the three equal-weight component averages
+is shipped. Recency is the N=5 window; no extra decay.
+
+**Player card:** RECENT EXPERIENCE label + WAIT / TRAINING / SERVICE
+components + reason line, above the five visit rows.
+
+**Still blocked:** member departures, dues writes, reputation writes,
+Career/Meet → Empire reputation, Portfolio, NpcLifter merge, Q/C/T
+retune, E-REP-01.
 
 ---
 

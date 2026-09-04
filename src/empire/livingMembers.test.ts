@@ -850,10 +850,14 @@ describe('Stage G.1C — persistent display names', () => {
     const displayName = source.indexOf("testID={'floorgrid-member-panel-display-name'}", panel);
     const typeLine = source.indexOf("testID={'floorgrid-member-panel-identity'}", panel);
     const shortId = source.indexOf("testID={'floorgrid-member-panel-short-id'}", panel);
+    const tenure = source.indexOf("testID={'floorgrid-member-panel-tenure'}", panel);
+    const experience = source.indexOf("testID={'floorgrid-member-panel-experience'}", panel);
     expect(panel).toBeGreaterThanOrEqual(0);
     expect(displayName).toBeGreaterThan(panel);
     expect(typeLine).toBeGreaterThan(displayName);
     expect(shortId).toBeGreaterThan(typeLine);
+    expect(tenure).toBeGreaterThan(shortId);
+    expect(experience).toBeGreaterThan(tenure);
     expect(source).toMatch(/selectedName === undefined \? null/);
     expect(source).toContain("testID={'floorgrid-selected-member-name'}");
     expect(source.includes('members.map((member) => member.displayName)')).toBe(false);
@@ -869,6 +873,7 @@ describe('Stage G.1C — persistent display names', () => {
       'sportingReputation.ts',
       'sessions.ts',
       'members.ts',
+      'livingMemberExperience.ts',
     ]);
     for (const file of isolated) {
       const source = readFileSync(join(here, file), 'utf8');

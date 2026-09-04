@@ -2466,6 +2466,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorSprites.ts',
       'ladder.ts',
       'ladderView.tsx',
+      'livingMemberExperience.ts',
       // Stage G.1: living floor-member identity and service outcomes.
       'livingMembers.ts',
       // §5.11 stage 4: staffing, maintenance, equipment condition and
@@ -2682,7 +2683,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // shipped module it used to). Pin is the live walk, not a guess.
     // 158 -> 175: Stage G.1 `livingMembers.ts` — new edges from ladderView,
     // FloorGrid, floorSim observations, and header prose across neighbours.
-    expect(pairs).toBe(175);
+    // 175 -> 181: Stage G.2A livingMemberExperience.ts plus FloorGrid /
+    // livingMembers / members headers naming it.
+    expect(pairs).toBe(183);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -2703,7 +2706,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // the pre-round file by `git show` rather than assumed.
     // 17 -> 18: GDD §5.14 Stage B. `pacing.ts` imports `refuseWith` from
     // `./empireCore`.
-    expect(mentionersOf('empireCore.ts').length).toBe(21);
+    expect(mentionersOf('empireCore.ts').length).toBe(22);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -3301,7 +3304,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'furniture,',
       'placed,',
       'unplaced',
-      'no recent service yet',
       'close',
       // GDD §5.14 Stage C: the contextual station panel, the last thing
       // FloorGrid.tsx's own JSX returns, so its chunks land after every
@@ -3848,7 +3850,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 671 -> 672: Stage G.1 member panel — `no recent service yet`.
     // 672 -> 688: Stage G.1 `livingMembers.ts` refuseWith and id-template strings.
     // 688 -> 756: Stage G.1C 64 given names plus wait-copy and selected-name testIDs.
-    expect(singleQuoted.size).toBe(756);
+    // 756 -> 794: Stage G.2A livingMemberExperience labels, statuses, reason
+    // kinds, and FloorGrid experience-panel testIDs. Read from this
+    // assertion's own failure value.
+    expect(singleQuoted.size).toBe(794);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3972,7 +3977,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // templates and added outcome / categoryFieldSize ones; net −1 unique chunk.
     // 353 -> 364 -> 370: Stage G.1A livingMembers refuseWith / id templates.
     // 370 -> 372: Stage G.1C display-name pool and wait-copy refuse templates.
-    expect(templateChunks.size).toBe(372);
+    // 372 -> 377: Stage G.2A FloorGrid experience-line templates plus the
+    // wait-ticks refuse message. Read from this assertion's own failure value.
+    expect(templateChunks.size).toBe(377);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4008,6 +4015,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './floorSprites',
       './ladder',
       './ladderView',
+      './livingMemberExperience',
       './livingMembers',
       './management',
       './members',
@@ -4039,16 +4047,20 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Conditioning',
       'Cora',
       'Dara',
+      'Disrupted',
       'Dove',
       'Drew',
       'Dumbbells',
+      'Easy',
       'Elke',
       'Ellis',
       'Enzo',
+      'Excellent',
       'Farah',
       'Felix',
       'Fern',
       'Galen',
+      'Good',
       'Gray',
       'GymMemberId',
       'Hale',
@@ -4071,10 +4083,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Leif',
       'Lila',
       'Machines',
+      'Manageable',
       'Mara',
       'Mats',
       'Miles',
       'Mira',
+      'Mixed',
       'Nia',
       'Nils',
       'Noor',
@@ -4086,6 +4100,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Petra',
       'Pia',
       'Placeholder',
+      'Poor',
       'Powerlifter',
       'Priya',
       'Quinn',
@@ -4094,6 +4109,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Reid',
       'Remy',
       'Rina',
+      'Rough',
       'Rowan',
       'Rower',
       'Sauna',
@@ -4101,15 +4117,20 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Skye',
       'Sled',
       'Sleeves',
+      'Solid',
       'Soren',
+      'Steady',
+      'Strained',
       'Suki',
       'Support',
       'Tessa',
       'Theo',
+      'Thin',
       'Toni',
       'Tove',
       'Treadmill',
       'Uma',
+      'Uneven',
       'Veda',
       'Vera',
       'Walking',
@@ -4270,6 +4291,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-member-panel',
       'floorgrid-member-panel-dismiss',
       'floorgrid-member-panel-display-name',
+      'floorgrid-member-panel-experience',
+      'floorgrid-member-panel-experience-components',
+      'floorgrid-member-panel-experience-reason',
+      'floorgrid-member-panel-experience-reliability',
+      'floorgrid-member-panel-experience-training',
+      'floorgrid-member-panel-experience-wait',
       'floorgrid-member-panel-identity',
       'floorgrid-member-panel-no-history',
       'floorgrid-member-panel-short-id',
@@ -4306,6 +4333,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorsim-caption',
       'floorsim-legend',
       'foam-rollers',
+      'formed',
+      'forming',
       'friend',
       'friend-encouragement',
       'friend-visit-allowance-reset',
@@ -4505,6 +4534,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'ordinal',
       'other-recovery',
       'out-of-bounds',
+      'outcome',
       'outside',
       'overlaps',
       'own-gym',
@@ -4543,6 +4573,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'refused',
       'regional',
       'relative',
+      'reliability',
       'removed',
       'repair',
       'repair-declined',
@@ -4659,6 +4690,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'veteran',
       'visit-fee-control',
       'visited',
+      'wait',
       'wall-clock',
       'wall-clock-earned',
       'wall-clock-elapsed',
@@ -4778,7 +4810,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1058 -> 1128: Stage G.1C — 68 new single-quoted literals (64 given
     // names, two wait phrases, two selected/card testIDs) plus two template
     // chunks. Read from this assertion's own failure value.
-    expect(stringsChecked).toBe(1128);
+    // 1128 -> 1171: Stage G.2A singleQuoted 756 -> 794 and templateChunks
+    // 372 -> 377. Read from this assertion's own failure value.
+    expect(stringsChecked).toBe(1171);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5159,6 +5193,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './ladderView',
         // Stage G.1: persistent member identity and service history on tap.
         './livingMembers',
+        './livingMemberExperience',
         // GDD §5.14 Stage C: the contextual station panel reads condition,
         // manager capability and the standing maintenance review straight
         // out of `management.ts`, and calls `repairEquipment` itself to
@@ -5224,6 +5259,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './sessions',
       ],
       'members.ts': ['./empireCore', './empireTuning', './production', './sessions'],
+      'livingMemberExperience.ts': ['./empireCore', './empireTuning', './livingMembers'],
       'livingMembers.ts': [
         './empireCore',
         './empireTuning',
@@ -5283,7 +5319,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
     // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
     // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-    expect(fenced).toBe(26);
+    expect(fenced).toBe(27);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -5402,7 +5438,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // ladder for trainingStation.
     // 107 -> 117: Stage G.1 — livingMembers.ts edges plus ladderView/FloorGrid
     // reading it and floorSim observation exports.
-    expect(specifiers).toBe(117);
+    // 117 -> 121: Stage G.2A — livingMemberExperience.ts three edges plus
+    // FloorGrid reading it.
+    expect(specifiers).toBe(121);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
@@ -5614,7 +5652,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // two watched grains, six FLOOR_PLATE_LOADING leaves).
     // 428 -> 434: Stage G.1 four living-member service-history knobs.
     // 434 -> 435: Stage G.1C LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS.
-    ).toBe(435);
+    // 435 -> 448: Stage G.2A LIVING_MEMBER_EXPERIENCE leaves (13 findings;
+    // trainingQualityScore 1 is ALWAYS_STRUCTURAL).
+    ).toBe(448);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });
