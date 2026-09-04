@@ -11,6 +11,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { EMPIRE_TUNING } from './empireTuning';
 import type {
   LivingMemberRetentionPressure,
   LivingMemberRetentionReasonKind,
@@ -18,10 +19,6 @@ import type {
 import {
   advanceLivingMemberStay,
   createLivingMemberStayState,
-  isLivingMemberDepartureEligible,
-  LIVING_MEMBER_STAY_CONFIRMATIONS_PER_STEP,
-  LIVING_MEMBER_STAY_STATUSES,
-  playerFacingStayResponse,
   type LivingMemberStayState,
 } from './livingMemberStay';
 import type { MemberType } from './members';
@@ -29,6 +26,7 @@ import type { MemberType } from './members';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SOURCE = readFileSync(join(HERE, 'livingMemberStay.ts'), 'utf8');
 const CODE = SOURCE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+const CONFIRMATIONS_PER_STEP = Math.floor(EMPIRE_TUNING.LIVING_MEMBER_SERVICE_HISTORY_WINDOW / 2) + 1;
 
 function formed(
   label: string,
@@ -72,7 +70,7 @@ function applyRepeated(
 }
 
 describe('Stage G.2C1 — persistent stay-response vocabulary', () => {
-  it('opens forming and exposes no departure claim', () => {
+  it('opens forming with no armed direction', () => {
     const state = createLivingMemberStayState();
     expect(state).toEqual({
       status: 'forming',
@@ -81,16 +79,7 @@ describe('Stage G.2C1 — persistent stay-response vocabulary', () => {
       pendingDirection: null,
       confirmations: 0,
     });
-    expect(LIVING_MEMBER_STAY_STATUSES).toEqual([
-      'forming',
-      'staying',
-      'unsettled',
-      'considering-exit',
-      'departure-eligible',
-    ]);
-    expect(LIVING_MEMBER_STAY_CONFIRMATIONS_PER_STEP).toBe(3);
-    expect(isLivingMemberDepartureEligible(state)).toBe(false);
-    expect(playerFacingStayResponse(state)).toBe('Still forming');
+    expect(CONFIRMATIONS_PER_STEP).toBe(3);
   });
 
   it('preserves forming uncertainty until G.2B is formed', () => {
@@ -143,7 +132,7 @@ describe('Stage G.2C1 — narrow GDD-backed type response', () => {
         createLivingMemberStayState(),
         type,
         formed('Watching', 0.3, 'wait'),
-        LIVING_MEMBER_STAY_CONFIRMATIONS_PER_STEP,
+        CONFIRMATIONS_PER_STEP,
       );
       expect(watching.status, type).toBe('staying');
       expect(watching.confirmations, type).toBe(0);
@@ -152,7 +141,7 @@ describe('Stage G.2C1 — narrow GDD-backed type response', () => {
         createLivingMemberStayState(),
         type,
         formed('Strained', 0.5, 'service'),
-        LIVING_MEMBER_STAY_CONFIRMATIONS_PER_STEP,
+        CONFIRMATIONS_PER_STEP,
       );
       expect(strained.status, type).toBe('unsettled');
     }
@@ -163,7 +152,7 @@ describe('Stage G.2C1 — narrow GDD-backed type response', () => {
       createLivingMemberStayState(),
       'serious-lifter',
       formed('Strained', 0.5, 'service'),
-      LIVING_MEMBER_STAY_CONFIRMATIONS_PER_STEP,
+      CONFIRMATIONS_PER_STEP,
     );
     expect(strained.status).toBe('staying');
     expect(strained.confirmations).toBe(0);
@@ -172,7 +161,7 @@ describe('Stage G.2C1 — narrow GDD-backed type response', () => {
       createLivingMemberStayState(),
       'serious-lifter',
       formed('At risk', 0.7, 'service'),
-      LIVING_MEMBER_STAY_CONFIRMATIONS_PER_STEP,
+      CONFIRMATIONS_PER_STEP,
     );
     expect(atRisk.status).toBe('unsettled');
   });
@@ -188,8 +177,6 @@ describe('Stage G.2C1 — sustained strain and recovery hysteresis', () => {
     expect(one.confirmations).toBe(1);
     expect(two.status).toBe('staying');
     expect(two.confirmations).toBe(2);
-    expect(isLivingMemberDepartureEligible(one)).toBe(false);
-    expect(isLivingMemberDepartureEligible(two)).toBe(false);
   });
 
   it('requires nine consecutive qualifying observations for the shortest path to eligibility', () => {
@@ -202,12 +189,9 @@ describe('Stage G.2C1 — sustained strain and recovery hysteresis', () => {
 
     state = applyRepeated(state, 'powerlifter', atRisk, 3, 4);
     expect(state.status).toBe('considering-exit');
-    expect(playerFacingStayResponse(state)).toBe('Considering leaving');
 
     state = applyRepeated(state, 'powerlifter', atRisk, 3, 7);
     expect(state.status).toBe('departure-eligible');
-    expect(isLivingMemberDepartureEligible(state)).toBe(true);
-    expect(playerFacingStayResponse(state)).toBe('Considering leaving');
   });
 
   it('requires sustained Stable service to recover one state at a time and never returns to forming', () => {
@@ -255,12 +239,13 @@ describe('Stage G.2C1 — sustained strain and recovery hysteresis', () => {
 });
 
 describe('Stage G.2C1 — source fences', () => {
-  it('contains no random, wall-clock, probability, dues, reputation, or roster deletion mechanism', () => {
+  it('contains no random, wall-clock, probability, dues, reputation, roster deletion, or UI API', () => {
     expect(CODE).not.toMatch(/Math\.random/);
     expect(CODE).not.toMatch(/Date\.now/);
     expect(CODE).not.toMatch(/leaveProbability|churnChance|dailyRisk/);
     expect(CODE).not.toMatch(/memberDuesGymBucks|reputationFromMembers/);
     expect(CODE).not.toMatch(/splice|filter\s*\(/);
+    expect(CODE).not.toMatch(/playerFacing|isLivingMemberDepartureEligible/);
     expect(CODE).not.toMatch(/from ['"]\.\/livingMembers['"]/);
   });
 });
