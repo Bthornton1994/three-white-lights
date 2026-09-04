@@ -192,6 +192,7 @@ import {
   floorSimStateCounts,
   floorStationRefKey,
   floorStations,
+  reconcileFloorSimPopulation,
   seatChangeoverTicks,
   stationChangeoverSeats,
   stepFloorSimWithObservations,
@@ -199,11 +200,16 @@ import {
 import { type LadderEquipmentItem } from './ladder';
 import { type GymViewAction } from './ladderView';
 import {
+  lastLivingMemberDeparture,
+  playerFacingDepartureLine,
+} from './livingMemberDeparture';
+import {
   floorSimPopulationFromRoster,
-  livingMemberAtIndex,
+  livingMemberById,
   playerFacingMemberShortId,
   playerFacingServiceVisitLine,
   playerFacingTenureLine,
+  type GymMemberId,
   type LivingMemberRoster,
 } from './livingMembers';
 import { livingMemberExperience } from './livingMemberExperience';
@@ -1386,6 +1392,18 @@ function AmbientMemberBody({
   );
 }
 
+function livingPopulationIsKnownToSim(
+  state: FloorSimState,
+  livingPopulation: FloorSimContext['livingPopulation'],
+): boolean {
+  const simIds = new Set<string>();
+  for (const member of state.members) simIds.add(member.memberId);
+  for (const entry of livingPopulation) {
+    if (!simIds.has(entry.memberId)) return false;
+  }
+  return true;
+}
+
 export function FloorGrid(props: FloorGridProps) {
   const { owned, barbellOwned, floor, dispatch, managed, capability, buildMode, livingMembers, gymClockSeconds } =
     props;
@@ -1402,7 +1420,7 @@ export function FloorGrid(props: FloorGridProps) {
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const tile = tilePixelsForStage(grid.width, grid.height, stageSize.width, stageSize.height);
   const [pendingPlace, setPendingPlace] = useState<PendingPlace | null>(null);
-  const [selectedMemberIndex, setSelectedMemberIndex] = useState<number | null>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<GymMemberId | null>(null);
   // Stage C.1d two-phase Build machine, explicit rather than inferred from
   // competing responders:
   //   SELECT (`pendingPlace === null`): equipment and inventory are tappable;
@@ -1491,7 +1509,7 @@ export function FloorGrid(props: FloorGridProps) {
   useEffect(() => {
     setSelectedStation(null);
     setSelectedEquipment(null);
-    setSelectedMemberIndex(null);
+    setSelectedMemberId(null);
     setPendingPlace(null);
     setPlacementRefuseKind(null);
     setOverlapRefusalItem(null);
@@ -1500,7 +1518,7 @@ export function FloorGrid(props: FloorGridProps) {
 
   /** Select `ref`, or deselect it if it is already the selected one — a second tap on the same station closes its own panel. */
   const toggleSelectedStation = (ref: FloorStationRef): void => {
-    setSelectedMemberIndex(null);
+    setSelectedMemberId(null);
     setSelectedEquipment(null);
     setSelectedStation((previous) =>
       previous !== null && refsMatch(previous, ref) ? null : ref,
@@ -1508,7 +1526,7 @@ export function FloorGrid(props: FloorGridProps) {
   };
 
   const toggleSelectedEquipment = (item: LadderEquipmentItem): void => {
-    setSelectedMemberIndex(null);
+    setSelectedMemberId(null);
     setSelectedStation(null);
     setSelectedEquipment((previous) => (previous === item ? null : item));
   };
@@ -1516,7 +1534,7 @@ export function FloorGrid(props: FloorGridProps) {
   const beginPlace = (next: PendingPlace): void => {
     setSelectedStation(null);
     setSelectedEquipment(null);
-    setSelectedMemberIndex(null);
+    setSelectedMemberId(null);
     setPlacementRefuseKind(null);
     setOverlapRefusalItem(null);
     setRefusalRegion(null);
@@ -1661,11 +1679,11 @@ export function FloorGrid(props: FloorGridProps) {
     tryPlaceAt(position);
   };
 
-  const toggleSelectedMember = (index: number): void => {
+  const toggleSelectedMember = (id: GymMemberId): void => {
     if (buildMode) return;
     setSelectedStation(null);
     setSelectedEquipment(null);
-    setSelectedMemberIndex((previous) => (previous === index ? null : index));
+    setSelectedMemberId((previous) => (previous === id ? null : id));
   };
 
   // The latest context, for the tick callback. `setInterval`'s callback closes
@@ -1715,7 +1733,12 @@ export function FloorGrid(props: FloorGridProps) {
     if (pendingPlace !== null) return undefined;
     const timer = setInterval(() => {
       setSim((previous) => {
-        const stepped = stepFloorSimWithObservations(previous, simContextRef.current);
+        const context = simContextRef.current;
+        if (!livingPopulationIsKnownToSim(previous, context.livingPopulation)) {
+          return previous;
+        }
+        const aligned = reconcileFloorSimPopulation(previous, context);
+        const stepped = stepFloorSimWithObservations(aligned, context);
         if (stepped.observations.length > 0) {
           dispatch({
             kind: 'apply-living-member-observations',
@@ -1727,6 +1750,10 @@ export function FloorGrid(props: FloorGridProps) {
     }, EMPIRE_TUNING.FLOOR_SIM_TICK_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [pendingPlace]);
+
+  const drawnSim = livingPopulationIsKnownToSim(sim, simContext.livingPopulation)
+    ? reconcileFloorSimPopulation(sim, simContext)
+    : sim;
 
   // The stations the sim can send a member to, and what is happening at each.
   // A derived read: `floorStations` recomputes from the same context every
@@ -1741,7 +1768,7 @@ export function FloorGrid(props: FloorGridProps) {
     stationByRefKey.set(stationKey(station.ref), station);
   }
   const stationActivity = new Map<string, 'using' | 'claimed'>();
-  for (const member of sim.members) {
+  for (const member of drawnSim.members) {
     if (member.target === null) continue;
     const key = stationKey(member.target);
     if (member.state === 'using') {
@@ -1759,14 +1786,14 @@ export function FloorGrid(props: FloorGridProps) {
   );
   const bayRef: FloorStationRef = { kind: 'training', station: COMPETITION_BENCH_BAY };
   const primaryOccupied =
-    bayStation !== undefined && memberUsesCell(sim.members, bayRef, bayStation.useCells[0]);
+    bayStation !== undefined && memberUsesCell(drawnSim.members, bayRef, bayStation.useCells[0]);
   const expansionOccupied =
-    bayStation !== undefined && memberUsesCell(sim.members, bayRef, bayStation.useCells[1]);
+    bayStation !== undefined && memberUsesCell(drawnSim.members, bayRef, bayStation.useCells[1]);
   const bayLevels = stationLevels(capability, COMPETITION_BENCH_BAY);
   const bayQualityMark = bay.complete && bayLevels.quality > 0;
   const bayThroughputMark = bay.complete && bayLevels.throughput > 0;
   const capacityFits = capacityRealizesOn(floor, barbellOwned);
-  const stateCounts = floorSimStateCounts(sim);
+  const stateCounts = floorSimStateCounts(drawnSim);
 
   /**
    * GDD §5.14 Stage C — item 9's tap/drag disambiguation. `origin` says
@@ -1845,7 +1872,7 @@ export function FloorGrid(props: FloorGridProps) {
     panelIdentity = stationIdentityView(panelStation);
     const selectedStationRow = stationByRefKey.get(stationKey(panelStation));
     panelOperation = stationOperationView(
-      sim.members,
+      drawnSim.members,
       panelStation,
       selectedStationRow === undefined ? undefined : selectedStationRow.useCells,
     );
@@ -1853,7 +1880,7 @@ export function FloorGrid(props: FloorGridProps) {
       selectedStationRow === undefined
         ? 0
         : stationChangeoverSeats(
-            sim.changeovers,
+            drawnSim.changeovers,
             selectedStationRow.ref,
             selectedStationRow.useCells,
           );
@@ -1867,9 +1894,10 @@ export function FloorGrid(props: FloorGridProps) {
   const standingPrompt = maintenancePrompt(managed);
 
   const selectedMember =
-    selectedMemberIndex === null
+    selectedMemberId === null
       ? null
-      : (sim.members.find((member) => member.index === selectedMemberIndex) ?? null);
+      : (drawnSim.members.find((member) => member.memberId === selectedMemberId) ?? null);
+  const lastDeparture = lastLivingMemberDeparture(livingMembers.departures);
 
   return (
     <View
@@ -2322,7 +2350,7 @@ export function FloorGrid(props: FloorGridProps) {
               // member is on it. testIDs are dash-stable (`floorsim-using-
               // training-competition-bench-bay`), never colon keys.
               stations.flatMap((station) =>
-                stationHighlightBoxes(station, bay, sim.members, sim.changeovers).map((box) => (
+                stationHighlightBoxes(station, bay, drawnSim.members, drawnSim.changeovers).map((box) => (
                   <View
                     key={box.key}
                     testID={box.testID}
@@ -2368,7 +2396,7 @@ export function FloorGrid(props: FloorGridProps) {
             }
             {
               stations.flatMap((station) =>
-                plateLoadingLayers(station, bay, sim.changeovers, capability, tile).map((layer) => (
+                plateLoadingLayers(station, bay, drawnSim.changeovers, capability, tile).map((layer) => (
                   <View
                     key={layer.key}
                     testID={layer.testID}
@@ -2395,11 +2423,10 @@ export function FloorGrid(props: FloorGridProps) {
               // own `Animated.Value`s and its own start/stop lifecycles,
               // which `.map` cannot give a hook directly).
               //
-              // Keyed by `member.index`, which `floorSim.ts` documents as
-              // stable for the life of a sim — so a member keeps its own
-              // animated values across ticks instead of being remounted and
-              // snapping.
-              sim.members.map((member) => {
+              // Keyed by `member.memberId` so an interior departure that
+              // reindexes survivors does not remount the remaining bodies or
+              // silently retarget selection.
+              drawnSim.members.map((member) => {
                 // P4b: the member's own station, when it has one — what the
                 // using-pose class, the draw bias and the facing all key on.
                 const station =
@@ -2408,7 +2435,7 @@ export function FloorGrid(props: FloorGridProps) {
                     : stationByRefKey.get(stationKey(member.target));
                 return (
                   <AmbientMemberBody
-                    key={`ambient-${member.index}`}
+                    key={`ambient-${member.memberId}`}
                     index={member.index}
                     type={member.type}
                     position={memberDrawPoint(member, station, bay)}
@@ -2416,16 +2443,20 @@ export function FloorGrid(props: FloorGridProps) {
                     state={member.state}
                     interruptedBy={member.interruptedBy}
                     stranded={member.strandedAt !== null}
-                    pose={memberPose(member, sim.tick)}
+                    pose={memberPose(member, drawnSim.tick)}
                     facing={memberFacing(member, station, bay)}
                     selectedName={
-                      selectedMemberIndex === member.index
-                        ? (livingMemberAtIndex(livingMembers, member.index)?.displayName ??
-                          undefined)
+                      selectedMemberId === member.memberId
+                        ? (livingMemberById(
+                            livingMembers,
+                            member.memberId as GymMemberId,
+                          )?.displayName ?? undefined)
                         : undefined
                     }
                     onPress={
-                      buildMode ? undefined : () => toggleSelectedMember(member.index)
+                      buildMode
+                        ? undefined
+                        : () => toggleSelectedMember(member.memberId as GymMemberId)
                     }
                   />
                 );
@@ -2494,7 +2525,10 @@ export function FloorGrid(props: FloorGridProps) {
           </View>
         </View>
       </View>
-      <Text testID={'floorgrid-ambient-caption'}>{sim.members.length} member(s) around the gym</Text>
+      <Text testID={'floorgrid-ambient-caption'}>{drawnSim.members.length} member(s) around the gym</Text>
+      {lastDeparture === null ? null : (
+        <Text testID={'floorgrid-departure-notice'}>{playerFacingDepartureLine(lastDeparture)}</Text>
+      )}
       <View
         testID={'floorgrid-tray'}
         style={buildMode ? undefined : { display: 'none' }}
@@ -2624,7 +2658,7 @@ export function FloorGrid(props: FloorGridProps) {
             {placed.length} placed, {unplaced.length} unplaced
           </Text>
           <Text testID={'floorsim-caption'}>
-            {`tick ${sim.tick} — `}
+            {`tick ${drawnSim.tick} — `}
             {FLOOR_SIM_MEMBER_STATES.map((each) => `${stateCounts[each]} ${each}`).join(', ')}
           </Text>
           <View testID={'floorsim-legend'}>
@@ -2666,7 +2700,10 @@ export function FloorGrid(props: FloorGridProps) {
       {selectedMember === null ? null : (
         <ScrollView testID={'floorgrid-member-panel'} style={panelStyles.panel}>
           {(() => {
-            const living = livingMemberAtIndex(livingMembers, selectedMember.index);
+            const living = livingMemberById(
+              livingMembers,
+              selectedMember.memberId as GymMemberId,
+            );
             return (
               <>
                 {living === null ? null : (
@@ -2749,7 +2786,7 @@ export function FloorGrid(props: FloorGridProps) {
             testID={'floorgrid-member-panel-dismiss'}
             accessibilityRole={'button'}
             style={panelStyles.button}
-            onPress={() => setSelectedMemberIndex(null)}
+            onPress={() => setSelectedMemberId(null)}
           >
             <Text style={panelStyles.buttonText}>close</Text>
           </Pressable>

@@ -171,7 +171,8 @@ export const DIRECTORY_WALK = Object.freeze({
   // 26 -> 27: Stage G.2A `livingMemberExperience.ts`.
   // 27 -> 28: Stage G.2B `livingMemberRetention.ts`.
   // 28 -> 29: Stage G.2C1 `livingMemberStay.ts`.
-  SHIPPED_MODULES: 29,
+  // 29 -> 30: Stage G.2C2 `livingMemberDeparture.ts`.
+  SHIPPED_MODULES: 30,
   /**
    * Files the shared walk hands the censuses today, tests included.
    *
@@ -200,7 +201,8 @@ export const DIRECTORY_WALK = Object.freeze({
   // 56 -> 58: Stage G.2A `livingMemberExperience.ts` and its test.
   // 58 -> 60: Stage G.2B `livingMemberRetention.ts` and its test.
   // 60 -> 63: Stage G.2C1 `livingMemberStay.ts` plus unit and integration tests.
-  DIRECTORY_FILES: 63,
+  // 63 -> 66: Stage G.2C2 `livingMemberDeparture.ts` plus unit and integration tests.
+  DIRECTORY_FILES: 66,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**
@@ -973,6 +975,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'floorSprites.ts',
       'ladder.ts',
       'ladderView.tsx',
+      'livingMemberDeparture.ts',
       'livingMemberExperience.ts',
       'livingMemberRetention.ts',
       'livingMemberStay.ts',

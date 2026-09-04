@@ -127,7 +127,7 @@ describe('D2-CONSEQUENCE-01 — played floor does not fund the institution', () 
     const floorSim = shippedSource('floorSim.ts');
     const floorGrid = shippedSource('FloorGrid.tsx');
     expect(floorSim).toMatch(/changeovers/);
-    expect(floorGrid).toMatch(/sim\.changeovers/);
+    expect(floorGrid).toMatch(/drawnSim\.changeovers/);
     expect(floorSim.includes('gymBucks')).toBe(false);
     expect(floorGrid.includes('gymBucks +')).toBe(false);
     expect(floorGrid.includes('gymBucks:')).toBe(false);

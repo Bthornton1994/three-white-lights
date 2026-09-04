@@ -1,5 +1,6 @@
 /**
- * livingMembers.ts — Stage G.1 / G.1A identity, G.2 service history, and stay response.
+ * livingMembers.ts — Stage G.1 / G.1A identity, G.2 service history, stay
+ * response, and G.2C2 departure execution.
  *
  * Pure module: zero React, zero side effects, zero I/O, no `Math.random`.
  * Persists the bodies the player sees on the played floor — NOT `NpcLifter`
@@ -9,6 +10,8 @@
  * G.1A IDENTITY AUTHORITY: member ids are gym-local ordinals under a nonce
  * (`member:n1:0`) and do NOT encode the current facility rung. Facility
  * relocation reconciles the roster — it never recreates existing members.
+ * Creation ordinals are minted from `nextOrdinal` so a departed identity is
+ * never reused.
  *
  * G.1C PRESENTATION: `displayName` is a stored given name assigned once at
  * creation. It does not enter FloorSim, station choice, or any G.2 quantity.
@@ -16,17 +19,20 @@
  * G.2A derives recent-service meaning in `livingMemberExperience.ts` from
  * `recentVisits`. G.2B derives type-blind retention pressure from that accepted
  * experience. G.2C1 persists only the member's response to that pressure in
- * `stayState`, once per real service observation. This file does not rebuild
+ * `stayState`, once per real service observation. G.2C2 may then remove an
+ * already-eligible member from the active roster after one further
+ * strain-qualifying service observation. This file does not rebuild
  * satisfaction or retention arithmetic.
  *
  * NOT BUILT HERE, ON PURPOSE — later stages:
  *
- *   - No roster deletion/departure event, no arrival dynamics beyond accepted
- *     facility expansion, no dues wiring, no `reputationFromMembers` wiring,
- *     no `memberSatisfaction` calls.
- *   - No offline-fabricated service visits or stay changes — observations arrive
- *     only from real `floorSim.ts` steps while the sim is running.
- *   - No Athlete season calendar and no Career/Meet → `EmpireState.reputation` path.
+ *   - No arrival dynamics beyond accepted facility expansion, no dues wiring,
+ *     no `reputationFromMembers` wiring, no `memberSatisfaction` calls.
+ *   - No offline-fabricated service visits, stay changes, or departures —
+ *     observations arrive only from real `floorSim.ts` steps while the sim
+ *     is running.
+ *   - No Athlete season calendar, no returning members, and no Career/Meet →
+ *     `EmpireState.reputation` path.
  */
 
 import { refuseWith } from './empireCore';
@@ -34,11 +40,17 @@ import { EMPIRE_TUNING } from './empireTuning';
 import { ambientMemberRoster } from './floor';
 import type { FloorSimPopulationEntry, FloorSimServiceObservation } from './floorSim';
 import type { LadderEquipmentItem, LadderRung } from './ladder';
+import {
+  createLivingMemberDepartureRecord,
+  livingMemberShouldDepart,
+  type LivingMemberDepartureRecord,
+} from './livingMemberDeparture';
 import { livingMemberExperience } from './livingMemberExperience';
 import { livingMemberRetentionPressure } from './livingMemberRetention';
 import {
   advanceLivingMemberStay,
   createLivingMemberStayState,
+  livingMemberStayEvidence,
   type LivingMemberStayState,
 } from './livingMemberStay';
 import { equipmentBiasedMemberTypes, type MemberType } from './members';
@@ -80,7 +92,11 @@ export interface LivingGymMember {
 export interface LivingMemberRoster {
   readonly rung: LadderRung;
   readonly identityNonce: number;
+  /** Next unused creation ordinal. Never decreases, including after a departure. */
+  readonly nextOrdinal: number;
   readonly members: readonly LivingGymMember[];
+  /** Archive of departed members. Not active roster rows. */
+  readonly departures: readonly LivingMemberDepartureRecord[];
 }
 
 /** History limits compared in tests; the shipped limit is the middle entry. */
@@ -258,13 +274,21 @@ export function createLivingMemberRoster(
       createLivingMember(identityNonce, index, row.type, joinedAtSeconds),
     ),
   );
-  return Object.freeze({ rung, identityNonce, members });
+  return Object.freeze({
+    rung,
+    identityNonce,
+    nextOrdinal: members.length,
+    members,
+    departures: Object.freeze([]),
+  });
 }
 
 /**
  * Facility relocation: preserve every existing member exactly; append only when
  * the destination ambient count is larger. Refuses when the destination would
- * require fewer members than already live on the floor.
+ * require fewer members than already live on the floor. New identities mint
+ * from `nextOrdinal`, never from active length, so a departed ordinal cannot
+ * be reused.
  */
 export function reconcileLivingMemberRosterOnRelocation(
   roster: LivingMemberRoster,
@@ -287,13 +311,15 @@ export function reconcileLivingMemberRosterOnRelocation(
   if (targetCount === existing.length) {
     return Object.freeze({ ...roster, rung: newRung });
   }
+  const startOrdinal = roster.nextOrdinal;
   const appended = Object.freeze(
     Array.from({ length: targetCount - existing.length }, (_unused, offset) => {
-      const index = existing.length + offset;
+      const ordinal = startOrdinal + offset;
+      const typeIndex = existing.length + offset;
       return createLivingMember(
         roster.identityNonce,
-        index,
-        memberTypeForIndex(sessionOwned, index),
+        ordinal,
+        memberTypeForIndex(sessionOwned, typeIndex),
         relocationMarkSeconds,
       );
     }),
@@ -301,7 +327,9 @@ export function reconcileLivingMemberRosterOnRelocation(
   return Object.freeze({
     rung: newRung,
     identityNonce: roster.identityNonce,
+    nextOrdinal: startOrdinal + appended.length,
     members: Object.freeze([...existing, ...appended]),
+    departures: roster.departures,
   });
 }
 
@@ -343,6 +371,15 @@ export function livingMemberById(
   return found ?? null;
 }
 
+/** Read a departed snapshot by stable id. */
+export function departedMemberById(
+  roster: LivingMemberRoster,
+  id: GymMemberId,
+): LivingMemberDepartureRecord | null {
+  const found = roster.departures.find((record) => record.member.id === id);
+  return found ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // Service outcomes
 // ---------------------------------------------------------------------------
@@ -377,15 +414,25 @@ function truncateHistory(
   return Object.freeze(visits.slice(visits.length - limit));
 }
 
+function latestVisitOf(member: LivingGymMember): ServiceVisitRecord | undefined {
+  return member.recentVisits[member.recentVisits.length - 1];
+}
+
 /**
- * Fold real floor-sim observations into history and G.2C1 stay response.
- * Offline clock does not call this. G.2A/G.2B are consumed whole rather than
- * reimplemented: new history → accepted experience → accepted pressure →
- * type-specific persistent response.
+ * Fold real floor-sim observations into history, G.2C1 stay response, and
+ * G.2C2 departure execution. Offline clock does not call this. G.2A/G.2B are
+ * consumed whole rather than reimplemented: new history → accepted experience
+ * → accepted pressure → type-specific persistent response → possible leave.
  *
- * Exact replay of the latest service event is a whole-roster no-op. If the
- * same member/tick arrives with different service facts, refuse instead of
- * choosing which history is true.
+ * Exact replay of the latest service event is a whole-roster no-op, including
+ * after the observation that executed a departure. If the same member/tick
+ * arrives with different service facts, refuse instead of choosing which
+ * history is true. A later observation for a departed member fails closed.
+ *
+ * G.2C1 stay still consumes G.2B of the N=5 window. G.2C2 departure
+ * confirmation consumes the same frozen type classifier on G.2B of the newly
+ * accepted visit alone, so leftover window strain cannot turn a Stable visit
+ * into a leave and the G.2C1 recovery path from eligibility stays live.
  */
 export function applyServiceObservations(
   roster: LivingMemberRoster,
@@ -402,9 +449,31 @@ export function applyServiceObservations(
   for (const member of roster.members) {
     byId.set(member.id, member);
   }
+  const departedById = new Map<GymMemberId, LivingMemberDepartureRecord>();
+  for (const record of roster.departures) {
+    departedById.set(record.member.id, record);
+  }
+  const nextDepartures: LivingMemberDepartureRecord[] = [];
+  for (const record of roster.departures) {
+    nextDepartures.push(record);
+  }
   let changed = false;
   for (const observation of observations) {
     const id = observation.memberId as GymMemberId;
+    const incomingVisit = visitFromObservation(observation);
+    const tombstone = departedById.get(id);
+    if (tombstone !== undefined) {
+      const departedVisit = latestVisitOf(tombstone.member);
+      if (departedVisit?.observedAtTick === incomingVisit.observedAtTick) {
+        if (!sameServiceVisit(departedVisit, incomingVisit)) {
+          refuseWith(
+            `service observation conflicts with departed member ${id} at tick ${incomingVisit.observedAtTick}`,
+          );
+        }
+        continue;
+      }
+      refuseWith(`service observation names departed member ${id}`);
+    }
     const current = byId.get(id);
     if (current === undefined) {
       refuseWith(`service observation names unknown member ${observation.memberId}`);
@@ -414,8 +483,7 @@ export function applyServiceObservations(
         `service observation type ${observation.memberType} does not match member ${current.id} type ${current.type}`,
       );
     }
-    const incomingVisit = visitFromObservation(observation);
-    const latestVisit = current.recentVisits[current.recentVisits.length - 1];
+    const latestVisit = latestVisitOf(current);
     if (latestVisit?.observedAtTick === incomingVisit.observedAtTick) {
       if (!sameServiceVisit(latestVisit, incomingVisit)) {
         refuseWith(`service observation conflicts with member ${current.id} at tick ${incomingVisit.observedAtTick}`);
@@ -426,6 +494,9 @@ export function applyServiceObservations(
       Object.freeze([...current.recentVisits, incomingVisit]),
       historyLimit,
     );
+    const visitExperience = livingMemberExperience(Object.freeze([incomingVisit]));
+    const visitRetention = livingMemberRetentionPressure(visitExperience);
+    const departureEvidence = livingMemberStayEvidence(current.type, visitRetention);
     const experience = livingMemberExperience(nextVisits);
     const retention = livingMemberRetentionPressure(experience);
     const stayState = advanceLivingMemberStay(
@@ -434,26 +505,43 @@ export function applyServiceObservations(
       retention,
       observation.observedAtTick,
     );
-    byId.set(
-      id,
-      Object.freeze({
-        ...current,
-        recentVisits: nextVisits,
-        stayState,
-      }),
-    );
+    const nextMember = Object.freeze({
+      ...current,
+      recentVisits: nextVisits,
+      stayState,
+    });
+    if (livingMemberShouldDepart(current.stayState.status, departureEvidence)) {
+      const record = createLivingMemberDepartureRecord(
+        nextMember,
+        observation.observedAtTick,
+        visitRetention,
+      );
+      byId.delete(id);
+      departedById.set(id, record);
+      nextDepartures.push(record);
+      changed = true;
+      continue;
+    }
+    byId.set(id, nextMember);
     changed = true;
   }
   if (!changed) return roster;
+  const nextMembers: LivingGymMember[] = [];
+  for (const member of roster.members) {
+    const updated = byId.get(member.id);
+    if (updated !== undefined) nextMembers.push(updated);
+  }
   return Object.freeze({
     ...roster,
-    members: Object.freeze(roster.members.map((member) => byId.get(member.id) ?? member)),
+    members: Object.freeze(nextMembers),
+    departures: Object.freeze(nextDepartures),
   });
 }
 
 /**
- * Clock advance only moves tenure forward. It never fabricates visits or stay
- * response — the gym may have been away; service truth stays in the sim.
+ * Clock advance only moves tenure forward. It never fabricates visits, stay
+ * response, or departures — the gym may have been away; service truth stays
+ * in the sim.
  */
 export function advanceLivingMemberTenure(
   roster: LivingMemberRoster,

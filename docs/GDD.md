@@ -3196,10 +3196,13 @@ than the ruling's own §1–§23 sequence:
   wait formula remains `exp(-ticks / 110)`. Independently verified
   mint `ba8561bfd11e9e2a5062923d4054b59e0976dcc0` (docs/comment only;
   no product-runtime change). **G.2B CLOSED** (COMMON / type-blind
-  retention-pressure foundation). **G.2C1 FOUNDATION BUILT, AWAITING
-  FREEZE** — persistent stay response from accepted G.2B pressure.
-  It does not delete members, does not wire dues or reputation, and
-  does not start G.2C arrivals/departures. G.2C / G.2D / G.2E remain
+  retention-pressure foundation). **G.2C1 CLOSED / FROZEN** at
+  `c8776cadcb57ef6f16acabe4f962858c6b2dac0a` — persistent stay
+  response from accepted G.2B pressure; eligibility is not removal.
+  **G.2C2 ACTUAL DEPARTURE EXECUTION BUILT, AWAITING FREEZE** —
+  the first slice allowed to remove a living member after one further
+  strain-qualifying service observation. No arrival-rate system, no
+  dues, no reputation, no Athlete return. G.2C3 / G.2D / G.2E remain
   blocked.
 
 ### Human Stage C rejection at `f097695b`
@@ -4755,12 +4758,13 @@ behavior.
 | G.1 | CLOSED at `c27f714c` |
 | G.2A | CLOSED at `255de8a5`; mint `ba8561bf` |
 | G.2B | CLOSED — COMMON / type-blind |
-| G.2C1 | FOUNDATION BUILT; awaiting freeze. No roster deletion. |
+| G.2C1 | CLOSED / FROZEN at `c8776cadcb57ef6f16acabe4f962858c6b2dac0a`. No roster deletion in G.2C1. |
+| G.2C2 | FOUNDATION BUILT; awaiting freeze. Actual departure after eligibility plus one new strain-qualifying observation. |
 | G2-CONDITION-01 | OPEN — service-level condition attribution missing |
 | G2-FIT-01 | OPEN — equipment fit is attraction, not recent service |
 | G2-TYPE-01 | OPEN — no type-specific **satisfaction** interpretation |
 | G2-ATHLETE-SEASON-01 | OPEN — Athlete leave/return needs G.2C |
-| G.2C | BLOCKED — actual arrivals/departures |
+| G.2C | BLOCKED — arrival-rate system / G.2C3. G.2C1 frozen. G.2C2 awaiting freeze. |
 | G.2D | BLOCKED |
 | G.2E | BLOCKED |
 | Career → Empire reputation | BLOCKED |
@@ -4850,11 +4854,13 @@ merge.
 
 #### Stage G.2C1 — Persistent Stay-Response Foundation
 
-**STAGE G.2C1 FOUNDATION BUILT, AWAITING FREEZE.** This slice turns
+**STAGE G.2C1 CLOSED / FROZEN** at
+`c8776cadcb57ef6f16acabe4f962858c6b2dac0a`. This slice turns
 repeated accepted G.2B pressure evaluations into a persistent member
 response. It does not calculate satisfaction, does not reinterpret
 pressure as probability, and does not remove a roster row. Actual
-arrivals/departures, G.2C2, G.2D, and G.2E stay blocked.
+member removal is G.2C2. Arrival-rate system, G.2C3, G.2D, and G.2E
+stay blocked.
 
 **Proven causal chain:** physical gym decision → real FloorSim service
 → persistent N=5 member history → G.2A experience → G.2B type-blind
@@ -4862,8 +4868,8 @@ retention pressure → G.2C1 `stayState`.
 
 **Statuses:** `forming` → `staying` → `unsettled` → `considering-exit`
 → `departure-eligible`. Forming is uncertainty, not a stay claim.
-`departure-eligible` is a persistent flag for a later stage, not a
-departure.
+`departure-eligible` is a persistent flag, not a departure. G.2C2
+consumes that flag; this stage does not delete the row.
 
 **Confirmation rule:** majority of the same five-visit memory window
 G.2A ships: `floor(5 / 2) + 1 = 3` consecutive qualifying observations
@@ -4879,7 +4885,8 @@ visits.
 
 **Type treatment is the G.2C1 response boundary only.** G.2B remains
 COMMON / type-blind. Type does not rewrite WAIT / TRAINING / SERVICE /
-overall experience or the pressure index.
+overall experience or the pressure index. The classifier is
+`livingMemberStayEvidence`; G.2C2 consumes that same function.
 
 | Type | G.2C1 response |
 |---|---|
@@ -4897,11 +4904,71 @@ the same member/tick fail closed.
 clock, no leave percentage, no countdown, no dues, no Empire reputation
 write, no Career import, no Portfolio, no NpcLifter merge. No
 player-facing departure copy. No speculative “departure eligible”
-helpers — only the persistent state and transition machinery
-`livingMembers.ts` actually consumes.
+helpers — only the persistent state, the shared evidence classifier,
+and transition machinery `livingMembers.ts` actually consumes.
 
-**Still blocked:** actual member removal, arrival-rate system, G.2C2,
-G.2D, G.2E.
+#### Stage G.2C2 — Actual Living-Member Departure Execution
+
+**STAGE G.2C2 ACTUAL DEPARTURE EXECUTION BUILT, AWAITING FREEZE.**
+This is the first slice allowed to remove a living member from the
+active gym roster. It is not a churn-system rewrite. Arrivals, arrival
+rates, dues, reputation, percentages, probabilities, random rolls,
+countdowns, wall-clock churn, Athlete seasonality, Career/Meet
+reputation, Portfolio, and NpcLifter merging stay blocked.
+
+**Eligibility vs actual departure:** G.2C1 reaching `departure-eligible`
+does not delete the member. The member stays on the active roster.
+Subsequent accepted service observations still pass G.2A → G.2B →
+G.2C1. If sustained Stable evidence recovers them out of
+`departure-eligible`, no departure occurs. If, while already eligible,
+a newly accepted service observation is itself strain-qualifying under
+the frozen G.2C1 type-response classifier (`livingMemberStayEvidence`
+on that visit’s own G.2A → G.2B reading), the member departs after
+that observation is accepted. G.2C1 stay continues to use G.2B of the
+N=5 window, so leftover window strain cannot turn a Stable visit into
+a leave.
+
+- shortest all-adverse path to eligibility = 9 observations
+- earliest all-adverse actual departure = 10 observations
+
+There is no new counter, countdown, probability, random roll, or
+elapsed-time hazard. Neutral service while eligible does not itself
+cause departure. The tenth observation is the first new
+strain-confirming service event after G.2C1 has already established
+eligibility.
+
+**Archive / idempotence:** a departed member is removed from
+`LivingMemberRoster.members` and stored on `departures`. Exact replay
+of the departure-causing observation is a full roster no-op. Same
+departed member + same tick + conflicting facts fail closed. A later
+observation for a departed member fails closed. No silent resurrection.
+No returning members.
+
+**Identity:** `nextOrdinal` is a monotonic allocator. Departed IDs are
+never reused. Relocation expansion mints from `nextOrdinal`, not from
+active `members.length`. Display names stay assigned once at creation.
+Existing active members keep identity, type, displayName,
+joinedAtSeconds, history, and stayState.
+
+**FloorSim:** `reconcileFloorSimPopulation` drops simulator bodies
+whose `memberId` is no longer active, preserves survivors (cell,
+queue/use, timers, target), reindexes the sim-local index space, and
+produces no observation. Unknown/new IDs through this seam fail closed.
+`createFloorSimState` may represent an active population smaller than
+the facility's ambient placement count; it may not exceed that count.
+
+**Selection:** FloorGrid selection is keyed by `memberId`. If someone
+before the selected member leaves, the selected member stays selected.
+If the selected member leaves, the card closes. Sprites are keyed by
+`memberId`.
+
+**Player-facing:** a last-departure notice names the member and the
+accepted G.2B reason. No %, no countdown, no “3 visits left,” no
+upgrade-ownership guess, no raw crowdingLoad.
+
+**Still blocked:** arrival-rate system, G.2C3, G.2D, G.2E, Athlete
+seasonality (G2-ATHLETE-SEASON-01), dues, reputation, Career → Empire
+reputation, Portfolio, NpcLifter merge.
 
 ---
 
