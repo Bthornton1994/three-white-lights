@@ -416,6 +416,7 @@ import * as ladderModule from './ladder';
 import * as ladderViewModule from './ladderView';
 import * as livingMemberExperienceModule from './livingMemberExperience';
 import * as livingMemberRetentionModule from './livingMemberRetention';
+import * as livingMemberStayModule from './livingMemberStay';
 import * as livingMembersModule from './livingMembers';
 import * as managementModule from './management';
 import * as membersModule from './members';
@@ -1637,6 +1638,8 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
+  // Stage G.2C1: private hasReason reads caller-supplied retention.reasons.
+  'livingMemberStay.ts#hasReason#retention.some x1',
   // Stage G.1 livingMembers.ts reads of caller-supplied roster/id/history.
   'livingMembers.ts#applyServiceObservations#roster.map x1',
   'livingMembers.ts#floorSimPopulationFromRoster#roster.map x1',
@@ -1676,7 +1679,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 28, // Stage G.2B livingMemberRetention.ts
+  MODULES: 29, // Stage G.2C1 livingMemberStay.ts
   // 273 -> 280: GymView's four new exports (createGymViewState, GymViewState,
   // GymViewAction, GymViewRefusal don't count as runtime exports — the seven
   // that do are createGymViewState, gymViewReduce, GymView from ladderView.tsx
@@ -1779,7 +1782,8 @@ const SURFACE_CENSUS = Object.freeze({
   // stationChangeoverSeats, stationChangeoverTicks, playerFacingStationOperation.
   // 429 -> 432: Stage D2.2 plateLoadingProgress, plateLoadingDiscs,
   // ladderDevClockTestId.
-  EXPORTS: 463, // Stage G.2B livingMemberRetentionPressure + statuses
+  // 463 -> 465: Stage G.2C1 createLivingMemberStayState + advanceLivingMemberStay.
+  EXPORTS: 465, // Stage G.2C1 stay-response foundation
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1921,7 +1925,10 @@ const SURFACE_CENSUS = Object.freeze({
 // for, the same as `isSoundCondition`'s addition above. Read from this pin's
 // own failure value.
   // 3970 -> 4024: Stage C.1b GymSurface / furniture-place unions and FloorState.furniture.
-  LITERAL_POSITIONS: 4333, // Stage G.2B livingMemberRetention literal unions
+  // 4333 -> 4453: Stage G.2C1 stay-status / cause / direction unions on
+  // livingMemberStay.ts and livingMembers.ts stayState. Read from this pin's
+  // own failure value.
+  LITERAL_POSITIONS: 4453, // Stage G.2C1 stay-response literal unions
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -1968,7 +1975,8 @@ const SURFACE_CENSUS = Object.freeze({
   // and StationUpgradeRefuseReason.
   // 243 -> 247: Stage D.1 — 'training', 'competition-bench-bay', 'primary',
   // 'expansion'.
-  DISTINCT_LITERAL_MEMBERS: 265, // Stage G.2B retention status/kind literals
+  // 265 -> 270: Stage G.2C1 stay-status / cause / direction members.
+  DISTINCT_LITERAL_MEMBERS: 270, // Stage G.2C1 stay-response literal members
   DEPTH_CUTS: 0,
 });
 
@@ -3004,7 +3012,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // calls no brand constructor either.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts joins the walk; it
   // calls no brand constructor either.
-  MODULES: 28, // Stage G.2B livingMemberRetention.ts
+  MODULES: 29, // Stage G.2C1 livingMemberStay.ts
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -3160,7 +3168,8 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // and FloorGrid presentation helpers. Read from this pin's own failure.
   // 3361 -> 3375: Stage D2.1A live-Capacity seat assignment / relocate helpers.
   // 3375 -> 3405: Stage D2.1B changeover helpers + FloorGrid loading path.
-  CALLS_EXAMINED: 3662, // Stage G.2B livingMemberRetention
+  // 3662 -> 3704: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
+  CALLS_EXAMINED: 3704, // Stage G.2C1 livingMemberStay
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3726,6 +3735,7 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'trainingStation.ts': trainingStationModule as unknown as Readonly<Record<string, unknown>>,
   'livingMemberExperience.ts': livingMemberExperienceModule as unknown as Readonly<Record<string, unknown>>,
   'livingMemberRetention.ts': livingMemberRetentionModule as unknown as Readonly<Record<string, unknown>>,
+  'livingMemberStay.ts': livingMemberStayModule as unknown as Readonly<Record<string, unknown>>,
   'livingMembers.ts': livingMembersModule as unknown as Readonly<Record<string, unknown>>,
 });
 
@@ -8159,6 +8169,62 @@ function driveEverything(): readonly DrivenRow[] {
     );
   }
 
+  // --- livingMemberStay.ts (Stage G.2C1: persistent stay-response. No roster deletion.)
+  {
+    const formingExperience = livingMemberExperienceModule.livingMemberExperience([]);
+    const formingRetention = livingMemberRetentionModule.livingMemberRetentionPressure(formingExperience);
+    drive('createLivingMemberStayState', 'open', () =>
+      livingMemberStayModule.createLivingMemberStayState(),
+    );
+    const opening = livingMemberStayModule.createLivingMemberStayState();
+    drive('advanceLivingMemberStay', 'forming', () =>
+      livingMemberStayModule.advanceLivingMemberStay(opening, 'casual', formingRetention, 1),
+      [opening, formingRetention],
+    );
+    const formedVisit = Object.freeze({
+      stationKind: 'training' as const,
+      stationKey: 'training:competition-bench-bay',
+      queueWaitTicks: 52,
+      trainingExperience: EMPIRE_TUNING.STATION_STOCK_TRAINING_EXPERIENCE,
+      outcome: 'completed' as const,
+      observedAtTick: 1,
+    });
+    const watchingRetention = livingMemberRetentionModule.livingMemberRetentionPressure(
+      livingMemberExperienceModule.livingMemberExperience([formedVisit]),
+    );
+    const strained = livingMemberStayModule.advanceLivingMemberStay(
+      opening,
+      'casual',
+      watchingRetention,
+      1,
+    );
+    drive('advanceLivingMemberStay', 'watching-wait', () =>
+      livingMemberStayModule.advanceLivingMemberStay(opening, 'casual', watchingRetention, 1),
+      [opening, watchingRetention],
+    );
+    drive('advanceLivingMemberStay', 'replay', () =>
+      livingMemberStayModule.advanceLivingMemberStay(strained, 'casual', watchingRetention, 1),
+      [strained, watchingRetention],
+    );
+    drive('advanceLivingMemberStay', 'older', () =>
+      livingMemberStayModule.advanceLivingMemberStay(strained, 'casual', watchingRetention, 0),
+      [strained, watchingRetention],
+    );
+    const stableRetention = livingMemberRetentionModule.livingMemberRetentionPressure(
+      livingMemberExperienceModule.livingMemberExperience([
+        Object.freeze({
+          ...formedVisit,
+          queueWaitTicks: 0,
+          trainingExperience: EMPIRE_TUNING.STATION_QUALITY_TRAINING_EXPERIENCE,
+        }),
+      ]),
+    );
+    drive('advanceLivingMemberStay', 'stable', () =>
+      livingMemberStayModule.advanceLivingMemberStay(opening, 'casual', stableRetention, 1),
+      [opening, stableRetention],
+    );
+  }
+
   // --- management.ts (GDD §5 v2, stage 4: staffing, maintenance, condition,
   // recoverable failure)
   //
@@ -11304,7 +11370,9 @@ const DRIVE_CENSUS = Object.freeze({
   // 593544 -> 595928: Stage C.1b furniture-layout exports, GYM_SURFACES, and
   // the larger GymScreen tree. Re-measured by running this assertion.
   // 595954 -> 595972: Stage C.1d playerFacing* drives.
-  ROWS: 600657, // Stage G.2B livingMemberRetention drive
+  // 600657 -> 600663: Stage G.2C1 createLivingMemberStayState +
+  // advanceLivingMemberStay drive rows. Read from this pin's own failure value.
+  ROWS: 600663, // Stage G.2C1 stay-response drive
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -11331,7 +11399,8 @@ const DRIVE_CENSUS = Object.freeze({
   // exports (isRecoveryBlocking, recoveryBlockingItems), both driven above.
   // 382 -> 389: Stage C.1b six floor furniture exports + GYM_SURFACES.
   // 393 -> 396: Stage C.1d three playerFacing* drives.
-  EXPORTS_DRIVEN: 463, // Stage G.2B livingMemberRetentionPressure + statuses
+  // 463 -> 465: Stage G.2C1 createLivingMemberStayState + advanceLivingMemberStay.
+  EXPORTS_DRIVEN: 465, // Stage G.2C1 stay-response foundation
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -11361,6 +11430,10 @@ const DRIVE_CENSUS = Object.freeze({
   // 6417384 -> 6417438: the same round, after `VALUE_WALK_MAX_DEPTH` went
   // 16 -> 24 so the walk stopped truncating on that tree. Fifty-four more
   // nodes, which is what the 81 depth cuts were declining to look at.
+  // 6_546_043 -> 6_546_189: Stage G.2C1 stay-response drive. STRINGS
+  // 30_199_722 -> 30_201_000 and DISTINCT_STRINGS 4224 -> 4231 were
+  // read from this pin's subsequent failure values, not guessed.
+  NODES: 6546189, // Stage G.2C1 stay-response drive
   // THE SENTENCE THAT USED TO FINISH THIS COMMENT WAS FALSE AND IS CORRECTED
   // RATHER THAN DELETED. It read: "`STRINGS` and `DISTINCT_STRINGS` did NOT
   // move with it — the nodes past the old bound carry no string this scan had
@@ -11424,7 +11497,9 @@ const DRIVE_CENSUS = Object.freeze({
   // failure value.
   // 6490388 -> 6510102: Stage C.1b furniture/dock GymScreen trees. Measured.
   // 6510907 -> 6510913: Stage C.1d playerFacing* drive rows.
-  NODES: 6546043, // Stage G.2B livingMemberRetention drive
+  // 6_546_043 -> 6_546_189: Stage G.2C1 stay-response drive. See NODES pin
+  // above. STRINGS 30_199_722 -> 30_201_000 and DISTINCT_STRINGS 4224 -> 4231
+  // were read from subsequent failure values, not guessed.
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -11545,7 +11620,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_199_722, // Stage G.2B livingMemberRetention drive strings
+  STRINGS: 30_201_000, // Stage G.2C1 stay-response drive strings
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -11655,7 +11730,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
   // 3973 -> 3975: Stage D2 reset-gym copy / wear-truth strings. Read from
   // this pin's own failure value.
-  DISTINCT_STRINGS: 4224, // Stage G.2B livingMemberRetention labels/reasons
+  DISTINCT_STRINGS: 4231, // Stage G.2C1 stay-status/cause/direction strings
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
   DEPTH_CUTS: 7,
   /**
@@ -11820,7 +11895,8 @@ const DRIVE_CENSUS = Object.freeze({
   // 6018 -> 6070: Stage C.1b GymScreen/FloorGrid Error.stack readings. Measured.
   // 6247 -> 6253: Stage D2 reset-gym Pressable stacks on driven GymScreen
   // trees. Read from this pin's own failure value.
-  STACKS: 6290,
+  // 6290 -> 6291: Stage G.2C1 stay-response drive Error.stack readings.
+  STACKS: 6291,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -15671,7 +15747,8 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'ladderView.tsx': 34,
       'livingMemberExperience.ts': 36,
       'livingMemberRetention.ts': 10,
-      'livingMembers.ts': 33, // Stage G.1C displayNameForCreation + wait-copy returns
+      'livingMemberStay.ts': 23, // Stage G.2C1 stay-state returns
+      'livingMembers.ts': 35, // Stage G.2C1 stayState wiring + wait-copy returns
       'management.ts': 90,
       'members.ts': 13,
       'npc.ts': 12,
@@ -15742,7 +15819,8 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'ladder.ts': 20,
   'livingMemberExperience.ts': 2,
   'livingMemberRetention.ts': 1,
-  'livingMembers.ts': 12,
+  'livingMemberStay.ts': 5, // Stage G.2C1 stay evaluation refusals
+  'livingMembers.ts': 13,
   'management.ts': 27,
   'members.ts': 9,
   'pacing.ts': 3,
@@ -16125,7 +16203,7 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'ladderView.tsx:672 returned=unfollowable:state',
   'ladderView.tsx:727 returned=unfollowable:state',
   'ladderView.tsx:736 returned=unfollowable:state',
-  'livingMembers.ts:269 returned=unfollowable:roster',
+  'livingMembers.ts:281 returned=unfollowable:roster',
   'management.ts:1473 returned=unfollowable:state',
   'pacing.ts:246 receiver=CallExpression',
   'recruitment.ts:388 returned=unfollowable:state',
@@ -16200,8 +16278,8 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'ladderView.tsx:852 ManagedGym asked=true walked=false',
   'ladderView.tsx:860 ManagedGym asked=true walked=false',
   'ladderView.tsx:895 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'livingMembers.ts:269 readonly LivingGymMember[] asked=true walked=false',
-  'livingMembers.ts:321 LivingGymMember | undefined asked=true walked=false',
+  'livingMembers.ts:281 readonly LivingGymMember[] asked=true walked=false',
+  'livingMembers.ts:333 LivingGymMember | undefined asked=true walked=false',
   'management.ts:1473 readonly CountedDecisionRecord[] asked=true walked=false',
   'management.ts:1640 LadderAccrual asked=true walked=false',
   'management.ts:1650 GymState asked=true walked=false',
@@ -16447,7 +16525,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1674 -> 1681: Stage D2 placedOwnedItems / withWear / stationOperationView / reset.
   // 1681 -> 1691: Stage D2.1A assignedSeat / reservedUseCells / relocate helpers.
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
-  function: 1815, // Stage G.2B livingMemberRetention + FloorGrid membership
+  // 1815 -> 1841: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
+  function: 1841, // Stage G.2C1 stay-response function calls
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16505,7 +16584,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1502 -> 1513: Stage D2 Set.has / Object.freeze / stationByRefKey.get.
   // 1513 -> 1517: Stage D2.1A useCells/blocked/has member calls on live relocate.
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
-  member: 1658, // Stage G.2B livingMemberRetention + FloorGrid membership
+  // 1658 -> 1673: Stage G.2C1 livingMemberStay.ts plus livingMembers stayState.
+  member: 1673, // Stage G.2C1 stay-response member calls
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -16515,7 +16595,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // Read from this pin's own failure value.
   // 23 -> 24: GDD §5.14 Stage B's `pacingReadingAtHorizon`'s
   // `readings.find(...)`, the same shape as S4b's rows above.
-  'member-of-parameter': 36, // Stage G.2A livingMemberExperience history/values member calls
+  'member-of-parameter': 37, // Stage G.2C1 stay evaluation reads retention.reasons
   // Phase 4: FLOOR_SPRITE_PALETTES' construction calls a fresh arrow (the
   // palette-row map), the same site DECLARED_FRESH_RECEIVERS names.
   fresh: 3, // Stage G.2A livingMemberExperience
@@ -16614,7 +16694,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 28, // Stage G.2B livingMemberRetention.ts
+  MODULES: 29, // Stage G.2C1 livingMemberStay.ts
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved.
    * 404 -> 427 with GymView: +13 `return` sites (5 -> 18) and +6
    * `callback-invocation` sites (3 -> 9) on `ladderView.tsx`, +4 `return`
@@ -16701,7 +16781,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 911 -> 916: Stage D2.1A floorSim return 63 -> 68.
   // 916 -> 925: Stage D2.1B floorSim 68→72, stationCapability 24→27,
   // stationView 44→46.
-  SITES: 1048, // Stage G.2B livingMemberRetention + FloorGrid membership sites
+  // 1048 -> 1073: Stage G.2C1 livingMemberStay.ts return 23 plus
+  // livingMembers.ts return 33 -> 35.
+  SITES: 1073, // Stage G.2C1 stay-response + livingMembers wiring
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -16854,7 +16936,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
   // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
   // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
-  NODES_EXAMINED: 83_797, // Stage G.2B livingMemberRetention AST
+  // 83_797 -> 84_813: Stage G.2C1 livingMemberStay.ts AST plus livingMembers
+  // stayState wiring. Read from this pin last.
+  NODES_EXAMINED: 84_813, // Stage G.2C1 stay-response AST
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -16873,7 +16957,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 149 -> 152: GDD §5.14 Stage B's pacing.ts, three `refuseWith` calls.
   // 152 -> 157: Stage C.1b floor.ts furniture refusals.
   // 159 -> 160: GDD §5.18 Stage D.1 stationCapability refuseWith.
-  WRAP_CALLS: 185, // Stage G.2B livingMemberRetention refuseWith
+  // 185 -> 191: Stage G.2C1 livingMemberStay.ts five refuseWith plus
+  // livingMembers.ts 12 -> 13.
+  WRAP_CALLS: 191, // Stage G.2C1 stay-response refuseWith
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 7, // Stage G.1 argument-mutation on floorSim observation export
@@ -16991,7 +17077,9 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // 1001 -> 1003: Stage D.1b capacityRealizesOn + bay sprite table leaves.
   // 1003 -> 1005: Stage D2 placedOwnedItems + reset-gym signatures.
   // 1005 -> 1015: Stage D2.1B five new exported functions' signatures.
-  POSITIONS: 1101, // Stage G.2B livingMemberRetention types
+  // 1101 -> 1109: Stage G.2C1 stay-state types on livingMemberStay.ts
+  // and livingMembers.ts stayState. Read from this pin's own failure value.
+  POSITIONS: 1109, // Stage G.2C1 stay-response types
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -21269,7 +21357,8 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // 252 -> 253: Stage C.1d PlacementRefuseKind.
   // 253 -> 258: Stage D stationCapability type declarations.
   // 258 -> 264: GDD §5.18 Stage D.1 trainingStation type declarations.
-  DECLARATIONS: 291, // Stage G.2B livingMemberRetention types
+  // 291 -> 297: Stage G.2C1 livingMemberStay.ts stay-state type declarations.
+  DECLARATIONS: 297, // Stage G.2C1 stay-response types
   /** Those carrying type parameters. An instantiation depth needs one. */
   // Phase 4: `MemberTable<Leaf>` in floorSprites.ts.
   GENERIC: 13,
@@ -25014,6 +25103,9 @@ const MEMBER_CALL_PASS_UNDRIVEN: readonly string[] = Object.freeze([
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
+  // Stage G.2C1: private hasReason. Dedicated driver remains a later pass;
+  // the site is named rather than left off the join.
+  'livingMemberStay.ts#hasReason#retention.some x1',
 ]);
 
 interface MemberCallResult {
@@ -25134,7 +25226,7 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 111 -> 159: S4b's two stage-4 sites, +24 each — measured, and the two
   // agreeing at 24 is a coincidence of the two rendered rows rather than a
   // shared derivation.
-  RETURNED: 270, // Stage G.1C applyServiceObservations map returns displayName (+6)
+  RETURNED: 294, // Stage G.2C1 applyServiceObservations map returns stayState
   FINDINGS: 0,
   TRIPWIRE_SUBJECTS: 2,
   TRIPWIRE_FINDINGS: 2,
@@ -25253,7 +25345,7 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   'pacing.ts#pacingReadingAtHorizon#readings.find x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
   // Stage G.1A: five new member-of-parameter sites, measured by running this assertion.
   'floorSim.ts#createFloorSimState#context.map x1 calls=1 callbacks=3 handed=0 returned=66 verdicts=objectx3',
-  'livingMembers.ts#applyServiceObservations#roster.map x1 calls=1 callbacks=3 handed=0 returned=33 verdicts=objectx3',
+  'livingMembers.ts#applyServiceObservations#roster.map x1 calls=1 callbacks=3 handed=0 returned=57 verdicts=objectx3',
   'livingMembers.ts#floorSimPopulationFromRoster#roster.map x1 calls=1 callbacks=3 handed=0 returned=12 verdicts=objectx3',
   'livingMembers.ts#livingMemberById#roster.find x1 calls=1 callbacks=1 handed=0 returned=0 verdicts=truex1',
   'livingMembers.ts#memberOrdinalFromId#id.split x1 calls=1 callbacks=0 handed=1 returned=0 verdicts=none',
@@ -25340,8 +25432,9 @@ describe('the member-call pass — what a caller-supplied method is actually han
     // the members: an empty excuse list is the one state where the set equality
     // above is a complete statement, so it is worth a line that reddens when it
     // stops being empty.
-    // Stage G.1A: two private-helper sites await dedicated drives.
-    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(7);
+    // Stage G.2A: two private-helper sites await dedicated drives.
+    // Stage G.2C1: hasReason#retention.some named on the undriven list.
+    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(8);
     expect(driven.length).toBe(MEMBER_CALL_PASS_CENSUS.SUBJECTS);
     // Both `visitRefusals` sites are driven, and they share a key. A `Set` of
     // the driven sites would have quietly collapsed them, so the count of that

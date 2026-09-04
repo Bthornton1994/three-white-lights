@@ -3195,11 +3195,12 @@ than the ruling's own §1–§23 sequence:
   half-life) and pinned the real Garage / synthetic tables; the shipped
   wait formula remains `exp(-ticks / 110)`. Independently verified
   mint `ba8561bfd11e9e2a5062923d4054b59e0976dcc0` (docs/comment only;
-  no product-runtime change). **G.2B is authorized** as the
-  retention-pressure foundation (explainable experience →
-  willingness-to-stay pressure). It does not delete members, does not
-  wire dues or reputation, and does not start G.2C arrivals/departures.
-  G.2C / G.2D / G.2E remain blocked.
+  no product-runtime change). **G.2B CLOSED** (COMMON / type-blind
+  retention-pressure foundation). **G.2C1 FOUNDATION BUILT, AWAITING
+  FREEZE** — persistent stay response from accepted G.2B pressure.
+  It does not delete members, does not wire dues or reputation, and
+  does not start G.2C arrivals/departures. G.2C / G.2D / G.2E remain
+  blocked.
 
 ### Human Stage C rejection at `f097695b`
 
@@ -4738,13 +4739,14 @@ those debts and does not start G.2C.
 
 #### Stage G.2B — Living Member Retention Pressure Foundation
 
-**STAGE G.2B AUTHORIZED — RETENTION PRESSURE FOUNDATION BUILT,
-AWAITING HUMAN STAY-RISK VERDICT.** Human authorization superseded
-the previous "unauthorized" sentence for this stage only. G.2C
-arrivals/departures, G.2D dues, G.2E member-side reputation,
-Career/Meet → Empire reputation, Portfolio, and NpcLifter merge stay
-blocked. No member leaves in G.2B. No new member arrives except the
-already-accepted G.1 facility-expansion behavior.
+**STAGE G.2B CLOSED — COMMON / TYPE-BLIND RETENTION PRESSURE
+FOUNDATION.** Human authorization and the stay-risk verdict closed
+this stage. Type-specific behavior is handled downstream at G.2C1
+rather than rewriting G.2A/G.2B truth. G.2C arrivals/departures, G.2D
+dues, G.2E member-side reputation, Career/Meet → Empire reputation,
+Portfolio, and NpcLifter merge stay blocked. No member leaves in G.2B.
+No new member arrives except the already-accepted G.1 facility-expansion
+behavior.
 
 **Current authority:**
 
@@ -4752,12 +4754,13 @@ already-accepted G.1 facility-expansion behavior.
 |---|---|
 | G.1 | CLOSED at `c27f714c` |
 | G.2A | CLOSED at `255de8a5`; mint `ba8561bf` |
-| G.2B | AUTHORIZED; foundation built; awaiting stay-risk verdict |
+| G.2B | CLOSED — COMMON / type-blind |
+| G.2C1 | FOUNDATION BUILT; awaiting freeze. No roster deletion. |
 | G2-CONDITION-01 | OPEN — service-level condition attribution missing |
 | G2-FIT-01 | OPEN — equipment fit is attraction, not recent service |
 | G2-TYPE-01 | OPEN — no type-specific **satisfaction** interpretation |
 | G2-ATHLETE-SEASON-01 | OPEN — Athlete leave/return needs G.2C |
-| G.2C | BLOCKED |
+| G.2C | BLOCKED — actual arrivals/departures |
 | G.2D | BLOCKED |
 | G.2E | BLOCKED |
 | Career → Empire reputation | BLOCKED |
@@ -4805,10 +4808,11 @@ does not alter G.2A WAIT / TRAINING / SERVICE / overall experience.
 NARROW GDD-backed response (Casual extra strain from accepted WAIT,
 Serious Lifter lower pressure at the same experience, no Bodybuilder /
 Powerlifter / Athlete G.2B modifier) is compared in
-`livingMemberRetention.test.ts` and is not applied. That comparison
-is a human decision before freezing type treatment. It does **not**
-close G2-TYPE-01: that debt is type-specific **satisfaction
-interpretation**, a different domain from retention response.
+`livingMemberRetention.test.ts` and is not applied **inside G.2B**.
+G.2C1 consumes the common signal and applies that narrow response at
+the stay-state boundary. That comparison does **not** close G2-TYPE-01:
+that debt is type-specific **satisfaction interpretation**, a different
+domain from retention response.
 
 **GDD type-quirk reading used here:**
 
@@ -4843,6 +4847,61 @@ on the member detail card only.
 G.2D member dues accounting, G.2E member-side institutional
 reputation, Career/Meet → Empire reputation, Portfolio, NpcLifter
 merge.
+
+#### Stage G.2C1 — Persistent Stay-Response Foundation
+
+**STAGE G.2C1 FOUNDATION BUILT, AWAITING FREEZE.** This slice turns
+repeated accepted G.2B pressure evaluations into a persistent member
+response. It does not calculate satisfaction, does not reinterpret
+pressure as probability, and does not remove a roster row. Actual
+arrivals/departures, G.2C2, G.2D, and G.2E stay blocked.
+
+**Proven causal chain:** physical gym decision → real FloorSim service
+→ persistent N=5 member history → G.2A experience → G.2B type-blind
+retention pressure → G.2C1 `stayState`.
+
+**Statuses:** `forming` → `staying` → `unsettled` → `considering-exit`
+→ `departure-eligible`. Forming is uncertainty, not a stay claim.
+`departure-eligible` is a persistent flag for a later stage, not a
+departure.
+
+**Confirmation rule:** majority of the same five-visit memory window
+G.2A ships: `floor(5 / 2) + 1 = 3` consecutive qualifying observations
+in the same direction. Neutral evidence breaks the pending streak.
+Shortest path from Staying to departure eligibility is nine qualifying
+service observations, not three. Sustained Stable service recovers one
+state at a time and never returns to forming.
+
+Stock Garage already produces Watching pressure (~0.364). Casual+wait
+therefore cannot advance one state every visit; without the majority
+rule a default Casual would have been departure-eligible after three
+visits.
+
+**Type treatment is the G.2C1 response boundary only.** G.2B remains
+COMMON / type-blind. Type does not rewrite WAIT / TRAINING / SERVICE /
+overall experience or the pressure index.
+
+| Type | G.2C1 response |
+|---|---|
+| Casual | May accumulate strain from Watching only when accepted G.2B reasons include wait. Not `crowdingLoad`. |
+| Bodybuilder | Common service path. Occupancy is upstream. |
+| Powerlifter | Common service path. Reputation is later. |
+| Athlete | Common service path. Seasonality remains G2-ATHLETE-SEASON-01 / G.2C. |
+| Serious Lifter | Accumulates strain only at At risk. “Very slow to leave” is response tolerance, not a G.2A/G.2B rewrite. |
+
+**Idempotence:** replaying the latest identical service observation is
+a full roster no-op. An older tick is refused. Conflicting facts for
+the same member/tick fail closed.
+
+**Fences:** no roster mutation, no departure, no random roll, no wall
+clock, no leave percentage, no countdown, no dues, no Empire reputation
+write, no Career import, no Portfolio, no NpcLifter merge. No
+player-facing departure copy. No speculative “departure eligible”
+helpers — only the persistent state and transition machinery
+`livingMembers.ts` actually consumes.
+
+**Still blocked:** actual member removal, arrival-rate system, G.2C2,
+G.2D, G.2E.
 
 ---
 
