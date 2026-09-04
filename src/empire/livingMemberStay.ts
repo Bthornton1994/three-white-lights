@@ -57,6 +57,9 @@ const FORMED_STAY_STATUSES = Object.freeze([
 
 type FormedStayStatus = (typeof FORMED_STAY_STATUSES)[number];
 
+const FORMED_RETENTION_LABELS = Object.freeze(['Stable', 'Watching', 'Strained', 'At risk'] as const);
+type FormedRetentionLabel = (typeof FORMED_RETENTION_LABELS)[number];
+
 const INITIAL_STAY_STATE: LivingMemberStayState = Object.freeze({
   status: 'forming',
   lastEvaluatedVisitTick: null,
@@ -82,6 +85,13 @@ function moveStatus(status: FormedStayStatus, direction: 'up' | 'down'): FormedS
   return FORMED_STAY_STATUSES[nextIndex] as FormedStayStatus;
 }
 
+function formedRetentionLabel(retention: LivingMemberRetentionPressure): FormedRetentionLabel {
+  if (!FORMED_RETENTION_LABELS.includes(retention.label as FormedRetentionLabel)) {
+    refuseWith(`formed retention has unknown label ${retention.label}`);
+  }
+  return retention.label as FormedRetentionLabel;
+}
+
 function hasReason(
   retention: LivingMemberRetentionPressure,
   kind: 'wait' | 'reliability',
@@ -98,11 +108,12 @@ function strainCause(retention: LivingMemberRetentionPressure): LivingMemberStay
 function shouldEscalate(
   type: MemberType,
   retention: LivingMemberRetentionPressure,
+  label: FormedRetentionLabel,
 ): boolean {
-  if (retention.label === 'At risk') return true;
+  if (label === 'At risk') return true;
   if (type === 'serious-lifter') return false;
-  if (retention.label === 'Strained') return true;
-  return type === 'casual' && retention.label === 'Watching' && hasReason(retention, 'wait');
+  if (label === 'Strained') return true;
+  return type === 'casual' && label === 'Watching' && hasReason(retention, 'wait');
 }
 
 /**
@@ -139,8 +150,9 @@ export function advanceLivingMemberStay(
     });
   }
 
+  const label = formedRetentionLabel(retention);
   const current = formedStatus(previous.status);
-  if (shouldEscalate(type, retention)) {
+  if (shouldEscalate(type, retention, label)) {
     return Object.freeze({
       status: moveStatus(current, 'up'),
       lastEvaluatedVisitTick: observedAtTick,
@@ -148,7 +160,7 @@ export function advanceLivingMemberStay(
     });
   }
 
-  if (retention.label === 'Stable') {
+  if (label === 'Stable') {
     return Object.freeze({
       status: moveStatus(current, 'down'),
       lastEvaluatedVisitTick: observedAtTick,
@@ -167,6 +179,11 @@ export function isLivingMemberDepartureEligible(state: LivingMemberStayState): b
   return state.status === 'departure-eligible';
 }
 
+/**
+ * Readable state only. Departure-eligible deliberately shares copy with the
+ * preceding warning state until a later G.2C slice actually performs a
+ * departure; the UI must not claim an event that has not happened.
+ */
 export function playerFacingStayResponse(state: LivingMemberStayState): string {
   switch (state.status) {
     case 'forming':
@@ -176,8 +193,7 @@ export function playerFacingStayResponse(state: LivingMemberStayState): string {
     case 'unsettled':
       return 'Unsettled';
     case 'considering-exit':
-      return 'Considering leaving';
     case 'departure-eligible':
-      return 'Ready to leave';
+      return 'Considering leaving';
   }
 }
