@@ -384,8 +384,10 @@ export function localSessionServer(options: LocalSessionServerOptions = {}): Loc
         } else if (applied.error.code === 'UNKNOWN_FEDERATION') {
           return { kind: 'refused', code: 'FEDERATION_UNKNOWN', detail: applied.error.message };
         }
-        // already chosen or locked by results: attach identity, keep federation
       }
+      // A1 `choose-federation` / v1 save already has chosen: true. Skip
+      // apply, attach identity, keep the confirmed federation. Create shows
+      // that as read-only — a chooser here was a silent no-op.
       profile = created.profile;
       persist();
       return { kind: 'saved', profile };

@@ -12,7 +12,9 @@ import type { LifterProfile, LifterRefusalCode } from '../game/lifterProfile';
 import { openingCache } from '../game/sessionClient';
 import type { ProgressionCache } from '../game/progression';
 import {
+  federationIdForCreate,
   lifterCardFacts,
+  lifterConfirmedFederation,
   lifterFederationOptions,
   lifterRefusalCopy,
   type LifterCardFacts,
@@ -25,6 +27,7 @@ export interface LifterLoop {
   readonly profile: LifterProfile | null;
   readonly card: LifterCardFacts | null;
   readonly options: readonly LifterFederationOption[];
+  readonly confirmedFederation: LifterFederationOption | null;
   readonly nameDraft: string;
   readonly bodyweightDraft: string;
   readonly sexDraft: DotsSex | null;
@@ -74,7 +77,8 @@ export function useLifter(port: LifterServerPort, active: boolean): LifterLoop {
       setRefusal(lifterRefusalCopy('SEX_UNKNOWN'));
       return;
     }
-    if (federationDraft === null) {
+    const federationId = federationIdForCreate(cache, federationDraft);
+    if (federationId === null) {
       setRefusal(lifterRefusalCopy('FEDERATION_UNKNOWN'));
       return;
     }
@@ -84,7 +88,7 @@ export function useLifter(port: LifterServerPort, active: boolean): LifterLoop {
     void port
       .createProfile(
         { name: nameDraft, sex: sexDraft, bodyweightKgText: bodyweightDraft },
-        federationDraft,
+        federationId,
       )
       .then((response) => {
         inFlightRef.current = false;
@@ -98,7 +102,7 @@ export function useLifter(port: LifterServerPort, active: boolean): LifterLoop {
         setPhase('card');
         setRefusal(null);
       });
-  }, [bodyweightDraft, federationDraft, nameDraft, port, sexDraft]);
+  }, [bodyweightDraft, cache, federationDraft, nameDraft, port, sexDraft]);
 
   const beginEditName = useCallback(() => {
     if (profile === null) return;
@@ -146,6 +150,7 @@ export function useLifter(port: LifterServerPort, active: boolean): LifterLoop {
     profile,
     card: profile === null ? null : lifterCardFacts(profile, cache),
     options: lifterFederationOptions(),
+    confirmedFederation: lifterConfirmedFederation(cache),
     nameDraft,
     bodyweightDraft,
     sexDraft,

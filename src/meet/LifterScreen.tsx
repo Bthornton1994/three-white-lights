@@ -116,21 +116,33 @@ export function LifterScreen({
           </View>
 
           <Text style={styles.label}>{CAREER_COPY.LIFTER_FEDERATION_LABEL}</Text>
-          <View style={styles.cards}>
-            {loop.options.map((option) => (
-              <Pressable
-                key={option.id}
-                style={[styles.card, loop.federationDraft === option.id ? styles.choiceOn : null]}
-                onPress={() => loop.setFederationDraft(option.id)}
-                testID={`lifter-fed-${option.id}`}
-                accessibilityRole="button"
-                accessibilityLabel={option.name}
-              >
-                <Text style={styles.cardName}>{option.name}</Text>
-                <Text style={styles.cardRuleset}>{option.rulesetText}</Text>
-              </Pressable>
-            ))}
-          </View>
+          {loop.confirmedFederation === null ? (
+            <View style={styles.cards}>
+              {loop.options.map((option) => (
+                <Pressable
+                  key={option.id}
+                  style={[styles.card, loop.federationDraft === option.id ? styles.choiceOn : null]}
+                  onPress={() => loop.setFederationDraft(option.id)}
+                  testID={`lifter-fed-${option.id}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={option.name}
+                >
+                  <Text style={styles.cardName}>{option.name}</Text>
+                  <Text style={styles.cardRuleset}>{option.rulesetText}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.cards} testID="lifter-create-federation-confirmed">
+              <View style={styles.card} testID={`lifter-fed-confirmed-${loop.confirmedFederation.id}`}>
+                <Text style={styles.cardName} testID="lifter-create-federation-name">
+                  {loop.confirmedFederation.name}
+                </Text>
+                <Text style={styles.cardRuleset}>{loop.confirmedFederation.rulesetText}</Text>
+              </View>
+              <Text style={styles.hint}>{CAREER_COPY.LIFTER_FEDERATION_LOCKED}</Text>
+            </View>
+          )}
 
           <Pressable
             style={styles.action}

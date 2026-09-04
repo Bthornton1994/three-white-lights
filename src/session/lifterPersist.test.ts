@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { careerMeetFor, seasonAnchorDay } from '../career/calendar';
 import { CAREER_TUNING } from '../career/careerTuning';
 import { meetDefinitionFor } from '../game/careerMeet';
+import { applyFederationChoice } from '../game/careerServer';
 import { kilogramMeetEntryFrom } from '../game/lifterEntry';
 import { createLifterProfile, type LifterDraft, type LifterProfile } from '../game/lifterProfile';
 import { applyMeetResult } from '../game/meetServer';
@@ -50,6 +51,22 @@ function instantServer(store?: SaveStore, profile?: LifterProfile | null) {
     nowIso: () => '2026-09-04T12:00:00.000Z',
     freshSignupDay: SIGNUP_DAY,
   });
+}
+
+function v1SaveWithChosenFederation(federationId: 'meridian' | 'ironline'): string {
+  const chosen = applyFederationChoice(
+    newServerRecord(SIGNUP_DAY),
+    { kind: 'choose-federation', report: { federationId } },
+    'v1-already-chosen',
+  );
+  if (!chosen.ok) throw new Error(chosen.error.message);
+  const parsed = JSON.parse(encodeSavedGame(chosen.value.record, '2026-08-19T00:00:00.000Z')) as {
+    version: number;
+    profile?: unknown;
+  };
+  parsed.version = 1;
+  delete parsed.profile;
+  return JSON.stringify(parsed);
 }
 
 describe('16 save-roundtrip / 17 reload-same-id', () => {
@@ -162,6 +179,31 @@ describe('20 edit-name / 21 edit-bodyweight / 22 historical-results', () => {
     const nextEntry = kilogramMeetEntryFrom(heavier.profile, 'meridian', MEET_ENTRY.lot);
     expect(nextEntry.bodyweight.kilograms).toBe(100);
     expect(nextEntry.name).toBe('S. QUILL');
+  });
+});
+
+describe('v1-already-chosen Create path', () => {
+  it('a v1 save with Meridian chosen still needs identity and keeps Meridian after Create', async () => {
+    const store = memoryStore(v1SaveWithChosenFederation('meridian'));
+    const server = instantServer(store);
+    expect(server.openingProfile()).toBeNull();
+    expect(server.openingSnapshot().federation).toEqual({ id: 'meridian', chosen: true });
+
+    const saved = await server.createProfile(DRAFT, 'meridian');
+    expect(saved.kind).toBe('saved');
+    if (saved.kind !== 'saved') return;
+    expect(saved.profile.name).toBe('R. VELLUM');
+    expect(server.openingProfile()?.id).toBe(saved.profile.id);
+    expect(server.openingSnapshot().federation).toEqual({ id: 'meridian', chosen: true });
+  });
+
+  it('Create asking Ironline cannot move that v1 Meridian choice — identity still attaches', async () => {
+    const store = memoryStore(v1SaveWithChosenFederation('meridian'));
+    const server = instantServer(store);
+    const saved = await server.createProfile(DRAFT, 'ironline');
+    expect(saved.kind).toBe('saved');
+    expect(server.openingSnapshot().federation).toEqual({ id: 'meridian', chosen: true });
+    expect(server.openingProfile()?.name).toBe('R. VELLUM');
   });
 });
 

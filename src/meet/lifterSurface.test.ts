@@ -2,15 +2,25 @@
  * lifterSurface.test.ts — Create / My Lifter presentation facts.
  */
 
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { describe, expect, it } from 'vitest';
 
 import { CAREER_COPY, LIFTER_IDENTITY } from '../career/careerTuning';
+import { applyFederationChoice } from '../game/careerServer';
 import { totalKgFromCache } from '../game/lifterClient';
 import { createLifterProfile } from '../game/lifterProfile';
+import { encodeSavedGame } from '../game/saveGame';
 import { openingCache } from '../game/sessionClient';
+import { newServerRecord } from '../game/sessionServer';
+import { SESSION_BOUNDARY } from '../game/sessionTuning';
 import { localSessionServer } from '../session/localSessionServer';
 import {
+  federationIdForCreate,
   lifterCardFacts,
+  lifterConfirmedFederation,
   lifterFederationOptions,
   lifterRefusalCopy,
   nameFitsBoard,
@@ -76,5 +86,82 @@ describe('refusal copy is keyed, not parsed', () => {
     expect(options.map((option) => option.id).sort()).toEqual(
       ['anvil-coast', 'grandhall', 'ironline', 'meridian'],
     );
+  });
+});
+
+describe('v1-already-chosen Create does not offer a chooser', () => {
+  it('an unchosen seed still needs a draft pick', () => {
+    const port = localSessionServer({
+      latencyMs: 0,
+      sleep: async () => undefined,
+      record: newServerRecord(SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY),
+    });
+    const cache = openingCache(port);
+    expect(lifterConfirmedFederation(cache)).toBeNull();
+    expect(federationIdForCreate(cache, null)).toBeNull();
+    expect(federationIdForCreate(cache, 'ironline')).toBe('ironline');
+  });
+
+  it('a chosen Meridian row shows as confirmed and ignores an Ironline draft', () => {
+    const chosen = applyFederationChoice(
+      newServerRecord(SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY),
+      { kind: 'choose-federation', report: { federationId: 'meridian' } },
+      'surface-chosen',
+    );
+    if (!chosen.ok) throw new Error(chosen.error.message);
+    const port = localSessionServer({
+      latencyMs: 0,
+      sleep: async () => undefined,
+      record: chosen.value.record,
+    });
+    const cache = openingCache(port);
+    const confirmed = lifterConfirmedFederation(cache);
+    expect(confirmed).toEqual({
+      id: 'meridian',
+      name: 'Meridian Barbell Union',
+      rulesetText: 'RAW / TESTED',
+    });
+    expect(federationIdForCreate(cache, 'ironline')).toBe('meridian');
+    expect(federationIdForCreate(cache, null)).toBe('meridian');
+  });
+
+  it('a v1 save with Meridian chosen opens Create as confirmed, not as a chooser', () => {
+    const chosen = applyFederationChoice(
+      newServerRecord(SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY),
+      { kind: 'choose-federation', report: { federationId: 'meridian' } },
+      'v1-surface-chosen',
+    );
+    if (!chosen.ok) throw new Error(chosen.error.message);
+    const parsed = JSON.parse(
+      encodeSavedGame(chosen.value.record, '2026-08-19T00:00:00.000Z'),
+    ) as { version: number; profile?: unknown };
+    parsed.version = 1;
+    delete parsed.profile;
+    const text = JSON.stringify(parsed);
+    const port = localSessionServer({
+      latencyMs: 0,
+      sleep: async () => undefined,
+      store: {
+        load: () => text,
+        save: () => undefined,
+      },
+    });
+    expect(port.openingProfile()).toBeNull();
+    const cache = openingCache(port);
+    expect(lifterConfirmedFederation(cache)?.id).toBe('meridian');
+    expect(federationIdForCreate(cache, 'ironline')).toBe('meridian');
+  });
+
+  it('LifterScreen only mounts the chooser when nothing is confirmed', () => {
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const source = readFileSync(path.join(here, 'LifterScreen.tsx'), 'utf8');
+    expect(source).toMatch(/loop\.confirmedFederation === null \? \(/);
+    expect(source).toMatch(/testID="lifter-create-federation-confirmed"/);
+    expect(source).toMatch(/CAREER_COPY\.LIFTER_FEDERATION_LOCKED/);
+    expect(source).toMatch(/onPress=\{\(\) => loop\.setFederationDraft\(option\.id\)\}/);
+    const chooserPress = source.indexOf('onPress={() => loop.setFederationDraft(option.id)}');
+    const confirmedBranch = source.indexOf('testID="lifter-create-federation-confirmed"');
+    expect(chooserPress).toBeGreaterThan(-1);
+    expect(confirmedBranch).toBeGreaterThan(chooserPress);
   });
 });

@@ -13,6 +13,7 @@ import {
 } from '../career/careerTuning';
 import { federationById, rulesetLabel, rulesetOf } from '../career/federation';
 import {
+  chosenFederationIdFromCache,
   currentFederationIdFromCache,
   e1rmFromCache,
   totalKgFromCache,
@@ -41,12 +42,46 @@ export interface LifterCardFacts {
   readonly federationLocked: true;
 }
 
-export function lifterFederationOptions(): readonly LifterFederationOption[] {
-  return CAREER_FEDERATIONS.map((federation) => ({
+function federationOption(id: CareerFederationId): LifterFederationOption {
+  const federation = federationById(id);
+  return {
     id: federation.id,
     name: federation.name,
     rulesetText: rulesetLabel(federation.ruleset),
-  }));
+  };
+}
+
+export function lifterFederationOptions(): readonly LifterFederationOption[] {
+  return CAREER_FEDERATIONS.map((federation) => federationOption(federation.id));
+}
+
+/**
+ * The federation Create may show as already decided.
+ *
+ * A v1 save, or an A1 `choose-federation` before identity existed, can
+ * already carry `chosen: true` with no profile. That choice is locked
+ * (GDD §2.1 / CLAUDE: chosen once; no transfer). Create must not offer
+ * a picker that cannot apply.
+ */
+export function lifterConfirmedFederation(
+  cache: ProgressionCache,
+): LifterFederationOption | null {
+  const id = chosenFederationIdFromCache(cache);
+  if (id === null) return null;
+  return federationOption(id);
+}
+
+/**
+ * Which federation Create submits.
+ *
+ * Already-chosen wins. A draft of a different federation is ignored so
+ * Create cannot pretend to re-pick on the A1→A2 completion path.
+ */
+export function federationIdForCreate(
+  cache: ProgressionCache,
+  draft: CareerFederationId | null,
+): CareerFederationId | null {
+  return chosenFederationIdFromCache(cache) ?? draft;
 }
 
 export function lifterRefusalCopy(code: LifterRefusalCode): string {
