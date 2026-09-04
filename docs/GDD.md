@@ -4940,9 +4940,10 @@ eligibility.
 **Archive / idempotence:** a departed member is removed from
 `LivingMemberRoster.members` and stored on `departures`. Exact replay
 of the departure-causing observation is a full roster no-op. Same
-departed member + same tick + conflicting facts fail closed. A later
-observation for a departed member fails closed. No silent resurrection.
-No returning members.
+departed member + same tick + conflicting facts fail closed, including
+a type mismatch against the archived snapshot (`memberType` is not
+added to G.2A visit history). A later observation for a departed
+member fails closed. No silent resurrection. No returning members.
 
 **Identity:** `nextOrdinal` is a monotonic allocator. Departed IDs are
 never reused. Relocation expansion mints from `nextOrdinal`, not from

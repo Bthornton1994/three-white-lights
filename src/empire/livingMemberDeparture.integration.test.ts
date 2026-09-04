@@ -17,6 +17,7 @@ import {
   type FloorSimServiceObservation,
 } from './floorSim';
 import type { LadderRung } from './ladder';
+import { createGymViewState, gymViewReduce } from './ladderView';
 import { lastLivingMemberDeparture, playerFacingDepartureLine } from './livingMemberDeparture';
 import { livingMemberExperience } from './livingMemberExperience';
 import { livingMemberRetentionPressure } from './livingMemberRetention';
@@ -147,6 +148,52 @@ function contextWithRoster(roster: LivingMemberRoster): FloorSimContext {
 
 function idsOf(roster: LivingMemberRoster): readonly string[] {
   return roster.members.map((member) => member.id);
+}
+
+function otherType(type: MemberType): MemberType {
+  return type === 'casual' ? 'powerlifter' : 'casual';
+}
+
+/**
+ * FloorGrid.tsx member-card resolution, as a test-only harness.
+ *
+ * FloorGrid holds `selectedMemberId` (not an array index), draws
+ * `reconcileFloorSimPopulation` when the living ids are a subset of the sim,
+ * then:
+ *   selectedMember = drawnSim.members.find((m) => m.memberId === selectedMemberId) ?? null
+ *   the card is omitted when selectedMember === null
+ *   the name is livingMemberById(livingMembers, selectedMember.memberId)
+ *
+ * This is not a production export and not a force-departure control. It is
+ * the same lookup FloorGrid runs, driven against a real post-departure
+ * roster+sim so an index-based selection cannot hide behind a source grep.
+ */
+function floorGridSelectedMemberCard(
+  selectedMemberId: GymMemberId | null,
+  livingMembers: LivingMemberRoster,
+  drawnSim: {
+    readonly members: readonly { readonly memberId: string; readonly index: number }[];
+  },
+): {
+  readonly open: boolean;
+  readonly memberId: string | null;
+  readonly displayName: string | null;
+  readonly simIndex: number | null;
+} {
+  const selectedMember =
+    selectedMemberId === null
+      ? null
+      : (drawnSim.members.find((member) => member.memberId === selectedMemberId) ?? null);
+  if (selectedMember === null) {
+    return { open: false, memberId: null, displayName: null, simIndex: null };
+  }
+  const living = livingMemberById(livingMembers, selectedMember.memberId as GymMemberId);
+  return {
+    open: true,
+    memberId: selectedMember.memberId,
+    displayName: living?.displayName ?? null,
+    simIndex: selectedMember.index,
+  };
 }
 
 describe('Stage G.2C2 — eligibility is not departure', () => {
@@ -348,6 +395,30 @@ describe('Stage G.2C2 — replay safety after departure', () => {
     );
   });
 
+  it('refuses a same-tick tombstone replay whose only conflict is memberType', () => {
+    const roster = opening();
+    const target = requireMember(roster, 0);
+    const tenth = adverse(target, 10);
+    const departed = applyServiceObservations(applyAll(roster, target, 9, adverse), [tenth]);
+    expect(departed.departures[0]?.member.type).toBe(target.type);
+    const typeConflict = observation(target, 10, { memberType: otherType(target.type) });
+    expect(typeConflict.memberId).toBe(tenth.memberId);
+    expect(typeConflict.observedAtTick).toBe(tenth.observedAtTick);
+    expect(typeConflict.stationKind).toBe(tenth.stationKind);
+    expect(typeConflict.stationKey).toBe(tenth.stationKey);
+    expect(typeConflict.queueWaitTicks).toBe(tenth.queueWaitTicks);
+    expect(typeConflict.trainingExperience).toBe(tenth.trainingExperience);
+    expect(typeConflict.outcome).toBe(tenth.outcome);
+    expect(typeConflict.memberType).not.toBe(tenth.memberType);
+    expect(() => applyServiceObservations(departed, [typeConflict])).toThrow(
+      /does not match departed member/,
+    );
+    const replay = applyServiceObservations(departed, [tenth]);
+    expect(replay).toBe(departed);
+    expect(livingMemberById(replay, target.id)).toBeNull();
+    expect(replay.departures.length).toBe(1);
+  });
+
   it('refuses a later observation for a departed member', () => {
     const roster = opening();
     const target = requireMember(roster, 0);
@@ -492,5 +563,99 @@ describe('Stage G.2C2 — relocation after departures and offline clock', () => 
 
     const departed = applyServiceObservations(eligible, [adverse(target, 10)]);
     expect(advanceLivingMemberTenure(departed, T.SECONDS_PER_DAY)).toBe(departed);
+  });
+});
+
+describe('Stage G.2C2 — FloorGrid selection is identity across departure', () => {
+  it('keeps C selected when B leaves and the roster compacts A/B/C → A/C', () => {
+    const openingState = createGymViewState();
+    const roster = openingState.livingMembers;
+    expect(roster.members.length).toBeGreaterThanOrEqual(3);
+    const memberA = requireMember(roster, 0);
+    const memberB = requireMember(roster, 1);
+    const memberC = requireMember(roster, 2);
+    const context = contextWithRoster(roster);
+    const started = createFloorSimState(context, T.FLOOR_SIM_RENDER_SEED);
+    const before = runFloorSim(started, context, 20);
+    expect(before.members.map((member) => member.memberId)).toEqual(idsOf(roster));
+
+    const selectedMemberId = memberC.id;
+    const beforeCard = floorGridSelectedMemberCard(selectedMemberId, roster, before);
+    expect(beforeCard.open).toBe(true);
+    expect(beforeCard.memberId).toBe(memberC.id);
+    expect(beforeCard.displayName).toBe(memberC.displayName);
+    expect(beforeCard.simIndex).toBe(2);
+
+    let state = openingState;
+    for (let tick = 1; tick <= 9; tick += 1) {
+      const current = livingMemberById(state.livingMembers, memberB.id) ?? memberB;
+      state = gymViewReduce(state, {
+        kind: 'apply-living-member-observations',
+        observations: [adverse(current, tick)],
+      });
+    }
+    expect(livingMemberById(state.livingMembers, memberB.id)?.stayState.status).toBe(
+      'departure-eligible',
+    );
+    state = gymViewReduce(state, {
+      kind: 'apply-living-member-observations',
+      observations: [adverse(memberB, 10)],
+    });
+    expect(livingMemberById(state.livingMembers, memberB.id)).toBeNull();
+    expect(state.livingMembers.members.map((member) => member.id)).toEqual([
+      memberA.id,
+      memberC.id,
+    ]);
+
+    const drawnSim = reconcileFloorSimPopulation(before, contextWithRoster(state.livingMembers));
+    expect(drawnSim.members[2]).toBeUndefined();
+    expect(drawnSim.members[1]?.memberId).toBe(memberC.id);
+
+    const card = floorGridSelectedMemberCard(selectedMemberId, state.livingMembers, drawnSim);
+    expect(card.open).toBe(true);
+    expect(card.memberId).toBe(memberC.id);
+    expect(card.displayName).toBe(memberC.displayName);
+    expect(card.displayName).not.toBe(memberA.displayName);
+    expect(card.simIndex).toBe(1);
+    expect(livingMemberById(state.livingMembers, memberC.id)?.displayName).toBe(memberC.displayName);
+  });
+
+  it('closes the member card when the selected member departs, and does not retarget', () => {
+    const openingState = createGymViewState();
+    const roster = openingState.livingMembers;
+    const memberA = requireMember(roster, 0);
+    const memberB = requireMember(roster, 1);
+    const memberC = requireMember(roster, 2);
+    const context = contextWithRoster(roster);
+    const started = createFloorSimState(context, T.FLOOR_SIM_RENDER_SEED);
+    const before = runFloorSim(started, context, 20);
+
+    const selectedMemberId = memberB.id;
+    expect(floorGridSelectedMemberCard(selectedMemberId, roster, before).open).toBe(true);
+
+    let state = openingState;
+    for (let tick = 1; tick <= 9; tick += 1) {
+      const current = livingMemberById(state.livingMembers, memberB.id) ?? memberB;
+      state = gymViewReduce(state, {
+        kind: 'apply-living-member-observations',
+        observations: [adverse(current, tick)],
+      });
+    }
+    state = gymViewReduce(state, {
+      kind: 'apply-living-member-observations',
+      observations: [adverse(memberB, 10)],
+    });
+    expect(livingMemberById(state.livingMembers, memberB.id)).toBeNull();
+
+    const drawnSim = reconcileFloorSimPopulation(before, contextWithRoster(state.livingMembers));
+    expect(drawnSim.members[1]?.memberId).toBe(memberC.id);
+
+    const card = floorGridSelectedMemberCard(selectedMemberId, state.livingMembers, drawnSim);
+    expect(card.open).toBe(false);
+    expect(card.memberId).toBeNull();
+    expect(card.displayName).toBeNull();
+    expect(card.displayName).not.toBe(memberA.displayName);
+    expect(card.displayName).not.toBe(memberC.displayName);
+    expect(lastLivingMemberDeparture(state.livingMembers.departures)?.member.id).toBe(memberB.id);
   });
 });

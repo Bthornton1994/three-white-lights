@@ -428,6 +428,8 @@ function latestVisitOf(member: LivingGymMember): ServiceVisitRecord | undefined 
  * after the observation that executed a departure. If the same member/tick
  * arrives with different service facts, refuse instead of choosing which
  * history is true. A later observation for a departed member fails closed.
+ * Same-tick tombstone replay also requires `observation.memberType` to match
+ * the archived member snapshot; type is not stored on G.2A visit history.
  *
  * G.2C1 stay still consumes G.2B of the N=5 window. G.2C2 departure
  * confirmation consumes the same frozen type classifier on G.2B of the newly
@@ -465,6 +467,11 @@ export function applyServiceObservations(
     if (tombstone !== undefined) {
       const departedVisit = latestVisitOf(tombstone.member);
       if (departedVisit?.observedAtTick === incomingVisit.observedAtTick) {
+        if (observation.memberType !== tombstone.member.type) {
+          refuseWith(
+            `service observation type ${observation.memberType} does not match departed member ${id} type ${tombstone.member.type}`,
+          );
+        }
         if (!sameServiceVisit(departedVisit, incomingVisit)) {
           refuseWith(
             `service observation conflicts with departed member ${id} at tick ${incomingVisit.observedAtTick}`,

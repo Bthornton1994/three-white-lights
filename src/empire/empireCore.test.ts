@@ -3998,7 +3998,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // assertion's own failure value.
     // 379 -> 384: Stage G.2C1 stay-state refuseWith templates.
     // 384 -> 392: Stage G.2C2 departure refuseWith templates and FloorGrid memberId keys.
-    expect(templateChunks.size).toBe(392);
+    // 392 -> 393: departed-member same-tick type-conflict refuseWith template.
+    expect(templateChunks.size).toBe(393);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4855,7 +4856,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1185 -> 1199: Stage G.2C1 singleQuoted 806 -> 815 and templateChunks
     // 379 -> 384.
     // 1199 -> 1213: Stage G.2C2 singleQuoted 815 -> 821 and templateChunks 384 -> 392.
-    expect(stringsChecked).toBe(1213);
+    // 1213 -> 1214: departed-member same-tick type-conflict refuseWith template.
+    expect(stringsChecked).toBe(1214);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were

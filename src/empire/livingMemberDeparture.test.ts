@@ -244,6 +244,10 @@ describe('Stage G.2C2 — source fences', () => {
     const source = readFileSync(join(HERE, 'FloorGrid.tsx'), 'utf8');
     expect(source).not.toMatch(/selectedMemberIndex/);
     expect(source).toMatch(/selectedMemberId/);
+    expect(source).toMatch(
+      /drawnSim\.members\.find\(\(member\) => member\.memberId === selectedMemberId\)/,
+    );
+    expect(source).toMatch(/selectedMember === null \? null/);
     expect(source).toMatch(/key=\{`ambient-\$\{member\.memberId\}`\}/);
     expect(source).toMatch(/livingMemberById/);
     expect(source).toMatch(/reconcileFloorSimPopulation/);
@@ -251,5 +255,7 @@ describe('Stage G.2C2 — source fences', () => {
     expect(source).toMatch(/playerFacingDepartureLine/);
     expect(source).not.toMatch(/leaveProbability|churnChance|% churn/);
     expect(source).not.toMatch(/X visits remaining|days remaining/);
+    expect(source).not.toMatch(/setSelectedMemberId\([^)]*members\[/);
+    expect(source).not.toMatch(/selectedMemberId\s*=\s*drawnSim\.members\[/);
   });
 });

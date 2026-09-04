@@ -142,7 +142,14 @@ import {
   playerFacingManagerCapability,
   stationConditionView,
 } from './stationView';
+import { FloorGrid } from './FloorGrid';
+import type { FloorSimServiceObservation } from './floorSim';
 import { GymScreen } from './GymScreen';
+import {
+  livingMemberById,
+  type LivingGymMember,
+  type LivingMemberRoster,
+} from './livingMembers';
 
 const T = EMPIRE_TUNING;
 
@@ -1860,5 +1867,88 @@ describe('S4h: every rendered Pressable is visibly a control', () => {
       'ready-to-reopen gym': 37,
     });
     expect(total).toBe(167);
+  });
+});
+
+function floorGridFrom(root: Rendered): Rendered {
+  function walk(node: unknown): Rendered | null {
+    if (!isRendered(node)) return null;
+    if (node.type === FloorGrid) return node;
+    for (const child of childrenOf(node)) {
+      const found = walk(child);
+      if (found !== null) return found;
+    }
+    return null;
+  }
+  const found = walk(root);
+  expect(found, 'GymScreen embeds FloorGrid').not.toBeNull();
+  return found as Rendered;
+}
+
+function livingRosterOf(root: Rendered): LivingMemberRoster {
+  const livingMembers = floorGridFrom(root).props['livingMembers'];
+  expect(livingMembers, 'FloorGrid receives livingMembers').toBeTruthy();
+  return livingMembers as LivingMemberRoster;
+}
+
+function adverseVisit(member: LivingGymMember, tick: number): FloorSimServiceObservation {
+  return Object.freeze({
+    memberId: member.id,
+    memberIndex: 0,
+    memberType: member.type,
+    stationKind: 'training' as const,
+    stationKey: 'training:competition-bench-bay',
+    queueWaitTicks: 200,
+    trainingExperience: T.STATION_STOCK_TRAINING_EXPERIENCE,
+    outcome: 'interrupted' as const,
+    observedAtTick: tick,
+  });
+}
+
+function departMember(state: GymViewState, memberId: LivingGymMember['id']): GymViewState {
+  let next = state;
+  for (let tick = 1; tick <= 10; tick += 1) {
+    const current = livingMemberById(next.livingMembers, memberId);
+    expect(current, `member ${memberId} still living at tick ${tick}`).not.toBeNull();
+    next = gymViewReduce(next, {
+      kind: 'apply-living-member-observations',
+      observations: [adverseVisit(current as LivingGymMember, tick)],
+    });
+  }
+  return next;
+}
+
+describe('Stage G.2C2 — FloorGrid receives compacted living identity after departure', () => {
+  it('keeps C on FloorGrid props when B leaves A/B/C → A/C', () => {
+    const openingState = createGymViewState();
+    const roster = openingState.livingMembers;
+    expect(roster.members.length).toBeGreaterThanOrEqual(3);
+    const memberA = roster.members[0] as LivingGymMember;
+    const memberB = roster.members[1] as LivingGymMember;
+    const memberC = roster.members[2] as LivingGymMember;
+    const before = livingRosterOf(render(openingState, []));
+    expect(before.members.map((member) => member.id)).toEqual([memberA.id, memberB.id, memberC.id]);
+
+    const after = departMember(openingState, memberB.id);
+    expect(livingMemberById(after.livingMembers, memberB.id)).toBeNull();
+    const gridRoster = livingRosterOf(render(after, []));
+    expect(gridRoster).toBe(after.livingMembers);
+    expect(gridRoster.members.map((member) => member.id)).toEqual([memberA.id, memberC.id]);
+    expect(gridRoster.members[1]?.id).toBe(memberC.id);
+    expect(gridRoster.members[1]?.id).not.toBe(memberB.id);
+    expect(livingMemberById(gridRoster, memberC.id)?.displayName).toBe(memberC.displayName);
+    expect(gridRoster.departures[0]?.member.id).toBe(memberB.id);
+  });
+
+  it('does not hand FloorGrid a replacement occupant for a departed selected member', () => {
+    const openingState = createGymViewState();
+    const memberB = openingState.livingMembers.members[1] as LivingGymMember;
+    const memberC = openingState.livingMembers.members[2] as LivingGymMember;
+    const after = departMember(openingState, memberB.id);
+    const gridRoster = livingRosterOf(render(after, []));
+    expect(livingMemberById(gridRoster, memberB.id)).toBeNull();
+    expect(gridRoster.members.some((member) => member.id === memberB.id)).toBe(false);
+    expect(gridRoster.members[1]?.id).toBe(memberC.id);
+    expect(gridRoster.departures.some((record) => record.member.id === memberB.id)).toBe(true);
   });
 });

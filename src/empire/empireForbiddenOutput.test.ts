@@ -3217,7 +3217,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 3662 -> 3704: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 3704 -> 3755: Stage G.2C2 livingMemberDeparture.ts plus livingMembers
   // departure/reconcile wiring. Read from this pin last.
-  CALLS_EXAMINED: 3755, // Stage G.2C2 livingMemberDeparture
+  CALLS_EXAMINED: 3756, // Stage G.2C2 departed-member type-conflict refuseWith
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -15970,7 +15970,7 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'livingMemberExperience.ts': 2,
   'livingMemberRetention.ts': 1,
   'livingMemberStay.ts': 5, // Stage G.2C1 stay evaluation refusals
-  'livingMembers.ts': 15, // Stage G.2C2 departed-member replay refusals
+  'livingMembers.ts': 16, // Stage G.2C2 departed-member type-conflict refuseWith
   'management.ts': 27,
   'members.ts': 9,
   'pacing.ts': 3,
@@ -16684,7 +16684,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
   // 1815 -> 1841: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 1841 -> 1866: Stage G.2C2 livingMemberDeparture.ts plus roster/sim wiring.
-  function: 1866, // Stage G.2C2 departure function calls
+  function: 1867, // Stage G.2C2 departed-member type-conflict refuseWith
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -17103,7 +17103,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // stayState wiring. Read from this pin last.
   // 84_813 -> 86_105: Stage G.2C2 livingMemberDeparture.ts plus roster/sim
   // departure wiring. Read from this pin last.
-  NODES_EXAMINED: 86_105, // Stage G.2C2 departure AST
+  NODES_EXAMINED: 86_137, // Stage G.2C2 departed-member type-conflict AST
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -17126,7 +17126,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // livingMembers.ts 12 -> 13.
   // 191 -> 199: Stage G.2C2 floorSim +4, livingMemberDeparture +2,
   // livingMembers +2. Read from this pin last.
-  WRAP_CALLS: 199, // Stage G.2C2 departure refuseWith
+  WRAP_CALLS: 200, // Stage G.2C2 departed-member type-conflict refuseWith
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 7, // Stage G.1 argument-mutation on floorSim observation export
