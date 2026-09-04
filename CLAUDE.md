@@ -41,13 +41,33 @@ and has no history, this section tells you which half of the repo is yours.
 ### Current Stage G authority (independently verified)
 
 G.1 CLOSED. G.2A CLOSED at `255de8a5` (mint `ba8561bf`, docs/comment only).
-G.2B is authorized as the retention-pressure foundation: explainable
-G.2A experience → willingness-to-stay pressure. No member leaves.
+G.2B CLOSED — COMMON / type-blind retention-pressure foundation.
+**G.2C1 FROZEN** at `c8776cadcb57ef6f16acabe4f962858c6b2dac0a`
+(PR #22; stays draft and unmerged). Human owns integration.
+**Session B stops here** until that integration authorizes the next
+slice. Do not start G.2C2 / G.2D / G.2E from this freeze alone.
+
+Frozen G.2C1 contract: `forming → staying → unsettled →
+considering-exit → departure-eligible`. Three consecutive qualifying
+observations per state step. Nine minimum from staying to eligibility.
+Neutral breaks pending evidence. Sustained Stable recovers one step
+per three confirmations. No return to forming after experience becomes
+formed. No actual departure. No RNG. No percentages. No countdown. No
+dues. No reputation. No arrivals. No Athlete seasonality.
+
+Authoritative roster path: `FloorSimServiceObservation → recentVisits
+→ G.2A → G.2B → stayState`. `applyServiceObservations()` is the only
+production caller of `advanceLivingMemberStay()`. The reducer stores
+only the tick; same-tick conflict detection lives at that boundary.
+G.2C2 must not add another production caller that bypasses it.
+
 G.2C arrivals/departures, G.2D dues, and G.2E member-side reputation
 stay blocked. Do not wire `memberDuesGymBucks` / `reputationFromMembers`
 / old crowding satisfaction merely because those functions exist.
 G2-CONDITION-01, G2-FIT-01, G2-TYPE-01, and G2-ATHLETE-SEASON-01 stay
 open. Career → Empire reputation and Portfolio stay blocked.
+Verification at the freeze SHA is builder-local: GitHub exposes no
+commit statuses or workflow runs for `c8776cad`.
 
 ### The split
 

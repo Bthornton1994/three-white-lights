@@ -3195,12 +3195,14 @@ than the ruling's own §1–§23 sequence:
   half-life) and pinned the real Garage / synthetic tables; the shipped
   wait formula remains `exp(-ticks / 110)`. Independently verified
   mint `ba8561bfd11e9e2a5062923d4054b59e0976dcc0` (docs/comment only;
-  no product-runtime change). **G.2B CLOSED** (COMMON / type-blind
-  retention-pressure foundation). **G.2C1 FOUNDATION BUILT, AWAITING
-  FREEZE** — persistent stay response from accepted G.2B pressure.
+  no product-runtime change).   **G.2B CLOSED** (COMMON / type-blind
+  retention-pressure foundation). **G.2C1 FROZEN** at
+  `c8776cadcb57ef6f16acabe4f962858c6b2dac0a` (PR #22; stays draft and
+  unmerged) — persistent stay response from accepted G.2B pressure.
   It does not delete members, does not wire dues or reputation, and
-  does not start G.2C arrivals/departures. G.2C / G.2D / G.2E remain
-  blocked.
+  does not start G.2C arrivals/departures. G.2C2 / G.2D / G.2E remain
+  blocked. Session B stops here until human integration authorizes
+  the next slice.
 
 ### Human Stage C rejection at `f097695b`
 
@@ -4755,7 +4757,7 @@ behavior.
 | G.1 | CLOSED at `c27f714c` |
 | G.2A | CLOSED at `255de8a5`; mint `ba8561bf` |
 | G.2B | CLOSED — COMMON / type-blind |
-| G.2C1 | FOUNDATION BUILT; awaiting freeze. No roster deletion. |
+| G.2C1 | FROZEN at `c8776cad`. PR #22 draft/unmerged. No roster deletion. |
 | G2-CONDITION-01 | OPEN — service-level condition attribution missing |
 | G2-FIT-01 | OPEN — equipment fit is attraction, not recent service |
 | G2-TYPE-01 | OPEN — no type-specific **satisfaction** interpretation |
@@ -4850,11 +4852,13 @@ merge.
 
 #### Stage G.2C1 — Persistent Stay-Response Foundation
 
-**STAGE G.2C1 FOUNDATION BUILT, AWAITING FREEZE.** This slice turns
+**STAGE G.2C1 FROZEN — ACCEPTED at `c8776cad`.** This slice turns
 repeated accepted G.2B pressure evaluations into a persistent member
 response. It does not calculate satisfaction, does not reinterpret
 pressure as probability, and does not remove a roster row. Actual
-arrivals/departures, G.2C2, G.2D, and G.2E stay blocked.
+arrivals/departures, G.2C2, G.2D, and G.2E stay blocked. Session B
+stops here until human integration authorizes the next slice. PR #22
+stays draft and unmerged.
 
 **Proven causal chain:** physical gym decision → real FloorSim service
 → persistent N=5 member history → G.2A experience → G.2B type-blind
@@ -4892,6 +4896,15 @@ overall experience or the pressure index.
 **Idempotence:** replaying the latest identical service observation is
 a full roster no-op. An older tick is refused. Conflicting facts for
 the same member/tick fail closed.
+
+**Authoritative caller, binding in G.2C2:**
+`applyServiceObservations()` is the only production path into
+`advanceLivingMemberStay()`. The reducer stores only the observation
+tick, so it cannot distinguish two different retention payloads at the
+same tick. That is acceptable because this boundary retains the
+underlying service facts and rejects conflicting same-tick observations
+before invoking the reducer. Do not introduce another production caller
+that bypasses that boundary.
 
 **Fences:** no roster mutation, no departure, no random roll, no wall
 clock, no leave percentage, no countdown, no dues, no Empire reputation
