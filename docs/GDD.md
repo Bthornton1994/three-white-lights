@@ -2,7 +2,12 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-09-04 (A1.1 competition truth: placing tie-break
+**Last updated:** 2026-09-04 (A1 AUTHENTIC MEET CLOSED at `9c749ee4` after
+a human nine-attempt Career Meet at 390×844: Total 475 kg, place 5 of 6,
+recap reconciled. A1.1 competition truth ACCEPTED. A2 My Lifter
+authorized — not closed. A0 PLAYABLE SPORT remains CLOSED at baseline
+runtime `39400d97`. Physical glass is A0-DEVICE-01 release QA debt.
+No lift runtime change. No merge to main.) Earlier: 2026-09-04 (A1.1 competition truth: placing tie-break
 on Total then bodyweight then who totaled first, lot-ordered platform,
 authored standing record. A1 still not
 closed. A0 PLAYABLE SPORT remains CLOSED at baseline runtime `39400d97`.
@@ -6312,8 +6317,8 @@ now**:
 | Stage | Name | What it is |
 |---|---|---|
 | **A0** | Playable sport | The lift engine, proven. CLOSED 2026-09-02 at `39400d97`. |
-| **A1** | Authentic Meet | Meet day as the sport's emotional payoff, not a results overlay. Current work. |
-| **A2** | My Lifter | Persistent athlete identity. |
+| **A1** | Authentic Meet | Meet day as the sport's emotional payoff, not a results overlay. CLOSED 2026-09-04 at `9c749ee4`. |
+| **A2** | My Lifter | Persistent athlete identity. Current work — freeze candidate, not closed. |
 | **A3** | Career Calendar | Training context and the meet calendar that gives it somewhere to go. |
 | **A4** | Powerlifting Universe v1 | Rankings, records, qualification, a living field. |
 | **A5** | Rivalries / Legacy | Repeated opponents and a career the world remembers. |
@@ -6322,10 +6327,11 @@ now**:
 
 **A0 is CLOSED.** Do not reopen accepted squat / bench C3 / deadlift
 mechanics without new human evidence, an explicit ruling, a targeted
-change, and a replay. A1 is authorized by the 2026-09-02 ruling; do not
-start A2–A7 from this section. Do not treat this table as a sprint plan;
+change, and a replay. **A1 is CLOSED** at `9c749ee4` by the 2026-09-04
+human Meet Day ruling. A2 is authorized by that ruling; do not start
+A3–A7 from this section. Do not treat this table as a sprint plan;
 the sprint plan lives in CLAUDE.md. Physical-device touch smoke is
-release QA debt (`A0-DEVICE-01`), not an A0 design blocker.
+release QA debt (`A0-DEVICE-01`), not an A0 or A1 design blocker.
 
 ### 13.8 Anti-patterns
 
@@ -6353,10 +6359,10 @@ C3 surplus compression is the accepted bench feel (minted 2026-09-01 after
 ordinary-bench phone replay). A0 PLAYABLE SPORT is CLOSED (2026-09-02)
 at baseline runtime `39400d97`: squat, bench C3, and deadlift are
 accepted and frozen. Physical-device touch smoke is A0-DEVICE-01 release
-QA debt, not a design blocker. A1 Authentic Meet is the current Session A
-task. An A1 Authentic Meet candidate is ready for human Meet Day
-playtest and is not closed from this section. This doctrine still does not retune lifts, implement Career, or
-touch Session B.
+QA debt, not a design blocker. A1 Authentic Meet is CLOSED (2026-09-04)
+at `9c749ee4` after a human nine-attempt Career Meet. A2 My Lifter is
+the current Session A task and is not closed from this section. This
+doctrine still does not retune lifts or touch Session B.
 
 This doctrine still governs **what comes after** and **how future features
-are judged**. A2–A7 are not authorized from this section.
+are judged**. A3–A7 are not authorized from this section.

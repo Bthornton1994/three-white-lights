@@ -35,8 +35,9 @@ commit as the code. The doc and the code never diverge.
 `VISION.md` is the product north star. The Powerlifting Sports Universe
 Doctrine is GDD §13. Future Session A feature work must satisfy that
 doctrine. **A0 PLAYABLE SPORT is CLOSED** (baseline runtime `39400d97`).
-A1 Authentic Meet is authorized by the 2026-09-02 human ruling. The
-doctrine does not change Session B's ownership of GDD §5.
+**A1 AUTHENTIC MEET is CLOSED** at `9c749ee4` (human ruling 2026-09-04).
+A2 My Lifter is authorized by that same ruling. The doctrine does not
+change Session B's ownership of GDD §5.
 
 ## Run Mode
 
@@ -2512,6 +2513,55 @@ change. A2–A7 remain blocked.
 - ON DECK is a declared-attempt fact. `flightOnDeckText` is null while
   `live` is null (attempt-select). Mixing the previous round's reveal
   with the next attempt's floor is not a platform-order claim.
+
+### RULED 2026-09-04: A1 AUTHENTIC MEET CLOSED — A2 MY LIFTER AUTHORIZED
+
+The human completed a full nine-attempt Career Meet at 390×844 and
+ruled: close A1, authorize A2. No A1 production code change for
+closure. A0 stays frozen at `39400d97`. Physical-glass touch remains
+A0-DEVICE-01 release-QA debt and does not reopen A0 or block A2.
+
+    A0 PLAYABLE SPORT          CLOSED at 39400d97
+    A1.1 competition truth     ACCEPTED at 9c749ee4
+    A1 AUTHENTIC MEET          CLOSED at 9c749ee4
+    A2 MY LIFTER               authorized — not closed
+    A3–A7                      not started
+    Session B                  untouched (`src/empire/**`)
+    Physical glass             A0-DEVICE-01, not a design blocker
+
+Human Meet Day (Career, 390×844, no debug query):
+
+    squat     160 make / 165 miss / 165 miss
+    bench     107.5 / 110 / 112.5 all made
+    deadlift  197.5 / 202.5 made / 207.5 miss
+    Total     475 kg
+    Place     5 of 6
+    recap     reconciled exactly
+
+Browser evidence established competition truth, routing, layout,
+pacing escalation, recap truth, and the nine-attempt arc.
+
+The 2026-09-02 A1 candidate filing and the 2026-09-04 A1.1 filing
+above stay as the record of what was pending. Current-authority
+text is this ruling.
+
+A2 authority split (load-bearing):
+
+- Profile owns persistent athlete identity (stable id, platform
+  name, DOTS sex, current tagged bodyweight).
+- Progression owns confirmed performance (Total, e1RM, meet
+  results). Federation membership stays the existing protected
+  `ConfirmedFederation` on the server row — chosen once.
+- Federation authority (`src/career/federation.ts`) owns the
+  ruleset. Equipment presentation is derived from it.
+- Meet owns event-local facts (lot, this weigh-in, this card).
+- Completed results remain historical facts. Editing the current
+  profile must not rewrite a stored meet.
+
+`src/tuning/` crossing for A2: none unless a new feel home is
+registered. Identity copy and layout live in the existing
+`careerTuning.ts` / `shellTuning.ts` homes. `src/empire/**`
+stays off-limits.
 
 ### If scope shifts
 
