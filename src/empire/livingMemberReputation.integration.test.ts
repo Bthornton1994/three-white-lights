@@ -2,14 +2,16 @@
  * livingMemberReputation.integration.test.ts — Stage G.2E causal-chain
  * reputation settlement through the living roster writer: replay, fail-closed,
  * join pro-rate, time-weighted departure occupancy, clock production path,
- * and high-paying vacancy gating.
+ * and high-paying vacancy gating (writer mint for Athlete and Serious Lifter,
+ * plus gymViewReduce apply-living-member-observations after advance-clock).
  */
 
 import { describe, expect, it } from 'vitest';
 
 import { EMPIRE_TUNING } from './empireTuning';
 import type { FloorSimServiceObservation } from './floorSim';
-import { gymViewReduce, createGymViewState } from './ladderView';
+import { gymViewReduce, createGymViewState, type GymViewState } from './ladderView';
+import { withUpdatedGym } from './management';
 import {
   lastLivingMemberReputationSettlement,
   livingMemberDailyReputation,
@@ -104,6 +106,66 @@ const ATHLETE_OWNED: readonly SessionEquipmentItem[] = Object.freeze([
   'treadmill',
   'rower',
 ]);
+
+const SERIOUS_OWNED: readonly SessionEquipmentItem[] = Object.freeze([
+  'foam-rollers',
+  'sauna',
+  'belts',
+  'sleeves',
+  'wrist-wraps',
+  'machines',
+]);
+
+const HIGH_PAYING_KITS = Object.freeze([
+  Object.freeze({ type: 'athlete' as const, owned: ATHLETE_OWNED, label: 'Athlete' }),
+  Object.freeze({
+    type: 'serious-lifter' as const,
+    owned: SERIOUS_OWNED,
+    label: 'Serious Lifter',
+  }),
+]);
+
+/** GymState lists session equipment in the published item order. */
+function sessionOwnedOnGym(
+  owned: readonly SessionEquipmentItem[],
+): readonly SessionEquipmentItem[] {
+  return Object.freeze(T.SESSION_EQUIPMENT_ITEMS.filter((item) => owned.includes(item)));
+}
+
+function withSessionOwned(
+  state: GymViewState,
+  owned: readonly SessionEquipmentItem[],
+): GymViewState {
+  return Object.freeze({
+    ...state,
+    managed: withUpdatedGym(
+      state.managed,
+      Object.freeze({
+        ...state.managed.gym,
+        sessionEquipment: sessionOwnedOnGym(owned),
+      }),
+    ),
+  });
+}
+
+function departInteriorOnGym(state: GymViewState): {
+  readonly state: GymViewState;
+  readonly leftover: LivingGymMember;
+} {
+  const gone = requireMember(state.livingMembers, 1);
+  const leftoverId = requireMember(state.livingMembers, 0).id;
+  let next = state;
+  for (let tick = 1; tick <= 10; tick += 1) {
+    const current = livingMemberById(next.livingMembers, gone.id) ?? gone;
+    next = gymViewReduce(next, {
+      kind: 'apply-living-member-observations',
+      observations: [adverse(current, tick)],
+    });
+  }
+  const leftover = livingMemberById(next.livingMembers, leftoverId);
+  if (leftover === null) throw new Error(`lost leftover ${leftoverId}`);
+  return { state: next, leftover };
+}
 
 describe('Stage G.2E — opening ledger', () => {
   it('starts settled at join time with nothing credited', () => {
@@ -370,50 +432,104 @@ describe('Stage G.2E — production clock path', () => {
 describe('Stage G.2E — high-paying vacancy gate', () => {
   it('pins the Athlete kit so the next vacancy type is Athlete', () => {
     expect(equipmentBiasedMemberTypes(ATHLETE_OWNED)).toEqual(['athlete']);
-  });
-  it('does not mint an Athlete into a vacancy while credited reputation is below the threshold', () => {
-    const roster = opening();
-    const gone = requireMember(roster, 1);
-    const leftover = requireMember(roster, 0);
-    const departed = applyServiceObservations(applyAll(roster, gone, 9, adverse), [
-      adverse(gone, 10),
-    ]);
-    expect(departed.reputation.creditedReputation).toBe(0);
-    const held = applyServiceObservations(
-      departed,
-      [stable(leftover, 11)],
-      undefined,
-      Object.freeze({ sessionOwned: ATHLETE_OWNED, joinedAtSeconds: 40 }),
-    );
-    expect(held.members.length).toBe(departed.members.length);
-    expect(held.arrivals).toEqual([]);
+    expect(equipmentBiasedMemberTypes(sessionOwnedOnGym(ATHLETE_OWNED))).toEqual(['athlete']);
   });
 
-  it('mints an Athlete on recovery once credited reputation meets the threshold, and replay is a no-op', () => {
-    const roster = applyLivingMemberReputation(opening(), DAY * 3);
-    expect(roster.reputation.creditedReputation).toBeGreaterThanOrEqual(GATE);
-    const gone = requireMember(roster, 1);
-    const leftover = requireMember(roster, 0);
-    const departed = applyServiceObservations(applyAll(roster, gone, 9, adverse), [
-      adverse(gone, 10),
-    ]);
-    const tenth = stable(leftover, 11);
-    const arrived = applyServiceObservations(
-      departed,
-      [tenth],
-      undefined,
-      Object.freeze({ sessionOwned: ATHLETE_OWNED, joinedAtSeconds: 40 }),
-    );
-    expect(arrived.members.length).toBe(departed.members.length + 1);
-    expect(arrived.members[arrived.members.length - 1]?.type).toBe('athlete');
-    const replay = applyServiceObservations(
-      arrived,
-      [tenth],
-      undefined,
-      Object.freeze({ sessionOwned: ATHLETE_OWNED, joinedAtSeconds: 40 }),
-    );
-    expect(replay).toBe(arrived);
+  it('pins the Serious Lifter kit so the next vacancy type is Serious Lifter', () => {
+    expect(equipmentBiasedMemberTypes(SERIOUS_OWNED)).toEqual(['serious-lifter']);
+    expect(equipmentBiasedMemberTypes(sessionOwnedOnGym(SERIOUS_OWNED))).toEqual(['serious-lifter']);
   });
+
+  for (const spec of HIGH_PAYING_KITS) {
+    it(`does not mint a ${spec.label} into a vacancy while credited reputation is below the threshold`, () => {
+      const roster = opening();
+      const gone = requireMember(roster, 1);
+      const leftover = requireMember(roster, 0);
+      const departed = applyServiceObservations(applyAll(roster, gone, 9, adverse), [
+        adverse(gone, 10),
+      ]);
+      expect(departed.reputation.creditedReputation).toBe(0);
+      const held = applyServiceObservations(
+        departed,
+        [stable(leftover, 11)],
+        undefined,
+        Object.freeze({ sessionOwned: spec.owned, joinedAtSeconds: 40 }),
+      );
+      expect(held.members.length).toBe(departed.members.length);
+      expect(held.arrivals).toEqual([]);
+    });
+
+    it(`mints a ${spec.label} on recovery once credited reputation meets the threshold, and replay is a no-op`, () => {
+      const roster = applyLivingMemberReputation(opening(), DAY * 3);
+      expect(roster.reputation.creditedReputation).toBeGreaterThanOrEqual(GATE);
+      const gone = requireMember(roster, 1);
+      const leftover = requireMember(roster, 0);
+      const departed = applyServiceObservations(applyAll(roster, gone, 9, adverse), [
+        adverse(gone, 10),
+      ]);
+      const tenth = stable(leftover, 11);
+      const arrived = applyServiceObservations(
+        departed,
+        [tenth],
+        undefined,
+        Object.freeze({ sessionOwned: spec.owned, joinedAtSeconds: 40 }),
+      );
+      expect(arrived.members.length).toBe(departed.members.length + 1);
+      expect(arrived.members[arrived.members.length - 1]?.type).toBe(spec.type);
+      const replay = applyServiceObservations(
+        arrived,
+        [tenth],
+        undefined,
+        Object.freeze({ sessionOwned: spec.owned, joinedAtSeconds: 40 }),
+      );
+      expect(replay).toBe(arrived);
+    });
+  }
+});
+
+describe('Stage G.2E — high-paying mint through gymViewReduce', () => {
+  for (const spec of HIGH_PAYING_KITS) {
+    it(`does not mint a ${spec.label} through apply-living-member-observations before advance-clock`, () => {
+      const opened = withSessionOwned(createGymViewState(), spec.owned);
+      expect(equipmentBiasedMemberTypes(opened.managed.gym.sessionEquipment)).toEqual([spec.type]);
+      expect(opened.livingMembers.reputation.creditedReputation).toBe(0);
+      const { state: departed, leftover } = departInteriorOnGym(opened);
+      expect(departed.livingMembers.reputation.creditedReputation).toBe(0);
+      const held = gymViewReduce(departed, {
+        kind: 'apply-living-member-observations',
+        observations: [stable(leftover, 11)],
+      });
+      expect(held.livingMembers.members.length).toBe(departed.livingMembers.members.length);
+      expect(held.livingMembers.arrivals).toEqual([]);
+      expect(held.livingMembers.members.some((member) => member.type === spec.type)).toBe(false);
+    });
+
+    it(`mints a ${spec.label} through apply-living-member-observations after advance-clock meets the gate`, () => {
+      let state = withSessionOwned(createGymViewState(), spec.owned);
+      expect(equipmentBiasedMemberTypes(state.managed.gym.sessionEquipment)).toEqual([spec.type]);
+      state = gymViewReduce(state, { kind: 'advance-clock', gapSeconds: DAY * 3, mode: 'online' });
+      expect(state.livingMembers.reputation.creditedReputation).toBeGreaterThanOrEqual(GATE);
+      expect(state.livingMembers.reputation.settledAtSeconds).toBe(DAY * 3);
+      const { state: departed, leftover } = departInteriorOnGym(state);
+      expect(departed.livingMembers.reputation.creditedReputation).toBe(
+        state.livingMembers.reputation.creditedReputation,
+      );
+      const attracting = stable(leftover, 11);
+      const arrived = gymViewReduce(departed, {
+        kind: 'apply-living-member-observations',
+        observations: [attracting],
+      });
+      expect(arrived.livingMembers.members.length).toBe(departed.livingMembers.members.length + 1);
+      expect(arrived.livingMembers.members[arrived.livingMembers.members.length - 1]?.type).toBe(
+        spec.type,
+      );
+      const replay = gymViewReduce(arrived, {
+        kind: 'apply-living-member-observations',
+        observations: [attracting],
+      });
+      expect(replay.livingMembers).toBe(arrived.livingMembers);
+    });
+  }
 });
 
 describe('Stage G.2E — player-facing line is the current type rate', () => {
