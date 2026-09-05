@@ -8,7 +8,8 @@
  *
  * `totalKg` on the played-facts input is read only as null versus
  * non-null. Kilograms never enter the points. `isTotalPr` is the
- * server's boolean, adopted unchanged.
+ * server's boolean, adopted unchanged. The composed reading lives in
+ * institutionalReputation.ts.
  */
 
 import { refuseWith, type ReputationPoints } from './empireCore';
