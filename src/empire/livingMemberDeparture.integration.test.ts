@@ -468,7 +468,7 @@ describe('Stage G.2C2 — identity allocator never reuses a departed ordinal', (
 });
 
 describe('Stage G.2C2 — FloorSim population continuity', () => {
-  it('drops the departed body, keeps survivors, and fails closed on unknown ids', () => {
+  it('drops the departed body, keeps survivors, mints an authorised arrival, and fails closed over cap', () => {
     const roster = opening();
     const interior = requireMember(roster, 1);
     const context = contextWithRoster(roster);
@@ -502,15 +502,35 @@ describe('Stage G.2C2 — FloorSim population continuity', () => {
     expect(smaller.members.length).toBe(2);
     expect(smaller.members.length).toBeLessThan(T.AMBIENT_MEMBER_COUNT_BY_RUNG.garage);
 
+    const arrivalId = 'member:n1:99';
+    const withArrival = Object.freeze({
+      ...afterContext,
+      livingPopulation: Object.freeze([
+        ...afterContext.livingPopulation,
+        Object.freeze({ memberId: arrivalId, type: 'casual' as const }),
+      ]),
+    });
+    const minted = reconcileFloorSimPopulation(reconciled, withArrival);
+    expect(minted.members.map((member) => member.memberId)).toEqual([
+      ...idsOf(departedRoster),
+      arrivalId,
+    ]);
+    const newBody = minted.members.find((member) => member.memberId === arrivalId);
+    expect(newBody?.state).toBe('seeking');
+    expect(newBody?.index).toBe(2);
+    expect(minted.members.find((member) => member.memberId === survivorBefore?.memberId)?.cell).toEqual(
+      survivorBefore?.cell,
+    );
+
     expect(() =>
-      reconcileFloorSimPopulation(reconciled, {
-        ...afterContext,
+      reconcileFloorSimPopulation(minted, {
+        ...withArrival,
         livingPopulation: Object.freeze([
-          ...afterContext.livingPopulation,
-          Object.freeze({ memberId: 'member:n1:99', type: 'casual' as const }),
+          ...withArrival.livingPopulation,
+          Object.freeze({ memberId: 'member:n1:100', type: 'casual' as const }),
         ]),
       }),
-    ).toThrow(/unknown simulator member/);
+    ).toThrow(/exceeds ambient placement/);
 
     const stepped = stepFloorSimWithObservations(reconciled, afterContext);
     expect(stepped.observations.every((row) => row.memberId !== interior.id)).toBe(true);

@@ -309,6 +309,7 @@ import {
   createLivingMemberRoster,
   floorSimPopulationFromRoster,
   reconcileLivingMemberRosterOnRelocation,
+  SHIPPED_SERVICE_HISTORY_WINDOW,
   type LivingMemberRoster,
 } from './livingMembers';
 import {
@@ -901,7 +902,15 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
     case 'apply-living-member-observations':
       return Object.freeze({
         ...state,
-        livingMembers: applyServiceObservations(state.livingMembers, action.observations),
+        livingMembers: applyServiceObservations(
+          state.livingMembers,
+          action.observations,
+          SHIPPED_SERVICE_HISTORY_WINDOW,
+          Object.freeze({
+            sessionOwned: state.managed.gym.sessionEquipment,
+            joinedAtSeconds: state.managed.gym.ladder.collectedAt,
+          }),
+        ),
       });
   }
 }

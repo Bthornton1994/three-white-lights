@@ -1704,8 +1704,49 @@ export function withAmbientLivingPopulation(
  * The opening state: authoritative member ids/types from `livingPopulation`,
  * starting POSITIONS from `ambientMemberRoster`. After G.2C2 departures the
  * living population may be smaller than the facility's ambient placement
- * count; it may not exceed that count.
+ * count; G.2C3 arrivals may grow it back toward that count. It may not exceed
+ * that count.
  */
+function seekingSimulatorMember(
+  entry: FloorSimPopulationEntry,
+  index: number,
+  cell: GridPosition,
+): FloorSimMember {
+  return Object.freeze({
+    memberId: entry.memberId,
+    index,
+    type: entry.type,
+    state: 'seeking' as FloorSimMemberState,
+    cell,
+    next: null,
+    progress: 0,
+    target: null,
+    targetPosition: null,
+    claimedAt: null,
+    queuedAt: null,
+    queueArrivedAt: null,
+    timer: 0,
+    interruptedBy: null,
+    awayFrom: null,
+    strandedAt: null,
+    usingStartedAt: null,
+  });
+}
+
+function spawnCellForArrival(
+  placements: readonly { readonly position: GridPosition }[],
+  occupied: ReadonlySet<string>,
+  plan: RoutePlan,
+  fallbackIndex: number,
+): GridPosition {
+  for (const placement of placements) {
+    const cell = nearestWalkable(placement.position, plan);
+    if (!occupied.has(`${cell.x},${cell.y}`)) return cell;
+  }
+  const fallback = placements[fallbackIndex] ?? placements[0];
+  return nearestWalkable(fallback?.position ?? { x: 0, y: 0 }, plan);
+}
+
 export function createFloorSimState(context: FloorSimContext, seed: number): FloorSimState {
   requireSeed(seed);
   const plan = routePlan(context);
@@ -1720,25 +1761,11 @@ export function createFloorSimState(context: FloorSimContext, seed: number): Flo
     seed,
     members: Object.freeze(
       context.livingPopulation.map((entry, index) =>
-        Object.freeze({
-          memberId: entry.memberId,
+        seekingSimulatorMember(
+          entry,
           index,
-          type: entry.type,
-          state: 'seeking' as FloorSimMemberState,
-          cell: nearestWalkable(placements[index]?.position ?? { x: 0, y: 0 }, plan),
-          next: null,
-          progress: 0,
-          target: null,
-          targetPosition: null,
-          claimedAt: null,
-          queuedAt: null,
-          queueArrivedAt: null,
-          timer: 0,
-          interruptedBy: null,
-          awayFrom: null,
-          strandedAt: null,
-          usingStartedAt: null,
-        }),
+          nearestWalkable(placements[index]?.position ?? { x: 0, y: 0 }, plan),
+        ),
       ),
     ),
     changeovers: Object.freeze({}),
@@ -1769,11 +1796,13 @@ function livingPopulationMatchesSim(
 /**
  * Reconcile simulator bodies to the authoritative living population.
  *
- * G.2C2 may drop members whose `memberId` is no longer active. Survivors keep
- * their current simulation state. Simulator-local indexes are reassigned
- * contiguously in living-population order. New identities through this seam
- * fail closed — arrivals are not invented here. Relocation continues to use
- * `createFloorSimState`. Produces no service observation.
+ * G.2C2 may drop members whose `memberId` is no longer active. G.2C3 may mint
+ * seeking bodies for newly active identities. Survivors keep their current
+ * simulation state. Simulator-local indexes are reassigned contiguously in
+ * living-population order. A living population larger than the facility
+ * ambient placement count fails closed. Type mismatch on a surviving identity
+ * fails closed. Relocation continues to use `createFloorSimState`. Produces
+ * no service observation.
  */
 export function reconcileFloorSimPopulation(
   previous: FloorSimState,
@@ -1782,12 +1811,27 @@ export function reconcileFloorSimPopulation(
   const livingPopulation = context.livingPopulation;
   if (livingPopulationMatchesSim(previous, livingPopulation)) return previous;
 
+  const placements = ambientMemberRoster(context.rung, context.barbellOwned, context.sessionOwned);
+  if (livingPopulation.length > placements.length) {
+    refuseWith(
+      `living population count ${livingPopulation.length} exceeds ambient placement count ${placements.length}`,
+    );
+  }
+
   const byId = new Map<string, FloorSimMember>();
   for (const member of previous.members) {
     if (byId.has(member.memberId)) {
       refuseWith(`floor sim repeats member ${member.memberId}`);
     }
     byId.set(member.memberId, member);
+  }
+
+  const plan = routePlan(context);
+  const occupied = new Set<string>();
+  for (const entry of livingPopulation) {
+    const current = byId.get(entry.memberId);
+    if (current === undefined) continue;
+    occupied.add(`${current.cell.x},${current.cell.y}`);
   }
 
   const seen = new Set<string>();
@@ -1801,7 +1845,10 @@ export function reconcileFloorSimPopulation(
     seen.add(entry.memberId);
     const current = byId.get(entry.memberId);
     if (current === undefined) {
-      refuseWith(`living population names unknown simulator member ${entry.memberId}`);
+      const cell = spawnCellForArrival(placements, occupied, plan, index);
+      occupied.add(`${cell.x},${cell.y}`);
+      nextMembers.push(seekingSimulatorMember(entry, index, cell));
+      continue;
     }
     if (current.type !== entry.type) {
       refuseWith(

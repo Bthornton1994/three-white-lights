@@ -2466,6 +2466,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorSprites.ts',
       'ladder.ts',
       'ladderView.tsx',
+      // Stage G.2C3: vacancy arrival / population replenishment.
+      'livingMemberArrival.ts',
       'livingMemberDeparture.ts',
       'livingMemberExperience.ts',
       // Stage G.2B: living-member retention pressure, derived from G.2A.
@@ -2693,7 +2695,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 183 -> 188: Stage G.2B livingMemberRetention.ts plus FloorGrid reading it.
     // 188 -> 194: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring it.
     // 194 -> 200: Stage G.2C2 livingMemberDeparture.ts plus FloorGrid / livingMembers / stay wiring.
-    expect(pairs).toBe(200);
+    // 200 -> 207: Stage G.2C3 livingMemberArrival.ts plus FloorGrid / livingMembers wiring.
+    expect(pairs).toBe(207);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -2717,7 +2720,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 22 -> 23: Stage G.2B livingMemberRetention.ts imports refuseWith.
     // 23 -> 24: Stage G.2C1 livingMemberStay.ts imports refuseWith.
     // 24 -> 25: Stage G.2C2 livingMemberDeparture.ts imports refuseWith.
-    expect(mentionersOf('empireCore.ts').length).toBe(25);
+    // 25 -> 26: Stage G.2C3 livingMemberArrival.ts imports refuseWith.
+    expect(mentionersOf('empireCore.ts').length).toBe(26);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -3868,7 +3872,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // membership testIDs. Read from this assertion's own failure value.
     // 806 -> 815: Stage G.2C1 stay-status / cause / direction vocabulary.
     // 815 -> 821: Stage G.2C2 departure reason kinds, notice testID, and refuse tokens.
-    expect(singleQuoted.size).toBe(821);
+    // 821 -> 823: Stage G.2C3 arrival notice testID and join-line copy.
+    expect(singleQuoted.size).toBe(823);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3999,7 +4004,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 379 -> 384: Stage G.2C1 stay-state refuseWith templates.
     // 384 -> 392: Stage G.2C2 departure refuseWith templates and FloorGrid memberId keys.
     // 392 -> 393: departed-member same-tick type-conflict refuseWith template.
-    expect(templateChunks.size).toBe(393);
+    // 393 -> 395: Stage G.2C3 arrival tick / joinedAtSeconds refuseWith templates.
+    expect(templateChunks.size).toBe(395);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4035,6 +4041,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './floorSprites',
       './ladder',
       './ladderView',
+      './livingMemberArrival',
       './livingMemberDeparture',
       './livingMemberExperience',
       './livingMemberRetention',
@@ -4295,6 +4302,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorGrids',
       'floorUris',
       'floorgrid-ambient-caption',
+      'floorgrid-arrival-notice',
       'floorgrid-bay-expansion',
       'floorgrid-bay-expansion-sprite',
       'floorgrid-bay-label-competition-bench-bay',
@@ -4857,7 +4865,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 379 -> 384.
     // 1199 -> 1213: Stage G.2C2 singleQuoted 815 -> 821 and templateChunks 384 -> 392.
     // 1213 -> 1214: departed-member same-tick type-conflict refuseWith template.
-    expect(stringsChecked).toBe(1214);
+    // 1214 -> 1218: Stage G.2C3 singleQuoted +2 and templateChunks +2.
+    expect(stringsChecked).toBe(1218);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5236,6 +5245,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './floorSprites',
         './ladder',
         './ladderView',
+        // Stage G.2C3: last-arrival notice copy.
+        './livingMemberArrival',
         // Stage G.2C2: last-departure notice copy.
         './livingMemberDeparture',
         // Stage G.1: persistent member identity and service history on tap.
@@ -5307,6 +5318,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './sessions',
       ],
       'members.ts': ['./empireCore', './empireTuning', './production', './sessions'],
+      'livingMemberArrival.ts': [
+        './empireCore',
+        './livingMemberStay',
+        './livingMembers',
+        './members',
+        './sessions',
+      ],
       'livingMemberExperience.ts': ['./empireCore', './empireTuning', './livingMembers'],
       'livingMemberRetention.ts': ['./empireCore', './empireTuning', './livingMemberExperience'],
       'livingMemberStay.ts': ['./empireCore', './empireTuning', './livingMemberRetention', './members'],
@@ -5322,6 +5340,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './floor',
         './floorSim',
         './ladder',
+        './livingMemberArrival',
         './livingMemberDeparture',
         './livingMemberExperience',
         './livingMemberRetention',
@@ -5382,7 +5401,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 27 -> 28: Stage G.2B livingMemberRetention.ts.
     // 28 -> 29: Stage G.2C1 livingMemberStay.ts.
     // 29 -> 30: Stage G.2C2 livingMemberDeparture.ts.
-    expect(fenced).toBe(30);
+    // 30 -> 31: Stage G.2C3 livingMemberArrival.ts.
+    expect(fenced).toBe(31);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -5509,7 +5529,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // livingMembers.ts reading experience / retention / stay.
     // 132 -> 138: Stage G.2C2 — livingMemberDeparture.ts four edges plus
     // livingMembers.ts and FloorGrid.tsx reading it.
-    expect(specifiers).toBe(138);
+    // 138 -> 145: Stage G.2C3 — livingMemberArrival.ts five edges plus
+    // livingMembers.ts and FloorGrid.tsx reading it.
+    expect(specifiers).toBe(145);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
