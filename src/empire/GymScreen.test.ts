@@ -761,6 +761,15 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
     .replace('{fromSporting}', String(reputationReading.fromSporting));
   expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(reputationLine);
   expect(textOf(findByTestId(root, 'gymscreen-reputation'))).not.toMatch(/\+REP/);
+  // REP-EVIDENCE-01: both halves live on the HUD, not only the more-drawer
+  // diagnostics block. testID readers still find the same ids.
+  expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain('gymscreen-reputation');
+  expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).not.toContain(
+    'gymscreen-reputation',
+  );
+  expect(testIdsUnder(findByTestId(root, 'gymscreen-diagnostics'))).not.toContain(
+    'gymscreen-reputation',
+  );
   const credit = state.lastSportingCredit;
   if (credit === null) {
     expect(findAllByTestId(root, 'gymscreen-reputation-reason-0').length).toBe(0);
@@ -2030,9 +2039,10 @@ describe('G2-ATHLETE-SEASON-01 — FloorGrid season notice', () => {
   });
 });
 
-describe('CAREER-EMPIRE-REP-01 — gymscreen-reputation diagnostics', () => {
-  it('opens with both halves at zero and no reason rows', () => {
+describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
+  it('opens with both halves at zero and no reason rows on the play HUD', () => {
     const state = createGymViewState();
+    expect(state.surface).toBe('play');
     const root = render(state, []);
     expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(
       T.SPORTING_REPUTATION.copy.composed
@@ -2041,9 +2051,13 @@ describe('CAREER-EMPIRE-REP-01 — gymscreen-reputation diagnostics', () => {
     );
     expect(findAllByTestId(root, 'gymscreen-reputation-reason-0').length).toBe(0);
     expect(textOf(findByTestId(root, 'gymscreen-reputation'))).not.toMatch(/\+REP/);
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain('gymscreen-reputation');
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).not.toContain(
+      'gymscreen-reputation',
+    );
   });
 
-  it('shows the placing reason after a first-of-16 PR credit', () => {
+  it('shows the placing reason after a first-of-16 PR credit, still on the HUD', () => {
     const credited = gymViewReduce(createGymViewState(), {
       kind: 'credit-sporting-result',
       meetId: 'local-open-2026',
@@ -2065,6 +2079,109 @@ describe('CAREER-EMPIRE-REP-01 — gymscreen-reputation diagnostics', () => {
         .replace('{field}', '16')
         .replace('{kind}', 'local'),
     );
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain(
+      'gymscreen-reputation-reason-0',
+    );
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).not.toContain(
+      'gymscreen-reputation-reason-0',
+    );
     expect(textOf(findByTestId(root, 'gymscreen-reputation'))).not.toMatch(/\+REP/);
+  });
+
+  it('shows the members half on the HUD after a played clock settle, meets still zero', () => {
+    const opened = createGymViewState();
+    const advanced = gymViewReduce(opened, {
+      kind: 'advance-clock',
+      gapSeconds: T.SECONDS_PER_DAY,
+      mode: 'online',
+    });
+    const reading = institutionalReputation(
+      advanced.livingMembers.reputation,
+      advanced.sportingReputation,
+    );
+    expect(reading.fromMembers).toBeGreaterThan(0);
+    expect(reading.fromSporting).toBe(0);
+    const root = render(advanced, []);
+    expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(
+      T.SPORTING_REPUTATION.copy.composed
+        .replace('{fromMembers}', String(reading.fromMembers))
+        .replace('{fromSporting}', '0'),
+    );
+    expect(findAllByTestId(root, 'gymscreen-reputation-reason-0').length).toBe(0);
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain('gymscreen-reputation');
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).not.toContain(
+      'gymscreen-reputation',
+    );
+  });
+
+  it('shows both credited halves together on the HUD after a clock settle and a played meet', () => {
+    const advanced = gymViewReduce(createGymViewState(), {
+      kind: 'advance-clock',
+      gapSeconds: T.SECONDS_PER_DAY,
+      mode: 'online',
+    });
+    const credited = gymViewReduce(advanced, {
+      kind: 'credit-sporting-result',
+      meetId: 'local-open-2026',
+      facts: Object.freeze({
+        totalKg: 600,
+        isTotalPr: true,
+        placing: Object.freeze({ place: 1, fieldSize: 16 }),
+      }),
+    });
+    const reading = institutionalReputation(
+      credited.livingMembers.reputation,
+      credited.sportingReputation,
+    );
+    expect(reading.fromMembers).toBeGreaterThan(0);
+    expect(reading.fromSporting).toBe(40);
+    const root = render(credited, []);
+    expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(
+      T.SPORTING_REPUTATION.copy.composed
+        .replace('{fromMembers}', String(reading.fromMembers))
+        .replace('{fromSporting}', '40'),
+    );
+    expect(textOf(findByTestId(root, 'gymscreen-reputation-reason-0'))).toBe(
+      T.SPORTING_REPUTATION.copy.placing
+        .replace('{place}', '1')
+        .replace('{field}', '16')
+        .replace('{kind}', 'local'),
+    );
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain('gymscreen-reputation');
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain(
+      'gymscreen-reputation-reason-0',
+    );
+  });
+
+  it('fails closed on an unknown meet: HUD stays at zero sporting and names the stored refuse', () => {
+    const opened = createGymViewState();
+    const missed = gymViewReduce(opened, {
+      kind: 'credit-sporting-result',
+      meetId: 'not-on-the-sporting-map',
+      facts: Object.freeze({
+        totalKg: 600,
+        isTotalPr: true,
+        placing: Object.freeze({ place: 1, fieldSize: 16 }),
+      }),
+    });
+    expect(missed.sportingReputation).toBe(opened.sportingReputation);
+    expect(missed.sportingReputation.creditedReputation).toBe(0);
+    expect(missed.lastSportingCredit).toEqual({
+      kind: 'not-creditable',
+      meetId: 'not-on-the-sporting-map',
+      reason: 'unknown-meet',
+    });
+    const root = render(missed, []);
+    expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(
+      T.SPORTING_REPUTATION.copy.composed
+        .replace('{fromMembers}', '0')
+        .replace('{fromSporting}', '0'),
+    );
+    expect(textOf(findByTestId(root, 'gymscreen-reputation-reason-0'))).toBe(
+      T.SPORTING_REPUTATION.copy.unknownMeet,
+    );
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain(
+      'gymscreen-reputation-reason-0',
+    );
   });
 });

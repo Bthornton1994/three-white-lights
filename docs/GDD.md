@@ -3252,8 +3252,10 @@ than the ruling's own §1–§23 sequence:
   gate not run — not CLOSED) — member-side reputation from that same
   occupancy, plus reputation-gated high-paying vacancy arrival.
   **G2-ATHLETE-SEASON-01 IN PROGRESS** — shared gym-clock Athlete
-  leave/return. Career → Empire reputation, Portfolio, and NpcLifter
-  merge stay blocked.
+  leave/return. **CAREER-EMPIRE-REP-01 FROZEN** at
+  `34b98a06772db81126b68deec220a24328892a22` (factory freeze; human
+  feel gate not run — not CLOSED). Portfolio and NpcLifter merge stay
+  blocked.
 
 ### Human Stage C rejection at `f097695b`
 
@@ -5246,8 +5248,9 @@ per-member-per-day rates (opening Garage is three powerlifters at
 
 **Player-facing:** member detail card `REP` line shows the current daily
 type rate. No %, no countdown, no Career claim, no upgrade-ownership
-guess. Evidence of *why the gym total moved* (Stage E's reason-bearing
-toast) is presentation later; this slice names the daily rate.
+guess. Evidence of *why the gym total moved* is REP-EVIDENCE-01 on the
+Gym HUD (`gymscreen-reputation`), not only the more-drawer diagnostics
+block.
 
 **Fences:** no `reputationFromMembers` on an aggregate roster, no
 `memberSatisfaction`, no Career import, no Portfolio, no NpcLifter
@@ -5255,8 +5258,10 @@ merge, no RNG, no `Date.now`, no leave probability. No write of
 `EmpireState.reputation`. G.2A/G.2B/G.2C1–C3/G.2D frozen. Q/C/T frozen.
 E-REP-01 stays open.
 
-**Still blocked after G.2E freeze:** Career → Empire reputation,
-Portfolio, NpcLifter merge. G2-ATHLETE-SEASON-01 is the next authorised
+**Still blocked after G.2E freeze:** Portfolio, NpcLifter merge.
+CAREER-EMPIRE-REP-01 later FROZE the sporting half at
+`34b98a06772db81126b68deec220a24328892a22` (factory freeze; human feel
+gate not run — not CLOSED). G2-ATHLETE-SEASON-01 is a later authorised
 slice.
 
 #### G2-ATHLETE-SEASON-01 — Athlete Seasonal Leave / Return
@@ -5406,9 +5411,12 @@ identity. Unknown meet id records `not-creditable` and leaves the
 ledger identical. A stamp earlier than the last sporting entry refuses.
 Malformed facts refuse.
 
-**Player-facing:** diagnostics line in the existing `more` drawer
-(`gymscreen-reputation`). No toast. Feel unproven. Player-facing
-"why reputation moved" copy is REP-EVIDENCE-01.
+**Player-facing:** HUD `gymscreen-reputation` on the default play
+surface. Both halves (`members {fromMembers} · meets {fromSporting}`)
+and stored sporting reasons. Honest zero when nothing is credited.
+Unknown meet ids fail closed as `not-creditable` with the stored
+`unknownMeet` copy. No toast. Feel unproven. Presentation is
+REP-EVIDENCE-01; credit routing is CAREER-EMPIRE-REP-01 P1/P2.
 
 **G.2E gate:** high-paying vacancy arrival still reads member-only
 `creditedReputation`. Sporting credit does not mint Athlete or Serious
@@ -5427,14 +5435,51 @@ E-REP-01 stays open.
 **Residuals:** REP-GRAIN-01 — the halves share a unit and were
 calibrated against different ladders (threshold 1; powerlifter
 0.15/day; local title 24). Any later consumer must be calibrated
-against the composed reading before it reads it. REP-EVIDENCE-01 —
-player-facing evidence copy is not this slice. Tools claim 14
-(played meet → gym `more` → meets half > 0; no `?meet=` path,
+against the composed reading before it reads it. Tools claim 14
+(played meet → gym HUD → meets half > 0; no `?meet=` path,
 including `live`, may credit) was not run.
 
 **Still blocked:** Portfolio, NpcLifter merge, G.2E gate on the
 composed reading, Career calendar / `newlyQualifiedFor`, server write,
 E-REP-01, feel Ready.
+
+#### REP-EVIDENCE-01 — player-facing sporting + member reputation evidence
+
+Presentation of the two institutional halves already stored on
+`GymViewState` / `institutionalReputation`. Not a new ledger, not an
+E-REP-01 retune, not a G.2E gate re-point, not a credit-path change.
+
+**GDD citation:** §5.6 Members: "Reputation is earned mostly by
+powerlifter and serious-lifter members, and by your own competition
+results." G.2E names the daily type rate on the member card.
+CAREER-EMPIRE-REP-01 stores sporting reasons and the composed
+reading. This slice puts both halves, and those stored reasons, on
+the Gym HUD so a player does not have to open the diagnostics-only
+`more` drawer.
+
+**Proven causal chain:** unchanged from CAREER-EMPIRE-REP-01. Played
+meet → AppShell played-port view → `credit-sporting-result` → sporting
+ledger. Member half still settles on the gym clock. `?meet=` frames,
+including `live`, still use a non-crediting stand-in.
+
+**Player-facing:** HUD line `members {fromMembers} · meets
+{fromSporting}` (`gymscreen-reputation`). Sporting reason rows from
+`lastSportingCredit` (`gymscreen-reputation-reason-*`). Opening state
+is honest zero with no reason rows. Unknown meet keeps the sporting
+ledger identical and shows `unknownMeet`. No toast. Feel unproven.
+
+**Fences:** no `src/game/**` edit. Crossing 9 unchanged. AppShell
+`meetScreenPort` / `withSportingCreditOnRecord` / `debugMeetStandIn`
+unchanged. Stage E calculator, every `livingMember*.ts`, `empireCore.ts`,
+and `reputation.ts` byte-identical. G.2E high-paying arrival still
+reads member-only. No numeric tuning literal. E-REP-01 stays open.
+
+**Residuals:** claim 14 not run. Feel unproven. Stage C / physical-phone
+gates. Preexisting `guaranteeTags` tip fails.
+
+**Still blocked:** Portfolio, NpcLifter merge, G.2E gate on the
+composed reading, Career calendar / `newlyQualifiedFor`, server write,
+E-REP-01, Empire feel Ready.
 
 ---
 
