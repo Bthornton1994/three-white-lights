@@ -2,7 +2,9 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-09-05 (G2-ATHLETE-SEASON-01 FROZEN at
+**Last updated:** 2026-09-05 (CAREER-EMPIRE-REP-01 IN PROGRESS — sporting
+ledger on `GymViewState` composed with G.2E at points. Prior
+`EmpireState.reputation` phrase names this composed v2 reading. G2-ATHLETE-SEASON-01 FROZEN at
 `9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze; human feel
 gate not run — not CLOSED). G.2E FROZEN at
 `cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel
@@ -4807,7 +4809,7 @@ behavior.
 | G.2C | G.2C1 frozen. G.2C2 frozen. G.2C3 frozen. Reputation-gated high-paying rates remain G.2E. |
 | G.2D | CLOSED / FROZEN at `28611af74dd6479bfad58763ebba72db5942307c`. Living-member dues from G.2A experience. P1 occupancy is time-weighted presence including open-mark production leaves; purse composition in this slice. |
 | G.2E | FROZEN at `cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel gate not run — not CLOSED). Member-side institutional reputation from living occupancy; high-paying (Athlete, Serious Lifter) vacancy arrival gated on credited living-member reputation. |
-| Career → Empire reputation | BLOCKED |
+| Career → Empire reputation | CAREER-EMPIRE-REP-01 IN PROGRESS — `GymViewState.sportingReputation` composed with G.2E at points. Literal v1 `EmpireState.reputation` stays unwritten. |
 | Portfolio | BLOCKED |
 
 **Proven causal chain:** physical gym decision → real FloorSim service
@@ -5317,6 +5319,80 @@ module bodies.
 **Still blocked:** Career → Empire reputation, Portfolio, NpcLifter
 merge. Feel of the 6 / 2 / 4 week cadence is unproven.
 CAREER-EMPIRE-REP-01 is the next authorised slice.
+
+#### CAREER-EMPIRE-REP-01 — Career/Meet → Empire Reputation (Stage E's deferred crossing)
+
+**CAREER-EMPIRE-REP-01 IN PROGRESS.** This is Stage E's deferred
+crossing: a played meet result may credit Empire sporting reputation.
+It is not a write of literal v1 `EmpireState.reputation`. It is not
+Portfolio, not NpcLifter merge, not an E-REP-01 retune, and not a
+pay-to-win purchase. It is not a new Stage G.2F.
+
+**GDD citation:** §5.6 Members: "Reputation is earned mostly by
+powerlifter and serious-lifter members, and by your own competition
+results." G.2E shipped the members half. This slice ships the
+competition-results half as a sporting ledger on the played gym tree.
+
+**§5.10 memorial:** "What does not survive: `EmpireState`'s shape."
+Prior entries that said Career/Meet → `EmpireState.reputation` named
+the crossing, not the v1 field. That phrase now resolves to this
+composed v2 reading: `GymViewState.sportingReputation` plus
+`institutionalReputation` over the frozen G.2E member ledger. The
+literal v1 field stays unwritten.
+
+**Why this slice, and not a v1 write:** `EmpireState` is off the played
+path. The played gym is `GymViewState`. G.2E already stores member
+reputation on that tree. Stage E named a later accounting boundary that may compose once both
+halves share a grain. Both halves are now credited points. Writing v1
+cannot compose with G.2E.
+
+**Proven causal chain:** played meet → server `RecordedMeet` →
+`MeetScreen.onRecorded` → `AppShell` → `credit-sporting-result` →
+Stage E `sportingReputationFromResult` → sporting ledger →
+`institutionalReputation` (members points + sporting points).
+
+**Write path:** `GymViewState.sportingReputation` via
+`creditSportingResult`. Adapter reads `totalKg` only as null/non-null,
+adopts server `isTotalPr` unchanged, and maps
+`placing.fieldSize` to Stage E `categoryFieldSize`. Kind comes from
+`SPORTING_REPUTATION.playedMeetKindById`. `newlyQualifiedFor` is passed
+as null (Career standing is not on the played path). Unknown `meetId`
+fails closed. Replay of the same `meetId` is a state identity no-op.
+
+**Grain:** credited reputation points, stamped on the gym clock
+(`LadderState.collectedAt`). Member half is
+`LivingMemberReputationLedger.creditedReputation`. Sporting half is
+`SportingReputationLedger.creditedReputation`. Composer adds points to
+points and clamps at `REPUTATION_MAX` on read. The composed number is
+not stored. A rate is not added to an event delta.
+
+**Idempotence / fail-closed:** same `meetId` returns the gym state by
+identity. Unknown meet id records `not-creditable` and leaves the
+ledger identical. A stamp earlier than the last sporting entry refuses.
+Malformed facts refuse.
+
+**Player-facing:** diagnostics line in the existing `more` drawer
+(`gymscreen-reputation`). No toast. Feel unproven. Player-facing
+"why reputation moved" copy is REP-EVIDENCE-01.
+
+**G.2E gate:** high-paying vacancy arrival still reads member-only
+`creditedReputation`. Sporting credit does not mint Athlete or Serious
+Lifter.
+
+**Fences:** Stage E calculator byte-identical. Every `livingMember*.ts`
+byte-identical. `empireCore.ts` / `reputation.ts` byte-identical. No
+`src/game/**` edit. `MeetScreen.tsx` is one optional prop and one
+effect. No new numeric tuning literal. E-REP-01 stays open.
+
+**Residuals:** REP-GRAIN-01 — the halves share a unit and were
+calibrated against different ladders (threshold 1; powerlifter
+0.15/day; local title 24). Any later consumer must be calibrated
+against the composed reading before it reads it. REP-EVIDENCE-01 —
+player-facing evidence copy is not this slice.
+
+**Still blocked:** Portfolio, NpcLifter merge, G.2E gate on the
+composed reading, Career calendar / `newlyQualifiedFor`, server write,
+E-REP-01, feel Ready.
 
 ---
 
