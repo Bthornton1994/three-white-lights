@@ -12568,7 +12568,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_209_828, // CAREER-EMPIRE-REP-01 GymScreen reputation diagnostics strings
+  STRINGS: 30_209_831, // REP-EVIDENCE-01 GymScreen reputation HUD strings (+3)
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -17977,7 +17977,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // stayState wiring. Read from this pin last.
   // 84_813 -> 86_105: Stage G.2C2 livingMemberDeparture.ts plus roster/sim
   // departure wiring. Read from this pin last.
-  NODES_EXAMINED: 92_830, // CAREER-EMPIRE-REP-01 GymScreen reputation diagnostics AST
+  NODES_EXAMINED: 92_844, // REP-EVIDENCE-01 GymScreen reputation HUD AST (+14)
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

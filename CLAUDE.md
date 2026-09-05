@@ -62,7 +62,10 @@ human feel gate not run — not CLOSED): the sporting half lands as
 with the G.2E member ledger at points. The G.2E high-paying arrival
 gate still reads member-only. The prior phrase "Career/Meet →
 `EmpireState.reputation`" names this composed v2 reading; the literal
-v1 field stays unwritten. Feel is unproven. G.2C1–C3 and
+v1 field stays unwritten. Feel is unproven. REP-EVIDENCE-01 surfaces
+both stored halves and sporting reasons on the Gym HUD
+(`gymscreen-reputation`), not only the diagnostics `more` drawer.
+Honest zero when nothing is credited. G.2C1–C3 and
 G.2D stay frozen. G2-ATHLETE-SEASON-01
 is FROZEN at `9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze;
 human feel gate not run — not CLOSED). G2-CONDITION-01, G2-FIT-01, and

@@ -5355,7 +5355,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         // gym's own screen can point at which stations are blocking it —
         // one new edge, no new arithmetic.
         './stationView',
-        // CAREER-EMPIRE-REP-01: composed reputation diagnostics.
+        // CAREER-EMPIRE-REP-01 / REP-EVIDENCE-01: composed reputation HUD.
         './institutionalReputation',
         'react-native',
       ],

@@ -580,6 +580,25 @@ export function GymScreen(props: GymViewProps) {
         <Text testID={'gymscreen-gym-bucks'} style={styles.hudText}>gym bucks: {gym.ladder.gymBucks}</Text>
         <Text testID={'gymscreen-accelerated-bucks'} style={styles.hudText}>accelerated: {gym.acceleratedGymBucks}</Text>
         <Text testID={'gymscreen-clock'} style={styles.hudText}>clock: {describeLadderClock(gym.ladder.collectedAt)}</Text>
+        {/*
+          REP-EVIDENCE-01 — player information, not engine detail. Both
+          institutional halves already live on GymViewState
+          (`livingMembers.reputation` + `sportingReputation`); the composer
+          is `institutionalReputation`. Stored sporting reasons ride
+          `lastSportingCredit`. Honest zero when nothing is credited. No
+          toast. The more-drawer diagnostics block must not be the only
+          place these lines exist.
+        */}
+        <Text testID={'gymscreen-reputation'} style={styles.hudText}>{reputationLine}</Text>
+        {reputationReasons.map((text, index) => (
+          <Text
+            testID={`gymscreen-reputation-reason-${index}`}
+            key={index}
+            style={styles.hudText}
+          >
+            {text}
+          </Text>
+        ))}
         {prompt.kind === 'quiet' ? null : (
           <Pressable
             testID={'gymscreen-hud-review'}
@@ -1135,6 +1154,9 @@ export function GymScreen(props: GymViewProps) {
         existing reader of those three (this file's own render test, the
         browser reachability tool) finds them by testID, not by position, so
         relocating them costs no rewritten assertion.
+        `gymscreen-reputation` left this block under REP-EVIDENCE-01: it is
+        player information (both institutional halves and stored sporting
+        reasons) and now lives on the HUD.
       */}
       <View testID={'gymscreen-diagnostics'}>
         <Text>engine detail — not needed to play, kept here for verification</Text>
@@ -1149,12 +1171,6 @@ export function GymScreen(props: GymViewProps) {
             <Text testID={'gymscreen-strikes-lead'}>0 counted decision(s)</Text>
           </View>
         ) : null}
-        <Text testID={'gymscreen-reputation'}>{reputationLine}</Text>
-        {reputationReasons.map((text, index) => (
-          <Text testID={`gymscreen-reputation-reason-${index}`} key={index}>
-            {text}
-          </Text>
-        ))}
         {lastAccrual === null ? null : (
           <Text testID={'gymscreen-accrual'}>
             last advance banked {lastAccrual.secondsBanked}s of {lastAccrual.secondsElapsed}s, paid{' '}
