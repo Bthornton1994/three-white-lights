@@ -123,9 +123,10 @@ export function appMeetPort(): MeetServerPort {
  * promise the screen used, on a parent that outlives MeetScreen.
  *
  * It does not replace the singleton. `appSessionPort() === appMeetPort()`
- * is still the one row. Only the object handed to the played MeetScreen
- * is this view. A `?meet=` debug frame keeps its own stand-in port and
- * must not pass through here.
+ * is still the one row. Only the object handed to the production played
+ * MeetScreen is this view. Every `?meet=` debug frame — including
+ * `?meet=live`, whose `serverPort` is intentionally undefined — stays
+ * off this view. `meetScreenPort` is the selection that keeps that true.
  */
 export function withSportingCreditOnRecord(
   port: MeetServerPort,
@@ -142,4 +143,24 @@ export function withSportingCreditOnRecord(
       return response;
     },
   };
+}
+
+/**
+ * Which port AppShell hands MeetScreen.
+ *
+ * Credit is AppShell-owned and only for the production played path
+ * (`meetFrame` absent). Every `?meet=` frame stays off the crediting
+ * view — including `?meet=live`, a defined frame whose `serverPort` is
+ * undefined so the loop uses the app connection. `meetFrame?.serverPort
+ * ?? playedMeetPort` would have selected the view for live; this
+ * selection keys on frame presence, not on whether the frame carried a
+ * stand-in port.
+ */
+export function meetScreenPort(
+  meetFrame: { readonly serverPort: MeetServerPort | undefined } | undefined,
+  playedMeetPort: MeetServerPort,
+  appPort: MeetServerPort,
+): MeetServerPort {
+  if (meetFrame === undefined) return playedMeetPort;
+  return meetFrame.serverPort ?? appPort;
 }

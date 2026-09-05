@@ -2,11 +2,12 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-09-05 (CAREER-EMPIRE-REP-01 P1 — a leave during
-the in-flight meet save can no longer drop sporting credit. AppShell
-owns a played-port view that credits from `recordMeetResult`; Crossing 9
-stays the MeetScreen `onRecorded` report. A recorded Total that cannot
-credit fails closed visibly. Factory freeze remains
+**Last updated:** 2026-09-05 (CAREER-EMPIRE-REP-01 P2 — no `?meet=`
+path, including `live`, credits sporting reputation. `?meet=live` is a
+defined debug frame with `serverPort: undefined`; AppShell selects
+`appMeetPort()` for it, not the crediting `playedMeetPort` view. Only
+the production played path (no meetFrame) uses the AppShell-owned view.
+Crossing 9 stays the mounted MeetScreen report. Factory freeze remains
 `34b98a06772db81126b68deec220a24328892a22` — human feel gate not run —
 not CLOSED. Sporting ledger on `GymViewState` composed
 with G.2E at points. Prior `EmpireState.reputation` phrase names this
@@ -16,6 +17,15 @@ gate not run — not CLOSED). G.2E FROZEN at
 `cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel
 gate not run — not CLOSED). G.2D CLOSED / FROZEN at
 `28611af74dd6479bfad58763ebba72db5942307c`.
+Earlier: 2026-09-05 (CAREER-EMPIRE-REP-01 P1 — a leave during
+the in-flight meet save can no longer drop sporting credit. AppShell
+owns a played-port view that credits from `recordMeetResult`; Crossing 9
+stays the MeetScreen `onRecorded` report. A recorded Total that cannot
+credit fails closed visibly. Factory freeze remains
+`34b98a06772db81126b68deec220a24328892a22` — human feel gate not run —
+not CLOSED. Sporting ledger on `GymViewState` composed
+with G.2E at points. Prior `EmpireState.reputation` phrase names this
+composed v2 reading.)
 Earlier: 2026-09-05 (G.2E IN PROGRESS — member-side living-member
 reputation ledger and reputation-gated high-paying vacancy arrival.
 G.2D CLOSED / FROZEN at `28611af74dd6479bfad58763ebba72db5942307c`.
@@ -5367,7 +5377,12 @@ A leave during the in-flight save still credits because AppShell's
 view outlives MeetScreen. Replay of the same `meetId` is a state
 identity no-op, so both paths may fire. A recorded Total on an
 unknown meet fails closed as `not-creditable` — a silent miss is a
-fail.
+fail. P2: AppShell selects that view only when `meetFrame` is
+absent. Every `?meet=` frame — including `?meet=live`, a defined
+frame whose `serverPort` is undefined — uses the frame stand-in or
+`appMeetPort()`, never the crediting view. Disabling Crossing 9
+`onRecorded` is not enough; the view itself must not wrap a debug
+frame.
 
 **Write path:** `GymViewState.sportingReputation` via
 `creditSportingResult`. Adapter reads `totalKg` only as null/non-null,
@@ -5401,7 +5416,9 @@ Lifter.
 byte-identical. `empireCore.ts` / `reputation.ts` byte-identical. No
 `src/game/**` edit. `MeetScreen.tsx` is one optional prop and one
 effect. P1 credit is AppShell's played-port view, not a second
-Crossing 9 argument on `useMeetDay`. No new numeric tuning literal.
+Crossing 9 argument on `useMeetDay`. P2 keeps that view on the
+production path only (`meetScreenPort` keys on frame presence).
+No new numeric tuning literal.
 E-REP-01 stays open.
 
 **Residuals:** REP-GRAIN-01 — the halves share a unit and were
@@ -5409,8 +5426,8 @@ calibrated against different ladders (threshold 1; powerlifter
 0.15/day; local title 24). Any later consumer must be calibrated
 against the composed reading before it reads it. REP-EVIDENCE-01 —
 player-facing evidence copy is not this slice. Tools claim 14
-(played meet → gym `more` → meets half > 0; `?meet=recap` must not
-credit) was not run.
+(played meet → gym `more` → meets half > 0; no `?meet=` path,
+including `live`, may credit) was not run.
 
 **Still blocked:** Portfolio, NpcLifter merge, G.2E gate on the
 composed reading, Career calendar / `newlyQualifiedFor`, server write,

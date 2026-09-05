@@ -84,7 +84,7 @@ import { LIFT_PALETTE } from '../lift/liftPalette';
 import { LiftScreen } from '../lift/LiftScreen';
 import { MeetScreen, type MeetScreenProps } from '../meet/MeetScreen';
 import { SessionScreen } from '../session/SessionScreen';
-import { appMeetPort, appSessionPort, withSportingCreditOnRecord } from './appServer';
+import { appMeetPort, appSessionPort, meetScreenPort, withSportingCreditOnRecord } from './appServer';
 import {
   frozenMeetFor,
   frozenSessionFor,
@@ -448,19 +448,22 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
           //
           // `appMeetPort()` IS `appSessionPort()` — the same object, one row —
           // which is what makes the lifter who trains and the lifter who
-          // competes one lifter. The played route is handed a view of that
-          // object (`playedMeetPort`) so sporting credit lives on AppShell
-          // if MeetScreen unmounts mid-save. A debug frame keeps its own
-          // stand-in and does not pass through the view.
+          // competes one lifter. The production played route is handed a view
+          // of that object (`playedMeetPort`) so sporting credit lives on
+          // AppShell if MeetScreen unmounts mid-save. Every `?meet=` frame —
+          // including `?meet=live`, whose stand-in port is intentionally
+          // undefined — stays off that view. Selection keys on frame
+          // presence, not on `serverPort ??`, because live is a defined
+          // frame with no stand-in.
           //
-          // The `??` reads like the ternary it replaces and is not one:
           // `meetFrame` is `undefined` for every route a player can reach
-          // (`frozenMeetFor` requires `source === 'debug'`), and a frame only
-          // carries a port when it also carries a scripted state. Both halves
-          // are pinned in `shellRoute.test.ts`, and the browser check in
+          // (`frozenMeetFor` requires `source === 'debug'`). A frame only
+          // carries a port when it also carries a scripted state; live uses
+          // the app connection without the credit wrapper. Both halves are
+          // pinned in `shellRoute.test.ts`, and the browser check in
           // `tools/verify-shell-route.mjs` measures the consequence on the
           // played path rather than trusting either.
-          serverPort={meetFrame?.serverPort ?? playedMeetPort}
+          serverPort={meetScreenPort(meetFrame, playedMeetPort, appMeetPort())}
           preview={meetFrame?.state}
           showCard={meetFrame?.card ?? false}
           holdWalkoutAtMs={meetFrame?.holdWalkoutAtMs ?? null}

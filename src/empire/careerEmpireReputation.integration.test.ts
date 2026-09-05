@@ -22,7 +22,7 @@ import {
   type RecordedMeet,
 } from '../game/meetClient';
 import { meetResultProposal } from '../game/meetDay';
-import { playMeet } from '../game/meetPreview';
+import { MEET_MOMENTS, playMeet } from '../game/meetPreview';
 import { MEET_ENTRY, MEET_LOCAL } from '../game/meetTuning';
 import { asProposalId } from '../game/progression';
 import { SESSION_BOUNDARY, SESSION_TUNING } from '../game/sessionTuning';
@@ -31,7 +31,8 @@ import { equipmentBiasedMemberTypes } from './members';
 import type { SessionEquipmentItem } from './sessions';
 import { localSessionServer } from '../session/localSessionServer';
 import { openingCache } from '../game/sessionClient';
-import { withSportingCreditOnRecord } from '../shell/appServer';
+import { meetScreenPort, withSportingCreditOnRecord } from '../shell/appServer';
+import { frozenMeetFor, resolveEntry } from '../shell/shellRoute';
 import type { PlayedMeetFacts } from './sportingReputationLedger';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -269,7 +270,8 @@ describe('CAREER-EMPIRE-REP-01 — Crossing 9 / Crossing 6-extended wiring', () 
     expect(APP_SHELL).toMatch(/kind: 'credit-sporting-result'/);
     expect(APP_SHELL).toMatch(/facts: recorded/);
     expect(APP_SHELL).toMatch(/withSportingCreditOnRecord\(appMeetPort\(\), creditSportingResult\)/);
-    expect(APP_SHELL).toMatch(/serverPort=\{meetFrame\?\.serverPort \?\? playedMeetPort\}/);
+    expect(APP_SHELL).toMatch(/serverPort=\{meetScreenPort\(meetFrame, playedMeetPort, appMeetPort\(\)\}/);
+    expect(APP_SHELL).not.toMatch(/meetFrame\?\.serverPort \?\? playedMeetPort/);
     expect(APP_SHELL).not.toMatch(/dispatchRef/);
   });
 
@@ -315,6 +317,7 @@ describe('CAREER-EMPIRE-REP-01 P1 — leave-before-response / unmount-before-onR
     expect(MEET_SCREEN).toMatch(/onRecorded\?\.\(state\.context\.meet\.id, loop\.applied\)/);
     expect(USE_MEET_DAY).not.toMatch(/\bonRecorded\b/);
     expect(APP_SHELL).toMatch(/withSportingCreditOnRecord\(appMeetPort\(\), creditSportingResult\)/);
+    expect(APP_SHELL).toMatch(/serverPort=\{meetScreenPort\(meetFrame, playedMeetPort, appMeetPort\(\)\}/);
   });
 
   it('credits sporting reputation when the screen unmounts before onRecorded', async () => {
@@ -424,5 +427,110 @@ describe('CAREER-EMPIRE-REP-01 P1 — leave-before-response / unmount-before-onR
       reason: 'unknown-meet',
     });
     expect(gym.sportingReputation.creditedReputation).toBe(0);
+  });
+});
+
+describe('CAREER-EMPIRE-REP-01 P2 — ?meet= frames do not credit', () => {
+  const DAY = SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY;
+
+  function playAMeet(port: MeetServerPort) {
+    const facts = meetDayFactsFromCache(openingCache(port), DAY, SESSION_TUNING.STARTING_E1RM);
+    const state = playMeet(
+      () => 'perfect',
+      () => 'small',
+      {
+        day: DAY,
+        meet: MEET_LOCAL,
+        entry: MEET_ENTRY,
+        bestE1rmKg: facts.bestE1rmKg,
+        previousBestTotalKg: facts.previousBestTotalKg,
+        previousBestByLiftKg: facts.previousBestByLiftKg,
+        fatigue: port.meetBrief(DAY).fatigue,
+      },
+    );
+    const proposal = meetResultProposal(state);
+    if (proposal === null) throw new Error('the played meet produced no proposal');
+    return proposal;
+  }
+
+  function creditOnto(
+    gym: GymViewState,
+  ): {
+    readonly gym: { current: GymViewState };
+    readonly credit: (meetId: string, recorded: RecordedMeet) => void;
+  } {
+    const box = { current: gym };
+    return {
+      gym: box,
+      credit: (meetId, recorded) => {
+        box.current = gymViewReduce(box.current, {
+          kind: 'credit-sporting-result',
+          meetId,
+          facts: recorded,
+        });
+      },
+    };
+  }
+
+  it('?meet=live is a defined frame; the old ?? fallback would have selected the crediting view', () => {
+    const entry = resolveEntry('?meet=live');
+    const frame = frozenMeetFor(entry, entry.route);
+    expect(frame).toBeDefined();
+    expect(frame?.serverPort).toBeUndefined();
+
+    const inner = localSessionServer({ sleep: () => Promise.resolve() });
+    const played = withSportingCreditOnRecord(inner, () => undefined);
+    // The P1 selection. Live's undefined stand-in coalesces onto the view.
+    expect(frame?.serverPort ?? played).toBe(played);
+    expect(meetScreenPort(frame, played, inner)).toBe(inner);
+    expect(meetScreenPort(frame, played, inner)).not.toBe(played);
+  });
+
+  it('no ?meet= frame — including live — credits sporting reputation', async () => {
+    const searches = [...MEET_MOMENTS.map((moment) => `?meet=${moment}`), '?meet=live'];
+    expect(searches.length).toBe(MEET_MOMENTS.length + 1);
+
+    for (const [index, search] of searches.entries()) {
+      const entry = resolveEntry(search);
+      const frame = frozenMeetFor(entry, entry.route);
+      expect(frame, search).toBeDefined();
+
+      const inner = localSessionServer({ sleep: () => Promise.resolve() });
+      const box = creditOnto(createGymViewState());
+      const played = withSportingCreditOnRecord(inner, box.credit);
+      const port = meetScreenPort(frame, played, inner);
+      expect(port, search).not.toBe(played);
+
+      const proposal = playAMeet(port);
+      const response = await port.recordMeetResult(
+        DAY,
+        MEET_LOCAL,
+        proposal,
+        asProposalId(`p2-debug-${String(index)}`),
+      );
+      expect(response.kind, search).toBe('recorded');
+      if (response.kind !== 'recorded') throw new Error('unreachable');
+      expect(response.result.totalKg, search).not.toBeNull();
+      expect(box.gym.current.lastSportingCredit, search).toBeNull();
+      expect(box.gym.current.sportingReputation.creditedReputation, search).toBe(0);
+    }
+  });
+
+  it('the production path (no meetFrame) still credits through the AppShell-owned view', async () => {
+    const inner = localSessionServer({ sleep: () => Promise.resolve() });
+    const box = creditOnto(createGymViewState());
+    const played = withSportingCreditOnRecord(inner, box.credit);
+    const port = meetScreenPort(undefined, played, inner);
+    expect(port).toBe(played);
+
+    const response = await port.recordMeetResult(
+      DAY,
+      MEET_LOCAL,
+      playAMeet(inner),
+      asProposalId('p2-played'),
+    );
+    expect(response.kind).toBe('recorded');
+    expect(box.gym.current.lastSportingCredit?.kind).toBe('credited');
+    expect(box.gym.current.sportingReputation.creditedReputation).toBeGreaterThan(0);
   });
 });

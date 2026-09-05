@@ -29,7 +29,7 @@ import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-import { appMeetPort, appSessionPort, withSportingCreditOnRecord } from './appServer';
+import { appMeetPort, appSessionPort, meetScreenPort, withSportingCreditOnRecord } from './appServer';
 import { meetDayFactsFromCache } from '../game/meetClient';
 import { meetResultProposal } from '../game/meetDay';
 import { playMeet } from '../game/meetPreview';
@@ -969,8 +969,16 @@ describe('navigating away and back cannot buy a second session of the day', () =
     // `AppShell` gave `SessionScreen` a `serverPort` and gave `MeetScreen` no
     // port, no record and no cache. That asymmetry IS the defect, in one line of
     // JSX, and this is the line.
-    expect(SHELL).toMatch(/serverPort=\{meetFrame\?\.serverPort \?\? playedMeetPort\}/);
+    expect(SHELL).toMatch(/serverPort=\{meetScreenPort\(meetFrame, playedMeetPort, appMeetPort\(\)\}/);
     expect(SHELL).toMatch(/withSportingCreditOnRecord\(appMeetPort\(\), creditSportingResult\)/);
+    expect(SHELL).not.toMatch(/meetFrame\?\.serverPort \?\? playedMeetPort/);
+    // Selection keys on frame presence. A live-shaped frame (defined, no
+    // stand-in port) must not coalesce onto the crediting view.
+    const app = appMeetPort();
+    const played = withSportingCreditOnRecord(app, () => undefined);
+    expect(meetScreenPort(undefined, played, app)).toBe(played);
+    expect(meetScreenPort({ serverPort: undefined }, played, app)).toBe(app);
+    expect(meetScreenPort({ serverPort: app }, played, app)).toBe(app);
   });
 
   it('MeetScreen forwards the port to the hook instead of dropping it', () => {
