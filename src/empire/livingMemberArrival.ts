@@ -7,9 +7,12 @@
  * replacement into a vacancy, and writes the player-facing join line.
  *
  * It does not own the G.2C1 confirmation machine or G.2C2 departure. It does
- * not invent dues, reputation, seasonality, a return path, a random roll, a
- * percentage, a countdown, or wall-clock churn. Athlete leave/return stays
- * G2-ATHLETE-SEASON-01. Reputation-gated high-paying arrival rates stay G.2E.
+ * not invent dues, seasonality, a return path, a random roll, a percentage,
+ * a countdown, or wall-clock churn. Athlete leave/return stays
+ * G2-ATHLETE-SEASON-01. G.2E reputation-gated high-paying arrival is the
+ * additional gate on Athlete and Serious Lifter: credited living-member
+ * reputation must meet the published threshold. Casual, Bodybuilder, and
+ * Powerlifter are not high-paying and are not gated here.
  *
  * A vacancy is not itself an arrival. G.1 relocation still appends when the
  * destination cap is larger. G.2C3 is the first slice allowed to mint at the
@@ -20,9 +23,10 @@
  */
 
 import { refuseWith } from './empireCore';
+import { EMPIRE_TUNING } from './empireTuning';
 import type { LivingMemberStayEvidence } from './livingMemberStay';
 import type { GymMemberId, LivingGymMember } from './livingMembers';
-import type { MemberType } from './members';
+import { isHighPayingMemberType, type MemberType } from './members';
 import type { SessionEquipmentItem } from './sessions';
 
 /**
@@ -54,17 +58,34 @@ export interface LivingMemberArrivalRecord {
  * response rather than rewriting G.2A/G.2B:
  * - Casual may join on recovery or on formed-neutral evidence (faster to
  *   arrive).
- * - Serious Lifter joins only on recovery (slow to arrive).
- * - Bodybuilder, Powerlifter, and Athlete use the common recovery path.
- *   Athlete seasonality is not this slice.
+ * - Serious Lifter joins only on recovery (slow to arrive) and only when
+ *   credited living-member reputation meets the G.2E high-paying threshold.
+ * - Bodybuilder and Powerlifter use the common recovery path.
+ * - Athlete uses the common recovery path and the same high-paying
+ *   reputation gate. Athlete seasonality is not this slice.
+ *
+ * `creditedReputation` is the G.2E living-member ledger total, not
+ * check-in reputation and not a sporting meet delta.
  */
 export function livingMemberShouldArrive(
   vacancyCount: number,
   arrivingType: MemberType,
   servingEvidence: LivingMemberStayEvidence,
+  creditedReputation: number,
 ): boolean {
   if (vacancyCount <= 0) return false;
+  if (!Number.isFinite(creditedReputation) || creditedReputation < 0) {
+    refuseWith(
+      `credited member reputation must be a non-negative number, received ${creditedReputation}`,
+    );
+  }
   if (servingEvidence === 'forming' || servingEvidence === 'strain') return false;
+  if (
+    isHighPayingMemberType(arrivingType) &&
+    creditedReputation < EMPIRE_TUNING.HIGH_PAYING_MEMBER_ARRIVAL_REPUTATION_THRESHOLD
+  ) {
+    return false;
+  }
   if (arrivingType === 'serious-lifter') return servingEvidence === 'recovery';
   if (arrivingType === 'casual') {
     return servingEvidence === 'recovery' || servingEvidence === 'neutral';

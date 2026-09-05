@@ -333,8 +333,8 @@ describe('Stage G.2C3 — type treatment at the arrival boundary', () => {
     expect(retention.label).toBe('Watching');
     expect(retention.reasons.some((reason) => reason.kind === 'wait')).toBe(false);
     expect(evidence).toBe('neutral');
-    expect(livingMemberShouldArrive(1, 'casual', evidence)).toBe(true);
-    expect(livingMemberShouldArrive(1, 'serious-lifter', evidence)).toBe(false);
+    expect(livingMemberShouldArrive(1, 'casual', evidence, 0)).toBe(true);
+    expect(livingMemberShouldArrive(1, 'serious-lifter', evidence, T.HIGH_PAYING_MEMBER_ARRIVAL_REPUTATION_THRESHOLD)).toBe(false);
 
     expect(nextArrivalType(departed, CASUAL_OWNED)).toBe('casual');
     const casualArrival: LivingMemberArrivalContext = Object.freeze({

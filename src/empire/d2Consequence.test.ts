@@ -100,15 +100,17 @@ describe('D2-CONSEQUENCE-01 — played floor does not fund the institution', () 
     expect(away.gymBucks).toBeCloseTo(rate * T.OFFLINE_EARNINGS_FRACTION, 5);
   });
 
-  it('lets only G.2D livingMemberDues.ts call member dues; satisfaction and reputation stay unwired', () => {
+  it('lets only G.2D livingMemberDues.ts call member dues; G.2E livingMemberReputation.ts call type reputation rates; crowding satisfaction and aggregate reputationFromMembers stay unwired', () => {
     const members = shippedSource('members.ts');
     expect(members).toMatch(/export function memberDuesGymBucks/);
     expect(members).toMatch(/export function memberSatisfaction/);
     expect(members).toMatch(/export function reputationFromMembers/);
+    expect(members).toMatch(/export function memberReputationPerDay/);
 
     const root = HERE;
     const shipped = tsFilesUnder(root, 'without-tests');
     const duesCallers: string[] = [];
+    const reputationRateCallers: string[] = [];
     const blockedCallers: string[] = [];
     for (const name of shipped) {
       if (name === 'members.ts') continue;
@@ -116,11 +118,15 @@ describe('D2-CONSEQUENCE-01 — played floor does not fund the institution', () 
       if (code.includes('memberDuesGymBucks(') || code.includes('memberBaseDuesGymBucks(')) {
         duesCallers.push(name);
       }
+      if (code.includes('memberReputationPerDay(') || code.includes('isHighPayingMemberType(')) {
+        reputationRateCallers.push(name);
+      }
       if (code.includes('memberSatisfaction(') || code.includes('reputationFromMembers(')) {
         blockedCallers.push(name);
       }
     }
     expect(duesCallers).toEqual(['livingMemberDues.ts']);
+    expect(reputationRateCallers.sort()).toEqual(['livingMemberArrival.ts', 'livingMemberReputation.ts']);
     expect(blockedCallers).toEqual([]);
 
     const dues = shippedSource('livingMemberDues.ts');

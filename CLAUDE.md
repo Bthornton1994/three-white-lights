@@ -44,18 +44,20 @@ G.1 CLOSED. G.2A CLOSED at `255de8a5` (mint `ba8561bf`, docs/comment only).
 G.2B CLOSED as the retention-pressure foundation. G.2C1 CLOSED / FROZEN
 at `c8776cad`. G.2C2 CLOSED / FROZEN at `1493f438` (actual departure).
 G.2C3 CLOSED / FROZEN at `2b0f52bd` (vacancy arrival + P1 honest
-Watching/neutral proof). G.2D dues accounting is the authorised next
-slice: living-member Gym Bucks dues from accepted G.2A experience,
+Watching/neutral proof). G.2D CLOSED / FROZEN at `28611af7` —
+living-member Gym Bucks dues from accepted G.2A experience,
 clock-settled on the roster ledger and credited onto `ladder.gymBucks`
 on top of frozen D2 facility income. Unsettled-window occupancy is
 time-weighted presence (joins pro-rate; in-window G.2C2 leaves still
 pay the active stub; a played leave on the open settle mark occupies
-the GymHost tick). Do not retune D2 rates. G.2E member-side
-reputation (including reputation-gated high-paying arrival rates) and
-G2-ATHLETE-SEASON-01 stay blocked. Do not wire `reputationFromMembers`
-or old crowding satisfaction. G.2C1–C3 stay frozen. G2-CONDITION-01,
-G2-FIT-01, and G2-TYPE-01 stay open. Career → Empire reputation and
-Portfolio stay blocked.
+the GymHost tick). Do not retune D2 rates. G.2E is IN PROGRESS:
+living-member reputation from that same occupancy, and reputation-gated
+high-paying (Athlete, Serious Lifter) vacancy arrival. Do not wire
+`reputationFromMembers` on an aggregate
+`MemberRoster` or old crowding satisfaction. Do not write Career/Meet →
+`EmpireState.reputation`. G.2C1–C3 and G.2D stay frozen. G2-ATHLETE-SEASON-01,
+G2-CONDITION-01, G2-FIT-01, and G2-TYPE-01 stay open. Portfolio stays
+blocked.
 
 ### The split
 

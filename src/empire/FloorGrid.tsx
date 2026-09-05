@@ -212,6 +212,10 @@ import {
   playerFacingDuesLine,
 } from './livingMemberDues';
 import {
+  livingMemberDailyReputation,
+  playerFacingReputationLine,
+} from './livingMemberReputation';
+import {
   floorSimPopulationFromRoster,
   livingMemberById,
   playerFacingMemberShortId,
@@ -2755,6 +2759,9 @@ export function FloorGrid(props: FloorGridProps) {
                           </Text>
                           <Text testID={'floorgrid-member-panel-dues'}>
                             {playerFacingDuesLine(livingMemberDailyDuesGymBucks(living))}
+                          </Text>
+                          <Text testID={'floorgrid-member-panel-reputation'}>
+                            {playerFacingReputationLine(livingMemberDailyReputation(living))}
                           </Text>
                         </>
                       );

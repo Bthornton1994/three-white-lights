@@ -856,6 +856,7 @@ describe('Stage G.1C — persistent display names', () => {
     const experience = source.indexOf("testID={'floorgrid-member-panel-experience'}", panel);
     const membership = source.indexOf("testID={'floorgrid-member-panel-membership'}", panel);
     const dues = source.indexOf("testID={'floorgrid-member-panel-dues'}", panel);
+    const reputation = source.indexOf("testID={'floorgrid-member-panel-reputation'}", panel);
     expect(panel).toBeGreaterThanOrEqual(0);
     expect(displayName).toBeGreaterThan(panel);
     expect(typeLine).toBeGreaterThan(displayName);
@@ -864,6 +865,8 @@ describe('Stage G.1C — persistent display names', () => {
     expect(experience).toBeGreaterThan(tenure);
     expect(membership).toBeGreaterThan(experience);
     expect(dues).toBeGreaterThan(membership);
+    expect(reputation).toBeGreaterThan(dues);
+    expect(source).toContain('playerFacingReputationLine(livingMemberDailyReputation(living))');
     expect(source).toMatch(/selectedName === undefined \? null/);
     expect(source).toContain("testID={'floorgrid-selected-member-name'}");
     expect(source.includes('members.map((member) => member.displayName)')).toBe(false);
@@ -882,6 +885,7 @@ describe('Stage G.1C — persistent display names', () => {
       'livingMemberExperience.ts',
       'livingMemberRetention.ts',
       'livingMemberDues.ts',
+      'livingMemberReputation.ts',
     ]);
     for (const file of isolated) {
       const source = readFileSync(join(here, file), 'utf8');
@@ -893,6 +897,7 @@ describe('Stage G.1C — persistent display names', () => {
     expect(living).not.toMatch(/reputationFromMembers\(/);
     expect(living).not.toMatch(/memberDuesGymBucks/);
     expect(living).toMatch(/applyLivingMemberDues/);
+    expect(living).toMatch(/applyLivingMemberReputation/);
     expect(living).not.toMatch(/Math\.random\(/);
   });
 

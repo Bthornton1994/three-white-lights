@@ -8,7 +8,9 @@ import {
   equipmentFitScore,
   memberBaseDuesGymBucks,
   memberDuesGymBucks,
+  memberReputationPerDay,
   memberSatisfaction,
+  isHighPayingMemberType,
   reputationFromMembers,
   type MemberRoster,
   type MemberType,
@@ -395,9 +397,20 @@ describe('reputationFromMembers — §5.6\'s reputation contribution', () => {
     expect(reputationFromMembers.length).toBe(1);
     const roster: MemberRoster = [{ type: 'powerlifter', count: 4 }];
     expect(reputationFromMembers(roster)).toBeCloseTo(
-      4 * EMPIRE_TUNING.MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY.powerlifter,
+      4 * memberReputationPerDay('powerlifter'),
       6,
     );
+  });
+
+  it('exposes the per-type daily rate G.2E occupancy uses, and names high-paying types', () => {
+    expect(memberReputationPerDay('casual')).toBe(0);
+    expect(memberReputationPerDay('powerlifter')).toBeGreaterThan(memberReputationPerDay('athlete'));
+    expect(isHighPayingMemberType('athlete')).toBe(true);
+    expect(isHighPayingMemberType('serious-lifter')).toBe(true);
+    expect(isHighPayingMemberType('powerlifter')).toBe(false);
+    expect(isHighPayingMemberType('casual')).toBe(false);
+    expect(isHighPayingMemberType('bodybuilder')).toBe(false);
+    expect([...EMPIRE_TUNING.HIGH_PAYING_MEMBER_TYPES]).toEqual(['athlete', 'serious-lifter']);
   });
 
   it('refuses a malformed roster the same way crowdingLoad does', () => {
