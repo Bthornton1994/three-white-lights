@@ -12403,7 +12403,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_206_976, // Stage G.2E livingMemberReputation / applyLivingMemberReputation drive strings
+  STRINGS: 30_208_066, // G2-ATHLETE-SEASON-01 lastLivingMemberSeasonEvent leave/return drive strings
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
