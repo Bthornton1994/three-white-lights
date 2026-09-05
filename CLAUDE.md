@@ -56,11 +56,13 @@ reputation from that same occupancy, and reputation-gated high-paying
 (Athlete, Serious Lifter) vacancy arrival. Do not wire
 `reputationFromMembers` on an aggregate
 `MemberRoster` or old crowding satisfaction. CAREER-EMPIRE-REP-01 is
-IN PROGRESS: the sporting half lands as `GymViewState.sportingReputation`
-composed by `institutionalReputation` with the G.2E member ledger at
-points. The G.2E high-paying arrival gate still reads member-only. The
-prior phrase "Career/Meet → `EmpireState.reputation`" names this
-composed v2 reading; the literal v1 field stays unwritten. G.2C1–C3 and
+FROZEN at `34b98a06772db81126b68deec220a24328892a22` (factory freeze;
+human feel gate not run — not CLOSED): the sporting half lands as
+`GymViewState.sportingReputation` composed by `institutionalReputation`
+with the G.2E member ledger at points. The G.2E high-paying arrival
+gate still reads member-only. The prior phrase "Career/Meet →
+`EmpireState.reputation`" names this composed v2 reading; the literal
+v1 field stays unwritten. Feel is unproven. G.2C1–C3 and
 G.2D stay frozen. G2-ATHLETE-SEASON-01
 is FROZEN at `9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze;
 human feel gate not run — not CLOSED). G2-CONDITION-01, G2-FIT-01, and

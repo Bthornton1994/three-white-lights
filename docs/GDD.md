@@ -2,9 +2,11 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-09-05 (CAREER-EMPIRE-REP-01 IN PROGRESS — sporting
-ledger on `GymViewState` composed with G.2E at points. Prior
-`EmpireState.reputation` phrase names this composed v2 reading. G2-ATHLETE-SEASON-01 FROZEN at
+**Last updated:** 2026-09-05 (CAREER-EMPIRE-REP-01 FROZEN at
+`34b98a06772db81126b68deec220a24328892a22` — factory freeze; human feel
+gate not run — not CLOSED. Sporting ledger on `GymViewState` composed
+with G.2E at points. Prior `EmpireState.reputation` phrase names this
+composed v2 reading. G2-ATHLETE-SEASON-01 FROZEN at
 `9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze; human feel
 gate not run — not CLOSED). G.2E FROZEN at
 `cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel
@@ -4809,7 +4811,7 @@ behavior.
 | G.2C | G.2C1 frozen. G.2C2 frozen. G.2C3 frozen. Reputation-gated high-paying rates remain G.2E. |
 | G.2D | CLOSED / FROZEN at `28611af74dd6479bfad58763ebba72db5942307c`. Living-member dues from G.2A experience. P1 occupancy is time-weighted presence including open-mark production leaves; purse composition in this slice. |
 | G.2E | FROZEN at `cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel gate not run — not CLOSED). Member-side institutional reputation from living occupancy; high-paying (Athlete, Serious Lifter) vacancy arrival gated on credited living-member reputation. |
-| Career → Empire reputation | CAREER-EMPIRE-REP-01 IN PROGRESS — `GymViewState.sportingReputation` composed with G.2E at points. Literal v1 `EmpireState.reputation` stays unwritten. |
+| Career → Empire reputation | CAREER-EMPIRE-REP-01 FROZEN at `34b98a06772db81126b68deec220a24328892a22` (factory freeze; human feel gate not run — not CLOSED). `GymViewState.sportingReputation` composed with G.2E at points. Literal v1 `EmpireState.reputation` stays unwritten. |
 | Portfolio | BLOCKED |
 
 **Proven causal chain:** physical gym decision → real FloorSim service
@@ -5316,13 +5318,17 @@ no leave probability. G.2A/G.2B/G.2C1–C3/G.2D/G.2E frozen. Q/C/T
 frozen. No rewrite of stay / departure / arrival / dues / reputation
 module bodies.
 
-**Still blocked:** Career → Empire reputation, Portfolio, NpcLifter
+**Still blocked:** Portfolio, NpcLifter
 merge. Feel of the 6 / 2 / 4 week cadence is unproven.
-CAREER-EMPIRE-REP-01 is the next authorised slice.
+CAREER-EMPIRE-REP-01 is FROZEN at
+`34b98a06772db81126b68deec220a24328892a22` (factory freeze; human feel
+gate not run — not CLOSED).
 
 #### CAREER-EMPIRE-REP-01 — Career/Meet → Empire Reputation (Stage E's deferred crossing)
 
-**CAREER-EMPIRE-REP-01 IN PROGRESS.** This is Stage E's deferred
+**CAREER-EMPIRE-REP-01 FROZEN** at
+`34b98a06772db81126b68deec220a24328892a22` (factory freeze; human feel
+gate not run — not CLOSED). This is Stage E's deferred
 crossing: a played meet result may credit Empire sporting reputation.
 It is not a write of literal v1 `EmpireState.reputation`. It is not
 Portfolio, not NpcLifter merge, not an E-REP-01 retune, and not a
@@ -5388,7 +5394,9 @@ effect. No new numeric tuning literal. E-REP-01 stays open.
 calibrated against different ladders (threshold 1; powerlifter
 0.15/day; local title 24). Any later consumer must be calibrated
 against the composed reading before it reads it. REP-EVIDENCE-01 —
-player-facing evidence copy is not this slice.
+player-facing evidence copy is not this slice. Tools claim 14
+(played meet → gym `more` → meets half > 0; `?meet=recap` must not
+credit) was not run.
 
 **Still blocked:** Portfolio, NpcLifter merge, G.2E gate on the
 composed reading, Career calendar / `newlyQualifiedFor`, server write,
