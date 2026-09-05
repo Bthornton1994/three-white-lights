@@ -18,10 +18,14 @@ import {
 } from './floorSim';
 import {
   lastLivingMemberArrival,
+  livingMemberShouldArrive,
   playerFacingArrivalLine,
   type LivingMemberArrivalContext,
 } from './livingMemberArrival';
 import { lastLivingMemberDeparture } from './livingMemberDeparture';
+import { livingMemberExperience } from './livingMemberExperience';
+import { livingMemberRetentionPressure } from './livingMemberRetention';
+import { livingMemberStayEvidence } from './livingMemberStay';
 import {
   advanceLivingMemberTenure,
   applyServiceObservations,
@@ -34,8 +38,9 @@ import {
   type GymMemberId,
   type LivingGymMember,
   type LivingMemberRoster,
+  type ServiceVisitRecord,
 } from './livingMembers';
-import { equipmentBiasedMemberTypes } from './members';
+import { equipmentBiasedMemberTypes, type MemberType } from './members';
 import type { SessionEquipmentItem } from './sessions';
 import { stockStationCapability } from './stationCapability';
 
@@ -84,12 +89,42 @@ function stable(member: LivingGymMember, tick: number): FloorSimServiceObservati
   });
 }
 
+/**
+ * Stock-completed wait that independently classifies as G.2B Watching without
+ * a wait reason (Manageable wait, service-only reasons). queueWaitTicks 20 is
+ * Easy / Stable / recovery — too good to prove formed-neutral attraction.
+ * The type-treatment test re-derives G.2A → G.2B → G.2C1 on the visit rather
+ * than trusting this number.
+ */
+const WATCHING_WITHOUT_WAIT_TICKS = 70;
+
 function watchingNoWait(member: LivingGymMember, tick: number): FloorSimServiceObservation {
   return observation(member, tick, {
-    queueWaitTicks: 20,
+    queueWaitTicks: WATCHING_WITHOUT_WAIT_TICKS,
     trainingExperience: T.STATION_STOCK_TRAINING_EXPERIENCE,
     outcome: 'completed',
   });
+}
+
+function visitFromObservation(observation: FloorSimServiceObservation): ServiceVisitRecord {
+  return Object.freeze({
+    stationKind: observation.stationKind,
+    stationKey: observation.stationKey,
+    queueWaitTicks: observation.queueWaitTicks,
+    trainingExperience: observation.trainingExperience,
+    outcome: observation.outcome,
+    observedAtTick: observation.observedAtTick,
+  });
+}
+
+function independentVisitClassification(
+  memberType: MemberType,
+  serving: FloorSimServiceObservation,
+) {
+  const experience = livingMemberExperience(Object.freeze([visitFromObservation(serving)]));
+  const retention = livingMemberRetentionPressure(experience);
+  const evidence = livingMemberStayEvidence(memberType, retention);
+  return { experience, retention, evidence };
 }
 
 const STOCK_ARRIVAL: LivingMemberArrivalContext = Object.freeze({
@@ -274,21 +309,50 @@ describe('Stage G.2C3 — type treatment at the arrival boundary', () => {
     'machines',
     'mats',
   ]);
+  const SERIOUS_OWNED: readonly SessionEquipmentItem[] = Object.freeze([
+    'foam-rollers',
+    'sauna',
+    'belts',
+    'sleeves',
+    'wrist-wraps',
+    'machines',
+  ]);
 
   it('pins the Casual kit so the next vacancy type is Casual', () => {
     expect(equipmentBiasedMemberTypes(CASUAL_OWNED)).toEqual(['casual']);
   });
 
-  it('lets Casual join on formed-neutral Watching without wait', () => {
+  it('pins the Serious Lifter kit so the next vacancy type is Serious Lifter', () => {
+    expect(equipmentBiasedMemberTypes(SERIOUS_OWNED)).toEqual(['serious-lifter']);
+  });
+
+  it('lets Casual join on independently classified formed-neutral Watching without wait, and does not let Serious Lifter', () => {
     const { departed, leftover } = departInterior(opening());
-    const arrival: LivingMemberArrivalContext = Object.freeze({
+    const serving = watchingNoWait(leftover, 11);
+    const { retention, evidence } = independentVisitClassification(leftover.type, serving);
+    expect(retention.label).toBe('Watching');
+    expect(retention.reasons.some((reason) => reason.kind === 'wait')).toBe(false);
+    expect(evidence).toBe('neutral');
+    expect(livingMemberShouldArrive(1, 'casual', evidence)).toBe(true);
+    expect(livingMemberShouldArrive(1, 'serious-lifter', evidence)).toBe(false);
+
+    expect(nextArrivalType(departed, CASUAL_OWNED)).toBe('casual');
+    const casualArrival: LivingMemberArrivalContext = Object.freeze({
       sessionOwned: CASUAL_OWNED,
       joinedAtSeconds: 40,
     });
-    expect(nextArrivalType(departed, CASUAL_OWNED)).toBe('casual');
-    const after = applyServiceObservations(departed, [watchingNoWait(leftover, 11)], undefined, arrival);
-    expect(after.members.length).toBe(departed.members.length + 1);
-    expect(after.members[after.members.length - 1]?.type).toBe('casual');
+    const casualJoined = applyServiceObservations(departed, [serving], undefined, casualArrival);
+    expect(casualJoined.members.length).toBe(departed.members.length + 1);
+    expect(casualJoined.members[casualJoined.members.length - 1]?.type).toBe('casual');
+
+    expect(nextArrivalType(departed, SERIOUS_OWNED)).toBe('serious-lifter');
+    const seriousArrival: LivingMemberArrivalContext = Object.freeze({
+      sessionOwned: SERIOUS_OWNED,
+      joinedAtSeconds: 40,
+    });
+    const seriousHeld = applyServiceObservations(departed, [serving], undefined, seriousArrival);
+    expect(seriousHeld.members.length).toBe(departed.members.length);
+    expect(seriousHeld.arrivals).toEqual([]);
   });
 
   it('does not substitute a different type when attraction is not met', () => {
