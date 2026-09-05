@@ -866,6 +866,7 @@ describe('Stage G.1C — persistent display names', () => {
     expect(membership).toBeGreaterThan(experience);
     expect(dues).toBeGreaterThan(membership);
     expect(reputation).toBeGreaterThan(dues);
+    expect(source).toContain('playerFacingReputationLine(livingMemberDailyReputation(living))');
     expect(source).toMatch(/selectedName === undefined \? null/);
     expect(source).toContain("testID={'floorgrid-selected-member-name'}");
     expect(source.includes('members.map((member) => member.displayName)')).toBe(false);

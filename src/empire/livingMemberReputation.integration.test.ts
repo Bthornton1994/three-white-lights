@@ -17,11 +17,13 @@ import {
   livingMemberReputationForWindow,
   playerFacingReputationLine,
 } from './livingMemberReputation';
+import { livingMemberDuesOccupancyUntilSeconds } from './livingMemberDues';
 import {
   applyLivingMemberReputation,
   applyServiceObservations,
   createLivingMemberRoster,
   livingMemberById,
+  reconcileLivingMemberRosterOnRelocation,
   type LivingGymMember,
   type LivingMemberRoster,
 } from './livingMembers';
@@ -232,6 +234,61 @@ describe('Stage G.2E — occupancy during the settle window', () => {
       livingMemberReputationForWindow(departed.members, 0, DAY) + stub,
     );
   });
+
+  it('credits a leave stamped on the settle mark for the open GymHost tick on the writer', () => {
+    const roster = opening();
+    const gone = requireMember(roster, 1);
+    const departed = applyServiceObservations(
+      applyAll(roster, gone, 9, adverse),
+      [adverse(gone, 10)],
+      undefined,
+      null,
+      0,
+    );
+    expect(departed.duesLeftAtSeconds[gone.id]).toBe(0);
+    expect(departed.reputation.settledAtSeconds).toBe(0);
+    const snapshot = requireDeparture(departed, 0);
+    const stubUntil = livingMemberDuesOccupancyUntilSeconds(0, 0, DAY);
+    expect(stubUntil).toBe(T.WALL_CLOCK_TICK_INTERVAL_SECONDS);
+    const stub = livingMemberReputationForInterval(snapshot, 0, DAY, stubUntil);
+    expect(stub).toBeGreaterThan(0);
+    const settled = applyLivingMemberReputation(departed, DAY);
+    expect(settled.reputation.creditedReputation).toBe(
+      livingMemberReputationForWindow(
+        departed.members,
+        0,
+        DAY,
+        Object.freeze([{ member: snapshot, departedAtSeconds: 0 }]),
+      ),
+    );
+    expect(settled.reputation.creditedReputation).toBeCloseTo(
+      livingMemberReputationForWindow(departed.members, 0, DAY) + stub,
+      10,
+    );
+    expect(settled.reputation.creditedReputation).not.toBe(
+      livingMemberReputationForWindow(departed.members, 0, DAY),
+    );
+  });
+
+  it('pro-rates a mid-window relocation arrival from joinedAtSeconds on the writer', () => {
+    const roster = opening();
+    const moved = reconcileLivingMemberRosterOnRelocation(
+      roster,
+      'storage-unit',
+      Object.freeze([]),
+      DAY / 2,
+    );
+    const newcomers = moved.members.slice(roster.members.length);
+    expect(newcomers.length).toBeGreaterThan(0);
+    expect(newcomers.every((member) => member.joinedAtSeconds === DAY / 2)).toBe(true);
+    const settled = applyLivingMemberReputation(moved, DAY);
+    expect(settled.reputation.creditedReputation).toBe(
+      livingMemberReputationForWindow(moved.members, 0, DAY),
+    );
+    expect(settled.reputation.creditedReputation).toBeGreaterThan(
+      livingMemberReputationForWindow(roster.members, 0, DAY),
+    );
+  });
 });
 
 describe('Stage G.2E — production clock path', () => {
@@ -255,6 +312,58 @@ describe('Stage G.2E — production clock path', () => {
     });
     expect(next.livingMembers.reputation).toBe(opened.livingMembers.reputation);
     expect(next.livingMembers.reputation.creditedReputation).toBe(0);
+  });
+
+  it('credits a played leave for the open GymHost tick of the following settle', () => {
+    let state = createGymViewState();
+    const gone = requireMember(state.livingMembers, 1);
+    const openingMembers = state.livingMembers.members;
+    for (let tick = 1; tick <= 10; tick += 1) {
+      const current = livingMemberById(state.livingMembers, gone.id) ?? gone;
+      state = gymViewReduce(state, {
+        kind: 'apply-living-member-observations',
+        observations: [adverse(current, tick)],
+      });
+    }
+    expect(livingMemberById(state.livingMembers, gone.id)).toBeNull();
+    expect(state.livingMembers.reputation.creditedReputation).toBe(0);
+    expect(state.livingMembers.duesLeftAtSeconds[gone.id]).toBe(
+      state.managed.gym.ladder.collectedAt,
+    );
+    const snapshot = requireDeparture(state.livingMembers, 0);
+    const leftAt = state.livingMembers.duesLeftAtSeconds[gone.id];
+    expect(leftAt).toBe(0);
+    if (leftAt === undefined) throw new Error('expected gym-clock occupancy mark');
+    const stubUntil = livingMemberDuesOccupancyUntilSeconds(leftAt, 0, DAY);
+    expect(stubUntil).toBe(T.WALL_CLOCK_TICK_INTERVAL_SECONDS);
+    const stub = livingMemberReputationForInterval(snapshot, 0, DAY, stubUntil);
+    expect(stub).toBeGreaterThan(0);
+    const next = gymViewReduce(state, { kind: 'advance-clock', gapSeconds: DAY, mode: 'online' });
+    expect(next.livingMembers.reputation.creditedReputation).toBe(
+      livingMemberReputationForWindow(
+        next.livingMembers.members,
+        0,
+        DAY,
+        Object.freeze([{ member: snapshot, departedAtSeconds: leftAt }]),
+      ),
+    );
+    expect(next.livingMembers.reputation.creditedReputation).toBeCloseTo(
+      livingMemberReputationForWindow(next.livingMembers.members, 0, DAY) + stub,
+      10,
+    );
+    expect(next.livingMembers.reputation.creditedReputation).toBeGreaterThan(
+      livingMemberReputationForWindow(next.livingMembers.members, 0, DAY),
+    );
+    expect(next.livingMembers.reputation.creditedReputation).toBeLessThan(
+      livingMemberReputationForWindow(openingMembers, 0, DAY),
+    );
+    const archived = gymViewReduce(next, { kind: 'advance-clock', gapSeconds: DAY, mode: 'online' });
+    expect(
+      lastLivingMemberReputationSettlement(archived.livingMembers.reputation.settlements)
+        ?.reputation,
+    ).toBe(livingMemberReputationForWindow(next.livingMembers.members, DAY, DAY * 2));
+    const replay = gymViewReduce(archived, { kind: 'advance-clock', gapSeconds: 0, mode: 'online' });
+    expect(replay.livingMembers).toBe(archived.livingMembers);
   });
 });
 
