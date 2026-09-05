@@ -3285,7 +3285,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 3662 -> 3704: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 3704 -> 3755: Stage G.2C2 livingMemberDeparture.ts plus livingMembers
   // departure/reconcile wiring. Read from this pin last.
-  CALLS_EXAMINED: 3874, // Stage G.2D P1 open-mark occupancy until
+  CALLS_EXAMINED: 3934, // Stage G.2E livingMemberReputation plus arrival/members wiring
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -12010,7 +12010,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 6_546_189 -> 6_546_436: Stage G.2C2 departure/reconcile/stayEvidence drive.
   // Read from this pin last. STRINGS/DISTINCT_STRINGS below remain the G.2C1
   // pins until this assertion's subsequent failure names them.
-  NODES: 6547592, // Stage G.2D P1 open-mark occupancy until drive
+  NODES: 6548484, // Stage G.2E livingMemberReputation / applyLivingMemberReputation drive
   // THE SENTENCE THAT USED TO FINISH THIS COMMENT WAS FALSE AND IS CORRECTED
   // RATHER THAN DELETED. It read: "`STRINGS` and `DISTINCT_STRINGS` did NOT
   // move with it — the nodes past the old bound carry no string this scan had
@@ -12197,7 +12197,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_204_593, // Stage G.2D P1 open-mark occupancy until drive strings
+  STRINGS: 30_206_976, // Stage G.2E livingMemberReputation / applyLivingMemberReputation drive strings
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -12307,7 +12307,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
   // 3973 -> 3975: Stage D2 reset-gym copy / wear-truth strings. Read from
   // this pin's own failure value.
-  DISTINCT_STRINGS: 4255, // Stage G.2D P1 occupancy refuse / occupancy-clock strings
+  DISTINCT_STRINGS: 4259, // Stage G.2E reputation line / high-paying gate strings
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
   DEPTH_CUTS: 10, // Stage G.2D purse-credit ledger walk
   /**
@@ -16295,7 +16295,6 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'ladderView.tsx': 1,
       'livingMemberDues.ts': 1, // Stage G.2D playerFacingDuesLine
       'livingMemberExperience.ts': 1,
-      'livingMemberReputation.ts': 1, // Stage G.2E playerFacingReputationLine
       'livingMemberRetention.ts': 1,
       'livingMembers.ts': 6, // Stage G.1C given-name pool + very-long wait knob
       'management.ts': 6,
@@ -17138,7 +17137,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
   // 1815 -> 1841: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 1841 -> 1866: Stage G.2C2 livingMemberDeparture.ts plus roster/sim wiring.
-  function: 1935, // Stage G.2D P1 open-mark occupancy until calls
+  function: 1973, // Stage G.2E livingMemberReputation plus arrival/members wiring
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -17198,7 +17197,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
   // 1658 -> 1673: Stage G.2C1 livingMemberStay.ts plus livingMembers stayState.
   // 1673 -> 1699: Stage G.2C2 livingMemberDeparture.ts plus roster/sim members.
-  member: 1748, // Stage G.2D P1 open-mark occupancy until members
+  member: 1770, // Stage G.2E livingMemberReputation plus arrival/members wiring
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -17406,9 +17405,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 1121 -> 1122: Stage G.2D P1 occupancy-clock return.
   // 1122 -> 1123: Stage G.2D P1 open-mark occupancy until return.
   // 1123 -> 1124: Stage G.2D P1 open-mark occupancy until second return path.
-  // 1124 -> 1142: Stage G.2E livingMemberReputation returns + exported-binding,
-  // livingMembers applyLivingMemberReputation, members type helpers, arrival gate.
-  SITES: 1142, // Stage G.2E reputation ledger returns
+  // 1124 -> 1141: Stage G.2E livingMemberReputation returns, livingMembers
+  // applyLivingMemberReputation, members type helpers, arrival gate.
+  SITES: 1141, // Stage G.2E reputation ledger returns
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -17565,7 +17564,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // stayState wiring. Read from this pin last.
   // 84_813 -> 86_105: Stage G.2C2 livingMemberDeparture.ts plus roster/sim
   // departure wiring. Read from this pin last.
-  NODES_EXAMINED: 88_398, // Stage G.2D P1 open-mark occupancy until AST
+  NODES_EXAMINED: 89_468, // Stage G.2E livingMemberReputation AST
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
