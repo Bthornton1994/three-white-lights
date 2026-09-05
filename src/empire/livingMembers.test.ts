@@ -374,7 +374,9 @@ describe('Stage G.1 — service observations and history', () => {
       gapSeconds: T.SECONDS_PER_HOUR,
       mode: 'offline',
     });
-    expect(state.livingMembers).toBe(before);
+    expect(state.livingMembers.members).toBe(before.members);
+    expect(state.livingMembers.dues.settledAtSeconds).toBe(state.managed.gym.ladder.collectedAt);
+    expect(state.livingMembers.dues.creditedGymBucks).toBeGreaterThan(0);
     for (const member of state.livingMembers.members) {
       expect(member.recentVisits.length).toBe(0);
     }
@@ -853,6 +855,8 @@ describe('Stage G.1C — persistent display names', () => {
     const tenure = source.indexOf("testID={'floorgrid-member-panel-tenure'}", panel);
     const experience = source.indexOf("testID={'floorgrid-member-panel-experience'}", panel);
     const membership = source.indexOf("testID={'floorgrid-member-panel-membership'}", panel);
+    const dues = source.indexOf("testID={'floorgrid-member-panel-dues'}", panel);
+    const reputation = source.indexOf("testID={'floorgrid-member-panel-reputation'}", panel);
     expect(panel).toBeGreaterThanOrEqual(0);
     expect(displayName).toBeGreaterThan(panel);
     expect(typeLine).toBeGreaterThan(displayName);
@@ -860,6 +864,9 @@ describe('Stage G.1C — persistent display names', () => {
     expect(tenure).toBeGreaterThan(shortId);
     expect(experience).toBeGreaterThan(tenure);
     expect(membership).toBeGreaterThan(experience);
+    expect(dues).toBeGreaterThan(membership);
+    expect(reputation).toBeGreaterThan(dues);
+    expect(source).toContain('playerFacingReputationLine(livingMemberDailyReputation(living))');
     expect(source).toMatch(/selectedName === undefined \? null/);
     expect(source).toContain("testID={'floorgrid-selected-member-name'}");
     expect(source.includes('members.map((member) => member.displayName)')).toBe(false);
@@ -877,6 +884,8 @@ describe('Stage G.1C — persistent display names', () => {
       'members.ts',
       'livingMemberExperience.ts',
       'livingMemberRetention.ts',
+      'livingMemberDues.ts',
+      'livingMemberReputation.ts',
     ]);
     for (const file of isolated) {
       const source = readFileSync(join(here, file), 'utf8');
@@ -886,7 +895,11 @@ describe('Stage G.1C — persistent display names', () => {
     const living = readFileSync(join(here, 'livingMembers.ts'), 'utf8');
     expect(living).not.toMatch(/memberSatisfaction\(/);
     expect(living).not.toMatch(/reputationFromMembers\(/);
-    expect(living).not.toMatch(/memberDues|duesGymBucks/);
+    expect(living).not.toMatch(/memberDuesGymBucks/);
+    expect(living).toMatch(/applyLivingMemberDues/);
+    expect(living).toMatch(/applyLivingMemberReputation/);
+    expect(living).toMatch(/applyLivingMemberSeason/);
+    expect(living).toMatch(/settleLivingMemberClock/);
     expect(living).not.toMatch(/Math\.random\(/);
   });
 

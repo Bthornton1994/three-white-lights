@@ -417,6 +417,11 @@ import * as ladderViewModule from './ladderView';
 import * as livingMemberExperienceModule from './livingMemberExperience';
 import * as livingMemberRetentionModule from './livingMemberRetention';
 import * as livingMemberStayModule from './livingMemberStay';
+import * as livingMemberArrivalModule from './livingMemberArrival';
+import * as livingMemberDepartureModule from './livingMemberDeparture';
+import * as livingMemberDuesModule from './livingMemberDues';
+import * as livingMemberReputationModule from './livingMemberReputation';
+import * as livingMemberSeasonModule from './livingMemberSeason';
 import * as livingMembersModule from './livingMembers';
 import * as managementModule from './management';
 import * as membersModule from './members';
@@ -428,6 +433,8 @@ import * as reputationModule from './reputation';
 import * as sessionsModule from './sessions';
 import * as socialModule from './social';
 import * as sportingReputationModule from './sportingReputation';
+import * as sportingReputationLedgerModule from './sportingReputationLedger';
+import * as institutionalReputationModule from './institutionalReputation';
 import * as stationViewModule from './stationView';
 import * as stationCapabilityModule from './stationCapability';
 import * as trainingStationModule from './trainingStation';
@@ -1251,6 +1258,30 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'stationView.ts#playerFacingUpgradeLabel#return',
       'stationView.ts#playerFacingUpgradeRefuse#return',
       'sportingReputation.ts#sportingReputationFromResult#return.reasons[].text',
+      // CAREER-EMPIRE-REP-01: Stage E reason text carried on the sporting ledger.
+      'ladderView.tsx#createGymViewState#return.lastSportingCredit.reasons[].text',
+      'ladderView.tsx#createGymViewState#return.sportingReputation.entries[].reasons[].text',
+      'ladderView.tsx#gymViewReduce#return.lastSportingCredit.reasons[].text',
+      'ladderView.tsx#gymViewReduce#return.sportingReputation.entries[].reasons[].text',
+      'sportingReputationLedger.ts#createSportingReputationLedger#return.entries[].reasons[].text',
+      'sportingReputationLedger.ts#creditSportingResult#return.ledger.entries[].reasons[].text',
+      'sportingReputationLedger.ts#creditSportingResult#return.report.reasons[].text',
+      'sportingReputationLedger.ts#lastSportingReputationEntry#return.reasons[].text',
+    ]),
+  }),
+  Object.freeze({
+    field: 'played-meet identifiers on the sporting ledger',
+    why:
+      'CAREER-EMPIRE-REP-01 stores the server meet id as a bare string because the catalogue is not a closed union this directory owns. Unknown ids fail closed at credit time rather than at the type. Instrument B containment-scans every produced value; the adapter map in SPORTING_REPUTATION.playedMeetKindById is the only accepted key today.',
+    positions: Object.freeze([
+      'ladderView.tsx#createGymViewState#return.lastSportingCredit.meetId',
+      'ladderView.tsx#createGymViewState#return.sportingReputation.entries[].meetId',
+      'ladderView.tsx#gymViewReduce#return.lastSportingCredit.meetId',
+      'ladderView.tsx#gymViewReduce#return.sportingReputation.entries[].meetId',
+      'sportingReputationLedger.ts#createSportingReputationLedger#return.entries[].meetId',
+      'sportingReputationLedger.ts#creditSportingResult#return.ledger.entries[].meetId',
+      'sportingReputationLedger.ts#creditSportingResult#return.report.meetId',
+      'sportingReputationLedger.ts#lastSportingReputationEntry#return.meetId',
     ]),
   }),
   Object.freeze({
@@ -1269,21 +1300,183 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'livingMembers.ts derives branded member ids and records floor-sim station keys on service visits; ladderView.tsx carries the roster through GymViewState. Display names are stored given names from a closed pool, presentation only. Player-facing tenure/wait/training/visit lines are presentation strings mapped from numeric sim truth. Instrument B containment-scans every produced value; the ids are derived from closed rung/index/nonce inputs rather than random draws.',
     positions: Object.freeze([
       'floorSim.ts#stepFloorSimWithObservations#return.observations[].stationKey',
+      'ladderView.tsx#createGymViewState#return.livingMembers.arrivals[].attractedById',
+      'ladderView.tsx#createGymViewState#return.livingMembers.arrivals[].member.displayName',
+      'ladderView.tsx#createGymViewState#return.livingMembers.arrivals[].member.id',
+      'ladderView.tsx#createGymViewState#return.livingMembers.arrivals[].member.recentVisits[].stationKey',
+      'ladderView.tsx#createGymViewState#return.livingMembers.departures[].member.displayName',
+      'ladderView.tsx#createGymViewState#return.livingMembers.departures[].member.id',
+      'ladderView.tsx#createGymViewState#return.livingMembers.departures[].member.recentVisits[].stationKey',
+      'ladderView.tsx#createGymViewState#return.livingMembers.departures[].reasonText',
       'ladderView.tsx#createGymViewState#return.livingMembers.members[].id',
       'ladderView.tsx#createGymViewState#return.livingMembers.members[].displayName',
       'ladderView.tsx#createGymViewState#return.livingMembers.members[].recentVisits[].stationKey',
+      'ladderView.tsx#createGymViewState#return.livingMembers.season.onLeave[].member.displayName',
+      'ladderView.tsx#createGymViewState#return.livingMembers.season.onLeave[].member.id',
+      'ladderView.tsx#createGymViewState#return.livingMembers.season.onLeave[].member.recentVisits[].stationKey',
+      'ladderView.tsx#createGymViewState#return.livingMembers.season.returns[].member.displayName',
+      'ladderView.tsx#createGymViewState#return.livingMembers.season.returns[].member.id',
+      'ladderView.tsx#createGymViewState#return.livingMembers.season.returns[].member.recentVisits[].stationKey',
+      'ladderView.tsx#gymViewReduce#return.livingMembers.arrivals[].attractedById',
+      'ladderView.tsx#gymViewReduce#return.livingMembers.arrivals[].member.displayName',
+      'ladderView.tsx#gymViewReduce#return.livingMembers.arrivals[].member.id',
+      'ladderView.tsx#gymViewReduce#return.livingMembers.arrivals[].member.recentVisits[].stationKey',
+      'ladderView.tsx#gymViewReduce#return.livingMembers.departures[].member.displayName',
+      'ladderView.tsx#gymViewReduce#return.livingMembers.departures[].member.id',
+      'ladderView.tsx#gymViewReduce#return.livingMembers.departures[].member.recentVisits[].stationKey',
+      'ladderView.tsx#gymViewReduce#return.livingMembers.departures[].reasonText',
       'ladderView.tsx#gymViewReduce#return.livingMembers.members[].id',
       'ladderView.tsx#gymViewReduce#return.livingMembers.members[].displayName',
       'ladderView.tsx#gymViewReduce#return.livingMembers.members[].recentVisits[].stationKey',
+      'ladderView.tsx#gymViewReduce#return.livingMembers.season.onLeave[].member.displayName',
+      'ladderView.tsx#gymViewReduce#return.livingMembers.season.onLeave[].member.id',
+      'ladderView.tsx#gymViewReduce#return.livingMembers.season.onLeave[].member.recentVisits[].stationKey',
+      'ladderView.tsx#gymViewReduce#return.livingMembers.season.returns[].member.displayName',
+      'ladderView.tsx#gymViewReduce#return.livingMembers.season.returns[].member.id',
+      'ladderView.tsx#gymViewReduce#return.livingMembers.season.returns[].member.recentVisits[].stationKey',
+      'livingMemberArrival.ts#createLivingMemberArrivalRecord#return.attractedById',
+      'livingMemberArrival.ts#createLivingMemberArrivalRecord#return.member.displayName',
+      'livingMemberArrival.ts#createLivingMemberArrivalRecord#return.member.id',
+      'livingMemberArrival.ts#createLivingMemberArrivalRecord#return.member.recentVisits[].stationKey',
+      'livingMemberArrival.ts#lastLivingMemberArrival#return.attractedById',
+      'livingMemberArrival.ts#lastLivingMemberArrival#return.member.displayName',
+      'livingMemberArrival.ts#lastLivingMemberArrival#return.member.id',
+      'livingMemberArrival.ts#lastLivingMemberArrival#return.member.recentVisits[].stationKey',
+      'livingMemberArrival.ts#playerFacingArrivalLine#return',
+      'livingMemberDeparture.ts#createLivingMemberDepartureRecord#return.member.displayName',
+      'livingMemberDeparture.ts#createLivingMemberDepartureRecord#return.member.id',
+      'livingMemberDeparture.ts#createLivingMemberDepartureRecord#return.member.recentVisits[].stationKey',
+      'livingMemberDeparture.ts#createLivingMemberDepartureRecord#return.reasonText',
+      'livingMemberDeparture.ts#lastLivingMemberDeparture#return.member.displayName',
+      'livingMemberDeparture.ts#lastLivingMemberDeparture#return.member.id',
+      'livingMemberDeparture.ts#lastLivingMemberDeparture#return.member.recentVisits[].stationKey',
+      'livingMemberDeparture.ts#lastLivingMemberDeparture#return.reasonText',
+      'livingMemberDeparture.ts#livingMemberDepartureReason#return.reasonText',
+      'livingMemberDeparture.ts#playerFacingDepartureLine#return',
+      'livingMemberDues.ts#playerFacingDuesLine#return',
+      'livingMemberReputation.ts#playerFacingReputationLine#return',
+      'livingMemberSeason.ts#createLivingMemberSeasonLeaveRecord#return.member.displayName',
+      'livingMemberSeason.ts#createLivingMemberSeasonLeaveRecord#return.member.id',
+      'livingMemberSeason.ts#createLivingMemberSeasonLeaveRecord#return.member.recentVisits[].stationKey',
+      'livingMemberSeason.ts#createLivingMemberSeasonLedger#return.onLeave[].member.displayName',
+      'livingMemberSeason.ts#createLivingMemberSeasonLedger#return.onLeave[].member.id',
+      'livingMemberSeason.ts#createLivingMemberSeasonLedger#return.onLeave[].member.recentVisits[].stationKey',
+      'livingMemberSeason.ts#createLivingMemberSeasonLedger#return.returns[].member.displayName',
+      'livingMemberSeason.ts#createLivingMemberSeasonLedger#return.returns[].member.id',
+      'livingMemberSeason.ts#createLivingMemberSeasonLedger#return.returns[].member.recentVisits[].stationKey',
+      'livingMemberSeason.ts#createLivingMemberSeasonReturnRecord#return.member.displayName',
+      'livingMemberSeason.ts#createLivingMemberSeasonReturnRecord#return.member.id',
+      'livingMemberSeason.ts#createLivingMemberSeasonReturnRecord#return.member.recentVisits[].stationKey',
+      'livingMemberSeason.ts#lastLivingMemberSeasonEvent#return.member.displayName',
+      'livingMemberSeason.ts#lastLivingMemberSeasonEvent#return.member.id',
+      'livingMemberSeason.ts#lastLivingMemberSeasonEvent#return.member.recentVisits[].stationKey',
+      'livingMemberSeason.ts#playerFacingSeasonLine#return',
+      'livingMembers.ts#advanceLivingMemberTenure#return.arrivals[].attractedById',
+      'livingMembers.ts#advanceLivingMemberTenure#return.arrivals[].member.displayName',
+      'livingMembers.ts#advanceLivingMemberTenure#return.arrivals[].member.id',
+      'livingMembers.ts#advanceLivingMemberTenure#return.arrivals[].member.recentVisits[].stationKey',
+      'livingMembers.ts#advanceLivingMemberTenure#return.departures[].member.displayName',
+      'livingMembers.ts#advanceLivingMemberTenure#return.departures[].member.id',
+      'livingMembers.ts#advanceLivingMemberTenure#return.departures[].member.recentVisits[].stationKey',
+      'livingMembers.ts#advanceLivingMemberTenure#return.departures[].reasonText',
       'livingMembers.ts#advanceLivingMemberTenure#return.members[].id',
       'livingMembers.ts#advanceLivingMemberTenure#return.members[].displayName',
       'livingMembers.ts#advanceLivingMemberTenure#return.members[].recentVisits[].stationKey',
+      'livingMembers.ts#advanceLivingMemberTenure#return.season.onLeave[].member.displayName',
+      'livingMembers.ts#advanceLivingMemberTenure#return.season.onLeave[].member.id',
+      'livingMembers.ts#advanceLivingMemberTenure#return.season.onLeave[].member.recentVisits[].stationKey',
+      'livingMembers.ts#advanceLivingMemberTenure#return.season.returns[].member.displayName',
+      'livingMembers.ts#advanceLivingMemberTenure#return.season.returns[].member.id',
+      'livingMembers.ts#advanceLivingMemberTenure#return.season.returns[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberDues#return.arrivals[].attractedById',
+      'livingMembers.ts#applyLivingMemberDues#return.arrivals[].member.displayName',
+      'livingMembers.ts#applyLivingMemberDues#return.arrivals[].member.id',
+      'livingMembers.ts#applyLivingMemberDues#return.arrivals[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberDues#return.departures[].member.displayName',
+      'livingMembers.ts#applyLivingMemberDues#return.departures[].member.id',
+      'livingMembers.ts#applyLivingMemberDues#return.departures[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberDues#return.departures[].reasonText',
+      'livingMembers.ts#applyLivingMemberDues#return.members[].displayName',
+      'livingMembers.ts#applyLivingMemberDues#return.members[].id',
+      'livingMembers.ts#applyLivingMemberDues#return.members[].recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberDues#return.season.onLeave[].member.displayName',
+      'livingMembers.ts#applyLivingMemberDues#return.season.onLeave[].member.id',
+      'livingMembers.ts#applyLivingMemberDues#return.season.onLeave[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberDues#return.season.returns[].member.displayName',
+      'livingMembers.ts#applyLivingMemberDues#return.season.returns[].member.id',
+      'livingMembers.ts#applyLivingMemberDues#return.season.returns[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberReputation#return.arrivals[].attractedById',
+      'livingMembers.ts#applyLivingMemberReputation#return.arrivals[].member.displayName',
+      'livingMembers.ts#applyLivingMemberReputation#return.arrivals[].member.id',
+      'livingMembers.ts#applyLivingMemberReputation#return.arrivals[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberReputation#return.departures[].member.displayName',
+      'livingMembers.ts#applyLivingMemberReputation#return.departures[].member.id',
+      'livingMembers.ts#applyLivingMemberReputation#return.departures[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberReputation#return.departures[].reasonText',
+      'livingMembers.ts#applyLivingMemberReputation#return.members[].displayName',
+      'livingMembers.ts#applyLivingMemberReputation#return.members[].id',
+      'livingMembers.ts#applyLivingMemberReputation#return.members[].recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberReputation#return.season.onLeave[].member.displayName',
+      'livingMembers.ts#applyLivingMemberReputation#return.season.onLeave[].member.id',
+      'livingMembers.ts#applyLivingMemberReputation#return.season.onLeave[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberReputation#return.season.returns[].member.displayName',
+      'livingMembers.ts#applyLivingMemberReputation#return.season.returns[].member.id',
+      'livingMembers.ts#applyLivingMemberReputation#return.season.returns[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberSeason#return.arrivals[].attractedById',
+      'livingMembers.ts#applyLivingMemberSeason#return.arrivals[].member.displayName',
+      'livingMembers.ts#applyLivingMemberSeason#return.arrivals[].member.id',
+      'livingMembers.ts#applyLivingMemberSeason#return.arrivals[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberSeason#return.departures[].member.displayName',
+      'livingMembers.ts#applyLivingMemberSeason#return.departures[].member.id',
+      'livingMembers.ts#applyLivingMemberSeason#return.departures[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberSeason#return.departures[].reasonText',
+      'livingMembers.ts#applyLivingMemberSeason#return.members[].displayName',
+      'livingMembers.ts#applyLivingMemberSeason#return.members[].id',
+      'livingMembers.ts#applyLivingMemberSeason#return.members[].recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberSeason#return.season.onLeave[].member.displayName',
+      'livingMembers.ts#applyLivingMemberSeason#return.season.onLeave[].member.id',
+      'livingMembers.ts#applyLivingMemberSeason#return.season.onLeave[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberSeason#return.season.returns[].member.displayName',
+      'livingMembers.ts#applyLivingMemberSeason#return.season.returns[].member.id',
+      'livingMembers.ts#applyLivingMemberSeason#return.season.returns[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyServiceObservations#return.arrivals[].attractedById',
+      'livingMembers.ts#applyServiceObservations#return.arrivals[].member.displayName',
+      'livingMembers.ts#applyServiceObservations#return.arrivals[].member.id',
+      'livingMembers.ts#applyServiceObservations#return.arrivals[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyServiceObservations#return.departures[].member.displayName',
+      'livingMembers.ts#applyServiceObservations#return.departures[].member.id',
+      'livingMembers.ts#applyServiceObservations#return.departures[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyServiceObservations#return.departures[].reasonText',
       'livingMembers.ts#applyServiceObservations#return.members[].id',
       'livingMembers.ts#applyServiceObservations#return.members[].displayName',
       'livingMembers.ts#applyServiceObservations#return.members[].recentVisits[].stationKey',
+      'livingMembers.ts#applyServiceObservations#return.season.onLeave[].member.displayName',
+      'livingMembers.ts#applyServiceObservations#return.season.onLeave[].member.id',
+      'livingMembers.ts#applyServiceObservations#return.season.onLeave[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyServiceObservations#return.season.returns[].member.displayName',
+      'livingMembers.ts#applyServiceObservations#return.season.returns[].member.id',
+      'livingMembers.ts#applyServiceObservations#return.season.returns[].member.recentVisits[].stationKey',
+      'livingMembers.ts#createLivingMemberRoster#return.arrivals[].attractedById',
+      'livingMembers.ts#createLivingMemberRoster#return.arrivals[].member.displayName',
+      'livingMembers.ts#createLivingMemberRoster#return.arrivals[].member.id',
+      'livingMembers.ts#createLivingMemberRoster#return.arrivals[].member.recentVisits[].stationKey',
+      'livingMembers.ts#createLivingMemberRoster#return.departures[].member.displayName',
+      'livingMembers.ts#createLivingMemberRoster#return.departures[].member.id',
+      'livingMembers.ts#createLivingMemberRoster#return.departures[].member.recentVisits[].stationKey',
+      'livingMembers.ts#createLivingMemberRoster#return.departures[].reasonText',
       'livingMembers.ts#createLivingMemberRoster#return.members[].id',
       'livingMembers.ts#createLivingMemberRoster#return.members[].displayName',
       'livingMembers.ts#createLivingMemberRoster#return.members[].recentVisits[].stationKey',
+      'livingMembers.ts#createLivingMemberRoster#return.season.onLeave[].member.displayName',
+      'livingMembers.ts#createLivingMemberRoster#return.season.onLeave[].member.id',
+      'livingMembers.ts#createLivingMemberRoster#return.season.onLeave[].member.recentVisits[].stationKey',
+      'livingMembers.ts#createLivingMemberRoster#return.season.returns[].member.displayName',
+      'livingMembers.ts#createLivingMemberRoster#return.season.returns[].member.id',
+      'livingMembers.ts#createLivingMemberRoster#return.season.returns[].member.recentVisits[].stationKey',
+      'livingMembers.ts#departedMemberById#return.member.displayName',
+      'livingMembers.ts#departedMemberById#return.member.id',
+      'livingMembers.ts#departedMemberById#return.member.recentVisits[].stationKey',
+      'livingMembers.ts#departedMemberById#return.reasonText',
       'livingMembers.ts#deriveMemberId#return',
       'livingMembers.ts#displayNameForCreation#return',
       'livingMembers.ts#LIVING_MEMBER_GIVEN_NAMES#value[]',
@@ -1307,9 +1500,40 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'livingMemberExperience.ts#livingMemberExperience#return.reasons[].text',
       'livingMemberRetention.ts#livingMemberRetentionPressure#return.label',
       'livingMemberRetention.ts#livingMemberRetentionPressure#return.reasons[].text',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.arrivals[].attractedById',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.arrivals[].member.displayName',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.arrivals[].member.id',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.arrivals[].member.recentVisits[].stationKey',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.departures[].member.displayName',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.departures[].member.id',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.departures[].member.recentVisits[].stationKey',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.departures[].reasonText',
       'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.members[].id',
       'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.members[].displayName',
       'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.members[].recentVisits[].stationKey',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.season.onLeave[].member.displayName',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.season.onLeave[].member.id',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.season.onLeave[].member.recentVisits[].stationKey',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.season.returns[].member.displayName',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.season.returns[].member.id',
+      'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.season.returns[].member.recentVisits[].stationKey',
+      'livingMembers.ts#settleLivingMemberClock#return.arrivals[].attractedById',
+      'livingMembers.ts#settleLivingMemberClock#return.arrivals[].member.displayName',
+      'livingMembers.ts#settleLivingMemberClock#return.arrivals[].member.id',
+      'livingMembers.ts#settleLivingMemberClock#return.arrivals[].member.recentVisits[].stationKey',
+      'livingMembers.ts#settleLivingMemberClock#return.departures[].member.displayName',
+      'livingMembers.ts#settleLivingMemberClock#return.departures[].member.id',
+      'livingMembers.ts#settleLivingMemberClock#return.departures[].member.recentVisits[].stationKey',
+      'livingMembers.ts#settleLivingMemberClock#return.departures[].reasonText',
+      'livingMembers.ts#settleLivingMemberClock#return.members[].displayName',
+      'livingMembers.ts#settleLivingMemberClock#return.members[].id',
+      'livingMembers.ts#settleLivingMemberClock#return.members[].recentVisits[].stationKey',
+      'livingMembers.ts#settleLivingMemberClock#return.season.onLeave[].member.displayName',
+      'livingMembers.ts#settleLivingMemberClock#return.season.onLeave[].member.id',
+      'livingMembers.ts#settleLivingMemberClock#return.season.onLeave[].member.recentVisits[].stationKey',
+      'livingMembers.ts#settleLivingMemberClock#return.season.returns[].member.displayName',
+      'livingMembers.ts#settleLivingMemberClock#return.season.returns[].member.id',
+      'livingMembers.ts#settleLivingMemberClock#return.season.returns[].member.recentVisits[].stationKey',
     ]),
   }),
   Object.freeze({
@@ -1319,6 +1543,7 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
     positions: Object.freeze([
       'floorSim.ts#ambientLivingPopulation#return[].memberId',
       'floorSim.ts#createFloorSimState#return.members[].memberId',
+      'floorSim.ts#reconcileFloorSimPopulation#return.members[].memberId',
       'floorSim.ts#runFloorSim#return.members[].memberId',
       'floorSim.ts#stepFloorSim#return.members[].memberId',
       'floorSim.ts#stepFloorSimWithObservations#return.observations[].memberId',
@@ -1584,6 +1809,8 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   // for.
   'GymScreen.tsx#GymScreen#props.map x1',
   'GymScreen.tsx#GymScreen#props.map x1',
+  // CAREER-EMPIRE-REP-01: lastSportingCredit reason rows.
+  'GymScreen.tsx#GymScreen#props.map x1',
   'GymScreen.tsx#GymScreen#week.map x1',
   'empireCore.ts#idleLedger#ledger.filter x1',
   'empireCore.ts#progressionLedger#ledger.filter x1',
@@ -1601,6 +1828,7 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   // Stage G.1: floorSim observation buffer and livingMembers roster helpers.
   'floorSim.ts#advanceMember#observations.push x1',
   'floorSim.ts#createFloorSimState#context.map x1',
+  'floorSim.ts#spawnCellForArrival#occupied.has x1',
   // GDD §5.13 presentation Phase 3 adds NO ROW HERE, and that is a decision
   // rather than an absence. floorSim.ts's first draft had six array-method
   // calls whose receiver was a parameter — `members.map`, `members.filter`,
@@ -1638,10 +1866,11 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
+  'livingMemberSeason.ts#athleteSeasonBoundaryWouldMove#members.some x1',
   // Stage G.2C1: private hasReason reads caller-supplied retention.reasons.
   'livingMemberStay.ts#hasReason#retention.some x1',
-  // Stage G.1 livingMembers.ts reads of caller-supplied roster/id/history.
-  'livingMembers.ts#applyServiceObservations#roster.map x1',
+  // Stage G.2C2: departedMemberById reads caller-supplied roster.departures.
+  'livingMembers.ts#departedMemberById#roster.find x1',
   'livingMembers.ts#floorSimPopulationFromRoster#roster.map x1',
   'livingMembers.ts#livingMemberById#roster.find x1',
   'livingMembers.ts#memberOrdinalFromId#id.split x1',
@@ -1679,7 +1908,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 29, // Stage G.2C1 livingMemberStay.ts
+  MODULES: 36, // CAREER-EMPIRE-REP-01 institutionalReputation.ts + sportingReputationLedger.ts
   // 273 -> 280: GymView's four new exports (createGymViewState, GymViewState,
   // GymViewAction, GymViewRefusal don't count as runtime exports — the seven
   // that do are createGymViewState, gymViewReduce, GymView from ladderView.tsx
@@ -1783,7 +2012,14 @@ const SURFACE_CENSUS = Object.freeze({
   // 429 -> 432: Stage D2.2 plateLoadingProgress, plateLoadingDiscs,
   // ladderDevClockTestId.
   // 463 -> 465: Stage G.2C1 createLivingMemberStayState + advanceLivingMemberStay.
-  EXPORTS: 465, // Stage G.2C1 stay-response foundation
+  // 465 -> 473: Stage G.2C2 livingMemberDeparture.ts runtime exports plus
+  // livingMembers/floorSim departure-archive and reconcile seams.
+  // 473 -> 478: Stage G.2C3 livingMemberArrival.ts five runtime exports.
+  // 478 -> 489: Stage G.2D livingMemberDues.ts plus applyLivingMemberDues.
+  // 489 -> 491: Stage G.2D purse composition helpers.
+  // 491 -> 492: Stage G.2D P1 requireLivingMemberDuesOccupancyClock.
+  // 492 -> 493: Stage G.2D P1 livingMemberDuesOccupancyUntilSeconds.
+  EXPORTS: 524, // CAREER-EMPIRE-REP-01 ledger + composer runtime exports
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1802,8 +2038,12 @@ const SURFACE_CENSUS = Object.freeze({
   // 122 -> 125: Stage D playerFacingUpgradeLabel/Effect/Refuse.
   // 128 -> 130: Stage D.1b bay qualityBench + plateTree URI leaves.
   // 130 -> 132: Stage D2.1B changeoverSeatKey + playerFacingStationOperation.
-  BARE_POSITIONS: 182, // Stage G.2B retention label + reasons
-  BARE_FIELDS: 6, // Stage G.1A floorSim memberId group added
+  // 182 -> 221: Stage G.2C2 departure archive / player-facing leave line
+  // plus reconcileFloorSimPopulation memberId. Read from this pin last.
+  // 221 -> 246: Stage G.2C3 arrival archive / player-facing join line.
+  // 246 -> 266: Stage G.2D playerFacingDuesLine plus applyLivingMemberDues roster strings.
+  BARE_POSITIONS: 392, // CAREER-EMPIRE-REP-01 meetId + sporting reason text positions
+  BARE_FIELDS: 7, // CAREER-EMPIRE-REP-01 played-meet identifier group
   BRANDED_POSITIONS: 34,
   /**
    * Zero, and the zero is the sixteenth bypass's repair rather than a fact
@@ -1928,7 +2168,9 @@ const SURFACE_CENSUS = Object.freeze({
   // 4333 -> 4453: Stage G.2C1 stay-status / cause / direction unions on
   // livingMemberStay.ts and livingMembers.ts stayState. Read from this pin's
   // own failure value.
-  LITERAL_POSITIONS: 4453, // Stage G.2C1 stay-response literal unions
+  // 4453 -> 4729: Stage G.2C2 departure-record / stay-evidence unions on
+  // livingMemberDeparture.ts and livingMembers.ts departures. Read from this pin last.
+  LITERAL_POSITIONS: 5909, // CAREER-EMPIRE-REP-01 credit / meet-kind / copy literals
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -1976,7 +2218,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 243 -> 247: Stage D.1 — 'training', 'competition-bench-bay', 'primary',
   // 'expansion'.
   // 265 -> 270: Stage G.2C1 stay-status / cause / direction members.
-  DISTINCT_LITERAL_MEMBERS: 270, // Stage G.2C1 stay-response literal members
+  DISTINCT_LITERAL_MEMBERS: 282, // CAREER-EMPIRE-REP-01 credit-sporting-result / not-creditable / unknown-meet
   DEPTH_CUTS: 0,
 });
 
@@ -3012,7 +3254,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // calls no brand constructor either.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts joins the walk; it
   // calls no brand constructor either.
-  MODULES: 29, // Stage G.2C1 livingMemberStay.ts
+  MODULES: 36, // CAREER-EMPIRE-REP-01 institutionalReputation.ts + sportingReputationLedger.ts
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -3169,7 +3411,9 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 3361 -> 3375: Stage D2.1A live-Capacity seat assignment / relocate helpers.
   // 3375 -> 3405: Stage D2.1B changeover helpers + FloorGrid loading path.
   // 3662 -> 3704: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
-  CALLS_EXAMINED: 3704, // Stage G.2C1 livingMemberStay
+  // 3704 -> 3755: Stage G.2C2 livingMemberDeparture.ts plus livingMembers
+  // departure/reconcile wiring. Read from this pin last.
+  CALLS_EXAMINED: 4098, // CAREER-EMPIRE-REP-01 GymScreen composed-reputation calls
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3368,7 +3612,7 @@ describe('instrument C — a raw string becomes a brand in a countable number of
     // (static frozen data with no branch point, read and containment-scanned
     // unconditionally) lives at the group.
     expect(DECLARED_BARE_STRING_FIELDS.length).toBe(SURFACE_CENSUS.BARE_FIELDS);
-    expect(SURFACE_CENSUS.BARE_FIELDS).toBe(6); // Stage G.1A floorSim memberId group added
+    expect(SURFACE_CENSUS.BARE_FIELDS).toBe(7); // CAREER-EMPIRE-REP-01 played-meet identifier group
     const keyGroup = DECLARED_BARE_STRING_FIELDS.find((group) =>
       group.field.includes('ReactElement.key'),
     );
@@ -3730,12 +3974,21 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'reputation.ts': reputationModule as unknown as Readonly<Record<string, unknown>>,
   'social.ts': socialModule as unknown as Readonly<Record<string, unknown>>,
   'sportingReputation.ts': sportingReputationModule as unknown as Readonly<Record<string, unknown>>,
+  'sportingReputationLedger.ts':
+    sportingReputationLedgerModule as unknown as Readonly<Record<string, unknown>>,
+  'institutionalReputation.ts':
+    institutionalReputationModule as unknown as Readonly<Record<string, unknown>>,
   'stationView.ts': stationViewModule as unknown as Readonly<Record<string, unknown>>,
   'stationCapability.ts': stationCapabilityModule as unknown as Readonly<Record<string, unknown>>,
   'trainingStation.ts': trainingStationModule as unknown as Readonly<Record<string, unknown>>,
+  'livingMemberArrival.ts': livingMemberArrivalModule as unknown as Readonly<Record<string, unknown>>,
+  'livingMemberDues.ts': livingMemberDuesModule as unknown as Readonly<Record<string, unknown>>,
+  'livingMemberReputation.ts': livingMemberReputationModule as unknown as Readonly<Record<string, unknown>>,
+  'livingMemberSeason.ts': livingMemberSeasonModule as unknown as Readonly<Record<string, unknown>>,
   'livingMemberExperience.ts': livingMemberExperienceModule as unknown as Readonly<Record<string, unknown>>,
   'livingMemberRetention.ts': livingMemberRetentionModule as unknown as Readonly<Record<string, unknown>>,
   'livingMemberStay.ts': livingMemberStayModule as unknown as Readonly<Record<string, unknown>>,
+  'livingMemberDeparture.ts': livingMemberDepartureModule as unknown as Readonly<Record<string, unknown>>,
   'livingMembers.ts': livingMembersModule as unknown as Readonly<Record<string, unknown>>,
 });
 
@@ -4109,6 +4362,9 @@ const UNIT_THRESHOLDS: Readonly<Record<AxisUnit, Readonly<Record<string, number>
     // reputation against the rung for the tier, which is the same shape as the
     // tier ladder above and was filed nowhere.
     ...tuningTable('NPC_RECRUIT_REPUTATION_THRESHOLD'),
+    // Stage G.2E: livingMemberShouldArrive compares credited living-member
+    // reputation against this gate for Athlete and Serious Lifter.
+    ...tuningTable('HIGH_PAYING_MEMBER_ARRIVAL_REPUTATION_THRESHOLD'),
   }),
   gymBucks: Object.freeze({
     ...tuningTable('SPACE_LEVEL_COST_GYM_BUCKS'),
@@ -4650,6 +4906,10 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
   ...exemptTable(
     'LIVING_MEMBER_RETENTION',
     'G.2B retention-pressure presentation bands on an already-derived experience composite. watchingMin/strainedMin/atRiskMin name the membership card; they are not a caller-supplied economic axis and not a departure hazard.',
+  ),
+  ...exemptTable(
+    'ATHLETE_SEASON',
+    'G2-ATHLETE-SEASON-01 shared gym-clock calendar knobs: cycleWeeks, inSeasonWeeks, and firstInSeasonWeek. They name when Athletes leave and return on the training-week index; nothing compares a caller-supplied purse, reputation, or elapsed-day axis against them. Feel is unproven.',
   ),
   ...exemptTable(
     'FLOOR_SIM_LEAVING_TICKS',
@@ -5800,19 +6060,22 @@ const DOMAIN_CENSUS = Object.freeze({
   // 102 -> 104: the two ordinal review knobs, filed under `count`.
   // 104 -> 105: the "chrome vs paid" bug-fix round's one new filed leaf,
   // DUST_REPAIR_COST_GYM_BUCKS, filed under `gymBucks`.
-  THRESHOLDS: 110,
+  THRESHOLDS: 111,
   /** Numeric leaves of EMPIRE_TUNING filed under a unit. */
   // 88 -> 100: the same twelve. Measured off this assertion.
   // 100 -> 102: the two ordinal review knobs, filed under `count`.
   // 102 -> 103: the same new filed leaf, DUST_REPAIR_COST_GYM_BUCKS.
-  FILED: 108,
+  FILED: 109, // Stage G.2E HIGH_PAYING_MEMBER_ARRIVAL_REPUTATION_THRESHOLD
   // 66 -> 121: members.ts's nine tables (§5.11 stage 3), 55 numeric leaves,
   // all exempt (RATE/MULTIPLIER, none compared against a live value).
   /** Numeric leaves on `NOT_A_BRANCH_POINT`. */
   // 154 -> 209.
   // 99 -> 104: members.ts's MEMBER_TYPES, five string leaves.
   // 104 -> 107: `MANAGER_TIERS`'s three tokens.
-  TUNING_STRING_LEAVES: 122,
+  // 122 -> 124: Stage G.2E HIGH_PAYING_MEMBER_TYPES, two string leaves.
+  // 124 -> 127: CAREER-EMPIRE-REP-01 SPORTING_REPUTATION.copy.composed /
+  // copy.unknownMeet / playedMeetKindById.local-open-2026. Read from dump.
+  TUNING_STRING_LEAVES: 127,
   // 156 -> 211.
   /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
   // 732 -> 1057: every domain straddles the 55 new exempt leaves too.
@@ -5873,7 +6136,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // (replace, exempt count unchanged).
   // 357 -> 365: Stage D2.2 LADDER_DEV_WATCHED_TIME_STEPS_SECONDS (2) plus
   // FLOOR_PLATE_LOADING (6).
-  EXEMPT: 396, // Stage G.2B LIVING_MEMBER_RETENTION nested leaves
+  EXEMPT: 399, // G2-ATHLETE-SEASON-01 ATHLETE_SEASON three week knobs
   // 154 -> 196: the same 42 new leaves. 251 -> 264: the same 13 new leaves.
   // 264 -> 266: the same 2 new leaves.
   // 266 -> 273: the same 7 new leaves.
@@ -5910,7 +6173,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS,
   // FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS), all filed.
   // 451 -> 453: Stage C.1b FLOOR_TILE_PIXELS_MAX and FLOOR_STAGE_PADDING_PIXELS.
-  TUNING_NUMERIC_LEAVES: 504, // Stage G.2B LIVING_MEMBER_RETENTION 3 nested leaves
+  TUNING_NUMERIC_LEAVES: 508, // G2-ATHLETE-SEASON-01 ATHLETE_SEASON three week knobs
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -5950,7 +6213,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 455 -> 456: Stage C.1c CONDITION_PERCENT_SCALE.
   // 456 -> 457: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS.
   // 466 -> 475: Stage D2.2 nine new numeric leaves (1 filed + 8 exempt).
-  BRANCH_POINTS: 506, // Stage G.2B LIVING_MEMBER_RETENTION
+  BRANCH_POINTS: 510, // G2-ATHLETE-SEASON-01 ATHLETE_SEASON three week knobs
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
@@ -6017,7 +6280,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 2372 -> 2377: Stage C.1c CONDITION_PERCENT_SCALE in five domains.
   // 2428 -> 2433: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS across
   // five domains that carry it under their ceiling; ROSTER_SHAPE omits it.
-  CONTAINMENT_CHECKS: 2662, // Stage G.2B LIVING_MEMBER_RETENTION label mins
+  CONTAINMENT_CHECKS: 2686, // G2-ATHLETE-SEASON-01 ATHLETE_SEASON three week knobs across domains
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -7390,6 +7653,40 @@ function driveEverything(): readonly DrivenRow[] {
       ladderViewModule.gymViewReduce(gymAfterWeek, { kind: 'reset-gym' }),
       [gymAfterWeek],
     );
+    const playedMeetFacts = Object.freeze({
+      totalKg: 600,
+      isTotalPr: true,
+      placing: Object.freeze({ place: 1, fieldSize: 16 }),
+    });
+    drive('gymViewReduce', 'credit-sporting-result/local-pr', () =>
+      ladderViewModule.gymViewReduce(gymAfterWeek, {
+        kind: 'credit-sporting-result',
+        meetId: 'local-open-2026',
+        facts: playedMeetFacts,
+      }),
+      [gymAfterWeek],
+    );
+    drive('gymViewReduce', 'credit-sporting-result/unknown-meet', () =>
+      ladderViewModule.gymViewReduce(gymAfterWeek, {
+        kind: 'credit-sporting-result',
+        meetId: 'not-on-the-map',
+        facts: playedMeetFacts,
+      }),
+      [gymAfterWeek],
+    );
+    const gymAfterCredit = ladderViewModule.gymViewReduce(gymAfterWeek, {
+      kind: 'credit-sporting-result',
+      meetId: 'local-open-2026',
+      facts: playedMeetFacts,
+    });
+    drive('gymViewReduce', 'credit-sporting-result/replay', () =>
+      ladderViewModule.gymViewReduce(gymAfterCredit, {
+        kind: 'credit-sporting-result',
+        meetId: 'local-open-2026',
+        facts: playedMeetFacts,
+      }),
+      [gymAfterCredit],
+    );
     const gymSilent = (): undefined => undefined;
     drive('GymView', 'opening', () =>
       ladderViewModule.GymView({ state: gymOpening, dispatch: gymSilent }), [gymOpening],
@@ -7604,6 +7901,8 @@ function driveEverything(): readonly DrivenRow[] {
       kit.join('+') === '' ? 'none' : kit.join('+');
     for (const type of EMPIRE_TUNING.MEMBER_TYPES) {
       drive('memberBaseDuesGymBucks', type, () => membersModule.memberBaseDuesGymBucks(type));
+      drive('memberReputationPerDay', type, () => membersModule.memberReputationPerDay(type));
+      drive('isHighPayingMemberType', type, () => membersModule.isHighPayingMemberType(type));
       for (const satisfaction of MEMBER_SATISFACTIONS) {
         drive('memberDuesGymBucks', `${type}/${String(satisfaction)}`, () =>
           membersModule.memberDuesGymBucks(type, satisfaction),
@@ -7676,6 +7975,103 @@ function driveEverything(): readonly DrivenRow[] {
         isTotalPr: true,
         newlyQualifiedFor: null,
       }),
+    );
+  }
+
+  // --- sportingReputationLedger.ts (CAREER-EMPIRE-REP-01 write side)
+  {
+    const facts = Object.freeze({
+      totalKg: 600,
+      isTotalPr: true,
+      placing: Object.freeze({ place: 1, fieldSize: 16 }),
+    });
+    const fresh = sportingReputationLedgerModule.createSportingReputationLedger();
+    drive('createSportingReputationLedger', 'zero-arg', () =>
+      sportingReputationLedgerModule.createSportingReputationLedger(),
+    );
+    drive('lastSportingReputationEntry', 'fresh', () =>
+      sportingReputationLedgerModule.lastSportingReputationEntry(fresh),
+      [fresh],
+    );
+    drive('sportingMeetResultFromPlayedFacts', 'local-pr', () =>
+      sportingReputationLedgerModule.sportingMeetResultFromPlayedFacts(facts, 'local', null),
+      [facts, 'local', null],
+    );
+    // KINDED_RETURN reads SportingMeetResult.kind (meet kind, not outcome).
+    // Drive every arm the type admits so the type/drive join stays non-vacuous.
+    drive('sportingMeetResultFromPlayedFacts', 'regional-pr', () =>
+      sportingReputationLedgerModule.sportingMeetResultFromPlayedFacts(facts, 'regional', null),
+      [facts, 'regional', null],
+    );
+    drive('sportingMeetResultFromPlayedFacts', 'nationals-pr', () =>
+      sportingReputationLedgerModule.sportingMeetResultFromPlayedFacts(facts, 'nationals', null),
+      [facts, 'nationals', null],
+    );
+    drive('sportingMeetResultFromPlayedFacts', 'worlds-pr', () =>
+      sportingReputationLedgerModule.sportingMeetResultFromPlayedFacts(facts, 'worlds', null),
+      [facts, 'worlds', null],
+    );
+    drive('sportingMeetResultFromPlayedFacts', 'local-bomb', () =>
+      sportingReputationLedgerModule.sportingMeetResultFromPlayedFacts(
+        Object.freeze({
+          totalKg: null,
+          isTotalPr: false,
+          placing: Object.freeze({ place: null, fieldSize: 16 }),
+        }),
+        'local',
+        null,
+      ),
+    );
+    drive('creditSportingResult', 'local-pr', () =>
+      sportingReputationLedgerModule.creditSportingResult(
+        fresh,
+        'local-open-2026',
+        facts,
+        0,
+        null,
+      ),
+      [fresh, 'local-open-2026', facts, 0, null],
+    );
+    drive('creditSportingResult', 'unknown-meet', () =>
+      sportingReputationLedgerModule.creditSportingResult(
+        fresh,
+        'not-on-the-map',
+        facts,
+        0,
+        null,
+      ),
+      [fresh, 'not-on-the-map', facts, 0, null],
+    );
+    const credited = sportingReputationLedgerModule.creditSportingResult(
+      fresh,
+      'local-open-2026',
+      facts,
+      0,
+      null,
+    );
+    drive('creditSportingResult', 'replay', () =>
+      sportingReputationLedgerModule.creditSportingResult(
+        credited.ledger,
+        'local-open-2026',
+        facts,
+        1,
+        null,
+      ),
+      [credited.ledger, 'local-open-2026', facts, 1, null],
+    );
+    drive('lastSportingReputationEntry', 'after-credit', () =>
+      sportingReputationLedgerModule.lastSportingReputationEntry(credited.ledger),
+      [credited.ledger],
+    );
+  }
+
+  // --- institutionalReputation.ts (CAREER-EMPIRE-REP-01 read side)
+  {
+    const members = livingMemberReputationModule.createLivingMemberReputationLedger(0);
+    const sporting = sportingReputationLedgerModule.createSportingReputationLedger();
+    drive('institutionalReputation', 'zero-plus-zero', () =>
+      institutionalReputationModule.institutionalReputation(members, sporting),
+      [members, sporting],
     );
   }
 
@@ -8024,6 +8420,18 @@ function driveEverything(): readonly DrivenRow[] {
           () => floorSimModule.floorSimStateCounts(settled),
           [settled],
         );
+        drive('reconcileFloorSimPopulation', 'aligned', () =>
+          floorSimModule.reconcileFloorSimPopulation(settled, withItem),
+          [settled, withItem],
+        );
+        const reduced = Object.freeze({
+          ...withItem,
+          livingPopulation: withItem.livingPopulation.slice(0, Math.max(0, withItem.livingPopulation.length - 1)),
+        });
+        drive('reconcileFloorSimPopulation', 'drop', () =>
+          floorSimModule.reconcileFloorSimPopulation(settled, reduced),
+          [settled, reduced],
+        );
       }
     }
   }
@@ -8043,6 +8451,10 @@ function driveEverything(): readonly DrivenRow[] {
         roster,
         firstMember.id,
       ]);
+      drive('departedMemberById', 'garage/0', () =>
+        livingMembersModule.departedMemberById(roster, firstMember.id),
+        [roster, firstMember.id],
+      );
       drive('memberOrdinalFromId', 'garage/0', () =>
         livingMembersModule.memberOrdinalFromId(firstMember.id),
         [firstMember.id],
@@ -8072,6 +8484,38 @@ function driveEverything(): readonly DrivenRow[] {
     );
     drive('advanceLivingMemberTenure', 'garage', () =>
       livingMembersModule.advanceLivingMemberTenure(roster, 60),
+      [roster],
+    );
+    drive('applyLivingMemberDues', 'zero-gap', () =>
+      livingMembersModule.applyLivingMemberDues(roster, 0),
+      [roster],
+    );
+    drive('applyLivingMemberDues', 'one-day', () =>
+      livingMembersModule.applyLivingMemberDues(roster, EMPIRE_TUNING.SECONDS_PER_DAY),
+      [roster],
+    );
+    drive('applyLivingMemberReputation', 'zero-gap', () =>
+      livingMembersModule.applyLivingMemberReputation(roster, 0),
+      [roster],
+    );
+    drive('applyLivingMemberReputation', 'one-day', () =>
+      livingMembersModule.applyLivingMemberReputation(roster, EMPIRE_TUNING.SECONDS_PER_DAY),
+      [roster],
+    );
+    drive('applyLivingMemberSeason', 'zero-gap', () =>
+      livingMembersModule.applyLivingMemberSeason(roster, 0),
+      [roster],
+    );
+    drive('applyLivingMemberSeason', 'one-day', () =>
+      livingMembersModule.applyLivingMemberSeason(roster, EMPIRE_TUNING.SECONDS_PER_DAY),
+      [roster],
+    );
+    drive('settleLivingMemberClock', 'zero-gap', () =>
+      livingMembersModule.settleLivingMemberClock(roster, 0),
+      [roster],
+    );
+    drive('settleLivingMemberClock', 'one-day', () =>
+      livingMembersModule.settleLivingMemberClock(roster, EMPIRE_TUNING.SECONDS_PER_DAY),
       [roster],
     );
     drive('playerFacingTenureLine', 'garage', () => livingMembersModule.playerFacingTenureLine(0, 3600));
@@ -8222,6 +8666,500 @@ function driveEverything(): readonly DrivenRow[] {
     drive('advanceLivingMemberStay', 'stable', () =>
       livingMemberStayModule.advanceLivingMemberStay(opening, 'casual', stableRetention, 1),
       [opening, stableRetention],
+    );
+    drive('livingMemberStayEvidence', 'forming', () =>
+      livingMemberStayModule.livingMemberStayEvidence('casual', formingRetention),
+      [formingRetention],
+    );
+    drive('livingMemberStayEvidence', 'watching-wait', () =>
+      livingMemberStayModule.livingMemberStayEvidence('casual', watchingRetention),
+      [watchingRetention],
+    );
+    drive('livingMemberStayEvidence', 'stable', () =>
+      livingMemberStayModule.livingMemberStayEvidence('powerlifter', stableRetention),
+      [stableRetention],
+    );
+  }
+
+  // --- livingMemberDeparture.ts (Stage G.2C2: actual departure execution)
+  {
+    const formingExperience = livingMemberExperienceModule.livingMemberExperience([]);
+    const formingRetention = livingMemberRetentionModule.livingMemberRetentionPressure(formingExperience);
+    drive('livingMemberShouldDepart', 'eligible-strain', () =>
+      livingMemberDepartureModule.livingMemberShouldDepart('departure-eligible', 'strain'),
+    );
+    drive('livingMemberShouldDepart', 'eligible-recovery', () =>
+      livingMemberDepartureModule.livingMemberShouldDepart('departure-eligible', 'recovery'),
+    );
+    drive('livingMemberShouldDepart', 'staying-strain', () =>
+      livingMemberDepartureModule.livingMemberShouldDepart('staying', 'strain'),
+    );
+    const waitRetention = livingMemberRetentionModule.livingMemberRetentionPressure(
+      livingMemberExperienceModule.livingMemberExperience([
+        Object.freeze({
+          stationKind: 'training' as const,
+          stationKey: 'training:competition-bench-bay',
+          queueWaitTicks: 200,
+          trainingExperience: EMPIRE_TUNING.STATION_STOCK_TRAINING_EXPERIENCE,
+          outcome: 'interrupted' as const,
+          observedAtTick: 1,
+        }),
+      ]),
+    );
+    drive('livingMemberDepartureReason', 'wait', () =>
+      livingMemberDepartureModule.livingMemberDepartureReason(waitRetention),
+      [waitRetention],
+    );
+    drive('livingMemberDepartureReason', 'forming', () =>
+      livingMemberDepartureModule.livingMemberDepartureReason(formingRetention),
+      [formingRetention],
+    );
+    const snapshot = livingMembersModule.createLivingMemberRoster(
+      'garage',
+      [...EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT],
+      [],
+      0,
+      EMPIRE_TUNING.FLOOR_SIM_RENDER_SEED,
+    ).members[0];
+    if (snapshot !== undefined) {
+      drive('createLivingMemberDepartureRecord', 'wait', () =>
+        livingMemberDepartureModule.createLivingMemberDepartureRecord(snapshot, 10, waitRetention),
+        [snapshot, waitRetention],
+      );
+      const record = livingMemberDepartureModule.createLivingMemberDepartureRecord(
+        snapshot,
+        10,
+        waitRetention,
+      );
+      drive('playerFacingDepartureLine', 'wait', () =>
+        livingMemberDepartureModule.playerFacingDepartureLine(record),
+        [record],
+      );
+      drive('lastLivingMemberDeparture', 'empty', () =>
+        livingMemberDepartureModule.lastLivingMemberDeparture([]),
+      );
+      drive('lastLivingMemberDeparture', 'one', () =>
+        livingMemberDepartureModule.lastLivingMemberDeparture([record]),
+        [record],
+      );
+    }
+  }
+
+  // --- livingMemberArrival.ts (Stage G.2C3: vacancy arrival / population replenishment)
+  {
+    const formingExperience = livingMemberExperienceModule.livingMemberExperience([]);
+    const formingRetention = livingMemberRetentionModule.livingMemberRetentionPressure(formingExperience);
+    const formingEvidence = livingMemberStayModule.livingMemberStayEvidence('casual', formingRetention);
+    const stableRetention = livingMemberRetentionModule.livingMemberRetentionPressure(
+      livingMemberExperienceModule.livingMemberExperience([
+        Object.freeze({
+          stationKind: 'training' as const,
+          stationKey: 'training:competition-bench-bay',
+          queueWaitTicks: 0,
+          trainingExperience: EMPIRE_TUNING.STATION_QUALITY_TRAINING_EXPERIENCE,
+          outcome: 'completed' as const,
+          observedAtTick: 1,
+        }),
+      ]),
+    );
+    const recoveryEvidence = livingMemberStayModule.livingMemberStayEvidence('casual', stableRetention);
+    const powerlifterRecovery = livingMemberStayModule.livingMemberStayEvidence(
+      'powerlifter',
+      stableRetention,
+    );
+    const seriousRecovery = livingMemberStayModule.livingMemberStayEvidence(
+      'serious-lifter',
+      stableRetention,
+    );
+    drive('livingMemberShouldArrive', 'no-vacancy', () =>
+      livingMemberArrivalModule.livingMemberShouldArrive(0, 'casual', recoveryEvidence, 0),
+    );
+    drive('livingMemberShouldArrive', 'casual-recovery', () =>
+      livingMemberArrivalModule.livingMemberShouldArrive(1, 'casual', recoveryEvidence, 0),
+    );
+    drive('livingMemberShouldArrive', 'casual-forming', () =>
+      livingMemberArrivalModule.livingMemberShouldArrive(1, 'casual', formingEvidence, 0),
+    );
+    drive('livingMemberShouldArrive', 'powerlifter-recovery', () =>
+      livingMemberArrivalModule.livingMemberShouldArrive(1, 'powerlifter', powerlifterRecovery, 0),
+    );
+    drive('livingMemberShouldArrive', 'serious-recovery', () =>
+      livingMemberArrivalModule.livingMemberShouldArrive(
+        1,
+        'serious-lifter',
+        seriousRecovery,
+        EMPIRE_TUNING.HIGH_PAYING_MEMBER_ARRIVAL_REPUTATION_THRESHOLD,
+      ),
+    );
+    const athleteRecovery = livingMemberStayModule.livingMemberStayEvidence(
+      'athlete',
+      stableRetention,
+    );
+    drive('livingMemberShouldArrive', 'athlete-recovery-below-gate', () =>
+      livingMemberArrivalModule.livingMemberShouldArrive(1, 'athlete', athleteRecovery, 0),
+    );
+    drive('livingMemberShouldArrive', 'athlete-recovery-at-gate', () =>
+      livingMemberArrivalModule.livingMemberShouldArrive(
+        1,
+        'athlete',
+        athleteRecovery,
+        EMPIRE_TUNING.HIGH_PAYING_MEMBER_ARRIVAL_REPUTATION_THRESHOLD,
+      ),
+    );
+    drive('requireLivingMemberArrivalContext', 'ok', () =>
+      livingMemberArrivalModule.requireLivingMemberArrivalContext(
+        Object.freeze({ sessionOwned: [], joinedAtSeconds: 0 }),
+      ),
+    );
+    const snapshot = livingMembersModule.createLivingMemberRoster(
+      'garage',
+      [...EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT],
+      [],
+      0,
+      EMPIRE_TUNING.FLOOR_SIM_RENDER_SEED,
+    ).members[0];
+    if (snapshot !== undefined) {
+      drive('createLivingMemberArrivalRecord', 'join', () =>
+        livingMemberArrivalModule.createLivingMemberArrivalRecord(snapshot, 10, snapshot.id),
+        [snapshot],
+      );
+      const record = livingMemberArrivalModule.createLivingMemberArrivalRecord(
+        snapshot,
+        10,
+        snapshot.id,
+      );
+      drive('playerFacingArrivalLine', 'join', () =>
+        livingMemberArrivalModule.playerFacingArrivalLine(record),
+        [record],
+      );
+      drive('lastLivingMemberArrival', 'empty', () =>
+        livingMemberArrivalModule.lastLivingMemberArrival([]),
+      );
+      drive('lastLivingMemberArrival', 'one', () =>
+        livingMemberArrivalModule.lastLivingMemberArrival([record]),
+        [record],
+      );
+    }
+  }
+
+  // --- livingMemberDues.ts (Stage G.2D: living-member dues accounting)
+  {
+    const snapshot = livingMembersModule.createLivingMemberRoster(
+      'garage',
+      [...EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT],
+      [],
+      0,
+      EMPIRE_TUNING.FLOOR_SIM_RENDER_SEED,
+    ).members[0];
+    if (snapshot !== undefined) {
+      drive('livingMemberDailyDuesGymBucks', 'forming', () =>
+        livingMemberDuesModule.livingMemberDailyDuesGymBucks(snapshot),
+        [snapshot],
+      );
+      const daily = livingMemberDuesModule.livingMemberDailyDuesGymBucks(snapshot);
+      drive('playerFacingDuesLine', 'forming', () =>
+        livingMemberDuesModule.playerFacingDuesLine(daily),
+        [daily],
+      );
+      drive('livingMemberDuesForWindow', 'empty', () =>
+        livingMemberDuesModule.livingMemberDuesForWindow([], 0, EMPIRE_TUNING.SECONDS_PER_DAY),
+      );
+      drive('livingMemberDuesForWindow', 'opening', () =>
+        livingMemberDuesModule.livingMemberDuesForWindow(
+          Object.freeze([snapshot]),
+          0,
+          EMPIRE_TUNING.SECONDS_PER_DAY,
+        ),
+        [snapshot],
+      );
+      drive('livingMemberDuesGymBucksForInterval', 'full-day', () =>
+        livingMemberDuesModule.livingMemberDuesGymBucksForInterval(
+          snapshot,
+          0,
+          EMPIRE_TUNING.SECONDS_PER_DAY,
+        ),
+        [snapshot],
+      );
+      drive('livingMemberDuesGymBucksForInterval', 'half-day-leave', () =>
+        livingMemberDuesModule.livingMemberDuesGymBucksForInterval(
+          snapshot,
+          0,
+          EMPIRE_TUNING.SECONDS_PER_DAY,
+          EMPIRE_TUNING.SECONDS_PER_DAY / 2,
+        ),
+        [snapshot],
+      );
+      drive('livingMemberDuesForWindow', 'departed-stub', () =>
+        livingMemberDuesModule.livingMemberDuesForWindow(
+          Object.freeze([]),
+          0,
+          EMPIRE_TUNING.SECONDS_PER_DAY,
+          Object.freeze([
+            Object.freeze({
+              member: snapshot,
+              departedAtSeconds: EMPIRE_TUNING.SECONDS_PER_DAY / 2,
+            }),
+          ]),
+        ),
+        [snapshot],
+      );
+      drive('requireLivingMemberDuesWindow', 'ok', () =>
+        livingMemberDuesModule.requireLivingMemberDuesWindow(0, EMPIRE_TUNING.SECONDS_PER_DAY),
+      );
+      drive('requireLivingMemberDuesOccupancyClock', 'ok', () =>
+        livingMemberDuesModule.requireLivingMemberDuesOccupancyClock(0, 0),
+      );
+      drive('livingMemberDuesOccupancyUntilSeconds', 'open-mark', () =>
+        livingMemberDuesModule.livingMemberDuesOccupancyUntilSeconds(
+          0,
+          0,
+          EMPIRE_TUNING.SECONDS_PER_DAY,
+        ),
+      );
+      drive('livingMemberDuesOccupancyUntilSeconds', 'mid-window', () =>
+        livingMemberDuesModule.livingMemberDuesOccupancyUntilSeconds(
+          EMPIRE_TUNING.SECONDS_PER_DAY / 2,
+          0,
+          EMPIRE_TUNING.SECONDS_PER_DAY,
+        ),
+      );
+      drive('livingMemberPresenceOverlapSeconds', 'full-day', () =>
+        livingMemberDuesModule.livingMemberPresenceOverlapSeconds(
+          0,
+          EMPIRE_TUNING.SECONDS_PER_DAY,
+          0,
+          EMPIRE_TUNING.SECONDS_PER_DAY,
+        ),
+      );
+      drive('livingMemberDuesForWindow', 'open-mark-leave', () =>
+        livingMemberDuesModule.livingMemberDuesForWindow(
+          Object.freeze([]),
+          0,
+          EMPIRE_TUNING.SECONDS_PER_DAY,
+          Object.freeze([
+            Object.freeze({
+              member: snapshot,
+              departedAtSeconds: 0,
+            }),
+          ]),
+        ),
+        [snapshot],
+      );
+      const ledger = livingMemberDuesModule.createLivingMemberDuesLedger(0);
+      drive('createLivingMemberDuesLedger', 'opening', () =>
+        livingMemberDuesModule.createLivingMemberDuesLedger(0),
+      );
+      const settlement = livingMemberDuesModule.createLivingMemberDuesSettlement(
+        0,
+        EMPIRE_TUNING.SECONDS_PER_DAY,
+        60,
+      );
+      drive('createLivingMemberDuesSettlement', 'day', () =>
+        livingMemberDuesModule.createLivingMemberDuesSettlement(0, EMPIRE_TUNING.SECONDS_PER_DAY, 60),
+      );
+      drive('appendLivingMemberDuesSettlement', 'first', () =>
+        livingMemberDuesModule.appendLivingMemberDuesSettlement(ledger, settlement),
+        [ledger, settlement],
+      );
+      drive('lastLivingMemberDuesSettlement', 'empty', () =>
+        livingMemberDuesModule.lastLivingMemberDuesSettlement([]),
+      );
+      drive('lastLivingMemberDuesSettlement', 'one', () =>
+        livingMemberDuesModule.lastLivingMemberDuesSettlement(Object.freeze([settlement])),
+        [settlement],
+      );
+      const credited = livingMemberDuesModule.appendLivingMemberDuesSettlement(ledger, settlement);
+      drive('livingMemberDuesCreditedDelta', 'replay', () =>
+        livingMemberDuesModule.livingMemberDuesCreditedDelta(ledger, ledger),
+        [ledger],
+      );
+      drive('livingMemberDuesCreditedDelta', 'settled', () =>
+        livingMemberDuesModule.livingMemberDuesCreditedDelta(ledger, credited),
+        [ledger, credited],
+      );
+      drive('creditLivingMemberDuesGymBucks', 'identity', () =>
+        livingMemberDuesModule.creditLivingMemberDuesGymBucks(10, 0),
+      );
+      drive('creditLivingMemberDuesGymBucks', 'credit', () =>
+        livingMemberDuesModule.creditLivingMemberDuesGymBucks(10, 5),
+      );
+    }
+  }
+
+  // --- livingMemberReputation.ts (Stage G.2E: member-side reputation)
+  {
+    const snapshot = livingMembersModule.createLivingMemberRoster(
+      'garage',
+      [...EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT],
+      [],
+      0,
+      EMPIRE_TUNING.FLOOR_SIM_RENDER_SEED,
+    ).members[0];
+    if (snapshot !== undefined) {
+      drive('livingMemberDailyReputation', 'opening', () =>
+        livingMemberReputationModule.livingMemberDailyReputation(snapshot),
+        [snapshot],
+      );
+      const daily = livingMemberReputationModule.livingMemberDailyReputation(snapshot);
+      drive('playerFacingReputationLine', 'opening', () =>
+        livingMemberReputationModule.playerFacingReputationLine(daily),
+      );
+      drive('livingMemberReputationForWindow', 'empty', () =>
+        livingMemberReputationModule.livingMemberReputationForWindow(
+          [],
+          0,
+          EMPIRE_TUNING.SECONDS_PER_DAY,
+        ),
+      );
+      drive('livingMemberReputationForWindow', 'opening', () =>
+        livingMemberReputationModule.livingMemberReputationForWindow(
+          Object.freeze([snapshot]),
+          0,
+          EMPIRE_TUNING.SECONDS_PER_DAY,
+        ),
+        [snapshot],
+      );
+      drive('livingMemberReputationForInterval', 'full-day', () =>
+        livingMemberReputationModule.livingMemberReputationForInterval(
+          snapshot,
+          0,
+          EMPIRE_TUNING.SECONDS_PER_DAY,
+        ),
+        [snapshot],
+      );
+      drive('livingMemberReputationForInterval', 'half-day-leave', () =>
+        livingMemberReputationModule.livingMemberReputationForInterval(
+          snapshot,
+          0,
+          EMPIRE_TUNING.SECONDS_PER_DAY,
+          EMPIRE_TUNING.SECONDS_PER_DAY / 2,
+        ),
+        [snapshot],
+      );
+      const ledger = livingMemberReputationModule.createLivingMemberReputationLedger(0);
+      drive('createLivingMemberReputationLedger', 'opening', () =>
+        livingMemberReputationModule.createLivingMemberReputationLedger(0),
+      );
+      const settlement = livingMemberReputationModule.createLivingMemberReputationSettlement(
+        0,
+        EMPIRE_TUNING.SECONDS_PER_DAY,
+        0.45,
+      );
+      drive('createLivingMemberReputationSettlement', 'day', () =>
+        livingMemberReputationModule.createLivingMemberReputationSettlement(
+          0,
+          EMPIRE_TUNING.SECONDS_PER_DAY,
+          0.45,
+        ),
+      );
+      drive('appendLivingMemberReputationSettlement', 'first', () =>
+        livingMemberReputationModule.appendLivingMemberReputationSettlement(ledger, settlement),
+        [ledger, settlement],
+      );
+      drive('lastLivingMemberReputationSettlement', 'empty', () =>
+        livingMemberReputationModule.lastLivingMemberReputationSettlement([]),
+      );
+      drive('lastLivingMemberReputationSettlement', 'one', () =>
+        livingMemberReputationModule.lastLivingMemberReputationSettlement(Object.freeze([settlement])),
+        [settlement],
+      );
+      const credited = livingMemberReputationModule.appendLivingMemberReputationSettlement(
+        ledger,
+        settlement,
+      );
+      drive('livingMemberReputationCreditedDelta', 'replay', () =>
+        livingMemberReputationModule.livingMemberReputationCreditedDelta(ledger, ledger),
+        [ledger],
+      );
+      drive('livingMemberReputationCreditedDelta', 'settled', () =>
+        livingMemberReputationModule.livingMemberReputationCreditedDelta(ledger, credited),
+        [ledger, credited],
+      );
+    }
+  }
+
+  // --- livingMemberSeason.ts (G2-ATHLETE-SEASON-01: Athlete leave/return)
+  {
+    const roster = livingMembersModule.createLivingMemberRoster(
+      'garage',
+      [...EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT],
+      [],
+      0,
+      EMPIRE_TUNING.FLOOR_SIM_RENDER_SEED,
+    );
+    const athlete = Object.freeze({ ...roster.members[0]!, type: 'athlete' as const });
+    drive('requireAthleteSeasonKnobs', 'shipped', () =>
+      livingMemberSeasonModule.requireAthleteSeasonKnobs(),
+    );
+    drive('athleteSeasonPhaseAtWeek', 'opening', () =>
+      livingMemberSeasonModule.athleteSeasonPhaseAtWeek(0),
+    );
+    drive('athleteSeasonPhaseAt', 'opening', () => livingMemberSeasonModule.athleteSeasonPhaseAt(0));
+    drive('athleteSeasonBoundariesBetween', 'empty', () =>
+      livingMemberSeasonModule.athleteSeasonBoundariesBetween(0, 0),
+    );
+    drive('athleteSeasonBoundariesBetween', 'first-leave', () =>
+      livingMemberSeasonModule.athleteSeasonBoundariesBetween(
+        0,
+        EMPIRE_TUNING.DAYS_PER_TRAINING_WEEK *
+          EMPIRE_TUNING.SECONDS_PER_DAY *
+          EMPIRE_TUNING.ATHLETE_SEASON.firstInSeasonWeek,
+      ),
+    );
+    drive('livingMemberTakesSeasonLeave', 'athlete', () =>
+      livingMemberSeasonModule.livingMemberTakesSeasonLeave('athlete'),
+    );
+    drive('livingMemberTakesSeasonLeave', 'casual', () =>
+      livingMemberSeasonModule.livingMemberTakesSeasonLeave('casual'),
+    );
+    const ledger = livingMemberSeasonModule.createLivingMemberSeasonLedger(0);
+    drive('createLivingMemberSeasonLedger', 'zero', () =>
+      livingMemberSeasonModule.createLivingMemberSeasonLedger(0),
+    );
+    const leave = livingMemberSeasonModule.createLivingMemberSeasonLeaveRecord(athlete, 0);
+    drive('createLivingMemberSeasonLeaveRecord', 'opening', () =>
+      livingMemberSeasonModule.createLivingMemberSeasonLeaveRecord(athlete, 0),
+      [athlete],
+    );
+    const leaveEvent = livingMemberSeasonModule.lastLivingMemberSeasonEvent(
+      Object.freeze({ ...ledger, onLeave: Object.freeze([leave]) }),
+    );
+    if (leaveEvent !== null) {
+      drive('playerFacingSeasonLine', 'leave', () =>
+        livingMemberSeasonModule.playerFacingSeasonLine(leaveEvent),
+      );
+    }
+    const returned = livingMemberSeasonModule.createLivingMemberSeasonReturnRecord(leave, 1);
+    drive('createLivingMemberSeasonReturnRecord', 'opening', () =>
+      livingMemberSeasonModule.createLivingMemberSeasonReturnRecord(leave, 1),
+      [leave],
+    );
+    drive('lastLivingMemberSeasonEvent', 'empty', () =>
+      livingMemberSeasonModule.lastLivingMemberSeasonEvent(ledger),
+    );
+    drive('lastLivingMemberSeasonEvent', 'leave', () =>
+      livingMemberSeasonModule.lastLivingMemberSeasonEvent(
+        Object.freeze({ ...ledger, onLeave: Object.freeze([leave]) }),
+      ),
+      [leave],
+    );
+    const returnLedger = Object.freeze({ ...ledger, returns: Object.freeze([returned]) });
+    drive('lastLivingMemberSeasonEvent', 'return', () =>
+      livingMemberSeasonModule.lastLivingMemberSeasonEvent(returnLedger),
+      [returned],
+    );
+    const event = livingMemberSeasonModule.lastLivingMemberSeasonEvent(returnLedger);
+    if (event !== null) {
+      drive('playerFacingSeasonLine', 'return', () =>
+        livingMemberSeasonModule.playerFacingSeasonLine(event),
+      );
+    }
+    drive('athleteSeasonBoundaryWouldMove', 'empty', () =>
+      livingMemberSeasonModule.athleteSeasonBoundaryWouldMove(
+        [],
+        [],
+        Object.freeze({ atSeconds: 0, phase: 'in-season' }),
+      ),
     );
   }
 
@@ -11372,7 +12310,9 @@ const DRIVE_CENSUS = Object.freeze({
   // 595954 -> 595972: Stage C.1d playerFacing* drives.
   // 600657 -> 600663: Stage G.2C1 createLivingMemberStayState +
   // advanceLivingMemberStay drive rows. Read from this pin's own failure value.
-  ROWS: 600663, // Stage G.2C1 stay-response drive
+  // 600663 -> 600678: Stage G.2C2 departure/reconcile/stayEvidence drive rows.
+  // Read from this pin last.
+  ROWS: 600775, // CAREER-EMPIRE-REP-01 sporting ledger / gym credit drives
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -11400,7 +12340,12 @@ const DRIVE_CENSUS = Object.freeze({
   // 382 -> 389: Stage C.1b six floor furniture exports + GYM_SURFACES.
   // 393 -> 396: Stage C.1d three playerFacing* drives.
   // 463 -> 465: Stage G.2C1 createLivingMemberStayState + advanceLivingMemberStay.
-  EXPORTS_DRIVEN: 465, // Stage G.2C1 stay-response foundation
+  // 465 -> 473: tracks SURFACE_CENSUS.EXPORTS 1:1 again — Stage G.2C2
+  // livingMemberDeparture.ts plus roster/sim seams, all driven above.
+  // 473 -> 478: Stage G.2C3 livingMemberArrival.ts five runtime exports.
+  // 478 -> 489: Stage G.2D livingMemberDues.ts plus applyLivingMemberDues.
+  // 489 -> 491: Stage G.2D purse composition helpers, both driven above.
+  EXPORTS_DRIVEN: 524, // CAREER-EMPIRE-REP-01 ledger + composer runtime exports
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -11433,7 +12378,10 @@ const DRIVE_CENSUS = Object.freeze({
   // 6_546_043 -> 6_546_189: Stage G.2C1 stay-response drive. STRINGS
   // 30_199_722 -> 30_201_000 and DISTINCT_STRINGS 4224 -> 4231 were
   // read from this pin's subsequent failure values, not guessed.
-  NODES: 6546189, // Stage G.2C1 stay-response drive
+  // 6_546_189 -> 6_546_436: Stage G.2C2 departure/reconcile/stayEvidence drive.
+  // Read from this pin last. STRINGS/DISTINCT_STRINGS below remain the G.2C1
+  // pins until this assertion's subsequent failure names them.
+  NODES: 6549732, // CAREER-EMPIRE-REP-01 GymScreen reputation diagnostics walk
   // THE SENTENCE THAT USED TO FINISH THIS COMMENT WAS FALSE AND IS CORRECTED
   // RATHER THAN DELETED. It read: "`STRINGS` and `DISTINCT_STRINGS` did NOT
   // move with it — the nodes past the old bound carry no string this scan had
@@ -11620,7 +12568,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_201_000, // Stage G.2C1 stay-response drive strings
+  STRINGS: 30_209_831, // REP-EVIDENCE-01 GymScreen reputation HUD strings (+3)
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -11730,9 +12678,9 @@ const DRIVE_CENSUS = Object.freeze({
   // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
   // 3973 -> 3975: Stage D2 reset-gym copy / wear-truth strings. Read from
   // this pin's own failure value.
-  DISTINCT_STRINGS: 4231, // Stage G.2C1 stay-status/cause/direction strings
+  DISTINCT_STRINGS: 4299, // CAREER-EMPIRE-REP-01 GymScreen reputation testIDs
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
-  DEPTH_CUTS: 7,
+  DEPTH_CUTS: 10, // Stage G.2D purse-credit ledger walk
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
    *
@@ -11815,7 +12763,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 181 -> 196: Stage C.1b dock onPress closures on driven GymScreen trees.
   // 196 -> 199: Stage D2 reset-gym onPress on the three driven GymScreen
   // trees. Read from this pin's own failure value.
-  CLOSURES_INVOKED: 217,
+  CLOSURES_INVOKED: 219,
   CLOSURE_THROWS: 0,
   // 2046 -> 2052: GDD §5.13 presentation Phase 1's two new declined closures
   // (FloorGrid's `type` and `dispatch`, embedded in GymScreen's own return),
@@ -11896,7 +12844,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 6247 -> 6253: Stage D2 reset-gym Pressable stacks on driven GymScreen
   // trees. Read from this pin's own failure value.
   // 6290 -> 6291: Stage G.2C1 stay-response drive Error.stack readings.
-  STACKS: 6291,
+  STACKS: 6297, // CAREER-EMPIRE-REP-01 GymScreen reputation diagnostics
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -12633,6 +13581,8 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   ['dismissManager#refused', 5],
   ['hireManager#hired', 9],
   ['hireManager#refused', 10],
+  ['lastLivingMemberSeasonEvent#leave', 1],
+  ['lastLivingMemberSeasonEvent#return', 1],
   ['maintenancePrompt#offered', 5],
   ['maintenancePrompt#quiet', 1],
   // GDD §5.14 Stage B: measured by running this exact assertion rather than
@@ -12658,6 +13608,11 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   ['respondToPrompt#no-prompt', 2],
   ['respondToPrompt#repair-refused', 3],
   ['respondToPrompt#repaired', 2],
+  // CAREER-EMPIRE-REP-01: SportingMeetResult.kind is the meet kind.
+  ['sportingMeetResultFromPlayedFacts#local', 2],
+  ['sportingMeetResultFromPlayedFacts#nationals', 1],
+  ['sportingMeetResultFromPlayedFacts#regional', 1],
+  ['sportingMeetResultFromPlayedFacts#worlds', 1],
   ['stationIdentityView#fixed', 3],
   ['stationIdentityView#session', 1],
   ['stationIdentityView#training', 1],
@@ -15716,6 +16671,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'floorSprites.ts': 7,
       'ladder.ts': 1,
       'ladderView.tsx': 1,
+      'livingMemberDues.ts': 1, // Stage G.2D playerFacingDuesLine
       'livingMemberExperience.ts': 1,
       'livingMemberRetention.ts': 1,
       'livingMembers.ts': 6, // Stage G.1C given-name pool + very-long wait knob
@@ -15740,17 +16696,23 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'expansion.ts': 47,
       'floor.ts': 38,
       'FloorGrid.tsx': 80,
-      'floorSim.ts': 76,
+      'floorSim.ts': 84,
       'floorSprites.ts': 54,
       'GymScreen.tsx': 12,
+      'institutionalReputation.ts': 1, // CAREER-EMPIRE-REP-01 composer
       'ladder.ts': 28,
-      'ladderView.tsx': 34,
+      'ladderView.tsx': 36, // CAREER-EMPIRE-REP-01 credit-sporting-result returns
+      'livingMemberArrival.ts': 10, // Stage G.2E high-paying gate return
+      'livingMemberDeparture.ts': 5, // Stage G.2C2 departure-record returns
+      'livingMemberDues.ts': 19, // Stage G.2D P1 open-mark occupancy until returns
       'livingMemberExperience.ts': 36,
+      'livingMemberReputation.ts': 11, // Stage G.2E ledger / occupancy / copy returns
       'livingMemberRetention.ts': 10,
-      'livingMemberStay.ts': 23, // Stage G.2C1 stay-state returns
-      'livingMembers.ts': 35, // Stage G.2C1 stayState wiring + wait-copy returns
+      'livingMemberSeason.ts': 21, // G2-ATHLETE-SEASON-01 calendar / copy / record returns
+      'livingMemberStay.ts': 27, // Stage G.2C2 stayEvidence export
+      'livingMembers.ts': 48, // G2-ATHLETE-SEASON-01 applyLivingMemberSeason + settleLivingMemberClock
       'management.ts': 90,
-      'members.ts': 13,
+      'members.ts': 15,
       'npc.ts': 12,
       'pacing.ts': 11,
       'production.ts': 11,
@@ -15759,6 +16721,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'sessions.ts': 43,
       'social.ts': 31,
       'sportingReputation.ts': 11,
+      'sportingReputationLedger.ts': 10, // CAREER-EMPIRE-REP-01 write-side returns
       'stationCapability.ts': 27,
       'stationView.ts': 50,
       'trainingStation.ts': 18,
@@ -15815,14 +16778,20 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'engagement.ts': 13,
   'expansion.ts': 3,
   'floor.ts': 13,
-  'floorSim.ts': 7,
+  'floorSim.ts': 11,
+  'institutionalReputation.ts': 2, // CAREER-EMPIRE-REP-01 alignment / clamp refusals
   'ladder.ts': 20,
+  'livingMemberArrival.ts': 3, // Stage G.2E credited-reputation refuse + G.2C3 arrival refusals
+  'livingMemberDeparture.ts': 2, // Stage G.2C2 departure refusals
+  'livingMemberDues.ts': 18, // Stage G.2D P1 open-mark occupancy until refusal
   'livingMemberExperience.ts': 2,
+  'livingMemberReputation.ts': 7, // Stage G.2E ledger / occupancy / rate refusals
   'livingMemberRetention.ts': 1,
+  'livingMemberSeason.ts': 8, // G2-ATHLETE-SEASON-01 calendar / record refusals
   'livingMemberStay.ts': 5, // Stage G.2C1 stay evaluation refusals
-  'livingMembers.ts': 13,
+  'livingMembers.ts': 39, // G2-ATHLETE-SEASON-01 applyLivingMemberSeason + settleLivingMemberClock refusals
   'management.ts': 27,
-  'members.ts': 9,
+  'members.ts': 10, // Stage G.2E memberReputationPerDay unpublished-rate refuse
   'pacing.ts': 3,
   'production.ts': 9,
   'recruitment.ts': 1,
@@ -15830,6 +16799,7 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'sessions.ts': 24,
   'social.ts': 6,
   'sportingReputation.ts': 9,
+  'sportingReputationLedger.ts': 7, // CAREER-EMPIRE-REP-01 facts / stamp refusals
   'stationCapability.ts': 3,
 });
 const DECLARED_CALLBACK_SITES: readonly string[] = Object.freeze([
@@ -16162,12 +17132,12 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:2668 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:2686 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:779 returned=unfollowable:station',
-  'FloorGrid.tsx:779 returned=unfollowable:station',
-  'FloorGrid.tsx:780 returned=unfollowable:station',
-  'FloorGrid.tsx:780 returned=unfollowable:station',
+  'FloorGrid.tsx:2709 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:2730 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:801 returned=unfollowable:station',
+  'FloorGrid.tsx:801 returned=unfollowable:station',
+  'FloorGrid.tsx:802 returned=unfollowable:station',
+  'FloorGrid.tsx:802 returned=unfollowable:station',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -16182,14 +17152,14 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'floor.ts:653 returned=unfollowable:floor',
   'floor.ts:663 returned=unfollowable:floor',
   'floor.ts:671 returned=unfollowable:floor',
+  'floorSim.ts:1108 returned=unfollowable:member',
   'floorSim.ts:1109 returned=unfollowable:member',
-  'floorSim.ts:1110 returned=unfollowable:member',
-  'floorSim.ts:1130 returned=unfollowable:walk',
-  'floorSim.ts:693 receiver=NewExpression',
-  'floorSim.ts:765 returned=unfollowable:context',
-  'floorSim.ts:768 receiver=NewExpression',
-  'floorSim.ts:915 receiver=ArrayLiteralExpression',
-  'floorSim.ts:969 returned=unfollowable:plan',
+  'floorSim.ts:1129 returned=unfollowable:walk',
+  'floorSim.ts:692 receiver=NewExpression',
+  'floorSim.ts:764 returned=unfollowable:context',
+  'floorSim.ts:767 receiver=NewExpression',
+  'floorSim.ts:914 receiver=ArrayLiteralExpression',
+  'floorSim.ts:968 returned=unfollowable:plan',
   'floorSprites.ts:1256 callee=fresh:ArrowFunction',
   'floorSprites.ts:363 receiver=NewExpression',
   'floorSprites.ts:422 receiver=NewExpression',
@@ -16197,13 +17167,29 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'ladder.ts:349 receiver=ArrayLiteralExpression',
   'ladderView.tsx:124 returned=unfollowable:state',
   'ladderView.tsx:132 returned=unfollowable:state',
-  'ladderView.tsx:641 returned=unfollowable:state',
-  'ladderView.tsx:669 returned=unfollowable:state',
-  'ladderView.tsx:671 returned=unfollowable:state',
-  'ladderView.tsx:672 returned=unfollowable:state',
-  'ladderView.tsx:727 returned=unfollowable:state',
-  'ladderView.tsx:736 returned=unfollowable:state',
-  'livingMembers.ts:281 returned=unfollowable:roster',
+  'ladderView.tsx:681 returned=unfollowable:state',
+  'ladderView.tsx:729 returned=unfollowable:state',
+  'ladderView.tsx:731 returned=unfollowable:state',
+  'ladderView.tsx:733 returned=unfollowable:state',
+  'ladderView.tsx:734 returned=unfollowable:state',
+  'ladderView.tsx:789 returned=unfollowable:state',
+  'ladderView.tsx:798 returned=unfollowable:state',
+  'livingMemberArrival.ts:126 returned=unfollowable:arrivals',
+  'livingMemberDeparture.ts:103 returned=unfollowable:departures',
+  'livingMemberDues.ts:169 returned=unfollowable:settlements',
+  'livingMemberDues.ts:186 returned=unfollowable:ledger',
+  'livingMemberReputation.ts:114 returned=unfollowable:settlements',
+  'livingMemberReputation.ts:131 returned=unfollowable:ledger',
+  'livingMemberSeason.ts:175 returned=unfollowable:record',
+  'livingMembers.ts:395 returned=unfollowable:roster',
+  'livingMembers.ts:423 returned=unfollowable:roster',
+  'livingMembers.ts:424 returned=unfollowable:roster',
+  'livingMembers.ts:426 returned=unfollowable:roster',
+  'livingMembers.ts:427 returned=unfollowable:roster',
+  'livingMembers.ts:428 returned=unfollowable:roster',
+  'livingMembers.ts:726 returned=unfollowable:roster',
+  'livingMembers.ts:936 returned=unfollowable:roster',
+  'livingMembers.ts:941 returned=unfollowable:roster',
   'management.ts:1473 returned=unfollowable:state',
   'pacing.ts:246 receiver=CallExpression',
   'recruitment.ts:388 returned=unfollowable:state',
@@ -16213,15 +17199,16 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'sessions.ts:809 returned=unfollowable:item',
   'social.ts:345 receiver=ArrayLiteralExpression',
   'social.ts:535 returned=unfollowable:context',
-  'stationCapability.ts:104 returned=unfollowable:capability',
+  'sportingReputationLedger.ts:177 returned=unfollowable:ledger',
+  'stationCapability.ts:104 returned=unfollowable:capability'
 ]);
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1725 FloorSimState asked=true walked=false',
-  'FloorGrid.tsx:779 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:779 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:780 GridSize asked=true walked=false',
-  'FloorGrid.tsx:780 GridSize asked=true walked=false',
-  'FloorGrid.tsx:792 BayBench | undefined asked=true walked=false',
+  'FloorGrid.tsx:1749 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:801 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:801 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:802 GridSize asked=true walked=false',
+  'FloorGrid.tsx:802 GridSize asked=true walked=false',
+  'FloorGrid.tsx:814 BayBench | undefined asked=true walked=false',
   'empireInvariant.ts:1084 GymAxes asked=true walked=false',
   'empireInvariant.ts:1137 GymAxes asked=true walked=false',
   'empireInvariant.ts:1168 readonly ExpansionBuild[] asked=true walked=false',
@@ -16235,25 +17222,25 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'floor.ts:653 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
   'floor.ts:663 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
   'floor.ts:671 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
-  'floorSim.ts:1109 GridPosition asked=true walked=false',
-  'floorSim.ts:1110 GridPosition | null asked=true walked=false',
-  'floorSim.ts:1130 GridPosition asked=true walked=false',
-  'floorSim.ts:1306 GridPosition | undefined asked=true walked=false',
-  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1495 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1531 GridPosition asked=true walked=false',
-  'floorSim.ts:1749 FloorSimState asked=true walked=false',
-  'floorSim.ts:1904 FloorSimState asked=true walked=false',
-  'floorSim.ts:765 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'floorSim.ts:960 readonly FloorStation[] asked=true walked=false',
-  'floorSim.ts:969 readonly FloorStation[] asked=true walked=false',
+  'floorSim.ts:1108 GridPosition asked=true walked=false',
+  'floorSim.ts:1109 GridPosition | null asked=true walked=false',
+  'floorSim.ts:1129 GridPosition asked=true walked=false',
+  'floorSim.ts:1305 GridPosition | undefined asked=true walked=false',
+  'floorSim.ts:1494 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1494 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1494 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1494 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1494 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1494 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1494 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1494 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1494 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1530 GridPosition asked=true walked=false',
+  'floorSim.ts:1875 FloorSimState asked=true walked=false',
+  'floorSim.ts:2030 FloorSimState asked=true walked=false',
+  'floorSim.ts:764 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'floorSim.ts:959 readonly FloorStation[] asked=true walked=false',
+  'floorSim.ts:968 readonly FloorStation[] asked=true walked=false',
   'ladder.ts:639 LadderState asked=true walked=false',
   'ladder.ts:650 LadderState asked=true walked=false',
   'ladder.ts:656 LadderState asked=true walked=false',
@@ -16263,23 +17250,52 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'ladderView.tsx:124 LadderAccrual | null asked=true walked=false',
   'ladderView.tsx:131 LadderState asked=true walked=false',
   'ladderView.tsx:132 LadderAccrual | null asked=true walked=false',
-  'ladderView.tsx:641 readonly GymWeekReport[] asked=true walked=false',
-  'ladderView.tsx:669 FloorState asked=true walked=false',
-  'ladderView.tsx:671 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'ladderView.tsx:672 LivingMemberRoster asked=true walked=false',
-  'ladderView.tsx:727 FloorState asked=true walked=false',
-  'ladderView.tsx:736 LivingMemberRoster asked=true walked=false',
-  'ladderView.tsx:748 FloorState asked=true walked=false',
-  'ladderView.tsx:768 FloorState asked=true walked=false',
-  'ladderView.tsx:807 ManagedGym asked=true walked=false',
-  'ladderView.tsx:820 ManagedGym asked=true walked=false',
-  'ladderView.tsx:834 ManagedGym asked=true walked=false',
-  'ladderView.tsx:844 ManagedGym asked=true walked=false',
-  'ladderView.tsx:852 ManagedGym asked=true walked=false',
-  'ladderView.tsx:860 ManagedGym asked=true walked=false',
-  'ladderView.tsx:895 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'livingMembers.ts:281 readonly LivingGymMember[] asked=true walked=false',
-  'livingMembers.ts:333 LivingGymMember | undefined asked=true walked=false',
+  'ladderView.tsx:681 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:729 FloorState asked=true walked=false',
+  'ladderView.tsx:731 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'ladderView.tsx:733 SportingReputationLedger asked=true walked=false',
+  'ladderView.tsx:734 SportingCreditReport | null asked=true walked=false',
+  'ladderView.tsx:789 FloorState asked=true walked=false',
+  'ladderView.tsx:798 LivingMemberRoster asked=true walked=false',
+  'ladderView.tsx:810 FloorState asked=true walked=false',
+  'ladderView.tsx:830 FloorState asked=true walked=false',
+  'ladderView.tsx:869 ManagedGym asked=true walked=false',
+  'ladderView.tsx:882 ManagedGym asked=true walked=false',
+  'ladderView.tsx:896 ManagedGym asked=true walked=false',
+  'ladderView.tsx:906 ManagedGym asked=true walked=false',
+  'ladderView.tsx:914 ManagedGym asked=true walked=false',
+  'ladderView.tsx:922 ManagedGym asked=true walked=false',
+  'ladderView.tsx:957 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'ladderView.tsx:976 SportingReputationLedger asked=true walked=false',
+  'ladderView.tsx:977 SportingCreditReport asked=true walked=false',
+  'livingMemberArrival.ts:126 LivingMemberArrivalRecord | undefined asked=true walked=false',
+  'livingMemberDeparture.ts:103 LivingMemberDepartureRecord | undefined asked=true walked=false',
+  'livingMemberDues.ts:169 LivingMemberDuesSettlement | undefined asked=true walked=false',
+  'livingMemberDues.ts:186 readonly LivingMemberDuesSettlement[] asked=true walked=false',
+  'livingMemberReputation.ts:114 LivingMemberReputationSettlement | undefined asked=true walked=false',
+  'livingMemberReputation.ts:131 readonly LivingMemberReputationSettlement[] asked=true walked=false',
+  'livingMemberSeason.ts:175 LivingGymMember asked=true walked=false',
+  'livingMemberSeason.ts:184 LivingMemberSeasonLeaveRecord | undefined asked=true walked=false',
+  'livingMemberSeason.ts:184 LivingMemberSeasonLeaveRecord | undefined asked=true walked=false',
+  'livingMemberSeason.ts:185 LivingMemberSeasonReturnRecord | undefined asked=true walked=false',
+  'livingMemberSeason.ts:185 LivingMemberSeasonReturnRecord | undefined asked=true walked=false',
+  'livingMemberSeason.ts:191 LivingGymMember asked=true walked=false',
+  'livingMemberSeason.ts:198 LivingGymMember asked=true walked=false',
+  'livingMemberSeason.ts:205 LivingGymMember asked=true walked=false',
+  'livingMemberSeason.ts:211 LivingGymMember asked=true walked=false',
+  'livingMembers.ts:395 readonly LivingGymMember[] asked=true walked=false',
+  'livingMembers.ts:423 readonly LivingMemberDepartureRecord[] asked=true walked=false',
+  'livingMembers.ts:424 readonly LivingMemberArrivalRecord[] asked=true walked=false',
+  'livingMembers.ts:426 LivingMemberDuesLedger asked=true walked=false',
+  'livingMembers.ts:427 LivingMemberReputationLedger asked=true walked=false',
+  'livingMembers.ts:428 LivingMemberSeasonLedger asked=true walked=false',
+  'livingMembers.ts:457 LivingGymMember | undefined asked=true walked=false',
+  'livingMembers.ts:514 ServiceVisitRecord | undefined asked=true walked=false',
+  'livingMembers.ts:726 LivingMemberDuesLedger asked=true walked=false',
+  'livingMembers.ts:936 LivingMemberSeasonLedger asked=true walked=false',
+  'livingMembers.ts:941 readonly LivingGymMember[] asked=true walked=false',
+  'livingMembers.ts:942 readonly LivingMemberSeasonLeaveRecord[] asked=true walked=false',
+  'livingMembers.ts:943 readonly LivingMemberSeasonReturnRecord[] asked=true walked=false',
   'management.ts:1473 readonly CountedDecisionRecord[] asked=true walked=false',
   'management.ts:1640 LadderAccrual asked=true walked=false',
   'management.ts:1650 GymState asked=true walked=false',
@@ -16304,6 +17320,10 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'sessions.ts:879 GymState asked=true walked=false',
   'sessions.ts:895 GymState asked=true walked=false',
   'social.ts:535 readonly FriendVisit[] asked=true walked=false',
+  'sportingReputationLedger.ts:173 readonly SportingReputationReason[] asked=true walked=false',
+  'sportingReputationLedger.ts:177 readonly SportingReputationEntry[] asked=true walked=false',
+  'sportingReputationLedger.ts:185 readonly SportingReputationReason[] asked=true walked=false',
+  'sportingReputationLedger.ts:70 SportingReputationEntry | undefined asked=true walked=false',
   'stationCapability.ts:104 StationAxisLevels | undefined asked=true walked=false',
   'trainingStation.ts:203 GridPosition asked=true walked=false',
   'trainingStation.ts:203 GridPosition asked=true walked=false',
@@ -16311,7 +17331,7 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'trainingStation.ts:204 GridSize asked=true walked=false',
   'trainingStation.ts:204 GridSize asked=true walked=false',
   'trainingStation.ts:204 GridSize asked=true walked=false',
-  'trainingStation.ts:231 GridSize asked=true walked=false',
+  'trainingStation.ts:231 GridSize asked=true walked=false'
 ]);
 const SCREEN_AGREEMENT = Object.freeze({
   // 29 -> 34: GDD §5.13 presentation Phase 1's floor.ts (+2) and the
@@ -16335,7 +17355,10 @@ const SCREEN_AGREEMENT = Object.freeze({
   // GridPosition/GridSize returns, capability keyed by competition-bench-bay.
   // 79 -> 89: Stage D2.1A assignedSeat remaining[order] plus live-Capacity
   // relocate useCells walk (nine rows at the same for-of) and awayFrom cell.
-  SHIPPED_DISAGREEMENTS: 96, // Stage G.1A livingMembers roster unfollowable
+  // 96 -> 99: Stage G.2C2 departure archive unfollowable returns.
+  // 99 -> 100: Stage G.2C3 lastLivingMemberArrival unfollowable return.
+  // 101 -> 104: Stage G.2D dues ledger unfollowable returns.
+  SHIPPED_DISAGREEMENTS: 129, // CAREER-EMPIRE-REP-01 sporting ledger / credit-report unfollowable returns
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
@@ -16429,7 +17452,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 66 -> 67: GDD §5.14 Stage B's pacing.ts — one call through a
   // module-level import (`offlineBankingHorizonSeconds()` in the sporadic
   // gap cycle). Read from this pin's own failure value.
-  'module-variable': 80, // Stage G.1A livingMembers + floorSim module-variable targets
+  'module-variable': 83, // CAREER-EMPIRE-REP-01 GymScreen SPORTING copy / institutionalReputation
   // 5 -> 7: Phase 3's RENDER half's two calls through a local binding in
   // `AmbientMemberBody`'s single animation effect (`bobLoop.start()`,
   // `pulseLoop.stop()`). Read from this table's own failure value.
@@ -16526,7 +17549,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1681 -> 1691: Stage D2.1A assignedSeat / reservedUseCells / relocate helpers.
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
   // 1815 -> 1841: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
-  function: 1841, // Stage G.2C1 stay-response function calls
+  // 1841 -> 1866: Stage G.2C2 livingMemberDeparture.ts plus roster/sim wiring.
+  function: 2056, // CAREER-EMPIRE-REP-01 GymScreen institutionalReputation call
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16585,7 +17609,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1513 -> 1517: Stage D2.1A useCells/blocked/has member calls on live relocate.
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
   // 1658 -> 1673: Stage G.2C1 livingMemberStay.ts plus livingMembers stayState.
-  member: 1673, // Stage G.2C1 stay-response member calls
+  // 1673 -> 1699: Stage G.2C2 livingMemberDeparture.ts plus roster/sim members.
+  member: 1846, // CAREER-EMPIRE-REP-01 GymScreen composed-copy / reason map
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -16595,7 +17620,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // Read from this pin's own failure value.
   // 23 -> 24: GDD §5.14 Stage B's `pacingReadingAtHorizon`'s
   // `readings.find(...)`, the same shape as S4b's rows above.
-  'member-of-parameter': 37, // Stage G.2C1 stay evaluation reads retention.reasons
+  'member-of-parameter': 40, // CAREER-EMPIRE-REP-01 GymScreen reputationReasons.map
   // Phase 4: FLOOR_SPRITE_PALETTES' construction calls a fresh arrow (the
   // palette-row map), the same site DECLARED_FRESH_RECEIVERS names.
   fresh: 3, // Stage G.2A livingMemberExperience
@@ -16666,7 +17691,9 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 430 -> 435: Stage D2 withWear restrict / stationOperationView seats / placedOwnedItems loops.
   // 435 -> 438: Stage D2.1A reservedUseCells / assignedSeat / relocate locals.
   // 438 -> 444: Stage D2.1B nextChangeovers / loading-path locals.
-  local: 461, // Stage G.2B FloorGrid membership IIFE locals
+  // 461 -> 472: Stage G.2C2 departure/reconcile local writes.
+  // Read from this pin last.
+  local: 500, // G2-ATHLETE-SEASON-01 applyLivingMemberSeason / settleLivingMemberClock locals
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -16694,7 +17721,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 29, // Stage G.2C1 livingMemberStay.ts
+  MODULES: 36, // CAREER-EMPIRE-REP-01 institutionalReputation.ts + sportingReputationLedger.ts
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved.
    * 404 -> 427 with GymView: +13 `return` sites (5 -> 18) and +6
    * `callback-invocation` sites (3 -> 9) on `ladderView.tsx`, +4 `return`
@@ -16783,7 +17810,17 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // stationView 44→46.
   // 1048 -> 1073: Stage G.2C1 livingMemberStay.ts return 23 plus
   // livingMembers.ts return 33 -> 35.
-  SITES: 1073, // Stage G.2C1 stay-response + livingMembers wiring
+  // 1073 -> 1092: Stage G.2C2 return +19 (FloorGrid +3, floorSim +5,
+  // livingMemberDeparture +5, stay +4, livingMembers +2). Read from this pin last.
+  // 1092 -> 1099: Stage G.2C3 livingMemberArrival.ts return sites.
+  // 1101 -> 1118: Stage G.2D livingMemberDues.ts exported-binding + return, livingMembers +3.
+  // 1118 -> 1121: Stage G.2D purse-credit return sites.
+  // 1121 -> 1122: Stage G.2D P1 occupancy-clock return.
+  // 1122 -> 1123: Stage G.2D P1 open-mark occupancy until return.
+  // 1123 -> 1124: Stage G.2D P1 open-mark occupancy until second return path.
+  // 1124 -> 1141: Stage G.2E livingMemberReputation returns, livingMembers
+  // applyLivingMemberReputation, members type helpers, arrival gate.
+  SITES: 1180, // CAREER-EMPIRE-REP-01 ledger +10 return, composer +1, ladderView +2
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -16938,7 +17975,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
   // 83_797 -> 84_813: Stage G.2C1 livingMemberStay.ts AST plus livingMembers
   // stayState wiring. Read from this pin last.
-  NODES_EXAMINED: 84_813, // Stage G.2C1 stay-response AST
+  // 84_813 -> 86_105: Stage G.2C2 livingMemberDeparture.ts plus roster/sim
+  // departure wiring. Read from this pin last.
+  NODES_EXAMINED: 92_844, // REP-EVIDENCE-01 GymScreen reputation HUD AST (+14)
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -16959,7 +17998,15 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 159 -> 160: GDD §5.18 Stage D.1 stationCapability refuseWith.
   // 185 -> 191: Stage G.2C1 livingMemberStay.ts five refuseWith plus
   // livingMembers.ts 12 -> 13.
-  WRAP_CALLS: 191, // Stage G.2C1 stay-response refuseWith
+  // 191 -> 199: Stage G.2C2 floorSim +4, livingMemberDeparture +2,
+  // livingMembers +2. Read from this pin last.
+  // 200 -> 202: Stage G.2C3 livingMemberArrival.ts two refuseWith calls.
+  // 202 -> 213: Stage G.2D livingMemberDues.ts 8 plus livingMembers applyLivingMemberDues.
+  // 216 -> 222: Stage G.2D P1 occupancy overlap / occupancy-clock / identity refusals.
+  // 222 -> 223: Stage G.2D P1 open-mark occupancy until refusal.
+  // 223 -> 234: Stage G.2E livingMemberReputation 7 + livingMembers +3 + arrival +1.
+  // 234 -> 235: Stage G.2E members.ts memberReputationPerDay refuse.
+  WRAP_CALLS: 269, // CAREER-EMPIRE-REP-01 ledger +7, composer +2
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 7, // Stage G.1 argument-mutation on floorSim observation export
@@ -17079,14 +18126,18 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // 1005 -> 1015: Stage D2.1B five new exported functions' signatures.
   // 1101 -> 1109: Stage G.2C1 stay-state types on livingMemberStay.ts
   // and livingMembers.ts stayState. Read from this pin's own failure value.
-  POSITIONS: 1109, // Stage G.2C1 stay-response types
+  // 1109 -> 1128: Stage G.2C2 departure-record types plus roster.departures.
+  // Read from this pin last.
+  POSITIONS: 1250, // CAREER-EMPIRE-REP-01 ledger + composer exported signatures
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
+    'ladderView.tsx#createGymViewState()',
+    'ladderView.tsx#gymViewReduce()',
     'recruitment.ts#beginRecruitment()',
   ]),
-  /** Positions strictly past the limit. The same two, and the number that matters. */
-  PAST_THE_LIMIT: 2,
+  /** Positions strictly past the limit. Named above; the number that matters. */
+  PAST_THE_LIMIT: 4,
   /**
    * The same reading with the assembly probe in the program, which reaches 41.
    *
@@ -18196,6 +19247,8 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
                 surface: 'play',
                 capability: stationCapabilityModule.stockStationCapability(),
                 livingMembers: censusLivingMembers(),
+                sportingReputation: sportingReputationLedgerModule.createSportingReputationLedger(),
+                lastSportingCredit: null,
               }),
               dispatch: (action: ladderViewModule.GymViewAction): void => {
                 record([action]);
@@ -18273,6 +19326,8 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
                 surface: 'play',
                 capability: stationCapabilityModule.stockStationCapability(),
                 livingMembers: censusLivingMembers(),
+                sportingReputation: sportingReputationLedgerModule.createSportingReputationLedger(),
+                lastSportingCredit: null,
               }),
               dispatch: (action: ladderViewModule.GymViewAction): void => {
                 record([action]);
@@ -21358,7 +22413,11 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // 253 -> 258: Stage D stationCapability type declarations.
   // 258 -> 264: GDD §5.18 Stage D.1 trainingStation type declarations.
   // 291 -> 297: Stage G.2C1 livingMemberStay.ts stay-state type declarations.
-  DECLARATIONS: 297, // Stage G.2C1 stay-response types
+  // 297 -> 300: Stage G.2C2 livingMemberDeparture.ts type declarations.
+  // 300 -> 302: Stage G.2C3 livingMemberArrival.ts type declarations.
+  // 302 -> 306: Stage G.2D livingMemberDues.ts type declarations.
+  // 306 -> 307: Stage G.2D P1 LivingMemberDuesDeparturePresence.
+  DECLARATIONS: 321, // CAREER-EMPIRE-REP-01 ledger + composer type declarations
   /** Those carrying type parameters. An instantiation depth needs one. */
   // Phase 4: `MemberTable<Leaf>` in floorSprites.ts.
   GENERIC: 13,
@@ -24672,6 +25731,8 @@ function memberCallGymViewState(weekLog: readonly GymWeekReport[]): ladderViewMo
     surface: 'play',
     capability: stationCapabilityModule.stockStationCapability(),
     livingMembers: censusLivingMembers(),
+    sportingReputation: sportingReputationLedgerModule.createSportingReputationLedger(),
+    lastSportingCredit: null,
   });
 }
 
@@ -24942,6 +26003,35 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
       });
     },
   }),
+  Object.freeze({
+    site: 'GymScreen.tsx#GymScreen#props.map x1',
+    run: (record: MemberCallRecord): void => {
+      const opening = memberCallGymViewState([]);
+      const reasons = recordOn(
+        [
+          Object.freeze({
+            kind: 'placing' as const,
+            text: 'Placed 1 of 16 in category at a local meet',
+            points: 24 as never,
+          }),
+        ],
+        'map',
+        record,
+      );
+      gymScreenModule.GymScreen({
+        state: Object.freeze({
+          ...opening,
+          lastSportingCredit: Object.freeze({
+            kind: 'credited' as const,
+            meetId: 'local-open-2026',
+            points: 24 as never,
+            reasons,
+          }),
+        }),
+        dispatch: MEMBER_CALL_SILENT_DISPATCH,
+      });
+    },
+  }),
   // members.ts (§5.11 stage 3): both sites sum a caller-supplied
   // `MemberRoster` with `.reduce`, so the same array is watched twice, once
   // per function. `reduce`'s own callback receives no argument this pass's
@@ -25013,30 +26103,6 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
     },
   }),
   Object.freeze({
-    site: 'livingMembers.ts#applyServiceObservations#roster.map x1',
-    run: (record: MemberCallRecord): void => {
-      const roster = censusLivingMembers();
-      const member = roster.members[0] as livingMembersModule.LivingGymMember;
-      const instrumented = Object.freeze({
-        ...roster,
-        members: recordOn([...roster.members], 'map', record),
-      });
-      livingMembersModule.applyServiceObservations(instrumented, [
-        Object.freeze({
-          memberId: member.id,
-          memberIndex: 0,
-          memberType: member.type,
-          stationKind: 'training' as const,
-          stationKey: 'training:competition-bench-bay',
-          queueWaitTicks: 0,
-          trainingExperience: 0,
-          outcome: 'completed' as const,
-          observedAtTick: 1,
-        }),
-      ]);
-    },
-  }),
-  Object.freeze({
     site: 'livingMembers.ts#floorSimPopulationFromRoster#roster.map x1',
     run: (record: MemberCallRecord): void => {
       const roster = censusLivingMembers();
@@ -25045,6 +26111,18 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
         members: recordOn([...roster.members], 'map', record),
       });
       livingMembersModule.floorSimPopulationFromRoster(instrumented);
+    },
+  }),
+  Object.freeze({
+    site: 'livingMembers.ts#departedMemberById#roster.find x1',
+    run: (record: MemberCallRecord): void => {
+      const roster = censusLivingMembers();
+      const member = roster.members[0] as livingMembersModule.LivingGymMember;
+      const instrumented = Object.freeze({
+        ...roster,
+        departures: recordOn([...roster.departures], 'find', record),
+      });
+      livingMembersModule.departedMemberById(instrumented, member.id);
     },
   }),
   Object.freeze({
@@ -25094,6 +26172,7 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
 const MEMBER_CALL_PASS_UNDRIVEN: readonly string[] = Object.freeze([
   // Stage G.1A: private helpers whose parameters are fresh literals at every call site.
   'floorSim.ts#advanceMember#observations.push x1',
+  'floorSim.ts#spawnCellForArrival#occupied.has x1',
   'livingMembers.ts#truncateHistory#visits.slice x1',
   // Stage G.2A: history.map ×3, history.filter, and private geometricMean.
   // Dedicated member-call drivers remain a later pass; the sites are named
@@ -25103,6 +26182,7 @@ const MEMBER_CALL_PASS_UNDRIVEN: readonly string[] = Object.freeze([
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
+  'livingMemberSeason.ts#athleteSeasonBoundaryWouldMove#members.some x1',
   // Stage G.2C1: private hasReason. Dedicated driver remains a later pass;
   // the site is named rather than left off the join.
   'livingMemberStay.ts#hasReason#retention.some x1',
@@ -25175,12 +26255,16 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // #readings.find x1`.
   // Stage G.1A: five more subjects — `createFloorSimState#context.map` and
   // four `livingMembers.ts` roster/id sites.
-  SUBJECTS: 29,
+  // 29 -> 28: Stage G.2C2 dropped applyServiceObservations#roster.map (loop).
+  // 28 -> 29: Stage G.2C2 departedMemberById#roster.find.
+  SUBJECTS: 30, // CAREER-EMPIRE-REP-01 GymScreen reputationReasons.map
   /** One call of the instrumented method per subject, two at the ladder site. */
   // 22 -> 24: S4b's two new subjects, one call each.
   // 24 -> 25: GDD §5.14 Stage B's one new subject, one call.
   // 25 -> 30: Stage G.1A's five new subjects, one call each.
-  CALLS: 30,
+  // 30 -> 29: the dropped applyServiceObservations map site.
+  // 29 -> 30: departedMemberById#roster.find, one call.
+  CALLS: 31, // CAREER-EMPIRE-REP-01 GymScreen reputationReasons.map
   /**
    * Callback invocations across every subject: 4 + 33, the second number being
    * E23's ten sites. Per site — and per ARM, which is the half a total cannot
@@ -25196,7 +26280,8 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 52 -> 54: GDD §5.14 Stage B's one new site, two callback invocations.
   // 54 -> 64: Stage G.1A's five new sites — three garage members on each
   // `.map` site, one `.find` predicate, and zero on `id.split`.
-  CALLBACK_CALLS: 64,
+  // 64 -> 61: three garage-member map callbacks no longer invoked.
+  CALLBACK_CALLS: 62, // CAREER-EMPIRE-REP-01 reputationReasons.map one row
   /**
    * Strings reachable from the non-function arguments.
    *
@@ -25226,7 +26311,10 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 111 -> 159: S4b's two stage-4 sites, +24 each — measured, and the two
   // agreeing at 24 is a coincidence of the two rendered rows rather than a
   // shared derivation.
-  RETURNED: 294, // Stage G.2C1 applyServiceObservations map returns stayState
+  // 294 -> 237: Stage G.2C2 rewrote applyServiceObservations roster.map as a
+  // loop (departure filter). The dead member-call site is removed rather than
+  // driven at zero. Read from this pin last.
+  RETURNED: 238, // CAREER-EMPIRE-REP-01 reputationReasons.map one string
   FINDINGS: 0,
   TRIPWIRE_SUBJECTS: 2,
   TRIPWIRE_FINDINGS: 2,
@@ -25330,6 +26418,8 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   // silently dropping to one is red rather than merely smaller.
   'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=24 verdicts=objectx1',
   'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=24 verdicts=objectx1',
+  // CAREER-EMPIRE-REP-01: lastSportingCredit.reasons.map — one Text child.
+  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=1 verdicts=stringx1',
   // members.ts (§5.11 stage 3): `.reduce(callback, 0)` is one call, with the
   // callback invoked once per roster row (two rows in both fixtures). The
   // callback returns a plain number (a running sum), never a string, so
@@ -25345,8 +26435,8 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   'pacing.ts#pacingReadingAtHorizon#readings.find x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
   // Stage G.1A: five new member-of-parameter sites, measured by running this assertion.
   'floorSim.ts#createFloorSimState#context.map x1 calls=1 callbacks=3 handed=0 returned=66 verdicts=objectx3',
-  'livingMembers.ts#applyServiceObservations#roster.map x1 calls=1 callbacks=3 handed=0 returned=57 verdicts=objectx3',
   'livingMembers.ts#floorSimPopulationFromRoster#roster.map x1 calls=1 callbacks=3 handed=0 returned=12 verdicts=objectx3',
+  'livingMembers.ts#departedMemberById#roster.find x1 calls=1 callbacks=0 handed=0 returned=0 verdicts=none',
   'livingMembers.ts#livingMemberById#roster.find x1 calls=1 callbacks=1 handed=0 returned=0 verdicts=truex1',
   'livingMembers.ts#memberOrdinalFromId#id.split x1 calls=1 callbacks=0 handed=1 returned=0 verdicts=none',
 ]);
@@ -25434,7 +26524,7 @@ describe('the member-call pass — what a caller-supplied method is actually han
     // stops being empty.
     // Stage G.2A: two private-helper sites await dedicated drives.
     // Stage G.2C1: hasReason#retention.some named on the undriven list.
-    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(8);
+    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(10);
     expect(driven.length).toBe(MEMBER_CALL_PASS_CENSUS.SUBJECTS);
     // Both `visitRefusals` sites are driven, and they share a key. A `Set` of
     // the driven sites would have quietly collapsed them, so the count of that
@@ -25445,7 +26535,7 @@ describe('the member-call pass — what a caller-supplied method is actually han
     // week log, the strike ledger and the auto-repair report — and the two
     // stage-4 ones produce byte-identical observation rows, so this count is
     // the only thing that reddens if a driver is dropped.
-    expect(driven.filter((site) => site === 'GymScreen.tsx#GymScreen#props.map x1').length).toBe(3);
+    expect(driven.filter((site) => site === 'GymScreen.tsx#GymScreen#props.map x1').length).toBe(4);
   });
 });
 

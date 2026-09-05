@@ -695,6 +695,16 @@ export const EMPIRE_TUNING = Object.freeze({
       placing: 'Placed {place} of {field} in category at a {kind} meet',
       totalPr: 'Raised published best total at a {kind} meet',
       qualified: 'Newly qualified for {rung}',
+      composed: 'members {fromMembers} · meets {fromSporting}',
+      unknownMeet: 'Meet is not on the sporting map',
+    } as const),
+    /**
+     * CAREER-EMPIRE-REP-01. Played meet id → Stage E kind. Unknown ids fail
+     * closed. One row today: the prototype's local meet. Production modules
+     * do not import the meet catalogue; tests pin this key against it.
+     */
+    playedMeetKindById: Object.freeze({
+      'local-open-2026': 'local',
     } as const),
   }),
 
@@ -1460,6 +1470,23 @@ export const EMPIRE_TUNING = Object.freeze({
   }),
 
   /**
+   * §5.6 Pays=High. G.2E gates vacancy arrival of these types on credited
+   * living-member reputation. Not a pay-to-win purchase and not Athlete
+   * seasonality. First-pass vocabulary; feel is unproven.
+   */
+  HIGH_PAYING_MEMBER_TYPES: Object.freeze(['athlete', 'serious-lifter'] as const),
+
+  /**
+   * Credited living-member reputation required before a high-paying type may
+   * fill a vacancy. Scaled to MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY, not
+   * to NPC_RECRUIT_REPUTATION_THRESHOLD.club (50) — those grains differ
+   * (0.15/day vs check-in 2). Opening Garage is three powerlifters (0.45/day),
+   * so 1 is a bit over two days of stock occupancy. First-pass knob; not
+   * playtested.
+   */
+  HIGH_PAYING_MEMBER_ARRIVAL_REPUTATION_THRESHOLD: 1,
+
+  /**
    * How close two types' equipment-fit scores must be for
    * `equipmentBiasedMemberTypes` to report both as the equipment set's bias,
    * rather than only the single highest. A budget: the design promise is
@@ -2048,6 +2075,19 @@ export const EMPIRE_TUNING = Object.freeze({
     watchingMin: 0.22,
     strainedMin: 0.42,
     atRiskMin: 0.55,
+  }),
+
+  /**
+   * G2-ATHLETE-SEASON-01 — shared gym-clock Athlete leave/return calendar.
+   * Week indices use the same training-week divisor as `sessions.ts`
+   * (`DAYS_PER_TRAINING_WEEK * SECONDS_PER_DAY`). First-pass knobs; feel is
+   * unproven. Existing ≤3-day clock tests sit before week 4, so they do not
+   * cross a leave boundary. Do not scatter these literals.
+   */
+  ATHLETE_SEASON: Object.freeze({
+    cycleWeeks: 6,
+    inSeasonWeeks: 2,
+    firstInSeasonWeek: 4,
   }),
 
   /**
@@ -2879,6 +2919,8 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   MEMBER_CROWDING_SATISFACTION_FLOOR: 'budget',
   MEMBER_TYPE_CROWDING_LOAD_WEIGHT: 'knob',
   MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY: 'knob',
+  HIGH_PAYING_MEMBER_TYPES: 'structural',
+  HIGH_PAYING_MEMBER_ARRIVAL_REPUTATION_THRESHOLD: 'knob',
   MEMBER_EQUIPMENT_BIAS_TIE_TOLERANCE: 'budget',
 
   FLOOR_GRID_SIZE: 'knob',
@@ -2930,6 +2972,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS: 'knob',
   LIVING_MEMBER_EXPERIENCE: 'knob',
   LIVING_MEMBER_RETENTION: 'knob',
+  ATHLETE_SEASON: 'knob',
   FLOOR_SIM_CUE_DIAMETER_FRACTION: 'knob',
   FLOOR_PLATE_LOADING: 'knob',
   FLOOR_SIM_CUE_GAP_PIXELS: 'knob',

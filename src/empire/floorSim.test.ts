@@ -811,7 +811,7 @@ describe('the Phase 3 tuning block is shaped the way `floorSim.ts` reads it', ()
     const code = FLOOR_GRID_SOURCE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
     expect(code.includes('seatChangeoverTicks(changeovers')).toBe(true);
     expect(code.includes('plateLoadingDiscs')).toBe(true);
-    expect(code.includes('sim.changeovers')).toBe(true);
+    expect(code.includes('drawnSim.changeovers')).toBe(true);
     expect((code.match(/setInterval/g) ?? []).length).toBe(1);
     expect(code.includes('createFloorSimState')).toBe(true);
   });

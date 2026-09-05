@@ -100,34 +100,50 @@ describe('D2-CONSEQUENCE-01 — played floor does not fund the institution', () 
     expect(away.gymBucks).toBeCloseTo(rate * T.OFFLINE_EARNINGS_FRACTION, 5);
   });
 
-  it('finds member dues, satisfaction, and reputation as pure functions with no live-floor consumer', () => {
+  it('lets only G.2D livingMemberDues.ts call member dues; G.2E livingMemberReputation.ts call type reputation rates; crowding satisfaction and aggregate reputationFromMembers stay unwired', () => {
     const members = shippedSource('members.ts');
     expect(members).toMatch(/export function memberDuesGymBucks/);
     expect(members).toMatch(/export function memberSatisfaction/);
     expect(members).toMatch(/export function reputationFromMembers/);
+    expect(members).toMatch(/export function memberReputationPerDay/);
 
     const root = HERE;
     const shipped = tsFilesUnder(root, 'without-tests');
-    const callers: string[] = [];
+    const duesCallers: string[] = [];
+    const reputationRateCallers: string[] = [];
+    const blockedCallers: string[] = [];
     for (const name of shipped) {
       if (name === 'members.ts') continue;
       const code = codeOnly(readFileSync(path.join(root, name), 'utf8'));
-      if (
-        code.includes('memberSatisfaction(') ||
-        code.includes('memberDuesGymBucks(') ||
-        code.includes('reputationFromMembers(')
-      ) {
-        callers.push(name);
+      if (code.includes('memberDuesGymBucks(') || code.includes('memberBaseDuesGymBucks(')) {
+        duesCallers.push(name);
+      }
+      if (code.includes('memberReputationPerDay(') || code.includes('isHighPayingMemberType(')) {
+        reputationRateCallers.push(name);
+      }
+      if (code.includes('memberSatisfaction(') || code.includes('reputationFromMembers(')) {
+        blockedCallers.push(name);
       }
     }
-    expect(callers).toEqual([]);
+    expect(duesCallers).toEqual(['livingMemberDues.ts']);
+    expect(reputationRateCallers.sort()).toEqual(['livingMemberArrival.ts', 'livingMemberReputation.ts']);
+    expect(blockedCallers).toEqual([]);
+
+    const dues = shippedSource('livingMemberDues.ts');
+    const living = shippedSource('livingMembers.ts');
+    const ladder = shippedSource('ladder.ts');
+    expect(dues.includes('accrueLadderGymBucks')).toBe(false);
+    expect(dues.includes('ladderIncomeRatePerHour')).toBe(false);
+    expect(living.includes('accrueLadderGymBucks')).toBe(false);
+    expect(ladder.includes('livingMemberDues')).toBe(false);
+    expect(ladder.includes('applyLivingMemberDues')).toBe(false);
   });
 
   it('does not let floor wait, completions, or changeover history write Gym Bucks', () => {
     const floorSim = shippedSource('floorSim.ts');
     const floorGrid = shippedSource('FloorGrid.tsx');
     expect(floorSim).toMatch(/changeovers/);
-    expect(floorGrid).toMatch(/sim\.changeovers/);
+    expect(floorGrid).toMatch(/drawnSim\.changeovers/);
     expect(floorSim.includes('gymBucks')).toBe(false);
     expect(floorGrid.includes('gymBucks +')).toBe(false);
     expect(floorGrid.includes('gymBucks:')).toBe(false);

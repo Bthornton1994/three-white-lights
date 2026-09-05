@@ -660,8 +660,33 @@ const GUARANTEE_COVERAGE = {
    * one word in one file, and running this test with only that word reverted
    * back to the dodge reads `expected 236 to be 235` — so the whole delta is
    * this one paragraph's own capitalised absolute, not a change anywhere else.
+   *
+   * SIXTEENTH ROUND, 236 -> 241, HYG-001. Session B routed five triggering
+   * paragraphs rather than bumping this pin (the file was barred to that
+   * session). Measured against the commit that pinned 236, by restoring `src`
+   * to that tree and re-reading: five new paragraphs, zero gone. Named by
+   * file rather than quoted, because a quoted capitalised run in this comment
+   * would read 242.
+   *
+   * In lower case they are: in `ladderView.tsx`, the open-up mint is gone and
+   * clock advance is the remaining way in (disclosed at the site as a routed
+   * +1); in `AppShell.tsx`, the gym host stays mounted off the gym surface
+   * (disclosed as routed, witness not built); in `GymScreen.tsx`, the
+   * world-first transition finished by removing the permanent per-item report
+   * rather than reordering it; in `stationView.ts`, the station panel has to
+   * answer both condition questions, not one; and in `appServer.ts`, a
+   * debug-only stand-in for a meet frame that carries no stand-in of its own.
+   *
+   * This round takes the pin to the measured 241. It does not reword any of
+   * those five. They live outside `GUARANTEE_PROSE_FILES`, so the ban never
+   * demanded a tag.
+   *
+   * Same finding, other half: a live G.2B forming-retention test declared a
+   * bracket id with no matching comment. The test stays; the title marker is
+   * retired so this scan no longer treats a stage label as a vanished
+   * guarantee.
    */
-  TREE_WIDE: 236,
+  TREE_WIDE: 241,
 } as const;
 
 // ---------------------------------------------------------------------------

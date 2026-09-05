@@ -305,12 +305,25 @@ import {
 } from './floor';
 import type { FloorSimServiceObservation } from './floorSim';
 import {
+  creditLivingMemberDuesGymBucks,
+  livingMemberDuesCreditedDelta,
+} from './livingMemberDues';
+import {
   applyServiceObservations,
   createLivingMemberRoster,
   floorSimPopulationFromRoster,
   reconcileLivingMemberRosterOnRelocation,
+  settleLivingMemberClock,
+  SHIPPED_SERVICE_HISTORY_WINDOW,
   type LivingMemberRoster,
 } from './livingMembers';
+import {
+  createSportingReputationLedger,
+  creditSportingResult,
+  type PlayedMeetFacts,
+  type SportingCreditReport,
+  type SportingReputationLedger,
+} from './sportingReputationLedger';
 import {
   type DeclineRepairResult,
   type DismissManagerResult,
@@ -430,6 +443,9 @@ export interface GymViewState {
   readonly capability: StationCapabilityState;
   /** Stage G.1 — persistent floor members, separate from `NpcLifter` roster. */
   readonly livingMembers: LivingMemberRoster;
+  /** CAREER-EMPIRE-REP-01 — sporting half on the played tree. */
+  readonly sportingReputation: SportingReputationLedger;
+  readonly lastSportingCredit: SportingCreditReport | null;
 }
 
 /**
@@ -547,6 +563,11 @@ export type GymViewAction =
   | {
       readonly kind: 'apply-living-member-observations';
       readonly observations: readonly FloorSimServiceObservation[];
+    }
+  | {
+      readonly kind: 'credit-sporting-result';
+      readonly meetId: string;
+      readonly facts: PlayedMeetFacts;
     };
 
 /** Opening living roster aligned with the floor-sim seed the renderer uses. */
@@ -577,6 +598,8 @@ export function createGymViewState(): GymViewState {
     surface: 'play',
     capability: stockStationCapability(),
     livingMembers: openingLivingMembers(managed),
+    sportingReputation: createSportingReputationLedger(),
+    lastSportingCredit: null,
   });
 }
 
@@ -593,6 +616,23 @@ export function createGymViewState(): GymViewState {
  * absolute mark; a gap that is negative, non-finite or off-tick is still
  * refused loudly, by `ladderCheckIn`'s own guard at the bottom of the same
  * call, and `ladderView.test.ts` drives that refusal.
+ *
+ * G.2D then composes living-member dues onto the same purse through
+ * `settleLivingMemberClock`: `applyLivingMemberDues` is still the one ledger
+ * writer, and the credited delta is added onto `ladder.gymBucks` on top of
+ * the frozen D2 facility lump. Replay of an already-settled mark is a ledger
+ * and purse identity no-op. This is not a retune of facility rates, Q/C/T,
+ * or the offline banking policy.
+ *
+ * G.2E settles living-member reputation on the same clock mark, still through
+ * that orchestrator. `applyLivingMemberReputation` remains the one writer of
+ * member-side reputation. It does not write `EmpireState.reputation` and does
+ * not retune check-in reputation. High-paying vacancy arrival reads the
+ * credited total.
+ *
+ * G2-ATHLETE-SEASON-01 applies Athlete leave/return at shared gym-clock
+ * season boundaries inside the same orchestrator. No Athletes means the
+ * dues and reputation ledgers match today's two calls.
  *
  * WHAT THIS ARM DOES NOT DO, because §5.7's clarification and `docs/GDD.md`
  * §5.13's wear-basis ruling both turn on it: it appends no strike and moves
@@ -655,8 +695,26 @@ function advanceGymClock(
     weekLog = Object.freeze([...weekLog, ...completed]);
     allocationSetThisWeek = false;
   }
+  const livingMembers = settleLivingMemberClock(
+    state.livingMembers,
+    checkedInManaged.gym.ladder.collectedAt,
+  );
+  const gymBucks = creditLivingMemberDuesGymBucks(
+    checkedInManaged.gym.ladder.gymBucks,
+    livingMemberDuesCreditedDelta(state.livingMembers.dues, livingMembers.dues),
+  );
+  const managed =
+    gymBucks === checkedInManaged.gym.ladder.gymBucks
+      ? checkedInManaged
+      : withUpdatedGym(
+          checkedInManaged,
+          withLadder(
+            checkedInManaged.gym,
+            Object.freeze({ ...checkedInManaged.gym.ladder, gymBucks }),
+          ),
+        );
   return Object.freeze({
-    managed: checkedInManaged,
+    managed,
     lastAccrual: accrual,
     lastManagementReport: Object.freeze(report),
     lastRefusal: null,
@@ -666,10 +724,14 @@ function advanceGymClock(
     weekLog,
     // A clock advance never relocates and never touches ownership, so the
     // floor layout is untouched — only a successful `move-up` resets it.
+    // G.2D: the same clock mark is the production dues-settlement caller,
+    // and the ledger delta is credited onto the spendable purse here.
     floor: state.floor,
     surface: state.surface,
     capability: state.capability,
-    livingMembers: state.livingMembers,
+    livingMembers,
+    sportingReputation: state.sportingReputation,
+    lastSportingCredit: state.lastSportingCredit,
   });
 }
 
@@ -898,10 +960,36 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
     }
     case 'reset-gym':
       return createGymViewState();
+    case 'credit-sporting-result': {
+      const outcome = creditSportingResult(
+        state.sportingReputation,
+        action.meetId,
+        action.facts,
+        state.managed.gym.ladder.collectedAt,
+        null,
+      );
+      if (outcome.report === null) {
+        return state;
+      }
+      return Object.freeze({
+        ...state,
+        sportingReputation: outcome.ledger,
+        lastSportingCredit: outcome.report,
+      });
+    }
     case 'apply-living-member-observations':
       return Object.freeze({
         ...state,
-        livingMembers: applyServiceObservations(state.livingMembers, action.observations),
+        livingMembers: applyServiceObservations(
+          state.livingMembers,
+          action.observations,
+          SHIPPED_SERVICE_HISTORY_WINDOW,
+          Object.freeze({
+            sessionOwned: state.managed.gym.sessionEquipment,
+            joinedAtSeconds: state.managed.gym.ladder.collectedAt,
+          }),
+          state.managed.gym.ladder.collectedAt,
+        ),
       });
   }
 }

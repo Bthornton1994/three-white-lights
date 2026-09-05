@@ -41,24 +41,48 @@ and has no history, this section tells you which half of the repo is yours.
 ### Current Stage G authority (independently verified)
 
 G.1 CLOSED. G.2A CLOSED at `255de8a5` (mint `ba8561bf`, docs/comment only).
-G.2B is authorized as the retention-pressure foundation: explainable
-G.2A experience → willingness-to-stay pressure. No member leaves.
-G.2C arrivals/departures, G.2D dues, and G.2E member-side reputation
-stay blocked. Do not wire `memberDuesGymBucks` / `reputationFromMembers`
-/ old crowding satisfaction merely because those functions exist.
-G2-CONDITION-01, G2-FIT-01, G2-TYPE-01, and G2-ATHLETE-SEASON-01 stay
-open. Career → Empire reputation and Portfolio stay blocked.
+G.2B CLOSED as the retention-pressure foundation. G.2C1 CLOSED / FROZEN
+at `c8776cad`. G.2C2 CLOSED / FROZEN at `1493f438` (actual departure).
+G.2C3 CLOSED / FROZEN at `2b0f52bd` (vacancy arrival + P1 honest
+Watching/neutral proof). G.2D CLOSED / FROZEN at `28611af7` —
+living-member Gym Bucks dues from accepted G.2A experience,
+clock-settled on the roster ledger and credited onto `ladder.gymBucks`
+on top of frozen D2 facility income. Unsettled-window occupancy is
+time-weighted presence (joins pro-rate; in-window G.2C2 leaves still
+pay the active stub; a played leave on the open settle mark occupies
+the GymHost tick). Do not retune D2 rates. G.2E is FROZEN at `cf98f4de`
+(factory freeze; human feel gate not run — not CLOSED): living-member
+reputation from that same occupancy, and reputation-gated high-paying
+(Athlete, Serious Lifter) vacancy arrival. Do not wire
+`reputationFromMembers` on an aggregate
+`MemberRoster` or old crowding satisfaction. CAREER-EMPIRE-REP-01 is
+FROZEN at `cae174d8f46d7652ae1873f7594a23133b09c4db` (squash memorial
+on Session B; factory freeze; human feel gate not run — not CLOSED;
+pre-squash identity `34b98a06772db81126b68deec220a24328892a22` is not
+an object on this tree): the sporting half lands as
+`GymViewState.sportingReputation` composed by `institutionalReputation`
+with the G.2E member ledger at points. The G.2E high-paying arrival
+gate still reads member-only. The prior phrase "Career/Meet →
+`EmpireState.reputation`" names this composed v2 reading; the literal
+v1 field stays unwritten. Feel is unproven. REP-EVIDENCE-01 surfaces
+both stored halves and sporting reasons on the Gym HUD
+(`gymscreen-reputation`), not only the diagnostics `more` drawer.
+Honest zero when nothing is credited. G.2C1–C3 and
+G.2D stay frozen. G2-ATHLETE-SEASON-01
+is FROZEN at `9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze;
+human feel gate not run — not CLOSED). G2-CONDITION-01, G2-FIT-01, and
+G2-TYPE-01 stay open. Portfolio stays blocked.
 
 ### The split
 
 | | Session A — the main loop | Session B — the parallel scope |
 |---|---|---|
 | Owns | everything not listed to the right | **GDD §5 — Gym Empire, the idle layer** |
-| Branch | `claude/agent-config-setup-m2r6ny` | its own `claude/*` branch, in its own worktree |
+| Branch | `grok/session-a-main-loop` | `grok/stage-g2c2-actual-departure` |
 | Files | `src/game`, `src/meet`, `src/cutin`, `src/session`, `src/shell`, `src/lift`, `src/art`, `src/card`, `src/licensing`, `src/audio`, `tools/` | `src/empire/**` (new), plus the three registry rows named below |
 
 **Neither session pushes to `main`, ever.** Both push only to their own
-`claude/*` branch. Merging into `main` is a human's call, not a session's.
+session branch. Merging into `main` is a human's call, not a session's.
 
 ### Session B's scope, stated exactly
 
@@ -925,6 +949,66 @@ change makes a bundle stale, so writing this paragraph re-stales the bundle it
 is about. Recorded rather than avoided — the report is worth more than the
 freshness, and a bundle whose whole-suite section is unobtainable was not going
 to be clean anyway.
+
+### CROSSING 9, REQUESTED: src/meet/MeetScreen.tsx — one optional onRecorded report prop
+
+Written here before the edit, as this section requires. CAREER-EMPIRE-REP-01
+is the Stage E deferred crossing: a played meet's server-confirmed result
+feeds Empire sporting reputation. The seam is one optional report callback
+on `MeetScreen`, not a rewrite of `src/game/**`, not a wrap of
+`MeetServerPort.recordMeetResult`, and not a Career calendar.
+
+**The edit, and nothing else.** `src/meet/MeetScreen.tsx` gains
+
+`onRecorded?: (meetId: string, recorded: RecordedMeet) => void`
+
+and one effect mirroring the existing `onPhase` effect. The effect fires
+`onRecorded?.(state.context.meet.id, loop.applied)` when `applied` is
+present. No other Session A or `src/game` drift.
+
+**Played route only.** AppShell passes the callback when
+`meetFrame === undefined`. A `?meet=` debug frame keeps its own stand-in
+port; that result is not the lifter's and must not credit the gym.
+
+**Shell forwards, Empire decides.** AppShell dispatches
+`{ kind: 'credit-sporting-result', meetId, facts }` and does not name or
+read a Total. Mapping from played facts to Stage E's
+`SportingMeetResult` lives in `sportingReputationLedger.ts`.
+
+**Authority.** TWL BO ACCEPT on Fable plan `bc-acf4f512` pin 2, Sol ACCEPT
+`bc-d98bea43`. Crossing 9 is an accepted product decision. This memorial
+commits before the `MeetScreen.tsx` edit.
+
+### CAREER-EMPIRE-REP-01 P1: AppShell-owned played-port credit
+
+TWL BO: do not widen Crossing 9 beyond the accepted MeetScreen report.
+`useMeetDay` does not take `onRecorded`. Credit on unmount is owned by
+AppShell: `withSportingCreditOnRecord(appMeetPort(), creditSportingResult)`
+is the played-route port. The singleton is unchanged
+(`appSessionPort() === appMeetPort()`). A `?meet=` frame keeps its own
+stand-in and does not pass through the view. Crossing 9 `onRecorded`
+remains the mounted report. A recorded Total that cannot credit fails
+closed as `not-creditable`.
+
+### CAREER-EMPIRE-REP-01 P2: `?meet=` frames use a non-crediting stand-in
+
+TWL BO: any `?meet=` frame, including `live`, must use a non-crediting
+stand-in — never the AppShell sporting-credit wrapper. Leave-during-save
+stays on the production path (`meetFrame` absent → `playedMeetPort`).
+Tight AppShell route selection only. Do not widen Crossing 9. Do not
+edit Session A / `src/game`. `?meet=live` is a defined frame with
+`serverPort: undefined`; AppShell hands it `debugMeetStandIn()`, not
+`appMeetPort()` and not `withSportingCreditOnRecord`.
+
+### CROSSING 6, EXTENDED: AppShell reducer lift for the sporting-reputation hand-off
+
+Crossing 6 already wired Gym Empire into `src/shell/**`. CAREER-EMPIRE-REP-01
+extends that crossing: lift
+`useReducer(gymViewReduce, undefined, createGymViewState)` from `GymHost`
+into `AppShell`'s body, pass `state` / `dispatch` to the always-mounted
+`GymHost`, and pass `onRecorded` on the played meet route. The wall-clock
+anchor and interval stay on `GymHost`. No dispatch-ref that can drop a
+credit. Recorded as Crossing 6 extended, not a new crossing number.
 
 ### CROSSING 8, APPROVED DIRECTLY BY THE HUMAN, TAKEN: `src/licensing/realIp.ts`, FOR THE REAL DESIGN INSPIRATION
 

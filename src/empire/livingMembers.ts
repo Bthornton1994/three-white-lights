@@ -1,5 +1,7 @@
 /**
- * livingMembers.ts — Stage G.1 / G.1A identity, G.2 service history, and stay response.
+ * livingMembers.ts — Stage G.1 / G.1A identity, G.2 service history, stay
+ * response, G.2C2 departure execution, G.2C3 vacancy arrival, G.2D dues
+ * settlement, and G.2E member-side reputation settlement.
  *
  * Pure module: zero React, zero side effects, zero I/O, no `Math.random`.
  * Persists the bodies the player sees on the played floor — NOT `NpcLifter`
@@ -9,6 +11,8 @@
  * G.1A IDENTITY AUTHORITY: member ids are gym-local ordinals under a nonce
  * (`member:n1:0`) and do NOT encode the current facility rung. Facility
  * relocation reconciles the roster — it never recreates existing members.
+ * Creation ordinals are minted from `nextOrdinal` so a departed identity is
+ * never reused.
  *
  * G.1C PRESENTATION: `displayName` is a stored given name assigned once at
  * creation. It does not enter FloorSim, station choice, or any G.2 quantity.
@@ -16,17 +20,47 @@
  * G.2A derives recent-service meaning in `livingMemberExperience.ts` from
  * `recentVisits`. G.2B derives type-blind retention pressure from that accepted
  * experience. G.2C1 persists only the member's response to that pressure in
- * `stayState`, once per real service observation. This file does not rebuild
+ * `stayState`, once per real service observation. G.2C2 may then remove an
+ * already-eligible member from the active roster after one further
+ * strain-qualifying service observation. This file does not rebuild
  * satisfaction or retention arithmetic.
+ *
+ * G.2D dues settlement lives in `applyLivingMemberDues`. That is the one
+ * writer of the living-member dues ledger. Clock advance on the played gym
+ * is the production caller, and that same path credits the ledger delta
+ * onto the spendable Gym Bucks purse. Service observations do not credit
+ * dues. They may stamp gym-clock occupancy ends onto `duesLeftAtSeconds` so
+ * a leave inside an unsettled window still pays the active stub. This file
+ * does not call the members-module dues interpolator or `memberSatisfaction`;
+ * `livingMemberDues.ts` owns that mapping from G.2A composite.
+ *
+ * G.2E reputation settlement lives in `applyLivingMemberReputation`. That is
+ * the one writer of the living-member reputation ledger. The same clock
+ * advance settles it. High-paying vacancy arrival reads
+ * `reputation.creditedReputation`. Service observations do not credit
+ * reputation. Occupancy stamps stay on `duesLeftAtSeconds`. This file does
+ * not call `reputationFromMembers` or write `EmpireState.reputation`.
  *
  * NOT BUILT HERE, ON PURPOSE — later stages:
  *
- *   - No roster deletion/departure event, no arrival dynamics beyond accepted
- *     facility expansion, no dues wiring, no `reputationFromMembers` wiring,
- *     no `memberSatisfaction` calls.
- *   - No offline-fabricated service visits or stay changes — observations arrive
- *     only from real `floorSim.ts` steps while the sim is running.
- *   - No Athlete season calendar and no Career/Meet → `EmpireState.reputation` path.
+ *   - No `reputationFromMembers` wiring, no `memberSatisfaction` calls.
+ *     G.2E member-side reputation is `applyLivingMemberReputation` plus
+ *     high-paying arrival gating on the credited ledger. Career/Meet →
+ *     `EmpireState.reputation` stays blocked.
+ *   - No writing `ladder.gymBucks` here. The production clock path credits
+ *     the dues ledger delta onto the spendable purse; this file stays the one
+ *     dues-ledger writer and the one member-reputation-ledger writer.
+ *   - No offline-fabricated service visits, stay changes, departures, or
+ *     arrivals — observations arrive only from real `floorSim.ts` steps while
+ *     the sim is running.
+ *   - No Career/Meet → `EmpireState.reputation` path, Portfolio, or
+ *     NpcLifter merge.
+ *
+ * G2-ATHLETE-SEASON-01: `applyLivingMemberSeason` is the one season-ledger
+ * writer. `settleLivingMemberClock` orchestrates dues + reputation + season
+ * at gym-clock marks. A season leave is not a G.2C2 departure; a return is
+ * not a G.2C3 arrival. C2's "no returning members" still applies to
+ * *departed* identities. Calendar math lives in `livingMemberSeason.ts`.
  */
 
 import { refuseWith } from './empireCore';
@@ -34,13 +68,55 @@ import { EMPIRE_TUNING } from './empireTuning';
 import { ambientMemberRoster } from './floor';
 import type { FloorSimPopulationEntry, FloorSimServiceObservation } from './floorSim';
 import type { LadderEquipmentItem, LadderRung } from './ladder';
+import {
+  createLivingMemberArrivalRecord,
+  livingMemberShouldArrive,
+  requireLivingMemberArrivalContext,
+  type LivingMemberArrivalContext,
+  type LivingMemberArrivalRecord,
+} from './livingMemberArrival';
+import {
+  appendLivingMemberDuesSettlement,
+  createLivingMemberDuesLedger,
+  createLivingMemberDuesSettlement,
+  lastLivingMemberDuesSettlement,
+  livingMemberDuesForWindow,
+  requireLivingMemberDuesOccupancyClock,
+  type LivingMemberDuesDeparturePresence,
+  type LivingMemberDuesLedger,
+} from './livingMemberDues';
+import {
+  appendLivingMemberReputationSettlement,
+  createLivingMemberReputationLedger,
+  createLivingMemberReputationSettlement,
+  lastLivingMemberReputationSettlement,
+  livingMemberReputationForWindow,
+  type LivingMemberReputationDeparturePresence,
+  type LivingMemberReputationLedger,
+} from './livingMemberReputation';
+import {
+  createLivingMemberDepartureRecord,
+  livingMemberShouldDepart,
+  type LivingMemberDepartureRecord,
+} from './livingMemberDeparture';
 import { livingMemberExperience } from './livingMemberExperience';
 import { livingMemberRetentionPressure } from './livingMemberRetention';
 import {
   advanceLivingMemberStay,
   createLivingMemberStayState,
+  livingMemberStayEvidence,
   type LivingMemberStayState,
 } from './livingMemberStay';
+import {
+  athleteSeasonBoundariesBetween,
+  athleteSeasonBoundaryWouldMove,
+  createLivingMemberSeasonLeaveRecord,
+  createLivingMemberSeasonLedger,
+  createLivingMemberSeasonReturnRecord,
+  livingMemberTakesSeasonLeave,
+  type LivingMemberSeasonLeaveRecord,
+  type LivingMemberSeasonLedger,
+} from './livingMemberSeason';
 import { equipmentBiasedMemberTypes, type MemberType } from './members';
 import type { SessionEquipmentItem } from './sessions';
 
@@ -80,7 +156,32 @@ export interface LivingGymMember {
 export interface LivingMemberRoster {
   readonly rung: LadderRung;
   readonly identityNonce: number;
+  /** Next unused creation ordinal. Never decreases, including after a departure. */
+  readonly nextOrdinal: number;
   readonly members: readonly LivingGymMember[];
+  /** Archive of departed members. Not active roster rows. */
+  readonly departures: readonly LivingMemberDepartureRecord[];
+  /** Archive of G.2C3 vacancy arrivals. Relocation appends are not recorded here. */
+  readonly arrivals: readonly LivingMemberArrivalRecord[];
+  /**
+   * Gym-clock seconds a departed identity left, keyed by member id. G.2D
+   * occupancy; C2 still owns `departedAtTick`. Missing keys mean the leave
+   * has no gym-clock mark and does not invent a stub.
+   */
+  readonly duesLeftAtSeconds: Readonly<Record<string, number>>;
+  /** G.2D dues ledger. Clock-settled; the clock path credits this onto the purse. */
+  readonly dues: LivingMemberDuesLedger;
+  /**
+   * G.2E member-side reputation ledger. Clock-settled from the same occupancy
+   * as dues. High-paying arrival reads `creditedReputation`.
+   */
+  readonly reputation: LivingMemberReputationLedger;
+  /**
+   * G2-ATHLETE-SEASON-01 shared gym-clock season ledger. `onLeave` holds
+   * reserved seats; those identities are not in `members` and not in
+   * `departures`.
+   */
+  readonly season: LivingMemberSeasonLedger;
 }
 
 /** History limits compared in tests; the shipped limit is the middle entry. */
@@ -258,13 +359,26 @@ export function createLivingMemberRoster(
       createLivingMember(identityNonce, index, row.type, joinedAtSeconds),
     ),
   );
-  return Object.freeze({ rung, identityNonce, members });
+  return Object.freeze({
+    rung,
+    identityNonce,
+    nextOrdinal: members.length,
+    members,
+    departures: Object.freeze([]),
+    arrivals: Object.freeze([]),
+    duesLeftAtSeconds: Object.freeze({}),
+    dues: createLivingMemberDuesLedger(joinedAtSeconds),
+    reputation: createLivingMemberReputationLedger(joinedAtSeconds),
+    season: createLivingMemberSeasonLedger(joinedAtSeconds),
+  });
 }
 
 /**
  * Facility relocation: preserve every existing member exactly; append only when
  * the destination ambient count is larger. Refuses when the destination would
- * require fewer members than already live on the floor.
+ * require fewer members than already live on the floor. New identities mint
+ * from `nextOrdinal`, never from active length, so a departed ordinal cannot
+ * be reused.
  */
 export function reconcileLivingMemberRosterOnRelocation(
   roster: LivingMemberRoster,
@@ -279,21 +393,24 @@ export function reconcileLivingMemberRosterOnRelocation(
   }
   const targetCount = ambientCountForRung(newRung);
   const existing = roster.members;
-  if (targetCount < existing.length) {
+  const occupied = existing.length + roster.season.onLeave.length;
+  if (targetCount < occupied) {
     refuseWith(
-      `relocation to ${String(newRung)} allows ${targetCount} members but roster already has ${existing.length}`,
+      `relocation to ${String(newRung)} allows ${targetCount} members but roster already has ${occupied}`,
     );
   }
-  if (targetCount === existing.length) {
+  if (targetCount === occupied) {
     return Object.freeze({ ...roster, rung: newRung });
   }
+  const startOrdinal = roster.nextOrdinal;
   const appended = Object.freeze(
-    Array.from({ length: targetCount - existing.length }, (_unused, offset) => {
-      const index = existing.length + offset;
+    Array.from({ length: targetCount - occupied }, (_unused, offset) => {
+      const ordinal = startOrdinal + offset;
+      const typeIndex = occupied + offset;
       return createLivingMember(
         roster.identityNonce,
-        index,
-        memberTypeForIndex(sessionOwned, index),
+        ordinal,
+        memberTypeForIndex(sessionOwned, typeIndex),
         relocationMarkSeconds,
       );
     }),
@@ -301,7 +418,14 @@ export function reconcileLivingMemberRosterOnRelocation(
   return Object.freeze({
     rung: newRung,
     identityNonce: roster.identityNonce,
+    nextOrdinal: startOrdinal + appended.length,
     members: Object.freeze([...existing, ...appended]),
+    departures: roster.departures,
+    arrivals: roster.arrivals,
+    duesLeftAtSeconds: roster.duesLeftAtSeconds,
+    dues: roster.dues,
+    reputation: roster.reputation,
+    season: roster.season,
   });
 }
 
@@ -343,6 +467,15 @@ export function livingMemberById(
   return found ?? null;
 }
 
+/** Read a departed snapshot by stable id. */
+export function departedMemberById(
+  roster: LivingMemberRoster,
+  id: GymMemberId,
+): LivingMemberDepartureRecord | null {
+  const found = roster.departures.find((record) => record.member.id === id);
+  return found ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // Service outcomes
 // ---------------------------------------------------------------------------
@@ -377,20 +510,44 @@ function truncateHistory(
   return Object.freeze(visits.slice(visits.length - limit));
 }
 
+function latestVisitOf(member: LivingGymMember): ServiceVisitRecord | undefined {
+  return member.recentVisits[member.recentVisits.length - 1];
+}
+
 /**
- * Fold real floor-sim observations into history and G.2C1 stay response.
- * Offline clock does not call this. G.2A/G.2B are consumed whole rather than
- * reimplemented: new history → accepted experience → accepted pressure →
- * type-specific persistent response.
+ * Fold real floor-sim observations into history, G.2C1 stay response,
+ * G.2C2 departure execution, and G.2C3 vacancy arrival. Offline clock does
+ * not call this. G.2A/G.2B are consumed whole rather than reimplemented: new
+ * history → accepted experience → accepted pressure → type-specific persistent
+ * response → possible leave → possible vacancy fill.
  *
- * Exact replay of the latest service event is a whole-roster no-op. If the
- * same member/tick arrives with different service facts, refuse instead of
- * choosing which history is true.
+ * Exact replay of the latest service event is a whole-roster no-op, including
+ * after the observation that executed a departure or attracted an arrival. If
+ * the same member/tick arrives with different service facts, refuse instead of
+ * choosing which history is true. A later observation for a departed member
+ * fails closed. Same-tick tombstone replay also requires
+ * `observation.memberType` to match the archived member snapshot; type is not
+ * stored on G.2A visit history.
+ *
+ * G.2C1 stay still consumes G.2B of the N=5 window. G.2C2 departure
+ * confirmation and G.2C3 attraction both consume the same frozen type
+ * classifier on G.2B of the newly accepted visit alone, so leftover window
+ * strain cannot turn a Stable visit into a leave and a strained window cannot
+ * block attraction from a Stable visit. The observation that executes a
+ * departure does not also mint. Arrivals never exceed the facility ambient
+ * cap and never reuse a departed ordinal.
+ *
+ * `gymClockSeconds` is G.2D occupancy only. A leave stamps `duesLeftAtSeconds`
+ * only when this gym clock is provided, so an unsettled window can still bill
+ * the active stub. Arrival `joinedAtSeconds` is not a leave mark. C1–C3
+ * classifiers and tick archives do not read it.
  */
 export function applyServiceObservations(
   roster: LivingMemberRoster,
   observations: readonly FloorSimServiceObservation[],
   historyLimit: number = SHIPPED_SERVICE_HISTORY_WINDOW,
+  arrival: LivingMemberArrivalContext | null = null,
+  gymClockSeconds?: number,
 ): LivingMemberRoster {
   if (!SERVICE_HISTORY_WINDOWS.includes(historyLimit as (typeof SERVICE_HISTORY_WINDOWS)[number])) {
     refuseWith(
@@ -398,13 +555,74 @@ export function applyServiceObservations(
     );
   }
   if (observations.length === 0) return roster;
+  if (gymClockSeconds !== undefined) {
+    requireLivingMemberDuesOccupancyClock(gymClockSeconds, 0);
+  }
   const byId = new Map<GymMemberId, LivingGymMember>();
   for (const member of roster.members) {
     byId.set(member.id, member);
   }
+  const departedById = new Map<GymMemberId, LivingMemberDepartureRecord>();
+  for (const record of roster.departures) {
+    departedById.set(record.member.id, record);
+  }
+  const onLeaveById = new Map<GymMemberId, LivingMemberSeasonLeaveRecord>();
+  for (const record of roster.season.onLeave) {
+    onLeaveById.set(record.member.id, record);
+  }
+  const nextDepartures: LivingMemberDepartureRecord[] = [];
+  for (const record of roster.departures) {
+    nextDepartures.push(record);
+  }
+  const nextArrivals: LivingMemberArrivalRecord[] = [];
+  for (const record of roster.arrivals) {
+    nextArrivals.push(record);
+  }
+  const minted: LivingGymMember[] = [];
+  let nextOrdinal = roster.nextOrdinal;
+  let duesLeftAtSeconds: Readonly<Record<string, number>> = roster.duesLeftAtSeconds;
+  const arrivalContext = arrival === null ? null : requireLivingMemberArrivalContext(arrival);
+  const ambientCap = ambientCountForRung(roster.rung);
   let changed = false;
   for (const observation of observations) {
     const id = observation.memberId as GymMemberId;
+    const incomingVisit = visitFromObservation(observation);
+    const tombstone = departedById.get(id);
+    if (tombstone !== undefined) {
+      const departedVisit = latestVisitOf(tombstone.member);
+      if (departedVisit?.observedAtTick === incomingVisit.observedAtTick) {
+        if (observation.memberType !== tombstone.member.type) {
+          refuseWith(
+            `service observation type ${observation.memberType} does not match departed member ${id} type ${tombstone.member.type}`,
+          );
+        }
+        if (!sameServiceVisit(departedVisit, incomingVisit)) {
+          refuseWith(
+            `service observation conflicts with departed member ${id} at tick ${incomingVisit.observedAtTick}`,
+          );
+        }
+        continue;
+      }
+      refuseWith(`service observation names departed member ${id}`);
+    }
+    const seasonLeave = onLeaveById.get(id);
+    if (seasonLeave !== undefined) {
+      const leftVisit = latestVisitOf(seasonLeave.member);
+      if (leftVisit?.observedAtTick === incomingVisit.observedAtTick) {
+        if (observation.memberType !== seasonLeave.member.type) {
+          refuseWith(
+            `service observation type ${observation.memberType} does not match member ${id} type ${seasonLeave.member.type}`,
+          );
+        }
+        if (!sameServiceVisit(leftVisit, incomingVisit)) {
+          refuseWith(
+            `service observation conflicts with member ${id} at tick ${incomingVisit.observedAtTick}`,
+          );
+        }
+        continue;
+      }
+      refuseWith(`service observation names member on season leave`);
+    }
     const current = byId.get(id);
     if (current === undefined) {
       refuseWith(`service observation names unknown member ${observation.memberId}`);
@@ -414,8 +632,7 @@ export function applyServiceObservations(
         `service observation type ${observation.memberType} does not match member ${current.id} type ${current.type}`,
       );
     }
-    const incomingVisit = visitFromObservation(observation);
-    const latestVisit = current.recentVisits[current.recentVisits.length - 1];
+    const latestVisit = latestVisitOf(current);
     if (latestVisit?.observedAtTick === incomingVisit.observedAtTick) {
       if (!sameServiceVisit(latestVisit, incomingVisit)) {
         refuseWith(`service observation conflicts with member ${current.id} at tick ${incomingVisit.observedAtTick}`);
@@ -426,6 +643,9 @@ export function applyServiceObservations(
       Object.freeze([...current.recentVisits, incomingVisit]),
       historyLimit,
     );
+    const visitExperience = livingMemberExperience(Object.freeze([incomingVisit]));
+    const visitRetention = livingMemberRetentionPressure(visitExperience);
+    const visitEvidence = livingMemberStayEvidence(current.type, visitRetention);
     const experience = livingMemberExperience(nextVisits);
     const retention = livingMemberRetentionPressure(experience);
     const stayState = advanceLivingMemberStay(
@@ -434,32 +654,391 @@ export function applyServiceObservations(
       retention,
       observation.observedAtTick,
     );
-    byId.set(
-      id,
-      Object.freeze({
-        ...current,
-        recentVisits: nextVisits,
-        stayState,
-      }),
-    );
+    const nextMember = Object.freeze({
+      ...current,
+      recentVisits: nextVisits,
+      stayState,
+    });
+    if (livingMemberShouldDepart(current.stayState.status, visitEvidence)) {
+      const record = createLivingMemberDepartureRecord(
+        nextMember,
+        observation.observedAtTick,
+        visitRetention,
+      );
+      const leaveClock = gymClockSeconds;
+      if (leaveClock !== undefined) {
+        requireLivingMemberDuesOccupancyClock(leaveClock, nextMember.joinedAtSeconds);
+        duesLeftAtSeconds = Object.freeze({
+          ...duesLeftAtSeconds,
+          [id]: leaveClock,
+        });
+      }
+      byId.delete(id);
+      departedById.set(id, record);
+      nextDepartures.push(record);
+      changed = true;
+      continue;
+    }
+    byId.set(id, nextMember);
     changed = true;
+    if (arrivalContext === null) continue;
+    const reservedSeats = roster.season.onLeave.length;
+    const vacancyCount = ambientCap - byId.size - reservedSeats;
+    const arrivingType = memberTypeForIndex(
+      arrivalContext.sessionOwned,
+      byId.size + reservedSeats,
+    );
+    if (!livingMemberShouldArrive(
+      vacancyCount,
+      arrivingType,
+      visitEvidence,
+      roster.reputation.creditedReputation,
+    )) continue;
+    const joined = createLivingMember(
+      roster.identityNonce,
+      nextOrdinal,
+      arrivingType,
+      arrivalContext.joinedAtSeconds,
+    );
+    nextOrdinal += 1;
+    byId.set(joined.id, joined);
+    minted.push(joined);
+    nextArrivals.push(
+      createLivingMemberArrivalRecord(joined, observation.observedAtTick, nextMember.id),
+    );
   }
   if (!changed) return roster;
+  const nextMembers: LivingGymMember[] = [];
+  for (const member of roster.members) {
+    const updated = byId.get(member.id);
+    if (updated !== undefined) nextMembers.push(updated);
+  }
+  for (const member of minted) {
+    nextMembers.push(member);
+  }
   return Object.freeze({
     ...roster,
-    members: Object.freeze(roster.members.map((member) => byId.get(member.id) ?? member)),
+    nextOrdinal,
+    members: Object.freeze(nextMembers),
+    departures: Object.freeze(nextDepartures),
+    arrivals: Object.freeze(nextArrivals),
+    duesLeftAtSeconds,
+    dues: roster.dues,
   });
 }
 
 /**
- * Clock advance only moves tenure forward. It never fabricates visits or stay
- * response — the gym may have been away; service truth stays in the sim.
+ * Clock advance only moves tenure forward. It never fabricates visits, stay
+ * response, departures, arrivals, dues settlements, reputation settlements,
+ * or season leave/return — the gym may have been away; service truth stays
+ * in the sim, dues settle through `applyLivingMemberDues`, member-side
+ * reputation settles through `applyLivingMemberReputation`, and Athlete
+ * season settles through `applyLivingMemberSeason`. Production clock
+ * composition is `settleLivingMemberClock`.
  */
 export function advanceLivingMemberTenure(
   roster: LivingMemberRoster,
   _gapSeconds: number,
 ): LivingMemberRoster {
   return roster;
+}
+
+/**
+ * One writer for living-member dues. Settles `[dues.settledAtSeconds, toSeconds)`
+ * against time-weighted occupancy over that window. Active members pay through
+ * the mark. A G.2C2 leave stamped on `duesLeftAtSeconds` still pays the stub
+ * it was active. A stamp on the window start occupies the open GymHost tick
+ * rather than `[mark, mark)`. Exact replay of an already-settled mark is a
+ * full roster no-op. An earlier mark fails closed. Service observations do
+ * not call this.
+ */
+export function applyLivingMemberDues(
+  roster: LivingMemberRoster,
+  toSeconds: number,
+): LivingMemberRoster {
+  if (!Number.isFinite(toSeconds) || toSeconds < 0) {
+    refuseWith(`dues settle seconds must be a non-negative number, received ${toSeconds}`);
+  }
+  const fromSeconds = roster.dues.settledAtSeconds;
+  if (toSeconds < fromSeconds) {
+    refuseWith(`dues settle ${toSeconds} is earlier than last settled ${fromSeconds}`);
+  }
+  if (toSeconds === fromSeconds) return roster;
+  const departed: LivingMemberDuesDeparturePresence[] = [];
+  for (const record of roster.departures) {
+    const leftAt = roster.duesLeftAtSeconds[record.member.id];
+    if (leftAt === undefined) continue;
+    departed.push(
+      Object.freeze({
+        member: record.member,
+        departedAtSeconds: leftAt,
+      }),
+    );
+  }
+  for (const stub of seasonLeaveOccupancyStubs(roster, fromSeconds)) {
+    departed.push(stub);
+  }
+  const gymBucks = livingMemberDuesForWindow(
+    roster.members,
+    fromSeconds,
+    toSeconds,
+    Object.freeze(departed),
+  );
+  const last = lastLivingMemberDuesSettlement(roster.dues.settlements);
+  if (last !== null && last.fromSeconds === fromSeconds && last.toSeconds === toSeconds) {
+    if (last.gymBucks !== gymBucks) {
+      refuseWith(`dues settlement conflicts at ${fromSeconds}–${toSeconds}`);
+    }
+    return roster;
+  }
+  const settlement = createLivingMemberDuesSettlement(fromSeconds, toSeconds, gymBucks);
+  return Object.freeze({
+    ...roster,
+    dues: appendLivingMemberDuesSettlement(roster.dues, settlement),
+  });
+}
+
+/**
+ * One writer for living-member reputation. Settles
+ * `[reputation.settledAtSeconds, toSeconds)` against the same time-weighted
+ * occupancy G.2D uses. Active members contribute through the mark. A G.2C2
+ * leave stamped on `duesLeftAtSeconds` still contributes the stub it was
+ * active. A stamp on the window start occupies the open GymHost tick rather
+ * than `[mark, mark)`. Exact replay of an already-settled mark is a full
+ * roster no-op. An earlier mark fails closed. Service observations do not
+ * call this.
+ */
+export function applyLivingMemberReputation(
+  roster: LivingMemberRoster,
+  toSeconds: number,
+): LivingMemberRoster {
+  if (!Number.isFinite(toSeconds) || toSeconds < 0) {
+    refuseWith(`reputation settle seconds must be a non-negative number, received ${toSeconds}`);
+  }
+  const fromSeconds = roster.reputation.settledAtSeconds;
+  if (toSeconds < fromSeconds) {
+    refuseWith(`reputation settle ${toSeconds} is earlier than last settled ${fromSeconds}`);
+  }
+  if (toSeconds === fromSeconds) return roster;
+  const departed: LivingMemberReputationDeparturePresence[] = [];
+  for (const record of roster.departures) {
+    const leftAt = roster.duesLeftAtSeconds[record.member.id];
+    if (leftAt === undefined) continue;
+    departed.push(
+      Object.freeze({
+        member: record.member,
+        departedAtSeconds: leftAt,
+      }),
+    );
+  }
+  for (const stub of seasonLeaveOccupancyStubs(roster, fromSeconds)) {
+    departed.push(stub);
+  }
+  const reputation = livingMemberReputationForWindow(
+    roster.members,
+    fromSeconds,
+    toSeconds,
+    Object.freeze(departed),
+  );
+  const last = lastLivingMemberReputationSettlement(roster.reputation.settlements);
+  if (last !== null && last.fromSeconds === fromSeconds && last.toSeconds === toSeconds) {
+    if (last.reputation !== reputation) {
+      refuseWith(`reputation settlement conflicts at ${fromSeconds}–${toSeconds}`);
+    }
+    return roster;
+  }
+  const settlement = createLivingMemberReputationSettlement(fromSeconds, toSeconds, reputation);
+  return Object.freeze({
+    ...roster,
+    reputation: appendLivingMemberReputationSettlement(roster.reputation, settlement),
+  });
+}
+
+function seasonLeaveOccupancyStubs(
+  roster: LivingMemberRoster,
+  fromSeconds: number,
+): readonly LivingMemberDuesDeparturePresence[] {
+  const stubs: LivingMemberDuesDeparturePresence[] = [];
+  for (const record of roster.season.onLeave) {
+    if (record.leftAtSeconds > fromSeconds) {
+      stubs.push(
+        Object.freeze({
+          member: record.member,
+          departedAtSeconds: record.leftAtSeconds,
+        }),
+      );
+    }
+  }
+  return Object.freeze(stubs);
+}
+
+function requireSeasonOccupancyInvariants(roster: LivingMemberRoster): void {
+  const activeIds = new Set<string>();
+  for (const member of roster.members) {
+    activeIds.add(member.id);
+  }
+  const departedIds = new Set<string>();
+  for (const record of roster.departures) {
+    departedIds.add(record.member.id);
+  }
+  const onLeaveIds = new Set<string>();
+  for (const record of roster.season.onLeave) {
+    if (!livingMemberTakesSeasonLeave(record.member.type)) {
+      refuseWith(`season onLeave names non-Athlete ${record.member.id}`);
+    }
+    if (activeIds.has(record.member.id)) {
+      refuseWith(`season onLeave names active member ${record.member.id}`);
+    }
+    if (departedIds.has(record.member.id)) {
+      refuseWith(`season onLeave names departed member ${record.member.id}`);
+    }
+    if (onLeaveIds.has(record.member.id)) {
+      refuseWith(`season onLeave names member ${record.member.id} twice`);
+    }
+    onLeaveIds.add(record.member.id);
+  }
+  const occupied = roster.members.length + roster.season.onLeave.length;
+  const cap = ambientCountForRung(roster.rung);
+  if (occupied > cap) {
+    refuseWith(`season occupancy ${occupied} exceeds ${String(roster.rung)} ambient cap ${cap}`);
+  }
+}
+
+/**
+ * One writer for the Athlete season ledger. Event-at-boundary: at an
+ * in-season start every active Athlete goes on leave; at an in-season end
+ * every on-leave Athlete returns as the same identity. Nothing happens
+ * between boundaries. Exact replay of an already-settled mark is a full
+ * roster no-op. An earlier mark fails closed.
+ */
+export function applyLivingMemberSeason(
+  roster: LivingMemberRoster,
+  toSeconds: number,
+): LivingMemberRoster {
+  if (!Number.isFinite(toSeconds) || toSeconds < 0) {
+    refuseWith(`season settle seconds must be a non-negative number, received ${toSeconds}`);
+  }
+  const fromSeconds = roster.season.settledAtSeconds;
+  if (toSeconds < fromSeconds) {
+    refuseWith(`season settle ${toSeconds} is earlier than last settled ${fromSeconds}`);
+  }
+  if (toSeconds === fromSeconds) return roster;
+  requireSeasonOccupancyInvariants(roster);
+  const pending = athleteSeasonBoundariesBetween(fromSeconds, toSeconds);
+  if (
+    !pending.some((boundary) =>
+      athleteSeasonBoundaryWouldMove(roster.members, roster.season.onLeave, boundary),
+    )
+  ) {
+    return Object.freeze({
+      ...roster,
+      season: Object.freeze({
+        ...roster.season,
+        settledAtSeconds: toSeconds,
+      }),
+    });
+  }
+  let members = [...roster.members];
+  let onLeave = [...roster.season.onLeave];
+  const returns = [...roster.season.returns];
+  const departedIds = new Set<string>();
+  for (const record of roster.departures) {
+    departedIds.add(record.member.id);
+  }
+  for (const boundary of pending) {
+    if (boundary.phase === 'in-season') {
+      const staying: LivingGymMember[] = [];
+      for (const member of members) {
+        if (!livingMemberTakesSeasonLeave(member.type)) {
+          staying.push(member);
+          continue;
+        }
+        if (departedIds.has(member.id)) {
+          refuseWith(`season leave names departed member ${member.id}`);
+        }
+        onLeave.push(createLivingMemberSeasonLeaveRecord(member, boundary.atSeconds));
+      }
+      members = staying;
+    } else {
+      const activeIds = new Set<string>();
+      for (const member of members) {
+        activeIds.add(member.id);
+      }
+      for (const record of onLeave) {
+        if (activeIds.has(record.member.id)) {
+          refuseWith(`season return collides with active member ${record.member.id}`);
+        }
+        if (departedIds.has(record.member.id)) {
+          refuseWith(`season return names departed member ${record.member.id}`);
+        }
+        members.push(record.member);
+        returns.push(createLivingMemberSeasonReturnRecord(record, boundary.atSeconds));
+        activeIds.add(record.member.id);
+      }
+      onLeave = [];
+    }
+  }
+  const next: LivingMemberRoster = Object.freeze({
+    ...roster,
+    members: Object.freeze(members),
+    season: Object.freeze({
+      settledAtSeconds: toSeconds,
+      onLeave: Object.freeze(onLeave),
+      returns: Object.freeze(returns),
+    }),
+  });
+  requireSeasonOccupancyInvariants(next);
+  return next;
+}
+
+/**
+ * Production gym-clock composition: settle dues and reputation up to each
+ * season boundary that would actually move a member, apply leave/return at
+ * that mark, then settle through `toSeconds`. With no Athletes this is
+ * today's two ledger calls plus an empty season scan.
+ */
+export function settleLivingMemberClock(
+  roster: LivingMemberRoster,
+  toSeconds: number,
+): LivingMemberRoster {
+  if (!Number.isFinite(toSeconds) || toSeconds < 0) {
+    refuseWith(`clock settle seconds must be a non-negative number, received ${toSeconds}`);
+  }
+  if (roster.dues.settledAtSeconds !== roster.reputation.settledAtSeconds) {
+    refuseWith(
+      `dues settled ${roster.dues.settledAtSeconds} and reputation settled ${roster.reputation.settledAtSeconds} are out of sync`,
+    );
+  }
+  if (toSeconds < roster.season.settledAtSeconds) {
+    refuseWith(
+      `season settle ${toSeconds} is earlier than last settled ${roster.season.settledAtSeconds}`,
+    );
+  }
+  if (toSeconds < roster.dues.settledAtSeconds) {
+    refuseWith(
+      `dues settle ${toSeconds} is earlier than last settled ${roster.dues.settledAtSeconds}`,
+    );
+  }
+  let next = roster;
+  const boundaries = athleteSeasonBoundariesBetween(roster.season.settledAtSeconds, toSeconds);
+  for (const boundary of boundaries) {
+    if (!athleteSeasonBoundaryWouldMove(next.members, next.season.onLeave, boundary)) {
+      continue;
+    }
+    if (boundary.atSeconds > next.dues.settledAtSeconds) {
+      next = applyLivingMemberDues(next, boundary.atSeconds);
+      next = applyLivingMemberReputation(next, boundary.atSeconds);
+    }
+    next = applyLivingMemberSeason(next, boundary.atSeconds);
+  }
+  if (toSeconds !== next.dues.settledAtSeconds) {
+    next = applyLivingMemberDues(next, toSeconds);
+    next = applyLivingMemberReputation(next, toSeconds);
+  } else if (toSeconds !== next.reputation.settledAtSeconds) {
+    next = applyLivingMemberReputation(next, toSeconds);
+  }
+  next = applyLivingMemberSeason(next, toSeconds);
+  return next;
 }
 
 // ---------------------------------------------------------------------------

@@ -31,6 +31,9 @@
  * Recovery uses the same confirmation rule: sustained Stable service steps
  * concern back one state at a time. No random roll, wall clock, leave
  * percentage, or countdown exists here.
+ *
+ * G.2C2 consumes `livingMemberStayEvidence` as the single type-response
+ * classifier. Eligibility still does not delete a row in this file.
  */
 
 import { refuseWith } from './empireCore';
@@ -49,6 +52,7 @@ const LIVING_MEMBER_STAY_STATUSES = Object.freeze([
 export type LivingMemberStayStatus = (typeof LIVING_MEMBER_STAY_STATUSES)[number];
 export type LivingMemberStayCause = 'forming' | 'wait' | 'reliability' | 'service' | 'recovery';
 export type LivingMemberStayDirection = 'strain' | 'recovery';
+export type LivingMemberStayEvidence = 'forming' | 'strain' | 'recovery' | 'neutral';
 
 /**
  * Majority of the accepted recent-service memory, not a free-standing churn
@@ -138,6 +142,25 @@ function shouldAccumulateStrain(
   return type === 'casual' && label === 'Watching' && hasReason(retention, 'wait');
 }
 
+/**
+ * One-observation type-response classifier. G.2C1 stay transitions, G.2C2
+ * departure confirmation, and G.2C3 attraction all consume this result so the
+ * stages cannot disagree about whether accepted G.2B pressure is strain,
+ * recovery, or neutral for a member type.
+ */
+export function livingMemberStayEvidence(
+  type: MemberType,
+  retention: LivingMemberRetentionPressure,
+): LivingMemberStayEvidence {
+  if (retention.status === 'forming' || retention.pressure === null) {
+    return 'forming';
+  }
+  const label = formedRetentionLabel(retention);
+  if (shouldAccumulateStrain(type, retention, label)) return 'strain';
+  if (label === 'Stable') return 'recovery';
+  return 'neutral';
+}
+
 function confirmedState(
   previous: LivingMemberStayState,
   current: FormedStayStatus,
@@ -204,7 +227,9 @@ export function advanceLivingMemberStay(
     if (observedAtTick === previous.lastEvaluatedVisitTick) return previous;
   }
 
-  if (retention.status === 'forming' || retention.pressure === null) {
+  const evidence = livingMemberStayEvidence(type, retention);
+
+  if (evidence === 'forming') {
     if (previous.status !== 'forming') {
       refuseWith('formed living-member stay state cannot return to forming');
     }
@@ -217,10 +242,9 @@ export function advanceLivingMemberStay(
     });
   }
 
-  const label = formedRetentionLabel(retention);
   const current = formedStatus(previous.status);
 
-  if (shouldAccumulateStrain(type, retention, label)) {
+  if (evidence === 'strain') {
     if (current === 'departure-eligible') {
       return neutralState(current, observedAtTick, strainCause(retention));
     }
@@ -233,7 +257,7 @@ export function advanceLivingMemberStay(
     );
   }
 
-  if (label === 'Stable') {
+  if (evidence === 'recovery') {
     if (current === 'staying') {
       return neutralState(current, observedAtTick, 'recovery');
     }

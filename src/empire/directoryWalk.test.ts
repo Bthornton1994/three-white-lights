@@ -171,7 +171,14 @@ export const DIRECTORY_WALK = Object.freeze({
   // 26 -> 27: Stage G.2A `livingMemberExperience.ts`.
   // 27 -> 28: Stage G.2B `livingMemberRetention.ts`.
   // 28 -> 29: Stage G.2C1 `livingMemberStay.ts`.
-  SHIPPED_MODULES: 29,
+  // 29 -> 30: Stage G.2C2 `livingMemberDeparture.ts`.
+  // 30 -> 31: Stage G.2C3 `livingMemberArrival.ts`.
+  // 31 -> 32: Stage G.2D `livingMemberDues.ts`.
+  // 32 -> 33: Stage G.2E `livingMemberReputation.ts`.
+  // 33 -> 34: G2-ATHLETE-SEASON-01 `livingMemberSeason.ts`.
+  // 34 -> 36: CAREER-EMPIRE-REP-01 institutionalReputation.ts +
+  // sportingReputationLedger.ts.
+  SHIPPED_MODULES: 36,
   /**
    * Files the shared walk hands the censuses today, tests included.
    *
@@ -200,7 +207,13 @@ export const DIRECTORY_WALK = Object.freeze({
   // 56 -> 58: Stage G.2A `livingMemberExperience.ts` and its test.
   // 58 -> 60: Stage G.2B `livingMemberRetention.ts` and its test.
   // 60 -> 63: Stage G.2C1 `livingMemberStay.ts` plus unit and integration tests.
-  DIRECTORY_FILES: 63,
+  // 63 -> 66: Stage G.2C2 `livingMemberDeparture.ts` plus unit and integration tests.
+  // 66 -> 69: Stage G.2C3 `livingMemberArrival.ts` plus unit and integration tests.
+  // 69 -> 72: Stage G.2D `livingMemberDues.ts` plus unit and integration tests.
+  // 72 -> 75: Stage G.2E `livingMemberReputation.ts` plus unit and integration tests.
+  // 75 -> 78: G2-ATHLETE-SEASON-01 `livingMemberSeason.ts` plus unit and integration tests.
+  // 78 -> 83: CAREER-EMPIRE-REP-01 ledger, composer, and integration tests.
+  DIRECTORY_FILES: 83,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**
@@ -971,10 +984,16 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'floor.ts',
       'floorSim.ts',
       'floorSprites.ts',
+      'institutionalReputation.ts',
       'ladder.ts',
       'ladderView.tsx',
+      'livingMemberArrival.ts',
+      'livingMemberDeparture.ts',
+      'livingMemberDues.ts',
       'livingMemberExperience.ts',
+      'livingMemberReputation.ts',
       'livingMemberRetention.ts',
+      'livingMemberSeason.ts',
       'livingMemberStay.ts',
       'livingMembers.ts',
       'management.ts',
@@ -987,6 +1006,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'sessions.ts',
       'social.ts',
       'sportingReputation.ts',
+      'sportingReputationLedger.ts',
       'stationCapability.ts',
       'stationView.ts',
       'trainingStation.ts',

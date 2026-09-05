@@ -197,6 +197,11 @@ describe('useMeetDay has one source of truth, and it is not its own', () => {
     expect(CODE).toMatch(/recordMeetResult/);
     expect(CODE).toMatch(/\.then\(/);
   });
+
+  it('does not take Crossing 9 onRecorded — that report stays on MeetScreen', () => {
+    expect(CODE).not.toMatch(/\bonRecorded\b/);
+    expect(CODE).not.toMatch(/onRecordedRef/);
+  });
 });
 
 // ---------------------------------------------------------------------------

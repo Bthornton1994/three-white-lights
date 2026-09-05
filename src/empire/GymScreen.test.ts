@@ -107,6 +107,7 @@ import {
   sessionItemFootprint,
 } from './floor';
 import { EMPIRE_TUNING } from './empireTuning';
+import { institutionalReputation } from './institutionalReputation';
 import {
   type CountedDecisionRecord,
   type ManagedEquipmentItem,
@@ -142,7 +143,18 @@ import {
   playerFacingManagerCapability,
   stationConditionView,
 } from './stationView';
+import { FloorGrid } from './FloorGrid';
+import type { FloorSimServiceObservation } from './floorSim';
 import { GymScreen } from './GymScreen';
+import {
+  lastLivingMemberSeasonEvent,
+  playerFacingSeasonLine,
+} from './livingMemberSeason';
+import {
+  livingMemberById,
+  type LivingGymMember,
+  type LivingMemberRoster,
+} from './livingMembers';
 
 const T = EMPIRE_TUNING;
 
@@ -740,6 +752,39 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
     }
     compared += 6;
   }
+  const reputationReading = institutionalReputation(
+    state.livingMembers.reputation,
+    state.sportingReputation,
+  );
+  const reputationLine = T.SPORTING_REPUTATION.copy.composed
+    .replace('{fromMembers}', String(reputationReading.fromMembers))
+    .replace('{fromSporting}', String(reputationReading.fromSporting));
+  expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(reputationLine);
+  expect(textOf(findByTestId(root, 'gymscreen-reputation'))).not.toMatch(/\+REP/);
+  // REP-EVIDENCE-01: both halves live on the HUD, not only the more-drawer
+  // diagnostics block. testID readers still find the same ids.
+  expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain('gymscreen-reputation');
+  expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).not.toContain(
+    'gymscreen-reputation',
+  );
+  expect(testIdsUnder(findByTestId(root, 'gymscreen-diagnostics'))).not.toContain(
+    'gymscreen-reputation',
+  );
+  const credit = state.lastSportingCredit;
+  if (credit === null) {
+    expect(findAllByTestId(root, 'gymscreen-reputation-reason-0').length).toBe(0);
+  } else if (credit.kind === 'credited') {
+    credit.reasons.forEach((row, index) => {
+      expect(textOf(findByTestId(root, `gymscreen-reputation-reason-${index}`))).toBe(row.text);
+    });
+    compared += credit.reasons.length;
+  } else {
+    expect(textOf(findByTestId(root, 'gymscreen-reputation-reason-0'))).toBe(
+      T.SPORTING_REPUTATION.copy.unknownMeet,
+    );
+    compared += 1;
+  }
+  compared += 2;
   return compared;
 }
 
@@ -995,8 +1040,8 @@ describe('stage 4: every new control dispatches exactly the action it names', ()
     const dispatched: GymViewAction[] = [];
     const root = render(worn, dispatched);
     const owned = ownedItemsOf(worn.managed.gym);
-    // GDD §5.14 STAGE C.1: `gymscreen-repair-<item>` is gone from this
-    // screen — that control is the contextual station panel's now
+    // GDD §5.14 STAGE C.1: `gymscreen-repair-<item>` is gone from GymScreen.
+    // Repair now lives on FloorGrid's station strip
     // (`floorgrid-station-panel-repair`, `FloorGrid.tsx`), which this file
     // cannot render (`GymScreen({state, dispatch})` never expands the
     // `<FloorGrid .../>` element descriptor — see this file's own header).
@@ -1860,5 +1905,283 @@ describe('S4h: every rendered Pressable is visibly a control', () => {
       'ready-to-reopen gym': 37,
     });
     expect(total).toBe(167);
+  });
+});
+
+function floorGridFrom(root: Rendered): Rendered {
+  function walk(node: unknown): Rendered | null {
+    if (!isRendered(node)) return null;
+    if (node.type === FloorGrid) return node;
+    for (const child of childrenOf(node)) {
+      const found = walk(child);
+      if (found !== null) return found;
+    }
+    return null;
+  }
+  const found = walk(root);
+  expect(found, 'GymScreen embeds FloorGrid').not.toBeNull();
+  return found as Rendered;
+}
+
+function livingRosterOf(root: Rendered): LivingMemberRoster {
+  const livingMembers = floorGridFrom(root).props['livingMembers'];
+  expect(livingMembers, 'FloorGrid receives livingMembers').toBeTruthy();
+  return livingMembers as LivingMemberRoster;
+}
+
+function adverseVisit(member: LivingGymMember, tick: number): FloorSimServiceObservation {
+  return Object.freeze({
+    memberId: member.id,
+    memberIndex: 0,
+    memberType: member.type,
+    stationKind: 'training' as const,
+    stationKey: 'training:competition-bench-bay',
+    queueWaitTicks: 200,
+    trainingExperience: T.STATION_STOCK_TRAINING_EXPERIENCE,
+    outcome: 'interrupted' as const,
+    observedAtTick: tick,
+  });
+}
+
+function departMember(state: GymViewState, memberId: LivingGymMember['id']): GymViewState {
+  let next = state;
+  for (let tick = 1; tick <= 10; tick += 1) {
+    const current = livingMemberById(next.livingMembers, memberId);
+    expect(current, `member ${memberId} still living at tick ${tick}`).not.toBeNull();
+    next = gymViewReduce(next, {
+      kind: 'apply-living-member-observations',
+      observations: [adverseVisit(current as LivingGymMember, tick)],
+    });
+  }
+  return next;
+}
+
+describe('Stage G.2C2 — FloorGrid receives compacted living identity after departure', () => {
+  it('keeps C on FloorGrid props when B leaves A/B/C → A/C', () => {
+    const openingState = createGymViewState();
+    const roster = openingState.livingMembers;
+    expect(roster.members.length).toBeGreaterThanOrEqual(3);
+    const memberA = roster.members[0] as LivingGymMember;
+    const memberB = roster.members[1] as LivingGymMember;
+    const memberC = roster.members[2] as LivingGymMember;
+    const before = livingRosterOf(render(openingState, []));
+    expect(before.members.map((member) => member.id)).toEqual([memberA.id, memberB.id, memberC.id]);
+
+    const after = departMember(openingState, memberB.id);
+    expect(livingMemberById(after.livingMembers, memberB.id)).toBeNull();
+    const gridRoster = livingRosterOf(render(after, []));
+    expect(gridRoster).toBe(after.livingMembers);
+    expect(gridRoster.members.map((member) => member.id)).toEqual([memberA.id, memberC.id]);
+    expect(gridRoster.members[1]?.id).toBe(memberC.id);
+    expect(gridRoster.members[1]?.id).not.toBe(memberB.id);
+    expect(livingMemberById(gridRoster, memberC.id)?.displayName).toBe(memberC.displayName);
+    expect(gridRoster.departures[0]?.member.id).toBe(memberB.id);
+  });
+
+  it('does not hand FloorGrid a replacement occupant for a departed selected member', () => {
+    const openingState = createGymViewState();
+    const memberB = openingState.livingMembers.members[1] as LivingGymMember;
+    const memberC = openingState.livingMembers.members[2] as LivingGymMember;
+    const after = departMember(openingState, memberB.id);
+    const gridRoster = livingRosterOf(render(after, []));
+    expect(livingMemberById(gridRoster, memberB.id)).toBeNull();
+    expect(gridRoster.members.some((member) => member.id === memberB.id)).toBe(false);
+    expect(gridRoster.members[1]?.id).toBe(memberC.id);
+    expect(gridRoster.departures.some((record) => record.member.id === memberB.id)).toBe(true);
+  });
+});
+
+describe('G2-ATHLETE-SEASON-01 — FloorGrid season notice', () => {
+  const weekSeconds = T.DAYS_PER_TRAINING_WEEK * T.SECONDS_PER_DAY;
+  const leaveAt = weekSeconds * T.ATHLETE_SEASON.firstInSeasonWeek;
+  const returnAt = leaveAt + weekSeconds * T.ATHLETE_SEASON.inSeasonWeeks;
+
+  function withAthlete(state: GymViewState): GymViewState {
+    const member = state.livingMembers.members[0] as LivingGymMember;
+    return Object.freeze({
+      ...state,
+      livingMembers: Object.freeze({
+        ...state.livingMembers,
+        members: Object.freeze(
+          state.livingMembers.members.map((row, index) =>
+            index === 0 ? Object.freeze({ ...row, type: 'athlete' as const }) : row,
+          ),
+        ),
+      }),
+    });
+  }
+
+  it('hands FloorGrid a leave event whose copy is the away line', () => {
+    const opened = withAthlete(createGymViewState());
+    const athlete = opened.livingMembers.members[0] as LivingGymMember;
+    const left = gymViewReduce(opened, { kind: 'advance-clock', gapSeconds: leaveAt });
+    const roster = livingRosterOf(render(left, []));
+    expect(roster).toBe(left.livingMembers);
+    const event = lastLivingMemberSeasonEvent(roster.season);
+    expect(event?.kind).toBe('leave');
+    const copy = playerFacingSeasonLine(event!);
+    expect(copy).toBe(`${athlete.displayName} is away for the season.`);
+    expect(copy).not.toMatch(/%/);
+    expect(copy).not.toMatch(/\d+\s*week/);
+    expect(copy).not.toMatch(/days/i);
+  });
+
+  it('hands FloorGrid a return event whose copy is the back line', () => {
+    const opened = withAthlete(createGymViewState());
+    const athlete = opened.livingMembers.members[0] as LivingGymMember;
+    const back = gymViewReduce(opened, { kind: 'advance-clock', gapSeconds: returnAt });
+    const event = lastLivingMemberSeasonEvent(livingRosterOf(render(back, [])).season);
+    expect(event?.kind).toBe('return');
+    const copy = playerFacingSeasonLine(event!);
+    expect(copy).toBe(`${athlete.displayName} is back from the season.`);
+    expect(copy).not.toMatch(/%/);
+    expect(copy).not.toMatch(/days/i);
+  });
+});
+
+describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
+  it('opens with both halves at zero and no reason rows on the play HUD', () => {
+    const state = createGymViewState();
+    expect(state.surface).toBe('play');
+    const root = render(state, []);
+    expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(
+      T.SPORTING_REPUTATION.copy.composed
+        .replace('{fromMembers}', '0')
+        .replace('{fromSporting}', '0'),
+    );
+    expect(findAllByTestId(root, 'gymscreen-reputation-reason-0').length).toBe(0);
+    expect(textOf(findByTestId(root, 'gymscreen-reputation'))).not.toMatch(/\+REP/);
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain('gymscreen-reputation');
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).not.toContain(
+      'gymscreen-reputation',
+    );
+  });
+
+  it('shows the placing reason after a first-of-16 PR credit, still on the HUD', () => {
+    const credited = gymViewReduce(createGymViewState(), {
+      kind: 'credit-sporting-result',
+      meetId: 'local-open-2026',
+      facts: Object.freeze({
+        totalKg: 600,
+        isTotalPr: true,
+        placing: Object.freeze({ place: 1, fieldSize: 16 }),
+      }),
+    });
+    const root = render(credited, []);
+    expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(
+      T.SPORTING_REPUTATION.copy.composed
+        .replace('{fromMembers}', '0')
+        .replace('{fromSporting}', '40'),
+    );
+    expect(textOf(findByTestId(root, 'gymscreen-reputation-reason-0'))).toBe(
+      T.SPORTING_REPUTATION.copy.placing
+        .replace('{place}', '1')
+        .replace('{field}', '16')
+        .replace('{kind}', 'local'),
+    );
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain(
+      'gymscreen-reputation-reason-0',
+    );
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).not.toContain(
+      'gymscreen-reputation-reason-0',
+    );
+    expect(textOf(findByTestId(root, 'gymscreen-reputation'))).not.toMatch(/\+REP/);
+  });
+
+  it('shows the members half on the HUD after a played clock settle, meets still zero', () => {
+    const opened = createGymViewState();
+    const advanced = gymViewReduce(opened, {
+      kind: 'advance-clock',
+      gapSeconds: T.SECONDS_PER_DAY,
+      mode: 'online',
+    });
+    const reading = institutionalReputation(
+      advanced.livingMembers.reputation,
+      advanced.sportingReputation,
+    );
+    expect(reading.fromMembers).toBeGreaterThan(0);
+    expect(reading.fromSporting).toBe(0);
+    const root = render(advanced, []);
+    expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(
+      T.SPORTING_REPUTATION.copy.composed
+        .replace('{fromMembers}', String(reading.fromMembers))
+        .replace('{fromSporting}', '0'),
+    );
+    expect(findAllByTestId(root, 'gymscreen-reputation-reason-0').length).toBe(0);
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain('gymscreen-reputation');
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).not.toContain(
+      'gymscreen-reputation',
+    );
+  });
+
+  it('shows both credited halves together on the HUD after a clock settle and a played meet', () => {
+    const advanced = gymViewReduce(createGymViewState(), {
+      kind: 'advance-clock',
+      gapSeconds: T.SECONDS_PER_DAY,
+      mode: 'online',
+    });
+    const credited = gymViewReduce(advanced, {
+      kind: 'credit-sporting-result',
+      meetId: 'local-open-2026',
+      facts: Object.freeze({
+        totalKg: 600,
+        isTotalPr: true,
+        placing: Object.freeze({ place: 1, fieldSize: 16 }),
+      }),
+    });
+    const reading = institutionalReputation(
+      credited.livingMembers.reputation,
+      credited.sportingReputation,
+    );
+    expect(reading.fromMembers).toBeGreaterThan(0);
+    expect(reading.fromSporting).toBe(40);
+    const root = render(credited, []);
+    expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(
+      T.SPORTING_REPUTATION.copy.composed
+        .replace('{fromMembers}', String(reading.fromMembers))
+        .replace('{fromSporting}', '40'),
+    );
+    expect(textOf(findByTestId(root, 'gymscreen-reputation-reason-0'))).toBe(
+      T.SPORTING_REPUTATION.copy.placing
+        .replace('{place}', '1')
+        .replace('{field}', '16')
+        .replace('{kind}', 'local'),
+    );
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain('gymscreen-reputation');
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain(
+      'gymscreen-reputation-reason-0',
+    );
+  });
+
+  it('fails closed on an unknown meet: HUD stays at zero sporting and names the stored refuse', () => {
+    const opened = createGymViewState();
+    const missed = gymViewReduce(opened, {
+      kind: 'credit-sporting-result',
+      meetId: 'not-on-the-sporting-map',
+      facts: Object.freeze({
+        totalKg: 600,
+        isTotalPr: true,
+        placing: Object.freeze({ place: 1, fieldSize: 16 }),
+      }),
+    });
+    expect(missed.sportingReputation).toBe(opened.sportingReputation);
+    expect(missed.sportingReputation.creditedReputation).toBe(0);
+    expect(missed.lastSportingCredit).toEqual({
+      kind: 'not-creditable',
+      meetId: 'not-on-the-sporting-map',
+      reason: 'unknown-meet',
+    });
+    const root = render(missed, []);
+    expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(
+      T.SPORTING_REPUTATION.copy.composed
+        .replace('{fromMembers}', '0')
+        .replace('{fromSporting}', '0'),
+    );
+    expect(textOf(findByTestId(root, 'gymscreen-reputation-reason-0'))).toBe(
+      T.SPORTING_REPUTATION.copy.unknownMeet,
+    );
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain(
+      'gymscreen-reputation-reason-0',
+    );
   });
 });

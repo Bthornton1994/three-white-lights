@@ -1,0 +1,16 @@
+{
+  "capturedFrom": {
+    "commit": "626a0a151dbd6de719ed0322b59542251640f37b",
+    "branch": "cursor/sf-twl-g2d-dues-62c6",
+    "dirty": false,
+    "capturedAt": "2026-09-05T03:11:34.317Z"
+  },
+  "viewport": {
+    "WIDTH": 390,
+    "HEIGHT": 844
+  },
+  "gymBucksText": "gym bucks: 1527.865694",
+  "gymBucks": 1527.865694,
+  "duesText": "DUES 130 gym bucks a day",
+  "shot": "390x844-member-dues.png"
+}

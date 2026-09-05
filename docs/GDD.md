@@ -2,7 +2,49 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-08-05 (§7.2 — the cut-in's "no Tier 2 at all" cost is
+**Last updated:** 2026-09-05 (SF-TWL-HYG-003 — CAREER-EMPIRE-REP-01
+factory freeze pin on Session B is squash memorial
+`cae174d8f46d7652ae1873f7594a23133b09c4db`. Pre-squash identity
+`34b98a06772db81126b68deec220a24328892a22` is not an object on this
+tree. Human feel gate not run — not CLOSED. G2-ATHLETE-SEASON-01 is
+FROZEN at `9720ea48f34e1f2670088f1c129026d54668776e`, not IN PROGRESS.)
+Earlier: 2026-09-05 (CAREER-EMPIRE-REP-01 P2 — no `?meet=`
+path, including `live`, credits sporting reputation. `?meet=live` is a
+defined debug frame with `serverPort: undefined`; AppShell selects a
+non-crediting stand-in (`debugMeetStandIn`) for it, never the sporting-
+credit `playedMeetPort` view and never the app singleton. Only the
+production played path (no meetFrame) uses the AppShell-owned view.
+Crossing 9 stays the mounted MeetScreen report. Factory freeze remains
+`cae174d8f46d7652ae1873f7594a23133b09c4db` — human feel gate not run —
+not CLOSED. Sporting ledger on `GymViewState` composed
+with G.2E at points. Prior `EmpireState.reputation` phrase names this
+composed v2 reading. G2-ATHLETE-SEASON-01 FROZEN at
+`9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze; human feel
+gate not run — not CLOSED). G.2E FROZEN at
+`cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel
+gate not run — not CLOSED). G.2D CLOSED / FROZEN at
+`28611af74dd6479bfad58763ebba72db5942307c`.
+Earlier: 2026-09-05 (CAREER-EMPIRE-REP-01 P1 — a leave during
+the in-flight meet save can no longer drop sporting credit. AppShell
+owns a played-port view that credits from `recordMeetResult`; Crossing 9
+stays the MeetScreen `onRecorded` report. A recorded Total that cannot
+credit fails closed visibly. Factory freeze remains
+`cae174d8f46d7652ae1873f7594a23133b09c4db` — human feel gate not run —
+not CLOSED. Sporting ledger on `GymViewState` composed
+with G.2E at points. Prior `EmpireState.reputation` phrase names this
+composed v2 reading.)
+Earlier: 2026-09-05 (G.2E IN PROGRESS — member-side living-member
+reputation ledger and reputation-gated high-paying vacancy arrival.
+G.2D CLOSED / FROZEN at `28611af74dd6479bfad58763ebba72db5942307c`.
+Earlier: 2026-09-05 (G.2D P1 — a played leave stamped on the
+settle-window start still occupies the open GymHost tick, so production
+`gymViewReduce` occupancy is not `[mark, mark)`. Unsettled-window dues
+are time-weighted presence, not the active roster at the settle mark.
+Earlier: 2026-09-05 (G.2D P1 — unsettled-window dues occupancy is
+time-weighted presence, not the active roster at the settle mark. A G.2C2
+leave inside the window still pays the gym-clock stub it was active;
+a member who already left before the window does not pay. Joins already
+pro-rated from `joinedAtSeconds`. Earlier: 2026-08-05 (§7.2 — the cut-in's "no Tier 2 at all" cost is
 **two costs, not one**. It was stated as an identification cost only; the surface
 also loses `tier2.shortName`, which is the panel's remedy for a name too wide for
 it, and the cut-in's substitute — wrap, then overflow, then widen the grid —
@@ -3196,11 +3238,32 @@ than the ruling's own §1–§23 sequence:
   wait formula remains `exp(-ticks / 110)`. Independently verified
   mint `ba8561bfd11e9e2a5062923d4054b59e0976dcc0` (docs/comment only;
   no product-runtime change). **G.2B CLOSED** (COMMON / type-blind
-  retention-pressure foundation). **G.2C1 FOUNDATION BUILT, AWAITING
-  FREEZE** — persistent stay response from accepted G.2B pressure.
-  It does not delete members, does not wire dues or reputation, and
-  does not start G.2C arrivals/departures. G.2C / G.2D / G.2E remain
-  blocked.
+  retention-pressure foundation). **G.2C1 CLOSED / FROZEN** at
+  `c8776cadcb57ef6f16acabe4f962858c6b2dac0a` — persistent stay
+  response from accepted G.2B pressure; eligibility is not removal.
+  **G.2C2 CLOSED / FROZEN** at
+  `1493f43807753eda3654c428e4234702a7da45f4` — actual living-member
+  departure after eligibility plus one further strain-qualifying
+  service observation.   **G.2C3 CLOSED / FROZEN** at
+  `2b0f52bdcd94004400937e450c8db12727ca74ca` — vacancy arrival /
+  population replenishment plus P1 honest Watching/neutral writer proof.
+  **G.2D CLOSED / FROZEN** at
+  `28611af74dd6479bfad58763ebba72db5942307c` — living-member dues
+  from accepted G.2A experience, clock-settled on the roster ledger and
+  credited onto the spendable Gym Bucks purse (added to frozen D2
+  facility income). P1: unsettled-window occupancy is time-weighted
+  presence (in-window leaves still pay the active stub; a played leave
+  on the open settle mark occupies the GymHost tick). **G.2E FROZEN** at
+  `cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel
+  gate not run — not CLOSED) — member-side reputation from that same
+  occupancy, plus reputation-gated high-paying vacancy arrival.
+  **G2-ATHLETE-SEASON-01 FROZEN** at
+  `9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze; human feel
+  gate not run — not CLOSED) — shared gym-clock Athlete leave/return.
+  **CAREER-EMPIRE-REP-01 FROZEN** at
+  `cae174d8f46d7652ae1873f7594a23133b09c4db` (squash memorial on Session
+  B; factory freeze; human feel gate not run — not CLOSED). Portfolio
+  and NpcLifter merge stay blocked.
 
 ### Human Stage C rejection at `f097695b`
 
@@ -4225,17 +4288,23 @@ The week-boundary jump remains away (offline). Reset gym is unchanged.
 
 Source trace (not inferred):
 
-- Gym Bucks on the played path are `ladderIncomeRatePerHour(rung)` × banked
-  seconds × online/offline fraction, via `advanceGymClock` → `managedCheckIn`
-  → `gymCheckIn` → `ladderCheckIn` → `accrueLadderGymBucks`. FloorSim
-  completions, queue length, wait, changeover duration, station training
-  experience, and station utilization are not inputs to that rate.
-- `memberSatisfaction`, `memberDuesGymBucks`, and `reputationFromMembers`
-  exist as pure functions in `members.ts`. `management.ts` does not import
-  `members.ts`. No shipped `src/empire/` module other than `members.ts`
-  itself calls those three functions. There is no persistent live-floor
-  member-outcome composition consuming actual queue / changeover /
-  training-experience history.
+- Gym Bucks on the played path are the frozen D2 facility lump
+  (`ladderIncomeRatePerHour(rung)` × banked seconds × online/offline
+  fraction, via `advanceGymClock` → `managedCheckIn` → `gymCheckIn` →
+  `ladderCheckIn` → `accrueLadderGymBucks`) plus living-member dues
+  (`applyLivingMemberDues` ledger delta, credited onto `ladder.gymBucks`
+  in the same `advanceGymClock`). FloorSim completions, queue length, wait,
+  changeover duration, station training experience, and station utilization
+  are not inputs to that rate.
+- `memberSatisfaction` and `reputationFromMembers` exist as pure functions
+  in `members.ts` and still have no shipped callers outside that file.
+  `management.ts` does not import `members.ts`. G.2D's `livingMemberDues.ts`
+  is the one shipped caller of `memberDuesGymBucks` / `memberBaseDuesGymBucks`.
+  Living dues settle onto `LivingMemberRoster.dues` and the production clock
+  path credits that ledger onto `ladder.gymBucks` on top of the D2 facility
+  lump. This is not a D2 rate retune. FloorSim completions, queue, wait,
+  changeover, and utilization are still not inputs to the spendable
+  ladder rate.
 
 Consequences of that graph, not of prices:
 
@@ -4478,10 +4547,11 @@ meaningful, and is not the shipped recommendation.
 wired, the player must be able to tell why it changed. Each sporting term
 carries a reason `kind` and a `text` line. No unexplained +REP toast.
 
-**D2-CONSEQUENCE-01 remains true.** Quality / Capacity / Throughput have
-truthful physical mechanisms, but the current played floor does not yet
-convert service quality into a durable member/business outcome. Stage E
-does not implement that member-outcome contribution.
+**D2-CONSEQUENCE-01 remains true of Quality / Capacity / Throughput.** Those
+axes have truthful physical mechanisms, but they still do not write
+`ladder.gymBucks`. G.2D living dues do credit the spendable purse on clock
+settle, added to the frozen D2 facility lump. That is not a Q/C/T write
+and not a D2 rate retune. Stage E does not implement member-side reputation.
 
 **Wiring remains blocked.** Career/Meet result → Empire persistent reputation
 state is a later explicit crossing.
@@ -4755,15 +4825,18 @@ behavior.
 | G.1 | CLOSED at `c27f714c` |
 | G.2A | CLOSED at `255de8a5`; mint `ba8561bf` |
 | G.2B | CLOSED — COMMON / type-blind |
-| G.2C1 | FOUNDATION BUILT; awaiting freeze. No roster deletion. |
+| G.2C1 | CLOSED / FROZEN at `c8776cadcb57ef6f16acabe4f962858c6b2dac0a`. No roster deletion in G.2C1. |
+| G.2C2 | CLOSED / FROZEN at `1493f43807753eda3654c428e4234702a7da45f4`. Actual departure after eligibility plus one new strain-qualifying observation. |
+| G.2C3 | CLOSED / FROZEN at `2b0f52bdcd94004400937e450c8db12727ca74ca`. Vacancy arrival after attraction-qualifying service. No reputation gating. |
 | G2-CONDITION-01 | OPEN — service-level condition attribution missing |
 | G2-FIT-01 | OPEN — equipment fit is attraction, not recent service |
 | G2-TYPE-01 | OPEN — no type-specific **satisfaction** interpretation |
-| G2-ATHLETE-SEASON-01 | OPEN — Athlete leave/return needs G.2C |
-| G.2C | BLOCKED — actual arrivals/departures |
-| G.2D | BLOCKED |
-| G.2E | BLOCKED |
-| Career → Empire reputation | BLOCKED |
+| G2-ATHLETE-SEASON-01 | FROZEN at `9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze; human feel gate not run — not CLOSED). |
+| G2-DUES-PURSE-01 | CLOSED — living dues credit the spendable ladder purse on clock settle; D2 facility income stays additive |
+| G.2C | G.2C1 frozen. G.2C2 frozen. G.2C3 frozen. Reputation-gated high-paying rates remain G.2E. |
+| G.2D | CLOSED / FROZEN at `28611af74dd6479bfad58763ebba72db5942307c`. Living-member dues from G.2A experience. P1 occupancy is time-weighted presence including open-mark production leaves; purse composition in this slice. |
+| G.2E | FROZEN at `cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel gate not run — not CLOSED). Member-side institutional reputation from living occupancy; high-paying (Athlete, Serious Lifter) vacancy arrival gated on credited living-member reputation. |
+| Career → Empire reputation | CAREER-EMPIRE-REP-01 FROZEN at `cae174d8f46d7652ae1873f7594a23133b09c4db` (squash memorial on Session B; factory freeze; human feel gate not run — not CLOSED). `GymViewState.sportingReputation` composed with G.2E at points. Literal v1 `EmpireState.reputation` stays unwritten. |
 | Portfolio | BLOCKED |
 
 **Proven causal chain:** physical gym decision → real FloorSim service
@@ -4850,11 +4923,13 @@ merge.
 
 #### Stage G.2C1 — Persistent Stay-Response Foundation
 
-**STAGE G.2C1 FOUNDATION BUILT, AWAITING FREEZE.** This slice turns
+**STAGE G.2C1 CLOSED / FROZEN** at
+`c8776cadcb57ef6f16acabe4f962858c6b2dac0a`. This slice turns
 repeated accepted G.2B pressure evaluations into a persistent member
 response. It does not calculate satisfaction, does not reinterpret
 pressure as probability, and does not remove a roster row. Actual
-arrivals/departures, G.2C2, G.2D, and G.2E stay blocked.
+member removal is G.2C2. G.2C3 vacancy arrival is a later slice. G.2D and G.2E
+stay blocked.
 
 **Proven causal chain:** physical gym decision → real FloorSim service
 → persistent N=5 member history → G.2A experience → G.2B type-blind
@@ -4862,8 +4937,8 @@ retention pressure → G.2C1 `stayState`.
 
 **Statuses:** `forming` → `staying` → `unsettled` → `considering-exit`
 → `departure-eligible`. Forming is uncertainty, not a stay claim.
-`departure-eligible` is a persistent flag for a later stage, not a
-departure.
+`departure-eligible` is a persistent flag, not a departure. G.2C2
+consumes that flag; this stage does not delete the row.
 
 **Confirmation rule:** majority of the same five-visit memory window
 G.2A ships: `floor(5 / 2) + 1 = 3` consecutive qualifying observations
@@ -4879,7 +4954,8 @@ visits.
 
 **Type treatment is the G.2C1 response boundary only.** G.2B remains
 COMMON / type-blind. Type does not rewrite WAIT / TRAINING / SERVICE /
-overall experience or the pressure index.
+overall experience or the pressure index. The classifier is
+`livingMemberStayEvidence`; G.2C2 and G.2C3 consume that same function.
 
 | Type | G.2C1 response |
 |---|---|
@@ -4897,11 +4973,523 @@ the same member/tick fail closed.
 clock, no leave percentage, no countdown, no dues, no Empire reputation
 write, no Career import, no Portfolio, no NpcLifter merge. No
 player-facing departure copy. No speculative “departure eligible”
-helpers — only the persistent state and transition machinery
-`livingMembers.ts` actually consumes.
+helpers — only the persistent state, the shared evidence classifier,
+and transition machinery `livingMembers.ts` actually consumes.
 
-**Still blocked:** actual member removal, arrival-rate system, G.2C2,
-G.2D, G.2E.
+#### Stage G.2C2 — Actual Living-Member Departure Execution
+
+**STAGE G.2C2 CLOSED / FROZEN** at
+`1493f43807753eda3654c428e4234702a7da45f4`. This is the first slice allowed
+to remove a living member from the active gym roster. It is not a
+churn-system rewrite. Arrivals, arrival rates, dues, reputation,
+percentages, probabilities, random rolls, countdowns, wall-clock churn,
+Athlete seasonality, Career/Meet reputation, Portfolio, and NpcLifter
+merging stay blocked except for the G.2C3 vacancy-arrival slice that
+follows.
+
+**Eligibility vs actual departure:** G.2C1 reaching `departure-eligible`
+does not delete the member. The member stays on the active roster.
+Subsequent accepted service observations still pass G.2A → G.2B →
+G.2C1. If sustained Stable evidence recovers them out of
+`departure-eligible`, no departure occurs. If, while already eligible,
+a newly accepted service observation is itself strain-qualifying under
+the frozen G.2C1 type-response classifier (`livingMemberStayEvidence`
+on that visit’s own G.2A → G.2B reading), the member departs after
+that observation is accepted. G.2C1 stay continues to use G.2B of the
+N=5 window, so leftover window strain cannot turn a Stable visit into
+a leave.
+
+- shortest all-adverse path to eligibility = 9 observations
+- earliest all-adverse actual departure = 10 observations
+
+There is no new counter, countdown, probability, random roll, or
+elapsed-time hazard. Neutral service while eligible does not itself
+cause departure. The tenth observation is the first new
+strain-confirming service event after G.2C1 has already established
+eligibility.
+
+**Archive / idempotence:** a departed member is removed from
+`LivingMemberRoster.members` and stored on `departures`. Exact replay
+of the departure-causing observation is a full roster no-op. Same
+departed member + same tick + conflicting facts fail closed, including
+a type mismatch against the archived snapshot (`memberType` is not
+added to G.2A visit history). A later observation for a departed
+member fails closed. No silent resurrection. No returning members.
+
+**Identity:** `nextOrdinal` is a monotonic allocator. Departed IDs are
+never reused. Relocation expansion mints from `nextOrdinal`, not from
+active `members.length`. Display names stay assigned once at creation.
+Existing active members keep identity, type, displayName,
+joinedAtSeconds, history, and stayState.
+
+**FloorSim:** `reconcileFloorSimPopulation` drops simulator bodies
+whose `memberId` is no longer active, preserves survivors (cell,
+queue/use, timers, target), reindexes the sim-local index space, and
+produces no observation. Unknown/new IDs through this seam fail closed.
+`createFloorSimState` may represent an active population smaller than
+the facility's ambient placement count; it may not exceed that count.
+
+**Selection:** FloorGrid selection is keyed by `memberId`. If someone
+before the selected member leaves, the selected member stays selected.
+If the selected member leaves, the card closes. Sprites are keyed by
+`memberId`.
+
+**Player-facing:** a last-departure notice names the member and the
+accepted G.2B reason. No %, no countdown, no “3 visits left,” no
+upgrade-ownership guess, no raw crowdingLoad.
+
+**Still blocked after G.2C2 freeze:** G.2D, G.2E, Athlete
+seasonality (G2-ATHLETE-SEASON-01), dues, reputation, Career → Empire
+reputation, Portfolio, NpcLifter merge. G.2C3 vacancy arrival is the
+next authorised slice.
+
+#### Stage G.2C3 — Vacancy Arrival / Population Replenishment
+
+**STAGE G.2C3 CLOSED / FROZEN** at
+`2b0f52bdcd94004400937e450c8db12727ca74ca` (includes P1 honest
+Watching/neutral writer proof). After G.2C2 the
+active roster can sit below the facility ambient cap. G.1 relocation
+still appends when the destination cap is larger. This slice is the
+first allowed to mint a new living member at the *current* rung into a
+vacancy. It is not a reputation-gated arrival-rate rewrite, not dues,
+and not Athlete seasonality.
+
+**Why this stage, and not G.2D / G.2E:** GDD §5.6 says members leave
+and the count drops, and that reputation later gates "the arrival rate
+of the high-paying member types." G.2C2 made leaving real. Without a
+vacancy fill, the gym only shrinks until the next relocation. G.2D
+(dues) and G.2E (member-side reputation) stay blocked; reputation-gated
+high-paying rates are deferred with G.2E rather than invented here.
+G2-ATHLETE-SEASON-01 stays open.
+
+**Vacancy vs actual arrival:** a G.2C2 departure that opens a slot does
+not mint a replacement. The observation that executes a departure does
+not also arrive. If, while a vacancy exists (`members.length` below
+`AMBIENT_MEMBER_COUNT_BY_RUNG[rung]`), a newly accepted service
+observation from a remaining member is itself attraction-qualifying
+under the frozen G.2C1 type-response classifier
+(`livingMemberStayEvidence` on that visit's own G.2A → G.2B reading),
+one new member may mint after that observation is accepted.
+
+There is no new counter, countdown, probability, random roll, or
+elapsed-time hazard. Offline clock advance does not mint. Neutral or
+strained service does not fill a vacancy. Arrivals never exceed the
+ambient cap. Departed ordinals are never reused (`nextOrdinal`).
+
+**Type treatment is the G.2C3 arrival-rate boundary only.** G.2B remains
+COMMON / type-blind. Type of the new member is `equipmentBiasedMemberTypes`
+cycled from the current active count — GDD §5.6's mix-as-consequence-of-
+equipment, the same function G.1 creation and relocation already use.
+The serving observation's evidence is classified for attraction:
+
+| Arriving type | G.2C3 attraction |
+|---|---|
+| Casual | May join on recovery or formed-neutral evidence (faster to arrive). |
+| Bodybuilder | Common recovery path. Occupancy is upstream. |
+| Powerlifter | Common recovery path. Reputation is later (G.2E). |
+| Athlete | Common recovery path. Seasonality remains G2-ATHLETE-SEASON-01. |
+| Serious Lifter | Joins only on recovery (slow to arrive). |
+
+If attraction is not met, the vacancy stays. The next type is not
+substituted.
+
+**Archive / idempotence:** a G.2C3 arrival is appended to
+`LivingMemberRoster.members` and stored on `arrivals`. Exact replay of
+the attracting observation is a full roster no-op. Same-tick conflicts
+on the serving member still fail closed. Invalid join-clock context
+fails closed.
+
+**FloorSim:** `reconcileFloorSimPopulation` mints a seeking body for a
+newly active `memberId`, preserves survivors, reindexes, and still
+refuses a population larger than the facility ambient placement count.
+Type mismatch on a surviving identity still fails closed.
+
+**Player-facing:** a last-arrival notice names the member. No %, no
+countdown, no dues figure, no reputation claim, no upgrade-ownership
+guess.
+
+**Still blocked after G.2C3 freeze:** G.2E member-side reputation (including
+reputation-gated high-paying arrival rates), Athlete seasonality
+(G2-ATHLETE-SEASON-01), Career → Empire reputation, Portfolio,
+NpcLifter merge. G.2D dues accounting is the next authorised slice.
+
+#### Stage G.2D — Living Member Dues Accounting
+
+**STAGE G.2D CLOSED / FROZEN** at
+`28611af74dd6479bfad58763ebba72db5942307c`. This is the first
+slice allowed to turn living-member presence and accepted G.2A recent-
+service meaning into Gym Bucks dues, and to credit those dues as spendable
+Gym Bucks income. It is not a reputation write, not a D2 facility-rate
+retune, and not Athlete seasonality.
+
+**GDD citation:** §5.6 Members: "They generate income. Dues scale with
+count and satisfaction." Count is time-weighted occupancy of the
+living roster during the unsettled window — active members plus
+in-window G.2C2 departure stubs. Satisfaction is accepted G.2A
+composite when experience is formed.
+Forming is not a fake score, so forming members pay the published type
+base (`memberBaseDuesGymBucks`) rather than `memberDuesGymBucks` with
+an invented 0 or 1. Old crowding × fit × condition `memberSatisfaction`
+is not an input. `crowdingLoad` is not an input.
+
+**Why this stage, and not G.2E:** G.2C3 made vacancy fill real, so the
+gym can hold a living population again. Dues are the income consequence
+of that population. Reputation-gated high-paying arrival rates, and
+member-side institutional reputation, stay G.2E.
+
+**Proven causal chain:** physical gym decision → real FloorSim service
+→ persistent N=5 member history → G.2A experience → type × formed
+composite (or forming base) → clock-settled dues ledger.
+
+**Settlement grain:** gym-clock seconds, not FloorSim ticks and not a
+per-visit cash-out. `applyLivingMemberDues` is the one ledger writer.
+`gymViewReduce` clock advance is the production caller and the purse
+composer. Service observations do not credit dues.
+`advanceLivingMemberTenure` remains a membership no-op and does not
+settle.
+
+**Occupancy during the settle window:** dues are time-weighted presence
+over `[dues.settledAtSeconds, toSeconds)`. Active members pay through
+the mark, each pro-rated from `joinedAtSeconds` if they joined during
+the window. A G.2C2 leave during the window still pays for the stub it
+was active — `[max(from, joinedAtSeconds), until)` — using the
+gym-clock occupancy mark stamped at leave (`duesLeftAtSeconds`), not
+FloorSim ticks. A stamp strictly before the window start pays nothing.
+A stamp strictly inside the window is used as-is. A stamp on the
+window start is the production observation path: `gymViewReduce` stamps
+`collectedAt`, which equals `dues.settledAtSeconds` after every clock
+settle, so the exclusive end would otherwise be `[mark, mark)`. That
+open mark still occupies the GymHost tick
+(`WALL_CLOCK_TICK_INTERVAL_SECONDS`), clipped to the settle window —
+the tick the leave occurred in, not the whole following skip. A later
+window after that stub is archived pays nothing. A leave with no
+gym-clock mark does not invent occupancy, including from an arrival
+join clock. Service observations still do not credit dues.
+
+**Idempotence / fail-closed:** exact replay of an already-settled mark
+is a full roster no-op. An earlier mark refuses. A non-finite or
+negative mark refuses. Same `from`/`to` with a conflicting amount
+refuses. Invalid join-clock on a paying member refuses.
+
+**Purse G2-DUES-PURSE-01 CLOSED as composition, not a D2 retune:** living
+dues are accounted on `LivingMemberRoster.dues` (`creditedGymBucks`,
+settlement archive). The production clock path credits each settlement's
+delta onto `ladder.gymBucks`, added to the frozen D2 facility lump
+(garage 60/hour and the offline banking policy). Replay of an already-
+settled mark is a ledger and purse identity no-op. Replacing or retuning
+that facility lump is still a pacing decision this slice does not take.
+
+**Player-facing:** member detail card `DUES` line shows the current
+daily rate. The HUD Gym Bucks figure includes settled dues. No %, no
+countdown, no reputation claim, no upgrade-ownership guess.
+
+**Fences:** no `reputationFromMembers`, no `memberSatisfaction`, no
+Career import, no Portfolio, no NpcLifter merge, no RNG, no `Date.now`,
+no leave probability. G.2A/G.2B/G.2C1–C3 frozen. Q/C/T frozen. No
+G.2E high-paying arrival rates.
+
+**Still blocked after G.2D freeze:** Athlete seasonality
+(G2-ATHLETE-SEASON-01), Career → Empire reputation, Portfolio,
+NpcLifter merge. G.2E member-side reputation is the next authorised slice.
+
+#### Stage G.2E — Member-Side Institutional Reputation
+
+**STAGE G.2E FROZEN** at
+`cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel
+gate not run — not CLOSED). This was the first slice allowed to turn
+living-member occupancy into institutional reputation, and to gate the
+arrival of high-paying member types on that credited number. It is not
+Career/Meet → `EmpireState.reputation`, not a check-in retune, not
+Athlete seasonality, and not a pay-to-win purchase.
+
+**GDD citation:** §5.6 Members: "Reputation is earned mostly by
+powerlifter and serious-lifter members, and by your own competition
+results. It gates: what sponsorship deals you're offered, which
+locations you can acquire, and the arrival rate of the high-paying
+member types." This slice implements the members half as a gym-clock
+rate from living occupancy, and the high-paying arrival-rate gate.
+Sponsorships, location acquisition, and competition-result wiring stay
+blocked.
+
+**Why this stage, and not Career → Empire:** Stage E already built the
+sporting calculator as a pure function. Closing it did not authorize a
+Career or Meet result writing `EmpireState.reputation`. G.2E is the
+living-roster contributor and the arrival gate that G.2C3 deferred.
+Check-in reputation (E-REP-01) is not retuned.
+
+**Proven causal chain:** physical gym decision → real FloorSim service
+→ persistent N=5 member history → G.2C2/C3 occupancy → gym-clock
+settlement of published type reputation rates → credited living-member
+reputation → high-paying vacancy arrival may proceed.
+
+**Settlement grain:** gym-clock seconds, the same occupancy G.2D ships.
+`applyLivingMemberReputation` is the one ledger writer. `gymViewReduce`
+clock advance is the production caller. Service observations do not
+credit reputation. Occupancy stamps stay on `duesLeftAtSeconds`. Type
+rate is `memberReputationPerDay` — not `reputationFromMembers` on an
+aggregate `MemberRoster`, not old crowding × fit `memberSatisfaction`,
+and not a G.2A composite scale. Forming members still occupy, so they
+still contribute their published type rate. Casual's published rate is
+0. Powerlifter and Serious Lifter raise reputation fastest.
+
+**Occupancy during the settle window:** identical to G.2D. Time-weighted
+presence over `[reputation.settledAtSeconds, toSeconds)`. Joins
+pro-rate from `joinedAtSeconds`. A G.2C2 leave during the window still
+contributes the stub it was active, including a played leave on the
+open settle mark occupying the GymHost tick.
+
+**Idempotence / fail-closed:** exact replay of an already-settled mark
+is a full roster no-op. An earlier mark refuses. A non-finite or
+negative mark refuses. Same `from`/`to` with a conflicting amount
+refuses. Invalid join-clock on a contributing member refuses.
+
+**High-paying arrival gate:** Athlete and Serious Lifter are §5.6
+Pays=High (`HIGH_PAYING_MEMBER_TYPES`). Vacancy fill still uses G.2C3
+evidence rules (Casual faster; Serious Lifter recovery-only; Bodybuilder
+and Powerlifter common recovery). High-paying types additionally require
+`reputation.creditedReputation >= HIGH_PAYING_MEMBER_ARRIVAL_REPUTATION_THRESHOLD`.
+If the gate is not met, the vacancy stays. The next type is not
+substituted. The threshold is a first-pass knob scaled to published
+per-member-per-day rates (opening Garage is three powerlifters at
+0.45/day, so 1 is a bit over two days of stock occupancy), not
+`NPC_RECRUIT_REPUTATION_THRESHOLD.club`. Feel is unproven.
+
+**Player-facing:** member detail card `REP` line shows the current daily
+type rate. No %, no countdown, no Career claim, no upgrade-ownership
+guess. Evidence of *why the gym total moved* is REP-EVIDENCE-01 on the
+Gym HUD (`gymscreen-reputation`), not only the more-drawer diagnostics
+block.
+
+**Fences:** no `reputationFromMembers` on an aggregate roster, no
+`memberSatisfaction`, no Career import, no Portfolio, no NpcLifter
+merge, no RNG, no `Date.now`, no leave probability. No write of
+`EmpireState.reputation`. G.2A/G.2B/G.2C1–C3/G.2D frozen. Q/C/T frozen.
+E-REP-01 stays open.
+
+**Still blocked after G.2E freeze:** Portfolio, NpcLifter merge.
+CAREER-EMPIRE-REP-01 later FROZE the sporting half at
+`cae174d8f46d7652ae1873f7594a23133b09c4db` (factory freeze; human feel
+gate not run — not CLOSED). G2-ATHLETE-SEASON-01 is a later authorised
+slice.
+
+#### G2-ATHLETE-SEASON-01 — Athlete Seasonal Leave / Return
+
+**G2-ATHLETE-SEASON-01 FROZEN** at
+`9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze; human feel
+gate not run — not CLOSED). This is the first
+slice allowed to make Athlete seasonality real: an Athlete on the living
+roster leaves the floor for a deterministic shared gym-clock in-season
+window, holds their roster slot while away, pays no dues and credits no
+reputation while away, and returns as the same `LivingGymMember`. It is
+not a G.2C2 departure, not a G.2C3 arrival, not Career/Meet →
+`EmpireState.reputation`, not Portfolio, not NpcLifter merge, and not a
+pay-to-win purchase. It is not a new Stage G.2F.
+
+**GDD citation:** §5.6 Athlete quirk "Seasonal — leaves and returns."
+Leaving is visible — the count drops and you have to find out why.
+
+**Why this slice, and not a churn rewrite:** G.2C1–C3 already own
+service-evidence leave and vacancy fill. Seasonality is orthogonal.
+G.2D and G.2E already settle occupancy on the gym clock. This slice
+composes over those frozen writers. G.2C named the debt; the
+implementation sits after G.2E because it consumes that clock.
+
+**G.2E memorial:** G.2E is FROZEN at
+`cf98f4dedbb572850667bd191692779a195caa50` (factory freeze). Feel is
+unproven. Writing CLOSED would overclaim.
+
+**Event class:** a third class. A season leave is not archived on
+`departures`. A season return is not archived on `arrivals`. G.2C2's
+"no returning members" applies to *departed* identities and stays true.
+`nextOrdinal` is not consumed on return.
+
+**Proven causal chain:** shared gym-clock week index → in-season start
+boundary → every active Athlete moves to `season.onLeave` (seat
+reserved) → in-season end boundary → the same identity returns to
+`members`.
+
+**Settlement grain:** gym-clock seconds. `applyLivingMemberSeason` is
+the one season-ledger writer. `settleLivingMemberClock` orchestrates
+dues, reputation, then season at each boundary that would actually move
+a member. Service observations do not leave or return anyone. Offline
+clock advance uses the same arm. `advanceLivingMemberTenure` stays a
+membership no-op.
+
+**Calendar:** `ATHLETE_SEASON` knobs (`cycleWeeks` 6, `inSeasonWeeks` 2,
+`firstInSeasonWeek` 4). Phase is a function of `trainingWeekIndexAt`.
+Event-at-boundary, not a state predicate: an Athlete minted mid-season
+stays until the next in-season start. First-pass knobs; feel unproven.
+
+**Occupancy while away:** on-leave rows are absent from `members`, so
+FloorSim, dues, and reputation see them as not present. Stubs with
+`leftAtSeconds <=` window start are omitted — the open GymHost tick
+rule stays for played G.2C2 leaves, not calendar boundaries. With no
+Athletes, the orchestrator is today's two ledger calls.
+
+**Capacity:** `vacancyCount` and relocation appends use
+`active + onLeave`. C3 type-cycle index uses that same occupied count.
+Return cannot exceed the ambient cap.
+
+**Idempotence / fail-closed:** exact replay of an already-settled mark
+is a roster no-op. An earlier mark refuses. Non-finite refuses. Dues
+and reputation ledgers must share a settle mark. `onLeave` holds only
+Athletes, never an active or departed id.
+
+**Player-facing:** one FloorGrid line — "<Name> is away for the season."
+or "<Name> is back from the season." No percent, countdown, return
+week, or dues figure. Ambient count already drops with FloorSim
+population.
+
+**Fences:** no `reputationFromMembers`, no `memberSatisfaction`, no
+Career import, no Portfolio, no NpcLifter merge, no RNG, no `Date.now`,
+no leave probability. G.2A/G.2B/G.2C1–C3/G.2D/G.2E frozen. Q/C/T
+frozen. No rewrite of stay / departure / arrival / dues / reputation
+module bodies.
+
+**Still blocked:** Portfolio, NpcLifter
+merge. Feel of the 6 / 2 / 4 week cadence is unproven.
+CAREER-EMPIRE-REP-01 is FROZEN at
+`cae174d8f46d7652ae1873f7594a23133b09c4db` (factory freeze; human feel
+gate not run — not CLOSED).
+
+#### CAREER-EMPIRE-REP-01 — Career/Meet → Empire Reputation (Stage E's deferred crossing)
+
+**CAREER-EMPIRE-REP-01 FROZEN** at
+`cae174d8f46d7652ae1873f7594a23133b09c4db` (squash memorial on Session
+B; factory freeze; human feel gate not run — not CLOSED). Pre-squash
+identity `34b98a06772db81126b68deec220a24328892a22` is not an object
+on this tree. This is Stage E's deferred
+crossing: a played meet result may credit Empire sporting reputation.
+It is not a write of literal v1 `EmpireState.reputation`. It is not
+Portfolio, not NpcLifter merge, not an E-REP-01 retune, and not a
+pay-to-win purchase. It is not a new Stage G.2F.
+
+**GDD citation:** §5.6 Members: "Reputation is earned mostly by
+powerlifter and serious-lifter members, and by your own competition
+results." G.2E shipped the members half. This slice ships the
+competition-results half as a sporting ledger on the played gym tree.
+
+**§5.10 memorial:** "What does not survive: `EmpireState`'s shape."
+Prior entries that said Career/Meet → `EmpireState.reputation` named
+the crossing, not the v1 field. That phrase now resolves to this
+composed v2 reading: `GymViewState.sportingReputation` plus
+`institutionalReputation` over the frozen G.2E member ledger. The
+literal v1 field stays unwritten.
+
+**Why this slice, and not a v1 write:** `EmpireState` is off the played
+path. The played gym is `GymViewState`. G.2E already stores member
+reputation on that tree. Stage E named a later accounting boundary that may compose once both
+halves share a grain. Both halves are now credited points. Writing v1
+cannot compose with G.2E.
+
+**Proven causal chain:** played meet → server `RecordedMeet` →
+AppShell played-port view (`withSportingCreditOnRecord`) →
+`credit-sporting-result` →
+Stage E `sportingReputationFromResult` → sporting ledger →
+`institutionalReputation` (members points + sporting points).
+Crossing 9 remains the mounted MeetScreen report only
+(`onRecorded` on `loop.applied`). It is not the unmount-safe path.
+A leave during the in-flight save still credits because AppShell's
+view outlives MeetScreen. Replay of the same `meetId` is a state
+identity no-op, so both paths may fire. A recorded Total on an
+unknown meet fails closed as `not-creditable` — a silent miss is a
+fail. P2: AppShell selects that view only when `meetFrame` is
+absent. Every `?meet=` frame — including `?meet=live`, a defined
+frame whose `serverPort` is undefined — uses a non-crediting stand-in
+(the frame's own port, or `debugMeetStandIn` for live), never the
+crediting view and never the app singleton. Disabling Crossing 9
+`onRecorded` is not enough; the view itself must not wrap a debug
+frame.
+
+**Write path:** `GymViewState.sportingReputation` via
+`creditSportingResult`. Adapter reads `totalKg` only as null/non-null,
+adopts server `isTotalPr` unchanged, and maps
+`placing.fieldSize` to Stage E `categoryFieldSize`. Kind comes from
+`SPORTING_REPUTATION.playedMeetKindById`. `newlyQualifiedFor` is passed
+as null (Career standing is not on the played path). Unknown `meetId`
+fails closed. Replay of the same `meetId` is a state identity no-op.
+
+**Grain:** credited reputation points, stamped on the gym clock
+(`LadderState.collectedAt`). Member half is
+`LivingMemberReputationLedger.creditedReputation`. Sporting half is
+`SportingReputationLedger.creditedReputation`. Composer adds points to
+points and clamps at `REPUTATION_MAX` on read. The composed number is
+not stored. A rate is not added to an event delta.
+
+**Idempotence / fail-closed:** same `meetId` returns the gym state by
+identity. Unknown meet id records `not-creditable` and leaves the
+ledger identical. A stamp earlier than the last sporting entry refuses.
+Malformed facts refuse.
+
+**Player-facing:** HUD `gymscreen-reputation` on the default play
+surface. Both halves (`members {fromMembers} · meets {fromSporting}`)
+and stored sporting reasons. Honest zero when nothing is credited.
+Unknown meet ids fail closed as `not-creditable` with the stored
+`unknownMeet` copy. No toast. Feel unproven. Presentation is
+REP-EVIDENCE-01; credit routing is CAREER-EMPIRE-REP-01 P1/P2.
+
+**G.2E gate:** high-paying vacancy arrival still reads member-only
+`creditedReputation`. Sporting credit does not mint Athlete or Serious
+Lifter.
+
+**Fences:** Stage E calculator byte-identical. Every `livingMember*.ts`
+byte-identical. `empireCore.ts` / `reputation.ts` byte-identical. No
+`src/game/**` edit. `MeetScreen.tsx` is one optional prop and one
+effect. P1 credit is AppShell's played-port view, not a second
+Crossing 9 argument on `useMeetDay`. P2 keeps that view on the
+production path only (`meetScreenPort` keys on frame presence; live
+uses `debugMeetStandIn`).
+No new numeric tuning literal.
+E-REP-01 stays open.
+
+**Residuals:** REP-GRAIN-01 — the halves share a unit and were
+calibrated against different ladders (threshold 1; powerlifter
+0.15/day; local title 24). Any later consumer must be calibrated
+against the composed reading before it reads it. Tools claim 14
+(played meet → gym HUD → meets half > 0; no `?meet=` path,
+including `live`, may credit) was not run.
+
+**Still blocked:** Portfolio, NpcLifter merge, G.2E gate on the
+composed reading, Career calendar / `newlyQualifiedFor`, server write,
+E-REP-01, feel Ready.
+
+#### REP-EVIDENCE-01 — player-facing sporting + member reputation evidence
+
+Presentation of the two institutional halves already stored on
+`GymViewState` / `institutionalReputation`. Not a new ledger, not an
+E-REP-01 retune, not a G.2E gate re-point, not a credit-path change.
+
+**GDD citation:** §5.6 Members: "Reputation is earned mostly by
+powerlifter and serious-lifter members, and by your own competition
+results." G.2E names the daily type rate on the member card.
+CAREER-EMPIRE-REP-01 stores sporting reasons and the composed
+reading. This slice puts both halves, and those stored reasons, on
+the Gym HUD so a player does not have to open the diagnostics-only
+`more` drawer.
+
+**Proven causal chain:** unchanged from CAREER-EMPIRE-REP-01. Played
+meet → AppShell played-port view → `credit-sporting-result` → sporting
+ledger. Member half still settles on the gym clock. `?meet=` frames,
+including `live`, still use a non-crediting stand-in.
+
+**Player-facing:** HUD line `members {fromMembers} · meets
+{fromSporting}` (`gymscreen-reputation`). Sporting reason rows from
+`lastSportingCredit` (`gymscreen-reputation-reason-*`). Opening state
+is honest zero with no reason rows. Unknown meet keeps the sporting
+ledger identical and shows `unknownMeet`. No toast. Feel unproven.
+
+**Fences:** no `src/game/**` edit. Crossing 9 unchanged. AppShell
+`meetScreenPort` / `withSportingCreditOnRecord` / `debugMeetStandIn`
+unchanged. Stage E calculator, every `livingMember*.ts`, `empireCore.ts`,
+and `reputation.ts` byte-identical. G.2E high-paying arrival still
+reads member-only. No numeric tuning literal. E-REP-01 stays open.
+
+**Residuals:** claim 14 not run. Feel unproven. Stage C / physical-phone
+gates.
+
+**Still blocked:** Portfolio, NpcLifter merge, G.2E gate on the
+composed reading, Career calendar / `newlyQualifiedFor`, server write,
+E-REP-01, Empire feel Ready.
 
 ---
 

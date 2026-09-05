@@ -252,6 +252,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { EMPIRE_TUNING } from './empireTuning';
 import { FloorGrid } from './FloorGrid';
+import { institutionalReputation } from './institutionalReputation';
 import { GYM_SURFACES, type GymViewAction, type GymViewProps } from './ladderView';
 import {
   failurePhase,
@@ -528,7 +529,24 @@ export function GymScreen(props: GymViewProps) {
     floor,
     surface,
     capability,
+    livingMembers,
+    sportingReputation,
+    lastSportingCredit,
   } = props.state;
+  const sportingCopy = EMPIRE_TUNING.SPORTING_REPUTATION.copy;
+  const reputationReading = institutionalReputation(
+    livingMembers.reputation,
+    sportingReputation,
+  );
+  const reputationLine = sportingCopy.composed
+    .replace('{fromMembers}', String(reputationReading.fromMembers))
+    .replace('{fromSporting}', String(reputationReading.fromSporting));
+  const reputationReasons =
+    lastSportingCredit === null
+      ? []
+      : lastSportingCredit.kind === 'credited'
+        ? lastSportingCredit.reasons.map((row) => row.text)
+        : [sportingCopy.unknownMeet];
   // Stage 1/2's own `GymState`, read out of the managed state that holds it.
   // There is one `GymState` in this screen's props (`ladderView.tsx`'s
   // `GymViewState` header says why), and this is the read of it.
@@ -562,6 +580,25 @@ export function GymScreen(props: GymViewProps) {
         <Text testID={'gymscreen-gym-bucks'} style={styles.hudText}>gym bucks: {gym.ladder.gymBucks}</Text>
         <Text testID={'gymscreen-accelerated-bucks'} style={styles.hudText}>accelerated: {gym.acceleratedGymBucks}</Text>
         <Text testID={'gymscreen-clock'} style={styles.hudText}>clock: {describeLadderClock(gym.ladder.collectedAt)}</Text>
+        {/*
+          REP-EVIDENCE-01 — player information, not engine detail. Both
+          institutional halves already live on GymViewState
+          (`livingMembers.reputation` + `sportingReputation`); the composer
+          is `institutionalReputation`. Stored sporting reasons ride
+          `lastSportingCredit`. Honest zero when nothing is credited. No
+          toast. The more-drawer diagnostics block must not be the only
+          place these lines exist.
+        */}
+        <Text testID={'gymscreen-reputation'} style={styles.hudText}>{reputationLine}</Text>
+        {reputationReasons.map((text, index) => (
+          <Text
+            testID={`gymscreen-reputation-reason-${index}`}
+            key={index}
+            style={styles.hudText}
+          >
+            {text}
+          </Text>
+        ))}
         {prompt.kind === 'quiet' ? null : (
           <Pressable
             testID={'gymscreen-hud-review'}
@@ -1117,6 +1154,9 @@ export function GymScreen(props: GymViewProps) {
         existing reader of those three (this file's own render test, the
         browser reachability tool) finds them by testID, not by position, so
         relocating them costs no rewritten assertion.
+        `gymscreen-reputation` left this block under REP-EVIDENCE-01: it is
+        player information (both institutional halves and stored sporting
+        reasons) and now lives on the HUD.
       */}
       <View testID={'gymscreen-diagnostics'}>
         <Text>engine detail — not needed to play, kept here for verification</Text>

@@ -80,6 +80,7 @@ describe('the block is frozen and every entry is classified', () => {
       'ADVANCED_RECOVERY_ITEMS',
       'AMBIENT_MEMBER_COUNT_BY_RUNG',
       'AMBIENT_MEMBER_FOOTPRINT_TILES',
+      'ATHLETE_SEASON',
       'EQUIPMENT_TIERS',
       'EQUIPMENT_TIER_BUCKS_MULTIPLIER',
       'EQUIPMENT_TIER_COST_GYM_BUCKS',
@@ -98,6 +99,7 @@ describe('the block is frozen and every entry is classified', () => {
       'FLOOR_SPRITE_FLOOR_PALETTE',
       'FLOOR_SPRITE_GEAR_PALETTE',
       'FLOOR_SPRITE_OUTFIT_PALETTE',
+      'HIGH_PAYING_MEMBER_TYPES',
       'LADDER_DEV_TIME_STEPS_SECONDS',
       'LADDER_DEV_WATCHED_TIME_STEPS_SECONDS',
       'LADDER_EQUIPMENT_COST_GYM_BUCKS',
@@ -740,7 +742,9 @@ describe('§5.5 social', () => {
     // 201 -> 202: Stage G.1C LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS.
     // 202 -> 203: Stage G.2A LIVING_MEMBER_EXPERIENCE.
     // 203 -> 204: Stage G.2B LIVING_MEMBER_RETENTION.
-    expect(examined).toBe(204);
+    // 204 -> 206: Stage G.2E HIGH_PAYING_MEMBER_TYPES + arrival reputation threshold.
+    // 206 -> 207: G2-ATHLETE-SEASON-01 ATHLETE_SEASON.
+    expect(examined).toBe(207);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -769,7 +773,9 @@ describe('§5.5 social', () => {
     // 1005 -> 1010: Stage G.1C one more wait-band entry × 5 banned units.
     // 1010 -> 1015: Stage G.2A LIVING_MEMBER_EXPERIENCE × 5 banned units.
     // 1015 -> 1020: Stage G.2B LIVING_MEMBER_RETENTION × 5 banned units.
-    expect(probed).toBe(1020);
+    // 1020 -> 1030: Stage G.2E HIGH_PAYING_MEMBER_TYPES + arrival threshold × 5.
+    // 1030 -> 1035: G2-ATHLETE-SEASON-01 ATHLETE_SEASON × 5.
+    expect(probed).toBe(1035);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

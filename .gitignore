@@ -110,3 +110,11 @@ public/canvaskit.wasm
 !.gauntlet/shots/meet/
 .gauntlet/shots/meet/*
 !.gauntlet/shots/meet/sound.json
+
+# G.2D member-card dues line. Critics cannot pass the player-facing copy on
+# FloorGrid source order; this folder holds the dated 390×844 photograph and
+# the `dues.json` record of the drawn text.
+!.gauntlet/shots/g2d/
+.gauntlet/shots/g2d/*
+!.gauntlet/shots/g2d/dues.json
+!.gauntlet/shots/g2d/390x844-member-dues.png

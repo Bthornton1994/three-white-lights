@@ -75,7 +75,18 @@ import {
   managedCheckIn,
   meanCondition,
   withUpdatedGym,
+  type ManagedGym,
 } from './management';
+import {
+  applyLivingMemberDues,
+  reconcileLivingMemberRosterOnRelocation,
+  settleLivingMemberClock,
+  type LivingMemberRoster,
+} from './livingMembers';
+import {
+  creditLivingMemberDuesGymBucks,
+  livingMemberDuesCreditedDelta,
+} from './livingMemberDues';
 import {
   createFloorState,
   placeFloorItem,
@@ -429,6 +440,22 @@ function dispatchGymThrough(state: GymViewState, action: GymViewAction): GymView
   return gymViewReduce(state, action);
 }
 
+function managedPlusLivingDues(
+  checkedIn: ManagedGym,
+  before: LivingMemberRoster,
+  after: LivingMemberRoster,
+): ManagedGym {
+  const gymBucks = creditLivingMemberDuesGymBucks(
+    checkedIn.gym.ladder.gymBucks,
+    livingMemberDuesCreditedDelta(before.dues, after.dues),
+  );
+  if (gymBucks === checkedIn.gym.ladder.gymBucks) return checkedIn;
+  return withUpdatedGym(
+    checkedIn,
+    withLadder(checkedIn.gym, Object.freeze({ ...checkedIn.gym.ladder, gymBucks })),
+  );
+}
+
 /** The words `describeSlotOutcome` must produce, checked without importing it. */
 function expectOutcomeInText(text: string, outcome: SlotOutcome): void {
   if (outcome.kind === 'rested') {
@@ -649,7 +676,13 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
     // number the deduction is a deduction FROM, so a build that quietly
     // stopped deducting would be red here rather than merely different.
     const direct = managedCheckIn(opened.managed, opened.managed.gym.ladder.collectedAt + gap);
-    expect(advanced.managed).toEqual(direct.state);
+    const settled = applyLivingMemberDues(
+      opened.livingMembers,
+      direct.state.gym.ladder.collectedAt,
+    );
+    expect(advanced.managed).toEqual(
+      managedPlusLivingDues(direct.state, opened.livingMembers, settled),
+    );
     expect(advanced.lastAccrual).toEqual(direct.accrual);
     expect(advanced.lastManagementReport).toEqual({
       incomeMultiplier: direct.incomeMultiplier,
@@ -665,7 +698,10 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
     const ladderOnly = gymCheckInAfter(opened.managed.gym, gap);
     expect(direct.incomeDeductedGymBucks).toBeGreaterThan(0);
     expect(advanced.managed.gym.ladder.gymBucks).toBe(
-      ladderOnly.state.ladder.gymBucks - direct.incomeDeductedGymBucks,
+      creditLivingMemberDuesGymBucks(
+        ladderOnly.state.ladder.gymBucks - direct.incomeDeductedGymBucks,
+        settled.dues.creditedGymBucks,
+      ),
     );
     expect(advanced.weekIndex).toBe(0);
     expect(advanced.weekLog).toEqual([]);
@@ -869,7 +905,13 @@ describe('GymView: advance-clock is now the ONLY way the review ordinal moves, a
     const gap = T.OFFLINE_EARNINGS_CAP_HOURS * T.SECONDS_PER_HOUR;
     const played = dispatchGymThrough(opened, { kind: 'advance-clock', gapSeconds: gap });
     const direct = managedCheckIn(opened.managed, opened.managed.gym.ladder.collectedAt + gap);
-    expect(played.managed).toEqual(direct.state);
+    const settled = applyLivingMemberDues(
+      opened.livingMembers,
+      direct.state.gym.ladder.collectedAt,
+    );
+    expect(played.managed).toEqual(
+      managedPlusLivingDues(direct.state, opened.livingMembers, settled),
+    );
     expect(played.lastAccrual).toEqual(direct.accrual);
     expect(played.lastRefusal).toBeNull();
     expect(played.managed.strikes).toEqual([]);
@@ -936,7 +978,13 @@ describe('GymView: advance-to-next-week always lands on the boundary sessions.ts
     const gap = secondsUntilNextWeekBoundary(opened.managed.gym.ladder.collectedAt);
     const jumped = dispatchGymThrough(opened, { kind: 'advance-to-next-week' });
     const direct = managedCheckIn(opened.managed, opened.managed.gym.ladder.collectedAt + gap);
-    expect(jumped.managed).toEqual(direct.state);
+    const settled = applyLivingMemberDues(
+      opened.livingMembers,
+      direct.state.gym.ladder.collectedAt,
+    );
+    expect(jumped.managed).toEqual(
+      managedPlusLivingDues(direct.state, opened.livingMembers, settled),
+    );
     expect(jumped.managed.gym.ladder.collectedAt).toBe(T.DAYS_PER_TRAINING_WEEK * T.SECONDS_PER_DAY);
     expect(jumped.weekIndex).toBe(1);
     // Exactly one week completed, all-rest, and reported against the equipment
@@ -984,11 +1032,13 @@ describe('GymView: a single advance can complete more than one training week', (
 
 describe('GymView: a played run — Barbell and stage-2 equipment, relocation, and a resolved week', () => {
   it('walks the storage-unit move, a bike purchase, and a week that trains cardio', () => {
-    // Pure model, advanced ONLY through direct sessions.ts / ladder.ts calls —
-    // never through gymViewReduce — so every screen below is graded against
-    // the pure functions and not against the reducer under test.
+    // Pure model, advanced through the same managedCheckIn + living-dues
+    // credit the reducer composes — never through gymViewReduce — so every
+    // screen below is graded against those functions and not against the
+    // reducer under test.
     let view = createGymViewState();
     let pureManaged = createManagedGym();
+    let pureLiving = view.livingMembers;
     let pureWeekIndex = 0;
     let pureAllocation: WeekAllocation = createRestAllocation();
     let pureAllocationSetThisWeek = false;
@@ -1031,7 +1081,12 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
         }
         pureAllocationSetThisWeek = false;
       }
-      pureManaged = direct.state;
+      const nextLiving = settleLivingMemberClock(
+        pureLiving,
+        direct.state.gym.ladder.collectedAt,
+      );
+      pureManaged = managedPlusLivingDues(direct.state, pureLiving, nextLiving);
+      pureLiving = nextLiving;
       pureWeekIndex = newWeek;
     };
 
@@ -1064,11 +1119,11 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
     expect(pureManaged.gym.ladder.gymBucks).toBeGreaterThanOrEqual(
       T.LADDER_MOVE_COST_GYM_BUCKS['storage-unit'],
     );
-    // The never-punish half of the same sequence, driven rather than argued:
-    // eight clock presses and no decision have moved condition and income and
-    // have moved NOTHING on the failure ledger. §5.7's clarification and
-    // `docs/GDD.md` §5.13's wear-basis ruling both turn on that split.
-    expect(pureManaged.gym.ladder.gymBucks).toBeLessThan(8 * 360);
+    // Facility-only income stays under the eight capped away gaps. Living
+    // dues are extra Gym Bucks on top of that lump, not a D2 rate retune.
+    expect(
+      pureManaged.gym.ladder.gymBucks - view.livingMembers.dues.creditedGymBucks,
+    ).toBeLessThan(8 * 360);
     expect(meanCondition(pureManaged)).toBeLessThan(1);
     expect(pureManaged.strikes).toEqual([]);
     expect(failurePhase(pureManaged)).toBe('sound');
@@ -1083,6 +1138,12 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
       const direct = moveUpLadder(pureManaged.gym.ladder);
       expect(direct.kind).toBe('moved');
       pureManaged = withUpdatedGym(pureManaged, withLadder(pureManaged.gym, direct.state));
+      pureLiving = reconcileLivingMemberRosterOnRelocation(
+        pureLiving,
+        direct.state.rung,
+        pureManaged.gym.sessionEquipment,
+        direct.state.collectedAt,
+      );
       const after = renderGym(view, []);
       expect(textOf(findByTestId(after, 'gym-rung'))).toBe('storage-unit');
       quantitiesCompared += expectGymScreenMatchesState(after, view);

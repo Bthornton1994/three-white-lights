@@ -11,12 +11,18 @@ contract. This file is only how to run it.
 
 ## Run it
 
-You need **Node 22+** and npm. The branch is `claude/agent-config-setup-m2r6ny`.
+You need **Node 22+** and npm. Two live sessions share this repo; this
+runbook checks out **Session B**. Neither session is `main`.
+
+| Session | Live branch |
+|---|---|
+| A — the main loop | `grok/session-a-main-loop` |
+| B — Gym Empire (this checkout) | `grok/stage-g2c2-actual-departure` |
 
 ```bash
 git clone https://github.com/bthornton1994/three-white-lights.git
 cd three-white-lights
-git checkout claude/agent-config-setup-m2r6ny
+git checkout grok/stage-g2c2-actual-departure
 npm install
 bash tools/dev-web.sh          # serves on http://localhost:8081
 ```
@@ -117,7 +123,7 @@ budgets roughly 30 hand-tuning passes, by playing it. None have happened.
 ## Checks
 
 ```bash
-npm test                 # 2654 tests across 63 files
+npm test                 # 4340 tests across 119 files (vitest at ad5c93e5)
 npm run typecheck        # tsc --noEmit, strict, no `any`
 ```
 
