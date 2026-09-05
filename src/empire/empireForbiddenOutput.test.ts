@@ -1838,6 +1838,7 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
+  'livingMemberSeason.ts#athleteSeasonBoundaryWouldMove#members.some x1',
   // Stage G.2C1: private hasReason reads caller-supplied retention.reasons.
   'livingMemberStay.ts#hasReason#retention.some x1',
   // Stage G.2C2: departedMemberById reads caller-supplied roster.departures.
@@ -2189,7 +2190,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 243 -> 247: Stage D.1 — 'training', 'competition-bench-bay', 'primary',
   // 'expansion'.
   // 265 -> 270: Stage G.2C1 stay-status / cause / direction members.
-  DISTINCT_LITERAL_MEMBERS: 271, // Stage G.2C2 stay-evidence 'neutral'
+  DISTINCT_LITERAL_MEMBERS: 275, // G2-ATHLETE-SEASON-01 in-season / off-season / leave / return
   DEPTH_CUTS: 0,
 });
 
@@ -6245,7 +6246,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 2372 -> 2377: Stage C.1c CONDITION_PERCENT_SCALE in five domains.
   // 2428 -> 2433: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS across
   // five domains that carry it under their ceiling; ROSTER_SHAPE omits it.
-  CONTAINMENT_CHECKS: 2668, // Stage G.2E HIGH_PAYING_MEMBER_ARRIVAL_REPUTATION_THRESHOLD across domains
+  CONTAINMENT_CHECKS: 2686, // G2-ATHLETE-SEASON-01 ATHLETE_SEASON three week knobs across domains
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -12146,7 +12147,7 @@ const DRIVE_CENSUS = Object.freeze({
   // advanceLivingMemberStay drive rows. Read from this pin's own failure value.
   // 600663 -> 600678: Stage G.2C2 departure/reconcile/stayEvidence drive rows.
   // Read from this pin last.
-  ROWS: 600758, // G2-ATHLETE-SEASON-01 livingMemberSeason / applyLivingMemberSeason / settleLivingMemberClock drives
+  ROWS: 600760, // G2-ATHLETE-SEASON-01 lastLivingMemberSeasonEvent leave/return drives
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -17266,7 +17267,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 66 -> 67: GDD §5.14 Stage B's pacing.ts — one call through a
   // module-level import (`offlineBankingHorizonSeconds()` in the sporadic
   // gap cycle). Read from this pin's own failure value.
-  'module-variable': 80, // Stage G.1A livingMembers + floorSim module-variable targets
+  'module-variable': 81, // G2-ATHLETE-SEASON-01 livingMemberSeason trainingWeekIndexAt
   // 5 -> 7: Phase 3's RENDER half's two calls through a local binding in
   // `AmbientMemberBody`'s single animation effect (`bobLoop.start()`,
   // `pulseLoop.stop()`). Read from this table's own failure value.
@@ -17364,7 +17365,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
   // 1815 -> 1841: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 1841 -> 1866: Stage G.2C2 livingMemberDeparture.ts plus roster/sim wiring.
-  function: 1973, // Stage G.2E livingMemberReputation plus arrival/members wiring
+  function: 2036, // G2-ATHLETE-SEASON-01 livingMemberSeason plus livingMembers clock wiring
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -17424,7 +17425,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
   // 1658 -> 1673: Stage G.2C1 livingMemberStay.ts plus livingMembers stayState.
   // 1673 -> 1699: Stage G.2C2 livingMemberDeparture.ts plus roster/sim members.
-  member: 1770, // Stage G.2E livingMemberReputation plus arrival/members wiring
+  member: 1823, // G2-ATHLETE-SEASON-01 livingMemberSeason plus livingMembers clock wiring
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -17434,7 +17435,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // Read from this pin's own failure value.
   // 23 -> 24: GDD §5.14 Stage B's `pacingReadingAtHorizon`'s
   // `readings.find(...)`, the same shape as S4b's rows above.
-  'member-of-parameter': 38, // Stage G.2C3 spawnCellForArrival occupied.has
+  'member-of-parameter': 39, // G2-ATHLETE-SEASON-01 athleteSeasonBoundaryWouldMove members.some
   // Phase 4: FLOOR_SPRITE_PALETTES' construction calls a fresh arrow (the
   // palette-row map), the same site DECLARED_FRESH_RECEIVERS names.
   fresh: 3, // Stage G.2A livingMemberExperience
@@ -17507,7 +17508,7 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 438 -> 444: Stage D2.1B nextChangeovers / loading-path locals.
   // 461 -> 472: Stage G.2C2 departure/reconcile local writes.
   // Read from this pin last.
-  local: 485, // Stage G.2E reputation occupancy / applyLivingMemberReputation locals
+  local: 500, // G2-ATHLETE-SEASON-01 applyLivingMemberSeason / settleLivingMemberClock locals
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -17946,10 +17947,12 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
+    'ladderView.tsx#createGymViewState()',
+    'ladderView.tsx#gymViewReduce()',
     'recruitment.ts#beginRecruitment()',
   ]),
-  /** Positions strictly past the limit. The same two, and the number that matters. */
-  PAST_THE_LIMIT: 2,
+  /** Positions strictly past the limit. Named above; the number that matters. */
+  PAST_THE_LIMIT: 4,
   /**
    * The same reading with the assembly probe in the program, which reaches 41.
    *
@@ -25959,6 +25962,7 @@ const MEMBER_CALL_PASS_UNDRIVEN: readonly string[] = Object.freeze([
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
   'livingMemberExperience.ts#livingMemberExperience#history.map x1',
+  'livingMemberSeason.ts#athleteSeasonBoundaryWouldMove#members.some x1',
   // Stage G.2C1: private hasReason. Dedicated driver remains a later pass;
   // the site is named rather than left off the join.
   'livingMemberStay.ts#hasReason#retention.some x1',
