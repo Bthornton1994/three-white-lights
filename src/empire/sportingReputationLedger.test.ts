@@ -135,7 +135,8 @@ describe('sportingMeetResultFromPlayedFacts — Stage E input from played facts'
 
 describe('playedMeetKindById — two-way pin against the local field of 16', () => {
   it('maps the played local meet to local, and that field is 16 beside the GDD calibration line', () => {
-    expect(S.playedMeetKindById[MEET_LOCAL.id]).toBe('local');
+    expect(MEET_LOCAL.id).toBe('local-open-2026');
+    expect(S.playedMeetKindById['local-open-2026']).toBe('local');
     expect(MEET_LOCAL.ghostTotalsKg.length + 1).toBe(16);
     expect(GDD).toMatch(/first of 16 in\s+category/);
   });

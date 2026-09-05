@@ -74,10 +74,15 @@ import Animated, {
 import { EMPIRE_TUNING } from '../empire/empireTuning';
 import { GymScreen } from '../empire/GymScreen';
 import { type EarningsMode } from '../empire/ladder';
-import { createGymViewState, gymViewReduce } from '../empire/ladderView';
+import {
+  createGymViewState,
+  gymViewReduce,
+  type GymViewAction,
+  type GymViewState,
+} from '../empire/ladderView';
 import { LIFT_PALETTE } from '../lift/liftPalette';
 import { LiftScreen } from '../lift/LiftScreen';
-import { MeetScreen } from '../meet/MeetScreen';
+import { MeetScreen, type MeetScreenProps } from '../meet/MeetScreen';
 import { SessionScreen } from '../session/SessionScreen';
 import { appMeetPort, appSessionPort } from './appServer';
 import {
@@ -163,18 +168,15 @@ function ShellNav({
 }
 
 /**
- * CROSSING 6, EXTENDED BY THE "KILL THE MINT" RULING: the Gym Empire
- * surface's mount point, the one place the `useReducer` hook this screen
- * needs lives — outside `src/empire/`, the same rule `ladder-dev.tsx` follows
- * for the web dev harness (`ladderView.tsx`'s own header: "The one stateful
- * hook lives in the dev mount, outside this directory, which is what keeps
- * this file render-only in the checkable sense") — and, as of this round,
- * the one place that drives the gym's real-time clock. `GymScreen` itself
- * stays a pure function of `{ state, dispatch }`; this component computes no
- * game math (every second it turns into a dispatch is read off `Date.now()`
- * and handed to the same `advance-clock` action the dev row and the old
- * mint both already used) and is still the only thing in `src/shell/` that
- * reads `src/empire/`.
+ * CROSSING 6, EXTENDED BY CAREER-EMPIRE-REP-01: the Gym Empire surface's
+ * mount point. The `useReducer` hook itself now lives on `AppShell`'s body
+ * so a played meet can dispatch `credit-sporting-result` without a ref that
+ * can drop a credit. This component still owns the wall-clock anchor and
+ * interval, still sits outside `src/empire/` (the same rule `ladder-dev.tsx`
+ * follows), and still computes no game math — every second it turns into a
+ * dispatch is read off `Date.now()` and handed to the same `advance-clock`
+ * action the dev row already used. `GymScreen` stays a pure function of
+ * `{ state, dispatch }`.
  *
  * WHY THIS COMPONENT IS NOW ALWAYS MOUNTED, RATHER THAN MOUNTED ONLY WHILE
  * `route.surface === 'gym'`.
@@ -243,8 +245,15 @@ function ShellNav({
  *      clock have moved": sitting on the screen with the interval running is
  *      what makes that true, without a single tap.
  */
-function GymHost({ visible }: { readonly visible: boolean }): React.ReactElement {
-  const [state, dispatch] = useReducer(gymViewReduce, undefined, createGymViewState);
+function GymHost({
+  visible,
+  state,
+  dispatch,
+}: {
+  readonly visible: boolean;
+  readonly state: GymViewState;
+  readonly dispatch: React.Dispatch<GymViewAction>;
+}): React.ReactElement {
 
   // A real-time reading, not React state on purpose — see the header above.
   // Initialised once, at this component's first (and only) mount, which is
@@ -275,7 +284,7 @@ function GymHost({ visible }: { readonly visible: boolean }): React.ReactElement
     if (gapSeconds < EMPIRE_TUNING.TICK_SECONDS) return;
     lastAnchorMsRef.current = nowMs;
     dispatch({ kind: 'advance-clock', gapSeconds, mode });
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     if (!visible) return;
@@ -331,6 +340,17 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   // scripted meet, so this must not run per render.
   const entry = useMemo(() => resolveEntry(search), [search]);
   const [route, setRoute] = useState(entry.route);
+
+  // CROSSING 6, EXTENDED. The gym reducer lives here so MeetScreen's
+  // optional onRecorded can dispatch onto the same tree GymHost renders.
+  // The wall-clock anchor stays on GymHost. No dispatch-ref.
+  const [gymState, dispatch] = useReducer(gymViewReduce, undefined, createGymViewState);
+  const creditSportingResult = useCallback<NonNullable<MeetScreenProps['onRecorded']>>(
+    (meetId, recorded) => {
+      dispatch({ kind: 'credit-sporting-result', meetId, facts: recorded });
+    },
+    [],
+  );
 
   // What beat the surface underneath is on. The screens report it; the shell
   // does not derive it, because deriving session or meet state in a `.tsx` is
@@ -436,6 +456,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
           holdWalkoutAtMs={meetFrame?.holdWalkoutAtMs ?? null}
           onLeave={leaveMeet}
           onPhase={setMeetPhase}
+          onRecorded={meetFrame === undefined ? creditSportingResult : undefined}
           onCutIn={setCutInLive}
           cutInSearch={search}
         />
@@ -473,7 +494,11 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
         style={route.surface === 'gym' ? styles.gymVisible : styles.gymHidden}
         pointerEvents={route.surface === 'gym' ? 'auto' : 'none'}
       >
-        <GymHost visible={route.surface === 'gym'} />
+        <GymHost
+          visible={route.surface === 'gym'}
+          state={gymState}
+          dispatch={dispatch}
+        />
       </View>
 
       {affordance === null && gymAffordance === null ? null : (

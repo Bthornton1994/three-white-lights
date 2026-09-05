@@ -66,7 +66,7 @@ import { preloadMeetSound } from './meetSound';
 import { OpenersView } from './OpenersView';
 import { RecapView } from './RecapView';
 import { useMeetDay } from './useMeetDay';
-import type { MeetServerPort } from '../game/meetClient';
+import type { MeetServerPort, RecordedMeet } from '../game/meetClient';
 import { VerdictView } from './VerdictView';
 import { WalkoutView } from './WalkoutView';
 import { WeighInView } from './WeighInView';
@@ -140,6 +140,13 @@ export interface MeetScreenProps {
    */
   readonly onPhase?: ((phase: MeetDayState['phase']) => void) | undefined;
   /**
+   * CROSSING 9. Reports a server-confirmed played meet so AppShell can
+   * lift it onto the gym sporting ledger. Optional: the `?meet=` debug
+   * frame must not credit. Fires only when `useMeetDay` has applied a
+   * recorded result.
+   */
+  readonly onRecorded?: ((meetId: string, recorded: RecordedMeet) => void) | undefined;
+  /**
    * Reports whether a GDD §7.2 cut-in is on screen, for the shell's chrome gate.
    *
    * The same kind of thing as `onPhase` and forwarded straight to `CutInHost`,
@@ -165,6 +172,7 @@ export function MeetScreen({
   holdWalkoutAtMs = null,
   onLeave,
   onPhase,
+  onRecorded,
   onCutIn,
   cutInSearch,
 }: MeetScreenProps): React.ReactElement {
@@ -187,6 +195,11 @@ export function MeetScreen({
   useEffect(() => {
     onPhase?.(state.phase);
   }, [onPhase, state.phase]);
+
+  useEffect(() => {
+    if (loop.applied === null) return;
+    onRecorded?.(state.context.meet.id, loop.applied);
+  }, [onRecorded, state.context.meet.id, loop.applied]);
 
   const onResolved = useCallback(
     (resolution: LiftResolution) => dispatch({ kind: 'lift-resolved', resolution }),

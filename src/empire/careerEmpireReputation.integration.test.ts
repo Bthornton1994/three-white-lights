@@ -1,9 +1,13 @@
 /**
  * careerEmpireReputation.integration.test.ts — CAREER-EMPIRE-REP-01
  * through gymViewReduce: credit, replay identity, fail-closed unknown
- * meet, clock carry, relocation, reset, and G.2E gate isolation.
+ * meet, clock carry, relocation, reset, G.2E gate isolation, and the
+ * Crossing 9 / Crossing 6-extended wiring pins.
  */
 
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { EMPIRE_TUNING } from './empireTuning';
@@ -16,6 +20,10 @@ import { livingMemberById, type LivingGymMember } from './livingMembers';
 import { equipmentBiasedMemberTypes } from './members';
 import type { SessionEquipmentItem } from './sessions';
 import type { PlayedMeetFacts } from './sportingReputationLedger';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const APP_SHELL = readFileSync(join(HERE, '..', 'shell', 'AppShell.tsx'), 'utf8');
+const MEET_SCREEN = readFileSync(join(HERE, '..', 'meet', 'MeetScreen.tsx'), 'utf8');
 
 const T = EMPIRE_TUNING;
 const DAY = T.SECONDS_PER_DAY;
@@ -235,4 +243,24 @@ describe('CAREER-EMPIRE-REP-01 — G.2E gate stays member-only', () => {
       );
     });
   }
+});
+
+describe('CAREER-EMPIRE-REP-01 — Crossing 9 / Crossing 6-extended wiring', () => {
+  it('lifts the gym reducer onto AppShell and credits only the played route', () => {
+    expect(APP_SHELL).toMatch(/useReducer\(gymViewReduce, undefined, createGymViewState\)/);
+    expect(APP_SHELL).toMatch(/<GymHost[\s\S]*state=\{gymState\}[\s\S]*dispatch=\{dispatch\}/);
+    expect(APP_SHELL).toMatch(
+      /onRecorded=\{meetFrame === undefined \? creditSportingResult : undefined\}/,
+    );
+    expect(APP_SHELL).toMatch(/kind: 'credit-sporting-result'/);
+    expect(APP_SHELL).toMatch(/facts: recorded/);
+    expect(APP_SHELL).not.toMatch(/dispatchRef/);
+  });
+
+  it('MeetScreen reports an applied result through one optional onRecorded', () => {
+    expect(MEET_SCREEN).toMatch(
+      /readonly onRecorded\?: \(\(meetId: string, recorded: RecordedMeet\) => void\) \| undefined;/,
+    );
+    expect(MEET_SCREEN).toMatch(/onRecorded\?\.\(state\.context\.meet\.id, loop\.applied\)/);
+  });
 });
