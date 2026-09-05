@@ -197,6 +197,23 @@ describe('useMeetDay has one source of truth, and it is not its own', () => {
     expect(CODE).toMatch(/recordMeetResult/);
     expect(CODE).toMatch(/\.then\(/);
   });
+
+  it('acknowledges a recorded meet from the record promise, not only after applied', () => {
+    // The screen effect on `loop.applied` dies with MeetScreen. Exit is already
+    // available while `recordMeetResult` is in flight, so a leave can unmount
+    // before that effect runs. The server still records; replay is refused;
+    // sporting credit would stay behind unless the promise itself notifies.
+    expect(CODE).toMatch(/onRecorded\?: \(\(meetId: string, recorded: RecordedMeet\) => void\) \| undefined/);
+    expect(CODE).toMatch(/onRecordedRef\.current = onRecorded/);
+    expect(CODE).toMatch(/onRecordedRef\.current\?\.\(meetId, response\.result\)/);
+    const thenAt = SOURCE.indexOf('.then((response) => {');
+    const notifyAt = SOURCE.indexOf('onRecordedRef.current?.(meetId, response.result)');
+    const appliedAt = SOURCE.indexOf('setApplied(response.result)');
+    expect(thenAt).toBeGreaterThan(-1);
+    expect(notifyAt).toBeGreaterThan(thenAt);
+    expect(appliedAt).toBeGreaterThan(notifyAt);
+    expect(CODE).not.toMatch(/onRecordedRef\.current = (?:undefined|null)/);
+  });
 });
 
 // ---------------------------------------------------------------------------

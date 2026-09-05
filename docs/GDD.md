@@ -2,9 +2,12 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-09-05 (CAREER-EMPIRE-REP-01 FROZEN at
-`34b98a06772db81126b68deec220a24328892a22` — factory freeze; human feel
-gate not run — not CLOSED. Sporting ledger on `GymViewState` composed
+**Last updated:** 2026-09-05 (CAREER-EMPIRE-REP-01 P1 — a leave during
+the in-flight meet save can no longer drop sporting credit: the record
+promise notifies AppShell's `onRecorded` even if MeetScreen unmounts
+before `loop.applied` runs its effect. Factory freeze remains
+`34b98a06772db81126b68deec220a24328892a22` — human feel gate not run —
+not CLOSED. Sporting ledger on `GymViewState` composed
 with G.2E at points. Prior `EmpireState.reputation` phrase names this
 composed v2 reading. G2-ATHLETE-SEASON-01 FROZEN at
 `9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze; human feel
@@ -5353,9 +5356,14 @@ halves share a grain. Both halves are now credited points. Writing v1
 cannot compose with G.2E.
 
 **Proven causal chain:** played meet → server `RecordedMeet` →
-`MeetScreen.onRecorded` → `AppShell` → `credit-sporting-result` →
+`useMeetDay` record-promise (and `MeetScreen.onRecorded`) → `AppShell` →
+`credit-sporting-result` →
 Stage E `sportingReputationFromResult` → sporting ledger →
 `institutionalReputation` (members points + sporting points).
+The promise notifies AppShell's callback so a leave during the in-flight
+save cannot drop sporting credit when MeetScreen unmounts. The Crossing 9
+effect remains the mounted report. Replay of the same `meetId` is a
+state identity no-op, so both paths may fire.
 
 **Write path:** `GymViewState.sportingReputation` via
 `creditSportingResult`. Adapter reads `totalKg` only as null/non-null,

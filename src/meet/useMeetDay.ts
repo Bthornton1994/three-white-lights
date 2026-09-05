@@ -147,11 +147,18 @@ export interface MeetDayLoop {
  * server round trip still runs when frozen, so a preview of the recap has a real
  * total on it — against the preview's OWN port, which `meetPreview.ts` builds
  * and `shellRoute.ts` only ever attaches to a scripted frame.
+ *
+ * @param onRecorded App-owned acknowledgement of a server-confirmed meet.
+ * Invoked from the `recordMeetResult` promise so a leave during the in-flight
+ * save cannot drop sporting credit when MeetScreen unmounts. Optional: the
+ * `?meet=` debug frame must not credit. Held in a ref and not listed as an
+ * effect dependency, so a new callback cannot cancel or re-issue the request.
  */
 export function useMeetDay(
   serverPort: MeetServerPort,
   initial?: MeetDayState,
   frozen: boolean = false,
+  onRecorded?: ((meetId: string, recorded: RecordedMeet) => void) | undefined,
 ): MeetDayLoop {
   const [cache, setCache] = useState<ProgressionCache>(() => openingCache(serverPort));
 
@@ -186,6 +193,8 @@ export function useMeetDay(
   const [submissionError, setSubmissionError] = useState<MeetServerError | null>(null);
   const submittedRef = useRef<string>('');
   const proposalSeq = useRef<number>(0);
+  const onRecordedRef = useRef(onRecorded);
+  onRecordedRef.current = onRecorded;
 
   const dispatch = useCallback((event: MeetDayEvent) => {
     setState((current) => stepMeetDay(current, event));
@@ -308,6 +317,7 @@ export function useMeetDay(
       return pending.ok ? pending.value : current;
     });
 
+    const meetId = state.context.meet.id;
     void serverPort
       .recordMeetResult(state.context.day, state.context.meet, proposal, proposalId)
       .then((response) => {
@@ -326,6 +336,10 @@ export function useMeetDay(
           });
           return;
         }
+        // Notify from the promise, not from a later MeetScreen effect on
+        // `applied`. The server has already recorded; leaving now unmounts the
+        // screen before that effect can run. The callback lives on AppShell.
+        onRecordedRef.current?.(meetId, response.result);
         setApplied(response.result);
         setCache((current) => receiveSnapshot(current, response.wire));
       });

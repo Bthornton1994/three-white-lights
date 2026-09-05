@@ -966,7 +966,9 @@ describe('navigating away and back cannot buy a second session of the day', () =
   it('MeetScreen forwards the port to the hook instead of dropping it', () => {
     // The twin of the `SessionScreen` check below, and the same silent failure:
     // accepting the prop and calling `useMeetDay(preview, ...)` anyway.
-    expect(MEET_SCREEN).toMatch(/useMeetDay\(serverPort, preview, preview !== undefined\)/);
+    expect(MEET_SCREEN).toMatch(
+      /useMeetDay\(serverPort, preview, preview !== undefined, onRecorded\)/,
+    );
     expect(MEET_SCREEN).not.toMatch(/useMeetDay\(preview/);
   });
 

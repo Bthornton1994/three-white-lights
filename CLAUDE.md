@@ -974,6 +974,15 @@ read a Total. Mapping from played facts to Stage E's
 `bc-d98bea43`. Crossing 9 is an accepted product decision. This memorial
 commits before the `MeetScreen.tsx` edit.
 
+### CAREER-EMPIRE-REP-01 P1: record-promise acknowledgement
+
+The Crossing 9 effect still reports `loop.applied` while MeetScreen is
+mounted. `useMeetDay` also notifies `onRecorded` from the
+`recordMeetResult` promise, via a ref that is not cleared on unmount,
+so a leave during the in-flight save cannot drop sporting credit.
+AppShell still owns the callback and still passes it only on the played
+route. Not a wrap of `MeetServerPort.recordMeetResult`.
+
 ### CROSSING 6, EXTENDED: AppShell reducer lift for the sporting-reputation hand-off
 
 Crossing 6 already wired Gym Empire into `src/shell/**`. CAREER-EMPIRE-REP-01
