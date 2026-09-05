@@ -252,6 +252,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { EMPIRE_TUNING } from './empireTuning';
 import { FloorGrid } from './FloorGrid';
+import { institutionalReputation } from './institutionalReputation';
 import { GYM_SURFACES, type GymViewAction, type GymViewProps } from './ladderView';
 import {
   failurePhase,
@@ -528,7 +529,24 @@ export function GymScreen(props: GymViewProps) {
     floor,
     surface,
     capability,
+    livingMembers,
+    sportingReputation,
+    lastSportingCredit,
   } = props.state;
+  const sportingCopy = EMPIRE_TUNING.SPORTING_REPUTATION.copy;
+  const reputationReading = institutionalReputation(
+    livingMembers.reputation,
+    sportingReputation,
+  );
+  const reputationLine = sportingCopy.composed
+    .replace('{fromMembers}', String(reputationReading.fromMembers))
+    .replace('{fromSporting}', String(reputationReading.fromSporting));
+  const reputationReasons =
+    lastSportingCredit === null
+      ? []
+      : lastSportingCredit.kind === 'credited'
+        ? lastSportingCredit.reasons.map((row) => row.text)
+        : [sportingCopy.unknownMeet];
   // Stage 1/2's own `GymState`, read out of the managed state that holds it.
   // There is one `GymState` in this screen's props (`ladderView.tsx`'s
   // `GymViewState` header says why), and this is the read of it.
@@ -1131,6 +1149,12 @@ export function GymScreen(props: GymViewProps) {
             <Text testID={'gymscreen-strikes-lead'}>0 counted decision(s)</Text>
           </View>
         ) : null}
+        <Text testID={'gymscreen-reputation'}>{reputationLine}</Text>
+        {reputationReasons.map((text, index) => (
+          <Text testID={`gymscreen-reputation-reason-${index}`} key={index}>
+            {text}
+          </Text>
+        ))}
         {lastAccrual === null ? null : (
           <Text testID={'gymscreen-accrual'}>
             last advance banked {lastAccrual.secondsBanked}s of {lastAccrual.secondsElapsed}s, paid{' '}

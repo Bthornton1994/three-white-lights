@@ -1809,6 +1809,8 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   // for.
   'GymScreen.tsx#GymScreen#props.map x1',
   'GymScreen.tsx#GymScreen#props.map x1',
+  // CAREER-EMPIRE-REP-01: lastSportingCredit reason rows.
+  'GymScreen.tsx#GymScreen#props.map x1',
   'GymScreen.tsx#GymScreen#week.map x1',
   'empireCore.ts#idleLedger#ledger.filter x1',
   'empireCore.ts#progressionLedger#ledger.filter x1',
@@ -3411,7 +3413,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 3662 -> 3704: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 3704 -> 3755: Stage G.2C2 livingMemberDeparture.ts plus livingMembers
   // departure/reconcile wiring. Read from this pin last.
-  CALLS_EXAMINED: 4091, // CAREER-EMPIRE-REP-01 ledger + composer + GymView credit arm
+  CALLS_EXAMINED: 4098, // CAREER-EMPIRE-REP-01 GymScreen composed-reputation calls
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -12379,7 +12381,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 6_546_189 -> 6_546_436: Stage G.2C2 departure/reconcile/stayEvidence drive.
   // Read from this pin last. STRINGS/DISTINCT_STRINGS below remain the G.2C1
   // pins until this assertion's subsequent failure names them.
-  NODES: 6549717, // CAREER-EMPIRE-REP-01 sporting ledger / gym credit drives
+  NODES: 6549732, // CAREER-EMPIRE-REP-01 GymScreen reputation diagnostics walk
   // THE SENTENCE THAT USED TO FINISH THIS COMMENT WAS FALSE AND IS CORRECTED
   // RATHER THAN DELETED. It read: "`STRINGS` and `DISTINCT_STRINGS` did NOT
   // move with it — the nodes past the old bound carry no string this scan had
@@ -12566,7 +12568,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_209_771, // CAREER-EMPIRE-REP-01 sporting ledger / gym credit drive strings
+  STRINGS: 30_209_828, // CAREER-EMPIRE-REP-01 GymScreen reputation diagnostics strings
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -12676,7 +12678,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
   // 3973 -> 3975: Stage D2 reset-gym copy / wear-truth strings. Read from
   // this pin's own failure value.
-  DISTINCT_STRINGS: 4296, // CAREER-EMPIRE-REP-01 sporting copy / meet-id strings
+  DISTINCT_STRINGS: 4299, // CAREER-EMPIRE-REP-01 GymScreen reputation testIDs
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
   DEPTH_CUTS: 10, // Stage G.2D purse-credit ledger walk
   /**
@@ -12842,7 +12844,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 6247 -> 6253: Stage D2 reset-gym Pressable stacks on driven GymScreen
   // trees. Read from this pin's own failure value.
   // 6290 -> 6291: Stage G.2C1 stay-response drive Error.stack readings.
-  STACKS: 6294, // Stage G.2D purse-credit drive
+  STACKS: 6297, // CAREER-EMPIRE-REP-01 GymScreen reputation diagnostics
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -17450,7 +17452,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 66 -> 67: GDD §5.14 Stage B's pacing.ts — one call through a
   // module-level import (`offlineBankingHorizonSeconds()` in the sporadic
   // gap cycle). Read from this pin's own failure value.
-  'module-variable': 81, // G2-ATHLETE-SEASON-01 livingMemberSeason trainingWeekIndexAt
+  'module-variable': 83, // CAREER-EMPIRE-REP-01 GymScreen SPORTING copy / institutionalReputation
   // 5 -> 7: Phase 3's RENDER half's two calls through a local binding in
   // `AmbientMemberBody`'s single animation effect (`bobLoop.start()`,
   // `pulseLoop.stop()`). Read from this table's own failure value.
@@ -17548,7 +17550,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
   // 1815 -> 1841: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 1841 -> 1866: Stage G.2C2 livingMemberDeparture.ts plus roster/sim wiring.
-  function: 2055, // CAREER-EMPIRE-REP-01 ledger + composer + GymView credit arm
+  function: 2056, // CAREER-EMPIRE-REP-01 GymScreen institutionalReputation call
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -17608,7 +17610,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
   // 1658 -> 1673: Stage G.2C1 livingMemberStay.ts plus livingMembers stayState.
   // 1673 -> 1699: Stage G.2C2 livingMemberDeparture.ts plus roster/sim members.
-  member: 1843, // CAREER-EMPIRE-REP-01 ledger + composer + GymView credit arm
+  member: 1846, // CAREER-EMPIRE-REP-01 GymScreen composed-copy / reason map
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -17618,7 +17620,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // Read from this pin's own failure value.
   // 23 -> 24: GDD §5.14 Stage B's `pacingReadingAtHorizon`'s
   // `readings.find(...)`, the same shape as S4b's rows above.
-  'member-of-parameter': 39, // G2-ATHLETE-SEASON-01 athleteSeasonBoundaryWouldMove members.some
+  'member-of-parameter': 40, // CAREER-EMPIRE-REP-01 GymScreen reputationReasons.map
   // Phase 4: FLOOR_SPRITE_PALETTES' construction calls a fresh arrow (the
   // palette-row map), the same site DECLARED_FRESH_RECEIVERS names.
   fresh: 3, // Stage G.2A livingMemberExperience
@@ -17975,7 +17977,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // stayState wiring. Read from this pin last.
   // 84_813 -> 86_105: Stage G.2C2 livingMemberDeparture.ts plus roster/sim
   // departure wiring. Read from this pin last.
-  NODES_EXAMINED: 92_688, // CAREER-EMPIRE-REP-01 ledger + composer + GymView credit arm AST
+  NODES_EXAMINED: 92_830, // CAREER-EMPIRE-REP-01 GymScreen reputation diagnostics AST
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -26001,6 +26003,35 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
       });
     },
   }),
+  Object.freeze({
+    site: 'GymScreen.tsx#GymScreen#props.map x1',
+    run: (record: MemberCallRecord): void => {
+      const opening = memberCallGymViewState([]);
+      const reasons = recordOn(
+        [
+          Object.freeze({
+            kind: 'placing' as const,
+            text: 'Placed 1 of 16 in category at a local meet',
+            points: 24 as never,
+          }),
+        ],
+        'map',
+        record,
+      );
+      gymScreenModule.GymScreen({
+        state: Object.freeze({
+          ...opening,
+          lastSportingCredit: Object.freeze({
+            kind: 'credited' as const,
+            meetId: 'local-open-2026',
+            points: 24 as never,
+            reasons,
+          }),
+        }),
+        dispatch: MEMBER_CALL_SILENT_DISPATCH,
+      });
+    },
+  }),
   // members.ts (§5.11 stage 3): both sites sum a caller-supplied
   // `MemberRoster` with `.reduce`, so the same array is watched twice, once
   // per function. `reduce`'s own callback receives no argument this pass's
@@ -26226,14 +26257,14 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // four `livingMembers.ts` roster/id sites.
   // 29 -> 28: Stage G.2C2 dropped applyServiceObservations#roster.map (loop).
   // 28 -> 29: Stage G.2C2 departedMemberById#roster.find.
-  SUBJECTS: 29,
+  SUBJECTS: 30, // CAREER-EMPIRE-REP-01 GymScreen reputationReasons.map
   /** One call of the instrumented method per subject, two at the ladder site. */
   // 22 -> 24: S4b's two new subjects, one call each.
   // 24 -> 25: GDD §5.14 Stage B's one new subject, one call.
   // 25 -> 30: Stage G.1A's five new subjects, one call each.
   // 30 -> 29: the dropped applyServiceObservations map site.
   // 29 -> 30: departedMemberById#roster.find, one call.
-  CALLS: 30,
+  CALLS: 31, // CAREER-EMPIRE-REP-01 GymScreen reputationReasons.map
   /**
    * Callback invocations across every subject: 4 + 33, the second number being
    * E23's ten sites. Per site — and per ARM, which is the half a total cannot
@@ -26250,7 +26281,7 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 54 -> 64: Stage G.1A's five new sites — three garage members on each
   // `.map` site, one `.find` predicate, and zero on `id.split`.
   // 64 -> 61: three garage-member map callbacks no longer invoked.
-  CALLBACK_CALLS: 61,
+  CALLBACK_CALLS: 62, // CAREER-EMPIRE-REP-01 reputationReasons.map one row
   /**
    * Strings reachable from the non-function arguments.
    *
@@ -26283,7 +26314,7 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 294 -> 237: Stage G.2C2 rewrote applyServiceObservations roster.map as a
   // loop (departure filter). The dead member-call site is removed rather than
   // driven at zero. Read from this pin last.
-  RETURNED: 237, // Stage G.2C2 applyServiceObservations no longer maps
+  RETURNED: 238, // CAREER-EMPIRE-REP-01 reputationReasons.map one string
   FINDINGS: 0,
   TRIPWIRE_SUBJECTS: 2,
   TRIPWIRE_FINDINGS: 2,
@@ -26387,6 +26418,8 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   // silently dropping to one is red rather than merely smaller.
   'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=24 verdicts=objectx1',
   'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=24 verdicts=objectx1',
+  // CAREER-EMPIRE-REP-01: lastSportingCredit.reasons.map — one Text child.
+  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=1 verdicts=stringx1',
   // members.ts (§5.11 stage 3): `.reduce(callback, 0)` is one call, with the
   // callback invoked once per roster row (two rows in both fixtures). The
   // callback returns a plain number (a running sum), never a string, so
@@ -26502,7 +26535,7 @@ describe('the member-call pass — what a caller-supplied method is actually han
     // week log, the strike ledger and the auto-repair report — and the two
     // stage-4 ones produce byte-identical observation rows, so this count is
     // the only thing that reddens if a driver is dropped.
-    expect(driven.filter((site) => site === 'GymScreen.tsx#GymScreen#props.map x1').length).toBe(3);
+    expect(driven.filter((site) => site === 'GymScreen.tsx#GymScreen#props.map x1').length).toBe(4);
   });
 });
 

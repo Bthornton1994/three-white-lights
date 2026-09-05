@@ -107,6 +107,7 @@ import {
   sessionItemFootprint,
 } from './floor';
 import { EMPIRE_TUNING } from './empireTuning';
+import { institutionalReputation } from './institutionalReputation';
 import {
   type CountedDecisionRecord,
   type ManagedEquipmentItem,
@@ -751,6 +752,30 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
     }
     compared += 6;
   }
+  const reputationReading = institutionalReputation(
+    state.livingMembers.reputation,
+    state.sportingReputation,
+  );
+  const reputationLine = T.SPORTING_REPUTATION.copy.composed
+    .replace('{fromMembers}', String(reputationReading.fromMembers))
+    .replace('{fromSporting}', String(reputationReading.fromSporting));
+  expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(reputationLine);
+  expect(textOf(findByTestId(root, 'gymscreen-reputation'))).not.toMatch(/\+REP/);
+  const credit = state.lastSportingCredit;
+  if (credit === null) {
+    expect(findAllByTestId(root, 'gymscreen-reputation-reason-0').length).toBe(0);
+  } else if (credit.kind === 'credited') {
+    credit.reasons.forEach((row, index) => {
+      expect(textOf(findByTestId(root, `gymscreen-reputation-reason-${index}`))).toBe(row.text);
+    });
+    compared += credit.reasons.length;
+  } else {
+    expect(textOf(findByTestId(root, 'gymscreen-reputation-reason-0'))).toBe(
+      T.SPORTING_REPUTATION.copy.unknownMeet,
+    );
+    compared += 1;
+  }
+  compared += 2;
   return compared;
 }
 
@@ -2002,5 +2027,44 @@ describe('G2-ATHLETE-SEASON-01 — FloorGrid season notice', () => {
     expect(copy).toBe(`${athlete.displayName} is back from the season.`);
     expect(copy).not.toMatch(/%/);
     expect(copy).not.toMatch(/days/i);
+  });
+});
+
+describe('CAREER-EMPIRE-REP-01 — gymscreen-reputation diagnostics', () => {
+  it('opens with both halves at zero and no reason rows', () => {
+    const state = createGymViewState();
+    const root = render(state, []);
+    expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(
+      T.SPORTING_REPUTATION.copy.composed
+        .replace('{fromMembers}', '0')
+        .replace('{fromSporting}', '0'),
+    );
+    expect(findAllByTestId(root, 'gymscreen-reputation-reason-0').length).toBe(0);
+    expect(textOf(findByTestId(root, 'gymscreen-reputation'))).not.toMatch(/\+REP/);
+  });
+
+  it('shows the placing reason after a first-of-16 PR credit', () => {
+    const credited = gymViewReduce(createGymViewState(), {
+      kind: 'credit-sporting-result',
+      meetId: 'local-open-2026',
+      facts: Object.freeze({
+        totalKg: 600,
+        isTotalPr: true,
+        placing: Object.freeze({ place: 1, fieldSize: 16 }),
+      }),
+    });
+    const root = render(credited, []);
+    expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(
+      T.SPORTING_REPUTATION.copy.composed
+        .replace('{fromMembers}', '0')
+        .replace('{fromSporting}', '40'),
+    );
+    expect(textOf(findByTestId(root, 'gymscreen-reputation-reason-0'))).toBe(
+      T.SPORTING_REPUTATION.copy.placing
+        .replace('{place}', '1')
+        .replace('{field}', '16')
+        .replace('{kind}', 'local'),
+    );
+    expect(textOf(findByTestId(root, 'gymscreen-reputation'))).not.toMatch(/\+REP/);
   });
 });

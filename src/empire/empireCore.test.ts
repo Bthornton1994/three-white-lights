@@ -2712,7 +2712,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 233 -> 245: CAREER-EMPIRE-REP-01 institutionalReputation.ts +
     // sportingReputationLedger.ts mention graph. Read from this assertion's
     // own failure value.
-    expect(pairs).toBe(245);
+    // 245 -> 246: CAREER-EMPIRE-REP-01 GymScreen → institutionalReputation.
+    expect(pairs).toBe(246);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3898,7 +3899,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 825 -> 827: Stage G.2E reputation card testID and daily-rate copy.
     // 827 -> 841: G2-ATHLETE-SEASON-01 season copy, refuse lines, and notice testID.
     // 841 -> 852: CAREER-EMPIRE-REP-01 ledger/composer copy and refuse lines.
-    expect(singleQuoted.size).toBe(852);
+    // 852 -> 856: CAREER-EMPIRE-REP-01 GymScreen reputation testIDs / copy.
+    expect(singleQuoted.size).toBe(856);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4037,7 +4039,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 413 -> 426: Stage G.2E reputation settle / occupancy refuse templates plus REP line.
     // 426 -> 446: G2-ATHLETE-SEASON-01 season leave/return / occupancy refuse templates.
     // 446 -> 451: CAREER-EMPIRE-REP-01 ledger/composer refuse templates.
-    expect(templateChunks.size).toBe(451);
+    // 451 -> 452: CAREER-EMPIRE-REP-01 gymscreen-reputation-reason template.
+    expect(templateChunks.size).toBe(452);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4071,6 +4074,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './floor',
       './floorSim',
       './floorSprites',
+      './institutionalReputation',
       './ladder',
       './ladderView',
       './livingMemberArrival',
@@ -4513,6 +4517,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-recovery-history',
       'gymscreen-recovery-state',
       'gymscreen-refusal',
+      'gymscreen-reputation',
       'gymscreen-reset-gym',
       'gymscreen-root',
       'gymscreen-rung',
@@ -4800,6 +4805,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'wide',
       'worlds',
       'wrist-wraps',
+      '{fromMembers}',
+      '{fromSporting}',
     ]);
 
     // The half the pin does not reach: a multi-word name inside a message. Run
@@ -4921,7 +4928,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1238 -> 1253: Stage G.2E singleQuoted +2 and templateChunks +13.
     // 1253 -> 1287: G2-ATHLETE-SEASON-01 singleQuoted +14 and templateChunks +20.
     // 1287 -> 1303: CAREER-EMPIRE-REP-01 space-free tokens + template chunks.
-    expect(stringsChecked).toBe(1303);
+    // 1303 -> 1307: CAREER-EMPIRE-REP-01 GymScreen composed-copy tokens.
+    expect(stringsChecked).toBe(1308);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5347,6 +5355,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         // gym's own screen can point at which stations are blocking it —
         // one new edge, no new arithmetic.
         './stationView',
+        // CAREER-EMPIRE-REP-01: composed reputation diagnostics.
+        './institutionalReputation',
         'react-native',
       ],
       'institutionalReputation.ts': [
@@ -5641,8 +5651,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 153 -> 154: Stage G.2D purse composition — ladderView.tsx imports livingMemberDues.ts.
     // 154 -> 163: Stage G.2E livingMemberReputation.ts six edges plus livingMembers / FloorGrid / arrival.
     // 163 -> 170: G2-ATHLETE-SEASON-01 livingMemberSeason.ts five edges plus livingMembers / FloorGrid.
-    // CAREER-EMPIRE-REP-01: +9 specifiers (ledger + composer + tests).
-    expect(specifiers).toBe(179);
+    // CAREER-EMPIRE-REP-01: +10 specifiers (ledger + composer + GymScreen).
+    expect(specifiers).toBe(180);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
