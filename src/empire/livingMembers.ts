@@ -1,6 +1,7 @@
 /**
  * livingMembers.ts — Stage G.1 / G.1A identity, G.2 service history, stay
- * response, G.2C2 departure execution, and G.2C3 vacancy arrival.
+ * response, G.2C2 departure execution, G.2C3 vacancy arrival, and G.2D dues
+ * settlement.
  *
  * Pure module: zero React, zero side effects, zero I/O, no `Math.random`.
  * Persists the bodies the player sees on the played floor — NOT `NpcLifter`
@@ -24,11 +25,22 @@
  * strain-qualifying service observation. This file does not rebuild
  * satisfaction or retention arithmetic.
  *
+ * G.2D dues settlement lives in `applyLivingMemberDues`. That is the one
+ * writer of the living-member dues ledger. Clock advance on the played gym
+ * is the production caller, and that same path credits the ledger delta
+ * onto the spendable Gym Bucks purse. Service observations do not credit
+ * dues. They may stamp gym-clock occupancy ends onto `duesLeftAtSeconds` so
+ * a leave inside an unsettled window still pays the active stub. This file
+ * does not call the members-module dues interpolator or `memberSatisfaction`;
+ * `livingMemberDues.ts` owns that mapping from G.2A composite.
+ *
  * NOT BUILT HERE, ON PURPOSE — later stages:
  *
- *   - No dues wiring, no `reputationFromMembers` wiring, no
- *     `memberSatisfaction` calls, no reputation-gated high-paying arrival
- *     rates (G.2E).
+ *   - No `reputationFromMembers` wiring, no `memberSatisfaction` calls, no
+ *     reputation-gated high-paying arrival rates (G.2E).
+ *   - No writing `ladder.gymBucks` here. The production clock path credits
+ *     the ledger delta onto the spendable purse; this file stays the one
+ *     dues-ledger writer.
  *   - No offline-fabricated service visits, stay changes, departures, or
  *     arrivals — observations arrive only from real `floorSim.ts` steps while
  *     the sim is running.
@@ -48,6 +60,16 @@ import {
   type LivingMemberArrivalContext,
   type LivingMemberArrivalRecord,
 } from './livingMemberArrival';
+import {
+  appendLivingMemberDuesSettlement,
+  createLivingMemberDuesLedger,
+  createLivingMemberDuesSettlement,
+  lastLivingMemberDuesSettlement,
+  livingMemberDuesForWindow,
+  requireLivingMemberDuesOccupancyClock,
+  type LivingMemberDuesDeparturePresence,
+  type LivingMemberDuesLedger,
+} from './livingMemberDues';
 import {
   createLivingMemberDepartureRecord,
   livingMemberShouldDepart,
@@ -107,6 +129,14 @@ export interface LivingMemberRoster {
   readonly departures: readonly LivingMemberDepartureRecord[];
   /** Archive of G.2C3 vacancy arrivals. Relocation appends are not recorded here. */
   readonly arrivals: readonly LivingMemberArrivalRecord[];
+  /**
+   * Gym-clock seconds a departed identity left, keyed by member id. G.2D
+   * occupancy; C2 still owns `departedAtTick`. Missing keys mean the leave
+   * has no gym-clock mark and does not invent a stub.
+   */
+  readonly duesLeftAtSeconds: Readonly<Record<string, number>>;
+  /** G.2D dues ledger. Clock-settled; the clock path credits this onto the purse. */
+  readonly dues: LivingMemberDuesLedger;
 }
 
 /** History limits compared in tests; the shipped limit is the middle entry. */
@@ -291,6 +321,8 @@ export function createLivingMemberRoster(
     members,
     departures: Object.freeze([]),
     arrivals: Object.freeze([]),
+    duesLeftAtSeconds: Object.freeze({}),
+    dues: createLivingMemberDuesLedger(joinedAtSeconds),
   });
 }
 
@@ -342,6 +374,8 @@ export function reconcileLivingMemberRosterOnRelocation(
     members: Object.freeze([...existing, ...appended]),
     departures: roster.departures,
     arrivals: roster.arrivals,
+    duesLeftAtSeconds: roster.duesLeftAtSeconds,
+    dues: roster.dues,
   });
 }
 
@@ -452,12 +486,18 @@ function latestVisitOf(member: LivingGymMember): ServiceVisitRecord | undefined 
  * block attraction from a Stable visit. The observation that executes a
  * departure does not also mint. Arrivals never exceed the facility ambient
  * cap and never reuse a departed ordinal.
+ *
+ * `gymClockSeconds` is G.2D occupancy only. A leave stamps `duesLeftAtSeconds`
+ * only when this gym clock is provided, so an unsettled window can still bill
+ * the active stub. Arrival `joinedAtSeconds` is not a leave mark. C1–C3
+ * classifiers and tick archives do not read it.
  */
 export function applyServiceObservations(
   roster: LivingMemberRoster,
   observations: readonly FloorSimServiceObservation[],
   historyLimit: number = SHIPPED_SERVICE_HISTORY_WINDOW,
   arrival: LivingMemberArrivalContext | null = null,
+  gymClockSeconds?: number,
 ): LivingMemberRoster {
   if (!SERVICE_HISTORY_WINDOWS.includes(historyLimit as (typeof SERVICE_HISTORY_WINDOWS)[number])) {
     refuseWith(
@@ -465,6 +505,9 @@ export function applyServiceObservations(
     );
   }
   if (observations.length === 0) return roster;
+  if (gymClockSeconds !== undefined) {
+    requireLivingMemberDuesOccupancyClock(gymClockSeconds, 0);
+  }
   const byId = new Map<GymMemberId, LivingGymMember>();
   for (const member of roster.members) {
     byId.set(member.id, member);
@@ -483,6 +526,7 @@ export function applyServiceObservations(
   }
   const minted: LivingGymMember[] = [];
   let nextOrdinal = roster.nextOrdinal;
+  let duesLeftAtSeconds: Readonly<Record<string, number>> = roster.duesLeftAtSeconds;
   const arrivalContext = arrival === null ? null : requireLivingMemberArrivalContext(arrival);
   const ambientCap = ambientCountForRung(roster.rung);
   let changed = false;
@@ -549,6 +593,14 @@ export function applyServiceObservations(
         observation.observedAtTick,
         visitRetention,
       );
+      const leaveClock = gymClockSeconds;
+      if (leaveClock !== undefined) {
+        requireLivingMemberDuesOccupancyClock(leaveClock, nextMember.joinedAtSeconds);
+        duesLeftAtSeconds = Object.freeze({
+          ...duesLeftAtSeconds,
+          [id]: leaveClock,
+        });
+      }
       byId.delete(id);
       departedById.set(id, record);
       nextDepartures.push(record);
@@ -589,19 +641,74 @@ export function applyServiceObservations(
     members: Object.freeze(nextMembers),
     departures: Object.freeze(nextDepartures),
     arrivals: Object.freeze(nextArrivals),
+    duesLeftAtSeconds,
+    dues: roster.dues,
   });
 }
 
 /**
  * Clock advance only moves tenure forward. It never fabricates visits, stay
- * response, departures, or arrivals — the gym may have been away; service
- * truth stays in the sim.
+ * response, departures, arrivals, or dues settlements — the gym may have been
+ * away; service truth stays in the sim, and dues settle through
+ * `applyLivingMemberDues`.
  */
 export function advanceLivingMemberTenure(
   roster: LivingMemberRoster,
   _gapSeconds: number,
 ): LivingMemberRoster {
   return roster;
+}
+
+/**
+ * One writer for living-member dues. Settles `[dues.settledAtSeconds, toSeconds)`
+ * against time-weighted occupancy over that window. Active members pay through
+ * the mark. A G.2C2 leave stamped on `duesLeftAtSeconds` still pays the stub
+ * it was active. A stamp on the window start occupies the open GymHost tick
+ * rather than `[mark, mark)`. Exact replay of an already-settled mark is a
+ * full roster no-op. An earlier mark fails closed. Service observations do
+ * not call this.
+ */
+export function applyLivingMemberDues(
+  roster: LivingMemberRoster,
+  toSeconds: number,
+): LivingMemberRoster {
+  if (!Number.isFinite(toSeconds) || toSeconds < 0) {
+    refuseWith(`dues settle seconds must be a non-negative number, received ${toSeconds}`);
+  }
+  const fromSeconds = roster.dues.settledAtSeconds;
+  if (toSeconds < fromSeconds) {
+    refuseWith(`dues settle ${toSeconds} is earlier than last settled ${fromSeconds}`);
+  }
+  if (toSeconds === fromSeconds) return roster;
+  const departed: LivingMemberDuesDeparturePresence[] = [];
+  for (const record of roster.departures) {
+    const leftAt = roster.duesLeftAtSeconds[record.member.id];
+    if (leftAt === undefined) continue;
+    departed.push(
+      Object.freeze({
+        member: record.member,
+        departedAtSeconds: leftAt,
+      }),
+    );
+  }
+  const gymBucks = livingMemberDuesForWindow(
+    roster.members,
+    fromSeconds,
+    toSeconds,
+    Object.freeze(departed),
+  );
+  const last = lastLivingMemberDuesSettlement(roster.dues.settlements);
+  if (last !== null && last.fromSeconds === fromSeconds && last.toSeconds === toSeconds) {
+    if (last.gymBucks !== gymBucks) {
+      refuseWith(`dues settlement conflicts at ${fromSeconds}–${toSeconds}`);
+    }
+    return roster;
+  }
+  const settlement = createLivingMemberDuesSettlement(fromSeconds, toSeconds, gymBucks);
+  return Object.freeze({
+    ...roster,
+    dues: appendLivingMemberDuesSettlement(roster.dues, settlement),
+  });
 }
 
 // ---------------------------------------------------------------------------
