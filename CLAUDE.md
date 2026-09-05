@@ -985,6 +985,16 @@ stand-in and does not pass through the view. Crossing 9 `onRecorded`
 remains the mounted report. A recorded Total that cannot credit fails
 closed as `not-creditable`.
 
+### CAREER-EMPIRE-REP-01 P2: `?meet=` frames use a non-crediting stand-in
+
+TWL BO: any `?meet=` frame, including `live`, must use a non-crediting
+stand-in — never the AppShell sporting-credit wrapper. Leave-during-save
+stays on the production path (`meetFrame` absent → `playedMeetPort`).
+Tight AppShell route selection only. Do not widen Crossing 9. Do not
+edit Session A / `src/game`. `?meet=live` is a defined frame with
+`serverPort: undefined`; AppShell hands it `debugMeetStandIn()`, not
+`appMeetPort()` and not `withSportingCreditOnRecord`.
+
 ### CROSSING 6, EXTENDED: AppShell reducer lift for the sporting-reputation hand-off
 
 Crossing 6 already wired Gym Empire into `src/shell/**`. CAREER-EMPIRE-REP-01

@@ -4,9 +4,10 @@
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
 **Last updated:** 2026-09-05 (CAREER-EMPIRE-REP-01 P2 — no `?meet=`
 path, including `live`, credits sporting reputation. `?meet=live` is a
-defined debug frame with `serverPort: undefined`; AppShell selects
-`appMeetPort()` for it, not the crediting `playedMeetPort` view. Only
-the production played path (no meetFrame) uses the AppShell-owned view.
+defined debug frame with `serverPort: undefined`; AppShell selects a
+non-crediting stand-in (`debugMeetStandIn`) for it, never the sporting-
+credit `playedMeetPort` view and never the app singleton. Only the
+production played path (no meetFrame) uses the AppShell-owned view.
 Crossing 9 stays the mounted MeetScreen report. Factory freeze remains
 `34b98a06772db81126b68deec220a24328892a22` — human feel gate not run —
 not CLOSED. Sporting ledger on `GymViewState` composed
@@ -5379,8 +5380,9 @@ identity no-op, so both paths may fire. A recorded Total on an
 unknown meet fails closed as `not-creditable` — a silent miss is a
 fail. P2: AppShell selects that view only when `meetFrame` is
 absent. Every `?meet=` frame — including `?meet=live`, a defined
-frame whose `serverPort` is undefined — uses the frame stand-in or
-`appMeetPort()`, never the crediting view. Disabling Crossing 9
+frame whose `serverPort` is undefined — uses a non-crediting stand-in
+(the frame's own port, or `debugMeetStandIn` for live), never the
+crediting view and never the app singleton. Disabling Crossing 9
 `onRecorded` is not enough; the view itself must not wrap a debug
 frame.
 
@@ -5417,7 +5419,8 @@ byte-identical. `empireCore.ts` / `reputation.ts` byte-identical. No
 `src/game/**` edit. `MeetScreen.tsx` is one optional prop and one
 effect. P1 credit is AppShell's played-port view, not a second
 Crossing 9 argument on `useMeetDay`. P2 keeps that view on the
-production path only (`meetScreenPort` keys on frame presence).
+production path only (`meetScreenPort` keys on frame presence; live
+uses `debugMeetStandIn`).
 No new numeric tuning literal.
 E-REP-01 stays open.
 

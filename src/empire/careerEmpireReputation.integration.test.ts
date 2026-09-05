@@ -31,7 +31,7 @@ import { equipmentBiasedMemberTypes } from './members';
 import type { SessionEquipmentItem } from './sessions';
 import { localSessionServer } from '../session/localSessionServer';
 import { openingCache } from '../game/sessionClient';
-import { meetScreenPort, withSportingCreditOnRecord } from '../shell/appServer';
+import { debugMeetStandIn, meetScreenPort, withSportingCreditOnRecord } from '../shell/appServer';
 import { frozenMeetFor, resolveEntry } from '../shell/shellRoute';
 import type { PlayedMeetFacts } from './sportingReputationLedger';
 
@@ -270,8 +270,10 @@ describe('CAREER-EMPIRE-REP-01 — Crossing 9 / Crossing 6-extended wiring', () 
     expect(APP_SHELL).toMatch(/kind: 'credit-sporting-result'/);
     expect(APP_SHELL).toMatch(/facts: recorded/);
     expect(APP_SHELL).toMatch(/withSportingCreditOnRecord\(appMeetPort\(\), creditSportingResult\)/);
-    expect(APP_SHELL).toMatch(/serverPort=\{meetScreenPort\(meetFrame, playedMeetPort, appMeetPort\(\)\)\}/);
+    expect(APP_SHELL).toMatch(/serverPort=\{meetScreenPort\(meetFrame, playedMeetPort, liveMeetStandIn\)\}/);
+    expect(APP_SHELL).toMatch(/useMemo\(\(\) => debugMeetStandIn\(\), \[\]\)/);
     expect(APP_SHELL).not.toMatch(/meetFrame\?\.serverPort \?\? playedMeetPort/);
+    expect(APP_SHELL).not.toMatch(/meetScreenPort\(meetFrame, playedMeetPort, appMeetPort\(\)\)/);
     expect(APP_SHELL).not.toMatch(/dispatchRef/);
   });
 
@@ -317,7 +319,7 @@ describe('CAREER-EMPIRE-REP-01 P1 — leave-before-response / unmount-before-onR
     expect(MEET_SCREEN).toMatch(/onRecorded\?\.\(state\.context\.meet\.id, loop\.applied\)/);
     expect(USE_MEET_DAY).not.toMatch(/\bonRecorded\b/);
     expect(APP_SHELL).toMatch(/withSportingCreditOnRecord\(appMeetPort\(\), creditSportingResult\)/);
-    expect(APP_SHELL).toMatch(/serverPort=\{meetScreenPort\(meetFrame, playedMeetPort, appMeetPort\(\)\)\}/);
+    expect(APP_SHELL).toMatch(/serverPort=\{meetScreenPort\(meetFrame, playedMeetPort, liveMeetStandIn\)\}/);
   });
 
   it('credits sporting reputation when the screen unmounts before onRecorded', async () => {
@@ -480,10 +482,12 @@ describe('CAREER-EMPIRE-REP-01 P2 — ?meet= frames do not credit', () => {
 
     const inner = localSessionServer({ sleep: () => Promise.resolve() });
     const played = withSportingCreditOnRecord(inner, () => undefined);
-    // The P1 selection. Live's undefined stand-in coalesces onto the view.
+    const standIn = debugMeetStandIn();
+    // The P1 selection. Live's undefined frame port coalesces onto the view.
     expect(frame?.serverPort ?? played).toBe(played);
-    expect(meetScreenPort(frame, played, inner)).toBe(inner);
-    expect(meetScreenPort(frame, played, inner)).not.toBe(played);
+    expect(meetScreenPort(frame, played, standIn)).toBe(standIn);
+    expect(meetScreenPort(frame, played, standIn)).not.toBe(played);
+    expect(meetScreenPort(frame, played, standIn)).not.toBe(inner);
   });
 
   it('no ?meet= frame — including live — credits sporting reputation', async () => {
@@ -498,8 +502,15 @@ describe('CAREER-EMPIRE-REP-01 P2 — ?meet= frames do not credit', () => {
       const inner = localSessionServer({ sleep: () => Promise.resolve() });
       const box = creditOnto(createGymViewState());
       const played = withSportingCreditOnRecord(inner, box.credit);
-      const port = meetScreenPort(frame, played, inner);
+      const standIn = debugMeetStandIn();
+      const port = meetScreenPort(frame, played, standIn);
       expect(port, search).not.toBe(played);
+      expect(port, search).not.toBe(inner);
+      if (search === '?meet=live') {
+        expect(port, search).toBe(standIn);
+      } else {
+        expect(port, search).toBe(frame?.serverPort);
+      }
 
       const proposal = playAMeet(port);
       const response = await port.recordMeetResult(
@@ -520,7 +531,7 @@ describe('CAREER-EMPIRE-REP-01 P2 — ?meet= frames do not credit', () => {
     const inner = localSessionServer({ sleep: () => Promise.resolve() });
     const box = creditOnto(createGymViewState());
     const played = withSportingCreditOnRecord(inner, box.credit);
-    const port = meetScreenPort(undefined, played, inner);
+    const port = meetScreenPort(undefined, played, debugMeetStandIn());
     expect(port).toBe(played);
 
     const response = await port.recordMeetResult(

@@ -29,7 +29,13 @@ import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-import { appMeetPort, appSessionPort, meetScreenPort, withSportingCreditOnRecord } from './appServer';
+import {
+  appMeetPort,
+  appSessionPort,
+  debugMeetStandIn,
+  meetScreenPort,
+  withSportingCreditOnRecord,
+} from './appServer';
 import { meetDayFactsFromCache } from '../game/meetClient';
 import { meetResultProposal } from '../game/meetDay';
 import { playMeet } from '../game/meetPreview';
@@ -955,10 +961,13 @@ describe('navigating away and back cannot buy a second session of the day', () =
     expect(APP_SERVER).toMatch(/let connection: LocalAppServerPort \| null = null;/);
     expect(APP_SERVER).toMatch(/if \(connection === null\) connection = localSessionServer\(\);/);
     expect(APP_SERVER).not.toMatch(/useRef|useState|useMemo/);
-    // AND THERE IS EXACTLY ONE `localSessionServer()` CALL IN THE FILE. Two
+    // EXACTLY ONE assignment into the singleton. A second `connection =`
     // would typecheck, would keep every assertion above green except the
-    // identity one, and would be the defect back.
-    expect(APP_SERVER.match(/localSessionServer\(\)/g)).toHaveLength(1);
+    // identity one, and would be the defect back. `debugMeetStandIn` is a
+    // separate throwaway and must not write `connection`.
+    expect(APP_SERVER.match(/connection = localSessionServer\(\)/g)).toHaveLength(1);
+    expect(APP_SERVER).toMatch(/export function debugMeetStandIn/);
+    expect(APP_SERVER.match(/return localSessionServer\(\);/g)).toHaveLength(1);
   });
 
   it('the shell hands that port to the session, rather than letting it build one', () => {
@@ -969,16 +978,23 @@ describe('navigating away and back cannot buy a second session of the day', () =
     // `AppShell` gave `SessionScreen` a `serverPort` and gave `MeetScreen` no
     // port, no record and no cache. That asymmetry IS the defect, in one line of
     // JSX, and this is the line.
-    expect(SHELL).toMatch(/serverPort=\{meetScreenPort\(meetFrame, playedMeetPort, appMeetPort\(\)\)\}/);
+    expect(SHELL).toMatch(/serverPort=\{meetScreenPort\(meetFrame, playedMeetPort, liveMeetStandIn\)\}/);
     expect(SHELL).toMatch(/withSportingCreditOnRecord\(appMeetPort\(\), creditSportingResult\)/);
+    expect(SHELL).toMatch(/useMemo\(\(\) => debugMeetStandIn\(\), \[\]\)/);
     expect(SHELL).not.toMatch(/meetFrame\?\.serverPort \?\? playedMeetPort/);
+    expect(SHELL).not.toMatch(/meetScreenPort\(meetFrame, playedMeetPort, appMeetPort\(\)\)/);
     // Selection keys on frame presence. A live-shaped frame (defined, no
-    // stand-in port) must not coalesce onto the crediting view.
+    // stand-in port) uses the non-crediting stand-in — never the view,
+    // never the singleton.
     const app = appMeetPort();
     const played = withSportingCreditOnRecord(app, () => undefined);
-    expect(meetScreenPort(undefined, played, app)).toBe(played);
-    expect(meetScreenPort({ serverPort: undefined }, played, app)).toBe(app);
-    expect(meetScreenPort({ serverPort: app }, played, app)).toBe(app);
+    const standIn = debugMeetStandIn();
+    expect(meetScreenPort(undefined, played, standIn)).toBe(played);
+    expect(meetScreenPort({ serverPort: undefined }, played, standIn)).toBe(standIn);
+    expect(meetScreenPort({ serverPort: undefined }, played, standIn)).not.toBe(played);
+    expect(meetScreenPort({ serverPort: undefined }, played, standIn)).not.toBe(app);
+    expect(meetScreenPort({ serverPort: app }, played, standIn)).toBe(app);
+    expect((standIn as unknown) === (app as unknown)).toBe(false);
   });
 
   it('MeetScreen forwards the port to the hook instead of dropping it', () => {

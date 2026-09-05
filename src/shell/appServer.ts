@@ -125,8 +125,8 @@ export function appMeetPort(): MeetServerPort {
  * It does not replace the singleton. `appSessionPort() === appMeetPort()`
  * is still the one row. Only the object handed to the production played
  * MeetScreen is this view. Every `?meet=` debug frame — including
- * `?meet=live`, whose `serverPort` is intentionally undefined — stays
- * off this view. `meetScreenPort` is the selection that keeps that true.
+ * `?meet=live` — uses a non-crediting stand-in and stays off this view.
+ * `meetScreenPort` is the selection that keeps that true.
  */
 export function withSportingCreditOnRecord(
   port: MeetServerPort,
@@ -146,21 +146,35 @@ export function withSportingCreditOnRecord(
 }
 
 /**
+ * DEBUG ONLY. A throwaway meet server for a `?meet=` frame that carries
+ * no stand-in of its own — today that is only `?meet=live`.
+ *
+ * Not the app singleton (`appMeetPort`) and not the sporting-credit
+ * view. Scripted moments already bring `previewMeetPort()` on the
+ * frame; live must not reuse that fabricated lifter, and must not fall
+ * back onto the played-route wrapper. A fresh `localSessionServer` is
+ * the same factory the scripted stand-in uses, without the preview row.
+ */
+export function debugMeetStandIn(): MeetServerPort {
+  return localSessionServer();
+}
+
+/**
  * Which port AppShell hands MeetScreen.
  *
  * Credit is AppShell-owned and only for the production played path
- * (`meetFrame` absent). Every `?meet=` frame stays off the crediting
- * view — including `?meet=live`, a defined frame whose `serverPort` is
- * undefined so the loop uses the app connection. `meetFrame?.serverPort
- * ?? playedMeetPort` would have selected the view for live; this
- * selection keys on frame presence, not on whether the frame carried a
- * stand-in port.
+ * (`meetFrame` absent). Every `?meet=` frame uses a non-crediting
+ * stand-in — the frame's own port when present, otherwise
+ * `debugMeetStandIn`. `?meet=live` is a defined frame whose
+ * `serverPort` is undefined; `meetFrame?.serverPort ?? playedMeetPort`
+ * would have selected the view for live, and `?? appMeetPort()` would
+ * have recorded onto the singleton. Selection keys on frame presence.
  */
 export function meetScreenPort(
   meetFrame: { readonly serverPort: MeetServerPort | undefined } | undefined,
   playedMeetPort: MeetServerPort,
-  appPort: MeetServerPort,
+  debugStandIn: MeetServerPort,
 ): MeetServerPort {
   if (meetFrame === undefined) return playedMeetPort;
-  return meetFrame.serverPort ?? appPort;
+  return meetFrame.serverPort ?? debugStandIn;
 }

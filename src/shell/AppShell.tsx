@@ -84,7 +84,13 @@ import { LIFT_PALETTE } from '../lift/liftPalette';
 import { LiftScreen } from '../lift/LiftScreen';
 import { MeetScreen, type MeetScreenProps } from '../meet/MeetScreen';
 import { SessionScreen } from '../session/SessionScreen';
-import { appMeetPort, appSessionPort, meetScreenPort, withSportingCreditOnRecord } from './appServer';
+import {
+  appMeetPort,
+  appSessionPort,
+  debugMeetStandIn,
+  meetScreenPort,
+  withSportingCreditOnRecord,
+} from './appServer';
 import {
   frozenMeetFor,
   frozenSessionFor,
@@ -359,6 +365,10 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
     () => withSportingCreditOnRecord(appMeetPort(), creditSportingResult),
     [creditSportingResult],
   );
+  // P2: non-crediting stand-in for `?meet=` frames that carry no port
+  // of their own (`?meet=live`). Memoised so the live loop is not
+  // rebuilt on every shell render. Never the sporting-credit view.
+  const liveMeetStandIn = useMemo(() => debugMeetStandIn(), []);
 
   // What beat the surface underneath is on. The screens report it; the shell
   // does not derive it, because deriving session or meet state in a `.tsx` is
@@ -444,26 +454,26 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
     <View style={styles.root} testID="app-shell">
       {route.surface === 'meet' ? (
         <MeetScreen
-          // THE APP'S CONNECTION, or the frozen frame's own stand-in server.
+          // THE APP'S CONNECTION, or a non-crediting debug stand-in.
           //
           // `appMeetPort()` IS `appSessionPort()` — the same object, one row —
           // which is what makes the lifter who trains and the lifter who
           // competes one lifter. The production played route is handed a view
           // of that object (`playedMeetPort`) so sporting credit lives on
           // AppShell if MeetScreen unmounts mid-save. Every `?meet=` frame —
-          // including `?meet=live`, whose stand-in port is intentionally
-          // undefined — stays off that view. Selection keys on frame
-          // presence, not on `serverPort ??`, because live is a defined
-          // frame with no stand-in.
+          // including `?meet=live`, whose frame port is intentionally
+          // undefined — uses a non-crediting stand-in and stays off that
+          // view. Selection keys on frame presence, not on `serverPort ??`,
+          // because live is a defined frame with no stand-in of its own.
           //
           // `meetFrame` is `undefined` for every route a player can reach
           // (`frozenMeetFor` requires `source === 'debug'`). A frame only
           // carries a port when it also carries a scripted state; live uses
-          // the app connection without the credit wrapper. Both halves are
-          // pinned in `shellRoute.test.ts`, and the browser check in
-          // `tools/verify-shell-route.mjs` measures the consequence on the
-          // played path rather than trusting either.
-          serverPort={meetScreenPort(meetFrame, playedMeetPort, appMeetPort())}
+          // `liveMeetStandIn`, never the wrapper and never the singleton.
+          // Both halves are pinned in `shellRoute.test.ts`, and the browser
+          // check in `tools/verify-shell-route.mjs` measures the consequence
+          // on the played path rather than trusting either.
+          serverPort={meetScreenPort(meetFrame, playedMeetPort, liveMeetStandIn)}
           preview={meetFrame?.state}
           showCard={meetFrame?.card ?? false}
           holdWalkoutAtMs={meetFrame?.holdWalkoutAtMs ?? null}
