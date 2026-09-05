@@ -4238,12 +4238,14 @@ Source trace (not inferred):
   → `gymCheckIn` → `ladderCheckIn` → `accrueLadderGymBucks`. FloorSim
   completions, queue length, wait, changeover duration, station training
   experience, and station utilization are not inputs to that rate.
-- `memberSatisfaction`, `memberDuesGymBucks`, and `reputationFromMembers`
-  exist as pure functions in `members.ts`. `management.ts` does not import
-  `members.ts`. No shipped `src/empire/` module other than `members.ts`
-  itself calls those three functions. There is no persistent live-floor
-  member-outcome composition consuming actual queue / changeover /
-  training-experience history.
+- `memberSatisfaction` and `reputationFromMembers` exist as pure functions
+  in `members.ts` and still have no shipped callers outside that file.
+  `management.ts` does not import `members.ts`. G.2D's `livingMemberDues.ts`
+  is the one shipped caller of `memberDuesGymBucks` / `memberBaseDuesGymBucks`.
+  Living dues settle onto `LivingMemberRoster.dues`. They are not composed
+  into `ladder.gymBucks` (G2-DUES-PURSE-01). FloorSim completions, queue,
+  wait, changeover, and utilization are still not inputs to the spendable
+  ladder rate.
 
 Consequences of that graph, not of prices:
 
@@ -4486,10 +4488,11 @@ meaningful, and is not the shipped recommendation.
 wired, the player must be able to tell why it changed. Each sporting term
 carries a reason `kind` and a `text` line. No unexplained +REP toast.
 
-**D2-CONSEQUENCE-01 remains true.** Quality / Capacity / Throughput have
-truthful physical mechanisms, but the current played floor does not yet
-convert service quality into a durable member/business outcome. Stage E
-does not implement that member-outcome contribution.
+**D2-CONSEQUENCE-01 remains true of the spendable ladder purse.** Quality /
+Capacity / Throughput have truthful physical mechanisms, but they still do
+not write `ladder.gymBucks`. G.2D accounts living dues on
+`LivingMemberRoster.dues`; composing that ledger into the purse is
+G2-DUES-PURSE-01. Stage E does not implement member-side reputation.
 
 **Wiring remains blocked.** Career/Meet result → Empire persistent reputation
 state is a later explicit crossing.
