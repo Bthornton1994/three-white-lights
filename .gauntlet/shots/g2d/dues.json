@@ -1,9 +1,9 @@
 {
   "capturedFrom": {
-    "commit": "41d0a39a1279a0633896eade865cbb15e600bda7",
+    "commit": "626a0a151dbd6de719ed0322b59542251640f37b",
     "branch": "cursor/sf-twl-g2d-dues-62c6",
-    "dirty": true,
-    "capturedAt": "2026-09-05T03:04:00.760Z"
+    "dirty": false,
+    "capturedAt": "2026-09-05T03:11:34.317Z"
   },
   "viewport": {
     "WIDTH": 390,
