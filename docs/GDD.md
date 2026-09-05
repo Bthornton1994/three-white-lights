@@ -5164,7 +5164,9 @@ NpcLifter merge. G.2E member-side reputation is the next authorised slice.
 
 #### Stage G.2E — Member-Side Institutional Reputation
 
-**STAGE G.2E IN PROGRESS.** This is the first slice allowed to turn
+**STAGE G.2E FROZEN** at
+`cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel
+gate not run — not CLOSED). This was the first slice allowed to turn
 living-member occupancy into institutional reputation, and to gate the
 arrival of high-paying member types on that credited number. It is not
 Career/Meet → `EmpireState.reputation`, not a check-in retune, not
