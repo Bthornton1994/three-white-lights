@@ -70,6 +70,26 @@ try {
   await page.getByTestId('gymscreen-root').waitFor({ state: 'attached', timeout: 30000 });
   await page.waitForTimeout(800);
 
+  await page.getByTestId('gymscreen-surface-more').click({ timeout: 15000 });
+  await page.waitForTimeout(200);
+  await page.getByTestId('gymscreen-advance-offline-259200').click({ timeout: 15000 });
+  await page.waitForTimeout(400);
+  await page.getByTestId('gymscreen-surface-play').click({ timeout: 15000 });
+  await page.waitForTimeout(200);
+
+  const hud = await waitUntilDrawn(page, 'gymscreen-gym-bucks', BEAT_TIMEOUT_MS);
+  if (!hud.drawn) {
+    throw new Error(`gymscreen-gym-bucks never drawn (${hud.why})`);
+  }
+  const gymBucksText = ((await page.getByTestId('gymscreen-gym-bucks').innerText()) ?? '').trim();
+  const gymBucksMatch = gymBucksText.match(/gym bucks:\s*([0-9.]+)/i);
+  const gymBucks = gymBucksMatch === null ? Number.NaN : Number(gymBucksMatch[1]);
+  if (!Number.isFinite(gymBucks) || gymBucks <= 360) {
+    throw new Error(
+      `HUD Gym Bucks should include a 3-day dues credit on top of the capped facility lump (${gymBucksText})`,
+    );
+  }
+
   const memberHit = await waitUntilDrawn(page, 'floorgrid-ambient-0', BEAT_TIMEOUT_MS);
   if (!memberHit.drawn) {
     throw new Error(`floorgrid-ambient-0 never drawn (${memberHit.why})`);
@@ -101,6 +121,8 @@ try {
   const record = Object.freeze({
     capturedFrom: capturedFrom(),
     viewport: VIEWPORT,
+    gymBucksText,
+    gymBucks,
     duesText,
     shot: '390x844-member-dues.png',
   });
