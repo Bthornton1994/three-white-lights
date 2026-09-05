@@ -185,6 +185,7 @@ export function lastLivingMemberSeasonEvent(
   const returned = ledger.returns[ledger.returns.length - 1];
   if (leave === undefined && returned === undefined) return null;
   if (leave === undefined) {
+    if (returned === undefined) return null;
     return Object.freeze({
       kind: 'return',
       member: returned.member,

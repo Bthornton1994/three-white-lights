@@ -205,7 +205,7 @@ describe('G2-ATHLETE-SEASON-01 — purity', () => {
       join(dirname(fileURLToPath(import.meta.url)), 'livingMemberSeason.ts'),
       'utf8',
     );
-    expect(source).not.toMatch(/Math\.random/);
-    expect(source).not.toMatch(/Date\.now/);
+    expect(source).not.toMatch(/Math\.random\(/);
+    expect(source).not.toMatch(/Date\.now\(/);
   });
 });

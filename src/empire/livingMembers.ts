@@ -924,6 +924,20 @@ export function applyLivingMemberSeason(
   }
   if (toSeconds === fromSeconds) return roster;
   requireSeasonOccupancyInvariants(roster);
+  const pending = athleteSeasonBoundariesBetween(fromSeconds, toSeconds);
+  if (
+    !pending.some((boundary) =>
+      athleteSeasonBoundaryWouldMove(roster.members, roster.season.onLeave, boundary),
+    )
+  ) {
+    return Object.freeze({
+      ...roster,
+      season: Object.freeze({
+        ...roster.season,
+        settledAtSeconds: toSeconds,
+      }),
+    });
+  }
   let members = [...roster.members];
   let onLeave = [...roster.season.onLeave];
   const returns = [...roster.season.returns];
@@ -931,7 +945,7 @@ export function applyLivingMemberSeason(
   for (const record of roster.departures) {
     departedIds.add(record.member.id);
   }
-  for (const boundary of athleteSeasonBoundariesBetween(fromSeconds, toSeconds)) {
+  for (const boundary of pending) {
     if (boundary.phase === 'in-season') {
       const staying: LivingGymMember[] = [];
       for (const member of members) {
@@ -987,9 +1001,22 @@ export function settleLivingMemberClock(
   roster: LivingMemberRoster,
   toSeconds: number,
 ): LivingMemberRoster {
+  if (!Number.isFinite(toSeconds) || toSeconds < 0) {
+    refuseWith(`clock settle seconds must be a non-negative number, received ${toSeconds}`);
+  }
   if (roster.dues.settledAtSeconds !== roster.reputation.settledAtSeconds) {
     refuseWith(
       `dues settled ${roster.dues.settledAtSeconds} and reputation settled ${roster.reputation.settledAtSeconds} are out of sync`,
+    );
+  }
+  if (toSeconds < roster.season.settledAtSeconds) {
+    refuseWith(
+      `season settle ${toSeconds} is earlier than last settled ${roster.season.settledAtSeconds}`,
+    );
+  }
+  if (toSeconds < roster.dues.settledAtSeconds) {
+    refuseWith(
+      `dues settle ${toSeconds} is earlier than last settled ${roster.dues.settledAtSeconds}`,
     );
   }
   let next = roster;

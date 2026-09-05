@@ -989,6 +989,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'livingMemberExperience.ts',
       'livingMemberReputation.ts',
       'livingMemberRetention.ts',
+      'livingMemberSeason.ts',
       'livingMemberStay.ts',
       'livingMembers.ts',
       'management.ts',

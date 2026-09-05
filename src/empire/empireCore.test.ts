@@ -2474,10 +2474,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'livingMemberExperience.ts',
       // Stage G.2E: living-member reputation ledger.
       'livingMemberReputation.ts',
-      // G2-ATHLETE-SEASON-01: shared gym-clock Athlete leave/return.
-      'livingMemberSeason.ts',
       // Stage G.2B: living-member retention pressure, derived from G.2A.
       'livingMemberRetention.ts',
+      // G2-ATHLETE-SEASON-01: shared gym-clock Athlete leave/return.
+      'livingMemberSeason.ts',
       // Stage G.2C1: persistent stay-response. No roster deletion.
       'livingMemberStay.ts',
       // Stage G.1: living floor-member identity and service outcomes.
@@ -2705,7 +2705,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 207 -> 215: Stage G.2D livingMemberDues.ts plus FloorGrid / livingMembers / ladderView wiring.
     // 215 -> 216: Stage G.2D purse composition — ladderView.tsx now names livingMemberDues.ts.
     // 216 -> 226: Stage G.2E livingMemberReputation.ts plus FloorGrid / livingMembers / arrival wiring.
-    expect(pairs).toBe(226);
+    // 226 -> 233: G2-ATHLETE-SEASON-01 livingMemberSeason.ts plus FloorGrid / livingMembers / ladderView wiring.
+    expect(pairs).toBe(233);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3887,7 +3888,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 821 -> 823: Stage G.2C3 arrival notice testID and join-line copy.
     // 823 -> 825: Stage G.2D dues card testID and daily-rate copy.
     // 825 -> 827: Stage G.2E reputation card testID and daily-rate copy.
-    expect(singleQuoted.size).toBe(827);
+    // 827 -> 841: G2-ATHLETE-SEASON-01 season copy, refuse lines, and notice testID.
+    expect(singleQuoted.size).toBe(841);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4024,7 +4026,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // assertion's own failure value.
     // 409 -> 413: Stage G.2D P1 occupancy-clock / occupancy-identity refuse templates.
     // 413 -> 426: Stage G.2E reputation settle / occupancy refuse templates plus REP line.
-    expect(templateChunks.size).toBe(426);
+    // 426 -> 446: G2-ATHLETE-SEASON-01 season leave/return / occupancy refuse templates.
+    expect(templateChunks.size).toBe(446);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4065,8 +4068,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './livingMemberDues',
       './livingMemberExperience',
       './livingMemberReputation',
-      './livingMemberSeason',
       './livingMemberRetention',
+      './livingMemberSeason',
       './livingMemberStay',
       './livingMembers',
       './management',
@@ -4331,7 +4334,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-bay-label-second-bench',
       'floorgrid-caption',
       'floorgrid-departure-notice',
-      'floorgrid-season-notice',
       // GDD §5.14 Stage C.1: the collapsed-by-default diagnostics surface's
       // three new testIDs.
       'floorgrid-diagnostic-caption',
@@ -4375,6 +4377,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-root',
       'floorgrid-scroll-x',
       'floorgrid-scroll-y',
+      'floorgrid-season-notice',
       'floorgrid-selected-member-name',
       // GDD §5.14 Stage C: the contextual station panel's ten new testIDs.
       'floorgrid-station-panel',
@@ -4522,6 +4525,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'idle-only',
       'idle-tenure-days',
       'idleTenureDays',
+      'in-season',
       'injury-chance-multiplier',
       'injury-days-saved',
       'injury-risk',
@@ -4542,6 +4546,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'ladder-shop',
       'ladder-view',
       'leaderboard-placement',
+      'leave',
       'leaving',
       'left',
       'legendary',
@@ -4583,6 +4588,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'number',
       'object',
       'occupied',
+      'off-season',
       'offered',
       // The "chrome vs paid" bug-fix round's `EarningsMode` — 'offline' is
       // the default (every pre-existing call site), 'online' is the one
@@ -4656,6 +4662,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'residual-carry-multiplier',
       'rest',
       'rested',
+      'return',
       'rewarded-ad-timer-skip',
       'right',
       'rival',
@@ -4895,7 +4902,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1231 -> 1234: Stage G.2D purse-credit refuseWith templates +3.
     // 1234 -> 1238: Stage G.2D P1 occupancy refuse templates +4.
     // 1238 -> 1253: Stage G.2E singleQuoted +2 and templateChunks +13.
-    expect(stringsChecked).toBe(1253);
+    // 1253 -> 1287: G2-ATHLETE-SEASON-01 singleQuoted +14 and templateChunks +20.
+    expect(stringsChecked).toBe(1287);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5464,7 +5472,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 30 -> 31: Stage G.2C3 livingMemberArrival.ts.
     // 31 -> 32: Stage G.2D livingMemberDues.ts.
     // 32 -> 33: Stage G.2E livingMemberReputation.ts.
-    expect(fenced).toBe(33);
+    // 33 -> 34: G2-ATHLETE-SEASON-01 livingMemberSeason.ts.
+    expect(fenced).toBe(34);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -5813,7 +5822,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 435 -> 448: Stage G.2A LIVING_MEMBER_EXPERIENCE leaves (13 findings;
     // trainingQualityScore 1 is ALWAYS_STRUCTURAL).
     // 448 -> 451: Stage G.2B LIVING_MEMBER_RETENTION three label mins.
-    ).toBe(451);
+    // 451 -> 454: G2-ATHLETE-SEASON-01 ATHLETE_SEASON three week knobs.
+    ).toBe(454);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

@@ -173,7 +173,7 @@ function withAthleteState(state: GymViewState, index = 0): GymViewState {
   });
 }
 
-describe('G2-ATHLETE-SEASON-01 — no Athletes stays today's clock', () => {
+describe('G2-ATHLETE-SEASON-01 — no Athletes stays todays clock', () => {
   it('matches dues+reputation composition across two season boundaries', () => {
     const roster = opening();
     expect(roster.members.every((member) => member.type !== 'athlete')).toBe(true);

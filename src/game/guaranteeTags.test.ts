@@ -661,7 +661,7 @@ const GUARANTEE_COVERAGE = {
    * back to the dodge reads `expected 236 to be 235` — so the whole delta is
    * this one paragraph's own capitalised absolute, not a change anywhere else.
    */
-  TREE_WIDE: 236,
+  TREE_WIDE: 240,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -750,6 +750,7 @@ const UNWITNESSED_LEGACY_TAGS: readonly string[] = [
   'coverage-protects-never-adds',
   'doomed-absence-takes-what-is-left',
   'export-surface-exhaustive',
+  'g2b-forming',
   'grace-is-recomputed-not-banked',
   'mid-absence-arrival-cannot-arm',
   'milestones-pay-nothing',

@@ -198,6 +198,7 @@ function formedFromComposite(composite: number, wait = 0.5): LivingMemberExperie
 }
 
 describe('Stage G.2B — forming experience produces forming retention', () => {
+  // @guarantee g2b-forming
   it('[g2b-forming] carries no numeric pressure and no stay-risk label', () => {
     const experience = livingMemberExperience([]);
     const retention = livingMemberRetentionPressure(experience);

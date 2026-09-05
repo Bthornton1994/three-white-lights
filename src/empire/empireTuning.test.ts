@@ -743,7 +743,8 @@ describe('§5.5 social', () => {
     // 202 -> 203: Stage G.2A LIVING_MEMBER_EXPERIENCE.
     // 203 -> 204: Stage G.2B LIVING_MEMBER_RETENTION.
     // 204 -> 206: Stage G.2E HIGH_PAYING_MEMBER_TYPES + arrival reputation threshold.
-    expect(examined).toBe(206);
+    // 206 -> 207: G2-ATHLETE-SEASON-01 ATHLETE_SEASON.
+    expect(examined).toBe(207);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -773,7 +774,8 @@ describe('§5.5 social', () => {
     // 1010 -> 1015: Stage G.2A LIVING_MEMBER_EXPERIENCE × 5 banned units.
     // 1015 -> 1020: Stage G.2B LIVING_MEMBER_RETENTION × 5 banned units.
     // 1020 -> 1030: Stage G.2E HIGH_PAYING_MEMBER_TYPES + arrival threshold × 5.
-    expect(probed).toBe(1030);
+    // 1030 -> 1035: G2-ATHLETE-SEASON-01 ATHLETE_SEASON × 5.
+    expect(probed).toBe(1035);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {
