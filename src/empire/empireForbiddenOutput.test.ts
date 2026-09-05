@@ -12216,7 +12216,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 6_546_189 -> 6_546_436: Stage G.2C2 departure/reconcile/stayEvidence drive.
   // Read from this pin last. STRINGS/DISTINCT_STRINGS below remain the G.2C1
   // pins until this assertion's subsequent failure names them.
-  NODES: 6548484, // Stage G.2E livingMemberReputation / applyLivingMemberReputation drive
+  NODES: 6549060, // G2-ATHLETE-SEASON-01 lastLivingMemberSeasonEvent leave/return drives
   // THE SENTENCE THAT USED TO FINISH THIS COMMENT WAS FALSE AND IS CORRECTED
   // RATHER THAN DELETED. It read: "`STRINGS` and `DISTINCT_STRINGS` did NOT
   // move with it — the nodes past the old bound carry no string this scan had
@@ -17792,7 +17792,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // stayState wiring. Read from this pin last.
   // 84_813 -> 86_105: Stage G.2C2 livingMemberDeparture.ts plus roster/sim
   // departure wiring. Read from this pin last.
-  NODES_EXAMINED: 89_468, // Stage G.2E livingMemberReputation AST
+  NODES_EXAMINED: 91_612, // G2-ATHLETE-SEASON-01 livingMemberSeason AST plus livingMembers clock wiring
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -26302,7 +26302,7 @@ describe('the member-call pass — what a caller-supplied method is actually han
     // stops being empty.
     // Stage G.2A: two private-helper sites await dedicated drives.
     // Stage G.2C1: hasReason#retention.some named on the undriven list.
-    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(9);
+    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(10);
     expect(driven.length).toBe(MEMBER_CALL_PASS_CENSUS.SUBJECTS);
     // Both `visitRefusals` sites are driven, and they share a key. A `Set` of
     // the driven sites would have quietly collapsed them, so the count of that
