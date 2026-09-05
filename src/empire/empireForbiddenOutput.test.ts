@@ -433,6 +433,8 @@ import * as reputationModule from './reputation';
 import * as sessionsModule from './sessions';
 import * as socialModule from './social';
 import * as sportingReputationModule from './sportingReputation';
+import * as sportingReputationLedgerModule from './sportingReputationLedger';
+import * as institutionalReputationModule from './institutionalReputation';
 import * as stationViewModule from './stationView';
 import * as stationCapabilityModule from './stationCapability';
 import * as trainingStationModule from './trainingStation';
@@ -1256,6 +1258,30 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'stationView.ts#playerFacingUpgradeLabel#return',
       'stationView.ts#playerFacingUpgradeRefuse#return',
       'sportingReputation.ts#sportingReputationFromResult#return.reasons[].text',
+      // CAREER-EMPIRE-REP-01: Stage E reason text carried on the sporting ledger.
+      'ladderView.tsx#createGymViewState#return.lastSportingCredit.reasons[].text',
+      'ladderView.tsx#createGymViewState#return.sportingReputation.entries[].reasons[].text',
+      'ladderView.tsx#gymViewReduce#return.lastSportingCredit.reasons[].text',
+      'ladderView.tsx#gymViewReduce#return.sportingReputation.entries[].reasons[].text',
+      'sportingReputationLedger.ts#createSportingReputationLedger#return.entries[].reasons[].text',
+      'sportingReputationLedger.ts#creditSportingResult#return.ledger.entries[].reasons[].text',
+      'sportingReputationLedger.ts#creditSportingResult#return.report.reasons[].text',
+      'sportingReputationLedger.ts#lastSportingReputationEntry#return.reasons[].text',
+    ]),
+  }),
+  Object.freeze({
+    field: 'played-meet identifiers on the sporting ledger',
+    why:
+      'CAREER-EMPIRE-REP-01 stores the server meet id as a bare string because the catalogue is not a closed union this directory owns. Unknown ids fail closed at credit time rather than at the type. Instrument B containment-scans every produced value; the adapter map in SPORTING_REPUTATION.playedMeetKindById is the only accepted key today.',
+    positions: Object.freeze([
+      'ladderView.tsx#createGymViewState#return.lastSportingCredit.meetId',
+      'ladderView.tsx#createGymViewState#return.sportingReputation.entries[].meetId',
+      'ladderView.tsx#gymViewReduce#return.lastSportingCredit.meetId',
+      'ladderView.tsx#gymViewReduce#return.sportingReputation.entries[].meetId',
+      'sportingReputationLedger.ts#createSportingReputationLedger#return.entries[].meetId',
+      'sportingReputationLedger.ts#creditSportingResult#return.ledger.entries[].meetId',
+      'sportingReputationLedger.ts#creditSportingResult#return.report.meetId',
+      'sportingReputationLedger.ts#lastSportingReputationEntry#return.meetId',
     ]),
   }),
   Object.freeze({
@@ -1783,6 +1809,8 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   // for.
   'GymScreen.tsx#GymScreen#props.map x1',
   'GymScreen.tsx#GymScreen#props.map x1',
+  // CAREER-EMPIRE-REP-01: lastSportingCredit reason rows.
+  'GymScreen.tsx#GymScreen#props.map x1',
   'GymScreen.tsx#GymScreen#week.map x1',
   'empireCore.ts#idleLedger#ledger.filter x1',
   'empireCore.ts#progressionLedger#ledger.filter x1',
@@ -1880,7 +1908,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 34, // G2-ATHLETE-SEASON-01 livingMemberSeason.ts
+  MODULES: 36, // CAREER-EMPIRE-REP-01 institutionalReputation.ts + sportingReputationLedger.ts
   // 273 -> 280: GymView's four new exports (createGymViewState, GymViewState,
   // GymViewAction, GymViewRefusal don't count as runtime exports — the seven
   // that do are createGymViewState, gymViewReduce, GymView from ladderView.tsx
@@ -1991,7 +2019,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 489 -> 491: Stage G.2D purse composition helpers.
   // 491 -> 492: Stage G.2D P1 requireLivingMemberDuesOccupancyClock.
   // 492 -> 493: Stage G.2D P1 livingMemberDuesOccupancyUntilSeconds.
-  EXPORTS: 519, // G2-ATHLETE-SEASON-01 livingMemberSeason runtime exports + applyLivingMemberSeason + settleLivingMemberClock
+  EXPORTS: 524, // CAREER-EMPIRE-REP-01 ledger + composer runtime exports
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -2014,8 +2042,8 @@ const SURFACE_CENSUS = Object.freeze({
   // plus reconcileFloorSimPopulation memberId. Read from this pin last.
   // 221 -> 246: Stage G.2C3 arrival archive / player-facing join line.
   // 246 -> 266: Stage G.2D playerFacingDuesLine plus applyLivingMemberDues roster strings.
-  BARE_POSITIONS: 376, // G2-ATHLETE-SEASON-01 season copy + roster season.onLeave/returns strings
-  BARE_FIELDS: 6, // Stage G.1A floorSim memberId group added
+  BARE_POSITIONS: 392, // CAREER-EMPIRE-REP-01 meetId + sporting reason text positions
+  BARE_FIELDS: 7, // CAREER-EMPIRE-REP-01 played-meet identifier group
   BRANDED_POSITIONS: 34,
   /**
    * Zero, and the zero is the sixteenth bypass's repair rather than a fact
@@ -2142,7 +2170,7 @@ const SURFACE_CENSUS = Object.freeze({
   // own failure value.
   // 4453 -> 4729: Stage G.2C2 departure-record / stay-evidence unions on
   // livingMemberDeparture.ts and livingMembers.ts departures. Read from this pin last.
-  LITERAL_POSITIONS: 5835, // G2-ATHLETE-SEASON-01 season ledger / leave-return literals
+  LITERAL_POSITIONS: 5909, // CAREER-EMPIRE-REP-01 credit / meet-kind / copy literals
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -2190,7 +2218,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 243 -> 247: Stage D.1 — 'training', 'competition-bench-bay', 'primary',
   // 'expansion'.
   // 265 -> 270: Stage G.2C1 stay-status / cause / direction members.
-  DISTINCT_LITERAL_MEMBERS: 275, // G2-ATHLETE-SEASON-01 in-season / off-season / leave / return
+  DISTINCT_LITERAL_MEMBERS: 282, // CAREER-EMPIRE-REP-01 credit-sporting-result / not-creditable / unknown-meet
   DEPTH_CUTS: 0,
 });
 
@@ -3226,7 +3254,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // calls no brand constructor either.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts joins the walk; it
   // calls no brand constructor either.
-  MODULES: 34, // G2-ATHLETE-SEASON-01 livingMemberSeason.ts
+  MODULES: 36, // CAREER-EMPIRE-REP-01 institutionalReputation.ts + sportingReputationLedger.ts
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -3385,7 +3413,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 3662 -> 3704: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 3704 -> 3755: Stage G.2C2 livingMemberDeparture.ts plus livingMembers
   // departure/reconcile wiring. Read from this pin last.
-  CALLS_EXAMINED: 4052, // G2-ATHLETE-SEASON-01 livingMemberSeason plus livingMembers clock wiring
+  CALLS_EXAMINED: 4098, // CAREER-EMPIRE-REP-01 GymScreen composed-reputation calls
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3584,7 +3612,7 @@ describe('instrument C — a raw string becomes a brand in a countable number of
     // (static frozen data with no branch point, read and containment-scanned
     // unconditionally) lives at the group.
     expect(DECLARED_BARE_STRING_FIELDS.length).toBe(SURFACE_CENSUS.BARE_FIELDS);
-    expect(SURFACE_CENSUS.BARE_FIELDS).toBe(6); // Stage G.1A floorSim memberId group added
+    expect(SURFACE_CENSUS.BARE_FIELDS).toBe(7); // CAREER-EMPIRE-REP-01 played-meet identifier group
     const keyGroup = DECLARED_BARE_STRING_FIELDS.find((group) =>
       group.field.includes('ReactElement.key'),
     );
@@ -3946,6 +3974,10 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'reputation.ts': reputationModule as unknown as Readonly<Record<string, unknown>>,
   'social.ts': socialModule as unknown as Readonly<Record<string, unknown>>,
   'sportingReputation.ts': sportingReputationModule as unknown as Readonly<Record<string, unknown>>,
+  'sportingReputationLedger.ts':
+    sportingReputationLedgerModule as unknown as Readonly<Record<string, unknown>>,
+  'institutionalReputation.ts':
+    institutionalReputationModule as unknown as Readonly<Record<string, unknown>>,
   'stationView.ts': stationViewModule as unknown as Readonly<Record<string, unknown>>,
   'stationCapability.ts': stationCapabilityModule as unknown as Readonly<Record<string, unknown>>,
   'trainingStation.ts': trainingStationModule as unknown as Readonly<Record<string, unknown>>,
@@ -6041,7 +6073,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // 99 -> 104: members.ts's MEMBER_TYPES, five string leaves.
   // 104 -> 107: `MANAGER_TIERS`'s three tokens.
   // 122 -> 124: Stage G.2E HIGH_PAYING_MEMBER_TYPES, two string leaves.
-  TUNING_STRING_LEAVES: 124,
+  // 124 -> 127: CAREER-EMPIRE-REP-01 SPORTING_REPUTATION.copy.composed /
+  // copy.unknownMeet / playedMeetKindById.local-open-2026. Read from dump.
+  TUNING_STRING_LEAVES: 127,
   // 156 -> 211.
   /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
   // 732 -> 1057: every domain straddles the 55 new exempt leaves too.
@@ -7619,6 +7653,40 @@ function driveEverything(): readonly DrivenRow[] {
       ladderViewModule.gymViewReduce(gymAfterWeek, { kind: 'reset-gym' }),
       [gymAfterWeek],
     );
+    const playedMeetFacts = Object.freeze({
+      totalKg: 600,
+      isTotalPr: true,
+      placing: Object.freeze({ place: 1, fieldSize: 16 }),
+    });
+    drive('gymViewReduce', 'credit-sporting-result/local-pr', () =>
+      ladderViewModule.gymViewReduce(gymAfterWeek, {
+        kind: 'credit-sporting-result',
+        meetId: 'local-open-2026',
+        facts: playedMeetFacts,
+      }),
+      [gymAfterWeek],
+    );
+    drive('gymViewReduce', 'credit-sporting-result/unknown-meet', () =>
+      ladderViewModule.gymViewReduce(gymAfterWeek, {
+        kind: 'credit-sporting-result',
+        meetId: 'not-on-the-map',
+        facts: playedMeetFacts,
+      }),
+      [gymAfterWeek],
+    );
+    const gymAfterCredit = ladderViewModule.gymViewReduce(gymAfterWeek, {
+      kind: 'credit-sporting-result',
+      meetId: 'local-open-2026',
+      facts: playedMeetFacts,
+    });
+    drive('gymViewReduce', 'credit-sporting-result/replay', () =>
+      ladderViewModule.gymViewReduce(gymAfterCredit, {
+        kind: 'credit-sporting-result',
+        meetId: 'local-open-2026',
+        facts: playedMeetFacts,
+      }),
+      [gymAfterCredit],
+    );
     const gymSilent = (): undefined => undefined;
     drive('GymView', 'opening', () =>
       ladderViewModule.GymView({ state: gymOpening, dispatch: gymSilent }), [gymOpening],
@@ -7907,6 +7975,103 @@ function driveEverything(): readonly DrivenRow[] {
         isTotalPr: true,
         newlyQualifiedFor: null,
       }),
+    );
+  }
+
+  // --- sportingReputationLedger.ts (CAREER-EMPIRE-REP-01 write side)
+  {
+    const facts = Object.freeze({
+      totalKg: 600,
+      isTotalPr: true,
+      placing: Object.freeze({ place: 1, fieldSize: 16 }),
+    });
+    const fresh = sportingReputationLedgerModule.createSportingReputationLedger();
+    drive('createSportingReputationLedger', 'zero-arg', () =>
+      sportingReputationLedgerModule.createSportingReputationLedger(),
+    );
+    drive('lastSportingReputationEntry', 'fresh', () =>
+      sportingReputationLedgerModule.lastSportingReputationEntry(fresh),
+      [fresh],
+    );
+    drive('sportingMeetResultFromPlayedFacts', 'local-pr', () =>
+      sportingReputationLedgerModule.sportingMeetResultFromPlayedFacts(facts, 'local', null),
+      [facts, 'local', null],
+    );
+    // KINDED_RETURN reads SportingMeetResult.kind (meet kind, not outcome).
+    // Drive every arm the type admits so the type/drive join stays non-vacuous.
+    drive('sportingMeetResultFromPlayedFacts', 'regional-pr', () =>
+      sportingReputationLedgerModule.sportingMeetResultFromPlayedFacts(facts, 'regional', null),
+      [facts, 'regional', null],
+    );
+    drive('sportingMeetResultFromPlayedFacts', 'nationals-pr', () =>
+      sportingReputationLedgerModule.sportingMeetResultFromPlayedFacts(facts, 'nationals', null),
+      [facts, 'nationals', null],
+    );
+    drive('sportingMeetResultFromPlayedFacts', 'worlds-pr', () =>
+      sportingReputationLedgerModule.sportingMeetResultFromPlayedFacts(facts, 'worlds', null),
+      [facts, 'worlds', null],
+    );
+    drive('sportingMeetResultFromPlayedFacts', 'local-bomb', () =>
+      sportingReputationLedgerModule.sportingMeetResultFromPlayedFacts(
+        Object.freeze({
+          totalKg: null,
+          isTotalPr: false,
+          placing: Object.freeze({ place: null, fieldSize: 16 }),
+        }),
+        'local',
+        null,
+      ),
+    );
+    drive('creditSportingResult', 'local-pr', () =>
+      sportingReputationLedgerModule.creditSportingResult(
+        fresh,
+        'local-open-2026',
+        facts,
+        0,
+        null,
+      ),
+      [fresh, 'local-open-2026', facts, 0, null],
+    );
+    drive('creditSportingResult', 'unknown-meet', () =>
+      sportingReputationLedgerModule.creditSportingResult(
+        fresh,
+        'not-on-the-map',
+        facts,
+        0,
+        null,
+      ),
+      [fresh, 'not-on-the-map', facts, 0, null],
+    );
+    const credited = sportingReputationLedgerModule.creditSportingResult(
+      fresh,
+      'local-open-2026',
+      facts,
+      0,
+      null,
+    );
+    drive('creditSportingResult', 'replay', () =>
+      sportingReputationLedgerModule.creditSportingResult(
+        credited.ledger,
+        'local-open-2026',
+        facts,
+        1,
+        null,
+      ),
+      [credited.ledger, 'local-open-2026', facts, 1, null],
+    );
+    drive('lastSportingReputationEntry', 'after-credit', () =>
+      sportingReputationLedgerModule.lastSportingReputationEntry(credited.ledger),
+      [credited.ledger],
+    );
+  }
+
+  // --- institutionalReputation.ts (CAREER-EMPIRE-REP-01 read side)
+  {
+    const members = livingMemberReputationModule.createLivingMemberReputationLedger(0);
+    const sporting = sportingReputationLedgerModule.createSportingReputationLedger();
+    drive('institutionalReputation', 'zero-plus-zero', () =>
+      institutionalReputationModule.institutionalReputation(members, sporting),
+      [members, sporting],
     );
   }
 
@@ -12147,7 +12312,7 @@ const DRIVE_CENSUS = Object.freeze({
   // advanceLivingMemberStay drive rows. Read from this pin's own failure value.
   // 600663 -> 600678: Stage G.2C2 departure/reconcile/stayEvidence drive rows.
   // Read from this pin last.
-  ROWS: 600760, // G2-ATHLETE-SEASON-01 lastLivingMemberSeasonEvent leave/return drives
+  ROWS: 600775, // CAREER-EMPIRE-REP-01 sporting ledger / gym credit drives
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -12180,7 +12345,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 473 -> 478: Stage G.2C3 livingMemberArrival.ts five runtime exports.
   // 478 -> 489: Stage G.2D livingMemberDues.ts plus applyLivingMemberDues.
   // 489 -> 491: Stage G.2D purse composition helpers, both driven above.
-  EXPORTS_DRIVEN: 519, // G2-ATHLETE-SEASON-01 livingMemberSeason runtime exports + applyLivingMemberSeason + settleLivingMemberClock
+  EXPORTS_DRIVEN: 524, // CAREER-EMPIRE-REP-01 ledger + composer runtime exports
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -12216,7 +12381,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 6_546_189 -> 6_546_436: Stage G.2C2 departure/reconcile/stayEvidence drive.
   // Read from this pin last. STRINGS/DISTINCT_STRINGS below remain the G.2C1
   // pins until this assertion's subsequent failure names them.
-  NODES: 6549060, // G2-ATHLETE-SEASON-01 lastLivingMemberSeasonEvent leave/return drives
+  NODES: 6549732, // CAREER-EMPIRE-REP-01 GymScreen reputation diagnostics walk
   // THE SENTENCE THAT USED TO FINISH THIS COMMENT WAS FALSE AND IS CORRECTED
   // RATHER THAN DELETED. It read: "`STRINGS` and `DISTINCT_STRINGS` did NOT
   // move with it — the nodes past the old bound carry no string this scan had
@@ -12403,7 +12568,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_208_066, // G2-ATHLETE-SEASON-01 lastLivingMemberSeasonEvent leave/return drive strings
+  STRINGS: 30_209_828, // CAREER-EMPIRE-REP-01 GymScreen reputation diagnostics strings
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -12513,7 +12678,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
   // 3973 -> 3975: Stage D2 reset-gym copy / wear-truth strings. Read from
   // this pin's own failure value.
-  DISTINCT_STRINGS: 4274, // G2-ATHLETE-SEASON-01 season leave/return / notice strings
+  DISTINCT_STRINGS: 4299, // CAREER-EMPIRE-REP-01 GymScreen reputation testIDs
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
   DEPTH_CUTS: 10, // Stage G.2D purse-credit ledger walk
   /**
@@ -12679,7 +12844,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 6247 -> 6253: Stage D2 reset-gym Pressable stacks on driven GymScreen
   // trees. Read from this pin's own failure value.
   // 6290 -> 6291: Stage G.2C1 stay-response drive Error.stack readings.
-  STACKS: 6294, // Stage G.2D purse-credit drive
+  STACKS: 6297, // CAREER-EMPIRE-REP-01 GymScreen reputation diagnostics
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -13443,6 +13608,11 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   ['respondToPrompt#no-prompt', 2],
   ['respondToPrompt#repair-refused', 3],
   ['respondToPrompt#repaired', 2],
+  // CAREER-EMPIRE-REP-01: SportingMeetResult.kind is the meet kind.
+  ['sportingMeetResultFromPlayedFacts#local', 2],
+  ['sportingMeetResultFromPlayedFacts#nationals', 1],
+  ['sportingMeetResultFromPlayedFacts#regional', 1],
+  ['sportingMeetResultFromPlayedFacts#worlds', 1],
   ['stationIdentityView#fixed', 3],
   ['stationIdentityView#session', 1],
   ['stationIdentityView#training', 1],
@@ -16529,8 +16699,9 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'floorSim.ts': 84,
       'floorSprites.ts': 54,
       'GymScreen.tsx': 12,
+      'institutionalReputation.ts': 1, // CAREER-EMPIRE-REP-01 composer
       'ladder.ts': 28,
-      'ladderView.tsx': 34,
+      'ladderView.tsx': 36, // CAREER-EMPIRE-REP-01 credit-sporting-result returns
       'livingMemberArrival.ts': 10, // Stage G.2E high-paying gate return
       'livingMemberDeparture.ts': 5, // Stage G.2C2 departure-record returns
       'livingMemberDues.ts': 19, // Stage G.2D P1 open-mark occupancy until returns
@@ -16550,6 +16721,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'sessions.ts': 43,
       'social.ts': 31,
       'sportingReputation.ts': 11,
+      'sportingReputationLedger.ts': 10, // CAREER-EMPIRE-REP-01 write-side returns
       'stationCapability.ts': 27,
       'stationView.ts': 50,
       'trainingStation.ts': 18,
@@ -16607,6 +16779,7 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'expansion.ts': 3,
   'floor.ts': 13,
   'floorSim.ts': 11,
+  'institutionalReputation.ts': 2, // CAREER-EMPIRE-REP-01 alignment / clamp refusals
   'ladder.ts': 20,
   'livingMemberArrival.ts': 3, // Stage G.2E credited-reputation refuse + G.2C3 arrival refusals
   'livingMemberDeparture.ts': 2, // Stage G.2C2 departure refusals
@@ -16626,6 +16799,7 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'sessions.ts': 24,
   'social.ts': 6,
   'sportingReputation.ts': 9,
+  'sportingReputationLedger.ts': 7, // CAREER-EMPIRE-REP-01 facts / stamp refusals
   'stationCapability.ts': 3,
 });
 const DECLARED_CALLBACK_SITES: readonly string[] = Object.freeze([
@@ -16993,11 +17167,13 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'ladder.ts:349 receiver=ArrayLiteralExpression',
   'ladderView.tsx:124 returned=unfollowable:state',
   'ladderView.tsx:132 returned=unfollowable:state',
-  'ladderView.tsx:664 returned=unfollowable:state',
-  'ladderView.tsx:712 returned=unfollowable:state',
-  'ladderView.tsx:714 returned=unfollowable:state',
-  'ladderView.tsx:770 returned=unfollowable:state',
-  'ladderView.tsx:779 returned=unfollowable:state',
+  'ladderView.tsx:681 returned=unfollowable:state',
+  'ladderView.tsx:729 returned=unfollowable:state',
+  'ladderView.tsx:731 returned=unfollowable:state',
+  'ladderView.tsx:733 returned=unfollowable:state',
+  'ladderView.tsx:734 returned=unfollowable:state',
+  'ladderView.tsx:789 returned=unfollowable:state',
+  'ladderView.tsx:798 returned=unfollowable:state',
   'livingMemberArrival.ts:126 returned=unfollowable:arrivals',
   'livingMemberDeparture.ts:103 returned=unfollowable:departures',
   'livingMemberDues.ts:169 returned=unfollowable:settlements',
@@ -17023,7 +17199,8 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'sessions.ts:809 returned=unfollowable:item',
   'social.ts:345 receiver=ArrayLiteralExpression',
   'social.ts:535 returned=unfollowable:context',
-  'stationCapability.ts:104 returned=unfollowable:capability',
+  'sportingReputationLedger.ts:177 returned=unfollowable:ledger',
+  'stationCapability.ts:104 returned=unfollowable:capability'
 ]);
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'FloorGrid.tsx:1749 FloorSimState asked=true walked=false',
@@ -17073,20 +17250,24 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'ladderView.tsx:124 LadderAccrual | null asked=true walked=false',
   'ladderView.tsx:131 LadderState asked=true walked=false',
   'ladderView.tsx:132 LadderAccrual | null asked=true walked=false',
-  'ladderView.tsx:664 readonly GymWeekReport[] asked=true walked=false',
-  'ladderView.tsx:712 FloorState asked=true walked=false',
-  'ladderView.tsx:714 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'ladderView.tsx:770 FloorState asked=true walked=false',
-  'ladderView.tsx:779 LivingMemberRoster asked=true walked=false',
-  'ladderView.tsx:791 FloorState asked=true walked=false',
-  'ladderView.tsx:811 FloorState asked=true walked=false',
-  'ladderView.tsx:850 ManagedGym asked=true walked=false',
-  'ladderView.tsx:863 ManagedGym asked=true walked=false',
-  'ladderView.tsx:877 ManagedGym asked=true walked=false',
-  'ladderView.tsx:887 ManagedGym asked=true walked=false',
-  'ladderView.tsx:895 ManagedGym asked=true walked=false',
-  'ladderView.tsx:903 ManagedGym asked=true walked=false',
-  'ladderView.tsx:938 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'ladderView.tsx:681 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:729 FloorState asked=true walked=false',
+  'ladderView.tsx:731 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'ladderView.tsx:733 SportingReputationLedger asked=true walked=false',
+  'ladderView.tsx:734 SportingCreditReport | null asked=true walked=false',
+  'ladderView.tsx:789 FloorState asked=true walked=false',
+  'ladderView.tsx:798 LivingMemberRoster asked=true walked=false',
+  'ladderView.tsx:810 FloorState asked=true walked=false',
+  'ladderView.tsx:830 FloorState asked=true walked=false',
+  'ladderView.tsx:869 ManagedGym asked=true walked=false',
+  'ladderView.tsx:882 ManagedGym asked=true walked=false',
+  'ladderView.tsx:896 ManagedGym asked=true walked=false',
+  'ladderView.tsx:906 ManagedGym asked=true walked=false',
+  'ladderView.tsx:914 ManagedGym asked=true walked=false',
+  'ladderView.tsx:922 ManagedGym asked=true walked=false',
+  'ladderView.tsx:957 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'ladderView.tsx:976 SportingReputationLedger asked=true walked=false',
+  'ladderView.tsx:977 SportingCreditReport asked=true walked=false',
   'livingMemberArrival.ts:126 LivingMemberArrivalRecord | undefined asked=true walked=false',
   'livingMemberDeparture.ts:103 LivingMemberDepartureRecord | undefined asked=true walked=false',
   'livingMemberDues.ts:169 LivingMemberDuesSettlement | undefined asked=true walked=false',
@@ -17139,6 +17320,10 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'sessions.ts:879 GymState asked=true walked=false',
   'sessions.ts:895 GymState asked=true walked=false',
   'social.ts:535 readonly FriendVisit[] asked=true walked=false',
+  'sportingReputationLedger.ts:173 readonly SportingReputationReason[] asked=true walked=false',
+  'sportingReputationLedger.ts:177 readonly SportingReputationEntry[] asked=true walked=false',
+  'sportingReputationLedger.ts:185 readonly SportingReputationReason[] asked=true walked=false',
+  'sportingReputationLedger.ts:70 SportingReputationEntry | undefined asked=true walked=false',
   'stationCapability.ts:104 StationAxisLevels | undefined asked=true walked=false',
   'trainingStation.ts:203 GridPosition asked=true walked=false',
   'trainingStation.ts:203 GridPosition asked=true walked=false',
@@ -17146,7 +17331,7 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'trainingStation.ts:204 GridSize asked=true walked=false',
   'trainingStation.ts:204 GridSize asked=true walked=false',
   'trainingStation.ts:204 GridSize asked=true walked=false',
-  'trainingStation.ts:231 GridSize asked=true walked=false',
+  'trainingStation.ts:231 GridSize asked=true walked=false'
 ]);
 const SCREEN_AGREEMENT = Object.freeze({
   // 29 -> 34: GDD §5.13 presentation Phase 1's floor.ts (+2) and the
@@ -17173,7 +17358,7 @@ const SCREEN_AGREEMENT = Object.freeze({
   // 96 -> 99: Stage G.2C2 departure archive unfollowable returns.
   // 99 -> 100: Stage G.2C3 lastLivingMemberArrival unfollowable return.
   // 101 -> 104: Stage G.2D dues ledger unfollowable returns.
-  SHIPPED_DISAGREEMENTS: 121, // G2-ATHLETE-SEASON-01 season ledger unfollowable returns
+  SHIPPED_DISAGREEMENTS: 129, // CAREER-EMPIRE-REP-01 sporting ledger / credit-report unfollowable returns
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
@@ -17267,7 +17452,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 66 -> 67: GDD §5.14 Stage B's pacing.ts — one call through a
   // module-level import (`offlineBankingHorizonSeconds()` in the sporadic
   // gap cycle). Read from this pin's own failure value.
-  'module-variable': 81, // G2-ATHLETE-SEASON-01 livingMemberSeason trainingWeekIndexAt
+  'module-variable': 83, // CAREER-EMPIRE-REP-01 GymScreen SPORTING copy / institutionalReputation
   // 5 -> 7: Phase 3's RENDER half's two calls through a local binding in
   // `AmbientMemberBody`'s single animation effect (`bobLoop.start()`,
   // `pulseLoop.stop()`). Read from this table's own failure value.
@@ -17365,7 +17550,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
   // 1815 -> 1841: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 1841 -> 1866: Stage G.2C2 livingMemberDeparture.ts plus roster/sim wiring.
-  function: 2036, // G2-ATHLETE-SEASON-01 livingMemberSeason plus livingMembers clock wiring
+  function: 2056, // CAREER-EMPIRE-REP-01 GymScreen institutionalReputation call
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -17425,7 +17610,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
   // 1658 -> 1673: Stage G.2C1 livingMemberStay.ts plus livingMembers stayState.
   // 1673 -> 1699: Stage G.2C2 livingMemberDeparture.ts plus roster/sim members.
-  member: 1823, // G2-ATHLETE-SEASON-01 livingMemberSeason plus livingMembers clock wiring
+  member: 1846, // CAREER-EMPIRE-REP-01 GymScreen composed-copy / reason map
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -17435,7 +17620,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // Read from this pin's own failure value.
   // 23 -> 24: GDD §5.14 Stage B's `pacingReadingAtHorizon`'s
   // `readings.find(...)`, the same shape as S4b's rows above.
-  'member-of-parameter': 39, // G2-ATHLETE-SEASON-01 athleteSeasonBoundaryWouldMove members.some
+  'member-of-parameter': 40, // CAREER-EMPIRE-REP-01 GymScreen reputationReasons.map
   // Phase 4: FLOOR_SPRITE_PALETTES' construction calls a fresh arrow (the
   // palette-row map), the same site DECLARED_FRESH_RECEIVERS names.
   fresh: 3, // Stage G.2A livingMemberExperience
@@ -17536,7 +17721,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 34, // G2-ATHLETE-SEASON-01 livingMemberSeason.ts
+  MODULES: 36, // CAREER-EMPIRE-REP-01 institutionalReputation.ts + sportingReputationLedger.ts
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved.
    * 404 -> 427 with GymView: +13 `return` sites (5 -> 18) and +6
    * `callback-invocation` sites (3 -> 9) on `ladderView.tsx`, +4 `return`
@@ -17635,7 +17820,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 1123 -> 1124: Stage G.2D P1 open-mark occupancy until second return path.
   // 1124 -> 1141: Stage G.2E livingMemberReputation returns, livingMembers
   // applyLivingMemberReputation, members type helpers, arrival gate.
-  SITES: 1167, // G2-ATHLETE-SEASON-01 livingMemberSeason +21 return, livingMembers +5
+  SITES: 1180, // CAREER-EMPIRE-REP-01 ledger +10 return, composer +1, ladderView +2
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -17792,7 +17977,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // stayState wiring. Read from this pin last.
   // 84_813 -> 86_105: Stage G.2C2 livingMemberDeparture.ts plus roster/sim
   // departure wiring. Read from this pin last.
-  NODES_EXAMINED: 91_612, // G2-ATHLETE-SEASON-01 livingMemberSeason AST plus livingMembers clock wiring
+  NODES_EXAMINED: 92_830, // CAREER-EMPIRE-REP-01 GymScreen reputation diagnostics AST
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -17821,7 +18006,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 222 -> 223: Stage G.2D P1 open-mark occupancy until refusal.
   // 223 -> 234: Stage G.2E livingMemberReputation 7 + livingMembers +3 + arrival +1.
   // 234 -> 235: Stage G.2E members.ts memberReputationPerDay refuse.
-  WRAP_CALLS: 260, // G2-ATHLETE-SEASON-01 livingMemberSeason +8, livingMembers +17
+  WRAP_CALLS: 269, // CAREER-EMPIRE-REP-01 ledger +7, composer +2
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 7, // Stage G.1 argument-mutation on floorSim observation export
@@ -17943,7 +18128,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // and livingMembers.ts stayState. Read from this pin's own failure value.
   // 1109 -> 1128: Stage G.2C2 departure-record types plus roster.departures.
   // Read from this pin last.
-  POSITIONS: 1235, // G2-ATHLETE-SEASON-01 livingMemberSeason exported signatures
+  POSITIONS: 1250, // CAREER-EMPIRE-REP-01 ledger + composer exported signatures
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -19062,6 +19247,8 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
                 surface: 'play',
                 capability: stationCapabilityModule.stockStationCapability(),
                 livingMembers: censusLivingMembers(),
+                sportingReputation: sportingReputationLedgerModule.createSportingReputationLedger(),
+                lastSportingCredit: null,
               }),
               dispatch: (action: ladderViewModule.GymViewAction): void => {
                 record([action]);
@@ -19139,6 +19326,8 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
                 surface: 'play',
                 capability: stationCapabilityModule.stockStationCapability(),
                 livingMembers: censusLivingMembers(),
+                sportingReputation: sportingReputationLedgerModule.createSportingReputationLedger(),
+                lastSportingCredit: null,
               }),
               dispatch: (action: ladderViewModule.GymViewAction): void => {
                 record([action]);
@@ -22228,7 +22417,7 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // 300 -> 302: Stage G.2C3 livingMemberArrival.ts type declarations.
   // 302 -> 306: Stage G.2D livingMemberDues.ts type declarations.
   // 306 -> 307: Stage G.2D P1 LivingMemberDuesDeparturePresence.
-  DECLARATIONS: 316, // G2-ATHLETE-SEASON-01 livingMemberSeason type declarations
+  DECLARATIONS: 321, // CAREER-EMPIRE-REP-01 ledger + composer type declarations
   /** Those carrying type parameters. An instantiation depth needs one. */
   // Phase 4: `MemberTable<Leaf>` in floorSprites.ts.
   GENERIC: 13,
@@ -25542,6 +25731,8 @@ function memberCallGymViewState(weekLog: readonly GymWeekReport[]): ladderViewMo
     surface: 'play',
     capability: stationCapabilityModule.stockStationCapability(),
     livingMembers: censusLivingMembers(),
+    sportingReputation: sportingReputationLedgerModule.createSportingReputationLedger(),
+    lastSportingCredit: null,
   });
 }
 
@@ -25812,6 +26003,35 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
       });
     },
   }),
+  Object.freeze({
+    site: 'GymScreen.tsx#GymScreen#props.map x1',
+    run: (record: MemberCallRecord): void => {
+      const opening = memberCallGymViewState([]);
+      const reasons = recordOn(
+        [
+          Object.freeze({
+            kind: 'placing' as const,
+            text: 'Placed 1 of 16 in category at a local meet',
+            points: 24 as never,
+          }),
+        ],
+        'map',
+        record,
+      );
+      gymScreenModule.GymScreen({
+        state: Object.freeze({
+          ...opening,
+          lastSportingCredit: Object.freeze({
+            kind: 'credited' as const,
+            meetId: 'local-open-2026',
+            points: 24 as never,
+            reasons,
+          }),
+        }),
+        dispatch: MEMBER_CALL_SILENT_DISPATCH,
+      });
+    },
+  }),
   // members.ts (§5.11 stage 3): both sites sum a caller-supplied
   // `MemberRoster` with `.reduce`, so the same array is watched twice, once
   // per function. `reduce`'s own callback receives no argument this pass's
@@ -26037,14 +26257,14 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // four `livingMembers.ts` roster/id sites.
   // 29 -> 28: Stage G.2C2 dropped applyServiceObservations#roster.map (loop).
   // 28 -> 29: Stage G.2C2 departedMemberById#roster.find.
-  SUBJECTS: 29,
+  SUBJECTS: 30, // CAREER-EMPIRE-REP-01 GymScreen reputationReasons.map
   /** One call of the instrumented method per subject, two at the ladder site. */
   // 22 -> 24: S4b's two new subjects, one call each.
   // 24 -> 25: GDD §5.14 Stage B's one new subject, one call.
   // 25 -> 30: Stage G.1A's five new subjects, one call each.
   // 30 -> 29: the dropped applyServiceObservations map site.
   // 29 -> 30: departedMemberById#roster.find, one call.
-  CALLS: 30,
+  CALLS: 31, // CAREER-EMPIRE-REP-01 GymScreen reputationReasons.map
   /**
    * Callback invocations across every subject: 4 + 33, the second number being
    * E23's ten sites. Per site — and per ARM, which is the half a total cannot
@@ -26061,7 +26281,7 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 54 -> 64: Stage G.1A's five new sites — three garage members on each
   // `.map` site, one `.find` predicate, and zero on `id.split`.
   // 64 -> 61: three garage-member map callbacks no longer invoked.
-  CALLBACK_CALLS: 61,
+  CALLBACK_CALLS: 62, // CAREER-EMPIRE-REP-01 reputationReasons.map one row
   /**
    * Strings reachable from the non-function arguments.
    *
@@ -26094,7 +26314,7 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 294 -> 237: Stage G.2C2 rewrote applyServiceObservations roster.map as a
   // loop (departure filter). The dead member-call site is removed rather than
   // driven at zero. Read from this pin last.
-  RETURNED: 237, // Stage G.2C2 applyServiceObservations no longer maps
+  RETURNED: 238, // CAREER-EMPIRE-REP-01 reputationReasons.map one string
   FINDINGS: 0,
   TRIPWIRE_SUBJECTS: 2,
   TRIPWIRE_FINDINGS: 2,
@@ -26198,6 +26418,8 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   // silently dropping to one is red rather than merely smaller.
   'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=24 verdicts=objectx1',
   'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=24 verdicts=objectx1',
+  // CAREER-EMPIRE-REP-01: lastSportingCredit.reasons.map — one Text child.
+  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=1 verdicts=stringx1',
   // members.ts (§5.11 stage 3): `.reduce(callback, 0)` is one call, with the
   // callback invoked once per roster row (two rows in both fixtures). The
   // callback returns a plain number (a running sum), never a string, so
@@ -26313,7 +26535,7 @@ describe('the member-call pass — what a caller-supplied method is actually han
     // week log, the strike ledger and the auto-repair report — and the two
     // stage-4 ones produce byte-identical observation rows, so this count is
     // the only thing that reddens if a driver is dropped.
-    expect(driven.filter((site) => site === 'GymScreen.tsx#GymScreen#props.map x1').length).toBe(3);
+    expect(driven.filter((site) => site === 'GymScreen.tsx#GymScreen#props.map x1').length).toBe(4);
   });
 });
 

@@ -2464,6 +2464,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // grids, palettes resolved from EMPIRE_TUNING, and the indexed-PNG
       // encoding FloorGrid.tsx draws.
       'floorSprites.ts',
+      'institutionalReputation.ts',
       'ladder.ts',
       'ladderView.tsx',
       // Stage G.2C3: vacancy arrival / population replenishment.
@@ -2497,6 +2498,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // Stage E: Career-result → Empire reputation calculator. Pure function;
       // the persistent write is a later crossing.
       'sportingReputation.ts',
+      // CAREER-EMPIRE-REP-01: sporting ledger on the played gym tree.
+      'sportingReputationLedger.ts',
       // GDD §5.14 Stage D: Quality / Capacity / Throughput algebra.
       'stationCapability.ts',
       // GDD §5.14 Stage C: the station-tap management selector.
@@ -2706,7 +2709,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 215 -> 216: Stage G.2D purse composition — ladderView.tsx now names livingMemberDues.ts.
     // 216 -> 226: Stage G.2E livingMemberReputation.ts plus FloorGrid / livingMembers / arrival wiring.
     // 226 -> 233: G2-ATHLETE-SEASON-01 livingMemberSeason.ts plus FloorGrid / livingMembers / ladderView wiring.
-    expect(pairs).toBe(233);
+    // 233 -> 245: CAREER-EMPIRE-REP-01 institutionalReputation.ts +
+    // sportingReputationLedger.ts mention graph. Read from this assertion's
+    // own failure value.
+    // 245 -> 246: CAREER-EMPIRE-REP-01 GymScreen → institutionalReputation.
+    expect(pairs).toBe(246);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -2734,7 +2741,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 26 -> 27: Stage G.2D livingMemberDues.ts imports refuseWith.
     // 27 -> 28: Stage G.2E livingMemberReputation.ts imports refuseWith.
     // 28 -> 29: G2-ATHLETE-SEASON-01 livingMemberSeason.ts imports refuseWith.
-    expect(mentionersOf('empireCore.ts').length).toBe(29);
+    // 29 -> 31: CAREER-EMPIRE-REP-01 institutionalReputation.ts +
+    // sportingReputationLedger.ts import refuseWith.
+    expect(mentionersOf('empireCore.ts').length).toBe(31);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -3889,7 +3898,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 823 -> 825: Stage G.2D dues card testID and daily-rate copy.
     // 825 -> 827: Stage G.2E reputation card testID and daily-rate copy.
     // 827 -> 841: G2-ATHLETE-SEASON-01 season copy, refuse lines, and notice testID.
-    expect(singleQuoted.size).toBe(841);
+    // 841 -> 852: CAREER-EMPIRE-REP-01 ledger/composer copy and refuse lines.
+    // 852 -> 856: CAREER-EMPIRE-REP-01 GymScreen reputation testIDs / copy.
+    expect(singleQuoted.size).toBe(856);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4027,7 +4038,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 409 -> 413: Stage G.2D P1 occupancy-clock / occupancy-identity refuse templates.
     // 413 -> 426: Stage G.2E reputation settle / occupancy refuse templates plus REP line.
     // 426 -> 446: G2-ATHLETE-SEASON-01 season leave/return / occupancy refuse templates.
-    expect(templateChunks.size).toBe(446);
+    // 446 -> 451: CAREER-EMPIRE-REP-01 ledger/composer refuse templates.
+    // 451 -> 452: CAREER-EMPIRE-REP-01 gymscreen-reputation-reason template.
+    expect(templateChunks.size).toBe(452);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4061,6 +4074,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './floor',
       './floorSim',
       './floorSprites',
+      './institutionalReputation',
       './ladder',
       './ladderView',
       './livingMemberArrival',
@@ -4080,6 +4094,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './reputation',
       './sessions',
       './social',
+      './sportingReputation',
+      './sportingReputationLedger',
       './stationCapability',
       // GDD §5.14 Stage C's own import specifier — `FloorGrid.tsx`'s new
       // edge to `stationView.ts`.
@@ -4276,6 +4292,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'cosmetics',
       'costliest-affordable-first',
       'covered-day',
+      'credit-sporting-result',
+      'credited',
       'crimson',
       'currency-purchase',
       'daily-allowance-spent',
@@ -4499,6 +4517,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-recovery-history',
       'gymscreen-recovery-state',
       'gymscreen-refusal',
+      'gymscreen-reputation',
       'gymscreen-reset-gym',
       'gymscreen-root',
       'gymscreen-rung',
@@ -4554,6 +4573,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'livingPopulation',
       'loading',
       'local',
+      'local-open-2026',
       'machines',
       'manager-hired-under-warning',
       'mats',
@@ -4574,6 +4594,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'no-total',
       'none',
       'not-a-friend-gym',
+      'not-creditable',
       'not-dormant',
       'not-enough-gym-bucks',
       'not-enough-reputation',
@@ -4755,6 +4776,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'unacceleratedSeconds',
       'under',
       'unequipped',
+      'unknown-meet',
       'unsettled',
       'up',
       'upgrade-station',
@@ -4783,6 +4805,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'wide',
       'worlds',
       'wrist-wraps',
+      '{fromMembers}',
+      '{fromSporting}',
     ]);
 
     // The half the pin does not reach: a multi-word name inside a message. Run
@@ -4903,7 +4927,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1234 -> 1238: Stage G.2D P1 occupancy refuse templates +4.
     // 1238 -> 1253: Stage G.2E singleQuoted +2 and templateChunks +13.
     // 1253 -> 1287: G2-ATHLETE-SEASON-01 singleQuoted +14 and templateChunks +20.
-    expect(stringsChecked).toBe(1287);
+    // 1287 -> 1303: CAREER-EMPIRE-REP-01 space-free tokens + template chunks.
+    // 1303 -> 1307: CAREER-EMPIRE-REP-01 GymScreen composed-copy tokens.
+    expect(stringsChecked).toBe(1308);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5329,7 +5355,15 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         // gym's own screen can point at which stations are blocking it —
         // one new edge, no new arithmetic.
         './stationView',
+        // CAREER-EMPIRE-REP-01: composed reputation diagnostics.
+        './institutionalReputation',
         'react-native',
+      ],
+      'institutionalReputation.ts': [
+        './empireCore',
+        './empireTuning',
+        './livingMemberReputation',
+        './sportingReputationLedger',
       ],
       'ladder.ts': ['./empireCore', './empireTuning', './production'],
       // S4b: `./management` joined the reducer's edges — `GymViewState.managed`
@@ -5344,6 +5378,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './livingMembers',
         './management',
         './sessions',
+        // CAREER-EMPIRE-REP-01: sporting ledger + credit-sporting-result.
+        './sportingReputationLedger',
         './stationCapability',
         './trainingStation',
       ],
@@ -5428,6 +5464,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'sessions.ts': ['./empireCore', './empireTuning', './ladder', './production'],
       'social.ts': ['./empireCore', './empireTuning'],
       'sportingReputation.ts': ['./empireCore', './empireTuning', './production'],
+      'sportingReputationLedger.ts': [
+        './empireCore',
+        './empireTuning',
+        './production',
+        './sportingReputation',
+      ],
       // GDD §5.14 Stage C: the station-tap management selector. Five edges —
       // the tuning block, the floor sim's own vocabulary (`FloorStationRef`,
       // `FloorSimMember`), `management.ts`'s condition/repair/manager
@@ -5473,7 +5515,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 31 -> 32: Stage G.2D livingMemberDues.ts.
     // 32 -> 33: Stage G.2E livingMemberReputation.ts.
     // 33 -> 34: G2-ATHLETE-SEASON-01 livingMemberSeason.ts.
-    expect(fenced).toBe(34);
+    // 34 -> 36: CAREER-EMPIRE-REP-01 institutionalReputation.ts +
+    // sportingReputationLedger.ts.
+    expect(fenced).toBe(36);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -5607,7 +5651,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 153 -> 154: Stage G.2D purse composition — ladderView.tsx imports livingMemberDues.ts.
     // 154 -> 163: Stage G.2E livingMemberReputation.ts six edges plus livingMembers / FloorGrid / arrival.
     // 163 -> 170: G2-ATHLETE-SEASON-01 livingMemberSeason.ts five edges plus livingMembers / FloorGrid.
-    expect(specifiers).toBe(170);
+    // CAREER-EMPIRE-REP-01: +10 specifiers (ledger + composer + GymScreen).
+    expect(specifiers).toBe(180);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external

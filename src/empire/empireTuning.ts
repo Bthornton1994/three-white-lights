@@ -695,6 +695,16 @@ export const EMPIRE_TUNING = Object.freeze({
       placing: 'Placed {place} of {field} in category at a {kind} meet',
       totalPr: 'Raised published best total at a {kind} meet',
       qualified: 'Newly qualified for {rung}',
+      composed: 'members {fromMembers} · meets {fromSporting}',
+      unknownMeet: 'Meet is not on the sporting map',
+    } as const),
+    /**
+     * CAREER-EMPIRE-REP-01. Played meet id → Stage E kind. Unknown ids fail
+     * closed. One row today: the prototype's local meet. Production modules
+     * do not import the meet catalogue; tests pin this key against it.
+     */
+    playedMeetKindById: Object.freeze({
+      'local-open-2026': 'local',
     } as const),
   }),
 

@@ -318,6 +318,13 @@ import {
   type LivingMemberRoster,
 } from './livingMembers';
 import {
+  createSportingReputationLedger,
+  creditSportingResult,
+  type PlayedMeetFacts,
+  type SportingCreditReport,
+  type SportingReputationLedger,
+} from './sportingReputationLedger';
+import {
   type DeclineRepairResult,
   type DismissManagerResult,
   type HireResult,
@@ -436,6 +443,9 @@ export interface GymViewState {
   readonly capability: StationCapabilityState;
   /** Stage G.1 — persistent floor members, separate from `NpcLifter` roster. */
   readonly livingMembers: LivingMemberRoster;
+  /** CAREER-EMPIRE-REP-01 — sporting half on the played tree. */
+  readonly sportingReputation: SportingReputationLedger;
+  readonly lastSportingCredit: SportingCreditReport | null;
 }
 
 /**
@@ -553,6 +563,11 @@ export type GymViewAction =
   | {
       readonly kind: 'apply-living-member-observations';
       readonly observations: readonly FloorSimServiceObservation[];
+    }
+  | {
+      readonly kind: 'credit-sporting-result';
+      readonly meetId: string;
+      readonly facts: PlayedMeetFacts;
     };
 
 /** Opening living roster aligned with the floor-sim seed the renderer uses. */
@@ -583,6 +598,8 @@ export function createGymViewState(): GymViewState {
     surface: 'play',
     capability: stockStationCapability(),
     livingMembers: openingLivingMembers(managed),
+    sportingReputation: createSportingReputationLedger(),
+    lastSportingCredit: null,
   });
 }
 
@@ -713,6 +730,8 @@ function advanceGymClock(
     surface: state.surface,
     capability: state.capability,
     livingMembers,
+    sportingReputation: state.sportingReputation,
+    lastSportingCredit: state.lastSportingCredit,
   });
 }
 
@@ -941,6 +960,23 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
     }
     case 'reset-gym':
       return createGymViewState();
+    case 'credit-sporting-result': {
+      const outcome = creditSportingResult(
+        state.sportingReputation,
+        action.meetId,
+        action.facts,
+        state.managed.gym.ladder.collectedAt,
+        null,
+      );
+      if (outcome.report === null) {
+        return state;
+      }
+      return Object.freeze({
+        ...state,
+        sportingReputation: outcome.ledger,
+        lastSportingCredit: outcome.report,
+      });
+    }
     case 'apply-living-member-observations':
       return Object.freeze({
         ...state,

@@ -2,11 +2,31 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-09-05 (G2-ATHLETE-SEASON-01 IN PROGRESS — shared
-gym-clock Athlete leave/return. G.2E FROZEN at
+**Last updated:** 2026-09-05 (CAREER-EMPIRE-REP-01 P2 — no `?meet=`
+path, including `live`, credits sporting reputation. `?meet=live` is a
+defined debug frame with `serverPort: undefined`; AppShell selects a
+non-crediting stand-in (`debugMeetStandIn`) for it, never the sporting-
+credit `playedMeetPort` view and never the app singleton. Only the
+production played path (no meetFrame) uses the AppShell-owned view.
+Crossing 9 stays the mounted MeetScreen report. Factory freeze remains
+`34b98a06772db81126b68deec220a24328892a22` — human feel gate not run —
+not CLOSED. Sporting ledger on `GymViewState` composed
+with G.2E at points. Prior `EmpireState.reputation` phrase names this
+composed v2 reading. G2-ATHLETE-SEASON-01 FROZEN at
+`9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze; human feel
+gate not run — not CLOSED). G.2E FROZEN at
 `cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel
 gate not run — not CLOSED). G.2D CLOSED / FROZEN at
 `28611af74dd6479bfad58763ebba72db5942307c`.
+Earlier: 2026-09-05 (CAREER-EMPIRE-REP-01 P1 — a leave during
+the in-flight meet save can no longer drop sporting credit. AppShell
+owns a played-port view that credits from `recordMeetResult`; Crossing 9
+stays the MeetScreen `onRecorded` report. A recorded Total that cannot
+credit fails closed visibly. Factory freeze remains
+`34b98a06772db81126b68deec220a24328892a22` — human feel gate not run —
+not CLOSED. Sporting ledger on `GymViewState` composed
+with G.2E at points. Prior `EmpireState.reputation` phrase names this
+composed v2 reading.)
 Earlier: 2026-09-05 (G.2E IN PROGRESS — member-side living-member
 reputation ledger and reputation-gated high-paying vacancy arrival.
 G.2D CLOSED / FROZEN at `28611af74dd6479bfad58763ebba72db5942307c`.
@@ -4801,12 +4821,12 @@ behavior.
 | G2-CONDITION-01 | OPEN — service-level condition attribution missing |
 | G2-FIT-01 | OPEN — equipment fit is attraction, not recent service |
 | G2-TYPE-01 | OPEN — no type-specific **satisfaction** interpretation |
-| G2-ATHLETE-SEASON-01 | IN PROGRESS — shared gym-clock Athlete leave/return. Seat reserved onLeave. Same identity on return. |
+| G2-ATHLETE-SEASON-01 | FROZEN at `9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze; human feel gate not run — not CLOSED). |
 | G2-DUES-PURSE-01 | CLOSED — living dues credit the spendable ladder purse on clock settle; D2 facility income stays additive |
 | G.2C | G.2C1 frozen. G.2C2 frozen. G.2C3 frozen. Reputation-gated high-paying rates remain G.2E. |
 | G.2D | CLOSED / FROZEN at `28611af74dd6479bfad58763ebba72db5942307c`. Living-member dues from G.2A experience. P1 occupancy is time-weighted presence including open-mark production leaves; purse composition in this slice. |
 | G.2E | FROZEN at `cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel gate not run — not CLOSED). Member-side institutional reputation from living occupancy; high-paying (Athlete, Serious Lifter) vacancy arrival gated on credited living-member reputation. |
-| Career → Empire reputation | BLOCKED |
+| Career → Empire reputation | CAREER-EMPIRE-REP-01 FROZEN at `34b98a06772db81126b68deec220a24328892a22` (factory freeze; human feel gate not run — not CLOSED). `GymViewState.sportingReputation` composed with G.2E at points. Literal v1 `EmpireState.reputation` stays unwritten. |
 | Portfolio | BLOCKED |
 
 **Proven causal chain:** physical gym decision → real FloorSim service
@@ -5241,7 +5261,9 @@ slice.
 
 #### G2-ATHLETE-SEASON-01 — Athlete Seasonal Leave / Return
 
-**G2-ATHLETE-SEASON-01 IN PROGRESS.** Draft-only. This is the first
+**G2-ATHLETE-SEASON-01 FROZEN** at
+`9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze; human feel
+gate not run — not CLOSED). This is the first
 slice allowed to make Athlete seasonality real: an Athlete on the living
 roster leaves the floor for a deterministic shared gym-clock in-season
 window, holds their roster slot while away, pays no dues and credits no
@@ -5311,8 +5333,108 @@ no leave probability. G.2A/G.2B/G.2C1–C3/G.2D/G.2E frozen. Q/C/T
 frozen. No rewrite of stay / departure / arrival / dues / reputation
 module bodies.
 
-**Still blocked:** Career → Empire reputation, Portfolio, NpcLifter
+**Still blocked:** Portfolio, NpcLifter
 merge. Feel of the 6 / 2 / 4 week cadence is unproven.
+CAREER-EMPIRE-REP-01 is FROZEN at
+`34b98a06772db81126b68deec220a24328892a22` (factory freeze; human feel
+gate not run — not CLOSED).
+
+#### CAREER-EMPIRE-REP-01 — Career/Meet → Empire Reputation (Stage E's deferred crossing)
+
+**CAREER-EMPIRE-REP-01 FROZEN** at
+`34b98a06772db81126b68deec220a24328892a22` (factory freeze; human feel
+gate not run — not CLOSED). This is Stage E's deferred
+crossing: a played meet result may credit Empire sporting reputation.
+It is not a write of literal v1 `EmpireState.reputation`. It is not
+Portfolio, not NpcLifter merge, not an E-REP-01 retune, and not a
+pay-to-win purchase. It is not a new Stage G.2F.
+
+**GDD citation:** §5.6 Members: "Reputation is earned mostly by
+powerlifter and serious-lifter members, and by your own competition
+results." G.2E shipped the members half. This slice ships the
+competition-results half as a sporting ledger on the played gym tree.
+
+**§5.10 memorial:** "What does not survive: `EmpireState`'s shape."
+Prior entries that said Career/Meet → `EmpireState.reputation` named
+the crossing, not the v1 field. That phrase now resolves to this
+composed v2 reading: `GymViewState.sportingReputation` plus
+`institutionalReputation` over the frozen G.2E member ledger. The
+literal v1 field stays unwritten.
+
+**Why this slice, and not a v1 write:** `EmpireState` is off the played
+path. The played gym is `GymViewState`. G.2E already stores member
+reputation on that tree. Stage E named a later accounting boundary that may compose once both
+halves share a grain. Both halves are now credited points. Writing v1
+cannot compose with G.2E.
+
+**Proven causal chain:** played meet → server `RecordedMeet` →
+AppShell played-port view (`withSportingCreditOnRecord`) →
+`credit-sporting-result` →
+Stage E `sportingReputationFromResult` → sporting ledger →
+`institutionalReputation` (members points + sporting points).
+Crossing 9 remains the mounted MeetScreen report only
+(`onRecorded` on `loop.applied`). It is not the unmount-safe path.
+A leave during the in-flight save still credits because AppShell's
+view outlives MeetScreen. Replay of the same `meetId` is a state
+identity no-op, so both paths may fire. A recorded Total on an
+unknown meet fails closed as `not-creditable` — a silent miss is a
+fail. P2: AppShell selects that view only when `meetFrame` is
+absent. Every `?meet=` frame — including `?meet=live`, a defined
+frame whose `serverPort` is undefined — uses a non-crediting stand-in
+(the frame's own port, or `debugMeetStandIn` for live), never the
+crediting view and never the app singleton. Disabling Crossing 9
+`onRecorded` is not enough; the view itself must not wrap a debug
+frame.
+
+**Write path:** `GymViewState.sportingReputation` via
+`creditSportingResult`. Adapter reads `totalKg` only as null/non-null,
+adopts server `isTotalPr` unchanged, and maps
+`placing.fieldSize` to Stage E `categoryFieldSize`. Kind comes from
+`SPORTING_REPUTATION.playedMeetKindById`. `newlyQualifiedFor` is passed
+as null (Career standing is not on the played path). Unknown `meetId`
+fails closed. Replay of the same `meetId` is a state identity no-op.
+
+**Grain:** credited reputation points, stamped on the gym clock
+(`LadderState.collectedAt`). Member half is
+`LivingMemberReputationLedger.creditedReputation`. Sporting half is
+`SportingReputationLedger.creditedReputation`. Composer adds points to
+points and clamps at `REPUTATION_MAX` on read. The composed number is
+not stored. A rate is not added to an event delta.
+
+**Idempotence / fail-closed:** same `meetId` returns the gym state by
+identity. Unknown meet id records `not-creditable` and leaves the
+ledger identical. A stamp earlier than the last sporting entry refuses.
+Malformed facts refuse.
+
+**Player-facing:** diagnostics line in the existing `more` drawer
+(`gymscreen-reputation`). No toast. Feel unproven. Player-facing
+"why reputation moved" copy is REP-EVIDENCE-01.
+
+**G.2E gate:** high-paying vacancy arrival still reads member-only
+`creditedReputation`. Sporting credit does not mint Athlete or Serious
+Lifter.
+
+**Fences:** Stage E calculator byte-identical. Every `livingMember*.ts`
+byte-identical. `empireCore.ts` / `reputation.ts` byte-identical. No
+`src/game/**` edit. `MeetScreen.tsx` is one optional prop and one
+effect. P1 credit is AppShell's played-port view, not a second
+Crossing 9 argument on `useMeetDay`. P2 keeps that view on the
+production path only (`meetScreenPort` keys on frame presence; live
+uses `debugMeetStandIn`).
+No new numeric tuning literal.
+E-REP-01 stays open.
+
+**Residuals:** REP-GRAIN-01 — the halves share a unit and were
+calibrated against different ladders (threshold 1; powerlifter
+0.15/day; local title 24). Any later consumer must be calibrated
+against the composed reading before it reads it. REP-EVIDENCE-01 —
+player-facing evidence copy is not this slice. Tools claim 14
+(played meet → gym `more` → meets half > 0; no `?meet=` path,
+including `live`, may credit) was not run.
+
+**Still blocked:** Portfolio, NpcLifter merge, G.2E gate on the
+composed reading, Career calendar / `newlyQualifiedFor`, server write,
+E-REP-01, feel Ready.
 
 ---
 

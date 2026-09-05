@@ -41,7 +41,7 @@
  */
 
 import { localSessionServer, type LocalAppServerPort } from '../session/localSessionServer';
-import type { MeetServerPort } from '../game/meetClient';
+import type { MeetServerPort, RecordedMeet } from '../game/meetClient';
 import type { SessionServerPort } from '../game/sessionClient';
 
 let connection: LocalAppServerPort | null = null;
@@ -112,4 +112,69 @@ export function appSessionPort(): SessionServerPort {
  */
 export function appMeetPort(): MeetServerPort {
   return appConnection();
+}
+
+/**
+ * A played-route VIEW of a meet port, owned by AppShell.
+ *
+ * Crossing 9 stays the MeetScreen report (`onRecorded` on `loop.applied`).
+ * That effect dies with the screen, and leave-meet is already available
+ * while `recordMeetResult` is in flight. This view credits from the same
+ * promise the screen used, on a parent that outlives MeetScreen.
+ *
+ * It does not replace the singleton. `appSessionPort() === appMeetPort()`
+ * is still the one row. Only the object handed to the production played
+ * MeetScreen is this view. Every `?meet=` debug frame — including
+ * `?meet=live` — uses a non-crediting stand-in and stays off this view.
+ * `meetScreenPort` is the selection that keeps that true.
+ */
+export function withSportingCreditOnRecord(
+  port: MeetServerPort,
+  onRecorded: (meetId: string, recorded: RecordedMeet) => void,
+): MeetServerPort {
+  return {
+    openingSnapshot: () => port.openingSnapshot(),
+    meetBrief: (day) => port.meetBrief(day),
+    recordMeetResult: async (day, meet, proposal, proposalId) => {
+      const response = await port.recordMeetResult(day, meet, proposal, proposalId);
+      if (response.kind === 'recorded') {
+        onRecorded(meet.id, response.result);
+      }
+      return response;
+    },
+  };
+}
+
+/**
+ * DEBUG ONLY. A throwaway meet server for a `?meet=` frame that carries
+ * no stand-in of its own — today that is only `?meet=live`.
+ *
+ * Not the app singleton (`appMeetPort`) and not the sporting-credit
+ * view. Scripted moments already bring `previewMeetPort()` on the
+ * frame; live must not reuse that fabricated lifter, and must not fall
+ * back onto the played-route wrapper. A fresh `localSessionServer` is
+ * the same factory the scripted stand-in uses, without the preview row.
+ */
+export function debugMeetStandIn(): MeetServerPort {
+  return localSessionServer();
+}
+
+/**
+ * Which port AppShell hands MeetScreen.
+ *
+ * Credit is AppShell-owned and only for the production played path
+ * (`meetFrame` absent). Every `?meet=` frame uses a non-crediting
+ * stand-in — the frame's own port when present, otherwise
+ * `debugMeetStandIn`. `?meet=live` is a defined frame whose
+ * `serverPort` is undefined; `meetFrame?.serverPort ?? playedMeetPort`
+ * would have selected the view for live, and `?? appMeetPort()` would
+ * have recorded onto the singleton. Selection keys on frame presence.
+ */
+export function meetScreenPort(
+  meetFrame: { readonly serverPort: MeetServerPort | undefined } | undefined,
+  playedMeetPort: MeetServerPort,
+  debugStandIn: MeetServerPort,
+): MeetServerPort {
+  if (meetFrame === undefined) return playedMeetPort;
+  return meetFrame.serverPort ?? debugStandIn;
 }
