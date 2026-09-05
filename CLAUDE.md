@@ -78,11 +78,11 @@ G2-TYPE-01 stay open. Portfolio stays blocked.
 | | Session A — the main loop | Session B — the parallel scope |
 |---|---|---|
 | Owns | everything not listed to the right | **GDD §5 — Gym Empire, the idle layer** |
-| Branch | `claude/agent-config-setup-m2r6ny` | its own `claude/*` branch, in its own worktree |
+| Branch | `grok/session-a-main-loop` | `grok/stage-g2c2-actual-departure` |
 | Files | `src/game`, `src/meet`, `src/cutin`, `src/session`, `src/shell`, `src/lift`, `src/art`, `src/card`, `src/licensing`, `src/audio`, `tools/` | `src/empire/**` (new), plus the three registry rows named below |
 
 **Neither session pushes to `main`, ever.** Both push only to their own
-`claude/*` branch. Merging into `main` is a human's call, not a session's.
+session branch. Merging into `main` is a human's call, not a session's.
 
 ### Session B's scope, stated exactly
 
