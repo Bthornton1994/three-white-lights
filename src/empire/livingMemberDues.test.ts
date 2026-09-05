@@ -18,7 +18,9 @@ import {
   livingMemberDuesCreditedDelta,
   livingMemberDuesForWindow,
   livingMemberDuesGymBucksForInterval,
+  livingMemberDuesOccupancyUntilSeconds,
   playerFacingDuesLine,
+  requireLivingMemberDuesOccupancyClock,
   requireLivingMemberDuesWindow,
   appendLivingMemberDuesSettlement,
 } from './livingMemberDues';
@@ -52,9 +54,10 @@ function memberNamed(
   type: LivingGymMember['type'] = 'casual',
   recentVisits: readonly ServiceVisitRecord[] = Object.freeze([]),
   joinedAtSeconds: number = 0,
+  ordinal: number = 0,
 ): LivingGymMember {
   return Object.freeze({
-    id: `member:n1:0` as GymMemberId,
+    id: `member:n1:${ordinal}` as GymMemberId,
     displayName: name,
     type,
     joinedAtSeconds,
@@ -140,27 +143,82 @@ describe('Stage G.2D — clock window math', () => {
       memberBaseDuesGymBucks('casual') / 2,
     );
     expect(livingMemberDuesGymBucksForInterval(nia, 0, DAY / 2)).toBe(0);
+    const later = memberNamed('Nia', 'casual', Object.freeze([]), DAY);
+    expect(livingMemberDuesGymBucksForInterval(later, 0, DAY / 2)).toBe(0);
   });
 
-  it('sums active members and ignores a zero-length window', () => {
+  it('pro-rates a mid-window departure through untilSeconds', () => {
     const nia = memberNamed('Nia', 'casual');
-    const pair: readonly LivingGymMember[] = Object.freeze([
-      nia,
-      memberNamed('Omar', 'athlete'),
-    ]);
+    expect(livingMemberDuesGymBucksForInterval(nia, 0, DAY, DAY / 2)).toBe(
+      memberBaseDuesGymBucks('casual') / 2,
+    );
+    expect(livingMemberDuesGymBucksForInterval(nia, 0, DAY, 0)).toBe(0);
+    expect(livingMemberDuesGymBucksForInterval(nia, DAY / 2, DAY, DAY / 2)).toBe(0);
+  });
+
+  it('occupies the open GymHost tick when a departure is stamped on the window start', () => {
+    const nia = memberNamed('Nia', 'casual');
+    const omar = memberNamed('Omar', 'athlete', Object.freeze([]), 0, 1);
+    const openMark = EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS;
+    expect(livingMemberDuesOccupancyUntilSeconds(0, 0, DAY)).toBe(openMark);
+    expect(livingMemberDuesOccupancyUntilSeconds(DAY / 2, 0, DAY)).toBe(DAY / 2);
+    expect(livingMemberDuesOccupancyUntilSeconds(0, 0, 1)).toBe(1);
+    expect(
+      livingMemberDuesForWindow(Object.freeze([nia]), 0, DAY, Object.freeze([
+        { member: omar, departedAtSeconds: 0 },
+      ])),
+    ).toBe(
+      memberBaseDuesGymBucks('casual') +
+        livingMemberDuesGymBucksForInterval(omar, 0, DAY, openMark),
+    );
+  });
+
+  it('sums active members with departed stubs and ignores a zero-length window', () => {
+    const nia = memberNamed('Nia', 'casual');
+    const omar = memberNamed('Omar', 'athlete', Object.freeze([]), 0, 1);
+    const pair: readonly LivingGymMember[] = Object.freeze([nia, omar]);
     expect(livingMemberDuesForWindow(pair, 0, DAY)).toBe(
       memberBaseDuesGymBucks('casual') + memberBaseDuesGymBucks('athlete'),
     );
     expect(livingMemberDuesForWindow(pair, 40, 40)).toBe(0);
+    expect(
+      livingMemberDuesForWindow(Object.freeze([nia]), 0, DAY, Object.freeze([
+        { member: omar, departedAtSeconds: DAY / 2 },
+      ])),
+    ).toBe(memberBaseDuesGymBucks('casual') + memberBaseDuesGymBucks('athlete') / 2);
   });
 
-  it('refuses a backward window and a negative mark', () => {
+  it('refuses a backward window, a negative mark, and occupancy that leaves before join', () => {
     expect(() => requireLivingMemberDuesWindow(10, 9)).toThrow(/earlier than start/);
     expect(() => requireLivingMemberDuesWindow(-1, 10)).toThrow(/non-negative/);
     expect(() => requireLivingMemberDuesWindow(0, Number.NaN)).toThrow(/non-negative/);
     expect(() => createLivingMemberDuesLedger(-1)).toThrow(/settledAtSeconds/);
     expect(() => createLivingMemberDuesSettlement(0, 0, 1)).toThrow(/positive interval/);
     expect(() => createLivingMemberDuesSettlement(0, DAY, -1)).toThrow(/non-negative/);
+    expect(() => requireLivingMemberDuesOccupancyClock(-1, 0)).toThrow(/non-negative/);
+    expect(() => requireLivingMemberDuesOccupancyClock(1, 2)).toThrow(/earlier than joinedAtSeconds/);
+    const nia = memberNamed('Nia', 'casual');
+    const other = memberNamed('Omar', 'athlete', Object.freeze([]), 0, 1);
+    expect(() => livingMemberDuesGymBucksForInterval(nia, 0, DAY, nia.joinedAtSeconds - 1)).toThrow(
+      /non-negative/,
+    );
+    expect(() =>
+      livingMemberDuesForWindow(Object.freeze([nia]), 0, DAY, Object.freeze([
+        { member: nia, departedAtSeconds: DAY / 2 },
+      ])),
+    ).toThrow(/active member/);
+    expect(() =>
+      livingMemberDuesForWindow(Object.freeze([nia]), 0, DAY, Object.freeze([
+        { member: other, departedAtSeconds: DAY / 2 },
+        { member: other, departedAtSeconds: DAY / 4 },
+      ])),
+    ).toThrow(/twice/);
+    const late = memberNamed('Nia', 'casual', Object.freeze([]), DAY, 2);
+    expect(() =>
+      livingMemberDuesForWindow(Object.freeze([]), 0, DAY, Object.freeze([
+        { member: late, departedAtSeconds: DAY / 2 },
+      ])),
+    ).toThrow(/earlier than joinedAtSeconds/);
   });
 });
 
@@ -221,5 +279,7 @@ describe('Stage G.2D — source fences', () => {
     expect(source).not.toMatch(/ladderIncomeRatePerHour|accrueLadderGymBucks/);
     expect(source).not.toMatch(/^import \{[^}]*\} from ['"]\.\/livingMembers['"]/m);
     expect(source).toMatch(/import type/);
+    expect(source).toMatch(/requireLivingMemberDuesOccupancyClock/);
+    expect(source).toMatch(/departedAtSeconds/);
   });
 });

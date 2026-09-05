@@ -941,6 +941,7 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
             sessionOwned: state.managed.gym.sessionEquipment,
             joinedAtSeconds: state.managed.gym.ladder.collectedAt,
           }),
+          state.managed.gym.ladder.collectedAt,
         ),
       });
   }

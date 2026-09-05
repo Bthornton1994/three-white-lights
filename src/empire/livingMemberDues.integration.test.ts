@@ -1,8 +1,8 @@
 /**
  * livingMemberDues.integration.test.ts — Stage G.2D causal-chain dues
  * settlement through the living roster writer: replay, fail-closed, join
- * pro-rate, departure exclusion, clock production path, and frozen C1–C3
- * membership behaviour.
+ * pro-rate, time-weighted departure occupancy, clock production path, and
+ * frozen C1–C3 membership behaviour.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -19,6 +19,8 @@ import {
   livingMemberDailyDuesGymBucks,
   livingMemberDuesForWindow,
   playerFacingDuesLine,
+  livingMemberDuesGymBucksForInterval,
+  livingMemberDuesOccupancyUntilSeconds,
 } from './livingMemberDues';
 import { livingMemberExperience } from './livingMemberExperience';
 import {
@@ -45,6 +47,12 @@ function requireMember(roster: LivingMemberRoster, index: number): LivingGymMemb
   const member = roster.members[index];
   if (member === undefined) throw new Error(`missing member at ${index}`);
   return member;
+}
+
+function requireDeparture(roster: LivingMemberRoster, index: number): LivingGymMember {
+  const record = roster.departures[index];
+  if (record === undefined) throw new Error(`missing departure at ${index}`);
+  return record.member;
 }
 
 function observation(
@@ -201,13 +209,14 @@ describe('Stage G.2D — formed experience changes what the next window pays', (
   });
 });
 
-describe('Stage G.2D — occupancy at the settle mark', () => {
-  it('does not charge a member who already departed', () => {
+describe('Stage G.2D — occupancy during the settle window', () => {
+  it('does not invent a charge when a leave has no gym-clock occupancy mark', () => {
     const roster = opening();
     const gone = requireMember(roster, 1);
     const departed = applyServiceObservations(applyAll(roster, gone, 9, adverse), [adverse(gone, 10)]);
     expect(departed.members.length).toBe(roster.members.length - 1);
     expect(livingMemberById(departed, gone.id)).toBeNull();
+    expect(departed.duesLeftAtSeconds[gone.id]).toBeUndefined();
     const settled = applyLivingMemberDues(departed, DAY);
     expect(settled.dues.creditedGymBucks).toBe(
       livingMemberDuesForWindow(departed.members, 0, DAY),
@@ -215,6 +224,105 @@ describe('Stage G.2D — occupancy at the settle mark', () => {
     expect(settled.dues.creditedGymBucks).toBeLessThan(
       livingMemberDuesForWindow(roster.members, 0, DAY),
     );
+  });
+
+  it('does not invent occupancy from an arrival join clock when gym clock is omitted', () => {
+    const roster = opening();
+    const gone = requireMember(roster, 1);
+    const departed = applyServiceObservations(
+      applyAll(roster, gone, 9, adverse),
+      [adverse(gone, 10)],
+      undefined,
+      Object.freeze({
+        sessionOwned: Object.freeze([] as const),
+        joinedAtSeconds: 40,
+      }),
+    );
+    expect(livingMemberById(departed, gone.id)).toBeNull();
+    expect(departed.duesLeftAtSeconds[gone.id]).toBeUndefined();
+    const settled = applyLivingMemberDues(departed, DAY);
+    expect(settled.dues.creditedGymBucks).toBe(
+      livingMemberDuesForWindow(departed.members, 0, DAY),
+    );
+  });
+
+  it('charges a mid-window departure for the stub that member was still active', () => {
+    const roster = opening();
+    const gone = requireMember(roster, 1);
+    const departed = applyServiceObservations(
+      applyAll(roster, gone, 9, adverse),
+      [adverse(gone, 10)],
+      undefined,
+      null,
+      DAY / 2,
+    );
+    expect(departed.members.length).toBe(roster.members.length - 1);
+    expect(livingMemberById(departed, gone.id)).toBeNull();
+    expect(departed.duesLeftAtSeconds[gone.id]).toBe(DAY / 2);
+    const snapshot = requireDeparture(departed, 0);
+    const daily = livingMemberDailyDuesGymBucks(snapshot);
+    expect(daily.status).toBe('formed');
+    const stub = livingMemberDuesGymBucksForInterval(snapshot, 0, DAY, DAY / 2);
+    expect(stub).toBeGreaterThan(0);
+    expect(stub).toBeLessThan(daily.gymBucksPerDay);
+    const settled = applyLivingMemberDues(departed, DAY);
+    expect(settled.dues.creditedGymBucks).toBe(
+      livingMemberDuesForWindow(
+        departed.members,
+        0,
+        DAY,
+        Object.freeze([{ member: snapshot, departedAtSeconds: DAY / 2 }]),
+      ),
+    );
+    expect(settled.dues.creditedGymBucks).toBe(
+      livingMemberDuesForWindow(departed.members, 0, DAY) + stub,
+    );
+    expect(settled.dues.creditedGymBucks).toBeGreaterThan(
+      livingMemberDuesForWindow(departed.members, 0, DAY),
+    );
+    expect(settled.dues.creditedGymBucks).toBeLessThan(
+      livingMemberDuesForWindow(roster.members, 0, DAY),
+    );
+  });
+
+  it('does not charge a departed member after the stub window is archived', () => {
+    const roster = opening();
+    const gone = requireMember(roster, 1);
+    const departed = applyServiceObservations(
+      applyAll(roster, gone, 9, adverse),
+      [adverse(gone, 10)],
+      undefined,
+      null,
+      DAY / 2,
+    );
+    const settled = applyLivingMemberDues(departed, DAY);
+    const next = applyLivingMemberDues(settled, DAY * 2);
+    expect(lastLivingMemberDuesSettlement(next.dues.settlements)?.gymBucks).toBe(
+      livingMemberDuesForWindow(departed.members, DAY, DAY * 2),
+    );
+    expect(lastLivingMemberDuesSettlement(next.dues.settlements)?.gymBucks).toBeLessThan(
+      livingMemberDuesForWindow(roster.members, DAY, DAY * 2),
+    );
+    const replay = applyLivingMemberDues(next, DAY * 2);
+    expect(replay).toBe(next);
+    expect(replay.dues.settlements.length).toBe(2);
+  });
+
+  it('is still a full roster no-op on exact replay after an occupancy settle', () => {
+    const roster = opening();
+    const gone = requireMember(roster, 1);
+    const departed = applyServiceObservations(
+      applyAll(roster, gone, 9, adverse),
+      [adverse(gone, 10)],
+      undefined,
+      null,
+      DAY / 2,
+    );
+    const settled = applyLivingMemberDues(departed, DAY);
+    const replay = applyLivingMemberDues(settled, DAY);
+    expect(replay).toBe(settled);
+    expect(replay.dues.settlements.length).toBe(1);
+    expect(replay.dues.creditedGymBucks).toBe(settled.dues.creditedGymBucks);
   });
 
   it('pro-rates a mid-window relocation arrival from joinedAtSeconds', () => {
@@ -297,6 +405,57 @@ describe('Stage G.2D — gymViewReduce clock is the production writer', () => {
     });
     expect(next.livingMembers.dues).toBe(opened.livingMembers.dues);
     expect(next.livingMembers.dues.creditedGymBucks).toBe(0);
+  });
+
+  it('charges a played leave for the open GymHost tick of the following settle', () => {
+    let state = createGymViewState();
+    const gone = requireMember(state.livingMembers, 1);
+    const openingMembers = state.livingMembers.members;
+    for (let tick = 1; tick <= 10; tick += 1) {
+      const current = livingMemberById(state.livingMembers, gone.id) ?? gone;
+      state = gymViewReduce(state, {
+        kind: 'apply-living-member-observations',
+        observations: [adverse(current, tick)],
+      });
+    }
+    expect(livingMemberById(state.livingMembers, gone.id)).toBeNull();
+    expect(state.livingMembers.dues.creditedGymBucks).toBe(0);
+    expect(state.livingMembers.duesLeftAtSeconds[gone.id]).toBe(
+      state.managed.gym.ladder.collectedAt,
+    );
+    const snapshot = requireDeparture(state.livingMembers, 0);
+    const leftAt = state.livingMembers.duesLeftAtSeconds[gone.id];
+    expect(leftAt).toBe(0);
+    if (leftAt === undefined) throw new Error('expected gym-clock occupancy mark');
+    const stubUntil = livingMemberDuesOccupancyUntilSeconds(leftAt, 0, DAY);
+    expect(stubUntil).toBe(T.WALL_CLOCK_TICK_INTERVAL_SECONDS);
+    const stub = livingMemberDuesGymBucksForInterval(snapshot, 0, DAY, stubUntil);
+    expect(stub).toBeGreaterThan(0);
+    const next = gymViewReduce(state, { kind: 'advance-clock', gapSeconds: DAY, mode: 'online' });
+    expect(next.livingMembers.dues.creditedGymBucks).toBe(
+      livingMemberDuesForWindow(
+        next.livingMembers.members,
+        0,
+        DAY,
+        Object.freeze([{ member: snapshot, departedAtSeconds: leftAt }]),
+      ),
+    );
+    expect(next.livingMembers.dues.creditedGymBucks).toBe(
+      livingMemberDuesForWindow(next.livingMembers.members, 0, DAY) + stub,
+    );
+    expect(next.livingMembers.dues.creditedGymBucks).toBeGreaterThan(
+      livingMemberDuesForWindow(next.livingMembers.members, 0, DAY),
+    );
+    expect(next.livingMembers.dues.creditedGymBucks).toBeLessThan(
+      livingMemberDuesForWindow(openingMembers, 0, DAY),
+    );
+    const archived = gymViewReduce(next, { kind: 'advance-clock', gapSeconds: DAY, mode: 'online' });
+    expect(lastLivingMemberDuesSettlement(archived.livingMembers.dues.settlements)?.gymBucks).toBe(
+      livingMemberDuesForWindow(next.livingMembers.members, DAY, DAY * 2),
+    );
+    const replay = gymViewReduce(archived, { kind: 'advance-clock', gapSeconds: 0, mode: 'online' });
+    expect(replay.livingMembers).toBe(archived.livingMembers);
+    expect(replay.managed.gym.ladder.gymBucks).toBe(archived.managed.gym.ladder.gymBucks);
   });
 });
 
