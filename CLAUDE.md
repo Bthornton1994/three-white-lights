@@ -56,8 +56,10 @@ reputation from that same occupancy, and reputation-gated high-paying
 (Athlete, Serious Lifter) vacancy arrival. Do not wire
 `reputationFromMembers` on an aggregate
 `MemberRoster` or old crowding satisfaction. CAREER-EMPIRE-REP-01 is
-FROZEN at `34b98a06772db81126b68deec220a24328892a22` (factory freeze;
-human feel gate not run — not CLOSED): the sporting half lands as
+FROZEN at `cae174d8f46d7652ae1873f7594a23133b09c4db` (squash memorial
+on Session B; factory freeze; human feel gate not run — not CLOSED;
+pre-squash identity `34b98a06772db81126b68deec220a24328892a22` is not
+an object on this tree): the sporting half lands as
 `GymViewState.sportingReputation` composed by `institutionalReputation`
 with the G.2E member ledger at points. The G.2E high-paying arrival
 gate still reads member-only. The prior phrase "Career/Meet →

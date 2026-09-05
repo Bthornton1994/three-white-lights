@@ -2,14 +2,20 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-09-05 (CAREER-EMPIRE-REP-01 P2 — no `?meet=`
+**Last updated:** 2026-09-05 (SF-TWL-HYG-003 — CAREER-EMPIRE-REP-01
+factory freeze pin on Session B is squash memorial
+`cae174d8f46d7652ae1873f7594a23133b09c4db`. Pre-squash identity
+`34b98a06772db81126b68deec220a24328892a22` is not an object on this
+tree. Human feel gate not run — not CLOSED. G2-ATHLETE-SEASON-01 is
+FROZEN at `9720ea48f34e1f2670088f1c129026d54668776e`, not IN PROGRESS.)
+Earlier: 2026-09-05 (CAREER-EMPIRE-REP-01 P2 — no `?meet=`
 path, including `live`, credits sporting reputation. `?meet=live` is a
 defined debug frame with `serverPort: undefined`; AppShell selects a
 non-crediting stand-in (`debugMeetStandIn`) for it, never the sporting-
 credit `playedMeetPort` view and never the app singleton. Only the
 production played path (no meetFrame) uses the AppShell-owned view.
 Crossing 9 stays the mounted MeetScreen report. Factory freeze remains
-`34b98a06772db81126b68deec220a24328892a22` — human feel gate not run —
+`cae174d8f46d7652ae1873f7594a23133b09c4db` — human feel gate not run —
 not CLOSED. Sporting ledger on `GymViewState` composed
 with G.2E at points. Prior `EmpireState.reputation` phrase names this
 composed v2 reading. G2-ATHLETE-SEASON-01 FROZEN at
@@ -23,7 +29,7 @@ the in-flight meet save can no longer drop sporting credit. AppShell
 owns a played-port view that credits from `recordMeetResult`; Crossing 9
 stays the MeetScreen `onRecorded` report. A recorded Total that cannot
 credit fails closed visibly. Factory freeze remains
-`34b98a06772db81126b68deec220a24328892a22` — human feel gate not run —
+`cae174d8f46d7652ae1873f7594a23133b09c4db` — human feel gate not run —
 not CLOSED. Sporting ledger on `GymViewState` composed
 with G.2E at points. Prior `EmpireState.reputation` phrase names this
 composed v2 reading.)
@@ -3251,11 +3257,13 @@ than the ruling's own §1–§23 sequence:
   `cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel
   gate not run — not CLOSED) — member-side reputation from that same
   occupancy, plus reputation-gated high-paying vacancy arrival.
-  **G2-ATHLETE-SEASON-01 IN PROGRESS** — shared gym-clock Athlete
-  leave/return. **CAREER-EMPIRE-REP-01 FROZEN** at
-  `34b98a06772db81126b68deec220a24328892a22` (factory freeze; human
-  feel gate not run — not CLOSED). Portfolio and NpcLifter merge stay
-  blocked.
+  **G2-ATHLETE-SEASON-01 FROZEN** at
+  `9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze; human feel
+  gate not run — not CLOSED) — shared gym-clock Athlete leave/return.
+  **CAREER-EMPIRE-REP-01 FROZEN** at
+  `cae174d8f46d7652ae1873f7594a23133b09c4db` (squash memorial on Session
+  B; factory freeze; human feel gate not run — not CLOSED). Portfolio
+  and NpcLifter merge stay blocked.
 
 ### Human Stage C rejection at `f097695b`
 
@@ -4828,7 +4836,7 @@ behavior.
 | G.2C | G.2C1 frozen. G.2C2 frozen. G.2C3 frozen. Reputation-gated high-paying rates remain G.2E. |
 | G.2D | CLOSED / FROZEN at `28611af74dd6479bfad58763ebba72db5942307c`. Living-member dues from G.2A experience. P1 occupancy is time-weighted presence including open-mark production leaves; purse composition in this slice. |
 | G.2E | FROZEN at `cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel gate not run — not CLOSED). Member-side institutional reputation from living occupancy; high-paying (Athlete, Serious Lifter) vacancy arrival gated on credited living-member reputation. |
-| Career → Empire reputation | CAREER-EMPIRE-REP-01 FROZEN at `34b98a06772db81126b68deec220a24328892a22` (factory freeze; human feel gate not run — not CLOSED). `GymViewState.sportingReputation` composed with G.2E at points. Literal v1 `EmpireState.reputation` stays unwritten. |
+| Career → Empire reputation | CAREER-EMPIRE-REP-01 FROZEN at `cae174d8f46d7652ae1873f7594a23133b09c4db` (squash memorial on Session B; factory freeze; human feel gate not run — not CLOSED). `GymViewState.sportingReputation` composed with G.2E at points. Literal v1 `EmpireState.reputation` stays unwritten. |
 | Portfolio | BLOCKED |
 
 **Proven causal chain:** physical gym decision → real FloorSim service
@@ -5260,7 +5268,7 @@ E-REP-01 stays open.
 
 **Still blocked after G.2E freeze:** Portfolio, NpcLifter merge.
 CAREER-EMPIRE-REP-01 later FROZE the sporting half at
-`34b98a06772db81126b68deec220a24328892a22` (factory freeze; human feel
+`cae174d8f46d7652ae1873f7594a23133b09c4db` (factory freeze; human feel
 gate not run — not CLOSED). G2-ATHLETE-SEASON-01 is a later authorised
 slice.
 
@@ -5341,14 +5349,16 @@ module bodies.
 **Still blocked:** Portfolio, NpcLifter
 merge. Feel of the 6 / 2 / 4 week cadence is unproven.
 CAREER-EMPIRE-REP-01 is FROZEN at
-`34b98a06772db81126b68deec220a24328892a22` (factory freeze; human feel
+`cae174d8f46d7652ae1873f7594a23133b09c4db` (factory freeze; human feel
 gate not run — not CLOSED).
 
 #### CAREER-EMPIRE-REP-01 — Career/Meet → Empire Reputation (Stage E's deferred crossing)
 
 **CAREER-EMPIRE-REP-01 FROZEN** at
-`34b98a06772db81126b68deec220a24328892a22` (factory freeze; human feel
-gate not run — not CLOSED). This is Stage E's deferred
+`cae174d8f46d7652ae1873f7594a23133b09c4db` (squash memorial on Session
+B; factory freeze; human feel gate not run — not CLOSED). Pre-squash
+identity `34b98a06772db81126b68deec220a24328892a22` is not an object
+on this tree. This is Stage E's deferred
 crossing: a played meet result may credit Empire sporting reputation.
 It is not a write of literal v1 `EmpireState.reputation`. It is not
 Portfolio, not NpcLifter merge, not an E-REP-01 retune, and not a
@@ -5475,7 +5485,7 @@ and `reputation.ts` byte-identical. G.2E high-paying arrival still
 reads member-only. No numeric tuning literal. E-REP-01 stays open.
 
 **Residuals:** claim 14 not run. Feel unproven. Stage C / physical-phone
-gates. Preexisting `guaranteeTags` tip fails.
+gates.
 
 **Still blocked:** Portfolio, NpcLifter merge, G.2E gate on the
 composed reading, Career calendar / `newlyQualifiedFor`, server write,
