@@ -270,7 +270,7 @@ describe('CAREER-EMPIRE-REP-01 — Crossing 9 / Crossing 6-extended wiring', () 
     expect(APP_SHELL).toMatch(/kind: 'credit-sporting-result'/);
     expect(APP_SHELL).toMatch(/facts: recorded/);
     expect(APP_SHELL).toMatch(/withSportingCreditOnRecord\(appMeetPort\(\), creditSportingResult\)/);
-    expect(APP_SHELL).toMatch(/serverPort=\{meetScreenPort\(meetFrame, playedMeetPort, appMeetPort\(\)\}/);
+    expect(APP_SHELL).toMatch(/serverPort=\{meetScreenPort\(meetFrame, playedMeetPort, appMeetPort\(\)\)\}/);
     expect(APP_SHELL).not.toMatch(/meetFrame\?\.serverPort \?\? playedMeetPort/);
     expect(APP_SHELL).not.toMatch(/dispatchRef/);
   });
@@ -317,7 +317,7 @@ describe('CAREER-EMPIRE-REP-01 P1 — leave-before-response / unmount-before-onR
     expect(MEET_SCREEN).toMatch(/onRecorded\?\.\(state\.context\.meet\.id, loop\.applied\)/);
     expect(USE_MEET_DAY).not.toMatch(/\bonRecorded\b/);
     expect(APP_SHELL).toMatch(/withSportingCreditOnRecord\(appMeetPort\(\), creditSportingResult\)/);
-    expect(APP_SHELL).toMatch(/serverPort=\{meetScreenPort\(meetFrame, playedMeetPort, appMeetPort\(\)\}/);
+    expect(APP_SHELL).toMatch(/serverPort=\{meetScreenPort\(meetFrame, playedMeetPort, appMeetPort\(\)\)\}/);
   });
 
   it('credits sporting reputation when the screen unmounts before onRecorded', async () => {

@@ -969,7 +969,7 @@ describe('navigating away and back cannot buy a second session of the day', () =
     // `AppShell` gave `SessionScreen` a `serverPort` and gave `MeetScreen` no
     // port, no record and no cache. That asymmetry IS the defect, in one line of
     // JSX, and this is the line.
-    expect(SHELL).toMatch(/serverPort=\{meetScreenPort\(meetFrame, playedMeetPort, appMeetPort\(\)\}/);
+    expect(SHELL).toMatch(/serverPort=\{meetScreenPort\(meetFrame, playedMeetPort, appMeetPort\(\)\)\}/);
     expect(SHELL).toMatch(/withSportingCreditOnRecord\(appMeetPort\(\), creditSportingResult\)/);
     expect(SHELL).not.toMatch(/meetFrame\?\.serverPort \?\? playedMeetPort/);
     // Selection keys on frame presence. A live-shaped frame (defined, no
