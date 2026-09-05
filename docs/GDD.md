@@ -2,7 +2,10 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-09-05 (G.2D P1 — a played leave stamped on the
+**Last updated:** 2026-09-05 (G.2E IN PROGRESS — member-side living-member
+reputation ledger and reputation-gated high-paying vacancy arrival.
+G.2D CLOSED / FROZEN at `28611af74dd6479bfad58763ebba72db5942307c`.
+Earlier: 2026-09-05 (G.2D P1 — a played leave stamped on the
 settle-window start still occupies the open GymHost tick, so production
 `gymViewReduce` occupancy is not `[mark, mark)`. Unsettled-window dues
 are time-weighted presence, not the active roster at the settle mark.
@@ -3213,12 +3216,15 @@ than the ruling's own §1–§23 sequence:
   service observation.   **G.2C3 CLOSED / FROZEN** at
   `2b0f52bdcd94004400937e450c8db12727ca74ca` — vacancy arrival /
   population replenishment plus P1 honest Watching/neutral writer proof.
-  **G.2D DUES ACCOUNTING BUILT, AWAITING FREEZE** — living-member dues
+  **G.2D CLOSED / FROZEN** at
+  `28611af74dd6479bfad58763ebba72db5942307c` — living-member dues
   from accepted G.2A experience, clock-settled on the roster ledger and
   credited onto the spendable Gym Bucks purse (added to frozen D2
   facility income). P1: unsettled-window occupancy is time-weighted
   presence (in-window leaves still pay the active stub; a played leave
-  on the open settle mark occupies the GymHost tick). G.2E member-side reputation, Athlete seasonality,
+  on the open settle mark occupies the GymHost tick). **G.2E IN
+  PROGRESS** — member-side reputation from that same occupancy, plus
+  reputation-gated high-paying vacancy arrival. Athlete seasonality,
   Career → Empire reputation, Portfolio, and NpcLifter merge stay blocked.
 
 ### Human Stage C rejection at `f097695b`
@@ -4790,8 +4796,8 @@ behavior.
 | G2-ATHLETE-SEASON-01 | OPEN — Athlete leave/return needs G.2C |
 | G2-DUES-PURSE-01 | CLOSED — living dues credit the spendable ladder purse on clock settle; D2 facility income stays additive |
 | G.2C | G.2C1 frozen. G.2C2 frozen. G.2C3 frozen. Reputation-gated high-paying rates remain G.2E. |
-| G.2D | FOUNDATION BUILT; P1 occupancy is time-weighted presence including open-mark production leaves; purse composition in this slice; awaiting freeze. Living-member dues from G.2A experience. |
-| G.2E | BLOCKED |
+| G.2D | CLOSED / FROZEN at `28611af74dd6479bfad58763ebba72db5942307c`. Living-member dues from G.2A experience. P1 occupancy is time-weighted presence including open-mark production leaves; purse composition in this slice. |
+| G.2E | IN PROGRESS — member-side institutional reputation from living occupancy; high-paying (Athlete, Serious Lifter) vacancy arrival gated on credited living-member reputation. |
 | Career → Empire reputation | BLOCKED |
 | Portfolio | BLOCKED |
 
@@ -5071,7 +5077,8 @@ NpcLifter merge. G.2D dues accounting is the next authorised slice.
 
 #### Stage G.2D — Living Member Dues Accounting
 
-**STAGE G.2D DUES ACCOUNTING BUILT, AWAITING FREEZE.** This is the first
+**STAGE G.2D CLOSED / FROZEN** at
+`28611af74dd6479bfad58763ebba72db5942307c`. This is the first
 slice allowed to turn living-member presence and accepted G.2A recent-
 service meaning into Gym Bucks dues, and to credit those dues as spendable
 Gym Bucks income. It is not a reputation write, not a D2 facility-rate
@@ -5143,10 +5150,83 @@ Career import, no Portfolio, no NpcLifter merge, no RNG, no `Date.now`,
 no leave probability. G.2A/G.2B/G.2C1–C3 frozen. Q/C/T frozen. No
 G.2E high-paying arrival rates.
 
-**Still blocked:** G.2E member-side reputation (including reputation-
-gated high-paying arrival rates), Athlete seasonality
+**Still blocked after G.2D freeze:** Athlete seasonality
 (G2-ATHLETE-SEASON-01), Career → Empire reputation, Portfolio,
-NpcLifter merge.
+NpcLifter merge. G.2E member-side reputation is the next authorised slice.
+
+#### Stage G.2E — Member-Side Institutional Reputation
+
+**STAGE G.2E IN PROGRESS.** This is the first slice allowed to turn
+living-member occupancy into institutional reputation, and to gate the
+arrival of high-paying member types on that credited number. It is not
+Career/Meet → `EmpireState.reputation`, not a check-in retune, not
+Athlete seasonality, and not a pay-to-win purchase.
+
+**GDD citation:** §5.6 Members: "Reputation is earned mostly by
+powerlifter and serious-lifter members, and by your own competition
+results. It gates: what sponsorship deals you're offered, which
+locations you can acquire, and the arrival rate of the high-paying
+member types." This slice implements the members half as a gym-clock
+rate from living occupancy, and the high-paying arrival-rate gate.
+Sponsorships, location acquisition, and competition-result wiring stay
+blocked.
+
+**Why this stage, and not Career → Empire:** Stage E already built the
+sporting calculator as a pure function. Closing it did not authorize a
+Career or Meet result writing `EmpireState.reputation`. G.2E is the
+living-roster contributor and the arrival gate that G.2C3 deferred.
+Check-in reputation (E-REP-01) is not retuned.
+
+**Proven causal chain:** physical gym decision → real FloorSim service
+→ persistent N=5 member history → G.2C2/C3 occupancy → gym-clock
+settlement of published type reputation rates → credited living-member
+reputation → high-paying vacancy arrival may proceed.
+
+**Settlement grain:** gym-clock seconds, the same occupancy G.2D ships.
+`applyLivingMemberReputation` is the one ledger writer. `gymViewReduce`
+clock advance is the production caller. Service observations do not
+credit reputation. Occupancy stamps stay on `duesLeftAtSeconds`. Type
+rate is `memberReputationPerDay` — not `reputationFromMembers` on an
+aggregate `MemberRoster`, not old crowding × fit `memberSatisfaction`,
+and not a G.2A composite scale. Forming members still occupy, so they
+still contribute their published type rate. Casual's published rate is
+0. Powerlifter and Serious Lifter raise reputation fastest.
+
+**Occupancy during the settle window:** identical to G.2D. Time-weighted
+presence over `[reputation.settledAtSeconds, toSeconds)`. Joins
+pro-rate from `joinedAtSeconds`. A G.2C2 leave during the window still
+contributes the stub it was active, including a played leave on the
+open settle mark occupying the GymHost tick.
+
+**Idempotence / fail-closed:** exact replay of an already-settled mark
+is a full roster no-op. An earlier mark refuses. A non-finite or
+negative mark refuses. Same `from`/`to` with a conflicting amount
+refuses. Invalid join-clock on a contributing member refuses.
+
+**High-paying arrival gate:** Athlete and Serious Lifter are §5.6
+Pays=High (`HIGH_PAYING_MEMBER_TYPES`). Vacancy fill still uses G.2C3
+evidence rules (Casual faster; Serious Lifter recovery-only; Bodybuilder
+and Powerlifter common recovery). High-paying types additionally require
+`reputation.creditedReputation >= HIGH_PAYING_MEMBER_ARRIVAL_REPUTATION_THRESHOLD`.
+If the gate is not met, the vacancy stays. The next type is not
+substituted. The threshold is a first-pass knob scaled to published
+per-member-per-day rates (opening Garage is three powerlifters at
+0.45/day, so 1 is a bit over two days of stock occupancy), not
+`NPC_RECRUIT_REPUTATION_THRESHOLD.club`. Feel is unproven.
+
+**Player-facing:** member detail card `REP` line shows the current daily
+type rate. No %, no countdown, no Career claim, no upgrade-ownership
+guess. Evidence of *why the gym total moved* (Stage E's reason-bearing
+toast) is presentation later; this slice names the daily rate.
+
+**Fences:** no `reputationFromMembers` on an aggregate roster, no
+`memberSatisfaction`, no Career import, no Portfolio, no NpcLifter
+merge, no RNG, no `Date.now`, no leave probability. No write of
+`EmpireState.reputation`. G.2A/G.2B/G.2C1–C3/G.2D frozen. Q/C/T frozen.
+E-REP-01 stays open.
+
+**Still blocked:** Athlete seasonality (G2-ATHLETE-SEASON-01), Career →
+Empire reputation, Portfolio, NpcLifter merge.
 
 ---
 

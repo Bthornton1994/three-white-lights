@@ -2472,6 +2472,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // Stage G.2D: living-member dues accounting.
       'livingMemberDues.ts',
       'livingMemberExperience.ts',
+      // Stage G.2E: living-member reputation ledger.
+      'livingMemberReputation.ts',
       // Stage G.2B: living-member retention pressure, derived from G.2A.
       'livingMemberRetention.ts',
       // Stage G.2C1: persistent stay-response. No roster deletion.
@@ -2700,7 +2702,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 200 -> 207: Stage G.2C3 livingMemberArrival.ts plus FloorGrid / livingMembers wiring.
     // 207 -> 215: Stage G.2D livingMemberDues.ts plus FloorGrid / livingMembers / ladderView wiring.
     // 215 -> 216: Stage G.2D purse composition — ladderView.tsx now names livingMemberDues.ts.
-    expect(pairs).toBe(216);
+    // 216 -> 226: Stage G.2E livingMemberReputation.ts plus FloorGrid / livingMembers / arrival wiring.
+    expect(pairs).toBe(226);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -2726,7 +2729,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 24 -> 25: Stage G.2C2 livingMemberDeparture.ts imports refuseWith.
     // 25 -> 26: Stage G.2C3 livingMemberArrival.ts imports refuseWith.
     // 26 -> 27: Stage G.2D livingMemberDues.ts imports refuseWith.
-    expect(mentionersOf('empireCore.ts').length).toBe(27);
+    // 27 -> 28: Stage G.2E livingMemberReputation.ts imports refuseWith.
+    expect(mentionersOf('empireCore.ts').length).toBe(28);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -3879,7 +3883,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 815 -> 821: Stage G.2C2 departure reason kinds, notice testID, and refuse tokens.
     // 821 -> 823: Stage G.2C3 arrival notice testID and join-line copy.
     // 823 -> 825: Stage G.2D dues card testID and daily-rate copy.
-    expect(singleQuoted.size).toBe(825);
+    // 825 -> 827: Stage G.2E reputation card testID and daily-rate copy.
+    expect(singleQuoted.size).toBe(827);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4015,7 +4020,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 406 -> 409: Stage G.2D purse-credit refuseWith templates. Read from this
     // assertion's own failure value.
     // 409 -> 413: Stage G.2D P1 occupancy-clock / occupancy-identity refuse templates.
-    expect(templateChunks.size).toBe(413);
+    // 413 -> 426: Stage G.2E reputation settle / occupancy refuse templates plus REP line.
+    expect(templateChunks.size).toBe(426);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4055,6 +4061,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './livingMemberDeparture',
       './livingMemberDues',
       './livingMemberExperience',
+      './livingMemberReputation',
       './livingMemberRetention',
       './livingMemberStay',
       './livingMembers',
@@ -4350,6 +4357,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-member-panel-membership',
       'floorgrid-member-panel-membership-reason',
       'floorgrid-member-panel-no-history',
+      'floorgrid-member-panel-reputation',
       'floorgrid-member-panel-short-id',
       'floorgrid-member-panel-state',
       'floorgrid-member-panel-tenure',
@@ -4881,7 +4889,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1218 -> 1231: Stage G.2D singleQuoted +2 and templateChunks +11.
     // 1231 -> 1234: Stage G.2D purse-credit refuseWith templates +3.
     // 1234 -> 1238: Stage G.2D P1 occupancy refuse templates +4.
-    expect(stringsChecked).toBe(1238);
+    // 1238 -> 1253: Stage G.2E singleQuoted +2 and templateChunks +13.
+    expect(stringsChecked).toBe(1253);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5266,10 +5275,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './livingMemberDeparture',
         // Stage G.2D: member-card dues line.
         './livingMemberDues',
-        // Stage G.1: persistent member identity and service history on tap.
-        './livingMembers',
         './livingMemberExperience',
+        './livingMemberReputation',
         './livingMemberRetention',
+        './livingMembers',
         // GDD §5.14 Stage C: the contextual station panel reads condition,
         // manager capability and the standing maintenance review straight
         // out of `management.ts`, and calls `repairEquipment` itself to
@@ -5338,6 +5347,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'members.ts': ['./empireCore', './empireTuning', './production', './sessions'],
       'livingMemberArrival.ts': [
         './empireCore',
+        './empireTuning',
         './livingMemberStay',
         './livingMembers',
         './members',
@@ -5352,6 +5362,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './production',
       ],
       'livingMemberExperience.ts': ['./empireCore', './empireTuning', './livingMembers'],
+      'livingMemberReputation.ts': [
+        './empireCore',
+        './empireTuning',
+        './livingMemberDues',
+        './livingMembers',
+        './members',
+        './production',
+      ],
       'livingMemberRetention.ts': ['./empireCore', './empireTuning', './livingMemberExperience'],
       'livingMemberStay.ts': ['./empireCore', './empireTuning', './livingMemberRetention', './members'],
       'livingMemberDeparture.ts': [
@@ -5370,6 +5388,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './livingMemberDeparture',
         './livingMemberDues',
         './livingMemberExperience',
+        './livingMemberReputation',
         './livingMemberRetention',
         './livingMemberStay',
         './members',
@@ -5430,7 +5449,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 29 -> 30: Stage G.2C2 livingMemberDeparture.ts.
     // 30 -> 31: Stage G.2C3 livingMemberArrival.ts.
     // 31 -> 32: Stage G.2D livingMemberDues.ts.
-    expect(fenced).toBe(32);
+    // 32 -> 33: Stage G.2E livingMemberReputation.ts.
+    expect(fenced).toBe(33);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -5562,7 +5582,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 145 -> 153: Stage G.2D — livingMemberDues.ts six edges plus livingMembers
     // and FloorGrid reading it.
     // 153 -> 154: Stage G.2D purse composition — ladderView.tsx imports livingMemberDues.ts.
-    expect(specifiers).toBe(154);
+    // 154 -> 163: Stage G.2E livingMemberReputation.ts six edges plus livingMembers / FloorGrid / arrival.
+    expect(specifiers).toBe(163);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external

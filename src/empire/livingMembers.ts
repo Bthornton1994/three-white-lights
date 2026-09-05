@@ -1,7 +1,7 @@
 /**
  * livingMembers.ts — Stage G.1 / G.1A identity, G.2 service history, stay
- * response, G.2C2 departure execution, G.2C3 vacancy arrival, and G.2D dues
- * settlement.
+ * response, G.2C2 departure execution, G.2C3 vacancy arrival, G.2D dues
+ * settlement, and G.2E member-side reputation settlement.
  *
  * Pure module: zero React, zero side effects, zero I/O, no `Math.random`.
  * Persists the bodies the player sees on the played floor — NOT `NpcLifter`
@@ -34,13 +34,22 @@
  * does not call the members-module dues interpolator or `memberSatisfaction`;
  * `livingMemberDues.ts` owns that mapping from G.2A composite.
  *
+ * G.2E reputation settlement lives in `applyLivingMemberReputation`. That is
+ * the one writer of the living-member reputation ledger. The same clock
+ * advance settles it. High-paying vacancy arrival reads
+ * `reputation.creditedReputation`. Service observations do not credit
+ * reputation. Occupancy stamps stay on `duesLeftAtSeconds`. This file does
+ * not call `reputationFromMembers` or write `EmpireState.reputation`.
+ *
  * NOT BUILT HERE, ON PURPOSE — later stages:
  *
- *   - No `reputationFromMembers` wiring, no `memberSatisfaction` calls, no
- *     reputation-gated high-paying arrival rates (G.2E).
+ *   - No `reputationFromMembers` wiring, no `memberSatisfaction` calls.
+ *     G.2E member-side reputation is `applyLivingMemberReputation` plus
+ *     high-paying arrival gating on the credited ledger. Career/Meet →
+ *     `EmpireState.reputation` stays blocked.
  *   - No writing `ladder.gymBucks` here. The production clock path credits
- *     the ledger delta onto the spendable purse; this file stays the one
- *     dues-ledger writer.
+ *     the dues ledger delta onto the spendable purse; this file stays the one
+ *     dues-ledger writer and the one member-reputation-ledger writer.
  *   - No offline-fabricated service visits, stay changes, departures, or
  *     arrivals — observations arrive only from real `floorSim.ts` steps while
  *     the sim is running.
@@ -70,6 +79,15 @@ import {
   type LivingMemberDuesDeparturePresence,
   type LivingMemberDuesLedger,
 } from './livingMemberDues';
+import {
+  appendLivingMemberReputationSettlement,
+  createLivingMemberReputationLedger,
+  createLivingMemberReputationSettlement,
+  lastLivingMemberReputationSettlement,
+  livingMemberReputationForWindow,
+  type LivingMemberReputationDeparturePresence,
+  type LivingMemberReputationLedger,
+} from './livingMemberReputation';
 import {
   createLivingMemberDepartureRecord,
   livingMemberShouldDepart,
@@ -137,6 +155,11 @@ export interface LivingMemberRoster {
   readonly duesLeftAtSeconds: Readonly<Record<string, number>>;
   /** G.2D dues ledger. Clock-settled; the clock path credits this onto the purse. */
   readonly dues: LivingMemberDuesLedger;
+  /**
+   * G.2E member-side reputation ledger. Clock-settled from the same occupancy
+   * as dues. High-paying arrival reads `creditedReputation`.
+   */
+  readonly reputation: LivingMemberReputationLedger;
 }
 
 /** History limits compared in tests; the shipped limit is the middle entry. */
@@ -323,6 +346,7 @@ export function createLivingMemberRoster(
     arrivals: Object.freeze([]),
     duesLeftAtSeconds: Object.freeze({}),
     dues: createLivingMemberDuesLedger(joinedAtSeconds),
+    reputation: createLivingMemberReputationLedger(joinedAtSeconds),
   });
 }
 
@@ -376,6 +400,7 @@ export function reconcileLivingMemberRosterOnRelocation(
     arrivals: roster.arrivals,
     duesLeftAtSeconds: roster.duesLeftAtSeconds,
     dues: roster.dues,
+    reputation: roster.reputation,
   });
 }
 
@@ -612,7 +637,12 @@ export function applyServiceObservations(
     if (arrivalContext === null) continue;
     const vacancyCount = ambientCap - byId.size;
     const arrivingType = memberTypeForIndex(arrivalContext.sessionOwned, byId.size);
-    if (!livingMemberShouldArrive(vacancyCount, arrivingType, visitEvidence)) continue;
+    if (!livingMemberShouldArrive(
+      vacancyCount,
+      arrivingType,
+      visitEvidence,
+      roster.reputation.creditedReputation,
+    )) continue;
     const joined = createLivingMember(
       roster.identityNonce,
       nextOrdinal,
@@ -648,9 +678,10 @@ export function applyServiceObservations(
 
 /**
  * Clock advance only moves tenure forward. It never fabricates visits, stay
- * response, departures, arrivals, or dues settlements — the gym may have been
- * away; service truth stays in the sim, and dues settle through
- * `applyLivingMemberDues`.
+ * response, departures, arrivals, dues settlements, or reputation settlements
+ * — the gym may have been away; service truth stays in the sim, dues settle
+ * through `applyLivingMemberDues`, and member-side reputation settles through
+ * `applyLivingMemberReputation`.
  */
 export function advanceLivingMemberTenure(
   roster: LivingMemberRoster,
@@ -708,6 +739,59 @@ export function applyLivingMemberDues(
   return Object.freeze({
     ...roster,
     dues: appendLivingMemberDuesSettlement(roster.dues, settlement),
+  });
+}
+
+/**
+ * One writer for living-member reputation. Settles
+ * `[reputation.settledAtSeconds, toSeconds)` against the same time-weighted
+ * occupancy G.2D uses. Active members contribute through the mark. A G.2C2
+ * leave stamped on `duesLeftAtSeconds` still contributes the stub it was
+ * active. A stamp on the window start occupies the open GymHost tick rather
+ * than `[mark, mark)`. Exact replay of an already-settled mark is a full
+ * roster no-op. An earlier mark fails closed. Service observations do not
+ * call this.
+ */
+export function applyLivingMemberReputation(
+  roster: LivingMemberRoster,
+  toSeconds: number,
+): LivingMemberRoster {
+  if (!Number.isFinite(toSeconds) || toSeconds < 0) {
+    refuseWith(`reputation settle seconds must be a non-negative number, received ${toSeconds}`);
+  }
+  const fromSeconds = roster.reputation.settledAtSeconds;
+  if (toSeconds < fromSeconds) {
+    refuseWith(`reputation settle ${toSeconds} is earlier than last settled ${fromSeconds}`);
+  }
+  if (toSeconds === fromSeconds) return roster;
+  const departed: LivingMemberReputationDeparturePresence[] = [];
+  for (const record of roster.departures) {
+    const leftAt = roster.duesLeftAtSeconds[record.member.id];
+    if (leftAt === undefined) continue;
+    departed.push(
+      Object.freeze({
+        member: record.member,
+        departedAtSeconds: leftAt,
+      }),
+    );
+  }
+  const reputation = livingMemberReputationForWindow(
+    roster.members,
+    fromSeconds,
+    toSeconds,
+    Object.freeze(departed),
+  );
+  const last = lastLivingMemberReputationSettlement(roster.reputation.settlements);
+  if (last !== null && last.fromSeconds === fromSeconds && last.toSeconds === toSeconds) {
+    if (last.reputation !== reputation) {
+      refuseWith(`reputation settlement conflicts at ${fromSeconds}–${toSeconds}`);
+    }
+    return roster;
+  }
+  const settlement = createLivingMemberReputationSettlement(fromSeconds, toSeconds, reputation);
+  return Object.freeze({
+    ...roster,
+    reputation: appendLivingMemberReputationSettlement(roster.reputation, settlement),
   });
 }
 

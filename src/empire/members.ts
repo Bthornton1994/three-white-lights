@@ -420,8 +420,28 @@ export function memberSatisfaction(input: MemberSatisfactionInput): MemberSatisf
 export function reputationFromMembers(roster: MemberRoster): ReputationPoints {
   requireMemberRoster(roster);
   const fromMembers = roster.reduce(
-    (sum, row) => sum + row.count * EMPIRE_TUNING.MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY[row.type],
+    (sum, row) => sum + row.count * memberReputationPerDay(row.type),
     0,
   );
   return asReputation(scrubPrecision(fromMembers));
+}
+
+/**
+ * Published reputation rate for one member of `type`, per day. G.2E living
+ * occupancy uses this per identity rather than folding a living roster into
+ * `reputationFromMembers`'s aggregate `MemberRoster`.
+ */
+export function memberReputationPerDay(type: MemberType): number {
+  requireMemberType(type);
+  const rate = EMPIRE_TUNING.MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY[type];
+  if (!Number.isFinite(rate) || rate < 0) {
+    refuseWith(`${type} has no published member reputation rate`);
+  }
+  return rate;
+}
+
+/** §5.6 Pays=High. Athlete and Serious Lifter; Casual/Bodybuilder/Powerlifter are not. */
+export function isHighPayingMemberType(type: MemberType): boolean {
+  requireMemberType(type);
+  return (EMPIRE_TUNING.HIGH_PAYING_MEMBER_TYPES as readonly MemberType[]).includes(type);
 }

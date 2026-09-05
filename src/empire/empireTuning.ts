@@ -1460,6 +1460,23 @@ export const EMPIRE_TUNING = Object.freeze({
   }),
 
   /**
+   * §5.6 Pays=High. G.2E gates vacancy arrival of these types on credited
+   * living-member reputation. Not a pay-to-win purchase and not Athlete
+   * seasonality. First-pass vocabulary; feel is unproven.
+   */
+  HIGH_PAYING_MEMBER_TYPES: Object.freeze(['athlete', 'serious-lifter'] as const),
+
+  /**
+   * Credited living-member reputation required before a high-paying type may
+   * fill a vacancy. Scaled to MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY, not
+   * to NPC_RECRUIT_REPUTATION_THRESHOLD.club (50) — those grains differ
+   * (0.15/day vs check-in 2). Opening Garage is three powerlifters (0.45/day),
+   * so 1 is a bit over two days of stock occupancy. First-pass knob; not
+   * playtested.
+   */
+  HIGH_PAYING_MEMBER_ARRIVAL_REPUTATION_THRESHOLD: 1,
+
+  /**
    * How close two types' equipment-fit scores must be for
    * `equipmentBiasedMemberTypes` to report both as the equipment set's bias,
    * rather than only the single highest. A budget: the design promise is
@@ -2879,6 +2896,8 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   MEMBER_CROWDING_SATISFACTION_FLOOR: 'budget',
   MEMBER_TYPE_CROWDING_LOAD_WEIGHT: 'knob',
   MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY: 'knob',
+  HIGH_PAYING_MEMBER_TYPES: 'structural',
+  HIGH_PAYING_MEMBER_ARRIVAL_REPUTATION_THRESHOLD: 'knob',
   MEMBER_EQUIPMENT_BIAS_TIE_TOLERANCE: 'budget',
 
   FLOOR_GRID_SIZE: 'knob',

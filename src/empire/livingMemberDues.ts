@@ -207,7 +207,11 @@ export function livingMemberDailyDuesGymBucks(member: LivingGymMember): LivingMe
   });
 }
 
-function presenceOverlapSeconds(
+/**
+ * Gym-clock seconds of presence overlapping `[fromSeconds, toSeconds)`.
+ * Shared occupancy grain for G.2D dues and G.2E member-side reputation.
+ */
+export function livingMemberPresenceOverlapSeconds(
   joinedAtSeconds: number,
   untilSeconds: number,
   fromSeconds: number,
@@ -263,7 +267,7 @@ export function livingMemberDuesGymBucksForInterval(
   untilSeconds: number = toSeconds,
 ): number {
   requireLivingMemberDuesWindow(fromSeconds, toSeconds);
-  const seconds = presenceOverlapSeconds(
+  const seconds = livingMemberPresenceOverlapSeconds(
     member.joinedAtSeconds,
     untilSeconds,
     fromSeconds,

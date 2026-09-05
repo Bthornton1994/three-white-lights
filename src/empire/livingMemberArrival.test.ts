@@ -9,6 +9,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { EMPIRE_TUNING } from './empireTuning';
 import {
   createLivingMemberArrivalRecord,
   lastLivingMemberArrival,
@@ -21,6 +22,7 @@ import type { GymMemberId, LivingGymMember } from './livingMembers';
 import type { MemberType } from './members';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+const GATE = EMPIRE_TUNING.HIGH_PAYING_MEMBER_ARRIVAL_REPUTATION_THRESHOLD;
 
 function codeOf(file: string): string {
   const source = readFileSync(join(HERE, file), 'utf8');
@@ -40,32 +42,50 @@ function memberNamed(name: string, type: MemberType = 'casual'): LivingGymMember
 
 describe('Stage G.2C3 — vacancy arrival classifier', () => {
   it('refuses to mint when the facility is already at cap', () => {
-    expect(livingMemberShouldArrive(0, 'casual', 'recovery')).toBe(false);
-    expect(livingMemberShouldArrive(-1, 'casual', 'recovery')).toBe(false);
+    expect(livingMemberShouldArrive(0, 'casual', 'recovery', 0)).toBe(false);
+    expect(livingMemberShouldArrive(-1, 'casual', 'recovery', 0)).toBe(false);
   });
 
   it('does not mint from forming or strain evidence', () => {
-    expect(livingMemberShouldArrive(1, 'casual', 'forming')).toBe(false);
-    expect(livingMemberShouldArrive(1, 'casual', 'strain')).toBe(false);
-    expect(livingMemberShouldArrive(1, 'powerlifter', 'strain')).toBe(false);
-    expect(livingMemberShouldArrive(1, 'serious-lifter', 'neutral')).toBe(false);
+    expect(livingMemberShouldArrive(1, 'casual', 'forming', 0)).toBe(false);
+    expect(livingMemberShouldArrive(1, 'casual', 'strain', 0)).toBe(false);
+    expect(livingMemberShouldArrive(1, 'powerlifter', 'strain', 0)).toBe(false);
+    expect(livingMemberShouldArrive(1, 'serious-lifter', 'neutral', GATE)).toBe(false);
   });
 
   it('lets Casual join on recovery or formed-neutral evidence', () => {
-    expect(livingMemberShouldArrive(1, 'casual', 'recovery')).toBe(true);
-    expect(livingMemberShouldArrive(1, 'casual', 'neutral')).toBe(true);
+    expect(livingMemberShouldArrive(1, 'casual', 'recovery', 0)).toBe(true);
+    expect(livingMemberShouldArrive(1, 'casual', 'neutral', 0)).toBe(true);
   });
 
-  it('lets common types join only on recovery', () => {
-    for (const type of ['bodybuilder', 'powerlifter', 'athlete'] as const) {
-      expect(livingMemberShouldArrive(1, type, 'recovery')).toBe(true);
-      expect(livingMemberShouldArrive(1, type, 'neutral')).toBe(false);
+  it('lets Bodybuilder and Powerlifter join only on recovery, without a reputation gate', () => {
+    for (const type of ['bodybuilder', 'powerlifter'] as const) {
+      expect(livingMemberShouldArrive(1, type, 'recovery', 0)).toBe(true);
+      expect(livingMemberShouldArrive(1, type, 'neutral', 0)).toBe(false);
+      expect(livingMemberShouldArrive(1, type, 'recovery', GATE)).toBe(true);
     }
   });
 
-  it('lets Serious Lifter join only on recovery', () => {
-    expect(livingMemberShouldArrive(1, 'serious-lifter', 'recovery')).toBe(true);
-    expect(livingMemberShouldArrive(1, 'serious-lifter', 'neutral')).toBe(false);
+  it('lets Athlete join on recovery only when credited reputation meets the G.2E gate', () => {
+    expect(livingMemberShouldArrive(1, 'athlete', 'recovery', 0)).toBe(false);
+    expect(livingMemberShouldArrive(1, 'athlete', 'recovery', GATE - Number.EPSILON)).toBe(false);
+    expect(livingMemberShouldArrive(1, 'athlete', 'recovery', GATE)).toBe(true);
+    expect(livingMemberShouldArrive(1, 'athlete', 'neutral', GATE)).toBe(false);
+  });
+
+  it('lets Serious Lifter join only on recovery and only when credited reputation meets the G.2E gate', () => {
+    expect(livingMemberShouldArrive(1, 'serious-lifter', 'recovery', 0)).toBe(false);
+    expect(livingMemberShouldArrive(1, 'serious-lifter', 'recovery', GATE)).toBe(true);
+    expect(livingMemberShouldArrive(1, 'serious-lifter', 'neutral', GATE)).toBe(false);
+  });
+
+  it('refuses a non-finite or negative credited reputation', () => {
+    expect(() => livingMemberShouldArrive(1, 'casual', 'recovery', Number.NaN)).toThrow(
+      /credited member reputation/,
+    );
+    expect(() => livingMemberShouldArrive(1, 'casual', 'recovery', -1)).toThrow(
+      /credited member reputation/,
+    );
   });
 });
 

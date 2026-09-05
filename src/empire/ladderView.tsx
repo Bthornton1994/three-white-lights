@@ -310,6 +310,7 @@ import {
 } from './livingMemberDues';
 import {
   applyLivingMemberDues,
+  applyLivingMemberReputation,
   applyServiceObservations,
   createLivingMemberRoster,
   floorSimPopulationFromRoster,
@@ -606,6 +607,11 @@ export function createGymViewState(): GymViewState {
  * already-settled mark is a ledger and purse identity no-op. This is not a
  * retune of facility rates, Q/C/T, or the offline banking policy.
  *
+ * G.2E settles living-member reputation on the same clock mark through
+ * `applyLivingMemberReputation`. That ledger is the one writer of member-side
+ * reputation. It does not write `EmpireState.reputation` and does not retune
+ * check-in reputation. High-paying vacancy arrival reads the credited total.
+ *
  * WHAT THIS ARM DOES NOT DO, because §5.7's clarification and `docs/GDD.md`
  * §5.13's wear-basis ruling both turn on it: it appends no strike and moves
  * no failure phase. `managedCheckIn` reads no strike and writes no strike, so
@@ -667,8 +673,12 @@ function advanceGymClock(
     weekLog = Object.freeze([...weekLog, ...completed]);
     allocationSetThisWeek = false;
   }
-  const livingMembers = applyLivingMemberDues(
+  const livingAfterDues = applyLivingMemberDues(
     state.livingMembers,
+    checkedInManaged.gym.ladder.collectedAt,
+  );
+  const livingMembers = applyLivingMemberReputation(
+    livingAfterDues,
     checkedInManaged.gym.ladder.collectedAt,
   );
   const gymBucks = creditLivingMemberDuesGymBucks(
