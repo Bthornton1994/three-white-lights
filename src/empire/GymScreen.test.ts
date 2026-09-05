@@ -146,6 +146,10 @@ import { FloorGrid } from './FloorGrid';
 import type { FloorSimServiceObservation } from './floorSim';
 import { GymScreen } from './GymScreen';
 import {
+  lastLivingMemberSeasonEvent,
+  playerFacingSeasonLine,
+} from './livingMemberSeason';
+import {
   livingMemberById,
   type LivingGymMember,
   type LivingMemberRoster,
@@ -1002,8 +1006,8 @@ describe('stage 4: every new control dispatches exactly the action it names', ()
     const dispatched: GymViewAction[] = [];
     const root = render(worn, dispatched);
     const owned = ownedItemsOf(worn.managed.gym);
-    // GDD §5.14 STAGE C.1: `gymscreen-repair-<item>` is gone from this
-    // screen — that control is the contextual station panel's now
+    // GDD §5.14 STAGE C.1: `gymscreen-repair-<item>` is gone from GymScreen.
+    // Repair now lives on FloorGrid's station strip
     // (`floorgrid-station-panel-repair`, `FloorGrid.tsx`), which this file
     // cannot render (`GymScreen({state, dispatch})` never expands the
     // `<FloorGrid .../>` element descriptor — see this file's own header).
@@ -1950,5 +1954,53 @@ describe('Stage G.2C2 — FloorGrid receives compacted living identity after dep
     expect(gridRoster.members.some((member) => member.id === memberB.id)).toBe(false);
     expect(gridRoster.members[1]?.id).toBe(memberC.id);
     expect(gridRoster.departures.some((record) => record.member.id === memberB.id)).toBe(true);
+  });
+});
+
+describe('G2-ATHLETE-SEASON-01 — FloorGrid season notice', () => {
+  const weekSeconds = T.DAYS_PER_TRAINING_WEEK * T.SECONDS_PER_DAY;
+  const leaveAt = weekSeconds * T.ATHLETE_SEASON.firstInSeasonWeek;
+  const returnAt = leaveAt + weekSeconds * T.ATHLETE_SEASON.inSeasonWeeks;
+
+  function withAthlete(state: GymViewState): GymViewState {
+    const member = state.livingMembers.members[0] as LivingGymMember;
+    return Object.freeze({
+      ...state,
+      livingMembers: Object.freeze({
+        ...state.livingMembers,
+        members: Object.freeze(
+          state.livingMembers.members.map((row, index) =>
+            index === 0 ? Object.freeze({ ...row, type: 'athlete' as const }) : row,
+          ),
+        ),
+      }),
+    });
+  }
+
+  it('hands FloorGrid a leave event whose copy is the away line', () => {
+    const opened = withAthlete(createGymViewState());
+    const athlete = opened.livingMembers.members[0] as LivingGymMember;
+    const left = gymViewReduce(opened, { kind: 'advance-clock', gapSeconds: leaveAt });
+    const roster = livingRosterOf(render(left, []));
+    expect(roster).toBe(left.livingMembers);
+    const event = lastLivingMemberSeasonEvent(roster.season);
+    expect(event?.kind).toBe('leave');
+    const copy = playerFacingSeasonLine(event!);
+    expect(copy).toBe(`${athlete.displayName} is away for the season.`);
+    expect(copy).not.toMatch(/%/);
+    expect(copy).not.toMatch(/\d+\s*week/);
+    expect(copy).not.toMatch(/days/i);
+  });
+
+  it('hands FloorGrid a return event whose copy is the back line', () => {
+    const opened = withAthlete(createGymViewState());
+    const athlete = opened.livingMembers.members[0] as LivingGymMember;
+    const back = gymViewReduce(opened, { kind: 'advance-clock', gapSeconds: returnAt });
+    const event = lastLivingMemberSeasonEvent(livingRosterOf(render(back, [])).season);
+    expect(event?.kind).toBe('return');
+    const copy = playerFacingSeasonLine(event!);
+    expect(copy).toBe(`${athlete.displayName} is back from the season.`);
+    expect(copy).not.toMatch(/%/);
+    expect(copy).not.toMatch(/days/i);
   });
 });

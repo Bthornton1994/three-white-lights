@@ -2068,6 +2068,19 @@ export const EMPIRE_TUNING = Object.freeze({
   }),
 
   /**
+   * G2-ATHLETE-SEASON-01 — shared gym-clock Athlete leave/return calendar.
+   * Week indices use the same training-week divisor as `sessions.ts`
+   * (`DAYS_PER_TRAINING_WEEK * SECONDS_PER_DAY`). First-pass knobs; feel is
+   * unproven. Existing ≤3-day clock tests sit before week 4, so they do not
+   * cross a leave boundary. Do not scatter these literals.
+   */
+  ATHLETE_SEASON: Object.freeze({
+    cycleWeeks: 6,
+    inSeasonWeeks: 2,
+    firstInSeasonWeek: 4,
+  }),
+
+  /**
    * as a fraction of the smaller of its footprint's two rendered dimensions.
    */
   FLOOR_SIM_CUE_DIAMETER_FRACTION: 0.5,
@@ -2949,6 +2962,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS: 'knob',
   LIVING_MEMBER_EXPERIENCE: 'knob',
   LIVING_MEMBER_RETENTION: 'knob',
+  ATHLETE_SEASON: 'knob',
   FLOOR_SIM_CUE_DIAMETER_FRACTION: 'knob',
   FLOOR_PLATE_LOADING: 'knob',
   FLOOR_SIM_CUE_GAP_PIXELS: 'knob',

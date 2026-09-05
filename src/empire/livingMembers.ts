@@ -53,8 +53,14 @@
  *   - No offline-fabricated service visits, stay changes, departures, or
  *     arrivals — observations arrive only from real `floorSim.ts` steps while
  *     the sim is running.
- *   - No Athlete season calendar, no returning members, and no Career/Meet →
- *     `EmpireState.reputation` path.
+ *   - No Career/Meet → `EmpireState.reputation` path, Portfolio, or
+ *     NpcLifter merge.
+ *
+ * G2-ATHLETE-SEASON-01: `applyLivingMemberSeason` is the one season-ledger
+ * writer. `settleLivingMemberClock` orchestrates dues + reputation + season
+ * at gym-clock marks. A season leave is not a G.2C2 departure; a return is
+ * not a G.2C3 arrival. C2's "no returning members" still applies to
+ * *departed* identities. Calendar math lives in `livingMemberSeason.ts`.
  */
 
 import { refuseWith } from './empireCore';
@@ -101,6 +107,16 @@ import {
   livingMemberStayEvidence,
   type LivingMemberStayState,
 } from './livingMemberStay';
+import {
+  athleteSeasonBoundariesBetween,
+  athleteSeasonBoundaryWouldMove,
+  createLivingMemberSeasonLeaveRecord,
+  createLivingMemberSeasonLedger,
+  createLivingMemberSeasonReturnRecord,
+  livingMemberTakesSeasonLeave,
+  type LivingMemberSeasonLeaveRecord,
+  type LivingMemberSeasonLedger,
+} from './livingMemberSeason';
 import { equipmentBiasedMemberTypes, type MemberType } from './members';
 import type { SessionEquipmentItem } from './sessions';
 
@@ -160,6 +176,12 @@ export interface LivingMemberRoster {
    * as dues. High-paying arrival reads `creditedReputation`.
    */
   readonly reputation: LivingMemberReputationLedger;
+  /**
+   * G2-ATHLETE-SEASON-01 shared gym-clock season ledger. `onLeave` holds
+   * reserved seats; those identities are not in `members` and not in
+   * `departures`.
+   */
+  readonly season: LivingMemberSeasonLedger;
 }
 
 /** History limits compared in tests; the shipped limit is the middle entry. */
@@ -347,6 +369,7 @@ export function createLivingMemberRoster(
     duesLeftAtSeconds: Object.freeze({}),
     dues: createLivingMemberDuesLedger(joinedAtSeconds),
     reputation: createLivingMemberReputationLedger(joinedAtSeconds),
+    season: createLivingMemberSeasonLedger(joinedAtSeconds),
   });
 }
 
@@ -370,19 +393,20 @@ export function reconcileLivingMemberRosterOnRelocation(
   }
   const targetCount = ambientCountForRung(newRung);
   const existing = roster.members;
-  if (targetCount < existing.length) {
+  const occupied = existing.length + roster.season.onLeave.length;
+  if (targetCount < occupied) {
     refuseWith(
-      `relocation to ${String(newRung)} allows ${targetCount} members but roster already has ${existing.length}`,
+      `relocation to ${String(newRung)} allows ${targetCount} members but roster already has ${occupied}`,
     );
   }
-  if (targetCount === existing.length) {
+  if (targetCount === occupied) {
     return Object.freeze({ ...roster, rung: newRung });
   }
   const startOrdinal = roster.nextOrdinal;
   const appended = Object.freeze(
-    Array.from({ length: targetCount - existing.length }, (_unused, offset) => {
+    Array.from({ length: targetCount - occupied }, (_unused, offset) => {
       const ordinal = startOrdinal + offset;
-      const typeIndex = existing.length + offset;
+      const typeIndex = occupied + offset;
       return createLivingMember(
         roster.identityNonce,
         ordinal,
@@ -401,6 +425,7 @@ export function reconcileLivingMemberRosterOnRelocation(
     duesLeftAtSeconds: roster.duesLeftAtSeconds,
     dues: roster.dues,
     reputation: roster.reputation,
+    season: roster.season,
   });
 }
 
@@ -541,6 +566,10 @@ export function applyServiceObservations(
   for (const record of roster.departures) {
     departedById.set(record.member.id, record);
   }
+  const onLeaveById = new Map<GymMemberId, LivingMemberSeasonLeaveRecord>();
+  for (const record of roster.season.onLeave) {
+    onLeaveById.set(record.member.id, record);
+  }
   const nextDepartures: LivingMemberDepartureRecord[] = [];
   for (const record of roster.departures) {
     nextDepartures.push(record);
@@ -575,6 +604,24 @@ export function applyServiceObservations(
         continue;
       }
       refuseWith(`service observation names departed member ${id}`);
+    }
+    const seasonLeave = onLeaveById.get(id);
+    if (seasonLeave !== undefined) {
+      const leftVisit = latestVisitOf(seasonLeave.member);
+      if (leftVisit?.observedAtTick === incomingVisit.observedAtTick) {
+        if (observation.memberType !== seasonLeave.member.type) {
+          refuseWith(
+            `service observation type ${observation.memberType} does not match member ${id} type ${seasonLeave.member.type}`,
+          );
+        }
+        if (!sameServiceVisit(leftVisit, incomingVisit)) {
+          refuseWith(
+            `service observation conflicts with member ${id} at tick ${incomingVisit.observedAtTick}`,
+          );
+        }
+        continue;
+      }
+      refuseWith(`service observation names member on season leave`);
     }
     const current = byId.get(id);
     if (current === undefined) {
@@ -635,8 +682,12 @@ export function applyServiceObservations(
     byId.set(id, nextMember);
     changed = true;
     if (arrivalContext === null) continue;
-    const vacancyCount = ambientCap - byId.size;
-    const arrivingType = memberTypeForIndex(arrivalContext.sessionOwned, byId.size);
+    const reservedSeats = roster.season.onLeave.length;
+    const vacancyCount = ambientCap - byId.size - reservedSeats;
+    const arrivingType = memberTypeForIndex(
+      arrivalContext.sessionOwned,
+      byId.size + reservedSeats,
+    );
     if (!livingMemberShouldArrive(
       vacancyCount,
       arrivingType,
@@ -678,10 +729,12 @@ export function applyServiceObservations(
 
 /**
  * Clock advance only moves tenure forward. It never fabricates visits, stay
- * response, departures, arrivals, dues settlements, or reputation settlements
- * — the gym may have been away; service truth stays in the sim, dues settle
- * through `applyLivingMemberDues`, and member-side reputation settles through
- * `applyLivingMemberReputation`.
+ * response, departures, arrivals, dues settlements, reputation settlements,
+ * or season leave/return — the gym may have been away; service truth stays
+ * in the sim, dues settle through `applyLivingMemberDues`, member-side
+ * reputation settles through `applyLivingMemberReputation`, and Athlete
+ * season settles through `applyLivingMemberSeason`. Production clock
+ * composition is `settleLivingMemberClock`.
  */
 export function advanceLivingMemberTenure(
   roster: LivingMemberRoster,
@@ -721,6 +774,9 @@ export function applyLivingMemberDues(
         departedAtSeconds: leftAt,
       }),
     );
+  }
+  for (const stub of seasonLeaveOccupancyStubs(roster, fromSeconds)) {
+    departed.push(stub);
   }
   const gymBucks = livingMemberDuesForWindow(
     roster.members,
@@ -775,6 +831,9 @@ export function applyLivingMemberReputation(
       }),
     );
   }
+  for (const stub of seasonLeaveOccupancyStubs(roster, fromSeconds)) {
+    departed.push(stub);
+  }
   const reputation = livingMemberReputationForWindow(
     roster.members,
     fromSeconds,
@@ -793,6 +852,193 @@ export function applyLivingMemberReputation(
     ...roster,
     reputation: appendLivingMemberReputationSettlement(roster.reputation, settlement),
   });
+}
+
+function seasonLeaveOccupancyStubs(
+  roster: LivingMemberRoster,
+  fromSeconds: number,
+): readonly LivingMemberDuesDeparturePresence[] {
+  const stubs: LivingMemberDuesDeparturePresence[] = [];
+  for (const record of roster.season.onLeave) {
+    if (record.leftAtSeconds > fromSeconds) {
+      stubs.push(
+        Object.freeze({
+          member: record.member,
+          departedAtSeconds: record.leftAtSeconds,
+        }),
+      );
+    }
+  }
+  return Object.freeze(stubs);
+}
+
+function requireSeasonOccupancyInvariants(roster: LivingMemberRoster): void {
+  const activeIds = new Set<string>();
+  for (const member of roster.members) {
+    activeIds.add(member.id);
+  }
+  const departedIds = new Set<string>();
+  for (const record of roster.departures) {
+    departedIds.add(record.member.id);
+  }
+  const onLeaveIds = new Set<string>();
+  for (const record of roster.season.onLeave) {
+    if (!livingMemberTakesSeasonLeave(record.member.type)) {
+      refuseWith(`season onLeave names non-Athlete ${record.member.id}`);
+    }
+    if (activeIds.has(record.member.id)) {
+      refuseWith(`season onLeave names active member ${record.member.id}`);
+    }
+    if (departedIds.has(record.member.id)) {
+      refuseWith(`season onLeave names departed member ${record.member.id}`);
+    }
+    if (onLeaveIds.has(record.member.id)) {
+      refuseWith(`season onLeave names member ${record.member.id} twice`);
+    }
+    onLeaveIds.add(record.member.id);
+  }
+  const occupied = roster.members.length + roster.season.onLeave.length;
+  const cap = ambientCountForRung(roster.rung);
+  if (occupied > cap) {
+    refuseWith(`season occupancy ${occupied} exceeds ${String(roster.rung)} ambient cap ${cap}`);
+  }
+}
+
+/**
+ * One writer for the Athlete season ledger. Event-at-boundary: at an
+ * in-season start every active Athlete goes on leave; at an in-season end
+ * every on-leave Athlete returns as the same identity. Nothing happens
+ * between boundaries. Exact replay of an already-settled mark is a full
+ * roster no-op. An earlier mark fails closed.
+ */
+export function applyLivingMemberSeason(
+  roster: LivingMemberRoster,
+  toSeconds: number,
+): LivingMemberRoster {
+  if (!Number.isFinite(toSeconds) || toSeconds < 0) {
+    refuseWith(`season settle seconds must be a non-negative number, received ${toSeconds}`);
+  }
+  const fromSeconds = roster.season.settledAtSeconds;
+  if (toSeconds < fromSeconds) {
+    refuseWith(`season settle ${toSeconds} is earlier than last settled ${fromSeconds}`);
+  }
+  if (toSeconds === fromSeconds) return roster;
+  requireSeasonOccupancyInvariants(roster);
+  const pending = athleteSeasonBoundariesBetween(fromSeconds, toSeconds);
+  if (
+    !pending.some((boundary) =>
+      athleteSeasonBoundaryWouldMove(roster.members, roster.season.onLeave, boundary),
+    )
+  ) {
+    return Object.freeze({
+      ...roster,
+      season: Object.freeze({
+        ...roster.season,
+        settledAtSeconds: toSeconds,
+      }),
+    });
+  }
+  let members = [...roster.members];
+  let onLeave = [...roster.season.onLeave];
+  const returns = [...roster.season.returns];
+  const departedIds = new Set<string>();
+  for (const record of roster.departures) {
+    departedIds.add(record.member.id);
+  }
+  for (const boundary of pending) {
+    if (boundary.phase === 'in-season') {
+      const staying: LivingGymMember[] = [];
+      for (const member of members) {
+        if (!livingMemberTakesSeasonLeave(member.type)) {
+          staying.push(member);
+          continue;
+        }
+        if (departedIds.has(member.id)) {
+          refuseWith(`season leave names departed member ${member.id}`);
+        }
+        onLeave.push(createLivingMemberSeasonLeaveRecord(member, boundary.atSeconds));
+      }
+      members = staying;
+    } else {
+      const activeIds = new Set<string>();
+      for (const member of members) {
+        activeIds.add(member.id);
+      }
+      for (const record of onLeave) {
+        if (activeIds.has(record.member.id)) {
+          refuseWith(`season return collides with active member ${record.member.id}`);
+        }
+        if (departedIds.has(record.member.id)) {
+          refuseWith(`season return names departed member ${record.member.id}`);
+        }
+        members.push(record.member);
+        returns.push(createLivingMemberSeasonReturnRecord(record, boundary.atSeconds));
+        activeIds.add(record.member.id);
+      }
+      onLeave = [];
+    }
+  }
+  const next: LivingMemberRoster = Object.freeze({
+    ...roster,
+    members: Object.freeze(members),
+    season: Object.freeze({
+      settledAtSeconds: toSeconds,
+      onLeave: Object.freeze(onLeave),
+      returns: Object.freeze(returns),
+    }),
+  });
+  requireSeasonOccupancyInvariants(next);
+  return next;
+}
+
+/**
+ * Production gym-clock composition: settle dues and reputation up to each
+ * season boundary that would actually move a member, apply leave/return at
+ * that mark, then settle through `toSeconds`. With no Athletes this is
+ * today's two ledger calls plus an empty season scan.
+ */
+export function settleLivingMemberClock(
+  roster: LivingMemberRoster,
+  toSeconds: number,
+): LivingMemberRoster {
+  if (!Number.isFinite(toSeconds) || toSeconds < 0) {
+    refuseWith(`clock settle seconds must be a non-negative number, received ${toSeconds}`);
+  }
+  if (roster.dues.settledAtSeconds !== roster.reputation.settledAtSeconds) {
+    refuseWith(
+      `dues settled ${roster.dues.settledAtSeconds} and reputation settled ${roster.reputation.settledAtSeconds} are out of sync`,
+    );
+  }
+  if (toSeconds < roster.season.settledAtSeconds) {
+    refuseWith(
+      `season settle ${toSeconds} is earlier than last settled ${roster.season.settledAtSeconds}`,
+    );
+  }
+  if (toSeconds < roster.dues.settledAtSeconds) {
+    refuseWith(
+      `dues settle ${toSeconds} is earlier than last settled ${roster.dues.settledAtSeconds}`,
+    );
+  }
+  let next = roster;
+  const boundaries = athleteSeasonBoundariesBetween(roster.season.settledAtSeconds, toSeconds);
+  for (const boundary of boundaries) {
+    if (!athleteSeasonBoundaryWouldMove(next.members, next.season.onLeave, boundary)) {
+      continue;
+    }
+    if (boundary.atSeconds > next.dues.settledAtSeconds) {
+      next = applyLivingMemberDues(next, boundary.atSeconds);
+      next = applyLivingMemberReputation(next, boundary.atSeconds);
+    }
+    next = applyLivingMemberSeason(next, boundary.atSeconds);
+  }
+  if (toSeconds !== next.dues.settledAtSeconds) {
+    next = applyLivingMemberDues(next, toSeconds);
+    next = applyLivingMemberReputation(next, toSeconds);
+  } else if (toSeconds !== next.reputation.settledAtSeconds) {
+    next = applyLivingMemberReputation(next, toSeconds);
+  }
+  next = applyLivingMemberSeason(next, toSeconds);
+  return next;
 }
 
 // ---------------------------------------------------------------------------

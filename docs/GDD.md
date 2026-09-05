@@ -2,7 +2,12 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-09-05 (G.2E IN PROGRESS — member-side living-member
+**Last updated:** 2026-09-05 (G2-ATHLETE-SEASON-01 IN PROGRESS — shared
+gym-clock Athlete leave/return. G.2E FROZEN at
+`cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel
+gate not run — not CLOSED). G.2D CLOSED / FROZEN at
+`28611af74dd6479bfad58763ebba72db5942307c`.
+Earlier: 2026-09-05 (G.2E IN PROGRESS — member-side living-member
 reputation ledger and reputation-gated high-paying vacancy arrival.
 G.2D CLOSED / FROZEN at `28611af74dd6479bfad58763ebba72db5942307c`.
 Earlier: 2026-09-05 (G.2D P1 — a played leave stamped on the
@@ -3222,10 +3227,13 @@ than the ruling's own §1–§23 sequence:
   credited onto the spendable Gym Bucks purse (added to frozen D2
   facility income). P1: unsettled-window occupancy is time-weighted
   presence (in-window leaves still pay the active stub; a played leave
-  on the open settle mark occupies the GymHost tick). **G.2E IN
-  PROGRESS** — member-side reputation from that same occupancy, plus
-  reputation-gated high-paying vacancy arrival. Athlete seasonality,
-  Career → Empire reputation, Portfolio, and NpcLifter merge stay blocked.
+  on the open settle mark occupies the GymHost tick). **G.2E FROZEN** at
+  `cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel
+  gate not run — not CLOSED) — member-side reputation from that same
+  occupancy, plus reputation-gated high-paying vacancy arrival.
+  **G2-ATHLETE-SEASON-01 IN PROGRESS** — shared gym-clock Athlete
+  leave/return. Career → Empire reputation, Portfolio, and NpcLifter
+  merge stay blocked.
 
 ### Human Stage C rejection at `f097695b`
 
@@ -4793,11 +4801,11 @@ behavior.
 | G2-CONDITION-01 | OPEN — service-level condition attribution missing |
 | G2-FIT-01 | OPEN — equipment fit is attraction, not recent service |
 | G2-TYPE-01 | OPEN — no type-specific **satisfaction** interpretation |
-| G2-ATHLETE-SEASON-01 | OPEN — Athlete leave/return needs G.2C |
+| G2-ATHLETE-SEASON-01 | IN PROGRESS — shared gym-clock Athlete leave/return. Seat reserved onLeave. Same identity on return. |
 | G2-DUES-PURSE-01 | CLOSED — living dues credit the spendable ladder purse on clock settle; D2 facility income stays additive |
 | G.2C | G.2C1 frozen. G.2C2 frozen. G.2C3 frozen. Reputation-gated high-paying rates remain G.2E. |
 | G.2D | CLOSED / FROZEN at `28611af74dd6479bfad58763ebba72db5942307c`. Living-member dues from G.2A experience. P1 occupancy is time-weighted presence including open-mark production leaves; purse composition in this slice. |
-| G.2E | IN PROGRESS — member-side institutional reputation from living occupancy; high-paying (Athlete, Serious Lifter) vacancy arrival gated on credited living-member reputation. |
+| G.2E | FROZEN at `cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel gate not run — not CLOSED). Member-side institutional reputation from living occupancy; high-paying (Athlete, Serious Lifter) vacancy arrival gated on credited living-member reputation. |
 | Career → Empire reputation | BLOCKED |
 | Portfolio | BLOCKED |
 
@@ -5156,7 +5164,9 @@ NpcLifter merge. G.2E member-side reputation is the next authorised slice.
 
 #### Stage G.2E — Member-Side Institutional Reputation
 
-**STAGE G.2E IN PROGRESS.** This is the first slice allowed to turn
+**STAGE G.2E FROZEN** at
+`cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel
+gate not run — not CLOSED). This was the first slice allowed to turn
 living-member occupancy into institutional reputation, and to gate the
 arrival of high-paying member types on that credited number. It is not
 Career/Meet → `EmpireState.reputation`, not a check-in retune, not
@@ -5225,8 +5235,84 @@ merge, no RNG, no `Date.now`, no leave probability. No write of
 `EmpireState.reputation`. G.2A/G.2B/G.2C1–C3/G.2D frozen. Q/C/T frozen.
 E-REP-01 stays open.
 
-**Still blocked:** Athlete seasonality (G2-ATHLETE-SEASON-01), Career →
-Empire reputation, Portfolio, NpcLifter merge.
+**Still blocked after G.2E freeze:** Career → Empire reputation,
+Portfolio, NpcLifter merge. G2-ATHLETE-SEASON-01 is the next authorised
+slice.
+
+#### G2-ATHLETE-SEASON-01 — Athlete Seasonal Leave / Return
+
+**G2-ATHLETE-SEASON-01 IN PROGRESS.** Draft-only. This is the first
+slice allowed to make Athlete seasonality real: an Athlete on the living
+roster leaves the floor for a deterministic shared gym-clock in-season
+window, holds their roster slot while away, pays no dues and credits no
+reputation while away, and returns as the same `LivingGymMember`. It is
+not a G.2C2 departure, not a G.2C3 arrival, not Career/Meet →
+`EmpireState.reputation`, not Portfolio, not NpcLifter merge, and not a
+pay-to-win purchase. It is not a new Stage G.2F.
+
+**GDD citation:** §5.6 Athlete quirk "Seasonal — leaves and returns."
+Leaving is visible — the count drops and you have to find out why.
+
+**Why this slice, and not a churn rewrite:** G.2C1–C3 already own
+service-evidence leave and vacancy fill. Seasonality is orthogonal.
+G.2D and G.2E already settle occupancy on the gym clock. This slice
+composes over those frozen writers. G.2C named the debt; the
+implementation sits after G.2E because it consumes that clock.
+
+**G.2E memorial:** G.2E is FROZEN at
+`cf98f4dedbb572850667bd191692779a195caa50` (factory freeze). Feel is
+unproven. Writing CLOSED would overclaim.
+
+**Event class:** a third class. A season leave is not archived on
+`departures`. A season return is not archived on `arrivals`. G.2C2's
+"no returning members" applies to *departed* identities and stays true.
+`nextOrdinal` is not consumed on return.
+
+**Proven causal chain:** shared gym-clock week index → in-season start
+boundary → every active Athlete moves to `season.onLeave` (seat
+reserved) → in-season end boundary → the same identity returns to
+`members`.
+
+**Settlement grain:** gym-clock seconds. `applyLivingMemberSeason` is
+the one season-ledger writer. `settleLivingMemberClock` orchestrates
+dues, reputation, then season at each boundary that would actually move
+a member. Service observations do not leave or return anyone. Offline
+clock advance uses the same arm. `advanceLivingMemberTenure` stays a
+membership no-op.
+
+**Calendar:** `ATHLETE_SEASON` knobs (`cycleWeeks` 6, `inSeasonWeeks` 2,
+`firstInSeasonWeek` 4). Phase is a function of `trainingWeekIndexAt`.
+Event-at-boundary, not a state predicate: an Athlete minted mid-season
+stays until the next in-season start. First-pass knobs; feel unproven.
+
+**Occupancy while away:** on-leave rows are absent from `members`, so
+FloorSim, dues, and reputation see them as not present. Stubs with
+`leftAtSeconds <=` window start are omitted — the open GymHost tick
+rule stays for played G.2C2 leaves, not calendar boundaries. With no
+Athletes, the orchestrator is today's two ledger calls.
+
+**Capacity:** `vacancyCount` and relocation appends use
+`active + onLeave`. C3 type-cycle index uses that same occupied count.
+Return cannot exceed the ambient cap.
+
+**Idempotence / fail-closed:** exact replay of an already-settled mark
+is a roster no-op. An earlier mark refuses. Non-finite refuses. Dues
+and reputation ledgers must share a settle mark. `onLeave` holds only
+Athletes, never an active or departed id.
+
+**Player-facing:** one FloorGrid line — "<Name> is away for the season."
+or "<Name> is back from the season." No percent, countdown, return
+week, or dues figure. Ambient count already drops with FloorSim
+population.
+
+**Fences:** no `reputationFromMembers`, no `memberSatisfaction`, no
+Career import, no Portfolio, no NpcLifter merge, no RNG, no `Date.now`,
+no leave probability. G.2A/G.2B/G.2C1–C3/G.2D/G.2E frozen. Q/C/T
+frozen. No rewrite of stay / departure / arrival / dues / reputation
+module bodies.
+
+**Still blocked:** Career → Empire reputation, Portfolio, NpcLifter
+merge. Feel of the 6 / 2 / 4 week cadence is unproven.
 
 ---
 

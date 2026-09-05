@@ -50,14 +50,16 @@ clock-settled on the roster ledger and credited onto `ladder.gymBucks`
 on top of frozen D2 facility income. Unsettled-window occupancy is
 time-weighted presence (joins pro-rate; in-window G.2C2 leaves still
 pay the active stub; a played leave on the open settle mark occupies
-the GymHost tick). Do not retune D2 rates. G.2E is IN PROGRESS:
-living-member reputation from that same occupancy, and reputation-gated
-high-paying (Athlete, Serious Lifter) vacancy arrival. Do not wire
+the GymHost tick). Do not retune D2 rates. G.2E is FROZEN at `cf98f4de`
+(factory freeze; human feel gate not run — not CLOSED): living-member
+reputation from that same occupancy, and reputation-gated high-paying
+(Athlete, Serious Lifter) vacancy arrival. Do not wire
 `reputationFromMembers` on an aggregate
 `MemberRoster` or old crowding satisfaction. Do not write Career/Meet →
-`EmpireState.reputation`. G.2C1–C3 and G.2D stay frozen. G2-ATHLETE-SEASON-01,
-G2-CONDITION-01, G2-FIT-01, and G2-TYPE-01 stay open. Portfolio stays
-blocked.
+`EmpireState.reputation`. G.2C1–C3 and G.2D stay frozen. G2-ATHLETE-SEASON-01
+is IN PROGRESS (shared gym-clock Athlete leave/return; seat reserved
+while away; same identity on return). G2-CONDITION-01, G2-FIT-01, and
+G2-TYPE-01 stay open. Portfolio stays blocked.
 
 ### The split
 

@@ -208,6 +208,10 @@ import {
   playerFacingDepartureLine,
 } from './livingMemberDeparture';
 import {
+  lastLivingMemberSeasonEvent,
+  playerFacingSeasonLine,
+} from './livingMemberSeason';
+import {
   livingMemberDailyDuesGymBucks,
   playerFacingDuesLine,
 } from './livingMemberDues';
@@ -1894,6 +1898,7 @@ export function FloorGrid(props: FloorGridProps) {
       : (drawnSim.members.find((member) => member.memberId === selectedMemberId) ?? null);
   const lastDeparture = lastLivingMemberDeparture(livingMembers.departures);
   const lastArrival = lastLivingMemberArrival(livingMembers.arrivals);
+  const lastSeason = lastLivingMemberSeasonEvent(livingMembers.season);
 
   return (
     <View
@@ -2527,6 +2532,9 @@ export function FloorGrid(props: FloorGridProps) {
       )}
       {lastArrival === null ? null : (
         <Text testID={'floorgrid-arrival-notice'}>{playerFacingArrivalLine(lastArrival)}</Text>
+      )}
+      {lastSeason === null ? null : (
+        <Text testID={'floorgrid-season-notice'}>{playerFacingSeasonLine(lastSeason)}</Text>
       )}
       <View
         testID={'floorgrid-tray'}

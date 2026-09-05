@@ -79,8 +79,8 @@ import {
 } from './management';
 import {
   applyLivingMemberDues,
-  applyLivingMemberReputation,
   reconcileLivingMemberRosterOnRelocation,
+  settleLivingMemberClock,
   type LivingMemberRoster,
 } from './livingMembers';
 import {
@@ -1081,11 +1081,8 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
         }
         pureAllocationSetThisWeek = false;
       }
-      const nextLiving = applyLivingMemberReputation(
-        applyLivingMemberDues(
-          pureLiving,
-          direct.state.gym.ladder.collectedAt,
-        ),
+      const nextLiving = settleLivingMemberClock(
+        pureLiving,
         direct.state.gym.ladder.collectedAt,
       );
       pureManaged = managedPlusLivingDues(direct.state, pureLiving, nextLiving);
