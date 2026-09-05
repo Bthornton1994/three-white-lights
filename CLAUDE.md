@@ -57,8 +57,8 @@ reputation from that same occupancy, and reputation-gated high-paying
 `reputationFromMembers` on an aggregate
 `MemberRoster` or old crowding satisfaction. Do not write Career/Meet →
 `EmpireState.reputation`. G.2C1–C3 and G.2D stay frozen. G2-ATHLETE-SEASON-01
-is IN PROGRESS (shared gym-clock Athlete leave/return; seat reserved
-while away; same identity on return). G2-CONDITION-01, G2-FIT-01, and
+is FROZEN at `9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze;
+human feel gate not run — not CLOSED). G2-CONDITION-01, G2-FIT-01, and
 G2-TYPE-01 stay open. Portfolio stays blocked.
 
 ### The split

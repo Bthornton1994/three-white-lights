@@ -2,8 +2,9 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-09-05 (G2-ATHLETE-SEASON-01 IN PROGRESS — shared
-gym-clock Athlete leave/return. G.2E FROZEN at
+**Last updated:** 2026-09-05 (G2-ATHLETE-SEASON-01 FROZEN at
+`9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze; human feel
+gate not run — not CLOSED). G.2E FROZEN at
 `cf98f4dedbb572850667bd191692779a195caa50` (factory freeze; human feel
 gate not run — not CLOSED). G.2D CLOSED / FROZEN at
 `28611af74dd6479bfad58763ebba72db5942307c`.
@@ -4801,7 +4802,7 @@ behavior.
 | G2-CONDITION-01 | OPEN — service-level condition attribution missing |
 | G2-FIT-01 | OPEN — equipment fit is attraction, not recent service |
 | G2-TYPE-01 | OPEN — no type-specific **satisfaction** interpretation |
-| G2-ATHLETE-SEASON-01 | IN PROGRESS — shared gym-clock Athlete leave/return. Seat reserved onLeave. Same identity on return. |
+| G2-ATHLETE-SEASON-01 | FROZEN at `9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze; human feel gate not run — not CLOSED). |
 | G2-DUES-PURSE-01 | CLOSED — living dues credit the spendable ladder purse on clock settle; D2 facility income stays additive |
 | G.2C | G.2C1 frozen. G.2C2 frozen. G.2C3 frozen. Reputation-gated high-paying rates remain G.2E. |
 | G.2D | CLOSED / FROZEN at `28611af74dd6479bfad58763ebba72db5942307c`. Living-member dues from G.2A experience. P1 occupancy is time-weighted presence including open-mark production leaves; purse composition in this slice. |
@@ -5241,7 +5242,9 @@ slice.
 
 #### G2-ATHLETE-SEASON-01 — Athlete Seasonal Leave / Return
 
-**G2-ATHLETE-SEASON-01 IN PROGRESS.** Draft-only. This is the first
+**G2-ATHLETE-SEASON-01 FROZEN** at
+`9720ea48f34e1f2670088f1c129026d54668776e` (factory freeze; human feel
+gate not run — not CLOSED). This is the first
 slice allowed to make Athlete seasonality real: an Athlete on the living
 roster leaves the floor for a deterministic shared gym-clock in-season
 window, holds their roster slot while away, pays no dues and credits no
@@ -5313,6 +5316,7 @@ module bodies.
 
 **Still blocked:** Career → Empire reputation, Portfolio, NpcLifter
 merge. Feel of the 6 / 2 / 4 week cadence is unproven.
+CAREER-EMPIRE-REP-01 is the next authorised slice.
 
 ---
 
