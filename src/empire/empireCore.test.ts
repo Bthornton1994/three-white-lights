@@ -4014,7 +4014,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 395 -> 406: Stage G.2D dues interval / settle refuseWith templates plus DUES line.
     // 406 -> 409: Stage G.2D purse-credit refuseWith templates. Read from this
     // assertion's own failure value.
-    expect(templateChunks.size).toBe(409);
+    // 409 -> 413: Stage G.2D P1 occupancy-clock / occupancy-identity refuse templates.
+    expect(templateChunks.size).toBe(413);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4879,7 +4880,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1214 -> 1218: Stage G.2C3 singleQuoted +2 and templateChunks +2.
     // 1218 -> 1231: Stage G.2D singleQuoted +2 and templateChunks +11.
     // 1231 -> 1234: Stage G.2D purse-credit refuseWith templates +3.
-    expect(stringsChecked).toBe(1234);
+    // 1234 -> 1238: Stage G.2D P1 occupancy refuse templates +4.
+    expect(stringsChecked).toBe(1238);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were

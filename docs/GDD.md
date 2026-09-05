@@ -2,7 +2,11 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-08-05 (§7.2 — the cut-in's "no Tier 2 at all" cost is
+**Last updated:** 2026-09-05 (G.2D P1 — unsettled-window dues occupancy is
+time-weighted presence, not the active roster at the settle mark. A G.2C2
+leave inside the window still pays the gym-clock stub it was active;
+a member who already left before the window does not pay. Joins already
+pro-rated from `joinedAtSeconds`. Earlier: 2026-08-05 (§7.2 — the cut-in's "no Tier 2 at all" cost is
 **two costs, not one**. It was stated as an identification cost only; the surface
 also loses `tier2.shortName`, which is the panel's remedy for a name too wide for
 it, and the cut-in's substitute — wrap, then overflow, then widen the grid —
@@ -3208,7 +3212,8 @@ than the ruling's own §1–§23 sequence:
   **G.2D DUES ACCOUNTING BUILT, AWAITING FREEZE** — living-member dues
   from accepted G.2A experience, clock-settled on the roster ledger and
   credited onto the spendable Gym Bucks purse (added to frozen D2
-  facility income). G.2E member-side reputation, Athlete seasonality,
+  facility income). P1: unsettled-window occupancy is time-weighted
+  presence (in-window leaves still pay the active stub). G.2E member-side reputation, Athlete seasonality,
   Career → Empire reputation, Portfolio, and NpcLifter merge stay blocked.
 
 ### Human Stage C rejection at `f097695b`
@@ -4780,7 +4785,7 @@ behavior.
 | G2-ATHLETE-SEASON-01 | OPEN — Athlete leave/return needs G.2C |
 | G2-DUES-PURSE-01 | CLOSED — living dues credit the spendable ladder purse on clock settle; D2 facility income stays additive |
 | G.2C | G.2C1 frozen. G.2C2 frozen. G.2C3 frozen. Reputation-gated high-paying rates remain G.2E. |
-| G.2D | FOUNDATION BUILT; purse composition in this slice; awaiting freeze. Living-member dues from G.2A experience. |
+| G.2D | FOUNDATION BUILT; P1 occupancy is time-weighted presence; purse composition in this slice; awaiting freeze. Living-member dues from G.2A experience. |
 | G.2E | BLOCKED |
 | Career → Empire reputation | BLOCKED |
 | Portfolio | BLOCKED |
@@ -5068,8 +5073,10 @@ Gym Bucks income. It is not a reputation write, not a D2 facility-rate
 retune, and not Athlete seasonality.
 
 **GDD citation:** §5.6 Members: "They generate income. Dues scale with
-count and satisfaction." Count is the active `LivingMemberRoster`.
-Satisfaction is accepted G.2A composite when experience is formed.
+count and satisfaction." Count is time-weighted occupancy of the
+living roster during the unsettled window — active members plus
+in-window G.2C2 departure stubs. Satisfaction is accepted G.2A
+composite when experience is formed.
 Forming is not a fake score, so forming members pay the published type
 base (`memberBaseDuesGymBucks`) rather than `memberDuesGymBucks` with
 an invented 0 or 1. Old crowding × fit × condition `memberSatisfaction`
@@ -5091,11 +5098,14 @@ composer. Service observations do not credit dues.
 `advanceLivingMemberTenure` remains a membership no-op and does not
 settle.
 
-**Occupancy at the settle mark:** active members at the mark pay for
-`[dues.settledAtSeconds, toSeconds)`, each pro-rated from
-`joinedAtSeconds` if they joined during the window. A member already
-off the roster (G.2C2) does not pay. Mid-window departure stubs are
-not reconstructed — named residual, not a second occupancy timeline.
+**Occupancy during the settle window:** dues are time-weighted presence
+over `[dues.settledAtSeconds, toSeconds)`. Active members pay through
+the mark, each pro-rated from `joinedAtSeconds` if they joined during
+the window. A G.2C2 leave during the window still pays for the stub it
+was active — `[max(from, joinedAtSeconds), leftAtSeconds)` — using the
+gym-clock occupancy mark stamped at leave (`duesLeftAtSeconds`), not
+FloorSim ticks. A member who left at or before the window start does
+not pay. A leave with no gym-clock mark does not invent occupancy.
 
 **Idempotence / fail-closed:** exact replay of an already-settled mark
 is a full roster no-op. An earlier mark refuses. A non-finite or
