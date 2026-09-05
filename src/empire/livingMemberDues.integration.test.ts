@@ -385,6 +385,31 @@ describe('Stage G.2D — gymViewReduce clock is the production writer', () => {
     expect(next.livingMembers.dues).toBe(opened.livingMembers.dues);
     expect(next.livingMembers.dues.creditedGymBucks).toBe(0);
   });
+
+  it('does not charge a played leave for the following clock gap', () => {
+    let state = createGymViewState();
+    const gone = requireMember(state.livingMembers, 1);
+    const openingMembers = state.livingMembers.members;
+    for (let tick = 1; tick <= 10; tick += 1) {
+      const current = livingMemberById(state.livingMembers, gone.id) ?? gone;
+      state = gymViewReduce(state, {
+        kind: 'apply-living-member-observations',
+        observations: [adverse(current, tick)],
+      });
+    }
+    expect(livingMemberById(state.livingMembers, gone.id)).toBeNull();
+    expect(state.livingMembers.dues.creditedGymBucks).toBe(0);
+    expect(state.livingMembers.duesLeftAtSeconds[gone.id]).toBe(
+      state.managed.gym.ladder.collectedAt,
+    );
+    const next = gymViewReduce(state, { kind: 'advance-clock', gapSeconds: DAY, mode: 'online' });
+    expect(next.livingMembers.dues.creditedGymBucks).toBe(
+      livingMemberDuesForWindow(next.livingMembers.members, 0, DAY),
+    );
+    expect(next.livingMembers.dues.creditedGymBucks).toBeLessThan(
+      livingMemberDuesForWindow(openingMembers, 0, DAY),
+    );
+  });
 });
 
 describe('Stage G.2D — player-facing line is the current rate', () => {

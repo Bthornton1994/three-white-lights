@@ -5106,6 +5106,12 @@ was active — `[max(from, joinedAtSeconds), leftAtSeconds)` — using the
 gym-clock occupancy mark stamped at leave (`duesLeftAtSeconds`), not
 FloorSim ticks. A member who left at or before the window start does
 not pay. A leave with no gym-clock mark does not invent occupancy.
+The production clock path settles while members are still active, then
+observations run at `collectedAt` equal to that settle mark, so a
+played leave is stamped at the start of the next window and does not
+owe that following gap. Service observations still do not credit dues.
+The writer bills a mid-window stub when a gym-clock leave mark sits
+strictly inside the unsettled interval.
 
 **Idempotence / fail-closed:** exact replay of an already-settled mark
 is a full roster no-op. An earlier mark refuses. A non-finite or
