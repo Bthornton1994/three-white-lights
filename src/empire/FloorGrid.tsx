@@ -200,6 +200,10 @@ import {
 import { type LadderEquipmentItem } from './ladder';
 import { type GymViewAction } from './ladderView';
 import {
+  lastLivingMemberArrival,
+  playerFacingArrivalLine,
+} from './livingMemberArrival';
+import {
   lastLivingMemberDeparture,
   playerFacingDepartureLine,
 } from './livingMemberDeparture';
@@ -1392,18 +1396,6 @@ function AmbientMemberBody({
   );
 }
 
-function livingPopulationIsKnownToSim(
-  state: FloorSimState,
-  livingPopulation: FloorSimContext['livingPopulation'],
-): boolean {
-  const simIds = new Set<string>();
-  for (const member of state.members) simIds.add(member.memberId);
-  for (const entry of livingPopulation) {
-    if (!simIds.has(entry.memberId)) return false;
-  }
-  return true;
-}
-
 export function FloorGrid(props: FloorGridProps) {
   const { owned, barbellOwned, floor, dispatch, managed, capability, buildMode, livingMembers, gymClockSeconds } =
     props;
@@ -1734,9 +1726,6 @@ export function FloorGrid(props: FloorGridProps) {
     const timer = setInterval(() => {
       setSim((previous) => {
         const context = simContextRef.current;
-        if (!livingPopulationIsKnownToSim(previous, context.livingPopulation)) {
-          return previous;
-        }
         const aligned = reconcileFloorSimPopulation(previous, context);
         const stepped = stepFloorSimWithObservations(aligned, context);
         if (stepped.observations.length > 0) {
@@ -1751,9 +1740,7 @@ export function FloorGrid(props: FloorGridProps) {
     return () => clearInterval(timer);
   }, [pendingPlace]);
 
-  const drawnSim = livingPopulationIsKnownToSim(sim, simContext.livingPopulation)
-    ? reconcileFloorSimPopulation(sim, simContext)
-    : sim;
+  const drawnSim = reconcileFloorSimPopulation(sim, simContext);
 
   // The stations the sim can send a member to, and what is happening at each.
   // A derived read: `floorStations` recomputes from the same context every
@@ -1898,6 +1885,7 @@ export function FloorGrid(props: FloorGridProps) {
       ? null
       : (drawnSim.members.find((member) => member.memberId === selectedMemberId) ?? null);
   const lastDeparture = lastLivingMemberDeparture(livingMembers.departures);
+  const lastArrival = lastLivingMemberArrival(livingMembers.arrivals);
 
   return (
     <View
@@ -2528,6 +2516,9 @@ export function FloorGrid(props: FloorGridProps) {
       <Text testID={'floorgrid-ambient-caption'}>{drawnSim.members.length} member(s) around the gym</Text>
       {lastDeparture === null ? null : (
         <Text testID={'floorgrid-departure-notice'}>{playerFacingDepartureLine(lastDeparture)}</Text>
+      )}
+      {lastArrival === null ? null : (
+        <Text testID={'floorgrid-arrival-notice'}>{playerFacingArrivalLine(lastArrival)}</Text>
       )}
       <View
         testID={'floorgrid-tray'}

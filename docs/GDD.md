@@ -3199,10 +3199,13 @@ than the ruling's own §1–§23 sequence:
   retention-pressure foundation). **G.2C1 CLOSED / FROZEN** at
   `c8776cadcb57ef6f16acabe4f962858c6b2dac0a` — persistent stay
   response from accepted G.2B pressure; eligibility is not removal.
-  **G.2C2 ACTUAL DEPARTURE EXECUTION BUILT, AWAITING FREEZE** —
-  the first slice allowed to remove a living member after one further
-  strain-qualifying service observation. No arrival-rate system, no
-  dues, no reputation, no Athlete return. G.2C3 / G.2D / G.2E remain
+  **G.2C2 CLOSED / FROZEN** at
+  `1493f43807753eda3654c428e4234702a7da45f4` — actual living-member
+  departure after eligibility plus one further strain-qualifying
+  service observation. **G.2C3 VACANCY ARRIVAL BUILT, AWAITING FREEZE**
+  — population replenishment into ambient-cap vacancies from
+  attraction-qualifying service, not a reputation-gated rate rewrite.
+  No dues, no reputation, no Athlete return. G.2D / G.2E remain
   blocked.
 
 ### Human Stage C rejection at `f097695b`
@@ -4759,12 +4762,13 @@ behavior.
 | G.2A | CLOSED at `255de8a5`; mint `ba8561bf` |
 | G.2B | CLOSED — COMMON / type-blind |
 | G.2C1 | CLOSED / FROZEN at `c8776cadcb57ef6f16acabe4f962858c6b2dac0a`. No roster deletion in G.2C1. |
-| G.2C2 | FOUNDATION BUILT; awaiting freeze. Actual departure after eligibility plus one new strain-qualifying observation. |
+| G.2C2 | CLOSED / FROZEN at `1493f43807753eda3654c428e4234702a7da45f4`. Actual departure after eligibility plus one new strain-qualifying observation. |
+| G.2C3 | FOUNDATION BUILT; awaiting freeze. Vacancy arrival after attraction-qualifying service. No reputation gating. |
 | G2-CONDITION-01 | OPEN — service-level condition attribution missing |
 | G2-FIT-01 | OPEN — equipment fit is attraction, not recent service |
 | G2-TYPE-01 | OPEN — no type-specific **satisfaction** interpretation |
 | G2-ATHLETE-SEASON-01 | OPEN — Athlete leave/return needs G.2C |
-| G.2C | BLOCKED — arrival-rate system / G.2C3. G.2C1 frozen. G.2C2 awaiting freeze. |
+| G.2C | G.2C1 frozen. G.2C2 frozen. G.2C3 vacancy arrival built, awaiting freeze. Reputation-gated high-paying rates remain G.2E. |
 | G.2D | BLOCKED |
 | G.2E | BLOCKED |
 | Career → Empire reputation | BLOCKED |
@@ -4859,7 +4863,7 @@ merge.
 repeated accepted G.2B pressure evaluations into a persistent member
 response. It does not calculate satisfaction, does not reinterpret
 pressure as probability, and does not remove a roster row. Actual
-member removal is G.2C2. Arrival-rate system, G.2C3, G.2D, and G.2E
+member removal is G.2C2. G.2C3 vacancy arrival is a later slice. G.2D and G.2E
 stay blocked.
 
 **Proven causal chain:** physical gym decision → real FloorSim service
@@ -4886,7 +4890,7 @@ visits.
 **Type treatment is the G.2C1 response boundary only.** G.2B remains
 COMMON / type-blind. Type does not rewrite WAIT / TRAINING / SERVICE /
 overall experience or the pressure index. The classifier is
-`livingMemberStayEvidence`; G.2C2 consumes that same function.
+`livingMemberStayEvidence`; G.2C2 and G.2C3 consume that same function.
 
 | Type | G.2C1 response |
 |---|---|
@@ -4909,12 +4913,14 @@ and transition machinery `livingMembers.ts` actually consumes.
 
 #### Stage G.2C2 — Actual Living-Member Departure Execution
 
-**STAGE G.2C2 ACTUAL DEPARTURE EXECUTION BUILT, AWAITING FREEZE.**
-This is the first slice allowed to remove a living member from the
-active gym roster. It is not a churn-system rewrite. Arrivals, arrival
-rates, dues, reputation, percentages, probabilities, random rolls,
-countdowns, wall-clock churn, Athlete seasonality, Career/Meet
-reputation, Portfolio, and NpcLifter merging stay blocked.
+**STAGE G.2C2 CLOSED / FROZEN** at
+`1493f43807753eda3654c428e4234702a7da45f4`. This is the first slice allowed
+to remove a living member from the active gym roster. It is not a
+churn-system rewrite. Arrivals, arrival rates, dues, reputation,
+percentages, probabilities, random rolls, countdowns, wall-clock churn,
+Athlete seasonality, Career/Meet reputation, Portfolio, and NpcLifter
+merging stay blocked except for the G.2C3 vacancy-arrival slice that
+follows.
 
 **Eligibility vs actual departure:** G.2C1 reaching `departure-eligible`
 does not delete the member. The member stays on the active roster.
@@ -4967,9 +4973,78 @@ If the selected member leaves, the card closes. Sprites are keyed by
 accepted G.2B reason. No %, no countdown, no “3 visits left,” no
 upgrade-ownership guess, no raw crowdingLoad.
 
-**Still blocked:** arrival-rate system, G.2C3, G.2D, G.2E, Athlete
+**Still blocked after G.2C2 freeze:** G.2D, G.2E, Athlete
 seasonality (G2-ATHLETE-SEASON-01), dues, reputation, Career → Empire
-reputation, Portfolio, NpcLifter merge.
+reputation, Portfolio, NpcLifter merge. G.2C3 vacancy arrival is the
+next authorised slice.
+
+#### Stage G.2C3 — Vacancy Arrival / Population Replenishment
+
+**STAGE G.2C3 VACANCY ARRIVAL BUILT, AWAITING FREEZE.** After G.2C2 the
+active roster can sit below the facility ambient cap. G.1 relocation
+still appends when the destination cap is larger. This slice is the
+first allowed to mint a new living member at the *current* rung into a
+vacancy. It is not a reputation-gated arrival-rate rewrite, not dues,
+and not Athlete seasonality.
+
+**Why this stage, and not G.2D / G.2E:** GDD §5.6 says members leave
+and the count drops, and that reputation later gates "the arrival rate
+of the high-paying member types." G.2C2 made leaving real. Without a
+vacancy fill, the gym only shrinks until the next relocation. G.2D
+(dues) and G.2E (member-side reputation) stay blocked; reputation-gated
+high-paying rates are deferred with G.2E rather than invented here.
+G2-ATHLETE-SEASON-01 stays open.
+
+**Vacancy vs actual arrival:** a G.2C2 departure that opens a slot does
+not mint a replacement. The observation that executes a departure does
+not also arrive. If, while a vacancy exists (`members.length` below
+`AMBIENT_MEMBER_COUNT_BY_RUNG[rung]`), a newly accepted service
+observation from a remaining member is itself attraction-qualifying
+under the frozen G.2C1 type-response classifier
+(`livingMemberStayEvidence` on that visit's own G.2A → G.2B reading),
+one new member may mint after that observation is accepted.
+
+There is no new counter, countdown, probability, random roll, or
+elapsed-time hazard. Offline clock advance does not mint. Neutral or
+strained service does not fill a vacancy. Arrivals never exceed the
+ambient cap. Departed ordinals are never reused (`nextOrdinal`).
+
+**Type treatment is the G.2C3 arrival-rate boundary only.** G.2B remains
+COMMON / type-blind. Type of the new member is `equipmentBiasedMemberTypes`
+cycled from the current active count — GDD §5.6's mix-as-consequence-of-
+equipment, the same function G.1 creation and relocation already use.
+The serving observation's evidence is classified for attraction:
+
+| Arriving type | G.2C3 attraction |
+|---|---|
+| Casual | May join on recovery or formed-neutral evidence (faster to arrive). |
+| Bodybuilder | Common recovery path. Occupancy is upstream. |
+| Powerlifter | Common recovery path. Reputation is later (G.2E). |
+| Athlete | Common recovery path. Seasonality remains G2-ATHLETE-SEASON-01. |
+| Serious Lifter | Joins only on recovery (slow to arrive). |
+
+If attraction is not met, the vacancy stays. The next type is not
+substituted.
+
+**Archive / idempotence:** a G.2C3 arrival is appended to
+`LivingMemberRoster.members` and stored on `arrivals`. Exact replay of
+the attracting observation is a full roster no-op. Same-tick conflicts
+on the serving member still fail closed. Invalid join-clock context
+fails closed.
+
+**FloorSim:** `reconcileFloorSimPopulation` mints a seeking body for a
+newly active `memberId`, preserves survivors, reindexes, and still
+refuses a population larger than the facility ambient placement count.
+Type mismatch on a surviving identity still fails closed.
+
+**Player-facing:** a last-arrival notice names the member. No %, no
+countdown, no dues figure, no reputation claim, no upgrade-ownership
+guess.
+
+**Still blocked:** G.2D dues, G.2E member-side reputation (including
+reputation-gated high-paying arrival rates), Athlete seasonality
+(G2-ATHLETE-SEASON-01), Career → Empire reputation, Portfolio,
+NpcLifter merge.
 
 ---
 

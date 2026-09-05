@@ -1,6 +1,6 @@
 /**
  * livingMembers.ts — Stage G.1 / G.1A identity, G.2 service history, stay
- * response, and G.2C2 departure execution.
+ * response, G.2C2 departure execution, and G.2C3 vacancy arrival.
  *
  * Pure module: zero React, zero side effects, zero I/O, no `Math.random`.
  * Persists the bodies the player sees on the played floor — NOT `NpcLifter`
@@ -26,11 +26,12 @@
  *
  * NOT BUILT HERE, ON PURPOSE — later stages:
  *
- *   - No arrival dynamics beyond accepted facility expansion, no dues wiring,
- *     no `reputationFromMembers` wiring, no `memberSatisfaction` calls.
- *   - No offline-fabricated service visits, stay changes, or departures —
- *     observations arrive only from real `floorSim.ts` steps while the sim
- *     is running.
+ *   - No dues wiring, no `reputationFromMembers` wiring, no
+ *     `memberSatisfaction` calls, no reputation-gated high-paying arrival
+ *     rates (G.2E).
+ *   - No offline-fabricated service visits, stay changes, departures, or
+ *     arrivals — observations arrive only from real `floorSim.ts` steps while
+ *     the sim is running.
  *   - No Athlete season calendar, no returning members, and no Career/Meet →
  *     `EmpireState.reputation` path.
  */
@@ -40,6 +41,13 @@ import { EMPIRE_TUNING } from './empireTuning';
 import { ambientMemberRoster } from './floor';
 import type { FloorSimPopulationEntry, FloorSimServiceObservation } from './floorSim';
 import type { LadderEquipmentItem, LadderRung } from './ladder';
+import {
+  createLivingMemberArrivalRecord,
+  livingMemberShouldArrive,
+  requireLivingMemberArrivalContext,
+  type LivingMemberArrivalContext,
+  type LivingMemberArrivalRecord,
+} from './livingMemberArrival';
 import {
   createLivingMemberDepartureRecord,
   livingMemberShouldDepart,
@@ -97,6 +105,8 @@ export interface LivingMemberRoster {
   readonly members: readonly LivingGymMember[];
   /** Archive of departed members. Not active roster rows. */
   readonly departures: readonly LivingMemberDepartureRecord[];
+  /** Archive of G.2C3 vacancy arrivals. Relocation appends are not recorded here. */
+  readonly arrivals: readonly LivingMemberArrivalRecord[];
 }
 
 /** History limits compared in tests; the shipped limit is the middle entry. */
@@ -280,6 +290,7 @@ export function createLivingMemberRoster(
     nextOrdinal: members.length,
     members,
     departures: Object.freeze([]),
+    arrivals: Object.freeze([]),
   });
 }
 
@@ -330,6 +341,7 @@ export function reconcileLivingMemberRosterOnRelocation(
     nextOrdinal: startOrdinal + appended.length,
     members: Object.freeze([...existing, ...appended]),
     departures: roster.departures,
+    arrivals: roster.arrivals,
   });
 }
 
@@ -419,27 +431,33 @@ function latestVisitOf(member: LivingGymMember): ServiceVisitRecord | undefined 
 }
 
 /**
- * Fold real floor-sim observations into history, G.2C1 stay response, and
- * G.2C2 departure execution. Offline clock does not call this. G.2A/G.2B are
- * consumed whole rather than reimplemented: new history → accepted experience
- * → accepted pressure → type-specific persistent response → possible leave.
+ * Fold real floor-sim observations into history, G.2C1 stay response,
+ * G.2C2 departure execution, and G.2C3 vacancy arrival. Offline clock does
+ * not call this. G.2A/G.2B are consumed whole rather than reimplemented: new
+ * history → accepted experience → accepted pressure → type-specific persistent
+ * response → possible leave → possible vacancy fill.
  *
  * Exact replay of the latest service event is a whole-roster no-op, including
- * after the observation that executed a departure. If the same member/tick
- * arrives with different service facts, refuse instead of choosing which
- * history is true. A later observation for a departed member fails closed.
- * Same-tick tombstone replay also requires `observation.memberType` to match
- * the archived member snapshot; type is not stored on G.2A visit history.
+ * after the observation that executed a departure or attracted an arrival. If
+ * the same member/tick arrives with different service facts, refuse instead of
+ * choosing which history is true. A later observation for a departed member
+ * fails closed. Same-tick tombstone replay also requires
+ * `observation.memberType` to match the archived member snapshot; type is not
+ * stored on G.2A visit history.
  *
  * G.2C1 stay still consumes G.2B of the N=5 window. G.2C2 departure
- * confirmation consumes the same frozen type classifier on G.2B of the newly
- * accepted visit alone, so leftover window strain cannot turn a Stable visit
- * into a leave and the G.2C1 recovery path from eligibility stays live.
+ * confirmation and G.2C3 attraction both consume the same frozen type
+ * classifier on G.2B of the newly accepted visit alone, so leftover window
+ * strain cannot turn a Stable visit into a leave and a strained window cannot
+ * block attraction from a Stable visit. The observation that executes a
+ * departure does not also mint. Arrivals never exceed the facility ambient
+ * cap and never reuse a departed ordinal.
  */
 export function applyServiceObservations(
   roster: LivingMemberRoster,
   observations: readonly FloorSimServiceObservation[],
   historyLimit: number = SHIPPED_SERVICE_HISTORY_WINDOW,
+  arrival: LivingMemberArrivalContext | null = null,
 ): LivingMemberRoster {
   if (!SERVICE_HISTORY_WINDOWS.includes(historyLimit as (typeof SERVICE_HISTORY_WINDOWS)[number])) {
     refuseWith(
@@ -459,6 +477,14 @@ export function applyServiceObservations(
   for (const record of roster.departures) {
     nextDepartures.push(record);
   }
+  const nextArrivals: LivingMemberArrivalRecord[] = [];
+  for (const record of roster.arrivals) {
+    nextArrivals.push(record);
+  }
+  const minted: LivingGymMember[] = [];
+  let nextOrdinal = roster.nextOrdinal;
+  const arrivalContext = arrival === null ? null : requireLivingMemberArrivalContext(arrival);
+  const ambientCap = ambientCountForRung(roster.rung);
   let changed = false;
   for (const observation of observations) {
     const id = observation.memberId as GymMemberId;
@@ -503,7 +529,7 @@ export function applyServiceObservations(
     );
     const visitExperience = livingMemberExperience(Object.freeze([incomingVisit]));
     const visitRetention = livingMemberRetentionPressure(visitExperience);
-    const departureEvidence = livingMemberStayEvidence(current.type, visitRetention);
+    const visitEvidence = livingMemberStayEvidence(current.type, visitRetention);
     const experience = livingMemberExperience(nextVisits);
     const retention = livingMemberRetentionPressure(experience);
     const stayState = advanceLivingMemberStay(
@@ -517,7 +543,7 @@ export function applyServiceObservations(
       recentVisits: nextVisits,
       stayState,
     });
-    if (livingMemberShouldDepart(current.stayState.status, departureEvidence)) {
+    if (livingMemberShouldDepart(current.stayState.status, visitEvidence)) {
       const record = createLivingMemberDepartureRecord(
         nextMember,
         observation.observedAtTick,
@@ -531,6 +557,22 @@ export function applyServiceObservations(
     }
     byId.set(id, nextMember);
     changed = true;
+    if (arrivalContext === null) continue;
+    const vacancyCount = ambientCap - byId.size;
+    const arrivingType = memberTypeForIndex(arrivalContext.sessionOwned, byId.size);
+    if (!livingMemberShouldArrive(vacancyCount, arrivingType, visitEvidence)) continue;
+    const joined = createLivingMember(
+      roster.identityNonce,
+      nextOrdinal,
+      arrivingType,
+      arrivalContext.joinedAtSeconds,
+    );
+    nextOrdinal += 1;
+    byId.set(joined.id, joined);
+    minted.push(joined);
+    nextArrivals.push(
+      createLivingMemberArrivalRecord(joined, observation.observedAtTick, nextMember.id),
+    );
   }
   if (!changed) return roster;
   const nextMembers: LivingGymMember[] = [];
@@ -538,17 +580,22 @@ export function applyServiceObservations(
     const updated = byId.get(member.id);
     if (updated !== undefined) nextMembers.push(updated);
   }
+  for (const member of minted) {
+    nextMembers.push(member);
+  }
   return Object.freeze({
     ...roster,
+    nextOrdinal,
     members: Object.freeze(nextMembers),
     departures: Object.freeze(nextDepartures),
+    arrivals: Object.freeze(nextArrivals),
   });
 }
 
 /**
  * Clock advance only moves tenure forward. It never fabricates visits, stay
- * response, or departures — the gym may have been away; service truth stays
- * in the sim.
+ * response, departures, or arrivals — the gym may have been away; service
+ * truth stays in the sim.
  */
 export function advanceLivingMemberTenure(
   roster: LivingMemberRoster,

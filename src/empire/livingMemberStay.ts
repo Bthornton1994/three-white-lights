@@ -143,10 +143,10 @@ function shouldAccumulateStrain(
 }
 
 /**
- * One-observation type-response classifier. G.2C1 stay transitions and G.2C2
- * departure confirmation both consume this result so the two stages cannot
- * disagree about whether accepted G.2B pressure is strain, recovery, or
- * neutral for a member type.
+ * One-observation type-response classifier. G.2C1 stay transitions, G.2C2
+ * departure confirmation, and G.2C3 attraction all consume this result so the
+ * stages cannot disagree about whether accepted G.2B pressure is strain,
+ * recovery, or neutral for a member type.
  */
 export function livingMemberStayEvidence(
   type: MemberType,
