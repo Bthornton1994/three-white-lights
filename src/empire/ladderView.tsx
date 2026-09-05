@@ -309,12 +309,11 @@ import {
   livingMemberDuesCreditedDelta,
 } from './livingMemberDues';
 import {
-  applyLivingMemberDues,
-  applyLivingMemberReputation,
   applyServiceObservations,
   createLivingMemberRoster,
   floorSimPopulationFromRoster,
   reconcileLivingMemberRosterOnRelocation,
+  settleLivingMemberClock,
   SHIPPED_SERVICE_HISTORY_WINDOW,
   type LivingMemberRoster,
 } from './livingMembers';
@@ -601,16 +600,22 @@ export function createGymViewState(): GymViewState {
  * refused loudly, by `ladderCheckIn`'s own guard at the bottom of the same
  * call, and `ladderView.test.ts` drives that refusal.
  *
- * G.2D then composes living-member dues onto the same purse: `applyLivingMemberDues`
- * is still the one ledger writer, and the credited delta is added onto
- * `ladder.gymBucks` on top of the frozen D2 facility lump. Replay of an
- * already-settled mark is a ledger and purse identity no-op. This is not a
- * retune of facility rates, Q/C/T, or the offline banking policy.
+ * G.2D then composes living-member dues onto the same purse through
+ * `settleLivingMemberClock`: `applyLivingMemberDues` is still the one ledger
+ * writer, and the credited delta is added onto `ladder.gymBucks` on top of
+ * the frozen D2 facility lump. Replay of an already-settled mark is a ledger
+ * and purse identity no-op. This is not a retune of facility rates, Q/C/T,
+ * or the offline banking policy.
  *
- * G.2E settles living-member reputation on the same clock mark through
- * `applyLivingMemberReputation`. That ledger is the one writer of member-side
- * reputation. It does not write `EmpireState.reputation` and does not retune
- * check-in reputation. High-paying vacancy arrival reads the credited total.
+ * G.2E settles living-member reputation on the same clock mark, still through
+ * that orchestrator. `applyLivingMemberReputation` remains the one writer of
+ * member-side reputation. It does not write `EmpireState.reputation` and does
+ * not retune check-in reputation. High-paying vacancy arrival reads the
+ * credited total.
+ *
+ * G2-ATHLETE-SEASON-01 applies Athlete leave/return at shared gym-clock
+ * season boundaries inside the same orchestrator. No Athletes means the
+ * dues and reputation ledgers match today's two calls.
  *
  * WHAT THIS ARM DOES NOT DO, because §5.7's clarification and `docs/GDD.md`
  * §5.13's wear-basis ruling both turn on it: it appends no strike and moves
@@ -673,12 +678,8 @@ function advanceGymClock(
     weekLog = Object.freeze([...weekLog, ...completed]);
     allocationSetThisWeek = false;
   }
-  const livingAfterDues = applyLivingMemberDues(
+  const livingMembers = settleLivingMemberClock(
     state.livingMembers,
-    checkedInManaged.gym.ladder.collectedAt,
-  );
-  const livingMembers = applyLivingMemberReputation(
-    livingAfterDues,
     checkedInManaged.gym.ladder.collectedAt,
   );
   const gymBucks = creditLivingMemberDuesGymBucks(

@@ -2474,6 +2474,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'livingMemberExperience.ts',
       // Stage G.2E: living-member reputation ledger.
       'livingMemberReputation.ts',
+      // G2-ATHLETE-SEASON-01: shared gym-clock Athlete leave/return.
+      'livingMemberSeason.ts',
       // Stage G.2B: living-member retention pressure, derived from G.2A.
       'livingMemberRetention.ts',
       // Stage G.2C1: persistent stay-response. No roster deletion.
@@ -2730,7 +2732,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 25 -> 26: Stage G.2C3 livingMemberArrival.ts imports refuseWith.
     // 26 -> 27: Stage G.2D livingMemberDues.ts imports refuseWith.
     // 27 -> 28: Stage G.2E livingMemberReputation.ts imports refuseWith.
-    expect(mentionersOf('empireCore.ts').length).toBe(28);
+    // 28 -> 29: G2-ATHLETE-SEASON-01 livingMemberSeason.ts imports refuseWith.
+    expect(mentionersOf('empireCore.ts').length).toBe(29);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -4062,6 +4065,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './livingMemberDues',
       './livingMemberExperience',
       './livingMemberReputation',
+      './livingMemberSeason',
       './livingMemberRetention',
       './livingMemberStay',
       './livingMembers',
@@ -4327,6 +4331,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-bay-label-second-bench',
       'floorgrid-caption',
       'floorgrid-departure-notice',
+      'floorgrid-season-notice',
       // GDD §5.14 Stage C.1: the collapsed-by-default diagnostics surface's
       // three new testIDs.
       'floorgrid-diagnostic-caption',
@@ -5278,6 +5283,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './livingMemberExperience',
         './livingMemberReputation',
         './livingMemberRetention',
+        './livingMemberSeason',
         './livingMembers',
         // GDD §5.14 Stage C: the contextual station panel reads condition,
         // manager capability and the standing maintenance review straight
@@ -5371,6 +5377,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './production',
       ],
       'livingMemberRetention.ts': ['./empireCore', './empireTuning', './livingMemberExperience'],
+      'livingMemberSeason.ts': [
+        './empireCore',
+        './empireTuning',
+        './livingMembers',
+        './members',
+        './sessions',
+      ],
       'livingMemberStay.ts': ['./empireCore', './empireTuning', './livingMemberRetention', './members'],
       'livingMemberDeparture.ts': [
         './empireCore',
@@ -5390,6 +5403,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './livingMemberExperience',
         './livingMemberReputation',
         './livingMemberRetention',
+        './livingMemberSeason',
         './livingMemberStay',
         './members',
         './sessions',
@@ -5583,7 +5597,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // and FloorGrid reading it.
     // 153 -> 154: Stage G.2D purse composition — ladderView.tsx imports livingMemberDues.ts.
     // 154 -> 163: Stage G.2E livingMemberReputation.ts six edges plus livingMembers / FloorGrid / arrival.
-    expect(specifiers).toBe(163);
+    // 163 -> 170: G2-ATHLETE-SEASON-01 livingMemberSeason.ts five edges plus livingMembers / FloorGrid.
+    expect(specifiers).toBe(170);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external

@@ -1952,3 +1952,48 @@ describe('Stage G.2C2 — FloorGrid receives compacted living identity after dep
     expect(gridRoster.departures.some((record) => record.member.id === memberB.id)).toBe(true);
   });
 });
+
+describe('G2-ATHLETE-SEASON-01 — FloorGrid season notice', () => {
+  const weekSeconds = T.DAYS_PER_TRAINING_WEEK * T.SECONDS_PER_DAY;
+  const leaveAt = weekSeconds * T.ATHLETE_SEASON.firstInSeasonWeek;
+  const returnAt = leaveAt + weekSeconds * T.ATHLETE_SEASON.inSeasonWeeks;
+
+  function withAthlete(state: GymViewState): GymViewState {
+    const member = state.livingMembers.members[0] as LivingGymMember;
+    return Object.freeze({
+      ...state,
+      livingMembers: Object.freeze({
+        ...state.livingMembers,
+        members: Object.freeze(
+          state.livingMembers.members.map((row, index) =>
+            index === 0 ? Object.freeze({ ...row, type: 'athlete' as const }) : row,
+          ),
+        ),
+      }),
+    });
+  }
+
+  it('renders exactly one away notice after the leave boundary', () => {
+    const opened = withAthlete(createGymViewState());
+    const athlete = opened.livingMembers.members[0] as LivingGymMember;
+    const left = gymViewReduce(opened, { kind: 'advance-clock', gapSeconds: leaveAt });
+    const root = render(left, []);
+    const notice = findByTestId(root, 'floorgrid-season-notice');
+    expect(findAllByTestId(root, 'floorgrid-season-notice')).toHaveLength(1);
+    const copy = textOf(notice);
+    expect(copy).toBe(`${athlete.displayName} is away for the season.`);
+    expect(copy).not.toMatch(/%/);
+    expect(copy).not.toMatch(/\d+\s*week/);
+    expect(copy).not.toMatch(/days/i);
+  });
+
+  it('renders the return notice after the in-season end', () => {
+    const opened = withAthlete(createGymViewState());
+    const athlete = opened.livingMembers.members[0] as LivingGymMember;
+    const back = gymViewReduce(opened, { kind: 'advance-clock', gapSeconds: returnAt });
+    const copy = textOf(findByTestId(render(back, []), 'floorgrid-season-notice'));
+    expect(copy).toBe(`${athlete.displayName} is back from the season.`);
+    expect(copy).not.toMatch(/%/);
+    expect(copy).not.toMatch(/days/i);
+  });
+});

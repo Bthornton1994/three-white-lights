@@ -421,6 +421,7 @@ import * as livingMemberArrivalModule from './livingMemberArrival';
 import * as livingMemberDepartureModule from './livingMemberDeparture';
 import * as livingMemberDuesModule from './livingMemberDues';
 import * as livingMemberReputationModule from './livingMemberReputation';
+import * as livingMemberSeasonModule from './livingMemberSeason';
 import * as livingMembersModule from './livingMembers';
 import * as managementModule from './management';
 import * as membersModule from './members';
@@ -1780,7 +1781,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 33, // Stage G.2E livingMemberReputation.ts
+  MODULES: 34, // G2-ATHLETE-SEASON-01 livingMemberSeason.ts
   // 273 -> 280: GymView's four new exports (createGymViewState, GymViewState,
   // GymViewAction, GymViewRefusal don't count as runtime exports — the seven
   // that do are createGymViewState, gymViewReduce, GymView from ladderView.tsx
@@ -3126,7 +3127,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // calls no brand constructor either.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts joins the walk; it
   // calls no brand constructor either.
-  MODULES: 33, // Stage G.2E livingMemberReputation.ts
+  MODULES: 34, // G2-ATHLETE-SEASON-01 livingMemberSeason.ts
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -3852,6 +3853,7 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'livingMemberArrival.ts': livingMemberArrivalModule as unknown as Readonly<Record<string, unknown>>,
   'livingMemberDues.ts': livingMemberDuesModule as unknown as Readonly<Record<string, unknown>>,
   'livingMemberReputation.ts': livingMemberReputationModule as unknown as Readonly<Record<string, unknown>>,
+  'livingMemberSeason.ts': livingMemberSeasonModule as unknown as Readonly<Record<string, unknown>>,
   'livingMemberExperience.ts': livingMemberExperienceModule as unknown as Readonly<Record<string, unknown>>,
   'livingMemberRetention.ts': livingMemberRetentionModule as unknown as Readonly<Record<string, unknown>>,
   'livingMemberStay.ts': livingMemberStayModule as unknown as Readonly<Record<string, unknown>>,
@@ -6034,7 +6036,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS,
   // FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS), all filed.
   // 451 -> 453: Stage C.1b FLOOR_TILE_PIXELS_MAX and FLOOR_STAGE_PADDING_PIXELS.
-  TUNING_NUMERIC_LEAVES: 505, // Stage G.2E HIGH_PAYING_MEMBER_ARRIVAL_REPUTATION_THRESHOLD
+  TUNING_NUMERIC_LEAVES: 508, // G2-ATHLETE-SEASON-01 ATHLETE_SEASON three week knobs
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -8232,6 +8234,22 @@ function driveEverything(): readonly DrivenRow[] {
       livingMembersModule.applyLivingMemberReputation(roster, EMPIRE_TUNING.SECONDS_PER_DAY),
       [roster],
     );
+    drive('applyLivingMemberSeason', 'zero-gap', () =>
+      livingMembersModule.applyLivingMemberSeason(roster, 0),
+      [roster],
+    );
+    drive('applyLivingMemberSeason', 'one-day', () =>
+      livingMembersModule.applyLivingMemberSeason(roster, EMPIRE_TUNING.SECONDS_PER_DAY),
+      [roster],
+    );
+    drive('settleLivingMemberClock', 'zero-gap', () =>
+      livingMembersModule.settleLivingMemberClock(roster, 0),
+      [roster],
+    );
+    drive('settleLivingMemberClock', 'one-day', () =>
+      livingMembersModule.settleLivingMemberClock(roster, EMPIRE_TUNING.SECONDS_PER_DAY),
+      [roster],
+    );
     drive('playerFacingTenureLine', 'garage', () => livingMembersModule.playerFacingTenureLine(0, 3600));
     drive('playerFacingWaitExperience', 'short', () => livingMembersModule.playerFacingWaitExperience(5));
     drive('playerFacingTrainingExperience', 'light', () =>
@@ -8790,6 +8808,80 @@ function driveEverything(): readonly DrivenRow[] {
         [ledger, credited],
       );
     }
+  }
+
+  // --- livingMemberSeason.ts (G2-ATHLETE-SEASON-01: Athlete leave/return)
+  {
+    const roster = livingMembersModule.createLivingMemberRoster(
+      'garage',
+      [...EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT],
+      [],
+      0,
+      EMPIRE_TUNING.FLOOR_SIM_RENDER_SEED,
+    );
+    const athlete = Object.freeze({ ...roster.members[0]!, type: 'athlete' as const });
+    drive('requireAthleteSeasonKnobs', 'shipped', () =>
+      livingMemberSeasonModule.requireAthleteSeasonKnobs(),
+    );
+    drive('athleteSeasonPhaseAtWeek', 'opening', () =>
+      livingMemberSeasonModule.athleteSeasonPhaseAtWeek(0),
+    );
+    drive('athleteSeasonPhaseAt', 'opening', () => livingMemberSeasonModule.athleteSeasonPhaseAt(0));
+    drive('athleteSeasonBoundariesBetween', 'empty', () =>
+      livingMemberSeasonModule.athleteSeasonBoundariesBetween(0, 0),
+    );
+    drive('athleteSeasonBoundariesBetween', 'first-leave', () =>
+      livingMemberSeasonModule.athleteSeasonBoundariesBetween(
+        0,
+        EMPIRE_TUNING.DAYS_PER_TRAINING_WEEK *
+          EMPIRE_TUNING.SECONDS_PER_DAY *
+          EMPIRE_TUNING.ATHLETE_SEASON.firstInSeasonWeek,
+      ),
+    );
+    drive('livingMemberTakesSeasonLeave', 'athlete', () =>
+      livingMemberSeasonModule.livingMemberTakesSeasonLeave('athlete'),
+    );
+    drive('livingMemberTakesSeasonLeave', 'casual', () =>
+      livingMemberSeasonModule.livingMemberTakesSeasonLeave('casual'),
+    );
+    const ledger = livingMemberSeasonModule.createLivingMemberSeasonLedger(0);
+    drive('createLivingMemberSeasonLedger', 'zero', () =>
+      livingMemberSeasonModule.createLivingMemberSeasonLedger(0),
+    );
+    const leave = livingMemberSeasonModule.createLivingMemberSeasonLeaveRecord(athlete, 0);
+    drive('createLivingMemberSeasonLeaveRecord', 'opening', () =>
+      livingMemberSeasonModule.createLivingMemberSeasonLeaveRecord(athlete, 0),
+      [athlete],
+    );
+    const returned = livingMemberSeasonModule.createLivingMemberSeasonReturnRecord(leave, 1);
+    drive('createLivingMemberSeasonReturnRecord', 'opening', () =>
+      livingMemberSeasonModule.createLivingMemberSeasonReturnRecord(leave, 1),
+      [leave],
+    );
+    drive('lastLivingMemberSeasonEvent', 'empty', () =>
+      livingMemberSeasonModule.lastLivingMemberSeasonEvent(ledger),
+    );
+    drive('lastLivingMemberSeasonEvent', 'leave', () =>
+      livingMemberSeasonModule.lastLivingMemberSeasonEvent(
+        Object.freeze({ ...ledger, onLeave: Object.freeze([leave]) }),
+      ),
+      [leave],
+    );
+    const event = livingMemberSeasonModule.lastLivingMemberSeasonEvent(
+      Object.freeze({ ...ledger, returns: Object.freeze([returned]) }),
+    );
+    if (event !== null) {
+      drive('playerFacingSeasonLine', 'return', () =>
+        livingMemberSeasonModule.playerFacingSeasonLine(event),
+      );
+    }
+    drive('athleteSeasonBoundaryWouldMove', 'empty', () =>
+      livingMemberSeasonModule.athleteSeasonBoundaryWouldMove(
+        [],
+        [],
+        Object.freeze({ atSeconds: 0, phase: 'in-season' }),
+      ),
+    );
   }
 
   // --- management.ts (GDD §5 v2, stage 4: staffing, maintenance, condition,
@@ -17308,7 +17400,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 33, // Stage G.2E livingMemberReputation.ts
+  MODULES: 34, // G2-ATHLETE-SEASON-01 livingMemberSeason.ts
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved.
    * 404 -> 427 with GymView: +13 `return` sites (5 -> 18) and +6
    * `callback-invocation` sites (3 -> 9) on `ladderView.tsx`, +4 `return`

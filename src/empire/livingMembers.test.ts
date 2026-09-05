@@ -898,6 +898,8 @@ describe('Stage G.1C — persistent display names', () => {
     expect(living).not.toMatch(/memberDuesGymBucks/);
     expect(living).toMatch(/applyLivingMemberDues/);
     expect(living).toMatch(/applyLivingMemberReputation/);
+    expect(living).toMatch(/applyLivingMemberSeason/);
+    expect(living).toMatch(/settleLivingMemberClock/);
     expect(living).not.toMatch(/Math\.random\(/);
   });
 

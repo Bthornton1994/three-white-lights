@@ -80,6 +80,7 @@ describe('the block is frozen and every entry is classified', () => {
       'ADVANCED_RECOVERY_ITEMS',
       'AMBIENT_MEMBER_COUNT_BY_RUNG',
       'AMBIENT_MEMBER_FOOTPRINT_TILES',
+      'ATHLETE_SEASON',
       'EQUIPMENT_TIERS',
       'EQUIPMENT_TIER_BUCKS_MULTIPLIER',
       'EQUIPMENT_TIER_COST_GYM_BUCKS',
