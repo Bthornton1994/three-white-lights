@@ -305,6 +305,10 @@ import {
 } from './floor';
 import type { FloorSimServiceObservation } from './floorSim';
 import {
+  creditLivingMemberDuesGymBucks,
+  livingMemberDuesCreditedDelta,
+} from './livingMemberDues';
+import {
   applyLivingMemberDues,
   applyServiceObservations,
   createLivingMemberRoster,
@@ -596,6 +600,12 @@ export function createGymViewState(): GymViewState {
  * refused loudly, by `ladderCheckIn`'s own guard at the bottom of the same
  * call, and `ladderView.test.ts` drives that refusal.
  *
+ * G.2D then composes living-member dues onto the same purse: `applyLivingMemberDues`
+ * is still the one ledger writer, and the credited delta is added onto
+ * `ladder.gymBucks` on top of the frozen D2 facility lump. Replay of an
+ * already-settled mark is a ledger and purse identity no-op. This is not a
+ * retune of facility rates, Q/C/T, or the offline banking policy.
+ *
  * WHAT THIS ARM DOES NOT DO, because §5.7's clarification and `docs/GDD.md`
  * §5.13's wear-basis ruling both turn on it: it appends no strike and moves
  * no failure phase. `managedCheckIn` reads no strike and writes no strike, so
@@ -657,8 +667,26 @@ function advanceGymClock(
     weekLog = Object.freeze([...weekLog, ...completed]);
     allocationSetThisWeek = false;
   }
+  const livingMembers = applyLivingMemberDues(
+    state.livingMembers,
+    checkedInManaged.gym.ladder.collectedAt,
+  );
+  const gymBucks = creditLivingMemberDuesGymBucks(
+    checkedInManaged.gym.ladder.gymBucks,
+    livingMemberDuesCreditedDelta(state.livingMembers.dues, livingMembers.dues),
+  );
+  const managed =
+    gymBucks === checkedInManaged.gym.ladder.gymBucks
+      ? checkedInManaged
+      : withUpdatedGym(
+          checkedInManaged,
+          withLadder(
+            checkedInManaged.gym,
+            Object.freeze({ ...checkedInManaged.gym.ladder, gymBucks }),
+          ),
+        );
   return Object.freeze({
-    managed: checkedInManaged,
+    managed,
     lastAccrual: accrual,
     lastManagementReport: Object.freeze(report),
     lastRefusal: null,
@@ -668,14 +696,12 @@ function advanceGymClock(
     weekLog,
     // A clock advance never relocates and never touches ownership, so the
     // floor layout is untouched — only a successful `move-up` resets it.
-    // G.2D: the same clock mark is the production dues-settlement caller.
+    // G.2D: the same clock mark is the production dues-settlement caller,
+    // and the ledger delta is credited onto the spendable purse here.
     floor: state.floor,
     surface: state.surface,
     capability: state.capability,
-    livingMembers: applyLivingMemberDues(
-      state.livingMembers,
-      checkedInManaged.gym.ladder.collectedAt,
-    ),
+    livingMembers,
   });
 }
 

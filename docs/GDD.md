@@ -3206,9 +3206,10 @@ than the ruling's own §1–§23 sequence:
   `2b0f52bdcd94004400937e450c8db12727ca74ca` — vacancy arrival /
   population replenishment plus P1 honest Watching/neutral writer proof.
   **G.2D DUES ACCOUNTING BUILT, AWAITING FREEZE** — living-member dues
-  from accepted G.2A experience, clock-settled on the roster ledger.
-  G.2E member-side reputation, Athlete seasonality, Career → Empire
-  reputation, Portfolio, and NpcLifter merge stay blocked.
+  from accepted G.2A experience, clock-settled on the roster ledger and
+  credited onto the spendable Gym Bucks purse (added to frozen D2
+  facility income). G.2E member-side reputation, Athlete seasonality,
+  Career → Empire reputation, Portfolio, and NpcLifter merge stay blocked.
 
 ### Human Stage C rejection at `f097695b`
 
@@ -4233,18 +4234,22 @@ The week-boundary jump remains away (offline). Reset gym is unchanged.
 
 Source trace (not inferred):
 
-- Gym Bucks on the played path are `ladderIncomeRatePerHour(rung)` × banked
-  seconds × online/offline fraction, via `advanceGymClock` → `managedCheckIn`
-  → `gymCheckIn` → `ladderCheckIn` → `accrueLadderGymBucks`. FloorSim
-  completions, queue length, wait, changeover duration, station training
-  experience, and station utilization are not inputs to that rate.
+- Gym Bucks on the played path are the frozen D2 facility lump
+  (`ladderIncomeRatePerHour(rung)` × banked seconds × online/offline
+  fraction, via `advanceGymClock` → `managedCheckIn` → `gymCheckIn` →
+  `ladderCheckIn` → `accrueLadderGymBucks`) plus living-member dues
+  (`applyLivingMemberDues` ledger delta, credited onto `ladder.gymBucks`
+  in the same `advanceGymClock`). FloorSim completions, queue length, wait,
+  changeover duration, station training experience, and station utilization
+  are not inputs to that rate.
 - `memberSatisfaction` and `reputationFromMembers` exist as pure functions
   in `members.ts` and still have no shipped callers outside that file.
   `management.ts` does not import `members.ts`. G.2D's `livingMemberDues.ts`
   is the one shipped caller of `memberDuesGymBucks` / `memberBaseDuesGymBucks`.
-  Living dues settle onto `LivingMemberRoster.dues`. They are not composed
-  into `ladder.gymBucks` (G2-DUES-PURSE-01). FloorSim completions, queue,
-  wait, changeover, and utilization are still not inputs to the spendable
+  Living dues settle onto `LivingMemberRoster.dues` and the production clock
+  path credits that ledger onto `ladder.gymBucks` on top of the D2 facility
+  lump. This is not a D2 rate retune. FloorSim completions, queue, wait,
+  changeover, and utilization are still not inputs to the spendable
   ladder rate.
 
 Consequences of that graph, not of prices:
@@ -4488,11 +4493,11 @@ meaningful, and is not the shipped recommendation.
 wired, the player must be able to tell why it changed. Each sporting term
 carries a reason `kind` and a `text` line. No unexplained +REP toast.
 
-**D2-CONSEQUENCE-01 remains true of the spendable ladder purse.** Quality /
-Capacity / Throughput have truthful physical mechanisms, but they still do
-not write `ladder.gymBucks`. G.2D accounts living dues on
-`LivingMemberRoster.dues`; composing that ledger into the purse is
-G2-DUES-PURSE-01. Stage E does not implement member-side reputation.
+**D2-CONSEQUENCE-01 remains true of Quality / Capacity / Throughput.** Those
+axes have truthful physical mechanisms, but they still do not write
+`ladder.gymBucks`. G.2D living dues do credit the spendable purse on clock
+settle, added to the frozen D2 facility lump. That is not a Q/C/T write
+and not a D2 rate retune. Stage E does not implement member-side reputation.
 
 **Wiring remains blocked.** Career/Meet result → Empire persistent reputation
 state is a later explicit crossing.
@@ -4773,9 +4778,9 @@ behavior.
 | G2-FIT-01 | OPEN — equipment fit is attraction, not recent service |
 | G2-TYPE-01 | OPEN — no type-specific **satisfaction** interpretation |
 | G2-ATHLETE-SEASON-01 | OPEN — Athlete leave/return needs G.2C |
-| G2-DUES-PURSE-01 | OPEN — living dues are accounted; they are not yet the spendable ladder purse |
+| G2-DUES-PURSE-01 | CLOSED — living dues credit the spendable ladder purse on clock settle; D2 facility income stays additive |
 | G.2C | G.2C1 frozen. G.2C2 frozen. G.2C3 frozen. Reputation-gated high-paying rates remain G.2E. |
-| G.2D | FOUNDATION BUILT; awaiting freeze. Living-member dues accounting from G.2A experience. |
+| G.2D | FOUNDATION BUILT; purse composition in this slice; awaiting freeze. Living-member dues from G.2A experience. |
 | G.2E | BLOCKED |
 | Career → Empire reputation | BLOCKED |
 | Portfolio | BLOCKED |
@@ -5058,8 +5063,9 @@ NpcLifter merge. G.2D dues accounting is the next authorised slice.
 
 **STAGE G.2D DUES ACCOUNTING BUILT, AWAITING FREEZE.** This is the first
 slice allowed to turn living-member presence and accepted G.2A recent-
-service meaning into Gym Bucks dues. It is not a reputation write, not
-a ladder-income retune, and not Athlete seasonality.
+service meaning into Gym Bucks dues, and to credit those dues as spendable
+Gym Bucks income. It is not a reputation write, not a D2 facility-rate
+retune, and not Athlete seasonality.
 
 **GDD citation:** §5.6 Members: "They generate income. Dues scale with
 count and satisfaction." Count is the active `LivingMemberRoster`.
@@ -5079,10 +5085,11 @@ member-side institutional reputation, stay G.2E.
 composite (or forming base) → clock-settled dues ledger.
 
 **Settlement grain:** gym-clock seconds, not FloorSim ticks and not a
-per-visit cash-out. `applyLivingMemberDues` is the one writer.
-`gymViewReduce` clock advance is the production caller. Service
-observations do not credit dues. `advanceLivingMemberTenure` remains a
-membership no-op and does not settle.
+per-visit cash-out. `applyLivingMemberDues` is the one ledger writer.
+`gymViewReduce` clock advance is the production caller and the purse
+composer. Service observations do not credit dues.
+`advanceLivingMemberTenure` remains a membership no-op and does not
+settle.
 
 **Occupancy at the settle mark:** active members at the mark pay for
 `[dues.settledAtSeconds, toSeconds)`, each pro-rated from
@@ -5095,16 +5102,17 @@ is a full roster no-op. An earlier mark refuses. A non-finite or
 negative mark refuses. Same `from`/`to` with a conflicting amount
 refuses. Invalid join-clock on a paying member refuses.
 
-**Purse residual G2-DUES-PURSE-01:** living dues are accounted on
-`LivingMemberRoster.dues` (`creditedGymBucks`, settlement archive).
-They are not composed into `ladder.gymBucks` in this slice. Frozen D2
-facility income (garage 60/hour and the offline banking policy) stays
-the spendable lump. Replacing or adding that lump is a pacing decision,
-not this foundation.
+**Purse G2-DUES-PURSE-01 CLOSED as composition, not a D2 retune:** living
+dues are accounted on `LivingMemberRoster.dues` (`creditedGymBucks`,
+settlement archive). The production clock path credits each settlement's
+delta onto `ladder.gymBucks`, added to the frozen D2 facility lump
+(garage 60/hour and the offline banking policy). Replay of an already-
+settled mark is a ledger and purse identity no-op. Replacing or retuning
+that facility lump is still a pacing decision this slice does not take.
 
 **Player-facing:** member detail card `DUES` line shows the current
-daily rate. No %, no countdown, no reputation claim, no upgrade-
-ownership guess.
+daily rate. The HUD Gym Bucks figure includes settled dues. No %, no
+countdown, no reputation claim, no upgrade-ownership guess.
 
 **Fences:** no `reputationFromMembers`, no `memberSatisfaction`, no
 Career import, no Portfolio, no NpcLifter merge, no RNG, no `Date.now`,
@@ -5114,7 +5122,7 @@ G.2E high-paying arrival rates.
 **Still blocked:** G.2E member-side reputation (including reputation-
 gated high-paying arrival rates), Athlete seasonality
 (G2-ATHLETE-SEASON-01), Career → Empire reputation, Portfolio,
-NpcLifter merge, G2-DUES-PURSE-01 purse composition.
+NpcLifter merge.
 
 ---
 

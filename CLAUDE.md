@@ -46,8 +46,8 @@ at `c8776cad`. G.2C2 CLOSED / FROZEN at `1493f438` (actual departure).
 G.2C3 CLOSED / FROZEN at `2b0f52bd` (vacancy arrival + P1 honest
 Watching/neutral proof). G.2D dues accounting is the authorised next
 slice: living-member Gym Bucks dues from accepted G.2A experience,
-clock-settled on the roster ledger. Do not compose those dues into
-`ladder.gymBucks` in this slice (G2-DUES-PURSE-01). G.2E member-side
+clock-settled on the roster ledger and credited onto `ladder.gymBucks`
+on top of frozen D2 facility income. Do not retune D2 rates. G.2E member-side
 reputation (including reputation-gated high-paying arrival rates) and
 G2-ATHLETE-SEASON-01 stay blocked. Do not wire `reputationFromMembers`
 or old crowding satisfaction. G.2C1–C3 stay frozen. G2-CONDITION-01,

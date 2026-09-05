@@ -27,8 +27,9 @@
  *
  * G.2D dues settlement lives in `applyLivingMemberDues`. That is the one
  * writer of the living-member dues ledger. Clock advance on the played gym
- * is the production caller. Service observations do not credit dues. This
- * file does not call the members-module dues interpolator or
+ * is the production caller, and that same path credits the ledger delta
+ * onto the spendable Gym Bucks purse. Service observations do not credit
+ * dues. This file does not call the members-module dues interpolator or
  * `memberSatisfaction`; `livingMemberDues.ts` owns that mapping from G.2A
  * composite.
  *
@@ -36,7 +37,9 @@
  *
  *   - No `reputationFromMembers` wiring, no `memberSatisfaction` calls, no
  *     reputation-gated high-paying arrival rates (G.2E).
- *   - No composing living dues into `ladder.gymBucks` (G2-DUES-PURSE-01).
+ *   - No writing `ladder.gymBucks` here. The production clock path credits
+ *     the ledger delta onto the spendable purse; this file stays the one
+ *     dues-ledger writer.
  *   - No offline-fabricated service visits, stay changes, departures, or
  *     arrivals — observations arrive only from real `floorSim.ts` steps while
  *     the sim is running.
@@ -123,7 +126,7 @@ export interface LivingMemberRoster {
   readonly departures: readonly LivingMemberDepartureRecord[];
   /** Archive of G.2C3 vacancy arrivals. Relocation appends are not recorded here. */
   readonly arrivals: readonly LivingMemberArrivalRecord[];
-  /** G.2D dues ledger. Clock-settled; not the spendable ladder purse. */
+  /** G.2D dues ledger. Clock-settled; the clock path credits this onto the purse. */
   readonly dues: LivingMemberDuesLedger;
 }
 

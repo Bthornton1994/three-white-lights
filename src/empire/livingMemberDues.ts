@@ -16,8 +16,10 @@
  *
  * Accrual grain is gym-clock seconds, not FloorSim ticks and not per-visit
  * cash. Exact replay of an already-settled mark is a roster no-op. A later
- * mark that is earlier than the ledger refuses. The spendable ladder purse
- * stays the frozen facility lump (G2-DUES-PURSE-01).
+ * mark that is earlier than the ledger refuses. The production clock path
+ * credits each ledger delta onto `ladder.gymBucks` on top of frozen D2
+ * facility income. This module does not write ladder state and does not
+ * retune facility rates.
  */
 
 import { refuseWith } from './empireCore';
@@ -45,8 +47,8 @@ export interface LivingMemberDuesSettlement {
 
 /**
  * Authoritative dues ledger carried on `LivingMemberRoster`. Credited Gym
- * Bucks are accounted here; they are not composed into `ladder.gymBucks` in
- * this slice.
+ * Bucks are the income amount the production clock path adds onto
+ * `ladder.gymBucks`. This ledger is not itself the purse.
  */
 export interface LivingMemberDuesLedger {
   readonly settledAtSeconds: number;
@@ -94,6 +96,36 @@ export function createLivingMemberDuesSettlement(
     toSeconds,
     gymBucks: scrubPrecision(gymBucks),
   });
+}
+
+/** Gym Bucks credited between two ledger snapshots. Replay of the same mark is 0. */
+export function livingMemberDuesCreditedDelta(
+  before: LivingMemberDuesLedger,
+  after: LivingMemberDuesLedger,
+): number {
+  return after.creditedGymBucks - before.creditedGymBucks;
+}
+
+/**
+ * Add a living-dues ledger credit onto a Gym Bucks purse. Zero delta is
+ * identity. A negative credit refuses — the ledger only grows. This is
+ * spendable-income composition, not a D2 facility-rate retune.
+ */
+export function creditLivingMemberDuesGymBucks(
+  gymBucks: number,
+  creditedDelta: number,
+): number {
+  if (!Number.isFinite(gymBucks)) {
+    refuseWith(`gym bucks purse must be a finite number, received ${gymBucks}`);
+  }
+  if (!Number.isFinite(creditedDelta)) {
+    refuseWith(`dues credit must be a finite number, received ${creditedDelta}`);
+  }
+  if (creditedDelta < 0) {
+    refuseWith(`dues credit must be non-negative, received ${creditedDelta}`);
+  }
+  if (creditedDelta === 0) return gymBucks;
+  return scrubPrecision(gymBucks + creditedDelta);
 }
 
 /** Last accepted G.2D settlement, or null when nothing has been settled. */

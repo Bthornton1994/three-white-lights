@@ -14,6 +14,7 @@ import { gymViewReduce, createGymViewState } from './ladderView';
 import { managedCheckIn } from './management';
 import {
   createLivingMemberDuesSettlement,
+  creditLivingMemberDuesGymBucks,
   lastLivingMemberDuesSettlement,
   livingMemberDailyDuesGymBucks,
   livingMemberDuesForWindow,
@@ -245,7 +246,7 @@ describe('Stage G.2D — tenure advance still does not settle, mutate stay, or m
 });
 
 describe('Stage G.2D — gymViewReduce clock is the production writer', () => {
-  it('settles dues on advance-clock without changing the spendable ladder purse by the dues amount', () => {
+  it('settles dues on advance-clock and credits that amount onto the spendable ladder purse', () => {
     const opened = createGymViewState();
     const purseBefore = opened.managed.gym.ladder.gymBucks;
     const next = gymViewReduce(opened, { kind: 'advance-clock', gapSeconds: DAY, mode: 'online' });
@@ -268,13 +269,23 @@ describe('Stage G.2D — gymViewReduce clock is the production writer', () => {
       'online',
       inService,
     );
-    expect(next.managed.gym.ladder.gymBucks).toBe(independentlyChecked.state.gym.ladder.gymBucks);
+    expect(next.lastAccrual).toEqual(independentlyChecked.accrual);
+    expect(next.managed.gym.ladder.gymBucks).toBe(
+      creditLivingMemberDuesGymBucks(
+        independentlyChecked.state.gym.ladder.gymBucks,
+        next.livingMembers.dues.creditedGymBucks,
+      ),
+    );
     const ladderGain = next.managed.gym.ladder.gymBucks - purseBefore;
-    expect(ladderGain).toBeGreaterThan(0);
+    const facilityGain =
+      independentlyChecked.state.gym.ladder.gymBucks - purseBefore;
     expect(next.livingMembers.dues.creditedGymBucks).toBeGreaterThan(0);
+    expect(facilityGain).toBeGreaterThan(0);
+    expect(ladderGain).toBeGreaterThan(facilityGain);
     expect(ladderGain).not.toBe(next.livingMembers.dues.creditedGymBucks);
     const replay = gymViewReduce(next, { kind: 'advance-clock', gapSeconds: 0, mode: 'online' });
     expect(replay.livingMembers).toBe(next.livingMembers);
+    expect(replay.managed.gym.ladder.gymBucks).toBe(next.managed.gym.ladder.gymBucks);
   });
 
   it('does not settle dues through apply-living-member-observations', () => {

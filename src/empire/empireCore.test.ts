@@ -2699,7 +2699,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 194 -> 200: Stage G.2C2 livingMemberDeparture.ts plus FloorGrid / livingMembers / stay wiring.
     // 200 -> 207: Stage G.2C3 livingMemberArrival.ts plus FloorGrid / livingMembers wiring.
     // 207 -> 215: Stage G.2D livingMemberDues.ts plus FloorGrid / livingMembers / ladderView wiring.
-    expect(pairs).toBe(215);
+    // 215 -> 216: Stage G.2D purse composition — ladderView.tsx now names livingMemberDues.ts.
+    expect(pairs).toBe(216);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -4011,7 +4012,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 392 -> 393: departed-member same-tick type-conflict refuseWith template.
     // 393 -> 395: Stage G.2C3 arrival tick / joinedAtSeconds refuseWith templates.
     // 395 -> 406: Stage G.2D dues interval / settle refuseWith templates plus DUES line.
-    expect(templateChunks.size).toBe(406);
+    // 406 -> 409: Stage G.2D purse-credit refuseWith templates. Read from this
+    // assertion's own failure value.
+    expect(templateChunks.size).toBe(409);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4875,7 +4878,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1213 -> 1214: departed-member same-tick type-conflict refuseWith template.
     // 1214 -> 1218: Stage G.2C3 singleQuoted +2 and templateChunks +2.
     // 1218 -> 1231: Stage G.2D singleQuoted +2 and templateChunks +11.
-    expect(stringsChecked).toBe(1231);
+    // 1231 -> 1234: Stage G.2D purse-credit refuseWith templates +3.
+    expect(stringsChecked).toBe(1234);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5311,6 +5315,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './floor',
         './floorSim',
         './ladder',
+        './livingMemberDues',
         './livingMembers',
         './management',
         './sessions',
@@ -5554,7 +5559,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // livingMembers.ts and FloorGrid.tsx reading it.
     // 145 -> 153: Stage G.2D — livingMemberDues.ts six edges plus livingMembers
     // and FloorGrid reading it.
-    expect(specifiers).toBe(153);
+    // 153 -> 154: Stage G.2D purse composition — ladderView.tsx imports livingMemberDues.ts.
+    expect(specifiers).toBe(154);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external

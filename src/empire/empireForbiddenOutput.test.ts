@@ -1875,7 +1875,8 @@ const SURFACE_CENSUS = Object.freeze({
   // livingMembers/floorSim departure-archive and reconcile seams.
   // 473 -> 478: Stage G.2C3 livingMemberArrival.ts five runtime exports.
   // 478 -> 489: Stage G.2D livingMemberDues.ts plus applyLivingMemberDues.
-  EXPORTS: 489, // Stage G.2D living-member dues accounting
+  // 489 -> 491: Stage G.2D purse composition helpers.
+  EXPORTS: 491, // Stage G.2D living-member dues purse credit
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -3269,7 +3270,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 3662 -> 3704: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 3704 -> 3755: Stage G.2C2 livingMemberDeparture.ts plus livingMembers
   // departure/reconcile wiring. Read from this pin last.
-  CALLS_EXAMINED: 3834, // Stage G.2D livingMemberDues.ts plus applyLivingMemberDues
+  CALLS_EXAMINED: 3845, // Stage G.2D purse-credit refuseWith / scrubPrecision
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -8569,6 +8570,21 @@ function driveEverything(): readonly DrivenRow[] {
         livingMemberDuesModule.lastLivingMemberDuesSettlement(Object.freeze([settlement])),
         [settlement],
       );
+      const credited = livingMemberDuesModule.appendLivingMemberDuesSettlement(ledger, settlement);
+      drive('livingMemberDuesCreditedDelta', 'replay', () =>
+        livingMemberDuesModule.livingMemberDuesCreditedDelta(ledger, ledger),
+        [ledger],
+      );
+      drive('livingMemberDuesCreditedDelta', 'settled', () =>
+        livingMemberDuesModule.livingMemberDuesCreditedDelta(ledger, credited),
+        [ledger, credited],
+      );
+      drive('creditLivingMemberDuesGymBucks', 'identity', () =>
+        livingMemberDuesModule.creditLivingMemberDuesGymBucks(10, 0),
+      );
+      drive('creditLivingMemberDuesGymBucks', 'credit', () =>
+        livingMemberDuesModule.creditLivingMemberDuesGymBucks(10, 5),
+      );
     }
   }
 
@@ -11721,7 +11737,7 @@ const DRIVE_CENSUS = Object.freeze({
   // advanceLivingMemberStay drive rows. Read from this pin's own failure value.
   // 600663 -> 600678: Stage G.2C2 departure/reconcile/stayEvidence drive rows.
   // Read from this pin last.
-  ROWS: 600702, // Stage G.2D dues drive rows
+  ROWS: 600706, // Stage G.2D purse-credit drive rows
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -11753,7 +11769,8 @@ const DRIVE_CENSUS = Object.freeze({
   // livingMemberDeparture.ts plus roster/sim seams, all driven above.
   // 473 -> 478: Stage G.2C3 livingMemberArrival.ts five runtime exports.
   // 478 -> 489: Stage G.2D livingMemberDues.ts plus applyLivingMemberDues.
-  EXPORTS_DRIVEN: 489, // Stage G.2D living-member dues accounting
+  // 489 -> 491: Stage G.2D purse composition helpers, both driven above.
+  EXPORTS_DRIVEN: 491, // Stage G.2D living-member dues purse credit
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -11789,7 +11806,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 6_546_189 -> 6_546_436: Stage G.2C2 departure/reconcile/stayEvidence drive.
   // Read from this pin last. STRINGS/DISTINCT_STRINGS below remain the G.2C1
   // pins until this assertion's subsequent failure names them.
-  NODES: 6547430, // Stage G.2D dues drive
+  NODES: 6547460, // Stage G.2D purse-credit drive
   // THE SENTENCE THAT USED TO FINISH THIS COMMENT WAS FALSE AND IS CORRECTED
   // RATHER THAN DELETED. It read: "`STRINGS` and `DISTINCT_STRINGS` did NOT
   // move with it — the nodes past the old bound carry no string this scan had
@@ -11976,7 +11993,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_204_327, // Stage G.2D dues drive strings
+  STRINGS: 30_204_427, // Stage G.2D purse-credit drive strings
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -12086,9 +12103,9 @@ const DRIVE_CENSUS = Object.freeze({
   // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
   // 3973 -> 3975: Stage D2 reset-gym copy / wear-truth strings. Read from
   // this pin's own failure value.
-  DISTINCT_STRINGS: 4252, // Stage G.2D dues-copy strings
+  DISTINCT_STRINGS: 4254, // Stage G.2D purse-credit drive strings
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
-  DEPTH_CUTS: 7,
+  DEPTH_CUTS: 10, // Stage G.2D purse-credit ledger walk
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
    *
@@ -12171,7 +12188,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 181 -> 196: Stage C.1b dock onPress closures on driven GymScreen trees.
   // 196 -> 199: Stage D2 reset-gym onPress on the three driven GymScreen
   // trees. Read from this pin's own failure value.
-  CLOSURES_INVOKED: 217,
+  CLOSURES_INVOKED: 219,
   CLOSURE_THROWS: 0,
   // 2046 -> 2052: GDD §5.13 presentation Phase 1's two new declined closures
   // (FloorGrid's `type` and `dispatch`, embedded in GymScreen's own return),
@@ -12252,7 +12269,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 6247 -> 6253: Stage D2 reset-gym Pressable stacks on driven GymScreen
   // trees. Read from this pin's own failure value.
   // 6290 -> 6291: Stage G.2C1 stay-response drive Error.stack readings.
-  STACKS: 6292, // Stage G.2C2 departure drive
+  STACKS: 6294, // Stage G.2D purse-credit drive
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -16104,7 +16121,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'ladderView.tsx': 34,
       'livingMemberArrival.ts': 9, // Stage G.2C3 arrival-record returns
       'livingMemberDeparture.ts': 5, // Stage G.2C2 departure-record returns
-      'livingMemberDues.ts': 13, // Stage G.2D dues ledger / rate returns
+      'livingMemberDues.ts': 16, // Stage G.2D dues ledger / rate / purse-credit returns
       'livingMemberExperience.ts': 36,
       'livingMemberRetention.ts': 10,
       'livingMemberStay.ts': 27, // Stage G.2C2 stayEvidence export
@@ -16179,7 +16196,7 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'ladder.ts': 20,
   'livingMemberArrival.ts': 2, // Stage G.2C3 arrival refusals
   'livingMemberDeparture.ts': 2, // Stage G.2C2 departure refusals
-  'livingMemberDues.ts': 8, // Stage G.2D dues window / ledger refusals
+  'livingMemberDues.ts': 11, // Stage G.2D dues window / ledger / purse-credit refusals
   'livingMemberExperience.ts': 2,
   'livingMemberRetention.ts': 1,
   'livingMemberStay.ts': 5, // Stage G.2C1 stay evaluation refusals
@@ -16560,20 +16577,20 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'ladder.ts:349 receiver=ArrayLiteralExpression',
   'ladderView.tsx:124 returned=unfollowable:state',
   'ladderView.tsx:132 returned=unfollowable:state',
-  'ladderView.tsx:643 returned=unfollowable:state',
-  'ladderView.tsx:672 returned=unfollowable:state',
-  'ladderView.tsx:674 returned=unfollowable:state',
-  'ladderView.tsx:733 returned=unfollowable:state',
-  'ladderView.tsx:742 returned=unfollowable:state',
+  'ladderView.tsx:653 returned=unfollowable:state',
+  'ladderView.tsx:701 returned=unfollowable:state',
+  'ladderView.tsx:703 returned=unfollowable:state',
+  'ladderView.tsx:759 returned=unfollowable:state',
+  'ladderView.tsx:768 returned=unfollowable:state',
   'livingMemberArrival.ts:105 returned=unfollowable:arrivals',
   'livingMemberDeparture.ts:103 returned=unfollowable:departures',
-  'livingMemberDues.ts:103 returned=unfollowable:settlements',
-  'livingMemberDues.ts:120 returned=unfollowable:ledger',
-  'livingMembers.ts:335 returned=unfollowable:roster',
-  'livingMembers.ts:362 returned=unfollowable:roster',
-  'livingMembers.ts:363 returned=unfollowable:roster',
-  'livingMembers.ts:364 returned=unfollowable:roster',
-  'livingMembers.ts:612 returned=unfollowable:roster',
+  'livingMemberDues.ts:135 returned=unfollowable:settlements',
+  'livingMemberDues.ts:152 returned=unfollowable:ledger',
+  'livingMembers.ts:338 returned=unfollowable:roster',
+  'livingMembers.ts:365 returned=unfollowable:roster',
+  'livingMembers.ts:366 returned=unfollowable:roster',
+  'livingMembers.ts:367 returned=unfollowable:roster',
+  'livingMembers.ts:615 returned=unfollowable:roster',
   'management.ts:1473 returned=unfollowable:state',
   'pacing.ts:246 receiver=CallExpression',
   'recruitment.ts:388 returned=unfollowable:state',
@@ -16633,31 +16650,31 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'ladderView.tsx:124 LadderAccrual | null asked=true walked=false',
   'ladderView.tsx:131 LadderState asked=true walked=false',
   'ladderView.tsx:132 LadderAccrual | null asked=true walked=false',
-  'ladderView.tsx:643 readonly GymWeekReport[] asked=true walked=false',
-  'ladderView.tsx:672 FloorState asked=true walked=false',
-  'ladderView.tsx:674 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'ladderView.tsx:733 FloorState asked=true walked=false',
-  'ladderView.tsx:742 LivingMemberRoster asked=true walked=false',
-  'ladderView.tsx:754 FloorState asked=true walked=false',
-  'ladderView.tsx:774 FloorState asked=true walked=false',
-  'ladderView.tsx:813 ManagedGym asked=true walked=false',
-  'ladderView.tsx:826 ManagedGym asked=true walked=false',
-  'ladderView.tsx:840 ManagedGym asked=true walked=false',
-  'ladderView.tsx:850 ManagedGym asked=true walked=false',
-  'ladderView.tsx:858 ManagedGym asked=true walked=false',
+  'ladderView.tsx:653 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:701 FloorState asked=true walked=false',
+  'ladderView.tsx:703 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'ladderView.tsx:759 FloorState asked=true walked=false',
+  'ladderView.tsx:768 LivingMemberRoster asked=true walked=false',
+  'ladderView.tsx:780 FloorState asked=true walked=false',
+  'ladderView.tsx:800 FloorState asked=true walked=false',
+  'ladderView.tsx:839 ManagedGym asked=true walked=false',
+  'ladderView.tsx:852 ManagedGym asked=true walked=false',
   'ladderView.tsx:866 ManagedGym asked=true walked=false',
-  'ladderView.tsx:901 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'ladderView.tsx:876 ManagedGym asked=true walked=false',
+  'ladderView.tsx:884 ManagedGym asked=true walked=false',
+  'ladderView.tsx:892 ManagedGym asked=true walked=false',
+  'ladderView.tsx:927 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
   'livingMemberArrival.ts:105 LivingMemberArrivalRecord | undefined asked=true walked=false',
   'livingMemberDeparture.ts:103 LivingMemberDepartureRecord | undefined asked=true walked=false',
-  'livingMemberDues.ts:103 LivingMemberDuesSettlement | undefined asked=true walked=false',
-  'livingMemberDues.ts:120 readonly LivingMemberDuesSettlement[] asked=true walked=false',
-  'livingMembers.ts:335 readonly LivingGymMember[] asked=true walked=false',
-  'livingMembers.ts:362 readonly LivingMemberDepartureRecord[] asked=true walked=false',
-  'livingMembers.ts:363 readonly LivingMemberArrivalRecord[] asked=true walked=false',
-  'livingMembers.ts:364 LivingMemberDuesLedger asked=true walked=false',
-  'livingMembers.ts:393 LivingGymMember | undefined asked=true walked=false',
-  'livingMembers.ts:450 ServiceVisitRecord | undefined asked=true walked=false',
-  'livingMembers.ts:612 LivingMemberDuesLedger asked=true walked=false',
+  'livingMemberDues.ts:135 LivingMemberDuesSettlement | undefined asked=true walked=false',
+  'livingMemberDues.ts:152 readonly LivingMemberDuesSettlement[] asked=true walked=false',
+  'livingMembers.ts:338 readonly LivingGymMember[] asked=true walked=false',
+  'livingMembers.ts:365 readonly LivingMemberDepartureRecord[] asked=true walked=false',
+  'livingMembers.ts:366 readonly LivingMemberArrivalRecord[] asked=true walked=false',
+  'livingMembers.ts:367 LivingMemberDuesLedger asked=true walked=false',
+  'livingMembers.ts:396 LivingGymMember | undefined asked=true walked=false',
+  'livingMembers.ts:453 ServiceVisitRecord | undefined asked=true walked=false',
+  'livingMembers.ts:615 LivingMemberDuesLedger asked=true walked=false',
   'management.ts:1473 readonly CountedDecisionRecord[] asked=true walked=false',
   'management.ts:1640 LadderAccrual asked=true walked=false',
   'management.ts:1650 GymState asked=true walked=false',
@@ -16908,7 +16925,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
   // 1815 -> 1841: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 1841 -> 1866: Stage G.2C2 livingMemberDeparture.ts plus roster/sim wiring.
-  function: 1914, // Stage G.2D dues / applyLivingMemberDues function calls
+  function: 1922, // Stage G.2D purse-credit function calls
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16968,7 +16985,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
   // 1658 -> 1673: Stage G.2C1 livingMemberStay.ts plus livingMembers stayState.
   // 1673 -> 1699: Stage G.2C2 livingMemberDeparture.ts plus roster/sim members.
-  member: 1729, // Stage G.2D dues / applyLivingMemberDues member calls
+  member: 1732, // Stage G.2D purse-credit member calls
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -17172,7 +17189,8 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // livingMemberDeparture +5, stay +4, livingMembers +2). Read from this pin last.
   // 1092 -> 1099: Stage G.2C3 livingMemberArrival.ts return sites.
   // 1101 -> 1118: Stage G.2D livingMemberDues.ts exported-binding + return, livingMembers +3.
-  SITES: 1118, // Stage G.2D living-member dues accounting
+  // 1118 -> 1121: Stage G.2D purse-credit return sites.
+  SITES: 1121, // Stage G.2D living-member dues purse credit
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -17329,7 +17347,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // stayState wiring. Read from this pin last.
   // 84_813 -> 86_105: Stage G.2C2 livingMemberDeparture.ts plus roster/sim
   // departure wiring. Read from this pin last.
-  NODES_EXAMINED: 87_755, // Stage G.2D livingMemberDues.ts plus applyLivingMemberDues
+  NODES_EXAMINED: 87_921, // Stage G.2D purse-credit helpers
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -17354,7 +17372,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // livingMembers +2. Read from this pin last.
   // 200 -> 202: Stage G.2C3 livingMemberArrival.ts two refuseWith calls.
   // 202 -> 213: Stage G.2D livingMemberDues.ts 8 plus livingMembers applyLivingMemberDues.
-  WRAP_CALLS: 213, // Stage G.2D dues interval / ledger refusals
+  WRAP_CALLS: 216, // Stage G.2D dues interval / ledger / purse-credit refusals
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 7, // Stage G.1 argument-mutation on floorSim observation export
@@ -17476,7 +17494,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // and livingMembers.ts stayState. Read from this pin's own failure value.
   // 1109 -> 1128: Stage G.2C2 departure-record types plus roster.departures.
   // Read from this pin last.
-  POSITIONS: 1165, // Stage G.2D dues ledger / settlement types
+  POSITIONS: 1169, // Stage G.2D purse-credit helper signatures
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',

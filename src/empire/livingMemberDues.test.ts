@@ -12,8 +12,10 @@ import { EMPIRE_TUNING } from './empireTuning';
 import {
   createLivingMemberDuesLedger,
   createLivingMemberDuesSettlement,
+  creditLivingMemberDuesGymBucks,
   lastLivingMemberDuesSettlement,
   livingMemberDailyDuesGymBucks,
+  livingMemberDuesCreditedDelta,
   livingMemberDuesForWindow,
   livingMemberDuesGymBucksForInterval,
   playerFacingDuesLine,
@@ -174,6 +176,20 @@ describe('Stage G.2D — ledger helpers and copy', () => {
     expect(() =>
       appendLivingMemberDuesSettlement(createLivingMemberDuesLedger(10), record),
     ).toThrow(/does not continue/);
+  });
+
+  it('credits a positive ledger delta onto the purse and leaves a zero delta as identity', () => {
+    expect(creditLivingMemberDuesGymBucks(10, 0)).toBe(10);
+    expect(creditLivingMemberDuesGymBucks(10, 5)).toBe(15);
+    const before = createLivingMemberDuesLedger(0);
+    const after = appendLivingMemberDuesSettlement(
+      before,
+      createLivingMemberDuesSettlement(0, DAY, 60),
+    );
+    expect(livingMemberDuesCreditedDelta(before, after)).toBe(60);
+    expect(livingMemberDuesCreditedDelta(after, after)).toBe(0);
+    expect(() => creditLivingMemberDuesGymBucks(10, -1)).toThrow(/non-negative/);
+    expect(() => creditLivingMemberDuesGymBucks(Number.NaN, 1)).toThrow(/finite number/);
   });
 
   it('names the daily rate without a percent, countdown, or reputation claim', () => {
