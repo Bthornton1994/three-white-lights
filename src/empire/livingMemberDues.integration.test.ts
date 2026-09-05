@@ -8,8 +8,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { EMPIRE_TUNING } from './empireTuning';
+import { placedOwnedItems } from './floor';
 import type { FloorSimServiceObservation } from './floorSim';
 import { gymViewReduce, createGymViewState } from './ladderView';
+import { managedCheckIn } from './management';
 import {
   createLivingMemberDuesSettlement,
   lastLivingMemberDuesSettlement,
@@ -255,8 +257,21 @@ describe('Stage G.2D — gymViewReduce clock is the production writer', () => {
         next.managed.gym.ladder.collectedAt,
       ),
     );
+    const inService = placedOwnedItems(
+      opened.floor,
+      opened.managed.gym.ladder.equipment,
+      opened.managed.gym.sessionEquipment,
+    );
+    const independentlyChecked = managedCheckIn(
+      opened.managed,
+      opened.managed.gym.ladder.collectedAt + DAY,
+      'online',
+      inService,
+    );
+    expect(next.managed.gym.ladder.gymBucks).toBe(independentlyChecked.state.gym.ladder.gymBucks);
     const ladderGain = next.managed.gym.ladder.gymBucks - purseBefore;
     expect(ladderGain).toBeGreaterThan(0);
+    expect(next.livingMembers.dues.creditedGymBucks).toBeGreaterThan(0);
     expect(ladderGain).not.toBe(next.livingMembers.dues.creditedGymBucks);
     const replay = gymViewReduce(next, { kind: 'advance-clock', gapSeconds: 0, mode: 'online' });
     expect(replay.livingMembers).toBe(next.livingMembers);

@@ -1650,6 +1650,27 @@ try {
           ok(`G.2B: member card shows compact membership strain (${membershipText})`);
         }
       }
+      const duesLine = await waitUntilDrawn(
+        page,
+        'floorgrid-member-panel-dues',
+        BEAT_TIMEOUT_MS,
+      );
+      if (!duesLine.drawn) {
+        fail(
+          `G.2D: floorgrid-member-panel-dues never drawn after the member card opened — ${duesLine.why}`,
+        );
+      } else {
+        const duesText = ((await textOf('floorgrid-member-panel-dues')) ?? '').trim();
+        if (/%/.test(duesText) || /reputation|countdown|visits left/i.test(duesText)) {
+          fail(`G.2D: dues line exposes a percent, reputation claim, or countdown (${duesText})`);
+        } else if (duesText.length === 0) {
+          fail('G.2D: floorgrid-member-panel-dues is drawn but empty');
+        } else if (!/^DUES /.test(duesText) || !/gym bucks a day/.test(duesText)) {
+          fail(`G.2D: dues line is missing the daily-rate copy (${duesText})`);
+        } else {
+          ok(`G.2D: member card shows current daily dues (${duesText})`);
+        }
+      }
       await page.getByTestId('floorgrid-member-panel-dismiss').click({ timeout: 10000 }).catch(() => {});
     } else {
       fail(`C.1b: floorgrid-member-panel never drawn after tapping floorgrid-ambient-0 — ${memberPanel.why}`);
