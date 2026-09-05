@@ -29,7 +29,7 @@ import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-import { appMeetPort, appSessionPort } from './appServer';
+import { appMeetPort, appSessionPort, withSportingCreditOnRecord } from './appServer';
 import { meetDayFactsFromCache } from '../game/meetClient';
 import { meetResultProposal } from '../game/meetDay';
 import { playMeet } from '../game/meetPreview';
@@ -842,6 +842,15 @@ describe('navigating away and back cannot buy a second session of the day', () =
       meet === session,
       'meet day and the daily session are holding two different servers, so they are two different lifters',
     ).toBe(true);
+    const viewed: unknown = withSportingCreditOnRecord(appMeetPort(), () => undefined);
+    expect(
+      viewed === meet,
+      'the played-route credit view replaced the singleton, so the two halves are two objects again',
+    ).toBe(false);
+    expect(
+      (appMeetPort() as unknown) === (appSessionPort() as unknown),
+      'the view mutated the singleton identity',
+    ).toBe(true);
   });
 
   it('and it really is a meet-server port, so the identity above is not two stubs', () => {
@@ -960,15 +969,14 @@ describe('navigating away and back cannot buy a second session of the day', () =
     // `AppShell` gave `SessionScreen` a `serverPort` and gave `MeetScreen` no
     // port, no record and no cache. That asymmetry IS the defect, in one line of
     // JSX, and this is the line.
-    expect(SHELL).toMatch(/serverPort=\{meetFrame\?\.serverPort \?\? appMeetPort\(\)\}/);
+    expect(SHELL).toMatch(/serverPort=\{meetFrame\?\.serverPort \?\? playedMeetPort\}/);
+    expect(SHELL).toMatch(/withSportingCreditOnRecord\(appMeetPort\(\), creditSportingResult\)/);
   });
 
   it('MeetScreen forwards the port to the hook instead of dropping it', () => {
     // The twin of the `SessionScreen` check below, and the same silent failure:
     // accepting the prop and calling `useMeetDay(preview, ...)` anyway.
-    expect(MEET_SCREEN).toMatch(
-      /useMeetDay\(serverPort, preview, preview !== undefined, onRecorded\)/,
-    );
+    expect(MEET_SCREEN).toMatch(/useMeetDay\(serverPort, preview, preview !== undefined\)/);
     expect(MEET_SCREEN).not.toMatch(/useMeetDay\(preview/);
   });
 

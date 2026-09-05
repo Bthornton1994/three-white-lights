@@ -15,7 +15,12 @@ import type { FloorSimServiceObservation } from './floorSim';
 import { institutionalReputation } from './institutionalReputation';
 import { gymViewReduce, createGymViewState, type GymViewState } from './ladderView';
 import { withUpdatedGym } from './management';
-import { meetDayFactsFromCache } from '../game/meetClient';
+import {
+  meetDayFactsFromCache,
+  type MeetServerPort,
+  type MeetServerResponse,
+  type RecordedMeet,
+} from '../game/meetClient';
 import { meetResultProposal } from '../game/meetDay';
 import { playMeet } from '../game/meetPreview';
 import { MEET_ENTRY, MEET_LOCAL } from '../game/meetTuning';
@@ -26,6 +31,7 @@ import { equipmentBiasedMemberTypes } from './members';
 import type { SessionEquipmentItem } from './sessions';
 import { localSessionServer } from '../session/localSessionServer';
 import { openingCache } from '../game/sessionClient';
+import { withSportingCreditOnRecord } from '../shell/appServer';
 import type { PlayedMeetFacts } from './sportingReputationLedger';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -262,6 +268,8 @@ describe('CAREER-EMPIRE-REP-01 — Crossing 9 / Crossing 6-extended wiring', () 
     );
     expect(APP_SHELL).toMatch(/kind: 'credit-sporting-result'/);
     expect(APP_SHELL).toMatch(/facts: recorded/);
+    expect(APP_SHELL).toMatch(/withSportingCreditOnRecord\(appMeetPort\(\), creditSportingResult\)/);
+    expect(APP_SHELL).toMatch(/serverPort=\{meetFrame\?\.serverPort \?\? playedMeetPort\}/);
     expect(APP_SHELL).not.toMatch(/dispatchRef/);
   });
 
@@ -270,9 +278,13 @@ describe('CAREER-EMPIRE-REP-01 — Crossing 9 / Crossing 6-extended wiring', () 
       /readonly onRecorded\?: \(\(meetId: string, recorded: RecordedMeet\) => void\) \| undefined;/,
     );
     expect(MEET_SCREEN).toMatch(/onRecorded\?\.\(state\.context\.meet\.id, loop\.applied\)/);
-    expect(MEET_SCREEN).toMatch(
-      /useMeetDay\(serverPort, preview, preview !== undefined, onRecorded\)/,
-    );
+    expect(MEET_SCREEN).toMatch(/useMeetDay\(serverPort, preview, preview !== undefined\)/);
+    expect(MEET_SCREEN).not.toMatch(/useMeetDay\(serverPort, preview, preview !== undefined, onRecorded\)/);
+  });
+
+  it('useMeetDay does not take Crossing 9 onRecorded', () => {
+    expect(USE_MEET_DAY).not.toMatch(/\bonRecorded\b/);
+    expect(USE_MEET_DAY).not.toMatch(/onRecordedRef/);
   });
 });
 
@@ -299,16 +311,10 @@ describe('CAREER-EMPIRE-REP-01 P1 — leave-before-response / unmount-before-onR
     return proposal;
   }
 
-  it('the record promise notifies onRecorded before setApplied, and does not clear the ref', () => {
-    const thenAt = USE_MEET_DAY.indexOf('.then((response) => {');
-    const notifyAt = USE_MEET_DAY.indexOf('onRecordedRef.current?.(meetId, response.result)');
-    const appliedAt = USE_MEET_DAY.indexOf('setApplied(response.result)');
-    expect(thenAt).toBeGreaterThan(-1);
-    expect(notifyAt).toBeGreaterThan(thenAt);
-    expect(appliedAt).toBeGreaterThan(notifyAt);
-    expect(USE_MEET_DAY).toMatch(/onRecordedRef\.current = onRecorded/);
-    expect(USE_MEET_DAY).not.toMatch(/onRecordedRef\.current = (?:undefined|null)/);
-    expect(USE_MEET_DAY).not.toMatch(/recordMeetResult[\s\S]{0,200}= async/);
+  it('Crossing 9 stays the MeetScreen report; AppShell owns the unmount-safe credit', () => {
+    expect(MEET_SCREEN).toMatch(/onRecorded\?\.\(state\.context\.meet\.id, loop\.applied\)/);
+    expect(USE_MEET_DAY).not.toMatch(/\bonRecorded\b/);
+    expect(APP_SHELL).toMatch(/withSportingCreditOnRecord\(appMeetPort\(\), creditSportingResult\)/);
   });
 
   it('credits sporting reputation when the screen unmounts before onRecorded', async () => {
@@ -316,13 +322,17 @@ describe('CAREER-EMPIRE-REP-01 P1 — leave-before-response / unmount-before-onR
     const held = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const port = localSessionServer({ sleep: () => held });
-    const proposal = playAMeet(port);
+    const inner = localSessionServer({ sleep: () => held });
+    const proposal = playAMeet(inner);
 
     let gym = createGymViewState();
     const creditSportingResult = (
       meetId: string,
-      recorded: { readonly totalKg: number | null; readonly isTotalPr: boolean; readonly placing: PlayedMeetFacts['placing'] },
+      recorded: {
+        readonly totalKg: number | null;
+        readonly isTotalPr: boolean;
+        readonly placing: PlayedMeetFacts['placing'];
+      },
     ): void => {
       gym = gymViewReduce(gym, {
         kind: 'credit-sporting-result',
@@ -331,7 +341,6 @@ describe('CAREER-EMPIRE-REP-01 P1 — leave-before-response / unmount-before-onR
       });
     };
 
-    // Screen-owned Crossing 9 effect: dies with MeetScreen.
     let screenMounted = true;
     const screenOnRecorded = (
       meetId: string,
@@ -341,42 +350,79 @@ describe('CAREER-EMPIRE-REP-01 P1 — leave-before-response / unmount-before-onR
       creditSportingResult(meetId, recorded);
     };
 
-    // App-owned listener (AppShell's callback, held by the hook ref).
-    const onRecordedRef: {
-      current: typeof creditSportingResult | undefined;
-    } = { current: creditSportingResult };
+    const playedPort = withSportingCreditOnRecord(inner, creditSportingResult);
+    const pending = playedPort.recordMeetResult(
+      DAY,
+      MEET_LOCAL,
+      proposal,
+      asProposalId('meet-leave'),
+    );
 
-    const pending = port.recordMeetResult(DAY, MEET_LOCAL, proposal, asProposalId('meet-leave'));
-
-    // Player leaves during the in-flight save. MeetScreen unmounts; its
-    // applied-effect cannot run. The hook ref is not cleared.
+    // Player leaves during the in-flight save. MeetScreen unmounts; Crossing 9
+    // cannot run. AppShell's played-port view still outlives the screen.
     screenMounted = false;
 
     release();
     const response = await pending;
     expect(response.kind).toBe('recorded');
     if (response.kind !== 'recorded') throw new Error('unreachable');
+    expect(response.result.totalKg).not.toBeNull();
 
-    // The dropped screen path: this is the P1. `applied` never reaches an
-    // effect on an unmounted MeetScreen.
     screenOnRecorded(MEET_LOCAL.id, response.result);
-    expect(gym.sportingReputation.creditedReputation).toBe(0);
-    expect(gym.sportingReputation.entries).toEqual([]);
-
-    // The record-promise path: useMeetDay notifies from `.then`.
-    onRecordedRef.current?.(MEET_LOCAL.id, response.result);
-    expect(gym.sportingReputation.creditedReputation).toBeGreaterThan(0);
     expect(gym.lastSportingCredit?.kind).toBe('credited');
+    expect(gym.sportingReputation.creditedReputation).toBeGreaterThan(0);
 
-    const replay = await port.recordMeetResult(
+    const replay = await inner.recordMeetResult(
       DAY,
       MEET_LOCAL,
-      playAMeet(port),
+      playAMeet(inner),
       asProposalId('meet-replay'),
     );
     expect(replay.kind).toBe('refused');
     if (replay.kind !== 'refused') throw new Error('unreachable');
     expect(replay.error.code).toBe('MEET_ALREADY_RECORDED');
     expect(gym.sportingReputation.creditedReputation).toBeGreaterThan(0);
+  });
+
+  it('a recorded Total that cannot credit fails closed with a visible report', async () => {
+    const recorded: RecordedMeet = Object.freeze({
+      totalKg: 600,
+      previousBestTotalKg: null,
+      isTotalPr: true,
+      liftPrs: Object.freeze({ squat: false, bench: false, deadlift: false }),
+      placing: Object.freeze({ place: 1, fieldSize: 16 }),
+      bestByLiftKg: Object.freeze({ squat: 210, bench: 135, deadlift: 255 }),
+      bombedLift: null,
+    });
+    const stub: MeetServerPort = {
+      openingSnapshot: () => {
+        throw new Error('unused');
+      },
+      meetBrief: () => {
+        throw new Error('unused');
+      },
+      recordMeetResult: async (): Promise<MeetServerResponse> => ({
+        kind: 'recorded',
+        wire: recorded as never,
+        result: recorded,
+      }),
+    };
+    let gym = createGymViewState();
+    const playedPort = withSportingCreditOnRecord(stub, (meetId, facts) => {
+      gym = gymViewReduce(gym, { kind: 'credit-sporting-result', meetId, facts });
+    });
+    const response = await playedPort.recordMeetResult(
+      DAY,
+      { ...MEET_LOCAL, id: 'not-a-meet' },
+      playAMeet(localSessionServer({ sleep: () => Promise.resolve() })),
+      asProposalId('meet-unknown-view'),
+    );
+    expect(response.kind).toBe('recorded');
+    expect(gym.lastSportingCredit).toEqual({
+      kind: 'not-creditable',
+      meetId: 'not-a-meet',
+      reason: 'unknown-meet',
+    });
+    expect(gym.sportingReputation.creditedReputation).toBe(0);
   });
 });

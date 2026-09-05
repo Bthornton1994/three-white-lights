@@ -84,7 +84,7 @@ import { LIFT_PALETTE } from '../lift/liftPalette';
 import { LiftScreen } from '../lift/LiftScreen';
 import { MeetScreen, type MeetScreenProps } from '../meet/MeetScreen';
 import { SessionScreen } from '../session/SessionScreen';
-import { appMeetPort, appSessionPort } from './appServer';
+import { appMeetPort, appSessionPort, withSportingCreditOnRecord } from './appServer';
 import {
   frozenMeetFor,
   frozenSessionFor,
@@ -351,6 +351,14 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
     },
     [],
   );
+  // P1: AppShell-owned view of the played meet port. Memoised so the hook
+  // does not rebuild the meet on every shell render. Crossing 9 onRecorded
+  // stays the mounted report; this view credits if the screen unmounts
+  // while the save is still in flight.
+  const playedMeetPort = useMemo(
+    () => withSportingCreditOnRecord(appMeetPort(), creditSportingResult),
+    [creditSportingResult],
+  );
 
   // What beat the surface underneath is on. The screens report it; the shell
   // does not derive it, because deriving session or meet state in a `.tsx` is
@@ -440,8 +448,10 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
           //
           // `appMeetPort()` IS `appSessionPort()` — the same object, one row —
           // which is what makes the lifter who trains and the lifter who
-          // competes one lifter. This screen used to be given no port at all,
-          // and `useMeetDay` fabricated a record to have something to read.
+          // competes one lifter. The played route is handed a view of that
+          // object (`playedMeetPort`) so sporting credit lives on AppShell
+          // if MeetScreen unmounts mid-save. A debug frame keeps its own
+          // stand-in and does not pass through the view.
           //
           // The `??` reads like the ternary it replaces and is not one:
           // `meetFrame` is `undefined` for every route a player can reach
@@ -450,7 +460,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
           // are pinned in `shellRoute.test.ts`, and the browser check in
           // `tools/verify-shell-route.mjs` measures the consequence on the
           // played path rather than trusting either.
-          serverPort={meetFrame?.serverPort ?? appMeetPort()}
+          serverPort={meetFrame?.serverPort ?? playedMeetPort}
           preview={meetFrame?.state}
           showCard={meetFrame?.card ?? false}
           holdWalkoutAtMs={meetFrame?.holdWalkoutAtMs ?? null}

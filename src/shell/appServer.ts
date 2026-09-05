@@ -41,7 +41,7 @@
  */
 
 import { localSessionServer, type LocalAppServerPort } from '../session/localSessionServer';
-import type { MeetServerPort } from '../game/meetClient';
+import type { MeetServerPort, RecordedMeet } from '../game/meetClient';
 import type { SessionServerPort } from '../game/sessionClient';
 
 let connection: LocalAppServerPort | null = null;
@@ -112,4 +112,34 @@ export function appSessionPort(): SessionServerPort {
  */
 export function appMeetPort(): MeetServerPort {
   return appConnection();
+}
+
+/**
+ * A played-route VIEW of a meet port, owned by AppShell.
+ *
+ * Crossing 9 stays the MeetScreen report (`onRecorded` on `loop.applied`).
+ * That effect dies with the screen, and leave-meet is already available
+ * while `recordMeetResult` is in flight. This view credits from the same
+ * promise the screen used, on a parent that outlives MeetScreen.
+ *
+ * It does not replace the singleton. `appSessionPort() === appMeetPort()`
+ * is still the one row. Only the object handed to the played MeetScreen
+ * is this view. A `?meet=` debug frame keeps its own stand-in port and
+ * must not pass through here.
+ */
+export function withSportingCreditOnRecord(
+  port: MeetServerPort,
+  onRecorded: (meetId: string, recorded: RecordedMeet) => void,
+): MeetServerPort {
+  return {
+    openingSnapshot: () => port.openingSnapshot(),
+    meetBrief: (day) => port.meetBrief(day),
+    recordMeetResult: async (day, meet, proposal, proposalId) => {
+      const response = await port.recordMeetResult(day, meet, proposal, proposalId);
+      if (response.kind === 'recorded') {
+        onRecorded(meet.id, response.result);
+      }
+      return response;
+    },
+  };
 }

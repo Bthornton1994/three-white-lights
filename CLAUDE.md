@@ -974,14 +974,16 @@ read a Total. Mapping from played facts to Stage E's
 `bc-d98bea43`. Crossing 9 is an accepted product decision. This memorial
 commits before the `MeetScreen.tsx` edit.
 
-### CAREER-EMPIRE-REP-01 P1: record-promise acknowledgement
+### CAREER-EMPIRE-REP-01 P1: AppShell-owned played-port credit
 
-The Crossing 9 effect still reports `loop.applied` while MeetScreen is
-mounted. `useMeetDay` also notifies `onRecorded` from the
-`recordMeetResult` promise, via a ref that is not cleared on unmount,
-so a leave during the in-flight save cannot drop sporting credit.
-AppShell still owns the callback and still passes it only on the played
-route. Not a wrap of `MeetServerPort.recordMeetResult`.
+TWL BO: do not widen Crossing 9 beyond the accepted MeetScreen report.
+`useMeetDay` does not take `onRecorded`. Credit on unmount is owned by
+AppShell: `withSportingCreditOnRecord(appMeetPort(), creditSportingResult)`
+is the played-route port. The singleton is unchanged
+(`appSessionPort() === appMeetPort()`). A `?meet=` frame keeps its own
+stand-in and does not pass through the view. Crossing 9 `onRecorded`
+remains the mounted report. A recorded Total that cannot credit fails
+closed as `not-creditable`.
 
 ### CROSSING 6, EXTENDED: AppShell reducer lift for the sporting-reputation hand-off
 

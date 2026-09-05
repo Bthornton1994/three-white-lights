@@ -3,9 +3,10 @@
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
 **Last updated:** 2026-09-05 (CAREER-EMPIRE-REP-01 P1 — a leave during
-the in-flight meet save can no longer drop sporting credit: the record
-promise notifies AppShell's `onRecorded` even if MeetScreen unmounts
-before `loop.applied` runs its effect. Factory freeze remains
+the in-flight meet save can no longer drop sporting credit. AppShell
+owns a played-port view that credits from `recordMeetResult`; Crossing 9
+stays the MeetScreen `onRecorded` report. A recorded Total that cannot
+credit fails closed visibly. Factory freeze remains
 `34b98a06772db81126b68deec220a24328892a22` — human feel gate not run —
 not CLOSED. Sporting ledger on `GymViewState` composed
 with G.2E at points. Prior `EmpireState.reputation` phrase names this
@@ -5356,14 +5357,17 @@ halves share a grain. Both halves are now credited points. Writing v1
 cannot compose with G.2E.
 
 **Proven causal chain:** played meet → server `RecordedMeet` →
-`useMeetDay` record-promise (and `MeetScreen.onRecorded`) → `AppShell` →
+AppShell played-port view (`withSportingCreditOnRecord`) →
 `credit-sporting-result` →
 Stage E `sportingReputationFromResult` → sporting ledger →
 `institutionalReputation` (members points + sporting points).
-The promise notifies AppShell's callback so a leave during the in-flight
-save cannot drop sporting credit when MeetScreen unmounts. The Crossing 9
-effect remains the mounted report. Replay of the same `meetId` is a
-state identity no-op, so both paths may fire.
+Crossing 9 remains the mounted MeetScreen report only
+(`onRecorded` on `loop.applied`). It is not the unmount-safe path.
+A leave during the in-flight save still credits because AppShell's
+view outlives MeetScreen. Replay of the same `meetId` is a state
+identity no-op, so both paths may fire. A recorded Total on an
+unknown meet fails closed as `not-creditable` — a silent miss is a
+fail.
 
 **Write path:** `GymViewState.sportingReputation` via
 `creditSportingResult`. Adapter reads `totalKg` only as null/non-null,
@@ -5396,7 +5400,9 @@ Lifter.
 **Fences:** Stage E calculator byte-identical. Every `livingMember*.ts`
 byte-identical. `empireCore.ts` / `reputation.ts` byte-identical. No
 `src/game/**` edit. `MeetScreen.tsx` is one optional prop and one
-effect. No new numeric tuning literal. E-REP-01 stays open.
+effect. P1 credit is AppShell's played-port view, not a second
+Crossing 9 argument on `useMeetDay`. No new numeric tuning literal.
+E-REP-01 stays open.
 
 **Residuals:** REP-GRAIN-01 — the halves share a unit and were
 calibrated against different ladders (threshold 1; powerlifter

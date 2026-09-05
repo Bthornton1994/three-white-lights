@@ -176,7 +176,7 @@ export function MeetScreen({
   onCutIn,
   cutInSearch,
 }: MeetScreenProps): React.ReactElement {
-  const loop = useMeetDay(serverPort, preview, preview !== undefined, onRecorded);
+  const loop = useMeetDay(serverPort, preview, preview !== undefined);
   const { dispatch, restart } = loop;
   const state = preview ?? loop.state;
   const [cardOpen, setCardOpen] = useState(showCard);
@@ -196,8 +196,6 @@ export function MeetScreen({
     onPhase?.(state.phase);
   }, [onPhase, state.phase]);
 
-  // Crossing 9 mounted report. The hook also notifies from the record
-  // promise so a leave during the in-flight save cannot drop the credit.
   useEffect(() => {
     if (loop.applied === null) return;
     onRecorded?.(state.context.meet.id, loop.applied);
