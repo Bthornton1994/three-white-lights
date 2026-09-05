@@ -1,6 +1,7 @@
 /**
  * livingMembers.ts — Stage G.1 / G.1A identity, G.2 service history, stay
- * response, G.2C2 departure execution, and G.2C3 vacancy arrival.
+ * response, G.2C2 departure execution, G.2C3 vacancy arrival, and G.2D dues
+ * settlement.
  *
  * Pure module: zero React, zero side effects, zero I/O, no `Math.random`.
  * Persists the bodies the player sees on the played floor — NOT `NpcLifter`
@@ -24,11 +25,18 @@
  * strain-qualifying service observation. This file does not rebuild
  * satisfaction or retention arithmetic.
  *
+ * G.2D dues settlement lives in `applyLivingMemberDues`. That is the one
+ * writer of the living-member dues ledger. Clock advance on the played gym
+ * is the production caller. Service observations do not credit dues. This
+ * file does not call the members-module dues interpolator or
+ * `memberSatisfaction`; `livingMemberDues.ts` owns that mapping from G.2A
+ * composite.
+ *
  * NOT BUILT HERE, ON PURPOSE — later stages:
  *
- *   - No dues wiring, no `reputationFromMembers` wiring, no
- *     `memberSatisfaction` calls, no reputation-gated high-paying arrival
- *     rates (G.2E).
+ *   - No `reputationFromMembers` wiring, no `memberSatisfaction` calls, no
+ *     reputation-gated high-paying arrival rates (G.2E).
+ *   - No composing living dues into `ladder.gymBucks` (G2-DUES-PURSE-01).
  *   - No offline-fabricated service visits, stay changes, departures, or
  *     arrivals — observations arrive only from real `floorSim.ts` steps while
  *     the sim is running.
@@ -48,6 +56,14 @@ import {
   type LivingMemberArrivalContext,
   type LivingMemberArrivalRecord,
 } from './livingMemberArrival';
+import {
+  appendLivingMemberDuesSettlement,
+  createLivingMemberDuesLedger,
+  createLivingMemberDuesSettlement,
+  lastLivingMemberDuesSettlement,
+  livingMemberDuesForWindow,
+  type LivingMemberDuesLedger,
+} from './livingMemberDues';
 import {
   createLivingMemberDepartureRecord,
   livingMemberShouldDepart,
@@ -107,6 +123,8 @@ export interface LivingMemberRoster {
   readonly departures: readonly LivingMemberDepartureRecord[];
   /** Archive of G.2C3 vacancy arrivals. Relocation appends are not recorded here. */
   readonly arrivals: readonly LivingMemberArrivalRecord[];
+  /** G.2D dues ledger. Clock-settled; not the spendable ladder purse. */
+  readonly dues: LivingMemberDuesLedger;
 }
 
 /** History limits compared in tests; the shipped limit is the middle entry. */
@@ -291,6 +309,7 @@ export function createLivingMemberRoster(
     members,
     departures: Object.freeze([]),
     arrivals: Object.freeze([]),
+    dues: createLivingMemberDuesLedger(joinedAtSeconds),
   });
 }
 
@@ -342,6 +361,7 @@ export function reconcileLivingMemberRosterOnRelocation(
     members: Object.freeze([...existing, ...appended]),
     departures: roster.departures,
     arrivals: roster.arrivals,
+    dues: roster.dues,
   });
 }
 
@@ -589,19 +609,54 @@ export function applyServiceObservations(
     members: Object.freeze(nextMembers),
     departures: Object.freeze(nextDepartures),
     arrivals: Object.freeze(nextArrivals),
+    dues: roster.dues,
   });
 }
 
 /**
  * Clock advance only moves tenure forward. It never fabricates visits, stay
- * response, departures, or arrivals — the gym may have been away; service
- * truth stays in the sim.
+ * response, departures, arrivals, or dues settlements — the gym may have been
+ * away; service truth stays in the sim, and dues settle through
+ * `applyLivingMemberDues`.
  */
 export function advanceLivingMemberTenure(
   roster: LivingMemberRoster,
   _gapSeconds: number,
 ): LivingMemberRoster {
   return roster;
+}
+
+/**
+ * One writer for living-member dues. Settles `[dues.settledAtSeconds, toSeconds)`
+ * against the active roster at this mark. Exact replay of an already-settled
+ * mark is a full roster no-op. An earlier mark fails closed. Service
+ * observations do not call this.
+ */
+export function applyLivingMemberDues(
+  roster: LivingMemberRoster,
+  toSeconds: number,
+): LivingMemberRoster {
+  if (!Number.isFinite(toSeconds) || toSeconds < 0) {
+    refuseWith(`dues settle seconds must be a non-negative number, received ${toSeconds}`);
+  }
+  const fromSeconds = roster.dues.settledAtSeconds;
+  if (toSeconds < fromSeconds) {
+    refuseWith(`dues settle ${toSeconds} is earlier than last settled ${fromSeconds}`);
+  }
+  if (toSeconds === fromSeconds) return roster;
+  const gymBucks = livingMemberDuesForWindow(roster.members, fromSeconds, toSeconds);
+  const last = lastLivingMemberDuesSettlement(roster.dues.settlements);
+  if (last !== null && last.fromSeconds === fromSeconds && last.toSeconds === toSeconds) {
+    if (last.gymBucks !== gymBucks) {
+      refuseWith(`dues settlement conflicts at ${fromSeconds}–${toSeconds}`);
+    }
+    return roster;
+  }
+  const settlement = createLivingMemberDuesSettlement(fromSeconds, toSeconds, gymBucks);
+  return Object.freeze({
+    ...roster,
+    dues: appendLivingMemberDuesSettlement(roster.dues, settlement),
+  });
 }
 
 // ---------------------------------------------------------------------------

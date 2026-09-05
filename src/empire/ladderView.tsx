@@ -305,6 +305,7 @@ import {
 } from './floor';
 import type { FloorSimServiceObservation } from './floorSim';
 import {
+  applyLivingMemberDues,
   applyServiceObservations,
   createLivingMemberRoster,
   floorSimPopulationFromRoster,
@@ -667,10 +668,14 @@ function advanceGymClock(
     weekLog,
     // A clock advance never relocates and never touches ownership, so the
     // floor layout is untouched — only a successful `move-up` resets it.
+    // G.2D: the same clock mark is the production dues-settlement caller.
     floor: state.floor,
     surface: state.surface,
     capability: state.capability,
-    livingMembers: state.livingMembers,
+    livingMembers: applyLivingMemberDues(
+      state.livingMembers,
+      checkedInManaged.gym.ladder.collectedAt,
+    ),
   });
 }
 

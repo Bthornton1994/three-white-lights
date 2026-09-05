@@ -208,6 +208,10 @@ import {
   playerFacingDepartureLine,
 } from './livingMemberDeparture';
 import {
+  livingMemberDailyDuesGymBucks,
+  playerFacingDuesLine,
+} from './livingMemberDues';
+import {
   floorSimPopulationFromRoster,
   livingMemberById,
   playerFacingMemberShortId,
@@ -2748,6 +2752,9 @@ export function FloorGrid(props: FloorGridProps) {
                           </Text>
                           <Text testID={'floorgrid-member-panel-membership-reason'}>
                             {retention.reasons.map((reason) => reason.text).join(' ')}
+                          </Text>
+                          <Text testID={'floorgrid-member-panel-dues'}>
+                            {playerFacingDuesLine(livingMemberDailyDuesGymBucks(living))}
                           </Text>
                         </>
                       );

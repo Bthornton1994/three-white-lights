@@ -3202,11 +3202,13 @@ than the ruling's own §1–§23 sequence:
   **G.2C2 CLOSED / FROZEN** at
   `1493f43807753eda3654c428e4234702a7da45f4` — actual living-member
   departure after eligibility plus one further strain-qualifying
-  service observation. **G.2C3 VACANCY ARRIVAL BUILT, AWAITING FREEZE**
-  — population replenishment into ambient-cap vacancies from
-  attraction-qualifying service, not a reputation-gated rate rewrite.
-  No dues, no reputation, no Athlete return. G.2D / G.2E remain
-  blocked.
+  service observation.   **G.2C3 CLOSED / FROZEN** at
+  `2b0f52bdcd94004400937e450c8db12727ca74ca` — vacancy arrival /
+  population replenishment plus P1 honest Watching/neutral writer proof.
+  **G.2D DUES ACCOUNTING BUILT, AWAITING FREEZE** — living-member dues
+  from accepted G.2A experience, clock-settled on the roster ledger.
+  G.2E member-side reputation, Athlete seasonality, Career → Empire
+  reputation, Portfolio, and NpcLifter merge stay blocked.
 
 ### Human Stage C rejection at `f097695b`
 
@@ -4763,13 +4765,14 @@ behavior.
 | G.2B | CLOSED — COMMON / type-blind |
 | G.2C1 | CLOSED / FROZEN at `c8776cadcb57ef6f16acabe4f962858c6b2dac0a`. No roster deletion in G.2C1. |
 | G.2C2 | CLOSED / FROZEN at `1493f43807753eda3654c428e4234702a7da45f4`. Actual departure after eligibility plus one new strain-qualifying observation. |
-| G.2C3 | FOUNDATION BUILT; awaiting freeze. Vacancy arrival after attraction-qualifying service. No reputation gating. |
+| G.2C3 | CLOSED / FROZEN at `2b0f52bdcd94004400937e450c8db12727ca74ca`. Vacancy arrival after attraction-qualifying service. No reputation gating. |
 | G2-CONDITION-01 | OPEN — service-level condition attribution missing |
 | G2-FIT-01 | OPEN — equipment fit is attraction, not recent service |
 | G2-TYPE-01 | OPEN — no type-specific **satisfaction** interpretation |
 | G2-ATHLETE-SEASON-01 | OPEN — Athlete leave/return needs G.2C |
-| G.2C | G.2C1 frozen. G.2C2 frozen. G.2C3 vacancy arrival built, awaiting freeze. Reputation-gated high-paying rates remain G.2E. |
-| G.2D | BLOCKED |
+| G2-DUES-PURSE-01 | OPEN — living dues are accounted; they are not yet the spendable ladder purse |
+| G.2C | G.2C1 frozen. G.2C2 frozen. G.2C3 frozen. Reputation-gated high-paying rates remain G.2E. |
+| G.2D | FOUNDATION BUILT; awaiting freeze. Living-member dues accounting from G.2A experience. |
 | G.2E | BLOCKED |
 | Career → Empire reputation | BLOCKED |
 | Portfolio | BLOCKED |
@@ -4980,7 +4983,9 @@ next authorised slice.
 
 #### Stage G.2C3 — Vacancy Arrival / Population Replenishment
 
-**STAGE G.2C3 VACANCY ARRIVAL BUILT, AWAITING FREEZE.** After G.2C2 the
+**STAGE G.2C3 CLOSED / FROZEN** at
+`2b0f52bdcd94004400937e450c8db12727ca74ca` (includes P1 honest
+Watching/neutral writer proof). After G.2C2 the
 active roster can sit below the facility ambient cap. G.1 relocation
 still appends when the destination cap is larger. This slice is the
 first allowed to mint a new living member at the *current* rung into a
@@ -5041,10 +5046,72 @@ Type mismatch on a surviving identity still fails closed.
 countdown, no dues figure, no reputation claim, no upgrade-ownership
 guess.
 
-**Still blocked:** G.2D dues, G.2E member-side reputation (including
+**Still blocked after G.2C3 freeze:** G.2E member-side reputation (including
 reputation-gated high-paying arrival rates), Athlete seasonality
 (G2-ATHLETE-SEASON-01), Career → Empire reputation, Portfolio,
-NpcLifter merge.
+NpcLifter merge. G.2D dues accounting is the next authorised slice.
+
+#### Stage G.2D — Living Member Dues Accounting
+
+**STAGE G.2D DUES ACCOUNTING BUILT, AWAITING FREEZE.** This is the first
+slice allowed to turn living-member presence and accepted G.2A recent-
+service meaning into Gym Bucks dues. It is not a reputation write, not
+a ladder-income retune, and not Athlete seasonality.
+
+**GDD citation:** §5.6 Members: "They generate income. Dues scale with
+count and satisfaction." Count is the active `LivingMemberRoster`.
+Satisfaction is accepted G.2A composite when experience is formed.
+Forming is not a fake score, so forming members pay the published type
+base (`memberBaseDuesGymBucks`) rather than `memberDuesGymBucks` with
+an invented 0 or 1. Old crowding × fit × condition `memberSatisfaction`
+is not an input. `crowdingLoad` is not an input.
+
+**Why this stage, and not G.2E:** G.2C3 made vacancy fill real, so the
+gym can hold a living population again. Dues are the income consequence
+of that population. Reputation-gated high-paying arrival rates, and
+member-side institutional reputation, stay G.2E.
+
+**Proven causal chain:** physical gym decision → real FloorSim service
+→ persistent N=5 member history → G.2A experience → type × formed
+composite (or forming base) → clock-settled dues ledger.
+
+**Settlement grain:** gym-clock seconds, not FloorSim ticks and not a
+per-visit cash-out. `applyLivingMemberDues` is the one writer.
+`gymViewReduce` clock advance is the production caller. Service
+observations do not credit dues. `advanceLivingMemberTenure` remains a
+membership no-op and does not settle.
+
+**Occupancy at the settle mark:** active members at the mark pay for
+`[dues.settledAtSeconds, toSeconds)`, each pro-rated from
+`joinedAtSeconds` if they joined during the window. A member already
+off the roster (G.2C2) does not pay. Mid-window departure stubs are
+not reconstructed — named residual, not a second occupancy timeline.
+
+**Idempotence / fail-closed:** exact replay of an already-settled mark
+is a full roster no-op. An earlier mark refuses. A non-finite or
+negative mark refuses. Same `from`/`to` with a conflicting amount
+refuses. Invalid join-clock on a paying member refuses.
+
+**Purse residual G2-DUES-PURSE-01:** living dues are accounted on
+`LivingMemberRoster.dues` (`creditedGymBucks`, settlement archive).
+They are not composed into `ladder.gymBucks` in this slice. Frozen D2
+facility income (garage 60/hour and the offline banking policy) stays
+the spendable lump. Replacing or adding that lump is a pacing decision,
+not this foundation.
+
+**Player-facing:** member detail card `DUES` line shows the current
+daily rate. No %, no countdown, no reputation claim, no upgrade-
+ownership guess.
+
+**Fences:** no `reputationFromMembers`, no `memberSatisfaction`, no
+Career import, no Portfolio, no NpcLifter merge, no RNG, no `Date.now`,
+no leave probability. G.2A/G.2B/G.2C1–C3 frozen. Q/C/T frozen. No
+G.2E high-paying arrival rates.
+
+**Still blocked:** G.2E member-side reputation (including reputation-
+gated high-paying arrival rates), Athlete seasonality
+(G2-ATHLETE-SEASON-01), Career → Empire reputation, Portfolio,
+NpcLifter merge, G2-DUES-PURSE-01 purse composition.
 
 ---
 

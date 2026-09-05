@@ -419,6 +419,7 @@ import * as livingMemberRetentionModule from './livingMemberRetention';
 import * as livingMemberStayModule from './livingMemberStay';
 import * as livingMemberArrivalModule from './livingMemberArrival';
 import * as livingMemberDepartureModule from './livingMemberDeparture';
+import * as livingMemberDuesModule from './livingMemberDues';
 import * as livingMembersModule from './livingMembers';
 import * as managementModule from './management';
 import * as membersModule from './members';
@@ -1312,6 +1313,7 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'livingMemberDeparture.ts#lastLivingMemberDeparture#return.reasonText',
       'livingMemberDeparture.ts#livingMemberDepartureReason#return.reasonText',
       'livingMemberDeparture.ts#playerFacingDepartureLine#return',
+      'livingMemberDues.ts#playerFacingDuesLine#return',
       'livingMembers.ts#advanceLivingMemberTenure#return.arrivals[].attractedById',
       'livingMembers.ts#advanceLivingMemberTenure#return.arrivals[].member.displayName',
       'livingMembers.ts#advanceLivingMemberTenure#return.arrivals[].member.id',
@@ -1323,6 +1325,17 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'livingMembers.ts#advanceLivingMemberTenure#return.members[].id',
       'livingMembers.ts#advanceLivingMemberTenure#return.members[].displayName',
       'livingMembers.ts#advanceLivingMemberTenure#return.members[].recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberDues#return.arrivals[].attractedById',
+      'livingMembers.ts#applyLivingMemberDues#return.arrivals[].member.displayName',
+      'livingMembers.ts#applyLivingMemberDues#return.arrivals[].member.id',
+      'livingMembers.ts#applyLivingMemberDues#return.arrivals[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberDues#return.departures[].member.displayName',
+      'livingMembers.ts#applyLivingMemberDues#return.departures[].member.id',
+      'livingMembers.ts#applyLivingMemberDues#return.departures[].member.recentVisits[].stationKey',
+      'livingMembers.ts#applyLivingMemberDues#return.departures[].reasonText',
+      'livingMembers.ts#applyLivingMemberDues#return.members[].displayName',
+      'livingMembers.ts#applyLivingMemberDues#return.members[].id',
+      'livingMembers.ts#applyLivingMemberDues#return.members[].recentVisits[].stationKey',
       'livingMembers.ts#applyServiceObservations#return.arrivals[].attractedById',
       'livingMembers.ts#applyServiceObservations#return.arrivals[].member.displayName',
       'livingMembers.ts#applyServiceObservations#return.arrivals[].member.id',
@@ -1754,7 +1767,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 31, // Stage G.2C3 livingMemberArrival.ts
+  MODULES: 32, // Stage G.2D livingMemberDues.ts
   // 273 -> 280: GymView's four new exports (createGymViewState, GymViewState,
   // GymViewAction, GymViewRefusal don't count as runtime exports — the seven
   // that do are createGymViewState, gymViewReduce, GymView from ladderView.tsx
@@ -1861,7 +1874,8 @@ const SURFACE_CENSUS = Object.freeze({
   // 465 -> 473: Stage G.2C2 livingMemberDeparture.ts runtime exports plus
   // livingMembers/floorSim departure-archive and reconcile seams.
   // 473 -> 478: Stage G.2C3 livingMemberArrival.ts five runtime exports.
-  EXPORTS: 478, // Stage G.2C3 vacancy arrival
+  // 478 -> 489: Stage G.2D livingMemberDues.ts plus applyLivingMemberDues.
+  EXPORTS: 489, // Stage G.2D living-member dues accounting
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1883,7 +1897,8 @@ const SURFACE_CENSUS = Object.freeze({
   // 182 -> 221: Stage G.2C2 departure archive / player-facing leave line
   // plus reconcileFloorSimPopulation memberId. Read from this pin last.
   // 221 -> 246: Stage G.2C3 arrival archive / player-facing join line.
-  BARE_POSITIONS: 254, // Stage G.2C3 arrival archive + attractedById
+  // 246 -> 266: Stage G.2D playerFacingDuesLine plus applyLivingMemberDues roster strings.
+  BARE_POSITIONS: 266, // Stage G.2D dues line + applyLivingMemberDues roster strings
   BARE_FIELDS: 6, // Stage G.1A floorSim memberId group added
   BRANDED_POSITIONS: 34,
   /**
@@ -2011,7 +2026,7 @@ const SURFACE_CENSUS = Object.freeze({
   // own failure value.
   // 4453 -> 4729: Stage G.2C2 departure-record / stay-evidence unions on
   // livingMemberDeparture.ts and livingMembers.ts departures. Read from this pin last.
-  LITERAL_POSITIONS: 4935, // Stage G.2C3 arrival-record literal unions
+  LITERAL_POSITIONS: 5016, // Stage G.2D dues status / settlement literals
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -3095,7 +3110,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // calls no brand constructor either.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts joins the walk; it
   // calls no brand constructor either.
-  MODULES: 31, // Stage G.2C3 livingMemberArrival.ts
+  MODULES: 32, // Stage G.2D livingMemberDues.ts
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -3254,7 +3269,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 3662 -> 3704: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 3704 -> 3755: Stage G.2C2 livingMemberDeparture.ts plus livingMembers
   // departure/reconcile wiring. Read from this pin last.
-  CALLS_EXAMINED: 3786, // Stage G.2C3 livingMemberArrival.ts plus roster/sim wiring
+  CALLS_EXAMINED: 3834, // Stage G.2D livingMemberDues.ts plus applyLivingMemberDues
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3819,6 +3834,7 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'stationCapability.ts': stationCapabilityModule as unknown as Readonly<Record<string, unknown>>,
   'trainingStation.ts': trainingStationModule as unknown as Readonly<Record<string, unknown>>,
   'livingMemberArrival.ts': livingMemberArrivalModule as unknown as Readonly<Record<string, unknown>>,
+  'livingMemberDues.ts': livingMemberDuesModule as unknown as Readonly<Record<string, unknown>>,
   'livingMemberExperience.ts': livingMemberExperienceModule as unknown as Readonly<Record<string, unknown>>,
   'livingMemberRetention.ts': livingMemberRetentionModule as unknown as Readonly<Record<string, unknown>>,
   'livingMemberStay.ts': livingMemberStayModule as unknown as Readonly<Record<string, unknown>>,
@@ -8177,6 +8193,14 @@ function driveEverything(): readonly DrivenRow[] {
       livingMembersModule.advanceLivingMemberTenure(roster, 60),
       [roster],
     );
+    drive('applyLivingMemberDues', 'zero-gap', () =>
+      livingMembersModule.applyLivingMemberDues(roster, 0),
+      [roster],
+    );
+    drive('applyLivingMemberDues', 'one-day', () =>
+      livingMembersModule.applyLivingMemberDues(roster, EMPIRE_TUNING.SECONDS_PER_DAY),
+      [roster],
+    );
     drive('playerFacingTenureLine', 'garage', () => livingMembersModule.playerFacingTenureLine(0, 3600));
     drive('playerFacingWaitExperience', 'short', () => livingMembersModule.playerFacingWaitExperience(5));
     drive('playerFacingTrainingExperience', 'light', () =>
@@ -8477,6 +8501,73 @@ function driveEverything(): readonly DrivenRow[] {
       drive('lastLivingMemberArrival', 'one', () =>
         livingMemberArrivalModule.lastLivingMemberArrival([record]),
         [record],
+      );
+    }
+  }
+
+  // --- livingMemberDues.ts (Stage G.2D: living-member dues accounting)
+  {
+    const snapshot = livingMembersModule.createLivingMemberRoster(
+      'garage',
+      [...EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT],
+      [],
+      0,
+      EMPIRE_TUNING.FLOOR_SIM_RENDER_SEED,
+    ).members[0];
+    if (snapshot !== undefined) {
+      drive('livingMemberDailyDuesGymBucks', 'forming', () =>
+        livingMemberDuesModule.livingMemberDailyDuesGymBucks(snapshot),
+        [snapshot],
+      );
+      const daily = livingMemberDuesModule.livingMemberDailyDuesGymBucks(snapshot);
+      drive('playerFacingDuesLine', 'forming', () =>
+        livingMemberDuesModule.playerFacingDuesLine(daily),
+        [daily],
+      );
+      drive('livingMemberDuesForWindow', 'empty', () =>
+        livingMemberDuesModule.livingMemberDuesForWindow([], 0, EMPIRE_TUNING.SECONDS_PER_DAY),
+      );
+      drive('livingMemberDuesForWindow', 'opening', () =>
+        livingMemberDuesModule.livingMemberDuesForWindow(
+          Object.freeze([snapshot]),
+          0,
+          EMPIRE_TUNING.SECONDS_PER_DAY,
+        ),
+        [snapshot],
+      );
+      drive('livingMemberDuesGymBucksForInterval', 'full-day', () =>
+        livingMemberDuesModule.livingMemberDuesGymBucksForInterval(
+          snapshot,
+          0,
+          EMPIRE_TUNING.SECONDS_PER_DAY,
+        ),
+        [snapshot],
+      );
+      drive('requireLivingMemberDuesWindow', 'ok', () =>
+        livingMemberDuesModule.requireLivingMemberDuesWindow(0, EMPIRE_TUNING.SECONDS_PER_DAY),
+      );
+      const ledger = livingMemberDuesModule.createLivingMemberDuesLedger(0);
+      drive('createLivingMemberDuesLedger', 'opening', () =>
+        livingMemberDuesModule.createLivingMemberDuesLedger(0),
+      );
+      const settlement = livingMemberDuesModule.createLivingMemberDuesSettlement(
+        0,
+        EMPIRE_TUNING.SECONDS_PER_DAY,
+        60,
+      );
+      drive('createLivingMemberDuesSettlement', 'day', () =>
+        livingMemberDuesModule.createLivingMemberDuesSettlement(0, EMPIRE_TUNING.SECONDS_PER_DAY, 60),
+      );
+      drive('appendLivingMemberDuesSettlement', 'first', () =>
+        livingMemberDuesModule.appendLivingMemberDuesSettlement(ledger, settlement),
+        [ledger, settlement],
+      );
+      drive('lastLivingMemberDuesSettlement', 'empty', () =>
+        livingMemberDuesModule.lastLivingMemberDuesSettlement([]),
+      );
+      drive('lastLivingMemberDuesSettlement', 'one', () =>
+        livingMemberDuesModule.lastLivingMemberDuesSettlement(Object.freeze([settlement])),
+        [settlement],
       );
     }
   }
@@ -11630,7 +11721,7 @@ const DRIVE_CENSUS = Object.freeze({
   // advanceLivingMemberStay drive rows. Read from this pin's own failure value.
   // 600663 -> 600678: Stage G.2C2 departure/reconcile/stayEvidence drive rows.
   // Read from this pin last.
-  ROWS: 600688, // Stage G.2C3 vacancy arrival drive
+  ROWS: 600702, // Stage G.2D dues drive rows
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -11661,7 +11752,8 @@ const DRIVE_CENSUS = Object.freeze({
   // 465 -> 473: tracks SURFACE_CENSUS.EXPORTS 1:1 again — Stage G.2C2
   // livingMemberDeparture.ts plus roster/sim seams, all driven above.
   // 473 -> 478: Stage G.2C3 livingMemberArrival.ts five runtime exports.
-  EXPORTS_DRIVEN: 478, // Stage G.2C3 vacancy arrival
+  // 478 -> 489: Stage G.2D livingMemberDues.ts plus applyLivingMemberDues.
+  EXPORTS_DRIVEN: 489, // Stage G.2D living-member dues accounting
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -15980,6 +16072,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'floorSprites.ts': 7,
       'ladder.ts': 1,
       'ladderView.tsx': 1,
+      'livingMemberDues.ts': 1, // Stage G.2D playerFacingDuesLine
       'livingMemberExperience.ts': 1,
       'livingMemberRetention.ts': 1,
       'livingMembers.ts': 6, // Stage G.1C given-name pool + very-long wait knob
@@ -16011,10 +16104,11 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'ladderView.tsx': 34,
       'livingMemberArrival.ts': 9, // Stage G.2C3 arrival-record returns
       'livingMemberDeparture.ts': 5, // Stage G.2C2 departure-record returns
+      'livingMemberDues.ts': 13, // Stage G.2D dues ledger / rate returns
       'livingMemberExperience.ts': 36,
       'livingMemberRetention.ts': 10,
       'livingMemberStay.ts': 27, // Stage G.2C2 stayEvidence export
-      'livingMembers.ts': 37, // Stage G.2C2 departure archive wiring
+      'livingMembers.ts': 40, // Stage G.2D applyLivingMemberDues returns
       'management.ts': 90,
       'members.ts': 13,
       'npc.ts': 12,
@@ -16085,10 +16179,11 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'ladder.ts': 20,
   'livingMemberArrival.ts': 2, // Stage G.2C3 arrival refusals
   'livingMemberDeparture.ts': 2, // Stage G.2C2 departure refusals
+  'livingMemberDues.ts': 8, // Stage G.2D dues window / ledger refusals
   'livingMemberExperience.ts': 2,
   'livingMemberRetention.ts': 1,
   'livingMemberStay.ts': 5, // Stage G.2C1 stay evaluation refusals
-  'livingMembers.ts': 16, // Stage G.2C2 departed-member type-conflict refuseWith
+  'livingMembers.ts': 19, // Stage G.2D applyLivingMemberDues refusals
   'management.ts': 27,
   'members.ts': 9,
   'pacing.ts': 3,
@@ -16430,12 +16525,12 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:2693 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:2714 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:789 returned=unfollowable:station',
-  'FloorGrid.tsx:789 returned=unfollowable:station',
-  'FloorGrid.tsx:790 returned=unfollowable:station',
-  'FloorGrid.tsx:790 returned=unfollowable:station',
+  'FloorGrid.tsx:2697 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:2718 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:793 returned=unfollowable:station',
+  'FloorGrid.tsx:793 returned=unfollowable:station',
+  'FloorGrid.tsx:794 returned=unfollowable:station',
+  'FloorGrid.tsx:794 returned=unfollowable:station',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -16465,17 +16560,20 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'ladder.ts:349 receiver=ArrayLiteralExpression',
   'ladderView.tsx:124 returned=unfollowable:state',
   'ladderView.tsx:132 returned=unfollowable:state',
-  'ladderView.tsx:642 returned=unfollowable:state',
-  'ladderView.tsx:670 returned=unfollowable:state',
+  'ladderView.tsx:643 returned=unfollowable:state',
   'ladderView.tsx:672 returned=unfollowable:state',
-  'ladderView.tsx:673 returned=unfollowable:state',
-  'ladderView.tsx:728 returned=unfollowable:state',
-  'ladderView.tsx:737 returned=unfollowable:state',
+  'ladderView.tsx:674 returned=unfollowable:state',
+  'ladderView.tsx:733 returned=unfollowable:state',
+  'ladderView.tsx:742 returned=unfollowable:state',
   'livingMemberArrival.ts:105 returned=unfollowable:arrivals',
   'livingMemberDeparture.ts:103 returned=unfollowable:departures',
-  'livingMembers.ts:316 returned=unfollowable:roster',
-  'livingMembers.ts:343 returned=unfollowable:roster',
-  'livingMembers.ts:344 returned=unfollowable:roster',
+  'livingMemberDues.ts:103 returned=unfollowable:settlements',
+  'livingMemberDues.ts:120 returned=unfollowable:ledger',
+  'livingMembers.ts:335 returned=unfollowable:roster',
+  'livingMembers.ts:362 returned=unfollowable:roster',
+  'livingMembers.ts:363 returned=unfollowable:roster',
+  'livingMembers.ts:364 returned=unfollowable:roster',
+  'livingMembers.ts:612 returned=unfollowable:roster',
   'management.ts:1473 returned=unfollowable:state',
   'pacing.ts:246 receiver=CallExpression',
   'recruitment.ts:388 returned=unfollowable:state',
@@ -16488,12 +16586,12 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'stationCapability.ts:104 returned=unfollowable:capability',
 ]);
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1737 FloorSimState asked=true walked=false',
-  'FloorGrid.tsx:789 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:789 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:790 GridSize asked=true walked=false',
-  'FloorGrid.tsx:790 GridSize asked=true walked=false',
-  'FloorGrid.tsx:802 BayBench | undefined asked=true walked=false',
+  'FloorGrid.tsx:1741 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:793 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:793 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:794 GridSize asked=true walked=false',
+  'FloorGrid.tsx:794 GridSize asked=true walked=false',
+  'FloorGrid.tsx:806 BayBench | undefined asked=true walked=false',
   'empireInvariant.ts:1084 GymAxes asked=true walked=false',
   'empireInvariant.ts:1137 GymAxes asked=true walked=false',
   'empireInvariant.ts:1168 readonly ExpansionBuild[] asked=true walked=false',
@@ -16535,28 +16633,31 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'ladderView.tsx:124 LadderAccrual | null asked=true walked=false',
   'ladderView.tsx:131 LadderState asked=true walked=false',
   'ladderView.tsx:132 LadderAccrual | null asked=true walked=false',
-  'ladderView.tsx:642 readonly GymWeekReport[] asked=true walked=false',
-  'ladderView.tsx:670 FloorState asked=true walked=false',
-  'ladderView.tsx:672 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'ladderView.tsx:673 LivingMemberRoster asked=true walked=false',
-  'ladderView.tsx:728 FloorState asked=true walked=false',
-  'ladderView.tsx:737 LivingMemberRoster asked=true walked=false',
-  'ladderView.tsx:749 FloorState asked=true walked=false',
-  'ladderView.tsx:769 FloorState asked=true walked=false',
-  'ladderView.tsx:808 ManagedGym asked=true walked=false',
-  'ladderView.tsx:821 ManagedGym asked=true walked=false',
-  'ladderView.tsx:835 ManagedGym asked=true walked=false',
-  'ladderView.tsx:845 ManagedGym asked=true walked=false',
-  'ladderView.tsx:853 ManagedGym asked=true walked=false',
-  'ladderView.tsx:861 ManagedGym asked=true walked=false',
-  'ladderView.tsx:896 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'ladderView.tsx:643 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:672 FloorState asked=true walked=false',
+  'ladderView.tsx:674 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'ladderView.tsx:733 FloorState asked=true walked=false',
+  'ladderView.tsx:742 LivingMemberRoster asked=true walked=false',
+  'ladderView.tsx:754 FloorState asked=true walked=false',
+  'ladderView.tsx:774 FloorState asked=true walked=false',
+  'ladderView.tsx:813 ManagedGym asked=true walked=false',
+  'ladderView.tsx:826 ManagedGym asked=true walked=false',
+  'ladderView.tsx:840 ManagedGym asked=true walked=false',
+  'ladderView.tsx:850 ManagedGym asked=true walked=false',
+  'ladderView.tsx:858 ManagedGym asked=true walked=false',
+  'ladderView.tsx:866 ManagedGym asked=true walked=false',
+  'ladderView.tsx:901 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
   'livingMemberArrival.ts:105 LivingMemberArrivalRecord | undefined asked=true walked=false',
   'livingMemberDeparture.ts:103 LivingMemberDepartureRecord | undefined asked=true walked=false',
-  'livingMembers.ts:316 readonly LivingGymMember[] asked=true walked=false',
-  'livingMembers.ts:343 readonly LivingMemberDepartureRecord[] asked=true walked=false',
-  'livingMembers.ts:344 readonly LivingMemberArrivalRecord[] asked=true walked=false',
-  'livingMembers.ts:373 LivingGymMember | undefined asked=true walked=false',
-  'livingMembers.ts:430 ServiceVisitRecord | undefined asked=true walked=false',
+  'livingMemberDues.ts:103 LivingMemberDuesSettlement | undefined asked=true walked=false',
+  'livingMemberDues.ts:120 readonly LivingMemberDuesSettlement[] asked=true walked=false',
+  'livingMembers.ts:335 readonly LivingGymMember[] asked=true walked=false',
+  'livingMembers.ts:362 readonly LivingMemberDepartureRecord[] asked=true walked=false',
+  'livingMembers.ts:363 readonly LivingMemberArrivalRecord[] asked=true walked=false',
+  'livingMembers.ts:364 LivingMemberDuesLedger asked=true walked=false',
+  'livingMembers.ts:393 LivingGymMember | undefined asked=true walked=false',
+  'livingMembers.ts:450 ServiceVisitRecord | undefined asked=true walked=false',
+  'livingMembers.ts:612 LivingMemberDuesLedger asked=true walked=false',
   'management.ts:1473 readonly CountedDecisionRecord[] asked=true walked=false',
   'management.ts:1640 LadderAccrual asked=true walked=false',
   'management.ts:1650 GymState asked=true walked=false',
@@ -16614,7 +16715,8 @@ const SCREEN_AGREEMENT = Object.freeze({
   // relocate useCells walk (nine rows at the same for-of) and awayFrom cell.
   // 96 -> 99: Stage G.2C2 departure archive unfollowable returns.
   // 99 -> 100: Stage G.2C3 lastLivingMemberArrival unfollowable return.
-  SHIPPED_DISAGREEMENTS: 101, // Stage G.2C3 arrival archive unfollowable
+  // 101 -> 104: Stage G.2D dues ledger unfollowable returns.
+  SHIPPED_DISAGREEMENTS: 104, // Stage G.2D dues ledger unfollowable
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
@@ -16806,7 +16908,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
   // 1815 -> 1841: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 1841 -> 1866: Stage G.2C2 livingMemberDeparture.ts plus roster/sim wiring.
-  function: 1882, // Stage G.2C3 arrival / FloorSim mint function calls
+  function: 1914, // Stage G.2D dues / applyLivingMemberDues function calls
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16866,7 +16968,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
   // 1658 -> 1673: Stage G.2C1 livingMemberStay.ts plus livingMembers stayState.
   // 1673 -> 1699: Stage G.2C2 livingMemberDeparture.ts plus roster/sim members.
-  member: 1713, // Stage G.2C3 arrival / FloorSim mint member calls
+  member: 1729, // Stage G.2D dues / applyLivingMemberDues member calls
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -16977,7 +17079,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 31, // Stage G.2C3 livingMemberArrival.ts
+  MODULES: 32, // Stage G.2D livingMemberDues.ts
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved.
    * 404 -> 427 with GymView: +13 `return` sites (5 -> 18) and +6
    * `callback-invocation` sites (3 -> 9) on `ladderView.tsx`, +4 `return`
@@ -17069,7 +17171,8 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 1073 -> 1092: Stage G.2C2 return +19 (FloorGrid +3, floorSim +5,
   // livingMemberDeparture +5, stay +4, livingMembers +2). Read from this pin last.
   // 1092 -> 1099: Stage G.2C3 livingMemberArrival.ts return sites.
-  SITES: 1101, // Stage G.2C3 vacancy arrival
+  // 1101 -> 1118: Stage G.2D livingMemberDues.ts exported-binding + return, livingMembers +3.
+  SITES: 1118, // Stage G.2D living-member dues accounting
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -17250,7 +17353,8 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 191 -> 199: Stage G.2C2 floorSim +4, livingMemberDeparture +2,
   // livingMembers +2. Read from this pin last.
   // 200 -> 202: Stage G.2C3 livingMemberArrival.ts two refuseWith calls.
-  WRAP_CALLS: 202, // Stage G.2C3 arrival joinedAtSeconds / tick refusals
+  // 202 -> 213: Stage G.2D livingMemberDues.ts 8 plus livingMembers applyLivingMemberDues.
+  WRAP_CALLS: 213, // Stage G.2D dues interval / ledger refusals
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 7, // Stage G.1 argument-mutation on floorSim observation export
@@ -17372,7 +17476,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // and livingMembers.ts stayState. Read from this pin's own failure value.
   // 1109 -> 1128: Stage G.2C2 departure-record types plus roster.departures.
   // Read from this pin last.
-  POSITIONS: 1140, // Stage G.2C3 arrival-record types
+  POSITIONS: 1165, // Stage G.2D dues ledger / settlement types
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -21653,7 +21757,8 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // 291 -> 297: Stage G.2C1 livingMemberStay.ts stay-state type declarations.
   // 297 -> 300: Stage G.2C2 livingMemberDeparture.ts type declarations.
   // 300 -> 302: Stage G.2C3 livingMemberArrival.ts type declarations.
-  DECLARATIONS: 302, // Stage G.2C3 arrival-record types
+  // 302 -> 306: Stage G.2D livingMemberDues.ts type declarations.
+  DECLARATIONS: 306, // Stage G.2D dues ledger / settlement types
   /** Those carrying type parameters. An instantiation depth needs one. */
   // Phase 4: `MemberTable<Leaf>` in floorSprites.ts.
   GENERIC: 13,
