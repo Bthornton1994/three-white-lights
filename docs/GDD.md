@@ -2,7 +2,11 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-09-05 (G.2D P1 — unsettled-window dues occupancy is
+**Last updated:** 2026-09-05 (G.2D P1 — a played leave stamped on the
+settle-window start still occupies the open GymHost tick, so production
+`gymViewReduce` occupancy is not `[mark, mark)`. Unsettled-window dues
+are time-weighted presence, not the active roster at the settle mark.
+Earlier: 2026-09-05 (G.2D P1 — unsettled-window dues occupancy is
 time-weighted presence, not the active roster at the settle mark. A G.2C2
 leave inside the window still pays the gym-clock stub it was active;
 a member who already left before the window does not pay. Joins already
@@ -3213,7 +3217,8 @@ than the ruling's own §1–§23 sequence:
   from accepted G.2A experience, clock-settled on the roster ledger and
   credited onto the spendable Gym Bucks purse (added to frozen D2
   facility income). P1: unsettled-window occupancy is time-weighted
-  presence (in-window leaves still pay the active stub). G.2E member-side reputation, Athlete seasonality,
+  presence (in-window leaves still pay the active stub; a played leave
+  on the open settle mark occupies the GymHost tick). G.2E member-side reputation, Athlete seasonality,
   Career → Empire reputation, Portfolio, and NpcLifter merge stay blocked.
 
 ### Human Stage C rejection at `f097695b`
@@ -4785,7 +4790,7 @@ behavior.
 | G2-ATHLETE-SEASON-01 | OPEN — Athlete leave/return needs G.2C |
 | G2-DUES-PURSE-01 | CLOSED — living dues credit the spendable ladder purse on clock settle; D2 facility income stays additive |
 | G.2C | G.2C1 frozen. G.2C2 frozen. G.2C3 frozen. Reputation-gated high-paying rates remain G.2E. |
-| G.2D | FOUNDATION BUILT; P1 occupancy is time-weighted presence; purse composition in this slice; awaiting freeze. Living-member dues from G.2A experience. |
+| G.2D | FOUNDATION BUILT; P1 occupancy is time-weighted presence including open-mark production leaves; purse composition in this slice; awaiting freeze. Living-member dues from G.2A experience. |
 | G.2E | BLOCKED |
 | Career → Empire reputation | BLOCKED |
 | Portfolio | BLOCKED |
@@ -5102,16 +5107,19 @@ settle.
 over `[dues.settledAtSeconds, toSeconds)`. Active members pay through
 the mark, each pro-rated from `joinedAtSeconds` if they joined during
 the window. A G.2C2 leave during the window still pays for the stub it
-was active — `[max(from, joinedAtSeconds), leftAtSeconds)` — using the
+was active — `[max(from, joinedAtSeconds), until)` — using the
 gym-clock occupancy mark stamped at leave (`duesLeftAtSeconds`), not
-FloorSim ticks. A member who left at or before the window start does
-not pay. A leave with no gym-clock mark does not invent occupancy.
-The production clock path settles while members are still active, then
-observations run at `collectedAt` equal to that settle mark, so a
-played leave is stamped at the start of the next window and does not
-owe that following gap. Service observations still do not credit dues.
-The writer bills a mid-window stub when a gym-clock leave mark sits
-strictly inside the unsettled interval.
+FloorSim ticks. A stamp strictly before the window start pays nothing.
+A stamp strictly inside the window is used as-is. A stamp on the
+window start is the production observation path: `gymViewReduce` stamps
+`collectedAt`, which equals `dues.settledAtSeconds` after every clock
+settle, so the exclusive end would otherwise be `[mark, mark)`. That
+open mark still occupies the GymHost tick
+(`WALL_CLOCK_TICK_INTERVAL_SECONDS`), clipped to the settle window —
+the tick the leave occurred in, not the whole following skip. A later
+window after that stub is archived pays nothing. A leave with no
+gym-clock mark does not invent occupancy, including from an arrival
+join clock. Service observations still do not credit dues.
 
 **Idempotence / fail-closed:** exact replay of an already-settled mark
 is a full roster no-op. An earlier mark refuses. A non-finite or

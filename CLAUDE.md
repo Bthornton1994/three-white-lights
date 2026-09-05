@@ -49,7 +49,8 @@ slice: living-member Gym Bucks dues from accepted G.2A experience,
 clock-settled on the roster ledger and credited onto `ladder.gymBucks`
 on top of frozen D2 facility income. Unsettled-window occupancy is
 time-weighted presence (joins pro-rate; in-window G.2C2 leaves still
-pay the active stub). Do not retune D2 rates. G.2E member-side
+pay the active stub; a played leave on the open settle mark occupies
+the GymHost tick). Do not retune D2 rates. G.2E member-side
 reputation (including reputation-gated high-paying arrival rates) and
 G2-ATHLETE-SEASON-01 stay blocked. Do not wire `reputationFromMembers`
 or old crowding satisfaction. G.2C1–C3 stay frozen. G2-CONDITION-01,

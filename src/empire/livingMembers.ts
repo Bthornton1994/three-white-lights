@@ -488,8 +488,9 @@ function latestVisitOf(member: LivingGymMember): ServiceVisitRecord | undefined 
  * cap and never reuse a departed ordinal.
  *
  * `gymClockSeconds` is G.2D occupancy only. A leave stamps `duesLeftAtSeconds`
- * so an unsettled window can still bill the active stub. C1–C3 classifiers
- * and tick archives do not read it.
+ * only when this gym clock is provided, so an unsettled window can still bill
+ * the active stub. Arrival `joinedAtSeconds` is not a leave mark. C1–C3
+ * classifiers and tick archives do not read it.
  */
 export function applyServiceObservations(
   roster: LivingMemberRoster,
@@ -592,7 +593,7 @@ export function applyServiceObservations(
         observation.observedAtTick,
         visitRetention,
       );
-      const leaveClock = gymClockSeconds ?? arrivalContext?.joinedAtSeconds;
+      const leaveClock = gymClockSeconds;
       if (leaveClock !== undefined) {
         requireLivingMemberDuesOccupancyClock(leaveClock, nextMember.joinedAtSeconds);
         duesLeftAtSeconds = Object.freeze({
@@ -662,8 +663,10 @@ export function advanceLivingMemberTenure(
  * One writer for living-member dues. Settles `[dues.settledAtSeconds, toSeconds)`
  * against time-weighted occupancy over that window. Active members pay through
  * the mark. A G.2C2 leave stamped on `duesLeftAtSeconds` still pays the stub
- * it was active. Exact replay of an already-settled mark is a full roster
- * no-op. An earlier mark fails closed. Service observations do not call this.
+ * it was active. A stamp on the window start occupies the open GymHost tick
+ * rather than `[mark, mark)`. Exact replay of an already-settled mark is a
+ * full roster no-op. An earlier mark fails closed. Service observations do
+ * not call this.
  */
 export function applyLivingMemberDues(
   roster: LivingMemberRoster,

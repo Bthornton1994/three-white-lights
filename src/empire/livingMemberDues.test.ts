@@ -18,6 +18,7 @@ import {
   livingMemberDuesCreditedDelta,
   livingMemberDuesForWindow,
   livingMemberDuesGymBucksForInterval,
+  livingMemberDuesOccupancyUntilSeconds,
   playerFacingDuesLine,
   requireLivingMemberDuesOccupancyClock,
   requireLivingMemberDuesWindow,
@@ -153,6 +154,23 @@ describe('Stage G.2D — clock window math', () => {
     );
     expect(livingMemberDuesGymBucksForInterval(nia, 0, DAY, 0)).toBe(0);
     expect(livingMemberDuesGymBucksForInterval(nia, DAY / 2, DAY, DAY / 2)).toBe(0);
+  });
+
+  it('occupies the open GymHost tick when a departure is stamped on the window start', () => {
+    const nia = memberNamed('Nia', 'casual');
+    const omar = memberNamed('Omar', 'athlete', Object.freeze([]), 0, 1);
+    const openMark = EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS;
+    expect(livingMemberDuesOccupancyUntilSeconds(0, 0, DAY)).toBe(openMark);
+    expect(livingMemberDuesOccupancyUntilSeconds(DAY / 2, 0, DAY)).toBe(DAY / 2);
+    expect(livingMemberDuesOccupancyUntilSeconds(0, 0, 1)).toBe(1);
+    expect(
+      livingMemberDuesForWindow(Object.freeze([nia]), 0, DAY, Object.freeze([
+        { member: omar, departedAtSeconds: 0 },
+      ])),
+    ).toBe(
+      memberBaseDuesGymBucks('casual') +
+        livingMemberDuesGymBucksForInterval(omar, 0, DAY, openMark),
+    );
   });
 
   it('sums active members with departed stubs and ignores a zero-length window', () => {

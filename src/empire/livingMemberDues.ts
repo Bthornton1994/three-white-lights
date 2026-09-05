@@ -17,11 +17,15 @@
  * Accrual grain is gym-clock seconds, not FloorSim ticks and not per-visit
  * cash. Occupancy is time-weighted over the unsettled window: joins pro-rate
  * from `joinedAtSeconds`, and a G.2C2 leave during the window still pays for
- * the stub it was active. Exact replay of an already-settled mark is a roster
- * no-op. A later mark that is earlier than the ledger refuses. The production
- * clock path credits each ledger delta onto `ladder.gymBucks` on top of frozen
- * D2 facility income. This module does not write ladder state and does not
- * retune facility rates.
+ * the stub it was active. A leave stamped on the settle-window start — the
+ * production `gymViewReduce` observation arm, where `collectedAt` equals
+ * `dues.settledAtSeconds` — still occupies the open GymHost tick
+ * (`WALL_CLOCK_TICK_INTERVAL_SECONDS`), clipped to the window, so a played
+ * leave is not `[mark, mark)`. Exact replay of an already-settled mark is a
+ * roster no-op. A later mark that is earlier than the ledger refuses. The
+ * production clock path credits each ledger delta onto `ladder.gymBucks` on
+ * top of frozen D2 facility income. This module does not write ladder state
+ * and does not retune facility rates.
  */
 
 import { refuseWith } from './empireCore';
@@ -222,6 +226,32 @@ function presenceOverlapSeconds(
 }
 
 /**
+ * Exclusive gym-clock end of a departed member's presence in `[from, to)`.
+ *
+ * A stamp strictly inside the window is used as-is. A stamp on the window
+ * start is the production observation arm: GymHost has not yet dispatched
+ * the tick the leave occurred in, so occupancy is that open tick clipped to
+ * the settle window — not `[from, from)` and not the whole following skip.
+ */
+export function livingMemberDuesOccupancyUntilSeconds(
+  departedAtSeconds: number,
+  fromSeconds: number,
+  toSeconds: number,
+): number {
+  requireLivingMemberDuesWindow(fromSeconds, toSeconds);
+  if (!Number.isFinite(departedAtSeconds) || departedAtSeconds < 0) {
+    refuseWith(
+      `dues occupancy gym clock must be a non-negative number, received ${departedAtSeconds}`,
+    );
+  }
+  if (departedAtSeconds !== fromSeconds) return departedAtSeconds;
+  return Math.min(
+    toSeconds,
+    fromSeconds + EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS,
+  );
+}
+
+/**
  * Gym Bucks one living member owes across `[fromSeconds, toSeconds)`.
  * `untilSeconds` is the exclusive gym-clock end of presence; omitted means
  * still active through the window.
@@ -247,8 +277,9 @@ export function livingMemberDuesGymBucksForInterval(
 /**
  * Gym Bucks owed across a gym-clock window from time-weighted occupancy.
  * Active `members` pay through the window end, each pro-rated from
- * `joinedAtSeconds`. `departed` rows still pay `[joinedAtSeconds, departedAtSeconds)`
- * clipped to the window. A leave at or before the window start pays nothing.
+ * `joinedAtSeconds`. `departed` rows still pay `[joinedAtSeconds, until)`
+ * clipped to the window. A stamp strictly before the window start pays
+ * nothing. A stamp on the window start occupies the open GymHost tick.
  */
 export function livingMemberDuesForWindow(
   members: readonly LivingGymMember[],
@@ -282,7 +313,11 @@ export function livingMemberDuesForWindow(
       row.member,
       fromSeconds,
       toSeconds,
-      row.departedAtSeconds,
+      livingMemberDuesOccupancyUntilSeconds(
+        row.departedAtSeconds,
+        fromSeconds,
+        toSeconds,
+      ),
     );
   }
   return scrubPrecision(total);
