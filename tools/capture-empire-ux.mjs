@@ -59,7 +59,11 @@ async function logChrome(page, label) {
         : await tray.evaluate((el) => getComputedStyle(el).display);
     const fab = page.getByTestId('gymscreen-surface-build');
     const fabText = (await fab.count()) === 0 ? 'missing' : (await fab.innerText()).trim();
-    console.log(JSON.stringify({ label, lines, texture, trayDisplay, fabText }));
+    const fabDisplay =
+      (await fab.count()) === 0
+        ? 'missing'
+        : await fab.evaluate((el) => getComputedStyle(el).display);
+    console.log(JSON.stringify({ label, lines, texture, trayDisplay, fabText, fabDisplay }));
   } catch (err) {
     console.log(JSON.stringify({ label, error: String(err) }));
   }
@@ -132,16 +136,86 @@ async function run() {
   await logVoid(page, 'play-390');
   await shot(page, 'play');
   await logChrome(page, 'play');
+  await page.getByTestId('floorgrid-fixed-flat-bench').click({ timeout: 10000 });
+  await page.waitForTimeout(400);
+  const inspectGeom = await page.evaluate(() => {
+    const panel = document.querySelector('[data-testid="floorgrid-station-panel"]');
+    const equipment = document.querySelector('[data-testid="floorgrid-equipment-panel"]');
+    const card = document.querySelector('[data-testid="gymscreen-action-card"]');
+    const boxOf = (el) => {
+      if (el === null) return null;
+      const r = el.getBoundingClientRect();
+      const s = getComputedStyle(el);
+      return {
+        display: s.display,
+        visibility: s.visibility,
+        opacity: s.opacity,
+        top: Math.round(r.top),
+        bottom: Math.round(r.bottom),
+        height: Math.round(r.height),
+        width: Math.round(r.width),
+        inView: r.height > 0 && r.width > 0 && r.bottom > 0 && r.top < window.innerHeight,
+      };
+    };
+    return {
+      stationPanel: boxOf(panel),
+      equipmentPanel: boxOf(equipment),
+      actionCard: boxOf(card),
+    };
+  });
+  console.log(
+    JSON.stringify({
+      label: 'play-inspect',
+      stationPanel: await page.getByTestId('floorgrid-station-panel').count(),
+      equipmentPanel: await page.getByTestId('floorgrid-equipment-panel').count(),
+      ...inspectGeom,
+    }),
+  );
+  await shot(page, 'play-inspect');
+  const inspectDismiss = page.getByTestId('floorgrid-station-panel-dismiss');
+  if ((await inspectDismiss.count()) > 0) {
+    await inspectDismiss.click({ timeout: 5000 }).catch(() => {});
+  }
+  const equipDismiss = page.getByTestId('floorgrid-equipment-panel-dismiss');
+  if ((await equipDismiss.count()) > 0) {
+    await equipDismiss.click({ timeout: 5000 }).catch(() => {});
+  }
+  await page.waitForTimeout(300);
   await openSurface(page, 'build');
   await shot(page, 'build');
   await logChrome(page, 'build');
+  await page.getByTestId('floorgrid-fixed-power-bar').click({ timeout: 8000 });
+  await page.waitForTimeout(350);
+  console.log(
+    JSON.stringify({
+      label: 'build-moving',
+      ghost: await page.getByTestId('floorgrid-place-ghost').count(),
+      cancel: await page.getByTestId('floorgrid-place-cancel').count(),
+    }),
+  );
+  await shot(page, 'build-moving');
+  const dropCell = page.getByTestId('floorgrid-cell-6-3');
+  if ((await dropCell.count()) > 0) {
+    await dropCell.click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(400);
+  }
+  console.log(
+    JSON.stringify({
+      label: 'build-after-place',
+      refused: await page.getByTestId('floorgrid-drop-refused').count(),
+      ghost: await page.getByTestId('floorgrid-place-ghost').count(),
+    }),
+  );
+  await shot(page, 'build-after-place');
   // A6-2: Exit Build → Play via Done (same FAB testID as Build).
   await openSurface(page, 'build');
   await shot(page, 'play-after-exit-build');
   await logChrome(page, 'play-after-exit-build');
   await openSurface(page, 'shop');
+  await logChrome(page, 'shop');
   await shot(page, 'shop');
   await openSurface(page, 'staff');
+  await logChrome(page, 'staff');
   await shot(page, 'staff');
   await openSurface(page, 'more');
   await shot(page, 'more');

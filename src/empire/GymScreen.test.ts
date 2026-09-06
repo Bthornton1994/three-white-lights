@@ -2289,6 +2289,24 @@ describe('SF-TWL-GYM-EMPIRE-UX-02 — Play operating view vs Build overlay', () 
     );
   });
 
+  it('hides the Build FAB on Shop and Staff sheets', () => {
+    const play = createGymViewState();
+    const shop = gymViewReduce(play, { kind: 'set-gym-surface', surface: 'shop' });
+    const shopFab = findByTestId(render(shop, []), 'gymscreen-surface-build');
+    expect(shopFab.props.style).toEqual(
+      expect.objectContaining({ display: 'none' }),
+    );
+    const staff = gymViewReduce(play, { kind: 'set-gym-surface', surface: 'staff' });
+    const staffFab = findByTestId(render(staff, []), 'gymscreen-surface-build');
+    expect(staffFab.props.style).toEqual(
+      expect.objectContaining({ display: 'none' }),
+    );
+    const playFab = findByTestId(render(play, []), 'gymscreen-surface-build');
+    expect(playFab.props.style).not.toEqual(
+      expect.objectContaining({ display: 'none' }),
+    );
+  });
+
   it('Build sets FloorGrid buildMode; Done returns Play with no buildMode', () => {
     const play = createGymViewState();
     const build = gymViewReduce(play, { kind: 'set-gym-surface', surface: 'build' });

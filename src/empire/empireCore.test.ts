@@ -3914,7 +3914,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 918 -> 917: A6-4 removed GymScreen More "Developer" control testID.
     // 917 -> 932: SF-TWL-GYM-EMPIRE-UX-02 now/next/leave/build-place copy.
     // 932 -> 938: A×C IRON & AMBER chrome tokens (Gym, ivory, lights, card).
-    expect(singleQuoted.size).toBe(938);
+    // 938 -> 939: A×C board surround (`sienna`) and athletic `uppercase`.
+    expect(singleQuoted.size).toBe(939);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4116,7 +4117,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './stationCapability',
       './stationView',
       './trainingStation',
-      '100%',
       ':',
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
       'Accessory',
@@ -4736,6 +4736,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'settledTenureDays',
       'shipped',
       'shop',
+      'sienna',
       'silver',
       'single-purse',
       'single-wall-clock-purse',
@@ -4804,6 +4805,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'up',
       'upgrade-station',
       'upgraded',
+      'uppercase',
       'using',
       'using-bar-a',
       'using-bar-b',
@@ -4953,7 +4955,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1387 -> 1386: A6-4 removed GymScreen More Developer control testID.
     // 1386 -> 1403: SF-TWL-GYM-EMPIRE-UX-02 singleQuoted +15 and templateChunks +2.
     // 1403 -> 1409: A×C IRON & AMBER chrome tokens.
-    expect(stringsChecked).toBe(1409);
+    // 1409 -> 1410: A×C sienna/uppercase minus room Image `100%`.
+    expect(stringsChecked).toBe(1410);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5074,11 +5077,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `stationKind`, `completed`, `GymMemberId`, `:` from
     // `livingMembers.ts`'s id split). G.1A removes the `?` fallback from
     // `memberOrdinalFromId` and adds no new space-free single-quoted tokens.
-    expect(probes).toBe(spaceFree.length - 3);
-    // `:` from `livingMembers.ts`'s id split, `-` from shop separators, and
-    // `100%` from the full-bleed room Image size — each fails the letter
-    // guard and is intentionally unprobed. Every other shipped token is.
-    expect(probes + 3).toBe(spaceFree.length);
+    expect(probes).toBe(spaceFree.length - 2);
+    // `:` from `livingMembers.ts`'s id split and `-` from shop separators —
+    // each fails the letter guard and is intentionally unprobed. The old
+    // `100%` room-Image size left with the stretched room PNG. Every other
+    // shipped token is a probe.
+    expect(probes + 2).toBe(spaceFree.length);
 
     // JSX text gets a SIGNED-PAIR census rather than the flat ban above, and
     // the difference is a measurement, not a taste (E39): the ban predicate

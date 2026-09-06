@@ -343,7 +343,7 @@ const GYM_SCREEN_BUTTON_TEXT_COLOR = 'ivory';
 const GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR = 'darkslategray';
 const GYM_SCREEN_BUTTON_DISABLED_BORDER_COLOR = 'gray';
 const GYM_SCREEN_BUTTON_DISABLED_TEXT_COLOR = 'silver';
-const GYM_SCREEN_STAGE_COLOR = 'darkslategray';
+const GYM_SCREEN_STAGE_COLOR = 'sienna';
 const GYM_SCREEN_FAB_BACKGROUND_COLOR = 'goldenrod';
 const GYM_SCREEN_FAB_TEXT_COLOR = 'black';
 const GYM_SCREEN_LIGHT_COLOR = 'ivory';
@@ -395,6 +395,8 @@ const styles = StyleSheet.create({
   hudHeading: {
     color: GYM_SCREEN_BUTTON_TEXT_COLOR,
     fontWeight: 'bold',
+    letterSpacing: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    textTransform: 'uppercase',
   },
   hudMuted: {
     color: GYM_SCREEN_BUTTON_DISABLED_TEXT_COLOR,
@@ -426,7 +428,7 @@ const styles = StyleSheet.create({
     bottom:
       EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS +
       EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS * 2,
-    zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
+    zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
     padding: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
     backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
     borderWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
@@ -448,6 +450,7 @@ const styles = StyleSheet.create({
     bottom:
       EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS +
       EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS +
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS +
       EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS +
       EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS +
       EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS +
@@ -466,6 +469,14 @@ const styles = StyleSheet.create({
   },
   fabText: {
     color: GYM_SCREEN_FAB_TEXT_COLOR,
+    fontWeight: 'bold',
+    letterSpacing: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    textTransform: 'uppercase',
+  },
+  dockText: {
+    color: GYM_SCREEN_BUTTON_TEXT_COLOR,
+    letterSpacing: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    textTransform: 'uppercase',
   },
   drawer: {
     position: 'absolute',
@@ -523,6 +534,8 @@ const styles = StyleSheet.create({
   dockButtonActiveText: {
     color: GYM_SCREEN_FAB_TEXT_COLOR,
     fontWeight: 'bold',
+    letterSpacing: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    textTransform: 'uppercase',
   },
   staffCard: {
     marginBottom: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
@@ -1444,7 +1457,9 @@ export function GymScreen(props: GymScreenProps) {
       <Pressable
         testID={'gymscreen-surface-build'}
         accessibilityRole={'button'}
-        style={styles.fab}
+        style={
+          surface === 'play' || surface === 'build' ? styles.fab : styles.drawerHidden
+        }
         onPress={() =>
           dispatch({ kind: 'set-gym-surface', surface: surface === 'build' ? 'play' : 'build' })
         }
@@ -1485,10 +1500,10 @@ export function GymScreen(props: GymScreenProps) {
                 name === 'play'
                   ? surface === 'play' || surface === 'build'
                     ? styles.dockButtonActiveText
-                    : styles.buttonText
+                    : styles.dockText
                   : surface === name
                     ? styles.dockButtonActiveText
-                    : styles.buttonText
+                    : styles.dockText
               }
             >
               {playerFacingSurfaceLabel(name)}

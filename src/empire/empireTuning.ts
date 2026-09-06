@@ -2310,15 +2310,16 @@ export const EMPIRE_TUNING = Object.freeze({
   /**
    * The floor texture's own four tones, as RGB components: a base, a slightly
    * different alternate so tiles read in a checker, a darker seam drawn along
-   * each tile's far edges, and a sparse lighter fleck. All four sit close
-   * together and low in value on purpose — the bodies are the read, and the
-   * lift screen's environment palette holds its floor down the same way.
+   * each tile's far edges, and a sparse lighter fleck. A×C IRON & AMBER
+   * retunes these from cool slate toward garage wood — still index art, still
+   * darker than bodies and gear so sprites remain the read. Not a claim that
+   * isometric brick/steel illustration is done.
    */
   FLOOR_SPRITE_FLOOR_PALETTE: Object.freeze({
-    BASE: Object.freeze([58, 64, 66]),
-    ALT: Object.freeze([53, 58, 61]),
-    SEAM: Object.freeze([44, 49, 52]),
-    FLECK: Object.freeze([67, 74, 75]),
+    BASE: Object.freeze([96, 70, 42]),
+    ALT: Object.freeze([84, 60, 36]),
+    SEAM: Object.freeze([62, 42, 28]),
+    FLECK: Object.freeze([148, 112, 64]),
   }),
 
   /**

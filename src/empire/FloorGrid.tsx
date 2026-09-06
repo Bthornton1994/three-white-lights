@@ -230,7 +230,7 @@ import {
 } from './livingMembers';
 import { livingMemberExperience } from './livingMemberExperience';
 import { livingMemberRetentionPressure } from './livingMemberRetention';
-import { type ManagedGym, maintenancePrompt } from './management';
+import { type ManagedGym, maintenancePrompt, wornItems } from './management';
 import { type MemberType } from './members';
 import { type SessionEquipmentItem } from './sessions';
 import {
@@ -377,7 +377,7 @@ type PendingPlace =
   | { readonly kind: 'session'; readonly item: SessionEquipmentItem }
   | { readonly kind: 'furniture'; readonly item: LadderEquipmentItem };
 
-const FLOOR_BACKGROUND_COLOR = 'darkslategray';
+const FLOOR_BACKGROUND_COLOR = 'sienna';
 const FLOOR_GRID_BORDER_COLOR = 'gray';
 const FLOOR_ITEM_BORDER_COLOR = 'black';
 /** GDD §5.13's PLAYTEST 2 ruling, gap 3: the internal tile-boundary lines. Same shade as the outer frame, for one consistent "this is a grid" read. */
@@ -442,7 +442,11 @@ const FLOOR_PLACE_VALID_COLOR = 'springgreen';
  */
 const panelStyles = StyleSheet.create({
   panel: {
-    marginTop: EMPIRE_TUNING.FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS,
+    position: 'absolute',
+    left: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    right: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    bottom: EMPIRE_TUNING.GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS,
+    zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
     padding: EMPIRE_TUNING.FLOOR_STATION_PANEL_PADDING_PIXELS,
     borderWidth: EMPIRE_TUNING.FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS,
     borderColor: FLOOR_STATION_PANEL_BUTTON_BORDER_COLOR,
@@ -1431,6 +1435,14 @@ export function FloorGrid(props: FloorGridProps) {
   const unplaced = unplacedOwnedFloorItems(floor, owned);
   const furniture = floorFurnitureLayout(floor, barbellOwned);
   const unplacedFurniture = unplacedOwnedFurnitureItems(floor, barbellOwned);
+  const wornLeadItems = wornItems(managed);
+  const itemNeedsPlayInspect = (item: string): boolean => {
+    if (buildMode) return false;
+    for (let i = 0; i < wornLeadItems.length; i += 1) {
+      if (wornLeadItems[i] === item) return true;
+    }
+    return false;
+  };
   const bay = competitionBenchBay(
     floor,
     barbellOwned,
@@ -1940,6 +1952,8 @@ export function FloorGrid(props: FloorGridProps) {
     selectedMemberId === null
       ? null
       : (drawnSim.members.find((member) => member.memberId === selectedMemberId) ?? null);
+  const inspecting =
+    selectedMember !== null || panelStation !== null || panelEquipment !== null;
   const lastDeparture = lastLivingMemberDeparture(livingMembers.departures);
   const lastArrival = lastLivingMemberArrival(livingMembers.arrivals);
   const lastSeason = lastLivingMemberSeasonEvent(livingMembers.season);
@@ -1961,6 +1975,14 @@ export function FloorGrid(props: FloorGridProps) {
         position: 'relative',
         overflow: 'hidden',
         paddingBottom: EMPIRE_TUNING.GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS,
+        // Play action card is a GymScreen sibling. While a real inspect
+        // sheet is open this floor stacks above that card (highlight vs
+        // member z-index) so the sheet is the contextual surface and the
+        // gym stays visible above it. Resting Play keeps the lower stack
+        // so now/next is not covered.
+        zIndex: inspecting
+          ? EMPIRE_TUNING.FLOOR_SIM_MEMBER_Z_INDEX
+          : EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
       }}
     >
       <View
@@ -1972,22 +1994,9 @@ export function FloorGrid(props: FloorGridProps) {
           top: 0,
           right: 0,
           bottom: 0,
+          backgroundColor: FLOOR_BACKGROUND_COLOR,
         }}
-      >
-        <Image
-          source={{ uri: FLOOR_SPRITE_URIS.floor[floor.rung] }}
-          resizeMode={'stretch'}
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            right: 0,
-            bottom: 0,
-            width: '100%',
-            height: '100%',
-          }}
-        />
-      </View>
+      />
       <Text
         testID={'floorgrid-caption'}
         style={buildMode ? FLOOR_LABEL_STYLE : { display: 'none' }}
@@ -2044,7 +2053,7 @@ export function FloorGrid(props: FloorGridProps) {
             style={{
               width: grid.width * tile,
               height: grid.height * tile,
-              backgroundColor: buildMode ? FLOOR_BACKGROUND_COLOR : 'transparent',
+              backgroundColor: 'transparent',
               borderWidth: 0,
               borderColor: FLOOR_GRID_BORDER_COLOR,
               // GDD §5.13 presentation Phase 4: every sprite under this
@@ -2065,11 +2074,23 @@ export function FloorGrid(props: FloorGridProps) {
             } as PixelSnappedViewStyle}
           >
             {/*
-              GDD §5.13 presentation Phase 4: indexed floor PNG, stretched
-              to the grid. Build-only snap atlas (BO Q1 / PX A5): fades in
-              200–280ms on enter and unmounts after fade-out so Play has no
-              placement grid. Play keeps the solid FLOOR_BACKGROUND_COLOR.
+              A×C: the indexed floor PNG is the board in Play and Build —
+              a wood garage floor, not a placement atlas. Grid lines stay
+              Build-only (fade). Surrounding leftover stage is brick sienna
+              on floorgrid-room, not a stretched copy of this texture.
             */}
+            <Image
+              testID={'floorgrid-floor-texture'}
+              source={{ uri: FLOOR_SPRITE_URIS.floor[floor.rung] }}
+              resizeMode={'stretch'}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: grid.width * tile,
+                height: grid.height * tile,
+              }}
+            />
             {gridPainted ? (
             <Animated.View
               pointerEvents={'none'}
@@ -2084,15 +2105,6 @@ export function FloorGrid(props: FloorGridProps) {
                 borderColor: FLOOR_GRID_BORDER_COLOR,
               }}
             >
-              <Image
-                testID={'floorgrid-floor-texture'}
-                source={{ uri: FLOOR_SPRITE_URIS.floor[floor.rung] }}
-                resizeMode={'stretch'}
-                style={{
-                  width: grid.width * tile,
-                  height: grid.height * tile,
-                }}
-              />
             {verticalLines.map((i) => (
               <View
                 key={`v${i}`}
@@ -2231,14 +2243,20 @@ export function FloorGrid(props: FloorGridProps) {
                     // urgent than "this is the tapped station". Stage D.1b:
                     // Quality is the competition-spec pad itself, not a
                     // goldenrod rest-edge around the bay.
+                    // A×C Play: no editor selection box. Worn stations keep a
+                    // goldenrod inspect cue from real management state.
                     borderWidth: isRefusalTarget
                       ? EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS
                       : buildMode && isSelected
                         ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
-                        : 0,
+                        : itemNeedsPlayInspect(row.item)
+                          ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
+                          : 0,
                     borderColor: isRefusalTarget
                       ? FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR
-                      : FLOOR_STATION_SELECTED_OUTLINE_COLOR,
+                      : itemNeedsPlayInspect(row.item)
+                        ? FLOOR_QUALITY_MARK_COLOR
+                        : FLOOR_STATION_SELECTED_OUTLINE_COLOR,
                     cursor: 'pointer',
                   } as WebSelectableViewStyle}
                 >
@@ -2425,11 +2443,15 @@ export function FloorGrid(props: FloorGridProps) {
                         ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
                         : buildMode
                           ? EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS
-                          : 0,
+                          : itemNeedsPlayInspect(row.item)
+                            ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
+                            : 0,
                     borderColor:
                       isSelected || isPending
                         ? FLOOR_STATION_SELECTED_OUTLINE_COLOR
-                        : FLOOR_ITEM_BORDER_COLOR,
+                        : itemNeedsPlayInspect(row.item)
+                          ? FLOOR_QUALITY_MARK_COLOR
+                          : FLOOR_ITEM_BORDER_COLOR,
                     zIndex: 1,
                     cursor: 'pointer',
                   } as WebSelectableViewStyle}
@@ -2499,7 +2521,9 @@ export function FloorGrid(props: FloorGridProps) {
                       top: box.position.y * tile,
                       width: box.footprint.width * tile,
                       height: box.footprint.height * tile,
-                      borderWidth: EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS,
+                      borderWidth: buildMode
+                        ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
+                        : 0,
                       borderColor:
                         box.activity === 'using'
                           ? FLOOR_SIM_STATE_COLOR.using
@@ -2814,27 +2838,14 @@ export function FloorGrid(props: FloorGridProps) {
         </View>
       ) : null}
       {/*
-        GDD §5.14 Stage C — the contextual station panel. An ANCHORED PANEL
-        (CLAUDE.md's brief names "bottom sheet, anchored panel, compact
-        overlay" as the acceptable shapes) sitting in this file's own normal
-        document flow, directly below the grid/tray it is about, rather than
-        a `position: 'fixed'` sheet — chosen because `GymScreen.tsx`'s
-        `ScrollView` already nests this component inside another scroll
-        surface, and a fixed-position sheet is exactly the shape that risks
-        landing under `AppShell.tsx`'s absolutely-positioned `BACK TO
-        TRAINING` pill (S4i's own defect, one layer up) unless it is given
-        its own clearance maths. An inline panel cannot make that mistake by
-        construction: it has no fixed position to conflict with anything.
-
-        Stage D.1b: the panel is NOT `position: 'absolute'` over the floor.
-        An overlay forced a close-first ritual (taps on other world objects
-        hit the panel). Document flow keeps the floor as the primary
-        interaction surface, so one tap on another visible object selects it.
-
-        Dismissing this panel dispatches nothing — `setSelectedStation(null)`
-        is the only thing any control inside it does when it does not touch
-        `management.ts`, so closing it can never move a piece of equipment,
-        change the floor, or touch anything `GymViewState` owns.
+        GDD §5.14 Stage C — the contextual station panel. UX-02 Play is a
+        full-bleed overlay stage (`overflow: 'hidden'` on this root), so an
+        in-flow sheet below the grid is clipped and the GymScreen action
+        card covers the same band. The sheet is therefore a bottom overlay
+        with dock clearance: gym remains visible above it, and stations
+        above the sheet stay tappable. Dismiss still dispatches nothing —
+        `setSelectedStation(null)` only — so closing never moves equipment
+        or touches `GymViewState`.
       */}
       {selectedMember === null ? null : (
         <ScrollView testID={'floorgrid-member-panel'} style={panelStyles.panel}>
