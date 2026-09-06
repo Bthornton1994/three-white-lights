@@ -182,6 +182,38 @@ export function playerFacingUpgradeRefuse(reason: StationUpgradeRefuseReason): s
   return 'Not enough gym bucks';
 }
 
+/**
+ * Play HUD toast for any gym refusal. Domain tokens stay the identifiers;
+ * Play never prints them. Upgrade reasons reuse `playerFacingUpgradeRefuse`.
+ * Placement reasons reuse `playerFacingPlacementRefuse` wording.
+ */
+export function playerFacingGymRefusal(reason: string): string {
+  if (
+    reason === 'not-upgradable' ||
+    reason === 'already-upgraded' ||
+    reason === 'not-placed' ||
+    reason === 'no-second-position' ||
+    reason === 'not-enough-gym-bucks'
+  ) {
+    return playerFacingUpgradeRefuse(reason);
+  }
+  if (reason === 'out-of-bounds') return playerFacingPlacementRefuse('outside');
+  if (reason === 'overlaps') return playerFacingPlacementRefuse('occupied');
+  if (reason === 'already-owned') return 'Already in the gym';
+  if (reason === 'rung-too-low') return 'Locked at this location';
+  if (reason === 'at-the-top') return 'Already at the top location';
+  if (reason === 'not-owned') return 'Not in the gym yet';
+  if (reason === 'already-sound') return 'Already in good shape';
+  if (reason === 'not-offered') return 'Not offered right now';
+  if (reason === 'already-staffed') return 'A manager is already hired';
+  if (reason === 'no-manager') return 'No manager hired';
+  if (reason === 'not-dormant') return 'The gym is already open';
+  if (reason === 'equipment-below-recovery-minimum') return 'Equipment is not ready yet';
+  if (reason === 'manager-hired-under-warning') return 'Let the counted hire go first';
+  if (reason === 'no-prompt') return 'No review is open';
+  return 'That did not go through';
+}
+
 /** How a piece of equipment relates to the Competition Bench Bay. */
 export function playerFacingBayRole(
   complete: boolean,

@@ -292,7 +292,7 @@ import {
   playerFacingReturnSummary,
   playerFacingStayStatus,
   playerFacingSurfaceLabel,
-  playerFacingUpgradeRefuse,
+  playerFacingGymRefusal,
   playerFacingWeekEffectsLine,
   recoveryBlockingItems,
 } from './stationView';
@@ -667,13 +667,7 @@ export function GymScreen(props: GymViewProps) {
         )}
         {lastRefusal === null ? null : (
           <Text testID={'gymscreen-refusal'} style={styles.hudText}>
-            refused:{' '}
-            {lastRefusal === 'not-upgradable' ||
-            lastRefusal === 'already-upgraded' ||
-            lastRefusal === 'not-placed' ||
-            lastRefusal === 'no-second-position'
-              ? playerFacingUpgradeRefuse(lastRefusal)
-              : lastRefusal}
+            {playerFacingGymRefusal(lastRefusal)}
           </Text>
         )}
       </View>

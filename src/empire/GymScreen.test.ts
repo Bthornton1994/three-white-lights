@@ -946,7 +946,7 @@ describe('every control dispatches exactly the action it names', () => {
     expect(refused.lastRefusal).toBe('not-enough-gym-bucks');
     const refusedRoot = render(refused, []);
     expect(textOf(findByTestId(refusedRoot, 'gymscreen-refusal'))).toBe(
-      'refused: not-enough-gym-bucks',
+      'Not enough gym bucks',
     );
     expect(refused.managed.gym).toEqual(state.managed.gym);
     expect(findAllByTestId(refusedRoot, 'gymscreen-move-up').length).toBe(0);
@@ -1467,7 +1467,7 @@ describe('stage 4: the repair decision, priced before it is taken', () => {
     const again = dispatchThrough(repaired, { kind: 'repair-item', item });
     expect(again.lastRefusal).toBe('already-sound');
     expect(textOf(findByTestId(render(again, []), 'gymscreen-refusal'))).toBe(
-      'refused: already-sound',
+      'Already in good shape',
     );
   });
 
@@ -1478,7 +1478,7 @@ describe('stage 4: the repair decision, priced before it is taken', () => {
     expect(answered.lastRefusal).toBe('no-prompt');
     expect(answered.managed).toEqual(quiet.managed);
     expect(textOf(findByTestId(render(answered, []), 'gymscreen-refusal'))).toBe(
-      'refused: no-prompt',
+      'No review is open',
     );
   });
 });

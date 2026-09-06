@@ -1256,6 +1256,7 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'stationView.ts#playerFacingEquipmentCostLine#return',
       'stationView.ts#playerFacingEquipmentLabel#return',
       'stationView.ts#playerFacingGymBucksLine#return',
+      'stationView.ts#playerFacingGymRefusal#return',
       'stationView.ts#playerFacingIncomeRateLine#return',
       'stationView.ts#playerFacingLocationLine#return',
       'stationView.ts#playerFacingManagerCapability#return',
@@ -2189,7 +2190,7 @@ const SURFACE_CENSUS = Object.freeze({
   // own failure value.
   // 4453 -> 4729: Stage G.2C2 departure-record / stay-evidence unions on
   // livingMemberDeparture.ts and livingMembers.ts departures. Read from this pin last.
-  LITERAL_POSITIONS: 5917, // SF-TWL-GYM-EMPIRE-UX-01 player-facing gym chrome literals
+  LITERAL_POSITIONS: 5918, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -3432,7 +3433,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 3662 -> 3704: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 3704 -> 3755: Stage G.2C2 livingMemberDeparture.ts plus livingMembers
   // departure/reconcile wiring. Read from this pin last.
-  CALLS_EXAMINED: 4200, // SF-TWL-GYM-EMPIRE-UX-01 Play labels + gym-bucks lines
+  CALLS_EXAMINED: 4209, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -6019,6 +6020,7 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   // ceiling too, the same shape as MIN_HEIGHT_PIXELS=44 immediately above —
   // a real pill-footprint figure rather than a roster count.
   'ROSTER_SHAPE/GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS=82',
+  'ROSTER_SHAPE/GYM_SCREEN_BUILD_GRID_FADE_MS=240',
   'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
   'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[1]=28800',
   'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[2]=259200',
@@ -6307,7 +6309,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 2372 -> 2377: Stage C.1c CONDITION_PERCENT_SCALE in five domains.
   // 2428 -> 2433: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS across
   // five domains that carry it under their ceiling; ROSTER_SHAPE omits it.
-  CONTAINMENT_CHECKS: 2698, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS
+  CONTAINMENT_CHECKS: 2697, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -6385,7 +6387,7 @@ const DOMAIN_CENSUS = Object.freeze({
     // above ROSTER_SHAPE's ceiling (17); STATION_THROUGHPUT_CHANGEOVER_TICKS=6
     // does not.
     // 223 -> 225: Stage D2.2 two watched QA grains (1800, 3600).
-    ROSTER_SHAPE: 230, // Stage G.2A waitDecayTicks=110 above roster ceiling
+    ROSTER_SHAPE: 231, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS=240
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -9805,6 +9807,32 @@ function driveEverything(): readonly DrivenRow[] {
     drive('playerFacingUpgradeRefuse', 'no-second-position', () =>
       stationViewModule.playerFacingUpgradeRefuse('no-second-position'),
     );
+    for (const reason of [
+      'not-enough-gym-bucks',
+      'already-owned',
+      'rung-too-low',
+      'at-the-top',
+      'not-owned',
+      'out-of-bounds',
+      'overlaps',
+      'already-sound',
+      'not-offered',
+      'already-staffed',
+      'no-manager',
+      'not-dormant',
+      'equipment-below-recovery-minimum',
+      'manager-hired-under-warning',
+      'no-prompt',
+      'not-upgradable',
+      'already-upgraded',
+      'not-placed',
+      'no-second-position',
+      'unknown-token',
+    ] as const) {
+      drive('playerFacingGymRefusal', reason, () =>
+        stationViewModule.playerFacingGymRefusal(reason),
+      );
+    }
     drive('playerFacingRungLabel', 'garage', () => stationViewModule.playerFacingRungLabel('garage'));
     drive('playerFacingGymBucksAmount', 'zero', () => stationViewModule.playerFacingGymBucksAmount(0));
     drive('playerFacingGymBucksAmount', 'fraction', () =>
@@ -11661,7 +11689,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 358 -> 359: Stage C.1c CONDITION_PERCENT_SCALE=100 dropped above ROSTER_SHAPE.
   // 362 -> 363: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS=18 dropped
   // above ROSTER_SHAPE.
-  POINTS: 374, // Stage G.2A waitDecayTicks=110 dropped above ROSTER_SHAPE
+  POINTS: 375, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS dropped above ROSTER_SHAPE
   /** Of those, how many at least one subject was driven at. */
   // Tracks POINTS 1:1 again (218), confirmed by running the assertion below
   // rather than assumed. PLAYTEST 4: tracks POINTS 1:1 again (222), confirmed
@@ -11683,7 +11711,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 344 -> 357: GDD §5.14 Stage B, tracks POINTS 1:1 again (see POINTS
   // above), confirmed by running this exact assertion.
   // Stage C.1b: FLOOR_TILE_PIXELS_MAX drop is now driven; tracks POINTS 1:1.
-  POINTS_DRIVEN: 374, // Stage G.2A waitDecayTicks
+  POINTS_DRIVEN: 375, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS tracks POINTS 1:1
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
@@ -11728,7 +11756,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // COUNT/DAY/ROSTER_SHAPE. Measured off this assertion rather than
   // hand-derived per domain.
   // 6250 -> 6273: Stage C.1b one more dropped point × argument-heavy subjects.
-  PAIRS_DRIVEN: 6590, // Stage G.2A waitDecayTicks overflow pairs
+  PAIRS_DRIVEN: 6613, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS overflow pairs
   // GDD §5.13 presentation Phase 3: PAIRS_SKIPPED re-measured (495 -> 517),
   // a real failure value this round's own run produced.
   // GDD §5.14 Stage B: re-measured (517 -> 561), a real failure value this
@@ -11827,7 +11855,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // the next run's real failure.
   // Stage C.1b: furniture layout + dock-driven GymScreen trees add overflow
   // rows. Re-measured by running this assertion.
-  ROWS: 7526, // Stage G.2A waitDecayTicks overflow rows
+  ROWS: 7549, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS overflow rows
   // GDD §5.13 presentation Phase 3: re-measured (942486 -> 947983), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (947983 -> 960248).
@@ -11845,7 +11873,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // GDD §5.14 Stage B: thirteen new dropped points. Read from this pin's own
   // failure value.
   // 1355914 -> 1357825: Stage C.1b overflow GymScreen trees. Measured.
-  NODES: 1_446_422, // Stage G.2A waitDecayTicks overflow walk
+  NODES: 1_452_197, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS overflow walk
   // GDD §5.13 presentation Phase 3: re-measured (6413124 -> 6446099), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (6446099 -> 6540148).
@@ -11864,7 +11892,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // GDD §5.14 Stage B: thirteen new dropped points. Read from this pin's own
   // failure value.
   // 9415846 -> 9429777: Stage C.1b overflow strings. Measured.
-  STRINGS: 10_038_744, // Stage G.2A waitDecayTicks overflow walk
+  STRINGS: 10_083_587, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS overflow walk
   // GDD §5.13 presentation Phase 3: re-measured (4366 -> 4378), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (4378 -> 4381).
@@ -11948,7 +11976,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 1328 -> 1336: Stage C.1b overflow declined closures. Measured.
   // 1344 -> 1368: Stage D overflow declined closures. Measured.
   // 1368 -> 1376: Stage D2.1B four new overflow drive invocations.
-  CLOSURES_DECLINED: 1424, // Stage G.2A waitDecayTicks=110 overflow declined closures
+  CLOSURES_DECLINED: 1432, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS overflow declined closures
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -12007,7 +12035,7 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // refused the same way. Measured off this assertion.
   // Stage C.1b: one more refused overflow arm from the widened ROSTER_SHAPE
   // drop (FLOOR_TILE_PIXELS_MAX). Re-measured by running this assertion.
-  ['beginRecruitment#refused', 230], // Stage G.2A waitDecayTicks dropped above ROSTER_SHAPE
+  ['beginRecruitment#refused', 231], // SF-TWL-GYM-EMPIRE-UX-01 fade ms dropped above ROSTER_SHAPE
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
@@ -12667,7 +12695,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_217_523, // SF-TWL-GYM-EMPIRE-UX-01 player-facing gym chrome strings
+  STRINGS: 30_217_532, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -12777,7 +12805,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
   // 3973 -> 3975: Stage D2 reset-gym copy / wear-truth strings. Read from
   // this pin's own failure value.
-  DISTINCT_STRINGS: 4467, // SF-TWL-GYM-EMPIRE-UX-01 player-facing gym chrome strings
+    DISTINCT_STRINGS: 4470, // SF-TWL-GYM-EMPIRE-UX-01 player-facing gym chrome strings
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
   DEPTH_CUTS: 10, // Stage G.2D purse-credit ledger walk
   /**
@@ -16794,7 +16822,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'engagement.ts': 23,
       'expansion.ts': 47,
       'floor.ts': 38,
-      'FloorGrid.tsx': 80,
+      'FloorGrid.tsx': 81,
       'floorSim.ts': 84,
       'floorSprites.ts': 54,
       'GymScreen.tsx': 12,
@@ -17567,7 +17595,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 37 -> 32: Stage C.1d dropped PanResponder-local call sites.
   // 32 -> 37: C-DEBT-04 clipRefusalRegion / flashRefusal region calls.
   // 37 -> 47: GDD §5.18 Stage D.1 FloorGrid per-bench / equipment-panel locals.
-  local: 47,
+  local: 49,
   // GDD §5.13 presentation Phase 3: function 827 -> 918, member 810 -> 889,
   // member-of-parameter 21 -> 27, all floorSim.ts's own call targets. Read
   // from this table's own failure value.
@@ -17649,7 +17677,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
   // 1815 -> 1841: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 1841 -> 1866: Stage G.2C2 livingMemberDeparture.ts plus roster/sim wiring.
-  function: 2135, // SF-TWL-GYM-EMPIRE-UX-01 Play labels + gym-bucks lines
+  function: 2134, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -17709,7 +17737,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
   // 1658 -> 1673: Stage G.2C1 livingMemberStay.ts plus livingMembers stayState.
   // 1673 -> 1699: Stage G.2C2 livingMemberDeparture.ts plus roster/sim members.
-  member: 1870, // SF-TWL-GYM-EMPIRE-UX-01 player-facing gym chrome members
+  member: 1878, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -17919,7 +17947,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 1123 -> 1124: Stage G.2D P1 open-mark occupancy until second return path.
   // 1124 -> 1141: Stage G.2E livingMemberReputation returns, livingMembers
   // applyLivingMemberReputation, members type helpers, arrival gate.
-  SITES: 1212, // SF-TWL-GYM-EMPIRE-UX-01 +1 exported-binding +31 stationView returns
+  SITES: 1213, // SF-TWL-GYM-EMPIRE-UX-01 FloorGrid fade/ghost return
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -18076,7 +18104,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // stayState wiring. Read from this pin last.
   // 84_813 -> 86_105: Stage G.2C2 livingMemberDeparture.ts plus roster/sim
   // departure wiring. Read from this pin last.
-  NODES_EXAMINED: 95_090, // SF-TWL-GYM-EMPIRE-UX-01 Play labels + gym-bucks AST
+  NODES_EXAMINED: 95_259, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS AST
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

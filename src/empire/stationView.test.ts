@@ -27,6 +27,7 @@ import {
   playerFacingEquipmentLabel,
   playerFacingGymBucksAmount,
   playerFacingGymBucksLine,
+  playerFacingGymRefusal,
   playerFacingIncomeRateLine,
   playerFacingLocationLine,
   playerFacingManagerCapability,
@@ -183,6 +184,13 @@ describe('stationView.ts — GDD §5.14 Stage C', () => {
       'No room for a second bench',
     );
     expect(playerFacingUpgradeRefuse('not-enough-gym-bucks')).toBe('Not enough gym bucks');
+    expect(playerFacingGymRefusal('not-enough-gym-bucks')).toBe('Not enough gym bucks');
+    expect(playerFacingGymRefusal('already-sound')).toBe('Already in good shape');
+    expect(playerFacingGymRefusal('no-prompt')).toBe('No review is open');
+    expect(playerFacingGymRefusal('overlaps')).toBe('Space occupied');
+    expect(playerFacingGymRefusal('out-of-bounds')).toBe('Outside the gym');
+    expect(playerFacingGymRefusal('no-manager')).toBe('No manager hired');
+    expect(playerFacingGymRefusal('not-a-real-reason')).toBe('That did not go through');
   });
 
   // -------------------------------------------------------------------------
