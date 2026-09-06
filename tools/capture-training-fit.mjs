@@ -90,6 +90,7 @@ function overflowReport() {
     startRect.top >= 0 &&
     startRect.bottom <= window.innerHeight + 1 &&
     startRect.height > 0;
+  const stage = document.querySelector('[data-testid="session-training-stage"]');
   const overlay = document.querySelector('[data-testid="session-briefing-overlay"]');
   const stageRect = stage === null ? null : stage.getBoundingClientRect();
   const overlayRect = overlay === null ? null : overlay.getBoundingClientRect();
@@ -103,7 +104,8 @@ function overflowReport() {
     checkInPresent: checkIn !== null,
     stagePresent: document.querySelector('[data-testid="session-training-stage"]') !== null,
     lightsPresent: document.querySelector('[data-testid="session-lights"]') !== null,
-    startPresent: document.querySelector('[data-testid="session-start-lift"]') !== null,
+    startPresent: start !== null,
+    startInView,
     outlookPresent: document.querySelector('[data-testid="close-out-outlook"]') !== null,
     nextActionPresent: document.querySelector('[data-testid="close-out-next"]') !== null,
     rpeWraps,
@@ -252,6 +254,7 @@ const briefingHits = report.viewports.flatMap((v) =>
         f.checkInPresent ||
         f.sleepChipPresent ||
         f.rpeWraps ||
+        !f.startInView ||
         (typeof f.stageHeight === 'number' && f.stageHeight < f.innerHeight * 0.9)),
   ),
 );
