@@ -2713,7 +2713,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // sportingReputationLedger.ts mention graph. Read from this assertion's
     // own failure value.
     // 245 -> 246: CAREER-EMPIRE-REP-01 GymScreen → institutionalReputation.
-    expect(pairs).toBe(246);
+    // 246 -> 249: SF-TWL-GYM-EMPIRE-UX-01 GymScreen staff cards name
+    // livingMemberDues / livingMemberReputation / livingMembers.
+    expect(pairs).toBe(249);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3333,7 +3335,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'member(s) around the gym',
       // C.1c: the Build tray now sits above the diagnostics block so the
       // inventory is next to the gym rather than under a developer readout.
-      'unplaced — tap a piece, then tap a tile on the gym',
+      // UX-02: tray copy is playerFacingBuildTrayEmpty / PlaceHint, not JSX
+      // text, so the old "tap a tile" chunk is gone.
       'floor (',
       ') —',
       'x',
@@ -3395,14 +3398,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // refusal chunks that used to lead now trail it. Transcribed from a
       // driven run of this exact census, same discipline as every entry in
       // this list.
-      'rung',
-      'earning',
-      'gym bucks per hour',
-      'gym bucks:',
-      'accelerated:',
-      'clock:',
+      // Player HUD is now expressions from stationView.ts (location, purse,
+      // rate, reputation). The six rung/earning/clock JsxText chunks that
+      // used to lead this file are gone from Play; clock/accelerated remain
+      // on the developer route below.
       'maintenance review',
-      'refused:',
       // S4b — §5.11 stage 4 on the garage floor. Fifty-two new chunks, all
       // in `GymScreen.tsx`'s new management section, transcribed from a driven
       // run of this exact census rather than typed against the source, the
@@ -3421,13 +3421,30 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       ': hire',
       'gym bucks, wage',
       '/hour,',
+      'Role: manager',
+      'Specialty:',
+      'Assignment: not hired',
+      'Effect:',
+      'Next: hire if the purse covers it',
       'needs',
       'gym bucks — you have',
       'hire',
       'manager:',
       '—',
       'gym bucks per banked hour,',
+      'Role:',
+      'Specialty:',
+      'Assignment: on staff',
+      'Effect:',
+      'Next: let them go',
       'let them go',
+      'Role: member',
+      'Specialty:',
+      'Assignment:',
+      'Effect:',
+      ';',
+      ';',
+      'Next:',
       'gym status:',
       'Equipment condition:',
       '%',
@@ -3477,7 +3494,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gym bucks ·',
       'owned',
       'not here yet — fits from',
-      'and this gym is a',
+      'and this gym is',
       'needs',
       'gym bucks — you have',
       'buy',
@@ -3485,7 +3502,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gym bucks ·',
       'owned',
       'not here yet — fits from',
-      'and this gym is a',
+      'and this gym is',
       'needs',
       'gym bucks — you have',
       'buy',
@@ -3514,25 +3531,17 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'slot',
       ':',
       '—',
-      'if this week ended now: residual carry',
-      ', injury chance',
-      ', technique bonus',
-      ', ceiling growth',
       'week',
       ':',
-      '— residual carry',
-      ', injury chance',
-      ', technique bonus',
-      ', ceiling growth',
+      '—',
       // GDD §5.14 STAGE C.1 — the new `gymscreen-diagnostics` block, directly
       // above this file's dev-controls chunk (also unmoved: already correctly
-      // last). The five `gymscreen-accrual` chunks and the eleven
-      // `gymscreen-check-in-costs`/auto-repair chunks are BYTE-IDENTICAL to
-      // where this list used to carry them, earlier in this same file's
-      // section above — relocated, not reworded, per this round's own "kept
-      // here for verification" heading chunk, which is the one genuinely new
-      // string this round adds anywhere in `GymScreen.tsx`.
+      // last). Relocated onto the explicit developer route this round, still
+      // byte-identical except clock/accelerated which moved here from the
+      // player HUD.
       'engine detail — not needed to play, kept here for verification',
+      'accelerated:',
+      'clock:',
       'no maintenance review open',
       'Needs attention: none',
       '0 counted decision(s)',
@@ -3900,7 +3909,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 827 -> 841: G2-ATHLETE-SEASON-01 season copy, refuse lines, and notice testID.
     // 841 -> 852: CAREER-EMPIRE-REP-01 ledger/composer copy and refuse lines.
     // 852 -> 856: CAREER-EMPIRE-REP-01 GymScreen reputation testIDs / copy.
-    expect(singleQuoted.size).toBe(856);
+    // 856 -> 905: SF-TWL-GYM-EMPIRE-UX-01 player-facing chrome and catalog copy.
+    // 905 -> 918: SF-TWL-GYM-EMPIRE-UX-01 playerFacingGymRefusal toast copy.
+    // 918 -> 917: A6-4 removed GymScreen More "Developer" control testID.
+    // 917 -> 932: SF-TWL-GYM-EMPIRE-UX-02 now/next/leave/build-place copy.
+    // 932 -> 938: A×C IRON & AMBER chrome tokens (Gym, ivory, lights, card).
+    // 938 -> 939: A×C board surround (`sienna`) and athletic `uppercase`.
+    // 939 -> 942: A×C brand line, gymscreen-brand testID, HUD column identity.
+    expect(singleQuoted.size).toBe(942);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4040,7 +4056,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 426 -> 446: G2-ATHLETE-SEASON-01 season leave/return / occupancy refuse templates.
     // 446 -> 451: CAREER-EMPIRE-REP-01 ledger/composer refuse templates.
     // 451 -> 452: CAREER-EMPIRE-REP-01 gymscreen-reputation-reason template.
-    expect(templateChunks.size).toBe(452);
+    // 452 -> 469: SF-TWL-GYM-EMPIRE-UX-01 player-facing template lines.
+    // 469 -> 471: SF-TWL-GYM-EMPIRE-UX-02 now-line templates.
+    expect(templateChunks.size).toBe(471);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4066,6 +4084,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // property names from `Omit`/`Extract` in `ladderView.tsx`. No
     // manufacturer, athlete or brand.
     expect(spaceFree).toEqual([
+      '-',
       './FloorGrid',
       './empireCore',
       './empireInvariant',
@@ -4097,8 +4116,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './sportingReputation',
       './sportingReputationLedger',
       './stationCapability',
-      // GDD §5.14 Stage C's own import specifier — `FloorGrid.tsx`'s new
-      // edge to `stationView.ts`.
       './stationView',
       './trainingStation',
       ':',
@@ -4112,13 +4129,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Bike',
       'Blair',
       'Bodybuilder',
+      'Build',
       'Cables',
       'Casual',
       'Cole',
       'Conditioning',
       'Cora',
       'Dara',
+      'Developer',
       'Disrupted',
+      'Done',
       'Dove',
       'Drew',
       'Dumbbells',
@@ -4131,8 +4151,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Felix',
       'Fern',
       'Galen',
+      'Garage',
       'Good',
       'Gray',
+      'Gym',
       'GymMemberId',
       'Hale',
       'Hana',
@@ -4160,6 +4182,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Miles',
       'Mira',
       'Mixed',
+      'More',
       'Nia',
       'Nils',
       'Noor',
@@ -4185,12 +4208,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Rower',
       'Sauna',
       'Shae',
+      'Shop',
       'Skye',
       'Sled',
       'Sleeves',
       'Solid',
       'Soren',
       'Stable',
+      'Staff',
       'Steady',
       'Strained',
       'Suki',
@@ -4203,9 +4228,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Treadmill',
       'Uma',
       'Uneven',
+      'Unsettled',
       'Veda',
       'Vera',
       'Walking',
+      'Warehouse',
       'Watching',
       'Wren',
       'Wynn',
@@ -4249,6 +4276,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'black',
       'blocked',
       'bodybuilder',
+      'bold',
       'bombed-out',
       'boolean',
       'bought',
@@ -4278,6 +4306,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'club',
       'coach',
       'coach-staff-level',
+      'column',
       'combined-total',
       'comp-plates',
       'competition-bench-bay',
@@ -4298,7 +4327,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'currency-purchase',
       'daily-allowance-spent',
       'darkkhaki',
-      'darkslateblue',
       'darkslategray',
       'data:image/png;base64,',
       'deadlift',
@@ -4307,6 +4335,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'deepskyblue',
       'delegating',
       'departure-eligible',
+      'developer',
       'diligent',
       'disc',
       'dismiss',
@@ -4352,8 +4381,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-bay-label-second-bench',
       'floorgrid-caption',
       'floorgrid-departure-notice',
-      // GDD §5.14 Stage C.1: the collapsed-by-default diagnostics surface's
-      // three new testIDs.
       'floorgrid-diagnostic-caption',
       'floorgrid-diagnostics',
       'floorgrid-diagnostics-toggle',
@@ -4389,22 +4416,26 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-pending',
       'floorgrid-place-banner',
       'floorgrid-place-cancel',
+      'floorgrid-place-cost',
+      'floorgrid-place-effect',
+      'floorgrid-place-ghost',
+      'floorgrid-place-purpose',
+      'floorgrid-place-tradeoff',
       'floorgrid-plate-tree-competition-bench-bay',
       'floorgrid-quality-bench-competition-bench-bay',
       'floorgrid-quality-mark-competition-bench-bay',
+      'floorgrid-room',
       'floorgrid-root',
       'floorgrid-scroll-x',
       'floorgrid-scroll-y',
       'floorgrid-season-notice',
       'floorgrid-selected-member-name',
-      // GDD §5.14 Stage C: the contextual station panel's ten new testIDs.
       'floorgrid-station-panel',
       'floorgrid-station-panel-condition',
       'floorgrid-station-panel-dismiss',
       'floorgrid-station-panel-identity',
       'floorgrid-station-panel-manager',
       'floorgrid-station-panel-operation',
-      // GDD §5.14 Stage C.1a: the panel's dormant-only recovery reading.
       'floorgrid-station-panel-recovery',
       'floorgrid-station-panel-remove',
       'floorgrid-station-panel-remove-furniture',
@@ -4427,8 +4458,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'garage',
       'generic',
       'global',
-      // GDD §5.14 Stage C: the selected-station outline colour, reused from
-      // `AMBIENT_MEMBER_PALETTE` — see this file's own header note above.
       'gold',
       'goldenrod',
       'gray',
@@ -4464,39 +4493,42 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymId',
       'gymscreen-accelerated-bucks',
       'gymscreen-accrual',
+      'gymscreen-action-card',
       'gymscreen-advance',
       'gymscreen-advance-next-week',
       'gymscreen-allocation',
       'gymscreen-available-now',
+      'gymscreen-brand',
       'gymscreen-check-in-costs',
       'gymscreen-clock',
       'gymscreen-condition',
       'gymscreen-dev-controls',
-      // GDD §5.14 Stage C.1: the diagnostics block's own container testID.
+      'gymscreen-developer-drawer',
       'gymscreen-diagnostics',
       'gymscreen-dismiss-manager',
       'gymscreen-dock',
       'gymscreen-floor',
       'gymscreen-full-repair',
       'gymscreen-gym-bucks',
+      'gymscreen-gym-bucks-exact',
       'gymscreen-hud',
       'gymscreen-hud-review',
       'gymscreen-ladder-shop',
+      'gymscreen-leave-gym',
       'gymscreen-lifts',
+      'gymscreen-light-0',
+      'gymscreen-light-1',
+      'gymscreen-light-2',
+      'gymscreen-lights',
       'gymscreen-management',
       'gymscreen-manager',
       'gymscreen-manager-state',
       'gymscreen-more-drawer',
       'gymscreen-move',
       'gymscreen-move-up',
-      // The reason drawn where a control that could only refuse used to be.
-      // Six of these arrived in one round: the relocate control here, the
-      // review's own repair answer below, and — as templates rather than
-      // plain literals, so they are counted in `templateChunks` instead of
-      // here — the per-item repair, the per-tier hire, and both shops' buys.
       'gymscreen-move-up-unavailable',
-      // 'gymscreen-open-up' / '-note' / '-press' — the player's own check-in
-      // control — are gone, by human ruling ("kill the mint").
+      'gymscreen-next',
+      'gymscreen-now',
       'gymscreen-phase',
       'gymscreen-prompt',
       'gymscreen-prompt-decline',
@@ -4508,31 +4540,33 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-rate',
       'gymscreen-recover',
       'gymscreen-recovery',
-      // GDD §5.14 Stage C.1a: the actionable-remedy pointer, naming which
-      // stations are keeping a dormant gym shut.
       'gymscreen-recovery-blocking',
       'gymscreen-recovery-cost',
-      // The reopen COUNT, split out of the cost line: history rather than an
-      // offer, so it survives on an open gym where the price does not.
       'gymscreen-recovery-history',
       'gymscreen-recovery-state',
       'gymscreen-refusal',
       'gymscreen-reputation',
       'gymscreen-reset-gym',
+      'gymscreen-return',
+      'gymscreen-return-more',
       'gymscreen-root',
       'gymscreen-rung',
       'gymscreen-session-shop',
       'gymscreen-shop-drawer',
+      'gymscreen-staff-card-manager',
       'gymscreen-staff-drawer',
+      'gymscreen-staff-members',
       'gymscreen-stage',
       'gymscreen-strikes',
       'gymscreen-strikes-lead',
+      'gymscreen-surface-build',
       'gymscreen-week',
       'gymscreen-week-log',
       'gymscreen-week-preview',
       'gymscreen-worn',
       'hands-off',
       'hatch',
+      'hidden',
       'hire-manager',
       'hire-novice',
       'hire-steady',
@@ -4550,6 +4584,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'injury-risk',
       'injuryDaysSaved',
       'interrupted',
+      'ivory',
       'khaki',
       'kind',
       'knob',
@@ -4611,18 +4646,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'occupied',
       'off-season',
       'offered',
-      // The "chrome vs paid" bug-fix round's `EarningsMode` — 'offline' is
-      // the default (every pre-existing call site), 'online' is the one
-      // real periodic-tick call site in `AppShell.tsx`'s `GymHost`. No
-      // manufacturer, athlete or brand.
       'offline',
-      // GDD §5.14 Stage B's `pacing.ts` — one of its four `PacingCheckInPolicy`
-      // members. No manufacturer, athlete or brand.
       'once-a-day',
       'online',
-      // 'open-up' — the reducer arm for the player's own check-in — is gone,
-      // by human ruling ("kill the mint"): no tap anywhere on this screen
-      // advances the clock any more.
       'ordinal',
       'other-recovery',
       'out-of-bounds',
@@ -4713,6 +4739,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'settledTenureDays',
       'shipped',
       'shop',
+      'sienna',
       'silver',
       'single-purse',
       'single-wall-clock-purse',
@@ -4724,12 +4751,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'sound',
       'space',
       'space-around',
+      'space-between',
       'space-level',
       'specialty-bars',
       'spend-once-per-calendar-day',
       'sponsorship',
-      // GDD §5.14 Stage B's `pacing.ts` — one of its four `PacingCheckInPolicy`
-      // members. No manufacturer, athlete or brand.
       'sporadic',
       'spotter',
       'springgreen',
@@ -4757,6 +4783,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'tRNS',
       'target-moved',
       'target-removed',
+      'technique',
       'technique-quality',
       'technique-quality-bonus',
       'throughput',
@@ -4781,6 +4808,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'up',
       'upgrade-station',
       'upgraded',
+      'uppercase',
       'using',
       'using-bar-a',
       'using-bar-b',
@@ -4798,15 +4826,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'wall-clock-wear-control',
       'warehouse',
       'warned',
-      // GDD §5.14 Stage B's `pacing.ts` — one of its four `PacingCheckInPolicy`
-      // members. No manufacturer, athlete or brand.
       'watcher',
       'white',
       'wide',
       'worlds',
       'wrist-wraps',
-      '{fromMembers}',
-      '{fromSporting}',
     ]);
 
     // The half the pin does not reach: a multi-word name inside a message. Run
@@ -4929,7 +4953,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1253 -> 1287: G2-ATHLETE-SEASON-01 singleQuoted +14 and templateChunks +20.
     // 1287 -> 1303: CAREER-EMPIRE-REP-01 space-free tokens + template chunks.
     // 1303 -> 1307: CAREER-EMPIRE-REP-01 GymScreen composed-copy tokens.
-    expect(stringsChecked).toBe(1308);
+    // 1308 -> 1374: SF-TWL-GYM-EMPIRE-UX-01 player-facing chrome strings.
+    // 1374 -> 1387: SF-TWL-GYM-EMPIRE-UX-01 playerFacingGymRefusal toast copy.
+    // 1387 -> 1386: A6-4 removed GymScreen More Developer control testID.
+    // 1386 -> 1403: SF-TWL-GYM-EMPIRE-UX-02 singleQuoted +15 and templateChunks +2.
+    // 1403 -> 1409: A×C IRON & AMBER chrome tokens.
+    // 1409 -> 1410: A×C sienna/uppercase minus room Image `100%`.
+    // 1410 -> 1413: A×C brand line + gymscreen-brand + column identity.
+    expect(stringsChecked).toBe(1413);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5050,10 +5081,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `stationKind`, `completed`, `GymMemberId`, `:` from
     // `livingMembers.ts`'s id split). G.1A removes the `?` fallback from
     // `memberOrdinalFromId` and adds no new space-free single-quoted tokens.
-    expect(probes).toBe(spaceFree.length - 1);
-    // `:` from `livingMembers.ts`'s id split clears the `< 2` guard and is
-    // intentionally unprobed — every other shipped token is.
-    expect(probes + 1).toBe(spaceFree.length);
+    expect(probes).toBe(spaceFree.length - 2);
+    // `:` from `livingMembers.ts`'s id split and `-` from shop separators —
+    // each fails the letter guard and is intentionally unprobed. The old
+    // `100%` room-Image size left with the stretched room PNG. Every other
+    // shipped token is a probe.
+    expect(probes + 2).toBe(spaceFree.length);
 
     // JSX text gets a SIGNED-PAIR census rather than the flat ban above, and
     // the difference is a measurement, not a taste (E39): the ban predicate
@@ -5345,6 +5378,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './floorSprites',
         './ladder',
         './ladderView',
+        // Staff person cards: dues / reputation / tenure copy already
+        // published by those modules. Presentation only — no new economy.
+        './livingMemberDues',
+        './livingMemberReputation',
+        './livingMembers',
         // S4b: §5.11 stage 4 reaching the screen. Every condition, cost,
         // staffing and dormancy quantity this screen draws is a call into
         // `management.ts`; nothing about stage 4 is recomputed here.
@@ -5652,7 +5690,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 154 -> 163: Stage G.2E livingMemberReputation.ts six edges plus livingMembers / FloorGrid / arrival.
     // 163 -> 170: G2-ATHLETE-SEASON-01 livingMemberSeason.ts five edges plus livingMembers / FloorGrid.
     // CAREER-EMPIRE-REP-01: +10 specifiers (ledger + composer + GymScreen).
-    expect(specifiers).toBe(180);
+    // SF-TWL-GYM-EMPIRE-UX-01: GymScreen.tsx staff cards read living-member
+    // dues, reputation, and tenure — three presentation edges, no new math.
+    expect(specifiers).toBe(183);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
@@ -5868,7 +5908,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // trainingQualityScore 1 is ALWAYS_STRUCTURAL).
     // 448 -> 451: Stage G.2B LIVING_MEMBER_RETENTION three label mins.
     // 451 -> 454: G2-ATHLETE-SEASON-01 ATHLETE_SEASON three week knobs.
-    ).toBe(454);
+    // 454 -> 455: SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_DOCK_HOME_FLEX.
+    // 455 -> 456: SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS.
+    ).toBe(456);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

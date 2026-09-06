@@ -1600,16 +1600,18 @@ export const EMPIRE_TUNING = Object.freeze({
 
   /**
    * Upper bound on a live tile, in pixels, after the gym stage is measured.
-   * Stops a desktop viewport from blowing an 8x6 garage into unreadable
-   * sprites. Read by `FloorGrid.tsx` only.
-   */
-  FLOOR_TILE_PIXELS_MAX: 72,
-
-  /**
-   * Inset, in pixels, reserved on every edge of the gym stage before the
-   * tile size is chosen so the grid does not kiss the HUD/dock. Read by
+   * Width-fill on phones and tablets; this cap only stops a wide desktop
+   * from blowing an 8x6 garage into unreadable sprites. Read by
    * `FloorGrid.tsx` only.
    */
+  FLOOR_TILE_PIXELS_MAX: 160,
+
+  /**
+     * Inset, in pixels, reserved on every edge of the gym stage before the
+     * tile size is chosen. UX-02 still fills leftover stage with the room
+     * texture so this inset is not a white letterbox. Read by `FloorGrid.tsx`
+     * only.
+     */
   FLOOR_STAGE_PADDING_PIXELS: 8,
 
   /**
@@ -2306,17 +2308,20 @@ export const EMPIRE_TUNING = Object.freeze({
   }),
 
   /**
-   * The floor texture's own four tones, as RGB components: a base, a slightly
-   * different alternate so tiles read in a checker, a darker seam drawn along
-   * each tile's far edges, and a sparse lighter fleck. All four sit close
-   * together and low in value on purpose — the bodies are the read, and the
-   * lift screen's environment palette holds its floor down the same way.
+   * The floor texture's own four tones, as RGB components: a continuous base
+   * fill, a slightly darker alternate grain nick, a still-darker seam nick
+   * (not a tile-edge cell stroke — H1), and a sparse lighter fleck. Play
+   * stretches this full-bleed; a repeating board or cell lattice would read
+   * as a floor grid. A×C IRON & AMBER retunes these from cool slate toward
+   * garage wood — still index art, still darker than bodies and gear so
+   * sprites remain the read. Not a claim that isometric brick/steel
+   * illustration is done.
    */
   FLOOR_SPRITE_FLOOR_PALETTE: Object.freeze({
-    BASE: Object.freeze([58, 64, 66]),
-    ALT: Object.freeze([53, 58, 61]),
-    SEAM: Object.freeze([44, 49, 52]),
-    FLECK: Object.freeze([67, 74, 75]),
+    BASE: Object.freeze([96, 70, 42]),
+    ALT: Object.freeze([84, 60, 36]),
+    SEAM: Object.freeze([62, 42, 28]),
+    FLECK: Object.freeze([148, 112, 64]),
   }),
 
   /**
@@ -2619,14 +2624,24 @@ export const EMPIRE_TUNING = Object.freeze({
   GYM_SCREEN_DISABLED_OPACITY: 0.5,
 
   /**
-   * S4i — how much room `GymScreen.tsx`'s own `ScrollView` box reserves at
-   * its bottom edge so its scrollport frame never extends under
-   * `src/shell/AppShell.tsx`'s absolutely-positioned `BACK TO TRAINING` /
-   * `shell-leave-gym` nav pill, at ANY scroll position — not only at
-   * max-scroll, which is what `contentContainerStyle` padding alone would
-   * buy and why this is a `marginBottom` on the box itself instead. A real
-   * iPhone Safari playtest found the pill covering slot 2's
-   * `stretching-yoga` and `rest` week-slot buttons; this is that clearance.
+   * Play's flex grow on the player dock versus Shop/Staff/More. Structural
+   * layout, not an economy value — Play owns home gravity so Build is not an
+   * equal dock peer.
+   */
+  GYM_SCREEN_DOCK_HOME_FLEX: 2,
+
+  /**
+   * PX A5: Build enter/exit snap-grid fade, milliseconds. Must stay inside
+   * 200–280 so the grid is fully gone shortly after Done, without a blocking
+   * motion over 400ms. Tunable; not asserted as the final feel.
+   */
+  GYM_SCREEN_BUILD_GRID_FADE_MS: 240,
+
+  /**
+   * S4i — overlay clearance for GymScreen's dock + contextual action card
+   * (UX-02 full-bleed Play). The old BACK TO TRAINING pill left operating
+   * chrome; this number still sizes the band the floor must keep clear at
+   * the bottom so inspect panels and the Build tray are not under the dock.
    *
    * THE NUMBER, AND WHERE IT CAME FROM. 82 = `NAV_BOTTOM_INSET` (44) +
    * `NAV_HEIGHT` (38), both read directly out of `src/shell/shellTuning.ts`
@@ -3017,6 +3032,8 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS: 'knob',
   GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS: 'knob',
   GYM_SCREEN_DISABLED_OPACITY: 'knob',
+  GYM_SCREEN_DOCK_HOME_FLEX: 'knob',
+  GYM_SCREEN_BUILD_GRID_FADE_MS: 'knob',
   GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS: 'knob',
 
   PACING_REPORT_HORIZONS_SECONDS: 'structural',

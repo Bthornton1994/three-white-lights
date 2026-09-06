@@ -255,10 +255,14 @@ function GymHost({
   visible,
   state,
   dispatch,
+  search,
+  onLeaveGym,
 }: {
   readonly visible: boolean;
   readonly state: GymViewState;
   readonly dispatch: React.Dispatch<GymViewAction>;
+  readonly search: string | null;
+  readonly onLeaveGym: () => void;
 }): React.ReactElement {
 
   // A real-time reading, not React state on purpose — see the header above.
@@ -292,6 +296,32 @@ function GymHost({
     dispatch({ kind: 'advance-clock', gapSeconds, mode });
   }, [dispatch]);
 
+  // A6-4: Developer is not on player More/dock. Explicit web route only:
+  // `?empireDev=1` or `#empire-developer`. Native has no URL, so this stays
+  // closed there — same as any other debug query this shell already gates.
+  useEffect(() => {
+    const openIfRequested = (): void => {
+      let requested = false;
+      if (search !== null && search.length > 0) {
+        const raw = search.charAt(0) === '?' ? search.slice(1) : search;
+        const params = new URLSearchParams(raw);
+        requested = params.get('empireDev') === '1';
+      }
+      if (
+        !requested &&
+        typeof window !== 'undefined' &&
+        window.location.hash === '#empire-developer'
+      ) {
+        requested = true;
+      }
+      if (requested) dispatch({ kind: 'set-gym-surface', surface: 'developer' });
+    };
+    openIfRequested();
+    if (typeof window === 'undefined') return undefined;
+    window.addEventListener('hashchange', openIfRequested);
+    return () => window.removeEventListener('hashchange', openIfRequested);
+  }, [dispatch, search]);
+
   useEffect(() => {
     if (!visible) return;
     // Catch up immediately on becoming visible — including the very first
@@ -309,7 +339,7 @@ function GymHost({
     return () => clearInterval(intervalId);
   }, [visible, catchUpOnRealTime]);
 
-  return <GymScreen state={state} dispatch={dispatch} />;
+  return <GymScreen state={state} dispatch={dispatch} onLeaveGym={onLeaveGym} />;
 }
 
 export interface AppShellProps {
@@ -521,6 +551,8 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
           visible={route.surface === 'gym'}
           state={gymState}
           dispatch={dispatch}
+          search={search}
+          onLeaveGym={leaveGym}
         />
       </View>
 
