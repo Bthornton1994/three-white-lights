@@ -3917,7 +3917,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 938 -> 939: A×C board surround (`sienna`) and athletic `uppercase`.
     // 939 -> 942: A×C brand line, gymscreen-brand testID, HUD column identity.
     // 942 -> 946: Session B presentation scene layers (wall/light/floor-plane).
-    expect(singleQuoted.size).toBe(946);
+    // 946 -> 949: illustrated atmosphere plate URI, testID, and cover fit.
+    expect(singleQuoted.size).toBe(949);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4119,6 +4120,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './stationCapability',
       './stationView',
       './trainingStation',
+      '/empire-garage-atmosphere.png',
       ':',
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
       'Accessory',
@@ -4321,6 +4323,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'cosmetic-unlock',
       'cosmetics',
       'costliest-affordable-first',
+      'cover',
       'covered-day',
       'credit-sporting-result',
       'credited',
@@ -4428,6 +4431,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-room',
       'floorgrid-root',
       'floorgrid-scene',
+      'floorgrid-scene-atmosphere',
       'floorgrid-scene-floor-plane',
       'floorgrid-scene-light',
       'floorgrid-scene-wall',
@@ -4966,7 +4970,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1409 -> 1410: A×C sienna/uppercase minus room Image `100%`.
     // 1410 -> 1413: A×C brand line + gymscreen-brand + column identity.
     // 1413 -> 1417: Session B presentation scene layers.
-    expect(stringsChecked).toBe(1417);
+    // 1417 -> 1420: illustrated atmosphere plate URI, testID, and cover fit.
+    expect(stringsChecked).toBe(1420);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were

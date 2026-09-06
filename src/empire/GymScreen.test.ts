@@ -2307,8 +2307,17 @@ describe('SF-TWL-GYM-EMPIRE-UX-02 — Play operating view vs Build overlay', () 
       'gymscreen-surface-developer',
     );
     expect(findAllByTestId(root, 'gymscreen-leave-gym').length).toBe(0);
-    expect(textOf(findByTestId(root, 'gymscreen-surface-play'))).toBe(
-      playerFacingSurfaceLabel('play'),
+    expect(textOf(findByTestId(root, 'gymscreen-surface-more'))).toBe(
+      playerFacingSurfaceLabel('more'),
+    );
+    expect(textOf(findByTestId(root, 'gymscreen-surface-more'))).toBe('Train');
+    expect(findByTestId(root, 'gymscreen-surface-shop').props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ borderWidth: 0 })]),
+    );
+    expect(findByTestId(root, 'gymscreen-surface-play').props.style).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ flex: EMPIRE_TUNING.GYM_SCREEN_DOCK_HOME_FLEX }),
+      ]),
     );
   });
 

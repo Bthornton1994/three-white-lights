@@ -95,13 +95,20 @@ async function logChrome(page, label) {
       (await rungEl.count()) === 0
         ? 'missing'
         : await rungEl.evaluate((el) => getComputedStyle(el).letterSpacing);
-    const textureParent =
+    const atmosphere =
+      (await page.getByTestId('floorgrid-scene-atmosphere').count()) === 0
+        ? 'missing'
+        : await page.getByTestId('floorgrid-scene-atmosphere').evaluate((el) => {
+            const s = getComputedStyle(el);
+            const r = el.getBoundingClientRect();
+            return `${s.display}|${Math.round(r.width)}x${Math.round(r.height)}`;
+          });
+    const textureDisplay =
       (await page.getByTestId('floorgrid-floor-texture').count()) === 0
         ? 'missing'
-        : await page.getByTestId('floorgrid-floor-texture').evaluate((el) => {
-            const parent = el.parentElement;
-            return parent === null ? null : parent.getAttribute('data-testid');
-          });
+        : await page
+            .getByTestId('floorgrid-floor-texture')
+            .evaluate((el) => getComputedStyle(el).display);
     const roomBox =
       (await page.getByTestId('floorgrid-room').count()) === 0
         ? null
@@ -168,7 +175,8 @@ async function logChrome(page, label) {
         brandText,
         rungText,
         rungTracking,
-        textureParent,
+        atmosphere,
+        textureDisplay,
         roomBox,
         gridBox,
         textureBox,

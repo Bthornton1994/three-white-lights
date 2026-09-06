@@ -12735,7 +12735,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_377_355, // A×C brand + floor language
+  STRINGS: 30_377_361, // Session B presentation scene layers
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -17299,12 +17299,12 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:2856 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:2877 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:824 returned=unfollowable:station',
-  'FloorGrid.tsx:824 returned=unfollowable:station',
-  'FloorGrid.tsx:825 returned=unfollowable:station',
-  'FloorGrid.tsx:825 returned=unfollowable:station',
+  'FloorGrid.tsx:2927 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:2948 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:829 returned=unfollowable:station',
+  'FloorGrid.tsx:829 returned=unfollowable:station',
+  'FloorGrid.tsx:830 returned=unfollowable:station',
+  'FloorGrid.tsx:830 returned=unfollowable:station',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -17370,12 +17370,12 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'stationCapability.ts:104 returned=unfollowable:capability'
 ]);
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1808 FloorSimState asked=true walked=false',
-  'FloorGrid.tsx:824 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:824 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:825 GridSize asked=true walked=false',
-  'FloorGrid.tsx:825 GridSize asked=true walked=false',
-  'FloorGrid.tsx:837 BayBench | undefined asked=true walked=false',
+  'FloorGrid.tsx:1813 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:829 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:829 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:830 GridSize asked=true walked=false',
+  'FloorGrid.tsx:830 GridSize asked=true walked=false',
+  'FloorGrid.tsx:842 BayBench | undefined asked=true walked=false',
   'empireInvariant.ts:1084 GymAxes asked=true walked=false',
   'empireInvariant.ts:1137 GymAxes asked=true walked=false',
   'empireInvariant.ts:1168 readonly ExpansionBuild[] asked=true walked=false',
@@ -18144,7 +18144,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // stayState wiring. Read from this pin last.
   // 84_813 -> 86_105: Stage G.2C2 livingMemberDeparture.ts plus roster/sim
   // departure wiring. Read from this pin last.
-  NODES_EXAMINED: 96_849, // H1 continuous wood fill (drop nested board lattice)
+  NODES_EXAMINED: 97_118, // Session B illustrated atmosphere plate
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

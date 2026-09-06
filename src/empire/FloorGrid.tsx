@@ -2009,8 +2009,8 @@ export function FloorGrid(props: FloorGridProps) {
           Iron & Amber scene layers — the PRIMARY room (PR #44). Named CSS
           only; sprites stay nostalgia on top. Play has no grid. Wall / light /
           floor-plane are separable so PX can read the facility, not a sprite
-          sheet. Sprite floor PNG is kept in the DOM for the texture testID
-          and drawn at leaving-opacity as grain, not as the room.
+          sheet. Sprite floor PNG stays in the DOM for the texture testID and
+          is display-none so the illustrated plate is the room.
         */}
         <View
           testID={'floorgrid-scene'}
@@ -2062,12 +2062,25 @@ export function FloorGrid(props: FloorGridProps) {
               backgroundColor: FLOOR_SCENE_FLOOR_COLOR,
             }}
           />
+          <Image
+            testID={'floorgrid-scene-atmosphere'}
+            source={{ uri: '/empire-garage-atmosphere.png' }}
+            resizeMode={'cover'}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width: stageSize.width,
+              height: stageSize.height,
+            }}
+          />
         </View>
         <Image
           testID={'floorgrid-floor-texture'}
           source={{ uri: FLOOR_SPRITE_URIS.floor[floor.rung] }}
           resizeMode={'stretch'}
           style={{
+            display: 'none',
             position: 'absolute',
             left: 0,
             top: 0,
