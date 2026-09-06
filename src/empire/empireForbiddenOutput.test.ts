@@ -12939,7 +12939,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 6247 -> 6253: Stage D2 reset-gym Pressable stacks on driven GymScreen
   // trees. Read from this pin's own failure value.
   // 6290 -> 6291: Stage G.2C1 stay-response drive Error.stack readings.
-  STACKS: 6297, // CAREER-EMPIRE-REP-01 GymScreen reputation diagnostics
+  STACKS: 6690, // SF-TWL-GYM-EMPIRE-UX-01 Play labels walk
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -18072,7 +18072,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // stayState wiring. Read from this pin last.
   // 84_813 -> 86_105: Stage G.2C2 livingMemberDeparture.ts plus roster/sim
   // departure wiring. Read from this pin last.
-  NODES_EXAMINED: 95_070, // SF-TWL-GYM-EMPIRE-UX-01 player-facing gym chrome AST
+  NODES_EXAMINED: 95_090, // SF-TWL-GYM-EMPIRE-UX-01 Play labels + gym-bucks AST
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
