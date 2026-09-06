@@ -486,6 +486,7 @@ const styles = StyleSheet.create({
   },
   dockText: {
     color: GYM_SCREEN_BUTTON_TEXT_COLOR,
+    fontWeight: 'bold',
     letterSpacing: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
     textTransform: 'uppercase',
   },
@@ -518,6 +519,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
     paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
     backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
+    borderTopWidth: EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS,
+    borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
   },
   dockButton: {
     flex: 1,
@@ -592,6 +595,15 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: GYM_SCREEN_BUTTON_TEXT_COLOR,
+  },
+  buttonPrimary: {
+    backgroundColor: GYM_SCREEN_FAB_BACKGROUND_COLOR,
+  },
+  buttonPrimaryText: {
+    color: GYM_SCREEN_FAB_TEXT_COLOR,
+    fontWeight: 'bold',
+    letterSpacing: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    textTransform: 'uppercase',
   },
   buttonDisabled: {
     backgroundColor: GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR,
@@ -775,10 +787,10 @@ export function GymScreen(props: GymScreenProps) {
           <Pressable
             testID={'gymscreen-hud-review'}
             accessibilityRole={'button'}
-            style={styles.button}
+            style={[styles.button, styles.buttonPrimary]}
             onPress={() => dispatch({ kind: 'set-gym-surface', surface: 'staff' })}
           >
-            <Text style={styles.buttonText}>maintenance review</Text>
+            <Text style={styles.buttonPrimaryText}>maintenance review</Text>
           </Pressable>
         )}
         {lastRefusal === null ? null : (
@@ -894,12 +906,12 @@ export function GymScreen(props: GymScreenProps) {
                     </Text>
                   ) : (
                     <Pressable
-                      testID={`gymscreen-hire-${tier}`}
-                      accessibilityRole={'button'}
-                      style={styles.button}
-                      onPress={() => dispatch({ kind: 'hire-manager', tier })}
-                    >
-                      <Text style={styles.buttonText}>hire {tier}</Text>
+                    testID={`gymscreen-hire-${tier}`}
+                    accessibilityRole={'button'}
+                    style={[styles.button, styles.buttonPrimary]}
+                    onPress={() => dispatch({ kind: 'hire-manager', tier })}
+                  >
+                    <Text style={styles.buttonPrimaryText}>hire {tier}</Text>
                     </Pressable>
                   )}
                 </View>
@@ -1048,12 +1060,12 @@ export function GymScreen(props: GymScreenProps) {
               </Text>
             ) : (
               <Pressable
-                testID={'gymscreen-prompt-repair'}
-                accessibilityRole={'button'}
-                style={styles.button}
-                onPress={() => dispatch({ kind: 'answer-prompt', response: 'repair' })}
-              >
-                <Text style={styles.buttonText}>repair for {prompt.repairCostGymBucks}</Text>
+              testID={'gymscreen-prompt-repair'}
+              accessibilityRole={'button'}
+              style={[styles.button, styles.buttonPrimary]}
+              onPress={() => dispatch({ kind: 'answer-prompt', response: 'repair' })}
+            >
+              <Text style={styles.buttonPrimaryText}>repair for {prompt.repairCostGymBucks}</Text>
               </Pressable>
             )}
             <Pressable
@@ -1153,12 +1165,12 @@ export function GymScreen(props: GymScreenProps) {
           ) : null}
           {recovery.kind === 'ready' ? (
             <Pressable
-              testID={'gymscreen-recover'}
-              accessibilityRole={'button'}
-              style={styles.button}
-              onPress={() => dispatch({ kind: 'recover-gym' })}
-            >
-              <Text style={styles.buttonText}>reopen the gym</Text>
+            testID={'gymscreen-recover'}
+            accessibilityRole={'button'}
+            style={[styles.button, styles.buttonPrimary]}
+            onPress={() => dispatch({ kind: 'recover-gym' })}
+          >
+            <Text style={styles.buttonPrimaryText}>reopen the gym</Text>
             </Pressable>
           ) : null}
           {managed.recoveries === 0 ? null : (
@@ -1246,10 +1258,10 @@ export function GymScreen(props: GymScreenProps) {
                   <Pressable
                     testID={`gymscreen-buy-ladder-${item}`}
                     accessibilityRole={'button'}
-                    style={styles.button}
+                    style={[styles.button, styles.buttonPrimary]}
                     onPress={() => dispatch({ kind: 'buy-ladder', item })}
                   >
-                    <Text style={styles.buttonText}>buy</Text>
+                    <Text style={styles.buttonPrimaryText}>buy</Text>
                   </Pressable>
                 )}
               </View>
@@ -1324,10 +1336,10 @@ export function GymScreen(props: GymScreenProps) {
                   <Pressable
                     testID={`gymscreen-buy-session-${item}`}
                     accessibilityRole={'button'}
-                    style={styles.button}
+                    style={[styles.button, styles.buttonPrimary]}
                     onPress={() => dispatch({ kind: 'buy-session', item })}
                   >
-                    <Text style={styles.buttonText}>buy</Text>
+                    <Text style={styles.buttonPrimaryText}>buy</Text>
                   </Pressable>
                 )}
               </View>
@@ -1353,10 +1365,10 @@ export function GymScreen(props: GymScreenProps) {
               <Pressable
                 testID={'gymscreen-move-up'}
                 accessibilityRole={'button'}
-                style={styles.button}
+                style={[styles.button, styles.buttonPrimary]}
                 onPress={() => dispatch({ kind: 'move-up' })}
               >
-                <Text style={styles.buttonText}>relocate</Text>
+                <Text style={styles.buttonPrimaryText}>relocate</Text>
               </Pressable>
             )}
           </>

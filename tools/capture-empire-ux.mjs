@@ -85,6 +85,27 @@ async function logChrome(page, label) {
       (await hud.count()) === 0
         ? 'missing'
         : await hud.evaluate((el) => getComputedStyle(el).backgroundColor);
+    const occupancy = page.locator(
+      '[data-testid^="floorsim-using-"], [data-testid^="floorsim-claimed-"], [data-testid^="floorsim-loading-"]',
+    );
+    const occupancyCount = await occupancy.count();
+    const occupancyDisplay =
+      occupancyCount === 0
+        ? 'none-mounted'
+        : await occupancy.first().evaluate((el) => getComputedStyle(el).display);
+    const dock = page.getByTestId('gymscreen-dock');
+    const dockChrome =
+      (await dock.count()) === 0
+        ? 'missing'
+        : await dock.evaluate((el) => {
+            const s = getComputedStyle(el);
+            return `${s.backgroundColor}|${s.borderTopWidth}|${s.borderTopColor}`;
+          });
+    const shopBuy = page.locator('[data-testid^="gymscreen-buy-"]');
+    const shopBuyBg =
+      (await shopBuy.count()) === 0
+        ? 'none-mounted'
+        : await shopBuy.first().evaluate((el) => getComputedStyle(el).backgroundColor);
     console.log(
       JSON.stringify({
         label,
@@ -96,6 +117,10 @@ async function logChrome(page, label) {
         fabDisplay,
         actionClearsFab,
         hudBg,
+        occupancyCount,
+        occupancyDisplay,
+        dockChrome,
+        shopBuyBg,
       }),
     );
   } catch (err) {

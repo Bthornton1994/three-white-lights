@@ -479,7 +479,7 @@ const panelStyles = StyleSheet.create({
     cursor: 'pointer',
   },
   buttonText: {
-    color: FLOOR_STATION_PANEL_BUTTON_TEXT_COLOR,
+    color: FLOOR_STATION_PANEL_BUTTON_TEXT_COLOR, fontWeight: 'bold', letterSpacing: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS, textTransform: 'uppercase',
   },
   bodyText: {
     color: FLOOR_LABEL_COLOR,
@@ -2525,16 +2525,16 @@ export function FloorGrid(props: FloorGridProps) {
                       top: box.position.y * tile,
                       width: box.footprint.width * tile,
                       height: box.footprint.height * tile,
-                      borderWidth: buildMode
-                        ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
-                        : 0,
+                      display: buildMode
+                        ? undefined
+                        : 'none',
                       borderColor:
                         box.activity === 'using'
                           ? FLOOR_SIM_STATE_COLOR.using
                           : box.activity === 'loading'
                             ? FLOOR_THROUGHPUT_MARK_COLOR
                             : FLOOR_SIM_STATE_COLOR.seeking,
-                      backgroundColor: FLOOR_SIM_HIGHLIGHT_FILL,
+                      backgroundColor: FLOOR_SIM_HIGHLIGHT_FILL, borderWidth: EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS,
                       zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
                     }}
                   />
