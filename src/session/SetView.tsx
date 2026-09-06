@@ -133,6 +133,9 @@ export function SetView({ state, onRepResolved }: SetViewProps): React.ReactElem
   return (
     <View style={styles.root} testID="session-set" {...SUPPRESS_CONTEXT_MENU}>
       <View style={styles.header}>
+        <Text style={styles.hero} testID="session-lift-hero">
+          {SESSION_COPY.LIFT_HERO[plan.lift]}
+        </Text>
         <Text style={styles.setLabel} testID="session-set-label">
           {`${SESSION_COPY.SET_LABEL} ${setNumber} ${SESSION_COPY.SET_OF} ${plan.workSets}`}
         </Text>
@@ -223,6 +226,16 @@ const styles = StyleSheet.create({
     paddingVertical: L.ROW_GAP,
     width: '100%',
     maxWidth: '100%',
+  },
+  hero: {
+    color: SESSION_PALETTE.TEXT,
+    fontSize: L.HEADLINE_FONT,
+    fontWeight: '800',
+    letterSpacing: L.HERO_LETTER_SPACING,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    width: '100%',
+    flexShrink: 1,
   },
   setLabel: {
     color: SESSION_PALETTE.TEXT,

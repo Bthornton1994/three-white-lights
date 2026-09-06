@@ -992,7 +992,7 @@ const EMPIRE_RETURN = Object.freeze({
   /** The beat the second leg departs from, and — since the repair — returns to. */
   DEPARTS_FROM: 'session-briefing',
   /** src/game/sessionTuning.ts — SESSION_COPY.BRIEFING_PROMPT. Pinned below. */
-  DEPARTURE_SAYS: 'PICK YOUR RPE',
+  DEPARTURE_SAYS: 'CHOOSE YOUR EFFORT',
   /** The beat a discarded session came back on. Now the thing asserted against. */
   LANDS_ON: 'session-check-in',
 });

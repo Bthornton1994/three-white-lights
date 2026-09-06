@@ -2,17 +2,23 @@
  * BriefingView — the opening training decision (GDD §3.2 as corrected): lift,
  * history readiness copy, and RPE on one screen.
  *
+ * A×C IRON & AMBER Screen 03 family (direction, not pixel-perfect props):
+ * small session kicker, athletic lift hero, readiness as a card, effort
+ * pills with an amber outline on the suggested rung, full-width amber START.
+ * No isometric gym art. No Gym/Shop/Staff/Train dock.
+ *
  * No subjective sleep / soreness / motivation taps. Readiness is inferred
  * from the training-history ledger and printed; this file computes nothing.
  *
  * GDD §3.3: the player picks RPE, not raw weight. The bar appears on the
- * platform after the choice.
+ * platform after the choice. Tapping a rung still starts the set (drivers
+ * and the existing RPE behaviour). START starts the suggested rung.
  *
  * NO FATIGUE METER (GDD §3.4, §12.3). Copy only.
  */
 
 import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -26,6 +32,7 @@ import type { OnboardingDisclosure } from '../game/onboardingDisclosure';
 import { SESSION_PALETTE } from './sessionPalette';
 
 const L = SESSION_LAYOUT;
+const SUGGESTED_RPE = SESSION_TUNING.RPE_CHOICES[SESSION_TUNING.DEFAULT_RPE_INDEX];
 
 function modifierColour(percent: number, band: ReadinessReport['band']): string {
   if (percent > 0) return SESSION_PALETTE.MODIFIER_UP;
@@ -74,100 +81,134 @@ export function BriefingView({
   }, [reveal]);
   const ladderStyle = useAnimatedStyle(() => ({ opacity: reveal.value }));
 
+  const startRpe = SUGGESTED_RPE === undefined ? SESSION_TUNING.RPE_CHOICES[0] : SUGGESTED_RPE;
+
   return (
     <View style={styles.root} testID="session-briefing">
-      <View style={styles.lights} testID="session-lights">
-        {([0, 1, 2] as const).map((index) => (
-          <View key={index} testID={`session-light-${index}`} style={styles.light} />
-        ))}
-      </View>
-      <Text style={styles.title}>{SESSION_COPY.CHECK_IN_TITLE}</Text>
-
-      <View style={styles.row} testID="check-in-lift">
-        <Text style={styles.question}>{SESSION_COPY.CHECK_IN_LIFT_QUESTION}</Text>
-        <View style={styles.chips}>
-          {SESSION_TUNING.LIFT_ROTATION.map((option) => {
-            const isChosen = option === lift;
-            return (
-              <Pressable
-                key={option}
-                testID={`check-in-lift-${option}`}
-                accessibilityRole="button"
-                onPress={() => onChooseLift(option)}
-                style={[styles.chip, isChosen ? styles.chipChosen : null]}
-              >
-                <Text
-                  style={[styles.chipLabel, isChosen ? styles.chipLabelChosen : null]}
-                  numberOfLines={1}
-                >
-                  {SESSION_COPY.LIFT_LABEL[option]}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
-      <Text
-        style={[styles.modifier, { color: modifierColour(readiness.loadAdjustmentPercent, readiness.band) }]}
-        testID="session-modifier"
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {readiness.label}
-      </Text>
-      {readiness.detail === '' ? null : (
-        <Text style={styles.detail} testID="session-readiness-detail">
-          {readiness.detail}
-        </Text>
-      )}
-      <Text style={styles.plan} testID="session-plan">
-        {`${workSets} ${SESSION_COPY.BRIEFING_PLAN} × ${repsPerSet}`}
-      </Text>
+        <View style={styles.block}>
+          <View style={styles.lights} testID="session-lights">
+            {([0, 1, 2] as const).map((index) => (
+              <View key={index} testID={`session-light-${index}`} style={styles.light} />
+            ))}
+          </View>
+          <Text style={styles.kicker}>{SESSION_COPY.CHECK_IN_TITLE}</Text>
+          <Text style={styles.hero} testID="session-lift-hero">
+            {SESSION_COPY.LIFT_HERO[lift]}
+          </Text>
 
-      {injury === null ? null : <InjuryLine injury={injury} />}
+          <View style={styles.row} testID="check-in-lift">
+            <Text style={styles.question}>{SESSION_COPY.CHECK_IN_LIFT_QUESTION}</Text>
+            <View style={styles.chips}>
+              {SESSION_TUNING.LIFT_ROTATION.map((option) => {
+                const isChosen = option === lift;
+                return (
+                  <Pressable
+                    key={option}
+                    testID={`check-in-lift-${option}`}
+                    accessibilityRole="button"
+                    onPress={() => onChooseLift(option)}
+                    style={[styles.chip, isChosen ? styles.chipChosen : null]}
+                  >
+                    <Text
+                      style={[styles.chipLabel, isChosen ? styles.chipLabelChosen : null]}
+                      numberOfLines={1}
+                    >
+                      {SESSION_COPY.LIFT_LABEL[option]}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
 
-      {disclosures.length > 0 ? (
-        <View style={styles.disclosures} testID="check-in-disclosures">
-          <Text style={styles.disclosureTitle}>{SESSION_COPY.FIRST_RUN_TITLE}</Text>
-          {disclosures.map((disclosure) => (
+          <Text style={styles.plan} testID="session-plan">
+            {`${workSets} ${SESSION_COPY.BRIEFING_PLAN} × ${repsPerSet}`}
+          </Text>
+        </View>
+
+        <View style={styles.card} testID="session-readiness-card">
+          <View style={styles.cardAccent} />
+          <View style={styles.cardBody}>
             <Text
-              key={disclosure.id}
-              testID={`check-in-disclosure-${disclosure.id}`}
-              style={styles.disclosureLine}
-            >
-              {disclosure.line}
-            </Text>
-          ))}
-        </View>
-      ) : null}
-
-      <Animated.View style={[styles.ladderBlock, ladderStyle]}>
-        <Text style={styles.prompt}>{SESSION_COPY.BRIEFING_PROMPT}</Text>
-        <View style={styles.ladder} testID="session-rpe-ladder">
-          {SESSION_TUNING.RPE_CHOICES.map((rpe, index) => (
-            <Pressable
-              key={rpe}
-              testID={`session-rpe-${rpe}`}
-              accessibilityRole="button"
-              disabled={!ladderReady}
-              onPress={() => onChooseRpe(rpe)}
               style={[
-                styles.rung,
-                index === SESSION_TUNING.DEFAULT_RPE_INDEX ? styles.rungSuggested : null,
+                styles.cardHeadline,
+                { color: modifierColour(readiness.loadAdjustmentPercent, readiness.band) },
               ]}
+              testID="session-modifier"
             >
-              <Text
-                style={[
-                  styles.rungLabel,
-                  index === SESSION_TUNING.DEFAULT_RPE_INDEX ? styles.rungLabelSuggested : null,
-                ]}
-              >
-                {rpe}
+              {readiness.label}
+            </Text>
+            {readiness.detail === '' ? null : (
+              <Text style={styles.cardDetail} testID="session-readiness-detail">
+                {readiness.detail}
               </Text>
-            </Pressable>
-          ))}
+            )}
+          </View>
         </View>
-        <Text style={styles.hint}>{SESSION_COPY.BRIEFING_RPE_HINT}</Text>
-      </Animated.View>
+
+        {injury === null ? null : <InjuryLine injury={injury} />}
+
+        {disclosures.length > 0 ? (
+          <View style={styles.disclosures} testID="check-in-disclosures">
+            <Text style={styles.disclosureTitle}>{SESSION_COPY.FIRST_RUN_TITLE}</Text>
+            {disclosures.map((disclosure) => (
+              <Text
+                key={disclosure.id}
+                testID={`check-in-disclosure-${disclosure.id}`}
+                style={styles.disclosureLine}
+              >
+                {disclosure.line}
+              </Text>
+            ))}
+          </View>
+        ) : null}
+
+        <Animated.View style={[styles.ladderBlock, ladderStyle]}>
+          <Text style={styles.prompt}>{SESSION_COPY.BRIEFING_PROMPT}</Text>
+          <View style={styles.ladder} testID="session-rpe-ladder">
+            {SESSION_TUNING.RPE_CHOICES.map((rpe) => {
+              const isSuggested = rpe === SUGGESTED_RPE;
+              return (
+                <Pressable
+                  key={rpe}
+                  testID={`session-rpe-${rpe}`}
+                  accessibilityRole="button"
+                  disabled={!ladderReady}
+                  onPress={() => onChooseRpe(rpe)}
+                  style={[styles.rung, isSuggested ? styles.rungSuggested : null]}
+                >
+                  <Text
+                    style={[styles.rungLabel, isSuggested ? styles.rungLabelSuggested : null]}
+                    numberOfLines={1}
+                  >
+                    {`${SESSION_COPY.BRIEFING_RPE_PREFIX} ${rpe}`}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={styles.hint}>{SESSION_COPY.BRIEFING_RPE_HINT}</Text>
+          <Pressable
+            accessibilityRole="button"
+            disabled={!ladderReady || startRpe === undefined}
+            onPress={() => {
+              if (startRpe !== undefined) onChooseRpe(startRpe);
+            }}
+            style={styles.start}
+            testID="session-start-lift"
+          >
+            <Text style={styles.startLabel}>
+              {`${SESSION_COPY.BRIEFING_START} ${SESSION_COPY.LIFT_LABEL[lift]}`}
+            </Text>
+          </Pressable>
+        </Animated.View>
+      </ScrollView>
     </View>
   );
 }
@@ -175,14 +216,26 @@ export function BriefingView({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    justifyContent: 'center',
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
+  },
+  scroll: {
+    flex: 1,
+    width: '100%',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'space-between',
     paddingHorizontal: L.SCREEN_PAD,
     paddingTop: L.SAFE_AREA_FALLBACK,
     paddingBottom: L.SAFE_AREA_FALLBACK,
     gap: L.ROW_GAP,
     width: '100%',
-    maxWidth: '100%',
-    overflow: 'hidden',
+  },
+  block: {
+    gap: L.ROW_GAP,
+    width: '100%',
   },
   lights: {
     flexDirection: 'row',
@@ -196,13 +249,24 @@ const styles = StyleSheet.create({
     borderRadius: L.PIP_SIZE / 2,
     backgroundColor: SESSION_PALETTE.LIGHT,
   },
-  title: {
+  kicker: {
     color: SESSION_PALETTE.TEXT,
-    fontSize: L.HEADLINE_FONT,
+    fontSize: L.TITLE_FONT,
     fontWeight: '800',
     letterSpacing: L.LETTER_SPACING,
     textAlign: 'center',
     textTransform: 'uppercase',
+  },
+  hero: {
+    color: SESSION_PALETTE.TEXT,
+    fontSize: L.HERO_FONT,
+    fontWeight: '800',
+    letterSpacing: L.HERO_LETTER_SPACING,
+    lineHeight: L.HERO_LINE_HEIGHT,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    width: '100%',
+    flexShrink: 1,
   },
   row: {
     gap: L.ROW_GAP,
@@ -245,25 +309,42 @@ const styles = StyleSheet.create({
     color: SESSION_PALETTE.ACTION_TEXT,
     fontWeight: '800',
   },
-  modifier: {
-    fontSize: L.MODIFIER_FONT,
-    fontWeight: '700',
-    textAlign: 'center',
-    flexShrink: 1,
-    width: '100%',
-  },
-  detail: {
-    color: SESSION_PALETTE.TEXT_DIM,
-    fontSize: L.HINT_FONT,
-    lineHeight: L.BODY_LINE_HEIGHT,
-    textAlign: 'center',
-    width: '100%',
-    flexShrink: 1,
-  },
   plan: {
     color: SESSION_PALETTE.TEXT_DIM,
     fontSize: L.PLAN_FONT,
     textAlign: 'center',
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    width: '100%',
+    borderRadius: L.CARD_RADIUS,
+    borderWidth: L.CHIP_BORDER,
+    borderColor: SESSION_PALETTE.CARD_EDGE,
+    backgroundColor: SESSION_PALETTE.CARD,
+    overflow: 'hidden',
+  },
+  cardAccent: {
+    width: L.CARD_ACCENT_WIDTH,
+    backgroundColor: SESSION_PALETTE.ACTION,
+  },
+  cardBody: {
+    flex: 1,
+    gap: L.ROW_GAP / 2,
+    padding: L.CARD_PAD,
+  },
+  cardHeadline: {
+    fontSize: L.MODIFIER_FONT,
+    fontWeight: '700',
+    width: '100%',
+    flexShrink: 1,
+  },
+  cardDetail: {
+    color: SESSION_PALETTE.TEXT_DIM,
+    fontSize: L.HINT_FONT,
+    lineHeight: L.BODY_LINE_HEIGHT,
+    width: '100%',
+    flexShrink: 1,
   },
   injury: {
     marginTop: L.ROW_GAP,
@@ -316,14 +397,16 @@ const styles = StyleSheet.create({
     height: L.RPE_CHIP_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: L.CHIP_RADIUS,
+    borderRadius: L.RPE_CHIP_HEIGHT / 2,
     borderWidth: L.CHIP_BORDER,
     borderColor: SESSION_PALETTE.CHIP_EDGE,
     backgroundColor: SESSION_PALETTE.CHIP,
+    paddingHorizontal: L.CHIP_GAP,
   },
   rungSuggested: {
-    backgroundColor: SESSION_PALETTE.ACTION,
+    backgroundColor: SESSION_PALETTE.CHIP,
     borderColor: SESSION_PALETTE.RPE_SUGGESTED_EDGE,
+    borderWidth: L.RPE_SELECTED_BORDER,
   },
   rungLabel: {
     color: SESSION_PALETTE.TEXT,
@@ -331,7 +414,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   rungLabelSuggested: {
-    color: SESSION_PALETTE.ACTION_TEXT,
+    color: SESSION_PALETTE.ACTION,
     fontWeight: '800',
   },
   hint: {
@@ -341,6 +424,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     width: '100%',
     flexShrink: 1,
+  },
+  start: {
+    alignSelf: 'stretch',
+    minHeight: L.TOUCH_MIN,
+    height: L.START_BUTTON_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: L.BUTTON_RADIUS,
+    backgroundColor: SESSION_PALETTE.ACTION,
+    marginTop: L.ROW_GAP,
+  },
+  startLabel: {
+    color: SESSION_PALETTE.ACTION_TEXT,
+    fontSize: L.BUTTON_FONT,
+    fontWeight: '800',
+    letterSpacing: L.LETTER_SPACING,
+    textTransform: 'uppercase',
   },
   disclosures: {
     gap: L.DISCLOSURE_GAP,

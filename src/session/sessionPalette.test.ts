@@ -20,6 +20,8 @@ describe('A×C IRON & AMBER bind', () => {
     expect(IRON_AMBER.IVORY).toBe('#FFFFF0');
     expect(IRON_AMBER.MUTED).toBe('#C0C0C0');
     expect(IRON_AMBER.STAGE_NAMED).toBe('#2F4F4F');
+    expect(IRON_AMBER.CARD).toBe('#1A1A1A');
+    expect(IRON_AMBER.CARD_EDGE).toBe('#2A2A2A');
   });
 
   it('training chrome uses iron / ivory / amber; lift stage colours stay on LIFT_PALETTE', () => {
@@ -28,6 +30,7 @@ describe('A×C IRON & AMBER bind', () => {
     expect(SESSION_PALETTE.ACTION).toBe(IRON_AMBER.AMBER);
     expect(SESSION_PALETTE.ACTION_TEXT).toBe(IRON_AMBER.IRON);
     expect(SESSION_PALETTE.CHIP_CHOSEN).toBe(IRON_AMBER.AMBER);
+    expect(SESSION_PALETTE.CARD).toBe(IRON_AMBER.CARD);
     expect(SESSION_PALETTE.LIGHT).toBe(IRON_AMBER.IVORY);
     expect(SESSION_PALETTE.TRACE).toBe(LIFT_PALETTE.TRACE);
     expect(SESSION_PALETTE.CUE_PERFECT).toBe(LIFT_PALETTE.CUE_PERFECT);

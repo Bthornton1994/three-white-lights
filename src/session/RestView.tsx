@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     color: SESSION_PALETTE.TEXT,
     fontSize: L.HEADLINE_FONT,
     fontWeight: '800',
-    letterSpacing: L.LETTER_SPACING,
+    letterSpacing: L.HERO_LETTER_SPACING,
     textTransform: 'uppercase',
   },
   pips: {

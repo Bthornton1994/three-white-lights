@@ -44,6 +44,9 @@ export const IRON_AMBER = Object.freeze({
   IVORY: '#FFFFF0',
   MUTED: '#C0C0C0',
   STAGE_NAMED: '#2F4F4F',
+  /** Lifted iron for the readiness card. Not a Gym Empire CSS name. */
+  CARD: '#1A1A1A',
+  CARD_EDGE: '#2A2A2A',
 });
 
 export const SESSION_PALETTE = Object.freeze({
@@ -54,11 +57,15 @@ export const SESSION_PALETTE = Object.freeze({
   TEXT: IRON_AMBER.IVORY,
   TEXT_DIM: IRON_AMBER.MUTED,
 
-  /** Idle chip vs the one the finger landed on. Chosen is the amber action. */
+  /** Idle chip vs the one the finger landed on. Chosen lift is amber fill. */
   CHIP: LIFT_PALETTE.PANEL,
   CHIP_EDGE: LIFT_PALETTE.PANEL_EDGE,
   CHIP_CHOSEN: IRON_AMBER.AMBER,
   CHIP_CHOSEN_EDGE: IRON_AMBER.AMBER,
+
+  /** Readiness card on the opening decision (Screen 03 family). Copy only. */
+  CARD: IRON_AMBER.CARD,
+  CARD_EDGE: IRON_AMBER.CARD_EDGE,
 
   /** The RPE the ladder opens on — the obvious training action. */
   RPE_SUGGESTED_EDGE: IRON_AMBER.AMBER,

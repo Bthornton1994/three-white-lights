@@ -466,9 +466,13 @@ export const SESSION_LAYOUT = Object.freeze({
   SAFE_AREA_FALLBACK: 12,
 
   TITLE_FONT: 13,
+  /** Athletic lift name on the opening decision and the live set. */
+  HERO_FONT: 32,
+  HERO_LETTER_SPACING: 1.6,
+  HERO_LINE_HEIGHT: 36,
   QUESTION_FONT: 11,
   ANSWER_FONT: 15,
-  MODIFIER_FONT: 22,
+  MODIFIER_FONT: 18,
   PROMPT_FONT: 13,
   HINT_FONT: 12,
   PLAN_FONT: 15,
@@ -492,8 +496,18 @@ export const SESSION_LAYOUT = Object.freeze({
   /** The RPE ladder. Five across, so each is narrower than a chip. */
   RPE_CHIP_HEIGHT: 56,
   RPE_CHIP_GAP: 6,
-  RPE_CHIP_MIN_WIDTH: 48,
+  RPE_CHIP_MIN_WIDTH: 88,
+  /** Amber outline on the suggested effort — thicker than CHIP_BORDER. */
+  RPE_SELECTED_BORDER: 3,
   TOUCH_MIN: 44,
+
+  /**
+   * Recovery / readiness card on the opening decision (A×C Screen 03 family).
+   * Not a meter. Copy only.
+   */
+  CARD_PAD: 14,
+  CARD_RADIUS: 16,
+  CARD_ACCENT_WIDTH: 4,
 
   /** The set counter pips shown above the stage while a set is live. */
   PIP_SIZE: 8,
@@ -502,6 +516,8 @@ export const SESSION_LAYOUT = Object.freeze({
   BUTTON_HEIGHT: 48,
   BUTTON_RADIUS: 10,
   BUTTON_FONT: 13,
+  /** Full-width primary on the opening decision. */
+  START_BUTTON_HEIGHT: 56,
 
   /** Close-out stat rows. */
   STAT_ROW_GAP: 18,
@@ -588,9 +604,20 @@ export const SESSION_COPY = Object.freeze({
     bench: 'BENCH',
     deadlift: 'DEADLIFT',
   } as const satisfies Record<LiftKind, string>),
+  /**
+   * Athletic hero on the opening decision and the live set. Longer than the
+   * chip label where the lift's common name needs two words.
+   */
+  LIFT_HERO: Object.freeze({
+    squat: 'SQUAT',
+    bench: 'BENCH PRESS',
+    deadlift: 'DEADLIFT',
+  } as const satisfies Record<LiftKind, string>),
 
   /** The briefing. The modifier headline itself comes from `fatigue.ts`. */
-  BRIEFING_PROMPT: 'PICK YOUR RPE',
+  BRIEFING_PROMPT: 'CHOOSE YOUR EFFORT',
+  BRIEFING_RPE_PREFIX: 'RPE',
+  BRIEFING_START: 'START',
   BRIEFING_RPE_HINT: 'Heavier target, heavier bar. The game does the maths.',
   BRIEFING_PLAN: 'sets',
 
