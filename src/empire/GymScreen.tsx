@@ -343,7 +343,7 @@ import {
  * No parallel token module and no hex in this file.
  * `black` = iron.surface; `goldenrod` = amber.action; `ivory` = ivory.text;
  * `silver` = ivory.muted; `transparent` stage lets html iron.void show through;
- * `sienna` is Gym-home dock weight only, not a sixth token.
+ * `sienna` is the facility floor-plane (FloorGrid scene), not a sixth token.
  */
 const GYM_SCREEN_BUTTON_BACKGROUND_COLOR = 'black';
 const GYM_SCREEN_BUTTON_BORDER_COLOR = 'goldenrod';
@@ -352,7 +352,8 @@ const GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR = 'darkslategray';
 const GYM_SCREEN_BUTTON_DISABLED_BORDER_COLOR = 'gray';
 const GYM_SCREEN_BUTTON_DISABLED_TEXT_COLOR = 'silver';
 const GYM_SCREEN_STAGE_COLOR = 'transparent';
-const GYM_SCREEN_DOCK_HOME_COLOR = 'sienna';
+const GYM_SCREEN_DOCK_HOME_COLOR = 'black';
+const GYM_SCREEN_DOCK_ACTIVE_TEXT_COLOR = 'goldenrod';
 const GYM_SCREEN_FAB_BACKGROUND_COLOR = 'goldenrod';
 const GYM_SCREEN_FAB_TEXT_COLOR = 'black';
 const GYM_SCREEN_LIGHT_COLOR = 'ivory';
@@ -406,11 +407,13 @@ const styles = StyleSheet.create({
     color: GYM_SCREEN_BUTTON_TEXT_COLOR,
     fontWeight: 'bold',
     textTransform: 'uppercase',
+    fontSize: EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS,
   },
   hudBrand: {
     color: GYM_SCREEN_BUTTON_TEXT_COLOR,
     fontWeight: 'bold',
     textTransform: 'uppercase',
+    fontSize: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
   },
   hudMuted: {
     color: GYM_SCREEN_BUTTON_DISABLED_TEXT_COLOR,
@@ -457,7 +460,7 @@ const styles = StyleSheet.create({
     backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
     borderWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
     borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
-    borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS,
+    borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
   },
   stage: {
     flex: 1,
@@ -483,7 +486,7 @@ const styles = StyleSheet.create({
     minHeight: EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS,
     paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
     paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
-    borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS,
+    borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
     borderWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
     backgroundColor: GYM_SCREEN_FAB_BACKGROUND_COLOR,
     borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
@@ -498,14 +501,14 @@ const styles = StyleSheet.create({
   fabText: {
     color: GYM_SCREEN_FAB_TEXT_COLOR,
     fontWeight: 'bold',
-    letterSpacing: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
     textTransform: 'uppercase',
+    fontSize: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
   },
   dockText: {
-    color: GYM_SCREEN_BUTTON_TEXT_COLOR,
+    color: GYM_SCREEN_BUTTON_DISABLED_TEXT_COLOR,
     fontWeight: 'bold',
-    letterSpacing: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
     textTransform: 'uppercase',
+    fontSize: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
   },
   drawer: {
     position: 'absolute',
@@ -536,7 +539,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
     paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
     backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
-    borderTopWidth: EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS,
+    borderTopWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
     borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
   },
   dockButton: {
@@ -561,13 +564,13 @@ const styles = StyleSheet.create({
     backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
   },
   dockButtonActive: {
-    backgroundColor: GYM_SCREEN_FAB_BACKGROUND_COLOR,
+    backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
   },
   dockButtonActiveText: {
-    color: GYM_SCREEN_FAB_TEXT_COLOR,
+    color: GYM_SCREEN_DOCK_ACTIVE_TEXT_COLOR,
     fontWeight: 'bold',
-    letterSpacing: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
     textTransform: 'uppercase',
+    fontSize: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
   },
   staffCard: {
     marginBottom: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,

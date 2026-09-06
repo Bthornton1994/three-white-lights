@@ -3916,7 +3916,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 932 -> 938: A×C IRON & AMBER chrome tokens (Gym, ivory, lights, card).
     // 938 -> 939: A×C board surround (`sienna`) and athletic `uppercase`.
     // 939 -> 942: A×C brand line, gymscreen-brand testID, HUD column identity.
-    expect(singleQuoted.size).toBe(942);
+    // 942 -> 946: Session B presentation scene layers (wall/light/floor-plane).
+    expect(singleQuoted.size).toBe(946);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4182,7 +4183,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Miles',
       'Mira',
       'Mixed',
-      'More',
       'Nia',
       'Nils',
       'Noor',
@@ -4225,6 +4225,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Thin',
       'Toni',
       'Tove',
+      'Train',
       'Treadmill',
       'Uma',
       'Uneven',
@@ -4426,6 +4427,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-quality-mark-competition-bench-bay',
       'floorgrid-room',
       'floorgrid-root',
+      'floorgrid-scene',
+      'floorgrid-scene-floor-plane',
+      'floorgrid-scene-light',
+      'floorgrid-scene-wall',
       'floorgrid-scroll-x',
       'floorgrid-scroll-y',
       'floorgrid-season-notice',
@@ -4960,7 +4965,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1403 -> 1409: A×C IRON & AMBER chrome tokens.
     // 1409 -> 1410: A×C sienna/uppercase minus room Image `100%`.
     // 1410 -> 1413: A×C brand line + gymscreen-brand + column identity.
-    expect(stringsChecked).toBe(1413);
+    // 1413 -> 1417: Session B presentation scene layers.
+    expect(stringsChecked).toBe(1417);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were

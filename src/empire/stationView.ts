@@ -240,7 +240,7 @@ const SURFACE_PLAYER_LABELS: Readonly<Record<string, string>> = Object.freeze({
   build: 'Build',
   shop: 'Shop',
   staff: 'Staff',
-  more: 'More',
+  more: 'Train',
   developer: 'Developer',
 });
 

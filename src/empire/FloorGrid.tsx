@@ -378,6 +378,11 @@ type PendingPlace =
   | { readonly kind: 'furniture'; readonly item: LadderEquipmentItem };
 
 const FLOOR_BACKGROUND_COLOR = 'transparent';
+/** Scene plate — Iron & Amber facility, not a sixth token. Existing named CSS. */
+const FLOOR_SCENE_VOID_COLOR = 'black';
+const FLOOR_SCENE_WALL_COLOR = 'darkslategray';
+const FLOOR_SCENE_LIGHT_COLOR = 'goldenrod';
+const FLOOR_SCENE_FLOOR_COLOR = 'sienna';
 const FLOOR_GRID_BORDER_COLOR = 'gray';
 const FLOOR_ITEM_BORDER_COLOR = 'black';
 /** GDD §5.13's PLAYTEST 2 ruling, gap 3: the internal tile-boundary lines. Same shade as the outer frame, for one consistent "this is a grid" read. */
@@ -1997,15 +2002,67 @@ export function FloorGrid(props: FloorGridProps) {
           top: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: FLOOR_BACKGROUND_COLOR,
-          imageRendering: 'pixelated',
-        } as PixelSnappedViewStyle}
+          backgroundColor: FLOOR_SCENE_VOID_COLOR,
+        }}
       >
         {/*
-          Owned garage-floor PNG, full-bleed across the stage so Play is a
-          room rather than a wood island on burnt-orange leftover. Not an
-          invented HD isometric. Grid lines stay Build-only (fade).
+          Iron & Amber scene layers — the PRIMARY room (PR #44). Named CSS
+          only; sprites stay nostalgia on top. Play has no grid. Wall / light /
+          floor-plane are separable so PX can read the facility, not a sprite
+          sheet. Sprite floor PNG is kept in the DOM for the texture testID
+          and drawn at leaving-opacity as grain, not as the room.
         */}
+        <View
+          testID={'floorgrid-scene'}
+          pointerEvents={'none'}
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: stageSize.width,
+            height: stageSize.height,
+          }}
+        >
+          <View
+            testID={'floorgrid-scene-wall'}
+            pointerEvents={'none'}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width: stageSize.width,
+              height: stageSize.height * EMPIRE_TUNING.FLOOR_SIM_LEAVING_OPACITY,
+              backgroundColor: FLOOR_SCENE_WALL_COLOR,
+            }}
+          />
+          <View
+            testID={'floorgrid-scene-light'}
+            pointerEvents={'none'}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width: stageSize.width * EMPIRE_TUNING.GYM_SCREEN_DISABLED_OPACITY,
+              height: stageSize.height * EMPIRE_TUNING.FLOOR_SIM_LEAVING_OPACITY,
+              backgroundColor: FLOOR_SCENE_LIGHT_COLOR,
+              opacity: EMPIRE_TUNING.GYM_SCREEN_DISABLED_OPACITY,
+            }}
+          />
+          <View
+            testID={'floorgrid-scene-floor-plane'}
+            pointerEvents={'none'}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: stageSize.height * EMPIRE_TUNING.FLOOR_SIM_LEAVING_OPACITY,
+              width: stageSize.width,
+              height:
+                stageSize.height -
+                stageSize.height * EMPIRE_TUNING.FLOOR_SIM_LEAVING_OPACITY,
+              backgroundColor: FLOOR_SCENE_FLOOR_COLOR,
+            }}
+          />
+        </View>
         <Image
           testID={'floorgrid-floor-texture'}
           source={{ uri: FLOOR_SPRITE_URIS.floor[floor.rung] }}
@@ -2016,6 +2073,7 @@ export function FloorGrid(props: FloorGridProps) {
             top: 0,
             width: stageSize.width,
             height: stageSize.height,
+            opacity: EMPIRE_TUNING.GYM_SCREEN_DISABLED_OPACITY,
           }}
         />
       </View>

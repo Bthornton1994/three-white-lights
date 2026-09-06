@@ -2324,7 +2324,7 @@ describe('SF-TWL-GYM-EMPIRE-UX-02 — Play operating view vs Build overlay', () 
       expect.objectContaining({
         backgroundColor: 'black',
         borderColor: 'goldenrod',
-        borderTopWidth: EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS,
+        borderTopWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
       }),
     );
     expect(findByTestId(root, 'gymscreen-rung').props.style).toEqual(
