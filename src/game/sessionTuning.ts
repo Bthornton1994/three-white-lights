@@ -518,6 +518,12 @@ export const SESSION_LAYOUT = Object.freeze({
   BUTTON_FONT: 13,
   /** Full-width primary on the opening decision. */
   START_BUTTON_HEIGHT: 56,
+  /**
+   * Bottom inset so the opening START is not under the shell nav overlay.
+   * Matches SHELL_LAYOUT.NAV_BOTTOM_INSET + NAV_HEIGHT + NAV_GAP (44 + 38 + 10).
+   * Restated here so session screens do not import the shell.
+   */
+  NAV_CLEARANCE: 92,
 
   /** Close-out stat rows. */
   STAT_ROW_GAP: 18,

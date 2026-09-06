@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: L.SCREEN_PAD,
     paddingTop: L.SAFE_AREA_FALLBACK,
-    paddingBottom: L.SAFE_AREA_FALLBACK,
+    paddingBottom: L.NAV_CLEARANCE,
     gap: L.ROW_GAP,
     width: '100%',
   },
