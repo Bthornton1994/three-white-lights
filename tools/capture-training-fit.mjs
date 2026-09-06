@@ -13,7 +13,7 @@ import path from 'node:path';
 
 import { gateDevServer } from './devServerSentinel.mjs';
 import { armFreshLifterPerBoot } from './freshLifterBoundary.mjs';
-import { openSessionToFirstSet } from './sessionDrive.mjs';
+import { completeCreateIfNeeded, CREATE_LIFTER } from './enterMeetFromCalendar.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -150,22 +150,46 @@ for (const viewport of VIEWPORTS) {
   });
   await armFreshLifterPerBoot(context);
   const page = await context.newPage();
-  const opened = await openSessionToFirstSet(page, url, undefined, undefined, 'squat');
-  const metrics = await page.evaluate(overflowReport);
   const file = '390x844-live-set-no-check-in.png';
-  if (opened.reached) {
-    await page.screenshot({ path: path.join(outDir, file) });
-  }
-  report.live = {
-    reached: opened.reached,
-    why: opened.reached ? null : opened.why,
-    file: opened.reached ? file : null,
-    ...metrics,
+  let live = {
+    reached: false,
+    why: 'did not start',
+    file: null,
   };
+  try {
+    await page.goto(url, { waitUntil: 'load' });
+    await page.getByTestId(CREATE_LIFTER.SCREEN).waitFor({ state: 'visible', timeout: 40000 });
+    const created = await completeCreateIfNeeded(page);
+    if (created.why) throw new Error(created.why);
+    await page.getByTestId('session-briefing').waitFor({ state: 'visible', timeout: 40000 });
+    await page.waitForTimeout(700);
+    const sleepCount = await page.getByTestId('check-in-sleep-ok').count();
+    await page.getByTestId('check-in-lift-squat').click({ timeout: 20000 });
+    await page.getByTestId('session-rpe-8').click({ timeout: 20000 });
+    await page.getByTestId('session-set').waitFor({ state: 'visible', timeout: 40000 });
+    const metrics = await page.evaluate(overflowReport);
+    await page.screenshot({ path: path.join(outDir, file) });
+    live = {
+      reached: true,
+      why: null,
+      file,
+      sleepChipCount: sleepCount,
+      ...metrics,
+    };
+  } catch (error) {
+    const metrics = await page.evaluate(overflowReport).catch(() => ({}));
+    live = {
+      reached: false,
+      why: error instanceof Error ? error.message : String(error),
+      file: null,
+      ...metrics,
+    };
+  }
+  report.live = live;
   console.log(
-    `live squat set        reached=${opened.reached} ` +
-      `checkIn=${metrics.checkInPresent} sleep=${metrics.sleepChipPresent} ` +
-      (opened.reached ? '' : opened.why),
+    `live squat set        reached=${live.reached} ` +
+      `checkIn=${live.checkInPresent ?? '?'} sleep=${live.sleepChipPresent ?? live.sleepChipCount ?? '?'} ` +
+      (live.reached ? '' : live.why),
   );
   await context.close();
 }
