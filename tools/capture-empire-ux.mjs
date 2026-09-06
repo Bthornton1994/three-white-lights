@@ -73,14 +73,40 @@ async function logMoreA64(page) {
     .locator('[data-testid="gymscreen-dock"] [data-testid="gymscreen-surface-developer"]')
     .count();
   const moreText = await page.getByTestId('gymscreen-more-drawer').innerText();
+  const shellLeave = await page.getByTestId('shell-leave-gym').count();
+  const moreLeave = await page
+    .locator('[data-testid="gymscreen-more-drawer"] [data-testid="gymscreen-leave-gym"]')
+    .count();
   console.log(
     JSON.stringify({
-      label: 'more-a6-4',
+      label: 'more-settings',
       moreDeveloperControls: moreDev,
       dockDeveloperControls: dockDev,
       moreHasDeveloperWord: /\bDeveloper\b/.test(moreText),
+      shellLeaveGym: shellLeave,
+      moreLeaveGym: moreLeave,
     }),
   );
+}
+
+async function logVoid(page, label) {
+  const probe = await page.evaluate(() => {
+    const html = getComputedStyle(document.documentElement).backgroundColor;
+    const body = getComputedStyle(document.body).backgroundColor;
+    const rootEl = document.getElementById('root');
+    const root = rootEl === null ? 'missing' : getComputedStyle(rootEl).backgroundColor;
+    const gym = document.querySelector('[data-testid="gymscreen-root"]');
+    const gymBox = gym === null ? null : gym.getBoundingClientRect();
+    return {
+      html,
+      body,
+      root,
+      gym: gymBox,
+      innerWidth: window.innerWidth,
+      innerHeight: window.innerHeight,
+    };
+  });
+  console.log(JSON.stringify({ label: `void-${label}`, ...probe }));
 }
 
 /** Developer chrome is an explicit web route, never player More/dock. */
@@ -103,6 +129,7 @@ async function run() {
   });
   const page = await context.newPage();
   await openGym(page);
+  await logVoid(page, 'play-390');
   await shot(page, 'play');
   await logChrome(page, 'play');
   await openSurface(page, 'build');
@@ -136,6 +163,23 @@ async function run() {
     }
   }
   await context.close();
+  for (const vp of [
+    { width: 375, height: 812, name: 'play-375' },
+    { width: 430, height: 932, name: 'play-430' },
+    { width: 768, height: 1024, name: 'play-tablet' },
+    { width: 1280, height: 800, name: 'play-desktop' },
+  ]) {
+    const extra = await browser.newContext({
+      viewport: { width: vp.width, height: vp.height },
+      deviceScaleFactor: 2,
+    });
+    const extraPage = await extra.newPage();
+    await openGym(extraPage);
+    await logVoid(extraPage, vp.name);
+    await logChrome(extraPage, vp.name);
+    await shot(extraPage, vp.name);
+    await extra.close();
+  }
   await browser.close();
   console.log(`empire-ux-01 ${PHASE} screenshots in ${OUT}`);
 }

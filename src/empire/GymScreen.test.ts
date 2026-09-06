@@ -142,10 +142,13 @@ import {
   playerFacingEquipmentCatalog,
   playerFacingEquipmentLabel,
   playerFacingGymBucksLine,
+  playerFacingGymNowLine,
+  playerFacingGymNextLine,
   playerFacingIncomeRateLine,
   playerFacingLocationLine,
   playerFacingManagerCapability,
   playerFacingReputationHud,
+  playerFacingSurfaceLabel,
   playerFacingWeekEffectsLine,
   stationConditionView,
 } from './stationView';
@@ -234,12 +237,13 @@ function press(element: Rendered): void {
   (handler as () => void)();
 }
 
-function render(state: GymViewState, dispatched: GymViewAction[]): Rendered {
+function render(state: GymViewState, dispatched: GymViewAction[], onLeaveGym?: () => void): Rendered {
   const element: unknown = GymScreen({
     state,
     dispatch: (action) => {
       dispatched.push(action);
     },
+    ...(onLeaveGym === undefined ? {} : { onLeaveGym }),
   });
   expect(isRendered(element)).toBe(true);
   return element as Rendered;
@@ -413,14 +417,41 @@ function expectScreenMatchesState(root: Rendered, state: GymViewState): number {
     playerFacingLocationLine(gym.ladder.rung),
   );
   compared += 1;
-  expect(textOf(findByTestId(root, 'gymscreen-rate'))).toBe(
-    playerFacingIncomeRateLine(ladderIncomeRatePerHour(gym.ladder.rung)),
-  );
-  compared += 1;
   expect(textOf(findByTestId(root, 'gymscreen-gym-bucks'))).toBe(
     playerFacingGymBucksLine(gym.ladder.gymBucks),
   );
   compared += 1;
+  expect(textOf(findByTestId(root, 'gymscreen-now'))).toBe(
+    playerFacingGymNowLine(
+      Object.freeze({
+        memberCount: state.livingMembers.members.length,
+        wornCount: wornItems(managed).length,
+        wornLead:
+          wornItems(managed)[0] === undefined
+            ? null
+            : playerFacingEquipmentLabel(wornItems(managed)[0] as string),
+        reviewOpen: maintenancePrompt(managed).kind !== 'quiet',
+        gymClosed: failurePhase(managed) === 'failed',
+      }),
+    ),
+  );
+  expect(textOf(findByTestId(root, 'gymscreen-next'))).toBe(
+    playerFacingGymNextLine(
+      Object.freeze({
+        memberCount: state.livingMembers.members.length,
+        wornCount: wornItems(managed).length,
+        reviewOpen: maintenancePrompt(managed).kind !== 'quiet',
+        gymClosed: failurePhase(managed) === 'failed',
+      }),
+    ),
+  );
+  compared += 2;
+  expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).not.toContain('gymscreen-rate');
+  expect(testIdsUnder(findByTestId(root, 'gymscreen-action-card'))).toContain('gymscreen-now');
+  expect(testIdsUnder(findByTestId(root, 'gymscreen-action-card'))).toContain('gymscreen-next');
+  expect(textOf(findByTestId(root, 'gymscreen-rate'))).toBe(
+    playerFacingIncomeRateLine(ladderIncomeRatePerHour(gym.ladder.rung)),
+  );
   expect(textOf(findByTestId(root, 'gymscreen-accelerated-bucks'))).toContain(
     String(gym.acceleratedGymBucks),
   );
@@ -2079,6 +2110,12 @@ describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
     expect(findAllByTestId(root, 'gymscreen-reputation-reason-0').length).toBe(0);
     expect(textOf(findByTestId(root, 'gymscreen-reputation'))).not.toMatch(/\+REP/);
     expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain('gymscreen-reputation');
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain('gymscreen-lights');
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-action-card'))).toContain('gymscreen-now');
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-action-card'))).toContain('gymscreen-next');
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).not.toContain('gymscreen-now');
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).not.toContain('gymscreen-rate');
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).toContain('gymscreen-rate');
     expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).not.toContain(
       'gymscreen-reputation',
     );
@@ -2108,7 +2145,7 @@ describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
     expect(textOf(findByTestId(root, 'gymscreen-reputation'))).not.toMatch(/\.\d/);
   });
 
-  it('shows the placing reason after a first-of-16 PR credit, still on the HUD', () => {
+  it('shows the placing reason after a first-of-16 PR credit, on More not the Play HUD', () => {
     const credited = gymViewReduce(createGymViewState(), {
       kind: 'credit-sporting-result',
       meetId: 'local-open-2026',
@@ -2128,10 +2165,10 @@ describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
         .replace('{field}', '16')
         .replace('{kind}', 'local'),
     );
-    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain(
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).toContain(
       'gymscreen-reputation-reason-0',
     );
-    expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).not.toContain(
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).not.toContain(
       'gymscreen-reputation-reason-0',
     );
     expect(textOf(findByTestId(root, 'gymscreen-reputation'))).not.toMatch(/\+REP/);
@@ -2193,7 +2230,10 @@ describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
         .replace('{kind}', 'local'),
     );
     expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain('gymscreen-reputation');
-    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain(
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).toContain(
+      'gymscreen-reputation-reason-0',
+    );
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).not.toContain(
       'gymscreen-reputation-reason-0',
     );
   });
@@ -2223,8 +2263,52 @@ describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
     expect(textOf(findByTestId(root, 'gymscreen-reputation-reason-0'))).toBe(
       T.SPORTING_REPUTATION.copy.unknownMeet,
     );
-    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain(
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).toContain(
       'gymscreen-reputation-reason-0',
     );
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).not.toContain(
+      'gymscreen-reputation-reason-0',
+    );
+  });
+});
+
+describe('SF-TWL-GYM-EMPIRE-UX-02 — Play operating view vs Build overlay', () => {
+  it('Play FloorGrid is not in build mode and More holds no diagnostics', () => {
+    const root = render(createGymViewState(), []);
+    expect(floorGridFrom(root).props['buildMode']).toBe(false);
+    expect(floorGridFrom(root).props['developerChrome']).toBe(false);
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).not.toContain(
+      'gymscreen-diagnostics',
+    );
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).not.toContain(
+      'gymscreen-surface-developer',
+    );
+    expect(findAllByTestId(root, 'gymscreen-leave-gym').length).toBe(0);
+    expect(textOf(findByTestId(root, 'gymscreen-surface-play'))).toBe(
+      playerFacingSurfaceLabel('play'),
+    );
+  });
+
+  it('Build sets FloorGrid buildMode; Done returns Play with no buildMode', () => {
+    const play = createGymViewState();
+    const build = gymViewReduce(play, { kind: 'set-gym-surface', surface: 'build' });
+    expect(floorGridFrom(render(build, [])).props['buildMode']).toBe(true);
+    const back = gymViewReduce(build, { kind: 'set-gym-surface', surface: 'play' });
+    expect(floorGridFrom(render(back, [])).props['buildMode']).toBe(false);
+    expect(testIdsUnder(findByTestId(render(back, []), 'gymscreen-action-card'))).toContain(
+      'gymscreen-now',
+    );
+  });
+
+  it('leave-gym lives on More only when the shell supplies the callback', () => {
+    const left: string[] = [];
+    const root = render(createGymViewState(), [], () => {
+      left.push('left');
+    });
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).toContain(
+      'gymscreen-leave-gym',
+    );
+    press(findByTestId(root, 'gymscreen-leave-gym'));
+    expect(left).toEqual(['left']);
   });
 });

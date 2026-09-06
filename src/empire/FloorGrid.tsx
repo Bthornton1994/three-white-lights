@@ -249,6 +249,8 @@ import {
   type StationOperationView,
   displayConditionPercent,
   playerFacingBayRole,
+  playerFacingBuildPlaceHint,
+  playerFacingBuildTrayEmpty,
   playerFacingEquipmentCatalog,
   playerFacingEquipmentCostLine,
   playerFacingEquipmentLabel, playerFacingGymBucksLine,
@@ -350,7 +352,7 @@ export interface FloorGridProps {
   readonly gymClockSeconds: number;
 }
 
-/** Live tile size from the measured gym stage, so a garage fills the viewport. */
+/** Live tile size from the measured gym stage, so a garage fills stage width. */
 function tilePixelsForStage(
   gridWidth: number,
   gridHeight: number,
@@ -361,7 +363,11 @@ function tilePixelsForStage(
   const availW = stageWidth - pad * 2;
   const availH = stageHeight - pad * 2;
   if (availW <= 0 || availH <= 0) return EMPIRE_TUNING.FLOOR_TILE_PIXELS;
-  const raw = Math.floor(Math.min(availW / gridWidth, availH / gridHeight));
+  // Width-first: phones are tall; filling min(w,h) left a short island and
+  // a contrasting void. Height leftover is the same room texture, not a gap.
+  const byWidth = Math.floor(availW / gridWidth);
+  const byHeight = Math.floor(availH / gridHeight);
+  const raw = byWidth > 0 ? byWidth : byHeight;
   if (raw < 1) return 1;
   if (raw > EMPIRE_TUNING.FLOOR_TILE_PIXELS_MAX) return EMPIRE_TUNING.FLOOR_TILE_PIXELS_MAX;
   return raw;
@@ -387,14 +393,14 @@ const FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR = 'crimson';
  * crossing) is needed to pass the colour-literal scan — the sprite colours
  * themselves are numeric components in `EMPIRE_TUNING`, which is registered.
  */
-const FLOOR_LABEL_COLOR = 'white';
+const FLOOR_LABEL_COLOR = 'ivory';
 /** The caption style every sprite label shares — colour above, size from the registered knob. */
 const FLOOR_LABEL_STYLE = Object.freeze({
   color: FLOOR_LABEL_COLOR,
   fontSize: EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE,
 });
 /** The tray chip's backing — a quiet dark slate the sprites read against, one class for every item now that the sprite carries the identity the old colour cycle used to. */
-const FLOOR_TRAY_CHIP_COLOR = 'darkslateblue';
+const FLOOR_TRAY_CHIP_COLOR = 'black';
 const AMBIENT_MEMBER_BORDER_COLOR = 'black';
 /**
  * GDD §5.14 Stage C: the outline a station carries while it is the selected
@@ -420,11 +426,12 @@ const FLOOR_THROUGHPUT_MARK_COLOR = 'darkkhaki';
 const FLOOR_PLATE_LOADING_COLOR = 'crimson';
 const FLOOR_PLATE_LOADING_HOLE_COLOR = 'white';
 /** The contextual station panel's own backing, the same quiet slate the tray chip already reads against. */
-const FLOOR_STATION_PANEL_BACKGROUND_COLOR = 'darkslateblue';
-/** The panel's action-button chrome — the identical literals `GymScreen.tsx`'s own `styles.button` already uses, so a control looks like the same control on both screens. */
-const FLOOR_STATION_PANEL_BUTTON_BACKGROUND_COLOR = 'darkslateblue';
-const FLOOR_STATION_PANEL_BUTTON_BORDER_COLOR = 'deepskyblue';
-const FLOOR_STATION_PANEL_BUTTON_TEXT_COLOR = 'white';
+const FLOOR_STATION_PANEL_BACKGROUND_COLOR = 'black';
+/** A×C IRON & AMBER panel chrome — amber CTA, ivory label, charcoal sheet. */
+const FLOOR_STATION_PANEL_BUTTON_BACKGROUND_COLOR = 'goldenrod';
+const FLOOR_STATION_PANEL_BUTTON_BORDER_COLOR = 'goldenrod';
+const FLOOR_STATION_PANEL_BUTTON_TEXT_COLOR = 'black';
+const FLOOR_PLACE_VALID_COLOR = 'springgreen';
 
 /**
  * The station panel's own `StyleSheet.create` block — GDD §5.14 Stage C.
@@ -438,7 +445,7 @@ const panelStyles = StyleSheet.create({
     marginTop: EMPIRE_TUNING.FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS,
     padding: EMPIRE_TUNING.FLOOR_STATION_PANEL_PADDING_PIXELS,
     borderWidth: EMPIRE_TUNING.FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS,
-    borderColor: FLOOR_STATION_SELECTED_OUTLINE_COLOR,
+    borderColor: FLOOR_STATION_PANEL_BUTTON_BORDER_COLOR,
     backgroundColor: FLOOR_STATION_PANEL_BACKGROUND_COLOR,
     // Same cap the facility drawers already use. Without it the open panel
     // grows through gymscreen-dock and shell-leave-gym (13j measured the
@@ -1948,14 +1955,44 @@ export function FloorGrid(props: FloorGridProps) {
             : { width: next.width, height: next.height },
         );
       }}
-      style={{ flex: 1 }}
+      style={{
+        flex: 1,
+        backgroundColor: FLOOR_BACKGROUND_COLOR,
+        position: 'relative',
+        overflow: 'hidden',
+        paddingBottom: EMPIRE_TUNING.GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS,
+      }}
     >
-      <Text testID={'floorgrid-caption'}>
-        {buildMode
-          ? placing
-            ? 'build — tap a tile to place'
-            : 'build — tap a piece, then tap a tile'
-          : playerFacingRungLabel(floor.rung)}
+      <View
+        testID={'floorgrid-room'}
+        pointerEvents={'none'}
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          right: 0,
+          bottom: 0,
+        }}
+      >
+        <Image
+          source={{ uri: FLOOR_SPRITE_URIS.floor[floor.rung] }}
+          resizeMode={'stretch'}
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: '100%',
+            height: '100%',
+          }}
+        />
+      </View>
+      <Text
+        testID={'floorgrid-caption'}
+        style={buildMode ? FLOOR_LABEL_STYLE : { display: 'none' }}
+      >
+        {buildMode ? playerFacingBuildPlaceHint(placing) : playerFacingRungLabel(floor.rung)}
       </Text>
       {pendingPlace === null ? null : (
         <View testID={'floorgrid-place-banner'}>
@@ -1993,13 +2030,21 @@ export function FloorGrid(props: FloorGridProps) {
         </View>
       )}
       <View testID={'floorgrid-scroll-x'} style={{ flex: 1 }}>
-        <View testID={'floorgrid-scroll-y'} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View
+          testID={'floorgrid-scroll-y'}
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: FLOOR_BACKGROUND_COLOR,
+          }}
+        >
           <View
             testID={'floorgrid-grid'}
             style={{
               width: grid.width * tile,
               height: grid.height * tile,
-              backgroundColor: FLOOR_BACKGROUND_COLOR,
+              backgroundColor: buildMode ? FLOOR_BACKGROUND_COLOR : 'transparent',
               borderWidth: 0,
               borderColor: FLOOR_GRID_BORDER_COLOR,
               // GDD §5.13 presentation Phase 4: every sprite under this
@@ -2128,7 +2173,7 @@ export function FloorGrid(props: FloorGridProps) {
                   width: ghostSource.footprint.width * tile,
                   height: ghostSource.footprint.height * tile,
                   borderWidth: EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS,
-                  borderColor: FLOOR_STATION_SELECTED_OUTLINE_COLOR,
+                  borderColor: FLOOR_PLACE_VALID_COLOR,
                   opacity: EMPIRE_TUNING.GYM_SCREEN_DISABLED_OPACITY,
                   zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
                 }}
@@ -2188,7 +2233,7 @@ export function FloorGrid(props: FloorGridProps) {
                     // goldenrod rest-edge around the bay.
                     borderWidth: isRefusalTarget
                       ? EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS
-                      : isSelected
+                      : buildMode && isSelected
                         ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
                         : 0,
                     borderColor: isRefusalTarget
@@ -2274,7 +2319,7 @@ export function FloorGrid(props: FloorGridProps) {
                       }}
                     />
                   ) : null}
-                  {isBayPrimary ? null : (
+                  {isBayPrimary || !buildMode ? null : (
                     <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
                       {playerFacingEquipmentLabel(row.item)}
                     </Text>
@@ -2302,6 +2347,7 @@ export function FloorGrid(props: FloorGridProps) {
                   height: bay.expansion.footprint.height * tile,
                   zIndex: 0,
                   borderWidth:
+                    buildMode &&
                     selectedStation !== null &&
                     selectedStation.kind === 'training' &&
                     selectedStation.station === COMPETITION_BENCH_BAY
@@ -2375,9 +2421,11 @@ export function FloorGrid(props: FloorGridProps) {
                     width: row.footprint.width * tile,
                     height: row.footprint.height * tile,
                     borderWidth:
-                      isSelected || isPending
+                      buildMode && (isSelected || isPending)
                         ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
-                        : EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
+                        : buildMode
+                          ? EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS
+                          : 0,
                     borderColor:
                       isSelected || isPending
                         ? FLOOR_STATION_SELECTED_OUTLINE_COLOR
@@ -2399,9 +2447,11 @@ export function FloorGrid(props: FloorGridProps) {
                     }}
                     {...({ pointerEvents: 'none' } as object)}
                   />
-                  <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
-                    {playerFacingEquipmentLabel(row.item)}
-                  </Text>
+                  {buildMode ? (
+                    <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
+                      {playerFacingEquipmentLabel(row.item)}
+                    </Text>
+                  ) : null}
                 </Pressable>
               );
             })}
@@ -2551,14 +2601,16 @@ export function FloorGrid(props: FloorGridProps) {
                     width: bay.primary.footprint.width * tile,
                     height: tile,
                     zIndex: EMPIRE_TUNING.FLOOR_SIM_MEMBER_Z_INDEX + 1,
-                    backgroundColor: FLOOR_STATION_PANEL_BACKGROUND_COLOR,
+                    backgroundColor: 'transparent',
                     justifyContent: 'center',
                     cursor: 'pointer',
                   } as WebSelectableViewStyle}
                 >
-                  <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
-                    bench bay
-                  </Text>
+                  {buildMode ? (
+                    <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
+                      bench bay
+                    </Text>
+                  ) : null}
                 </Pressable>
               )}
             {buildMode || bay.expansion === null
@@ -2581,20 +2633,27 @@ export function FloorGrid(props: FloorGridProps) {
                     width: bay.expansion.footprint.width * tile,
                     height: tile,
                     zIndex: EMPIRE_TUNING.FLOOR_SIM_MEMBER_Z_INDEX + 1,
-                    backgroundColor: FLOOR_STATION_PANEL_BACKGROUND_COLOR,
+                    backgroundColor: 'transparent',
                     justifyContent: 'center',
                     cursor: 'pointer',
                   } as WebSelectableViewStyle}
                 >
-                  <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
-                    second bench
-                  </Text>
+                  {buildMode ? (
+                    <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
+                      second bench
+                    </Text>
+                  ) : null}
                 </Pressable>
               )}
           </View>
         </View>
       </View>
-      <Text testID={'floorgrid-ambient-caption'}>{drawnSim.members.length} member(s) around the gym</Text>
+      <Text
+        testID={'floorgrid-ambient-caption'}
+        style={buildMode ? FLOOR_LABEL_STYLE : { display: 'none' }}
+      >
+        {drawnSim.members.length} member(s) around the gym
+      </Text>
       {lastDeparture === null ? null : (
         <Text testID={'floorgrid-departure-notice'}>{playerFacingDepartureLine(lastDeparture)}</Text>
       )}
@@ -2610,12 +2669,10 @@ export function FloorGrid(props: FloorGridProps) {
       >
         {unplaced.length === 0 && unplacedFurniture.length === 0 ? (
           <Text testID={'floorgrid-tray-empty'}>
-            {owned.length === 0
-              ? 'no session equipment yet — buy some, then tap it here and tap a tile'
-              : 'every piece you own is on the floor — tap one, then tap a new tile'}
+            {playerFacingBuildTrayEmpty(owned.length)}
           </Text>
         ) : (
-          <Text>unplaced — tap a piece, then tap a tile on the gym</Text>
+          <Text>{playerFacingBuildPlaceHint(false)}</Text>
         )}
         <ScrollView horizontal testID={'floorgrid-tray-scroll'}>
           {unplacedFurniture.map((item) => {

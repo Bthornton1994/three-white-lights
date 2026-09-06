@@ -1600,16 +1600,18 @@ export const EMPIRE_TUNING = Object.freeze({
 
   /**
    * Upper bound on a live tile, in pixels, after the gym stage is measured.
-   * Stops a desktop viewport from blowing an 8x6 garage into unreadable
-   * sprites. Read by `FloorGrid.tsx` only.
-   */
-  FLOOR_TILE_PIXELS_MAX: 72,
-
-  /**
-   * Inset, in pixels, reserved on every edge of the gym stage before the
-   * tile size is chosen so the grid does not kiss the HUD/dock. Read by
+   * Width-fill on phones and tablets; this cap only stops a wide desktop
+   * from blowing an 8x6 garage into unreadable sprites. Read by
    * `FloorGrid.tsx` only.
    */
+  FLOOR_TILE_PIXELS_MAX: 160,
+
+  /**
+     * Inset, in pixels, reserved on every edge of the gym stage before the
+     * tile size is chosen. UX-02 still fills leftover stage with the room
+     * texture so this inset is not a white letterbox. Read by `FloorGrid.tsx`
+     * only.
+     */
   FLOOR_STAGE_PADDING_PIXELS: 8,
 
   /**
@@ -2633,14 +2635,10 @@ export const EMPIRE_TUNING = Object.freeze({
   GYM_SCREEN_BUILD_GRID_FADE_MS: 240,
 
   /**
-   * S4i — how much room `GymScreen.tsx`'s own `ScrollView` box reserves at
-   * its bottom edge so its scrollport frame never extends under
-   * `src/shell/AppShell.tsx`'s absolutely-positioned `BACK TO TRAINING` /
-   * `shell-leave-gym` nav pill, at ANY scroll position — not only at
-   * max-scroll, which is what `contentContainerStyle` padding alone would
-   * buy and why this is a `marginBottom` on the box itself instead. A real
-   * iPhone Safari playtest found the pill covering slot 2's
-   * `stretching-yoga` and `rest` week-slot buttons; this is that clearance.
+   * S4i — overlay clearance for GymScreen's dock + contextual action card
+   * (UX-02 full-bleed Play). The old BACK TO TRAINING pill left operating
+   * chrome; this number still sizes the band the floor must keep clear at
+   * the bottom so inspect panels and the Build tray are not under the dock.
    *
    * THE NUMBER, AND WHERE IT CAME FROM. 82 = `NAV_BOTTOM_INSET` (44) +
    * `NAV_HEIGHT` (38), both read directly out of `src/shell/shellTuning.ts`

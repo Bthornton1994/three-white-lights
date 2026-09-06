@@ -3335,7 +3335,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'member(s) around the gym',
       // C.1c: the Build tray now sits above the diagnostics block so the
       // inventory is next to the gym rather than under a developer readout.
-      'unplaced — tap a piece, then tap a tile on the gym',
+      // UX-02: tray copy is playerFacingBuildTrayEmpty / PlaceHint, not JSX
+      // text, so the old "tap a tile" chunk is gone.
       'floor (',
       ') —',
       'x',
@@ -3911,7 +3912,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 856 -> 905: SF-TWL-GYM-EMPIRE-UX-01 player-facing chrome and catalog copy.
     // 905 -> 918: SF-TWL-GYM-EMPIRE-UX-01 playerFacingGymRefusal toast copy.
     // 918 -> 917: A6-4 removed GymScreen More "Developer" control testID.
-    expect(singleQuoted.size).toBe(917);
+    // 917 -> 932: SF-TWL-GYM-EMPIRE-UX-02 now/next/leave/build-place copy.
+    // 932 -> 938: A×C IRON & AMBER chrome tokens (Gym, ivory, lights, card).
+    expect(singleQuoted.size).toBe(938);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4052,7 +4055,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 446 -> 451: CAREER-EMPIRE-REP-01 ledger/composer refuse templates.
     // 451 -> 452: CAREER-EMPIRE-REP-01 gymscreen-reputation-reason template.
     // 452 -> 469: SF-TWL-GYM-EMPIRE-UX-01 player-facing template lines.
-    expect(templateChunks.size).toBe(469);
+    // 469 -> 471: SF-TWL-GYM-EMPIRE-UX-02 now-line templates.
+    expect(templateChunks.size).toBe(471);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4112,6 +4116,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './stationCapability',
       './stationView',
       './trainingStation',
+      '100%',
       ':',
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
       'Accessory',
@@ -4148,6 +4153,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Garage',
       'Good',
       'Gray',
+      'Gym',
       'GymMemberId',
       'Hale',
       'Hana',
@@ -4187,7 +4193,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Petra',
       'Pia',
       'Placeholder',
-      'Play',
       'Poor',
       'Powerlifter',
       'Priya',
@@ -4270,6 +4275,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'black',
       'blocked',
       'bodybuilder',
+      'bold',
       'bombed-out',
       'boolean',
       'bought',
@@ -4319,7 +4325,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'currency-purchase',
       'daily-allowance-spent',
       'darkkhaki',
-      'darkslateblue',
       'darkslategray',
       'data:image/png;base64,',
       'deadlift',
@@ -4417,6 +4422,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-plate-tree-competition-bench-bay',
       'floorgrid-quality-bench-competition-bench-bay',
       'floorgrid-quality-mark-competition-bench-bay',
+      'floorgrid-room',
       'floorgrid-root',
       'floorgrid-scroll-x',
       'floorgrid-scroll-y',
@@ -4485,6 +4491,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymId',
       'gymscreen-accelerated-bucks',
       'gymscreen-accrual',
+      'gymscreen-action-card',
       'gymscreen-advance',
       'gymscreen-advance-next-week',
       'gymscreen-allocation',
@@ -4504,7 +4511,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-hud',
       'gymscreen-hud-review',
       'gymscreen-ladder-shop',
+      'gymscreen-leave-gym',
       'gymscreen-lifts',
+      'gymscreen-light-0',
+      'gymscreen-light-1',
+      'gymscreen-light-2',
+      'gymscreen-lights',
       'gymscreen-management',
       'gymscreen-manager',
       'gymscreen-manager-state',
@@ -4512,6 +4524,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-move',
       'gymscreen-move-up',
       'gymscreen-move-up-unavailable',
+      'gymscreen-next',
+      'gymscreen-now',
       'gymscreen-phase',
       'gymscreen-prompt',
       'gymscreen-prompt-decline',
@@ -4567,6 +4581,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'injury-risk',
       'injuryDaysSaved',
       'interrupted',
+      'ivory',
       'khaki',
       'kind',
       'knob',
@@ -4936,7 +4951,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1308 -> 1374: SF-TWL-GYM-EMPIRE-UX-01 player-facing chrome strings.
     // 1374 -> 1387: SF-TWL-GYM-EMPIRE-UX-01 playerFacingGymRefusal toast copy.
     // 1387 -> 1386: A6-4 removed GymScreen More Developer control testID.
-    expect(stringsChecked).toBe(1386);
+    // 1386 -> 1403: SF-TWL-GYM-EMPIRE-UX-02 singleQuoted +15 and templateChunks +2.
+    // 1403 -> 1409: A×C IRON & AMBER chrome tokens.
+    expect(stringsChecked).toBe(1409);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5057,11 +5074,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `stationKind`, `completed`, `GymMemberId`, `:` from
     // `livingMembers.ts`'s id split). G.1A removes the `?` fallback from
     // `memberOrdinalFromId` and adds no new space-free single-quoted tokens.
-    expect(probes).toBe(spaceFree.length - 2);
-    // `:` from `livingMembers.ts`'s id split and `-` from shop separators
-    // clear the `< 2` guard and are intentionally unprobed — every other
-    // shipped token is.
-    expect(probes + 2).toBe(spaceFree.length);
+    expect(probes).toBe(spaceFree.length - 3);
+    // `:` from `livingMembers.ts`'s id split, `-` from shop separators, and
+    // `100%` from the full-bleed room Image size — each fails the letter
+    // guard and is intentionally unprobed. Every other shipped token is.
+    expect(probes + 3).toBe(spaceFree.length);
 
     // JSX text gets a SIGNED-PAIR census rather than the flat ban above, and
     // the difference is a measurement, not a taste (E39): the ban predicate

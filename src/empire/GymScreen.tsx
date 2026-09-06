@@ -282,7 +282,10 @@ import {
   playerFacingEquipmentCatalog,
   playerFacingEquipmentLabel,
   playerFacingGymBucksLine,
+  playerFacingGymNowLine,
+  playerFacingGymNextLine,
   playerFacingIncomeRateLine,
+  playerFacingLeaveGymLabel,
   playerFacingLocationLine,
   playerFacingManagerCapability,
   playerFacingManagerRole,
@@ -333,12 +336,17 @@ import {
  * census per NEW word it needed (`'pointer'`, `'auto'`, `'button'`) and none
  * for a colour.
  */
-const GYM_SCREEN_BUTTON_BACKGROUND_COLOR = 'darkslateblue';
-const GYM_SCREEN_BUTTON_BORDER_COLOR = 'deepskyblue';
-const GYM_SCREEN_BUTTON_TEXT_COLOR = 'white';
+/** A×C IRON & AMBER — named CSS only (empire colour-literal scan). */
+const GYM_SCREEN_BUTTON_BACKGROUND_COLOR = 'black';
+const GYM_SCREEN_BUTTON_BORDER_COLOR = 'goldenrod';
+const GYM_SCREEN_BUTTON_TEXT_COLOR = 'ivory';
 const GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR = 'darkslategray';
 const GYM_SCREEN_BUTTON_DISABLED_BORDER_COLOR = 'gray';
 const GYM_SCREEN_BUTTON_DISABLED_TEXT_COLOR = 'silver';
+const GYM_SCREEN_STAGE_COLOR = 'darkslategray';
+const GYM_SCREEN_FAB_BACKGROUND_COLOR = 'goldenrod';
+const GYM_SCREEN_FAB_TEXT_COLOR = 'black';
+const GYM_SCREEN_LIGHT_COLOR = 'ivory';
 
 /**
  * The one `StyleSheet.create` block this file needs. `button` is the shape
@@ -367,51 +375,108 @@ const styles = StyleSheet.create({
    */
   root: {
     flex: 1,
-    marginBottom: EMPIRE_TUNING.GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS,
+    backgroundColor: GYM_SCREEN_STAGE_COLOR,
     overflow: 'hidden',
   },
   hud: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
     paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
     paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
+    backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
+    pointerEvents: 'box-none',
   },
   hudText: {
     color: GYM_SCREEN_BUTTON_TEXT_COLOR,
   },
+  hudHeading: {
+    color: GYM_SCREEN_BUTTON_TEXT_COLOR,
+    fontWeight: 'bold',
+  },
+  hudMuted: {
+    color: GYM_SCREEN_BUTTON_DISABLED_TEXT_COLOR,
+  },
   hudRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  identity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  lights: {
+    flexDirection: 'row',
+    marginRight: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+  },
+  light: {
+    width: EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE,
+    height: EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE,
+    borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS,
+    backgroundColor: GYM_SCREEN_LIGHT_COLOR,
+    marginRight: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
+  },
+  actionCard: {
+    position: 'absolute',
+    left: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
+    right: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
+    bottom:
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS +
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS * 2,
+    zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
+    padding: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
+    backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
+    borderWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
+    borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
+    borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS,
   },
   stage: {
     flex: 1,
     position: 'relative',
+    backgroundColor: GYM_SCREEN_STAGE_COLOR,
   },
   floor: {
     flex: 1,
+    backgroundColor: GYM_SCREEN_STAGE_COLOR,
   },
   fab: {
     position: 'absolute',
     right: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
-    bottom: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
+    bottom:
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS +
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS +
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS +
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS +
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS +
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
     minHeight: EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS,
     paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
     paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
     borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS,
     borderWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
-    backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
+    backgroundColor: GYM_SCREEN_FAB_BACKGROUND_COLOR,
     borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
     cursor: 'pointer',
   },
+  fabText: {
+    color: GYM_SCREEN_FAB_TEXT_COLOR,
+  },
   drawer: {
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 0,
+    bottom:
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS +
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS * 2,
     maxHeight:
       EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS * EMPIRE_TUNING.FLOOR_GRID_SIZE.garage.height,
-    backgroundColor: GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR,
+    backgroundColor: GYM_SCREEN_STAGE_COLOR,
     borderTopWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
     borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
     zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
@@ -420,10 +485,16 @@ const styles = StyleSheet.create({
     display: 'none',
   },
   dock: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
     paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
+    backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
   },
   dockButton: {
     flex: 1,
@@ -440,9 +511,18 @@ const styles = StyleSheet.create({
   },
   dockButtonHome: {
     flex: EMPIRE_TUNING.GYM_SCREEN_DOCK_HOME_FLEX,
+    backgroundColor: GYM_SCREEN_STAGE_COLOR,
+  },
+  dockButtonQuiet: {
+    borderWidth: 0,
+    backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
   },
   dockButtonActive: {
-    backgroundColor: GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR,
+    backgroundColor: GYM_SCREEN_FAB_BACKGROUND_COLOR,
+  },
+  dockButtonActiveText: {
+    color: GYM_SCREEN_FAB_TEXT_COLOR,
+    fontWeight: 'bold',
   },
   staffCard: {
     marginBottom: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
@@ -563,12 +643,17 @@ function displayRepairCost(costGymBucks: number): number {
   return isDustRepairCost(costGymBucks) ? 0 : costGymBucks;
 }
 
+export type GymScreenProps = GymViewProps & {
+  /** Shell route off Gym Empire. Absent in node render tests. */
+  readonly onLeaveGym?: () => void;
+};
+
 /**
  * The native stage-1+2+4 screen. Prop-taking on purpose, the same reason
  * `GymView` gives: a pure function of its props, so a render test can invoke
  * it directly, and so the one stateful hook stays outside `src/empire/`.
  */
-export function GymScreen(props: GymViewProps) {
+export function GymScreen(props: GymScreenProps) {
   const {
     managed,
     lastAccrual,
@@ -623,38 +708,42 @@ export function GymScreen(props: GymViewProps) {
   const previewEffects = weeklyAttributeEffects(allocation, gym.sessionEquipment);
   const available = availableActivities(gym.sessionEquipment);
   const dispatch = (action: GymViewAction): void => props.dispatch(action);
+  const gymClosed = failurePhase(managed) === 'failed';
+  const reviewOpen = prompt.kind !== 'quiet';
+  const nowInput = Object.freeze({
+    memberCount: livingMembers.members.length,
+    wornCount: worn.length,
+    wornLead: worn[0] === undefined ? null : playerFacingEquipmentLabel(worn[0]),
+    reviewOpen,
+    gymClosed,
+  });
+  const nowLine = playerFacingGymNowLine(nowInput);
+  const nextLine = playerFacingGymNextLine(nowInput);
 
   return (
     <View testID={'gymscreen-root'} style={styles.root}>
       <View testID={'gymscreen-hud'} style={styles.hud}>
         <View style={styles.hudRow}>
-          <Text testID={'gymscreen-rung'} style={styles.hudText}>
-            {playerFacingLocationLine(gym.ladder.rung)}
-          </Text>
+          <View style={styles.identity}>
+            <View testID={'gymscreen-lights'} style={styles.lights}>
+              <View testID={'gymscreen-light-0'} style={styles.light} />
+              <View testID={'gymscreen-light-1'} style={styles.light} />
+              <View testID={'gymscreen-light-2'} style={styles.light} />
+            </View>
+            <Text testID={'gymscreen-rung'} style={styles.hudHeading}>
+              {playerFacingLocationLine(gym.ladder.rung)}
+            </Text>
+          </View>
           <Text testID={'gymscreen-gym-bucks'} style={styles.hudText}>
             {playerFacingGymBucksLine(gym.ladder.gymBucks)}
           </Text>
         </View>
-        <View style={styles.hudRow}>
-          <Text testID={'gymscreen-rate'} style={styles.hudText}>
-            {playerFacingIncomeRateLine(ladderIncomeRatePerHour(gym.ladder.rung))}
-          </Text>
-          <Text testID={'gymscreen-reputation'} style={styles.hudText}>{reputationLine}</Text>
-        </View>
+        <Text testID={'gymscreen-reputation'} style={styles.hudMuted}>{reputationLine}</Text>
         {returnSummary === null ? null : (
           <Text testID={'gymscreen-return'} style={styles.hudText}>
             {returnSummary}
           </Text>
         )}
-        {reputationReasons.map((text, index) => (
-          <Text
-            testID={`gymscreen-reputation-reason-${index}`}
-            key={index}
-            style={styles.hudText}
-          >
-            {text}
-          </Text>
-        ))}
         {prompt.kind === 'quiet' ? null : (
           <Pressable
             testID={'gymscreen-hud-review'}
@@ -1247,6 +1336,28 @@ export function GymScreen(props: GymViewProps) {
           {returnSummary}
         </Text>
       )}
+      <Text testID={'gymscreen-rate'} style={styles.hudMuted}>
+        {playerFacingIncomeRateLine(ladderIncomeRatePerHour(gym.ladder.rung))}
+      </Text>
+      {reputationReasons.map((text, index) => (
+        <Text
+          testID={`gymscreen-reputation-reason-${index}`}
+          key={index}
+          style={styles.hudText}
+        >
+          {text}
+        </Text>
+      ))}
+      {props.onLeaveGym === undefined ? null : (
+        <Pressable
+          testID={'gymscreen-leave-gym'}
+          accessibilityRole={'button'}
+          style={styles.button}
+          onPress={props.onLeaveGym}
+        >
+          <Text style={styles.buttonText}>{playerFacingLeaveGymLabel()}</Text>
+        </Pressable>
+      )}
       </ScrollView>
       <ScrollView
         testID={'gymscreen-developer-drawer'}
@@ -1338,8 +1449,19 @@ export function GymScreen(props: GymViewProps) {
           dispatch({ kind: 'set-gym-surface', surface: surface === 'build' ? 'play' : 'build' })
         }
       >
-        <Text style={styles.buttonText}>{playerFacingBuildFabLabel(surface === 'build')}</Text>
+        <Text style={styles.fabText}>{playerFacingBuildFabLabel(surface === 'build')}</Text>
       </Pressable>
+      </View>
+      <View
+        testID={'gymscreen-action-card'}
+        style={surface === 'play' ? styles.actionCard : styles.drawerHidden}
+      >
+        <Text testID={'gymscreen-now'} style={styles.hudHeading}>
+          {nowLine}
+        </Text>
+        <Text testID={'gymscreen-next'} style={styles.hudMuted}>
+          {nextLine}
+        </Text>
       </View>
       <View testID={'gymscreen-dock'} style={styles.dock}>
         {GYM_DOCK_SURFACES.map((name) => (
@@ -1348,17 +1470,29 @@ export function GymScreen(props: GymViewProps) {
             testID={`gymscreen-surface-${name}`}
             accessibilityRole={'button'}
             style={
-              surface === name
-                ? name === 'play'
+              name === 'play'
+                ? surface === 'play' || surface === 'build'
                   ? [styles.dockButton, styles.dockButtonHome, styles.dockButtonActive]
-                  : [styles.dockButton, styles.dockButtonActive]
-                : name === 'play'
-                  ? [styles.dockButton, styles.dockButtonHome]
-                  : styles.dockButton
+                  : [styles.dockButton, styles.dockButtonHome]
+                : surface === name
+                  ? [styles.dockButton, styles.dockButtonQuiet, styles.dockButtonActive]
+                  : [styles.dockButton, styles.dockButtonQuiet]
             }
             onPress={() => dispatch({ kind: 'set-gym-surface', surface: name })}
           >
-            <Text style={styles.buttonText}>{playerFacingSurfaceLabel(name)}</Text>
+            <Text
+              style={
+                name === 'play'
+                  ? surface === 'play' || surface === 'build'
+                    ? styles.dockButtonActiveText
+                    : styles.buttonText
+                  : surface === name
+                    ? styles.dockButtonActiveText
+                    : styles.buttonText
+              }
+            >
+              {playerFacingSurfaceLabel(name)}
+            </Text>
           </Pressable>
         ))}
       </View>

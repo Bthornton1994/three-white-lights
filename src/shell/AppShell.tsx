@@ -256,11 +256,13 @@ function GymHost({
   state,
   dispatch,
   search,
+  onLeaveGym,
 }: {
   readonly visible: boolean;
   readonly state: GymViewState;
   readonly dispatch: React.Dispatch<GymViewAction>;
   readonly search: string | null;
+  readonly onLeaveGym: () => void;
 }): React.ReactElement {
 
   // A real-time reading, not React state on purpose — see the header above.
@@ -337,7 +339,7 @@ function GymHost({
     return () => clearInterval(intervalId);
   }, [visible, catchUpOnRealTime]);
 
-  return <GymScreen state={state} dispatch={dispatch} />;
+  return <GymScreen state={state} dispatch={dispatch} onLeaveGym={onLeaveGym} />;
 }
 
 export interface AppShellProps {
@@ -550,6 +552,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
           state={gymState}
           dispatch={dispatch}
           search={search}
+          onLeaveGym={leaveGym}
         />
       </View>
 

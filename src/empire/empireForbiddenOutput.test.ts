@@ -2039,7 +2039,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 489 -> 491: Stage G.2D purse composition helpers.
   // 491 -> 492: Stage G.2D P1 requireLivingMemberDuesOccupancyClock.
   // 492 -> 493: Stage G.2D P1 livingMemberDuesOccupancyUntilSeconds.
-  EXPORTS: 541, // SF-TWL-GYM-EMPIRE-UX-01 playerFacingGymRefusal
+  EXPORTS: 546, // SF-TWL-GYM-EMPIRE-UX-02 now/next/leave/place copy
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -9857,6 +9857,37 @@ function driveEverything(): readonly DrivenRow[] {
       stationViewModule.playerFacingBuildFabLabel(false),
     );
     drive('playerFacingBuildFabLabel', 'done', () => stationViewModule.playerFacingBuildFabLabel(true));
+    drive('playerFacingLeaveGymLabel', 'more', () => stationViewModule.playerFacingLeaveGymLabel());
+    drive('playerFacingBuildPlaceHint', 'idle', () =>
+      stationViewModule.playerFacingBuildPlaceHint(false),
+    );
+    drive('playerFacingBuildPlaceHint', 'placing', () =>
+      stationViewModule.playerFacingBuildPlaceHint(true),
+    );
+    drive('playerFacingBuildTrayEmpty', 'empty', () =>
+      stationViewModule.playerFacingBuildTrayEmpty(0),
+    );
+    drive('playerFacingGymNowLine', 'quiet', () =>
+      stationViewModule.playerFacingGymNowLine(
+        Object.freeze({
+          memberCount: 0,
+          wornCount: 0,
+          wornLead: null,
+          reviewOpen: false,
+          gymClosed: false,
+        }),
+      ),
+    );
+    drive('playerFacingGymNextLine', 'quiet', () =>
+      stationViewModule.playerFacingGymNextLine(
+        Object.freeze({
+          memberCount: 0,
+          wornCount: 0,
+          reviewOpen: false,
+          gymClosed: false,
+        }),
+      ),
+    );
     drive('playerFacingStayStatus', 'staying', () =>
       stationViewModule.playerFacingStayStatus('staying'),
     );
@@ -12474,7 +12505,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 473 -> 478: Stage G.2C3 livingMemberArrival.ts five runtime exports.
   // 478 -> 489: Stage G.2D livingMemberDues.ts plus applyLivingMemberDues.
   // 489 -> 491: Stage G.2D purse composition helpers, both driven above.
-  EXPORTS_DRIVEN: 541, // SF-TWL-GYM-EMPIRE-UX-01 playerFacingGymRefusal
+  EXPORTS_DRIVEN: 546, // SF-TWL-GYM-EMPIRE-UX-02 now/next/leave/place copy
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),

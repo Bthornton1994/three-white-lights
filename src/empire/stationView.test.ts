@@ -22,13 +22,18 @@ import {
   isSoundCondition,
   playerFacingActivityGroupLabel,
   playerFacingBuildFabLabel,
+  playerFacingBuildPlaceHint,
+  playerFacingBuildTrayEmpty,
   playerFacingEquipmentCatalog,
   playerFacingEquipmentCostLine,
   playerFacingEquipmentLabel,
   playerFacingGymBucksAmount,
   playerFacingGymBucksLine,
+  playerFacingGymNowLine,
+  playerFacingGymNextLine,
   playerFacingGymRefusal,
   playerFacingIncomeRateLine,
+  playerFacingLeaveGymLabel,
   playerFacingLocationLine,
   playerFacingManagerCapability,
   playerFacingManagerRole,
@@ -630,10 +635,59 @@ describe('player-facing gym chrome (existing values, reformatted)', () => {
   it('names location, dock, and build FAB without domain tokens on the chrome', () => {
     expect(playerFacingRungLabel('garage')).toBe('Garage');
     expect(playerFacingLocationLine('garage')).toBe('Garage');
-    expect(playerFacingSurfaceLabel('play')).toBe('Play');
+    expect(playerFacingSurfaceLabel('play')).toBe('Gym');
     expect(playerFacingSurfaceLabel('developer')).toBe('Developer');
     expect(playerFacingBuildFabLabel(false)).toBe('Build');
     expect(playerFacingBuildFabLabel(true)).toBe('Done');
+    expect(playerFacingLeaveGymLabel()).toBe('Back to training');
+  });
+
+  it('writes now/next lines from real roster and maintenance state', () => {
+    expect(
+      playerFacingGymNowLine({
+        memberCount: 0,
+        wornCount: 0,
+        wornLead: null,
+        reviewOpen: false,
+        gymClosed: false,
+      }),
+    ).toBe('The floor is quiet.');
+    expect(
+      playerFacingGymNextLine({
+        memberCount: 0,
+        wornCount: 0,
+        reviewOpen: false,
+        gymClosed: false,
+      }),
+    ).toContain('shop');
+    expect(
+      playerFacingGymNowLine({
+        memberCount: 3,
+        wornCount: 0,
+        wornLead: null,
+        reviewOpen: false,
+        gymClosed: false,
+      }),
+    ).toBe('3 lifters on the floor.');
+    expect(
+      playerFacingGymNowLine({
+        memberCount: 1,
+        wornCount: 1,
+        wornLead: 'Power bar',
+        reviewOpen: false,
+        gymClosed: false,
+      }),
+    ).toBe('Power bar is wearing down.');
+    expect(
+      playerFacingGymNextLine({
+        memberCount: 1,
+        wornCount: 0,
+        reviewOpen: true,
+        gymClosed: false,
+      }),
+    ).toContain('staff');
+    expect(playerFacingBuildPlaceHint(false)).not.toMatch(/tile/i);
+    expect(playerFacingBuildTrayEmpty(0)).toContain('Shop');
   });
 
   it('shows reputation halves as whole numbers from existing reads', () => {

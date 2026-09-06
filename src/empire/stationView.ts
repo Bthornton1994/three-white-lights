@@ -236,7 +236,7 @@ const RUNG_PLAYER_LABELS: Readonly<Record<LadderRung, string>> = Object.freeze({
 });
 
 const SURFACE_PLAYER_LABELS: Readonly<Record<string, string>> = Object.freeze({
-  play: 'Play',
+  play: 'Gym',
   build: 'Build',
   shop: 'Shop',
   staff: 'Staff',
@@ -297,6 +297,59 @@ export function playerFacingSurfaceLabel(surface: string): string {
 /** Build FAB: enter Build from Play, or Done back to Play. */
 export function playerFacingBuildFabLabel(buildMode: boolean): string {
   return buildMode ? 'Done' : 'Build';
+}
+
+/** Leave Gym Empire for the daily session. More-settings copy, not operating chrome. */
+export function playerFacingLeaveGymLabel(): string {
+  return 'Back to training';
+}
+
+/** Build-mode place hint. Never shown on Play. */
+export function playerFacingBuildPlaceHint(placing: boolean): string {
+  return placing ? 'Choose a place on the floor.' : 'Choose a piece, then a place on the floor.';
+}
+
+/** Build tray empty copy. Shop is the buy surface; this is not a developer tile lesson. */
+export function playerFacingBuildTrayEmpty(ownedCount: number): string {
+  if (ownedCount <= 0) {
+    return 'Nothing to place. Buy equipment in Shop, then return to Build.';
+  }
+  return 'Everything you own is on the floor. Tap a piece to move it.';
+}
+
+/**
+ * Sparse Play HUD — what is happening, from roster/management state already
+ * on the screen. No invented occupancy, satisfaction, or income.
+ */
+export function playerFacingGymNowLine(input: {
+  readonly memberCount: number;
+  readonly wornCount: number;
+  readonly wornLead: string | null;
+  readonly reviewOpen: boolean;
+  readonly gymClosed: boolean;
+}): string {
+  if (input.gymClosed) return 'The gym is closed until you repair what failed.';
+  if (input.reviewOpen) return 'A station needs a maintenance decision.';
+  if (input.wornCount > 0 && input.wornLead !== null) {
+    return `${input.wornLead} is wearing down.`;
+  }
+  if (input.memberCount <= 0) return 'The floor is quiet.';
+  if (input.memberCount === 1) return '1 lifter on the floor.';
+  return `${input.memberCount} lifters on the floor.`;
+}
+
+/** Sparse Play HUD — one next act, still from real state. */
+export function playerFacingGymNextLine(input: {
+  readonly memberCount: number;
+  readonly wornCount: number;
+  readonly reviewOpen: boolean;
+  readonly gymClosed: boolean;
+}): string {
+  if (input.gymClosed) return 'Repair the failed stations in Staff.';
+  if (input.reviewOpen) return 'Take the review on the staff sheet.';
+  if (input.wornCount > 0) return 'Inspect the worn station.';
+  if (input.memberCount <= 0) return 'The shop can equip the floor.';
+  return 'Watch the floor, or Build to rearrange.';
 }
 
 /** Stay-response status as a player reads it. Domain tokens stay the identifiers. */

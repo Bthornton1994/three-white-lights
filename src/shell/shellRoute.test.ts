@@ -473,13 +473,10 @@ describe('when the shell may draw a control — pinned, one beat at a time', () 
 describe('CROSSING 6: the gym surface draws its own way out, unconditionally', () => {
   const GYM = AS_PLAYER('gym');
 
-  it('THE WAY BACK IS ALWAYS THERE — the gym has no beat machine to gate it on', () => {
-    // Unlike session/meet, `phase` is meaningless on this surface (no
-    // `GymPhase` type exists, nothing reports one), so this is deliberately
-    // NOT gated on the second argument at all.
-    expect(shellAffordanceFor(GYM, null)).toBe('leave-gym');
-    expect(shellAffordanceFor(GYM, 'check-in')).toBe('leave-gym');
-    expect(shellAffordanceFor(GYM, 'recap')).toBe('leave-gym');
+  it('UX-02 — the shell pill is off the gym; leave lives in More', () => {
+    expect(shellAffordanceFor(GYM, null)).toBe(null);
+    expect(shellAffordanceFor(GYM, 'check-in')).toBe(null);
+    expect(shellAffordanceFor(GYM, 'recap')).toBe(null);
   });
 
   it('...except under a live cut-in, same as every other surface', () => {
@@ -488,7 +485,7 @@ describe('CROSSING 6: the gym surface draws its own way out, unconditionally', (
     // so that IF that ever happens, the rule is the same one every other
     // surface already follows rather than a silent exception.
     expect(shellAffordanceFor(GYM, null, 'live')).toBe(null);
-    expect(shellAffordanceFor(GYM, null, 'none')).toBe('leave-gym');
+    expect(shellAffordanceFor(GYM, null, 'none')).toBe(null);
   });
 
   it('does not answer for a beat belonging to session or meet', () => {
