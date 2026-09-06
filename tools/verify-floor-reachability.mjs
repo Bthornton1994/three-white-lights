@@ -789,6 +789,15 @@ async function openGymSurface(name) {
   await page.waitForTimeout(200);
 }
 
+/** Developer chrome is an explicit web route, never player More/dock. */
+async function openDeveloperSurface() {
+  await page.evaluate(() => {
+    window.location.hash = 'empire-developer';
+  });
+  await page.getByTestId('gymscreen-developer-drawer').waitFor({ state: 'visible', timeout: 10000 });
+  await page.waitForTimeout(200);
+}
+
 /** Click the centre of a floor cell. Caller must already be in PLACE phase. */
 async function tapGridCell(xTile, yTile) {
   const id = `floorgrid-cell-${xTile}-${yTile}`;
@@ -945,6 +954,29 @@ function numberInText(text, pattern) {
   if (text === null || text === undefined) return null;
   const found = text.match(pattern);
   return found === null ? null : Number.parseFloat(found[1]);
+}
+
+/** Player HUD purse is a whole number: "12 gym bucks". */
+function playerFacingPurseOf(text) {
+  return numberInText(text, /^(\d+) gym bucks/);
+}
+
+/** Developer exact purse: "purse: 12.08". Existing value, not a new grant. */
+function exactPurseOf(text) {
+  return numberInText(text, /purse: ([\d.]+)/);
+}
+
+async function exactPurseNow() {
+  const text = await page
+    .getByTestId('gymscreen-gym-bucks-exact')
+    .textContent({ timeout: 5000 })
+    .catch(() => null);
+  return exactPurseOf(text);
+}
+
+/** Player HUD rate: "60 gym bucks an hour". */
+function rateOf(text) {
+  return numberInText(text, /(\d+) gym bucks an hour/);
 }
 
 /**
@@ -1384,6 +1416,8 @@ async function reachGymScreen(report) {
   // is itself a played path (a real `page.click()` on a real control), not a
   // debug bypass — see CLAUDE.md's "a screen a player reaches needs a check
   // that reaches it the way a player does".
+  // Diagnostics and the clock live on the explicit developer route, not Play.
+  await openDeveloperSurface();
   const diagnosticsToggleDrawn = await waitUntilDrawn(page, 'floorgrid-diagnostics-toggle', BEAT_TIMEOUT_MS);
   if (!diagnosticsToggleDrawn.drawn) {
     fail(`floorgrid-diagnostics-toggle never drawn — ${diagnosticsToggleDrawn.why} — the diagnostics surface this whole run depends on cannot be opened`);
@@ -1398,6 +1432,7 @@ async function reachGymScreen(report) {
   if (report) {
     ok('pressing floorgrid-diagnostics-toggle opens the diagnostics surface (floorgrid-diagnostics attached)');
   }
+  await openGymSurface('play');
   const gridForTile = await boxOf('floorgrid-grid');
   if (gridForTile !== null && gridForTile.width > 0) {
     FLOOR_TILE_PIXELS = gridForTile.width / 8;
@@ -1421,15 +1456,16 @@ try {
   // in the ruling's own words. Read the drawn purse and clock, take no action
   // of any kind for a real multiple of `WALL_CLOCK_TICK_INTERVAL_SECONDS`,
   // and read both again.
-  const gymBucksOf = (text) => numberInText(text, /gym bucks: ([\d.]+)/);
+  await openDeveloperSurface();
+  const gymBucksOf = (text) => exactPurseOf(text);
   const clockOf = (text) => text;
-  const rateAt10a0 = numberInText(await textOf('gymscreen-rate'), /earning ([\d.]+) gym bucks per hour/);
-  const purseAt10a0 = gymBucksOf(await textOf('gymscreen-gym-bucks'));
+  const rateAt10a0 = rateOf(await textOf('gymscreen-rate'));
+  const purseAt10a0 = gymBucksOf(await textOf('gymscreen-gym-bucks-exact'));
   const clockAt10a0 = clockOf(await textOf('gymscreen-clock'));
   const waitMs10a = WALL_CLOCK_WAIT_TICKS * WALL_CLOCK_TICK_INTERVAL_SECONDS * 1000;
   const onlineWaitStartMs = Date.now();
   await page.waitForTimeout(waitMs10a + WALL_CLOCK_READ_SETTLE_MS);
-  const purseAt10a1 = gymBucksOf(await textOf('gymscreen-gym-bucks'));
+  const purseAt10a1 = gymBucksOf(await textOf('gymscreen-gym-bucks-exact'));
   const onlineWaitRealSeconds = (Date.now() - onlineWaitStartMs) / 1000;
   const clockAt10a1 = clockOf(await textOf('gymscreen-clock'));
   readAddress('10a: after a real wait, zero presses');
@@ -1514,7 +1550,7 @@ try {
       await page.getByTestId('shell-open-gym').click({ timeout: 10000 });
       await page.waitForTimeout(WALL_CLOCK_NAV_SETTLE_MS + WALL_CLOCK_READ_SETTLE_MS);
       const realAwaySeconds = (Date.now() - awayStartMs) / 1000;
-      const purseAt10b = gymBucksOf(await textOf('gymscreen-gym-bucks'));
+      const purseAt10b = gymBucksOf(await textOf('gymscreen-gym-bucks-exact'));
       const clockAt10b = clockOf(await textOf('gymscreen-clock'));
       readAddress('10b: back on the gym surface, after a real absence');
       // The absence-only span must itself have banked real seconds — a
@@ -1679,22 +1715,33 @@ try {
     fail(`C.1b: floorgrid-ambient-0 never drawn — ${memberHit.why}`);
   }
 
-  // Gap 3: the grid reads as a grid — real tile boundaries, counted exactly
-  // against the garage's real FLOOR_GRID_SIZE (8x6), not "some lines exist".
+  // Gap 3: Play hides the tile grid; Build turns it on for placement.
   const GARAGE_GRID = { WIDTH: 8, HEIGHT: 6 };
+  await openGymSurface('play');
+  const playVertical = await page.locator('[data-testid^="floorgrid-line-v-"]').count();
+  const playHorizontal = await page.locator('[data-testid^="floorgrid-line-h-"]').count();
+  if (playVertical === 0 && playHorizontal === 0) {
+    ok('gap 3: Play hides the tile-boundary grid');
+  } else {
+    fail(
+      `gap 3: Play must hide the grid — drew ${playVertical} vertical + ${playHorizontal} horizontal lines`,
+    );
+  }
+  await openGymSurface('build');
   const verticalLines = await page.locator('[data-testid^="floorgrid-line-v-"]').count();
   const horizontalLines = await page.locator('[data-testid^="floorgrid-line-h-"]').count();
   const expectedVertical = GARAGE_GRID.WIDTH - 1;
   const expectedHorizontal = GARAGE_GRID.HEIGHT - 1;
   if (verticalLines === expectedVertical && horizontalLines === expectedHorizontal) {
     ok(
-      `gap 3: the grid draws exactly ${verticalLines} vertical + ${horizontalLines} horizontal tile-boundary lines, matching the garage's real 8x6 FLOOR_GRID_SIZE`,
+      `gap 3: Build draws exactly ${verticalLines} vertical + ${horizontalLines} horizontal tile-boundary lines, matching the garage's real 8x6 FLOOR_GRID_SIZE`,
     );
   } else {
     fail(
       `gap 3: expected ${expectedVertical} vertical + ${expectedHorizontal} horizontal tile-boundary lines for an 8x6 garage, drew ${verticalLines} + ${horizontalLines}`,
     );
   }
+  await openGymSurface('play');
 
   // Gap 2: no dead drag prompt when the tray is genuinely empty (0 owned,
   // 0 unplaced) — an honest empty-state message instead.
@@ -1734,12 +1781,14 @@ try {
   // `floorgrid-diagnostic-caption`, behind `floorgrid-diagnostics-toggle` —
   // already pressed once by `reachGymScreen`, so this testID is attached the
   // same way it always was at this point in the run.
+  await openDeveloperSurface();
   const captionText = await textOf('floorgrid-diagnostic-caption');
   if (captionText !== null && /\b3 furniture,/.test(captionText)) {
     ok(`gap 5: the diagnostic caption states the furniture count ("${captionText}")`);
   } else {
     fail(`gap 5: expected floorgrid-diagnostic-caption to state "3 furniture," on a cold garage — got "${captionText}"`);
   }
+  await openGymSurface('play');
 
   // -------------------------------------------------------------------------
   // 1b. GDD §5.13 presentation Phase 2 — ambient members, on the same cold
@@ -2210,7 +2259,7 @@ try {
   //    needed), then buy it, then confirm it shows up in the unplaced tray.
   // -------------------------------------------------------------------------
   readAddress('2: earning and buying mats');
-  await openGymSurface('more');
+  await openDeveloperSurface();
   const advanceId = 'gymscreen-advance-offline-259200'; // +3d away
   const advanceButton = page.getByTestId(advanceId);
   const advanceExists = await advanceButton.count().then((n) => n > 0).catch(() => false);
@@ -2232,7 +2281,7 @@ try {
   let presses = 0;
   while (
     bucksText !== null &&
-    (numberInText(bucksText, /gym bucks: ([\d.]+)/) ?? 0) < 400 &&
+    (playerFacingPurseOf(bucksText) ?? 0) < 400 &&
     presses < MAX_CHECK_INS
   ) {
     await advanceButton.click({ timeout: 10000 });
@@ -2758,7 +2807,7 @@ try {
     const found = text.match(pattern);
     return found === null ? null : Number.parseFloat(found[1]);
   };
-  const purseNow = async () => numberIn(await textOf('gymscreen-gym-bucks'), /gym bucks:\s*([\d.]+)/);
+  const purseNow = async () => playerFacingPurseOf(await textOf('gymscreen-gym-bucks'));
   const meanConditionNow = async () => {
     await openGymSurface('staff');
     const percent = numberIn(await textOf('gymscreen-condition'), /Equipment condition: (\d+)%/);
@@ -2776,7 +2825,9 @@ try {
     return found === null ? null : found[1];
   };
   const pressById = async (id) => {
-    if (id.startsWith('gymscreen-advance')) await openGymSurface('more');
+    if (id.startsWith('gymscreen-advance') || id === 'gymscreen-reset-gym' || id === 'gymscreen-advance-next-week') {
+      await openDeveloperSurface();
+    }
     if (id.startsWith('gymscreen-buy-')) await openGymSurface('shop');
     if (id.startsWith('floorgrid-')) await openGymSurface('play');
     if (
@@ -3887,7 +3938,7 @@ try {
   // ===========================================================================
   await reachGymScreen(false);
   readAddress('13: a fresh gym for the station panel');
-  await openGymSurface('more');
+  await openDeveloperSurface();
 
   /** Press the dev `+3d` control until the drawn purse is at or above `target`, or give up after `MAX_CHECK_INS`. */
   const earnUntil13 = async (target) => {
@@ -3895,7 +3946,7 @@ try {
     let presses = 0;
     while (
       text !== null &&
-      (numberInText(text, /gym bucks: ([\d.]+)/) ?? 0) < target &&
+      (playerFacingPurseOf(text) ?? 0) < target &&
       presses < MAX_CHECK_INS
     ) {
       await page.getByTestId(advanceId).click({ timeout: 10000 });
@@ -4249,7 +4300,7 @@ try {
     wornBeforeRepair13 !== null &&
     wornBeforeRepair13.replace(/^Needs attention:\s*/, '').split(', ').includes('mats');
   await openGymSurface('play');
-  const purseBeforeRepair13 = numberInText(await textOf('gymscreen-gym-bucks'), /gym bucks: ([\d.]+)/);
+  const purseBeforeRepair13 = await exactPurseNow();
   const repairButton13 = page.getByTestId('floorgrid-station-panel-repair');
   const repairButtonExists13 = await repairButton13.count().then((n) => n > 0).catch(() => false);
   if (!repairButtonExists13 || repairQuote13 === null || purseBeforeRepair13 === null || !matsWornBeforeRepair13) {
@@ -4259,7 +4310,7 @@ try {
   } else {
     await pressRnWeb(repairButton13);
     await page.waitForTimeout(200);
-    const purseAfterRepair13 = numberInText(await textOf('gymscreen-gym-bucks'), /gym bucks: ([\d.]+)/);
+    const purseAfterRepair13 = await exactPurseNow();
     const charged13 = purseAfterRepair13 === null ? null : purseBeforeRepair13 - purseAfterRepair13;
     const band13 = charged13 === null ? null : purseMatchBand(charged13, repairQuote13);
     await openGymSurface('staff');

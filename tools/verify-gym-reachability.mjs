@@ -136,7 +136,7 @@ async function openGymSurface(name) {
 }
 
 function purseAmount(text) {
-  const match = /gym bucks:\s*([\d.]+)/i.exec(text ?? '');
+  const match = /^(\d+) gym bucks/i.exec((text ?? '').trim());
   return match === null ? Number.NaN : Number.parseFloat(match[1] ?? '');
 }
 
@@ -198,7 +198,7 @@ try {
   // 3. The opening state is the pure functions' opening state.
   // -------------------------------------------------------------------------
   const openingRung = await textOf('gymscreen-rung');
-  if (openingRung !== null && openingRung.includes('garage')) {
+  if (openingRung !== null && /garage/i.test(openingRung)) {
     ok(`opening rung reads "${openingRung}" — matches createGymViewState()'s opening rung`);
   } else {
     fail(`opening rung reads ${JSON.stringify(openingRung)}, expected it to contain "garage"`);
@@ -215,14 +215,18 @@ try {
   // 4 & 5. Press the dev check-in control repeatedly, see the figure move;
   // then press move-up and see the rung change.
   // -------------------------------------------------------------------------
+  await page.evaluate(() => {
+    window.location.hash = 'empire-developer';
+  });
+  await page.getByTestId('gymscreen-developer-drawer').waitFor({ state: 'visible', timeout: 10000 });
+  await page.waitForTimeout(200);
   const advanceId = 'gymscreen-advance-offline-259200'; // +3d away
   const advanceButton = page.getByTestId(advanceId);
   const advanceExists = await advanceButton.count().then((n) => n > 0).catch(() => false);
 
   if (!advanceExists) {
-    fail(`the +3d dev check-in control (${advanceId}) is not on screen — cannot drive the interaction`);
+    fail(`the +3d dev check-in control (${advanceId}) is not on the developer surface — cannot drive the interaction`);
   } else {
-    await openGymSurface('more');
     const before = await textOf('gymscreen-gym-bucks');
     await advanceButton.click({ timeout: 10000 });
     await page.waitForTimeout(200);
@@ -260,7 +264,7 @@ try {
       const rungAfterMove = await textOf('gymscreen-rung');
       if (
         rungAfterMove !== null &&
-        rungAfterMove.includes('storage-unit') &&
+        rungAfterMove.includes('Storage unit') &&
         rungAfterMove !== rungBeforeMove
       ) {
         ok(`PRESS MOVE UP, SEE THE RUNG CHANGE: "${rungBeforeMove}" -> "${rungAfterMove}"`);

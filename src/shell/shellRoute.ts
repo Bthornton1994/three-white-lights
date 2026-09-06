@@ -284,16 +284,10 @@ export function shellAffordanceFor(
   cutIn: CutInPresence = 'none',
 ): ShellIntent | null {
   if (cutIn === 'live') return null;
-  // CROSSING 6: the gym surface's own way out. Checked before the `phase ===
-  // null` refusal below, on purpose — `gym` has no beat machine of its own
-  // (no `GymPhase` type, no `onPhase` report, nothing `SHELL_NAV` gates it
-  // on), so a caller on the gym surface always passes `phase = null`, and
-  // gating this arm on `phase` the way `session`/`meet` are gated would mean
-  // this pill could never draw. `LEAVE_GYM_LABEL`'s pill is therefore
-  // unconditional — the same choice `MEET_PHASES`'s `bombed` exclusion makes
-  // for the opposite reason (a screen that draws its OWN way out gets no
-  // pill); Gym Empire draws none of its own, so the shell's is the only one.
-  if (route.surface === 'gym') return 'leave-gym';
+  // UX-02: BACK TO TRAINING is not Empire operating chrome. The way out lives
+  // on More as `gymscreen-leave-gym`. The gym surface draws none of the
+  // shell's pills.
+  if (route.surface === 'gym') return null;
   if (phase === null) return null;
   if (route.surface === 'session') {
     return (SHELL_NAV.SESSION_PHASES as readonly string[]).includes(phase) ? 'open-meet' : null;

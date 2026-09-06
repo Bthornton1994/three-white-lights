@@ -49,8 +49,19 @@ import {
   repairCostGymBucks,
 } from './management';
 import { type MemberType } from './members';
-import { type LadderEquipmentItem } from './ladder';
-import { type SessionActivityGroup, type SessionEquipmentItem, sessionEquipmentGroup } from './sessions';
+import {
+  type LadderAccrual,
+  type LadderEquipmentItem,
+  type LadderRung,
+  ladderEquipmentCost,
+} from './ladder';
+import {
+  type SessionActivityGroup,
+  type SessionEquipmentItem,
+  type WeeklyAttributeEffects,
+  sessionEquipmentCost,
+  sessionEquipmentGroup,
+} from './sessions';
 import { type StationUpgradeAxis, type StationUpgradeRefuseReason } from './stationCapability';
 
 /**
@@ -171,6 +182,38 @@ export function playerFacingUpgradeRefuse(reason: StationUpgradeRefuseReason): s
   return 'Not enough gym bucks';
 }
 
+/**
+ * Play HUD toast for any gym refusal. Domain tokens stay the identifiers;
+ * Play never prints them. Upgrade reasons reuse `playerFacingUpgradeRefuse`.
+ * Placement reasons reuse `playerFacingPlacementRefuse` wording.
+ */
+export function playerFacingGymRefusal(reason: string): string {
+  if (
+    reason === 'not-upgradable' ||
+    reason === 'already-upgraded' ||
+    reason === 'not-placed' ||
+    reason === 'no-second-position' ||
+    reason === 'not-enough-gym-bucks'
+  ) {
+    return playerFacingUpgradeRefuse(reason);
+  }
+  if (reason === 'out-of-bounds') return playerFacingPlacementRefuse('outside');
+  if (reason === 'overlaps') return playerFacingPlacementRefuse('occupied');
+  if (reason === 'already-owned') return 'Already in the gym';
+  if (reason === 'rung-too-low') return 'Locked at this location';
+  if (reason === 'at-the-top') return 'Already at the top location';
+  if (reason === 'not-owned') return 'Not in the gym yet';
+  if (reason === 'already-sound') return 'Already in good shape';
+  if (reason === 'not-offered') return 'Not offered right now';
+  if (reason === 'already-staffed') return 'A manager is already hired';
+  if (reason === 'no-manager') return 'No manager hired';
+  if (reason === 'not-dormant') return 'The gym is already open';
+  if (reason === 'equipment-below-recovery-minimum') return 'Equipment is not ready yet';
+  if (reason === 'manager-hired-under-warning') return 'Let the counted hire go first';
+  if (reason === 'no-prompt') return 'No review is open';
+  return 'That did not go through';
+}
+
 /** How a piece of equipment relates to the Competition Bench Bay. */
 export function playerFacingBayRole(
   complete: boolean,
@@ -183,6 +226,285 @@ export function playerFacingBayRole(
     labels.push(playerFacingEquipmentLabel(item));
   }
   return `Needs ${labels.join(', ')} for a Competition bench bay`;
+}
+
+const RUNG_PLAYER_LABELS: Readonly<Record<LadderRung, string>> = Object.freeze({
+  garage: 'Garage gym',
+  'storage-unit': 'Storage unit',
+  'strip-mall-unit': 'Strip-mall unit',
+  warehouse: 'Warehouse',
+});
+
+const SURFACE_PLAYER_LABELS: Readonly<Record<string, string>> = Object.freeze({
+  play: 'Gym',
+  build: 'Build',
+  shop: 'Shop',
+  staff: 'Staff',
+  more: 'Train',
+  developer: 'Developer',
+});
+
+const STAY_PLAYER_LABELS: Readonly<Record<string, string>> = Object.freeze({
+  forming: 'Settling in',
+  staying: 'Training here',
+  unsettled: 'Unsettled',
+  'considering-exit': 'Considering leaving',
+  'departure-eligible': 'Ready to leave',
+});
+
+const SUPPORT_CHANNEL_PLAYER_LABELS: Readonly<Record<string, string>> = Object.freeze({
+  'technique-quality': 'technique',
+  'injury-risk': 'injury risk',
+  'ceiling-growth': 'ceiling growth',
+});
+
+/** Player-facing location name. Domain rung tokens stay the identifiers. */
+export function playerFacingRungLabel(rung: LadderRung): string {
+  return RUNG_PLAYER_LABELS[rung] ?? rung;
+}
+
+/** Whole gym bucks for display. Floors so the HUD never overstates the purse. */
+export function playerFacingGymBucksAmount(gymBucks: number): number {
+  if (!Number.isFinite(gymBucks) || gymBucks <= 0) return 0;
+  return Math.floor(gymBucks);
+}
+
+/** Human-readable purse line from an existing gym-bucks quantity. */
+export function playerFacingGymBucksLine(gymBucks: number): string {
+  return `${playerFacingGymBucksAmount(gymBucks)} gym bucks`;
+}
+
+/** Location HUD line. */
+export function playerFacingLocationLine(rung: LadderRung): string {
+  return playerFacingRungLabel(rung);
+}
+
+/** Brand line. Three White Lights identity, not a spaced location stencil. */
+export function playerFacingBrandLine(): string {
+  return 'THREE WHITE LIGHTS';
+}
+
+/** Income HUD line. Rate is the published per-hour table, shown as a whole. */
+export function playerFacingIncomeRateLine(gymBucksPerHour: number): string {
+  return `${playerFacingGymBucksAmount(gymBucksPerHour)} gym bucks an hour`;
+}
+
+/** Reputation HUD. Both halves are existing institutional reads, shown whole. */
+export function playerFacingReputationHud(fromMembers: number, fromSporting: number): string {
+  return `Reputation ${playerFacingGymBucksAmount(fromMembers)} from members · ${playerFacingGymBucksAmount(fromSporting)} from meets`;
+}
+
+/** Dock / FAB label. Domain surface tokens stay the identifiers. */
+export function playerFacingSurfaceLabel(surface: string): string {
+  return SURFACE_PLAYER_LABELS[surface] ?? surface;
+}
+
+/** Build FAB: enter Build from Play, or Done back to Play. */
+export function playerFacingBuildFabLabel(buildMode: boolean): string {
+  return buildMode ? 'Done' : 'Build';
+}
+
+/** Leave Gym Empire for the daily session. More-settings copy, not operating chrome. */
+export function playerFacingLeaveGymLabel(): string {
+  return 'Back to training';
+}
+
+/** Build-mode place hint. Never shown on Play. */
+export function playerFacingBuildPlaceHint(placing: boolean): string {
+  return placing ? 'Choose a place on the floor.' : 'Choose a piece, then a place on the floor.';
+}
+
+/** Build tray empty copy. Shop is the buy surface; this is not a developer tile lesson. */
+export function playerFacingBuildTrayEmpty(ownedCount: number): string {
+  if (ownedCount <= 0) {
+    return 'Nothing to place. Buy equipment in Shop, then return to Build.';
+  }
+  return 'Everything you own is on the floor. Tap a piece to move it.';
+}
+
+/**
+ * Sparse Play HUD — what is happening, from roster/management state already
+ * on the screen. No invented occupancy, satisfaction, or income.
+ */
+export function playerFacingGymNowLine(input: {
+  readonly memberCount: number;
+  readonly wornCount: number;
+  readonly wornLead: string | null;
+  readonly reviewOpen: boolean;
+  readonly gymClosed: boolean;
+}): string {
+  if (input.gymClosed) return 'The gym is closed until you repair what failed.';
+  if (input.reviewOpen) return 'A station needs a maintenance decision.';
+  if (input.wornCount > 0 && input.wornLead !== null) {
+    return `${input.wornLead} is wearing down.`;
+  }
+  if (input.memberCount <= 0) return 'The floor is quiet.';
+  if (input.memberCount === 1) return '1 lifter on the floor.';
+  return `${input.memberCount} lifters on the floor.`;
+}
+
+/** Sparse Play HUD — one next act, still from real state. */
+export function playerFacingGymNextLine(input: {
+  readonly memberCount: number;
+  readonly wornCount: number;
+  readonly reviewOpen: boolean;
+  readonly gymClosed: boolean;
+}): string {
+  if (input.gymClosed) return 'Repair the failed stations in Staff.';
+  if (input.reviewOpen) return 'Take the review on the staff sheet.';
+  if (input.wornCount > 0) return 'Inspect the worn station.';
+  if (input.memberCount <= 0) return 'The shop can equip the floor.';
+  return 'Watch the floor, or Build to rearrange.';
+}
+
+/** Stay-response status as a player reads it. Domain tokens stay the identifiers. */
+export function playerFacingStayStatus(status: string): string {
+  return STAY_PLAYER_LABELS[status] ?? 'On the floor';
+}
+
+/** Manager role card title. Tier tokens stay the identifiers. */
+export function playerFacingManagerRole(tier: ManagerTier): string {
+  if (tier === 'novice') return 'Novice manager';
+  if (tier === 'steady') return 'Steady manager';
+  return 'Veteran manager';
+}
+
+/** Honest next action on a living member card. There is no member-hire control. */
+export function playerFacingMemberStaffNextAction(status: string): string {
+  if (status === 'departure-eligible') {
+    return 'May leave after more strained sessions — there is no hire control';
+  }
+  if (status === 'considering-exit') {
+    return 'Watching the floor — members leave on their own';
+  }
+  return 'Members join and leave on their own — no hire control';
+}
+
+export interface EquipmentCatalogCopy {
+  readonly purpose: string;
+  readonly effect: string;
+  readonly unlock: string;
+  readonly tradeoff: string;
+}
+
+function activityNamesForGroup(group: SessionActivityGroup): string {
+  const names: string[] = [];
+  const table = EMPIRE_TUNING.SESSION_ACTIVITY_EQUIPMENT_GROUP;
+  for (const activity of EMPIRE_TUNING.FLEXIBLE_ACTIVITIES) {
+    if (table[activity] === group) names.push(activity.replace('-', ' '));
+  }
+  return names.join(', ');
+}
+
+function liftsRequiring(item: string): string {
+  const lifts: string[] = [];
+  for (const lift of EMPIRE_TUNING.LADDER_LIFTS) {
+    const need = EMPIRE_TUNING.LADDER_LIFT_REQUIREMENTS[lift];
+    if ((need as readonly string[]).includes(item)) lifts.push(lift);
+  }
+  return lifts.join(', ');
+}
+
+/**
+ * Shop-card copy from existing SKU tables only: group, lift gates, min rung,
+ * support channel. No new prices, grades-as-decimals, or invented appeal.
+ */
+export function playerFacingEquipmentCatalog(
+  item: LadderEquipmentItem | SessionEquipmentItem | string,
+): EquipmentCatalogCopy {
+  const ladderItems = EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS as readonly string[];
+  if (ladderItems.includes(item)) {
+    const minRung = EMPIRE_TUNING.LADDER_EQUIPMENT_MIN_RUNG[
+      item as LadderEquipmentItem
+    ] as LadderRung;
+    const lifts = liftsRequiring(item);
+    return Object.freeze({
+      purpose: 'Competition lifts',
+      effect: lifts.length === 0 ? 'Barbell group' : `Required for ${lifts}`,
+      unlock: `Fits from ${playerFacingRungLabel(minRung)}`,
+      tradeoff: 'Trains your total, not member sessions',
+    });
+  }
+  const sessionItems = EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS as readonly string[];
+  if (sessionItems.includes(item)) {
+    const sessionItem = item as SessionEquipmentItem;
+    const group = sessionEquipmentGroup(sessionItem);
+    const minRung = EMPIRE_TUNING.SESSION_EQUIPMENT_MIN_RUNG[sessionItem] as LadderRung;
+    const supportTable: Readonly<Partial<Record<string, string>>> =
+      EMPIRE_TUNING.SUPPORT_ITEM_CHANNEL;
+    const supportChannel = supportTable[sessionItem];
+    if (supportChannel !== undefined) {
+      const channel = SUPPORT_CHANNEL_PLAYER_LABELS[supportChannel] ?? supportChannel;
+      return Object.freeze({
+        purpose: playerFacingActivityGroupLabel(group),
+        effect: `Modifies ${channel} only when that session is trained`,
+        unlock: `Fits from ${playerFacingRungLabel(minRung)}`,
+        tradeoff: 'A modifier — it earns nothing on its own',
+      });
+    }
+    const advanced = new Set<string>(EMPIRE_TUNING.ADVANCED_RECOVERY_ITEMS);
+    const activities = activityNamesForGroup(group);
+    return Object.freeze({
+      purpose: playerFacingActivityGroupLabel(group),
+      effect: advanced.has(item)
+        ? `Unlocks other recovery once recovery equipment is present`
+        : `Unlocks ${activities}`,
+      unlock: `Fits from ${playerFacingRungLabel(minRung)}`,
+      tradeoff: 'Helps that session, not a competition lift',
+    });
+  }
+  return Object.freeze({
+    purpose: playerFacingEquipmentLabel(item),
+    effect: 'Owned equipment',
+    unlock: 'Fits this gym',
+    tradeoff: 'See the shop row for the published price',
+  });
+}
+
+/** Shop and build-panel price line from the published cost tables only. */
+export function playerFacingEquipmentCostLine(
+  item: LadderEquipmentItem | SessionEquipmentItem | string,
+): string {
+  const ladderItems = EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS as readonly string[];
+  if (ladderItems.includes(item)) {
+    return playerFacingGymBucksLine(ladderEquipmentCost(item as LadderEquipmentItem));
+  }
+  const sessionItems = EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS as readonly string[];
+  if (sessionItems.includes(item)) {
+    return playerFacingGymBucksLine(sessionEquipmentCost(item as SessionEquipmentItem));
+  }
+  return 'See the shop row for the published price';
+}
+
+/**
+ * Return card from an existing accrual. Null when the last catch-up is only a
+ * watched tick with nothing to collect — no invented offline grant.
+ */
+export function playerFacingReturnSummary(accrual: LadderAccrual | null): string | null {
+  if (accrual === null) return null;
+  const earned = playerFacingGymBucksAmount(accrual.gymBucks);
+  const watchedTick = EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS;
+  if (accrual.secondsElapsed <= watchedTick && accrual.secondsDiscarded === 0 && earned === 0) {
+    return null;
+  }
+  if (earned === 0 && accrual.secondsDiscarded === 0 && accrual.secondsElapsed <= watchedTick) {
+    return null;
+  }
+  const earnedLine = `While you were away the gym earned ${playerFacingGymBucksLine(accrual.gymBucks)}.`;
+  if (accrual.secondsDiscarded > 0) {
+    return `${earnedLine} The away cap stopped further earnings.`;
+  }
+  return earnedLine;
+}
+
+/** Week-preview line: existing multipliers shown as whole percents. */
+export function playerFacingWeekEffectsLine(effects: WeeklyAttributeEffects): string {
+  const scale = EMPIRE_TUNING.CONDITION_PERCENT_SCALE;
+  const recovery = Math.round(effects.residualCarryMultiplier * scale);
+  const injury = Math.round(effects.injuryChanceMultiplier * scale);
+  const technique = Math.round(effects.techniqueQualityBonus * scale);
+  const ceiling = Math.round(effects.ceilingGrowthPerWeek * scale);
+  return `if this week ended now: recovery ${recovery}%, injury ${injury}%, technique ${technique}, ceiling ${ceiling}%`;
 }
 
 // ---------------------------------------------------------------------------
