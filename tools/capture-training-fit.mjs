@@ -8,6 +8,7 @@
  *   node tools/capture-training-fit.mjs [--url URL] [--out DIR]
  */
 import { chromium } from 'playwright';
+import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -40,8 +41,14 @@ const MOMENTS = [
 
 await mkdir(outDir, { recursive: true });
 
+const chromiumPath = [
+  process.env.PW_CHROMIUM,
+  '/opt/pw-browsers/chromium',
+  '/opt/google/chrome/chrome',
+].find((candidate) => typeof candidate === 'string' && candidate.length > 0 && existsSync(candidate));
+
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
+  ...(chromiumPath === undefined ? {} : { executablePath: chromiumPath }),
   args: [
     '--no-sandbox',
     '--disable-dev-shm-usage',

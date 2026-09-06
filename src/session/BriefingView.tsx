@@ -185,6 +185,7 @@ export function BriefingView({
                   key={rpe}
                   testID={`session-rpe-${rpe}`}
                   accessibilityRole="button"
+                  accessibilityLabel={`${SESSION_COPY.BRIEFING_RPE_PREFIX} ${rpe}`}
                   disabled={!ladderReady}
                   onPress={() => onChooseRpe(rpe)}
                   style={[styles.rung, isSuggested ? styles.rungSuggested : null]}
@@ -193,7 +194,7 @@ export function BriefingView({
                     style={[styles.rungLabel, isSuggested ? styles.rungLabelSuggested : null]}
                     numberOfLines={1}
                   >
-                    {`${SESSION_COPY.BRIEFING_RPE_PREFIX} ${rpe}`}
+                    {`${rpe}`}
                   </Text>
                 </Pressable>
               );

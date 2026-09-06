@@ -318,15 +318,20 @@ export function CloseOutView({
       </Row>
 
       <Row index={SESSION_TUNING.CLOSE_OUT_ROW_ORDER.OUTLOOK}>
-        <Text style={styles.statLabel}>{SESSION_COPY.CLOSE_OUT_OUTLOOK_LABEL}</Text>
-        <Text style={styles.outlookHeadline} testID="close-out-outlook">
-          {closeOut.outlookHeadline}
-        </Text>
-        {closeOut.outlookDetail === '' ? null : (
-          <Text style={styles.feedback} testID="close-out-outlook-detail">
-            {closeOut.outlookDetail}
-          </Text>
-        )}
+        <View style={styles.outlookCard} testID="close-out-outlook-card">
+          <View style={styles.outlookAccent} />
+          <View style={styles.outlookBody}>
+            <Text style={styles.statLabel}>{SESSION_COPY.CLOSE_OUT_OUTLOOK_LABEL}</Text>
+            <Text style={styles.outlookHeadline} testID="close-out-outlook">
+              {closeOut.outlookHeadline}
+            </Text>
+            {closeOut.outlookDetail === '' ? null : (
+              <Text style={styles.feedback} testID="close-out-outlook-detail">
+                {closeOut.outlookDetail}
+              </Text>
+            )}
+          </View>
+        </View>
       </Row>
 
       {e1rm !== null && e1rm.valueKg !== null ? (
@@ -397,15 +402,20 @@ export function CloseOutView({
       </Row>
 
       <Row index={SESSION_TUNING.CLOSE_OUT_ROW_ORDER.NEXT}>
-        <Text style={styles.statLabel}>{SESSION_COPY.CLOSE_OUT_NEXT_LABEL}</Text>
-        <Text style={styles.outlookHeadline} testID="close-out-next">
-          {closeOut.nextAction.headline}
-        </Text>
-        {closeOut.nextAction.detail === '' ? null : (
-          <Text style={styles.feedback} testID="close-out-next-detail">
-            {closeOut.nextAction.detail}
-          </Text>
-        )}
+        <View style={styles.outlookCard} testID="close-out-next-card">
+          <View style={styles.outlookAccent} />
+          <View style={styles.outlookBody}>
+            <Text style={styles.statLabel}>{SESSION_COPY.CLOSE_OUT_NEXT_LABEL}</Text>
+            <Text style={styles.outlookHeadline} testID="close-out-next">
+              {closeOut.nextAction.headline}
+            </Text>
+            {closeOut.nextAction.detail === '' ? null : (
+              <Text style={styles.feedback} testID="close-out-next-detail">
+                {closeOut.nextAction.detail}
+              </Text>
+            )}
+          </View>
+        </View>
       </Row>
 
       <Pressable
@@ -430,9 +440,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     paddingHorizontal: L.SCREEN_PAD,
+    paddingTop: L.SAFE_AREA_FALLBACK,
     paddingBottom: L.NAV_CLEARANCE,
     gap: L.STAT_ROW_GAP,
   },
@@ -508,9 +519,28 @@ const styles = StyleSheet.create({
     color: SESSION_PALETTE.TEXT,
     fontSize: L.MODIFIER_FONT,
     fontWeight: '700',
-    textAlign: 'center',
+    textAlign: 'left',
     width: '100%',
     flexShrink: 1,
+  },
+  outlookCard: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    width: '100%',
+    borderRadius: L.CARD_RADIUS,
+    borderWidth: L.CHIP_BORDER,
+    borderColor: SESSION_PALETTE.CARD_EDGE,
+    backgroundColor: SESSION_PALETTE.CARD,
+    overflow: 'hidden',
+  },
+  outlookAccent: {
+    width: L.CARD_ACCENT_WIDTH,
+    backgroundColor: SESSION_PALETTE.ACTION,
+  },
+  outlookBody: {
+    flex: 1,
+    gap: L.ROW_GAP / 2,
+    padding: L.CARD_PAD,
   },
   action: {
     alignSelf: 'stretch',
