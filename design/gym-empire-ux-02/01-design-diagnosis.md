@@ -26,7 +26,7 @@ Warm garage institution: charcoal surfaces, amber CTAs, ivory text, three white 
 
 **Not claimed done (HUMAN_REQUIRED):** HD illustrated isometric garage, brick/steel/wood scene lighting, stencil webfont, new member/equipment anatomy art. Current floor/members/equipment remain Stage 4 index sprites. Do not grade visual fidelity as accepted from this Cloud.
 
-Playable-slice chrome toward that look (still not art-accepted): wood-tuned floor PNG on the board in Play; sienna brick surround in leftover stage; occupancy editor boxes Build-only; Build FAB hidden on Shop/Staff/More; athletic uppercase tracking on headings/dock/FAB; inspect/member sheets overlay the gym as a dock-cleared bottom card so Play taps show real station/member state without covering the room; Shop/Staff/More charcoal sheets over the gym with charcoal/amber cards.
+Playable-slice chrome toward that look (still not art-accepted): wood-tuned floor PNG on the board in Play; sienna brick surround in leftover stage; occupancy editor boxes Build-only; Build FAB hidden on Shop/Staff/More and stacked under a real inspect sheet (FAB lives inside the floor at highlight z-index so FloorGrid can cover it without GymScreen learning inspect state); athletic uppercase tracking on headings/dock/FAB; inspect/member sheets overlay the gym as a dock-cleared bottom card so Play taps show real station/member state without covering the room; Shop/Staff/More charcoal sheets over the gym with charcoal/amber cards and ivory player copy.
 
 ## Reset (this packet)
 

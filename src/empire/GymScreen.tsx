@@ -465,7 +465,10 @@ const styles = StyleSheet.create({
     borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
+    // Same stack as the Play action card, inside gymscreen-floor. FloorGrid
+    // raises to member z-index while a real inspect sheet is open, so the
+    // sheet covers this control without GymScreen learning inspect state.
+    zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
     cursor: 'pointer',
   },
   fabText: {
@@ -802,6 +805,18 @@ export function GymScreen(props: GymScreenProps) {
           {nextLine}
         </Text>
       </View>
+      <Pressable
+        testID={'gymscreen-surface-build'}
+        accessibilityRole={'button'}
+        style={
+          surface === 'play' || surface === 'build' ? styles.fab : styles.drawerHidden
+        }
+        onPress={() =>
+          dispatch({ kind: 'set-gym-surface', surface: surface === 'build' ? 'play' : 'build' })
+        }
+      >
+        <Text style={styles.fabText}>{playerFacingBuildFabLabel(surface === 'build')}</Text>
+      </Pressable>
       </View>
       {/*
         §5.11 stage 4 on the garage floor — GDD §5.7's staffing, maintenance,
@@ -932,10 +947,10 @@ export function GymScreen(props: GymScreenProps) {
             </View>
           ))}
         </View>
-        <Text testID={'gymscreen-phase'}>
+        <Text testID={'gymscreen-phase'} style={styles.buttonText}>
           gym status: {signs.phase}
         </Text>
-        <Text testID={'gymscreen-condition'}>
+        <Text testID={'gymscreen-condition'} style={styles.buttonText}>
           Equipment condition: {displayConditionPercent(meanCondition(managed))}%
         </Text>
         {/*
@@ -974,7 +989,7 @@ export function GymScreen(props: GymScreenProps) {
           time, and there is no bulk-repair control anywhere in this
           directory for it to duplicate.
         */}
-        <Text testID={'gymscreen-full-repair'}>
+        <Text testID={'gymscreen-full-repair'} style={styles.buttonText}>
           Full repair: {worn.length === 0 ? 0 : fullRepairCostGymBucks(managed)} gym bucks
         </Text>
         {/*
@@ -997,18 +1012,18 @@ export function GymScreen(props: GymScreenProps) {
           time — the numbers themselves are the station panel's job now.
         */}
         {worn.length === 0 ? null : (
-          <Text testID={'gymscreen-worn'}>
+          <Text testID={'gymscreen-worn'} style={styles.buttonText}>
             Needs attention: {worn.join(', ')}
           </Text>
         )}
         {prompt.kind === 'quiet' ? null : (
           <View testID={'gymscreen-prompt'}>
-            <Text testID={'gymscreen-prompt-item'}>
+            <Text testID={'gymscreen-prompt-item'} style={styles.buttonText}>
               maintenance review: {prompt.item} at{' '}
               {displayConditionPercent(itemCondition(managed, prompt.item))}% — repair costs{' '}
               {displayRepairCost(prompt.repairCostGymBucks)} gym bucks
             </Text>
-            <Text testID={'gymscreen-prompt-stakes'}>
+            <Text testID={'gymscreen-prompt-stakes'} style={styles.buttonText}>
               {prompt.alreadyRefused
                 ? 'you already refused this order — refusing it again adds nothing. only a press moves the ledger; leaving this open does not.'
                 : prompt.dismissalWouldCount
@@ -1016,11 +1031,11 @@ export function GymScreen(props: GymScreenProps) {
                   : '“not now” is free this once; “decline the repair” counts. only a press moves the ledger; leaving this open does not.'}
             </Text>
             {isDustRepairCost(prompt.repairCostGymBucks) ? (
-              <Text testID={'gymscreen-prompt-repair-unavailable'}>
+              <Text testID={'gymscreen-prompt-repair-unavailable'} style={styles.buttonText}>
                 this one is already as new — there is nothing to pay for
               </Text>
             ) : prompt.repairCostGymBucks > gym.ladder.gymBucks ? (
-              <Text testID={'gymscreen-prompt-repair-unavailable'}>
+              <Text testID={'gymscreen-prompt-repair-unavailable'} style={styles.buttonText}>
                 needs {prompt.repairCostGymBucks} gym bucks — you have{' '}
                 {playerFacingGymBucksLine(gym.ladder.gymBucks)}
               </Text>
@@ -1054,11 +1069,11 @@ export function GymScreen(props: GymScreenProps) {
         )}
         {managed.strikes.length === 0 ? null : (
         <View testID={'gymscreen-strikes'}>
-          <Text testID={'gymscreen-strikes-lead'}>
+          <Text testID={'gymscreen-strikes-lead'} style={styles.buttonText}>
             {managed.strikes.length} counted decision(s)
           </Text>
           {managed.strikes.map((record, index) => (
-            <Text testID={`gymscreen-strike-${index}`} key={`${record.decision}-${index}`}>
+            <Text testID={`gymscreen-strike-${index}`} key={`${record.decision}-${index}`} style={styles.buttonText}>
               {record.decision} at {record.atSeconds}s, price shown {record.shownCostGymBucks} gym
               bucks
             </Text>
@@ -1067,15 +1082,15 @@ export function GymScreen(props: GymScreenProps) {
         )}
         <View testID={'gymscreen-recovery'}>
           {recovery.kind === 'not-dormant' ? (
-            <Text testID={'gymscreen-recovery-state'}>
+            <Text testID={'gymscreen-recovery-state'} style={styles.buttonText}>
               open for business — {failurePhase(managed)}
             </Text>
           ) : recovery.kind === 'ready' ? (
-            <Text testID={'gymscreen-recovery-state'}>
+            <Text testID={'gymscreen-recovery-state'} style={styles.buttonText}>
               dormant — everything reopening asks for is done
             </Text>
           ) : (
-            <Text testID={'gymscreen-recovery-state'}>
+            <Text testID={'gymscreen-recovery-state'} style={styles.buttonText}>
               dormant — still needed:{' '}
               {recovery.equipmentBelowMinimum
                 ? `equipment back to condition ${EMPIRE_TUNING.RECOVERY_CONDITION_MIN}`
@@ -1104,7 +1119,7 @@ export function GymScreen(props: GymScreenProps) {
             never failed is the same empty line this round is removing.
           */}
           {recovery.kind === 'not-dormant' ? null : (
-            <Text testID={'gymscreen-recovery-cost'}>
+            <Text testID={'gymscreen-recovery-cost'} style={styles.buttonText}>
               reopening would cost {recoveryRepairCostGymBucks(managed)} gym bucks in repairs
             </Text>
           )}
@@ -1125,7 +1140,7 @@ export function GymScreen(props: GymScreenProps) {
             reacts to real state rather than to a flag.
           */}
           {recovery.kind === 'blocked' && recovery.equipmentBelowMinimum ? (
-            <Text testID={'gymscreen-recovery-blocking'}>
+            <Text testID={'gymscreen-recovery-blocking'} style={styles.buttonText}>
               blocking reopening: {recoveryBlocking.join(', ')} — tap one on the floor to repair it
             </Text>
           ) : null}
@@ -1140,7 +1155,7 @@ export function GymScreen(props: GymScreenProps) {
             </Pressable>
           ) : null}
           {managed.recoveries === 0 ? null : (
-            <Text testID={'gymscreen-recovery-history'}>
+            <Text testID={'gymscreen-recovery-history'} style={styles.buttonText}>
               this gym has reopened {managed.recoveries} time(s)
             </Text>
           )}
@@ -1315,15 +1330,15 @@ export function GymScreen(props: GymScreenProps) {
       </View>
       <View testID={'gymscreen-move'}>
         {destination === null ? (
-          <Text>top of the ladder - staffing, maintenance and the failure state are above; the portfolio stays paused</Text>
+          <Text style={styles.buttonText}>top of the ladder - staffing, maintenance and the failure state are above; the portfolio stays paused</Text>
         ) : (
           <>
-            <Text>
+            <Text style={styles.buttonText}>
               next: {playerFacingLocationLine(destination)} for {ladderMoveCost(destination)} gym bucks
             </Text>
             {/* `moveUpLadder`'s `'not-enough-gym-bucks'` arm, drawn instead of pressed for. */}
             {ladderMoveCost(destination) > gym.ladder.gymBucks ? (
-              <Text testID={'gymscreen-move-up-unavailable'}>
+              <Text testID={'gymscreen-move-up-unavailable'} style={styles.buttonText}>
                 needs {ladderMoveCost(destination)} gym bucks — you have{' '}
                 {playerFacingGymBucksLine(gym.ladder.gymBucks)}
               </Text>
@@ -1380,7 +1395,7 @@ export function GymScreen(props: GymScreenProps) {
       </View>
       <View testID={'gymscreen-week-log'}>
         {weekLog.map((week) => (
-          <Text testID={`gymscreen-week-log-${week.weekIndex}`} key={week.weekIndex}>
+          <Text testID={`gymscreen-week-log-${week.weekIndex}`} key={week.weekIndex} style={styles.buttonText}>
             week {week.weekIndex}: {week.slots.map(describeSlotOutcome).join('; ')} —{' '}
             {playerFacingWeekEffectsLine(week.effects)}
           </Text>
@@ -1496,18 +1511,6 @@ export function GymScreen(props: GymScreenProps) {
         </Pressable>
       </View>
       </ScrollView>
-      <Pressable
-        testID={'gymscreen-surface-build'}
-        accessibilityRole={'button'}
-        style={
-          surface === 'play' || surface === 'build' ? styles.fab : styles.drawerHidden
-        }
-        onPress={() =>
-          dispatch({ kind: 'set-gym-surface', surface: surface === 'build' ? 'play' : 'build' })
-        }
-      >
-        <Text style={styles.fabText}>{playerFacingBuildFabLabel(surface === 'build')}</Text>
-      </Pressable>
       </View>
       <View testID={'gymscreen-dock'} style={styles.dock}>
         {GYM_DOCK_SURFACES.map((name) => (

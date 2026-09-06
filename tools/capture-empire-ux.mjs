@@ -157,10 +157,29 @@ async function run() {
         inView: r.height > 0 && r.width > 0 && r.bottom > 0 && r.top < window.innerHeight,
       };
     };
+    const fab = document.querySelector('[data-testid="gymscreen-surface-build"]');
+    const floor = document.querySelector('[data-testid="gymscreen-floor"]');
+    const hitAtFab = (() => {
+      if (fab === null) return null;
+      const r = fab.getBoundingClientRect();
+      const x = r.left + r.width / 2;
+      const y = r.top + r.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      if (hit === null) return { x, y, testId: null };
+      const tagged = hit.closest('[data-testid]');
+      return {
+        x: Math.round(x),
+        y: Math.round(y),
+        testId: tagged === null ? hit.tagName : tagged.getAttribute('data-testid'),
+      };
+    })();
     return {
       stationPanel: boxOf(panel),
       equipmentPanel: boxOf(equipment),
       actionCard: boxOf(card),
+      fab: boxOf(fab),
+      floorContainsFab: floor !== null && fab !== null && floor.contains(fab),
+      hitAtFab,
     };
   });
   console.log(
@@ -252,6 +271,29 @@ async function run() {
     await logVoid(extraPage, vp.name);
     await logChrome(extraPage, vp.name);
     await shot(extraPage, vp.name);
+    if (vp.name === 'play-375' || vp.name === 'play-430') {
+      await extraPage.getByTestId('floorgrid-fixed-flat-bench').click({ timeout: 10000 });
+      await extraPage.waitForTimeout(400);
+      const hit = await extraPage.evaluate(() => {
+        const fab = document.querySelector('[data-testid="gymscreen-surface-build"]');
+        if (fab === null) return { testId: null };
+        const r = fab.getBoundingClientRect();
+        const x = r.left + r.width / 2;
+        const y = r.top + r.height / 2;
+        const el = document.elementFromPoint(x, y);
+        const tagged = el === null ? null : el.closest('[data-testid]');
+        return {
+          testId:
+            tagged === null
+              ? el === null
+                ? null
+                : el.tagName
+              : tagged.getAttribute('data-testid'),
+        };
+      });
+      console.log(JSON.stringify({ label: `${vp.name}-inspect-fab-hit`, ...hit }));
+      await shot(extraPage, `${vp.name}-inspect`);
+    }
     await extra.close();
   }
   await browser.close();

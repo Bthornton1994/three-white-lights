@@ -2128,6 +2128,14 @@ describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
     expect(testIdsUnder(findByTestId(root, 'gymscreen-dock'))).not.toContain(
       'gymscreen-surface-build',
     );
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-floor'))).toContain(
+      'gymscreen-surface-build',
+    );
+    expect(findByTestId(root, 'gymscreen-surface-build').props.style).toEqual(
+      expect.objectContaining({
+        zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
+      }),
+    );
     expect(findAllByTestId(root, 'gymscreen-surface-build').length).toBe(1);
     expect(findAllByTestId(root, 'gymscreen-surface-developer').length).toBe(0);
     expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).not.toContain(
@@ -2325,6 +2333,19 @@ describe('SF-TWL-GYM-EMPIRE-UX-02 — Play operating view vs Build overlay', () 
     );
     expect(findByTestId(staffRoot, 'gymscreen-staff-drawer').props.style).toEqual(
       expect.objectContaining({ backgroundColor: 'black' }),
+    );
+    expect(findByTestId(staffRoot, 'gymscreen-phase').props.style).toEqual(
+      expect.objectContaining({ color: 'ivory' }),
+    );
+    expect(findByTestId(staffRoot, 'gymscreen-condition').props.style).toEqual(
+      expect.objectContaining({ color: 'ivory' }),
+    );
+    const moreRoot = render(
+      gymViewReduce(play, { kind: 'set-gym-surface', surface: 'more' }),
+      [],
+    );
+    expect(findByTestId(moreRoot, 'gymscreen-lifts').props.style).toEqual(
+      expect.objectContaining({ color: 'ivory' }),
     );
   });
 
