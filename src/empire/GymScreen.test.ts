@@ -2307,6 +2307,27 @@ describe('SF-TWL-GYM-EMPIRE-UX-02 — Play operating view vs Build overlay', () 
     );
   });
 
+  it('paints Shop and Staff cards charcoal on a charcoal sheet', () => {
+    const play = createGymViewState();
+    const shopRoot = render(
+      gymViewReduce(play, { kind: 'set-gym-surface', surface: 'shop' }),
+      [],
+    );
+    expect(findByTestId(shopRoot, 'gymscreen-shop-card-power-bar').props.style).toEqual(
+      expect.objectContaining({ backgroundColor: 'black' }),
+    );
+    expect(findByTestId(shopRoot, 'gymscreen-shop-drawer').props.style).toEqual(
+      expect.objectContaining({ backgroundColor: 'black' }),
+    );
+    const staffRoot = render(
+      gymViewReduce(play, { kind: 'set-gym-surface', surface: 'staff' }),
+      [],
+    );
+    expect(findByTestId(staffRoot, 'gymscreen-staff-drawer').props.style).toEqual(
+      expect.objectContaining({ backgroundColor: 'black' }),
+    );
+  });
+
   it('Build sets FloorGrid buildMode; Done returns Play with no buildMode', () => {
     const play = createGymViewState();
     const build = gymViewReduce(play, { kind: 'set-gym-surface', surface: 'build' });

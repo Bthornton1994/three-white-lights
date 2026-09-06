@@ -26,14 +26,14 @@ Warm garage institution: charcoal surfaces, amber CTAs, ivory text, three white 
 
 **Not claimed done (HUMAN_REQUIRED):** HD illustrated isometric garage, brick/steel/wood scene lighting, stencil webfont, new member/equipment anatomy art. Current floor/members/equipment remain Stage 4 index sprites. Do not grade visual fidelity as accepted from this Cloud.
 
-Playable-slice chrome toward that look (still not art-accepted): wood-tuned floor PNG on the board in Play; sienna brick surround in leftover stage; occupancy editor boxes Build-only; Build FAB hidden on Shop/Staff/More; athletic uppercase tracking on headings/dock/FAB; inspect/member sheets overlay the gym as a dock-cleared bottom card so Play taps show real station/member state without covering the room.
+Playable-slice chrome toward that look (still not art-accepted): wood-tuned floor PNG on the board in Play; sienna brick surround in leftover stage; occupancy editor boxes Build-only; Build FAB hidden on Shop/Staff/More; athletic uppercase tracking on headings/dock/FAB; inspect/member sheets overlay the gym as a dock-cleared bottom card so Play taps show real station/member state without covering the room; Shop/Staff/More charcoal sheets over the gym with charcoal/amber cards.
 
 ## Reset (this packet)
 
 - Paint html/body/#root warm iron; sienna brick leftover around a wood board; overlay HUD/dock/action card.
 - Sparse HUD: referee lights + location + purse + reputation. Causal now/next on a Play action card from real management / roster state.
 - Build-only grid, labels, place copy, gold/black editor boxes, occupancy outlines. Play inspects without editor chrome; worn stations may show an amber inspect cue from real condition. Exit Build → Play with no residue (existing fade).
-- Weighted IA: Gym (Play) home with amber active; Shop/Staff sheets; Build FAB on Play/Build only; More = settings including leave-gym; Developer explicit route only.
+- Weighted IA: Gym (Play) home with amber active; Shop/Staff charcoal sheets over the gym; Build FAB on Play/Build only; More = settings including leave-gym; Developer explicit route only.
 - Inspect panels use charcoal/amber/ivory, not prototype blue.
 
 Soft feel remains **HUMAN_REQUIRED**. Empire Ready **NO**. Draft only. **NO MERGE**.
