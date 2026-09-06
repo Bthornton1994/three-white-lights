@@ -239,10 +239,17 @@ async function run() {
   await logChrome(page, 'build');
   await page.getByTestId('floorgrid-fixed-power-bar').click({ timeout: 8000 });
   await page.waitForTimeout(350);
+  const ghostBorder =
+    (await page.getByTestId('floorgrid-place-ghost').count()) === 0
+      ? 'missing'
+      : await page
+          .getByTestId('floorgrid-place-ghost')
+          .evaluate((el) => getComputedStyle(el).borderColor);
   console.log(
     JSON.stringify({
       label: 'build-moving',
       ghost: await page.getByTestId('floorgrid-place-ghost').count(),
+      ghostBorder,
       cancel: await page.getByTestId('floorgrid-place-cancel').count(),
     }),
   );

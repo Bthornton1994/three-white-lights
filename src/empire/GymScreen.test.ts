@@ -2309,6 +2309,28 @@ describe('SF-TWL-GYM-EMPIRE-UX-02 — Play operating view vs Build overlay', () 
     );
   });
 
+  it('paints A×C iron-and-amber chrome without purple admin', () => {
+    const root = render(createGymViewState(), []);
+    expect(findByTestId(root, 'gymscreen-hud').props.style).toEqual(
+      expect.objectContaining({ backgroundColor: 'sienna' }),
+    );
+    expect(findByTestId(root, 'gymscreen-surface-build').props.style).toEqual(
+      expect.objectContaining({ backgroundColor: 'goldenrod' }),
+    );
+    expect(findByTestId(root, 'gymscreen-dock').props.style).toEqual(
+      expect.objectContaining({ backgroundColor: 'black' }),
+    );
+    expect(findByTestId(root, 'gymscreen-rung').props.style).toEqual(
+      expect.objectContaining({ textTransform: 'uppercase' }),
+    );
+    expect(findByTestId(root, 'gymscreen-now').props.style).toEqual(
+      expect.objectContaining({ textTransform: 'uppercase' }),
+    );
+    expect(findByTestId(root, 'gymscreen-next').props.style).not.toEqual(
+      expect.objectContaining({ textTransform: 'uppercase' }),
+    );
+  });
+
   it('hides the Build FAB on Shop and Staff sheets', () => {
     const play = createGymViewState();
     const shop = gymViewReduce(play, { kind: 'set-gym-surface', surface: 'shop' });
