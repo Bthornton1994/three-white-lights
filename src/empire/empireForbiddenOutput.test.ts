@@ -1248,6 +1248,7 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
     positions: Object.freeze([
       'stationView.ts#playerFacingActivityGroupLabel#return',
       'stationView.ts#playerFacingBayRole#return',
+      'stationView.ts#playerFacingBrandLine#return',
       'stationView.ts#playerFacingBuildFabLabel#return',
       'stationView.ts#playerFacingBuildPlaceHint#return',
       'stationView.ts#playerFacingBuildTrayEmpty#return',
@@ -2044,7 +2045,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 489 -> 491: Stage G.2D purse composition helpers.
   // 491 -> 492: Stage G.2D P1 requireLivingMemberDuesOccupancyClock.
   // 492 -> 493: Stage G.2D P1 livingMemberDuesOccupancyUntilSeconds.
-  EXPORTS: 546, // SF-TWL-GYM-EMPIRE-UX-02 now/next/leave/place copy
+  EXPORTS: 547, // A×C playerFacingBrandLine
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -2067,7 +2068,7 @@ const SURFACE_CENSUS = Object.freeze({
   // plus reconcileFloorSimPopulation memberId. Read from this pin last.
   // 221 -> 246: Stage G.2C3 arrival archive / player-facing join line.
   // 246 -> 266: Stage G.2D playerFacingDuesLine plus applyLivingMemberDues roster strings.
-  BARE_POSITIONS: 415, // SF-TWL-GYM-EMPIRE-UX-02 now/next/leave/place returns
+  BARE_POSITIONS: 416, // A×C playerFacingBrandLine
   BARE_FIELDS: 7, // CAREER-EMPIRE-REP-01 played-meet identifier group
   BRANDED_POSITIONS: 34,
   /**
@@ -3438,7 +3439,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 3662 -> 3704: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 3704 -> 3755: Stage G.2C2 livingMemberDeparture.ts plus livingMembers
   // departure/reconcile wiring. Read from this pin last.
-  CALLS_EXAMINED: 4224, // A×C FloorGrid worn inspect + board floor
+  CALLS_EXAMINED: 4225, // A×C playerFacingBrandLine
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -9849,6 +9850,7 @@ function driveEverything(): readonly DrivenRow[] {
     drive('playerFacingLocationLine', 'garage', () =>
       stationViewModule.playerFacingLocationLine('garage'),
     );
+    drive('playerFacingBrandLine', 'product', () => stationViewModule.playerFacingBrandLine());
     drive('playerFacingIncomeRateLine', 'garage', () =>
       stationViewModule.playerFacingIncomeRateLine(
         EMPIRE_TUNING.LADDER_INCOME_GYM_BUCKS_PER_HOUR.garage,
@@ -12477,7 +12479,7 @@ const DRIVE_CENSUS = Object.freeze({
   // advanceLivingMemberStay drive rows. Read from this pin's own failure value.
   // 600663 -> 600678: Stage G.2C2 departure/reconcile/stayEvidence drive rows.
   // Read from this pin last.
-  ROWS: 600858, // A×C wood floor palette (net -2 NUMBER points)
+  ROWS: 600859, // A×C playerFacingBrandLine
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -12510,7 +12512,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 473 -> 478: Stage G.2C3 livingMemberArrival.ts five runtime exports.
   // 478 -> 489: Stage G.2D livingMemberDues.ts plus applyLivingMemberDues.
   // 489 -> 491: Stage G.2D purse composition helpers, both driven above.
-  EXPORTS_DRIVEN: 546, // SF-TWL-GYM-EMPIRE-UX-02 now/next/leave/place copy
+  EXPORTS_DRIVEN: 547, // A×C playerFacingBrandLine
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -12546,7 +12548,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 6_546_189 -> 6_546_436: Stage G.2C2 departure/reconcile/stayEvidence drive.
   // Read from this pin last. STRINGS/DISTINCT_STRINGS below remain the G.2C1
   // pins until this assertion's subsequent failure names them.
-  NODES: 6_583_289, // A×C wood floor palette
+  NODES: 6_583_415, // A×C playerFacingBrandLine
   // THE SENTENCE THAT USED TO FINISH THIS COMMENT WAS FALSE AND IS CORRECTED
   // RATHER THAN DELETED. It read: "`STRINGS` and `DISTINCT_STRINGS` did NOT
   // move with it — the nodes past the old bound carry no string this scan had
@@ -12733,7 +12735,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_376_468, // A×C wood floor palette
+  STRINGS: 30_377_355, // A×C brand + floor language
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -12843,9 +12845,9 @@ const DRIVE_CENSUS = Object.freeze({
   // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
   // 3973 -> 3975: Stage D2 reset-gym copy / wear-truth strings. Read from
   // this pin's own failure value.
-  DISTINCT_STRINGS: 4504, // A×C wood floor palette
+  DISTINCT_STRINGS: 4511, // A×C brand + floor language
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
-  DEPTH_CUTS: 10, // Stage G.2D purse-credit ledger walk
+  DEPTH_CUTS: 13, // A×C playerFacingBrandLine
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
    *
@@ -13009,7 +13011,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 6247 -> 6253: Stage D2 reset-gym Pressable stacks on driven GymScreen
   // trees. Read from this pin's own failure value.
   // 6290 -> 6291: Stage G.2C1 stay-response drive Error.stack readings.
-  STACKS: 6705, // A×C wood floor palette
+  STACKS: 6720, // A×C brand + floor language
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -13231,8 +13233,8 @@ const DECLINED_CLOSURE_POSITIONS: readonly string[] = Object.freeze([
   // after the caption `<Text>`, hence `.props.children.1` unchanged).
   // Stage C.1b facility-first tree: HUD, then stage wrapping FloorGrid
   // (children.1 → children.0.props.children). Same embed, new path.
-  'GymScreen#return.props.children.1.props.children.0.props.children.props.dispatch/1',
-  'GymScreen#return.props.children.1.props.children.0.props.children.type/1',
+  'GymScreen#return.props.children.1.props.children.0.props.children.0.props.dispatch/1',
+  'GymScreen#return.props.children.1.props.children.0.props.children.0.type/1',
   'accrueProduction#argument.1.gymBucksPerHour/1',
   'accrueProduction#argument.1.trainingIqPerDay/1',
   'gymBucksRatePerHour#argument.1.gymBucksPerHour/1',
@@ -16888,7 +16890,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'sportingReputation.ts': 11,
       'sportingReputationLedger.ts': 10, // CAREER-EMPIRE-REP-01 write-side returns
       'stationCapability.ts': 27,
-      'stationView.ts': 112, // SF-TWL-GYM-EMPIRE-UX-02 now/next/leave/place returns
+      'stationView.ts': 113, // A×C playerFacingBrandLine
       'trainingStation.ts': 18,
     }),
     'returned-closure': Object.freeze({
@@ -17368,7 +17370,7 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'stationCapability.ts:104 returned=unfollowable:capability'
 ]);
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1809 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:1808 FloorSimState asked=true walked=false',
   'FloorGrid.tsx:824 GridPosition asked=true walked=false',
   'FloorGrid.tsx:824 GridPosition asked=true walked=false',
   'FloorGrid.tsx:825 GridSize asked=true walked=false',
@@ -17715,7 +17717,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
   // 1815 -> 1841: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 1841 -> 1866: Stage G.2C2 livingMemberDeparture.ts plus roster/sim wiring.
-  function: 2148, // A×C FloorGrid worn inspect + board floor
+  function: 2149, // A×C playerFacingBrandLine
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -17985,7 +17987,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 1123 -> 1124: Stage G.2D P1 open-mark occupancy until second return path.
   // 1124 -> 1141: Stage G.2E livingMemberReputation returns, livingMembers
   // applyLivingMemberReputation, members type helpers, arrival gate.
-  SITES: 1247, // A×C FloorGrid return sites (worn inspect + board floor)
+  SITES: 1248, // A×C playerFacingBrandLine
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -18142,7 +18144,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // stayState wiring. Read from this pin last.
   // 84_813 -> 86_105: Stage G.2C2 livingMemberDeparture.ts plus roster/sim
   // departure wiring. Read from this pin last.
-  NODES_EXAMINED: 96_918, // A×C leave-gym first on More as amber CTA
+  NODES_EXAMINED: 96_980, // A×C full-bleed room + brand + floor language
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -18293,7 +18295,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // and livingMembers.ts stayState. Read from this pin's own failure value.
   // 1109 -> 1128: Stage G.2C2 departure-record types plus roster.departures.
   // Read from this pin last.
-  POSITIONS: 1296, // SF-TWL-GYM-EMPIRE-UX-02 now/next/leave/place signatures
+  POSITIONS: 1298, // A×C playerFacingBrandLine
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -26500,7 +26502,7 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 294 -> 237: Stage G.2C2 rewrote applyServiceObservations roster.map as a
   // loop (departure filter). The dead member-call site is removed rather than
   // driven at zero. Read from this pin last.
-  RETURNED: 235, // SF-TWL-GYM-EMPIRE-UX-01 GymScreen props.map deep-scan
+  RETURNED: 241, // A×C HUD identity map payload
   FINDINGS: 0,
   TRIPWIRE_SUBJECTS: 2,
   TRIPWIRE_FINDINGS: 2,
@@ -26585,7 +26587,7 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   // ported screen. `returned=26` rather than GymView's 30 — measured, not
   // assumed identical: the sparse HUD carries fewer deep-scanned strings
   // than the DOM GymView tree's separately-scanned text nodes.
-  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=26 verdicts=objectx1',
+  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=29 verdicts=objectx1',
   'GymScreen.tsx#GymScreen#week.map x1 calls=1 callbacks=3 handed=0 returned=3 verdicts=stringx3',
   // S4b's two stage-4 sites, in `MEMBER_CALL_SUBJECTS` order: the strike
   // ledger's `.map` and the auto-repair report's. `returned=24` on each,
@@ -26600,7 +26602,7 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   // above, and the mitigation is the same one that row got — the COUNT of
   // this key among the driven subjects is pinned separately, so a driver
   // silently dropping to one is red rather than merely smaller.
-  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=24 verdicts=objectx1',
+  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=27 verdicts=objectx1',
   'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=24 verdicts=objectx1',
   // CAREER-EMPIRE-REP-01: lastSportingCredit.reasons.map — one Text child.
   'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=1 verdicts=stringx1',

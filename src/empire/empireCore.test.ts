@@ -3915,7 +3915,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 917 -> 932: SF-TWL-GYM-EMPIRE-UX-02 now/next/leave/build-place copy.
     // 932 -> 938: A×C IRON & AMBER chrome tokens (Gym, ivory, lights, card).
     // 938 -> 939: A×C board surround (`sienna`) and athletic `uppercase`.
-    expect(singleQuoted.size).toBe(939);
+    // 939 -> 942: A×C brand line, gymscreen-brand testID, HUD column identity.
+    expect(singleQuoted.size).toBe(942);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4305,6 +4306,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'club',
       'coach',
       'coach-staff-level',
+      'column',
       'combined-total',
       'comp-plates',
       'competition-bench-bay',
@@ -4496,6 +4498,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-advance-next-week',
       'gymscreen-allocation',
       'gymscreen-available-now',
+      'gymscreen-brand',
       'gymscreen-check-in-costs',
       'gymscreen-clock',
       'gymscreen-condition',
@@ -4956,7 +4959,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1386 -> 1403: SF-TWL-GYM-EMPIRE-UX-02 singleQuoted +15 and templateChunks +2.
     // 1403 -> 1409: A×C IRON & AMBER chrome tokens.
     // 1409 -> 1410: A×C sienna/uppercase minus room Image `100%`.
-    expect(stringsChecked).toBe(1410);
+    // 1410 -> 1413: A×C brand line + gymscreen-brand + column identity.
+    expect(stringsChecked).toBe(1413);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were

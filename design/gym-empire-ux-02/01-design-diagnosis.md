@@ -4,7 +4,7 @@
 
 Owner Bryant product-rejected HEAD `ea58acef` (A6-4-only chrome). That SHA is **REJECTED / NOT ACCEPT**. Bryant then **approved** visual direction **A × C IRON & AMBER**. This packet is a layout / IA / hierarchy reset plus chrome toward that look — not a restyle of the same editor, and not a claim that art fidelity is done.
 
-**PX Iron & Amber bind (this Cloud, Session B sole lease).** Bound by path. Hunt this turn: **not in this checkout**, not on this branch, not on GitHub `design/gym-empire-ux-02/` (only this diagnosis file), not in Notion. Did **not** invent TOKEN-MANIFEST, webfonts, SKUs, or a parallel token system. PX Lead owns interface tokens.
+**PX Iron & Amber bind (this Cloud, Session B sole lease).** Bound by path. Hunt this turn (PX visual fail @ `4c4aad49`): factory `04` / `05` / `shared-assets` / mockup / bar **still unreadable** — not on this disk, not in GitHub `design/gym-empire-ux-02/` (only this diagnosis file), not in Notion, environment repos = `three-white-lights` only. Did **not** invent TOKEN-MANIFEST. Mount verbatim when those files are accessible.
 
 | Deliverable | Status |
 | --- | --- |
@@ -42,13 +42,13 @@ Warm garage institution: charcoal surfaces, amber CTAs, ivory text, three white 
 
 **Not claimed done (HUMAN_REQUIRED):** HD illustrated isometric garage, brick/steel/wood scene lighting, stencil webfont, new member/equipment anatomy art. Current floor/members/equipment remain Stage 4 index sprites. Do not grade visual fidelity as accepted from this Cloud. Visual-direction files (`A-x-C-IRON-AMBER-approved.png`, `04-iron-amber-visual-spec.md`, `05-art-direction-review.md`, standing order, TOKEN-MANIFEST) are not mounted; chrome reuses named CSS already in the empire vocabulary and does not ship a webfont or a parallel token system.
 
-Playable-slice chrome toward that look (still not art-accepted): wood-tuned floor PNG on the board in Play; sienna brick surround in leftover stage; occupancy editor boxes Build-only (`display: none` on Play, testIDs still mounted); Build FAB hidden on Shop/Staff/More and stacked under a real inspect sheet (FAB lives inside the floor at highlight z-index so FloorGrid can cover it without GymScreen learning inspect state); athletic uppercase tracking on headings/dock/FAB; inspect/member sheets overlay the gym as a dock-cleared bottom card so Play taps show real station/member state without covering the room; Shop/Staff/More charcoal sheets over the gym with charcoal/amber cards, ivory body copy, and amber (goldenrod) primary CTAs; weighted dock with a goldenrod top bar.
+Playable-slice chrome toward that look (still not art-accepted): owned garage-floor PNG stretched full-bleed on `floorgrid-room` (Play is a room, not an 8×6 wood island on burnt-orange leftover); placement grid lines and occupancy editor boxes Build-only (`display: none` / fade on Play, testIDs still mounted); member state is ivory floor language from `FLOOR_SIM_STATE_LEGEND`, not green/blue/yellow orbs; HUD brand is `THREE WHITE LIGHTS` plus three ivory referee lights plus athletic `Garage` with no tracking; Build FAB hidden on Shop/Staff/More and stacked under a real inspect sheet (FAB lives inside the floor at highlight z-index so FloorGrid can cover it without GymScreen learning inspect state); inspect/member sheets overlay the gym as a dock-cleared bottom card; Shop/Staff/More charcoal sheets over the gym with charcoal/amber cards, ivory body copy, and amber (goldenrod) primary CTAs; weighted dock with a goldenrod top bar and sienna Gym home weight.
 
 ## Reset (this packet)
 
-- Paint html/body/#root warm iron; sienna brick leftover around a wood board; overlay HUD/dock/action card. HUD identity sits on the sienna room (not a black admin strip).
-- Sparse HUD: referee lights + location + purse + reputation. Causal now/next on a Play action card from real management / roster state.
-- Build-only grid, labels, place copy, gold/black editor boxes, occupancy outlines. Play inspects without editor chrome; worn stations may show an amber inspect cue from real condition. Exit Build → Play with no residue (existing fade).
+- Paint html/body/#root warm iron; owned floor PNG full-bleed on the stage; overlay HUD/dock/action card. HUD identity overlays the gym (not a burnt-orange admin strip).
+- Sparse HUD: THREE WHITE LIGHTS + three referee lights + Garage (no letter-spacing) + purse + reputation. Causal now/next on a Play action card from real management / roster state.
+- Build-only grid, labels, place copy, gold/black editor boxes, occupancy outlines. Play inspects without editor chrome; member cues are readable floor language. Worn stations may show an amber inspect cue from real condition. Exit Build → Play with no residue (existing fade).
 - Weighted IA: Gym (Play) home with amber active; Shop/Staff charcoal sheets over the gym; Build FAB on Play/Build only, stacked under inspect, and the Play now/next card stops short of it; More = settings with leave-gym as the first amber control (not buried under week allocation); Developer explicit route only. Dock is a charcoal bar with a goldenrod top edge. Shop/Staff primary buy/hire/repair/reopen/relocate CTAs reuse the FAB amber, not a second token system.
 - Inspect panels use charcoal/amber/ivory, not prototype blue.
 

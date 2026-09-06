@@ -139,6 +139,7 @@ import { scrubPrecision } from './production';
 import {
   displayConditionPercent,
   playerFacingActivityGroupLabel,
+  playerFacingBrandLine,
   playerFacingEquipmentCatalog,
   playerFacingEquipmentLabel,
   playerFacingGymBucksLine,
@@ -413,6 +414,7 @@ function expectScreenMatchesState(root: Rendered, state: GymViewState): number {
   expect(weekText).toContain(`${shape.fixed} fixed + ${shape.flexible} flexible = ${shape.total}`);
   expect(weekText).toContain(allocationSetThisWeek ? 'allocated this week' : 'not yet allocated');
   compared += 3;
+  expect(textOf(findByTestId(root, 'gymscreen-brand'))).toBe(playerFacingBrandLine());
   expect(textOf(findByTestId(root, 'gymscreen-rung'))).toBe(
     playerFacingLocationLine(gym.ladder.rung),
   );
@@ -2111,6 +2113,7 @@ describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
     expect(textOf(findByTestId(root, 'gymscreen-reputation'))).not.toMatch(/\+REP/);
     expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain('gymscreen-reputation');
     expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain('gymscreen-lights');
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain('gymscreen-brand');
     expect(testIdsUnder(findByTestId(root, 'gymscreen-action-card'))).toContain('gymscreen-now');
     expect(testIdsUnder(findByTestId(root, 'gymscreen-action-card'))).toContain('gymscreen-next');
     expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).not.toContain('gymscreen-now');
@@ -2146,7 +2149,7 @@ describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
       }),
     );
     expect(findByTestId(root, 'gymscreen-hud').props.style).toEqual(
-      expect.objectContaining({ backgroundColor: 'sienna' }),
+      expect.objectContaining({ backgroundColor: 'transparent' }),
     );
     expect(findAllByTestId(root, 'gymscreen-surface-build').length).toBe(1);
     expect(findAllByTestId(root, 'gymscreen-surface-developer').length).toBe(0);
@@ -2312,7 +2315,7 @@ describe('SF-TWL-GYM-EMPIRE-UX-02 — Play operating view vs Build overlay', () 
   it('paints A×C iron-and-amber chrome without purple admin', () => {
     const root = render(createGymViewState(), []);
     expect(findByTestId(root, 'gymscreen-hud').props.style).toEqual(
-      expect.objectContaining({ backgroundColor: 'sienna' }),
+      expect.objectContaining({ backgroundColor: 'transparent' }),
     );
     expect(findByTestId(root, 'gymscreen-surface-build').props.style).toEqual(
       expect.objectContaining({ backgroundColor: 'goldenrod' }),
@@ -2327,6 +2330,13 @@ describe('SF-TWL-GYM-EMPIRE-UX-02 — Play operating view vs Build overlay', () 
     expect(findByTestId(root, 'gymscreen-rung').props.style).toEqual(
       expect.objectContaining({ textTransform: 'uppercase' }),
     );
+    expect(findByTestId(root, 'gymscreen-rung').props.style).not.toEqual(
+      expect.objectContaining({
+        letterSpacing: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+      }),
+    );
+    expect(textOf(findByTestId(root, 'gymscreen-brand'))).toBe(playerFacingBrandLine());
+    expect(textOf(findByTestId(root, 'gymscreen-rung'))).toBe('Garage');
     expect(findByTestId(root, 'gymscreen-now').props.style).toEqual(
       expect.objectContaining({ textTransform: 'uppercase' }),
     );

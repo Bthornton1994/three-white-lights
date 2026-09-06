@@ -279,6 +279,7 @@ import {
   displayConditionPercent,
   playerFacingActivityGroupLabel,
   playerFacingBuildFabLabel,
+  playerFacingBrandLine,
   playerFacingEquipmentCatalog,
   playerFacingEquipmentLabel,
   playerFacingGymBucksLine,
@@ -343,7 +344,8 @@ const GYM_SCREEN_BUTTON_TEXT_COLOR = 'ivory';
 const GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR = 'darkslategray';
 const GYM_SCREEN_BUTTON_DISABLED_BORDER_COLOR = 'gray';
 const GYM_SCREEN_BUTTON_DISABLED_TEXT_COLOR = 'silver';
-const GYM_SCREEN_STAGE_COLOR = 'sienna';
+const GYM_SCREEN_STAGE_COLOR = 'transparent';
+const GYM_SCREEN_DOCK_HOME_COLOR = 'sienna';
 const GYM_SCREEN_FAB_BACKGROUND_COLOR = 'goldenrod';
 const GYM_SCREEN_FAB_TEXT_COLOR = 'black';
 const GYM_SCREEN_LIGHT_COLOR = 'ivory';
@@ -386,7 +388,7 @@ const styles = StyleSheet.create({
     zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
     paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
     paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
-    // Identity lives on the sienna room, not a black admin strip over the gym.
+    // Identity overlays the gym floor, not a burnt-orange admin strip.
     backgroundColor: GYM_SCREEN_STAGE_COLOR,
     pointerEvents: 'box-none',
   },
@@ -396,7 +398,11 @@ const styles = StyleSheet.create({
   hudHeading: {
     color: GYM_SCREEN_BUTTON_TEXT_COLOR,
     fontWeight: 'bold',
-    letterSpacing: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    textTransform: 'uppercase',
+  },
+  hudBrand: {
+    color: GYM_SCREEN_BUTTON_TEXT_COLOR,
+    fontWeight: 'bold',
     textTransform: 'uppercase',
   },
   hudMuted: {
@@ -408,6 +414,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   identity: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  identityRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -537,7 +547,7 @@ const styles = StyleSheet.create({
   },
   dockButtonHome: {
     flex: EMPIRE_TUNING.GYM_SCREEN_DOCK_HOME_FLEX,
-    backgroundColor: GYM_SCREEN_STAGE_COLOR,
+    backgroundColor: GYM_SCREEN_DOCK_HOME_COLOR,
   },
   dockButtonQuiet: {
     borderWidth: 0,
@@ -764,14 +774,19 @@ export function GymScreen(props: GymScreenProps) {
       <View testID={'gymscreen-hud'} style={styles.hud}>
         <View style={styles.hudRow}>
           <View style={styles.identity}>
-            <View testID={'gymscreen-lights'} style={styles.lights}>
-              <View testID={'gymscreen-light-0'} style={styles.light} />
-              <View testID={'gymscreen-light-1'} style={styles.light} />
-              <View testID={'gymscreen-light-2'} style={styles.light} />
-            </View>
-            <Text testID={'gymscreen-rung'} style={styles.hudHeading}>
-              {playerFacingLocationLine(gym.ladder.rung)}
+            <Text testID={'gymscreen-brand'} style={styles.hudBrand}>
+              {playerFacingBrandLine()}
             </Text>
+            <View style={styles.identityRow}>
+              <View testID={'gymscreen-lights'} style={styles.lights}>
+                <View testID={'gymscreen-light-0'} style={styles.light} />
+                <View testID={'gymscreen-light-1'} style={styles.light} />
+                <View testID={'gymscreen-light-2'} style={styles.light} />
+              </View>
+              <Text testID={'gymscreen-rung'} style={styles.hudHeading}>
+                {playerFacingLocationLine(gym.ladder.rung)}
+              </Text>
+            </View>
           </View>
           <Text testID={'gymscreen-gym-bucks'} style={styles.hudText}>
             {playerFacingGymBucksLine(gym.ladder.gymBucks)}

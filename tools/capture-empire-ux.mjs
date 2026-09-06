@@ -85,6 +85,54 @@ async function logChrome(page, label) {
       (await hud.count()) === 0
         ? 'missing'
         : await hud.evaluate((el) => getComputedStyle(el).backgroundColor);
+    const brandText =
+      (await page.getByTestId('gymscreen-brand').count()) === 0
+        ? 'missing'
+        : (await page.getByTestId('gymscreen-brand').innerText()).trim();
+    const rungEl = page.getByTestId('gymscreen-rung');
+    const rungText = (await rungEl.count()) === 0 ? 'missing' : (await rungEl.innerText()).trim();
+    const rungTracking =
+      (await rungEl.count()) === 0
+        ? 'missing'
+        : await rungEl.evaluate((el) => getComputedStyle(el).letterSpacing);
+    const textureParent =
+      (await page.getByTestId('floorgrid-floor-texture').count()) === 0
+        ? 'missing'
+        : await page.getByTestId('floorgrid-floor-texture').evaluate((el) => {
+            const parent = el.parentElement;
+            return parent === null ? null : parent.getAttribute('data-testid');
+          });
+    const roomBox =
+      (await page.getByTestId('floorgrid-room').count()) === 0
+        ? null
+        : await page.getByTestId('floorgrid-room').evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            return { w: Math.round(r.width), h: Math.round(r.height) };
+          });
+    const gridBox =
+      (await page.getByTestId('floorgrid-grid').count()) === 0
+        ? null
+        : await page.getByTestId('floorgrid-grid').evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            return { w: Math.round(r.width), h: Math.round(r.height) };
+          });
+    const textureBox =
+      (await page.getByTestId('floorgrid-floor-texture').count()) === 0
+        ? null
+        : await page.getByTestId('floorgrid-floor-texture').evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            return { w: Math.round(r.width), h: Math.round(r.height) };
+          });
+    const cue = page.locator('[data-testid^="floorsim-cue-"]:not([data-testid*="cue-word"])');
+    const cueCount = await cue.count();
+    const cueSample =
+      cueCount === 0
+        ? 'none'
+        : await cue.first().evaluate((el) => ({
+            tag: el.tagName,
+            text: (el.textContent || '').trim(),
+            bg: getComputedStyle(el).backgroundColor,
+          }));
     const occupancy = page.locator(
       '[data-testid^="floorsim-using-"], [data-testid^="floorsim-claimed-"], [data-testid^="floorsim-loading-"]',
     );
@@ -117,6 +165,15 @@ async function logChrome(page, label) {
         fabDisplay,
         actionClearsFab,
         hudBg,
+        brandText,
+        rungText,
+        rungTracking,
+        textureParent,
+        roomBox,
+        gridBox,
+        textureBox,
+        cueCount,
+        cueSample,
         occupancyCount,
         occupancyDisplay,
         dockChrome,

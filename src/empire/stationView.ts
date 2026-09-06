@@ -279,6 +279,11 @@ export function playerFacingLocationLine(rung: LadderRung): string {
   return playerFacingRungLabel(rung);
 }
 
+/** Brand line. Three White Lights identity, not a spaced location stencil. */
+export function playerFacingBrandLine(): string {
+  return 'THREE WHITE LIGHTS';
+}
+
 /** Income HUD line. Rate is the published per-hour table, shown as a whole. */
 export function playerFacingIncomeRateLine(gymBucksPerHour: number): string {
   return `${playerFacingGymBucksAmount(gymBucksPerHour)} gym bucks an hour`;

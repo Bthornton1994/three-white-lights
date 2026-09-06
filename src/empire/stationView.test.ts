@@ -21,6 +21,7 @@ import {
   isRecoveryBlocking,
   isSoundCondition,
   playerFacingActivityGroupLabel,
+  playerFacingBrandLine,
   playerFacingBuildFabLabel,
   playerFacingBuildPlaceHint,
   playerFacingBuildTrayEmpty,
@@ -635,6 +636,7 @@ describe('player-facing gym chrome (existing values, reformatted)', () => {
   it('names location, dock, and build FAB without domain tokens on the chrome', () => {
     expect(playerFacingRungLabel('garage')).toBe('Garage');
     expect(playerFacingLocationLine('garage')).toBe('Garage');
+    expect(playerFacingBrandLine()).toBe('THREE WHITE LIGHTS');
     expect(playerFacingSurfaceLabel('play')).toBe('Gym');
     expect(playerFacingSurfaceLabel('developer')).toBe('Developer');
     expect(playerFacingBuildFabLabel(false)).toBe('Build');

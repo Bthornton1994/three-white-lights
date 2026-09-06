@@ -377,7 +377,7 @@ type PendingPlace =
   | { readonly kind: 'session'; readonly item: SessionEquipmentItem }
   | { readonly kind: 'furniture'; readonly item: LadderEquipmentItem };
 
-const FLOOR_BACKGROUND_COLOR = 'sienna';
+const FLOOR_BACKGROUND_COLOR = 'transparent';
 const FLOOR_GRID_BORDER_COLOR = 'gray';
 const FLOOR_ITEM_BORDER_COLOR = 'black';
 /** GDD §5.13's PLAYTEST 2 ruling, gap 3: the internal tile-boundary lines. Same shade as the outer frame, for one consistent "this is a grid" read. */
@@ -1325,29 +1325,28 @@ function AmbientMemberBody({
         {...({ pointerEvents: 'none' } as object)}
       />
       {/*
-        GDD §5.13 presentation Phase 3 — the state cue, in the register §5.13
-        names by hand ("a visible reaction cue (RCT's thought-bubble
-        pattern)"). One bubble above the head, coloured by state, carrying the
-        cause glyph while an interruption beat is running and drawn larger
-        while it is. Its testID carries the state, so a browser check can ask
-        which state a member is in by reading the drawn DOM rather than by
-        reading a caption.
+        GDD §5.13 presentation Phase 3 / PX H3 — the state cue is readable
+        floor language, not a colour orb. Same testID as the old bubble so a
+        browser check still asks which state a member is in from the DOM.
+        Interruption cause and stranded ring stay beside/on the body.
       */}
-      <View
+      <Text
         testID={`floorsim-cue-${index}-${state}`}
         pointerEvents={'none'}
         style={{
           position: 'absolute',
-          left: (footprintWidth - cueDiameter) / 2,
+          left: -tile,
           top: -(cueDiameter + EMPIRE_TUNING.FLOOR_SIM_CUE_GAP_PIXELS),
-          width: cueDiameter,
-          height: cueDiameter,
-          borderRadius: cueDiameter / 2,
-          backgroundColor: FLOOR_SIM_STATE_COLOR[state],
-          borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
-          borderColor: AMBIENT_MEMBER_BORDER_COLOR,
+          width: footprintWidth + tile * 2,
+          color: FLOOR_LABEL_COLOR,
+          fontSize: EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE,
+          fontWeight: 'bold',
+          textAlign: 'center',
+          textTransform: 'uppercase',
         }}
-      />
+      >
+        {FLOOR_SIM_STATE_LEGEND[state]}
+      </Text>
       {interruptedBy === null ? null : (
         // The cause, in a word, beside the body rather than inside the
         // bubble: the bubble is a fraction of a 28-pixel tile and a word laid
@@ -1999,8 +1998,27 @@ export function FloorGrid(props: FloorGridProps) {
           right: 0,
           bottom: 0,
           backgroundColor: FLOOR_BACKGROUND_COLOR,
-        }}
-      />
+          imageRendering: 'pixelated',
+        } as PixelSnappedViewStyle}
+      >
+        {/*
+          Owned garage-floor PNG, full-bleed across the stage so Play is a
+          room rather than a wood island on burnt-orange leftover. Not an
+          invented HD isometric. Grid lines stay Build-only (fade).
+        */}
+        <Image
+          testID={'floorgrid-floor-texture'}
+          source={{ uri: FLOOR_SPRITE_URIS.floor[floor.rung] }}
+          resizeMode={'stretch'}
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: stageSize.width,
+            height: stageSize.height,
+          }}
+        />
+      </View>
       <Text
         testID={'floorgrid-caption'}
         style={buildMode ? FLOOR_LABEL_STYLE : { display: 'none' }}
@@ -2077,24 +2095,6 @@ export function FloorGrid(props: FloorGridProps) {
               position: 'relative',
             } as PixelSnappedViewStyle}
           >
-            {/*
-              A×C: the indexed floor PNG is the board in Play and Build —
-              a wood garage floor, not a placement atlas. Grid lines stay
-              Build-only (fade). Surrounding leftover stage is brick sienna
-              on floorgrid-room, not a stretched copy of this texture.
-            */}
-            <Image
-              testID={'floorgrid-floor-texture'}
-              source={{ uri: FLOOR_SPRITE_URIS.floor[floor.rung] }}
-              resizeMode={'stretch'}
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                width: grid.width * tile,
-                height: grid.height * tile,
-              }}
-            />
             {gridPainted ? (
             <Animated.View
               pointerEvents={'none'}
@@ -2852,7 +2852,7 @@ export function FloorGrid(props: FloorGridProps) {
         or touches `GymViewState`.
       */}
       {selectedMember === null ? null : (
-        <ScrollView testID={'floorgrid-member-panel'} style={[panelStyles.panel, panelStyles.bodyText]}>
+        <ScrollView testID={'floorgrid-member-panel'} style={panelStyles.panel}>
           {(() => {
             const living = livingMemberById(
               livingMembers,
@@ -2958,7 +2958,7 @@ export function FloorGrid(props: FloorGridProps) {
       panelCondition === null ||
       panelManagerEffect === null ||
       selectedMember !== null ? null : (
-        <ScrollView testID={'floorgrid-station-panel'} style={[panelStyles.panel, panelStyles.bodyText]}>
+        <ScrollView testID={'floorgrid-station-panel'} style={panelStyles.panel}>
           <Text testID={'floorgrid-station-panel-identity'} style={panelStyles.bodyText}>
             {playerFacingEquipmentLabel(panelIdentity.item)}
           </Text>
@@ -3190,7 +3190,7 @@ export function FloorGrid(props: FloorGridProps) {
         </ScrollView>
       )}
       {panelEquipment === null || selectedMember !== null || panelStation !== null ? null : (
-        <ScrollView testID={'floorgrid-equipment-panel'} style={[panelStyles.panel, panelStyles.bodyText]}>
+        <ScrollView testID={'floorgrid-equipment-panel'} style={panelStyles.panel}>
           <Text testID={'floorgrid-equipment-panel-identity'}>
             {playerFacingEquipmentLabel(panelEquipment)}
           </Text>
