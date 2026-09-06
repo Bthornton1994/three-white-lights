@@ -14,58 +14,73 @@
  * not belong in a block a playtester turns with a stopwatch.
  *
  * ---------------------------------------------------------------------------
- * A×C IRON & AMBER (Bryant-approved visual direction)
+ * A×C IRON & AMBER — CONSUME, DO NOT FORK
  * ---------------------------------------------------------------------------
- * Consume, do not fork. PX owns `design/gym-empire-ux-02/visual-direction/`
- * including `04-iron-amber-visual-spec.md` and `shared-assets/TOKEN-MANIFEST`.
- * Those markdown files were not on Gym Empire branch `cursor/gym-empire-ux-01-9b73`
- * at `77931ea9`. The playable chrome that branch actually paints is in
- * `src/empire/GymScreen.tsx` (CSS named colours, because that tree forbids hex
- * literals). Session A binds to that vocabulary here as hex, which is this
- * directory's palette convention.
+ * PX owns:
+ *   design/gym-empire-ux-02/visual-direction/04-iron-amber-visual-spec.md
+ *   shared-assets/TOKEN-MANIFEST
+ * (and the same files under `visual-direction/shared-assets/`).
+ *
+ * Those files are still absent from this checkout and from Gym Empire
+ * `cursor/gym-empire-ux-01-9b73` at `7010867efea4438db7d098a619625400016025da`
+ * (PR #41). Do not copy `src/empire/` here. Session A binds the playable
+ * tokens that branch actually paints:
+ *
+ *   `src/empire/GymScreen.tsx` — CSS named colours (that tree forbids hex)
+ *   `index.ts` — html/body/#root warm iron `#1a1410`
  *
  * Named CSS → sRGB hex (CSS Color Module Level 4):
  *   black #000000 · goldenrod #DAA520 · ivory #FFFFF0
- *   darkslategray #2F4F4F · silver #C0C0C0
+ *   darkslategray #2F4F4F · silver #C0C0C0 · gray #808080
  *
- * Bounded decision (not PLANNER_ESCALATION): training chrome uses black /
- * goldenrod / ivory / silver. The lift STAGE and Meet Day keep `LIFT_PALETTE`
- * (cool iron #12141a, plate-safe cues). Darkslategray is Gym Empire's named-CSS
- * stand-in for a stage fill under that tree's hex scan — it is not applied as
- * the training backdrop, so Session A does not recolor frozen Meet Day or the
- * mechanic canvas.
+ * `sessionPalette.test.ts` re-binds automatically: if the PX files appear,
+ * every hex below must occur in them (or the suite goes red until this table
+ * is updated). Until then it pins the GymScreen / index.ts mapping.
+ *
+ * Bounded decision (not PLANNER_ESCALATION): the training ROOM uses warm iron
+ * void (`#1A1410`). Chrome (chips, card, action text) uses black / goldenrod /
+ * ivory / gray. The lift STAGE and Meet Day keep `LIFT_PALETTE` (cool iron
+ * `#12141a`, plate-safe cues). Darkslategray is Gym Empire's named-CSS stage
+ * fill — it is not the training backdrop, so Session A does not recolor frozen
+ * Meet Day or the mechanic canvas.
  */
 import { LIFT_PALETTE } from '../lift/liftPalette';
 
 /** Gym Empire playable A×C tokens, consumed as hex. Not a second palette SoT for sprites. */
 export const IRON_AMBER = Object.freeze({
+  /** GymScreen button background / FAB text — CSS `black`. */
   IRON: '#000000',
+  /** index.ts html/body/#root — warm iron void. Not a CSS named colour. */
+  VOID: '#1A1410',
+  /** GymScreen FAB / borders / primary — CSS `goldenrod`. */
   AMBER: '#DAA520',
+  /** GymScreen text / referee lights — CSS `ivory`. */
   IVORY: '#FFFFF0',
+  /** GymScreen disabled text — CSS `silver`. */
   MUTED: '#C0C0C0',
+  /** GymScreen stage fill — CSS `darkslategray`. Not the training backdrop. */
   STAGE_NAMED: '#2F4F4F',
-  /** Lifted iron for the readiness card. Not a Gym Empire CSS name. */
-  CARD: '#1A1A1A',
-  CARD_EDGE: '#2A2A2A',
+  /** GymScreen disabled border — CSS `gray`. */
+  GRAY: '#808080',
 });
 
 export const SESSION_PALETTE = Object.freeze({
   ...LIFT_PALETTE,
 
   /** Training chrome frame. LiftStage still paints `LIFT_PALETTE.BACKDROP`. */
-  BACKDROP: IRON_AMBER.IRON,
+  BACKDROP: IRON_AMBER.VOID,
   TEXT: IRON_AMBER.IVORY,
   TEXT_DIM: IRON_AMBER.MUTED,
 
   /** Idle chip vs the one the finger landed on. Chosen lift is amber fill. */
-  CHIP: LIFT_PALETTE.PANEL,
-  CHIP_EDGE: LIFT_PALETTE.PANEL_EDGE,
+  CHIP: IRON_AMBER.IRON,
+  CHIP_EDGE: IRON_AMBER.GRAY,
   CHIP_CHOSEN: IRON_AMBER.AMBER,
   CHIP_CHOSEN_EDGE: IRON_AMBER.AMBER,
 
-  /** Readiness card on the opening decision (Screen 03 family). Copy only. */
-  CARD: IRON_AMBER.CARD,
-  CARD_EDGE: IRON_AMBER.CARD_EDGE,
+  /** Readiness card: GymScreen inspect-style black panel on warm iron. Copy only. */
+  CARD: IRON_AMBER.IRON,
+  CARD_EDGE: IRON_AMBER.GRAY,
 
   /** The RPE the ladder opens on — the obvious training action. */
   RPE_SUGGESTED_EDGE: IRON_AMBER.AMBER,
@@ -82,16 +97,16 @@ export const SESSION_PALETTE = Object.freeze({
   /** Set-counter pips: done, current, still to come. */
   PIP_DONE: '#7ddc8f',
   PIP_LIVE: IRON_AMBER.AMBER,
-  PIP_TODO: LIFT_PALETTE.PANEL_EDGE,
+  PIP_TODO: IRON_AMBER.GRAY,
 
-  /** Primary action (close-out, suggested RPE, chosen lift). */
+  /** Primary action (close-out, START, chosen lift). */
   ACTION: IRON_AMBER.AMBER,
   ACTION_TEXT: IRON_AMBER.IRON,
 
   /** Three White Lights identity pips. */
   LIGHT: IRON_AMBER.IVORY,
 
-  DIVIDER: LIFT_PALETTE.PANEL_EDGE,
+  DIVIDER: IRON_AMBER.GRAY,
 
   /**
    * How sure a progression number is (`progression.ts`'s `ProgressionReading`).
