@@ -2136,6 +2136,15 @@ describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
         zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
       }),
     );
+    expect(findByTestId(root, 'gymscreen-action-card').props.style).toEqual(
+      expect.objectContaining({
+        right:
+          EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS +
+          EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS +
+          EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS +
+          EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
+      }),
+    );
     expect(findAllByTestId(root, 'gymscreen-surface-build').length).toBe(1);
     expect(findAllByTestId(root, 'gymscreen-surface-developer').length).toBe(0);
     expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).not.toContain(

@@ -1381,7 +1381,7 @@ function AmbientMemberBody({
               EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE
             ),
             width: footprintWidth + tile * 2,
-            color: AMBIENT_MEMBER_BORDER_COLOR,
+            color: FLOOR_LABEL_COLOR,
             fontSize: EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE,
             textAlign: 'center',
           }}

@@ -33,7 +33,7 @@ Playable-slice chrome toward that look (still not art-accepted): wood-tuned floo
 - Paint html/body/#root warm iron; sienna brick leftover around a wood board; overlay HUD/dock/action card.
 - Sparse HUD: referee lights + location + purse + reputation. Causal now/next on a Play action card from real management / roster state.
 - Build-only grid, labels, place copy, gold/black editor boxes, occupancy outlines. Play inspects without editor chrome; worn stations may show an amber inspect cue from real condition. Exit Build → Play with no residue (existing fade).
-- Weighted IA: Gym (Play) home with amber active; Shop/Staff charcoal sheets over the gym; Build FAB on Play/Build only; More = settings including leave-gym; Developer explicit route only.
+- Weighted IA: Gym (Play) home with amber active; Shop/Staff charcoal sheets over the gym; Build FAB on Play/Build only, stacked under inspect, and the Play now/next card stops short of it; More = settings including leave-gym; Developer explicit route only.
 - Inspect panels use charcoal/amber/ivory, not prototype blue.
 
 Soft feel remains **HUMAN_REQUIRED**. Empire Ready **NO**. Draft only. **NO MERGE**.

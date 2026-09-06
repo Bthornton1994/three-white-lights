@@ -68,8 +68,29 @@ async function logChrome(page, label) {
       (await trayEmpty.count()) === 0
         ? 'missing'
         : await trayEmpty.evaluate((el) => getComputedStyle(el).color);
+    const card = page.getByTestId('gymscreen-action-card');
+    const actionClearsFab = await page.evaluate(() => {
+      const fabEl = document.querySelector('[data-testid="gymscreen-surface-build"]');
+      const cardEl = document.querySelector('[data-testid="gymscreen-action-card"]');
+      if (fabEl === null || cardEl === null) return 'missing';
+      const fabStyle = getComputedStyle(fabEl);
+      const cardStyle = getComputedStyle(cardEl);
+      if (fabStyle.display === 'none' || cardStyle.display === 'none') return 'hidden';
+      const f = fabEl.getBoundingClientRect();
+      const c = cardEl.getBoundingClientRect();
+      return c.right <= f.left + 1;
+    });
     console.log(
-      JSON.stringify({ label, lines, texture, trayDisplay, trayEmptyColor, fabText, fabDisplay }),
+      JSON.stringify({
+        label,
+        lines,
+        texture,
+        trayDisplay,
+        trayEmptyColor,
+        fabText,
+        fabDisplay,
+        actionClearsFab,
+      }),
     );
   } catch (err) {
     console.log(JSON.stringify({ label, error: String(err) }));
