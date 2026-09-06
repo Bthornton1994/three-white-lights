@@ -142,7 +142,8 @@ for (const viewport of VIEWPORTS) {
   for (const moment of MOMENTS) {
     await page.goto(`${url}${moment.query}`, { waitUntil: 'load' });
     await page.getByTestId(moment.wait).waitFor({ state: 'visible', timeout: 120000 });
-    await page.waitForTimeout(700);
+    const settleMs = moment.id.includes('close-out') ? 1800 : 700;
+    await page.waitForTimeout(settleMs);
     const file = `${viewport.name}-${moment.id}.png`;
     await page.screenshot({ path: path.join(outDir, file), fullPage: false });
     const metrics = await page.evaluate(overflowReport);
