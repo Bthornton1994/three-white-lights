@@ -130,6 +130,9 @@ describe('the shell is the join, and it is the only one', () => {
     expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'open-lifter'\)/);
     expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'leave-lifter'\)/);
     expect(SHELL).not.toMatch(/setRoute\(\{/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/shell-train-here/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/TRAIN_NAV_LABEL/);
+    expect(source('src/shell/AppShell.tsx')).not.toMatch(/navigate\(current, 'open-train'\)/);
   });
 
   it('forgets the destination’s beat on the way in, so no stale control flashes', () => {

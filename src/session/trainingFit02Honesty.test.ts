@@ -173,6 +173,17 @@ describe('TRAINING-FIT-02 BO honesty fence', () => {
     }
   });
 
+  it('session chrome has an amber TRAIN location peer, not a Session B dock', () => {
+    const shell = readRepo('src/shell/AppShell.tsx');
+    expect(shell).toMatch(/shell-train-here/);
+    expect(shell).toMatch(/TRAIN_NAV_LABEL/);
+    expect(shell).toMatch(/navTrainingHere/);
+    expect(codeOnly(shell)).not.toMatch(/navigate\([^)]*train/i);
+    const briefing = readFileSync(path.join(HERE, 'BriefingView.tsx'), 'utf8');
+    expect(briefing).not.toMatch(/shell-train-here/);
+    expect(briefing).not.toMatch(/GYM\/SHOP\/STAFF/);
+  });
+
   it('training chrome is facility-first: stage layer + lights + overlay, no check-in host', () => {
     const briefing = readFileSync(path.join(HERE, 'BriefingView.tsx'), 'utf8');
     expect(briefing).toMatch(/TrainingStagePreview/);

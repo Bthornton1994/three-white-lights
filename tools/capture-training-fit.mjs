@@ -106,6 +106,7 @@ function overflowReport() {
     lightsPresent: document.querySelector('[data-testid="session-lights"]') !== null,
     startPresent: start !== null,
     startInView,
+    trainHerePresent: document.querySelector('[data-testid="shell-train-here"]') !== null,
     outlookPresent: document.querySelector('[data-testid="close-out-outlook"]') !== null,
     nextActionPresent: document.querySelector('[data-testid="close-out-next"]') !== null,
     rpeWraps,
@@ -256,6 +257,7 @@ const briefingHits = report.viewports.flatMap((v) =>
         f.sleepChipPresent ||
         f.rpeWraps ||
         !f.startInView ||
+        !f.trainHerePresent ||
         (typeof f.stageHeight === 'number' && f.stageHeight < f.innerHeight * 0.9)),
   ),
 );

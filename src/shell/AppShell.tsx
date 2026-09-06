@@ -223,6 +223,34 @@ function ShellNav({
   );
 }
 
+/** Session A current-location peer. Not a route. Not a Session B dock. */
+function ShellTrainHere(): React.ReactElement {
+  const shown = useSharedValue(0);
+  useEffect(() => {
+    shown.value = withDelay(
+      SHELL_NAV.FADE_IN_DELAY_MS,
+      withTiming(1, { duration: SHELL_NAV.FADE_IN_MS }),
+    );
+  }, [shown]);
+  const style = useAnimatedStyle(() => ({ opacity: shown.value }));
+  return (
+    <Animated.View style={style} pointerEvents="none">
+      <View
+        style={[styles.nav, styles.navTrainingHere]}
+        accessibilityRole="text"
+        accessibilityLabel={SHELL_COPY.TRAIN_NAV_LABEL}
+        accessibilityHint={SHELL_COPY.TRAIN_NAV_HINT}
+        accessibilityState={{ selected: true }}
+        testID="shell-train-here"
+      >
+        <Text style={[styles.navLabel, styles.navLabelTrainingHere]}>
+          {SHELL_COPY.TRAIN_NAV_LABEL}
+        </Text>
+      </View>
+    </Animated.View>
+  );
+}
+
 export interface AppShellProps {
   /**
    * `window.location.search`, or `null` where there is no URL.
@@ -536,6 +564,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
       careerAffordance === null &&
       lifterAffordance === null ? null : (
         <View style={styles.navSlot} pointerEvents="box-none">
+          {trainingChrome ? <ShellTrainHere /> : null}
           {affordance === null ? null : (
             <ShellNav
               key={affordance}
@@ -645,5 +674,12 @@ const styles = StyleSheet.create({
   },
   navLabelTraining: {
     color: SESSION_PALETTE.TEXT_DIM,
+  },
+  navTrainingHere: {
+    borderColor: SESSION_PALETTE.ACTION,
+    backgroundColor: SESSION_PALETTE.ACTION,
+  },
+  navLabelTrainingHere: {
+    color: SESSION_PALETTE.ACTION_TEXT,
   },
 });

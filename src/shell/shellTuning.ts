@@ -291,6 +291,14 @@ export const SHELL_COPY = Object.freeze({
   LIFTER_NAV_LABEL: 'LIFTER',
   LIFTER_NAV_HINT: 'Opens my lifter.',
 
+  /**
+   * Session A current-location peer (TRAINING-FIT-02 V-SHL). Amber while the
+   * daily loop is on screen. Not a ShellIntent and not a Session B dock
+   * (Gym / Shop / Staff / Train). GDD §3.2.
+   */
+  TRAIN_NAV_LABEL: 'TRAIN',
+  TRAIN_NAV_HINT: 'You are on the daily training session.',
+
   /** My Lifter surface -> back to the daily loop. */
   LEAVE_LIFTER_LABEL: 'BACK TO TRAINING',
   LEAVE_LIFTER_HINT: 'Returns to the daily session.',

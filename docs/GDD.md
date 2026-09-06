@@ -316,8 +316,9 @@ room (the same raster the live set already paints). Chrome is a compact overlay
 — THREE WHITE LIGHTS, today's lift, history readiness copy, RPE 6–10, START.
 It is not a form on a flat void. Training chrome is Iron & Amber; the lift
 STAGE and Meet Day keep the lift palette. Unlicensed isometric mockup art is
-not a shippable asset. Session A shell labels stay GYM EMPIRE / CAREER /
-LIFTER (Session B dock is out of scope).
+not a shippable asset. Session A chrome shows an amber TRAIN location peer
+plus GYM EMPIRE / CAREER / LIFTER. TRAIN is the current-session marker, not a
+Session B dock (Gym / Shop / Staff / Train).
 
 The close-out still moves **e1RM, never Total**. It also shows history outlook
 and the next training action as copy — still never a meter. Subjective

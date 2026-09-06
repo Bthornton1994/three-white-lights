@@ -39,7 +39,7 @@ export function TrainingStagePreview(): React.ReactElement {
     L.STAGE_FIT_MIN_SCALE,
     slotWidth / STAGE.STAGE_W,
     slotHeight / STAGE.STAGE_H,
-  );
+  ) * L.STAGE_PREVIEW_ZOOM;
   const coverShift = slotHeight * L.STAGE_PREVIEW_COVER_SHIFT_FRACTION;
   const image = useMemo(() => makeGymSceneImage(liftStageScene()), []);
 

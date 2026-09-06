@@ -534,9 +534,15 @@ export const SESSION_LAYOUT = Object.freeze({
    * upward so the visible band above the overlay is the room (racks / floor),
    * not only the ceiling lamps. UNTUNED placeholder.
    */
-  STAGE_PREVIEW_COVER_SHIFT_FRACTION: 0.2,
+  STAGE_PREVIEW_COVER_SHIFT_FRACTION: 0.32,
+  /**
+   * Extra cover zoom so the platform / racks fill the visible band above the
+   * overlay. UNTUNED placeholder (GDD §12.1). Session A lift-hero only —
+   * does not retune `gymTuning` (live set / meet still use their own scale).
+   */
+  STAGE_PREVIEW_ZOOM: 1.18,
   /** Iron scrim under briefing chrome so type reads over the gym raster. */
-  OVERLAY_SCRIM_OPACITY: 0.7,
+  OVERLAY_SCRIM_OPACITY: 0.58,
 
   /** The set counter pips shown above the stage while a set is live. */
   PIP_SIZE: 8,
@@ -549,10 +555,11 @@ export const SESSION_LAYOUT = Object.freeze({
   START_BUTTON_HEIGHT: 56,
   /**
    * Bottom inset so the opening START is not under the shell nav overlay.
-   * Matches SHELL_LAYOUT.NAV_BOTTOM_INSET + NAV_HEIGHT + NAV_GAP (44 + 38 + 10).
-   * Restated here so session screens do not import the shell.
+   * Two-row session chrome (TRAIN location peer + GYM EMPIRE / CAREER / LIFTER):
+   * SHELL_LAYOUT.NAV_BOTTOM_INSET + NAV_HEIGHT + NAV_GAP + NAV_HEIGHT
+   * (44 + 38 + 10 + 38). Restated here so session screens do not import the shell.
    */
-  NAV_CLEARANCE: 92,
+  NAV_CLEARANCE: 130,
 
   /** Close-out stat rows. */
   STAT_ROW_GAP: 18,
