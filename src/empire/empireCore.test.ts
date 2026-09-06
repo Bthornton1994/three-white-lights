@@ -3918,7 +3918,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 939 -> 942: A×C brand line, gymscreen-brand testID, HUD column identity.
     // 942 -> 946: Session B presentation scene layers (wall/light/floor-plane).
     // 946 -> 949: illustrated atmosphere plate URI, testID, and cover fit.
-    expect(singleQuoted.size).toBe(949);
+    // 949 -> 960: illustrated occupancy URIs + contain + lighten blend.
+    expect(singleQuoted.size).toBe(960);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4120,7 +4121,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './stationCapability',
       './stationView',
       './trainingStation',
+      '/empire-equip-bar.png',
+      '/empire-equip-bench.png',
+      '/empire-equip-plates.png',
+      '/empire-equip-station.png',
       '/empire-garage-atmosphere.png',
+      '/empire-lifter-bar.png',
+      '/empire-lifter-bench.png',
+      '/empire-lifter-stand.png',
+      '/empire-lifter-wait.png',
+      '/empire-lifter-walk.png',
       ':',
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
       'Accessory',
@@ -4154,7 +4164,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Felix',
       'Fern',
       'Galen',
-      'Garage',
       'Good',
       'Gray',
       'Gym',
@@ -4320,6 +4329,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'condition-gated-prompt-control',
       'conditioning',
       'considering-exit',
+      'contain',
       'cosmetic-unlock',
       'cosmetics',
       'costliest-affordable-first',
@@ -4614,6 +4624,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'left',
       'legendary',
       'level',
+      'lighten',
       'livingPopulation',
       'loading',
       'local',
@@ -4971,7 +4982,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1410 -> 1413: A×C brand line + gymscreen-brand + column identity.
     // 1413 -> 1417: Session B presentation scene layers.
     // 1417 -> 1420: illustrated atmosphere plate URI, testID, and cover fit.
-    expect(stringsChecked).toBe(1420);
+    // 1420 -> 1431: illustrated occupancy URIs + contain + lighten blend.
+    expect(stringsChecked).toBe(1431);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were

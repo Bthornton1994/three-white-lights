@@ -784,19 +784,19 @@ export function GymScreen(props: GymScreenProps) {
       <View testID={'gymscreen-hud'} style={styles.hud}>
         <View style={styles.hudRow}>
           <View style={styles.identity}>
-            <Text testID={'gymscreen-brand'} style={styles.hudBrand}>
-              {playerFacingBrandLine()}
-            </Text>
             <View style={styles.identityRow}>
               <View testID={'gymscreen-lights'} style={styles.lights}>
                 <View testID={'gymscreen-light-0'} style={styles.light} />
                 <View testID={'gymscreen-light-1'} style={styles.light} />
                 <View testID={'gymscreen-light-2'} style={styles.light} />
               </View>
-              <Text testID={'gymscreen-rung'} style={styles.hudHeading}>
-                {playerFacingLocationLine(gym.ladder.rung)}
+              <Text testID={'gymscreen-brand'} style={styles.hudBrand}>
+                {playerFacingBrandLine()}
               </Text>
             </View>
+            <Text testID={'gymscreen-rung'} style={styles.hudHeading}>
+              {playerFacingLocationLine(gym.ladder.rung)}
+            </Text>
           </View>
           <Text testID={'gymscreen-gym-bucks'} style={styles.hudText}>
             {playerFacingGymBucksLine(gym.ladder.gymBucks)}

@@ -404,6 +404,8 @@ const FLOOR_LABEL_STYLE = Object.freeze({
   color: FLOOR_LABEL_COLOR,
   fontSize: EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE,
 });
+/** Knock espresso token plates into the garage floor so occupancy is not a box. */
+const ILLUSTRATED_BLEND = Object.freeze({ mixBlendMode: 'lighten' });
 /** The tray chip's backing — a quiet dark slate the sprites read against, one class for every item now that the sprite carries the identity the old colour cycle used to. */
 const FLOOR_TRAY_CHIP_COLOR = 'black';
 const AMBIENT_MEMBER_BORDER_COLOR = 'black';
@@ -755,8 +757,36 @@ function fixedSpriteUriFor(item: LadderEquipmentItem, occupied: boolean): string
  * it is the surface, not a loaded bar.
  */
 function bayBenchSpriteUri(quality: boolean, occupied: boolean): string | null {
-  if (quality) return FLOOR_SPRITE_URIS.bay.qualityBench;
-  return fixedSpriteUriFor(COMPETITION_BENCH_BAY_PRIMARY, occupied);
+  if (quality) return '/empire-equip-bench.png';
+  return illustratedFixedUri(COMPETITION_BENCH_BAY_PRIMARY, occupied);
+}
+
+/** Iron & Amber illustrated occupancy — sprites stay fallback only. */
+function illustratedMemberUri(
+  pose: FloorSpritePose,
+  state: FloorSimMemberState,
+  type: MemberType,
+  facing: FloorSpriteFacing,
+): string {
+  const sprite = FLOOR_SPRITE_URIS.member[type][pose][facing];
+  if (sprite === undefined) return '/empire-lifter-stand.png';
+  if (pose === 'using-bench-a' || pose === 'using-bench-b') return '/empire-lifter-bench.png';
+  if (pose === 'using-bar-a' || pose === 'using-bar-b') return '/empire-lifter-bar.png';
+  if (pose === 'step-a' || pose === 'step-b') return '/empire-lifter-walk.png';
+  if (state === 'queuing') return '/empire-lifter-wait.png';
+  return '/empire-lifter-stand.png';
+}
+
+function illustratedFixedUri(item: LadderEquipmentItem, occupied: boolean): string | null {
+  if (item === 'power-bar') return '/empire-equip-bar.png';
+  if (item === 'flat-bench') return '/empire-equip-bench.png';
+  if (item === 'comp-plates') return '/empire-equip-plates.png';
+  return fixedSpriteUriFor(item, occupied);
+}
+
+function illustratedSessionUri(item: SessionEquipmentItem): string {
+  const sprite = FLOOR_SPRITE_URIS.session[item];
+  return sprite === undefined ? '/empire-equip-station.png' : '/empire-equip-station.png';
 }
 
 /** A station's identity as a map key — matching `floorStationRefKey` in `floorSim.ts`. */
@@ -1318,27 +1348,28 @@ function AmbientMemberBody({
       */}
       <Image
         testID={`floorgrid-member-sprite-${index}`}
-        source={{ uri: FLOOR_SPRITE_URIS.member[type][pose][facing] }}
-        resizeMode={'stretch'}
+        source={{ uri: illustratedMemberUri(pose, state, type, facing) }}
+        resizeMode={'contain'}
         style={{
           position: 'absolute',
           left: 0,
-          top: 0,
+          top: -tile,
           width: footprintWidth,
-          height: footprintHeight,
+          height: footprintHeight + tile,
         }}
-        {...({ pointerEvents: 'none' } as object)}
+        {...({ pointerEvents: 'none', ...ILLUSTRATED_BLEND } as object)}
       />
       {/*
-        GDD §5.13 presentation Phase 3 / PX H3 — the state cue is readable
-        floor language, not a colour orb. Same testID as the old bubble so a
-        browser check still asks which state a member is in from the DOM.
-        Interruption cause and stranded ring stay beside/on the body.
+        GDD §5.13 presentation Phase 3 / PX H3 — the state cue stays in the
+        DOM so a browser check can still ask which state a member is in.
+        Play no longer paints it: status lives on the gym card, not as
+        walk-state debug labels over the floor.
       */}
       <Text
         testID={`floorsim-cue-${index}-${state}`}
         pointerEvents={'none'}
         style={{
+          display: 'none',
           position: 'absolute',
           left: -tile,
           top: -(cueDiameter + EMPIRE_TUNING.FLOOR_SIM_CUE_GAP_PIXELS),
@@ -1363,6 +1394,7 @@ function AmbientMemberBody({
           testID={`floorsim-cue-word-${index}`}
           pointerEvents={'none'}
           style={{
+            display: 'none',
             position: 'absolute',
             left: 0,
             top: footprintHeight + EMPIRE_TUNING.FLOOR_SIM_CUE_GAP_PIXELS,
@@ -2337,7 +2369,7 @@ export function FloorGrid(props: FloorGridProps) {
                 >
                   {(isBayPrimary
                     ? bayBenchSpriteUri(qualityMark, isOccupied)
-                    : fixedSpriteUriFor(row.item, isOccupied)) === null ? null : (
+                    : illustratedFixedUri(row.item, isOccupied)) === null ? null : (
                     <View
                       testID={
                         qualityMark
@@ -2358,9 +2390,9 @@ export function FloorGrid(props: FloorGridProps) {
                         source={{
                           uri: (isBayPrimary
                             ? bayBenchSpriteUri(qualityMark, isOccupied)
-                            : fixedSpriteUriFor(row.item, isOccupied)) as string,
+                            : illustratedFixedUri(row.item, isOccupied)) as string,
                         }}
-                        resizeMode={'stretch'}
+                        resizeMode={'contain'}
                         style={{
                           position: 'absolute',
                           left: 0,
@@ -2368,7 +2400,7 @@ export function FloorGrid(props: FloorGridProps) {
                           width: row.footprint.width * tile,
                           height: row.footprint.height * tile,
                         }}
-                        {...({ pointerEvents: 'none' } as object)}
+                        {...({ pointerEvents: 'none', ...ILLUSTRATED_BLEND } as object)}
                       />
                     </View>
                   )}
@@ -2456,7 +2488,7 @@ export function FloorGrid(props: FloorGridProps) {
                     source={{
                       uri: bayBenchSpriteUri(bayQualityMark, expansionOccupied) as string,
                     }}
-                    resizeMode={'stretch'}
+                    resizeMode={'contain'}
                     style={{
                       position: 'absolute',
                       left: 0,
@@ -2464,7 +2496,7 @@ export function FloorGrid(props: FloorGridProps) {
                       width: bay.expansion.footprint.width * tile,
                       height: bay.expansion.footprint.height * tile,
                     }}
-                    {...({ pointerEvents: 'none' } as object)}
+                    {...({ pointerEvents: 'none', ...ILLUSTRATED_BLEND } as object)}
                   />
                 )}
               </Pressable>
@@ -2472,8 +2504,8 @@ export function FloorGrid(props: FloorGridProps) {
             {bay.complete && bay.primary !== null && bayThroughputMark ? (
               <Image
                 testID={'floorgrid-plate-tree-competition-bench-bay'}
-                source={{ uri: FLOOR_SPRITE_URIS.bay.plateTree }}
-                resizeMode={'stretch'}
+                source={{ uri: '/empire-equip-plates.png' }}
+                resizeMode={'contain'}
                 style={{
                   position: 'absolute',
                   left: (bay.primary.position.x + bay.primary.footprint.width - 1) * tile,
@@ -2482,7 +2514,7 @@ export function FloorGrid(props: FloorGridProps) {
                   height: tile * 2,
                   zIndex: 1,
                 }}
-                {...({ pointerEvents: 'none' } as object)}
+                {...({ pointerEvents: 'none', ...ILLUSTRATED_BLEND } as object)}
               />
             ) : null}
             {placed.map((row) => {
@@ -2533,8 +2565,8 @@ export function FloorGrid(props: FloorGridProps) {
                 >
                   <Image
                     testID={`floorgrid-placed-sprite-${row.item}`}
-                    source={{ uri: FLOOR_SPRITE_URIS.session[row.item] }}
-                    resizeMode={'stretch'}
+                    source={{ uri: illustratedSessionUri(row.item) }}
+                    resizeMode={'contain'}
                     style={{
                       position: 'absolute',
                       left: 0,
@@ -2542,7 +2574,7 @@ export function FloorGrid(props: FloorGridProps) {
                       width: row.footprint.width * tile,
                       height: row.footprint.height * tile,
                     }}
-                    {...({ pointerEvents: 'none' } as object)}
+                    {...({ pointerEvents: 'none', ...ILLUSTRATED_BLEND } as object)}
                   />
                   {buildMode ? (
                     <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
@@ -2801,11 +2833,11 @@ export function FloorGrid(props: FloorGridProps) {
                   cursor: 'pointer',
                 } as WebSelectableViewStyle}
               >
-                {fixedSpriteUriFor(item, false) === null ? null : (
+                {illustratedFixedUri(item, false) === null ? null : (
                   <Image
                     testID={`floorgrid-tray-sprite-${item}`}
-                    source={{ uri: fixedSpriteUriFor(item, false) as string }}
-                    resizeMode={'stretch'}
+                    source={{ uri: illustratedFixedUri(item, false) as string }}
+                    resizeMode={'contain'}
                     style={{
                       position: 'absolute',
                       left: (chipWidth - footprint.width * tile) / 2,
@@ -2848,8 +2880,8 @@ export function FloorGrid(props: FloorGridProps) {
               >
                 <Image
                   testID={`floorgrid-tray-sprite-${item}`}
-                  source={{ uri: FLOOR_SPRITE_URIS.session[item] }}
-                  resizeMode={'stretch'}
+                  source={{ uri: illustratedSessionUri(item) }}
+                  resizeMode={'contain'}
                   style={{
                     position: 'absolute',
                     left: (chipWidth - footprint.width * tile) / 2,
@@ -2857,7 +2889,7 @@ export function FloorGrid(props: FloorGridProps) {
                     width: footprint.width * tile,
                     height: footprint.height * tile,
                   }}
-                  {...({ pointerEvents: 'none' } as object)}
+                  {...({ pointerEvents: 'none', ...ILLUSTRATED_BLEND } as object)}
                 />
                 <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
                   {playerFacingEquipmentLabel(item)}

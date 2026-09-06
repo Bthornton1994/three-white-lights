@@ -229,7 +229,7 @@ export function playerFacingBayRole(
 }
 
 const RUNG_PLAYER_LABELS: Readonly<Record<LadderRung, string>> = Object.freeze({
-  garage: 'Garage',
+  garage: 'Garage gym',
   'storage-unit': 'Storage unit',
   'strip-mall-unit': 'Strip-mall unit',
   warehouse: 'Warehouse',

@@ -3439,7 +3439,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 3662 -> 3704: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 3704 -> 3755: Stage G.2C2 livingMemberDeparture.ts plus livingMembers
   // departure/reconcile wiring. Read from this pin last.
-  CALLS_EXAMINED: 4223, // H1 continuous wood fill (net -2 call sites)
+  CALLS_EXAMINED: 4228, // illustrated occupancy helpers
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -16862,7 +16862,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'engagement.ts': 23,
       'expansion.ts': 47,
       'floor.ts': 38,
-      'FloorGrid.tsx': 84,
+      'FloorGrid.tsx': 95,
       'floorSim.ts': 84,
       'floorSprites.ts': 54,
       'GymScreen.tsx': 12,
@@ -17299,12 +17299,12 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:2927 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:2948 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:829 returned=unfollowable:station',
-  'FloorGrid.tsx:829 returned=unfollowable:station',
-  'FloorGrid.tsx:830 returned=unfollowable:station',
-  'FloorGrid.tsx:830 returned=unfollowable:station',
+  'FloorGrid.tsx:2959 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:2980 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:859 returned=unfollowable:station',
+  'FloorGrid.tsx:859 returned=unfollowable:station',
+  'FloorGrid.tsx:860 returned=unfollowable:station',
+  'FloorGrid.tsx:860 returned=unfollowable:station',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -17370,12 +17370,12 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'stationCapability.ts:104 returned=unfollowable:capability'
 ]);
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1813 FloorSimState asked=true walked=false',
-  'FloorGrid.tsx:829 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:829 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:830 GridSize asked=true walked=false',
-  'FloorGrid.tsx:830 GridSize asked=true walked=false',
-  'FloorGrid.tsx:842 BayBench | undefined asked=true walked=false',
+  'FloorGrid.tsx:1845 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:859 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:859 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:860 GridSize asked=true walked=false',
+  'FloorGrid.tsx:860 GridSize asked=true walked=false',
+  'FloorGrid.tsx:872 BayBench | undefined asked=true walked=false',
   'empireInvariant.ts:1084 GymAxes asked=true walked=false',
   'empireInvariant.ts:1137 GymAxes asked=true walked=false',
   'empireInvariant.ts:1168 readonly ExpansionBuild[] asked=true walked=false',
@@ -17717,7 +17717,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
   // 1815 -> 1841: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 1841 -> 1866: Stage G.2C2 livingMemberDeparture.ts plus roster/sim wiring.
-  function: 2148, // H1 continuous wood fill
+  function: 2152, // illustrated occupancy helpers
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -17777,7 +17777,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
   // 1658 -> 1673: Stage G.2C1 livingMemberStay.ts plus livingMembers stayState.
   // 1673 -> 1699: Stage G.2C2 livingMemberDeparture.ts plus roster/sim members.
-  member: 1878, // H1 continuous wood fill (net -1 ops.push site)
+  member: 1879, // illustrated occupancy blend
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -17987,7 +17987,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 1123 -> 1124: Stage G.2D P1 open-mark occupancy until second return path.
   // 1124 -> 1141: Stage G.2E livingMemberReputation returns, livingMembers
   // applyLivingMemberReputation, members type helpers, arrival gate.
-  SITES: 1248, // A×C playerFacingBrandLine
+  SITES: 1259, // illustrated occupancy helpers
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -18144,7 +18144,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // stayState wiring. Read from this pin last.
   // 84_813 -> 86_105: Stage G.2C2 livingMemberDeparture.ts plus roster/sim
   // departure wiring. Read from this pin last.
-  NODES_EXAMINED: 97_118, // Session B illustrated atmosphere plate
+  NODES_EXAMINED: 97_292, // illustrated occupancy helpers
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

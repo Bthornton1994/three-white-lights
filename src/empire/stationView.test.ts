@@ -634,8 +634,8 @@ describe('player-facing gym chrome (existing values, reformatted)', () => {
   });
 
   it('names location, dock, and build FAB without domain tokens on the chrome', () => {
-    expect(playerFacingRungLabel('garage')).toBe('Garage');
-    expect(playerFacingLocationLine('garage')).toBe('Garage');
+    expect(playerFacingRungLabel('garage')).toBe('Garage gym');
+    expect(playerFacingLocationLine('garage')).toBe('Garage gym');
     expect(playerFacingBrandLine()).toBe('THREE WHITE LIGHTS');
     expect(playerFacingSurfaceLabel('play')).toBe('Gym');
     expect(playerFacingSurfaceLabel('developer')).toBe('Developer');

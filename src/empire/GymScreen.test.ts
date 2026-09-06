@@ -2345,7 +2345,7 @@ describe('SF-TWL-GYM-EMPIRE-UX-02 — Play operating view vs Build overlay', () 
       }),
     );
     expect(textOf(findByTestId(root, 'gymscreen-brand'))).toBe(playerFacingBrandLine());
-    expect(textOf(findByTestId(root, 'gymscreen-rung'))).toBe('Garage');
+    expect(textOf(findByTestId(root, 'gymscreen-rung'))).toBe('Garage gym');
     expect(findByTestId(root, 'gymscreen-now').props.style).toEqual(
       expect.objectContaining({ textTransform: 'uppercase' }),
     );
