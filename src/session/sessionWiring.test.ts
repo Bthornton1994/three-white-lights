@@ -210,6 +210,11 @@ describe('no screen can reach the hidden ledger', () => {
       const code = codeOnly(source(file));
       expect(code, file).not.toMatch(/\bFatigueState\b/);
       expect(code, file).not.toMatch(/\.fatigue\b/);
+      expect(code, file).not.toMatch(/CHECK_IN_QUESTION/);
+      expect(code, file).not.toMatch(/CHECK_IN_ANSWER/);
+      expect(code, file).not.toMatch(/check-in-sleep-/);
+      expect(code, file).not.toMatch(/check-in-soreness-/);
+      expect(code, file).not.toMatch(/check-in-motivation-/);
     }
   });
 

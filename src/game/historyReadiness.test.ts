@@ -1,8 +1,16 @@
 /**
  * History-derived readiness — SF-TWL-SESSION-A-TRAINING-FIT-01.
  *
- * Single source of truth: `FatigueState.sessions` via `recordSession`.
- * No second ledger. No fabricated rows. Load percent is always 0.
+ * Owner constraints (Session A only; do not retune lift/RPE difficulty):
+ *   - deterministic, bounded, named constants
+ *   - strain is sets × reps × rpeStrainWeight, not fatigue += RPE
+ *   - declared/target RPE is not labelled achieved
+ *   - one ledger: FatigueState.sessions
+ *   - no subjective questionnaire on the player path
+ *   - empty history → forming, not fabricated fresh/fatigue
+ *   - RPE 9/10 >> RPE 8; hard recent ≠ recovered; rest recovers; accumulation bounded
+ *   - may train while fatigued; tighter window / slower bar, not a lock
+ *   - coaching copy only; no residual/strain/% on the play surface
  */
 
 import { describe, expect, it } from 'vitest';
@@ -17,9 +25,18 @@ import {
   recordSession,
   sessionFeel,
   type FatigueState,
+  type ReadinessCheckIn,
   type SessionRecord,
 } from './fatigue';
-import { createSession, stepSession, type SessionContext } from './session';
+import { TO_FAILURE_RPE } from './e1rm';
+import {
+  createSession,
+  playedSetFrom,
+  prescribeSession,
+  stepSession,
+  type SessionContext,
+} from './session';
+import { fatigueRecordFor } from './sessionServer';
 import { SESSION_TUNING } from './sessionTuning';
 
 const BASE_WINDOW_MS = 240;
@@ -59,6 +76,9 @@ describe('history readiness', () => {
     expect(historyReadiness(rpe8, 2).headline).not.toBe(
       historyReadiness(rpe9, 2).headline,
     );
+    expect(historyReadiness(rpe8, 2).headline).toBe(
+      FATIGUE_COPY.HISTORY_READINESS_HEADLINE.heavy,
+    );
     expect(historyReadiness(rpe9, 2).headline).toBe(
       FATIGUE_COPY.HISTORY_READINESS_HEADLINE.grinding,
     );
@@ -95,6 +115,15 @@ describe('history readiness', () => {
     expect(window).toBeGreaterThanOrEqual(floor);
     expect(Number.isFinite(window)).toBe(true);
     expect(historyReadiness(state, 13).loadAdjustmentPercent).toBe(0);
+    expect(historyReadiness(state, 13).headline).toBe(
+      FATIGUE_COPY.HISTORY_READINESS_HEADLINE.grinding,
+    );
+    expect(
+      historyReadiness(state, 12 + FATIGUE_TUNING.FATIGUE_MEMORY_DAYS).headline,
+    ).toBe(FATIGUE_COPY.HISTORY_READINESS_HEADLINE.recovered);
+    expect(
+      historyReadiness(state, 13 + FATIGUE_TUNING.FATIGUE_MEMORY_DAYS).headline,
+    ).toBe(FATIGUE_COPY.HISTORY_READINESS_HEADLINE.forming);
   });
 
   it('same inputs produce the same outputs', () => {
@@ -139,6 +168,77 @@ describe('history readiness', () => {
     const lifting = stepSession(opened, { kind: 'choose-rpe', rpe: 8 });
     expect(lifting.phase).toBe('set');
     expect(lifting.plan).not.toBeNull();
+    const freshWindow = adjustedTimingWindowMs(
+      BASE_WINDOW_MS,
+      sessionFeel(EMPTY_FATIGUE_STATE, 1),
+    );
+    const tiredWindow = adjustedTimingWindowMs(BASE_WINDOW_MS, sessionFeel(hard, 1));
+    expect(tiredWindow).toBeLessThan(freshWindow);
+  });
+
+  it('player-facing copy has no residual, strain, or percent diagnostics', () => {
+    for (const kind of ['forming', 'recovered', 'ready', 'heavy', 'grinding'] as const) {
+      const headline = FATIGUE_COPY.HISTORY_READINESS_HEADLINE[kind];
+      const detail = FATIGUE_COPY.HISTORY_READINESS_DETAIL[kind];
+      expect(headline).not.toMatch(/%|residual|strain|meter/i);
+      expect(detail).not.toMatch(/%|residual|strain|meter/i);
+    }
+  });
+
+  it('the ledger has one history field — sessions — and no competing store', () => {
+    expect(Object.keys(EMPTY_FATIGUE_STATE).sort()).toEqual(['injury', 'sessions']);
+  });
+
+  it('readiness copy ignores leftover check-in taps; history owns the report', () => {
+    const hard = after(EMPTY_FATIGUE_STATE, template(1, 10));
+    const primed: ReadinessCheckIn = {
+      sleep: 'good',
+      soreness: 'fresh',
+      motivation: 'fired-up',
+    };
+    const wrecked: ReadinessCheckIn = {
+      sleep: 'poor',
+      soreness: 'sore',
+      motivation: 'flat',
+    };
+    expect(sessionFeel(hard, 2, primed).readiness).toEqual(sessionFeel(hard, 2, wrecked).readiness);
+    expect(sessionFeel(hard, 2, primed).readiness.headline).toBe(
+      FATIGUE_COPY.HISTORY_READINESS_HEADLINE.grinding,
+    );
+  });
+
+  it('made reps keep declared RPE; failure is achieved RPE 10 — not relabelled', () => {
+    const plan = prescribeSession(
+      200,
+      'squat',
+      8,
+      historyReadiness(EMPTY_FATIGUE_STATE, 1),
+      1,
+    );
+    expect(plan.targetRpe).toBe(8);
+    const made = playedSetFrom(plan, 1, [
+      { outcome: 'good-lift', executionQuality: 1 },
+      { outcome: 'good-lift', executionQuality: 1 },
+      { outcome: 'good-lift', executionQuality: 1 },
+    ]);
+    expect(made.wentToFailure).toBe(false);
+    expect(made.report?.rpe).toBe(plan.targetRpe);
+    expect(made.report?.rpe).not.toBe(TO_FAILURE_RPE);
+    const madeRecord = fatigueRecordFor(1, 'squat', made.report === null ? [] : [made.report]);
+    expect(madeRecord?.topRpe).toBe(8);
+
+    const failed = playedSetFrom(plan, 1, [
+      { outcome: 'good-lift', executionQuality: 1 },
+      { outcome: 'miss', executionQuality: 0 },
+    ]);
+    expect(failed.wentToFailure).toBe(true);
+    expect(failed.report?.rpe).toBe(TO_FAILURE_RPE);
+    const failedRecord = fatigueRecordFor(
+      1,
+      'squat',
+      failed.report === null ? [] : [failed.report],
+    );
+    expect(failedRecord?.topRpe).toBe(10);
   });
 });
 

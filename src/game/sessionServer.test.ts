@@ -1121,6 +1121,11 @@ describe('the ledger entry a session leaves', () => {
   it('is nothing at all for a session with no sets', () => {
     expect(fatigueRecordFor(4, 'squat', [])).toBeNull();
   });
+
+  it('keeps a fully-made set at declared RPE 8 rather than labelling it achieved 10', () => {
+    const record = fatigueRecordFor(4, 'squat', [set('squat', 150, 3, 8)]);
+    expect(record?.topRpe).toBe(8);
+  });
 });
 
 describe('today, for the client to prescribe from', () => {
