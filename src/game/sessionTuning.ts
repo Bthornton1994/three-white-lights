@@ -523,8 +523,14 @@ export const SESSION_LAYOUT = Object.freeze({
   /**
    * Training-gym preview on the opening decision (PX: kill flat void).
    * Facility-first: this is the floor, chrome sits in a compact overlay.
+   * Cover-scale fills the slot; the overlay is capped so the gym stays the room.
+   * Overlay fraction / scrim opacity are UNTUNED placeholders (GDD §12.1).
    */
   STAGE_PREVIEW_MIN_HEIGHT: 220,
+  /** Percent of briefing height the compact overlay may occupy. */
+  STAGE_OVERLAY_MAX_PERCENT: 62,
+  /** Iron scrim under briefing chrome so type reads over the gym raster. */
+  OVERLAY_SCRIM_OPACITY: 0.86,
 
   /** The set counter pips shown above the stage while a set is live. */
   PIP_SIZE: 8,

@@ -83,6 +83,7 @@ export function BriefingView({
   const ladderStyle = useAnimatedStyle(() => ({ opacity: reveal.value }));
 
   const startRpe = SUGGESTED_RPE === undefined ? SESSION_TUNING.RPE_CHOICES[0] : SUGGESTED_RPE;
+  const overlayMaxPercent = L.STAGE_OVERLAY_MAX_PERCENT;
 
   return (
     <View style={styles.root} testID="session-briefing">
@@ -98,12 +99,17 @@ export function BriefingView({
         </View>
       </View>
 
-      <ScrollView
-        style={styles.overlay}
-        contentContainerStyle={styles.overlayContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <View
+        style={[styles.overlay, { maxHeight: `${overlayMaxPercent}%` }]}
+        testID="session-briefing-overlay"
       >
+        <View style={styles.overlayScrim} pointerEvents="none" />
+        <ScrollView
+          style={styles.overlayScroll}
+          contentContainerStyle={styles.overlayContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         <Text style={styles.kicker}>{SESSION_COPY.BRIEFING_KICKER}</Text>
         <Text style={styles.hero} testID="session-lift-hero">
           {SESSION_COPY.LIFT_HERO[lift]}
@@ -214,7 +220,8 @@ export function BriefingView({
             </Text>
           </Pressable>
         </Animated.View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -227,7 +234,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   stageWrap: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     minHeight: L.STAGE_PREVIEW_MIN_HEIGHT,
     width: '100%',
   },
@@ -240,8 +251,23 @@ const styles = StyleSheet.create({
     gap: L.BRAND_LIGHT_GAP,
   },
   overlay: {
-    flexGrow: 0,
-    flexShrink: 1,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    maxWidth: '100%',
+  },
+  overlayScrim: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: SESSION_PALETTE.BACKDROP,
+    opacity: L.OVERLAY_SCRIM_OPACITY,
+  },
+  overlayScroll: {
     width: '100%',
     maxWidth: '100%',
   },

@@ -81,8 +81,12 @@ function overflowReport() {
     const node = document.querySelector(`[data-testid="${id}"]`);
     return node === null ? null : (node.textContent ?? '').trim();
   };
-  const rpeRow = document.querySelector('[data-testid="session-rpe-ladder"]');
+    const rpeRow = document.querySelector('[data-testid="session-rpe-ladder"]');
   const rpeWraps = rpeRow !== null && rpeRow.getBoundingClientRect().height > 56;
+  const stage = document.querySelector('[data-testid="session-training-stage"]');
+  const overlay = document.querySelector('[data-testid="session-briefing-overlay"]');
+  const stageRect = stage === null ? null : stage.getBoundingClientRect();
+  const overlayRect = overlay === null ? null : overlay.getBoundingClientRect();
   return {
     innerWidth: window.innerWidth,
     innerHeight: window.innerHeight,
@@ -97,6 +101,10 @@ function overflowReport() {
     outlookPresent: document.querySelector('[data-testid="close-out-outlook"]') !== null,
     nextActionPresent: document.querySelector('[data-testid="close-out-next"]') !== null,
     rpeWraps,
+    overlayPresent: overlay !== null,
+    stageHeight: stageRect === null ? null : Math.round(stageRect.height),
+    overlayHeight: overlayRect === null ? null : Math.round(overlayRect.height),
+    stageTop: stageRect === null ? null : Math.round(stageRect.top),
     modifier: text('session-modifier'),
     readinessDetail: text('session-readiness-detail'),
     liftHero: text('session-lift-hero'),
@@ -153,7 +161,9 @@ for (const viewport of VIEWPORTS) {
     console.log(
       `${viewport.name} ${moment.id.padEnd(20)} overflowX=${metrics.overflowX} ` +
         `scroll=${metrics.scrollWidth}/${metrics.innerWidth} ` +
-        `stage=${metrics.stagePresent} lights=${metrics.lightsPresent} ` +
+        `stage=${metrics.stagePresent}:${metrics.stageHeight ?? '-'} ` +
+        `overlay=${metrics.overlayPresent}:${metrics.overlayHeight ?? '-'} ` +
+        `lights=${metrics.lightsPresent} ` +
         `checkIn=${metrics.checkInPresent} sleep=${metrics.sleepChipPresent} ` +
         `outlook=${JSON.stringify(metrics.outlook)} ` +
         `modifier=${JSON.stringify(metrics.modifier)}`,
@@ -230,7 +240,13 @@ const briefingHits = report.viewports.flatMap((v) =>
       (f.moment === 'briefing' ||
         f.moment === 'briefing-heavy' ||
         f.moment === 'briefing-recovered') &&
-      (!f.stagePresent || !f.lightsPresent || f.checkInPresent || f.sleepChipPresent || f.rpeWraps),
+      (!f.stagePresent ||
+        !f.lightsPresent ||
+        !f.overlayPresent ||
+        f.checkInPresent ||
+        f.sleepChipPresent ||
+        f.rpeWraps ||
+        (typeof f.stageHeight === 'number' && f.stageHeight < f.innerHeight * 0.9)),
   ),
 );
 const closeOutHits = report.viewports.flatMap((v) =>

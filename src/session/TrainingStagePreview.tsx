@@ -26,14 +26,19 @@ const SCENE = GYM_LIFT_STAGE;
 
 export function TrainingStagePreview(): React.ReactElement {
   const [slotWidth, setSlotWidth] = useState<number>(STAGE.STAGE_W);
+  const [slotHeight, setSlotHeight] = useState<number>(STAGE.STAGE_H);
   const onLayout = useCallback((event: LayoutChangeEvent) => {
-    const next = event.nativeEvent.layout.width;
-    if (next > 0 && next !== slotWidth) setSlotWidth(next);
-  }, [slotWidth]);
+    const nextW = event.nativeEvent.layout.width;
+    const nextH = event.nativeEvent.layout.height;
+    if (nextW > 0 && nextW !== slotWidth) setSlotWidth(nextW);
+    if (nextH > 0 && nextH !== slotHeight) setSlotHeight(nextH);
+  }, [slotHeight, slotWidth]);
 
+  // Cover the briefing slot so leftover espresso void is not the room.
   const fittedScale = Math.max(
     L.STAGE_FIT_MIN_SCALE,
-    Math.min(1, slotWidth / STAGE.STAGE_W),
+    slotWidth / STAGE.STAGE_W,
+    slotHeight / STAGE.STAGE_H,
   );
   const image = useMemo(() => makeGymSceneImage(liftStageScene()), []);
 
@@ -93,14 +98,16 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: L.STAGE_PREVIEW_MIN_HEIGHT,
     width: '100%',
+    height: '100%',
     maxWidth: '100%',
     alignItems: 'center',
+    justifyContent: 'center',
     overflow: 'hidden',
   },
   scaler: {
     overflow: 'hidden',
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   canvasBox: {
     width: STAGE.STAGE_W,

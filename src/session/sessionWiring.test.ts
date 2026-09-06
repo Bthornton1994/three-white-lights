@@ -187,6 +187,10 @@ describe('SessionScreen hands the readings down and computes nothing', () => {
     expect(source('SetView.tsx')).toMatch(/STAGE_FIT_MIN_SCALE/);
     expect(source('TrainingStagePreview.tsx')).toMatch(/session-training-stage/);
     expect(source('TrainingStagePreview.tsx')).toMatch(/liftStageScene/);
+    expect(source('TrainingStagePreview.tsx')).toMatch(/slotHeight/);
+    expect(source('BriefingView.tsx')).toMatch(/session-briefing-overlay/);
+    expect(source('BriefingView.tsx')).toMatch(/STAGE_OVERLAY_MAX_PERCENT/);
+    expect(source('BriefingView.tsx')).toMatch(/OVERLAY_SCRIM_OPACITY/);
     expect(source('CloseOutView.tsx')).toMatch(/outlookHeadline/);
     expect(source('CloseOutView.tsx')).toMatch(/nextAction/);
     expect(source('CloseOutView.tsx')).toMatch(/CLOSE_OUT_OUTLOOK_LABEL/);
