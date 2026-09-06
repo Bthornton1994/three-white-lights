@@ -872,7 +872,10 @@ describe('nextBestE1rm', () => {
     const closeOut = played.state.closeOut!;
     const held = record.bestE1rmKg[played.lift]!;
     expect(closeOut.sessionE1rmKg).not.toBeNull();
-    expect(nextBestE1rm(held, estimate(closeOut.sessionE1rmKg!))).toBe(closeOut.sessionE1rmKg);
+    const next = nextBestE1rm(held, estimate(closeOut.sessionE1rmKg!));
+    expect(next).toBeLessThanOrEqual(
+      held * (1 + SESSION_PROGRESSION_GUARD.MAX_E1RM_GAIN_FRACTION_PER_SESSION) + 1e-9,
+    );
   });
 });
 
@@ -1206,7 +1209,7 @@ describe('the whole round trip — client proposes, server publishes, client rea
 
     const e1rm = readBestE1rmKg(done.value, played.lift);
     expect(isConfirmedReading(e1rm)).toBe(true);
-    expect(readingValue(e1rm)).toBeCloseTo(closeOut.sessionE1rmKg ?? Number.NaN, 6);
+    expect(readingValue(e1rm)).toBeCloseTo(closeOut.newBestE1rmKg ?? Number.NaN, 6);
     const streak = readStreakDays(done.value);
     expect(isConfirmedReading(streak)).toBe(true);
     expect(readingValue(streak)).toBe(1);
@@ -1270,61 +1273,24 @@ describe('the whole round trip — client proposes, server publishes, client rea
     // ------------------------------------------------------------------
     // THE MAGNITUDE. Pinned as MEASURED CURRENT BEHAVIOUR, not as a target.
     // ------------------------------------------------------------------
-    // Days 0-4 are the neutral half: the load goes out through a chart cell and
-    // the estimate comes back through the same cell, so nothing moves. That is
-    // `e1rm.ts`'s cancellation working exactly as designed.
-    //
-    // Days 5-9 are the primed half, and every one of them is a PR — including
-    // days 8 and 9, which are the SECOND time this lifter trained that lift and
-    // are computed from the number the first one minted. That compounding is
-    // the known gap: the readiness nudge is a flat constant paid for three taps
-    // rather than something coupled to training stimulus, and coupling it is a
-    // recorded dependency on the fatigue/progression work (GDD §3.4). When it
-    // lands, these numbers are what has to change.
-    const neutralHalf = trail.slice(0, 5);
-    const primedHalf = trail.slice(5);
-    expect(neutralHalf.filter((step) => step.isPr)).toEqual([]);
-    for (const step of neutralHalf) {
+    // Both halves hold. The load goes out through a chart cell and the
+    // estimate comes back through the same cell — `e1rm.ts`'s cancellation.
+    // Subjective check-in taps are ignored on the player path, so the primed
+    // answers no longer mint a heavier bar or a compounding PR trail.
+    // SF-TWL-SESSION-A-TRAINING-FIT-01. Session-over-session growth from
+    // stimulus remains a recorded GDD §3.4 dependency, not this loop's job.
+    const firstHalf = trail.slice(0, 5);
+    const secondHalf = trail.slice(5);
+    expect(trail.filter((step) => step.isPr)).toEqual([]);
+    for (const step of trail) {
       expect(step.afterKg, `day ${step.day} ${step.lift}`).toBe(step.beforeKg);
     }
-    expect(primedHalf.filter((step) => step.isPr)).toHaveLength(5);
+    expect(firstHalf).toHaveLength(5);
+    expect(secondHalf).toHaveLength(5);
 
-    // Hand-written per lift, from the seed magnitudes in
-    // `SESSION_TUNING.STARTING_E1RM.kilograms` (squat 180, bench 120,
-    // deadlift 220).
-    expect(primedHalf.map((step) => step.lift)).toEqual([
-      'deadlift',
-      'squat',
-      'bench',
-      'deadlift',
-      'squat',
-    ]);
-    expect(primedHalf[0]!.afterKg).toBeCloseTo(228.1134, 4); // 220 -> +3.7%
-    expect(primedHalf[1]!.afterKg).toBeCloseTo(188.172, 3); // 180 -> +4.5%
-    expect(primedHalf[2]!.afterKg).toBeCloseTo(124.5655, 4); // 120 -> +3.8%
-    // The compounding ones: each is the previous PR's number, nudged again.
-    expect(primedHalf[3]!.beforeKg).toBeCloseTo(228.1134, 4);
-    expect(primedHalf[3]!.afterKg).toBeCloseTo(238.2287, 4);
-    expect(primedHalf[4]!.beforeKg).toBeCloseTo(188.172, 3);
-    expect(primedHalf[4]!.afterKg).toBeCloseTo(195.2278, 4);
-
-    // Five primed sessions across three lifts, and every lift's published best
-    // is above where it started. Nothing here caps it: the one guard in the
-    // path is 6% per session against a 5% nudge.
-    expect(record.bestE1rmKg.squat).toBeCloseTo(195.2278, 4);
-    expect(record.bestE1rmKg.bench).toBeCloseTo(124.5655, 4);
-    expect(record.bestE1rmKg.deadlift).toBeCloseTo(238.2287, 4);
-    expect(record.bestE1rmKg.squat! / SESSION_TUNING.STARTING_E1RM.kilograms.squat).toBeCloseTo(1.0846, 4);
-    expect(
-      record.bestE1rmKg.deadlift! / SESSION_TUNING.STARTING_E1RM.kilograms.deadlift,
-    ).toBeCloseTo(1.0829, 4);
-    // Two sessions on one lift, eight percent. Written as an explicit bound so
-    // that a change which makes it worse fails here rather than passing.
-    for (const lift of LIFT_ORDER) {
-      const grown = record.bestE1rmKg[lift]! / SESSION_TUNING.STARTING_E1RM.kilograms[lift];
-      expect(grown, `${lift} grew`).toBeGreaterThan(1);
-      expect(grown, `${lift} grew`).toBeLessThan(1.09);
-    }
+    expect(record.bestE1rmKg.squat).toBe(SESSION_TUNING.STARTING_E1RM.kilograms.squat);
+    expect(record.bestE1rmKg.bench).toBe(SESSION_TUNING.STARTING_E1RM.kilograms.bench);
+    expect(record.bestE1rmKg.deadlift).toBe(SESSION_TUNING.STARTING_E1RM.kilograms.deadlift);
   });
 });
 

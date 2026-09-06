@@ -383,8 +383,8 @@ describe('the audit bites', () => {
     // and `letterSpacing: 2` is a design decision.
     const mutated = mutate(
       read(A_SESSION_COMPONENT),
-      'letterSpacing: L.LETTER_SPACING,\n  },\n  weight:',
-      'letterSpacing: 2,\n  },\n  weight:',
+      'letterSpacing: L.LETTER_SPACING,\n    textAlign: \'center\',\n  },\n  pips:',
+      'letterSpacing: 2,\n    textAlign: \'center\',\n  },\n  pips:',
     );
     expect(auditSource(A_SESSION_COMPONENT, mutated).map((f) => f.text)).toEqual(['2']);
   });

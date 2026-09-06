@@ -103,6 +103,7 @@ import {
   BAR_SPEED_CUE_ORDER,
   EMPTY_FATIGUE_STATE,
   LUCKIEST_ROLLS,
+  readinessCheckIn,
   recordSession,
   sessionFeel,
   type SessionFeel,
@@ -2408,12 +2409,16 @@ const GRIND_SWEEP = {
  * goes red as a set — which is the point of pinning it in both directions
  * rather than pinning the counts alone.
  *
- * THE FEEL IS PART OF THE CELL, NOT A NUISANCE PARAMETER. The check-in moves
- * BOTH the prescribed load (`readiness.loadAdjustmentPercent`) and the
- * lifter's capacity (`capacityScaleForBarSpeed`), and the second is the larger
- * effect — so a cell is `(loadRatio, barSpeed)` and the two axes are not
- * independent. See `REACHABLE_COUPLING` for what that does, measured and
- * pinned deliberately rather than left to be discovered.
+ * THE FEEL IS PART OF THE CELL, NOT A NUISANCE PARAMETER. The leftover
+ * `readinessCheckIn` helper still moves BOTH the prescribed load
+ * (`loadAdjustmentPercent`) and the lifter's capacity (`capacityScaleForBarSpeed`)
+ * when a test walks it, and the second is the larger effect — so a cell is
+ * `(loadRatio, barSpeed)` and the two axes are not independent. See
+ * `REACHABLE_COUPLING`. The player path does not take that helper: it
+ * prescribes through `historyReadiness` at a 0% load nudge (SF-TWL-SESSION-A-
+ * TRAINING-FIT-01). This walk still uses the helper so the mechanic domain
+ * GDD §6.2 quotes, and the RPE difficulty pins measured on it, stay derived
+ * rather than being silently retuned by a product-flow change.
  */
 const REACHABLE = {
   /**
@@ -2485,12 +2490,14 @@ interface ReachableCell {
 }
 
 /**
- * Every distinct (loadRatio, barSpeed) a SESSION can hand the mechanic.
+ * Every distinct (loadRatio, barSpeed) the leftover check-in helper can hand
+ * the mechanic. The player loop no longer asks those questions; this walk
+ * keeps the derived domain the RPE difficulty pins were measured on.
  *
- * Walks all five RPE choices against all 27 check-ins and dedupes, because the
- * check-in's effect on both axes is coarse: 135 combinations collapse to 22
- * distinct cells. Deduping is what makes the pinned table readable; the count
- * is pinned so a collapse to fewer cells reports itself.
+ * Walks all five RPE choices against all 27 helper check-ins and dedupes,
+ * because the helper's effect on both axes is coarse: 135 combinations
+ * collapse to 22 distinct cells. Deduping is what makes the pinned table
+ * readable; the count is pinned so a collapse to fewer cells reports itself.
  */
 function reachableSessionCells(): ReachableCell[] {
   const sleeps = ['poor', 'ok', 'good'] as const;
@@ -2502,16 +2509,13 @@ function reachableSessionCells(): ReachableCell[] {
     for (const sleep of sleeps) {
       for (const soreness of sorenesses) {
         for (const motivation of motivations) {
-          const feel = sessionFeel(EMPTY_FATIGUE_STATE, REACHABLE.WORK_SETS + 2, {
-            sleep,
-            soreness,
-            motivation,
-          });
+          const checkIn = { sleep, soreness, motivation };
+          const feel = sessionFeel(EMPTY_FATIGUE_STATE, REACHABLE.WORK_SETS + 2, checkIn);
           const plan = prescribeSession(
             REACHABLE.E1RM_KG,
             BENCH,
             targetRpe,
-            feel.readiness,
+            readinessCheckIn(checkIn),
             REACHABLE.WORK_SETS,
             REACHABLE.REPS_PER_SET,
           );
@@ -5043,17 +5047,16 @@ describe('the grind decides the lift', () => {
   }, 900_000);
 
   it('makes a better check-in an EASIER rep, which is deliberate and is not this piece to fix', () => {
-    // See `REACHABLE_COUPLING`. The check-in moves the prescribed load and the
-    // lifter's capacity together and capacity moves further, so the ordering
-    // runs the way a reader does not expect. Pinned rather than left to be
-    // discovered: it is the reason the `crisp` and `popping` rows of the table
-    // above are not the hardest ones at their rung, and a future tuner who
-    // changes either half needs to see this go red rather than find it by
-    // playing.
+    // See `REACHABLE_COUPLING`. The leftover `readinessCheckIn` helper still
+    // moves prescribed load and capacity together; capacity moves further, so
+    // the ordering is the one a reader does not expect. The player path does
+    // not take that helper (history readiness, 0% load). Pinned on the helper
+    // domain so a future tuner who changes either half sees this go red
+    // rather than finding it by playing.
     //
     // BOTH HALVES LIVE OUTSIDE THIS PIECE — `fatigue.ts`'s
-    // `capacityScaleForBarSpeed` and `session.ts`'s `loadAdjustmentPercent` —
-    // and the coupling predates the bench work entirely. What is asserted here
+    // `capacityScaleForBarSpeed` and `readinessCheckIn`'s `loadAdjustmentPercent`
+    // — and the coupling predates the bench work entirely. What is asserted here
     // is what it DOES to a bench rep, measured, not a judgement about whether
     // it should.
     const cells = reachableSessionCells();

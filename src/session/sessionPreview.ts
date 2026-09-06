@@ -46,7 +46,7 @@ import {
   type SessionContext,
   type SessionState,
 } from '../game/session';
-import { EMPTY_FATIGUE_STATE, type ReadinessCheckIn } from '../game/fatigue';
+import { EMPTY_FATIGUE_STATE, LUCKIEST_ROLLS, recordSession, type FatigueState } from '../game/fatigue';
 import {
   SESSION_BOUNDARY,
   SESSION_BOUNDARY_PREVIEW,
@@ -80,10 +80,14 @@ import type { SessionPreviewFrame } from './useSession';
 export type SessionMomentId =
   /** Nothing tapped. What the app opens on. */
   | 'check-in'
-  /** Two of the three taps in. */
+  /** Alias of the opening decision; the three-tap check-in is gone. */
   | 'check-in-partial'
-  /** The modifier surfaced and the RPE ladder live. */
+  /** The opening decision: lift + RPE, history readiness as copy. */
   | 'briefing'
+  /** Opening decision the day after a hard session (history readiness). */
+  | 'briefing-heavy'
+  /** Opening decision after residual has washed out. */
+  | 'briefing-recovered'
   /**
    * The first rep of the first set, braced.
    *
@@ -125,6 +129,8 @@ export const SESSION_MOMENTS = Object.freeze([
   'check-in',
   'check-in-partial',
   'briefing',
+  'briefing-heavy',
+  'briefing-recovered',
   'set',
   'rest',
   'close-out-pr',
@@ -158,9 +164,6 @@ export function sessionPreviewFrom(search: string): SessionPreviewRequest | null
   return { moment };
 }
 
-const PRIMED: ReadinessCheckIn = { sleep: 'good', soreness: 'fresh', motivation: 'fired-up' };
-const STEADY: ReadinessCheckIn = { sleep: 'ok', soreness: 'normal', motivation: 'steady' };
-
 const PREVIEW_DAY = SESSION_PREVIEW.DAY;
 const PREVIEW_LIFT = liftForDay(PREVIEW_DAY);
 const PREVIEW_PROPOSAL_ID = asProposalId('preview-session');
@@ -182,12 +185,13 @@ const PREVIEW_WALL_CLOCK: LocalWallClock = {
  * rows and `progression.test.ts` reads both as sealed off the source; only one
  * of them could be executed. `sessionPreview.test.ts` now freezes-checks it.
  */
-export function recordBeforeSession(): ServerRecord {
+export function recordBeforeSession(
+  bestE1rmKg: number = SESSION_PREVIEW.BEST_E1RM_KG,
+): ServerRecord {
   const fresh = newServerRecord(SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY);
-  // SEALED, like every other `record` row in `progression.ts` 7.5.
   return sealServerValue({
     ...fresh,
-    bestE1rmKg: { ...fresh.bestE1rmKg, [PREVIEW_LIFT]: SESSION_PREVIEW.BEST_E1RM_KG },
+    bestE1rmKg: { ...fresh.bestE1rmKg, [PREVIEW_LIFT]: bestE1rmKg },
     streak: {
       ...fresh.streak,
       currentStreak: SESSION_PREVIEW.STREAK_BEFORE,
@@ -197,7 +201,7 @@ export function recordBeforeSession(): ServerRecord {
   });
 }
 
-function previewContext(): SessionContext {
+function previewContext(overrides: Partial<SessionContext> = {}): SessionContext {
   return {
     day: PREVIEW_DAY,
     lift: PREVIEW_LIFT,
@@ -206,31 +210,45 @@ function previewContext(): SessionContext {
     streakBefore: SESSION_PREVIEW.STREAK_BEFORE,
     streakIfTrainedToday: SESSION_PREVIEW.STREAK_BEFORE + 1,
     fatigue: EMPTY_FATIGUE_STATE,
+    ...overrides,
   };
 }
 
-function tapThrough(state: SessionState, answers: ReadinessCheckIn): SessionState {
-  let next = stepSession(state, {
-    kind: 'check-in-tap',
-    tap: { question: 'sleep', answer: answers.sleep },
-  });
-  next = stepSession(next, {
-    kind: 'check-in-tap',
-    tap: { question: 'soreness', answer: answers.soreness },
-  });
-  return stepSession(next, {
-    kind: 'check-in-tap',
-    tap: { question: 'motivation', answer: answers.motivation },
-  });
+function heavyHistory(day: number): FatigueState {
+  return recordSession(
+    EMPTY_FATIGUE_STATE,
+    {
+      day: day - 1,
+      lift: 'squat',
+      topRpe: SESSION_PREVIEW.HEAVY_HISTORY_TOP_RPE,
+      workSets: SESSION_TUNING.WORK_SETS,
+      repsPerSet: SESSION_TUNING.REPS_PER_SET,
+    },
+    LUCKIEST_ROLLS,
+  ).state;
+}
+
+function recoveredHistory(day: number): FatigueState {
+  return recordSession(
+    EMPTY_FATIGUE_STATE,
+    {
+      day: day - SESSION_PREVIEW.RECOVERED_HISTORY_DAYS_AGO,
+      lift: 'squat',
+      topRpe: SESSION_PREVIEW.RECOVERED_HISTORY_TOP_RPE,
+      workSets: SESSION_TUNING.WORK_SETS,
+      repsPerSet: SESSION_TUNING.REPS_PER_SET,
+    },
+    LUCKIEST_ROLLS,
+  ).state;
 }
 
 /** Drives the loop to its close-out with every rep scripted. */
 function playScripted(
-  answers: ReadinessCheckIn,
   outcome: (setIndex: number, repIndex: number) => LiftOutcome,
   stopAtRest: boolean,
+  context: SessionContext = previewContext(),
 ): SessionState {
-  let state = stepSession(tapThrough(createSession(previewContext()), answers), {
+  let state = stepSession(createSession(context), {
     kind: 'choose-rpe',
     rpe: SESSION_PREVIEW.RPE,
   });
@@ -308,11 +326,15 @@ export function recordAfterServer(
  * projection and the server agree because `sessionServer.ts` and the client run
  * the same `nextBestE1rm`.
  */
-function cacheAfterServer(closeOut: SessionCloseOut, driftKg: number): ProgressionCache {
+function cacheAfterServer(
+  closeOut: SessionCloseOut,
+  driftKg: number,
+  priorBestKg: number = SESSION_PREVIEW.BEST_E1RM_KG,
+): ProgressionCache {
   const submission = submissionFor(closeOut);
   if (submission === null) return cacheBeforeSession();
   const applied = applyTrainingSession(
-    recordBeforeSession(),
+    recordBeforeSession(priorBestKg),
     PREVIEW_DAY,
     submission.proposal,
     PREVIEW_PROPOSAL_ID,
@@ -333,12 +355,16 @@ function frame(state: SessionState, cache: ProgressionCache): SessionPreviewFram
   return { state, cache };
 }
 
-function settledFrame(state: SessionState, driftKg: number): SessionPreviewFrame {
+function settledFrame(
+  state: SessionState,
+  driftKg: number,
+  priorBestKg: number = SESSION_PREVIEW.BEST_E1RM_KG,
+): SessionPreviewFrame {
   return frame(
     state,
     state.closeOut === null
       ? cacheBeforeSession()
-      : cacheAfterServer(state.closeOut, driftKg),
+      : cacheAfterServer(state.closeOut, driftKg, priorBestKg),
   );
 }
 
@@ -351,38 +377,41 @@ function settledFrame(state: SessionState, driftKg: number): SessionPreviewFrame
  */
 export function previewFrameFor(request: SessionPreviewRequest): SessionPreviewFrame {
   const fresh = createSession(previewContext());
+  const prContext = previewContext({ bestE1rmKg: SESSION_PREVIEW.PR_PRIOR_BEST_E1RM_KG });
   switch (request.moment) {
     case 'check-in':
+    case 'check-in-partial':
+    case 'briefing':
       return frame(fresh, cacheBeforeSession());
-    case 'check-in-partial': {
-      const one = stepSession(fresh, {
-        kind: 'check-in-tap',
-        tap: { question: 'sleep', answer: 'good' },
-      });
+    case 'briefing-heavy':
       return frame(
-        stepSession(one, { kind: 'check-in-tap', tap: { question: 'soreness', answer: 'fresh' } }),
+        createSession(previewContext({ fatigue: heavyHistory(PREVIEW_DAY) })),
         cacheBeforeSession(),
       );
-    }
-    case 'briefing':
-      return frame(tapThrough(fresh, PRIMED), cacheBeforeSession());
+    case 'briefing-recovered':
+      return frame(
+        createSession(previewContext({ fatigue: recoveredHistory(PREVIEW_DAY) })),
+        cacheBeforeSession(),
+      );
     case 'set':
       return frame(
-        stepSession(tapThrough(fresh, STEADY), { kind: 'choose-rpe', rpe: SESSION_PREVIEW.RPE }),
+        stepSession(fresh, { kind: 'choose-rpe', rpe: SESSION_PREVIEW.RPE }),
         cacheBeforeSession(),
       );
     case 'rest':
-      return frame(playScripted(STEADY, () => 'good-lift', true), cacheBeforeSession());
+      return frame(playScripted(() => 'good-lift', true), cacheBeforeSession());
     case 'close-out-pr':
-      return settledFrame(playScripted(PRIMED, () => 'good-lift', false), 0);
+      return settledFrame(
+        playScripted(() => 'good-lift', false, prContext),
+        0,
+        SESSION_PREVIEW.PR_PRIOR_BEST_E1RM_KG,
+      );
     case 'close-out-held':
-      return settledFrame(playScripted(STEADY, () => 'good-lift', false), 0);
+      return settledFrame(playScripted(() => 'good-lift', false), 0);
     case 'close-out-empty':
-      // Nothing was banked, so nothing was proposed: the cache is exactly where
-      // it was before the session, and confirmed.
-      return frame(playScripted(STEADY, () => 'miss', false), cacheBeforeSession());
+      return frame(playScripted(() => 'miss', false), cacheBeforeSession());
     case 'close-out-saving': {
-      const state = playScripted(PRIMED, () => 'good-lift', false);
+      const state = playScripted(() => 'good-lift', false, prContext);
       return frame(
         state,
         state.closeOut === null ? cacheBeforeSession() : cacheWhileSaving(state.closeOut),
@@ -390,29 +419,20 @@ export function previewFrameFor(request: SessionPreviewRequest): SessionPreviewF
     }
     case 'close-out-server-wins':
       return settledFrame(
-        playScripted(PRIMED, () => 'good-lift', false),
+        playScripted(() => 'good-lift', false, prContext),
         SESSION_BOUNDARY_PREVIEW.SERVER_DRIFT_KG,
+        SESSION_PREVIEW.PR_PRIOR_BEST_E1RM_KG,
       );
     case 'close-out-unsynced': {
-      const state = playScripted(PRIMED, () => 'good-lift', false);
+      const state = playScripted(() => 'good-lift', false, prContext);
       return frame(
         state,
         state.closeOut === null ? cacheBeforeSession() : cacheAfterRefusal(state.closeOut),
       );
     }
     case 'close-out-accessory': {
-      // PRIMED, NOT STEADY, AND THE READINESS IS THE POINT OF THIS BEAT.
-      //
-      // This fixture used to be built on `STEADY` — the one readiness band that
-      // arithmetically cannot produce a PR — while every other close-out beat
-      // used `PRIMED`. So the one demonstration of accessory day was pointed
-      // away from the case where it fails: on `STEADY` the screen read "SESSION
-      // LOGGED", which is merely wrong, and on `PRIMED` it read "NEW e1RM" over
-      // a Training IQ row with no number in it, which is the thing GDD §3.2
-      // rules out. The beat is now built on the readiness that would have shown
-      // it, and `sessionPreview.test.ts` asserts the headline.
-      const played = playScripted(PRIMED, () => 'good-lift', false);
-      const settled = settledFrame(played, 0);
+      const played = playScripted(() => 'good-lift', false, prContext);
+      const settled = settledFrame(played, 0, SESSION_PREVIEW.PR_PRIOR_BEST_E1RM_KG);
       return played.closeOut === null
         ? settled
         : frame({ ...played, closeOut: asAccessoryCloseOut(played.closeOut) }, settled.cache);

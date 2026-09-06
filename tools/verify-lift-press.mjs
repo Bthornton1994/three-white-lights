@@ -450,7 +450,7 @@ const MEET_PROBE = Object.freeze({
   /** The beat the CAREER pill is drawn on at boot: GDD §3.2's check-in. The
    *  way into a meet is `tools/enterMeetFromCalendar.mjs`'s three-press drive
    *  (Sprint 1c deleted `shell-open-meet`). */
-  CHECK_IN: 'session-check-in',
+  CHECK_IN: 'session-briefing',
   /** How long the pill has to finish fading in before the press. */
   PILL_MS: 40000,
   /** ...and the meet has to appear after it. */

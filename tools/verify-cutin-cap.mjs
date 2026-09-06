@@ -723,7 +723,7 @@ await page.addInitScript(
     pollMs: CAP_DRIVE.RECORDER_POLL_MS,
     observerKey: observerGlobal,
     beats: [
-      'session-check-in',
+      'session-briefing',
       'meet-weigh-in',
       'meet-openers',
       'meet-attempt-select',
@@ -746,7 +746,7 @@ async function read() {
     const has = (id) => document.querySelector(`[data-testid="${id}"]`) !== null;
     const text = (id) => document.querySelector(`[data-testid="${id}"]`)?.textContent ?? null;
     return {
-      checkIn: has('session-check-in'),
+      checkIn: has('session-briefing'),
       meetScreen: has('meet-screen'),
       weighIn: has('meet-weigh-in'),
       openers: has('meet-openers'),

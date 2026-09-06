@@ -4,10 +4,11 @@ import { StyleSheet, View } from 'react-native';
 import { AppShell } from './src/shell/AppShell';
 import { LIFT_PALETTE } from './src/lift/liftPalette';
 
-// THE APP OPENS INTO THE DAILY SESSION LOOP (GDD §3.2): readiness check-in ->
-// modifier -> the work sets, on the lift mechanic -> close-out. There is no
-// splash and no home screen in front of it, because GDD §12.2 measures that
-// piece on time-to-first-input.
+// THE APP OPENS INTO THE DAILY SESSION LOOP (GDD §3.2): lift + RPE, with
+// history readiness as copy -> the work sets, on the lift mechanic ->
+// close-out. There is no splash, no home screen, and no subjective readiness
+// check-in in front of it, because GDD §12.2 measures that piece on
+// time-to-first-input.
 //
 // `index.ts` must not import this module until `LoadSkiaWeb` has resolved:
 // Skia's web build binds `global.CanvasKit` at module-evaluation time, and
@@ -55,6 +56,9 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
     backgroundColor: LIFT_PALETTE.BACKDROP,
   },
 });

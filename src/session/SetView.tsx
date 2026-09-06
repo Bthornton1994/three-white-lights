@@ -1,39 +1,15 @@
 /**
  * SetView — the reps, played on the mechanic that already exists.
  *
- * ---------------------------------------------------------------------------
- * NOTHING ABOUT THE REP IS REBUILT HERE
- * ---------------------------------------------------------------------------
- * `LiftStage` draws it, `useLiftLoop` clocks it and plays its haptics, and
- * `stepLift` decides it. This file adds exactly two things a standalone rep did
- * not need:
+ * Phone-first: the stage scales to the visible width so the bar-path panel
+ * cannot hang off the right edge, and instructional copy wraps or collapses
+ * instead of clipping. Meet-day AttemptView is untouched.
  *
- *   1. THE PRESCRIPTION. `useLiftLoop` is handed `repConfigFor(state)`, so the
- *      bar is the weight GDD §3.3's RPE choice produced and the timing window
- *      is whatever `fatigue.ts` made it for this point in the session. The
- *      standalone screen picks its load off a row of buttons; a session does
- *      not offer that choice mid-set.
- *   2. WHERE THE PLAYER IS. A set counter and rep pips, so four sets of three
- *      reads as a session rather than as twelve unrelated reps.
- *
- * `LiftScreen` itself is deliberately NOT reused whole: it owns a load selector
- * and its own load state, which is the Prototype-1 harness rather than a
- * session, and it takes no prescribed config. Its parts are what get reused.
- *
- * ---------------------------------------------------------------------------
- * WHY THE REP IS RESTARTED RATHER THAN REMOUNTED
- * ---------------------------------------------------------------------------
- * `useLiftLoop.restart` reuses the Skia canvas. Remounting per rep — the
- * obvious alternative, keyed on the rep index — would tear down and rebuild the
- * canvas twelve times a session, which is a visible hitch at exactly the moment
- * the player is about to be asked for a timing input.
- *
- * NO MECHANIC LOGIC AND NO FATIGUE READOUT (GDD §3.4, §12.3). Nothing here
- * computes a window, judges an outcome or displays a level.
+ * NO MECHANIC LOGIC AND NO FATIGUE READOUT (GDD §3.4, §12.3).
  */
 
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 
 import { LiftStage } from '../lift/LiftStage';
 import { useLiftLoop } from '../lift/useLiftLoop';
@@ -57,6 +33,7 @@ import { SESSION_PALETTE } from './sessionPalette';
 import { LIFT_PALETTE } from '../lift/liftPalette';
 
 const L = SESSION_LAYOUT;
+const STAGE = LIFT_TUNING.LAYOUT;
 
 const OUTCOME_COLOUR: Record<LiftOutcome, string> = {
   'good-lift': SESSION_PALETTE.GOOD,
@@ -64,12 +41,6 @@ const OUTCOME_COLOUR: Record<LiftOutcome, string> = {
   miss: SESSION_PALETTE.MISS,
 };
 
-/**
- * One pip per prescribed rep in this set: banked, live, or still to come.
- *
- * The reason a session has a shape. Without it a work set is an unbounded run
- * of reps and the player cannot tell whether they are nearly done.
- */
 function RepPips({
   reps,
   done,
@@ -105,10 +76,6 @@ export interface SetViewProps {
 
 export function SetView({ state, onRepResolved }: SetViewProps): React.ReactElement {
   const plan = state.plan;
-  // The config is a function of WHICH REP THIS IS and what was prescribed, and
-  // of nothing else. Depending on the whole session state would hand `restart`
-  // a new object mid-rep every time anything about the session changed, which
-  // would reset the bar under the player's finger.
   const setIndex = state.setIndex;
   const repIndex = state.repIndex;
   const config = useMemo(
@@ -119,7 +86,19 @@ export function SetView({ state, onRepResolved }: SetViewProps): React.ReactElem
   const loop = useLiftLoop(config);
   const { restart, onPressIn, onPressOut } = loop;
 
-  // --- start the next rep ---------------------------------------------------
+  const [stageWidth, setStageWidth] = useState<number>(STAGE.STAGE_W);
+  const [instructionsOpen, setInstructionsOpen] = useState(true);
+
+  const onStageSlotLayout = useCallback((event: LayoutChangeEvent) => {
+    const next = event.nativeEvent.layout.width;
+    if (next > 0 && next !== stageWidth) setStageWidth(next);
+  }, [stageWidth]);
+
+  const fittedScale = Math.max(
+    L.STAGE_FIT_MIN_SCALE,
+    Math.min(1, stageWidth / STAGE.STAGE_W),
+  );
+
   const repKey = `${state.setIndex}:${state.repIndex}`;
   const lastRepKey = useRef<string>(repKey);
   useEffect(() => {
@@ -128,12 +107,9 @@ export function SetView({ state, onRepResolved }: SetViewProps): React.ReactElem
     restart(config.loadRatio);
   }, [repKey, restart, config.loadRatio]);
 
-  // --- hand the outcome back after the result beat --------------------------
   const resolution = loop.state.resolution;
   const resolved = loop.state.phase === 'RESOLVED';
   const outcome = resolution === null ? null : resolution.outcome;
-  // `executionQualityFrom` is `session.ts`'s pure read of `resolution` — no
-  // mechanic logic lives in this file, only the call.
   const handOff = useCallback(() => {
     if (outcome !== null && resolution !== null) {
       onRepResolved(outcome, executionQualityFrom(resolution));
@@ -149,6 +125,10 @@ export function SetView({ state, onRepResolved }: SetViewProps): React.ReactElem
 
   const totalKg = totalKgFor(plan.loadRatio, plan.e1rmKg);
   const setNumber = currentSetNumber(state);
+  const instruction =
+    resolution === null || resolution.detail === ''
+      ? LIFT_COPY.SUBTITLE[loop.state.config.kind]
+      : resolution.detail;
 
   return (
     <View style={styles.root} testID="session-set" {...SUPPRESS_CONTEXT_MENU}>
@@ -175,22 +155,53 @@ export function SetView({ state, onRepResolved }: SetViewProps): React.ReactElem
         >
           {resolution === null ? promptFor(loop.state) : resolution.headline}
         </Text>
-        <Text style={styles.detail} testID="session-detail">
-          {resolution === null || resolution.detail === ''
-            ? LIFT_COPY.SUBTITLE[loop.state.config.kind]
-            : resolution.detail}
-        </Text>
+        {instructionsOpen ? (
+          <Text style={styles.detail} testID="session-detail">
+            {instruction}
+          </Text>
+        ) : null}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setInstructionsOpen((open) => !open)}
+          style={styles.instructionToggle}
+          testID="session-instruction-toggle"
+        >
+          <Text style={styles.instructionToggleLabel}>
+            {instructionsOpen ? SESSION_COPY.INSTRUCTION_DISMISS : SESSION_COPY.INSTRUCTION_SHOW}
+          </Text>
+        </Pressable>
       </View>
 
-      <Pressable
-        style={styles.stage}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        testID="session-touch"
-        {...PRESS_WITHOUT_DELAY}
-      >
-        <LiftStage state={loop.state} history={loop.history} totalKg={totalKg} />
-      </Pressable>
+      <View style={styles.stageSlot} onLayout={onStageSlotLayout}>
+        <View
+          style={[
+            styles.stageScaler,
+            {
+              width: STAGE.STAGE_W * fittedScale,
+              height: STAGE.STAGE_H * fittedScale,
+            },
+          ]}
+        >
+          <Pressable
+            style={[
+              styles.stage,
+              {
+                transform: [
+                  { translateX: ((fittedScale - 1) * STAGE.STAGE_W) / 2 },
+                  { translateY: ((fittedScale - 1) * STAGE.STAGE_H) / 2 },
+                  { scale: fittedScale },
+                ],
+              },
+            ]}
+            onPressIn={onPressIn}
+            onPressOut={onPressOut}
+            testID="session-touch"
+            {...PRESS_WITHOUT_DELAY}
+          >
+            <LiftStage state={loop.state} history={loop.history} totalKg={totalKg} />
+          </Pressable>
+        </View>
+      </View>
     </View>
   );
 }
@@ -199,26 +210,34 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     alignItems: 'center',
-    // The INHERITED half, on the root so it reaches the copy — see
-    // `src/lift/pressGuard.ts`. On the stage it would reach only the Skia
-    // canvas, where no selection is possible in the first place.
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
+    paddingHorizontal: L.SCREEN_PAD,
+    paddingTop: L.SAFE_AREA_FALLBACK,
     ...PRESS_NOT_SELECT,
   },
   header: {
     alignItems: 'center',
     gap: L.ROW_GAP / 2,
     paddingVertical: L.ROW_GAP,
+    width: '100%',
+    maxWidth: '100%',
   },
   setLabel: {
     color: SESSION_PALETTE.TEXT,
     fontSize: L.LABEL_FONT,
     fontWeight: '700',
     letterSpacing: L.LETTER_SPACING,
+    textAlign: 'center',
+    width: '100%',
+    flexShrink: 1,
   },
   weight: {
     color: SESSION_PALETTE.TEXT_DIM,
     fontSize: L.LABEL_FONT,
     letterSpacing: L.LETTER_SPACING,
+    textAlign: 'center',
   },
   pips: {
     flexDirection: 'row',
@@ -238,14 +257,45 @@ const styles = StyleSheet.create({
     fontSize: L.PROMPT_FONT,
     fontWeight: '700',
     letterSpacing: L.LETTER_SPACING,
+    textAlign: 'center',
+    width: '100%',
+    flexShrink: 1,
   },
   detail: {
     color: SESSION_PALETTE.TEXT_DIM,
     fontSize: L.HINT_FONT,
+    lineHeight: L.INSTRUCTION_LINE_HEIGHT,
+    textAlign: 'center',
+    width: '100%',
+    flexShrink: 1,
+  },
+  instructionToggle: {
+    minHeight: L.TOUCH_MIN,
+    minWidth: L.TOUCH_MIN,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: L.SCREEN_PAD,
+  },
+  instructionToggleLabel: {
+    color: SESSION_PALETTE.TEXT,
+    fontSize: L.LABEL_FONT,
+    fontWeight: '700',
+    letterSpacing: L.LETTER_SPACING,
+  },
+  stageSlot: {
+    width: '100%',
+    maxWidth: '100%',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  stageScaler: {
+    overflow: 'hidden',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
   },
   stage: {
-    width: LIFT_TUNING.LAYOUT.STAGE_W,
-    height: LIFT_TUNING.LAYOUT.STAGE_H,
+    width: STAGE.STAGE_W,
+    height: STAGE.STAGE_H,
     // The half that does NOT inherit, so it has to be here, on the element the
     // press lands in. Without it this Pressable computes `touch-action:
     // manipulation` and 20px of finger drift hands the descent to the browser.

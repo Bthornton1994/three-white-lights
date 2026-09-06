@@ -277,13 +277,16 @@ export const SESSION_TUNING = Object.freeze({
   // -------------------------------------------------------------------------
 
   /**
-   * How long the modifier line is held before the RPE ladder becomes tappable.
-   *
-   * GDD §3.2 wants the modifier "applied and surfaced", so it needs a beat of
-   * its own — but a beat the player cannot tap through is a tax, so this is
-   * short and the ladder is live the moment it ends.
+   * How long the history-readiness line is held before the RPE ladder becomes
+   * tappable. Short: a beat the player cannot skip is a tax.
    */
   BRIEFING_REVEAL_MS: 420,
+
+  /**
+   * Briefing reveal when the player prefers reduced motion. Zero: the ladder
+   * is live on the first paint.
+   */
+  REDUCED_MOTION_REVEAL_MS: 0,
 
   /** How long a resolved rep is held before the next one braces. */
   REP_RESULT_HOLD_MS: 700,
@@ -422,9 +425,21 @@ export const SESSION_PREVIEW = Object.freeze({
    * recorded in §7.3(c) rather than left to be inferred from the name.
    */
   BEST_E1RM_KG: 200,
+  /**
+   * Prior best for the PR close-out preview. On-target work at E1RM_KG no
+   * longer gets a tap-style load bonus, so a PR beat needs a lower record
+   * rather than a primed check-in.
+   */
+  PR_PRIOR_BEST_E1RM_KG: 185,
   STREAK_BEFORE: 11,
   /** RPE the preview session is taken at. */
   RPE: 8,
+  /** Stimulus RPE of the hard day the heavy-readiness preview remembers. */
+  HEAVY_HISTORY_TOP_RPE: 10,
+  /** Stimulus RPE of the washed-out day the recovered preview remembers. */
+  RECOVERED_HISTORY_TOP_RPE: 8,
+  /** How many days before the preview day that recovered session sits. */
+  RECOVERED_HISTORY_DAYS_AGO: 4,
 });
 
 /**
@@ -443,11 +458,17 @@ export const SESSION_LAYOUT = Object.freeze({
   SCREEN_PAD: 20,
   ROW_GAP: 10,
   SECTION_GAP: 26,
+  /**
+   * Extra inset on top of SCREEN_PAD so training chrome clears a notched
+   * phone's safe-area. Web uses `env(safe-area-inset-*)` at the shell; this
+   * is the fallback when that env is 0.
+   */
+  SAFE_AREA_FALLBACK: 12,
 
   TITLE_FONT: 13,
   QUESTION_FONT: 11,
   ANSWER_FONT: 15,
-  MODIFIER_FONT: 24,
+  MODIFIER_FONT: 22,
   PROMPT_FONT: 13,
   HINT_FONT: 12,
   PLAN_FONT: 15,
@@ -457,17 +478,22 @@ export const SESSION_LAYOUT = Object.freeze({
   HEADLINE_FONT: 22,
   SUBHEAD_FONT: 13,
   STAT_FONT: 26,
-  LETTER_SPACING: 2,
+  LETTER_SPACING: 1.2,
+  BODY_LINE_HEIGHT: 18,
+  INSTRUCTION_LINE_HEIGHT: 18,
 
   /** Check-in answer chips. Three across, tall enough for a thumb. */
   CHIP_HEIGHT: 52,
   CHIP_RADIUS: 10,
   CHIP_GAP: 8,
   CHIP_BORDER: 2,
+  CHIP_MIN_WIDTH: 88,
 
   /** The RPE ladder. Five across, so each is narrower than a chip. */
-  RPE_CHIP_HEIGHT: 60,
+  RPE_CHIP_HEIGHT: 56,
   RPE_CHIP_GAP: 6,
+  RPE_CHIP_MIN_WIDTH: 48,
+  TOUCH_MIN: 44,
 
   /** The set counter pips shown above the stage while a set is live. */
   PIP_SIZE: 8,
@@ -482,19 +508,14 @@ export const SESSION_LAYOUT = Object.freeze({
   DIVIDER_HEIGHT: 1,
 
   /**
-   * The first-run disclosure block on the check-in (GDD §4.2).
-   *
-   * Smaller than a question row and set below all three of them on purpose:
-   * GDD §12.2 measures this screen on time-to-first-input, so the disclosure
-   * has to be readable without pushing the first tap off the first paint. Both
-   * of these are placeholders in the sense the file header describes, and the
-   * line height in particular is the one to turn first — two sentences of body
-   * text set at the same tight leading as a chip label is the shape that reads
-   * as a wall.
+   * The first-run disclosure block on the opening decision (GDD §4.2).
    */
   DISCLOSURE_FONT: 11,
   DISCLOSURE_LINE_HEIGHT: 16,
   DISCLOSURE_GAP: 8,
+
+  /** Training stage fit: never paint the canvas wider than the viewport. */
+  STAGE_FIT_MIN_SCALE: 0.72,
 });
 
 /**
@@ -545,9 +566,9 @@ export const SESSION_PROGRESSION_GUARD = Object.freeze({
  * different person on a different pass.
  */
 export const SESSION_COPY = Object.freeze({
-  /** GDD §3.2: "3 taps: sleep / soreness / motivation". */
-  CHECK_IN_TITLE: 'HOW ARE YOU TODAY?',
-  CHECK_IN_LIFT_QUESTION: 'TODAY',
+  /** Opening decision. Lift + RPE; no subjective readiness taps. */
+  CHECK_IN_TITLE: "TODAY'S SESSION",
+  CHECK_IN_LIFT_QUESTION: 'LIFT',
   CHECK_IN_QUESTION: Object.freeze({
     sleep: 'SLEEP',
     soreness: 'SORENESS',
@@ -558,6 +579,9 @@ export const SESSION_COPY = Object.freeze({
     soreness: Object.freeze({ sore: 'Sore', normal: 'Normal', fresh: 'Fresh' }),
     motivation: Object.freeze({ flat: 'Flat', steady: 'Steady', 'fired-up': 'Fired up' }),
   }),
+
+  INSTRUCTION_SHOW: 'HOW TO LIFT',
+  INSTRUCTION_DISMISS: 'GOT IT',
 
   LIFT_LABEL: Object.freeze({
     squat: 'SQUAT',

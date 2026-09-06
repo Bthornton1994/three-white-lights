@@ -31,20 +31,21 @@
  * Where the copy appears, and that this was a judgement call
  * ---------------------------------------------------------------------------
  * The GDD asks for onboarding copy and does not say which screen carries it.
- * The screen chosen is the readiness check-in, below its three question rows,
- * on the squat first run. The reasoning, recorded so it can be argued with:
+ * The screen chosen is the opening lift+RPE briefing, below the history
+ * readiness line, on the squat first run. The reasoning, recorded so it can
+ * be argued with:
  *
  *   1. It is the one screen a first-run player is certain to reach. The
- *      briefing sits behind three taps and the close-out behind a whole
- *      session, so a player who opens the app, reads nothing and leaves — the
- *      exact player the signup disclosure is about — never sees either.
+ *      close-out sits behind a whole session, so a player who opens the app,
+ *      reads nothing and leaves — the exact player the signup disclosure is
+ *      about — never sees it.
  *   2. The signup fact is only useful before the gap opens. Said on the
  *      close-out it is a report on something the player can no longer change,
  *      because `recordTrainingDay` has already moved the anchor off the signup
  *      day by then.
  *   3. `SessionScreen.tsx`'s own header holds this screen to GDD §12.2's
  *      time-to-first-input bar: "no splash, no home screen, no start-session
- *      button". Text set below the questions costs no tap and no navigation,
+ *      button". Text set below the lift chips costs no tap and no navigation,
  *      so it spends none of that budget. A separate screen in front would.
  *
  * ---------------------------------------------------------------------------

@@ -2554,18 +2554,16 @@ describe('navigating away and back cannot buy a second session of the day', () =
     // trip being cancelled by its own effect — a defect this whole file, and
     // the other 2233 tests, were structurally unable to see.
     expect(SESSION_SCREEN).toMatch(
-      /loop\.alreadyTrainedToday && state\.phase === '' && preview === undefined/,
+      /loop\.alreadyTrainedToday && state\.plan === null && preview === undefined/,
     );
-    // ...and the phase it is gated on, in the raw source, is `check-in` itself.
     expect(source('src/session/SessionScreen.tsx')).toMatch(
-      /loop\.alreadyTrainedToday && state\.phase === 'check-in'/,
+      /loop\.alreadyTrainedToday && state\.plan === null/,
     );
-    // The scan can see the shape it is looking for, and can see it change.
-    expect(codeOnly("if (a && state.phase === 'check-in' && b) {")).toMatch(
-      /state\.phase === ''/,
+    expect(codeOnly("if (a && state.plan === null && b) {")).toMatch(
+      /state\.plan === null/,
     );
     expect("loop.alreadyTrainedToday && state.phase === 'rest'").not.toMatch(
-      /loop\.alreadyTrainedToday && state\.phase === 'check-in'/,
+      /loop\.alreadyTrainedToday && state\.plan === null/,
     );
   });
 });

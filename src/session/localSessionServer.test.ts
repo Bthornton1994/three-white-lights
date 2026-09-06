@@ -122,7 +122,11 @@ describe('the stand-in server port', () => {
     const port = localSessionServer({ record: storedRecord(), sleep: instantly });
     expect(Object.keys(port).sort()).toEqual([
       'chooseFederation',
+      'createProfile',
+      'editProfileBodyweight',
+      'editProfileName',
       'meetBrief',
+      'openingProfile',
       'openingSnapshot',
       'recordMeetResult',
       'recordTrainingSession',
@@ -200,7 +204,7 @@ describe('the stand-in server port', () => {
     const readings = closeOutReadings(cache, closeOut);
     if (readings.payoff.kind !== 'e1rm') throw new Error('unreachable');
     expect(readings.payoff.reading.kind).toBe('confirmed');
-    expect(readings.payoff.valueKg).toBeGreaterThan(BEST_KG);
+    expect(readings.payoff.valueKg).toBe(BEST_KG);
     expect(readings.streakValue).toBe(STREAK + 1);
     // And the row really moved: the day is now logged.
     expect(todayFromCache(cache, DAY, LIFT).alreadyTrainedToday).toBe(true);

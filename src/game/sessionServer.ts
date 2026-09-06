@@ -691,10 +691,15 @@ export function bestE1rmFromSets(
  * The reported sets, as the one `SessionRecord` `fatigue.ts` folds into the
  * ledger. GDD §3.2 is one session per day, so one record per day.
  *
- * `topRpe` is the hardest RPE reported, `workSets` the number of sets, and
- * `repsPerSet` the mean rounded up — `fatigue.ts` takes a rectangle, and
- * rounding the ragged real session UP is the direction that cannot understate
- * what it cost.
+ * `topRpe` is the stimulus RPE folded into the ledger. Prefer ACHIEVED: a set
+ * that went to failure is reported at RPE 10 (`playedSetFrom`). When every
+ * prescribed rep is made, only the DECLARED / target RPE exists — that value is
+ * used as a bounded stimulus and is not labelled achieved. This is the single
+ * writer; `fatigue.ts` does not keep a second reading.
+ *
+ * `workSets` is the number of sets, and `repsPerSet` the mean rounded up —
+ * `fatigue.ts` takes a rectangle, and rounding the ragged real session UP is the
+ * direction that cannot understate what it cost.
  *
  * NO WEIGHT FIELD, which is `fatigue.ts`'s design and not an omission: strain is
  * a function of RPE, sets and reps, so a lifter whose e1RM has doubled and who

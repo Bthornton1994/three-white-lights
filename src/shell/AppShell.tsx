@@ -558,6 +558,9 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
     backgroundColor: LIFT_PALETTE.BACKDROP,
   },
   /** A mounted surface that is the one on screen. */

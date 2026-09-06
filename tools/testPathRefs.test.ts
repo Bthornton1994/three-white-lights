@@ -320,8 +320,11 @@ const PINNED = Object.freeze({
    *
    * 320 -> 332 with A2 My Lifter: six identity modules, five tests, and
    * `tools/_capture-a2-lifter.mjs`.
+   *
+   * 332 -> 333 with SF-TWL-SESSION-A-TRAINING-FIT-01: CheckInView.tsx left
+   * (-1), historyReadiness.test.ts and capture-training-fit.mjs arrived (+2).
    */
-  SCANNED_FILES: 332,
+  SCANNED_FILES: 333,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -367,8 +370,13 @@ const PINNED = Object.freeze({
    *
    * 104 -> 109 with A2: `lifterProfile.test.ts`, `lifterEntry.test.ts`,
    * `lifterPersist.test.ts`, `lifterSurface.test.ts`, `a2LifterFreeze.test.ts`.
+   *
+   * 109 -> 110 with SF-TWL-SESSION-A-TRAINING-FIT-01:
+   * `src/game/historyReadiness.test.ts`. `src/session/CheckInView.tsx` left
+   * the tracked tree in the same commit. `tools/capture-training-fit.mjs`
+   * lands beside them, so `SCANNED_FILES` is 332 - 1 + 2 = 333.
    */
-  TEST_FILES: 109,
+  TEST_FILES: 110,
 });
 
 /**

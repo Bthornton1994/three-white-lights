@@ -162,17 +162,20 @@ describe('SessionScreen hands the readings down and computes nothing', () => {
     }
   });
 
-  it('the check-in retargets the lift through the cache, not a second context', () => {
-    // `'choose-lift'` is a string literal, which `codeOnly` strips, so this
-    // one reads the raw source. The rest of the path is code.
+  it('the opening decision retargets the lift through the cache, not a second context', () => {
     expect(source('useSession.ts')).toMatch(/'choose-lift'/);
     expect(USE_SESSION).toMatch(/\bchooseLift\b/);
     expect(USE_SESSION).toMatch(/sessionContextFrom/);
     expect(USE_SESSION).toMatch(/sessionBrief/);
     expect(SCREEN).toMatch(/onChooseLift=\{chooseLift\}/);
-    expect(source('CheckInView.tsx')).toMatch(/onChooseLift/);
-    expect(source('CheckInView.tsx')).toMatch(/LIFT_ROTATION/);
-    expect(source('CheckInView.tsx')).toMatch(/check-in-lift-/);
+    expect(source('BriefingView.tsx')).toMatch(/onChooseLift/);
+    expect(source('BriefingView.tsx')).toMatch(/LIFT_ROTATION/);
+    expect(source('BriefingView.tsx')).toMatch(/check-in-lift-/);
+    expect(source('BriefingView.tsx')).not.toMatch(/check-in-sleep-/);
+    expect(SCREEN).not.toMatch(/CheckInView/);
+    expect(SCREEN).not.toMatch(/check-in-tap/);
+    expect(source('SetView.tsx')).toMatch(/session-instruction-toggle/);
+    expect(source('SetView.tsx')).toMatch(/STAGE_FIT_MIN_SCALE/);
   });
 });
 
@@ -183,7 +186,6 @@ describe('SessionScreen hands the readings down and computes nothing', () => {
 describe('no screen can reach the hidden ledger', () => {
   const SCREENS = [
     'BriefingView.tsx',
-    'CheckInView.tsx',
     'CloseOutView.tsx',
     'RestView.tsx',
     'SessionScreen.tsx',

@@ -1,31 +1,14 @@
 /**
- * BriefingView — GDD §3.2's "Modifier applied and surfaced" and GDD §3.3's RPE
- * choice, on ONE screen.
+ * BriefingView — the opening training decision (GDD §3.2 as corrected): lift,
+ * history readiness copy, and RPE on one screen.
  *
- * ---------------------------------------------------------------------------
- * WHY THEY SHARE A SCREEN
- * ---------------------------------------------------------------------------
- * The modifier is the answer to the check-in the player just gave, and the RPE
- * ladder is the decision it informs. Splitting them would put a screen with
- * nothing to do on it between the two, which is exactly the flab GDD §12.2
- * measures. The modifier line is held for `BRIEFING_REVEAL_MS` so it registers
- * as a result rather than as a caption, and the ladder is live the moment that
- * beat ends.
+ * No subjective sleep / soreness / motivation taps. Readiness is inferred
+ * from the training-history ledger and printed; this file computes nothing.
  *
- * ---------------------------------------------------------------------------
- * WHAT THIS FILE IS AND IS NOT ALLOWED TO KNOW
- * ---------------------------------------------------------------------------
- * The headline and the percentage are `ReadinessReport`, built by `fatigue.ts`;
- * this screen prints them. It computes no load, no percentage and no band.
+ * GDD §3.3: the player picks RPE, not raw weight. The bar appears on the
+ * platform after the choice.
  *
- * IT SHOWS NO WEIGHT EITHER, and that is the design rather than an omission.
- * GDD §3.3: "Player selects RPE target (6-10), NOT raw weight." Printing the
- * bar next to each rung would turn the choice back into picking a weight off a
- * list, which is the thing the mode exists not to be. The weight appears on the
- * platform, once the choice is made.
- *
- * NO FATIGUE METER (GDD §3.4, §12.3). The only quantity on this screen is the
- * player's own check-in percentage.
+ * NO FATIGUE METER (GDD §3.4, §12.3). Copy only.
  */
 
 import React, { useEffect } from 'react';
@@ -39,24 +22,19 @@ import Animated, {
 import { SESSION_COPY, SESSION_LAYOUT, SESSION_TUNING } from '../game/sessionTuning';
 import type { InjuryNotice, ReadinessReport } from '../game/fatigue';
 import type { LiftKind } from '../game/meet';
+import type { OnboardingDisclosure } from '../game/onboardingDisclosure';
 import { SESSION_PALETTE } from './sessionPalette';
 
 const L = SESSION_LAYOUT;
 
-function modifierColour(percent: number): string {
+function modifierColour(percent: number, band: ReadinessReport['band']): string {
   if (percent > 0) return SESSION_PALETTE.MODIFIER_UP;
   if (percent < 0) return SESSION_PALETTE.MODIFIER_DOWN;
+  if (band === 'grinding') return SESSION_PALETTE.MODIFIER_DOWN;
+  if (band === 'ready' || band === 'primed') return SESSION_PALETTE.MODIFIER_UP;
   return SESSION_PALETTE.MODIFIER_LEVEL;
 }
 
-/**
- * The setback line, when one is running (GDD §3.5).
- *
- * Copy only — the volume cut it describes was already applied by
- * `fatigue.ts`'s `cappedSession` when the plan was built. Framed as
- * recoverable, because §3.5 requires it to be, and the reassurance line comes
- * from the fatigue module rather than being written again here.
- */
 function InjuryLine({ injury }: { readonly injury: InjuryNotice }): React.ReactElement {
   return (
     <View style={styles.injury} testID="session-injury">
@@ -73,9 +51,10 @@ export interface BriefingViewProps {
   readonly injury: InjuryNotice | null;
   readonly workSets: number;
   readonly repsPerSet: number;
-  /** Live once the reveal beat has elapsed. */
+  readonly disclosures: readonly OnboardingDisclosure[];
   readonly ladderReady: boolean;
   readonly onChooseRpe: (rpe: number) => void;
+  readonly onChooseLift: (lift: LiftKind) => void;
 }
 
 export function BriefingView({
@@ -84,8 +63,10 @@ export function BriefingView({
   injury,
   workSets,
   repsPerSet,
+  disclosures,
   ladderReady,
   onChooseRpe,
+  onChooseLift,
 }: BriefingViewProps): React.ReactElement {
   const reveal = useSharedValue(0);
   useEffect(() => {
@@ -95,18 +76,64 @@ export function BriefingView({
 
   return (
     <View style={styles.root} testID="session-briefing">
-      <Text style={styles.lift}>{SESSION_COPY.LIFT_LABEL[lift]}</Text>
+      <Text style={styles.title}>{SESSION_COPY.CHECK_IN_TITLE}</Text>
+
+      <View style={styles.row} testID="check-in-lift">
+        <Text style={styles.question}>{SESSION_COPY.CHECK_IN_LIFT_QUESTION}</Text>
+        <View style={styles.chips}>
+          {SESSION_TUNING.LIFT_ROTATION.map((option) => {
+            const isChosen = option === lift;
+            return (
+              <Pressable
+                key={option}
+                testID={`check-in-lift-${option}`}
+                accessibilityRole="button"
+                onPress={() => onChooseLift(option)}
+                style={[styles.chip, isChosen ? styles.chipChosen : null]}
+              >
+                <Text
+                  style={[styles.chipLabel, isChosen ? styles.chipLabelChosen : null]}
+                  numberOfLines={1}
+                >
+                  {SESSION_COPY.LIFT_LABEL[option]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
       <Text
-        style={[styles.modifier, { color: modifierColour(readiness.loadAdjustmentPercent) }]}
+        style={[styles.modifier, { color: modifierColour(readiness.loadAdjustmentPercent, readiness.band) }]}
         testID="session-modifier"
       >
         {readiness.label}
       </Text>
+      {readiness.detail === '' ? null : (
+        <Text style={styles.detail} testID="session-readiness-detail">
+          {readiness.detail}
+        </Text>
+      )}
       <Text style={styles.plan} testID="session-plan">
         {`${workSets} ${SESSION_COPY.BRIEFING_PLAN} × ${repsPerSet}`}
       </Text>
 
       {injury === null ? null : <InjuryLine injury={injury} />}
+
+      {disclosures.length > 0 ? (
+        <View style={styles.disclosures} testID="check-in-disclosures">
+          <Text style={styles.disclosureTitle}>{SESSION_COPY.FIRST_RUN_TITLE}</Text>
+          {disclosures.map((disclosure) => (
+            <Text
+              key={disclosure.id}
+              testID={`check-in-disclosure-${disclosure.id}`}
+              style={styles.disclosureLine}
+            >
+              {disclosure.line}
+            </Text>
+          ))}
+        </View>
+      ) : null}
 
       <Animated.View style={[styles.ladderBlock, ladderStyle]}>
         <Text style={styles.prompt}>{SESSION_COPY.BRIEFING_PROMPT}</Text>
@@ -138,18 +165,75 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: L.SCREEN_PAD,
+    paddingTop: L.SAFE_AREA_FALLBACK,
+    paddingBottom: L.SAFE_AREA_FALLBACK,
     gap: L.ROW_GAP,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
-  lift: {
-    color: SESSION_PALETTE.TEXT_DIM,
-    fontSize: L.LABEL_FONT,
+  title: {
+    color: SESSION_PALETTE.TEXT,
+    fontSize: L.TITLE_FONT,
+    fontWeight: '700',
     letterSpacing: L.LETTER_SPACING,
     textAlign: 'center',
+  },
+  row: {
+    gap: L.ROW_GAP,
+    width: '100%',
+  },
+  question: {
+    color: SESSION_PALETTE.TEXT_DIM,
+    fontSize: L.QUESTION_FONT,
+    letterSpacing: L.LETTER_SPACING,
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: L.CHIP_GAP,
+    width: '100%',
+  },
+  chip: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: L.CHIP_MIN_WIDTH,
+    minWidth: L.CHIP_MIN_WIDTH,
+    minHeight: L.TOUCH_MIN,
+    height: L.CHIP_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: L.CHIP_RADIUS,
+    borderWidth: L.CHIP_BORDER,
+    borderColor: SESSION_PALETTE.CHIP_EDGE,
+    backgroundColor: SESSION_PALETTE.CHIP,
+  },
+  chipChosen: {
+    backgroundColor: SESSION_PALETTE.CHIP_CHOSEN,
+    borderColor: SESSION_PALETTE.CHIP_CHOSEN_EDGE,
+  },
+  chipLabel: {
+    color: SESSION_PALETTE.TEXT_DIM,
+    fontSize: L.ANSWER_FONT,
+  },
+  chipLabelChosen: {
+    color: SESSION_PALETTE.TEXT,
+    fontWeight: '700',
   },
   modifier: {
     fontSize: L.MODIFIER_FONT,
     fontWeight: '700',
     textAlign: 'center',
+    flexShrink: 1,
+    width: '100%',
+  },
+  detail: {
+    color: SESSION_PALETTE.TEXT_DIM,
+    fontSize: L.HINT_FONT,
+    lineHeight: L.BODY_LINE_HEIGHT,
+    textAlign: 'center',
+    width: '100%',
+    flexShrink: 1,
   },
   plan: {
     color: SESSION_PALETTE.TEXT_DIM,
@@ -160,21 +244,26 @@ const styles = StyleSheet.create({
     marginTop: L.ROW_GAP,
     gap: L.ROW_GAP / 2,
     alignItems: 'center',
+    width: '100%',
   },
   injuryHeadline: {
     color: SESSION_PALETTE.GRIND,
     fontSize: L.PROMPT_FONT,
     fontWeight: '700',
     letterSpacing: L.LETTER_SPACING,
+    textAlign: 'center',
   },
   injuryDetail: {
     color: SESSION_PALETTE.TEXT_DIM,
     fontSize: L.HINT_FONT,
+    lineHeight: L.BODY_LINE_HEIGHT,
     textAlign: 'center',
+    width: '100%',
   },
   ladderBlock: {
     marginTop: L.SECTION_GAP,
     gap: L.ROW_GAP,
+    width: '100%',
   },
   prompt: {
     color: SESSION_PALETTE.TEXT,
@@ -182,13 +271,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: L.LETTER_SPACING,
     textAlign: 'center',
+    width: '100%',
+    flexShrink: 1,
   },
   ladder: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: L.RPE_CHIP_GAP,
+    width: '100%',
+    justifyContent: 'center',
   },
   rung: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: L.RPE_CHIP_MIN_WIDTH,
+    minWidth: L.RPE_CHIP_MIN_WIDTH,
+    minHeight: L.TOUCH_MIN,
     height: L.RPE_CHIP_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
@@ -208,6 +306,23 @@ const styles = StyleSheet.create({
   hint: {
     color: SESSION_PALETTE.TEXT_DIM,
     fontSize: L.HINT_FONT,
+    lineHeight: L.BODY_LINE_HEIGHT,
     textAlign: 'center',
+    width: '100%',
+    flexShrink: 1,
+  },
+  disclosures: {
+    gap: L.DISCLOSURE_GAP,
+    width: '100%',
+  },
+  disclosureTitle: {
+    color: SESSION_PALETTE.TEXT_DIM,
+    fontSize: L.QUESTION_FONT,
+    letterSpacing: L.LETTER_SPACING,
+  },
+  disclosureLine: {
+    color: SESSION_PALETTE.TEXT_DIM,
+    fontSize: L.DISCLOSURE_FONT,
+    lineHeight: L.DISCLOSURE_LINE_HEIGHT,
   },
 });
