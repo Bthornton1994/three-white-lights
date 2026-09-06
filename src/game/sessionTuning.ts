@@ -374,7 +374,14 @@ export const SESSION_TUNING = Object.freeze({
    * times `CLOSE_OUT_ROW_STAGGER_MS`, so this is where "which beat lands first"
    * is decided — reorder it and the payoff reads differently.
    */
-  CLOSE_OUT_ROW_ORDER: Object.freeze({ CALL: 0, E1RM: 1, STREAK: 2, REPS: 3 }),
+  CLOSE_OUT_ROW_ORDER: Object.freeze({
+    CALL: 0,
+    E1RM: 1,
+    STREAK: 2,
+    REPS: 3,
+    OUTLOOK: 4,
+    NEXT: 5,
+  }),
 });
 
 /**
@@ -467,9 +474,9 @@ export const SESSION_LAYOUT = Object.freeze({
 
   TITLE_FONT: 13,
   /** Athletic lift name on the opening decision and the live set. */
-  HERO_FONT: 32,
-  HERO_LETTER_SPACING: 1.6,
-  HERO_LINE_HEIGHT: 36,
+  HERO_FONT: 36,
+  HERO_LETTER_SPACING: 0.4,
+  HERO_LINE_HEIGHT: 40,
   QUESTION_FONT: 11,
   ANSWER_FONT: 15,
   MODIFIER_FONT: 18,
@@ -493,10 +500,10 @@ export const SESSION_LAYOUT = Object.freeze({
   CHIP_BORDER: 2,
   CHIP_MIN_WIDTH: 88,
 
-  /** The RPE ladder. Five across, so each is narrower than a chip. */
-  RPE_CHIP_HEIGHT: 56,
-  RPE_CHIP_GAP: 6,
-  RPE_CHIP_MIN_WIDTH: 88,
+  /** The RPE ladder. Five in one row on a 375pt phone. */
+  RPE_CHIP_HEIGHT: 48,
+  RPE_CHIP_GAP: 4,
+  RPE_CHIP_MIN_WIDTH: 56,
   /** Amber outline on the suggested effort — thicker than CHIP_BORDER. */
   RPE_SELECTED_BORDER: 3,
   TOUCH_MIN: 44,
@@ -508,6 +515,16 @@ export const SESSION_LAYOUT = Object.freeze({
   CARD_PAD: 14,
   CARD_RADIUS: 16,
   CARD_ACCENT_WIDTH: 4,
+
+  /** THREE WHITE LIGHTS identity pips on the training stage. */
+  BRAND_LIGHT_SIZE: 12,
+  BRAND_LIGHT_GAP: 10,
+  BRAND_FONT: 11,
+  /**
+   * Training-gym preview on the opening decision (PX: kill flat void).
+   * Facility-first: this is the floor, chrome sits in a compact overlay.
+   */
+  STAGE_PREVIEW_MIN_HEIGHT: 220,
 
   /** The set counter pips shown above the stage while a set is live. */
   PIP_SIZE: 8,
@@ -590,6 +607,8 @@ export const SESSION_PROGRESSION_GUARD = Object.freeze({
 export const SESSION_COPY = Object.freeze({
   /** Opening decision. Lift + RPE; no subjective readiness taps. */
   CHECK_IN_TITLE: "TODAY'S SESSION",
+  BRAND_MARK: 'THREE WHITE LIGHTS',
+  BRIEFING_KICKER: 'TRAINING',
   CHECK_IN_LIFT_QUESTION: 'LIFT',
   CHECK_IN_QUESTION: Object.freeze({
     sleep: 'SLEEP',
@@ -672,6 +691,8 @@ export const SESSION_COPY = Object.freeze({
   CLOSE_OUT_E1RM_LABEL: 'e1RM',
   CLOSE_OUT_STREAK_LABEL: 'DAY STREAK',
   CLOSE_OUT_REPS_LABEL: 'REPS BANKED',
+  CLOSE_OUT_OUTLOOK_LABEL: 'OUTLOOK',
+  CLOSE_OUT_NEXT_LABEL: 'NEXT',
   CLOSE_OUT_DONE: 'DONE',
   CLOSE_OUT_RETRY: 'TRAIN AGAIN',
 

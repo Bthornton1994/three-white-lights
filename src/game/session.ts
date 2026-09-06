@@ -192,13 +192,18 @@
  */
 
 import {
+  LUCKIEST_ROLLS,
   NEUTRAL_CHECK_IN,
   cappedSession,
+  historyReadiness,
+  nextTrainingAction,
+  recordSession,
   sessionFeel,
   type FatigueState,
   type InjuryNotice,
   type LiftMoment,
   type MotivationAnswer,
+  type NextTrainingAction,
   type ReadinessCheckIn,
   type ReadinessReport,
   type SessionFeel,
@@ -422,6 +427,11 @@ export interface SessionCloseOut {
    * the close-out offers a retry instead of ending the day.
    */
   readonly canPropose: boolean;
+  /** History outlook for the next day. Copy only — never a meter. */
+  readonly outlookHeadline: string;
+  readonly outlookDetail: string;
+  /** Adaptive next action from the same ledger. */
+  readonly nextAction: NextTrainingAction;
 }
 
 /** The whole loop, on one tap. */
@@ -1009,6 +1019,15 @@ function closeOutFrom(state: SessionState): SessionCloseOut {
     prescribedReps,
   });
 
+  const nextDay = state.context.day + 1;
+  let ledger = state.context.fatigue;
+  const recorded = sessionRecordFromReports(state.context.day, plan.lift, reports);
+  if (recorded !== null) {
+    ledger = recordSession(ledger, recorded, LUCKIEST_ROLLS).state;
+  }
+  const outlook = historyReadiness(ledger, nextDay);
+  const action = nextTrainingAction(ledger, nextDay);
+
   return {
     day: state.context.day,
     lift: plan.lift,
@@ -1032,6 +1051,32 @@ function closeOutFrom(state: SessionState): SessionCloseOut {
     headline,
     subhead,
     canPropose,
+    outlookHeadline: outlook.headline,
+    outlookDetail: outlook.detail,
+    nextAction: action,
+  };
+}
+
+function sessionRecordFromReports(
+  day: number,
+  lift: SimLift,
+  reports: readonly TrainingSetReport[],
+): SessionRecord | null {
+  if (reports.length === 0) return null;
+  let topRpe = Number.NEGATIVE_INFINITY;
+  let totalReps = 0;
+  for (let i = 0; i < reports.length; i += 1) {
+    const set = reports[i];
+    if (set === undefined) continue;
+    if (set.rpe > topRpe) topRpe = set.rpe;
+    totalReps += set.reps;
+  }
+  return {
+    day,
+    lift,
+    topRpe,
+    workSets: reports.length,
+    repsPerSet: Math.ceil(totalReps / reports.length),
   };
 }
 

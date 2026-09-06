@@ -2,17 +2,17 @@
  * BriefingView — the opening training decision (GDD §3.2 as corrected): lift,
  * history readiness copy, and RPE on one screen.
  *
- * A×C IRON & AMBER Screen 03 family (direction, not pixel-perfect props):
- * small session kicker, athletic lift hero, readiness as a card, effort
- * pills with an amber outline on the suggested rung, full-width amber START.
- * No isometric gym art. No Gym/Shop/Staff/Train dock.
+ * A×C IRON & AMBER Screen 03 family (PX TRAINING-FIT-02):
+ * facility-first training gym, THREE WHITE LIGHTS, athletic lift hero,
+ * readiness as a card, one-row effort pills, full-width amber START.
+ * Licensed gym raster — not mockup isometric art. No Gym/Shop/Staff/Train
+ * dock (Session B).
  *
  * No subjective sleep / soreness / motivation taps. Readiness is inferred
  * from the training-history ledger and printed; this file computes nothing.
  *
- * GDD §3.3: the player picks RPE, not raw weight. The bar appears on the
- * platform after the choice. Tapping a rung still starts the set (drivers
- * and the existing RPE behaviour). START starts the suggested rung.
+ * GDD §3.3: the player picks RPE, not raw weight. Tapping a rung still starts
+ * the set. START starts the suggested rung.
  *
  * NO FATIGUE METER (GDD §3.4, §12.3). Copy only.
  */
@@ -30,6 +30,7 @@ import type { InjuryNotice, ReadinessReport } from '../game/fatigue';
 import type { LiftKind } from '../game/meet';
 import type { OnboardingDisclosure } from '../game/onboardingDisclosure';
 import { SESSION_PALETTE } from './sessionPalette';
+import { TrainingStagePreview } from './TrainingStagePreview';
 
 const L = SESSION_LAYOUT;
 const SUGGESTED_RPE = SESSION_TUNING.RPE_CHOICES[SESSION_TUNING.DEFAULT_RPE_INDEX];
@@ -85,52 +86,57 @@ export function BriefingView({
 
   return (
     <View style={styles.root} testID="session-briefing">
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.block}>
+      <View style={styles.stageWrap}>
+        <TrainingStagePreview />
+        <View style={styles.brand} pointerEvents="none">
           <View style={styles.lights} testID="session-lights">
             {([0, 1, 2] as const).map((index) => (
               <View key={index} testID={`session-light-${index}`} style={styles.light} />
             ))}
           </View>
-          <Text style={styles.kicker}>{SESSION_COPY.CHECK_IN_TITLE}</Text>
-          <Text style={styles.hero} testID="session-lift-hero">
-            {SESSION_COPY.LIFT_HERO[lift]}
-          </Text>
-
-          <View style={styles.row} testID="check-in-lift">
-            <Text style={styles.question}>{SESSION_COPY.CHECK_IN_LIFT_QUESTION}</Text>
-            <View style={styles.chips}>
-              {SESSION_TUNING.LIFT_ROTATION.map((option) => {
-                const isChosen = option === lift;
-                return (
-                  <Pressable
-                    key={option}
-                    testID={`check-in-lift-${option}`}
-                    accessibilityRole="button"
-                    onPress={() => onChooseLift(option)}
-                    style={[styles.chip, isChosen ? styles.chipChosen : null]}
-                  >
-                    <Text
-                      style={[styles.chipLabel, isChosen ? styles.chipLabelChosen : null]}
-                      numberOfLines={1}
-                    >
-                      {SESSION_COPY.LIFT_LABEL[option]}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <Text style={styles.plan} testID="session-plan">
-            {`${workSets} ${SESSION_COPY.BRIEFING_PLAN} × ${repsPerSet}`}
-          </Text>
+          <Text style={styles.brandMark}>{SESSION_COPY.BRAND_MARK}</Text>
         </View>
+      </View>
+
+      <ScrollView
+        style={styles.overlay}
+        contentContainerStyle={styles.overlayContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.kicker}>{SESSION_COPY.BRIEFING_KICKER}</Text>
+        <Text style={styles.hero} testID="session-lift-hero">
+          {SESSION_COPY.LIFT_HERO[lift]}
+        </Text>
+
+        <View style={styles.row} testID="check-in-lift">
+          <Text style={styles.question}>{SESSION_COPY.CHECK_IN_LIFT_QUESTION}</Text>
+          <View style={styles.chips}>
+            {SESSION_TUNING.LIFT_ROTATION.map((option) => {
+              const isChosen = option === lift;
+              return (
+                <Pressable
+                  key={option}
+                  testID={`check-in-lift-${option}`}
+                  accessibilityRole="button"
+                  onPress={() => onChooseLift(option)}
+                  style={[styles.chip, isChosen ? styles.chipChosen : null]}
+                >
+                  <Text
+                    style={[styles.chipLabel, isChosen ? styles.chipLabelChosen : null]}
+                    numberOfLines={1}
+                  >
+                    {SESSION_COPY.LIFT_LABEL[option]}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <Text style={styles.plan} testID="session-plan">
+          {`${workSets} ${SESSION_COPY.BRIEFING_PLAN} × ${repsPerSet}`}
+        </Text>
 
         <View style={styles.card} testID="session-readiness-card">
           <View style={styles.cardAccent} />
@@ -193,7 +199,6 @@ export function BriefingView({
               );
             })}
           </View>
-          <Text style={styles.hint}>{SESSION_COPY.BRIEFING_RPE_HINT}</Text>
           <Pressable
             accessibilityRole="button"
             disabled={!ladderReady || startRpe === undefined}
@@ -220,37 +225,54 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     overflow: 'hidden',
   },
-  scroll: {
+  stageWrap: {
     flex: 1,
+    minHeight: L.STAGE_PREVIEW_MIN_HEIGHT,
     width: '100%',
   },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'space-between',
+  brand: {
+    position: 'absolute',
+    top: L.SAFE_AREA_FALLBACK,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    gap: L.BRAND_LIGHT_GAP,
+  },
+  overlay: {
+    flexGrow: 0,
+    flexShrink: 1,
+    width: '100%',
+    maxWidth: '100%',
+  },
+  overlayContent: {
     paddingHorizontal: L.SCREEN_PAD,
-    paddingTop: L.SAFE_AREA_FALLBACK,
+    paddingTop: L.SECTION_GAP,
     paddingBottom: L.NAV_CLEARANCE,
-    gap: L.ROW_GAP,
-    width: '100%',
-  },
-  block: {
     gap: L.ROW_GAP,
     width: '100%',
   },
   lights: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: L.PIP_GAP,
+    gap: L.BRAND_LIGHT_GAP,
     width: '100%',
   },
   light: {
-    width: L.PIP_SIZE,
-    height: L.PIP_SIZE,
-    borderRadius: L.PIP_SIZE / 2,
+    width: L.BRAND_LIGHT_SIZE,
+    height: L.BRAND_LIGHT_SIZE,
+    borderRadius: L.BRAND_LIGHT_SIZE / 2,
     backgroundColor: SESSION_PALETTE.LIGHT,
   },
-  kicker: {
+  brandMark: {
     color: SESSION_PALETTE.TEXT,
+    fontSize: L.BRAND_FONT,
+    fontWeight: '800',
+    letterSpacing: L.LETTER_SPACING,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  kicker: {
+    color: SESSION_PALETTE.TEXT_DIM,
     fontSize: L.TITLE_FONT,
     fontWeight: '800',
     letterSpacing: L.LETTER_SPACING,
@@ -259,6 +281,7 @@ const styles = StyleSheet.create({
   },
   hero: {
     color: SESSION_PALETTE.TEXT,
+    fontFamily: SESSION_PALETTE.TYPE_HERO,
     fontSize: L.HERO_FONT,
     fontWeight: '800',
     letterSpacing: L.HERO_LETTER_SPACING,
@@ -367,7 +390,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   ladderBlock: {
-    marginTop: L.SECTION_GAP,
     gap: L.ROW_GAP,
     width: '100%',
   },
@@ -383,7 +405,7 @@ const styles = StyleSheet.create({
   },
   ladder: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     gap: L.RPE_CHIP_GAP,
     width: '100%',
     justifyContent: 'center',
@@ -416,14 +438,6 @@ const styles = StyleSheet.create({
   rungLabelSuggested: {
     color: SESSION_PALETTE.ACTION,
     fontWeight: '800',
-  },
-  hint: {
-    color: SESSION_PALETTE.TEXT_DIM,
-    fontSize: L.HINT_FONT,
-    lineHeight: L.BODY_LINE_HEIGHT,
-    textAlign: 'center',
-    width: '100%',
-    flexShrink: 1,
   },
   start: {
     alignSelf: 'stretch',

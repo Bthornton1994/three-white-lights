@@ -93,7 +93,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -301,7 +301,13 @@ export function CloseOutView({
       : SESSION_PALETTE.MISS;
 
   return (
-    <View style={styles.root} testID="session-close-out">
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      testID="session-close-out"
+    >
       <Row index={SESSION_TUNING.CLOSE_OUT_ROW_ORDER.CALL}>
         <Text style={[styles.headline, { color: headlineColour }]} testID="close-out-headline">
           {closeOut.headline}
@@ -309,6 +315,18 @@ export function CloseOutView({
         <Text style={styles.subhead} testID="close-out-subhead">
           {closeOut.subhead}
         </Text>
+      </Row>
+
+      <Row index={SESSION_TUNING.CLOSE_OUT_ROW_ORDER.OUTLOOK}>
+        <Text style={styles.statLabel}>{SESSION_COPY.CLOSE_OUT_OUTLOOK_LABEL}</Text>
+        <Text style={styles.outlookHeadline} testID="close-out-outlook">
+          {closeOut.outlookHeadline}
+        </Text>
+        {closeOut.outlookDetail === '' ? null : (
+          <Text style={styles.feedback} testID="close-out-outlook-detail">
+            {closeOut.outlookDetail}
+          </Text>
+        )}
       </Row>
 
       {e1rm !== null && e1rm.valueKg !== null ? (
@@ -378,6 +396,18 @@ export function CloseOutView({
         </Text>
       </Row>
 
+      <Row index={SESSION_TUNING.CLOSE_OUT_ROW_ORDER.NEXT}>
+        <Text style={styles.statLabel}>{SESSION_COPY.CLOSE_OUT_NEXT_LABEL}</Text>
+        <Text style={styles.outlookHeadline} testID="close-out-next">
+          {closeOut.nextAction.headline}
+        </Text>
+        {closeOut.nextAction.detail === '' ? null : (
+          <Text style={styles.feedback} testID="close-out-next-detail">
+            {closeOut.nextAction.detail}
+          </Text>
+        )}
+      </Row>
+
       <Pressable
         style={styles.action}
         accessibilityRole="button"
@@ -388,21 +418,28 @@ export function CloseOutView({
           {closeOut.canPropose ? SESSION_COPY.CLOSE_OUT_DONE : SESSION_COPY.CLOSE_OUT_RETRY}
         </Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    width: '100%',
+    maxWidth: '100%',
+  },
+  content: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: L.SCREEN_PAD,
+    paddingBottom: L.NAV_CLEARANCE,
     gap: L.STAT_ROW_GAP,
   },
   row: {
     alignItems: 'center',
     gap: L.ROW_GAP / 2,
+    width: '100%',
   },
   provisional: {
     alignItems: 'center',
@@ -418,6 +455,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: L.LETTER_SPACING,
     textTransform: 'uppercase',
+    textAlign: 'center',
+    width: '100%',
+    flexShrink: 1,
   },
   subhead: {
     color: SESSION_PALETTE.TEXT_DIM,
@@ -461,6 +501,16 @@ const styles = StyleSheet.create({
     color: SESSION_PALETTE.TEXT_DIM,
     fontSize: L.SUBHEAD_FONT,
     textAlign: 'center',
+    width: '100%',
+    flexShrink: 1,
+  },
+  outlookHeadline: {
+    color: SESSION_PALETTE.TEXT,
+    fontSize: L.MODIFIER_FONT,
+    fontWeight: '700',
+    textAlign: 'center',
+    width: '100%',
+    flexShrink: 1,
   },
   action: {
     alignSelf: 'stretch',

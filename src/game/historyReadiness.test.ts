@@ -22,6 +22,8 @@ import {
   LUCKIEST_ROLLS,
   adjustedTimingWindowMs,
   historyReadiness,
+  nextTrainingAction,
+  nextTrainingActionAfterSession,
   recordSession,
   sessionFeel,
   type FatigueState,
@@ -267,5 +269,70 @@ describe('the normal path has no subjective check-in', () => {
     const restored = JSON.parse(JSON.stringify(hard)) as FatigueState;
     expect(historyReadiness(restored, 2)).toEqual(historyReadiness(hard, 2));
     expect(sessionFeel(restored, 2)).toEqual(sessionFeel(hard, 2));
+  });
+});
+
+describe('adaptive next training action — TRAINING-FIT-02 C/E', () => {
+  it('empty history is form-history, not a fabricated push', () => {
+    const action = nextTrainingAction(EMPTY_FATIGUE_STATE, 10);
+    expect(action.kind).toBe('form-history');
+    expect(action.headline).toBe(FATIGUE_COPY.NEXT_ACTION_HEADLINE['form-history']);
+    expect(action.detail).toBe(FATIGUE_COPY.NEXT_ACTION_DETAIL['form-history']);
+    expect(action.detail).not.toMatch(/\d|residual|strain|meter/i);
+  });
+
+  it('RPE 9 and 10 are heavier than RPE 8 — next action is not push', () => {
+    const rpe8 = after(EMPTY_FATIGUE_STATE, template(1, 8));
+    const rpe9 = after(EMPTY_FATIGUE_STATE, template(1, 9));
+    const rpe10 = after(EMPTY_FATIGUE_STATE, template(1, 10));
+    expect(nextTrainingAction(rpe8, 2).kind).toBe('hold');
+    expect(nextTrainingAction(rpe9, 2).kind).toBe('recover');
+    expect(nextTrainingAction(rpe10, 2).kind).toBe('recover');
+    expect(nextTrainingAction(rpe8, 2).kind).not.toBe(nextTrainingAction(rpe9, 2).kind);
+    expect(nextTrainingAction(rpe10, 2).detail).toBe(FATIGUE_COPY.NEXT_ACTION_LIMIT_DETAIL);
+    expect(nextTrainingAction(rpe9, 2).detail).toBe(FATIGUE_COPY.NEXT_ACTION_DETAIL.recover);
+  });
+
+  it('hard recent training is not immediately recovered', () => {
+    const hard = after(EMPTY_FATIGUE_STATE, template(1, 10));
+    expect(nextTrainingAction(hard, 2).kind).toBe('recover');
+    expect(nextTrainingAction(hard, 2).kind).not.toBe('push');
+  });
+
+  it('recovery decay opens a push after enough days', () => {
+    const hard = after(EMPTY_FATIGUE_STATE, template(1, 10));
+    expect(nextTrainingAction(hard, 6).kind).toBe('push');
+    expect(nextTrainingAction(hard, 6).headline).toBe(FATIGUE_COPY.NEXT_ACTION_HEADLINE.push);
+  });
+
+  it('a failed lift folds as RPE 10 and is not a push the next morning', () => {
+    const plan = prescribeSession(200, 'squat', 8, historyReadiness(EMPTY_FATIGUE_STATE, 1), 1);
+    const failed = playedSetFrom(plan, 1, [
+      { outcome: 'good-lift', executionQuality: 1 },
+      { outcome: 'miss', executionQuality: 0 },
+    ]);
+    expect(failed.report?.rpe).toBe(TO_FAILURE_RPE);
+    const oneSet = fatigueRecordFor(1, 'squat', failed.report === null ? [] : [failed.report]);
+    expect(oneSet?.topRpe).toBe(TO_FAILURE_RPE);
+    const fullFail: SessionRecord = {
+      ...template(1, TO_FAILURE_RPE),
+    };
+    const action = nextTrainingActionAfterSession(EMPTY_FATIGUE_STATE, fullFail, 2);
+    expect(action.kind).toBe('recover');
+    expect(action.detail).toBe(FATIGUE_COPY.NEXT_ACTION_LIMIT_DETAIL);
+    expect(oneSet).not.toBeNull();
+  });
+
+  it('same inputs produce the same next action', () => {
+    const a = after(after(EMPTY_FATIGUE_STATE, template(1, 9)), template(2, 10));
+    const b = after(after(EMPTY_FATIGUE_STATE, template(1, 9)), template(2, 10));
+    expect(nextTrainingAction(a, 3)).toEqual(nextTrainingAction(b, 3));
+  });
+
+  it('history readiness names the last session without a meter', () => {
+    expect(historyReadiness(EMPTY_FATIGUE_STATE, 2).detail).not.toMatch(/Last session/);
+    const hard = after(EMPTY_FATIGUE_STATE, template(1, 10));
+    expect(historyReadiness(hard, 2).detail).toMatch(/Last session • squat • RPE 10\./);
+    expect(historyReadiness(hard, 2).detail).not.toMatch(/residual|strain|meter/i);
   });
 });

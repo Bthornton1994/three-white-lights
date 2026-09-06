@@ -8,6 +8,7 @@ import {
   FATIGUE_TUNING,
   HISTORY_READINESS_KIND_ORDER,
   INJURY_KINDS,
+  NEXT_TRAINING_ACTION_KIND_ORDER,
   LUCKIEST_ROLLS,
   NEUTRAL_CHECK_IN,
   READINESS_BAND_ORDER,
@@ -386,6 +387,7 @@ describe('no fatigue meter: the public API offers no fatigue level', () => {
         'FATIGUE_TUNING',
         'HISTORY_READINESS_KIND_ORDER',
         'INJURY_KINDS',
+        'NEXT_TRAINING_ACTION_KIND_ORDER',
         'LUCKIEST_ROLLS',
         'NEUTRAL_CHECK_IN',
         'READINESS_BAND_ORDER',
@@ -398,6 +400,8 @@ describe('no fatigue meter: the public API offers no fatigue level', () => {
         'cappedSession',
         'historyReadiness',
         'isFreeSession',
+        'nextTrainingAction',
+        'nextTrainingActionAfterSession',
         'perceivedRpe',
         'pruneFatigueState',
         'readinessCheckIn',
@@ -1409,6 +1413,14 @@ describe('the channels fatigue is felt through (GDD §3.4)', () => {
       expect(FATIGUE_COPY.HISTORY_READINESS_HEADLINE[kind]).not.toMatch(/\d/);
       expect(FATIGUE_COPY.HISTORY_READINESS_DETAIL[kind]).not.toMatch(/\d/);
     }
+    expect(FATIGUE_COPY.LAST_SESSION_PREFIX).not.toMatch(/\d/);
+    for (const kind of NEXT_TRAINING_ACTION_KIND_ORDER) {
+      expect(FATIGUE_COPY.NEXT_ACTION_HEADLINE[kind]).toBeTypeOf('string');
+      expect(FATIGUE_COPY.NEXT_ACTION_DETAIL[kind]).toBeTypeOf('string');
+      expect(FATIGUE_COPY.NEXT_ACTION_HEADLINE[kind]).not.toMatch(/\d/);
+      expect(FATIGUE_COPY.NEXT_ACTION_DETAIL[kind]).not.toMatch(/\d/);
+    }
+    expect(FATIGUE_COPY.NEXT_ACTION_LIMIT_DETAIL).not.toMatch(/\d/);
   });
 });
 

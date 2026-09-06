@@ -2,10 +2,16 @@
  * Session A chrome binds to Gym Empire's playable A×C IRON & AMBER tokens
  * without forking `src/empire/` or the PX visual-direction tree.
  *
- * If PX publishes the spec / TOKEN-MANIFEST into this checkout, every hex in
- * `IRON_AMBER` must appear in those files. Until they exist, the suite pins
- * the GymScreen CSS named colours and `index.ts` void at Gym Empire
- * `7010867efea4438db7d098a619625400016025da`.
+ * TRAINING-FIT-02 visual SoT (Session A only):
+ *   design/session-a-training-fit-02/00-twl-bo-product-bar.md
+ *   design/session-a-training-fit-02/01-visual-rework-diagnosis.md
+ *   design/session-a-training-fit-02/02-screen-03-impl-contract.md
+ *   design/session-a-training-fit-02/03-developer-packet.md
+ *
+ * If PX publishes those files or TOKEN-MANIFEST into this checkout, every hex
+ * in `IRON_AMBER` must appear in the published text when that text actually
+ * contains hex. Until they exist, the suite pins the GymScreen CSS named
+ * colours and `index.ts` void at Gym Empire `7010867efea4438db7d098a619625400016025da`.
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
@@ -27,6 +33,13 @@ const PX_MANIFEST_CANDIDATES = [
   'design/gym-empire-ux-02/shared-assets/TOKEN-MANIFEST.md',
   'shared-assets/TOKEN-MANIFEST',
   'shared-assets/TOKEN-MANIFEST.md',
+] as const;
+
+const TRAINING_FIT_02_SOT = [
+  'design/session-a-training-fit-02/00-twl-bo-product-bar.md',
+  'design/session-a-training-fit-02/01-visual-rework-diagnosis.md',
+  'design/session-a-training-fit-02/02-screen-03-impl-contract.md',
+  'design/session-a-training-fit-02/03-developer-packet.md',
 ] as const;
 
 /** CSS Color Module Level 4 sRGB for GymScreen's named-colour chrome. */
@@ -61,6 +74,12 @@ function pxBindText(): { files: string[]; text: string } | null {
     files.push(candidate);
     chunks.push(body);
   }
+  for (const packet of TRAINING_FIT_02_SOT) {
+    const body = readIfPresent(packet);
+    if (body === null) continue;
+    files.push(packet);
+    chunks.push(body);
+  }
   if (files.length === 0) return null;
   return { files, text: chunks.join('\n').toUpperCase() };
 }
@@ -73,16 +92,32 @@ describe('A×C IRON & AMBER bind', () => {
     expect(sessionDir.some((name) => name.startsWith('GymScreen'))).toBe(false);
   });
 
+  it('cites TRAINING-FIT-02 visual SoT paths so the suite fail-closes when they land', () => {
+    const palette = readFileSync(path.join(HERE, 'sessionPalette.ts'), 'utf8');
+    for (const packet of TRAINING_FIT_02_SOT) {
+      expect(palette).toContain(packet);
+    }
+    expect(palette).toMatch(/hard rejects V1/);
+  });
+
   it('consumes PX files when they exist; otherwise GymScreen named CSS + void', () => {
     const px = pxBindText();
     if (px !== null) {
-      for (const [name, hex] of Object.entries(IRON_AMBER)) {
-        expect(
-          px.text.includes(hex.toUpperCase()),
-          `${name} ${hex} must occur in PX bind files (${px.files.join(', ')}) — re-bind, do not fork`,
-        ).toBe(true);
+      const hasHex = /#[0-9A-F]{3,8}/.test(px.text);
+      if (hasHex) {
+        for (const [name, hex] of Object.entries(IRON_AMBER)) {
+          expect(
+            px.text.includes(hex.toUpperCase()),
+            `${name} ${hex} must occur in PX bind files (${px.files.join(', ')}) — re-bind, do not fork`,
+          ).toBe(true);
+        }
       }
-      return;
+      const contract = readIfPresent(TRAINING_FIT_02_SOT[2]);
+      if (contract !== null) {
+        expect(contract).toMatch(/V1/);
+        expect(contract).toMatch(/V8/);
+      }
+      if (hasHex) return;
     }
     expect(IRON_AMBER.IRON).toBe(GYM_SCREEN_NAMED.black);
     expect(IRON_AMBER.AMBER).toBe(GYM_SCREEN_NAMED.goldenrod);
@@ -104,6 +139,7 @@ describe('A×C IRON & AMBER bind', () => {
     expect(SESSION_PALETTE.ACTION_TEXT).toBe(IRON_AMBER.IRON);
     expect(SESSION_PALETTE.CHIP_CHOSEN).toBe(IRON_AMBER.AMBER);
     expect(SESSION_PALETTE.LIGHT).toBe(IRON_AMBER.IVORY);
+    expect(SESSION_PALETTE.TYPE_HERO).toMatch(/Impact/);
     expect(SESSION_PALETTE.TRACE).toBe(LIFT_PALETTE.TRACE);
     expect(SESSION_PALETTE.CUE_PERFECT).toBe(LIFT_PALETTE.CUE_PERFECT);
     expect(SESSION_PALETTE.GRIND_PIP_LIT).toBe(LIFT_PALETTE.GRIND_PIP_LIT);
@@ -120,5 +156,6 @@ describe('A×C IRON & AMBER bind', () => {
     expect(source).toMatch(/GymScreen/);
     expect(source).toMatch(/04-iron-amber-visual-spec/);
     expect(source).toMatch(/TOKEN-MANIFEST/);
+    expect(source).toMatch(/session-a-training-fit-02/);
   });
 });

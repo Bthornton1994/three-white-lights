@@ -40,6 +40,7 @@ import {
 import { SESSION_COPY, SESSION_PROGRESSION_GUARD, SESSION_TUNING } from './sessionTuning';
 import {
   EMPTY_FATIGUE_STATE,
+  FATIGUE_COPY,
   FATIGUE_TUNING,
   UNLUCKIEST_ROLLS,
   readinessCheckIn,
@@ -1068,6 +1069,9 @@ describe('the close-out — GDD §3.2', () => {
     expect(closeOut.subhead).toBe(SESSION_COPY.CLOSE_OUT_HELD_SUBHEAD);
     expect(closeOut.streakBefore).toBe(4);
     expect(closeOut.streakAfter).toBe(5);
+    expect(closeOut.outlookHeadline).toBe(FATIGUE_COPY.HISTORY_READINESS_HEADLINE.heavy);
+    expect(closeOut.nextAction.kind).toBe('hold');
+    expect(closeOut.nextAction.headline).toBe(FATIGUE_COPY.NEXT_ACTION_HEADLINE.hold);
   });
 
   it('does not call a PR from a primed tap — history never raises the bar', () => {
@@ -1145,8 +1149,14 @@ describe('the close-out — GDD §3.2', () => {
 
   it('exposes no fatigue level for a component to bind to — GDD §3.4, §12.3', () => {
     const state = runSession(context(), WRECKED, 10, ALL_GOOD);
-    const json = JSON.stringify(state.closeOut ?? {});
-    expect(json).not.toMatch(/fatigue|burden|readiness|strain|risk/i);
+    const closeOut = state.closeOut;
+    expect(closeOut).not.toBeNull();
+    if (closeOut === null) return;
+    const keys = [...Object.keys(closeOut), ...Object.keys(closeOut.nextAction)].join(',');
+    expect(keys).not.toMatch(/fatigue|burden|readiness|strain|risk/i);
+    expect(closeOut.outlookHeadline).toBe(FATIGUE_COPY.HISTORY_READINESS_HEADLINE.grinding);
+    expect(closeOut.nextAction.kind).toBe('recover');
+    expect(closeOut.nextAction.detail).toBe(FATIGUE_COPY.NEXT_ACTION_LIMIT_DETAIL);
     // The feel object's one number lives behind a private symbol, so nothing a
     // component can name or serialise carries a level.
     const feelJson = JSON.stringify(state.feel);
@@ -1278,6 +1288,8 @@ describe('what the close-out is HEADED, not only what it counts', () => {
     expect(accessory.streakAfter).toBe(played.streakAfter);
     expect(accessory.barSpeedText).toBe(played.barSpeedText);
     expect(accessory.canPropose).toBe(played.canPropose);
+    expect(accessory.outlookHeadline).toBe(played.outlookHeadline);
+    expect(accessory.nextAction).toEqual(played.nextAction);
     // And still no Total, on the branch that did not exist when that was checked.
     expect(JSON.stringify(accessory)).not.toMatch(/total/i);
   });

@@ -310,6 +310,19 @@ Fatigue is felt through bar speed, timing-window width, and concise copy
 ("Recent heavy work is still affecting readiness" / "Recovered and ready to
 push"). The player may train while fatigued; that is a tradeoff, not a lock.
 
+**Owner-authorized visual + close-out correction (SF-TWL-SESSION-A-TRAINING-FIT-02).**
+The opening decision is **facility-first**: the licensed training gym is the
+room (the same raster the live set already paints). Chrome is a compact overlay
+— THREE WHITE LIGHTS, today's lift, history readiness copy, RPE 6–10, START.
+It is not a form on a flat void. Training chrome is Iron & Amber; the lift
+STAGE and Meet Day keep the lift palette. Unlicensed isometric mockup art is
+not a shippable asset. Session A shell labels stay GYM EMPIRE / CAREER /
+LIFTER (Session B dock is out of scope).
+
+The close-out still moves **e1RM, never Total**. It also shows history outlook
+and the next training action as copy — still never a meter. Subjective
+check-in stays gone.
+
 One session per day, one competition lift. The day's **programmed** lift follows
 the squat → bench → deadlift rotation; the player may choose a different
 competition lift on that opening decision screen, defaulting to the rotation.
@@ -356,6 +369,7 @@ Hidden stat. **Never display a fatigue bar** — surface it through feel:
 
 - Bar-speed cues ("that rep looked slower than expected")
 - History-derived readiness copy shifting how the session is framed, never a meter
+- Close-out outlook and next-action copy from the same ledger, never a meter
 - Missed reps becoming more likely as fatigue accumulates
 - Tighter input timing windows when fatigued; more forgiving when recovered
 

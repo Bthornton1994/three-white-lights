@@ -104,6 +104,7 @@ import { CareerScreen } from '../meet/CareerScreen';
 import { LifterScreen } from '../meet/LifterScreen';
 import { EmpireScreen } from './EmpireScreen';
 import { LIFT_PALETTE } from '../lift/liftPalette';
+import { SESSION_PALETTE } from '../session/sessionPalette';
 import { LiftScreen } from '../lift/LiftScreen';
 import { MeetScreen } from '../meet/MeetScreen';
 import { SessionScreen } from '../session/SessionScreen';
@@ -187,9 +188,12 @@ const INTENT_COPY: Readonly<Record<ShellIntent, { readonly label: string; readon
 function ShellNav({
   intent,
   onPress,
+  trainingChrome,
 }: {
   readonly intent: ShellIntent;
   readonly onPress: () => void;
+  /** Iron & Amber only on Session A. Meet / Empire / Career keep LIFT_PALETTE. */
+  readonly trainingChrome: boolean;
 }): React.ReactElement {
   const shown = useSharedValue(0);
   useEffect(() => {
@@ -203,7 +207,7 @@ function ShellNav({
   return (
     <Animated.View style={style} pointerEvents="box-none">
       <Pressable
-        style={styles.nav}
+        style={[styles.nav, trainingChrome ? styles.navTraining : null]}
         accessibilityRole="button"
         accessibilityLabel={copy.label}
         accessibilityHint={copy.hint}
@@ -211,7 +215,9 @@ function ShellNav({
         onPress={onPress}
         testID={`shell-${intent}`}
       >
-        <Text style={styles.navLabel}>{copy.label}</Text>
+        <Text style={[styles.navLabel, trainingChrome ? styles.navLabelTraining : null]}>
+          {copy.label}
+        </Text>
       </Pressable>
     </Animated.View>
   );
@@ -440,8 +446,13 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   const lifterMounted =
     route.surface === 'lifter' || (isPersistentSurface('lifter') && lifterOpened);
 
+  const trainingChrome = route.surface === 'session';
+
   return (
-    <View style={styles.root} testID="app-shell">
+    <View
+      style={[styles.root, trainingChrome ? styles.rootTraining : null]}
+      testID="app-shell"
+    >
       {route.surface === 'meet' && (meetFrame !== undefined || enteredMeet !== null) ? (
         <MeetScreen
           // THE APP'S CONNECTION, or the frozen frame's own stand-in server.
@@ -526,13 +537,19 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
       lifterAffordance === null ? null : (
         <View style={styles.navSlot} pointerEvents="box-none">
           {affordance === null ? null : (
-            <ShellNav key={affordance} intent={affordance} onPress={pressFor(affordance)} />
+            <ShellNav
+              key={affordance}
+              intent={affordance}
+              onPress={pressFor(affordance)}
+              trainingChrome={trainingChrome}
+            />
           )}
           {empireAffordance === null ? null : (
             <ShellNav
               key={empireAffordance}
               intent={empireAffordance}
               onPress={pressFor(empireAffordance)}
+              trainingChrome={trainingChrome}
             />
           )}
           {careerAffordance === null ? null : (
@@ -540,6 +557,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
               key={careerAffordance}
               intent={careerAffordance}
               onPress={pressFor(careerAffordance)}
+              trainingChrome={trainingChrome}
             />
           )}
           {lifterAffordance === null ? null : (
@@ -547,6 +565,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
               key={lifterAffordance}
               intent={lifterAffordance}
               onPress={pressFor(lifterAffordance)}
+              trainingChrome={trainingChrome}
             />
           )}
         </View>
@@ -562,6 +581,10 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     overflow: 'hidden',
     backgroundColor: LIFT_PALETTE.BACKDROP,
+  },
+  /** Session A training chrome only. Meet / Empire / Career stay on LIFT_PALETTE. */
+  rootTraining: {
+    backgroundColor: SESSION_PALETTE.BACKDROP,
   },
   /** A mounted surface that is the one on screen. */
   surface: {
@@ -610,10 +633,17 @@ const styles = StyleSheet.create({
     borderColor: LIFT_PALETTE.PANEL_EDGE,
     backgroundColor: LIFT_PALETTE.PANEL,
   },
+  navTraining: {
+    borderColor: SESSION_PALETTE.CHIP_EDGE,
+    backgroundColor: SESSION_PALETTE.CHIP,
+  },
   navLabel: {
     color: LIFT_PALETTE.TEXT_DIM,
     fontSize: L.NAV_FONT,
     fontWeight: '700',
     letterSpacing: L.NAV_LETTER_SPACING,
+  },
+  navLabelTraining: {
+    color: SESSION_PALETTE.TEXT_DIM,
   },
 });

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * SF-TWL-SESSION-A-TRAINING-FIT-01 evidence: phone viewports, overflow, and
- * the no-check-in training path.
+ * SF-TWL-SESSION-A-TRAINING-FIT-02 evidence: facility-first briefing, overflow,
+ * no check-in, live set from RPE, close-out outlook.
  *
  * Usage:
  *   bash tools/dev-web.sh
@@ -24,7 +24,7 @@ const flag = (name, dflt) => {
 const url = flag('url', 'http://localhost:8081');
 gateDevServer({ url });
 
-const outDir = path.resolve(flag('out', 'docs/evidence/sf-twl-session-a-training-fit-01'));
+const outDir = path.resolve(flag('out', 'docs/evidence/sf-twl-session-a-training-fit-02'));
 const VIEWPORTS = [
   { name: '375x812', width: 375, height: 812 },
   { name: '390x844', width: 390, height: 844 },
@@ -35,6 +35,7 @@ const MOMENTS = [
   { id: 'briefing-heavy', query: '?session=briefing-heavy', wait: 'session-briefing' },
   { id: 'briefing-recovered', query: '?session=briefing-recovered', wait: 'session-briefing' },
   { id: 'set', query: '?session=set', wait: 'session-set' },
+  { id: 'close-out-held', query: '?session=close-out-held', wait: 'session-close-out' },
 ];
 
 await mkdir(outDir, { recursive: true });
@@ -73,6 +74,8 @@ function overflowReport() {
     const node = document.querySelector(`[data-testid="${id}"]`);
     return node === null ? null : (node.textContent ?? '').trim();
   };
+  const rpeRow = document.querySelector('[data-testid="session-rpe-ladder"]');
+  const rpeWraps = rpeRow !== null && rpeRow.getBoundingClientRect().height > 56;
   return {
     innerWidth: window.innerWidth,
     innerHeight: window.innerHeight,
@@ -81,8 +84,17 @@ function overflowReport() {
     overflowX: Math.max(doc.scrollWidth, body.scrollWidth) > window.innerWidth + 1,
     sleepChipPresent: sleep !== null,
     checkInPresent: checkIn !== null,
+    stagePresent: document.querySelector('[data-testid="session-training-stage"]') !== null,
+    lightsPresent: document.querySelector('[data-testid="session-lights"]') !== null,
+    startPresent: document.querySelector('[data-testid="session-start-lift"]') !== null,
+    outlookPresent: document.querySelector('[data-testid="close-out-outlook"]') !== null,
+    nextActionPresent: document.querySelector('[data-testid="close-out-next"]') !== null,
+    rpeWraps,
     modifier: text('session-modifier'),
     readinessDetail: text('session-readiness-detail'),
+    liftHero: text('session-lift-hero'),
+    outlook: text('close-out-outlook'),
+    nextAction: text('close-out-next'),
     instruction: text('session-detail'),
     instructionToggle: text('session-instruction-toggle'),
     clipped,
@@ -134,7 +146,9 @@ for (const viewport of VIEWPORTS) {
     console.log(
       `${viewport.name} ${moment.id.padEnd(20)} overflowX=${metrics.overflowX} ` +
         `scroll=${metrics.scrollWidth}/${metrics.innerWidth} ` +
+        `stage=${metrics.stagePresent} lights=${metrics.lightsPresent} ` +
         `checkIn=${metrics.checkInPresent} sleep=${metrics.sleepChipPresent} ` +
+        `outlook=${JSON.stringify(metrics.outlook)} ` +
         `modifier=${JSON.stringify(metrics.modifier)}`,
     );
   }
@@ -163,7 +177,10 @@ for (const viewport of VIEWPORTS) {
     if (created.why) throw new Error(created.why);
     await page.getByTestId('session-briefing').waitFor({ state: 'visible', timeout: 40000 });
     await page.waitForTimeout(700);
+    const briefingFile = '390x844-live-briefing.png';
+    await page.screenshot({ path: path.join(outDir, briefingFile) });
     const sleepCount = await page.getByTestId('check-in-sleep-ok').count();
+    const briefingMetrics = await page.evaluate(overflowReport);
     await page.getByTestId('check-in-lift-squat').click({ timeout: 20000 });
     await page.getByTestId('session-rpe-8').click({ timeout: 20000 });
     await page.getByTestId('session-set').waitFor({ state: 'visible', timeout: 40000 });
@@ -173,7 +190,9 @@ for (const viewport of VIEWPORTS) {
       reached: true,
       why: null,
       file,
+      briefingFile,
       sleepChipCount: sleepCount,
+      briefing: briefingMetrics,
       ...metrics,
     };
   } catch (error) {
@@ -189,6 +208,7 @@ for (const viewport of VIEWPORTS) {
   console.log(
     `live squat set        reached=${live.reached} ` +
       `checkIn=${live.checkInPresent ?? '?'} sleep=${live.sleepChipPresent ?? live.sleepChipCount ?? '?'} ` +
+      `stage=${live.briefing?.stagePresent ?? live.stagePresent ?? '?'} ` +
       (live.reached ? '' : live.why),
   );
   await context.close();
@@ -197,10 +217,30 @@ for (const viewport of VIEWPORTS) {
 await writeFile(path.join(outDir, 'overflow.json'), `${JSON.stringify(report, null, 2)}\n`);
 await browser.close();
 
+const briefingHits = report.viewports.flatMap((v) =>
+  v.frames.filter(
+    (f) =>
+      (f.moment === 'briefing' ||
+        f.moment === 'briefing-heavy' ||
+        f.moment === 'briefing-recovered') &&
+      (!f.stagePresent || !f.lightsPresent || f.checkInPresent || f.sleepChipPresent || f.rpeWraps),
+  ),
+);
+const closeOutHits = report.viewports.flatMap((v) =>
+  v.frames.filter(
+    (f) => f.moment === 'close-out-held' && (!f.outlookPresent || !f.nextActionPresent),
+  ),
+);
 const overflowHits = report.viewports.flatMap((v) =>
   v.frames.filter((f) => f.overflowX || f.clipped.length > 0 || f.checkInPresent || f.sleepChipPresent),
 );
-if (overflowHits.length > 0 || (report.live && (report.live.overflowX || report.live.checkInPresent))) {
+if (
+  overflowHits.length > 0 ||
+  briefingHits.length > 0 ||
+  closeOutHits.length > 0 ||
+  (report.live && (report.live.overflowX || report.live.checkInPresent || !report.live.reached)) ||
+  (report.live?.briefing && !report.live.briefing.stagePresent)
+) {
   console.error('TRAINING-FIT EVIDENCE HAS FINDINGS — see overflow.json');
   process.exit(1);
 }

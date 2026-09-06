@@ -174,12 +174,24 @@ describe('SessionScreen hands the readings down and computes nothing', () => {
     expect(source('BriefingView.tsx')).toMatch(/session-lights/);
     expect(source('BriefingView.tsx')).toMatch(/session-start-lift/);
     expect(source('BriefingView.tsx')).toMatch(/session-readiness-card/);
+    expect(source('BriefingView.tsx')).toMatch(/TrainingStagePreview/);
+    expect(source('BriefingView.tsx')).toMatch(/BRAND_MARK/);
+    expect(source('BriefingView.tsx')).toMatch(/BRIEFING_KICKER/);
+    expect(source('BriefingView.tsx')).toMatch(/flexWrap: 'nowrap'/);
     expect(source('BriefingView.tsx')).toMatch(/LIFT_HERO/);
     expect(source('BriefingView.tsx')).not.toMatch(/check-in-sleep-/);
+    expect(source('BriefingView.tsx')).not.toMatch(/session-check-in/);
     expect(SCREEN).not.toMatch(/CheckInView/);
     expect(SCREEN).not.toMatch(/check-in-tap/);
     expect(source('SetView.tsx')).toMatch(/session-instruction-toggle/);
     expect(source('SetView.tsx')).toMatch(/STAGE_FIT_MIN_SCALE/);
+    expect(source('TrainingStagePreview.tsx')).toMatch(/session-training-stage/);
+    expect(source('TrainingStagePreview.tsx')).toMatch(/liftStageScene/);
+    expect(source('CloseOutView.tsx')).toMatch(/outlookHeadline/);
+    expect(source('CloseOutView.tsx')).toMatch(/nextAction/);
+    expect(source('CloseOutView.tsx')).toMatch(/CLOSE_OUT_OUTLOOK_LABEL/);
+    expect(source('CloseOutView.tsx')).toMatch(/CLOSE_OUT_NEXT_LABEL/);
+    expect(source('CloseOutView.tsx')).toMatch(/NAV_CLEARANCE/);
   });
 });
 
@@ -194,6 +206,7 @@ describe('no screen can reach the hidden ledger', () => {
     'RestView.tsx',
     'SessionScreen.tsx',
     'SetView.tsx',
+    'TrainingStagePreview.tsx',
   ];
 
   it('finds the screens at all', () => {

@@ -322,6 +322,26 @@ export const HISTORY_READINESS_KIND_ORDER = Object.freeze([
   'grinding',
 ] as const satisfies readonly HistoryReadinessKind[]);
 
+/**
+ * Adaptive next-day action (GDD §3.2 close-out). Qualitative only — no residual,
+ * no meter, no lock. Hard recent work never reads as "push"; empty history never
+ * reads as recovered.
+ */
+export type NextTrainingActionKind = 'form-history' | 'push' | 'hold' | 'recover';
+
+export const NEXT_TRAINING_ACTION_KIND_ORDER = Object.freeze([
+  'form-history',
+  'push',
+  'hold',
+  'recover',
+] as const satisfies readonly NextTrainingActionKind[]);
+
+export interface NextTrainingAction {
+  readonly kind: NextTrainingActionKind;
+  readonly headline: string;
+  readonly detail: string;
+}
+
 /** Best to worst. Exported so a UI can render all bands exhaustively. */
 export const READINESS_BAND_ORDER = Object.freeze([
   'primed',
@@ -769,6 +789,26 @@ export const FATIGUE_COPY = Object.freeze({
     heavy: 'You can still train — the window is tighter.',
     grinding: 'You can still train — expect a slower bar.',
   }),
+
+  /** Prefix for the last-session fact line. RPE digits are composed at read time. */
+  LAST_SESSION_PREFIX: 'Last session',
+
+  NEXT_ACTION_HEADLINE: Object.freeze({
+    'form-history': 'Keep showing up',
+    push: 'You can push',
+    hold: 'Stay in the work',
+    recover: 'Take the lighter day',
+  } as const satisfies Record<NextTrainingActionKind, string>),
+
+  NEXT_ACTION_DETAIL: Object.freeze({
+    'form-history': 'Train again so the next session has history to read.',
+    push: 'Recent work has washed out. A hard day is a choice, not a debt.',
+    hold: 'Yesterday still counts. You can train — pick effort with that in mind.',
+    recover: 'Recent heavy work is still in you. You can train; expect a slower bar.',
+  } as const satisfies Record<NextTrainingActionKind, string>),
+
+  NEXT_ACTION_LIMIT_DETAIL:
+    'Yesterday went to the limit. You can train — the window is tighter.',
 
   BAR_SPEED_TEXT: Object.freeze({
     popping: 'The bar is jumping off you today.',
@@ -1227,13 +1267,15 @@ export function historyReadiness(state: FatigueState, day: number): ReadinessRep
   const residual = residualAtStartOfDay(state, day);
   const kind = historyKindFor(residual, hasRememberedSession(state, day));
   const headline: string | undefined = FATIGUE_COPY.HISTORY_READINESS_HEADLINE[kind];
-  const detail: string | undefined = FATIGUE_COPY.HISTORY_READINESS_DETAIL[kind];
-  if (headline === undefined || detail === undefined) {
+  const baseDetail: string | undefined = FATIGUE_COPY.HISTORY_READINESS_DETAIL[kind];
+  if (headline === undefined || baseDetail === undefined) {
     throw new RangeError(`History readiness kind ${kind} has no copy.`);
   }
   const band: ReadinessBand =
     kind === 'forming' ? 'steady' : kind === 'recovered' || kind === 'ready' ? 'ready' : 'grinding';
   const percent = FATIGUE_TUNING.HISTORY_READINESS_LOAD_ADJUSTMENT_PERCENT;
+  const lastLine = lastSessionFact(state, day);
+  const detail = lastLine === '' ? baseDetail : `${baseDetail} ${lastLine}`;
   return {
     band,
     headline,
@@ -1246,6 +1288,67 @@ export function historyReadiness(state: FatigueState, day: number): ReadinessRep
       motivation: NEUTRAL_CHECK_IN.motivation,
     },
   };
+}
+
+function lastRememberedSession(state: FatigueState, day: number): SessionRecord | null {
+  const oldest = day - FATIGUE_TUNING.FATIGUE_MEMORY_DAYS;
+  let latest: SessionRecord | null = null;
+  for (let i = 0; i < state.sessions.length; i += 1) {
+    const session = state.sessions[i];
+    if (session === undefined || session.day < oldest || session.day >= day) continue;
+    if (latest === null || session.day > latest.day) latest = session;
+  }
+  return latest;
+}
+
+function lastSessionFact(state: FatigueState, day: number): string {
+  const last = lastRememberedSession(state, day);
+  if (last === null) return '';
+  const lift = FATIGUE_COPY.LIFT_LABEL[last.lift];
+  return `${FATIGUE_COPY.LAST_SESSION_PREFIX} • ${lift} • RPE ${last.topRpe}.`;
+}
+
+function actionKindFor(kind: HistoryReadinessKind): NextTrainingActionKind {
+  if (kind === 'forming') return 'form-history';
+  if (kind === 'recovered' || kind === 'ready') return 'push';
+  if (kind === 'heavy') return 'hold';
+  return 'recover';
+}
+
+/**
+ * Adaptive next-day action from the training-history ledger (GDD §3.2).
+ * Same source of truth as `historyReadiness`. No lock; copy only.
+ */
+export function nextTrainingAction(state: FatigueState, day: number): NextTrainingAction {
+  assertDayIndex(day, 'day');
+  const residual = residualAtStartOfDay(state, day);
+  const historyKind = historyKindFor(residual, hasRememberedSession(state, day));
+  const kind = actionKindFor(historyKind);
+  const headline: string | undefined = FATIGUE_COPY.NEXT_ACTION_HEADLINE[kind];
+  let detail: string | undefined = FATIGUE_COPY.NEXT_ACTION_DETAIL[kind];
+  if (headline === undefined || detail === undefined) {
+    throw new RangeError(`Next-action kind ${kind} has no copy.`);
+  }
+  const last = lastRememberedSession(state, day);
+  const limitRpe = FATIGUE_TUNING.RPE_STRAIN_WEIGHTS[FATIGUE_TUNING.RPE_STRAIN_WEIGHTS.length - 1];
+  if (last !== null && limitRpe !== undefined && last.topRpe >= limitRpe.rpe) {
+    detail = FATIGUE_COPY.NEXT_ACTION_LIMIT_DETAIL;
+  }
+  return { kind, headline, detail };
+}
+
+/**
+ * Next-day action after folding a completed session into the ledger. Uses the
+ * luckiest injury rolls so the projection cannot mint a setback the player
+ * did not roll — this is copy for the close-out, not an injury path.
+ */
+export function nextTrainingActionAfterSession(
+  state: FatigueState,
+  session: SessionRecord,
+  nextDay: number,
+): NextTrainingAction {
+  const folded = recordSession(state, session, LUCKIEST_ROLLS).state;
+  return nextTrainingAction(folded, nextDay);
 }
 
 // ---------------------------------------------------------------------------

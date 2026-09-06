@@ -21,6 +21,13 @@
  *   shared-assets/TOKEN-MANIFEST
  * (and the same files under `visual-direction/shared-assets/`).
  *
+ * TRAINING-FIT-02 visual SoT (Session A only; bind, do not invent):
+ *   design/session-a-training-fit-02/00-twl-bo-product-bar.md
+ *   design/session-a-training-fit-02/01-visual-rework-diagnosis.md
+ *   design/session-a-training-fit-02/02-screen-03-impl-contract.md
+ *     (hard rejects V1–V8 when present)
+ *   design/session-a-training-fit-02/03-developer-packet.md
+ *
  * Those files are still absent from this checkout and from Gym Empire
  * `cursor/gym-empire-ux-01-9b73` at `7010867efea4438db7d098a619625400016025da`
  * (PR #41). Do not copy `src/empire/` here. Session A binds the playable
@@ -35,7 +42,10 @@
  *
  * `sessionPalette.test.ts` re-binds automatically: if the PX files appear,
  * every hex below must occur in them (or the suite goes red until this table
- * is updated). Until then it pins the GymScreen / index.ts mapping.
+ * is updated). TRAINING-FIT-02 packets are cited the same way: if they land
+ * and contain hex, the suite fail-closes until this table matches; it does
+ * not require hex that those markdown files do not actually publish.
+ * Until then it pins the GymScreen / index.ts mapping.
  *
  * Bounded decision (not PLANNER_ESCALATION): the training ROOM uses warm iron
  * void (`#1A1410`). Chrome (chips, card, action text) uses black / goldenrod /
@@ -105,6 +115,12 @@ export const SESSION_PALETTE = Object.freeze({
 
   /** Three White Lights identity pips. */
   LIGHT: IRON_AMBER.IVORY,
+
+  /**
+   * Athletic condensed stack for the briefing lift hero (TRAINING-FIT-02).
+   * System fonts only — no Google Fonts, no unlicensed files.
+   */
+  TYPE_HERO: 'Impact, "Arial Narrow", "Franklin Gothic Medium", sans-serif',
 
   DIVIDER: IRON_AMBER.GRAY,
 
