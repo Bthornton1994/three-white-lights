@@ -529,8 +529,14 @@ export const SESSION_LAYOUT = Object.freeze({
   STAGE_PREVIEW_MIN_HEIGHT: 220,
   /** Percent of briefing height the compact overlay may occupy. */
   STAGE_OVERLAY_MAX_PERCENT: 62,
+  /**
+   * Cover-scale shift, as a fraction of slot height. Positive pulls the gym
+   * upward so the visible band above the overlay is the room (racks / floor),
+   * not only the ceiling lamps. UNTUNED placeholder.
+   */
+  STAGE_PREVIEW_COVER_SHIFT_FRACTION: 0.2,
   /** Iron scrim under briefing chrome so type reads over the gym raster. */
-  OVERLAY_SCRIM_OPACITY: 0.86,
+  OVERLAY_SCRIM_OPACITY: 0.7,
 
   /** The set counter pips shown above the stage while a set is live. */
   PIP_SIZE: 8,

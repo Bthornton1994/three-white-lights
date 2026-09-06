@@ -40,6 +40,7 @@ export function TrainingStagePreview(): React.ReactElement {
     slotWidth / STAGE.STAGE_W,
     slotHeight / STAGE.STAGE_H,
   );
+  const coverShift = slotHeight * L.STAGE_PREVIEW_COVER_SHIFT_FRACTION;
   const image = useMemo(() => makeGymSceneImage(liftStageScene()), []);
 
   return (
@@ -54,6 +55,7 @@ export function TrainingStagePreview(): React.ReactElement {
           {
             width: STAGE.STAGE_W * fittedScale,
             height: STAGE.STAGE_H * fittedScale,
+            transform: [{ translateY: -coverShift }],
           },
         ]}
       >
