@@ -298,15 +298,12 @@ type WebSelectableViewStyle = ViewStyle & { readonly userSelect?: 'none'; readon
  * style pass-through (it maps straight to the CSS property, which is
  * INHERITED, so setting it once on the grid and once on the tray covers every
  * sprite image drawn inside them) that the core `react-native` types do not
- * declare. Without it a browser smooths every scaled sprite back into the
- * blur this whole phase exists to avoid — nearest-neighbour or nothing is the
- * same rule `src/art/`'s own view layer states for the lift screen. On a
- * native renderer the property is unknown and inert; the sprites there are
- * pre-upscaled to their drawn size, so only the device-pixel-ratio scale is
- * outside this file's control. Same widening pattern as
- * `WebSelectableViewStyle` above.
+ * declare. Illustrated occupancy uses `auto` so cutouts scale smoothly on
+ * the atmosphere plate instead of nearest-neighbour index-sprite chips. On a
+ * native renderer the property is unknown and inert. Same widening pattern
+ * as `WebSelectableViewStyle` above.
  */
-type PixelSnappedViewStyle = ViewStyle & { readonly imageRendering?: 'pixelated' };
+type PixelSnappedViewStyle = ViewStyle & { readonly imageRendering?: 'auto' };
 
 export interface FloorGridProps {
   readonly owned: readonly SessionEquipmentItem[];
@@ -404,8 +401,21 @@ const FLOOR_LABEL_STYLE = Object.freeze({
   color: FLOOR_LABEL_COLOR,
   fontSize: EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE,
 });
-/** Knock espresso token plates into the garage floor so occupancy is not a box. */
-const ILLUSTRATED_BLEND = Object.freeze({ mixBlendMode: 'lighten' });
+/**
+ * True-alpha occupancy cutouts. No mix-blend mat — espresso plates were
+ * painting rectangular token boxes on the garage floor. Smooth scale so
+ * illustrated members/equipment are not nearest-neighbour index-sprite chips.
+ */
+const ILLUSTRATED_CUTOUT = Object.freeze({
+  pointerEvents: 'none',
+  imageRendering: 'auto',
+});
+/** Build keeps catalog names in the tray/drawer, not as on-floor stickers. */
+const FLOOR_ON_FLOOR_LABEL_STYLE = Object.freeze({
+  color: FLOOR_LABEL_COLOR,
+  fontSize: EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE,
+  display: 'none',
+});
 /** The tray chip's backing — a quiet dark slate the sprites read against, one class for every item now that the sprite carries the identity the old colour cycle used to. */
 const FLOOR_TRAY_CHIP_COLOR = 'black';
 const AMBIENT_MEMBER_BORDER_COLOR = 'black';
@@ -1321,7 +1331,10 @@ function AmbientMemberBody({
         top: 0,
         width: footprintWidth,
         height: footprintHeight,
-        zIndex: EMPIRE_TUNING.FLOOR_SIM_MEMBER_Z_INDEX,
+        zIndex: Math.min(
+          EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX - 1,
+          EMPIRE_TUNING.FLOOR_SIM_MEMBER_Z_INDEX + Math.round(position.y),
+        ),
         // `leaving` is the one state drawn at less than full strength — a
         // member that has finished with a machine and is stepping away.
         opacity: state === 'leaving' ? EMPIRE_TUNING.FLOOR_SIM_LEAVING_OPACITY : 1,
@@ -1352,12 +1365,12 @@ function AmbientMemberBody({
         resizeMode={'contain'}
         style={{
           position: 'absolute',
-          left: 0,
-          top: -tile,
-          width: footprintWidth,
-          height: footprintHeight + tile,
+          left: -Math.round(tile / 2),
+          top: -tile * 2,
+          width: footprintWidth + tile,
+          height: footprintHeight + tile * 2,
         }}
-        {...({ pointerEvents: 'none', ...ILLUSTRATED_BLEND } as object)}
+        {...({ ...ILLUSTRATED_CUTOUT } as object)}
       />
       {/*
         GDD §5.13 presentation Phase 3 / PX H3 — the state cue stays in the
@@ -2136,13 +2149,13 @@ export function FloorGrid(props: FloorGridProps) {
           <Text testID={'floorgrid-place-cost'} style={FLOOR_LABEL_STYLE}>
             {playerFacingEquipmentCostLine(pendingPlace.item)}
           </Text>
-          <Text testID={'floorgrid-place-purpose'} style={FLOOR_LABEL_STYLE}>
+          <Text testID={'floorgrid-place-purpose'} style={FLOOR_ON_FLOOR_LABEL_STYLE}>
             {playerFacingEquipmentCatalog(pendingPlace.item).purpose}
           </Text>
-          <Text testID={'floorgrid-place-effect'} style={FLOOR_LABEL_STYLE}>
+          <Text testID={'floorgrid-place-effect'} style={FLOOR_ON_FLOOR_LABEL_STYLE}>
             {playerFacingEquipmentCatalog(pendingPlace.item).effect}
           </Text>
-          <Text testID={'floorgrid-place-tradeoff'} style={FLOOR_LABEL_STYLE}>
+          <Text testID={'floorgrid-place-tradeoff'} style={FLOOR_ON_FLOOR_LABEL_STYLE}>
             {playerFacingEquipmentCatalog(pendingPlace.item).tradeoff}
           </Text>
           {placementRefuseKind === null ? null : (
@@ -2184,7 +2197,7 @@ export function FloorGrid(props: FloorGridProps) {
               // GDD §5.13 presentation Phase 4: every sprite under this
               // container inherits crisp nearest-neighbour scaling on the
               // web renderer. See `PixelSnappedViewStyle`.
-              imageRendering: 'pixelated',
+              imageRendering: 'auto',
               // Explicit, rather than relying on a platform default: every
               // placed item below is `position: 'absolute'`, and CSS
               // resolves that against the nearest ANCESTOR that is itself
@@ -2338,7 +2351,10 @@ export function FloorGrid(props: FloorGridProps) {
                     top: row.position.y * tile,
                     width: row.footprint.width * tile,
                     height: row.footprint.height * tile,
-                    zIndex: 0,
+                    zIndex: Math.min(
+                      EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX - 2,
+                      Math.max(0, Math.round(row.position.y)),
+                    ),
                     // Phase 4: the sprite is the body of the chip; the
                     // refusal outline still draws over it, and no border in
                     // the resting state so the sprite's own baked outline is
@@ -2379,10 +2395,10 @@ export function FloorGrid(props: FloorGridProps) {
                       pointerEvents={'none'}
                       style={{
                         position: 'absolute',
-                        left: 0,
-                        top: 0,
-                        width: row.footprint.width * tile,
-                        height: row.footprint.height * tile,
+                        left: -Math.round(tile / 2),
+                        top: -Math.round(tile / 2),
+                        width: row.footprint.width * tile + tile,
+                        height: row.footprint.height * tile + Math.round(tile / 2),
                       }}
                     >
                       <Image
@@ -2397,10 +2413,10 @@ export function FloorGrid(props: FloorGridProps) {
                           position: 'absolute',
                           left: 0,
                           top: 0,
-                          width: row.footprint.width * tile,
-                          height: row.footprint.height * tile,
+                          width: row.footprint.width * tile + tile,
+                          height: row.footprint.height * tile + Math.round(tile / 2),
                         }}
-                        {...({ pointerEvents: 'none', ...ILLUSTRATED_BLEND } as object)}
+                        {...({ ...ILLUSTRATED_CUTOUT } as object)}
                       />
                     </View>
                   )}
@@ -2445,7 +2461,7 @@ export function FloorGrid(props: FloorGridProps) {
                     />
                   ) : null}
                   {isBayPrimary || !buildMode ? null : (
-                    <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
+                    <Text pointerEvents={'none'} style={FLOOR_ON_FLOOR_LABEL_STYLE}>
                       {playerFacingEquipmentLabel(row.item)}
                     </Text>
                   )}
@@ -2470,7 +2486,10 @@ export function FloorGrid(props: FloorGridProps) {
                   top: bay.expansion.position.y * tile,
                   width: bay.expansion.footprint.width * tile,
                   height: bay.expansion.footprint.height * tile,
-                  zIndex: 0,
+                  zIndex: Math.min(
+                    EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX - 2,
+                    Math.max(0, Math.round(bay.expansion.position.y)),
+                  ),
                   borderWidth:
                     buildMode &&
                     selectedStation !== null &&
@@ -2491,12 +2510,12 @@ export function FloorGrid(props: FloorGridProps) {
                     resizeMode={'contain'}
                     style={{
                       position: 'absolute',
-                      left: 0,
-                      top: 0,
-                      width: bay.expansion.footprint.width * tile,
-                      height: bay.expansion.footprint.height * tile,
+                      left: -Math.round(tile / 2),
+                      top: -Math.round(tile / 2),
+                      width: bay.expansion.footprint.width * tile + tile,
+                      height: bay.expansion.footprint.height * tile + Math.round(tile / 2),
                     }}
-                    {...({ pointerEvents: 'none', ...ILLUSTRATED_BLEND } as object)}
+                    {...({ ...ILLUSTRATED_CUTOUT } as object)}
                   />
                 )}
               </Pressable>
@@ -2514,7 +2533,7 @@ export function FloorGrid(props: FloorGridProps) {
                   height: tile * 2,
                   zIndex: 1,
                 }}
-                {...({ pointerEvents: 'none', ...ILLUSTRATED_BLEND } as object)}
+                {...({ ...ILLUSTRATED_CUTOUT } as object)}
               />
             ) : null}
             {placed.map((row) => {
@@ -2548,18 +2567,19 @@ export function FloorGrid(props: FloorGridProps) {
                     borderWidth:
                       buildMode && (isSelected || isPending)
                         ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
-                        : buildMode
-                          ? EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS
-                          : itemNeedsPlayInspect(row.item)
-                            ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
-                            : 0,
+                        : itemNeedsPlayInspect(row.item)
+                          ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
+                          : 0,
                     borderColor:
                       isSelected || isPending
                         ? FLOOR_STATION_SELECTED_OUTLINE_COLOR
                         : itemNeedsPlayInspect(row.item)
                           ? FLOOR_QUALITY_MARK_COLOR
                           : FLOOR_ITEM_BORDER_COLOR,
-                    zIndex: 1,
+                    zIndex: Math.min(
+                      EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX - 2,
+                      Math.max(1, Math.round(row.position.y)),
+                    ),
                     cursor: 'pointer',
                   } as WebSelectableViewStyle}
                 >
@@ -2569,15 +2589,15 @@ export function FloorGrid(props: FloorGridProps) {
                     resizeMode={'contain'}
                     style={{
                       position: 'absolute',
-                      left: 0,
-                      top: 0,
-                      width: row.footprint.width * tile,
-                      height: row.footprint.height * tile,
+                      left: -Math.round(tile / 2),
+                      top: -Math.round(tile / 2),
+                      width: row.footprint.width * tile + tile,
+                      height: row.footprint.height * tile + Math.round(tile / 2),
                     }}
-                    {...({ pointerEvents: 'none', ...ILLUSTRATED_BLEND } as object)}
+                    {...({ ...ILLUSTRATED_CUTOUT } as object)}
                   />
                   {buildMode ? (
-                    <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
+                    <Text pointerEvents={'none'} style={FLOOR_ON_FLOOR_LABEL_STYLE}>
                       {playerFacingEquipmentLabel(row.item)}
                     </Text>
                   ) : null}
@@ -2781,7 +2801,7 @@ export function FloorGrid(props: FloorGridProps) {
       </View>
       <Text
         testID={'floorgrid-ambient-caption'}
-        style={buildMode ? FLOOR_LABEL_STYLE : { display: 'none' }}
+        style={FLOOR_ON_FLOOR_LABEL_STYLE}
       >
         {drawnSim.members.length} member(s) around the gym
       </Text>
@@ -2889,7 +2909,7 @@ export function FloorGrid(props: FloorGridProps) {
                     width: footprint.width * tile,
                     height: footprint.height * tile,
                   }}
-                  {...({ pointerEvents: 'none', ...ILLUSTRATED_BLEND } as object)}
+                  {...({ ...ILLUSTRATED_CUTOUT } as object)}
                 />
                 <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
                   {playerFacingEquipmentLabel(item)}
