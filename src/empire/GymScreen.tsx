@@ -1379,6 +1379,16 @@ export function GymScreen(props: GymScreenProps) {
         testID={'gymscreen-more-drawer'}
         style={surface === 'more' ? styles.drawer : styles.drawerHidden}
       >
+      {props.onLeaveGym === undefined ? null : (
+        <Pressable
+          testID={'gymscreen-leave-gym'}
+          accessibilityRole={'button'}
+          style={[styles.button, styles.buttonPrimary]}
+          onPress={props.onLeaveGym}
+        >
+          <Text style={styles.buttonPrimaryText}>{playerFacingLeaveGymLabel()}</Text>
+        </Pressable>
+      )}
       <View testID={'gymscreen-week'}>
         <Text style={styles.buttonText}>
           week {weekIndex} ({shape.fixed} fixed + {shape.flexible} flexible = {shape.total}{' '}
@@ -1437,16 +1447,6 @@ export function GymScreen(props: GymScreenProps) {
           {text}
         </Text>
       ))}
-      {props.onLeaveGym === undefined ? null : (
-        <Pressable
-          testID={'gymscreen-leave-gym'}
-          accessibilityRole={'button'}
-          style={styles.button}
-          onPress={props.onLeaveGym}
-        >
-          <Text style={styles.buttonText}>{playerFacingLeaveGymLabel()}</Text>
-        </Pressable>
-      )}
       </ScrollView>
       <ScrollView
         testID={'gymscreen-developer-drawer'}

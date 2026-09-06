@@ -1,10 +1,26 @@
 # SF-TWL-GYM-EMPIRE-UX-02 — design diagnosis
 
-**Aligns** with GDD §2.4 / §5.14 / §5.15 Living Gym Doctrine. Presentation reset only. Economy, SKUs, Session A, and frozen lift math are unchanged.
+**Aligns** with GDD §2.4 / §5.14 / §5.15 Living Gym Doctrine. Presentation reset only. Economy, SKUs, Session A, and frozen lift math are unchanged. **No dual-launch.** Session A / training / readiness / Meet Day frozen math stay off-limits.
 
 Owner Bryant product-rejected HEAD `ea58acef` (A6-4-only chrome). That SHA is **REJECTED / NOT ACCEPT**. Bryant then **approved** visual direction **A × C IRON & AMBER**. This packet is a layout / IA / hierarchy reset plus chrome toward that look — not a restyle of the same editor, and not a claim that art fidelity is done.
 
+**PX Iron & Amber bind (this Cloud, Session B sole lease).** Bound by path. Hunt this turn: **not in this checkout**, not on this branch, not on GitHub `design/gym-empire-ux-02/` (only this diagnosis file), not in Notion. Did **not** invent TOKEN-MANIFEST, webfonts, SKUs, or a parallel token system. PX Lead owns interface tokens.
+
+| Deliverable | Status |
+| --- | --- |
+| `design/gym-empire-ux-02/visual-direction/04-iron-amber-visual-spec.md` | UNMOUNTED |
+| `design/gym-empire-ux-02/visual-direction/05-art-direction-review.md` | UNMOUNTED |
+| `design/gym-empire-ux-02/visual-direction/shared-assets/` + TOKEN-MANIFEST | UNMOUNTED |
+| `A-x-C-IRON-AMBER-approved.png` | UNMOUNTED |
+| `twl-visual-direction-a-x-c-iron-amber.md` | UNMOUNTED |
+| `02-product-bar-LOCKED.md` (also `02-twl-bo-product-bar-locked.md`) | UNMOUNTED |
+| UX-02 `01` / `03` amended | this `01` is the in-tree diagnosis; PX `03-developer-packet.md` UNMOUNTED |
+
+**Direction ≠ verified ≠ player accept.** Soft feel **HUMAN_REQUIRED**. Do not self-grade vs the mockup.
+
 Canonical product bar is `software-factory/design/gym-empire-ux-02/02-product-bar-LOCKED.md` (also `02-twl-bo-product-bar-locked.md` if present; do not dilute). That folder is **not mounted** in this Cloud, so diagnosis follows GDD + the live Gym Empire tree + the LOCKED-bar constraints as bound (living institution; full-bleed Play; Build separate; Shop/Staff sheets; diagnostics never More; keep UX-01 necessaries; no invent).
+
+**03 Developer Ready fence (bound while PX 03 is unmounted, not a substitute packet):** diagnostics never on player More; Developer is `#empire-developer` / `?empireDev=1` only. Do not put Developer back on More.
 
 ## Layout failures (void / letterbox)
 
@@ -33,7 +49,7 @@ Playable-slice chrome toward that look (still not art-accepted): wood-tuned floo
 - Paint html/body/#root warm iron; sienna brick leftover around a wood board; overlay HUD/dock/action card. HUD identity sits on the sienna room (not a black admin strip).
 - Sparse HUD: referee lights + location + purse + reputation. Causal now/next on a Play action card from real management / roster state.
 - Build-only grid, labels, place copy, gold/black editor boxes, occupancy outlines. Play inspects without editor chrome; worn stations may show an amber inspect cue from real condition. Exit Build → Play with no residue (existing fade).
-- Weighted IA: Gym (Play) home with amber active; Shop/Staff charcoal sheets over the gym; Build FAB on Play/Build only, stacked under inspect, and the Play now/next card stops short of it; More = settings including leave-gym; Developer explicit route only. Dock is a charcoal bar with a goldenrod top edge. Shop/Staff primary buy/hire/repair/reopen/relocate CTAs reuse the FAB amber, not a second token system.
+- Weighted IA: Gym (Play) home with amber active; Shop/Staff charcoal sheets over the gym; Build FAB on Play/Build only, stacked under inspect, and the Play now/next card stops short of it; More = settings with leave-gym as the first amber control (not buried under week allocation); Developer explicit route only. Dock is a charcoal bar with a goldenrod top edge. Shop/Staff primary buy/hire/repair/reopen/relocate CTAs reuse the FAB amber, not a second token system.
 - Inspect panels use charcoal/amber/ivory, not prototype blue.
 
 Soft feel remains **HUMAN_REQUIRED**. Empire Ready **NO**. Draft only. **NO MERGE**.
