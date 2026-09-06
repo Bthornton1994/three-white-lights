@@ -1918,7 +1918,7 @@ export function FloorGrid(props: FloorGridProps) {
           ? placing
             ? 'build — tap a tile to place'
             : 'build — tap a piece, then tap a tile'
-          : `floor (${floor.rung})`}
+          : `Your gym · floor (${floor.rung})`}
       </Text>
       {pendingPlace === null ? null : (
         <View testID={'floorgrid-place-banner'}>
@@ -2011,6 +2011,7 @@ export function FloorGrid(props: FloorGridProps) {
                   width: EMPIRE_TUNING.FLOOR_GRID_LINE_WIDTH_PIXELS,
                   height: grid.height * tile,
                   backgroundColor: FLOOR_GRID_LINE_COLOR,
+                  ...(buildMode ? {} : { display: 'none' }),
                 }}
               />
             ))}
@@ -2026,6 +2027,7 @@ export function FloorGrid(props: FloorGridProps) {
                   width: grid.width * tile,
                   height: EMPIRE_TUNING.FLOOR_GRID_LINE_WIDTH_PIXELS,
                   backgroundColor: FLOOR_GRID_LINE_COLOR,
+                  ...(buildMode ? {} : { display: 'none' }),
                 }}
               />
             ))}

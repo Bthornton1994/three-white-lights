@@ -3396,11 +3396,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // driven run of this exact census, same discipline as every entry in
       // this list.
       'rung',
-      'earning',
-      'gym bucks per hour',
       'gym bucks:',
-      'accelerated:',
-      'clock:',
       'maintenance review',
       'refused:',
       // S4b — §5.11 stage 4 on the garage floor. Fifty-two new chunks, all
@@ -3504,6 +3500,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'needs',
       'gym bucks — you have',
       'relocate',
+      'earning',
+      'gym bucks per hour',
+      'accelerated:',
+      'clock:',
       'week',
       '(',
       'fixed +',

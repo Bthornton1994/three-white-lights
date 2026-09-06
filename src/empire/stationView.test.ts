@@ -21,7 +21,11 @@ import {
   isRecoveryBlocking,
   isSoundCondition,
   playerFacingActivityGroupLabel,
+  playerFacingComposedReputation,
   playerFacingEquipmentLabel,
+  playerFacingEquipmentPurpose,
+  playerFacingHudAmount,
+  playerFacingHudReading,
   playerFacingManagerCapability,
   playerFacingMemberActivityLine,
   playerFacingMemberTypeLabel,
@@ -111,6 +115,21 @@ describe('stationView.ts — GDD §5.14 Stage C', () => {
     expect(playerFacingEquipmentLabel('competition-bench-bay')).toBe('Competition bench bay');
     expect(playerFacingEquipmentLabel('wrist-wraps')).toBe('Wrist wraps');
     expect(playerFacingEquipmentLabel('mats')).toBe('Mats');
+  });
+
+  it('floors gym-bucks HUD amounts and rounds reputation dust to zero', () => {
+    expect(playerFacingHudAmount(0.200092)).toBe('0');
+    expect(playerFacingHudAmount(12.9)).toBe('12');
+    expect(playerFacingHudReading(0)).toBe('0');
+    expect(playerFacingHudReading(0.000084)).toBe('0');
+    expect(playerFacingHudReading(0.72)).toBe('0.72');
+    expect(playerFacingHudReading(40)).toBe('40');
+    expect(
+      playerFacingComposedReputation('members {fromMembers} · meets {fromSporting}', 0.000084, 0),
+    ).toBe('members 0 · meets 0');
+    expect(playerFacingEquipmentPurpose('bike')).toBe('Conditioning');
+    expect(playerFacingEquipmentPurpose('squat-rack')).toBe('squat');
+    expect(playerFacingEquipmentPurpose('power-bar')).toBe('squat, bench, deadlift');
   });
 
   it('projects session activity groups to player-facing labels', () => {
