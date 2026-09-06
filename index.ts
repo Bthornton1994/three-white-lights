@@ -9,6 +9,7 @@ import { Platform } from 'react-native';
 // public/ rather than the default CDN, which this sandbox blocks.
 async function bootWeb(): Promise<void> {
   if (typeof document !== 'undefined') {
+    // iron.void — TOKEN-MANIFEST. Document root cannot take named CSS here.
     const bg = '#1a1410';
     document.documentElement.style.backgroundColor = bg;
     document.documentElement.style.height = '100%';

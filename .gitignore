@@ -122,3 +122,7 @@ public/canvaskit.wasm
 # SF-TWL-GYM-EMPIRE-UX-01 player-facing vertical-slice evidence. Before/after
 # 390×844 photographs of Play (grid hidden), Build (grid on), Shop, Staff, More.
 !.gauntlet/shots/empire-ux-01/
+
+# SF-TWL-GYM-EMPIRE-UX-02 Iron & Amber 390 evidence (Play / Build / Inspect /
+# More / Shop / Staff). Same argument as empire-ux-01: graders need dated PNGs.
+!.gauntlet/shots/empire-ux-02/

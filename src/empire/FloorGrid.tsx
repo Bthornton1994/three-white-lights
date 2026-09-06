@@ -427,7 +427,7 @@ const FLOOR_PLATE_LOADING_COLOR = 'crimson';
 const FLOOR_PLATE_LOADING_HOLE_COLOR = 'white';
 /** The contextual station panel's own backing, the same quiet slate the tray chip already reads against. */
 const FLOOR_STATION_PANEL_BACKGROUND_COLOR = 'black';
-/** A×C IRON & AMBER panel chrome — amber CTA, ivory label, charcoal sheet. */
+/** A×C IRON & AMBER panel chrome — TOKEN-MANIFEST amber.action / ivory.text / iron.surface. */
 const FLOOR_STATION_PANEL_BUTTON_BACKGROUND_COLOR = 'goldenrod';
 const FLOOR_STATION_PANEL_BUTTON_BORDER_COLOR = 'goldenrod';
 const FLOOR_STATION_PANEL_BUTTON_TEXT_COLOR = 'black';

@@ -337,7 +337,14 @@ import {
  * census per NEW word it needed (`'pointer'`, `'auto'`, `'button'`) and none
  * for a colour.
  */
-/** A×C IRON & AMBER — named CSS only (empire colour-literal scan). */
+/**
+ * A×C IRON & AMBER — named CSS only (empire colour-literal scan). SoT is
+ * `design/gym-empire-ux-02/visual-direction/shared-assets/TOKEN-MANIFEST.md`.
+ * No parallel token module and no hex in this file.
+ * `black` = iron.surface; `goldenrod` = amber.action; `ivory` = ivory.text;
+ * `silver` = ivory.muted; `transparent` stage lets html iron.void show through;
+ * `sienna` is Gym-home dock weight only, not a sixth token.
+ */
 const GYM_SCREEN_BUTTON_BACKGROUND_COLOR = 'black';
 const GYM_SCREEN_BUTTON_BORDER_COLOR = 'goldenrod';
 const GYM_SCREEN_BUTTON_TEXT_COLOR = 'ivory';
