@@ -677,13 +677,21 @@ describe('the equipment and the floor', () => {
   });
 
   it('does not bake a placement-cell stroke into the floor texture', () => {
-    // H1: Play hides overlay lines; a full tile-edge seam in the PNG still
-    // reads as a floor grid once the texture is stretched full-bleed.
+    // H1: Play hides overlay lines; a repeating board/tile lattice in the PNG
+    // still reads as a floor grid once the texture is stretched full-bleed.
+    // Continuous wood is a base fill plus three grain specks — not an 8×6
+    // checker and not full-height stripes.
     const paletteSize = FLOOR_SPRITE_PALETTES.base.length;
+    const baseIndex = paletteSize - 3;
     const seamIndex = paletteSize - 1;
     for (const rung of T.LADDER_RUNGS) {
       const grid = FLOOR_SPRITE_GRIDS.floor[rung];
       const size = T.FLOOR_GRID_SIZE[rung];
+      let nonBase = 0;
+      for (const index of grid.data) {
+        if (index !== baseIndex) nonBase += 1;
+      }
+      expect(nonBase, `${rung} non-base floor pixels`).toBe(3);
       for (let ty = 1; ty < size.height; ty += 1) {
         const y = ty * NATIVE - 1;
         let seamOnRow = 0;

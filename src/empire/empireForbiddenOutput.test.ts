@@ -3439,7 +3439,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 3662 -> 3704: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 3704 -> 3755: Stage G.2C2 livingMemberDeparture.ts plus livingMembers
   // departure/reconcile wiring. Read from this pin last.
-  CALLS_EXAMINED: 4225, // A×C playerFacingBrandLine
+  CALLS_EXAMINED: 4223, // H1 continuous wood fill (net -2 call sites)
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -17327,7 +17327,7 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'floorSim.ts:767 receiver=NewExpression',
   'floorSim.ts:914 receiver=ArrayLiteralExpression',
   'floorSim.ts:968 returned=unfollowable:plan',
-  'floorSprites.ts:1256 callee=fresh:ArrowFunction',
+  'floorSprites.ts:1250 callee=fresh:ArrowFunction',
   'floorSprites.ts:363 receiver=NewExpression',
   'floorSprites.ts:422 receiver=NewExpression',
   'floorSprites.ts:435 receiver=NewExpression',
@@ -17717,7 +17717,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
   // 1815 -> 1841: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 1841 -> 1866: Stage G.2C2 livingMemberDeparture.ts plus roster/sim wiring.
-  function: 2149, // A×C playerFacingBrandLine
+  function: 2148, // H1 continuous wood fill
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -17777,7 +17777,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
   // 1658 -> 1673: Stage G.2C1 livingMemberStay.ts plus livingMembers stayState.
   // 1673 -> 1699: Stage G.2C2 livingMemberDeparture.ts plus roster/sim members.
-  member: 1879, // SF-TWL-GYM-EMPIRE-UX-02 GymScreenProps
+  member: 1878, // H1 continuous wood fill (net -1 ops.push site)
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -17860,7 +17860,7 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 438 -> 444: Stage D2.1B nextChangeovers / loading-path locals.
   // 461 -> 472: Stage G.2C2 departure/reconcile local writes.
   // Read from this pin last.
-  local: 502, // SF-TWL-GYM-EMPIRE-UX-01 GymScreen surface / developer locals
+  local: 501, // H1 continuous wood fill (net -1 ops.push write)
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -18144,7 +18144,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // stayState wiring. Read from this pin last.
   // 84_813 -> 86_105: Stage G.2C2 livingMemberDeparture.ts plus roster/sim
   // departure wiring. Read from this pin last.
-  NODES_EXAMINED: 96_980, // A×C full-bleed room + brand + floor language
+  NODES_EXAMINED: 96_849, // H1 continuous wood fill (drop nested board lattice)
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

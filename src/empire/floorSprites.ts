@@ -1220,32 +1220,25 @@ const FIXED_PAINTERS: Readonly<Record<FixedFurnitureItem, EquipmentPainter>> = {
 };
 
 // ---------------------------------------------------------------------------
-// The floor texture — per rung, at native resolution, drawn scaled. Vertical
-// boards (column tone, not an 8×6 checker) with grain nicks — not cell-edge
-// strokes. Placement-grid lines are the Build overlay in FloorGrid, not paint
-// in this PNG. Play stretches this full-bleed; a baked seam would read as a
-// floor grid after H1.
+// The floor texture — per rung, at native resolution, drawn scaled. A
+// continuous wood fill with short grain marks — not an 8×6 cell checker and
+// not full-height stripes (those moiré into a fake grid when stretched
+// full-bleed). Placement-grid lines are the Build overlay in FloorGrid.
 // ---------------------------------------------------------------------------
 
 function floorTextureGrid(rung: LadderRung): FloorSpriteGrid {
   const size = EMPIRE_TUNING.FLOOR_GRID_SIZE[rung];
   const ops: PaintOp[] = [];
   const stride = EMPIRE_TUNING.FLOOR_SPRITE_FLECK_STRIDE;
-  for (let ty = 0; ty < size.height; ty += 1) {
-    for (let tx = 0; tx < size.width; tx += 1) {
-      const base = tx % 2 === 0 ? PX_FLOOR_BASE : PX_FLOOR_ALT;
-      ops.push(fill(tx * NATIVE, ty * NATIVE, NATIVE, NATIVE, base));
-      // Grain nicks — 1×1, interior, never a tile-edge stroke.
-      ops.push(fill(tx * NATIVE + QUARTER, ty * NATIVE + HALF, 1, 1, PX_FLOOR_SEAM));
-      ops.push(fill(tx * NATIVE + HALF, ty * NATIVE + QUARTER, 1, 1, PX_FLOOR_SEAM));
-      // A sparse fleck, deterministic from the tile coordinate alone.
-      if ((tx + ty * size.width) % stride === 0) {
-        ops.push(dot(tx * NATIVE + QUARTER, ty * NATIVE + HALF, PX_FLOOR_FLECK));
-        ops.push(dot(tx * NATIVE + HALF + 2, ty * NATIVE + QUARTER + 1, PX_FLOOR_FLECK));
-      }
-    }
-  }
-  return render(size.width * NATIVE, size.height * NATIVE, ops, false);
+  const width = size.width * NATIVE;
+  const height = size.height * NATIVE;
+  ops.push(fill(0, 0, width, height, PX_FLOOR_BASE));
+  // Three specks only — a lattice of 1×1 marks stretches into a dash-grid
+  // under H2 full-bleed (Y scale ~10×). One knot, not a cell overlay.
+  ops.push(dot(stride, HALF, PX_FLOOR_ALT));
+  ops.push(dot(HALF, QUARTER, PX_FLOOR_SEAM));
+  ops.push(dot(HALF + 2, HALF, PX_FLOOR_FLECK));
+  return render(width, height, ops, false);
 }
 
 // ---------------------------------------------------------------------------

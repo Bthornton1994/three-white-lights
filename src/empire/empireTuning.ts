@@ -2308,12 +2308,14 @@ export const EMPIRE_TUNING = Object.freeze({
   }),
 
   /**
-   * The floor texture's own four tones, as RGB components: a base, a slightly
-   * different alternate so vertical boards read apart, a darker grain nick
-   * (not a tile-edge cell stroke — H1), and a sparse lighter fleck. A×C IRON
-   * & AMBER retunes these from cool slate toward garage wood — still index
-   * art, still darker than bodies and gear so sprites remain the read. Not a
-   * claim that isometric brick/steel illustration is done.
+   * The floor texture's own four tones, as RGB components: a continuous base
+   * fill, a slightly darker alternate grain nick, a still-darker seam nick
+   * (not a tile-edge cell stroke — H1), and a sparse lighter fleck. Play
+   * stretches this full-bleed; a repeating board or cell lattice would read
+   * as a floor grid. A×C IRON & AMBER retunes these from cool slate toward
+   * garage wood — still index art, still darker than bodies and gear so
+   * sprites remain the read. Not a claim that isometric brick/steel
+   * illustration is done.
    */
   FLOOR_SPRITE_FLOOR_PALETTE: Object.freeze({
     BASE: Object.freeze([96, 70, 42]),
