@@ -96,6 +96,10 @@ export function BriefingView({
             ))}
           </View>
           <Text style={styles.brandMark}>{SESSION_COPY.BRAND_MARK}</Text>
+          <Text style={styles.kicker}>{SESSION_COPY.BRIEFING_KICKER}</Text>
+          <Text style={styles.hero} testID="session-lift-hero">
+            {SESSION_COPY.LIFT_HERO[lift]}
+          </Text>
         </View>
       </View>
 
@@ -110,11 +114,6 @@ export function BriefingView({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-        <Text style={styles.kicker}>{SESSION_COPY.BRIEFING_KICKER}</Text>
-        <Text style={styles.hero} testID="session-lift-hero">
-          {SESSION_COPY.LIFT_HERO[lift]}
-        </Text>
-
         <View style={styles.row} testID="check-in-lift">
           <Text style={styles.question}>{SESSION_COPY.CHECK_IN_LIFT_QUESTION}</Text>
           <View style={styles.chips}>
@@ -254,7 +253,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 0,
+    bottom: L.NAV_CLEARANCE,
     width: '100%',
     maxWidth: '100%',
   },
@@ -274,7 +273,7 @@ const styles = StyleSheet.create({
   overlayContent: {
     paddingHorizontal: L.SCREEN_PAD,
     paddingTop: L.SECTION_GAP,
-    paddingBottom: L.NAV_CLEARANCE,
+    paddingBottom: L.SECTION_GAP,
     gap: L.ROW_GAP,
     width: '100%',
   },

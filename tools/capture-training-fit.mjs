@@ -83,7 +83,13 @@ function overflowReport() {
   };
     const rpeRow = document.querySelector('[data-testid="session-rpe-ladder"]');
   const rpeWraps = rpeRow !== null && rpeRow.getBoundingClientRect().height > 56;
-  const stage = document.querySelector('[data-testid="session-training-stage"]');
+  const start = document.querySelector('[data-testid="session-start-lift"]');
+  const startRect = start === null ? null : start.getBoundingClientRect();
+  const startInView =
+    startRect !== null &&
+    startRect.top >= 0 &&
+    startRect.bottom <= window.innerHeight + 1 &&
+    startRect.height > 0;
   const overlay = document.querySelector('[data-testid="session-briefing-overlay"]');
   const stageRect = stage === null ? null : stage.getBoundingClientRect();
   const overlayRect = overlay === null ? null : overlay.getBoundingClientRect();
