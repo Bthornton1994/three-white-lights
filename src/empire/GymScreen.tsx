@@ -368,6 +368,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     marginBottom: EMPIRE_TUNING.GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS,
+    overflow: 'hidden',
   },
   hud: {
     paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,

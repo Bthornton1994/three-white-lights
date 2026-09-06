@@ -2626,6 +2626,13 @@ export const EMPIRE_TUNING = Object.freeze({
   GYM_SCREEN_DOCK_HOME_FLEX: 2,
 
   /**
+   * PX A5: Build enter/exit snap-grid fade, milliseconds. Must stay inside
+   * 200–280 so the grid is fully gone shortly after Done, without a blocking
+   * motion over 400ms. Tunable; not asserted as the final feel.
+   */
+  GYM_SCREEN_BUILD_GRID_FADE_MS: 240,
+
+  /**
    * S4i — how much room `GymScreen.tsx`'s own `ScrollView` box reserves at
    * its bottom edge so its scrollport frame never extends under
    * `src/shell/AppShell.tsx`'s absolutely-positioned `BACK TO TRAINING` /
@@ -3025,6 +3032,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS: 'knob',
   GYM_SCREEN_DISABLED_OPACITY: 'knob',
   GYM_SCREEN_DOCK_HOME_FLEX: 'knob',
+  GYM_SCREEN_BUILD_GRID_FADE_MS: 'knob',
   GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS: 'knob',
 
   PACING_REPORT_HORIZONS_SECONDS: 'structural',

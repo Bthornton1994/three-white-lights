@@ -745,7 +745,8 @@ describe('§5.5 social', () => {
     // 204 -> 206: Stage G.2E HIGH_PAYING_MEMBER_TYPES + arrival reputation threshold.
     // 206 -> 207: G2-ATHLETE-SEASON-01 ATHLETE_SEASON.
     // 207 -> 208: SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_DOCK_HOME_FLEX.
-    expect(examined).toBe(208);
+    // 208 -> 209: SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS.
+    expect(examined).toBe(209);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -777,13 +778,20 @@ describe('§5.5 social', () => {
     // 1020 -> 1030: Stage G.2E HIGH_PAYING_MEMBER_TYPES + arrival threshold × 5.
     // 1030 -> 1035: G2-ATHLETE-SEASON-01 ATHLETE_SEASON × 5.
     // 1035 -> 1040: SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_DOCK_HOME_FLEX × 5.
-    expect(probed).toBe(1040);
+    // 1040 -> 1045: SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS × 5.
+    expect(probed).toBe(1045);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {
     expect(T.RIVAL_REWARD_GYM_BUCKS).toBeGreaterThan(0);
     expect(T.ENCOURAGEMENT_REWARD_GYM_BUCKS).toBeGreaterThan(0);
     expect(T.FRIEND_VISITS_PER_DAY).toBeGreaterThan(0);
+  });
+
+  it('PX A5 Build grid fade stays inside 200–280ms and under the 400ms block cap', () => {
+    expect(T.GYM_SCREEN_BUILD_GRID_FADE_MS).toBeGreaterThanOrEqual(200);
+    expect(T.GYM_SCREEN_BUILD_GRID_FADE_MS).toBeLessThanOrEqual(280);
+    expect(T.GYM_SCREEN_BUILD_GRID_FADE_MS).toBeLessThanOrEqual(400);
   });
 });
 

@@ -45,7 +45,7 @@ async function openSurface(page, name) {
   const btn = page.getByTestId(`gymscreen-surface-${name}`);
   await btn.waitFor({ state: 'attached', timeout: 10000 });
   await btn.click({ timeout: 10000 });
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(450);
 }
 
 async function logChrome(page, label) {

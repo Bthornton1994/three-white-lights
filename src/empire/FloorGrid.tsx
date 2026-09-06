@@ -1440,6 +1440,12 @@ export function FloorGrid(props: FloorGridProps) {
   //   PLACE (`pendingPlace !== null`): ONE cell layer is mounted; equipment,
   //     inventory, members, and Play-mode station taps are pointerEvents none.
   const placing = buildMode && pendingPlace !== null;
+  const ghostSource =
+    pendingPlace === null
+      ? null
+      : pendingPlace.kind === 'furniture'
+        ? (furniture.find((row) => row.item === pendingPlace.item) ?? null)
+        : (placed.find((row) => row.item === pendingPlace.item) ?? null);
 
   // GDD §5.13 presentation Phase 3 — everything `floorSim.ts` is allowed to
   // see, rebuilt from PROPS on every render. Never copied into sim state and
@@ -1527,6 +1533,29 @@ export function FloorGrid(props: FloorGridProps) {
     setOverlapRefusalItem(null);
     setRefusalRegion(null);
   }, [buildMode]);
+
+  const gridFade = useRef(new Animated.Value(buildMode ? 1 : 0)).current;
+  const [gridPainted, setGridPainted] = useState(buildMode);
+  useEffect(() => {
+    if (buildMode) {
+      setGridPainted(true);
+      Animated.timing(gridFade, {
+        toValue: 1,
+        duration: EMPIRE_TUNING.GYM_SCREEN_BUILD_GRID_FADE_MS,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: false,
+      }).start();
+      return;
+    }
+    Animated.timing(gridFade, {
+      toValue: 0,
+      duration: EMPIRE_TUNING.GYM_SCREEN_BUILD_GRID_FADE_MS,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false,
+    }).start(({ finished }) => {
+      if (finished) setGridPainted(false);
+    });
+  }, [buildMode, gridFade]);
 
   /** Select `ref`, or deselect it if it is already the selected one — a second tap on the same station closes its own panel. */
   const toggleSelectedStation = (ref: FloorStationRef): void => {
@@ -1971,7 +2000,7 @@ export function FloorGrid(props: FloorGridProps) {
               width: grid.width * tile,
               height: grid.height * tile,
               backgroundColor: FLOOR_BACKGROUND_COLOR,
-              borderWidth: buildMode ? EMPIRE_TUNING.FLOOR_GRID_BORDER_WIDTH_PIXELS : 0,
+              borderWidth: 0,
               borderColor: FLOOR_GRID_BORDER_COLOR,
               // GDD §5.13 presentation Phase 4: every sprite under this
               // container inherits crisp nearest-neighbour scaling on the
@@ -1992,13 +2021,12 @@ export function FloorGrid(props: FloorGridProps) {
           >
             {/*
               GDD §5.13 presentation Phase 4: indexed floor PNG, stretched
-              to the grid. Build-only: the tile-seam atlas is a snap grid
-              (BO Q1). Play keeps the solid FLOOR_BACKGROUND_COLOR fill.
-              Overlay lines stay Build-only; Play must not read as placement.
-              Texture atlas is never drawn when buildMode is false.
+              to the grid. Build-only snap atlas (BO Q1 / PX A5): fades in
+              200–280ms on enter and unmounts after fade-out so Play has no
+              placement grid. Play keeps the solid FLOOR_BACKGROUND_COLOR.
             */}
-            {buildMode ? (
-            <View
+            {gridPainted ? (
+            <Animated.View
               pointerEvents={'none'}
               style={{
                 position: 'absolute',
@@ -2006,6 +2034,9 @@ export function FloorGrid(props: FloorGridProps) {
                 top: 0,
                 width: grid.width * tile,
                 height: grid.height * tile,
+                opacity: gridFade,
+                borderWidth: EMPIRE_TUNING.FLOOR_GRID_BORDER_WIDTH_PIXELS,
+                borderColor: FLOOR_GRID_BORDER_COLOR,
               }}
             >
               <Image
@@ -2017,10 +2048,7 @@ export function FloorGrid(props: FloorGridProps) {
                   height: grid.height * tile,
                 }}
               />
-            </View>
-            ) : null}
-            {buildMode
-              ? verticalLines.map((i) => (
+            {verticalLines.map((i) => (
               <View
                 key={`v${i}`}
                 testID={`floorgrid-line-v-${i}`}
@@ -2034,10 +2062,8 @@ export function FloorGrid(props: FloorGridProps) {
                   backgroundColor: FLOOR_GRID_LINE_COLOR,
                 }}
               />
-            ))
-              : null}
-            {buildMode
-              ? horizontalLines.map((j) => (
+            ))}
+            {horizontalLines.map((j) => (
               <View
                 key={`h${j}`}
                 testID={`floorgrid-line-h-${j}`}
@@ -2051,8 +2077,9 @@ export function FloorGrid(props: FloorGridProps) {
                   backgroundColor: FLOOR_GRID_LINE_COLOR,
                 }}
               />
-            ))
-              : null}
+            ))}
+            </Animated.View>
+            ) : null}
             {placing
               ? tileYs.flatMap((y) =>
                   tileXs.map((x) => (
@@ -2090,24 +2117,18 @@ export function FloorGrid(props: FloorGridProps) {
                 }}
               />
             )}
-            {placing && pendingPlace !== null && refusalRegion === null ? (
+            {placing && pendingPlace !== null && refusalRegion === null && ghostSource !== null ? (
               <View
                 testID={'floorgrid-place-ghost'}
                 pointerEvents={'none'}
                 style={{
                   position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  width:
-                    (pendingPlace.kind === 'session'
-                      ? sessionItemFootprint(pendingPlace.item).width
-                      : furnitureItemFootprint(pendingPlace.item).width) * tile,
-                  height:
-                    (pendingPlace.kind === 'session'
-                      ? sessionItemFootprint(pendingPlace.item).height
-                      : furnitureItemFootprint(pendingPlace.item).height) * tile,
+                  left: ghostSource.position.x * tile,
+                  top: ghostSource.position.y * tile,
+                  width: ghostSource.footprint.width * tile,
+                  height: ghostSource.footprint.height * tile,
                   borderWidth: EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS,
-                  borderColor: FLOOR_STATION_PANEL_BUTTON_BORDER_COLOR,
+                  borderColor: FLOOR_STATION_SELECTED_OUTLINE_COLOR,
                   opacity: EMPIRE_TUNING.GYM_SCREEN_DISABLED_OPACITY,
                   zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
                 }}

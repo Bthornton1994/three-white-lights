@@ -5882,7 +5882,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 448 -> 451: Stage G.2B LIVING_MEMBER_RETENTION three label mins.
     // 451 -> 454: G2-ATHLETE-SEASON-01 ATHLETE_SEASON three week knobs.
     // 454 -> 455: SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_DOCK_HOME_FLEX.
-    ).toBe(455);
+    // 455 -> 456: SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS.
+    ).toBe(456);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

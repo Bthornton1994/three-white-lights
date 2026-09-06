@@ -5068,6 +5068,10 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
     'GYM_SCREEN_DOCK_HOME_FLEX',
     'A PAINT SCALE: Play\'s flex grow on the player dock versus Shop/Staff/More. Read once into GymScreen dock style and never compared against a caller-supplied number — Play owns home gravity so Build is not an equal dock peer.',
   ),
+  ...exemptTable(
+    'GYM_SCREEN_BUILD_GRID_FADE_MS',
+    'A DURATION, in milliseconds: Build enter/exit snap-grid fade. Read once into FloorGrid Animated.timing and never compared against a caller-supplied number. PX A5 bounds are 200–280; the motion is visual only and does not block input.',
+  ),
   // S4i — clearance for the shell's own nav pill, which this directory cannot
   // import and so cannot compare against live: read once into
   // `styles.root`'s `marginBottom`, the same "paint/layout scale, applied and
@@ -6159,7 +6163,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // (replace, exempt count unchanged).
   // 357 -> 365: Stage D2.2 LADDER_DEV_WATCHED_TIME_STEPS_SECONDS (2) plus
   // FLOOR_PLATE_LOADING (6).
-  EXEMPT: 400, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_DOCK_HOME_FLEX
+  EXEMPT: 401, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS
   // 154 -> 196: the same 42 new leaves. 251 -> 264: the same 13 new leaves.
   // 264 -> 266: the same 2 new leaves.
   // 266 -> 273: the same 7 new leaves.
@@ -6196,7 +6200,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS,
   // FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS), all filed.
   // 451 -> 453: Stage C.1b FLOOR_TILE_PIXELS_MAX and FLOOR_STAGE_PADDING_PIXELS.
-  TUNING_NUMERIC_LEAVES: 509, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_DOCK_HOME_FLEX
+  TUNING_NUMERIC_LEAVES: 510, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -6236,7 +6240,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 455 -> 456: Stage C.1c CONDITION_PERCENT_SCALE.
   // 456 -> 457: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS.
   // 466 -> 475: Stage D2.2 nine new numeric leaves (1 filed + 8 exempt).
-  BRANCH_POINTS: 511, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_DOCK_HOME_FLEX
+  BRANCH_POINTS: 512, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
@@ -6303,7 +6307,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 2372 -> 2377: Stage C.1c CONDITION_PERCENT_SCALE in five domains.
   // 2428 -> 2433: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS across
   // five domains that carry it under their ceiling; ROSTER_SHAPE omits it.
-  CONTAINMENT_CHECKS: 2692, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_DOCK_HOME_FLEX
+  CONTAINMENT_CHECKS: 2698, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_BUILD_GRID_FADE_MS
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -17227,8 +17231,8 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:2763 callee=fresh:ArrowFunction',
   'FloorGrid.tsx:2784 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:2805 callee=fresh:ArrowFunction',
   'FloorGrid.tsx:809 returned=unfollowable:station',
   'FloorGrid.tsx:809 returned=unfollowable:station',
   'FloorGrid.tsx:810 returned=unfollowable:station',
@@ -17298,7 +17302,7 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'stationCapability.ts:104 returned=unfollowable:capability'
 ]);
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1757 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:1786 FloorSimState asked=true walked=false',
   'FloorGrid.tsx:809 GridPosition asked=true walked=false',
   'FloorGrid.tsx:809 GridPosition asked=true walked=false',
   'FloorGrid.tsx:810 GridSize asked=true walked=false',
