@@ -457,7 +457,8 @@ const panelStyles = StyleSheet.create({
     maxHeight:
       EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS *
       EMPIRE_TUNING.FLOOR_GRID_SIZE.garage.height,
-  },
+    color: FLOOR_LABEL_COLOR,
+  } as ViewStyle & { readonly color: string },
   diagnosticsToggle: {
     alignSelf: 'flex-start',
     paddingVertical: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
@@ -479,6 +480,9 @@ const panelStyles = StyleSheet.create({
   },
   buttonText: {
     color: FLOOR_STATION_PANEL_BUTTON_TEXT_COLOR,
+  },
+  bodyText: {
+    color: FLOOR_LABEL_COLOR,
   },
 });
 
@@ -2848,7 +2852,7 @@ export function FloorGrid(props: FloorGridProps) {
         or touches `GymViewState`.
       */}
       {selectedMember === null ? null : (
-        <ScrollView testID={'floorgrid-member-panel'} style={panelStyles.panel}>
+        <ScrollView testID={'floorgrid-member-panel'} style={[panelStyles.panel, panelStyles.bodyText]}>
           {(() => {
             const living = livingMemberById(
               livingMembers,
@@ -2954,8 +2958,8 @@ export function FloorGrid(props: FloorGridProps) {
       panelCondition === null ||
       panelManagerEffect === null ||
       selectedMember !== null ? null : (
-        <ScrollView testID={'floorgrid-station-panel'} style={panelStyles.panel}>
-          <Text testID={'floorgrid-station-panel-identity'}>
+        <ScrollView testID={'floorgrid-station-panel'} style={[panelStyles.panel, panelStyles.bodyText]}>
+          <Text testID={'floorgrid-station-panel-identity'} style={panelStyles.bodyText}>
             {playerFacingEquipmentLabel(panelIdentity.item)}
           </Text>
           {/*
@@ -2965,7 +2969,7 @@ export function FloorGrid(props: FloorGridProps) {
             panel and the floor light the same snapshot; no fake
             "efficiency score" is computed here.
           */}
-          <Text testID={'floorgrid-station-panel-operation'}>
+          <Text testID={'floorgrid-station-panel-operation'} style={panelStyles.bodyText}>
             {playerFacingStationOperation(panelOperation, panelLoadingSeats)}
           </Text>
           {/*
@@ -2979,7 +2983,7 @@ export function FloorGrid(props: FloorGridProps) {
             line reads exactly as it did before for every already-tested
             non-dormant state — see `stationConditionView`'s own comment.
           */}
-          <Text testID={'floorgrid-station-panel-condition'}>
+          <Text testID={'floorgrid-station-panel-condition'} style={panelStyles.bodyText}>
             Condition {displayConditionPercent(panelCondition.condition)}% — repair{' '}
             {panelCondition.blocksRecovery
               ? panelCondition.repairCostGymBucks
@@ -3009,7 +3013,7 @@ export function FloorGrid(props: FloorGridProps) {
             (Stage B's own measurement, CLAUDE.md) reads here as "never
             repairs automatically", not as a vague "management" line.
           */}
-          <Text testID={'floorgrid-station-panel-manager'}>
+          <Text testID={'floorgrid-station-panel-manager'} style={panelStyles.bodyText}>
             {panelManagerEffect.hired
               ? panelManagerEffect.wouldAutoRepairNow
                 ? `your ${panelManagerEffect.tier} manager repairs this automatically below condition ${panelManagerEffect.autoRepairCondition}`
@@ -3186,7 +3190,7 @@ export function FloorGrid(props: FloorGridProps) {
         </ScrollView>
       )}
       {panelEquipment === null || selectedMember !== null || panelStation !== null ? null : (
-        <ScrollView testID={'floorgrid-equipment-panel'} style={panelStyles.panel}>
+        <ScrollView testID={'floorgrid-equipment-panel'} style={[panelStyles.panel, panelStyles.bodyText]}>
           <Text testID={'floorgrid-equipment-panel-identity'}>
             {playerFacingEquipmentLabel(panelEquipment)}
           </Text>

@@ -17297,12 +17297,12 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:2852 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:2873 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:820 returned=unfollowable:station',
-  'FloorGrid.tsx:820 returned=unfollowable:station',
-  'FloorGrid.tsx:821 returned=unfollowable:station',
-  'FloorGrid.tsx:821 returned=unfollowable:station',
+  'FloorGrid.tsx:2856 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:2877 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:824 returned=unfollowable:station',
+  'FloorGrid.tsx:824 returned=unfollowable:station',
+  'FloorGrid.tsx:825 returned=unfollowable:station',
+  'FloorGrid.tsx:825 returned=unfollowable:station',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -17368,12 +17368,12 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'stationCapability.ts:104 returned=unfollowable:capability'
 ]);
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1805 FloorSimState asked=true walked=false',
-  'FloorGrid.tsx:820 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:820 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:821 GridSize asked=true walked=false',
-  'FloorGrid.tsx:821 GridSize asked=true walked=false',
-  'FloorGrid.tsx:833 BayBench | undefined asked=true walked=false',
+  'FloorGrid.tsx:1809 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:824 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:824 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:825 GridSize asked=true walked=false',
+  'FloorGrid.tsx:825 GridSize asked=true walked=false',
+  'FloorGrid.tsx:837 BayBench | undefined asked=true walked=false',
   'empireInvariant.ts:1084 GymAxes asked=true walked=false',
   'empireInvariant.ts:1137 GymAxes asked=true walked=false',
   'empireInvariant.ts:1168 readonly ExpansionBuild[] asked=true walked=false',
@@ -18142,7 +18142,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // stayState wiring. Read from this pin last.
   // 84_813 -> 86_105: Stage G.2C2 livingMemberDeparture.ts plus roster/sim
   // departure wiring. Read from this pin last.
-  NODES_EXAMINED: 96_445, // A×C inspect overlay + FloorGrid worn/board AST
+  NODES_EXAMINED: 96_499, // A×C inspect overlay ivory sheet + FloorGrid AST
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

@@ -1466,7 +1466,6 @@ export function GymScreen(props: GymScreenProps) {
       >
         <Text style={styles.fabText}>{playerFacingBuildFabLabel(surface === 'build')}</Text>
       </Pressable>
-      </View>
       <View
         testID={'gymscreen-action-card'}
         style={surface === 'play' ? styles.actionCard : styles.drawerHidden}
@@ -1477,6 +1476,7 @@ export function GymScreen(props: GymScreenProps) {
         <Text testID={'gymscreen-next'} style={styles.hudMuted}>
           {nextLine}
         </Text>
+      </View>
       </View>
       <View testID={'gymscreen-dock'} style={styles.dock}>
         {GYM_DOCK_SURFACES.map((name) => (
