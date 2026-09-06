@@ -18142,7 +18142,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // stayState wiring. Read from this pin last.
   // 84_813 -> 86_105: Stage G.2C2 livingMemberDeparture.ts plus roster/sim
   // departure wiring. Read from this pin last.
-  NODES_EXAMINED: 96_663, // A×C charcoal sheets + ivory shop/staff copy
+  NODES_EXAMINED: 96_823, // A×C ivory Build tray / place-banner / living notices
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

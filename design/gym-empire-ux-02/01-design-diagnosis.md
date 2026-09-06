@@ -4,7 +4,7 @@
 
 Owner Bryant product-rejected HEAD `ea58acef` (A6-4-only chrome). That SHA is **REJECTED / NOT ACCEPT**. Bryant then **approved** visual direction **A × C IRON & AMBER**. This packet is a layout / IA / hierarchy reset plus chrome toward that look — not a restyle of the same editor, and not a claim that art fidelity is done.
 
-Factory disk `software-factory/design/gym-empire-ux-02/` is **not mounted** in this Cloud (standing order and LOCKED product bar were not on disk). Diagnosis is from GDD + the live Gym Empire tree + the attached A×C mockup description.
+Canonical product bar is `software-factory/design/gym-empire-ux-02/02-product-bar-LOCKED.md` (supersedes any prior bar filename). That folder is **not mounted** in this Cloud, so diagnosis follows GDD + the live Gym Empire tree + the LOCKED-bar constraints as bound (living institution; full-bleed Play; Build separate; Shop/Staff sheets; diagnostics never More; keep UX-01 necessaries; no invent).
 
 ## Layout failures (void / letterbox)
 

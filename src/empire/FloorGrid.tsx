@@ -2009,19 +2009,19 @@ export function FloorGrid(props: FloorGridProps) {
       </Text>
       {pendingPlace === null ? null : (
         <View testID={'floorgrid-place-banner'}>
-          <Text testID={'floorgrid-pending'}>
+          <Text testID={'floorgrid-pending'} style={FLOOR_LABEL_STYLE}>
             Moving: {playerFacingEquipmentLabel(pendingPlace.item)}
           </Text>
-          <Text testID={'floorgrid-place-cost'}>
+          <Text testID={'floorgrid-place-cost'} style={FLOOR_LABEL_STYLE}>
             {playerFacingEquipmentCostLine(pendingPlace.item)}
           </Text>
-          <Text testID={'floorgrid-place-purpose'}>
+          <Text testID={'floorgrid-place-purpose'} style={FLOOR_LABEL_STYLE}>
             {playerFacingEquipmentCatalog(pendingPlace.item).purpose}
           </Text>
-          <Text testID={'floorgrid-place-effect'}>
+          <Text testID={'floorgrid-place-effect'} style={FLOOR_LABEL_STYLE}>
             {playerFacingEquipmentCatalog(pendingPlace.item).effect}
           </Text>
-          <Text testID={'floorgrid-place-tradeoff'}>
+          <Text testID={'floorgrid-place-tradeoff'} style={FLOOR_LABEL_STYLE}>
             {playerFacingEquipmentCatalog(pendingPlace.item).tradeoff}
           </Text>
           {placementRefuseKind === null ? null : (
@@ -2683,24 +2683,24 @@ export function FloorGrid(props: FloorGridProps) {
         {drawnSim.members.length} member(s) around the gym
       </Text>
       {lastDeparture === null ? null : (
-        <Text testID={'floorgrid-departure-notice'}>{playerFacingDepartureLine(lastDeparture)}</Text>
+        <Text testID={'floorgrid-departure-notice'} style={FLOOR_LABEL_STYLE}>{playerFacingDepartureLine(lastDeparture)}</Text>
       )}
       {lastArrival === null ? null : (
-        <Text testID={'floorgrid-arrival-notice'}>{playerFacingArrivalLine(lastArrival)}</Text>
+        <Text testID={'floorgrid-arrival-notice'} style={FLOOR_LABEL_STYLE}>{playerFacingArrivalLine(lastArrival)}</Text>
       )}
       {lastSeason === null ? null : (
-        <Text testID={'floorgrid-season-notice'}>{playerFacingSeasonLine(lastSeason)}</Text>
+        <Text testID={'floorgrid-season-notice'} style={FLOOR_LABEL_STYLE}>{playerFacingSeasonLine(lastSeason)}</Text>
       )}
       <View
         testID={'floorgrid-tray'}
         style={buildMode ? undefined : { display: 'none' }}
       >
         {unplaced.length === 0 && unplacedFurniture.length === 0 ? (
-          <Text testID={'floorgrid-tray-empty'}>
+          <Text testID={'floorgrid-tray-empty'} style={FLOOR_LABEL_STYLE}>
             {playerFacingBuildTrayEmpty(owned.length)}
           </Text>
         ) : (
-          <Text>{playerFacingBuildPlaceHint(false)}</Text>
+          <Text style={FLOOR_LABEL_STYLE}>{playerFacingBuildPlaceHint(false)}</Text>
         )}
         <ScrollView horizontal testID={'floorgrid-tray-scroll'}>
           {unplacedFurniture.map((item) => {

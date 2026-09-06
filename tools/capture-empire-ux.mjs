@@ -63,7 +63,14 @@ async function logChrome(page, label) {
       (await fab.count()) === 0
         ? 'missing'
         : await fab.evaluate((el) => getComputedStyle(el).display);
-    console.log(JSON.stringify({ label, lines, texture, trayDisplay, fabText, fabDisplay }));
+    const trayEmpty = page.getByTestId('floorgrid-tray-empty');
+    const trayEmptyColor =
+      (await trayEmpty.count()) === 0
+        ? 'missing'
+        : await trayEmpty.evaluate((el) => getComputedStyle(el).color);
+    console.log(
+      JSON.stringify({ label, lines, texture, trayDisplay, trayEmptyColor, fabText, fabDisplay }),
+    );
   } catch (err) {
     console.log(JSON.stringify({ label, error: String(err) }));
   }
