@@ -325,8 +325,10 @@ const PINNED = Object.freeze({
    * (-1), historyReadiness.test.ts, capture-training-fit.mjs, and
    * docs/evidence/.../overflow.json arrived (+3). PNG evidence is outside the
    * text walk this pin counts.
+   *
+   * 334 -> 335 with Session A Iron & Amber bind: sessionPalette.test.ts.
    */
-  SCANNED_FILES: 334,
+  SCANNED_FILES: 335,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -377,8 +379,11 @@ const PINNED = Object.freeze({
    * `src/game/historyReadiness.test.ts`. `src/session/CheckInView.tsx` left
    * the tracked tree in the same commit. Evidence PNGs are not tests, so this
    * pin does not move with `SCANNED_FILES`.
+   *
+   * 110 -> 111 / 334 -> 335 with the Session A Iron & Amber bind:
+   * `src/session/sessionPalette.test.ts`.
    */
-  TEST_FILES: 110,
+  TEST_FILES: 111,
 });
 
 /**

@@ -76,6 +76,11 @@ export function BriefingView({
 
   return (
     <View style={styles.root} testID="session-briefing">
+      <View style={styles.lights} testID="session-lights">
+        {([0, 1, 2] as const).map((index) => (
+          <View key={index} testID={`session-light-${index}`} style={styles.light} />
+        ))}
+      </View>
       <Text style={styles.title}>{SESSION_COPY.CHECK_IN_TITLE}</Text>
 
       <View style={styles.row} testID="check-in-lift">
@@ -150,7 +155,14 @@ export function BriefingView({
                 index === SESSION_TUNING.DEFAULT_RPE_INDEX ? styles.rungSuggested : null,
               ]}
             >
-              <Text style={styles.rungLabel}>{rpe}</Text>
+              <Text
+                style={[
+                  styles.rungLabel,
+                  index === SESSION_TUNING.DEFAULT_RPE_INDEX ? styles.rungLabelSuggested : null,
+                ]}
+              >
+                {rpe}
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -172,12 +184,25 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     overflow: 'hidden',
   },
+  lights: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: L.PIP_GAP,
+    width: '100%',
+  },
+  light: {
+    width: L.PIP_SIZE,
+    height: L.PIP_SIZE,
+    borderRadius: L.PIP_SIZE / 2,
+    backgroundColor: SESSION_PALETTE.LIGHT,
+  },
   title: {
     color: SESSION_PALETTE.TEXT,
-    fontSize: L.TITLE_FONT,
-    fontWeight: '700',
+    fontSize: L.HEADLINE_FONT,
+    fontWeight: '800',
     letterSpacing: L.LETTER_SPACING,
     textAlign: 'center',
+    textTransform: 'uppercase',
   },
   row: {
     gap: L.ROW_GAP,
@@ -217,8 +242,8 @@ const styles = StyleSheet.create({
     fontSize: L.ANSWER_FONT,
   },
   chipLabelChosen: {
-    color: SESSION_PALETTE.TEXT,
-    fontWeight: '700',
+    color: SESSION_PALETTE.ACTION_TEXT,
+    fontWeight: '800',
   },
   modifier: {
     fontSize: L.MODIFIER_FONT,
@@ -268,9 +293,10 @@ const styles = StyleSheet.create({
   prompt: {
     color: SESSION_PALETTE.TEXT,
     fontSize: L.PROMPT_FONT,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: L.LETTER_SPACING,
     textAlign: 'center',
+    textTransform: 'uppercase',
     width: '100%',
     flexShrink: 1,
   },
@@ -296,12 +322,17 @@ const styles = StyleSheet.create({
     backgroundColor: SESSION_PALETTE.CHIP,
   },
   rungSuggested: {
+    backgroundColor: SESSION_PALETTE.ACTION,
     borderColor: SESSION_PALETTE.RPE_SUGGESTED_EDGE,
   },
   rungLabel: {
     color: SESSION_PALETTE.TEXT,
     fontSize: L.ANSWER_FONT,
     fontWeight: '700',
+  },
+  rungLabelSuggested: {
+    color: SESSION_PALETTE.ACTION_TEXT,
+    fontWeight: '800',
   },
   hint: {
     color: SESSION_PALETTE.TEXT_DIM,

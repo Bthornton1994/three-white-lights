@@ -107,6 +107,14 @@ describe('history readiness', () => {
     );
   });
 
+  it('fatigue is not a simple RPE sum — volume still matters at the same RPE', () => {
+    const light = after(EMPTY_FATIGUE_STATE, { ...template(1, 8), workSets: 1, repsPerSet: 1 });
+    const heavy = after(EMPTY_FATIGUE_STATE, template(1, 8));
+    const lightWindow = adjustedTimingWindowMs(BASE_WINDOW_MS, sessionFeel(light, 2));
+    const heavyWindow = adjustedTimingWindowMs(BASE_WINDOW_MS, sessionFeel(heavy, 2));
+    expect(heavyWindow).toBeLessThan(lightWindow);
+  });
+
   it('history never nudges load — RPE still owns the bar', () => {
     expect(FATIGUE_TUNING.HISTORY_READINESS_LOAD_ADJUSTMENT_PERCENT).toBe(0);
     const hard = after(EMPTY_FATIGUE_STATE, template(1, 10));

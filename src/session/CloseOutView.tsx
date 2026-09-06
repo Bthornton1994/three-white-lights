@@ -413,9 +413,11 @@ const styles = StyleSheet.create({
     letterSpacing: L.LETTER_SPACING,
   },
   headline: {
+    color: SESSION_PALETTE.TEXT,
     fontSize: L.HEADLINE_FONT,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: L.LETTER_SPACING,
+    textTransform: 'uppercase',
   },
   subhead: {
     color: SESSION_PALETTE.TEXT_DIM,
@@ -471,7 +473,8 @@ const styles = StyleSheet.create({
   actionLabel: {
     color: SESSION_PALETTE.ACTION_TEXT,
     fontSize: L.BUTTON_FONT,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: L.LETTER_SPACING,
+    textTransform: 'uppercase',
   },
 });

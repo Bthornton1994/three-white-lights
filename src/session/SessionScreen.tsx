@@ -149,9 +149,10 @@ const styles = StyleSheet.create({
   headline: {
     color: SESSION_PALETTE.TEXT,
     fontSize: L.HEADLINE_FONT,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: L.LETTER_SPACING,
     textAlign: 'center',
+    textTransform: 'uppercase',
     width: '100%',
   },
   subhead: {

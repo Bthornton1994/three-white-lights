@@ -171,6 +171,7 @@ describe('SessionScreen hands the readings down and computes nothing', () => {
     expect(source('BriefingView.tsx')).toMatch(/onChooseLift/);
     expect(source('BriefingView.tsx')).toMatch(/LIFT_ROTATION/);
     expect(source('BriefingView.tsx')).toMatch(/check-in-lift-/);
+    expect(source('BriefingView.tsx')).toMatch(/session-lights/);
     expect(source('BriefingView.tsx')).not.toMatch(/check-in-sleep-/);
     expect(SCREEN).not.toMatch(/CheckInView/);
     expect(SCREEN).not.toMatch(/check-in-tap/);
