@@ -749,7 +749,7 @@ export function GymScreen(props: GymViewProps) {
                   {managerHireCostGymBucks(tier) > gym.ladder.gymBucks ? (
                     <Text testID={`gymscreen-hire-${tier}-unavailable`}>
                       needs {managerHireCostGymBucks(tier)} gym bucks — you have{' '}
-                      {gym.ladder.gymBucks}
+                      {playerFacingGymBucksLine(gym.ladder.gymBucks)}
                     </Text>
                   ) : (
                     <Pressable
@@ -896,7 +896,8 @@ export function GymScreen(props: GymViewProps) {
               </Text>
             ) : prompt.repairCostGymBucks > gym.ladder.gymBucks ? (
               <Text testID={'gymscreen-prompt-repair-unavailable'}>
-                needs {prompt.repairCostGymBucks} gym bucks — you have {gym.ladder.gymBucks}
+                needs {prompt.repairCostGymBucks} gym bucks — you have{' '}
+                {playerFacingGymBucksLine(gym.ladder.gymBucks)}
               </Text>
             ) : (
               <Pressable
@@ -1079,12 +1080,13 @@ export function GymScreen(props: GymViewProps) {
                   <Text>owned</Text>
                 ) : tooLow ? (
                   <Text testID={`gymscreen-buy-ladder-${item}-unavailable`}>
-                    not here yet — fits from {ladderEquipmentMinRung(item)} and this gym is a{' '}
-                    {gym.ladder.rung}
+                    not here yet — fits from {playerFacingLocationLine(ladderEquipmentMinRung(item))} and this gym is{' '}
+                    {playerFacingLocationLine(gym.ladder.rung)}
                   </Text>
                 ) : tooPoor ? (
                   <Text testID={`gymscreen-buy-ladder-${item}-unavailable`}>
-                    needs {ladderEquipmentCost(item)} gym bucks — you have {gym.ladder.gymBucks}
+                    needs {ladderEquipmentCost(item)} gym bucks — you have{' '}
+                    {playerFacingGymBucksLine(gym.ladder.gymBucks)}
                   </Text>
                 ) : (
                   <Pressable
@@ -1142,8 +1144,8 @@ export function GymScreen(props: GymViewProps) {
                   <Text>owned</Text>
                 ) : tooLow ? (
                   <Text testID={`gymscreen-buy-session-${item}-unavailable`}>
-                    not here yet — fits from {sessionEquipmentMinRung(item)} and this gym is a{' '}
-                    {gym.ladder.rung}
+                    not here yet — fits from {playerFacingLocationLine(sessionEquipmentMinRung(item))} and this gym is{' '}
+                    {playerFacingLocationLine(gym.ladder.rung)}
                   </Text>
                 ) : tooPoor ? (
                   <Pressable
@@ -1153,7 +1155,8 @@ export function GymScreen(props: GymViewProps) {
                     style={[styles.button, styles.buttonDisabled]}
                   >
                     <Text style={styles.buttonTextDisabled}>
-                      needs {sessionEquipmentCost(item)} gym bucks — you have {gym.ladder.gymBucks}
+                      needs {sessionEquipmentCost(item)} gym bucks — you have{' '}
+                      {playerFacingGymBucksLine(gym.ladder.gymBucks)}
                     </Text>
                   </Pressable>
                 ) : (
@@ -1177,12 +1180,13 @@ export function GymScreen(props: GymViewProps) {
         ) : (
           <>
             <Text>
-              next: {destination} for {ladderMoveCost(destination)} gym bucks
+              next: {playerFacingLocationLine(destination)} for {ladderMoveCost(destination)} gym bucks
             </Text>
             {/* `moveUpLadder`'s `'not-enough-gym-bucks'` arm, drawn instead of pressed for. */}
             {ladderMoveCost(destination) > gym.ladder.gymBucks ? (
               <Text testID={'gymscreen-move-up-unavailable'}>
-                needs {ladderMoveCost(destination)} gym bucks — you have {gym.ladder.gymBucks}
+                needs {ladderMoveCost(destination)} gym bucks — you have{' '}
+                {playerFacingGymBucksLine(gym.ladder.gymBucks)}
               </Text>
             ) : (
               <Pressable

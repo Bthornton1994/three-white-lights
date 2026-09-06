@@ -251,7 +251,7 @@ import {
   playerFacingBayRole,
   playerFacingEquipmentCatalog,
   playerFacingEquipmentCostLine,
-  playerFacingEquipmentLabel,
+  playerFacingEquipmentLabel, playerFacingGymBucksLine,
   playerFacingMemberActivityLine,
   playerFacingMemberTypeLabel,
   playerFacingPlacementRefuse,
@@ -1971,7 +1971,7 @@ export function FloorGrid(props: FloorGridProps) {
               width: grid.width * tile,
               height: grid.height * tile,
               backgroundColor: FLOOR_BACKGROUND_COLOR,
-              borderWidth: EMPIRE_TUNING.FLOOR_GRID_BORDER_WIDTH_PIXELS,
+              borderWidth: buildMode ? EMPIRE_TUNING.FLOOR_GRID_BORDER_WIDTH_PIXELS : 0,
               borderColor: FLOOR_GRID_BORDER_COLOR,
               // GDD §5.13 presentation Phase 4: every sprite under this
               // container inherits crisp nearest-neighbour scaling on the
@@ -1991,14 +1991,13 @@ export function FloorGrid(props: FloorGridProps) {
             } as PixelSnappedViewStyle}
           >
             {/*
-              GDD §5.13 presentation Phase 4: the floor itself. One indexed
-              PNG per rung at the sprite-native resolution, drawn stretched
-              to the grid's full pixel size (an integer scale by
-              construction — both sides are the same tile count). It sits
-              first in the container so everything else paints over it; the
-              flat background colour above stays as the fallback a failed
-              image load would reveal.
+              GDD §5.13 presentation Phase 4: indexed floor PNG, stretched
+              to the grid. Build-only: the tile-seam atlas is a snap grid
+              (BO Q1). Play keeps the solid FLOOR_BACKGROUND_COLOR fill.
+              Overlay lines stay Build-only; Play must not read as placement.
+              Texture atlas is never drawn when buildMode is false.
             */}
+            {buildMode ? (
             <View
               pointerEvents={'none'}
               style={{
@@ -2019,6 +2018,7 @@ export function FloorGrid(props: FloorGridProps) {
                 }}
               />
             </View>
+            ) : null}
             {buildMode
               ? verticalLines.map((i) => (
               <View
@@ -2255,7 +2255,7 @@ export function FloorGrid(props: FloorGridProps) {
                   ) : null}
                   {isBayPrimary ? null : (
                     <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
-                      {row.item}
+                      {playerFacingEquipmentLabel(row.item)}
                     </Text>
                   )}
                 </Pressable>
@@ -2379,7 +2379,7 @@ export function FloorGrid(props: FloorGridProps) {
                     {...({ pointerEvents: 'none' } as object)}
                   />
                   <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
-                    {row.item}
+                    {playerFacingEquipmentLabel(row.item)}
                   </Text>
                 </Pressable>
               );
@@ -2638,7 +2638,7 @@ export function FloorGrid(props: FloorGridProps) {
                     }}
                   />
                 )}
-                <Text style={FLOOR_LABEL_STYLE}>{item}</Text>
+                <Text style={FLOOR_LABEL_STYLE}>{playerFacingEquipmentLabel(item)}</Text>
               </Pressable>
             );
           })}
@@ -2683,7 +2683,7 @@ export function FloorGrid(props: FloorGridProps) {
                   {...({ pointerEvents: 'none' } as object)}
                 />
                 <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
-                  {item}
+                  {playerFacingEquipmentLabel(item)}
                 </Text>
               </Pressable>
             );
@@ -2971,7 +2971,7 @@ export function FloorGrid(props: FloorGridProps) {
                       key={axis}
                       testID={`floorgrid-station-panel-upgrade-${axis}-unavailable`}
                     >
-                      {`${playerFacingUpgradeLabel(axis)} needs ${cost} gym bucks — you have ${managed.gym.ladder.gymBucks}`}
+                      {`${playerFacingUpgradeLabel(axis)} needs ${cost} gym bucks — you have ${playerFacingGymBucksLine(managed.gym.ladder.gymBucks)}`}
                     </Text>
                   );
                 }
@@ -3026,7 +3026,7 @@ export function FloorGrid(props: FloorGridProps) {
           ) : panelCondition.repairCostGymBucks > managed.gym.ladder.gymBucks ? (
             <Text testID={'floorgrid-station-panel-repair-unavailable'}>
               needs {panelCondition.repairCostGymBucks} gym bucks — you have{' '}
-              {managed.gym.ladder.gymBucks}
+              {playerFacingGymBucksLine(managed.gym.ladder.gymBucks)}
             </Text>
           ) : (
             <Pressable

@@ -48,6 +48,23 @@ async function openSurface(page, name) {
   await page.waitForTimeout(400);
 }
 
+async function logChrome(page, label) {
+  try {
+    const lines = await page.locator('[data-testid^="floorgrid-line-"]').count();
+    const texture = await page.getByTestId('floorgrid-floor-texture').count();
+    const tray = page.getByTestId('floorgrid-tray');
+    const trayDisplay =
+      (await tray.count()) === 0
+        ? 'missing'
+        : await tray.evaluate((el) => getComputedStyle(el).display);
+    const fab = page.getByTestId('gymscreen-surface-build');
+    const fabText = (await fab.count()) === 0 ? 'missing' : (await fab.innerText()).trim();
+    console.log(JSON.stringify({ label, lines, texture, trayDisplay, fabText }));
+  } catch (err) {
+    console.log(JSON.stringify({ label, error: String(err) }));
+  }
+}
+
 async function run() {
   const browser = await chromium.launch({
     ...(PW_CHROMIUM === undefined ? {} : { executablePath: PW_CHROMIUM }),
@@ -60,8 +77,14 @@ async function run() {
   const page = await context.newPage();
   await openGym(page);
   await shot(page, 'play');
+  await logChrome(page, 'play');
   await openSurface(page, 'build');
   await shot(page, 'build');
+  await logChrome(page, 'build');
+  // A6-2: Exit Build → Play via Done (same FAB testID as Build).
+  await openSurface(page, 'build');
+  await shot(page, 'play-after-exit-build');
+  await logChrome(page, 'play-after-exit-build');
   await openSurface(page, 'shop');
   await shot(page, 'shop');
   await openSurface(page, 'staff');
@@ -79,6 +102,15 @@ async function run() {
     await developer.click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(400);
     await shot(page, 'developer');
+    const advance = page.getByTestId('gymscreen-advance-offline-259200');
+    if ((await advance.count()) > 0) {
+      await advance.click({ timeout: 5000 }).catch(() => {});
+      await page.waitForTimeout(400);
+      await openSurface(page, 'play');
+      if ((await page.getByTestId('gymscreen-return').count()) > 0) {
+        await shot(page, 'return');
+      }
+    }
   }
   await context.close();
   await browser.close();
