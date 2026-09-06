@@ -430,7 +430,7 @@ export const GYM_SURFACES = Object.freeze([
 ] as const);
 export type GymSurface = (typeof GYM_SURFACES)[number];
 
-/** Player dock peers. Build is a FAB; developer is an explicit More route. */
+/** Player dock peers. Build is a FAB. Developer is not a player More/dock control. */
 export const GYM_DOCK_SURFACES = Object.freeze(['play', 'shop', 'staff', 'more'] as const);
 export type GymDockSurface = (typeof GYM_DOCK_SURFACES)[number];
 

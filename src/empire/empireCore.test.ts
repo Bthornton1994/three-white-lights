@@ -3910,7 +3910,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 852 -> 856: CAREER-EMPIRE-REP-01 GymScreen reputation testIDs / copy.
     // 856 -> 905: SF-TWL-GYM-EMPIRE-UX-01 player-facing chrome and catalog copy.
     // 905 -> 918: SF-TWL-GYM-EMPIRE-UX-01 playerFacingGymRefusal toast copy.
-    expect(singleQuoted.size).toBe(918);
+    // 918 -> 917: A6-4 removed GymScreen More "Developer" control testID.
+    expect(singleQuoted.size).toBe(917);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4542,7 +4543,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-strikes',
       'gymscreen-strikes-lead',
       'gymscreen-surface-build',
-      'gymscreen-surface-developer',
       'gymscreen-week',
       'gymscreen-week-log',
       'gymscreen-week-preview',
@@ -4935,7 +4935,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1303 -> 1307: CAREER-EMPIRE-REP-01 GymScreen composed-copy tokens.
     // 1308 -> 1374: SF-TWL-GYM-EMPIRE-UX-01 player-facing chrome strings.
     // 1374 -> 1387: SF-TWL-GYM-EMPIRE-UX-01 playerFacingGymRefusal toast copy.
-    expect(stringsChecked).toBe(1387);
+    // 1387 -> 1386: A6-4 removed GymScreen More Developer control testID.
+    expect(stringsChecked).toBe(1386);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were

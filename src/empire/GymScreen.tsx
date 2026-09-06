@@ -1247,14 +1247,6 @@ export function GymScreen(props: GymViewProps) {
           {returnSummary}
         </Text>
       )}
-      <Pressable
-        testID={'gymscreen-surface-developer'}
-        accessibilityRole={'button'}
-        style={styles.button}
-        onPress={() => dispatch({ kind: 'set-gym-surface', surface: 'developer' })}
-      >
-        <Text style={styles.buttonText}>{playerFacingSurfaceLabel('developer')}</Text>
-      </Pressable>
       </ScrollView>
       <ScrollView
         testID={'gymscreen-developer-drawer'}

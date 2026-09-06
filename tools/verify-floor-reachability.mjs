@@ -789,11 +789,12 @@ async function openGymSurface(name) {
   await page.waitForTimeout(200);
 }
 
-/** Developer chrome lives behind More, not on the player dock. */
+/** Developer chrome is an explicit web route, never player More/dock. */
 async function openDeveloperSurface() {
-  await openGymSurface('more');
-  const btn = page.getByTestId('gymscreen-surface-developer');
-  await btn.click({ timeout: 10000 });
+  await page.evaluate(() => {
+    window.location.hash = 'empire-developer';
+  });
+  await page.getByTestId('gymscreen-developer-drawer').waitFor({ state: 'visible', timeout: 10000 });
   await page.waitForTimeout(200);
 }
 

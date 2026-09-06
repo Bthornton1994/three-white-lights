@@ -1923,17 +1923,17 @@ describe('S4h: every rendered Pressable is visibly a control', () => {
       expect(count, `${label} drew at least one Pressable`).toBeGreaterThan(0);
     }
     const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
-    // Stage C.1b added five dock surfaces (play/build/shop/staff/more) on
-    // every gym, and a HUD review chip on gyms that have a standing
+    // Stage C.1b dock (play/shop/staff/more) plus Build FAB. A6-4 removed the
+    // Developer More control; HUD review chip still on gyms with a standing
     // maintenance review (dormant and ready-to-reopen in this fixture).
     expect(counts).toEqual({
-      'cold garage': 30,
-      'heavily operated gym': 34,
-      'staffed gym': 32,
-      'dormant gym': 38,
-      'ready-to-reopen gym': 38,
+      'cold garage': 29,
+      'heavily operated gym': 33,
+      'staffed gym': 31,
+      'dormant gym': 37,
+      'ready-to-reopen gym': 37,
     });
-    expect(total).toBe(172);
+    expect(total).toBe(167);
   });
 });
 
@@ -2092,7 +2092,18 @@ describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
       'gymscreen-surface-build',
     );
     expect(findAllByTestId(root, 'gymscreen-surface-build').length).toBe(1);
-    expect(findAllByTestId(root, 'gymscreen-surface-developer').length).toBe(1);
+    expect(findAllByTestId(root, 'gymscreen-surface-developer').length).toBe(0);
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).not.toContain(
+      'gymscreen-surface-developer',
+    );
+    expect(testIdsUnder(findByTestId(root, 'gymscreen-dock'))).not.toContain(
+      'gymscreen-surface-developer',
+    );
+    const developer = gymViewReduce(state, { kind: 'set-gym-surface', surface: 'developer' });
+    expect(developer.surface).toBe('developer');
+    expect(testIdsUnder(findByTestId(render(developer, []), 'gymscreen-developer-drawer'))).toContain(
+      'gymscreen-diagnostics',
+    );
     expect(textOf(findByTestId(root, 'gymscreen-gym-bucks'))).not.toMatch(/\./);
     expect(textOf(findByTestId(root, 'gymscreen-reputation'))).not.toMatch(/\.\d/);
   });

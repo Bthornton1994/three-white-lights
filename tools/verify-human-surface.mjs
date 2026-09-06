@@ -434,9 +434,10 @@ async function enterGym(page) {
 }
 
 async function afford(page, amount) {
-  await page.getByTestId('gymscreen-surface-more').click();
-  await page.waitForTimeout(200);
-  await page.getByTestId('gymscreen-surface-developer').click({ timeout: 10000 });
+  await page.evaluate(() => {
+    window.location.hash = 'empire-developer';
+  });
+  await page.getByTestId('gymscreen-developer-drawer').waitFor({ state: 'visible', timeout: 10000 });
   await page.waitForTimeout(200);
   let purse = Number.NaN;
   for (let i = 0; i < 16; i += 1) {

@@ -215,8 +215,10 @@ try {
   // 4 & 5. Press the dev check-in control repeatedly, see the figure move;
   // then press move-up and see the rung change.
   // -------------------------------------------------------------------------
-  await openGymSurface('more');
-  await page.getByTestId('gymscreen-surface-developer').click({ timeout: 10000 });
+  await page.evaluate(() => {
+    window.location.hash = 'empire-developer';
+  });
+  await page.getByTestId('gymscreen-developer-drawer').waitFor({ state: 'visible', timeout: 10000 });
   await page.waitForTimeout(200);
   const advanceId = 'gymscreen-advance-offline-259200'; // +3d away
   const advanceButton = page.getByTestId(advanceId);

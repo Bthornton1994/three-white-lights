@@ -65,6 +65,33 @@ async function logChrome(page, label) {
   }
 }
 
+async function logMoreA64(page) {
+  const moreDev = await page
+    .locator('[data-testid="gymscreen-more-drawer"] [data-testid="gymscreen-surface-developer"]')
+    .count();
+  const dockDev = await page
+    .locator('[data-testid="gymscreen-dock"] [data-testid="gymscreen-surface-developer"]')
+    .count();
+  const moreText = await page.getByTestId('gymscreen-more-drawer').innerText();
+  console.log(
+    JSON.stringify({
+      label: 'more-a6-4',
+      moreDeveloperControls: moreDev,
+      dockDeveloperControls: dockDev,
+      moreHasDeveloperWord: /\bDeveloper\b/.test(moreText),
+    }),
+  );
+}
+
+/** Developer chrome is an explicit web route, never player More/dock. */
+async function openDeveloperSurface(page) {
+  await page.evaluate(() => {
+    window.location.hash = 'empire-developer';
+  });
+  await page.getByTestId('gymscreen-developer-drawer').waitFor({ state: 'visible', timeout: 10000 });
+  await page.waitForTimeout(400);
+}
+
 async function run() {
   const browser = await chromium.launch({
     ...(PW_CHROMIUM === undefined ? {} : { executablePath: PW_CHROMIUM }),
@@ -91,25 +118,21 @@ async function run() {
   await shot(page, 'staff');
   await openSurface(page, 'more');
   await shot(page, 'more');
+  await logMoreA64(page);
   const returnCard = page.getByTestId('gymscreen-return');
   if ((await returnCard.count()) > 0) {
     await openSurface(page, 'play');
     await shot(page, 'return');
   }
-  const developer = page.getByTestId('gymscreen-surface-developer');
-  if ((await developer.count()) > 0) {
-    await openSurface(page, 'more').catch(() => {});
-    await developer.click({ timeout: 5000 }).catch(() => {});
+  await openDeveloperSurface(page);
+  await shot(page, 'developer');
+  const advance = page.getByTestId('gymscreen-advance-offline-259200');
+  if ((await advance.count()) > 0) {
+    await advance.click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(400);
-    await shot(page, 'developer');
-    const advance = page.getByTestId('gymscreen-advance-offline-259200');
-    if ((await advance.count()) > 0) {
-      await advance.click({ timeout: 5000 }).catch(() => {});
-      await page.waitForTimeout(400);
-      await openSurface(page, 'play');
-      if ((await page.getByTestId('gymscreen-return').count()) > 0) {
-        await shot(page, 'return');
-      }
+    await openSurface(page, 'play');
+    if ((await page.getByTestId('gymscreen-return').count()) > 0) {
+      await shot(page, 'return');
     }
   }
   await context.close();

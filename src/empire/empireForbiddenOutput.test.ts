@@ -19224,8 +19224,9 @@ const GYM_VIEW_CONTROLS =
  *
  * The ungated set, named so the split is legible: the watched and away QA
  * clock steps, the week-boundary jump, every flexible-slot option button, and
- * the player dock plus Build FAB plus the explicit developer route
- * (`GYM_SURFACES`). The player's own check-in
+ * the player dock plus Build FAB. Developer is an explicit deep-link
+ * route (`#empire-developer` / `?empireDev=1`), not a player control.
+ * The player's own check-in
  * used to be another always-offered control — `'open-up'` — and is gone,
  * by human ruling: no tap anywhere on this screen mints or advances the
  * clock any more (`GymScreen.tsx`'s own header, "kill the mint" round). The
@@ -19249,7 +19250,8 @@ function gymScreenControlsAt(managed: managementModule.ManagedGym): number {
     EMPIRE_TUNING.LADDER_DEV_TIME_STEPS_SECONDS.length +
     1 + // the week-boundary jump
     1 + // reset gym, always offered, labeled not-part-of-the-game
-    ladderViewModule.GYM_SURFACES.length + // Stage C.1b dock; always offered
+    ladderViewModule.GYM_DOCK_SURFACES.length +
+    1 + // Build FAB; developer is not a player control (A6-4)
     // The player's own check-in ('open-up') used to be counted here, always
     // offered, +1 unconditionally. It is gone — no tap anywhere on
     // `GymScreen` mints or advances the clock any more.
