@@ -1220,10 +1220,11 @@ const FIXED_PAINTERS: Readonly<Record<FixedFurnitureItem, EquipmentPainter>> = {
 };
 
 // ---------------------------------------------------------------------------
-// The floor texture — per rung, at native resolution, drawn scaled. A quiet
-// two-tone tile checker with a seam along each tile's far edges and a sparse
-// fleck, so cell boundaries stay readable underneath the existing grid
-// lines without the floor competing with the bodies for value.
+// The floor texture — per rung, at native resolution, drawn scaled. Vertical
+// boards (column tone, not an 8×6 checker) with grain nicks — not cell-edge
+// strokes. Placement-grid lines are the Build overlay in FloorGrid, not paint
+// in this PNG. Play stretches this full-bleed; a baked seam would read as a
+// floor grid after H1.
 // ---------------------------------------------------------------------------
 
 function floorTextureGrid(rung: LadderRung): FloorSpriteGrid {
@@ -1232,11 +1233,11 @@ function floorTextureGrid(rung: LadderRung): FloorSpriteGrid {
   const stride = EMPIRE_TUNING.FLOOR_SPRITE_FLECK_STRIDE;
   for (let ty = 0; ty < size.height; ty += 1) {
     for (let tx = 0; tx < size.width; tx += 1) {
-      const base = (tx + ty) % 2 === 0 ? PX_FLOOR_BASE : PX_FLOOR_ALT;
+      const base = tx % 2 === 0 ? PX_FLOOR_BASE : PX_FLOOR_ALT;
       ops.push(fill(tx * NATIVE, ty * NATIVE, NATIVE, NATIVE, base));
-      // The far edges of every tile read as a seam.
-      ops.push(fill(tx * NATIVE, ty * NATIVE + NATIVE - 1, NATIVE, 1, PX_FLOOR_SEAM));
-      ops.push(fill(tx * NATIVE + NATIVE - 1, ty * NATIVE, 1, NATIVE, PX_FLOOR_SEAM));
+      // Grain nicks — 1×1, interior, never a tile-edge stroke.
+      ops.push(fill(tx * NATIVE + QUARTER, ty * NATIVE + HALF, 1, 1, PX_FLOOR_SEAM));
+      ops.push(fill(tx * NATIVE + HALF, ty * NATIVE + QUARTER, 1, 1, PX_FLOOR_SEAM));
       // A sparse fleck, deterministic from the tile coordinate alone.
       if ((tx + ty * size.width) % stride === 0) {
         ops.push(dot(tx * NATIVE + QUARTER, ty * NATIVE + HALF, PX_FLOOR_FLECK));
