@@ -253,7 +253,11 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { EMPIRE_TUNING } from './empireTuning';
 import { FloorGrid } from './FloorGrid';
 import { institutionalReputation } from './institutionalReputation';
-import { GYM_SURFACES, type GymViewAction, type GymViewProps } from './ladderView';
+import {
+  GYM_DOCK_SURFACES,
+  type GymViewAction,
+  type GymViewProps,
+} from './ladderView';
 import {
   failurePhase,
   fullRepairCostGymBucks,
@@ -268,12 +272,28 @@ import {
   wornItems,
 } from './management';
 import { FLOOR_SPRITE_URIS } from './floorSprites';
+import { playerFacingDuesLine, livingMemberDailyDuesGymBucks } from './livingMemberDues';
+import { playerFacingReputationLine, livingMemberDailyReputation } from './livingMemberReputation';
+import { playerFacingTenureLine } from './livingMembers';
 import {
   displayConditionPercent,
   playerFacingActivityGroupLabel,
+  playerFacingBuildFabLabel,
+  playerFacingEquipmentCatalog,
   playerFacingEquipmentLabel,
+  playerFacingGymBucksLine,
+  playerFacingIncomeRateLine,
+  playerFacingLocationLine,
   playerFacingManagerCapability,
+  playerFacingManagerRole,
+  playerFacingMemberStaffNextAction,
+  playerFacingMemberTypeLabel,
+  playerFacingReputationHud,
+  playerFacingReturnSummary,
+  playerFacingStayStatus,
+  playerFacingSurfaceLabel,
   playerFacingUpgradeRefuse,
+  playerFacingWeekEffectsLine,
   recoveryBlockingItems,
 } from './stationView';
 import {
@@ -356,12 +376,32 @@ const styles = StyleSheet.create({
   hudText: {
     color: GYM_SCREEN_BUTTON_TEXT_COLOR,
   },
+  hudRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
   stage: {
     flex: 1,
     position: 'relative',
   },
   floor: {
     flex: 1,
+  },
+  fab: {
+    position: 'absolute',
+    right: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
+    bottom: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
+    minHeight: EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS,
+    paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
+    paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
+    borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS,
+    borderWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
+    backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
+    borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
+    cursor: 'pointer',
   },
   drawer: {
     position: 'absolute',
@@ -397,7 +437,18 @@ const styles = StyleSheet.create({
     borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
     cursor: 'pointer',
   },
+  dockButtonHome: {
+    flex: EMPIRE_TUNING.GYM_SCREEN_DOCK_HOME_FLEX,
+  },
   dockButtonActive: {
+    backgroundColor: GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR,
+  },
+  staffCard: {
+    marginBottom: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    padding: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
+    borderWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
+    borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
+    borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS,
     backgroundColor: GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR,
   },
   shopCard: {
@@ -538,9 +589,11 @@ export function GymScreen(props: GymViewProps) {
     livingMembers.reputation,
     sportingReputation,
   );
-  const reputationLine = sportingCopy.composed
-    .replace('{fromMembers}', String(reputationReading.fromMembers))
-    .replace('{fromSporting}', String(reputationReading.fromSporting));
+  const reputationLine = playerFacingReputationHud(
+    reputationReading.fromMembers,
+    reputationReading.fromSporting,
+  );
+  const returnSummary = playerFacingReturnSummary(lastAccrual);
   const reputationReasons =
     lastSportingCredit === null
       ? []
@@ -573,23 +626,25 @@ export function GymScreen(props: GymViewProps) {
   return (
     <View testID={'gymscreen-root'} style={styles.root}>
       <View testID={'gymscreen-hud'} style={styles.hud}>
-        <Text testID={'gymscreen-rung'} style={styles.hudText}>rung {gym.ladder.rung}</Text>
-        <Text testID={'gymscreen-rate'} style={styles.hudText}>
-          earning {ladderIncomeRatePerHour(gym.ladder.rung)} gym bucks per hour
-        </Text>
-        <Text testID={'gymscreen-gym-bucks'} style={styles.hudText}>gym bucks: {gym.ladder.gymBucks}</Text>
-        <Text testID={'gymscreen-accelerated-bucks'} style={styles.hudText}>accelerated: {gym.acceleratedGymBucks}</Text>
-        <Text testID={'gymscreen-clock'} style={styles.hudText}>clock: {describeLadderClock(gym.ladder.collectedAt)}</Text>
-        {/*
-          REP-EVIDENCE-01 — player information, not engine detail. Both
-          institutional halves already live on GymViewState
-          (`livingMembers.reputation` + `sportingReputation`); the composer
-          is `institutionalReputation`. Stored sporting reasons ride
-          `lastSportingCredit`. Honest zero when nothing is credited. No
-          toast. The more-drawer diagnostics block must not be the only
-          place these lines exist.
-        */}
-        <Text testID={'gymscreen-reputation'} style={styles.hudText}>{reputationLine}</Text>
+        <View style={styles.hudRow}>
+          <Text testID={'gymscreen-rung'} style={styles.hudText}>
+            {playerFacingLocationLine(gym.ladder.rung)}
+          </Text>
+          <Text testID={'gymscreen-gym-bucks'} style={styles.hudText}>
+            {playerFacingGymBucksLine(gym.ladder.gymBucks)}
+          </Text>
+        </View>
+        <View style={styles.hudRow}>
+          <Text testID={'gymscreen-rate'} style={styles.hudText}>
+            {playerFacingIncomeRateLine(ladderIncomeRatePerHour(gym.ladder.rung))}
+          </Text>
+          <Text testID={'gymscreen-reputation'} style={styles.hudText}>{reputationLine}</Text>
+        </View>
+        {returnSummary === null ? null : (
+          <Text testID={'gymscreen-return'} style={styles.hudText}>
+            {returnSummary}
+          </Text>
+        )}
         {reputationReasons.map((text, index) => (
           <Text
             testID={`gymscreen-reputation-reason-${index}`}
@@ -633,6 +688,7 @@ export function GymScreen(props: GymViewProps) {
           buildMode={surface === 'build'}
           livingMembers={props.state.livingMembers}
           gymClockSeconds={gym.ladder.collectedAt}
+          developerChrome={surface === 'developer'}
         />
       </View>
       {/*
@@ -679,11 +735,17 @@ export function GymScreen(props: GymViewProps) {
             <>
               <Text testID={'gymscreen-manager-state'}>No manager hired</Text>
               {EMPIRE_TUNING.MANAGER_TIERS.map((tier) => (
-                <View key={tier}>
+                <View key={tier} testID={`gymscreen-staff-card-${tier}`} style={styles.staffCard}>
                   <Text testID={`gymscreen-manager-tier-${tier}`}>
                     {tier}: hire {managerHireCostGymBucks(tier)} gym bucks, wage{' '}
                     {managerWageRatePerBankedHour(tier)}/hour, {playerFacingManagerCapability(tier)}
                   </Text>
+                  <Text>{playerFacingManagerRole(tier)}</Text>
+                  <Text>Role: manager</Text>
+                  <Text>Specialty: {playerFacingManagerCapability(tier)}</Text>
+                  <Text>Assignment: not hired</Text>
+                  <Text>Effect: {playerFacingManagerCapability(tier)}</Text>
+                  <Text>Next: hire if the purse covers it</Text>
                   {managerHireCostGymBucks(tier) > gym.ladder.gymBucks ? (
                     <Text testID={`gymscreen-hire-${tier}-unavailable`}>
                       needs {managerHireCostGymBucks(tier)} gym bucks — you have{' '}
@@ -703,12 +765,17 @@ export function GymScreen(props: GymViewProps) {
               ))}
             </>
           ) : (
-            <>
+            <View testID={'gymscreen-staff-card-manager'} style={styles.staffCard}>
               <Text testID={'gymscreen-manager-state'}>
                 manager: {managed.manager.tier} — {managerWageRatePerBankedHour(managed.manager.tier)}{' '}
                 gym bucks per banked hour, {playerFacingManagerCapability(managed.manager.tier)}
                 {managed.manager.hiredUnderWarning ? ' — hired while the gym was already warned' : null}
               </Text>
+              <Text>Role: {playerFacingManagerRole(managed.manager.tier)}</Text>
+              <Text>Specialty: {playerFacingManagerCapability(managed.manager.tier)}</Text>
+              <Text>Assignment: on staff</Text>
+              <Text>Effect: {playerFacingManagerCapability(managed.manager.tier)}</Text>
+              <Text>Next: let them go</Text>
               <Pressable
                 testID={'gymscreen-dismiss-manager'}
                 accessibilityRole={'button'}
@@ -717,8 +784,28 @@ export function GymScreen(props: GymViewProps) {
               >
                 <Text style={styles.buttonText}>let them go</Text>
               </Pressable>
-            </>
+            </View>
           )}
+        </View>
+        <View testID={'gymscreen-staff-members'}>
+          {livingMembers.members.map((member) => (
+            <View
+              key={member.id}
+              testID={`gymscreen-staff-member-${member.id}`}
+              style={styles.staffCard}
+            >
+              <Text>{member.displayName}</Text>
+              <Text>Role: member</Text>
+              <Text>Specialty: {playerFacingMemberTypeLabel(member.type)}</Text>
+              <Text>Assignment: {playerFacingStayStatus(member.stayState.status)}</Text>
+              <Text>
+                Effect: {playerFacingDuesLine(livingMemberDailyDuesGymBucks(member))};{' '}
+                {playerFacingReputationLine(livingMemberDailyReputation(member))};{' '}
+                {playerFacingTenureLine(member.joinedAtSeconds, gym.ladder.collectedAt)}
+              </Text>
+              <Text>Next: {playerFacingMemberStaffNextAction(member.stayState.status)}</Text>
+            </View>
+          ))}
         </View>
         <Text testID={'gymscreen-phase'}>
           gym status: {signs.phase}
@@ -976,6 +1063,18 @@ export function GymScreen(props: GymViewProps) {
                   {ladderEquipmentCost(item)} gym bucks · {ladderEquipmentMinRung(item)}
                   {owned ? ' · owned' : null}
                 </Text>
+                <Text testID={`gymscreen-shop-purpose-${item}`}>
+                  {playerFacingEquipmentCatalog(item).purpose}
+                </Text>
+                <Text testID={`gymscreen-shop-effect-${item}`}>
+                  {playerFacingEquipmentCatalog(item).effect}
+                </Text>
+                <Text testID={`gymscreen-shop-unlock-${item}`}>
+                  {playerFacingEquipmentCatalog(item).unlock}
+                </Text>
+                <Text testID={`gymscreen-shop-tradeoff-${item}`}>
+                  {playerFacingEquipmentCatalog(item).tradeoff}
+                </Text>
                 {owned ? (
                   <Text>owned</Text>
                 ) : tooLow ? (
@@ -1026,6 +1125,18 @@ export function GymScreen(props: GymViewProps) {
                   {playerFacingActivityGroupLabel(sessionEquipmentGroup(item))} ·{' '}
                   {sessionEquipmentCost(item)} gym bucks · {sessionEquipmentMinRung(item)}
                   {owned ? ' · owned' : null}
+                </Text>
+                <Text testID={`gymscreen-shop-purpose-${item}`}>
+                  {playerFacingEquipmentCatalog(item).purpose}
+                </Text>
+                <Text testID={`gymscreen-shop-effect-${item}`}>
+                  {playerFacingEquipmentCatalog(item).effect}
+                </Text>
+                <Text testID={`gymscreen-shop-unlock-${item}`}>
+                  {playerFacingEquipmentCatalog(item).unlock}
+                </Text>
+                <Text testID={`gymscreen-shop-tradeoff-${item}`}>
+                  {playerFacingEquipmentCatalog(item).tradeoff}
                 </Text>
                 {owned ? (
                   <Text>owned</Text>
@@ -1121,45 +1232,40 @@ export function GymScreen(props: GymViewProps) {
           </View>
         ))}
         <Text testID={'gymscreen-week-preview'}>
-          if this week ended now: residual carry {previewEffects.residualCarryMultiplier}, injury
-          chance {previewEffects.injuryChanceMultiplier}, technique bonus{' '}
-          {previewEffects.techniqueQualityBonus}, ceiling growth {previewEffects.ceilingGrowthPerWeek}
+          {playerFacingWeekEffectsLine(previewEffects)}
         </Text>
       </View>
       <View testID={'gymscreen-week-log'}>
         {weekLog.map((week) => (
           <Text testID={`gymscreen-week-log-${week.weekIndex}`} key={week.weekIndex}>
-            week {week.weekIndex}: {week.slots.map(describeSlotOutcome).join('; ')} — residual carry{' '}
-            {week.effects.residualCarryMultiplier}, injury chance {week.effects.injuryChanceMultiplier},
-            technique bonus {week.effects.techniqueQualityBonus}, ceiling growth{' '}
-            {week.effects.ceilingGrowthPerWeek}
+            week {week.weekIndex}: {week.slots.map(describeSlotOutcome).join('; ')} —{' '}
+            {playerFacingWeekEffectsLine(week.effects)}
           </Text>
         ))}
       </View>
-      {/*
-        GDD §5.14 STAGE C.1 — verification/engine detail, moved here rather
-        than deleted. CLAUDE.md's own Stage C.1 brief: "separate PLAYER
-        INFORMATION... from VERIFICATION/DEVELOPER INFORMATION... preserve the
-        latter through tests, selectors, instrumentation, or an explicitly
-        secondary/debug surface." The three quantities below (the raw
-        banked/elapsed/discarded seconds of the last catch-up, the raw delta
-        report of what the last check-in cost, and the manager's own per-item
-        auto-repair log) are exactly that: real, reported numbers nobody
-        should have to scroll past to find the gym, but nobody is asked to
-        make a decision from either — every actionable consequence they
-        describe (a lower purse, a repaired item, a moved condition number) is
-        already visible elsewhere on this screen or on the tapped station.
-        Kept at the SAME testIDs they always had (`gymscreen-accrual`,
-        `gymscreen-check-in-costs`, `gymscreen-auto-repair-<item>`) — every
-        existing reader of those three (this file's own render test, the
-        browser reachability tool) finds them by testID, not by position, so
-        relocating them costs no rewritten assertion.
-        `gymscreen-reputation` left this block under REP-EVIDENCE-01: it is
-        player information (both institutional halves and stored sporting
-        reasons) and now lives on the HUD.
-      */}
+      {returnSummary === null ? null : (
+        <Text testID={'gymscreen-return-more'} style={styles.hudText}>
+          {returnSummary}
+        </Text>
+      )}
+      <Pressable
+        testID={'gymscreen-surface-developer'}
+        accessibilityRole={'button'}
+        style={styles.button}
+        onPress={() => dispatch({ kind: 'set-gym-surface', surface: 'developer' })}
+      >
+        <Text style={styles.buttonText}>{playerFacingSurfaceLabel('developer')}</Text>
+      </Pressable>
+      </ScrollView>
+      <ScrollView
+        testID={'gymscreen-developer-drawer'}
+        style={surface === 'developer' ? styles.drawer : styles.drawerHidden}
+      >
       <View testID={'gymscreen-diagnostics'}>
         <Text>engine detail — not needed to play, kept here for verification</Text>
+        <Text testID={'gymscreen-gym-bucks-exact'}>{`purse: ${gym.ladder.gymBucks}`}</Text>
+        <Text testID={'gymscreen-accelerated-bucks'}>accelerated: {gym.acceleratedGymBucks}</Text>
+        <Text testID={'gymscreen-clock'}>clock: {describeLadderClock(gym.ladder.collectedAt)}</Text>
         {prompt.kind === 'quiet' ? (
           <Text testID={'gymscreen-prompt'}>no maintenance review open</Text>
         ) : null}
@@ -1233,17 +1339,35 @@ export function GymScreen(props: GymViewProps) {
         </Pressable>
       </View>
       </ScrollView>
+      <Pressable
+        testID={'gymscreen-surface-build'}
+        accessibilityRole={'button'}
+        style={styles.fab}
+        onPress={() =>
+          dispatch({ kind: 'set-gym-surface', surface: surface === 'build' ? 'play' : 'build' })
+        }
+      >
+        <Text style={styles.buttonText}>{playerFacingBuildFabLabel(surface === 'build')}</Text>
+      </Pressable>
       </View>
       <View testID={'gymscreen-dock'} style={styles.dock}>
-        {GYM_SURFACES.map((name) => (
+        {GYM_DOCK_SURFACES.map((name) => (
           <Pressable
             key={name}
             testID={`gymscreen-surface-${name}`}
             accessibilityRole={'button'}
-            style={surface === name ? [styles.dockButton, styles.dockButtonActive] : styles.dockButton}
+            style={
+              surface === name
+                ? name === 'play'
+                  ? [styles.dockButton, styles.dockButtonHome, styles.dockButtonActive]
+                  : [styles.dockButton, styles.dockButtonActive]
+                : name === 'play'
+                  ? [styles.dockButton, styles.dockButtonHome]
+                  : styles.dockButton
+            }
             onPress={() => dispatch({ kind: 'set-gym-surface', surface: name })}
           >
-            <Text style={styles.buttonText}>{name}</Text>
+            <Text style={styles.buttonText}>{playerFacingSurfaceLabel(name)}</Text>
           </Pressable>
         ))}
       </View>

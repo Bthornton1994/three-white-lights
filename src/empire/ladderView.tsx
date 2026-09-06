@@ -426,8 +426,13 @@ export const GYM_SURFACES = Object.freeze([
   'shop',
   'staff',
   'more',
+  'developer',
 ] as const);
 export type GymSurface = (typeof GYM_SURFACES)[number];
+
+/** Player dock peers. Build is a FAB; developer is an explicit More route. */
+export const GYM_DOCK_SURFACES = Object.freeze(['play', 'shop', 'staff', 'more'] as const);
+export type GymDockSurface = (typeof GYM_DOCK_SURFACES)[number];
 
 export interface GymViewState {
   readonly managed: ManagedGym;

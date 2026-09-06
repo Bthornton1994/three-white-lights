@@ -1248,15 +1248,32 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
     positions: Object.freeze([
       'stationView.ts#playerFacingActivityGroupLabel#return',
       'stationView.ts#playerFacingBayRole#return',
+      'stationView.ts#playerFacingBuildFabLabel#return',
+      'stationView.ts#playerFacingEquipmentCatalog#return.effect',
+      'stationView.ts#playerFacingEquipmentCatalog#return.purpose',
+      'stationView.ts#playerFacingEquipmentCatalog#return.tradeoff',
+      'stationView.ts#playerFacingEquipmentCatalog#return.unlock',
+      'stationView.ts#playerFacingEquipmentCostLine#return',
       'stationView.ts#playerFacingEquipmentLabel#return',
+      'stationView.ts#playerFacingGymBucksLine#return',
+      'stationView.ts#playerFacingIncomeRateLine#return',
+      'stationView.ts#playerFacingLocationLine#return',
       'stationView.ts#playerFacingManagerCapability#return',
+      'stationView.ts#playerFacingManagerRole#return',
       'stationView.ts#playerFacingMemberActivityLine#return',
+      'stationView.ts#playerFacingMemberStaffNextAction#return',
       'stationView.ts#playerFacingMemberTypeLabel#return',
       'stationView.ts#playerFacingPlacementRefuse#return',
+      'stationView.ts#playerFacingReputationHud#return',
+      'stationView.ts#playerFacingReturnSummary#return',
+      'stationView.ts#playerFacingRungLabel#return',
       'stationView.ts#playerFacingStationOperation#return',
+      'stationView.ts#playerFacingStayStatus#return',
+      'stationView.ts#playerFacingSurfaceLabel#return',
       'stationView.ts#playerFacingUpgradeEffect#return',
       'stationView.ts#playerFacingUpgradeLabel#return',
       'stationView.ts#playerFacingUpgradeRefuse#return',
+      'stationView.ts#playerFacingWeekEffectsLine#return',
       'sportingReputation.ts#sportingReputationFromResult#return.reasons[].text',
       // CAREER-EMPIRE-REP-01: Stage E reason text carried on the sporting ledger.
       'ladderView.tsx#createGymViewState#return.lastSportingCredit.reasons[].text',
@@ -2019,7 +2036,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 489 -> 491: Stage G.2D purse composition helpers.
   // 491 -> 492: Stage G.2D P1 requireLivingMemberDuesOccupancyClock.
   // 492 -> 493: Stage G.2D P1 livingMemberDuesOccupancyUntilSeconds.
-  EXPORTS: 524, // CAREER-EMPIRE-REP-01 ledger + composer runtime exports
+  EXPORTS: 540, // SF-TWL-GYM-EMPIRE-UX-01 player-facing gym chrome exports
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -2042,7 +2059,7 @@ const SURFACE_CENSUS = Object.freeze({
   // plus reconcileFloorSimPopulation memberId. Read from this pin last.
   // 221 -> 246: Stage G.2C3 arrival archive / player-facing join line.
   // 246 -> 266: Stage G.2D playerFacingDuesLine plus applyLivingMemberDues roster strings.
-  BARE_POSITIONS: 392, // CAREER-EMPIRE-REP-01 meetId + sporting reason text positions
+  BARE_POSITIONS: 409, // SF-TWL-GYM-EMPIRE-UX-01 player-facing gym chrome returns
   BARE_FIELDS: 7, // CAREER-EMPIRE-REP-01 played-meet identifier group
   BRANDED_POSITIONS: 34,
   /**
@@ -2170,7 +2187,7 @@ const SURFACE_CENSUS = Object.freeze({
   // own failure value.
   // 4453 -> 4729: Stage G.2C2 departure-record / stay-evidence unions on
   // livingMemberDeparture.ts and livingMembers.ts departures. Read from this pin last.
-  LITERAL_POSITIONS: 5909, // CAREER-EMPIRE-REP-01 credit / meet-kind / copy literals
+  LITERAL_POSITIONS: 5917, // SF-TWL-GYM-EMPIRE-UX-01 player-facing gym chrome literals
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -3413,7 +3430,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 3662 -> 3704: Stage G.2C1 livingMemberStay.ts plus livingMembers wiring.
   // 3704 -> 3755: Stage G.2C2 livingMemberDeparture.ts plus livingMembers
   // departure/reconcile wiring. Read from this pin last.
-  CALLS_EXAMINED: 4098, // CAREER-EMPIRE-REP-01 GymScreen composed-reputation calls
+  CALLS_EXAMINED: 4184, // SF-TWL-GYM-EMPIRE-UX-01 player-facing gym chrome constructors
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -6173,7 +6190,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // FLOOR_STATION_PANEL_BORDER_WIDTH_PIXELS,
   // FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS), all filed.
   // 451 -> 453: Stage C.1b FLOOR_TILE_PIXELS_MAX and FLOOR_STAGE_PADDING_PIXELS.
-  TUNING_NUMERIC_LEAVES: 508, // G2-ATHLETE-SEASON-01 ATHLETE_SEASON three week knobs
+  TUNING_NUMERIC_LEAVES: 509, // SF-TWL-GYM-EMPIRE-UX-01 GYM_SCREEN_DOCK_HOME_FLEX
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -7579,6 +7596,7 @@ function driveEverything(): readonly DrivenRow[] {
   // through the same string scan as every other returned value.
   drive('createGymViewState', 'zero-arg', () => ladderViewModule.createGymViewState());
   drive('GYM_SURFACES', 'value', () => ladderViewModule.GYM_SURFACES);
+  drive('GYM_DOCK_SURFACES', 'value', () => ladderViewModule.GYM_DOCK_SURFACES);
   {
     const gymOpening = ladderViewModule.createGymViewState();
     let gymPlayed = gymOpening;
@@ -9776,6 +9794,77 @@ function driveEverything(): readonly DrivenRow[] {
     );
     drive('playerFacingUpgradeRefuse', 'no-second-position', () =>
       stationViewModule.playerFacingUpgradeRefuse('no-second-position'),
+    );
+    drive('playerFacingRungLabel', 'garage', () => stationViewModule.playerFacingRungLabel('garage'));
+    drive('playerFacingGymBucksAmount', 'zero', () => stationViewModule.playerFacingGymBucksAmount(0));
+    drive('playerFacingGymBucksAmount', 'fraction', () =>
+      stationViewModule.playerFacingGymBucksAmount(0.7),
+    );
+    drive('playerFacingGymBucksLine', 'opening', () => stationViewModule.playerFacingGymBucksLine(0));
+    drive('playerFacingLocationLine', 'garage', () =>
+      stationViewModule.playerFacingLocationLine('garage'),
+    );
+    drive('playerFacingIncomeRateLine', 'garage', () =>
+      stationViewModule.playerFacingIncomeRateLine(
+        EMPIRE_TUNING.LADDER_INCOME_GYM_BUCKS_PER_HOUR.garage,
+      ),
+    );
+    drive('playerFacingReputationHud', 'opening', () =>
+      stationViewModule.playerFacingReputationHud(0, 0),
+    );
+    drive('playerFacingSurfaceLabel', 'play', () => stationViewModule.playerFacingSurfaceLabel('play'));
+    drive('playerFacingBuildFabLabel', 'enter', () =>
+      stationViewModule.playerFacingBuildFabLabel(false),
+    );
+    drive('playerFacingBuildFabLabel', 'done', () => stationViewModule.playerFacingBuildFabLabel(true));
+    drive('playerFacingStayStatus', 'staying', () =>
+      stationViewModule.playerFacingStayStatus('staying'),
+    );
+    drive('playerFacingMemberStaffNextAction', 'staying', () =>
+      stationViewModule.playerFacingMemberStaffNextAction('staying'),
+    );
+    for (const tier of EMPIRE_TUNING.MANAGER_TIERS) {
+      drive('playerFacingManagerRole', tier, () => stationViewModule.playerFacingManagerRole(tier));
+    }
+    for (const item of EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS) {
+      drive('playerFacingEquipmentCatalog', item, () =>
+        stationViewModule.playerFacingEquipmentCatalog(item),
+      );
+      drive('playerFacingEquipmentCostLine', item, () =>
+        stationViewModule.playerFacingEquipmentCostLine(item),
+      );
+    }
+    for (const item of EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS) {
+      drive('playerFacingEquipmentCatalog', item, () =>
+        stationViewModule.playerFacingEquipmentCatalog(item),
+      );
+      drive('playerFacingEquipmentCostLine', item, () =>
+        stationViewModule.playerFacingEquipmentCostLine(item),
+      );
+    }
+    drive('playerFacingReturnSummary', 'none', () =>
+      stationViewModule.playerFacingReturnSummary(null),
+    );
+    drive('playerFacingReturnSummary', 'watched-tick', () =>
+      stationViewModule.playerFacingReturnSummary({
+        gymBucks: 0.08,
+        secondsElapsed: EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS,
+        secondsBanked: EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS,
+        secondsDiscarded: 0,
+      }),
+    );
+    drive('playerFacingReturnSummary', 'away', () =>
+      stationViewModule.playerFacingReturnSummary({
+        gymBucks: 12,
+        secondsElapsed: 3600,
+        secondsBanked: 3600,
+        secondsDiscarded: 0,
+      }),
+    );
+    drive('playerFacingWeekEffectsLine', 'rest', () =>
+      stationViewModule.playerFacingWeekEffectsLine(
+        sessionsModule.weeklyAttributeEffects(sessionsModule.createRestAllocation(), []),
+      ),
     );
     for (const tier of EMPIRE_TUNING.MANAGER_TIERS) {
       const hired = managementModule.hireManager(
@@ -12312,7 +12401,7 @@ const DRIVE_CENSUS = Object.freeze({
   // advanceLivingMemberStay drive rows. Read from this pin's own failure value.
   // 600663 -> 600678: Stage G.2C2 departure/reconcile/stayEvidence drive rows.
   // Read from this pin last.
-  ROWS: 600775, // CAREER-EMPIRE-REP-01 sporting ledger / gym credit drives
+  ROWS: 600832, // SF-TWL-GYM-EMPIRE-UX-01 player-facing gym chrome drives
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -12345,7 +12434,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 473 -> 478: Stage G.2C3 livingMemberArrival.ts five runtime exports.
   // 478 -> 489: Stage G.2D livingMemberDues.ts plus applyLivingMemberDues.
   // 489 -> 491: Stage G.2D purse composition helpers, both driven above.
-  EXPORTS_DRIVEN: 524, // CAREER-EMPIRE-REP-01 ledger + composer runtime exports
+  EXPORTS_DRIVEN: 540, // SF-TWL-GYM-EMPIRE-UX-01 player-facing gym chrome exports
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -16670,7 +16759,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'floorSim.ts': 3,
       'floorSprites.ts': 7,
       'ladder.ts': 1,
-      'ladderView.tsx': 1,
+      'ladderView.tsx': 2, // SF-TWL-GYM-EMPIRE-UX-01 GYM_DOCK_SURFACES
       'livingMemberDues.ts': 1, // Stage G.2D playerFacingDuesLine
       'livingMemberExperience.ts': 1,
       'livingMemberRetention.ts': 1,
@@ -16723,7 +16812,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'sportingReputation.ts': 11,
       'sportingReputationLedger.ts': 10, // CAREER-EMPIRE-REP-01 write-side returns
       'stationCapability.ts': 27,
-      'stationView.ts': 50,
+      'stationView.ts': 81, // SF-TWL-GYM-EMPIRE-UX-01 player-facing gym chrome returns
       'trainingStation.ts': 18,
     }),
     'returned-closure': Object.freeze({
@@ -17132,12 +17221,12 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:2709 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:2730 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:801 returned=unfollowable:station',
-  'FloorGrid.tsx:801 returned=unfollowable:station',
-  'FloorGrid.tsx:802 returned=unfollowable:station',
-  'FloorGrid.tsx:802 returned=unfollowable:station',
+  'FloorGrid.tsx:2763 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:2784 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:809 returned=unfollowable:station',
+  'FloorGrid.tsx:809 returned=unfollowable:station',
+  'FloorGrid.tsx:810 returned=unfollowable:station',
+  'FloorGrid.tsx:810 returned=unfollowable:station',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -17167,13 +17256,13 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'ladder.ts:349 receiver=ArrayLiteralExpression',
   'ladderView.tsx:124 returned=unfollowable:state',
   'ladderView.tsx:132 returned=unfollowable:state',
-  'ladderView.tsx:681 returned=unfollowable:state',
-  'ladderView.tsx:729 returned=unfollowable:state',
-  'ladderView.tsx:731 returned=unfollowable:state',
-  'ladderView.tsx:733 returned=unfollowable:state',
+  'ladderView.tsx:686 returned=unfollowable:state',
   'ladderView.tsx:734 returned=unfollowable:state',
-  'ladderView.tsx:789 returned=unfollowable:state',
-  'ladderView.tsx:798 returned=unfollowable:state',
+  'ladderView.tsx:736 returned=unfollowable:state',
+  'ladderView.tsx:738 returned=unfollowable:state',
+  'ladderView.tsx:739 returned=unfollowable:state',
+  'ladderView.tsx:794 returned=unfollowable:state',
+  'ladderView.tsx:803 returned=unfollowable:state',
   'livingMemberArrival.ts:126 returned=unfollowable:arrivals',
   'livingMemberDeparture.ts:103 returned=unfollowable:departures',
   'livingMemberDues.ts:169 returned=unfollowable:settlements',
@@ -17203,12 +17292,12 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'stationCapability.ts:104 returned=unfollowable:capability'
 ]);
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1749 FloorSimState asked=true walked=false',
-  'FloorGrid.tsx:801 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:801 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:802 GridSize asked=true walked=false',
-  'FloorGrid.tsx:802 GridSize asked=true walked=false',
-  'FloorGrid.tsx:814 BayBench | undefined asked=true walked=false',
+  'FloorGrid.tsx:1757 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:809 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:809 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:810 GridSize asked=true walked=false',
+  'FloorGrid.tsx:810 GridSize asked=true walked=false',
+  'FloorGrid.tsx:822 BayBench | undefined asked=true walked=false',
   'empireInvariant.ts:1084 GymAxes asked=true walked=false',
   'empireInvariant.ts:1137 GymAxes asked=true walked=false',
   'empireInvariant.ts:1168 readonly ExpansionBuild[] asked=true walked=false',
@@ -17250,24 +17339,24 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'ladderView.tsx:124 LadderAccrual | null asked=true walked=false',
   'ladderView.tsx:131 LadderState asked=true walked=false',
   'ladderView.tsx:132 LadderAccrual | null asked=true walked=false',
-  'ladderView.tsx:681 readonly GymWeekReport[] asked=true walked=false',
-  'ladderView.tsx:729 FloorState asked=true walked=false',
-  'ladderView.tsx:731 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'ladderView.tsx:733 SportingReputationLedger asked=true walked=false',
-  'ladderView.tsx:734 SportingCreditReport | null asked=true walked=false',
-  'ladderView.tsx:789 FloorState asked=true walked=false',
-  'ladderView.tsx:798 LivingMemberRoster asked=true walked=false',
-  'ladderView.tsx:810 FloorState asked=true walked=false',
-  'ladderView.tsx:830 FloorState asked=true walked=false',
-  'ladderView.tsx:869 ManagedGym asked=true walked=false',
-  'ladderView.tsx:882 ManagedGym asked=true walked=false',
-  'ladderView.tsx:896 ManagedGym asked=true walked=false',
-  'ladderView.tsx:906 ManagedGym asked=true walked=false',
-  'ladderView.tsx:914 ManagedGym asked=true walked=false',
-  'ladderView.tsx:922 ManagedGym asked=true walked=false',
-  'ladderView.tsx:957 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'ladderView.tsx:976 SportingReputationLedger asked=true walked=false',
-  'ladderView.tsx:977 SportingCreditReport asked=true walked=false',
+  'ladderView.tsx:686 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:734 FloorState asked=true walked=false',
+  'ladderView.tsx:736 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'ladderView.tsx:738 SportingReputationLedger asked=true walked=false',
+  'ladderView.tsx:739 SportingCreditReport | null asked=true walked=false',
+  'ladderView.tsx:794 FloorState asked=true walked=false',
+  'ladderView.tsx:803 LivingMemberRoster asked=true walked=false',
+  'ladderView.tsx:815 FloorState asked=true walked=false',
+  'ladderView.tsx:835 FloorState asked=true walked=false',
+  'ladderView.tsx:874 ManagedGym asked=true walked=false',
+  'ladderView.tsx:887 ManagedGym asked=true walked=false',
+  'ladderView.tsx:901 ManagedGym asked=true walked=false',
+  'ladderView.tsx:911 ManagedGym asked=true walked=false',
+  'ladderView.tsx:919 ManagedGym asked=true walked=false',
+  'ladderView.tsx:927 ManagedGym asked=true walked=false',
+  'ladderView.tsx:962 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'ladderView.tsx:981 SportingReputationLedger asked=true walked=false',
+  'ladderView.tsx:982 SportingCreditReport asked=true walked=false',
   'livingMemberArrival.ts:126 LivingMemberArrivalRecord | undefined asked=true walked=false',
   'livingMemberDeparture.ts:103 LivingMemberDepartureRecord | undefined asked=true walked=false',
   'livingMemberDues.ts:169 LivingMemberDuesSettlement | undefined asked=true walked=false',
@@ -17693,7 +17782,7 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 438 -> 444: Stage D2.1B nextChangeovers / loading-path locals.
   // 461 -> 472: Stage G.2C2 departure/reconcile local writes.
   // Read from this pin last.
-  local: 500, // G2-ATHLETE-SEASON-01 applyLivingMemberSeason / settleLivingMemberClock locals
+  local: 502, // SF-TWL-GYM-EMPIRE-UX-01 GymScreen surface / developer locals
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -17820,7 +17909,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 1123 -> 1124: Stage G.2D P1 open-mark occupancy until second return path.
   // 1124 -> 1141: Stage G.2E livingMemberReputation returns, livingMembers
   // applyLivingMemberReputation, members type helpers, arrival gate.
-  SITES: 1180, // CAREER-EMPIRE-REP-01 ledger +10 return, composer +1, ladderView +2
+  SITES: 1212, // SF-TWL-GYM-EMPIRE-UX-01 +1 exported-binding +31 stationView returns
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -18128,7 +18217,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // and livingMembers.ts stayState. Read from this pin's own failure value.
   // 1109 -> 1128: Stage G.2C2 departure-record types plus roster.departures.
   // Read from this pin last.
-  POSITIONS: 1250, // CAREER-EMPIRE-REP-01 ledger + composer exported signatures
+  POSITIONS: 1283, // SF-TWL-GYM-EMPIRE-UX-01 player-facing gym chrome signatures
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -19094,8 +19183,9 @@ const GYM_VIEW_CONTROLS =
  * transition's refusal order is red here.
  *
  * The ungated set, named so the split is legible: the watched and away QA
- * clock steps, the week-boundary jump, every flexible-slot option button, and Stage C.1b's
- * five surface-dock buttons (`GYM_SURFACES`). The player's own check-in
+ * clock steps, the week-boundary jump, every flexible-slot option button, and
+ * the player dock plus Build FAB plus the explicit developer route
+ * (`GYM_SURFACES`). The player's own check-in
  * used to be another always-offered control — `'open-up'` — and is gone,
  * by human ruling: no tap anywhere on this screen mints or advances the
  * clock any more (`GymScreen.tsx`'s own header, "kill the mint" round). The
@@ -19683,8 +19773,8 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
     // GDD §5.14 Stage B: NUMBER 404 -> 407. Read from this pin's own failure
     // value.
     points: 410,
-    calls: 12507, // Stage G.2A NUMBER 410
-    recorded: 12507,
+    calls: 12917, // SF-TWL-GYM-EMPIRE-UX-01 GymScreen dispatch per purse point
+    recorded: 12917,
   }),
   // S4i: NUMBER's own engagement domain 239 -> 241. Read from this pin's own
   // failure value.
@@ -22417,7 +22507,7 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // 300 -> 302: Stage G.2C3 livingMemberArrival.ts type declarations.
   // 302 -> 306: Stage G.2D livingMemberDues.ts type declarations.
   // 306 -> 307: Stage G.2D P1 LivingMemberDuesDeparturePresence.
-  DECLARATIONS: 321, // CAREER-EMPIRE-REP-01 ledger + composer type declarations
+  DECLARATIONS: 323, // SF-TWL-GYM-EMPIRE-UX-01 player-facing catalog / return types
   /** Those carrying type parameters. An instantiation depth needs one. */
   // Phase 4: `MemberTable<Leaf>` in floorSprites.ts.
   GENERIC: 13,
@@ -26314,7 +26404,7 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 294 -> 237: Stage G.2C2 rewrote applyServiceObservations roster.map as a
   // loop (departure filter). The dead member-call site is removed rather than
   // driven at zero. Read from this pin last.
-  RETURNED: 238, // CAREER-EMPIRE-REP-01 reputationReasons.map one string
+  RETURNED: 235, // SF-TWL-GYM-EMPIRE-UX-01 GymScreen props.map deep-scan
   FINDINGS: 0,
   TRIPWIRE_SUBJECTS: 2,
   TRIPWIRE_FINDINGS: 2,
@@ -26396,12 +26486,10 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   'ladderView.tsx#GymView#props.map x1 calls=1 callbacks=1 handed=0 returned=30 verdicts=objectx1',
   'ladderView.tsx#GymView#week.map x1 calls=1 callbacks=3 handed=0 returned=3 verdicts=stringx3',
   // CROSSING 6: the same drive shape as the GymView pair above, on the
-  // ported screen. `returned=29` rather than GymView's 30 — measured, not
-  // assumed identical: the rendered week-row element carries one fewer
-  // deep-scanned string, because the RN tree's `<Text>` wraps the row in a
-  // single string-concatenating child rather than the DOM tree's several
-  // separately-scanned text nodes.
-  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=29 verdicts=objectx1',
+  // ported screen. `returned=26` rather than GymView's 30 — measured, not
+  // assumed identical: the sparse HUD carries fewer deep-scanned strings
+  // than the DOM GymView tree's separately-scanned text nodes.
+  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=26 verdicts=objectx1',
   'GymScreen.tsx#GymScreen#week.map x1 calls=1 callbacks=3 handed=0 returned=3 verdicts=stringx3',
   // S4b's two stage-4 sites, in `MEMBER_CALL_SUBJECTS` order: the strike
   // ledger's `.map` and the auto-repair report's. `returned=24` on each,

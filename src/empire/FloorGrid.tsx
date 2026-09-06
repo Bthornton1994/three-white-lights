@@ -249,10 +249,13 @@ import {
   type StationOperationView,
   displayConditionPercent,
   playerFacingBayRole,
+  playerFacingEquipmentCatalog,
+  playerFacingEquipmentCostLine,
   playerFacingEquipmentLabel,
   playerFacingMemberActivityLine,
   playerFacingMemberTypeLabel,
   playerFacingPlacementRefuse,
+  playerFacingRungLabel,
   playerFacingStationOperation,
   playerFacingUpgradeEffect,
   playerFacingUpgradeLabel,
@@ -336,6 +339,11 @@ export interface FloorGridProps {
    * stations and members. Never an economic flag.
    */
   readonly buildMode: boolean;
+  /**
+   * Explicit developer route from GymScreen. Floor-sim tick/legend stay off
+   * the default Play surface; the toggle is drawn only here.
+   */
+  readonly developerChrome?: boolean;
   /** Stage G.1 — persistent member identities and service history. */
   readonly livingMembers: LivingMemberRoster;
   /** Gym clock seconds for tenure copy. */
@@ -1409,7 +1417,7 @@ function AmbientMemberBody({
 }
 
 export function FloorGrid(props: FloorGridProps) {
-  const { owned, barbellOwned, floor, dispatch, managed, capability, buildMode, livingMembers, gymClockSeconds } =
+  const { owned, barbellOwned, floor, dispatch, managed, capability, buildMode, livingMembers, gymClockSeconds, developerChrome } =
     props;
   const grid = floorGridSize(floor.rung);
   const placed = floorLayout(floor);
@@ -1918,12 +1926,24 @@ export function FloorGrid(props: FloorGridProps) {
           ? placing
             ? 'build — tap a tile to place'
             : 'build — tap a piece, then tap a tile'
-          : `floor (${floor.rung})`}
+          : playerFacingRungLabel(floor.rung)}
       </Text>
       {pendingPlace === null ? null : (
         <View testID={'floorgrid-place-banner'}>
           <Text testID={'floorgrid-pending'}>
             Moving: {playerFacingEquipmentLabel(pendingPlace.item)}
+          </Text>
+          <Text testID={'floorgrid-place-cost'}>
+            {playerFacingEquipmentCostLine(pendingPlace.item)}
+          </Text>
+          <Text testID={'floorgrid-place-purpose'}>
+            {playerFacingEquipmentCatalog(pendingPlace.item).purpose}
+          </Text>
+          <Text testID={'floorgrid-place-effect'}>
+            {playerFacingEquipmentCatalog(pendingPlace.item).effect}
+          </Text>
+          <Text testID={'floorgrid-place-tradeoff'}>
+            {playerFacingEquipmentCatalog(pendingPlace.item).tradeoff}
           </Text>
           {placementRefuseKind === null ? null : (
             <Text
@@ -1999,7 +2019,8 @@ export function FloorGrid(props: FloorGridProps) {
                 }}
               />
             </View>
-            {verticalLines.map((i) => (
+            {buildMode
+              ? verticalLines.map((i) => (
               <View
                 key={`v${i}`}
                 testID={`floorgrid-line-v-${i}`}
@@ -2013,8 +2034,10 @@ export function FloorGrid(props: FloorGridProps) {
                   backgroundColor: FLOOR_GRID_LINE_COLOR,
                 }}
               />
-            ))}
-            {horizontalLines.map((j) => (
+            ))
+              : null}
+            {buildMode
+              ? horizontalLines.map((j) => (
               <View
                 key={`h${j}`}
                 testID={`floorgrid-line-h-${j}`}
@@ -2028,7 +2051,8 @@ export function FloorGrid(props: FloorGridProps) {
                   backgroundColor: FLOOR_GRID_LINE_COLOR,
                 }}
               />
-            ))}
+            ))
+              : null}
             {placing
               ? tileYs.flatMap((y) =>
                   tileXs.map((x) => (
@@ -2066,6 +2090,29 @@ export function FloorGrid(props: FloorGridProps) {
                 }}
               />
             )}
+            {placing && pendingPlace !== null && refusalRegion === null ? (
+              <View
+                testID={'floorgrid-place-ghost'}
+                pointerEvents={'none'}
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  width:
+                    (pendingPlace.kind === 'session'
+                      ? sessionItemFootprint(pendingPlace.item).width
+                      : furnitureItemFootprint(pendingPlace.item).width) * tile,
+                  height:
+                    (pendingPlace.kind === 'session'
+                      ? sessionItemFootprint(pendingPlace.item).height
+                      : furnitureItemFootprint(pendingPlace.item).height) * tile,
+                  borderWidth: EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS,
+                  borderColor: FLOOR_STATION_PANEL_BUTTON_BORDER_COLOR,
+                  opacity: EMPIRE_TUNING.GYM_SCREEN_DISABLED_OPACITY,
+                  zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
+                }}
+              />
+            ) : null}
             {furniture.map((row) => {
               const isRefusalTarget = overlapRefusalItem === row.item;
               const isBayPrimary =
@@ -2652,14 +2699,21 @@ export function FloorGrid(props: FloorGridProps) {
         testID={'floorgrid-diagnostics-toggle'}
         accessibilityRole={'button'}
         onPress={() => setShowDiagnostics((previous) => !previous)}
-        style={panelStyles.diagnosticsToggle as WebSelectableViewStyle}
+        style={
+          developerChrome
+            ? (panelStyles.diagnosticsToggle as WebSelectableViewStyle)
+            : ({ display: 'none' } as WebSelectableViewStyle)
+        }
       >
         <Text style={panelStyles.buttonText}>
           {showDiagnostics ? 'hide diagnostics' : 'show diagnostics'}
         </Text>
       </Pressable>
       {showDiagnostics ? (
-        <View testID={'floorgrid-diagnostics'}>
+        <View
+          testID={'floorgrid-diagnostics'}
+          style={developerChrome ? undefined : { height: 0, overflow: 'hidden', opacity: 0 }}
+        >
           <Text testID={'floorgrid-diagnostic-caption'}>
             floor ({floor.rung}) — {grid.width}x{grid.height} tiles, {furniture.length} furniture,{' '}
             {placed.length} placed, {unplaced.length} unplaced

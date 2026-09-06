@@ -118,3 +118,7 @@ public/canvaskit.wasm
 .gauntlet/shots/g2d/*
 !.gauntlet/shots/g2d/dues.json
 !.gauntlet/shots/g2d/390x844-member-dues.png
+
+# SF-TWL-GYM-EMPIRE-UX-01 player-facing vertical-slice evidence. Before/after
+# 390×844 photographs of Play (grid hidden), Build (grid on), Shop, Staff, More.
+!.gauntlet/shots/empire-ux-01/

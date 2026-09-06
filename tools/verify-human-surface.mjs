@@ -120,7 +120,7 @@ async function runSurface(page, viewportName) {
   await page.getByTestId('gymscreen-root').waitFor({ state: 'attached', timeout: 20000 });
   await page.waitForTimeout(800);
 
-  await page.getByText('play', { exact: true }).click();
+  await page.getByTestId('gymscreen-surface-play').click();
   await page.waitForTimeout(400);
 
   const memberBefore = await page.getByTestId('floorgrid-member-panel').count();
@@ -271,7 +271,7 @@ async function runSurface(page, viewportName) {
   }
   await page.getByText('close', { exact: true }).click().catch(() => {});
 
-  await page.getByText('build', { exact: true }).click();
+  await page.getByTestId('gymscreen-surface-build').click();
   await page.waitForTimeout(300);
 
   const positions = [];
@@ -341,7 +341,7 @@ async function runSurface(page, viewportName) {
 
   await clickGridTile(6, 0);
 
-  await page.getByText('play', { exact: true }).click();
+  await page.getByTestId('gymscreen-surface-play').click();
   await page.waitForTimeout(400);
   const occupiedStation = await waitForOccupiedStation(page);
   if (occupiedStation === null) {
@@ -377,7 +377,7 @@ async function runSurface(page, viewportName) {
       }
     }
     const before = await boxOf(occupiedStation);
-    await page.getByText('build', { exact: true }).click();
+    await page.getByTestId('gymscreen-surface-build').click();
     await page.waitForTimeout(200);
     const selected = await clickVisible(occupiedStation);
     const moving = await textOf('floorgrid-pending');
@@ -387,7 +387,7 @@ async function runSurface(page, viewportName) {
       before !== null &&
       after !== null &&
       (Math.abs(after.x - before.x) > 8 || Math.abs(after.y - before.y) > 8);
-    await page.getByText('play', { exact: true }).click();
+    await page.getByTestId('gymscreen-surface-play').click();
     await page.waitForTimeout(400);
     const membersAfter = await page.locator('[data-testid^="floorgrid-ambient-"]').count();
     if (selected && moving !== null && relocated && membersAfter > 0) {
@@ -401,7 +401,7 @@ async function runSurface(page, viewportName) {
     }
   }
 
-  await page.getByText('shop', { exact: true }).click();
+  await page.getByTestId('gymscreen-surface-shop').click();
   await page.waitForTimeout(300);
   const shopName = await textOf('gymscreen-shop-name-power-bar');
   if (shopName === 'Power bar') {
@@ -410,7 +410,7 @@ async function runSurface(page, viewportName) {
     fail(`${tag}: Shop Power bar card missing — "${shopName}"`);
   }
 
-  await page.getByText('staff', { exact: true }).click();
+  await page.getByTestId('gymscreen-surface-staff').click();
   await page.waitForTimeout(300);
   const manager = await textOf('gymscreen-manager-state');
   if (manager !== null && manager.includes('No manager hired')) {
@@ -421,7 +421,7 @@ async function runSurface(page, viewportName) {
 }
 
 function purseAmount(text) {
-  const match = /gym bucks:\s*([\d.]+)/i.exec(text ?? '');
+  const match = /^(\d+) gym bucks/i.exec((text ?? '').trim());
   return match === null ? Number.NaN : Number.parseFloat(match[1] ?? '');
 }
 
@@ -435,6 +435,8 @@ async function enterGym(page) {
 
 async function afford(page, amount) {
   await page.getByTestId('gymscreen-surface-more').click();
+  await page.waitForTimeout(200);
+  await page.getByTestId('gymscreen-surface-developer').click({ timeout: 10000 });
   await page.waitForTimeout(200);
   let purse = Number.NaN;
   for (let i = 0; i < 16; i += 1) {
@@ -456,7 +458,7 @@ async function runD1b(page, viewportName) {
   const tag = viewportName;
 
   await enterGym(page);
-  await page.getByText('play', { exact: true }).click();
+  await page.getByTestId('gymscreen-surface-play').click();
   await page.waitForTimeout(400);
   await shot(page, `d1b-stock-${tag}`);
   const stockQuality = await page.getByTestId('floorgrid-quality-bench-competition-bench-bay').count();
@@ -494,7 +496,7 @@ async function runD1b(page, viewportName) {
   }
 
   await enterGym(page);
-  await page.getByText('play', { exact: true }).click();
+  await page.getByTestId('gymscreen-surface-play').click();
   await page.waitForTimeout(400);
   await afford(page, 150);
   await page.getByTestId('gymscreen-surface-play').click();
@@ -520,7 +522,7 @@ async function runD1b(page, viewportName) {
   }
 
   await enterGym(page);
-  await page.getByText('play', { exact: true }).click();
+  await page.getByTestId('gymscreen-surface-play').click();
   await page.waitForTimeout(400);
   const purseBeforeBox = await afford(page, 180);
   await page.getByTestId('gymscreen-surface-build').click();

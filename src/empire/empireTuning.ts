@@ -2619,6 +2619,13 @@ export const EMPIRE_TUNING = Object.freeze({
   GYM_SCREEN_DISABLED_OPACITY: 0.5,
 
   /**
+   * Play's flex grow on the player dock versus Shop/Staff/More. Structural
+   * layout, not an economy value — Play owns home gravity so Build is not an
+   * equal dock peer.
+   */
+  GYM_SCREEN_DOCK_HOME_FLEX: 2,
+
+  /**
    * S4i — how much room `GymScreen.tsx`'s own `ScrollView` box reserves at
    * its bottom edge so its scrollport frame never extends under
    * `src/shell/AppShell.tsx`'s absolutely-positioned `BACK TO TRAINING` /
@@ -3017,6 +3024,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS: 'knob',
   GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS: 'knob',
   GYM_SCREEN_DISABLED_OPACITY: 'knob',
+  GYM_SCREEN_DOCK_HOME_FLEX: 'knob',
   GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS: 'knob',
 
   PACING_REPORT_HORIZONS_SECONDS: 'structural',

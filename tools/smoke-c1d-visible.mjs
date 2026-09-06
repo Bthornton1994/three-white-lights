@@ -58,7 +58,7 @@ async function run(name, viewport) {
   await page.getByText('GYM EMPIRE').click({ timeout: 15000 });
   await page.waitForTimeout(1000);
 
-  await page.getByText('play', { exact: true }).click();
+  await page.getByTestId('gymscreen-surface-play').click();
   await page.waitForTimeout(500);
   await clickBox(page, '[data-testid="floorgrid-ambient-0"]');
   await shot(page, `${name}-member`);
@@ -69,7 +69,7 @@ async function run(name, viewport) {
   await page.waitForTimeout(300);
   await page.getByText('close', { exact: true }).click().catch(() => {});
 
-  await page.getByText('build', { exact: true }).click();
+  await page.getByTestId('gymscreen-surface-build').click();
   await page.waitForTimeout(300);
   await clickBox(page, '[data-testid="floorgrid-fixed-sprite-power-bar"]');
   await clickGrid(page, 6, 0);
@@ -91,10 +91,10 @@ async function run(name, viewport) {
   console.log(`${name}: invalid placement "${refused}" with ${Math.round(refusedArea.width)}x${Math.round(refusedArea.height)} outline`);
   await clickGrid(page, 6, 0);
 
-  await page.getByText('shop', { exact: true }).click();
+  await page.getByTestId('gymscreen-surface-shop').click();
   await page.waitForTimeout(400);
   await shot(page, `${name}-shop`);
-  await page.getByText('staff', { exact: true }).click();
+  await page.getByTestId('gymscreen-surface-staff').click();
   await page.waitForTimeout(400);
   await shot(page, `${name}-staff`);
   await context.close();

@@ -14,22 +14,37 @@ import {
   repairEquipment,
   withUpdatedGym,
 } from './management';
-import { buySessionEquipment, withLadder } from './sessions';
+import { buySessionEquipment, createRestAllocation, weeklyAttributeEffects, withLadder } from './sessions';
 import {
   displayConditionPercent,
   displayRepairCostBySoundness,
   isRecoveryBlocking,
   isSoundCondition,
   playerFacingActivityGroupLabel,
+  playerFacingBuildFabLabel,
+  playerFacingEquipmentCatalog,
+  playerFacingEquipmentCostLine,
   playerFacingEquipmentLabel,
+  playerFacingGymBucksAmount,
+  playerFacingGymBucksLine,
+  playerFacingIncomeRateLine,
+  playerFacingLocationLine,
   playerFacingManagerCapability,
+  playerFacingManagerRole,
   playerFacingMemberActivityLine,
+  playerFacingMemberStaffNextAction,
   playerFacingMemberTypeLabel,
   playerFacingPlacementRefuse,
+  playerFacingReputationHud,
+  playerFacingReturnSummary,
+  playerFacingRungLabel,
   playerFacingStationOperation,
+  playerFacingStayStatus,
+  playerFacingSurfaceLabel,
   playerFacingUpgradeEffect,
   playerFacingUpgradeLabel,
   playerFacingUpgradeRefuse,
+  playerFacingWeekEffectsLine,
   plateLoadingDiscs,
   plateLoadingProgress,
   recoveryBlockingItems,
@@ -592,6 +607,81 @@ describe('Stage D2.2 plate-loading progress — same job, duration-scaled', () =
     const mid = plateLoadingDiscs(0.5);
     expect(mid[0]?.xFraction).toBeCloseTo(layout.sleeveXFraction, 10);
     expect(mid[layout.discCount - 1]?.xFraction).toBeCloseTo(layout.sourceXFraction, 10);
+  });
+});
+
+describe('player-facing gym chrome (existing values, reformatted)', () => {
+  it('floors gym bucks so the HUD never overstates the purse', () => {
+    expect(playerFacingGymBucksAmount(0)).toBe(0);
+    expect(playerFacingGymBucksAmount(0.7)).toBe(0);
+    expect(playerFacingGymBucksAmount(12.9)).toBe(12);
+    expect(playerFacingGymBucksLine(12.9)).toBe('12 gym bucks');
+    expect(playerFacingIncomeRateLine(60)).toBe('60 gym bucks an hour');
+  });
+
+  it('names location, dock, and build FAB without domain tokens on the chrome', () => {
+    expect(playerFacingRungLabel('garage')).toBe('Garage');
+    expect(playerFacingLocationLine('garage')).toBe('Garage');
+    expect(playerFacingSurfaceLabel('play')).toBe('Play');
+    expect(playerFacingSurfaceLabel('developer')).toBe('Developer');
+    expect(playerFacingBuildFabLabel(false)).toBe('Build');
+    expect(playerFacingBuildFabLabel(true)).toBe('Done');
+  });
+
+  it('shows reputation halves as whole numbers from existing reads', () => {
+    expect(playerFacingReputationHud(0, 0)).toBe('Reputation 0 from members · 0 from meets');
+    expect(playerFacingReputationHud(1.9, 40)).toBe('Reputation 1 from members · 40 from meets');
+  });
+
+  it('builds shop catalog copy from published SKU tables only', () => {
+    const bar = playerFacingEquipmentCatalog('power-bar');
+    expect(bar.purpose).toBe('Competition lifts');
+    expect(bar.effect).toContain('Required for');
+    expect(bar.unlock).toContain('Garage');
+    expect(bar.tradeoff).toContain('not member sessions');
+    expect(playerFacingEquipmentCostLine('power-bar')).toBe(
+      playerFacingGymBucksLine(EMPIRE_TUNING.LADDER_EQUIPMENT_COST_GYM_BUCKS['power-bar']),
+    );
+    const mats = playerFacingEquipmentCatalog('mats');
+    expect(mats.purpose).toBe(playerFacingActivityGroupLabel('recovery'));
+    expect(mats.unlock).toContain('Garage');
+    expect(playerFacingEquipmentCostLine('mats')).toBe(
+      playerFacingGymBucksLine(EMPIRE_TUNING.SESSION_EQUIPMENT_COST_GYM_BUCKS.mats),
+    );
+  });
+
+  it('returns a summary only for a real away catch-up, never a watched tick', () => {
+    expect(playerFacingReturnSummary(null)).toBeNull();
+    expect(
+      playerFacingReturnSummary({
+        gymBucks: 0.08,
+        secondsElapsed: EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS,
+        secondsBanked: EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS,
+        secondsDiscarded: 0,
+      }),
+    ).toBeNull();
+    const away = playerFacingReturnSummary({
+      gymBucks: 12,
+      secondsElapsed: 3600,
+      secondsBanked: 3600,
+      secondsDiscarded: 0,
+    });
+    expect(away).toContain('12 gym bucks');
+    expect(away).toContain('away');
+  });
+
+  it('prints week multipliers as whole percents from the existing scale', () => {
+    const effects = weeklyAttributeEffects(createRestAllocation(), []);
+    const line = playerFacingWeekEffectsLine(effects);
+    expect(line).toContain('recovery');
+    expect(line).not.toMatch(/\d+\.\d+/);
+  });
+
+  it('keeps staff next-action copy honest — no hire control for members', () => {
+    expect(playerFacingStayStatus('staying')).toBe('Training here');
+    expect(playerFacingManagerRole('novice')).toBe('Novice manager');
+    expect(playerFacingMemberStaffNextAction('staying')).toContain('no hire control');
+    expect(playerFacingMemberStaffNextAction('departure-eligible')).toContain('no hire control');
   });
 });
 
