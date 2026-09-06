@@ -2406,6 +2406,9 @@ describe('SF-TWL-GYM-EMPIRE-UX-02 — Play operating view vs Build overlay', () 
     expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).toContain(
       'gymscreen-leave-gym',
     );
+    expect(findByTestId(root, 'gymscreen-leave-gym').props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ backgroundColor: 'goldenrod' })]),
+    );
     press(findByTestId(root, 'gymscreen-leave-gym'));
     expect(left).toEqual(['left']);
   });
