@@ -4,7 +4,7 @@
 
 Owner Bryant product-rejected HEAD `ea58acef` (A6-4-only chrome). That SHA is **REJECTED / NOT ACCEPT**. Bryant then **approved** visual direction **A × C IRON & AMBER**. This packet is a layout / IA / hierarchy reset plus chrome toward that look — not a restyle of the same editor, and not a claim that art fidelity is done.
 
-Canonical product bar is `software-factory/design/gym-empire-ux-02/02-product-bar-LOCKED.md` (supersedes any prior bar filename). That folder is **not mounted** in this Cloud, so diagnosis follows GDD + the live Gym Empire tree + the LOCKED-bar constraints as bound (living institution; full-bleed Play; Build separate; Shop/Staff sheets; diagnostics never More; keep UX-01 necessaries; no invent).
+Canonical product bar is `software-factory/design/gym-empire-ux-02/02-product-bar-LOCKED.md` (also `02-twl-bo-product-bar-locked.md` if present; do not dilute). That folder is **not mounted** in this Cloud, so diagnosis follows GDD + the live Gym Empire tree + the LOCKED-bar constraints as bound (living institution; full-bleed Play; Build separate; Shop/Staff sheets; diagnostics never More; keep UX-01 necessaries; no invent).
 
 ## Layout failures (void / letterbox)
 
@@ -30,7 +30,7 @@ Playable-slice chrome toward that look (still not art-accepted): wood-tuned floo
 
 ## Reset (this packet)
 
-- Paint html/body/#root warm iron; sienna brick leftover around a wood board; overlay HUD/dock/action card.
+- Paint html/body/#root warm iron; sienna brick leftover around a wood board; overlay HUD/dock/action card. HUD identity sits on the sienna room (not a black admin strip).
 - Sparse HUD: referee lights + location + purse + reputation. Causal now/next on a Play action card from real management / roster state.
 - Build-only grid, labels, place copy, gold/black editor boxes, occupancy outlines. Play inspects without editor chrome; worn stations may show an amber inspect cue from real condition. Exit Build → Play with no residue (existing fade).
 - Weighted IA: Gym (Play) home with amber active; Shop/Staff charcoal sheets over the gym; Build FAB on Play/Build only, stacked under inspect, and the Play now/next card stops short of it; More = settings including leave-gym; Developer explicit route only.

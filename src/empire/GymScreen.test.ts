@@ -2145,6 +2145,9 @@ describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
           EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
       }),
     );
+    expect(findByTestId(root, 'gymscreen-hud').props.style).toEqual(
+      expect.objectContaining({ backgroundColor: 'sienna' }),
+    );
     expect(findAllByTestId(root, 'gymscreen-surface-build').length).toBe(1);
     expect(findAllByTestId(root, 'gymscreen-surface-developer').length).toBe(0);
     expect(testIdsUnder(findByTestId(root, 'gymscreen-more-drawer'))).not.toContain(

@@ -386,7 +386,8 @@ const styles = StyleSheet.create({
     zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
     paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
     paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
-    backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
+    // Identity lives on the sienna room, not a black admin strip over the gym.
+    backgroundColor: GYM_SCREEN_STAGE_COLOR,
     pointerEvents: 'box-none',
   },
   hudText: {

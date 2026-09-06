@@ -80,6 +80,11 @@ async function logChrome(page, label) {
       const c = cardEl.getBoundingClientRect();
       return c.right <= f.left + 1;
     });
+    const hud = page.getByTestId('gymscreen-hud');
+    const hudBg =
+      (await hud.count()) === 0
+        ? 'missing'
+        : await hud.evaluate((el) => getComputedStyle(el).backgroundColor);
     console.log(
       JSON.stringify({
         label,
@@ -90,6 +95,7 @@ async function logChrome(page, label) {
         fabText,
         fabDisplay,
         actionClearsFab,
+        hudBg,
       }),
     );
   } catch (err) {
