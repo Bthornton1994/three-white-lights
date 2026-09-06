@@ -139,7 +139,9 @@ import { scrubPrecision } from './production';
 import {
   displayConditionPercent,
   playerFacingActivityGroupLabel,
+  playerFacingComposedReputation,
   playerFacingEquipmentLabel,
+  playerFacingHudAmount,
   playerFacingManagerCapability,
   stationConditionView,
 } from './stationView';
@@ -409,7 +411,9 @@ function expectScreenMatchesState(root: Rendered, state: GymViewState): number {
     String(ladderIncomeRatePerHour(gym.ladder.rung)),
   );
   compared += 1;
-  expect(textOf(findByTestId(root, 'gymscreen-gym-bucks'))).toContain(String(gym.ladder.gymBucks));
+  expect(textOf(findByTestId(root, 'gymscreen-gym-bucks'))).toBe(
+    `gym bucks: ${playerFacingHudAmount(gym.ladder.gymBucks)}`,
+  );
   compared += 1;
   expect(textOf(findByTestId(root, 'gymscreen-accelerated-bucks'))).toContain(
     String(gym.acceleratedGymBucks),
@@ -756,9 +760,11 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
     state.livingMembers.reputation,
     state.sportingReputation,
   );
-  const reputationLine = T.SPORTING_REPUTATION.copy.composed
-    .replace('{fromMembers}', String(reputationReading.fromMembers))
-    .replace('{fromSporting}', String(reputationReading.fromSporting));
+  const reputationLine = playerFacingComposedReputation(
+    T.SPORTING_REPUTATION.copy.composed,
+    reputationReading.fromMembers,
+    reputationReading.fromSporting,
+  );
   expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(reputationLine);
   expect(textOf(findByTestId(root, 'gymscreen-reputation'))).not.toMatch(/\+REP/);
   // REP-EVIDENCE-01: both halves live on the HUD, not only the more-drawer
@@ -2045,9 +2051,7 @@ describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
     expect(state.surface).toBe('play');
     const root = render(state, []);
     expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(
-      T.SPORTING_REPUTATION.copy.composed
-        .replace('{fromMembers}', '0')
-        .replace('{fromSporting}', '0'),
+      playerFacingComposedReputation(T.SPORTING_REPUTATION.copy.composed, 0, 0),
     );
     expect(findAllByTestId(root, 'gymscreen-reputation-reason-0').length).toBe(0);
     expect(textOf(findByTestId(root, 'gymscreen-reputation'))).not.toMatch(/\+REP/);
@@ -2069,9 +2073,7 @@ describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
     });
     const root = render(credited, []);
     expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(
-      T.SPORTING_REPUTATION.copy.composed
-        .replace('{fromMembers}', '0')
-        .replace('{fromSporting}', '40'),
+      playerFacingComposedReputation(T.SPORTING_REPUTATION.copy.composed, 0, 40),
     );
     expect(textOf(findByTestId(root, 'gymscreen-reputation-reason-0'))).toBe(
       T.SPORTING_REPUTATION.copy.placing
@@ -2103,9 +2105,11 @@ describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
     expect(reading.fromSporting).toBe(0);
     const root = render(advanced, []);
     expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(
-      T.SPORTING_REPUTATION.copy.composed
-        .replace('{fromMembers}', String(reading.fromMembers))
-        .replace('{fromSporting}', '0'),
+      playerFacingComposedReputation(
+        T.SPORTING_REPUTATION.copy.composed,
+        reading.fromMembers,
+        reading.fromSporting,
+      ),
     );
     expect(findAllByTestId(root, 'gymscreen-reputation-reason-0').length).toBe(0);
     expect(testIdsUnder(findByTestId(root, 'gymscreen-hud'))).toContain('gymscreen-reputation');
@@ -2137,9 +2141,11 @@ describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
     expect(reading.fromSporting).toBe(40);
     const root = render(credited, []);
     expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(
-      T.SPORTING_REPUTATION.copy.composed
-        .replace('{fromMembers}', String(reading.fromMembers))
-        .replace('{fromSporting}', '40'),
+      playerFacingComposedReputation(
+        T.SPORTING_REPUTATION.copy.composed,
+        reading.fromMembers,
+        reading.fromSporting,
+      ),
     );
     expect(textOf(findByTestId(root, 'gymscreen-reputation-reason-0'))).toBe(
       T.SPORTING_REPUTATION.copy.placing
@@ -2173,9 +2179,7 @@ describe('REP-EVIDENCE-01 — gymscreen-reputation on the HUD', () => {
     });
     const root = render(missed, []);
     expect(textOf(findByTestId(root, 'gymscreen-reputation'))).toBe(
-      T.SPORTING_REPUTATION.copy.composed
-        .replace('{fromMembers}', '0')
-        .replace('{fromSporting}', '0'),
+      playerFacingComposedReputation(T.SPORTING_REPUTATION.copy.composed, 0, 0),
     );
     expect(textOf(findByTestId(root, 'gymscreen-reputation-reason-0'))).toBe(
       T.SPORTING_REPUTATION.copy.unknownMeet,

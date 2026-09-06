@@ -271,7 +271,10 @@ import { FLOOR_SPRITE_URIS } from './floorSprites';
 import {
   displayConditionPercent,
   playerFacingActivityGroupLabel,
+  playerFacingComposedReputation,
   playerFacingEquipmentLabel,
+  playerFacingEquipmentPurpose,
+  playerFacingHudAmount,
   playerFacingManagerCapability,
   playerFacingUpgradeRefuse,
   recoveryBlockingItems,
@@ -397,8 +400,28 @@ const styles = StyleSheet.create({
     borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
     cursor: 'pointer',
   },
+  dockButtonHome: {
+    flex:
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS +
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
+  },
   dockButtonActive: {
     backgroundColor: GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR,
+  },
+  buildFab: {
+    position: 'absolute',
+    right: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
+    bottom: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
+    width: EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS,
+    height: EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS,
+    borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS,
+    zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
+    borderWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
+    borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
+    cursor: 'pointer',
   },
   shopCard: {
     flexDirection: 'row',
@@ -538,9 +561,11 @@ export function GymScreen(props: GymViewProps) {
     livingMembers.reputation,
     sportingReputation,
   );
-  const reputationLine = sportingCopy.composed
-    .replace('{fromMembers}', String(reputationReading.fromMembers))
-    .replace('{fromSporting}', String(reputationReading.fromSporting));
+  const reputationLine = playerFacingComposedReputation(
+    sportingCopy.composed,
+    reputationReading.fromMembers,
+    reputationReading.fromSporting,
+  );
   const reputationReasons =
     lastSportingCredit === null
       ? []
@@ -574,20 +599,17 @@ export function GymScreen(props: GymViewProps) {
     <View testID={'gymscreen-root'} style={styles.root}>
       <View testID={'gymscreen-hud'} style={styles.hud}>
         <Text testID={'gymscreen-rung'} style={styles.hudText}>rung {gym.ladder.rung}</Text>
-        <Text testID={'gymscreen-rate'} style={styles.hudText}>
-          earning {ladderIncomeRatePerHour(gym.ladder.rung)} gym bucks per hour
+        <Text testID={'gymscreen-gym-bucks'} style={styles.hudText}>
+          gym bucks: {playerFacingHudAmount(gym.ladder.gymBucks)}
         </Text>
-        <Text testID={'gymscreen-gym-bucks'} style={styles.hudText}>gym bucks: {gym.ladder.gymBucks}</Text>
-        <Text testID={'gymscreen-accelerated-bucks'} style={styles.hudText}>accelerated: {gym.acceleratedGymBucks}</Text>
-        <Text testID={'gymscreen-clock'} style={styles.hudText}>clock: {describeLadderClock(gym.ladder.collectedAt)}</Text>
         {/*
           REP-EVIDENCE-01 — player information, not engine detail. Both
           institutional halves already live on GymViewState
           (`livingMembers.reputation` + `sportingReputation`); the composer
           is `institutionalReputation`. Stored sporting reasons ride
           `lastSportingCredit`. Honest zero when nothing is credited. No
-          toast. The more-drawer diagnostics block must not be the only
-          place these lines exist.
+          toast. Rate, accelerated purse, and clock skip the Play HUD and
+          live in the more drawer with the other verification quantities.
         */}
         <Text testID={'gymscreen-reputation'} style={styles.hudText}>{reputationLine}</Text>
         {reputationReasons.map((text, index) => (
@@ -674,7 +696,7 @@ export function GymScreen(props: GymViewProps) {
         style={surface === 'staff' ? styles.drawer : styles.drawerHidden}
       >
       <View testID={'gymscreen-management'}>
-        <View testID={'gymscreen-manager'}>
+        <View testID={'gymscreen-manager'} style={styles.shopCard}>
           {managed.manager === null ? (
             <>
               <Text testID={'gymscreen-manager-state'}>No manager hired</Text>
@@ -687,7 +709,7 @@ export function GymScreen(props: GymViewProps) {
                   {managerHireCostGymBucks(tier) > gym.ladder.gymBucks ? (
                     <Text testID={`gymscreen-hire-${tier}-unavailable`}>
                       needs {managerHireCostGymBucks(tier)} gym bucks — you have{' '}
-                      {gym.ladder.gymBucks}
+                      {playerFacingHudAmount(gym.ladder.gymBucks)}
                     </Text>
                   ) : (
                     <Pressable
@@ -809,7 +831,7 @@ export function GymScreen(props: GymViewProps) {
               </Text>
             ) : prompt.repairCostGymBucks > gym.ladder.gymBucks ? (
               <Text testID={'gymscreen-prompt-repair-unavailable'}>
-                needs {prompt.repairCostGymBucks} gym bucks — you have {gym.ladder.gymBucks}
+                needs {prompt.repairCostGymBucks} gym bucks — you have {playerFacingHudAmount(gym.ladder.gymBucks)}
               </Text>
             ) : (
               <Pressable
@@ -972,6 +994,7 @@ export function GymScreen(props: GymViewProps) {
               )}
               <View style={styles.shopCardBody}>
                 <Text testID={`gymscreen-shop-name-${item}`}>{playerFacingEquipmentLabel(item)}</Text>
+                <Text>{playerFacingEquipmentPurpose(item)}</Text>
                 <Text>
                   {ladderEquipmentCost(item)} gym bucks · {ladderEquipmentMinRung(item)}
                   {owned ? ' · owned' : null}
@@ -985,7 +1008,7 @@ export function GymScreen(props: GymViewProps) {
                   </Text>
                 ) : tooPoor ? (
                   <Text testID={`gymscreen-buy-ladder-${item}-unavailable`}>
-                    needs {ladderEquipmentCost(item)} gym bucks — you have {gym.ladder.gymBucks}
+                    needs {ladderEquipmentCost(item)} gym bucks — you have {playerFacingHudAmount(gym.ladder.gymBucks)}
                   </Text>
                 ) : (
                   <Pressable
@@ -1022,6 +1045,7 @@ export function GymScreen(props: GymViewProps) {
               )}
               <View style={styles.shopCardBody}>
                 <Text testID={`gymscreen-shop-name-${item}`}>{playerFacingEquipmentLabel(item)}</Text>
+                <Text>{playerFacingEquipmentPurpose(item)}</Text>
                 <Text>
                   {playerFacingActivityGroupLabel(sessionEquipmentGroup(item))} ·{' '}
                   {sessionEquipmentCost(item)} gym bucks · {sessionEquipmentMinRung(item)}
@@ -1042,7 +1066,7 @@ export function GymScreen(props: GymViewProps) {
                     style={[styles.button, styles.buttonDisabled]}
                   >
                     <Text style={styles.buttonTextDisabled}>
-                      needs {sessionEquipmentCost(item)} gym bucks — you have {gym.ladder.gymBucks}
+                      needs {sessionEquipmentCost(item)} gym bucks — you have {playerFacingHudAmount(gym.ladder.gymBucks)}
                     </Text>
                   </Pressable>
                 ) : (
@@ -1071,7 +1095,7 @@ export function GymScreen(props: GymViewProps) {
             {/* `moveUpLadder`'s `'not-enough-gym-bucks'` arm, drawn instead of pressed for. */}
             {ladderMoveCost(destination) > gym.ladder.gymBucks ? (
               <Text testID={'gymscreen-move-up-unavailable'}>
-                needs {ladderMoveCost(destination)} gym bucks — you have {gym.ladder.gymBucks}
+                needs {ladderMoveCost(destination)} gym bucks — you have {playerFacingHudAmount(gym.ladder.gymBucks)}
               </Text>
             ) : (
               <Pressable
@@ -1091,6 +1115,15 @@ export function GymScreen(props: GymViewProps) {
         testID={'gymscreen-more-drawer'}
         style={surface === 'more' ? styles.drawer : styles.drawerHidden}
       >
+      <Text testID={'gymscreen-rate'} style={styles.hudText}>
+        earning {ladderIncomeRatePerHour(gym.ladder.rung)} gym bucks per hour
+      </Text>
+      <Text testID={'gymscreen-accelerated-bucks'} style={styles.hudText}>
+        accelerated: {gym.acceleratedGymBucks}
+      </Text>
+      <Text testID={'gymscreen-clock'} style={styles.hudText}>
+        clock: {describeLadderClock(gym.ladder.collectedAt)}
+      </Text>
       <View testID={'gymscreen-week'}>
         <Text>
           week {weekIndex} ({shape.fixed} fixed + {shape.flexible} flexible = {shape.total}{' '}
@@ -1174,7 +1207,7 @@ export function GymScreen(props: GymViewProps) {
         {lastAccrual === null ? null : (
           <Text testID={'gymscreen-accrual'}>
             last advance banked {lastAccrual.secondsBanked}s of {lastAccrual.secondsElapsed}s, paid{' '}
-            {lastAccrual.gymBucks} gym bucks, cap discarded {lastAccrual.secondsDiscarded}s
+            {playerFacingHudAmount(lastAccrual.gymBucks)} gym bucks, cap discarded {lastAccrual.secondsDiscarded}s
           </Text>
         )}
         {lastManagementReport === null ? null : (
@@ -1233,19 +1266,42 @@ export function GymScreen(props: GymViewProps) {
         </Pressable>
       </View>
       </ScrollView>
-      </View>
-      <View testID={'gymscreen-dock'} style={styles.dock}>
-        {GYM_SURFACES.map((name) => (
+      {GYM_SURFACES.map((name) =>
+        name === 'build' ? (
           <Pressable
             key={name}
             testID={`gymscreen-surface-${name}`}
             accessibilityRole={'button'}
-            style={surface === name ? [styles.dockButton, styles.dockButtonActive] : styles.dockButton}
+            style={surface === name ? [styles.buildFab, styles.dockButtonActive] : styles.buildFab}
             onPress={() => dispatch({ kind: 'set-gym-surface', surface: name })}
           >
             <Text style={styles.buttonText}>{name}</Text>
           </Pressable>
-        ))}
+        ) : null,
+      )}
+      </View>
+      <View testID={'gymscreen-dock'} style={styles.dock}>
+        {GYM_SURFACES.map((name) =>
+          name === 'build' ? null : (
+            <Pressable
+              key={name}
+              testID={`gymscreen-surface-${name}`}
+              accessibilityRole={'button'}
+              style={
+                name === 'play'
+                  ? surface === name
+                    ? [styles.dockButton, styles.dockButtonHome, styles.dockButtonActive]
+                    : [styles.dockButton, styles.dockButtonHome]
+                  : surface === name
+                    ? [styles.dockButton, styles.dockButtonActive]
+                    : styles.dockButton
+              }
+              onPress={() => dispatch({ kind: 'set-gym-surface', surface: name })}
+            >
+              <Text style={styles.buttonText}>{name}</Text>
+            </Pressable>
+          ),
+        )}
       </View>
     </View>
   );

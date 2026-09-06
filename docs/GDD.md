@@ -3372,6 +3372,28 @@ Closing Stage C does not mean the remaining defects do not exist. These are debt
 
 C.2 simulator fidelity follows this Stage C close. Stage D is not started by C-DEBT-04. The Living Gym Doctrine (§5.15) does not authorize Stage D during C.2.
 
+### SF-TWL-GYM-EMPIRE-UX-01 — Play presentation candidate (not closed)
+
+Presentation-only candidate on the Session B gym UI. Does not reopen Stage C,
+D.1b, or C.2. Feel / visual is HUMAN_REQUIRED. Do not mint. Do not call Stage C
+closed a second time from this slice.
+
+Prior play of the post-reputation HUD found Play still reading as a telemetry
+strip over an empty grid, with Build as one more equal dock key. This candidate
+applies §5.15's world test to that chrome, not to the sim:
+
+- Play HUD keeps rung, whole gym bucks, reputation, the maintenance-review
+  chip, and refusal. Rate, accelerated purse, and clock move to More.
+- Play hides tile grid lines. Build still shows them and the tray.
+- Build is a control on the gym stage, not a fifth equal dock key. Dock is
+  Play / Shop / Staff / More.
+- Shop cards name why a SKU exists from data the engine already has (session
+  activity group, or the competition lifts that require a ladder item).
+
+No new reducer, SKU, or economy number. Existing testIDs stay. Jumping the
+press, warm-up protection, and squat / bench / deadlift histories are
+untouched — this file is Empire chrome.
+
 ### 5.15 The Living Gym Doctrine
 
 Human product-direction ruling, GDD-only, recorded against Session B head

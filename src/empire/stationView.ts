@@ -93,6 +93,61 @@ export function playerFacingEquipmentLabel(
   return EQUIPMENT_PLAYER_LABELS[item] ?? item;
 }
 
+/**
+ * Whole gym-bucks for the HUD and "you have" lines. The engine still stores
+ * fractional accrual; Play must not print `0.200092`.
+ */
+export function playerFacingHudAmount(value: number): string {
+  return String(Math.floor(value));
+}
+
+/**
+ * Reputation half for the composed HUD line. Opening idle dust rounds to
+ * `0`; once a half is actually visible it shows at most two decimals.
+ */
+export function playerFacingHudReading(value: number): string {
+  const scale = EMPIRE_TUNING.CONDITION_PERCENT_SCALE;
+  return String(Math.round(value * scale) / scale);
+}
+
+/** `SPORTING_REPUTATION.copy.composed` with both halves player-facing. */
+export function playerFacingComposedReputation(
+  composed: string,
+  fromMembers: number,
+  fromSporting: number,
+): string {
+  return composed
+    .replace('{fromMembers}', playerFacingHudReading(fromMembers))
+    .replace('{fromSporting}', playerFacingHudReading(fromSporting));
+}
+
+/**
+ * Why a shop SKU exists, from data the engine already has: session activity
+ * group, or the competition lifts that require a ladder item. Not a new
+ * economy number.
+ */
+export function playerFacingEquipmentPurpose(
+  item: LadderEquipmentItem | SessionEquipmentItem | string,
+): string {
+  for (const sessionItem of EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS) {
+    if (sessionItem === item) {
+      return playerFacingActivityGroupLabel(sessionEquipmentGroup(sessionItem));
+    }
+  }
+  const lifts: string[] = [];
+  for (const lift of EMPIRE_TUNING.LADDER_LIFTS) {
+    const required = EMPIRE_TUNING.LADDER_LIFT_REQUIREMENTS[lift];
+    for (const needed of required) {
+      if (needed === item) {
+        lifts.push(lift);
+        break;
+      }
+    }
+  }
+  if (lifts.length === 0) return playerFacingEquipmentLabel(item);
+  return lifts.join(', ');
+}
+
 /** Player-facing name for a §5.4 session activity group. */
 export function playerFacingActivityGroupLabel(group: SessionActivityGroup): string {
   return ACTIVITY_GROUP_PLAYER_LABELS[group];
