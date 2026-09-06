@@ -8,10 +8,10 @@
  *   design/session-a-training-fit-02/02-screen-03-impl-contract.md
  *   design/session-a-training-fit-02/03-developer-packet.md
  *
- * If PX publishes those files or TOKEN-MANIFEST into this checkout, every hex
- * in `IRON_AMBER` must appear in the published text when that text actually
- * contains hex. Until they exist, the suite pins the GymScreen CSS named
- * colours and `index.ts` void at Gym Empire `7010867efea4438db7d098a619625400016025da`.
+ * If PX files or TOKEN-MANIFEST contain hex, every hex in `IRON_AMBER` must
+ * appear in that published text. TRAINING-FIT-02 00–03 are in-tree and do
+ * not publish hex, so the suite pins the GymScreen CSS named colours and
+ * `index.ts` void at Gym Empire `7010867efea4438db7d098a619625400016025da`.
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';

@@ -8,16 +8,15 @@
  *   design/session-a-training-fit-02/02-screen-03-impl-contract.md
  *   design/session-a-training-fit-02/03-developer-packet.md
  *
- * Those files are still absent from this checkout. This suite does not invent
- * their MUST/MUST NOT list. It fail-closes when they land, and until then it
- * pins the GDD §3.2 / §3.4 / §12.3 honesty that the opening decision and
- * close-out already have to tell the truth about:
+ * Those files are now in-tree. This suite requires them and fail-closes on
+ * the filed bar: V1–V8, DO_NOT_MERGE, no check-in, Session A only. It does not
+ * invent extra MUST text. GDD §3.2 / §3.4 / §12.3 still pin:
  *
  *   - no subjective check-in
  *   - empty history is forming, not fabricated fatigue
  *   - close-out moves e1RM, never Total
  *   - no visible fatigue meter
- *   - no product PASS / ACCEPT claim while the bar file is missing
+ *   - no product PASS / ACCEPT / FEEL_PASS claim
  *   - Session B / Gym Empire stay out of `src/session/`
  *
  * Soft feel remains CLOSED fail on the #43 lineage. Tech green ≠ BO PASS.
@@ -45,11 +44,6 @@ function readRepo(rel: string): string {
   return readFileSync(path.join(REPO, rel), 'utf8');
 }
 
-function readIfPresent(rel: string): string | null {
-  const abs = path.join(REPO, rel);
-  return existsSync(abs) ? readFileSync(abs, 'utf8') : null;
-}
-
 function sessionSources(): { file: string; source: string }[] {
   return readdirSync(HERE)
     .filter((name) => name.endsWith('.ts') || name.endsWith('.tsx'))
@@ -67,7 +61,11 @@ function codeOnly(source: string): string {
 }
 
 describe('TRAINING-FIT-02 BO honesty fence', () => {
-  it('cites the BO bar and PX 01–03 so bind fail-closes when they land', () => {
+  it('requires the BO bar and PX 01–03 in-tree and cited', () => {
+    expect(existsSync(path.join(REPO, BO_BAR))).toBe(true);
+    for (const packet of PX_PACKETS) {
+      expect(existsSync(path.join(REPO, packet))).toBe(true);
+    }
     const palette = readRepo('src/session/sessionPalette.ts');
     expect(palette).toContain(BO_BAR);
     for (const packet of PX_PACKETS) {
@@ -75,8 +73,7 @@ describe('TRAINING-FIT-02 BO honesty fence', () => {
     }
   });
 
-  it('does not claim product PASS or ACCEPT while the BO bar file is absent', () => {
-    const bar = readIfPresent(BO_BAR);
+  it('does not claim product PASS, ACCEPT, or FEEL_PASS', () => {
     const gdd = readRepo('docs/GDD.md');
     const fit02 = gdd.slice(
       gdd.indexOf('SF-TWL-SESSION-A-TRAINING-FIT-02'),
@@ -86,31 +83,38 @@ describe('TRAINING-FIT-02 BO honesty fence', () => {
     expect(fit02).not.toMatch(/\bACCEPTED\b/);
     expect(fit02).not.toMatch(/\bPRODUCT PASS\b/);
     expect(fit02).not.toMatch(/\bFEEL_PASS\b/);
-    if (bar === null) {
-      const comments = sessionSources()
-        .map((s) => s.source)
-        .join('\n');
-      expect(comments).not.toMatch(/\bBO_PASS\b/);
-      expect(comments).not.toMatch(/\bPRODUCT_PASS\b/);
-      expect(comments).not.toMatch(/TRAINING-FIT-02 is ACCEPTED/);
-    }
+    const comments = sessionSources()
+      .map((s) => s.source)
+      .join('\n');
+    expect(comments).not.toMatch(/\bBO_PASS\b/);
+    expect(comments).not.toMatch(/\bPRODUCT_PASS\b/);
+    expect(comments).not.toMatch(/TRAINING-FIT-02 is ACCEPTED/);
+    expect(comments).not.toMatch(/Implementation Verified vs Screen 03 = YES/);
   });
 
-  it('binds the BO bar fail-closed when the file lands', () => {
-    const bar = readIfPresent(BO_BAR);
-    if (bar === null) {
-      expect(existsSync(path.join(REPO, BO_BAR))).toBe(false);
-      return;
-    }
-    expect(bar).toMatch(/DO_NOT_MERGE|NO MERGE|DO NOT MERGE/i);
-    expect(bar).toMatch(/Total/i);
+  it('binds the landed BO bar and Screen 03 contract fail-closed', () => {
+    const bar = readRepo(BO_BAR);
+    expect(bar).toMatch(/DO_NOT_MERGE/);
     expect(bar).toMatch(/check-in/i);
-    const contract = readIfPresent(PX_PACKETS[1]);
-    if (contract !== null) {
-      expect(contract).toMatch(/V1/);
-      expect(contract).toMatch(/V8/);
+    expect(bar).toMatch(/Session A only/);
+    expect(bar).toMatch(/feel Ready/);
+    expect(bar).toMatch(/Session B bleed/);
+    expect(bar).not.toMatch(/\bFEEL_PASS\b/);
+    const diagnosis = readRepo(PX_PACKETS[0]);
+    expect(diagnosis).toMatch(/FEEL_FAIL/);
+    expect(diagnosis).toMatch(/facility-first/i);
+    expect(diagnosis).toMatch(/DO_NOT_MERGE/);
+    const contract = readRepo(PX_PACKETS[1]);
+    for (const reject of ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8'] as const) {
+      expect(contract).toMatch(new RegExp(`\\b${reject}\\b`));
     }
-    const hasHex = /#[0-9A-Fa-f]{3,8}/.test(bar);
+    expect(contract).toMatch(/check-in/);
+    expect(contract).toMatch(/overflowX/);
+    const developer = readRepo(PX_PACKETS[2]);
+    expect(developer).toMatch(/DO_NOT_MERGE/);
+    expect(developer).toMatch(/Implementation Verified vs Screen 03 = NO/);
+    expect(developer).not.toMatch(/Implementation Verified vs Screen 03 = YES/);
+    const hasHex = /#[0-9A-Fa-f]{3,8}/.test([bar, diagnosis, contract, developer].join('\n'));
     if (hasHex) {
       const palette = readRepo('src/session/sessionPalette.ts');
       expect(palette).toMatch(/IRON_AMBER/);

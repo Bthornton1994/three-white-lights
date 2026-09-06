@@ -28,10 +28,9 @@
  *     (hard rejects V1–V8 when present)
  *   design/session-a-training-fit-02/03-developer-packet.md
  *
- * Those files are still absent from this checkout and from Gym Empire
- * `cursor/gym-empire-ux-01-9b73` at `7010867efea4438db7d098a619625400016025da`
- * (PR #41). Do not copy `src/empire/` here. Session A binds the playable
- * tokens that branch actually paints:
+ * Those files are in-tree. They do not publish hex, so this table still binds
+ * Gym Empire playable tokens rather than inventing a second palette. Do not
+ * copy `src/empire/` here. Session A binds the tokens that branch paints:
  *
  *   `src/empire/GymScreen.tsx` — CSS named colours (that tree forbids hex)
  *   `index.ts` — html/body/#root warm iron `#1a1410`
@@ -40,12 +39,9 @@
  *   black #000000 · goldenrod #DAA520 · ivory #FFFFF0
  *   darkslategray #2F4F4F · silver #C0C0C0 · gray #808080
  *
- * `sessionPalette.test.ts` re-binds automatically: if the PX files appear,
- * every hex below must occur in them (or the suite goes red until this table
- * is updated). TRAINING-FIT-02 packets are cited the same way: if they land
- * and contain hex, the suite fail-closes until this table matches; it does
- * not require hex that those markdown files do not actually publish.
- * Until then it pins the GymScreen / index.ts mapping.
+ * `sessionPalette.test.ts` re-binds automatically: if PX files or TRAINING-FIT-02
+ * packets contain hex, every hex below must occur in them. They currently do
+ * not publish hex, so the suite pins the GymScreen / index.ts mapping.
  *
  * Bounded decision (not PLANNER_ESCALATION): the training ROOM uses warm iron
  * void (`#1A1410`). Chrome (chips, card, action text) uses black / goldenrod /
