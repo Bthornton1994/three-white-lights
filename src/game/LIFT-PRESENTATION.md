@@ -27,11 +27,14 @@ const view = liftPresentation(state, totalKg, previousStateOrNull);
 `totalKg` is the prescribed bar the session already computed (`totalKgFor`).
 Pass the same number the HUD shows. The contract will not invent a different load.
 
+**Pass `prior` every tick.** `barVelocity` is Δheight. Without an adjacent
+prior it is 0 — not a bug, a missing sample.
+
 ## 3. Update cadence
 
 Every sim tick. `PRESENTATION_TICK_MS` (`TICK_MS`, 1000 / `TICK_HZ`).
-Call once per `stepLift`. Pass the previous `LiftState` when you have it so
-`barAcceleration` is real.
+Call once per `stepLift`. `prior` must be the `LiftState` from the previous
+tick (`prior.tick + 1 === state.tick`).
 
 ## 4. Value ranges and units
 
@@ -41,10 +44,11 @@ Call once per `stepLift`. Pass the previous `LiftState` when you have it so
 | `phase` | BRACE DESCENT HOLE ASCENT LOCKOUT RESOLVED | Discrete region of one continuous rep |
 | `barHeight` | 0..1 (may clip) | 0 = hole/floor, 1 = lockout. **Drive the rig from this**, not from phase names |
 | `depth` | 0..1+ | 0 = standing, 1 = authored bottom |
-| `barVelocity` | height / tick | Negative = being beaten |
-| `barAcceleration` | height / tick² | 0 if `prior` omitted |
+| `barVelocity` | height / tick | **Actual Δheight this tick.** +rise / −descend / 0 stationary. Requires adjacent `prior` |
+| `integratorVelocity` | height / tick | `LiftState.velocity` — ascent force integrator. **0 on squat/bench descent by design.** Stall/grind |
+| `barAcceleration` | height / tick² | Always 0 in this version. Differentiate consecutive `barVelocity` values |
 | `strain` | 0..1 | Load + phase + current deficit |
-| `grindIntensity` | 0..1 | 1 on stall / reverse / lockout slip |
+| `grindIntensity` | 0..1 | 1 on stall / reverse / lockout slip. Reads the **integrator**, not Δheight |
 | `effortBand` | easy / normal / hard / grind / failing | Derived band, not an animation name |
 | `load.discs` | kg, hue, diameterMm | One sleeve, heaviest inboard. Mirror it. |
 | `command.cueProgress` | null or 0..n | Timing window only. Not a target ring mandate |
@@ -52,6 +56,34 @@ Call once per `stepLift`. Pass the previous `LiftState` when you have it so
 | `chalkPuff` | 0..1 | Mechanical puff intensity |
 | `complete` | bool | `phase === RESOLVED` |
 | `outcome` | good-lift / grind / miss / null | Null until resolved |
+
+### Motion truth (P0)
+
+`LiftState.velocity` is **not** “how fast the bar is moving” on the way down.
+
+Squat/bench DESCENT writes `depth += rate` and `height = 1 - depth`. The
+ascent integrator stays 0 until reversal (squat) or press launch (bench).
+
+`barVelocity = state.height - prior.height` (adjacent ticks only).
+
+The tick that *enters* DESCENT may still report 0: the sim switches phase
+before the depth increment runs (else-if). Motion starts the following tick.
+That is real, not a hole in the contract.
+
+That sign is shared:
+
+- squat descent → negative
+- bench descent → negative (faster when the finger is up — runaway)
+- squat/bench/deadlift ascent → positive while the bar is winning
+- stall / being beaten on the way up → near-zero or negative
+
+Load-scaled squat descent is real: a light bar drops more height per tick than
+a maximal bar. Claude must not recover that by differentiating `barHeight`
+locally — it is already `barVelocity`.
+
+Deadlift has **no** sim-owned controlled return after lockout. After
+`RESOLVED` / made lockout the bar stays up. Any lower-back-to-floor motion is
+a presentation-owned post-resolution transition. Do not invent sim state for it.
 
 Bar pose extras (`barForwardPx`, `barLateralPx`, `barTiltDeg`, `barBendPx`) are
 sim-authored millimetre-ish sprite px. Scale them in the renderer. Do not
@@ -106,6 +138,13 @@ Claude may request a field.
 3. Would it require changing A0/A2 frozen behaviour? Escalate. Do not silent-retune.
 
 Open a Session A mechanics request. Do not patch `lift.ts` from a visual PR.
+
+## P1 — strain duplication
+
+`presentationStrain` restates `liveStrain` (`src/lift/liftFrame.ts`) so
+`src/game` does not import the Meet Day sprite adapter. Equality is tested.
+Canonicalising into one function would edit A0-frozen `liftFrame.ts`. Not
+doing that for cleanup. Keep the guard.
 
 ## Debug schematic
 

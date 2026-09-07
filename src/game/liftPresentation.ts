@@ -83,10 +83,30 @@ export interface LiftPresentationState {
   readonly barHeight: number;
   /** 0 = standing / rack, 1 = authored bottom. May exceed 1 (buried). */
   readonly depth: number;
-  /** Height units per tick. Negative = the bar is being beaten. */
+  /**
+   * Signed actual vertical bar displacement this tick, in height units.
+   * Positive = rising, negative = descending, 0 = stationary or no `prior`.
+   *
+   * NOT `LiftState.velocity`. That field is the ascent force integrator and
+   * stays 0 through squat/bench descent while `height` still falls. See
+   * `integratorVelocity`.
+   *
+   * Requires `prior` from the previous tick (`prior.tick + 1 === state.tick`).
+   * Without an adjacent prior this is 0 — there is no displacement sample.
+   */
   readonly barVelocity: number;
-  /** Height units per tick². 0 when no prior tick was supplied. */
+  /**
+   * Change in `barVelocity` this tick. 0 unless both `prior` and the tick
+   * before it were sampled — with a single prior we only have one Δheight.
+   * Claude may differentiate consecutive `barVelocity` values instead.
+   */
   readonly barAcceleration: number;
+  /**
+   * Ascent force integrator (`LiftState.velocity`). Height units / tick.
+   * 0 throughout squat/bench DESCENT by design. Stall/grind read this, not
+   * `barVelocity`. Do not use it as “the bar is moving.”
+   */
+  readonly integratorVelocity: number;
   readonly peakHeight: number;
   readonly netForce: number;
   /** 0..1. Load + phase + current deficit. Not a fatigue meter. */
@@ -122,7 +142,11 @@ export interface LiftPresentationState {
 
 /**
  * Strain read-model. Same formula as `liveStrain` in liftFrame — restated here
- * so `src/game` does not import the Meet Day sprite adapter. Tests pin equality.
+ * so `src/game` does not import the Meet Day sprite adapter (A0 freeze).
+ *
+ * P1 DEBT: two implementations of one truth. Canonicalising into `src/game`
+ * would require editing `src/lift/liftFrame.ts`. Do not cross that freeze for
+ * cleanup. The equality test in `liftPresentation.test.ts` is the guard.
  */
 export function presentationStrain(state: LiftState): number {
   const w = LIFT_TUNING.STRAIN_PHASE_WEIGHT;
@@ -155,6 +179,20 @@ export function presentationStrain(state: LiftState): number {
       ? 0
       : clamp01(-state.netForce / LIFT_TUNING.STRUGGLE_FULL_DEFICIT);
   return clamp01(base * weight + LIFT_TUNING.STRAIN_STRUGGLE_BONUS * struggle);
+}
+
+/**
+ * Actual bar motion this tick: Δheight when `prior` is the immediately
+ * previous state. Height-space: +rise / −descend / 0 stationary.
+ *
+ * `LiftState.velocity` is the wrong source on the way down. Squat and bench
+ * write height from depth (`height = 1 - depth`) and leave the integrator at
+ * 0 until reversal or press launch.
+ */
+export function barMotionPerTick(state: LiftState, prior: LiftState | null): number {
+  if (prior === null) return 0;
+  if (state.tick !== prior.tick + 1) return 0;
+  return state.height - prior.height;
 }
 
 export function presentationGrind(state: LiftState): number {
@@ -211,8 +249,9 @@ export function liftPresentation(
     phaseTick: state.phaseTick,
     barHeight: state.height,
     depth: state.depth,
-    barVelocity: state.velocity,
-    barAcceleration: prior === null ? 0 : state.velocity - prior.velocity,
+    barVelocity: barMotionPerTick(state, prior),
+    barAcceleration: 0,
+    integratorVelocity: state.velocity,
     peakHeight: state.peakHeight,
     netForce: state.netForce,
     strain,

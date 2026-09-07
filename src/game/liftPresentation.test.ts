@@ -5,18 +5,29 @@ import { describe, expect, it } from 'vitest';
 
 import { visualPlateStack, BAR_AND_COLLARS_KG } from '../art/plates';
 import { liveStrain } from '../lift/liftFrame';
-import { createLift, runLift, stepLift, type LiftState } from './lift';
+import {
+  braceTicks,
+  createLift,
+  descentRate,
+  runLift,
+  stepLift,
+  type LiftInput,
+  type LiftPhase,
+  type LiftState,
+} from './lift';
 import { LIFT_TUNING } from './liftTuning';
 import {
   liftPresentation,
   presentationGrind,
   presentationStrain,
+  type LiftPresentationState,
 } from './liftPresentation';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const LIGHT_KG = 70;
 const WORK_KG = 155;
 const HEAVY_KG = 220;
+const MAX_TICKS = 800;
 
 function squatAt(loadRatio: number, seed = 1): LiftState {
   return createLift({ kind: 'squat', loadRatio, seed });
@@ -31,6 +42,38 @@ function holdDownTo(targetHeight: number, loadRatio = 0.8): LiftState {
     guard += 1;
   }
   return state;
+}
+
+function mean(values: readonly number[]): number {
+  expect(values.length, 'mean of empty sample').toBeGreaterThan(0);
+  return values.reduce((sum, n) => sum + n, 0) / values.length;
+}
+
+interface WalkSample {
+  readonly prior: LiftState;
+  readonly state: LiftState;
+  readonly view: LiftPresentationState;
+}
+
+function walk(
+  start: LiftState,
+  inputFor: (state: LiftState) => LiftInput | null,
+  until: (state: LiftState) => boolean,
+): readonly WalkSample[] {
+  const out: WalkSample[] = [];
+  let state = start;
+  let guard = 0;
+  while (!until(state) && state.phase !== 'RESOLVED' && guard < MAX_TICKS) {
+    const prior = state;
+    state = stepLift(state, inputFor(state));
+    out.push({ prior, state, view: liftPresentation(state, WORK_KG, prior) });
+    guard += 1;
+  }
+  return out;
+}
+
+function phaseOf(samples: readonly WalkSample[], phase: LiftPhase): readonly WalkSample[] {
+  return samples.filter((sample) => sample.view.phase === phase);
 }
 
 describe('liftPresentation is renderer-agnostic mechanical truth', () => {
@@ -131,15 +174,183 @@ describe('liftPresentation is renderer-agnostic mechanical truth', () => {
     expect(Object.keys(bench)).toEqual(Object.keys(pull));
   });
 
-  it('acceleration is zero without a prior tick and tracks velocity delta with one', () => {
+  it('without prior, barVelocity is 0 even while the integrator is idle', () => {
     const a = squatAt(0.8);
     const b = stepLift(a, { kind: 'press' });
-    expect(liftPresentation(b, WORK_KG).barAcceleration).toBe(0);
-    expect(liftPresentation(b, WORK_KG, a).barAcceleration).toBe(b.velocity - a.velocity);
+    const view = liftPresentation(b, WORK_KG);
+    expect(view.barVelocity).toBe(0);
+    expect(view.integratorVelocity).toBe(b.velocity);
+    expect(view.barAcceleration).toBe(0);
   });
 
-  it('is deterministic for a fixed config and load', () => {
-    const state = holdDownTo(0.6, 0.8);
-    expect(liftPresentation(state, WORK_KG)).toEqual(liftPresentation(state, WORK_KG));
+  it('is deterministic for a fixed config, load, and prior', () => {
+    const prior = squatAt(0.8);
+    const state = stepLift(prior, { kind: 'press' });
+    expect(liftPresentation(state, WORK_KG, prior)).toEqual(
+      liftPresentation(state, WORK_KG, prior),
+    );
+  });
+});
+
+describe('barVelocity is signed actual bar motion, not the ascent integrator', () => {
+  it('squat DESCENT ticks exist, height falls, and barVelocity is negative', () => {
+    const load = 0.55;
+    const pressAt = braceTicks(load, 'squat') + 1;
+    const samples = walk(
+      squatAt(load),
+      (state) => (state.tick + 1 === pressAt || state.held ? { kind: 'press' } : { kind: 'press' }),
+      (state) => state.phase === 'HOLE' || state.phase === 'ASCENT' || state.phase === 'RESOLVED',
+    );
+    const descent = phaseOf(samples, 'DESCENT');
+    expect(descent.length, 'squat DESCENT produced no ticks').toBeGreaterThan(2);
+    const moving = descent.filter((sample) => sample.view.barVelocity !== 0);
+    expect(moving.length, 'squat DESCENT had no actual bar motion').toBeGreaterThan(2);
+    const heights = moving.map((sample) => sample.view.barHeight);
+    expect(heights[heights.length - 1]!).toBeLessThan(heights[0]!);
+    const motions = moving.map((sample) => sample.view.barVelocity);
+    expect(motions.every((v) => v < 0), `descent barVelocity ${motions.slice(0, 5)}`).toBe(true);
+    expect(
+      descent.every((sample) => sample.view.integratorVelocity === 0),
+      'integrator must stay 0 on squat descent',
+    ).toBe(true);
+    const rate = descentRate(load, 'squat');
+    expect(Math.abs(mean(motions) + rate)).toBeLessThan(rate);
+  });
+
+  it('a light squat descends faster (more negative) than a maximal squat', () => {
+    const lightLoad = 0.4;
+    const heavyLoad = 1;
+    const collect = (loadRatio: number): number[] => {
+      const pressAt = braceTicks(loadRatio, 'squat') + 1;
+      const samples = walk(
+        squatAt(loadRatio, 2),
+        (state) => (state.tick + 1 >= pressAt ? { kind: 'press' } : null),
+        (state) => state.phase === 'HOLE' || state.phase === 'ASCENT' || state.phase === 'RESOLVED',
+      );
+      const descent = phaseOf(samples, 'DESCENT');
+      expect(descent.length, `empty DESCENT at load ${loadRatio}`).toBeGreaterThan(2);
+      const moving = descent.filter((sample) => sample.view.barVelocity !== 0);
+      expect(moving.length, `no bar motion at load ${loadRatio}`).toBeGreaterThan(2);
+      return moving.map((sample) => sample.view.barVelocity);
+    };
+    const light = mean(collect(lightLoad));
+    const heavy = mean(collect(heavyLoad));
+    expect(light).toBeLessThan(heavy);
+    expect(light).toBeLessThan(0);
+    expect(heavy).toBeLessThan(0);
+    expect(descentRate(lightLoad, 'squat')).toBeGreaterThan(descentRate(heavyLoad, 'squat'));
+  });
+
+  it('squat ASCENT ticks exist and barVelocity is positive while the bar is winning', () => {
+    const load = 0.55;
+    const pressAt = braceTicks(load, 'squat') + 1;
+    let state = squatAt(load);
+    const samples: WalkSample[] = [];
+    let released = false;
+    let guard = 0;
+    while (state.phase !== 'RESOLVED' && guard < MAX_TICKS) {
+      let input: LiftInput | null = null;
+      if (state.tick + 1 >= pressAt && !released) input = { kind: 'press' };
+      if (state.phase === 'DESCENT' && state.depth >= LIFT_TUNING.DEPTH_IDEAL.squat && !released) {
+        input = { kind: 'release' };
+        released = true;
+      }
+      const prior = state;
+      state = stepLift(state, input);
+      samples.push({ prior, state, view: liftPresentation(state, WORK_KG, prior) });
+      guard += 1;
+    }
+    const ascent = phaseOf(samples, 'ASCENT');
+    expect(ascent.length, 'squat ASCENT produced no ticks').toBeGreaterThan(2);
+    const rising = ascent.filter((sample) => sample.view.barVelocity > 0);
+    expect(rising.length, 'ascent had no positive barVelocity').toBeGreaterThan(0);
+    expect(ascent[ascent.length - 1]!.view.barHeight).toBeGreaterThan(ascent[0]!.view.barHeight);
+    const stalled = ascent.filter(
+      (sample) => sample.view.integratorVelocity < LIFT_TUNING.GRIND_STALL_VELOCITY,
+    );
+    for (const sample of stalled) {
+      expect(sample.view.grindIntensity).toBe(1);
+    }
+  });
+
+  it('bench descent is negative; a released bar is faster than a held bar', () => {
+    const load = 0.7;
+    const pressAt = braceTicks(load, 'bench') + 1;
+    const heldWalk = walk(
+      createLift({ kind: 'bench', loadRatio: load, seed: 4 }),
+      (state) => (state.tick + 1 >= pressAt ? { kind: 'press' } : null),
+      (state) => state.phase === 'HOLE' || state.phase === 'RESOLVED',
+    );
+    const heldDescent = phaseOf(heldWalk, 'DESCENT').filter(
+      (sample) => sample.view.barVelocity !== 0,
+    );
+    expect(heldDescent.length, 'held bench DESCENT empty').toBeGreaterThan(2);
+    expect(heldDescent.every((sample) => sample.view.barVelocity < 0)).toBe(true);
+
+    let state = createLift({ kind: 'bench', loadRatio: load, seed: 4 });
+    const dropped: WalkSample[] = [];
+    let started = false;
+    let guard = 0;
+    while (state.phase !== 'HOLE' && state.phase !== 'RESOLVED' && guard < MAX_TICKS) {
+      let input: LiftInput | null = null;
+      if (state.tick + 1 >= pressAt && !started) {
+        input = { kind: 'press' };
+        started = true;
+      } else if (started && state.phase === 'DESCENT' && state.held) {
+        input = { kind: 'release' };
+      }
+      const prior = state;
+      state = stepLift(state, input);
+      dropped.push({ prior, state, view: liftPresentation(state, WORK_KG, prior) });
+      guard += 1;
+    }
+    const droppedDescent = phaseOf(dropped, 'DESCENT').filter((sample) => !sample.state.held);
+    expect(droppedDescent.length, 'released bench DESCENT empty').toBeGreaterThan(0);
+    expect(mean(droppedDescent.map((s) => s.view.barVelocity))).toBeLessThan(
+      mean(heldDescent.map((s) => s.view.barVelocity)),
+    );
+  });
+
+  it('bench press ascent produces positive barVelocity off the chest', () => {
+    const load = 0.55;
+    const pressAt = braceTicks(load, 'bench') + 1;
+    let state = createLift({ kind: 'bench', loadRatio: load, seed: 5 });
+    const samples: WalkSample[] = [];
+    let guard = 0;
+    while (state.phase !== 'RESOLVED' && guard < MAX_TICKS) {
+      const live = state.phase === 'HOLE' || state.phase === 'ASCENT';
+      const input: LiftInput | null =
+        state.tick + 1 >= pressAt ? { kind: 'press' } : live ? { kind: 'press' } : null;
+      const prior = state;
+      state = stepLift(state, input);
+      samples.push({ prior, state, view: liftPresentation(state, WORK_KG, prior) });
+      guard += 1;
+    }
+    const ascent = phaseOf(samples, 'ASCENT');
+    expect(ascent.length, 'bench ASCENT empty').toBeGreaterThan(1);
+    const rising = ascent.filter((sample) => sample.view.barVelocity > 0);
+    expect(rising.length, 'bench ascent had no positive barVelocity').toBeGreaterThan(0);
+  });
+
+  it('deadlift floor-to-lockout is positive barVelocity; no sim-owned return', () => {
+    const load = 0.55;
+    const pressAt = braceTicks(load, 'deadlift') + 1;
+    const samples = walk(
+      createLift({ kind: 'deadlift', loadRatio: load, seed: 6 }),
+      (state) => (state.tick + 1 >= pressAt ? { kind: 'press' } : state.held ? null : { kind: 'press' }),
+      (state) => state.phase === 'RESOLVED',
+    );
+    expect(phaseOf(samples, 'DESCENT').length, 'deadlift must not enter DESCENT').toBe(0);
+    const ascent = phaseOf(samples, 'ASCENT');
+    expect(ascent.length, 'deadlift ASCENT empty').toBeGreaterThan(2);
+    const rising = ascent.filter((sample) => sample.view.barVelocity > 0);
+    expect(rising.length, 'deadlift ascent had no positive barVelocity').toBeGreaterThan(0);
+    expect(ascent[ascent.length - 1]!.view.barHeight).toBeGreaterThan(ascent[0]!.view.barHeight);
+    const done = samples[samples.length - 1];
+    expect(done).toBeDefined();
+    expect(done!.view.complete).toBe(true);
+    if (done!.view.outcome !== 'miss') {
+      expect(done!.view.barHeight).toBeGreaterThan(0);
+    }
   });
 });
