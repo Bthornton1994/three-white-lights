@@ -10,9 +10,10 @@
  * livingMembers.ts already holds stable GymMemberId values. floor.ts already
  * places and moves SKU-keyed equipment. worldView.ts already names occupancy
  * for FloorGrid. None of those is a single public contract: worldView keys
- * members by index, claimantsOf is unexported, wait is two timestamps, and
- * equipment identity is a map key rather than a UUID. Claude must not infer
- * those facts from HUD cards or array order.
+ * members by index, wait is two timestamps, and equipment identity is a map
+ * key rather than a UUID. Claude must not infer those facts from HUD cards or
+ * array order. Queue order is `claimantsOf` in floorSim.ts — this file does
+ * not reimplement it.
  *
  * WHAT THIS MODULE IS. A pure read of sim + floor + roster + managed gym +
  * capability. GymState gains no field. FloorSimState is not stored here.
@@ -45,7 +46,10 @@ import {
   type GridSize,
 } from './floor';
 import {
+  claimantsOf,
   floorStationRefKey,
+  floorStations,
+  type FloorSimContext,
   type FloorSimInterruption,
   type FloorSimMember,
   type FloorSimMemberState,
@@ -58,6 +62,7 @@ import { livingMemberExperience, type LivingMemberExperienceStatus } from './liv
 import {
   livingMemberAtIndex,
   memberIdForIndex,
+  floorSimPopulationFromRoster,
   type GymMemberId,
   type LivingMemberRoster,
 } from './livingMembers';
@@ -84,10 +89,9 @@ export function presentationStepProgressPerTick(): number {
   return EMPIRE_TUNING.FLOOR_SIM_STEP_PROGRESS_PER_TICK;
 }
 
-/** Inputs the contract reads. All of these already exist; none is invented here. */
+/** Inputs the contract reads. Stations are derived from this bundle, not passed in. */
 export interface PresentationWorldInput {
   readonly sim: FloorSimState;
-  readonly stations: readonly FloorStation[];
   readonly floor: FloorState;
   readonly roster: LivingMemberRoster;
   readonly managed: ManagedGym;
@@ -217,48 +221,23 @@ function requireMemberId(roster: LivingMemberRoster, index: number): GymMemberId
   return id;
 }
 
-function compareClaimants(left: FloorSimMember, right: FloorSimMember): number {
-  const leftArrived = left.queuedAt === null ? 1 : 0;
-  const rightArrived = right.queuedAt === null ? 1 : 0;
-  if (leftArrived !== rightArrived) return leftArrived - rightArrived;
-  const leftAt = left.queuedAt ?? left.claimedAt ?? 0;
-  const rightAt = right.queuedAt ?? right.claimedAt ?? 0;
-  if (leftAt !== rightAt) return leftAt - rightAt;
-  return left.index - right.index;
+function contextFromInput(input: PresentationWorldInput): FloorSimContext {
+  return Object.freeze({
+    rung: input.floor.rung,
+    floor: input.floor,
+    barbellOwned: input.managed.gym.ladder.equipment,
+    sessionOwned: input.managed.gym.sessionEquipment,
+    capability: input.capability,
+    livingPopulation: floorSimPopulationFromRoster(input.roster),
+  });
 }
 
-/**
- * Service order for `ref` — the same four-key ordering floorSim.ts documents
- * on claimantsOf (arrivals, arrival tick, claim tick, index). There is no
- * queue table; this derived order IS the queue.
- */
-function claimantsOf(
-  members: readonly FloorSimMember[],
-  ref: FloorStationRef,
-): readonly FloorSimMember[] {
-  const waiting: FloorSimMember[] = [];
-  for (let index = 0; index < members.length; index += 1) {
-    const member = members[index];
-    if (member === undefined) continue;
-    if (member.target === null) continue;
-    if (!refsMatch(member.target, ref)) continue;
-    if (member.state !== 'seeking' && member.state !== 'queuing') continue;
-    waiting.push(member);
+function assertCoherentWorldInput(input: PresentationWorldInput): void {
+  if (Object.prototype.hasOwnProperty.call(input, 'stations')) {
+    refuseWith(
+      'presentation world derives stations from the floor bundle; do not pass a second station list',
+    );
   }
-  for (let i = 1; i < waiting.length; i += 1) {
-    const current = waiting[i];
-    if (current === undefined) continue;
-    let j = i - 1;
-    while (j >= 0) {
-      const previous = waiting[j];
-      if (previous === undefined) break;
-      if (compareClaimants(previous, current) <= 0) break;
-      waiting[j + 1] = previous;
-      j -= 1;
-    }
-    waiting[j + 1] = current;
-  }
-  return waiting;
 }
 
 function idsOf(
@@ -524,17 +503,19 @@ function presentationBusinessOf(
 
 /** Snapshot Claude may read this tick. Pure. Does not step the sim. */
 export function presentationWorld(input: PresentationWorldInput): PresentationWorld {
+  assertCoherentWorldInput(input);
+  const stations = floorStations(contextFromInput(input));
   const members: PresentationMember[] = [];
   for (let index = 0; index < input.sim.members.length; index += 1) {
     const member = input.sim.members[index];
     if (member === undefined) continue;
-    members.push(presentationMember(member, input.sim, input.stations, input.roster));
+    members.push(presentationMember(member, input.sim, stations, input.roster));
   }
-  const stations: PresentationStation[] = [];
-  for (let index = 0; index < input.stations.length; index += 1) {
-    const station = input.stations[index];
+  const stationViews: PresentationStation[] = [];
+  for (let index = 0; index < stations.length; index += 1) {
+    const station = stations[index];
     if (station === undefined) continue;
-    stations.push(presentationStation(station, input.sim, input.roster));
+    stationViews.push(presentationStation(station, input.sim, input.roster));
   }
   const furniture = furnitureRows(input.floor, input.managed);
   const session = sessionRows(input.floor, input.managed);
@@ -555,15 +536,16 @@ export function presentationWorld(input: PresentationWorldInput): PresentationWo
       seed: input.sim.seed,
     }),
     members: Object.freeze(members),
-    stations: Object.freeze(stations),
+    stations: Object.freeze(stationViews),
     equipment: Object.freeze(equipment),
     staff: presentationStaffOf(input.managed),
-    business: presentationBusinessOf(input.sim, input.stations, input.managed, input.capability),
+    business: presentationBusinessOf(input.sim, stations, input.managed, input.capability),
   });
 }
 
 /** Persistent mechanical facts. Same SKU, same cell, same ids after JSON round-trip. */
 export function persistableFacilityTruth(input: PresentationWorldInput): PersistableFacilityTruth {
+  assertCoherentWorldInput(input);
   return Object.freeze({
     rung: input.floor.rung,
     gymBucks: input.managed.gym.ladder.gymBucks,

@@ -680,8 +680,16 @@ const GUARANTEE_COVERAGE = {
    * and checked, by the tests pinning the deleted testIDs' absence — so it
    * took the bump alone. Net across the round: one decline, one bump, this
    * constant +1.
+   *
+   * 237 -> 239 on the Session B presentation-contract lineage (PR #52 stacked
+   * on C1b / living-world), measured after merging `0a4f3919`. PR #52 HEAD
+   * itself read 240 against a pin of 236. The stationView method-note reword
+   * in the governance commit declined one trigger (240 -> 239). The two
+   * remaining over PR #52's original pin are this lineage's own later
+   * modules, not a rewrite of the S4d-era declared-undercount-of-two, which
+   * stays two entries above and is untouched.
    */
-  TREE_WIDE: 237,
+  TREE_WIDE: 239,
 } as const;
 
 // ---------------------------------------------------------------------------

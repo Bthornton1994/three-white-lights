@@ -1567,13 +1567,14 @@ superseded going forward, the same way GDD §5 v1 stayed true history under v2.
   presentation.** How that state is rendered, animated and interacted with.
 
 **The file/module ownership table, read off the actual tree rather than
-guessed from the domain list in the ruling.** `src/empire/` has 22 non-test
-modules; three are `.tsx` (React Native components — the whole directory's
-only React surface, per the import-fence discipline the directory has held
-since E0), the other nineteen are pure TypeScript per this file's "Pure logic
-is separate from UI" rule. Ownership does not track the `.ts`/`.tsx` split
-cleanly, and where it does not, that is called out below rather than papered
-over.
+guessed from the domain list in the ruling.** `src/empire/` has 31 non-test
+modules on the current Session B contract lineage (three `.tsx` React Native
+components — the whole directory's only React surface, per the import-fence
+discipline the directory has held since E0 — the rest pure TypeScript). The
+original governance table at `0a4f3919` counted 22 modules on Stage C.1a;
+this amendment names the world-truth contract that table predates, and the
+modules that landed with C1b / living-world / D2 without silently claiming
+`stationView.ts` is still the sole presentation-state contract.
 
 | Module | Owner | Why |
 |---|---|---|
@@ -1591,9 +1592,16 @@ over.
 | `social.ts` | Grok | Leaderboards, friend visits, weekly rival — social mechanics. |
 | `pacing.ts` | Grok | The economy pacing simulator (Stage B) — composes the ladder/management truth above over real check-in cadences; no rendering. |
 | `floor.ts` | Grok | Grid, placement validity, collision, `FloorState` — placement truth (station identity and coordinates), independent of how a placed item is drawn. |
-| `floorSim.ts` | Grok | Member pathing, queuing, station occupancy — movement truth and queue truth, the sharpest instance of "what the gym does." |
+| `floorSim.ts` | Grok | Member pathing, queuing, station occupancy — movement truth and queue truth, the sharpest instance of "what the gym does." Canonical service order is `claimantsOf` here. |
+| `livingMembers.ts`, `livingMemberExperience.ts`, `livingMemberRetention.ts` | Grok | Living-member identity (`GymMemberId`), visit experience, retention pressure. |
+| `stationCapability.ts`, `trainingStation.ts` | Grok | Station Q/C/T axes and training-station semantics. |
+| `sportingReputation.ts` | Grok | Sporting-reputation mechanics. |
+| `presentationState.ts` | **Grok — the Session B world-truth contract** | Authoritative renderer-independent living-gym read-model: members by `GymMemberId`, queues, occupancy, SKU equipment, staff-as-manager, persistable shape. Claude binds a renderer to this. It originates no pixels. |
+| `docs/design/SESSION-B-PRESENTATION-CONTRACT.md` | Grok | Contract documentation for `presentationState.ts`. |
 | `floorSprites.ts` | **Claude, despite the `.ts` extension** | Sprite pose/facing/index-grid derivation for the 16-bit art pass. Pure TypeScript per this file's own convention (testable without React), but its entire subject is visual representation — it holds no economic or member-decision truth, only how `floorSim.ts`'s truth is drawn. Flagged explicitly so the extension is never read as the ownership signal here. |
-| `stationView.ts` | **Claude — the presentation-state contract itself** | The small pure selector that reshapes `management.ts`/`floorSim.ts` truth into one read model per tapped station for `FloorGrid.tsx`'s panel. This is the renderer-independent seam the split below names: it originates no truth of its own (every field traces to a Grok-owned function call), and it exists only because a UI needed that truth reshaped. Claude authors its shape; if a needed fact is not yet exposed by a Grok-owned module, that is a request to Grok for a new accessor, not a reason to re-derive the fact here. |
+| `ironAmberArt.ts` | Claude | Iron & Amber atmosphere plates — presentation assets, not sim truth. |
+| `worldView.ts` | Claude | Occupancy convenience FloorGrid already draws. A presentation-specific projector, **not** the world-truth contract. |
+| `stationView.ts` | **Claude — station-panel/UI selector** | Narrower pure selector that reshapes Grok mechanical truth (`management.ts` / `floorSim.ts` / the world contract) into one read model per tapped station for `FloorGrid.tsx`'s panel. It originates no truth of its own. **Not** the Session B presentation-state contract now that `presentationState.ts` exists. Claude authors its panel shape; if a needed fact is not yet exposed by a Grok-owned module, that is a request to Grok for a new accessor, not a reason to re-derive the fact here. |
 | `FloorGrid.tsx` | Claude | World rendering, drag/tap interaction, the floor's visual composition — consumes `floor.ts`/`floorSim.ts`/`floorSprites.ts`/`stationView.ts` truth and draws it. |
 | `GymScreen.tsx` | Claude | The shipped native screen — layout, chrome, copy, the S4e–S4i/Stage-C presentation fixes. |
 | `ladderView.tsx` | **Mixed — flagged, not split this round** | See below. |
@@ -1617,9 +1625,9 @@ holds two different things in one file: `LadderView`/`GymView` — actual
 render components, Claude's — and `ladderViewReduce`/`gymViewReduce` — the
 reducers that translate a player's tapped intent into calls on Grok-owned
 truth functions (`moveUpLadder`, `placeFloorItem`, `repairEquipment`,
-`hireManager`, and so on). The reducer is the seam in motion the same way
-`stationView.ts` is the seam at rest: it originates no truth, it only routes
-an intent to the function that owns the answer. Per the ruling's own
+`hireManager`, and so on). The reducer is the seam in motion the same way `presentationState.ts` is the
+world seam at rest and `stationView.ts` is the panel selector: it originates
+no truth, it only routes an intent to the function that owns the answer. Per the ruling's own
 instruction — "preserve behavior, do not perform broad refactors merely for
 organizational aesthetics" — this file is not split this round. Recorded as
 future architecture work: if `ladderViewReduce`/`gymViewReduce` keep growing
@@ -1641,17 +1649,22 @@ failure value rather than guessing it (this directory's own established
 discipline, unchanged), and note the update plainly in the commit that causes
 it.
 
-**The seam, stated once rather than per-file.** Grok owns the authoritative
-values — stable identity, member lifecycle state and destination, queue
-membership and order, station occupancy, equipment identity and condition,
-placement coordinates, staff assignments, throughput, economy values, and
-facility/failure state. Claude owns how those facts are rendered, animated
-and interacted with, and consumes Grok's truth through its exported functions
-and types — never by recomputing a queue order, a condition value, a repair
-price or a placement rule inside a `.tsx`, which is this file's existing
-"pure logic is separate from UI" rule applied across the new lane boundary
-rather than only across the React/non-React one. Claude does not dictate what
-the simulation does; Grok does not dictate how it looks.
+**The seam, stated once rather than per-file.** Grok owns the WORLD TRUTH
+CONTRACT (`presentationState.ts` + this table's Grok modules) — stable
+identity, member lifecycle state and destination, queue membership and order
+(`claimantsOf` in `floorSim.ts`), station occupancy, equipment identity and
+condition, placement coordinates, staff assignments, throughput, economy
+values, and facility/failure state. Claude owns how those facts are rendered,
+animated and interacted with, and may own presentation-specific selectors
+derived from that truth (`stationView.ts` for the tapped-station panel,
+`worldView.ts` for FloorGrid occupancy). Claude consumes Grok's truth through
+exported functions and types — never by recomputing a queue order, a
+condition value, a repair price or a placement rule inside a `.tsx`, which is
+this file's existing "pure logic is separate from UI" rule applied across the
+new lane boundary rather than only across the React/non-React one. Claude
+does not dictate what the simulation does; Grok does not dictate how it
+looks. Do not call `stationView.ts` the sole Session B presentation-state
+contract.
 
 **Stage gates are unchanged by this split, and are recorded here so neither
 lane relabels them.** GDD §5.14 Stage C.1a is built and independently

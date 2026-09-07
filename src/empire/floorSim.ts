@@ -994,8 +994,11 @@ function stationSlot(plan: RoutePlan, ref: FloorStationRef): number {
  * alone leaves `serves the member that arrived first, not the one that claimed
  * first` red at `expected +0 to be 1`, with the sweep's arm census moving
  * beside it.
+ *
+ * Exported so `presentationState.ts` cannot reimplement this order. Both the
+ * sim and the world contract consume this one function.
  */
-function claimantsOf(
+export function claimantsOf(
   members: readonly FloorSimMember[],
   ref: FloorStationRef,
 ): readonly FloorSimMember[] {

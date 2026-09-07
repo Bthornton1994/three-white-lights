@@ -5,6 +5,7 @@
  * not claim Visual, Animation, or Soft-Feel PASS.
  */
 
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { EMPIRE_TUNING } from './empireTuning';
@@ -15,6 +16,7 @@ import {
   type GridPosition,
 } from './floor';
 import {
+  claimantsOf,
   createFloorSimState,
   floorStations,
   stepFloorSim,
@@ -64,7 +66,7 @@ function garageInput(
   const managed = overrides.managed ?? createManagedGym();
   const capability = overrides.capability ?? stockStationCapability();
   const context: FloorSimContext = Object.freeze({
-    rung: 'garage',
+    rung: floor.rung,
     floor,
     barbellOwned: managed.gym.ladder.equipment,
     sessionOwned: managed.gym.sessionEquipment,
@@ -72,10 +74,8 @@ function garageInput(
     livingPopulation: floorSimPopulationFromRoster(roster),
   });
   const sim = overrides.sim ?? createFloorSimState(context, T.FLOOR_SIM_RENDER_SEED);
-  const stations = overrides.stations ?? floorStations(context);
   return Object.freeze({
     sim,
-    stations,
     floor,
     roster,
     managed,
@@ -331,5 +331,80 @@ describe('presentationState.ts — purchase, ownership, placement, operational e
     expect(restored.sessionEquipment).toEqual(['mats']);
     expect(restored.placements.mats).toEqual(MATS_CELL);
     expect(restored.gymBucks).toBe(bought.state.ladder.gymBucks);
+  });
+});
+
+describe('presentationState.ts — canonical queue order and snapshot coherence', () => {
+  it('does not reimplement claimantsOf; sim and contract share one order', () => {
+    const source = readFileSync(new URL('./presentationState.ts', import.meta.url), 'utf8');
+    expect(source).not.toContain('function claimantsOf');
+    expect(source).not.toContain('compareClaimants');
+    expect(source).toContain("claimantsOf,");
+  });
+
+  it('queueIds and queueRank match floorSim claimantsOf, not a claim-tick-only sort', () => {
+    const input = garageInput();
+    const context = contextFrom(input);
+    const stations = floorStations(context);
+    const bench = stations.find((station) => station.ref.kind === 'training');
+    expect(bench).toBeDefined();
+    if (bench === undefined) return;
+    const first = input.sim.members[0];
+    const second = input.sim.members[1];
+    expect(first).toBeDefined();
+    expect(second).toBeDefined();
+    if (first === undefined || second === undefined) return;
+    const walker = Object.freeze({
+      ...first,
+      state: 'seeking' as const,
+      target: bench.ref,
+      claimedAt: 1,
+      queuedAt: null,
+      queueArrivedAt: null,
+    });
+    const arriver = Object.freeze({
+      ...second,
+      state: 'queuing' as const,
+      target: bench.ref,
+      claimedAt: 10,
+      queuedAt: 5,
+      queueArrivedAt: 5,
+    });
+    const planted = garageInput({
+      sim: Object.freeze({
+        ...input.sim,
+        members: Object.freeze([walker, arriver]),
+      }),
+    });
+    const canonical = claimantsOf(planted.sim.members, bench.ref);
+    expect(canonical.map((member) => member.index)).toEqual([1, 0]);
+    const claimTickOnly = [...planted.sim.members].sort((left, right) => {
+      const leftAt = left.claimedAt ?? 0;
+      const rightAt = right.claimedAt ?? 0;
+      if (leftAt !== rightAt) return leftAt - rightAt;
+      return left.index - right.index;
+    });
+    expect(claimTickOnly.map((member) => member.index)).toEqual([0, 1]);
+    expect(canonical.map((member) => member.index)).not.toEqual(
+      claimTickOnly.map((member) => member.index),
+    );
+    const world = presentationWorld(planted);
+    const view = world.stations.find((station) => station.ref.kind === 'training');
+    expect(view?.queueIds).toEqual([world.members[1]?.id]);
+    expect(view?.approachingIds).toEqual([world.members[0]?.id]);
+    expect(world.members[1]?.queueRank).toBe(0);
+    expect(world.members[0]?.queueRank).toBe(1);
+  });
+
+  it('world input has no stations field; a smuggled list is refused', () => {
+    const input = garageInput();
+    expect(Object.keys(input).sort()).toEqual(['capability', 'floor', 'managed', 'roster', 'sim']);
+    expect(Object.prototype.hasOwnProperty.call(input, 'stations')).toBe(false);
+    expect(() =>
+      presentationWorld({
+        ...input,
+        stations: [],
+      } as PresentationWorldInput),
+    ).toThrow(/second station list/);
   });
 });

@@ -217,7 +217,11 @@ Claude should interpolate between logical ticks. Do not step the sim from an ani
 
 ## 11. Persistence expectations
 
-There is **no** `localStorage` and no save file in `src/empire` (banned by census).
+**SERIALIZATION SHAPE = PASS.** `persistableFacilityTruth` is JSON-round-trippable.
+
+**PERSISTENCE = NOT WIRED / OWNER_BLOCKED.** There is **no** `localStorage` and no
+save file in `src/empire` (banned by census). Application save/load does not
+exist yet. Do not report persistence as shipped.
 
 What survives in-process on `GymViewState`:
 
@@ -268,9 +272,12 @@ presentationTickIntervalMs() -> 120
 presentationStepProgressPerTick() -> 0.34
 ```
 
-`input` is `{ sim, stations, floor, roster, managed, capability }`.
+`input` is `{ sim, floor, roster, managed, capability }`.
 
-`stations` must be `floorStations(context)` for that same floor/capability.
+Stations are **derived** inside `presentationWorld` via `floorStations` from that
+same bundle. Callers cannot pass a station list from another world.
+
+Queue order is `claimantsOf` in `floorSim.ts`. The contract does not re-sort.
 
 ---
 
