@@ -172,7 +172,7 @@ describe('SessionScreen hands the readings down and computes nothing', () => {
     expect(SCREEN).toMatch(/onChooseLift=\{chooseLift\}/);
     expect(source('BriefingView.tsx')).toMatch(/onChooseLift/);
     expect(source('BriefingView.tsx')).toMatch(/LIFT_ROTATION/);
-    expect(source('BriefingView.tsx')).toMatch(/check-in-lift-/);
+    expect(source('BriefingView.tsx')).toMatch(/briefing-lift-/);
   });
 });
 

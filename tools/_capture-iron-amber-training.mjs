@@ -40,6 +40,11 @@ async function forbiddenResidue(page) {
       (el) => el && el.offsetParent !== null,
     );
     if (visibleCheckIn) hits.push('session-check-in');
+    const leftoverLift = [...document.querySelectorAll('[data-testid]')].some((el) => {
+      const id = el.getAttribute('data-testid') ?? '';
+      return id === 'check-in-lift' || id.startsWith('check-in-lift-');
+    });
+    if (leftoverLift) hits.push('check-in-lift');
     const ids = [...document.querySelectorAll('[data-testid]')]
       .map((el) => el.getAttribute('data-testid'))
       .filter((id) => id && /accelerated|diagnostics/.test(id));
@@ -111,7 +116,7 @@ async function shotCloseOut(vp) {
 async function shotLift(vp, kind) {
   const { context, page } = await openPage(vp.width, vp.height, '');
   await page.getByTestId('session-briefing').waitFor({ state: 'visible', timeout: 60000 });
-  await page.getByTestId(`check-in-lift-${kind}`).click({ timeout: 20000 });
+  await page.getByTestId(`briefing-lift-${kind}`).click({ timeout: 20000 });
   await page.waitForTimeout(SESSION_DRIVE.BRIEFING_SETTLE_MS);
   await page.getByTestId('session-rpe-8').click({ timeout: 20000 });
   await page.getByTestId('session-set').waitFor({ state: 'visible', timeout: 30000 });
@@ -177,12 +182,10 @@ const report = { briefing: [], closeOut: [], live: [] };
 for (const vp of VIEWPORTS) {
   report.briefing.push(await shotBriefing(vp));
   report.closeOut.push(await shotCloseOut(vp));
+  for (const kind of ['squat', 'bench', 'deadlift']) {
+    report.live.push(await shotLift(vp, kind));
+  }
 }
-report.live.push(await shotLift(VIEWPORTS[1], 'squat'));
-report.live.push(await shotLift(VIEWPORTS[1], 'bench'));
-report.live.push(await shotLift(VIEWPORTS[1], 'deadlift'));
-report.live.push(await shotLift(VIEWPORTS[0], 'deadlift'));
-report.live.push(await shotLift(VIEWPORTS[0], 'squat'));
 
 console.log(JSON.stringify({ outDir, report }, null, 2));
 await browser.close();

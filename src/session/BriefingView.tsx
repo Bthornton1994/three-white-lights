@@ -107,13 +107,13 @@ export function BriefingView({
       <View style={styles.scrim} />
       <View style={styles.body}>
       <View style={styles.card}>
-      <View style={styles.liftRow} testID="check-in-lift">
+      <View style={styles.liftRow} testID="briefing-lift">
         {SESSION_TUNING.LIFT_ROTATION.map((option) => {
           const selected = option === lift;
           return (
             <Pressable
               key={option}
-              testID={`check-in-lift-${option}`}
+              testID={`briefing-lift-${option}`}
               accessibilityRole="button"
               onPress={() => onChooseLift(option)}
               style={[styles.liftChip, selected ? styles.liftChipSelected : null]}

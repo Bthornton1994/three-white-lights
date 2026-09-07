@@ -72,6 +72,8 @@ describe('Iron & Amber training path wiring', () => {
     expect(briefing).toContain('testID="iron-amber-briefing-gym"');
     expect(briefing).toContain('testID="session-briefing"');
     expect(briefing).toContain('testID="session-rpe-ladder"');
+    expect(briefing).toContain('briefing-lift-');
     expect(briefing).not.toContain('session-check-in');
+    expect(briefing).not.toContain('check-in-lift');
   });
 });

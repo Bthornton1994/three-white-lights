@@ -267,9 +267,14 @@ export const ECCENTRIC_ONLY_PROMPTS = Object.freeze(
     .filter((line) => line !== null),
 );
 
-/** The check-in chip that retargets today's session onto `kind` (GDD §3.2). */
+/** The briefing chip that retargets today's session onto `kind` (GDD §3.2). */
+export function briefingLiftTestId(kind) {
+  return `briefing-lift-${kind}`;
+}
+
+/** @deprecated Use briefingLiftTestId. Kept so older drivers keep compiling. */
 export function checkInLiftTestId(kind) {
-  return `check-in-lift-${kind}`;
+  return briefingLiftTestId(kind);
 }
 
 // ---------------------------------------------------------------------------
@@ -927,16 +932,14 @@ const resolved = (state) =>
  * squat-shaped rep works one day in three and reports a wall of timeouts on the
  * other two.
  *
- * Passing a `lift` presses `check-in-lift-<kind>` — a chip `CheckInView.tsx`
+ * Passing a `lift` presses `briefing-lift-<kind>` — a chip `BriefingView.tsx`
  * renders for every entry of `LIFT_ROTATION`, one tap, on the first paint of
- * the check-in. It is an ordinary player control (GDD §3.2: "the player may
- * choose a different competition lift on the check-in"), NOT a debug route and
+ * the briefing. It is an ordinary player control, NOT a debug route and
  * NOT a query string, which is what lets a check driven through it still claim
  * the played arm.
  *
- * PRESSED BEFORE THE THREE READINESS TAPS, deliberately: the third tap
- * completes the check-in and the session leaves that screen, and `choose-lift`
- * is only legal while it is still on it.
+ * Legal before an RPE is chosen. After RPE the session is on the set and
+ * `choose-lift` is ignored.
  */
 export async function openSessionToFirstSet(
   page,
