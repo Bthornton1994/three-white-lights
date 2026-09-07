@@ -2119,11 +2119,13 @@ const MEASURED_SCALAR = /expected\s[+-]?\d+(?:\.\d+)?\sto\s/;
  * test rather than transcribed here, so it moves when the table does.
  */
 const TRANSPLANTED_NUMERIC_RULE = {
-  // 77/64/329/195 -> 78/65/332/197 on the presentation contract's witness. Its
-  // transcript carries `1 failed | 8 passed (9)` — a vitest tally, three
-  // numerals, two of which the named body does not pin. Flagged, and correctly:
-  // the tally counts the MUTATED tree, which is the whole point this constant
-  // keeps making.
+  // 77/64/329/195 -> 78/65/332/197 on the visual lane's presentation-contract
+  // witness (2026-09-07); BACK to 77/64/329/195 the same day when the mechanics
+  // lane published the authoritative contract in `src/game/liftPresentation.ts`
+  // and that copy, its tag and its witness were deleted; then 78/65/332/197
+  // AGAIN on the rig-binding witness that replaced it — a transcript of the
+  // same shape (`1 failed | 9 passed (10)`), three numerals, two unresolved,
+  // flagged for the same correct reason: a tally counts the MUTATED tree.
   // 52/40/154/76 -> 55/43/165/87 on the three empire-row witnesses. All three
   // are flagged by the transplant and all three are correct, which is the
   // argument this constant exists to keep making: the numbers in a transcript
@@ -5044,45 +5046,37 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       "{ unit: 'kg', …(3) } // Object.is equality",
   },
   // -------------------------------------------------------------------------
-  // THE 2026-09-07 PRESENTATION CONTRACT, AND THE MUTANT IS THE ARCHITECTURE
-  // THAT WAS REJECTED RATHER THAN AN INVENTED EDIT.
+  // THE 2026-09-07 RIG BINDING, AND THE MUTANT IS THE RENDERER REACHING PAST
+  // THE CONTRACT FOR A MECHANICAL THRESHOLD.
   //
-  // `src/session/liftPresentation.ts` exists because two athlete
-  // implementations were rejected for one cause: an engineer authored the body,
-  // as pixel joint coordinates (`leftKnee.x = mid - STANCE - KNEE_OUT * sit`).
-  // The contract's whole job is to carry gameplay to a renderer WITHOUT
-  // carrying a skeleton, so the mutant is a joint coming back — and it comes
-  // back the way one actually would, as a nested `{ x, y }` point rather than
-  // as a field called `x`, because that is the spelling a reviewer skims past.
-  //
-  // THE ROW ALSO RECORDS A REORDERING THE MUTANT FORCED. Run against the first
-  // version of the test, this exact mutant reddened on the NON-VACUITY pin
-  // (`expected 18 to be 15`) — the guard on the guard — and aborted before
-  // either ban was reached, so the check that names the defect never spoke. The
-  // bans now run first and the pin last. Both reddening paths are still there:
-  // emptying the interface is caught by the pin (`expected 1 to be 15`), and a
-  // joint is caught by the ban below. Measured both ways, then written down.
+  // `src/art/athleteRig.ts` is the visual lane's only consumer of the frozen
+  // mechanics contract (`src/game/liftPresentation.ts`, PR #48 `20bda71d`).
+  // Its guarantee is that it re-derives nothing: it imports the contract and
+  // two visual-lane modules, and never `lift.ts`, `liftTuning.ts` or a
+  // `LiftState`. The mutant is the shortest way to break that — one import
+  // of `LIFT_TUNING` — and it is the exact shape the request doc §2 records
+  // twice on the pre-contract renderer, where a visual constant stood in for
+  // `GRIND_STALL_VELOCITY` and `grind` became `strain` with a phase check in
+  // front of it. Measured the other way too: the same import USED to redefine
+  // `grindIntensity` also reddens the behavioural pass-through test
+  // (`expected 111 to be 7`), so the scan is not the only thing watching.
   // -------------------------------------------------------------------------
   {
-    guarantee: 'the-presentation-contract-carries-no-coordinates',
-    mutatedFile: 'src/session/liftPresentation.ts',
-    mutated: '  /** Resolved outcome, or `null` while the rep is still live. */',
+    guarantee: 'the-rig-binding-invents-no-mechanical-fact',
+    mutatedFile: 'src/art/athleteRig.ts',
+    mutated: "import { PLATE_SPECS } from './plates';",
     mutatedTo:
-      '  /** A joint, smuggled in as a nested point. */\n' +
-      '  readonly hip: { readonly x: number; readonly y: number };\n' +
-      '  /** Resolved outcome, or `null` while the rep is still live. */',
-    testFile: 'src/session/liftPresentation.test.ts',
+      "import { PLATE_SPECS } from './plates';\n" +
+      "import { LIFT_TUNING } from '../game/liftTuning';",
+    testFile: 'src/art/athleteRig.test.ts',
     redAssertion:
-      "    expect(banned, 'coordinate-shaped fields in the contract').toEqual([]);",
+      "    expect(mechanical, 'mechanical modules imported by the binding').toEqual([]);",
     observed:
-      'FAIL  src/session/liftPresentation.test.ts > the presentation contract carries no ' +
-      'coordinates > declares no joint, point or pixel field ' +
-      '[the-presentation-contract-carries-no-coordinates]\n' +
-      "AssertionError: coordinate-shaped fields in the contract: expected [ 'x', 'y' ] to " +
-      'deeply equal []\n' +
-      'Tests  1 failed | 8 passed (9)',
+      'FAIL  src/art/athleteRig.test.ts > the rig binding invents no mechanical fact > imports nothing from lift.ts or liftTuning.ts and never receives LiftState [the-rig-binding-invents-no-mechanical-fact]\n' +
+      "AssertionError: mechanical modules imported by the binding: expected [ '../game/liftTuning' ] to deeply equal []\n" +
+      'Tests  1 failed | 9 passed (10)',
     measuredOver:
-      "    expect(fields.length, 'fields the scan actually read').toBe(15);",
+      "    expect(imports.length, 'imports the scan actually read').toBe(3);",
   },
 ];
 
@@ -5703,6 +5697,10 @@ describe('the guarantee-tag convention', () => {
     // itself is written down. Adding a witness in a new file is a one-line
     // diff here, on purpose.
     expect(censused, 'the files the witness table scopes into').toEqual([
+      // The rig binding to the frozen mechanics contract. Its mutant is the
+      // renderer reaching past the contract for a mechanical threshold — the
+      // pre-contract defect the request doc measured, kept from coming back.
+      'src/art/athleteRig.test.ts',
       // GDD §2.1's career spine, and the first row in this table from it.
       'src/career/eligibility.test.ts',
       'src/cutin/cutInWiring.test.ts',
@@ -5746,11 +5744,6 @@ describe('the guarantee-tag convention', () => {
       // trio was deleted (Sprint 1c) and its witness retired with it.
       'src/meet/meetSound.test.ts',
       'src/meet/meetStage.test.ts',
-      // The renderer-agnostic presentation contract. Its mutant is the
-      // architecture two athlete implementations were rejected for — a joint
-      // coming back into the layer whose whole job is to carry gameplay to a
-      // renderer without carrying a skeleton.
-      'src/session/liftPresentation.test.ts',
       // GDD §5's floor learning to advance: the §12.3 property that the gym a
       // player sees is a function of elapsed time and of nothing they did.
       'src/shell/empireFloor.test.ts',

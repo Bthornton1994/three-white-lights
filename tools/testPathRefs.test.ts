@@ -344,8 +344,18 @@ const PINNED = Object.freeze({
    * and the placeholder `.riv` stopped being read when it became binary (-1).
    * A spike measurement kept beside its record — not a `.gauntlet/shots`
    * harness record, on purpose.
+   *
+   * 363 -> 364 on the PR #48 handoff merge (`20bda71d`): the mechanics lane's
+   * `src/game/LIFT-PRESENTATION.md`, `liftPresentation.ts` and its test (+3),
+   * and the visual lane's superseded `src/session/liftPresentation.ts` and
+   * its test deleted the same day (-2) — one contract, not two.
+   *
+   * 364 -> 373 with the rig binding and the unmounted production stage pair:
+   * `src/art/athleteRig.ts` + test, `src/session/AthleteStage.native.tsx`,
+   * `.web.tsx`, `AthleteStage.d.ts`, `athleteStageTypes.ts`,
+   * `athleteStagePrior.ts` + test, `athleteAsset.ts`.
    */
-  SCANNED_FILES: 363,
+  SCANNED_FILES: 373,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -395,14 +405,20 @@ const PINNED = Object.freeze({
    * 109 -> 111 with Iron & Amber training plates: `ironAmberPlates.test.ts`
    * and `ironAmberWiring.test.ts`.
    *
-   * 112 -> 113 with `src/session/liftPresentation.test.ts`, the presentation
-   * contract's guard.
+   * 112 -> 113 with the visual lane's presentation-contract test under
+   * `src/session/` (since deleted — see the next note).
    *
    * 113 -> 115 with the runtime spike's two: `spikeSignal.test.ts` (the pure
    * synthetic feed) and `riveSpikeTypes.test.ts` (the asset path is required
    * as a literal, and the placeholder is still the placeholder).
+   *
+   * 115 -> 115 on the handoff merge: `src/game/liftPresentation.test.ts`
+   * arrives (+1), the visual lane's `src/session/` copy of that test leaves (-1).
+   *
+   * 115 -> 117 with `src/art/athleteRig.test.ts` and
+   * `src/session/athleteStagePrior.test.ts`.
    */
-  TEST_FILES: 115,
+  TEST_FILES: 117,
 });
 
 /**

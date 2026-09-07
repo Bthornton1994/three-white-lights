@@ -1289,3 +1289,24 @@ export function byLoad(endpoints: LoadEndpoints, loadRatio: number): number {
 export function ticksByLoad(endpoints: LoadEndpoints, loadRatio: number): number {
   return Math.max(1, Math.round(byLoad(endpoints, loadRatio)));
 }
+
+/**
+ * ATHLETE_RIG — the production athlete binding's own numbers
+ * (`src/art/athleteRig.ts`). How the frozen mechanics contract
+ * (`src/game/liftPresentation.ts`) is packaged for a rig's ViewModel; nothing
+ * here is a mechanic and nothing here is read by `src/game`.
+ */
+export const ATHLETE_RIG = Object.freeze({
+  /**
+   * Plate slots authored per sleeve. A ViewModel scalar cannot hold
+   * `load.discs` (a list), so the rig exposes this many `{ size, on }` slot
+   * pairs per side and the binding fills them inboard-first. Eight covers the
+   * loading range the game reaches (`plates.ts` pitches a 425 kg bar at eight
+   * discs) without the drawn stack running off the sleeve. Discs past the
+   * eighth are DROPPED and `platesOverflow` reports how many — pinned in
+   * `athleteRig.test.ts` so a silent truncation cannot ship.
+   */
+  PLATE_SLOTS_PER_SIDE: 8,
+  /** `barVelocity` is height per tick in the contract; the rig gets heights per second. */
+  MS_PER_SECOND: 1000,
+});

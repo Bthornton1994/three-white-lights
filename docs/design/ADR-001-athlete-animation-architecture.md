@@ -1,6 +1,13 @@
 # ADR-001 — Athlete animation architecture
 
 **Status:** **PROVISIONAL — RIVE LEADING CANDIDATE.** Not FINAL. Not merged.
+**What closes it, exactly:** the web spike (§7) rendering a real `.riv` whose
+ViewModel takes the `rigInputPaths()` set (`src/art/athleteRig.ts`) at 60 Hz
+without dropped frames on the beta's own target (web/PWA, GDD §10.0). That
+one artefact is the gate, and it is `ASSET_PIPELINE_BLOCKED` from this
+environment (§9). Native stays a device-build gate behind it. Options B and C
+are not reopened unless that web spike, with a real asset, fails — and if it
+does, §4 is re-run against the same criterion rather than re-argued.
 **Date:** 2026-09-07; amended the same day against the modern runtime (§4a).
 **Decision owner:** Claude Code Session A — visual / animation / player-experience
 **Measured at:** `20a1aa55` (PR #48 head) for §2–§4 and §8; `55f86007` plus the
@@ -228,25 +235,31 @@ shape:
 
 ```
 LiftState (Grok, authoritative)
-   └─ liftPresentationFrom() ── pure, no pixels, no joints (src/session/liftPresentation.ts)
-            │  { stand, barSpeed, strain, grind, barTiltDeg, barFlex,
-            │    commandGlow, chalk, phase, outcome, platesPerSideKg, … }
+   └─ liftPresentation(state, totalKg, prior)  ── src/game/liftPresentation.ts, FROZEN at 20bda71d
+            │  the mechanics lane's contract: barHeight, barVelocity (Δheight, prior REQUIRED),
+            │  motionSampleValid, integratorVelocity, strain, grindIntensity, effortBand,
+            │  load.discs, command, outcome / missReason / lockedOut / complete, …
             │
-            ├─► RiveStage.native.tsx   @rive-app/react-native
-            │      useRiveFile(require('./athlete.riv'))
-            │      useViewModelInstance(file, { async: true })
-            │      instance.numberProperty('stand').set(p.stand)   ← sync JSI write, per tick
-            │      <RiveView file dataBind autoPlay onError />
-            │
-            └─► RiveStage.web.tsx      @rive-app/react-canvas
-                   RuntimeLoader.setWasmUrl(<self-hosted rive.wasm>)   ← once, module scope
-                   useRive({ src: resolveAssetSource(require('./athlete.riv')).uri })
-                   useViewModel(rive) → useViewModelInstance(vm, { useDefault, rive })
-                   useViewModelInstanceNumber('stand', instance).setValue(p.stand)
-                   <RiveComponent />
-
-RiveStage.d.ts  ── declares the one shared signature for `tsc`; Metro never reads it
+            └─ athleteRigInputsFrom(view)  ── src/art/athleteRig.ts, visual lane
+                     │  rename + unit conversion + one list unrolled into fixed slots;
+                     │  re-derives NOTHING (@guarantee the-rig-binding-invents-no-mechanical-fact)
+                     │
+                     ├─► AthleteStage.native.tsx   @rive-app/react-native
+                     │      prior = priorFromHistory(history, state)
+                     │      useRiveFile(ATHLETE_RIV_ASSET) · useViewModelInstance(file, { async: true })
+                     │      instance.numberProperty('barHeight').set(i.barHeight)   ← sync JSI write, per tick
+                     │      <RiveView file dataBind autoPlay onError />
+                     │
+                     └─► AthleteStage.web.tsx      @rive-app/react-canvas
+                            useRive({ src }) · useViewModel · useViewModelInstance
+                            vmi.number('barHeight').value = i.barHeight        ← sync setter, per tick
+                            <RiveComponent />
 ```
+
+Both stages exist and typecheck at this SHA and are MOUNTED NOWHERE — the
+swap is one line in `TrainingLiftStage.tsx` and waits on a real `.riv`
+(§9). The spike (§7) is the same shape with a synthetic feed; the production
+stage differs only in what it feeds.
 
 Five rules the spike established, each for a measured reason:
 
@@ -444,7 +457,9 @@ Removed — architecture-specific puppet:
   Given `strain`, `grind` and `phase`, a shake amplitude and a breathing loop
   are things an ARTIST authors in the rig. Carrying them as engine-computed
   numbers is the rejected architecture in miniature, so they are removed rather
-  than kept — see `src/session/liftPresentation.ts`'s header.
+  than kept. The frozen contract agrees from the other side — its doc §9 lists
+  face, hand and cloth instructions as things it "will not include" — and
+  `src/art/athleteRig.ts`'s header carries the visual-lane reasoning.
 
 **The removal is deferred, not skipped.** `SquatScene` stays until a Rive stage
 can replace it, because deleting the only working stage before its replacement
@@ -486,8 +501,10 @@ environment under any of the three options. This is a real blocker on the
 athlete, and it is **not** a reason to ship a fourth placeholder body — the
 product standard explicitly refuses one.
 
-Non-blocked work proceeds and is done: the presentation contract
-(`src/session/liftPresentation.ts`), the pipeline specification
+Non-blocked work proceeds and is done: the binding to the mechanics lane's
+frozen contract (`src/art/athleteRig.ts`, consuming
+`src/game/liftPresentation.ts` at `20bda71d`), the unmounted production
+stage pair (`src/session/AthleteStage.native.tsx` / `.web.tsx`), the pipeline specification
 (`docs/design/ATHLETE-ASSET-PIPELINE.md`), the data request to the
 mechanics owner (`docs/design/PRESENTATION-CONTRACT-REQUEST.md`), and the
 runtime spike (§7).

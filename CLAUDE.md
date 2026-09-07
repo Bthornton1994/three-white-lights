@@ -163,10 +163,15 @@ and its `.test.ts`.
   craft metrics, and `riv.d.ts`. `plates.ts` is loading DATA the renderer draws
   from and is not an authority on meet loading (its own header says so).
 - `src/session/SquatScene.tsx`, `squatVisual.ts`, `TrainingLiftStage.tsx`,
-  `ironAmberPlates.ts`, `sessionPalette.ts`, `liftPresentation.ts` — the
-  training stage and its read models. `liftPresentation.ts` is the visual
-  lane's REQUEST for a contract, shaped to collapse into a pass-through when
-  the mechanics lane publishes the authoritative one; see the shared list.
+  `ironAmberPlates.ts`, `sessionPalette.ts` — the training stage and its read
+  models. `SquatScene`/`squatVisual` are the REJECTED schematic, retained as
+  a debug path only (the contract doc says the same). Plus, since the
+  handoff: `AthleteStage.native.tsx` / `.web.tsx`, `AthleteStage.d.ts`,
+  `athleteStageTypes.ts`, `athleteStagePrior.ts`, `athleteAsset.ts` — the
+  production stage pair, mounted nowhere until a real `.riv` exists.
+- `src/art/athleteRig.ts` — the visual lane's ONLY consumer of the mechanics
+  contract: rename, unit-convert, unroll `load.discs` into slots. Re-derives
+  nothing (`@guarantee the-rig-binding-invents-no-mechanical-fact`, witnessed).
 - `src/session/BriefingView.tsx`, `CheckInView.tsx`, `CloseOutView.tsx`,
   `RestView.tsx`, `SetView.tsx`, `SessionScreen.tsx` — layout, styling, copy
   placement. The hooks these views call and the events they dispatch are the
@@ -207,11 +212,14 @@ before the work:**
   knobs inside a mechanics file. The visual lane may change a VALUE in them
   with a filing here; a new block, or a new consumer of a mechanical constant
   from that file, is the mechanics lane's call.
-- `src/session/liftPresentation.ts` — until the mechanics lane takes it over
-  (R2 in the request doc), the visual lane owns it and the mechanics lane's
-  edits are crossings; after, the reverse. The one property that survives the
-  handover regardless: **no coordinates** — enforced by
-  `the-presentation-contract-carries-no-coordinates` and its witness.
+- `src/game/liftPresentation.ts` and `src/game/LIFT-PRESENTATION.md` — THE
+  SEAM, mechanics lane's, FROZEN at `20bda71d` (PR #48). The visual lane
+  reads it through `src/art/athleteRig.ts` and edits it never; a missing
+  mechanical fact is a request under the contract doc's §10, not a patch.
+  The visual lane's own `src/session/liftPresentation.ts` — the working
+  adapter that stood in until the handoff — was deleted the same day, with
+  its tag `the-presentation-contract-carries-no-coordinates` and witness,
+  rather than left as a second definition of one truth.
 - `src/tuning/audit.ts`, `audit.test.ts`, `index.ts` — already the A↔B surface
   (see "The one place the two sessions genuinely touch"); now also the lane
   surface, same rule, same three whole files.
@@ -296,6 +304,62 @@ watchlisted project name in code position in `AppShell.tsx` /
 `shellWiring.test.ts`). Every one is a mechanics-lane file or a human-ruled
 registry. The visual lane leaves them red rather than editing the other lane's
 tests to green, and says so here.
+
+### FILED 2026-09-07: THE MECHANICS CONTRACT IS FROZEN AT `20bda71d` — THE SEAM MOVED
+
+Human handoff: Grok Session A published `src/game/liftPresentation.ts` and
+`src/game/LIFT-PRESENTATION.md` on PR #48 at `20bda71d` (still DRAFT /
+DO_NOT_MERGE). `liftPresentation(state, totalKg, prior)`, `prior` REQUIRED;
+`barVelocity` is actual Δheight with `motionSampleValid` beside it;
+`integratorVelocity` is the ascent integrator and is named so it cannot be
+mistaken for bar motion; `grindIntensity`, `strain`, `load.discs` and the
+resolution fields are the mechanics lane's and are not recomputed. Merged
+into `claude/session-a-visual-architecture` as `07d6844f`.
+
+**What the visual lane did with it, all the same day:**
+
+- **Both open requests are answered** — R1 (descent rate) by `barVelocity`,
+  R2 (own the contract) by the handoff itself. R3/R4 honoured by the
+  contract's own header. `docs/design/PRESENTATION-CONTRACT-REQUEST.md` is
+  marked closed item by item; it stays as the record.
+- **`src/session/liftPresentation.ts` and its test are DELETED**, not kept as
+  a pass-through: two definitions of one truth is the defect the request doc
+  §2 measured twice. Its tag and `MUTATION_WITNESSES` row are removed and
+  the census pins walked back (`WITNESS_ROWS` 86→85, `GRADED` 50→49,
+  `REPRODUCIBLE` 38→37, transplanted 78/65/332/197→77/64/329/195,
+  `testPathRefs` 366→364 after the merge's +3) — registry data under the
+  registry ruling above, called out here.
+- **`src/art/athleteRig.ts` is the binding** — the only visual-lane file that
+  imports the contract. `@guarantee the-rig-binding-invents-no-mechanical-fact`:
+  its imports are scanned (raw source for specifiers, `codeOnly` for the
+  `LiftState` identifier) and the witness is the mutant that reaches into
+  `liftTuning.ts` for `GRIND_STALL_VELOCITY` — measured red, `1 failed | 9
+  passed (10)`. Its constants (`ATHLETE_RIG`) live in the existing
+  `spriteTuning.ts` home; no new tuning home, no `src/tuning/` crossing.
+- **The production stage pair exists and mounts nowhere.**
+  `TrainingLiftStage.tsx` still draws the rejected schematic for squat; the
+  swap is one line and waits on a real `.riv`. The stages pass the TRUE
+  `prior` (`priorFromHistory` — `useLiftLoop` pushes the current state, so
+  the previous tick is second-from-last).
+
+**Reported to a human, not self-registered — `REVIEWABLE_CITATIONS` is
+excluded from the registry ruling on purpose:** the merge brings a new
+category (B) tripwire — `IPF`, prose, count 1, in Grok's
+`src/game/LIFT-PRESENTATION.md` ("Hue is IPF colour language"). It is a
+structural reference of exactly the kind the federation ruling calls
+legitimate, and it is a mechanics-lane file; the row is a human's to add.
+`realIp.test.ts` reads 183 vs 180 on this branch (was 182 vs 180): the two
+`OpenLifter` rows are the inherited pair, this is the one new entry.
+
+**One integration observation, not acted on:** the rejected schematic's
+`squatPoseFrom` calls the contract with `prior = null` on every tick, so its
+`barVelocity` — and the `cameraY` it feeds — is always 0. Not fixed: the
+standing order is not to polish the puppet, and it is a debug path.
+
+**Not done, and not claimed:** no production `.riv` exists, so no VISUAL,
+ANIMATION or SOFT-FEEL gate moves; the runtime decision stays PROVISIONAL
+with its closing condition now written into ADR-001's status line. Bench and
+deadlift stay blocked. PR #48 not merged.
 
 ### Session B's scope, stated exactly
 

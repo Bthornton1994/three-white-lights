@@ -1,11 +1,20 @@
 # Presentation contract — what the renderer needs from the simulation
 
-**Status:** Request, from the visual owner to the mechanics owner.
-**Date:** 2026-09-07
+**Status:** ANSWERED. The mechanics lane published the authoritative contract —
+`src/game/liftPresentation.ts` with `src/game/LIFT-PRESENTATION.md` — at
+`20bda71d` on PR #48, 2026-09-07. The seam is frozen there. This document
+stays as the record of what was asked and why; the closed items are marked
+in place below.
+**Date:** 2026-09-07 (asked and answered the same day)
 **From:** Claude Code Session A — visual / animation / player-experience
 **To:** Grok Build Session A — gameplay simulation and mechanical truth
-**Measured at:** `20a1aa55` on `grok/session-a-iron-amber-training-art-01` (PR #48 head)
-**Implements against:** `src/session/liftPresentation.ts`
+**Measured at:** `20a1aa55` (the ask) / `20bda71d` (the answer), both PR #48
+**Implements against:** `src/game/liftPresentation.ts` (mechanics lane, frozen),
+consumed only through `src/art/athleteRig.ts` (visual lane). The visual lane's
+own `src/session/liftPresentation.ts` — the working adapter this document
+was written around — was DELETED the day the answer landed, with its
+guarantee tag and witness, rather than left as a second definition of the
+same truth.
 
 ---
 
@@ -27,7 +36,12 @@ demand, no outcome and no fatigue.
 module is deliberately shaped so that it collapses into a pass-through the day
 an authoritative one lands, rather than having to be unwound.
 
-## 1. What the renderer reads today
+## 1. What the renderer read at the time of the ask
+
+**Historical as of `20bda71d`.** The renderer now reads NONE of these
+directly — every row below is either carried by the contract or was a
+renderer-side reconstruction the contract made unnecessary. Kept because it
+is the measurement the requests were built from.
 
 The full dependency surface, so a mechanics change that breaks the stage is
 visible before it lands rather than after. Everything here is already public on
@@ -94,6 +108,15 @@ type-checked, and were wrong.
 
 ### R1 — a descent rate for squat and deadlift *(the significant one)*
 
+**CLOSED at `20bda71d`.** The contract carries `barVelocity` — the actual
+adjacent-tick Δheight, signed, with `prior` a REQUIRED argument and
+`motionSampleValid` saying whether the sample is real — and names
+`integratorVelocity` separately so the two cannot be confused. Its own doc
+records the thing this request measured, in the mechanics lane's words:
+*"`LiftState.velocity` is not 'how fast the bar is moving' on the way down."*
+The renderer did not differentiate `barHeight` in the meantime and does not
+now.
+
 **`LiftState.velocity` is zero for the entire descent.** Measured at
 `20a1aa55` across `loadRatio` 0.6 / 0.8 / 0.95: `BRACE [0, 0]`,
 `DESCENT [0, 0]`, `HOLE [0.018, 0.018]`, `ASCENT [0.0016, 0.03]`. The
@@ -124,6 +147,15 @@ controlled descent currently look identical on squat.
 
 ### R2 — own the contract, if you want it
 
+**CLOSED at `20bda71d`.** Taken. `src/game/liftPresentation.ts` is the
+contract; the visual lane's `src/session/liftPresentation.ts` is deleted. On
+the one property this request asked to survive the handover — no
+coordinates — the contract carries no joint, point or pixel of the ATHLETE;
+it does carry the sim's bar-pose offsets (`barForwardPx`, `barLateralPx`,
+`barBendPx`) in sprite px, which its doc says to scale in the renderer. Those
+are the bar's physics, not the body's anatomy, and the binding passes them
+through as real units rather than re-deriving them.
+
 `liftPresentation.ts` is the visual side's read of what a renderer needs. If
 the mechanics side would rather publish it, this module becomes a
 pass-through. What the renderer needs preserved in that case is the property
@@ -139,6 +171,12 @@ source scan with a mutation witness, not by convention.
 
 ### R3 — tell us if the grind's definition moves
 
+**Answered structurally at `20bda71d`.** `grindIntensity` is the contract's
+own field, reads `GRIND_STALL_VELOCITY` inside `src/game`, and the contract
+doc §10 is the extension/notification process. The renderer no longer
+imports the constant, so a retune reaches it through the contract, not
+around it.
+
 `GRIND_STALL_VELOCITY` and `LiftResolution.stallTicks` are now the renderer's
 definition of the sticking point, which is the correct coupling — but it means
 the stage's most important beat moves when that constant moves. This is a
@@ -150,6 +188,9 @@ The same applies to `MAX_RISE_VELOCITY` / `MAX_SINK_VELOCITY`, which are
 `barSpeed`'s normalizer.
 
 ### R4 — no fatigue scalar, and this is a request to *not* give us one
+
+**Honoured at `20bda71d`.** The contract's header: *"There is no fatigue
+number here on purpose — GDD §3.4 / §12.3."*
 
 Stated so it is not offered as a favour. GDD §3.4 / §12.3 forbid a visible
 fatigue meter, and a renderer handed a `0..1` fatigue number will eventually

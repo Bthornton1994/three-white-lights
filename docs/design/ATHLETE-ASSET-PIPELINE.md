@@ -247,48 +247,74 @@ because they are the rules a second athlete must also obey.
 - **Cloth follows the body one step late.** The singlet is not welded to the
   mesh; a small lag is what sells mass.
 - **Tremor is authored in the rig, not supplied as coordinates.** The contract
-  carries `strain` and `grind`; the shake is the artist's expression of them.
-  This is deliberate — see `src/session/liftPresentation.ts`'s header for why
-  carrying tremor as a number would re-import the rejected architecture.
+  carries `strain` and `grindIntensity`; the shake is the artist's expression
+  of them. This is deliberate — the mechanics lane's contract doc §9 excludes
+  face, hand and cloth instructions by design, and `src/art/athleteRig.ts`'s
+  header records why carrying tremor as a number would re-import the rejected
+  architecture.
+- **Deadlift's lower-after-lockout is choreography, not mechanics.** The
+  simulation owns no eccentric return after a made deadlift lockout — after
+  `complete` with a made `outcome`, `barHeight` stays up. The controlled
+  lower-to-floor the player expects to see is authored in the rig as a
+  post-resolution transition keyed on `complete` + `outcome`, and is NEVER
+  written back into gameplay state. (Deadlift art itself stays blocked until
+  the squat proves the system; the rule is recorded now so it is not lost.)
 - **No pose is a re-used mirror of another.** The descent is not the ascent
   played backwards; they have different torso angles and different intent.
 
 ## 11. Delivery — what the `.riv` must expose
 
-The rig is driven by `src/session/liftPresentation.ts`, which is
-renderer-agnostic and carries **no coordinates**. The ViewModel inputs the
-asset must expose match that contract field-for-field:
+The rig is driven by `src/art/athleteRig.ts`, the visual lane's binding to
+the mechanics lane's frozen contract (`src/game/liftPresentation.ts`,
+`src/game/LIFT-PRESENTATION.md`, PR #48 at `20bda71d`). **`rigInputPaths()`
+in that module is the authoritative list** — derived from the record type, so
+this table cannot drift from it without `athleteRig.test.ts` going red. The
+ViewModel property paths, verbatim:
 
-| Input | Type | Range | Meaning |
+| Path | Type | Range / unit | Meaning |
 | --- | --- | --- | --- |
 | `lift` | enum | `squat` \| `bench` \| `deadlift` | Which skeleton. v1 authors `squat` only. |
-| `phase` | enum | the six `LIFT_PHASES` | The mechanic's own beat. |
-| `stand` | number | `0..1` | Rep position. `1` locked out, `0` at the bottom. **The primary driver.** |
-| `barSpeed` | number | `-1..1` | Signed bar speed. Negative is losing. |
-| `strain` | number | `0..1` | How hard the lift is. Effort expression. |
-| `grind` | number | `0..1` | Sticking point. Non-zero only while ascending slowly. |
-| `barTiltDeg` | number | degrees | Real unit. Lifter's right side high is positive. |
-| `barFlex` | number | `-1..1` | Sleeve whip. |
-| `commandGlow` | number | `0..1` | Cue prominence at the stimulus. |
+| `phase` | enum | the six `LIFT_PHASES` | The mechanic's beat. **Not the driver** — see `barHeight`. |
+| `barHeight` | number | `0..1` (may clip) | 0 hole/floor, 1 lockout. **THE driver.** Continuous through descent and ascent; the contract says pose from this, not from `phase`. |
+| `barVelocity` | number | heights / second, signed | Actual Δheight per tick, scaled to seconds. `+` rising, `−` descending. `0` is rest ONLY when `motionSampleValid`. |
+| `motionSampleValid` | boolean | — | False on an unpaired snapshot: then `barVelocity` is 0 for lack of a sample, not because the bar sat still. |
+| `integratorVelocity` | number | heights / second | The ascent force integrator. 0 through squat/bench descent by design. Stall/grind feel reads this, not `barVelocity`. |
+| `strain` | number | `0..1` | Load + phase + current deficit. Effort expression. Not a fatigue meter. |
+| `grindIntensity` | number | `0..1` | 1 = stalled or being beaten on the way up. The game's title beat. |
+| `effortBand` | enum | `easy` \| `normal` \| `hard` \| `grind` \| `failing` | A derived band the state machine may key on. Not an animation name. |
+| `barTiltDeg` | number | degrees | Lifter's right side high is positive. |
+| `barForwardPx` / `barLateralPx` / `barBendPx` | number | sprite px | The sim's bar-pose offsets. **Scale in the editor**; do not re-derive. |
+| `commandGlow` | number | `0..1` | Cue prominence — full while held, peaks at the cue's ideal instant. A visual reading of the timing window. |
+| `held` / `pressCommandLive` / `lockoutHoldLive` | boolean | — | Finger down; the bench command is live; the lockout hold is live. |
 | `chalk` | number | `0..1` | Chalk intensity. Placement is the rig's. |
-| `outcome` | enum | `good-lift` \| `grind` \| `miss` \| none | Terminal state selector. |
+| `depthAchieved` / `lockedOut` / `complete` | boolean | — | Judged depth; reached lockout; `phase === RESOLVED`. |
+| `outcome` | enum | `good-lift` \| `grind` \| `miss` \| `none` | Terminal state selector. `none` until resolved. |
+| `missReason` | enum | `no-depth` \| `buried` \| `stalled` \| `timeout` \| `dropped` \| `none` | Why, on a miss. |
+| `totalKg` | number | kg | What the HUD shows. The drawn bar must plausibly be this weight. |
+| `plates/<i>/on` | boolean | `i` in `0..7` | Slot `i` on one sleeve is loaded. Inboard first. Mirror for the far sleeve. |
+| `plates/<i>/size` | number | index into the §7 ladder | `0` = 25 kg red … `6` = 1.25 kg black (the `PLATE_SPECS` order). Meaningless when `on` is false. |
+| `platesOverflow` | number | count | Discs the eight slots could not show. Non-zero is a finding to report, not a look. |
+| `seed` | number | — | Deterministic, so authored variation is stable across replays. |
 
-**`stand` and `phase` together are sufficient to pose the athlete.** Everything
-else modulates expression. If the rig needs a beat that cannot be derived from
-those two, that is a gap in the contract and belongs in
-`docs/design/PRESENTATION-CONTRACT-REQUEST.md` — do not have the rig infer it
-from a timer.
+**`barHeight` alone poses the athlete through the rep; `phase` and
+`effortBand` select states around it.** The contract is explicit that
+animation is not keyed primarily from phase names where continuous state
+exists — the descent and the ascent are the same `barHeight` curve read in
+two directions, with `barVelocity`'s sign saying which. If the rig needs a
+beat none of these carries, that is a request through the contract doc's §10
+process — do not have the rig infer it from a timer, and do not have the
+binding compute it.
 
-**Plates are slots, not a number.** The contract carries `platesPerSideKg` — a
-list, which a ViewModel scalar cannot hold. Author **eight plate slots per
-side**, each with a size index over the §7 ladder and a visibility flag; the
-host adapter maps the list onto the slots. Eight per side covers the loading
-range the game reaches without the drawn stack running off the sleeve.
+**Plates are slots, not a number.** `load.discs` is a list; a ViewModel
+scalar cannot hold one. Eight `{on, size}` pairs per sleeve
+(`ATHLETE_RIG.PLATE_SLOTS_PER_SIDE` in `spriteTuning.ts`) cover the loading
+range the game reaches; the binding fills them inboard-first and reports any
+overflow rather than truncating silently.
 
 **Naming, so the asset survives a second athlete:** `athlete-<name>.riv`, one
-artboard per lift, state machine named for the lift. Input names exactly as
-above — a renamed input is a silent no-op at runtime in both Rive runtimes,
-which is the failure mode this table exists to prevent.
+artboard per lift, state machine named for the lift. Paths exactly as above —
+a renamed input is a silent no-op at runtime in both Rive runtimes, which is
+the failure mode `rigInputPaths()` exists to prevent.
 
 ## 12. What counts as delivered
 
@@ -309,8 +335,10 @@ SOFT-FEEL cannot, and OWNER PLAYTEST is Bryant's alone.
 
 Blocked work is the athlete. Not blocked, and either done or doable now:
 
-- **The presentation contract** — `src/session/liftPresentation.ts` and its
-  tests. Identical under every option in ADR-001, so it is not a bet.
+- **The binding to the frozen contract** — `src/art/athleteRig.ts` and its
+  tests, consuming `src/game/liftPresentation.ts` at `20bda71d`. Identical
+  under every option in ADR-001, so it is not a bet. The unmounted production
+  stage pair (`src/session/AthleteStage.native.tsx` / `.web.tsx`) sits on it.
 - **The data request to Grok** — `docs/design/PRESENTATION-CONTRACT-REQUEST.md`.
 - **This specification**, so the asset is authored against a target.
 - **Equipment and room presentation**, which are not the athlete: plate
