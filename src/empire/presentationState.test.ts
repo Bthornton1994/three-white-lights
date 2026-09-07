@@ -363,7 +363,7 @@ describe('presentationState.ts — snapshot coherence', () => {
     );
   });
 
-  it('makes a caller-supplied station list impossible by API shape', () => {
+  it('does not accept a stations field; stations are derived from the bundle', () => {
     const input = garageInput();
     expect(input).not.toHaveProperty('stations');
     const world = presentationWorld(input);

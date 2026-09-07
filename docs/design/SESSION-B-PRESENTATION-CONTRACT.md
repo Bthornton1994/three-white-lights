@@ -113,10 +113,13 @@ Starting kit is granted on `createLadderState` and pre-placed by `createFloorSta
 
 Stations are **derived** each call from this snapshot's floor + capability +
 ownership (`floorStations` on a context built from the same bundle). They are
-not a caller-supplied array. `PresentationWorldInput` has no `stations` field.
-Mixing one floor's stations with another floor's sim is impossible by API shape.
-A floor whose rung is not the managed gym rung is refused. A sim whose member
-ids are not the roster ids is refused.
+not a caller-supplied array. `PresentationWorldInput` has no `stations` field,
+so a caller cannot inject a separately-derived stations list. A floor whose
+rung is not the managed gym rung is refused. A roster whose size is not the
+sim member count is refused. A sim whose member ids are not the roster ids is
+refused. A `FloorSimState` may still be stale relative to a newly-mutated
+floor until the sim's update / interrupt handling processes that change. That
+is the guarantee. Do not read it as "mixing floors is impossible by API shape."
 
 
 | Field | Meaning |

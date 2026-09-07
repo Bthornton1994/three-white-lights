@@ -90,9 +90,9 @@ export function presentationStepProgressPerTick(): number {
 }
 
 /**
- * Inputs the contract reads. Stations are NOT accepted here — they are
- * derived from this same floor + capability + ownership bundle so a caller
- * cannot mix one floor's stations with another floor's sim.
+ * Inputs the contract reads. Stations are not a caller-supplied array;
+ * they are derived from this floor + capability + ownership bundle.
+ * Rung, roster-size, and member-id mismatches are refused. Sim may be stale.
  */
 export interface PresentationWorldInput {
   readonly sim: FloorSimState;
