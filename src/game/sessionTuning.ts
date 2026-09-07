@@ -504,6 +504,11 @@ export const SESSION_LAYOUT = Object.freeze({
   BRIEFING_CARD_PAD: 18,
   BRIEFING_CARD_RADIUS: 14,
   BRIEFING_CARD_BORDER: 1,
+
+  /** Compact HUD over the live-set plate. The gym is the room; this is type. */
+  SET_HUD_PAD: 14,
+  SET_HUD_HEIGHT: 148,
+  SET_HUD_SCRIM: 0.62,
 });
 
 /**

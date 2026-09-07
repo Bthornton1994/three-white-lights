@@ -1,15 +1,14 @@
 #!/usr/bin/env node
 /**
  * Photographs Iron & Amber training graphics at 375×812 and 390×844.
- * Briefing gym plate, live squat set, live deadlift set, live bench set.
- * Deadlift and bench are the played check-in path — `?session=set` is squat.
+ * Briefing, live set (braced), a driven grind/ascent, and close-out.
+ * Debug `?session=` beats skip Create and skip photographing check-in.
  */
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { gateDevServer } from './devServerSentinel.mjs';
 import { armFreshLifterPerBoot } from './freshLifterBoundary.mjs';
-import { completeCreateIfNeeded } from './enterMeetFromCalendar.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -29,47 +28,28 @@ const VIEWPORTS = [
 
 const browser = await chromium.launch({ headless: true });
 
-async function visibleTestIds(page) {
+async function forbiddenResidue(page) {
   return page.evaluate(() => {
-    const out = [];
-    for (const el of document.querySelectorAll('[data-testid]')) {
-      const id = el.getAttribute('data-testid');
-      const style = window.getComputedStyle(el);
-      const r = el.getBoundingClientRect();
-      if (
-        style.display !== 'none' &&
-        style.visibility !== 'hidden' &&
-        Number(style.opacity) > 0 &&
-        r.width > 0 &&
-        r.height > 0
-      ) {
-        out.push(id);
-      }
+    const body = (document.body?.innerText ?? '').toLowerCase();
+    const hits = [];
+    for (const word of ['check-in', 'accelerated', 'diagnostics', 'clock']) {
+      if (body.includes(word)) hits.push(word);
     }
-    return out;
+    const ids = [...document.querySelectorAll('[data-testid]')]
+      .map((el) => el.getAttribute('data-testid'))
+      .filter((id) => id && /check-in|debug|accelerated|clock/.test(id));
+    return { hits, ids };
   });
 }
 
-/** First-run Create is forced; session-check-in is mounted but display:none under it. */
-async function waitForCreateOrCheckIn(page) {
-  await page.waitForFunction(
-    () => {
-      const ids = ['lifter-create', 'lifter-card', 'session-check-in'];
-      return ids.some((id) => {
-        const el = document.querySelector(`[data-testid="${id}"]`);
-        if (el === null) return false;
-        const style = window.getComputedStyle(el);
-        if (style.display === 'none' || style.visibility === 'hidden') return false;
-        const r = el.getBoundingClientRect();
-        return r.width > 0 && r.height > 0;
-      });
-    },
-    null,
-    { timeout: 90000 },
-  );
+async function overflow(page) {
+  return page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+  }));
 }
 
-async function shotQuery(width, height, name, search) {
+async function openMoment(width, height, search) {
   const context = await browser.newContext({
     viewport: { width, height },
     deviceScaleFactor: 2,
@@ -78,84 +58,95 @@ async function shotQuery(width, height, name, search) {
   const page = await context.newPage();
   page.setDefaultTimeout(120000);
   await page.goto(`${url}${search}`, { waitUntil: 'load' });
-  if (search.includes('briefing')) {
-    await page.getByTestId('iron-amber-briefing-gym').waitFor({ state: 'visible', timeout: 60000 });
-  } else {
-    await page.getByTestId('iron-amber-stage').waitFor({ state: 'visible', timeout: 60000 });
-  }
-  await page.waitForTimeout(1200);
-  await page.screenshot({ path: path.join(outDir, name) });
-  const gym = await page.getByTestId('iron-amber-briefing-gym').count();
-  const stage = await page.getByTestId('iron-amber-stage').count();
-  await context.close();
-  return { gym, stage };
+  return { context, page };
 }
 
-async function liveLift(width, height, name, lift) {
-  const context = await browser.newContext({
-    viewport: { width, height },
-    deviceScaleFactor: 2,
-  });
-  await armFreshLifterPerBoot(context);
-  const page = await context.newPage();
-  page.setDefaultTimeout(120000);
-  await page.goto(url, { waitUntil: 'load' });
-  await waitForCreateOrCheckIn(page);
-  const created = await completeCreateIfNeeded(page, { leaveAfter: true });
-  if (created.why) {
-    const visible = await visibleTestIds(page);
-    throw new Error(`Create refused (${created.why}); visible=${JSON.stringify(visible)}`);
-  }
-  try {
-    await page.getByTestId('session-check-in').waitFor({ state: 'visible', timeout: 60000 });
-  } catch (err) {
-    const visible = await visibleTestIds(page);
-    await page.screenshot({ path: path.join(outDir, `FAIL-${name}`) });
-    await context.close();
-    throw new Error(
-      `check-in stayed hidden after Create created=${created.created}; visible=${JSON.stringify(visible)}; ${err.message}`,
-    );
-  }
-  await page.getByTestId(`check-in-lift-${lift}`).click();
-  await page.getByTestId('check-in-sleep-ok').click();
-  await page.getByTestId('check-in-soreness-normal').click();
-  await page.getByTestId('check-in-motivation-steady').click();
-  await page.getByTestId('session-briefing').waitFor({ state: 'visible', timeout: 60000 });
-  await page.getByTestId('iron-amber-briefing-gym').waitFor({ state: 'visible', timeout: 30000 });
-  await page.waitForTimeout(600);
-  if (name.includes('briefing')) {
-    await page.screenshot({ path: path.join(outDir, name) });
-    const gym = await page.getByTestId('iron-amber-briefing-gym').count();
-    await context.close();
-    return { gym, stage: 0, lift };
-  }
-  await page.getByTestId('session-rpe-8').click();
+async function shotBriefing(vp) {
+  const { context, page } = await openMoment(vp.width, vp.height, '?session=briefing');
+  await page.getByTestId('iron-amber-briefing-gym').waitFor({ state: 'visible', timeout: 60000 });
+  await page.getByTestId('session-rpe-ladder').waitFor({ state: 'visible', timeout: 30000 });
+  await page.waitForTimeout(800);
+  const name = `${vp.name}-briefing.png`;
+  await page.screenshot({ path: path.join(outDir, name) });
+  const residue = await forbiddenResidue(page);
+  const box = await overflow(page);
+  const rpe = await page.getByTestId('session-rpe-8').boundingBox();
+  await context.close();
+  return { name, residue, overflowX: box.scrollWidth > box.clientWidth + 1, rpeVisible: rpe !== null };
+}
+
+async function shotCloseOut(vp) {
+  const { context, page } = await openMoment(vp.width, vp.height, '?session=close-out-held');
+  await page.getByTestId('session-close-out').waitFor({ state: 'visible', timeout: 60000 });
+  await page.getByTestId('iron-amber-close-out-gym').waitFor({ state: 'visible', timeout: 30000 });
+  await page.getByTestId('close-out-action').waitFor({ state: 'visible', timeout: 30000 });
+  await page.waitForTimeout(800);
+  const name = `${vp.name}-close-out.png`;
+  await page.screenshot({ path: path.join(outDir, name) });
+  const residue = await forbiddenResidue(page);
+  const action = await page.getByTestId('close-out-action').boundingBox();
+  await context.close();
+  return { name, residue, actionVisible: action !== null };
+}
+
+async function shotLive(vp) {
+  const { context, page } = await openMoment(vp.width, vp.height, '?session=set');
   await page.getByTestId('session-set').waitFor({ state: 'visible', timeout: 60000 });
   await page.getByTestId('iron-amber-stage').waitFor({ state: 'visible', timeout: 30000 });
-  const plateTestId = await page.evaluate(() => {
-    const nodes = [...document.querySelectorAll('[data-testid^="iron-amber-plate-"]')];
-    return nodes.map((n) => n.getAttribute('data-testid'));
-  });
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(1000);
+  const plateTestId = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid^="iron-amber-plate-"]')].map((n) =>
+      n.getAttribute('data-testid'),
+    ),
+  );
   const prompt = await page.getByTestId('session-prompt').textContent();
-  await page.screenshot({ path: path.join(outDir, name) });
-  const stage = await page.getByTestId('iron-amber-stage').count();
+  const activeName = `${vp.name}-active-lift.png`;
+  await page.screenshot({ path: path.join(outDir, activeName) });
+
+  const box = await page.getByTestId('session-touch').boundingBox();
+  if (box === null) {
+    await context.close();
+    throw new Error('session-touch missing for grind drive');
+  }
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(900);
+  await page.mouse.up();
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector('[data-testid="session-prompt"]');
+      const text = (el?.textContent ?? '').toUpperCase();
+      return text.includes('DRIVE') || text.includes('GRIND') || text.includes('TAP');
+    },
+    null,
+    { timeout: 8000 },
+  ).catch(() => null);
+  await page.mouse.down();
+  await page.waitForTimeout(700);
+  const grindPrompt = await page.getByTestId('session-prompt').textContent();
+  const grindName = `${vp.name}-grinder.png`;
+  await page.screenshot({ path: path.join(outDir, grindName) });
+  await page.mouse.up();
+  const residue = await forbiddenResidue(page);
+  const overflowBox = await overflow(page);
   await context.close();
-  return { gym: 0, stage, lift, prompt, plateTestId };
+  return {
+    activeName,
+    grindName,
+    plateTestId,
+    prompt,
+    grindPrompt,
+    residue,
+    overflowX: overflowBox.scrollWidth > overflowBox.clientWidth + 1,
+  };
 }
 
-const report = { briefing: [], squat: [], deadlift: [], bench: [] };
+const report = { briefing: [], closeOut: [], live: [] };
 for (const vp of VIEWPORTS) {
-  report.briefing.push(
-    await shotQuery(vp.width, vp.height, `${vp.name}-briefing.png`, '?session=briefing'),
-  );
+  report.briefing.push(await shotBriefing(vp));
+  report.live.push(await shotLive(vp));
+  report.closeOut.push(await shotCloseOut(vp));
 }
-report.squat.push(await liveLift(390, 844, '390x844-set-squat.png', 'squat'));
-report.squat.push(await liveLift(375, 812, '375x812-set-squat.png', 'squat'));
-report.deadlift.push(await liveLift(390, 844, '390x844-live-deadlift.png', 'deadlift'));
-report.deadlift.push(await liveLift(375, 812, '375x812-live-deadlift.png', 'deadlift'));
-report.bench.push(await liveLift(390, 844, '390x844-live-bench.png', 'bench'));
-report.bench.push(await liveLift(375, 812, '375x812-live-bench.png', 'bench'));
 
 console.log(JSON.stringify({ outDir, report }, null, 2));
 await browser.close();

@@ -30,8 +30,24 @@ describe('Iron & Amber training path wiring', () => {
     expect(stage).not.toContain('GymSceneLayer');
     expect(stage).not.toContain('renderGymScene');
     expect(stage).not.toContain('TRACE_X');
-    expect(stage).not.toContain('grindReadout');
+    expect(stage).toContain('grindReadout');
     expect(stage).toContain('testID="iron-amber-stage"');
+  });
+
+  it('SetView overlays HUD on the plate instead of stacking a debug header above it', () => {
+    const setView = source('SetView.tsx');
+    expect(setView).toContain('styles.hudScrim');
+    expect(setView).toContain('styles.hud');
+    expect(setView).toContain('pointerEvents="none"');
+    expect(setView).not.toContain('styles.header');
+  });
+
+  it('CloseOutView uses the gym plate behind the payoff card', () => {
+    const closeOut = source('CloseOutView.tsx');
+    expect(closeOut).toContain("from '../../assets/iron-amber/gym-briefing.jpg'");
+    expect(closeOut).toContain('testID="iron-amber-close-out-gym"');
+    expect(closeOut).toContain('testID="session-close-out"');
+    expect(closeOut).toContain('testID="close-out-action"');
   });
 
   it('Meet Day still draws the sprite LiftStage, not the training plates', () => {

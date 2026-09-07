@@ -148,6 +148,7 @@ export function BriefingView({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    overflow: 'hidden',
   },
   gym: {
     ...StyleSheet.absoluteFill,

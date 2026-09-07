@@ -2,17 +2,17 @@
  * TrainingLiftStage — Iron & Amber plates on the daily session set.
  *
  * The played lift still comes from `useLiftLoop` / `stepLift`. This file only
- * replaces the training-path picture: owned gym stills instead of the sprite
- * raster. Meet Day keeps `src/lift/LiftStage.tsx`.
+ * replaces the training-path picture: owned illustrated gym stills instead of
+ * the sprite raster. Meet Day keeps `src/lift/LiftStage.tsx`.
  *
- * The plate is the room. Skia draws only the command and cue rings the
- * mechanic still needs on web — not the bar-path panel, which reads as a hole
- * cut out of the photograph.
+ * The plate is the room. Skia draws command/cue rings and the grind pip row
+ * the mechanic still needs on web — not the bar-path TRACE panel, which read
+ * as a hole cut out of the picture.
  *
  * Exported as `LiftStage` so the press-surface walk in `liftInput.test.ts`
  * still finds a stage inside `SetView`.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { Canvas, Circle, Group, Rect } from '@shopify/react-native-skia';
 
@@ -23,6 +23,7 @@ import {
   commandHit,
   cuePulse,
   cueRing,
+  grindReadout,
   hitFlash,
   stageArmed,
   stageShake,
@@ -59,6 +60,7 @@ const PLATE_SOURCE: Record<Exclude<IronAmberPlateId, 'gym-briefing'>, number> = 
 export function TrainingLiftStage({
   state,
 }: LiftStageProps): React.ReactElement {
+  const [box, setBox] = useState<{ w: number; h: number }>({ w: L.STAGE_W, h: L.STAGE_H });
   const plateId = ironAmberPlateFor(state.config.kind, state.phase, state.height);
   const ring = cueRing(cueProgress(state));
   const shake = stageShake(state);
@@ -67,11 +69,20 @@ export function TrainingLiftStage({
   const lastTiming = state.timings[state.timings.length - 1];
   const hit = commandHit(state);
   const armed = stageArmed(state);
+  const grind = grindReadout(state);
+  const sx = box.w / L.STAGE_W;
+  const sy = box.h / L.STAGE_H;
+  const cueX = L.CUE_X * sx;
+  const cueY = L.CUE_Y * sy;
 
   return (
     <View
       style={[styles.canvas, { transform: [{ translateX: shake.dx }, { translateY: shake.dy }] }]}
       testID="iron-amber-stage"
+      onLayout={(event) => {
+        const { width, height } = event.nativeEvent.layout;
+        if (width > 0 && height > 0) setBox({ w: width, h: height });
+      }}
     >
       <Image
         source={PLATE_SOURCE[plateId]}
@@ -85,15 +96,15 @@ export function TrainingLiftStage({
             <Rect
               x={0}
               y={0}
-              width={L.STAGE_W}
-              height={L.STAGE_H}
+              width={box.w}
+              height={box.h}
               color={LIFT_PALETTE.COMMAND_FLASH}
               opacity={hit.washAlpha}
             />
             <Circle
-              cx={L.CUE_X}
-              cy={L.CUE_Y}
-              r={hit.ringRadius}
+              cx={cueX}
+              cy={cueY}
+              r={hit.ringRadius * sx}
               color={LIFT_PALETTE.COMMAND_RING}
               style="stroke"
               strokeWidth={F.STAGE_COMMAND.RING_STROKE}
@@ -104,9 +115,9 @@ export function TrainingLiftStage({
 
         {armed === null ? null : (
           <Circle
-            cx={L.CUE_X}
-            cy={L.CUE_Y}
-            r={F.STAGE_COMMAND.ARMED_RING_R}
+            cx={cueX}
+            cy={cueY}
+            r={F.STAGE_COMMAND.ARMED_RING_R * sx}
             color={LIFT_PALETTE.ARMED}
             style="stroke"
             strokeWidth={F.STAGE_COMMAND.ARMED_RING_STROKE}
@@ -117,17 +128,17 @@ export function TrainingLiftStage({
         {ring === null ? null : (
           <Group>
             <Circle
-              cx={L.CUE_X}
-              cy={L.CUE_Y}
-              r={ring.targetRadius}
+              cx={cueX}
+              cy={cueY}
+              r={ring.targetRadius * sx}
               color={LIFT_PALETTE.CUE_TARGET}
               style="stroke"
               strokeWidth={1}
             />
             <Circle
-              cx={L.CUE_X}
-              cy={L.CUE_Y}
-              r={ring.radius}
+              cx={cueX}
+              cy={cueY}
+              r={ring.radius * sx}
               color={ring.inPerfectBand ? LIFT_PALETTE.CUE_PERFECT : LIFT_PALETTE.CUE}
               style="stroke"
               strokeWidth={F.CUE_RING_STROKE}
@@ -138,9 +149,9 @@ export function TrainingLiftStage({
 
         {flash <= 0 || lastTiming === undefined ? null : (
           <Circle
-            cx={L.CUE_X}
-            cy={L.CUE_Y}
-            r={F.CUE_RING_OUTER_R - (F.CUE_RING_OUTER_R - F.CUE_RING_INNER_R) * flash}
+            cx={cueX}
+            cy={cueY}
+            r={(F.CUE_RING_OUTER_R - (F.CUE_RING_OUTER_R - F.CUE_RING_INNER_R) * flash) * sx}
             color={
               lastTiming.grade === 'missed' ? LIFT_PALETTE.MISS : LIFT_PALETTE.CUE_PERFECT
             }
@@ -148,6 +159,28 @@ export function TrainingLiftStage({
             strokeWidth={F.CUE_RING_STROKE}
             opacity={flash}
           />
+        )}
+
+        {grind === null ? null : (
+          <Group>
+            <Rect
+              x={grind.tray.x * sx}
+              y={grind.tray.y * sy}
+              width={grind.tray.w * sx}
+              height={grind.tray.h * sy}
+              color={LIFT_PALETTE.GRIND_TRAY}
+            />
+            {grind.pips.map((pip) => (
+              <Rect
+                key={pip.x}
+                x={pip.x * sx}
+                y={pip.y * sy}
+                width={pip.w * sx}
+                height={pip.h * sy}
+                color={pip.lit ? LIFT_PALETTE.GRIND_PIP_LIT : LIFT_PALETTE.GRIND_PIP_DIM}
+              />
+            ))}
+          </Group>
         )}
       </Canvas>
     </View>
@@ -159,8 +192,8 @@ export { TrainingLiftStage as LiftStage };
 
 const styles = StyleSheet.create({
   canvas: {
-    width: L.STAGE_W,
-    height: L.STAGE_H,
+    flex: 1,
+    alignSelf: 'stretch',
     overflow: 'hidden',
     position: 'relative',
     backgroundColor: SESSION_PALETTE.CARD,

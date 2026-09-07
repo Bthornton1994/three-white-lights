@@ -93,7 +93,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -114,6 +114,7 @@ import type { ProgressionReading } from '../game/progression';
 import type { SessionCloseOut } from '../game/session';
 import { useOfferCutIn } from '../cutin/CutInHost';
 import { SESSION_PALETTE } from './sessionPalette';
+import gymBriefing from '../../assets/iron-amber/gym-briefing.jpg';
 
 const L = SESSION_LAYOUT;
 
@@ -302,6 +303,14 @@ export function CloseOutView({
 
   return (
     <View style={styles.root} testID="session-close-out">
+      <Image
+        source={gymBriefing}
+        style={styles.gym}
+        resizeMode="cover"
+        testID="iron-amber-close-out-gym"
+      />
+      <View style={styles.scrim} />
+      <View style={styles.card}>
       <Row index={SESSION_TUNING.CLOSE_OUT_ROW_ORDER.CALL}>
         <Text style={[styles.headline, { color: headlineColour }]} testID="close-out-headline">
           {closeOut.headline}
@@ -388,6 +397,7 @@ export function CloseOutView({
           {closeOut.canPropose ? SESSION_COPY.CLOSE_OUT_DONE : SESSION_COPY.CLOSE_OUT_RETRY}
         </Text>
       </Pressable>
+      </View>
     </View>
   );
 }
@@ -395,9 +405,27 @@ export function CloseOutView({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    overflow: 'hidden',
+  },
+  gym: {
+    ...StyleSheet.absoluteFill,
+  },
+  scrim: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: SESSION_PALETTE.CARD,
+    opacity: L.BRIEFING_SCRIM,
+  },
+  card: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: L.SCREEN_PAD,
+    marginHorizontal: L.SCREEN_PAD,
+    marginVertical: L.SECTION_GAP,
+    padding: L.BRIEFING_CARD_PAD,
+    borderRadius: L.BRIEFING_CARD_RADIUS,
+    borderWidth: L.BRIEFING_CARD_BORDER,
+    borderColor: SESSION_PALETTE.CARD_EDGE,
+    backgroundColor: SESSION_PALETTE.CARD,
     gap: L.STAT_ROW_GAP,
   },
   row: {
@@ -466,10 +494,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: L.BUTTON_RADIUS,
-    backgroundColor: SESSION_PALETTE.ACTION,
+    backgroundColor: SESSION_PALETTE.AMBER,
   },
   actionLabel: {
-    color: SESSION_PALETTE.ACTION_TEXT,
+    color: SESSION_PALETTE.CARD,
     fontSize: L.BUTTON_FONT,
     fontWeight: '700',
     letterSpacing: L.LETTER_SPACING,

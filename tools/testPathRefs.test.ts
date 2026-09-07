@@ -324,8 +324,10 @@ const PINNED = Object.freeze({
    * 332 -> 339 with Iron & Amber training plates: `TrainingLiftStage.tsx`,
    * `ironAmberPlates.ts`, two tests, `jpg.d.ts`, the capture tool, and the
    * `sessionPalette` sibling already on the tree.
+   *
+   * 339 -> 340 with `docs/design/IRON-AMBER-TRAINING-ASSETS.md`.
    */
-  SCANNED_FILES: 339,
+  SCANNED_FILES: 340,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
