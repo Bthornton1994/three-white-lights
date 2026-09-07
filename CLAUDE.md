@@ -1287,6 +1287,44 @@ edit. Whoever owns that file should take the two-row bump, or say why either
 paragraph is a method note rather than a claim — the reasoning above is
 written so that judgement can be made without re-deriving it.
 
+### TWO MORE FROM STAGE C.1A, FOUND WHILE VERIFYING THE GOVERNANCE SPLIT
+### BELOW — ONE TAKEN, ONE DECLINED, THE PIN NOW 237
+
+Found incidentally rather than sought: verifying that the governance-split
+edit below did not itself move `GUARANTEE_COVERAGE.TREE_WIDE` (it does not —
+this scanner reads only `.ts`/`.tsx` under `src`, and the split lives in this
+file) surfaced that the real count had already drifted since the S4d round
+above, independent of that edit. Stage C.1a's own evidence bundle scoped only
+`src/empire`'s own suite and never ran this test, so the drift shipped
+unnoticed on `f097695b`. Measured the same way as every entry above it: the
+standalone reimplementation of this file's scan, run against `src/empire`
+before and after Stage C.1a, names two new triggering paragraphs and nothing
+else — everything else in the delta is line-number drift from the round's
+own edits.
+
+One, in `stationView.ts`, explained why a condition check is asked twice by
+naming what the immediately preceding round's panel had done — a
+historical/comparative note about that earlier round, not a claim this one
+makes about the code as it now stands. Reworded to lower case, disclosed at
+the site, the same disposition the S4d round's `management.test.ts` paragraph
+above already got for the identical shape.
+
+The other, in `GymScreen.tsx`, is a present-tense claim that Stage C.1
+deleted the old duplicate per-item report rather than only relocating it —
+checkable, and checked, by the tests pinning the deleted testIDs' absence.
+Unlike the two S4d-round claims left owed above, `src/game/guaranteeTags.test.ts`
+is not treated as barred this round: the file's own precedent (Crossing 4 and
+its three successors) already established that this one constant is "data,
+not a restructure" and may be bumped directly by whichever session's prose
+moved it, so the bump was taken rather than left as an eighth undercount.
+236 -> 237.
+
+The two owed-and-undocumented claims from the S4d round two entries above are
+untouched by this — they are not this round's debt, and the gap between the
+new pin (237) and the real count (239) is exactly those two, unchanged.
+Whoever next reconciles this constant should expect a live count of at least
+239 for that reason, not 237, until those two are separately disposed.
+
 ### CROSSING 6, APPROVED BY THE HUMAN DIRECTLY: WIRING GYM EMPIRE INTO
 ### `src/shell/**`, AND WHY THE THING BEING WIRED IS NOT `GymView`
 
@@ -1507,6 +1545,132 @@ exists to prevent.
 Full reasoning and the three provisional proposals (grid dimensions, the
 layout-to-satisfaction formula, the pathing-interruption fallback) are in
 `docs/GDD.md` §5.13, not repeated here.
+
+### SESSION B IS SPLIT IN TWO — GROK BUILD SESSION B AND CLAUDE CODE SESSION
+### B — RULED BY A HUMAN, SUPERSEDING "SESSION B OWNS `src/empire/**` IN
+### FULL"
+
+Ruled by a human, dated 2026-09-07, as the section on scope shifts above
+requires: written here before either lane crosses the old boundary, not
+discovered in a merge. This replaces the ownership model that has governed
+every round recorded above it in this file — "Session B builds the §5 loop,
+because it owns the subsystem's context end to end" and every crossing built
+on that premise — with a two-lane split inside what was one session's scope.
+Nothing above this point is deleted or wrong for its own round; it is
+superseded going forward, the same way GDD §5 v1 stayed true history under v2.
+
+**The split.** `src/empire/**` no longer has one owner. It has two:
+
+- **Grok Build Session B — simulation / mechanics / gameplay truth.** The
+  authoritative state: what the gym does, independent of how it is drawn.
+- **Claude Code Session B — visual world / animation / UI/UX / player-facing
+  presentation.** How that state is rendered, animated and interacted with.
+
+**The file/module ownership table, read off the actual tree rather than
+guessed from the domain list in the ruling.** `src/empire/` has 22 non-test
+modules; three are `.tsx` (React Native components — the whole directory's
+only React surface, per the import-fence discipline the directory has held
+since E0), the other nineteen are pure TypeScript per this file's "Pure logic
+is separate from UI" rule. Ownership does not track the `.ts`/`.tsx` split
+cleanly, and where it does not, that is called out below rather than papered
+over.
+
+| Module | Owner | Why |
+|---|---|---|
+| `empireCore.ts` | Grok | Shared vocabulary and the Sim-progression seam — foundational simulation types, read by both lanes but authored as truth. |
+| `empireTuning.ts` | **Shared — see below** | One frozen constants object; both lanes append to it. |
+| `empireInvariant.ts`, `engagement.ts` | Grok | Calendar-composed invariant/measurement sweeps over the mechanics — verification of gameplay truth, not of anything drawn. |
+| `ladder.ts` | Grok | Rungs, relocation, money accrual — progression/economy truth. |
+| `sessions.ts` | Grok | Sessions and equipment groups — the training/business tension itself. |
+| `members.ts` | Grok | Member types and satisfaction — member-lifecycle mechanics. |
+| `management.ts` | Grok | Staffing, maintenance, equipment condition, recoverable failure — the authoritative condition/repair/failure state `stationView.ts` (Claude) reads and reshapes for the panel. |
+| `npc.ts`, `recruitment.ts` | Grok | Roster output by tier/tenure; deterministic (no-gacha) recruitment — staff mechanics. |
+| `production.ts` | Grok | §5.1/§5.2 resource-generation arithmetic over an injected clock — throughput/economy truth. |
+| `expansion.ts` | Grok | §5.4's four expansion axes — cost, gate, build time truth. |
+| `reputation.ts` | Grok | Reputation accrual, unlocks, sponsor Gym Bucks — progression/economy truth. |
+| `social.ts` | Grok | Leaderboards, friend visits, weekly rival — social mechanics. |
+| `pacing.ts` | Grok | The economy pacing simulator (Stage B) — composes the ladder/management truth above over real check-in cadences; no rendering. |
+| `floor.ts` | Grok | Grid, placement validity, collision, `FloorState` — placement truth (station identity and coordinates), independent of how a placed item is drawn. |
+| `floorSim.ts` | Grok | Member pathing, queuing, station occupancy — movement truth and queue truth, the sharpest instance of "what the gym does." |
+| `floorSprites.ts` | **Claude, despite the `.ts` extension** | Sprite pose/facing/index-grid derivation for the 16-bit art pass. Pure TypeScript per this file's own convention (testable without React), but its entire subject is visual representation — it holds no economic or member-decision truth, only how `floorSim.ts`'s truth is drawn. Flagged explicitly so the extension is never read as the ownership signal here. |
+| `stationView.ts` | **Claude — the presentation-state contract itself** | The small pure selector that reshapes `management.ts`/`floorSim.ts` truth into one read model per tapped station for `FloorGrid.tsx`'s panel. This is the renderer-independent seam the split below names: it originates no truth of its own (every field traces to a Grok-owned function call), and it exists only because a UI needed that truth reshaped. Claude authors its shape; if a needed fact is not yet exposed by a Grok-owned module, that is a request to Grok for a new accessor, not a reason to re-derive the fact here. |
+| `FloorGrid.tsx` | Claude | World rendering, drag/tap interaction, the floor's visual composition — consumes `floor.ts`/`floorSim.ts`/`floorSprites.ts`/`stationView.ts` truth and draws it. |
+| `GymScreen.tsx` | Claude | The shipped native screen — layout, chrome, copy, the S4e–S4i/Stage-C presentation fixes. |
+| `ladderView.tsx` | **Mixed — flagged, not split this round** | See below. |
+
+**`empireTuning.ts` is genuinely shared, and that is by design, not a gap.**
+"Game Feel Values Must Be Tunable" already requires every tunable value to
+live as one named constant in one place rather than scattered; that rule does
+not stop applying because there are now two lanes. The file already carries a
+per-constant `classification` (the same grammar `src/tuning/audit.ts` reads):
+balance/economy constants (`classification: 'balance'` and similar — costs,
+rates, thresholds, caps) are Grok's; UI-geometry, animation and feel constants
+(`classification: 'feel'`/`'knob'` — paddings, border radii, drag thresholds,
+clearance pixels, the S4h/S4i/Stage-C additions) are Claude's. Both lanes
+**append** new named constants; neither lane edits a constant it does not own
+without routing the change through this file the way every other crossing in
+this document has been routed. Collision risk is additive-append, which is
+low, not editing-in-place, which would not be.
+
+**`ladderView.tsx` is mixed and is named rather than silently split.** It
+holds two different things in one file: `LadderView`/`GymView` — actual
+render components, Claude's — and `ladderViewReduce`/`gymViewReduce` — the
+reducers that translate a player's tapped intent into calls on Grok-owned
+truth functions (`moveUpLadder`, `placeFloorItem`, `repairEquipment`,
+`hireManager`, and so on). The reducer is the seam in motion the same way
+`stationView.ts` is the seam at rest: it originates no truth, it only routes
+an intent to the function that owns the answer. Per the ruling's own
+instruction — "preserve behavior, do not perform broad refactors merely for
+organizational aesthetics" — this file is not split this round. Recorded as
+future architecture work: if `ladderViewReduce`/`gymViewReduce` keep growing
+faster than the components around them, extracting them into a dedicated
+reducer module gives the reducer half a clean single owner (arguably Claude,
+since it is UI-intent routing, not truth) without moving any Grok-owned
+arithmetic.
+
+**A second shared surface now exists, the same shape `src/tuning/` already
+is between Session A and Session B.** `empireForbiddenOutput.test.ts`,
+`directoryWalk.test.ts` and `empireSweep.test.ts` are whole-directory census
+and fence tests — they pin counts and structural properties over every file
+in `src/empire/`, not over one module. A change by either lane can move a
+pinned count in these three files exactly the way a new `src/empire/`
+declaration already moves `GUARANTEE_COVERAGE.TREE_WIDE` in Session A's
+`guaranteeTags.test.ts`. Neither lane owns these three files individually;
+both lanes may need to update a pin after their own change, read the real
+failure value rather than guessing it (this directory's own established
+discipline, unchanged), and note the update plainly in the commit that causes
+it.
+
+**The seam, stated once rather than per-file.** Grok owns the authoritative
+values — stable identity, member lifecycle state and destination, queue
+membership and order, station occupancy, equipment identity and condition,
+placement coordinates, staff assignments, throughput, economy values, and
+facility/failure state. Claude owns how those facts are rendered, animated
+and interacted with, and consumes Grok's truth through its exported functions
+and types — never by recomputing a queue order, a condition value, a repair
+price or a placement rule inside a `.tsx`, which is this file's existing
+"pure logic is separate from UI" rule applied across the new lane boundary
+rather than only across the React/non-React one. Claude does not dictate what
+the simulation does; Grok does not dictate how it looks.
+
+**Stage gates are unchanged by this split, and are recorded here so neither
+lane relabels them.** GDD §5.14 Stage C.1a is built and independently
+verified at commit `f097695b` on `claude/empire-s5-build-h9rvca`; that commit
+is not rewritten by this reorganization and is the shared baseline both lanes
+branch from. The Stage C human phone playtest is **not closed** — only the
+human closes it. Stage C2 and Stage D are **not authorized** by this ownership
+change; nothing about who owns which file moves a design gate. Work that
+follows this split and is not itself Stage C2/D is recorded as its own named
+corrective slice, not smuggled through under an old stage's name.
+
+**Branches.** `claude/empire-s5-build-h9rvca` stays the historical/shared
+baseline and is not force-pushed or rewritten. Grok Build Session B works in
+its own `claude/*` branch and worktree, not on this one. Claude Code Session
+B's future visual-lane work, once resumed, does the same rather than
+committing directly onto the shared baseline — both lanes start from a
+documented common commit so integration stays auditable, matching this file's
+existing worktree discipline ("Use git worktrees for parallel builders so
+concurrent work does not collide").
 
 ## Subagent Roles
 

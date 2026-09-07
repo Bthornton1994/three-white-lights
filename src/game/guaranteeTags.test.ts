@@ -660,8 +660,28 @@ const GUARANTEE_COVERAGE = {
    * one word in one file, and running this test with only that word reverted
    * back to the dodge reads `expected 236 to be 235` — so the whole delta is
    * this one paragraph's own capitalised absolute, not a change anywhere else.
+   *
+   * 236 -> 237, taken across a governance change rather than a code change,
+   * and recorded here under the same "data, not a restructure" reading this
+   * file's own precedent already applies to this one constant (CLAUDE.md's
+   * "Session B" ownership of `src/empire/**` was split into two lanes; the
+   * governance edit itself lives in CLAUDE.md, which this scan does not
+   * read, so it moved nothing here on its own). Measured by re-running the
+   * standalone reimplementation of this file's own scan against `src/empire`
+   * before and after that same round's Stage C.1a work: two new triggering
+   * paragraphs, not zero, contrary to that round's own evidence bundle,
+   * which scoped only that directory's own suite and never ran this test.
+   * One, in `stationView.ts`, described a prior round's shipped state rather
+   * than claiming anything about the code as it now stands, so it was
+   * reworded to lower case and declined the bump, the same disposition this
+   * file's own "method note" precedent gives that shape. The other, in
+   * `GymScreen.tsx`, is a present-tense claim that Stage C.1 deleted the old
+   * duplicate per-item report rather than merely relocating it — checkable,
+   * and checked, by the tests pinning the deleted testIDs' absence — so it
+   * took the bump alone. Net across the round: one decline, one bump, this
+   * constant +1.
    */
-  TREE_WIDE: 236,
+  TREE_WIDE: 237,
 } as const;
 
 // ---------------------------------------------------------------------------
