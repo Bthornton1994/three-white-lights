@@ -30,13 +30,17 @@ Under this mode:
 If switching to human-paced phased building instead, replace this section with
 the phase gates in GDD §10.
 
-## Session Coordination — TWO SESSIONS ARE RUNNING ON THIS REPO
+## Session Coordination — THREE LANES ARE RUNNING ON THIS REPO
 
-**Read this before claiming any piece. There is more than one Claude Code
-session working in this repository, and neither can see the other's
-conversation.** Coordination lives here, in the tree, because that is the only
-channel both sessions actually share. If you are a session that has just started
-and has no history, this section tells you which half of the repo is yours.
+**Read this before claiming any piece.** Coordination lives here, in the
+tree, because that is the only channel the lanes actually share. If you are a
+session that has just started and has no history, this section tells you which
+files are yours.
+
+The older sentence "Session B owns `src/empire/**`" is **superseded**. It
+described the first split (main loop vs idle layer). It is still true that
+Session A stays out of `src/empire`. It is **no longer true** that one Claude
+session owns every file under `src/empire`.
 
 ### Current Stage G authority (independently verified)
 
@@ -48,29 +52,127 @@ stay blocked. Do not wire `memberDuesGymBucks` / `reputationFromMembers`
 / old crowding satisfaction merely because those functions exist.
 G2-CONDITION-01, G2-FIT-01, G2-TYPE-01, and G2-ATHLETE-SEASON-01 stay
 open. Career → Empire reputation and Portfolio stay blocked.
+Do not start G.2C3 / G.2D / G.2E or D2 expansion.
 
-### The split
+### CURRENT organization (this is the live table)
 
-| | Session A — the main loop | Session B — the parallel scope |
+| Lane | Agent | Owns |
 |---|---|---|
-| Owns | everything not listed to the right | **GDD §5 — Gym Empire, the idle layer** |
-| Branch | `claude/agent-config-setup-m2r6ny` | its own `claude/*` branch, in its own worktree |
-| Files | `src/game`, `src/meet`, `src/cutin`, `src/session`, `src/shell`, `src/lift`, `src/art`, `src/card`, `src/licensing`, `src/audio`, `tools/` | `src/empire/**` (new), plus the three registry rows named below |
+| Session A — the main loop | Claude Code | everything not listed below. `src/game`, `src/meet`, `src/cutin`, `src/session`, `src/shell`, `src/lift`, `src/art`, `src/card`, `src/licensing`, `src/audio`, `tools/` except the Session B capture scripts named under Claude Code Session B |
+| **GROK BUILD SESSION B** | Grok | **what the gym does**: simulation, identity, queues, placement, economy, staff mechanics, presentation-state contract |
+| **CLAUDE CODE SESSION B** | Claude Code | **what the gym looks and feels like**: visual world, animation, player-facing chrome, sprites, interpolation, camera |
 
-**Neither session pushes to `main`, ever.** Both push only to their own
-`claude/*` branch. Merging into `main` is a human's call, not a session's.
+**Neither lane pushes to `main`, ever.** Merging into `main` is a human's
+call. Draft PRs stay draft. Do not merge #22, #25, #46, #49, #51, #52.
 
-### Session B's scope, stated exactly
+Grok must not put visual instructions (clip names, sprite ids, glows, camera
+shake) into mechanical state. Claude must not recreate simulation logic, queue
+order, placement legality, or economy in the renderer.
 
-**GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion
-Axes, §5.5 Social Layer — built pure-logic-first into a new `src/empire/`
-directory**, the way M1–M6 were built before V1 wired them: production curves,
-the offline-earnings cap, NPC output by tier and tenure, deterministic
-recruitment cost, expansion cost tables, reputation. Zero React imports, zero
-side effects, unit tests per exported function (the "Pure logic is separate from
-UI" rule below applies unchanged).
+### File ownership inside `src/empire/`
 
-**Explicitly OUT of Session B's scope, because these are the collision:**
+Do **not** treat `src/empire/**` as a free-for-all. Edit only the files your
+lane owns, unless a crossing is written in this section **before** the work.
+
+**GROK BUILD SESSION B owns (mechanics / simulation / contract):**
+
+- `empireCore.ts`, `empireInvariant.ts`, `empireTuning.ts`
+- `floor.ts`, `floorSim.ts`, `trainingStation.ts`, `stationCapability.ts`
+- `sessions.ts`, `ladder.ts`, `management.ts`
+- `members.ts`, `livingMembers.ts`, `livingMemberExperience.ts`, `livingMemberRetention.ts`
+- `production.ts`, `engagement.ts`, `expansion.ts`, `pacing.ts`
+- `npc.ts`, `recruitment.ts`, `reputation.ts`, `social.ts`, `sportingReputation.ts`
+- `worldView.ts` — occupancy facts for the renderer; not a second sim
+- `stationView.ts` — mechanical HUD facts and copy selectors; Claude styles how they appear
+- `presentationState.ts` — the renderer-independent world snapshot **Grok writes and Claude reads**
+- matching `*.test.ts` for those modules
+- `docs/design/SESSION-B-PRESENTATION-CONTRACT.md`
+- `docs/design/LIVING-GYM-WORLD.md` (architecture diagnosis)
+
+**CLAUDE CODE SESSION B owns (visual world / animation / player-facing UX):**
+
+- `FloorGrid.tsx` — renderer, interpolation, selection chrome, placement ghost
+- `GymScreen.tsx` — facility scene, dock chrome, Play/Build surfaces
+- `floorSprites.ts` — sprite painters and URI tables
+- `ironAmberArt.ts` — owned-art URI adapter
+- matching tests: `GymScreen.test.ts`, `floorSprites.test.ts`, `ironAmberArt.test.ts`
+- `public/empire-art/**` and `docs/design/IRON-AMBER*` / art-01 / art-02 screenshots
+- capture scripts already in `tools/` for Gym Empire visual proof
+  (`capture-c1b-gym.mjs`, `capture-c1c-gym.mjs`, `capture-iron-amber-art.mjs`,
+  `capture-living-world.mjs`, `smoke-c1d-visible.mjs`, the gym/floor
+  reachability verifiers)
+
+**Shared contract / registry surfaces (neither lane edits the other's half silently):**
+
+| Surface | Rule |
+|---|---|
+| `presentationState.ts` + `docs/design/SESSION-B-PRESENTATION-CONTRACT.md` | Grok writes the facts. Claude reads them. Claude does not add visual fields. Grok does not add clip/sprite/camera fields. |
+| `empireTuning.ts` | Grok owns the numbers. Claude may read cadence and sizes. Claude does not retune. |
+| `ladderView.tsx` | **MIXED FILE.** `GymViewState`, `GymViewAction`, `gymViewReduce` = Grok. `GymView` JSX chrome = Claude. Crossing required to edit the other half. |
+| `CLAUDE.md` (this section) | Both lanes write a crossing here **before** touching a file they do not own. |
+| `src/tuning/audit.ts`, `audit.test.ts`, `index.ts` | Existing Session A / Session B registry. Same three-row rule as below. |
+| `docs/GDD.md` | Design authority. Update in the same commit as a real design change. |
+
+AmbientMemberBody in `FloorGrid.tsx` stays Claude-owned. Its props must not grow
+a dispatch or game-state channel.
+
+### Crossing procedure
+
+If a lane needs a file it does not own:
+
+1. Write the crossing in **this section** before the work starts — not only in
+   a commit message, not only in a conversation the other lane cannot read.
+2. Name the file, the reason, and which lane will make the edit.
+3. Do not "just this once" silently.
+4. Human owns merge. Keep draft PRs draft.
+
+Scope changes are written here **before** crossing the boundary. That is the
+repo's own coordination rule and it still holds.
+
+### Branch / worktree policy
+
+| Lane | Branches | Worktree |
+|---|---|---|
+| Session A | its `claude/*` main-loop branch | its own worktree; stays out of `src/empire/**` |
+| Grok Build Session B | `grok/session-b-*` (mechanics / contract). Current contract lane: `grok/session-b-presentation-contract` (draft PR #52), stacked on living-world #51 | do not rebase or merge Session A or `main` |
+| Claude Code Session B | visual stacked drafts: #46 Iron & Amber home, #49 art-01/art-02, #51 living-world occupancy renderer | do not modify #46 / #49 / #51 contents from the Grok lane; do not merge them |
+
+- Name every Session B worktree branch `claude/*` or `grok/session-b-*` so the
+  silent-worktree scan can see it (historical rule, still in force).
+- Do not convert TanStack Start. Do not re-add `dev` to `package.json`.
+- Untracked App Builder chrome stays untracked.
+- TRAIN remains Session A `shell-leave-gym`. Do not edit Session A lift mechanics.
+- Queue *capacity-upgrade* visual proof is next after this contract, not a
+  silent start.
+
+A governance-only commit that touches this file is the shared coordination
+edit. Both Grok and Claude lanes must read it before the next Session B
+crossing. Cherry-pick it rather than leaving the split described only on one
+private mechanics branch.
+
+The 0a4f3919 / 57006e93 module-by-module why-column is not deleted from git
+history. **CURRENT organization above wins** if that column disagrees.
+Explicit supersessions: `worldView.ts` is Grok occupancy facts; `stationView.ts`
+is Grok mechanical HUD facts (Claude styles how they appear);
+`presentationState.ts` is the Grok world-truth contract Claude reads.
+`empireTuning.ts` remains shared-append; `ladderView.tsx` remains mixed;
+`empireForbiddenOutput.test.ts` / `directoryWalk.test.ts` / `empireSweep.test.ts`
+remain a shared pin surface.
+
+### Historical Session A / Session B split (still in force for Session A)
+
+The table that follows is the **first** split: main loop vs Gym Empire idle
+layer. Session A still does not edit `src/empire/**`. What it must not be
+read as: a licence for one Claude session to own every empire file end to end.
+The live table is **CURRENT organization** above.
+
+| | Session A — the main loop | Session B — the idle layer (now split internally) |
+|---|---|---|
+| Owns | everything not listed to the right | **GDD §5 — Gym Empire** |
+| Branch | `claude/agent-config-setup-m2r6ny` | Grok `grok/session-b-*` and Claude visual drafts, each in their own worktree |
+| Files | `src/game`, `src/meet`, `src/cutin`, `src/session`, `src/shell`, `src/lift`, `src/art`, `src/card`, `src/licensing`, `src/audio`, `tools/` | `src/empire/**` **divided by the ownership table above**, plus the three registry rows named below |
+
+**Explicitly OUT of every Session B lane, because these are the collision:**
 
 - **`src/game/progression.ts`.** The Gym Empire loop eventually has to write a
   wallet, and that write is a progression intent. Do not add one. That file is
@@ -81,7 +183,7 @@ UI" rule below applies unchanged).
   (`physioDaysSaved`) and is a Session A file. Read the constant; do not edit it.
 - **A screen or route.** `src/shell/shellRoute.ts` and `AppShell.tsx` are Session
   A's, and A has a shell grading pass queued. A render-only view under
-  `src/empire/` is fine; wiring it into the shell is not.
+  `src/empire/` is Claude Code Session B's; wiring it into the shell is not.
 
 ### Why §5 is the disjoint piece, and not merely the unstarted one
 
@@ -134,9 +236,11 @@ either.
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
-piece there. If either session needs to cross the line, the crossing is written
-into this section **before** the work starts — not into a commit message, not
-into a conversation the other session cannot read.
+piece there. Inside Session B, Grok and Claude do not freely edit each other's
+files — see **CURRENT organization** and **Crossing procedure** above. If a
+lane needs to cross, the crossing is written into this section **before** the
+work starts — not into a commit message, not into a conversation the other
+lane cannot read.
 
 ### Crossings Session B needed — one is DONE, one is still open
 
@@ -1287,44 +1391,6 @@ edit. Whoever owns that file should take the two-row bump, or say why either
 paragraph is a method note rather than a claim — the reasoning above is
 written so that judgement can be made without re-deriving it.
 
-### TWO MORE FROM STAGE C.1A, FOUND WHILE VERIFYING THE GOVERNANCE SPLIT
-### BELOW — ONE TAKEN, ONE DECLINED, THE PIN NOW 237
-
-Found incidentally rather than sought: verifying that the governance-split
-edit below did not itself move `GUARANTEE_COVERAGE.TREE_WIDE` (it does not —
-this scanner reads only `.ts`/`.tsx` under `src`, and the split lives in this
-file) surfaced that the real count had already drifted since the S4d round
-above, independent of that edit. Stage C.1a's own evidence bundle scoped only
-`src/empire`'s own suite and never ran this test, so the drift shipped
-unnoticed on `f097695b`. Measured the same way as every entry above it: the
-standalone reimplementation of this file's scan, run against `src/empire`
-before and after Stage C.1a, names two new triggering paragraphs and nothing
-else — everything else in the delta is line-number drift from the round's
-own edits.
-
-One, in `stationView.ts`, explained why a condition check is asked twice by
-naming what the immediately preceding round's panel had done — a
-historical/comparative note about that earlier round, not a claim this one
-makes about the code as it now stands. Reworded to lower case, disclosed at
-the site, the same disposition the S4d round's `management.test.ts` paragraph
-above already got for the identical shape.
-
-The other, in `GymScreen.tsx`, is a present-tense claim that Stage C.1
-deleted the old duplicate per-item report rather than only relocating it —
-checkable, and checked, by the tests pinning the deleted testIDs' absence.
-Unlike the two S4d-round claims left owed above, `src/game/guaranteeTags.test.ts`
-is not treated as barred this round: the file's own precedent (Crossing 4 and
-its three successors) already established that this one constant is "data,
-not a restructure" and may be bumped directly by whichever session's prose
-moved it, so the bump was taken rather than left as an eighth undercount.
-236 -> 237.
-
-The two owed-and-undocumented claims from the S4d round two entries above are
-untouched by this — they are not this round's debt, and the gap between the
-new pin (237) and the real count (239) is exactly those two, unchanged.
-Whoever next reconciles this constant should expect a live count of at least
-239 for that reason, not 237, until those two are separately disposed.
-
 ### CROSSING 6, APPROVED BY THE HUMAN DIRECTLY: WIRING GYM EMPIRE INTO
 ### `src/shell/**`, AND WHY THE THING BEING WIRED IS NOT `GymView`
 
@@ -1545,145 +1611,6 @@ exists to prevent.
 Full reasoning and the three provisional proposals (grid dimensions, the
 layout-to-satisfaction formula, the pathing-interruption fallback) are in
 `docs/GDD.md` §5.13, not repeated here.
-
-### SESSION B IS SPLIT IN TWO — GROK BUILD SESSION B AND CLAUDE CODE SESSION
-### B — RULED BY A HUMAN, SUPERSEDING "SESSION B OWNS `src/empire/**` IN
-### FULL"
-
-Ruled by a human, dated 2026-09-07, as the section on scope shifts above
-requires: written here before either lane crosses the old boundary, not
-discovered in a merge. This replaces the ownership model that has governed
-every round recorded above it in this file — "Session B builds the §5 loop,
-because it owns the subsystem's context end to end" and every crossing built
-on that premise — with a two-lane split inside what was one session's scope.
-Nothing above this point is deleted or wrong for its own round; it is
-superseded going forward, the same way GDD §5 v1 stayed true history under v2.
-
-**The split.** `src/empire/**` no longer has one owner. It has two:
-
-- **Grok Build Session B — simulation / mechanics / gameplay truth.** The
-  authoritative state: what the gym does, independent of how it is drawn.
-- **Claude Code Session B — visual world / animation / UI/UX / player-facing
-  presentation.** How that state is rendered, animated and interacted with.
-
-**The file/module ownership table, read off the actual tree rather than
-guessed from the domain list in the ruling.** `src/empire/` has 31 non-test
-modules on the current Session B contract lineage (three `.tsx` React Native
-components — the whole directory's only React surface, per the import-fence
-discipline the directory has held since E0 — the rest pure TypeScript). The
-original governance table at `0a4f3919` counted 22 modules on Stage C.1a;
-this amendment names the world-truth contract that table predates, and the
-modules that landed with C1b / living-world / D2 without silently claiming
-`stationView.ts` is still the sole presentation-state contract.
-
-| Module | Owner | Why |
-|---|---|---|
-| `empireCore.ts` | Grok | Shared vocabulary and the Sim-progression seam — foundational simulation types, read by both lanes but authored as truth. |
-| `empireTuning.ts` | **Shared — see below** | One frozen constants object; both lanes append to it. |
-| `empireInvariant.ts`, `engagement.ts` | Grok | Calendar-composed invariant/measurement sweeps over the mechanics — verification of gameplay truth, not of anything drawn. |
-| `ladder.ts` | Grok | Rungs, relocation, money accrual — progression/economy truth. |
-| `sessions.ts` | Grok | Sessions and equipment groups — the training/business tension itself. |
-| `members.ts` | Grok | Member types and satisfaction — member-lifecycle mechanics. |
-| `management.ts` | Grok | Staffing, maintenance, equipment condition, recoverable failure — the authoritative condition/repair/failure state `stationView.ts` (Claude) reads and reshapes for the panel. |
-| `npc.ts`, `recruitment.ts` | Grok | Roster output by tier/tenure; deterministic (no-gacha) recruitment — staff mechanics. |
-| `production.ts` | Grok | §5.1/§5.2 resource-generation arithmetic over an injected clock — throughput/economy truth. |
-| `expansion.ts` | Grok | §5.4's four expansion axes — cost, gate, build time truth. |
-| `reputation.ts` | Grok | Reputation accrual, unlocks, sponsor Gym Bucks — progression/economy truth. |
-| `social.ts` | Grok | Leaderboards, friend visits, weekly rival — social mechanics. |
-| `pacing.ts` | Grok | The economy pacing simulator (Stage B) — composes the ladder/management truth above over real check-in cadences; no rendering. |
-| `floor.ts` | Grok | Grid, placement validity, collision, `FloorState` — placement truth (station identity and coordinates), independent of how a placed item is drawn. |
-| `floorSim.ts` | Grok | Member pathing, queuing, station occupancy — movement truth and queue truth, the sharpest instance of "what the gym does." Canonical service order is `claimantsOf` here. |
-| `livingMembers.ts`, `livingMemberExperience.ts`, `livingMemberRetention.ts` | Grok | Living-member identity (`GymMemberId`), visit experience, retention pressure. |
-| `stationCapability.ts`, `trainingStation.ts` | Grok | Station Q/C/T axes and training-station semantics. |
-| `sportingReputation.ts` | Grok | Sporting-reputation mechanics. |
-| `presentationState.ts` | **Grok — the Session B world-truth contract** | Authoritative renderer-independent living-gym read-model: members by `GymMemberId`, queues, occupancy, SKU equipment, staff-as-manager, persistable shape. Claude binds a renderer to this. It originates no pixels. |
-| `docs/design/SESSION-B-PRESENTATION-CONTRACT.md` | Grok | Contract documentation for `presentationState.ts`. |
-| `floorSprites.ts` | **Claude, despite the `.ts` extension** | Sprite pose/facing/index-grid derivation for the 16-bit art pass. Pure TypeScript per this file's own convention (testable without React), but its entire subject is visual representation — it holds no economic or member-decision truth, only how `floorSim.ts`'s truth is drawn. Flagged explicitly so the extension is never read as the ownership signal here. |
-| `ironAmberArt.ts` | Claude | Iron & Amber atmosphere plates — presentation assets, not sim truth. |
-| `worldView.ts` | Claude | Occupancy convenience FloorGrid already draws. A presentation-specific projector, **not** the world-truth contract. |
-| `stationView.ts` | **Claude — station-panel/UI selector** | Narrower pure selector that reshapes Grok mechanical truth (`management.ts` / `floorSim.ts` / the world contract) into one read model per tapped station for `FloorGrid.tsx`'s panel. It originates no truth of its own. **Not** the Session B presentation-state contract now that `presentationState.ts` exists. Claude authors its panel shape; if a needed fact is not yet exposed by a Grok-owned module, that is a request to Grok for a new accessor, not a reason to re-derive the fact here. |
-| `FloorGrid.tsx` | Claude | World rendering, drag/tap interaction, the floor's visual composition — consumes `floor.ts`/`floorSim.ts`/`floorSprites.ts`/`stationView.ts` truth and draws it. |
-| `GymScreen.tsx` | Claude | The shipped native screen — layout, chrome, copy, the S4e–S4i/Stage-C presentation fixes. |
-| `ladderView.tsx` | **Mixed — flagged, not split this round** | See below. |
-
-**`empireTuning.ts` is genuinely shared, and that is by design, not a gap.**
-"Game Feel Values Must Be Tunable" already requires every tunable value to
-live as one named constant in one place rather than scattered; that rule does
-not stop applying because there are now two lanes. The file already carries a
-per-constant `classification` (the same grammar `src/tuning/audit.ts` reads):
-balance/economy constants (`classification: 'balance'` and similar — costs,
-rates, thresholds, caps) are Grok's; UI-geometry, animation and feel constants
-(`classification: 'feel'`/`'knob'` — paddings, border radii, drag thresholds,
-clearance pixels, the S4h/S4i/Stage-C additions) are Claude's. Both lanes
-**append** new named constants; neither lane edits a constant it does not own
-without routing the change through this file the way every other crossing in
-this document has been routed. Collision risk is additive-append, which is
-low, not editing-in-place, which would not be.
-
-**`ladderView.tsx` is mixed and is named rather than silently split.** It
-holds two different things in one file: `LadderView`/`GymView` — actual
-render components, Claude's — and `ladderViewReduce`/`gymViewReduce` — the
-reducers that translate a player's tapped intent into calls on Grok-owned
-truth functions (`moveUpLadder`, `placeFloorItem`, `repairEquipment`,
-`hireManager`, and so on). The reducer is the seam in motion the same way `presentationState.ts` is the
-world seam at rest and `stationView.ts` is the panel selector: it originates
-no truth, it only routes an intent to the function that owns the answer. Per the ruling's own
-instruction — "preserve behavior, do not perform broad refactors merely for
-organizational aesthetics" — this file is not split this round. Recorded as
-future architecture work: if `ladderViewReduce`/`gymViewReduce` keep growing
-faster than the components around them, extracting them into a dedicated
-reducer module gives the reducer half a clean single owner (arguably Claude,
-since it is UI-intent routing, not truth) without moving any Grok-owned
-arithmetic.
-
-**A second shared surface now exists, the same shape `src/tuning/` already
-is between Session A and Session B.** `empireForbiddenOutput.test.ts`,
-`directoryWalk.test.ts` and `empireSweep.test.ts` are whole-directory census
-and fence tests — they pin counts and structural properties over every file
-in `src/empire/`, not over one module. A change by either lane can move a
-pinned count in these three files exactly the way a new `src/empire/`
-declaration already moves `GUARANTEE_COVERAGE.TREE_WIDE` in Session A's
-`guaranteeTags.test.ts`. Neither lane owns these three files individually;
-both lanes may need to update a pin after their own change, read the real
-failure value rather than guessing it (this directory's own established
-discipline, unchanged), and note the update plainly in the commit that causes
-it.
-
-**The seam, stated once rather than per-file.** Grok owns the WORLD TRUTH
-CONTRACT (`presentationState.ts` + this table's Grok modules) — stable
-identity, member lifecycle state and destination, queue membership and order
-(`claimantsOf` in `floorSim.ts`), station occupancy, equipment identity and
-condition, placement coordinates, staff assignments, throughput, economy
-values, and facility/failure state. Claude owns how those facts are rendered,
-animated and interacted with, and may own presentation-specific selectors
-derived from that truth (`stationView.ts` for the tapped-station panel,
-`worldView.ts` for FloorGrid occupancy). Claude consumes Grok's truth through
-exported functions and types — never by recomputing a queue order, a
-condition value, a repair price or a placement rule inside a `.tsx`, which is
-this file's existing "pure logic is separate from UI" rule applied across the
-new lane boundary rather than only across the React/non-React one. Claude
-does not dictate what the simulation does; Grok does not dictate how it
-looks. Do not call `stationView.ts` the sole Session B presentation-state
-contract.
-
-**Stage gates are unchanged by this split, and are recorded here so neither
-lane relabels them.** GDD §5.14 Stage C.1a is built and independently
-verified at commit `f097695b` on `claude/empire-s5-build-h9rvca`; that commit
-is not rewritten by this reorganization and is the shared baseline both lanes
-branch from. The Stage C human phone playtest is **not closed** — only the
-human closes it. Stage C2 and Stage D are **not authorized** by this ownership
-change; nothing about who owns which file moves a design gate. Work that
-follows this split and is not itself Stage C2/D is recorded as its own named
-corrective slice, not smuggled through under an old stage's name.
-
-**Branches.** `claude/empire-s5-build-h9rvca` stays the historical/shared
-baseline and is not force-pushed or rewritten. Grok Build Session B works in
-its own `claude/*` branch and worktree, not on this one. Claude Code Session
-B's future visual-lane work, once resumed, does the same rather than
-committing directly onto the shared baseline — both lanes start from a
-documented common commit so integration stays auditable, matching this file's
-existing worktree discipline ("Use git worktrees for parallel builders so
-concurrent work does not collide").
 
 ## Subagent Roles
 
