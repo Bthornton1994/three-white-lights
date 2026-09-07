@@ -495,6 +495,26 @@ export const SESSION_LAYOUT = Object.freeze({
   DISCLOSURE_FONT: 11,
   DISCLOSURE_LINE_HEIGHT: 16,
   DISCLOSURE_GAP: 8,
+
+  /**
+   * Dark wash over the Iron & Amber briefing gym so the readiness card stays
+   * readable. Not a second palette — the gym is the room; this is type contrast.
+   */
+  BRIEFING_SCRIM: 0.32,
+  BRIEFING_CARD_PAD: 18,
+  BRIEFING_CARD_RADIUS: 14,
+  BRIEFING_CARD_BORDER: 1,
+});
+
+/**
+ * Height cuts for Iron & Amber training plates. Authored here so `src/session/`
+ * does not grow bare literals. Deadlift cuts must never select a squat plate.
+ */
+export const IRON_AMBER = Object.freeze({
+  SQUAT_HOLE_MAX: 0.42,
+  BENCH_CHEST_MAX: 0.4,
+  DEADLIFT_FLOOR_MAX: 0.34,
+  DEADLIFT_LOCKOUT_MIN: 0.78,
 });
 
 /**

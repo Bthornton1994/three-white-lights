@@ -35,7 +35,7 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LiftStage } from '../lift/LiftStage';
+import { LiftStage } from './TrainingLiftStage';
 import { useLiftLoop } from '../lift/useLiftLoop';
 import { totalKgFor } from '../lift/liftFrame';
 import {
