@@ -412,6 +412,7 @@ import * as floorGridModule from './FloorGrid';
 import * as floorSimModule from './floorSim';
 import * as floorSpritesModule from './floorSprites';
 import * as gymScreenModule from './GymScreen';
+import * as ironAmberArtModule from './ironAmberArt';
 import * as ladderModule from './ladder';
 import * as ladderViewModule from './ladderView';
 import * as livingMemberExperienceModule from './livingMemberExperience';
@@ -1325,6 +1326,22 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'floorSim.ts#withAmbientLivingPopulation#return.livingPopulation[].memberId',
     ]),
   }),
+  Object.freeze({
+    field: 'ironAmberArt owned-art URI stems',
+    why:
+      'Session B owned-art adapter. Every export is a root-relative PNG path under /empire-art/ or a frozen stem list of those files. The payloads are path strings, not image bytes, so there is no closed union to narrow them to and a brand would add a constructor without a check. Instrument B containment-scans every produced URI; ironAmberArt.test.ts joins each stem to a real PNG on disk.',
+    positions: Object.freeze([
+      'ironAmberArt.ts#IRON_AMBER_ART_STEMS#value[]',
+      'ironAmberArt.ts#ironAmberArtRoot#return',
+      'ironAmberArt.ts#ironAmberArtUri#return',
+      'ironAmberArt.ts#ironAmberFixedUri#return',
+      'ironAmberArt.ts#ironAmberFloorPlaneUri#return',
+      'ironAmberArt.ts#ironAmberFloorUri#return',
+      'ironAmberArt.ts#ironAmberMemberUri#return',
+      'ironAmberArt.ts#ironAmberPlateTreeUri#return',
+      'ironAmberArt.ts#ironAmberSessionUri#return',
+    ]),
+  }),
 ]);
 
 /**
@@ -1676,7 +1693,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 28, // Stage G.2B livingMemberRetention.ts
+  MODULES: 29, // Iron & Amber owned-art adapter
   // 273 -> 280: GymView's four new exports (createGymViewState, GymViewState,
   // GymViewAction, GymViewRefusal don't count as runtime exports — the seven
   // that do are createGymViewState, gymViewReduce, GymView from ladderView.tsx
@@ -1779,7 +1796,7 @@ const SURFACE_CENSUS = Object.freeze({
   // stationChangeoverSeats, stationChangeoverTicks, playerFacingStationOperation.
   // 429 -> 432: Stage D2.2 plateLoadingProgress, plateLoadingDiscs,
   // ladderDevClockTestId.
-  EXPORTS: 463, // Stage G.2B livingMemberRetentionPressure + statuses
+  EXPORTS: 472, // Iron & Amber owned-art adapter + floor-plane URI
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1798,8 +1815,8 @@ const SURFACE_CENSUS = Object.freeze({
   // 122 -> 125: Stage D playerFacingUpgradeLabel/Effect/Refuse.
   // 128 -> 130: Stage D.1b bay qualityBench + plateTree URI leaves.
   // 130 -> 132: Stage D2.1B changeoverSeatKey + playerFacingStationOperation.
-  BARE_POSITIONS: 182, // Stage G.2B retention label + reasons
-  BARE_FIELDS: 6, // Stage G.1A floorSim memberId group added
+  BARE_POSITIONS: 191, // Iron & Amber owned-art URI returns + floor-plane
+  BARE_FIELDS: 7, // ironAmberArt URI stem group
   BRANDED_POSITIONS: 34,
   /**
    * Zero, and the zero is the sixteenth bypass's repair rather than a fact
@@ -3004,7 +3021,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // calls no brand constructor either.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts joins the walk; it
   // calls no brand constructor either.
-  MODULES: 28, // Stage G.2B livingMemberRetention.ts
+  MODULES: 29, // Iron & Amber owned-art adapter
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -3160,7 +3177,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // and FloorGrid presentation helpers. Read from this pin's own failure.
   // 3361 -> 3375: Stage D2.1A live-Capacity seat assignment / relocate helpers.
   // 3375 -> 3405: Stage D2.1B changeover helpers + FloorGrid loading path.
-  CALLS_EXAMINED: 3664, // Iron & Amber occupancy cards + compact HUD
+  CALLS_EXAMINED: 3710, // Iron & Amber owned-art adapter calls
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3359,7 +3376,7 @@ describe('instrument C — a raw string becomes a brand in a countable number of
     // (static frozen data with no branch point, read and containment-scanned
     // unconditionally) lives at the group.
     expect(DECLARED_BARE_STRING_FIELDS.length).toBe(SURFACE_CENSUS.BARE_FIELDS);
-    expect(SURFACE_CENSUS.BARE_FIELDS).toBe(6); // Stage G.1A floorSim memberId group added
+    expect(SURFACE_CENSUS.BARE_FIELDS).toBe(7); // ironAmberArt URI stem group
     const keyGroup = DECLARED_BARE_STRING_FIELDS.find((group) =>
       group.field.includes('ReactElement.key'),
     );
@@ -3709,6 +3726,7 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'floorSprites.ts': floorSpritesModule as unknown as Readonly<Record<string, unknown>>,
   'FloorGrid.tsx': floorGridModule as unknown as Readonly<Record<string, unknown>>,
   'GymScreen.tsx': gymScreenModule as unknown as Readonly<Record<string, unknown>>,
+  'ironAmberArt.ts': ironAmberArtModule as unknown as Readonly<Record<string, unknown>>,
   'ladder.ts': ladderModule as unknown as Readonly<Record<string, unknown>>,
   'ladderView.tsx': ladderViewModule as unknown as Readonly<Record<string, unknown>>,
   'management.ts': managementModule as unknown as Readonly<Record<string, unknown>>,
@@ -7411,6 +7429,24 @@ function driveEverything(): readonly DrivenRow[] {
         dispatch: gymSilent,
       }), [gymRich],
     );
+  }
+
+  // --- ironAmberArt.ts (Session B owned-art URI adapter)
+  {
+    drive('IRON_AMBER_ART_STEMS', 'vocab', () => ironAmberArtModule.IRON_AMBER_ART_STEMS);
+    drive('ironAmberArtRoot', 'root', () => ironAmberArtModule.ironAmberArtRoot());
+    drive('ironAmberArtUri', 'floor', () => ironAmberArtModule.ironAmberArtUri('floor-garage'));
+    drive('ironAmberFloorUri', 'garage', () => ironAmberArtModule.ironAmberFloorUri('garage'));
+    drive('ironAmberFloorUri', 'unknown-rung', () => ironAmberArtModule.ironAmberFloorUri('attic'));
+    drive('ironAmberFloorPlaneUri', 'plane', () => ironAmberArtModule.ironAmberFloorPlaneUri());
+    drive('ironAmberMemberUri', 'stand', () =>
+      ironAmberArtModule.ironAmberMemberUri('athlete', 'stand', 'right'),
+    );
+    drive('ironAmberFixedUri', 'bench', () => ironAmberArtModule.ironAmberFixedUri('flat-bench', false));
+    drive('ironAmberFixedUri', 'quality', () => ironAmberArtModule.ironAmberFixedUri('flat-bench', true));
+    drive('ironAmberFixedUri', 'unknown', () => ironAmberArtModule.ironAmberFixedUri('squat-rack', false));
+    drive('ironAmberPlateTreeUri', 'tree', () => ironAmberArtModule.ironAmberPlateTreeUri());
+    drive('ironAmberSessionUri', 'mats', () => ironAmberArtModule.ironAmberSessionUri('mats'));
   }
 
   // --- sessions.ts (GDD §5 v2, stage 2)
@@ -11304,7 +11340,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 593544 -> 595928: Stage C.1b furniture-layout exports, GYM_SURFACES, and
   // the larger GymScreen tree. Re-measured by running this assertion.
   // 595954 -> 595972: Stage C.1d playerFacing* drives.
-  ROWS: 600657, // Stage G.2B livingMemberRetention drive
+  ROWS: 600670, // + ironAmberFloorPlaneUri drive row
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -11331,7 +11367,7 @@ const DRIVE_CENSUS = Object.freeze({
   // exports (isRecoveryBlocking, recoveryBlockingItems), both driven above.
   // 382 -> 389: Stage C.1b six floor furniture exports + GYM_SURFACES.
   // 393 -> 396: Stage C.1d three playerFacing* drives.
-  EXPORTS_DRIVEN: 463, // Stage G.2B livingMemberRetentionPressure + statuses
+  EXPORTS_DRIVEN: 472, // Iron & Amber owned-art adapter + floor-plane URI
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -11424,7 +11460,7 @@ const DRIVE_CENSUS = Object.freeze({
   // failure value.
   // 6490388 -> 6510102: Stage C.1b furniture/dock GymScreen trees. Measured.
   // 6510907 -> 6510913: Stage C.1d playerFacing* drive rows.
-  NODES: 6546238, // Iron & Amber occupancy cards + compact HUD
+  NODES: 6546313, // + floor-plane URI node
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -11545,7 +11581,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_200_775, // Iron & Amber occupancy cards + compact HUD
+  STRINGS: 30_201_168, // + per-rung rooms, floor-plane, session stems
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -11655,7 +11691,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
   // 3973 -> 3975: Stage D2 reset-gym copy / wear-truth strings. Read from
   // this pin's own failure value.
-  DISTINCT_STRINGS: 4242, // Iron & Amber occupancy cards + compact HUD
+  DISTINCT_STRINGS: 4320, // + per-rung rooms, floor-plane, session stems
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
   DEPTH_CUTS: 7,
   /**
@@ -11820,7 +11856,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 6018 -> 6070: Stage C.1b GymScreen/FloorGrid Error.stack readings. Measured.
   // 6247 -> 6253: Stage D2 reset-gym Pressable stacks on driven GymScreen
   // trees. Read from this pin's own failure value.
-  STACKS: 6323,
+  STACKS: 6335,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -12042,8 +12078,11 @@ const DECLINED_CLOSURE_POSITIONS: readonly string[] = Object.freeze([
   // after the caption `<Text>`, hence `.props.children.1` unchanged).
   // Stage C.1b facility-first tree: HUD, then stage wrapping FloorGrid
   // (children.1 → children.0.props.children). Same embed, new path.
-  'GymScreen#return.props.children.1.props.children.0.props.children.props.dispatch/1',
-  'GymScreen#return.props.children.1.props.children.0.props.children.type/1',
+  // children.0 → children.1: Iron & Amber facility scene sits in front of
+  // FloorGrid inside the stage (`gymscreen-facility-scene` then
+  // `gymscreen-floor`), so the embed is now the stage's second child.
+  'GymScreen#return.props.children.1.props.children.1.props.children.props.dispatch/1',
+  'GymScreen#return.props.children.1.props.children.1.props.children.type/1',
   'accrueProduction#argument.1.gymBucksPerHour/1',
   'accrueProduction#argument.1.trainingIqPerDay/1',
   'gymBucksRatePerHour#argument.1.gymBucksPerHour/1',
@@ -15643,6 +15682,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'livingMemberExperience.ts': 1,
       'livingMemberRetention.ts': 1,
       'livingMembers.ts': 6, // Stage G.1C given-name pool + very-long wait knob
+      'ironAmberArt.ts': 1,
       'management.ts': 6,
       'pacing.ts': 1,
       'production.ts': 1,
@@ -15663,10 +15703,11 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'engagement.ts': 23,
       'expansion.ts': 47,
       'floor.ts': 38,
-      'FloorGrid.tsx': 80,
+      'FloorGrid.tsx': 83,
       'floorSim.ts': 76,
       'floorSprites.ts': 54,
-      'GymScreen.tsx': 12,
+      'GymScreen.tsx': 14,
+      'ironAmberArt.ts': 20,
       'ladder.ts': 28,
       'ladderView.tsx': 34,
       'livingMemberExperience.ts': 36,
@@ -16084,12 +16125,12 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:2731 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:2749 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:807 returned=unfollowable:station',
-  'FloorGrid.tsx:807 returned=unfollowable:station',
-  'FloorGrid.tsx:808 returned=unfollowable:station',
-  'FloorGrid.tsx:808 returned=unfollowable:station',
+  'FloorGrid.tsx:2743 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:2761 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:838 returned=unfollowable:station',
+  'FloorGrid.tsx:838 returned=unfollowable:station',
+  'FloorGrid.tsx:839 returned=unfollowable:station',
+  'FloorGrid.tsx:839 returned=unfollowable:station',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -16138,12 +16179,12 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'stationCapability.ts:104 returned=unfollowable:capability',
 ]);
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1753 FloorSimState asked=true walked=false',
-  'FloorGrid.tsx:807 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:807 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:808 GridSize asked=true walked=false',
-  'FloorGrid.tsx:808 GridSize asked=true walked=false',
-  'FloorGrid.tsx:820 BayBench | undefined asked=true walked=false',
+  'FloorGrid.tsx:1787 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:838 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:838 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:839 GridSize asked=true walked=false',
+  'FloorGrid.tsx:839 GridSize asked=true walked=false',
+  'FloorGrid.tsx:851 BayBench | undefined asked=true walked=false',
   'empireInvariant.ts:1084 GymAxes asked=true walked=false',
   'empireInvariant.ts:1137 GymAxes asked=true walked=false',
   'empireInvariant.ts:1168 readonly ExpansionBuild[] asked=true walked=false',
@@ -16447,7 +16488,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1674 -> 1681: Stage D2 placedOwnedItems / withWear / stationOperationView / reset.
   // 1681 -> 1691: Stage D2.1A assignedSeat / reservedUseCells / relocate helpers.
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
-  function: 1816, // Iron & Amber occupancy cards + compact HUD
+  function: 1858, // Iron & Amber owned-art adapter + scene composition
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16505,7 +16546,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1502 -> 1513: Stage D2 Set.has / Object.freeze / stationByRefKey.get.
   // 1513 -> 1517: Stage D2.1A useCells/blocked/has member calls on live relocate.
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
-  member: 1659, // Iron & Amber occupancy cards + compact HUD
+  member: 1663, // Iron & Amber owned-art adapter + scene composition
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -16614,7 +16655,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 28, // Stage G.2B livingMemberRetention.ts
+  MODULES: 29, // Iron & Amber owned-art adapter
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved.
    * 404 -> 427 with GymView: +13 `return` sites (5 -> 18) and +6
    * `callback-invocation` sites (3 -> 9) on `ladderView.tsx`, +4 `return`
@@ -16701,7 +16742,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 911 -> 916: Stage D2.1A floorSim return 63 -> 68.
   // 916 -> 925: Stage D2.1B floorSim 68→72, stationCapability 24→27,
   // stationView 44→46.
-  SITES: 1048, // Stage G.2B livingMemberRetention + FloorGrid membership sites
+  SITES: 1074, // Iron & Amber owned-art adapter + FloorGrid/GymScreen scene returns
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -16854,7 +16895,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
   // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
   // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
-  NODES_EXAMINED: 84_819, // Iron & Amber occupancy cards + compact HUD
+  NODES_EXAMINED: 85_725, // Iron & Amber owned-art adapter + scene composition
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

@@ -1923,7 +1923,25 @@ describe('Iron & Amber presentation — Gym Empire home chrome', () => {
     expect(source).toMatch(/floorgrid-occupancy-waiting/);
     expect(source).toMatch(/on the machine/);
     expect(source).toMatch(/occupancyCard/);
+    expect(source).not.toMatch(/ironAmberFloorUri/);
+    expect(source).not.toMatch(/testID=\{'floorgrid-floor-texture'\}/);
+    expect(source).toMatch(/testID=\{'floorgrid-floor-plane'\}/);
+    expect(source).toMatch(/ironAmberFloorPlaneUri/);
     expect(source).toMatch(/buildMode \? null : \(\s*<View testID=\{'floorgrid-occupancy'\}/);
+  });
+
+  it('lets GymScreen compose the facility scene in front of FloorGrid interaction', () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const gymSource = readFileSync(join(here, 'GymScreen.tsx'), 'utf8');
+    expect(gymSource).toMatch(/gymscreen-facility-scene/);
+    expect(gymSource).toMatch(/gymscreen-facility-art/);
+    expect(gymSource).toMatch(/ironAmberFloorUri/);
+    const play = render(createGymViewState(), []);
+    expect(findByTestId(play, 'gymscreen-facility-scene')).toBeDefined();
+    expect(findByTestId(play, 'gymscreen-facility-art')).toBeDefined();
+    expect(findByTestId(play, 'gymscreen-facility-art').props['source']).toEqual({
+      uri: '/empire-art/floor-garage.png',
+    });
   });
 
   it('renders a compact HUD strip with title, lights, purse, rate, and rung', () => {
@@ -1935,5 +1953,8 @@ describe('Iron & Amber presentation — Gym Empire home chrome', () => {
     expect(textOf(findByTestId(play, 'gymscreen-gym-bucks'))).toMatch(/^gym bucks:/);
     expect(textOf(findByTestId(play, 'gymscreen-rate'))).toMatch(/gym bucks per hour/);
     expect(textOf(findByTestId(play, 'gymscreen-rung'))).toMatch(/^rung /);
+    expect(textOf(findByTestId(play, 'gymscreen-clock'))).toMatch(/^clock:/);
+    expect(textOf(findByTestId(play, 'gymscreen-accelerated-bucks'))).toMatch(/^accelerated:/);
+    expect(textOf(findByTestId(play, 'gymscreen-more-debug'))).toMatch(/clock:/);
   });
 });

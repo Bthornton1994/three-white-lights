@@ -170,7 +170,8 @@ export const DIRECTORY_WALK = Object.freeze({
   // Bench Bay, equipment is not a training station.
   // 26 -> 27: Stage G.2A `livingMemberExperience.ts`.
   // 27 -> 28: Stage G.2B `livingMemberRetention.ts`.
-  SHIPPED_MODULES: 28,
+  // 28 -> 29: Iron & Amber owned-art adapter (`ironAmberArt.ts`).
+  SHIPPED_MODULES: 29,
   /**
    * Files the shared walk hands the censuses today, tests included.
    *
@@ -198,7 +199,8 @@ export const DIRECTORY_WALK = Object.freeze({
   // 54 -> 56: Stage G.1 `livingMembers.ts` and `livingMembers.test.ts`.
   // 56 -> 58: Stage G.2A `livingMemberExperience.ts` and its test.
   // 58 -> 60: Stage G.2B `livingMemberRetention.ts` and its test.
-  DIRECTORY_FILES: 60,
+  // 60 -> 62: Iron & Amber owned-art adapter and its test.
+  DIRECTORY_FILES: 62,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**
@@ -969,6 +971,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'floor.ts',
       'floorSim.ts',
       'floorSprites.ts',
+      'ironAmberArt.ts',
       'ladder.ts',
       'ladderView.tsx',
       'livingMemberExperience.ts',
