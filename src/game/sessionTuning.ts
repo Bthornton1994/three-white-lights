@@ -534,6 +534,68 @@ export const IRON_AMBER = Object.freeze({
 });
 
 /**
+ * Continuous squat scene. Ratios of the live stage box, authored here so
+ * `src/session/` does not grow bare literals. This is a renderer, not a
+ * retune of `lift.ts`.
+ */
+export const SQUAT_VISUAL = Object.freeze({
+  FLOOR_Y: 0.9,
+  STAND_BAR_Y: 0.3,
+  HOLE_BAR_Y: 0.58,
+  MID_X: 0.5,
+  STANCE: 0.13,
+  KNEE_OUT: 0.035,
+  HIP_DROP: 0.16,
+  KNEE_DROP: 0.08,
+  KNEE_ALONG: 0.5,
+  HEAD_R: 0.03,
+  LIMB_W: 0.03,
+  TORSO_W: 0.07,
+  TORSO_H: 0.16,
+  BAR_THICK: 0.012,
+  SLEEVE_FRAC: 0.22,
+  COLLAR_W: 0.012,
+  RACK_X_INSET: 0.12,
+  RACK_W: 0.022,
+  J_CUP_W: 0.05,
+  J_CUP_H: 0.012,
+  TREMOR_MAX: 0.007,
+  TREMOR_FREQ: 0.62,
+  BREATH_AMP: 0.005,
+  BREATH_FREQ: 0.08,
+  CHALK_COUNT: 7,
+  CHALK_DRIFT: 0.0015,
+  CHALK_SPREAD: 2,
+  CHALK_R_MIN: 0.2,
+  CHALK_R_SPAN: 0.4,
+  CHALK_A: 4,
+  CHALK_RISE: 0.08,
+  GLOW_MIN: 0.12,
+  CAMERA_VEL: 0.05,
+  PLATE_SCALE: 0.42,
+  PLATE_GAP: 0.01,
+  PLATE_MAX_R: 0.11,
+  PLATE_REF_MM: 450,
+  SHAFT_OPACITY: 0.08,
+  DUST_OPACITY: 0.1,
+  LATERAL_SCALE: 0.0004,
+  BEND_SCALE: 0.0008,
+  HASH_A: 12.9898,
+  HASH_B: 78.233,
+  HASH_C: 43758.5453,
+  HASH_HALF: 0.5,
+  BREATH_TORSO: 2,
+  SHAFT_X: 0.34,
+  SHAFT_W: 0.28,
+  DUST_COUNT: 5,
+  DUST_R: 0.004,
+  FOOT_W: 0.045,
+  FOOT_H: 0.014,
+  GLOW_PAD: 0.01,
+  ARM_DROP: 0.015,
+});
+
+/**
  * The pacing guard the server stand-in applies. Kept out of the block above
  * because it is not a feel value a playtester turns with a stopwatch — it is a
  * bound on what the server will accept from a client.

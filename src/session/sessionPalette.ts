@@ -56,6 +56,23 @@ export const SESSION_PALETTE = Object.freeze({
   CARD_EDGE: '#3a2a1c',
   AMBER: '#c9a15b',
 
+  /** Continuous squat rig. Warm gym, not sprite banks. */
+  SQUAT_WALL: '#1a120e',
+  SQUAT_FLOOR: '#241810',
+  SQUAT_RACK: '#4a3a2c',
+  SQUAT_CUP: '#6a5640',
+  SQUAT_SKIN: '#c4a07a',
+  SQUAT_SINGLET: '#1c1612',
+  SQUAT_HAIR: '#24160e',
+  SQUAT_BAR: '#d8d0c4',
+  SQUAT_GLOW: '#e8c27a',
+  SQUAT_CHALK: '#e8dcc8',
+  SQUAT_PLATE_RED: '#b83228',
+  SQUAT_PLATE_BLUE: '#2c4f9a',
+  SQUAT_PLATE_YELLOW: '#d4b43c',
+  SQUAT_PLATE_GREEN: '#2f7a3e',
+  SQUAT_PLATE_BLACK: '#1a1a1a',
+
   /**
    * How sure a progression number is (`progression.ts`'s `ProgressionReading`).
    *

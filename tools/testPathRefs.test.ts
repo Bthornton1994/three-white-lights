@@ -327,7 +327,7 @@ const PINNED = Object.freeze({
    *
    * 339 -> 340 with `docs/design/IRON-AMBER-TRAINING-ASSETS.md`.
    */
-  SCANNED_FILES: 340,
+  SCANNED_FILES: 343,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -377,7 +377,7 @@ const PINNED = Object.freeze({
    * 109 -> 111 with Iron & Amber training plates: `ironAmberPlates.test.ts`
    * and `ironAmberWiring.test.ts`.
    */
-  TEST_FILES: 111,
+  TEST_FILES: 112,
 });
 
 /**

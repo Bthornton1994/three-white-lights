@@ -19,19 +19,25 @@ describe('Iron & Amber training path wiring', () => {
     expect(setView).not.toContain('GymSceneLayer');
   });
 
-  it('TrainingLiftStage loads owned plates and does not raster the sprite gym', () => {
+  it('TrainingLiftStage mounts the continuous squat scene, not squat JPEGs', () => {
     const stage = source('TrainingLiftStage.tsx');
-    expect(stage).toContain("from '../../assets/iron-amber/deadlift-floor.jpg'");
-    expect(stage).toContain("from '../../assets/iron-amber/squat-brace.jpg'");
-    expect(stage).toContain("from '../../assets/iron-amber/bench-brace.jpg'");
-    expect(stage).toContain('ironAmberPlateFor');
-    expect(stage).toContain('testID={`iron-amber-plate-${plateId}`}');
+    expect(stage).toContain("from './SquatScene'");
+    expect(stage).toContain("kind === 'squat'");
+    expect(stage).not.toContain("from '../../assets/iron-amber/squat-brace.jpg'");
     expect(stage).not.toContain('makeSpriteImage');
     expect(stage).not.toContain('GymSceneLayer');
-    expect(stage).not.toContain('renderGymScene');
     expect(stage).not.toContain('TRACE_X');
-    expect(stage).toContain('grindReadout');
     expect(stage).toContain('testID="iron-amber-stage"');
+  });
+
+  it('SquatScene is a persistent Skia rig driven by squatPoseFrom', () => {
+    const scene = source('SquatScene.tsx');
+    expect(scene).toContain('squatPoseFrom');
+    expect(scene).toContain('testID="squat-scene"');
+    expect(scene).not.toContain('ironAmberPlateFor');
+    expect(scene).not.toContain('.jpg');
+    expect(scene).not.toContain('cueRing');
+    expect(scene).not.toContain('TRACE_X');
   });
 
   it('SetView overlays HUD on the plate instead of stacking a debug header above it', () => {

@@ -121,9 +121,12 @@ async function shotLift(vp, kind) {
   await page.getByTestId('session-rpe-8').click({ timeout: 20000 });
   await page.getByTestId('session-set').waitFor({ state: 'visible', timeout: 30000 });
   await page.getByTestId('iron-amber-stage').waitFor({ state: 'visible', timeout: 30000 });
+  if (kind === 'squat') {
+    await page.getByTestId('squat-scene').waitFor({ state: 'visible', timeout: 30000 });
+  }
   await page.waitForTimeout(800);
   const plateTestId = await page.evaluate(() =>
-    [...document.querySelectorAll('[data-testid^="iron-amber-plate-"]')].map((n) =>
+    [...document.querySelectorAll('[data-testid^="iron-amber-plate-"], [data-testid="squat-scene"]')].map((n) =>
       n.getAttribute('data-testid'),
     ),
   );
