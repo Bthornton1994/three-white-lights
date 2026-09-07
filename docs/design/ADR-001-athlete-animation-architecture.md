@@ -231,6 +231,30 @@ can replace it, because deleting the only working stage before its replacement
 exists would leave the training path with nothing to draw. It is marked, not
 polished, and it is not the target.
 
+### What the played path actually draws today, stated plainly
+
+Traced through `SetView.tsx` -> `TrainingLiftStage.tsx` at the SHA above,
+rather than inferred from the PR description. **All three rejected or legacy
+presentations are simultaneously live**, and the reader of this ADR should not
+come away thinking the squat rig replaced anything:
+
+| Surface | Draws | Which architecture |
+| --- | --- | --- |
+| Daily session — squat | `SquatScene` | rejection #2, the Skia primitive rig |
+| Daily session — bench | `StillPlateStage` | **rejection #1**, phase-swapped JPEG stills |
+| Daily session — deadlift | `StillPlateStage` | **rejection #1**, same |
+| Meet Day — all three | `src/lift/LiftStage.tsx` | the legacy sprite stage |
+
+`StillPlateStage` selects one of three `.jpg` files per lift from
+`ironAmberPlateFor(kind, phase, height)`. That is the phase-swap by
+construction: three poses, chosen by a threshold on `height`, with nothing
+between them.
+
+This is the state `docs/design/IRON-AND-AMBER-REFERENCE.md` names when it says
+a visual implementation is not complete while the legacy composition remains
+the primary experience — so **no VISUAL gate is claimed on any lift surface**,
+squat included.
+
 ## 9. Blocked
 
 **`ASSET_PIPELINE_BLOCKED`** — the full report, with the missing asset, the
