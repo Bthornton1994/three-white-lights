@@ -90,6 +90,213 @@ treat C's own pass as verification.
 `grok/session-a-main-loop`. Session B pushes only its own branch. Merging into
 `main` is a human's call, not a session's.
 
+**Session A is TWO LANES since 2026-09-07 — a mechanics lane and a visual lane,
+on two branches — and the table above names only the first.** The file-level
+split, the shared contract files and the crossing procedure are in the ruling
+entry "RULED 2026-09-07: SESSION A IS TWO LANES" below. Read it before claiming
+anything under `src/session`, `src/lift`, `src/art`, `src/meet`, `src/shell` or
+`src/cutin`, because mechanical and visual code coexist in every one of them.
+
+### RULED 2026-09-07: SESSION A IS TWO LANES — GROK BUILD (MECHANICS) AND CLAUDE CODE (VISUAL)
+
+Human ruling, recorded here because the split existed only in conversation
+history until now. The Grok/Claude division is deliberate. **One model per
+lane does not erase the concurrency boundary** — the two lanes cannot see each
+other's conversations any more than A and B can, and this section is the only
+channel they share.
+
+| | Grok Build Session A — mechanics | Claude Code Session A — visual |
+|---|---|---|
+| Owns | authoritative mechanics: the lift simulation, RPE, fatigue, timing, velocity, grind, success/failure, load, prescription, readiness/history, progression, persistence, Meet Day rules, and the **renderer-independent presentation contract** once it takes it over | rendering architecture, the athlete asset pipeline, animation and rig integration, environment/bar/equipment presentation, lighting, VFX, UI/UX/HUD, mobile visual performance, screenshot/video evidence, player-facing visual quality |
+| Branch | `grok/session-a-main-loop` | `claude/session-a-visual-architecture` |
+| Grades | mechanical truth, by the builder/critic loop | TECHNICAL / INTEGRATION / PERFORMANCE from here; VISUAL, ANIMATION, SOFT-FEEL and OWNER PLAYTEST are never self-claimed — only Bryant closes the last |
+
+**The gameplay simulation is authoritative. The renderer consumes gameplay
+truth.** The visual lane may not alter a mechanic because an animation would be
+easier with a different value — it files a request (`docs/design/PRESENTATION-
+CONTRACT-REQUEST.md`) and draws what the simulation says until the request is
+answered. It also does not reconstruct a mechanical quantity on the renderer
+side to work around a missing one: the squat/deadlift descent rate is the
+standing example — `LiftState.velocity` is zero for the whole descent, bench
+has `chestRate`, squat has nothing, and the renderer does NOT differentiate
+`depth` to invent one. That request stays open until the mechanics lane answers
+it.
+
+#### File ownership, inspected at `ebb95663` and this working tree — not inferred from directory names
+
+A vague "`src/session` belongs to the visual lane" would be false: mechanical
+clocks and visual stages sit in the same directories. So this is by module.
+`**` means the whole directory including tests; a named file means that file
+and its `.test.ts`.
+
+**Grok Build (mechanics):**
+
+- `src/game/**` — every module, including the tuning homes (`liftTuning.ts`,
+  `sessionTuning.ts`, `meetTuning.ts`). Two blocks inside `sessionTuning.ts`
+  are visual by content — `SQUAT_VISUAL` and `IRON_AMBER` — and are listed as
+  a shared seam below rather than pretending the file is one thing.
+- `src/career/**` — calendar, eligibility, federation, its sweep and tuning.
+- `src/session/useSession.ts`, `localSessionServer.ts`, `sessionPreview.ts` —
+  the clock, the stand-in server port, the debug frame builder.
+- `src/lift/useLiftLoop.ts`, `liftReplay.ts`, `replayRoute.ts`, `pressGuard.ts`
+  — the loop that steps `stepLift`, the replay harness, the press-surface guard.
+- `src/meet/useMeetDay.ts`, `useCareer.ts`, `useLifter.ts`, `useHallStep.ts`,
+  `careerSurface.ts`, `lifterSurface.ts`, `meetFeedback.ts` — the hooks and
+  read models that talk to the servers and step the meet.
+- `src/shell/appServer.ts` — the app's one connection to the session server.
+- `src/cutin/cutInGate.ts`, `cutInLedger.ts`, `cutInObserver.ts` — the gate's
+  rules, its ledger and its audit trail (GDD §7.2 / §12.3).
+- `src/licensing/**` — human-ruled content; the mechanics lane stewards the
+  registry, nobody edits `REVIEWABLE_CITATIONS` without a human.
+- `tools/**` — the evidence harness and the mechanics drivers
+  (`sessionDrive.mjs`, `meetDrive.mjs`, the `verify-*` graders). The visual
+  lane may ADD a visual grader here by filing it in this section first; a new
+  tool that declares the dev-server URL must call `gateDevServer`
+  (`tools/devServerSentinel.test.ts` is red without it).
+- `src/audio/**`, `src/meet/meetSound.ts`, `soundAssets.ts` — NOT named by the
+  ruling for either lane. They stay with the mechanics lane until a human
+  assigns them; the visual lane does not touch them on the strength of "VFX".
+
+**Claude Code (visual):**
+
+- `src/art/**` — sprites, rigs, the gym scene, plates, palettes, sprite tuning,
+  craft metrics, and `riv.d.ts`. `plates.ts` is loading DATA the renderer draws
+  from and is not an authority on meet loading (its own header says so).
+- `src/session/SquatScene.tsx`, `squatVisual.ts`, `TrainingLiftStage.tsx`,
+  `ironAmberPlates.ts`, `sessionPalette.ts`, `liftPresentation.ts` — the
+  training stage and its read models. `liftPresentation.ts` is the visual
+  lane's REQUEST for a contract, shaped to collapse into a pass-through when
+  the mechanics lane publishes the authoritative one; see the shared list.
+- `src/session/BriefingView.tsx`, `CheckInView.tsx`, `CloseOutView.tsx`,
+  `RestView.tsx`, `SetView.tsx`, `SessionScreen.tsx` — layout, styling, copy
+  placement. The hooks these views call and the events they dispatch are the
+  mechanics lane's contract: a view edit that changes WHICH event is
+  dispatched or WHEN is a crossing, not a restyle.
+- `src/lift/LiftScreen.tsx`, `LiftStage.tsx`, `liftPalette.ts` — the meet-day
+  stage and its colours.
+- `src/meet/*View.tsx`, `MeetScreen.tsx`, `CareerScreen.tsx`, `LifterScreen.tsx`,
+  `meetPalette.ts`, `meetHall.ts`, `walkout.ts` — meet-day presentation, the
+  hall as data, the walk-out timing sheet. Same rule as the session views on
+  hook calls and dispatched events.
+- `src/cutin/CutInHost.tsx`, `CutInView.tsx`, `cutInArt.ts`, `cutInPreview.ts`,
+  `cutInTuning.ts` — the overlay's rendering and feel; the gate it obeys is
+  the mechanics lane's.
+- `src/card/**` — result-card rendering, the pixel font, sample cards.
+- `src/dev/**` — developer-only surfaces. Today: the Rive runtime spike.
+  Never player-reachable; `App.tsx` mounts it only behind `__DEV__` AND a
+  query string `shellRoute.ts` has no arm for.
+- `docs/design/**` — the ADR, the asset pipeline, the contract request, the
+  Iron & Amber references.
+
+**Shared contract files — either lane's edit is a crossing filed here FIRST,
+before the work:**
+
+- `src/shell/shellRoute.ts`, `AppShell.tsx`, `shellTuning.ts` — the navigation
+  graph encodes which gameplay surfaces a player can reach (mechanics) and
+  what the shell draws on the way (visual). `EmpireScreen.tsx` and
+  `empireFloor.ts` stay under the Session C entries below.
+- `App.tsx` — the platform edge. The four debug query strings are the
+  mechanics lane's evidence harness; the one `__DEV__` branch is the visual
+  lane's. Neither adds to the other's.
+- `src/lift/liftFrame.ts` — the adapter from a live rep to the sprite system
+  (`liveStrain`, `totalKgFor`). Pure, read by both lanes, owned by neither
+  alone.
+- `src/lift/haptics.ts` — the motor channel. WHICH pattern an event gets is
+  `lift.ts` (mechanics); HOW it reaches the motor is presentation.
+- `src/game/sessionTuning.ts`'s `SQUAT_VISUAL` and `IRON_AMBER` blocks — visual
+  knobs inside a mechanics file. The visual lane may change a VALUE in them
+  with a filing here; a new block, or a new consumer of a mechanical constant
+  from that file, is the mechanics lane's call.
+- `src/session/liftPresentation.ts` — until the mechanics lane takes it over
+  (R2 in the request doc), the visual lane owns it and the mechanics lane's
+  edits are crossings; after, the reverse. The one property that survives the
+  handover regardless: **no coordinates** — enforced by
+  `the-presentation-contract-carries-no-coordinates` and its witness.
+- `src/tuning/audit.ts`, `audit.test.ts`, `index.ts` — already the A↔B surface
+  (see "The one place the two sessions genuinely touch"); now also the lane
+  surface, same rule, same three whole files.
+- `docs/GDD.md` and this file. GDD product design is not altered to record an
+  agent coordination change — this entry is the whole of today's change.
+
+#### Extension and crossing procedure
+
+Unchanged in mechanism from the A/B rule and restated so the lanes cannot claim
+not to have seen it: **write the crossing into this section before the work,
+naming the files, so the other lane expects the conflict there.** A crossing
+filed after the fact is recorded as a breach, per the precedent already in
+this file. For the presentation contract specifically: a field the renderer
+needs and the simulation does not publish is written into
+`docs/design/PRESENTATION-CONTRACT-REQUEST.md` as a request and answered by
+the mechanics lane in `src/game/**`; the renderer does not derive it.
+
+#### Registry and census edits are NOT crossings, within these limits — RULED 2026-09-07
+
+A lane may update a shared registry or census **solely to register artifacts
+it owns**, provided all five hold:
+
+1. no gameplay semantics change;
+2. no restructuring — a row, a count, a witness, not a rule;
+3. the change is called out in the report;
+4. the relevant guard is run and read;
+5. mutation and non-vacuity requirements remain satisfied.
+
+The registries this covers: `MUTATION_WITNESSES` and the census pins in
+`src/game/guaranteeTags.test.ts`; the file and test-file counts in
+`tools/testPathRefs.test.ts`; `SOURCE_DIRECTORIES` and the allowlist rows in
+`src/game/streakEntitlement.test.ts` (extending the `COVERED_DAY_TOUCHING_
+FUNCTIONS` ruling already above); `REFLECTIVE_ASSEMBLY_EXEMPTIONS` in
+`progression.test.ts`; and a `SOURCE_RULES` row in `src/tuning/` for a home
+the lane owns. **`REVIEWABLE_CITATIONS` in `src/licensing/realIp.ts` is
+excluded on purpose** — its own header says a new mention is a human decision.
+Anything beyond registry/census data remains a real crossing.
+
+Retroactively covers the visual lane's 2026-09-07 edits to
+`src/game/guaranteeTags.test.ts` (one witness, eight census pins) and
+`tools/testPathRefs.test.ts` (two counts), which the ruling authorised by name.
+
+#### CROSSING FILED BY THE VISUAL LANE, BEFORE THE WORK, 2026-09-07 — the runtime spike's registry rows
+
+Filed here first, per the procedure above, for the dev-only Rive runtime spike
+(`src/dev/riveRuntimeSpike/`, ADR-001 §7):
+
+1. **`src/tuning/audit.ts` and `src/tuning/audit.test.ts`** — one `SOURCE_RULES`
+   row classifying `src/dev/riveRuntimeSpike/spikeTuning.ts` as `local`
+   (synthetic sine periods and dev-screen layout, not knobs — deliberately not
+   `feel`, so `src/tuning/index.ts` is NOT touched), and its pinned-list entry.
+   Session B and the mechanics lane should expect a conflict in those two files
+   and nowhere else.
+2. **`src/game/streakEntitlement.test.ts`** — `SOURCE_DIRECTORIES` 13 → 14 for
+   the new `src/dev/` directory, with the walk reaching it and contributing no
+   match. Registry data.
+3. **`App.tsx`** — one `__DEV__`-and-query-string branch, checked before
+   `AppShell` mounts, that `resolveEntry` has no arm for. The four debug query
+   strings are unchanged.
+4. **`tools/testPathRefs.test.ts`** and the census pins in
+   `src/game/guaranteeTags.test.ts` — whatever the new files move, bumped with
+   the note each file's own convention asks for.
+
+**Tried and reverted, recorded so nobody re-tries it:** `moduleSuffixes:
+['.native', '.web', '']` in `tsconfig.json`, the textbook way to let `tsc`
+resolve `RiveSpikeStage.native.tsx` / `.web.tsx` from the bare specifier Metro
+needs. It re-routes THIRD-PARTY packages' internal relative imports too:
+`expo-audio`'s `index.d.ts` does `export * from './ExpoAudio'`, which resolved
+to `ExpoAudio.web.d.ts`, whose `setAudioModeAsync` wants a full `AudioMode`
+rather than `Partial<AudioMode>` — and `src/meet/meetSound.ts`, a mechanics-lane
+file, went red. Measured with the change stashed and unstashed. The spike uses
+a scoped `RiveSpikeStage.d.ts` instead; `tsconfig.json` is untouched.
+
+**Inherited, not caused, and verified at the base by detached checkout of
+`20a1aa55`:** 6 failing tests across 5 files on the visual branch's base —
+`tools/devServerSentinel.test.ts` (the `_capture-*.mjs` tools), `src/game/
+progression.test.ts` (`meetField.ts Object.assign x6`), `src/game/
+streakEntitlement.test.ts` (the directory walk reads root-level `src/*.d.ts`
+files as directories; `jpg.d.ts` trips it), `src/session/localSessionServer.
+test.ts` (four profile methods), `src/licensing/realIp.test.ts` ×2 (a
+watchlisted project name in code position in `AppShell.tsx` /
+`shellWiring.test.ts`). Every one is a mechanics-lane file or a human-ruled
+registry. The visual lane leaves them red rather than editing the other lane's
+tests to green, and says so here.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion
