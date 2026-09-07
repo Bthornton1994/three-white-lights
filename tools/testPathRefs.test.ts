@@ -320,8 +320,12 @@ const PINNED = Object.freeze({
    *
    * 320 -> 332 with A2 My Lifter: six identity modules, five tests, and
    * `tools/_capture-a2-lifter.mjs`.
+   *
+   * 332 -> 339 with Iron & Amber training plates: `TrainingLiftStage.tsx`,
+   * `ironAmberPlates.ts`, two tests, `jpg.d.ts`, the capture tool, and the
+   * `sessionPalette` sibling already on the tree.
    */
-  SCANNED_FILES: 332,
+  SCANNED_FILES: 339,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -367,8 +371,11 @@ const PINNED = Object.freeze({
    *
    * 104 -> 109 with A2: `lifterProfile.test.ts`, `lifterEntry.test.ts`,
    * `lifterPersist.test.ts`, `lifterSurface.test.ts`, `a2LifterFreeze.test.ts`.
+   *
+   * 109 -> 111 with Iron & Amber training plates: `ironAmberPlates.test.ts`
+   * and `ironAmberWiring.test.ts`.
    */
-  TEST_FILES: 109,
+  TEST_FILES: 111,
 });
 
 /**

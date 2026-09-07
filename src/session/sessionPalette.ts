@@ -49,6 +49,14 @@ export const SESSION_PALETTE = Object.freeze({
   DIVIDER: '#242b39',
 
   /**
+   * Iron & Amber briefing card. Warm espresso so the gym photograph stays the
+   * room and the type sits on a facility card, not on a cool debug panel.
+   */
+  CARD: '#14100d',
+  CARD_EDGE: '#3a2a1c',
+  AMBER: '#c9a15b',
+
+  /**
    * How sure a progression number is (`progression.ts`'s `ProgressionReading`).
    *
    * PROVISIONAL is the caption under a number the server has not answered for
