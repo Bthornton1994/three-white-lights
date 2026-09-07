@@ -111,7 +111,13 @@ Starting kit is granted on `createLadderState` and pre-placed by `createFloorSta
 
 ## 5. Station state
 
-Stations are **derived** each call from floor + capability (`floorStations`). They are not a stored table.
+Stations are **derived** each call from this snapshot's floor + capability +
+ownership (`floorStations` on a context built from the same bundle). They are
+not a caller-supplied array. `PresentationWorldInput` has no `stations` field.
+Mixing one floor's stations with another floor's sim is impossible by API shape.
+A floor whose rung is not the managed gym rung is refused. A sim whose member
+ids are not the roster ids is refused.
+
 
 | Field | Meaning |
 | --- | --- |
@@ -132,11 +138,15 @@ Incomplete Competition Bench Bay (any of power-bar / comp-plates / flat-bench of
 
 ## 6. Queue semantics
 
-There is **no queue table** in `FloorSimState`. Order is recomputed every tick:
+There is **no queue table** in `FloorSimState`. Order is recomputed every tick
+by **`floorSim.claimantsOf`** — the one canonical helper. `stepFloorSim` and
+`presentationWorld` both call it. `presentationState.ts` does not re-encode
+the formula.
 
 1. Arrivals (`queuedAt` set) before walkers
 2. Then `queuedAt` (or `claimedAt` for walkers) ascending
 3. Then `index` ascending
+
 
 `queueIds` is that order filtered to `queuing`. The head of `queueIds` is who acquires the next free seat after changeover.
 
@@ -215,13 +225,18 @@ Claude should interpolate between logical ticks. Do not step the sim from an ani
 
 ---
 
-## 11. Persistence expectations
+## 11. Serialization shape vs persistence
 
-**SERIALIZATION SHAPE = PASS.** `persistableFacilityTruth` is JSON-round-trippable.
+There is **no** `localStorage` and no save file in `src/empire` (banned by census).
 
-**PERSISTENCE = NOT WIRED / OWNER_BLOCKED.** There is **no** `localStorage` and no
-save file in `src/empire` (banned by census). Application save/load does not
-exist yet. Do not report persistence as shipped.
+**SERIALIZATION SHAPE** = `persistableFacilityTruth` is a JSON-round-trippable
+payload candidate (SKU cells, ownership, capability, identity nonce + member
+count). Reload proof of the *shape*: same SKU, same cell, same
+`deriveMemberId(nonce, ordinal)`.
+
+**PERSISTENCE = NOT WIRED / OWNER_BLOCKED.** JSON.stringify/JSON.parse of that
+payload is not application save/load. Nothing writes this object to disk or
+restores `GymViewState` from it.
 
 What survives in-process on `GymViewState`:
 
@@ -234,8 +249,6 @@ What survives in-process on `GymViewState`:
 What does **not** survive remount:
 
 - `FloorSimState` pose, queues, in-flight timers
-
-`persistableFacilityTruth` is the JSON-round-trippable mechanical snapshot (SKU cells, ownership, capability, identity nonce + member count). Reload proof: same SKU, same cell, same `deriveMemberId(nonce, ordinal)`.
 
 ---
 
@@ -274,10 +287,7 @@ presentationStepProgressPerTick() -> 0.34
 
 `input` is `{ sim, floor, roster, managed, capability }`.
 
-Stations are **derived** inside `presentationWorld` via `floorStations` from that
-same bundle. Callers cannot pass a station list from another world.
-
-Queue order is `claimantsOf` in `floorSim.ts`. The contract does not re-sort.
+Stations are derived internally. Do not pass a station array.
 
 ---
 
@@ -294,7 +304,7 @@ Queue order is `claimantsOf` in `floorSim.ts`. The contract does not re-sort.
 
 ## Named gaps (OWNER_BLOCKED)
 
-- Wired save/load (disk / localStorage)
+- Wired save/load (disk / localStorage) — PERSISTENCE OWNER_BLOCKED
 - Staff world presence / staff AI
 - Equipment instance UUIDs (blocked until duplicate SKUs exist)
 - Lifting `FloorSimState` onto `GymViewState` (needs Claude coordination)

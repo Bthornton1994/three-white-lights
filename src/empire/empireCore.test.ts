@@ -2697,7 +2697,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 193 -> 197: worldView.ts imported by FloorGrid; worldView reads floorSim
     // and names FloorGrid / floorSim in its header.
     // 197 -> 213: presentationState.ts contract plus worldView header naming it.
-    // 213 -> 214: floorSim.ts now exports claimantsOf; presentationState names it.
+    // 213 -> 214: floorSim.ts header names presentationState.ts as a claimantsOf consumer.
     expect(pairs).toBe(214);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
@@ -3891,8 +3891,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 856 -> 874: per-rung rooms, floor-plane, and 14 session stems.
     // 874 -> 882: living-world occupancy/activity vocabulary and ./worldView.
     // 882 -> 883: presentationState.ts FloorState['placements'] index access.
-    // 883 -> 885: queue-order / snapshot-coherence refuse strings.
-    expect(singleQuoted.size).toBe(885);
+    // 883 -> 886: presentationState.ts three coherent-snapshot refuse messages.
+    expect(singleQuoted.size).toBe(886);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4767,7 +4767,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'stand',
       'state',
       'stationKind',
-      'stations',
       'steady',
       'step-a',
       'step-b',
@@ -4948,8 +4947,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1243 -> 1261: per-rung rooms, floor-plane, 14 session stems, occupancy overlay id.
     // 1261 -> 1271: living-world singleQuoted 874 -> 882 and templateChunks 387 -> 389.
     // 1271 -> 1273: presentationState.ts specifier + refuseWith template chunk.
-    // 1273 -> 1275: snapshot-coherence refuse + queue-order tokens.
-    expect(stringsChecked).toBe(1275);
+    // 1273 -> 1276: three coherent-snapshot refuse messages.
+    expect(stringsChecked).toBe(1276);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were

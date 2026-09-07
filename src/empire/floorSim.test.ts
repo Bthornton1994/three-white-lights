@@ -25,6 +25,7 @@ import {
   FLOOR_SIM_INTERRUPTIONS,
   FLOOR_SIM_MEMBER_STATES,
   createFloorSimState,
+  claimantsOf,
   floorSimStateCounts,
   floorStationRefKey,
   floorStations,
@@ -1465,6 +1466,62 @@ describe('the queue is FIFO by arrival, and it is bounded', () => {
     expect(gaps.length).toBeGreaterThan(0);
     expect(Math.min(...gaps)).toBeGreaterThanOrEqual(1);
     expect(Math.min(...gaps)).toBe(4);
+  });
+
+  it('orders arrivals ahead of walkers, then by tick, then by index', () => {
+    const ref: FloorStationRef = Object.freeze({
+      kind: 'training',
+      station: 'competition-bench-bay',
+    });
+    const walker = Object.freeze({
+      ...memberAt(0, 'casual', { x: 0, y: 0 }),
+      state: 'seeking' as FloorSimMemberState,
+      target: ref,
+      claimedAt: 1,
+      queuedAt: null,
+    });
+    const arriver = Object.freeze({
+      ...memberAt(1, 'casual', { x: 1, y: 0 }),
+      state: 'queuing' as FloorSimMemberState,
+      target: ref,
+      claimedAt: 10,
+      queuedAt: 3,
+    });
+    expect(claimantsOf([walker, arriver], ref).map((member) => member.index)).toEqual([1, 0]);
+    const laterArrival = Object.freeze({
+      ...memberAt(2, 'casual', { x: 2, y: 0 }),
+      state: 'queuing' as FloorSimMemberState,
+      target: ref,
+      claimedAt: 3,
+      queuedAt: 8,
+    });
+    const earlierArrival = Object.freeze({
+      ...memberAt(5, 'casual', { x: 3, y: 0 }),
+      state: 'queuing' as FloorSimMemberState,
+      target: ref,
+      claimedAt: 1,
+      queuedAt: 4,
+    });
+    expect(claimantsOf([laterArrival, earlierArrival], ref).map((member) => member.index)).toEqual([
+      5, 2,
+    ]);
+    const sameTickHigh = Object.freeze({
+      ...memberAt(4, 'casual', { x: 4, y: 0 }),
+      state: 'queuing' as FloorSimMemberState,
+      target: ref,
+      claimedAt: 1,
+      queuedAt: 7,
+    });
+    const sameTickLow = Object.freeze({
+      ...memberAt(1, 'casual', { x: 5, y: 0 }),
+      state: 'queuing' as FloorSimMemberState,
+      target: ref,
+      claimedAt: 9,
+      queuedAt: 7,
+    });
+    expect(claimantsOf([sameTickHigh, sameTickLow], ref).map((member) => member.index)).toEqual([
+      1, 4,
+    ]);
   });
 });
 

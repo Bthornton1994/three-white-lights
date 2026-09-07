@@ -1,11 +1,14 @@
 /**
  * presentationState.test.ts — Session B presentation-state contract.
  *
- * SIMULATION / CONTRACT / QUEUE / ECONOMY / PERSISTENCE proofs. These do
- * not claim Visual, Animation, or Soft-Feel PASS.
+ * SIMULATION / CONTRACT / QUEUE / ECONOMY / SERIALIZATION SHAPE proofs.
+ * PERSISTENCE is not wired. These do not claim Visual, Animation, or
+ * Soft-Feel PASS.
  */
 
 import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { EMPIRE_TUNING } from './empireTuning';
@@ -16,16 +19,16 @@ import {
   type GridPosition,
 } from './floor';
 import {
-  claimantsOf,
   createFloorSimState,
-  floorStations,
+  claimantsOf,
   stepFloorSim,
   type FloorSimContext,
+  type FloorSimMember,
   type FloorSimState,
   type FloorStationRef,
 } from './floorSim';
 import { createLadderState, type LadderEquipmentItem } from './ladder';
-import { createLivingMemberRoster, deriveMemberId, floorSimPopulationFromRoster } from './livingMembers';
+import { createLivingMemberRoster, deriveMemberId, floorSimPopulationFromRoster, memberIdForIndex } from './livingMembers';
 import { createManagedGym, hireManager, withUpdatedGym } from './management';
 import {
   buySessionEquipment,
@@ -66,7 +69,7 @@ function garageInput(
   const managed = overrides.managed ?? createManagedGym();
   const capability = overrides.capability ?? stockStationCapability();
   const context: FloorSimContext = Object.freeze({
-    rung: floor.rung,
+    rung: 'garage',
     floor,
     barbellOwned: managed.gym.ladder.equipment,
     sessionOwned: managed.gym.sessionEquipment,
@@ -124,6 +127,7 @@ describe('presentationState.ts — cadence and identity', () => {
     }
     const ids = world.members.map((member) => member.id);
     expect(new Set(ids).size).toBe(ids.length);
+    expect(input).not.toHaveProperty('stations');
   });
 
   it('keys stations by FloorStationRef and equipment by SKU', () => {
@@ -250,9 +254,124 @@ describe('presentationState.ts — constrained queue', () => {
     expect(servedHead).toBe(queuedIds[0]);
     expect(servedHead).not.toBe(userId);
   });
+
+  it('queueIds and queueRank are floorSim.claimantsOf order, filtered to queuing', () => {
+    let input = garageInput();
+    const context = contextFrom(input);
+    let matched = false;
+    for (let tick = 0; tick < 480; tick += 1) {
+      const world = presentationWorld(input);
+      const bench = world.stations.find((station) => station.ref.kind === 'training');
+      if (bench !== undefined && bench.queueIds.length > 0) {
+        const order = claimantsOf(input.sim.members, BENCH);
+        const queued = order.filter((member) => member.state === 'queuing');
+        const expectedIds = queued.map((member) => memberIdForIndex(input.roster, member.index));
+        expect(bench.queueIds).toEqual(expectedIds);
+        for (let rank = 0; rank < order.length; rank += 1) {
+          const claimant = order[rank];
+          if (claimant === undefined) continue;
+          const row = world.members.find((member) => member.id === memberIdForIndex(input.roster, claimant.index));
+          expect(row?.queueRank).toBe(rank);
+        }
+        matched = true;
+        break;
+      }
+      input = Object.freeze({ ...input, sim: stepFloorSim(input.sim, context) });
+    }
+    expect(matched).toBe(true);
+  });
+
+  it('pins arriver-before-claimer ranks so a claimantsOf mutation reddens this proof', () => {
+    const input = garageInput();
+    const walker = input.sim.members[0];
+    const arriver = input.sim.members[1];
+    const spare = input.sim.members[2];
+    expect(walker).toBeDefined();
+    expect(arriver).toBeDefined();
+    expect(spare).toBeDefined();
+    if (walker === undefined || arriver === undefined || spare === undefined) return;
+    const queued = Object.freeze({
+      ...arriver,
+      state: 'queuing' as const,
+      target: BENCH,
+      targetPosition: { x: 3, y: 0 },
+      claimedAt: 10,
+      queuedAt: 3,
+      queueArrivedAt: 3,
+    });
+    const walking = Object.freeze({
+      ...walker,
+      state: 'seeking' as const,
+      target: BENCH,
+      targetPosition: { x: 3, y: 0 },
+      claimedAt: 1,
+      queuedAt: null,
+      queueArrivedAt: null,
+    });
+    const idle = Object.freeze({
+      ...spare,
+      state: 'seeking' as const,
+      target: null,
+      claimedAt: null,
+      queuedAt: null,
+    });
+    const sim: FloorSimState = Object.freeze({
+      ...input.sim,
+      members: Object.freeze([walking, queued, idle]),
+    });
+    const world = presentationWorld(Object.freeze({ ...input, sim }));
+    const walkerId = memberIdForIndex(input.roster, 0);
+    const arriverId = memberIdForIndex(input.roster, 1);
+    expect(world.members.find((member) => member.id === arriverId)?.queueRank).toBe(0);
+    expect(world.members.find((member) => member.id === walkerId)?.queueRank).toBe(1);
+    const bench = world.stations.find((station) => station.ref.kind === 'training');
+    expect(bench?.queueIds).toEqual([arriverId]);
+    expect(claimantsOf(sim.members, BENCH).map((member) => member.index)).toEqual([1, 0]);
+  });
+
+  it('does not encode the four-key fairness formula; floorSim.claimantsOf is the only copy', () => {
+    const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'presentationState.ts'), 'utf8');
+    expect(source).not.toMatch(/queuedAt \?\? .*claimedAt/);
+    expect(source).not.toMatch(/function claimantsOf/);
+    expect(source).not.toMatch(/function compareClaimants/);
+    expect(source).toMatch(/claimantsOf\(/);
+  });
 });
 
-describe('presentationState.ts — repeated movement and persistence', () => {
+describe('presentationState.ts — snapshot coherence', () => {
+  it('refuses a floor whose rung is not the managed gym rung', () => {
+    const input = garageInput();
+    expect(input.managed.gym.ladder.rung).toBe('garage');
+    expect(() =>
+      presentationWorld(Object.freeze({ ...input, floor: createFloorState('warehouse') })),
+    ).toThrow(/floor rung does not match managed gym rung/);
+  });
+
+  it('refuses a sim whose member ids are not the roster ids', () => {
+    const input = garageInput();
+    const first = input.sim.members[0];
+    expect(first).toBeDefined();
+    if (first === undefined) return;
+    const swapped: FloorSimMember = Object.freeze({ ...first, memberId: 'member:n0:99' });
+    const rest = input.sim.members.slice(1);
+    const sim: FloorSimState = Object.freeze({
+      ...input.sim,
+      members: Object.freeze([swapped, ...rest]),
+    });
+    expect(() => presentationWorld(Object.freeze({ ...input, sim }))).toThrow(
+      /roster id does not match sim member/,
+    );
+  });
+
+  it('makes a caller-supplied station list impossible by API shape', () => {
+    const input = garageInput();
+    expect(input).not.toHaveProperty('stations');
+    const world = presentationWorld(input);
+    expect(world.stations.some((station) => station.ref.kind === 'training')).toBe(true);
+  });
+});
+
+describe('presentationState.ts — repeated movement and serialization shape', () => {
   it('moves the same furniture SKU four times without duplicating it', () => {
     const opened = createFloorState('garage');
     const first = placeFloorFurniture(opened, KIT, 'power-bar', BAR_A);
@@ -276,7 +395,7 @@ describe('presentationState.ts — repeated movement and persistence', () => {
     expect(bars[0]?.placed).toBe(true);
   });
 
-  it('JSON-round-trips persistable truth without changing SKU identity or member ids', () => {
+  it('JSON-round-trips the serialization payload without changing SKU identity or member ids', () => {
     const moved = placeFloorFurniture(createFloorState('garage'), KIT, 'power-bar', BAR_A);
     expect(moved.kind).toBe('placed');
     if (moved.kind !== 'placed') return;
@@ -331,80 +450,5 @@ describe('presentationState.ts — purchase, ownership, placement, operational e
     expect(restored.sessionEquipment).toEqual(['mats']);
     expect(restored.placements.mats).toEqual(MATS_CELL);
     expect(restored.gymBucks).toBe(bought.state.ladder.gymBucks);
-  });
-});
-
-describe('presentationState.ts — canonical queue order and snapshot coherence', () => {
-  it('does not reimplement claimantsOf; sim and contract share one order', () => {
-    const source = readFileSync(new URL('./presentationState.ts', import.meta.url), 'utf8');
-    expect(source).not.toContain('function claimantsOf');
-    expect(source).not.toContain('compareClaimants');
-    expect(source).toContain("claimantsOf,");
-  });
-
-  it('queueIds and queueRank match floorSim claimantsOf, not a claim-tick-only sort', () => {
-    const input = garageInput();
-    const context = contextFrom(input);
-    const stations = floorStations(context);
-    const bench = stations.find((station) => station.ref.kind === 'training');
-    expect(bench).toBeDefined();
-    if (bench === undefined) return;
-    const first = input.sim.members[0];
-    const second = input.sim.members[1];
-    expect(first).toBeDefined();
-    expect(second).toBeDefined();
-    if (first === undefined || second === undefined) return;
-    const walker = Object.freeze({
-      ...first,
-      state: 'seeking' as const,
-      target: bench.ref,
-      claimedAt: 1,
-      queuedAt: null,
-      queueArrivedAt: null,
-    });
-    const arriver = Object.freeze({
-      ...second,
-      state: 'queuing' as const,
-      target: bench.ref,
-      claimedAt: 10,
-      queuedAt: 5,
-      queueArrivedAt: 5,
-    });
-    const planted = garageInput({
-      sim: Object.freeze({
-        ...input.sim,
-        members: Object.freeze([walker, arriver]),
-      }),
-    });
-    const canonical = claimantsOf(planted.sim.members, bench.ref);
-    expect(canonical.map((member) => member.index)).toEqual([1, 0]);
-    const claimTickOnly = [...planted.sim.members].sort((left, right) => {
-      const leftAt = left.claimedAt ?? 0;
-      const rightAt = right.claimedAt ?? 0;
-      if (leftAt !== rightAt) return leftAt - rightAt;
-      return left.index - right.index;
-    });
-    expect(claimTickOnly.map((member) => member.index)).toEqual([0, 1]);
-    expect(canonical.map((member) => member.index)).not.toEqual(
-      claimTickOnly.map((member) => member.index),
-    );
-    const world = presentationWorld(planted);
-    const view = world.stations.find((station) => station.ref.kind === 'training');
-    expect(view?.queueIds).toEqual([world.members[1]?.id]);
-    expect(view?.approachingIds).toEqual([world.members[0]?.id]);
-    expect(world.members[1]?.queueRank).toBe(0);
-    expect(world.members[0]?.queueRank).toBe(1);
-  });
-
-  it('world input has no stations field; a smuggled list is refused', () => {
-    const input = garageInput();
-    expect(Object.keys(input).sort()).toEqual(['capability', 'floor', 'managed', 'roster', 'sim']);
-    expect(Object.prototype.hasOwnProperty.call(input, 'stations')).toBe(false);
-    expect(() =>
-      presentationWorld({
-        ...input,
-        stations: [],
-      } as PresentationWorldInput),
-    ).toThrow(/second station list/);
   });
 });

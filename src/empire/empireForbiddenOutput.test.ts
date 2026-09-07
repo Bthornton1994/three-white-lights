@@ -1320,6 +1320,7 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'G.1A makes memberId the durable identity carried through the sim. These positions are derived member-id strings on FloorSimMember and observation returns, not caller-supplied free text. Instrument B containment-scans every produced value.',
     positions: Object.freeze([
       'floorSim.ts#ambientLivingPopulation#return[].memberId',
+      'floorSim.ts#claimantsOf#return[].memberId',
       'floorSim.ts#createFloorSimState#return.members[].memberId',
       'floorSim.ts#runFloorSim#return.members[].memberId',
       'floorSim.ts#stepFloorSim#return.members[].memberId',
@@ -1809,7 +1810,7 @@ const SURFACE_CENSUS = Object.freeze({
   // stationChangeoverSeats, stationChangeoverTicks, playerFacingStationOperation.
   // 429 -> 432: Stage D2.2 plateLoadingProgress, plateLoadingDiscs,
   // ladderDevClockTestId.
-  EXPORTS: 484, // floorSim.ts claimantsOf — one canonical queue order
+  EXPORTS: 484, // presentation-state contract plus floorSim.claimantsOf
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1828,7 +1829,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 122 -> 125: Stage D playerFacingUpgradeLabel/Effect/Refuse.
   // 128 -> 130: Stage D.1b bay qualityBench + plateTree URI leaves.
   // 130 -> 132: Stage D2.1B changeoverSeatKey + playerFacingStationOperation.
-  BARE_POSITIONS: 195, // presentationState.ts GymMemberId projections
+  BARE_POSITIONS: 196, // claimantsOf return memberId
   BARE_FIELDS: 8, // presentationState.ts GymMemberId group
   BRANDED_POSITIONS: 34,
   /**
@@ -1951,7 +1952,7 @@ const SURFACE_CENSUS = Object.freeze({
 // for, the same as `isSoundCondition`'s addition above. Read from this pin's
 // own failure value.
   // 3970 -> 4024: Stage C.1b GymSurface / furniture-place unions and FloorState.furniture.
-  LITERAL_POSITIONS: 4577, // presentationState.ts contract unions
+  LITERAL_POSITIONS: 4612, // claimantsOf exported member union
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -3190,7 +3191,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // and FloorGrid presentation helpers. Read from this pin's own failure.
   // 3361 -> 3375: Stage D2.1A live-Capacity seat assignment / relocate helpers.
   // 3375 -> 3405: Stage D2.1B changeover helpers + FloorGrid loading path.
-  CALLS_EXAMINED: 3832, // presentationState derives stations + claimantsOf
+  CALLS_EXAMINED: 3833, // claimantsOf export plus presentation snapshot helpers
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -8077,6 +8078,18 @@ function driveEverything(): readonly DrivenRow[] {
         [context],
       );
       const opening = floorSimModule.createFloorSimState(context, 1);
+      const openingStations = floorSimModule.floorStations(context);
+      drive(
+        'claimantsOf',
+        rung,
+        () => {
+          const station = openingStations[0];
+          return station === undefined
+            ? []
+            : floorSimModule.claimantsOf(opening.members, station.ref);
+        },
+        [opening],
+      );
       drive(
         'floorSimStateCounts',
         rung,
@@ -8106,12 +8119,6 @@ function driveEverything(): readonly DrivenRow[] {
           'stationOccupancy',
           `${rung}/${floorSimModule.floorStationRefKey(station.ref)}`,
           () => floorSimModule.stationOccupancy(opening.members, station.ref),
-          [opening.members, station.ref],
-        );
-        drive(
-          'claimantsOf',
-          `${rung}/${floorSimModule.floorStationRefKey(station.ref)}`,
-          () => floorSimModule.claimantsOf(opening.members, station.ref),
           [opening.members, station.ref],
         );
       }
@@ -11457,7 +11464,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 593544 -> 595928: Stage C.1b furniture-layout exports, GYM_SURFACES, and
   // the larger GymScreen tree. Re-measured by running this assertion.
   // 595954 -> 595972: Stage C.1d playerFacing* drives.
-  ROWS: 600687, // claimantsOf drive rows (one export, four rung/station keys)
+  ROWS: 600687, // claimantsOf drive plus presentation snapshot helpers
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -11484,7 +11491,7 @@ const DRIVE_CENSUS = Object.freeze({
   // exports (isRecoveryBlocking, recoveryBlockingItems), both driven above.
   // 382 -> 389: Stage C.1b six floor furniture exports + GYM_SURFACES.
   // 393 -> 396: Stage C.1d three playerFacing* drives.
-  EXPORTS_DRIVEN: 484, // floorSim.ts claimantsOf — one canonical queue order
+  EXPORTS_DRIVEN: 484, // presentation-state contract plus floorSim.claimantsOf
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -11577,7 +11584,7 @@ const DRIVE_CENSUS = Object.freeze({
   // failure value.
   // 6490388 -> 6510102: Stage C.1b furniture/dock GymScreen trees. Measured.
   // 6510907 -> 6510913: Stage C.1d playerFacing* drive rows.
-  NODES: 6546631, // claimantsOf drive nodes
+  NODES: 6546635, // presentation-state contract drive nodes
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -11698,7 +11705,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_203_389, // claimantsOf drive strings
+  STRINGS: 30_203_389, // presentation-state contract drive strings
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -15907,7 +15914,7 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'management.ts': 27,
   'members.ts': 9,
   'pacing.ts': 3,
-  'presentationState.ts': 1,
+  'presentationState.ts': 5,
   'production.ts': 9,
   'recruitment.ts': 1,
   'reputation.ts': 6,
@@ -16266,9 +16273,9 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'floor.ts:653 returned=unfollowable:floor',
   'floor.ts:663 returned=unfollowable:floor',
   'floor.ts:671 returned=unfollowable:floor',
-  'floorSim.ts:1112 returned=unfollowable:member',
   'floorSim.ts:1113 returned=unfollowable:member',
-  'floorSim.ts:1133 returned=unfollowable:walk',
+  'floorSim.ts:1114 returned=unfollowable:member',
+  'floorSim.ts:1134 returned=unfollowable:walk',
   'floorSim.ts:693 receiver=NewExpression',
   'floorSim.ts:765 returned=unfollowable:context',
   'floorSim.ts:768 receiver=NewExpression',
@@ -16290,8 +16297,10 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'livingMembers.ts:269 returned=unfollowable:roster',
   'management.ts:1473 returned=unfollowable:state',
   'pacing.ts:246 receiver=CallExpression',
-  'presentationState.ts:367 returned=unfollowable:station',
-  'presentationState.ts:557 returned=unfollowable:input',
+  'presentationState.ts:252 returned=unfollowable:input',
+  'presentationState.ts:255 returned=unfollowable:input',
+  'presentationState.ts:377 returned=unfollowable:station',
+  'presentationState.ts:567 returned=unfollowable:input',
   'recruitment.ts:388 returned=unfollowable:state',
   'sessions.ts:563 receiver=ArrayLiteralExpression',
   'sessions.ts:656 returned=unfollowable:state',
@@ -16321,22 +16330,22 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'floor.ts:653 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
   'floor.ts:663 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
   'floor.ts:671 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
-  'floorSim.ts:1112 GridPosition asked=true walked=false',
-  'floorSim.ts:1113 GridPosition | null asked=true walked=false',
-  'floorSim.ts:1133 GridPosition asked=true walked=false',
-  'floorSim.ts:1309 GridPosition | undefined asked=true walked=false',
-  'floorSim.ts:1498 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1498 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1498 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1498 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1498 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1498 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1498 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1498 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1498 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1534 GridPosition asked=true walked=false',
-  'floorSim.ts:1752 FloorSimState asked=true walked=false',
-  'floorSim.ts:1907 FloorSimState asked=true walked=false',
+  'floorSim.ts:1113 GridPosition asked=true walked=false',
+  'floorSim.ts:1114 GridPosition | null asked=true walked=false',
+  'floorSim.ts:1134 GridPosition asked=true walked=false',
+  'floorSim.ts:1310 GridPosition | undefined asked=true walked=false',
+  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1535 GridPosition asked=true walked=false',
+  'floorSim.ts:1753 FloorSimState asked=true walked=false',
+  'floorSim.ts:1908 FloorSimState asked=true walked=false',
   'floorSim.ts:765 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
   'floorSim.ts:960 readonly FloorStation[] asked=true walked=false',
   'floorSim.ts:969 readonly FloorStation[] asked=true walked=false',
@@ -16383,12 +16392,12 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'management.ts:2690 ManagedGym asked=true walked=false',
   'pacing.ts:292 LadderState asked=true walked=false',
   'pacing.ts:298 LadderState asked=true walked=false',
-  'presentationState.ts:227 FloorState asked=true walked=false',
-  'presentationState.ts:230 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'presentationState.ts:367 GridSize asked=true walked=false',
-  'presentationState.ts:555 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
-  'presentationState.ts:556 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
-  'presentationState.ts:557 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'presentationState.ts:252 FloorState asked=true walked=false',
+  'presentationState.ts:255 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'presentationState.ts:377 GridSize asked=true walked=false',
+  'presentationState.ts:565 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
+  'presentationState.ts:566 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
+  'presentationState.ts:567 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
   'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
   'sessions.ts:656 LadderState asked=true walked=false',
   'sessions.ts:696 LadderState asked=true walked=false',
@@ -16427,7 +16436,7 @@ const SCREEN_AGREEMENT = Object.freeze({
   // GridPosition/GridSize returns, capability keyed by competition-bench-bay.
   // 79 -> 89: Stage D2.1A assignedSeat remaining[order] plus live-Capacity
   // relocate useCells walk (nine rows at the same for-of) and awayFrom cell.
-  SHIPPED_DISAGREEMENTS: 102, // presentationState contextFromInput FloorState + capability
+  SHIPPED_DISAGREEMENTS: 102, // presentation-state contract unfollowable returns
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
@@ -16617,7 +16626,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1674 -> 1681: Stage D2 placedOwnedItems / withWear / stationOperationView / reset.
   // 1681 -> 1691: Stage D2.1A assignedSeat / reservedUseCells / relocate helpers.
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
-  function: 1932, // presentationState derives stations + claimantsOf
+  function: 1934, // presentation-state contract call targets
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16675,7 +16684,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1502 -> 1513: Stage D2 Set.has / Object.freeze / stationByRefKey.get.
   // 1513 -> 1517: Stage D2.1A useCells/blocked/has member calls on live relocate.
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
-  member: 1711, // presentationState hasOwnProperty coherence check
+  member: 1710, // presentation-state contract member calls
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -16756,7 +16765,7 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 430 -> 435: Stage D2 withWear restrict / stationOperationView seats / placedOwnedItems loops.
   // 435 -> 438: Stage D2.1A reservedUseCells / assignedSeat / relocate locals.
   // 438 -> 444: Stage D2.1B nextChangeovers / loading-path locals.
-  local: 477, // presentationState derived-stations fold
+  local: 477, // presentation-state contract local writes
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -16871,7 +16880,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 911 -> 916: Stage D2.1A floorSim return 63 -> 68.
   // 916 -> 925: Stage D2.1B floorSim 68→72, stationCapability 24→27,
   // stationView 44→46.
-  SITES: 1129, // presentationState.ts 26 returns after derived-stations fold
+  SITES: 1129, // presentationState.ts 26 returns
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -17024,7 +17033,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
   // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
   // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
-  NODES_EXAMINED: 89_732, // presentationState derived-stations fold
+  NODES_EXAMINED: 89_782, // presentation-state contract AST nodes
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -17043,7 +17052,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 149 -> 152: GDD §5.14 Stage B's pacing.ts, three `refuseWith` calls.
   // 152 -> 157: Stage C.1b floor.ts furniture refusals.
   // 159 -> 160: GDD §5.18 Stage D.1 stationCapability refuseWith.
-  WRAP_CALLS: 186, // presentationState.ts refuseWith
+  WRAP_CALLS: 190, // presentationState.ts refuseWith
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 7, // Stage G.1 argument-mutation on floorSim observation export
@@ -17161,7 +17170,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // 1001 -> 1003: Stage D.1b capacityRealizesOn + bay sprite table leaves.
   // 1003 -> 1005: Stage D2 placedOwnedItems + reset-gym signatures.
   // 1005 -> 1015: Stage D2.1B five new exported functions' signatures.
-  POSITIONS: 1156, // claimantsOf exported signature
+  POSITIONS: 1156, // presentation-state contract exported positions
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',

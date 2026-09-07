@@ -28,12 +28,12 @@
  *     side effect, so `FloorGrid.tsx` calls it directly for that question
  *     rather than this module re-deriving the same three-way branch a second
  *     time.
- *   - It does not recompute a station's queue ORDER (`floorSim.ts`'s own
- *     `claimantsOf` is the ordering; it is not exported and this module does
- *     not need it). `stationOperationView` below counts the same two states
- *     `floorSim.ts`'s own header defines the queue by ("everyone whose target
- *     is that station and whose state is `seeking` or `queuing`") — a filter
- *     and a count, not a re-implementation of the fairness ordering.
+ *   - It does not recompute a station's queue ORDER (`floorSim.ts`'s exported
+ *     `claimantsOf` is the one canonical ordering). `stationOperationView`
+ *     below counts the same two states `floorSim.ts`'s own header defines the
+ *     queue by ("everyone whose target is that station and whose state is
+ *     `seeking` or `queuing`") — a filter and a count, not a re-implementation
+ *     of the fairness ordering.
  */
 
 import { EMPIRE_TUNING } from './empireTuning';
