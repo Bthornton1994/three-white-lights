@@ -5,6 +5,11 @@ from the binding mockup `docs/design/iron-and-amber-reference.jpeg`. These are
 not third-party stock, not sprite rasters, and not a CSS recolor of the old
 stage.
 
+The plates are the gameplay surface: briefing, live squat/bench/deadlift, and
+close-out fill the room. Set chrome is a compact overlay (set/weight/pips on
+top, command prompt at the thumb). Cue rings sit on the plate, not at
+sprite-era TRACE coordinates. Check-in is not on the played path.
+
 ## Loading path
 
 Metro `require` of each `.jpg`. TypeScript sees them through `src/jpg.d.ts`.
@@ -14,6 +19,7 @@ Metro `require` of each `.jpg`. TypeScript sees them through `src/jpg.d.ts`.
 | Briefing gym | `src/session/BriefingView.tsx` | `import gymBriefing from '../../assets/iron-amber/gym-briefing.jpg'` |
 | Close-out gym | `src/session/CloseOutView.tsx` | same gym plate |
 | Live set | `src/session/TrainingLiftStage.tsx` | `PLATE_SOURCE[ironAmberPlateFor(kind, phase, height)]` |
+| Crop | `ironAmberCropShift(kind)` | per-lift translate so the bar stays in frame |
 | Wiring | `src/session/SetView.tsx` | mounts `TrainingLiftStage` as `LiftStage` |
 
 Meet Day still draws `src/lift/LiftStage.tsx` (sprite stage). A0 lift files

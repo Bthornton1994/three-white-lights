@@ -162,7 +162,7 @@ describe('SessionScreen hands the readings down and computes nothing', () => {
     }
   });
 
-  it('the check-in retargets the lift through the cache, not a second context', () => {
+  it('the briefing retargets the lift through the cache, not a second context', () => {
     // `'choose-lift'` is a string literal, which `codeOnly` strips, so this
     // one reads the raw source. The rest of the path is code.
     expect(source('useSession.ts')).toMatch(/'choose-lift'/);
@@ -170,9 +170,9 @@ describe('SessionScreen hands the readings down and computes nothing', () => {
     expect(USE_SESSION).toMatch(/sessionContextFrom/);
     expect(USE_SESSION).toMatch(/sessionBrief/);
     expect(SCREEN).toMatch(/onChooseLift=\{chooseLift\}/);
-    expect(source('CheckInView.tsx')).toMatch(/onChooseLift/);
-    expect(source('CheckInView.tsx')).toMatch(/LIFT_ROTATION/);
-    expect(source('CheckInView.tsx')).toMatch(/check-in-lift-/);
+    expect(source('BriefingView.tsx')).toMatch(/onChooseLift/);
+    expect(source('BriefingView.tsx')).toMatch(/LIFT_ROTATION/);
+    expect(source('BriefingView.tsx')).toMatch(/check-in-lift-/);
   });
 });
 

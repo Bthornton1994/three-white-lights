@@ -2517,55 +2517,18 @@ describe('navigating away and back cannot buy a second session of the day', () =
     expect(source('src/session/SessionScreen.tsx')).toMatch(/testID=""session-already-trained""|testID="session-already-trained"/);
   });
 
-  it('AND IT RENDERS ON THE `check-in` BEAT, so the shell’s pill is on it too', () => {
-    // THE JOIN THAT MAKES A SECOND VISIT NOT A DEAD END, in two halves.
-    //
-    // Half one, here: `SessionScreen` renders the already-trained surface while
-    // `state.phase === 'check-in'` and reports that same `state.phase` to the
-    // shell (pinned above, `onPhase?.(state.phase)`). So the beat the shell's
-    // gate sees on the already-trained screen IS `'check-in'`.
-    //
-    // Half two, in `shellRoute.test.ts`: `shellCareerAffordanceFor(session,
-    // 'check-in')` is pinned by a HAND-WRITTEN literal to `'open-career'` —
-    // the way toward a meet since Sprint 1c deleted the direct door.
-    //
-    // Compose them and a player who opens the app for the second time today
-    // gets somewhere to go rather than a screen with nothing on it — GDD §12.3's
-    // "never punish daily engagement" line applied to navigation. Neither half
-    // states it alone, which is why this scan exists: `'check-in'` could be
-    // changed to a bespoke phase here and the literal in `shellRoute.test.ts`
-    // would stay green while the second visit went back to being a dead end.
-    //
-    // WHAT THIS DOES NOT SETTLE, AND WHO DOES. Nothing here says whether the
-    // pill visually collides with the already-trained copy. The surface is
-    // `styles.centred` (`flex: 1`, `justifyContent: 'center'`), so it occupies
-    // the middle band and the pill is anchored `SHELL_LAYOUT.NAV_BOTTOM_INSET`
-    // from the bottom — but that is an argument, not a photograph.
-    //
-    // THIS COMMENT USED TO SAY THE PHOTOGRAPH WAS IMPOSSIBLE: "this path has no
-    // `?session=` moment that reaches it, so `verify-shell-route.mjs` cannot
-    // drive it". The premise was right and the conclusion was wrong. The
-    // already-trained branch does require `preview === undefined`, so no debug
-    // URL opens it — but it does not need one. It needs A SESSION.
-    // `verify-shell-route.mjs` now PLAYS one with a mouse (see
-    // `tools/sessionDrive.mjs`), presses DONE, and measures the gap between the
-    // copy's lowest drawn line and the pill's top edge on the screen that comes
-    // up. Playing that path is also what caught the close-out's server round
-    // trip being cancelled by its own effect — a defect this whole file, and
-    // the other 2233 tests, were structurally unable to see.
+  it('AND IT RENDERS BEFORE AN RPE IS CHOSEN, so the shell’s pill is on it too', () => {
     expect(SESSION_SCREEN).toMatch(
-      /loop\.alreadyTrainedToday && state\.phase === '' && preview === undefined/,
+      /loop\.alreadyTrainedToday && state\.plan === null && preview === undefined/,
     );
-    // ...and the phase it is gated on, in the raw source, is `check-in` itself.
     expect(source('src/session/SessionScreen.tsx')).toMatch(
-      /loop\.alreadyTrainedToday && state\.phase === 'check-in'/,
+      /loop\.alreadyTrainedToday && state\.plan === null/,
     );
-    // The scan can see the shape it is looking for, and can see it change.
-    expect(codeOnly("if (a && state.phase === 'check-in' && b) {")).toMatch(
-      /state\.phase === ''/,
+    expect(codeOnly("if (a && state.plan === null && b) {")).toMatch(
+      /state\.plan === null/,
     );
     expect("loop.alreadyTrainedToday && state.phase === 'rest'").not.toMatch(
-      /loop\.alreadyTrainedToday && state\.phase === 'check-in'/,
+      /loop\.alreadyTrainedToday && state\.plan === null/,
     );
   });
 });

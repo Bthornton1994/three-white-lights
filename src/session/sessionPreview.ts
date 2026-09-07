@@ -353,22 +353,12 @@ export function previewFrameFor(request: SessionPreviewRequest): SessionPreviewF
   const fresh = createSession(previewContext());
   switch (request.moment) {
     case 'check-in':
-      return frame(fresh, cacheBeforeSession());
-    case 'check-in-partial': {
-      const one = stepSession(fresh, {
-        kind: 'check-in-tap',
-        tap: { question: 'sleep', answer: 'good' },
-      });
-      return frame(
-        stepSession(one, { kind: 'check-in-tap', tap: { question: 'soreness', answer: 'fresh' } }),
-        cacheBeforeSession(),
-      );
-    }
+    case 'check-in-partial':
     case 'briefing':
-      return frame(tapThrough(fresh, PRIMED), cacheBeforeSession());
+      return frame(fresh, cacheBeforeSession());
     case 'set':
       return frame(
-        stepSession(tapThrough(fresh, STEADY), { kind: 'choose-rpe', rpe: SESSION_PREVIEW.RPE }),
+        stepSession(fresh, { kind: 'choose-rpe', rpe: SESSION_PREVIEW.RPE }),
         cacheBeforeSession(),
       );
     case 'rest':

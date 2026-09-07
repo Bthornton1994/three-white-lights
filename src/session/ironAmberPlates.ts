@@ -78,3 +78,9 @@ export function ironAmberPlateFor(
   }
   return 'squat-brace';
 }
+
+export function ironAmberCropShift(kind: LiftKind): number {
+  if (kind === 'deadlift') return IRON_AMBER.DEADLIFT_CROP_Y;
+  if (kind === 'bench') return IRON_AMBER.BENCH_CROP_Y;
+  return IRON_AMBER.SQUAT_CROP_Y;
+}

@@ -168,6 +168,9 @@ export function SetView({ state, onRepResolved }: SetViewProps): React.ReactElem
             {`${totalKg} kg`}
           </Text>
           <RepPips reps={plan.repsPerSet} done={state.repIndex} live={!resolved} />
+        </View>
+        <View style={styles.commandScrim} pointerEvents="none" />
+        <View style={styles.command} pointerEvents="none">
           <Text
             style={[
               styles.prompt,
@@ -211,10 +214,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: L.ROW_GAP / 2,
-    paddingTop: L.SET_HUD_PAD,
-    paddingHorizontal: L.SCREEN_PAD,
+    justifyContent: 'space-between',
+    gap: L.ROW_GAP,
+    height: L.SET_HUD_HEIGHT,
+    paddingHorizontal: L.SET_HUD_PAD,
   },
   setLabel: {
     color: SESSION_PALETTE.AMBER,
@@ -226,6 +231,8 @@ const styles = StyleSheet.create({
     color: SESSION_PALETTE.TEXT,
     fontSize: L.PLAN_FONT,
     letterSpacing: L.LETTER_SPACING,
+    flex: 1,
+    textAlign: 'center',
   },
   pips: {
     flexDirection: 'row',
@@ -254,6 +261,26 @@ const styles = StyleSheet.create({
     color: SESSION_PALETTE.TEXT_DIM,
     fontSize: L.HINT_FONT,
     textAlign: 'center',
+  },
+  commandScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: L.SET_COMMAND_HEIGHT,
+    backgroundColor: SESSION_PALETTE.CARD,
+    opacity: L.SET_COMMAND_SCRIM,
+  },
+  command: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: L.SET_COMMAND_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: L.ROW_GAP / 2,
+    paddingHorizontal: L.SET_HUD_PAD,
   },
   stage: {
     flex: 1,

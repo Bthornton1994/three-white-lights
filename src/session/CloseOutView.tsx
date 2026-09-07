@@ -409,6 +409,8 @@ const styles = StyleSheet.create({
   },
   gym: {
     ...StyleSheet.absoluteFill,
+    width: '100%',
+    height: '100%',
   },
   scrim: {
     ...StyleSheet.absoluteFill,

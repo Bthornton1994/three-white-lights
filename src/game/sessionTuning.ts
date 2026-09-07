@@ -464,6 +464,7 @@ export const SESSION_LAYOUT = Object.freeze({
   CHIP_RADIUS: 10,
   CHIP_GAP: 8,
   CHIP_BORDER: 2,
+  LIFT_CHIP_HEIGHT: 36,
 
   /** The RPE ladder. Five across, so each is narrower than a chip. */
   RPE_CHIP_HEIGHT: 60,
@@ -506,9 +507,11 @@ export const SESSION_LAYOUT = Object.freeze({
   BRIEFING_CARD_BORDER: 1,
 
   /** Compact HUD over the live-set plate. The gym is the room; this is type. */
-  SET_HUD_PAD: 14,
-  SET_HUD_HEIGHT: 148,
-  SET_HUD_SCRIM: 0.62,
+  SET_HUD_PAD: 10,
+  SET_HUD_HEIGHT: 56,
+  SET_HUD_SCRIM: 0.42,
+  SET_COMMAND_HEIGHT: 92,
+  SET_COMMAND_SCRIM: 0.55,
 });
 
 /**
@@ -520,6 +523,14 @@ export const IRON_AMBER = Object.freeze({
   BENCH_CHEST_MAX: 0.4,
   DEADLIFT_FLOOR_MAX: 0.34,
   DEADLIFT_LOCKOUT_MIN: 0.78,
+  /** Cue overlay, as a fraction of the plate box — not sprite-era CUE_X/CUE_Y. */
+  CUE_X_RATIO: 0.5,
+  CUE_Y_RATIO: 0.58,
+  PLATE_SCALE: 1.14,
+  SQUAT_CROP_Y: 0,
+  BENCH_CROP_Y: 18,
+  DEADLIFT_CROP_Y: -42,
+  GRIND_BELOW_CUE: 36,
 });
 
 /**

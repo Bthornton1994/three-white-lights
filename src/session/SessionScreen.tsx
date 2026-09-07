@@ -54,7 +54,6 @@ import type { SessionPhase } from '../game/session';
 import type { SessionServerPort } from '../game/sessionClient';
 import type { LiftOutcome } from '../game/lift';
 import { BriefingView } from './BriefingView';
-import { CheckInView } from './CheckInView';
 import { CloseOutView } from './CloseOutView';
 import { RestView } from './RestView';
 import { SESSION_PALETTE } from './sessionPalette';
@@ -154,7 +153,7 @@ export function SessionScreen({
 
   const day = state.context.day;
 
-  if (loop.alreadyTrainedToday && state.phase === 'check-in' && preview === undefined) {
+  if (loop.alreadyTrainedToday && state.plan === null && preview === undefined) {
     return (
       <View style={styles.root} testID="session-screen">
         <AlreadyTrained />
@@ -170,16 +169,6 @@ export function SessionScreen({
       onLive={onCutIn}
     >
       <View style={styles.root} testID="session-screen">
-        {state.phase === 'check-in' ? (
-          <CheckInView
-            answers={state.answers}
-            lift={state.context.lift}
-            disclosures={loop.onboardingDisclosures}
-            onTap={(tap) => dispatch({ kind: 'check-in-tap', tap })}
-            onChooseLift={chooseLift}
-          />
-        ) : null}
-
         {state.phase === 'briefing' && state.readiness !== null ? (
           <BriefingView
             lift={state.context.lift}
@@ -189,6 +178,7 @@ export function SessionScreen({
             repsPerSet={plannedTemplateFor(state).repsPerSet}
             ladderReady={loop.ladderReady}
             onChooseRpe={(rpe) => dispatch({ kind: 'choose-rpe', rpe })}
+            onChooseLift={chooseLift}
           />
         ) : null}
 

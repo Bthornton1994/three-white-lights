@@ -39,7 +39,16 @@ describe('Iron & Amber training path wiring', () => {
     expect(setView).toContain('styles.hudScrim');
     expect(setView).toContain('styles.hud');
     expect(setView).toContain('pointerEvents="none"');
+    expect(setView).toContain('styles.command');
+    expect(setView).toContain('styles.commandScrim');
     expect(setView).not.toContain('styles.header');
+  });
+
+  it('SessionScreen does not mount the check-in questionnaire on the played path', () => {
+    const screen = source('SessionScreen.tsx');
+    expect(screen).not.toContain('CheckInView');
+    expect(screen).not.toContain('session-check-in');
+    expect(screen).toContain('onChooseLift={chooseLift}');
   });
 
   it('CloseOutView uses the gym plate behind the payoff card', () => {

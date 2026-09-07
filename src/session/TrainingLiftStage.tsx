@@ -30,7 +30,8 @@ import {
 } from '../lift/liftFrame';
 import type { LiftStageProps } from '../lift/LiftStage';
 import { SESSION_PALETTE } from './sessionPalette';
-import { ironAmberPlateFor, type IronAmberPlateId } from './ironAmberPlates';
+import { ironAmberCropShift, ironAmberPlateFor, type IronAmberPlateId } from './ironAmberPlates';
+import { IRON_AMBER } from '../game/sessionTuning';
 
 import squatBrace from '../../assets/iron-amber/squat-brace.jpg';
 import squatHole from '../../assets/iron-amber/squat-hole.jpg';
@@ -71,9 +72,9 @@ export function TrainingLiftStage({
   const armed = stageArmed(state);
   const grind = grindReadout(state);
   const sx = box.w / L.STAGE_W;
-  const sy = box.h / L.STAGE_H;
-  const cueX = L.CUE_X * sx;
-  const cueY = L.CUE_Y * sy;
+  const cueX = box.w * IRON_AMBER.CUE_X_RATIO;
+  const cueY = box.h * IRON_AMBER.CUE_Y_RATIO;
+  const cropY = ironAmberCropShift(state.config.kind);
 
   return (
     <View
@@ -86,7 +87,12 @@ export function TrainingLiftStage({
     >
       <Image
         source={PLATE_SOURCE[plateId]}
-        style={styles.plate}
+        style={[
+          styles.plate,
+          {
+            transform: [{ scale: IRON_AMBER.PLATE_SCALE }, { translateY: cropY }],
+          },
+        ]}
         resizeMode="cover"
         testID={`iron-amber-plate-${plateId}`}
       />
@@ -164,19 +170,23 @@ export function TrainingLiftStage({
         {grind === null ? null : (
           <Group>
             <Rect
-              x={grind.tray.x * sx}
-              y={grind.tray.y * sy}
+              x={cueX - (grind.tray.w * sx) / 2}
+              y={cueY + IRON_AMBER.GRIND_BELOW_CUE}
               width={grind.tray.w * sx}
-              height={grind.tray.h * sy}
+              height={grind.tray.h * sx}
               color={LIFT_PALETTE.GRIND_TRAY}
             />
             {grind.pips.map((pip) => (
               <Rect
                 key={pip.x}
-                x={pip.x * sx}
-                y={pip.y * sy}
+                x={cueX - (grind.tray.w * sx) / 2 + (pip.x - grind.tray.x) * sx}
+                y={
+                  cueY +
+                  IRON_AMBER.GRIND_BELOW_CUE +
+                  (pip.y - grind.tray.y) * sx
+                }
                 width={pip.w * sx}
-                height={pip.h * sy}
+                height={pip.h * sx}
                 color={pip.lit ? LIFT_PALETTE.GRIND_PIP_LIT : LIFT_PALETTE.GRIND_PIP_DIM}
               />
             ))}

@@ -382,52 +382,41 @@ describe('the check-in — GDD §3.2, three taps', () => {
     expect(nextCheckInQuestion(three)).toBeNull();
   });
 
-  it('stays on the check-in until the third tap, then surfaces the modifier', () => {
-    let state = createSession(context());
-    expect(state.phase).toBe('check-in');
-    state = stepSession(state, { kind: 'check-in-tap', tap: { question: 'sleep', answer: 'good' } });
-    expect(state.phase).toBe('check-in');
-    expect(state.readiness).toBeNull();
-    state = stepSession(state, {
-      kind: 'check-in-tap',
-      tap: { question: 'soreness', answer: 'fresh' },
-    });
-    expect(state.phase).toBe('check-in');
-    state = stepSession(state, {
-      kind: 'check-in-tap',
-      tap: { question: 'motivation', answer: 'fired-up' },
-    });
+  it('opens on the lift+RPE briefing with history readiness, not a subjective check-in', () => {
+    const state = createSession(context());
     expect(state.phase).toBe('briefing');
-    expect(state.readiness?.headline).toBe('Feeling primed');
-    expect(state.readiness?.label).toBe('Feeling primed +5%');
+    expect(state.readiness).not.toBeNull();
+    const ignored = stepSession(state, {
+      kind: 'check-in-tap',
+      tap: { question: 'sleep', answer: 'good' },
+    });
+    expect(ignored.phase).toBe('briefing');
+    expect(ignored.answers.sleep).toBe('good');
   });
 
-  it('a check-in choose-lift retargets the session, including the e1RM the bar will be prescribed from', () => {
+  it('a briefing choose-lift retargets the session, including the e1RM the bar will be prescribed from', () => {
     const started = createSession(context({ lift: 'squat', e1rmKg: 200, bestE1rmKg: 200 }));
     const retargeted = stepSession(started, {
       kind: 'choose-lift',
       context: context({ lift: 'bench', e1rmKg: 140, bestE1rmKg: 140 }),
     });
     expect(retargeted).not.toBe(started);
-    expect(retargeted.phase).toBe('check-in');
+    expect(retargeted.phase).toBe('briefing');
     expect(retargeted.context.lift).toBe('bench');
     expect(retargeted.context.e1rmKg).toBe(140);
     expect(retargeted.answers).toEqual(EMPTY_CHECK_IN);
   });
 
-  it('keeps any readiness taps already given when the lift changes', () => {
-    const started = stepSession(createSession(context({ lift: 'squat', e1rmKg: 200 })), {
-      kind: 'check-in-tap',
-      tap: { question: 'sleep', answer: 'good' },
+  it('ignores a choose-lift once an RPE has been chosen', () => {
+    const lifting = stepSession(createSession(context({ lift: 'squat', e1rmKg: 200 })), {
+      kind: 'choose-rpe',
+      rpe: 8,
     });
-    const retargeted = stepSession(started, {
+    const retargeted = stepSession(lifting, {
       kind: 'choose-lift',
       context: context({ lift: 'bench', e1rmKg: 140, bestE1rmKg: 140 }),
     });
-    expect(retargeted.phase).toBe('check-in');
-    expect(retargeted.answers.sleep).toBe('good');
-    expect(retargeted.answers.soreness).toBeNull();
-    expect(retargeted.context.lift).toBe('bench');
+    expect(retargeted).toBe(lifting);
   });
 
   it('ignores a choose-lift that would change the day, or that names the lift already selected', () => {
@@ -446,14 +435,17 @@ describe('the check-in — GDD §3.2, three taps', () => {
     ).toBe(started);
   });
 
-  it('locks the lift once the check-in is complete', () => {
-    const briefing = tapThrough(createSession(context({ lift: 'squat', e1rmKg: 200 })), NEUTRAL);
+  it('locks the lift once an RPE has been chosen', () => {
+    const lifting = stepSession(createSession(context({ lift: 'squat', e1rmKg: 200 })), {
+      kind: 'choose-rpe',
+      rpe: 8,
+    });
     expect(
-      stepSession(briefing, {
+      stepSession(lifting, {
         kind: 'choose-lift',
         context: context({ lift: 'bench', e1rmKg: 140, bestE1rmKg: 140 }),
       }),
-    ).toBe(briefing);
+    ).toBe(lifting);
   });
 
   it('a bench chosen on the check-in is the lift the mechanic is configured with', () => {
@@ -1305,16 +1297,16 @@ describe('a session that banked nothing is retried, not lost — GDD §12.3', ()
 describe('the machine ignores what does not apply', () => {
   it('does not advance on an event for another phase', () => {
     const fresh = createSession(context());
-    expect(stepSession(fresh, { kind: 'choose-rpe', rpe: 8 })).toBe(fresh);
+    expect(fresh.phase).toBe('briefing');
     expect(stepSession(fresh, { kind: 'rep-resolved', outcome: 'good-lift', executionQuality: 1 })).toBe(fresh);
     expect(stepSession(fresh, { kind: 'begin-set' })).toBe(fresh);
     expect(stepSession(fresh, { kind: 'retry' })).toBe(fresh);
 
-    const briefing = tapThrough(fresh, NEUTRAL);
-    expect(stepSession(briefing, { kind: 'rep-resolved', outcome: 'good-lift', executionQuality: 1 })).toBe(briefing);
+    const lifting = stepSession(fresh, { kind: 'choose-rpe', rpe: 8 });
+    expect(lifting.phase).toBe('set');
     expect(
-      stepSession(briefing, { kind: 'check-in-tap', tap: { question: 'sleep', answer: 'poor' } }),
-    ).toBe(briefing);
+      stepSession(lifting, { kind: 'check-in-tap', tap: { question: 'sleep', answer: 'poor' } }),
+    ).toBe(lifting);
   });
 
   it('never mutates the state it is given', () => {

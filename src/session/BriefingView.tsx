@@ -77,6 +77,7 @@ export interface BriefingViewProps {
   /** Live once the reveal beat has elapsed. */
   readonly ladderReady: boolean;
   readonly onChooseRpe: (rpe: number) => void;
+  readonly onChooseLift: (lift: LiftKind) => void;
 }
 
 export function BriefingView({
@@ -87,6 +88,7 @@ export function BriefingView({
   repsPerSet,
   ladderReady,
   onChooseRpe,
+  onChooseLift,
 }: BriefingViewProps): React.ReactElement {
   const reveal = useSharedValue(0);
   useEffect(() => {
@@ -105,6 +107,24 @@ export function BriefingView({
       <View style={styles.scrim} />
       <View style={styles.body}>
       <View style={styles.card}>
+      <View style={styles.liftRow} testID="check-in-lift">
+        {SESSION_TUNING.LIFT_ROTATION.map((option) => {
+          const selected = option === lift;
+          return (
+            <Pressable
+              key={option}
+              testID={`check-in-lift-${option}`}
+              accessibilityRole="button"
+              onPress={() => onChooseLift(option)}
+              style={[styles.liftChip, selected ? styles.liftChipSelected : null]}
+            >
+              <Text style={[styles.liftChipLabel, selected ? styles.liftChipLabelSelected : null]}>
+                {SESSION_COPY.LIFT_LABEL[option]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
       <Text style={styles.lift}>{SESSION_COPY.LIFT_LABEL[lift]}</Text>
       <Text
         style={[styles.modifier, { color: modifierColour(readiness.loadAdjustmentPercent) }]}
@@ -152,6 +172,8 @@ const styles = StyleSheet.create({
   },
   gym: {
     ...StyleSheet.absoluteFill,
+    width: '100%',
+    height: '100%',
   },
   scrim: {
     ...StyleSheet.absoluteFill,
@@ -170,6 +192,32 @@ const styles = StyleSheet.create({
     borderColor: SESSION_PALETTE.CARD_EDGE,
     backgroundColor: SESSION_PALETTE.CARD,
     gap: L.ROW_GAP,
+  },
+  liftRow: {
+    flexDirection: 'row',
+    gap: L.CHIP_GAP,
+  },
+  liftChip: {
+    flex: 1,
+    height: L.LIFT_CHIP_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: L.CHIP_RADIUS,
+    borderWidth: L.CHIP_BORDER,
+    borderColor: SESSION_PALETTE.CHIP_EDGE,
+    backgroundColor: SESSION_PALETTE.CHIP,
+  },
+  liftChipSelected: {
+    borderColor: SESSION_PALETTE.AMBER,
+  },
+  liftChipLabel: {
+    color: SESSION_PALETTE.TEXT_DIM,
+    fontSize: L.LABEL_FONT,
+    fontWeight: '700',
+    letterSpacing: L.LETTER_SPACING,
+  },
+  liftChipLabelSelected: {
+    color: SESSION_PALETTE.AMBER,
   },
   lift: {
     color: SESSION_PALETTE.AMBER,

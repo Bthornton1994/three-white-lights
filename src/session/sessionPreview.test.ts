@@ -56,8 +56,8 @@ describe('the ?session= debug route', () => {
 describe('the beats a preview can be frozen on', () => {
   it('each one reaches the phase it names', () => {
     const expected: Record<string, string> = {
-      'check-in': 'check-in',
-      'check-in-partial': 'check-in',
+      'check-in': 'briefing',
+      'check-in-partial': 'briefing',
       briefing: 'briefing',
       set: 'set',
       rest: 'rest',
@@ -85,18 +85,20 @@ describe('the beats a preview can be frozen on', () => {
     }
   });
 
-  it('opens on a blank check-in and shows two of three when partial', () => {
+  it('opens on the lift+RPE briefing — check-in aliases are the same screen', () => {
     const blank = previewFrameFor({ moment: 'check-in' }).state;
-    expect(blank.answers).toEqual({ sleep: null, soreness: null, motivation: null });
     const partial = previewFrameFor({ moment: 'check-in-partial' }).state;
-    expect(partial.answers.sleep).toBe('good');
-    expect(partial.answers.soreness).toBe('fresh');
-    expect(partial.answers.motivation).toBeNull();
+    const briefing = previewFrameFor({ moment: 'briefing' }).state;
+    expect(blank.phase).toBe('briefing');
+    expect(partial.phase).toBe('briefing');
+    expect(briefing.phase).toBe('briefing');
+    expect(briefing.plan).toBeNull();
+    expect(briefing.readiness).not.toBeNull();
   });
 
   it('the briefing beat has a surfaced modifier and no plan yet', () => {
     const state = previewFrameFor({ moment: 'briefing' }).state;
-    expect(state.readiness?.label).toBe('Feeling primed +5%');
+    expect(state.readiness).not.toBeNull();
     expect(state.plan).toBeNull();
     expect(state.context.lift).toBe(liftForDay(SESSION_PREVIEW.DAY));
   });
