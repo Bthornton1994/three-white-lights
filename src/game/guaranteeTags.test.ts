@@ -1125,7 +1125,7 @@ const GUARANTEE_COVERAGE = {
   // so the live board is a named fixture scanned by the same file. The old
   // wording tripped the capitalised-absolute heuristic; the new one does not.
   // No tagged guarantee moved.
-  TREE_WIDE: 317,
+  TREE_WIDE: 318,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1505,7 +1505,7 @@ const NUMBER_COVERAGE = {
   // 88 -> 91 ON C3: three tagged paragraphs (`bench-surplus-wall-is-identity`
   // twice, `the-grind-readout-reads-useful-force` once). Two unique ids, so
   // NAMED_BODIES moves by two, not three.
-  TAGGED_PARAGRAPHS: 91,
+  TAGGED_PARAGRAPHS: 92,
   /**
    * ...of which this many state a number as prose.
    *
@@ -1601,7 +1601,7 @@ const NUMBER_COVERAGE = {
   // 79 -> 81 ON C3: `bench-surplus-wall-is-identity` and
   // `the-grind-readout-reads-useful-force`. Both bodies hold a bare 0 and a
   // bare 1, so the two weakness counts below move with them.
-  NAMED_BODIES: 81,
+  NAMED_BODIES: 82,
   // 53 -> 55 with the command beat's three tag-named bodies; two of the three
   // state a bare 0 (the wash before the call, the pip row's first frame) and
   // the third does not.
@@ -1618,7 +1618,7 @@ const NUMBER_COVERAGE = {
   // when a body arrives holding both, and neither is evidence about the other.
   // 58 -> 59: the same body, same reason.
   // 59 -> 61 ON C3, same two bodies as NAMED_BODIES.
-  NAMED_BODIES_HOLDING_ONE: 61,
+  NAMED_BODIES_HOLDING_ONE: 62,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
@@ -1954,7 +1954,7 @@ const TRANSCRIPT_BAR = {
   // is therefore the tree as it stood before the 2026-08-26 ruling.
   // 47 -> 49 ON C3's two new witnesses. Both transcripts name their test
   // and quote a measured scalar, so WITH_A_MEASURED_NUMBER moves with them.
-  GRADED: 49,
+  GRADED: 50,
   /** ...and rows excused because their transcript predates it. */
   // 37 -> 36 when the placeholder's witness retired with its subject
   // (Sprint 1c): its transcript predated the rule, so the excused count is
@@ -2119,6 +2119,11 @@ const MEASURED_SCALAR = /expected\s[+-]?\d+(?:\.\d+)?\sto\s/;
  * test rather than transcribed here, so it moves when the table does.
  */
 const TRANSPLANTED_NUMERIC_RULE = {
+  // 77/64/329/195 -> 78/65/332/197 on the presentation contract's witness. Its
+  // transcript carries `1 failed | 8 passed (9)` — a vitest tally, three
+  // numerals, two of which the named body does not pin. Flagged, and correctly:
+  // the tally counts the MUTATED tree, which is the whole point this constant
+  // keeps making.
   // 52/40/154/76 -> 55/43/165/87 on the three empire-row witnesses. All three
   // are flagged by the transplant and all three are correct, which is the
   // argument this constant exists to keep making: the numbers in a transcript
@@ -2223,10 +2228,10 @@ const TRANSPLANTED_NUMERIC_RULE = {
   // 0.975191 / 0.819427 are MUTATED-tree numbers, plus the skip-line
   // digits the transcript rule itself demands. The shipped bodies pin
   // identity and useful-force equality, not those mutated readings.
-  rows: 77,
-  flagged: 64,
-  numerals: 329,
-  unresolved: 195,
+  rows: 78,
+  flagged: 65,
+  numerals: 332,
+  unresolved: 197,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -2599,7 +2604,7 @@ const REPLACEMENT_BAR = {
   // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
   // is therefore the tree as it stood before the 2026-08-26 ruling.
   // 35 -> 37 ON C3: both new rows carry a `mutatedTo`.
-  REPRODUCIBLE: 37,
+  REPRODUCIBLE: 38,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2780,7 +2785,7 @@ const SECTION_4A_KILL_LIST = {
 // and `the-grind-readout-reads-useful-force` (light the row from raw
 // grindForce). GRADED 47 -> 49, WITH_A_MEASURED_NUMBER 24 -> 26,
 // REPRODUCIBLE 35 -> 37. Both transcripts quote a scalar.
-const WITNESS_ROWS = 85;
+const WITNESS_ROWS = 86;
 
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
   // -------------------------------------------------------------------------
@@ -5038,6 +5043,47 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       "can drift from the app's one set: expected { unit: 'kg', …(3) } to be " +
       "{ unit: 'kg', …(3) } // Object.is equality",
   },
+  // -------------------------------------------------------------------------
+  // THE 2026-09-07 PRESENTATION CONTRACT, AND THE MUTANT IS THE ARCHITECTURE
+  // THAT WAS REJECTED RATHER THAN AN INVENTED EDIT.
+  //
+  // `src/session/liftPresentation.ts` exists because two athlete
+  // implementations were rejected for one cause: an engineer authored the body,
+  // as pixel joint coordinates (`leftKnee.x = mid - STANCE - KNEE_OUT * sit`).
+  // The contract's whole job is to carry gameplay to a renderer WITHOUT
+  // carrying a skeleton, so the mutant is a joint coming back — and it comes
+  // back the way one actually would, as a nested `{ x, y }` point rather than
+  // as a field called `x`, because that is the spelling a reviewer skims past.
+  //
+  // THE ROW ALSO RECORDS A REORDERING THE MUTANT FORCED. Run against the first
+  // version of the test, this exact mutant reddened on the NON-VACUITY pin
+  // (`expected 18 to be 15`) — the guard on the guard — and aborted before
+  // either ban was reached, so the check that names the defect never spoke. The
+  // bans now run first and the pin last. Both reddening paths are still there:
+  // emptying the interface is caught by the pin (`expected 1 to be 15`), and a
+  // joint is caught by the ban below. Measured both ways, then written down.
+  // -------------------------------------------------------------------------
+  {
+    guarantee: 'the-presentation-contract-carries-no-coordinates',
+    mutatedFile: 'src/session/liftPresentation.ts',
+    mutated: '  /** Resolved outcome, or `null` while the rep is still live. */',
+    mutatedTo:
+      '  /** A joint, smuggled in as a nested point. */\n' +
+      '  readonly hip: { readonly x: number; readonly y: number };\n' +
+      '  /** Resolved outcome, or `null` while the rep is still live. */',
+    testFile: 'src/session/liftPresentation.test.ts',
+    redAssertion:
+      "    expect(banned, 'coordinate-shaped fields in the contract').toEqual([]);",
+    observed:
+      'FAIL  src/session/liftPresentation.test.ts > the presentation contract carries no ' +
+      'coordinates > declares no joint, point or pixel field ' +
+      '[the-presentation-contract-carries-no-coordinates]\n' +
+      "AssertionError: coordinate-shaped fields in the contract: expected [ 'x', 'y' ] to " +
+      'deeply equal []\n' +
+      'Tests  1 failed | 8 passed (9)',
+    measuredOver:
+      "    expect(fields.length, 'fields the scan actually read').toBe(15);",
+  },
 ];
 
 /**
@@ -5700,6 +5746,11 @@ describe('the guarantee-tag convention', () => {
       // trio was deleted (Sprint 1c) and its witness retired with it.
       'src/meet/meetSound.test.ts',
       'src/meet/meetStage.test.ts',
+      // The renderer-agnostic presentation contract. Its mutant is the
+      // architecture two athlete implementations were rejected for — a joint
+      // coming back into the layer whose whole job is to carry gameplay to a
+      // renderer without carrying a skeleton.
+      'src/session/liftPresentation.test.ts',
       // GDD §5's floor learning to advance: the §12.3 property that the gym a
       // player sees is a function of elapsed time and of nothing they did.
       'src/shell/empireFloor.test.ts',
