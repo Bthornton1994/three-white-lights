@@ -312,12 +312,22 @@ import {
  * census per NEW word it needed (`'pointer'`, `'auto'`, `'button'`) and none
  * for a colour.
  */
-const GYM_SCREEN_BUTTON_BACKGROUND_COLOR = 'darkslateblue';
-const GYM_SCREEN_BUTTON_BORDER_COLOR = 'deepskyblue';
-const GYM_SCREEN_BUTTON_TEXT_COLOR = 'white';
-const GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR = 'darkslategray';
-const GYM_SCREEN_BUTTON_DISABLED_BORDER_COLOR = 'gray';
+const GYM_SCREEN_BUTTON_BACKGROUND_COLOR = 'black';
+const GYM_SCREEN_BUTTON_BORDER_COLOR = 'goldenrod';
+const GYM_SCREEN_BUTTON_TEXT_COLOR = 'ivory';
+const GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR = 'black';
+const GYM_SCREEN_BUTTON_DISABLED_BORDER_COLOR = 'silver';
 const GYM_SCREEN_BUTTON_DISABLED_TEXT_COLOR = 'silver';
+const GYM_SCREEN_VOID_COLOR = 'black';
+const GYM_SCREEN_AMBER_COLOR = 'goldenrod';
+const GYM_SCREEN_LIGHT_COLOR = 'ivory';
+const GYM_SURFACE_DOCK_LABEL: Readonly<Record<(typeof GYM_SURFACES)[number], string>> = Object.freeze({
+  play: 'GYM',
+  build: 'BUILD',
+  shop: 'SHOP',
+  staff: 'STAFF',
+  more: 'MORE',
+});
 
 /**
  * The one `StyleSheet.create` block this file needs. `button` is the shape
@@ -346,13 +356,56 @@ const styles = StyleSheet.create({
    */
   root: {
     flex: 1,
+    backgroundColor: GYM_SCREEN_VOID_COLOR,
     marginBottom: EMPIRE_TUNING.GYM_SCREEN_LEAVE_PILL_CLEARANCE_PIXELS,
   },
   hud: {
     paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
     paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
+    backgroundColor: GYM_SCREEN_VOID_COLOR,
+  },
+  hudBrand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  hudStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+  },
+  hudMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+  },
+  hudStat: {
+    flexShrink: 1,
+    marginRight: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+  },
+  title: {
+    color: GYM_SCREEN_BUTTON_TEXT_COLOR,
+    letterSpacing: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
+  },
+  lights: {
+    flexDirection: 'row',
+  },
+  light: {
+    width: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS,
+    height: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS,
+    borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS,
+    backgroundColor: GYM_SCREEN_LIGHT_COLOR,
+    marginRight: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
   },
   hudText: {
+    color: GYM_SCREEN_BUTTON_DISABLED_TEXT_COLOR,
+  },
+  hudPrimary: {
+    color: GYM_SCREEN_BUTTON_TEXT_COLOR,
+  },
+  copy: {
     color: GYM_SCREEN_BUTTON_TEXT_COLOR,
   },
   stage: {
@@ -369,7 +422,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     maxHeight:
       EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS * EMPIRE_TUNING.FLOOR_GRID_SIZE.garage.height,
-    backgroundColor: GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR,
+    backgroundColor: GYM_SCREEN_VOID_COLOR,
     borderTopWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
     borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
     zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
@@ -382,6 +435,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
     paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
+    backgroundColor: GYM_SCREEN_VOID_COLOR,
+    borderTopWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
+    borderColor: GYM_SCREEN_AMBER_COLOR,
   },
   dockButton: {
     flex: 1,
@@ -392,12 +448,37 @@ const styles = StyleSheet.create({
     borderWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
-    borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
+    backgroundColor: GYM_SCREEN_VOID_COLOR,
+    borderColor: GYM_SCREEN_VOID_COLOR,
     cursor: 'pointer',
   },
   dockButtonActive: {
-    backgroundColor: GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR,
+    borderColor: GYM_SCREEN_AMBER_COLOR,
+  },
+  dockButtonText: {
+    color: GYM_SCREEN_BUTTON_DISABLED_TEXT_COLOR,
+  },
+  dockButtonTextActive: {
+    color: GYM_SCREEN_AMBER_COLOR,
+  },
+  fab: {
+    position: 'absolute',
+    right: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
+    bottom:
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS +
+      EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS * 2,
+    minHeight: EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS,
+    minWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS,
+    paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
+    borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS,
+    backgroundColor: GYM_SCREEN_AMBER_COLOR,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
+    cursor: 'pointer',
+  },
+  fabText: {
+    color: GYM_SCREEN_VOID_COLOR,
   },
   shopCard: {
     flexDirection: 'row',
@@ -407,7 +488,7 @@ const styles = StyleSheet.create({
     borderWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
     borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
     borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS,
-    backgroundColor: GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR,
+    backgroundColor: GYM_SCREEN_VOID_COLOR,
   },
   shopSprite: {
     width: EMPIRE_TUNING.FLOOR_TILE_PIXELS_MAX,
@@ -426,12 +507,12 @@ const styles = StyleSheet.create({
     borderWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: GYM_SCREEN_BUTTON_BACKGROUND_COLOR,
-    borderColor: GYM_SCREEN_BUTTON_BORDER_COLOR,
+    backgroundColor: GYM_SCREEN_AMBER_COLOR,
+    borderColor: GYM_SCREEN_AMBER_COLOR,
     cursor: 'pointer',
   },
   buttonText: {
-    color: GYM_SCREEN_BUTTON_TEXT_COLOR,
+    color: GYM_SCREEN_VOID_COLOR,
   },
   buttonDisabled: {
     backgroundColor: GYM_SCREEN_BUTTON_DISABLED_BACKGROUND_COLOR,
@@ -555,13 +636,31 @@ export function GymScreen(props: GymViewProps) {
   return (
     <View testID={'gymscreen-root'} style={styles.root}>
       <View testID={'gymscreen-hud'} style={styles.hud}>
-        <Text testID={'gymscreen-rung'} style={styles.hudText}>rung {gym.ladder.rung}</Text>
-        <Text testID={'gymscreen-rate'} style={styles.hudText}>
-          earning {ladderIncomeRatePerHour(gym.ladder.rung)} gym bucks per hour
-        </Text>
-        <Text testID={'gymscreen-gym-bucks'} style={styles.hudText}>gym bucks: {gym.ladder.gymBucks}</Text>
-        <Text testID={'gymscreen-accelerated-bucks'} style={styles.hudText}>accelerated: {gym.acceleratedGymBucks}</Text>
-        <Text testID={'gymscreen-clock'} style={styles.hudText}>clock: {describeLadderClock(gym.ladder.collectedAt)}</Text>
+        <View style={styles.hudBrand}>
+          <Text testID={'gymscreen-title'} style={styles.title}>THREE WHITE LIGHTS</Text>
+          <View testID={'gymscreen-lights'} style={styles.lights}>
+            <View testID={'gymscreen-light-0'} style={styles.light} />
+            <View testID={'gymscreen-light-1'} style={styles.light} />
+            <View testID={'gymscreen-light-2'} style={styles.light} />
+          </View>
+        </View>
+        <View style={styles.hudStats}>
+          <Text testID={'gymscreen-gym-bucks'} style={[styles.hudPrimary, styles.hudStat]}>
+            gym bucks: {gym.ladder.gymBucks}
+          </Text>
+          <Text testID={'gymscreen-rate'} style={[styles.hudText, styles.hudStat]}>
+            earning {ladderIncomeRatePerHour(gym.ladder.rung)} gym bucks per hour
+          </Text>
+          <Text testID={'gymscreen-rung'} style={styles.hudPrimary}>rung {gym.ladder.rung}</Text>
+        </View>
+        <View style={styles.hudMeta}>
+          <Text testID={'gymscreen-accelerated-bucks'} style={styles.hudText}>
+            accelerated: {gym.acceleratedGymBucks}
+          </Text>
+          <Text testID={'gymscreen-clock'} style={styles.hudText}>
+            clock: {describeLadderClock(gym.ladder.collectedAt)}
+          </Text>
+        </View>
         {prompt.kind === 'quiet' ? null : (
           <Pressable
             testID={'gymscreen-hud-review'}
@@ -637,18 +736,18 @@ export function GymScreen(props: GymViewProps) {
         style={surface === 'staff' ? styles.drawer : styles.drawerHidden}
       >
       <View testID={'gymscreen-management'}>
-        <View testID={'gymscreen-manager'}>
+        <View testID={'gymscreen-manager'} style={styles.shopCard}>
           {managed.manager === null ? (
             <>
-              <Text testID={'gymscreen-manager-state'}>No manager hired</Text>
+              <Text style={styles.copy} testID={'gymscreen-manager-state'}>No manager hired</Text>
               {EMPIRE_TUNING.MANAGER_TIERS.map((tier) => (
                 <View key={tier}>
-                  <Text testID={`gymscreen-manager-tier-${tier}`}>
+                  <Text style={styles.copy} testID={`gymscreen-manager-tier-${tier}`}>
                     {tier}: hire {managerHireCostGymBucks(tier)} gym bucks, wage{' '}
                     {managerWageRatePerBankedHour(tier)}/hour, {playerFacingManagerCapability(tier)}
                   </Text>
                   {managerHireCostGymBucks(tier) > gym.ladder.gymBucks ? (
-                    <Text testID={`gymscreen-hire-${tier}-unavailable`}>
+                    <Text style={styles.copy} testID={`gymscreen-hire-${tier}-unavailable`}>
                       needs {managerHireCostGymBucks(tier)} gym bucks — you have{' '}
                       {gym.ladder.gymBucks}
                     </Text>
@@ -667,7 +766,7 @@ export function GymScreen(props: GymViewProps) {
             </>
           ) : (
             <>
-              <Text testID={'gymscreen-manager-state'}>
+              <Text style={styles.copy} testID={'gymscreen-manager-state'}>
                 manager: {managed.manager.tier} — {managerWageRatePerBankedHour(managed.manager.tier)}{' '}
                 gym bucks per banked hour, {playerFacingManagerCapability(managed.manager.tier)}
                 {managed.manager.hiredUnderWarning ? ' — hired while the gym was already warned' : null}
@@ -683,12 +782,14 @@ export function GymScreen(props: GymViewProps) {
             </>
           )}
         </View>
-        <Text testID={'gymscreen-phase'}>
-          gym status: {signs.phase}
-        </Text>
-        <Text testID={'gymscreen-condition'}>
-          Equipment condition: {displayConditionPercent(meanCondition(managed))}%
-        </Text>
+        <View style={styles.shopCard}>
+          <Text style={styles.copy} testID={'gymscreen-phase'}>
+            gym status: {signs.phase}
+          </Text>
+          <Text style={styles.copy} testID={'gymscreen-condition'}>
+            Equipment condition: {displayConditionPercent(meanCondition(managed))}%
+          </Text>
+        </View>
         {/*
           GDD §5.14 STAGE C.1 REMOVED THE PER-ITEM REPAIR LOOP THAT USED TO SIT
           HERE. Every owned item's condition, quoted repair cost and a live
@@ -725,7 +826,7 @@ export function GymScreen(props: GymViewProps) {
           time, and there is no bulk-repair control anywhere in this
           directory for it to duplicate.
         */}
-        <Text testID={'gymscreen-full-repair'}>
+        <Text style={styles.copy} testID={'gymscreen-full-repair'}>
           Full repair: {worn.length === 0 ? 0 : fullRepairCostGymBucks(managed)} gym bucks
         </Text>
         {/*
@@ -748,18 +849,18 @@ export function GymScreen(props: GymViewProps) {
           time — the numbers themselves are the station panel's job now.
         */}
         {worn.length === 0 ? null : (
-          <Text testID={'gymscreen-worn'}>
+          <Text style={styles.copy} testID={'gymscreen-worn'}>
             Needs attention: {worn.join(', ')}
           </Text>
         )}
         {prompt.kind === 'quiet' ? null : (
           <View testID={'gymscreen-prompt'}>
-            <Text testID={'gymscreen-prompt-item'}>
+            <Text style={styles.copy} testID={'gymscreen-prompt-item'}>
               maintenance review: {prompt.item} at{' '}
               {displayConditionPercent(itemCondition(managed, prompt.item))}% — repair costs{' '}
               {displayRepairCost(prompt.repairCostGymBucks)} gym bucks
             </Text>
-            <Text testID={'gymscreen-prompt-stakes'}>
+            <Text style={styles.copy} testID={'gymscreen-prompt-stakes'}>
               {prompt.alreadyRefused
                 ? 'you already refused this order — refusing it again adds nothing. only a press moves the ledger; leaving this open does not.'
                 : prompt.dismissalWouldCount
@@ -767,11 +868,11 @@ export function GymScreen(props: GymViewProps) {
                   : '“not now” is free this once; “decline the repair” counts. only a press moves the ledger; leaving this open does not.'}
             </Text>
             {isDustRepairCost(prompt.repairCostGymBucks) ? (
-              <Text testID={'gymscreen-prompt-repair-unavailable'}>
+              <Text style={styles.copy} testID={'gymscreen-prompt-repair-unavailable'}>
                 this one is already as new — there is nothing to pay for
               </Text>
             ) : prompt.repairCostGymBucks > gym.ladder.gymBucks ? (
-              <Text testID={'gymscreen-prompt-repair-unavailable'}>
+              <Text style={styles.copy} testID={'gymscreen-prompt-repair-unavailable'}>
                 needs {prompt.repairCostGymBucks} gym bucks — you have {gym.ladder.gymBucks}
               </Text>
             ) : (
@@ -804,11 +905,11 @@ export function GymScreen(props: GymViewProps) {
         )}
         {managed.strikes.length === 0 ? null : (
         <View testID={'gymscreen-strikes'}>
-          <Text testID={'gymscreen-strikes-lead'}>
+          <Text style={styles.copy} testID={'gymscreen-strikes-lead'}>
             {managed.strikes.length} counted decision(s)
           </Text>
           {managed.strikes.map((record, index) => (
-            <Text testID={`gymscreen-strike-${index}`} key={`${record.decision}-${index}`}>
+            <Text style={styles.copy} testID={`gymscreen-strike-${index}`} key={`${record.decision}-${index}`}>
               {record.decision} at {record.atSeconds}s, price shown {record.shownCostGymBucks} gym
               bucks
             </Text>
@@ -817,15 +918,15 @@ export function GymScreen(props: GymViewProps) {
         )}
         <View testID={'gymscreen-recovery'}>
           {recovery.kind === 'not-dormant' ? (
-            <Text testID={'gymscreen-recovery-state'}>
+            <Text style={styles.copy} testID={'gymscreen-recovery-state'}>
               open for business — {failurePhase(managed)}
             </Text>
           ) : recovery.kind === 'ready' ? (
-            <Text testID={'gymscreen-recovery-state'}>
+            <Text style={styles.copy} testID={'gymscreen-recovery-state'}>
               dormant — everything reopening asks for is done
             </Text>
           ) : (
-            <Text testID={'gymscreen-recovery-state'}>
+            <Text style={styles.copy} testID={'gymscreen-recovery-state'}>
               dormant — still needed:{' '}
               {recovery.equipmentBelowMinimum
                 ? `equipment back to condition ${EMPIRE_TUNING.RECOVERY_CONDITION_MIN}`
@@ -854,7 +955,7 @@ export function GymScreen(props: GymViewProps) {
             never failed is the same empty line this round is removing.
           */}
           {recovery.kind === 'not-dormant' ? null : (
-            <Text testID={'gymscreen-recovery-cost'}>
+            <Text style={styles.copy} testID={'gymscreen-recovery-cost'}>
               reopening would cost {recoveryRepairCostGymBucks(managed)} gym bucks in repairs
             </Text>
           )}
@@ -875,7 +976,7 @@ export function GymScreen(props: GymViewProps) {
             reacts to real state rather than to a flag.
           */}
           {recovery.kind === 'blocked' && recovery.equipmentBelowMinimum ? (
-            <Text testID={'gymscreen-recovery-blocking'}>
+            <Text style={styles.copy} testID={'gymscreen-recovery-blocking'}>
               blocking reopening: {recoveryBlocking.join(', ')} — tap one on the floor to repair it
             </Text>
           ) : null}
@@ -890,7 +991,7 @@ export function GymScreen(props: GymViewProps) {
             </Pressable>
           ) : null}
           {managed.recoveries === 0 ? null : (
-            <Text testID={'gymscreen-recovery-history'}>
+            <Text style={styles.copy} testID={'gymscreen-recovery-history'}>
               this gym has reopened {managed.recoveries} time(s)
             </Text>
           )}
@@ -934,20 +1035,20 @@ export function GymScreen(props: GymViewProps) {
                 />
               )}
               <View style={styles.shopCardBody}>
-                <Text testID={`gymscreen-shop-name-${item}`}>{playerFacingEquipmentLabel(item)}</Text>
-                <Text>
+                <Text style={styles.copy} testID={`gymscreen-shop-name-${item}`}>{playerFacingEquipmentLabel(item)}</Text>
+                <Text style={styles.copy}>
                   {ladderEquipmentCost(item)} gym bucks · {ladderEquipmentMinRung(item)}
                   {owned ? ' · owned' : null}
                 </Text>
                 {owned ? (
-                  <Text>owned</Text>
+                  <Text style={styles.copy}>owned</Text>
                 ) : tooLow ? (
-                  <Text testID={`gymscreen-buy-ladder-${item}-unavailable`}>
+                  <Text style={styles.copy} testID={`gymscreen-buy-ladder-${item}-unavailable`}>
                     not here yet — fits from {ladderEquipmentMinRung(item)} and this gym is a{' '}
                     {gym.ladder.rung}
                   </Text>
                 ) : tooPoor ? (
-                  <Text testID={`gymscreen-buy-ladder-${item}-unavailable`}>
+                  <Text style={styles.copy} testID={`gymscreen-buy-ladder-${item}-unavailable`}>
                     needs {ladderEquipmentCost(item)} gym bucks — you have {gym.ladder.gymBucks}
                   </Text>
                 ) : (
@@ -984,16 +1085,16 @@ export function GymScreen(props: GymViewProps) {
                 />
               )}
               <View style={styles.shopCardBody}>
-                <Text testID={`gymscreen-shop-name-${item}`}>{playerFacingEquipmentLabel(item)}</Text>
-                <Text>
+                <Text style={styles.copy} testID={`gymscreen-shop-name-${item}`}>{playerFacingEquipmentLabel(item)}</Text>
+                <Text style={styles.copy}>
                   {playerFacingActivityGroupLabel(sessionEquipmentGroup(item))} ·{' '}
                   {sessionEquipmentCost(item)} gym bucks · {sessionEquipmentMinRung(item)}
                   {owned ? ' · owned' : null}
                 </Text>
                 {owned ? (
-                  <Text>owned</Text>
+                  <Text style={styles.copy}>owned</Text>
                 ) : tooLow ? (
-                  <Text testID={`gymscreen-buy-session-${item}-unavailable`}>
+                  <Text style={styles.copy} testID={`gymscreen-buy-session-${item}-unavailable`}>
                     not here yet — fits from {sessionEquipmentMinRung(item)} and this gym is a{' '}
                     {gym.ladder.rung}
                   </Text>
@@ -1025,15 +1126,15 @@ export function GymScreen(props: GymViewProps) {
       </View>
       <View testID={'gymscreen-move'}>
         {destination === null ? (
-          <Text>top of the ladder - staffing, maintenance and the failure state are above; the portfolio stays paused</Text>
+          <Text style={styles.copy}>top of the ladder - staffing, maintenance and the failure state are above; the portfolio stays paused</Text>
         ) : (
           <>
-            <Text>
+            <Text style={styles.copy}>
               next: {destination} for {ladderMoveCost(destination)} gym bucks
             </Text>
             {/* `moveUpLadder`'s `'not-enough-gym-bucks'` arm, drawn instead of pressed for. */}
             {ladderMoveCost(destination) > gym.ladder.gymBucks ? (
-              <Text testID={'gymscreen-move-up-unavailable'}>
+              <Text style={styles.copy} testID={'gymscreen-move-up-unavailable'}>
                 needs {ladderMoveCost(destination)} gym bucks — you have {gym.ladder.gymBucks}
               </Text>
             ) : (
@@ -1055,19 +1156,19 @@ export function GymScreen(props: GymViewProps) {
         style={surface === 'more' ? styles.drawer : styles.drawerHidden}
       >
       <View testID={'gymscreen-week'}>
-        <Text>
+        <Text style={styles.copy}>
           week {weekIndex} ({shape.fixed} fixed + {shape.flexible} flexible = {shape.total}{' '}
           sessions) — {allocationSetThisWeek ? 'allocated this week' : 'not yet allocated this week'}
         </Text>
       </View>
-      <Text testID={'gymscreen-lifts'}>lifts unlocked: {unlockedLifts(gym.ladder.equipment).join(', ')}</Text>
+      <Text style={styles.copy} testID={'gymscreen-lifts'}>lifts unlocked: {unlockedLifts(gym.ladder.equipment).join(', ')}</Text>
       <View testID={'gymscreen-allocation'}>
-        <Text testID={'gymscreen-available-now'}>
+        <Text style={styles.copy} testID={'gymscreen-available-now'}>
           available now: {available.length === 0 ? 'none' : available.join(', ')}
         </Text>
         {([0, 1, 2] as const).map((slotIndex) => (
           <View testID={`gymscreen-slot-${slotIndex}`} key={slotIndex}>
-            <Text>
+            <Text style={styles.copy}>
               slot {slotIndex}: {allocation[slotIndex]} — {describeSlotOutcome(previewOutcomes[slotIndex])}
             </Text>
             {allocationOptions().map((option) => (
@@ -1083,7 +1184,7 @@ export function GymScreen(props: GymViewProps) {
             ))}
           </View>
         ))}
-        <Text testID={'gymscreen-week-preview'}>
+        <Text style={styles.copy} testID={'gymscreen-week-preview'}>
           if this week ended now: residual carry {previewEffects.residualCarryMultiplier}, injury
           chance {previewEffects.injuryChanceMultiplier}, technique bonus{' '}
           {previewEffects.techniqueQualityBonus}, ceiling growth {previewEffects.ceilingGrowthPerWeek}
@@ -1091,7 +1192,7 @@ export function GymScreen(props: GymViewProps) {
       </View>
       <View testID={'gymscreen-week-log'}>
         {weekLog.map((week) => (
-          <Text testID={`gymscreen-week-log-${week.weekIndex}`} key={week.weekIndex}>
+          <Text style={styles.copy} testID={`gymscreen-week-log-${week.weekIndex}`} key={week.weekIndex}>
             week {week.weekIndex}: {week.slots.map(describeSlotOutcome).join('; ')} — residual carry{' '}
             {week.effects.residualCarryMultiplier}, injury chance {week.effects.injuryChanceMultiplier},
             technique bonus {week.effects.techniqueQualityBonus}, ceiling growth{' '}
@@ -1119,26 +1220,26 @@ export function GymScreen(props: GymViewProps) {
         relocating them costs no rewritten assertion.
       */}
       <View testID={'gymscreen-diagnostics'}>
-        <Text>engine detail — not needed to play, kept here for verification</Text>
+        <Text style={styles.copy}>engine detail — not needed to play, kept here for verification</Text>
         {prompt.kind === 'quiet' ? (
-          <Text testID={'gymscreen-prompt'}>no maintenance review open</Text>
+          <Text style={styles.copy} testID={'gymscreen-prompt'}>no maintenance review open</Text>
         ) : null}
         {worn.length === 0 ? (
-          <Text testID={'gymscreen-worn'}>Needs attention: none</Text>
+          <Text style={styles.copy} testID={'gymscreen-worn'}>Needs attention: none</Text>
         ) : null}
         {managed.strikes.length === 0 ? (
           <View testID={'gymscreen-strikes'}>
-            <Text testID={'gymscreen-strikes-lead'}>0 counted decision(s)</Text>
+            <Text style={styles.copy} testID={'gymscreen-strikes-lead'}>0 counted decision(s)</Text>
           </View>
         ) : null}
         {lastAccrual === null ? null : (
-          <Text testID={'gymscreen-accrual'}>
+          <Text style={styles.copy} testID={'gymscreen-accrual'}>
             last advance banked {lastAccrual.secondsBanked}s of {lastAccrual.secondsElapsed}s, paid{' '}
             {lastAccrual.gymBucks} gym bucks, cap discarded {lastAccrual.secondsDiscarded}s
           </Text>
         )}
         {lastManagementReport === null ? null : (
-          <Text testID={'gymscreen-check-in-costs'}>
+          <Text style={styles.copy} testID={'gymscreen-check-in-costs'}>
             since the last update: condition took {lastManagementReport.incomeDeductedGymBucks} gym bucks off
             the accrual and paid {lastManagementReport.incomePaidGymBucks} at{' '}
             {lastManagementReport.incomeMultiplier}, wore the gym down by{' '}
@@ -1151,13 +1252,13 @@ export function GymScreen(props: GymViewProps) {
         {lastManagementReport === null
           ? null
           : lastManagementReport.autoRepairs.map((repair) => (
-              <Text testID={`gymscreen-auto-repair-${repair.item}`} key={repair.item}>
+              <Text style={styles.copy} testID={`gymscreen-auto-repair-${repair.item}`} key={repair.item}>
                 your manager repaired {repair.item} for {repair.costGymBucks} gym bucks
               </Text>
             ))}
       </View>
       <View testID={'gymscreen-dev-controls'}>
-        <Text>
+        <Text style={styles.copy}>
           not part of the game. Watched buttons pay the online garage rate. Away buttons pay the
           offline fraction, the same as leaving the app. The week-boundary jump is away. Reset gym
           starts a new opening garage.
@@ -1194,6 +1295,16 @@ export function GymScreen(props: GymViewProps) {
       </View>
       </ScrollView>
       </View>
+      {surface === 'play' ? (
+        <Pressable
+          testID={'gymscreen-build-fab'}
+          accessibilityRole={'button'}
+          style={styles.fab}
+          onPress={() => dispatch({ kind: 'set-gym-surface', surface: 'build' })}
+        >
+          <Text style={styles.fabText}>BUILD</Text>
+        </Pressable>
+      ) : null}
       <View testID={'gymscreen-dock'} style={styles.dock}>
         {GYM_SURFACES.map((name) => (
           <Pressable
@@ -1203,7 +1314,9 @@ export function GymScreen(props: GymViewProps) {
             style={surface === name ? [styles.dockButton, styles.dockButtonActive] : styles.dockButton}
             onPress={() => dispatch({ kind: 'set-gym-surface', surface: name })}
           >
-            <Text style={styles.buttonText}>{name}</Text>
+            <Text style={surface === name ? styles.dockButtonTextActive : styles.dockButtonText}>
+              {GYM_SURFACE_DOCK_LABEL[name]}
+            </Text>
           </Pressable>
         ))}
       </View>

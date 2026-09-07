@@ -143,6 +143,10 @@ import {
   stationConditionView,
 } from './stationView';
 import { GymScreen } from './GymScreen';
+import { FloorGrid } from './FloorGrid';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const T = EMPIRE_TUNING;
 
@@ -1853,12 +1857,83 @@ describe('S4h: every rendered Pressable is visibly a control', () => {
     // every gym, and a HUD review chip on gyms that have a standing
     // maintenance review (dormant and ready-to-reopen in this fixture).
     expect(counts).toEqual({
-      'cold garage': 29,
-      'heavily operated gym': 33,
-      'staffed gym': 31,
-      'dormant gym': 37,
-      'ready-to-reopen gym': 37,
+      'cold garage': 30,
+      'heavily operated gym': 34,
+      'staffed gym': 32,
+      'dormant gym': 38,
+      'ready-to-reopen gym': 38,
     });
-    expect(total).toBe(167);
+    expect(total).toBe(172);
+  });
+});
+
+describe('Iron & Amber presentation — Gym Empire home chrome', () => {
+  it('names THREE WHITE LIGHTS, three lights, GYM dock, and a BUILD action on Play', () => {
+    const dispatched: GymViewAction[] = [];
+    const root = render(createGymViewState(), dispatched);
+    expect(textOf(findByTestId(root, 'gymscreen-title'))).toBe('THREE WHITE LIGHTS');
+    expect(findByTestId(root, 'gymscreen-light-0')).toBeDefined();
+    expect(findByTestId(root, 'gymscreen-light-1')).toBeDefined();
+    expect(findByTestId(root, 'gymscreen-light-2')).toBeDefined();
+    expect(textOf(findByTestId(root, 'gymscreen-surface-play'))).toBe('GYM');
+    expect(textOf(findByTestId(root, 'gymscreen-surface-build'))).toBe('BUILD');
+    expect(textOf(findByTestId(root, 'gymscreen-surface-shop'))).toBe('SHOP');
+    expect(textOf(findByTestId(root, 'gymscreen-surface-staff'))).toBe('STAFF');
+    expect(textOf(findByTestId(root, 'gymscreen-surface-more'))).toBe('MORE');
+    expect(textOf(findByTestId(root, 'gymscreen-build-fab'))).toBe('BUILD');
+    const fab = findByTestId(root, 'gymscreen-build-fab');
+    const press = fab.props['onPress'] as (() => void) | undefined;
+    expect(press).toBeTypeOf('function');
+    press?.();
+    expect(dispatched).toEqual([{ kind: 'set-gym-surface', surface: 'build' }]);
+  });
+
+  it('hands FloorGrid play mode on Play and build mode on Build', () => {
+    const play = render(createGymViewState(), []);
+    function floorGridFrom(root: Rendered): Rendered {
+      function walk(node: unknown): Rendered | null {
+        if (!isRendered(node)) return null;
+        if (node.type === FloorGrid) return node;
+        for (const child of childrenOf(node)) {
+          const found = walk(child);
+          if (found !== null) return found;
+        }
+        return null;
+      }
+      const found = walk(root);
+      expect(found, 'GymScreen embeds FloorGrid').not.toBeNull();
+      return found as Rendered;
+    }
+    expect(floorGridFrom(play).props['buildMode']).toBe(false);
+    const buildState = gymViewReduce(createGymViewState(), {
+      kind: 'set-gym-surface',
+      surface: 'build',
+    });
+    const build = render(buildState, []);
+    expect(floorGridFrom(build).props['buildMode']).toBe(true);
+    expect(findAllByTestId(build, 'gymscreen-build-fab').length).toBe(0);
+  });
+
+  it('keeps FloorGrid placement-grid lines on the Build overlay only', () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const source = readFileSync(join(here, 'FloorGrid.tsx'), 'utf8');
+    expect(source).toMatch(/buildMode\s*\n\s*\? verticalLines\.map/);
+    expect(source).toMatch(/buildMode\s*\n\s*\? horizontalLines\.map/);
+    expect(source).toMatch(/floorgrid-occupancy-on-floor/);
+    expect(source).toMatch(/floorgrid-occupancy-waiting/);
+    expect(source).toMatch(/on the machine/);
+    expect(source).toMatch(/occupancyCard/);
+    expect(source).toMatch(/buildMode \? null : \(\s*<View testID=\{'floorgrid-occupancy'\}/);
+  });
+
+  it('renders a compact HUD strip with title, lights, purse, rate, and rung', () => {
+    const play = render(createGymViewState(), []);
+    expect(textOf(findByTestId(play, 'gymscreen-title'))).toBe('THREE WHITE LIGHTS');
+    expect(findByTestId(play, 'gymscreen-light-0')).toBeDefined();
+    expect(findByTestId(play, 'gymscreen-light-1')).toBeDefined();
+    expect(findByTestId(play, 'gymscreen-light-2')).toBeDefined();
+    expect(textOf(findByTestId(play, 'gymscreen-gym-bucks'))).toMatch(/^gym bucks:/);
+    expect(textOf(findByTestId(play, 'gymscreen-rate'))).toMatch(/gym bucks per hour/);
+    expect(textOf(findByTestId(play, 'gymscreen-rung'))).toMatch(/^rung /);
   });
 });

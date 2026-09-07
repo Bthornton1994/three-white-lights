@@ -3160,7 +3160,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // and FloorGrid presentation helpers. Read from this pin's own failure.
   // 3361 -> 3375: Stage D2.1A live-Capacity seat assignment / relocate helpers.
   // 3375 -> 3405: Stage D2.1B changeover helpers + FloorGrid loading path.
-  CALLS_EXAMINED: 3662, // Stage G.2B livingMemberRetention
+  CALLS_EXAMINED: 3664, // Iron & Amber occupancy cards + compact HUD
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -11424,7 +11424,7 @@ const DRIVE_CENSUS = Object.freeze({
   // failure value.
   // 6490388 -> 6510102: Stage C.1b furniture/dock GymScreen trees. Measured.
   // 6510907 -> 6510913: Stage C.1d playerFacing* drive rows.
-  NODES: 6546043, // Stage G.2B livingMemberRetention drive
+  NODES: 6546238, // Iron & Amber occupancy cards + compact HUD
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -11545,7 +11545,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_199_722, // Stage G.2B livingMemberRetention drive strings
+  STRINGS: 30_200_775, // Iron & Amber occupancy cards + compact HUD
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -11655,7 +11655,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
   // 3973 -> 3975: Stage D2 reset-gym copy / wear-truth strings. Read from
   // this pin's own failure value.
-  DISTINCT_STRINGS: 4224, // Stage G.2B livingMemberRetention labels/reasons
+  DISTINCT_STRINGS: 4242, // Iron & Amber occupancy cards + compact HUD
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
   DEPTH_CUTS: 7,
   /**
@@ -11740,7 +11740,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 181 -> 196: Stage C.1b dock onPress closures on driven GymScreen trees.
   // 196 -> 199: Stage D2 reset-gym onPress on the three driven GymScreen
   // trees. Read from this pin's own failure value.
-  CLOSURES_INVOKED: 217,
+  CLOSURES_INVOKED: 220,
   CLOSURE_THROWS: 0,
   // 2046 -> 2052: GDD §5.13 presentation Phase 1's two new declined closures
   // (FloorGrid's `type` and `dispatch`, embedded in GymScreen's own return),
@@ -11820,7 +11820,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 6018 -> 6070: Stage C.1b GymScreen/FloorGrid Error.stack readings. Measured.
   // 6247 -> 6253: Stage D2 reset-gym Pressable stacks on driven GymScreen
   // trees. Read from this pin's own failure value.
-  STACKS: 6290,
+  STACKS: 6323,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -16084,12 +16084,12 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:2668 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:2686 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:779 returned=unfollowable:station',
-  'FloorGrid.tsx:779 returned=unfollowable:station',
-  'FloorGrid.tsx:780 returned=unfollowable:station',
-  'FloorGrid.tsx:780 returned=unfollowable:station',
+  'FloorGrid.tsx:2731 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:2749 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:807 returned=unfollowable:station',
+  'FloorGrid.tsx:807 returned=unfollowable:station',
+  'FloorGrid.tsx:808 returned=unfollowable:station',
+  'FloorGrid.tsx:808 returned=unfollowable:station',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -16138,12 +16138,12 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'stationCapability.ts:104 returned=unfollowable:capability',
 ]);
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1725 FloorSimState asked=true walked=false',
-  'FloorGrid.tsx:779 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:779 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:780 GridSize asked=true walked=false',
-  'FloorGrid.tsx:780 GridSize asked=true walked=false',
-  'FloorGrid.tsx:792 BayBench | undefined asked=true walked=false',
+  'FloorGrid.tsx:1753 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:807 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:807 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:808 GridSize asked=true walked=false',
+  'FloorGrid.tsx:808 GridSize asked=true walked=false',
+  'FloorGrid.tsx:820 BayBench | undefined asked=true walked=false',
   'empireInvariant.ts:1084 GymAxes asked=true walked=false',
   'empireInvariant.ts:1137 GymAxes asked=true walked=false',
   'empireInvariant.ts:1168 readonly ExpansionBuild[] asked=true walked=false',
@@ -16447,7 +16447,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1674 -> 1681: Stage D2 placedOwnedItems / withWear / stationOperationView / reset.
   // 1681 -> 1691: Stage D2.1A assignedSeat / reservedUseCells / relocate helpers.
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
-  function: 1815, // Stage G.2B livingMemberRetention + FloorGrid membership
+  function: 1816, // Iron & Amber occupancy cards + compact HUD
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16505,7 +16505,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1502 -> 1513: Stage D2 Set.has / Object.freeze / stationByRefKey.get.
   // 1513 -> 1517: Stage D2.1A useCells/blocked/has member calls on live relocate.
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
-  member: 1658, // Stage G.2B livingMemberRetention + FloorGrid membership
+  member: 1659, // Iron & Amber occupancy cards + compact HUD
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -16854,7 +16854,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
   // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
   // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
-  NODES_EXAMINED: 83_797, // Stage G.2B livingMemberRetention AST
+  NODES_EXAMINED: 84_819, // Iron & Amber occupancy cards + compact HUD
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -17956,7 +17956,7 @@ const GYM_VIEW_CONTROLS =
  *
  * The ungated set, named so the split is legible: the watched and away QA
  * clock steps, the week-boundary jump, every flexible-slot option button, and Stage C.1b's
- * five surface-dock buttons (`GYM_SURFACES`). The player's own check-in
+ * five surface-dock buttons (`GYM_SURFACES`) plus the Play-only BUILD FAB. The player's own check-in
  * used to be another always-offered control — `'open-up'` — and is gone,
  * by human ruling: no tap anywhere on this screen mints or advances the
  * clock any more (`GymScreen.tsx`'s own header, "kill the mint" round). The
@@ -17981,6 +17981,7 @@ function gymScreenControlsAt(managed: managementModule.ManagedGym): number {
     1 + // the week-boundary jump
     1 + // reset gym, always offered, labeled not-part-of-the-game
     ladderViewModule.GYM_SURFACES.length + // Stage C.1b dock; always offered
+    1 + // Play-only BUILD FAB; this drive's default surface is play
     // The player's own check-in ('open-up') used to be counted here, always
     // offered, +1 unconditionally. It is gone — no tap anywhere on
     // `GymScreen` mints or advances the clock any more.
@@ -18540,8 +18541,8 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
     // GDD §5.14 Stage B: NUMBER 404 -> 407. Read from this pin's own failure
     // value.
     points: 410,
-    calls: 12507, // Stage G.2A NUMBER 410
-    recorded: 12507,
+    calls: 12917, // Iron & Amber Play BUILD FAB: +1 control × NUMBER 410
+    recorded: 12917,
   }),
   // S4i: NUMBER's own engagement domain 239 -> 241. Read from this pin's own
   // failure value.
@@ -18710,7 +18711,7 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
       // 5230128 -> 5230196: Stage D, sum of DECLARED_CALLBACK_AXES.calls
       // (GymScreen +28, GymView +35, LadderView +5).
       // 5230196 -> 5230605: Stage D2 reset-gym, +409 (one control × NUMBER 409).
-      CALLS: 5233463, // Stage G.2A waitDecayTicks domain +1
+      CALLS: 5233873, // Iron & Amber Play BUILD FAB +410 (GymScreen dispatch axis)
   // GDD §5.13 presentation Phase 3: re-measured (5496920 -> 5618662), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (5618662 -> 5620716).
@@ -18737,7 +18738,7 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // 8686979 -> 8687342: Stage C.1b, sum of DECLARED_CALLBACK_AXES.recorded.
   // 8687342 -> 8687410: Stage D, same +68 as CALLS.
   // 8687410 -> 8687819: Stage D2 reset-gym, same +409 as CALLS.
-  RECORDED: 8690897, // Stage G.2A waitDecayTicks domain +1
+  RECORDED: 8691307, // Iron & Amber Play BUILD FAB +410, same as CALLS
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
@@ -25134,7 +25135,7 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 111 -> 159: S4b's two stage-4 sites, +24 each — measured, and the two
   // agreeing at 24 is a coincidence of the two rendered rows rather than a
   // shared derivation.
-  RETURNED: 270, // Stage G.1C applyServiceObservations map returns displayName (+6)
+  RETURNED: 279, // Iron & Amber GymScreen chrome +9 (week-row 29→32, two stage-4 maps 24→27)
   FINDINGS: 0,
   TRIPWIRE_SUBJECTS: 2,
   TRIPWIRE_FINDINGS: 2,
@@ -25221,7 +25222,7 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   // deep-scanned string, because the RN tree's `<Text>` wraps the row in a
   // single string-concatenating child rather than the DOM tree's several
   // separately-scanned text nodes.
-  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=29 verdicts=objectx1',
+  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=32 verdicts=objectx1',
   'GymScreen.tsx#GymScreen#week.map x1 calls=1 callbacks=3 handed=0 returned=3 verdicts=stringx3',
   // S4b's two stage-4 sites, in `MEMBER_CALL_SUBJECTS` order: the strike
   // ledger's `.map` and the auto-repair report's. `returned=24` on each,
@@ -25236,8 +25237,8 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   // above, and the mitigation is the same one that row got — the COUNT of
   // this key among the driven subjects is pinned separately, so a driver
   // silently dropping to one is red rather than merely smaller.
-  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=24 verdicts=objectx1',
-  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=24 verdicts=objectx1',
+  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=27 verdicts=objectx1',
+  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=27 verdicts=objectx1',
   // members.ts (§5.11 stage 3): `.reduce(callback, 0)` is one call, with the
   // callback invoked once per roster row (two rows in both fixtures). The
   // callback returns a plain number (a running sum), never a string, so
