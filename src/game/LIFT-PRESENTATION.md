@@ -4,7 +4,7 @@ Grok owns **what happens**. Claude Code owns **what it looks and feels like**.
 
 This file is the handoff. Implementation: `src/game/liftPresentation.ts`.
 Do not bind a Session A renderer to `LiftState` fields Claude would have to
-reinterpret. Call `liftPresentation(state, totalKg, prior?)`.
+reinterpret. Call `liftPresentation(state, totalKg, prior)`.
 
 PR #48 remains **DRAFT / DO_NOT_MERGE**. The Skia squat puppet is **not** the
 production visual. Do not generalize it to bench or deadlift.
@@ -24,17 +24,17 @@ import { liftPresentation } from '../game/liftPresentation';
 const view = liftPresentation(state, totalKg, previousStateOrNull);
 ```
 
+`prior` is required. Pass the immediately preceding `LiftState` on every normal
+tick. Pass `null` only for an initial or unpaired snapshot.
+
 `totalKg` is the prescribed bar the session already computed (`totalKgFor`).
 Pass the same number the HUD shows. The contract will not invent a different load.
-
-**Pass `prior` every tick.** `barVelocity` is Δheight. Without an adjacent
-prior it is 0 — not a bug, a missing sample.
 
 ## 3. Update cadence
 
 Every sim tick. `PRESENTATION_TICK_MS` (`TICK_MS`, 1000 / `TICK_HZ`).
 Call once per `stepLift`. `prior` must be the `LiftState` from the previous
-tick (`prior.tick + 1 === state.tick`).
+tick (`prior.tick + 1 === state.tick`) except on an intentional unpaired read.
 
 ## 4. Value ranges and units
 
@@ -44,9 +44,9 @@ tick (`prior.tick + 1 === state.tick`).
 | `phase` | BRACE DESCENT HOLE ASCENT LOCKOUT RESOLVED | Discrete region of one continuous rep |
 | `barHeight` | 0..1 (may clip) | 0 = hole/floor, 1 = lockout. **Drive the rig from this**, not from phase names |
 | `depth` | 0..1+ | 0 = standing, 1 = authored bottom |
-| `barVelocity` | height / tick | **Actual Δheight this tick.** +rise / −descend / 0 stationary. Requires adjacent `prior` |
+| `barVelocity` | height / tick | **Actual Δheight this tick.** +rise / −descend / 0 stationary. 0 is rest only when `motionSampleValid` is true |
+| `motionSampleValid` | bool | `prior` exists and `prior.tick + 1 === state.tick` |
 | `integratorVelocity` | height / tick | `LiftState.velocity` — ascent force integrator. **0 on squat/bench descent by design.** Stall/grind |
-| `barAcceleration` | height / tick² | Always 0 in this version. Differentiate consecutive `barVelocity` values |
 | `strain` | 0..1 | Load + phase + current deficit |
 | `grindIntensity` | 0..1 | 1 on stall / reverse / lockout slip. Reads the **integrator**, not Δheight |
 | `effortBand` | easy / normal / hard / grind / failing | Derived band, not an animation name |

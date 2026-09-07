@@ -85,22 +85,22 @@ export interface LiftPresentationState {
   readonly depth: number;
   /**
    * Signed actual vertical bar displacement this tick, in height units.
-   * Positive = rising, negative = descending, 0 = stationary or no `prior`.
+   * Positive = rising, negative = descending, 0 = stationary.
    *
    * NOT `LiftState.velocity`. That field is the ascent force integrator and
    * stays 0 through squat/bench descent while `height` still falls. See
    * `integratorVelocity`.
    *
-   * Requires `prior` from the previous tick (`prior.tick + 1 === state.tick`).
-   * Without an adjacent prior this is 0 — there is no displacement sample.
+   * 0 is only actual motion when `motionSampleValid` is true. If that flag is
+   * false, this is 0 because there was no adjacent `prior`, not because the
+   * bar sat still.
    */
   readonly barVelocity: number;
   /**
-   * Change in `barVelocity` this tick. 0 unless both `prior` and the tick
-   * before it were sampled — with a single prior we only have one Δheight.
-   * Claude may differentiate consecutive `barVelocity` values instead.
+   * True when `prior` exists and `prior.tick + 1 === state.tick`.
+   * False means this snapshot has no adjacent motion sample.
    */
-  readonly barAcceleration: number;
+  readonly motionSampleValid: boolean;
   /**
    * Ascent force integrator (`LiftState.velocity`). Height units / tick.
    * 0 throughout squat/bench DESCENT by design. Stall/grind read this, not
@@ -182,6 +182,14 @@ export function presentationStrain(state: LiftState): number {
 }
 
 /**
+ * True when `prior` is the immediately previous sim tick.
+ * A non-adjacent snapshot is still a valid inspect; it is not a motion sample.
+ */
+export function motionSampleValid(state: LiftState, prior: LiftState | null): boolean {
+  return prior !== null && state.tick === prior.tick + 1;
+}
+
+/**
  * Actual bar motion this tick: Δheight when `prior` is the immediately
  * previous state. Height-space: +rise / −descend / 0 stationary.
  *
@@ -190,8 +198,7 @@ export function presentationStrain(state: LiftState): number {
  * 0 until reversal or press launch.
  */
 export function barMotionPerTick(state: LiftState, prior: LiftState | null): number {
-  if (prior === null) return 0;
-  if (state.tick !== prior.tick + 1) return 0;
+  if (prior === null || state.tick !== prior.tick + 1) return 0;
   return state.height - prior.height;
 }
 
@@ -233,7 +240,7 @@ function effortBandFor(
 export function liftPresentation(
   state: LiftState,
   totalKg: number,
-  prior: LiftState | null = null,
+  prior: LiftState | null,
 ): LiftPresentationState {
   const stack = visualPlateStack(totalKg, BAR_AND_COLLARS_KG);
   const strain = presentationStrain(state);
@@ -250,7 +257,7 @@ export function liftPresentation(
     barHeight: state.height,
     depth: state.depth,
     barVelocity: barMotionPerTick(state, prior),
-    barAcceleration: 0,
+    motionSampleValid: motionSampleValid(state, prior),
     integratorVelocity: state.velocity,
     peakHeight: state.peakHeight,
     netForce: state.netForce,

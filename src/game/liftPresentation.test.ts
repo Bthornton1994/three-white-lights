@@ -86,10 +86,11 @@ describe('liftPresentation is renderer-agnostic mechanical truth', () => {
     expect(source).not.toContain('@rive-app');
     expect(source).not.toContain('makeSpriteImage');
     expect(source).not.toContain('ironAmberPlateFor');
+    expect(source).not.toContain('barAcceleration');
   });
 
   it('standing squat brace is lockout height, not a JPEG id', () => {
-    const view = liftPresentation(squatAt(0.8), WORK_KG);
+    const view = liftPresentation(squatAt(0.8), WORK_KG, null);
     expect(view.kind).toBe('squat');
     expect(view.phase).toBe('BRACE');
     expect(view.barHeight).toBe(1);
@@ -101,9 +102,9 @@ describe('liftPresentation is renderer-agnostic mechanical truth', () => {
   });
 
   it('barHeight falls continuously on squat descent — no phase snap', () => {
-    const top = liftPresentation(squatAt(0.8), WORK_KG);
-    const mid = liftPresentation(holdDownTo(0.7), WORK_KG);
-    const low = liftPresentation(holdDownTo(0.45), WORK_KG);
+    const top = liftPresentation(squatAt(0.8), WORK_KG, null);
+    const mid = liftPresentation(holdDownTo(0.7), WORK_KG, null);
+    const low = liftPresentation(holdDownTo(0.45), WORK_KG, null);
     expect(mid.barHeight).toBeLessThan(top.barHeight);
     expect(low.barHeight).toBeLessThan(mid.barHeight);
     expect(mid.depth).toBeGreaterThan(top.depth);
@@ -111,8 +112,8 @@ describe('liftPresentation is renderer-agnostic mechanical truth', () => {
   });
 
   it('heavier prescribed load yields more discs, never an invented visual load', () => {
-    const light = liftPresentation(squatAt(0.5), LIGHT_KG);
-    const heavy = liftPresentation(squatAt(1), HEAVY_KG);
+    const light = liftPresentation(squatAt(0.5), LIGHT_KG, null);
+    const heavy = liftPresentation(squatAt(1), HEAVY_KG, null);
     expect(heavy.load.discs.length).toBeGreaterThan(light.load.discs.length);
     expect(heavy.load.discs).toEqual(
       visualPlateStack(HEAVY_KG, BAR_AND_COLLARS_KG).perSide.map((p) => ({
@@ -126,7 +127,7 @@ describe('liftPresentation is renderer-agnostic mechanical truth', () => {
   it('strain matches liveStrain so the sprite adapter and this contract cannot drift', () => {
     const state = holdDownTo(0.5, 0.9);
     expect(presentationStrain(state)).toBe(liveStrain(state));
-    expect(liftPresentation(state, WORK_KG).strain).toBe(liveStrain(state));
+    expect(liftPresentation(state, WORK_KG, null).strain).toBe(liveStrain(state));
   });
 
   it('grindIntensity uses GRIND_STALL_VELOCITY, not a camera constant', () => {
@@ -143,7 +144,7 @@ describe('liftPresentation is renderer-agnostic mechanical truth', () => {
       } else {
         expect(grind).toBeLessThan(1);
       }
-      expect(liftPresentation(state, HEAVY_KG).effortBand).not.toBe('easy');
+      expect(liftPresentation(state, HEAVY_KG, null).effortBand).not.toBe('easy');
     }
   });
 
@@ -153,7 +154,7 @@ describe('liftPresentation is renderer-agnostic mechanical truth', () => {
       [{ tick: 1, kind: 'press' }],
       800,
     );
-    const view = liftPresentation(buried.final, WORK_KG);
+    const view = liftPresentation(buried.final, WORK_KG, null);
     expect(view.complete).toBe(true);
     expect(view.outcome).toBe('miss');
     expect(view.effortBand).toBe('failing');
@@ -161,10 +162,15 @@ describe('liftPresentation is renderer-agnostic mechanical truth', () => {
   });
 
   it('bench and deadlift share the same contract shape', () => {
-    const bench = liftPresentation(createLift({ kind: 'bench', loadRatio: 0.7, seed: 2 }), WORK_KG);
+    const bench = liftPresentation(
+      createLift({ kind: 'bench', loadRatio: 0.7, seed: 2 }),
+      WORK_KG,
+      null,
+    );
     const pull = liftPresentation(
       createLift({ kind: 'deadlift', loadRatio: 0.7, seed: 2 }),
       WORK_KG,
+      null,
     );
     expect(bench.kind).toBe('bench');
     expect(pull.kind).toBe('deadlift');
@@ -174,13 +180,31 @@ describe('liftPresentation is renderer-agnostic mechanical truth', () => {
     expect(Object.keys(bench)).toEqual(Object.keys(pull));
   });
 
-  it('without prior, barVelocity is 0 even while the integrator is idle', () => {
+  it('null prior is an explicit unpaired sample, not actual rest', () => {
     const a = squatAt(0.8);
     const b = stepLift(a, { kind: 'press' });
-    const view = liftPresentation(b, WORK_KG);
+    const unpaired = liftPresentation(b, WORK_KG, null);
+    expect(unpaired.motionSampleValid).toBe(false);
+    expect(unpaired.barVelocity).toBe(0);
+    expect(unpaired.integratorVelocity).toBe(b.velocity);
+
+    const adjacent = liftPresentation(b, WORK_KG, a);
+    expect(adjacent.motionSampleValid).toBe(true);
+
+    const stale = holdDownTo(0.5, 0.8);
+    const far = liftPresentation(b, WORK_KG, stale);
+    expect(far.motionSampleValid).toBe(false);
+    expect(far.barVelocity).toBe(0);
+  });
+
+  it('a held brace with an adjacent prior is valid and stationary', () => {
+    const a = squatAt(0.8);
+    const b = stepLift(a, null);
+    const view = liftPresentation(b, WORK_KG, a);
+    expect(b.phase).toBe('BRACE');
+    expect(view.motionSampleValid).toBe(true);
     expect(view.barVelocity).toBe(0);
-    expect(view.integratorVelocity).toBe(b.velocity);
-    expect(view.barAcceleration).toBe(0);
+    expect(view.barHeight).toBe(1);
   });
 
   it('is deterministic for a fixed config, load, and prior', () => {
@@ -209,6 +233,7 @@ describe('barVelocity is signed actual bar motion, not the ascent integrator', (
     expect(heights[heights.length - 1]!).toBeLessThan(heights[0]!);
     const motions = moving.map((sample) => sample.view.barVelocity);
     expect(motions.every((v) => v < 0), `descent barVelocity ${motions.slice(0, 5)}`).toBe(true);
+    expect(moving.every((sample) => sample.view.motionSampleValid)).toBe(true);
     expect(
       descent.every((sample) => sample.view.integratorVelocity === 0),
       'integrator must stay 0 on squat descent',

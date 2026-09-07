@@ -76,7 +76,7 @@ function commandGlowFrom(view: LiftPresentationState): number {
 }
 
 export function squatPoseFrom(state: LiftState, totalKg: number): SquatPose {
-  const view = liftPresentation(state, totalKg);
+  const view = liftPresentation(state, totalKg, null);
   const stand = clamp01(view.barHeight);
   const sit = 1 - stand;
   const tremor = clamp01(view.strain * sit + view.grindIntensity) * V.TREMOR_MAX;
