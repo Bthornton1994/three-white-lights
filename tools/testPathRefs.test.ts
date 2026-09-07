@@ -326,8 +326,14 @@ const PINNED = Object.freeze({
    * `sessionPalette` sibling already on the tree.
    *
    * 339 -> 340 with `docs/design/IRON-AMBER-TRAINING-ASSETS.md`.
+   *
+   * 343 -> 348 with the Session A visual architecture pieces: the three design
+   * documents (`ADR-001-athlete-animation-architecture.md`,
+   * `ATHLETE-ASSET-PIPELINE.md`, `PRESENTATION-CONTRACT-REQUEST.md`) and the
+   * renderer-agnostic presentation contract with its test
+   * (`src/session/liftPresentation.ts`, `.test.ts`).
    */
-  SCANNED_FILES: 343,
+  SCANNED_FILES: 348,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -376,8 +382,11 @@ const PINNED = Object.freeze({
    *
    * 109 -> 111 with Iron & Amber training plates: `ironAmberPlates.test.ts`
    * and `ironAmberWiring.test.ts`.
+   *
+   * 112 -> 113 with `src/session/liftPresentation.test.ts`, the presentation
+   * contract's guard.
    */
-  TEST_FILES: 112,
+  TEST_FILES: 113,
 });
 
 /**
