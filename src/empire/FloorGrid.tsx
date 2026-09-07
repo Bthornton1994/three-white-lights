@@ -49,9 +49,10 @@
  *
  * WHAT THIS FILE DOES NOT DO. It does not own the Play visual identity —
  * GymScreen composes `gymscreen-facility-scene` behind this overlay. Play
- * mode here is occupancy cards plus station/member hit-testing; the
- * placement grid, furniture sprites, and tray are Build-mode interaction.
- * It does not validate a placement — every
+ * mode here is occupancy cards, live member/furniture sprites, and
+ * station/member hit-testing. The placement grid, labels, quality/throughput
+ * marks, and tray are Build-mode interaction. It does not validate a
+ * placement — every
  * dispatched `floor-place` may be refused, and the refusal (`gymscreen-
  * refusal`, GymScreen's existing display) is where a rejected drop is
  * reported, the same "reported, never silent" rule `sessions.ts` states for
@@ -172,6 +173,7 @@ import {
 } from './floorSprites';
 import {
   ironAmberFixedUri,
+  ironAmberFloorPlaneUri,
   ironAmberMemberUri,
   ironAmberPlateTreeUri,
   ironAmberSessionUri,
@@ -351,7 +353,6 @@ type PendingPlace =
   | { readonly kind: 'session'; readonly item: SessionEquipmentItem }
   | { readonly kind: 'furniture'; readonly item: LadderEquipmentItem };
 
-const FLOOR_BACKGROUND_COLOR = 'saddlebrown';
 const FLOOR_GRID_BORDER_COLOR = 'gray';
 const FLOOR_ITEM_BORDER_COLOR = 'black';
 /** GDD §5.13's PLAYTEST 2 ruling, gap 3: the internal tile-boundary lines. Same shade as the outer frame, for one consistent "this is a grid" read. */
@@ -450,9 +451,14 @@ const panelStyles = StyleSheet.create({
     color: FLOOR_STATION_PANEL_BUTTON_TEXT_COLOR,
   },
   occupancy: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     flexDirection: 'row',
     paddingHorizontal: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
     paddingBottom: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
   },
   occupancyCard: {
     flexGrow: 1,
@@ -1329,7 +1335,6 @@ function AmbientMemberBody({
           top: 0,
           width: footprintWidth,
           height: footprintHeight,
-          opacity: onPress === undefined ? 1 : 0,
         }}
         {...({ pointerEvents: 'none' } as object)}
       />
@@ -2019,6 +2024,21 @@ export function FloorGrid(props: FloorGridProps) {
               position: 'relative',
             } as PixelSnappedViewStyle}
           >
+            {buildMode ? (
+            <Image
+              testID={'floorgrid-floor-plane'}
+              source={{ uri: ironAmberFloorPlaneUri() }}
+              resizeMode={'stretch'}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: grid.width * tile,
+                height: grid.height * tile,
+              }}
+              {...({ pointerEvents: 'none' } as object)}
+            />
+            ) : null}
             {buildMode
               ? verticalLines.map((i) => (
               <View
@@ -2153,8 +2173,7 @@ export function FloorGrid(props: FloorGridProps) {
                     cursor: 'pointer',
                   } as WebSelectableViewStyle}
                 >
-                  {buildMode &&
-                  (isBayPrimary
+                  {(isBayPrimary
                     ? bayBenchSpriteUri(qualityMark, isOccupied)
                     : fixedSpriteUriFor(row.item, isOccupied)) !== null ? (
                     <View
@@ -2268,7 +2287,7 @@ export function FloorGrid(props: FloorGridProps) {
                   cursor: 'pointer',
                 } as WebSelectableViewStyle}
               >
-                {buildMode && bayBenchSpriteUri(bayQualityMark, expansionOccupied) !== null ? (
+                {bayBenchSpriteUri(bayQualityMark, expansionOccupied) !== null ? (
                   <Image
                     testID={'floorgrid-bay-expansion-sprite'}
                     source={{
@@ -2287,7 +2306,7 @@ export function FloorGrid(props: FloorGridProps) {
                 ) : null}
               </Pressable>
             )}
-            {buildMode && bay.complete && bay.primary !== null && bayThroughputMark ? (
+            {bay.complete && bay.primary !== null && bayThroughputMark ? (
               <Image
                 testID={'floorgrid-plate-tree-competition-bench-bay'}
                 source={{ uri: ironAmberPlateTreeUri() }}
@@ -2343,7 +2362,6 @@ export function FloorGrid(props: FloorGridProps) {
                     cursor: 'pointer',
                   } as WebSelectableViewStyle}
                 >
-                  {buildMode ? (
                   <Image
                     testID={`floorgrid-placed-sprite-${row.item}`}
                     source={{ uri: sessionSpriteUri(row.item) }}
@@ -2357,7 +2375,6 @@ export function FloorGrid(props: FloorGridProps) {
                     }}
                     {...({ pointerEvents: 'none' } as object)}
                   />
-                  ) : null}
                   {buildMode ? (
                   <Text pointerEvents={'none'} style={FLOOR_LABEL_STYLE}>
                     {row.item}

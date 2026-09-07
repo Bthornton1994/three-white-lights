@@ -1925,6 +1925,8 @@ describe('Iron & Amber presentation — Gym Empire home chrome', () => {
     expect(source).toMatch(/occupancyCard/);
     expect(source).not.toMatch(/ironAmberFloorUri/);
     expect(source).not.toMatch(/testID=\{'floorgrid-floor-texture'\}/);
+    expect(source).toMatch(/testID=\{'floorgrid-floor-plane'\}/);
+    expect(source).toMatch(/ironAmberFloorPlaneUri/);
     expect(source).toMatch(/buildMode \? null : \(\s*<View testID=\{'floorgrid-occupancy'\}/);
   });
 

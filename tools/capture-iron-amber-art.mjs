@@ -67,9 +67,16 @@ async function measure(page, label) {
     const member = document.querySelector('[data-testid^="floorgrid-member-sprite-"]');
     const memberImg = member && (member.tagName === 'IMG' ? member : member.querySelector('img'));
     const memberSrc = memberImg ? memberImg.getAttribute('src') : (member ? member.getAttribute('src') : null);
+    const memberStyle = member ? getComputedStyle(member) : null;
+    const memberBox = member ? member.getBoundingClientRect() : null;
     const bench = document.querySelector('[data-testid="floorgrid-fixed-sprite-flat-bench"]');
     const benchImg = bench && (bench.tagName === 'IMG' ? bench : bench.querySelector('img'));
     const benchSrc = benchImg ? benchImg.getAttribute('src') : (bench ? bench.getAttribute('src') : null);
+    const plane = document.querySelector('[data-testid="floorgrid-floor-plane"]');
+    const planeImg = plane && (plane.tagName === 'IMG' ? plane : plane.querySelector('img'));
+    const planeSrc = planeImg ? planeImg.getAttribute('src') : (plane ? plane.getAttribute('src') : null);
+    const planeBox = plane ? plane.getBoundingClientRect() : null;
+    const gridBox = grid ? grid.getBoundingClientRect() : null;
     return {
       tag,
       viewport: { w: window.innerWidth, h: window.innerHeight },
@@ -79,6 +86,7 @@ async function measure(page, label) {
       verticalLines: vertical,
       horizontalLines: horizontal,
       occupancyVisible: occupancyBox !== null && occupancyBox.width > 8 && occupancyBox.height > 8,
+      occupancyBox,
       occupancyText: occupancy ? occupancy.innerText : '',
       clockBox,
       clockParentOpacity: clockStyle ? clockStyle.opacity : null,
@@ -91,7 +99,12 @@ async function measure(page, label) {
       textureSrc,
       textureBox,
       memberSrc,
+      memberOpacity: memberStyle ? memberStyle.opacity : null,
+      memberBox,
       benchSrc,
+      planeSrc,
+      planeBox,
+      gridBox,
     };
   }, label);
 }
@@ -123,6 +136,13 @@ async function runViewport(width, height) {
   const build = await measure(page, `${prefix}-build`);
   note(JSON.stringify(build, null, 2));
   await shoot(page, `${prefix}-build`);
+  await page.getByTestId('floorgrid-fixed-flat-bench').click({ timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(300);
+  const placing = await measure(page, `${prefix}-build-place`);
+  note(JSON.stringify(placing, null, 2));
+  await shoot(page, `${prefix}-build-place`);
+  await page.getByTestId('floorgrid-place-cancel').click({ timeout: 4000 }).catch(() => {});
+  await page.waitForTimeout(200);
   await page.getByTestId('gymscreen-surface-shop').click({ timeout: 8000 });
   await page.waitForTimeout(400);
   await shoot(page, `${prefix}-shop`);

@@ -65,11 +65,12 @@
  *
  * IRON & AMBER COMPOSITION, NAMED SO FloorGrid IS NOT THE VISUAL IDENTITY.
  * Play stacks three layers in this file, in this order: the facility scene
- * (`gymscreen-facility-scene`, the owned atmosphere PNG), then occupancy and
- * station/member interactions (`FloorGrid` in play mode — transparent, no
- * placement grid, no sprite-floor), then HUD / FAB / dock. Build reuses the
- * same atmosphere and asks FloorGrid for the placement grid and inventory
- * tray. FloorGrid must not draw the garage texture; that is this scene.
+ * (`gymscreen-facility-scene`, the owned empty-room atmosphere PNG — no
+ * baked lifters), then live occupancy and station/member interactions
+ * (`FloorGrid` in play mode — transparent, no placement grid, live sprites
+ * from sim state), then HUD / FAB / dock. Build reuses the same atmosphere
+ * and asks FloorGrid for the orthographic floor-plane, placement grid, and
+ * inventory tray. FloorGrid must not draw the room texture; that is this scene.
  *
  * WHO OWNS THE STATE. `GymScreen` takes `{ state, dispatch }` as props and
  * computes nothing else — a pure function of its props, exactly like

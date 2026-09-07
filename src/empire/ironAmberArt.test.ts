@@ -15,6 +15,7 @@ import {
   ironAmberArtRoot,
   ironAmberArtUri,
   ironAmberFixedUri,
+  ironAmberFloorPlaneUri,
   ironAmberFloorUri,
   ironAmberMemberUri,
   ironAmberPlateTreeUri,
@@ -49,9 +50,15 @@ describe('Iron & Amber owned-art adapter', () => {
   });
 
   it('maps every rung, member pose, and baseline furniture onto owned art', () => {
+    expect(ironAmberFloorUri('garage')).toBe('/empire-art/floor-garage.png');
+    expect(ironAmberFloorUri('storage-unit')).toBe('/empire-art/floor-storage-unit.png');
+    expect(ironAmberFloorUri('strip-mall-unit')).toBe('/empire-art/floor-strip-mall-unit.png');
+    expect(ironAmberFloorUri('warehouse')).toBe('/empire-art/floor-warehouse.png');
     for (const rung of EMPIRE_TUNING.LADDER_RUNGS) {
-      expect(ironAmberFloorUri(rung)).toBe('/empire-art/floor-garage.png');
+      expect(ironAmberFloorUri(rung).startsWith('/empire-art/floor-')).toBe(true);
+      expect(ironAmberFloorUri(rung).endsWith('.png')).toBe(true);
     }
+    expect(ironAmberFloorPlaneUri()).toBe('/empire-art/floor-plane.png');
     for (const type of EMPIRE_TUNING.MEMBER_TYPES) {
       for (const pose of FLOOR_SPRITE_POSES) {
         for (const facing of FLOOR_SPRITE_FACINGS) {
@@ -75,7 +82,12 @@ describe('Iron & Amber owned-art adapter', () => {
     expect(ironAmberFixedUri('power-bar', false)).toBe('/empire-art/eq-power-bar.png');
     expect(ironAmberFixedUri('comp-plates', false)).toBe('/empire-art/eq-comp-plates.png');
     expect(ironAmberPlateTreeUri()).toBe('/empire-art/eq-plate-tree.png');
-    expect(ironAmberSessionUri('mats')).toBeNull();
+    expect(ironAmberSessionUri('mats')).toBe('/empire-art/session-mats.png');
+    for (const item of EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS) {
+      const uri = ironAmberSessionUri(item);
+      expect(uri, item).not.toBeNull();
+      expect(uri?.startsWith('/empire-art/session-')).toBe(true);
+    }
     expect(ironAmberFixedUri('squat-rack', false)).toBeNull();
   });
 

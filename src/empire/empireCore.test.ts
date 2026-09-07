@@ -3875,7 +3875,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 806 -> 821: Iron & Amber named CSS binds and occupancy/header testIDs.
     // 822 -> 854: Iron & Amber owned-art stems and `/empire-art` URIs.
     // 854 -> 856: gymscreen-facility-scene and gymscreen-facility-art.
-    expect(singleQuoted.size).toBe(856);
+    // 856 -> 874: per-rung rooms, floor-plane, and 14 session stems.
+    expect(singleQuoted.size).toBe(874);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4302,8 +4303,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floor-garage',
       'floor-place',
       'floor-place-furniture',
+      'floor-plane',
       'floor-remove',
       'floor-remove-furniture',
+      'floor-storage-unit',
+      'floor-strip-mall-unit',
+      'floor-warehouse',
       'floorGrids',
       'floorUris',
       'floorgrid-ambient-caption',
@@ -4326,6 +4331,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-equipment-panel-remove',
       'floorgrid-equipment-panel-repair',
       'floorgrid-equipment-panel-role',
+      'floorgrid-floor-plane',
       'floorgrid-grid',
       'floorgrid-member-panel',
       'floorgrid-member-panel-dismiss',
@@ -4679,13 +4685,26 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'row',
       'rower',
       'rung-too-low',
-      'saddlebrown',
       'sauna',
       'save-for-physio-first',
       'seeking',
       'serious-lifter',
       'service',
       'session',
+      'session-belts',
+      'session-bike',
+      'session-cables',
+      'session-dumbbells',
+      'session-foam-rollers',
+      'session-machines',
+      'session-mats',
+      'session-rower',
+      'session-sauna',
+      'session-sled',
+      'session-sleeves',
+      'session-specialty-bars',
+      'session-treadmill',
+      'session-wrist-wraps',
       'sessionGrids',
       'sessionUris',
       'set-allocation-slot',
@@ -4898,7 +4917,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1185 -> 1200: Iron & Amber singleQuoted 806 -> 821; templateChunks unchanged.
     // 1201 -> 1241: owned-art adapter +32 space-free stems/URIs and +8 member-stem templates.
     // 1241 -> 1243: facility-scene and facility-art testIDs.
-    expect(stringsChecked).toBe(1243);
+    // 1243 -> 1261: per-rung rooms, floor-plane, 14 session stems, occupancy overlay id.
+    expect(stringsChecked).toBe(1261);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were

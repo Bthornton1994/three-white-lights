@@ -7,11 +7,16 @@
  * `public/empire-art/`, and it maps gameplay keys (rung, member
  * type/pose/facing, furniture item) onto those files.
  *
- * `floor-garage.png` is the portrait Iron & Amber facility atmosphere
- * (espresso brick, factory windows, amber light, rubber floor). GymScreen
- * draws it as `gymscreen-facility-scene`, a full-bleed gameplay scene behind
- * FloorGrid. FloorGrid is the Build-mode interaction overlay plus Play
- * occupancy/hit-testing — it does not paint the garage.
+ * `floor-<rung>.png` is the portrait Iron & Amber facility atmosphere
+ * (espresso brick, factory windows, amber light, rubber floor, no baked
+ * lifters). GymScreen draws it as `gymscreen-facility-scene`, a full-bleed
+ * gameplay scene behind FloorGrid. FloorGrid is the Build-mode interaction
+ * overlay plus Play occupancy/hit-testing — it does not paint the room.
+ *
+ * `floor-plane.png` is the orthographic rubber floor that sits INSIDE
+ * `floorgrid-grid` so placement cells and equipment footprints share one
+ * rectangle with the painted floor. It is a different URI function from
+ * `ironAmberFloorUri`, which FloorGrid is forbidden to call.
  *
  * WHY THIS MODULE EXISTS RATHER THAN LOADING A PNG FROM FloorGrid.tsx.
  * `empireCore.test.ts`'s import fence lets FloorGrid import only `react`,
@@ -19,10 +24,8 @@
  * shipped sibling, so the floor cannot import art files. This adapter is the
  * narrow crossing: string URIs, closed lookup tables, no package imports.
  *
- * WHAT IT DOES NOT DO. It does not replace `floorSprites.ts`. Session
- * equipment that has no owned HD file still draws from the Phase 4 tables.
- * It does not claim Visual PASS — remaining pixel session chips and the
- * shared garage atmosphere on every rung are named residuals.
+ * WHAT IT DOES NOT DO. It does not replace `floorSprites.ts`. It does not
+ * claim Visual PASS.
  */
 
 const ART_ROOT = '/empire-art';
@@ -66,9 +69,9 @@ function memberStem(type: string, pose: string, facing: string): string {
 
 const FLOOR_BY_RUNG: Readonly<Record<string, string>> = Object.freeze({
   garage: png('floor-garage'),
-  'storage-unit': png('floor-garage'),
-  'strip-mall-unit': png('floor-garage'),
-  warehouse: png('floor-garage'),
+  'storage-unit': png('floor-storage-unit'),
+  'strip-mall-unit': png('floor-strip-mall-unit'),
+  warehouse: png('floor-warehouse'),
 });
 
 const FIXED_BY_ITEM: Readonly<Record<string, string>> = Object.freeze({
@@ -77,14 +80,49 @@ const FIXED_BY_ITEM: Readonly<Record<string, string>> = Object.freeze({
   'comp-plates': png('eq-comp-plates'),
 });
 
+const SESSION_BY_ITEM: Readonly<Record<string, string>> = Object.freeze({
+  bike: png('session-bike'),
+  treadmill: png('session-treadmill'),
+  rower: png('session-rower'),
+  sled: png('session-sled'),
+  dumbbells: png('session-dumbbells'),
+  cables: png('session-cables'),
+  machines: png('session-machines'),
+  mats: png('session-mats'),
+  'foam-rollers': png('session-foam-rollers'),
+  sauna: png('session-sauna'),
+  'wrist-wraps': png('session-wrist-wraps'),
+  belts: png('session-belts'),
+  sleeves: png('session-sleeves'),
+  'specialty-bars': png('session-specialty-bars'),
+});
+
 /** Closed list of files this adapter serves — the provenance test joins this to disk. */
 export const IRON_AMBER_ART_STEMS = Object.freeze([
   'floor-garage',
+  'floor-storage-unit',
+  'floor-strip-mall-unit',
+  'floor-warehouse',
+  'floor-plane',
   'eq-flat-bench',
   'eq-quality-bench',
   'eq-power-bar',
   'eq-comp-plates',
   'eq-plate-tree',
+  'session-bike',
+  'session-treadmill',
+  'session-rower',
+  'session-sled',
+  'session-dumbbells',
+  'session-cables',
+  'session-machines',
+  'session-mats',
+  'session-foam-rollers',
+  'session-sauna',
+  'session-wrist-wraps',
+  'session-belts',
+  'session-sleeves',
+  'session-specialty-bars',
   'member-casual-right',
   'member-casual-left',
   'member-bodybuilder-right',
@@ -122,6 +160,10 @@ export function ironAmberFloorUri(rung: string): string {
   return hit !== undefined ? hit : png('floor-garage');
 }
 
+export function ironAmberFloorPlaneUri(): string {
+  return png('floor-plane');
+}
+
 export function ironAmberMemberUri(type: string, pose: string, facing: string): string {
   return png(memberStem(type, pose, facing));
 }
@@ -136,6 +178,7 @@ export function ironAmberPlateTreeUri(): string {
   return png('eq-plate-tree');
 }
 
-export function ironAmberSessionUri(_item: string): string | null {
-  return null;
+export function ironAmberSessionUri(item: string): string | null {
+  const hit = SESSION_BY_ITEM[item];
+  return hit !== undefined ? hit : null;
 }

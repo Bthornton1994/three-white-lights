@@ -1335,6 +1335,7 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'ironAmberArt.ts#ironAmberArtRoot#return',
       'ironAmberArt.ts#ironAmberArtUri#return',
       'ironAmberArt.ts#ironAmberFixedUri#return',
+      'ironAmberArt.ts#ironAmberFloorPlaneUri#return',
       'ironAmberArt.ts#ironAmberFloorUri#return',
       'ironAmberArt.ts#ironAmberMemberUri#return',
       'ironAmberArt.ts#ironAmberPlateTreeUri#return',
@@ -1795,7 +1796,7 @@ const SURFACE_CENSUS = Object.freeze({
   // stationChangeoverSeats, stationChangeoverTicks, playerFacingStationOperation.
   // 429 -> 432: Stage D2.2 plateLoadingProgress, plateLoadingDiscs,
   // ladderDevClockTestId.
-  EXPORTS: 471, // Iron & Amber owned-art adapter (8 runtime exports)
+  EXPORTS: 472, // Iron & Amber owned-art adapter + floor-plane URI
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1814,7 +1815,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 122 -> 125: Stage D playerFacingUpgradeLabel/Effect/Refuse.
   // 128 -> 130: Stage D.1b bay qualityBench + plateTree URI leaves.
   // 130 -> 132: Stage D2.1B changeoverSeatKey + playerFacingStationOperation.
-  BARE_POSITIONS: 190, // Iron & Amber owned-art URI returns
+  BARE_POSITIONS: 191, // Iron & Amber owned-art URI returns + floor-plane
   BARE_FIELDS: 7, // ironAmberArt URI stem group
   BRANDED_POSITIONS: 34,
   /**
@@ -3176,7 +3177,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // and FloorGrid presentation helpers. Read from this pin's own failure.
   // 3361 -> 3375: Stage D2.1A live-Capacity seat assignment / relocate helpers.
   // 3375 -> 3405: Stage D2.1B changeover helpers + FloorGrid loading path.
-  CALLS_EXAMINED: 3693, // Iron & Amber owned-art adapter calls
+  CALLS_EXAMINED: 3710, // Iron & Amber owned-art adapter calls
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -7437,6 +7438,7 @@ function driveEverything(): readonly DrivenRow[] {
     drive('ironAmberArtUri', 'floor', () => ironAmberArtModule.ironAmberArtUri('floor-garage'));
     drive('ironAmberFloorUri', 'garage', () => ironAmberArtModule.ironAmberFloorUri('garage'));
     drive('ironAmberFloorUri', 'unknown-rung', () => ironAmberArtModule.ironAmberFloorUri('attic'));
+    drive('ironAmberFloorPlaneUri', 'plane', () => ironAmberArtModule.ironAmberFloorPlaneUri());
     drive('ironAmberMemberUri', 'stand', () =>
       ironAmberArtModule.ironAmberMemberUri('athlete', 'stand', 'right'),
     );
@@ -11338,7 +11340,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 593544 -> 595928: Stage C.1b furniture-layout exports, GYM_SURFACES, and
   // the larger GymScreen tree. Re-measured by running this assertion.
   // 595954 -> 595972: Stage C.1d playerFacing* drives.
-  ROWS: 600669, // Iron & Amber owned-art adapter drives
+  ROWS: 600670, // + ironAmberFloorPlaneUri drive row
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -11365,7 +11367,7 @@ const DRIVE_CENSUS = Object.freeze({
   // exports (isRecoveryBlocking, recoveryBlockingItems), both driven above.
   // 382 -> 389: Stage C.1b six floor furniture exports + GYM_SURFACES.
   // 393 -> 396: Stage C.1d three playerFacing* drives.
-  EXPORTS_DRIVEN: 471, // Iron & Amber owned-art adapter (8 runtime exports)
+  EXPORTS_DRIVEN: 472, // Iron & Amber owned-art adapter + floor-plane URI
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -11458,7 +11460,7 @@ const DRIVE_CENSUS = Object.freeze({
   // failure value.
   // 6490388 -> 6510102: Stage C.1b furniture/dock GymScreen trees. Measured.
   // 6510907 -> 6510913: Stage C.1d playerFacing* drive rows.
-  NODES: 6546312, // Iron & Amber facility scene in GymScreen, not FloorGrid
+  NODES: 6546313, // + floor-plane URI node
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -11579,7 +11581,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_201_130, // Iron & Amber facility scene in GymScreen, not FloorGrid
+  STRINGS: 30_201_168, // + per-rung rooms, floor-plane, session stems
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -11689,7 +11691,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
   // 3973 -> 3975: Stage D2 reset-gym copy / wear-truth strings. Read from
   // this pin's own failure value.
-  DISTINCT_STRINGS: 4286, // Iron & Amber facility scene in GymScreen, not FloorGrid
+  DISTINCT_STRINGS: 4320, // + per-rung rooms, floor-plane, session stems
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
   DEPTH_CUTS: 7,
   /**
@@ -15705,7 +15707,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'floorSim.ts': 76,
       'floorSprites.ts': 54,
       'GymScreen.tsx': 14,
-      'ironAmberArt.ts': 19,
+      'ironAmberArt.ts': 20,
       'ladder.ts': 28,
       'ladderView.tsx': 34,
       'livingMemberExperience.ts': 36,
@@ -16123,12 +16125,12 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:2726 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:2744 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:832 returned=unfollowable:station',
-  'FloorGrid.tsx:832 returned=unfollowable:station',
-  'FloorGrid.tsx:833 returned=unfollowable:station',
-  'FloorGrid.tsx:833 returned=unfollowable:station',
+  'FloorGrid.tsx:2743 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:2761 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:838 returned=unfollowable:station',
+  'FloorGrid.tsx:838 returned=unfollowable:station',
+  'FloorGrid.tsx:839 returned=unfollowable:station',
+  'FloorGrid.tsx:839 returned=unfollowable:station',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -16177,12 +16179,12 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'stationCapability.ts:104 returned=unfollowable:capability',
 ]);
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1783 FloorSimState asked=true walked=false',
-  'FloorGrid.tsx:832 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:832 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:833 GridSize asked=true walked=false',
-  'FloorGrid.tsx:833 GridSize asked=true walked=false',
-  'FloorGrid.tsx:845 BayBench | undefined asked=true walked=false',
+  'FloorGrid.tsx:1787 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:838 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:838 GridPosition asked=true walked=false',
+  'FloorGrid.tsx:839 GridSize asked=true walked=false',
+  'FloorGrid.tsx:839 GridSize asked=true walked=false',
+  'FloorGrid.tsx:851 BayBench | undefined asked=true walked=false',
   'empireInvariant.ts:1084 GymAxes asked=true walked=false',
   'empireInvariant.ts:1137 GymAxes asked=true walked=false',
   'empireInvariant.ts:1168 readonly ExpansionBuild[] asked=true walked=false',
@@ -16486,7 +16488,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1674 -> 1681: Stage D2 placedOwnedItems / withWear / stationOperationView / reset.
   // 1681 -> 1691: Stage D2.1A assignedSeat / reservedUseCells / relocate helpers.
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
-  function: 1842, // Iron & Amber owned-art adapter + scene composition
+  function: 1858, // Iron & Amber owned-art adapter + scene composition
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16544,7 +16546,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1502 -> 1513: Stage D2 Set.has / Object.freeze / stationByRefKey.get.
   // 1513 -> 1517: Stage D2.1A useCells/blocked/has member calls on live relocate.
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
-  member: 1662, // Iron & Amber owned-art adapter + scene composition
+  member: 1663, // Iron & Amber owned-art adapter + scene composition
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -16740,7 +16742,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 911 -> 916: Stage D2.1A floorSim return 63 -> 68.
   // 916 -> 925: Stage D2.1B floorSim 68→72, stationCapability 24→27,
   // stationView 44→46.
-  SITES: 1073, // Iron & Amber owned-art adapter + FloorGrid/GymScreen scene returns
+  SITES: 1074, // Iron & Amber owned-art adapter + FloorGrid/GymScreen scene returns
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -16893,7 +16895,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
   // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
   // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
-  NODES_EXAMINED: 85_547, // Iron & Amber owned-art adapter + scene composition
+  NODES_EXAMINED: 85_725, // Iron & Amber owned-art adapter + scene composition
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
