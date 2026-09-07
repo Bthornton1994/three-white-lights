@@ -2493,6 +2493,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'stationView.ts',
       // GDD §5.18 Stage D.1: equipment is not a training station.
       'trainingStation.ts',
+      // Living-world projector: sim members/stations to renderer occupancy.
+      'worldView.ts',
     ]);
   });
 
@@ -2690,7 +2692,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // livingMembers / members headers naming it.
     // 183 -> 188: Stage G.2B livingMemberRetention.ts plus FloorGrid reading it.
     // 188 -> 193: Iron & Amber owned-art adapter named by FloorGrid / GymScreen.
-    expect(pairs).toBe(193);
+    // 193 -> 197: worldView.ts imported by FloorGrid; worldView reads floorSim
+    // and names FloorGrid / floorSim in its header.
+    expect(pairs).toBe(197);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3876,7 +3880,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 822 -> 854: Iron & Amber owned-art stems and `/empire-art` URIs.
     // 854 -> 856: gymscreen-facility-scene and gymscreen-facility-art.
     // 856 -> 874: per-rung rooms, floor-plane, and 14 session stems.
-    expect(singleQuoted.size).toBe(874);
+    // 874 -> 882: living-world occupancy/activity vocabulary and ./worldView.
+    expect(singleQuoted.size).toBe(882);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4005,7 +4010,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 377 -> 379: Stage G.2B MEMBERSHIP line templates. Read from this
     // assertion's own failure value.
     // 379 -> 387: Iron & Amber member-stem templates.
-    expect(templateChunks.size).toBe(387);
+    // 387 -> 389: living-world queue-cell testID templates.
+    expect(templateChunks.size).toBe(389);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4058,6 +4064,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // edge to `stationView.ts`.
       './stationView',
       './trainingStation',
+      './worldView',
       '/empire-art',
       ':',
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
@@ -4197,10 +4204,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'already-visited-today',
       'answer-prompt',
       'apply-living-member-observations',
+      'approaching',
       'at-ceiling',
       'at-the-top',
       'athlete',
       'auto',
+      'available',
       'axes',
       'banked-operation',
       'bar',
@@ -4233,6 +4242,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'center',
       'chalk',
       'chance-draw',
+      'changeover',
       'cheapest-affordable-first',
       'cheapest-hire-under-warning',
       'cheapskate',
@@ -4641,6 +4651,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'prompt-repair',
       'qualify',
       'quality',
+      'queued',
       'queuing',
       'quiet',
       'react',
@@ -4750,6 +4761,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'stepB',
       'storage-unit',
       'store-purchase',
+      'stranded',
       'stretch',
       'stretching-yoga',
       'string',
@@ -4791,6 +4803,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'visit-fee-control',
       'visited',
       'wait',
+      'waiting',
+      'walking',
       'wall-clock',
       'wall-clock-earned',
       'wall-clock-elapsed',
@@ -4918,7 +4932,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1201 -> 1241: owned-art adapter +32 space-free stems/URIs and +8 member-stem templates.
     // 1241 -> 1243: facility-scene and facility-art testIDs.
     // 1243 -> 1261: per-rung rooms, floor-plane, 14 session stems, occupancy overlay id.
-    expect(stringsChecked).toBe(1261);
+    // 1261 -> 1271: living-world singleQuoted 874 -> 882 and templateChunks 387 -> 389.
+    expect(stringsChecked).toBe(1271);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5320,6 +5335,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './trainingStation',
         'react',
         'react-native',
+        './worldView',
       ],
       // Phase 4: pure sprite data. Tuning for every colour and scale knob,
       // and the three vocabulary types its tables are keyed by.
@@ -5410,6 +5426,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       ],
       'stationCapability.ts': ['./empireCore', './empireTuning', './trainingStation'],
       'trainingStation.ts': ['./floor', './ladder'],
+      'worldView.ts': ['./floorSim'],
     };
     let fenced = 0;
     for (const name of SHIPPED_MODULES) {
@@ -5434,7 +5451,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
     // 27 -> 28: Stage G.2B livingMemberRetention.ts.
     // 28 -> 29: Iron & Amber owned-art adapter.
-    expect(fenced).toBe(29);
+    // 29 -> 30: living-world projector worldView.ts.
+    expect(fenced).toBe(30);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -5559,7 +5577,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // FloorGrid reading it.
     // 125 -> 127: Iron & Amber owned-art adapter — FloorGrid and GymScreen
     // each gain one `./ironAmberArt` edge. The adapter itself has zero imports.
-    expect(specifiers).toBe(127);
+    // 127 -> 129: worldView.ts `./floorSim` plus FloorGrid `./worldView`.
+    expect(specifiers).toBe(129);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external

@@ -147,6 +147,11 @@
  * `FloorSimContext` carries five fields and this file builds all five from
  * props it already had. And it writes nothing back: the sim is a function of
  * the floor, never the other way round.
+ *
+ * LIVING WORLD SLICE. Play draws station occupancy and queue cells in the
+ * world from `worldView.ts`. Occupancy cards explain the same numbers; they
+ * are not the occupancy. Station outlines and plate-loading discs stay
+ * visible on Play. Cue bubbles stay Build-only. No new simulation.
  */
 
 import { useEffect, useRef, useState, type ReactElement } from 'react';
@@ -263,6 +268,11 @@ import {
   type BayBench,
   type CompetitionBenchBay,
 } from './trainingStation';
+import {
+  memberWorldPoint,
+  worldFrame,
+  type WorldStationView,
+} from './worldView';
 
 /**
  * `userSelect` and `cursor` are real react-native-web style extensions (they
@@ -588,11 +598,7 @@ interface FloorTilePoint {
  * decided here, and the sim's own numbers are not adjusted, only positioned.
  */
 function memberTilePoint(member: FloorSimMember): FloorTilePoint {
-  if (member.next === null) return { x: member.cell.x, y: member.cell.y };
-  return {
-    x: member.cell.x + (member.next.x - member.cell.x) * member.progress,
-    y: member.cell.y + (member.next.y - member.cell.y) * member.progress,
-  };
+  return memberWorldPoint(member);
 }
 
 /**
@@ -1022,6 +1028,51 @@ function plateLoadingDiscViews(layer: PlateLoadingLayer): readonly ReactElement[
         }}
       />,
     );
+  }
+  return views;
+}
+
+function queueCellTestId(ref: FloorStationRef, slot: number): string {
+  if (ref.kind === 'training') {
+    return `floorsim-queue-cell-training-${ref.station}-${slot}`;
+  }
+  return `floorsim-queue-cell-${ref.kind}-${ref.item}-${slot}`;
+}
+
+/**
+ * Waiting members occupy queue cells. Drawn on Play so a bottleneck is a
+ * line on the floor, not a "waiting" label. C-style loops keep the channel
+ * census off a `.map` of the world-view parameter.
+ */
+function queueOccupancyViews(stations: readonly WorldStationView[], tile: number): readonly ReactElement[] {
+  const views: ReactElement[] = [];
+  const inset = EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS;
+  for (let stationIndex = 0; stationIndex < stations.length; stationIndex += 1) {
+    const station = stations[stationIndex];
+    if (station === undefined) continue;
+    for (let slot = 0; slot < station.occupiedQueueCells.length; slot += 1) {
+      const cell = station.occupiedQueueCells[slot];
+      if (cell === undefined) continue;
+      const testID = queueCellTestId(station.ref, slot);
+      views.push(
+        <View
+          key={testID}
+          testID={testID}
+          pointerEvents={'none'}
+          style={{
+            position: 'absolute',
+            left: cell.x * tile + inset,
+            top: cell.y * tile + inset,
+            width: tile - inset * 2,
+            height: tile - inset * 2,
+            borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
+            borderColor: FLOOR_SIM_STATE_COLOR.queuing,
+            backgroundColor: FLOOR_SIM_HIGHLIGHT_FILL,
+            zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
+          }}
+        />,
+      );
+    }
   }
   return views;
 }
@@ -1796,6 +1847,7 @@ export function FloorGrid(props: FloorGridProps) {
   // render and is stored nowhere, the same "read model, never a `FloorState`"
   // discipline `fixedFloorFurniture` already carries.
   const stations = floorStations(simContext);
+  const world = worldFrame(sim, stations);
   // GDD §5.13 P4b: the same read model keyed for lookup, so a `using`
   // member's draw bias and facing resolve against the identical stations the
   // sim was stepped with this render — one derivation, no second copy.
@@ -2436,7 +2488,6 @@ export function FloorGrid(props: FloorGridProps) {
                             : FLOOR_SIM_STATE_COLOR.seeking,
                       backgroundColor: FLOOR_SIM_HIGHLIGHT_FILL,
                       zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
-                      opacity: buildMode ? 1 : 0,
                     }}
                   />
                 )),
@@ -2454,7 +2505,6 @@ export function FloorGrid(props: FloorGridProps) {
                       left: 0,
                       top: 0,
                       zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
-                      opacity: buildMode ? 1 : 0,
                     }}
                   >
                     {plateLoadingDiscViews(layer)}
@@ -2462,6 +2512,7 @@ export function FloorGrid(props: FloorGridProps) {
                 )),
               )
             }
+            {buildMode ? null : queueOccupancyViews(world.stations, tile)}
             {
               // GDD §5.13 presentation Phase 3: the members, at the position
               // the sim puts them at this instant. Still non-draggable, still

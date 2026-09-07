@@ -171,7 +171,8 @@ export const DIRECTORY_WALK = Object.freeze({
   // 26 -> 27: Stage G.2A `livingMemberExperience.ts`.
   // 27 -> 28: Stage G.2B `livingMemberRetention.ts`.
   // 28 -> 29: Iron & Amber owned-art adapter (`ironAmberArt.ts`).
-  SHIPPED_MODULES: 29,
+  // 29 -> 30: living-world projector (`worldView.ts`).
+  SHIPPED_MODULES: 30,
   /**
    * Files the shared walk hands the censuses today, tests included.
    *
@@ -200,7 +201,8 @@ export const DIRECTORY_WALK = Object.freeze({
   // 56 -> 58: Stage G.2A `livingMemberExperience.ts` and its test.
   // 58 -> 60: Stage G.2B `livingMemberRetention.ts` and its test.
   // 60 -> 62: Iron & Amber owned-art adapter and its test.
-  DIRECTORY_FILES: 62,
+  // 62 -> 64: living-world projector and its test.
+  DIRECTORY_FILES: 64,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**
@@ -990,6 +992,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'stationCapability.ts',
       'stationView.ts',
       'trainingStation.ts',
+      'worldView.ts',
     ]);
     expect(shippedModuleNames().length).toBe(DIRECTORY_WALK.SHIPPED_MODULES);
     // And the test files are in the wider list and out of the narrower one, so

@@ -1,0 +1,26 @@
+{
+  "a": {
+    "usingSeen": true,
+    "queueSeen": true,
+    "jump": 1.0244140625,
+    "overflowX": false,
+    "textureSrc": "/empire-art/floor-garage.png"
+  },
+  "b": {
+    "usingSeen": true,
+    "queueSeen": true,
+    "jump": 0.909088134765625,
+    "overflowX": false,
+    "textureSrc": "/empire-art/floor-garage.png"
+  },
+  "notes": [
+    "390x844 walk shot. occupancy=\"3 on the floor\\n1 waiting\\n1 on the machine\" using=1",
+    "390x844 using shot. using=[{\"id\":\"floorsim-using-training-competition-bench-bay\",\"opacity\":1,\"box\":{\"x\":149,\"y\":246.5,\"w\":92,\"h\":184}}] queues=2 texture=/empire-art/floor-garage.png overflowX=false",
+    "390x844 samples=8 maxJumpPx=1.0 usingSeen=true queueSeen=true",
+    "390x844 final {\"members\":[{\"id\":\"floorgrid-ambient-0\",\"box\":{\"x\":172,\"y\":315.6261901855469,\"w\":46,\"h\":46},\"spriteOpacity\":1},{\"id\":\"floorgrid-ambient-1\",\"box\":{\"x\":287,\"y\":246.72320556640625,\"w\":46,\"h\":46},\"spriteOpacity\":1},{\"id\":\"floorgrid-ambient-2\",\"box\":{\"x\":241,\"y\":293.6226806640625,\"w\":46,\"h\":46},\"spriteOpacity\":1}],\"using\":[{\"id\":\"floorsim-using-training-competition-bench-bay\",\"opacity\":1,\"box\":{\"x\":149,\"y\":246.5,\"w\":92,\"h\":184}}],\"claimed\":[],\"queues\":[{\"id\":\"floorsim-queue-cell-training-competition-bench-bay-0\",\"opacity\":1,\"box\":{\"x\":290,\"y\":249.5,\"w\":40,\"h\":40}},{\"id\":\"floorsim-queue-cell-training-competition-bench-bay-1\",\"opacity\":1,\"box\":{\"x\":244,\"y\":295.5,\"w\":40,\"h\":40}}],\"occupancyText\":\"3 on the floor\\n2 waiting\\n1 on the machine\",\"textureSrc\":\"/empire-art/floor-garage.png\",\"overflowX\":false,\"viewport\":{\"w\":390,\"h\":844}}",
+    "375x812 walk shot. occupancy=\"3 on the floor\\n1 waiting\\n1 on the machine\" using=1",
+    "375x812 using shot. using=[{\"id\":\"floorsim-using-training-competition-bench-bay\",\"opacity\":1,\"box\":{\"x\":143.5,\"y\":236.5,\"w\":88,\"h\":176}}] queues=2 texture=/empire-art/floor-garage.png overflowX=false",
+    "375x812 samples=8 maxJumpPx=0.9 usingSeen=true queueSeen=true",
+    "375x812 final {\"members\":[{\"id\":\"floorgrid-ambient-0\",\"box\":{\"x\":165.5,\"y\":302.68853759765625,\"w\":44,\"h\":44},\"spriteOpacity\":1},{\"id\":\"floorgrid-ambient-1\",\"box\":{\"x\":275.5,\"y\":236.65615844726562,\"w\":44,\"h\":44},\"spriteOpacity\":1},{\"id\":\"floorgrid-ambient-2\",\"box\":{\"x\":231.5,\"y\":281.5,\"w\":44,\"h\":44},\"spriteOpacity\":1}],\"using\":[{\"id\":\"floorsim-using-training-competition-bench-bay\",\"opacity\":1,\"box\":{\"x\":143.5,\"y\":236.5,\"w\":88,\"h\":176}}],\"claimed\":[],\"queues\":[{\"id\":\"floorsim-queue-cell-training-competition-bench-bay-0\",\"opacity\":1,\"box\":{\"x\":278.5,\"y\":239.5,\"w\":38,\"h\":38}},{\"id\":\"floorsim-queue-cell-training-competition-bench-bay-1\",\"opacity\":1,\"box\":{\"x\":234.5,\"y\":283.5,\"w\":38,\"h\":38}}],\"occupancyText\":\"3 on the floor\\n2 waiting\\n1 on the machine\",\"textureSrc\":\"/empire-art/floor-garage.png\",\"overflowX\":false,\"viewport\":{\"w\":375,\"h\":812}}"
+  ]
+}
