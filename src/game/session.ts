@@ -3,9 +3,8 @@
  *
  * ```
  * Open app
- *   -> Readiness check-in (5 sec, 3 taps: sleep / soreness / motivation;
- *      today's lift is chosen here, defaulting to the rotation)
- *   -> Modifier applied and surfaced ("Feeling primed +5%" / "Grinding today")
+ *   -> Next training decision (lift + intended RPE)
+ *   -> Automated readiness from training history, as copy
  *   -> One lift-focused session (60-90 sec, timing-based sets)
  *   -> e1RM updated, streak incremented, feedback shown
  *   -> Done
@@ -193,13 +192,18 @@
  */
 
 import {
+  LUCKIEST_ROLLS,
   NEUTRAL_CHECK_IN,
   cappedSession,
+  historyReadiness,
+  nextTrainingAction,
+  recordSession,
   sessionFeel,
   type FatigueState,
   type InjuryNotice,
   type LiftMoment,
   type MotivationAnswer,
+  type NextTrainingAction,
   type ReadinessCheckIn,
   type ReadinessReport,
   type SessionFeel,
@@ -265,8 +269,8 @@ export type SessionEvent =
   /**
    * Retarget today's session to another competition lift. The caller supplies
    * the full next `SessionContext` (same day, new lift, that lift's e1RM)
-   * because this module never talks to the cache. Legal only on the check-in;
-   * later beats ignore it the way every other out-of-phase event is ignored.
+   * because this module never talks to the cache. Legal on the opening
+   * decision (briefing, before an RPE is chosen); later beats ignore it.
    */
   | { readonly kind: 'choose-lift'; readonly context: SessionContext }
   | { readonly kind: 'choose-rpe'; readonly rpe: number }
@@ -423,6 +427,11 @@ export interface SessionCloseOut {
    * the close-out offers a retry instead of ending the day.
    */
   readonly canPropose: boolean;
+  /** History outlook for the next day. Copy only — never a meter. */
+  readonly outlookHeadline: string;
+  readonly outlookDetail: string;
+  /** Adaptive next action from the same ledger. */
+  readonly nextAction: NextTrainingAction;
 }
 
 /** The whole loop, on one tap. */
@@ -1010,6 +1019,15 @@ function closeOutFrom(state: SessionState): SessionCloseOut {
     prescribedReps,
   });
 
+  const nextDay = state.context.day + 1;
+  let ledger = state.context.fatigue;
+  const recorded = sessionRecordFromReports(state.context.day, plan.lift, reports);
+  if (recorded !== null) {
+    ledger = recordSession(ledger, recorded, LUCKIEST_ROLLS).state;
+  }
+  const outlook = historyReadiness(ledger, nextDay);
+  const action = nextTrainingAction(ledger, nextDay);
+
   return {
     day: state.context.day,
     lift: plan.lift,
@@ -1033,6 +1051,32 @@ function closeOutFrom(state: SessionState): SessionCloseOut {
     headline,
     subhead,
     canPropose,
+    outlookHeadline: outlook.headline,
+    outlookDetail: outlook.detail,
+    nextAction: action,
+  };
+}
+
+function sessionRecordFromReports(
+  day: number,
+  lift: SimLift,
+  reports: readonly TrainingSetReport[],
+): SessionRecord | null {
+  if (reports.length === 0) return null;
+  let topRpe = Number.NEGATIVE_INFINITY;
+  let totalReps = 0;
+  for (let i = 0; i < reports.length; i += 1) {
+    const set = reports[i];
+    if (set === undefined) continue;
+    if (set.rpe > topRpe) topRpe = set.rpe;
+    totalReps += set.reps;
+  }
+  return {
+    day,
+    lift,
+    topRpe,
+    workSets: reports.length,
+    repsPerSet: Math.ceil(totalReps / reports.length),
   };
 }
 
@@ -1142,7 +1186,7 @@ export function sessionProjection(
 // The machine
 // ---------------------------------------------------------------------------
 
-/** A session at its first frame: the check-in, with nothing tapped. */
+/** A session at its first frame: lift + RPE, with history readiness already applied. */
 export function createSession(context: SessionContext): SessionState {
   if (!Number.isSafeInteger(context.day)) {
     throw new RangeError(`session: day must be a safe integer day index, received ${context.day}.`);
@@ -1152,13 +1196,14 @@ export function createSession(context: SessionContext): SessionState {
       `session: e1rmKg must be a positive finite number, received ${context.e1rmKg}.`,
     );
   }
+  const feel = sessionFeel(context.fatigue, context.day, NEUTRAL_CHECK_IN);
   return {
     context,
-    phase: 'check-in',
+    phase: 'briefing',
     answers: EMPTY_CHECK_IN,
-    feel: null,
-    readiness: null,
-    injury: null,
+    feel,
+    readiness: feel.readiness,
+    injury: feel.injury,
     plan: null,
     setIndex: 0,
     repIndex: 0,
@@ -1166,19 +1211,6 @@ export function createSession(context: SessionContext): SessionState {
     repsThisSet: [],
     closeOut: null,
   };
-}
-
-function withTap(answers: PartialCheckIn, tap: CheckInTap): PartialCheckIn {
-  switch (tap.question) {
-    case 'sleep':
-      return { ...answers, sleep: tap.answer };
-    case 'soreness':
-      return { ...answers, soreness: tap.answer };
-    case 'motivation':
-      return { ...answers, motivation: tap.answer };
-    default:
-      return answers;
-  }
 }
 
 /**
@@ -1191,30 +1223,23 @@ function withTap(answers: PartialCheckIn, tap: CheckInTap): PartialCheckIn {
 export function stepSession(state: SessionState, event: SessionEvent): SessionState {
   switch (event.kind) {
     case 'choose-lift': {
-      if (state.phase !== 'check-in') return state;
+      if (state.phase !== 'briefing' || state.plan !== null) return state;
       if (event.context.day !== state.context.day) return state;
       if (event.context.lift === state.context.lift) return state;
-      return { ...state, context: event.context };
-    }
-
-    case 'check-in-tap': {
-      if (state.phase !== 'check-in') return state;
-      const answers = withTap(state.answers, event.tap);
-      const complete = completeCheckIn(answers);
-      if (complete === null) return { ...state, answers };
-      // The whole of GDD §3.2's "modifier applied and surfaced", in one call.
-      // `sessionFeel` is the only thing that reads the hidden ledger, and the
-      // readiness report it returns is a readout of these three taps and
-      // nothing else — `fatigue.ts` guarantees that by taking no state.
-      const feel = sessionFeel(state.context.fatigue, state.context.day, complete);
+      const feel = sessionFeel(event.context.fatigue, event.context.day, NEUTRAL_CHECK_IN);
       return {
         ...state,
-        phase: 'briefing',
-        answers,
+        context: event.context,
         feel,
         readiness: feel.readiness,
         injury: feel.injury,
       };
+    }
+
+    case 'check-in-tap': {
+      // Subjective check-in is not in the player loop. The event stays on the
+      // union so old callers do not crash; it does not move the phase.
+      return state;
     }
 
     case 'choose-rpe': {

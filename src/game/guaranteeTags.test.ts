@@ -3345,7 +3345,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
   {
     guarantee: 'no-press-surface-swallows-a-fast-tap',
     mutatedFile: 'src/session/SetView.tsx',
-    mutated: '        testID="session-touch"\n        {...PRESS_WITHOUT_DELAY}\n',
+    mutated: '            testID="session-touch"\n            {...PRESS_WITHOUT_DELAY}\n',
     mutatedTo: '        testID="session-touch"\n',
     testFile: 'src/lift/liftInput.test.ts',
     redAssertion: "      expect(bare, bare.join('\\n')).toEqual([]);",

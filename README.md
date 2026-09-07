@@ -45,18 +45,18 @@ before trusting it.
 
 ## The loop, and what to press
 
-The app opens straight onto the readiness check-in — no splash, no home screen.
-That is deliberate (GDD §3.2).
+The app opens straight onto today's lift and RPE — no splash, no home screen,
+no subjective readiness check-in. That is deliberate (GDD §3.2).
 
-1. **Check-in** — three taps: sleep, soreness, motivation.
-2. **Briefing** — the prescribed lift and load. Pick an RPE target.
-3. **Sets and rest** — tap and hold to descend, release at depth, drive out of
+1. **Today's session** — confirm the lift (rotation default, you may retarget)
+   and pick an RPE target. Readiness copy comes from training history.
+2. **Sets and rest** — tap and hold to descend, release at depth, drive out of
    the hole. A session is 5 × 3 and runs about a minute.
-4. **Close-out** — the number that moves is **e1RM**, never Total.
-5. **`MEET DAY`** — a control on the check-in, briefing and close-out. Press it.
-6. **The meet** — weigh-in, declare openers, then squat → bench → deadlift,
+3. **Close-out** — the number that moves is **e1RM**, never Total.
+4. **`MEET DAY`** — a control on the briefing and close-out. Press it.
+5. **The meet** — weigh-in, declare openers, then squat → bench → deadlift,
    three attempts each. Attempts never go down. Three-light judging.
-7. **Recap → result card**, then `BACK TO TRAINING`.
+6. **Recap → result card**, then `BACK TO TRAINING`.
 
 No control is drawn over a live set, a live attempt, or a cut-in, on purpose — a
 mis-tap there costs a rep, an attempt, or the tap that was meant to skip the

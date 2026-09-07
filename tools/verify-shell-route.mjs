@@ -695,7 +695,7 @@ const BEAT_SAYS = Object.freeze({
    */
   RECAP: 'SEE YOUR CARD',
   /** src/game/sessionTuning.ts — SESSION_COPY.CHECK_IN_TITLE. */
-  CHECK_IN: 'HOW ARE YOU TODAY?',
+  CHECK_IN: "TODAY'S SESSION",
   /**
    * src/game/sessionTuning.ts — SESSION_COPY.ALREADY_TRAINED_HEADLINE.
    *
@@ -992,7 +992,7 @@ const EMPIRE_RETURN = Object.freeze({
   /** The beat the second leg departs from, and — since the repair — returns to. */
   DEPARTS_FROM: 'session-briefing',
   /** src/game/sessionTuning.ts — SESSION_COPY.BRIEFING_PROMPT. Pinned below. */
-  DEPARTURE_SAYS: 'PICK YOUR RPE',
+  DEPARTURE_SAYS: 'CHOOSE YOUR EFFORT',
   /** The beat a discarded session came back on. Now the thing asserted against. */
   LANDS_ON: 'session-check-in',
 });
@@ -5040,12 +5040,12 @@ check(openHit.hit, 'and the point a thumb would land on belongs to it', `element
 // pill-drawn table at the end of the run is filled from here and a reading
 // filed under the wrong beat is worse than no reading. `SessionScreen` renders
 // the check-in on a fresh launch with no query string (GDD §3.2).
-const openedOnCheckIn = await visible('session-check-in');
+const openedOnBriefing = await visible('session-briefing');
 check(
-  openedOnCheckIn,
-  'and the beat underneath it is GDD §3.2’s check-in — the beat SHELL_NAV says carries this pill',
+  openedOnBriefing,
+  'and the beat underneath it is GDD §3.2’s opening decision — the beat SHELL_NAV says carries this pill',
 );
-sawPillOn('check-in', openDrawn && openedOnCheckIn, openHit.hit);
+sawPillOn('briefing', openDrawn && openedOnBriefing, openHit.hit);
 check(
   !/\btotal\b/i.test(await bodyText()),
   'the session surface shows no Total in the shell chrome (GDD §3.2)',
@@ -5366,7 +5366,7 @@ if (!reachedMeet) {
     'PRESSING IT RETURNS TO THE DAILY SESSION — on a meet the player opened, played and finished',
   );
   check(!(await visible('meet-screen')), 'and that meet is no longer on screen');
-  await shootBeat('05a-check-in-after-a-played-meet.png', 'check-in', BEAT_SAYS.CHECK_IN);
+  await shootBeat('05a-check-in-after-a-played-meet.png', 'briefing', BEAT_SAYS.CHECK_IN);
 
   // ---- 4b. and now the second meet of the same app run --------------------
   //
@@ -5498,7 +5498,7 @@ if (!reachedMeet) {
         'AND PRESSING IT RETURNS TO THE DAILY SESSION — a player who competes twice is not stranded',
       );
       check(!(await visible('meet-screen')), 'and the second meet is no longer on screen either');
-      await shootBeat('05b-check-in-after-the-second-meet.png', 'check-in', BEAT_SAYS.CHECK_IN);
+      await shootBeat('05b-check-in-after-the-second-meet.png', 'briefing', BEAT_SAYS.CHECK_IN);
 
       // ---------------------------------------------------------------------
       // 4d. RETIRED WITH ITS REASON, NOT DELETED QUIETLY (Sprint 1c)
@@ -7222,8 +7222,8 @@ await checkOnScreen(
       // were the same beat by construction and no state of the app could redden
       // it. What is asserted here is the part this leg can be wrong about.
       check(
-        await visible('session-check-in'),
-        'it lands on GDD §3.2’s check-in (this leg left from the check-in; whether the beat is PRESERVED is section 10b’s question)',
+        await visible('session-briefing'),
+        'it lands on GDD §3.2’s opening decision (this leg left from the briefing; whether the beat is PRESERVED is section 10b’s question)',
       );
       // Bounded, and for the reason section 4 gives at length: the pill
       // remounts on the way back (its `key` is the affordance) and fades in
@@ -7270,15 +7270,9 @@ await checkOnScreen(
   // deadlines. `openSessionToFirstSet` goes one beat further than this leg wants
   // (`set` is a `NEVER_A_PILL_BEAT`), so the three taps are made here and the
   // list they come from is the driver's.
-  let reachedBriefing = true;
-  for (const id of SESSION_DRIVE.CHECK_IN_TAPS) {
-    try {
-      await page.getByTestId(id).click({ timeout: SESSION_DRIVE.BRACE_TIMEOUT_MS });
-    } catch {
-      reachedBriefing = false;
-      check(false, `SKIPPED: 10b needs the check-in answer ${id}, which could not be pressed`);
-      break;
-    }
+  let reachedBriefing = await visible('session-briefing');
+  if (!reachedBriefing) {
+    check(false, 'SKIPPED: 10b needs the opening briefing, which was not on screen');
   }
   if (reachedBriefing) {
     const briefingDrawn = await waitUntilDrawn(page, EMPIRE_RETURN.DEPARTS_FROM, settleMs);
@@ -7741,8 +7735,8 @@ await checkOnScreen(
         );
         check(!(await visible('career-screen')), 'and the Career surface is no longer on screen');
         check(
-          await visible('session-check-in'),
-          'it lands on GDD §3.2’s check-in — the beat this leg departed from',
+          await visible('session-briefing'),
+          'it lands on GDD §3.2’s opening decision — the beat this leg departed from',
         );
         await page.screenshot({ path: path.join(outDir, '22-career-round-trip-closed.png') });
       }

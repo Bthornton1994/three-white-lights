@@ -362,7 +362,7 @@ async function readOverlay() {
       hintBox: box('cut-in-skip-hint'),
       // The screen underneath. If this is missing, the shot is of an overlay
       // over nothing and every "does it interrupt" question is meaningless.
-      behind: node('session-check-in') !== null,
+      behind: node('session-briefing') !== null,
       // FOUR CORNERS AND THE CENTRE. GDD §7.2: "Always skippable — tap to
       // dismiss", with no close button in a corner, so every one of these must
       // land on the cut-in.
@@ -384,7 +384,7 @@ async function readOverlay() {
       // That is exactly how the first version of this tool was wrong.
       tappableThroughTheCutIn: {
         checkIn: (() => {
-          const n = document.querySelector('[data-testid="check-in-sleep-good"]');
+          const n = document.querySelector('[data-testid="check-in-lift-squat"]');
           if (n === null) return null;
           const r = n.getBoundingClientRect();
           const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
@@ -509,7 +509,7 @@ let shellNavOverTheInterrupt = 0;
 // taken against and the proof that an unrecognised debug route is inert.
 await page.goto(`${url}?cutin=nonsense`, { waitUntil: 'load' });
 await completeCreateIfNeeded(page);
-await page.getByTestId('session-check-in').waitFor({ state: 'visible', timeout: 120000 });
+await page.getByTestId('session-briefing').waitFor({ state: 'visible', timeout: 120000 });
 
 // SAFE TO CLEAR NOW — see the block above `mkdir`. The page loaded and the app
 // mounted, so this run will write replacements for everything it removes.
@@ -797,7 +797,7 @@ try {
   await page.getByTestId('cut-in').waitFor({ state: 'detached', timeout: GONE_BY_MS });
   const goneAt = Date.now() - appearedAt;
   await page.screenshot({ path: path.join(outDir, 'live-after-auto-dismiss.png') });
-  const behind = await page.getByTestId('session-check-in').isVisible();
+  const behind = await page.getByTestId('session-briefing').isVisible();
   leavesOnItsOwn = { stillUpAt, stillUp, goneAt, behind };
   if (!stillUp) timing += 1;
   if (!behind) timing += 1;

@@ -67,7 +67,7 @@ await page.screenshot({ path: path.join(outDir, '02-my-lifter.png') });
 const leave = page.getByTestId(CREATE_LIFTER.LEAVE);
 await leave.waitFor({ state: 'visible', timeout: 40000 });
 await leave.click();
-await page.getByTestId('session-check-in').waitFor({ state: 'visible', timeout: 120000 });
+await page.getByTestId('session-briefing').waitFor({ state: 'visible', timeout: 120000 });
 
 const careerPill = page.getByTestId(CALENDAR_ENTRY.NAV_OPEN_CAREER);
 await careerPill.waitFor({ state: 'visible', timeout: 40000 });

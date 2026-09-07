@@ -40,6 +40,7 @@ import {
 import { SESSION_COPY, SESSION_PROGRESSION_GUARD, SESSION_TUNING } from './sessionTuning';
 import {
   EMPTY_FATIGUE_STATE,
+  FATIGUE_COPY,
   FATIGUE_TUNING,
   UNLUCKIEST_ROLLS,
   readinessCheckIn,
@@ -357,8 +358,8 @@ describe('liftForDay — GDD §3.2 programmed lift on rotation', () => {
   });
 });
 
-describe('the check-in — GDD §3.2, three taps', () => {
-  it('needs all three answers before it is a check-in', () => {
+describe('the opening decision — GDD §3.2 as corrected', () => {
+  it('leftover helpers still assemble a three-answer check-in, unused in play', () => {
     expect(completeCheckIn(EMPTY_CHECK_IN)).toBeNull();
     expect(completeCheckIn({ sleep: 'good', soreness: null, motivation: 'flat' })).toBeNull();
     expect(completeCheckIn({ sleep: 'good', soreness: 'sore', motivation: 'flat' })).toEqual({
@@ -382,52 +383,28 @@ describe('the check-in — GDD §3.2, three taps', () => {
     expect(nextCheckInQuestion(three)).toBeNull();
   });
 
-  it('stays on the check-in until the third tap, then surfaces the modifier', () => {
-    let state = createSession(context());
-    expect(state.phase).toBe('check-in');
-    state = stepSession(state, { kind: 'check-in-tap', tap: { question: 'sleep', answer: 'good' } });
-    expect(state.phase).toBe('check-in');
-    expect(state.readiness).toBeNull();
-    state = stepSession(state, {
-      kind: 'check-in-tap',
-      tap: { question: 'soreness', answer: 'fresh' },
-    });
-    expect(state.phase).toBe('check-in');
-    state = stepSession(state, {
-      kind: 'check-in-tap',
-      tap: { question: 'motivation', answer: 'fired-up' },
-    });
+  it('opens on the lift+RPE briefing with history readiness, not a subjective check-in', () => {
+    const state = createSession(context());
     expect(state.phase).toBe('briefing');
-    expect(state.readiness?.headline).toBe('Feeling primed');
-    expect(state.readiness?.label).toBe('Feeling primed +5%');
+    expect(state.readiness?.headline).toBe('Readiness forming');
+    expect(state.readiness?.loadAdjustmentPercent).toBe(0);
+    const ignored = stepSession(state, {
+      kind: 'check-in-tap',
+      tap: { question: 'sleep', answer: 'good' },
+    });
+    expect(ignored).toBe(state);
   });
 
-  it('a check-in choose-lift retargets the session, including the e1RM the bar will be prescribed from', () => {
+  it('a choose-lift retargets the session, including the e1RM the bar will be prescribed from', () => {
     const started = createSession(context({ lift: 'squat', e1rmKg: 200, bestE1rmKg: 200 }));
     const retargeted = stepSession(started, {
       kind: 'choose-lift',
       context: context({ lift: 'bench', e1rmKg: 140, bestE1rmKg: 140 }),
     });
     expect(retargeted).not.toBe(started);
-    expect(retargeted.phase).toBe('check-in');
+    expect(retargeted.phase).toBe('briefing');
     expect(retargeted.context.lift).toBe('bench');
     expect(retargeted.context.e1rmKg).toBe(140);
-    expect(retargeted.answers).toEqual(EMPTY_CHECK_IN);
-  });
-
-  it('keeps any readiness taps already given when the lift changes', () => {
-    const started = stepSession(createSession(context({ lift: 'squat', e1rmKg: 200 })), {
-      kind: 'check-in-tap',
-      tap: { question: 'sleep', answer: 'good' },
-    });
-    const retargeted = stepSession(started, {
-      kind: 'choose-lift',
-      context: context({ lift: 'bench', e1rmKg: 140, bestE1rmKg: 140 }),
-    });
-    expect(retargeted.phase).toBe('check-in');
-    expect(retargeted.answers.sleep).toBe('good');
-    expect(retargeted.answers.soreness).toBeNull();
-    expect(retargeted.context.lift).toBe('bench');
   });
 
   it('ignores a choose-lift that would change the day, or that names the lift already selected', () => {
@@ -446,45 +423,50 @@ describe('the check-in — GDD §3.2, three taps', () => {
     ).toBe(started);
   });
 
-  it('locks the lift once the check-in is complete', () => {
-    const briefing = tapThrough(createSession(context({ lift: 'squat', e1rmKg: 200 })), NEUTRAL);
+  it('locks the lift once an RPE has been chosen', () => {
+    const lifting = stepSession(createSession(context({ lift: 'squat', e1rmKg: 200 })), {
+      kind: 'choose-rpe',
+      rpe: 8,
+    });
+    expect(lifting.phase).toBe('set');
     expect(
-      stepSession(briefing, {
+      stepSession(lifting, {
         kind: 'choose-lift',
         context: context({ lift: 'bench', e1rmKg: 140, bestE1rmKg: 140 }),
       }),
-    ).toBe(briefing);
+    ).toBe(lifting);
   });
 
-  it('a bench chosen on the check-in is the lift the mechanic is configured with', () => {
+  it('a bench chosen on the opening screen is the lift the mechanic is configured with', () => {
     const started = createSession(context({ lift: 'squat', e1rmKg: 200 }));
     const retargeted = stepSession(started, {
       kind: 'choose-lift',
       context: context({ lift: 'bench', e1rmKg: 140, bestE1rmKg: 140 }),
     });
-    const lifting = stepSession(tapThrough(retargeted, NEUTRAL), { kind: 'choose-rpe', rpe: 8 });
+    const lifting = stepSession(retargeted, { kind: 'choose-rpe', rpe: 8 });
     expect(repConfigFor(lifting).kind).toBe('bench');
   });
 
-  it('surfaces "Grinding today" at the other end, GDD §3.2 verbatim', () => {
-    const state = tapThrough(createSession(context()), WRECKED);
-    expect(state.readiness?.headline).toBe('Grinding today');
-    expect(state.readiness?.label).toBe('Grinding today -5%');
-  });
-
-  it('reports the surfaced modifier as a readout of the three taps and nothing else', () => {
-    // Two lifters with wildly different hidden ledgers, identical taps.
+  it('readiness copy comes from the ledger, not from three taps', () => {
     const heavy: FatigueState = recordSession(
-      recordSession(EMPTY_FATIGUE_STATE, { day: -2, lift: 'squat', topRpe: 10, workSets: 8, repsPerSet: 5 }, UNLUCKIEST_ROLLS).state,
+      recordSession(
+        EMPTY_FATIGUE_STATE,
+        { day: -2, lift: 'squat', topRpe: 10, workSets: 8, repsPerSet: 5 },
+        UNLUCKIEST_ROLLS,
+      ).state,
       { day: -1, lift: 'squat', topRpe: 10, workSets: 8, repsPerSet: 5 },
       UNLUCKIEST_ROLLS,
     ).state;
-    const fresh = tapThrough(createSession(context()), PRIMED).readiness;
-    const tired = tapThrough(createSession(context({ fatigue: heavy })), PRIMED).readiness;
-    expect(tired).toEqual(fresh);
+    const fresh = createSession(context()).readiness;
+    const tired = createSession(context({ fatigue: heavy })).readiness;
+    expect(fresh?.headline).toBe('Readiness forming');
+    expect(tired?.headline).toBe('Grinding today');
+    expect(tired).not.toEqual(fresh);
+    expect(fresh?.loadAdjustmentPercent).toBe(0);
+    expect(tired?.loadAdjustmentPercent).toBe(0);
   });
 
-  it('falls back to fatigue.ts’s own neutral before the taps land', () => {
+  it('falls back to fatigue.ts’s own neutral — taps are not taken', () => {
     expect(checkInOrNeutral(createSession(context()))).toEqual({
       sleep: 'ok',
       soreness: 'normal',
@@ -708,6 +690,24 @@ describe('prescription — GDD §3.3, RPE target in, weight out', () => {
     expect(SESSION_PROGRESSION_GUARD.MAX_E1RM_GAIN_FRACTION_PER_SESSION).toBeGreaterThan(
       FATIGUE_TUNING.READINESS_LOAD_ADJUSTMENT_PERCENT.primed / 100,
     );
+  });
+
+  it('the player path never pays the tap nudge: 30 on-target sessions hold 200 kg', () => {
+    let best = 200;
+    let prs = 0;
+    for (let session = 0; session < 30; session += 1) {
+      const state = runSession(
+        context({ day: session, e1rmKg: best, bestE1rmKg: best }),
+        PRIMED,
+        8,
+        ALL_GOOD,
+      );
+      const next = state.closeOut?.newBestE1rmKg ?? best;
+      if (next > best) prs += 1;
+      best = next;
+    }
+    expect(best).toBe(200);
+    expect(prs).toBe(0);
   });
 
   it('offers RPE 8 by default', () => {
@@ -1032,17 +1032,19 @@ describe('the rep the mechanic is handed', () => {
     expect(lastSet).toBeLessThan(firstRep);
   });
 
-  it('is a wider window on a primed day than on a wrecked one', () => {
-    const primed = stepSession(tapThrough(createSession(context()), PRIMED), {
+  it('is a wider window after recovery than after hard recent work', () => {
+    const recovered = stepSession(createSession(context()), { kind: 'choose-rpe', rpe: 8 });
+    const heavyLedger = recordSession(
+      EMPTY_FATIGUE_STATE,
+      { day: -1, lift: 'squat', topRpe: 10, workSets: 5, repsPerSet: 3 },
+      UNLUCKIEST_ROLLS,
+    ).state;
+    const grinding = stepSession(createSession(context({ fatigue: heavyLedger })), {
       kind: 'choose-rpe',
       rpe: 8,
     });
-    const wrecked = stepSession(tapThrough(createSession(context()), WRECKED), {
-      kind: 'choose-rpe',
-      rpe: 8,
-    });
-    expect(cueWindowMs('drive', repConfigFor(primed))).toBeGreaterThan(
-      cueWindowMs('drive', repConfigFor(wrecked)),
+    expect(cueWindowMs('drive', repConfigFor(recovered))).toBeGreaterThan(
+      cueWindowMs('drive', repConfigFor(grinding)),
     );
   });
 
@@ -1067,30 +1069,46 @@ describe('the close-out — GDD §3.2', () => {
     expect(closeOut.subhead).toBe(SESSION_COPY.CLOSE_OUT_HELD_SUBHEAD);
     expect(closeOut.streakBefore).toBe(4);
     expect(closeOut.streakAfter).toBe(5);
+    expect(closeOut.outlookHeadline).toBe(FATIGUE_COPY.HISTORY_READINESS_HEADLINE.heavy);
+    expect(closeOut.nextAction.kind).toBe('hold');
+    expect(closeOut.nextAction.headline).toBe(FATIGUE_COPY.NEXT_ACTION_HEADLINE.hold);
   });
 
-  it('calls a PR when the primed bar went up', () => {
+  it('does not call a PR from a primed tap — history never raises the bar', () => {
     const state = runSession(context(), PRIMED, 8, ALL_GOOD);
     const closeOut = state.closeOut;
     expect(closeOut).not.toBeNull();
     if (closeOut === null) return;
-    // 180 kg x 3 @ RPE 8 -> 180 / 0.863 = 208.5747...
-    expect(closeOut.weightKg).toBe(180);
-    expect(closeOut.sessionE1rmKg).toBeCloseTo(208.5747, 4);
+    expect(closeOut.weightKg).toBe(172.5);
+    expect(closeOut.sessionE1rmKg).toBeCloseTo(199.8841, 4);
+    expect(closeOut.isPr).toBe(false);
+    expect(closeOut.headline).toBe(SESSION_COPY.CLOSE_OUT_HELD_HEADLINE);
+  });
+
+  it('calls a PR when the prior best sits under an on-target bar', () => {
+    const state = runSession(context({ bestE1rmKg: 185 }), NEUTRAL, 8, ALL_GOOD);
+    const closeOut = state.closeOut;
+    expect(closeOut).not.toBeNull();
+    if (closeOut === null) return;
+    expect(closeOut.weightKg).toBe(172.5);
+    expect(closeOut.sessionE1rmKg).toBeCloseTo(199.8841, 4);
     expect(closeOut.isPr).toBe(true);
-    expect(closeOut.prGainKg).toBeCloseTo(8.5747, 4);
+    expect(closeOut.newBestE1rmKg).toBeCloseTo(
+      185 * (1 + SESSION_PROGRESSION_GUARD.MAX_E1RM_GAIN_FRACTION_PER_SESSION),
+      4,
+    );
     expect(closeOut.headline).toBe(SESSION_COPY.CLOSE_OUT_PR_HEADLINE);
   });
 
   it('does not call a PR when the session came up short', () => {
-    // Every set fails on the third rep: 2 reps @ RPE 10 on a 180 kg bar.
-    const state = runSession(context(), PRIMED, 8, (_set, rep) => (rep === 2 ? 'miss' : 'good-lift'));
+    // Every set fails on the third rep: 2 reps @ RPE 10 on a 172.5 kg bar.
+    const state = runSession(context(), NEUTRAL, 8, (_set, rep) => (rep === 2 ? 'miss' : 'good-lift'));
     const closeOut = state.closeOut;
     expect(closeOut).not.toBeNull();
     if (closeOut === null) return;
     expect(closeOut.goodReps).toBe(SESSION_TUNING.WORK_SETS * 2);
-    // 180 / 0.955 = 188.4816...
-    expect(closeOut.sessionE1rmKg).toBeCloseTo(188.4817, 4);
+    // 172.5 / 0.955 = 180.6283...
+    expect(closeOut.sessionE1rmKg).toBeCloseTo(180.6283, 4);
     expect(closeOut.isPr).toBe(false);
     expect(closeOut.subhead).toBe(SESSION_COPY.CLOSE_OUT_SHORT_SUBHEAD);
   });
@@ -1131,8 +1149,14 @@ describe('the close-out — GDD §3.2', () => {
 
   it('exposes no fatigue level for a component to bind to — GDD §3.4, §12.3', () => {
     const state = runSession(context(), WRECKED, 10, ALL_GOOD);
-    const json = JSON.stringify(state.closeOut ?? {});
-    expect(json).not.toMatch(/fatigue|burden|readiness|strain|risk/i);
+    const closeOut = state.closeOut;
+    expect(closeOut).not.toBeNull();
+    if (closeOut === null) return;
+    const keys = [...Object.keys(closeOut), ...Object.keys(closeOut.nextAction)].join(',');
+    expect(keys).not.toMatch(/fatigue|burden|readiness|strain|risk/i);
+    expect(closeOut.outlookHeadline).toBe(FATIGUE_COPY.HISTORY_READINESS_HEADLINE.grinding);
+    expect(closeOut.nextAction.kind).toBe('recover');
+    expect(closeOut.nextAction.detail).toBe(FATIGUE_COPY.NEXT_ACTION_LIMIT_DETAIL);
     // The feel object's one number lives behind a private symbol, so nothing a
     // component can name or serialise carries a level.
     const feelJson = JSON.stringify(state.feel);
@@ -1141,8 +1165,6 @@ describe('the close-out — GDD §3.2', () => {
     expect(
       JSON.stringify({ barSpeed: state.feel?.barSpeed, text: state.feel?.barSpeedText }),
     ).not.toMatch(/[0-9]/);
-    // The only numbers on it are the player's own tap readout, which the suite
-    // above shows is identical across wildly different hidden ledgers.
     expect(feelJson).toMatch(/loadAdjustmentPercent/);
   });
 });
@@ -1247,7 +1269,7 @@ describe('what the close-out is HEADED, not only what it counts', () => {
     // The one door. It exists because accessory day is RULED and the rotation
     // that would produce one is not built — `liftForDay` hands back a
     // `LiftKind`, which is the meet's three lifts for ever.
-    const played = runSession(context(), PRIMED, 8, ALL_GOOD).closeOut;
+    const played = runSession(context({ bestE1rmKg: 185 }), NEUTRAL, 8, ALL_GOOD).closeOut;
     expect(played).not.toBeNull();
     if (played === null) return;
     expect(played.isPr).toBe(true);
@@ -1266,6 +1288,8 @@ describe('what the close-out is HEADED, not only what it counts', () => {
     expect(accessory.streakAfter).toBe(played.streakAfter);
     expect(accessory.barSpeedText).toBe(played.barSpeedText);
     expect(accessory.canPropose).toBe(played.canPropose);
+    expect(accessory.outlookHeadline).toBe(played.outlookHeadline);
+    expect(accessory.nextAction).toEqual(played.nextAction);
     // And still no Total, on the branch that did not exist when that was checked.
     expect(JSON.stringify(accessory)).not.toMatch(/total/i);
   });
@@ -1305,16 +1329,20 @@ describe('a session that banked nothing is retried, not lost — GDD §12.3', ()
 describe('the machine ignores what does not apply', () => {
   it('does not advance on an event for another phase', () => {
     const fresh = createSession(context());
-    expect(stepSession(fresh, { kind: 'choose-rpe', rpe: 8 })).toBe(fresh);
+    expect(fresh.phase).toBe('briefing');
     expect(stepSession(fresh, { kind: 'rep-resolved', outcome: 'good-lift', executionQuality: 1 })).toBe(fresh);
     expect(stepSession(fresh, { kind: 'begin-set' })).toBe(fresh);
     expect(stepSession(fresh, { kind: 'retry' })).toBe(fresh);
-
-    const briefing = tapThrough(fresh, NEUTRAL);
-    expect(stepSession(briefing, { kind: 'rep-resolved', outcome: 'good-lift', executionQuality: 1 })).toBe(briefing);
     expect(
-      stepSession(briefing, { kind: 'check-in-tap', tap: { question: 'sleep', answer: 'poor' } }),
-    ).toBe(briefing);
+      stepSession(fresh, { kind: 'check-in-tap', tap: { question: 'sleep', answer: 'poor' } }),
+    ).toBe(fresh);
+
+    const lifting = stepSession(fresh, { kind: 'choose-rpe', rpe: 8 });
+    expect(lifting.phase).toBe('set');
+    expect(stepSession(lifting, { kind: 'choose-rpe', rpe: 9 })).toBe(lifting);
+    expect(
+      stepSession(lifting, { kind: 'check-in-tap', tap: { question: 'sleep', answer: 'poor' } }),
+    ).toBe(lifting);
   });
 
   it('never mutates the state it is given', () => {
@@ -1391,10 +1419,10 @@ describe('the proposal and the projection — the client proposes, the server pu
   });
 
   it('claims an e1RM and a streak, and a null Total', () => {
-    const state = runSession(context(), PRIMED, 8, ALL_GOOD);
+    const state = runSession(context(), NEUTRAL, 8, ALL_GOOD);
     const projection = sessionProjection(state.closeOut!);
     expect(projection.totalKg).toBeNull();
-    expect(projection.bestE1rmKg.squat).toBeCloseTo(208.5747, 4);
+    expect(projection.bestE1rmKg.squat).toBe(200);
     expect(projection.bestE1rmKg.bench).toBeNull();
     expect(projection.bestE1rmKg.deadlift).toBeNull();
     expect(projection.streak?.currentStreak).toBe(5);

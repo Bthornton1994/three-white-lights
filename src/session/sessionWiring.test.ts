@@ -162,17 +162,41 @@ describe('SessionScreen hands the readings down and computes nothing', () => {
     }
   });
 
-  it('the check-in retargets the lift through the cache, not a second context', () => {
-    // `'choose-lift'` is a string literal, which `codeOnly` strips, so this
-    // one reads the raw source. The rest of the path is code.
+  it('the opening decision retargets the lift through the cache, not a second context', () => {
     expect(source('useSession.ts')).toMatch(/'choose-lift'/);
     expect(USE_SESSION).toMatch(/\bchooseLift\b/);
     expect(USE_SESSION).toMatch(/sessionContextFrom/);
     expect(USE_SESSION).toMatch(/sessionBrief/);
     expect(SCREEN).toMatch(/onChooseLift=\{chooseLift\}/);
-    expect(source('CheckInView.tsx')).toMatch(/onChooseLift/);
-    expect(source('CheckInView.tsx')).toMatch(/LIFT_ROTATION/);
-    expect(source('CheckInView.tsx')).toMatch(/check-in-lift-/);
+    expect(source('BriefingView.tsx')).toMatch(/onChooseLift/);
+    expect(source('BriefingView.tsx')).toMatch(/LIFT_ROTATION/);
+    expect(source('BriefingView.tsx')).toMatch(/check-in-lift-/);
+    expect(source('BriefingView.tsx')).toMatch(/session-lights/);
+    expect(source('BriefingView.tsx')).toMatch(/session-start-lift/);
+    expect(source('BriefingView.tsx')).toMatch(/session-readiness-card/);
+    expect(source('BriefingView.tsx')).toMatch(/TrainingStagePreview/);
+    expect(source('BriefingView.tsx')).toMatch(/BRAND_MARK/);
+    expect(source('BriefingView.tsx')).toMatch(/BRIEFING_KICKER/);
+    expect(source('BriefingView.tsx')).toMatch(/flexWrap: 'nowrap'/);
+    expect(source('BriefingView.tsx')).toMatch(/LIFT_HERO/);
+    expect(source('BriefingView.tsx')).not.toMatch(/check-in-sleep-/);
+    expect(source('BriefingView.tsx')).not.toMatch(/session-check-in/);
+    expect(SCREEN).not.toMatch(/CheckInView/);
+    expect(SCREEN).not.toMatch(/check-in-tap/);
+    expect(source('SetView.tsx')).toMatch(/session-instruction-toggle/);
+    expect(source('SetView.tsx')).toMatch(/STAGE_FIT_MIN_SCALE/);
+    expect(source('TrainingStagePreview.tsx')).toMatch(/session-training-stage/);
+    expect(source('TrainingStagePreview.tsx')).toMatch(/liftStageScene/);
+    expect(source('TrainingStagePreview.tsx')).toMatch(/STAGE_PREVIEW_COVER_SHIFT_FRACTION/);
+    expect(source('TrainingStagePreview.tsx')).toMatch(/STAGE_PREVIEW_ZOOM/);
+    expect(source('BriefingView.tsx')).toMatch(/session-briefing-overlay/);
+    expect(source('BriefingView.tsx')).toMatch(/STAGE_OVERLAY_MAX_PERCENT/);
+    expect(source('BriefingView.tsx')).toMatch(/OVERLAY_SCRIM_OPACITY/);
+    expect(source('CloseOutView.tsx')).toMatch(/outlookHeadline/);
+    expect(source('CloseOutView.tsx')).toMatch(/nextAction/);
+    expect(source('CloseOutView.tsx')).toMatch(/CLOSE_OUT_OUTLOOK_LABEL/);
+    expect(source('CloseOutView.tsx')).toMatch(/CLOSE_OUT_NEXT_LABEL/);
+    expect(source('CloseOutView.tsx')).toMatch(/NAV_CLEARANCE/);
   });
 });
 
@@ -183,11 +207,11 @@ describe('SessionScreen hands the readings down and computes nothing', () => {
 describe('no screen can reach the hidden ledger', () => {
   const SCREENS = [
     'BriefingView.tsx',
-    'CheckInView.tsx',
     'CloseOutView.tsx',
     'RestView.tsx',
     'SessionScreen.tsx',
     'SetView.tsx',
+    'TrainingStagePreview.tsx',
   ];
 
   it('finds the screens at all', () => {
@@ -207,6 +231,11 @@ describe('no screen can reach the hidden ledger', () => {
       const code = codeOnly(source(file));
       expect(code, file).not.toMatch(/\bFatigueState\b/);
       expect(code, file).not.toMatch(/\.fatigue\b/);
+      expect(code, file).not.toMatch(/CHECK_IN_QUESTION/);
+      expect(code, file).not.toMatch(/CHECK_IN_ANSWER/);
+      expect(code, file).not.toMatch(/check-in-sleep-/);
+      expect(code, file).not.toMatch(/check-in-soreness-/);
+      expect(code, file).not.toMatch(/check-in-motivation-/);
     }
   });
 

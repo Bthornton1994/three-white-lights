@@ -320,8 +320,15 @@ const PINNED = Object.freeze({
    *
    * 320 -> 332 with A2 My Lifter: six identity modules, five tests, and
    * `tools/_capture-a2-lifter.mjs`.
+   *
+   * 332 -> 334 with SF-TWL-SESSION-A-TRAINING-FIT-01: CheckInView.tsx left
+   * (-1), historyReadiness.test.ts, capture-training-fit.mjs, and
+   * docs/evidence/.../overflow.json arrived (+3). PNG evidence is outside the
+   * text walk this pin counts.
+   *
+   * 334 -> 335 with Session A Iron & Amber bind: sessionPalette.test.ts.
    */
-  SCANNED_FILES: 332,
+  SCANNED_FILES: 335,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -367,8 +374,16 @@ const PINNED = Object.freeze({
    *
    * 104 -> 109 with A2: `lifterProfile.test.ts`, `lifterEntry.test.ts`,
    * `lifterPersist.test.ts`, `lifterSurface.test.ts`, `a2LifterFreeze.test.ts`.
+   *
+   * 109 -> 110 with SF-TWL-SESSION-A-TRAINING-FIT-01:
+   * `src/game/historyReadiness.test.ts`. `src/session/CheckInView.tsx` left
+   * the tracked tree in the same commit. Evidence PNGs are not tests, so this
+   * pin does not move with `SCANNED_FILES`.
+   *
+   * 110 -> 111 / 334 -> 335 with the Session A Iron & Amber bind:
+   * `src/session/sessionPalette.test.ts`.
    */
-  TEST_FILES: 109,
+  TEST_FILES: 111,
 });
 
 /**

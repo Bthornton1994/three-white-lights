@@ -947,12 +947,12 @@ export async function openSessionToFirstSet(
 ) {
   await page.goto(url, { waitUntil: 'load' });
   await page
-    .getByTestId('check-in-sleep-good')
+    .getByTestId('session-briefing')
     .waitFor({ state: 'visible', timeout: SESSION_DRIVE.FIRST_SET_TIMEOUT_MS });
 
   const startedAt = Date.now();
   // THE LIFT CHOICE, FIRST. See the `lift` parameter's own block above for why
-  // it is here rather than after the three answers, and for what the default
+  // it is here rather than after readiness, and for what the default
   // actually is. Reported, not thrown, the same way the answers below are.
   if (lift !== null) {
     try {
@@ -960,18 +960,20 @@ export async function openSessionToFirstSet(
     } catch {
       return {
         reached: false,
-        why: `the check-in offered no ${checkInLiftTestId(lift)} chip to press — GDD §3.2's lift choice is not on this screen`,
+        why: `the briefing offered no ${checkInLiftTestId(lift)} chip to press — GDD §3.2's lift choice is not on this screen`,
       };
     }
   }
-  // Reported, not thrown. A check-in answer that cannot be pressed — covered by
-  // something, or gone — is a fact about the app, and the caller has to be able
-  // to say which one it was rather than die inside the harness.
+  // Subjective check-in taps are gone from play. If a caller still passes
+  // the old ids, skip any that are not on screen rather than failing a
+  // sleep/soreness/motivation press that cannot happen.
   for (const id of checkInTaps) {
+    const chip = page.getByTestId(id);
+    if ((await chip.count()) === 0) continue;
     try {
-      await page.getByTestId(id).click({ timeout: 20000 });
+      await chip.click({ timeout: 20000 });
     } catch {
-      return { reached: false, why: `the check-in answer ${id} could not be pressed` };
+      return { reached: false, why: `the leftover check-in answer ${id} could not be pressed` };
     }
   }
 
@@ -980,7 +982,7 @@ export async function openSessionToFirstSet(
       .getByTestId('session-briefing')
       .waitFor({ state: 'visible', timeout: SESSION_DRIVE.BRACE_TIMEOUT_MS });
   } catch {
-    return { reached: false, why: 'the three check-in answers never produced a briefing' };
+    return { reached: false, why: 'the opening decision never produced a briefing' };
   }
   await page.waitForTimeout(SESSION_DRIVE.BRIEFING_SETTLE_MS);
 

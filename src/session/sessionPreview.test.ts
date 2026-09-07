@@ -40,6 +40,8 @@ describe('the ?session= debug route', () => {
       'check-in',
       'check-in-partial',
       'briefing',
+      'briefing-heavy',
+      'briefing-recovered',
       'set',
       'rest',
       'close-out-pr',
@@ -56,9 +58,11 @@ describe('the ?session= debug route', () => {
 describe('the beats a preview can be frozen on', () => {
   it('each one reaches the phase it names', () => {
     const expected: Record<string, string> = {
-      'check-in': 'check-in',
-      'check-in-partial': 'check-in',
+      'check-in': 'briefing',
+      'check-in-partial': 'briefing',
       briefing: 'briefing',
+      'briefing-heavy': 'briefing',
+      'briefing-recovered': 'briefing',
       set: 'set',
       rest: 'rest',
       'close-out-pr': 'close-out',
@@ -85,20 +89,33 @@ describe('the beats a preview can be frozen on', () => {
     }
   });
 
-  it('opens on a blank check-in and shows two of three when partial', () => {
+  it('opens on the lift+RPE briefing — check-in aliases are the same screen', () => {
     const blank = previewFrameFor({ moment: 'check-in' }).state;
-    expect(blank.answers).toEqual({ sleep: null, soreness: null, motivation: null });
     const partial = previewFrameFor({ moment: 'check-in-partial' }).state;
-    expect(partial.answers.sleep).toBe('good');
-    expect(partial.answers.soreness).toBe('fresh');
-    expect(partial.answers.motivation).toBeNull();
+    const briefing = previewFrameFor({ moment: 'briefing' }).state;
+    expect(blank.phase).toBe('briefing');
+    expect(partial.phase).toBe('briefing');
+    expect(briefing.phase).toBe('briefing');
+    expect(blank.plan).toBeNull();
+    expect(partial.plan).toBeNull();
+    expect(briefing.readiness?.loadAdjustmentPercent).toBe(0);
+    expect(briefing.readiness?.headline).toBe('Readiness forming');
   });
 
-  it('the briefing beat has a surfaced modifier and no plan yet', () => {
+  it('the briefing beat has history copy and no plan yet', () => {
     const state = previewFrameFor({ moment: 'briefing' }).state;
-    expect(state.readiness?.label).toBe('Feeling primed +5%');
+    expect(state.readiness?.label).toBe('Readiness forming');
     expect(state.plan).toBeNull();
     expect(state.context.lift).toBe(liftForDay(SESSION_PREVIEW.DAY));
+  });
+
+  it('heavy recent work and recovered history are different copy, same 0% load', () => {
+    const heavy = previewFrameFor({ moment: 'briefing-heavy' }).state;
+    const recovered = previewFrameFor({ moment: 'briefing-recovered' }).state;
+    expect(heavy.readiness?.headline).toBe('Grinding today');
+    expect(recovered.readiness?.headline).toBe('Recovered and ready to push');
+    expect(heavy.readiness?.loadAdjustmentPercent).toBe(0);
+    expect(recovered.readiness?.loadAdjustmentPercent).toBe(0);
   });
 
   it('the rest beat is between the first and second set', () => {
@@ -118,9 +135,11 @@ describe('the beats a preview can be frozen on', () => {
     expect(held?.canPropose).toBe(true);
     expect(empty?.canPropose).toBe(false);
     expect(empty?.sessionE1rmKg).toBeNull();
-    // And the PR is a bigger number than the held estimate, or the two
-    // screenshots would show the same thing with different words on them.
-    expect(pr?.newBestE1rmKg ?? 0).toBeGreaterThan(held?.newBestE1rmKg ?? 0);
+    // Different screens: the PR beat starts from a lower prior and banks a
+    // new best; the held beat keeps the existing best. The two numbers are
+    // not comparable as "PR is heavier" now that history no longer nudges load.
+    expect(pr?.previousBestE1rmKg ?? 0).toBeLessThan(held?.previousBestE1rmKg ?? 0);
+    expect(pr?.newBestE1rmKg ?? 0).toBeGreaterThan(pr?.previousBestE1rmKg ?? 0);
   });
 
   it('no preview shows a Total — GDD §3.2', () => {

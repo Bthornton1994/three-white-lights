@@ -130,6 +130,9 @@ describe('the shell is the join, and it is the only one', () => {
     expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'open-lifter'\)/);
     expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'leave-lifter'\)/);
     expect(SHELL).not.toMatch(/setRoute\(\{/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/shell-train-here/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/TRAIN_NAV_LABEL/);
+    expect(source('src/shell/AppShell.tsx')).not.toMatch(/navigate\(current, 'open-train'\)/);
   });
 
   it('forgets the destination’s beat on the way in, so no stale control flashes', () => {
@@ -2554,18 +2557,16 @@ describe('navigating away and back cannot buy a second session of the day', () =
     // trip being cancelled by its own effect — a defect this whole file, and
     // the other 2233 tests, were structurally unable to see.
     expect(SESSION_SCREEN).toMatch(
-      /loop\.alreadyTrainedToday && state\.phase === '' && preview === undefined/,
+      /loop\.alreadyTrainedToday && state\.plan === null && preview === undefined/,
     );
-    // ...and the phase it is gated on, in the raw source, is `check-in` itself.
     expect(source('src/session/SessionScreen.tsx')).toMatch(
-      /loop\.alreadyTrainedToday && state\.phase === 'check-in'/,
+      /loop\.alreadyTrainedToday && state\.plan === null/,
     );
-    // The scan can see the shape it is looking for, and can see it change.
-    expect(codeOnly("if (a && state.phase === 'check-in' && b) {")).toMatch(
-      /state\.phase === ''/,
+    expect(codeOnly("if (a && state.plan === null && b) {")).toMatch(
+      /state\.plan === null/,
     );
     expect("loop.alreadyTrainedToday && state.phase === 'rest'").not.toMatch(
-      /loop\.alreadyTrainedToday && state\.phase === 'check-in'/,
+      /loop\.alreadyTrainedToday && state\.plan === null/,
     );
   });
 });
@@ -2741,6 +2742,7 @@ describe('the browser tools’ fresh-lifter boundary matches the app’s save', 
       'capture-lift.mjs',
       'capture-meet.mjs',
       'capture-session.mjs',
+      'capture-training-fit.mjs',
       'shoot.mjs',
       'verify-cutin-cap.mjs',
       'verify-lift-press.mjs',

@@ -100,8 +100,9 @@ const styles = StyleSheet.create({
   prompt: {
     color: SESSION_PALETTE.TEXT,
     fontSize: L.HEADLINE_FONT,
-    fontWeight: '700',
-    letterSpacing: L.LETTER_SPACING,
+    fontWeight: '800',
+    letterSpacing: L.HERO_LETTER_SPACING,
+    textTransform: 'uppercase',
   },
   pips: {
     flexDirection: 'row',

@@ -277,13 +277,16 @@ export const SESSION_TUNING = Object.freeze({
   // -------------------------------------------------------------------------
 
   /**
-   * How long the modifier line is held before the RPE ladder becomes tappable.
-   *
-   * GDD §3.2 wants the modifier "applied and surfaced", so it needs a beat of
-   * its own — but a beat the player cannot tap through is a tax, so this is
-   * short and the ladder is live the moment it ends.
+   * How long the history-readiness line is held before the RPE ladder becomes
+   * tappable. Short: a beat the player cannot skip is a tax.
    */
   BRIEFING_REVEAL_MS: 420,
+
+  /**
+   * Briefing reveal when the player prefers reduced motion. Zero: the ladder
+   * is live on the first paint.
+   */
+  REDUCED_MOTION_REVEAL_MS: 0,
 
   /** How long a resolved rep is held before the next one braces. */
   REP_RESULT_HOLD_MS: 700,
@@ -371,7 +374,14 @@ export const SESSION_TUNING = Object.freeze({
    * times `CLOSE_OUT_ROW_STAGGER_MS`, so this is where "which beat lands first"
    * is decided — reorder it and the payoff reads differently.
    */
-  CLOSE_OUT_ROW_ORDER: Object.freeze({ CALL: 0, E1RM: 1, STREAK: 2, REPS: 3 }),
+  CLOSE_OUT_ROW_ORDER: Object.freeze({
+    CALL: 0,
+    E1RM: 1,
+    STREAK: 2,
+    REPS: 3,
+    OUTLOOK: 4,
+    NEXT: 5,
+  }),
 });
 
 /**
@@ -422,9 +432,21 @@ export const SESSION_PREVIEW = Object.freeze({
    * recorded in §7.3(c) rather than left to be inferred from the name.
    */
   BEST_E1RM_KG: 200,
+  /**
+   * Prior best for the PR close-out preview. On-target work at E1RM_KG no
+   * longer gets a tap-style load bonus, so a PR beat needs a lower record
+   * rather than a primed check-in.
+   */
+  PR_PRIOR_BEST_E1RM_KG: 185,
   STREAK_BEFORE: 11,
   /** RPE the preview session is taken at. */
   RPE: 8,
+  /** Stimulus RPE of the hard day the heavy-readiness preview remembers. */
+  HEAVY_HISTORY_TOP_RPE: 10,
+  /** Stimulus RPE of the washed-out day the recovered preview remembers. */
+  RECOVERED_HISTORY_TOP_RPE: 8,
+  /** How many days before the preview day that recovered session sits. */
+  RECOVERED_HISTORY_DAYS_AGO: 4,
 });
 
 /**
@@ -443,11 +465,21 @@ export const SESSION_LAYOUT = Object.freeze({
   SCREEN_PAD: 20,
   ROW_GAP: 10,
   SECTION_GAP: 26,
+  /**
+   * Extra inset on top of SCREEN_PAD so training chrome clears a notched
+   * phone's safe-area. Web uses `env(safe-area-inset-*)` at the shell; this
+   * is the fallback when that env is 0.
+   */
+  SAFE_AREA_FALLBACK: 12,
 
   TITLE_FONT: 13,
+  /** Athletic lift name on the opening decision and the live set. */
+  HERO_FONT: 36,
+  HERO_LETTER_SPACING: 0.4,
+  HERO_LINE_HEIGHT: 40,
   QUESTION_FONT: 11,
   ANSWER_FONT: 15,
-  MODIFIER_FONT: 24,
+  MODIFIER_FONT: 18,
   PROMPT_FONT: 13,
   HINT_FONT: 12,
   PLAN_FONT: 15,
@@ -457,17 +489,60 @@ export const SESSION_LAYOUT = Object.freeze({
   HEADLINE_FONT: 22,
   SUBHEAD_FONT: 13,
   STAT_FONT: 26,
-  LETTER_SPACING: 2,
+  LETTER_SPACING: 1.2,
+  BODY_LINE_HEIGHT: 18,
+  INSTRUCTION_LINE_HEIGHT: 18,
 
   /** Check-in answer chips. Three across, tall enough for a thumb. */
   CHIP_HEIGHT: 52,
   CHIP_RADIUS: 10,
   CHIP_GAP: 8,
   CHIP_BORDER: 2,
+  CHIP_MIN_WIDTH: 88,
 
-  /** The RPE ladder. Five across, so each is narrower than a chip. */
-  RPE_CHIP_HEIGHT: 60,
-  RPE_CHIP_GAP: 6,
+  /** The RPE ladder. Five in one row on a 375pt phone. */
+  RPE_CHIP_HEIGHT: 48,
+  RPE_CHIP_GAP: 4,
+  RPE_CHIP_MIN_WIDTH: 56,
+  /** Amber outline on the suggested effort — thicker than CHIP_BORDER. */
+  RPE_SELECTED_BORDER: 3,
+  TOUCH_MIN: 44,
+
+  /**
+   * Recovery / readiness card on the opening decision (A×C Screen 03 family).
+   * Not a meter. Copy only.
+   */
+  CARD_PAD: 14,
+  CARD_RADIUS: 16,
+  CARD_ACCENT_WIDTH: 4,
+
+  /** THREE WHITE LIGHTS identity pips on the training stage. */
+  BRAND_LIGHT_SIZE: 12,
+  BRAND_LIGHT_GAP: 10,
+  BRAND_FONT: 11,
+  /**
+   * Training-gym preview on the opening decision (PX: kill flat void).
+   * Facility-first: this is the floor, chrome sits in a compact overlay.
+   * Cover-scale fills the slot; the overlay is capped so the gym stays the room.
+   * Overlay fraction / scrim opacity are UNTUNED placeholders (GDD §12.1).
+   */
+  STAGE_PREVIEW_MIN_HEIGHT: 220,
+  /** Percent of briefing height the compact overlay may occupy. */
+  STAGE_OVERLAY_MAX_PERCENT: 62,
+  /**
+   * Cover-scale shift, as a fraction of slot height. Positive pulls the gym
+   * upward so the visible band above the overlay is the room (racks / floor),
+   * not only the ceiling lamps. UNTUNED placeholder.
+   */
+  STAGE_PREVIEW_COVER_SHIFT_FRACTION: 0.32,
+  /**
+   * Extra cover zoom so the platform / racks fill the visible band above the
+   * overlay. UNTUNED placeholder (GDD §12.1). Session A lift-hero only —
+   * does not retune `gymTuning` (live set / meet still use their own scale).
+   */
+  STAGE_PREVIEW_ZOOM: 1.18,
+  /** Iron scrim under briefing chrome so type reads over the gym raster. */
+  OVERLAY_SCRIM_OPACITY: 0.58,
 
   /** The set counter pips shown above the stage while a set is live. */
   PIP_SIZE: 8,
@@ -476,25 +551,29 @@ export const SESSION_LAYOUT = Object.freeze({
   BUTTON_HEIGHT: 48,
   BUTTON_RADIUS: 10,
   BUTTON_FONT: 13,
+  /** Full-width primary on the opening decision. */
+  START_BUTTON_HEIGHT: 56,
+  /**
+   * Bottom inset so the opening START is not under the shell nav overlay.
+   * Two-row session chrome (TRAIN location peer + GYM EMPIRE / CAREER / LIFTER):
+   * SHELL_LAYOUT.NAV_BOTTOM_INSET + NAV_HEIGHT + NAV_GAP + NAV_HEIGHT
+   * (44 + 38 + 10 + 38). Restated here so session screens do not import the shell.
+   */
+  NAV_CLEARANCE: 130,
 
   /** Close-out stat rows. */
   STAT_ROW_GAP: 18,
   DIVIDER_HEIGHT: 1,
 
   /**
-   * The first-run disclosure block on the check-in (GDD §4.2).
-   *
-   * Smaller than a question row and set below all three of them on purpose:
-   * GDD §12.2 measures this screen on time-to-first-input, so the disclosure
-   * has to be readable without pushing the first tap off the first paint. Both
-   * of these are placeholders in the sense the file header describes, and the
-   * line height in particular is the one to turn first — two sentences of body
-   * text set at the same tight leading as a chip label is the shape that reads
-   * as a wall.
+   * The first-run disclosure block on the opening decision (GDD §4.2).
    */
   DISCLOSURE_FONT: 11,
   DISCLOSURE_LINE_HEIGHT: 16,
   DISCLOSURE_GAP: 8,
+
+  /** Training stage fit: never paint the canvas wider than the viewport. */
+  STAGE_FIT_MIN_SCALE: 0.72,
 });
 
 /**
@@ -545,9 +624,11 @@ export const SESSION_PROGRESSION_GUARD = Object.freeze({
  * different person on a different pass.
  */
 export const SESSION_COPY = Object.freeze({
-  /** GDD §3.2: "3 taps: sleep / soreness / motivation". */
-  CHECK_IN_TITLE: 'HOW ARE YOU TODAY?',
-  CHECK_IN_LIFT_QUESTION: 'TODAY',
+  /** Opening decision. Lift + RPE; no subjective readiness taps. */
+  CHECK_IN_TITLE: "TODAY'S SESSION",
+  BRAND_MARK: 'THREE WHITE LIGHTS',
+  BRIEFING_KICKER: 'TRAINING',
+  CHECK_IN_LIFT_QUESTION: 'LIFT',
   CHECK_IN_QUESTION: Object.freeze({
     sleep: 'SLEEP',
     soreness: 'SORENESS',
@@ -559,14 +640,28 @@ export const SESSION_COPY = Object.freeze({
     motivation: Object.freeze({ flat: 'Flat', steady: 'Steady', 'fired-up': 'Fired up' }),
   }),
 
+  INSTRUCTION_SHOW: 'HOW TO LIFT',
+  INSTRUCTION_DISMISS: 'GOT IT',
+
   LIFT_LABEL: Object.freeze({
     squat: 'SQUAT',
     bench: 'BENCH',
     deadlift: 'DEADLIFT',
   } as const satisfies Record<LiftKind, string>),
+  /**
+   * Athletic hero on the opening decision and the live set. Longer than the
+   * chip label where the lift's common name needs two words.
+   */
+  LIFT_HERO: Object.freeze({
+    squat: 'SQUAT',
+    bench: 'BENCH PRESS',
+    deadlift: 'DEADLIFT',
+  } as const satisfies Record<LiftKind, string>),
 
   /** The briefing. The modifier headline itself comes from `fatigue.ts`. */
-  BRIEFING_PROMPT: 'PICK YOUR RPE',
+  BRIEFING_PROMPT: 'CHOOSE YOUR EFFORT',
+  BRIEFING_RPE_PREFIX: 'RPE',
+  BRIEFING_START: 'START',
   BRIEFING_RPE_HINT: 'Heavier target, heavier bar. The game does the maths.',
   BRIEFING_PLAN: 'sets',
 
@@ -615,6 +710,8 @@ export const SESSION_COPY = Object.freeze({
   CLOSE_OUT_E1RM_LABEL: 'e1RM',
   CLOSE_OUT_STREAK_LABEL: 'DAY STREAK',
   CLOSE_OUT_REPS_LABEL: 'REPS BANKED',
+  CLOSE_OUT_OUTLOOK_LABEL: 'OUTLOOK',
+  CLOSE_OUT_NEXT_LABEL: 'NEXT',
   CLOSE_OUT_DONE: 'DONE',
   CLOSE_OUT_RETRY: 'TRAIN AGAIN',
 

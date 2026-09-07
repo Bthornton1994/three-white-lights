@@ -334,6 +334,7 @@ describe('the siblings all read the guard (CLAUDE.md twin-guard rule)', () => {
     'capture-lift.mjs',
     'capture-meet.mjs',
     'capture-session.mjs',
+    'capture-training-fit.mjs',
     'shoot.mjs',
     'verify-cutin-cap.mjs',
     'verify-lift-press.mjs',

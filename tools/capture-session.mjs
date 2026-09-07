@@ -64,6 +64,8 @@ const MOMENTS = [
   'check-in',
   'check-in-partial',
   'briefing',
+  'briefing-heavy',
+  'briefing-recovered',
   'set',
   'rest',
   'close-out-pr',

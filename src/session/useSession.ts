@@ -147,8 +147,9 @@ export interface SessionLoop {
   /** True when the server would refuse another session today (GDD §3.2). */
   readonly alreadyTrainedToday: boolean;
   /**
-   * GDD §4.2's first-run disclosures, for the check-in to render. Empty for
-   * every lifter who has trained, and on every lift but the first-run one.
+   * GDD §4.2's first-run disclosures, for the opening decision to render.
+   * Empty for every lifter who has trained, and on every lift but the first-run
+   * one.
    */
   readonly onboardingDisclosures: readonly OnboardingDisclosure[];
   readonly dispatch: (event: SessionEvent) => void;
@@ -156,8 +157,8 @@ export interface SessionLoop {
   readonly restartDay: () => void;
   /**
    * Retargets today's session to another competition lift. Legal on the
-   * check-in; ignored later. Rebuilds the context through the cache so the
-   * bar is prescribed from that lift's e1RM.
+   * opening briefing while no plan exists; ignored later. Rebuilds the context
+   * through the cache so the bar is prescribed from that lift's e1RM.
    */
   readonly chooseLift: (lift: LiftKind) => void;
 }
@@ -209,7 +210,14 @@ export function useSession(
       return undefined;
     }
     setLiveLadderReady(false);
-    const timer = setTimeout(() => setLiveLadderReady(true), SESSION_TUNING.BRIEFING_REVEAL_MS);
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const revealMs = reduced
+      ? SESSION_TUNING.REDUCED_MOTION_REVEAL_MS
+      : SESSION_TUNING.BRIEFING_REVEAL_MS;
+    const timer = setTimeout(() => setLiveLadderReady(true), revealMs);
     return () => clearTimeout(timer);
   }, [liveState.phase]);
 
@@ -235,7 +243,9 @@ export function useSession(
   const chooseLift = useCallback(
     (lift: LiftKind) => {
       setLiveState((current) => {
-        if (current.phase !== 'check-in' || current.context.lift === lift) return current;
+        if (current.phase !== 'briefing' || current.plan !== null || current.context.lift === lift) {
+          return current;
+        }
         const { day } = current.context;
         const nextContext = sessionContextFrom(
           cacheRef.current,

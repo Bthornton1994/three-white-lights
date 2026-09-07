@@ -17,10 +17,10 @@
  * about when a navigation control is welcome and when it is in the way, and
  * that judgement needs a thumb on a phone to settle.
  *
- * Colour is deliberately absent: the pill is drawn out of `LIFT_PALETTE`, which
- * both `SESSION_PALETTE` and `MEET_PALETTE` are built on, so the shell's chrome
- * sits in the same room as whichever surface is under it without adding a
- * fourth palette that could drift from the other three.
+ * Colour is not authored here. Meet / Empire / Career / Lifter pills stay on
+ * `LIFT_PALETTE`. Session A training chrome (TRAINING-FIT-02, Iron & Amber)
+ * is `SESSION_PALETTE`, applied only while `route.surface === 'session'`.
+ * That is a surface switch, not a fourth palette.
  */
 
 import type { MeetDayPhaseId } from '../game/meetDay';
@@ -290,6 +290,14 @@ export const SHELL_COPY = Object.freeze({
   /** Session surface -> My Lifter. */
   LIFTER_NAV_LABEL: 'LIFTER',
   LIFTER_NAV_HINT: 'Opens my lifter.',
+
+  /**
+   * Session A current-location peer (TRAINING-FIT-02 V-SHL). Amber while the
+   * daily loop is on screen. Not a ShellIntent and not a Session B dock
+   * (Gym / Shop / Staff / Train). GDD §3.2.
+   */
+  TRAIN_NAV_LABEL: 'TRAIN',
+  TRAIN_NAV_HINT: 'You are on the daily training session.',
 
   /** My Lifter surface -> back to the daily loop. */
   LEAVE_LIFTER_LABEL: 'BACK TO TRAINING',

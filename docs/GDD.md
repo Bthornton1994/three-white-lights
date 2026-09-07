@@ -290,20 +290,44 @@ checkable, and community-recognized.
 
 ```
 Open app
-  → Readiness check-in (5 sec, 3 taps: sleep / soreness / motivation)
-  → Modifier applied and surfaced ("Feeling primed +5%" / "Grinding today")
+  → Next training decision (confirm lift + intended RPE)
+  → Automated readiness from training history, as copy — never a meter
   → One lift-focused session (60–90 sec, timing-based sets)
   → e1RM updated, streak incremented, feedback shown
   → Done
 ```
 
+**Owner-authorized product correction (SF-TWL-SESSION-A-TRAINING-FIT-01).**
+The subjective three-tap readiness check-in (sleep / soreness / motivation) is
+**not** in the normal player flow. First paint is the next meaningful training
+decision: today's lift (rotation default, player may retarget) and the intended
+RPE. Readiness and residual fatigue are inferred from the existing training-
+history ledger (§3.4), not from self-report. No second ledger. No fabricated
+history. A lifter with no sessions on record is **neutral / readiness forming**,
+not pre-fatigued. History does not apply a tap-style percentage bonus to the
+bar — load still comes from the player's RPE choice against the published chart.
+Fatigue is felt through bar speed, timing-window width, and concise copy
+("Recent heavy work is still affecting readiness" / "Recovered and ready to
+push"). The player may train while fatigued; that is a tradeoff, not a lock.
+
+**Owner-authorized visual + close-out correction (SF-TWL-SESSION-A-TRAINING-FIT-02).**
+The opening decision is **facility-first**: the licensed training gym is the
+room (the same raster the live set already paints). Chrome is a compact overlay
+— THREE WHITE LIGHTS, today's lift, history readiness copy, RPE 6–10, START.
+It is not a form on a flat void. Training chrome is Iron & Amber; the lift
+STAGE and Meet Day keep the lift palette. Unlicensed isometric mockup art is
+not a shippable asset. Session A chrome shows an amber TRAIN location peer
+plus GYM EMPIRE / CAREER / LIFTER. TRAIN is the current-session marker, not a
+Session B dock (Gym / Shop / Staff / Train).
+
+The close-out still moves **e1RM, never Total**. It also shows history outlook
+and the next training action as copy — still never a meter. Subjective
+check-in stays gone.
+
 One session per day, one competition lift. The day's **programmed** lift follows
 the squat → bench → deadlift rotation; the player may choose a different
-competition lift on the check-in before the session starts. That choice does not
-add a screen in front of the first question — the three readiness taps stay on
-the first paint, with today's lift offered as chips above them, defaulting to
-the rotation. Accessory day is still not a fourth `LiftKind` (see the ruling
-below).
+competition lift on that opening decision screen, defaulting to the rotation.
+Accessory day is still not a fourth `LiftKind` (see the ruling below).
 
 **Accessory day pays Training IQ, and nothing lift-specific — RULED.** The
 competition lifts are exactly three, because that is the meet (§6.2), so
@@ -345,9 +369,10 @@ homebrew this — lifters know these numbers.
 Hidden stat. **Never display a fatigue bar** — surface it through feel:
 
 - Bar-speed cues ("that rep looked slower than expected")
-- Readiness check-in shifting what a given RPE actually feels like
+- History-derived readiness copy shifting how the session is framed, never a meter
+- Close-out outlook and next-action copy from the same ledger, never a meter
 - Missed reps becoming more likely as fatigue accumulates
-- Tighter input timing windows when fatigued; more forgiving when primed
+- Tighter input timing windows when fatigued; more forgiving when recovered
 
 Fatigue operates on a **same-day / next-day horizon**, not multi-week arcs. Push
 too hard today → tomorrow's session starts harder. Multi-week arcs belong to
@@ -365,13 +390,17 @@ effort history. It must not stay a flat constant.** Growth is earned by training
 stimulus; it is not a reward for opening the app and tapping *good / fresh /
 fired up*.
 
-What the daily loop ships today, and why that is knowingly incomplete: the nudge
-is a flat percentage keyed only to the three check-in taps, which nothing
-verifies against the fatigue ledger. Measured over 30 sessions with every set hit
-exactly on target, a 200 kg e1RM becomes **200.00 kg** at neutral and **770.65 kg**
-at primed, with a PR reported on **30 of 30** sessions. The optimal play is
+What the daily loop used to ship, and why that was incomplete: the nudge was a
+flat percentage keyed only to three check-in taps, which nothing verified
+against the fatigue ledger. Measured over 30 sessions with every set hit
+exactly on target, a 200 kg e1RM became **200.00 kg** at neutral and **770.65 kg**
+at primed, with a PR reported on **30 of 30** sessions. The optimal play was
 therefore the lightest rung plus a primed tap — the easiest possible session
-paying the maximum reward.
+paying the maximum reward. SF-TWL-SESSION-A-TRAINING-FIT-01 removes those taps
+from play; session-over-session stimulus is the ledger's RPE/effort history.
+The load-nudge compounding path is no longer reachable in the normal loop. The
+growth-from-stimulus coupling itself remains the fatigue/progression module's
+job and is still not a shipping progression model.
 
 **`e1rm.ts` is correct and is not the defect.** Its chart-cancellation property —
 a set hit exactly on target reports exactly the e1RM it was prescribed from — is

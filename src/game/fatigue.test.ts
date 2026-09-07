@@ -6,7 +6,9 @@ import {
   EMPTY_FATIGUE_STATE,
   FATIGUE_COPY,
   FATIGUE_TUNING,
+  HISTORY_READINESS_KIND_ORDER,
   INJURY_KINDS,
+  NEXT_TRAINING_ACTION_KIND_ORDER,
   LUCKIEST_ROLLS,
   NEUTRAL_CHECK_IN,
   READINESS_BAND_ORDER,
@@ -16,6 +18,7 @@ import {
   adjustedMissChance,
   adjustedTimingWindowMs,
   cappedSession,
+  historyReadiness,
   isFreeSession,
   perceivedRpe,
   pruneFatigueState,
@@ -382,7 +385,9 @@ describe('no fatigue meter: the public API offers no fatigue level', () => {
         'EMPTY_FATIGUE_STATE',
         'FATIGUE_COPY',
         'FATIGUE_TUNING',
+        'HISTORY_READINESS_KIND_ORDER',
         'INJURY_KINDS',
+        'NEXT_TRAINING_ACTION_KIND_ORDER',
         'LUCKIEST_ROLLS',
         'NEUTRAL_CHECK_IN',
         'READINESS_BAND_ORDER',
@@ -393,7 +398,10 @@ describe('no fatigue meter: the public API offers no fatigue level', () => {
         'adjustedMissChance',
         'adjustedTimingWindowMs',
         'cappedSession',
+        'historyReadiness',
         'isFreeSession',
+        'nextTrainingAction',
+        'nextTrainingActionAfterSession',
         'perceivedRpe',
         'pruneFatigueState',
         'readinessCheckIn',
@@ -501,7 +509,7 @@ describe('no fatigue meter: the public API offers no fatigue level', () => {
     expect(JSON.parse(JSON.stringify(state))).toEqual(state);
   });
 
-  it('the readiness readout is identical across wildly different fatigue histories', () => {
+  it('the readiness copy is inferred from history, not from check-in taps', () => {
     const fresh = EMPTY_FATIGUE_STATE;
     const wrecked = recordAll(EMPTY_FATIGUE_STATE, [
       maximalSession(1),
@@ -509,17 +517,14 @@ describe('no fatigue meter: the public API offers no fatigue level', () => {
       maximalSession(3),
       maximalSession(4),
     ]);
-    for (const sleep of SLEEP_ANSWERS) {
-      for (const soreness of SORENESS_ANSWERS) {
-        for (const motivation of MOTIVATION_ANSWERS) {
-          const checkIn: ReadinessCheckIn = { sleep, soreness, motivation };
-          expect(sessionFeel(fresh, 5, checkIn).readiness).toEqual(
-            sessionFeel(wrecked, 5, checkIn).readiness,
-          );
-          expect(sessionFeel(wrecked, 5, checkIn).readiness).toEqual(readinessCheckIn(checkIn));
-        }
-      }
-    }
+    const freshFeel = sessionFeel(fresh, 5, BEST_CHECK_IN);
+    const wreckedFeel = sessionFeel(wrecked, 5, BEST_CHECK_IN);
+    expect(freshFeel.readiness.headline).toBe(FATIGUE_COPY.HISTORY_READINESS_HEADLINE.forming);
+    expect(wreckedFeel.readiness.headline).toBe(FATIGUE_COPY.HISTORY_READINESS_HEADLINE.grinding);
+    expect(freshFeel.readiness).not.toEqual(wreckedFeel.readiness);
+    expect(freshFeel.readiness.loadAdjustmentPercent).toBe(0);
+    expect(wreckedFeel.readiness.loadAdjustmentPercent).toBe(0);
+    expect(readinessCheckIn(BEST_CHECK_IN).label).toBe('Feeling primed +5%');
   });
 
   it('rejects a hand-built SessionFeel, so the hidden half cannot be forged in a literal', () => {
@@ -1200,7 +1205,7 @@ describe('readiness check-in (GDD §3.2)', () => {
 
   it('exposes no raw score, only a band, a headline and a signed percentage', () => {
     expect(Object.keys(readinessCheckIn(BEST_CHECK_IN)).sort()).toEqual(
-      ['answers', 'band', 'headline', 'label', 'loadAdjustmentPercent'].sort(),
+      ['answers', 'band', 'detail', 'headline', 'label', 'loadAdjustmentPercent'].sort(),
     );
   });
 
@@ -1402,6 +1407,20 @@ describe('the channels fatigue is felt through (GDD §3.4)', () => {
     for (const lift of SIM_LIFTS) {
       expect(FATIGUE_COPY.LIFT_LABEL[lift]).toBeTypeOf('string');
     }
+    for (const kind of HISTORY_READINESS_KIND_ORDER) {
+      expect(FATIGUE_COPY.HISTORY_READINESS_HEADLINE[kind]).toBeTypeOf('string');
+      expect(FATIGUE_COPY.HISTORY_READINESS_DETAIL[kind]).toBeTypeOf('string');
+      expect(FATIGUE_COPY.HISTORY_READINESS_HEADLINE[kind]).not.toMatch(/\d/);
+      expect(FATIGUE_COPY.HISTORY_READINESS_DETAIL[kind]).not.toMatch(/\d/);
+    }
+    expect(FATIGUE_COPY.LAST_SESSION_PREFIX).not.toMatch(/\d/);
+    for (const kind of NEXT_TRAINING_ACTION_KIND_ORDER) {
+      expect(FATIGUE_COPY.NEXT_ACTION_HEADLINE[kind]).toBeTypeOf('string');
+      expect(FATIGUE_COPY.NEXT_ACTION_DETAIL[kind]).toBeTypeOf('string');
+      expect(FATIGUE_COPY.NEXT_ACTION_HEADLINE[kind]).not.toMatch(/\d/);
+      expect(FATIGUE_COPY.NEXT_ACTION_DETAIL[kind]).not.toMatch(/\d/);
+    }
+    expect(FATIGUE_COPY.NEXT_ACTION_LIMIT_DETAIL).not.toMatch(/\d/);
   });
 });
 

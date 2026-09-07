@@ -46,7 +46,7 @@ import {
 } from './sessionServer';
 import { EMPTY_FATIGUE_STATE, type FatigueState, type SessionRecord } from './fatigue';
 import { FATIGUE_TUNING } from './fatigue';
-import { SESSION_BOUNDARY, SESSION_BOUNDARY_COPY, SESSION_COPY, SESSION_TUNING } from './sessionTuning';
+import { SESSION_BOUNDARY, SESSION_BOUNDARY_COPY, SESSION_COPY, SESSION_PREVIEW, SESSION_TUNING } from './sessionTuning';
 import {
   RECOVERY_DAY_GUARDRAILS,
   asStreakDay,
@@ -325,7 +325,7 @@ describe('what today is, read out of the cache', () => {
     expect(context.streakBefore).toBe(STARTING_STREAK);
     expect(context.streakIfTrainedToday).toBe(STARTING_STREAK + 1);
     // And it is a session the machine will accept.
-    expect(createSession(context).phase).toBe('check-in');
+    expect(createSession(context).phase).toBe('briefing');
   });
 });
 
@@ -612,11 +612,12 @@ describe('the PR call', () => {
   it('is re-derived against the reading, so a server correction removes it', async () => {
     // A server that answers BELOW the previous best: the client called a PR and
     // the record did not deliver one.
-    const stored = storedRecord(STARTING_BEST_KG);
+    const priorKg = SESSION_PREVIEW.PR_PRIOR_BEST_E1RM_KG;
+    const stored = storedRecord(priorKg);
     const meaner: ServerRecord = {
       ...stored,
       revision: stored.revision + 1,
-      bestE1rmKg: { ...stored.bestE1rmKg, [LIFT]: STARTING_BEST_KG - 1 },
+      bestE1rmKg: { ...stored.bestE1rmKg, [LIFT]: priorKg - 1 },
     };
     const port: SessionServerPort = {
       openingSnapshot: () => snapshotWireFor(stored, null),
@@ -626,7 +627,17 @@ describe('the PR call', () => {
     };
 
     let cache = openingCache(port);
-    const closeOut = closeOutOf(playSession(STARTING_BEST_KG));
+    const closeOut = closeOutOf(
+      playSessionFrom({
+        day: DAY,
+        lift: LIFT,
+        e1rmKg: STARTING_BEST_KG,
+        bestE1rmKg: priorKg,
+        streakBefore: STARTING_STREAK,
+        streakIfTrainedToday: STARTING_STREAK + 1,
+        fatigue: EMPTY_FATIGUE_STATE,
+      }),
+    );
     expect(closeOut.isPr).toBe(true);
 
     const submission = submitCloseOut(cache, closeOut, WALL_CLOCK, PROPOSAL_ID)!;
@@ -641,7 +652,7 @@ describe('the PR call', () => {
     const settled = closeOutReadings(cache, closeOut);
     if (settled.payoff.kind !== 'e1rm') throw new Error('unreachable');
     expect(settled.payoff.isPr).toBe(false);
-    expect(settled.payoff.valueKg).toBe(STARTING_BEST_KG - 1);
+    expect(settled.payoff.valueKg).toBe(priorKg - 1);
   });
 
   it('a first-ever e1RM is a PR', () => {

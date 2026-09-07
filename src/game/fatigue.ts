@@ -307,6 +307,41 @@ export interface ReadinessCheckIn {
  */
 export type ReadinessBand = 'primed' | 'ready' | 'steady' | 'grinding';
 
+/**
+ * History-derived readiness kind. Separate from the old tap bands so "no
+ * history" is not mislabelled recovered, and so RPE 8 vs 9/10 can land in
+ * different copy without exporting a residual.
+ */
+export type HistoryReadinessKind = 'forming' | 'recovered' | 'ready' | 'heavy' | 'grinding';
+
+export const HISTORY_READINESS_KIND_ORDER = Object.freeze([
+  'forming',
+  'recovered',
+  'ready',
+  'heavy',
+  'grinding',
+] as const satisfies readonly HistoryReadinessKind[]);
+
+/**
+ * Adaptive next-day action (GDD §3.2 close-out). Qualitative only — no residual,
+ * no meter, no lock. Hard recent work never reads as "push"; empty history never
+ * reads as recovered.
+ */
+export type NextTrainingActionKind = 'form-history' | 'push' | 'hold' | 'recover';
+
+export const NEXT_TRAINING_ACTION_KIND_ORDER = Object.freeze([
+  'form-history',
+  'push',
+  'hold',
+  'recover',
+] as const satisfies readonly NextTrainingActionKind[]);
+
+export interface NextTrainingAction {
+  readonly kind: NextTrainingActionKind;
+  readonly headline: string;
+  readonly detail: string;
+}
+
 /** Best to worst. Exported so a UI can render all bands exhaustively. */
 export const READINESS_BAND_ORDER = Object.freeze([
   'primed',
@@ -501,6 +536,29 @@ export const FATIGUE_TUNING = Object.freeze({
     Object.freeze({ band: 'steady', minScore: -0.35 }),
     Object.freeze({ band: 'grinding', minScore: Number.NEGATIVE_INFINITY }),
   ] as const satisfies readonly ReadinessBandEdge[]),
+
+  /**
+   * History-derived readiness (SF-TWL-SESSION-A-TRAINING-FIT-01). Residual at
+   * the start of today, walked top-down: first edge whose `maxResidual` is
+   * strictly above the hidden residual wins. Empty history is a separate
+   * override (`forming`) and does not use this table.
+   *
+   * NOT A METER. These edges pick copy. They are not exported, not shown, and
+   * load adjustment from history is independently pinned at 0 so the player's
+   * RPE choice still owns the bar (owner: do not retune load values).
+   */
+  HISTORY_READINESS_MAX_RESIDUAL: Object.freeze([
+    Object.freeze({ band: 'ready' as const, maxResidual: 0.08 }),
+    Object.freeze({ band: 'steady' as const, maxResidual: 0.28 }),
+    Object.freeze({ band: 'grinding' as const, maxResidual: Number.POSITIVE_INFINITY }),
+  ]),
+
+  /**
+   * History never applies the old tap-style percentage bonus to the bar.
+   * Load stays the published-chart RPE prescription at a 0% nudge — the
+   * previous `steady` check-in path — so RPE difficulty is unchanged.
+   */
+  HISTORY_READINESS_LOAD_ADJUSTMENT_PERCENT: 0,
 
   /**
    * The surfaced number in GDD §3.2's "Feeling primed +5%". A percentage nudge
@@ -703,13 +761,54 @@ export const FATIGUE_TUNING = Object.freeze({
  * their numeric counterparts, so a new band cannot ship without its copy.
  */
 export const FATIGUE_COPY = Object.freeze({
-  /** GDD §3.2 gives "Feeling primed" and "Grinding today" verbatim. */
+  /** Tap-scored headlines. Kept for the unused self-report helper. */
   READINESS_HEADLINE: Object.freeze({
     primed: 'Feeling primed',
     ready: 'Ready to work',
     steady: 'Steady',
     grinding: 'Grinding today',
   }),
+
+  /**
+   * Player-facing history readiness (GDD §3.2 as corrected, §3.4). Qualitative
+   * only — no residual, no percentage, no session count. `forming` is the empty
+   * ledger, not a fabricated "fresh" claim.
+   */
+  HISTORY_READINESS_HEADLINE: Object.freeze({
+    forming: 'Readiness forming',
+    recovered: 'Recovered and ready to push',
+    ready: 'Ready to work',
+    heavy: 'Recent heavy work is still affecting readiness',
+    grinding: 'Grinding today',
+  }),
+
+  HISTORY_READINESS_DETAIL: Object.freeze({
+    forming: 'Train to give the next session something to read.',
+    recovered: 'Yesterday has washed out. You can push.',
+    ready: 'Carry is light. A hard day is still a choice.',
+    heavy: 'You can still train — the window is tighter.',
+    grinding: 'You can still train — expect a slower bar.',
+  }),
+
+  /** Prefix for the last-session fact line. RPE digits are composed at read time. */
+  LAST_SESSION_PREFIX: 'Last session',
+
+  NEXT_ACTION_HEADLINE: Object.freeze({
+    'form-history': 'Keep showing up',
+    push: 'You can push',
+    hold: 'Stay in the work',
+    recover: 'Take the lighter day',
+  } as const satisfies Record<NextTrainingActionKind, string>),
+
+  NEXT_ACTION_DETAIL: Object.freeze({
+    'form-history': 'Train again so the next session has history to read.',
+    push: 'Recent work has washed out. A hard day is a choice, not a debt.',
+    hold: 'Yesterday still counts. You can train — pick effort with that in mind.',
+    recover: 'Recent heavy work is still in you. You can train; expect a slower bar.',
+  } as const satisfies Record<NextTrainingActionKind, string>),
+
+  NEXT_ACTION_LIMIT_DETAIL:
+    'Yesterday went to the limit. You can train — the window is tighter.',
 
   BAR_SPEED_TEXT: Object.freeze({
     popping: 'The bar is jumping off you today.',
@@ -766,7 +865,14 @@ export interface SessionRecord {
   /** Integer day index, caller-supplied. This module never reads a clock. */
   readonly day: number;
   readonly lift: SimLift;
-  /** Hardest RPE reached. Clamped to the RPE chart's range when read. */
+  /**
+   * Stimulus RPE folded into strain. Prefer ACHIEVED: a set that hit failure
+   * is reported at RPE 10 (`session.ts` `playedSetFrom`). When every prescribed
+   * rep is made, only the DECLARED / target RPE exists — that value is used as
+   * a bounded stimulus and must not be labelled "achieved". `fatigueRecordFor`
+   * in `sessionServer.ts` is the single writer; this module does not invent a
+   * second reading.
+   */
   readonly topRpe: number;
   readonly workSets: number;
   readonly repsPerSet: number;
@@ -1030,13 +1136,21 @@ function residualAtStartOfDay(state: FatigueState, day: number): number {
  */
 export interface ReadinessReport {
   readonly band: ReadinessBand;
-  /** "Feeling primed" / "Grinding today". */
+  /** "Feeling primed" / "Readiness forming" / "Recovered and ready to push". */
   readonly headline: string;
-  /** Percentage nudge to today's prescribed load. Signed; may be 0. */
+  /** Percentage nudge to today's prescribed load. Signed; may be 0. History path is 0. */
   readonly loadAdjustmentPercent: number;
   /** Headline plus the signed percentage when non-zero: "Feeling primed +5%". */
   readonly label: string;
-  /** What the player tapped, echoed back. Their own input, not a derived value. */
+  /**
+   * Supporting line. Qualitative; no residual, no count, no percent. Empty on
+   * the unused tap-scored helper.
+   */
+  readonly detail: string;
+  /**
+   * What the player tapped, echoed back — or `NEUTRAL_CHECK_IN` when readiness
+   * was inferred from history and no subjective check-in was taken.
+   */
   readonly answers: ReadinessCheckIn;
 }
 
@@ -1103,12 +1217,138 @@ export function readinessCheckIn(answers: ReadinessCheckIn): ReadinessReport {
     headline,
     loadAdjustmentPercent: percent,
     label: percent === 0 ? headline : `${headline} ${formatSignedPercent(percent)}`,
+    detail: '',
     answers: {
       sleep: answers.sleep,
       soreness: answers.soreness,
       motivation: answers.motivation,
     },
   };
+}
+
+function hasRememberedSession(state: FatigueState, day: number): boolean {
+  const oldest = day - FATIGUE_TUNING.FATIGUE_MEMORY_DAYS;
+  for (let i = 0; i < state.sessions.length; i += 1) {
+    const session = state.sessions[i];
+    if (session !== undefined && session.day >= oldest && session.day < day) return true;
+  }
+  return false;
+}
+
+function bandForHistoryResidual(residual: number): ReadinessBand {
+  const edges = FATIGUE_TUNING.HISTORY_READINESS_MAX_RESIDUAL;
+  for (let i = 0; i < edges.length; i += 1) {
+    const edge = edges[i];
+    if (edge !== undefined && residual < edge.maxResidual) return edge.band;
+  }
+  return 'grinding';
+}
+
+function historyKindFor(residual: number, remembered: boolean): HistoryReadinessKind {
+  if (!remembered && residual <= 0) return 'forming';
+  if (residual <= 0) return 'recovered';
+  const band = bandForHistoryResidual(residual);
+  if (band === 'ready') return 'ready';
+  if (band === 'steady') return 'heavy';
+  return 'grinding';
+}
+
+/**
+ * Readiness inferred from the training-history ledger (GDD §3.2 as corrected,
+ * §3.4). Single source of truth: `FatigueState.sessions`, the same fold
+ * `sessionFeel` already uses. No clock, no second ledger, no invented rows.
+ *
+ * Empty history → `forming`, not a fabricated fresh/fatigued claim.
+ * History never writes a load percentage other than
+ * `HISTORY_READINESS_LOAD_ADJUSTMENT_PERCENT` (0).
+ */
+export function historyReadiness(state: FatigueState, day: number): ReadinessReport {
+  assertDayIndex(day, 'day');
+  const residual = residualAtStartOfDay(state, day);
+  const kind = historyKindFor(residual, hasRememberedSession(state, day));
+  const headline: string | undefined = FATIGUE_COPY.HISTORY_READINESS_HEADLINE[kind];
+  const baseDetail: string | undefined = FATIGUE_COPY.HISTORY_READINESS_DETAIL[kind];
+  if (headline === undefined || baseDetail === undefined) {
+    throw new RangeError(`History readiness kind ${kind} has no copy.`);
+  }
+  const band: ReadinessBand =
+    kind === 'forming' ? 'steady' : kind === 'recovered' || kind === 'ready' ? 'ready' : 'grinding';
+  const percent = FATIGUE_TUNING.HISTORY_READINESS_LOAD_ADJUSTMENT_PERCENT;
+  const lastLine = lastSessionFact(state, day);
+  const detail = lastLine === '' ? baseDetail : `${baseDetail} ${lastLine}`;
+  return {
+    band,
+    headline,
+    loadAdjustmentPercent: percent,
+    label: percent === 0 ? headline : `${headline} ${formatSignedPercent(percent)}`,
+    detail,
+    answers: {
+      sleep: NEUTRAL_CHECK_IN.sleep,
+      soreness: NEUTRAL_CHECK_IN.soreness,
+      motivation: NEUTRAL_CHECK_IN.motivation,
+    },
+  };
+}
+
+function lastRememberedSession(state: FatigueState, day: number): SessionRecord | null {
+  const oldest = day - FATIGUE_TUNING.FATIGUE_MEMORY_DAYS;
+  let latest: SessionRecord | null = null;
+  for (let i = 0; i < state.sessions.length; i += 1) {
+    const session = state.sessions[i];
+    if (session === undefined || session.day < oldest || session.day >= day) continue;
+    if (latest === null || session.day > latest.day) latest = session;
+  }
+  return latest;
+}
+
+function lastSessionFact(state: FatigueState, day: number): string {
+  const last = lastRememberedSession(state, day);
+  if (last === null) return '';
+  const lift = FATIGUE_COPY.LIFT_LABEL[last.lift];
+  return `${FATIGUE_COPY.LAST_SESSION_PREFIX} • ${lift} • RPE ${last.topRpe}.`;
+}
+
+function actionKindFor(kind: HistoryReadinessKind): NextTrainingActionKind {
+  if (kind === 'forming') return 'form-history';
+  if (kind === 'recovered' || kind === 'ready') return 'push';
+  if (kind === 'heavy') return 'hold';
+  return 'recover';
+}
+
+/**
+ * Adaptive next-day action from the training-history ledger (GDD §3.2).
+ * Same source of truth as `historyReadiness`. No lock; copy only.
+ */
+export function nextTrainingAction(state: FatigueState, day: number): NextTrainingAction {
+  assertDayIndex(day, 'day');
+  const residual = residualAtStartOfDay(state, day);
+  const historyKind = historyKindFor(residual, hasRememberedSession(state, day));
+  const kind = actionKindFor(historyKind);
+  const headline: string | undefined = FATIGUE_COPY.NEXT_ACTION_HEADLINE[kind];
+  let detail: string | undefined = FATIGUE_COPY.NEXT_ACTION_DETAIL[kind];
+  if (headline === undefined || detail === undefined) {
+    throw new RangeError(`Next-action kind ${kind} has no copy.`);
+  }
+  const last = lastRememberedSession(state, day);
+  const limitRpe = FATIGUE_TUNING.RPE_STRAIN_WEIGHTS[FATIGUE_TUNING.RPE_STRAIN_WEIGHTS.length - 1];
+  if (last !== null && limitRpe !== undefined && last.topRpe >= limitRpe.rpe) {
+    detail = FATIGUE_COPY.NEXT_ACTION_LIMIT_DETAIL;
+  }
+  return { kind, headline, detail };
+}
+
+/**
+ * Next-day action after folding a completed session into the ledger. Uses the
+ * luckiest injury rolls so the projection cannot mint a setback the player
+ * did not roll — this is copy for the close-out, not an injury path.
+ */
+export function nextTrainingActionAfterSession(
+  state: FatigueState,
+  session: SessionRecord,
+  nextDay: number,
+): NextTrainingAction {
+  const folded = recordSession(state, session, LUCKIEST_ROLLS).state;
+  return nextTrainingAction(folded, nextDay);
 }
 
 // ---------------------------------------------------------------------------
@@ -1467,7 +1707,7 @@ interface FeelInternals {
  *     which is exactly what GDD §3.5 wants surfaced.
  */
 export interface SessionFeel {
-  /** The check-in, verbatim. Does not vary with fatigue history. */
+  /** History-derived readiness copy. Qualitative; load percent is 0. */
   readonly readiness: ReadinessReport;
   /** How the bar is expected to move (GDD §3.4). A prediction, not a reading. */
   readonly barSpeed: BarSpeedCue;
@@ -1523,7 +1763,10 @@ export function sessionFeel(
   checkIn: ReadinessCheckIn = NEUTRAL_CHECK_IN,
 ): SessionFeel {
   assertDayIndex(day, 'day');
-  const readiness = readinessCheckIn(checkIn);
+  // Copy is history. Burden still accepts an optional check-in so existing
+  // mechanic unit tests of tap-relief keep a path; the player loop always
+  // passes `NEUTRAL_CHECK_IN` (zero relief).
+  const readiness = historyReadiness(state, day);
   const residual = residualAtStartOfDay(state, day);
   const burden =
     FATIGUE_TUNING.FATIGUE_BURDEN_WEIGHT * residual -
