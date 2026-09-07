@@ -911,6 +911,12 @@ export function isTextFile(bytes: Uint8Array): boolean {
 export const EXTENSIONS_READ_AS_TEXT: readonly string[] = Object.freeze([
   '(none)',
   '.html',
+  // `.js` ARRIVED WITH `metro.config.js`, the first tracked `.js` in the tree.
+  // Expo needs a CommonJS `metro.config.js` to register `.riv` and `.wasm` as
+  // asset extensions for the Rive runtime spike (ADR-001 §6); every other
+  // script here is `.mjs`. Scanned like any other text — a `.js` can carry a
+  // name as easily as a `.ts` — which is the fail-closed shape working.
+  '.js',
   '.json',
   '.md',
   '.mjs',
@@ -972,7 +978,16 @@ export interface UnreadableGroup {
 export const UNREADABLE_BY_THIS_AUDIT: readonly UnreadableGroup[] = Object.freeze([
   { extension: '.jpeg', reason: 'nul-byte', count: 1 },
   { extension: '.jpg', reason: 'nul-byte', count: 10 },
-  { extension: '.png', reason: 'nul-byte', count: 10 },
+  // 10 -> 12 with the Rive runtime spike's two browser screenshots under
+  // `docs/design/evidence/rive-spike/` (ADR-001 §7). Binary, filename only.
+  { extension: '.png', reason: 'nul-byte', count: 12 },
+  // `.riv` ARRIVED WITH THE SPIKE, AS A BINARY ROW ON PURPOSE. The committed
+  // `assets/dev/rive-spike.riv` is a deliberately-invalid placeholder — see
+  // its README — and carries a NUL so this census classifies it the way a
+  // real `.riv` (a binary) would be classified. When a real asset replaces
+  // it, this row stays true; had the placeholder been text, the row would
+  // have sat in the text census and gone stale the day the real file landed.
+  { extension: '.riv', reason: 'nul-byte', count: 1 },
   { extension: '.wav', reason: 'nul-byte', count: 7 },
   { extension: '.webp', reason: 'nul-byte', count: 2 },
 ]);

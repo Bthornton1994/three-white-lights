@@ -972,6 +972,9 @@ describe('the registered allowlist', () => {
         'src/art/spriteTuning.ts',
         'src/art/squatAnimation.ts',
         'src/art/craftMetrics.ts',
+        // The dev-only Rive runtime spike's own numbers — `local`, registered
+        // so its consumers are audited like any other, never a knob.
+        'src/dev/riveRuntimeSpike/spikeTuning.ts',
         // The synthesised meet-day audio (GDD §12.2 judges the walkout on
         // "pacing AND sound"). Both are `local`: the FORMAT and the arithmetic
         // live with the encoder — nobody playtests a RIFF byte offset — and

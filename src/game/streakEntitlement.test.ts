@@ -1109,8 +1109,14 @@ const PURCHASED_DAY_SCAN = {
    * reaches it and it contributes no match: nothing in the career calendar or
    * its eligibility rules mentions a purchase or a covered day, which is the
    * answer this pin exists to make somebody produce rather than assume.
+   *
+   * 13 -> 14 when the dev-only Rive runtime spike arrived as `src/dev/`. The
+   * walk reaches it and it contributes no match: the spike feeds synthetic
+   * sine curves into a ViewModel and mentions no purchase, no covered day and
+   * no entitlement. Registry data for an artifact the visual lane owns, per
+   * the 2026-09-07 registry/census ruling in CLAUDE.md — not a gameplay edit.
    */
-  SOURCE_DIRECTORIES: 13,
+  SOURCE_DIRECTORIES: 14,
 
   /**
    * The files that currently contain at least one matching declaration, as

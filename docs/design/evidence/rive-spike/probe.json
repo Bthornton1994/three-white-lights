@@ -1,0 +1,44 @@
+{
+  "base": "http://localhost:8081",
+  "startedAt": "2026-09-07T20:56:29.165Z",
+  "spike": {
+    "msToMount": 12686,
+    "msToSettledStatus": 12701,
+    "status": "error: load: loaderror — The file failed to load",
+    "addressBar": "?dev-rive-spike=1",
+    "canvasCount": 1,
+    "framePacing": {
+      "frames": 300,
+      "meanMs": 16.67,
+      "p50Ms": 16.7,
+      "p95Ms": 16.7,
+      "maxMs": 16.8,
+      "over33ms": 0
+    },
+    "heap": {
+      "usedJSHeapStart": 191373887,
+      "usedJSHeapAfter10s": 191731795,
+      "deltaBytes": 357908
+    },
+    "consoleLines": [
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[error] Bad header",
+      "[error] The file failed to load"
+    ],
+    "pageErrors": []
+  },
+  "playerPath": {
+    "msToShell": 905,
+    "addressBar": "",
+    "devSpikePresent": false,
+    "appShellPresent": true,
+    "consoleLines": [
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF."
+    ],
+    "pageErrors": [],
+    "wrongFlagValueOpensSpike": false
+  },
+  "finishedAt": "2026-09-07T20:56:59.184Z"
+}

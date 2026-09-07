@@ -332,8 +332,20 @@ const PINNED = Object.freeze({
    * `ATHLETE-ASSET-PIPELINE.md`, `PRESENTATION-CONTRACT-REQUEST.md`) and the
    * renderer-agnostic presentation contract with its test
    * (`src/session/liftPresentation.ts`, `.test.ts`).
+   *
+   * 348 -> 361 with the dev-only Rive runtime spike (ADR-001 §7): nine files
+   * under `src/dev/riveRuntimeSpike/`, `src/art/riv.d.ts`, `metro.config.js`,
+   * and the deliberately-invalid placeholder `assets/dev/rive-spike.riv` with
+   * its README. Never player-reachable; registered, not a knob.
+   *
+   * 361 -> 363 with the spike's browser evidence under
+   * `docs/design/evidence/rive-spike/` — the probe record, the script that
+   * produced it and its README are read (+3); its two screenshots are not,
+   * and the placeholder `.riv` stopped being read when it became binary (-1).
+   * A spike measurement kept beside its record — not a `.gauntlet/shots`
+   * harness record, on purpose.
    */
-  SCANNED_FILES: 348,
+  SCANNED_FILES: 363,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -385,8 +397,12 @@ const PINNED = Object.freeze({
    *
    * 112 -> 113 with `src/session/liftPresentation.test.ts`, the presentation
    * contract's guard.
+   *
+   * 113 -> 115 with the runtime spike's two: `spikeSignal.test.ts` (the pure
+   * synthetic feed) and `riveSpikeTypes.test.ts` (the asset path is required
+   * as a literal, and the placeholder is still the placeholder).
    */
-  TEST_FILES: 113,
+  TEST_FILES: 115,
 });
 
 /**

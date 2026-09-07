@@ -334,6 +334,20 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     why: 'CRAFT — bar thresholds for grading sprite craft, mostly derived from the decoded reference. Feel values are in SPRITE_TUNING.',
   }),
 
+  // --- the dev-only Rive runtime spike, which is not a knob and not a screen ---
+  // `local` and deliberately NOT `feel`: these are the periods of synthetic
+  // sine/ease curves that stand in for a rep so the RUNTIME can be exercised
+  // (ADR-001 §7), plus the dev screen's own layout. Nothing here describes an
+  // athlete or a mechanic; putting it in the tuning index would sit a fake
+  // rep's period beside real game-feel values. Mounted only behind `__DEV__`
+  // and a query string `shellRoute.ts` has no arm for. Deleted with the spike.
+  // Crossing filed in CLAUDE.md, 2026-09-07, before this row landed.
+  'src/dev/riveRuntimeSpike/spikeTuning.ts': Object.freeze({
+    role: 'constants',
+    kind: 'local',
+    why: 'SPIKE_SIGNAL, SPIKE_STAGE, SPIKE_LAYOUT — synthetic feed periods, the 60fps write cadence and the dev screen box. A developer-only runtime spike; no player ever sees it and no playtester turns it.',
+  }),
+
   // --- the audio format, which is not a knob either -------------------------
   // Deliberately `local` and deliberately NOT in the tuning index. What meet
   // day sounds like is `MEET_SOUND` in `meetTuning.ts` — a registered `feel`

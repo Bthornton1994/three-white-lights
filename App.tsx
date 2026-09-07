@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppShell } from './src/shell/AppShell';
 import { LIFT_PALETTE } from './src/lift/liftPalette';
+import { RiveRuntimeSpikeScreen } from './src/dev/riveRuntimeSpike/RiveRuntimeSpikeScreen';
 
 // THE APP OPENS INTO THE DAILY SESSION LOOP (GDD §3.2): readiness check-in ->
 // modifier -> the work sets, on the lift mechanic -> close-out. There is no
@@ -43,7 +44,33 @@ function locationSearch(): string | null {
   return window.location.search;
 }
 
+// ---------------------------------------------------------------------------
+// ONE DEV-ONLY BRANCH, DELIBERATELY SEPARATE FROM `resolveEntry`'S FOUR.
+// ---------------------------------------------------------------------------
+// `?dev-rive-spike=1` is NOT one of the four debug query strings named above
+// and never reaches `src/shell/shellRoute.ts` — it is checked here, before
+// `AppShell` mounts at all, and short-circuits to a screen `resolveEntry` has
+// no arm for and will never be given one. It is not part of the GDD evidence
+// harness those four serve; it exists solely for
+// `docs/design/ADR-001-athlete-animation-architecture.md` §7's runtime spike.
+//
+// Gated on BOTH conditions, not either alone: `__DEV__` is Metro's own
+// dev/production flag (statically `false` in a production build, native or
+// web) and the query string is one nobody reaches by navigating the app.
+// Either alone would still keep a player from getting here; both together
+// means a misconfigured `__DEV__` in a preview build still can't surface it
+// without someone typing this exact string.
+function isDevRiveSpikeRequested(): boolean {
+  if (!__DEV__) return false;
+  const search = locationSearch();
+  if (search === null) return false;
+  return new URLSearchParams(search).get('dev-rive-spike') === '1';
+}
+
 export default function App() {
+  if (isDevRiveSpikeRequested()) {
+    return <RiveRuntimeSpikeScreen />;
+  }
   return (
     <View style={styles.container}>
       <AppShell search={locationSearch()} />
