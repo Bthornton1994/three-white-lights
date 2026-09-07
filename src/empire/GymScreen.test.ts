@@ -1928,6 +1928,11 @@ describe('Iron & Amber presentation — Gym Empire home chrome', () => {
     expect(source).toMatch(/testID=\{'floorgrid-floor-plane'\}/);
     expect(source).toMatch(/ironAmberFloorPlaneUri/);
     expect(source).toMatch(/buildMode \? null : \(\s*<View testID=\{'floorgrid-occupancy'\}/);
+    expect(source).toMatch(/from '\.\/worldView'/);
+    expect(source).toMatch(/worldFrame\(/);
+    expect(source).toMatch(/floorsim-queue-cell-/);
+    expect(source).toMatch(/queueOccupancyViews\(world\.stations, tile\)/);
+    expect(source).not.toMatch(/opacity: buildMode \? 1 : 0/);
   });
 
   it('lets GymScreen compose the facility scene in front of FloorGrid interaction', () => {
