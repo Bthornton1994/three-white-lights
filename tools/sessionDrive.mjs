@@ -267,9 +267,14 @@ export const ECCENTRIC_ONLY_PROMPTS = Object.freeze(
     .filter((line) => line !== null),
 );
 
-/** The check-in chip that retargets today's session onto `kind` (GDD §3.2). */
+/** The briefing chip that retargets today's session onto `kind` (GDD §3.2). */
+export function briefingLiftTestId(kind) {
+  return `briefing-lift-${kind}`;
+}
+
+/** @deprecated Use briefingLiftTestId. Kept so older drivers keep compiling. */
 export function checkInLiftTestId(kind) {
-  return `check-in-lift-${kind}`;
+  return briefingLiftTestId(kind);
 }
 
 // ---------------------------------------------------------------------------
@@ -927,16 +932,14 @@ const resolved = (state) =>
  * squat-shaped rep works one day in three and reports a wall of timeouts on the
  * other two.
  *
- * Passing a `lift` presses `check-in-lift-<kind>` — a chip `CheckInView.tsx`
+ * Passing a `lift` presses `briefing-lift-<kind>` — a chip `BriefingView.tsx`
  * renders for every entry of `LIFT_ROTATION`, one tap, on the first paint of
- * the check-in. It is an ordinary player control (GDD §3.2: "the player may
- * choose a different competition lift on the check-in"), NOT a debug route and
+ * the briefing. It is an ordinary player control, NOT a debug route and
  * NOT a query string, which is what lets a check driven through it still claim
  * the played arm.
  *
- * PRESSED BEFORE THE THREE READINESS TAPS, deliberately: the third tap
- * completes the check-in and the session leaves that screen, and `choose-lift`
- * is only legal while it is still on it.
+ * Legal before an RPE is chosen. After RPE the session is on the set and
+ * `choose-lift` is ignored.
  */
 export async function openSessionToFirstSet(
   page,
@@ -946,41 +949,47 @@ export async function openSessionToFirstSet(
   lift = null,
 ) {
   await page.goto(url, { waitUntil: 'load' });
-  await page
-    .getByTestId('check-in-sleep-good')
-    .waitFor({ state: 'visible', timeout: SESSION_DRIVE.FIRST_SET_TIMEOUT_MS });
+  await page.getByTestId('app-shell').waitFor({ state: 'visible', timeout: SESSION_DRIVE.FIRST_SET_TIMEOUT_MS }).catch(() => {});
+  // History-derived briefing is the opening surface. The three-tap check-in
+  // is not on the played path; keep a short fallback for leftover previews.
+  const leaveLifter = page.getByTestId('shell-leave-lifter');
+  if (await leaveLifter.isVisible().catch(() => false)) {
+    await leaveLifter.click({ timeout: 20000 }).catch(() => {});
+  }
+  const opened = await Promise.race([
+    page.getByTestId('session-briefing').waitFor({ state: 'visible', timeout: SESSION_DRIVE.FIRST_SET_TIMEOUT_MS }).then(() => 'briefing'),
+    page.getByTestId('check-in-sleep-good').waitFor({ state: 'visible', timeout: SESSION_DRIVE.FIRST_SET_TIMEOUT_MS }).then(() => 'check-in'),
+  ]).catch(() => null);
+  if (opened === null) {
+    return { reached: false, why: 'neither briefing nor leftover check-in became visible' };
+  }
 
   const startedAt = Date.now();
-  // THE LIFT CHOICE, FIRST. See the `lift` parameter's own block above for why
-  // it is here rather than after the three answers, and for what the default
-  // actually is. Reported, not thrown, the same way the answers below are.
   if (lift !== null) {
     try {
       await page.getByTestId(checkInLiftTestId(lift)).click({ timeout: 20000 });
     } catch {
       return {
         reached: false,
-        why: `the check-in offered no ${checkInLiftTestId(lift)} chip to press — GDD §3.2's lift choice is not on this screen`,
+        why: `the opening surface offered no ${checkInLiftTestId(lift)} chip to press — GDD §3.2's lift choice is not on this screen`,
       };
     }
   }
-  // Reported, not thrown. A check-in answer that cannot be pressed — covered by
-  // something, or gone — is a fact about the app, and the caller has to be able
-  // to say which one it was rather than die inside the harness.
-  for (const id of checkInTaps) {
-    try {
-      await page.getByTestId(id).click({ timeout: 20000 });
-    } catch {
-      return { reached: false, why: `the check-in answer ${id} could not be pressed` };
+  if (opened === 'check-in') {
+    for (const id of checkInTaps) {
+      try {
+        await page.getByTestId(id).click({ timeout: 20000 });
+      } catch {
+        return { reached: false, why: `the check-in answer ${id} could not be pressed` };
+      }
     }
-  }
-
-  try {
-    await page
-      .getByTestId('session-briefing')
-      .waitFor({ state: 'visible', timeout: SESSION_DRIVE.BRACE_TIMEOUT_MS });
-  } catch {
-    return { reached: false, why: 'the three check-in answers never produced a briefing' };
+    try {
+      await page
+        .getByTestId('session-briefing')
+        .waitFor({ state: 'visible', timeout: SESSION_DRIVE.BRACE_TIMEOUT_MS });
+    } catch {
+      return { reached: false, why: 'the three check-in answers never produced a briefing' };
+    }
   }
   await page.waitForTimeout(SESSION_DRIVE.BRIEFING_SETTLE_MS);
 

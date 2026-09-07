@@ -1500,7 +1500,7 @@ async function untilLoop(page, predicate, timeoutMs) {
  * CLAUDE.md: "A screen a player reaches needs a check that reaches it the way a
  * player does." A deadlift is a screen a player reaches — `CheckInView.tsx`
  * renders one chip per `SESSION_TUNING.LIFT_ROTATION` entry and a tap on
- * `check-in-lift-deadlift` retargets the session (GDD §3.2) — so the rule
+ * `briefing-lift-deadlift` retargets the session (GDD §3.2) — so the rule
  * applies in full and was unmet.
  *
  * ===========================================================================
@@ -4533,7 +4533,7 @@ async function openArm(page, arm) {
   // The default this used to take is `liftForDay(...)` — the rotation indexed
   // by the REAL CALENDAR — while every rep this arm drives is squat-shaped, so
   // this arm worked one day in three and reported a wall of timeouts on the
-  // other two. `check-in-lift-squat` is a chip on the check-in's first paint,
+  // other two. `briefing-lift-squat` is a chip on the briefing's first paint,
   // one tap, a player control; asking for it costs nothing and makes the arm
   // day-independent. See `openSessionToFirstSet`'s `lift` parameter.
   const opened = await openSessionToFirstSet(page, url, undefined, undefined, 'squat');

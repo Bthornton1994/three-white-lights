@@ -156,8 +156,8 @@ export interface SessionLoop {
   readonly restartDay: () => void;
   /**
    * Retargets today's session to another competition lift. Legal on the
-   * check-in; ignored later. Rebuilds the context through the cache so the
-   * bar is prescribed from that lift's e1RM.
+   * briefing before an RPE is chosen; ignored later. Rebuilds the context
+   * through the cache so the bar is prescribed from that lift's e1RM.
    */
   readonly chooseLift: (lift: LiftKind) => void;
 }
@@ -235,7 +235,9 @@ export function useSession(
   const chooseLift = useCallback(
     (lift: LiftKind) => {
       setLiveState((current) => {
-        if (current.phase !== 'check-in' || current.context.lift === lift) return current;
+        if (current.phase !== 'briefing' || current.plan !== null || current.context.lift === lift) {
+          return current;
+        }
         const { day } = current.context;
         const nextContext = sessionContextFrom(
           cacheRef.current,

@@ -29,7 +29,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -40,6 +40,7 @@ import { SESSION_COPY, SESSION_LAYOUT, SESSION_TUNING } from '../game/sessionTun
 import type { InjuryNotice, ReadinessReport } from '../game/fatigue';
 import type { LiftKind } from '../game/meet';
 import { SESSION_PALETTE } from './sessionPalette';
+import gymBriefing from '../../assets/iron-amber/gym-briefing.jpg';
 
 const L = SESSION_LAYOUT;
 
@@ -76,6 +77,7 @@ export interface BriefingViewProps {
   /** Live once the reveal beat has elapsed. */
   readonly ladderReady: boolean;
   readonly onChooseRpe: (rpe: number) => void;
+  readonly onChooseLift: (lift: LiftKind) => void;
 }
 
 export function BriefingView({
@@ -86,6 +88,7 @@ export function BriefingView({
   repsPerSet,
   ladderReady,
   onChooseRpe,
+  onChooseLift,
 }: BriefingViewProps): React.ReactElement {
   const reveal = useSharedValue(0);
   useEffect(() => {
@@ -95,6 +98,33 @@ export function BriefingView({
 
   return (
     <View style={styles.root} testID="session-briefing">
+      <Image
+        source={gymBriefing}
+        style={styles.gym}
+        resizeMode="cover"
+        testID="iron-amber-briefing-gym"
+      />
+      <View style={styles.scrim} />
+      <View style={styles.body}>
+      <View style={styles.card}>
+      <View style={styles.liftRow} testID="briefing-lift">
+        {SESSION_TUNING.LIFT_ROTATION.map((option) => {
+          const selected = option === lift;
+          return (
+            <Pressable
+              key={option}
+              testID={`briefing-lift-${option}`}
+              accessibilityRole="button"
+              onPress={() => onChooseLift(option)}
+              style={[styles.liftChip, selected ? styles.liftChipSelected : null]}
+            >
+              <Text style={[styles.liftChipLabel, selected ? styles.liftChipLabelSelected : null]}>
+                {SESSION_COPY.LIFT_LABEL[option]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
       <Text style={styles.lift}>{SESSION_COPY.LIFT_LABEL[lift]}</Text>
       <Text
         style={[styles.modifier, { color: modifierColour(readiness.loadAdjustmentPercent) }]}
@@ -129,6 +159,8 @@ export function BriefingView({
         </View>
         <Text style={styles.hint}>{SESSION_COPY.BRIEFING_RPE_HINT}</Text>
       </Animated.View>
+      </View>
+      </View>
     </View>
   );
 }
@@ -136,12 +168,59 @@ export function BriefingView({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    overflow: 'hidden',
+  },
+  gym: {
+    ...StyleSheet.absoluteFill,
+    width: '100%',
+    height: '100%',
+  },
+  scrim: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: SESSION_PALETTE.CARD,
+    opacity: L.BRIEFING_SCRIM,
+  },
+  body: {
+    flex: 1,
     justifyContent: 'center',
     paddingHorizontal: L.SCREEN_PAD,
+  },
+  card: {
+    padding: L.BRIEFING_CARD_PAD,
+    borderRadius: L.BRIEFING_CARD_RADIUS,
+    borderWidth: L.BRIEFING_CARD_BORDER,
+    borderColor: SESSION_PALETTE.CARD_EDGE,
+    backgroundColor: SESSION_PALETTE.CARD,
     gap: L.ROW_GAP,
   },
-  lift: {
+  liftRow: {
+    flexDirection: 'row',
+    gap: L.CHIP_GAP,
+  },
+  liftChip: {
+    flex: 1,
+    height: L.LIFT_CHIP_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: L.CHIP_RADIUS,
+    borderWidth: L.CHIP_BORDER,
+    borderColor: SESSION_PALETTE.CHIP_EDGE,
+    backgroundColor: SESSION_PALETTE.CHIP,
+  },
+  liftChipSelected: {
+    borderColor: SESSION_PALETTE.AMBER,
+  },
+  liftChipLabel: {
     color: SESSION_PALETTE.TEXT_DIM,
+    fontSize: L.LABEL_FONT,
+    fontWeight: '700',
+    letterSpacing: L.LETTER_SPACING,
+  },
+  liftChipLabelSelected: {
+    color: SESSION_PALETTE.AMBER,
+  },
+  lift: {
+    color: SESSION_PALETTE.AMBER,
     fontSize: L.LABEL_FONT,
     letterSpacing: L.LETTER_SPACING,
     textAlign: 'center',
@@ -198,7 +277,7 @@ const styles = StyleSheet.create({
     backgroundColor: SESSION_PALETTE.CHIP,
   },
   rungSuggested: {
-    borderColor: SESSION_PALETTE.RPE_SUGGESTED_EDGE,
+    borderColor: SESSION_PALETTE.AMBER,
   },
   rungLabel: {
     color: SESSION_PALETTE.TEXT,

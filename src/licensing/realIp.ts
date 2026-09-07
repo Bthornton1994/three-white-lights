@@ -970,6 +970,8 @@ export interface UnreadableGroup {
  * the same cost `REVIEWABLE_CITATIONS` already charges, for a stronger reason.
  */
 export const UNREADABLE_BY_THIS_AUDIT: readonly UnreadableGroup[] = Object.freeze([
+  { extension: '.jpeg', reason: 'nul-byte', count: 1 },
+  { extension: '.jpg', reason: 'nul-byte', count: 10 },
   { extension: '.png', reason: 'nul-byte', count: 10 },
   { extension: '.wav', reason: 'nul-byte', count: 7 },
   { extension: '.webp', reason: 'nul-byte', count: 2 },

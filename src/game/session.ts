@@ -1142,7 +1142,7 @@ export function sessionProjection(
 // The machine
 // ---------------------------------------------------------------------------
 
-/** A session at its first frame: the check-in, with nothing tapped. */
+/** A session at its first frame: lift + RPE, with history readiness already applied. */
 export function createSession(context: SessionContext): SessionState {
   if (!Number.isSafeInteger(context.day)) {
     throw new RangeError(`session: day must be a safe integer day index, received ${context.day}.`);
@@ -1152,13 +1152,14 @@ export function createSession(context: SessionContext): SessionState {
       `session: e1rmKg must be a positive finite number, received ${context.e1rmKg}.`,
     );
   }
+  const feel = sessionFeel(context.fatigue, context.day, NEUTRAL_CHECK_IN);
   return {
     context,
-    phase: 'check-in',
+    phase: 'briefing',
     answers: EMPTY_CHECK_IN,
-    feel: null,
-    readiness: null,
-    injury: null,
+    feel,
+    readiness: feel.readiness,
+    injury: feel.injury,
     plan: null,
     setIndex: 0,
     repIndex: 0,
@@ -1191,25 +1192,30 @@ function withTap(answers: PartialCheckIn, tap: CheckInTap): PartialCheckIn {
 export function stepSession(state: SessionState, event: SessionEvent): SessionState {
   switch (event.kind) {
     case 'choose-lift': {
-      if (state.phase !== 'check-in') return state;
+      if (state.phase !== 'briefing' || state.plan !== null) return state;
       if (event.context.day !== state.context.day) return state;
       if (event.context.lift === state.context.lift) return state;
-      return { ...state, context: event.context };
+      const feel = sessionFeel(event.context.fatigue, event.context.day, NEUTRAL_CHECK_IN);
+      return {
+        ...state,
+        context: event.context,
+        feel,
+        readiness: feel.readiness,
+        injury: feel.injury,
+      };
     }
 
     case 'check-in-tap': {
-      if (state.phase !== 'check-in') return state;
+      // The questionnaire is not on the player path. The event still applies
+      // on the briefing so scripted tests can name a readiness band; a live
+      // session never sends it.
+      if (state.phase !== 'briefing' || state.plan !== null) return state;
       const answers = withTap(state.answers, event.tap);
       const complete = completeCheckIn(answers);
       if (complete === null) return { ...state, answers };
-      // The whole of GDD §3.2's "modifier applied and surfaced", in one call.
-      // `sessionFeel` is the only thing that reads the hidden ledger, and the
-      // readiness report it returns is a readout of these three taps and
-      // nothing else — `fatigue.ts` guarantees that by taking no state.
       const feel = sessionFeel(state.context.fatigue, state.context.day, complete);
       return {
         ...state,
-        phase: 'briefing',
         answers,
         feel,
         readiness: feel.readiness,

@@ -464,6 +464,7 @@ export const SESSION_LAYOUT = Object.freeze({
   CHIP_RADIUS: 10,
   CHIP_GAP: 8,
   CHIP_BORDER: 2,
+  LIFT_CHIP_HEIGHT: 36,
 
   /** The RPE ladder. Five across, so each is narrower than a chip. */
   RPE_CHIP_HEIGHT: 60,
@@ -495,6 +496,103 @@ export const SESSION_LAYOUT = Object.freeze({
   DISCLOSURE_FONT: 11,
   DISCLOSURE_LINE_HEIGHT: 16,
   DISCLOSURE_GAP: 8,
+
+  /**
+   * Dark wash over the Iron & Amber briefing gym so the readiness card stays
+   * readable. Not a second palette — the gym is the room; this is type contrast.
+   */
+  BRIEFING_SCRIM: 0.32,
+  BRIEFING_CARD_PAD: 18,
+  BRIEFING_CARD_RADIUS: 14,
+  BRIEFING_CARD_BORDER: 1,
+
+  /** Compact HUD over the live-set plate. The gym is the room; this is type. */
+  SET_HUD_PAD: 10,
+  SET_HUD_HEIGHT: 56,
+  SET_HUD_SCRIM: 0.42,
+  SET_COMMAND_HEIGHT: 92,
+  SET_COMMAND_SCRIM: 0.55,
+});
+
+/**
+ * Height cuts for Iron & Amber training plates. Authored here so `src/session/`
+ * does not grow bare literals. Deadlift cuts must never select a squat plate.
+ */
+export const IRON_AMBER = Object.freeze({
+  SQUAT_HOLE_MAX: 0.42,
+  BENCH_CHEST_MAX: 0.4,
+  DEADLIFT_FLOOR_MAX: 0.34,
+  DEADLIFT_LOCKOUT_MIN: 0.78,
+  /** Cue overlay, as a fraction of the plate box — not sprite-era CUE_X/CUE_Y. */
+  CUE_X_RATIO: 0.5,
+  CUE_Y_RATIO: 0.58,
+  PLATE_SCALE: 1.14,
+  SQUAT_CROP_Y: 0,
+  BENCH_CROP_Y: 18,
+  DEADLIFT_CROP_Y: -42,
+  GRIND_BELOW_CUE: 36,
+});
+
+/**
+ * Continuous squat scene. Ratios of the live stage box, authored here so
+ * `src/session/` does not grow bare literals. This is a renderer, not a
+ * retune of `lift.ts`.
+ */
+export const SQUAT_VISUAL = Object.freeze({
+  FLOOR_Y: 0.9,
+  STAND_BAR_Y: 0.3,
+  HOLE_BAR_Y: 0.58,
+  MID_X: 0.5,
+  STANCE: 0.13,
+  KNEE_OUT: 0.035,
+  HIP_DROP: 0.16,
+  KNEE_DROP: 0.08,
+  KNEE_ALONG: 0.5,
+  HEAD_R: 0.03,
+  LIMB_W: 0.03,
+  TORSO_W: 0.07,
+  TORSO_H: 0.16,
+  BAR_THICK: 0.012,
+  SLEEVE_FRAC: 0.22,
+  COLLAR_W: 0.012,
+  RACK_X_INSET: 0.12,
+  RACK_W: 0.022,
+  J_CUP_W: 0.05,
+  J_CUP_H: 0.012,
+  TREMOR_MAX: 0.007,
+  TREMOR_FREQ: 0.62,
+  BREATH_AMP: 0.005,
+  BREATH_FREQ: 0.08,
+  CHALK_COUNT: 7,
+  CHALK_DRIFT: 0.0015,
+  CHALK_SPREAD: 2,
+  CHALK_R_MIN: 0.2,
+  CHALK_R_SPAN: 0.4,
+  CHALK_A: 4,
+  CHALK_RISE: 0.08,
+  GLOW_MIN: 0.12,
+  CAMERA_VEL: 0.05,
+  PLATE_SCALE: 0.42,
+  PLATE_GAP: 0.01,
+  PLATE_MAX_R: 0.11,
+  PLATE_REF_MM: 450,
+  SHAFT_OPACITY: 0.08,
+  DUST_OPACITY: 0.1,
+  LATERAL_SCALE: 0.0004,
+  BEND_SCALE: 0.0008,
+  HASH_A: 12.9898,
+  HASH_B: 78.233,
+  HASH_C: 43758.5453,
+  HASH_HALF: 0.5,
+  BREATH_TORSO: 2,
+  SHAFT_X: 0.34,
+  SHAFT_W: 0.28,
+  DUST_COUNT: 5,
+  DUST_R: 0.004,
+  FOOT_W: 0.045,
+  FOOT_H: 0.014,
+  GLOW_PAD: 0.01,
+  ARM_DROP: 0.015,
 });
 
 /**

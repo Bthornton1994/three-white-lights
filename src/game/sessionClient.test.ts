@@ -325,7 +325,7 @@ describe('what today is, read out of the cache', () => {
     expect(context.streakBefore).toBe(STARTING_STREAK);
     expect(context.streakIfTrainedToday).toBe(STARTING_STREAK + 1);
     // And it is a session the machine will accept.
-    expect(createSession(context).phase).toBe('check-in');
+    expect(createSession(context).phase).toBe('briefing');
   });
 });
 
