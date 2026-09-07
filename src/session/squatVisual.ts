@@ -1,17 +1,15 @@
 /**
- * squatVisual — simulation → continuous squat pose.
+ * squatVisual — debug schematic pose. NOT production character art.
  *
- * The mechanic (`lift.ts`) already owns height, velocity, grind and load.
- * This file does not retune it. It maps one LiftState tick onto a persistent
- * rig: joints, bar, plates, tremor, breath, command glow.
- *
- * Ask: "what is the existing bar doing at this height?"
- * Do not ask: "which JPEG is this phase?"
+ * Mechanical facts come from `liftPresentation`. Joint layout stays here so
+ * gameplay truth does not grow Skia/Rive semantics. Claude Code owns the
+ * player-facing athlete. Do not generalize this file to bench or deadlift.
  */
 import { SQUAT_VISUAL as V } from '../game/sessionTuning';
-import { cueProgress, type LiftPhase, type LiftState } from '../game/lift';
-import { liveStrain } from '../lift/liftFrame';
-import { BAR_AND_COLLARS_KG, visualPlateStack, type LoadedPlate } from '../art/plates';
+import { liftPresentation, type LiftPresentationState } from '../game/liftPresentation';
+import type { LiftPhase, LiftState } from '../game/lift';
+import type { LoadedPlate } from '../art/plates';
+import { visualPlateStack, BAR_AND_COLLARS_KG } from '../art/plates';
 
 function clamp01(n: number): number {
   if (n < 0) return 0;
@@ -65,39 +63,29 @@ function hash01(seed: number, salt: number): number {
   return x - Math.floor(x);
 }
 
-/**
- * 1 at lockout/standing, 0 in the hole. Driven by the mechanic's height,
- * which squat already keeps as `1 - depth` through descent and as the
- * ascent coordinate after reversal.
- */
+/** 1 at lockout/standing, 0 in the hole. From mechanical barHeight. */
 export function squatStandFrom(state: LiftState): number {
   return clamp01(state.height);
 }
 
+function commandGlowFrom(view: LiftPresentationState): number {
+  const cue = view.command.cueProgress;
+  if (view.command.held) return 1;
+  if (cue === null) return 0;
+  return clamp01(1 - Math.abs(cue - 1));
+}
+
 export function squatPoseFrom(state: LiftState, totalKg: number): SquatPose {
-  const stand = squatStandFrom(state);
+  const view = liftPresentation(state, totalKg, null);
+  const stand = clamp01(view.barHeight);
   const sit = 1 - stand;
-  const strain = liveStrain(state);
-  const grind =
-    state.phase === 'ASCENT' && state.velocity >= 0 && state.velocity < V.CAMERA_VEL
-      ? 1
-      : 0;
-  const tremor = clamp01(strain * sit + grind) * V.TREMOR_MAX;
+  const tremor = clamp01(view.strain * sit + view.grindIntensity) * V.TREMOR_MAX;
   const wobble = Math.sin(state.tick * V.TREMOR_FREQ);
   const wobbleY = Math.cos(state.tick * V.TREMOR_FREQ);
-  const dx = wobble * tremor + state.barLateralPx * V.LATERAL_SCALE;
+  const dx = wobble * tremor + view.barLateralPx * V.LATERAL_SCALE;
   const dy = wobbleY * tremor;
   const breath =
-    state.phase === 'BRACE'
-      ? Math.sin(state.tick * V.BREATH_FREQ) * V.BREATH_AMP
-      : 0;
-  const cue = cueProgress(state);
-  const commandGlow =
-    state.held || (cue !== null && cue >= 0 && cue <= 1)
-      ? V.GLOW_MIN + (1 - V.GLOW_MIN) * (state.held ? 1 : 1 - Math.abs((cue ?? 0) - 1))
-      : state.held
-        ? 1
-        : 0;
+    view.phase === 'BRACE' ? Math.sin(state.tick * V.BREATH_FREQ) * V.BREATH_AMP : 0;
 
   const mid = V.MID_X + dx;
   const floor = V.FLOOR_Y;
@@ -119,10 +107,10 @@ export function squatPoseFrom(state: LiftState, totalKg: number): SquatPose {
   const head = { x: mid, y: barY - V.HEAD_R * 2 + breath };
   const stack = visualPlateStack(totalKg, BAR_AND_COLLARS_KG);
   const particles: SquatChalk[] = [];
-  const puff = clamp01(state.chalkPuff);
+  const puff = view.chalkPuff;
   if (puff > 0) {
     for (let i = 0; i < V.CHALK_COUNT; i += 1) {
-      const t = hash01(state.config.seed, i + state.tick);
+      const t = hash01(view.seed, i + state.tick);
       particles.push({
         x: mid + (t - V.HASH_HALF) * V.STANCE * V.CHALK_SPREAD,
         y: barY - t * sit * V.CHALK_RISE - state.tick * V.CHALK_DRIFT * (i + 1),
@@ -136,8 +124,8 @@ export function squatPoseFrom(state: LiftState, totalKg: number): SquatPose {
     stand,
     sit,
     bar: { x: mid, y: barY },
-    barTiltDeg: state.barTiltDeg,
-    barBend: state.barBendPx * V.BEND_SCALE,
+    barTiltDeg: view.barTiltDeg,
+    barBend: view.barBendPx * V.BEND_SCALE,
     hip,
     leftFoot,
     rightFoot,
@@ -148,16 +136,16 @@ export function squatPoseFrom(state: LiftState, totalKg: number): SquatPose {
     head,
     tremor,
     breath,
-    strain,
-    commandGlow: clamp01(commandGlow),
+    strain: view.strain,
+    commandGlow: commandGlowFrom(view),
     chalk: puff,
     plates: stack.perSide,
-    barKg: BAR_AND_COLLARS_KG,
-    totalKg,
-    phase: state.phase,
-    height: state.height,
-    velocity: state.velocity,
-    cameraY: -state.velocity * V.CAMERA_VEL,
+    barKg: view.load.barKg,
+    totalKg: view.load.totalKg,
+    phase: view.phase,
+    height: view.barHeight,
+    velocity: view.barVelocity,
+    cameraY: -view.barVelocity * V.CAMERA_VEL,
     particles,
   };
 }
