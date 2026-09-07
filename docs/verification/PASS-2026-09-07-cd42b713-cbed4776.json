@@ -1,0 +1,257 @@
+{
+  "passId": "PASS-2026-09-07-cd42b713-cbed4776",
+  "inspectedAt": "2026-09-07T16:30:00Z",
+  "lanes": {
+    "A": {
+      "lane": "A",
+      "pr": 48,
+      "pinnedSha": "cd42b713e68835b9e031ddb8d14273e863014204",
+      "branch": "grok/session-a-iron-amber-training-art-01",
+      "base": "grok/session-a-main-loop@4ab81ac8",
+      "draft": true,
+      "ci": "Fail",
+      "reviews": 0,
+      "reviewComments": 0,
+      "commands": [
+        {
+          "cmd": "npx tsc --noEmit",
+          "result": "0 errors",
+          "exitCode": 0
+        },
+        {
+          "cmd": "npx vitest run src/session/ironAmberPlates.test.ts src/session/ironAmberWiring.test.ts src/session/sessionWiring.test.ts src/session/sessionPreview.test.ts src/meet src/game/a2LifterFreeze.test.ts src/shell/shellWiring.test.ts src/game/guaranteeTags.test.ts tools/testPathRefs.test.ts",
+          "result": "18 files / 387 tests passed",
+          "exitCode": 0
+        },
+        {
+          "cmd": "npx vitest run src/lift/liftInput.test.ts",
+          "result": "20/20 passed",
+          "exitCode": 0
+        },
+        {
+          "cmd": "PORT=8081 bash tools/dev-web.sh && node tools/_capture-iron-amber-training.mjs --url http://127.0.0.1:8081 --out /opt/cursor/artifacts/lane-a/shots",
+          "result": "briefing/active/grinder/close-out captured at 375×812 and 390×844; residue hits=[]; overflowX=false; grindPrompt=DON'T LET GO",
+          "exitCode": 0
+        },
+        {
+          "cmd": "git diff --name-only 39400d97 -- src/game/lift.ts src/game/liftTuning.ts src/lift",
+          "result": "empty (A0 freeze intact vs local object)",
+          "exitCode": 0
+        },
+        {
+          "cmd": "git diff --name-only 4ab81ac8..cd42b713 -- src/empire src/game/lift.ts src/game/liftTuning.ts src/lift src/game/lifterProfile.ts src/game/lifterClient.ts src/game/lifterEntry.ts",
+          "result": "empty (Session B + A0/A2 identity paths untouched by PR delta)",
+          "exitCode": 0
+        }
+      ],
+      "gates": [
+        {
+          "id": "iron_amber_plates_are_gameplay_surface",
+          "verdict": "PASS",
+          "note": "iron-amber-stage / iron-amber-plate-* fill live set; briefing/close-out use gym-briefing still."
+        },
+        {
+          "id": "briefing_active_grinder_closeout_work",
+          "verdict": "PASS",
+          "note": "Capture beats green; RPE ladder visible; DON'T LET GO grind; close-out action visible."
+        },
+        {
+          "id": "squat_bench_deadlift_cues_distinguishable",
+          "verdict": "PASS",
+          "note": "9 unique plate assets (3 per lift) + ironAmberPlateFor mapping; live capture exercised deadlift cues; asset hashes all unique."
+        },
+        {
+          "id": "rpe_fatigue_behavior_intact",
+          "verdict": "PASS",
+          "note": "session-rpe-ladder present; briefing shows Feeling primed +5%; close-out e1RM/streak/reps banked; liftInput 20/20."
+        },
+        {
+          "id": "manual_checkin_absent_from_normal_path",
+          "verdict": "FAIL",
+          "note": "After Create → BACK TO TRAINING, full session-check-in (HOW ARE YOU TODAY?) is the training entry. Remains on base; removal is PR #43, not this SHA."
+        },
+        {
+          "id": "no_sprite_era_trace_diagnostics_clock_accelerated",
+          "verdict": "PASS",
+          "note": "Capture residue hits=[] and ids=[] on all eight training shots; TRACE panel not drawn on TrainingLiftStage."
+        },
+        {
+          "id": "viewports_375_390_no_clip_or_blocked_controls",
+          "verdict": "PASS",
+          "note": "overflowX=false both viewports; RPE/close-out action bounding boxes non-null."
+        },
+        {
+          "id": "a2_freeze_and_core_lift_untouched",
+          "verdict": "PASS",
+          "note": "A0 paths empty vs 39400d97; PR delta does not touch A2 identity modules or src/lift runtime."
+        },
+        {
+          "id": "session_b_files_untouched",
+          "verdict": "PASS",
+          "note": "No src/empire paths in 4ab81ac8..cd42b713."
+        }
+      ],
+      "evidencePaths": [
+        "/opt/cursor/artifacts/lane-a/shots/",
+        "/opt/cursor/artifacts/lane-a/extra/390-training-entry-after-create.png",
+        "/opt/cursor/artifacts/lane-a/capture-report.json",
+        "/opt/cursor/artifacts/lane-a/plates/"
+      ],
+      "changedFiles": [],
+      "blockers": [
+        "Manual readiness check-in still on normal training entry (owned by PR #43, not #48).",
+        "GitHub merge-gate CI Fail on this SHA (realIp OpenLifter census + shallow-clone freeze SHA lookups + jpg.d.ts directory census + reflective assembly pin).",
+        "Owner visual/soft-feel playtest NOT_RUN — no merge authority from this lane."
+      ],
+      "readyForOwnerPlaytest": true,
+      "nextActionForGrok": "Do not treat #48 as visual PASS. Keep draft. Either stack/cherry-pick Session A training-fit check-in removal from PR #43 onto a new SHA and request a fresh verification pass, or leave check-in as an explicit owner-accepted residual. Separately: CI Fail is partly environment (shallow clone missing 39400d97/3cee186c) and partly pin drift (realIp OpenLifter + jpg.d.ts). Fix only census/pins on a new SHA if you want gate green — do not retune lift mechanics. Owner playtest prompt remains: serve cd42b713 (or successor), briefing→live grind→close-out at 390×844 and 375×812."
+    },
+    "B": {
+      "lane": "B",
+      "pr": 49,
+      "pinnedSha": "cbed4776a886b9bb9421f83851f20e1904802af5",
+      "branch": "grok/session-b-iron-amber-art-01",
+      "base": "grok/session-b-iron-amber-home@9661659 (#46)",
+      "draft": true,
+      "ci": "Unknown",
+      "reviews": 0,
+      "reviewComments": 0,
+      "commands": [
+        {
+          "cmd": "npx tsc --noEmit",
+          "result": "0 errors",
+          "exitCode": 0
+        },
+        {
+          "cmd": "npx vitest run src/empire/empireCore.test.ts src/empire/GymScreen.test.ts src/empire/ironAmberArt.test.ts src/empire/directoryWalk.test.ts",
+          "result": "110/110 passed",
+          "exitCode": 0
+        },
+        {
+          "cmd": "npx vitest run src/empire --exclude '**/engagement.test.ts' --exclude '**/empireForbiddenOutput.test.ts'",
+          "result": "31 files / 1011 tests passed",
+          "exitCode": 0
+        },
+        {
+          "cmd": "PORT=8082 bash tools/dev-web.sh && node tools/capture-iron-amber-art.mjs --url http://127.0.0.1:8082",
+          "result": "Play/Build/Shop/Staff/More captured both viewports; play lines 0/0; build 7v+5h; fab play-only; clockParentOpacity 0; overflowX false",
+          "exitCode": 0
+        },
+        {
+          "cmd": "git merge-base --is-ancestor 966165900fb10ed923ebbf3489947caf47e2e43a cbed4776a886b9bb9421f83851f20e1904802af5",
+          "result": "YES — #49 stacked on #46",
+          "exitCode": 0
+        }
+      ],
+      "gates": [
+        {
+          "id": "facility_scene_is_play_visual_layer",
+          "verdict": "PASS",
+          "note": "gymscreen-facility-scene serves /empire-art/floor-garage.png behind FloorGrid on Play."
+        },
+        {
+          "id": "floorgrid_build_only_interaction",
+          "verdict": "PASS",
+          "note": "Play vertical/horizontal lines=0; Build=7v+5h; furniture sprites Build-only (benchSrc null on Play)."
+        },
+        {
+          "id": "play_no_placement_grid_or_furniture_sprites",
+          "verdict": "PASS",
+          "note": "Instrumented + screenshots: no grid/furniture sprites on Play."
+        },
+        {
+          "id": "build_retains_placement_interaction",
+          "verdict": "PASS",
+          "note": "Build grid + tray + HD bench/bar/plates present; placement copy visible."
+        },
+        {
+          "id": "occupancy_fab_shop_staff_more_back_functional",
+          "verdict": "PASS",
+          "note": "Occupancy visible; BUILD FAB play-only; Shop/Staff/More drawers captured; BACK TO TRAINING present."
+        },
+        {
+          "id": "static_art_does_not_contradict_live_occupancy",
+          "verdict": "FAIL",
+          "note": "Occupancy reports members on floor while FacilityScene people are baked/empty relative to live counts; Play live member sprites not the readable occupancy story."
+        },
+        {
+          "id": "pixel_session_chips_identified_if_present",
+          "verdict": "FAIL",
+          "note": "VISUAL GAP CONFIRMED: Build still shows Phase-4 pixel/data-URI residue (dataUriCount=14) and yellow member chips; ironAmberSessionUri('mats')=null fallback path remains."
+        },
+        {
+          "id": "build_grid_aligned_with_painted_floor",
+          "verdict": "FAIL",
+          "note": "White 2D overlay grid is not perspective-aligned to painted red floor marks (matches builder residual)."
+        },
+        {
+          "id": "repeated_garage_per_rung_vs_reference",
+          "verdict": "FAIL",
+          "note": "All LADDER_RUNGS map to floor-garage.png; mockup expects distinct facility identity per rung / isometric garage language — gap vs A×C reference."
+        },
+        {
+          "id": "viewports_375_390_no_clip_or_inaccessible_controls",
+          "verdict": "PASS",
+          "note": "overflowX=false; dock/FAB/BACK TO TRAINING within frame both viewports."
+        }
+      ],
+      "evidencePaths": [
+        "/opt/cursor/artifacts/lane-b/shots/",
+        "/opt/cursor/artifacts/lane-b/committed/",
+        "/opt/cursor/artifacts/lane-b/notes.json"
+      ],
+      "changedFiles": [],
+      "blockers": [
+        "Visual gaps remain: occupancy vs baked scene, pixel chips, grid misalignment, garage reused per rung.",
+        "CI status Unknown (no Actions runs observed on branch).",
+        "engagement.test.ts still NOT_RUN (known hang) — not re-run.",
+        "Owner visual/soft-feel playtest NOT_RUN."
+      ],
+      "readyForOwnerPlaytest": true,
+      "nextActionForGrok": "Keep #49 draft on top of #46. Do not claim visual PASS. Highest-value next SHA for a fresh verification pass: (1) replace/hide Phase-4 pixel session chips and magenta fixed placeholders on Build, (2) either hide baked people or drive readable live occupancy that matches chips, (3) perspective-align Build grid to painted floor marks OR document intentional flat overlay and ask owner to waive. Garage-per-rung reuse can stay named residual unless owner demands per-rung art. Do not touch Session A."
+    },
+    "integration": {
+      "lane": "integration",
+      "pinnedCandidates": {
+        "48": "cd42b713e68835b9e031ddb8d14273e863014204",
+        "49": "cbed4776a886b9bb9421f83851f20e1904802af5",
+        "46": "966165900fb10ed923ebbf3489947caf47e2e43a"
+      },
+      "gates": [
+        {
+          "id": "pr48_isolated_from_session_b",
+          "verdict": "PASS",
+          "note": "No empire paths in PR #48 delta."
+        },
+        {
+          "id": "pr49_stacked_on_46",
+          "verdict": "PASS",
+          "note": "9661659 is parent of cbed4776; baseRef=grok/session-b-iron-amber-home."
+        },
+        {
+          "id": "no_stale_branch_treated_as_current",
+          "verdict": "PASS",
+          "note": "Current: #48 supersedes #47 graphics-01; #49 on #46 is Session B candidate. Open but NOT current product: #41/#42/#45 (G.2C2 UX), #43 (training-fit), #47 (prior plates)."
+        },
+        {
+          "id": "ci_status_from_evidence_only",
+          "verdict": "PASS",
+          "note": "#48 Fail (merge-gate run 34093790421). #49 Unknown (no runs). #46 Unknown (no runs)."
+        },
+        {
+          "id": "review_threads_and_draft_accurate",
+          "verdict": "PASS",
+          "note": "All three draft=true; reviews=0; review comments=0; issue comments=0."
+        },
+        {
+          "id": "no_merge_recommendation_with_open_visual_gates",
+          "verdict": "PASS",
+          "note": "Verifier issues NO MERGE recommendation. Visual/owner gates remain open."
+        }
+      ],
+      "mergeRecommendation": "NONE",
+      "readyForOwnerPlaytest": true,
+      "nextActionForGrok": "Await owner playtest on pinned SHAs. Ship only isolated fixes on new SHAs; request new verification pass per SHA. Do not merge #46/#48/#49."
+    }
+  }
+}

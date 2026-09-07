@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "twl-visual-gate-evidence.schema.json",
+  "title": "Three White Lights visual-gate evidence record",
+  "type": "object",
+  "required": ["passId", "lane", "pinnedSha", "pr", "gates", "commands", "evidencePaths", "readyForOwnerPlaytest"],
+  "properties": {
+    "passId": { "type": "string" },
+    "lane": { "enum": ["A", "B", "integration"] },
+    "pinnedSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "pr": { "type": "integer" },
+    "inspectedAt": { "type": "string" },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["cmd", "result"],
+        "properties": {
+          "cmd": { "type": "string" },
+          "result": { "type": "string" },
+          "exitCode": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "verdict"],
+        "properties": {
+          "id": { "type": "string" },
+          "verdict": { "enum": ["PASS", "FAIL", "UNKNOWN"] },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "evidencePaths": { "type": "array", "items": { "type": "string" } },
+    "changedFiles": { "type": "array", "items": { "type": "string" } },
+    "blockers": { "type": "array", "items": { "type": "string" } },
+    "readyForOwnerPlaytest": { "type": "boolean" },
+    "nextActionForGrok": { "type": "string" }
+  },
+  "additionalProperties": false
+}
