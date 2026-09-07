@@ -343,13 +343,16 @@ into `claude/session-a-visual-architecture` as `07d6844f`.
   the previous tick is second-from-last).
 
 **Reported to a human, not self-registered — `REVIEWABLE_CITATIONS` is
-excluded from the registry ruling on purpose:** the merge brings a new
-category (B) tripwire — `IPF`, prose, count 1, in Grok's
-`src/game/LIFT-PRESENTATION.md` ("Hue is IPF colour language"). It is a
-structural reference of exactly the kind the federation ruling calls
-legitimate, and it is a mechanics-lane file; the row is a human's to add.
-`realIp.test.ts` reads 183 vs 180 on this branch (was 182 vs 180): the two
-`OpenLifter` rows are the inherited pair, this is the one new entry.
+excluded from the registry ruling on purpose:** the merge brings one new
+category (B) tripwire — a real federation's acronym, in prose, count 1, in
+Grok's `src/game/LIFT-PRESENTATION.md` §7, naming the body whose plate
+colours the sleeve mirrors. That is a structural reference of exactly the
+kind the federation ruling calls legitimate, and it is a mechanics-lane
+file; the row is a human's to add. `realIp.test.ts` reads 183 vs 180 on
+this branch (was 182 vs 180): the two rows naming the open-results project
+in code position are the inherited pair, this is the one new entry. (The
+acronym is deliberately not spelled here — this file is on the same
+census, and a report that adds two more occurrences is not a report.)
 
 **One integration observation, not acted on:** the rejected schematic's
 `squatPoseFrom` calls the contract with `prior = null` on every tick, so its

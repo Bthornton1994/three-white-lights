@@ -174,6 +174,42 @@ Two consequences the artwork has to honour:
 Do not draw a bumper-plate-only gym. The black small plates are what makes an
 80 kg bar look like 80 kg.
 
+## 7a. Bar, rack and room — the equipment pipeline
+
+The athlete is blocked; the equipment is not, and it is authored to the same
+rules so the two meet on one stage.
+
+- **The bar is part of the rig, not a separate asset.** §9 already requires
+  it — hands and traps must stay in contact under every deformation, and two
+  assets cannot promise that. Its length, sleeve length and knurl are drawn
+  once at the §7 scale (a 20 kg bar is 2200 mm against the 1750 mm athlete).
+  The sim's bar-pose offsets arrive through the binding as `barTiltDeg`
+  (degrees) and `barForwardPx` / `barLateralPx` / `barBendPx` (sprite px):
+  the rig applies tilt as rotation about the bar centre and scales the three
+  px offsets in the editor to its own canvas — the contract says "scale them
+  in the renderer" and the rig is the renderer. Whip (`barBendPx`) is drawn
+  as sleeve droop, never as a change in bar length.
+- **Plates are eight authored slots per sleeve**, `plates/<i>/on` and
+  `plates/<i>/size` (§11), filled inboard-first by `src/art/athleteRig.ts`
+  from the contract's `load.discs`. Seven disc drawings at the §7 diameters,
+  each with its hue; the slot's `size` picks the drawing. The far sleeve
+  mirrors the near one. `platesOverflow` non-zero on stage is a finding to
+  report, not something to draw around.
+- **The rack is a static environment layer**, drawn once in Iron & Amber
+  behind the rig at the same scale and light, with the J-cups at the bar's
+  `barHeight = 1` line so the walk-out and the re-rack read as contact. It
+  does not deform and it carries no ViewModel input.
+- **The room is the existing Iron & Amber gym plate** — the environment
+  already authored for the briefing and close-out
+  (`docs/design/IRON-AMBER-TRAINING-ASSETS.md`) — behind the rack, at the
+  same camera. One room, one light, one scale, so the athlete does not
+  arrive into a scene drawn for a different lens.
+- **Layer order, back to front:** room → rack → far-sleeve plates → athlete
+  and bar (one rig) → near-sleeve plates → chalk. The near sleeve sits in
+  front of the athlete so the bar reads as loaded, not as painted on.
+
+Nothing here needs a mechanical fact the contract does not carry.
+
 ## 8. The squat, beat by beat — the mechanical reference
 
 The rep the athlete must perform, with the beats named as the shipped
