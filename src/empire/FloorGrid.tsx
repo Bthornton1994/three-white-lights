@@ -341,7 +341,7 @@ type PendingPlace =
   | { readonly kind: 'session'; readonly item: SessionEquipmentItem }
   | { readonly kind: 'furniture'; readonly item: LadderEquipmentItem };
 
-const FLOOR_BACKGROUND_COLOR = 'darkslategray';
+const FLOOR_BACKGROUND_COLOR = 'saddlebrown';
 const FLOOR_GRID_BORDER_COLOR = 'gray';
 const FLOOR_ITEM_BORDER_COLOR = 'black';
 /** GDD §5.13's PLAYTEST 2 ruling, gap 3: the internal tile-boundary lines. Same shade as the outer frame, for one consistent "this is a grid" read. */
@@ -357,14 +357,14 @@ const FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR = 'crimson';
  * crossing) is needed to pass the colour-literal scan — the sprite colours
  * themselves are numeric components in `EMPIRE_TUNING`, which is registered.
  */
-const FLOOR_LABEL_COLOR = 'white';
+const FLOOR_LABEL_COLOR = 'ivory';
 /** The caption style every sprite label shares — colour above, size from the registered knob. */
 const FLOOR_LABEL_STYLE = Object.freeze({
   color: FLOOR_LABEL_COLOR,
   fontSize: EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE,
 });
 /** The tray chip's backing — a quiet dark slate the sprites read against, one class for every item now that the sprite carries the identity the old colour cycle used to. */
-const FLOOR_TRAY_CHIP_COLOR = 'darkslateblue';
+const FLOOR_TRAY_CHIP_COLOR = 'black';
 const AMBIENT_MEMBER_BORDER_COLOR = 'black';
 /**
  * GDD §5.14 Stage C: the outline a station carries while it is the selected
@@ -390,11 +390,11 @@ const FLOOR_THROUGHPUT_MARK_COLOR = 'darkkhaki';
 const FLOOR_PLATE_LOADING_COLOR = 'crimson';
 const FLOOR_PLATE_LOADING_HOLE_COLOR = 'white';
 /** The contextual station panel's own backing, the same quiet slate the tray chip already reads against. */
-const FLOOR_STATION_PANEL_BACKGROUND_COLOR = 'darkslateblue';
-/** The panel's action-button chrome — the identical literals `GymScreen.tsx`'s own `styles.button` already uses, so a control looks like the same control on both screens. */
-const FLOOR_STATION_PANEL_BUTTON_BACKGROUND_COLOR = 'darkslateblue';
-const FLOOR_STATION_PANEL_BUTTON_BORDER_COLOR = 'deepskyblue';
-const FLOOR_STATION_PANEL_BUTTON_TEXT_COLOR = 'white';
+const FLOOR_STATION_PANEL_BACKGROUND_COLOR = 'black';
+/** The panel's action-button chrome — amber fill, iron label, matching GymScreen. */
+const FLOOR_STATION_PANEL_BUTTON_BACKGROUND_COLOR = 'goldenrod';
+const FLOOR_STATION_PANEL_BUTTON_BORDER_COLOR = 'goldenrod';
+const FLOOR_STATION_PANEL_BUTTON_TEXT_COLOR = 'black';
 
 /**
  * The station panel's own `StyleSheet.create` block — GDD §5.14 Stage C.
@@ -438,6 +438,34 @@ const panelStyles = StyleSheet.create({
   },
   buttonText: {
     color: FLOOR_STATION_PANEL_BUTTON_TEXT_COLOR,
+  },
+  occupancy: {
+    flexDirection: 'row',
+    paddingHorizontal: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    paddingBottom: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+  },
+  occupancyCard: {
+    flexGrow: 1,
+    flexShrink: 1,
+    marginHorizontal: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
+    paddingHorizontal: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    borderWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
+    borderColor: FLOOR_STATION_PANEL_BUTTON_BORDER_COLOR,
+    borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS,
+    backgroundColor: FLOOR_STATION_PANEL_BACKGROUND_COLOR,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS,
+  },
+  occupancyText: {
+    color: FLOOR_LABEL_COLOR,
+    fontSize: EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE,
+  },
+  quietCaption: {
+    color: FLOOR_LABEL_COLOR,
+    fontSize: EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE,
+    paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
   },
 });
 
@@ -1884,13 +1912,44 @@ export function FloorGrid(props: FloorGridProps) {
       }}
       style={{ flex: 1 }}
     >
-      <Text testID={'floorgrid-caption'}>
+      <Text testID={'floorgrid-caption'} style={panelStyles.quietCaption}>
         {buildMode
           ? placing
             ? 'build — tap a tile to place'
             : 'build — tap a piece, then tap a tile'
           : `floor (${floor.rung})`}
       </Text>
+      {buildMode ? null : (
+        <View testID={'floorgrid-occupancy'} style={panelStyles.occupancy}>
+          <View style={panelStyles.occupancyCard}>
+            <Text
+              testID={'floorgrid-occupancy-on-floor'}
+              numberOfLines={1}
+              style={panelStyles.occupancyText}
+            >
+              {sim.members.length} on the floor
+            </Text>
+          </View>
+          <View style={panelStyles.occupancyCard}>
+            <Text
+              testID={'floorgrid-occupancy-waiting'}
+              numberOfLines={1}
+              style={panelStyles.occupancyText}
+            >
+              {stateCounts.queuing} waiting
+            </Text>
+          </View>
+          <View style={panelStyles.occupancyCard}>
+            <Text
+              testID={'floorgrid-occupancy-using'}
+              numberOfLines={1}
+              style={panelStyles.occupancyText}
+            >
+              {stateCounts.using} on the machine
+            </Text>
+          </View>
+        </View>
+      )}
       {pendingPlace === null ? null : (
         <View testID={'floorgrid-place-banner'}>
           <Text testID={'floorgrid-pending'}>
@@ -1970,7 +2029,8 @@ export function FloorGrid(props: FloorGridProps) {
                 }}
               />
             </View>
-            {verticalLines.map((i) => (
+            {buildMode
+              ? verticalLines.map((i) => (
               <View
                 key={`v${i}`}
                 testID={`floorgrid-line-v-${i}`}
@@ -1984,8 +2044,10 @@ export function FloorGrid(props: FloorGridProps) {
                   backgroundColor: FLOOR_GRID_LINE_COLOR,
                 }}
               />
-            ))}
-            {horizontalLines.map((j) => (
+            ))
+              : null}
+            {buildMode
+              ? horizontalLines.map((j) => (
               <View
                 key={`h${j}`}
                 testID={`floorgrid-line-h-${j}`}
@@ -1999,7 +2061,8 @@ export function FloorGrid(props: FloorGridProps) {
                   backgroundColor: FLOOR_GRID_LINE_COLOR,
                 }}
               />
-            ))}
+            ))
+              : null}
             {placing
               ? tileYs.flatMap((y) =>
                   tileXs.map((x) => (
@@ -2494,7 +2557,7 @@ export function FloorGrid(props: FloorGridProps) {
           </View>
         </View>
       </View>
-      <Text testID={'floorgrid-ambient-caption'}>{sim.members.length} member(s) around the gym</Text>
+      <Text testID={'floorgrid-ambient-caption'} style={panelStyles.quietCaption}>{sim.members.length} member(s) around the gym</Text>
       <View
         testID={'floorgrid-tray'}
         style={buildMode ? undefined : { display: 'none' }}
@@ -2613,7 +2676,7 @@ export function FloorGrid(props: FloorGridProps) {
         onPress={() => setShowDiagnostics((previous) => !previous)}
         style={panelStyles.diagnosticsToggle as WebSelectableViewStyle}
       >
-        <Text style={panelStyles.buttonText}>
+        <Text style={FLOOR_LABEL_STYLE}>
           {showDiagnostics ? 'hide diagnostics' : 'show diagnostics'}
         </Text>
       </Pressable>

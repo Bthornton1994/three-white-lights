@@ -3286,6 +3286,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // Stage C.1d: the silent `can't place here` overlay and on-chip `x`
       // remove control are gone. Placement chrome is the Moving banner and
       // Cancel, and refusal copy is an expression from stationView.ts.
+      // Iron & Amber Play occupancy overlay — JsxText around the sim counts.
+      'on the floor',
+      'waiting',
+      'on the machine',
       'Moving:',
       'Cancel',
       // GDD §5.18 Stage D.1b: the "bench bay" / "second bench" world labels
@@ -3362,10 +3366,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // refusal chunks that used to lead now trail it. Transcribed from a
       // driven run of this exact census, same discipline as every entry in
       // this list.
-      'rung',
+      // Iron & Amber header.
+      'THREE WHITE LIGHTS',
+      'gym bucks:',
       'earning',
       'gym bucks per hour',
-      'gym bucks:',
+      'rung',
       'accelerated:',
       'clock:',
       'maintenance review',
@@ -3522,6 +3528,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'not part of the game. Watched buttons pay the online garage rate. Away buttons pay the offline fraction, the same as leaving the app. The week-boundary jump is away. Reset gym starts a new opening garage.',
       '+1 week boundary',
       'reset gym',
+      // Iron & Amber Play BUILD FAB.
+      'BUILD',
       // ladderView.tsx, in tree order: the header line, the money line, the
       // capability line, the accrual report, the refusal line, the shop, the
       // relocation line, and the visibly-labelled dev control.
@@ -3859,7 +3867,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // assertion's own failure value.
     // 794 -> 806: Stage G.2B membership labels, reasons, and member-panel
     // membership testIDs. Read from this assertion's own failure value.
-    expect(singleQuoted.size).toBe(806);
+    // 806 -> 821: Iron & Amber named CSS binds and occupancy/header testIDs.
+    expect(singleQuoted.size).toBe(822);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4045,6 +4054,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Anya',
       'Arlo',
       'Athlete',
+      'BUILD',
       'Bec',
       'Belts',
       'Bike',
@@ -4068,6 +4078,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Farah',
       'Felix',
       'Fern',
+      'GYM',
       'Galen',
       'Good',
       'Gray',
@@ -4091,6 +4102,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Leaving',
       'Leif',
       'Lila',
+      'MORE',
       'Machines',
       'Manageable',
       'Mara',
@@ -4121,6 +4133,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'Rough',
       'Rowan',
       'Rower',
+      'SHOP',
+      'STAFF',
       'Sauna',
       'Shae',
       'Skye',
@@ -4233,8 +4247,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'currency-purchase',
       'daily-allowance-spent',
       'darkkhaki',
-      'darkslateblue',
-      'darkslategray',
       'data:image/png;base64,',
       'deadlift',
       'decline-repair',
@@ -4315,6 +4327,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-member-panel-short-id',
       'floorgrid-member-panel-state',
       'floorgrid-member-panel-tenure',
+      'floorgrid-occupancy',
+      'floorgrid-occupancy-on-floor',
+      'floorgrid-occupancy-using',
+      'floorgrid-occupancy-waiting',
       'floorgrid-pending',
       'floorgrid-place-banner',
       'floorgrid-place-cancel',
@@ -4396,6 +4412,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-advance-next-week',
       'gymscreen-allocation',
       'gymscreen-available-now',
+      'gymscreen-build-fab',
       'gymscreen-check-in-costs',
       'gymscreen-clock',
       'gymscreen-condition',
@@ -4411,6 +4428,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-hud-review',
       'gymscreen-ladder-shop',
       'gymscreen-lifts',
+      'gymscreen-light-0',
+      'gymscreen-light-1',
+      'gymscreen-light-2',
+      'gymscreen-lights',
       'gymscreen-management',
       'gymscreen-manager',
       'gymscreen-manager-state',
@@ -4454,6 +4475,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-stage',
       'gymscreen-strikes',
       'gymscreen-strikes-lead',
+      'gymscreen-title',
       'gymscreen-week',
       'gymscreen-week-log',
       'gymscreen-week-preview',
@@ -4476,6 +4498,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'injury-risk',
       'injuryDaysSaved',
       'interrupted',
+      'ivory',
       'khaki',
       'kind',
       'knob',
@@ -4614,6 +4637,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'row',
       'rower',
       'rung-too-low',
+      'saddlebrown',
       'sauna',
       'save-for-physio-first',
       'seeking',
@@ -4642,6 +4666,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'sound',
       'space',
       'space-around',
+      'space-between',
       'space-level',
       'specialty-bars',
       'spend-once-per-calendar-day',
@@ -4828,7 +4853,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 372 -> 377. Read from this assertion's own failure value.
     // 1171 -> 1185: Stage G.2B singleQuoted 794 -> 806 and templateChunks
     // 377 -> 379.
-    expect(stringsChecked).toBe(1185);
+    // 1185 -> 1200: Iron & Amber singleQuoted 806 -> 821; templateChunks unchanged.
+    expect(stringsChecked).toBe(1201);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were

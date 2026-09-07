@@ -1658,20 +1658,18 @@ try {
     fail(`C.1b: floorgrid-ambient-0 never drawn — ${memberHit.why}`);
   }
 
-  // Gap 3: the grid reads as a grid — real tile boundaries, counted exactly
-  // against the garage's real FLOOR_GRID_SIZE (8x6), not "some lines exist".
+  // Gap 3: placement grid is a Build overlay, not Play residue.
+  // Iron & Amber: Play has no tile-boundary lines; Build keeps the garage 8x6 grid.
   const GARAGE_GRID = { WIDTH: 8, HEIGHT: 6 };
-  const verticalLines = await page.locator('[data-testid^="floorgrid-line-v-"]').count();
-  const horizontalLines = await page.locator('[data-testid^="floorgrid-line-h-"]').count();
   const expectedVertical = GARAGE_GRID.WIDTH - 1;
   const expectedHorizontal = GARAGE_GRID.HEIGHT - 1;
-  if (verticalLines === expectedVertical && horizontalLines === expectedHorizontal) {
-    ok(
-      `gap 3: the grid draws exactly ${verticalLines} vertical + ${horizontalLines} horizontal tile-boundary lines, matching the garage's real 8x6 FLOOR_GRID_SIZE`,
-    );
+  const playVertical = await page.locator('[data-testid^="floorgrid-line-v-"]').count();
+  const playHorizontal = await page.locator('[data-testid^="floorgrid-line-h-"]').count();
+  if (playVertical === 0 && playHorizontal === 0) {
+    ok('gap 3: Play draws no placement-grid tile-boundary lines');
   } else {
     fail(
-      `gap 3: expected ${expectedVertical} vertical + ${expectedHorizontal} horizontal tile-boundary lines for an 8x6 garage, drew ${verticalLines} + ${horizontalLines}`,
+      `gap 3: Play must draw 0 placement-grid lines, drew ${playVertical} vertical + ${playHorizontal} horizontal`,
     );
   }
 
@@ -1685,6 +1683,17 @@ try {
   // gym next to three (fixed) items on the same screen — was reworded to
   // name session equipment explicitly.
   await openGymSurface('build');
+  const buildVertical = await page.locator('[data-testid^="floorgrid-line-v-"]').count();
+  const buildHorizontal = await page.locator('[data-testid^="floorgrid-line-h-"]').count();
+  if (buildVertical === expectedVertical && buildHorizontal === expectedHorizontal) {
+    ok(
+      `gap 3: Build draws exactly ${buildVertical} vertical + ${buildHorizontal} horizontal tile-boundary lines, matching the garage's real 8x6 FLOOR_GRID_SIZE`,
+    );
+  } else {
+    fail(
+      `gap 3: Build expected ${expectedVertical} vertical + ${expectedHorizontal} horizontal tile-boundary lines for an 8x6 garage, drew ${buildVertical} + ${buildHorizontal}`,
+    );
+  }
   const trayEmptyDrawn = await waitUntilDrawn(page, 'floorgrid-tray-empty', BEAT_TIMEOUT_MS);
   const trayEmptyText = await textOf('floorgrid-tray-empty');
   const deadPromptCount = await page
@@ -1703,6 +1712,15 @@ try {
     );
   }
   await openGymSurface('play');
+  const playAfterVertical = await page.locator('[data-testid^="floorgrid-line-v-"]').count();
+  const playAfterHorizontal = await page.locator('[data-testid^="floorgrid-line-h-"]').count();
+  if (playAfterVertical === 0 && playAfterHorizontal === 0) {
+    ok('gap 3: Play after leaving Build still draws no placement-grid lines');
+  } else {
+    fail(
+      `gap 3: Play after Build must draw 0 lines, drew ${playAfterVertical} vertical + ${playAfterHorizontal} horizontal`,
+    );
+  }
 
   // Gap 5 (PLAYTEST 3): the caption states the fixed-furniture count
   // alongside placed/unplaced, so "0 placed, 0 unplaced" no longer reads as
