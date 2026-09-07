@@ -1,0 +1,579 @@
+/**
+ * presentationState.ts — Session B presentation-state contract.
+ *
+ * Pure module (CLAUDE.md, "Pure logic is separate from UI"): zero React, zero
+ * side effects, zero I/O, no clock, no randomness, no pixels. This file is the
+ * renderer-independent world snapshot Claude Code reads. It does not draw.
+ * FloorGrid.tsx and GymScreen.tsx remain the visual owners.
+ *
+ * WHY THIS FILE EXISTS. floorSim.ts already walks, queues, uses, and leaves.
+ * livingMembers.ts already holds stable GymMemberId values. floor.ts already
+ * places and moves SKU-keyed equipment. worldView.ts already names occupancy
+ * for FloorGrid. None of those is a single public contract: worldView keys
+ * members by index, claimantsOf is unexported, wait is two timestamps, and
+ * equipment identity is a map key rather than a UUID. Claude must not infer
+ * those facts from HUD cards or array order.
+ *
+ * WHAT THIS MODULE IS. A pure read of sim + floor + roster + managed gym +
+ * capability. GymState gains no field. FloorSimState is not stored here.
+ * Interpolation, easing, gait, sprites, lighting, and camera stay out.
+ *
+ * WHAT THIS MODULE DELIBERATELY DOES NOT DO.
+ *   - It does not invent equipment instance UUIDs. Ownership is one-of-each
+ *     SKU (`already-owned`); the SKU is the entity id.
+ *   - It does not invent staff AI or a floor location for the hired manager.
+ *   - It does not lift FloorSimState onto GymViewState. The live tick still
+ *     lives where the renderer steps it; this contract snapshots that tick.
+ *   - It does not write localStorage. PersistableFacilityTruth is the
+ *     in-process round-trip shape; wired save/load is not in this build.
+ *   - It does not put animation clip names, sprite ids, glows, or camera
+ *     shake into simulation state.
+ */
+
+import { refuseWith } from './empireCore';
+import { EMPIRE_TUNING } from './empireTuning';
+import {
+  floorFurnitureLayout,
+  floorGridSize,
+  floorLayout,
+  furnitureItemFootprint,
+  sessionItemFootprint,
+  unplacedOwnedFloorItems,
+  unplacedOwnedFurnitureItems,
+  type FloorState,
+  type GridPosition,
+  type GridSize,
+} from './floor';
+import {
+  floorStationRefKey,
+  type FloorSimInterruption,
+  type FloorSimMember,
+  type FloorSimMemberState,
+  type FloorSimState,
+  type FloorStation,
+  type FloorStationRef,
+} from './floorSim';
+import { type LadderEquipmentItem, type LadderRung } from './ladder';
+import { livingMemberExperience, type LivingMemberExperienceStatus } from './livingMemberExperience';
+import {
+  livingMemberAtIndex,
+  memberIdForIndex,
+  type GymMemberId,
+  type LivingMemberRoster,
+} from './livingMembers';
+import {
+  itemCondition,
+  meanCondition,
+  type ManagedEquipmentItem,
+  type ManagedGym,
+  type ManagerTier,
+} from './management';
+import { type MemberType } from './members';
+import { type SessionEquipmentItem } from './sessions';
+import { stationLevels, type StationCapabilityState } from './stationCapability';
+import { COMPETITION_BENCH_BAY } from './trainingStation';
+import { worldStationView, type WorldStationOccupancy } from './worldView';
+
+/** Wall-clock milliseconds between FloorGrid sim ticks. Renderer cadence, not a sim input. */
+export function presentationTickIntervalMs(): number {
+  return EMPIRE_TUNING.FLOOR_SIM_TICK_INTERVAL_MS;
+}
+
+/** Sim progress toward `next` added each tick. Cell commits when progress reaches 1. */
+export function presentationStepProgressPerTick(): number {
+  return EMPIRE_TUNING.FLOOR_SIM_STEP_PROGRESS_PER_TICK;
+}
+
+/** Inputs the contract reads. All of these already exist; none is invented here. */
+export interface PresentationWorldInput {
+  readonly sim: FloorSimState;
+  readonly stations: readonly FloorStation[];
+  readonly floor: FloorState;
+  readonly roster: LivingMemberRoster;
+  readonly managed: ManagedGym;
+  readonly capability: StationCapabilityState;
+}
+
+/** Discrete grid cell. Claude interpolates between `cell` and `next` using `progress`. */
+export interface PresentationCell {
+  readonly x: number;
+  readonly y: number;
+}
+
+/**
+ * One living member. `id` is GymMemberId from the roster, not the sim index.
+ * `lifecycle` is the actual floor-sim alphabet — not invented travel names.
+ */
+export interface PresentationMember {
+  readonly id: GymMemberId;
+  readonly type: MemberType;
+  readonly lifecycle: FloorSimMemberState;
+  readonly stranded: boolean;
+  readonly cell: PresentationCell;
+  readonly next: PresentationCell | null;
+  readonly progress: number;
+  readonly target: FloorStationRef | null;
+  readonly queueRank: number | null;
+  readonly waitTicks: number | null;
+  readonly timer: number;
+  readonly interruptedBy: FloorSimInterruption | null;
+  readonly experienceStatus: LivingMemberExperienceStatus;
+  readonly experienceWait: number | null;
+  readonly experienceTraining: number | null;
+  readonly experienceComposite: number | null;
+}
+
+/** One derived station. Identity is FloorStationRef (SKU-kind), not array order. */
+export interface PresentationStation {
+  readonly ref: FloorStationRef;
+  readonly position: PresentationCell;
+  readonly footprint: GridSize;
+  readonly capacity: number;
+  readonly occupancy: WorldStationOccupancy;
+  readonly usingIds: readonly GymMemberId[];
+  readonly queueIds: readonly GymMemberId[];
+  readonly approachingIds: readonly GymMemberId[];
+  readonly changeoverSeats: number;
+}
+
+/** One owned SKU. Presence in `item` is identity; at most one of each exists. */
+export interface PresentationEquipment {
+  readonly item: LadderEquipmentItem | SessionEquipmentItem;
+  readonly kind: 'furniture' | 'session';
+  readonly placed: boolean;
+  readonly position: PresentationCell | null;
+  readonly footprint: GridSize;
+  readonly condition: number;
+}
+
+/** Hired manager, gym-wide. No floor cell and no station assignment in this build. */
+export interface PresentationStaff {
+  readonly hired: boolean;
+  readonly tier: ManagerTier | null;
+  readonly hiredUnderWarning: boolean;
+}
+
+/** Instantaneous operational and economy facts. Not a horizon report. */
+export interface PresentationBusiness {
+  readonly gymBucks: number;
+  readonly acceleratedGymBucks: number;
+  readonly usingCount: number;
+  readonly queueCount: number;
+  readonly approachingCount: number;
+  readonly capacitySeats: number;
+  readonly bayQuality: number;
+  readonly bayCapacity: number;
+  readonly bayThroughput: number;
+  readonly meanCondition: number;
+}
+
+export interface PresentationFacility {
+  readonly rung: LadderRung;
+  readonly grid: GridSize;
+  readonly tick: number;
+  readonly seed: number;
+}
+
+/** One renderer-independent world frame. Claude draws this; Grok writes the sim. */
+export interface PresentationWorld {
+  readonly facility: PresentationFacility;
+  readonly members: readonly PresentationMember[];
+  readonly stations: readonly PresentationStation[];
+  readonly equipment: readonly PresentationEquipment[];
+  readonly staff: PresentationStaff;
+  readonly business: PresentationBusiness;
+}
+
+/**
+ * In-process persistence shape. JSON-round-trippable. Not a file format and
+ * not localStorage — empire modules must not touch that API.
+ */
+export interface PersistableFacilityTruth {
+  readonly rung: LadderRung;
+  readonly gymBucks: number;
+  readonly acceleratedGymBucks: number;
+  readonly sessionEquipment: readonly SessionEquipmentItem[];
+  readonly ladderEquipment: readonly LadderEquipmentItem[];
+  readonly placements: FloorState['placements'];
+  readonly furniture: FloorState['furniture'];
+  readonly capability: StationCapabilityState;
+  readonly identityNonce: number;
+  readonly memberCount: number;
+}
+
+function freezeCell(cell: GridPosition): PresentationCell {
+  return Object.freeze({ x: cell.x, y: cell.y });
+}
+
+function refsMatch(left: FloorStationRef, right: FloorStationRef): boolean {
+  return floorStationRefKey(left) === floorStationRefKey(right);
+}
+
+function requireMemberId(roster: LivingMemberRoster, index: number): GymMemberId {
+  const id = memberIdForIndex(roster, index);
+  if (id === null) {
+    refuseWith(`presentation world has no living member at index ${index}`);
+  }
+  return id;
+}
+
+function compareClaimants(left: FloorSimMember, right: FloorSimMember): number {
+  const leftArrived = left.queuedAt === null ? 1 : 0;
+  const rightArrived = right.queuedAt === null ? 1 : 0;
+  if (leftArrived !== rightArrived) return leftArrived - rightArrived;
+  const leftAt = left.queuedAt ?? left.claimedAt ?? 0;
+  const rightAt = right.queuedAt ?? right.claimedAt ?? 0;
+  if (leftAt !== rightAt) return leftAt - rightAt;
+  return left.index - right.index;
+}
+
+/**
+ * Service order for `ref` — the same four-key ordering floorSim.ts documents
+ * on claimantsOf (arrivals, arrival tick, claim tick, index). There is no
+ * queue table; this derived order IS the queue.
+ */
+function claimantsOf(
+  members: readonly FloorSimMember[],
+  ref: FloorStationRef,
+): readonly FloorSimMember[] {
+  const waiting: FloorSimMember[] = [];
+  for (let index = 0; index < members.length; index += 1) {
+    const member = members[index];
+    if (member === undefined) continue;
+    if (member.target === null) continue;
+    if (!refsMatch(member.target, ref)) continue;
+    if (member.state !== 'seeking' && member.state !== 'queuing') continue;
+    waiting.push(member);
+  }
+  for (let i = 1; i < waiting.length; i += 1) {
+    const current = waiting[i];
+    if (current === undefined) continue;
+    let j = i - 1;
+    while (j >= 0) {
+      const previous = waiting[j];
+      if (previous === undefined) break;
+      if (compareClaimants(previous, current) <= 0) break;
+      waiting[j + 1] = previous;
+      j -= 1;
+    }
+    waiting[j + 1] = current;
+  }
+  return waiting;
+}
+
+function idsOf(
+  members: readonly FloorSimMember[],
+  roster: LivingMemberRoster,
+): readonly GymMemberId[] {
+  const ids: GymMemberId[] = [];
+  for (let index = 0; index < members.length; index += 1) {
+    const member = members[index];
+    if (member === undefined) continue;
+    ids.push(requireMemberId(roster, member.index));
+  }
+  return Object.freeze(ids);
+}
+
+function waitTicksOf(member: FloorSimMember, tick: number): number | null {
+  if (member.queueArrivedAt === null) return null;
+  if (member.usingStartedAt !== null) return member.usingStartedAt - member.queueArrivedAt;
+  return tick - member.queueArrivedAt;
+}
+
+function queueRankOf(
+  member: FloorSimMember,
+  stations: readonly FloorStation[],
+  members: readonly FloorSimMember[],
+): number | null {
+  if (member.target === null) return null;
+  if (member.state !== 'seeking' && member.state !== 'queuing') return null;
+  for (let stationIndex = 0; stationIndex < stations.length; stationIndex += 1) {
+    const station = stations[stationIndex];
+    if (station === undefined) continue;
+    if (!refsMatch(member.target, station.ref)) continue;
+    const order = claimantsOf(members, station.ref);
+    for (let rank = 0; rank < order.length; rank += 1) {
+      const claimant = order[rank];
+      if (claimant !== undefined && claimant.index === member.index) return rank;
+    }
+  }
+  return null;
+}
+
+function presentationMember(
+  member: FloorSimMember,
+  sim: FloorSimState,
+  stations: readonly FloorStation[],
+  roster: LivingMemberRoster,
+): PresentationMember {
+  const living = livingMemberAtIndex(roster, member.index);
+  const experience = livingMemberExperience(living === null ? [] : living.recentVisits);
+  const components = experience.components;
+  return Object.freeze({
+    id: requireMemberId(roster, member.index),
+    type: member.type,
+    lifecycle: member.state,
+    stranded: member.strandedAt !== null,
+    cell: freezeCell(member.cell),
+    next: member.next === null ? null : freezeCell(member.next),
+    progress: member.progress,
+    target: member.target,
+    queueRank: queueRankOf(member, stations, sim.members),
+    waitTicks: waitTicksOf(member, sim.tick),
+    timer: member.timer,
+    interruptedBy: member.interruptedBy,
+    experienceStatus: experience.status,
+    experienceWait: components === null ? null : components.wait,
+    experienceTraining: components === null ? null : components.training,
+    experienceComposite: experience.composite,
+  });
+}
+
+function usingMembersOf(
+  members: readonly FloorSimMember[],
+  ref: FloorStationRef,
+): readonly FloorSimMember[] {
+  const using: FloorSimMember[] = [];
+  for (let index = 0; index < members.length; index += 1) {
+    const member = members[index];
+    if (member === undefined) continue;
+    if (member.state !== 'using') continue;
+    if (member.target === null) continue;
+    if (!refsMatch(member.target, ref)) continue;
+    using.push(member);
+  }
+  return using;
+}
+
+function approachingOf(
+  members: readonly FloorSimMember[],
+  ref: FloorStationRef,
+): readonly FloorSimMember[] {
+  const approaching: FloorSimMember[] = [];
+  for (let index = 0; index < members.length; index += 1) {
+    const member = members[index];
+    if (member === undefined) continue;
+    if (member.state !== 'seeking') continue;
+    if (member.target === null) continue;
+    if (!refsMatch(member.target, ref)) continue;
+    approaching.push(member);
+  }
+  return approaching;
+}
+
+function queuedOnly(
+  members: readonly FloorSimMember[],
+  ref: FloorStationRef,
+): readonly FloorSimMember[] {
+  const queued: FloorSimMember[] = [];
+  const order = claimantsOf(members, ref);
+  for (let index = 0; index < order.length; index += 1) {
+    const member = order[index];
+    if (member === undefined) continue;
+    if (member.state !== 'queuing') continue;
+    queued.push(member);
+  }
+  return queued;
+}
+
+function presentationStation(
+  station: FloorStation,
+  sim: FloorSimState,
+  roster: LivingMemberRoster,
+): PresentationStation {
+  const view = worldStationView(station, sim.members, sim.changeovers);
+  return Object.freeze({
+    ref: station.ref,
+    position: freezeCell(station.position),
+    footprint: station.footprint,
+    capacity: station.useCells.length,
+    occupancy: view.occupancy,
+    usingIds: idsOf(usingMembersOf(sim.members, station.ref), roster),
+    queueIds: idsOf(queuedOnly(sim.members, station.ref), roster),
+    approachingIds: idsOf(approachingOf(sim.members, station.ref), roster),
+    changeoverSeats: view.changeoverSeats,
+  });
+}
+
+function furnitureRows(
+  floor: FloorState,
+  managed: ManagedGym,
+): readonly PresentationEquipment[] {
+  const owned = managed.gym.ladder.equipment;
+  const placed = floorFurnitureLayout(floor, owned);
+  const rows: PresentationEquipment[] = [];
+  for (let index = 0; index < placed.length; index += 1) {
+    const row = placed[index];
+    if (row === undefined) continue;
+    rows.push(
+      Object.freeze({
+        item: row.item,
+        kind: 'furniture',
+        placed: true,
+        position: freezeCell(row.position),
+        footprint: row.footprint,
+        condition: itemCondition(managed, row.item as ManagedEquipmentItem),
+      }),
+    );
+  }
+  const tray = unplacedOwnedFurnitureItems(floor, owned);
+  for (let index = 0; index < tray.length; index += 1) {
+    const item = tray[index];
+    if (item === undefined) continue;
+    rows.push(
+      Object.freeze({
+        item,
+        kind: 'furniture',
+        placed: false,
+        position: null,
+        footprint: furnitureItemFootprint(item),
+        condition: itemCondition(managed, item as ManagedEquipmentItem),
+      }),
+    );
+  }
+  return Object.freeze(rows);
+}
+
+function sessionRows(
+  floor: FloorState,
+  managed: ManagedGym,
+): readonly PresentationEquipment[] {
+  const owned = managed.gym.sessionEquipment;
+  const placed = floorLayout(floor);
+  const rows: PresentationEquipment[] = [];
+  for (let index = 0; index < placed.length; index += 1) {
+    const row = placed[index];
+    if (row === undefined) continue;
+    rows.push(
+      Object.freeze({
+        item: row.item,
+        kind: 'session',
+        placed: true,
+        position: freezeCell(row.position),
+        footprint: row.footprint,
+        condition: itemCondition(managed, row.item as ManagedEquipmentItem),
+      }),
+    );
+  }
+  const tray = unplacedOwnedFloorItems(floor, owned);
+  for (let index = 0; index < tray.length; index += 1) {
+    const item = tray[index];
+    if (item === undefined) continue;
+    rows.push(
+      Object.freeze({
+        item,
+        kind: 'session',
+        placed: false,
+        position: null,
+        footprint: sessionItemFootprint(item),
+        condition: itemCondition(managed, item as ManagedEquipmentItem),
+      }),
+    );
+  }
+  return Object.freeze(rows);
+}
+
+function presentationStaffOf(managed: ManagedGym): PresentationStaff {
+  const manager = managed.manager;
+  if (manager === null) {
+    return Object.freeze({ hired: false, tier: null, hiredUnderWarning: false });
+  }
+  return Object.freeze({
+    hired: true,
+    tier: manager.tier,
+    hiredUnderWarning: manager.hiredUnderWarning,
+  });
+}
+
+function presentationBusinessOf(
+  sim: FloorSimState,
+  stations: readonly FloorStation[],
+  managed: ManagedGym,
+  capability: StationCapabilityState,
+): PresentationBusiness {
+  let usingCount = 0;
+  let queueCount = 0;
+  let approachingCount = 0;
+  for (let index = 0; index < sim.members.length; index += 1) {
+    const member = sim.members[index];
+    if (member === undefined) continue;
+    if (member.state === 'using') usingCount += 1;
+    else if (member.state === 'queuing') queueCount += 1;
+    else if (member.state === 'seeking' && member.target !== null) approachingCount += 1;
+  }
+  let capacitySeats = 0;
+  for (let index = 0; index < stations.length; index += 1) {
+    const station = stations[index];
+    if (station === undefined) continue;
+    capacitySeats += station.useCells.length;
+  }
+  const levels = stationLevels(capability, COMPETITION_BENCH_BAY);
+  return Object.freeze({
+    gymBucks: managed.gym.ladder.gymBucks,
+    acceleratedGymBucks: managed.gym.acceleratedGymBucks,
+    usingCount,
+    queueCount,
+    approachingCount,
+    capacitySeats,
+    bayQuality: levels.quality,
+    bayCapacity: levels.capacity,
+    bayThroughput: levels.throughput,
+    meanCondition: meanCondition(managed),
+  });
+}
+
+/** Snapshot Claude may read this tick. Pure. Does not step the sim. */
+export function presentationWorld(input: PresentationWorldInput): PresentationWorld {
+  const members: PresentationMember[] = [];
+  for (let index = 0; index < input.sim.members.length; index += 1) {
+    const member = input.sim.members[index];
+    if (member === undefined) continue;
+    members.push(presentationMember(member, input.sim, input.stations, input.roster));
+  }
+  const stations: PresentationStation[] = [];
+  for (let index = 0; index < input.stations.length; index += 1) {
+    const station = input.stations[index];
+    if (station === undefined) continue;
+    stations.push(presentationStation(station, input.sim, input.roster));
+  }
+  const furniture = furnitureRows(input.floor, input.managed);
+  const session = sessionRows(input.floor, input.managed);
+  const equipment: PresentationEquipment[] = [];
+  for (let index = 0; index < furniture.length; index += 1) {
+    const row = furniture[index];
+    if (row !== undefined) equipment.push(row);
+  }
+  for (let index = 0; index < session.length; index += 1) {
+    const row = session[index];
+    if (row !== undefined) equipment.push(row);
+  }
+  return Object.freeze({
+    facility: Object.freeze({
+      rung: input.floor.rung,
+      grid: floorGridSize(input.floor.rung),
+      tick: input.sim.tick,
+      seed: input.sim.seed,
+    }),
+    members: Object.freeze(members),
+    stations: Object.freeze(stations),
+    equipment: Object.freeze(equipment),
+    staff: presentationStaffOf(input.managed),
+    business: presentationBusinessOf(input.sim, input.stations, input.managed, input.capability),
+  });
+}
+
+/** Persistent mechanical facts. Same SKU, same cell, same ids after JSON round-trip. */
+export function persistableFacilityTruth(input: PresentationWorldInput): PersistableFacilityTruth {
+  return Object.freeze({
+    rung: input.floor.rung,
+    gymBucks: input.managed.gym.ladder.gymBucks,
+    acceleratedGymBucks: input.managed.gym.acceleratedGymBucks,
+    sessionEquipment: input.managed.gym.sessionEquipment,
+    ladderEquipment: input.managed.gym.ladder.equipment,
+    placements: input.floor.placements,
+    furniture: input.floor.furniture,
+    capability: input.capability,
+    identityNonce: input.roster.identityNonce,
+    memberCount: input.roster.members.length,
+  });
+}
