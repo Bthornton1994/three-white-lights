@@ -168,6 +168,68 @@ If a lane needs a file it does not own:
 Scope changes are written here **before** crossing the boundary. That is the
 repo's own coordination rule and it still holds.
 
+### Crossing VL-1 — Claude Code Session B, first living-world slice, written before the work
+
+Branch `claude/empire-s5-visual-lane`, stacked on PR #52's head `8b273ffa`
+(the contract candidate named in the brief is `f75637c6`; the two commits
+after it are one CLAUDE.md governance commit and one doc/refuse-message
+wording commit — `presentationState.ts`'s exported types and functions are
+byte-identical between the two, checked by `git diff`). Shared baseline
+`f097695b` and governance `0a4f3919` stay in ancestry. Draft only. Not merged.
+
+**The slice.** One persistent gym, one observed member, one real station:
+`FloorGrid.tsx` reads `presentationWorld({ sim, floor, roster, managed,
+capability })` and draws members keyed by `PresentationMember.id`, stations
+by `PresentationStation.ref`, queue rank from `queueRank`, occupancy from the
+station's own `occupancy`. Renderer-side interpolation, gait, an eased settle
+onto the bench, a grounding shadow and feet-on-cell draw order are Claude's
+visual interpretation of that state. The sim tick stays where the contract
+§9 says it stays (component-local, 120 ms). No mechanic, queue order,
+placement rule, economy value or member decision is recreated or changed.
+
+**Files in Claude Code Session B's own lane, edited freely:**
+`src/empire/FloorGrid.tsx`, `src/empire/GymScreen.test.ts` (if a pin there
+moves), `tools/capture-living-world.mjs` (rewritten to follow one member by
+its contract id through walk → queue → use → release, with video and a frame
+strip at 375×812 and 390×844), and the evidence it writes under
+`docs/design/living-gym-world/vl-1/`.
+
+**Shared-append, taken under the rule the CURRENT organization table already
+states for `empireTuning.ts`** ("Grok owns the numbers. Claude may read
+cadence and sizes." and the PR #52 body's "`empireTuning.ts` is
+shared-append"): a small block of new `FLOOR_MEMBER_*` presentation knobs
+(draw scale, gait cadence, settle easing, shadow geometry) with their
+`EMPIRE_TUNING_CLASSIFICATION` rows, all `'knob'`, all provisional under
+"Game Feel Values Must Be Tunable". No existing value is retuned. They exist
+because `src/tuning/audit.ts` refuses a bare number in a `.tsx`, so a
+presentation number has nowhere else to live.
+
+**Pin-only updates in census/fence tests the Grok lane owns or that are
+directory-wide, taken as data rather than as a restructure** — the same
+reading this file already gives `COVERED_DAY_TOUCHING_FUNCTIONS` and
+`GUARANTEE_COVERAGE.TREE_WIDE`: `empireTuning.test.ts`,
+`empireCore.test.ts`, `empireForbiddenOutput.test.ts` and
+`directoryWalk.test.ts`, wherever a string census, import-edge count, leaf
+count, or `AmbientMemberBodyProps` prop-surface row moves because of the
+edits above. Every new pin is read from the real failure value. No predicate,
+instrument, walk or declared list changes shape; the
+`AmbientMemberBodyProps` witness anchor (`readonly tile: number;` last) is
+preserved.
+
+**Not touched, and read only:** `presentationState.ts`, `floorSim.ts`,
+`floor.ts`, `worldView.ts`, `stationView.ts`, `livingMembers.ts`, the
+`GymViewState`/`GymViewAction`/`gymViewReduce` half of `ladderView.tsx`,
+`docs/design/SESSION-B-PRESENTATION-CONTRACT.md`, and every Session A
+directory. If the slice needs a fact the contract does not expose, that is a
+request to the Grok lane recorded here, not a re-derivation in the renderer.
+
+**Gates this slice may and may not move.** It can produce evidence for
+CONTRACT CONSUMPTION, WORLD INTEGRATION and (bounded) ANIMATION and
+PERFORMANCE. It does not close VISUAL, WORLD LEGIBILITY, SOFT-FEEL or OWNER
+PLAYTEST; only Bryant closes OWNER PLAYTEST. It does not start the
+capacity-upgrade proof, G.2C3 / G.2D / G.2E, or any Session A work, and does
+not merge #46 / #49 / #51 / #52.
+
 ### Branch / worktree policy
 
 | Lane | Branches | Worktree |
