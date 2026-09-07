@@ -2464,6 +2464,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // grids, palettes resolved from EMPIRE_TUNING, and the indexed-PNG
       // encoding FloorGrid.tsx draws.
       'floorSprites.ts',
+      'ironAmberArt.ts',
       'ladder.ts',
       'ladderView.tsx',
       'livingMemberExperience.ts',
@@ -2688,7 +2689,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 175 -> 181: Stage G.2A livingMemberExperience.ts plus FloorGrid /
     // livingMembers / members headers naming it.
     // 183 -> 188: Stage G.2B livingMemberRetention.ts plus FloorGrid reading it.
-    expect(pairs).toBe(188);
+    // 188 -> 193: Iron & Amber owned-art adapter named by FloorGrid / GymScreen.
+    expect(pairs).toBe(193);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -2710,7 +2712,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 17 -> 18: GDD §5.14 Stage B. `pacing.ts` imports `refuseWith` from
     // `./empireCore`.
     // 22 -> 23: Stage G.2B livingMemberRetention.ts imports refuseWith.
-    expect(mentionersOf('empireCore.ts').length).toBe(23);
+    // 23 -> 24: Iron & Amber adapter header names empireCore.test.ts.
+    expect(mentionersOf('empireCore.ts').length).toBe(24);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -3477,6 +3480,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'needs',
       'gym bucks — you have',
       'relocate',
+      'clock:',
+      '— accelerated:',
       'week',
       '(',
       'fixed +',
@@ -3868,7 +3873,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 794 -> 806: Stage G.2B membership labels, reasons, and member-panel
     // membership testIDs. Read from this assertion's own failure value.
     // 806 -> 821: Iron & Amber named CSS binds and occupancy/header testIDs.
-    expect(singleQuoted.size).toBe(822);
+    // 822 -> 854: Iron & Amber owned-art stems and `/empire-art` URIs.
+    // 854 -> 856: gymscreen-facility-scene and gymscreen-facility-art.
+    expect(singleQuoted.size).toBe(856);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3996,7 +4003,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // wait-ticks refuse message. Read from this assertion's own failure value.
     // 377 -> 379: Stage G.2B MEMBERSHIP line templates. Read from this
     // assertion's own failure value.
-    expect(templateChunks.size).toBe(379);
+    // 379 -> 387: Iron & Amber member-stem templates.
+    expect(templateChunks.size).toBe(387);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4030,6 +4038,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './floor',
       './floorSim',
       './floorSprites',
+      './ironAmberArt',
       './ladder',
       './ladderView',
       './livingMemberExperience',
@@ -4048,6 +4057,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // edge to `stationView.ts`.
       './stationView',
       './trainingStation',
+      '/empire-art',
       ':',
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
       'Accessory',
@@ -4242,6 +4252,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'cosmetic-unlock',
       'cosmetics',
       'costliest-affordable-first',
+      'cover',
       'covered-day',
       'crimson',
       'currency-purchase',
@@ -4266,6 +4277,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'e1rm',
       'eager-turnaround-control',
       'elapsedSeconds',
+      'eq-comp-plates',
+      'eq-flat-bench',
+      'eq-plate-tree',
+      'eq-power-bar',
+      'eq-quality-bench',
       'equipment',
       'equipment-below-recovery-minimum',
       'expansion',
@@ -4283,6 +4299,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'fixedUris',
       'flat-bench',
       'flex-start',
+      'floor-garage',
       'floor-place',
       'floor-place-furniture',
       'floor-remove',
@@ -4309,7 +4326,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-equipment-panel-remove',
       'floorgrid-equipment-panel-repair',
       'floorgrid-equipment-panel-role',
-      'floorgrid-floor-texture',
       'floorgrid-grid',
       'floorgrid-member-panel',
       'floorgrid-member-panel-dismiss',
@@ -4421,6 +4437,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-diagnostics',
       'gymscreen-dismiss-manager',
       'gymscreen-dock',
+      'gymscreen-facility-art',
+      'gymscreen-facility-scene',
       'gymscreen-floor',
       'gymscreen-full-repair',
       'gymscreen-gym-bucks',
@@ -4435,6 +4453,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-management',
       'gymscreen-manager',
       'gymscreen-manager-state',
+      'gymscreen-more-debug',
       'gymscreen-more-drawer',
       'gymscreen-move',
       'gymscreen-move-up',
@@ -4482,6 +4501,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-worn',
       'hands-off',
       'hatch',
+      'hidden',
       'hire-manager',
       'hire-novice',
       'hire-steady',
@@ -4524,6 +4544,28 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'machines',
       'manager-hired-under-warning',
       'mats',
+      'member-athlete-left',
+      'member-athlete-right',
+      'member-bodybuilder-left',
+      'member-bodybuilder-right',
+      'member-casual-left',
+      'member-casual-right',
+      'member-powerlifter-left',
+      'member-powerlifter-right',
+      'member-serious-lifter-left',
+      'member-serious-lifter-right',
+      'member-using-bar-a-left',
+      'member-using-bar-a-right',
+      'member-using-bar-b-left',
+      'member-using-bar-b-right',
+      'member-using-bench-a-left',
+      'member-using-bench-a-right',
+      'member-using-bench-b-left',
+      'member-using-bench-b-right',
+      'member-walk-a-left',
+      'member-walk-a-right',
+      'member-walk-b-left',
+      'member-walk-b-right',
       'memberGrids',
       'memberUris',
       'monolift',
@@ -4854,7 +4896,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1171 -> 1185: Stage G.2B singleQuoted 794 -> 806 and templateChunks
     // 377 -> 379.
     // 1185 -> 1200: Iron & Amber singleQuoted 806 -> 821; templateChunks unchanged.
-    expect(stringsChecked).toBe(1201);
+    // 1201 -> 1241: owned-art adapter +32 space-free stems/URIs and +8 member-stem templates.
+    // 1241 -> 1243: facility-scene and facility-art testIDs.
+    expect(stringsChecked).toBe(1243);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -4975,6 +5019,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `stationKind`, `completed`, `GymMemberId`, `:` from
     // `livingMembers.ts`'s id split). G.1A removes the `?` fallback from
     // `memberOrdinalFromId` and adds no new space-free single-quoted tokens.
+    // Art-01: `cover` (GymScreen facility-art resizeMode) replaces
+    // `floorgrid-floor-texture` (atmosphere moved out of FloorGrid). Net 0.
     expect(probes).toBe(spaceFree.length - 1);
     // `:` from `livingMembers.ts`'s id split clears the `< 2` guard and is
     // intentionally unprobed — every other shipped token is.
@@ -5231,6 +5277,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './floorSim',
         // GDD §5.13 presentation Phase 4: the sprite tables the floor draws.
         './floorSprites',
+        './ironAmberArt',
         './ladder',
         './ladderView',
         // Stage G.1: persistent member identity and service history on tap.
@@ -5274,7 +5321,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         // one new edge, no new arithmetic.
         './stationView',
         'react-native',
+        './ironAmberArt',
       ],
+      'ironAmberArt.ts': [],
       'ladder.ts': ['./empireCore', './empireTuning', './production'],
       // S4b: `./management` joined the reducer's edges — `GymViewState.managed`
       // is a `ManagedGym` now, and every stage-4 arm is one call into that
@@ -5364,7 +5413,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
     // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
     // 27 -> 28: Stage G.2B livingMemberRetention.ts.
-    expect(fenced).toBe(28);
+    // 28 -> 29: Iron & Amber owned-art adapter.
+    expect(fenced).toBe(29);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -5487,7 +5537,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // FloorGrid reading it.
     // 121 -> 125: Stage G.2B — livingMemberRetention.ts three edges plus
     // FloorGrid reading it.
-    expect(specifiers).toBe(125);
+    // 125 -> 127: Iron & Amber owned-art adapter — FloorGrid and GymScreen
+    // each gain one `./ironAmberArt` edge. The adapter itself has zero imports.
+    expect(specifiers).toBe(127);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external

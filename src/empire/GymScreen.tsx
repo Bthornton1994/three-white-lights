@@ -63,6 +63,14 @@
  * rather than the census silently walking past it. `FloorGrid.tsx`'s own
  * header explains the shape in full.
  *
+ * IRON & AMBER COMPOSITION, NAMED SO FloorGrid IS NOT THE VISUAL IDENTITY.
+ * Play stacks three layers in this file, in this order: the facility scene
+ * (`gymscreen-facility-scene`, the owned atmosphere PNG), then occupancy and
+ * station/member interactions (`FloorGrid` in play mode — transparent, no
+ * placement grid, no sprite-floor), then HUD / FAB / dock. Build reuses the
+ * same atmosphere and asks FloorGrid for the placement grid and inventory
+ * tray. FloorGrid must not draw the garage texture; that is this scene.
+ *
  * WHO OWNS THE STATE. `GymScreen` takes `{ state, dispatch }` as props and
  * computes nothing else — a pure function of its props, exactly like
  * `GymView`. The one stateful hook (`useReducer`) lives outside this
@@ -267,6 +275,7 @@ import {
   wornItems,
 } from './management';
 import { FLOOR_SPRITE_URIS } from './floorSprites';
+import { ironAmberFixedUri, ironAmberFloorUri, ironAmberSessionUri } from './ironAmberArt';
 import {
   displayConditionPercent,
   playerFacingActivityGroupLabel,
@@ -376,10 +385,11 @@ const styles = StyleSheet.create({
     marginTop: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
   },
   hudMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    overflow: 'hidden',
+    opacity: 0,
   },
   hudStat: {
     flexShrink: 1,
@@ -412,8 +422,24 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
   },
+  facilityScene: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+  },
+  facilityArt: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+  },
   floor: {
     flex: 1,
+    zIndex: 1,
   },
   drawer: {
     position: 'absolute',
@@ -532,6 +558,10 @@ function allocationOptions(): readonly FlexibleSlot[] {
 
 /** One `SlotOutcome`, in words a player reads without decoding the union — ported from `GymView`'s private `describeSlotOutcome`. */
 function shopSpriteUri(item: string): string | null {
+  const ownedFixed = ironAmberFixedUri(item, false);
+  if (ownedFixed !== null) return ownedFixed;
+  const ownedSession = ironAmberSessionUri(item);
+  if (ownedSession !== null) return ownedSession;
   const sessionUris = FLOOR_SPRITE_URIS.session as Readonly<Record<string, string>>;
   if (sessionUris[item] !== undefined) return sessionUris[item] as string;
   const fixedUris = FLOOR_SPRITE_URIS.fixed as Readonly<Record<string, string>>;
@@ -684,6 +714,15 @@ export function GymScreen(props: GymViewProps) {
         )}
       </View>
       <View testID={'gymscreen-stage'} style={styles.stage}>
+      <View testID={'gymscreen-facility-scene'} style={styles.facilityScene}>
+        <Image
+          testID={'gymscreen-facility-art'}
+          source={{ uri: ironAmberFloorUri(gym.ladder.rung) }}
+          resizeMode={'cover'}
+          style={styles.facilityArt}
+          {...({ pointerEvents: 'none' } as object)}
+        />
+      </View>
       <View testID={'gymscreen-floor'} style={styles.floor}>
         <FloorGrid
           owned={gym.sessionEquipment}
@@ -1155,6 +1194,12 @@ export function GymScreen(props: GymViewProps) {
         testID={'gymscreen-more-drawer'}
         style={surface === 'more' ? styles.drawer : styles.drawerHidden}
       >
+      <View testID={'gymscreen-more-debug'}>
+        <Text style={styles.copy}>
+          clock: {describeLadderClock(gym.ladder.collectedAt)} — accelerated:{' '}
+          {gym.acceleratedGymBucks}
+        </Text>
+      </View>
       <View testID={'gymscreen-week'}>
         <Text style={styles.copy}>
           week {weekIndex} ({shape.fixed} fixed + {shape.flexible} flexible = {shape.total}{' '}
