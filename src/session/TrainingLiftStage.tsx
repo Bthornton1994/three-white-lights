@@ -1,8 +1,11 @@
 /**
- * TrainingLiftStage — Session A live-set picture.
+ * TrainingLiftStage — Session A live-set picture (Claude Code owns this).
  *
- * Squat is the continuous Iron & Amber rig (`SquatScene`). Bench and deadlift
- * still use leftover stills until those slices get the same architecture.
+ * Squat currently mounts the rejected Skia schematic (`SquatScene`) as a
+ * leftover debug path. It is NOT the production athlete. Do not generalize
+ * it to bench or deadlift. Bind new rendering to `liftPresentation`, not to
+ * joint layout in `squatVisual`.
+ *
  * Meet Day keeps `src/lift/LiftStage.tsx`.
  *
  * Exported as `LiftStage` so the press-surface walk in `liftInput.test.ts`
