@@ -5,8 +5,8 @@
  * durable truth -> store -> destroy the process-side objects -> load ->
  * equivalent authoritative gym truth. FloorSim pose is not restored.
  *
- * The v1 body is FacilitySaveTruthV1, amended in place: PR #53 is draft,
- * GymHost is unwired, and no external schemaVersion 1 bytes exist.
+ * The v1 body is FacilitySaveTruthV1. GymHost wiring lives in src/shell and
+ * is not this file.
  */
 
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
