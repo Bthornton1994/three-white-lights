@@ -3056,6 +3056,114 @@ export const EMPIRE_TUNING = Object.freeze({
     'comp-plates': 0.94,
     'plate-tree': 3.17,
   }),
+
+  // -------------------------------------------------------------------------
+  // VL-3 ART PIPELINE (Claude Code Session B, CLAUDE.md "VL-3"): the numbers
+  // `memberRig.ts` poses the cut-out puppet with and `memberRig.test.ts`
+  // grades the poses against. Every one is PROVISIONAL under "Game Feel
+  // Values Must Be Tunable". The hand-authored art data itself — part
+  // polygons, pivots, keyframe joint angles — lives in `memberPuppet.ts`,
+  // which declares itself authored drawings in the style of `src/art/rig.ts`;
+  // what lives HERE is what a playtester turns without redrawing a pose.
+  // -------------------------------------------------------------------------
+
+  /**
+   * VL-3: how far above the bottom edge of a baked frame the ground line
+   * sits, in canvas pixels — the row the planted sole is solved onto. A few
+   * pixels of margin so a heel-down contact pose and a bilinear edge never
+   * clip against the canvas edge.
+   */
+  FLOOR_MEMBER_MOTION_GROUND_INSET_PX: 4,
+
+  /**
+   * VL-3: how far, in canvas pixels, the walk's root travel over one full
+   * cycle may differ from the stride the runtime advances it by
+   * (`memberMotionStrideTiles()` × canvas / `FLOOR_MEMBER_DRAW_SCALE_TILES`).
+   * The authored leg swing is sized to the stride; this is the slack the
+   * test allows before a re-author is demanded.
+   */
+  FLOOR_MEMBER_MOTION_STRIDE_TOLERANCE_PX: 2,
+
+  /**
+   * VL-3: the most a planted foot's world x may move across its stance,
+   * in canvas pixels, under the runtime's uniform per-frame advance. The
+   * rig solves each frame's sample time so the stance foot's canvas x
+   * retreats exactly one frame's share of the stride; this bounds the
+   * residual of that solve, not an authored slide.
+   */
+  FLOOR_MEMBER_MOTION_FOOT_DRIFT_TOLERANCE_PX: 0.25,
+
+  /**
+   * VL-3: how far, in degrees, any joint may differ between the last pose
+   * of one clip and the first pose of the clip the runtime cuts to along
+   * a `MEMBER_MOTION_TRANSITIONS` edge, before the cut reads as a snap. The
+   * runtime's `FLOOR_MEMBER_CLIP_BLEND_MS` crossfade covers this much.
+   */
+  FLOOR_MEMBER_MOTION_POSE_TOLERANCE_DEGREES: 8,
+
+  /**
+   * VL-3: how far, in canvas pixels, the root may sit from where the next
+   * clip's first pose puts it at a transition — the positional half of the
+   * tolerance above.
+   */
+  FLOOR_MEMBER_MOTION_ROOT_TOLERANCE_PX: 6,
+
+  /**
+   * VL-3: the largest vertical excursion of the walk's root over a cycle,
+   * in canvas pixels, that the test accepts. The bounce is not authored —
+   * it emerges from solving the pelvis height so the planted sole sits on
+   * the ground line, contact poses low and passing poses high — and this
+   * ceiling keeps an over-swung leg from turning it into a hop. At the
+   * front row (a body ~74 px tall) `FLOOR_MEMBER_GAIT_BOUNCE_PIXELS` of
+   * screen bounce is about ten canvas pixels; the runtime must NOT add its
+   * own bounce on top of a baked walk frame.
+   */
+  FLOOR_MEMBER_MOTION_GAIT_BOUNCE_MAX_PX: 12,
+
+  /**
+   * VL-3: bisection steps the rig spends solving each walk frame's sample
+   * time so the stance foot lands on its uniform-advance x. Each step
+   * halves the interval; 48 puts the residual far below a pixel.
+   */
+  FLOOR_MEMBER_MOTION_RETIME_ITERATIONS: 48,
+
+  /**
+   * VL-3: multiplier on the RGB of the far-side limbs (the leg and arm
+   * further from the viewer) at bake time. The walk painting's own far leg
+   * is drawn a shade darker for depth; the rig reuses the near leg's
+   * drawing for both legs so the two half-cycles mirror exactly, and this
+   * restores that depth cue.
+   */
+  FLOOR_MEMBER_MOTION_FAR_LIMB_SHADE: 0.82,
+
+  /**
+   * VL-3: peak rise of the torso and shoulders on an idle or wait breath,
+   * in degrees of joint rotation — a cut-out puppet cannot inflate a chest,
+   * so a breath is the torso pitching back a little and the upper arms
+   * lifting with it.
+   */
+  FLOOR_MEMBER_MOTION_BREATH_DEGREES: 1.2,
+
+  /**
+   * VL-3: the idle clip's slow weight shift as a fraction of the wait
+   * clip's sway (`FLOOR_MEMBER_WAIT_SWAY_DEGREES`). A body with nowhere to
+   * be moves less than a body in a line.
+   */
+  FLOOR_MEMBER_MOTION_IDLE_SWAY_FRACTION: 0.5,
+
+  /**
+   * VL-3: half the spread of the feet in a stand, in degrees of thigh
+   * rotation either side of straight down — `idle` narrow, `wait` squared
+   * toward the station.
+   */
+  FLOOR_MEMBER_MOTION_STANCE_DEGREES: Object.freeze({ idle: 3, wait: 7 }),
+
+  /**
+   * VL-3: how far the swing foot must clear the ground line at every walk
+   * frame, in canvas pixels, as a lower bound the test enforces on the
+   * authored swing (a foot below the line is a foot through the floor).
+   */
+  FLOOR_MEMBER_MOTION_SWING_CLEARANCE_MIN_PX: 0,
 } satisfies EmpireTuningRecord);
 
 /**
@@ -3317,4 +3425,16 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_MEMBER_CLIP_BLEND_MS: 'knob',
   FLOOR_STATION_PAD_FRACTION: 'knob',
   FLOOR_FIXED_ART_HEIGHT_OVER_WIDTH: 'knob',
+  FLOOR_MEMBER_MOTION_GROUND_INSET_PX: 'knob',
+  FLOOR_MEMBER_MOTION_STRIDE_TOLERANCE_PX: 'knob',
+  FLOOR_MEMBER_MOTION_FOOT_DRIFT_TOLERANCE_PX: 'knob',
+  FLOOR_MEMBER_MOTION_POSE_TOLERANCE_DEGREES: 'knob',
+  FLOOR_MEMBER_MOTION_ROOT_TOLERANCE_PX: 'knob',
+  FLOOR_MEMBER_MOTION_GAIT_BOUNCE_MAX_PX: 'knob',
+  FLOOR_MEMBER_MOTION_RETIME_ITERATIONS: 'knob',
+  FLOOR_MEMBER_MOTION_FAR_LIMB_SHADE: 'knob',
+  FLOOR_MEMBER_MOTION_BREATH_DEGREES: 'knob',
+  FLOOR_MEMBER_MOTION_IDLE_SWAY_FRACTION: 'knob',
+  FLOOR_MEMBER_MOTION_STANCE_DEGREES: 'knob',
+  FLOOR_MEMBER_MOTION_SWING_CLEARANCE_MIN_PX: 'knob',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

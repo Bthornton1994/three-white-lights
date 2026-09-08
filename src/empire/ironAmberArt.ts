@@ -24,9 +24,18 @@
  * shipped sibling, so the floor cannot import art files. This adapter is the
  * narrow crossing: string URIs, closed lookup tables, no package imports.
  *
+ * VL-3: the production motion strips. `ironAmberMemberMotionUri` maps a
+ * production member type and a clip onto `member-motion-<type>-<clip>.png`
+ * through `memberMotionStripStem`, the one naming function the rig, the
+ * bake and the runtime share; the eight stems sit in `IRON_AMBER_ART_STEMS`
+ * so the provenance test joins them to disk. This is the module's one
+ * import, of a sibling pure module — still no PNG, no package, no URL.
+ *
  * WHAT IT DOES NOT DO. It does not replace `floorSprites.ts`. It does not
  * claim Visual PASS.
  */
+
+import { MEMBER_MOTION_CLIPS, memberMotionStripStem, type MemberMotionClip, type MemberMotionProductionType } from './memberMotionClips';
 
 const ART_ROOT = '/empire-art';
 
@@ -145,6 +154,7 @@ export const IRON_AMBER_ART_STEMS = Object.freeze([
   'member-using-bar-a-left',
   'member-using-bar-b-right',
   'member-using-bar-b-left',
+  ...MEMBER_MOTION_CLIPS.map((clip) => memberMotionStripStem('powerlifter', clip)),
 ]);
 
 export function ironAmberArtRoot(): string {
@@ -176,6 +186,11 @@ export function ironAmberFixedUri(item: string, quality: boolean): string | null
 
 export function ironAmberPlateTreeUri(): string {
   return png('eq-plate-tree');
+}
+
+/** VL-3: the baked frame strip of a production member type's clip. */
+export function ironAmberMemberMotionUri(type: MemberMotionProductionType, clip: MemberMotionClip): string {
+  return png(memberMotionStripStem(type, clip));
 }
 
 export function ironAmberSessionUri(item: string): string | null {
