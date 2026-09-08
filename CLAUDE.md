@@ -812,6 +812,57 @@ ANIMATION or SOFT-FEEL gate moves; bench and deadlift blocked; PR #48 not
 merged; `ATHLETE_RIG.TRAINING_STAGE` still `'schematic'`; no emulator
 installed here without a ruling.
 
+#### CROSSING FILED BY THE VISUAL LANE, BEFORE THE WORK, 2026-09-08 (FIFTH) — `expo-system-ui`, so Android honours the `userInterfaceStyle` rule
+
+Human ruling at `eac35a73`: the one repository-owned warning the prebuild
+preflight reported — `app.json` declares `"userInterfaceStyle": "light"`
+and Expo SDK 57 ignores it on Android without `expo-system-ui` — is now
+authorised as a fix. Filed here first, per the procedure, for the shared
+project files it touches. **No other dependency moves; Expo and React
+Native are not upgraded; nothing in `src/` imports SystemUI** (this is
+configuration support for the existing rule, not a runtime feature).
+
+1. **`package.json` and `package-lock.json`** — `expo-system-ui` at the
+   SDK 57 pin from `expo/bundledNativeModules.json` (`~57.0.2`; the
+   ruling's "approximately ~57.0.3" is the same line — the resolver's own
+   table is the authority and the installed version is recorded in the
+   result below). Through `npx expo install` if the proxy lets it reach
+   Expo's API this time, otherwise `npm install` at the identical range —
+   the third filing's precedent. The lock moves for that package's own tree
+   and nothing else.
+2. **`app.json`** — one key added: `"plugins": ["expo-system-ui"]`. Every
+   identity value stays byte-identical (`name`, `slug`, `scheme`,
+   `android.package`, `owner`, `extra.eas.projectId`), and
+   `"userInterfaceStyle": "light"` stays `light` — not `automatic`, not
+   `dark`.
+3. **Why an explicit `plugins` entry is safe, read from source before the
+   edit:** `@expo/prebuild-config` already applies the package's plugin
+   automatically once it is installed (`createLegacyPlugin` →
+   `withStaticPlugin`, with the warning-only built-in copy as the
+   `fallback` — that copy is the whole source of the warning), and the
+   package's own plugin is a run-once plugin, so listing it explicitly does
+   not apply it twice. Verified on the installed package, not assumed.
+4. **Evidence, re-taken after the change lands and stamped at the fix
+   commit:** the disposable prebuild preflight
+   (`docs/design/evidence/android-prebuild-preflight/`) — its `warnings`
+   array must lose the `userInterfaceStyle` line and change in no other
+   way; identity, schemes, Rive + Nitro autolinking and the dev client must
+   read identically; the generated Android resources must carry the light
+   style. `docs/design/evidence/eas-cloud-build/` gains the status the
+   ruling asks for: the executed build `29d41836` stays PASS at its prior
+   source; the current HEAD is NOT RE-RUN after this change, which is not
+   a failure.
+5. **`src/tuning/*`, `tools/**`, `src/**` — NOT touched.** No new files,
+   so `testPathRefs` does not move; `realIp` unchanged (`expo-system-ui`
+   is not on the table, and the lockfile is excluded by construction).
+   The CI audit gate's allowlist is not edited: `npm audit` is diffed
+   before and after and must show the identical advisory set.
+
+After this fix Session A visual engineering FREEZES on the remaining
+external blockers — athlete `.riv` / `.rev` / reference sheet /
+provenance, the empty side-on room plate, an Android runtime target — and
+invents no further work package.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion
