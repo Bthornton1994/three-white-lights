@@ -2646,6 +2646,28 @@ credit. `e1rm.ts` cancellation is unchanged.
 
 Do not merge PR #48. Presentation contract stays frozen.
 
+### FILED 2026-09-07: GDD §3.4 PHYSICAL PROGRESSION OPPORTUNITY (MECHANICS, NOT ART)
+
+Session A mechanics on `grok/session-a-iron-amber-training-art-01` at
+PR #48 (`20bda71d` contract freeze). Lift presentation, A0, A2 identity,
+and `src/empire/**` untouched. Does not amend the stimulus-formula
+commit or the credit-bank commit; this is a new realization model on
+the same bank.
+
+The 1.5% / 3-step percent cap deadlocked starting strengths at and
+below ~150 kg (signup bench 120 kg included) and let 300+ kg lifters
+PR every 8 sessions because 0.5% already cleared a plate. Realization
+is now physical: twelve prior same-lift credit buys ordinary snapped
+bar + ONE existing rounding increment (kg 2.5, lb 5). RPE 6 is
+recovery and cannot cash. Consume 12 only on successful realization;
+a miss consumes 0; then add today's stimulus. `choose-rpe` writes
+`nudgedWeightKg` onto the plan and never reconstructs the increment as
+a percent (IEEE snap-down). 6% remains a lying-client guard, not a
+pacing lever; it may bind at implausible light loads. `e1rm.ts`
+cancellation is unchanged.
+
+Do not merge PR #48. Presentation contract stays frozen.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a

@@ -212,12 +212,11 @@ function previewContext(trainingProgressCredit = 0): SessionContext {
 }
 
 /**
- * Credit that actually moves a 2.5 kg plate at preview loads (200 kg @ RPE 8).
- * One or two 0.5% steps snap identical; three (1.5%) clear the plate.
+ * Credit that actually moves a plate at preview loads (200 kg @ RPE 8):
+ * one physical progression opportunity.
  */
 const PREVIEW_CREDIT_THAT_MOVES_THE_BAR =
-  TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_STEP *
-  TRAINING_PROGRESS_TUNING.MAX_APPLIED_STEPS_PER_SESSION;
+  TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_OPPORTUNITY;
 
 function tapThrough(state: SessionState, answers: ReadinessCheckIn): SessionState {
   let next = stepSession(state, {

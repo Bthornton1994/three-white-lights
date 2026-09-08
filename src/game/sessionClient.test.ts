@@ -636,8 +636,7 @@ describe('the PR call', () => {
       playSession(
         STARTING_BEST_KG,
         EMPTY_FATIGUE_STATE,
-        TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_STEP *
-          TRAINING_PROGRESS_TUNING.MAX_APPLIED_STEPS_PER_SESSION,
+        TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_OPPORTUNITY,
       ),
     );
     expect(closeOut.isPr).toBe(true);

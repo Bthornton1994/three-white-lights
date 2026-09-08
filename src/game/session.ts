@@ -98,15 +98,17 @@
  *   primed         +5%    770.65 kg  (at RPE 6)       30 / 30
  *
  * That arithmetic is still true of `prescribeSession`. It is no longer the
- * player path. `choose-rpe` replaces the tap percent with a
- * `progressionOffer` built from this lift's PRIOR training-progress credit
- * (GDD §3.4). Empty credit is 0, so a first session cannot mint a PR from
- * taps; successful work banks credit that a later session of this lift may
- * spend on a heavier bar, and only if that bar actually moves after plate
- * snap. `session.test.ts` pins both: the handed-in-percent sweep still
- * documents the function, and the player-path loop (no `check-in-tap`) pins
- * that e1RM now moves with accumulated credit, not with taps or a harder
- * menu pick.
+ * player path. `choose-rpe` zeros the tap percent and writes a
+ * `progressionOffer` physical bar (ordinary snapped load, plus one
+ * rounding increment when PRIOR credit on this lift can pay for it)
+ * onto the plan (GDD §3.4). Empty credit is 0, so a first session
+ * cannot mint a PR from taps; successful work banks credit that a later
+ * session of this lift may spend on the next plate, and only if that
+ * bar is realized. Never reconstruct the increment as a percent —
+ * IEEE-754 can snap 174.999 down to 172.5. `session.test.ts` pins both:
+ * the handed-in-percent sweep still documents the function, and the
+ * player-path loop (no `check-in-tap`) pins that e1RM now moves with
+ * accumulated credit, not with taps or a harder menu pick.
  *
  * The mechanism, in four steps, none of which is a bug on its own:
  *
@@ -117,9 +119,11 @@
  *   2. On a positive handed-in percent the surviving factor is `(1 + nudge)`, so
  *      the set reports an e1RM above the one it was prescribed from.
  *   3. `nextBestE1rm` is monotone and its cap
- *      (`MAX_E1RM_GAIN_FRACTION_PER_SESSION`, 6%) is above the largest tap
- *      nudge (5%) and above the largest honest credit step (1.5%), so
- *      the cap never binds on an honest session and the higher number is kept.
+ *      (`MAX_E1RM_GAIN_FRACTION_PER_SESSION`, 6%) is a lying-client guard,
+ *      not a pacing lever. It sits above the old unearned primed tap (5%)
+ *      and above a typical honest physical opportunity at fixture loads.
+ *      At implausible light loads one increment can exceed 6%; the guard
+ *      then binds. Do not retune it to paper over plate geometry.
  *   4. `sessionServer.todayForLifter` prescribes tomorrow from the best on
  *      record — i.e. from the number today's nudge just minted. It compounds.
  *
@@ -133,11 +137,12 @@
  * performance is exactly the two-parts-disagree failure CLAUDE.md's one-formula
  * rule forbids. The player path no longer feeds `FATIGUE_TUNING.READINESS_LOAD_ADJUSTMENT_PERCENT`
  * into the bar. Session-over-session growth is thresholded credit: successful
- * work earns a unit, four units buy one 0.5% step, and a step is only applied
- * from PRIOR credit when it actually moves the snapped bar. Completed RPE 8, 9
- * and 10 of the same volume earn the same unit; recovery RPE 6 earns nothing.
- * Higher rungs do not pay by breaking this session's chart round-trip, and
- * they do not pay merely for being the harder menu option.
+ * work earns a unit, twelve units buy one physical opportunity (ordinary
+ * snapped bar + one rounding increment), and an opportunity is only applied
+ * from PRIOR credit at RPE 7-10. Completed RPE 8, 9
+ * and 10 of the same volume earn the same unit; recovery RPE 6 earns nothing
+ * and cannot cash a bank. Higher rungs do not pay by breaking this session's
+ * chart round-trip, and they do not pay merely for being the harder menu option.
  *
  * ALSO UNRESOLVED, and separate: the prescribed fraction of e1RM is the same
  * whatever the e1RM is, so the mechanic does not get harder as the number
@@ -583,10 +588,13 @@ export function defaultRpeChoice(): number {
  * refusal through rather than clamping the request onto a cell that exists.
  *
  * The load-adjustment percentage is applied to the load. On the player path
- * that percent is `progressionOffer` from this lift's PRIOR credit (GDD §3.4),
- * not the check-in tap table. This function still honours whatever percent the
- * report carries, so a unit test can hand in a primed readout and measure the
- * arithmetic; `choose-rpe` is what stops those taps minting the bar.
+ * that percent is zeroed: `choose-rpe` writes `progressionOffer.nudgedWeightKg`
+ * (ordinary snapped bar, plus one physical increment when PRIOR credit on
+ * this lift can pay for it) onto the plan (GDD §3.4), not a reconstructed
+ * percent and not the check-in tap table. This function still honours
+ * whatever percent the report carries, so a unit test can hand in a primed
+ * readout and measure the arithmetic; `choose-rpe` is what stops those taps
+ * minting the bar.
  *
  * @throws {RangeError} on a non-positive e1RM, or on an RPE / rep-count pair
  * the published chart has no cell for.
@@ -1261,10 +1269,12 @@ export function stepSession(state: SessionState, event: SessionEvent): SessionSt
       const readiness = state.readiness;
       if (readiness === null) return state;
       const workSets = workSetsForToday(state.context, event.rpe);
-      // GDD §3.4: the bar is nudged by PRIOR credit on this lift, not by
-      // the check-in taps and not by today's work. `readiness` stays the
-      // tap readout (history-invariant); only the plan's load percent is
-      // replaced. A snap-to-identical bar is appliedSteps 0.
+      // GDD §3.4: the bar is the ordinary snapped prescription, plus one
+      // physical increment when PRIOR credit on this lift can pay for an
+      // opportunity. `readiness` stays the tap readout (history-invariant).
+      // The tap percent is zeroed. Never reconstruct the increment as a
+      // percent into `prescribeSession` (IEEE snap-down). Recovery (RPE 6)
+      // is ineligible and leaves the ordinary bar on.
       const offer = progressionOffer({
         credit: state.context.trainingProgressCredit,
         e1rmKg: state.context.e1rmKg,
@@ -1272,15 +1282,20 @@ export function stepSession(state: SessionState, event: SessionEvent): SessionSt
       });
       const barReadiness: ReadinessReport = {
         ...readiness,
-        loadAdjustmentPercent: offer.loadAdjustmentPercent,
+        loadAdjustmentPercent: 0,
       };
-      const plan = prescribeSession(
+      const prescribed = prescribeSession(
         state.context.e1rmKg,
         state.context.lift,
         event.rpe,
         barReadiness,
         workSets,
       );
+      const plan = {
+        ...prescribed,
+        weightKg: offer.nudgedWeightKg,
+        loadRatio: scrub(offer.nudgedWeightKg / state.context.e1rmKg),
+      };
       return { ...state, phase: 'set', plan, setIndex: 0, repIndex: 0, repsThisSet: [] };
     }
 

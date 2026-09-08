@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { SESSION_TUNING, SESSION_PROGRESSION_GUARD, TRAINING_PROGRESS_TUNING } from './sessionTuning';
 import { FATIGUE_TUNING } from './fatigue';
-import { rawLoadForRpeTarget, roundLoad } from './rpe';
+import { rawLoadForRpeTarget, roundLoad, RPE_LOADING_TUNING } from './rpe';
 import {
   EMPTY_TRAINING_PROGRESS_CREDIT,
   copyTrainingProgressCredit,
@@ -15,14 +15,11 @@ import {
   stimulusCreditFor,
 } from './trainingProgress';
 
-const CREDIT_FOR_A_PLATE =
-  TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_STEP *
-  TRAINING_PROGRESS_TUNING.MAX_APPLIED_STEPS_PER_SESSION;
+const CREDIT_FOR_A_PLATE = TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_OPPORTUNITY;
 
-function snap(e1rmKg: number, rpe: number, percent: number): number {
+function ordinaryBar(e1rmKg: number, rpe: number): number {
   const chart = rawLoadForRpeTarget(e1rmKg, SESSION_TUNING.REPS_PER_SET, rpe);
-  const nudged = chart * (1 + percent / SESSION_TUNING.PERCENT_TO_FRACTION);
-  return roundLoad(nudged, {
+  return roundLoad(chart, {
     unit: SESSION_TUNING.LOAD_UNIT,
     mode: SESSION_TUNING.LOAD_ROUNDING_MODE,
   });
@@ -47,20 +44,27 @@ describe('purity contract', () => {
     expect(code).not.toContain('fetch(');
     expect(code).not.toMatch(/from\s*''react/);
   });
+
+  it('does not reconstruct the increment as a percent', () => {
+    const code = codeOnly(source);
+    expect(code).not.toMatch(/PROGRESSION_STEP_PERCENT/);
+    expect(code).not.toMatch(/CREDIT_PER_PROGRESSION_STEP/);
+    expect(code).not.toMatch(/MAX_APPLIED_STEPS/);
+    expect(source).toContain('nudgedWeightKg');
+    expect(source).toContain('oneIncrementHeavier');
+  });
 });
 
 describe('TRAINING_PROGRESS_TUNING — GDD §3.4 pacing knobs', () => {
-  it('a full reference session needs four same-lift sessions for one step', () => {
-    expect(TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_STEP).toBe(4);
-    expect(TRAINING_PROGRESS_TUNING.PROGRESSION_STEP_PERCENT).toBe(0.5);
-    expect(TRAINING_PROGRESS_TUNING.MAX_APPLIED_STEPS_PER_SESSION).toBe(3);
+  it('a full reference session needs twelve same-lift sessions for one opportunity', () => {
+    expect(TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_OPPORTUNITY).toBe(12);
+    expect(Object.keys(TRAINING_PROGRESS_TUNING)).toEqual(['CREDIT_PER_PROGRESSION_OPPORTUNITY']);
   });
 
-  it('the honest max step sits below the per-session e1RM guard', () => {
-    const honestMax =
-      TRAINING_PROGRESS_TUNING.PROGRESSION_STEP_PERCENT *
-      TRAINING_PROGRESS_TUNING.MAX_APPLIED_STEPS_PER_SESSION;
-    expect(honestMax / SESSION_TUNING.PERCENT_TO_FRACTION).toBeLessThan(
+  it('at the 200 kg fixture one increment sits below the per-session e1RM guard', () => {
+    const increment = RPE_LOADING_TUNING.ROUNDING_INCREMENT[SESSION_TUNING.LOAD_UNIT];
+    const chart = rawLoadForRpeTarget(200, SESSION_TUNING.REPS_PER_SET, 8);
+    expect(increment / chart).toBeLessThan(
       SESSION_PROGRESSION_GUARD.MAX_E1RM_GAIN_FRACTION_PER_SESSION,
     );
   });
@@ -97,13 +101,14 @@ describe('sessionStimulusCredit, via stimulusCreditFor', () => {
   });
 });
 
-describe('progressionOffer — prior credit, plate-aware', () => {
+describe('progressionOffer — prior credit, physical increment', () => {
   it('empty credit cannot mint a bar', () => {
     const offer = progressionOffer({ credit: 0, e1rmKg: 200, targetRpe: 8 });
     expect(offer.availableSteps).toBe(0);
     expect(offer.appliedSteps).toBe(0);
     expect(offer.loadAdjustmentPercent).toBe(0);
     expect(offer.nudgedWeightKg).toBe(offer.unNudgedWeightKg);
+    expect(offer.unNudgedWeightKg).toBe(ordinaryBar(200, 8));
   });
 
   it('today’s stimulus is not an input — the offer cannot see it', () => {
@@ -117,47 +122,71 @@ describe('progressionOffer — prior credit, plate-aware', () => {
     expect(body).not.toMatch(/sessionStimulus|fatigue|checkIn|readiness/);
   });
 
-  it('at 200 kg @ RPE 8, one and two 0.5% steps snap identical; three clear a plate', () => {
-    const unNudged = snap(200, 8, 0);
-    expect(snap(200, 8, 0.5)).toBe(unNudged);
-    expect(snap(200, 8, 1)).toBe(unNudged);
-    expect(snap(200, 8, 1.5)).toBeGreaterThan(unNudged);
-
-    const oneStep = progressionOffer({
-      credit: TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_STEP,
+  it('at 200 kg @ RPE 8, twelve credit puts exactly one increment on the bar', () => {
+    const unNudged = ordinaryBar(200, 8);
+    const increment = RPE_LOADING_TUNING.ROUNDING_INCREMENT[SESSION_TUNING.LOAD_UNIT];
+    const short = progressionOffer({
+      credit: CREDIT_FOR_A_PLATE - 1,
       e1rmKg: 200,
       targetRpe: 8,
     });
-    expect(oneStep.availableSteps).toBe(1);
-    expect(oneStep.appliedSteps).toBe(0);
+    expect(short.availableSteps).toBe(0);
+    expect(short.appliedSteps).toBe(0);
+    expect(short.nudgedWeightKg).toBe(unNudged);
 
-    const twoSteps = progressionOffer({
-      credit: TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_STEP * 2,
-      e1rmKg: 200,
-      targetRpe: 8,
-    });
-    expect(twoSteps.availableSteps).toBe(2);
-    expect(twoSteps.appliedSteps).toBe(0);
-
-    const threeSteps = progressionOffer({
+    const offer = progressionOffer({
       credit: CREDIT_FOR_A_PLATE,
       e1rmKg: 200,
       targetRpe: 8,
     });
-    expect(threeSteps.availableSteps).toBe(3);
-    expect(threeSteps.appliedSteps).toBe(3);
-    expect(threeSteps.nudgedWeightKg).toBeGreaterThan(threeSteps.unNudgedWeightKg);
+    expect(offer.availableSteps).toBe(1);
+    expect(offer.appliedSteps).toBe(1);
+    expect(offer.loadAdjustmentPercent).toBe(0);
+    expect(offer.unNudgedWeightKg).toBe(unNudged);
+    expect(offer.nudgedWeightKg).toBe(unNudged + increment);
   });
 
-  it('applies the smallest n that actually moves the snapped bar, not all available', () => {
-    // Bank enough for the cap. At 200 kg @ RPE 8 the smallest moving n is 3.
+  it('surplus credit still spends exactly one opportunity', () => {
     const offer = progressionOffer({
-      credit: CREDIT_FOR_A_PLATE + TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_STEP,
+      credit: CREDIT_FOR_A_PLATE * 4,
       e1rmKg: 200,
       targetRpe: 8,
     });
-    expect(offer.availableSteps).toBe(TRAINING_PROGRESS_TUNING.MAX_APPLIED_STEPS_PER_SESSION);
-    expect(offer.appliedSteps).toBe(3);
+    expect(offer.availableSteps).toBe(1);
+    expect(offer.appliedSteps).toBe(1);
+  });
+
+  it('RPE 6 is recovery: credit does not cash, bar does not move', () => {
+    expect(SESSION_TUNING.RPE_CHOICES[0]).toBe(6);
+    const recoveryWeight = FATIGUE_TUNING.STIMULUS_EFFORT_WEIGHTS.find((row) => row.rpe === 6)?.weight;
+    expect(recoveryWeight).toBe(0);
+    const offer = progressionOffer({
+      credit: CREDIT_FOR_A_PLATE,
+      e1rmKg: 200,
+      targetRpe: 6,
+    });
+    expect(offer.availableSteps).toBe(1);
+    expect(offer.appliedSteps).toBe(0);
+    expect(offer.nudgedWeightKg).toBe(offer.unNudgedWeightKg);
+  });
+
+  it('RPE 7-10 are eligible', () => {
+    for (const rpe of [7, 8, 9, 10]) {
+      const offer = progressionOffer({ credit: CREDIT_FOR_A_PLATE, e1rmKg: 200, targetRpe: rpe });
+      expect(offer.appliedSteps, `rpe ${rpe}`).toBe(1);
+      expect(offer.nudgedWeightKg, `rpe ${rpe}`).toBeGreaterThan(offer.unNudgedWeightKg);
+    }
+  });
+
+  it('lb unit adds the lb increment, not a different architecture', () => {
+    const offer = progressionOffer({
+      credit: CREDIT_FOR_A_PLATE,
+      e1rmKg: 200,
+      targetRpe: 8,
+      unit: 'lb',
+    });
+    expect(offer.appliedSteps).toBe(1);
+    expect(offer.nudgedWeightKg - offer.unNudgedWeightKg).toBe(RPE_LOADING_TUNING.ROUNDING_INCREMENT.lb);
   });
 });
 
@@ -167,7 +196,7 @@ describe('settleTrainingProgress — consume only on realization', () => {
     const settled = settleTrainingProgress({
       prior,
       lift: 'squat',
-      appliedSteps: 3,
+      appliedSteps: 1,
       realized: false,
       sessionStimulus: 0.8,
     });
@@ -178,12 +207,12 @@ describe('settleTrainingProgress — consume only on realization', () => {
     expect(settled.next.deadlift).toBe(3);
   });
 
-  it('a successful realization consumes exactly the applied steps, once', () => {
+  it('a successful realization consumes exactly one opportunity, once', () => {
     const prior = { squat: CREDIT_FOR_A_PLATE, bench: 0, deadlift: 0 };
     const settled = settleTrainingProgress({
       prior,
       lift: 'squat',
-      appliedSteps: 3,
+      appliedSteps: 1,
       realized: true,
       sessionStimulus: 1,
     });
@@ -191,6 +220,18 @@ describe('settleTrainingProgress — consume only on realization', () => {
     expect(settled.earned).toBe(1);
     expect(settled.pending).toBe(1);
     expect(settled.next.squat).toBe(1);
+  });
+
+  it('a caller cannot consume more than one opportunity per session', () => {
+    const settled = settleTrainingProgress({
+      prior: { squat: 40, bench: 0, deadlift: 0 },
+      lift: 'squat',
+      appliedSteps: 3,
+      realized: true,
+      sessionStimulus: 1,
+    });
+    expect(settled.consumed).toBe(CREDIT_FOR_A_PLATE);
+    expect(settled.pending).toBe(40 - CREDIT_FOR_A_PLATE + 1);
   });
 
   it('appliedSteps 0 never consumes, even if realized is true', () => {
@@ -211,7 +252,7 @@ describe('settleTrainingProgress — consume only on realization', () => {
     settleTrainingProgress({
       prior: frozen,
       lift: 'bench',
-      appliedSteps: 3,
+      appliedSteps: 1,
       realized: true,
       sessionStimulus: 1,
     });
@@ -230,5 +271,19 @@ describe('settleTrainingProgress — consume only on realization', () => {
         sessionStimulus: 0,
       }),
     ).toThrow(RangeError);
+  });
+
+  it('other-lift credit is untouched — a squat settlement cannot steal bench', () => {
+    const prior = { squat: CREDIT_FOR_A_PLATE, bench: 9, deadlift: 4 };
+    const settled = settleTrainingProgress({
+      prior,
+      lift: 'squat',
+      appliedSteps: 1,
+      realized: true,
+      sessionStimulus: 1,
+    });
+    expect(settled.next.bench).toBe(9);
+    expect(settled.next.deadlift).toBe(4);
+    expect(settled.next.squat).toBe(1);
   });
 });

@@ -874,14 +874,14 @@ describe('nextBestE1rm', () => {
   });
 
   it('the cap does not bind on anything this loop can produce, at full execution quality', () => {
-    // The largest honest jump is now the earned stimulus cap (4%), still
-    // below MAX (6%). If the per-session guard ever starts biting on a real
-    // session the close-out would show a number the maths does not support.
+    // The honest jump is now one physical increment on the bar. At starting
+    // loads that is well under MAX (6%). If the per-session guard ever starts
+    // biting on a real fixture-load session the close-out would show a number
+    // the maths does not support. Light-load bind is accepted and not retuned.
     const record = withProgressCredit(
       newServerRecord(SIGNUP_DAY),
       liftForDay(0),
-      TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_STEP *
-        TRAINING_PROGRESS_TUNING.MAX_APPLIED_STEPS_PER_SESSION,
+      TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_OPPORTUNITY,
     );
     const played = playAgainst(record, 0, NEUTRAL, 10);
     const closeOut = played.state.closeOut!;
@@ -1244,8 +1244,7 @@ describe('the whole round trip — client proposes, server publishes, client rea
     const record = withProgressCredit(
       newServerRecord(SIGNUP_DAY),
       liftForDay(0),
-      TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_STEP *
-        TRAINING_PROGRESS_TUNING.MAX_APPLIED_STEPS_PER_SESSION,
+      TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_OPPORTUNITY,
     );
     const seed = receiveProgressionSnapshot(snapshotWireFor(record, null));
     expect(seed.ok).toBe(true);
@@ -1361,10 +1360,9 @@ describe('the whole round trip — client proposes, server publishes, client rea
     expect(primedHalf.filter((step) => step.isPr).length).toBeLessThan(5);
 
     // Hard work on squat grows squat and leaves the others. Credit is
-    // thresholded: one session is not a load percent, and a single 0.5%
-    // step often snaps identical at these loads. Keep training this lift
-    // until prior credit actually moves the bar, bounded well past the
-    // 12-credit plate cost.
+    // thresholded: one session is not a load percent. Keep training this
+    // lift until prior credit actually pays for a physical increment,
+    // bounded well past the 12-credit opportunity cost.
     let squatDay = day;
     while (liftForDay(squatDay) !== 'squat') squatDay += 1;
     const firstHard = playAgainst(record, squatDay, NEUTRAL, 9);
@@ -1402,6 +1400,107 @@ describe('the whole round trip — client proposes, server publishes, client rea
     expect(moved, 'earned stimulus eventually moves this lift’s e1RM').toBe(true);
     expect(record.bestE1rmKg.bench).toBe(benchBefore);
     expect(lastKg / SESSION_TUNING.STARTING_E1RM.kilograms.squat).toBeLessThan(1.2);
+  });
+});
+
+describe('training-progress credit is server-authoritative', () => {
+  const OPPORTUNITY = TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_OPPORTUNITY;
+
+  it('the proposal cannot carry credit — there is no field to forge', () => {
+    expect(TRAINING_CARD_REPORT_KEYS).not.toContain('trainingProgressCredit');
+    const proposal = proposalOf([set('squat', 160, 3, 8)]);
+    expect(proposal).not.toHaveProperty('trainingProgressCredit');
+    expect(proposal.report).not.toHaveProperty('trainingProgressCredit');
+    expect(JSON.stringify(proposal)).not.toMatch(/trainingProgressCredit/);
+  });
+
+  it('a heavier forged card without prior credit cannot consume an opportunity', () => {
+    const record = newServerRecord(SIGNUP_DAY);
+    expect(record.trainingProgressCredit.squat).toBe(0);
+    const applied = applyTrainingSession(
+      record,
+      0,
+      proposalOf([set('squat', 200, 3, 8)]),
+      'forge-bar',
+    );
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) return;
+    expect(applied.value.trainingProgress.appliedSteps).toBe(0);
+    expect(applied.value.trainingProgress.consumed).toBe(0);
+    expect(applied.value.record.trainingProgressCredit.squat).toBe(
+      applied.value.trainingProgress.earned,
+    );
+  });
+
+  it('bench credit cannot fund a squat opportunity', () => {
+    const record = withProgressCredit(newServerRecord(SIGNUP_DAY), 'bench', OPPORTUNITY);
+    const applied = applyTrainingSession(
+      record,
+      0,
+      proposalOf([set('squat', 160, 3, 8)]),
+      'steal-bench',
+    );
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) return;
+    expect(applied.value.trainingProgress.consumed).toBe(0);
+    expect(applied.value.record.trainingProgressCredit.bench).toBe(OPPORTUNITY);
+    expect(applied.value.record.trainingProgressCredit.squat).toBe(
+      applied.value.trainingProgress.earned,
+    );
+  });
+
+  it('an unrealized heavier bar does not consume', () => {
+    const lift = liftForDay(0);
+    const record = withProgressCredit(newServerRecord(SIGNUP_DAY), lift, OPPORTUNITY);
+    const applied = applyTrainingSession(
+      record,
+      0,
+      proposalOf([set(lift, 50, 3, 8)]),
+      'no-realize',
+    );
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) return;
+    expect(applied.value.isPr).toBe(false);
+    expect(applied.value.trainingProgress.consumed).toBe(0);
+    expect(applied.value.record.trainingProgressCredit[lift]).toBeGreaterThanOrEqual(OPPORTUNITY);
+  });
+
+  it('the same credit cannot be consumed twice', () => {
+    const lift = liftForDay(0);
+    const record = withProgressCredit(newServerRecord(SIGNUP_DAY), lift, OPPORTUNITY);
+    const first = playAgainst(record, 0, NEUTRAL, 8);
+    const applied = applyTrainingSession(
+      record,
+      0,
+      sessionProposal(first.state.closeOut!, WALL_CLOCK)!,
+      'once',
+    );
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) return;
+    expect(applied.value.trainingProgress.consumed).toBe(OPPORTUNITY);
+    expect(applied.value.isPr).toBe(true);
+
+    const replay = applyTrainingSession(
+      applied.value.record,
+      0,
+      sessionProposal(first.state.closeOut!, WALL_CLOCK)!,
+      'twice',
+    );
+    expect(replay.ok).toBe(false);
+
+    const nextDay = SESSION_TUNING.LIFT_ROTATION.length;
+    expect(liftForDay(nextDay)).toBe(lift);
+    const second = playAgainst(applied.value.record, nextDay, NEUTRAL, 8);
+    const applied2 = applyTrainingSession(
+      applied.value.record,
+      nextDay,
+      sessionProposal(second.state.closeOut!, WALL_CLOCK)!,
+      'next-session',
+    );
+    expect(applied2.ok).toBe(true);
+    if (!applied2.ok) return;
+    expect(applied2.value.trainingProgress.consumed).toBe(0);
+    expect(applied2.value.trainingProgress.appliedSteps).toBe(0);
   });
 });
 

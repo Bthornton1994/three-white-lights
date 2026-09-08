@@ -610,8 +610,7 @@ describe('the row survives a reload (Sprint 2)', () => {
       trainingProgressCredit: { squat: number; bench: number; deadlift: number };
     };
     parsed.trainingProgressCredit[LIFT] =
-      TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_STEP *
-      TRAINING_PROGRESS_TUNING.MAX_APPLIED_STEPS_PER_SESSION;
+      TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_OPPORTUNITY;
     store.text = JSON.stringify(parsed);
     const banked = localSessionServer({ store, sleep: instantly, freshSignupDay: SIGNUP_DAY });
     cache = openingCache(banked);

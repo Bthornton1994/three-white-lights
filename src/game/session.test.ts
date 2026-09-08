@@ -52,6 +52,7 @@ import {
   EMPTY_TRAINING_PROGRESS_CREDIT,
   TRAINING_PROGRESS_TUNING,
   creditForLift,
+  progressionOffer,
 } from './trainingProgress';
 import {
   applyTrainingSession,
@@ -102,9 +103,7 @@ const PRIMED: ReadinessCheckIn = { sleep: 'good', soreness: 'fresh', motivation:
 const READY: ReadinessCheckIn = { sleep: 'good', soreness: 'normal', motivation: 'steady' };
 const WRECKED: ReadinessCheckIn = { sleep: 'poor', soreness: 'sore', motivation: 'flat' };
 
-const CREDIT_FOR_A_PLATE =
-  TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_STEP *
-  TRAINING_PROGRESS_TUNING.MAX_APPLIED_STEPS_PER_SESSION;
+const CREDIT_FOR_A_PLATE = TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_OPPORTUNITY;
 
 function context(overrides: Partial<SessionContext> = {}): SessionContext {
   return {
@@ -745,7 +744,11 @@ describe('prescription — GDD §3.3, RPE target in, weight out', () => {
     expect(failHigh.closeOut?.isPr).toBe(false);
     const eight = runSession(context({ trainingProgressCredit: CREDIT_FOR_A_PLATE }), NEUTRAL, 8, ALL_GOOD);
     expect(eight.closeOut?.isPr).toBe(true);
-    expect(eight.plan?.loadAdjustmentPercent).toBeGreaterThan(0);
+    expect(eight.plan?.loadAdjustmentPercent).toBe(0);
+    const ordinary = progressionOffer({ credit: 0, e1rmKg: 200, targetRpe: 8 });
+    const paid = progressionOffer({ credit: CREDIT_FOR_A_PLATE, e1rmKg: 200, targetRpe: 8 });
+    expect(eight.plan?.weightKg).toBe(paid.nudgedWeightKg);
+    expect(paid.nudgedWeightKg).toBeGreaterThan(ordinary.unNudgedWeightKg);
 
     const primed = runSession(context({ trainingProgressCredit: CREDIT_FOR_A_PLATE }), PRIMED, 8, ALL_GOOD);
     const wrecked = runSession(context({ trainingProgressCredit: CREDIT_FOR_A_PLATE }), WRECKED, 8, ALL_GOOD);
@@ -1440,7 +1443,7 @@ describe('the close-out — GDD §3.2', () => {
     const closeOut = state.closeOut;
     expect(closeOut).not.toBeNull();
     if (closeOut === null) return;
-    expect(state.plan?.loadAdjustmentPercent).toBeGreaterThan(0);
+    expect(state.plan?.loadAdjustmentPercent).toBe(0);
     expect(closeOut.isPr).toBe(true);
     expect(closeOut.prGainKg).toBeGreaterThan(0);
     expect(closeOut.headline).toBe(SESSION_COPY.CLOSE_OUT_PR_HEADLINE);

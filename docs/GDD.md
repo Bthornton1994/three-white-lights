@@ -374,13 +374,14 @@ answers are not an input.
 
 That credit accumulates per lift in `trainingProgress.ts` as
 `TrainingProgressCredit` — server-authoritative, JSON, never a ConfirmedFact,
-never a player-facing meter. Four successful reference sessions bank one
-progression **step** (0.5% of the chart load). A later session of the same
-lift may spend prior credit on a heavier prescription, capped at three
-steps (+1.5%) and only the smallest number of steps that actually moves
-the snapped bar. Today's work does not finance today's bar. Credit is
-consumed only when that heavier bar is realized as a new best e1RM; a
-miss does not burn the bank; a snap-to-identical bar consumes nothing.
+never a player-facing meter. Twelve successful reference sessions bank one
+progression **opportunity**. A later session of the same lift at RPE 7-10
+may spend that prior credit on the ordinary snapped prescription plus one
+existing physical rounding increment (kg 2.5, lb 5). RPE 6 is recovery and
+cannot cash. Today's work does not finance today's bar. Credit is consumed
+only when that heavier bar is realized as a new best e1RM; a miss does not
+burn the bank. A 1.5% / 3-step percent cap was tried and rejected: it
+deadlocked light bars against plate geometry and accelerated heavy ones.
 
 Values are **beta game-pacing parameters, not sports-science claims.**
 Playtesting owns the pace. Career still owns true multi-week training
@@ -5333,17 +5334,19 @@ for three entries; corrected here rather than left as decoration.)
       papered over.
 
 - [x] **Session-over-session growth is coupled to training stimulus —
-      RULED, and now built as thresholded credit, not a compounding
-      percent.** Stimulus of one session lives in `fatigue.ts` as
-      `sessionStimulusCredit` (volume × saturating effort; RPE 8/9/10 of
-      the same completed volume earn the same credit; misses and
+      RULED, and now built as thresholded credit spent on a physical
+      opportunity, not a compounding percent and not a 1.5% cap hiding
+      inside plate snap.** Stimulus of one session lives in `fatigue.ts`
+      as `sessionStimulusCredit` (volume × saturating effort; RPE 8/9/10
+      of the same completed volume earn the same credit; misses and
       failure-only earn nothing; check-in is not an input). Accumulation
       and spending live in `trainingProgress.ts`: a per-lift
-      `TrainingProgressCredit` bank, four successful reference sessions
-      per 0.5% step, at most +1.5% from prior credit, consumed only when
-      the heavier snapped bar is realized. `choose-rpe` applies
-      `progressionOffer`, not three readiness taps and not a harder menu
-      pick. Empty credit cannot mint, so a first session holds.
+      `TrainingProgressCredit` bank, twelve successful reference sessions
+      per opportunity, realization = ordinary snapped bar + one existing
+      rounding increment, RPE 6 ineligible, consumed only when the
+      heavier bar is realized. `choose-rpe` writes `nudgedWeightKg` onto
+      the plan; it does not reconstruct the increment as a percent.
+      Empty credit cannot mint, so a first session holds.
       **`e1rm.ts` and its cancellation property stay untouched.** The old
       primed-tap compounding (200 kg → 770.65 kg over 30 sessions, a PR
       on 30 of 30) is still what `prescribeSession` does if handed a +5%
