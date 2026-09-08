@@ -236,6 +236,45 @@ export function projectFloorPoint(camera: FloorCamera, point: FloorCameraPoint):
   return Object.freeze({ x, y, scale });
 }
 
+/**
+ * VL-3: the three numbers that turn a DRAWN stage y back into a depth scale
+ * — the Play camera's band read the other way round. `projectFloorPoint`
+ * makes screen y linear in scale across the band (`backY` at `backScale`,
+ * `backY + span` at 1), so the inverse is one linear map and needs nothing
+ * else of the camera. Plain numbers on purpose: `AmbientMemberBody`'s prop
+ * surface is pinned to hold no callable, so the body takes these three and
+ * inverts them itself rather than taking a function or the camera object.
+ * Under the plan view `span` is 0, which `depthScaleFromStageY` reads as
+ * "scale 1 everywhere".
+ */
+export interface FloorDepthFrame {
+  readonly backY: number;
+  readonly span: number;
+  readonly backScale: number;
+}
+
+/** The depth frame of a camera: the band's back edge, its screen depth and its back scale; `{0, 0, 1}` under the plan view. */
+export function floorDepthFrame(camera: FloorCamera): FloorDepthFrame {
+  if (camera.kind === 'orthographic') return Object.freeze({ backY: 0, span: 0, backScale: 1 });
+  return Object.freeze({ backY: camera.backY, span: camera.depth, backScale: camera.backScale });
+}
+
+/**
+ * The depth scale at stage y `y`: the exact inverse of `projectFloorPoint`'s
+ * y for a point inside the band (pinned by test to round-trip every row),
+ * clamped to [`backScale`, 1] outside it — a body drawn over a bench's art
+ * can sit a little above the band's back edge and must not grow past the
+ * back row's size, nor shrink under the front row's below the front edge.
+ * A degenerate frame (no span, a non-finite y) is scale 1.
+ */
+export function depthScaleFromStageY(frame: FloorDepthFrame, y: number): number {
+  if (!(frame.span > 0) || !Number.isFinite(y)) return 1;
+  const low = Math.min(frame.backScale, 1);
+  const scale = frame.backScale + ((y - frame.backY) * (1 - frame.backScale)) / frame.span;
+  if (!Number.isFinite(scale)) return 1;
+  return scale < low ? low : scale > 1 ? 1 : scale;
+}
+
 /** The screen width, in pixels, of one tile at row `y`. */
 export function floorTileWidthAt(camera: FloorCamera, y: number): number {
   return camera.tile * floorDepthScale(camera, y);

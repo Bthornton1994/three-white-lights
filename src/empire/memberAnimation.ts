@@ -214,14 +214,44 @@ export function memberAnimationStaggerMs(ordinal: number): number {
 }
 
 /**
+ * VL-3: the phase a body starts ANY time clip of period `periodMs` at — its
+ * stagger offset over that period, wrapped — so the production clip table
+ * (`memberMotionClips.ts`, whose periods are its own) and the two-keypose
+ * clips below share one desync rule rather than two. A non-positive or
+ * non-finite period has no phase to offset and starts at 0.
+ */
+export function memberAnimationStaggerPhase(periodMs: number, ordinal: number): number {
+  if (!Number.isFinite(periodMs) || periodMs <= 0) return 0;
+  return wrapUnit(memberAnimationStaggerMs(ordinal) / periodMs);
+}
+
+/**
+ * VL-3: the factor a body's time-driven periods are stretched by, from its
+ * roster ordinal — the stagger lanes spread over
+ * ±`FLOOR_MEMBER_PERIOD_JITTER_FRACTION`, centred on one. A stagger offset
+ * alone desyncs a crowd only at the start of a clip: two bodies with
+ * different offsets and the same period stay a fixed fraction apart for
+ * ever, which reads as breathing in step with a delay. A period that
+ * differs per body drifts them. Deterministic: no clock, no dice; with one
+ * lane every body gets exactly 1.
+ */
+export function memberAnimationPeriodJitter(ordinal: number): number {
+  const lanes = EMPIRE_TUNING.AMBIENT_MEMBER_BOB_STAGGER_LANES;
+  if (lanes <= 1) return 1;
+  const lane = Math.abs(Math.trunc(ordinal)) % lanes;
+  const centred = (lane / (lanes - 1)) * 2 - 1;
+  return 1 + centred * EMPIRE_TUNING.FLOOR_MEMBER_PERIOD_JITTER_FRACTION;
+}
+
+/**
  * The phase a body starts a clip at: a time clip starts at its stagger
- * offset (`memberAnimationStaggerMs` over the clip's period, wrapped), so a
+ * offset (`memberAnimationStaggerPhase` over the clip's period), so a
  * crowd changing clips together does not rep or breathe in lockstep; a
  * distance clip starts at 0 — a body that has not moved is at contact.
  */
 export function memberAnimationStartPhase(clip: MemberAnimationClip, ordinal: number): number {
   if (memberAnimationDrive(clip) === 'distance') return 0;
-  return wrapUnit(memberAnimationStaggerMs(ordinal) / memberAnimationPeriod(clip));
+  return memberAnimationStaggerPhase(memberAnimationPeriod(clip), ordinal);
 }
 
 /** `value` wrapped into [0, 1). */

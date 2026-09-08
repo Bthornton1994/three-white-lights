@@ -23,7 +23,9 @@ import {
   memberAnimationDrive,
   memberAnimationPeriod,
   memberAnimationPoses,
+  memberAnimationPeriodJitter,
   memberAnimationStaggerMs,
+  memberAnimationStaggerPhase,
   memberAnimationStartPhase,
   sampleMemberAnimation,
   samplePlayback,
@@ -109,6 +111,52 @@ describe('the clip table', () => {
       expect(memberAnimationStartPhase('idle', ordinal)).toBeGreaterThanOrEqual(0);
       expect(memberAnimationStartPhase('idle', ordinal)).toBeLessThan(1);
     }
+  });
+
+  it('VL-3: the stagger phase over any period is what the start phase reads, and a degenerate period starts at 0', () => {
+    const lanes = EMPIRE_TUNING.AMBIENT_MEMBER_BOB_STAGGER_LANES;
+    for (let ordinal = 0; ordinal < lanes * 2; ordinal += 1) {
+      for (const clip of MEMBER_ANIMATION_CLIPS) {
+        if (memberAnimationDrive(clip) === 'distance') continue;
+        expect(memberAnimationStartPhase(clip, ordinal)).toBe(
+          memberAnimationStaggerPhase(memberAnimationPeriod(clip), ordinal),
+        );
+      }
+      const phase = memberAnimationStaggerPhase(EMPIRE_TUNING.FLOOR_MEMBER_IDLE_BREATH_PERIOD_MS, ordinal);
+      expect(phase).toBeCloseTo(
+        (memberAnimationStaggerMs(ordinal) / EMPIRE_TUNING.FLOOR_MEMBER_IDLE_BREATH_PERIOD_MS) % 1,
+        9,
+      );
+    }
+    expect(memberAnimationStaggerPhase(0, 1)).toBe(0);
+    expect(memberAnimationStaggerPhase(-5, 1)).toBe(0);
+    expect(memberAnimationStaggerPhase(Number.NaN, 1)).toBe(0);
+    // Two adjacent ordinals start a breath at different phases: the desync a crowd needs.
+    expect(memberAnimationStaggerPhase(EMPIRE_TUNING.FLOOR_MEMBER_IDLE_BREATH_PERIOD_MS, 0)).not.toBe(
+      memberAnimationStaggerPhase(EMPIRE_TUNING.FLOOR_MEMBER_IDLE_BREATH_PERIOD_MS, 1),
+    );
+  });
+
+  it('VL-3: the period jitter spreads the lanes over ±FLOOR_MEMBER_PERIOD_JITTER_FRACTION, centred on one, and differs between lanes', () => {
+    const lanes = EMPIRE_TUNING.AMBIENT_MEMBER_BOB_STAGGER_LANES;
+    const fraction = EMPIRE_TUNING.FLOOR_MEMBER_PERIOD_JITTER_FRACTION;
+    expect(lanes).toBeGreaterThan(1);
+    expect(fraction).toBeGreaterThan(0);
+    const seen = new Set<number>();
+    let sum = 0;
+    for (let ordinal = 0; ordinal < lanes; ordinal += 1) {
+      const jitter = memberAnimationPeriodJitter(ordinal);
+      expect(jitter).toBeGreaterThanOrEqual(1 - fraction - 1e-12);
+      expect(jitter).toBeLessThanOrEqual(1 + fraction + 1e-12);
+      expect(jitter).toBe(memberAnimationPeriodJitter(ordinal + lanes));
+      seen.add(jitter);
+      sum += jitter;
+    }
+    expect(seen.size).toBe(lanes);
+    expect(sum / lanes).toBeCloseTo(1, 9);
+    expect(memberAnimationPeriodJitter(0)).toBe(1 - fraction);
+    expect(memberAnimationPeriodJitter(lanes - 1)).toBe(1 + fraction);
+    expect(memberAnimationPeriodJitter(-1)).toBe(memberAnimationPeriodJitter(1));
   });
 });
 

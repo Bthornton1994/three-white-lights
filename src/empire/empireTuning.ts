@@ -3031,6 +3031,50 @@ export const EMPIRE_TUNING = Object.freeze({
   FLOOR_MEMBER_CLIP_BLEND_MS: 120,
 
   /**
+   * VL-3: how far, in tiles at the body's own depth, a production member's
+   * DRAWN feet must travel horizontally against its current facing before
+   * the body turns round. The contract's step direction can reverse on one
+   * tick while the playback timeline is still finishing the previous step,
+   * so a facing read off the contract flips a frame before the body turns
+   * and reads as a twitch; a facing read off the drawn velocity with this
+   * much hysteresis turns when the body does. A quarter tile is about one
+   * step's worth of the timeline's one-tick lag.
+   */
+  FLOOR_MEMBER_FACING_FLIP_TILES: 0.25,
+
+  /**
+   * VL-3: how long, in milliseconds, a STANDING production member's
+   * contract facing (the station it is waiting on, the step it is about to
+   * take) must disagree with the way it is drawn facing before it turns.
+   * A body with no drawn velocity has nothing else to turn on, and a
+   * standing body that snapped round on the tick a target was assigned
+   * would be the same twitch one state over. Two sim ticks.
+   */
+  FLOOR_MEMBER_FACING_HINT_MS: 240,
+
+  /**
+   * VL-3: how much, as a fraction either side of one, a production member's
+   * time-driven clip periods (breath, sway, rep, the transitions) are
+   * stretched by its roster ordinal — so two bodies that started a breath
+   * at the same stagger offset still drift apart rather than breathing in
+   * step for ever. Spread over `AMBIENT_MEMBER_BOB_STAGGER_LANES` lanes,
+   * centred on one, deterministic. Six per cent: a breath of 3.2 s runs
+   * between 3.0 and 3.4 s across a crowd, inside what reads as one tempo.
+   */
+  FLOOR_MEMBER_PERIOD_JITTER_FRACTION: 0.06,
+
+  /**
+   * VL-3: the most records the evidence-only motion trace sink
+   * (`FloorGrid.tsx`'s `__empireMotionTrace`, one record per body per
+   * frame when a tool has attached an array) will ever hold. Nothing in the
+   * app reads the sink; a tool that forgets to drain it must not grow the
+   * heap without bound, so pushes stop at this length until the tool
+   * truncates the array. Twenty thousand is about 110 s of three bodies at
+   * 60 Hz, longer than any capture window the tools run.
+   */
+  FLOOR_MEMBER_MOTION_TRACE_CAP: 20000,
+
+  /**
    * Where on a station's drawn art the body of a `using` member is centred,
    * as a fraction of the art's height from its top — the bench pad sits in
    * the upper part of the three-quarter-view bench painting, not at its
@@ -3423,6 +3467,10 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_MEMBER_CATCH_UP_RATE: 'knob',
   FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS: 'knob',
   FLOOR_MEMBER_CLIP_BLEND_MS: 'knob',
+  FLOOR_MEMBER_FACING_FLIP_TILES: 'knob',
+  FLOOR_MEMBER_FACING_HINT_MS: 'knob',
+  FLOOR_MEMBER_PERIOD_JITTER_FRACTION: 'knob',
+  FLOOR_MEMBER_MOTION_TRACE_CAP: 'knob',
   FLOOR_STATION_PAD_FRACTION: 'knob',
   FLOOR_FIXED_ART_HEIGHT_OVER_WIDTH: 'knob',
   FLOOR_MEMBER_MOTION_GROUND_INSET_PX: 'knob',
