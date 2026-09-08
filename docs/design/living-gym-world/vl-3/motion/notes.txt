@@ -1,0 +1,57 @@
+VL-3 motion proof at c8e07e23a581b4b11f2dc83a223b100c3d1eb57e url=http://localhost:8082 — headless desktop browser in a container, NOT a phone
+clip table: 8 clips (walk:16 idle:12 wait:12 walk-to-wait:4 wait-to-walk:4 bench-setup:8 bench-press:12 bench-finish:8), 14 edges, canvas 256 px, stride 1.1 tiles, production types powerlifter
+rig: MISSING CONTRACT: src/empire/memberRig.ts does not exist (export memberRigFrameMetadata expected)
+bounds: walking frame step 0.132 tiles, settle frame 0.416 tiles, scale step 0.0357, gait max skip 2 frames, foot tolerance 0.05 tiles, station tolerance 0.05 tiles, grid rows 6
+390x844 reached the gym at http://localhost:8082/ (no query string)
+390x844 following member:n1:2 (table clip name, seeking the bay); drawn: ["member:n1:1=queuing/walk@training:competition-bench-bay","member:n1:2=seeking/walk@training:competition-bench-bay","member:n1:0=using/use-bench@training:competition-bench-bay"]
+390x844 t=0.0s seeking (clip walk, tick 4, 1 samples, trace 0 records)
+390x844 t=2.9s queuing (clip wait, tick 28, 176 samples, trace 0 records)
+390x844 t=13.8s using (clip use-bench, tick 118, 822 samples, trace 0 records)
+390x844 t=18.0s leaving (clip walk, tick 154, 1072 samples, trace 0 records)
+390x844 t=19.5s queuing (clip wait, tick 166, 1163 samples, trace 0 records)
+390x844 lifecycle order seeking > queuing > using > leaving > queuing over 20.7s: cycle seeking>queuing>using>leaving observed
+390x844 identity DOM: 1173 frames, followed id resolved to exactly one node in all but 0, duplicate-id frames 0, ids member:n1:1, member:n1:2, member:n1:0
+390x844 tickRate 8.332/s measured (164 ticks over 19683 ms) vs nominal 8.333/s = 1000/120; deviation 0.01% vs tolerance 14.60% = mean frame 16.79 ms / 120 + 1/164
+390x844 transitionsLegal DOM: 23 clip change(s), 23 off the table — first {"id":"member:n1:1","at":2343.4,"from":"walk","to":"wait"}; clip names NOT in MEMBER_MOTION_CLIPS: use-bench (VL-2's vocabulary, so this tree draws no production clip yet); edges read from memberMotionClips.ts: 14
+390x844 scaleContinuous DOM: max |Δscale| per frame 0.1538 over 3516 pairs at {"id":"member:n1:1","at":8709.8,"from":0.6996466431095406,"to":0.853448275862069,"lifecycle":"using"}; bound 0.0357 = 0.416 tiles/frame × (1/0.66 − 1)/6 rows (settle-frame bound 34 × (3/360 + 0.34×(1+0.25)×(1+0.1)/120))
+390x844 OBSERVATION (tick-28, unjudged) shared cell while one is using: 21 frame(s) exact — ticks 5,65,121, first {"frame":8,"t":1993.5,"cell":"5,0","members":["member:n1:1:queuing@tick5","member:n1:0:using@tick5"]}; 44 more on the rounded cell only
+390x844 ok   playedPath
+390x844 ok   cycle
+390x844 ok   identity
+390x844 ok   tickRate
+390x844 FAIL transitionsLegal
+390x844 SKIP gaitCycle — window.__empireMotionTrace is empty after the run: FloorGrid.tsx pushed no record — the runtime trace contract is absent on this tree
+390x844 SKIP walkFootPlanted — window.__empireMotionTrace is empty after the run: FloorGrid.tsx pushed no record — the runtime trace contract is absent on this tree
+390x844 SKIP noSkate — window.__empireMotionTrace is empty after the run: FloorGrid.tsx pushed no record — the runtime trace contract is absent on this tree
+390x844 SKIP noFamilySnap — window.__empireMotionTrace is empty after the run: FloorGrid.tsx pushed no record — the runtime trace contract is absent on this tree
+390x844 SKIP stationAttached — window.__empireMotionTrace is empty after the run: FloorGrid.tsx pushed no record — the runtime trace contract is absent on this tree
+390x844 FAIL scaleContinuous
+390x844 SKIP facingStable — window.__empireMotionTrace is empty after the run: FloorGrid.tsx pushed no record — the runtime trace contract is absent on this tree
+390x844 ok   layout
+375x812 reached the gym at http://localhost:8082/ (no query string)
+375x812 following member:n1:2 (table clip name, seeking the bay); drawn: ["member:n1:1=queuing/walk@training:competition-bench-bay","member:n1:2=seeking/walk@training:competition-bench-bay","member:n1:0=using/use-bench@training:competition-bench-bay"]
+375x812 t=0.0s seeking (clip walk, tick 4, 0 samples, trace 0 records)
+375x812 t=3.1s queuing (clip wait, tick 30, 184 samples, trace 0 records)
+375x812 t=13.6s using (clip use-bench, tick 117, 809 samples, trace 0 records)
+375x812 t=17.8s leaving (clip idle, tick 152, 1056 samples, trace 0 records)
+375x812 t=19.4s queuing (clip wait, tick 166, 1154 samples, trace 0 records)
+375x812 lifecycle order seeking > queuing > using > leaving > queuing over 20.4s: cycle seeking>queuing>using>leaving observed
+375x812 identity DOM: 1162 frames, followed id resolved to exactly one node in all but 0, duplicate-id frames 0, ids member:n1:1, member:n1:2, member:n1:0
+375x812 tickRate 8.331/s measured (163 ticks over 19566 ms) vs nominal 8.333/s = 1000/120; deviation 0.03% vs tolerance 14.66% = mean frame 16.85 ms / 120 + 1/163
+375x812 transitionsLegal DOM: 23 clip change(s), 23 off the table — first {"id":"member:n1:1","at":2416.7,"from":"walk","to":"wait"}; clip names NOT in MEMBER_MOTION_CLIPS: use-bench (VL-2's vocabulary, so this tree draws no production clip yet); edges read from memberMotionClips.ts: 14
+375x812 scaleContinuous DOM: max |Δscale| per frame 0.1538 over 3483 pairs at {"id":"member:n1:1","at":8766.5,"from":0.6996466431095406,"to":0.853448275862069,"lifecycle":"using"}; bound 0.0357 = 0.416 tiles/frame × (1/0.66 − 1)/6 rows (settle-frame bound 34 × (3/360 + 0.34×(1+0.25)×(1+0.1)/120))
+375x812 OBSERVATION (tick-28, unjudged) shared cell while one is using: 22 frame(s) exact — ticks 5,65,121, first {"frame":4,"t":2050.1,"cell":"5,0","members":["member:n1:1:queuing@tick5","member:n1:0:using@tick5"]}; 41 more on the rounded cell only
+375x812 ok   playedPath
+375x812 ok   cycle
+375x812 ok   identity
+375x812 ok   tickRate
+375x812 FAIL transitionsLegal
+375x812 SKIP gaitCycle — window.__empireMotionTrace is empty after the run: FloorGrid.tsx pushed no record — the runtime trace contract is absent on this tree
+375x812 SKIP walkFootPlanted — window.__empireMotionTrace is empty after the run: FloorGrid.tsx pushed no record — the runtime trace contract is absent on this tree
+375x812 SKIP noSkate — window.__empireMotionTrace is empty after the run: FloorGrid.tsx pushed no record — the runtime trace contract is absent on this tree
+375x812 SKIP noFamilySnap — window.__empireMotionTrace is empty after the run: FloorGrid.tsx pushed no record — the runtime trace contract is absent on this tree
+375x812 SKIP stationAttached — window.__empireMotionTrace is empty after the run: FloorGrid.tsx pushed no record — the runtime trace contract is absent on this tree
+375x812 FAIL scaleContinuous
+375x812 SKIP facingStable — window.__empireMotionTrace is empty after the run: FloorGrid.tsx pushed no record — the runtime trace contract is absent on this tree
+375x812 ok   layout
+MISSING CONTRACT(S): one or more verdicts were SKIPPED for want of a contract — see the SKIP lines above (rig: MISSING CONTRACT: src/empire/memberRig.ts does not exist (export memberRigFrameMetadata expected)). Exit 3: this run is not a graded pass.

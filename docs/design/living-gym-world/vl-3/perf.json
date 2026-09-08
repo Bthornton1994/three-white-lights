@@ -1,0 +1,253 @@
+{
+  "sha": "c8e07e23a581b4b11f2dc83a223b100c3d1eb57e",
+  "dirty": false,
+  "url": "http://localhost:8082",
+  "generatedAt": "2026-09-08T21:31:05.273Z",
+  "harness": "headless desktop browser in a container; not a device",
+  "sampleMs": 15000,
+  "stallMs": 400,
+  "settleStallStepBoundTiles": 0.4157916666666667,
+  "longFrameMs": 50,
+  "veryLongFrameMs": 100,
+  "results": [
+    {
+      "viewport": "390x844",
+      "entities": {
+        "members": 3,
+        "poseImages": 9,
+        "stationChips": 6,
+        "floorNodes": 61,
+        "documentNodes": 376
+      },
+      "frames": {
+        "frames": 894,
+        "meanMs": 16.77785234899329,
+        "p50Ms": 16.69999999999891,
+        "p95Ms": 16.799999999999272,
+        "p99Ms": 16.80000000000109,
+        "maxMs": 50,
+        "longFrames": 0,
+        "veryLongFrames": 0,
+        "fpsFromMean": 59.60238409536382
+      },
+      "simTicks": {
+        "framesWithTick": 895,
+        "ticksObserved": 125,
+        "tickAdvance": 125,
+        "spanMs": 14999.4,
+        "ticksPerSecond": 8.333666680000533,
+        "nominalTicksPerSecond": 8.333333333333334,
+        "tickJumpsOverOne": 0,
+        "firstTick": 12,
+        "lastTick": 137
+      },
+      "summary": {
+        "meanFrameIntervalMs": 16.77785234899329,
+        "p95FrameIntervalMs": 16.799999999999272,
+        "worstFrameIntervalMs": 50,
+        "entityCount": 3,
+        "entityCountDetail": {
+          "members": 3,
+          "poseImages": 9,
+          "stationChips": 6,
+          "floorNodes": 61,
+          "documentNodes": 376
+        },
+        "simTicksPerSecond": 8.333666680000533,
+        "simTicksPerSecondNominal": 8.333333333333334
+      },
+      "heapStart": {
+        "jsHeapUsedBytes": 53159532,
+        "jsHeapTotalBytes": 81530880,
+        "domNodes": 863,
+        "layoutCount": 16,
+        "recalcStyleCount": 73,
+        "scriptDurationS": 1.279845,
+        "layoutDurationS": 0.024974
+      },
+      "heapEndRaw": {
+        "jsHeapUsedBytes": 49024280,
+        "jsHeapTotalBytes": 120066048,
+        "domNodes": 820,
+        "layoutCount": 98,
+        "recalcStyleCount": 965,
+        "scriptDurationS": 8.495777,
+        "layoutDurationS": 0.041418
+      },
+      "heapEnd": {
+        "jsHeapUsedBytes": 36985868,
+        "jsHeapTotalBytes": 38014976,
+        "domNodes": 820,
+        "layoutCount": 98,
+        "recalcStyleCount": 967,
+        "scriptDurationS": 8.508866,
+        "layoutDurationS": 0.041418
+      },
+      "heapGrowthBytes": -16173664,
+      "interaction": {
+        "openMs": 25.5,
+        "closeMs": 16.5
+      },
+      "stall": {
+        "memberId": "member:n1:2",
+        "stallMs": 400,
+        "samples": 97,
+        "stalledAtMs": 502.7000000000007,
+        "maxFrameGapMs": 400,
+        "maxSingleFrameStepTiles": 0.06471000394998824,
+        "maxSingleFrameStepAtMs": 52.70000000000073,
+        "maxRateTilesPer100ms": 0.38748505359272706,
+        "simRateTilesPer100ms": 0.2833333333333333,
+        "maxDrawnVsContractLagTiles": 0.5568855936894197,
+        "maxLagAtMs": 286,
+        "clipsSeen": [
+          "walk",
+          "wait"
+        ]
+      },
+      "settleStall": {
+        "stallMs": 400,
+        "memberId": "member:n1:0",
+        "edgeAtMs": 47.59999999962747,
+        "stalledAtMs": 448.5,
+        "samples": 124,
+        "pairsJudged": 121,
+        "scaleStepsSkipped": 0,
+        "firstStepAfterStallTiles": 0.37105496812072025,
+        "maxStepAfterStallTiles": 0.37105496812072025,
+        "maxStepAfterStallAtMs": 461.1999999998152,
+        "boundTiles": 0.4157916666666667,
+        "bounded": true
+      },
+      "pageErrors": []
+    },
+    {
+      "viewport": "375x812",
+      "entities": {
+        "members": 3,
+        "poseImages": 9,
+        "stationChips": 6,
+        "floorNodes": 61,
+        "documentNodes": 376
+      },
+      "frames": {
+        "frames": 895,
+        "meanMs": 16.777653631284917,
+        "p50Ms": 16.69999999999891,
+        "p95Ms": 16.700000000000728,
+        "p99Ms": 16.80000000000109,
+        "maxMs": 49.899999999999636,
+        "longFrames": 0,
+        "veryLongFrames": 0,
+        "fpsFromMean": 59.603090037293555
+      },
+      "simTicks": {
+        "framesWithTick": 896,
+        "ticksObserved": 125,
+        "tickAdvance": 125,
+        "spanMs": 15016,
+        "ticksPerSecond": 8.324453915823122,
+        "nominalTicksPerSecond": 8.333333333333334,
+        "tickJumpsOverOne": 0,
+        "firstTick": 14,
+        "lastTick": 139
+      },
+      "summary": {
+        "meanFrameIntervalMs": 16.777653631284917,
+        "p95FrameIntervalMs": 16.700000000000728,
+        "worstFrameIntervalMs": 49.899999999999636,
+        "entityCount": 3,
+        "entityCountDetail": {
+          "members": 3,
+          "poseImages": 9,
+          "stationChips": 6,
+          "floorNodes": 61,
+          "documentNodes": 376
+        },
+        "simTicksPerSecond": 8.324453915823122,
+        "simTicksPerSecondNominal": 8.333333333333334
+      },
+      "heapStart": {
+        "jsHeapUsedBytes": 53349948,
+        "jsHeapTotalBytes": 81793024,
+        "domNodes": 863,
+        "layoutCount": 15,
+        "recalcStyleCount": 77,
+        "scriptDurationS": 1.559932,
+        "layoutDurationS": 0.022502
+      },
+      "heapEndRaw": {
+        "jsHeapUsedBytes": 82519184,
+        "jsHeapTotalBytes": 130813952,
+        "domNodes": 907,
+        "layoutCount": 96,
+        "recalcStyleCount": 971,
+        "scriptDurationS": 9.226591,
+        "layoutDurationS": 0.03913
+      },
+      "heapEnd": {
+        "jsHeapUsedBytes": 36554244,
+        "jsHeapTotalBytes": 38539264,
+        "domNodes": 820,
+        "layoutCount": 96,
+        "recalcStyleCount": 972,
+        "scriptDurationS": 9.227433,
+        "layoutDurationS": 0.03913
+      },
+      "heapGrowthBytes": -16795704,
+      "interaction": {
+        "openMs": 24.799999999813735,
+        "closeMs": 20.5
+      },
+      "stall": {
+        "memberId": "member:n1:0",
+        "stallMs": 400,
+        "samples": 97,
+        "stalledAtMs": 504.7999999992535,
+        "maxFrameGapMs": 400,
+        "maxSingleFrameStepTiles": 0.0486304432348367,
+        "maxSingleFrameStepAtMs": 2004.699999999255,
+        "maxRateTilesPer100ms": 0.29120025889122503,
+        "simRateTilesPer100ms": 0.2833333333333333,
+        "maxDrawnVsContractLagTiles": 0.6988842414740313,
+        "maxLagAtMs": 1954.699999999255,
+        "clipsSeen": [
+          "wait",
+          "walk"
+        ]
+      },
+      "settleStall": {
+        "stallMs": 400,
+        "memberId": "member:n1:0",
+        "edgeAtMs": 54.19999999925494,
+        "stalledAtMs": 455.09999999962747,
+        "samples": 123,
+        "pairsJudged": 120,
+        "scaleStepsSkipped": 0,
+        "firstStepAfterStallTiles": 0.3660157743754483,
+        "maxStepAfterStallTiles": 0.3660157743754483,
+        "maxStepAfterStallAtMs": 460.4999999992542,
+        "boundTiles": 0.4157916666666667,
+        "bounded": true
+      },
+      "pageErrors": []
+    }
+  ],
+  "notes": [
+    "VL-2 performance measurement at c8e07e23a581b4b11f2dc83a223b100c3d1eb57e url=http://localhost:8082 sample=15000ms stall=400ms — headless desktop browser in a container, NOT a phone",
+    "390x844 entities members=3 poseImages=9 stations=6 floorNodes=61 docNodes=376",
+    "390x844 frames n=894 mean=16.78ms p50=16.70 p95=16.80 p99=16.80 max=50.00 long(>50ms)=0 veryLong(>100ms)=0 fps(mean)=59.6",
+    "390x844 SUMMARY meanFrameInterval=16.78ms p95FrameInterval=16.80ms worstFrameInterval=50.00ms entities=3 (members; 9 pose images, 6 stations, 61 floor nodes) simTickRate=8.334/s (nominal 8.333/s = 1000/120; 125 ticks over 14999ms, 125 frames advanced it, 0 by more than one)",
+    "390x844 heap used 50.7MB -> 46.8MB raw, 35.3MB after a forced GC, over 15000ms; DOM nodes 863 -> 820; layouts 16 -> 98",
+    "390x844 interaction bench-tap -> panel 25.5ms, tap -> closed 16.5ms",
+    "390x844 stall 400ms on member:n1:2 (walk/wait): max frame gap 400ms, max single-frame step 0.065 tiles at t=53ms, max rate 0.387 tiles/100ms vs sim 0.283, max drawn-vs-contract lag 0.557 tiles",
+    "390x844 settle stall 400ms at member:n1:0's using edge (t=48ms): first post-stall step 0.371 tiles, max 0.371 tiles at t=461ms over 121 pairs (0 size-step pair(s) excluded), bound 0.416 = 34 x (3/360 + 0.34x(1+0.25)x(1+0.1)/120): ok",
+    "375x812 entities members=3 poseImages=9 stations=6 floorNodes=61 docNodes=376",
+    "375x812 frames n=895 mean=16.78ms p50=16.70 p95=16.70 p99=16.80 max=49.90 long(>50ms)=0 veryLong(>100ms)=0 fps(mean)=59.6",
+    "375x812 SUMMARY meanFrameInterval=16.78ms p95FrameInterval=16.70ms worstFrameInterval=49.90ms entities=3 (members; 9 pose images, 6 stations, 61 floor nodes) simTickRate=8.324/s (nominal 8.333/s = 1000/120; 125 ticks over 15016ms, 125 frames advanced it, 0 by more than one)",
+    "375x812 heap used 50.9MB -> 78.7MB raw, 34.9MB after a forced GC, over 15000ms; DOM nodes 863 -> 820; layouts 15 -> 96",
+    "375x812 interaction bench-tap -> panel 24.8ms, tap -> closed 20.5ms",
+    "375x812 stall 400ms on member:n1:0 (wait/walk): max frame gap 400ms, max single-frame step 0.049 tiles at t=2005ms, max rate 0.291 tiles/100ms vs sim 0.283, max drawn-vs-contract lag 0.699 tiles",
+    "375x812 settle stall 400ms at member:n1:0's using edge (t=54ms): first post-stall step 0.366 tiles, max 0.366 tiles at t=460ms over 120 pairs (0 size-step pair(s) excluded), bound 0.416 = 34 x (3/360 + 0.34x(1+0.25)x(1+0.1)/120): ok"
+  ]
+}

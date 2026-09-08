@@ -1,0 +1,270 @@
+{
+  "sha": "c8e07e23a581b4b11f2dc83a223b100c3d1eb57e",
+  "dirty": false,
+  "url": "http://localhost:5173/owner-playtest.html?scenario=capacity",
+  "generatedAt": "2026-09-08T21:31:33.641Z",
+  "capacityPrice": 180,
+  "results": [
+    {
+      "viewport": "390x844",
+      "verdicts": {
+        "routeIsScenario": true,
+        "funded": true,
+        "floorAndMembersDrawn": true,
+        "playSurface": true,
+        "noShellChrome": true,
+        "noDiagnosticsOnPlay": true,
+        "queueForms": true,
+        "benchOpensPanel": true,
+        "capacityOffered": true,
+        "capacityReachable": true,
+        "priceCharged": true,
+        "secondBenchDrawn": true,
+        "queueRelieved": true,
+        "stillMoving": true,
+        "noPageErrors": true
+      },
+      "frames": [
+        "owner-route-390x844-before.png",
+        "owner-route-390x844-queue.png",
+        "owner-route-390x844-panel.png",
+        "owner-route-390x844-after.png",
+        "owner-route-390x844-relief.png"
+      ],
+      "pageErrors": [],
+      "address": "http://localhost:5173/owner-playtest.html?scenario=capacity",
+      "funds": {
+        "text": "gym bucks: 357.84",
+        "value": 357.84
+      },
+      "surface": {
+        "members": [
+          {
+            "id": "member:n1:1",
+            "lifecycle": "queuing",
+            "cell": "5,1",
+            "tick": "2",
+            "clip": "walk"
+          },
+          {
+            "id": "member:n1:2",
+            "lifecycle": "seeking",
+            "cell": "1.4091003063088283,2",
+            "tick": "2",
+            "clip": "walk"
+          },
+          {
+            "id": "member:n1:0",
+            "lifecycle": "using",
+            "cell": "5,0",
+            "tick": "2",
+            "clip": "use-bench"
+          }
+        ],
+        "floor": {
+          "present": true,
+          "opacity": 1,
+          "box": {
+            "x": 0,
+            "y": 72,
+            "w": 390,
+            "h": 625
+          },
+          "insideViewport": true,
+          "drawn": true
+        },
+        "fab": {
+          "present": true,
+          "opacity": 1,
+          "box": {
+            "x": 300.765625,
+            "y": 654,
+            "w": 73.234375,
+            "h": 44
+          },
+          "insideViewport": true,
+          "drawn": true
+        },
+        "dock": {
+          "present": true,
+          "opacity": 1,
+          "box": {
+            "x": 0,
+            "y": 697,
+            "w": 390,
+            "h": 65
+          },
+          "insideViewport": true,
+          "drawn": true
+        },
+        "shellPill": {
+          "present": false
+        },
+        "diagnostics": {
+          "present": true,
+          "opacity": 0,
+          "box": {
+            "x": 0,
+            "y": 0,
+            "w": 0,
+            "h": 0
+          },
+          "insideViewport": false,
+          "drawn": false
+        },
+        "devControls": {
+          "present": true,
+          "opacity": 0,
+          "box": {
+            "x": 0,
+            "y": 0,
+            "w": 0,
+            "h": 0
+          },
+          "insideViewport": false,
+          "drawn": false
+        },
+        "diagnosticsToggle": {
+          "present": true,
+          "opacity": 0,
+          "box": {
+            "x": 0,
+            "y": 72,
+            "w": 1,
+            "h": 1
+          },
+          "insideViewport": true,
+          "drawn": false
+        }
+      },
+      "queue": {
+        "hit": true,
+        "members": [
+          {
+            "id": "member:n1:1",
+            "lifecycle": "queuing",
+            "cell": "5,0",
+            "tick": "5",
+            "clip": "walk"
+          },
+          {
+            "id": "member:n1:2",
+            "lifecycle": "seeking",
+            "cell": "2,2.4091003063088285",
+            "tick": "5",
+            "clip": "walk"
+          },
+          {
+            "id": "member:n1:0",
+            "lifecycle": "using",
+            "cell": "5,0",
+            "tick": "5",
+            "clip": "use-bench"
+          }
+        ],
+        "afterMs": 7
+      },
+      "capacityRow": {
+        "box": {
+          "x": 12,
+          "y": 569,
+          "w": 366,
+          "h": 44
+        },
+        "insideViewport": true,
+        "hitTestInsideRow": true,
+        "hitTestId": "floorgrid-station-panel-upgrade-capacity",
+        "text": "Second bench — two can train at once (180)"
+      },
+      "capacityUnavailable": null,
+      "purchase": {
+        "before": 357.84,
+        "after": 177.83999999999997,
+        "price": 180
+      },
+      "expansion": {
+        "bay": {
+          "present": true,
+          "opacity": 1,
+          "box": {
+            "x": 234.890625,
+            "y": 474.8125,
+            "w": 79.796875,
+            "h": 79.796875
+          },
+          "insideViewport": true,
+          "drawn": true
+        },
+        "sprite": {
+          "present": true,
+          "opacity": 1,
+          "box": {
+            "x": 234.890625,
+            "y": 474.8125,
+            "w": 79.796875,
+            "h": 79.796875
+          },
+          "insideViewport": true,
+          "drawn": true
+        },
+        "picture": "/empire-art/eq-flat-bench.png",
+        "drawn": true
+      },
+      "relief": {
+        "hit": true,
+        "members": [
+          {
+            "id": "member:n1:0",
+            "lifecycle": "using",
+            "cell": "2,2",
+            "tick": "11",
+            "clip": "use-bench"
+          },
+          {
+            "id": "member:n1:1",
+            "lifecycle": "using",
+            "cell": "7,0",
+            "tick": "11",
+            "clip": "use-bench"
+          },
+          {
+            "id": "member:n1:2",
+            "lifecycle": "seeking",
+            "cell": "2,3.5908996936911715",
+            "tick": "11",
+            "clip": "walk"
+          }
+        ],
+        "afterMs": 5
+      }
+    }
+  ],
+  "notes": [
+    "VL-3 owner route check at c8e07e23a581b4b11f2dc83a223b100c3d1eb57e url=http://localhost:5173/owner-playtest.html?scenario=capacity — opened BY URL with the scenario query on purpose; this is the owner's route, not the played in-app path",
+    "390x844 opened http://localhost:5173/owner-playtest.html?scenario=capacity (the scenario route)",
+    "390x844 HUD \"gym bucks: 357.84\" — Capacity price 180: funded",
+    "390x844 floor drawn with 3 member(s) [\"member:n1:1=queuing@5,1\",\"member:n1:2=seeking@1.4091003063088283,2\",\"member:n1:0=using@5,0\"]; BUILD fab drawn, dock drawn; shell pill absent; diagnostics readout in the More drawer, not drawn; dev controls in the More drawer, not drawn; diagnostics toggle opacity 0",
+    "390x844 queue: one using and one queuing after 7 ms — [\"member:n1:1=queuing@5,0 tick5\",\"member:n1:2=seeking@2,2.4091003063088285 tick5\",\"member:n1:0=using@5,0 tick5\"]",
+    "390x844 bench pressed: true; station panel opened",
+    "390x844 Capacity row \"Second bench — two can train at once (180)\" box {\"x\":12,\"y\":569,\"w\":366,\"h\":44}, inside viewport true, hit-test resolves to floorgrid-station-panel-upgrade-capacity",
+    "390x844 pressed Capacity: gym bucks 357.84 -> 177.83999999999997 (price 180)",
+    "390x844 expansion bench drawn: bay {\"x\":234.890625,\"y\":474.8125,\"w\":79.796875,\"h\":79.796875} opacity 1, sprite opacity 1, picture eq-flat-bench.png",
+    "390x844 relief: two using after 5 ms — [\"member:n1:0=using@2,2 tick11\",\"member:n1:1=using@7,0 tick11\",\"member:n1:2=seeking@2,3.5908996936911715 tick11\"]",
+    "390x844 one second later: ticks 12 -> 21, drawn boxes moved",
+    "390x844 ok   routeIsScenario",
+    "390x844 ok   funded",
+    "390x844 ok   floorAndMembersDrawn",
+    "390x844 ok   playSurface",
+    "390x844 ok   noShellChrome",
+    "390x844 ok   noDiagnosticsOnPlay",
+    "390x844 ok   queueForms",
+    "390x844 ok   benchOpensPanel",
+    "390x844 ok   capacityOffered",
+    "390x844 ok   capacityReachable",
+    "390x844 ok   priceCharged",
+    "390x844 ok   secondBenchDrawn",
+    "390x844 ok   queueRelieved",
+    "390x844 ok   stillMoving",
+    "390x844 ok   noPageErrors"
+  ]
+}
