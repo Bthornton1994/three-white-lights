@@ -124,6 +124,7 @@ lane owns, unless a crossing is written in this section **before** the work.
 - `worldView.ts` — occupancy facts for the renderer; not a second sim
 - `stationView.ts` — mechanical HUD facts and copy selectors; Claude styles how they appear
 - `presentationState.ts` — the renderer-independent world snapshot **Grok writes and Claude reads**
+- `facilityPersistence.ts` — versioned facility save/load. Hosts write the encoded bytes through a store they own; this directory still does not name `localStorage`. Restores durable gym truth (facility, clock, management, week plan, living history). FloorSim pose is TRANSIENT.
 - matching `*.test.ts` for those modules
 - `docs/design/SESSION-B-PRESENTATION-CONTRACT.md`
 - `docs/design/LIVING-GYM-WORLD.md` (architecture diagnosis)
@@ -168,13 +169,29 @@ If a lane needs a file it does not own:
 Scope changes are written here **before** crossing the boundary. That is the
 repo's own coordination rule and it still holds.
 
+### Crossing this slice — facility persistence (Grok Build Session B)
+
+**No Session A file is edited.** Persistence I/O is a host-owned `FacilitySaveStore`.
+Empire encodes and decodes bytes; it does not call the store. `src/shell/AppShell.tsx` /
+`shellRoute.ts` / `src/game/progression.ts` stay untouched. Host wiring of the store
+into GymHost is a later serialised crossing, not this slice.
+
+`facilityPersistence.ts` **reads** Grok-owned `GymViewState` / `createGymViewState`
+from mixed `ladderView.tsx`. It does not edit that file's JSX.
+
+`presentationState.ts` gains no new fields. `PersistableFacilityTruth` stays
+the durable facility/layout subset. The v1 body is `FacilitySaveTruthV1`
+(facility + clock + management + week + living). FloorSim pose, queues, and
+in-flight timers are TRANSIENT and are not saved. Schema version 1 is amended
+in place: the PR is draft, the host is unwired, and no external v1 bytes exist.
+
 ### Branch / worktree policy
 
 | Lane | Branches | Worktree |
 |---|---|---|
 | Grok Build Session A | Session A mechanics branches | own worktree; stays out of `src/empire/**`; owns lift / RPE / fatigue / progression math and the lift presentation contract |
 | Claude Code Session A | Session A visual branches | own worktree; stays out of `src/empire/**`; owns athlete presentation, Session A rendering, training UI/UX |
-| Grok Build Session B | `grok/session-b-*` (mechanics / contract). Current contract lane: `grok/session-b-presentation-contract` (draft PR #52), stacked on living-world #51 | do not rebase or merge Session A or `main` |
+| Grok Build Session B | `grok/session-b-*` (mechanics / contract). Frozen contract: `grok/session-b-presentation-contract` (draft PR #52 @ `124fb132`). Current persistence lane: `grok/session-b-facility-persistence-01` | do not rebase or merge Session A or `main`; do not rewrite #52 |
 | Claude Code Session B | visual stacked drafts: #46 Iron & Amber home, #49 art-01/art-02, #51 living-world occupancy renderer | do not modify #46 / #49 / #51 contents from the Grok lane; do not merge them |
 
 - Name every Session B worktree branch `claude/*` or `grok/session-b-*` so the

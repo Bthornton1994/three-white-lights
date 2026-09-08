@@ -433,6 +433,7 @@ import * as stationCapabilityModule from './stationCapability';
 import * as trainingStationModule from './trainingStation';
 import * as worldViewModule from './worldView';
 import * as presentationStateModule from './presentationState';
+import * as facilityPersistenceModule from './facilityPersistence';
 
 import { EMPIRE_TUNING } from './empireTuning';
 import type {
@@ -1312,6 +1313,18 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.members[].id',
       'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.members[].displayName',
       'livingMembers.ts#reconcileLivingMemberRosterOnRelocation#return.members[].recentVisits[].stationKey',
+      'facilityPersistence.ts#decodeFacilitySave#return.envelope.truth.living.members[].recentVisits[].stationKey',
+      'facilityPersistence.ts#loadFacilitySave#return.envelope.truth.living.members[].recentVisits[].stationKey',
+      'facilityPersistence.ts#persistableGymTruthFromGymView#return.living.members[].recentVisits[].stationKey',
+      'facilityPersistence.ts#restoreDurableFacility#return.roster.members[].displayName',
+      'facilityPersistence.ts#restoreDurableFacility#return.roster.members[].id',
+      'facilityPersistence.ts#restoreDurableFacility#return.roster.members[].recentVisits[].stationKey',
+      'facilityPersistence.ts#restoreGymViewState#return.livingMembers.members[].displayName',
+      'facilityPersistence.ts#restoreGymViewState#return.livingMembers.members[].id',
+      'facilityPersistence.ts#restoreGymViewState#return.livingMembers.members[].recentVisits[].stationKey',
+      'facilityPersistence.ts#presentationInputFromRestored#return.roster.members[].displayName',
+      'facilityPersistence.ts#presentationInputFromRestored#return.roster.members[].id',
+      'facilityPersistence.ts#presentationInputFromRestored#return.roster.members[].recentVisits[].stationKey',
     ]),
   }),
   Object.freeze({
@@ -1327,6 +1340,7 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'floorSim.ts#stepFloorSimWithObservations#return.observations[].memberId',
       'floorSim.ts#stepFloorSimWithObservations#return.state.members[].memberId',
       'floorSim.ts#withAmbientLivingPopulation#return.livingPopulation[].memberId',
+      'facilityPersistence.ts#presentationInputFromRestored#return.sim.members[].memberId',
     ]),
   }),
   Object.freeze({
@@ -1339,7 +1353,18 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'presentationState.ts#presentationWorld#return.stations[].queueIds[]',
       'presentationState.ts#presentationWorld#return.stations[].seats[].usingId',
       'presentationState.ts#presentationWorld#return.stations[].usingIds[]',
+      'facilityPersistence.ts#restoredPresentationWorld#return.members[].id',
+      'facilityPersistence.ts#restoredPresentationWorld#return.stations[].approachingIds[]',
+      'facilityPersistence.ts#restoredPresentationWorld#return.stations[].queueIds[]',
+      'facilityPersistence.ts#restoredPresentationWorld#return.stations[].seats[].usingId',
+      'facilityPersistence.ts#restoredPresentationWorld#return.stations[].usingIds[]',
     ]),
+  }),
+  Object.freeze({
+    field: 'facility save envelope JSON',
+    why:
+      'encodeFacilitySave returns the versioned envelope as JSON text. The payload is free-form serialized facility truth, not a closed union, and a brand would add a constructor without a check that means anything. Instrument B containment-scans every produced byte; facilityPersistence.test.ts pins encode as deterministic and decode as fail-closed on corrupt or unsupported bytes.',
+    positions: Object.freeze(['facilityPersistence.ts#encodeFacilitySave#return']),
   }),
   Object.freeze({
     field: 'ironAmberArt owned-art URI stems',
@@ -1708,7 +1733,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 31, // presentation-state contract presentationState.ts
+  MODULES: 32, // facilityPersistence.ts facility save/load
   // 273 -> 280: GymView's four new exports (createGymViewState, GymViewState,
   // GymViewAction, GymViewRefusal don't count as runtime exports — the seven
   // that do are createGymViewState, gymViewReduce, GymView from ladderView.tsx
@@ -1811,7 +1836,7 @@ const SURFACE_CENSUS = Object.freeze({
   // stationChangeoverSeats, stationChangeoverTicks, playerFacingStationOperation.
   // 429 -> 432: Stage D2.2 plateLoadingProgress, plateLoadingDiscs,
   // ladderDevClockTestId.
-  EXPORTS: 484, // presentation-state contract plus floorSim.claimantsOf
+  EXPORTS: 498, // facilityPersistence.ts 14 runtime save/load exports
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1830,8 +1855,8 @@ const SURFACE_CENSUS = Object.freeze({
   // 122 -> 125: Stage D playerFacingUpgradeLabel/Effect/Refuse.
   // 128 -> 130: Stage D.1b bay qualityBench + plateTree URI leaves.
   // 130 -> 132: Stage D2.1B changeoverSeatKey + playerFacingStationOperation.
-  BARE_POSITIONS: 197, // presentationState.ts seats[].usingId
-  BARE_FIELDS: 8, // presentationState.ts GymMemberId group
+  BARE_POSITIONS: 216, // facilityPersistence restore/encode identity and JSON
+  BARE_FIELDS: 9, // facility save envelope JSON group
   BRANDED_POSITIONS: 34,
   /**
    * Zero, and the zero is the sixteenth bypass's repair rather than a fact
@@ -1953,7 +1978,7 @@ const SURFACE_CENSUS = Object.freeze({
 // for, the same as `isSoundCondition`'s addition above. Read from this pin's
 // own failure value.
   // 3970 -> 4024: Stage C.1b GymSurface / furniture-place unions and FloorState.furniture.
-  LITERAL_POSITIONS: 4613, // presentation-state PresentationSeat field
+  LITERAL_POSITIONS: 5613, // facilityPersistence decode/load closed unions
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -2000,7 +2025,7 @@ const SURFACE_CENSUS = Object.freeze({
   // and StationUpgradeRefuseReason.
   // 243 -> 247: Stage D.1 — 'training', 'competition-bench-bay', 'primary',
   // 'expansion'.
-  DISTINCT_LITERAL_MEMBERS: 274, // presentationState.ts FloorState['placements']
+  DISTINCT_LITERAL_MEMBERS: 295, // FacilitySaveTruthV1 domain names
   DEPTH_CUTS: 0,
 });
 
@@ -3036,7 +3061,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // calls no brand constructor either.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts joins the walk; it
   // calls no brand constructor either.
-  MODULES: 31, // presentation-state contract presentationState.ts
+  MODULES: 32, // facilityPersistence.ts facility save/load
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -3192,7 +3217,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // and FloorGrid presentation helpers. Read from this pin's own failure.
   // 3361 -> 3375: Stage D2.1A live-Capacity seat assignment / relocate helpers.
   // 3375 -> 3405: Stage D2.1B changeover helpers + FloorGrid loading path.
-  CALLS_EXAMINED: 3841, // presentationSeats + PresentationSeat freeze calls
+  CALLS_EXAMINED: 4192, // facilityPersistence.ts v1 body decode/encode Object.freeze
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3391,7 +3416,7 @@ describe('instrument C — a raw string becomes a brand in a countable number of
     // (static frozen data with no branch point, read and containment-scanned
     // unconditionally) lives at the group.
     expect(DECLARED_BARE_STRING_FIELDS.length).toBe(SURFACE_CENSUS.BARE_FIELDS);
-    expect(SURFACE_CENSUS.BARE_FIELDS).toBe(8); // presentationState.ts GymMemberId group
+    expect(SURFACE_CENSUS.BARE_FIELDS).toBe(9); // facility save envelope JSON group
     const keyGroup = DECLARED_BARE_STRING_FIELDS.find((group) =>
       group.field.includes('ReactElement.key'),
     );
@@ -3759,6 +3784,7 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'trainingStation.ts': trainingStationModule as unknown as Readonly<Record<string, unknown>>,
   'worldView.ts': worldViewModule as unknown as Readonly<Record<string, unknown>>,
   'presentationState.ts': presentationStateModule as unknown as Readonly<Record<string, unknown>>,
+  'facilityPersistence.ts': facilityPersistenceModule as unknown as Readonly<Record<string, unknown>>,
   'livingMemberExperience.ts': livingMemberExperienceModule as unknown as Readonly<Record<string, unknown>>,
   'livingMemberRetention.ts': livingMemberRetentionModule as unknown as Readonly<Record<string, unknown>>,
   'livingMembers.ts': livingMembersModule as unknown as Readonly<Record<string, unknown>>,
@@ -7560,6 +7586,122 @@ function driveEverything(): readonly DrivenRow[] {
       () => presentationStateModule.persistableFacilityTruth(presentationInput),
       [presentationInput],
     );
+  }
+
+  // --- facilityPersistence.ts (Session B facility save/load)
+  {
+    const persistenceRoster = livingMembersModule.createLivingMemberRoster(
+      'garage',
+      [...EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT],
+      [],
+      0,
+      EMPIRE_TUNING.FLOOR_SIM_RENDER_SEED,
+    );
+    const persistenceFloor = floorModule.createFloorState('garage');
+    const persistenceManaged = managementModule.createManagedGym();
+    const persistenceContext = Object.freeze({
+      rung: 'garage' as const,
+      floor: persistenceFloor,
+      barbellOwned: [...EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT],
+      sessionOwned: [] as readonly SessionEquipmentItem[],
+      capability: {},
+      livingPopulation: livingMembersModule.floorSimPopulationFromRoster(persistenceRoster),
+    });
+    const persistenceSim = floorSimModule.createFloorSimState(
+      persistenceContext,
+      EMPIRE_TUNING.FLOOR_SIM_RENDER_SEED,
+    );
+    const persistenceInput = Object.freeze({
+      sim: persistenceSim,
+      floor: persistenceFloor,
+      roster: persistenceRoster,
+      managed: persistenceManaged,
+      capability: {},
+    });
+    const persistenceTruth = facilityPersistenceModule.persistableGymTruthFromGymView(
+      ladderViewModule.createGymViewState(),
+    );
+    const persistenceBytes = facilityPersistenceModule.encodeFacilitySave(persistenceTruth);
+    drive('FACILITY_SAVE_KIND', 'value', () => facilityPersistenceModule.FACILITY_SAVE_KIND);
+    drive(
+      'FACILITY_SAVE_SCHEMA_VERSION',
+      'value',
+      () => facilityPersistenceModule.FACILITY_SAVE_SCHEMA_VERSION,
+    );
+    drive(
+      'DURABLE_FACILITY_TRUTH_FIELDS',
+      'value',
+      () => facilityPersistenceModule.DURABLE_FACILITY_TRUTH_FIELDS,
+    );
+    drive(
+      'FACILITY_SAVE_TRUTH_DOMAINS',
+      'value',
+      () => facilityPersistenceModule.FACILITY_SAVE_TRUTH_DOMAINS,
+    );
+    drive('encodeFacilitySave', 'garage', () => facilityPersistenceModule.encodeFacilitySave(persistenceTruth), [
+      persistenceTruth,
+    ]);
+    drive('decodeFacilitySave', 'garage', () => facilityPersistenceModule.decodeFacilitySave(persistenceBytes), [
+      persistenceBytes,
+    ]);
+    drive(
+      'decodeFacilitySave',
+      'empty',
+      () => facilityPersistenceModule.decodeFacilitySave(persistenceBytes.slice(0, 0)),
+      [persistenceBytes.slice(0, 0)],
+    );
+    drive('decodeFacilitySave', 'corrupt', () => facilityPersistenceModule.decodeFacilitySave('{'), ['{']);
+    drive('loadFacilitySave', 'garage', () => facilityPersistenceModule.loadFacilitySave(persistenceBytes), [
+      persistenceBytes,
+    ]);
+    drive('loadFacilitySave', 'empty', () => facilityPersistenceModule.loadFacilitySave(null), [null]);
+    drive('loadFacilitySave', 'corrupt', () => facilityPersistenceModule.loadFacilitySave('{'), ['{']);
+    drive(
+      'restoreDurableFacility',
+      'garage',
+      () => facilityPersistenceModule.restoreDurableFacility(persistenceTruth),
+      [persistenceTruth],
+    );
+    drive(
+      'presentationInputFromRestored',
+      'garage',
+      () =>
+        facilityPersistenceModule.presentationInputFromRestored(
+          facilityPersistenceModule.restoreDurableFacility(persistenceTruth),
+        ),
+      [persistenceTruth],
+    );
+    drive(
+      'restoreGymViewState',
+      'garage',
+      () => facilityPersistenceModule.restoreGymViewState(persistenceTruth),
+      [persistenceTruth],
+    );
+    drive(
+      'persistableGymTruthFromGymView',
+      'garage',
+      () =>
+        facilityPersistenceModule.persistableGymTruthFromGymView(
+          facilityPersistenceModule.restoreGymViewState(persistenceTruth),
+        ),
+      [persistenceTruth],
+    );
+    drive(
+      'persistableTruthFromGymView',
+      'garage',
+      () =>
+        facilityPersistenceModule.persistableTruthFromGymView(
+          facilityPersistenceModule.restoreGymViewState(persistenceTruth),
+        ),
+      [persistenceTruth],
+    );
+    drive(
+      'restoredPresentationWorld',
+      'garage',
+      () => facilityPersistenceModule.restoredPresentationWorld(persistenceTruth),
+      [persistenceTruth],
+    );
+    drive('bayAxisLevels', 'stock', () => facilityPersistenceModule.bayAxisLevels({}), [{}]);
   }
 
   // --- sessions.ts (GDD §5 v2, stage 2)
@@ -11465,7 +11607,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 593544 -> 595928: Stage C.1b furniture-layout exports, GYM_SURFACES, and
   // the larger GymScreen tree. Re-measured by running this assertion.
   // 595954 -> 595972: Stage C.1d playerFacing* drives.
-  ROWS: 600687, // claimantsOf drive plus presentation snapshot helpers
+  ROWS: 600709, // facilityPersistence decode/load empty and refused arms
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -11492,7 +11634,7 @@ const DRIVE_CENSUS = Object.freeze({
   // exports (isRecoveryBlocking, recoveryBlockingItems), both driven above.
   // 382 -> 389: Stage C.1b six floor furniture exports + GYM_SURFACES.
   // 393 -> 396: Stage C.1d three playerFacing* drives.
-  EXPORTS_DRIVEN: 484, // presentation-state contract plus floorSim.claimantsOf
+  EXPORTS_DRIVEN: 498, // facilityPersistence.ts 14 runtime save/load exports
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -11585,7 +11727,7 @@ const DRIVE_CENSUS = Object.freeze({
   // failure value.
   // 6490388 -> 6510102: Stage C.1b furniture/dock GymScreen trees. Measured.
   // 6510907 -> 6510913: Stage C.1d playerFacing* drive rows.
-  NODES: 6546638, // presentationWorld seats array walked on the garage drive
+  NODES: 6547061, // facilityPersistence decode/load empty and refused arms
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -11706,7 +11848,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 30_203_395, // presentationWorld seats keys walked on the garage drive
+  STRINGS: 30_204_549, // facilityPersistence decode/load empty and refused arms
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -11816,7 +11958,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
   // 3973 -> 3975: Stage D2 reset-gym copy / wear-truth strings. Read from
   // this pin's own failure value.
-  DISTINCT_STRINGS: 4358, // presentationWorld seats / usingId / changeoverTicks keys
+  DISTINCT_STRINGS: 4371, // facilityPersistence empty/refused kind and reason strings
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
   DEPTH_CUTS: 7,
   /**
@@ -12717,10 +12859,16 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   // assertion and reading its failure value.
   ['declineRepair#declined', 15],
   ['declineRepair#refused', 9],
+  ['decodeFacilitySave#empty', 1],
+  ['decodeFacilitySave#loaded', 1],
+  ['decodeFacilitySave#refused', 1],
   ['dismissManager#dismissed', 2],
   ['dismissManager#refused', 5],
   ['hireManager#hired', 9],
   ['hireManager#refused', 10],
+  ['loadFacilitySave#empty', 1],
+  ['loadFacilitySave#loaded', 1],
+  ['loadFacilitySave#refused', 1],
   ['maintenancePrompt#offered', 5],
   ['maintenancePrompt#quiet', 1],
   // GDD §5.14 Stage B: measured by running this exact assertion rather than
@@ -15800,6 +15948,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'empireTuning.ts': 3,
       'engagement.ts': 2,
       'expansion.ts': 7,
+      'facilityPersistence.ts': 4,
       'floorSim.ts': 3,
       'floorSprites.ts': 7,
       'ladder.ts': 1,
@@ -15828,6 +15977,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'empireInvariant.ts': 60,
       'engagement.ts': 23,
       'expansion.ts': 47,
+      'facilityPersistence.ts': 207,
       'floor.ts': 38,
       'FloorGrid.tsx': 85,
       'floorSim.ts': 76,
@@ -15906,6 +16056,7 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'empireInvariant.ts': 8,
   'engagement.ts': 13,
   'expansion.ts': 3,
+  'facilityPersistence.ts': 9,
   'floor.ts': 13,
   'floorSim.ts': 7,
   'ladder.ts': 20,
@@ -16270,6 +16421,14 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'engagement.ts:437 returned=unfollowable:gym',
   'engagement.ts:455 returned=unfollowable:gym',
   'expansion.ts:549 returned=unfollowable:state',
+  'facilityPersistence.ts:1244 returned=unfollowable:truth',
+  'facilityPersistence.ts:1251 returned=unfollowable:restored',
+  'facilityPersistence.ts:1254 returned=unfollowable:restored',
+  'facilityPersistence.ts:1267 returned=unfollowable:restored',
+  'facilityPersistence.ts:1268 returned=unfollowable:restored',
+  'facilityPersistence.ts:1269 returned=unfollowable:restored',
+  'facilityPersistence.ts:1270 returned=unfollowable:restored',
+  'facilityPersistence.ts:376 receiver=ArrayLiteralExpression',
   'floor.ts:586 returned=unfollowable:floor',
   'floor.ts:653 returned=unfollowable:floor',
   'floor.ts:663 returned=unfollowable:floor',
@@ -16298,10 +16457,10 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'livingMembers.ts:269 returned=unfollowable:roster',
   'management.ts:1473 returned=unfollowable:state',
   'pacing.ts:246 receiver=CallExpression',
-  'presentationState.ts:268 returned=unfollowable:input',
   'presentationState.ts:271 returned=unfollowable:input',
-  'presentationState.ts:423 returned=unfollowable:station',
-  'presentationState.ts:614 returned=unfollowable:input',
+  'presentationState.ts:274 returned=unfollowable:input',
+  'presentationState.ts:426 returned=unfollowable:station',
+  'presentationState.ts:617 returned=unfollowable:input',
   'recruitment.ts:388 returned=unfollowable:state',
   'sessions.ts:563 receiver=ArrayLiteralExpression',
   'sessions.ts:656 returned=unfollowable:state',
@@ -16327,6 +16486,19 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'engagement.ts:437 EmpireState asked=true walked=false',
   'engagement.ts:455 EmpireState asked=true walked=false',
   'expansion.ts:549 EmpireClock asked=true walked=false',
+  'facilityPersistence.ts:1087 PersistableFacilityTruth asked=true walked=false',
+  'facilityPersistence.ts:1244 { readonly allocation: WeekAllocation; readonly allocationSetThisWeek: boolean; readonly weekLog: readonly GymWeekReport[]; } asked=true walked=false',
+  'facilityPersistence.ts:1251 FloorState asked=true walked=false',
+  'facilityPersistence.ts:1254 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'facilityPersistence.ts:1267 FloorState asked=true walked=false',
+  'facilityPersistence.ts:1268 LivingMemberRoster asked=true walked=false',
+  'facilityPersistence.ts:1269 ManagedGym asked=true walked=false',
+  'facilityPersistence.ts:1270 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'facilityPersistence.ts:1280 ManagedGym asked=true walked=false',
+  'facilityPersistence.ts:1281 FloorState asked=true walked=false',
+  'facilityPersistence.ts:1282 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'facilityPersistence.ts:1283 LivingMemberRoster asked=true walked=false',
+  'facilityPersistence.ts:1287 readonly GymWeekReport[] asked=true walked=false',
   'floor.ts:586 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
   'floor.ts:653 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
   'floor.ts:663 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
@@ -16393,12 +16565,12 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'management.ts:2690 ManagedGym asked=true walked=false',
   'pacing.ts:292 LadderState asked=true walked=false',
   'pacing.ts:298 LadderState asked=true walked=false',
-  'presentationState.ts:268 FloorState asked=true walked=false',
-  'presentationState.ts:271 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'presentationState.ts:423 GridSize asked=true walked=false',
-  'presentationState.ts:612 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
-  'presentationState.ts:613 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
-  'presentationState.ts:614 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'presentationState.ts:271 FloorState asked=true walked=false',
+  'presentationState.ts:274 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'presentationState.ts:426 GridSize asked=true walked=false',
+  'presentationState.ts:615 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
+  'presentationState.ts:616 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
+  'presentationState.ts:617 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
   'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
   'sessions.ts:656 LadderState asked=true walked=false',
   'sessions.ts:696 LadderState asked=true walked=false',
@@ -16437,7 +16609,7 @@ const SCREEN_AGREEMENT = Object.freeze({
   // GridPosition/GridSize returns, capability keyed by competition-bench-bay.
   // 79 -> 89: Stage D2.1A assignedSeat remaining[order] plus live-Capacity
   // relocate useCells walk (nine rows at the same for-of) and awayFrom cell.
-  SHIPPED_DISAGREEMENTS: 102, // presentation-state contract unfollowable returns
+  SHIPPED_DISAGREEMENTS: 115, // facilityPersistence restore unfollowable returns
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
@@ -16627,7 +16799,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1674 -> 1681: Stage D2 placedOwnedItems / withWear / stationOperationView / reset.
   // 1681 -> 1691: Stage D2.1A assignedSeat / reservedUseCells / relocate helpers.
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
-  function: 1939, // presentation-state seats helper call targets
+  function: 2124, // facilityPersistence.ts restore/encode function calls
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16685,7 +16857,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1502 -> 1513: Stage D2 Set.has / Object.freeze / stationByRefKey.get.
   // 1513 -> 1517: Stage D2.1A useCells/blocked/has member calls on live relocate.
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
-  member: 1713, // presentation-state seats helper member calls
+  member: 1879, // facilityPersistence.ts empty-decode Object.freeze
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -16766,7 +16938,7 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 430 -> 435: Stage D2 withWear restrict / stationOperationView seats / placedOwnedItems loops.
   // 435 -> 438: Stage D2.1A reservedUseCells / assignedSeat / relocate locals.
   // 438 -> 444: Stage D2.1B nextChangeovers / loading-path locals.
-  local: 478, // presentation-state seats helper local writes
+  local: 503, // facilityPersistence.ts restore/decode local writes
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -16778,7 +16950,7 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 11 -> 12: GDD §5.14 Stage B's `pacingCheckInSchedule` — the
   // `Array.from(new Set(...)).sort(...)` fresh mutating receiver, the same
   // site `DECLARED_FRESH_RECEIVERS` names (`pacing.ts:246`).
-  fresh: 12,
+  fresh: 13,
   unclassified: 0,
 });
 
@@ -16794,7 +16966,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 31, // presentation-state contract presentationState.ts
+  MODULES: 32, // facilityPersistence.ts facility save/load
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved.
    * 404 -> 427 with GymView: +13 `return` sites (5 -> 18) and +6
    * `callback-invocation` sites (3 -> 9) on `ladderView.tsx`, +4 `return`
@@ -16881,7 +17053,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 911 -> 916: Stage D2.1A floorSim return 63 -> 68.
   // 916 -> 925: Stage D2.1B floorSim 68→72, stationCapability 24→27,
   // stationView 44→46.
-  SITES: 1130, // presentationState.ts 27 returns
+  SITES: 1341, // facilityPersistence.ts 207 returns + 4 exported bindings
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -17034,7 +17206,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
   // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
   // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
-  NODES_EXAMINED: 90_017, // presentation-state seats helper AST nodes
+  NODES_EXAMINED: 96_751, // facilityPersistence.ts empty-decode return AST
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -17053,7 +17225,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 149 -> 152: GDD §5.14 Stage B's pacing.ts, three `refuseWith` calls.
   // 152 -> 157: Stage C.1b floor.ts furniture refusals.
   // 159 -> 160: GDD §5.18 Stage D.1 stationCapability refuseWith.
-  WRAP_CALLS: 190, // presentationState.ts refuseWith
+  WRAP_CALLS: 199, // facilityPersistence.ts restore refuseWith calls
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 7, // Stage G.1 argument-mutation on floorSim observation export
@@ -17102,7 +17274,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
  */
 const SHIPPED_TYPE_DEPTH = Object.freeze({
   /** Deepest chain from an exported surface, in the control's own accounting. */
-  DEEPEST: 9,
+  DEEPEST: 11,
   // 661 -> 663: GymScreen's own exported signature (CROSSING 6) — its one
   // parameter position and its one return position.
   // 663 -> 684: members.ts's exported signatures (§5.11 stage 3).
@@ -17171,14 +17343,20 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // 1001 -> 1003: Stage D.1b capacityRealizesOn + bay sprite table leaves.
   // 1003 -> 1005: Stage D2 placedOwnedItems + reset-gym signatures.
   // 1005 -> 1015: Stage D2.1B five new exported functions' signatures.
-  POSITIONS: 1157, // presentation-state PresentationSeat exported positions
+  POSITIONS: 1190, // facilityPersistence.ts exported save/load positions
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
+    'facilityPersistence.ts#decodeFacilitySave()',
+    'facilityPersistence.ts#loadFacilitySave()',
+  ]),
+  /** Positions strictly past the limit. Decode/load at 11; runEmpire/beginRecruitment still at 9. */
+  PAST_THE_LIMIT_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
+    'facilityPersistence.ts#decodeFacilitySave()',
+    'facilityPersistence.ts#loadFacilitySave()',
     'recruitment.ts#beginRecruitment()',
   ]),
-  /** Positions strictly past the limit. The same two, and the number that matters. */
-  PAST_THE_LIMIT: 2,
+  PAST_THE_LIMIT: 4,
   /**
    * The same reading with the assembly probe in the program, which reaches 41.
    *
@@ -17218,7 +17396,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
    * census that is not limited that way is `cyclicDeclarations`, which walks
    * every declaration in the file whether it is exported or not.
    */
-  DEEPEST_THROUGH_INDEX: 9,
+  DEEPEST_THROUGH_INDEX: 11,
   /** Positions whose deepest path crosses at least one declared index signature. */
   POSITIONS_CROSSING_AN_INDEX: 0,
   /** Index-signature crossings on the single most-crossing path. */
@@ -17238,7 +17416,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
    */
   AMBIENT_PROBE_DEEPEST: 12,
   /** What the wide predicate reported for the same probe. The number 12 is 12 against this. */
-  AMBIENT_PROBE_DEEPEST_WHEN_EVERY_DECLARATION_FILE_IS_SKIPPED: 9,
+  AMBIENT_PROBE_DEEPEST_WHEN_EVERY_DECLARATION_FILE_IS_SKIPPED: 11,
 });
 
 /**
@@ -20090,7 +20268,7 @@ describe('the assembly walk bites — every binding whose value is not in its in
     // Named rather than counted, so a different type reaching the maximum is a
     // row somebody reads rather than a number that stayed the same.
     expect(reading.deepestAt).toEqual(SHIPPED_TYPE_DEPTH.DEEPEST_AT);
-    expect(reading.pastTheLimit).toEqual(SHIPPED_TYPE_DEPTH.DEEPEST_AT);
+    expect(reading.pastTheLimit).toEqual(SHIPPED_TYPE_DEPTH.PAST_THE_LIMIT_AT);
     expect(reading.pastTheLimit.length).toBe(SHIPPED_TYPE_DEPTH.PAST_THE_LIMIT);
     // THE POSITIVE CONTROL, AND IT IS HERE BECAUSE THE PIN ABOVE WAS VACUOUS
     // WITHOUT IT. A mutant that gave this walk the control's own bound —
@@ -21450,7 +21628,7 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // 252 -> 253: Stage C.1d PlacementRefuseKind.
   // 253 -> 258: Stage D stationCapability type declarations.
   // 258 -> 264: GDD §5.18 Stage D.1 trainingStation type declarations.
-  DECLARATIONS: 308, // PresentationSeat added to the presentation contract
+  DECLARATIONS: 317, // facilityPersistence.ts save/load type declarations
   /** Those carrying type parameters. An instantiation depth needs one. */
   // Phase 4: `MemberTable<Leaf>` in floorSprites.ts.
   GENERIC: 13,

@@ -2458,6 +2458,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'empireTuning.ts',
       'engagement.ts',
       'expansion.ts',
+      // Session B facility save/load: versioned envelope, injected store.
+      'facilityPersistence.ts',
       'floor.ts',
       'floorSim.ts',
       // GDD §5.13 presentation Phase 4: the floor's sprite data — index
@@ -2698,7 +2700,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // and names FloorGrid / floorSim in its header.
     // 197 -> 213: presentationState.ts contract plus worldView header naming it.
     // 213 -> 214: floorSim.ts header names presentationState.ts as a claimantsOf consumer.
-    expect(pairs).toBe(214);
+    // 214 -> 227: facilityPersistence.ts save/load plus neighbours naming it.
+    expect(pairs).toBe(227);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -2722,7 +2725,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 22 -> 23: Stage G.2B livingMemberRetention.ts imports refuseWith.
     // 23 -> 24: Iron & Amber adapter header names empireCore.test.ts.
     // 24 -> 25: presentationState.ts imports refuseWith from empireCore.
-    expect(mentionersOf('empireCore.ts').length).toBe(25);
+    // 25 -> 26: facilityPersistence.ts imports refuseWith from empireCore.
+    expect(mentionersOf('empireCore.ts').length).toBe(26);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -3892,7 +3896,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 874 -> 882: living-world occupancy/activity vocabulary and ./worldView.
     // 882 -> 883: presentationState.ts FloorState['placements'] index access.
     // 883 -> 886: presentationState.ts three coherent-snapshot refuse messages.
-    expect(singleQuoted.size).toBe(886);
+    // 886 -> 902: facilityPersistence.ts envelope kind, refuse reasons, field names.
+    // 902 -> 948: FacilitySaveTruthV1 domains, clock/management/week/living fields,
+    // fail-closed refuse strings, and slot-outcome field names.
+    expect(singleQuoted.size).toBe(948);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4023,7 +4030,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 379 -> 387: Iron & Amber member-stem templates.
     // 387 -> 389: living-world queue-cell testID templates.
     // 389 -> 390: presentationState.ts refuseWith template for missing member index.
-    expect(templateChunks.size).toBe(390);
+    // 390 -> 391: facilityPersistence.ts memberCount restore refuse template.
+    expect(templateChunks.size).toBe(391);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4066,6 +4074,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './management',
       './members',
       './npc',
+      './presentationState',
       './production',
       './recruitment',
       './reputation',
@@ -4199,15 +4208,19 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'accelerated',
       'accelerated-purse',
       'accelerated-seconds',
+      'acceleratedGymBucks',
       'acceleratedSeconds',
       'accepted',
       'accessory',
       'accrual',
+      'activity',
       'advance',
       'advance-clock',
       'advance-to-next-week',
       'advanced-recovery',
       'ahead',
+      'allocation',
+      'allocationSetThisWeek',
       'already-building',
       'already-owned',
       'already-sound',
@@ -4219,11 +4232,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'approaching',
       'at-ceiling',
       'at-the-top',
+      'atSeconds',
       'athlete',
       'auto',
       'available',
       'axes',
       'banked-operation',
+      'bankedOperationSeconds',
       'bar',
       'bare-bar',
       'behind',
@@ -4246,11 +4261,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'buy-session',
       'cables',
       'calendar-day',
+      'capability',
       'capacity',
       'cardio',
       'casual',
       'ceiling-growth',
       'ceiling-growth-per-week',
+      'ceilingGrowthPerWeek',
       'center',
       'chalk',
       'chance-draw',
@@ -4259,10 +4276,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'cheapest-hire-under-warning',
       'cheapskate',
       'check-in-upkeep',
+      'checkInsTaken',
       'claimed',
+      'clock',
       'club',
       'coach',
       'coach-staff-level',
+      'collectedAt',
       'combined-total',
       'comp-plates',
       'competition-bench-bay',
@@ -4272,6 +4292,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'condition',
       'condition-gated-prompt-control',
       'conditioning',
+      'corrupt-json',
       'cosmetic-unlock',
       'cosmetics',
       'costliest-affordable-first',
@@ -4283,6 +4304,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'darkkhaki',
       'data:image/png;base64,',
       'deadlift',
+      'decision',
       'decline-repair',
       'declined',
       'deepskyblue',
@@ -4299,7 +4321,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'dumbbells',
       'e1rm',
       'eager-turnaround-control',
+      'effects',
       'elapsedSeconds',
+      'empty',
       'eq-comp-plates',
       'eq-flat-bench',
       'eq-plate-tree',
@@ -4308,6 +4332,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'equipment',
       'equipment-below-recovery-minimum',
       'expansion',
+      'facility',
       'failed',
       'failure-slump-control',
       'fault-message',
@@ -4431,6 +4456,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gym-clock',
       'gym-dev-controls',
       'gym-economy',
+      'gym-empire-facility',
       'gym-empire-timer-skip',
       'gym-gym-bucks',
       'gym-id',
@@ -4535,18 +4561,23 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'hire-steady',
       'hire-veteran',
       'hired',
+      'hiredUnderWarning',
       'hoard',
       'hypertrophy',
+      'identityNonce',
       'idle-clock',
       'idle-only',
       'idle-tenure-days',
       'idleTenureDays',
+      'incoherent',
       'injury-chance-multiplier',
       'injury-days-saved',
       'injury-risk',
+      'injuryChanceMultiplier',
       'injuryDaysSaved',
       'interrupted',
       'ivory',
+      'joinedAtSeconds',
       'khaki',
       'kind',
       'knob',
@@ -4561,15 +4592,20 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'ladder-rung',
       'ladder-shop',
       'ladder-view',
+      'ladderEquipment',
       'leaderboard-placement',
       'leaving',
       'left',
       'legendary',
       'level',
+      'living',
       'livingPopulation',
+      'loaded',
       'loading',
       'local',
       'machines',
+      'management',
+      'manager',
       'manager-hired-under-warning',
       'mats',
       'member-athlete-left',
@@ -4594,8 +4630,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'member-walk-a-right',
       'member-walk-b-left',
       'member-walk-b-right',
+      'memberCount',
       'memberGrids',
       'memberUris',
+      'members',
       'monolift',
       'more',
       'move',
@@ -4603,6 +4641,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'moved',
       'national',
       'nationals',
+      'neglected',
       'negligent',
       'no-manager',
       'no-prompt',
@@ -4623,6 +4662,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'npcId',
       'number',
       'object',
+      'observedAtTick',
       'occupied',
       'offered',
       // The "chrome vs paid" bug-fix round's `EarningsMode` — 'offline' is
@@ -4662,8 +4702,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'prompt-dismiss',
       'prompt-dismissed-again',
       'prompt-repair',
+      'promptDismissals',
       'qualify',
       'quality',
+      'queueWaitTicks',
       'queued',
       'queuing',
       'quiet',
@@ -4671,9 +4713,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'react-native',
       'ready',
       'reason',
+      'recentVisits',
       'recover',
       'recover-gym',
       'recovered',
+      'recoveries',
       'recovery',
       'red',
       'redemptive',
@@ -4693,8 +4737,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'reputation-below-threshold',
       'reputation-milestone',
       'reputation-tier',
+      'requires',
       'reset-gym',
       'residual-carry-multiplier',
+      'residualCarryMultiplier',
       'rest',
       'rested',
       'rewarded-ad-timer-skip',
@@ -4708,9 +4754,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'route-blocked',
       'row',
       'rower',
+      'rung',
       'rung-too-low',
       'sauna',
       'save-for-physio-first',
+      'schemaVersion',
       'seeking',
       'serious-lifter',
       'service',
@@ -4729,6 +4777,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'session-specialty-bars',
       'session-treadmill',
       'session-wrist-wraps',
+      'sessionEquipment',
       'sessionGrids',
       'sessionUris',
       'set-allocation-slot',
@@ -4740,6 +4789,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'settledTenureDays',
       'shipped',
       'shop',
+      'shownCostGymBucks',
       'silver',
       'single-purse',
       'single-wall-clock-purse',
@@ -4766,6 +4816,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'staff',
       'stand',
       'state',
+      'stationKey',
       'stationKind',
       'steady',
       'step-a',
@@ -4777,6 +4828,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'stranded',
       'stretch',
       'stretching-yoga',
+      'strikes',
       'string',
       'strip-mall-unit',
       'structural',
@@ -4786,8 +4838,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'target-removed',
       'technique-quality',
       'technique-quality-bonus',
+      'techniqueQualityBonus',
       'throughput',
       'thrownMessage',
+      'tier',
       'total',
       'total-pr',
       'trained',
@@ -4795,14 +4849,19 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'training',
       'training-iq',
       'training-pace',
+      'trainingExperience',
       'trainingIq',
       'trainingIqPerDay',
       'transparent',
       'treadmill',
+      'truth',
+      'type',
       'unaccelerated-seconds',
       'unacceleratedSeconds',
       'under',
       'unequipped',
+      'unknown-kind',
+      'unsupported-version',
       'upgrade-station',
       'upgraded',
       'using',
@@ -4827,6 +4886,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // GDD §5.14 Stage B's `pacing.ts` — one of its four `PacingCheckInPolicy`
       // members. No manufacturer, athlete or brand.
       'watcher',
+      'week',
+      'weekIndex',
+      'weekLog',
       'white',
       'wide',
       'worlds',
@@ -4948,7 +5010,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1261 -> 1271: living-world singleQuoted 874 -> 882 and templateChunks 387 -> 389.
     // 1271 -> 1273: presentationState.ts specifier + refuseWith template chunk.
     // 1273 -> 1276: three coherent-snapshot refuse messages.
-    expect(stringsChecked).toBe(1276);
+    // 1276 -> 1293: facilityPersistence.ts envelope kind, refuse reasons,
+    // durable field names, and the memberCount restore template chunk
+    // (singleQuoted 886 -> 902, templateChunks 390 -> 391).
+    // 1293 -> 1339: FacilitySaveTruthV1 body fields and refuse strings
+    // (singleQuoted 902 -> 948, templateChunks unchanged at 391).
+    expect(stringsChecked).toBe(1339);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5434,6 +5501,20 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './trainingStation',
         './worldView',
       ],
+      'facilityPersistence.ts': [
+        './empireCore',
+        './empireTuning',
+        './floor',
+        './floorSim',
+        './ladder',
+        './ladderView',
+        './livingMembers',
+        './management',
+        './presentationState',
+        './sessions',
+        './stationCapability',
+        './trainingStation',
+      ],
       'production.ts': ['./empireCore', './empireTuning'],
       'recruitment.ts': ['./empireCore', './empireTuning'],
       'reputation.ts': ['./empireCore', './empireTuning', './expansion', './production'],
@@ -5483,7 +5564,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 28 -> 29: Iron & Amber owned-art adapter.
     // 29 -> 30: living-world projector worldView.ts.
     // 30 -> 31: Session B presentation-state contract presentationState.ts.
-    expect(fenced).toBe(31);
+    // 31 -> 32: Session B facility persistence facilityPersistence.ts.
+    expect(fenced).toBe(32);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -5610,7 +5692,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // each gain one `./ironAmberArt` edge. The adapter itself has zero imports.
     // 127 -> 129: worldView.ts `./floorSim` plus FloorGrid `./worldView`.
     // 129 -> 142: presentationState.ts thirteen intra-directory imports.
-    expect(specifiers).toBe(142);
+    // 142 -> 154: facilityPersistence.ts twelve intra-directory imports.
+    expect(specifiers).toBe(154);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
