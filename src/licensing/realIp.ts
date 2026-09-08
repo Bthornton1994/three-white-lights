@@ -982,7 +982,13 @@ export const UNREADABLE_BY_THIS_AUDIT: readonly UnreadableGroup[] = Object.freez
   // `docs/design/evidence/rive-spike/` (ADR-001 §7). Binary, filename only.
   // 12 -> 13 with the spike's second frame, `spike-route-later.png` — the
   // same scene 450 ms later, which is how "the graphic moves" is on record.
-  { extension: '.png', reason: 'nul-byte', count: 13 },
+  // 13 -> 19 with the night-shift evidence (2026-09-08): the acceptance
+  // harness's `route.png` and two composition shots
+  // (`docs/design/evidence/athlete-acceptance/`) and the host-runtime soak's
+  // three frames (`docs/design/evidence/host-runtime-soak/`). Binary,
+  // filename only, dev evidence — never an athlete. A count edited under the
+  // census ruling for artifacts the visual lane owns, and flagged in CLAUDE.md.
+  { extension: '.png', reason: 'nul-byte', count: 19 },
   // `.riv` ARRIVED WITH THE SPIKE, AS A BINARY ROW ON PURPOSE. The committed
   // `assets/dev/rive-spike.riv` is a deliberately-invalid placeholder — see
   // its README — and carries a NUL so this census classifies it the way a

@@ -1,0 +1,1546 @@
+{
+  "label": "HOST-RUNTIME SOAK",
+  "notA": [
+    "ATHLETE PERFORMANCE",
+    "VISUAL",
+    "ANIMATION"
+  ],
+  "base": "http://localhost:8081",
+  "startedAt": "2026-09-08T07:29:59.508Z",
+  "knobs": {
+    "SOAK_SECONDS": 90,
+    "ROUTE_CYCLES": 12,
+    "REMOUNT_SECONDS": 60,
+    "STALL_MS": 800
+  },
+  "baseline": {
+    "ms": 1082,
+    "status": "bound — writing health at 60fps",
+    "pacing5s": {
+      "frames": 300,
+      "meanMs": 16.67,
+      "p50Ms": 16.7,
+      "p95Ms": 16.7,
+      "maxMs": 16.8,
+      "over33ms": 0,
+      "over50ms": 0
+    },
+    "heapBytes": 194686360,
+    "motion": {
+      "totalPixels": 458240,
+      "changedPixels": 6813,
+      "maxChannelDelta": 255,
+      "gapMs": 450
+    },
+    "canvases": 1,
+    "canvas": {
+      "width": 716,
+      "height": 640,
+      "cssWidth": 358,
+      "cssHeight": 320
+    },
+    "listeners": {
+      "window": {
+        "total": 18,
+        "byType": {
+          "mousemove": 1,
+          "pointerdown": 1,
+          "pointerup": 1,
+          "touchstart": 1,
+          "touchend": 1,
+          "touchcancel": 1,
+          "mousedown": 1,
+          "mouseup": 1,
+          "click": 1,
+          "auxclick": 1,
+          "dblclick": 1,
+          "contextmenu": 1,
+          "error": 1,
+          "unhandledrejection": 1,
+          "__playwright_global_listeners_check__": 1,
+          "blur": 2,
+          "focus": 1
+        }
+      },
+      "document": {
+        "total": 28,
+        "byType": {
+          "keydown": 1,
+          "visibilitychange": 2,
+          "pointerdown": 1,
+          "pointermove": 1,
+          "contextmenu": 2,
+          "mousedown": 2,
+          "mousemove": 2,
+          "mouseup": 2,
+          "touchcancel": 2,
+          "touchmove": 2,
+          "touchstart": 2,
+          "selectionchange": 3,
+          "scroll": 2,
+          "blur": 1,
+          "dragstart": 1,
+          "touchend": 1,
+          "select": 1
+        }
+      }
+    },
+    "addressBar": "?dev-rive-spike=1",
+    "consoleLines": [
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[warning] Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently"
+    ],
+    "pageErrors": []
+  },
+  "sustained": {
+    "seconds": 90.1,
+    "windows": [
+      {
+        "atSeconds": 10,
+        "frames": 599,
+        "meanMs": 16.69,
+        "p50Ms": 16.7,
+        "p95Ms": 16.7,
+        "maxMs": 33.4,
+        "over33ms": 1,
+        "over50ms": 0,
+        "heapBytes": 196866632
+      },
+      {
+        "atSeconds": 20,
+        "frames": 600,
+        "meanMs": 16.67,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "maxMs": 16.8,
+        "over33ms": 0,
+        "over50ms": 0,
+        "heapBytes": 195912414
+      },
+      {
+        "atSeconds": 30.1,
+        "frames": 600,
+        "meanMs": 16.67,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "maxMs": 16.8,
+        "over33ms": 0,
+        "over50ms": 0,
+        "heapBytes": 192206584
+      },
+      {
+        "atSeconds": 40.1,
+        "frames": 600,
+        "meanMs": 16.67,
+        "p50Ms": 16.7,
+        "p95Ms": 16.7,
+        "maxMs": 16.8,
+        "over33ms": 0,
+        "over50ms": 0,
+        "heapBytes": 195994374
+      },
+      {
+        "atSeconds": 50.1,
+        "frames": 600,
+        "meanMs": 16.67,
+        "p50Ms": 16.7,
+        "p95Ms": 16.7,
+        "maxMs": 16.8,
+        "over33ms": 0,
+        "over50ms": 0,
+        "heapBytes": 192622208
+      },
+      {
+        "atSeconds": 60.1,
+        "frames": 600,
+        "meanMs": 16.67,
+        "p50Ms": 16.7,
+        "p95Ms": 16.7,
+        "maxMs": 16.8,
+        "over33ms": 0,
+        "over50ms": 0,
+        "heapBytes": 195434215
+      },
+      {
+        "atSeconds": 70.1,
+        "frames": 600,
+        "meanMs": 16.67,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "maxMs": 16.8,
+        "over33ms": 0,
+        "over50ms": 0,
+        "heapBytes": 192139581
+      },
+      {
+        "atSeconds": 80.1,
+        "frames": 600,
+        "meanMs": 16.67,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "maxMs": 16.8,
+        "over33ms": 0,
+        "over50ms": 0,
+        "heapBytes": 195242301
+      },
+      {
+        "atSeconds": 90.1,
+        "frames": 600,
+        "meanMs": 16.67,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "maxMs": 16.8,
+        "over33ms": 0,
+        "over50ms": 0,
+        "heapBytes": 191724013
+      }
+    ],
+    "totals": {
+      "frames": 5399,
+      "over33ms": 1,
+      "over50ms": 0,
+      "maxMs": 33.4
+    },
+    "heapSlopeBytesPerSecond": -38772.8,
+    "heapDeltaBytes": -5142619,
+    "motionAtEnd": {
+      "totalPixels": 458240,
+      "changedPixels": 4108,
+      "maxChannelDelta": 255,
+      "gapMs": 450
+    },
+    "status": "bound — writing health at 60fps",
+    "canvases": 1,
+    "consoleLines": [],
+    "pageErrors": []
+  },
+  "resize": {
+    "steps": [
+      {
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "pacing2s": {
+          "frames": 121,
+          "meanMs": 16.67,
+          "p50Ms": 16.7,
+          "p95Ms": 16.7,
+          "maxMs": 16.8,
+          "over33ms": 0,
+          "over50ms": 0
+        },
+        "canvas": {
+          "width": 686,
+          "height": 640,
+          "cssWidth": 343,
+          "cssHeight": 320
+        },
+        "canvases": 1,
+        "motion": {
+          "totalPixels": 439040,
+          "changedPixels": 5798,
+          "maxChannelDelta": 255,
+          "gapMs": 300
+        },
+        "status": "bound — writing health at 60fps"
+      },
+      {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "pacing2s": {
+          "frames": 120,
+          "meanMs": 16.67,
+          "p50Ms": 16.7,
+          "p95Ms": 16.7,
+          "maxMs": 16.8,
+          "over33ms": 0,
+          "over50ms": 0
+        },
+        "canvas": {
+          "width": 716,
+          "height": 640,
+          "cssWidth": 358,
+          "cssHeight": 320
+        },
+        "canvases": 1,
+        "motion": {
+          "totalPixels": 458240,
+          "changedPixels": 13154,
+          "maxChannelDelta": 255,
+          "gapMs": 300
+        },
+        "status": "bound — writing health at 60fps"
+      },
+      {
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "pacing2s": {
+          "frames": 120,
+          "meanMs": 16.67,
+          "p50Ms": 16.7,
+          "p95Ms": 16.7,
+          "maxMs": 16.8,
+          "over33ms": 0,
+          "over50ms": 0
+        },
+        "canvas": {
+          "width": 686,
+          "height": 640,
+          "cssWidth": 343,
+          "cssHeight": 320
+        },
+        "canvases": 1,
+        "motion": {
+          "totalPixels": 439040,
+          "changedPixels": 9098,
+          "maxChannelDelta": 255,
+          "gapMs": 300
+        },
+        "status": "bound — writing health at 60fps"
+      },
+      {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "pacing2s": {
+          "frames": 120,
+          "meanMs": 16.67,
+          "p50Ms": 16.7,
+          "p95Ms": 16.7,
+          "maxMs": 16.8,
+          "over33ms": 0,
+          "over50ms": 0
+        },
+        "canvas": {
+          "width": 716,
+          "height": 640,
+          "cssWidth": 358,
+          "cssHeight": 320
+        },
+        "canvases": 1,
+        "motion": {
+          "totalPixels": 458240,
+          "changedPixels": 5893,
+          "maxChannelDelta": 255,
+          "gapMs": 300
+        },
+        "status": "bound — writing health at 60fps"
+      },
+      {
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "pacing2s": {
+          "frames": 120,
+          "meanMs": 16.67,
+          "p50Ms": 16.7,
+          "p95Ms": 16.8,
+          "maxMs": 16.8,
+          "over33ms": 0,
+          "over50ms": 0
+        },
+        "canvas": {
+          "width": 686,
+          "height": 640,
+          "cssWidth": 343,
+          "cssHeight": 320
+        },
+        "canvases": 1,
+        "motion": {
+          "totalPixels": 439040,
+          "changedPixels": 11792,
+          "maxChannelDelta": 255,
+          "gapMs": 300
+        },
+        "status": "bound — writing health at 60fps"
+      },
+      {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "pacing2s": {
+          "frames": 120,
+          "meanMs": 16.67,
+          "p50Ms": 16.7,
+          "p95Ms": 16.7,
+          "maxMs": 16.8,
+          "over33ms": 0,
+          "over50ms": 0
+        },
+        "canvas": {
+          "width": 716,
+          "height": 640,
+          "cssWidth": 358,
+          "cssHeight": 320
+        },
+        "canvases": 1,
+        "motion": {
+          "totalPixels": 458240,
+          "changedPixels": 4110,
+          "maxChannelDelta": 255,
+          "gapMs": 300
+        },
+        "status": "bound — writing health at 60fps"
+      }
+    ],
+    "consoleLines": [],
+    "pageErrors": []
+  },
+  "visibility": {
+    "tabSwitch": {
+      "visibilityStateWhileBehind": "visible",
+      "recoveryPacing3s": {
+        "frames": 180,
+        "meanMs": 16.67,
+        "p50Ms": 16.7,
+        "p95Ms": 16.7,
+        "maxMs": 16.8,
+        "over33ms": 0,
+        "over50ms": 0
+      },
+      "motionAfter": {
+        "totalPixels": 458240,
+        "changedPixels": 3373,
+        "maxChannelDelta": 255,
+        "gapMs": 450
+      },
+      "status": "bound — writing health at 60fps"
+    },
+    "lifecycleFreeze": {
+      "supported": true,
+      "events": [],
+      "recoveryPacing3s": {
+        "frames": 180,
+        "meanMs": 16.67,
+        "p50Ms": 16.7,
+        "p95Ms": 16.7,
+        "maxMs": 16.8,
+        "over33ms": 0,
+        "over50ms": 0
+      },
+      "motionAfter": {
+        "totalPixels": 458240,
+        "changedPixels": 14998,
+        "maxChannelDelta": 255,
+        "gapMs": 450
+      },
+      "status": "bound — writing health at 60fps",
+      "canvases": 1
+    },
+    "consoleLines": [],
+    "pageErrors": []
+  },
+  "stall": {
+    "stallMs": 800,
+    "runs": [
+      {
+        "frames": 194,
+        "worstGapMs": 783.4,
+        "framesAfterStall": 133,
+        "afterMeanMs": 16.67,
+        "afterOver33ms": 0,
+        "status": "bound — writing health at 60fps",
+        "motion": {
+          "totalPixels": 458240,
+          "changedPixels": 4446,
+          "maxChannelDelta": 255,
+          "gapMs": 300
+        }
+      },
+      {
+        "frames": 194,
+        "worstGapMs": 783.3,
+        "framesAfterStall": 133,
+        "afterMeanMs": 16.67,
+        "afterOver33ms": 0,
+        "status": "bound — writing health at 60fps",
+        "motion": {
+          "totalPixels": 458240,
+          "changedPixels": 1742,
+          "maxChannelDelta": 255,
+          "gapMs": 300
+        }
+      },
+      {
+        "frames": 194,
+        "worstGapMs": 783.3,
+        "framesAfterStall": 133,
+        "afterMeanMs": 16.67,
+        "afterOver33ms": 0,
+        "status": "bound — writing health at 60fps",
+        "motion": {
+          "totalPixels": 458240,
+          "changedPixels": 4937,
+          "maxChannelDelta": 255,
+          "gapMs": 300
+        }
+      }
+    ],
+    "consoleLines": [],
+    "pageErrors": []
+  },
+  "routeCycles": {
+    "cycles": [
+      {
+        "cycle": 1,
+        "shellMs": 1057,
+        "spikeAbsentOnShell": true,
+        "spikeMountMs": 1029,
+        "status": "bound — writing health at 60fps",
+        "canvases": 1,
+        "heapBytes": 339908740,
+        "listeners": {
+          "window": {
+            "total": 18,
+            "byType": {
+              "mousemove": 1,
+              "pointerdown": 1,
+              "pointerup": 1,
+              "touchstart": 1,
+              "touchend": 1,
+              "touchcancel": 1,
+              "mousedown": 1,
+              "mouseup": 1,
+              "click": 1,
+              "auxclick": 1,
+              "dblclick": 1,
+              "contextmenu": 1,
+              "error": 1,
+              "unhandledrejection": 1,
+              "__playwright_global_listeners_check__": 1,
+              "blur": 2,
+              "focus": 1
+            }
+          },
+          "document": {
+            "total": 28,
+            "byType": {
+              "keydown": 1,
+              "visibilitychange": 2,
+              "pointerdown": 1,
+              "pointermove": 1,
+              "contextmenu": 2,
+              "mousedown": 2,
+              "mousemove": 2,
+              "mouseup": 2,
+              "touchcancel": 2,
+              "touchmove": 2,
+              "touchstart": 2,
+              "selectionchange": 3,
+              "scroll": 2,
+              "blur": 1,
+              "dragstart": 1,
+              "touchend": 1,
+              "select": 1
+            }
+          }
+        }
+      },
+      {
+        "cycle": 2,
+        "shellMs": 991,
+        "spikeAbsentOnShell": true,
+        "spikeMountMs": 928,
+        "status": "bound — writing health at 60fps",
+        "canvases": 1,
+        "heapBytes": 201008273,
+        "listeners": {
+          "window": {
+            "total": 18,
+            "byType": {
+              "mousemove": 1,
+              "pointerdown": 1,
+              "pointerup": 1,
+              "touchstart": 1,
+              "touchend": 1,
+              "touchcancel": 1,
+              "mousedown": 1,
+              "mouseup": 1,
+              "click": 1,
+              "auxclick": 1,
+              "dblclick": 1,
+              "contextmenu": 1,
+              "error": 1,
+              "unhandledrejection": 1,
+              "__playwright_global_listeners_check__": 1,
+              "blur": 2,
+              "focus": 1
+            }
+          },
+          "document": {
+            "total": 28,
+            "byType": {
+              "keydown": 1,
+              "visibilitychange": 2,
+              "pointerdown": 1,
+              "pointermove": 1,
+              "contextmenu": 2,
+              "mousedown": 2,
+              "mousemove": 2,
+              "mouseup": 2,
+              "touchcancel": 2,
+              "touchmove": 2,
+              "touchstart": 2,
+              "selectionchange": 3,
+              "scroll": 2,
+              "blur": 1,
+              "dragstart": 1,
+              "touchend": 1,
+              "select": 1
+            }
+          }
+        }
+      },
+      {
+        "cycle": 3,
+        "shellMs": 932,
+        "spikeAbsentOnShell": true,
+        "spikeMountMs": 1007,
+        "status": "bound — writing health at 60fps",
+        "canvases": 1,
+        "heapBytes": 203050226,
+        "listeners": {
+          "window": {
+            "total": 18,
+            "byType": {
+              "mousemove": 1,
+              "pointerdown": 1,
+              "pointerup": 1,
+              "touchstart": 1,
+              "touchend": 1,
+              "touchcancel": 1,
+              "mousedown": 1,
+              "mouseup": 1,
+              "click": 1,
+              "auxclick": 1,
+              "dblclick": 1,
+              "contextmenu": 1,
+              "error": 1,
+              "unhandledrejection": 1,
+              "__playwright_global_listeners_check__": 1,
+              "blur": 2,
+              "focus": 1
+            }
+          },
+          "document": {
+            "total": 28,
+            "byType": {
+              "keydown": 1,
+              "visibilitychange": 2,
+              "pointerdown": 1,
+              "pointermove": 1,
+              "contextmenu": 2,
+              "mousedown": 2,
+              "mousemove": 2,
+              "mouseup": 2,
+              "touchcancel": 2,
+              "touchmove": 2,
+              "touchstart": 2,
+              "selectionchange": 3,
+              "scroll": 2,
+              "blur": 1,
+              "dragstart": 1,
+              "touchend": 1,
+              "select": 1
+            }
+          }
+        }
+      },
+      {
+        "cycle": 4,
+        "shellMs": 920,
+        "spikeAbsentOnShell": true,
+        "spikeMountMs": 944,
+        "status": "bound — writing health at 60fps",
+        "canvases": 1,
+        "heapBytes": 203578378,
+        "listeners": {
+          "window": {
+            "total": 18,
+            "byType": {
+              "mousemove": 1,
+              "pointerdown": 1,
+              "pointerup": 1,
+              "touchstart": 1,
+              "touchend": 1,
+              "touchcancel": 1,
+              "mousedown": 1,
+              "mouseup": 1,
+              "click": 1,
+              "auxclick": 1,
+              "dblclick": 1,
+              "contextmenu": 1,
+              "error": 1,
+              "unhandledrejection": 1,
+              "__playwright_global_listeners_check__": 1,
+              "blur": 2,
+              "focus": 1
+            }
+          },
+          "document": {
+            "total": 28,
+            "byType": {
+              "keydown": 1,
+              "visibilitychange": 2,
+              "pointerdown": 1,
+              "pointermove": 1,
+              "contextmenu": 2,
+              "mousedown": 2,
+              "mousemove": 2,
+              "mouseup": 2,
+              "touchcancel": 2,
+              "touchmove": 2,
+              "touchstart": 2,
+              "selectionchange": 3,
+              "scroll": 2,
+              "blur": 1,
+              "dragstart": 1,
+              "touchend": 1,
+              "select": 1
+            }
+          }
+        }
+      },
+      {
+        "cycle": 5,
+        "shellMs": 938,
+        "spikeAbsentOnShell": true,
+        "spikeMountMs": 949,
+        "status": "bound — writing health at 60fps",
+        "canvases": 1,
+        "heapBytes": 203598474,
+        "listeners": {
+          "window": {
+            "total": 18,
+            "byType": {
+              "mousemove": 1,
+              "pointerdown": 1,
+              "pointerup": 1,
+              "touchstart": 1,
+              "touchend": 1,
+              "touchcancel": 1,
+              "mousedown": 1,
+              "mouseup": 1,
+              "click": 1,
+              "auxclick": 1,
+              "dblclick": 1,
+              "contextmenu": 1,
+              "error": 1,
+              "unhandledrejection": 1,
+              "__playwright_global_listeners_check__": 1,
+              "blur": 2,
+              "focus": 1
+            }
+          },
+          "document": {
+            "total": 28,
+            "byType": {
+              "keydown": 1,
+              "visibilitychange": 2,
+              "pointerdown": 1,
+              "pointermove": 1,
+              "contextmenu": 2,
+              "mousedown": 2,
+              "mousemove": 2,
+              "mouseup": 2,
+              "touchcancel": 2,
+              "touchmove": 2,
+              "touchstart": 2,
+              "selectionchange": 3,
+              "scroll": 2,
+              "blur": 1,
+              "dragstart": 1,
+              "touchend": 1,
+              "select": 1
+            }
+          }
+        }
+      },
+      {
+        "cycle": 6,
+        "shellMs": 923,
+        "spikeAbsentOnShell": true,
+        "spikeMountMs": 956,
+        "status": "bound — writing health at 60fps",
+        "canvases": 1,
+        "heapBytes": 203483394,
+        "listeners": {
+          "window": {
+            "total": 18,
+            "byType": {
+              "mousemove": 1,
+              "pointerdown": 1,
+              "pointerup": 1,
+              "touchstart": 1,
+              "touchend": 1,
+              "touchcancel": 1,
+              "mousedown": 1,
+              "mouseup": 1,
+              "click": 1,
+              "auxclick": 1,
+              "dblclick": 1,
+              "contextmenu": 1,
+              "error": 1,
+              "unhandledrejection": 1,
+              "__playwright_global_listeners_check__": 1,
+              "blur": 2,
+              "focus": 1
+            }
+          },
+          "document": {
+            "total": 28,
+            "byType": {
+              "keydown": 1,
+              "visibilitychange": 2,
+              "pointerdown": 1,
+              "pointermove": 1,
+              "contextmenu": 2,
+              "mousedown": 2,
+              "mousemove": 2,
+              "mouseup": 2,
+              "touchcancel": 2,
+              "touchmove": 2,
+              "touchstart": 2,
+              "selectionchange": 3,
+              "scroll": 2,
+              "blur": 1,
+              "dragstart": 1,
+              "touchend": 1,
+              "select": 1
+            }
+          }
+        }
+      },
+      {
+        "cycle": 7,
+        "shellMs": 932,
+        "spikeAbsentOnShell": true,
+        "spikeMountMs": 950,
+        "status": "bound — writing health at 60fps",
+        "canvases": 1,
+        "heapBytes": 203513110,
+        "listeners": {
+          "window": {
+            "total": 18,
+            "byType": {
+              "mousemove": 1,
+              "pointerdown": 1,
+              "pointerup": 1,
+              "touchstart": 1,
+              "touchend": 1,
+              "touchcancel": 1,
+              "mousedown": 1,
+              "mouseup": 1,
+              "click": 1,
+              "auxclick": 1,
+              "dblclick": 1,
+              "contextmenu": 1,
+              "error": 1,
+              "unhandledrejection": 1,
+              "__playwright_global_listeners_check__": 1,
+              "blur": 2,
+              "focus": 1
+            }
+          },
+          "document": {
+            "total": 28,
+            "byType": {
+              "keydown": 1,
+              "visibilitychange": 2,
+              "pointerdown": 1,
+              "pointermove": 1,
+              "contextmenu": 2,
+              "mousedown": 2,
+              "mousemove": 2,
+              "mouseup": 2,
+              "touchcancel": 2,
+              "touchmove": 2,
+              "touchstart": 2,
+              "selectionchange": 3,
+              "scroll": 2,
+              "blur": 1,
+              "dragstart": 1,
+              "touchend": 1,
+              "select": 1
+            }
+          }
+        }
+      },
+      {
+        "cycle": 8,
+        "shellMs": 947,
+        "spikeAbsentOnShell": true,
+        "spikeMountMs": 1008,
+        "status": "bound — writing health at 60fps",
+        "canvases": 1,
+        "heapBytes": 196242224,
+        "listeners": {
+          "window": {
+            "total": 18,
+            "byType": {
+              "mousemove": 1,
+              "pointerdown": 1,
+              "pointerup": 1,
+              "touchstart": 1,
+              "touchend": 1,
+              "touchcancel": 1,
+              "mousedown": 1,
+              "mouseup": 1,
+              "click": 1,
+              "auxclick": 1,
+              "dblclick": 1,
+              "contextmenu": 1,
+              "error": 1,
+              "unhandledrejection": 1,
+              "__playwright_global_listeners_check__": 1,
+              "blur": 2,
+              "focus": 1
+            }
+          },
+          "document": {
+            "total": 28,
+            "byType": {
+              "keydown": 1,
+              "visibilitychange": 2,
+              "pointerdown": 1,
+              "pointermove": 1,
+              "contextmenu": 2,
+              "mousedown": 2,
+              "mousemove": 2,
+              "mouseup": 2,
+              "touchcancel": 2,
+              "touchmove": 2,
+              "touchstart": 2,
+              "selectionchange": 3,
+              "scroll": 2,
+              "blur": 1,
+              "dragstart": 1,
+              "touchend": 1,
+              "select": 1
+            }
+          }
+        }
+      },
+      {
+        "cycle": 9,
+        "shellMs": 1004,
+        "spikeAbsentOnShell": true,
+        "spikeMountMs": 976,
+        "status": "bound — writing health at 60fps",
+        "canvases": 1,
+        "heapBytes": 202711637,
+        "listeners": {
+          "window": {
+            "total": 18,
+            "byType": {
+              "mousemove": 1,
+              "pointerdown": 1,
+              "pointerup": 1,
+              "touchstart": 1,
+              "touchend": 1,
+              "touchcancel": 1,
+              "mousedown": 1,
+              "mouseup": 1,
+              "click": 1,
+              "auxclick": 1,
+              "dblclick": 1,
+              "contextmenu": 1,
+              "error": 1,
+              "unhandledrejection": 1,
+              "__playwright_global_listeners_check__": 1,
+              "blur": 2,
+              "focus": 1
+            }
+          },
+          "document": {
+            "total": 28,
+            "byType": {
+              "keydown": 1,
+              "visibilitychange": 2,
+              "pointerdown": 1,
+              "pointermove": 1,
+              "contextmenu": 2,
+              "mousedown": 2,
+              "mousemove": 2,
+              "mouseup": 2,
+              "touchcancel": 2,
+              "touchmove": 2,
+              "touchstart": 2,
+              "selectionchange": 3,
+              "scroll": 2,
+              "blur": 1,
+              "dragstart": 1,
+              "touchend": 1,
+              "select": 1
+            }
+          }
+        }
+      },
+      {
+        "cycle": 10,
+        "shellMs": 916,
+        "spikeAbsentOnShell": true,
+        "spikeMountMs": 998,
+        "status": "bound — writing health at 60fps",
+        "canvases": 1,
+        "heapBytes": 502022494,
+        "listeners": {
+          "window": {
+            "total": 18,
+            "byType": {
+              "mousemove": 1,
+              "pointerdown": 1,
+              "pointerup": 1,
+              "touchstart": 1,
+              "touchend": 1,
+              "touchcancel": 1,
+              "mousedown": 1,
+              "mouseup": 1,
+              "click": 1,
+              "auxclick": 1,
+              "dblclick": 1,
+              "contextmenu": 1,
+              "error": 1,
+              "unhandledrejection": 1,
+              "__playwright_global_listeners_check__": 1,
+              "blur": 2,
+              "focus": 1
+            }
+          },
+          "document": {
+            "total": 28,
+            "byType": {
+              "keydown": 1,
+              "visibilitychange": 2,
+              "pointerdown": 1,
+              "pointermove": 1,
+              "contextmenu": 2,
+              "mousedown": 2,
+              "mousemove": 2,
+              "mouseup": 2,
+              "touchcancel": 2,
+              "touchmove": 2,
+              "touchstart": 2,
+              "selectionchange": 3,
+              "scroll": 2,
+              "blur": 1,
+              "dragstart": 1,
+              "touchend": 1,
+              "select": 1
+            }
+          }
+        }
+      },
+      {
+        "cycle": 11,
+        "shellMs": 976,
+        "spikeAbsentOnShell": true,
+        "spikeMountMs": 907,
+        "status": "bound — writing health at 60fps",
+        "canvases": 1,
+        "heapBytes": 203341884,
+        "listeners": {
+          "window": {
+            "total": 18,
+            "byType": {
+              "mousemove": 1,
+              "pointerdown": 1,
+              "pointerup": 1,
+              "touchstart": 1,
+              "touchend": 1,
+              "touchcancel": 1,
+              "mousedown": 1,
+              "mouseup": 1,
+              "click": 1,
+              "auxclick": 1,
+              "dblclick": 1,
+              "contextmenu": 1,
+              "error": 1,
+              "unhandledrejection": 1,
+              "__playwright_global_listeners_check__": 1,
+              "blur": 2,
+              "focus": 1
+            }
+          },
+          "document": {
+            "total": 28,
+            "byType": {
+              "keydown": 1,
+              "visibilitychange": 2,
+              "pointerdown": 1,
+              "pointermove": 1,
+              "contextmenu": 2,
+              "mousedown": 2,
+              "mousemove": 2,
+              "mouseup": 2,
+              "touchcancel": 2,
+              "touchmove": 2,
+              "touchstart": 2,
+              "selectionchange": 3,
+              "scroll": 2,
+              "blur": 1,
+              "dragstart": 1,
+              "touchend": 1,
+              "select": 1
+            }
+          }
+        }
+      },
+      {
+        "cycle": 12,
+        "shellMs": 919,
+        "spikeAbsentOnShell": true,
+        "spikeMountMs": 935,
+        "status": "bound — writing health at 60fps",
+        "canvases": 1,
+        "heapBytes": 203541352,
+        "listeners": {
+          "window": {
+            "total": 18,
+            "byType": {
+              "mousemove": 1,
+              "pointerdown": 1,
+              "pointerup": 1,
+              "touchstart": 1,
+              "touchend": 1,
+              "touchcancel": 1,
+              "mousedown": 1,
+              "mouseup": 1,
+              "click": 1,
+              "auxclick": 1,
+              "dblclick": 1,
+              "contextmenu": 1,
+              "error": 1,
+              "unhandledrejection": 1,
+              "__playwright_global_listeners_check__": 1,
+              "blur": 2,
+              "focus": 1
+            }
+          },
+          "document": {
+            "total": 28,
+            "byType": {
+              "keydown": 1,
+              "visibilitychange": 2,
+              "pointerdown": 1,
+              "pointermove": 1,
+              "contextmenu": 2,
+              "mousedown": 2,
+              "mousemove": 2,
+              "mouseup": 2,
+              "touchcancel": 2,
+              "touchmove": 2,
+              "touchstart": 2,
+              "selectionchange": 3,
+              "scroll": 2,
+              "blur": 1,
+              "dragstart": 1,
+              "touchend": 1,
+              "select": 1
+            }
+          }
+        }
+      }
+    ],
+    "heapSlopeBytesPerCycle": 2053826.5,
+    "heapDeltaBytes": -136367388,
+    "windowListenersFirst": 18,
+    "windowListenersLast": 18,
+    "pacingAfter": {
+      "frames": 180,
+      "meanMs": 16.67,
+      "p50Ms": 16.7,
+      "p95Ms": 16.8,
+      "maxMs": 16.8,
+      "over33ms": 0,
+      "over50ms": 0
+    },
+    "motionAfter": {
+      "totalPixels": 458240,
+      "changedPixels": 2789,
+      "maxChannelDelta": 255,
+      "gapMs": 450
+    },
+    "consoleLines": [
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[warning] Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently"
+    ],
+    "pageErrors": []
+  },
+  "remount": {
+    "open": {
+      "ms": 955,
+      "status": "bound — writing health at 60fps"
+    },
+    "remountsObserved": 24,
+    "windows": [
+      {
+        "atSeconds": 0,
+        "cycle": 0,
+        "canvases": 1,
+        "pacing5s": {
+          "frames": 300,
+          "meanMs": 16.67,
+          "p50Ms": 16.7,
+          "p95Ms": 16.8,
+          "maxMs": 16.8,
+          "over33ms": 0,
+          "over50ms": 0
+        },
+        "heapBytes": 207138156,
+        "status": "bound — writing health at 60fps"
+      },
+      {
+        "atSeconds": 5,
+        "cycle": 2,
+        "canvases": 1,
+        "pacing5s": {
+          "frames": 300,
+          "meanMs": 16.67,
+          "p50Ms": 16.7,
+          "p95Ms": 16.8,
+          "maxMs": 16.8,
+          "over33ms": 0,
+          "over50ms": 0
+        },
+        "heapBytes": 218822547,
+        "status": "bound — writing health at 60fps"
+      },
+      {
+        "atSeconds": 10,
+        "cycle": 4,
+        "canvases": 1,
+        "pacing5s": {
+          "frames": 300,
+          "meanMs": 16.67,
+          "p50Ms": 16.7,
+          "p95Ms": 16.8,
+          "maxMs": 16.8,
+          "over33ms": 0,
+          "over50ms": 0
+        },
+        "heapBytes": 204160258,
+        "status": "bound — writing health at 60fps"
+      },
+      {
+        "atSeconds": 15.1,
+        "cycle": 6,
+        "canvases": 1,
+        "pacing5s": {
+          "frames": 300,
+          "meanMs": 16.67,
+          "p50Ms": 16.7,
+          "p95Ms": 16.8,
+          "maxMs": 16.8,
+          "over33ms": 0,
+          "over50ms": 0
+        },
+        "heapBytes": 197036792,
+        "status": "bound — writing health at 60fps"
+      },
+      {
+        "atSeconds": 20.1,
+        "cycle": 8,
+        "canvases": 1,
+        "pacing5s": {
+          "frames": 300,
+          "meanMs": 16.67,
+          "p50Ms": 16.7,
+          "p95Ms": 16.8,
+          "maxMs": 16.8,
+          "over33ms": 0,
+          "over50ms": 0
+        },
+        "heapBytes": 207467921,
+        "status": "bound — writing health at 60fps"
+      },
+      {
+        "atSeconds": 25.1,
+        "cycle": 10,
+        "canvases": 1,
+        "pacing5s": {
+          "frames": 300,
+          "meanMs": 16.67,
+          "p50Ms": 16.7,
+          "p95Ms": 16.7,
+          "maxMs": 16.8,
+          "over33ms": 0,
+          "over50ms": 0
+        },
+        "heapBytes": 219597725,
+        "status": "bound — writing health at 60fps"
+      },
+      {
+        "atSeconds": 30.1,
+        "cycle": 12,
+        "canvases": 1,
+        "pacing5s": {
+          "frames": 300,
+          "meanMs": 16.67,
+          "p50Ms": 16.7,
+          "p95Ms": 16.7,
+          "maxMs": 16.8,
+          "over33ms": 0,
+          "over50ms": 0
+        },
+        "heapBytes": 202626372,
+        "status": "bound — writing health at 60fps"
+      },
+      {
+        "atSeconds": 35.1,
+        "cycle": 14,
+        "canvases": 1,
+        "pacing5s": {
+          "frames": 300,
+          "meanMs": 16.67,
+          "p50Ms": 16.7,
+          "p95Ms": 16.8,
+          "maxMs": 16.8,
+          "over33ms": 0,
+          "over50ms": 0
+        },
+        "heapBytes": 214494244,
+        "status": "bound — writing health at 60fps"
+      },
+      {
+        "atSeconds": 40.2,
+        "cycle": 16,
+        "canvases": 1,
+        "pacing5s": {
+          "frames": 299,
+          "meanMs": 16.72,
+          "p50Ms": 16.7,
+          "p95Ms": 16.7,
+          "maxMs": 33.3,
+          "over33ms": 1,
+          "over50ms": 0
+        },
+        "heapBytes": 196838478,
+        "status": "bound — writing health at 60fps"
+      },
+      {
+        "atSeconds": 45.2,
+        "cycle": 18,
+        "canvases": 1,
+        "pacing5s": {
+          "frames": 300,
+          "meanMs": 16.67,
+          "p50Ms": 16.7,
+          "p95Ms": 16.8,
+          "maxMs": 16.8,
+          "over33ms": 0,
+          "over50ms": 0
+        },
+        "heapBytes": 209069318,
+        "status": "bound — writing health at 60fps"
+      },
+      {
+        "atSeconds": 50.2,
+        "cycle": 20,
+        "canvases": 1,
+        "pacing5s": {
+          "frames": 300,
+          "meanMs": 16.67,
+          "p50Ms": 16.7,
+          "p95Ms": 16.8,
+          "maxMs": 16.8,
+          "over33ms": 0,
+          "over50ms": 0
+        },
+        "heapBytes": 221082529,
+        "status": "bound — writing health at 60fps"
+      },
+      {
+        "atSeconds": 55.2,
+        "cycle": 22,
+        "canvases": 1,
+        "pacing5s": {
+          "frames": 300,
+          "meanMs": 16.67,
+          "p50Ms": 16.7,
+          "p95Ms": 16.8,
+          "maxMs": 16.8,
+          "over33ms": 0,
+          "over50ms": 0
+        },
+        "heapBytes": 202930641,
+        "status": "bound — writing health at 60fps"
+      }
+    ],
+    "heapStart": 202694135,
+    "heapEnd": 202930641,
+    "heapSlopeBytesPerSecond": 7761.7,
+    "listenersStart": {
+      "window": {
+        "total": 18,
+        "byType": {
+          "mousemove": 1,
+          "pointerdown": 1,
+          "pointerup": 1,
+          "touchstart": 1,
+          "touchend": 1,
+          "touchcancel": 1,
+          "mousedown": 1,
+          "mouseup": 1,
+          "click": 1,
+          "auxclick": 1,
+          "dblclick": 1,
+          "contextmenu": 1,
+          "error": 1,
+          "unhandledrejection": 1,
+          "__playwright_global_listeners_check__": 1,
+          "blur": 2,
+          "focus": 1
+        }
+      },
+      "document": {
+        "total": 28,
+        "byType": {
+          "keydown": 1,
+          "visibilitychange": 2,
+          "pointerdown": 1,
+          "pointermove": 1,
+          "contextmenu": 2,
+          "mousedown": 2,
+          "mousemove": 2,
+          "mouseup": 2,
+          "touchcancel": 2,
+          "touchmove": 2,
+          "touchstart": 2,
+          "selectionchange": 3,
+          "scroll": 2,
+          "blur": 1,
+          "dragstart": 1,
+          "touchend": 1,
+          "select": 1
+        }
+      }
+    },
+    "listenersEnd": {
+      "window": {
+        "total": 18,
+        "byType": {
+          "mousemove": 1,
+          "pointerdown": 1,
+          "pointerup": 1,
+          "touchstart": 1,
+          "touchend": 1,
+          "touchcancel": 1,
+          "mousedown": 1,
+          "mouseup": 1,
+          "click": 1,
+          "auxclick": 1,
+          "dblclick": 1,
+          "contextmenu": 1,
+          "error": 1,
+          "unhandledrejection": 1,
+          "__playwright_global_listeners_check__": 1,
+          "blur": 2,
+          "focus": 1
+        }
+      },
+      "document": {
+        "total": 28,
+        "byType": {
+          "keydown": 1,
+          "visibilitychange": 2,
+          "pointerdown": 1,
+          "pointermove": 1,
+          "contextmenu": 2,
+          "mousedown": 2,
+          "mousemove": 2,
+          "mouseup": 2,
+          "touchcancel": 2,
+          "touchmove": 2,
+          "touchstart": 2,
+          "selectionchange": 3,
+          "scroll": 2,
+          "blur": 1,
+          "dragstart": 1,
+          "touchend": 1,
+          "select": 1
+        }
+      }
+    },
+    "maxCanvases": 1,
+    "motionAtEnd": {
+      "totalPixels": 458240,
+      "changedPixels": 6458,
+      "maxChannelDelta": 255,
+      "gapMs": 450
+    },
+    "consoleLines": [
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+      "[warning] Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently"
+    ],
+    "pageErrors": []
+  },
+  "playerPath": {
+    "spikePresent": false,
+    "appShellPresent": true,
+    "addressBar": "",
+    "consoleLines": [
+      "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF."
+    ],
+    "pageErrors": []
+  },
+  "finishedAt": "2026-09-08T07:33:54.436Z"
+}

@@ -21,10 +21,10 @@ cp -r assets src "$WORK"/
 ln -s "$REPO/node_modules" "$WORK/node_modules"
 cd "$WORK" && git init -q .
 set +e
-CI=1 EXPO_NO_TELEMETRY=1 npx expo prebuild --platform android --no-install > "$OUT/prebuild.log" 2>&1
+CI=1 EXPO_NO_TELEMETRY=1 npx expo prebuild --platform android --no-install > "$OUT/prebuild-output.txt" 2>&1
 EXIT=$?
 set -e
-echo "PREBUILD_EXIT=$EXIT" >> "$OUT/prebuild.log"
+echo "PREBUILD_EXIT=$EXIT" >> "$OUT/prebuild-output.txt"
 node - "$WORK" "$OUT" "$EXIT" "$(git -C "$REPO" rev-parse HEAD)" <<'NODE'
 const [work, out, exit, sha] = process.argv.slice(2);
 const fs = require('node:fs'); const path = require('node:path'); const { execSync } = require('node:child_process');
@@ -36,7 +36,7 @@ const strings = read('android/app/src/main/res/values/strings.xml');
 const rn = JSON.parse(execSync('npx expo-modules-autolinking react-native-config --platform android --json', { cwd: work, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
 const expo = JSON.parse(execSync('npx expo-modules-autolinking resolve --platform android --json', { cwd: work, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
 const prop = (k) => (props.match(new RegExp(`^${k}=(.*)$`, 'm')) || [])[1] ?? null;
-const log = fs.readFileSync(path.join(out, 'prebuild.log'), 'utf8');
+const log = fs.readFileSync(path.join(out, 'prebuild-output.txt'), 'utf8');
 const record = {
   label: 'ANDROID_PREBUILD_PREFLIGHT',
   notA: ['NATIVE_BUILD', 'NATIVE_RUNTIME'],

@@ -1,13 +1,46 @@
 {
   "route": "http://localhost:8081/?dev-rive-spike=1&dev-mode=athlete-accept",
-  "startedAt": "2026-09-08T07:17:37.262Z",
+  "startedAt": "2026-09-08T07:29:27.920Z",
   "scenarios": [],
-  "msToMount": 19601,
+  "msToMount": 1639,
   "addressBar": "?dev-rive-spike=1&dev-mode=athlete-accept",
   "status": "ASSET_MISSING — assets/athlete/athlete-01.riv has not arrived; athleteAsset.ts points at the placeholder; no stage mounted, no substitute",
   "probe": {
     "status": "ASSET_MISSING",
     "message": "",
+    "roomAssetMissing": true,
+    "composition": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "hud": {
+        "top": 96,
+        "bottom": 160
+      },
+      "frame": {
+        "x": -110.12432432432433,
+        "y": -78.8108108108108,
+        "width": 610.2486486486487,
+        "height": 915.372972972973
+      },
+      "scale": 0.5297297297297298,
+      "fit": "cover",
+      "band": {
+        "top": 96,
+        "bottom": 684
+      },
+      "floorY": 662.8108108108108,
+      "crownY": 127.7837837837838,
+      "lockoutBarY": 214.12972972972975,
+      "holeBarY": 433.9675675675676,
+      "cropped": {
+        "top": 148.77551020408163,
+        "bottom": 0,
+        "left": 207.8877551020408,
+        "right": 207.8877551020408
+      }
+    },
     "scenarioIds": [
       "clean-make",
       "grinding-make",
@@ -29,10 +62,187 @@
     "loops": 0,
     "mounted": false
   },
-  "finishedAt": "2026-09-08T07:17:56.984Z",
+  "composition": [
+    {
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "composition": {
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "hud": {
+          "top": 96,
+          "bottom": 160
+        },
+        "frame": {
+          "x": -101.01891891891893,
+          "y": -69.29729729729729,
+          "width": 577.0378378378379,
+          "height": 865.5567567567567
+        },
+        "scale": 0.5009009009009009,
+        "fit": "cover",
+        "band": {
+          "top": 96,
+          "bottom": 652
+        },
+        "floorY": 631.9639639639639,
+        "crownY": 126.05405405405406,
+        "lockoutBarY": 207.70090090090088,
+        "holeBarY": 415.57477477477477,
+        "cropped": {
+          "top": 138.34532374100718,
+          "bottom": 0,
+          "left": 201.6744604316547,
+          "right": 201.6744604316547
+        }
+      },
+      "boxes": {
+        "frame": {
+          "x": -101.015625,
+          "y": -69.296875,
+          "width": 577.03125,
+          "height": 865.546875
+        },
+        "floor": {
+          "x": 0,
+          "y": 631.953125,
+          "width": 375,
+          "height": 2
+        },
+        "crown": {
+          "x": 0,
+          "y": 126.046875,
+          "width": 375,
+          "height": 2
+        },
+        "hudTop": {
+          "x": 0,
+          "y": 0,
+          "width": 375,
+          "height": 96
+        },
+        "hudBottom": {
+          "x": 0,
+          "y": 652,
+          "width": 375,
+          "height": 160
+        }
+      },
+      "checks": {
+        "probeViewportMatches": true,
+        "frameX": true,
+        "frameY": true,
+        "frameWidth": true,
+        "frameHeight": true,
+        "frameAspectIsCanvas": true,
+        "floorAtFloorY": true,
+        "crownAtCrownY": true,
+        "hudTopBandHeight": true,
+        "hudBottomBandY": true,
+        "floorInsideBand": true,
+        "crownInsideBand": true,
+        "fitCoverOnPhone": true,
+        "roomAssetMissing": true
+      },
+      "ok": true
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "composition": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "hud": {
+          "top": 96,
+          "bottom": 160
+        },
+        "frame": {
+          "x": -110.12432432432433,
+          "y": -78.8108108108108,
+          "width": 610.2486486486487,
+          "height": 915.372972972973
+        },
+        "scale": 0.5297297297297298,
+        "fit": "cover",
+        "band": {
+          "top": 96,
+          "bottom": 684
+        },
+        "floorY": 662.8108108108108,
+        "crownY": 127.7837837837838,
+        "lockoutBarY": 214.12972972972975,
+        "holeBarY": 433.9675675675676,
+        "cropped": {
+          "top": 148.77551020408163,
+          "bottom": 0,
+          "left": 207.8877551020408,
+          "right": 207.8877551020408
+        }
+      },
+      "boxes": {
+        "frame": {
+          "x": -110.109375,
+          "y": -78.796875,
+          "width": 610.234375,
+          "height": 915.359375
+        },
+        "floor": {
+          "x": 0,
+          "y": 662.796875,
+          "width": 390,
+          "height": 2
+        },
+        "crown": {
+          "x": 0,
+          "y": 127.78125,
+          "width": 390,
+          "height": 2
+        },
+        "hudTop": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 96
+        },
+        "hudBottom": {
+          "x": 0,
+          "y": 684,
+          "width": 390,
+          "height": 160
+        }
+      },
+      "checks": {
+        "probeViewportMatches": true,
+        "frameX": true,
+        "frameY": true,
+        "frameWidth": true,
+        "frameHeight": true,
+        "frameAspectIsCanvas": true,
+        "floorAtFloorY": true,
+        "crownAtCrownY": true,
+        "hudTopBandHeight": true,
+        "hudBottomBandY": true,
+        "floorInsideBand": true,
+        "crownInsideBand": true,
+        "fitCoverOnPhone": true,
+        "roomAssetMissing": true
+      },
+      "ok": true
+    }
+  ],
+  "finishedAt": "2026-09-08T07:29:31.048Z",
   "consoleLines": [
     "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
-    "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF."
+    "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
+    "[warning] props.pointerEvents is deprecated. Use style.pointerEvents"
   ],
   "pageErrors": []
 }

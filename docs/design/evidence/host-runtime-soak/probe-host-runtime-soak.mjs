@@ -24,7 +24,9 @@
 //   A baseline      spike route, bound; 5 s rAF; heap; canvas motion; listeners
 //   B sustained     SOAK_SECONDS of 10 s pacing windows with heap samples; slope
 //   C resize        375×812 ⇄ 390×844, six times, pacing and canvas size each
-//   D visibility    another tab in front for 5 s (document.hidden true), back; recovery pacing
+//   D visibility    another tab in front for 5 s, back (headless keeps the page `visible` — reported);
+//                   then CDP Page.setWebLifecycleState frozen 5 s → active, the page's own
+//                   visibilitychange / freeze / resume events recorded; recovery pacing
 //   E stall         a STALL_MS busy loop on the main thread, three times; recovery
 //   F route cycles  ROUTE_CYCLES × (player path ⇄ spike route): mount ms, canvases, heap, listeners
 //   G remount       `?dev-mode=spike-cycle`: the stage unmounted/remounted in place for REMOUNT_SECONDS
@@ -146,15 +148,40 @@ try {
   await page.screenshot({ path: `${OUT}/after-resize.png` });
 
   // --- D. visibility -------------------------------------------------------------
+  // Two transitions, because headless Chromium does not hide a page when
+  // another tab is brought to the front (measured: `visibilityState` stayed
+  // `visible`). The tab switch is kept and reported honestly; the transition
+  // that does reach the page is the Page Lifecycle one — CDP
+  // `Page.setWebLifecycleState` `frozen` → `active`, which is what a mobile
+  // browser does to a backgrounded tab. Listeners installed before the freeze
+  // record what the page itself saw (`visibilitychange`, `freeze`, `resume`).
   const other = await context.newPage();
   await other.goto('about:blank');
   await other.bringToFront();
   await page.waitForTimeout(5000);
-  const hiddenWhileBehind = await page.evaluate(() => document.visibilityState);
+  const stateWhileBehind = await page.evaluate(() => document.visibilityState);
   await page.bringToFront();
   await other.close();
   await page.waitForTimeout(300);
-  record.visibility = { visibilityStateWhileBehind: hiddenWhileBehind, recoveryPacing3s: await pacing(3000), motionAfter: await motion(450), status: await status(), canvases: await canvasCount(), ...drain() };
+  const tabSwitch = { visibilityStateWhileBehind: stateWhileBehind, recoveryPacing3s: await pacing(3000), motionAfter: await motion(450), status: await status() };
+  await page.evaluate(() => {
+    window.__soakLifecycle = [];
+    const log = (name) => () => window.__soakLifecycle.push({ event: name, visibilityState: document.visibilityState, at: performance.now() });
+    document.addEventListener('visibilitychange', log('visibilitychange'));
+    document.addEventListener('freeze', log('freeze'));
+    document.addEventListener('resume', log('resume'));
+  });
+  let lifecycle = { supported: true };
+  try {
+    await cdp.send('Page.setWebLifecycleState', { state: 'frozen' });
+    await new Promise((r) => setTimeout(r, 5000));
+    await cdp.send('Page.setWebLifecycleState', { state: 'active' });
+    await page.waitForTimeout(300);
+    lifecycle = { supported: true, events: await page.evaluate(() => window.__soakLifecycle), recoveryPacing3s: await pacing(3000), motionAfter: await motion(450), status: await status(), canvases: await canvasCount() };
+  } catch (err) {
+    lifecycle = { supported: false, error: String(err?.message ?? err) };
+  }
+  record.visibility = { tabSwitch, lifecycleFreeze: lifecycle, ...drain() };
 
   // --- E. main-thread stall ------------------------------------------------------
   const stalls = [];

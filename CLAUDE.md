@@ -687,6 +687,77 @@ The host-runtime soak probe and its record live beside the spike's, under
 `docs/design/evidence/`, like `probe-rive-spike.mjs` — a measurement kept
 with its result, not a grader in `tools/`.
 
+**Done the same night, and what it measured.** Filed at `27cd99d8` and
+pushed before any shared file moved; the ten packages followed in five
+commits, each pushed. Every browser number below was taken against a
+`tools/dev-web.sh` server on the tree that landed it.
+
+- **The canonical corpus is the real mechanic.** `src/art/athleteTraces.ts`
+  drives six scripted squat reps — clean make, grinding make, no-depth,
+  stalled, buried, timeout — through `runLift`, `liftPresentation(state,
+  totalKg, prior)` and `athleteRigInputsFrom`, and `docs/design/athlete-
+  traces/` holds every tick (1,030 of them) with each file's own config and
+  script; `tools/athleteTraces.mjs check|replay` and
+  `src/art/athleteTraces.test.ts` pin the bytes to the engine. The drive
+  press lands on the tick the engine's own cue calls ideal, read off a
+  probe rep — nothing transcribed, nothing authored.
+- **The chain guard found a real drift on its first run.** `depth` was a
+  contract field the binding did not read, while the handoff and the source
+  package told the artist a buried descent reads `barHeight = −0.3`. The
+  mechanic clamps height to 0..1 (`lift.ts`, `clamp01(1 − depth)`); the
+  buried trace read 0 on every buried tick; the buried collapse — one of
+  the five authored miss resolutions — was invisible to the rig. `depth` is
+  now a rig input (43), the manifest and both documents are corrected to
+  key the collapse on `depth > 1`, and `src/art/rigContractChain.test.ts`
+  holds every contract field to bound-or-listed and parses the handoff's
+  schema table against `rigInputSpec()`. Seven mutants run and restored,
+  each reddening its guard — in the commit message at `ae2fd9a1`.
+- **The acceptance harness and the gate are live.** `?dev-rive-spike=1&
+  dev-mode=athlete-accept` (the spike's gate, one more key; `App.tsx`
+  untouched) replays the corpus through the real `AthleteStage` inside the
+  composed stage; `node tools/athleteAccept.mjs --web` composes intake →
+  corpus → composition → the harness, calls `gateDevServer`, and never
+  names the player-path gate in code. Driven in Chromium: mounted in 19.6 s
+  cold, `ASSET_MISSING` reported, no stage mounted, no substitute, 0
+  errors, exit 2 (`docs/design/evidence/athlete-acceptance/`).
+- **The composition is one rect, verified on the DOM.** `src/session/
+  athleteComposition.ts` places the room plate and the rig canvas in one
+  frame at one scale from the viewport and the HUD insets alone; at 375×812
+  and 390×844 the frame outline, floor and crown lines and HUD bands read
+  off the browser within a pixel of the numbers, 14 of 14 checks each. The
+  room plate is still absent (`ROOM_ASSET_MISSING`, `src/session/
+  roomAsset.ts` pinned to the file and forbidden a painted scene).
+- **Android prebuild preflight PASS, in a disposable copy** — identity,
+  scheme, Rive + Nitro autolinked, dev client resolved; one repository-
+  owned warning (`userInterfaceStyle` without `expo-system-ui`) reported,
+  not fixed. Not a build. `docs/design/evidence/android-prebuild-preflight/`.
+- **Host-runtime soak recorded** — 90 s of 60 Hz writes with a flat heap
+  (5,399 frames, 1 over 33 ms), six resizes, three 800 ms stalls recovered
+  in one frame, twelve route cycles and twenty-four in-page remounts with
+  listeners 18/28 → 18/28 and never a second canvas. Backgrounding was NOT
+  achieved in headless Chromium (both transitions left the page `visible`)
+  and is owed to a device. `docs/design/evidence/host-runtime-soak/`.
+- **The dev route is executed, not only pinned**: `devRoute.ts` runs under
+  a `react`/`react-native` stand-in with `__DEV__` as a parameter — a
+  production build returns the app for the exact query on both platforms
+  with no `Linking` call, an undefined `__DEV__` fails closed, the launcher
+  URL never opens it; `resolveEntry` has no arm; `App.tsx` is the only
+  importer.
+
+**Registry data, called out per the ruling's condition 3:** `testPathRefs`
+390 → 425 / 121 → 130 across the five commits; `tools/devServerSentinel.
+test.ts` `GATED_TOOLS` gains `athleteAccept.mjs`; one `SOURCE_RULES`
+`data` row for `src/art/athleteTraces.ts`; `guaranteeTags` census
+unmoved; `realIp` unchanged at the inherited pair. Inherited reds unchanged
+in nature: `devServerSentinel` (the `_capture-*` pair), `streakEntitlement`
+(the `.d.ts` walked as a directory), `progression` (the reflective
+assembly), `realIp` ×2, `localSessionServer`.
+
+**Not done, and not claimed:** no athlete `.riv`; no room plate; no cloud
+build (`OWNER_BLOCKED_EXPO_AUTH`); no native runtime; no VISUAL, ANIMATION
+or SOFT-FEEL gate moves; bench and deadlift blocked; PR #48 not merged;
+`ATHLETE_RIG.TRAINING_STAGE` still `'schematic'`.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion

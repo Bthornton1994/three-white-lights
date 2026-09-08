@@ -27,14 +27,15 @@
  * draws nothing is what the probe's canvas readback is for.
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { athleteRigInputsFrom, rigInputValues } from '../../art/athleteRig';
-import { ATHLETE_RIG } from '../../art/spriteTuning';
 import { liftPresentation, PRESENTATION_TICK_MS } from '../../game/liftPresentation';
 import { LIFT_PALETTE } from '../../lift/liftPalette';
-import { AthleteStage } from '../../session/AthleteStage';
+import { AthleteComposedStage } from '../../session/AthleteComposedStage';
 import { ATHLETE_RIV_IS_PLACEHOLDER } from '../../session/athleteAsset';
+import { composeAthleteStage, DEFAULT_HUD_INSETS, type AthleteComposition } from '../../session/athleteComposition';
+import { ROOM_ASSET_IS_MISSING } from '../../session/roomAsset';
 import { priorFromHistory } from '../../session/athleteStagePrior';
 import { ACCEPTANCE_PLAYBACK, SPIKE_LAYOUT } from '../riveRuntimeSpike/spikeTuning';
 import {
@@ -92,10 +93,25 @@ function probeJson(
   plan: readonly AcceptanceScenario[],
   position: PlaybackPosition,
   frame: PlaybackFrame | null,
+  composition: AthleteComposition,
 ): string {
   const base = {
     status: status.kind,
     message: status.kind === 'RUNTIME_ERROR' ? status.message : '',
+    roomAssetMissing: ROOM_ASSET_IS_MISSING,
+    composition: {
+      viewport: composition.viewport,
+      hud: composition.hud,
+      frame: composition.frame,
+      scale: composition.scale,
+      fit: composition.fit,
+      band: composition.band,
+      floorY: composition.floorY,
+      crownY: composition.crownY,
+      lockoutBarY: composition.lockoutBarY,
+      holeBarY: composition.holeBarY,
+      cropped: composition.cropped,
+    },
     scenarioIds: plan.map((p) => p.scenario.id),
     scenarioTicks: plan.map((p) => p.states.length),
     holdTicks: ACCEPTANCE_PLAYBACK.HOLD_TICKS_AT_END,
@@ -136,6 +152,8 @@ export function AthleteAcceptanceScreen(): React.ReactElement {
   }, [mounted, plan]);
 
   const frame = mounted ? playbackFrame(plan, position) : null;
+  const window = useWindowDimensions();
+  const composition = composeAthleteStage({ width: window.width, height: window.height }, DEFAULT_HUD_INSETS);
   const status: AcceptanceStatus = ATHLETE_RIV_IS_PLACEHOLDER
     ? { kind: 'ASSET_MISSING' }
     : runtimeError !== null
@@ -147,24 +165,58 @@ export function AthleteAcceptanceScreen(): React.ReactElement {
   // measures.
   const probeRef = useRef<string>('');
   const boundary = position.tick === 0 || position.tick % ACCEPTANCE_PLAYBACK.PROBE_EVERY_TICKS === 0;
-  if (probeRef.current === '' || boundary || !mounted) probeRef.current = probeJson(status, plan, position, frame);
+  const windowKey = `${window.width}x${window.height}`;
+  const lastWindowRef = useRef<string>('');
+  const resized = lastWindowRef.current !== windowKey;
+  lastWindowRef.current = windowKey;
+  if (probeRef.current === '' || boundary || !mounted || resized) {
+    probeRef.current = probeJson(status, plan, position, frame, composition);
+  }
 
+  // The phone, composed: the composed stage fills the window behind the
+  // guides (HUD bands, the frame outline, the floor and crown lines) and the
+  // status/probe text sits in the top HUD inset. With no athlete the frame
+  // and the lines still draw, so the geometry can be verified before the
+  // asset exists — on the real room plate when it lands, on the backdrop
+  // until then.
+  const { frame: box } = composition;
   return (
     <View style={styles.container} testID="dev-athlete-accept">
-      <Text style={styles.heading}>ATHLETE ACCEPTANCE — DEV ONLY — the real stage on the canonical trace corpus</Text>
-      <Text style={styles.status} testID="dev-athlete-accept-status">
-        {statusLine(status, frame, position)}
-      </Text>
-      <Text style={styles.probe} testID="dev-athlete-accept-probe">
-        {probeRef.current}
-      </Text>
       {mounted && frame !== null ? (
-        <View style={styles.stage} testID="dev-athlete-accept-stage">
+        <View style={StyleSheet.absoluteFill} testID="dev-athlete-accept-stage">
           <StageErrorBoundary onError={setRuntimeError}>
-            <AthleteStage state={frame.state} history={frame.history} totalKg={frame.totalKg} />
+            <AthleteComposedStage
+              state={frame.state}
+              history={frame.history}
+              totalKg={frame.totalKg}
+              viewport={{ width: window.width, height: window.height }}
+              hud={DEFAULT_HUD_INSETS}
+            />
           </StageErrorBoundary>
         </View>
       ) : null}
+      <View
+        pointerEvents="none"
+        style={[styles.guideFrame, { left: box.x, top: box.y, width: box.width, height: box.height }]}
+        testID="dev-athlete-accept-frame"
+      />
+      <View pointerEvents="none" style={[styles.guideLine, { top: composition.floorY }]} testID="dev-athlete-accept-floor" />
+      <View pointerEvents="none" style={[styles.guideLine, { top: composition.crownY }]} testID="dev-athlete-accept-crown" />
+      <View pointerEvents="none" style={[styles.hudBand, { top: 0, height: composition.band.top }]} testID="dev-athlete-accept-hud-top" />
+      <View
+        pointerEvents="none"
+        style={[styles.hudBand, { top: composition.band.bottom, height: window.height - composition.band.bottom }]}
+        testID="dev-athlete-accept-hud-bottom"
+      />
+      <View style={styles.chrome} pointerEvents="none">
+        <Text style={styles.heading}>ATHLETE ACCEPTANCE — DEV ONLY — the real stage on the canonical trace corpus</Text>
+        <Text style={styles.status} testID="dev-athlete-accept-status">
+          {statusLine(status, frame, position)}
+        </Text>
+        <Text style={styles.probe} testID="dev-athlete-accept-probe">
+          {probeRef.current}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -173,8 +225,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: LIFT_PALETTE.BACKDROP,
+  },
+  chrome: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
     paddingTop: SPIKE_LAYOUT.PADDING_TOP,
     paddingHorizontal: SPIKE_LAYOUT.PADDING_HORIZONTAL,
+  },
+  guideFrame: {
+    position: 'absolute',
+    borderWidth: ACCEPTANCE_PLAYBACK.GUIDE_LINE_PX,
+    borderColor: LIFT_PALETTE.TEXT,
+  },
+  guideLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: ACCEPTANCE_PLAYBACK.GUIDE_LINE_PX,
+    backgroundColor: LIFT_PALETTE.TEXT,
+  },
+  hudBand: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    backgroundColor: LIFT_PALETTE.BACKDROP,
+    opacity: ACCEPTANCE_PLAYBACK.HUD_BAND_OPACITY,
   },
   heading: {
     color: LIFT_PALETTE.TEXT,
@@ -192,11 +269,5 @@ const styles = StyleSheet.create({
     fontSize: ACCEPTANCE_PLAYBACK.PROBE_FONT_SIZE,
     opacity: 0,
     height: 0,
-  },
-  stage: {
-    width: '100%',
-    aspectRatio: ATHLETE_RIG.CANVAS_PX.WIDTH / ATHLETE_RIG.CANVAS_PX.HEIGHT,
-    maxHeight: ACCEPTANCE_PLAYBACK.STAGE_MAX_HEIGHT,
-    alignSelf: 'center',
   },
 });

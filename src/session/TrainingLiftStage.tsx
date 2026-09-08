@@ -29,8 +29,8 @@ import { SquatScene } from './SquatScene';
 // for nothing. Metro resolves the bare specifier per platform; `tsc` reads
 // `AthleteStage.d.ts`.
 const AthleteStageLazy = React.lazy(async () => {
-  const mod = await import('./AthleteStage');
-  return { default: mod.AthleteStage };
+  const mod = await import('./AthleteComposedStage');
+  return { default: mod.AthleteComposedStage };
 });
 
 import benchBrace from '../../assets/iron-amber/bench-brace.jpg';

@@ -4,7 +4,7 @@
 DISPOSABLE copy of the project (`preflight.sh` — node_modules symlinked, the
 generated `android/` read and thrown away; the repository's gitignored
 `android/` stays absent). `preflight.json` is the machine record;
-`prebuild.log` is the command's own output. `measuredAt` in the record is the
+`prebuild-output.txt` is the command's own output. `measuredAt` in the record is the
 commit the copy was taken from.
 
 **What this is not:** a native build. No Gradle ran, no APK exists, no device

@@ -5,7 +5,13 @@
 (§7, on a licensed diagnostic asset — a health bar, whose performance is NOT
 generalised to an athlete); NATIVE_BUILD = **`OWNER_BLOCKED_EXPO_AUTH`**
 (EAS cloud development build configured, not launched — §7 has the exact
-commands); NATIVE_RUNTIME = **`OWNER_BLOCKED_DEVICE`** (never inferred
+commands); ANDROID_PREBUILD_PREFLIGHT = **PASS** (a disposable
+`expo prebuild` read back — identity, scheme, Rive + Nitro autolinked,
+dev client resolved; `docs/design/evidence/android-prebuild-preflight/`;
+not a build); HOST-RUNTIME SOAK = **RECORDED** (the web host on the
+diagnostic asset under sustained writes, resizes, a frozen tab, stalls,
+route cycles and in-page remounts; `docs/design/evidence/host-runtime-soak/`;
+not athlete performance); NATIVE_RUNTIME = **`OWNER_BLOCKED_DEVICE`** (never inferred
 from a build); ATHLETE = NOT BUILT
 (`ASSET_AUTHORING_BLOCKED`, §9); VISUAL / ANIMATION / SOFT-FEEL = NOT PASSED
 and never self-claimed; OWNER PLAYTEST = Bryant's alone.
@@ -373,10 +379,12 @@ how the "one number" claim above was established rather than assumed.
 | Verification target | Result |
 | --- | --- |
 | Native runtime installs cleanly | **YES** — `npm install` clean against RN 0.86.2 / React 19.2.3 / Expo 57; **zero new `npm audit` advisories** (19 before, the identical 19 after, diffed by package). |
-| Expo development build works | **CONFIGURED FOR EAS CLOUD, NOT YET BUILT** — `expo-dev-client` installed at the SDK pin, `eas.json` `development` profile (development client, internal distribution, Android APK), `app.json` carries `scheme` and `android.package`. `expo prebuild --platform android` succeeds here (exit 0, `newArchEnabled=true`) and Expo's autolinker links both packages. The cloud build itself: **`OWNER_BLOCKED_EXPO_AUTH`** — see the runbook below. |
+| Expo development build works | **CONFIGURED FOR EAS CLOUD, NOT YET BUILT** — `expo-dev-client` installed at the SDK pin, `eas.json` `development` profile (development client, internal distribution, Android APK), `app.json` carries `scheme` and `android.package`. `expo prebuild --platform android` in a disposable copy: exit 0, `namespace`/`applicationId` `com.threewhitelights.app`, `app_name` "Three White Lights", manifest schemes `threewhitelights` and `exp+three-white-lights`, `@rive-app/react-native` + `react-native-nitro-modules` in the RN autolinking config, `expo-dev-client`/`-launcher`/`-menu` resolved, `newArchEnabled`, `hermesEnabled` — the record and the script are `docs/design/evidence/android-prebuild-preflight/` (ANDROID_PREBUILD_PREFLIGHT; one warning: `userInterfaceStyle` without `expo-system-ui`, owner's call). The cloud build itself: **`OWNER_BLOCKED_EXPO_AUTH`** — see the runbook below. |
 | iOS path | **NOT EXECUTABLE HERE** (no macOS/Xcode) and no EAS iOS profile defined; nobody has asked for one. |
 | Android path | **NATIVE_BUILD: not yet attempted** (EAS cloud, blocked on Expo auth). **NATIVE_RUNTIME: not yet attempted** (needs a device). The two are kept separate on purpose — a green build is not a running runtime. |
 | Web/PWA counterpart | **EXECUTED** — see the probe record below. |
+| The web host under abuse | **HOST-RUNTIME SOAK RECORDED** (`docs/design/evidence/host-runtime-soak/`): the diagnostic asset under a 60 Hz write for 90 s, six resizes 375×812 ⇄ 390×844, a tab switch and a Page-Lifecycle freeze/resume, three 800 ms main-thread stalls, twelve route enter/leave cycles with CDP listener counts, and 60 s of in-page unmount/remount through the spike's `spike-cycle` mode. The README beside the record carries the numbers. Not athlete performance — one bound number, not forty-three. |
+| The athlete, when it arrives | **HARNESS AND GATE READY, ROUTE LIVE** — `node tools/athleteAccept.mjs --web` (intake → corpus → composition → the dev-only acceptance harness at `?dev-rive-spike=1&dev-mode=athlete-accept`, which replays the six canonical mechanics traces through the real `AthleteStage` inside the composed stage and reads the canvas back per scenario). Driven today: `ATHLETE_ACCEPT: ASSET_MISSING`, composition PASS at both phone viewports, 0 page errors — `docs/design/evidence/athlete-acceptance/`. |
 | Same presentation state feeds both runtimes | **YES, structurally** — one `spikeSignal.ts` feed, two platform stages, one shared signature pinned three ways; the web stage's binding calls run every frame in the browser, against a real file. |
 | Data Binding / ViewModel numeric updates | **MEASURED on web, on a real `.riv` (2026-09-08).** The bound number moves the shape: two canvas readbacks 450 ms apart differ in 5,918 px (max channel delta 255), the readout going `100` → `14` and the bar's fill and colour with it. AND the finding that came first: with no state machine named, the instance binds, the status reads `bound`, and **0 px change** — data binding drives a state machine, so the stages now name theirs and the contract diff checks for one. |
 | Continuous high-frequency values | **The 60 Hz write loop ran in the browser against a drawing scene**; frame pacing below. One number on this file — the forty-three-input rig is not yet measured. |
@@ -593,9 +601,18 @@ product standard explicitly refuses one.
 Non-blocked work proceeds and is done: the binding to the mechanics lane's
 frozen contract (`src/art/athleteRig.ts`, consuming
 `src/game/liftPresentation.ts` at `20bda71d`), the unmounted production
-stage pair (`src/session/AthleteStage.native.tsx` / `.web.tsx`), the pipeline specification
-(`docs/design/ATHLETE-ASSET-PIPELINE.md`), the data request to the
-mechanics owner (`docs/design/PRESENTATION-CONTRACT-REQUEST.md`), and the
+stage pair (`src/session/AthleteStage.native.tsx` / `.web.tsx`) and the
+composed stage that will mount it (`src/session/AthleteComposedStage.tsx`,
+`athleteComposition.ts` — one frame for the room plate and the rig, the
+floor a fixed footroom above the bottom HUD, verified on the DOM at 375×812
+and 390×844), the canonical mechanics trace corpus
+(`docs/design/athlete-traces/`, six scenarios driven through the real
+`runLift`), the dev-only acceptance harness and the one-command gate
+(`tools/athleteAccept.mjs`), the contract-drift chain guard
+(`src/art/rigContractChain.test.ts` — which found and closed the buried-depth
+gap: `barHeight` is clamped, `depth` now reaches the rig), the pipeline
+specification (`docs/design/ATHLETE-ASSET-PIPELINE.md`), the data request to
+the mechanics owner (`docs/design/PRESENTATION-CONTRACT-REQUEST.md`), and the
 runtime spike (§7).
 
 **`ASSET_AUTHORING_BLOCKED` — the athlete, restated for the 2026-09-08

@@ -29,7 +29,11 @@ describe('the training-stage gate', () => {
   });
 
   it('loads the athlete stage dynamically, so the Rive runtime is not on the player bundle while closed', () => {
-    expect(stage).toMatch(/import\('\.\/AthleteStage'\)/);
+    // The composed stage (room + rig in one frame) is what the gate opens onto;
+    // it imports AthleteStage itself, so the runtime is still behind this one
+    // dynamic import.
+    expect(stage).toMatch(/import\('\.\/AthleteComposedStage'\)/);
+    expect(stage).toContain('mod.AthleteComposedStage');
     expect(stage, 'a static import would bundle the runtime for nothing').not.toMatch(
       /^import .*AthleteStage/m,
     );

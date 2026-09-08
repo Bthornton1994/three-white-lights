@@ -400,8 +400,13 @@ const PINNED = Object.freeze({
    * (README, `accept.json`; `route.png` is binary and not read) and the
    * preflight README. Two of the eight text files are tests, so `TEST_FILES`
    * moves with it, 127 -> 129.
+   *
+   * 421 -> 425 with the composed stage (`src/session/AthleteComposedStage.tsx`
+   * + test) and the host-runtime soak's record (`soak.json` and its README;
+   * the PNGs are binary and not read). One test file, so `TEST_FILES`
+   * 129 -> 130.
    */
-  SCANNED_FILES: 421,
+  SCANNED_FILES: 425,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -482,8 +487,10 @@ const PINNED = Object.freeze({
    *
    * 127 -> 129 with `athleteComposition.test.ts` and `roomAsset.test.ts`
    * (SCANNED_FILES 421).
+   *
+   * 129 -> 130 with `src/session/athleteComposedStage.test.ts` (SCANNED_FILES 425).
    */
-  TEST_FILES: 129,
+  TEST_FILES: 130,
 });
 
 /**

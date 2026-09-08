@@ -82,4 +82,8 @@ export const ACCEPTANCE_PLAYBACK = Object.freeze({
   /** Widest the stage box gets, dp; the box keeps the artboard's aspect below that. */
   STAGE_MAX_HEIGHT: 520,
   PROBE_FONT_SIZE: 9,
+  /** Composition guides drawn by the harness (frame outline, floor and crown lines), dp. */
+  GUIDE_LINE_PX: 2,
+  /** How translucent the HUD-inset bands are drawn, 0..1. */
+  HUD_BAND_OPACITY: 0.35,
 });

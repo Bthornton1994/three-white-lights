@@ -17,6 +17,11 @@
 //               traces are what the engine produces on this tree, byte for
 //               byte — then `replay` on each record: its own config + script
 //               reproduce its own ticks. This is the input the harness plays.
+//   composition --web only. At 375×812 and 390×844 the harness's guides (frame
+//               outline, floor and crown lines, HUD bands) are read off the DOM
+//               and held to the numbers `composeAthleteStage` put in the probe —
+//               with or without an athlete, on the backdrop until the room
+//               plate lands (ROOM_ASSET_MISSING is reported, never painted over).
 //   web smoke   --web only. `gateDevServer({ url })` first — a server that
 //               `tools/dev-web.sh` did not start is refused, not driven — then
 //               Chromium (Playwright, 390×844, DPR 2) opens the dev-only
@@ -139,6 +144,40 @@ async function webSmoke() {
     report.probe = await readProbe();
     await page.screenshot({ path: path.join(out, 'route.png') });
 
+    // The composition, verified on the real DOM at both phone viewports — with
+    // or without an athlete: the harness draws the frame outline, the floor and
+    // crown lines and the HUD bands from `composeAthleteStage`, and the probe
+    // carries the numbers; each guide's bounding box must sit where the
+    // numbers say, and the frame must keep the canvas aspect.
+    report.composition = [];
+    for (const viewport of [{ width: 375, height: 812 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(viewport);
+      await page.waitForTimeout(400);
+      const probe = await readProbe();
+      const box = async (id) => page.locator(`[data-testid="dev-athlete-accept-${id}"]`).boundingBox();
+      const frame = await box('frame'); const floor = await box('floor'); const crown = await box('crown'); const hudTop = await box('hud-top'); const hudBottom = await box('hud-bottom');
+      const c = probe.composition ?? {};
+      const near = (a, b) => a !== null && a !== undefined && Math.abs(a - b) <= 1;
+      const checks = {
+        probeViewportMatches: c.viewport?.width === viewport.width && c.viewport?.height === viewport.height,
+        frameX: near(frame?.x, c.frame?.x), frameY: near(frame?.y, c.frame?.y), frameWidth: near(frame?.width, c.frame?.width), frameHeight: near(frame?.height, c.frame?.height),
+        frameAspectIsCanvas: frame ? Math.abs(frame.width / frame.height - 1152 / 1728) < 0.002 : false,
+        floorAtFloorY: near(floor?.y, c.floorY), crownAtCrownY: near(crown?.y, c.crownY),
+        hudTopBandHeight: near(hudTop?.height, c.band?.top), hudBottomBandY: near(hudBottom?.y, c.band?.bottom),
+        floorInsideBand: c.floorY !== undefined && c.floorY <= c.band?.bottom && c.floorY >= c.band?.top,
+        crownInsideBand: c.crownY !== undefined && c.crownY >= c.band?.top && c.crownY <= c.band?.bottom,
+        fitCoverOnPhone: c.fit === 'cover',
+        roomAssetMissing: probe.roomAssetMissing,
+      };
+      await page.screenshot({ path: path.join(out, `composition-${viewport.width}x${viewport.height}.png`) });
+      report.composition.push({ viewport, composition: c, boxes: { frame, floor, crown, hudTop, hudBottom }, checks, ok: Object.entries(checks).every(([k, v]) => k === 'roomAssetMissing' || v === true) });
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(300);
+
+    const compositionOk = report.composition.every((c) => c.ok);
+    const compositionDetail = report.composition.map((c) => `${c.viewport.width}x${c.viewport.height} ${c.ok ? 'ok' : 'MISMATCH'}`).join(', ');
+    record('composition', compositionOk ? 'PASS' : 'FAIL', `frame, floor, crown and HUD bands on the DOM where composeAthleteStage puts them: ${compositionDetail}${report.probe.roomAssetMissing ? '; ROOM_ASSET_MISSING (backdrop under the rig, no painted scene)' : ''}`);
     if (report.status.startsWith('ASSET_MISSING')) {
       finish(report, consoleLines, pageErrors);
       await browser.close();
