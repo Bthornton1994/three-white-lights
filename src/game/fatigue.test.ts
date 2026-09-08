@@ -24,6 +24,7 @@ import {
   recoverySessionFor,
   resolveRepAttempt,
   sessionFeel,
+  sessionStimulusCredit,
   type FatigueState,
   type InjuryRolls,
   type ReadinessCheckIn,
@@ -31,6 +32,7 @@ import {
   type SessionRecord,
   type SimLift,
 } from './fatigue';
+import { SESSION_TUNING } from './sessionTuning';
 
 /**
  * Fatigue is explicitly NOT domain-correctness territory (CLAUDE.md; GDD §3.1),
@@ -401,6 +403,7 @@ describe('no fatigue meter: the public API offers no fatigue level', () => {
         'recoverySessionFor',
         'resolveRepAttempt',
         'sessionFeel',
+        'sessionStimulusCredit',
       ].sort(),
     );
   });
@@ -1934,5 +1937,101 @@ describe('consistency never accrues injury risk (G5, G5b)', () => {
       );
       expect(result.injuryOnset, describeTemplate(template)).not.toBeNull();
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GDD §3.4 — successful work is a credit unit, not a load percent
+// ---------------------------------------------------------------------------
+
+describe('sessionStimulusCredit — GDD §3.4, earned not tapped', () => {
+  it('pins the reference rectangle against the shipped 5×3 template', () => {
+    expect(FATIGUE_TUNING.STIMULUS_PRESCRIBED_REPS).toBe(SESSION_TUNING.REPS_PER_SET);
+    expect(FATIGUE_TUNING.STIMULUS_REFERENCE_VOLUME).toBe(
+      SESSION_TUNING.WORK_SETS * SESSION_TUNING.REPS_PER_SET,
+    );
+    const effort = FATIGUE_TUNING.STIMULUS_EFFORT_WEIGHTS;
+    const weightAt = (rpe: number): number => {
+      const row = effort.find((entry) => entry.rpe === rpe);
+      if (row === undefined) throw new Error(`missing effort weight for RPE ${rpe}`);
+      return row.weight;
+    };
+    expect(weightAt(6)).toBe(0);
+    expect(weightAt(7)).toBeGreaterThan(0);
+    expect(weightAt(7)).toBeLessThan(1);
+    expect(weightAt(8)).toBe(1);
+    expect(weightAt(9)).toBe(1);
+    expect(weightAt(10)).toBe(1);
+  });
+
+  it('empty / recovery / failure-only is 0', () => {
+    expect(
+      sessionStimulusCredit({
+        day: 0,
+        lift: 'squat',
+        topRpe: 6,
+        workSets: 5,
+        repsPerSet: 3,
+      }),
+    ).toBe(0);
+    expect(
+      sessionStimulusCredit({
+        day: 0,
+        lift: 'squat',
+        topRpe: 10,
+        workSets: 5,
+        repsPerSet: 2,
+      }),
+    ).toBe(0);
+  });
+
+  it('a completed productive session of this lift is 1.0 of a template', () => {
+    expect(sessionStimulusCredit(hardSession(0, 'squat'))).toBe(1);
+  });
+
+  it('completed RPE 8, 9 and 10 of the same volume earn the same unit — the menu pick is not the reward', () => {
+    const template = { lift: 'squat' as const, workSets: 5, repsPerSet: 3, day: 0 };
+    const creditAt = (rpe: number): number => sessionStimulusCredit({ ...template, topRpe: rpe });
+    expect(creditAt(6)).toBe(0);
+    expect(creditAt(7)).toBeGreaterThan(0);
+    expect(creditAt(7)).toBeLessThan(creditAt(8));
+    expect(creditAt(8)).toBe(1);
+    expect(creditAt(9)).toBe(creditAt(8));
+    expect(creditAt(10)).toBe(creditAt(8));
+  });
+
+  it('short completed volume earns a fraction; last-set-miss volume earns less than a full template', () => {
+    const full = sessionStimulusCredit({
+      day: 0,
+      lift: 'squat',
+      topRpe: 8,
+      workSets: 5,
+      repsPerSet: 3,
+    });
+    const four = sessionStimulusCredit({
+      day: 0,
+      lift: 'squat',
+      topRpe: 8,
+      workSets: 4,
+      repsPerSet: 3,
+    });
+    expect(four).toBeGreaterThan(0);
+    expect(four).toBeLessThan(full);
+    expect(
+      sessionStimulusCredit({ day: 0, lift: 'squat', topRpe: 10, workSets: 3, repsPerSet: 3 }),
+    ).toBe(sessionStimulusCredit({ day: 0, lift: 'squat', topRpe: 8, workSets: 3, repsPerSet: 3 }));
+  });
+
+  it('is not a function of check-in — the self-report exploit on load is closed', () => {
+    const credit = sessionStimulusCredit(hardSession(0, 'squat'));
+    expect(sessionFeel(EMPTY_FATIGUE_STATE, 0, BEST_CHECK_IN).readiness.loadAdjustmentPercent).toBe(
+      FATIGUE_TUNING.READINESS_LOAD_ADJUSTMENT_PERCENT.primed,
+    );
+    expect(sessionFeel(EMPTY_FATIGUE_STATE, 0, WORST_CHECK_IN).readiness.loadAdjustmentPercent).toBe(
+      FATIGUE_TUNING.READINESS_LOAD_ADJUSTMENT_PERCENT.grinding,
+    );
+    expect(credit).not.toBe(
+      sessionFeel(EMPTY_FATIGUE_STATE, 0, BEST_CHECK_IN).readiness.loadAdjustmentPercent,
+    );
   });
 });

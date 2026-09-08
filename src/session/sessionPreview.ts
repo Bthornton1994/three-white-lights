@@ -47,6 +47,7 @@ import {
   type SessionState,
 } from '../game/session';
 import { EMPTY_FATIGUE_STATE, type ReadinessCheckIn } from '../game/fatigue';
+import { TRAINING_PROGRESS_TUNING } from '../game/trainingProgress';
 import {
   SESSION_BOUNDARY,
   SESSION_BOUNDARY_PREVIEW,
@@ -197,7 +198,7 @@ export function recordBeforeSession(): ServerRecord {
   });
 }
 
-function previewContext(): SessionContext {
+function previewContext(trainingProgressCredit = 0): SessionContext {
   return {
     day: PREVIEW_DAY,
     lift: PREVIEW_LIFT,
@@ -206,8 +207,16 @@ function previewContext(): SessionContext {
     streakBefore: SESSION_PREVIEW.STREAK_BEFORE,
     streakIfTrainedToday: SESSION_PREVIEW.STREAK_BEFORE + 1,
     fatigue: EMPTY_FATIGUE_STATE,
+    trainingProgressCredit,
   };
 }
+
+/**
+ * Credit that actually moves a plate at preview loads (200 kg @ RPE 8):
+ * one physical progression opportunity.
+ */
+const PREVIEW_CREDIT_THAT_MOVES_THE_BAR =
+  TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_OPPORTUNITY;
 
 function tapThrough(state: SessionState, answers: ReadinessCheckIn): SessionState {
   let next = stepSession(state, {
@@ -229,11 +238,15 @@ function playScripted(
   answers: ReadinessCheckIn,
   outcome: (setIndex: number, repIndex: number) => LiftOutcome,
   stopAtRest: boolean,
+  trainingProgressCredit = 0,
 ): SessionState {
-  let state = stepSession(tapThrough(createSession(previewContext()), answers), {
-    kind: 'choose-rpe',
-    rpe: SESSION_PREVIEW.RPE,
-  });
+  let state = stepSession(
+    tapThrough(createSession(previewContext(trainingProgressCredit)), answers),
+    {
+      kind: 'choose-rpe',
+      rpe: SESSION_PREVIEW.RPE,
+    },
+  );
   let guard = 0;
   const limit = SESSION_TUNING.WORK_SETS * SESSION_TUNING.REPS_PER_SET * SESSION_TUNING.WORK_SETS;
   while (state.phase !== 'close-out' && guard < limit) {
@@ -364,7 +377,10 @@ export function previewFrameFor(request: SessionPreviewRequest): SessionPreviewF
     case 'rest':
       return frame(playScripted(STEADY, () => 'good-lift', true), cacheBeforeSession());
     case 'close-out-pr':
-      return settledFrame(playScripted(PRIMED, () => 'good-lift', false), 0);
+      return settledFrame(
+        playScripted(PRIMED, () => 'good-lift', false, PREVIEW_CREDIT_THAT_MOVES_THE_BAR),
+        0,
+      );
     case 'close-out-held':
       return settledFrame(playScripted(STEADY, () => 'good-lift', false), 0);
     case 'close-out-empty':
@@ -372,7 +388,7 @@ export function previewFrameFor(request: SessionPreviewRequest): SessionPreviewF
       // it was before the session, and confirmed.
       return frame(playScripted(STEADY, () => 'miss', false), cacheBeforeSession());
     case 'close-out-saving': {
-      const state = playScripted(PRIMED, () => 'good-lift', false);
+      const state = playScripted(PRIMED, () => 'good-lift', false, PREVIEW_CREDIT_THAT_MOVES_THE_BAR);
       return frame(
         state,
         state.closeOut === null ? cacheBeforeSession() : cacheWhileSaving(state.closeOut),
@@ -380,28 +396,18 @@ export function previewFrameFor(request: SessionPreviewRequest): SessionPreviewF
     }
     case 'close-out-server-wins':
       return settledFrame(
-        playScripted(PRIMED, () => 'good-lift', false),
+        playScripted(PRIMED, () => 'good-lift', false, PREVIEW_CREDIT_THAT_MOVES_THE_BAR),
         SESSION_BOUNDARY_PREVIEW.SERVER_DRIFT_KG,
       );
     case 'close-out-unsynced': {
-      const state = playScripted(PRIMED, () => 'good-lift', false);
+      const state = playScripted(PRIMED, () => 'good-lift', false, PREVIEW_CREDIT_THAT_MOVES_THE_BAR);
       return frame(
         state,
         state.closeOut === null ? cacheBeforeSession() : cacheAfterRefusal(state.closeOut),
       );
     }
     case 'close-out-accessory': {
-      // PRIMED, NOT STEADY, AND THE READINESS IS THE POINT OF THIS BEAT.
-      //
-      // This fixture used to be built on `STEADY` — the one readiness band that
-      // arithmetically cannot produce a PR — while every other close-out beat
-      // used `PRIMED`. So the one demonstration of accessory day was pointed
-      // away from the case where it fails: on `STEADY` the screen read "SESSION
-      // LOGGED", which is merely wrong, and on `PRIMED` it read "NEW e1RM" over
-      // a Training IQ row with no number in it, which is the thing GDD §3.2
-      // rules out. The beat is now built on the readiness that would have shown
-      // it, and `sessionPreview.test.ts` asserts the headline.
-      const played = playScripted(PRIMED, () => 'good-lift', false);
+      const played = playScripted(PRIMED, () => 'good-lift', false, PREVIEW_CREDIT_THAT_MOVES_THE_BAR);
       const settled = settledFrame(played, 0);
       return played.closeOut === null
         ? settled

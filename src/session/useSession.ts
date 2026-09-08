@@ -70,8 +70,10 @@
  * code. The port returns a promise, so `pending` is a state the app passes
  * through and a screen can draw.
  *
- * NOTHING IS PERSISTED. See `localSessionServer.ts`: a reload starts a fresh
- * lifter, because persistence is the server's job.
+ * Persistence is the server's job — `localSessionServer.ts` writes the row
+ * through `saveGame.ts` after every accepted mutation. A reload of a port
+ * constructed over the same store reopens the same lifter. This hook still
+ * does not write a fact; it only proposes.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

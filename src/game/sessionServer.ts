@@ -178,7 +178,7 @@
 
 import { CAREER_TUNING, type CareerFederationId } from '../career/careerTuning';
 import { DOTS_TOTAL_UNIT } from './dots';
-import { estimateE1rm, tryEstimateE1rm } from './e1rm';
+import { estimateE1rm, tryEstimateE1rm, TO_FAILURE_RPE } from './e1rm';
 import {
   EMPTY_FATIGUE_STATE,
   LUCKIEST_ROLLS,
@@ -212,6 +212,15 @@ import {
 } from './streak';
 import { nextBestE1rm, type SessionE1rmEstimate } from './session';
 import { SESSION_TUNING } from './sessionTuning';
+import {
+  EMPTY_TRAINING_PROGRESS_CREDIT,
+  copyTrainingProgressCredit,
+  creditForLift,
+  progressionOffer,
+  settleTrainingProgress,
+  stimulusCreditFor,
+  type TrainingProgressCredit,
+} from './trainingProgress';
 
 // ---------------------------------------------------------------------------
 // The accessory-day boundary, at compile time
@@ -290,6 +299,15 @@ export interface ServerRecord {
   readonly meets: readonly MeetResultWire[];
   readonly wallet: Readonly<Record<WalletCurrency, number>>;
   readonly fatigue: FatigueState;
+  /**
+   * Per-lift training-progress credit (GDD §3.4). THIS IS PROGRESSION, NOT
+   * FATIGUE. Successful work banks units here; a later session of the same
+   * lift may spend them on a heavier bar. Deliberately NOT on
+   * `ProgressionSnapshotWire` — a credit number on the wire is a meter that
+   * has not been rendered yet. The client gets this lift's prior credit
+   * through `SessionBrief`, the same door as the pruned ledger.
+   */
+  readonly trainingProgressCredit: TrainingProgressCredit;
   /**
    * GDD §2.1's federation. MOVED BY `careerServer.ts`'s `applyFederationChoice`
    * ONLY, and only while the row carries neither a prior choice nor a meet
@@ -455,6 +473,7 @@ export function newServerRecord(
     meets: [],
     wallet: { gymBucks: 0, chalk: 0 },
     fatigue: EMPTY_FATIGUE_STATE,
+    trainingProgressCredit: copyTrainingProgressCredit(EMPTY_TRAINING_PROGRESS_CREDIT),
     federation: { id: federationId, chosen: false },
   });
 }
@@ -479,6 +498,9 @@ function streakWire(state: StreakState): StreakStateWire {
  * `fatigue` is deliberately NOT on it: `ProgressionSnapshotWire` has no field
  * for it and none may be added. GDD §3.4 and §12.3 forbid a visible fatigue
  * meter, and a ledger on the wire is a meter that has not been rendered yet.
+ * Training-progress credit is the same class of hidden prescription state and
+ * is likewise absent: the client gets this lift's prior credit through
+ * `SessionBrief`, not as a ConfirmedFact.
  * The client gets a `SessionFeel` instead, computed from the copy of the ledger
  * it is handed for the session it is about to play — qualitative, and with its
  * one number behind a private symbol.
@@ -691,10 +713,22 @@ export function bestE1rmFromSets(
  * The reported sets, as the one `SessionRecord` `fatigue.ts` folds into the
  * ledger. GDD §3.2 is one session per day, so one record per day.
  *
- * `topRpe` is the hardest RPE reported, `workSets` the number of sets, and
- * `repsPerSet` the mean rounded up — `fatigue.ts` takes a rectangle, and
- * rounding the ragged real session UP is the direction that cannot understate
- * what it cost.
+ * The rectangle is SUCCESSFUL PRESCRIBED WORK, because the same row now
+ * feeds both hidden strain and the GDD §3.4 load nudge:
+ *
+ *   - `topRpe` is the hardest RPE among sets that made the prescribed
+ *     reps. A miss reports `TO_FAILURE_RPE` (10) for the e1RM chart;
+ *     counting that as the session's top RPE was paying failure as if
+ *     it were harder successful training.
+ *   - `workSets` / `repsPerSet` come from those completed sets only, so
+ *     a last-set miss keeps the earlier work and does not invent reps
+ *     for the miss. Rounding a ragged session UP used to be the strain-
+ *     conservative direction; it is also how a miss rounded into a
+ *     completed 5×3 @ RPE 10.
+ *   - A session of only to-failure reports (every set short of the
+ *     prescribed reps) still records as RPE 10 with the missed volume,
+ *     so strain still sees the grind. Stimulus then earns 0 — failing
+ *     RPE 10 cannot outgrow completing RPE 8.
  *
  * NO WEIGHT FIELD, which is `fatigue.ts`'s design and not an omission: strain is
  * a function of RPE, sets and reps, so a lifter whose e1RM has doubled and who
@@ -706,19 +740,46 @@ export function fatigueRecordFor(
   sets: readonly TrainingSetReport[],
 ): SessionRecord | null {
   if (sets.length === 0) return null;
+  const prescribedReps = SESSION_TUNING.REPS_PER_SET;
+  const completed: TrainingSetReport[] = [];
+  const missed: TrainingSetReport[] = [];
+  for (const set of sets) {
+    if (set.reps >= prescribedReps) completed.push(set);
+    else missed.push(set);
+  }
+  const source = completed.length > 0 ? completed : missed;
   let topRpe = Number.NEGATIVE_INFINITY;
   let totalReps = 0;
-  for (const set of sets) {
+  for (const set of source) {
     if (set.rpe > topRpe) topRpe = set.rpe;
     totalReps += set.reps;
   }
   return {
     day,
     lift,
-    topRpe,
-    workSets: sets.length,
-    repsPerSet: Math.ceil(totalReps / sets.length),
+    topRpe: completed.length > 0 ? topRpe : TO_FAILURE_RPE,
+    workSets: source.length,
+    repsPerSet: totalReps / source.length,
   };
+}
+
+/**
+ * The RPE the session was prescribed at, reconstructed from the card.
+ *
+ * Completed-as-prescribed sets carry the target. Missed sets report
+ * `TO_FAILURE_RPE`. The offer has to be rebuilt from the same target the
+ * player chose, because plate snap is chart-cell-dependent.
+ */
+function targetRpeFromSets(sets: readonly TrainingSetReport[]): number {
+  const prescribedReps = SESSION_TUNING.REPS_PER_SET;
+  for (const set of sets) {
+    if (set.reps >= prescribedReps) return set.rpe;
+  }
+  return sets[0]?.rpe ?? SESSION_TUNING.RPE_CHOICES[SESSION_TUNING.DEFAULT_RPE_INDEX]!;
+}
+
+function creditStateOf(record: ServerRecord): TrainingProgressCredit {
+  return record.trainingProgressCredit ?? EMPTY_TRAINING_PROGRESS_CREDIT;
 }
 
 // ---------------------------------------------------------------------------
@@ -810,6 +871,17 @@ export interface AppliedTrainingSession {
   readonly isPr: boolean;
   /** A setback this session started, or null (GDD §3.5). */
   readonly injuryOnset: InjuryNotice | null;
+  /**
+   * How this session settled the per-lift credit bank. Hidden prescription
+   * state, not a ConfirmedFact, not on the wire.
+   */
+  readonly trainingProgress: {
+    readonly appliedSteps: number;
+    readonly realized: boolean;
+    readonly consumed: number;
+    readonly earned: number;
+    readonly pending: number;
+  };
 }
 
 /**
@@ -897,13 +969,50 @@ export function applyTrainingSession(
   const trainedLift: LiftKind | undefined = sets[0]?.lift;
   let fatigue = record.fatigue;
   let injuryOnset: InjuryNotice | null = null;
+  let fatigueRecord = null as ReturnType<typeof fatigueRecordFor>;
   if (trainedLift !== undefined) {
-    const fatigueRecord = fatigueRecordFor(day, trainedLift, sets);
+    fatigueRecord = fatigueRecordFor(day, trainedLift, sets);
     if (fatigueRecord !== null) {
       const folded = recordSession(fatigue, fatigueRecord, rolls);
       fatigue = folded.state;
       injuryOnset = folded.injuryOnset;
     }
+  }
+
+  const priorCredit = creditStateOf(record);
+  let nextCredit = copyTrainingProgressCredit(priorCredit);
+  let trainingProgress: AppliedTrainingSession['trainingProgress'] = {
+    appliedSteps: 0,
+    realized: false,
+    consumed: 0,
+    earned: 0,
+    pending: trainedLift === undefined ? 0 : creditForLift(priorCredit, trainedLift),
+  };
+  if (trainedLift !== undefined) {
+    const held = record.bestE1rmKg[trainedLift];
+    const nextHeld = bestE1rmKg[trainedLift];
+    const e1rmRose = nextHeld !== null && (held === null || nextHeld > held);
+    const offer = progressionOffer({
+      credit: creditForLift(priorCredit, trainedLift),
+      e1rmKg: held ?? PROVEN_STARTING_E1RM.kilograms[trainedLift],
+      targetRpe: targetRpeFromSets(sets),
+    });
+    const realized = offer.appliedSteps > 0 && e1rmRose;
+    const settled = settleTrainingProgress({
+      prior: priorCredit,
+      lift: trainedLift,
+      appliedSteps: offer.appliedSteps,
+      realized,
+      sessionStimulus: fatigueRecord === null ? 0 : stimulusCreditFor(fatigueRecord),
+    });
+    nextCredit = settled.next;
+    trainingProgress = {
+      appliedSteps: offer.appliedSteps,
+      realized,
+      consumed: settled.consumed,
+      earned: settled.earned,
+      pending: settled.pending,
+    };
   }
 
   const next: ServerRecord = sealServerValue({
@@ -915,6 +1024,7 @@ export function applyTrainingSession(
     meets: record.meets,
     wallet: record.wallet,
     fatigue,
+    trainingProgressCredit: nextCredit,
     // CARRIED THROUGH UNTOUCHED. Training cannot move a federation.
     federation: record.federation,
   });
@@ -928,6 +1038,7 @@ export function applyTrainingSession(
       bestE1rmKg: trainedLift === undefined ? null : bestE1rmKg[trainedLift],
       isPr,
       injuryOnset,
+      trainingProgress,
     },
   };
 }
@@ -956,6 +1067,11 @@ export interface TodayForLifter {
   readonly alreadyTrainedToday: boolean;
   /** A copy of the hidden ledger, for `sessionFeel`. Never rendered as a number. */
   readonly fatigue: FatigueState;
+  /**
+   * This lift's PRIOR training-progress credit. Hidden prescription input,
+   * not a ConfirmedFact. Today's work is not in this number.
+   */
+  readonly trainingProgressCredit: number;
 }
 
 export function todayForLifter(record: ServerRecord, day: number, lift: LiftKind): TodayForLifter {
@@ -979,6 +1095,7 @@ export function todayForLifter(record: ServerRecord, day: number, lift: LiftKind
     // the short one is what reached the screen.
     streakIfTrainedToday: streakIfTrainedToday(opening),
     fatigue: record.fatigue,
+    trainingProgressCredit: creditForLift(creditStateOf(record), lift),
     alreadyTrainedToday,
   };
 }

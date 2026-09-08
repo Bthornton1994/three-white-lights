@@ -29,6 +29,10 @@
  *     wire, validated field by field on the way back in (`fatigue.ts` calls
  *     the shape "plain JSON; round-trips exactly", and this is where that
  *     sentence is made checkable).
+ *   - TRAINING-PROGRESS CREDIT. Same class as fatigue: per-lift, server
+ *     authoritative, not a ConfirmedFact, not a meter. A save that dropped
+ *     it would make reloading a progression reset. Version 1 and 2 migrate
+ *     as empty credit.
  *   - THE ENVELOPE. A format name, a schema version, and when it was saved.
  *
  * ---------------------------------------------------------------------------
@@ -38,9 +42,10 @@
  * refused as `FUTURE_VERSION` — deleting a player's future is worse than
  * asking them to update — and the caller keeps the bytes (see `appServer.ts`'s
  * quarantine) rather than overwriting them. A save from an OLDER version gets
- * a migration arm here: version 1 loads as version 2 with `profile: null`,
- * which is the "needs identity completion" state. An unknown lower version is
- * refused as `UNKNOWN_VERSION`.
+ * a migration arm here: version 1 loads as the current schema with
+ * `profile: null` and empty training-progress credit; version 2 loads with
+ * its profile and empty credit. An unknown lower version is refused as
+ * `UNKNOWN_VERSION`.
  *
  * BACKEND-LIFTABLE is a property of this shape, not a promise: the payload is
  * the boundary's own wire plus one JSON-safe state, so lifting the store to
@@ -72,14 +77,29 @@ import {
 } from './progression';
 import { snapshotWireFor, type ServerRecord } from './sessionServer';
 import { decodeLifterProfile, type LifterProfile } from './lifterProfile';
+import {
+  EMPTY_TRAINING_PROGRESS_CREDIT,
+  copyTrainingProgressCredit,
+  type TrainingProgressCredit,
+} from './trainingProgress';
+import { LIFT_ORDER, type LiftKind } from './meet';
 
 /** The envelope's format tag — what says "this string is ours" before any
  *  version question is asked of it. */
 export const SAVE_FORMAT = 'three-white-lights-save';
 
-/** This build's schema version. Bump it WITH a migration arm in
- *  `decodeSavedGame`, never alone. */
-export const SAVE_VERSION = 2 as const;
+/** Schema version that first carried a profile sibling. */
+export const SAVE_VERSION_V2 = 2 as const;
+
+/**
+ * Schema version that first carried per-lift training-progress credit.
+ * Migrations: v1 and v2 load as empty credit. Bump `SAVE_VERSION` WITH a
+ * migration arm in `decodeSavedGame`, never alone.
+ */
+export const SAVE_VERSION_TRAINING_PROGRESS = 3 as const;
+
+/** This build's schema version. */
+export const SAVE_VERSION = SAVE_VERSION_TRAINING_PROGRESS;
 
 /** The envelope, as written. `wire` is the progression boundary's own shape. */
 export interface SavedGameV1 {
@@ -94,11 +114,26 @@ export interface SavedGameV1 {
 /** Version 2 adds persistent athlete identity beside the progression wire. */
 export interface SavedGameV2 {
   readonly format: typeof SAVE_FORMAT;
+  readonly version: typeof SAVE_VERSION_V2;
+  readonly savedAtIso: string;
+  readonly wire: ProgressionSnapshotWire;
+  readonly fatigue: FatigueState;
+  readonly profile: LifterProfile | null;
+}
+
+/**
+ * Version 3 adds per-lift training-progress credit beside the fatigue ledger.
+ * Same standing as fatigue: JSON, round-trippable, never a ConfirmedFact,
+ * never a player-facing meter.
+ */
+export interface SavedGameV3 {
+  readonly format: typeof SAVE_FORMAT;
   readonly version: typeof SAVE_VERSION;
   readonly savedAtIso: string;
   readonly wire: ProgressionSnapshotWire;
   readonly fatigue: FatigueState;
   readonly profile: LifterProfile | null;
+  readonly trainingProgressCredit: TrainingProgressCredit;
 }
 
 /**
@@ -112,6 +147,7 @@ export const SAVE_REFUSAL_CODES = [
   'UNKNOWN_VERSION',
   'BAD_WIRE',
   'BAD_FATIGUE',
+  'BAD_TRAINING_PROGRESS',
 ] as const;
 export type SaveRefusalCode = (typeof SAVE_REFUSAL_CODES)[number];
 
@@ -130,13 +166,16 @@ export function encodeSavedGame(
   savedAtIso: string,
   profile: LifterProfile | null = null,
 ): string {
-  const save: SavedGameV2 = {
+  const save: SavedGameV3 = {
     format: SAVE_FORMAT,
     version: SAVE_VERSION,
     savedAtIso,
     wire: snapshotWireFor(record, null),
     fatigue: record.fatigue,
     profile,
+    trainingProgressCredit: copyTrainingProgressCredit(
+      record.trainingProgressCredit ?? EMPTY_TRAINING_PROGRESS_CREDIT,
+    ),
   };
   return JSON.stringify(save);
 }
@@ -207,6 +246,38 @@ function decodeFatigue(value: unknown): { ok: true; state: FatigueState } | { ok
   return { ok: true, state: { sessions, injury } };
 }
 
+function isCredit(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+}
+
+function decodeTrainingProgress(
+  value: unknown,
+): { ok: true; state: TrainingProgressCredit } | { ok: false; detail: string } {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return {
+      ok: false,
+      detail: `trainingProgressCredit must be an object, received a ${Array.isArray(value) ? 'array' : typeof value}`,
+    };
+  }
+  const shape = value as Partial<Record<LiftKind, unknown>>;
+  const next: { squat: number; bench: number; deadlift: number } = {
+    squat: 0,
+    bench: 0,
+    deadlift: 0,
+  };
+  for (const lift of LIFT_ORDER) {
+    const raw = shape[lift];
+    if (!isCredit(raw)) {
+      return {
+        ok: false,
+        detail: `trainingProgressCredit.${lift} must be a finite non-negative number`,
+      };
+    }
+    next[lift] = raw;
+  }
+  return { ok: true, state: next };
+}
+
 /**
  * A save string back into a `ServerRecord`, or a refusal that says why.
  *
@@ -261,9 +332,18 @@ export function decodeSavedGame(text: string): SaveDecodeResult {
   const fatigue = decodeFatigue(envelope.fatigue);
   if (!fatigue.ok) return refused('BAD_FATIGUE', fatigue.detail);
 
+  let trainingProgressCredit = copyTrainingProgressCredit(EMPTY_TRAINING_PROGRESS_CREDIT);
+  if (envelope.version >= SAVE_VERSION_TRAINING_PROGRESS) {
+    const decodedCredit = decodeTrainingProgress(
+      (envelope as { trainingProgressCredit?: unknown }).trainingProgressCredit,
+    );
+    if (!decodedCredit.ok) return refused('BAD_TRAINING_PROGRESS', decodedCredit.detail);
+    trainingProgressCredit = decodedCredit.state;
+  }
+
   const envelopeProfile = (envelope as { profile?: unknown }).profile;
   let profile: LifterProfile | null = null;
-  if (envelope.version >= 2 && envelopeProfile !== undefined && envelopeProfile !== null) {
+  if (envelope.version >= SAVE_VERSION_V2 && envelopeProfile !== undefined && envelopeProfile !== null) {
     const decodedProfile = decodeLifterProfile(envelopeProfile);
     // Corrupt identity fails closed as "needs completion". The progression
     // wire already proved; refusing the whole save would reset Total.
@@ -286,6 +366,7 @@ export function decodeSavedGame(text: string): SaveDecodeResult {
       meets: wire.meets,
       wallet: wire.wallet,
       fatigue: fatigue.state,
+      trainingProgressCredit,
       federation: facts.federation,
     }),
   };

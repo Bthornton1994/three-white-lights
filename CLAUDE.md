@@ -2602,6 +2602,72 @@ Residuals, recorded rather than papered over:
 - ON DECK / YOUR OPENER chrome overlap is A1 residue.
 - A3–A7 not started. Physical glass remains A0-DEVICE-01.
 
+### FILED 2026-09-07: GDD §3.4 STIMULUS-COUPLED GROWTH (MECHANICS, NOT ART)
+
+Session A mechanics on `grok/session-a-iron-amber-training-art-01` at
+PR #48 (`20bda71d` contract freeze). Lift presentation, A0, A2 identity,
+and `src/empire/**` untouched.
+
+The daily loop's load nudge now scales with this lift's successful
+prescribed work, not with check-in taps and not with a harder RPE
+menu pick. `stimulusLoadAdjustmentPercent` in `fatigue.ts` reads the
+ledger (volume × saturating effort; RPE 8/9/10 of the same completed
+volume earn the same percent; misses do not count as completed work);
+`choose-rpe` in `session.ts` applies it. Check-in taps still move
+windows and bar-speed; they do not mint the bar. `e1rm.ts`
+cancellation is unchanged. Empty/recovery history is 0, so a first
+session holds.
+
+Superseded the same day: the percent-nudge compounding exploded under
+the 90/180 matrix and was replaced by thresholded credit (filing
+below). Do not restore the percent-nudge path.
+
+Do not merge PR #48. Presentation contract stays frozen.
+
+### FILED 2026-09-07: GDD §3.4 PROGRESSION CREDIT, NOT COMPOUNDING (MECHANICS, NOT ART)
+
+Session A mechanics on `grok/session-a-iron-amber-training-art-01` at
+PR #48 (`20bda71d` contract freeze). Lift presentation, A0, A2 identity,
+and `src/empire/**` untouched. Does not amend the stimulus-formula
+commit; this is a new progression architecture.
+
+Successful work still earns stimulus (`sessionStimulusCredit` in
+`fatigue.ts`: volume × saturating effort; RPE 6 = 0; RPE 8/9/10 equal;
+misses and failure-only = 0; check-in is not an input). That worth is
+no longer a load percent applied next session. It accumulates per lift
+as `TrainingProgressCredit` in `trainingProgress.ts` (sibling of the
+fatigue ledger on `ServerRecord`, never on `ProgressionSnapshotWire`,
+never a meter). Four successful reference sessions bank one 0.5% step.
+`progressionOffer` spends PRIOR credit only, smallest n that actually
+moves the snapped bar, capped at 3 steps / +1.5%. Settlement consumes
+applied × 4 only when the heavier bar is realized as a new best e1RM,
+then adds today's stimulus. Save schema is v3; v1/v2 migrate empty
+credit. `e1rm.ts` cancellation is unchanged.
+
+Do not merge PR #48. Presentation contract stays frozen.
+
+### FILED 2026-09-07: GDD §3.4 PHYSICAL PROGRESSION OPPORTUNITY (MECHANICS, NOT ART)
+
+Session A mechanics on `grok/session-a-iron-amber-training-art-01` at
+PR #48 (`20bda71d` contract freeze). Lift presentation, A0, A2 identity,
+and `src/empire/**` untouched. Does not amend the stimulus-formula
+commit or the credit-bank commit; this is a new realization model on
+the same bank.
+
+The 1.5% / 3-step percent cap deadlocked starting strengths at and
+below ~150 kg (signup bench 120 kg included) and let 300+ kg lifters
+PR every 8 sessions because 0.5% already cleared a plate. Realization
+is now physical: twelve prior same-lift credit buys ordinary snapped
+bar + ONE existing rounding increment (kg 2.5, lb 5). RPE 6 is
+recovery and cannot cash. Consume 12 only on successful realization;
+a miss consumes 0; then add today's stimulus. `choose-rpe` writes
+`nudgedWeightKg` onto the plan and never reconstructs the increment as
+a percent (IEEE snap-down). 6% remains a lying-client guard, not a
+pacing lever; it may bind at implausible light loads. `e1rm.ts`
+cancellation is unchanged.
+
+Do not merge PR #48. Presentation contract stays frozen.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a

@@ -44,9 +44,23 @@ import {
   UNLUCKIEST_ROLLS,
   readinessCheckIn,
   recordSession,
+  sessionStimulusCredit,
   type FatigueState,
   type ReadinessCheckIn,
 } from './fatigue';
+import {
+  EMPTY_TRAINING_PROGRESS_CREDIT,
+  TRAINING_PROGRESS_TUNING,
+  creditForLift,
+  progressionOffer,
+} from './trainingProgress';
+import {
+  applyTrainingSession,
+  newServerRecord,
+  snapshotWireFor,
+  fatigueRecordFor,
+  type ServerRecord,
+} from './sessionServer';
 import {
   createLift,
   stepLift,
@@ -71,7 +85,6 @@ import {
   type TrainingSetReport,
 } from './progression';
 import type { LiftKind } from './meet';
-import { newServerRecord, snapshotWireFor } from './sessionServer';
 
 /**
  * The day these fixtures pretend the account was created on (GDD 4.2 signup
@@ -90,6 +103,8 @@ const PRIMED: ReadinessCheckIn = { sleep: 'good', soreness: 'fresh', motivation:
 const READY: ReadinessCheckIn = { sleep: 'good', soreness: 'normal', motivation: 'steady' };
 const WRECKED: ReadinessCheckIn = { sleep: 'poor', soreness: 'sore', motivation: 'flat' };
 
+const CREDIT_FOR_A_PLATE = TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_OPPORTUNITY;
+
 function context(overrides: Partial<SessionContext> = {}): SessionContext {
   return {
     day: 0,
@@ -99,6 +114,7 @@ function context(overrides: Partial<SessionContext> = {}): SessionContext {
     streakBefore: 4,
     streakIfTrainedToday: 5,
     fatigue: EMPTY_FATIGUE_STATE,
+    trainingProgressCredit: 0,
     ...overrides,
   };
 }
@@ -630,13 +646,10 @@ describe('prescription — GDD §3.3, RPE target in, weight out', () => {
   });
 
   it('and that ratchet COMPOUNDS: 30 on-target primed sessions take a 200 kg squat past 770 kg', () => {
-    // The measured cost of the gap the sweep above pins, driven only through
-    // this module's public API — the same four calls the app makes, with the
-    // next day's prescription computed from the number the last one minted.
-    //
-    // KNOWN AND RECORDED (GDD §3.4), NOT ENDORSED. The numbers are here so that
-    // coupling the nudge to training stimulus fails this test rather than
-    // passing it quietly.
+    // The measured arithmetic of a HANDED-IN percent — the same four calls
+    // `prescribeSession` makes — with the next day's prescription computed
+    // from the number the last one minted. This is still what the function
+    // does. It is no longer the player path; see the test below.
     function thirtySessions(
       answers: ReadinessCheckIn,
       rpe: number,
@@ -702,8 +715,355 @@ describe('prescription — GDD §3.3, RPE target in, weight out', () => {
     );
   });
 
+  it('the player path never mints that ratchet from check-in taps — GDD §3.4', () => {
+    const primed = runSession(context(), PRIMED, 8, ALL_GOOD);
+    const neutral = runSession(context(), NEUTRAL, 8, ALL_GOOD);
+    expect(primed.plan?.loadAdjustmentPercent).toBe(0);
+    expect(primed.plan?.weightKg).toBe(neutral.plan?.weightKg);
+    expect(primed.closeOut?.isPr).toBe(false);
+    expect(neutral.closeOut?.isPr).toBe(false);
+  });
+
+  it('player-path growth is thresholded credit, not taps or a harder menu pick', () => {
+    const missOnce = runSession(context(), NEUTRAL, 8, (set, rep) =>
+      set === SESSION_TUNING.WORK_SETS - 1 && rep === 0 ? 'miss' : 'good-lift',
+    );
+    const fullOnce = runSession(context(), NEUTRAL, 8, ALL_GOOD);
+    const missRecord = fatigueRecordFor(0, 'squat', missOnce.closeOut!.sets);
+    const fullRecord = fatigueRecordFor(0, 'squat', fullOnce.closeOut!.sets);
+    expect(missRecord?.workSets).toBe(SESSION_TUNING.WORK_SETS - 1);
+    expect(fullRecord?.workSets).toBe(SESSION_TUNING.WORK_SETS);
+    expect(sessionStimulusCredit(missRecord!)).toBeLessThan(sessionStimulusCredit(fullRecord!));
+
+    const failHigh = runSession(
+      context({ trainingProgressCredit: CREDIT_FOR_A_PLATE }),
+      NEUTRAL,
+      10,
+      (_set, rep) => (rep === SESSION_TUNING.REPS_PER_SET - 1 ? 'miss' : 'good-lift'),
+    );
+    expect(failHigh.closeOut?.isPr).toBe(false);
+    const eight = runSession(context({ trainingProgressCredit: CREDIT_FOR_A_PLATE }), NEUTRAL, 8, ALL_GOOD);
+    expect(eight.closeOut?.isPr).toBe(true);
+    expect(eight.plan?.loadAdjustmentPercent).toBe(0);
+    const ordinary = progressionOffer({ credit: 0, e1rmKg: 200, targetRpe: 8 });
+    const paid = progressionOffer({ credit: CREDIT_FOR_A_PLATE, e1rmKg: 200, targetRpe: 8 });
+    expect(eight.plan?.weightKg).toBe(paid.nudgedWeightKg);
+    expect(paid.nudgedWeightKg).toBeGreaterThan(ordinary.unNudgedWeightKg);
+
+    const primed = runSession(context({ trainingProgressCredit: CREDIT_FOR_A_PLATE }), PRIMED, 8, ALL_GOOD);
+    const wrecked = runSession(context({ trainingProgressCredit: CREDIT_FOR_A_PLATE }), WRECKED, 8, ALL_GOOD);
+    expect(wrecked.plan?.weightKg).toBe(primed.plan?.weightKg);
+    expect(wrecked.closeOut?.isPr).toBe(primed.closeOut?.isPr);
+  });
+
   it('offers RPE 8 by default', () => {
     expect(defaultRpeChoice()).toBe(8);
+  });
+});
+
+const MATRIX_CLOCK = { year: 2026, month: 8, day: 3, hour: 19 };
+
+describe('credit pacing matrix — GDD §3.4 red-team', () => {
+  interface PathStats {
+    readonly name: string;
+    readonly sessions: number;
+    readonly start: number;
+    readonly end: number;
+    readonly gain: number;
+    readonly pct: number;
+    readonly prs: number;
+    readonly longestPrStreak: number;
+    readonly meanSessionsBetweenPrs: number | null;
+    readonly missedSets: number;
+    readonly rpeCounts: Readonly<Record<number, number>>;
+    readonly creditEarned: number;
+    readonly creditConsumed: number;
+    readonly pending: number;
+    readonly snappedWeights: readonly number[];
+  }
+
+  function seededRecord(): ServerRecord {
+    const fresh = newServerRecord(SIGNUP_DAY);
+    return {
+      ...fresh,
+      bestE1rmKg: { squat: 200, bench: 200, deadlift: 200 },
+    };
+  }
+
+  function playPath(args: {
+    readonly name: string;
+    readonly sessions: number;
+    readonly rpeFor: (sessionIndex: number, lift: LiftKind) => number;
+    readonly answersFor?: (sessionIndex: number) => ReadinessCheckIn;
+    readonly outcomeFor?: (setIndex: number, repIndex: number) => LiftOutcome;
+    readonly rotate?: boolean;
+    readonly trackLift?: LiftKind;
+  }): PathStats {
+    const start = 200;
+    let record = seededRecord();
+    const track = args.trackLift ?? 'squat';
+    let prs = 0;
+    let streak = 0;
+    let longest = 0;
+    const prDays: number[] = [];
+    let missedSets = 0;
+    const rpeCounts: Record<number, number> = { 6: 0, 7: 0, 8: 0, 9: 0, 10: 0 };
+    let creditEarned = 0;
+    let creditConsumed = 0;
+    const snappedWeights: number[] = [];
+    const answersFor = args.answersFor ?? ((): ReadinessCheckIn => NEUTRAL);
+    const outcomeFor = args.outcomeFor ?? ALL_GOOD;
+    for (let i = 0; i < args.sessions; i += 1) {
+      const day = i;
+      const lift = args.rotate === true ? liftForDay(day) : track;
+      const best = record.bestE1rmKg[lift] ?? start;
+      const credit = creditForLift(record.trainingProgressCredit ?? EMPTY_TRAINING_PROGRESS_CREDIT, lift);
+      const rpe = args.rpeFor(i, lift);
+      if (lift === track) rpeCounts[rpe] = (rpeCounts[rpe] ?? 0) + 1;
+      const state = runSession(
+        context({
+          day,
+          e1rmKg: best,
+          bestE1rmKg: best,
+          fatigue: record.fatigue,
+          trainingProgressCredit: credit,
+          lift,
+        }),
+        answersFor(i),
+        rpe,
+        outcomeFor,
+      );
+      const closeOut = state.closeOut;
+      if (closeOut === null) throw new Error(`${args.name} day ${day} produced no close-out`);
+      if (lift === track) {
+        missedSets += closeOut.sets.filter((row) => row.rpe >= 10 && row.reps < SESSION_TUNING.REPS_PER_SET).length;
+        missedSets += SESSION_TUNING.WORK_SETS - closeOut.sets.length;
+        if (state.plan !== null) snappedWeights.push(state.plan.weightKg);
+      }
+      const proposal = sessionProposal(closeOut, MATRIX_CLOCK);
+      if (proposal === null) continue;
+      const applied = applyTrainingSession(record, day, proposal, `${args.name}-${i}`);
+      if (!applied.ok) throw new Error(`${args.name} day ${day}: ${applied.error.message}`);
+      record = applied.value.record;
+      if (lift === track) {
+        creditEarned += applied.value.trainingProgress.earned;
+        creditConsumed += applied.value.trainingProgress.consumed;
+        if (applied.value.isPr) {
+          prs += 1;
+          streak += 1;
+          if (streak > longest) longest = streak;
+          prDays.push(i);
+        } else {
+          streak = 0;
+        }
+      }
+    }
+    const end = record.bestE1rmKg[track] ?? start;
+    let meanGap: number | null = null;
+    if (prDays.length >= 2) {
+      let gaps = 0;
+      for (let i = 1; i < prDays.length; i += 1) gaps += prDays[i]! - prDays[i - 1]!;
+      meanGap = gaps / (prDays.length - 1);
+    }
+    return {
+      name: args.name,
+      sessions: args.sessions,
+      start,
+      end,
+      gain: end - start,
+      pct: ((end - start) / start) * 100,
+      prs,
+      longestPrStreak: longest,
+      meanSessionsBetweenPrs: meanGap,
+      missedSets,
+      rpeCounts,
+      creditEarned,
+      creditConsumed,
+      pending: creditForLift(record.trainingProgressCredit ?? EMPTY_TRAINING_PROGRESS_CREDIT, track),
+      snappedWeights,
+    };
+  }
+
+  it('30 / 90 / 180 sessions: credit is scarce; always-10 does not dominate; failing does not pay', { timeout: 60_000 }, () => {
+    const lastRepMiss: (set: number, rep: number) => LiftOutcome = (_set, rep) =>
+      rep === SESSION_TUNING.REPS_PER_SET - 1 ? 'miss' : 'good-lift';
+    const lastSetMiss: (set: number, rep: number) => LiftOutcome = (set, rep) =>
+      set === SESSION_TUNING.WORK_SETS - 1 && rep === 0 ? 'miss' : 'good-lift';
+
+    const at = (
+      sessions: number,
+      name: string,
+      rpe: number,
+      outcome: (set: number, rep: number) => LiftOutcome = ALL_GOOD,
+    ): PathStats =>
+      playPath({
+        name: `${sessions} ${name}`,
+        sessions,
+        rpeFor: () => rpe,
+        outcomeFor: outcome,
+      });
+
+    const rpe6_30 = at(30, 'always-6', 6);
+    const rpe7_30 = at(30, 'always-7', 7);
+    const rpe8_30 = at(30, 'always-8', 8);
+    const rpe9_30 = at(30, 'always-9', 9);
+    const rpe10_30 = at(30, 'always-10', 10);
+    const lastMiss_30 = playPath({
+      name: '30 last-set-miss-8',
+      sessions: 30,
+      rpeFor: () => 8,
+      outcomeFor: lastSetMiss,
+    });
+    const fail10_30 = playPath({
+      name: '30 fail-high-10',
+      sessions: 30,
+      rpeFor: () => 10,
+      outcomeFor: lastRepMiss,
+    });
+    const alt_30 = playPath({
+      name: '30 alt-6-9',
+      sessions: 30,
+      rpeFor: (i) => (i % 2 === 0 ? 6 : 9),
+    });
+    const mix_30 = playPath({
+      name: '30 mixed-7-8-9',
+      sessions: 30,
+      rpeFor: (i) => ([7, 8, 9] as const)[i % 3]!,
+    });
+    const primed_30 = playPath({
+      name: '30 rpe8-primed',
+      sessions: 30,
+      rpeFor: () => 8,
+      answersFor: () => PRIMED,
+    });
+    const wrecked_30 = playPath({
+      name: '30 rpe8-wrecked',
+      sessions: 30,
+      rpeFor: () => 8,
+      answersFor: () => WRECKED,
+    });
+
+    // First session cannot mint: 30 always-6 holds; always-8 is scarce.
+    expect(rpe6_30.end).toBe(200);
+    expect(rpe6_30.prs).toBe(0);
+    expect(rpe6_30.creditEarned).toBe(0);
+    expect(rpe8_30.end).toBeGreaterThan(200);
+    expect(rpe8_30.end).toBeLessThan(500);
+    expect(rpe8_30.pct).toBeGreaterThanOrEqual(2);
+    expect(rpe8_30.pct).toBeLessThanOrEqual(6);
+    expect(rpe8_30.prs).toBeGreaterThan(0);
+    expect(rpe8_30.prs).toBeLessThanOrEqual(10);
+    expect(rpe8_30.longestPrStreak).toBeLessThanOrEqual(2);
+
+    expect(rpe7_30.end).toBeGreaterThan(200);
+    expect(rpe7_30.end).toBeLessThan(rpe8_30.end);
+
+    const productive30 = [rpe8_30.end, rpe9_30.end, rpe10_30.end];
+    expect(Math.min(...productive30) / Math.max(...productive30)).toBeGreaterThan(0.95);
+    expect(rpe10_30.end).toBeLessThanOrEqual(Math.max(rpe8_30.end, rpe9_30.end) + 5);
+    expect(fail10_30.end).toBe(200);
+    expect(fail10_30.creditEarned).toBe(0);
+    expect(fail10_30.end).toBeLessThan(rpe8_30.end);
+    expect(lastMiss_30.end).toBeGreaterThan(200);
+    expect(lastMiss_30.end).toBeLessThanOrEqual(rpe8_30.end);
+    expect(lastMiss_30.creditEarned).toBeLessThan(rpe8_30.creditEarned);
+    expect(alt_30.end).toBeGreaterThan(rpe6_30.end);
+    expect(alt_30.end).toBeLessThanOrEqual(rpe8_30.end);
+    expect(mix_30.end).toBeGreaterThan(200);
+    expect(primed_30.end).toBe(wrecked_30.end);
+    expect(primed_30.pending).toBe(wrecked_30.pending);
+
+    const rpe8_90 = at(90, 'always-8', 8);
+    const rpe10_90 = at(90, 'always-10', 10);
+    const fail10_90 = at(90, 'fail-high-10', 10, lastRepMiss);
+    const lastMiss_90 = playPath({
+      name: '90 last-set-miss-8',
+      sessions: 90,
+      rpeFor: () => 8,
+      outcomeFor: lastSetMiss,
+    });
+    const rpe8_180 = at(180, 'always-8', 8);
+    const rpe10_180 = at(180, 'always-10', 10);
+    const fail10_180 = at(180, 'fail-high-10', 10, lastRepMiss);
+    const lastMiss_180 = playPath({
+      name: '180 last-set-miss-8',
+      sessions: 180,
+      rpeFor: () => 8,
+      outcomeFor: lastSetMiss,
+    });
+
+    expect(rpe8_90.pct).toBeGreaterThanOrEqual(7);
+    expect(rpe8_90.pct).toBeLessThanOrEqual(15);
+    expect(rpe8_90.end).toBeGreaterThan(rpe8_30.end);
+    expect(rpe10_90.end / rpe8_90.end).toBeLessThan(1.05);
+    expect(fail10_90.end).toBe(200);
+    expect(lastMiss_90.end).toBeLessThan(rpe8_90.end);
+
+    expect(rpe8_180.pct).toBeLessThan(30);
+    expect(rpe8_180.end).toBeGreaterThan(rpe8_90.end);
+    expect(rpe10_180.end / rpe8_180.end).toBeLessThan(1.05);
+    expect(fail10_180.end).toBe(200);
+    expect(lastMiss_180.end).toBeLessThan(rpe8_180.end);
+
+    const rotate90 = playPath({
+      name: '90 rotate-8',
+      sessions: 90,
+      rpeFor: () => 8,
+      rotate: true,
+      trackLift: 'squat',
+    });
+    const rotate180 = playPath({
+      name: '180 rotate-8',
+      sessions: 180,
+      rpeFor: () => 8,
+      rotate: true,
+      trackLift: 'squat',
+    });
+    // 90 calendar days of a 3-lift rotation is 30 squat sessions.
+    expect(rotate90.end / rpe8_30.end).toBeGreaterThan(0.95);
+    expect(rotate90.end / rpe8_30.end).toBeLessThan(1.05);
+    expect(rotate180.end).toBeGreaterThan(rotate90.end);
+    expect(rotate180.end).toBeLessThan(rpe8_90.end);
+
+    expect(rpe8_30.rpeCounts[8]).toBe(30);
+    expect(fail10_30.missedSets).toBeGreaterThan(0);
+    expect(lastMiss_30.missedSets).toBeGreaterThan(0);
+    expect(rpe8_30.creditConsumed).toBeGreaterThan(0);
+    expect(rpe8_30.pending).toBeGreaterThanOrEqual(0);
+  });
+
+  it('architecture: first session cannot mint; failed opportunity does not burn the bank', () => {
+    const first = playPath({ name: '1 always-8', sessions: 1, rpeFor: () => 8 });
+    expect(first.end).toBe(200);
+    expect(first.prs).toBe(0);
+    expect(first.creditEarned).toBe(1);
+    expect(first.creditConsumed).toBe(0);
+    expect(first.pending).toBe(1);
+
+    // Bank 12, miss the session: consume 0, keep the bank, earn 0 for failure-only.
+    let record = seededRecord();
+    record = {
+      ...record,
+      trainingProgressCredit: { squat: CREDIT_FOR_A_PLATE, bench: 0, deadlift: 0 },
+    };
+    const miss = runSession(
+      context({
+        trainingProgressCredit: CREDIT_FOR_A_PLATE,
+        e1rmKg: 200,
+        bestE1rmKg: 200,
+        fatigue: record.fatigue,
+      }),
+      NEUTRAL,
+      8,
+      (_set, rep) => (rep === SESSION_TUNING.REPS_PER_SET - 1 ? 'miss' : 'good-lift'),
+    );
+    const proposal = sessionProposal(miss.closeOut!, MATRIX_CLOCK)!;
+    const applied = applyTrainingSession(record, 0, proposal, 'miss-bank');
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) return;
+    expect(applied.value.trainingProgress.consumed).toBe(0);
+    expect(applied.value.isPr).toBe(false);
+    expect(applied.value.record.trainingProgressCredit.squat).toBeGreaterThanOrEqual(CREDIT_FOR_A_PLATE);
   });
 });
 
@@ -957,6 +1317,28 @@ describe('playing a set', () => {
     expect(state.completedSets[0]?.goodReps).toBe(1);
   });
 
+  it('a miss on the last set still closes out, at the same load', () => {
+    let state = stepSession(createSession(context()), { kind: 'choose-rpe', rpe: 8 });
+    const load = state.plan?.weightKg;
+    expect(load).toBeGreaterThan(0);
+    const lastSet = SESSION_TUNING.WORK_SETS - 1;
+    while (state.setIndex < lastSet) {
+      if (state.phase === 'rest') {
+        state = stepSession(state, { kind: 'begin-set' });
+        continue;
+      }
+      state = stepSession(state, { kind: 'rep-resolved', outcome: 'good-lift', executionQuality: 1 });
+    }
+    if (state.phase === 'rest') state = stepSession(state, { kind: 'begin-set' });
+    expect(state.phase).toBe('set');
+    expect(state.setIndex).toBe(lastSet);
+    state = stepSession(state, { kind: 'rep-resolved', outcome: 'miss', executionQuality: 0 });
+    expect(state.phase).toBe('close-out');
+    expect(state.plan?.weightKg).toBe(load);
+    expect(state.closeOut?.canPropose).toBe(true);
+    expect(state.closeOut?.sets).toHaveLength(lastSet);
+  });
+
   it('counts the set number for copy from one', () => {
     let state = stepSession(tapThrough(createSession(context()), NEUTRAL), {
       kind: 'choose-rpe',
@@ -1061,28 +1443,29 @@ describe('the close-out — GDD §3.2', () => {
     expect(closeOut.streakAfter).toBe(5);
   });
 
-  it('calls a PR when the primed bar went up', () => {
-    const state = runSession(context(), PRIMED, 8, ALL_GOOD);
+  it('calls a PR when earned stimulus made the bar heavier — GDD §3.4', () => {
+    const state = runSession(context({ trainingProgressCredit: CREDIT_FOR_A_PLATE }), NEUTRAL, 8, ALL_GOOD);
     const closeOut = state.closeOut;
     expect(closeOut).not.toBeNull();
     if (closeOut === null) return;
-    // 180 kg x 3 @ RPE 8 -> 180 / 0.863 = 208.5747...
-    expect(closeOut.weightKg).toBe(180);
-    expect(closeOut.sessionE1rmKg).toBeCloseTo(208.5747, 4);
+    expect(state.plan?.loadAdjustmentPercent).toBe(0);
     expect(closeOut.isPr).toBe(true);
-    expect(closeOut.prGainKg).toBeCloseTo(8.5747, 4);
+    expect(closeOut.prGainKg).toBeGreaterThan(0);
     expect(closeOut.headline).toBe(SESSION_COPY.CLOSE_OUT_PR_HEADLINE);
   });
 
-  it('does not call a PR when the session came up short', () => {
-    // Every set fails on the third rep: 2 reps @ RPE 10 on a 180 kg bar.
-    const state = runSession(context(), PRIMED, 8, (_set, rep) => (rep === 2 ? 'miss' : 'good-lift'));
+  it('does not call a PR when the session came up short, even with stimulus in the ledger', () => {
+    // Every set fails on the third rep: 2 reps @ RPE 10 on the stimulus-nudged bar.
+    const state = runSession(
+      context({ trainingProgressCredit: CREDIT_FOR_A_PLATE }),
+      NEUTRAL,
+      8,
+      (_set, rep) => (rep === 2 ? 'miss' : 'good-lift'),
+    );
     const closeOut = state.closeOut;
     expect(closeOut).not.toBeNull();
     if (closeOut === null) return;
     expect(closeOut.goodReps).toBe(SESSION_TUNING.WORK_SETS * 2);
-    // 180 / 0.955 = 188.4816...
-    expect(closeOut.sessionE1rmKg).toBeCloseTo(188.4817, 4);
     expect(closeOut.isPr).toBe(false);
     expect(closeOut.subhead).toBe(SESSION_COPY.CLOSE_OUT_SHORT_SUBHEAD);
   });
@@ -1239,7 +1622,7 @@ describe('what the close-out is HEADED, not only what it counts', () => {
     // The one door. It exists because accessory day is RULED and the rotation
     // that would produce one is not built — `liftForDay` hands back a
     // `LiftKind`, which is the meet's three lifts for ever.
-    const played = runSession(context(), PRIMED, 8, ALL_GOOD).closeOut;
+    const played = runSession(context({ trainingProgressCredit: CREDIT_FOR_A_PLATE }), NEUTRAL, 8, ALL_GOOD).closeOut;
     expect(played).not.toBeNull();
     if (played === null) return;
     expect(played.isPr).toBe(true);
@@ -1383,10 +1766,10 @@ describe('the proposal and the projection — the client proposes, the server pu
   });
 
   it('claims an e1RM and a streak, and a null Total', () => {
-    const state = runSession(context(), PRIMED, 8, ALL_GOOD);
+    const state = runSession(context({ trainingProgressCredit: CREDIT_FOR_A_PLATE }), NEUTRAL, 8, ALL_GOOD);
     const projection = sessionProjection(state.closeOut!);
     expect(projection.totalKg).toBeNull();
-    expect(projection.bestE1rmKg.squat).toBeCloseTo(208.5747, 4);
+    expect(projection.bestE1rmKg.squat).toBeGreaterThan(200);
     expect(projection.bestE1rmKg.bench).toBeNull();
     expect(projection.bestE1rmKg.deadlift).toBeNull();
     expect(projection.streak?.currentStreak).toBe(5);
@@ -1406,7 +1789,7 @@ describe('the proposal and the projection — the client proposes, the server pu
     expect(seeded.ok).toBe(true);
     if (!seeded.ok) return;
 
-    const state = runSession(context({ e1rmKg: 180, bestE1rmKg: 180 }), PRIMED, 8, ALL_GOOD);
+    const state = runSession(context({ e1rmKg: 180, bestE1rmKg: 180, trainingProgressCredit: CREDIT_FOR_A_PLATE }), NEUTRAL, 8, ALL_GOOD);
     const closeOut = state.closeOut!;
     const proposed = proposeChange(
       seeded.value,

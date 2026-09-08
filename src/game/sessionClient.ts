@@ -69,12 +69,14 @@
  *
  * Three things narrow that here, and the residual is stated rather than glossed:
  *
- *  1. IT IS A DIFFERENT DOOR, AND IT CARRIES ONE THING. `SessionBrief` is what
- *     the client is given to PLAY today, as against what it is told about its
- *     progression. `SESSION_BRIEF_KEYS` is `['fatigue']` and
- *     `A_SESSION_BRIEF_IS_EXACTLY_ITS_ALLOWLIST` fails `tsc` if a second field
- *     appears. Every number `todayForLifter` also returns now comes from the
- *     cache instead, so the brief cannot become the bypass the row was.
+ *  1. IT IS A DIFFERENT DOOR, AND IT CARRIES THE HIDDEN PRESCRIPTION STATE.
+ *     `SessionBrief` is what the client is given to PLAY today, as against
+ *     what it is told about its progression. `SESSION_BRIEF_KEYS` is
+ *     `['fatigue', 'trainingProgressCredit']` and
+ *     `A_SESSION_BRIEF_IS_EXACTLY_ITS_ALLOWLIST` fails `tsc` if a third field
+ *     appears. Neither field is a ConfirmedFact. Every number `todayForLifter`
+ *     also returns now comes from the cache instead, so the brief cannot
+ *     become the bypass the row was.
  *  2. IT IS NARROWED TO THE HORIZON. The port hands over
  *     `pruneFatigueState(ledger, day)` — GDD §3.4's "same-day / next-day horizon,
  *     not multi-week arcs" — so what crosses is the days that can still affect
@@ -139,11 +141,16 @@ import { SESSION_TUNING } from './sessionTuning';
 /**
  * The not-progression half of what the server tells a client at session start.
  *
- * ONE FIELD, AND THE ALLOWLIST BELOW IS WHY. Everything else `todayForLifter`
- * computes — the e1RM, the best on record, the streak before, the streak if
- * trained today, whether today is already trained — is a progression fact and
- * has its own door. Putting any of them here would rebuild the bypass this file
- * exists to remove.
+ * TWO FIELDS, BOTH HIDDEN PRESCRIPTION STATE, AND THE ALLOWLIST BELOW IS WHY.
+ * Everything else `todayForLifter` computes — the e1RM, the best on record,
+ * the streak before, the streak if trained today, whether today is already
+ * trained — is a progression fact and has its own door. Putting any of them
+ * here would rebuild the bypass this file exists to remove.
+ *
+ * `trainingProgressCredit` is this lift's prior credit, the fatigue analog:
+ * the client needs it to prescribe today's bar, it is not a ConfirmedFact,
+ * and it must not appear on `ProgressionSnapshotWire`. Adding a third field
+ * still has to be argued here.
  */
 export interface SessionBrief {
   /**
@@ -153,9 +160,15 @@ export interface SessionBrief {
    * header for the full argument and for the residual.
    */
   readonly fatigue: FatigueState;
+  /**
+   * This lift's PRIOR training-progress credit, in stimulus units.
+   *
+   * Hidden. Not a meter. Not on the wire. Today's work is not in this number.
+   */
+  readonly trainingProgressCredit: number;
 }
 
-export const SESSION_BRIEF_KEYS = ['fatigue'] as const;
+export const SESSION_BRIEF_KEYS = ['fatigue', 'trainingProgressCredit'] as const;
 
 export type SessionBriefKey = (typeof SESSION_BRIEF_KEYS)[number];
 
@@ -359,6 +372,7 @@ export function sessionContextFrom(
     streakBefore: today.streakBefore,
     streakIfTrainedToday: today.streakIfTrainedToday,
     fatigue: brief.fatigue,
+    trainingProgressCredit: brief.trainingProgressCredit,
   };
 }
 
