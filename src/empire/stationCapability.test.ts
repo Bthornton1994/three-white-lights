@@ -453,9 +453,9 @@ describe('Stage D.1 living-gym bottleneck — Quality vs Capacity vs Throughput 
         completions: 5,
         maxQueue: 3,
         maxUsing: 2,
-        meanUseTicks: 34,
+        meanUseTicks: 32,
         experience: 5,
-        targetDemand: 685,
+        targetDemand: 672,
       },
       throughput: {
         physicalBays: 1,

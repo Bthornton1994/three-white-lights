@@ -76,6 +76,8 @@ Spatial facts Grok owns:
 
 Claude owns interpolation, easing, gait, visual speed. Do **not** treat `worldView.memberWorldPoint` as a second sim. It is a lerp of `cell`/`next`/`progress`.
 
+Working pads are not aisles. `seats[i].cell` (the station `useCells`) is a reserved standing pad. A seeking or queuing member's `cell` / `next` does not occupy a seat whose `usingId` is another member, does not transit a changeover seat they are not leaving, and does not occupy or step into a foreign use cell that is empty. A leaving member may remain on their former seat while the exit timer runs; their `next` is never another use cell. Wander `next` is never a use cell. If a pad is boxed so every orthogonal neighbour is furniture, OOB, or another pad, the member stands — that is the liveness mechanism, not walking onto a foreign pad. Furniture footprints stay impassable. Aisle tiles may still be shared — members do not block each other. Claude must not invent renderer collision offsets to hide a pathing miss; if two contract points coincide on a pad, that is a FloorSim defect.
+
 Other fields:
 
 - `queueRank` — 0 is next to be served among claimants; `null` if not claiming
