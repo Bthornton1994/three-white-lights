@@ -3,12 +3,17 @@
 # It answers: does it compile, do the node tests pass, did a new advisory appear.
 #
 # TWO TRIGGERS, because they test different trees:
-#   pull_request — actions/checkout's default is refs/pull/N/merge, GitHub's
+#   pull_request — checkout's ref is still refs/pull/N/merge, GitHub's
 #     preview merge of the PR head into the current base. That is stronger
 #     than the PR head alone, and it is still not the commit that lands.
 #   push to the integration branch — the SHA that actually reached origin.
 #     This run has already shipped a red tip from a merge that looked clean
 #     in isolation; a PR-only gate would not have seen that commit.
+#
+# fetch-depth: 0 is required. Freeze guards git-diff against immutable
+# historical SHAs. checkout@v4's default depth=1 of the merge ref omits
+# those objects (fatal: bad revision). Full history is the contract;
+# do not list today's freeze SHAs here — the next freeze would break again.
 
 name: merge-gate
 
@@ -24,6 +29,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
