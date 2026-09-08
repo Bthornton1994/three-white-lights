@@ -980,7 +980,9 @@ export const UNREADABLE_BY_THIS_AUDIT: readonly UnreadableGroup[] = Object.freez
   { extension: '.jpg', reason: 'nul-byte', count: 10 },
   // 10 -> 12 with the Rive runtime spike's two browser screenshots under
   // `docs/design/evidence/rive-spike/` (ADR-001 §7). Binary, filename only.
-  { extension: '.png', reason: 'nul-byte', count: 12 },
+  // 12 -> 13 with the spike's second frame, `spike-route-later.png` — the
+  // same scene 450 ms later, which is how "the graphic moves" is on record.
+  { extension: '.png', reason: 'nul-byte', count: 13 },
   // `.riv` ARRIVED WITH THE SPIKE, AS A BINARY ROW ON PURPOSE. The committed
   // `assets/dev/rive-spike.riv` is a deliberately-invalid placeholder — see
   // its README — and carries a NUL so this census classifies it the way a

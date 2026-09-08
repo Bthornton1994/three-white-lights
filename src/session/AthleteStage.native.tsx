@@ -18,7 +18,7 @@
  * Mirrors `src/dev/riveRuntimeSpike/RiveSpikeStage.native.tsx`, which is the
  * measured proof that this shape mounts, loads, binds and fails cleanly.
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { View } from 'react-native';
 import {
   RiveView,
@@ -51,22 +51,31 @@ function writeInputs(instance: ViewModelInstance, inputs: AthleteRigInputs): voi
 }
 
 export const AthleteStage: AthleteStageComponent = ({ state, history, totalKg }: LiftStageProps) => {
+  // The contract tick, taken in render — `kind` selects the artboard, the
+  // state machine, and (through `artboardName`) which default ViewModel the
+  // instance is created from. See the web stage's header for why the state
+  // machine must be named.
+  const view = useMemo(
+    () => liftPresentation(state, totalKg, priorFromHistory(history, state)),
+    [state, history, totalKg],
+  );
   const { riveFile } = useRiveFile(ATHLETE_RIV_ASSET);
-  const { instance } = useViewModelInstance(riveFile, { async: true });
+  const { instance } = useViewModelInstance(riveFile, { artboardName: view.kind, async: true });
   const instanceRef = useRef<ViewModelInstance | null>(null);
   instanceRef.current = instance ?? null;
 
   useEffect(() => {
     const vmi = instanceRef.current;
     if (vmi === null) return;
-    const view = liftPresentation(state, totalKg, priorFromHistory(history, state));
     writeInputs(vmi, athleteRigInputsFrom(view));
-  }, [state, history, totalKg]);
+  }, [view, instance]);
 
   if (!riveFile) return <View style={{ flex: 1, alignSelf: 'stretch' }} />;
   return (
     <RiveView
       file={riveFile}
+      artboardName={view.kind}
+      stateMachineName={view.kind}
       dataBind={instance ?? undefined}
       autoPlay={true}
       onError={() => undefined}

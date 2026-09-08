@@ -1,12 +1,21 @@
 {
   "base": "http://localhost:8081",
-  "startedAt": "2026-09-07T20:56:29.165Z",
+  "startedAt": "2026-09-08T02:23:37.602Z",
   "spike": {
-    "msToMount": 12686,
-    "msToSettledStatus": 12701,
-    "status": "error: load: loaderror — The file failed to load",
+    "msToMount": 13757,
+    "msToSettledStatus": 13773,
+    "status": "bound — writing health at 60fps",
     "addressBar": "?dev-rive-spike=1",
     "canvasCount": 1,
+    "sceneMotion": {
+      "width": 716,
+      "height": 640,
+      "totalPixels": 458240,
+      "nonBlankPixelsAtFirstSample": 458240,
+      "sampleGapMs": 450,
+      "changedPixels": 5918,
+      "maxChannelDelta": 255
+    },
     "framePacing": {
       "frames": 300,
       "meanMs": 16.67,
@@ -16,20 +25,19 @@
       "over33ms": 0
     },
     "heap": {
-      "usedJSHeapStart": 191373887,
-      "usedJSHeapAfter10s": 191731795,
-      "deltaBytes": 357908
+      "usedJSHeapStart": 192320538,
+      "usedJSHeapAfter10s": 194673880,
+      "deltaBytes": 2353342
     },
     "consoleLines": [
       "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
       "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF.",
-      "[error] Bad header",
-      "[error] The file failed to load"
+      "[warning] Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently"
     ],
     "pageErrors": []
   },
   "playerPath": {
-    "msToShell": 905,
+    "msToShell": 1013,
     "addressBar": "",
     "devSpikePresent": false,
     "appShellPresent": true,
@@ -40,5 +48,5 @@
     "pageErrors": [],
     "wrongFlagValueOpensSpike": false
   },
-  "finishedAt": "2026-09-07T20:56:59.184Z"
+  "finishedAt": "2026-09-08T02:24:10.096Z"
 }

@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { SPIKE_BOUND_PROPERTY, SPIKE_RIV_ASSET_RELATIVE_PATH } from './riveSpikeTypes';
+import { readRivSchema } from '../../../tools/rivSchema.mjs';
+import { SPIKE_BOUND_PROPERTY, SPIKE_RIV_ASSET_RELATIVE_PATH, SPIKE_STATE_MACHINE } from './riveSpikeTypes';
 
 const STAGES = ['RiveSpikeStage.native.tsx', 'RiveSpikeStage.web.tsx'] as const;
 
@@ -19,8 +20,11 @@ describe('the spike asset path is written down once and required as a literal', 
       // And not the constant — a `require(SPIKE_RIV_ASSET_RELATIVE_PATH)` is
       // the bundle-time failure this test exists to keep out.
       expect(source.includes('require(SPIKE_RIV_ASSET_RELATIVE_PATH)'), `${stage} requires a variable`).toBe(false);
-      // Both write the one property the file exposes, by the shared name.
+      // Both write the one property the file exposes, by the shared name,
+      // and both PLAY the named state machine — the first real-asset probe
+      // measured a bound instance and zero changed pixels without it.
       expect(source.includes('SPIKE_BOUND_PROPERTY'), `${stage} binds the documented property`).toBe(true);
+      expect(source.includes('SPIKE_STATE_MACHINE'), `${stage} plays the documented state machine`).toBe(true);
     }
     expect(SPIKE_BOUND_PROPERTY).toBe('health');
   });
@@ -36,6 +40,16 @@ describe('the spike asset path is written down once and required as a literal', 
     const provenance = readFileSync(new URL('../../../assets/dev/THIRD-PARTY-RIVE-ASSETS.md', import.meta.url), 'utf8');
     const sha256 = createHash('sha256').update(bytes).digest('hex');
     expect(provenance.includes(sha256), 'the bytes shipped are the bytes the licence record describes').toBe(true);
+  });
+
+  it('the names the stages use are the names the file actually carries, read headlessly', async () => {
+    const schema = await readRivSchema(readFileSync(new URL(`./${SPIKE_RIV_ASSET_RELATIVE_PATH}`, import.meta.url)));
+    expect(schema.valid).toBe(true);
+    if (!schema.valid) return;
+    const artboard = schema.defaultArtboard ?? '';
+    expect(schema.stateMachines[artboard], `state machines on ${artboard}`).toContain(SPIKE_STATE_MACHINE);
+    const vm = schema.defaultViewModel ?? '';
+    expect(schema.viewModels[vm]?.[SPIKE_BOUND_PROPERTY]?.type, `${vm}.${SPIKE_BOUND_PROPERTY}`).toBe('number');
   });
 
   it('the deliberate placeholder still exists for the error path, and is still not a Rive file', () => {

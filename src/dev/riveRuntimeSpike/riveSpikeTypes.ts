@@ -57,3 +57,15 @@ export const SPIKE_RIV_ASSET_RELATIVE_PATH = '../../../assets/dev/quick_start.ri
  * multi-field tick is still exercised, the count of writes per frame is not.
  */
 export const SPIKE_BOUND_PROPERTY = 'health';
+
+/**
+ * The state machine the stage must PLAY for data binding to reach the
+ * screen. Measured on the first real-asset probe (2026-09-08): with no state
+ * machine named, the web runtime plays the artboard's first linear animation
+ * instead, the ViewModel instance still binds, the status line reads
+ * "bound" — and `sceneMotion.changedPixels` reads 0, because data binding
+ * drives a state machine and nothing was running one. "Bound" is not
+ * "driven". `tools/rivSchema.mjs` reads this name out of the file;
+ * `riveSpikeTypes.test.ts` pins it against that read.
+ */
+export const SPIKE_STATE_MACHINE = 'State Machine 1';

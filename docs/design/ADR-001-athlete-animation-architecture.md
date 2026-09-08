@@ -342,16 +342,20 @@ the URL carries `?dev-rive-spike=1`** — a query string `shellRoute.ts` has no
 arm for. It is not an athlete, it is not presented as one, and it is removable
 by deleting that directory and one branch in `App.tsx`.
 
-**The asset is a deliberate placeholder, and that decides what the spike can
-prove.** No legally-usable `.riv` is obtainable in this environment: the
-egress policy allowlists package registries only; `cdn.rive.app` answers
-`CONNECT tunnel failed, response 403`; and no npm-published Rive package — the
-modern native package, `@rive-app/canvas`, `@rive-app/react-canvas`, the legacy
-`rive-react-native`, `rive-canvas`, `@remotion/rive` — bundles a redistributable
-`.riv` (zero `.riv` files across all six tarballs, checked). Nothing here can
-author one. So `assets/dev/rive-spike.riv` holds bytes that are deliberately
-not Rive's `RIVE` magic, and both runtimes correctly reject it. See
-`assets/dev/rive-spike.riv.README.md`.
+**The asset is REAL as of 2026-09-08, and that changes what the spike can
+prove.** The first run of this spike had only a deliberately invalid
+placeholder, on the finding that no legally usable `.riv` was obtainable:
+the egress policy allowlists package registries; `cdn.rive.app` answers
+`CONNECT tunnel failed, response 403`; and no npm-published Rive package
+bundles a `.riv` (zero across six tarballs, checked). Both facts still hold.
+The conclusion did not: this sandbox's git path to the source host is open,
+and the vendor's own React Native runtime repository is MIT with its example
+assets committed in-tree. `assets/dev/quick_start.riv` — the vendor's
+quick-start health bar, one ViewModel number `health` — is the spike's asset
+now, with the licence text, upstream commit, path and SHA-256 in
+`assets/dev/THIRD-PARTY-RIVE-ASSETS.md`. The placeholder stays as the
+error-path fixture. `tools/rivSchema.mjs` reads either headlessly, which is
+how the "one number" claim above was established rather than assumed.
 
 ### Executed here (Linux, web via Chromium, no native toolchain)
 
@@ -362,42 +366,58 @@ not Rive's `RIVE` magic, and both runtimes correctly reject it. See
 | iOS path | **NOT EXECUTABLE HERE** (no macOS/Xcode). Requirements recorded in §4a row 4. |
 | Android path | **NOT EXECUTABLE HERE** beyond prebuild + autolinking (no SDK/NDK/emulator). |
 | Web/PWA counterpart | **EXECUTED** — see the probe record below. |
-| Same presentation state feeds both runtimes | **YES, structurally** — one `spikeSignal.ts` feed, two platform stages, one shared signature pinned three ways; the web stage's binding calls run every frame in the browser. |
-| Data Binding / ViewModel numeric updates | **Compiles and mounts on both; the write loop runs on web.** Whether a property actually moves a shape needs a real `.riv` — with the placeholder there is no ViewModel instance to bind, by construction. |
-| Continuous high-frequency values | **The 60 Hz write loop ran in the browser** for the probe's duration; frame pacing below. Effect on a rendered graphic: needs a real `.riv`. |
+| Same presentation state feeds both runtimes | **YES, structurally** — one `spikeSignal.ts` feed, two platform stages, one shared signature pinned three ways; the web stage's binding calls run every frame in the browser, against a real file. |
+| Data Binding / ViewModel numeric updates | **MEASURED on web, on a real `.riv` (2026-09-08).** The bound number moves the shape: two canvas readbacks 450 ms apart differ in 5,918 px (max channel delta 255), the readout going `100` → `14` and the bar's fill and colour with it. AND the finding that came first: with no state machine named, the instance binds, the status reads `bound`, and **0 px change** — data binding drives a state machine, so the stages now name theirs and the contract diff checks for one. |
+| Continuous high-frequency values | **The 60 Hz write loop ran in the browser against a drawing scene**; frame pacing below. One number on this file — the forty-two-input rig is not yet measured. |
 | Responsive sizing | Not measured — a fixed 320 dp stage. Deferred to the production stage. |
 | Load/unload lifecycle | **EXECUTED** — mount, load attempt, status transition, unmount on navigation away; no page errors on the player path. |
-| Frame pacing | **MEASURED on web**, with the caveat that the stage is drawing nothing — below. |
+| Frame pacing | **MEASURED on web while a real graphic follows the writes** — below. |
 | Memory | **SAMPLED on web** (Chromium `performance.memory`, 10 s window) — below. |
 | Latency | Not meaningfully measurable without a rendered property. Deferred. |
-| Failure / error behavior | **EXECUTED and is the main thing the placeholder proves** — the load failure is caught and shown on the dev screen's status line; the app does not crash; the player path is untouched. |
+| Failure / error behavior | **EXECUTED** on the first run (the invalid placeholder): the load failure is caught and shown on the dev screen's status line; the app does not crash; the player path is untouched. The placeholder stays as the error-path fixture `tools/rivSchema.mjs` refuses. |
 
 ### The probe record
 
 Taken from `docs/design/evidence/rive-spike/probe.json` (Chromium via
 Playwright, 390×844 @2x, against `tools/dev-web.sh`'s server after a `--clear`
 restart so the bundle is the shipped source, not a cached one). Numbers are
-the record's, not rounded from memory.
+the record's, not rounded from memory. **This is the real-asset record of
+2026-09-08;** the placeholder run it replaces is summarised beneath it.
 
 | Measurement | Value | Reading |
 | --- | --- | --- |
-| Spike route mounted | **12686 ms** after navigation (cold: first bundle after `--clear`) | The dev screen and its canvas exist; the bundle built with the native file excluded. |
-| Status settled | 12701 ms — `error: load: loaderror — The file failed to load` | The load attempt ran and FAILED in the runtime's own words: console `Bad header`, `The file failed to load`. `Bad header` is the parser rejecting the placeholder's non-`RIVE` magic — which only happens after the wasm engine has loaded, so **the self-hosted engine initialised**. |
+| Spike route mounted | **13757 ms** after navigation (cold: first bundle after `--clear`) | The dev screen and its canvas exist; the bundle built with the native file excluded. |
+| Status settled | 13773 ms — `bound — writing health at 60fps` | A real file loaded, its default ViewModel bound, the write loop running. |
+| Scene motion | canvas 716×640, **5918 of 458240 px changed** across 450 ms, max channel delta 255 | **The graphic follows the writes.** `HEALTH 100` and a full green bar, then `HEALTH 14` and a short red bar — the file's own state machine reading the bound number. |
 | Canvases on the page | 1 | `RiveComponent` mounted its canvas. |
-| Page errors (uncaught) | 0 | The failure is caught and displayed, never thrown to the app. |
-| rAF pacing, 5 s, under the 60 Hz write loop | 300 frames — mean 16.67 ms, p50 16.7, p95 16.7, max 16.8; frames over 33 ms: 0 | The write loop and React do not disturb the frame cadence. **Caveat stated plainly:** nothing is being drawn, so this is a floor, not the number a rendering athlete will read. |
-| JS heap, 10 s sample | 191.4 MB → 191.7 MB (Δ +358 KB) | Flat under 600 writes. Same caveat. |
-| Player path (`/`, no flag) | shell in 905 ms; `app-shell` present: True; `dev-rive-spike` present: **False**; address bar: `""`; page errors: 0 | **The spike is not on the player path.** |
+| Page errors (uncaught) | 0 | Nothing thrown to the app. |
+| rAF pacing, 5 s, under the 60 Hz write loop, scene drawing | 300 frames — mean 16.67 ms, p50 16.7, p95 16.7, max 16.8; frames over 33 ms: 0 | The write loop, React and a live Rive scene together do not disturb the frame cadence. One bound number — the rig's forty-two are not yet measured. |
+| JS heap, 10 s sample | 192.3 MB → 194.7 MB (Δ +2.35 MB); the two earlier runs of the same probe read −5.44 MB and −0.02 MB | Garbage-collector noise around a flat line across three runs, not a trend. A longer soak is a device question. |
+| Player path (`/`, no flag) | shell in 1013 ms; `app-shell` present: True; `dev-rive-spike` present: **False**; address bar: `""`; page errors: 0 | **The spike is not on the player path.** |
 | Wrong flag value (`?dev-rive-spike=0`) | opens the spike: **False** | The gate needs the exact value, not the key. |
 
-Three earlier runs of the same probe are part of the record's provenance
-and each changed the code: run 2 found Metro refusing `require(constant)`
-(fixed — string literal, pinned by `riveSpikeTypes.test.ts`); run 5 found
-`react-native-web` has no `Image.resolveAssetSource` (fixed — `expo-asset`);
-run 6 found the status line printing `[object Object]` for a Rive
-`onLoadError` event (fixed — the event's fields). Runs 3 and 4 were voided by
-this author editing the subject mid-capture, and are recorded as such in the
-commit rather than counted.
+**The finding this round, from the first real-asset run:** the same probe
+read `bound`, one canvas, perfect pacing — and **0 changed pixels**, the
+health readout sitting on the file's authored `16`. The console said why:
+no state machine was specified, so the artboard's first linear animation
+played instead. Data binding drives a state machine; a bound ViewModel
+with none running is a graphic the writes never reach. Naming the state
+machine took the count to 14970 on the second run, and the singular
+`stateMachine` parameter (the plural is deprecated) to the record above.
+"Bound" is not "driven" — the production stages now name their state
+machine by lift, and `src/art/rivContract.ts` checks that each lift's
+artboard carries one of the same name.
+
+**The placeholder run this replaces (2026-09-07):** mounted 12686 ms;
+status `error: load: loaderror — The file failed to load` after console
+`Bad header` — the engine initialised and correctly refused the invalid
+bytes; pacing 300 frames mean 16.67 / max 16.8 / 0 over 33 ms while drawing
+nothing; heap Δ +358 KB; player path clean. Its three earlier attempts each
+changed the code: Metro refusing `require(constant)` (fixed — string
+literal, pinned by `riveSpikeTypes.test.ts`); `react-native-web` having no
+`Image.resolveAssetSource` (fixed — `expo-asset`, now in
+`src/session/riveWebEngine.ts`); the status line printing `[object Object]`
+for a Rive `onLoadError` event (fixed — the event's fields).
 
 ### Not executed here, and what closes it
 
@@ -409,21 +429,26 @@ npx expo run:ios      # or: npx expo run:android
 # temporarily return true from isDevRiveSpikeRequested() in App.tsx
 ```
 
-and reports: build success, the dev screen's status line, and — once a real
-`.riv` with the five number properties exists — whether the shape moves at
-60 Hz. That closes §4a rows 4, 5 and the native half of 6–8, and it is the
-gate between "leading candidate" and "final".
+and reports: build success, the dev screen's status line, and whether the
+health bar moves at 60 Hz the way the web record shows. That closes §4a
+rows 4, 5 and the native half of 6–8, and it is the gate between "leading
+candidate" and "final".
 
 **PASS / FAIL after the spike, stated separately by platform:**
 
-- **Web: PROVISIONAL PASS** for everything a placeholder can exercise —
-  install, resolution, bundling with the native file excluded, mount, the
-  60 Hz write loop, error handling, player-path isolation. Rendering and
-  binding a real graphic: UNMEASURED, blocked on the asset.
+- **Web: TECHNICAL PASS on a real asset** — install, resolution, bundling
+  with the native file excluded, mount, engine from a self-hosted wasm, a
+  real `.riv` loaded and its ViewModel bound, a state machine driven by a
+  60 Hz write with the graphic following it at an undisturbed frame
+  cadence, error handling, player-path isolation. Not measured: the rig's
+  forty-two inputs (this file has one), responsive sizing, a long soak.
 - **Native: UNVERIFIED.** Everything measurable without a toolchain passed
   (install, prebuild, autolinking, types). Nothing requiring one was run.
-- **Overall: Rive stays LEADING CANDIDATE. Not FINAL.** Nothing measured here
-  materially failed; the material half is not yet measured.
+- **Overall: Rive stays LEADING CANDIDATE. Not FINAL.** The status line's
+  closing condition is unchanged — a real `.riv` whose ViewModel takes the
+  `rigInputPaths()` set at 60 Hz without dropped frames. This round proved
+  the mechanism on a real scene with one input; the athlete asset is what
+  proves it on the rig's set, and none exists (§9).
 
 ## 8. What survives from PR #48
 
@@ -509,11 +534,11 @@ stage pair (`src/session/AthleteStage.native.tsx` / `.web.tsx`), the pipeline sp
 mechanics owner (`docs/design/PRESENTATION-CONTRACT-REQUEST.md`), and the
 runtime spike (§7).
 
-**A second, smaller asset gap, kept distinct from the athlete:** the spike's
-own test `.riv` — any abstract graphic with a ViewModel exposing five number
-properties named `repProgress`, `barHeight`, `barVelocity`, `strain`,
-`grindIntensity`. It needs the Rive editor, not an illustrator, and is not
-the athlete; it is what turns §7's "compiles, mounts, fails cleanly" into
-"draws and moves". Drop it at `assets/dev/rive-spike.riv`; nothing else
-changes, and `riveSpikeTypes.test.ts` reddens on purpose so §7 is re-measured
-rather than read stale.
+**The second, smaller asset gap — the spike's own test `.riv` — is CLOSED
+as of 2026-09-08.** It is `assets/dev/quick_start.riv` (MIT; provenance in
+`assets/dev/THIRD-PARTY-RIVE-ASSETS.md`), a real articulated graphic with a
+ViewModel number the spike drives at 60 Hz; §7's second run is the
+measurement. It is not the athlete and closes nothing about the athlete.
+What it settled beyond the spike: a legally usable `.riv` IS obtainable from
+this environment (over the git path to the vendor's MIT repositories), so
+"no asset can reach here" is no longer a reason for anything.

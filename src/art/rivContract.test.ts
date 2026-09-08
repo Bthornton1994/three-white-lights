@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { isRivMagic, readRivSchema, type RivSchema } from '../../tools/rivSchema.mjs';
-import { rigInputSpec } from './athleteRig';
+import { rigInputSpec, rigLiftArtboards } from './athleteRig';
 import { diffRivContract, flattenViewModel } from './rivContract';
 
 const asset = (name: string): Uint8Array =>
@@ -123,11 +123,12 @@ function schemaSatisfying(spec = rigInputSpec()): RivSchema {
     root[input.path] = input.type === 'enum' ? { type: 'enum', values: [...input.values] } : { type: input.type };
   }
   root['plates'] = { type: 'viewModel', ref: 'PlateSlots' };
+  const lifts = rigLiftArtboards();
   return {
     valid: true,
-    artboards: ['squat'],
-    defaultArtboard: 'squat',
-    stateMachines: { squat: ['squat'] },
+    artboards: [...lifts],
+    defaultArtboard: lifts[0] ?? null,
+    stateMachines: Object.fromEntries(lifts.map((lift) => [lift, [lift]])),
     viewModels: { Athlete: root, PlateSlots: slots, PlateSlot: slot },
     defaultViewModel: 'Athlete',
   };
@@ -137,9 +138,10 @@ describe('diffRivContract', () => {
   it('reports every rig path missing from the health-bar test asset, and names what it has instead', async () => {
     const schema = await readRivSchema(asset('quick_start.riv'));
     const spec = rigInputSpec();
-    const diff = diffRivContract(schema, spec);
+    const diff = diffRivContract(schema, spec, { artboards: rigLiftArtboards() });
     expect(diff.viewModel).toBe('health_bar_01');
     expect(diff.satisfied).toBe(false);
+    expect(diff.missingArtboards).toEqual(['squat', 'bench', 'deadlift']);
     expect(diff.missing).toEqual(spec.map((input) => input.path));
     expect(diff.wrongType).toEqual([]);
     expect(diff.extra).toEqual(['gameOver', 'hoverYes', 'hoverNo', 'healthColor', 'health']);
@@ -156,9 +158,10 @@ describe('diffRivContract', () => {
 
   it('a schema built from the spec satisfies it, through the nested plate slots', () => {
     const spec = rigInputSpec();
-    const diff = diffRivContract(schemaSatisfying(spec), spec);
+    const diff = diffRivContract(schemaSatisfying(spec), spec, { artboards: rigLiftArtboards() });
     expect(diff).toEqual({
       viewModel: 'Athlete',
+      missingArtboards: [],
       missing: [],
       wrongType: [],
       missingEnumValues: [],
@@ -190,8 +193,26 @@ describe('diffRivContract', () => {
   it('binds to a named ViewModel when asked, else the engine’s default', () => {
     const spec = rigInputSpec();
     const schema = schemaSatisfying(spec);
-    expect(diffRivContract(schema, spec, 'PlateSlot').satisfied).toBe(false);
-    expect(diffRivContract(schema, spec, 'Athlete').satisfied).toBe(true);
+    expect(diffRivContract(schema, spec, { viewModel: 'PlateSlot' }).satisfied).toBe(false);
+    expect(diffRivContract(schema, spec, { viewModel: 'Athlete' }).satisfied).toBe(true);
     expect(diffRivContract({ ...schema, defaultViewModel: null }, spec).viewModel).toBeNull();
+  });
+
+  it('an artboard that exists but carries no same-named state machine is missing — bound is not driven', () => {
+    const spec = rigInputSpec();
+    const good = schemaSatisfying(spec);
+    // The spike's first real-asset probe, as a schema: the artboard is there,
+    // its only state machine is called something else, the writes reach nothing.
+    const mutant: RivSchema = { ...good, stateMachines: { ...good.stateMachines, squat: ['State Machine 1'] } };
+    const diff = diffRivContract(mutant, spec, { artboards: rigLiftArtboards() });
+    expect(diff.missingArtboards).toEqual(['squat']);
+    expect(diff.missing, 'the ViewModel still binds').toEqual([]);
+    expect(diff.satisfied).toBe(false);
+    // And an artboard absent outright.
+    const absent: RivSchema = { ...good, artboards: good.artboards.filter((a) => a !== 'deadlift') };
+    expect(diffRivContract(absent, spec, { artboards: rigLiftArtboards() }).missingArtboards).toEqual(['deadlift']);
+    // NON-VACUITY: three lifts asked for, three artboards on the good schema.
+    expect(rigLiftArtboards().length).toBe(3);
+    expect(good.artboards.length).toBe(3);
   });
 });

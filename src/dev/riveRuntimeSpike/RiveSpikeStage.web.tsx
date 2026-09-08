@@ -29,7 +29,12 @@ import {
 import { riveAssetUri, selfHostRiveEngine } from '../../session/riveWebEngine';
 import { spikeSignalAt } from './spikeSignal';
 import { SPIKE_STAGE } from './spikeTuning';
-import { SPIKE_BOUND_PROPERTY, type RiveSpikeStageComponent, type RiveSpikeStageProps } from './riveSpikeTypes';
+import {
+  SPIKE_BOUND_PROPERTY,
+  SPIKE_STATE_MACHINE,
+  type RiveSpikeStageComponent,
+  type RiveSpikeStageProps,
+} from './riveSpikeTypes';
 
 // A STRING LITERAL, NOT THE CONSTANT `riveSpikeTypes.ts` DOCUMENTS — Metro
 // collects dependencies statically and refuses `require(someVariable)`.
@@ -44,6 +49,10 @@ export function RiveSpikeStage({ onStatus }: RiveSpikeStageProps): React.ReactEl
   const [loadError, setLoadError] = useState<string | null>(null);
   const { rive, RiveComponent } = useRive({
     src: SPIKE_ASSET_SRC,
+    // NAMED, because data binding drives a state machine: left unnamed, the
+    // runtime plays the first linear animation, binds anyway, and draws a
+    // graphic the writes never reach — measured, see `riveSpikeTypes.ts`.
+    stateMachine: SPIKE_STATE_MACHINE,
     autoplay: true,
     onLoadError: (event) => setLoadError(describeRiveEvent(event)),
   });

@@ -26,7 +26,12 @@ import {
 
 import { spikeSignalAt } from './spikeSignal';
 import { SPIKE_STAGE } from './spikeTuning';
-import { SPIKE_BOUND_PROPERTY, type RiveSpikeStageComponent, type RiveSpikeStageProps } from './riveSpikeTypes';
+import {
+  SPIKE_BOUND_PROPERTY,
+  SPIKE_STATE_MACHINE,
+  type RiveSpikeStageComponent,
+  type RiveSpikeStageProps,
+} from './riveSpikeTypes';
 
 // A STRING LITERAL, NOT THE CONSTANT `riveSpikeTypes.ts` DOCUMENTS. Metro
 // collects dependencies statically and refuses `require(someVariable)` at
@@ -78,6 +83,7 @@ export function RiveSpikeStage({ onStatus }: RiveSpikeStageProps): React.ReactEl
   return (
     <RiveView
       file={riveFile}
+      stateMachineName={SPIKE_STATE_MACHINE}
       dataBind={instance ?? undefined}
       autoPlay={true}
       onError={(e) => onStatus({ phase: 'error', message: `view: ${e.message}` })}

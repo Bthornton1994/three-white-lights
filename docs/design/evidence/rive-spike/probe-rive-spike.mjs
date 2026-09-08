@@ -14,7 +14,16 @@
 // the status line, canvas count, 5 s of rAF pacing under the 60 Hz write loop,
 // a 10 s heap sample, every console line and page error, and whether the
 // spike is absent from the player path. See ADR-001 §7.
+//
+// SECOND RUN, 2026-09-08, on a REAL asset (`assets/dev/quick_start.riv`): the
+// record also carries `sceneMotion` — two `getImageData` samples of the Rive
+// canvas a quarter of a synthetic rep apart, compared pixel by pixel — so
+// "the graphic moves under the 60 Hz ViewModel write" is a count, not a
+// reading of two screenshots by eye. The canvas is a 2D context (this is
+// `@rive-app/canvas`, not the WebGL build), so `getImageData` reads it back
+// directly. `spike-route-later.png` is the second instant, photographed.
 import { writeFileSync } from 'node:fs';
+import { chromium } from 'playwright';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:8081';
 const OUT = process.env.OUT_DIR;
@@ -60,6 +69,30 @@ record.spike.status = statusText;
 record.spike.addressBar = await page.evaluate(() => window.location.search);
 record.spike.canvasCount = await page.evaluate(() => document.querySelectorAll('canvas').length);
 
+// Does the scene MOVE under the write loop? Two readbacks of the Rive canvas,
+// SAMPLE_GAP_MS apart (a quarter of `SPIKE_SIGNAL.REP_PERIOD_MS`, 1800 ms, so
+// the health bar's fill differs between them), compared pixel by pixel.
+const SAMPLE_GAP_MS = 450;
+record.spike.sceneMotion = await page.evaluate(async (gapMs) => {
+  const canvas = document.querySelector('canvas');
+  if (!canvas) return { error: 'no canvas' };
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return { error: 'no 2d context on the canvas' };
+  const read = () => ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  const a = read();
+  await new Promise((r) => setTimeout(r, gapMs));
+  const b = read();
+  let changedPixels = 0; let maxChannelDelta = 0; let nonBlankA = 0;
+  for (let i = 0; i < a.length; i += 4) {
+    if (a[i + 3] !== 0) nonBlankA += 1;
+    let d = 0;
+    for (let c = 0; c < 4; c += 1) d = Math.max(d, Math.abs(a[i + c] - b[i + c]));
+    if (d > 0) changedPixels += 1;
+    if (d > maxChannelDelta) maxChannelDelta = d;
+  }
+  return { width: canvas.width, height: canvas.height, totalPixels: a.length / 4, nonBlankPixelsAtFirstSample: nonBlankA, sampleGapMs: gapMs, changedPixels, maxChannelDelta };
+}, SAMPLE_GAP_MS);
+
 // Frame pacing while the 60fps write loop runs: sample rAF intervals for 5s.
 record.spike.framePacing = await page.evaluate(() => new Promise((resolve) => {
   const gaps = []; let last = performance.now(); const end = last + 5000;
@@ -81,6 +114,8 @@ record.spike.heap = await page.evaluate(async () => {
   return { usedJSHeapStart: a, usedJSHeapAfter10s: b, deltaBytes: b - a };
 });
 await page.screenshot({ path: `${OUT}/spike-route.png`, fullPage: false });
+await page.waitForTimeout(SAMPLE_GAP_MS);
+await page.screenshot({ path: `${OUT}/spike-route-later.png`, fullPage: false });
 record.spike.consoleLines = consoleLines.slice();
 record.spike.pageErrors = pageErrors.slice();
 consoleLines.length = 0; pageErrors.length = 0;

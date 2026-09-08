@@ -328,6 +328,16 @@ export function rigInputSpec(): readonly RigInputSpec[] {
   );
 }
 
+/**
+ * The artboards the stages select, one per lift, each expected to carry a
+ * state machine of the same name — the asset convention in
+ * `ATHLETE-ASSET-PIPELINE.md` §11. The same set the `lift` enum input
+ * carries, so the two cannot disagree.
+ */
+export function rigLiftArtboards(): readonly string[] {
+  return Object.keys(LIFT_VALUES);
+}
+
 /** The paths alone — `rigInputSpec()` without the types. */
 export function rigInputPaths(): readonly string[] {
   return rigInputSpec().map((input) => input.path);

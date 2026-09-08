@@ -57,6 +57,13 @@ export interface RivEnumGap {
 export interface RivContractDiff {
   /** The ViewModel the diff was taken against; null when the file is invalid or has no default. */
   readonly viewModel: string | null;
+  /**
+   * Artboards the stage will select that the file lacks, or that carry no
+   * state machine of the same name. A ViewModel binds either way; only a
+   * RUNNING state machine turns the writes into motion — measured on the
+   * runtime spike's first real-asset probe: bound, zero changed pixels.
+   */
+  readonly missingArtboards: readonly string[];
   /** Spec paths the file does not expose at all. */
   readonly missing: readonly string[];
   /** Spec paths exposed with a different type. */
@@ -65,8 +72,19 @@ export interface RivContractDiff {
   readonly missingEnumValues: readonly RivEnumGap[];
   /** Non-container properties the file exposes that the binding never writes. Informational: authored beats live here. */
   readonly extra: readonly string[];
-  /** True only when `missing`, `wrongType` and `missingEnumValues` are all empty. */
+  /** True only when `missing`, `wrongType`, `missingEnumValues` and `missingArtboards` are all empty. */
   readonly satisfied: boolean;
+}
+
+export interface RivContractOptions {
+  /** The ViewModel to diff against; default: the engine's default for the default artboard (`useDefault: true`). */
+  readonly viewModel?: string;
+  /**
+   * Artboards the stage selects by name — for the athlete, one per lift,
+   * each with a state machine of the same name (`ATHLETE-ASSET-PIPELINE.md`
+   * §11). Each must exist and carry that state machine.
+   */
+  readonly artboards?: readonly string[];
 }
 
 /**
@@ -77,12 +95,14 @@ export interface RivContractDiff {
 export function diffRivContract(
   schema: RivSchema | RivInvalid,
   spec: readonly RigInputSpec[],
-  viewModel?: string,
+  options: RivContractOptions = {},
 ): RivContractDiff {
-  const target = schema.valid ? (viewModel ?? schema.defaultViewModel) : null;
+  const wanted = options.artboards ?? [];
+  const target = schema.valid ? (options.viewModel ?? schema.defaultViewModel) : null;
   if (!schema.valid || target === null) {
     return {
       viewModel: null,
+      missingArtboards: [...wanted],
       missing: spec.map((input) => input.path),
       wrongType: [],
       missingEnumValues: [],
@@ -90,6 +110,10 @@ export function diffRivContract(
       satisfied: false,
     };
   }
+
+  const missingArtboards = wanted.filter(
+    (name) => !schema.artboards.includes(name) || !(schema.stateMachines[name] ?? []).includes(name),
+  );
 
   const exposed = new Map<string, RivProperty>();
   for (const flat of flattenViewModel(schema, target)) exposed.set(flat.path, flat.property);
@@ -121,10 +145,15 @@ export function diffRivContract(
 
   return {
     viewModel: target,
+    missingArtboards,
     missing,
     wrongType,
     missingEnumValues,
     extra,
-    satisfied: missing.length === 0 && wrongType.length === 0 && missingEnumValues.length === 0,
+    satisfied:
+      missing.length === 0 &&
+      wrongType.length === 0 &&
+      missingEnumValues.length === 0 &&
+      missingArtboards.length === 0,
   };
 }

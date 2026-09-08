@@ -14,7 +14,7 @@
  * runtime spike measured (a blocked CDN, and `react-native-web` having no
  * `Image.resolveAssetSource`).
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   useRive,
   useViewModel,
@@ -56,7 +56,26 @@ function writeInputs(vmi: ViewModelInstance, inputs: AthleteRigInputs): void {
 }
 
 export const AthleteStage: AthleteStageComponent = ({ state, history, totalKg }: LiftStageProps) => {
-  const { rive, RiveComponent } = useRive({ src: ATHLETE_SRC, autoplay: true });
+  // The contract tick, taken in render: pure, and `kind` is needed BEFORE
+  // the runtime mounts. The asset's convention (`ATHLETE-ASSET-PIPELINE.md`
+  // §11) is one artboard per lift and a state machine of the same name, and
+  // the state machine must be NAMED, because data binding drives a state
+  // machine: left unnamed, the web runtime plays the artboard's first linear
+  // animation, binds anyway, and draws a graphic the writes never reach —
+  // measured on the runtime spike's first real-asset probe.
+  const view = useMemo(
+    () => liftPresentation(state, totalKg, priorFromHistory(history, state)),
+    [state, history, totalKg],
+  );
+  const { rive, RiveComponent } = useRive({
+    src: ATHLETE_SRC,
+    artboard: view.kind,
+    stateMachine: view.kind,
+    autoplay: true,
+  });
+  // `useDefault` reads the CURRENT artboard's default ViewModel — the one
+  // `artboard: view.kind` selected — which is the ViewModel the diff in
+  // `src/art/rivContract.ts` checks by default.
   const viewModel = useViewModel(rive, { useDefault: true });
   const instance = useViewModelInstance(viewModel, { useDefault: true, rive });
   const instanceRef = useRef<ViewModelInstance | null>(null);
@@ -65,9 +84,8 @@ export const AthleteStage: AthleteStageComponent = ({ state, history, totalKg }:
   useEffect(() => {
     const vmi = instanceRef.current;
     if (vmi === null) return;
-    const view = liftPresentation(state, totalKg, priorFromHistory(history, state));
     writeInputs(vmi, athleteRigInputsFrom(view));
-  }, [state, history, totalKg]);
+  }, [view, instance]);
 
   return <RiveComponent style={{ flex: 1, alignSelf: 'stretch' }} />;
 };

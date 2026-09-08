@@ -352,6 +352,31 @@ artboard per lift, state machine named for the lift. Paths exactly as above —
 a renamed input is a silent no-op at runtime in both Rive runtimes, which is
 the failure mode `rigInputPaths()` exists to prevent.
 
+**The handoff check is a command, not a reading of this table.** A delivered
+`.riv` is run through `node tools/rivSchema.mjs <file>` — a headless read of
+the file's artboards, state machines and every ViewModel property with its
+type, nested references and enum values, using the same web engine the web
+stage runs — and the result is diffed against `rigInputSpec()` by
+`src/art/rivContract.ts`: paths the file lacks, paths of the wrong type,
+enum values the binding can write that the authored enum does not carry,
+and the file's extras (authored beats live there and are not a finding).
+`src/art/rivContract.test.ts` drives it against two real MIT-licensed test
+assets (`assets/dev/THIRD-PARTY-RIVE-ASSETS.md`) and the deliberate
+invalid placeholder, and against a schema built from the spec itself, so
+the diff is shown to bite before any athlete asset exists. The rig is
+delivered when that diff reads `satisfied: true` against its default
+ViewModel — the one `useDefault: true` binds — and not before. `plates`
+is expected as nested models (`plates` → `0`..`7` → `{ on, size }`), which
+is what the diff walks; the enum property `phase` must carry all six
+phases, `outcome` its three plus `none`, `missReason` its five plus
+`none`, `effortBand` its five, `lift` its three — the spec lists each set,
+derived from the contract's own unions. The diff also checks
+`rigLiftArtboards()`: an artboard per lift, each carrying a state machine
+OF THE SAME NAME, because the stages select both by the lift and **data
+binding drives a running state machine, not the artboard** — measured on
+the spike's first real-asset probe, where an unnamed state machine gave a
+bound ViewModel, a status line reading "bound", and zero changed pixels.
+
 ## 12. What counts as delivered
 
 - The reference sheet (§4) — front, side, three-quarter, same scale, bar in
@@ -380,8 +405,19 @@ Blocked work is the athlete. Not blocked, and either done or doable now:
 - **Equipment and room presentation**, which are not the athlete: plate
   drawing, bar, rack, floor, and the room plates that already exist.
 - **UI / HUD / typography** on the training surface.
-- The ADR §7 spike **design**, ready to run the moment a `.riv` — even a crude
-  test one — exists.
+- The ADR §7 spike, now running on a real, MIT-licensed test asset
+  (`assets/dev/quick_start.riv`, provenance in
+  `assets/dev/THIRD-PARTY-RIVE-ASSETS.md`) — a health bar, not an athlete.
+  The acquisition path that closed the "no legally usable `.riv`" gap is
+  the vendor's own MIT runtime repositories over this sandbox's git path;
+  npm tarballs and the vendor's asset host remain empty and blocked
+  respectively. Two example assets there were deliberately NOT taken because
+  the example source cites a marketplace listing for them, and a listing
+  carries its own terms.
+- **The `.riv` handoff diagnostic** (§11): `tools/rivSchema.mjs` and
+  `src/art/rivContract.ts`, tested against the real assets, so the day an
+  athlete file arrives the first question — does it expose what the binding
+  writes? — is a command with a pinned answer.
 
 Do not idle waiting on artwork, and do not fill the wait by building a fourth
 athlete.

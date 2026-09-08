@@ -399,6 +399,46 @@ copied to `assets/dev/` with the licence text, upstream commit, path and
 SHA-256 beside them. They are a health bar and a rewards card — dev-only
 test fixtures, never an athlete, never on the player path.
 
+**Done the same day, and what it measured.** `6ac60fab` landed the assets,
+the reader, `rigInputSpec()`/`rigInputValues()` on the binding (both
+production stages now loop that list and name no path — a hand-named
+`vmi.number('barHeight')` reddens `athleteRig.test.ts`, measured AFTER the
+scan moved from `codeOnly` to raw source, because `codeOnly` blanks string
+literals and the first version of that scan passed the mutant), the
+contract diff with its own mutants, and the spike on the real file. The
+commit after it carries the evidence and the finding the evidence forced:
+
+- **Run 1 on the real asset: status `bound`, one canvas, perfect pacing,
+  and 0 of 458,240 canvas pixels changed across 450 ms.** The console said
+  why — no state machine named, so the runtime played the artboard's first
+  linear animation; data binding drives a state machine. "Bound" is not
+  "driven", and nothing short of reading the pixels back would have said
+  so. The spike now names its state machine (read from the file by the
+  new tool and pinned against it), both production stages select artboard
+  AND state machine by `view.kind`, and `diffRivContract` checks that each
+  lift's artboard carries a same-named state machine — the pipeline doc's
+  §11 convention, now a check.
+- **Run 3, the record:** 5,918 px changed (max channel delta 255; the
+  frames read `HEALTH 100` green then `HEALTH 14` red), 300 rAF frames at
+  16.67 ms mean / 16.8 max / 0 over 33 ms while the scene drew, heap flat
+  across three runs within GC noise, no runtime warnings, player path
+  untouched. ADR-001 §7 is re-written from it; the runtime stays
+  PROVISIONAL because one bound number on a health bar is not the rig's
+  forty-two on an athlete.
+
+**Registry data, called out per the ruling's condition 3:** `testPathRefs`
+373→379 / 117→118; `realIp.ts` `UNREADABLE_BY_THIS_AUDIT` `.riv` 1→3 and
+`.png` 12→13 (the second spike frame) — a count in a mechanics-lane file,
+edited under the census ruling for artifacts this lane owns, and flagged
+here because `src/licensing/**` is otherwise human-ruled. `REVIEWABLE_
+CITATIONS` untouched; the vendor's name is not on it. Inherited reds
+unchanged: `devServerSentinel` (the two `_capture` tools — `rivSchema.mjs`
+is not in its census), `realIp` ×2 (183 vs 180).
+
+**Not done, and not claimed:** no athlete asset; no VISUAL, ANIMATION or
+SOFT-FEEL gate moves; native unexecuted; bench and deadlift blocked; PR #48
+not merged; nothing merged anywhere.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion
