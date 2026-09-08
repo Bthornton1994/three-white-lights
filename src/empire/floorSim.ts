@@ -92,7 +92,18 @@
  * pad on the way to a queue cell. VL-2B measured the defect: after live
  * Capacity the relocated user stood on `(2,2)` while a seeker transited
  * that same pad for seven ticks because the field still treated it as
- * corridor. Members still do not block each other.
+ * corridor.
+ *
+ * A FOREIGN use cell is never a wander destination, a leaving destination,
+ * a queue/seek route, a route-blocked escape, or a liveness fallback —
+ * occupied, empty, or in changeover. The only legal use-cell occupancy is
+ * a claimant entering their assigned empty seat, the user remaining on
+ * that seat, and that same user occupying their former seat while the
+ * leaving timer runs. The exit STEP itself goes to a non-use cell. If a
+ * pad is boxed so every orthogonal neighbour is furniture, OOB, or another
+ * pad, `stepAwayFrom` / `stepWander` return null and the member stands.
+ * That is the honest liveness mechanism; walking onto a foreign pad is
+ * not. Members still do not block each other on aisle tiles.
  *
  * ===========================================================================
  * 3. Queues are DERIVED, so they cannot drift from the members
@@ -1206,25 +1217,22 @@ function stepDownField(
   return null;
 }
 
-/** The walkable neighbour furthest from `from`, for a member stepping off a machine. */
+/** The walkable non-use neighbour furthest from `from`, for a member stepping off a machine. */
 function stepAwayFrom(cell: GridPosition, from: GridPosition, plan: RoutePlan): GridPosition | null {
-  const pick = (allowUse: boolean): GridPosition | null => {
-    let best: GridPosition | null = null;
-    let bestDistance = manhattan(cell, from);
-    for (const step of STEPS) {
-      const neighbour: GridPosition = { x: cell.x + step.x, y: cell.y + step.y };
-      if (!insideGrid(neighbour, plan.grid)) continue;
-      if (plan.blocked[cellIndex(neighbour, plan.grid)] === true) continue;
-      if (!allowUse && isStationUseCell(plan.stations, neighbour)) continue;
-      const distance = manhattan(neighbour, from);
-      if (distance > bestDistance) {
-        bestDistance = distance;
-        best = neighbour;
-      }
+  let best: GridPosition | null = null;
+  let bestDistance = manhattan(cell, from);
+  for (const step of STEPS) {
+    const neighbour: GridPosition = { x: cell.x + step.x, y: cell.y + step.y };
+    if (!insideGrid(neighbour, plan.grid)) continue;
+    if (plan.blocked[cellIndex(neighbour, plan.grid)] === true) continue;
+    if (isStationUseCell(plan.stations, neighbour)) continue;
+    const distance = manhattan(neighbour, from);
+    if (distance > bestDistance) {
+      bestDistance = distance;
+      best = neighbour;
     }
-    return best;
-  };
-  return pick(false) ?? pick(true);
+  }
+  return best;
 }
 
 /** A wander leg for a member with nowhere to be: a seeded direction, held for a few ticks. */
@@ -1235,20 +1243,17 @@ function stepWander(
   index: number,
   tick: number,
 ): GridPosition | null {
-  const pick = (allowUse: boolean): GridPosition | null => {
-    const leg = Math.floor(tick / EMPIRE_TUNING.FLOOR_SIM_WANDER_HOLD_TICKS);
-    const first = hashOf([seed, index, leg]) % STEPS.length;
-    for (let offset = 0; offset < STEPS.length; offset += 1) {
-      const step = STEPS[(first + offset) % STEPS.length] as GridPosition;
-      const neighbour: GridPosition = { x: cell.x + step.x, y: cell.y + step.y };
-      if (!insideGrid(neighbour, plan.grid)) continue;
-      if (plan.blocked[cellIndex(neighbour, plan.grid)] === true) continue;
-      if (!allowUse && isStationUseCell(plan.stations, neighbour)) continue;
-      return neighbour;
-    }
-    return null;
-  };
-  return pick(false) ?? pick(true);
+  const leg = Math.floor(tick / EMPIRE_TUNING.FLOOR_SIM_WANDER_HOLD_TICKS);
+  const first = hashOf([seed, index, leg]) % STEPS.length;
+  for (let offset = 0; offset < STEPS.length; offset += 1) {
+    const step = STEPS[(first + offset) % STEPS.length] as GridPosition;
+    const neighbour: GridPosition = { x: cell.x + step.x, y: cell.y + step.y };
+    if (!insideGrid(neighbour, plan.grid)) continue;
+    if (plan.blocked[cellIndex(neighbour, plan.grid)] === true) continue;
+    if (isStationUseCell(plan.stations, neighbour)) continue;
+    return neighbour;
+  }
+  return null;
 }
 
 /** The nearest walkable cell to `from`, by (distance, y, x) — where a member built on is moved to. */

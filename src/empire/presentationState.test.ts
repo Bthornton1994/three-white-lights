@@ -933,6 +933,30 @@ describe('presentationState.ts — live Capacity red team', () => {
           ).toBe(true);
         }
       }
+      for (const simMember of input.sim.members) {
+        if (simMember.state === 'leaving' && simMember.next !== null) {
+          for (const seat of bay.seats) {
+            if (simMember.next.x !== seat.cell.x || simMember.next.y !== seat.cell.y) continue;
+            const ownFormer =
+              simMember.awayFrom !== null &&
+              simMember.awayFrom.x === seat.cell.x &&
+              simMember.awayFrom.y === seat.cell.y;
+            expect(ownFormer, `${simMember.memberId} leaving next onto ${cellKey(seat.cell)}`).toBe(
+              true,
+            );
+          }
+        }
+        if (simMember.state === 'seeking' && simMember.target === null) {
+          for (const seat of bay.seats) {
+            const onSeat =
+              (simMember.cell.x === seat.cell.x && simMember.cell.y === seat.cell.y) ||
+              (simMember.next !== null &&
+                simMember.next.x === seat.cell.x &&
+                simMember.next.y === seat.cell.y);
+            expect(onSeat, `${simMember.memberId} wandered onto ${cellKey(seat.cell)}`).toBe(false);
+          }
+        }
+      }
       const ghosts = ghostIds(bay);
       if (ghosts.length > 0) ghostAfterFirstStep += 1;
       maxUsing = Math.max(maxUsing, bay.usingIds.length);
