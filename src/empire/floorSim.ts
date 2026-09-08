@@ -990,12 +990,16 @@ function stationSlot(plan: RoutePlan, ref: FloorStationRef): number {
  * arrivals first, then by arrival tick, then by claim tick, then by index.
  * This ordering IS the queue; there is no queue table to drift from it.
  *
+ * CANONICAL. `stepFloorSim` consumes this helper. `presentationState.ts`
+ * consumes this helper. Do not re-encode the four-key formula in a projector.
+ *
  * Run, not asserted: dropping the arrival keys and ordering by claim tick
  * alone leaves `serves the member that arrived first, not the one that claimed
  * first` red at `expected +0 to be 1`, with the sweep's arm census moving
- * beside it.
+ * beside it. The same mutation reddens the presentation contract's pinned
+ * arriver-before-claimer ranks.
  */
-function claimantsOf(
+export function claimantsOf(
   members: readonly FloorSimMember[],
   ref: FloorStationRef,
 ): readonly FloorSimMember[] {

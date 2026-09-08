@@ -30,13 +30,24 @@ Under this mode:
 If switching to human-paced phased building instead, replace this section with
 the phase gates in GDD §10.
 
-## Session Coordination — TWO SESSIONS ARE RUNNING ON THIS REPO
+## Session Coordination — FOUR LANES ARE RUNNING ON THIS REPO
 
-**Read this before claiming any piece. There is more than one Claude Code
-session working in this repository, and neither can see the other's
-conversation.** Coordination lives here, in the tree, because that is the only
-channel both sessions actually share. If you are a session that has just started
-and has no history, this section tells you which half of the repo is yours.
+**Read this before claiming any piece.** Coordination lives here, in the
+tree, because that is the only channel the lanes actually share. If you are a
+session that has just started and has no history, this section tells you which
+files are yours.
+
+The older sentence "Session B owns `src/empire/**`" is **superseded**. It
+described the first split (main loop vs idle layer). It is still true that
+Session A stays out of `src/empire`. It is **no longer true** that one Claude
+session owns every file under `src/empire`.
+
+The older CURRENT row "Session A — Claude Code — main loop" is also
+**superseded**. Session A is two lanes: Grok owns gameplay / mechanics /
+simulation truth; Claude owns visual / animation / player-facing experience.
+Do **not** dump `src/game` or `src/lift` onto Claude.
+
+The live factory is four lanes, not three.
 
 ### Current Stage G authority (independently verified)
 
@@ -48,29 +59,161 @@ stay blocked. Do not wire `memberDuesGymBucks` / `reputationFromMembers`
 / old crowding satisfaction merely because those functions exist.
 G2-CONDITION-01, G2-FIT-01, G2-TYPE-01, and G2-ATHLETE-SEASON-01 stay
 open. Career → Empire reputation and Portfolio stay blocked.
+Do not start G.2C3 / G.2D / G.2E or D2 expansion.
 
-### The split
+### CURRENT organization (this is the live table)
 
-| | Session A — the main loop | Session B — the parallel scope |
+| Lane | Agent | Owns |
 |---|---|---|
-| Owns | everything not listed to the right | **GDD §5 — Gym Empire, the idle layer** |
-| Branch | `claude/agent-config-setup-m2r6ny` | its own `claude/*` branch, in its own worktree |
-| Files | `src/game`, `src/meet`, `src/cutin`, `src/session`, `src/shell`, `src/lift`, `src/art`, `src/card`, `src/licensing`, `src/audio`, `tools/` | `src/empire/**` (new), plus the three registry rows named below |
+| **GROK BUILD SESSION A** | Grok | **what the lift does**: lift mechanics, RPE, fatigue, readiness/history, timing, success/failure, prescribed loads, progression/persistence, renderer-independent lift presentation contract |
+| **CLAUDE CODE SESSION A** | Claude Code | **what the lift looks and feels like**: athlete presentation, animation architecture, production athlete assets/rigging, Session A rendering, training UI/UX, environment presentation, VFX |
+| **GROK BUILD SESSION B** | Grok | **what the gym does**: simulation, identity, queues, placement, economy, staff mechanics, presentation-state contract |
+| **CLAUDE CODE SESSION B** | Claude Code | **what the gym looks and feels like**: visual world, animation, player-facing chrome, sprites, interpolation, camera |
 
-**Neither session pushes to `main`, ever.** Both push only to their own
-`claude/*` branch. Merging into `main` is a human's call, not a session's.
+**No lane pushes to `main`, ever.** Merging into `main` is a human's
+call. Draft PRs stay draft. Do not merge #22, #25, #46, #49, #51, #52.
 
-### Session B's scope, stated exactly
+Grok must not put visual instructions (clip names, sprite ids, glows, camera
+shake) into mechanical state. Claude must not recreate simulation logic, queue
+order, placement legality, lift math, RPE, fatigue, or economy in the renderer.
 
-**GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion
-Axes, §5.5 Social Layer — built pure-logic-first into a new `src/empire/`
-directory**, the way M1–M6 were built before V1 wired them: production curves,
-the offline-earnings cap, NPC output by tier and tenure, deterministic
-recruitment cost, expansion cost tables, reputation. Zero React imports, zero
-side effects, unit tests per exported function (the "Pure logic is separate from
-UI" rule below applies unchanged).
+### Session A ownership (do not dump directories onto Claude)
 
-**Explicitly OUT of Session B's scope, because these are the collision:**
+There is **no** second per-file Session A table in this document. Do not invent
+one. File-level freeze is the existing module headers, A0 / A2 art freezes,
+and **"Pure logic is separate from UI"** later in this file. Session A
+directories (`src/game`, `src/meet`, `src/cutin`, `src/session`, `src/shell`,
+`src/lift`, `src/art`, `src/card`, `src/licensing`, `src/audio`, `tools/`
+except Session B capture scripts) remain Session A territory — Session B
+stays out — but they are **not** wholesale Claude.
+
+**GROK BUILD SESSION A** owns the mechanical domains, including:
+
+- lift mechanics, RPE, fatigue, readiness / history gameplay state
+- timing, success / failure, prescribed loads
+- progression / persistence mechanics
+- renderer-independent lift presentation contract
+- `src/game/liftPresentation.ts` and `src/game/LIFT-PRESENTATION.md` (Grok
+  contract surfaces even when a given worktree does not contain them)
+- other mechanically owned Session A modules under the existing freeze /
+  purity contracts
+
+**CLAUDE CODE SESSION A** owns the visual domains:
+
+- athlete presentation, animation architecture, production athlete
+  assets / rigging
+- Session A rendering, training UI/UX, environment presentation, VFX
+- player-facing visual quality
+
+A0 / A2 art freezes remain in force. This file has no A0 / A2 freeze table;
+`src/art/gymScene.ts` cites the A2 brief ("IT IS A RENDERER AND NOTHING ELSE").
+`src/game` and `src/lift` stay mixed by that seam, not assigned wholesale.
+
+### File ownership inside `src/empire/`
+Do **not** treat `src/empire/**` as a free-for-all. Edit only the files your
+lane owns, unless a crossing is written in this section **before** the work.
+
+**GROK BUILD SESSION B owns (mechanics / simulation / contract):**
+
+- `empireCore.ts`, `empireInvariant.ts`, `empireTuning.ts`
+- `floor.ts`, `floorSim.ts`, `trainingStation.ts`, `stationCapability.ts`
+- `sessions.ts`, `ladder.ts`, `management.ts`
+- `members.ts`, `livingMembers.ts`, `livingMemberExperience.ts`, `livingMemberRetention.ts`
+- `production.ts`, `engagement.ts`, `expansion.ts`, `pacing.ts`
+- `npc.ts`, `recruitment.ts`, `reputation.ts`, `social.ts`, `sportingReputation.ts`
+- `worldView.ts` — occupancy facts for the renderer; not a second sim
+- `stationView.ts` — mechanical HUD facts and copy selectors; Claude styles how they appear
+- `presentationState.ts` — the renderer-independent world snapshot **Grok writes and Claude reads**
+- matching `*.test.ts` for those modules
+- `docs/design/SESSION-B-PRESENTATION-CONTRACT.md`
+- `docs/design/LIVING-GYM-WORLD.md` (architecture diagnosis)
+
+**CLAUDE CODE SESSION B owns (visual world / animation / player-facing UX):**
+
+- `FloorGrid.tsx` — renderer, interpolation, selection chrome, placement ghost
+- `GymScreen.tsx` — facility scene, dock chrome, Play/Build surfaces
+- `floorSprites.ts` — sprite painters and URI tables
+- `ironAmberArt.ts` — owned-art URI adapter
+- matching tests: `GymScreen.test.ts`, `floorSprites.test.ts`, `ironAmberArt.test.ts`
+- `public/empire-art/**` and `docs/design/IRON-AMBER*` / art-01 / art-02 screenshots
+- capture scripts already in `tools/` for Gym Empire visual proof
+  (`capture-c1b-gym.mjs`, `capture-c1c-gym.mjs`, `capture-iron-amber-art.mjs`,
+  `capture-living-world.mjs`, `smoke-c1d-visible.mjs`, the gym/floor
+  reachability verifiers)
+
+**Shared contract / registry surfaces (neither lane edits the other's half silently):**
+
+| Surface | Rule |
+|---|---|
+| `presentationState.ts` + `docs/design/SESSION-B-PRESENTATION-CONTRACT.md` | Grok writes the facts. Claude reads them. Claude does not add visual fields. Grok does not add clip/sprite/camera fields. |
+| `empireTuning.ts` | Grok owns the numbers. Claude may read cadence and sizes. Claude does not retune. |
+| `ladderView.tsx` | **MIXED FILE.** `GymViewState`, `GymViewAction`, `gymViewReduce` = Grok. `GymView` JSX chrome = Claude. Crossing required to edit the other half. |
+| `CLAUDE.md` (this section) | Both lanes write a crossing here **before** touching a file they do not own. |
+| `src/tuning/audit.ts`, `audit.test.ts`, `index.ts` | Existing Session A / Session B registry. Same three-row rule as below. |
+| `docs/GDD.md` | Design authority. Update in the same commit as a real design change. |
+
+AmbientMemberBody in `FloorGrid.tsx` stays Claude-owned. Its props must not grow
+a dispatch or game-state channel.
+
+### Crossing procedure
+
+If a lane needs a file it does not own:
+
+1. Write the crossing in **this section** before the work starts — not only in
+   a commit message, not only in a conversation the other lane cannot read.
+2. Name the file, the reason, and which lane will make the edit.
+3. Do not "just this once" silently.
+4. Human owns merge. Keep draft PRs draft.
+
+Scope changes are written here **before** crossing the boundary. That is the
+repo's own coordination rule and it still holds.
+
+### Branch / worktree policy
+
+| Lane | Branches | Worktree |
+|---|---|---|
+| Grok Build Session A | Session A mechanics branches | own worktree; stays out of `src/empire/**`; owns lift / RPE / fatigue / progression math and the lift presentation contract |
+| Claude Code Session A | Session A visual branches | own worktree; stays out of `src/empire/**`; owns athlete presentation, Session A rendering, training UI/UX |
+| Grok Build Session B | `grok/session-b-*` (mechanics / contract). Current contract lane: `grok/session-b-presentation-contract` (draft PR #52), stacked on living-world #51 | do not rebase or merge Session A or `main` |
+| Claude Code Session B | visual stacked drafts: #46 Iron & Amber home, #49 art-01/art-02, #51 living-world occupancy renderer | do not modify #46 / #49 / #51 contents from the Grok lane; do not merge them |
+
+- Name every Session B worktree branch `claude/*` or `grok/session-b-*` so the
+  silent-worktree scan can see it (historical rule, still in force).
+- Do not convert TanStack Start. Do not re-add `dev` to `package.json`.
+- Untracked App Builder chrome stays untracked.
+- TRAIN remains Session A `shell-leave-gym`. Do not edit Grok Session A lift mechanics.
+- Queue *capacity-upgrade* mechanics proof is this Grok slice. Visual proof
+  remains Claude's and must not start as a silent rewrite of #46 / #49 / #51.
+
+A governance-only commit that touches this file is the shared coordination
+edit. All four lanes must read it before the next crossing. Cherry-pick it
+rather than leaving the split described only on one private mechanics branch.
+
+The 0a4f3919 / 57006e93 module-by-module why-column is not deleted from git
+history. **CURRENT organization above wins** if that column disagrees.
+Explicit supersessions: `worldView.ts` is Grok occupancy facts; `stationView.ts`
+is Grok mechanical HUD facts (Claude styles how they appear);
+`presentationState.ts` is the Grok world-truth contract Claude reads.
+`empireTuning.ts` remains shared-append; `ladderView.tsx` remains mixed;
+`empireForbiddenOutput.test.ts` / `directoryWalk.test.ts` / `empireSweep.test.ts`
+remain a shared pin surface.
+
+### Historical Session A / Session B split (still in force for Session A)
+
+The table that follows is the **first** split: main loop vs Gym Empire idle
+layer. Session A still does not edit `src/empire/**`. Session A itself is also
+two lanes (Grok mechanics / Claude visual) — see **CURRENT organization**.
+What this table must not be read as: a licence for one Claude session to own
+every Session A file, or one Claude session to own every empire file. The live
+table is **CURRENT organization** above.
+
+| | Session A — the main loop (now split internally: Grok mechanics / Claude visual) | Session B — the idle layer (now split internally) |
+|---|---|---|
+| Owns | everything not listed to the right, **divided by CURRENT organization** | **GDD §5 — Gym Empire** |
+| Branch | Session A Grok / Claude worktrees; stays out of `src/empire/**` | Grok `grok/session-b-*` and Claude visual drafts, each in their own worktree |
+| Files | Session A directories (`src/game`, `src/meet`, `src/cutin`, `src/session`, `src/shell`, `src/lift`, `src/art`, `src/card`, `src/licensing`, `src/audio`, `tools/`) — **not** wholesale Claude; Grok owns mechanical modules, Claude owns visual ones. Session B capture scripts under `tools/` stay Claude Code Session B. | `src/empire/**` **divided by the ownership table above**, plus the three registry rows named below |
+
+**Explicitly OUT of every Session B lane, because these are the collision:**
 
 - **`src/game/progression.ts`.** The Gym Empire loop eventually has to write a
   wallet, and that write is a progression intent. Do not add one. That file is
@@ -81,7 +224,7 @@ UI" rule below applies unchanged).
   (`physioDaysSaved`) and is a Session A file. Read the constant; do not edit it.
 - **A screen or route.** `src/shell/shellRoute.ts` and `AppShell.tsx` are Session
   A's, and A has a shell grading pass queued. A render-only view under
-  `src/empire/` is fine; wiring it into the shell is not.
+  `src/empire/` is Claude Code Session B's; wiring it into the shell is not.
 
 ### Why §5 is the disjoint piece, and not merely the unstarted one
 
@@ -134,9 +277,12 @@ either.
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
-piece there. If either session needs to cross the line, the crossing is written
-into this section **before** the work starts — not into a commit message, not
-into a conversation the other session cannot read.
+piece there. Inside Session A, Grok (mechanics) and Claude (visual) do not
+freely edit each other's files — see **CURRENT organization**. Inside Session
+B, Grok and Claude do not freely edit each other's files — same table and
+**Crossing procedure** above. If a lane needs to cross, the crossing is
+written into this section **before** the work starts — not into a commit
+message, not into a conversation the other lane cannot read.
 
 ### Crossings Session B needed — one is DONE, one is still open
 

@@ -2479,6 +2479,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'npc.ts',
       // GDD §5.14 Stage B: the economy pacing simulator.
       'pacing.ts',
+      // Session B presentation-state contract: renderer-independent world snapshot.
+      'presentationState.ts',
       'production.ts',
       'recruitment.ts',
       'reputation.ts',
@@ -2694,7 +2696,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 188 -> 193: Iron & Amber owned-art adapter named by FloorGrid / GymScreen.
     // 193 -> 197: worldView.ts imported by FloorGrid; worldView reads floorSim
     // and names FloorGrid / floorSim in its header.
-    expect(pairs).toBe(197);
+    // 197 -> 213: presentationState.ts contract plus worldView header naming it.
+    // 213 -> 214: floorSim.ts header names presentationState.ts as a claimantsOf consumer.
+    expect(pairs).toBe(214);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -2717,7 +2721,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `./empireCore`.
     // 22 -> 23: Stage G.2B livingMemberRetention.ts imports refuseWith.
     // 23 -> 24: Iron & Amber adapter header names empireCore.test.ts.
-    expect(mentionersOf('empireCore.ts').length).toBe(24);
+    // 24 -> 25: presentationState.ts imports refuseWith from empireCore.
+    expect(mentionersOf('empireCore.ts').length).toBe(25);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -2780,10 +2785,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // GDD §12.3's no-gacha refusal, and `empireTuning.ts`'s own prose ("there
     // is no seed, no weight and no distribution anywhere in this file") is what
     // put `seed` on it. That claim is about the TUNING module and is still
-    // enforced — this pair is scoped to `floorSim.ts` alone. The patterns that
+    // enforced — this pair is scoped to `floorSim.ts` and the presentation
+    // contract that forwards the same field. The patterns that
     // carry the refusal itself (`Math.random`, `random`, `shuffle`,
     // `weightedPick`, `probability`, `rarity`, `gacha`, `Date`) all still run
-    // against `floorSim.ts`, and so does `weight` and `distribution`.
+    // against both files, and so does `weight` and `distribution`.
     //
     // The alternative was renaming the field to something the scan does not
     // match. It was refused: this file's own warning is that a scan for words
@@ -2796,7 +2802,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // pinned number of FIRST TARGETS when only the seed changes`, which pins
     // 4, 6 and 3 of 8 against a control of 0 — a reproducible variation key
     // rather than a roll.
-    const SEED_BAN_EXEMPT_FILES: readonly string[] = ['floorSim.ts'];
+    const SEED_BAN_EXEMPT_FILES: readonly string[] = ['floorSim.ts', 'presentationState.ts'];
     let scanned = 0;
     let checks = 0;
     let exemptions = 0;
@@ -2838,7 +2844,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // exemption sneaking in moves BOTH numbers and neither can absorb it
     // alone.
     // 1 -> 2: GDD §5.13 presentation Phase 3's seed pair, above.
-    expect(exemptions).toBe(2);
+    // 2 -> 3: presentationState.ts forwards FloorSimState.seed as a
+    // read-only facility field. Same honest name, same no-gacha claim —
+    // Claude does not re-roll destinations from it.
+    expect(exemptions).toBe(3);
     expect(checks).toBe(shipped.length * banned.length - exemptions);
     // And the patterns are not all dead letters: each one is driven against a
     // string that should trip it, derived from the pattern's own purpose, so a
@@ -3881,7 +3890,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 854 -> 856: gymscreen-facility-scene and gymscreen-facility-art.
     // 856 -> 874: per-rung rooms, floor-plane, and 14 session stems.
     // 874 -> 882: living-world occupancy/activity vocabulary and ./worldView.
-    expect(singleQuoted.size).toBe(882);
+    // 882 -> 883: presentationState.ts FloorState['placements'] index access.
+    // 883 -> 886: presentationState.ts three coherent-snapshot refuse messages.
+    expect(singleQuoted.size).toBe(886);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4011,7 +4022,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // assertion's own failure value.
     // 379 -> 387: Iron & Amber member-stem templates.
     // 387 -> 389: living-world queue-cell testID templates.
-    expect(templateChunks.size).toBe(389);
+    // 389 -> 390: presentationState.ts refuseWith template for missing member index.
+    expect(templateChunks.size).toBe(390);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4639,6 +4651,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'physio-days-saved',
       'pixelated',
       'placed',
+      'placements',
       'placing',
       'play',
       'pointer',
@@ -4933,7 +4946,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1241 -> 1243: facility-scene and facility-art testIDs.
     // 1243 -> 1261: per-rung rooms, floor-plane, 14 session stems, occupancy overlay id.
     // 1261 -> 1271: living-world singleQuoted 874 -> 882 and templateChunks 387 -> 389.
-    expect(stringsChecked).toBe(1271);
+    // 1271 -> 1273: presentationState.ts specifier + refuseWith template chunk.
+    // 1273 -> 1276: three coherent-snapshot refuse messages.
+    expect(stringsChecked).toBe(1276);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5404,6 +5419,21 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // reimplementing their arithmetic, and reads `offlineBankingHorizonSeconds`
       // straight from `production.ts` for the sporadic-policy gap cap.
       'pacing.ts': ['./empireCore', './empireTuning', './ladder', './management', './production'],
+      'presentationState.ts': [
+        './empireCore',
+        './empireTuning',
+        './floor',
+        './floorSim',
+        './ladder',
+        './livingMemberExperience',
+        './livingMembers',
+        './management',
+        './members',
+        './sessions',
+        './stationCapability',
+        './trainingStation',
+        './worldView',
+      ],
       'production.ts': ['./empireCore', './empireTuning'],
       'recruitment.ts': ['./empireCore', './empireTuning'],
       'reputation.ts': ['./empireCore', './empireTuning', './expansion', './production'],
@@ -5452,7 +5482,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 27 -> 28: Stage G.2B livingMemberRetention.ts.
     // 28 -> 29: Iron & Amber owned-art adapter.
     // 29 -> 30: living-world projector worldView.ts.
-    expect(fenced).toBe(30);
+    // 30 -> 31: Session B presentation-state contract presentationState.ts.
+    expect(fenced).toBe(31);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -5578,7 +5609,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 125 -> 127: Iron & Amber owned-art adapter — FloorGrid and GymScreen
     // each gain one `./ironAmberArt` edge. The adapter itself has zero imports.
     // 127 -> 129: worldView.ts `./floorSim` plus FloorGrid `./worldView`.
-    expect(specifiers).toBe(129);
+    // 129 -> 142: presentationState.ts thirteen intra-directory imports.
+    expect(specifiers).toBe(142);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external

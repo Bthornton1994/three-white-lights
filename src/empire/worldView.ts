@@ -18,6 +18,9 @@
  * FloorGrid.tsx is the renderer that draws these views. It does not become a
  * second source of gameplay truth. GymState gains no field.
  *
+ * The full Session B presentation-state contract is `presentationState.ts`.
+ * This file remains the occupancy convenience FloorGrid already draws.
+ *
  * WHAT THIS SLICE DOES NOT DO. It does not invent staff AI, persistent NPCs,
  * arrivals, dues, or a new pathfinder. Staff remain a management surface
  * until a later authorised slice gives them world presence. Equipment already

@@ -28,12 +28,12 @@
  *     side effect, so `FloorGrid.tsx` calls it directly for that question
  *     rather than this module re-deriving the same three-way branch a second
  *     time.
- *   - It does not recompute a station's queue ORDER (`floorSim.ts`'s own
- *     `claimantsOf` is the ordering; it is not exported and this module does
- *     not need it). `stationOperationView` below counts the same two states
- *     `floorSim.ts`'s own header defines the queue by ("everyone whose target
- *     is that station and whose state is `seeking` or `queuing`") — a filter
- *     and a count, not a re-implementation of the fairness ordering.
+ *   - It does not recompute a station's queue ORDER (`floorSim.ts`'s exported
+ *     `claimantsOf` is the one canonical ordering). `stationOperationView`
+ *     below counts the same two states `floorSim.ts`'s own header defines the
+ *     queue by ("everyone whose target is that station and whose state is
+ *     `seeking` or `queuing`") — a filter and a count, not a re-implementation
+ *     of the fairness ordering.
  */
 
 import { EMPIRE_TUNING } from './empireTuning';
@@ -348,8 +348,9 @@ export function displayRepairCostBySoundness(costGymBucks: number, condition: nu
  * than only as that function's gym-wide total. No new arithmetic: the
  * comparison is byte-for-byte the one `recoveryRepairCostGymBucks` performs.
  *
- * WHY THIS IS A SEPARATE QUESTION FROM `isSoundCondition`, STATED BECAUSE
- * STAGE C.1 SHIPPED A PANEL THAT ANSWERED ONLY ONE OF THEM. Routine
+ * Why this is a separate question from `isSoundCondition` — stated because
+ * Stage C.1's panel answered only one of them, a historical note about that
+ * round rather than a claim this one makes. Routine
  * maintenance (`isSoundCondition`, gated on `MAINTENANCE_PROMPT_CONDITION`,
  * 0.5) and recovery eligibility (this function, gated on
  * `RECOVERY_CONDITION_MIN`, 0.8) are two thresholds over the same condition
