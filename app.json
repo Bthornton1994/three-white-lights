@@ -22,6 +22,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "37ea7a85-87f5-49fd-a63a-edea55ece38f"
+      }
+    },
+    "owner": "bthornton1994s-team"
   }
 }
