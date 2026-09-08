@@ -58,7 +58,8 @@ blocker. The editor handoff is now zero-ambiguity from this side:
 | Rive authoring handoff — canvas, artboard and state-machine names, the `Athlete` ViewModel with all 42 inputs and enum values, bone hierarchy, IK, meshes, plate slots, bar transform, deformation limits, top/bottom references, five miss resolutions, layer order, export name, validation command, acceptance checklist | `docs/design/RIVE-AUTHORING-HANDOFF.md` | written; the `.riv` `ASSET_AUTHORING_BLOCKED` (no Rive editor; no generator or format work by ruling) |
 | Input manifest, generated from the binding and pinned to it by `src/art/rivContract.test.ts` | `docs/design/athlete-rig-manifest.json` | current |
 | The command that decides acceptance — every lift artboard present, same-named state machine, default ViewModel exposing the full contract; fails closed | `node tools/rivContract.mjs <file.riv> [--artboard squat]` | shipped, tested against the real diagnostic assets (NOT SATISFIED, as they should be) |
-| Native runtime | ADR-001 §7 | `NATIVE_RUNTIME_BLOCKED` — no Android SDK (`adb`, `emulator`, `sdkmanager`, `ANDROID_HOME`), no device, no macOS/Xcode; only Java and Gradle present |
+| Native runtime | ADR-001 §7 | reclassified 2026-09-08: the build is an EAS CLOUD build (`eas.json` `development`, `expo-dev-client` installed) — NATIVE_BUILD `OWNER_BLOCKED_EXPO_AUTH` (the exact commands are in §7), NATIVE_RUNTIME `OWNER_BLOCKED_DEVICE`; the missing local SDK is the record of why it is a cloud build, not the blocker |
+| Intake flow for `athlete-01.riv` | §12a, `node tools/athleteIntake.mjs` | written; the command runs steps 1–3 and names 4–8; the player-path gate `ATHLETE_RIG.TRAINING_STAGE` is closed and pinned |
 
 ## 3. Canonical identity — the character bible
 
@@ -421,6 +422,33 @@ the source-art package (`docs/design/ATHLETE-SOURCE-PACKAGE.md`) for the
 sheet, the silhouette test and the scale checks, and the Rive authoring
 handoff (`docs/design/RIVE-AUTHORING-HANDOFF.md`) for the rig; its §10 is
 the acceptance command, `node tools/rivContract.mjs assets/athlete/athlete-01.riv --artboard squat`.
+
+## 12a. Intake — what happens when `assets/athlete/athlete-01.riv` arrives, in order
+
+Ruled 2026-09-08. Eight steps, each gated, none skipped, none reordered. The
+first three are mechanical and `node tools/athleteIntake.mjs` runs them
+(exit 2: nothing there yet; 1: rejected, the line names the step; 0: the
+mechanical gates are clear and steps 4–8 are owed). **The validator is never
+weakened to admit a file, and the file is never edited to pass the
+validator** — a rejection goes back to the editor author with the command's
+own output.
+
+| # | Step | Command | Gate |
+| --- | --- | --- | --- |
+| 1 | Provenance / licence package | `ATHLETE-01-PROVENANCE.md` beside the file with `SHA-256:`, `Licence:`, `Artist:`, `Marks:`, `Editor source:` lines; `athlete-01.rev` and `athlete-01-reference-sheet.png` present | the SHA-256 matches the delivered bytes; every line present; no real mark or likeness attested |
+| 2 | The contract command | `node tools/rivContract.mjs assets/athlete/athlete-01.riv --artboard squat` | exit 0: artboard present, same-named state machine, default ViewModel exposes all 42 inputs with their enum values |
+| 3 | Reject on non-zero | (the same command) | any non-zero is a rejection, verbatim, back to the author |
+| 4 | The squat state machine actually DRIVES | flip `ATHLETE_RIG.TRAINING_STAGE` to `'athlete'` in a local scratch tree (not committed), `tools/dev-web.sh`, `tools/capture-session.mjs`, read the pixels back across two set beats | the athlete changes between beats; 0 changed pixels is BOUND, not DRIVEN (ADR-001 §7) — reject |
+| 5 | The REAL `LiftPresentationState` moves it | the same played session; the stages call `liftPresentation(state, totalKg, prior)` and nothing else (`athleteRig.test.ts` pins it) | brace → descent → depth → reversal → ascent → stick → grind → lockout and at least one authentic miss, from the simulation alone |
+| 6 | Web performance | the rAF cadence readback the spike probe used, on the athlete arm, at 390×844 | 60 Hz over a full rep with the 42-input write; no frame over 33 ms while the scene draws |
+| 7 | Native performance | the EAS development build on a physical Android device, same rep (ADR-001 §7) | installs, mounts, drives, survives unmount/remount and rotation, keeps pacing — a device fact, never inferred from the build |
+| 8 | Mount as the squat player-path CANDIDATE | `ATHLETE_RIG.TRAINING_STAGE = 'athlete'` and the pin in `src/session/trainingStageGate.test.ts`, in the commit that records the grade | a human graded VISUAL / ANIMATION / SOFT-FEEL; OWNER PLAYTEST is Bryant's alone |
+
+The gate at step 8 is one tuning value (`src/art/spriteTuning.ts`), read by
+`src/session/TrainingLiftStage.tsx`, which loads the athlete stage
+dynamically so the Rive runtime is not on the player bundle while the gate
+is closed. Until step 8 the training squat draws the rejected schematic,
+and the flag's test says so.
 
 ## 13. What proceeds while this is blocked
 

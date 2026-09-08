@@ -1319,9 +1319,11 @@ export const ATHLETE_RIG = Object.freeze({
   /**
    * The athlete artboard's canvas, px. THE ROOM'S CAMERA, NOT A CHOICE: the
    * Iron & Amber squat plates under `assets/iron-amber/` are 1152 x 1728, and
-   * the athlete has to sit in that room at that lens — a rig authored on a
-   * different canvas arrives into a scene drawn for a different camera.
-   * `rivContract.test.ts` reads the plate's JPEG header and pins this to it.
+   * that is the size the NEW empty side-on room plate is authored at too
+   * (`docs/design/ATHLETE-SOURCE-PACKAGE.md` §8 — the existing plates are a
+   * painted scene and are never cropped behind the rig), so the athlete
+   * sits in the room at one lens. `rivContract.test.ts` reads the plate's
+   * JPEG header and pins this to it.
    */
   CANVAS_PX: { WIDTH: 1152, HEIGHT: 1728 },
   /**
@@ -1332,4 +1334,20 @@ export const ATHLETE_RIG = Object.freeze({
    * editor agree on what to call the thing.
    */
   VIEW_MODEL_NAME: 'Athlete',
+  /**
+   * THE PLAYER-PATH GATE — intake step 8 of
+   * `docs/design/ATHLETE-ASSET-PIPELINE.md` §12a. Which stage the training
+   * squat mounts: `'schematic'` is the rejected Skia debug path
+   * (`SquatScene`), `'athlete'` is the production Rive stage
+   * (`AthleteStage.native` / `.web`). It stays `'schematic'` until an
+   * athlete asset has passed every intake step — provenance, the contract
+   * command, a driven state machine, the real presentation state, web and
+   * native performance — and a human has graded VISUAL / ANIMATION /
+   * SOFT-FEEL. `src/session/trainingStageGate.test.ts` pins it closed; the
+   * flip is this one value, in the commit that records the human grade.
+   */
+  TRAINING_STAGE: 'schematic' as TrainingStageKind,
 });
+
+/** The two things the training squat can draw; see `ATHLETE_RIG.TRAINING_STAGE`. */
+export type TrainingStageKind = 'schematic' | 'athlete';

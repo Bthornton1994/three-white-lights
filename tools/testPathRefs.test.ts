@@ -366,8 +366,15 @@ const PINNED = Object.freeze({
    * `docs/design/ATHLETE-SOURCE-PACKAGE.md` and
    * `docs/design/RIVE-AUTHORING-HANDOFF.md`. No test file among them, so
    * `TEST_FILES` below does not move.
+   *
+   * 383 -> 390 with the EAS development build and the athlete intake:
+   * `eas.json`, `src/dev/riveRuntimeSpike/devRouteQuery.ts` (the pure query
+   * parser), `devRoute.ts` (the `Linking` hook) + `devRoute.test.ts`,
+   * `src/session/trainingStageGate.test.ts` (the player-path gate pinned
+   * closed), `tools/athleteIntake.mjs` + `athleteIntake.test.ts`. Three of
+   * the seven are test files, so `TEST_FILES` moves with it, 118 -> 121.
    */
-  SCANNED_FILES: 383,
+  SCANNED_FILES: 390,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -432,7 +439,12 @@ const PINNED = Object.freeze({
    *
    * 117 -> 118 with `src/art/rivContract.test.ts`.
    */
-  TEST_FILES: 118,
+  /**
+   * 118 -> 121 with `src/dev/riveRuntimeSpike/devRoute.test.ts`,
+   * `src/session/trainingStageGate.test.ts` and `tools/athleteIntake.test.ts`
+   * — the test halves of the pair that moved `SCANNED_FILES` to 390 above.
+   */
+  TEST_FILES: 121,
 });
 
 /**

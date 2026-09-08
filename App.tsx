@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { AppShell } from './src/shell/AppShell';
 import { LIFT_PALETTE } from './src/lift/liftPalette';
 import { RiveRuntimeSpikeScreen } from './src/dev/riveRuntimeSpike/RiveRuntimeSpikeScreen';
+import { useDevRiveSpikeRoute } from './src/dev/riveRuntimeSpike/devRoute';
 
 // THE APP OPENS INTO THE DAILY SESSION LOOP (GDD §3.2): readiness check-in ->
 // modifier -> the work sets, on the lift mechanic -> close-out. There is no
@@ -48,7 +49,7 @@ function locationSearch(): string | null {
 // ONE DEV-ONLY BRANCH, DELIBERATELY SEPARATE FROM `resolveEntry`'S FOUR.
 // ---------------------------------------------------------------------------
 // `?dev-rive-spike=1` is NOT one of the four debug query strings named above
-// and never reaches `src/shell/shellRoute.ts` — it is checked here, before
+// and never reaches `src/shell/shellRoute.ts` — it is decided here, before
 // `AppShell` mounts at all, and short-circuits to a screen `resolveEntry` has
 // no arm for and will never be given one. It is not part of the GDD evidence
 // harness those four serve; it exists solely for
@@ -60,16 +61,22 @@ function locationSearch(): string | null {
 // Either alone would still keep a player from getting here; both together
 // means a misconfigured `__DEV__` in a preview build still can't surface it
 // without someone typing this exact string.
-function isDevRiveSpikeRequested(): boolean {
-  if (!__DEV__) return false;
-  const search = locationSearch();
-  if (search === null) return false;
-  return new URLSearchParams(search).get('dev-rive-spike') === '1';
-}
-
+//
+// THE SAME QUERY ON BOTH PLATFORMS. On web it is `window.location.search`,
+// read above. On native there is no address bar, so the same key and value
+// are read from the app's LAUNCH URL through the app scheme (`app.json`) —
+// `src/dev/riveRuntimeSpike/devRoute.ts` does that read, keeps the `__DEV__`
+// guard in front of every `Linking` call, and returns `'app'` unconditionally
+// in a production build. `'pending'` is the one native tick before the launch
+// URL resolves; the backdrop is drawn and nothing else, so the shell never
+// flashes under the spike. The four debug query strings are unchanged.
 export default function App() {
-  if (isDevRiveSpikeRequested()) {
+  const devRoute = useDevRiveSpikeRoute(locationSearch());
+  if (devRoute === 'spike') {
     return <RiveRuntimeSpikeScreen />;
+  }
+  if (devRoute === 'pending') {
+    return <View style={styles.container} />;
   }
   return (
     <View style={styles.container}>

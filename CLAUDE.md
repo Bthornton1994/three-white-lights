@@ -556,6 +556,51 @@ Own-lane files that move with it and are not crossings: `src/session/
 TrainingLiftStage.tsx` (the stage gate), `src/dev/riveRuntimeSpike/**`,
 `docs/design/**`.
 
+**Done the same day, and what it measured.** Filed at `c90069a5` and
+pushed before any shared file moved; the work followed on the next commit.
+
+- **The native blocker is reclassified, in two halves that stay apart.**
+  NATIVE_BUILD is an EAS cloud development build — `expo-dev-client` at the
+  SDK pin (`~57.0.10`; `npx expo install` cannot run here because the
+  React Native Directory and Expo API hosts answer `Forbidden` through the
+  proxy, so `npm install` at the identical range did it, and the lock moved
+  for that package's own seven-module tree and nothing else), `eas.json`
+  with one `development` profile, `app.json` with `scheme` and
+  `android.package`. **`OWNER_BLOCKED_EXPO_AUTH`**: `eas whoami` reads
+  `Not logged in`, `EXPO_TOKEN` is unset, `eas config` refuses to read the
+  profile without an account; nothing invented, nothing committed, the
+  exact commands are in ADR-001 §7. NATIVE_RUNTIME is
+  **`OWNER_BLOCKED_DEVICE`** and is never inferred from a build.
+- **The spike's native route is the same query as web.**
+  `src/dev/riveRuntimeSpike/devRouteQuery.ts` (pure, tested) parses
+  `?dev-rive-spike=1` from a bare search string or a full scheme URL and
+  refuses the dev client's own launcher URL; `devRoute.ts` reads the launch
+  URL through `Linking` under `__DEV__` only, pinned as source. `App.tsx`
+  keeps its one branch and its four debug query strings; `shellWiring`'s
+  data-flow check on `AppShell` still passes. One lesson worth the line:
+  a test that imports a module which imports `react-native` cannot even
+  PARSE under vitest (Flow source) — the pure half is its own module for
+  that reason, which is also the rule this file already states.
+- **The intake flow is a command.** `tools/athleteIntake.mjs` runs steps
+  1–3 of pipeline §12a (provenance package present, SHA-256 matching the
+  bytes, `rivContract … --artboard squat` exit 0) and prints 4–8 with their
+  gates; driven by `tools/athleteIntake.test.ts` against every reachable
+  outcome (missing, incomplete, hash mismatch, a real non-athlete file, the
+  invalid placeholder). The player-path gate `ATHLETE_RIG.TRAINING_STAGE`
+  is one tuning value, read by `TrainingLiftStage.tsx` through a dynamic
+  import so the Rive runtime stays off the player bundle, pinned closed by
+  `src/session/trainingStageGate.test.ts`.
+- **Handoff wording and the room rule** landed on the filing commit (the
+  jaw-silhouette sentence; never crop or re-use the squat JPEGs).
+
+**Registry data, called out per the ruling's condition 3:** `testPathRefs`
+383→390 / 118→121; `guaranteeTags` census unmoved; `realIp` unchanged at
+the inherited pair; `src/tuning/*` untouched. Inherited reds unchanged.
+
+**Not done, and not claimed:** no cloud build launched; no native runtime
+executed; no athlete `.riv`; no VISUAL, ANIMATION or SOFT-FEEL gate moves;
+bench and deadlift blocked; PR #48 not merged; RIVE stays PROVISIONAL.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion

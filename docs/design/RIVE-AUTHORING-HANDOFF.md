@@ -22,6 +22,7 @@ ViewModel — so this document cannot drift from the code without a red test.
 | Runtime file | `assets/athlete/athlete-01.riv` |
 | Editor source | `assets/athlete/athlete-01.rev` (the editor's own backup, committed beside the runtime file for provenance) |
 | Reference sheet | `assets/athlete/athlete-01-reference-sheet.png` (front / side / three-quarter, §ATHLETE-SOURCE-PACKAGE) |
+| Provenance package | `assets/athlete/ATHLETE-01-PROVENANCE.md` with one line each: `SHA-256:` (of the delivered `.riv`), `Licence:`, `Artist:`, `Marks:` (attesting no real federation, brand, sponsor or likeness), `Editor source:`. `node tools/athleteIntake.mjs` refuses the delivery without it, and refuses a hash that names other bytes. |
 | Version | Bump a suffix on breaking rig changes only: `athlete-01.riv` → `athlete-01-v2.riv`. The host references one path. |
 | Licence | Owned outright or licensed for redistribution, with the artist agreement filed. No real lifter's likeness, no federation mark, no shoe or apparel brand, no sponsor. |
 

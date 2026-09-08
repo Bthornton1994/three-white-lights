@@ -3,8 +3,10 @@
 **Status:** **PROVISIONAL — RIVE LEADING CANDIDATE.** Not FINAL. Not merged.
 **Gate lines, per the 2026-09-08 ruling:** WEB REAL-ASSET TECHNICAL = PASS
 (§7, on a licensed diagnostic asset — a health bar, whose performance is NOT
-generalised to an athlete); NATIVE = **`NATIVE_RUNTIME_BLOCKED`** (§7 —
-the exact missing requirement is recorded there); ATHLETE = NOT BUILT
+generalised to an athlete); NATIVE_BUILD = **`OWNER_BLOCKED_EXPO_AUTH`**
+(EAS cloud development build configured, not launched — §7 has the exact
+commands); NATIVE_RUNTIME = **`OWNER_BLOCKED_DEVICE`** (never inferred
+from a build); ATHLETE = NOT BUILT
 (`ASSET_AUTHORING_BLOCKED`, §9); VISUAL / ANIMATION / SOFT-FEEL = NOT PASSED
 and never self-claimed; OWNER PLAYTEST = Bryant's alone.
 **What closes it, exactly — BOTH, not either:** (1) the native runtime
@@ -371,9 +373,9 @@ how the "one number" claim above was established rather than assumed.
 | Verification target | Result |
 | --- | --- |
 | Native runtime installs cleanly | **YES** — `npm install` clean against RN 0.86.2 / React 19.2.3 / Expo 57; **zero new `npm audit` advisories** (19 before, the identical 19 after, diffed by package). |
-| Expo development build works | **PARTIAL** — `expo prebuild --platform android` succeeds (exit 0, `newArchEnabled=true`); Expo's autolinker links both packages on android and ios. Compilation and a running dev client: **not executable here**. |
-| iOS path | **NOT EXECUTABLE HERE** (no macOS/Xcode). Requirements recorded in §4a row 4. |
-| Android path | **NOT EXECUTABLE HERE** beyond prebuild + autolinking (no SDK/NDK/emulator). |
+| Expo development build works | **CONFIGURED FOR EAS CLOUD, NOT YET BUILT** — `expo-dev-client` installed at the SDK pin, `eas.json` `development` profile (development client, internal distribution, Android APK), `app.json` carries `scheme` and `android.package`. `expo prebuild --platform android` succeeds here (exit 0, `newArchEnabled=true`) and Expo's autolinker links both packages. The cloud build itself: **`OWNER_BLOCKED_EXPO_AUTH`** — see the runbook below. |
+| iOS path | **NOT EXECUTABLE HERE** (no macOS/Xcode) and no EAS iOS profile defined; nobody has asked for one. |
+| Android path | **NATIVE_BUILD: not yet attempted** (EAS cloud, blocked on Expo auth). **NATIVE_RUNTIME: not yet attempted** (needs a device). The two are kept separate on purpose — a green build is not a running runtime. |
 | Web/PWA counterpart | **EXECUTED** — see the probe record below. |
 | Same presentation state feeds both runtimes | **YES, structurally** — one `spikeSignal.ts` feed, two platform stages, one shared signature pinned three ways; the web stage's binding calls run every frame in the browser, against a real file. |
 | Data Binding / ViewModel numeric updates | **MEASURED on web, on a real `.riv` (2026-09-08).** The bound number moves the shape: two canvas readbacks 450 ms apart differ in 5,918 px (max channel delta 255), the readout going `100` → `14` and the bar's fill and colour with it. AND the finding that came first: with no state machine named, the instance binds, the status reads `bound`, and **0 px change** — data binding drives a state machine, so the stages now name theirs and the contract diff checks for one. |
@@ -428,26 +430,65 @@ literal, pinned by `riveSpikeTypes.test.ts`); `react-native-web` having no
 `src/session/riveWebEngine.ts`); the status line printing `[object Object]`
 for a Rive `onLoadError` event (fixed — the event's fields).
 
-### Not executed here, and what closes it
+### Not executed here, and what closes it — the EAS cloud path (ruled 2026-09-08)
 
-A developer with a Mac or an Android SDK runs, from the visual branch:
+"No local Android SDK" was the wrong classification of the native blocker.
+This is an Expo project; EAS cloud build compiles the development client
+without one. The local requirement table below is kept as the record of
+what this container lacks; it no longer gates anything.
+
+**What is configured on the branch, checked offline as far as the tool
+allows:** `expo-dev-client@~57.0.10` (the `bundledNativeModules.json` pin for
+SDK 57; `npx expo install` itself cannot run here — the React Native
+Directory and Expo API hosts answer `Forbidden` through the proxy — so it
+was installed by `npm install` at the identical range, and the lock moved
+for that package's own seven-module tree and nothing else); `eas.json` with
+one `development` profile — `developmentClient: true`, `distribution:
+internal`, `android.buildType: apk`, `appVersionSource: local`; `app.json`
+with `scheme: threewhitelights` and `android.package:
+com.threewhitelights.app` (placeholders the owner may rename); the dev-only
+route on native through that scheme (`src/dev/riveRuntimeSpike/devRoute.ts`,
+the same `?dev-rive-spike=1` query as web, still `__DEV__`-gated, tested).
+`npx eas-cli config --platform android --profile development` refuses to
+read the profile without an account, so the profile's validity is asserted
+by the schema it follows, not by the tool — recorded as a limit.
+
+**`OWNER_BLOCKED_EXPO_AUTH`.** `npx eas-cli whoami` reads `Not logged in`
+and `EXPO_TOKEN` is unset. No credential is invented and none is committed.
+Bryant, from the visual branch at the commit this section names:
 
 ```
-npx expo run:ios      # or: npx expo run:android
-# open the app with the dev flag — on native, there is no URL bar, so
-# temporarily return true from isDevRiveSpikeRequested() in App.tsx
+npx eas-cli login                      # or: export EXPO_TOKEN=<an expo.dev access token>
+npx eas-cli init                       # links the project; writes extra.eas.projectId into app.json
+npx eas-cli build --platform android --profile development
 ```
 
-and reports: build success, the dev screen's status line, and whether the
-health bar moves at 60 Hz the way the web record shows. That closes §4a
-rows 4, 5 and the native half of 6–8, and it is one of the two gates between
-"leading candidate" and "final" (the other is the athlete rig, §9).
+and records: source SHA, EAS build ID, Expo SDK (57), Android build type
+(`apk`, development client), the artifact type (an installable `.apk` from
+the build page), and the build result. That result is **NATIVE_BUILD**, and
+only that.
 
-**`NATIVE_RUNTIME_BLOCKED` — re-measured 2026-09-08 on this container, not
-inferred from autolinking or prebuild.** The licensed diagnostic asset
-(`assets/dev/quick_start.riv`) and the dev spike screen are ready to run
-natively; what is missing is the toolchain to execute anything native at
-all:
+**`OWNER_BLOCKED_DEVICE` — NATIVE_RUNTIME, kept separate from the build.**
+On a physical Android device (or a usable emulator), install the APK, then:
+
+```
+adb install <the .apk>
+adb shell am start -W -a android.intent.action.VIEW \
+  -d "threewhitelights://?dev-rive-spike=1" com.threewhitelights.app
+```
+
+and verify, reading the screen and the status line rather than the build
+log: the app installs; the spike opens ONLY through that link (a plain
+launch shows the shell, never the spike); `quick_start.riv` loads; the
+status reads `bound` with `State Machine 1` running; the health bar
+visibly drains and refills under the 60 Hz ViewModel write; no crash;
+leaving and re-entering the spike (unmount/remount) works; rotation and
+resize are sane; the writes keep going for minutes; frame pacing where the
+device exposes it. Nothing on that list is inferred from a green build.
+
+**Executable here, and executed:** nothing native beyond prebuild and
+autolinking, unchanged. The local gap, re-measured on this container and
+kept as the record of why the build is a cloud build:
 
 | Requirement | Here |
 | --- | --- |
@@ -455,12 +496,7 @@ all:
 | Android emulator (`emulator`, `avdmanager`) or a connected device | absent; no device |
 | `sdkmanager` / any SDK directory (`ANDROID_HOME`, `ANDROID_SDK_ROOT`) | absent; both variables unset; no `/opt/android*`, `/usr/lib/android-sdk`, `~/Android` |
 | macOS + Xcode for iOS | impossible on this Linux host |
-| Present | `java`, `javac`, `/opt/gradle/bin/gradle`, `@rive-app/react-native@0.4.20` installed and autolinked |
-
-Gradle without an SDK cannot compile an Android app, so `npx expo
-run:android` cannot start, let alone reach the runtime. The blocker is the
-Android SDK (or a Mac), nothing in the repository. Nothing about native is
-claimed from the install/prebuild/type evidence that does pass.
+| Present | `java`, `javac`, `/opt/gradle/bin/gradle`, `@rive-app/react-native@0.4.20` installed and autolinked, `expo-dev-client@57.0.18` installed (its config plugin is in prebuild's own `legacyExpoPlugins` list, so `app.json` needs no `plugins` entry — read from `@expo/prebuild-config`, not assumed) |
 
 **PASS / FAIL after the spike, stated separately by platform:**
 

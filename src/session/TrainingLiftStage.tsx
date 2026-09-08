@@ -11,14 +11,27 @@
  * Exported as `LiftStage` so the press-surface walk in `liftInput.test.ts`
  * still finds a stage inside `SetView`.
  */
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 
 import { SESSION_PALETTE } from './sessionPalette';
 import type { LiftStageProps } from '../lift/LiftStage';
 import { ironAmberCropShift, ironAmberPlateFor, type IronAmberPlateId } from './ironAmberPlates';
 import { IRON_AMBER } from '../game/sessionTuning';
+import { ATHLETE_RIG } from '../art/spriteTuning';
 import { SquatScene } from './SquatScene';
+
+// THE PLAYER-PATH GATE. `ATHLETE_RIG.TRAINING_STAGE` decides what the
+// training squat draws; it reads `'schematic'` until the athlete asset has
+// passed every intake step (`docs/design/ATHLETE-ASSET-PIPELINE.md` §12a).
+// The athlete stage is a DYNAMIC import so the Rive runtime stays off the
+// player bundle while the gate is closed — a static import would carry it
+// for nothing. Metro resolves the bare specifier per platform; `tsc` reads
+// `AthleteStage.d.ts`.
+const AthleteStageLazy = React.lazy(async () => {
+  const mod = await import('./AthleteStage');
+  return { default: mod.AthleteStage };
+});
 
 import benchBrace from '../../assets/iron-amber/bench-brace.jpg';
 import benchChest from '../../assets/iron-amber/bench-chest.jpg';
@@ -66,6 +79,13 @@ function StillPlateStage({ state }: LiftStageProps): React.ReactElement {
 
 export function TrainingLiftStage(props: LiftStageProps): React.ReactElement {
   if (props.state.config.kind === 'squat') {
+    if (ATHLETE_RIG.TRAINING_STAGE === 'athlete') {
+      return (
+        <Suspense fallback={<View style={styles.canvas} testID="iron-amber-stage" />}>
+          <AthleteStageLazy {...props} />
+        </Suspense>
+      );
+    }
     return <SquatScene {...props} />;
   }
   return <StillPlateStage {...props} />;
