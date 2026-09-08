@@ -383,8 +383,17 @@ const PINNED = Object.freeze({
    * 400 -> 401 with `src/art/rigContractChain.test.ts` — the contract → rig →
    * manifest → handoff → corpus chain guard. A test with no module beside it,
    * so both pins move by one: `TEST_FILES` 122 -> 123.
+   *
+   * 401 -> 413 with the athlete acceptance harness, the post-delivery gate
+   * and the Android prebuild preflight record: `src/session/athleteAsset.test.ts`,
+   * `src/dev/riveRuntimeSpike/devModeQuery.ts` + `devMode.ts` + `devMode.test.ts`,
+   * `src/dev/athleteAcceptance/acceptancePlan.ts` + test +
+   * `AthleteAcceptanceScreen.tsx`, `tools/athleteAccept.mjs` + test, and
+   * `docs/design/evidence/android-prebuild-preflight/` (`preflight.sh`,
+   * `preflight.json`, `prebuild.log`). Four of the twelve are test files, so
+   * `TEST_FILES` moves with it, 123 -> 127.
    */
-  SCANNED_FILES: 401,
+  SCANNED_FILES: 413,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -458,8 +467,12 @@ const PINNED = Object.freeze({
    * files that moved `SCANNED_FILES` to 400 above.
    *
    * 122 -> 123 with `src/art/rigContractChain.test.ts` (SCANNED_FILES 401).
+   *
+   * 123 -> 127 with `athleteAsset.test.ts`, `devMode.test.ts`,
+   * `acceptancePlan.test.ts` and `tools/athleteAccept.test.ts` — the test
+   * halves of the twelve files that moved `SCANNED_FILES` to 413 above.
    */
-  TEST_FILES: 123,
+  TEST_FILES: 127,
 });
 
 /**

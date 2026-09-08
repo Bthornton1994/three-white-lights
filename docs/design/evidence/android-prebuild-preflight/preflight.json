@@ -1,0 +1,100 @@
+{
+  "label": "ANDROID_PREBUILD_PREFLIGHT",
+  "notA": [
+    "NATIVE_BUILD",
+    "NATIVE_RUNTIME"
+  ],
+  "measuredAt": "ae2fd9a1e30482eea069008c7c4390ca4ca35bfb",
+  "prebuildExit": 0,
+  "identity": {
+    "namespace": "com.threewhitelights.app",
+    "applicationId": "com.threewhitelights.app",
+    "versionCode": 1,
+    "versionName": "1.0.0",
+    "appName": "Three White Lights",
+    "rootProjectName": "Three White Lights"
+  },
+  "manifest": {
+    "schemes": [
+      "https",
+      "threewhitelights",
+      "exp+three-white-lights"
+    ],
+    "mainActivityExported": true,
+    "launcherIntent": true,
+    "browsableViewIntent": true,
+    "updatesEnabled": "false",
+    "screenOrientation": "portrait"
+  },
+  "gradleProperties": {
+    "newArchEnabled": "true",
+    "hermesEnabled": "true",
+    "reactNativeArchitectures": "armeabi-v7a,arm64-v8a,x86,x86_64",
+    "devClientNetworkInspector": "true",
+    "edgeToEdgeEnabled": "true"
+  },
+  "autolinking": {
+    "reactNativeLibraries": [
+      "@react-native-masked-view/masked-view",
+      "@rive-app/react-native",
+      "@shopify/react-native-skia",
+      "expo",
+      "react-native-gesture-handler",
+      "react-native-nitro-modules",
+      "react-native-reanimated",
+      "react-native-safe-area-context",
+      "react-native-screens",
+      "react-native-svg",
+      "react-native-worklets"
+    ],
+    "expoModules": [
+      "@expo/dom-webview",
+      "@expo/log-box",
+      "@expo/ui",
+      "expo",
+      "expo-asset",
+      "expo-audio",
+      "expo-constants",
+      "expo-dev-client",
+      "expo-dev-launcher",
+      "expo-dev-menu",
+      "expo-dev-menu-interface",
+      "expo-file-system",
+      "expo-font",
+      "expo-haptics",
+      "expo-json-utils",
+      "expo-keep-awake",
+      "expo-linking",
+      "expo-manifests",
+      "expo-modules-core",
+      "expo-router",
+      "expo-status-bar",
+      "expo-updates-interface"
+    ],
+    "rive": true,
+    "nitro": true,
+    "devClient": true,
+    "devLauncher": true
+  },
+  "versions": {
+    "riveReactNative": "0.4.20",
+    "nitroModules": "0.35.10",
+    "expoDevClient": "57.0.18",
+    "reactNative": "0.86.2",
+    "expo": "57.0.9"
+  },
+  "warnings": [
+    "› Using react-native@0.86.2 instead of recommended react-native@0.86.0.",
+    "» android: userInterfaceStyle: Install expo-system-ui in your project to enable this feature."
+  ],
+  "filesGenerated": [
+    ".gitignore",
+    "app",
+    "build.gradle",
+    "gradle",
+    "gradle.properties",
+    "gradlew",
+    "gradlew.bat",
+    "settings.gradle"
+  ]
+}

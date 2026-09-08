@@ -52,3 +52,20 @@ export const SPIKE_LAYOUT = Object.freeze({
   STATUS_SIZE: 12,
   STATUS_GAP: 12,
 });
+
+/**
+ * The athlete acceptance harness's playback (`src/dev/athleteAcceptance/`),
+ * dev-only like everything here: how long a scenario's last frame is held
+ * before the next scenario starts, and how often the DOM probe is rewritten.
+ * The rep itself is never timed by these — every tick is the real mechanic's,
+ * replayed on `PRESENTATION_TICK_MS`.
+ */
+export const ACCEPTANCE_PLAYBACK = Object.freeze({
+  /** Ticks the resolved frame is held so a reader (or a probe) can see the ending. */
+  HOLD_TICKS_AT_END: 45,
+  /** The probe text is rewritten on every this-many-th tick, and at every scenario boundary. */
+  PROBE_EVERY_TICKS: 10,
+  /** Widest the stage box gets, dp; the box keeps the artboard's aspect below that. */
+  STAGE_MAX_HEIGHT: 520,
+  PROBE_FONT_SIZE: 9,
+});

@@ -1,0 +1,11 @@
+- Creating native directory (./android)
+✔ Created native directory
+- Updating package.json
+› Using react-native@0.86.2 instead of recommended react-native@0.86.0.
+- Updating package.json
+✔ Updated package.json
+- Running prebuild
+» android: userInterfaceStyle: Install expo-system-ui in your project to enable this feature.
+- Running prebuild
+✔ Finished prebuild
+PREBUILD_EXIT=0

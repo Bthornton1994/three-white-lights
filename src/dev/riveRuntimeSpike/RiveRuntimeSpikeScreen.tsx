@@ -37,12 +37,28 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { LIFT_PALETTE } from '../../lift/liftPalette';
+import { AthleteAcceptanceScreen } from '../athleteAcceptance/AthleteAcceptanceScreen';
+import { useDevMode } from './devMode';
 import { RiveSpikeStage } from './RiveSpikeStage';
 import type { RiveSpikeStatus } from './riveSpikeTypes';
 import { SPIKE_LAYOUT } from './spikeTuning';
 
+// The one platform read this screen makes — the same one App.tsx makes for
+// the spike key. On native `window` does not exist and the hook reads the
+// launch URL through `Linking` instead.
+function webSearch(): string | null {
+  if (typeof window === 'undefined') return null;
+  return window.location.search;
+}
+
 export function RiveRuntimeSpikeScreen(): React.ReactElement {
   const [status, setStatus] = useState<RiveSpikeStatus>({ phase: 'loading' });
+  // A second key on the spike route picks a surface inside it
+  // (`devModeQuery.ts`). Same gate — this screen only mounts on that route.
+  const mode = useDevMode(webSearch());
+  if (mode === 'athlete-accept') {
+    return <AthleteAcceptanceScreen />;
+  }
 
   return (
     <View style={styles.container} testID="dev-rive-spike">

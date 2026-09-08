@@ -79,23 +79,24 @@ export const REMAINING_STEPS = Object.freeze([
     step: 4,
     title: 'the squat state machine actually DRIVES',
     command:
-      "flip ATHLETE_RIG.TRAINING_STAGE to 'athlete' in a LOCAL scratch tree (do not commit), " +
-      'tools/dev-web.sh, then node tools/capture-session.mjs and read the pixels back across two set beats',
-    gate: 'the athlete changes between beats; 0 changed pixels is BOUND, not DRIVEN (ADR-001 §7) — reject',
+      'repoint src/session/athleteAsset.ts at the delivered file and flip ATHLETE_RIV_IS_PLACEHOLDER (athleteAsset.test.ts pins both), ' +
+      'tools/dev-web.sh, then node tools/athleteAccept.mjs --web: the dev-only harness replays the canonical trace corpus ' +
+      '(docs/design/athlete-traces/) through the REAL AthleteStage and reads the canvas back per scenario',
+    gate: 'the canvas changes within every scenario; 0 changed pixels is BOUND, not DRIVEN (ADR-001 §7) — reject',
   },
   {
     step: 5,
     title: 'the REAL LiftPresentationState is what moves it',
     command:
-      'the same played session: the stages already call liftPresentation(state, totalKg, prior) ' +
-      '(pinned by src/art/athleteRig.test.ts) — read barHeight / phase / outcome on the ViewModel against the HUD',
+      'the same run: the harness hands the stage LiftState + history from the real mechanic and its probe reports ' +
+      'barHeight / depth / phase / outcome per tick (the stages call liftPresentation(state, totalKg, prior), pinned by src/art/athleteRig.test.ts)',
     gate: 'brace → descent → depth → reversal → ascent → stick → grind → lockout, and at least one authentic miss, from the simulation alone',
   },
   {
     step: 6,
     title: 'web performance',
-    command: 'the rAF cadence readback the spike probe used (docs/design/evidence/rive-spike/), on the athlete arm, 390x844',
-    gate: '60 Hz sustained over a full rep with the 42-input write, no frame over 33 ms while the scene draws',
+    command: 'node tools/athleteAccept.mjs --web records rAF pacing per scenario at 390x844 (the readback the spike probe used)',
+    gate: '60 Hz sustained over a full rep with the 43-input write, no frame over 33 ms while the scene draws',
   },
   {
     step: 7,

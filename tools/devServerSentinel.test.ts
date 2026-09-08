@@ -330,6 +330,7 @@ describe('the siblings all read the guard (CLAUDE.md twin-guard rule)', () => {
    */
   const URL_DECLARATION = "flag('url', 'http://localhost:";
   const GATED_TOOLS = [
+    'athleteAccept.mjs',
     'capture-cutin.mjs',
     'capture-lift.mjs',
     'capture-meet.mjs',
