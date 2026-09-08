@@ -2045,7 +2045,9 @@ describe('purity', () => {
     // 25 -> 28 with TrainingProgressCredit: session.test.ts's 200 kg seed and
     // banked-credit miss fixture, plus sessionServer.test.ts's
     // withProgressCredit helper — three spreads, all fixtures, all discarded.
-    expect(routeScan().fixtures.length, 'fixture rows the scan sees and discards').toBe(28);
+    // 28 -> 29 with trainingProgress.geometry.redteam.test.ts's 11-start
+    // always-8 seed spread (`bestE1rmKg` overwritten on a newServerRecord).
+    expect(routeScan().fixtures.length, 'fixture rows the scan sees and discards').toBe(29);
     expect(routeScan().fixtures.map((row) => row.file)).toContain('src/game/meetServer.test.ts');
     // ...and no fixture leaked into the pinned table.
     expect(declaredRoutes().filter((row) => IS_TEST_FILE.test(row.file))).toEqual([]);
