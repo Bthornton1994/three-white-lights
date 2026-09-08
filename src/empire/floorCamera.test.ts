@@ -12,6 +12,8 @@ import { describe, expect, it } from 'vitest';
 import { EMPIRE_TUNING } from './empireTuning';
 import {
   type FloorCamera,
+  depthScaleFromStageY,
+  floorDepthFrame,
   floorDepthScale,
   floorFrontY,
   floorTileWidthAt,
@@ -205,5 +207,48 @@ describe('orthographicFloorCamera', () => {
     expect(floorDepthScale(camera, GARAGE.height / 2)).toBe(1);
     expect(floorTileWidthAt(camera, 0)).toBe(tile);
     expect(floorFrontY(camera)).toBe(GARAGE.height * tile);
+  });
+});
+
+describe('the depth frame (VL-3): a drawn stage y back to a depth scale', () => {
+  it('round-trips every row of every rung at both phone stages through projectFloorPoint, and is monotone in y', () => {
+    let checked = 0;
+    for (const stage of PHONE_STAGES) {
+      for (const rung of RUNGS) {
+        const grid = EMPIRE_TUNING.FLOOR_GRID_SIZE[rung];
+        const camera = perspectiveFloorCamera(stage, grid, rung);
+        const frame = floorDepthFrame(camera);
+        expect(frame.span).toBe(camera.depth);
+        expect(frame.backY).toBe(camera.backY);
+        let previous = -Infinity;
+        for (let row = 0; row <= grid.height * 4; row += 1) {
+          const y = row / 4;
+          const projected = projectFloorPoint(camera, { x: 1, y });
+          const back = depthScaleFromStageY(frame, projected.y);
+          expect(back).toBeCloseTo(projected.scale, 9);
+          expect(back).toBeCloseTo(floorDepthScale(camera, y), 9);
+          expect(back).toBeGreaterThanOrEqual(previous);
+          previous = back;
+          checked += 1;
+        }
+      }
+    }
+    const rows = RUNGS.reduce((sum, rung) => sum + EMPIRE_TUNING.FLOOR_GRID_SIZE[rung].height * 4 + 1, 0);
+    expect(checked).toBe(PHONE_STAGES.length * rows);
+    expect(checked).toBe(480);
+  });
+
+  it('clamps outside the band, so a body drawn over a back-row bench never grows past the back row', () => {
+    const camera = perspectiveFloorCamera(PHONE_STAGES[0] as { width: number; height: number }, GARAGE, 'garage');
+    const frame = floorDepthFrame(camera);
+    expect(depthScaleFromStageY(frame, camera.backY - 100)).toBe(camera.backScale);
+    expect(depthScaleFromStageY(frame, camera.backY + camera.depth + 100)).toBe(1);
+    expect(depthScaleFromStageY(frame, Number.NaN)).toBe(1);
+  });
+
+  it('is scale 1 everywhere under the plan view, whose frame has no span', () => {
+    const frame = floorDepthFrame(orthographicFloorCamera(GARAGE, 28));
+    expect(frame).toEqual({ backY: 0, span: 0, backScale: 1 });
+    for (const y of [-50, 0, 37, 1000]) expect(depthScaleFromStageY(frame, y)).toBe(1);
   });
 });
