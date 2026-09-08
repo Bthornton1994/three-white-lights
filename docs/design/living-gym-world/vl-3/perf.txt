@@ -1,0 +1,15 @@
+VL-2 performance measurement at c8e07e23a581b4b11f2dc83a223b100c3d1eb57e url=http://localhost:8082 sample=15000ms stall=400ms — headless desktop browser in a container, NOT a phone
+390x844 entities members=3 poseImages=9 stations=6 floorNodes=61 docNodes=376
+390x844 frames n=894 mean=16.78ms p50=16.70 p95=16.80 p99=16.80 max=50.00 long(>50ms)=0 veryLong(>100ms)=0 fps(mean)=59.6
+390x844 SUMMARY meanFrameInterval=16.78ms p95FrameInterval=16.80ms worstFrameInterval=50.00ms entities=3 (members; 9 pose images, 6 stations, 61 floor nodes) simTickRate=8.334/s (nominal 8.333/s = 1000/120; 125 ticks over 14999ms, 125 frames advanced it, 0 by more than one)
+390x844 heap used 50.7MB -> 46.8MB raw, 35.3MB after a forced GC, over 15000ms; DOM nodes 863 -> 820; layouts 16 -> 98
+390x844 interaction bench-tap -> panel 25.5ms, tap -> closed 16.5ms
+390x844 stall 400ms on member:n1:2 (walk/wait): max frame gap 400ms, max single-frame step 0.065 tiles at t=53ms, max rate 0.387 tiles/100ms vs sim 0.283, max drawn-vs-contract lag 0.557 tiles
+390x844 settle stall 400ms at member:n1:0's using edge (t=48ms): first post-stall step 0.371 tiles, max 0.371 tiles at t=461ms over 121 pairs (0 size-step pair(s) excluded), bound 0.416 = 34 x (3/360 + 0.34x(1+0.25)x(1+0.1)/120): ok
+375x812 entities members=3 poseImages=9 stations=6 floorNodes=61 docNodes=376
+375x812 frames n=895 mean=16.78ms p50=16.70 p95=16.70 p99=16.80 max=49.90 long(>50ms)=0 veryLong(>100ms)=0 fps(mean)=59.6
+375x812 SUMMARY meanFrameInterval=16.78ms p95FrameInterval=16.70ms worstFrameInterval=49.90ms entities=3 (members; 9 pose images, 6 stations, 61 floor nodes) simTickRate=8.324/s (nominal 8.333/s = 1000/120; 125 ticks over 15016ms, 125 frames advanced it, 0 by more than one)
+375x812 heap used 50.9MB -> 78.7MB raw, 34.9MB after a forced GC, over 15000ms; DOM nodes 863 -> 820; layouts 15 -> 96
+375x812 interaction bench-tap -> panel 24.8ms, tap -> closed 20.5ms
+375x812 stall 400ms on member:n1:0 (wait/walk): max frame gap 400ms, max single-frame step 0.049 tiles at t=2005ms, max rate 0.291 tiles/100ms vs sim 0.283, max drawn-vs-contract lag 0.699 tiles
+375x812 settle stall 400ms at member:n1:0's using edge (t=54ms): first post-stall step 0.366 tiles, max 0.366 tiles at t=460ms over 120 pairs (0 size-step pair(s) excluded), bound 0.416 = 34 x (3/360 + 0.34x(1+0.25)x(1+0.1)/120): ok

@@ -3075,6 +3075,29 @@ export const EMPIRE_TUNING = Object.freeze({
   FLOOR_MEMBER_MOTION_TRACE_CAP: 20000,
 
   /**
+   * VL-3 motion proof: how far, in tiles at the body's own depth, the
+   * planted foot's world x may drift across one stance of the walk before
+   * `tools/capture-motion-proof.mjs` calls it skating (`walkFootPlanted` /
+   * `noSkate`). The rig derives the root's advance from the planted foot,
+   * so the true drift is the baked frame's pixel quantisation — one canvas
+   * pixel is under a hundredth of a tile at the garage's body size — and
+   * a twentieth of a tile is the smallest slide a viewer reads as the foot
+   * sliding. Provisional; a proof tolerance, read from source by the tool,
+   * not a game value.
+   */
+  FLOOR_MEMBER_MOTION_PROOF_FOOT_DRIFT_TOLERANCE_TILES: 0.05,
+
+  /**
+   * VL-3 motion proof: how far, in tiles, the drawn body's offset from its
+   * bench may vary across the `bench-press` clip before the proof's
+   * `stationAttached` verdict says the body is not attached to the station,
+   * and the jitter allowance under which the offset during `bench-setup` /
+   * `bench-finish` still counts as moving monotonically. Same magnitude and
+   * reasoning as the foot-drift tolerance above. Provisional.
+   */
+  FLOOR_MEMBER_MOTION_PROOF_STATION_OFFSET_TOLERANCE_TILES: 0.05,
+
+  /**
    * Where on a station's drawn art the body of a `using` member is centred,
    * as a fraction of the art's height from its top — the bench pad sits in
    * the upper part of the three-quarter-view bench painting, not at its
@@ -3471,6 +3494,8 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_MEMBER_FACING_HINT_MS: 'knob',
   FLOOR_MEMBER_PERIOD_JITTER_FRACTION: 'knob',
   FLOOR_MEMBER_MOTION_TRACE_CAP: 'knob',
+  FLOOR_MEMBER_MOTION_PROOF_FOOT_DRIFT_TOLERANCE_TILES: 'knob',
+  FLOOR_MEMBER_MOTION_PROOF_STATION_OFFSET_TOLERANCE_TILES: 'knob',
   FLOOR_STATION_PAD_FRACTION: 'knob',
   FLOOR_FIXED_ART_HEIGHT_OVER_WIDTH: 'knob',
   FLOOR_MEMBER_MOTION_GROUND_INSET_PX: 'knob',
