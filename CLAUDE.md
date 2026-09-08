@@ -640,6 +640,53 @@ room rule as a check, with its limit stated (it cannot tell a painted room
 from an empty one by content; a reviewer can). No new files, so the census
 counts are unchanged.
 
+#### CROSSING FILED BY THE VISUAL LANE, BEFORE THE WORK, 2026-09-08 (FOURTH) — the night shift: canonical mechanics traces, the post-delivery gate, and their registry rows
+
+Human ruling at `aa688083`: Expo authentication is the owner's, in the
+morning; the night removes every non-owner-blocked risk from the morning's
+critical path (owner auth → EAS build → device test → athlete `.riv` arrives
+→ automated intake → real squat integration → owner review). No placeholder
+athlete, no new runtime, no `.riv` generator, no mechanics retune, no merge.
+Filed here first, per the procedure, for everything that touches `tools/`
+or a shared registry. Own-lane files (`src/art/**`, `src/session/**`,
+`src/dev/**`, `docs/design/**`) move without a filing.
+
+1. **`tools/athleteTraces.mjs` — new, additive.** Writes and checks
+   `docs/design/athlete-traces/*.json` — the canonical squat input corpus —
+   from `src/art/athleteTraces.ts`, which drives the REAL mechanic
+   (`runLift` on a scripted rep) through `liftPresentation(state, totalKg,
+   prior)` and `athleteRigInputsFrom` and records every tick. No
+   hand-authored animation value anywhere: the only synthetic thing in a
+   trace is the script (which tick the finger went down or up) and the seed,
+   both written into the file so the trace is reproducible. Loads the
+   TypeScript through the same `transpileModule` hook `rivContract.mjs`
+   uses. Declares no dev-server URL.
+2. **`tools/athleteAccept.mjs` — new, additive.** The one-command
+   post-delivery gate: `athleteIntake.mjs` (room, provenance, SHA, contract
+   on the squat artboard) → the trace corpus replayed against the file's
+   schema → the dev-only web acceptance route when a dev server is up. It
+   declares the dev-server URL, so it calls `gateDevServer`
+   (`tools/devServerSentinel.test.ts` is red without it). It never writes
+   `ATHLETE_RIG.TRAINING_STAGE`; `src/session/trainingStageGate.test.ts`
+   keeps that gate closed and a scan pins that no tool names the field.
+3. **`src/tuning/audit.ts` and `src/tuning/audit.test.ts`** — one
+   `SOURCE_RULES` row classifying `src/art/athleteTraces.ts` as `data` (the
+   scenario table: load ratios, release depths, drive offsets, the seed —
+   fixture recipes, not knobs) and its pinned-list entry. Registry data for
+   a home this lane owns, under the registry ruling; `src/tuning/index.ts`
+   is NOT touched.
+4. **`tools/testPathRefs.test.ts`** — the counts, for the new files.
+   **`src/game/guaranteeTags.test.ts`** — census pins only if the tree-wide
+   walk moves; no new tag, no new witness.
+5. **`app.json` / `package.json`** — NOT expected to move. The Android
+   prebuild preflight runs in a disposable copy; if it finds a
+   repository-owned defect, the fix is filed here as an addendum BEFORE it
+   lands on the branch, not after.
+
+The host-runtime soak probe and its record live beside the spike's, under
+`docs/design/evidence/`, like `probe-rive-spike.mjs` — a measurement kept
+with its result, not a grader in `tools/`.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion
