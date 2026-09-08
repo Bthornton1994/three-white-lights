@@ -972,6 +972,9 @@ describe('the registered allowlist', () => {
         'src/art/spriteTuning.ts',
         'src/art/squatAnimation.ts',
         'src/art/craftMetrics.ts',
+        // The athlete trace corpus's scenario table — `data`: the scripted
+        // reps the corpus is driven from, never a knob.
+        'src/art/athleteTraces.ts',
         // The dev-only Rive runtime spike's own numbers — `local`, registered
         // so its consumers are audited like any other, never a knob.
         'src/dev/riveRuntimeSpike/spikeTuning.ts',

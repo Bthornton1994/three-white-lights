@@ -373,8 +373,14 @@ const PINNED = Object.freeze({
    * `src/session/trainingStageGate.test.ts` (the player-path gate pinned
    * closed), `tools/athleteIntake.mjs` + `athleteIntake.test.ts`. Three of
    * the seven are test files, so `TEST_FILES` moves with it, 118 -> 121.
+   *
+   * 390 -> 400 with the canonical squat trace corpus: `src/art/athleteTraces.ts`
+   * + `athleteTraces.test.ts`, `tools/athleteTraces.mjs` (its writer/checker),
+   * and the seven generated records under `docs/design/athlete-traces/` (six
+   * scenario JSON files and the README). One test file among the ten, so
+   * `TEST_FILES` moves with it, 121 -> 122.
    */
-  SCANNED_FILES: 390,
+  SCANNED_FILES: 400,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -443,8 +449,11 @@ const PINNED = Object.freeze({
    * 118 -> 121 with `src/dev/riveRuntimeSpike/devRoute.test.ts`,
    * `src/session/trainingStageGate.test.ts` and `tools/athleteIntake.test.ts`
    * — the test halves of the pair that moved `SCANNED_FILES` to 390 above.
+   *
+   * 121 -> 122 with `src/art/athleteTraces.test.ts`, the test half of the ten
+   * files that moved `SCANNED_FILES` to 400 above.
    */
-  TEST_FILES: 121,
+  TEST_FILES: 122,
 });
 
 /**

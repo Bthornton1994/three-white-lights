@@ -392,6 +392,15 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     kind: 'data',
     why: 'BENCH landmarks / pad geometry — side-on recumbent press, same class as rig.ts. Feel knobs (height steps, strain lockout drop) are BENCH_PRESS in spriteTuning.ts.',
   }),
+  // The canonical squat trace corpus's scenario table: load ratios, release
+  // depths, drive offsets — fixture RECIPES that drive the real mechanic, not
+  // knobs anybody turns. `data`, like the drawings; not in the tuning index.
+  // Crossing filed in CLAUDE.md, 2026-09-08 (fourth), before this row landed.
+  'src/art/athleteTraces.ts': Object.freeze({
+    role: 'constants',
+    kind: 'data',
+    why: 'ATHLETE_TRACE_SCENARIOS — the scripted reps (load, release depth, drive offset, expected outcome) the athlete trace corpus is generated from through runLift and the presentation contract. Fixture recipes, not feel.',
+  }),
   'src/art/deadliftPull.ts': Object.freeze({
     role: 'constants',
     kind: 'data',
