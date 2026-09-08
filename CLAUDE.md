@@ -185,13 +185,66 @@ the durable facility/layout subset. The v1 body is `FacilitySaveTruthV1`
 in-flight timers are TRANSIENT and are not saved. Schema version 1 is amended
 in place: the PR is draft, the host is unwired, and no external v1 bytes exist.
 
+The later serialised crossing named above is now the next section. PR #53 stays
+the envelope; it does not receive host wiring.
+
+### Crossing this slice — host persistence (Grok Build Session B)
+
+Written here **before** any shell file is edited.
+
+**Session B Grok owns host wiring of Empire save/load.** Session A / Claude Code
+must not change GymHost / AppShell persistence, the durable-store adapter, or
+Empire encode/decode. Host I/O is not Empire.
+
+EMPIRE stays sync and I/O-free: `encodeFacilitySave`, `loadFacilitySave`,
+`restoreGymViewState`. HOST awaits/reads durable bytes, calls Empire, then
+awaits/writes encoded bytes. Encode/decode do not become async because storage
+I/O is async. React Native, Expo, AsyncStorage, localStorage, window, and
+document do not enter `src/empire/`.
+
+Files this crossing names, and why:
+
+- `src/shell/AppShell.tsx` (`GymHost`) — Grok edits. Bootstrap LOADING /
+  LOADED / EMPTY / REFUSED. EMPTY is empty, not a silent new gym. REFUSED
+  stays refused; corrupt bytes are not overwritten with an opening gym.
+  Date.now catch-up starts only after durable load. Persist after committed
+  reducer transitions. Session A stays out of this GymHost persistence work.
+  Claude Code Session B does not restyle this beyond the functional
+  loading/refused copy.
+- `src/shell/gymHostPersistence.ts` + `src/shell/gymHostPersistence.test.ts`
+  — new, Grok-owned. Async `DurableByteStore`, bootstrap, serialized write
+  queue, reset persistence, clock-anchor policy. No RN / Expo / AsyncStorage /
+  localStorage / window / document.
+- `src/shell/gymDurableStore.ts` — new, Grok-owned production adapter. Wraps
+  `@react-native-async-storage/async-storage` (native SQLite, web IndexedDB).
+  Not a localStorage-only production backend. Not under `src/empire/`.
+- `src/shell/shellWiring.test.ts` — Grok edits the GymHost
+  `useReducer(gymViewReduce, undefined, createGymViewState)` source pin so it
+  matches async bootstrap. Mixed / Session A file; named here before the edit.
+- `src/empire/facilityPersistence.ts` — Grok-owned. Encode/load/restore stay
+  sync. This crossing does not put I/O into Empire. Comments that still say
+  the host is unwired are corrected if they would be false after this slice.
+- `docs/design/SESSION-B-PRESENTATION-CONTRACT.md` — Grok-owned. Host wiring
+  is this slice; the previous "not this slice" sentence is updated.
+- `package.json` / lockfile — add `@react-native-async-storage/async-storage`
+  if no equivalent is already installed. Dependency change is host-owned.
+
+Out of this crossing:
+
+- FloorGrid / GymScreen presentation design / floorSprites / ironAmberArt
+- `src/game/progression.ts` and wallet wiring
+- AppState / OS-background durability (not claimed)
+- Player-chosen delete / overwrite of a refused save (REFUSED stays blocking)
+- Adding this work to PR #53, rewriting #52, converting either to Ready
+- Merging. Draft. Do not merge.
+
 ### Branch / worktree policy
 
 | Lane | Branches | Worktree |
 |---|---|---|
 | Grok Build Session A | Session A mechanics branches | own worktree; stays out of `src/empire/**`; owns lift / RPE / fatigue / progression math and the lift presentation contract |
 | Claude Code Session A | Session A visual branches | own worktree; stays out of `src/empire/**`; owns athlete presentation, Session A rendering, training UI/UX |
-| Grok Build Session B | `grok/session-b-*` (mechanics / contract). Frozen contract: `grok/session-b-presentation-contract` (draft PR #52 @ `124fb132`). Current persistence lane: `grok/session-b-facility-persistence-01` | do not rebase or merge Session A or `main`; do not rewrite #52 |
+| Grok Build Session B | `grok/session-b-*` (mechanics / contract). Frozen contract: `grok/session-b-presentation-contract` (draft PR #52 @ `124fb132`). Closed facility-envelope lane: `grok/session-b-facility-persistence-01` (draft PR #53). Current host-persistence lane: `grok/session-b-host-persistence-01` | do not rebase or merge Session A or `main`; do not rewrite #52; do not add host wiring onto #53 |
 | Claude Code Session B | visual stacked drafts: #46 Iron & Amber home, #49 art-01/art-02, #51 living-world occupancy renderer | do not modify #46 / #49 / #51 contents from the Grok lane; do not merge them |
 
 - Name every Session B worktree branch `claude/*` or `grok/session-b-*` so the

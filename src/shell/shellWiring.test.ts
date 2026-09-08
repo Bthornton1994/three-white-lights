@@ -195,10 +195,14 @@ describe('the shell is the join, and it is the only one', () => {
     // gate rather than a second literal reading the first one's result.
     expect(SHELL).toMatch(/gymAffordanceFor\(/);
     expect(SHELL).toMatch(/gymAffordance === null \? null :/);
-    // `useReducer` is the ONE stateful hook Gym Empire needs, and it lives
-    // here — outside `src/empire/` — not inside the pure `GymScreen`.
-    expect(SHELL).toMatch(/useReducer\(/);
-    expect(source('src/shell/AppShell.tsx')).toMatch(
+    // Host session is the stateful gym, outside `src/empire/`, not inside
+    // the pure `GymScreen`. Bootstrap is async; this is no longer a
+    // synchronous `useReducer(createGymViewState)` first paint.
+    expect(source('src/shell/AppShell.tsx')).toMatch(/createGymHostSession/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/getProductionGymDurableStore/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/gym-host-loading/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/gym-host-refused/);
+    expect(source('src/shell/AppShell.tsx')).not.toMatch(
       /useReducer\(gymViewReduce, undefined, createGymViewState\)/,
     );
   });

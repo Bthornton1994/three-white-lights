@@ -4,13 +4,13 @@
  * Pure module: zero React, zero I/O, no clock, no randomness. This file does
  * not name `localStorage`, `window`, `document`, or `process`. Bytes leave
  * as a string. Tests (and later a host) supply the durable medium by writing
- * those bytes through a `FacilitySaveStore` they own.
+ * those bytes through a store they own. Encode/decode stay synchronous.
  *
  * WHAT THIS MODULE IS. Application persistence around a versioned envelope.
  * `PersistableFacilityTruth` remains the facility/layout subset. The v1
  * body is `FacilitySaveTruthV1`: facility plus clock, management, week, and
- * living-member history. Amended in place: PR #53 is draft, the host is
- * unwired, no external v1 bytes exist.
+ * living-member history. Host wiring of those bytes is `src/shell/`, not
+ * this file.
  *
  * WHAT THIS MODULE DELIBERATELY DOES NOT DO.
  *   - It does not persist FloorSim pose, queues, timers, or changeovers.
@@ -18,10 +18,10 @@
  *   - It does not expand `PresentationWorld`. Save-only facts live here.
  *   - It does not re-run purchases. Restore writes saved capability, purse,
  *     condition, strikes, and week plan. Loading is not gameplay.
- *   - It does not touch FloorGrid / GymScreen / AppShell / progression.ts.
- *   - It does not put Date.now() in the empire. The host still supplies
- *     elapsed wall-clock. This file persists the watermark that makes that
- *     calculation correct.
+ *   - It does not touch FloorGrid / GymScreen / progression.ts.
+ *   - Host I/O lives in `src/shell/gymHostPersistence.ts`. This file does
+ *     not call a store. Date.now() stays in the host. This file persists
+ *     the watermark that makes that calculation correct.
  *
  * FIELD CLASSIFICATION (authoritative GymViewState graph):
  *

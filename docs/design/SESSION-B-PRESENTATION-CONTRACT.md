@@ -248,11 +248,13 @@ payload candidate (SKU cells, ownership, capability, identity nonce + member
 count). Reload proof of the *shape*: same SKU, same cell, same
 `deriveMemberId(nonce, ordinal)`.
 
-**PERSISTENCE** = `facilityPersistence.ts` (v1 envelope `gym-empire-facility`).
-Injected `FacilitySaveStore`. Restore rebuilds floor, managed gym, Q/C/T
-capability, clock watermark, management ledger, week plan, and living-member
-history. FloorSim pose is TRANSIENT and is not saved. Host wiring into
-AppShell is not this slice.
+**PERSISTENCE** = `facilityPersistence.ts` (v1 envelope `gym-empire-facility`)
+plus host I/O in `src/shell/gymHostPersistence.ts`. Empire encode/load/restore
+stay sync and I/O-free. The host awaits durable bytes, calls Empire, then
+awaits encoded writes. Production adapter is
+`@react-native-async-storage/async-storage` (native SQLite, web IndexedDB),
+not a localStorage-only backend, and is not imported under `src/empire/`.
+FloorSim pose is TRANSIENT and is not saved.
 
 What survives a save/load of the current envelope:
 

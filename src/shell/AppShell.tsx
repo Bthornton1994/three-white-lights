@@ -62,7 +62,7 @@
  * building `MEET_LOCAL` itself. Nothing about the route graph changes.
  */
 
-import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -74,7 +74,9 @@ import Animated, {
 import { EMPIRE_TUNING } from '../empire/empireTuning';
 import { GymScreen } from '../empire/GymScreen';
 import { type EarningsMode } from '../empire/ladder';
-import { createGymViewState, gymViewReduce } from '../empire/ladderView';
+import { type GymViewAction } from '../empire/ladderView';
+import { getProductionGymDurableStore } from './gymDurableStore';
+import { createGymHostSession, type GymHostSession } from './gymHostPersistence';
 import { LIFT_PALETTE } from '../lift/liftPalette';
 import { LiftScreen } from '../lift/LiftScreen';
 import { MeetScreen } from '../meet/MeetScreen';
@@ -163,18 +165,21 @@ function ShellNav({
 }
 
 /**
- * CROSSING 6, EXTENDED BY THE "KILL THE MINT" RULING: the Gym Empire
- * surface's mount point, the one place the `useReducer` hook this screen
- * needs lives — outside `src/empire/`, the same rule `ladder-dev.tsx` follows
- * for the web dev harness (`ladderView.tsx`'s own header: "The one stateful
- * hook lives in the dev mount, outside this directory, which is what keeps
- * this file render-only in the checkable sense") — and, as of this round,
- * the one place that drives the gym's real-time clock. `GymScreen` itself
- * stays a pure function of `{ state, dispatch }`; this component computes no
- * game math (every second it turns into a dispatch is read off `Date.now()`
- * and handed to the same `advance-clock` action the dev row and the old
- * mint both already used) and is still the only thing in `src/shell/` that
- * reads `src/empire/`.
+ * CROSSING 6, EXTENDED BY HOST PERSISTENCE: the Gym Empire surface's mount
+ * point. The stateful gym session lives outside `src/empire/` — same rule
+ * `ladder-dev.tsx` follows for the web harness — and this is still the one
+ * place that drives the gym's real-time clock. `GymScreen` itself stays a
+ * pure function of `{ state, dispatch }`. Encode/load/restore stay in
+ * Empire; this component awaits durable bytes, then hands restored or empty
+ * state to `GymScreen`. Host I/O lives in `gymHostPersistence.ts` /
+ * `gymDurableStore.ts`, not in Empire.
+ *
+ * Bootstrap is LOADING / LOADED / EMPTY / REFUSED (or READ_FAILED). The first
+ * paint is LOADING, so an opening gym is not shown and then replaced.
+ * EMPTY is empty, not a pretence that a save existed. REFUSED stays refused
+ * and does not overwrite corrupt bytes. Date.now catch-up starts only after
+ * bootstrap is playable, using the session's real-time anchor, so a slow
+ * storage read is not dispatched as player absence.
  *
  * WHY THIS COMPONENT IS NOW ALWAYS MOUNTED, RATHER THAN MOUNTED ONLY WHILE
  * `route.surface === 'gym'`.
@@ -192,109 +197,119 @@ function ShellNav({
  * than taken. A future round should either build the witness (plant the
  * unmount, name the assertion that reddens) or downgrade this paragraph to
  * a plain description once it is clear no test covers it. Before this round, leaving the gym surface
- * unmounted `GymHost` and destroyed its `useReducer` state outright — so
+ * unmounted `GymHost` and destroyed its in-memory gym outright — so
  * "the gym runs while open and away" was impossible to build honestly: there
  * was no state left to catch up when the player came back. `AppShell`
  * (below) now renders this component unconditionally, in a wrapper that is
  * visually absent — zero size, `pointerEvents: 'none'`, taken out of the
  * flex flow with `position: 'absolute'` so it cannot disturb the screen that
  * IS on top — whenever `visible` is false, rather than never rendering it at
- * all. That is what makes the reducer state (money, condition, the review
+ * all. That is what makes the in-memory gym (money, condition, the review
  * ledger, `bankedOperationSeconds`) survive a round trip through `session` or
- * `meet` and back.
+ * `meet` and back. That in-app path is not a process restart; remount with
+ * the same durable store is the restart this slice actually executes.
+ * AppState / lock-screen backgrounding is still not claimed.
  *
  * THE MECHANISM: REAL ELAPSED TIME, READ ON DEMAND, NEVER MINTED. There is no
- * per-second game-state tick here — CLAUDE.md's "pure logic is separate from
- * UI" rule and this file's own header rule that it computes no game state
- * both cut against a `.tsx` file owning a simulation loop. What this
- * component owns is exactly one thing: a real-time ANCHOR
- * (`lastAnchorMsRef`, a plain `Date.now()` reading, not React state — writing
- * it must never itself cause a render) and a function that reads
- * `Date.now()` again, computes the real gap since the anchor, and — if that
- * gap is at least one whole tick (`EMPIRE_TUNING.TICK_SECONDS`, the "collapse
- * t=0 no-ops" guard) — dispatches `advance-clock` with that gap and moves the
- * anchor forward. `advance-clock` already runs the real accrual, capped
- * exactly as `bankableOfflineSeconds`/`OFFLINE_EARNINGS_CAP_HOURS` always
- * specified (`ladder.ts`, `production.ts`); nothing here re-implements or
- * widens that cap.
+ * per-second game-state tick here. The host session owns a real-time anchor
+ * established only after durable load, then reads `Date.now()` again,
+ * computes the real gap, and — if that gap is at least one whole tick
+ * (`EMPIRE_TUNING.TICK_SECONDS`) — dispatches `advance-clock` with that gap
+ * and moves the anchor forward. `advance-clock` already runs the real
+ * accrual, capped exactly as `bankableOfflineSeconds` /
+ * `OFFLINE_EARNINGS_CAP_HOURS` always specified; nothing here re-implements
+ * or widens that cap.
  *
- * That one function is called from two places, both required by the brief
- * this round shipped against:
+ * Catch-up is called from two places, only once the session is playable:
  *
- *   1. On mount, and on every transition of `visible` from false to true —
- *      the effect below re-runs whenever `visible` changes and calls it
- *      immediately when the new value is `true`. This is what "away" means:
- *      not a background timer that has to keep running while the screen is
- *      off, but a correct read of how much real time passed the moment the
- *      screen is looked at again. Real OS backgrounding (the phone's screen
- *      actually locking) is explicitly NOT covered by this — there is no
- *      `AppState` listener here, so a lock-screen absence is invisible until
- *      the app is foregrounded AND the gym surface is the one on screen at
- *      that moment. Stated as a declared limit rather than silently claimed:
- *      "away" here means "navigated to another in-app surface and back",
- *      which is what GDD §5's rewrite (in the same commit as this file)
- *      states plainly.
- *   2. On a real `setInterval`, running only while `visible` is true and
- *      cleared the moment it becomes false or the component unmounts (which,
- *      per the point above, should now only happen at all if `AppShell`
- *      itself unmounts). The interval length is
- *      `EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS`, a named tunable —
- *      this is the literal mechanism behind "open gym, no presses, bucks/
- *      clock have moved": sitting on the screen with the interval running is
- *      what makes that true, without a single tap.
+ *   1. On every transition of `visible` from false to true, and on the first
+ *      playable paint if `visible` is already true. Real OS backgrounding is
+ *      still not covered — there is no `AppState` listener here.
+ *   2. On a real `setInterval`, running only while `visible` is true and the
+ *      session is playable. Interval length is
+ *      `EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS`.
  */
 function GymHost({ visible }: { readonly visible: boolean }): React.ReactElement {
-  const [state, dispatch] = useReducer(gymViewReduce, undefined, createGymViewState);
-
-  // A real-time reading, not React state on purpose — see the header above.
-  // Initialised once, at this component's first (and only) mount, which is
-  // now effectively "app launch" rather than "the moment the player opened
-  // the gym", because `GymHost` stays mounted for the whole app run.
-  const lastAnchorMsRef = useRef<number>(Date.now());
-
-  // `mode` distinguishes the two call sites below, and is the whole fix for
-  // "chrome shows the nominal rate, the purse banks half of it": a gap the
-  // player is watching happen (the interval, while `visible`) pays the
-  // nominal rate in full (`'online'`); a gap read on return from elsewhere
-  // (the effect's immediate call, on mount and on every false->true
-  // transition of `visible`) pays the existing discounted rate (`'offline'`).
-  // Nothing about the gap arithmetic below changes with `mode` — same
-  // `Date.now()` read, same anchor, same collapse-near-zero guard; only the
-  // dispatched action's `mode` field differs, and `ladder.ts`'s
-  // `accrueLadderGymBucks` is the one place that reads it.
-  const catchUpOnRealTime = useCallback((mode: EarningsMode): void => {
-    const nowMs = Date.now();
-    const gapSeconds = Math.floor(
-      (nowMs - lastAnchorMsRef.current) / EMPIRE_TUNING.MILLISECONDS_PER_SECOND,
-    );
-    // Collapse a near-zero gap into a no-op: no reducer churn, no zero-value
-    // report noise, matching the "collapse t=0 no-ops" ruling this build
-    // already follows elsewhere. The anchor is NOT moved on this path, so a
-    // sub-tick remainder accumulates toward the next real catch-up rather
-    // than being silently dropped.
-    if (gapSeconds < EMPIRE_TUNING.TICK_SECONDS) return;
-    lastAnchorMsRef.current = nowMs;
-    dispatch({ kind: 'advance-clock', gapSeconds, mode });
-  }, []);
+  // Host session is created once per mount. In-app away/back keeps this
+  // component mounted, so the in-memory gym continues. A process-like
+  // remount constructs a new session against the same durable store.
+  const sessionRef = useRef<GymHostSession | null>(null);
+  if (sessionRef.current === null) {
+    sessionRef.current = createGymHostSession({
+      store: getProductionGymDurableStore(),
+      clock: { now: () => Date.now() },
+    });
+  }
+  const session = sessionRef.current;
+  const [snapshot, setSnapshot] = useState(() => session.snapshot());
 
   useEffect(() => {
-    if (!visible) return;
-    // Catch up immediately on becoming visible — including the very first
-    // paint, if `visible` starts `true` — rather than waiting for the first
-    // tick of the interval below. This is the "returning after a gap" case:
-    // 'offline', discounted, exactly as before this round.
+    let cancelled = false;
+    void session.bootstrap().then((next) => {
+      if (!cancelled) setSnapshot(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  const dispatch = useCallback(
+    (action: GymViewAction): void => {
+      const next = session.dispatch(action);
+      if (next !== null) setSnapshot(next);
+    },
+    [session],
+  );
+
+  const catchUpOnRealTime = useCallback(
+    (mode: EarningsMode): void => {
+      const next = session.catchUp(mode);
+      if (next !== null) setSnapshot(next);
+    },
+    [session],
+  );
+
+  const playable =
+    snapshot.bootstrap.status === 'LOADED' || snapshot.bootstrap.status === 'EMPTY';
+
+  useEffect(() => {
+    if (!visible || !playable) return;
     catchUpOnRealTime('offline');
-    // The periodic tick, running only while the screen is actually on top:
-    // this is genuinely "watching it run", so it pays the nominal rate —
-    // 'online', undiscounted.
     const intervalId = setInterval(
       () => catchUpOnRealTime('online'),
       EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS * EMPIRE_TUNING.MILLISECONDS_PER_SECOND,
     );
     return () => clearInterval(intervalId);
-  }, [visible, catchUpOnRealTime]);
+  }, [visible, playable, catchUpOnRealTime]);
 
-  return <GymScreen state={state} dispatch={dispatch} />;
+  if (snapshot.bootstrap.status === 'LOADING') {
+    return (
+      <View testID="gym-host-loading" style={styles.gymHostMessage}>
+        <Text style={styles.gymHostMessageText}>Loading gym…</Text>
+      </View>
+    );
+  }
+  if (
+    snapshot.bootstrap.status === 'REFUSED' ||
+    snapshot.bootstrap.status === 'READ_FAILED'
+  ) {
+    return (
+      <View testID="gym-host-refused" style={styles.gymHostMessage}>
+        <Text style={styles.gymHostMessageText}>Gym save couldn't be loaded.</Text>
+      </View>
+    );
+  }
+  const state = snapshot.bootstrap.state;
+  return (
+    <View testID="gym-host-playable" style={styles.gymVisible}>
+      {snapshot.write.kind === 'failed' ? (
+        <Text testID="gym-host-write-failed" style={styles.gymHostWriteFailed}>
+          Gym save couldn't be written.
+        </Text>
+      ) : null}
+      <GymScreen state={state} dispatch={dispatch} />
+    </View>
+  );
 }
 
 export interface AppShellProps {
@@ -507,6 +522,24 @@ const styles = StyleSheet.create({
   /** `GymHost`'s wrapper while the gym IS the surface on top: fills the slot exactly like every other screen. */
   gymVisible: {
     flex: 1,
+  },
+  gymHostMessage: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: LIFT_PALETTE.BACKDROP,
+    paddingHorizontal: L.NAV_PAD_H,
+  },
+  gymHostMessageText: {
+    color: LIFT_PALETTE.TEXT,
+    fontSize: L.NAV_FONT,
+    textAlign: 'center',
+  },
+  gymHostWriteFailed: {
+    color: LIFT_PALETTE.TEXT_DIM,
+    fontSize: L.NAV_FONT,
+    textAlign: 'center',
+    paddingHorizontal: L.NAV_PAD_H,
   },
   /**
    * `GymHost`'s wrapper while the gym is NOT on top. `position: 'absolute'`
