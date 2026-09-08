@@ -572,7 +572,6 @@ function soleSlopeDegrees(sole: { readonly heel: PuppetPointTuple; readonly ball
 export const FOOT_FLAT: number = degrees(NEAR_ANKLE, NEAR_TOE) + soleSlopeDegrees(SOLE);
 
 const UP = HALF_TURN_DEGREES;
-const BACK = 270;
 const LEAN = UP - EMPIRE_TUNING.FLOOR_MEMBER_LEAN_DEGREES;
 const CANVAS_CENTRE_X = EMPIRE_TUNING.FLOOR_MEMBER_MOTION_CANVAS_PX / 2;
 
@@ -668,6 +667,14 @@ export interface PuppetBreath {
 
 const NO_BREATH: PuppetBreath = { torso: 0, nod: 0, shoulder: 0 };
 
+/** The arms hanging at rest in a stand, degrees: a little forward of straight down, elbows soft. */
+const HANGING_ARMS = { nearUpperArm: 4, nearForearm: 12, farUpperArm: -6, farForearm: 2 } as const;
+
+/** Key positions within a segment: the quarter points every standing and bench segment is authored on. */
+const KEY_QUARTER = 0.25;
+const KEY_HALF = 0.5;
+const KEY_THREE_QUARTERS = 0.75;
+
 /**
  * A stand: feet apart by ±stance, arms hanging, torso upright, plus a lean
  * and `inhale` (0..1) of a breath. The head is a child of the torso but its
@@ -685,10 +692,10 @@ function stand(stance: number, lean: number, breath: PuppetBreath, inhale: numbe
     farThigh: -stance,
     farShin: -stance,
     farFoot: FOOT_FLAT,
-    nearUpperArm: 4 - shoulder,
-    nearForearm: 12 - shoulder,
-    farUpperArm: -6 - shoulder,
-    farForearm: 2 - shoulder,
+    nearUpperArm: HANGING_ARMS.nearUpperArm - shoulder,
+    nearForearm: HANGING_ARMS.nearForearm - shoulder,
+    farUpperArm: HANGING_ARMS.farUpperArm - shoulder,
+    farForearm: HANGING_ARMS.farForearm - shoulder,
     torso: UP + lean + pitch,
     head: UP + lean - 2 + pitch + breath.nod * inhale,
   };
@@ -872,9 +879,9 @@ export function standingSegment(stance: number, sway: number, breath: PuppetBrea
     frame: 'body',
     keys: [
       walkerKey(0, 'in-out', stand(stance, 0, breath, 0), STAND_ROOT),
-      walkerKey(0.25, 'in-out', stand(stance, sway, breath, 1 / 2), STAND_ROOT),
-      walkerKey(0.5, 'in-out', stand(stance, 0, breath, 1), STAND_ROOT),
-      walkerKey(0.75, 'in-out', stand(stance, -sway, breath, 1 / 2), STAND_ROOT),
+      walkerKey(KEY_QUARTER, 'in-out', stand(stance, sway, breath, KEY_HALF), STAND_ROOT),
+      walkerKey(KEY_HALF, 'in-out', stand(stance, 0, breath, 1), STAND_ROOT),
+      walkerKey(KEY_THREE_QUARTERS, 'in-out', stand(stance, -sway, breath, KEY_HALF), STAND_ROOT),
     ],
     plant: { runs: [{ fromFrame: 0, toFrame: frames, foot: 'nearFoot', anchorFrame: 0 }], retime: false },
   };
@@ -895,7 +902,7 @@ export function walkToWaitSegment(stance: number, frames: number): PuppetSegment
     frame: 'body',
     keys: [
       walkerKey(0, 'out', GAIT.contact, STAND_ROOT),
-      walkerKey(0.5, 'out', GAIT.down, STAND_ROOT),
+      walkerKey(KEY_HALF, 'out', GAIT.down, STAND_ROOT),
       walkerKey(1, 'out', stand(stance, 0, NO_BREATH, 0), STAND_ROOT),
     ],
     plant: { runs: [{ fromFrame: 0, toFrame: frames, foot: 'nearFoot', anchorFrame: 0 }], retime: true },
@@ -916,7 +923,7 @@ export function waitToWalkSegment(stance: number, frames: number): PuppetSegment
     frame: 'body',
     keys: [
       walkerKey(0, 'in', stand(stance, 0, NO_BREATH, 0), STAND_ROOT),
-      walkerKey(0.5, 'in', otherSide(GAIT.up), STAND_ROOT),
+      walkerKey(KEY_HALF, 'in', otherSide(GAIT.up), STAND_ROOT),
       walkerKey(1, 'in', GAIT.contact, STAND_ROOT),
     ],
     plant: { runs: [{ fromFrame: 0, toFrame: frames, foot: 'farFoot', anchorFrame: 0 }], retime: true },
@@ -926,9 +933,9 @@ export function waitToWalkSegment(stance: number, frames: number): PuppetSegment
 /** The walker's five bench keys, stand → lying, at equal spacing. */
 const BENCH_WALKER_KEYS = (stance: number): readonly PuppetKey[] => [
   walkerKey(0, 'in-out', stand(stance, 0, NO_BREATH, 0), STAND_ROOT),
-  walkerKey(0.25, 'in-out', STEP_SINK, STAND_ROOT),
-  walkerKey(0.5, 'in-out', SEATED, STAND_ROOT),
-  walkerKey(0.75, 'in-out', LEAN_BACK, STAND_ROOT),
+  walkerKey(KEY_QUARTER, 'in-out', STEP_SINK, STAND_ROOT),
+  walkerKey(KEY_HALF, 'in-out', SEATED, STAND_ROOT),
+  walkerKey(KEY_THREE_QUARTERS, 'in-out', LEAN_BACK, STAND_ROOT),
   walkerKey(1, 'in-out', LYING, LYING_ROOT),
 ];
 
@@ -994,7 +1001,7 @@ export const BENCH_MOUNT_SEGMENT: PuppetSegment = {
   cyclic: false,
   mirrorSecondHalf: false,
   frame: 'world',
-  keys: [presserKey(0, 'in-out', BAR_RACKED), presserKey(0.5, 'in-out', BAR_HALF_RACKED), presserKey(1, 'in-out', BAR_LOCKOUT)],
+  keys: [presserKey(0, 'in-out', BAR_RACKED), presserKey(KEY_HALF, 'in-out', BAR_HALF_RACKED), presserKey(1, 'in-out', BAR_LOCKOUT)],
   plant: null,
 };
 
