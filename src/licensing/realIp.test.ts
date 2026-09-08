@@ -925,7 +925,10 @@ describe('the audit bites', () => {
 
   it('catches a real brand planted into app.json, in BOTH halves', () => {
     const source = read('app.json');
-    const mutated = mutate(source, '"name": "app"', `"name": "${A_REAL_BRAND}"`);
+    // The plant target is the ruled app identity (2026-09-08); the mutation
+    // helper refuses a target that is not in the file, so this line is the
+    // one that moves when the name does.
+    const mutated = mutate(source, '"name": "Three White Lights"', `"name": "${A_REAL_BRAND}"`);
 
     // (B) the listed half: a JSON file has no comments, so a hit in one is
     // `code` — the higher-severity position, and unpinned, so the suite reds.

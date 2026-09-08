@@ -425,8 +425,9 @@ the acceptance command, `node tools/rivContract.mjs assets/athlete/athlete-01.ri
 
 ## 12a. Intake — what happens when `assets/athlete/athlete-01.riv` arrives, in order
 
-Ruled 2026-09-08. Eight steps, each gated, none skipped, none reordered. The
-first three are mechanical and `node tools/athleteIntake.mjs` runs them
+Ruled 2026-09-08. Eight steps, each gated, none skipped, none reordered,
+plus a step 0 for the room the rig composites onto. The first three (and
+step 0) are mechanical and `node tools/athleteIntake.mjs` runs them
 (exit 2: nothing there yet; 1: rejected, the line names the step; 0: the
 mechanical gates are clear and steps 4–8 are owed). **The validator is never
 weakened to admit a file, and the file is never edited to pass the
@@ -435,6 +436,7 @@ own output.
 
 | # | Step | Command | Gate |
 | --- | --- | --- | --- |
+| 0 | The empty side-on room plate | `assets/iron-amber/squat-room-side.jpg` (or `--room <path>`), the new production asset of `ATHLETE-SOURCE-PACKAGE.md` §8 | absent: a note, not a rejection (the rig validates without it; the composite cannot be graded); present: 1152 × 1728 JPEG, and NOT one of the three painted `squat-*.jpg` scenes — refused by name; a painted room under a new name is the reviewer's call, not the tool's |
 | 1 | Provenance / licence package | `ATHLETE-01-PROVENANCE.md` beside the file with `SHA-256:`, `Licence:`, `Artist:`, `Marks:`, `Editor source:` lines; `athlete-01.rev` and `athlete-01-reference-sheet.png` present | the SHA-256 matches the delivered bytes; every line present; no real mark or likeness attested |
 | 2 | The contract command | `node tools/rivContract.mjs assets/athlete/athlete-01.riv --artboard squat` | exit 0: artboard present, same-named state machine, default ViewModel exposes all 42 inputs with their enum values |
 | 3 | Reject on non-zero | (the same command) | any non-zero is a rejection, verbatim, back to the author |

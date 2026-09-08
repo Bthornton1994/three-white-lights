@@ -624,6 +624,22 @@ standing rule that a shipped value contradicting a recorded ruling is fixed
 and flagged, not reported and left red. Flagged here, loudly, because the
 directory is otherwise the mechanics lane's and a human's.
 
+**Done, and where the round stopped.** The identity landed as two values
+in `app.json`; `npx expo config --type public` resolves `name`, `slug`,
+`scheme` and `android.package` to the ruled strings; the plant target in
+`realIp.test.ts` moved with it and that check is green again. **The auth
+boundary held:** `EXPO_TOKEN` unset, `npx eas-cli whoami` → `Not logged
+in` — so `eas init`, the project link, the config verification against a
+real project ID and the cloud build did not run, and none of steps 3–9 of
+the ruling is claimed. Nothing invented, nothing printed, nothing
+committed. In the meantime the intake command grew its step 0: the empty
+side-on room plate (`assets/iron-amber/squat-room-side.jpg`) is reported
+absent as a note, refused by name if it is one of the three painted squat
+scenes, and rejected if present at any size but 1152 × 1728 — the ruling's
+room rule as a check, with its limit stated (it cannot tell a painted room
+from an empty one by content; a reviewer can). No new files, so the census
+counts are unchanged.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion

@@ -19,8 +19,8 @@ const TOOL = path.join(HERE, 'athleteIntake.mjs');
 const QUICK_START = path.join(REPO, 'assets', 'dev', 'quick_start.riv');
 const PLACEHOLDER = path.join(REPO, 'assets', 'dev', 'rive-spike.riv');
 
-function run(dir?: string): { status: number | null; out: string } {
-  const args = [TOOL, ...(dir ? ['--dir', dir] : [])];
+function run(dir?: string, room?: string): { status: number | null; out: string } {
+  const args = [TOOL, ...(dir ? ['--dir', dir] : []), ...(room ? ['--room', room] : [])];
   const r = spawnSync(process.execPath, args, { cwd: REPO, encoding: 'utf8' });
   return { status: r.status, out: `${r.stdout}${r.stderr}` };
 }
@@ -112,6 +112,44 @@ describe('tools/athleteIntake.mjs', () => {
     const r = run(dir);
     expect(r.status).toBe(1);
     expect(r.out).toContain('CONTRACT_NOT_SATISFIED');
+  });
+
+  it('step 0 — reports the missing room plate as a note, never a rejection, at the default location', () => {
+    const r = run();
+    expect(r.out).toContain('step 0 note: room plate assets/iron-amber/squat-room-side.jpg is not there yet');
+    expect(r.out).toContain('ASSET_MISSING');
+    expect(r.status).toBe(2);
+  });
+
+  it('step 0 — refuses every existing painted squat scene by name, before reading the rig at all', () => {
+    for (const scene of ['squat-brace.jpg', 'squat-hole.jpg', 'squat-drive.jpg']) {
+      const r = run(undefined, path.join('assets', 'iron-amber', scene));
+      expect(r.status, scene).toBe(1);
+      expect(r.out, scene).toContain('ROOM_PLATE_IS_A_SCENE');
+      expect(r.out, 'the rig is not looked at once the room is refused').not.toContain('ASSET_MISSING');
+    }
+  });
+
+  it('step 0 — rejects a real JPEG of the wrong size and accepts one of the right size', () => {
+    // gym-briefing.jpg is a real 1008 x 1792 plate: right family, wrong lens.
+    const wrong = run(undefined, path.join('assets', 'iron-amber', 'gym-briefing.jpg'));
+    expect(wrong.status).toBe(1);
+    expect(wrong.out).toContain('ROOM_PLATE_WRONG_SIZE');
+    expect(wrong.out).toContain('1008 x 1792');
+    // A 1152 x 1728 JPEG under a NEW name passes the size gate — the only
+    // real one in the tree is a painted scene, so it is copied under the
+    // room's name into scratch. The by-name refusal is keyed on the basename
+    // alone, which this copy does not carry: the tool can refuse the direct
+    // re-use it can see and cannot tell a painted room from an empty one by
+    // content — that judgement is the reviewer's, and the header says so.
+    const dir = scratchDir();
+    const room = path.join(dir, 'squat-room-side.jpg');
+    copyFileSync(path.join(REPO, 'assets', 'iron-amber', 'squat-brace.jpg'), room);
+    const right = run(undefined, room);
+    expect(right.out).toContain('step 0 ok');
+    expect(right.out).toContain('1152 x 1728');
+    expect(right.out, 'then the rig check proceeds').toContain('ASSET_MISSING');
+    expect(right.status).toBe(2);
   });
 
   it('names the five remaining steps in order in its source, ending at the human gate', () => {
