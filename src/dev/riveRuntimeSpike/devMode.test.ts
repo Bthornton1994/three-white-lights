@@ -20,7 +20,8 @@ describe('devModeRequestedBy — the second key on the spike route', () => {
     expect(devModeRequestedBy('threewhitelights://?dev-rive-spike=1&dev-mode=athlete-accept')).toBe('athlete-accept');
     expect(devModeRequestedBy('threewhitelights://x/y?dev-mode=athlete-accept&dev-rive-spike=1#f')).toBe('athlete-accept');
     expect(DEV_MODE_QUERY_KEY).toBe('dev-mode');
-    expect([...DEV_MODES]).toEqual(['athlete-accept']);
+    expect([...DEV_MODES]).toEqual(['athlete-accept', 'spike-cycle']);
+    expect(devModeRequestedBy('?dev-rive-spike=1&dev-mode=spike-cycle')).toBe('spike-cycle');
   });
 
   it('refuses every other value, a bare key, and no query', () => {
@@ -58,5 +59,9 @@ describe('useDevMode — pinned as source', () => {
     expect(screen).toContain('useDevMode(');
     expect(screen).toContain("=== 'athlete-accept'");
     expect(screen).toContain('<AthleteAcceptanceScreen');
+    // The cycle mode remounts through a React `key` and never renders a second stage.
+    expect(screen).toContain("=== 'spike-cycle'");
+    expect(screen.match(/<RiveSpikeStage /g)?.length, 'one stage element').toBe(1);
+    expect(screen).toContain('<RiveSpikeStage key={cycle}');
   });
 });

@@ -1351,3 +1351,27 @@ export const ATHLETE_RIG = Object.freeze({
 
 /** The two things the training squat can draw; see `ATHLETE_RIG.TRAINING_STAGE`. */
 export type TrainingStageKind = 'schematic' | 'athlete';
+
+/**
+ * The production stage COMPOSITION — how the empty side-on room plate, the
+ * athlete rig canvas and the HUD share a phone. Read by
+ * `src/session/athleteComposition.ts` (pure) and nothing else. The canvas
+ * lines are the handoff's (`RIVE-AUTHORING-HANDOFF.md` §2, from the source
+ * package §4); `athleteComposition.test.ts` pins the document's table to
+ * these values so the two cannot drift.
+ */
+export const ATHLETE_COMPOSITION = Object.freeze({
+  /** The room plate's floor line, canvas px. */
+  FLOOR_Y: 1400,
+  /** Crown of the athlete at lockout, canvas px — the top of what must stay visible. */
+  CROWN_Y: 390,
+  /** Bar centre at lockout / at the hole, canvas px. */
+  LOCKOUT_BAR_Y: 553,
+  HOLE_BAR_Y: 968,
+  /** Canvas px kept visible above the crown and below the floor line. */
+  HEADROOM_PX: 60,
+  FOOTROOM_PX: 40,
+  /** HUD safe-area the required span never sits under, viewport px, when the screen passes none. */
+  HUD_TOP_PX: 96,
+  HUD_BOTTOM_PX: 160,
+});

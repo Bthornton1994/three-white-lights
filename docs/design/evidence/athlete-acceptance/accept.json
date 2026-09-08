@@ -1,0 +1,38 @@
+{
+  "route": "http://localhost:8081/?dev-rive-spike=1&dev-mode=athlete-accept",
+  "startedAt": "2026-09-08T07:17:37.262Z",
+  "scenarios": [],
+  "msToMount": 19601,
+  "addressBar": "?dev-rive-spike=1&dev-mode=athlete-accept",
+  "status": "ASSET_MISSING — assets/athlete/athlete-01.riv has not arrived; athleteAsset.ts points at the placeholder; no stage mounted, no substitute",
+  "probe": {
+    "status": "ASSET_MISSING",
+    "message": "",
+    "scenarioIds": [
+      "clean-make",
+      "grinding-make",
+      "no-depth-miss",
+      "stalled-miss",
+      "buried-miss",
+      "timeout-miss"
+    ],
+    "scenarioTicks": [
+      126,
+      231,
+      103,
+      181,
+      110,
+      279
+    ],
+    "holdTicks": 45,
+    "tickMs": 16.666666666666668,
+    "loops": 0,
+    "mounted": false
+  },
+  "finishedAt": "2026-09-08T07:17:56.984Z",
+  "consoleLines": [
+    "[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+    "[log] Running application \"main\" with appParams:\n {rootTag: #root, hydrate: undefined} \nDevelopment-level warnings: ON.\nPerformance optimizations: OFF."
+  ],
+  "pageErrors": []
+}

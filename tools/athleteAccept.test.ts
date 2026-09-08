@@ -22,7 +22,7 @@ const SOURCE = readFileSync(TOOL, 'utf8');
 const CODE = SOURCE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const QUICK_START = path.join(REPO, 'assets', 'dev', 'quick_start.riv');
 
-function run(args: readonly string[] = [], env: NodeJS.ProcessEnv = {}): { status: number | null; out: string } {
+function run(args: readonly string[] = [], env: Record<string, string> = {}): { status: number | null; out: string } {
   const r = spawnSync(process.execPath, [TOOL, ...args], { cwd: REPO, encoding: 'utf8', env: { ...process.env, ...env } });
   return { status: r.status, out: `${r.stdout}${r.stderr}` };
 }

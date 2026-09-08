@@ -43,6 +43,20 @@ export const SPIKE_STAGE = Object.freeze({
   HEALTH_SPAN: 100,
 });
 
+/**
+ * The `spike-cycle` mode of the spike screen (`devModeQuery.ts`): the stage is
+ * unmounted and remounted on a timer so the host-runtime soak
+ * (`docs/design/evidence/host-runtime-soak/`) can measure what React
+ * mount/unmount of the Rive runtime does to memory, listeners and pacing —
+ * the in-page half of "repeated mount/unmount"; route enter/leave is the other.
+ */
+export const SOAK_CYCLE = Object.freeze({
+  /** Wall-clock period of one mount → unmount → mount cycle, ms. */
+  PERIOD_MS: 2500,
+  /** How long the stage stays unmounted inside each period, ms. */
+  UNMOUNTED_MS: 300,
+});
+
 /** The dev screen's chrome. Colours come from `LIFT_PALETTE`, not here. */
 export const SPIKE_LAYOUT = Object.freeze({
   PADDING_TOP: 48,

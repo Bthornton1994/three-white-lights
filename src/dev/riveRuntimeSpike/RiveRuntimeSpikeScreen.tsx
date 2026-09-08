@@ -33,7 +33,7 @@
  * `AppShell.tsx` or `shellRoute.ts` — deleting this whole `src/dev/`
  * directory plus the App.tsx branch removes it with zero residue elsewhere.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { LIFT_PALETTE } from '../../lift/liftPalette';
@@ -41,7 +41,7 @@ import { AthleteAcceptanceScreen } from '../athleteAcceptance/AthleteAcceptanceS
 import { useDevMode } from './devMode';
 import { RiveSpikeStage } from './RiveSpikeStage';
 import type { RiveSpikeStatus } from './riveSpikeTypes';
-import { SPIKE_LAYOUT } from './spikeTuning';
+import { SOAK_CYCLE, SPIKE_LAYOUT } from './spikeTuning';
 
 // The one platform read this screen makes — the same one App.tsx makes for
 // the spike key. On native `window` does not exist and the hook reads the
@@ -56,6 +56,28 @@ export function RiveRuntimeSpikeScreen(): React.ReactElement {
   // A second key on the spike route picks a surface inside it
   // (`devModeQuery.ts`). Same gate — this screen only mounts on that route.
   const mode = useDevMode(webSearch());
+  // `spike-cycle`: unmount and remount the stage on a timer, counting cycles,
+  // so the host soak can watch memory, listeners and pacing across real React
+  // teardown of the Rive runtime. Inert in every other mode.
+  const cycling = mode === 'spike-cycle';
+  const [cycle, setCycle] = useState(0);
+  const [stageMounted, setStageMounted] = useState(true);
+  useEffect(() => {
+    if (!cycling) return undefined;
+    let unmountTimer: ReturnType<typeof setTimeout> | null = null;
+    const period = setInterval(() => {
+      setStageMounted(false);
+      unmountTimer = setTimeout(() => {
+        setCycle((n) => n + 1);
+        setStageMounted(true);
+      }, SOAK_CYCLE.UNMOUNTED_MS);
+    }, SOAK_CYCLE.PERIOD_MS);
+    return () => {
+      clearInterval(period);
+      if (unmountTimer !== null) clearTimeout(unmountTimer);
+    };
+  }, [cycling]);
+
   if (mode === 'athlete-accept') {
     return <AthleteAcceptanceScreen />;
   }
@@ -66,7 +88,12 @@ export function RiveRuntimeSpikeScreen(): React.ReactElement {
       <Text style={styles.status} testID="dev-rive-spike-status">
         {statusLine(status)}
       </Text>
-      <RiveSpikeStage onStatus={setStatus} />
+      {cycling ? (
+        <Text style={styles.status} testID="dev-rive-spike-cycle">
+          {String(cycle)}
+        </Text>
+      ) : null}
+      {stageMounted ? <RiveSpikeStage key={cycle} onStatus={setStatus} /> : null}
     </View>
   );
 }

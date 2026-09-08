@@ -392,8 +392,16 @@ const PINNED = Object.freeze({
    * `docs/design/evidence/android-prebuild-preflight/` (`preflight.sh`,
    * `preflight.json`, `prebuild.log`). Four of the twelve are test files, so
    * `TEST_FILES` moves with it, 123 -> 127.
+   *
+   * 413 -> 422 with the stage composition, the room-plate reference and the
+   * night's evidence records: `src/session/athleteComposition.ts` + test,
+   * `src/session/roomAsset.ts` + test, `docs/design/evidence/host-runtime-soak/
+   * probe-host-runtime-soak.mjs`, `docs/design/evidence/athlete-acceptance/`
+   * (README, `accept.json`; `route.png` is binary and not read) and the
+   * preflight README. Two of the eight text files are tests, so `TEST_FILES`
+   * moves with it, 127 -> 129.
    */
-  SCANNED_FILES: 413,
+  SCANNED_FILES: 421,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -471,8 +479,11 @@ const PINNED = Object.freeze({
    * 123 -> 127 with `athleteAsset.test.ts`, `devMode.test.ts`,
    * `acceptancePlan.test.ts` and `tools/athleteAccept.test.ts` — the test
    * halves of the twelve files that moved `SCANNED_FILES` to 413 above.
+   *
+   * 127 -> 129 with `athleteComposition.test.ts` and `roomAsset.test.ts`
+   * (SCANNED_FILES 421).
    */
-  TEST_FILES: 127,
+  TEST_FILES: 129,
 });
 
 /**

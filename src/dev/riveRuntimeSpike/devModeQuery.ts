@@ -8,6 +8,8 @@
  *
  *   ?dev-rive-spike=1                           the runtime spike (default)
  *   ?dev-rive-spike=1&dev-mode=athlete-accept   the athlete acceptance harness
+ *   ?dev-rive-spike=1&dev-mode=spike-cycle      the spike, unmounting and remounting
+ *                                               its stage on a timer (the host soak)
  *
  * No new `App.tsx` branch, no new query the shell could ever see, the same
  * gate: `dev-mode` alone opens nothing, because nothing reads it until the
@@ -15,7 +17,7 @@
  */
 export const DEV_MODE_QUERY_KEY = 'dev-mode';
 
-export const DEV_MODES = Object.freeze(['athlete-accept'] as const);
+export const DEV_MODES = Object.freeze(['athlete-accept', 'spike-cycle'] as const);
 export type DevMode = (typeof DEV_MODES)[number];
 
 /** The mode a search string or full URL asks for, or null. Exact values only. */
