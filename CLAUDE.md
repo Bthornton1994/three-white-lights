@@ -611,6 +611,19 @@ is the one shared-file edit of the identity round; `eas init` (which writes
 authentication is present, and that later edit is reviewed rather than
 accepted wholesale.
 
+**And one consequence, filed before that edit too — `src/licensing/
+realIp.test.ts`, a test in a human-ruled directory.** Its app.json check
+plants a real brand by string-replacing the literal `"name": "app"`; with
+the ruled identity that literal no longer exists, the plant finds nothing,
+and the check reads red — a NEW red this lane caused, not an inherited one.
+The repair is the plant target's one string, `"name": "app"` →
+`"name": "Three White Lights"`, so the check goes on biting exactly as it
+did. `REVIEWABLE_CITATIONS` and every rule in that file are untouched; this
+is fixture data invalidated by a recorded ruling, repaired under the
+standing rule that a shipped value contradicting a recorded ruling is fixed
+and flagged, not reported and left red. Flagged here, loudly, because the
+directory is otherwise the mechanics lane's and a human's.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion
