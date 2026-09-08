@@ -16554,8 +16554,8 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'FloorGrid.tsx:1076 returned=unfollowable:station',
   'FloorGrid.tsx:1077 returned=unfollowable:station',
   'FloorGrid.tsx:1077 returned=unfollowable:station',
-  'FloorGrid.tsx:3533 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:3551 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:3535 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:3553 callee=fresh:ArrowFunction',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -16613,7 +16613,7 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'FloorGrid.tsx:1077 GridSize asked=true walked=false',
   'FloorGrid.tsx:1077 GridSize asked=true walked=false',
   'FloorGrid.tsx:1089 BayBench | undefined asked=true walked=false',
-  'FloorGrid.tsx:2430 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:2432 FloorSimState asked=true walked=false',
   // VL-2: `memberAnchorFor`'s `MemberAnchor` return carries a `FloorTilePoint`,
   // an interface the control asks about and the walk declines the same way.
   'FloorGrid.tsx:922 FloorTilePoint asked=true walked=false',
@@ -17333,7 +17333,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
   // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
   // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
-  NODES_EXAMINED: 95_016, // VL-2 floorCamera / memberAnimation / FloorGrid camera + settle helpers (VL-1: 90_495). Read from this pin.
+  NODES_EXAMINED: 95_034, // VL-2 floorCamera / memberAnimation / FloorGrid camera + settle helpers, plate-sized discs (VL-1: 90_495). Read from this pin.
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

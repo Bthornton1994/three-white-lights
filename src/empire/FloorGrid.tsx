@@ -1212,10 +1212,12 @@ function plateLoadingLayers(
     if (remaining <= 0) continue;
     const progress = plateLoadingProgress(remaining, total);
     // VL-2: the discs travel across the bench's DRAWN box — the footprint
-    // box under Build, the projected art box under Play — so the loading
-    // read stays on the picture of the bench whichever camera drew it.
+    // box under Build, the projected art box under Play — sized as PLATES
+    // (the footprint's short side at the bench's drawn tile scale, exactly
+    // Build's size at scale 1): sized off the art box they doubled and read
+    // as three balloons over the bench on Play, seen in the first evidence.
     const box = stationDrawBox(camera, row.bench.position, row.bench.footprint, benchArtAspect);
-    const size = Math.min(box.width, box.height) * layout.discSizeFraction;
+    const size = Math.min(row.bench.footprint.width, row.bench.footprint.height) * camera.tile * box.scale * layout.discSizeFraction;
     const half = size / 2;
     const discs = plateLoadingDiscs(progress).map((disc) =>
       Object.freeze({
