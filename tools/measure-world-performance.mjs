@@ -43,6 +43,21 @@
  *
  * Usage: node tools/measure-world-performance.mjs [--url http://localhost:8081]
  *          [--out <dir>] [--sample-ms 15000] [--stall-ms 400]
+ *
+ * WHAT THE STALL PROBE'S "SINGLE-FRAME STEP" READS, stated after measuring
+ * it on 9479c7f0 rather than trusting the label: it is the per-frame move
+ * of the drawn body's box bottom-centre. At the moment the sim assigns a
+ * member to a bench the body's depth SCALE steps from the approach cell's
+ * to the bench's in one render (0.70 -> 0.85 on the garage, a 22% size
+ * step), and the box bottom read in the same frame moves by half that
+ * size change before the frame loop repositions it — 0.342 tiles at
+ * 375x812, the number this tool reports as its largest step on that run.
+ * The position glides (the settle is per-tile, at about walking speed);
+ * the SIZE does not ease, and that is a disclosed residual, not a stall
+ * artefact. The "drawn-vs-contract lag" likewise counts the settle's own
+ * pull while the glide is in flight, so it reads ~2.5 tiles at the start
+ * of every bench glide by design; the timeline's real lag is the number
+ * on a member that only walks and waits (0.23-0.63 tiles here).
  */
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
