@@ -15,7 +15,7 @@ import {
   todayForLifter,
   type ServerRecord,
 } from './sessionServer';
-import { SESSION_PROGRESSION_GUARD, SESSION_TUNING } from './sessionTuning';
+import { SESSION_PROGRESSION_GUARD, SESSION_TUNING, TRAINING_PROGRESS_TUNING } from './sessionTuning';
 import {
   A_STARTING_E1RM_SEED_CANNOT_BE_READ_WITHOUT_ITS_UNIT,
   A_TRAINING_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT,
@@ -41,7 +41,7 @@ import { receiveSnapshot } from './sessionClient';
 import { KILOGRAMS_PER_POUND } from './dots';
 import { RPE_LOADING_TUNING } from './rpe';
 import { LIFT_ORDER, type LiftKind } from './meet';
-import { SIM_LIFTS, UNLUCKIEST_ROLLS, LUCKIEST_ROLLS, recordSession } from './fatigue';
+import { SIM_LIFTS, UNLUCKIEST_ROLLS, LUCKIEST_ROLLS } from './fatigue';
 import {
   createSession,
   liftForDay,
@@ -118,6 +118,7 @@ function playAgainst(
     streakBefore: today.streakBefore,
     streakIfTrainedToday: today.streakIfTrainedToday,
     fatigue: today.fatigue,
+    trainingProgressCredit: today.trainingProgressCredit,
   });
   state = stepSession(state, { kind: 'check-in-tap', tap: { question: 'sleep', answer: answers.sleep } });
   state = stepSession(state, {
@@ -140,20 +141,15 @@ function playAgainst(
   return { state, lift };
 }
 
-function withEarnedWork(record: ServerRecord, lift: LiftKind, beforeDay: number): ServerRecord {
+function withProgressCredit(record: ServerRecord, lift: LiftKind, credit: number): ServerRecord {
   return {
     ...record,
-    fatigue: recordSession(
-      record.fatigue,
-      {
-        day: beforeDay,
-        lift,
-        topRpe: 9,
-        workSets: SESSION_TUNING.WORK_SETS,
-        repsPerSet: SESSION_TUNING.REPS_PER_SET,
-      },
-      LUCKIEST_ROLLS,
-    ).state,
+    trainingProgressCredit: {
+      squat: record.trainingProgressCredit?.squat ?? 0,
+      bench: record.trainingProgressCredit?.bench ?? 0,
+      deadlift: record.trainingProgressCredit?.deadlift ?? 0,
+      [lift]: credit,
+    },
   };
 }
 
@@ -881,7 +877,12 @@ describe('nextBestE1rm', () => {
     // The largest honest jump is now the earned stimulus cap (4%), still
     // below MAX (6%). If the per-session guard ever starts biting on a real
     // session the close-out would show a number the maths does not support.
-    const record = withEarnedWork(newServerRecord(SIGNUP_DAY), liftForDay(0), -1);
+    const record = withProgressCredit(
+      newServerRecord(SIGNUP_DAY),
+      liftForDay(0),
+      TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_STEP *
+        TRAINING_PROGRESS_TUNING.MAX_APPLIED_STEPS_PER_SESSION,
+    );
     const played = playAgainst(record, 0, NEUTRAL, 10);
     const closeOut = played.state.closeOut!;
     const held = record.bestE1rmKg[played.lift]!;
@@ -1240,7 +1241,12 @@ describe('today, for the client to prescribe from', () => {
 
 describe('the whole round trip — client proposes, server publishes, client reads', () => {
   it('ends with a CONFIRMED e1RM and streak, and an unmoved Total', () => {
-    const record = withEarnedWork(newServerRecord(SIGNUP_DAY), liftForDay(0), -1);
+    const record = withProgressCredit(
+      newServerRecord(SIGNUP_DAY),
+      liftForDay(0),
+      TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_STEP *
+        TRAINING_PROGRESS_TUNING.MAX_APPLIED_STEPS_PER_SESSION,
+    );
     const seed = receiveProgressionSnapshot(snapshotWireFor(record, null));
     expect(seed.ok).toBe(true);
     if (!seed.ok) return;
@@ -1354,10 +1360,11 @@ describe('the whole round trip — client proposes, server publishes, client rea
     const primedHalf = trail.slice(5);
     expect(primedHalf.filter((step) => step.isPr).length).toBeLessThan(5);
 
-    // Hard work on squat grows squat and leaves the others. Stimulus is
-    // present on the next session of this lift; snap-down can swallow a
-    // single step at some loads, so keep training until the number moves,
-    // bounded.
+    // Hard work on squat grows squat and leaves the others. Credit is
+    // thresholded: one session is not a load percent, and a single 0.5%
+    // step often snaps identical at these loads. Keep training this lift
+    // until prior credit actually moves the bar, bounded well past the
+    // 12-credit plate cost.
     let squatDay = day;
     while (liftForDay(squatDay) !== 'squat') squatDay += 1;
     const firstHard = playAgainst(record, squatDay, NEUTRAL, 9);
@@ -1374,10 +1381,9 @@ describe('the whole round trip — client proposes, server publishes, client rea
     const benchBefore = record.bestE1rmKg.bench;
     let moved = false;
     let lastKg = beforeBlock ?? 0;
-    for (let extra = 1; extra <= 6; extra += 1) {
+    for (let extra = 1; extra <= 16; extra += 1) {
       const nextDay = squatDay + extra * SESSION_TUNING.LIFT_ROTATION.length;
       const played = playAgainst(record, nextDay, NEUTRAL, 9);
-      expect(played.state.plan?.loadAdjustmentPercent).toBeGreaterThan(0);
       const applied = applyTrainingSession(
         record,
         nextDay,
@@ -1564,6 +1570,7 @@ describe('what leaves the server is sealed in flight', () => {
     expect(Object.isFrozen(fresh.wallet), 'and its wallet').toBe(true);
     expect(Object.isFrozen(fresh.meets), 'and its meets array').toBe(true);
     expect(Object.isFrozen(fresh.fatigue), 'and its fatigue').toBe(true);
+    expect(Object.isFrozen(fresh.trainingProgressCredit), 'and its training-progress credit').toBe(true);
     expect(Object.isFrozen(fresh.federation), 'and its federation').toBe(true);
     const freshBests: Record<LiftKind, number | null> = fresh.bestE1rmKg;
     expect(() => {
@@ -1587,6 +1594,7 @@ describe('what leaves the server is sealed in flight', () => {
     expect(Object.isFrozen(applied.value.record.wallet), 'and its wallet').toBe(true);
     expect(Object.isFrozen(applied.value.record.meets), 'and its meets array').toBe(true);
     expect(Object.isFrozen(applied.value.record.fatigue), 'and its fatigue').toBe(true);
+    expect(Object.isFrozen(applied.value.record.trainingProgressCredit), 'and its training-progress credit').toBe(true);
     expect(Object.isFrozen(applied.value.record.federation), 'and its federation').toBe(true);
     const settledBests: Record<LiftKind, number | null> = applied.value.record.bestE1rmKg;
     expect(() => {
@@ -1617,6 +1625,7 @@ describe('what leaves the server is sealed in flight', () => {
       ],
       wallet: { gymBucks: 0, chalk: 0 },
       fatigue: newServerRecord(SIGNUP_DAY).fatigue,
+      trainingProgressCredit: { squat: 0, bench: 0, deadlift: 0 },
       federation: { id: 'meridian', chosen: false },
     };
     expect(Object.isFrozen(handBuilt.bestE1rmKg), 'before the call').toBe(false);

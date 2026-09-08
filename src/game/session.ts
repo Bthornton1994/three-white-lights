@@ -98,13 +98,15 @@
  *   primed         +5%    770.65 kg  (at RPE 6)       30 / 30
  *
  * That arithmetic is still true of `prescribeSession`. It is no longer the
- * player path. `choose-rpe` replaces the tap percent with
- * `stimulusLoadAdjustmentPercent` from this lift's fatigue ledger (GDD §3.4).
- * Empty or recovery history is 0, so a first session cannot mint a PR from
- * taps; a hard day of this lift earns a heavier bar the next time it is
- * trained. `session.test.ts` pins both: the handed-in-percent sweep still
+ * player path. `choose-rpe` replaces the tap percent with a
+ * `progressionOffer` built from this lift's PRIOR training-progress credit
+ * (GDD §3.4). Empty credit is 0, so a first session cannot mint a PR from
+ * taps; successful work banks credit that a later session of this lift may
+ * spend on a heavier bar, and only if that bar actually moves after plate
+ * snap. `session.test.ts` pins both: the handed-in-percent sweep still
  * documents the function, and the player-path loop (no `check-in-tap`) pins
- * that e1RM now moves with RPE/effort history and does not move from taps.
+ * that e1RM now moves with accumulated credit, not with taps or a harder
+ * menu pick.
  *
  * The mechanism, in four steps, none of which is a bug on its own:
  *
@@ -116,7 +118,7 @@
  *      the set reports an e1RM above the one it was prescribed from.
  *   3. `nextBestE1rm` is monotone and its cap
  *      (`MAX_E1RM_GAIN_FRACTION_PER_SESSION`, 6%) is above the largest tap
- *      nudge (5%) and above `STIMULUS_LOAD_ADJUSTMENT_PERCENT_MAX` (3%), so
+ *      nudge (5%) and above the largest honest credit step (1.5%), so
  *      the cap never binds on an honest session and the higher number is kept.
  *   4. `sessionServer.todayForLifter` prescribes tomorrow from the best on
  *      record — i.e. from the number today's nudge just minted. It compounds.
@@ -126,16 +128,16 @@
  * PLAYER-PATH loop that records the ledger and pins that growth now scales
  * with successful stimulus, not with taps or a harder menu pick.
  *
- * THE FIX LANDED IN `fatigue.ts`, NOT HERE. It is not `e1rm.ts` — the
+ * THE FIX LANDED IN `trainingProgress.ts`, NOT HERE. It is not `e1rm.ts` — the
  * cancellation is right, and paying a higher rung more for the same relative
  * performance is exactly the two-parts-disagree failure CLAUDE.md's one-formula
  * rule forbids. The player path no longer feeds `FATIGUE_TUNING.READINESS_LOAD_ADJUSTMENT_PERCENT`
- * into the bar. Session-over-session growth scales with this lift's recent
- * successful work via `stimulusLoadAdjustmentPercent`. Completed RPE 8, 9
- * and 10 of the same volume earn the same next-session percent; recovery
- * RPE 6 earns nothing. Higher rungs do not pay by breaking this session's
- * chart round-trip, and they do not pay merely for being the harder menu
- * option.
+ * into the bar. Session-over-session growth is thresholded credit: successful
+ * work earns a unit, four units buy one 0.5% step, and a step is only applied
+ * from PRIOR credit when it actually moves the snapped bar. Completed RPE 8, 9
+ * and 10 of the same volume earn the same unit; recovery RPE 6 earns nothing.
+ * Higher rungs do not pay by breaking this session's chart round-trip, and
+ * they do not pay merely for being the harder menu option.
  *
  * ALSO UNRESOLVED, and separate: the prescribed fraction of e1RM is the same
  * whatever the e1RM is, so the mechanic does not get harder as the number
@@ -151,8 +153,8 @@
  * for e1RM should still not take the highest rung blindly: this session's
  * estimate still cancels through the chart, so a higher rung does not pay
  * more for the same relative performance TODAY, and the next session's
- * earned percent saturates at the default rung. Completing 5×3 at RPE 8, 9
- * or 10 earns the same load nudge; RPE 6 earns nothing. The lightest rung
+ * earned credit saturates at the default rung. Completing 5×3 at RPE 8, 9
+ * or 10 earns the same unit; RPE 6 earns nothing. The lightest rung
  * indexes under `STRAIN_FREE_ALLOWANCE` and earns nothing.
  *
  * The arithmetic, because it is not obvious and it is not a bug in the code:
@@ -178,9 +180,9 @@
  *     `FATIGUE_TUNING.STRAIN_FREE_ALLOWANCE` and costs nothing, while
  *     `5x3 @ RPE 9` is strain 1.0 and makes tomorrow's window tighter.
  *   - Tomorrow's bar on THIS lift. Successful prescribed volume at a
- *     productive RPE earns `stimulusLoadAdjustmentPercent` the next time
- *     the lift is trained. RPE 8, 9 and 10 of the same completed volume
- *     earn the same percent (GDD §3.4: do not pay higher rungs more).
+ *     productive RPE earns training-progress credit that a later session
+ *     of this lift may spend. RPE 8, 9 and 10 of the same completed volume
+ *     earn the same unit (GDD §3.4: do not pay higher rungs more).
  *     That is the reward the rungs were missing, and it does not break
  *     this session's chart round-trip.
  *   - Injury exposure. Only the top of the ladder passes
@@ -219,7 +221,6 @@ import {
   NEUTRAL_CHECK_IN,
   cappedSession,
   sessionFeel,
-  stimulusLoadAdjustmentPercent,
   type FatigueState,
   type InjuryNotice,
   type LiftMoment,
@@ -232,6 +233,7 @@ import {
   type SleepAnswer,
   type SorenessAnswer,
 } from './fatigue';
+import { progressionOffer } from './trainingProgress';
 import { TO_FAILURE_RPE, tryEstimateE1rm } from './e1rm';
 import { percentOf1RM, rawLoadForRpeTarget, roundLoad, type WeightUnit } from './rpe';
 import type { LiftConfig, LiftOutcome, LiftResolution } from './lift';
@@ -336,6 +338,14 @@ export interface SessionContext {
   readonly streakIfTrainedToday: number;
   /** The hidden ledger. Read only, and only by `fatigue.ts`. */
   readonly fatigue: FatigueState;
+  /**
+   * This lift's PRIOR training-progress credit, in stimulus units.
+   *
+   * Hidden prescription input, the fatigue analog: server-authoritative,
+   * never a ConfirmedFact, never on `ProgressionSnapshotWire`, never a
+   * player-facing meter. Today's work is not in this number. Missing is 0.
+   */
+  readonly trainingProgressCredit: number;
 }
 
 /** The prescription. Every number in it came from the published chart. */
@@ -573,10 +583,10 @@ export function defaultRpeChoice(): number {
  * refusal through rather than clamping the request onto a cell that exists.
  *
  * The load-adjustment percentage is applied to the load. On the player path
- * that percent is `stimulusLoadAdjustmentPercent` (GDD §3.4), not the check-in
- * tap table. This function still honours whatever percent the report carries,
- * so a unit test can hand in a primed readout and measure the arithmetic;
- * `choose-rpe` is what stops those taps minting the bar.
+ * that percent is `progressionOffer` from this lift's PRIOR credit (GDD §3.4),
+ * not the check-in tap table. This function still honours whatever percent the
+ * report carries, so a unit test can hand in a primed readout and measure the
+ * arithmetic; `choose-rpe` is what stops those taps minting the bar.
  *
  * @throws {RangeError} on a non-positive e1RM, or on an RPE / rep-count pair
  * the published chart has no cell for.
@@ -835,8 +845,8 @@ export function sessionE1rmFrom(sets: readonly TrainingSetReport[]): SessionE1rm
  * SO NOTHING HERE PACES SESSION-OVER-SESSION GROWTH. Quality scales how much
  * of ONE session's already-earned gain is trusted, not how many sessions in a
  * row may earn one. The coupling that fixes THAT now lives in
- * `stimulusLoadAdjustmentPercent` (GDD §3.4): `choose-rpe` applies this lift's
- * recent successful work as the load nudge, so a handed-in primed percent is no longer
+ * `trainingProgress.ts` (GDD §3.4): `choose-rpe` applies a plate-aware offer
+ * from this lift's PRIOR credit, so a handed-in primed percent is no longer
  * the player path. Do not read the quality scaling above as having closed
  * that gap — it never was the gap.
  */
@@ -1251,16 +1261,18 @@ export function stepSession(state: SessionState, event: SessionEvent): SessionSt
       const readiness = state.readiness;
       if (readiness === null) return state;
       const workSets = workSetsForToday(state.context, event.rpe);
-      // GDD §3.4: the bar is nudged by this lift's earned stimulus, not by
-      // the check-in taps. `readiness` stays the tap readout (history-
-      // invariant); only the plan's load percent is replaced.
+      // GDD §3.4: the bar is nudged by PRIOR credit on this lift, not by
+      // the check-in taps and not by today's work. `readiness` stays the
+      // tap readout (history-invariant); only the plan's load percent is
+      // replaced. A snap-to-identical bar is appliedSteps 0.
+      const offer = progressionOffer({
+        credit: state.context.trainingProgressCredit,
+        e1rmKg: state.context.e1rmKg,
+        targetRpe: event.rpe,
+      });
       const barReadiness: ReadinessReport = {
         ...readiness,
-        loadAdjustmentPercent: stimulusLoadAdjustmentPercent(
-          state.context.fatigue,
-          state.context.day,
-          asSimLift(state.context.lift),
-        ),
+        loadAdjustmentPercent: offer.loadAdjustmentPercent,
       };
       const plan = prescribeSession(
         state.context.e1rmKg,

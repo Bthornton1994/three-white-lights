@@ -24,7 +24,7 @@ import {
   recoverySessionFor,
   resolveRepAttempt,
   sessionFeel,
-  stimulusLoadAdjustmentPercent,
+  sessionStimulusCredit,
   type FatigueState,
   type InjuryRolls,
   type ReadinessCheckIn,
@@ -403,7 +403,7 @@ describe('no fatigue meter: the public API offers no fatigue level', () => {
         'recoverySessionFor',
         'resolveRepAttempt',
         'sessionFeel',
-        'stimulusLoadAdjustmentPercent',
+        'sessionStimulusCredit',
       ].sort(),
     );
   });
@@ -1941,25 +1941,14 @@ describe('consistency never accrues injury risk (G5, G5b)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// GDD §3.4 — the load nudge scales with this lift's RPE/effort history
+// GDD §3.4 — successful work is a credit unit, not a load percent
 // ---------------------------------------------------------------------------
 
-describe('stimulusLoadAdjustmentPercent — GDD §3.4, earned not tapped', () => {
-  it('lookback length and weights agree, so a retune cannot silently drop a session', () => {
-    expect(FATIGUE_TUNING.STIMULUS_LOOKBACK_WEIGHTS).toHaveLength(
-      FATIGUE_TUNING.STIMULUS_LOOKBACK_SESSIONS,
-    );
-    expect(FATIGUE_TUNING.STIMULUS_LOOKBACK_WEIGHTS.every((weight) => weight > 0)).toBe(true);
-  });
-
+describe('sessionStimulusCredit — GDD §3.4, earned not tapped', () => {
   it('pins the reference rectangle against the shipped 5×3 template', () => {
     expect(FATIGUE_TUNING.STIMULUS_PRESCRIBED_REPS).toBe(SESSION_TUNING.REPS_PER_SET);
     expect(FATIGUE_TUNING.STIMULUS_REFERENCE_VOLUME).toBe(
       SESSION_TUNING.WORK_SETS * SESSION_TUNING.REPS_PER_SET,
-    );
-    expect(FATIGUE_TUNING.STIMULUS_PERCENT_AT_REFERENCE).toBeGreaterThan(0);
-    expect(FATIGUE_TUNING.STIMULUS_LOAD_ADJUSTMENT_PERCENT_MAX).toBeGreaterThanOrEqual(
-      FATIGUE_TUNING.STIMULUS_PERCENT_AT_REFERENCE,
     );
     const effort = FATIGUE_TUNING.STIMULUS_EFFORT_WEIGHTS;
     const weightAt = (rpe: number): number => {
@@ -1975,141 +1964,74 @@ describe('stimulusLoadAdjustmentPercent — GDD §3.4, earned not tapped', () =>
     expect(weightAt(10)).toBe(1);
   });
 
-  it('empty history is 0 — a first session cannot mint a PR from nothing', () => {
-    expect(stimulusLoadAdjustmentPercent(EMPTY_FATIGUE_STATE, 0, 'squat')).toBe(0);
-    expect(stimulusLoadAdjustmentPercent(EMPTY_FATIGUE_STATE, 10, 'bench')).toBe(0);
+  it('empty / recovery / failure-only is 0', () => {
+    expect(
+      sessionStimulusCredit({
+        day: 0,
+        lift: 'squat',
+        topRpe: 6,
+        workSets: 5,
+        repsPerSet: 3,
+      }),
+    ).toBe(0);
+    expect(
+      sessionStimulusCredit({
+        day: 0,
+        lift: 'squat',
+        topRpe: 10,
+        workSets: 5,
+        repsPerSet: 2,
+      }),
+    ).toBe(0);
   });
 
-  it('a recovery / strain-free session of this lift still earns 0', () => {
-    const state = recordSession(
-      EMPTY_FATIGUE_STATE,
-      recoverySessionFor(-1, 'squat'),
-      LUCKIEST_ROLLS,
-    ).state;
-    expect(stimulusLoadAdjustmentPercent(state, 0, 'squat')).toBe(0);
+  it('a completed productive session of this lift is 1.0 of a template', () => {
+    expect(sessionStimulusCredit(hardSession(0, 'squat'))).toBe(1);
   });
 
-  it('one completed productive session of this lift earns the reference percent, capped, and not from other lifts', () => {
-    const squat = recordSession(EMPTY_FATIGUE_STATE, hardSession(-1, 'squat'), LUCKIEST_ROLLS).state;
-    const earned = stimulusLoadAdjustmentPercent(squat, 0, 'squat');
-    expect(earned).toBe(FATIGUE_TUNING.STIMULUS_PERCENT_AT_REFERENCE);
-    expect(earned).toBeLessThanOrEqual(FATIGUE_TUNING.STIMULUS_LOAD_ADJUSTMENT_PERCENT_MAX);
-    expect(stimulusLoadAdjustmentPercent(squat, 0, 'bench')).toBe(0);
-    expect(stimulusLoadAdjustmentPercent(squat, 0, 'deadlift')).toBe(0);
-  });
-
-  it('completed RPE 8, 9 and 10 of the same volume earn the same percent — the menu pick is not the reward', () => {
-    const template = { lift: 'squat' as const, workSets: 5, repsPerSet: 3 };
-    const percentAt = (rpe: number): number => {
-      const state = recordSession(
-        EMPTY_FATIGUE_STATE,
-        { day: -1, ...template, topRpe: rpe },
-        LUCKIEST_ROLLS,
-      ).state;
-      return stimulusLoadAdjustmentPercent(state, 0, 'squat');
-    };
-    expect(percentAt(6)).toBe(0);
-    expect(percentAt(7)).toBeGreaterThan(0);
-    expect(percentAt(7)).toBeLessThan(percentAt(8));
-    expect(percentAt(8)).toBe(FATIGUE_TUNING.STIMULUS_PERCENT_AT_REFERENCE);
-    expect(percentAt(9)).toBe(percentAt(8));
-    expect(percentAt(10)).toBe(percentAt(8));
-  });
-
-  it('a missed / to-failure-only rectangle earns 0 — failing RPE 10 is not a completed RPE 10', () => {
-    const failed = recordSession(
-      EMPTY_FATIGUE_STATE,
-      { day: -1, lift: 'squat', topRpe: 10, workSets: 5, repsPerSet: 2 },
-      LUCKIEST_ROLLS,
-    ).state;
-    expect(stimulusLoadAdjustmentPercent(failed, 0, 'squat')).toBe(0);
+  it('completed RPE 8, 9 and 10 of the same volume earn the same unit — the menu pick is not the reward', () => {
+    const template = { lift: 'squat' as const, workSets: 5, repsPerSet: 3, day: 0 };
+    const creditAt = (rpe: number): number => sessionStimulusCredit({ ...template, topRpe: rpe });
+    expect(creditAt(6)).toBe(0);
+    expect(creditAt(7)).toBeGreaterThan(0);
+    expect(creditAt(7)).toBeLessThan(creditAt(8));
+    expect(creditAt(8)).toBe(1);
+    expect(creditAt(9)).toBe(creditAt(8));
+    expect(creditAt(10)).toBe(creditAt(8));
   });
 
   it('short completed volume earns a fraction; last-set-miss volume earns less than a full template', () => {
-    const full = recordSession(
-      EMPTY_FATIGUE_STATE,
-      { day: -1, lift: 'squat', topRpe: 8, workSets: 5, repsPerSet: 3 },
-      LUCKIEST_ROLLS,
-    ).state;
-    const fourSets = recordSession(
-      EMPTY_FATIGUE_STATE,
-      { day: -1, lift: 'squat', topRpe: 8, workSets: 4, repsPerSet: 3 },
-      LUCKIEST_ROLLS,
-    ).state;
-    const injuredTen = recordSession(
-      EMPTY_FATIGUE_STATE,
-      { day: -1, lift: 'squat', topRpe: 10, workSets: 3, repsPerSet: 3 },
-      LUCKIEST_ROLLS,
-    ).state;
-    const injuredEight = recordSession(
-      EMPTY_FATIGUE_STATE,
-      { day: -1, lift: 'squat', topRpe: 8, workSets: 3, repsPerSet: 3 },
-      LUCKIEST_ROLLS,
-    ).state;
-    const fullPercent = stimulusLoadAdjustmentPercent(full, 0, 'squat');
-    const fourPercent = stimulusLoadAdjustmentPercent(fourSets, 0, 'squat');
-    expect(fourPercent).toBeGreaterThan(0);
-    expect(fourPercent).toBeLessThan(fullPercent);
-    expect(stimulusLoadAdjustmentPercent(injuredTen, 0, 'squat')).toBe(
-      stimulusLoadAdjustmentPercent(injuredEight, 0, 'squat'),
-    );
-    expect(stimulusLoadAdjustmentPercent(injuredEight, 0, 'squat')).toBeLessThan(fullPercent);
+    const full = sessionStimulusCredit({
+      day: 0,
+      lift: 'squat',
+      topRpe: 8,
+      workSets: 5,
+      repsPerSet: 3,
+    });
+    const four = sessionStimulusCredit({
+      day: 0,
+      lift: 'squat',
+      topRpe: 8,
+      workSets: 4,
+      repsPerSet: 3,
+    });
+    expect(four).toBeGreaterThan(0);
+    expect(four).toBeLessThan(full);
+    expect(
+      sessionStimulusCredit({ day: 0, lift: 'squat', topRpe: 10, workSets: 3, repsPerSet: 3 }),
+    ).toBe(sessionStimulusCredit({ day: 0, lift: 'squat', topRpe: 8, workSets: 3, repsPerSet: 3 }));
   });
 
-  it('never goes negative, and never reads a session on or after today', () => {
-    const state = recordSession(EMPTY_FATIGUE_STATE, hardSession(5, 'squat'), LUCKIEST_ROLLS).state;
-    expect(stimulusLoadAdjustmentPercent(state, 5, 'squat')).toBe(0);
-    expect(stimulusLoadAdjustmentPercent(state, 4, 'squat')).toBe(0);
-    expect(stimulusLoadAdjustmentPercent(state, 6, 'squat')).toBeGreaterThan(0);
-  });
-
-  it('does not vary with check-in — the self-report exploit on load is closed', () => {
-    const state = recordSession(EMPTY_FATIGUE_STATE, hardSession(-1, 'squat'), LUCKIEST_ROLLS).state;
-    const percent = stimulusLoadAdjustmentPercent(state, 0, 'squat');
-    expect(sessionFeel(state, 0, BEST_CHECK_IN).readiness.loadAdjustmentPercent).toBe(
+  it('is not a function of check-in — the self-report exploit on load is closed', () => {
+    const credit = sessionStimulusCredit(hardSession(0, 'squat'));
+    expect(sessionFeel(EMPTY_FATIGUE_STATE, 0, BEST_CHECK_IN).readiness.loadAdjustmentPercent).toBe(
       FATIGUE_TUNING.READINESS_LOAD_ADJUSTMENT_PERCENT.primed,
     );
-    expect(sessionFeel(state, 0, WORST_CHECK_IN).readiness.loadAdjustmentPercent).toBe(
+    expect(sessionFeel(EMPTY_FATIGUE_STATE, 0, WORST_CHECK_IN).readiness.loadAdjustmentPercent).toBe(
       FATIGUE_TUNING.READINESS_LOAD_ADJUSTMENT_PERCENT.grinding,
     );
-    expect(percent).not.toBe(sessionFeel(state, 0, BEST_CHECK_IN).readiness.loadAdjustmentPercent);
-    expect(stimulusLoadAdjustmentPercent(state, 0, 'squat')).toBe(percent);
-  });
-
-  it('survives the rotation gap: a session three days ago still counts', () => {
-    const state = recordSession(EMPTY_FATIGUE_STATE, hardSession(0, 'squat'), LUCKIEST_ROLLS).state;
-    expect(stimulusLoadAdjustmentPercent(state, 3, 'squat')).toBe(
-      FATIGUE_TUNING.STIMULUS_PERCENT_AT_REFERENCE,
+    expect(credit).not.toBe(
+      sessionFeel(EMPTY_FATIGUE_STATE, 0, BEST_CHECK_IN).readiness.loadAdjustmentPercent,
     );
-  });
-
-  it('most recent session of this lift weighs more than an older one', () => {
-    const shortThenFull = recordSession(
-      recordSession(
-        EMPTY_FATIGUE_STATE,
-        { day: -6, lift: 'squat', topRpe: 8, workSets: 2, repsPerSet: 3 },
-        LUCKIEST_ROLLS,
-      ).state,
-      { day: -3, lift: 'squat', topRpe: 8, workSets: 5, repsPerSet: 3 },
-      LUCKIEST_ROLLS,
-    ).state;
-    const fullThenShort = recordSession(
-      recordSession(
-        EMPTY_FATIGUE_STATE,
-        { day: -6, lift: 'squat', topRpe: 8, workSets: 5, repsPerSet: 3 },
-        LUCKIEST_ROLLS,
-      ).state,
-      { day: -3, lift: 'squat', topRpe: 8, workSets: 2, repsPerSet: 3 },
-      LUCKIEST_ROLLS,
-    ).state;
-    expect(stimulusLoadAdjustmentPercent(shortThenFull, 0, 'squat')).toBeGreaterThan(
-      stimulusLoadAdjustmentPercent(fullThenShort, 0, 'squat'),
-    );
-  });
-
-  it('refuses a lift the module does not know', () => {
-    expect(() =>
-      stimulusLoadAdjustmentPercent(EMPTY_FATIGUE_STATE, 0, 'press' as SimLift),
-    ).toThrow(RangeError);
   });
 });

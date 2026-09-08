@@ -72,6 +72,7 @@ import {
   SESSION_PREVIEW,
   SESSION_PROGRESSION_GUARD,
   SESSION_TUNING,
+  TRAINING_PROGRESS_TUNING,
 } from '../game/sessionTuning';
 import {
   MEET_COPY,
@@ -211,6 +212,7 @@ export const TUNING = Object.freeze({
     SESSION_COPY,
     SESSION_PREVIEW,
     SESSION_PROGRESSION_GUARD,
+    TRAINING_PROGRESS_TUNING,
     CHECK_IN_QUESTIONS,
   }),
 

@@ -601,16 +601,17 @@ export const SQUAT_VISUAL = Object.freeze({
  * bound on what the server will accept from a client.
  *
  * WHAT IT IS NOT: a solution to long-run progression pacing. 6% per session
- * sits ABOVE `STIMULUS_LOAD_ADJUSTMENT_PERCENT_MAX` (3%) and above the old
- * unearned primed tap (5%), so it never binds on an honest session. It is a
- * guard against a client reporting nonsense, in the same spirit as
- * `INJURY_MAX_CHANCE_PER_SESSION` being currently slack.
+ * sits ABOVE the largest honest step (`TRAINING_PROGRESS_TUNING` × max
+ * applied steps = 1.5%) and above the old unearned primed tap (5%), so it
+ * never binds on an honest session. It is a guard against a client reporting
+ * nonsense, in the same spirit as `INJURY_MAX_CHANCE_PER_SESSION` being
+ * currently slack.
  *
  * DO NOT REPURPOSE EITHER END AS THE SESSION-OVER-SESSION PACING LEVER. Growth
- * ACROSS sessions is coupled to RPE/effort history in `fatigue.ts`
- * (`stimulusLoadAdjustmentPercent`, GDD §3.4). The range below is about ONE
- * session's own execution, not the sequence of sessions. Tightening MAX
- * instead would put a pacing constant in the wrong file.
+ * ACROSS sessions is thresholded credit in `trainingProgress.ts` (GDD §3.4).
+ * The range below is about ONE session's own execution, not the sequence of
+ * sessions. Tightening MAX instead would put a pacing constant in the wrong
+ * file.
  *
  * MIN is Sprint 3's addition: `nextBestE1rm` scales the fraction it actually
  * grants, LINEARLY, between MIN (a set graded `executionQuality` 0 — the
@@ -630,6 +631,32 @@ export const SESSION_PROGRESSION_GUARD = Object.freeze({
   MAX_E1RM_GAIN_FRACTION_PER_SESSION: 0.06,
   /** Least a session with a made rep still banks, at the worst execution quality. */
   MIN_E1RM_GAIN_FRACTION_PER_SESSION: 0.02,
+});
+
+/**
+ * Per-lift progression credit (GDD §3.4, Session A v2).
+ *
+ * THIS IS PROGRESSION PACING, NOT FATIGUE AND NOT A METER. Fatigue stays
+ * same-day / next-day feel. These knobs turn successful work into scarce
+ * future prescription steps instead of compounding a percent of current
+ * best every session.
+ *
+ * CREDIT_PER_PROGRESSION_STEP = 4: a full successful 5×3 @ RPE 8 (stimulus
+ * 1.0) needs four same-lift sessions to bank one step.
+ * PROGRESSION_STEP_PERCENT = 0.5: one step is 0.5% of the chart load
+ * (fraction 0.005). Plate snap is allowed to hide a single step; credit
+ * then waits for two or three steps to move the bar.
+ * MAX_APPLIED_STEPS_PER_SESSION = 3: safety bound, one realization never
+ * requests more than +1.5%. Not a target.
+ *
+ * Beta game-pacing parameters, not sports-science claims. Career still
+ * owns true multi-week arcs.
+ */
+export const TRAINING_PROGRESS_TUNING = Object.freeze({
+  CREDIT_PER_PROGRESSION_STEP: 4,
+  /** Percent points, same unit as `ReadinessReport.loadAdjustmentPercent`. */
+  PROGRESSION_STEP_PERCENT: 0.5,
+  MAX_APPLIED_STEPS_PER_SESSION: 3,
 });
 
 /**

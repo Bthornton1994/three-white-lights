@@ -10,6 +10,7 @@ import {
   SESSION_LAYOUT,
   SESSION_PROGRESSION_GUARD,
   SESSION_TUNING,
+  TRAINING_PROGRESS_TUNING,
 } from './sessionTuning';
 import {
   CHARTED_REPS,
@@ -198,6 +199,19 @@ describe('the beats are beats', () => {
   it('the guard is a gain, not a loss', () => {
     expect(SESSION_PROGRESSION_GUARD.MAX_E1RM_GAIN_FRACTION_PER_SESSION).toBeGreaterThan(0);
   });
+
+  it('training-progress knobs are a scarce step, not a compounding percent', () => {
+    expect(TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_STEP).toBe(4);
+    expect(TRAINING_PROGRESS_TUNING.PROGRESSION_STEP_PERCENT).toBe(0.5);
+    expect(TRAINING_PROGRESS_TUNING.MAX_APPLIED_STEPS_PER_SESSION).toBe(3);
+    expect(Object.isFrozen(TRAINING_PROGRESS_TUNING)).toBe(true);
+    const honestMax =
+      TRAINING_PROGRESS_TUNING.PROGRESSION_STEP_PERCENT *
+      TRAINING_PROGRESS_TUNING.MAX_APPLIED_STEPS_PER_SESSION;
+    expect(honestMax / SESSION_TUNING.PERCENT_TO_FRACTION).toBeLessThan(
+      SESSION_PROGRESSION_GUARD.MAX_E1RM_GAIN_FRACTION_PER_SESSION,
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -372,6 +386,7 @@ describe('no feel value lives outside sessionTuning.ts', () => {
   const gameSources = [
     { file: 'session.ts', source: readFileSync(path.join(HERE, 'session.ts'), 'utf8') },
     { file: 'sessionServer.ts', source: readFileSync(path.join(HERE, 'sessionServer.ts'), 'utf8') },
+    { file: 'trainingProgress.ts', source: readFileSync(path.join(HERE, 'trainingProgress.ts'), 'utf8') },
   ];
 
   it('finds the session screens at all', () => {

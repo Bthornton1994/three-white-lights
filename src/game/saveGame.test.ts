@@ -141,7 +141,15 @@ describe('the save round-trips every record the server can hold', () => {
     expect(parsed.format).toBe(SAVE_FORMAT);
     expect(parsed.version).toBe(SAVE_VERSION);
     expect(parsed.savedAtIso).toBe(SAVED_AT);
-    expect(Object.keys(parsed).sort()).toEqual(['fatigue', 'format', 'profile', 'savedAtIso', 'version', 'wire']);
+    expect(Object.keys(parsed).sort()).toEqual([
+      'fatigue',
+      'format',
+      'profile',
+      'savedAtIso',
+      'trainingProgressCredit',
+      'version',
+      'wire',
+    ]);
     expect(parsed.profile).toBeNull();
   });
 });
@@ -209,9 +217,31 @@ describe('a save is untrusted input, and every refusal is driven', () => {
     expectRefusal(tampered((s) => { s.fatigue = 'tired'; }), 'BAD_FATIGUE');
   });
 
+  it('validates training-progress credit field by field — the other half the wire does not carry', () => {
+    expectRefusal(
+      tampered((s) => {
+        s.trainingProgressCredit = { squat: -1, bench: 0, deadlift: 0 };
+      }),
+      'BAD_TRAINING_PROGRESS',
+    );
+    expectRefusal(
+      tampered((s) => {
+        s.trainingProgressCredit = 'earned';
+      }),
+      'BAD_TRAINING_PROGRESS',
+    );
+    expectRefusal(
+      tampered((s) => {
+        delete s.trainingProgressCredit;
+      }),
+      'BAD_TRAINING_PROGRESS',
+    );
+  });
+
   it('the refusal codes are the closed set the shell will key copy to', () => {
     expect([...SAVE_REFUSAL_CODES].sort()).toEqual([
       'BAD_FATIGUE',
+      'BAD_TRAINING_PROGRESS',
       'BAD_WIRE',
       'FUTURE_VERSION',
       'NOT_A_SAVE',
@@ -252,7 +282,18 @@ describe('schema stability', () => {
     '"meets":[],"wallet":{"gymBucks":0,"chalk":0},"federation":{"id":"meridian","chosen":false},' +
     '"acknowledgedProposalId":null},"fatigue":{"sessions":[],"injury":null},"profile":null}';
 
-  it('A GOLDEN SAVE FROM VERSION 1 STAYS READABLE — identity is missing, progression is intact', () => {
+  const GOLDEN_V3 =
+    '{"format":"three-white-lights-save","version":3,"savedAtIso":"2026-08-19T00:00:00.000Z",' +
+    '"wire":{"revision":0,"totalKg":null,"bestE1rmKg":{"squat":180,"bench":120,"deadlift":220},' +
+    '"streak":{"signupDay":20000,"currentStreak":0,"longestStreak":0,"lastTrainedDay":null,' +
+    '"entitlement":{"windowIndex":0,"coveredDaysLeft":2,"purchasedDaysLeft":0},' +
+    '"armedEntitlement":{"windowIndex":0,"coveredDaysLeft":2,"purchasedDaysLeft":0},' +
+    '"entitlementArmed":true,"recoveryDayProtectionEnabled":true,"hasBankedFirstRecoveryDaySave":false},' +
+    '"meets":[],"wallet":{"gymBucks":0,"chalk":0},"federation":{"id":"meridian","chosen":false},' +
+    '"acknowledgedProposalId":null},"fatigue":{"sessions":[],"injury":null},"profile":null,' +
+    '"trainingProgressCredit":{"squat":0,"bench":0,"deadlift":0}}';
+
+  it('A GOLDEN SAVE FROM VERSION 1 STAYS READABLE — identity is missing, credit is empty, progression is intact', () => {
     const decoded = decodeSavedGame(GOLDEN_V1);
     expect(decoded.ok, decoded.ok ? '' : decoded.detail).toBe(true);
     if (decoded.ok) {
@@ -262,9 +303,18 @@ describe('schema stability', () => {
     }
   });
 
-  it('the current encoder writes version 2 with a profile sibling, and that golden stays readable', () => {
-    expect(encodeSavedGame(newServerRecord(SIGNUP_DAY), '2026-08-19T00:00:00.000Z')).toBe(GOLDEN_V2);
+  it('A GOLDEN SAVE FROM VERSION 2 STAYS READABLE — credit migrates empty, identity and progression intact', () => {
     const decoded = decodeSavedGame(GOLDEN_V2);
+    expect(decoded.ok, decoded.ok ? '' : decoded.detail).toBe(true);
+    if (decoded.ok) {
+      expect(decoded.record).toEqual(newServerRecord(SIGNUP_DAY));
+      expect(decoded.profile).toBeNull();
+    }
+  });
+
+  it('the current encoder writes version 3 with a training-progress sibling, and that golden stays readable', () => {
+    expect(encodeSavedGame(newServerRecord(SIGNUP_DAY), '2026-08-19T00:00:00.000Z')).toBe(GOLDEN_V3);
+    const decoded = decodeSavedGame(GOLDEN_V3);
     expect(decoded.ok, decoded.ok ? '' : decoded.detail).toBe(true);
     if (decoded.ok) {
       expect(decoded.record).toEqual(newServerRecord(SIGNUP_DAY));
@@ -306,6 +356,7 @@ describe('the save loader is a §7.5 route, and behaves like one', () => {
     const fatigueRow = record.fatigue.sessions[0];
     if (fatigueRow === undefined) throw new Error('fixture: the met rung decoded with no fatigue row');
     expect(Object.isFrozen(fatigueRow), 'a fatigue row').toBe(true);
+    expect(Object.isFrozen(record.trainingProgressCredit), 'trainingProgressCredit').toBe(true);
     expect(Object.isFrozen(record.federation), 'federation').toBe(true);
     const loose: { totalKg: number | null } = record;
     expect(() => {

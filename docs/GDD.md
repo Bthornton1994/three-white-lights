@@ -353,26 +353,38 @@ Fatigue operates on a **same-day / next-day horizon**, not multi-week arcs. Push
 too hard today → tomorrow's session starts harder. Multi-week arcs belong to
 Career mode.
 
-#### Required of this module: couple the nudge to training stimulus — RULED, and now built
+#### Required of this module: couple growth to training stimulus — RULED, and now built
 
-Session-over-session growth — the load "nudge" that decides how much heavier
-today's bar is than the e1RM it was prescribed from — **scales with RPE and
-effort history of this lift.** It is not a flat constant, and it is not a
-reward for opening the app and tapping *good / fresh / fired up*.
+Session-over-session growth is **earned successful work**, not a percentage of
+current best compounded every session, and not a reward for opening the app
+and tapping *good / fresh / fired up*.
 
-`fatigue.ts`'s `stimulusLoadAdjustmentPercent` reads the hidden ledger for
-recent sessions of the prescribed lift and returns a percentage
-`session.ts` applies at `choose-rpe`. Empty or recovery history is 0, so a
-first session cannot mint a PR. Stimulus is successful prescribed volume
-(sets × reps actually completed as prescribed) times a saturating effort
-weight: RPE 6 is recovery and earns nothing; RPE 8, 9 and 10 of the same
-completed volume earn the same percent. Choosing a harder menu option is
-not a reward. A missed set does not count as completed work; a session of
-only to-failure reports earns 0. Other lifts do not feed it. Check-in taps
-still move windows and bar-speed cues; they do not move the bar.
+Fatigue stays what this section already says it is: a **same-day / next-day
+feel ledger**. Bar-speed cues, windows, miss odds, injury. It is not the
+long-term progression state. Multi-week arcs still belong to Career mode.
 
-A completed 5×3 at RPE 8+ earns 2% for the next session of this lift
-(placeholder; playtesting owns the pace). The cap is 3%.
+Successful prescribed work earns **credit**, not a load percent.
+`fatigue.ts`'s `sessionStimulusCredit` scores one completed session as
+0..1 of a 5×3 template (volume actually completed as prescribed × a
+saturating effort weight). RPE 6 is recovery and earns nothing. RPE 8, 9
+and 10 of the same completed volume earn the same credit. Choosing a
+harder menu option is not a reward. A missed set does not count as
+completed work; a session of only to-failure reports earns 0. Check-in
+answers are not an input.
+
+That credit accumulates per lift in `trainingProgress.ts` as
+`TrainingProgressCredit` — server-authoritative, JSON, never a ConfirmedFact,
+never a player-facing meter. Four successful reference sessions bank one
+progression **step** (0.5% of the chart load). A later session of the same
+lift may spend prior credit on a heavier prescription, capped at three
+steps (+1.5%) and only the smallest number of steps that actually moves
+the snapped bar. Today's work does not finance today's bar. Credit is
+consumed only when that heavier bar is realized as a new best e1RM; a
+miss does not burn the bank; a snap-to-identical bar consumes nothing.
+
+Values are **beta game-pacing parameters, not sports-science claims.**
+Playtesting owns the pace. Career still owns true multi-week training
+arcs.
 
 **`e1rm.ts` is correct and is untouched.** Its chart-cancellation property —
 a set hit exactly on target reports exactly the e1RM it was prescribed from —
@@ -380,8 +392,8 @@ is the round-trip guarantee the whole domain layer rests on. Do not "fix"
 the curve by paying higher RPE rungs more for the same relative performance
 today; that is the two-parts-disagree failure CLAUDE.md's one-formula rule
 exists to prevent. Higher rungs pay in difficulty, fatigue cost, injury
-exposure and whether the work completes — not in a larger next-session
-percent for the same successful volume.
+exposure and whether the work completes — not in more credit for the same
+successful volume.
 
 The check-in tap table (`READINESS_LOAD_ADJUSTMENT_PERCENT`) remains a
 readout of the three answers so a handed-in report can still name a percent.
@@ -5321,18 +5333,23 @@ for three entries; corrected here rather than left as decoration.)
       papered over.
 
 - [x] **Session-over-session growth is coupled to training stimulus —
-      RULED, and now built in `fatigue.ts`.** The player path applies
-      `stimulusLoadAdjustmentPercent` at `choose-rpe`: recent successful
-      prescribed volume on this lift, not three readiness taps, and not
-      a higher menu pick. Empty or recovery history is 0, so a first
-      session holds; a completed 5×3 at RPE 8+ earns a heavier bar the
-      next time this lift is trained; RPE 8, 9 and 10 of the same volume
-      earn the same percent; a miss does not count as completed work.
+      RULED, and now built as thresholded credit, not a compounding
+      percent.** Stimulus of one session lives in `fatigue.ts` as
+      `sessionStimulusCredit` (volume × saturating effort; RPE 8/9/10 of
+      the same completed volume earn the same credit; misses and
+      failure-only earn nothing; check-in is not an input). Accumulation
+      and spending live in `trainingProgress.ts`: a per-lift
+      `TrainingProgressCredit` bank, four successful reference sessions
+      per 0.5% step, at most +1.5% from prior credit, consumed only when
+      the heavier snapped bar is realized. `choose-rpe` applies
+      `progressionOffer`, not three readiness taps and not a harder menu
+      pick. Empty credit cannot mint, so a first session holds.
       **`e1rm.ts` and its cancellation property stay untouched.** The old
       primed-tap compounding (200 kg → 770.65 kg over 30 sessions, a PR
       on 30 of 30) is still what `prescribeSession` does if handed a +5%
       report; it is no longer what the session loop feeds it. Tests pin
-      both.
+      both. Values are beta game-pacing, not sports science; Career still
+      owns true multi-week arcs.
 
 - [ ] **The cut-in cap is first-come across time. The same-lift bomb-out case is
       now closed by a disqualifier; the cross-lift case is not.** §7.2 caps

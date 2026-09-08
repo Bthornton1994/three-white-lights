@@ -38,16 +38,31 @@ describe('29 a0-untouched', () => {
 });
 
 describe('A1 competition authorities stay where A1 closed them', () => {
-  it('placing, board math, meet-day machine, and meet server are unchanged since A1 closed', () => {
+  it('placing, board math, and meet-day machine are unchanged since A1 closed', () => {
     expect(
       gitDiffNames(
         A1_CLOSED,
         'src/game/meet.ts',
         'src/game/meetBoard.ts',
         'src/game/meetDay.ts',
-        'src/game/meetServer.ts',
       ),
     ).toEqual([]);
+  });
+
+  it('meet server only gained copy-through of daily-loop siblings since A1 closed', () => {
+    // ServerRecord grew a required training-progress field. applyMeetResult
+    // must name it or tsc fails; it must not interpret it. The only authorized
+    // post-A1 edit is carrying the field through untouched, same standing as
+    // fatigue.
+    const output = execFileSync('git', ['diff', A1_CLOSED, '--', 'src/game/meetServer.ts'], {
+      cwd: REPO,
+      encoding: 'utf8',
+    });
+    const added = output.split('\n').filter((line) => line.startsWith('+') && !line.startsWith('+++'));
+    expect(added).toEqual([
+      "+    // CARRIED THROUGH UNTOUCHED. Progression credit is the daily loop's.",
+      '+    trainingProgressCredit: record.trainingProgressCredit,',
+    ]);
   });
 
   it('MEET_ENTRY remains the debug/test fixture, not a produced identity', () => {

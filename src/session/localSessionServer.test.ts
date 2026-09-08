@@ -25,7 +25,7 @@ import {
 } from '../game/session';
 import { newServerRecord, type ServerRecord } from '../game/sessionServer';
 import { FATIGUE_TUNING, type SessionRecord } from '../game/fatigue';
-import { SESSION_BOUNDARY, SESSION_TUNING } from '../game/sessionTuning';
+import { SESSION_BOUNDARY, SESSION_TUNING, TRAINING_PROGRESS_TUNING } from '../game/sessionTuning';
 import { asStreakDay, type LocalWallClock } from '../game/streak';
 
 /**
@@ -133,7 +133,9 @@ describe('the stand-in server port', () => {
 
   it('the brief carries the ledger and nothing else (GDD §3.4, §12.3)', () => {
     const port = localSessionServer({ record: storedRecord(), sleep: instantly });
-    expect(Object.keys(port.sessionBrief(DAY, LIFT))).toEqual(['fatigue']);
+    expect(Object.keys(port.sessionBrief(DAY, LIFT)).sort()).toEqual(
+      ['fatigue', 'trainingProgressCredit'].sort(),
+    );
   });
 
   it('the brief is narrowed to the horizon that can affect today', () => {
@@ -568,7 +570,7 @@ describe('the row survives a reload (Sprint 2)', () => {
     expect(chosen.kind).toBe('chosen');
   });
 
-  it('a trained session’s fatigue and next-day stimulus survive a reload — GDD §3.4', async () => {
+  it('a trained session’s fatigue and pending credit survive a reload — GDD §3.4', async () => {
     const store = fakeStore();
     const first = localSessionServer({ record: storedRecord(), store, sleep: instantly });
     let cache = openingCache(first);
@@ -578,31 +580,55 @@ describe('the row survives a reload (Sprint 2)', () => {
         9,
       ),
     );
+    expect(hard.isPr).toBe(false);
     const submitted = submitCloseOut(cache, hard, WALL_CLOCK, PROPOSAL_ID)!;
     const recorded = await first.recordTrainingSession(DAY, submitted.proposal, PROPOSAL_ID);
     expect(recorded.kind).toBe('snapshot');
     expect(store.saves).toBeGreaterThan(0);
 
+    const afterOne = decodeSavedGame(store.text ?? '');
+    expect(afterOne.ok).toBe(true);
+    if (!afterOne.ok) return;
+    expect(afterOne.record.trainingProgressCredit[LIFT]).toBe(1);
+
     const reopened = localSessionServer({ store, sleep: instantly, freshSignupDay: SIGNUP_DAY });
     cache = openingCache(reopened);
     expect(todayFromCache(cache, DAY, LIFT).alreadyTrainedToday).toBe(true);
+    expect(reopened.sessionBrief(DAY, LIFT).trainingProgressCredit).toBe(1);
 
     const nextDay = DAY + SESSION_TUNING.LIFT_ROTATION.length;
     expect(liftForDay(nextDay)).toBe(LIFT);
-    const next = closeOutOf(
+    const stillPending = closeOutOf(
       playSession(
         createSession(sessionContextFrom(cache, reopened.sessionBrief(nextDay, LIFT), nextDay, LIFT)),
         8,
       ),
     );
-    expect(next.isPr).toBe(true);
+    expect(stillPending.isPr).toBe(false);
+
+    const parsed = JSON.parse(store.text ?? '') as {
+      trainingProgressCredit: { squat: number; bench: number; deadlift: number };
+    };
+    parsed.trainingProgressCredit[LIFT] =
+      TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_STEP *
+      TRAINING_PROGRESS_TUNING.MAX_APPLIED_STEPS_PER_SESSION;
+    store.text = JSON.stringify(parsed);
+    const banked = localSessionServer({ store, sleep: instantly, freshSignupDay: SIGNUP_DAY });
+    cache = openingCache(banked);
+    const pr = closeOutOf(
+      playSession(
+        createSession(sessionContextFrom(cache, banked.sessionBrief(nextDay, LIFT), nextDay, LIFT)),
+        8,
+      ),
+    );
+    expect(pr.isPr).toBe(true);
     const nextId = asProposalId('local-test-next');
-    const nextSubmit = submitCloseOut(cache, next, WALL_CLOCK, nextId)!;
-    const grown = await reopened.recordTrainingSession(nextDay, nextSubmit.proposal, nextId);
+    const nextSubmit = submitCloseOut(cache, pr, WALL_CLOCK, nextId)!;
+    const grown = await banked.recordTrainingSession(nextDay, nextSubmit.proposal, nextId);
     expect(grown.kind).toBe('snapshot');
     if (grown.kind !== 'snapshot') throw new Error('unreachable');
     cache = receiveSnapshot(nextSubmit.cache, grown.wire);
-    const readings = closeOutReadings(cache, next);
+    const readings = closeOutReadings(cache, pr);
     if (readings.payoff.kind !== 'e1rm') throw new Error('unreachable');
     expect(readings.payoff.valueKg).toBeGreaterThan(BEST_KG);
   });
