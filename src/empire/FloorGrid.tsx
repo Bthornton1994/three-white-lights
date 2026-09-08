@@ -1749,9 +1749,10 @@ function AmbientMemberBody({
   });
 
   // VL-3: THE STEPPER'S STATE LIVES IN A REF ACROSS RENDERS. Created on the
-  // first frame from the props as they stand then, and only ever advanced by
-  // `stepMemberMotion`; a re-render with identical props does not touch it,
-  // so a re-render restarts no clip, no settle and no blend
+  // first frame from the props as they stand then, and replaced every frame
+  // by the state `stepMemberMotion` returns (the stepper writes into
+  // nothing); a re-render with identical props does not touch it, so a
+  // re-render restarts no clip, no settle and no blend
   // (`memberMotion.test.ts` pins that at the stepper).
   const motion = useRef<MemberMotionState | null>(null);
   // The root's host node, for the two evidence attributes the loop writes
@@ -1836,8 +1837,9 @@ function AmbientMemberBody({
         index: p.index,
         depth: { backY: p.depthBackY, span: p.depthSpan, backScale: p.depthBackScale },
       };
-      if (motion.current === null) motion.current = createMemberMotion(input, production);
-      const out = stepMemberMotion(motion.current, input, now);
+      const step = stepMemberMotion(motion.current ?? createMemberMotion(input, production), input, now);
+      motion.current = step.state;
+      const out = step.output;
       // The write. The root is a front-row-sized box scaled about its
       // centre, so its top-left is placed such that the SCALED box's
       // bottom-centre lands on the drawn feet point.

@@ -75,8 +75,9 @@
  *      (`memberAnimationStaggerPhase`) and runs at its own jittered period
  *      (`memberAnimationPeriodJitter`), both from the roster ordinal.
  *   e. NO RESET ON A HARMLESS RE-RENDER: the state is created once per mount
- *      and only ever advanced; an input identical to the last one advances
- *      the phase by the elapsed time and restarts nothing.
+ *      and only ever advanced (each frame returns the next state; the one
+ *      handed in is never written); an input identical to the last one
+ *      advances the phase by the elapsed time and restarts nothing.
  *
  * ITS LIMITS, stated where they sit. The production clip table has no
  * reaction clip, so an `interrupted` production body stands (`idle`) and
@@ -205,37 +206,45 @@ export interface MemberMotionOutput {
 }
 
 /**
- * The stepper's state — VL-2B's loop locals, created once per mounted body
- * and only ever advanced. Mutable on purpose: it is written every frame
- * from a `requestAnimationFrame` callback and must not allocate a new
- * object per frame for forty bodies. Read it through `stepMemberMotion`.
+ * The stepper's state — VL-2B's loop locals as one immutable record, created
+ * once per mounted body and replaced by `stepMemberMotion` every frame. The
+ * renderer holds the latest in a ref; the stepper never writes into the one
+ * it was handed (zero side effects, per "Pure logic is separate from UI"),
+ * so the cost of a frame is one small record and, on a tick, one short
+ * snapshot array — never a mutation of a caller's object.
  */
 export interface MemberMotionState {
   /** Drawn through the production strip pipeline (facing hysteresis, the clip table) or the legacy pose stack. */
   readonly production: boolean;
-  lastNow: number | null;
-  readonly snapshots: MemberPlaybackSnapshot[];
-  playTick: number | null;
-  pullFrom: MemberMotionPoint;
-  pullTo: MemberMotionPoint;
-  settleElapsedMs: number | null;
-  settleMs: number;
-  lastDrawn: MemberMotionPoint | null;
+  readonly lastNow: number | null;
+  readonly snapshots: readonly MemberPlaybackSnapshot[];
+  readonly playTick: number | null;
+  readonly pullFrom: MemberMotionPoint;
+  readonly pullTo: MemberMotionPoint;
+  readonly settleElapsedMs: number | null;
+  readonly settleMs: number;
+  readonly lastDrawn: MemberMotionPoint | null;
   /** The legacy pose stack's running clip, phase and one-tick blend. */
-  runningClip: MemberAnimationClip;
-  phase: number;
-  outgoingFrames: readonly MemberAnimationFrame[];
-  blendElapsedMs: number | null;
+  readonly runningClip: MemberAnimationClip;
+  readonly phase: number;
+  readonly outgoingFrames: readonly MemberAnimationFrame[];
+  readonly blendElapsedMs: number | null;
   /** The production strip's running clip, its phase (unwrapped for a non-looping clip) and the dissolve. */
-  motionClip: MemberMotionClip;
-  motionPhase: number;
-  motionOutgoing: { readonly clip: MemberMotionClip; readonly frame: number } | null;
-  motionBlendElapsedMs: number | null;
-  facing: FloorSpriteFacing;
+  readonly motionClip: MemberMotionClip;
+  readonly motionPhase: number;
+  readonly motionOutgoing: { readonly clip: MemberMotionClip; readonly frame: number } | null;
+  readonly motionBlendElapsedMs: number | null;
+  readonly facing: FloorSpriteFacing;
   /** Drawn horizontal travel, in tiles, against the current facing since it last agreed. */
-  facingOpposedTiles: number;
+  readonly facingOpposedTiles: number;
   /** How long, in milliseconds, a standing body's contract facing has disagreed with its drawn one. */
-  facingHintMs: number;
+  readonly facingHintMs: number;
+}
+
+/** One frame's result: the state to hold for the next frame, and what to draw now. */
+export interface MemberMotionStep {
+  readonly state: MemberMotionState;
+  readonly output: MemberMotionOutput;
 }
 
 /**
@@ -352,12 +361,13 @@ function wrapUnit(value: number): number {
   return wrapped < 0 || wrapped >= 1 ? 0 : wrapped;
 }
 
-/** A fresh stepper for a body drawing its first frame from `input`; `production` picks the strip pipeline. */
+/** A fresh stepper state for a body drawing its first frame from `input`; `production` picks the strip pipeline. */
 export function createMemberMotion(input: MemberMotionInput, production: boolean): MemberMotionState {
-  return {
+  const motionClip = memberMotionTargetClip(input.clip);
+  return Object.freeze({
     production,
     lastNow: null,
-    snapshots: [],
+    snapshots: Object.freeze([]),
     playTick: null,
     pullFrom: { x: input.pullX, y: input.pullY },
     pullTo: { x: input.pullX, y: input.pullY },
@@ -366,38 +376,41 @@ export function createMemberMotion(input: MemberMotionInput, production: boolean
     lastDrawn: null,
     runningClip: input.clip,
     phase: memberAnimationStartPhase(input.clip, input.index),
-    outgoingFrames: [],
+    outgoingFrames: Object.freeze([]),
     blendElapsedMs: null,
-    motionClip: memberMotionTargetClip(input.clip),
-    motionPhase: memberMotionStartPhase(memberMotionTargetClip(input.clip), input.index),
+    motionClip,
+    motionPhase: memberMotionStartPhase(motionClip, input.index),
     motionOutgoing: null,
     motionBlendElapsedMs: null,
     facing: input.facing,
     facingOpposedTiles: 0,
     facingHintMs: 0,
-  };
+  });
 }
 
 /**
- * One frame. Advances `state` in place by the capped elapsed since the last
- * call and returns what to draw. The order is VL-2B's: cap → intake (with
+ * One frame. Reads `state`, never writes it, and returns the state for the
+ * next frame beside what to draw. The order is VL-2B's: cap → intake (with
  * the relocation rebase) → playback clock → eased pull → drawn point → depth
  * scale → facing → clip → phase → sample.
  */
-export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput, now: number): MemberMotionOutput {
+export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput, now: number): MemberMotionStep {
   // 1. THE CAP.
   const elapsed =
     state.lastNow === null
       ? 0
       : Math.max(0, Math.min(now - state.lastNow, EMPIRE_TUNING.FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS));
-  state.lastNow = now;
-  if (state.settleElapsedMs !== null) state.settleElapsedMs += elapsed;
-  if (state.blendElapsedMs !== null) state.blendElapsedMs += elapsed;
-  if (state.motionBlendElapsedMs !== null) state.motionBlendElapsedMs += elapsed;
+  let settleElapsedMs = state.settleElapsedMs === null ? null : state.settleElapsedMs + elapsed;
+  let blendElapsedMs = state.blendElapsedMs === null ? null : state.blendElapsedMs + elapsed;
+  let motionBlendElapsedMs = state.motionBlendElapsedMs === null ? null : state.motionBlendElapsedMs + elapsed;
+  let settleMs = state.settleMs;
+  let pullFrom = state.pullFrom;
+  let pullTo = state.pullTo;
 
-  // 2. SNAPSHOT INTAKE, with the relocation rebase.
+  // 2. SNAPSHOT INTAKE, with the relocation rebase. Copy-on-write: the
+  //    buffer handed in is never touched.
   const tileHere = p.tile * p.scale;
-  const snapshots = state.snapshots;
+  let snapshots: readonly MemberPlaybackSnapshot[] = state.snapshots;
   const newest = snapshots[snapshots.length - 1];
   let relocating = false;
   const relocate = (): void => {
@@ -406,23 +419,19 @@ export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput,
       (state.playTick === null ? null : samplePlayback(snapshots, state.playTick)) ?? newest ?? p.position;
     const jumpX = p.position.x - drawnFeet.x;
     const jumpY = p.position.y - drawnFeet.y;
-    const remainderNow =
-      state.settleElapsedMs === null ? 0 : settleRemainder(state.settleElapsedMs, state.settleMs);
-    state.pullFrom = {
-      x: state.pullTo.x + (state.pullFrom.x - state.pullTo.x) * remainderNow - jumpX,
-      y: state.pullTo.y + (state.pullFrom.y - state.pullTo.y) * remainderNow - jumpY,
+    const remainderNow = settleElapsedMs === null ? 0 : settleRemainder(settleElapsedMs, settleMs);
+    pullFrom = {
+      x: pullTo.x + (pullFrom.x - pullTo.x) * remainderNow - jumpX,
+      y: pullTo.y + (pullFrom.y - pullTo.y) * remainderNow - jumpY,
     };
-    const glidePixels = Math.hypot(state.pullTo.x - state.pullFrom.x, state.pullTo.y - state.pullFrom.y);
+    const glidePixels = Math.hypot(pullTo.x - pullFrom.x, pullTo.y - pullFrom.y);
     if (glidePixels < 1) {
-      state.settleElapsedMs = null;
+      settleElapsedMs = null;
     } else {
-      state.settleElapsedMs = 0;
-      state.settleMs = settleDurationMs(glidePixels / tileHere);
+      settleElapsedMs = 0;
+      settleMs = settleDurationMs(glidePixels / tileHere);
     }
-    for (let i = 0; i < snapshots.length; i += 1) {
-      const held = snapshots[i];
-      if (held !== undefined) snapshots[i] = { tick: held.tick, x: p.position.x, y: p.position.y };
-    }
+    snapshots = snapshots.map((held) => ({ tick: held.tick, x: p.position.x, y: p.position.y }));
   };
   const isRelocation = (jumpX: number, jumpY: number): boolean =>
     tileHere > 0 && Math.hypot(jumpX, jumpY) / tileHere > EMPIRE_TUNING.FLOOR_MEMBER_STRIDE_TILES;
@@ -430,184 +439,228 @@ export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput,
     if (newest !== undefined && isRelocation(p.position.x - newest.x, p.position.y - newest.y)) {
       relocate();
     }
-    snapshots.push({ tick: p.tick, x: p.position.x, y: p.position.y });
+    snapshots = [...snapshots, { tick: p.tick, x: p.position.x, y: p.position.y }];
   } else if (newest.x !== p.position.x || newest.y !== p.position.y) {
     if (isRelocation(p.position.x - newest.x, p.position.y - newest.y)) {
       relocate();
     }
-    snapshots[snapshots.length - 1] = { tick: p.tick, x: p.position.x, y: p.position.y };
+    snapshots = [...snapshots.slice(0, -1), { tick: p.tick, x: p.position.x, y: p.position.y }];
   }
 
   // 3. THE PLAYBACK CLOCK and the walked feet point.
   const latestTick = (snapshots[snapshots.length - 1] as MemberPlaybackSnapshot).tick;
   const playTick = advancePlaybackTick(state.playTick, latestTick, elapsed);
-  state.playTick = playTick;
-  while (snapshots.length > 2 && (snapshots[1] as MemberPlaybackSnapshot).tick <= playTick) {
-    snapshots.shift();
+  let drop = 0;
+  while (snapshots.length - drop > 2 && (snapshots[drop + 1] as MemberPlaybackSnapshot).tick <= playTick) {
+    drop += 1;
   }
+  if (drop > 0) snapshots = snapshots.slice(drop);
   const feet = samplePlayback(snapshots, playTick) ?? p.position;
 
   // 4. THE EASED PULL.
-  if (p.pullX !== state.pullTo.x || p.pullY !== state.pullTo.y) {
-    const remainderNow =
-      state.settleElapsedMs === null ? 0 : settleRemainder(state.settleElapsedMs, state.settleMs);
-    state.pullFrom = {
-      x: state.pullTo.x + (state.pullFrom.x - state.pullTo.x) * remainderNow,
-      y: state.pullTo.y + (state.pullFrom.y - state.pullTo.y) * remainderNow,
+  if (p.pullX !== pullTo.x || p.pullY !== pullTo.y) {
+    const remainderNow = settleElapsedMs === null ? 0 : settleRemainder(settleElapsedMs, settleMs);
+    pullFrom = {
+      x: pullTo.x + (pullFrom.x - pullTo.x) * remainderNow,
+      y: pullTo.y + (pullFrom.y - pullTo.y) * remainderNow,
     };
-    state.pullTo = { x: p.pullX, y: p.pullY };
-    const pullPixels = Math.hypot(state.pullTo.x - state.pullFrom.x, state.pullTo.y - state.pullFrom.y);
+    pullTo = { x: p.pullX, y: p.pullY };
+    const pullPixels = Math.hypot(pullTo.x - pullFrom.x, pullTo.y - pullFrom.y);
     if (pullPixels < 1) {
-      state.settleElapsedMs = null;
+      settleElapsedMs = null;
     } else {
-      state.settleElapsedMs = 0;
-      state.settleMs = settleDurationMs(tileHere <= 0 ? 0 : pullPixels / tileHere);
+      settleElapsedMs = 0;
+      settleMs = settleDurationMs(tileHere <= 0 ? 0 : pullPixels / tileHere);
     }
   }
-  const remainder = state.settleElapsedMs === null ? 0 : settleRemainder(state.settleElapsedMs, state.settleMs);
-  if (remainder === 0) state.settleElapsedMs = null;
+  const remainder = settleElapsedMs === null ? 0 : settleRemainder(settleElapsedMs, settleMs);
+  if (remainder === 0) settleElapsedMs = null;
   const drawn: MemberMotionPoint = {
-    x: feet.x + state.pullTo.x + (state.pullFrom.x - state.pullTo.x) * remainder,
-    y: feet.y + state.pullTo.y + (state.pullFrom.y - state.pullTo.y) * remainder,
+    x: feet.x + pullTo.x + (pullFrom.x - pullTo.x) * remainder,
+    y: feet.y + pullTo.y + (pullFrom.y - pullTo.y) * remainder,
   };
   const movedTiles =
     state.lastDrawn === null || tileHere <= 0
       ? 0
       : Math.hypot(drawn.x - state.lastDrawn.x, drawn.y - state.lastDrawn.y) / tileHere;
   const drawnDx = state.lastDrawn === null ? 0 : drawn.x - state.lastDrawn.x;
-  state.lastDrawn = drawn;
 
   // 5. THE DEPTH SCALE, from the drawn point (b).
   const scale = depthScaleFromStageY(p.depth, drawn.y);
 
   // 6. FACING (a).
+  let facing = state.facing;
+  let facingOpposedTiles = state.facingOpposedTiles;
+  let facingHintMs = state.facingHintMs;
   if (!state.production) {
-    state.facing = p.facing;
+    facing = p.facing;
   } else if (p.lifecycle === 'using' || p.lifecycle === 'queuing') {
-    state.facing = p.facing;
-    state.facingOpposedTiles = 0;
-    state.facingHintMs = 0;
+    facing = p.facing;
+    facingOpposedTiles = 0;
+    facingHintMs = 0;
   } else if (drawnDx !== 0 && tileHere > 0) {
     const movingLeft = drawnDx < 0;
-    if (movingLeft !== (state.facing === 'left')) {
-      state.facingOpposedTiles += Math.abs(drawnDx) / tileHere;
-      if (state.facingOpposedTiles >= EMPIRE_TUNING.FLOOR_MEMBER_FACING_FLIP_TILES) {
-        state.facing = movingLeft ? 'left' : 'right';
-        state.facingOpposedTiles = 0;
+    if (movingLeft !== (facing === 'left')) {
+      facingOpposedTiles += Math.abs(drawnDx) / tileHere;
+      if (facingOpposedTiles >= EMPIRE_TUNING.FLOOR_MEMBER_FACING_FLIP_TILES) {
+        facing = movingLeft ? 'left' : 'right';
+        facingOpposedTiles = 0;
       }
     } else {
-      state.facingOpposedTiles = 0;
+      facingOpposedTiles = 0;
     }
-    state.facingHintMs = 0;
+    facingHintMs = 0;
   } else {
-    state.facingOpposedTiles = 0;
-    if (p.facing !== state.facing) {
-      state.facingHintMs += elapsed;
-      if (state.facingHintMs >= EMPIRE_TUNING.FLOOR_MEMBER_FACING_HINT_MS) {
-        state.facing = p.facing;
-        state.facingHintMs = 0;
+    facingOpposedTiles = 0;
+    if (p.facing !== facing) {
+      facingHintMs += elapsed;
+      if (facingHintMs >= EMPIRE_TUNING.FLOOR_MEMBER_FACING_HINT_MS) {
+        facing = p.facing;
+        facingHintMs = 0;
       }
     } else {
-      state.facingHintMs = 0;
+      facingHintMs = 0;
     }
   }
-  const facing = state.facing;
 
   // 7. THE CLIP the body wants this frame.
   const wantedClip = remainder > 0 ? clipWhileSettling(p.clip) : p.clip;
 
-  if (!state.production) {
-    // The legacy pose stack — VL-2's phase, sample and blend, unchanged.
-    if (wantedClip !== state.runningClip) {
-      state.outgoingFrames = sampleMemberAnimation(state.runningClip, state.phase).frames;
-      state.runningClip = wantedClip;
-      state.blendElapsedMs = 0;
-      state.phase = memberAnimationStartPhase(state.runningClip, p.index);
-    }
-    state.phase = advanceMemberAnimationPhase(state.runningClip, state.phase, movedTiles, elapsed);
-    const sample = sampleMemberAnimation(state.runningClip, state.phase);
-    const blend = state.blendElapsedMs === null ? 1 : memberAnimationBlend(state.blendElapsedMs);
-    if (blend >= 1) {
-      state.blendElapsedMs = null;
-      state.outgoingFrames = [];
-    }
-    const opacity: Partial<Record<FloorSpritePose, number>> = {};
-    for (const pose of FLOOR_SPRITE_POSES) {
-      let value = 0;
-      for (const shown of sample.frames) if (shown.pose === pose) value += shown.opacity * blend;
-      for (const fading of state.outgoingFrames) if (fading.pose === pose) value += fading.opacity * (1 - blend);
-      opacity[pose] = value > 1 ? 1 : value;
-    }
-    return {
-      elapsedMs: elapsed,
-      playTick,
-      drawn,
-      scale,
-      tileHere,
-      lift: -sample.liftPixels,
-      lean: facing === 'left' ? -sample.leanDegrees : sample.leanDegrees,
-      facing,
-      phase: state.phase,
-      blend,
-      settling: remainder > 0,
-      relocating,
-      transitioning: blend < 1,
-      transition: null,
-      draw: { kind: 'poses', clip: state.runningClip, opacity: opacity as Readonly<Record<FloorSpritePose, number>> },
-    };
-  }
-
-  // The production strip: one edge per frame along the table (c).
-  const target = memberMotionTargetClip(wantedClip);
-  let transition: string | null = null;
-  if (state.motionClip !== target) {
-    const spec = MEMBER_MOTION_CLIP_SPECS[state.motionClip];
-    const finished = spec.loop || state.motionPhase >= 1;
-    // The edge out of the distance-driven walk waits for the feet to stop.
-    const feetStill = spec.drive !== 'distance' || movedTiles === 0;
-    if (finished && feetStill) {
-      const next = memberMotionNextClip(state.motionClip, target);
-      if (next !== null && next !== state.motionClip) {
-        const from = state.motionClip;
-        state.motionOutgoing = memberMotionEdgeDissolves(from, next)
-          ? { clip: from, frame: memberMotionFrameAt(from, state.motionPhase) }
-          : null;
-        state.motionBlendElapsedMs = state.motionOutgoing === null ? null : 0;
-        state.motionClip = next;
-        state.motionPhase = memberMotionStartPhase(next, p.index);
-        transition = `${from}>${next}`;
-      }
-    }
-  }
-  state.motionPhase = advanceMemberMotionPhase(state.motionClip, state.motionPhase, p.index, movedTiles, elapsed);
-  const frame = memberMotionFrameAt(state.motionClip, state.motionPhase);
-  const blend = state.motionBlendElapsedMs === null ? 1 : memberAnimationBlend(state.motionBlendElapsedMs);
-  if (blend >= 1) {
-    state.motionBlendElapsedMs = null;
-    state.motionOutgoing = null;
-  }
-  const layers: MemberMotionStripLayer[] = [{ clip: state.motionClip, frame, opacity: blend }];
-  if (state.motionOutgoing !== null) {
-    layers.push({ clip: state.motionOutgoing.clip, frame: state.motionOutgoing.frame, opacity: 1 - blend });
-  }
-  return {
+  const carried = {
+    production: state.production,
+    lastNow: now,
+    snapshots,
+    playTick,
+    pullFrom,
+    pullTo,
+    settleElapsedMs,
+    settleMs,
+    lastDrawn: drawn,
+    facing,
+    facingOpposedTiles,
+    facingHintMs,
+  };
+  const common = {
     elapsedMs: elapsed,
     playTick,
     drawn,
     scale,
     tileHere,
-    // The baked frames carry their own bounce and lean; nothing procedural is
-    // added on top (see the header's limits for the reaction beat).
-    lift: 0,
-    lean: 0,
     facing,
-    phase: state.motionPhase,
-    blend,
     settling: remainder > 0,
     relocating,
-    transitioning: blend < 1 || !MEMBER_MOTION_CLIP_SPECS[state.motionClip].loop,
-    transition,
-    draw: { kind: 'strip', clip: state.motionClip, frame, layers },
+  };
+
+  if (!state.production) {
+    // The legacy pose stack — VL-2's phase, sample and blend, unchanged.
+    let runningClip = state.runningClip;
+    let phase = state.phase;
+    let outgoingFrames = state.outgoingFrames;
+    if (wantedClip !== runningClip) {
+      outgoingFrames = sampleMemberAnimation(runningClip, phase).frames;
+      runningClip = wantedClip;
+      blendElapsedMs = 0;
+      phase = memberAnimationStartPhase(runningClip, p.index);
+    }
+    phase = advanceMemberAnimationPhase(runningClip, phase, movedTiles, elapsed);
+    const sample = sampleMemberAnimation(runningClip, phase);
+    const blend = blendElapsedMs === null ? 1 : memberAnimationBlend(blendElapsedMs);
+    if (blend >= 1) {
+      blendElapsedMs = null;
+      outgoingFrames = Object.freeze([]);
+    }
+    const opacity: Partial<Record<FloorSpritePose, number>> = {};
+    for (const pose of FLOOR_SPRITE_POSES) {
+      let value = 0;
+      for (const shown of sample.frames) if (shown.pose === pose) value += shown.opacity * blend;
+      for (const fading of outgoingFrames) if (fading.pose === pose) value += fading.opacity * (1 - blend);
+      opacity[pose] = value > 1 ? 1 : value;
+    }
+    return {
+      state: Object.freeze({
+        ...carried,
+        runningClip,
+        phase,
+        outgoingFrames,
+        blendElapsedMs,
+        motionClip: state.motionClip,
+        motionPhase: state.motionPhase,
+        motionOutgoing: state.motionOutgoing,
+        motionBlendElapsedMs: state.motionBlendElapsedMs,
+      }),
+      output: {
+        ...common,
+        lift: -sample.liftPixels,
+        lean: facing === 'left' ? -sample.leanDegrees : sample.leanDegrees,
+        phase,
+        blend,
+        transitioning: blend < 1,
+        transition: null,
+        draw: { kind: 'poses', clip: runningClip, opacity: opacity as Readonly<Record<FloorSpritePose, number>> },
+      },
+    };
+  }
+
+  // The production strip: one edge per frame along the table (c).
+  const target = memberMotionTargetClip(wantedClip);
+  let motionClip = state.motionClip;
+  let motionPhase = state.motionPhase;
+  let motionOutgoing = state.motionOutgoing;
+  let transition: string | null = null;
+  if (motionClip !== target) {
+    const spec = MEMBER_MOTION_CLIP_SPECS[motionClip];
+    const finished = spec.loop || motionPhase >= 1;
+    // The edge out of the distance-driven walk waits for the feet to stop.
+    const feetStill = spec.drive !== 'distance' || movedTiles === 0;
+    if (finished && feetStill) {
+      const next = memberMotionNextClip(motionClip, target);
+      if (next !== null && next !== motionClip) {
+        const from = motionClip;
+        motionOutgoing = memberMotionEdgeDissolves(from, next)
+          ? { clip: from, frame: memberMotionFrameAt(from, motionPhase) }
+          : null;
+        motionBlendElapsedMs = motionOutgoing === null ? null : 0;
+        motionClip = next;
+        motionPhase = memberMotionStartPhase(next, p.index);
+        transition = `${from}>${next}`;
+      }
+    }
+  }
+  motionPhase = advanceMemberMotionPhase(motionClip, motionPhase, p.index, movedTiles, elapsed);
+  const frame = memberMotionFrameAt(motionClip, motionPhase);
+  const blend = motionBlendElapsedMs === null ? 1 : memberAnimationBlend(motionBlendElapsedMs);
+  if (blend >= 1) {
+    motionBlendElapsedMs = null;
+    motionOutgoing = null;
+  }
+  const layers: MemberMotionStripLayer[] = [{ clip: motionClip, frame, opacity: blend }];
+  if (motionOutgoing !== null) {
+    layers.push({ clip: motionOutgoing.clip, frame: motionOutgoing.frame, opacity: 1 - blend });
+  }
+  return {
+    state: Object.freeze({
+      ...carried,
+      runningClip: state.runningClip,
+      phase: state.phase,
+      outgoingFrames: state.outgoingFrames,
+      blendElapsedMs: state.blendElapsedMs,
+      motionClip,
+      motionPhase,
+      motionOutgoing,
+      motionBlendElapsedMs,
+    }),
+    output: {
+      ...common,
+      // The baked frames carry their own bounce and lean; nothing procedural
+      // is added on top (see the header's limits for the reaction beat).
+      lift: 0,
+      lean: 0,
+      phase: motionPhase,
+      blend,
+      transitioning: blend < 1 || !MEMBER_MOTION_CLIP_SPECS[motionClip].loop,
+      transition,
+      draw: { kind: 'strip', clip: motionClip, frame, layers },
+    },
   };
 }
 

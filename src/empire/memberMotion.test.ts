@@ -106,8 +106,28 @@ interface Frame {
  * fired by `now`. `gapBefore` inserts a main-thread stall (a frame whose
  * timestamp is that much later) before the given frame index.
  */
+/** A body: the latest stepper state, replaced every frame — what the renderer's ref holds. */
+interface Body {
+  state: MemberMotionState;
+}
+
+function body(c: Contract, production: boolean): Body {
+  return { state: createMemberMotion(inputOf(c), production) };
+}
+
+/** One frame on a body: step, hold the returned state, return the output. */
+function step(b: Body, input: MemberMotionInput, now: number): MemberMotionOutput {
+  const before = b.state;
+  const result = stepMemberMotion(before, input, now);
+  // The stepper writes into nothing: the state it was handed is frozen and unchanged.
+  expect(Object.isFrozen(before)).toBe(true);
+  expect(Object.isFrozen(result.state)).toBe(true);
+  b.state = result.state;
+  return result.output;
+}
+
 function drive(
-  state: MemberMotionState,
+  b: Body,
   frames: number,
   script: (tick: number, now: number) => Contract,
   options: { readonly start?: number; readonly gapBefore?: { readonly frame: number; readonly ms: number } } = {},
@@ -119,7 +139,7 @@ function drive(
     if (options.gapBefore !== undefined && options.gapBefore.frame === i) now += options.gapBefore.ms;
     const tick = Math.floor(now / TICK_MS);
     const input = inputOf(script(tick, now));
-    const out = stepMemberMotion(state, input, now);
+    const out = step(b, input, now);
     log.push({ now, input, out });
     now += FRAME_MS;
   }
@@ -239,7 +259,7 @@ describe('the clip table routing (c)', () => {
       }
       return { tick, cell: { x: approach.x + STEP_TILES * 20, y: 3 }, clip: 'idle', lifecycle: 'seeking' };
     };
-    const state = createMemberMotion(inputOf(script(0)), true);
+    const state = body(script(0), true);
     const log = drive(state, 900, script);
     const visited: MemberMotionClip[] = [];
     const transitions: string[] = [];
@@ -311,8 +331,8 @@ describe('VL-2B\'s arithmetic, moved verbatim in meaning', () => {
       tick < 3
         ? { tick, cell: { x: 4, y: 3 }, clip: 'wait', lifecycle: 'queuing' }
         : { tick, cell: { x: 4, y: 3 }, clip: 'use-bench', lifecycle: 'using', pull };
-    const stalled = createMemberMotion(inputOf(script(0)), true);
-    const smooth = createMemberMotion(inputOf(script(0)), true);
+    const stalled = body(script(0), true);
+    const smooth = body(script(0), true);
     // The stall lands two frames into the settle.
     const settleFrame = Math.ceil((3 * TICK_MS) / FRAME_MS) + 2;
     const a = drive(stalled, 120, script, { gapBefore: { frame: settleFrame, ms: 400 } });
@@ -344,7 +364,7 @@ describe('VL-2B\'s arithmetic, moved verbatim in meaning', () => {
   });
 
   it('never draws the playback past the newest snapshot, and holds there when no tick arrives', () => {
-    const state = createMemberMotion(inputOf(walker(0)), false);
+    const state = body(walker(0), false);
     const log = drive(state, 60, (tick) => walker(Math.min(tick, 4)));
     for (const f of log) expect(f.out.playTick).toBeLessThanOrEqual(f.input.tick);
     const last = log[log.length - 1] as Frame;
@@ -359,20 +379,20 @@ describe('VL-2B\'s arithmetic, moved verbatim in meaning', () => {
   });
 
   it('replaces a same-tick point moved under a stride in place: no settle, no relocation', () => {
-    const state = createMemberMotion(inputOf(walker(0)), false);
+    const state = body(walker(0), false);
     drive(state, 30, (tick) => walker(Math.min(tick, 2)));
     const nudged: Contract = { ...walker(2), cell: { x: 1 + STEP_TILES * 2 + 0.5, y: 1 } };
-    const out = stepMemberMotion(state, inputOf(nudged), 30 * FRAME_MS);
+    const out = step(state, inputOf(nudged), 30 * FRAME_MS);
     expect(out.relocating).toBe(false);
     expect(out.settling).toBe(false);
-    expect(state.snapshots[state.snapshots.length - 1]?.x).toBe(inputOf(nudged).position.x);
-    expect(state.snapshots.length).toBeLessThanOrEqual(3);
+    expect(state.state.snapshots[state.state.snapshots.length - 1]?.x).toBe(inputOf(nudged).position.x);
+    expect(state.state.snapshots.length).toBeLessThanOrEqual(3);
   });
 
   it('glides a three-tile relocation at the settle pace: first frame where the last one was, one FLOOR_MEMBER_SETTLE_MS per tile, walking', () => {
     const before: Contract = { tick: 0, cell: { x: 5, y: 0 }, clip: 'idle', lifecycle: 'seeking' };
     const after: Contract = { tick: 1, cell: { x: 2, y: 0 }, clip: 'idle', lifecycle: 'seeking' };
-    const state = createMemberMotion(inputOf(before), true);
+    const state = body(before, true);
     const settled = drive(state, 20, () => before);
     const last = settled[settled.length - 1] as Frame;
     const log = drive(state, 80, () => after, { start: 20 * FRAME_MS });
@@ -383,9 +403,9 @@ describe('VL-2B\'s arithmetic, moved verbatim in meaning', () => {
     expect(first.out.drawn.y).toBeCloseTo(last.out.drawn.y, 9);
     const jumpTiles = Math.abs(inputOf(after).position.x - inputOf(before).position.x) / first.out.tileHere;
     expect(jumpTiles).toBeGreaterThan(STRIDE);
-    expect(state.settleMs).toBeCloseTo(settleDurationMs(jumpTiles), 6);
+    expect(state.state.settleMs).toBeCloseTo(settleDurationMs(jumpTiles), 6);
     // The steepest frame of the ease-out cubic is 3/duration of the pull per millisecond.
-    const bound = ((FRAME_MS * 3) / state.settleMs) * jumpTiles;
+    const bound = ((FRAME_MS * 3) / state.state.settleMs) * jumpTiles;
     let maxStep = 0;
     let landed: number | null = null;
     for (let i = 1; i < log.length; i += 1) {
@@ -395,8 +415,8 @@ describe('VL-2B\'s arithmetic, moved verbatim in meaning', () => {
     }
     expect(maxStep).toBeLessThanOrEqual(bound + 1e-9);
     expect(landed).not.toBeNull();
-    expect(landed as number).toBeLessThanOrEqual(state.settleMs + FRAME_MS);
-    expect(landed as number).toBeGreaterThanOrEqual(state.settleMs - FRAME_MS);
+    expect(landed as number).toBeLessThanOrEqual(state.state.settleMs + FRAME_MS);
+    expect(landed as number).toBeGreaterThanOrEqual(state.state.settleMs - FRAME_MS);
     const final = log[log.length - 1] as Frame;
     expect(final.out.drawn.x).toBeCloseTo(inputOf(after).position.x, 6);
     // Walking pace on average: three tiles in three settles' worth of time.
@@ -409,7 +429,7 @@ describe('VL-2B\'s arithmetic, moved verbatim in meaning', () => {
     const approach = feetAt(5, 3);
     const pull = { x: benchFeet.x - approach.x, y: benchFeet.y - approach.y };
     const using: Contract = { tick: 0, cell: { x: 5, y: 3 }, clip: 'use-bench', lifecycle: 'using', pull };
-    const state = createMemberMotion(inputOf(using), true);
+    const state = body(using, true);
     const settled = drive(state, 240, () => using);
     const last = settled[settled.length - 1] as Frame;
     expect(last.out.settling).toBe(false);
@@ -417,7 +437,7 @@ describe('VL-2B\'s arithmetic, moved verbatim in meaning', () => {
     // The sim now seats the member ON the bench cell: the point moves three
     // tiles, the pull goes to zero, and the drawn point does not move.
     const seated: Contract = { tick: 1, cell: { x: 2.5, y: 3.2 }, clip: 'use-bench', lifecycle: 'using' };
-    const out = stepMemberMotion(state, inputOf(seated), 240 * FRAME_MS);
+    const out = step(state, inputOf(seated), 240 * FRAME_MS);
     expect(out.relocating).toBe(true);
     expect(out.settling).toBe(false);
     expect(out.drawn.x).toBeCloseTo(last.out.drawn.x, 6);
@@ -441,7 +461,7 @@ describe('facing from the drawn velocity, with hysteresis (a)', () => {
   };
 
   it('does not flip on the tick the contract reverses; flips only after the drawn feet have travelled FLOOR_MEMBER_FACING_FLIP_TILES the other way', () => {
-    const state = createMemberMotion(inputOf(script(0)), true);
+    const state = body(script(0), true);
     const log = drive(state, 200, script);
     const reversalFrame = log.findIndex((f) => f.input.facing === 'left');
     expect(reversalFrame).toBeGreaterThan(0);
@@ -475,7 +495,7 @@ describe('facing from the drawn velocity, with hysteresis (a)', () => {
   });
 
   it('the control: a legacy body takes the contract facing on the reversal frame while its drawn point still moves right', () => {
-    const state = createMemberMotion(inputOf(script(0)), false);
+    const state = body(script(0), false);
     const log = drive(state, 200, script);
     const reversalFrame = log.findIndex((f) => f.input.facing === 'left');
     const flipFrame = log.findIndex((f) => f.out.facing === 'left');
@@ -492,10 +512,10 @@ describe('facing from the drawn velocity, with hysteresis (a)', () => {
       lifecycle,
       facing,
     });
-    const queued = createMemberMotion(inputOf(standing('right', 'queuing')), true);
+    const queued = body(standing('right', 'queuing'), true);
     drive(queued, 5, () => standing('right', 'queuing'));
-    expect(stepMemberMotion(queued, inputOf(standing('left', 'queuing')), 5 * FRAME_MS).facing).toBe('left');
-    const idle = createMemberMotion(inputOf(standing('right', 'seeking')), true);
+    expect(step(queued, inputOf(standing('left', 'queuing')), 5 * FRAME_MS).facing).toBe('left');
+    const idle = body(standing('right', 'seeking'), true);
     drive(idle, 5, () => standing('right', 'seeking'));
     const turned = drive(idle, 40, () => standing('left', 'seeking'), { start: 5 * FRAME_MS });
     const turnFrame = turned.findIndex((f) => f.out.facing === 'left');
@@ -504,7 +524,7 @@ describe('facing from the drawn velocity, with hysteresis (a)', () => {
     expect(waited).toBeGreaterThanOrEqual(EMPIRE_TUNING.FLOOR_MEMBER_FACING_HINT_MS);
     expect(waited - (turned[turnFrame] as Frame).out.elapsedMs).toBeLessThan(EMPIRE_TUNING.FLOOR_MEMBER_FACING_HINT_MS);
     // A hint that flickers back before the window resets it.
-    const flicker = createMemberMotion(inputOf(standing('right', 'seeking')), true);
+    const flicker = body(standing('right', 'seeking'), true);
     drive(flicker, 5, () => standing('left', 'seeking'));
     drive(flicker, 1, () => standing('right', 'seeking'), { start: 5 * FRAME_MS });
     const again = drive(flicker, 5, () => standing('left', 'seeking'), { start: 6 * FRAME_MS });
@@ -522,7 +542,7 @@ describe('depth scale from the drawn point (b)', () => {
       tick < 4
         ? { tick, cell: { x: 5, y: 0 }, clip: 'wait', lifecycle: 'queuing' }
         : { tick, cell: { x: 5, y: 0 }, clip: 'use-bench', lifecycle: 'using', pull, scale: benchScale };
-    const state = createMemberMotion(inputOf(script(0)), true);
+    const state = body(script(0), true);
     const log = drive(state, 240, script);
     // Standing: the inverse of the projection is the projection's own scale.
     for (const f of log.slice(0, 10)) expect(f.out.scale).toBeCloseTo(f.input.scale, 9);
@@ -566,8 +586,8 @@ describe('depth scale from the drawn point (b)', () => {
 describe('phase desync (d) and no reset on a harmless re-render (e)', () => {
   it('two members in the same clip at the same instant are at different phases and drift apart', () => {
     const standing = (index: number): Contract => ({ tick: 0, cell: { x: 2, y: 2 }, clip: 'idle', lifecycle: 'seeking', index });
-    const a = createMemberMotion(inputOf(standing(0)), true);
-    const b = createMemberMotion(inputOf(standing(1)), true);
+    const a = body(standing(0), true);
+    const b = body(standing(1), true);
     const la = drive(a, 120, () => standing(0));
     const lb = drive(b, 120, () => standing(1));
     expect((la[0] as Frame).out.phase).not.toBe((lb[0] as Frame).out.phase);
@@ -586,7 +606,7 @@ describe('phase desync (d) and no reset on a harmless re-render (e)', () => {
     const pull = { x: benchFeet.x - here.x, y: benchFeet.y - here.y };
     const using: Contract = { tick: 7, cell: { x: 4, y: 3 }, clip: 'use-bench', lifecycle: 'using', pull };
     for (const production of [true, false]) {
-      const state = createMemberMotion(inputOf(using), production);
+      const state = body(using, production);
       const log = drive(state, 40, () => using);
       for (let i = 2; i < log.length; i += 1) {
         const prev = log[i - 1] as Frame;
@@ -620,7 +640,7 @@ describe('phase desync (d) and no reset on a harmless re-render (e)', () => {
 
   it('a legacy body draws the pose stack, blended over one tick at a clip change, facing as the contract says', () => {
     const script = (tick: number): Contract => (tick < 3 ? { ...walker(0), facing: 'left' } : { ...walker(tick), facing: 'left' });
-    const state = createMemberMotion(inputOf({ ...walker(0), clip: 'idle', facing: 'left' }), false);
+    const state = body({ ...walker(0), clip: 'idle', facing: 'left' }, false);
     const log = drive(state, 60, script);
     for (const f of log) {
       expect(f.out.draw.kind).toBe('poses');
