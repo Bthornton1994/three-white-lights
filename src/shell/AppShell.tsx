@@ -177,9 +177,11 @@ function ShellNav({
  * Bootstrap is LOADING / LOADED / EMPTY / REFUSED (or READ_FAILED). The first
  * paint is LOADING, so an opening gym is not shown and then replaced.
  * EMPTY is empty, not a pretence that a save existed. REFUSED stays refused
- * and does not overwrite corrupt bytes. Date.now catch-up starts only after
- * bootstrap is playable, using the session's real-time anchor, so a slow
- * storage read is not dispatched as player absence.
+ * and does not overwrite corrupt bytes. Process downtime uses the host
+ * record's savedThroughMs, captured against bootStartedMs before the
+ * storage read, then one existing offline advance-clock. Date.now catch-up
+ * starts only after bootstrap is playable, so a slow storage read is not
+ * dispatched as player absence.
  *
  * WHY THIS COMPONENT IS NOW ALWAYS MOUNTED, RATHER THAN MOUNTED ONLY WHILE
  * `route.surface === 'gym'`.
@@ -211,14 +213,12 @@ function ShellNav({
  * AppState / lock-screen backgrounding is still not claimed.
  *
  * THE MECHANISM: REAL ELAPSED TIME, READ ON DEMAND, NEVER MINTED. There is no
- * per-second game-state tick here. The host session owns a real-time anchor
- * established only after durable load, then reads `Date.now()` again,
- * computes the real gap, and — if that gap is at least one whole tick
- * (`EMPIRE_TUNING.TICK_SECONDS`) — dispatches `advance-clock` with that gap
- * and moves the anchor forward. `advance-clock` already runs the real
- * accrual, capped exactly as `bankableOfflineSeconds` /
- * `OFFLINE_EARNINGS_CAP_HOURS` always specified; nothing here re-implements
- * or widens that cap.
+ * per-second game-state tick here. The host session stores a wall-clock
+ * savedThroughMs beside Empire bytes. Process restart applies
+ * max(0, bootStartedMs - savedThroughMs) through existing `advance-clock`
+ * `'offline'`. After that, a real-time anchor is established and later
+ * visible-interval catch-up reads `Date.now()` against that anchor. Nothing
+ * here re-implements `bankableOfflineSeconds` / `OFFLINE_EARNINGS_CAP_HOURS`.
  *
  * Catch-up is called from two places, only once the session is playable:
  *

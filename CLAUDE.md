@@ -207,8 +207,12 @@ Files this crossing names, and why:
 - `src/shell/AppShell.tsx` (`GymHost`) — Grok edits. Bootstrap LOADING /
   LOADED / EMPTY / REFUSED. EMPTY is empty, not a silent new gym. REFUSED
   stays refused; corrupt bytes are not overwritten with an opening gym.
-  Date.now catch-up starts only after durable load. Persist after committed
-  reducer transitions. Session A stays out of this GymHost persistence work.
+  Date.now catch-up starts only after durable load. Process downtime is a
+  host-owned `savedThroughMs` on the durable host record, not an Empire
+  field: bootStartedMs is captured before the storage read, then one existing
+  offline `advance-clock` receives `max(0, bootStartedMs - savedThroughMs)`.
+  Persist after committed reducer transitions. Session A stays out of this
+  GymHost persistence work.
   Claude Code Session B does not restyle this beyond the functional
   loading/refused copy.
 - `src/shell/gymHostPersistence.ts` + `src/shell/gymHostPersistence.test.ts`

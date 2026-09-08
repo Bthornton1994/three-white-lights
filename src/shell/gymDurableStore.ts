@@ -11,6 +11,7 @@
  * tests inject a memory store and do not have to call
  * getProductionGymDurableStore.
  *
+ * One durable key holds the host record (savedThroughMs + Empire bytes).
  * AsyncStorage is loaded on first get/set so a node test that only
  * constructs createKeyValueDurableStore(fake) never evaluates the native
  * module.
@@ -18,7 +19,7 @@
 
 import { type DurableByteStore } from './gymHostPersistence';
 
-export const GYM_EMPIRE_SAVE_KEY = 'gym-empire.facility.v1';
+export const GYM_HOST_SAVE_KEY = 'gym-empire.host.v1';
 
 export interface AsyncStorageLike {
   readonly getItem: (key: string) => Promise<string | null>;
@@ -27,8 +28,8 @@ export interface AsyncStorageLike {
 
 export function createKeyValueDurableStore(storage: AsyncStorageLike): DurableByteStore {
   return {
-    get: () => storage.getItem(GYM_EMPIRE_SAVE_KEY),
-    set: (bytes) => storage.setItem(GYM_EMPIRE_SAVE_KEY, bytes),
+    get: () => storage.getItem(GYM_HOST_SAVE_KEY),
+    set: (bytes) => storage.setItem(GYM_HOST_SAVE_KEY, bytes),
   };
 }
 
@@ -54,11 +55,11 @@ function createLazyAsyncStorageStore(): DurableByteStore {
   return {
     get: async () => {
       const backend = await storage();
-      return backend.getItem(GYM_EMPIRE_SAVE_KEY);
+      return backend.getItem(GYM_HOST_SAVE_KEY);
     },
     set: async (bytes) => {
       const backend = await storage();
-      await backend.setItem(GYM_EMPIRE_SAVE_KEY, bytes);
+      await backend.setItem(GYM_HOST_SAVE_KEY, bytes);
     },
   };
 }

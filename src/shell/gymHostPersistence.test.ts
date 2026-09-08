@@ -1,10 +1,10 @@
 /**
  * gymHostPersistence.test.ts — host-owned save/load path.
  *
- * Empire encode/load/restore stay the authority for bytes. These tests drive
- * the HOST session: async DurableByteStore, bootstrap statuses, write queue,
- * clock anchor after load, reset, remount. They do not mount GymScreen and
- * they do not import AsyncStorage.
+ * Empire encode/load/restore stay the authority for facility bytes. These
+ * tests drive the HOST session: host envelope, savedThroughMs, async store,
+ * bootstrap statuses, write queue, process-downtime catch-up, reset, remount.
+ * They do not mount GymScreen and they do not import AsyncStorage.
  */
 
 import { readFileSync } from 'node:fs';
@@ -16,8 +16,6 @@ import { describe, expect, it } from 'vitest';
 import {
   bayAxisLevels,
   decodeFacilitySave,
-  encodeFacilitySave,
-  FACILITY_SAVE_KIND,
   persistableGymTruthFromGymView,
   presentationInputFromRestored,
   restoreDurableFacility,
@@ -27,6 +25,7 @@ import { EMPIRE_TUNING } from '../empire/empireTuning';
 import { stepFloorSim } from '../empire/floorSim';
 import {
   createGymViewState,
+  gymViewReduce,
   type GymViewAction,
   type GymViewState,
 } from '../empire/ladderView';
@@ -38,18 +37,27 @@ import { sessionEquipmentCost } from '../empire/sessions';
 import { COMPETITION_BENCH_BAY } from '../empire/trainingStation';
 import {
   createGymHostSession,
+  decodeHostSave,
   encodeGymView,
+  encodeHostSave,
+  GYM_HOST_SAVE_KIND,
+  GYM_HOST_SAVE_SCHEMA_VERSION,
+  hostOfflineGapSeconds,
   memoryDurableStore,
   type DurableByteStore,
+  type GymHostSaveV1,
   type GymHostSession,
   type HostClock,
 } from './gymHostPersistence';
-import { createKeyValueDurableStore, GYM_EMPIRE_SAVE_KEY } from './gymDurableStore';
+import { createKeyValueDurableStore, GYM_HOST_SAVE_KEY } from './gymDurableStore';
 
 const T = EMPIRE_TUNING;
 const BAY = COMPETITION_BENCH_BAY;
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
+const EIGHT_HOURS_MS = 8 * T.SECONDS_PER_HOUR * T.MILLISECONDS_PER_SECOND;
+const EIGHT_HOURS_SECONDS = 8 * T.SECONDS_PER_HOUR;
+const READ_HOLD_MS = 45 * T.MILLISECONDS_PER_SECOND;
 
 function source(relPath: string): string {
   return readFileSync(join(ROOT, relPath), 'utf8');
@@ -79,6 +87,22 @@ function requirePlayable(session: GymHostSession): GymViewState {
 
 function projection(state: GymViewState): unknown {
   return persistableGymTruthFromGymView(state);
+}
+
+function requireHostRecord(bytes: string | null): GymHostSaveV1 {
+  const loaded = decodeHostSave(bytes);
+  if (loaded.kind !== 'loaded') {
+    throw new Error(`expected host record, got ${loaded.kind}`);
+  }
+  return loaded.record;
+}
+
+function offlineAdvance(state: GymViewState, gapSeconds: number): GymViewState {
+  return gymViewReduce(state, {
+    kind: 'advance-clock',
+    gapSeconds,
+    mode: 'offline',
+  });
 }
 
 function createHoldableStore(initial: string | null = null): {
@@ -131,14 +155,12 @@ function createReleaseQueueStore(initial: string | null = null): {
   const waiting: Array<{
     readonly resolve: () => void;
     readonly reject: (error: unknown) => void;
-    readonly apply: () => void;
   }> = [];
   return {
     store: {
       get: () =>
         new Promise<string | null>((resolve, reject) => {
           waiting.push({
-            apply: () => resolve(bytes),
             resolve: () => resolve(bytes),
             reject,
           });
@@ -146,9 +168,6 @@ function createReleaseQueueStore(initial: string | null = null): {
       set: (next) =>
         new Promise<void>((resolve, reject) => {
           waiting.push({
-            apply: () => {
-              bytes = next;
-            },
             resolve: () => {
               bytes = next;
               resolve();
@@ -279,6 +298,24 @@ async function playNonDefaultGym(session: GymHostSession): Promise<GymViewState>
   return requirePlayable(session);
 }
 
+async function savedOpeningAt(startMs: number): Promise<{
+  readonly store: ReturnType<typeof memoryDurableStore>;
+  readonly played: GymViewState;
+}> {
+  const store = memoryDurableStore();
+  const session = createGymHostSession({ store, clock: fakeClock(startMs) });
+  await session.bootstrap();
+  expect(
+    session.dispatch({
+      kind: 'advance-clock',
+      gapSeconds: 2 * T.SECONDS_PER_HOUR,
+      mode: 'online',
+    }),
+  ).not.toBeNull();
+  await session.flushWrites();
+  return Object.freeze({ store, played: requirePlayable(session) });
+}
+
 describe('gymHostPersistence.ts — host/empire boundary', () => {
   it('host persistence names no platform storage APIs, and empire still does not', () => {
     const host = source('src/shell/gymHostPersistence.ts');
@@ -289,14 +326,94 @@ describe('gymHostPersistence.ts — host/empire boundary', () => {
     }
     expect(empire).not.toMatch(/from ['"]@react-native-async-storage/);
     expect(empire).not.toMatch(/from ['"]expo-file-system/);
+    expect(empire).not.toContain(GYM_HOST_SAVE_KIND);
+    expect(empire).not.toContain('savedThroughMs');
     expect(adapter).toContain('@react-native-async-storage/async-storage');
     expect(adapter).not.toMatch(/\blocalStorage\b/);
-    expect(adapter).toContain(GYM_EMPIRE_SAVE_KEY);
+    expect(adapter).toContain(GYM_HOST_SAVE_KEY);
+    expect(hostOfflineGapSeconds(8, 0)).toBe(0);
+  });
+});
+
+describe('gymHostPersistence.ts — host envelope', () => {
+  it('wraps exact Empire facility bytes and refuses a raw facility envelope', () => {
+    const state = createGymViewState();
+    const facilityBytes = encodeGymView(state);
+    const wrapped = encodeHostSave(state, 1_000_000);
+    const loaded = decodeHostSave(wrapped);
+    expect(loaded.kind).toBe('loaded');
+    if (loaded.kind !== 'loaded') return;
+    expect(loaded.record.kind).toBe(GYM_HOST_SAVE_KIND);
+    expect(loaded.record.schemaVersion).toBe(GYM_HOST_SAVE_SCHEMA_VERSION);
+    expect(loaded.record.savedThroughMs).toBe(1_000_000);
+    expect(loaded.record.facilityBytes).toBe(facilityBytes);
+    expect(decodeFacilitySave(loaded.record.facilityBytes).kind).toBe('loaded');
+    expect(decodeHostSave(facilityBytes)).toEqual({ kind: 'refused', reason: 'unknown-kind' });
+  });
+
+  it('refuses corrupt, unsupported, and incoherent host records', () => {
+    expect(decodeHostSave('{')).toEqual({ kind: 'refused', reason: 'corrupt-json' });
+    expect(decodeHostSave(JSON.stringify({ kind: 'other', schemaVersion: 1 }))).toEqual({
+      kind: 'refused',
+      reason: 'unknown-kind',
+    });
+    const state = createGymViewState();
+    expect(
+      decodeHostSave(
+        JSON.stringify({
+          kind: GYM_HOST_SAVE_KIND,
+          schemaVersion: 2,
+          savedThroughMs: 1,
+          facilityBytes: encodeGymView(state),
+        }),
+      ),
+    ).toEqual({ kind: 'refused', reason: 'unsupported-version' });
+    expect(
+      decodeHostSave(
+        JSON.stringify({
+          kind: GYM_HOST_SAVE_KIND,
+          schemaVersion: 1,
+          savedThroughMs: 1,
+          facilityBytes: encodeGymView(state),
+          extra: true,
+        }),
+      ),
+    ).toEqual({ kind: 'refused', reason: 'incoherent' });
+    expect(
+      decodeHostSave(
+        JSON.stringify({
+          kind: GYM_HOST_SAVE_KIND,
+          schemaVersion: 1,
+          savedThroughMs: -1,
+          facilityBytes: encodeGymView(state),
+        }),
+      ),
+    ).toEqual({ kind: 'refused', reason: 'incoherent' });
+    expect(
+      decodeHostSave(
+        JSON.stringify({
+          kind: GYM_HOST_SAVE_KIND,
+          schemaVersion: 1,
+          savedThroughMs: 1.5,
+          facilityBytes: encodeGymView(state),
+        }),
+      ),
+    ).toEqual({ kind: 'refused', reason: 'incoherent' });
+    expect(
+      decodeHostSave(
+        JSON.stringify({
+          kind: GYM_HOST_SAVE_KIND,
+          schemaVersion: 1,
+          savedThroughMs: 1,
+          facilityBytes: '{',
+        }),
+      ),
+    ).toEqual({ kind: 'refused', reason: 'corrupt-json' });
   });
 });
 
 describe('gymHostPersistence.ts — bootstrap', () => {
-  it('empty store is EMPTY, not a silent loaded gym, and then persists opening bytes', async () => {
+  it('empty store is EMPTY, not a silent loaded gym, and then persists opening host bytes', async () => {
     const store = memoryDurableStore();
     const session = createGymHostSession({ store, clock: fakeClock(1_000_000) });
     expect(session.snapshot().bootstrap.status).toBe('LOADING');
@@ -307,12 +424,13 @@ describe('gymHostPersistence.ts — bootstrap', () => {
     if (booted.bootstrap.status !== 'EMPTY') return;
     expect(projection(booted.bootstrap.state)).toEqual(projection(createGymViewState()));
     await session.flushWrites();
-    expect(store.inspect()).toBe(encodeGymView(createGymViewState()));
-    const remount = createGymHostSession({ store, clock: fakeClock(2_000_000) });
+    expect(store.inspect()).toBe(encodeHostSave(createGymViewState(), 1_000_000));
+    const remount = createGymHostSession({ store, clock: fakeClock(1_000_000) });
     const again = await remount.bootstrap();
     expect(again.bootstrap.status).toBe('LOADED');
     if (again.bootstrap.status !== 'LOADED') return;
     expect(projection(again.bootstrap.state)).toEqual(projection(createGymViewState()));
+    expect(again.bootstrap.state.lastAccrual).toBeNull();
   });
 
   it('valid store restores LOADED from restoreGymViewState', async () => {
@@ -330,16 +448,14 @@ describe('gymHostPersistence.ts — bootstrap', () => {
       }),
     ).not.toBeNull();
     await funded.flushWrites();
-    const bytes = memoryDurableStore(encodeGymView(requirePlayable(funded)));
-    // the store above is a fresh one with copied bytes
-    const store = memoryDurableStore(encodeGymView(requirePlayable(funded)));
+    const played = requirePlayable(funded);
+    const store = memoryDurableStore(encodeHostSave(played, 3_000_000));
     const session = createGymHostSession({ store, clock: fakeClock(3_000_000) });
     const booted = await session.bootstrap();
     expect(booted.bootstrap.status).toBe('LOADED');
     if (booted.bootstrap.status !== 'LOADED') return;
-    expect(projection(booted.bootstrap.state)).toEqual(projection(requirePlayable(funded)));
+    expect(projection(booted.bootstrap.state)).toEqual(projection(played));
     expect(projection(booted.bootstrap.state)).not.toEqual(projection(opening));
-    expect(bytes.inspect()).toBe(store.inspect());
   });
 
   it('corrupt bytes are REFUSED and are not overwritten', async () => {
@@ -356,11 +472,11 @@ describe('gymHostPersistence.ts — bootstrap', () => {
   });
 
   it('unsupported version is REFUSED and does not mint an opening gym', async () => {
-    const truth = persistableGymTruthFromGymView(createGymViewState());
     const bytes = JSON.stringify({
-      kind: FACILITY_SAVE_KIND,
+      kind: GYM_HOST_SAVE_KIND,
       schemaVersion: 2,
-      truth,
+      savedThroughMs: 1,
+      facilityBytes: encodeGymView(createGymViewState()),
     });
     const store = memoryDurableStore(bytes);
     const session = createGymHostSession({ store, clock: fakeClock(1_000_000) });
@@ -419,20 +535,20 @@ describe('gymHostPersistence.ts — clock ordering', () => {
     const mark = played.managed.gym.ladder.collectedAt;
     expect(mark).toBeGreaterThan(0);
 
-    const held = createHoldableStore(encodeGymView(played));
+    const held = createHoldableStore(encodeHostSave(played, 10_000_000));
     const clock = fakeClock(10_000_000);
     held.holdNextGet();
     const session = createGymHostSession({ store: held.store, clock });
     const pending = session.bootstrap();
     expect(session.snapshot().bootstrap.status).toBe('LOADING');
     expect(session.catchUp('offline')).toBeNull();
-    clock.add(45 * T.MILLISECONDS_PER_SECOND);
+    clock.add(READ_HOLD_MS);
     held.releaseGet();
     const booted = await pending;
     expect(booted.bootstrap.status).toBe('LOADED');
     if (booted.bootstrap.status !== 'LOADED') return;
     expect(booted.bootstrap.state.managed.gym.ladder.collectedAt).toBe(mark);
-    expect(booted.realtimeAnchorMs).toBe(10_000_000 + 45 * T.MILLISECONDS_PER_SECOND);
+    expect(booted.realtimeAnchorMs).toBe(10_000_000 + READ_HOLD_MS);
     const zero = session.catchUp('offline');
     expect(zero).not.toBeNull();
     expect(requirePlayable(session).managed.gym.ladder.collectedAt).toBe(mark);
@@ -440,6 +556,124 @@ describe('gymHostPersistence.ts — clock ordering', () => {
     const later = session.catchUp('offline');
     expect(later).not.toBeNull();
     expect(requirePlayable(session).managed.gym.ladder.collectedAt).toBe(mark + 5);
+  });
+});
+
+describe('gymHostPersistence.ts — cold-start elapsed continuity', () => {
+  it('8h process downtime is paid once as offline, and 45s storage latency is not', async () => {
+    const startMs = 50_000_000;
+    const { store, played } = await savedOpeningAt(startMs);
+    const mark = played.managed.gym.ladder.collectedAt;
+    const saved = requireHostRecord(store.inspect());
+    expect(saved.savedThroughMs).toBe(startMs);
+    expect(saved.facilityBytes).toBe(encodeGymView(played));
+    expect(mark).not.toBe(saved.savedThroughMs);
+
+    const held = createHoldableStore(store.inspect());
+    const clock = fakeClock(startMs + EIGHT_HOURS_MS);
+    held.holdNextGet();
+    const session = createGymHostSession({ store: held.store, clock });
+    const pending = session.bootstrap();
+    expect(hostOfflineGapSeconds(clock.read(), saved.savedThroughMs)).toBe(EIGHT_HOURS_SECONDS);
+    clock.add(READ_HOLD_MS);
+    held.releaseGet();
+    const booted = await pending;
+    expect(booted.bootstrap.status).toBe('LOADED');
+    if (booted.bootstrap.status !== 'LOADED') return;
+    const expected = offlineAdvance(played, EIGHT_HOURS_SECONDS);
+    expect(booted.bootstrap.state.managed.gym.ladder.collectedAt).toBe(mark + EIGHT_HOURS_SECONDS);
+    expect(projection(booted.bootstrap.state)).toEqual(projection(expected));
+    expect(booted.bootstrap.state.lastAccrual).toEqual(expected.lastAccrual);
+    expect(booted.bootstrap.state.lastAccrual?.secondsElapsed).toBe(EIGHT_HOURS_SECONDS);
+    expect(booted.bootstrap.state.lastAccrual?.secondsBanked).toBe(EIGHT_HOURS_SECONDS);
+    expect(booted.bootstrap.state.lastAccrual?.secondsDiscarded).toBe(0);
+    expect(booted.bootstrap.state.managed.gym.ladder.gymBucks).toBe(
+      expected.managed.gym.ladder.gymBucks,
+    );
+    expect(booted.bootstrap.state.managed.condition).toEqual(expected.managed.condition);
+    expect(booted.realtimeAnchorMs).toBe(startMs + EIGHT_HOURS_MS + READ_HOLD_MS);
+    const durable = requireHostRecord(held.inspect());
+    expect(durable.savedThroughMs).toBe(startMs + EIGHT_HOURS_MS + READ_HOLD_MS);
+    expect(durable.facilityBytes).toBe(encodeGymView(booted.bootstrap.state));
+    expect(session.catchUp('offline')).not.toBeNull();
+    expect(requirePlayable(session).managed.gym.ladder.collectedAt).toBe(mark + EIGHT_HOURS_SECONDS);
+  });
+
+  it('immediate remount with elapsed 0 mints nothing', async () => {
+    const startMs = 7_000_000;
+    const { store, played } = await savedOpeningAt(startMs);
+    const remount = createGymHostSession({ store, clock: fakeClock(startMs) });
+    const booted = await remount.bootstrap();
+    expect(booted.bootstrap.status).toBe('LOADED');
+    if (booted.bootstrap.status !== 'LOADED') return;
+    expect(projection(booted.bootstrap.state)).toEqual(projection(played));
+    expect(booted.bootstrap.state.lastAccrual).toBeNull();
+    expect(booted.bootstrap.state.managed.gym.ladder.collectedAt).toBe(
+      played.managed.gym.ladder.collectedAt,
+    );
+  });
+
+  it('a long absence reports the full elapsed gap and banks only the existing offline cap', async () => {
+    const startMs = 8_000_000;
+    const { store, played } = await savedOpeningAt(startMs);
+    const elapsedHours = T.OFFLINE_EARNINGS_CAP_HOURS + 8;
+    const elapsedSeconds = elapsedHours * T.SECONDS_PER_HOUR;
+    const remount = createGymHostSession({
+      store,
+      clock: fakeClock(startMs + elapsedSeconds * T.MILLISECONDS_PER_SECOND),
+    });
+    const booted = await remount.bootstrap();
+    expect(booted.bootstrap.status).toBe('LOADED');
+    if (booted.bootstrap.status !== 'LOADED') return;
+    const expected = offlineAdvance(played, elapsedSeconds);
+    expect(booted.bootstrap.state.lastAccrual).toEqual(expected.lastAccrual);
+    expect(booted.bootstrap.state.lastAccrual?.secondsElapsed).toBe(elapsedSeconds);
+    expect(booted.bootstrap.state.lastAccrual?.secondsBanked).toBe(
+      T.OFFLINE_EARNINGS_CAP_HOURS * T.SECONDS_PER_HOUR,
+    );
+    expect(booted.bootstrap.state.lastAccrual?.secondsDiscarded).toBe(EIGHT_HOURS_SECONDS);
+    expect(booted.bootstrap.state.managed.gym.ladder.collectedAt).toBe(
+      played.managed.gym.ladder.collectedAt + elapsedSeconds,
+    );
+    expect(booted.bootstrap.state.managed.gym.ladder.gymBucks).toBe(
+      expected.managed.gym.ladder.gymBucks,
+    );
+    expect(projection(booted.bootstrap.state)).toEqual(projection(expected));
+  });
+
+  it('a wall clock moving backwards yields no gap and does not refuse the save', async () => {
+    const startMs = 9_000_000;
+    const { store, played } = await savedOpeningAt(startMs);
+    const remount = createGymHostSession({ store, clock: fakeClock(startMs - 10_000) });
+    const booted = await remount.bootstrap();
+    expect(booted.bootstrap.status).toBe('LOADED');
+    if (booted.bootstrap.status !== 'LOADED') return;
+    expect(projection(booted.bootstrap.state)).toEqual(projection(played));
+    expect(booted.bootstrap.state.lastAccrual).toBeNull();
+    expect(sessionEquipmentCost('mats')).toBeGreaterThan(0);
+  });
+
+  it('repeated boot cannot pay the same elapsed real time twice', async () => {
+    const startMs = 11_000_000;
+    const { store, played } = await savedOpeningAt(startMs);
+    const first = createGymHostSession({
+      store,
+      clock: fakeClock(startMs + EIGHT_HOURS_MS),
+    });
+    const once = await first.bootstrap();
+    expect(once.bootstrap.status).toBe('LOADED');
+    if (once.bootstrap.status !== 'LOADED') return;
+    const afterOnce = once.bootstrap.state.managed.gym.ladder.collectedAt;
+    expect(afterOnce).toBe(played.managed.gym.ladder.collectedAt + EIGHT_HOURS_SECONDS);
+    const second = createGymHostSession({
+      store,
+      clock: fakeClock(requireHostRecord(store.inspect()).savedThroughMs),
+    });
+    const twice = await second.bootstrap();
+    expect(twice.bootstrap.status).toBe('LOADED');
+    if (twice.bootstrap.status !== 'LOADED') return;
+    expect(twice.bootstrap.state.managed.gym.ladder.collectedAt).toBe(afterOnce);
+    expect(twice.bootstrap.state.lastAccrual).toBeNull();
   });
 });
 
@@ -470,7 +704,47 @@ describe('gymHostPersistence.ts — writes', () => {
     if (flushed.write.kind !== 'failed') return;
     expect(flushed.write.message).toBe('disk full');
     expect(requirePlayable(session).managed.gym.ladder.gymBucks).toBeGreaterThan(before);
-    expect(inner.inspect()).toBe(encodeGymView(createGymViewState()));
+    expect(inner.inspect()).toBe(encodeHostSave(createGymViewState(), 1_000_000));
+  });
+
+  it('a failed catch-up write leaves the previous coherent host pair durable', async () => {
+    const startMs = 12_000_000;
+    const { store: inner, played } = await savedOpeningAt(startMs);
+    const original = inner.inspect();
+    const store: DurableByteStore = {
+      get: () => inner.get(),
+      set: async () => {
+        throw new Error('disk full');
+      },
+    };
+    const failed = createGymHostSession({
+      store,
+      clock: fakeClock(startMs + EIGHT_HOURS_MS),
+    });
+    const booted = await failed.bootstrap();
+    expect(booted.bootstrap.status).toBe('LOADED');
+    if (booted.bootstrap.status !== 'LOADED') return;
+    expect(booted.write.kind).toBe('failed');
+    expect(booted.bootstrap.state.managed.gym.ladder.collectedAt).toBe(
+      played.managed.gym.ladder.collectedAt + EIGHT_HOURS_SECONDS,
+    );
+    expect(inner.inspect()).toBe(original);
+    expect(requireHostRecord(inner.inspect()).savedThroughMs).toBe(startMs);
+    expect(requireHostRecord(inner.inspect()).facilityBytes).toBe(encodeGymView(played));
+
+    const recovered = createGymHostSession({
+      store: inner,
+      clock: fakeClock(startMs + EIGHT_HOURS_MS),
+    });
+    const again = await recovered.bootstrap();
+    expect(again.bootstrap.status).toBe('LOADED');
+    if (again.bootstrap.status !== 'LOADED') return;
+    expect(again.bootstrap.state.managed.gym.ladder.collectedAt).toBe(
+      played.managed.gym.ladder.collectedAt + EIGHT_HOURS_SECONDS,
+    );
+    const durable = requireHostRecord(inner.inspect());
+    expect(durable.savedThroughMs).toBe(startMs + EIGHT_HOURS_MS);
+    expect(durable.facilityBytes).toBe(encodeGymView(again.bootstrap.state));
   });
 
   it('a newer committed state wins even if the older write is still in flight', async () => {
@@ -497,17 +771,19 @@ describe('gymHostPersistence.ts — writes', () => {
       mode: 'online',
     };
     expect(session.dispatch(actionA)).not.toBeNull();
-    const afterA = encodeGymView(requirePlayable(session));
+    const afterA = encodeHostSave(requirePlayable(session), 1_000_000);
     expect(session.dispatch(actionB)).not.toBeNull();
-    const afterB = encodeGymView(requirePlayable(session));
+    const afterB = encodeHostSave(requirePlayable(session), 1_000_000);
     expect(afterB).not.toBe(afterA);
     await resolveQueuedUntilIdle(queued);
     await session.flushWrites();
     expect(queued.inspect()).toBe(afterB);
-    const loaded = decodeFacilitySave(queued.inspect() ?? '');
+    const loaded = decodeHostSave(queued.inspect());
     expect(loaded.kind).toBe('loaded');
     if (loaded.kind !== 'loaded') return;
-    expect(loaded.envelope.truth).toEqual(persistableGymTruthFromGymView(requirePlayable(session)));
+    expect(loaded.record.savedThroughMs).toBe(1_000_000);
+    expect(decodeFacilitySave(loaded.record.facilityBytes).kind).toBe('loaded');
+    expect(loaded.record.facilityBytes).toBe(encodeGymView(requirePlayable(session)));
   });
 });
 
@@ -518,19 +794,30 @@ describe('gymHostPersistence.ts — reset', () => {
     await session.bootstrap();
     const played = await playNonDefaultGym(session);
     expect(projection(played)).not.toEqual(projection(createGymViewState()));
-    expect(store.inspect()).toBe(encodeGymView(played));
+    expect(store.inspect()).toBe(encodeHostSave(played, 1_000_000));
     expect(session.dispatch({ kind: 'reset-gym' })).not.toBeNull();
     await session.flushWrites();
-    const openingBytes = encodeGymView(createGymViewState());
+    const openingBytes = encodeHostSave(createGymViewState(), 1_000_000);
     expect(store.inspect()).toBe(openingBytes);
     expect(projection(requirePlayable(session))).toEqual(projection(createGymViewState()));
-    const remount = createGymHostSession({ store, clock: fakeClock(9_000_000) });
+    const remount = createGymHostSession({ store, clock: fakeClock(1_000_000) });
     const booted = await remount.bootstrap();
     expect(booted.bootstrap.status).toBe('LOADED');
     if (booted.bootstrap.status !== 'LOADED') return;
     expect(projection(booted.bootstrap.state)).toEqual(projection(createGymViewState()));
     expect(booted.bootstrap.state.managed.manager).toBeNull();
     expect(bayAxisLevels(booted.bootstrap.state.capability).capacity).toBe(0);
+
+    const later = createGymHostSession({
+      store,
+      clock: fakeClock(1_000_000 + EIGHT_HOURS_MS),
+    });
+    const laterBoot = await later.bootstrap();
+    expect(laterBoot.bootstrap.status).toBe('LOADED');
+    if (laterBoot.bootstrap.status !== 'LOADED') return;
+    expect(laterBoot.bootstrap.state.managed.manager).toBeNull();
+    expect(laterBoot.bootstrap.state.managed.gym.sessionEquipment).toEqual([]);
+    expect(laterBoot.bootstrap.state.managed.gym.ladder.collectedAt).toBe(EIGHT_HOURS_SECONDS);
   });
 });
 
@@ -555,9 +842,10 @@ describe('gymHostPersistence.ts — remount of a non-default gym', () => {
     expect(member.recentVisits.length).toBeGreaterThan(0);
     const beforeExperience = livingMemberExperience(member.recentVisits);
     const beforeRetention = livingMemberRetentionPressure(beforeExperience);
-    expect(store.inspect()).toBe(encodeGymView(played));
+    const savedThroughMs = requireHostRecord(store.inspect()).savedThroughMs;
+    expect(store.inspect()).toBe(encodeHostSave(played, savedThroughMs));
 
-    const remount = createGymHostSession({ store, clock: fakeClock(4_000_000) });
+    const remount = createGymHostSession({ store, clock: fakeClock(savedThroughMs) });
     const booted = await remount.bootstrap();
     expect(booted.bootstrap.status).toBe('LOADED');
     if (booted.bootstrap.status !== 'LOADED') return;
@@ -581,7 +869,7 @@ describe('gymHostPersistence.ts — remount of a non-default gym', () => {
     const restoredFacility = restoreDurableFacility(persistableGymTruthFromGymView(restored));
     const input = presentationInputFromRestored(restoredFacility);
     expect(input.sim.tick).toBe(0);
-    expect(input.sim.members.every((member) => member.state === 'seeking')).toBe(true);
+    expect(input.sim.members.every((body) => body.state === 'seeking')).toBe(true);
     let sim = input.sim;
     const context = Object.freeze({
       rung: restoredFacility.floor.rung,
@@ -589,8 +877,8 @@ describe('gymHostPersistence.ts — remount of a non-default gym', () => {
       barbellOwned: restoredFacility.managed.gym.ladder.equipment,
       sessionOwned: restoredFacility.managed.gym.sessionEquipment,
       capability: restoredFacility.capability,
-      livingPopulation: input.sim.members.map((member) =>
-        Object.freeze({ memberId: member.memberId, type: member.type }),
+      livingPopulation: input.sim.members.map((body) =>
+        Object.freeze({ memberId: body.memberId, type: body.type }),
       ),
     });
     for (let tick = 0; tick < 240; tick += 1) {
@@ -626,9 +914,10 @@ describe('gymHostPersistence.ts — remount of a non-default gym', () => {
     expect(continued.managed.gym.ladder.collectedAt).toBeGreaterThan(
       restored.managed.gym.ladder.collectedAt,
     );
-    expect(store.inspect()).toBe(encodeGymView(continued));
+    const continuedThrough = requireHostRecord(store.inspect()).savedThroughMs;
+    expect(store.inspect()).toBe(encodeHostSave(continued, continuedThrough));
 
-    const third = createGymHostSession({ store, clock: fakeClock(5_000_000) });
+    const third = createGymHostSession({ store, clock: fakeClock(continuedThrough) });
     const again = await third.bootstrap();
     expect(again.bootstrap.status).toBe('LOADED');
     if (again.bootstrap.status !== 'LOADED') return;
@@ -654,7 +943,7 @@ describe('gymHostPersistence.ts — remount of a non-default gym', () => {
 });
 
 describe('gymDurableStore.ts — injected key-value adapter', () => {
-  it('reads and writes the gym-empire key and nothing else', async () => {
+  it('reads and writes the gym-empire host key and nothing else', async () => {
     const table = new Map<string, string>();
     const storage = {
       getItem: async (key: string) => table.get(key) ?? null,
@@ -664,9 +953,9 @@ describe('gymDurableStore.ts — injected key-value adapter', () => {
     };
     const store = createKeyValueDurableStore(storage);
     expect(await store.get()).toBeNull();
-    const bytes = encodeFacilitySave(persistableGymTruthFromGymView(createGymViewState()));
+    const bytes = encodeHostSave(createGymViewState(), 1);
     await store.set(bytes);
-    expect(table.get(GYM_EMPIRE_SAVE_KEY)).toBe(bytes);
+    expect(table.get(GYM_HOST_SAVE_KEY)).toBe(bytes);
     expect(table.size).toBe(1);
     expect(await store.get()).toBe(bytes);
     expect(sessionEquipmentCost('mats')).toBeGreaterThan(0);
