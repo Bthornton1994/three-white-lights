@@ -218,13 +218,16 @@ frame at lockout, loaded to the mid load in §5.
 | Silhouette test | `assets/athlete/athlete-01-silhouette-390x844.png` | §9. |
 | **Empty side-on room plate** | `assets/iron-amber/squat-room-side.jpg` (1152 × 1728) | **Required, and NOT one of the existing plates** — see below. The room behind the rack, side-on at this camera, in §6's light, with no athlete, no bar and no plates painted in; the rack is a separate static layer with its J-cups on the lockout line. |
 
-**Why the room plate is a new deliverable.** The pipeline (§7a) assumed the
-existing Iron & Amber squat plates were the room. They are not: each is a
-FRONT three-quarter scene with a painted lifter already in it — face,
-tattoos, a shield emblem on the tank and visible shoe branding — a whole
-picture, not an environment. A rigged athlete cannot be composited over a
-painted one. So the room the rig composites onto is a new empty side-on
-plate in the same light. (The painted lifter's marks are also a note for the
+**Why the room plate is a new deliverable, and a rule, not a preference
+(ruled 2026-09-08).** The pipeline (§7a) assumed the existing Iron & Amber
+squat plates were the room. They are not: each is a FRONT three-quarter
+scene with a painted lifter already in it — face, tattoos, a shield emblem
+on the tank and visible shoe branding — a whole picture, not an
+environment. A rigged athlete cannot be composited over a painted one.
+**Do not crop, mask, blur, mirror or otherwise re-use those JPEGs behind
+`athlete-01`.** The required background is a NEW production asset: EMPTY,
+side-on, 1152 × 1728, the same Iron & Amber lighting (§6), the same floor
+line and lockout framing (§7). (The painted lifter's marks are also a note for the
 human who owns `src/licensing/`: those plates carry brand-shaped marks that
 no registry row names; this document does not name any brand.)
 

@@ -511,6 +511,51 @@ two packages); `guaranteeTags` census only if the walk moved; `realIp` and
 SOFT-FEEL gate moves; native unexecuted; bench and deadlift blocked; PR #48
 not merged; nothing merged anywhere; RIVE stays PROVISIONAL.
 
+#### CROSSING FILED BY THE VISUAL LANE, BEFORE THE WORK, 2026-09-08 (THIRD) — the native build moves to EAS cloud, and the athlete intake tooling
+
+Human ruling at `12902b10`: "no local Android SDK" was the wrong
+classification for the native blocker — this is an Expo project, and EAS
+cloud build compiles without one. Filed here first, per the procedure, for
+every shared project or tooling file the work touches. **No dependency
+version moves except the one the native build needs.**
+
+1. **`App.tsx` — the visual lane's ONE `__DEV__` branch grows a native arm,
+   and nothing else in the file moves.** On web the branch reads
+   `?dev-rive-spike=1` from `window.location.search`; on native `window`
+   does not exist, so the same query is read from the app's launch URL
+   (`Linking`, the app scheme below) by a hook in
+   `src/dev/riveRuntimeSpike/devRoute.ts` — the visual lane's own
+   directory. Same key, same exact value, still `__DEV__` AND the query,
+   still checked before `AppShell` mounts, still no `resolveEntry` arm. The
+   four debug query strings are unchanged; the mechanics lane's harness is
+   untouched.
+2. **`app.json`** — two keys added, nothing changed: `scheme` (the deep link
+   the native dev route rides, and what `expo-dev-client` opens) and
+   `android.package` (EAS cannot build an Android app without one). Both are
+   placeholder identifiers Bryant may rename before a store build; renaming
+   them is an owner decision, not this lane's.
+3. **`package.json` and `package-lock.json`** — `expo-dev-client` at the
+   SDK-pinned version, through `npx expo install`, and no other line. The
+   lock moves only for that package's own tree.
+4. **`eas.json` — new.** One `development` profile: `developmentClient:
+   true`, `distribution: internal`, Android `buildType: apk`. No production
+   or preview profile is defined; nobody has asked for one.
+5. **`tools/athleteIntake.mjs` and `tools/athleteIntake.test.ts` — new,
+   additive.** The intake command for `assets/athlete/athlete-01.riv`: runs
+   the mechanical steps of the intake flow (provenance package present and
+   its SHA-256 matching the file, then `tools/rivContract.mjs … --artboard
+   squat`) and prints the remaining device and harness steps with their
+   gates. Declares no dev-server URL; touches no existing tool.
+6. **`tools/testPathRefs.test.ts`** — the counts, for the new files.
+   **`src/game/guaranteeTags.test.ts`** — census only if the walk moves.
+   **`src/tuning/audit.ts` / `audit.test.ts` / `index.ts` — NOT touched**:
+   the player-path stage gate is one more field on the already-registered
+   `ATHLETE_RIG` block in `src/art/spriteTuning.ts`.
+
+Own-lane files that move with it and are not crossings: `src/session/
+TrainingLiftStage.tsx` (the stage gate), `src/dev/riveRuntimeSpike/**`,
+`docs/design/**`.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion

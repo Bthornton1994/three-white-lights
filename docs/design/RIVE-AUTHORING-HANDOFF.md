@@ -141,7 +141,10 @@ assume a rep duration: the grind lasts as long as the simulation says.
    (torso angle closes on the way up, opens on the way down — see §7 of the
    source package). This layer alone must produce a legible rep.
 2. **`effort`** — additive layer keyed on `strain` (0..1) and `effortBand`:
-   bracing, jaw, forearm tension, belt bite. No shake here.
+   bracing; head / neck / jaw-SILHOUETTE tension (the outline of the head
+   and neck setting under load — no eyes, no mouth, no facial acting, no
+   likeness detail, because the source package authors no face at v1);
+   forearm tension; belt bite. No shake here.
 3. **`grind`** — additive tremor and bar creep keyed on `grindIntensity`
    (0..1), strongest inside the sticking band. Amplitude authored, never
    supplied as coordinates. Zero at `grindIntensity = 0`.
@@ -252,9 +255,12 @@ lane's fact; the enum carries all five, so all five are authored.
 
 ## 9. Layer ordering (back to front)
 
-room plate (empty, side-on, same size and light) → rack (static, J-cups at
-the lockout line) → far-sleeve plates → athlete and bar (one rig) →
-near-sleeve plates → chalk. The near sleeve in front of the body is what
+room plate (EMPTY, side-on, 1152 × 1728, the same Iron & Amber light, the
+same floor line and lockout framing — a NEW production asset, never a crop
+or re-use of the existing `assets/iron-amber/squat-*.jpg`, which carry a
+painted lifter, the wrong camera and brand-like marks) → rack (static,
+J-cups at the lockout line) → far-sleeve plates → athlete and bar (one rig)
+→ near-sleeve plates → chalk. The near sleeve in front of the body is what
 makes the bar read as loaded rather than painted on.
 
 ## 10. Validation — the command that decides

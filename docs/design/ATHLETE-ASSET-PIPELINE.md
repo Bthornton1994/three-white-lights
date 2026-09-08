@@ -225,7 +225,9 @@ rules so the two meet on one stage.
   plates), with no athlete, bar or plates painted in. One room, one light,
   one scale, so the athlete does not arrive into a scene drawn for a
   different lens. The existing plates stay what they are — the stills the
-  current `TrainingLiftStage` draws.
+  current `TrainingLiftStage` draws — and are **never cropped or re-used
+  behind `athlete-01`** (ruled 2026-09-08: painted lifter, wrong camera,
+  brand-like marks). The empty side-on room is a new production asset.
 - **Layer order, back to front:** room → rack → far-sleeve plates → athlete
   and bar (one rig) → near-sleeve plates → chalk. The near sleeve sits in
   front of the athlete so the bar reads as loaded, not as painted on.
