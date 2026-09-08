@@ -2177,7 +2177,9 @@ proposals below:
   spec as where layout data should live, did not exist when this critic note
   was written.** Session B now ships a v1 facility save envelope in
   `facilityPersistence.ts` (`kind: 'gym-empire-facility'`, `schemaVersion: 1`)
-  wrapping `PersistableFacilityTruth`. That envelope is not a GDD/CLAUDE
+  wrapping `FacilitySaveTruthV1` (facility layout plus clock, management,
+  week plan, and living-member history). `PersistableFacilityTruth` remains
+  the facility/layout subset of that body. That envelope is not a GDD/CLAUDE
   sprint ledger and does not live under `src/game/`. Hosts still wire the
   durable medium.
 

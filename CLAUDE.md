@@ -124,7 +124,7 @@ lane owns, unless a crossing is written in this section **before** the work.
 - `worldView.ts` — occupancy facts for the renderer; not a second sim
 - `stationView.ts` — mechanical HUD facts and copy selectors; Claude styles how they appear
 - `presentationState.ts` — the renderer-independent world snapshot **Grok writes and Claude reads**
-- `facilityPersistence.ts` — versioned facility save/load. Hosts write the encoded bytes through a store they own; this directory still does not name `localStorage`. Restores durable facility truth only (not FloorSim pose).
+- `facilityPersistence.ts` — versioned facility save/load. Hosts write the encoded bytes through a store they own; this directory still does not name `localStorage`. Restores durable gym truth (facility, clock, management, week plan, living history). FloorSim pose is TRANSIENT.
 - matching `*.test.ts` for those modules
 - `docs/design/SESSION-B-PRESENTATION-CONTRACT.md`
 - `docs/design/LIVING-GYM-WORLD.md` (architecture diagnosis)
@@ -180,8 +180,10 @@ into GymHost is a later serialised crossing, not this slice.
 from mixed `ladderView.tsx`. It does not edit that file's JSX.
 
 `presentationState.ts` gains no new fields. `PersistableFacilityTruth` stays
-the durable envelope body. FloorSim pose, queues, and in-flight timers are
-TRANSIENT and are not saved.
+the durable facility/layout subset. The v1 body is `FacilitySaveTruthV1`
+(facility + clock + management + week + living). FloorSim pose, queues, and
+in-flight timers are TRANSIENT and are not saved. Schema version 1 is amended
+in place: the PR is draft, the host is unwired, and no external v1 bytes exist.
 
 ### Branch / worktree policy
 

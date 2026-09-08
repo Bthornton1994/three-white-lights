@@ -250,20 +250,25 @@ count). Reload proof of the *shape*: same SKU, same cell, same
 
 **PERSISTENCE** = `facilityPersistence.ts` (v1 envelope `gym-empire-facility`).
 Injected `FacilitySaveStore`. Restore rebuilds floor, managed gym, Q/C/T
-capability, and roster ids. FloorSim pose is TRANSIENT and is not saved.
-Host wiring into AppShell is not this slice.
+capability, clock watermark, management ledger, week plan, and living-member
+history. FloorSim pose is TRANSIENT and is not saved. Host wiring into
+AppShell is not this slice.
 
 What survives a save/load of the current envelope:
 
 - owned equipment, purses, rung
 - floor placements and furniture cells
 - Q/C/T capability
-- living roster ids (nonce + member count; names re-derived)
+- living roster ids (nonce + ordinal; names re-derived)
+- collectedAt / banked operation / check-ins taken
+- condition, manager, strikes, neglected orders, prompt dismissals, recoveries
+- week allocation, allocationSetThisWeek, weekLog
+- living-member type, joinedAtSeconds, recentVisits
 
 What does **not** survive this slice:
 
 - `FloorSimState` pose, queues, in-flight timers
-- manager / condition / strikes / visit history / gym clock / week plan
+- lastAccrual / lastRefusal / lastManagementReport / Play-Build surface
 
 ---
 

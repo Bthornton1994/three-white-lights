@@ -24,8 +24,9 @@
  *   - It does not lift FloorSimState onto GymViewState. The live tick still
  *     lives where the renderer steps it; this contract snapshots that tick.
  *   - It does not write localStorage. PersistableFacilityTruth is the
- *     durable envelope body; `facilityPersistence.ts` is the writer that
- *     restores application state from it.
+ *     durable facility/layout subset. `facilityPersistence.ts` wraps it as
+ *     the `facility` domain of the v1 save body and restores application
+ *     state from that body.
  *   - It does not put animation clip names, sprite ids, glows, or camera
  *     shake into simulation state.
  *   - It does not re-encode queue fairness. `claimantsOf` in floorSim.ts is
@@ -212,8 +213,9 @@ export interface PresentationWorld {
 /**
  * In-process serialization-shape candidate. JSON-round-trippable. Not a file
  * format and not localStorage — empire modules must not touch that API.
- * `facilityPersistence.ts` wraps this payload in a versioned envelope and
- * restores floor / managed gym / capability / roster identity from it.
+ * `facilityPersistence.ts` wraps this payload as the `facility` domain of
+ * the v1 save body and restores floor / managed gym / capability / roster
+ * identity from the full envelope.
  */
 export interface PersistableFacilityTruth {
   readonly rung: LadderRung;
