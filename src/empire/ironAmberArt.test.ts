@@ -91,6 +91,42 @@ describe('Iron & Amber owned-art adapter', () => {
     expect(ironAmberFixedUri('squat-rack', false)).toBeNull();
   });
 
+  it('VL-2: the scene paintings are FLOOR_SCENE_ART_ASPECT on disk, and every fixed painting has its registered aspect', () => {
+    // The camera reproduces GymScreen's `cover` fit from these numbers, so
+    // a re-exported painting of another size would mis-place the floor
+    // silently without this. Read off each PNG's IHDR, never trusted.
+    const sizeOf = (stem: string): { readonly width: number; readonly height: number } => {
+      const bytes = readFileSync(path.join(ART_DIR, `${stem}.png`));
+      return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+    };
+    let scenes = 0;
+    for (const rung of Object.keys(EMPIRE_TUNING.FLOOR_SCENE_FLOOR_SEAM_FRACTION)) {
+      const size = sizeOf(ironAmberFloorUri(rung).replace('/empire-art/', '').replace('.png', ''));
+      expect(size).toEqual(EMPIRE_TUNING.FLOOR_SCENE_ART_ASPECT);
+      scenes += 1;
+    }
+    expect(scenes).toBe(EMPIRE_TUNING.LADDER_RUNGS.length);
+    const stemFor: Readonly<Record<keyof typeof EMPIRE_TUNING.FLOOR_FIXED_ART_HEIGHT_OVER_WIDTH, string>> = {
+      'flat-bench': 'eq-flat-bench',
+      'quality-bench': 'eq-quality-bench',
+      'power-bar': 'eq-power-bar',
+      'comp-plates': 'eq-comp-plates',
+      'plate-tree': 'eq-plate-tree',
+    };
+    let aspects = 0;
+    for (const [key, registered] of Object.entries(EMPIRE_TUNING.FLOOR_FIXED_ART_HEIGHT_OVER_WIDTH)) {
+      const stem = stemFor[key as keyof typeof stemFor];
+      expect(IRON_AMBER_ART_STEMS).toContain(stem);
+      const size = sizeOf(stem);
+      const actual = size.height / size.width;
+      // Within three percent: the knob is a drawn proportion, and the
+      // paintings' sizes are not round.
+      expect(Math.abs(actual - registered) / actual, `${key}: ${actual.toFixed(3)} on disk`).toBeLessThan(0.03);
+      aspects += 1;
+    }
+    expect(aspects).toBe(Object.keys(stemFor).length);
+  });
+
   it('does not import, require, or embed payloads in its own source', () => {
     const source = readFileSync(path.join(HERE, 'ironAmberArt.ts'), 'utf8');
     expect(source).not.toMatch(/\brequire\s*\(/);

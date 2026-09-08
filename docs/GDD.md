@@ -3061,6 +3061,29 @@ audit rather than assumed — build on this, do not rebuild it:**
   simplicity"*) already asked for restraint over fidelity once — an
   isometric rebuild pulls the opposite way. Overrulable, same as every
   scoping call in this document.
+
+  **Overruled for the Play surface, by the owner, in the VL-2 brief (2026-09-08)
+  — recorded here so the two documents do not diverge.** Two things changed
+  under this call after it was made: the 16-bit top-down floor it protected
+  was replaced by the painterly Iron & Amber facility scene (a three-quarter
+  view of a room, drawn `cover` behind the floor), and the first real
+  living-world slice on that scene (VL-1) showed an orthographic grid centred
+  on a stage whose painted floor is its lower half — members walking on the
+  back wall, a bench painting stretched into a footprint rectangle, no depth.
+  The owner's VL-2 instruction was to fix that as one coherent scene rather
+  than as patches. So the Play surface now draws its world through ONE
+  pinhole ground-plane projection (`src/empire/floorCamera.ts`) fitted to the
+  painted floor: every member, station, queue cell and plate disc is placed by
+  it, a body on the back row is drawn smaller and higher than one on the
+  front row by a single 1/depth law, and a station's painting stands on its
+  footprint's front edge at the painting's own proportions. This is not
+  isometric and does not restart Phases 1–3: the sim, its grid, placement
+  legality and the Build view are untouched — Build still draws the top-down
+  plan through the same projection function's identity mode, which is the
+  view placement is judged in. The scoping call's reason (restraint, no
+  projection rebuild of the mechanics) is honoured; what it did not
+  anticipate was a painted room arriving under the grid. Gates unchanged:
+  this is presentation, and it is judged by the owner playing it.
 - **Named, one-way facility tiers already exist** — `ladder.ts`'s Garage →
   Storage Unit → Strip-Mall Unit → Warehouse (§5.1) — matching the ruling's
   §11 ask in shape if not yet in count. Naming beyond Warehouse is new work

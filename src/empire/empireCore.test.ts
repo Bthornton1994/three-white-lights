@@ -2459,6 +2459,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'engagement.ts',
       'expansion.ts',
       'floor.ts',
+      // VL-2 (CLAUDE.md "Crossing VL-2"): the Play world's ground-plane
+      // projection, pure.
+      'floorCamera.ts',
       'floorSim.ts',
       // GDD §5.13 presentation Phase 4: the floor's sprite data — index
       // grids, palettes resolved from EMPIRE_TUNING, and the indexed-PNG
@@ -2475,6 +2478,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // §5.11 stage 4: staffing, maintenance, equipment condition and
       // recoverable failure.
       'management.ts',
+      // VL-2: the member animation clips, pure.
+      'memberAnimation.ts',
       'members.ts',
       'npc.ts',
       // GDD §5.14 Stage B: the economy pacing simulator.
@@ -2701,7 +2706,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 214 -> 216: VL-1 (CLAUDE.md "Crossing VL-1") — FloorGrid.tsx imports
     // presentationState.ts and its header names the contract it now draws
     // from. Read from this assertion's own failure value; pin is data.
-    expect(pairs).toBe(216);
+    // 216 -> 230: VL-2 (CLAUDE.md "Crossing VL-2") — floorCamera.ts and
+    // memberAnimation.ts arrive (each named by FloorGrid.tsx's imports and
+    // header, each naming its neighbours in its own header), and
+    // FloorGrid.tsx's VL-2 header names them back. Read from this
+    // assertion's own failure value.
+    expect(pairs).toBe(230);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3899,7 +3909,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // template and the `./presentationState` specifier (one of the two is a
     // template head the set already held). Read from this assertion's own
     // failure value.
-    expect(singleQuoted.size).toBe(887);
+    // 887 -> 904: VL-2 — the two new module specifiers, the seven clip names
+    // and the two drive names in memberAnimation.ts, the two camera kinds in
+    // floorCamera.ts, FloorGrid.tsx's `floorgrid-member-pose-` testID template
+    // and the `deg` interpolation strings. Read from this assertion's own
+    // failure value.
+    expect(singleQuoted.size).toBe(904);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4030,7 +4045,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 379 -> 387: Iron & Amber member-stem templates.
     // 387 -> 389: living-world queue-cell testID templates.
     // 389 -> 390: presentationState.ts refuseWith template for missing member index.
-    expect(templateChunks.size).toBe(390);
+    // 390 -> 391: VL-2's `floorgrid-member-pose-` testID template head.
+    expect(templateChunks.size).toBe(391);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4062,6 +4078,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './empireTuning',
       './expansion',
       './floor',
+      // VL-2 (CLAUDE.md "Crossing VL-2"): seventeen added and NONE removed —
+      // two module specifiers, the seven clip names and two drive names of
+      // memberAnimation.ts, floorCamera.ts's two camera kinds, two aspect-table
+      // keys, FloorGrid.tsx's `contain` resize mode and `deg` interpolation
+      // strings, and the `typeof` guard's `function`. Generic nouns and
+      // mechanism names; no manufacturer, athlete or brand.
+      './floorCamera',
       './floorSim',
       './floorSprites',
       './ironAmberArt',
@@ -4071,6 +4094,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './livingMemberRetention',
       './livingMembers',
       './management',
+      './memberAnimation',
       './members',
       './npc',
       // VL-1 (CLAUDE.md "Crossing VL-1"): `FloorGrid.tsx`'s new edge to the
@@ -4089,6 +4113,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './trainingStation',
       './worldView',
       '/empire-art',
+      '0deg',
+      '1deg',
       ':',
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
       'Accessory',
@@ -4283,6 +4309,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'condition',
       'condition-gated-prompt-control',
       'conditioning',
+      'contain',
       'cosmetic-unlock',
       'cosmetics',
       'costliest-affordable-first',
@@ -4305,6 +4332,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'dismissed',
       'display-name',
       'displayName',
+      'distance',
       'doesnt-fit',
       'dot',
       'dumbbells',
@@ -4422,6 +4450,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'friend',
       'friend-encouragement',
       'friend-visit-allowance-reset',
+      'function',
       'furniture',
       'garage',
       'generic',
@@ -4548,6 +4577,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'hired',
       'hoard',
       'hypertrophy',
+      'idle',
       'idle-clock',
       'idle-only',
       'idle-tenure-days',
@@ -4649,6 +4679,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // by human ruling ("kill the mint"): no tap anywhere on this screen
       // advances the clock any more.
       'ordinal',
+      'orthographic',
       'other-recovery',
       'out-of-bounds',
       'outcome',
@@ -4658,12 +4689,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'paid-pull',
       'per-order',
       'per-refusal',
+      'perspective',
       'physio',
       'physio-days-saved',
       'pixelated',
       'placed',
       'placements',
       'placing',
+      'plate-tree',
       'play',
       'pointer',
       'power-bar',
@@ -4675,6 +4708,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'prompt-repair',
       'qualify',
       'quality',
+      'quality-bench',
       'queued',
       'queuing',
       'quiet',
@@ -4799,6 +4833,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'technique-quality-bonus',
       'throughput',
       'thrownMessage',
+      'time',
       'total',
       'total-pr',
       'trained',
@@ -4816,6 +4851,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'unequipped',
       'upgrade-station',
       'upgraded',
+      'use-bar',
+      'use-bench',
+      'use-generic',
       'using',
       'using-bar-a',
       'using-bar-b',
@@ -4828,6 +4866,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'visited',
       'wait',
       'waiting',
+      'walk',
       'walking',
       'wall-clock',
       'wall-clock-earned',
@@ -4960,7 +4999,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1271 -> 1273: presentationState.ts specifier + refuseWith template chunk.
     // 1273 -> 1276: three coherent-snapshot refuse messages.
     // 1276 -> 1277: VL-1 FloorGrid.tsx `./presentationState` specifier.
-    expect(stringsChecked).toBe(1277);
+    // 1277 -> 1295: VL-2's seventeen space-free strings above plus one
+    // spaced string. Read from this assertion's own failure value.
+    expect(stringsChecked).toBe(1295);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5336,6 +5377,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'FloorGrid.tsx': [
         './empireTuning',
         './floor',
+        // VL-2 (CLAUDE.md "Crossing VL-2"): the Play world's one projection
+        // and the member animation clips.
+        './floorCamera',
         './floorSim',
         // GDD §5.13 presentation Phase 4: the sprite tables the floor draws.
         './floorSprites',
@@ -5352,6 +5396,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         // decide whether a press would succeed — never a second copy of
         // that arithmetic.
         './management',
+        './memberAnimation',
         './members',
         // VL-1 (CLAUDE.md "Crossing VL-1"): the Session B presentation-state
         // contract — the members FloorGrid draws are `presentationWorld`'s
@@ -5368,6 +5413,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         'react-native',
         './worldView',
       ],
+      // VL-2: the projection reads only the tuning knobs; its point and size
+      // types are local so it imports one thing.
+      'floorCamera.ts': ['./empireTuning'],
       // Phase 4: pure sprite data. Tuning for every colour and scale knob,
       // and the three vocabulary types its tables are keyed by.
       'floorSprites.ts': ['./empireTuning', './ladder', './members', './sessions'],
@@ -5392,6 +5440,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       ],
       'ironAmberArt.ts': [],
       'ladder.ts': ['./empireCore', './empireTuning', './production'],
+      // VL-2: the clips read the tuning knobs, the lifecycle vocabulary
+      // (a type) and the sprite pose / use-class vocabularies.
+      'memberAnimation.ts': ['./empireTuning', './floorSim', './floorSprites'],
       // S4b: `./management` joined the reducer's edges — `GymViewState.managed`
       // is a `ManagedGym` now, and every stage-4 arm is one call into that
       // module, the same one-call-per-arm shape the stage-1/2 arms already had.
@@ -5499,7 +5550,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 28 -> 29: Iron & Amber owned-art adapter.
     // 29 -> 30: living-world projector worldView.ts.
     // 30 -> 31: Session B presentation-state contract presentationState.ts.
-    expect(fenced).toBe(31);
+    // 31 -> 33: VL-2's floorCamera.ts and memberAnimation.ts.
+    expect(fenced).toBe(33);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -5628,7 +5680,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 129 -> 142: presentationState.ts thirteen intra-directory imports.
     // 142 -> 143: VL-1 FloorGrid.tsx `./presentationState` (CLAUDE.md
     // "Crossing VL-1"). Read from this assertion's own failure value.
-    expect(specifiers).toBe(143);
+    // 143 -> 149: VL-2 — FloorGrid.tsx's `./floorCamera` and
+    // `./memberAnimation`, floorCamera.ts's `./empireTuning`, and
+    // memberAnimation.ts's three. Read from this assertion's own failure value.
+    expect(specifiers).toBe(149);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
@@ -5846,7 +5901,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 451 -> 458: VL-1's seven FLOOR_MEMBER_* presentation knobs (CLAUDE.md
     // "Crossing VL-1", shared-append). Read from this assertion's own failure
     // value.
-    ).toBe(458);
+    // 458 -> 478: VL-2's 24 new presentation leaves (CLAUDE.md "Crossing
+    // VL-2"; the flat bench's aspect of 1 is the structural literal the
+    // audit never counts) minus the three retired cadence knobs. Read from
+    // this assertion's own failure value.
+    // 478 -> 480: the playback timeline's FLOOR_MEMBER_CATCH_UP_RATE (0.1) and
+    // FLOOR_MEMBER_CATCH_UP_BEHIND_TICKS (2 as a property value, which the
+    // audit does count); FLOOR_MEMBER_RENDER_DELAY_TICKS is 1 and is not.
+    // Read from this assertion's own failure value.
+    // 480 -> 479: FLOOR_SIM_MOVE_TWEEN_MS (120) removed in VL-2.
+    ).toBe(479);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

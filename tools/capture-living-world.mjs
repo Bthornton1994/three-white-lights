@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
- * capture-living-world.mjs — VL-1 evidence: ONE member, followed by its
- * contract identity, through a real lifecycle on the real Play surface.
+ * capture-living-world.mjs — VL-1 / VL-2 evidence: ONE member, followed by
+ * its contract identity, through a real lifecycle on the real Play surface.
  *
- * Claude Code Session B's instrument (CLAUDE.md "Crossing VL-1"). It does not
+ * Claude Code Session B's instrument (CLAUDE.md "Crossing VL-1", extended
+ * under "Crossing VL-2"). It does not
  * claim Visual, Animation, Soft-Feel or Owner-Playtest PASS. It produces the
  * continuous evidence the brief asks for — a video and a per-sample record —
  * and a handful of verdicts a reader can check against the record.
@@ -30,9 +31,10 @@
  *              walking, so distance alone would call a long gap a jump. The
  *              one exception is the eased settle onto or off the bench: for
  *              `FLOOR_MEMBER_SETTLE_MS` (read from `empireTuning.ts`) after a
- *              lifecycle change into or out of `using`, the total displacement
- *              across the window is bounded by `SETTLE_TILES` instead. Both
- *              maxima are recorded. A room-image swap or a snap-to-bench
+ *              lifecycle change into or out of `using`, the displacement
+ *              across the window BEYOND the walking ceiling for that interval
+ *              is bounded by `SETTLE_TILES` instead. Both maxima are
+ *              recorded, the raw settle displacement beside the excess. A room-image swap or a snap-to-bench
  *              would exceed these; the tween and the eased settle do not.
  *   using      the lifecycle reached `using`, and while it did the member's
  *              box overlapped the bench's own `floorsim-using-…` outline.
@@ -46,6 +48,31 @@
  *              room-image state swap.
  *   layout     no horizontal overflow at either viewport; no uncaught page
  *              error.
+ *
+ * VL-2 adds four readings of the same run, each off the drawn DOM:
+ *
+ *   gait       while walking, the VISIBLE sprite image (the most opaque of
+ *              the body's pre-mounted pose images, never a value the renderer
+ *              reports about itself) cycled through at least
+ *              `WALK_DISTINCT_FRAMES_MIN` distinct images — the contact and
+ *              passing poses of the distance-phased walk.
+ *   repCycle   while `using`, at least two distinct images were seen — the
+ *              two keyposes of the held-and-crossfaded rep.
+ *   depth      the body's `data-scale` (the camera's depth scale at its feet)
+ *              took more than one value across the run, and the drawn box
+ *              scaled with it: a member walking up the room got smaller.
+ *   lag        the largest gap between where the drawn body was and where the
+ *              renderer's own per-tick anchor (`data-anchor`, stage pixels)
+ *              said the sim put it, in tiles, outside a settle — reported,
+ *              not required, and measured by this tool from two DOM
+ *              attributes rather than taken from the renderer. The renderer
+ *              plays `FLOOR_MEMBER_RENDER_DELAY_TICKS` behind the sim by
+ *              design, so about one step of lag is the design working.
+ *
+ * `noTeleport` is tighter than VL-1's: the walk is snapshot-interpolated at
+ * the sim's own rate now, so the ordinary ceiling is that rate
+ * (`FLOOR_SIM_STEP_PROGRESS_PER_TICK` / `FLOOR_SIM_TICK_INTERVAL_MS`, read from
+ * source) times `RATE_TOLERANCE`, rather than a whole tile per 100 ms.
  *
  * Tile size is read off the drawn member box divided by
  * `FLOOR_MEMBER_DRAW_SCALE_TILES` read out of `empireTuning.ts` (the
@@ -71,21 +98,41 @@ function arg(name, fallback) {
 }
 
 const URL = arg('--url', 'http://localhost:8081');
-const OUT = arg('--out', join(ROOT, 'docs', 'design', 'living-gym-world', 'vl-1'));
+const OUT = arg('--out', join(ROOT, 'docs', 'design', 'living-gym-world', 'vl-2'));
 const MAX_MS = Number(arg('--max-ms', '90000'));
 const SAMPLE_MS = Number(arg('--sample-ms', '100'));
 const RECORD_VIDEO = !process.argv.includes('--no-video');
 /**
- * Ordinary walking: the sim moves at most ~0.43 tile per 120 ms tick and the
- * tween is linear, so a real walk never exceeds ~0.36 tile per 100 ms. After
- * this harness stalls the page for a screenshot the tween catches the body up
- * to the sim's newest cell over one 120 ms tween — measured at up to ~0.5
- * tile per 100 ms across a stall, which is the instrument's artefact, not the
- * renderer's. A teleport is a whole tile or more between adjacent samples, so
- * one tile per 100 ms separates the two without excusing either.
+ * Ordinary walking: VL-2 draws the walk by snapshot interpolation over one
+ * tick, so the drawn rate is the sim's own step rate and never more — a
+ * stalled frame is drawn as a hold, not as a catch-up burst (VL-1's tween
+ * measured ~0.5 tile per 100 ms across a harness stall; that is what this
+ * bound now excludes). The ceiling is that rate, read from source below,
+ * times a tolerance for sampling jitter. A teleport is a whole tile or more
+ * between adjacent samples and sits far above it.
  */
-const ORDINARY_TILES_PER_100MS = 1;
-/** Total displacement across one eased settle onto/off the bench: bounded by the bay footprint (2×4 tiles), nowhere near a room swap. */
+/**
+ * Sampling tolerance on the ordinary ceiling, and every factor in it is
+ * named: a ~100 ms interval holds six or seven 16.7 ms frames, so one
+ * interval can carry up to ~17% more playback than the next; and the tile
+ * a step is measured in is the body's tile at the END of the interval,
+ * which on a body walking toward the back is up to ~8% smaller than at the
+ * start (the camera's depth scale changes by that much across a front
+ * row). 1.17 × 1.08 ≈ 1.26; 1.3 leaves a little for frame jitter. A real
+ * teleport is a whole tile or more in an interval — well above.
+ */
+const RATE_TOLERANCE = 1.3;
+/** A walk cycle shows contact, passing, contact — three distinct images at the current art set. */
+const WALK_DISTINCT_FRAMES_MIN = 3;
+/**
+ * Displacement across one eased settle onto/off the bench BEYOND what
+ * ordinary walking could cover in the same interval: bounded by the bay
+ * footprint (2×4 tiles), nowhere near a room swap. Measured as an EXCESS
+ * because the transition screenshot stalls this tool (not the page) for
+ * several hundred milliseconds, and the sim keeps walking the member
+ * through that interval — so a settle-window sample carries the settle
+ * plus that walk, and only the part above the walking ceiling is the settle.
+ */
 const SETTLE_TILES = 3;
 const WALK_FRAME_EVERY_MS = 700;
 const MAX_WALK_FRAMES = 6;
@@ -115,10 +162,28 @@ if (!Array.isArray(selfTest) || selfTest.length > 0) {
 const tuningSource = readFileSync(join(ROOT, 'src', 'empire', 'empireTuning.ts'), 'utf8');
 const DRAW_SCALE_TILES = numberInSource(tuningSource, 'FLOOR_MEMBER_DRAW_SCALE_TILES');
 const SETTLE_MS = numberInSource(tuningSource, 'FLOOR_MEMBER_SETTLE_MS');
-if (DRAW_SCALE_TILES === null || SETTLE_MS === null) {
-  console.error('FLOOR_MEMBER_DRAW_SCALE_TILES / FLOOR_MEMBER_SETTLE_MS not found in empireTuning.ts');
+const TICK_MS = numberInSource(tuningSource, 'FLOOR_SIM_TICK_INTERVAL_MS');
+const STEP_PER_TICK = numberInSource(tuningSource, 'FLOOR_SIM_STEP_PROGRESS_PER_TICK');
+if (DRAW_SCALE_TILES === null || SETTLE_MS === null || TICK_MS === null || STEP_PER_TICK === null) {
+  console.error('FLOOR_MEMBER_DRAW_SCALE_TILES / FLOOR_MEMBER_SETTLE_MS / FLOOR_SIM_TICK_INTERVAL_MS / FLOOR_SIM_STEP_PROGRESS_PER_TICK not found in empireTuning.ts');
   process.exit(2);
 }
+const CATCH_UP_RATE = numberInSource(tuningSource, 'FLOOR_MEMBER_CATCH_UP_RATE');
+if (CATCH_UP_RATE === null) {
+  console.error('FLOOR_MEMBER_CATCH_UP_RATE not found in empireTuning.ts');
+  process.exit(2);
+}
+/**
+ * The ceiling on ordinary movement, in tiles per 100 ms: the sim's own step
+ * rate, times the renderer's bounded catch-up, times a tolerance for the
+ * sampling grain (a ~100 ms interval holds six or seven 16.7 ms frames, so
+ * one interval can carry up to ~17% more playback than the next). The step
+ * is measured on the longer axis of the feet's movement: the sim steps
+ * between four-neighbour cells, so one step is one axis, and the projected
+ * row height is a little under a tile width, so the axis read is the
+ * larger of the two anyway.
+ */
+const ORDINARY_TILES_PER_100MS = (STEP_PER_TICK / TICK_MS) * 100 * (1 + CATCH_UP_RATE) * RATE_TOLERANCE;
 
 const SHA = execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim();
 const DIRTY = execSync('git status --porcelain --untracked-files=no', { cwd: ROOT }).toString().trim() !== '';
@@ -156,16 +221,52 @@ async function worldSnapshot(page, followId) {
         target: node.getAttribute('data-target'),
         queueRank: node.getAttribute('data-queuerank'),
         testId: node.getAttribute('data-testid'),
+        clip: node.getAttribute('data-clip'),
+        tick: node.getAttribute('data-tick'),
+        cell: node.getAttribute('data-cell'),
+        anchor: node.getAttribute('data-anchor'),
+        scale: node.getAttribute('data-scale'),
         box: boxOf(node),
-        sprite: (node.querySelector('img') && node.querySelector('img').getAttribute('src')) || null,
+        // VL-2: the sprite is a stack of pose images; the visible one is the
+        // most opaque, read off the DOM rather than reported by the renderer.
+        // The web renderer draws an `Image` as a div carrying the picture as
+        // a background, with an accessibility `<img>` inside it at opacity 0
+        // — so the opacity that matters starts at the img's PARENT, not the
+        // img (reading the img's own opacity made every layer 0 and the
+        // first one "visible", which is how a first trial of this reading
+        // reported a walking body as standing).
+        sprite: (() => {
+          let best = null;
+          for (const img of node.querySelectorAll('img')) {
+            let opacity = 1;
+            let at = img.parentElement;
+            while (at !== null && at !== node.parentElement) {
+              opacity *= Number(getComputedStyle(at).opacity);
+              at = at.parentElement;
+            }
+            if (best === null || opacity > best.opacity) best = { src: img.getAttribute('src'), opacity };
+          }
+          return best === null ? null : best.src;
+        })(),
       }));
       const followed = followId === null ? [] : members.filter((m) => m.id === followId);
+      // The page's own clock at the moment of THIS read. A rate measured
+      // against the tool's clock is wrong by however unevenly the two reads
+      // were delayed on the page's main thread (a stall before one read and
+      // not the next shortens the true interval while the tool's interval
+      // reads as 100 ms); the interval between two DOM reads is the interval
+      // between the page clock at each.
+      const readAt = performance.now();
+      const grid = document.querySelector('[data-testid="floorgrid-grid"]');
+      const gridBox = boxOf(grid);
       const stationNode = document.querySelector(`[data-testid="${stationUsingId}"]`);
       const art = document.querySelector('[data-testid="gymscreen-facility-art"]');
       const artImg = art && (art.tagName === 'IMG' ? art : art.querySelector('img'));
       return {
         members,
         followed,
+        gridBox,
+        readAt,
         station: stationNode
           ? { id: stationNode.getAttribute('data-testid'), box: boxOf(stationNode), opacity: Number(getComputedStyle(stationNode).opacity) }
           : null,
@@ -175,6 +276,11 @@ async function worldSnapshot(page, followId) {
     },
     { followId, stationUsingId: STATION_USING_ID },
   );
+}
+
+/** The bottom-centre of a drawn box — where the feet stand. */
+function feetOf(box) {
+  return { x: box.x + box.w / 2, y: box.y + box.h };
 }
 
 function overlaps(a, b) {
@@ -230,6 +336,9 @@ async function runViewport(browser, viewport) {
     verdicts: {},
     maxOrdinaryTilesPer100ms: 0,
     maxSettleTiles: 0,
+    maxSettleRawTiles: 0,
+    maxLagTiles: 0,
+    maxLagAt: null,
     tilePx: null,
     pageErrors,
   };
@@ -249,6 +358,7 @@ async function runViewport(browser, viewport) {
   const t0 = Date.now();
   let lastBox = null;
   let lastT = null;
+  let lastReadAt = null;
   let lastLifecycle = null;
   let settleUntil = -Infinity;
   let settleFrom = null;
@@ -261,6 +371,9 @@ async function runViewport(browser, viewport) {
   let identityOk = true;
   const stationIds = new Set();
   const artSrcs = new Set();
+  const scalesSeen = new Set();
+  const walkSprites = new Set();
+  const useSprites = new Set();
   let n = 0;
 
   while (Date.now() - t0 < MAX_MS) {
@@ -275,24 +388,63 @@ async function runViewport(browser, viewport) {
       continue;
     }
     const me = snap.followed[0];
+    let lagNow = null;
+    // VL-2: the drawn box is the front-row tile times the depth scale at the
+    // body's feet, so the tile at THIS body's depth is the box over the draw
+    // scale, and a rate in tiles is a rate at that depth.
     const tilePx = me.box.w / DRAW_SCALE_TILES;
     result.tilePx = tilePx;
-    const stepTiles = lastBox === null ? 0 : Math.hypot(me.box.x - lastBox.x, me.box.y - lastBox.y) / tilePx;
-    const dt = lastT === null ? SAMPLE_MS : Math.max(t - lastT, 1);
+    if (me.scale !== null) scalesSeen.add(me.scale);
+    if (me.sprite !== null) {
+      if (me.clip === 'walk') walkSprites.add(me.sprite);
+      if (me.lifecycle === 'using') useSprites.add(me.sprite);
+    }
+    // Motion is measured at the FEET — the bottom-centre of the drawn box,
+    // the point the renderer's timeline moves. The box's top-left also moves
+    // when the body's depth scale changes (a bigger body has its corner
+    // further from its feet), which a first version of this read as extra
+    // speed on a member walking down the room.
+    const feet = feetOf(me.box);
+    const lastFeet = lastBox === null ? null : feetOf(lastBox);
+    const stepTiles =
+      lastFeet === null ? 0 : Math.max(Math.abs(feet.x - lastFeet.x), Math.abs(feet.y - lastFeet.y)) / tilePx;
+    // dt is the PAGE clock's interval between the two DOM reads, not the
+    // tool's; see `worldSnapshot`.
+    const dt = lastReadAt === null ? SAMPLE_MS : Math.max(snap.readAt - lastReadAt, 1);
     const settleEdge =
       lastLifecycle !== null && lastLifecycle !== me.lifecycle && (me.lifecycle === 'using' || lastLifecycle === 'using');
     if (settleEdge) {
       settleUntil = t + SETTLE_MS;
       settleFrom = lastBox;
     }
+    // The window covers every sample whose INTERVAL touches it: a sample taken
+    // right after the transition screenshot spans the whole settle, so the
+    // previous sample's time is what says whether this interval is a settle.
     let settleWindow = false;
-    if (t <= settleUntil && settleFrom !== null) {
+    if ((t <= settleUntil || (lastT !== null && lastT <= settleUntil)) && settleFrom !== null) {
       settleWindow = true;
-      const settled = Math.hypot(me.box.x - settleFrom.x, me.box.y - settleFrom.y) / tilePx;
-      result.maxSettleTiles = Math.max(result.maxSettleTiles, settled);
+      const settled = Math.hypot(feet.x - feetOf(settleFrom).x, feet.y - feetOf(settleFrom).y) / tilePx;
+      const walkAllowance = (ORDINARY_TILES_PER_100MS * (t - (lastT ?? t))) / 100;
+      result.maxSettleRawTiles = Math.max(result.maxSettleRawTiles, settled);
+      result.maxSettleTiles = Math.max(result.maxSettleTiles, Math.max(0, settled - walkAllowance));
     } else {
       const rate = stepTiles / (dt / 100);
       result.maxOrdinaryTilesPer100ms = Math.max(result.maxOrdinaryTilesPer100ms, rate);
+    }
+    if (me.anchor !== null && me.anchor.includes(',') && snap.gridBox !== null) {
+      // The anchor is in stage pixels; the drawn box is in viewport pixels;
+      // the stage's own box is the offset between them. The lag is the
+      // distance from the drawn feet to the anchor of the latest tick, in
+      // tiles at this body's depth — at most one sim step while walking,
+      // larger only while a settle eases across a bigger gap, which is why
+      // the settle window is excluded.
+      const [ax, ay] = me.anchor.split(',').map(Number);
+      const lag = Math.hypot(feet.x - (snap.gridBox.x + ax), feet.y - (snap.gridBox.y + ay)) / tilePx;
+      lagNow = Number(lag.toFixed(3));
+      if (!settleWindow && lag > result.maxLagTiles) {
+        result.maxLagTiles = lag;
+        result.maxLagAt = { t, tick: me.tick, lifecycle: me.lifecycle, clip: me.clip };
+      }
     }
     if (me.lifecycle === 'using' && snap.station && overlaps(me.box, snap.station.box)) usingOverlap = true;
     result.samples.push({
@@ -302,6 +454,13 @@ async function runViewport(browser, viewport) {
       target: me.target,
       queueRank: me.queueRank,
       box: me.box,
+      clip: me.clip,
+      scale: me.scale,
+      cell: me.cell,
+      tick: me.tick,
+      anchor: me.anchor,
+      lagTiles: lagNow,
+      sprite: me.sprite === null ? null : me.sprite.split('/').pop(),
       stepTiles: Number(stepTiles.toFixed(3)),
       settleWindow,
       station: snap.station ? snap.station.id : null,
@@ -332,6 +491,7 @@ async function runViewport(browser, viewport) {
     }
     lastBox = me.box;
     lastT = t;
+    lastReadAt = snap.readAt;
     lastLifecycle = me.lifecycle;
     if (continuedAfterLeaving) break;
     await page.waitForTimeout(SAMPLE_MS);
@@ -340,10 +500,9 @@ async function runViewport(browser, viewport) {
   const seekingSamples = result.samples.filter((s) => s.lifecycle === 'seeking' && s.box);
   let travelled = 0;
   for (let i = 1; i < seekingSamples.length; i += 1) {
-    travelled += Math.hypot(
-      seekingSamples[i].box.x - seekingSamples[i - 1].box.x,
-      seekingSamples[i].box.y - seekingSamples[i - 1].box.y,
-    );
+    const here = feetOf(seekingSamples[i].box);
+    const before = feetOf(seekingSamples[i - 1].box);
+    travelled += Math.hypot(here.x - before.x, here.y - before.y);
   }
   const lifecycles = result.samples.map((s) => s.lifecycle).filter(Boolean);
 
@@ -358,12 +517,20 @@ async function runViewport(browser, viewport) {
     station: stationIds.size === 1,
     scene: artSrcs.size === 1,
     layout: !result.samples.some((s) => s.overflowX) && pageErrors.length === 0,
+    // VL-2
+    gait: walkSprites.size >= WALK_DISTINCT_FRAMES_MIN,
+    repCycle: useSprites.size >= 2,
+    depth: scalesSeen.size > 1,
   };
+  result.walkSprites = [...walkSprites].map((s) => s.split('/').pop());
+  result.useSprites = [...useSprites].map((s) => s.split('/').pop());
+  result.scalesSeen = [...scalesSeen].sort();
+  result.ordinaryCeilingTilesPer100ms = ORDINARY_TILES_PER_100MS;
   result.travelledTiles = result.tilePx === null ? null : Number((travelled / result.tilePx).toFixed(2));
   result.stationIds = [...stationIds];
   result.artSrcs = [...artSrcs];
   note(
-    `${vp} verdicts ${JSON.stringify(result.verdicts)} samples=${result.samples.length} travelled=${result.travelledTiles} tiles maxOrdinaryRate=${result.maxOrdinaryTilesPer100ms.toFixed(3)} tiles/100ms maxSettle=${result.maxSettleTiles.toFixed(3)} tiles tile=${result.tilePx === null ? '-' : result.tilePx.toFixed(1)}px`,
+    `${vp} verdicts ${JSON.stringify(result.verdicts)} samples=${result.samples.length} travelled=${result.travelledTiles} tiles maxOrdinaryRate=${result.maxOrdinaryTilesPer100ms.toFixed(3)} tiles/100ms (ceiling ${ORDINARY_TILES_PER_100MS.toFixed(3)}) maxSettleExcess=${result.maxSettleTiles.toFixed(3)} (raw ${result.maxSettleRawTiles.toFixed(3)}) tiles maxLag=${result.maxLagTiles.toFixed(3)} tiles tile=${result.tilePx === null ? '-' : result.tilePx.toFixed(1)}px walkFrames=${result.walkSprites.join(',')} useFrames=${result.useSprites.join(',')} scales=${result.scalesSeen.join(',')}`,
   );
 
   const video = RECORD_VIDEO ? page.video() : null;
@@ -387,12 +554,12 @@ const browser = await chromium.launch({
 });
 let exitCode = 0;
 try {
-  note(`VL-1 living-world capture at ${SHA}${DIRTY ? ' (DIRTY TREE)' : ''} url=${URL}`);
+  note(`VL-2 living-world capture at ${SHA}${DIRTY ? ' (DIRTY TREE)' : ''} url=${URL}`);
   const results = [];
   for (const viewport of VIEWPORTS) {
     const result = await runViewport(browser, viewport);
     results.push(result);
-    const required = ['identity', 'travel', 'noTeleport', 'using', 'release', 'continues', 'station', 'scene', 'layout'];
+    const required = ['identity', 'travel', 'noTeleport', 'using', 'release', 'continues', 'station', 'scene', 'layout', 'gait', 'repCycle', 'depth'];
     const failed = required.filter((k) => result.verdicts[k] !== true);
     if (failed.length > 0) {
       exitCode = 1;

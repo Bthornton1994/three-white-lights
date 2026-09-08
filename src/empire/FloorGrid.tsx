@@ -170,12 +170,47 @@
  * `data-queuerank` so `tools/capture-living-world.mjs` can follow one member
  * by contract identity across frames; those are evidence attributes, not a
  * card, and nothing reads them back.
+ *
+ * VL-2 — PRODUCTION WORLD PRESENTATION (CLAUDE.md "Crossing VL-2"). Four
+ * changes, all on the Play surface, none to a mechanic:
+ *
+ * 1. ONE CAMERA. `floorCamera.ts` fits a pinhole ground plane to the painted
+ *    floor of the facility scene, and every Play element — station art,
+ *    the queue-cell and using anchors, plate discs, members — is positioned
+ *    through `projectFloorPoint` on it. A member on the back row is drawn
+ *    smaller and higher than one on the front row; a station's painting
+ *    stands on its footprint's front edge at the painting's own aspect
+ *    instead of being stretched into the footprint; everything draws in
+ *    order of its front edge's screen y, so a body walking behind the bench
+ *    goes under it and one lying on it goes over it. Build keeps the
+ *    orthographic plan through the same function's identity mode.
+ * 2. THE FRAME LOOP. `AmbientMemberBody` runs one `requestAnimationFrame`
+ *    loop per body: a playback clock in sim ticks that walks the feet
+ *    between the last two ticks' snapshots at the sim's own rate (holding
+ *    when nothing newer has arrived, catching up by a bounded rate when it
+ *    has fallen behind — a stall is drawn as a stall, never as a burst), an
+ *    eased pull onto or off a station on top of that, an animation phase
+ *    advanced by distance walked or time elapsed, a sample of the member's
+ *    clip from `memberAnimation.ts`, and writes into animated values. No
+ *    React re-render per frame; no sim step from a frame.
+ * 3. THE CLIPS. Which frame is drawn is no longer keyed to the sim tick.
+ *    The walk is phased by tiles moved with its bounce locked to the same
+ *    phase; a rep holds its two keyposes and crossfades between them;
+ *    waiting sways toward the station; idling breathes. The art is still
+ *    the two-keypose set, said plainly in `memberAnimation.ts`'s header.
+ * 4. DIAGNOSTICS RETIRED FROM PLAY WHERE THE WORLD CARRIES THE READ. The
+ *    green station outline and khaki queue squares are transparent
+ *    geometry anchors on Play (their testIDs and boxes stay, because the
+ *    evidence tools measure against them) and return under Build or the
+ *    diagnostics toggle; the three occupancy cards are one quiet caption
+ *    strip. Each member root also carries `data-cell` / `data-anchor` /
+ *    `data-scale` / `data-clip` so a tool can measure the drawn body
+ *    against the contract rather than trust this file.
  */
 
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import {
   Animated,
-  Easing,
   Image,
   Pressable,
   ScrollView,
@@ -187,10 +222,31 @@ import {
 
 import { EMPIRE_TUNING } from './empireTuning';
 import {
+  type FloorCamera,
+  orthographicFloorCamera,
+  perspectiveFloorCamera,
+  projectFloorPoint,
+} from './floorCamera';
+import {
+  type MemberAnimationClip,
+  type MemberAnimationFrame,
+  type MemberPlaybackSnapshot,
+  advanceMemberAnimationPhase,
+  advancePlaybackTick,
+  memberAnimationBlend,
+  memberAnimationClipFor,
+  memberAnimationPoses,
+  memberAnimationStartPhase,
+  sampleMemberAnimation,
+  samplePlayback,
+  settleRemainder,
+} from './memberAnimation';
+import {
   type FixedFurnitureItem,
   type FloorSpriteFacing,
   type FloorSpritePose,
   type FloorStationUseClass,
+  FLOOR_SPRITE_POSES,
   FLOOR_SPRITE_URIS,
   FLOOR_STATION_USE_CLASS,
 } from './floorSprites';
@@ -483,29 +539,34 @@ const panelStyles = StyleSheet.create({
   buttonText: {
     color: FLOOR_STATION_PANEL_BUTTON_TEXT_COLOR,
   },
+  // VL-2: the occupancy read is one quiet caption strip along the stage's
+  // bottom edge — three small pills, no border, no button height — where
+  // the VL-1 cards were three button-sized boxes across the floor. "UI may
+  // explain, must not substitute": the world (a lifter on the bench, a
+  // member standing in the queue cell, one walking at the bay) is the read
+  // and this strip captions it. The three testIDs and copy are unchanged.
   occupancy: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
     flexDirection: 'row',
+    // Left-aligned, so the strip never runs under `GymScreen.tsx`'s BUILD
+    // control docked at the stage's bottom-right.
+    justifyContent: 'flex-start',
     paddingHorizontal: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
     paddingBottom: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
     zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX,
   },
   occupancyCard: {
-    flexGrow: 1,
     flexShrink: 1,
     marginHorizontal: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
-    paddingVertical: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_VERTICAL_PIXELS,
-    paddingHorizontal: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
-    borderWidth: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_WIDTH_PIXELS,
-    borderColor: FLOOR_STATION_PANEL_BUTTON_BORDER_COLOR,
+    paddingVertical: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
+    paddingHorizontal: EMPIRE_TUNING.GYM_SCREEN_BUTTON_PADDING_HORIZONTAL_PIXELS,
     borderRadius: EMPIRE_TUNING.GYM_SCREEN_BUTTON_BORDER_RADIUS_PIXELS,
     backgroundColor: FLOOR_STATION_PANEL_BACKGROUND_COLOR,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: EMPIRE_TUNING.GYM_SCREEN_BUTTON_MIN_HEIGHT_PIXELS,
   },
   occupancyText: {
     color: FLOOR_LABEL_COLOR,
@@ -642,37 +703,112 @@ function stationUseClassFor(ref: FloorStationRef): FloorStationUseClass {
     : 'generic';
 }
 
-/** The two rep-cycle frames of each use class, as pose names the sprite table is keyed by. */
-const USING_POSE: Readonly<
-  Record<FloorStationUseClass, { readonly a: FloorSpritePose; readonly b: FloorSpritePose }>
-> = Object.freeze({
-  bench: Object.freeze({ a: 'using-bench-a', b: 'using-bench-b' }),
-  bar: Object.freeze({ a: 'using-bar-a', b: 'using-bar-b' }),
-  generic: Object.freeze({ a: 'using-generic-a', b: 'using-generic-b' }),
-});
+/**
+ * VL-2: which animation clip a contract member is drawn in this instant —
+ * `memberAnimation.ts`'s mapping of the contract's lifecycle, whether a step
+ * is in flight (`next !== null`) and the station's use class. Replaces the
+ * tick-driven pose flip VL-1 inherited: the clip is chosen here from the
+ * contract, and WHICH FRAME of it is on screen is decided per animation
+ * frame inside `AmbientMemberBody`, by distance walked or time elapsed,
+ * never by the sim tick. Nothing here decides what the member does.
+ */
+function memberClipFor(member: PresentationMember): MemberAnimationClip {
+  return memberAnimationClipFor(
+    member.lifecycle,
+    member.next !== null,
+    member.target === null ? null : stationUseClassFor(member.target),
+  );
+}
 
 /**
- * GDD §5.13 presentation Phase 4 (extended by P4b): which sprite pose a sim
- * member is drawn in this instant. While `using`, the station's own use
- * class picks the body (bench / bar / generic) and the two-frame rep cycle
- * alternates from the sim's own tick at `FLOOR_SPRITE_REP_FRAME_TICKS` —
- * faster than the walk cycle's `FLOOR_SPRITE_WALK_FRAME_TICKS`, which is the
- * "working a set" read the P4b ruling asks for. The walk alternates the two
- * step frames while a step is in flight; standing otherwise. Everything is
- * offset by the member's index so a crowd does not march or rep in lockstep,
- * and everything is deterministic from the tick — no clock and no dice, per
- * the directory's own rules. The five sim states keep their distinct cue
- * bubbles regardless of pose.
+ * VL-2: the height-over-width of a fixed item's painting, from the
+ * registered `FLOOR_FIXED_ART_HEIGHT_OVER_WIDTH` table — `quality-bench`
+ * for the upgraded bay bench, 1 (a square box) for any item the table does
+ * not name, mirroring `fixedSpriteUriFor`'s own `hasOwnProperty` fallback.
  */
-function memberPose(member: PresentationMember, tick: number, stagger: number): FloorSpritePose {
-  if (member.lifecycle === 'using' && member.target !== null) {
-    const poses = USING_POSE[stationUseClassFor(member.target)];
-    const rep = Math.floor(tick / EMPIRE_TUNING.FLOOR_SPRITE_REP_FRAME_TICKS) + stagger;
-    return rep % 2 === 0 ? poses.a : poses.b;
+function fixedArtAspectFor(item: string, quality: boolean): number {
+  const table = EMPIRE_TUNING.FLOOR_FIXED_ART_HEIGHT_OVER_WIDTH;
+  if (item === 'flat-bench' && quality) return table['quality-bench'];
+  return Object.prototype.hasOwnProperty.call(table, item)
+    ? table[item as keyof typeof table]
+    : 1;
+}
+
+/**
+ * VL-2: the aspect a station's art is drawn at in Play. Training and fixed
+ * stations draw their painting's own aspect; a session item is drawn
+ * `contain` inside a box with its footprint's aspect, because the fourteen
+ * session paintings vary and are not yet in the aspect table — a stated
+ * residual, not a hidden stretch.
+ */
+function stationArtAspectFor(ref: FloorStationRef, quality: boolean, footprint: GridSize): number {
+  if (ref.kind === 'training') return fixedArtAspectFor('flat-bench', quality);
+  if (ref.kind === 'fixed') return fixedArtAspectFor(ref.item, false);
+  return footprint.height / Math.max(footprint.width, 1);
+}
+
+/** One drawn station box in stage pixels, plus its depth-order key and the tile scale at its front edge. */
+interface StationDrawBox {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+  readonly depth: number;
+  readonly scale: number;
+}
+
+/**
+ * VL-2: where a station's art is drawn. Under Build's plan camera this is
+ * exactly the footprint box it always was (position × tile, footprint ×
+ * tile), so nothing about Build moves. Under the Play camera the box stands
+ * on the footprint's projected FRONT EDGE: as wide as the footprint is at
+ * that depth, as tall as the art's own aspect makes it, centred on the
+ * footprint's centre line — a bench painted in three-quarter view standing
+ * on the floor it occupies, instead of a painting stretched into a floor
+ * rectangle. `depth` is the front edge's screen y, the key every Play
+ * element is drawn in order of.
+ */
+function stationDrawBox(
+  camera: FloorCamera,
+  position: GridPosition,
+  footprint: GridSize,
+  heightOverWidth: number,
+): StationDrawBox {
+  if (camera.kind === 'orthographic') {
+    return {
+      left: position.x * camera.tile,
+      top: position.y * camera.tile,
+      width: footprint.width * camera.tile,
+      height: footprint.height * camera.tile,
+      depth: (position.y + footprint.height) * camera.tile,
+      scale: 1,
+    };
   }
-  if (member.next === null) return 'stand';
-  const frame = Math.floor(tick / EMPIRE_TUNING.FLOOR_SPRITE_WALK_FRAME_TICKS) + stagger;
-  return frame % 2 === 0 ? 'step-a' : 'step-b';
+  const front = projectFloorPoint(camera, {
+    x: position.x + footprint.width / 2,
+    y: position.y + footprint.height,
+  });
+  const width = footprint.width * camera.tile * front.scale;
+  const height = width * heightOverWidth;
+  return {
+    left: front.x - width / 2,
+    top: front.y - height,
+    width,
+    height,
+    depth: front.y,
+    scale: front.scale,
+  };
+}
+
+/** A floor cell's drawn box: the plan square under Build, the projected cell quad's bounding box under Play. */
+function floorCellBox(camera: FloorCamera, cell: GridPosition): { readonly left: number; readonly top: number; readonly width: number; readonly height: number } {
+  if (camera.kind === 'orthographic') {
+    return { left: cell.x * camera.tile, top: cell.y * camera.tile, width: camera.tile, height: camera.tile };
+  }
+  const back = projectFloorPoint(camera, { x: cell.x + 1 / 2, y: cell.y });
+  const front = projectFloorPoint(camera, { x: cell.x + 1 / 2, y: cell.y + 1 });
+  const width = camera.tile * front.scale;
+  return { left: front.x - width / 2, top: back.y, width, height: front.y - back.y };
 }
 
 /**
@@ -709,51 +845,86 @@ function stationAnchor(position: GridPosition, footprint: GridSize): FloorTilePo
 }
 
 /**
- * VL-1: the top-left corner, in tiles, of the square box a member's sprite
- * is drawn in this instant. The box is `FLOOR_MEMBER_DRAW_SCALE_TILES` on a
- * side — larger than the 1×1 sim footprint — and for every state except
- * `using` it is placed with its feet on the interpolated cell: centred on
- * the cell horizontally, bottom edge on the cell's bottom edge, so a
- * standing figure is taller than the tile it occupies rather than a token
- * squashed into it. That is a drawing decision; `memberTilePoint` is still
+ * VL-2: what `AmbientMemberBody` is told about where it stands: the FEET
+ * point in stage pixels (the contract's cell, projected — the point the
+ * playback timeline walks), the PULL from that point to where the body is
+ * actually drawn while using a station (zero otherwise; the body eases
+ * along it over `FLOOR_MEMBER_SETTLE_MS`), the depth scale, the draw-order
+ * key, and the contract cell it all came from.
+ */
+interface MemberAnchor {
+  readonly position: FloorTilePoint;
+  readonly pull: FloorTilePoint;
+  readonly scale: number;
+  readonly depth: number;
+  readonly cell: FloorTilePoint;
+}
+
+/**
+ * VL-2: the point a member's FEET stand on this instant, in stage pixels,
+ * through the one camera every Play element is drawn through. For every
+ * state except `using` that is the contract's interpolated tile point
+ * (`memberTilePoint`), taken at the bottom-centre of its 1×1 sim footprint
+ * and projected — so a body on the back row is smaller and higher than one
+ * on the front row by the camera's own law, and the drawn body (a square of
+ * `FLOOR_MEMBER_DRAW_SCALE_TILES` tiles at that depth's scale, feet on this
+ * point) is taller than the tile it stands on. `memberTilePoint` is still
  * the only positional read of the contract.
  *
- * GDD §5.13 P4b, carried forward: while `using`, the box is pulled from
- * that feet-on-cell placement toward being CENTRED on the member's own
- * bench by the class's `FLOOR_SIM_USING_ANCHOR_BIAS` fraction, so a lying
- * body meets the furniture instead of standing beside a green outline.
- * Capacity's second user is pulled onto the second bench, not the primary.
- * Renderer only, the same additive register as the walk tween: the sim's
- * `cell` is never touched, no state is kept, and the offset exists only
- * while the contract says `using`. The bench-to-floor move on `leaving` and
- * the floor-to-bench move on `using` are the two moments the drawn origin
- * jumps without the cell moving, and `AmbientMemberBody` eases exactly those
- * two over `FLOOR_MEMBER_SETTLE_MS` rather than the one-tick walk tween.
+ * GDD §5.13 P4b, carried forward through the camera: while `using`, the
+ * body is pulled from that feet-on-cell placement toward being CENTRED on
+ * the pad of its own bench's drawn box (`FLOOR_STATION_PAD_FRACTION` down
+ * the art) by the class's `FLOOR_SIM_USING_ANCHOR_BIAS`, and its depth key
+ * is set just in front of the bench's so a lying body draws over the bench
+ * it lies on rather than under it. Capacity's second user is pulled onto
+ * the second bench. Renderer only: the sim's `cell` is never touched, no
+ * state is kept, and the pull exists only while the contract says `using`.
+ * The floor-to-bench move on `using` and the bench-to-floor move on
+ * `leaving` are the two moments this point jumps without the cell moving,
+ * and `AmbientMemberBody` eases exactly those two over
+ * `FLOOR_MEMBER_SETTLE_MS` — as an eased PULL added on top of the walked
+ * feet point, so the timeline the feet play along never sees the jump.
  */
-function memberDrawOrigin(
+function memberAnchorFor(
   member: PresentationMember,
   station: FloorStation | undefined,
   bay: CompetitionBenchBay,
-): FloorTilePoint {
-  const scale = EMPIRE_TUNING.FLOOR_MEMBER_DRAW_SCALE_TILES;
+  camera: FloorCamera,
+  benchArtAspect: number,
+): MemberAnchor {
   const footprint = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES;
-  const base = memberTilePoint(member);
-  const standing: FloorTilePoint = {
-    x: base.x + (footprint.width - scale) / 2,
-    y: base.y + footprint.height - scale,
+  const cell = memberTilePoint(member);
+  const feet = projectFloorPoint(camera, {
+    x: cell.x + footprint.width / 2,
+    y: cell.y + footprint.height,
+  });
+  const standing: MemberAnchor = {
+    position: { x: feet.x, y: feet.y },
+    pull: { x: 0, y: 0 },
+    scale: feet.scale,
+    depth: Math.round(feet.y),
+    cell,
   };
   if (member.lifecycle !== 'using' || member.target === null || station === undefined) {
     return standing;
   }
   const bias = EMPIRE_TUNING.FLOOR_SIM_USING_ANCHOR_BIAS[stationUseClassFor(member.target)];
   const bench = usingBenchFor(member, station, bay);
+  const box = stationDrawBox(camera, bench.position, bench.footprint, benchArtAspect);
+  const side = EMPIRE_TUNING.FLOOR_MEMBER_DRAW_SCALE_TILES * camera.tile * box.scale;
   const centred: FloorTilePoint = {
-    x: bench.position.x + (bench.footprint.width - scale) / 2,
-    y: bench.position.y + (bench.footprint.height - scale) / 2,
+    x: box.left + box.width / 2,
+    y: box.top + EMPIRE_TUNING.FLOOR_STATION_PAD_FRACTION * box.height + side / 2,
   };
   return {
-    x: standing.x + (centred.x - standing.x) * bias,
-    y: standing.y + (centred.y - standing.y) * bias,
+    position: standing.position,
+    pull: {
+      x: (centred.x - standing.position.x) * bias,
+      y: (centred.y - standing.position.y) * bias,
+    },
+    scale: box.scale,
+    depth: Math.round(box.depth) + 1,
+    cell,
   };
 }
 
@@ -775,7 +946,18 @@ function memberFacing(
     const bench = usingBenchFor(member, station, bay);
     return stationAnchor(bench.position, bench.footprint).x < member.cell.x ? 'left' : 'right';
   }
-  if (member.next !== null && member.next.x < member.cell.x) return 'left';
+  // A horizontal step in flight faces the way it is going.
+  if (member.next !== null && member.next.x !== member.cell.x) {
+    return member.next.x < member.cell.x ? 'left' : 'right';
+  }
+  // VL-2: standing or stepping vertically with a station claimed — a queued
+  // member on its queue cell, one waiting to step toward the bay — faces
+  // the station, so a line reads as a line waiting for THAT bench rather
+  // than three bodies looking the same way. Still stateless: the station
+  // arrives from the same lookup the anchor used.
+  if (station !== undefined) {
+    return stationAnchor(station.position, station.footprint).x < member.cell.x ? 'left' : 'right';
+  }
   return 'right';
 }
 
@@ -996,7 +1178,8 @@ function plateLoadingLayers(
   bay: CompetitionBenchBay,
   changeovers: Readonly<Record<string, number>>,
   capability: StationCapabilityState,
-  tile: number,
+  camera: FloorCamera,
+  benchArtAspect: number,
 ): readonly PlateLoadingLayer[] {
   if (station.ref.kind !== 'training') return [];
   const total = stationChangeoverTicks(capability, station.ref.kind, station.ref.station);
@@ -1026,14 +1209,17 @@ function plateLoadingLayers(
     const remaining = seatChangeoverTicks(changeovers, station.ref, cell);
     if (remaining <= 0) continue;
     const progress = plateLoadingProgress(remaining, total);
-    const shortSide = Math.min(row.bench.footprint.width, row.bench.footprint.height);
-    const size = shortSide * tile * layout.discSizeFraction;
+    // VL-2: the discs travel across the bench's DRAWN box — the footprint
+    // box under Build, the projected art box under Play — so the loading
+    // read stays on the picture of the bench whichever camera drew it.
+    const box = stationDrawBox(camera, row.bench.position, row.bench.footprint, benchArtAspect);
+    const size = Math.min(box.width, box.height) * layout.discSizeFraction;
     const half = size / 2;
     const discs = plateLoadingDiscs(progress).map((disc) =>
       Object.freeze({
         index: disc.index,
-        left: (row.bench.position.x + disc.xFraction * row.bench.footprint.width) * tile - half,
-        top: (row.bench.position.y + disc.yFraction * row.bench.footprint.height) * tile - half,
+        left: box.left + disc.xFraction * box.width - half,
+        top: box.top + disc.yFraction * box.height - half,
         size,
       }),
     );
@@ -1088,13 +1274,26 @@ function queueCellTestId(ref: FloorStationRef, slot: number): string {
 }
 
 /**
- * Waiting members occupy queue cells. Drawn on Play so a bottleneck is a
- * line on the floor, not a "waiting" label. C-style loops keep the channel
- * census off a `.map` of the world-view parameter.
+ * Waiting members occupy queue cells. C-style loops keep the channel census
+ * off a `.map` of the world-view parameter.
+ *
+ * VL-2: on Play these are TRANSPARENT GEOMETRY ANCHORS, not marks. The
+ * khaki outline was a Phase 3 diagnostic — a square on the floor saying
+ * "someone is queued here" — and the world now says it itself: the queued
+ * member stands on that cell, facing its station, swaying. The element
+ * stays because `tools/verify-floor-reachability.mjs` and
+ * `tools/capture-living-world.mjs` read `floorsim-queue-cell-*` boxes as
+ * the queue's geometry, and geometry is a relation the tools measure, not
+ * a thing a player is shown; `outlined` says which of the two this call is
+ * drawing, and Build keeps the outline as its diagnostic read.
  */
-function queueOccupancyViews(stations: readonly WorldStationView[], tile: number): readonly ReactElement[] {
+function queueOccupancyViews(
+  stations: readonly WorldStationView[],
+  camera: FloorCamera,
+  outlined: boolean,
+): readonly ReactElement[] {
   const views: ReactElement[] = [];
-  const inset = EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS;
+  const inset = outlined ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS : 0;
   for (let stationIndex = 0; stationIndex < stations.length; stationIndex += 1) {
     const station = stations[stationIndex];
     if (station === undefined) continue;
@@ -1102,6 +1301,7 @@ function queueOccupancyViews(stations: readonly WorldStationView[], tile: number
       const cell = station.occupiedQueueCells[slot];
       if (cell === undefined) continue;
       const testID = queueCellTestId(station.ref, slot);
+      const box = floorCellBox(camera, cell);
       views.push(
         <View
           key={testID}
@@ -1109,11 +1309,11 @@ function queueOccupancyViews(stations: readonly WorldStationView[], tile: number
           pointerEvents={'none'}
           style={{
             position: 'absolute',
-            left: cell.x * tile + inset,
-            top: cell.y * tile + inset,
-            width: tile - inset * 2,
-            height: tile - inset * 2,
-            borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
+            left: box.left + inset,
+            top: box.top + inset,
+            width: box.width - inset * 2,
+            height: box.height - inset * 2,
+            borderWidth: outlined ? EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS : 0,
             borderColor: FLOOR_SIM_STATE_COLOR.queuing,
             backgroundColor: FLOOR_SIM_HIGHLIGHT_FILL,
             zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
@@ -1129,10 +1329,14 @@ interface AmbientMemberBodyProps {
   readonly index: number;
   readonly type: MemberType;
   /**
-   * GDD §5.13 presentation Phase 3: where to draw this member THIS INSTANT,
-   * in tiles, interpolated between the cell it is on and the cell it is
-   * stepping into. Phase 2 passed a whole `GridPosition` here because a body
-   * that never moved was always on a cell exactly.
+   * GDD §5.13 presentation Phase 3: where to draw this member THIS INSTANT.
+   * Phase 2 passed a whole `GridPosition` here because a body that never
+   * moved was always on a cell exactly; Phase 3 passed the interpolated
+   * tile point. VL-2: this is the point the body's FEET stand on, in STAGE
+   * PIXELS, already projected through the floor camera by `memberAnchorFor`
+   * — the bottom-centre of the drawn box. The shape (`{ x, y }`) is
+   * unchanged; the unit is not, and the frame loop below interpolates it
+   * between ticks in pixel space.
    */
   readonly position: FloorTilePoint;
   /** Which of `FLOOR_SIM_MEMBER_STATES`'s five arms this member is in, read straight off the sim. */
@@ -1148,15 +1352,57 @@ interface AmbientMemberBodyProps {
    */
   readonly stranded: boolean;
   /**
-   * GDD §5.13 presentation Phase 4 (P4b): which of the nine sprite poses to
-   * draw — computed by `FloorGrid` from the sim member (a station-class rep
-   * frame while `using`, the two-frame walk cycle while a step is in flight,
-   * standing otherwise), so this component stays a pure renderer of what it
-   * is told.
+   * VL-2: which animation CLIP this member is drawn in — computed by
+   * `FloorGrid` from the contract member (`memberClipFor`: the station's
+   * use clip while `using`, the walk while a step is in flight, wait while
+   * queued, idle otherwise, the reaction beat while interrupted). Replaces
+   * Phase 4's `pose`: which FRAME of the clip is on screen is no longer a
+   * prop at all, because it changes every animation frame and is decided
+   * inside the frame loop below from distance walked or time elapsed. A
+   * closed literal union, like `pose` was.
    */
-  readonly pose: FloorSpritePose;
+  readonly clip: MemberAnimationClip;
   /** Phase 4: which way the sprite faces — the mirror is baked into the sprite table, not computed here. */
   readonly facing: FloorSpriteFacing;
+  /**
+   * VL-2: the floor camera's depth scale at this member's feet — 1 on the
+   * front row, `FLOOR_CAMERA_BACK_SCALE` on the back row, 1 everywhere under
+   * Build's plan camera. Multiplies every drawn size (body, shadow, cue,
+   * bounce). A plain number, computed by the camera, never compared.
+   */
+  readonly scale: number;
+  /**
+   * VL-2: the draw-order key — the feet point's screen y under Play, the
+   * registered member z-index under Build — written to `zIndex` so a body
+   * lower on the floor paints over one behind it AND over the bench it is
+   * lying on. A plain number.
+   */
+  readonly depth: number;
+  /**
+   * VL-2: the contract's interpolated tile point this member's anchor was
+   * projected from, carried onto the drawn root as `data-cell` so the
+   * evidence tools can compare where the CONTRACT says the member is with
+   * where it is DRAWN — the lag after a stall is measured by the tool from
+   * those two, not reported by this component about itself. Two numbers,
+   * read off the contract, never written.
+   */
+  readonly cellX: number;
+  readonly cellY: number;
+  /**
+   * VL-2: the sim tick this anchor came from — the index the body's
+   * playback timeline files the snapshot under. Read off the sim's own
+   * counter; never compared here beyond "is this a newer snapshot".
+   */
+  readonly tick: number;
+  /**
+   * VL-2: the pull, in stage pixels, from the walked feet point to where
+   * the body is drawn while using a station — zero when it is not. The
+   * body eases along it over `FLOOR_MEMBER_SETTLE_MS` on each change, so
+   * lying down and getting up are the two eased beats and the walk
+   * timeline never sees the jump. Two plain numbers.
+   */
+  readonly pullX: number;
+  readonly pullY: number;
   /**
    * Compact selected-member cue only. Warehouse can hold 40 living members;
    * permanent floating names over every sprite would cover the room.
@@ -1258,8 +1504,10 @@ interface AmbientMemberBodyProps {
  * list written between one declaration's braces — and pins, in both
  * directions, the set of `{name, shape}` pairs it finds: `index: number`,
  * `tile: number`, `position: object{x:number,y:number}`, `stranded: boolean`,
- * `state`, `interruptedBy`, and (since Phase 4) `pose` and `facing` as their
- * own string-literal unions, and `type` as its five string literals. Because the reading is the resolved type, three things
+ * `state`, `interruptedBy`, and (since Phase 4) `facing` — and, since VL-2,
+ * `clip` in place of `pose` — as their own string-literal unions, `type` as
+ * its five string literals, and VL-2's `scale` / `depth` / `cellX` / `cellY`
+ * as plain numbers beside `index` and `tile`. Because the reading is the resolved type, three things
  * are inside it that a member-name list off the AST left outside: a member
  * arriving on a SECOND, merged `interface AmbientMemberBodyProps` declaration;
  * a member inherited through an `extends`; and an existing member's TYPE being
@@ -1315,139 +1563,211 @@ function AmbientMemberBody({
   state,
   interruptedBy,
   stranded,
-  pose,
+  clip,
   facing,
+  scale,
+  depth,
+  cellX,
+  cellY,
+  tick,
+  pullX,
+  pullY,
   target,
   queueRank,
   selectedName,
   onPress,
 }: AmbientMemberBodyProps) {
-  // VL-1: the drawn box is `FLOOR_MEMBER_DRAW_SCALE_TILES` on a side, and
-  // `memberDrawOrigin` has already placed it feet-on-cell (or centred on the
-  // bench), so this component still draws exactly the box it is handed.
-  const footprintWidth = EMPIRE_TUNING.FLOOR_MEMBER_DRAW_SCALE_TILES * tile;
-  const footprintHeight = EMPIRE_TUNING.FLOOR_MEMBER_DRAW_SCALE_TILES * tile;
-  const shadowWidth = EMPIRE_TUNING.FLOOR_MEMBER_SHADOW_WIDTH_FRACTION * tile;
-  const shadowHeight = EMPIRE_TUNING.FLOOR_MEMBER_SHADOW_HEIGHT_FRACTION * tile;
-  // Whether a step is in flight, read off the pose the caller already chose
-  // from the contract's `next` — the one fact the walking bounce keys on.
-  const stepping = pose === 'step-a' || pose === 'step-b';
+  // VL-2: every drawn size is the front-row size times the camera's depth
+  // scale at this body's feet. The box is `FLOOR_MEMBER_DRAW_SCALE_TILES`
+  // tiles on a side at that depth, its bottom-centre on `position`.
+  const bodySide = EMPIRE_TUNING.FLOOR_MEMBER_DRAW_SCALE_TILES * tile * scale;
+  const shadowWidth = EMPIRE_TUNING.FLOOR_MEMBER_SHADOW_WIDTH_FRACTION * tile * scale;
+  const shadowHeight = EMPIRE_TUNING.FLOOR_MEMBER_SHADOW_HEIGHT_FRACTION * tile * scale;
 
-  const bob = useRef(new Animated.Value(0)).current;
+  // The per-body animated values: the root's offset (the walk), the body's
+  // lift (bounce / breath) and lean, and one opacity per sprite pose (the
+  // frame). Created once per mounted body; written every animation frame by
+  // the loop below and read by the styles, so a frame never re-renders React.
+  const rootOffset = useRef(
+    new Animated.ValueXY({ x: position.x - bodySide / 2, y: position.y - bodySide }),
+  ).current;
+  const lift = useRef(new Animated.Value(0)).current;
+  const lean = useRef(new Animated.Value(0)).current;
+  const poseOpacity = useRef(poseOpacityValues()).current;
 
-  // ONE EFFECT OWNS THE LOOPING ANIMATION ON THIS TOKEN, AND ONE CLEANUP
-  // STOPS IT. That is a structural choice rather than a stylistic one:
-  // `empireForbiddenOutput.test.ts`'s returned-closure census keys a site by
-  // its MEMBER PATH, so two `useEffect` cleanups inside one component are two
-  // rows carrying the same key, and the seal census pins the number of
-  // DISTINCT members against the length of its two declared lists. Two
-  // cleanups here make those two numbers disagree. One effect keeps the key
-  // one-to-one with the site, which is what that census is asking for.
-  //
-  // THE `using` PULSE THAT USED TO SHARE THIS EFFECT IS GONE, AND ITS TWO
-  // KNOBS RETIRED WITH IT — GDD §5.13's P4b ruling replaces the pulse bob
-  // with the sprite-level rep cycle (`FLOOR_SPRITE_REP_FRAME_TICKS`) as the
-  // "working a set" read.
-  //
-  // VL-1: the one loop now has two cadences. While a step is in flight it
-  // runs at `FLOOR_MEMBER_GAIT_HALF_CYCLE_MS` — one bounce per step frame —
-  // and lifts the body by `FLOOR_MEMBER_GAIT_BOUNCE_PIXELS`; standing or
-  // waiting it is the Phase 2 idle bob at its own untouched knobs. The
-  // amplitude is chosen below by state, so a lying (`using`) body neither
-  // bounces nor bobs. `stepping` is therefore a dependency: the loop is
-  // restarted at the other cadence when a member starts or stops walking.
-  // Still one effect and one cleanup, for the returned-closure census's
-  // reason stated above.
+  // The latest props, for the frame loop. `requestAnimationFrame`'s callback
+  // closes over the render it was created in, so without this the loop
+  // would go on drawing the anchor as it stood when the body mounted.
+  // Written after every render (no dependency array), which runs before
+  // any frame fires.
+  const latest = useRef({ position, scale, clip, state, facing, tile, index, tick, pullX, pullY });
   useEffect(() => {
-    const lane = index % EMPIRE_TUNING.AMBIENT_MEMBER_BOB_STAGGER_LANES;
-    const delay = stepping ? 0 : lane * EMPIRE_TUNING.AMBIENT_MEMBER_BOB_STAGGER_STEP_MS;
-    const halfCycle = stepping
-      ? EMPIRE_TUNING.FLOOR_MEMBER_GAIT_HALF_CYCLE_MS
-      : EMPIRE_TUNING.AMBIENT_MEMBER_BOB_HALF_CYCLE_MS;
-    const bobLoop = Animated.loop(
-      Animated.sequence([
-        Animated.delay(delay),
-        Animated.timing(bob, {
-          toValue: 1,
-          duration: halfCycle,
-          useNativeDriver: false,
-        }),
-        Animated.timing(bob, {
-          toValue: 0,
-          duration: halfCycle,
-          useNativeDriver: false,
-        }),
-      ]),
-    );
-    bobLoop.start();
-
-    return () => {
-      bobLoop.stop();
-    };
-  }, [bob, index, stepping]);
-
-  // Upward while walking (a bounce lifts the body), the gentle Phase 2 bob
-  // while standing or waiting, and nothing at all while lying on a bench.
-  const lift = stepping
-    ? -EMPIRE_TUNING.FLOOR_MEMBER_GAIT_BOUNCE_PIXELS
-    : state === 'using'
-      ? 0
-      : EMPIRE_TUNING.AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS;
-  const bobTranslateY = bob.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, lift],
+    latest.current = { position, scale, clip, state, facing, tile, index, tick, pullX, pullY };
   });
 
-  // GDD §5.13 presentation Phase 3 — THE WALK. The sim advances a member by a
-  // fraction of a tile per tick, and the renderer would show that as three
-  // hops per tile if it simply wrote the new position out. Instead each new
-  // position is tweened from wherever the token currently is, LINEARLY (the
-  // `Animated.timing` default is an ease-in-out, which would put a stop and a
-  // start inside every tick and read as limping), over
-  // `FLOOR_SIM_MOVE_TWEEN_MS` — which at the shipped values equals the tick
-  // interval, so the tween for one tick is still running when the next
-  // replaces it and the walk is continuous.
-  //
-  // NO CLEANUP, and the reason is `AnimatedValue.animate`'s own contract: it
-  // stops whatever animation is already attached to the value before
-  // attaching the new one, so re-targeting mid-tween needs no teardown from
-  // here. What that leaves is an unmount with a tween in flight, which runs
-  // out its remaining `FLOOR_SIM_MOVE_TWEEN_MS` against a value nothing reads
-  // and then stops by itself. That residual is why this is a comment and not
-  // a silence.
-  //
-  // VL-1 — THE SETTLE. Two moments move the drawn origin without the cell
-  // moving: the contract turning `using` (the box is pulled from the feet-
-  // on-cell placement onto the bench) and it turning `leaving` (pulled
-  // back). A one-tick linear tween reads those as a snap, so exactly those
-  // two transitions — detected as a state change into or out of `using`,
-  // held in a ref so the next tick's walk is linear again — ease out over
-  // `FLOOR_MEMBER_SETTLE_MS` instead. Every other retarget is the Phase 3
-  // linear tween, unchanged.
-  const walk = useRef(
-    new Animated.ValueXY({ x: position.x * tile, y: position.y * tile }),
-  ).current;
-  const lastState = useRef(state);
+  // The previous clip's poses stay mounted for one render after a clip
+  // change, so the loop's blend has both the outgoing and the incoming
+  // frame to write to. `FLOOR_MEMBER_CLIP_BLEND_MS` is one tick long for
+  // exactly that reason (see the knob).
+  const previousClip = useRef(clip);
   useEffect(() => {
-    const settling =
-      lastState.current !== state && (state === 'using' || lastState.current === 'using');
-    lastState.current = state;
-    Animated.timing(walk, {
-      toValue: { x: position.x * tile, y: position.y * tile },
-      duration: settling
-        ? EMPIRE_TUNING.FLOOR_MEMBER_SETTLE_MS
-        : EMPIRE_TUNING.FLOOR_SIM_MOVE_TWEEN_MS,
-      easing: settling ? Easing.out(Easing.cubic) : Easing.linear,
-      useNativeDriver: false,
-    }).start();
-  }, [walk, position.x, position.y, tile, state]);
+    previousClip.current = clip;
+  }, [clip]);
+  const mountedPoses = posesToMount(clip, previousClip.current);
+
+  // ONE EFFECT OWNS THE FRAME LOOP ON THIS BODY, AND ONE CLEANUP STOPS IT.
+  // Structural rather than stylistic: `empireForbiddenOutput.test.ts`'s
+  // returned-closure census keys a site by its MEMBER PATH, so two
+  // `useEffect` cleanups inside one component are two rows carrying the
+  // same key, and the seal census pins DISTINCT members against its two
+  // declared lists. One effect keeps the key one-to-one with the site.
+  //
+  // VL-2 — THE FRAME LOOP. VL-1 ran two `Animated` timers per body: a
+  // looping bounce on its own clock and a per-tick `Animated.timing` tween
+  // toward each new position. Both are gone. One `requestAnimationFrame`
+  // loop per body now does, every frame, in this order:
+  //
+  //   1. THE WALK — a playback timeline in sim ticks. Every tick's feet
+  //      point is filed as a snapshot under its tick; a playback clock
+  //      advances one tick per `FLOOR_SIM_TICK_INTERVAL_MS` of real time,
+  //      `FLOOR_MEMBER_RENDER_DELAY_TICKS` behind the newest snapshot, and
+  //      the feet are drawn between the two snapshots it sits between
+  //      (`advancePlaybackTick`, `samplePlayback`). So the drawn speed is
+  //      the sim's own speed: a tick that arrives late leaves the clock
+  //      holding on the newest snapshot, and a main-thread stall is drawn
+  //      as a stall. When the clock has fallen more than
+  //      `FLOOR_MEMBER_CATCH_UP_BEHIND_TICKS` behind it runs faster by
+  //      `FLOOR_MEMBER_CATCH_UP_RATE` — a bounded catch-up whose ceiling
+  //      the evidence tool reads from source and checks — never a jump.
+  //      VL-1's tween retargeted FROM its in-flight position over a fresh
+  //      full duration, which is why it caught up at ~0.5 tiles per 100 ms
+  //      after a stall; a first VL-2 trial that simply interpolated to
+  //      each new anchor over one tick did the same when ticks arrived
+  //      bunched after a harness stall, which is what this replaced.
+  //      `data-cell` / `data-anchor` / `data-tick` on the root let the
+  //      evidence tool measure the drawn-versus-contract gap instead of
+  //      trusting this comment. The two lifecycle moments that move the
+  //      body without the cell moving — onto and off a station — are an
+  //      eased PULL added on top of the walked feet point over
+  //      `FLOOR_MEMBER_SETTLE_MS` (`settleRemainder`), so the timeline never
+  //      sees that jump either.
+  //   2. THE PHASE — the clip's phase advances by tiles the body actually
+  //      moved on screen this frame (the walk) or by the frame's elapsed
+  //      milliseconds (everything else), per `memberAnimation.ts`. A clip
+  //      change restarts the phase at the body's own stagger and starts a
+  //      one-tick blend from the outgoing clip's last frames.
+  //   3. THE SAMPLE — `sampleMemberAnimation` returns the frame(s) to show
+  //      and the lift and lean to show them with, all off that one phase.
+  //   4. THE WRITE — the root's offset (walk), the inner view's lift and
+  //      lean, and one opacity per mounted pose (frame, times the blend).
+  //      `Animated.Value.setValue` on a value bound in a style updates the
+  //      node directly; React is not re-rendered by any of this, which is
+  //      the property that lets a warehouse's forty bodies run it.
+  //
+  // No `Date`, no `performance`: the only clock is the timestamp
+  // `requestAnimationFrame` hands its callback, per the directory's own
+  // clock ban. Where there is no `requestAnimationFrame` (the node test
+  // harness) the loop simply does not run and the body draws its first
+  // frame at its anchor.
+  useEffect(() => {
+    if (typeof requestAnimationFrame !== 'function' || typeof cancelAnimationFrame !== 'function') {
+      return undefined;
+    }
+    let handle = 0;
+    let lastNow: number | null = null;
+    const snapshots: MemberPlaybackSnapshot[] = [];
+    let playTick: number | null = null;
+    let pullFrom: FloorTilePoint = { x: latest.current.pullX, y: latest.current.pullY };
+    let pullTo: FloorTilePoint = pullFrom;
+    let pullChangedAt: number | null = null;
+    let lastDrawn: FloorTilePoint | null = null;
+    let runningClip = latest.current.clip;
+    let outgoingFrames: readonly MemberAnimationFrame[] = [];
+    let clipChangedAt: number | null = null;
+    let phase = memberAnimationStartPhase(runningClip, latest.current.index);
+    const settleMs = EMPIRE_TUNING.FLOOR_MEMBER_SETTLE_MS;
+    const frame = (now: number): void => {
+      const p = latest.current;
+      const elapsed = lastNow === null ? 0 : now - lastNow;
+      lastNow = now;
+      // 1. Snapshot intake: a new tick files a new snapshot; the same tick
+      //    re-rendered with a moved anchor (a layout change) replaces it.
+      const newest = snapshots[snapshots.length - 1];
+      if (newest === undefined || newest.tick !== p.tick) {
+        snapshots.push({ tick: p.tick, x: p.position.x, y: p.position.y });
+      } else if (newest.x !== p.position.x || newest.y !== p.position.y) {
+        snapshots[snapshots.length - 1] = { tick: p.tick, x: p.position.x, y: p.position.y };
+      }
+      // 2. The playback clock, then the walked feet point along the buffer;
+      //    snapshots the clock has passed are dropped.
+      const latestTick = (snapshots[snapshots.length - 1] as MemberPlaybackSnapshot).tick;
+      playTick = advancePlaybackTick(playTick, latestTick, elapsed);
+      while (snapshots.length > 2 && (snapshots[1] as MemberPlaybackSnapshot).tick <= playTick) {
+        snapshots.shift();
+      }
+      const feet = samplePlayback(snapshots, playTick) ?? p.position;
+      // 3. The eased pull onto or off a station: a changed pull starts a new
+      //    settle from wherever the previous one had got to.
+      if (p.pullX !== pullTo.x || p.pullY !== pullTo.y) {
+        const remainderNow = pullChangedAt === null ? 0 : settleRemainder(now - pullChangedAt, settleMs);
+        pullFrom = {
+          x: pullTo.x + (pullFrom.x - pullTo.x) * remainderNow,
+          y: pullTo.y + (pullFrom.y - pullTo.y) * remainderNow,
+        };
+        pullTo = { x: p.pullX, y: p.pullY };
+        pullChangedAt = now;
+      }
+      const remainder = pullChangedAt === null ? 0 : settleRemainder(now - pullChangedAt, settleMs);
+      if (remainder === 0) pullChangedAt = null;
+      const drawn: FloorTilePoint = {
+        x: feet.x + pullTo.x + (pullFrom.x - pullTo.x) * remainder,
+        y: feet.y + pullTo.y + (pullFrom.y - pullTo.y) * remainder,
+      };
+      // 4. The clip phase, by distance walked on screen or by time.
+      const tileHere = p.tile * p.scale;
+      const movedTiles =
+        lastDrawn === null || tileHere <= 0
+          ? 0
+          : Math.hypot(drawn.x - lastDrawn.x, drawn.y - lastDrawn.y) / tileHere;
+      lastDrawn = drawn;
+      if (p.clip !== runningClip) {
+        outgoingFrames = sampleMemberAnimation(runningClip, phase).frames;
+        runningClip = p.clip;
+        clipChangedAt = now;
+        phase = memberAnimationStartPhase(runningClip, p.index);
+      }
+      phase = advanceMemberAnimationPhase(runningClip, phase, movedTiles, elapsed);
+      const sample = sampleMemberAnimation(runningClip, phase);
+      const blend = clipChangedAt === null ? 1 : memberAnimationBlend(now - clipChangedAt);
+      if (blend >= 1) {
+        clipChangedAt = null;
+        outgoingFrames = [];
+      }
+      // 5. The write.
+      const side = EMPIRE_TUNING.FLOOR_MEMBER_DRAW_SCALE_TILES * tileHere;
+      rootOffset.setValue({ x: drawn.x - side / 2, y: drawn.y - side });
+      lift.setValue(-sample.liftPixels * p.scale);
+      lean.setValue(p.facing === 'left' ? -sample.leanDegrees : sample.leanDegrees);
+      for (const pose of FLOOR_SPRITE_POSES) {
+        let opacity = 0;
+        for (const shown of sample.frames) if (shown.pose === pose) opacity += shown.opacity * blend;
+        for (const fading of outgoingFrames) {
+          if (fading.pose === pose) opacity += fading.opacity * (1 - blend);
+        }
+        poseOpacity[pose].setValue(opacity > 1 ? 1 : opacity);
+      }
+      handle = requestAnimationFrame(frame);
+    };
+    handle = requestAnimationFrame(frame);
+
+    return () => {
+      cancelAnimationFrame(handle);
+    };
+  }, [lean, lift, poseOpacity, rootOffset]);
 
   const cueScale =
     state === 'interrupted' ? EMPIRE_TUNING.FLOOR_SIM_INTERRUPTED_CUE_SCALE : 1;
-  const cueDiameter =
-    Math.min(footprintWidth, footprintHeight) *
-    EMPIRE_TUNING.FLOOR_SIM_CUE_DIAMETER_FRACTION *
-    cueScale;
+  const cueDiameter = bodySide * EMPIRE_TUNING.FLOOR_SIM_CUE_DIAMETER_FRACTION * cueScale;
 
   return (
     <Animated.View
@@ -1461,6 +1781,9 @@ function AmbientMemberBody({
       // attributes (react-native-web maps `dataSet` to `data-*`), so the
       // evidence tool follows one member by `data-memberid` across frames
       // and reads what the contract says it is doing from the same node.
+      // VL-2 adds the contract's tile point (`data-cell`), the projected
+      // anchor (`data-anchor`) and the depth scale, so the tool can measure
+      // the drawn body against the contract rather than trust the renderer.
       // Evidence only — nothing in this file reads them back.
       {...({
         dataSet: {
@@ -1470,15 +1793,20 @@ function AmbientMemberBody({
           // attribute is simply not written for that frame.
           target: target === null ? undefined : floorStationRefKey(target),
           queuerank: queueRank === null ? undefined : String(queueRank),
+          cell: `${String(cellX)},${String(cellY)}`,
+          anchor: `${String(position.x + pullX)},${String(position.y + pullY)}`,
+          tick: String(tick),
+          scale: String(scale),
+          clip,
         },
       } as object)}
       style={{
         position: 'absolute',
         left: 0,
         top: 0,
-        width: footprintWidth,
-        height: footprintHeight,
-        zIndex: EMPIRE_TUNING.FLOOR_SIM_MEMBER_Z_INDEX,
+        width: bodySide,
+        height: bodySide,
+        zIndex: depth,
         // VL-1: on Play a member stepping away from a bench is drawn at full
         // strength — a person, not a ghost. Build keeps the Phase 3
         // `leaving` fade as its diagnostic read of the fifth state.
@@ -1486,18 +1814,19 @@ function AmbientMemberBody({
           state === 'leaving' && onPress === undefined
             ? EMPIRE_TUNING.FLOOR_SIM_LEAVING_OPACITY
             : 1,
-        // The tweened walk owns the whole position; `left`/`top` stay at
-        // zero. VL-1 moved the bob onto an inner view so the grounding
-        // shadow below stays on the floor while the body lifts.
-        transform: [{ translateX: walk.x }, { translateY: walk.y }],
+        // The frame loop owns the whole position; `left`/`top` stay at
+        // zero. The lift and lean live on the inner view so the grounding
+        // shadow below stays on the floor while the body moves over it.
+        transform: [{ translateX: rootOffset.x }, { translateY: rootOffset.y }],
       }}
     >
       {/*
         VL-1: the grounding shadow — a flat ellipse under the feet, on the
-        floor, outside the bounce transform so the body lifts off it during a
+        floor, outside the lift transform so the body rises off it during a
         step. Not drawn while lying on a bench. `AMBIENT_MEMBER_BORDER_COLOR`
         is the named black this file already carries; the opacity and
-        geometry are the registered `FLOOR_MEMBER_SHADOW_*` knobs.
+        geometry are the registered `FLOOR_MEMBER_SHADOW_*` knobs, scaled by
+        depth like everything else on this body.
       */}
       {state === 'using' ? null : (
         <View
@@ -1505,8 +1834,8 @@ function AmbientMemberBody({
           pointerEvents={'none'}
           style={{
             position: 'absolute',
-            left: (footprintWidth - shadowWidth) / 2,
-            top: footprintHeight - shadowHeight / 2,
+            left: (bodySide - shadowWidth) / 2,
+            top: bodySide - shadowHeight / 2,
             width: shadowWidth,
             height: shadowHeight,
             borderRadius: shadowHeight,
@@ -1521,127 +1850,127 @@ function AmbientMemberBody({
           position: 'absolute',
           left: 0,
           top: 0,
-          width: footprintWidth,
-          height: footprintHeight,
-          transform: [{ translateY: bobTranslateY }],
+          width: bodySide,
+          height: bodySide,
+          transform: [
+            { translateY: lift },
+            // Degrees in, a rotation string out; `extrapolate` is the
+            // default `extend`, so the unit range maps every angle.
+            { rotate: lean.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '1deg'] }) },
+          ],
         }}
       >
-      {/*
-        GDD §5.13 presentation Phase 4: the member is the sprite now — one
-        pre-upscaled indexed PNG per (type, pose, facing), drawn at the same
-        footprint box the Phase 2 head-and-body placeholder occupied, so the
-        outer element's bounding box (what the browser check reads) is
-        unchanged. Type identity is the sprite's own outfit palette; the
-        Phase 2 fraction/corner-radius knobs stay registered in
-        `EMPIRE_TUNING` for the placeholder they describe but are no longer
-        read here.
-      */}
-      <Image
-        testID={`floorgrid-member-sprite-${index}`}
-        source={{ uri: ironAmberMemberUri(type, pose, facing) }}
-        resizeMode={'stretch'}
-        style={{
-          position: 'absolute',
-          left: 0,
-          top: 0,
-          width: footprintWidth,
-          height: footprintHeight,
-        }}
-        {...({ pointerEvents: 'none' } as object)}
-      />
-      {/*
-        GDD §5.13 presentation Phase 3 — the state cue, in the register §5.13
-        names by hand ("a visible reaction cue (RCT's thought-bubble
-        pattern)"). One bubble above the head, coloured by state, carrying the
-        cause glyph while an interruption beat is running and drawn larger
-        while it is. Its testID carries the state, so a browser check can ask
-        which state a member is in by reading the drawn DOM rather than by
-        reading a caption.
-      */}
-      <View
-        testID={`floorsim-cue-${index}-${state}`}
-        pointerEvents={'none'}
-        style={{
-          position: 'absolute',
-          left: (footprintWidth - cueDiameter) / 2,
-          top: -(cueDiameter + EMPIRE_TUNING.FLOOR_SIM_CUE_GAP_PIXELS),
-          width: cueDiameter,
-          height: cueDiameter,
-          borderRadius: cueDiameter / 2,
-          backgroundColor: FLOOR_SIM_STATE_COLOR[state],
-          borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
-          borderColor: AMBIENT_MEMBER_BORDER_COLOR,
-          opacity: onPress === undefined ? 1 : 0,
-        }}
-      />
-      {interruptedBy === null ? null : (
-        // The cause, in a word, beside the body rather than inside the
-        // bubble: the bubble is a fraction of a 28-pixel tile and a word laid
-        // out inside it would wrap to one letter a line. It overflows its
-        // member's own footprint, which is what makes it readable and is
-        // acceptable for a beat that runs for
-        // `FLOOR_SIM_INTERRUPTED_BEAT_TICKS` and then resolves.
-        <Text
-          testID={`floorsim-cue-word-${index}`}
-          pointerEvents={'none'}
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: footprintHeight + EMPIRE_TUNING.FLOOR_SIM_CUE_GAP_PIXELS,
-            color: FLOOR_SIM_STATE_COLOR.interrupted,
-            opacity: onPress === undefined ? 1 : 0,
-          }}
-        >
-          {FLOOR_SIM_INTERRUPTION_WORD[interruptedBy]}
-        </Text>
-      )}
-      {selectedName === undefined ? null : (
-        <Text
-          testID={'floorgrid-selected-member-name'}
-          pointerEvents={'none'}
-          style={{
-            position: 'absolute',
-            left: -tile,
-            top: -(
-              cueDiameter +
-              EMPIRE_TUNING.FLOOR_SIM_CUE_GAP_PIXELS * 2 +
-              EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE
-            ),
-            width: footprintWidth + tile * 2,
-            color: AMBIENT_MEMBER_BORDER_COLOR,
-            fontSize: EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE,
-            textAlign: 'center',
-            opacity: onPress === undefined ? 1 : 0,
-          }}
-        >
-          {selectedName}
-        </Text>
-      )}
-      {/*
-        The stranded ring. `floorSim.ts`'s own header states why this needs a
-        cue of its own: the interruption beat is transient, so a member walled
-        off from every station reacts once and then paces, and "still moving"
-        is exactly what a stranded member and a member walking with purpose
-        have in common. `FloorSimMember.strandedAt` is what tells them apart,
-        and this holds a mark against it for as long as it is set.
-      */}
-      {stranded ? (
+        {/*
+          GDD §5.13 presentation Phase 4: the member is the sprite. VL-2:
+          the sprite is a small stack of pre-mounted pose images — the
+          poses of the current clip, plus the previous clip's for one
+          render after a change — each bound to its own opacity value, so
+          a frame change is an opacity write from the loop above and never
+          a mount, an unmount or a `source` swap. `floorgrid-member-sprite-
+          <index>` is the stack's box (what the browser checks read); the
+          visible frame is whichever image the loop has at opacity 1.
+        */}
         <View
-          testID={`floorsim-stranded-${index}`}
+          testID={`floorgrid-member-sprite-${index}`}
+          pointerEvents={'none'}
+          style={{ position: 'absolute', left: 0, top: 0, width: bodySide, height: bodySide }}
+        >
+          {memberPoseImages(mountedPoses, poseOpacity, type, facing, bodySide, index)}
+        </View>
+        {/*
+          GDD §5.13 presentation Phase 3 — the state cue, in the register
+          §5.13 names by hand ("a visible reaction cue (RCT's thought-bubble
+          pattern)"). One bubble above the head, coloured by state, carrying
+          the cause glyph while an interruption beat is running and drawn
+          larger while it is. Its testID carries the state, so a browser
+          check can ask which state a member is in by reading the drawn DOM
+          rather than by reading a caption.
+        */}
+        <View
+          testID={`floorsim-cue-${index}-${state}`}
           pointerEvents={'none'}
           style={{
             position: 'absolute',
-            left: 0,
-            top: 0,
-            width: footprintWidth,
-            height: footprintHeight,
-            borderWidth: EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS,
-            borderColor: FLOOR_SIM_STATE_COLOR.interrupted,
-            backgroundColor: FLOOR_SIM_HIGHLIGHT_FILL,
+            left: (bodySide - cueDiameter) / 2,
+            top: -(cueDiameter + EMPIRE_TUNING.FLOOR_SIM_CUE_GAP_PIXELS),
+            width: cueDiameter,
+            height: cueDiameter,
+            borderRadius: cueDiameter / 2,
+            backgroundColor: FLOOR_SIM_STATE_COLOR[state],
+            borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
+            borderColor: AMBIENT_MEMBER_BORDER_COLOR,
             opacity: onPress === undefined ? 1 : 0,
           }}
         />
-      ) : null}
+        {interruptedBy === null ? null : (
+          // The cause, in a word, beside the body rather than inside the
+          // bubble: the bubble is a fraction of a 28-pixel tile and a word
+          // laid out inside it would wrap to one letter a line. It
+          // overflows its member's own footprint, which is what makes it
+          // readable and is acceptable for a beat that runs for
+          // `FLOOR_SIM_INTERRUPTED_BEAT_TICKS` and then resolves.
+          <Text
+            testID={`floorsim-cue-word-${index}`}
+            pointerEvents={'none'}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: bodySide + EMPIRE_TUNING.FLOOR_SIM_CUE_GAP_PIXELS,
+              color: FLOOR_SIM_STATE_COLOR.interrupted,
+              opacity: onPress === undefined ? 1 : 0,
+            }}
+          >
+            {FLOOR_SIM_INTERRUPTION_WORD[interruptedBy]}
+          </Text>
+        )}
+        {selectedName === undefined ? null : (
+          <Text
+            testID={'floorgrid-selected-member-name'}
+            pointerEvents={'none'}
+            style={{
+              position: 'absolute',
+              left: -tile,
+              top: -(
+                cueDiameter +
+                EMPIRE_TUNING.FLOOR_SIM_CUE_GAP_PIXELS * 2 +
+                EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE
+              ),
+              width: bodySide + tile * 2,
+              color: AMBIENT_MEMBER_BORDER_COLOR,
+              fontSize: EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE,
+              textAlign: 'center',
+              opacity: onPress === undefined ? 1 : 0,
+            }}
+          >
+            {selectedName}
+          </Text>
+        )}
+        {/*
+          The stranded ring. `floorSim.ts`'s own header states why this
+          needs a cue of its own: the interruption beat is transient, so a
+          member walled off from every station reacts once and then paces,
+          and "still moving" is exactly what a stranded member and a member
+          walking with purpose have in common. `FloorSimMember.strandedAt`
+          is what tells them apart, and this holds a mark against it for as
+          long as it is set.
+        */}
+        {stranded ? (
+          <View
+            testID={`floorsim-stranded-${index}`}
+            pointerEvents={'none'}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width: bodySide,
+              height: bodySide,
+              borderWidth: EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS,
+              borderColor: FLOOR_SIM_STATE_COLOR.interrupted,
+              backgroundColor: FLOOR_SIM_HIGHLIGHT_FILL,
+              opacity: onPress === undefined ? 1 : 0,
+            }}
+          />
+        ) : null}
       </Animated.View>
       {onPress === undefined ? null : (
         <Pressable
@@ -1651,14 +1980,71 @@ function AmbientMemberBody({
             position: 'absolute',
             left: 0,
             top: 0,
-            width: footprintWidth,
-            height: footprintHeight,
+            width: bodySide,
+            height: bodySide,
             cursor: 'pointer',
           } as WebSelectableViewStyle}
         />
       )}
     </Animated.View>
   );
+}
+
+/** One opacity value per sprite pose, all starting at 0 — the frame loop raises the ones a clip shows. A loop rather than a `.map`, for the channel census. */
+function poseOpacityValues(): Readonly<Record<FloorSpritePose, Animated.Value>> {
+  const values: Partial<Record<FloorSpritePose, Animated.Value>> = {};
+  for (const pose of FLOOR_SPRITE_POSES) values[pose] = new Animated.Value(0);
+  return values as Readonly<Record<FloorSpritePose, Animated.Value>>;
+}
+
+/** The union of two clips' poses, in `FLOOR_SPRITE_POSES` order, so the mounted stack is stable across a clip change. */
+function posesToMount(current: MemberAnimationClip, previous: MemberAnimationClip): readonly FloorSpritePose[] {
+  const wanted = new Set<FloorSpritePose>();
+  for (const pose of memberAnimationPoses(current)) wanted.add(pose);
+  for (const pose of memberAnimationPoses(previous)) wanted.add(pose);
+  const ordered: FloorSpritePose[] = [];
+  for (const pose of FLOOR_SPRITE_POSES) if (wanted.has(pose)) ordered.push(pose);
+  return ordered;
+}
+
+/**
+ * The pre-mounted pose images of one body, each bound to its own opacity.
+ * A C-style loop rather than `poses.map`, so the channel census does not
+ * file a member-of-parameter `.map`; every image is a full-box stretch of
+ * the same square, so whichever is visible sits exactly where the others
+ * do.
+ */
+function memberPoseImages(
+  poses: readonly FloorSpritePose[],
+  opacities: Readonly<Record<FloorSpritePose, Animated.Value>>,
+  type: MemberType,
+  facing: FloorSpriteFacing,
+  side: number,
+  index: number,
+): readonly ReactElement[] {
+  const images: ReactElement[] = [];
+  for (let at = 0; at < poses.length; at += 1) {
+    const pose = poses[at];
+    if (pose === undefined) continue;
+    images.push(
+      <Animated.Image
+        key={pose}
+        testID={`floorgrid-member-pose-${index}-${pose}`}
+        source={{ uri: ironAmberMemberUri(type, pose, facing) }}
+        resizeMode={'stretch'}
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: side,
+          height: side,
+          opacity: opacities[pose],
+        }}
+        {...({ pointerEvents: 'none' } as object)}
+      />,
+    );
+  }
+  return images;
 }
 
 export function FloorGrid(props: FloorGridProps) {
@@ -1676,6 +2062,24 @@ export function FloorGrid(props: FloorGridProps) {
   );
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const tile = tilePixelsForStage(grid.width, grid.height, stageSize.width, stageSize.height);
+  // VL-2 — THE CAMERA. Build draws the orthographic plan at `tile` pixels a
+  // cell, exactly as before; Play draws the pinhole ground plane
+  // `floorCamera.ts` fits to this stage and this rung's painted floor. Every
+  // Play element below — stations, queue cells, plate discs, members — is
+  // positioned through `projectFloorPoint` on this one object, which is
+  // what makes the scene one scene. Derived every render from measured
+  // stage size and props; stored nowhere.
+  const camera: FloorCamera = buildMode
+    ? orthographicFloorCamera(grid, tile)
+    : perspectiveFloorCamera(stageSize, grid, floor.rung);
+  // Play's camera is a function of the MEASURED stage, and the first render
+  // happens before `onLayout` has measured anything. Drawing the world
+  // against a 0×0 stage put every body a few hundred pixels above the floor
+  // for one frame and then slid it into place over the next tick — a
+  // teleport the evidence tool caught at ~2 tiles per 100 ms on entry. So on
+  // Play nothing in the world is drawn until the stage has a size; Build's
+  // plan camera needs no measurement and draws as before.
+  const worldMeasured = buildMode || (stageSize.width > 0 && stageSize.height > 0);
   const [pendingPlace, setPendingPlace] = useState<PendingPlace | null>(null);
   const [selectedMemberIndex, setSelectedMemberIndex] = useState<number | null>(null);
   // Stage C.1d two-phase Build machine, explicit rather than inferred from
@@ -2082,14 +2486,47 @@ export function FloorGrid(props: FloorGridProps) {
   // rows in sim order and refuses a roster that does not line up), and it is
   // used only for the verifier-stable `floorgrid-ambient-<n>` testID, the
   // tap-selection index and the animation stagger — identity is `member.id`.
-  const memberDraws = (contractWorld === null ? [] : contractWorld.members).map(
+  // VL-2: the station's art aspect a using member is laid on, and the clip
+  // and projected anchor for every member, through the camera above.
+  const benchArtAspect = fixedArtAspectFor('flat-bench', bayQualityMark);
+  const memberDraws = (contractWorld === null || !worldMeasured ? [] : contractWorld.members).map(
     (member, ordinal) => {
       const station =
         member.target === null ? undefined : stationByRefKey.get(stationKey(member.target));
-      return { member, ordinal, station, origin: memberDrawOrigin(member, station, bay) };
+      const aspect =
+        member.target === null || station === undefined
+          ? benchArtAspect
+          : stationArtAspectFor(member.target, bayQualityMark, station.footprint);
+      return {
+        member,
+        ordinal,
+        station,
+        clip: memberClipFor(member),
+        anchor: memberAnchorFor(member, station, bay, camera, aspect),
+      };
     },
   );
-  memberDraws.sort((left, right) => left.origin.y - right.origin.y);
+  memberDraws.sort((left, right) => left.anchor.depth - right.anchor.depth);
+  // VL-2: the second bench's and the plate tree's drawn boxes, through the
+  // same camera, computed here because a `const` cannot live inside a JSX
+  // conditional. The plate tree stands on the bench's front corner and is
+  // half the bench's depth deep, as the Stage D.1b layout drew it.
+  const expansionBox =
+    bay.expansion === null
+      ? null
+      : stationDrawBox(camera, bay.expansion.position, bay.expansion.footprint, benchArtAspect);
+  const plateTreeBox =
+    bay.primary === null
+      ? null
+      : stationDrawBox(
+          camera,
+          {
+            x: bay.primary.position.x + bay.primary.footprint.width - 1,
+            y: bay.primary.position.y + bay.primary.footprint.height / 2,
+          },
+          { width: 1, height: bay.primary.footprint.height / 2 },
+          fixedArtAspectFor('plate-tree', false),
+        );
 
   /**
    * GDD §5.14 Stage C — item 9's tap/drag disambiguation. `origin` says
@@ -2286,8 +2723,11 @@ export function FloorGrid(props: FloorGridProps) {
           <View
             testID={'floorgrid-grid'}
             style={{
-              width: grid.width * tile,
-              height: grid.height * tile,
+              // VL-2: on Play the world box IS the stage — every element is
+              // positioned in stage pixels through the camera — while Build
+              // keeps its centred plan of `grid` × `tile` cells.
+              width: buildMode ? grid.width * tile : stageSize.width,
+              height: buildMode ? grid.height * tile : stageSize.height,
               backgroundColor: FLOOR_SIM_HIGHLIGHT_FILL,
               borderWidth: buildMode ? EMPIRE_TUNING.FLOOR_GRID_BORDER_WIDTH_PIXELS : 0,
               borderColor: FLOOR_GRID_BORDER_COLOR,
@@ -2380,7 +2820,7 @@ export function FloorGrid(props: FloorGridProps) {
                 }}
               />
             )}
-            {furniture.map((row) => {
+            {!worldMeasured ? null : furniture.map((row) => {
               const isRefusalTarget = overlapRefusalItem === row.item;
               const isBayPrimary =
                 bay.complete && row.item === COMPETITION_BENCH_BAY_PRIMARY;
@@ -2394,6 +2834,14 @@ export function FloorGrid(props: FloorGridProps) {
                 : selectedEquipment === row.item;
               const qualityMark = isBayPrimary && bayQualityMark;
               const throughputMark = isBayPrimary && bayThroughputMark;
+              // VL-2: the footprint box under Build; the art's own box
+              // standing on the footprint's front edge under Play.
+              const box = stationDrawBox(
+                camera,
+                row.position,
+                row.footprint,
+                fixedArtAspectFor(row.item, qualityMark),
+              );
               return (
                 <Pressable
                   key={row.item}
@@ -2416,11 +2864,15 @@ export function FloorGrid(props: FloorGridProps) {
                   }}
                   style={{
                     position: 'absolute',
-                    left: row.position.x * tile,
-                    top: row.position.y * tile,
-                    width: row.footprint.width * tile,
-                    height: row.footprint.height * tile,
-                    zIndex: 0,
+                    left: box.left,
+                    top: box.top,
+                    width: box.width,
+                    height: box.height,
+                    // VL-2: on Play the draw order is the front edge's
+                    // screen y, the same key the members use, so a body
+                    // behind a station draws under it and one in front
+                    // draws over it.
+                    zIndex: buildMode ? 0 : Math.round(box.depth),
                     // Phase 4: the sprite is the body of the chip; the
                     // refusal outline still draws over it, and no border in
                     // the resting state so the sprite's own baked outline is
@@ -2457,8 +2909,8 @@ export function FloorGrid(props: FloorGridProps) {
                         position: 'absolute',
                         left: 0,
                         top: 0,
-                        width: row.footprint.width * tile,
-                        height: row.footprint.height * tile,
+                        width: box.width,
+                        height: box.height,
                       }}
                     >
                       <Image
@@ -2473,8 +2925,8 @@ export function FloorGrid(props: FloorGridProps) {
                           position: 'absolute',
                           left: 0,
                           top: 0,
-                          width: row.footprint.width * tile,
-                          height: row.footprint.height * tile,
+                          width: box.width,
+                          height: box.height,
                         }}
                         {...({ pointerEvents: 'none' } as object)}
                       />
@@ -2528,7 +2980,7 @@ export function FloorGrid(props: FloorGridProps) {
                 </Pressable>
               );
             })}
-            {bay.expansion === null ? null : (
+            {bay.expansion === null || expansionBox === null || !worldMeasured ? null : (
               <Pressable
                 testID={'floorgrid-bay-expansion'}
                 accessibilityRole={'button'}
@@ -2542,11 +2994,11 @@ export function FloorGrid(props: FloorGridProps) {
                 }}
                 style={{
                   position: 'absolute',
-                  left: bay.expansion.position.x * tile,
-                  top: bay.expansion.position.y * tile,
-                  width: bay.expansion.footprint.width * tile,
-                  height: bay.expansion.footprint.height * tile,
-                  zIndex: 0,
+                  left: expansionBox.left,
+                  top: expansionBox.top,
+                  width: expansionBox.width,
+                  height: expansionBox.height,
+                  zIndex: buildMode ? 0 : Math.round(expansionBox.depth),
                   borderWidth:
                     selectedStation !== null &&
                     selectedStation.kind === 'training' &&
@@ -2568,31 +3020,31 @@ export function FloorGrid(props: FloorGridProps) {
                       position: 'absolute',
                       left: 0,
                       top: 0,
-                      width: bay.expansion.footprint.width * tile,
-                      height: bay.expansion.footprint.height * tile,
+                      width: expansionBox.width,
+                      height: expansionBox.height,
                     }}
                     {...({ pointerEvents: 'none' } as object)}
                   />
                 ) : null}
               </Pressable>
             )}
-            {bay.complete && bay.primary !== null && bayThroughputMark ? (
+            {bay.complete && bay.primary !== null && bayThroughputMark && plateTreeBox !== null && worldMeasured ? (
               <Image
                 testID={'floorgrid-plate-tree-competition-bench-bay'}
                 source={{ uri: ironAmberPlateTreeUri() }}
                 resizeMode={'stretch'}
                 style={{
                   position: 'absolute',
-                  left: (bay.primary.position.x + bay.primary.footprint.width - 1) * tile,
-                  top: (bay.primary.position.y + bay.primary.footprint.height - 2) * tile,
-                  width: tile,
-                  height: tile * 2,
-                  zIndex: 1,
+                  left: plateTreeBox.left,
+                  top: plateTreeBox.top,
+                  width: plateTreeBox.width,
+                  height: plateTreeBox.height,
+                  zIndex: buildMode ? 1 : Math.round(plateTreeBox.depth),
                 }}
                 {...({ pointerEvents: 'none' } as object)}
               />
             ) : null}
-            {placed.map((row) => {
+            {!worldMeasured ? null : placed.map((row) => {
               const isSelected =
                 selectedStation !== null &&
                 selectedStation.kind === 'session' &&
@@ -2601,6 +3053,15 @@ export function FloorGrid(props: FloorGridProps) {
                 pendingPlace !== null &&
                 pendingPlace.kind === 'session' &&
                 pendingPlace.item === row.item;
+              // VL-2: the footprint box under Build; under Play a box with
+              // the footprint's own aspect standing on its front edge, the
+              // painting drawn `contain` inside it (see `stationArtAspectFor`).
+              const box = stationDrawBox(
+                camera,
+                row.position,
+                row.footprint,
+                stationArtAspectFor({ kind: 'session', item: row.item }, false, row.footprint),
+              );
               return (
                 <Pressable
                   key={row.item}
@@ -2616,10 +3077,10 @@ export function FloorGrid(props: FloorGridProps) {
                   }}
                   style={{
                     position: 'absolute',
-                    left: row.position.x * tile,
-                    top: row.position.y * tile,
-                    width: row.footprint.width * tile,
-                    height: row.footprint.height * tile,
+                    left: box.left,
+                    top: box.top,
+                    width: box.width,
+                    height: box.height,
                     borderWidth:
                       isSelected || isPending
                         ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
@@ -2627,21 +3088,23 @@ export function FloorGrid(props: FloorGridProps) {
                     borderColor:
                       isSelected || isPending
                         ? FLOOR_STATION_SELECTED_OUTLINE_COLOR
-                        : FLOOR_ITEM_BORDER_COLOR,
-                    zIndex: 1,
+                        : buildMode
+                          ? FLOOR_ITEM_BORDER_COLOR
+                          : FLOOR_SIM_HIGHLIGHT_FILL,
+                    zIndex: buildMode ? 1 : Math.round(box.depth),
                     cursor: 'pointer',
                   } as WebSelectableViewStyle}
                 >
                   <Image
                     testID={`floorgrid-placed-sprite-${row.item}`}
                     source={{ uri: sessionSpriteUri(row.item) }}
-                    resizeMode={'stretch'}
+                    resizeMode={buildMode ? 'stretch' : 'contain'}
                     style={{
                       position: 'absolute',
                       left: 0,
                       top: 0,
-                      width: row.footprint.width * tile,
-                      height: row.footprint.height * tile,
+                      width: box.width,
+                      height: box.height,
                     }}
                     {...({ pointerEvents: 'none' } as object)}
                   />
@@ -2666,8 +3129,17 @@ export function FloorGrid(props: FloorGridProps) {
               // physical bench gets its own using highlight when a second
               // member is on it. testIDs are dash-stable (`floorsim-using-
               // training-competition-bench-bay`), never colon keys.
-              stations.flatMap((station) =>
-                stationHighlightBoxes(station, bay, sim.members, sim.changeovers).map((box) => (
+              !worldMeasured ? null : stations.flatMap((station) =>
+                stationHighlightBoxes(station, bay, sim.members, sim.changeovers).map((box) => {
+                  // VL-2: the same drawn box as the station's own art, so
+                  // the anchor a tool reads is the bench a player sees.
+                  const drawn = stationDrawBox(
+                    camera,
+                    box.position,
+                    box.footprint,
+                    stationArtAspectFor(station.ref, bayQualityMark, box.footprint),
+                  );
+                  return (
                   <View
                     key={box.key}
                     testID={box.testID}
@@ -2693,11 +3165,21 @@ export function FloorGrid(props: FloorGridProps) {
                     pointerEvents={'none'}
                     style={{
                       position: 'absolute',
-                      left: box.position.x * tile,
-                      top: box.position.y * tile,
-                      width: box.footprint.width * tile,
-                      height: box.footprint.height * tile,
-                      borderWidth: EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS,
+                      left: drawn.left,
+                      top: drawn.top,
+                      width: drawn.width,
+                      height: drawn.height,
+                      // VL-2: on Play this is a TRANSPARENT GEOMETRY ANCHOR.
+                      // The green/khaki outline was a Phase 3 diagnostic;
+                      // the world now carries the read — a lifter on the
+                      // bench, a member walking at it — and the outline
+                      // returns under Build or the diagnostics toggle. The
+                      // element stays because the evidence tools measure
+                      // the using member's box against it.
+                      borderWidth:
+                        buildMode || showDiagnostics
+                          ? EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS
+                          : 0,
                       borderColor:
                         box.activity === 'using'
                           ? FLOOR_SIM_STATE_COLOR.using
@@ -2708,12 +3190,13 @@ export function FloorGrid(props: FloorGridProps) {
                       zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
                     }}
                   />
-                )),
+                  );
+                }),
               )
             }
             {
-              stations.flatMap((station) =>
-                plateLoadingLayers(station, bay, sim.changeovers, capability, tile).map((layer) => (
+              !worldMeasured ? null : stations.flatMap((station) =>
+                plateLoadingLayers(station, bay, sim.changeovers, capability, camera, benchArtAspect).map((layer) => (
                   <View
                     key={layer.key}
                     testID={layer.testID}
@@ -2730,7 +3213,7 @@ export function FloorGrid(props: FloorGridProps) {
                 )),
               )
             }
-            {buildMode ? null : queueOccupancyViews(occupancyFrame.stations, tile)}
+            {buildMode || !worldMeasured ? null : queueOccupancyViews(occupancyFrame.stations, camera, showDiagnostics)}
             {
               // GDD §5.13 presentation Phase 3: the members, at the position
               // the sim puts them at this instant. Still non-draggable, still
@@ -2751,13 +3234,20 @@ export function FloorGrid(props: FloorGridProps) {
                   index={draw.ordinal}
                   memberId={draw.member.id}
                   type={draw.member.type}
-                  position={draw.origin}
-                  tile={tile}
+                  position={draw.anchor.position}
+                  tile={camera.tile}
                   state={draw.member.lifecycle}
                   interruptedBy={draw.member.interruptedBy}
                   stranded={draw.member.stranded}
-                  pose={memberPose(draw.member, sim.tick, draw.ordinal)}
+                  clip={draw.clip}
                   facing={memberFacing(draw.member, draw.station, bay)}
+                  scale={draw.anchor.scale}
+                  depth={buildMode ? EMPIRE_TUNING.FLOOR_SIM_MEMBER_Z_INDEX : draw.anchor.depth}
+                  cellX={draw.anchor.cell.x}
+                  cellY={draw.anchor.cell.y}
+                  tick={sim.tick}
+                  pullX={draw.anchor.pull.x}
+                  pullY={draw.anchor.pull.y}
                   target={draw.member.target}
                   queueRank={draw.member.queueRank}
                   selectedName={
@@ -2948,7 +3438,19 @@ export function FloorGrid(props: FloorGridProps) {
         testID={'floorgrid-diagnostics-toggle'}
         accessibilityRole={'button'}
         onPress={() => setShowDiagnostics((previous) => !previous)}
-        style={panelStyles.visuallyHidden as WebSelectableViewStyle}
+        // VL-2 REGRESSION, FOUND BY `tools/verify-floor-reachability.mjs`
+        // AND FIXED HERE. This control is visually hidden (1×1, opacity 0)
+        // and sits at the top-left corner of `floorgrid-root` because
+        // `visuallyHidden` is `position: 'absolute'` with no offset. The
+        // Build plan never reached that corner; VL-2's Play world box IS
+        // the stage, and `floorgrid-scroll-x` stacks at z-index 1, so the
+        // stage now paints over the toggle and a force-click — the only
+        // way the evidence tools open the diagnostics — landed on the
+        // world instead. Measured: `elementFromPoint` at the toggle's
+        // centre returned `floorgrid-grid`; with this z-index it returns
+        // the toggle and the diagnostics attach. The floor's topmost
+        // layer is the right stack for a control that draws nothing.
+        style={[panelStyles.visuallyHidden, { zIndex: EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX }]}
       >
         <Text style={FLOOR_LABEL_STYLE}>
           {showDiagnostics ? 'hide diagnostics' : 'show diagnostics'}

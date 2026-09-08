@@ -1948,19 +1948,15 @@ export const EMPIRE_TUNING = Object.freeze({
    */
   FLOOR_SIM_TICK_INTERVAL_MS: 120,
 
-  /**
-   * How long, in milliseconds, the renderer takes to slide a member from the
-   * position one tick put it at to the position the next tick puts it at.
-   *
-   * At the shipped value this equals `FLOOR_SIM_TICK_INTERVAL_MS`, which is
-   * what makes a walk continuous rather than a sequence of hops — the tween
-   * for tick N is still running when tick N+1 replaces it. A tuner who wants
-   * a snappier, more stepped read shortens this WITHOUT touching the tick
-   * rate; a value above the tick interval makes a member permanently lag the
-   * cell the sim thinks it is on, which is a look rather than a bug but is
-   * worth knowing before turning it up.
-   */
-  FLOOR_SIM_MOVE_TWEEN_MS: 120,
+  // `FLOOR_SIM_MOVE_TWEEN_MS` (120) LEFT THIS BLOCK IN VL-2 (CLAUDE.md
+  // "Crossing VL-2"). It was the renderer's per-tick `Animated.timing` walk
+  // tween, and VL-2 replaced that tween with a tick-indexed playback
+  // timeline whose cadence IS `FLOOR_SIM_TICK_INTERVAL_MS` (see
+  // `memberAnimation.ts`'s `advancePlaybackTick`), so nothing read it.
+  // `floorSim.test.ts` partitions this prefix between the sim and the
+  // renderer in both directions and admits no unread key, which is why the
+  // knob is removed rather than parked on `AWAITING_CONSUMER`. The one-line
+  // deletion in a Grok-owned block is recorded as a crossing in CLAUDE.md.
 
   /**
    * The seed `FloorGrid.tsx` opens its sim with.
@@ -2164,40 +2160,12 @@ export const EMPIRE_TUNING = Object.freeze({
    */
   FLOOR_SPRITE_NATIVE_PIXELS_PER_TILE: 14,
 
-  /**
-   * How many sim ticks one walk frame is held before the two-frame cycle
-   * flips. At the shipped `FLOOR_SIM_TICK_INTERVAL_MS` of 120 this is a step
-   * cadence of roughly four frames a second, the register a small walking
-   * figure of this era animates at. A frame-duration feel value, named here
-   * per CLAUDE.md's tunability rule.
-   */
-  FLOOR_SPRITE_WALK_FRAME_TICKS: 2,
-
-  /**
-   * How many sim ticks one rep-cycle frame is held before a `using` member's
-   * two-frame working animation flips. GDD §5.13's P4b ruling asks for a rep
-   * cycle FASTER than the walk, so this sits below
-   * `FLOOR_SPRITE_WALK_FRAME_TICKS` — at the shipped tick interval of 120ms
-   * this is a frame flip every 120ms. The honest half, stated rather than
-   * asserted away: whether that reads as a stick figure vigorously working a
-   * set or as a 28px body vibrating has not been judged on a phone, and a
-   * flip this fast is exactly the kind of value that can land either way.
-   * This knob is the single thing a tuner moves to find out — 2 restores the
-   * walk cycle's cadence ratio, 3 halves it again — and no component
-   * arithmetic needs touching. Deterministic from the sim tick and the
-   * member index, like the walk cycle — no clock, no dice.
-   *
-   * P4c held this at 1 after inspecting the frames rather than the device,
-   * and left the doubt open with numbers on it. Measured a/b frame
-   * difference per class on the shipped maps: bench 52 native pixels, bar
-   * 32-36, generic 7. The generic pair's 7 are one contiguous arm (a
-   * two-pixel reach retraction plus its hand cap), which is a small coherent
-   * pump rather than scattered toggling — so the frame inspection produced
-   * no concrete flicker finding, and retuning on none would be a guess. For
-   * the next phone pass: if usage still reads frantic, generic is the class
-   * to watch, and 2 is the first value to try.
-   */
-  FLOOR_SPRITE_REP_FRAME_TICKS: 1,
+  // VL-2 (CLAUDE.md "Crossing VL-2") RETIRED `FLOOR_SPRITE_WALK_FRAME_TICKS`
+  // and `FLOOR_SPRITE_REP_FRAME_TICKS` — the tick-parity frame flips — with
+  // the flip itself: the walk is phased by distance walked and a rep by a
+  // millisecond period with holds (`FLOOR_MEMBER_STRIDE_TILES`,
+  // `FLOOR_MEMBER_REP_PERIOD_MS`, `FLOOR_MEMBER_REP_HOLD_FRACTION` below),
+  // so a cadence denominated in sim ticks has nothing left to drive.
 
   /**
    * The shared body colours every member sprite resolves through, as plain
@@ -2785,24 +2753,23 @@ export const EMPIRE_TUNING = Object.freeze({
   FLOOR_MEMBER_DRAW_SCALE_TILES: 1.6,
 
   /**
-   * Half-cycle of the walking bounce, in milliseconds — one bounce per
-   * sprite step frame. 240 = `FLOOR_SIM_TICK_INTERVAL_MS` (120) ×
-   * `FLOOR_SPRITE_WALK_FRAME_TICKS` (2), written as the literal because this
-   * object cannot reference its own other keys while it is being built; if
-   * either of those moves, this does not move with it — a drift risk stated
-   * rather than hidden, the same one `STATION_TAP_MAX_DRAG_PIXELS` carries.
+   * Peak lift of the walking bounce, in pixels at the front-row depth scale.
+   * Small on purpose; the step frames carry the read. VL-2 locks this bounce
+   * to the SAME phase as the step frame (highest at the passing pose,
+   * lowest at contact) rather than to a clock of its own — see
+   * `memberAnimation.ts` — which is why the VL-1 half-cycle knob that used
+   * to sit above this one is gone: a distance-phased gait has no cadence to
+   * tune in milliseconds.
    */
-  FLOOR_MEMBER_GAIT_HALF_CYCLE_MS: 240,
-
-  /** Peak lift of the walking bounce, in pixels. Small on purpose; the step frames carry the read. */
   FLOOR_MEMBER_GAIT_BOUNCE_PIXELS: 3,
 
   /**
    * How long the renderer takes to ease a member from the cell it walked
    * to onto its bench when the sim says `using`, and back onto the floor
    * when it says `leaving` — the two moments the drawn position moves
-   * without the cell moving. Longer than `FLOOR_SIM_MOVE_TWEEN_MS` so the
-   * settle reads as sitting down rather than as a snap.
+   * without the cell moving. Longer than one sim tick
+   * (`FLOOR_SIM_TICK_INTERVAL_MS`) so the settle reads as sitting down
+   * rather than as a snap.
    */
   FLOOR_MEMBER_SETTLE_MS: 360,
 
@@ -2814,6 +2781,185 @@ export const EMPIRE_TUNING = Object.freeze({
 
   /** Grounding shadow opacity over the painted floor. */
   FLOOR_MEMBER_SHADOW_OPACITY: 0.35,
+
+  // -------------------------------------------------------------------------
+  // Claude Code Session B — VL-2 production world presentation knobs.
+  //
+  // Shared-append under CLAUDE.md's "Crossing VL-2". Three groups: the scene
+  // camera (`floorCamera.ts` — where the painted floor is and how depth
+  // scales across it), the member animation clips (`memberAnimation.ts` —
+  // stride, sway, rep timing, blend), and the fixed art's own pixel aspect
+  // (`FloorGrid.tsx` draws a station at its art's true proportions in Play
+  // instead of stretching it into its footprint box). None is read by
+  // `floorSim.ts` or `presentationState.ts`; none changes a cell, a queue,
+  // a timer or a purse; every one is PROVISIONAL under "Game Feel Values
+  // Must Be Tunable". They live here because `src/tuning/audit.ts` refuses
+  // a bare number in a `.tsx`, and because a projection or a stride length
+  // is exactly the kind of number a playtester will want to move.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Pixel size of the facility scene paintings (`floor-<rung>.png`), all
+   * four rungs. `ironAmberArt.test.ts` reads each file's header and pins
+   * this against it, so a re-exported painting of another size reddens
+   * rather than silently mis-placing the floor. The camera needs it to
+   * reproduce the `cover` fit `GymScreen.tsx` draws the painting with: the
+   * painting is scaled to fill the stage and centre-cropped, and only with
+   * the art's aspect can the renderer know where a fraction of the painting
+   * lands on screen.
+   */
+  FLOOR_SCENE_ART_ASPECT: Object.freeze({ width: 1008, height: 1792 }),
+
+  /**
+   * Where the painted floor meets the back wall in each rung's scene, as a
+   * fraction of the painting's height from the top — measured off the
+   * paintings by a luminance-edge scan down five columns and taking the
+   * median (garage 0.583, storage unit 0.511, strip mall 0.599, warehouse
+   * 0.581), rounded to what a human eye agrees with. The sim's back row
+   * (row 0) is placed just in front of this line, so a member walking "up"
+   * the room walks toward the wall the painting shows. Per rung because the
+   * four paintings are four compositions, not one template.
+   */
+  FLOOR_SCENE_FLOOR_SEAM_FRACTION: Object.freeze({
+    garage: 0.58,
+    'storage-unit': 0.52,
+    'strip-mall-unit': 0.6,
+    warehouse: 0.58,
+  }),
+
+  /**
+   * Depth scale at the back row relative to the front row. A pinhole
+   * camera on a ground plane scales a thing by 1/depth, so this one number
+   * fixes the whole perspective: 0.66 means a member on the back row is
+   * drawn at 66% of the size it has on the front row, and rows get shorter
+   * toward the back in the same 1/depth law. The paintings' own vanishing
+   * is much stronger (about 0.3 from wall to bottom edge) — a wide-angle
+   * shot — and following it would draw a back-row member at ~23 px on a
+   * phone, which nobody could tap or read. So the game plane is a milder
+   * lens than the painting, on purpose, and the red floor lines in the art
+   * are treated as decoration rather than as the grid.
+   */
+  FLOOR_CAMERA_BACK_SCALE: 0.66,
+
+  /**
+   * How tall the FRONT row is on screen as a fraction of the front tile's
+   * width. 1 is a square tile (a top-down plan, the Build view); 0.5 is
+   * the flat three-quarter view an isometric game uses. The band the grid
+   * occupies is derived from this and the back scale, anchored at the
+   * back wall: a value that would push the front row past the stage's
+   * bottom inset shrinks the tile to fit rather than overflowing.
+   */
+  FLOOR_CAMERA_ROW_DEPTH_FRACTION: 0.95,
+
+  /** How far, in pixels, the back row's feet stand in front of the painted wall seam. */
+  FLOOR_CAMERA_BACK_INSET_PIXELS: 6,
+
+  /**
+   * Room reserved, in pixels, between the front row's feet and the stage's
+   * bottom edge — the quiet occupancy caption lives there, and a front-row
+   * body's shadow must not sit under it.
+   */
+  FLOOR_CAMERA_FRONT_INSET_PIXELS: 44,
+
+  /**
+   * Tiles travelled on screen per full walk cycle (two steps). The walk
+   * clip is phased by DISTANCE, not by time, so the feet stay planted
+   * relative to the ground whatever the frame rate or the sim's speed —
+   * a stride that ends when the body has moved one stride, not when a
+   * timer fires. A human stride is about 1.4 m on a ~1 m tile; 1.1 reads a
+   * little brisker than that, which suits a small figure.
+   */
+  FLOOR_MEMBER_STRIDE_TILES: 1.1,
+
+  /** Forward lean while walking, in degrees, toward the direction of travel. */
+  FLOOR_MEMBER_LEAN_DEGREES: 4,
+
+  /** Period of a queuing member's side-to-side sway, in milliseconds. */
+  FLOOR_MEMBER_WAIT_SWAY_PERIOD_MS: 2600,
+
+  /** Peak angle of that sway, in degrees, either side of upright. */
+  FLOOR_MEMBER_WAIT_SWAY_DEGREES: 1.5,
+
+  /**
+   * One rep of a `using` member's two-keypose cycle, in milliseconds. The
+   * cycle holds each keypose for `FLOOR_MEMBER_REP_HOLD_FRACTION` of this
+   * and crossfades between them for the rest, so a press reads as a
+   * lockout, a controlled descent, a bottom, and a drive — not as two
+   * pictures flickering at the sim tick, which is what the tick-parity
+   * flip this replaced was.
+   */
+  FLOOR_MEMBER_REP_PERIOD_MS: 1500,
+
+  /** Fraction of a rep spent holding EACH keypose; the remainder, split in two, is the travel between them. */
+  FLOOR_MEMBER_REP_HOLD_FRACTION: 0.3,
+
+  /**
+   * How many sim ticks behind the newest snapshot the drawn body plays.
+   * `FloorGrid.tsx` draws a member along a PLAYBACK TIMELINE in sim ticks:
+   * each tick's anchor is a snapshot, the playback clock advances one tick
+   * per `FLOOR_SIM_TICK_INTERVAL_MS` of real time, and the body is drawn
+   * between the two snapshots the clock sits between. Playing one tick
+   * behind means there is always a next snapshot to walk toward, so the
+   * walk is continuous; playing zero ticks behind would draw every tick as
+   * a hop. The cost is one tick of latency between the sim and the screen,
+   * which nothing a player does depends on.
+   */
+  FLOOR_MEMBER_RENDER_DELAY_TICKS: 1,
+
+  /**
+   * How far behind the newest snapshot, in ticks, the playback clock may
+   * fall before it starts catching up. After a main-thread stall the sim's
+   * ticks arrive late and bunched while the playback clock has been
+   * holding on its last snapshot; below this gap it just plays on at the
+   * sim's own rate, above it it plays faster by `FLOOR_MEMBER_CATCH_UP_RATE`
+   * until it is back within the gap. Bounded catch-up, never a jump: the
+   * drawn body is never faster than (1 + rate) times the sim, and the gap
+   * is visible in the evidence as lag rather than hidden by easing.
+   */
+  FLOOR_MEMBER_CATCH_UP_BEHIND_TICKS: 2,
+
+  /** How much faster than the sim's own rate the playback clock runs while catching up — 0.1 is ten per cent. */
+  FLOOR_MEMBER_CATCH_UP_RATE: 0.1,
+
+  /**
+   * How long, in milliseconds, the previous clip's frame fades out while
+   * the next clip's fades in when a member changes what it is doing —
+   * standing to walking, walking to lying on the bench, and back. Short:
+   * a cut between poses is normal in frame animation; this only takes the
+   * edge off it. One sim tick long on purpose: the outgoing clip's frames
+   * stay mounted for one more render after the change (`FloorGrid.tsx`
+   * unions the previous clip's poses into the mounted set until the next
+   * tick's render), so a blend longer than a tick could outlive the frame
+   * it is fading out.
+   */
+  FLOOR_MEMBER_CLIP_BLEND_MS: 120,
+
+  /**
+   * Where on a station's drawn art the body of a `using` member is centred,
+   * as a fraction of the art's height from its top — the bench pad sits in
+   * the upper part of the three-quarter-view bench painting, not at its
+   * centre. The `FLOOR_SIM_USING_ANCHOR_BIAS` fraction still decides how far
+   * from feet-on-cell toward that point the body is pulled.
+   */
+  FLOOR_STATION_PAD_FRACTION: 0.42,
+
+  /**
+   * Each fixed-furniture painting's height divided by its width, read off
+   * the PNG headers (`ironAmberArt.test.ts` pins these against disk within
+   * a few percent). In Play a station is drawn at its art's own proportions
+   * — width from its footprint's projected front edge, height from this —
+   * standing on the footprint's front edge, instead of being stretched into
+   * a footprint box whose aspect has nothing to do with the picture (the
+   * VL-1 bench was a 319×320 painting stretched into a 2×4-tile box, which
+   * is what made it lean).
+   */
+  FLOOR_FIXED_ART_HEIGHT_OVER_WIDTH: Object.freeze({
+    'flat-bench': 1,
+    'quality-bench': 1.02,
+    'power-bar': 2.64,
+    'comp-plates': 0.94,
+    'plate-tree': 3.17,
+  }),
 } satisfies EmpireTuningRecord);
 
 /**
@@ -2975,7 +3121,6 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_SIM_MAX_RUN_TICKS: 'budget',
 
   FLOOR_SIM_TICK_INTERVAL_MS: 'knob',
-  FLOOR_SIM_MOVE_TWEEN_MS: 'knob',
   FLOOR_SIM_RENDER_SEED: 'knob',
   LIVING_MEMBER_SERVICE_HISTORY_WINDOWS: 'knob',
   LIVING_MEMBER_SERVICE_HISTORY_WINDOW: 'knob',
@@ -2995,8 +3140,6 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX: 'knob',
 
   FLOOR_SPRITE_NATIVE_PIXELS_PER_TILE: 'knob',
-  FLOOR_SPRITE_WALK_FRAME_TICKS: 'knob',
-  FLOOR_SPRITE_REP_FRAME_TICKS: 'knob',
   FLOOR_SPRITE_BODY_PALETTE: 'knob',
   FLOOR_SPRITE_OUTFIT_PALETTE: 'knob',
   FLOOR_SPRITE_GEAR_PALETTE: 'knob',
@@ -3048,10 +3191,28 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   STATION_QUALITY_AFFINITY_BONUS: 'knob',
 
   FLOOR_MEMBER_DRAW_SCALE_TILES: 'knob',
-  FLOOR_MEMBER_GAIT_HALF_CYCLE_MS: 'knob',
   FLOOR_MEMBER_GAIT_BOUNCE_PIXELS: 'knob',
   FLOOR_MEMBER_SETTLE_MS: 'knob',
   FLOOR_MEMBER_SHADOW_WIDTH_FRACTION: 'knob',
   FLOOR_MEMBER_SHADOW_HEIGHT_FRACTION: 'knob',
   FLOOR_MEMBER_SHADOW_OPACITY: 'knob',
+
+  FLOOR_SCENE_ART_ASPECT: 'knob',
+  FLOOR_SCENE_FLOOR_SEAM_FRACTION: 'knob',
+  FLOOR_CAMERA_BACK_SCALE: 'knob',
+  FLOOR_CAMERA_ROW_DEPTH_FRACTION: 'knob',
+  FLOOR_CAMERA_BACK_INSET_PIXELS: 'knob',
+  FLOOR_CAMERA_FRONT_INSET_PIXELS: 'knob',
+  FLOOR_MEMBER_STRIDE_TILES: 'knob',
+  FLOOR_MEMBER_LEAN_DEGREES: 'knob',
+  FLOOR_MEMBER_WAIT_SWAY_PERIOD_MS: 'knob',
+  FLOOR_MEMBER_WAIT_SWAY_DEGREES: 'knob',
+  FLOOR_MEMBER_REP_PERIOD_MS: 'knob',
+  FLOOR_MEMBER_REP_HOLD_FRACTION: 'knob',
+  FLOOR_MEMBER_RENDER_DELAY_TICKS: 'knob',
+  FLOOR_MEMBER_CATCH_UP_BEHIND_TICKS: 'knob',
+  FLOOR_MEMBER_CATCH_UP_RATE: 'knob',
+  FLOOR_MEMBER_CLIP_BLEND_MS: 'knob',
+  FLOOR_STATION_PAD_FRACTION: 'knob',
+  FLOOR_FIXED_ART_HEIGHT_OVER_WIDTH: 'knob',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

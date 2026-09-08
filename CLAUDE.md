@@ -134,12 +134,23 @@ lane owns, unless a crossing is written in this section **before** the work.
 - `GymScreen.tsx` — facility scene, dock chrome, Play/Build surfaces
 - `floorSprites.ts` — sprite painters and URI tables
 - `ironAmberArt.ts` — owned-art URI adapter
-- matching tests: `GymScreen.test.ts`, `floorSprites.test.ts`, `ironAmberArt.test.ts`
-- `public/empire-art/**` and `docs/design/IRON-AMBER*` / art-01 / art-02 screenshots
+- `floorCamera.ts` — VL-2: the Play world's one ground-plane projection (tile
+  space to stage pixels and a depth scale, fitted to the painted floor). Pure;
+  holds no economic, queue, placement or member-decision truth, only how
+  Grok's cell coordinates are drawn.
+- `memberAnimation.ts` — VL-2: the member animation clips (frame, lift, lean
+  at a phase; phase advance by distance or time; the tick-indexed playback
+  timeline a body is drawn along). Pure; reads the contract's lifecycle
+  vocabulary as a type and decides nothing the member does.
+- matching tests: `GymScreen.test.ts`, `floorSprites.test.ts`, `ironAmberArt.test.ts`,
+  `floorCamera.test.ts`, `memberAnimation.test.ts`
+- `public/empire-art/**` and `docs/design/IRON-AMBER*` / art-01 / art-02 screenshots,
+  and `docs/design/living-gym-world/**` evidence
 - capture scripts already in `tools/` for Gym Empire visual proof
   (`capture-c1b-gym.mjs`, `capture-c1c-gym.mjs`, `capture-iron-amber-art.mjs`,
   `capture-living-world.mjs`, `smoke-c1d-visible.mjs`, the gym/floor
-  reachability verifiers)
+  reachability verifiers, and VL-2's `measure-world-performance.mjs` and
+  `rekey-empire-art.mjs`)
 
 **Shared contract / registry surfaces (neither lane edits the other's half silently):**
 

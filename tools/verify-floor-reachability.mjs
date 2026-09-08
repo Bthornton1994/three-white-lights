@@ -1095,42 +1095,56 @@ async function pngBackedElementIn(id) {
   return page
     .getByTestId(id)
     .evaluate((node) => {
+      // VL-2: a member's sprite is a STACK of pre-mounted pose images, each
+      // at its own opacity, and the visible frame is the one the frame loop
+      // has at opacity 1. So this reads every PNG-backed element in the
+      // subtree and returns the MOST OPAQUE one — its own opacity times
+      // every ancestor's up to the testID node — rather than the first in
+      // document order, which on a stack is whichever pose happens to sit
+      // first and says nothing about what is drawn. On a single-image
+      // element (a station chip, the scene) the two readings are the same.
+      const effectiveOpacity = (el) => {
+        let opacity = 1;
+        let at = el;
+        while (at !== null && at !== node.parentElement) {
+          opacity *= Number(getComputedStyle(at).opacity);
+          at = at.parentElement;
+        }
+        return opacity;
+      };
+      const hashOf = (text) => {
+        let hash = 0;
+        for (let i = 0; i < text.length; i += 1) hash = (hash * 33 + text.charCodeAt(i)) >>> 0;
+        return hash;
+      };
       const all = [node, ...node.querySelectorAll('*')];
+      let best = null;
       for (const el of all) {
         const style = getComputedStyle(el);
+        let uri = null;
         if (
           style.backgroundImage &&
           (style.backgroundImage.includes('data:image/png') ||
             style.backgroundImage.includes('.png') ||
             style.backgroundImage.includes('image/png'))
         ) {
-          const haystack = style.backgroundImage;
-          let hash = 0;
-          for (let i = 0; i < haystack.length; i += 1) {
-            hash = (hash * 33 + haystack.charCodeAt(i)) >>> 0;
-          }
-          return {
-            uriHash: hash,
-            uriLength: haystack.length,
+          uri = style.backgroundImage;
+        } else if (el.tagName === 'IMG') {
+          const src = el.getAttribute('src') || '';
+          if (src.includes('data:image/png') || src.includes('.png')) uri = src;
+        }
+        if (uri === null) continue;
+        const opacity = effectiveOpacity(el);
+        if (best === null || opacity > best.opacity) {
+          best = {
+            uriHash: hashOf(uri),
+            uriLength: uri.length,
             imageRendering: style.imageRendering,
+            opacity,
           };
         }
-        if (el.tagName === 'IMG') {
-          const src = el.getAttribute('src') || '';
-          if (src.includes('data:image/png') || src.includes('.png')) {
-            let hash = 0;
-            for (let i = 0; i < src.length; i += 1) {
-              hash = (hash * 33 + src.charCodeAt(i)) >>> 0;
-            }
-            return {
-              uriHash: hash,
-              uriLength: src.length,
-              imageRendering: style.imageRendering,
-            };
-          }
-        }
       }
-      return null;
+      return best;
     })
     .catch(() => null);
 }
@@ -1174,13 +1188,15 @@ const SPRITE_FRAME_SAMPLE_INTERVAL_MS = 250;
  * a failing claim. The minimum is 3px rather than 1 so a rounding half-pixel
  * on a shared edge cannot pass it.
  *
- * The rep-cycle claim samples one continuously-`using` member's sprite image
- * and requires at least two distinct frames across the window. At the shipped
- * `FLOOR_SPRITE_REP_FRAME_TICKS` of 1 the frame flips every sim tick (120ms),
- * so a 90ms sampling cadence cannot alias onto one parity for long; the
- * in-state sample count is reported so a thin window reads as thin rather
- * than as a pass. The pre-P4b floor ships exactly one `using` sprite per
- * (type, facing), so its distinct-frame count is 1 whatever the window.
+ * The rep-cycle claim samples one continuously-`using` member's VISIBLE
+ * sprite image (VL-2: the most opaque of the body's pre-mounted pose images,
+ * see `pngBackedElementIn`) and requires at least two distinct frames across
+ * the window. Since VL-2 a rep is a `FLOOR_MEMBER_REP_PERIOD_MS` cycle that
+ * holds each keypose and crossfades between them, so a 90ms sampling cadence
+ * over the window sees both keyposes; the in-state sample count is reported
+ * so a thin window reads as thin rather than as a pass. The pre-P4b floor
+ * ships exactly one `using` sprite per (type, facing), so its distinct-frame
+ * count is 1 whatever the window.
  */
 const P4B_COUPLING_POLL_MS = 12000;
 const P4B_OVERLAP_MIN_PIXELS = 3;
@@ -3965,6 +3981,19 @@ try {
   // viewport, because several presses between here and 13f (hiring, the
   // dev clock) scroll the page — an absolute-viewport box comparison would
   // read a scroll as a move, which is not the claim this is making.
+  // VL-2: the two reads of this offset happen on the SAME surface. Play now
+  // draws every floor item through one ground-plane projection (CLAUDE.md
+  // "Crossing VL-2", `floorCamera.ts`) while Build keeps the orthographic
+  // plan, so an offset read on Build right after the drag and re-read on
+  // Play before the removal press would differ by the projection, not by a
+  // move — measured at {x:231,y:1} against {x:232,y:338} on the first VL-2
+  // run of this tool, with no placement action in between. The claim is
+  // about placement, so both reads are taken on Play, where 13f presses.
+  await openGymSurface('play');
+  const matsPlacedOnPlay13 = await waitUntilDrawn(page, 'floorgrid-placed-mats', BEAT_TIMEOUT_MS);
+  if (!matsPlacedOnPlay13.drawn) {
+    fail(`13: mats placed on Build is not drawn on Play — ${matsPlacedOnPlay13.why}`);
+  }
   const matsBoxAfterPlace13 = await boxOf('floorgrid-placed-mats');
   const gridBoxAfterPlace13 = await boxOf('floorgrid-grid');
   const matsOffsetAfterPlace13 =

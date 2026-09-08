@@ -173,7 +173,11 @@ export const DIRECTORY_WALK = Object.freeze({
   // 28 -> 29: Iron & Amber owned-art adapter (`ironAmberArt.ts`).
   // 29 -> 30: living-world projector (`worldView.ts`).
   // 30 -> 31: Session B presentation-state contract (`presentationState.ts`).
-  SHIPPED_MODULES: 31,
+  // 31 -> 33: VL-2 (CLAUDE.md "Crossing VL-2", Claude Code Session B) — the
+  // Play world's ground-plane projection (`floorCamera.ts`) and the member
+  // animation clips (`memberAnimation.ts`), both pure. Read from this pin's
+  // own failure value.
+  SHIPPED_MODULES: 33,
   /**
    * Files the shared walk hands the censuses today, tests included.
    *
@@ -204,7 +208,8 @@ export const DIRECTORY_WALK = Object.freeze({
   // 60 -> 62: Iron & Amber owned-art adapter and its test.
   // 62 -> 64: living-world projector and its test.
   // 64 -> 66: presentation-state contract and its test.
-  DIRECTORY_FILES: 66,
+  // 66 -> 70: VL-2's `floorCamera.ts` / `memberAnimation.ts` and their tests.
+  DIRECTORY_FILES: 70,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**
@@ -973,6 +978,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'engagement.ts',
       'expansion.ts',
       'floor.ts',
+      'floorCamera.ts',
       'floorSim.ts',
       'floorSprites.ts',
       'ironAmberArt.ts',
@@ -982,6 +988,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'livingMemberRetention.ts',
       'livingMembers.ts',
       'management.ts',
+      'memberAnimation.ts',
       'members.ts',
       'npc.ts',
       'pacing.ts',

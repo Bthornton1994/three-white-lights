@@ -1934,7 +1934,14 @@ describe('Iron & Amber presentation — Gym Empire home chrome', () => {
     // VL-1: the occupancy convenience frame is `occupancyFrame` now that
     // `contractWorld` is the members' source; the queue cells still come from
     // `worldView.ts`.
-    expect(source).toMatch(/queueOccupancyViews\(occupancyFrame\.stations, tile\)/);
+    // VL-2: the queue cells are drawn through the floor camera and are
+    // outlined only under the diagnostics toggle — transparent geometry
+    // anchors on Play, where the queued member standing on the cell is
+    // the read.
+    expect(source).toMatch(/queueOccupancyViews\(occupancyFrame\.stations, camera, showDiagnostics\)/);
+    expect(source).toMatch(/perspectiveFloorCamera\(stageSize, grid, floor\.rung\)/);
+    expect(source).toMatch(/from '\.\/floorCamera'/);
+    expect(source).toMatch(/from '\.\/memberAnimation'/);
     expect(source).toMatch(/presentationWorld\(\{ sim, floor, roster: livingMembers, managed, capability \}\)/);
     expect(source).toMatch(/key=\{draw\.member\.id\}/);
     expect(source).not.toMatch(/opacity: buildMode \? 1 : 0/);

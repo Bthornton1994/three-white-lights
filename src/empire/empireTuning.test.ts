@@ -84,9 +84,14 @@ describe('the block is frozen and every entry is classified', () => {
       'EQUIPMENT_TIER_BUCKS_MULTIPLIER',
       'EQUIPMENT_TIER_COST_GYM_BUCKS',
       'FLEXIBLE_ACTIVITIES',
+      // VL-2 (CLAUDE.md "Crossing VL-2"): the fixed art's aspect table.
+      'FLOOR_FIXED_ART_HEIGHT_OVER_WIDTH',
       'FLOOR_FIXED_FURNITURE_LAYOUT',
       'FLOOR_GRID_SIZE',
       'FLOOR_PLATE_LOADING',
+      // VL-2: the scene paintings' size and per-rung floor seam.
+      'FLOOR_SCENE_ART_ASPECT',
+      'FLOOR_SCENE_FLOOR_SEAM_FRACTION',
       'FLOOR_SIM_USE_TICKS_BY_TYPE',
       // GDD §5.13 P4b — the per-use-class draw bias a `using` member is
       // pulled toward its station's anchor by.
@@ -745,7 +750,17 @@ describe('§5.5 social', () => {
     // renderer geometry and easing, none of them a cadence in any unit
     // training moves. Pinned from the real value under CLAUDE.md's
     // "Crossing VL-1" (shared-append to empireTuning.ts; this line is data).
-    expect(examined).toBe(211);
+    // 211 -> 223: VL-2 (CLAUDE.md "Crossing VL-2") — fifteen new presentation
+    // keys (scene aspect and seams, four camera knobs, seven clip knobs, the
+    // pad fraction, the fixed-art aspect table), minus the three retired
+    // tick-parity / time-cadence knobs (FLOOR_MEMBER_GAIT_HALF_CYCLE_MS,
+    // FLOOR_SPRITE_WALK_FRAME_TICKS, FLOOR_SPRITE_REP_FRAME_TICKS). Read from
+    // this assertion's own failure value.
+    // 223 -> 226: VL-2's playback timeline — FLOOR_MEMBER_RENDER_DELAY_TICKS,
+    // FLOOR_MEMBER_CATCH_UP_BEHIND_TICKS, FLOOR_MEMBER_CATCH_UP_RATE — added
+    // after the first pin. Read from this assertion's own failure value.
+    // 226 -> 225: FLOOR_SIM_MOVE_TWEEN_MS removed (see empireTuning.ts).
+    expect(examined).toBe(225);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -775,7 +790,8 @@ describe('§5.5 social', () => {
     // 1010 -> 1015: Stage G.2A LIVING_MEMBER_EXPERIENCE × 5 banned units.
     // 1015 -> 1020: Stage G.2B LIVING_MEMBER_RETENTION × 5 banned units.
     // 1020 -> 1055: VL-1's seven FLOOR_MEMBER_* entries × 5 banned units.
-    expect(probed).toBe(1055);
+    // 1055 -> 1125: VL-2's 225 keys × 5 banned units.
+    expect(probed).toBe(1125); // 225 keys × 5 banned units
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {
