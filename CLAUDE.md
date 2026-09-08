@@ -927,6 +927,64 @@ bench and deadlift not started; Rive architecture unchanged; mechanics
 untouched; `ATHLETE_RIG.TRAINING_STAGE` still `'schematic'`; PR #48 not
 merged.
 
+#### CROSSING FILED BY THE VISUAL LANE, BEFORE THE WORK, 2026-09-08 (SIXTH) — production athlete / continuous lift v1: authoring BLOCKED by measurement, the owner-playtest route, the performance capture
+
+Human ruling at `29c99cb6`: PRODUCTION ATHLETE / CONTINUOUS LIFT V1. The
+`.riv` must come from an actual Rive authoring workflow; if that
+environment is unavailable, declare it and do the intake and specification
+work without fabricating the asset. Measured before anything else, so the
+declaration is a finding and not a mood: `rive.app`, `editor.rive.app`
+and `app.rive.app` all answer `403` to CONNECT at this environment's
+egress proxy (the same policy denial recorded for `api.expo.dev`),
+`DISPLAY` is unset, and no Rive authoring binary exists in the tree or
+on the path — the editor is a GUI application behind an account, and none
+of those three things is here. **PRODUCTION ATHLETE AUTHORING = BLOCKED —
+RIVE EDITOR / ASSET AUTHOR REQUIRED.** No generator, no reverse-engineered
+format, no renamed JSON, no diagnostic file promoted to the athlete.
+
+Filed here first, per the procedure, although this round touches no
+shared file: `App.tsx` is untouched, `src/shell/**` is untouched, and the
+one new way to reach the shell is a dev surface INSIDE the existing
+`?dev-rive-spike=1` gate that renders `AppShell` (consumption of a shared
+module, not an edit). Own-lane files that move:
+
+1. **The owner-playtest route, fail-closed.** `src/session/
+   trainingStageSelect.ts` (pure, exhaustively tested) decides which arm
+   the training squat draws from the gate value, an override and the
+   asset flag; `src/session/athleteStageOverride.ts` is a React context
+   whose default is null, so production behaviour is byte-for-byte the
+   gate; `TrainingLiftStage.tsx` reads both and, when the athlete arm is
+   selected while `ATHLETE_RIV_IS_PLACEHOLDER` is true, renders an
+   explicit `athlete-asset-missing` panel — never the schematic, never a
+   diagnostic file. `dev-mode=owner-playtest` (one more value in
+   `devModeQuery.ts`) mounts the REAL `AppShell` under that override so
+   Bryant can play an ordinary session against the athlete stage on a dev
+   build before any flip; `ATHLETE_RIG.TRAINING_STAGE` stays
+   `'schematic'` and `trainingStageGate.test.ts` keeps pinning it.
+2. **The performance capture the ruling names.** `src/dev/
+   athleteAcceptance/frameMetrics.ts` (tested reducers: mean FPS, mean,
+   p95, worst, over-33 ms; memory trend) and `tools/athleteAccept.mjs`
+   (my tool, filed under the fourth entry) returning raw rAF gaps, long
+   tasks, `performance.memory` samples and the canvas count per scenario;
+   `tools/athleteTraces.mjs` exports its TypeScript loader so the harness
+   computes through the tested reducer rather than a second copy. What
+   `@rive-app/react-canvas` does not expose — its internal advance/draw
+   cost — is written down as not measurable, not estimated.
+3. **Specification fills**, own-lane docs: body-coherence rejections, the
+   exact authoring-environment requirements, the motion-beat → input map
+   with the corpus witness for each beat, intake inspection steps 6–11,
+   the performance metric definitions, naming/version rules, persistent
+   equipment, and the post-integration native sequence.
+4. **`tools/testPathRefs.test.ts`** — the counts, for the new files.
+   **`src/game/guaranteeTags.test.ts`** — census only if the walk moves;
+   no new tag. **`src/tuning/*` — NOT touched.** `realIp` — the vendor's
+   name is deliberately not on the table, as recorded on the first
+   2026-09-08 entry.
+
+**Not done, by ruling:** no placeholder athlete; no bench, no deadlift; no
+Rive architecture change; no mechanics change; `TRAINING_STAGE` not
+flipped; PR #48 not merged.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion
