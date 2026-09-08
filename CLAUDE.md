@@ -182,8 +182,8 @@ repo's own coordination rule and it still holds.
 - Do not convert TanStack Start. Do not re-add `dev` to `package.json`.
 - Untracked App Builder chrome stays untracked.
 - TRAIN remains Session A `shell-leave-gym`. Do not edit Grok Session A lift mechanics.
-- Queue *capacity-upgrade* visual proof is next after this contract, not a
-  silent start.
+- Queue *capacity-upgrade* mechanics proof is this Grok slice. Visual proof
+  remains Claude's and must not start as a silent rewrite of #46 / #49 / #51.
 
 A governance-only commit that touches this file is the shared coordination
 edit. All four lanes must read it before the next crossing. Cherry-pick it

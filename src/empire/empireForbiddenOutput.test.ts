@@ -1332,11 +1332,12 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
   Object.freeze({
     field: 'presentationState.ts GymMemberId projections for Claude',
     why:
-      'The Session B presentation contract must expose stable living-member identity so the renderer does not infer people from array index or screen order. GymMemberId is already a branded string on livingMembers.ts and is classified as bare here (the walker sees the string constituent). These four positions are the same ids projected onto PresentationWorld — derived from memberIdForIndex, never caller-supplied free text. Instrument B containment-scans every produced value; presentationState.test.ts pins the ids equal the roster.',
+      'The Session B presentation contract must expose stable living-member identity so the renderer does not infer people from array index or screen order. GymMemberId is already a branded string on livingMembers.ts and is classified as bare here (the walker sees the string constituent). These five positions are the same ids projected onto PresentationWorld — derived from memberIdForIndex, never caller-supplied free text. Instrument B containment-scans every produced value; presentationState.test.ts pins the ids equal the roster.',
     positions: Object.freeze([
       'presentationState.ts#presentationWorld#return.members[].id',
       'presentationState.ts#presentationWorld#return.stations[].approachingIds[]',
       'presentationState.ts#presentationWorld#return.stations[].queueIds[]',
+      'presentationState.ts#presentationWorld#return.stations[].seats[].usingId',
       'presentationState.ts#presentationWorld#return.stations[].usingIds[]',
     ]),
   }),
@@ -1829,7 +1830,7 @@ const SURFACE_CENSUS = Object.freeze({
   // 122 -> 125: Stage D playerFacingUpgradeLabel/Effect/Refuse.
   // 128 -> 130: Stage D.1b bay qualityBench + plateTree URI leaves.
   // 130 -> 132: Stage D2.1B changeoverSeatKey + playerFacingStationOperation.
-  BARE_POSITIONS: 196, // claimantsOf return memberId
+  BARE_POSITIONS: 197, // presentationState.ts seats[].usingId
   BARE_FIELDS: 8, // presentationState.ts GymMemberId group
   BRANDED_POSITIONS: 34,
   /**
@@ -1952,7 +1953,7 @@ const SURFACE_CENSUS = Object.freeze({
 // for, the same as `isSoundCondition`'s addition above. Read from this pin's
 // own failure value.
   // 3970 -> 4024: Stage C.1b GymSurface / furniture-place unions and FloorState.furniture.
-  LITERAL_POSITIONS: 4612, // claimantsOf exported member union
+  LITERAL_POSITIONS: 4613, // presentation-state PresentationSeat field
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -15852,7 +15853,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'stationView.ts': 50,
       'trainingStation.ts': 18,
       'worldView.ts': 25,
-      'presentationState.ts': 26,
+      'presentationState.ts': 27,
     }),
     'returned-closure': Object.freeze({
       'empireInvariant.ts': 2,
@@ -16297,10 +16298,10 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'livingMembers.ts:269 returned=unfollowable:roster',
   'management.ts:1473 returned=unfollowable:state',
   'pacing.ts:246 receiver=CallExpression',
-  'presentationState.ts:252 returned=unfollowable:input',
-  'presentationState.ts:255 returned=unfollowable:input',
-  'presentationState.ts:377 returned=unfollowable:station',
-  'presentationState.ts:567 returned=unfollowable:input',
+  'presentationState.ts:268 returned=unfollowable:input',
+  'presentationState.ts:271 returned=unfollowable:input',
+  'presentationState.ts:423 returned=unfollowable:station',
+  'presentationState.ts:614 returned=unfollowable:input',
   'recruitment.ts:388 returned=unfollowable:state',
   'sessions.ts:563 receiver=ArrayLiteralExpression',
   'sessions.ts:656 returned=unfollowable:state',
@@ -16392,12 +16393,12 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'management.ts:2690 ManagedGym asked=true walked=false',
   'pacing.ts:292 LadderState asked=true walked=false',
   'pacing.ts:298 LadderState asked=true walked=false',
-  'presentationState.ts:252 FloorState asked=true walked=false',
-  'presentationState.ts:255 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'presentationState.ts:377 GridSize asked=true walked=false',
-  'presentationState.ts:565 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
-  'presentationState.ts:566 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
-  'presentationState.ts:567 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'presentationState.ts:268 FloorState asked=true walked=false',
+  'presentationState.ts:271 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'presentationState.ts:423 GridSize asked=true walked=false',
+  'presentationState.ts:612 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
+  'presentationState.ts:613 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
+  'presentationState.ts:614 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
   'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
   'sessions.ts:656 LadderState asked=true walked=false',
   'sessions.ts:696 LadderState asked=true walked=false',
@@ -16626,7 +16627,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1674 -> 1681: Stage D2 placedOwnedItems / withWear / stationOperationView / reset.
   // 1681 -> 1691: Stage D2.1A assignedSeat / reservedUseCells / relocate helpers.
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
-  function: 1934, // presentation-state contract call targets
+  function: 1939, // presentation-state seats helper call targets
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16684,7 +16685,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1502 -> 1513: Stage D2 Set.has / Object.freeze / stationByRefKey.get.
   // 1513 -> 1517: Stage D2.1A useCells/blocked/has member calls on live relocate.
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
-  member: 1710, // presentation-state contract member calls
+  member: 1713, // presentation-state seats helper member calls
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -16765,7 +16766,7 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 430 -> 435: Stage D2 withWear restrict / stationOperationView seats / placedOwnedItems loops.
   // 435 -> 438: Stage D2.1A reservedUseCells / assignedSeat / relocate locals.
   // 438 -> 444: Stage D2.1B nextChangeovers / loading-path locals.
-  local: 477, // presentation-state contract local writes
+  local: 478, // presentation-state seats helper local writes
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -16880,7 +16881,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 911 -> 916: Stage D2.1A floorSim return 63 -> 68.
   // 916 -> 925: Stage D2.1B floorSim 68→72, stationCapability 24→27,
   // stationView 44→46.
-  SITES: 1129, // presentationState.ts 26 returns
+  SITES: 1130, // presentationState.ts 27 returns
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -17033,7 +17034,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
   // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
   // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
-  NODES_EXAMINED: 89_782, // presentation-state contract AST nodes
+  NODES_EXAMINED: 90_017, // presentation-state seats helper AST nodes
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -17170,7 +17171,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // 1001 -> 1003: Stage D.1b capacityRealizesOn + bay sprite table leaves.
   // 1003 -> 1005: Stage D2 placedOwnedItems + reset-gym signatures.
   // 1005 -> 1015: Stage D2.1B five new exported functions' signatures.
-  POSITIONS: 1156, // presentation-state contract exported positions
+  POSITIONS: 1157, // presentation-state PresentationSeat exported positions
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',

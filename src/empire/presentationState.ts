@@ -29,6 +29,8 @@
  *     shake into simulation state.
  *   - It does not re-encode queue fairness. `claimantsOf` in floorSim.ts is
  *     the only service-order implementation.
+ *   - It does not copy queue-cell geometry. `worldView.occupiedQueueCells`
+ *     remains the FloorGrid occupancy convenience. Service order is queueIds.
  */
 
 import { refuseWith } from './empireCore';
@@ -49,6 +51,7 @@ import {
   claimantsOf,
   floorStationRefKey,
   floorStations,
+  seatChangeoverTicks,
   type FloorSimContext,
   type FloorSimInterruption,
   type FloorSimMember,
@@ -131,6 +134,18 @@ export interface PresentationMember {
   readonly experienceComposite: number | null;
 }
 
+/**
+ * One realised seat. Capacity 2 is two of these on one bay, not two bays.
+ * `usingId` is who occupies this cell; a lifecycle-using member may briefly
+ * sit on no seat during a live Capacity rebuild (ghost-reserve).
+ * `changeoverTicks` is remaining plate-change on this cell, else 0.
+ */
+export interface PresentationSeat {
+  readonly cell: PresentationCell;
+  readonly usingId: GymMemberId | null;
+  readonly changeoverTicks: number;
+}
+
 /** One derived station. Identity is FloorStationRef (SKU-kind), not array order. */
 export interface PresentationStation {
   readonly ref: FloorStationRef;
@@ -142,6 +157,7 @@ export interface PresentationStation {
   readonly queueIds: readonly GymMemberId[];
   readonly approachingIds: readonly GymMemberId[];
   readonly changeoverSeats: number;
+  readonly seats: readonly PresentationSeat[];
 }
 
 /** One owned SKU. Presence in `item` is identity; at most one of each exists. */
@@ -365,6 +381,36 @@ function queuedOnly(
   return queued;
 }
 
+function presentationSeats(
+  station: FloorStation,
+  sim: FloorSimState,
+  roster: LivingMemberRoster,
+): readonly PresentationSeat[] {
+  const seats: PresentationSeat[] = [];
+  for (let index = 0; index < station.useCells.length; index += 1) {
+    const cell = station.useCells[index];
+    if (cell === undefined) continue;
+    let usingId: GymMemberId | null = null;
+    for (let memberIndex = 0; memberIndex < sim.members.length; memberIndex += 1) {
+      const member = sim.members[memberIndex];
+      if (member === undefined) continue;
+      if (member.state !== 'using') continue;
+      if (member.target === null || !refsMatch(member.target, station.ref)) continue;
+      if (member.cell.x !== cell.x || member.cell.y !== cell.y) continue;
+      usingId = requireMemberId(roster, member.index);
+      break;
+    }
+    seats.push(
+      Object.freeze({
+        cell: freezeCell(cell),
+        usingId,
+        changeoverTicks: seatChangeoverTicks(sim.changeovers, station.ref, cell),
+      }),
+    );
+  }
+  return Object.freeze(seats);
+}
+
 function presentationStation(
   station: FloorStation,
   sim: FloorSimState,
@@ -381,6 +427,7 @@ function presentationStation(
     queueIds: idsOf(queuedOnly(sim.members, station.ref), roster),
     approachingIds: idsOf(approachingOf(sim.members, station.ref), roster),
     changeoverSeats: view.changeoverSeats,
+    seats: presentationSeats(station, sim, roster),
   });
 }
 
