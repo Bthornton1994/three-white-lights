@@ -1,0 +1,5661 @@
+{
+  "sha": "2c5f884dc7b89babab5197f3b93273da2711ead0",
+  "dirty": false,
+  "url": "http://localhost:8081",
+  "generatedAt": "2026-09-08T00:02:20.246Z",
+  "drawScaleTiles": 1.6,
+  "results": [
+    {
+      "viewport": "390x844",
+      "subject": "member:n1:2",
+      "samples": [
+        {
+          "t": 3,
+          "dt": 100,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 52.88159942626953,
+            "y": 301.81048583984375,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 262,
+          "dt": 259,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 89.02365112304688,
+            "y": 315.8941955566406,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0.843,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 528,
+          "dt": 266,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 89.1999740600586,
+            "y": 352.3341369628906,
+            "w": 73.59375762939453,
+            "h": 73.59375
+          },
+          "stepTiles": 0.792,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 632,
+          "dt": 104,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 89.19999694824219,
+            "y": 362.4195556640625,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0.219,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 736,
+          "dt": 104,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 89.19999694824219,
+            "y": 379.52532958984375,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0.372,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 859,
+          "dt": 123,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 89.19999694824219,
+            "y": 394.5372314453125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0.326,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 961,
+          "dt": 102,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 90.92504119873047,
+            "y": 400.4945373535156,
+            "w": 73.59375762939453,
+            "h": 73.59375
+          },
+          "stepTiles": 0.135,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 1066,
+          "dt": 105,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 107.8617935180664,
+            "y": 402.8779296875,
+            "w": 73.59374237060547,
+            "h": 73.59375
+          },
+          "stepTiles": 0.372,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 1325,
+          "dt": 259,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 136.58047485351562,
+            "y": 402.89971923828125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0.624,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 1430,
+          "dt": 105,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 153.51559448242188,
+            "y": 402.8999938964844,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0.368,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 1543,
+          "dt": 113,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 169.1339111328125,
+            "y": 402.8999938964844,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0.34,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 1647,
+          "dt": 104,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 179.1790008544922,
+            "y": 402.8999938964844,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0.218,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 1752,
+          "dt": 105,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 195.38658142089844,
+            "y": 402.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0.352,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 1856,
+          "dt": 104,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 210.37030029296875,
+            "y": 402.8999938964844,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0.326,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 2115,
+          "dt": 259,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 390.5110778808594,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0.454,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 2219,
+          "dt": 104,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 372.1746826171875,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0.399,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 2323,
+          "dt": 104,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 361.44586181640625,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0.233,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 2427,
+          "dt": 104,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 351.4551696777344,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0.217,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 2531,
+          "dt": 104,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 337.223388671875,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0.309,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 2634,
+          "dt": 103,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 319.26275634765625,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0.39,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 2892,
+          "dt": 258,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 288.4118957519531,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0.671,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 2995,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 274.91943359375,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0.293,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3260,
+          "dt": 265,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0.218,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3362,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3466,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3569,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3673,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3776,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3879,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3981,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 4085,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 4189,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 4332,
+          "dt": 143,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 4437,
+          "dt": 105,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 4540,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 4646,
+          "dt": 106,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 4749,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 4852,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 4956,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5060,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5164,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5268,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5377,
+          "dt": 109,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5480,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5583,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5686,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5789,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5892,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5996,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 6099,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 6204,
+          "dt": 105,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 6307,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 6411,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 6514,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 6619,
+          "dt": 105,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 6721,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 6825,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 6929,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 7033,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7137,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 264.8999938964844,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7241,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 256.11798095703125,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0.191,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7344,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 242.08242797851562,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0.305,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7447,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 226.21742248535156,
+            "w": 73.59376525878906,
+            "h": 73.59376525878906
+          },
+          "stepTiles": 0.345,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7551,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 227.1999969482422,
+            "y": 218.96969604492188,
+            "w": 73.59376525878906,
+            "h": 73.59375
+          },
+          "stepTiles": 0.158,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7658,
+          "dt": 107,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 241.94125366210938,
+            "y": 218.91510009765625,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0.32,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7761,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 260.29986572265625,
+            "y": 218.90054321289062,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0.399,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7865,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 269.0573425292969,
+            "y": 218.90008544921875,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0.19,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7967,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0.09,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8071,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8174,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8277,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8381,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8485,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8589,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8693,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8796,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8900,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9004,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9107,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9220,
+          "dt": 113,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9323,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9426,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9528,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9631,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9735,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9839,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9952,
+          "dt": 113,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 10060,
+          "dt": 108,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 10164,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 10271,
+          "dt": 107,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 10374,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 10477,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 10581,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 10687,
+          "dt": 106,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 10790,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 10897,
+          "dt": 107,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 11002,
+          "dt": 105,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 11105,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11209,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11312,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11415,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11519,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11623,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11731,
+          "dt": 108,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11835,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11938,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12042,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12146,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12249,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12352,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12457,
+          "dt": 105,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12560,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12663,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12766,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12869,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12972,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 13076,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 13179,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 13282,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 13385,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 273.20001220703125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 13488,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.69293212890625,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0.228,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 13590,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 247.48123168945312,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0.331,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 13694,
+          "dt": 104,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 221.79071044921875,
+            "y": 233.77767944335938,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0.645,
+          "settleWindow": true,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 14377,
+          "dt": 683,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 2.023,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 14479,
+          "dt": 102,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 14582,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 14687,
+          "dt": 105,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 14790,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 14924,
+          "dt": 134,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15032,
+          "dt": 108,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15135,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15238,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15341,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15443,
+          "dt": 102,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15547,
+          "dt": 104,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15652,
+          "dt": 105,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15755,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15858,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15963,
+          "dt": 105,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16066,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16170,
+          "dt": 104,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16273,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16375,
+          "dt": 102,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16480,
+          "dt": 105,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16583,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16687,
+          "dt": 104,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16792,
+          "dt": 105,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16897,
+          "dt": 105,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 17001,
+          "dt": 104,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 17105,
+          "dt": 104,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 17208,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 17310,
+          "dt": 102,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 17413,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 17515,
+          "dt": 102,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 17620,
+          "dt": 105,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 17722,
+          "dt": 102,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 17826,
+          "dt": 104,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 158.1999969482422,
+            "y": 301.70001220703125,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 17929,
+          "dt": 103,
+          "lifecycle": "leaving",
+          "target": null,
+          "queueRank": null,
+          "box": {
+            "x": 175.01290893554688,
+            "y": 281.5245056152344,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 0.571,
+          "settleWindow": true,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 18609,
+          "dt": 680,
+          "lifecycle": "seeking",
+          "target": null,
+          "queueRank": null,
+          "box": {
+            "x": 294.21533203125,
+            "y": 218.89999389648438,
+            "w": 73.59375,
+            "h": 73.59375
+          },
+          "stepTiles": 2.927,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        }
+      ],
+      "transitions": [
+        {
+          "t": 3,
+          "lifecycle": "seeking",
+          "queueRank": "1",
+          "target": "training:competition-bench-bay",
+          "frame": "390x844-01-seeking.png"
+        },
+        {
+          "t": 2995,
+          "lifecycle": "queuing",
+          "queueRank": "1",
+          "target": "training:competition-bench-bay",
+          "frame": "390x844-02-queuing.png"
+        },
+        {
+          "t": 13694,
+          "lifecycle": "using",
+          "queueRank": null,
+          "target": "training:competition-bench-bay",
+          "frame": "390x844-03-using.png"
+        },
+        {
+          "t": 17929,
+          "lifecycle": "leaving",
+          "queueRank": null,
+          "target": null,
+          "frame": "390x844-04-leaving.png"
+        },
+        {
+          "t": 18609,
+          "lifecycle": "seeking",
+          "queueRank": null,
+          "target": null,
+          "frame": "390x844-05-seeking.png"
+        }
+      ],
+      "frames": [
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/390x844-01-seeking.png",
+          "label": "0.0s seeking q1"
+        },
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/390x844-walk-1.png",
+          "label": "0.3s walking"
+        },
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/390x844-walk-2.png",
+          "label": "1.1s walking"
+        },
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/390x844-walk-3.png",
+          "label": "1.9s walking"
+        },
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/390x844-walk-4.png",
+          "label": "2.6s walking"
+        },
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/390x844-02-queuing.png",
+          "label": "3.0s queuing q1"
+        },
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/390x844-03-using.png",
+          "label": "13.7s using"
+        },
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/390x844-04-leaving.png",
+          "label": "17.9s leaving"
+        },
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/390x844-05-seeking.png",
+          "label": "18.6s seeking"
+        }
+      ],
+      "verdicts": {
+        "identity": true,
+        "travel": true,
+        "noTeleport": true,
+        "using": true,
+        "release": true,
+        "continues": true,
+        "queueObserved": true,
+        "station": true,
+        "scene": true,
+        "layout": true
+      },
+      "maxOrdinaryTilesPer100ms": 0.43050835101432566,
+      "maxSettleTiles": 0.6454355197276304,
+      "tilePx": 45.99609375,
+      "pageErrors": [],
+      "travelledTiles": 10.06,
+      "stationIds": [
+        "floorsim-using-training-competition-bench-bay"
+      ],
+      "artSrcs": [
+        "/empire-art/floor-garage.png"
+      ],
+      "video": "390x844-lifecycle.webm",
+      "strip": "390x844-lifecycle-strip.png"
+    },
+    {
+      "viewport": "375x812",
+      "subject": "member:n1:2",
+      "samples": [
+        {
+          "t": 4,
+          "dt": 100,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 69.94850158691406,
+            "y": 289.30010986328125,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 225,
+          "dt": 221,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 86.25457763671875,
+            "y": 335.9136657714844,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 1.122,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 456,
+          "dt": 231,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 86.30000305175781,
+            "y": 362.91046142578125,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.614,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 559,
+          "dt": 103,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 86.30000305175781,
+            "y": 376.03387451171875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.298,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 662,
+          "dt": 103,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 86.30000305175781,
+            "y": 384.63739013671875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.196,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 766,
+          "dt": 104,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 101.45034790039062,
+            "y": 385.868408203125,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.346,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 869,
+          "dt": 103,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 116.30068969726562,
+            "y": 386.1000061035156,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.338,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 973,
+          "dt": 104,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 126.10043334960938,
+            "y": 386.1000061035156,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.223,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 1200,
+          "dt": 227,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 155.2284698486328,
+            "y": 386.1000061035156,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.662,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 1304,
+          "dt": 104,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 166.76380920410156,
+            "y": 386.1000061035156,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.262,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 1406,
+          "dt": 102,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 176.2452392578125,
+            "y": 386.1000061035156,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.216,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 1511,
+          "dt": 105,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 192.3004150390625,
+            "y": 386.1000061035156,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.365,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 1621,
+          "dt": 110,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 206.250732421875,
+            "y": 386.1000061035156,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.317,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 1724,
+          "dt": 103,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 216.1560516357422,
+            "y": 386.1000061035156,
+            "w": 70.39064025878906,
+            "h": 70.390625
+          },
+          "stepTiles": 0.225,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 1963,
+          "dt": 239,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.27740478515625,
+            "y": 353.66925048828125,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.739,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 2067,
+          "dt": 104,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.2996368408203,
+            "y": 344.8911437988281,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0.2,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 2170,
+          "dt": 103,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.29998779296875,
+            "y": 333.0502014160156,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.269,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 2275,
+          "dt": 105,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 318.99945068359375,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0.319,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 2377,
+          "dt": 102,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 307.0506286621094,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0.272,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 2481,
+          "dt": 104,
+          "lifecycle": "seeking",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 296.55267333984375,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0.239,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 2717,
+          "dt": 236,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 261.4992370605469,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0.797,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 2943,
+          "dt": 226,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0.168,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3046,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3150,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3253,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3357,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3460,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3563,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3666,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3770,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3873,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 3975,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 4079,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 4182,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 4286,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 4389,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 4499,
+          "dt": 110,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 4603,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 4707,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 4810,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 4913,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5016,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5119,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5223,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5326,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5428,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5532,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5634,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5736,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5839,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 5943,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 6046,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 6150,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 6253,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 6356,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 6459,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 6562,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "1",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 6666,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 6770,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 6872,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 254.10000610351562,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 6976,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 244.9497833251953,
+            "w": 70.39060974121094,
+            "h": 70.39064025878906
+          },
+          "stepTiles": 0.208,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7079,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 227.77938842773438,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0.39,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7183,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 218.3000030517578,
+            "y": 216.90972900390625,
+            "w": 70.39060974121094,
+            "h": 70.390625
+          },
+          "stepTiles": 0.247,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7286,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 221.00006103515625,
+            "y": 211.15882873535156,
+            "w": 70.390625,
+            "h": 70.39060974121094
+          },
+          "stepTiles": 0.144,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7390,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 236.0004119873047,
+            "y": 210.12075805664062,
+            "w": 70.39064025878906,
+            "h": 70.390625
+          },
+          "stepTiles": 0.342,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7505,
+          "dt": 115,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 251.09825134277344,
+            "y": 210.1036376953125,
+            "w": 70.39064025878906,
+            "h": 70.390625
+          },
+          "stepTiles": 0.343,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7607,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 260.3002014160156,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.209,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7711,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.045,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7815,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 7918,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8021,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8124,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8227,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8331,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8434,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8539,
+          "dt": 105,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8642,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8745,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8849,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 8952,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9059,
+          "dt": 107,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9162,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9267,
+          "dt": 105,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9371,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9473,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9576,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9679,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9782,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9885,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 9988,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 10092,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 10194,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 10297,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 10401,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 10504,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 10608,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 10710,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 10814,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 10917,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11019,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11121,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11225,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11328,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11433,
+          "dt": 105,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11536,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11638,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11740,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11844,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 11946,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12050,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12153,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12255,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12358,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12462,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12565,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12668,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12770,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12872,
+          "dt": 102,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 12976,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 13080,
+          "dt": 104,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 262.29998779296875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 13183,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 256.4498596191406,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.133,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 13286,
+          "dt": 103,
+          "lifecycle": "queuing",
+          "target": "training:competition-bench-bay",
+          "queueRank": "0",
+          "box": {
+            "x": 243.3845672607422,
+            "y": 210.10000610351562,
+            "w": 70.39064025878906,
+            "h": 70.390625
+          },
+          "stepTiles": 0.297,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 13388,
+          "dt": 102,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 226.4666748046875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.385,
+          "settleWindow": true,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 14077,
+          "dt": 689,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 2.466,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 14180,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 14283,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 14385,
+          "dt": 102,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 14489,
+          "dt": 104,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 14592,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 14699,
+          "dt": 107,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 14802,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 14905,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15008,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15112,
+          "dt": 104,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15216,
+          "dt": 104,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15319,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15424,
+          "dt": 105,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15526,
+          "dt": 102,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15630,
+          "dt": 104,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15733,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15837,
+          "dt": 104,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 15939,
+          "dt": 102,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16042,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16148,
+          "dt": 106,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16258,
+          "dt": 110,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16362,
+          "dt": 104,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16465,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16569,
+          "dt": 104,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16673,
+          "dt": 104,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16776,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16879,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 16984,
+          "dt": 105,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 17087,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 17189,
+          "dt": 102,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 17292,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 17396,
+          "dt": 104,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 17499,
+          "dt": 103,
+          "lifecycle": "using",
+          "target": "training:competition-bench-bay",
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": false,
+          "station": "floorsim-using-training-competition-bench-bay",
+          "overflowX": false
+        },
+        {
+          "t": 17604,
+          "dt": 105,
+          "lifecycle": "leaving",
+          "target": null,
+          "queueRank": null,
+          "box": {
+            "x": 152.3000030517578,
+            "y": 289.29998779296875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0,
+          "settleWindow": true,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 18279,
+          "dt": 675,
+          "lifecycle": "leaving",
+          "target": null,
+          "queueRank": null,
+          "box": {
+            "x": 276.968505859375,
+            "y": 210.10028076171875,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 3.357,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        },
+        {
+          "t": 18382,
+          "dt": 103,
+          "lifecycle": "seeking",
+          "target": null,
+          "queueRank": null,
+          "box": {
+            "x": 291.5506591796875,
+            "y": 210.10000610351562,
+            "w": 70.390625,
+            "h": 70.390625
+          },
+          "stepTiles": 0.331,
+          "settleWindow": false,
+          "station": null,
+          "overflowX": false
+        }
+      ],
+      "transitions": [
+        {
+          "t": 4,
+          "lifecycle": "seeking",
+          "queueRank": "1",
+          "target": "training:competition-bench-bay",
+          "frame": "375x812-01-seeking.png"
+        },
+        {
+          "t": 2717,
+          "lifecycle": "queuing",
+          "queueRank": "1",
+          "target": "training:competition-bench-bay",
+          "frame": "375x812-02-queuing.png"
+        },
+        {
+          "t": 13388,
+          "lifecycle": "using",
+          "queueRank": null,
+          "target": "training:competition-bench-bay",
+          "frame": "375x812-03-using.png"
+        },
+        {
+          "t": 17604,
+          "lifecycle": "leaving",
+          "queueRank": null,
+          "target": null,
+          "frame": "375x812-04-leaving.png"
+        },
+        {
+          "t": 18382,
+          "lifecycle": "seeking",
+          "queueRank": null,
+          "target": null,
+          "frame": "375x812-05-seeking.png"
+        }
+      ],
+      "frames": [
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/375x812-01-seeking.png",
+          "label": "0.0s seeking q1"
+        },
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/375x812-walk-1.png",
+          "label": "0.2s walking"
+        },
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/375x812-walk-2.png",
+          "label": "1.0s walking"
+        },
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/375x812-walk-3.png",
+          "label": "1.7s walking"
+        },
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/375x812-walk-4.png",
+          "label": "2.5s walking"
+        },
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/375x812-02-queuing.png",
+          "label": "2.7s queuing q1"
+        },
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/375x812-03-using.png",
+          "label": "13.4s using"
+        },
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/375x812-04-leaving.png",
+          "label": "17.6s leaving"
+        },
+        {
+          "path": "/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/claude-visual-lane/docs/design/living-gym-world/vl-1/375x812-05-seeking.png",
+          "label": "18.4s seeking"
+        }
+      ],
+      "verdicts": {
+        "identity": true,
+        "travel": true,
+        "noTeleport": true,
+        "using": true,
+        "release": true,
+        "continues": true,
+        "queueObserved": true,
+        "station": true,
+        "scene": true,
+        "layout": true
+      },
+      "maxOrdinaryTilesPer100ms": 0.5079174334053147,
+      "maxSettleTiles": 0.3845487652608213,
+      "tilePx": 43.994140625,
+      "pageErrors": [],
+      "travelledTiles": 9.8,
+      "stationIds": [
+        "floorsim-using-training-competition-bench-bay"
+      ],
+      "artSrcs": [
+        "/empire-art/floor-garage.png"
+      ],
+      "video": "375x812-lifecycle.webm",
+      "strip": "375x812-lifecycle-strip.png"
+    }
+  ],
+  "notes": [
+    "VL-1 living-world capture at 2c5f884dc7b89babab5197f3b93273da2711ead0 url=http://localhost:8081",
+    "390x844 following member:n1:2 — 3 members drawn, targets [\"queuing@training:competition-bench-bay\",\"using@training:competition-bench-bay\",\"seeking@training:competition-bench-bay\"]",
+    "390x844 t=0.0s seeking target=training:competition-bench-bay rank=1 box=(53,302)",
+    "390x844 t=3.0s queuing target=training:competition-bench-bay rank=1 box=(227,275)",
+    "390x844 t=13.7s using target=training:competition-bench-bay rank=- box=(222,234)",
+    "390x844 t=17.9s leaving target=- rank=- box=(175,282)",
+    "390x844 t=18.6s seeking target=- rank=- box=(294,219)",
+    "390x844 verdicts {\"identity\":true,\"travel\":true,\"noTeleport\":true,\"using\":true,\"release\":true,\"continues\":true,\"queueObserved\":true,\"station\":true,\"scene\":true,\"layout\":true} samples=159 travelled=10.06 tiles maxOrdinaryRate=0.431 tiles/100ms maxSettle=0.645 tiles tile=46.0px",
+    "375x812 following member:n1:2 — 3 members drawn, targets [\"queuing@training:competition-bench-bay\",\"using@training:competition-bench-bay\",\"seeking@training:competition-bench-bay\"]",
+    "375x812 t=0.0s seeking target=training:competition-bench-bay rank=1 box=(70,289)",
+    "375x812 t=2.7s queuing target=training:competition-bench-bay rank=1 box=(218,261)",
+    "375x812 t=13.4s using target=training:competition-bench-bay rank=- box=(226,210)",
+    "375x812 t=17.6s leaving target=- rank=- box=(152,289)",
+    "375x812 t=18.4s seeking target=- rank=- box=(292,210)",
+    "375x812 verdicts {\"identity\":true,\"travel\":true,\"noTeleport\":true,\"using\":true,\"release\":true,\"continues\":true,\"queueObserved\":true,\"station\":true,\"scene\":true,\"layout\":true} samples=160 travelled=9.8 tiles maxOrdinaryRate=0.508 tiles/100ms maxSettle=0.385 tiles tile=44.0px"
+  ]
+}

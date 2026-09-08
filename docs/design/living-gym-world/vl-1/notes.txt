@@ -1,0 +1,15 @@
+VL-1 living-world capture at 2c5f884dc7b89babab5197f3b93273da2711ead0 url=http://localhost:8081
+390x844 following member:n1:2 — 3 members drawn, targets ["queuing@training:competition-bench-bay","using@training:competition-bench-bay","seeking@training:competition-bench-bay"]
+390x844 t=0.0s seeking target=training:competition-bench-bay rank=1 box=(53,302)
+390x844 t=3.0s queuing target=training:competition-bench-bay rank=1 box=(227,275)
+390x844 t=13.7s using target=training:competition-bench-bay rank=- box=(222,234)
+390x844 t=17.9s leaving target=- rank=- box=(175,282)
+390x844 t=18.6s seeking target=- rank=- box=(294,219)
+390x844 verdicts {"identity":true,"travel":true,"noTeleport":true,"using":true,"release":true,"continues":true,"queueObserved":true,"station":true,"scene":true,"layout":true} samples=159 travelled=10.06 tiles maxOrdinaryRate=0.431 tiles/100ms maxSettle=0.645 tiles tile=46.0px
+375x812 following member:n1:2 — 3 members drawn, targets ["queuing@training:competition-bench-bay","using@training:competition-bench-bay","seeking@training:competition-bench-bay"]
+375x812 t=0.0s seeking target=training:competition-bench-bay rank=1 box=(70,289)
+375x812 t=2.7s queuing target=training:competition-bench-bay rank=1 box=(218,261)
+375x812 t=13.4s using target=training:competition-bench-bay rank=- box=(226,210)
+375x812 t=17.6s leaving target=- rank=- box=(152,289)
+375x812 t=18.4s seeking target=- rank=- box=(292,210)
+375x812 verdicts {"identity":true,"travel":true,"noTeleport":true,"using":true,"release":true,"continues":true,"queueObserved":true,"station":true,"scene":true,"layout":true} samples=160 travelled=9.8 tiles maxOrdinaryRate=0.508 tiles/100ms maxSettle=0.385 tiles tile=44.0px

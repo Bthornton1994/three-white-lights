@@ -324,7 +324,9 @@ async function runViewport(browser, viewport) {
     } else if (me.lifecycle === 'seeking' && walkFrames < MAX_WALK_FRAMES && t - lastWalkFrameAt >= WALK_FRAME_EVERY_MS && stepTiles > 0) {
       walkFrames += 1;
       lastWalkFrameAt = t;
-      const path = join(OUT, `${vp}-walk-${walkFrames}.png`);
+      // Walking frames live only in the strip (and the video); the loose
+      // PNGs go to the temp dir so the committed evidence stays small.
+      const path = join(VIDEO_TMP, `${vp}-walk-${walkFrames}.png`);
       await page.screenshot({ path, fullPage: false });
       result.frames.push({ path, label: `${(t / 1000).toFixed(1)}s walking` });
     }

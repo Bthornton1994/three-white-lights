@@ -230,6 +230,94 @@ PLAYTEST; only Bryant closes OWNER PLAYTEST. It does not start the
 capacity-upgrade proof, G.2C3 / G.2D / G.2E, or any Session A work, and does
 not merge #46 / #49 / #51 / #52.
 
+### VL-1 delivered — code at `2c5f884d`, evidence stamped against it, gates stated separately
+
+Code commit `2c5f884d` on `claude/empire-s5-visual-lane` (draft, not merged).
+Evidence under `docs/design/living-gym-world/vl-1/` is stamped `2c5f884d`
+with a clean tree by the tool that produced it: per viewport, a video of the
+whole run, one frame at each lifecycle transition (photographed after the
+settle so it shows where the body ends up), a strip, and `notes.json` with
+every 100 ms sample.
+
+**What was measured, both at 390×844 and 375×812**, following the contract
+member `member:n1:2` by `data-memberid` from the first coherent frame:
+seeking with `target=training:competition-bench-bay` and `queueRank=1` →
+queuing (t≈3.0 s / 2.7 s) → using (13.7 s / 13.4 s, box overlapping the
+bench's own `floorsim-using-…` outline) → leaving with the target cleared
+(17.9 s / 17.6 s) → seeking again (18.6 s / 18.4 s). The id resolved to
+exactly one drawn node in all 159 / 160 samples; 10.06 / 9.8 tiles travelled
+while seeking; fastest ordinary movement 0.43 / 0.51 tiles per 100 ms against
+a walking maximum of ~0.36 (the excess is the tween catching up after the
+harness's own screenshot stalls, measured and named in the tool); largest
+settle displacement 0.65 / 0.39 tiles; the station outline's id was the same
+string every time it was drawn; the facility art `src` never changed; no
+horizontal overflow; no page errors. Tile 46 / 44 px, so the drawn body is
+~74 / ~70 px tall.
+
+**Tests.** `src/empire`: 35 files, 1202 tests, exit 0. `tsc --noEmit` exit 0.
+`src/game/streakEntitlement.test.ts` 46/46 (no new declaration names a
+covered day or a purchase). `src/tuning/audit.test.ts` and
+`src/licensing/realIp.test.ts` green. `src/game/guaranteeTags.test.ts`: the
+tree-wide paragraph pin holds on this stack — VL-1 added no triggering
+paragraph — and its one red, `[g2b-forming]` declared by a test and tagged
+by no comment, is the pre-existing debt PR #52's body already records; it is
+red with this slice's changes stashed too.
+
+**Pins moved, all from their own failure values, none re-shaped:**
+`empireTuning.test.ts` (examined 204 → 211, probed 1020 → 1055);
+`empireCore.test.ts` (mention pairs 214 → 216, single-quoted 886 → 887,
+import specifiers 142 → 143, the tuning-audit literal count 451 → 458, the
+real-name probe list and its total 1276 → 1277, and `./presentationState` on
+`FloorGrid.tsx`'s import row); `empireForbiddenOutput.test.ts` (seven
+`NOT_A_BRANCH_POINT` rows for the `FLOOR_MEMBER_*` knobs, three
+`DECLARED_AMBIENT_MEMBER_BODY_PROPS` rows for `memberId` / `target` /
+`queueRank` with `DEEPEST` 1 → 3, `TUNING_NUMERIC_LEAVES` 504 → 511, and the
+cascade every exempt leaf causes as a foreign point in every numeric domain —
+domain point counts, containment checks, drive rows/nodes/strings, kinded-
+return arm counts, overflow rows, callback-pass counts, channel-site counts
+and the three line-drift lists); `GymScreen.test.ts` (the occupancy-frame
+regex, plus two new source pins on the contract read and the id key). The
+`AmbientMemberBodyProps` witness anchor (`readonly tile: number;` last) is
+intact.
+
+**Two reads that stay on Grok's functions rather than on the contract,
+noted for the Grok lane rather than requested:** the bench-level occupied
+sprite swap needs to know WHICH seat a using member occupies, and
+`PresentationStation` carries `usingIds` but not a per-seat mapping, so
+that one read still goes through `floorSim.ts`'s own `useCells` over the sim
+snapshot; and the queue-cell marks need the occupied queue CELLS, which the
+contract deliberately does not carry (it carries `queueIds` / `queueRank`),
+so they still come from `worldView.ts`'s occupancy convenience. Both are
+reads of Grok-owned functions, not re-derivations. If a later contract
+revision exposes per-seat occupancy, the first read moves onto it.
+
+**Gates, stated separately and not inferred from each other:**
+
+| Gate | State | Basis |
+|---|---|---|
+| CONTRACT CONSUMPTION | YES, bounded | Members drawn from `presentationWorld` rows keyed by contract id; station in-use from `usingIds`; the two reads above stay on Grok functions. |
+| WORLD INTEGRATION | EVIDENCE PRODUCED | One real member through exists → destination → travel → queue → acquire → use → release → continue, stable ids, on the real Play surface at both phone viewports. Evidence, not a pass. |
+| ANIMATION | NO | Gait bounce, eased settle, shadow and depth order are built; the member is still the two-frame walk and two-frame use sprite PR #51 shipped. |
+| PERFORMANCE | NOT RUN | Three members on a garage; no frame-pacing sample was taken. |
+| VISUAL | NO | Not claimed. Named residuals below. |
+| WORLD LEGIBILITY | NO | Queue and station outlines still read as outlines; occupancy cards still sit under the floor. |
+| SOFT-FEEL | NO | Not claimed. |
+| OWNER PLAYTEST | NOT RUN | Bryant's. |
+
+**Residuals, named rather than smoothed over:** the sprites are the same
+two-frame walk / two-frame use assets; the orthographic grid sits on a
+perspective painting, so a member walking "up" the room does not shrink and
+the bay bench is a side-view sprite on a floor drawn in three-quarter view;
+the using pose is a lying figure composited over the pink bench art rather
+than a body on that bench; the khaki queue-cell outline and green station
+outline are Phase 3 diagnostics still drawn on Play; the occupancy cards
+remain; the walk tween catches up fast after a main-thread stall, which a
+harness can provoke and a phone under load could; nothing here was run on
+native.
+
+**Not started, per the brief:** no capacity-upgrade proof, no G.2C3 / G.2D /
+G.2E, no Session A file, no merge of #46 / #49 / #51 / #52.
+
 ### Branch / worktree policy
 
 | Lane | Branches | Worktree |
