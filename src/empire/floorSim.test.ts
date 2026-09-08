@@ -815,7 +815,14 @@ describe('the Phase 3 tuning block is shaped the way `floorSim.ts` reads it', ()
 
   it('draws plate loading from FloorSimState.changeovers, with one sim tick timer', () => {
     const code = FLOOR_GRID_SOURCE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-    expect(code.includes('seatChangeoverTicks(changeovers')).toBe(true);
+    // VL-2B (Claude Code Session B, contract frozen at 124fb132): the
+    // per-seat remaining ticks reach the renderer as the contract's
+    // `seats[i].changeoverTicks` — computed by presentationState.ts from the
+    // same `FloorSimState.changeovers` with the same `seatChangeoverTicks`
+    // — so the renderer no longer calls that accessor itself. The read of
+    // `sim.changeovers` pinned below is the tap panel's `stationChangeoverSeats`.
+    expect(code.includes('seats[index]?.changeoverTicks')).toBe(true);
+    expect(code.includes('seatChangeoverTicks(changeovers')).toBe(false);
     expect(code.includes('plateLoadingDiscs')).toBe(true);
     expect(code.includes('sim.changeovers')).toBe(true);
     expect((code.match(/setInterval/g) ?? []).length).toBe(1);

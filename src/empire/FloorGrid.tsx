@@ -285,7 +285,6 @@ import {
   floorSimStateCounts,
   floorStationRefKey,
   floorStations,
-  seatChangeoverTicks,
   stationChangeoverSeats,
   stepFloorSimWithObservations,
 } from './floorSim';
@@ -307,6 +306,7 @@ import { type MemberType } from './members';
 import {
   presentationWorld,
   type PresentationMember,
+  type PresentationStation,
   type PresentationWorld,
 } from './presentationState';
 import { type SessionEquipmentItem } from './sessions';
@@ -889,7 +889,7 @@ interface MemberAnchor {
  */
 function memberAnchorFor(
   member: PresentationMember,
-  station: FloorStation | undefined,
+  station: PresentationStation | undefined,
   bay: CompetitionBenchBay,
   camera: FloorCamera,
   benchArtAspect: number,
@@ -941,7 +941,7 @@ function memberAnchorFor(
  */
 function memberFacing(
   member: PresentationMember,
-  station: FloorStation | undefined,
+  station: PresentationStation | undefined,
   bay: CompetitionBenchBay,
 ): FloorSpriteFacing {
   if (member.lifecycle === 'using' && station !== undefined) {
@@ -1019,10 +1019,6 @@ function refToken(ref: FloorStationRef): string {
   return ref.kind === 'training' ? ref.station : ref.item;
 }
 
-function cellsEqual(left: GridPosition, right: GridPosition): boolean {
-  return left.x === right.x && left.y === right.y;
-}
-
 /**
  * Verifier-stable highlight id. Dashes, never `floorStationRefKey`'s colon,
  * so `floorsim-using-session-mats` and `floorsim-using-training-competition-
@@ -1053,23 +1049,22 @@ function plateLoadingTestId(ref: FloorStationRef, expansion: boolean): string {
   return `floorsim-plate-loading-${ref.kind}-${ref.item}`;
 }
 
-function memberUsesCell(
-  members: readonly FloorSimMember[],
-  ref: FloorStationRef,
-  cell: GridPosition | undefined,
-): boolean {
-  if (cell === undefined) return false;
-  for (const member of members) {
-    if (member.state !== 'using') continue;
-    if (member.target === null || !refsMatch(member.target, ref)) continue;
-    if (cellsEqual(member.cell, cell)) return true;
-  }
-  return false;
-}
-
+/**
+ * VL-2B (contract frozen at `124fb132`): which physical bench a `using`
+ * member is drawn on, read off `PresentationStation.seats` by IDENTITY —
+ * `seats[i].usingId === member.id` — and never by walking `FloorSimMember`
+ * against `useCells` (VL-1's `memberUsesCell`, deleted). `seats[i]` is
+ * `useCells[i]` by the contract's construction and `benches[i]` by
+ * `trainingStation.ts`'s, which is the one correspondence this file still
+ * relies on and cannot read from the contract. A `using` member on NO seat
+ * — the one stale ghost-reserve snapshot after a live Capacity purchase —
+ * falls back to the primary bench; the next sim step seats it and the
+ * frame loop glides the same body there (see the relocation note in the
+ * loop). Nothing is fabricated for that frame.
+ */
 function usingBenchFor(
   member: PresentationMember,
-  station: FloorStation,
+  station: PresentationStation,
   bay: CompetitionBenchBay,
 ): BayBench {
   const fallback: BayBench = {
@@ -1079,9 +1074,9 @@ function usingBenchFor(
   };
   if (station.ref.kind !== 'training' || bay.benches.length === 0) return fallback;
   let index = -1;
-  for (let i = 0; i < station.useCells.length; i += 1) {
-    const cell = station.useCells[i];
-    if (cell !== undefined && cellsEqual(cell, member.cell)) {
+  for (let i = 0; i < station.seats.length; i += 1) {
+    const seat = station.seats[i];
+    if (seat !== undefined && seat.usingId === member.id) {
       index = i;
       break;
     }
@@ -1103,19 +1098,18 @@ interface StationHighlightBox {
  */
 function stationHighlightBoxes(
   station: FloorStation,
+  contract: PresentationStation | undefined,
   bay: CompetitionBenchBay,
-  members: readonly FloorSimMember[],
-  changeovers: Readonly<Record<string, number>>,
 ): readonly StationHighlightBox[] {
-  const targeting: FloorSimMember[] = [];
-  for (const member of members) {
-    if (member.target !== null && refsMatch(member.target, station.ref)) targeting.push(member);
-  }
-  if (targeting.length === 0) return [];
-  let waiting = false;
-  for (const member of targeting) {
-    if (member.state !== 'using') waiting = true;
-  }
+  // VL-2B: who is here comes from the contract — `usingIds`, `queueIds`,
+  // `approachingIds` and per-seat `seats[i]` — never from `sim.members`.
+  // No contract station on the one incoherent post-relocation frame means
+  // no highlight on that frame, the same as no member is drawn on it.
+  if (contract === undefined) return [];
+  const claimants =
+    contract.usingIds.length + contract.queueIds.length + contract.approachingIds.length;
+  if (claimants === 0) return [];
+  const waiting = contract.queueIds.length > 0 || contract.approachingIds.length > 0;
   const benches: { readonly bench: BayBench; readonly expansion: boolean }[] = [];
   if (station.ref.kind === 'training' && bay.benches.length > 0) {
     for (const bench of bay.benches) {
@@ -1135,10 +1129,9 @@ function stationHighlightBoxes(
   for (let index = 0; index < benches.length; index += 1) {
     const row = benches[index];
     if (row === undefined) continue;
-    const usingHere = memberUsesCell(members, station.ref, station.useCells[index]);
-    const loadingHere =
-      station.useCells[index] !== undefined &&
-      seatChangeoverTicks(changeovers, station.ref, station.useCells[index] as GridPosition) > 0;
+    const seat = contract.seats[index];
+    const usingHere = seat !== undefined && seat.usingId !== null;
+    const loadingHere = seat !== undefined && seat.changeoverTicks > 0;
     const activity: 'using' | 'claimed' | 'loading' | null = usingHere
       ? 'using'
       : loadingHere
@@ -1177,8 +1170,8 @@ interface PlateLoadingLayer {
  */
 function plateLoadingLayers(
   station: FloorStation,
+  contract: PresentationStation | undefined,
   bay: CompetitionBenchBay,
-  changeovers: Readonly<Record<string, number>>,
   capability: StationCapabilityState,
   camera: FloorCamera,
   benchArtAspect: number,
@@ -1206,9 +1199,11 @@ function plateLoadingLayers(
   for (let index = 0; index < benches.length; index += 1) {
     const row = benches[index];
     if (row === undefined) continue;
-    const cell = station.useCells[index];
-    if (cell === undefined) continue;
-    const remaining = seatChangeoverTicks(changeovers, station.ref, cell);
+    // VL-2B: the seat's remaining changeover is the contract's
+    // `seats[i].changeoverTicks` — the authoritative fact that this seat is
+    // in changeover — not a read of `sim.changeovers` here. The TOTAL the
+    // progress is measured against is the capability's own accessor above.
+    const remaining = contract?.seats[index]?.changeoverTicks ?? 0;
     if (remaining <= 0) continue;
     const progress = plateLoadingProgress(remaining, total);
     // VL-2: the discs travel across the bench's DRAWN box — the footprint
@@ -1701,8 +1696,42 @@ function AmbientMemberBody({
       lastNow = now;
       // 1. Snapshot intake: a new tick files a new snapshot; the same tick
       //    re-rendered with a moved anchor (a layout change) replaces it.
+      const tileHere = p.tile * p.scale;
       const newest = snapshots[snapshots.length - 1];
       if (newest === undefined || newest.tick !== p.tick) {
+        // VL-2B — A RELOCATION IS NOT A STEP. A new tick whose feet point
+        // is further than a stride from the previous snapshot is the sim
+        // moving this member somewhere in one step — the ghost-reserve
+        // rebuild after a live Capacity purchase relocates the `using`
+        // member from its old approach cell onto a new seat, three tiles
+        // on the garage (measured: 5,0 -> 2,2 at the first post-purchase
+        // tick). The timeline would slide it there in one tick, eight
+        // times walking speed. Instead the buffer is rebased onto the new
+        // point and the difference joins the settle offset, so the SAME
+        // body glides from where it was drawn to where the contract says
+        // it is, at walking speed, walking (`clipWhileSettling`). Not a
+        // teleport, not a duplicate, not a fabricated seat, and the sim is
+        // not delayed — only the drawing catches up.
+        if (newest !== undefined && tileHere > 0) {
+          const jumpX = p.position.x - newest.x;
+          const jumpY = p.position.y - newest.y;
+          if (Math.hypot(jumpX, jumpY) / tileHere > EMPIRE_TUNING.FLOOR_MEMBER_STRIDE_TILES) {
+            const remainderNow =
+              pullChangedAt === null ? 0 : settleRemainder(now - pullChangedAt, settleMs);
+            pullFrom = {
+              x: pullTo.x + (pullFrom.x - pullTo.x) * remainderNow - jumpX,
+              y: pullTo.y + (pullFrom.y - pullTo.y) * remainderNow - jumpY,
+            };
+            pullChangedAt = now;
+            settleMs = settleDurationMs(
+              Math.hypot(pullTo.x - pullFrom.x, pullTo.y - pullFrom.y) / tileHere,
+            );
+            for (let i = 0; i < snapshots.length; i += 1) {
+              const held = snapshots[i];
+              if (held !== undefined) snapshots[i] = { tick: held.tick, x: p.position.x, y: p.position.y };
+            }
+          }
+        }
         snapshots.push({ tick: p.tick, x: p.position.x, y: p.position.y });
       } else if (newest.x !== p.position.x || newest.y !== p.position.y) {
         snapshots[snapshots.length - 1] = { tick: p.tick, x: p.position.x, y: p.position.y };
@@ -1718,7 +1747,6 @@ function AmbientMemberBody({
       // 3. The eased pull onto or off a station: a changed pull starts a new
       //    settle from wherever the previous one had got to, timed by how
       //    far it has to cross in tiles at this body's depth.
-      const tileHere = p.tile * p.scale;
       if (p.pullX !== pullTo.x || p.pullY !== pullTo.y) {
         const remainderNow = pullChangedAt === null ? 0 : settleRemainder(now - pullChangedAt, settleMs);
         pullFrom = {
@@ -2472,6 +2500,16 @@ export function FloorGrid(props: FloorGridProps) {
   for (const station of stations) {
     stationByRefKey.set(stationKey(station.ref), station);
   }
+  // VL-2B: the contract's stations keyed the same way. Every draw that asks
+  // WHO is on a seat, whether a seat is in changeover, or which bench a
+  // member lies on reads this map; the raw map above serves the tap panel's
+  // geometry (`useCells`) and the queue-cell occupancy convenience only.
+  const contractStationByKey = new Map<string, PresentationStation>();
+  if (contractWorld !== null) {
+    for (const station of contractWorld.stations) {
+      contractStationByKey.set(stationKey(station.ref), station);
+    }
+  }
   // VL-1: which stations are in use, read off the contract's own per-station
   // `usingIds` rather than off raw sim members. Only the `'using'` reading
   // is consumed below (the fixed furniture's occupied sprite swap); the
@@ -2489,16 +2527,14 @@ export function FloorGrid(props: FloorGridProps) {
   }
   // Stage D.1 — Capacity is a second physical bench, drawn as a real
   // bench sprite (`floorgrid-bay-expansion`), not as approach-cell pads.
-  // Occupancy is per realised bench: a using member on `useCells[i]` marks
-  // `benches[i]`, so two simultaneous users light two benches.
-  const bayStation = stations.find(
-    (station) => station.ref.kind === 'training' && station.ref.station === COMPETITION_BENCH_BAY,
-  );
+  // Occupancy is per realised bench. VL-2B: read off the contract's
+  // `seats[i].usingId` — `seats[i]` is `benches[i]` — so two simultaneous
+  // users light two benches, and the ghost-reserve snapshot (a `using`
+  // member on no seat) lights none rather than inventing one.
   const bayRef: FloorStationRef = { kind: 'training', station: COMPETITION_BENCH_BAY };
-  const primaryOccupied =
-    bayStation !== undefined && memberUsesCell(sim.members, bayRef, bayStation.useCells[0]);
-  const expansionOccupied =
-    bayStation !== undefined && memberUsesCell(sim.members, bayRef, bayStation.useCells[1]);
+  const bayContract = contractStationByKey.get(stationKey(bayRef));
+  const primaryOccupied = (bayContract?.seats[0]?.usingId ?? null) !== null;
+  const expansionOccupied = (bayContract?.seats[1]?.usingId ?? null) !== null;
   const bayLevels = stationLevels(capability, COMPETITION_BENCH_BAY);
   const bayQualityMark = bay.complete && bayLevels.quality > 0;
   const bayThroughputMark = bay.complete && bayLevels.throughput > 0;
@@ -2520,7 +2556,7 @@ export function FloorGrid(props: FloorGridProps) {
   const memberDraws = (contractWorld === null || !worldMeasured ? [] : contractWorld.members).map(
     (member, ordinal) => {
       const station =
-        member.target === null ? undefined : stationByRefKey.get(stationKey(member.target));
+        member.target === null ? undefined : contractStationByKey.get(stationKey(member.target));
       const aspect =
         member.target === null || station === undefined
           ? benchArtAspect
@@ -3158,7 +3194,7 @@ export function FloorGrid(props: FloorGridProps) {
               // member is on it. testIDs are dash-stable (`floorsim-using-
               // training-competition-bench-bay`), never colon keys.
               !worldMeasured ? null : stations.flatMap((station) =>
-                stationHighlightBoxes(station, bay, sim.members, sim.changeovers).map((box) => {
+                stationHighlightBoxes(station, contractStationByKey.get(stationKey(station.ref)), bay).map((box) => {
                   // VL-2: the same drawn box as the station's own art, so
                   // the anchor a tool reads is the bench a player sees.
                   const drawn = stationDrawBox(
@@ -3224,7 +3260,7 @@ export function FloorGrid(props: FloorGridProps) {
             }
             {
               !worldMeasured ? null : stations.flatMap((station) =>
-                plateLoadingLayers(station, bay, sim.changeovers, capability, camera, benchArtAspect).map((layer) => (
+                plateLoadingLayers(station, contractStationByKey.get(stationKey(station.ref)), bay, capability, camera, benchArtAspect).map((layer) => (
                   <View
                     key={layer.key}
                     testID={layer.testID}

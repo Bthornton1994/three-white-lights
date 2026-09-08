@@ -3194,7 +3194,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // and FloorGrid presentation helpers. Read from this pin's own failure.
   // 3361 -> 3375: Stage D2.1A live-Capacity seat assignment / relocate helpers.
   // 3375 -> 3405: Stage D2.1B changeover helpers + FloorGrid loading path.
-  CALLS_EXAMINED: 3985, // VL-2 camera / animation / anchor / settle helpers, +8 presentationSeats freeze calls (124fb132). Read from this pin.
+  CALLS_EXAMINED: 3986, // VL-2 camera / animation / anchor / settle helpers, +8 presentationSeats freeze calls (124fb132); VL-2B seat consumption +1. Read from this pin.
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -16125,7 +16125,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'expansion.ts': 47,
       'floor.ts': 38,
       'floorCamera.ts': 11, // VL-2
-      'FloorGrid.tsx': 99, // VL-2 camera / anchor / draw-box helpers
+      'FloorGrid.tsx': 96, // VL-2 camera / anchor / draw-box helpers; VL-2B: memberUsesCell and cellsEqual deleted, seats read from the contract (99 -> 96)
       'floorSim.ts': 76,
       'floorSprites.ts': 54,
       'GymScreen.tsx': 14,
@@ -16551,12 +16551,12 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1076 returned=unfollowable:station',
-  'FloorGrid.tsx:1076 returned=unfollowable:station',
-  'FloorGrid.tsx:1077 returned=unfollowable:station',
-  'FloorGrid.tsx:1077 returned=unfollowable:station',
-  'FloorGrid.tsx:3535 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:3553 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:1071 returned=unfollowable:station',
+  'FloorGrid.tsx:1071 returned=unfollowable:station',
+  'FloorGrid.tsx:1072 returned=unfollowable:station',
+  'FloorGrid.tsx:1072 returned=unfollowable:station',
+  'FloorGrid.tsx:3571 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:3589 callee=fresh:ArrowFunction',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -16609,12 +16609,12 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'stationCapability.ts:104 returned=unfollowable:capability',
 ]);
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1076 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:1076 GridPosition asked=true walked=false',
-  'FloorGrid.tsx:1077 GridSize asked=true walked=false',
-  'FloorGrid.tsx:1077 GridSize asked=true walked=false',
-  'FloorGrid.tsx:1089 BayBench | undefined asked=true walked=false',
-  'FloorGrid.tsx:2432 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:1071 PresentationCell asked=true walked=false',
+  'FloorGrid.tsx:1071 PresentationCell asked=true walked=false',
+  'FloorGrid.tsx:1072 GridSize asked=true walked=false',
+  'FloorGrid.tsx:1072 GridSize asked=true walked=false',
+  'FloorGrid.tsx:1084 BayBench | undefined asked=true walked=false',
+  'FloorGrid.tsx:2460 FloorSimState asked=true walked=false',
   // VL-2: `memberAnchorFor`'s `MemberAnchor` return carries a `FloorTilePoint`,
   // an interface the control asks about and the walk declines the same way.
   'FloorGrid.tsx:922 FloorTilePoint asked=true walked=false',
@@ -16927,7 +16927,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1674 -> 1681: Stage D2 placedOwnedItems / withWear / stationOperationView / reset.
   // 1681 -> 1691: Stage D2.1A assignedSeat / reservedUseCells / relocate helpers.
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
-  function: 2012, // VL-2 (posesToMount's settling-clip loop); +5 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDrawOrigin call
+  function: 2009, // VL-2 (posesToMount's settling-clip loop); +5 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDrawOrigin call VL-2B: 2012 -> 2009.
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16985,7 +16985,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1502 -> 1513: Stage D2 Set.has / Object.freeze / stationByRefKey.get.
   // 1513 -> 1517: Stage D2.1A useCells/blocked/has member calls on live relocate.
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
-  member: 1777, // VL-2 (posesToMount's settling-clip loop); +3 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDraws.sort, Easing.out, String()
+  member: 1781, // VL-2 (posesToMount's settling-clip loop); +3 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDraws.sort, Easing.out, String() VL-2B: 1777 -> 1781.
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -17066,7 +17066,7 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 430 -> 435: Stage D2 withWear restrict / stationOperationView seats / placedOwnedItems loops.
   // 435 -> 438: Stage D2.1A reservedUseCells / assignedSeat / relocate locals.
   // 438 -> 444: Stage D2.1B nextChangeovers / loading-path locals.
-  local: 493, // VL-2: posesToMount's settling-clip loop; +1 presentationSeats (124fb132). Read from this pin. // VL-2: the frame loop's own locals. Read from this pin.
+  local: 494, // VL-2: posesToMount's settling-clip loop; +1 presentationSeats (124fb132); VL-2B relocation glide +1. Read from this pin.
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -17181,7 +17181,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 911 -> 916: Stage D2.1A floorSim return 63 -> 68.
   // 916 -> 925: Stage D2.1B floorSim 68→72, stationCapability 24→27,
   // stationView 44→46.
-  SITES: 1201, // VL-2 floorCamera / memberAnimation / FloorGrid returns, settle helpers; +1 presentationState return (124fb132)
+  SITES: 1198, // VL-2 floorCamera / memberAnimation / FloorGrid returns, settle helpers; +1 presentationState return (124fb132) VL-2B: memberUsesCell/cellsEqual deleted (1201 -> 1198).
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -17334,7 +17334,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
   // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
   // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
-  NODES_EXAMINED: 95_269, // VL-2 camera + settle helpers, plate-sized discs; +235 presentationSeats (124fb132) (VL-1: 90_495). Read from this pin.
+  NODES_EXAMINED: 95_370, // VL-2 camera + settle helpers, plate-sized discs; +235 presentationSeats (124fb132); VL-2B seat consumption + relocation glide +101 (VL-1: 90_495). Read from this pin.
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
