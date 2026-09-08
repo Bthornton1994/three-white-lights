@@ -326,8 +326,11 @@ const PINNED = Object.freeze({
    * `sessionPalette` sibling already on the tree.
    *
    * 339 -> 340 with `docs/design/IRON-AMBER-TRAINING-ASSETS.md`.
+   *
+   * 346 -> 349 with the physical-opportunity module: `trainingProgress.ts`,
+   * `trainingProgress.test.ts`, and `trainingProgress.geometry.redteam.test.ts`.
    */
-  SCANNED_FILES: 346,
+  SCANNED_FILES: 349,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -376,8 +379,11 @@ const PINNED = Object.freeze({
    *
    * 109 -> 111 with Iron & Amber training plates: `ironAmberPlates.test.ts`
    * and `ironAmberWiring.test.ts`.
+   *
+   * 113 -> 115 with the two tests beside that module:
+   * `trainingProgress.test.ts` and `trainingProgress.geometry.redteam.test.ts`.
    */
-  TEST_FILES: 113,
+  TEST_FILES: 115,
 });
 
 /**

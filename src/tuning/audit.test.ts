@@ -1007,6 +1007,7 @@ describe('the registered allowlist', () => {
         'src/game/prng.ts',
         'src/game/resultCard.ts',
         'src/game/rpe.ts',
+        'src/game/saveGame.ts',
         'src/game/sessionTuning.ts',
         'src/game/streak.ts',
         // The streak monotonicity fixture: seeds, calendar lengths and the

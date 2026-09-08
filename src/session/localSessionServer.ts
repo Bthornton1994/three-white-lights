@@ -243,12 +243,17 @@ export function localSessionServer(options: LocalSessionServerOptions = {}): Loc
      * The feel inputs for one session, and nothing else (GDD §3.4, §12.3).
      *
      * `briefFatigueFor` is the single named narrowing: what crosses is the days
-     * that can still affect `day`, not the lifter's training history. Every
-     * progression number `todayForLifter` also computes is deliberately absent —
-     * those come back through `progression.ts`'s read accessors.
+     * that can still affect `day`, not the lifter's training history. This
+     * lift's prior training-progress credit crosses by the same door — hidden
+     * prescription state, not a ConfirmedFact. Every progression number
+     * `todayForLifter` also computes is deliberately absent — those come back
+     * through `progression.ts`'s read accessors.
      */
-    sessionBrief(day: number, _lift: LiftKind): SessionBrief {
-      return { fatigue: briefFatigueFor(record.fatigue, day) };
+    sessionBrief(day: number, lift: LiftKind): SessionBrief {
+      return {
+        fatigue: briefFatigueFor(record.fatigue, day),
+        trainingProgressCredit: record.trainingProgressCredit?.[lift] ?? 0,
+      };
     },
 
     async recordTrainingSession(

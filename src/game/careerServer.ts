@@ -349,6 +349,7 @@ export function applyFederationChoice(
     meets: record.meets,
     wallet: record.wallet,
     fatigue: record.fatigue,
+    trainingProgressCredit: record.trainingProgressCredit,
     federation: { id: reported, chosen: true },
   });
   return {

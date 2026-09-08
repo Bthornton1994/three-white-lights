@@ -15,7 +15,7 @@ import {
   todayForLifter,
   type ServerRecord,
 } from './sessionServer';
-import { SESSION_PROGRESSION_GUARD, SESSION_TUNING } from './sessionTuning';
+import { SESSION_PROGRESSION_GUARD, SESSION_TUNING, TRAINING_PROGRESS_TUNING } from './sessionTuning';
 import {
   A_STARTING_E1RM_SEED_CANNOT_BE_READ_WITHOUT_ITS_UNIT,
   A_TRAINING_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT,
@@ -118,6 +118,7 @@ function playAgainst(
     streakBefore: today.streakBefore,
     streakIfTrainedToday: today.streakIfTrainedToday,
     fatigue: today.fatigue,
+    trainingProgressCredit: today.trainingProgressCredit,
   });
   state = stepSession(state, { kind: 'check-in-tap', tap: { question: 'sleep', answer: answers.sleep } });
   state = stepSession(state, {
@@ -138,6 +139,18 @@ function playAgainst(
         : stepSession(state, { kind: 'rep-resolved', outcome: 'good-lift', executionQuality: 1 });
   }
   return { state, lift };
+}
+
+function withProgressCredit(record: ServerRecord, lift: LiftKind, credit: number): ServerRecord {
+  return {
+    ...record,
+    trainingProgressCredit: {
+      squat: record.trainingProgressCredit?.squat ?? 0,
+      bench: record.trainingProgressCredit?.bench ?? 0,
+      deadlift: record.trainingProgressCredit?.deadlift ?? 0,
+      [lift]: credit,
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -861,18 +874,23 @@ describe('nextBestE1rm', () => {
   });
 
   it('the cap does not bind on anything this loop can produce, at full execution quality', () => {
-    // The largest honest jump is the readiness nudge at `primed`, +5%. If the
-    // cap ever starts biting on a real session the close-out would show a
-    // number the maths does not support, so this is a real check and not a
-    // restatement of the constant. `playAgainst` plays every rep at
-    // `executionQuality: 1`, so MAX is the fraction in play here, same as
-    // before this field existed.
-    const record = newServerRecord(SIGNUP_DAY);
-    const played = playAgainst(record, 0, PRIMED, 10);
+    // The honest jump is now one physical increment on the bar. At starting
+    // loads that is well under MAX (6%). If the per-session guard ever starts
+    // biting on a real fixture-load session the close-out would show a number
+    // the maths does not support. Light-load bind is accepted and not retuned.
+    const record = withProgressCredit(
+      newServerRecord(SIGNUP_DAY),
+      liftForDay(0),
+      TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_OPPORTUNITY,
+    );
+    const played = playAgainst(record, 0, NEUTRAL, 10);
     const closeOut = played.state.closeOut!;
     const held = record.bestE1rmKg[played.lift]!;
     expect(closeOut.sessionE1rmKg).not.toBeNull();
     expect(nextBestE1rm(held, estimate(closeOut.sessionE1rmKg!))).toBe(closeOut.sessionE1rmKg);
+    expect(
+      (closeOut.sessionE1rmKg! - held) / held,
+    ).toBeLessThan(SESSION_PROGRESSION_GUARD.MAX_E1RM_GAIN_FRACTION_PER_SESSION);
   });
 });
 
@@ -1099,18 +1117,68 @@ describe('applying a training session', () => {
 });
 
 describe('the ledger entry a session leaves', () => {
-  it('takes the hardest RPE and rounds the ragged session up to a rectangle', () => {
-    const record = fatigueRecordFor(4, 'squat', [
+  it('counts completed-as-prescribed work, not a miss as a harder RPE', () => {
+    const mixed = fatigueRecordFor(4, 'squat', [
       set('squat', 150, 3, 8),
       set('squat', 150, 2, 10),
       set('squat', 150, 3, 8),
     ]);
-    expect(record).toEqual({
+    expect(mixed).toEqual({
+      day: 4,
+      lift: 'squat',
+      topRpe: 8,
+      workSets: 2,
+      repsPerSet: 3,
+    });
+  });
+
+  it('keeps earlier work on a last-set miss and does not pay for the missed set', () => {
+    const lastMiss = fatigueRecordFor(4, 'squat', [
+      set('squat', 150, 3, 8),
+      set('squat', 150, 3, 8),
+      set('squat', 150, 3, 8),
+      set('squat', 150, 3, 8),
+      set('squat', 150, 1, 10),
+    ]);
+    expect(lastMiss).toEqual({
+      day: 4,
+      lift: 'squat',
+      topRpe: 8,
+      workSets: 4,
+      repsPerSet: 3,
+    });
+  });
+
+  it('records a to-failure-only session as RPE 10 with the missed volume', () => {
+    const failed = fatigueRecordFor(4, 'squat', [
+      set('squat', 150, 2, 10),
+      set('squat', 150, 2, 10),
+      set('squat', 150, 2, 10),
+      set('squat', 150, 2, 10),
+      set('squat', 150, 2, 10),
+    ]);
+    expect(failed).toEqual({
       day: 4,
       lift: 'squat',
       topRpe: 10,
-      workSets: 3,
-      // 8 reps over 3 sets rounds UP, so the ledger cannot understate the cost.
+      workSets: 5,
+      repsPerSet: 2,
+    });
+  });
+
+  it('counts a completed RPE 10 as prescribed work, not as a miss', () => {
+    const completedTen = fatigueRecordFor(4, 'squat', [
+      set('squat', 150, 3, 10),
+      set('squat', 150, 3, 10),
+      set('squat', 150, 3, 10),
+      set('squat', 150, 3, 10),
+      set('squat', 150, 3, 10),
+    ]);
+    expect(completedTen).toEqual({
+      day: 4,
+      lift: 'squat',
+      topRpe: 10,
+      workSets: 5,
       repsPerSet: 3,
     });
   });
@@ -1173,7 +1241,11 @@ describe('today, for the client to prescribe from', () => {
 
 describe('the whole round trip — client proposes, server publishes, client reads', () => {
   it('ends with a CONFIRMED e1RM and streak, and an unmoved Total', () => {
-    const record = newServerRecord(SIGNUP_DAY);
+    const record = withProgressCredit(
+      newServerRecord(SIGNUP_DAY),
+      liftForDay(0),
+      TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_OPPORTUNITY,
+    );
     const seed = receiveProgressionSnapshot(snapshotWireFor(record, null));
     expect(seed.ok).toBe(true);
     if (!seed.ok) return;
@@ -1181,7 +1253,7 @@ describe('the whole round trip — client proposes, server publishes, client rea
     expect(seeded.ok).toBe(true);
     if (!seeded.ok) return;
 
-    const played = playAgainst(record, 0, PRIMED, 8);
+    const played = playAgainst(record, 0, NEUTRAL, 8);
     const closeOut = played.state.closeOut!;
     const proposal = sessionProposal(closeOut, WALL_CLOCK)!;
     const proposed = proposeChange(
@@ -1268,63 +1340,167 @@ describe('the whole round trip — client proposes, server publishes, client rea
     expect(trail).toHaveLength(10);
 
     // ------------------------------------------------------------------
-    // THE MAGNITUDE. Pinned as MEASURED CURRENT BEHAVIOUR, not as a target.
+    // THE MAGNITUDE. Player path: stimulus, not taps. GDD §3.4.
     // ------------------------------------------------------------------
-    // Days 0-4 are the neutral half: the load goes out through a chart cell and
-    // the estimate comes back through the same cell, so nothing moves. That is
-    // `e1rm.ts`'s cancellation working exactly as designed.
-    //
-    // Days 5-9 are the primed half, and every one of them is a PR — including
-    // days 8 and 9, which are the SECOND time this lifter trained that lift and
-    // are computed from the number the first one minted. That compounding is
-    // the known gap: the readiness nudge is a flat constant paid for three taps
-    // rather than something coupled to training stimulus, and coupling it is a
-    // recorded dependency on the fatigue/progression work (GDD §3.4). When it
-    // lands, these numbers are what has to change.
-    const neutralHalf = trail.slice(0, 5);
+    // The first time each lift is trained there is no history of that lift,
+    // so the earned percent is 0 and e1RM holds. Later sessions of the same
+    // lift can PR, but only from work already in the ledger — the primed
+    // taps on days 5-9 are not a free 5-for-5.
+    const seen = new Set<LiftKind>();
+    for (const step of trail) {
+      if (!seen.has(step.lift)) {
+        expect(step.isPr, `first ${step.lift} on day ${step.day}`).toBe(false);
+        expect(step.afterKg, `first ${step.lift}`).toBe(step.beforeKg);
+        seen.add(step.lift);
+      }
+    }
+    expect(seen.size).toBe(LIFT_ORDER.length);
+
     const primedHalf = trail.slice(5);
-    expect(neutralHalf.filter((step) => step.isPr)).toEqual([]);
-    for (const step of neutralHalf) {
-      expect(step.afterKg, `day ${step.day} ${step.lift}`).toBe(step.beforeKg);
-    }
-    expect(primedHalf.filter((step) => step.isPr)).toHaveLength(5);
+    expect(primedHalf.filter((step) => step.isPr).length).toBeLessThan(5);
 
-    // Hand-written per lift, from the seed magnitudes in
-    // `SESSION_TUNING.STARTING_E1RM.kilograms` (squat 180, bench 120,
-    // deadlift 220).
-    expect(primedHalf.map((step) => step.lift)).toEqual([
-      'deadlift',
-      'squat',
-      'bench',
-      'deadlift',
-      'squat',
-    ]);
-    expect(primedHalf[0]!.afterKg).toBeCloseTo(228.1134, 4); // 220 -> +3.7%
-    expect(primedHalf[1]!.afterKg).toBeCloseTo(188.172, 3); // 180 -> +4.5%
-    expect(primedHalf[2]!.afterKg).toBeCloseTo(124.5655, 4); // 120 -> +3.8%
-    // The compounding ones: each is the previous PR's number, nudged again.
-    expect(primedHalf[3]!.beforeKg).toBeCloseTo(228.1134, 4);
-    expect(primedHalf[3]!.afterKg).toBeCloseTo(238.2287, 4);
-    expect(primedHalf[4]!.beforeKg).toBeCloseTo(188.172, 3);
-    expect(primedHalf[4]!.afterKg).toBeCloseTo(195.2278, 4);
-
-    // Five primed sessions across three lifts, and every lift's published best
-    // is above where it started. Nothing here caps it: the one guard in the
-    // path is 6% per session against a 5% nudge.
-    expect(record.bestE1rmKg.squat).toBeCloseTo(195.2278, 4);
-    expect(record.bestE1rmKg.bench).toBeCloseTo(124.5655, 4);
-    expect(record.bestE1rmKg.deadlift).toBeCloseTo(238.2287, 4);
-    expect(record.bestE1rmKg.squat! / SESSION_TUNING.STARTING_E1RM.kilograms.squat).toBeCloseTo(1.0846, 4);
-    expect(
-      record.bestE1rmKg.deadlift! / SESSION_TUNING.STARTING_E1RM.kilograms.deadlift,
-    ).toBeCloseTo(1.0829, 4);
-    // Two sessions on one lift, eight percent. Written as an explicit bound so
-    // that a change which makes it worse fails here rather than passing.
-    for (const lift of LIFT_ORDER) {
-      const grown = record.bestE1rmKg[lift]! / SESSION_TUNING.STARTING_E1RM.kilograms[lift];
-      expect(grown, `${lift} grew`).toBeGreaterThan(1);
-      expect(grown, `${lift} grew`).toBeLessThan(1.09);
+    // Hard work on squat grows squat and leaves the others. Credit is
+    // thresholded: one session is not a load percent. Keep training this
+    // lift until prior credit actually pays for a physical increment,
+    // bounded well past the 12-credit opportunity cost.
+    let squatDay = day;
+    while (liftForDay(squatDay) !== 'squat') squatDay += 1;
+    const firstHard = playAgainst(record, squatDay, NEUTRAL, 9);
+    const afterFirst = applyTrainingSession(
+      record,
+      squatDay,
+      sessionProposal(firstHard.state.closeOut!, WALL_CLOCK)!,
+      'p-hard-1',
+    );
+    expect(afterFirst.ok).toBe(true);
+    if (!afterFirst.ok) return;
+    record = afterFirst.value.record;
+    const beforeBlock = record.bestE1rmKg.squat;
+    const benchBefore = record.bestE1rmKg.bench;
+    let moved = false;
+    let lastKg = beforeBlock ?? 0;
+    for (let extra = 1; extra <= 16; extra += 1) {
+      const nextDay = squatDay + extra * SESSION_TUNING.LIFT_ROTATION.length;
+      const played = playAgainst(record, nextDay, NEUTRAL, 9);
+      const applied = applyTrainingSession(
+        record,
+        nextDay,
+        sessionProposal(played.state.closeOut!, WALL_CLOCK)!,
+        `p-hard-${extra + 1}`,
+      );
+      expect(applied.ok).toBe(true);
+      if (!applied.ok) return;
+      record = applied.value.record;
+      lastKg = applied.value.bestE1rmKg ?? lastKg;
+      if (lastKg > (beforeBlock ?? 0)) {
+        moved = true;
+        break;
+      }
     }
+    expect(moved, 'earned stimulus eventually moves this lift’s e1RM').toBe(true);
+    expect(record.bestE1rmKg.bench).toBe(benchBefore);
+    expect(lastKg / SESSION_TUNING.STARTING_E1RM.kilograms.squat).toBeLessThan(1.2);
+  });
+});
+
+describe('training-progress credit is server-authoritative', () => {
+  const OPPORTUNITY = TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_OPPORTUNITY;
+
+  it('the proposal cannot carry credit — there is no field to forge', () => {
+    expect(TRAINING_CARD_REPORT_KEYS).not.toContain('trainingProgressCredit');
+    const proposal = proposalOf([set('squat', 160, 3, 8)]);
+    expect(proposal).not.toHaveProperty('trainingProgressCredit');
+    expect(proposal.report).not.toHaveProperty('trainingProgressCredit');
+    expect(JSON.stringify(proposal)).not.toMatch(/trainingProgressCredit/);
+  });
+
+  it('a heavier forged card without prior credit cannot consume an opportunity', () => {
+    const record = newServerRecord(SIGNUP_DAY);
+    expect(record.trainingProgressCredit.squat).toBe(0);
+    const applied = applyTrainingSession(
+      record,
+      0,
+      proposalOf([set('squat', 200, 3, 8)]),
+      'forge-bar',
+    );
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) return;
+    expect(applied.value.trainingProgress.appliedSteps).toBe(0);
+    expect(applied.value.trainingProgress.consumed).toBe(0);
+    expect(applied.value.record.trainingProgressCredit.squat).toBe(
+      applied.value.trainingProgress.earned,
+    );
+  });
+
+  it('bench credit cannot fund a squat opportunity', () => {
+    const record = withProgressCredit(newServerRecord(SIGNUP_DAY), 'bench', OPPORTUNITY);
+    const applied = applyTrainingSession(
+      record,
+      0,
+      proposalOf([set('squat', 160, 3, 8)]),
+      'steal-bench',
+    );
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) return;
+    expect(applied.value.trainingProgress.consumed).toBe(0);
+    expect(applied.value.record.trainingProgressCredit.bench).toBe(OPPORTUNITY);
+    expect(applied.value.record.trainingProgressCredit.squat).toBe(
+      applied.value.trainingProgress.earned,
+    );
+  });
+
+  it('an unrealized heavier bar does not consume', () => {
+    const lift = liftForDay(0);
+    const record = withProgressCredit(newServerRecord(SIGNUP_DAY), lift, OPPORTUNITY);
+    const applied = applyTrainingSession(
+      record,
+      0,
+      proposalOf([set(lift, 50, 3, 8)]),
+      'no-realize',
+    );
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) return;
+    expect(applied.value.isPr).toBe(false);
+    expect(applied.value.trainingProgress.consumed).toBe(0);
+    expect(applied.value.record.trainingProgressCredit[lift]).toBeGreaterThanOrEqual(OPPORTUNITY);
+  });
+
+  it('the same credit cannot be consumed twice', () => {
+    const lift = liftForDay(0);
+    const record = withProgressCredit(newServerRecord(SIGNUP_DAY), lift, OPPORTUNITY);
+    const first = playAgainst(record, 0, NEUTRAL, 8);
+    const applied = applyTrainingSession(
+      record,
+      0,
+      sessionProposal(first.state.closeOut!, WALL_CLOCK)!,
+      'once',
+    );
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) return;
+    expect(applied.value.trainingProgress.consumed).toBe(OPPORTUNITY);
+    expect(applied.value.isPr).toBe(true);
+
+    const replay = applyTrainingSession(
+      applied.value.record,
+      0,
+      sessionProposal(first.state.closeOut!, WALL_CLOCK)!,
+      'twice',
+    );
+    expect(replay.ok).toBe(false);
+
+    const nextDay = SESSION_TUNING.LIFT_ROTATION.length;
+    expect(liftForDay(nextDay)).toBe(lift);
+    const second = playAgainst(applied.value.record, nextDay, NEUTRAL, 8);
+    const applied2 = applyTrainingSession(
+      applied.value.record,
+      nextDay,
+      sessionProposal(second.state.closeOut!, WALL_CLOCK)!,
+      'next-session',
+    );
+    expect(applied2.ok).toBe(true);
+    if (!applied2.ok) return;
+    expect(applied2.value.trainingProgress.consumed).toBe(0);
+    expect(applied2.value.trainingProgress.appliedSteps).toBe(0);
   });
 });
 
@@ -1493,6 +1669,7 @@ describe('what leaves the server is sealed in flight', () => {
     expect(Object.isFrozen(fresh.wallet), 'and its wallet').toBe(true);
     expect(Object.isFrozen(fresh.meets), 'and its meets array').toBe(true);
     expect(Object.isFrozen(fresh.fatigue), 'and its fatigue').toBe(true);
+    expect(Object.isFrozen(fresh.trainingProgressCredit), 'and its training-progress credit').toBe(true);
     expect(Object.isFrozen(fresh.federation), 'and its federation').toBe(true);
     const freshBests: Record<LiftKind, number | null> = fresh.bestE1rmKg;
     expect(() => {
@@ -1516,6 +1693,7 @@ describe('what leaves the server is sealed in flight', () => {
     expect(Object.isFrozen(applied.value.record.wallet), 'and its wallet').toBe(true);
     expect(Object.isFrozen(applied.value.record.meets), 'and its meets array').toBe(true);
     expect(Object.isFrozen(applied.value.record.fatigue), 'and its fatigue').toBe(true);
+    expect(Object.isFrozen(applied.value.record.trainingProgressCredit), 'and its training-progress credit').toBe(true);
     expect(Object.isFrozen(applied.value.record.federation), 'and its federation').toBe(true);
     const settledBests: Record<LiftKind, number | null> = applied.value.record.bestE1rmKg;
     expect(() => {
@@ -1546,6 +1724,7 @@ describe('what leaves the server is sealed in flight', () => {
       ],
       wallet: { gymBucks: 0, chalk: 0 },
       fatigue: newServerRecord(SIGNUP_DAY).fatigue,
+      trainingProgressCredit: { squat: 0, bench: 0, deadlift: 0 },
       federation: { id: 'meridian', chosen: false },
     };
     expect(Object.isFrozen(handBuilt.bestE1rmKg), 'before the call').toBe(false);

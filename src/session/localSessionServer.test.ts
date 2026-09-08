@@ -25,7 +25,7 @@ import {
 } from '../game/session';
 import { newServerRecord, type ServerRecord } from '../game/sessionServer';
 import { FATIGUE_TUNING, type SessionRecord } from '../game/fatigue';
-import { SESSION_BOUNDARY, SESSION_TUNING } from '../game/sessionTuning';
+import { SESSION_BOUNDARY, SESSION_TUNING, TRAINING_PROGRESS_TUNING } from '../game/sessionTuning';
 import { asStreakDay, type LocalWallClock } from '../game/streak';
 
 /**
@@ -81,16 +81,8 @@ function playAWholeMeet(port: ReturnType<typeof localSessionServer>, day: number
   return proposal;
 }
 
-function playSession(state: SessionState): SessionState {
-  let next = state;
-  for (const tap of [
-    { question: 'sleep', answer: 'good' },
-    { question: 'soreness', answer: 'fresh' },
-    { question: 'motivation', answer: 'fired-up' },
-  ] as const) {
-    next = stepSession(next, { kind: 'check-in-tap', tap });
-  }
-  next = stepSession(next, { kind: 'choose-rpe', rpe: SESSION_TUNING.RPE_CHOICES[2]! });
+function playSession(state: SessionState, rpe: number = SESSION_TUNING.RPE_CHOICES[2]!): SessionState {
+  let next = stepSession(state, { kind: 'choose-rpe', rpe });
   let guard = 0;
   const limit = SESSION_TUNING.WORK_SETS * SESSION_TUNING.REPS_PER_SET * SESSION_TUNING.WORK_SETS;
   while (next.phase !== 'close-out' && guard < limit) {
@@ -109,20 +101,22 @@ function closeOutOf(state: SessionState): SessionCloseOut {
 }
 
 describe('the stand-in server port', () => {
-  it('exposes five methods and no way at the row', () => {
+  it('exposes the port methods and no way at the row', () => {
     // The whole reason the row moved behind a port. A getter here would put the
     // bypass back within reach of the hook.
     //
-    // SIX, SINCE MEET DAY AND THE CAREER WERE WIRED TO THE SAME ROW.
-    // `meetBrief` and `recordMeetResult` are the meet half and
-    // `chooseFederation` is the career's; the count is pinned rather than
-    // bounded so that a seventh — in particular a `record` getter, which is
-    // the only method that could put the bypass back — is a failure and not a
-    // silent widening.
+    // Pinned rather than bounded so that a `record` getter — the only
+    // method that could put the bypass back — is a failure and not a
+    // silent widening. A2 added the four profile methods; they are the
+    // identity port, not a row accessor.
     const port = localSessionServer({ record: storedRecord(), sleep: instantly });
     expect(Object.keys(port).sort()).toEqual([
       'chooseFederation',
+      'createProfile',
+      'editProfileBodyweight',
+      'editProfileName',
       'meetBrief',
+      'openingProfile',
       'openingSnapshot',
       'recordMeetResult',
       'recordTrainingSession',
@@ -139,7 +133,9 @@ describe('the stand-in server port', () => {
 
   it('the brief carries the ledger and nothing else (GDD §3.4, §12.3)', () => {
     const port = localSessionServer({ record: storedRecord(), sleep: instantly });
-    expect(Object.keys(port.sessionBrief(DAY, LIFT))).toEqual(['fatigue']);
+    expect(Object.keys(port.sessionBrief(DAY, LIFT)).sort()).toEqual(
+      ['fatigue', 'trainingProgressCredit'].sort(),
+    );
   });
 
   it('the brief is narrowed to the horizon that can affect today', () => {
@@ -200,7 +196,10 @@ describe('the stand-in server port', () => {
     const readings = closeOutReadings(cache, closeOut);
     if (readings.payoff.kind !== 'e1rm') throw new Error('unreachable');
     expect(readings.payoff.reading.kind).toBe('confirmed');
-    expect(readings.payoff.valueKg).toBeGreaterThan(BEST_KG);
+    // First session of this lift, empty ledger: stimulus is 0, so the number
+    // HOLDS. Growth is earned on the next session of this lift (GDD §3.4).
+    expect(readings.payoff.valueKg).toBe(BEST_KG);
+    expect(readings.payoff.isPr).toBe(false);
     expect(readings.streakValue).toBe(STREAK + 1);
     // And the row really moved: the day is now logged.
     expect(todayFromCache(cache, DAY, LIFT).alreadyTrainedToday).toBe(true);
@@ -569,5 +568,67 @@ describe('the row survives a reload (Sprint 2)', () => {
     const port = localSessionServer({ store, sleep: instantly, freshSignupDay: SIGNUP_DAY });
     const chosen = await port.chooseFederation(CHOOSE_IRONLINE, asProposalId('save-c6'));
     expect(chosen.kind).toBe('chosen');
+  });
+
+  it('a trained session’s fatigue and pending credit survive a reload — GDD §3.4', async () => {
+    const store = fakeStore();
+    const first = localSessionServer({ record: storedRecord(), store, sleep: instantly });
+    let cache = openingCache(first);
+    const hard = closeOutOf(
+      playSession(
+        createSession(sessionContextFrom(cache, first.sessionBrief(DAY, LIFT), DAY, LIFT)),
+        9,
+      ),
+    );
+    expect(hard.isPr).toBe(false);
+    const submitted = submitCloseOut(cache, hard, WALL_CLOCK, PROPOSAL_ID)!;
+    const recorded = await first.recordTrainingSession(DAY, submitted.proposal, PROPOSAL_ID);
+    expect(recorded.kind).toBe('snapshot');
+    expect(store.saves).toBeGreaterThan(0);
+
+    const afterOne = decodeSavedGame(store.text ?? '');
+    expect(afterOne.ok).toBe(true);
+    if (!afterOne.ok) return;
+    expect(afterOne.record.trainingProgressCredit[LIFT]).toBe(1);
+
+    const reopened = localSessionServer({ store, sleep: instantly, freshSignupDay: SIGNUP_DAY });
+    cache = openingCache(reopened);
+    expect(todayFromCache(cache, DAY, LIFT).alreadyTrainedToday).toBe(true);
+    expect(reopened.sessionBrief(DAY, LIFT).trainingProgressCredit).toBe(1);
+
+    const nextDay = DAY + SESSION_TUNING.LIFT_ROTATION.length;
+    expect(liftForDay(nextDay)).toBe(LIFT);
+    const stillPending = closeOutOf(
+      playSession(
+        createSession(sessionContextFrom(cache, reopened.sessionBrief(nextDay, LIFT), nextDay, LIFT)),
+        8,
+      ),
+    );
+    expect(stillPending.isPr).toBe(false);
+
+    const parsed = JSON.parse(store.text ?? '') as {
+      trainingProgressCredit: { squat: number; bench: number; deadlift: number };
+    };
+    parsed.trainingProgressCredit[LIFT] =
+      TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_OPPORTUNITY;
+    store.text = JSON.stringify(parsed);
+    const banked = localSessionServer({ store, sleep: instantly, freshSignupDay: SIGNUP_DAY });
+    cache = openingCache(banked);
+    const pr = closeOutOf(
+      playSession(
+        createSession(sessionContextFrom(cache, banked.sessionBrief(nextDay, LIFT), nextDay, LIFT)),
+        8,
+      ),
+    );
+    expect(pr.isPr).toBe(true);
+    const nextId = asProposalId('local-test-next');
+    const nextSubmit = submitCloseOut(cache, pr, WALL_CLOCK, nextId)!;
+    const grown = await banked.recordTrainingSession(nextDay, nextSubmit.proposal, nextId);
+    expect(grown.kind).toBe('snapshot');
+    if (grown.kind !== 'snapshot') throw new Error('unreachable');
+    cache = receiveSnapshot(nextSubmit.cache, grown.wire);
+    const readings = closeOutReadings(cache, pr);
+    if (readings.payoff.kind !== 'e1rm') throw new Error('unreachable');
+    expect(readings.payoff.valueKg).toBeGreaterThan(BEST_KG);
   });
 });

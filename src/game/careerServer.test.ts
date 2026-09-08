@@ -513,6 +513,7 @@ describe('applyFederationChoice', () => {
     expect(Object.isFrozen(record.wallet), 'wallet').toBe(true);
     expect(Object.isFrozen(record.meets), 'the meets array').toBe(true);
     expect(Object.isFrozen(record.fatigue), 'fatigue').toBe(true);
+    expect(Object.isFrozen(record.trainingProgressCredit), 'trainingProgressCredit').toBe(true);
     expect(Object.isFrozen(record.federation), 'federation').toBe(true);
     const loose: { id: string } = record.federation;
     expect(() => {

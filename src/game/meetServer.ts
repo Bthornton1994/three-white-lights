@@ -1054,6 +1054,8 @@ export function applyMeetResult(
     wallet: record.wallet,
     // CARRIED THROUGH UNTOUCHED. The hidden ledger is the daily loop's.
     fatigue: record.fatigue,
+    // CARRIED THROUGH UNTOUCHED. Progression credit is the daily loop's.
+    trainingProgressCredit: record.trainingProgressCredit,
     // CARRIED THROUGH UNTOUCHED. A meet result cannot move a federation; what
     // it does to the career is the DERIVED fold picking up the meet appended
     // above, which is the one path (`careerServer.ts`).

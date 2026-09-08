@@ -408,6 +408,11 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     kind: 'data',
     why: 'RPE_PERCENT_CHART — the published Tuchscherer-style chart, plus RPE_LOADING_TUNING.',
   }),
+  'src/game/saveGame.ts': Object.freeze({
+    role: 'constants',
+    kind: 'local',
+    why: 'SAVE_FORMAT / SAVE_VERSION / SAVE_REFUSAL_CODES — schema identity, not a feel knob. A playtester does not turn a save version.',
+  }),
   'src/game/dots.ts': Object.freeze({
     role: 'constants',
     kind: 'data',

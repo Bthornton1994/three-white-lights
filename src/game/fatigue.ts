@@ -243,13 +243,17 @@
  * The two are combined only *behind* the symbol, into `burden`, which is what
  * moves the window, the miss odds, the perceived RPE and the bar-speed cue.
  *
- * KNOWN OPEN QUESTION, NOT SOLVED HERE: the check-in is self-reported, and
- * reporting "primed" both widens the window (`READINESS_RELIEF_WEIGHT`) and adds
- * load (`READINESS_LOAD_ADJUSTMENT_PERCENT`). Whether always claiming to be
- * primed is a net win depends on how the lift mechanic trades window width
- * against bar weight, which cannot be settled without playtesting. Both knobs
- * are exposed so the balance can be tuned; this module does not assert it is
- * already balanced.
+ * KNOWN OPEN QUESTION, CLOSED ON THE LOAD AXIS (GDD §3.4): the check-in is
+ * still self-reported, and reporting "primed" still widens the window
+ * (`READINESS_RELIEF_WEIGHT`). It does NOT add load on the player path.
+ * Successful prescribed work earns `sessionStimulusCredit` (0..1 of a
+ * completed 5×3). Long-term accumulation of that credit, and the bounded
+ * steps that become a heavier bar, live in `trainingProgress.ts` — this
+ * module is not the progression bank. `READINESS_LOAD_ADJUSTMENT_PERCENT`
+ * remains the tap-only readout on `readinessCheckIn` so a handed-in report
+ * can still name a percent, but three unverified taps no longer mint the
+ * bar. Window-vs-weight balance for the remaining relief knob is still a
+ * playtesting question.
  *
  * ---------------------------------------------------------------------------
  * DELIBERATE NON-GOALS
@@ -258,9 +262,13 @@
  *   - Per-lift or per-muscle fatigue. Residual here is systemic and global: a
  *     hard squat day makes tomorrow's bench start harder. Only INJURY is
  *     lift-specific.
- *   - Load prescription. `readinessCheckIn` reports a percentage nudge; the
- *     caller applies it to whatever `rpe.ts` prescribes. This module does no
- *     load math and imports no chart values beyond the RPE grid's own step.
+ *   - Load math. This module still imports no chart values beyond the RPE
+ *     grid's own step. What it DOES export is the session's successful-work
+ *     index (`sessionStimulusCredit`): 0..1 of a completed template, used by
+ *     `trainingProgress.ts` as CREDIT, not as a load percent. That is a
+ *     prescription input to the progression bank, not a fatigue level, and
+ *     not a substitute for `rpe.ts`.
+ *   - Long-term progression accumulation. That is `trainingProgress.ts`.
  *   - Streaks and Recovery Days (GDD §4). Separate module.
  *   - Any mutation of Total, e1RM or currency. Server-authoritative (CLAUDE.md).
  */
@@ -682,6 +690,49 @@ export const FATIGUE_TUNING = Object.freeze({
   RECOVERY_SESSION_WORK_SETS: 2,
   RECOVERY_SESSION_REPS_PER_SET: 5,
 
+  // --- Training stimulus (GDD §3.4: successful work earns credit, not a %) --
+  //
+  // One completed session is worth a unit of TRAINING STIMULUS in [0, 1] of
+  // the shipped 5×3 template. `trainingProgress.ts` banks that unit per lift
+  // and spends it in bounded steps. This module does not turn stimulus into
+  // a load percent — that compounding loop is what v2 exists to retire.
+  //
+  // Check-in is not an input. RPE 8/9/10 of the same completed volume earn
+  // the same unit. RPE 6 is recovery and earns 0. Failure-only earns 0.
+
+  /**
+   * Successful-rep volume that a completed shipped template (5 x 3) reports.
+   * Stimulus is a fraction of this, not a function of the target RPE menu
+   * pick. A retune of the session template that does not move this number
+   * will under- or over-state volume until this is updated; `fatigue.test.ts`
+   * pins it against 5 x 3 so that drift is loud.
+   */
+  STIMULUS_REFERENCE_VOLUME: 15,
+
+  /**
+   * Reps that make a set completed-as-prescribed. A to-failure report
+   * whose average reps never reach this is missed work, not a completed
+   * RPE 10, and earns 0. Must equal `SESSION_TUNING.REPS_PER_SET`;
+   * `fatigue.test.ts` pins both so a template retune cannot silently
+   * reclassify misses as completed RPE 10.
+   */
+  STIMULUS_PRESCRIBED_REPS: 3,
+
+  /**
+   * Effort weight on the prescribed RPE of COMPLETED-AS-PRESCRIBED work.
+   * Saturates at the default rung: RPE 8, 9 and 10 pay the same per
+   * successful volume. Choosing a harder menu option is not a reward
+   * (GDD §3.4: do not pay higher rungs more). RPE 6 is recovery and
+   * earns nothing. Interpolated the same way as `RPE_STRAIN_WEIGHTS`.
+   */
+  STIMULUS_EFFORT_WEIGHTS: Object.freeze([
+    Object.freeze({ rpe: 6, weight: 0 }),
+    Object.freeze({ rpe: 7, weight: 0.75 }),
+    Object.freeze({ rpe: 8, weight: 1 }),
+    Object.freeze({ rpe: 9, weight: 1 }),
+    Object.freeze({ rpe: 10, weight: 1 }),
+  ] as const satisfies readonly RpeStrainWeight[]),
+
   // --- Precision ------------------------------------------------------------
 
   /**
@@ -766,7 +817,12 @@ export interface SessionRecord {
   /** Integer day index, caller-supplied. This module never reads a clock. */
   readonly day: number;
   readonly lift: SimLift;
-  /** Hardest RPE reached. Clamped to the RPE chart's range when read. */
+  /**
+   * Hardest completed-as-prescribed RPE, or the chart max when the session
+   * was to-failure reports only. Missed sets do not raise this above the
+   * work that actually completed; `fatigueRecordFor` is what folds the
+   * ragged reports into that rule.
+   */
   readonly topRpe: number;
   readonly workSets: number;
   readonly repsPerSet: number;
@@ -878,20 +934,9 @@ function assertValidSession(session: SessionRecord): void {
 // Strain — MODULE-PRIVATE. This is the fatigue scalar and it does not leave.
 // ---------------------------------------------------------------------------
 
-/**
- * Per-rep strain weight for a top RPE, linearly interpolated across
- * `RPE_STRAIN_WEIGHTS` and clamped at both ends.
- *
- * Interpolating rather than requiring a charted RPE on purpose: this curve is a
- * game-feel abstraction (GDD §3.1), not the published chart, and refusing an
- * off-grid RPE here would imply a rigour the curve does not have. The published
- * chart's own refusal behaviour lives in `rpe.ts` and is untouched by this.
- */
-function rpeStrainWeight(rpe: number): number {
-  const table = FATIGUE_TUNING.RPE_STRAIN_WEIGHTS;
+function rpeTableWeight(rpe: number, table: readonly RpeStrainWeight[]): number {
   const first = table[0];
   const last = table[table.length - 1];
-  // Unreachable while the table is non-empty; the suite pins its length.
   if (first === undefined || last === undefined) return 0;
   if (!Number.isFinite(rpe) || rpe <= first.rpe) return first.weight;
   if (rpe >= last.rpe) return last.weight;
@@ -908,6 +953,20 @@ function rpeStrainWeight(rpe: number): number {
   }
   return last.weight;
 }
+
+/**
+ * Per-rep strain weight for a top RPE, linearly interpolated across
+ * `RPE_STRAIN_WEIGHTS` and clamped at both ends.
+ *
+ * Interpolating rather than requiring a charted RPE on purpose: this curve is a
+ * game-feel abstraction (GDD §3.1), not the published chart, and refusing an
+ * off-grid RPE here would imply a rigour the curve does not have. The published
+ * chart's own refusal behaviour lives in `rpe.ts` and is untouched by this.
+ */
+function rpeStrainWeight(rpe: number): number {
+  return rpeTableWeight(rpe, FATIGUE_TUNING.RPE_STRAIN_WEIGHTS);
+}
+
 
 /** Raw, un-thresholded work index for a session. Module-private. */
 function rawSessionIndex(session: SessionRecord): number {
@@ -1015,6 +1074,40 @@ function residualAtStartOfDay(state: FatigueState, day: number): number {
   }
   return residual;
 }
+
+/**
+ * Successful-work index of one ledger row, in [0, 1] of a completed template.
+ *
+ * This is not session strain: strain uses the steep RPE table and is the
+ * fatigue cost of the day. Stimulus uses realized volume times a saturating
+ * effort weight so a higher menu pick is not a growth reward.
+ *
+ * A to-failure-only rectangle (top RPE at the chart max, average reps short
+ * of a prescribed set) is missed work, not a completed RPE 10, and earns 0.
+ * Injured-short completed work (fewer sets, full reps at a productive RPE)
+ * still earns its volume fraction — including completed RPE 10.
+ *
+ * Check-in is not an input. The unit is CREDIT for `trainingProgress.ts`,
+ * not a load-adjustment percent. Empty / recovery / failure-only is 0.
+ */
+export function sessionStimulusCredit(session: SessionRecord): number {
+  assertValidSession(session);
+  const volume = Math.max(0, session.workSets) * Math.max(0, session.repsPerSet);
+  if (volume <= 0) return 0;
+  const reference = FATIGUE_TUNING.STIMULUS_REFERENCE_VOLUME;
+  if (reference <= 0) return 0;
+  if (
+    session.topRpe >= RPE_CHART_COVERAGE.MAX_RPE &&
+    session.repsPerSet < FATIGUE_TUNING.STIMULUS_PRESCRIBED_REPS
+  ) {
+    return 0;
+  }
+  const volumeRatio = Math.min(1, volume / reference);
+  const effort = rpeTableWeight(session.topRpe, FATIGUE_TUNING.STIMULUS_EFFORT_WEIGHTS);
+  if (effort <= 0) return 0;
+  return volumeRatio * effort;
+}
+
 
 // ---------------------------------------------------------------------------
 // Readiness check-in (GDD §3.2)
@@ -1462,6 +1555,10 @@ interface FeelInternals {
  *   - `readiness.loadAdjustmentPercent` is a readout of the player's own three
  *     taps. The suite asserts the whole `readiness` object is identical across
  *     wildly different fatigue histories, so it leaks nothing.
+ *   - The earned bar-nudge is NOT on this object. Progression credit lives
+ *     on `ServerRecord.trainingProgressCredit` and is offered through
+ *     `trainingProgress.ts`; putting it here would make `readiness` vary
+ *     with the ledger and fail that history-invariance pin.
  *   - `injury.daysRemaining` is a countdown on a rare discrete event, not a
  *     continuous readout. It says a setback is running and for how much longer,
  *     which is exactly what GDD §3.5 wants surfaced.

@@ -46,7 +46,7 @@ import {
 } from './sessionServer';
 import { EMPTY_FATIGUE_STATE, type FatigueState, type SessionRecord } from './fatigue';
 import { FATIGUE_TUNING } from './fatigue';
-import { SESSION_BOUNDARY, SESSION_BOUNDARY_COPY, SESSION_COPY, SESSION_TUNING } from './sessionTuning';
+import { SESSION_BOUNDARY, SESSION_BOUNDARY_COPY, SESSION_COPY, SESSION_TUNING, TRAINING_PROGRESS_TUNING } from './sessionTuning';
 import {
   RECOVERY_DAY_GUARDRAILS,
   asStreakDay,
@@ -104,7 +104,11 @@ function storedRecord(bestKg: number): ServerRecord {
 }
 
 /** Drives the real machine to a close-out, every rep good. */
-function playSession(bestKg: number, ledger: FatigueState = EMPTY_FATIGUE_STATE): SessionState {
+function playSession(
+  bestKg: number,
+  ledger: FatigueState = EMPTY_FATIGUE_STATE,
+  trainingProgressCredit = 0,
+): SessionState {
   return playSessionFrom({
     day: DAY,
     lift: LIFT,
@@ -113,6 +117,7 @@ function playSession(bestKg: number, ledger: FatigueState = EMPTY_FATIGUE_STATE)
     streakBefore: STARTING_STREAK,
     streakIfTrainedToday: STARTING_STREAK + 1,
     fatigue: ledger,
+    trainingProgressCredit,
   });
 }
 
@@ -201,7 +206,7 @@ function scriptedServer(options?: {
       openingSnapshot: (): ProgressionSnapshotWire => snapshotWireFor(stored, null),
       sessionBrief: (day: number): SessionBrief => {
         briefsAsked.push(day);
-        return { fatigue: briefFatigueFor(ledger, day) };
+        return { fatigue: briefFatigueFor(ledger, day), trainingProgressCredit: 0 };
       },
       recordTrainingSession: (
         _day: number,
@@ -254,10 +259,10 @@ describe('purity', () => {
 // ---------------------------------------------------------------------------
 
 describe('the session brief (GDD §3.4, §12.3)', () => {
-  it('carries exactly one field, and it is the ledger', () => {
-    const brief: SessionBrief = { fatigue: EMPTY_FATIGUE_STATE };
+  it('carries exactly the allowlisted hidden-prescription fields', () => {
+    const brief: SessionBrief = { fatigue: EMPTY_FATIGUE_STATE, trainingProgressCredit: 0 };
     expect(Object.keys(brief)).toEqual([...SESSION_BRIEF_KEYS]);
-    expect([...SESSION_BRIEF_KEYS]).toEqual(['fatigue']);
+    expect([...SESSION_BRIEF_KEYS]).toEqual(['fatigue', 'trainingProgressCredit']);
   });
 
   it('narrows the ledger to the horizon that can still affect today', () => {
@@ -414,7 +419,7 @@ describe('a Recovery Day save, read out of the cache (GDD §4.3)', () => {
     const banked = recordTrainingDay(state, asStreakDay(returnDay));
     if (!banked.ok) throw new Error(`the save should be bankable: ${banked.error.code}`);
 
-    const context = sessionContextFrom(cache, { fatigue: EMPTY_FATIGUE_STATE }, returnDay, lift);
+    const context = sessionContextFrom(cache, { fatigue: EMPTY_FATIGUE_STATE, trainingProgressCredit: 0 }, returnDay, lift);
     const closeOut = closeOutOf(playSessionFrom(context));
     expect(closeOut.canPropose).toBe(true);
     expect(closeOut.streakBefore).toBe(COVERED_GAP_RUN_DAYS);
@@ -528,6 +533,7 @@ describe('the whole round trip, against a server that disagrees', () => {
       streakBefore: STARTING_STREAK,
       streakIfTrainedToday: STARTING_STREAK + 1,
       fatigue: EMPTY_FATIGUE_STATE,
+      trainingProgressCredit: 0,
     });
     for (const tap of [
       { question: 'sleep', answer: 'poor' },
@@ -620,13 +626,19 @@ describe('the PR call', () => {
     };
     const port: SessionServerPort = {
       openingSnapshot: () => snapshotWireFor(stored, null),
-      sessionBrief: () => ({ fatigue: EMPTY_FATIGUE_STATE }),
+      sessionBrief: () => ({ fatigue: EMPTY_FATIGUE_STATE, trainingProgressCredit: 0 }),
       recordTrainingSession: (_d, _p, id) =>
         Promise.resolve({ kind: 'snapshot', wire: snapshotWireFor(meaner, id) } as const),
     };
 
     let cache = openingCache(port);
-    const closeOut = closeOutOf(playSession(STARTING_BEST_KG));
+    const closeOut = closeOutOf(
+      playSession(
+        STARTING_BEST_KG,
+        EMPTY_FATIGUE_STATE,
+        TRAINING_PROGRESS_TUNING.CREDIT_PER_PROGRESSION_OPPORTUNITY,
+      ),
+    );
     expect(closeOut.isPr).toBe(true);
 
     const submission = submitCloseOut(cache, closeOut, WALL_CLOCK, PROPOSAL_ID)!;

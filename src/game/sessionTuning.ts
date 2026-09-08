@@ -600,22 +600,21 @@ export const SQUAT_VISUAL = Object.freeze({
  * because it is not a feel value a playtester turns with a stopwatch — it is a
  * bound on what the server will accept from a client.
  *
- * WHAT IT IS NOT: a solution to long-run progression pacing, and at the shipped
- * MAX value it is not even a brake. 6% per session sits ABOVE the largest jump
- * this loop can produce (the readiness nudge, `+5%` at `primed`), so it never
- * binds on an honest session and the compounding described in `session.ts`'s
- * header runs straight past it. It is a guard against a client reporting
- * nonsense, in the same spirit as `INJURY_MAX_CHANCE_PER_SESSION` being
- * currently slack.
+ * WHAT IT IS NOT: a solution to long-run progression pacing. 6% per session
+ * sits ABOVE a typical honest physical opportunity at fixture loads (one
+ * 2.5 kg plate on a ~172.5 kg RPE-8 bar is well under 6% of e1RM). At
+ * implausible light loads a single increment can exceed 6% of current
+ * best; the guard then binds. That is accepted. It is a guard against a
+ * client reporting nonsense, in the same spirit as
+ * `INJURY_MAX_CHANCE_PER_SESSION` being currently slack.
  *
- * DO NOT REPURPOSE EITHER END AS THE SESSION-OVER-SESSION PACING LEVER. Growth
- * ACROSS sessions still needs to be coupled to RPE/effort history rather than
- * paid flat for three self-reported taps, and that coupling is a recorded
- * dependency on the fatigue/progression module (GDD §3.4) — unrelated to the
- * range below, which is about ONE session's own execution, not the sequence of
+ * DO NOT REPURPOSE EITHER END AS THE SESSION-OVER-SESSION PACING LEVER.
+ * Growth ACROSS sessions is a physical progression opportunity in
+ * `trainingProgress.ts` (GDD §3.4) paid for with thresholded credit.
+ * The range below is about ONE session's own execution, not the sequence of
  * sessions. Tightening MAX instead would put a pacing constant in the wrong
- * file, ahead of the thing it is meant to pace, for somebody else to unpick
- * later.
+ * file. Do not retune 6% to paper over plate geometry.
+
  *
  * MIN is Sprint 3's addition: `nextBestE1rm` scales the fraction it actually
  * grants, LINEARLY, between MIN (a set graded `executionQuality` 0 — the
@@ -635,6 +634,28 @@ export const SESSION_PROGRESSION_GUARD = Object.freeze({
   MAX_E1RM_GAIN_FRACTION_PER_SESSION: 0.06,
   /** Least a session with a made rep still banks, at the worst execution quality. */
   MIN_E1RM_GAIN_FRACTION_PER_SESSION: 0.02,
+});
+
+/**
+ * Per-lift progression credit (GDD §3.4, Session A v3).
+ *
+ * THIS IS PROGRESSION PACING, NOT FATIGUE AND NOT A METER. Fatigue stays
+ * same-day / next-day feel. These knobs turn successful work into a scarce
+ * physical right to put the next loadable increment on the bar, instead of
+ * compounding a percent of current best every session, and instead of
+ * hiding a fractional percent inside plate snap.
+ *
+ * CREDIT_PER_PROGRESSION_OPPORTUNITY = 12: a full successful 5×3 @ RPE 8
+ * (stimulus 1.0) needs twelve same-lift sessions to bank one opportunity.
+ * Realization is ordinary snapped bar + ONE existing rounding increment
+ * (kg 2.5, lb 5). RPE 6 is recovery and cannot cash. Consume 12 only when
+ * the heavier bar is realized as a new best e1RM.
+ *
+ * Beta game-pacing parameters, not sports-science claims. Career still
+ * owns true multi-week arcs.
+ */
+export const TRAINING_PROGRESS_TUNING = Object.freeze({
+  CREDIT_PER_PROGRESSION_OPPORTUNITY: 12,
 });
 
 /**

@@ -292,6 +292,7 @@ describe('the debug preview seals the rows it builds', () => {
     expect(Object.isFrozen(record.wallet), 'wallet').toBe(true);
     expect(Object.isFrozen(record.meets), 'the meets array').toBe(true);
     expect(Object.isFrozen(record.fatigue), 'fatigue').toBe(true);
+    expect(Object.isFrozen(record.trainingProgressCredit), 'trainingProgressCredit').toBe(true);
     expect(Object.isFrozen(record.federation), 'federation').toBe(true);
 
     // NON-VACUITY AS A VALUE, NOT A SHAPE. The preview pins one e1RM and one
@@ -342,6 +343,7 @@ describe('the debug preview seals the rows it builds', () => {
     expect(Object.isFrozen(answered.wallet), 'and its wallet').toBe(true);
     expect(Object.isFrozen(answered.meets), 'and its meets array').toBe(true);
     expect(Object.isFrozen(answered.fatigue), 'and its fatigue').toBe(true);
+    expect(Object.isFrozen(answered.trainingProgressCredit), 'and its training-progress credit').toBe(true);
     expect(Object.isFrozen(answered.federation), 'and its federation').toBe(true);
 
     const bests: Record<string, number | null> = answered.bestE1rmKg;

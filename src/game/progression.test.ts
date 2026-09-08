@@ -377,6 +377,23 @@ const REFLECTIVE_ASSEMBLY_EXEMPTIONS: readonly {
       'than the reason — the reason is that the line was read.',
   },
   {
+    file: 'src/game/meetField.ts',
+    idiom: 'Object.assign',
+    n: 6,
+    lines: [
+      "throw Object.assign(new Error(fixtureError(lifterId, 'plan is not a full card').message), {",
+      'throw Object.assign(new Error(fixtureError(lifterId, declared.error.message).message), {',
+      'throw Object.assign(new Error(fixtureError(lifterId, resolved.error.message).message), {',
+      "throw Object.assign(new Error(fixtureError(lifterId, 'card did not complete').message), {",
+      "throw Object.assign(new Error(fixtureError(lifterId, 'resolved fewer attempts than planned').message), {",
+      "throw Object.assign(new Error(fixtureError(spec.id, 'lot collides on this flight').message), {",
+    ],
+    why:
+      'replayFixtureCard / assertUniqueLots stamp a refusal code onto an Error. ' +
+      'Object.assign here is Error annotation, not a ServerRecord. No progression ' +
+      'field is copied. Named rather than left as an unexcused hit.',
+  },
+  {
     file: 'src/cutin/cutInObserver.ts',
     idiom: 'as unknown as',
     n: 1,
@@ -1830,7 +1847,7 @@ describe('purity', () => {
       targets.map((target) => [target.kind, objectValuedProperties(target, checker)]),
     );
     expect(requiredByKind, 'the nested objects each boundary type carries').toEqual({
-      record: ['bestE1rmKg', 'fatigue', 'federation', 'meets', 'streak', 'wallet'],
+      record: ['bestE1rmKg', 'fatigue', 'federation', 'meets', 'streak', 'trainingProgressCredit', 'wallet'],
       wire: ['bestE1rmKg', 'federation', 'meets', 'streak', 'wallet'],
       facts: ['bestE1rmKg', 'federation', 'meets', 'streak', 'wallet'],
     });
@@ -1897,7 +1914,11 @@ describe('purity', () => {
     // producer whose arrays arrive from JSON.parse thawed — it asserts both
     // array shells, an element of each, and the entitlement, where the other
     // rows' fixtures inherit those from an already-sealed input.
-    expect(frozen, 'Object.isFrozen arguments read out of the witness bodies').toBe(92);
+    //
+    // 92 -> 102 when `trainingProgressCredit` joined ServerRecord: one new
+    // isFrozen in each record witness. The shared sessionServer body carries
+    // two (newServerRecord and applyTrainingSession) and is audited twice.
+    expect(frozen, 'Object.isFrozen arguments read out of the witness bodies').toBe(102);
 
     // AND THE DEPTH THE LEDGER DOES NOT REACH, TABULATED RATHER THAN CLAIMED.
     // One array element down — `meets[0]`, where a stored meet's Total lives —
@@ -2021,7 +2042,12 @@ describe('purity', () => {
     // and the choose-federation test that decodes the choice's own wire.
     // 24 -> 25 with saveGame.test.ts's injured-rung record spread — a fixture,
     // seen and correctly discarded.
-    expect(routeScan().fixtures.length, 'fixture rows the scan sees and discards').toBe(25);
+    // 25 -> 28 with TrainingProgressCredit: session.test.ts's 200 kg seed and
+    // banked-credit miss fixture, plus sessionServer.test.ts's
+    // withProgressCredit helper — three spreads, all fixtures, all discarded.
+    // 28 -> 29 with trainingProgress.geometry.redteam.test.ts's 11-start
+    // always-8 seed spread (`bestE1rmKg` overwritten on a newServerRecord).
+    expect(routeScan().fixtures.length, 'fixture rows the scan sees and discards').toBe(29);
     expect(routeScan().fixtures.map((row) => row.file)).toContain('src/game/meetServer.test.ts');
     // ...and no fixture leaked into the pinned table.
     expect(declaredRoutes().filter((row) => IS_TEST_FILE.test(row.file))).toEqual([]);
