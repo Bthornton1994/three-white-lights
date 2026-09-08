@@ -2057,6 +2057,18 @@ export const EMPIRE_TUNING = Object.freeze({
    * fractions of the bench footprint. Disc count is how many plate discs
    * travel from the stack to the bar sleeve. `discSizeFraction` is of the
    * bench's shorter side in tiles. Not a parallel timer.
+   *
+   * VL-2 retuned `discSizeFraction` 0.45 -> 0.25, and the reason is a
+   * retracted diagnosis worth keeping: on VL-2's Play surface the discs
+   * read as three red balloons over the painted bench. Commit 39032282
+   * blamed a sizing off the bench's drawn art box and "fixed" it by sizing
+   * off the footprint's short side — a no-op, because the bench footprint
+   * is 2x4 and the short side IS two tiles either way; the served bundle
+   * was re-measured at 35.9 px before and after. The real cause is that
+   * VL-2's stage-fit tile is about 40 px on Play where the plan's was 28,
+   * so a disc at 45% of two tiles grew with the world. A quarter of the
+   * short side is half a tile — the width of a plate on the painted bar —
+   * and it is a feel value, tuned by eye on the evidence, not asserted.
    */
   FLOOR_PLATE_LOADING: Object.freeze({
     discCount: 3,
@@ -2064,7 +2076,7 @@ export const EMPIRE_TUNING = Object.freeze({
     sleeveXFraction: 0.72,
     railYFraction: 0.22,
     stackSpreadFraction: 0.12,
-    discSizeFraction: 0.45,
+    discSizeFraction: 0.25,
   }),
 
   /** The gap, in pixels, between the top of a member's head and the bottom of its state cue. */
