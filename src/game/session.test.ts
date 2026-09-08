@@ -890,7 +890,12 @@ describe('credit pacing matrix — GDD §3.4 red-team', () => {
     const lastSetMiss: (set: number, rep: number) => LiftOutcome = (set, rep) =>
       set === SESSION_TUNING.WORK_SETS - 1 && rep === 0 ? 'miss' : 'good-lift';
 
-    const at = (sessions: number, name: string, rpe: number, outcome = ALL_GOOD): PathStats =>
+    const at = (
+      sessions: number,
+      name: string,
+      rpe: number,
+      outcome: (set: number, rep: number) => LiftOutcome = ALL_GOOD,
+    ): PathStats =>
       playPath({
         name: `${sessions} ${name}`,
         sessions,

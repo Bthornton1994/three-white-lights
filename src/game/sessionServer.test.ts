@@ -1391,7 +1391,7 @@ describe('the whole round trip — client proposes, server publishes, client rea
       expect(applied.ok).toBe(true);
       if (!applied.ok) return;
       record = applied.value.record;
-      lastKg = applied.value.bestE1rmKg;
+      lastKg = applied.value.bestE1rmKg ?? lastKg;
       if (lastKg > (beforeBlock ?? 0)) {
         moved = true;
         break;
