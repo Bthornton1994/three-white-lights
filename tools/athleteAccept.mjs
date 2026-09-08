@@ -47,6 +47,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { gateDevServer } from './devServerSentinel.mjs';
+import { armFreshLifterPerBoot } from './freshLifterBoundary.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..');
@@ -126,6 +127,10 @@ async function webSmoke() {
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--no-sandbox'] });
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  // Every browser tool arms the fresh-lifter boundary (src/shell/shellWiring.test.ts
+  // reads the sibling list from the tree). The dev route reads no save, but the
+  // rule is mechanical and a tool that quietly skips it is the drift it exists to catch.
+  await armFreshLifterPerBoot(context);
   const page = await context.newPage();
   const consoleLines = [];
   const pageErrors = [];

@@ -863,6 +863,23 @@ external blockers — athlete `.riv` / `.rev` / reference sheet /
 provenance, the empty side-on room plate, an Android runtime target — and
 invents no further work package.
 
+**Found by this round's guards, caused by this lane on the night shift,
+fixed in its own commit and called out here as a shared-file census row:**
+`src/shell/shellWiring.test.ts` reads every tool under `tools/` that opens
+a browser context and requires each to arm the fresh-lifter boundary
+(`armFreshLifterPerBoot`), with the list PINNED. `tools/athleteAccept.mjs`
+(landed `b94b99d9`) opens Playwright and armed nothing, and its file was
+not in the night's lane-wide run, so the branch has carried that red for a
+day while the night report said 799 of 804. The tool now arms the
+boundary exactly as its siblings do (the dev route reads no save, but the
+rule is mechanical and a tool that skips it is the drift the rule
+exists to catch), and the pinned census gains `athleteAccept.mjs` — one
+row in a `src/shell/` test, registering an artifact this lane owns,
+under the registry ruling's five conditions and flagged because
+`src/shell/**` is a shared surface, not one of the ruling's named
+registries. If a human reads it as a crossing, it is one filed in the
+same commit as the edit, and is recorded here as such rather than hidden.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion

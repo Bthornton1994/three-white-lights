@@ -2701,6 +2701,7 @@ describe('the browser tools’ fresh-lifter boundary matches the app’s save', 
     expect(browserTools, 'tools that open a browser context').toEqual([
       '_capture-a2-lifter.mjs',
       '_capture-iron-amber-training.mjs',
+      'athleteAccept.mjs',
       'capture-cutin.mjs',
       'capture-lift.mjs',
       'capture-meet.mjs',
