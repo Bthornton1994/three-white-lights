@@ -28,7 +28,7 @@ import {
   type FloorStationRef,
 } from './floorSim';
 import { createLadderState, type LadderEquipmentItem } from './ladder';
-import { createLivingMemberRoster, deriveMemberId, floorSimPopulationFromRoster, memberIdForIndex } from './livingMembers';
+import { createLivingMemberRoster, deriveMemberId, floorSimPopulationFromRoster, type GymMemberId, memberIdForIndex } from './livingMembers';
 import { createManagedGym, hireManager, withUpdatedGym } from './management';
 import {
   buySessionEquipment,
@@ -36,12 +36,13 @@ import {
   sessionEquipmentCost,
   type GymState,
 } from './sessions';
-import { stockStationCapability } from './stationCapability';
+import { stockStationCapability, stationChangeoverTicks, upgradeStation } from './stationCapability';
 import {
   persistableFacilityTruth,
   presentationStepProgressPerTick,
   presentationTickIntervalMs,
   presentationWorld,
+  type PresentationStation,
   type PresentationWorldInput,
 } from './presentationState';
 
@@ -136,6 +137,11 @@ describe('presentationState.ts — cadence and identity', () => {
     expect(bench?.ref).toEqual(BENCH);
     expect(bench?.capacity).toBe(1);
     expect(bench?.occupancy).toBe('available');
+    expect(bench?.seats).toHaveLength(1);
+    expect(bench?.seats[0]?.usingId).toBeNull();
+    expect(bench?.seats[0]?.changeoverTicks).toBe(0);
+    expect(bench).not.toHaveProperty('queueCells');
+    expect(bench).not.toHaveProperty('occupiedQueueCells');
     const furniture = world.equipment.filter((row) => row.kind === 'furniture');
     expect(furniture.map((row) => row.item)).toEqual([...KIT]);
     for (const row of furniture) {
@@ -335,6 +341,597 @@ describe('presentationState.ts — constrained queue', () => {
     expect(source).not.toMatch(/function claimantsOf/);
     expect(source).not.toMatch(/function compareClaimants/);
     expect(source).toMatch(/claimantsOf\(/);
+  });
+});
+
+describe('presentationState.ts — live capacity throughput', () => {
+  function trainingBay(world: ReturnType<typeof presentationWorld>) {
+    return world.stations.find((station) => station.ref.kind === 'training');
+  }
+
+  function buyCapacity(input: PresentationWorldInput): PresentationWorldInput {
+    const bought = upgradeStation(
+      input.capability,
+      'competition-bench-bay',
+      'capacity',
+      10_000,
+      true,
+      true,
+    );
+    expect(bought.kind).toBe('upgraded');
+    if (bought.kind !== 'upgraded') return input;
+    return Object.freeze({ ...input, capability: bought.capability });
+  }
+
+  it('stock capacity 1 queues FIFO, wait accumulates, then live Capacity seats a second member', () => {
+    let input = garageInput();
+    const rosterIds = input.roster.members.map((member) => member.id);
+    expect(rosterIds).toHaveLength(3);
+    expect(presentationWorld(input).business.bayCapacity).toBe(0);
+    expect(trainingBay(presentationWorld(input))?.capacity).toBe(1);
+
+    let queuedAt: {
+      readonly tick: number;
+      readonly usingId: string;
+      readonly queueIds: readonly string[];
+      readonly waitTicks: number;
+      readonly occupantSeat: string | null;
+    } | null = null;
+    let waitGrew = false;
+    for (let tick = 0; tick < 480; tick += 1) {
+      const world = presentationWorld(input);
+      const bay = trainingBay(world);
+      expect(bay?.ref).toEqual(BENCH);
+      expect(bay?.seats.length).toBe(bay?.capacity);
+      if (
+        queuedAt === null &&
+        bay !== undefined &&
+        bay.usingIds.length === 1 &&
+        bay.queueIds.length >= 1
+      ) {
+        const usingId = bay.usingIds[0];
+        const head = world.members.find((member) => member.id === bay.queueIds[0]);
+        expect(usingId).toBeDefined();
+        expect(head?.lifecycle).toBe('queuing');
+        expect(head?.queueRank).toBe(0);
+        expect(head?.waitTicks).not.toBeNull();
+        if (usingId === undefined || head === undefined || head.waitTicks === null) {
+          break;
+        }
+        expect(bay.seats[0]?.usingId).toBe(usingId);
+        expect(rosterIds).toContain(usingId);
+        expect(rosterIds).toContain(head.id);
+        queuedAt = Object.freeze({
+          tick: world.facility.tick,
+          usingId,
+          queueIds: bay.queueIds,
+          waitTicks: head.waitTicks,
+          occupantSeat: bay.seats[0]?.usingId ?? null,
+        });
+      } else if (queuedAt !== null) {
+        const headId = queuedAt.queueIds[0];
+        const head = world.members.find((member) => member.id === headId);
+        if (head?.lifecycle === 'queuing' && head.waitTicks !== null) {
+          if (head.waitTicks > queuedAt.waitTicks) waitGrew = true;
+        }
+        break;
+      }
+      input = Object.freeze({ ...input, sim: stepFloorSim(input.sim, contextFrom(input)) });
+    }
+    expect(queuedAt).not.toBeNull();
+    expect(waitGrew).toBe(true);
+    if (queuedAt === null) return;
+
+    const idsBefore = presentationWorld(input).members.map((member) => member.id);
+    input = buyCapacity(input);
+    const afterBuy = presentationWorld(input);
+    expect(afterBuy.business.bayCapacity).toBe(1);
+    expect(afterBuy.business.bayThroughput).toBe(0);
+    expect(trainingBay(afterBuy)?.capacity).toBe(2);
+    expect(trainingBay(afterBuy)?.seats).toHaveLength(2);
+    expect(afterBuy.members.map((member) => member.id)).toEqual(idsBefore);
+    expect(afterBuy.members.some((member) => member.lifecycle === 'interrupted')).toBe(false);
+
+    const purchaseQueueHead = queuedAt.queueIds[0];
+    const originalUser = queuedAt.usingId;
+    let dualAt: {
+      readonly tick: number;
+      readonly usingIds: readonly GymMemberId[];
+      readonly queueIds: readonly string[];
+      readonly occupiedSeats: number;
+      readonly secondUser: string | null;
+    } | null = null;
+    for (let tick = 0; tick < 240; tick += 1) {
+      input = Object.freeze({ ...input, sim: stepFloorSim(input.sim, contextFrom(input)) });
+      const world = presentationWorld(input);
+      const bay = trainingBay(world);
+      expect(world.members.map((member) => member.id)).toEqual(idsBefore);
+      expect(world.members.some((member) => member.lifecycle === 'interrupted')).toBe(false);
+      if (bay === undefined) continue;
+      expect(bay.capacity).toBe(2);
+      expect(bay.seats).toHaveLength(2);
+      const occupiedSeats = bay.seats.filter((seat) => seat.usingId !== null).length;
+      for (const seat of bay.seats) {
+        if (seat.usingId !== null) expect(bay.usingIds).toContain(seat.usingId);
+      }
+      if (bay.usingIds.length >= 2 && dualAt === null) {
+        const secondUser = bay.usingIds.find((id) => id !== originalUser) ?? null;
+        dualAt = Object.freeze({
+          tick: world.facility.tick,
+          usingIds: bay.usingIds,
+          queueIds: bay.queueIds,
+          occupiedSeats,
+          secondUser,
+        });
+        break;
+      }
+    }
+    expect(dualAt).not.toBeNull();
+    if (dualAt === null) return;
+    expect(dualAt.usingIds).toHaveLength(2);
+    expect(dualAt.usingIds).toContain(originalUser);
+    expect(dualAt.secondUser).toBe(purchaseQueueHead);
+    expect(dualAt.queueIds.length).toBeLessThan(queuedAt.queueIds.length);
+    expect(dualAt.occupiedSeats).toBe(2);
+    expect(dualAt.usingIds.every((id) => rosterIds.includes(id))).toBe(true);
+  });
+});
+
+describe('presentationState.ts — live Capacity red team', () => {
+  function trainingBay(world: ReturnType<typeof presentationWorld>) {
+    return world.stations.find((station) => station.ref.kind === 'training');
+  }
+
+  function buyAxis(
+    input: PresentationWorldInput,
+    axis: 'capacity' | 'throughput' | 'quality',
+    realizesCapacity: boolean,
+  ): ReturnType<typeof upgradeStation> {
+    return upgradeStation(
+      input.capability,
+      'competition-bench-bay',
+      axis,
+      10_000,
+      true,
+      realizesCapacity,
+    );
+  }
+
+  function buyCapacity(input: PresentationWorldInput): PresentationWorldInput {
+    const bought = buyAxis(input, 'capacity', true);
+    expect(bought.kind).toBe('upgraded');
+    if (bought.kind !== 'upgraded') return input;
+    return Object.freeze({ ...input, capability: bought.capability });
+  }
+
+  function cellKey(cell: { readonly x: number; readonly y: number }): string {
+    return `${cell.x},${cell.y}`;
+  }
+
+  function ghostIds(bay: PresentationStation): readonly string[] {
+    const seated = new Set(
+      bay.seats.map((seat) => seat.usingId).filter((id): id is GymMemberId => id !== null),
+    );
+    return bay.usingIds.filter((id) => !seated.has(id));
+  }
+
+  function assertSeatInvariants(bay: PresentationStation): void {
+    expect(bay.seats.length).toBe(bay.capacity);
+    const cells = bay.seats.map((seat) => cellKey(seat.cell));
+    expect(new Set(cells).size).toBe(cells.length);
+    const occupied: string[] = [];
+    for (const seat of bay.seats) {
+      expect(seat.changeoverTicks).toBeGreaterThanOrEqual(0);
+      if (seat.usingId === null) continue;
+      expect(bay.usingIds).toContain(seat.usingId);
+      occupied.push(seat.usingId);
+    }
+    expect(new Set(occupied).size).toBe(occupied.length);
+  }
+
+  function assertStableRoster(
+    world: ReturnType<typeof presentationWorld>,
+    rosterIds: readonly string[],
+  ): void {
+    const ids = world.members.map((member) => member.id);
+    expect(ids).toEqual(rosterIds);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toHaveLength(3);
+  }
+
+  function driveUntilQueue(start: PresentationWorldInput): PresentationWorldInput {
+    let input = start;
+    for (let tick = 0; tick < 480; tick += 1) {
+      const bay = trainingBay(presentationWorld(input));
+      if (bay !== undefined && bay.usingIds.length === 1 && bay.queueIds.length >= 1) {
+        return input;
+      }
+      input = Object.freeze({ ...input, sim: stepFloorSim(input.sim, contextFrom(input)) });
+    }
+    return input;
+  }
+
+  it('ghost-reserve is a bounded stale-snapshot window, not a persistent occupancy bug', () => {
+    let input = driveUntilQueue(garageInput());
+    const rosterIds = input.roster.members.map((member) => member.id);
+    const before = presentationWorld(input);
+    const beforeBay = trainingBay(before);
+    expect(beforeBay).toBeDefined();
+    if (beforeBay === undefined) return;
+    assertSeatInvariants(beforeBay);
+    expect(before.business.bayCapacity).toBe(0);
+    expect(before.business.bayThroughput).toBe(0);
+    expect(beforeBay.capacity).toBe(1);
+    expect(beforeBay.seats).toHaveLength(1);
+    const originalUser = beforeBay.usingIds[0];
+    const purchaseQueueHead = beforeBay.queueIds[0];
+    const purchaseQueue = beforeBay.queueIds;
+    const originalCell = before.members.find((member) => member.id === originalUser)?.cell;
+    expect(originalUser).toBeDefined();
+    expect(purchaseQueueHead).toBeDefined();
+    expect(originalCell).toBeDefined();
+    if (originalUser === undefined || purchaseQueueHead === undefined || originalCell === undefined) {
+      return;
+    }
+    expect(beforeBay.seats[0]?.usingId).toBe(originalUser);
+    expect(claimantsOf(input.sim.members, BENCH).filter((member) => member.state === 'queuing').map((member) => memberIdForIndex(input.roster, member.index))).toEqual(
+      purchaseQueue,
+    );
+
+    const idsBefore = before.members.map((member) => member.id);
+    const nonceBefore = input.roster.identityNonce;
+    input = buyCapacity(input);
+    const ghostWorld = presentationWorld(input);
+    const ghostBay = trainingBay(ghostWorld);
+    expect(ghostBay).toBeDefined();
+    if (ghostBay === undefined) return;
+    assertSeatInvariants(ghostBay);
+    assertStableRoster(ghostWorld, rosterIds);
+    expect(ghostWorld.facility.tick).toBe(before.facility.tick);
+    expect(ghostWorld.business.bayCapacity).toBe(1);
+    expect(ghostWorld.business.bayThroughput).toBe(0);
+    expect(ghostWorld.business.capacitySeats).toBe(2);
+    expect(ghostBay.capacity).toBe(2);
+    expect(ghostBay.seats).toHaveLength(2);
+    expect(ghostWorld.members.some((member) => member.lifecycle === 'interrupted')).toBe(false);
+    expect(input.roster.identityNonce).toBe(nonceBefore);
+    expect(input.roster.members).toHaveLength(3);
+    expect(ghostWorld.members.map((member) => member.id)).toEqual(idsBefore);
+
+    const occupant = ghostWorld.members.find((member) => member.id === originalUser);
+    expect(occupant?.lifecycle).toBe('using');
+    expect(occupant?.cell).toEqual(originalCell);
+    const seatKeys = ghostBay.seats.map((seat) => cellKey(seat.cell));
+    expect(seatKeys).not.toContain(cellKey(originalCell));
+    expect(ghostBay.usingIds).toEqual([originalUser]);
+    expect(ghostBay.seats.map((seat) => seat.usingId)).toEqual([null, null]);
+    expect(ghostIds(ghostBay)).toEqual([originalUser]);
+    expect(ghostBay.queueIds).toEqual(purchaseQueue);
+    const headStillQueued = ghostWorld.members.find((member) => member.id === purchaseQueueHead);
+    expect(headStillQueued?.lifecycle).toBe('queuing');
+    expect(headStillQueued?.queueRank).toBe(0);
+
+    let ghostTicks = 0;
+    let dualAt: {
+      readonly tick: number;
+      readonly usingIds: readonly string[];
+      readonly queueIds: readonly string[];
+      readonly occupiedSeats: number;
+      readonly originalSeat: string | null;
+      readonly secondSeat: string | null;
+      readonly ghostStillPresent: boolean;
+    } | null = null;
+    let originalLandedAt: number | null = null;
+    let originalLandedSeat: string | null = null;
+    let persistentGhost = false;
+    for (let tick = 0; tick < 240; tick += 1) {
+      input = Object.freeze({ ...input, sim: stepFloorSim(input.sim, contextFrom(input)) });
+      const world = presentationWorld(input);
+      const bay = trainingBay(world);
+      expect(bay).toBeDefined();
+      if (bay === undefined) continue;
+      assertSeatInvariants(bay);
+      assertStableRoster(world, rosterIds);
+      expect(world.members.some((member) => member.lifecycle === 'interrupted')).toBe(false);
+      expect(world.business.bayThroughput).toBe(0);
+      expect(world.business.bayCapacity).toBe(1);
+      expect(bay.capacity).toBe(2);
+      const order = claimantsOf(input.sim.members, BENCH);
+      const queued = order.filter((member) => member.state === 'queuing');
+      expect(bay.queueIds).toEqual(queued.map((member) => memberIdForIndex(input.roster, member.index)));
+      const ghosts = ghostIds(bay);
+      if (ghosts.length > 0) {
+        ghostTicks += 1;
+        expect(ghosts).toContain(originalUser);
+        const stillUsing = world.members.find((member) => member.id === originalUser);
+        if (stillUsing?.lifecycle !== 'using') persistentGhost = true;
+      } else if (originalLandedAt === null) {
+        const seat = bay.seats.find((row) => row.usingId === originalUser);
+        originalLandedAt = world.facility.tick;
+        originalLandedSeat = seat === undefined ? null : cellKey(seat.cell);
+      }
+      if (bay.usingIds.length >= 2 && dualAt === null) {
+        const originalSeat = bay.seats.find((seat) => seat.usingId === originalUser);
+        const secondSeat = bay.seats.find((seat) => seat.usingId === purchaseQueueHead);
+        dualAt = Object.freeze({
+          tick: world.facility.tick,
+          usingIds: bay.usingIds,
+          queueIds: bay.queueIds,
+          occupiedSeats: bay.seats.filter((seat) => seat.usingId !== null).length,
+          originalSeat: originalSeat === undefined ? null : cellKey(originalSeat.cell),
+          secondSeat: secondSeat === undefined ? null : cellKey(secondSeat.cell),
+          ghostStillPresent: ghosts.length > 0,
+        });
+        break;
+      }
+    }
+
+    expect(persistentGhost).toBe(false);
+    expect(dualAt).not.toBeNull();
+    if (dualAt === null) return;
+    expect(originalLandedAt).not.toBeNull();
+    expect(ghostTicks).toBeGreaterThanOrEqual(0);
+    expect(ghostTicks).toBeLessThan(dualAt.tick - before.facility.tick + 1);
+    expect(dualAt.usingIds).toEqual(expect.arrayContaining([originalUser, purchaseQueueHead]));
+    expect(dualAt.usingIds).toHaveLength(2);
+    expect(dualAt.occupiedSeats).toBe(2);
+    expect(dualAt.ghostStillPresent).toBe(false);
+    expect(dualAt.queueIds.length).toBeLessThan(purchaseQueue.length);
+    expect(dualAt.queueIds).not.toContain(purchaseQueueHead);
+    expect(dualAt.originalSeat).not.toBeNull();
+    expect(dualAt.secondSeat).not.toBeNull();
+    expect(dualAt.originalSeat).not.toBe(dualAt.secondSeat);
+    expect(seatKeys).toEqual(expect.arrayContaining([dualAt.originalSeat, dualAt.secondSeat]));
+    expect({
+      useCellsAfter: seatKeys,
+      originalCellAtPurchase: cellKey(originalCell),
+      ghostOccupiedSeats: 0,
+      ghostUsing: 1,
+      queueUnchangedAtPurchase: true,
+      bayThroughputStaysZero: true,
+      ghostTicksAfterFirstStep: ghostTicks,
+      dualDelay: dualAt.tick - before.facility.tick,
+      originalLandedSeat,
+      secondSeat: dualAt.secondSeat,
+      originalSeatAtDual: dualAt.originalSeat,
+    }).toEqual({
+      useCellsAfter: ['2,2', '7,0'],
+      originalCellAtPurchase: '5,0',
+      ghostOccupiedSeats: 0,
+      ghostUsing: 1,
+      queueUnchangedAtPurchase: true,
+      bayThroughputStaysZero: true,
+      ghostTicksAfterFirstStep: 0,
+      dualDelay: 4,
+      originalLandedSeat: '2,2',
+      secondSeat: '7,0',
+      originalSeatAtDual: '2,2',
+    });
+  });
+
+  it('live Capacity never resets the roster or mints a duplicate member', () => {
+    let input = driveUntilQueue(garageInput());
+    const rosterIds = input.roster.members.map((member) => member.id);
+    const nonce = input.roster.identityNonce;
+    input = buyCapacity(input);
+    for (let tick = 0; tick < 120; tick += 1) {
+      const world = presentationWorld(input);
+      assertStableRoster(world, rosterIds);
+      expect(input.roster.identityNonce).toBe(nonce);
+      expect(input.roster.members.map((member) => member.id)).toEqual(rosterIds);
+      const bay = trainingBay(world);
+      if (bay !== undefined) assertSeatInvariants(bay);
+      input = Object.freeze({ ...input, sim: stepFloorSim(input.sim, contextFrom(input)) });
+    }
+  });
+
+  it('a refused Capacity purchase leaves one seat and does not interrupt', () => {
+    const queued = driveUntilQueue(garageInput());
+    const before = presentationWorld(queued);
+    const refused = buyAxis(queued, 'capacity', false);
+    expect(refused).toEqual(
+      expect.objectContaining({
+        kind: 'refused',
+        reason: 'no-second-position',
+      }),
+    );
+    if (refused.kind !== 'refused') return;
+    const world = presentationWorld(Object.freeze({ ...queued, capability: refused.capability }));
+    const bay = trainingBay(world);
+    expect(bay?.capacity).toBe(1);
+    expect(bay?.seats).toHaveLength(1);
+    expect(world.business.bayCapacity).toBe(0);
+    expect(world.business.bayThroughput).toBe(0);
+    expect(world.members.map((member) => member.id)).toEqual(before.members.map((member) => member.id));
+    expect(world.members.some((member) => member.lifecycle === 'interrupted')).toBe(false);
+  });
+
+  it('live Throughput does not add a seat and does not serve a second member', () => {
+    let input = driveUntilQueue(garageInput());
+    const rosterIds = input.roster.members.map((member) => member.id);
+    const beforeBay = trainingBay(presentationWorld(input));
+    expect(beforeBay?.capacity).toBe(1);
+    const bought = buyAxis(input, 'throughput', true);
+    expect(bought.kind).toBe('upgraded');
+    if (bought.kind !== 'upgraded') return;
+    input = Object.freeze({ ...input, capability: bought.capability });
+    const afterBuy = presentationWorld(input);
+    expect(afterBuy.business.bayThroughput).toBe(1);
+    expect(afterBuy.business.bayCapacity).toBe(0);
+    expect(trainingBay(afterBuy)?.capacity).toBe(1);
+    expect(trainingBay(afterBuy)?.seats).toHaveLength(1);
+    expect(stationChangeoverTicks(input.capability, 'training', 'competition-bench-bay')).toBe(
+      T.STATION_THROUGHPUT_CHANGEOVER_TICKS,
+    );
+    expect(stationChangeoverTicks(stockStationCapability(), 'training', 'competition-bench-bay')).toBe(
+      T.FLOOR_SIM_STATION_CHANGEOVER_TICKS,
+    );
+    let maxUsing = trainingBay(afterBuy)?.usingIds.length ?? 0;
+    let maxSeats = trainingBay(afterBuy)?.capacity ?? 0;
+    for (let tick = 0; tick < 240; tick += 1) {
+      input = Object.freeze({ ...input, sim: stepFloorSim(input.sim, contextFrom(input)) });
+      const world = presentationWorld(input);
+      const bay = trainingBay(world);
+      expect(bay).toBeDefined();
+      if (bay === undefined) continue;
+      assertSeatInvariants(bay);
+      assertStableRoster(world, rosterIds);
+      expect(world.business.bayThroughput).toBe(1);
+      expect(world.business.bayCapacity).toBe(0);
+      expect(bay.capacity).toBe(1);
+      expect(bay.seats).toHaveLength(1);
+      maxUsing = Math.max(maxUsing, bay.usingIds.length);
+      maxSeats = Math.max(maxSeats, bay.capacity);
+      expect(world.members.some((member) => member.lifecycle === 'interrupted')).toBe(false);
+    }
+    expect(maxUsing).toBe(1);
+    expect(maxSeats).toBe(1);
+  });
+
+  it('live Quality does not add a seat and does not change Throughput', () => {
+    let input = driveUntilQueue(garageInput());
+    const rosterIds = input.roster.members.map((member) => member.id);
+    const bought = buyAxis(input, 'quality', true);
+    expect(bought.kind).toBe('upgraded');
+    if (bought.kind !== 'upgraded') return;
+    input = Object.freeze({ ...input, capability: bought.capability });
+    const afterBuy = presentationWorld(input);
+    expect(afterBuy.business.bayQuality).toBe(1);
+    expect(afterBuy.business.bayCapacity).toBe(0);
+    expect(afterBuy.business.bayThroughput).toBe(0);
+    expect(trainingBay(afterBuy)?.capacity).toBe(1);
+    expect(trainingBay(afterBuy)?.seats).toHaveLength(1);
+    expect(stationChangeoverTicks(input.capability, 'training', 'competition-bench-bay')).toBe(
+      T.FLOOR_SIM_STATION_CHANGEOVER_TICKS,
+    );
+    let maxUsing = trainingBay(afterBuy)?.usingIds.length ?? 0;
+    for (let tick = 0; tick < 240; tick += 1) {
+      input = Object.freeze({ ...input, sim: stepFloorSim(input.sim, contextFrom(input)) });
+      const world = presentationWorld(input);
+      const bay = trainingBay(world);
+      expect(bay).toBeDefined();
+      if (bay === undefined) continue;
+      assertSeatInvariants(bay);
+      assertStableRoster(world, rosterIds);
+      expect(world.business.bayQuality).toBe(1);
+      expect(world.business.bayCapacity).toBe(0);
+      expect(world.business.bayThroughput).toBe(0);
+      expect(bay.capacity).toBe(1);
+      maxUsing = Math.max(maxUsing, bay.usingIds.length);
+      expect(world.members.some((member) => member.lifecycle === 'interrupted')).toBe(false);
+    }
+    expect(maxUsing).toBe(1);
+  });
+
+  it('stock changeover remains 18 after live Capacity; dual occupancy still loads plates', () => {
+    let input = driveUntilQueue(garageInput());
+    const rosterIds = input.roster.members.map((member) => member.id);
+    input = buyCapacity(input);
+    expect(stationChangeoverTicks(input.capability, 'training', 'competition-bench-bay')).toBe(
+      T.FLOOR_SIM_STATION_CHANGEOVER_TICKS,
+    );
+    let sawDual = false;
+    let loading: {
+      readonly changeoverTicks: number;
+      readonly usingId: string | null;
+      readonly bayThroughput: number;
+      readonly capacity: number;
+    } | null = null;
+    for (let tick = 0; tick < 720; tick += 1) {
+      input = Object.freeze({ ...input, sim: stepFloorSim(input.sim, contextFrom(input)) });
+      const world = presentationWorld(input);
+      const bay = trainingBay(world);
+      expect(bay).toBeDefined();
+      if (bay === undefined) continue;
+      assertSeatInvariants(bay);
+      assertStableRoster(world, rosterIds);
+      expect(world.business.bayThroughput).toBe(0);
+      expect(world.business.bayCapacity).toBe(1);
+      if (bay.usingIds.length >= 2) sawDual = true;
+      if (loading === null) {
+        const loadingSeat = bay.seats.find((seat) => seat.changeoverTicks > 0);
+        if (loadingSeat !== undefined) {
+          loading = Object.freeze({
+            changeoverTicks: loadingSeat.changeoverTicks,
+            usingId: loadingSeat.usingId,
+            bayThroughput: world.business.bayThroughput,
+            capacity: bay.capacity,
+          });
+          break;
+        }
+      }
+    }
+    expect(sawDual).toBe(true);
+    expect(loading).not.toBeNull();
+    if (loading === null) return;
+    expect(loading.usingId).toBeNull();
+    expect(loading.bayThroughput).toBe(0);
+    expect(loading.capacity).toBe(2);
+    expect(loading.changeoverTicks).toBeGreaterThan(0);
+    expect(loading.changeoverTicks).toBeLessThanOrEqual(T.FLOOR_SIM_STATION_CHANGEOVER_TICKS);
+    expect(loading.changeoverTicks).not.toBe(T.STATION_THROUGHPUT_CHANGEOVER_TICKS);
+  });
+
+  it('persistableFacilityTruth round-trips live Capacity without restoring the sim', () => {
+    const queued = driveUntilQueue(garageInput());
+    const bought = buyCapacity(queued);
+    const snap = persistableFacilityTruth(bought);
+    const restored = JSON.parse(JSON.stringify(snap)) as typeof snap;
+    expect(restored.capability).toEqual(bought.capability);
+    expect(restored.identityNonce).toBe(bought.roster.identityNonce);
+    expect(restored.memberCount).toBe(3);
+    expect(restored).not.toHaveProperty('sim');
+    expect(restored).not.toHaveProperty('members');
+    expect(restored).not.toHaveProperty('stations');
+    const world = presentationWorld(bought);
+    expect(world.business.bayCapacity).toBe(1);
+    expect(world.business.bayThroughput).toBe(0);
+    expect(trainingBay(world)?.seats).toHaveLength(2);
+  });
+
+  it('seat, FIFO, and identity invariants hold for 720 ticks after live Capacity', () => {
+    let input = driveUntilQueue(garageInput());
+    const rosterIds = input.roster.members.map((member) => member.id);
+    const purchaseQueue = trainingBay(presentationWorld(input))?.queueIds ?? [];
+    expect(purchaseQueue.length).toBeGreaterThan(0);
+    input = buyCapacity(input);
+    let sawDual = false;
+    let minQueueAfterDual = purchaseQueue.length;
+    let interrupted = 0;
+    let maxUsing = 0;
+    let maxOccupiedSeats = 0;
+    let ghostAfterFirstStep = 0;
+    for (let tick = 0; tick < 720; tick += 1) {
+      input = Object.freeze({ ...input, sim: stepFloorSim(input.sim, contextFrom(input)) });
+      const world = presentationWorld(input);
+      const bay = trainingBay(world);
+      expect(bay).toBeDefined();
+      if (bay === undefined) continue;
+      assertSeatInvariants(bay);
+      assertStableRoster(world, rosterIds);
+      expect(world.business.bayCapacity).toBe(1);
+      expect(world.business.bayThroughput).toBe(0);
+      expect(bay.capacity).toBe(2);
+      const queued = claimantsOf(input.sim.members, BENCH).filter((member) => member.state === 'queuing');
+      expect(bay.queueIds).toEqual(queued.map((member) => memberIdForIndex(input.roster, member.index)));
+      for (const member of world.members) {
+        if (member.lifecycle === 'interrupted') interrupted += 1;
+      }
+      const ghosts = ghostIds(bay);
+      if (ghosts.length > 0) ghostAfterFirstStep += 1;
+      maxUsing = Math.max(maxUsing, bay.usingIds.length);
+      maxOccupiedSeats = Math.max(maxOccupiedSeats, bay.seats.filter((seat) => seat.usingId !== null).length);
+      if (bay.usingIds.length >= 2) {
+        sawDual = true;
+        minQueueAfterDual = Math.min(minQueueAfterDual, bay.queueIds.length);
+      }
+    }
+    expect(interrupted).toBe(0);
+    expect(sawDual).toBe(true);
+    expect(maxUsing).toBe(2);
+    expect(maxOccupiedSeats).toBe(2);
+    expect(minQueueAfterDual).toBeLessThan(purchaseQueue.length);
+    expect(ghostAfterFirstStep).toBe(0);
   });
 });
 

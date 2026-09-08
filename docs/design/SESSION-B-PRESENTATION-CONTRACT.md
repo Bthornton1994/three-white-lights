@@ -126,16 +126,27 @@ is the guarantee. Do not read it as "mixing floors is impossible by API shape."
 | --- | --- |
 | `ref` | stable SKU-kind id |
 | `position` / `footprint` | primary rectangle (Capacity does not move this) |
-| `capacity` | `useCells.length` — simultaneous seats |
+| `capacity` | `useCells.length` — simultaneous seats; equals `seats.length` |
 | `occupancy` | `occupied` > `changeover` > `queued` > `approaching` > `available` |
-| `usingIds` | members in `using` on this ref |
+| `usingIds` | members in `using` on this ref (lifecycle, not per-seat) |
 | `queueIds` | members in `queuing`, **FIFO service order** |
 | `approachingIds` | members in `seeking` whose target is this ref |
 | `changeoverSeats` | seats reserved for plate change |
+| `seats` | per-seat occupancy: `{ cell, usingId, changeoverTicks }` in `useCells` order |
 
 Do not reconstruct queue order from HUD labels or from `queueCells` geometry. Use `queueIds` / `queueRank`.
 
+`seats[i].usingId` is who occupies that use cell right now. A lifecycle-using member can briefly be on no seat during a live Capacity rebuild (ghost-reserve). In the proven garage fixture that window is one stale snapshot: immediately after the capability swap, `usingIds` still names the original user while every `seats[].usingId` is null, because they still stand at the old approach cell (`5,0`) and the new `useCells` are `2,2` and `7,0`. The first `stepFloorSim` relocates them onto the primary; ghost ticks after that step are 0. Dual occupancy follows in 4 ticks; the prior queue head takes the new seat. If `seats[i].usingId` is set, that id is in `usingIds`. Claude must not walk `FloorSimMember` lists against `useCells`.
+
 Incomplete Competition Bench Bay (any of power-bar / comp-plates / flat-bench off the floor) is not a training station.
+
+### VL-1 bounded reads
+
+Claude VL-1 still reads two Grok-owned helpers from FloorGrid.
+
+1. **Per-seat station occupancy.** This fact belongs on the contract. It is now `PresentationStation.seats`. FloorGrid's local `memberUsesCell(sim.members, ref, useCells[i])` is reconstructing mechanical occupancy. After Claude binds, that walk should read `seats[i].usingId` instead.
+
+2. **Queue-cell geometry / occupancy convenience.** This fact stays off the contract. `worldView.occupiedQueueCells` is the named occupancy projector FloorGrid already draws as pad highlights. Service order is `queueIds` / `queueRank`. Member `cell` / `next` / `progress` already locate waiters. Slot index is not rank. Do not add `queueCells` or `occupiedQueueCells` to `PresentationWorld`. The existing `worldFrame` read is architecturally correct as occupancy convenience, not a second queue algorithm.
 
 ---
 
@@ -155,7 +166,7 @@ the formula.
 
 Stock garage: 3 members, bay capacity 1, queue cap 3. A line will form without shrinking the roster.
 
-Capacity upgrade (second bench) is the **next** visual proof. It must not reset members or clear the queue. Grok already owns that sim behaviour (`stationCapability` live Capacity).
+Capacity upgrade (second bench) is mechanically real on this contract: `capacity` / `seats.length` go from 1 to 2, `usingIds` can hold two GymMemberIds, queue pressure falls, wait / throughput respond. Members are not reset. Visual proof of the second bench remains Claude's.
 
 ---
 
