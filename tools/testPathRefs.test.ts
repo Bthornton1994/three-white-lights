@@ -359,8 +359,15 @@ const PINNED = Object.freeze({
    * provenance: `tools/rivSchema.mjs` + `.d.mts`, `src/art/rivContract.ts` +
    * test, `src/session/riveWebEngine.ts`, `assets/dev/THIRD-PARTY-RIVE-ASSETS.md`.
    * The two `.riv` binaries beside it are not text and are not read.
+   *
+   * 379 -> 383 with the athlete authoring handoff: `tools/rivContract.mjs`
+   * (the acceptance command), `docs/design/athlete-rig-manifest.json`
+   * (generated from the binding, pinned to it by `src/art/rivContract.test.ts`),
+   * `docs/design/ATHLETE-SOURCE-PACKAGE.md` and
+   * `docs/design/RIVE-AUTHORING-HANDOFF.md`. No test file among them, so
+   * `TEST_FILES` below does not move.
    */
-  SCANNED_FILES: 379,
+  SCANNED_FILES: 383,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.

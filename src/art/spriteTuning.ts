@@ -1309,4 +1309,27 @@ export const ATHLETE_RIG = Object.freeze({
   PLATE_SLOTS_PER_SIDE: 8,
   /** `barVelocity` is height per tick in the contract; the rig gets heights per second. */
   MS_PER_SECOND: 1000,
+  /**
+   * How deep `src/art/rivContract.ts` follows nested ViewModel references
+   * when it flattens a file's schema to slash paths. The rig nests two deep
+   * (`plates` -> `<i>` -> `on` / `size`); the cap exists so a
+   * self-referencing model terminates, not as a design limit.
+   */
+  VIEW_MODEL_DEPTH_LIMIT: 6,
+  /**
+   * The athlete artboard's canvas, px. THE ROOM'S CAMERA, NOT A CHOICE: the
+   * Iron & Amber squat plates under `assets/iron-amber/` are 1152 x 1728, and
+   * the athlete has to sit in that room at that lens — a rig authored on a
+   * different canvas arrives into a scene drawn for a different camera.
+   * `rivContract.test.ts` reads the plate's JPEG header and pins this to it.
+   */
+  CANVAS_PX: { WIDTH: 1152, HEIGHT: 1728 },
+  /**
+   * The name the athlete ViewModel is authored under. A CONVENTION, NOT THE
+   * BINDING: both production stages bind each lift artboard's DEFAULT
+   * ViewModel (`useDefault` / `artboardName`), whatever it is called, and the
+   * contract diff checks that default. The name exists so the handoff and the
+   * editor agree on what to call the thing.
+   */
+  VIEW_MODEL_NAME: 'Athlete',
 });

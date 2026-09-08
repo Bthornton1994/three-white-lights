@@ -1,0 +1,226 @@
+{
+  "canvas": {
+    "width": 1152,
+    "height": 1728
+  },
+  "viewModel": "Athlete",
+  "artboards": [
+    {
+      "name": "squat",
+      "stateMachine": "squat"
+    },
+    {
+      "name": "bench",
+      "stateMachine": "bench"
+    },
+    {
+      "name": "deadlift",
+      "stateMachine": "deadlift"
+    }
+  ],
+  "plateSlotsPerSide": 8,
+  "inputs": [
+    {
+      "path": "lift",
+      "type": "enum",
+      "values": [
+        "squat",
+        "bench",
+        "deadlift"
+      ]
+    },
+    {
+      "path": "phase",
+      "type": "enum",
+      "values": [
+        "BRACE",
+        "DESCENT",
+        "HOLE",
+        "ASCENT",
+        "LOCKOUT",
+        "RESOLVED"
+      ]
+    },
+    {
+      "path": "barHeight",
+      "type": "number"
+    },
+    {
+      "path": "barVelocity",
+      "type": "number"
+    },
+    {
+      "path": "motionSampleValid",
+      "type": "boolean"
+    },
+    {
+      "path": "integratorVelocity",
+      "type": "number"
+    },
+    {
+      "path": "strain",
+      "type": "number"
+    },
+    {
+      "path": "grindIntensity",
+      "type": "number"
+    },
+    {
+      "path": "effortBand",
+      "type": "enum",
+      "values": [
+        "easy",
+        "normal",
+        "hard",
+        "grind",
+        "failing"
+      ]
+    },
+    {
+      "path": "barTiltDeg",
+      "type": "number"
+    },
+    {
+      "path": "barForwardPx",
+      "type": "number"
+    },
+    {
+      "path": "barLateralPx",
+      "type": "number"
+    },
+    {
+      "path": "barBendPx",
+      "type": "number"
+    },
+    {
+      "path": "commandGlow",
+      "type": "number"
+    },
+    {
+      "path": "held",
+      "type": "boolean"
+    },
+    {
+      "path": "pressCommandLive",
+      "type": "boolean"
+    },
+    {
+      "path": "lockoutHoldLive",
+      "type": "boolean"
+    },
+    {
+      "path": "chalk",
+      "type": "number"
+    },
+    {
+      "path": "depthAchieved",
+      "type": "boolean"
+    },
+    {
+      "path": "lockedOut",
+      "type": "boolean"
+    },
+    {
+      "path": "complete",
+      "type": "boolean"
+    },
+    {
+      "path": "outcome",
+      "type": "enum",
+      "values": [
+        "good-lift",
+        "grind",
+        "miss",
+        "none"
+      ]
+    },
+    {
+      "path": "missReason",
+      "type": "enum",
+      "values": [
+        "no-depth",
+        "buried",
+        "stalled",
+        "timeout",
+        "dropped",
+        "none"
+      ]
+    },
+    {
+      "path": "totalKg",
+      "type": "number"
+    },
+    {
+      "path": "plates/0/on",
+      "type": "boolean"
+    },
+    {
+      "path": "plates/0/size",
+      "type": "number"
+    },
+    {
+      "path": "plates/1/on",
+      "type": "boolean"
+    },
+    {
+      "path": "plates/1/size",
+      "type": "number"
+    },
+    {
+      "path": "plates/2/on",
+      "type": "boolean"
+    },
+    {
+      "path": "plates/2/size",
+      "type": "number"
+    },
+    {
+      "path": "plates/3/on",
+      "type": "boolean"
+    },
+    {
+      "path": "plates/3/size",
+      "type": "number"
+    },
+    {
+      "path": "plates/4/on",
+      "type": "boolean"
+    },
+    {
+      "path": "plates/4/size",
+      "type": "number"
+    },
+    {
+      "path": "plates/5/on",
+      "type": "boolean"
+    },
+    {
+      "path": "plates/5/size",
+      "type": "number"
+    },
+    {
+      "path": "plates/6/on",
+      "type": "boolean"
+    },
+    {
+      "path": "plates/6/size",
+      "type": "number"
+    },
+    {
+      "path": "plates/7/on",
+      "type": "boolean"
+    },
+    {
+      "path": "plates/7/size",
+      "type": "number"
+    },
+    {
+      "path": "platesOverflow",
+      "type": "number"
+    },
+    {
+      "path": "seed",
+      "type": "number"
+    }
+  ]
+}

@@ -1,13 +1,22 @@
 # ADR-001 — Athlete animation architecture
 
 **Status:** **PROVISIONAL — RIVE LEADING CANDIDATE.** Not FINAL. Not merged.
-**What closes it, exactly:** the web spike (§7) rendering a real `.riv` whose
-ViewModel takes the `rigInputPaths()` set (`src/art/athleteRig.ts`) at 60 Hz
-without dropped frames on the beta's own target (web/PWA, GDD §10.0). That
-one artefact is the gate, and it is `ASSET_PIPELINE_BLOCKED` from this
-environment (§9). Native stays a device-build gate behind it. Options B and C
-are not reopened unless that web spike, with a real asset, fails — and if it
-does, §4 is re-run against the same criterion rather than re-argued.
+**Gate lines, per the 2026-09-08 ruling:** WEB REAL-ASSET TECHNICAL = PASS
+(§7, on a licensed diagnostic asset — a health bar, whose performance is NOT
+generalised to an athlete); NATIVE = **`NATIVE_RUNTIME_BLOCKED`** (§7 —
+the exact missing requirement is recorded there); ATHLETE = NOT BUILT
+(`ASSET_AUTHORING_BLOCKED`, §9); VISUAL / ANIMATION / SOFT-FEEL = NOT PASSED
+and never self-claimed; OWNER PLAYTEST = Bryant's alone.
+**What closes it, exactly — BOTH, not either:** (1) the native runtime
+executing a real `.riv` on a device or simulator, and (2) an actual athlete
+rig that satisfies `node tools/rivContract.mjs … --artboard squat` and
+responds to real `LiftPresentationState` input through
+`liftPresentation(state, totalKg, prior)` at 60 Hz without dropped frames on
+the beta's own target (web/PWA, GDD §10.0). Runtime plumbing is off the
+critical path; asset authoring is the blocker. Options B and C are not
+reopened unless the real athlete integration demonstrates a specific
+failure — and if it does, §4 is re-run against the same criterion rather
+than re-argued.
 **Date:** 2026-09-07; amended the same day against the modern runtime (§4a).
 **Decision owner:** Claude Code Session A — visual / animation / player-experience
 **Measured at:** `20a1aa55` (PR #48 head) for §2–§4 and §8; `55f86007` plus the
@@ -431,8 +440,27 @@ npx expo run:ios      # or: npx expo run:android
 
 and reports: build success, the dev screen's status line, and whether the
 health bar moves at 60 Hz the way the web record shows. That closes §4a
-rows 4, 5 and the native half of 6–8, and it is the gate between "leading
-candidate" and "final".
+rows 4, 5 and the native half of 6–8, and it is one of the two gates between
+"leading candidate" and "final" (the other is the athlete rig, §9).
+
+**`NATIVE_RUNTIME_BLOCKED` — re-measured 2026-09-08 on this container, not
+inferred from autolinking or prebuild.** The licensed diagnostic asset
+(`assets/dev/quick_start.riv`) and the dev spike screen are ready to run
+natively; what is missing is the toolchain to execute anything native at
+all:
+
+| Requirement | Here |
+| --- | --- |
+| Android SDK platform-tools (`adb`) | absent (`which adb` → nothing) |
+| Android emulator (`emulator`, `avdmanager`) or a connected device | absent; no device |
+| `sdkmanager` / any SDK directory (`ANDROID_HOME`, `ANDROID_SDK_ROOT`) | absent; both variables unset; no `/opt/android*`, `/usr/lib/android-sdk`, `~/Android` |
+| macOS + Xcode for iOS | impossible on this Linux host |
+| Present | `java`, `javac`, `/opt/gradle/bin/gradle`, `@rive-app/react-native@0.4.20` installed and autolinked |
+
+Gradle without an SDK cannot compile an Android app, so `npx expo
+run:android` cannot start, let alone reach the runtime. The blocker is the
+Android SDK (or a Mac), nothing in the repository. Nothing about native is
+claimed from the install/prebuild/type evidence that does pass.
 
 **PASS / FAIL after the spike, stated separately by platform:**
 
@@ -533,6 +561,27 @@ stage pair (`src/session/AthleteStage.native.tsx` / `.web.tsx`), the pipeline sp
 (`docs/design/ATHLETE-ASSET-PIPELINE.md`), the data request to the
 mechanics owner (`docs/design/PRESENTATION-CONTRACT-REQUEST.md`), and the
 runtime spike (§7).
+
+**`ASSET_AUTHORING_BLOCKED` — the athlete, restated for the 2026-09-08
+ruling, with every non-blocked artifact done.** No Rive editor exists here,
+and by ruling no binary generator, no reverse-engineering of the file
+format and no replacement format may stand in for one. What IS done, so the
+editor handoff is zero-ambiguity: the source-art package
+(`docs/design/ATHLETE-SOURCE-PACKAGE.md` — identity, proportions, torso/femur
+relationship, posture at every reference line, wardrobe, scale, light, the
+floor/lockout/depth/stick lines, the silhouette test, the three views and
+the empty side-on room plate as deliverables); the Rive authoring handoff
+(`docs/design/RIVE-AUTHORING-HANDOFF.md` — canvas, names, the 42-input
+`Athlete` ViewModel with every enum value, rig and state-machine plan,
+deformation limits, five miss resolutions, layer order, export naming);
+the generated input manifest (`docs/design/athlete-rig-manifest.json`,
+pinned to the binding by test); and the acceptance command,
+`node tools/rivContract.mjs <file.riv> [--artboard squat]`, which fails
+closed unless every lift artboard exists, carries a same-named state
+machine and exposes the full contract on its default ViewModel — the
+BOUND ≠ DRIVEN finding of §7, made a check. The production stage pair
+drives the rig from `liftPresentation(state, totalKg, prior)` and reads
+nothing from `LiftState` directly (`src/art/athleteRig.test.ts` pins it).
 
 **The second, smaller asset gap — the spike's own test `.riv` — is CLOSED
 as of 2026-09-08.** It is `assets/dev/quick_start.riv` (MIT; provenance in

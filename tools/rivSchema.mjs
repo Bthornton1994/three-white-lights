@@ -43,9 +43,6 @@ export const RIV_MAGIC = 'RIVE';
 /** The engine resolves `load()` with null for unparseable bytes; it never rejects. This is the wait on it. */
 const LOAD_TIMEOUT_MS = 20_000;
 
-/** Nested ViewModel references are expanded to paths; this stops a self-referencing model recursing forever. */
-export const MAX_VIEW_MODEL_DEPTH = 6;
-
 export function isRivMagic(bytes) {
   const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   if (u8.length < RIV_MAGIC.length) return false;
@@ -172,22 +169,32 @@ export async function readRivSchema(bytes) {
     viewModels[vm.name] = properties;
   }
 
-  let defaultViewModel = null;
-  try {
-    const defaultArtboard = file.defaultArtboard();
-    const raw = defaultArtboard ? file.defaultArtboardViewModel(defaultArtboard) : null;
-    defaultViewModel = raw ? new ViewModel(raw).name : null;
-  } catch {
-    defaultViewModel = null;
+  // The default ViewModel of EACH artboard, not only the file's default
+  // artboard: the production stages select an artboard by lift and bind that
+  // artboard's default (`artboardName` on native, `artboard` + `useDefault`
+  // on web), so that is the ViewModel the contract has to be checked on.
+  const defaultViewModelByArtboard = {};
+  for (let i = 0; i < file.artboardCount(); i += 1) {
+    const artboard = file.artboardByIndex(i);
+    let name = null;
+    try {
+      const raw = file.defaultArtboardViewModel(artboard);
+      name = raw ? new ViewModel(raw).name : null;
+    } catch {
+      name = null;
+    }
+    defaultViewModelByArtboard[artboard.name] = name;
   }
+  const defaultArtboard = artboards[0] ?? null;
 
   return {
     valid: true,
     artboards,
-    defaultArtboard: artboards[0] ?? null,
+    defaultArtboard,
     stateMachines,
     viewModels,
-    defaultViewModel,
+    defaultViewModel: defaultArtboard === null ? null : (defaultViewModelByArtboard[defaultArtboard] ?? null),
+    defaultViewModelByArtboard,
   };
 }
 

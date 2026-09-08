@@ -439,6 +439,78 @@ is not in its census), `realIp` ×2 (183 vs 180).
 SOFT-FEEL gate moves; native unexecuted; bench and deadlift blocked; PR #48
 not merged; nothing merged anywhere.
 
+#### CROSSING FILED BY THE VISUAL LANE, BEFORE THE WORK, 2026-09-08 (SECOND) — the rig-contract validation command, and the athlete handoff packages
+
+Human ruling: runtime plumbing is off the critical path; the blocker is
+asset authoring. Filed here first, per the procedure, for the pieces that
+touch `tools/` or a shared census:
+
+1. **`tools/rivContract.mjs` — new, additive.** The validation command the
+   Rive editor handoff names: `node tools/rivContract.mjs <file.riv>` loads
+   the file through the existing `tools/rivSchema.mjs`, diffs every lift
+   artboard's default ViewModel against `rigInputSpec()` — the TypeScript
+   truth in `src/art/athleteRig.ts`, loaded at run time through the
+   `typescript` package's own `transpileModule` (no bundler is installed;
+   esbuild is not resolvable here) — and exits non-zero unless every artboard
+   exists, carries a same-named state machine, and exposes the full
+   contract. `--manifest` prints the same truth as JSON for the handoff
+   document. Declares no dev-server URL.
+2. **`tools/rivSchema.mjs` / `.d.mts` — the visual lane's own tool from the
+   filing above, extended**: reports each artboard's default ViewModel
+   (`defaultViewModelByArtboard`), because the production stages bind the
+   artboard the lift selects, not the file's default; and `MAX_VIEW_MODEL_
+   DEPTH` moves out of it into `ATHLETE_RIG` in `src/art/spriteTuning.ts`
+   so `src/art/rivContract.ts` imports only types from the `.mjs` and can be
+   loaded synchronously by the command above.
+3. **`tools/testPathRefs.test.ts`** — the two counts, for the new files.
+   **`src/game/guaranteeTags.test.ts`** — census pins only if the tree-wide
+   walk moves; no new tag.
+4. **`src/tuning/audit.ts` / `audit.test.ts` / `index.ts` — NOT touched.**
+   `ATHLETE_RIG` is already a registered block.
+
+The two packages themselves — `docs/design/ATHLETE-SOURCE-PACKAGE.md` and
+`docs/design/RIVE-AUTHORING-HANDOFF.md`, with the generated
+`docs/design/athlete-rig-manifest.json` pinned to `rigInputSpec()` by
+`src/art/rivContract.test.ts` — are visual-lane files and not a crossing.
+
+**Done the same day, and what it found.** Both packages, the manifest and
+the command landed. The command is tested end to end as a subprocess
+(`--manifest` equals `rigManifest()`; the real diagnostic assets read NOT
+SATISFIED with every lift artboard ABSENT, exit 1; the invalid placeholder
+exits 1 with `valid: false`) and `--artboard squat` lets a squat-only v1 be
+accepted on its own artboard while the default remains the all-lifts bar.
+Two findings from reading the artifacts rather than their descriptions:
+
+- **The Iron & Amber squat plates are not a room.** Each is a FRONT
+  three-quarter scene with a painted lifter in it — face, tattoos, an
+  emblem on the tank, visible shoe branding. The pipeline doc's §7a said
+  the room was "the existing plate"; it is corrected, and an empty side-on
+  room plate at 1152 × 1728 in the same light is now a named authoring
+  deliverable. The painted marks are reported to the human who owns
+  `src/licensing/` and are deliberately not named here.
+- **The canvas hole line moved from the painted lifter's pose to the
+  athlete's anatomy** (hole y 941 → 968, judged depth 863 → 885, stick
+  827 ± 58), because the source package fixed femur / tibia / torso once
+  and the plate's painted squat did not agree with them. A drawing scale
+  is not a mechanical fact; nothing in `src/game/**` is affected.
+
+**Blockers, both recorded with the exact missing requirement:**
+`ASSET_AUTHORING_BLOCKED` (no Rive editor; no generator, format
+reverse-engineering or replacement format by ruling — pipeline §2, ADR §9)
+and `NATIVE_RUNTIME_BLOCKED` (no Android SDK: `adb`, `emulator`,
+`sdkmanager`, `ANDROID_HOME` all absent; no device; no macOS/Xcode; only
+Java and Gradle present — ADR §7, re-measured on this container, not
+inferred from autolinking or prebuild).
+
+**Registry data, called out per the ruling's condition 3:** `testPathRefs`
+counts for the four new files (`tools/rivContract.mjs`, the manifest, the
+two packages); `guaranteeTags` census only if the walk moved; `realIp` and
+`src/tuning/*` untouched. Inherited reds unchanged.
+
+**Not done, and not claimed:** no athlete `.riv`; no VISUAL, ANIMATION or
+SOFT-FEEL gate moves; native unexecuted; bench and deadlift blocked; PR #48
+not merged; nothing merged anywhere; RIVE stays PROVISIONAL.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion

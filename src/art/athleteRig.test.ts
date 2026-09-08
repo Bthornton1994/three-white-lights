@@ -252,6 +252,20 @@ describe('athleteRigInputsFrom carries the contract to the rig', () => {
     }
   });
 
+  it('both production stages are driven by liftPresentation(state, totalKg, prior) and read no LiftState field', () => {
+    for (const stage of ['AthleteStage.native.tsx', 'AthleteStage.web.tsx']) {
+      const source = codeOnly(readFileSync(new URL(`../session/${stage}`, import.meta.url), 'utf8'));
+      // The contract is called with the TRUE prior — the previous tick from
+      // history — never null and never the current state.
+      expect(source.includes('liftPresentation(state, totalKg, priorFromHistory(history, state))'), `${stage} calls the contract with the true prior`).toBe(true);
+      // No `state.<field>`: a stage that reads LiftState directly is
+      // re-deriving on the renderer side, which the ownership ruling forbids.
+      expect(/\bstate\.[a-zA-Z]/.test(source), `${stage} reads a LiftState field`).toBe(false);
+      // NON-VACUITY: `state` is genuinely in the file, so the ban had a subject.
+      expect((source.match(/\bstate\b/g) ?? []).length).toBeGreaterThan(1);
+    }
+  });
+
   it('names every ViewModel path the .riv must expose, from the record itself', () => {
     const paths = rigInputPaths();
     const record: AthleteRigInputs = athleteRigInputsFrom(playedRep(0.8)[0]!);

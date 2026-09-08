@@ -1,10 +1,13 @@
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
 import { isRivMagic, readRivSchema, type RivSchema } from '../../tools/rivSchema.mjs';
 import { rigInputSpec, rigLiftArtboards } from './athleteRig';
-import { diffRivContract, flattenViewModel } from './rivContract';
+import { diffRivContract, flattenViewModel, rigManifest } from './rivContract';
+import { ATHLETE_RIG } from './spriteTuning';
 
 const asset = (name: string): Uint8Array =>
   new Uint8Array(readFileSync(new URL(`../../assets/dev/${name}`, import.meta.url)));
@@ -131,6 +134,7 @@ function schemaSatisfying(spec = rigInputSpec()): RivSchema {
     stateMachines: Object.fromEntries(lifts.map((lift) => [lift, [lift]])),
     viewModels: { Athlete: root, PlateSlots: slots, PlateSlot: slot },
     defaultViewModel: 'Athlete',
+    defaultViewModelByArtboard: Object.fromEntries(lifts.map((lift) => [lift, 'Athlete'])),
   };
 }
 
@@ -142,6 +146,9 @@ describe('diffRivContract', () => {
     expect(diff.viewModel).toBe('health_bar_01');
     expect(diff.satisfied).toBe(false);
     expect(diff.missingArtboards).toEqual(['squat', 'bench', 'deadlift']);
+    expect(diff.artboards.map((a) => [a.artboard, a.present, a.stateMachine, a.viewModel, a.satisfied])).toEqual(
+      rigLiftArtboards().map((name) => [name, false, false, null, false]),
+    );
     expect(diff.missing).toEqual(spec.map((input) => input.path));
     expect(diff.wrongType).toEqual([]);
     expect(diff.extra).toEqual(['gameOver', 'hoverYes', 'hoverNo', 'healthColor', 'health']);
@@ -159,7 +166,8 @@ describe('diffRivContract', () => {
   it('a schema built from the spec satisfies it, through the nested plate slots', () => {
     const spec = rigInputSpec();
     const diff = diffRivContract(schemaSatisfying(spec), spec, { artboards: rigLiftArtboards() });
-    expect(diff).toEqual({
+    const { artboards, ...top } = diff;
+    expect(top).toEqual({
       viewModel: 'Athlete',
       missingArtboards: [],
       missing: [],
@@ -168,6 +176,11 @@ describe('diffRivContract', () => {
       extra: [],
       satisfied: true,
     });
+    // Each lift artboard is checked on ITS OWN default ViewModel, the way the
+    // stages bind it — not on the file's default.
+    expect(artboards.map((a) => [a.artboard, a.present, a.stateMachine, a.viewModel, a.satisfied])).toEqual(
+      rigLiftArtboards().map((name) => [name, true, true, 'Athlete', true]),
+    );
     // NON-VACUITY: the flattened schema has exactly one leaf per spec entry.
     const leaves = flattenViewModel(schemaSatisfying(spec), 'Athlete').filter((f) => f.property.type !== 'viewModel');
     expect(leaves.length).toBe(spec.length);
@@ -207,12 +220,88 @@ describe('diffRivContract', () => {
     const diff = diffRivContract(mutant, spec, { artboards: rigLiftArtboards() });
     expect(diff.missingArtboards).toEqual(['squat']);
     expect(diff.missing, 'the ViewModel still binds').toEqual([]);
+    expect(diff.artboards.find((a) => a.artboard === 'squat')?.satisfied).toBe(false);
+    expect(diff.artboards.find((a) => a.artboard === 'bench')?.satisfied).toBe(true);
     expect(diff.satisfied).toBe(false);
+    // And an artboard whose own default ViewModel lacks the contract, while
+    // the FILE's default is fine — the case a file-level check would pass.
+    const wrongDefault: RivSchema = { ...good, defaultViewModelByArtboard: { ...good.defaultViewModelByArtboard, bench: 'PlateSlot' } };
+    const benchDiff = diffRivContract(wrongDefault, spec, { artboards: rigLiftArtboards() });
+    expect(benchDiff.missing, 'the file default still satisfies').toEqual([]);
+    const bench = benchDiff.artboards.find((a) => a.artboard === 'bench');
+    expect(bench?.viewModel).toBe('PlateSlot');
+    // A slot model exposes `on` and `size` at its root — none of the 42 rig
+    // paths — so every path is missing and the two are reported as extras.
+    expect(bench?.missing.length).toBe(spec.length);
+    expect(bench?.extra).toEqual(['on', 'size']);
+    expect(benchDiff.satisfied).toBe(false);
     // And an artboard absent outright.
     const absent: RivSchema = { ...good, artboards: good.artboards.filter((a) => a !== 'deadlift') };
     expect(diffRivContract(absent, spec, { artboards: rigLiftArtboards() }).missingArtboards).toEqual(['deadlift']);
     // NON-VACUITY: three lifts asked for, three artboards on the good schema.
     expect(rigLiftArtboards().length).toBe(3);
     expect(good.artboards.length).toBe(3);
+  });
+});
+
+const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
+
+/** JPEG SOF0/SOF2 frame header: the room plate's real pixel dimensions. */
+function jpegDimensions(bytes: Buffer): { width: number; height: number } {
+  let i = 2;
+  while (i < bytes.length) {
+    if (bytes[i] !== 0xff) {
+      i += 1;
+      continue;
+    }
+    const marker = bytes[i + 1]!;
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      return { height: bytes.readUInt16BE(i + 5), width: bytes.readUInt16BE(i + 7) };
+    }
+    i += 2 + bytes.readUInt16BE(i + 2);
+  }
+  throw new Error('no JPEG frame header');
+}
+
+describe('the rig manifest is the binding written down', () => {
+  it('docs/design/athlete-rig-manifest.json is byte-for-byte rigManifest()', () => {
+    const committed = JSON.parse(readFileSync(new URL('../../docs/design/athlete-rig-manifest.json', import.meta.url), 'utf8'));
+    expect(committed).toEqual(JSON.parse(JSON.stringify(rigManifest())));
+    // NON-VACUITY: the manifest is the whole contract, not a stub.
+    expect(committed.inputs.length).toBe(rigInputSpec().length);
+    expect(committed.artboards.map((a: { name: string }) => a.name)).toEqual(rigLiftArtboards());
+  });
+
+  it('the rig canvas is the room plate’s camera, read from the plate’s own header', () => {
+    const plate = jpegDimensions(readFileSync(new URL('../../assets/iron-amber/squat-brace.jpg', import.meta.url)));
+    expect(plate).toEqual({ width: ATHLETE_RIG.CANVAS_PX.WIDTH, height: ATHLETE_RIG.CANVAS_PX.HEIGHT });
+    expect(rigManifest().canvas).toEqual({ width: plate.width, height: plate.height });
+  });
+});
+
+describe('tools/rivContract.mjs — the validation command the handoff names', () => {
+  const run = (...args: string[]) =>
+    spawnSync(process.execPath, ['tools/rivContract.mjs', ...args], { cwd: REPO_ROOT, encoding: 'utf8', timeout: 120_000 });
+
+  it('--manifest prints exactly rigManifest(), loaded from the TypeScript truth at run time', () => {
+    const result = run('--manifest');
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual(JSON.parse(JSON.stringify(rigManifest())));
+  });
+
+  it('fails closed on the health-bar fixture: every lift artboard missing, exit 1, the diff on stdout', () => {
+    const result = run('assets/dev/quick_start.riv');
+    expect(result.status, result.stderr).toBe(1);
+    const report = JSON.parse(result.stdout);
+    expect(report.satisfied).toBe(false);
+    expect(report.missingArtboards).toEqual(rigLiftArtboards());
+    expect(report.missing.length).toBe(rigInputSpec().length);
+    expect(result.stderr).toContain('NOT SATISFIED');
+  });
+
+  it('fails closed on the invalid placeholder', () => {
+    const result = run('assets/dev/rive-spike.riv');
+    expect(result.status).toBe(1);
+    expect(JSON.parse(result.stdout).valid).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 # The canonical athlete asset pipeline
 
-**Status:** Specification. No production asset exists yet — see §2.
+**Status:** Specification, complete to the editor handoff. No production asset exists yet — see §2 (`ASSET_AUTHORING_BLOCKED`, `NATIVE_RUNTIME_BLOCKED`).
 **Date:** 2026-09-07
 **Owner:** Claude Code Session A — visual / animation / player-experience
 **Measured at:** `20a1aa55` on `grok/session-a-iron-amber-training-art-01` (PR #48 head)
@@ -45,6 +45,20 @@ does not exist and cannot be produced from this environment.
 **This is not a reason to ship a fourth placeholder body.** The product
 standard refuses one, and the two rejections in ADR-001 §2 are what a
 placeholder costs: each one consumed a round and taught the same lesson.
+
+**Status at `38d2dd9d` + this tree, 2026-09-08 — two markers, both open, and
+every non-blocked artifact done.** The human ruling of 2026-09-08 moved
+runtime plumbing off the critical path (the web spike on a real MIT asset
+passed its technical bar; see ADR-001 §7) and named asset authoring as the
+blocker. The editor handoff is now zero-ambiguity from this side:
+
+| Artifact | Where | State |
+| --- | --- | --- |
+| Source-art package — identity, proportions in mm and canvas px, torso/femur relationship, posture at every reference line, wardrobe, bar/plate scale, light, floor/lockout/depth/stick lines, silhouette test at phone size, the three views and the empty room plate | `docs/design/ATHLETE-SOURCE-PACKAGE.md` | written; drawn deliverables `ASSET_AUTHORING_BLOCKED` |
+| Rive authoring handoff — canvas, artboard and state-machine names, the `Athlete` ViewModel with all 42 inputs and enum values, bone hierarchy, IK, meshes, plate slots, bar transform, deformation limits, top/bottom references, five miss resolutions, layer order, export name, validation command, acceptance checklist | `docs/design/RIVE-AUTHORING-HANDOFF.md` | written; the `.riv` `ASSET_AUTHORING_BLOCKED` (no Rive editor; no generator or format work by ruling) |
+| Input manifest, generated from the binding and pinned to it by `src/art/rivContract.test.ts` | `docs/design/athlete-rig-manifest.json` | current |
+| The command that decides acceptance — every lift artboard present, same-named state machine, default ViewModel exposing the full contract; fails closed | `node tools/rivContract.mjs <file.riv> [--artboard squat]` | shipped, tested against the real diagnostic assets (NOT SATISFIED, as they should be) |
+| Native runtime | ADR-001 §7 | `NATIVE_RUNTIME_BLOCKED` — no Android SDK (`adb`, `emulator`, `sdkmanager`, `ANDROID_HOME`), no device, no macOS/Xcode; only Java and Gradle present |
 
 ## 3. Canonical identity — the character bible
 
@@ -199,11 +213,19 @@ rules so the two meet on one stage.
   behind the rig at the same scale and light, with the J-cups at the bar's
   `barHeight = 1` line so the walk-out and the re-rack read as contact. It
   does not deform and it carries no ViewModel input.
-- **The room is the existing Iron & Amber gym plate** — the environment
-  already authored for the briefing and close-out
-  (`docs/design/IRON-AMBER-TRAINING-ASSETS.md`) — behind the rack, at the
-  same camera. One room, one light, one scale, so the athlete does not
-  arrive into a scene drawn for a different lens.
+- **The room is a NEW empty side-on plate, not one of the existing Iron &
+  Amber plates — corrected 2026-09-08 after reading the plates rather than
+  their description.** `assets/iron-amber/squat-*.jpg` are each a FRONT
+  three-quarter scene with a painted lifter already in it (face, tattoos, an
+  emblem on the tank, visible shoe branding): a whole picture at 1152 × 1728,
+  not an environment a rigged athlete can be composited into. The room behind
+  the rack is therefore an authoring deliverable of the source package
+  (`docs/design/ATHLETE-SOURCE-PACKAGE.md` §8): the same size, the same
+  camera as the rig's artboard, the same light (§6 there, measured from the
+  plates), with no athlete, bar or plates painted in. One room, one light,
+  one scale, so the athlete does not arrive into a scene drawn for a
+  different lens. The existing plates stay what they are — the stills the
+  current `TrainingLiftStage` draws.
 - **Layer order, back to front:** room → rack → far-sleeve plates → athlete
   and bar (one rig) → near-sleeve plates → chalk. The near sleeve sits in
   front of the athlete so the bar reads as loaded, not as painted on.
@@ -391,6 +413,12 @@ bound ViewModel, a status line reading "bound", and zero changed pixels.
 **None of these gates is closeable by an automated test.** Technical and
 integration evidence can be produced from here; VISUAL, ANIMATION and
 SOFT-FEEL cannot, and OWNER PLAYTEST is Bryant's alone.
+
+**The two documents that make this deliverable without reading source:**
+the source-art package (`docs/design/ATHLETE-SOURCE-PACKAGE.md`) for the
+sheet, the silhouette test and the scale checks, and the Rive authoring
+handoff (`docs/design/RIVE-AUTHORING-HANDOFF.md`) for the rig; its §10 is
+the acceptance command, `node tools/rivContract.mjs assets/athlete/athlete-01.riv --artboard squat`.
 
 ## 13. What proceeds while this is blocked
 
