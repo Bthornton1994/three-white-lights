@@ -34,14 +34,60 @@
  *
  *   Measured 2026-09-08 on the rig at the commit that adds this file; the
  *   source hash before and after each plant was identical (sha256
- *   1ce6fc0b70ca0457…).
+ *   1ce6fc0b70ca0457…). Re-run at art round 2 (rig e4441c720715b61b…):
+ *   mutant 1 reads `expected 8.207942427808518 to be less than or equal to
+ *   0.25` still, and now also reddens `retimes the standing transitions`
+ *   at `walk-to-wait: expected 7.401341383456099 to be less than or equal
+ *   to 0.25`, because the transitions share the solver; mutant 2 reads
+ *   `expected 251 to be close to 252` on the walk, `idle#0` and
+ *   `bench-setup#0` as before.
+ *
+ *   ART ROUND 2 WITNESSES, planted in `memberPuppet.ts` (880504e5c343ad9d…)
+ *   unless said otherwise, each restored and hash-checked:
+ *
+ *   3. `retimes the standing transitions like the walk: uniform root
+ *      advance, the planted ball at one world x`. Mutant: `retime: true`
+ *      → `retime: false` in `walkToWaitSegment`'s plant. Red at
+ *      `walk-to-wait#1: expected 17.842517630090953 to be close to
+ *      10.348217267792458` — round 1's non-uniform advance, back.
+ *
+ *   4. `holds the pelvis at one canvas point across each dissolve edge`.
+ *      Mutant: `LYING_ROOT` x 180 → 170. Red at `bench-setup →
+ *      bench-mount: pelvis gap 10.00 px: expected 10.000640815792945 to
+ *      be less than or equal to 6`; the thirds check reddens too, because
+ *      the total shrank under the same largest move.
+ *
+ *   5. `spreads the hips' travel to the bench … in near-equal thirds`.
+ *      Mutant: `SEATED.nearThigh` 55 → 75 (round 1's sit-back). Red at
+ *      `expected 29.16013218665239 to be less than or equal to
+ *      23.041948445880895`.
+ *
+ *   6. `breathes once per cycle …`. Mutant: the half-way key's inhale 1 →
+ *      `KEY_HALF` in `standingSegment`. Red at `expected 0.5999999999999943
+ *      to be close to 1.2`.
+ *
+ *   7. `measured the dissolve overlap at bake time above the registered
+ *      floor`. Mutant, in `member-motion-measurements.json`: the first
+ *      `"iou": 0.33…` → `0.13…`. Red at `bench-setup>bench-mount: expected
+ *      0.1318443966979532 to be greater than or equal to 0.3`. A data
+ *      mutant, so it proves the pin reads the file and not that the bake
+ *      measures correctly; the bake's IoU was checked against an
+ *      independent reimplementation (same 5869 / 17686) at the same commit.
+ *
+ *   Every art-round-2 mutant also reddens the metadata-on-disk check, as
+ *   it must: a re-posed puppet is a different bake.
  *
  * What these do NOT cover, stated so nobody reads them as more: the
- * witnesses prove the checks bite on the walk's sixteen frames. The domain
+ * witnesses prove the checks bite on the frames the rig authors. The domain
  * is the clip table's frame counts, which is every frame the runtime can
  * draw, so a pose the runtime never draws is not a pose this file grades;
  * but a defect that only shows BETWEEN two baked frames — a runtime
- * crossfade between clips — is the runtime's to test, not the rig's.
+ * crossfade between clips — is the runtime's to test, not the rig's. The
+ * phone-size breath pin and the dissolve IoU pin read numbers the BAKE
+ * measured off pixels and wrote beside the sheets; this file re-derives
+ * neither, so a bake that measured wrongly and wrote a passing number is
+ * invisible here — `--check` byte-identity and the scratch reimplementation
+ * are what stand behind those two numbers, not this file.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
