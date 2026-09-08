@@ -2174,11 +2174,12 @@ proposals below:
   presentation one, and needs to be named as its own decision rather than
   folded into "add positions."
 - **"Sprint 2's schema-versioned persistence work," named in the submitted
-  spec as where layout data should live, does not exist anywhere in this
-  repository.** `grep -rn "schemaVersion\|Sprint" docs/GDD.md CLAUDE.md
-  src/empire/ src/game/` finds no such system. Either this refers to
-  something outside this repo's visibility, or it has not been built yet —
-  flagged rather than guessed at.
+  spec as where layout data should live, did not exist when this critic note
+  was written.** Session B now ships a v1 facility save envelope in
+  `facilityPersistence.ts` (`kind: 'gym-empire-facility'`, `schemaVersion: 1`)
+  wrapping `PersistableFacilityTruth`. That envelope is not a GDD/CLAUDE
+  sprint ledger and does not live under `src/game/`. Hosts still wire the
+  durable medium.
 
 **The three items the submitted spec explicitly asked Session B to propose,
 answered here for review — none are built yet, all are provisional:**

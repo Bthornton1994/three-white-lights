@@ -173,7 +173,7 @@ export const DIRECTORY_WALK = Object.freeze({
   // 28 -> 29: Iron & Amber owned-art adapter (`ironAmberArt.ts`).
   // 29 -> 30: living-world projector (`worldView.ts`).
   // 30 -> 31: Session B presentation-state contract (`presentationState.ts`).
-  SHIPPED_MODULES: 31,
+  SHIPPED_MODULES: 32,
   /**
    * Files the shared walk hands the censuses today, tests included.
    *
@@ -204,7 +204,8 @@ export const DIRECTORY_WALK = Object.freeze({
   // 60 -> 62: Iron & Amber owned-art adapter and its test.
   // 62 -> 64: living-world projector and its test.
   // 64 -> 66: presentation-state contract and its test.
-  DIRECTORY_FILES: 66,
+  // 66 -> 68: facility persistence module and its test.
+  DIRECTORY_FILES: 68,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**
@@ -972,6 +973,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'empireTuning.ts',
       'engagement.ts',
       'expansion.ts',
+      'facilityPersistence.ts',
       'floor.ts',
       'floorSim.ts',
       'floorSprites.ts',

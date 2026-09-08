@@ -248,21 +248,22 @@ payload candidate (SKU cells, ownership, capability, identity nonce + member
 count). Reload proof of the *shape*: same SKU, same cell, same
 `deriveMemberId(nonce, ordinal)`.
 
-**PERSISTENCE = NOT WIRED / OWNER_BLOCKED.** JSON.stringify/JSON.parse of that
-payload is not application save/load. Nothing writes this object to disk or
-restores `GymViewState` from it.
+**PERSISTENCE** = `facilityPersistence.ts` (v1 envelope `gym-empire-facility`).
+Injected `FacilitySaveStore`. Restore rebuilds floor, managed gym, Q/C/T
+capability, and roster ids. FloorSim pose is TRANSIENT and is not saved.
+Host wiring into AppShell is not this slice.
 
-What survives in-process on `GymViewState`:
+What survives a save/load of the current envelope:
 
 - owned equipment, purses, rung
 - floor placements and furniture cells
 - Q/C/T capability
-- living roster ids, names, visit history
-- hired manager, condition, strikes
+- living roster ids (nonce + member count; names re-derived)
 
-What does **not** survive remount:
+What does **not** survive this slice:
 
 - `FloorSimState` pose, queues, in-flight timers
+- manager / condition / strikes / visit history / gym clock / week plan
 
 ---
 
@@ -295,6 +296,10 @@ If Claude needs a field that would be a visual instruction, refuse and expose th
 ```
 presentationWorld(input) -> PresentationWorld
 persistableFacilityTruth(input) -> PersistableFacilityTruth
+encodeFacilitySave(truth) -> string
+decodeFacilitySave(bytes) -> loaded | empty | refused
+loadFacilitySave(bytes | null) -> loaded | empty | refused
+restoreGymViewState(truth) -> GymViewState
 presentationTickIntervalMs() -> 120
 presentationStepProgressPerTick() -> 0.34
 ```
@@ -318,7 +323,6 @@ Stations are derived internally. Do not pass a station array.
 
 ## Named gaps (OWNER_BLOCKED)
 
-- Wired save/load (disk / localStorage) — PERSISTENCE OWNER_BLOCKED
 - Staff world presence / staff AI
 - Equipment instance UUIDs (blocked until duplicate SKUs exist)
 - Lifting `FloorSimState` onto `GymViewState` (needs Claude coordination)
