@@ -233,12 +233,14 @@ import {
   type MemberPlaybackSnapshot,
   advanceMemberAnimationPhase,
   advancePlaybackTick,
+  clipWhileSettling,
   memberAnimationBlend,
   memberAnimationClipFor,
   memberAnimationPoses,
   memberAnimationStartPhase,
   sampleMemberAnimation,
   samplePlayback,
+  settleDurationMs,
   settleRemainder,
 } from './memberAnimation';
 import {
@@ -1648,9 +1650,14 @@ function AmbientMemberBody({
   //      evidence tool measure the drawn-versus-contract gap instead of
   //      trusting this comment. The two lifecycle moments that move the
   //      body without the cell moving — onto and off a station — are an
-  //      eased PULL added on top of the walked feet point over
-  //      `FLOOR_MEMBER_SETTLE_MS` (`settleRemainder`), so the timeline never
-  //      sees that jump either.
+  //      eased PULL added on top of the walked feet point, timed per tile
+  //      of pull (`settleDurationMs`, `settleRemainder`) so a long pull
+  //      glides at about walking speed with the WALK clip playing over it
+  //      (`clipWhileSettling`) and the use pose lands with the body; the
+  //      timeline never sees that jump either. The first VL-2 build settled
+  //      every pull in one fixed 360 ms, and the garage bench's ~2.5-tile
+  //      pull crossed at three times walking speed — the stall probe's
+  //      largest single-frame step, and not from the stall.
   //   2. THE PHASE — the clip's phase advances by tiles the body actually
   //      moved on screen this frame (the walk) or by the frame's elapsed
   //      milliseconds (everything else), per `memberAnimation.ts`. A clip
@@ -1685,7 +1692,7 @@ function AmbientMemberBody({
     let outgoingFrames: readonly MemberAnimationFrame[] = [];
     let clipChangedAt: number | null = null;
     let phase = memberAnimationStartPhase(runningClip, latest.current.index);
-    const settleMs = EMPIRE_TUNING.FLOOR_MEMBER_SETTLE_MS;
+    let settleMs = settleDurationMs(0);
     const frame = (now: number): void => {
       const p = latest.current;
       const elapsed = lastNow === null ? 0 : now - lastNow;
@@ -1707,7 +1714,9 @@ function AmbientMemberBody({
       }
       const feet = samplePlayback(snapshots, playTick) ?? p.position;
       // 3. The eased pull onto or off a station: a changed pull starts a new
-      //    settle from wherever the previous one had got to.
+      //    settle from wherever the previous one had got to, timed by how
+      //    far it has to cross in tiles at this body's depth.
+      const tileHere = p.tile * p.scale;
       if (p.pullX !== pullTo.x || p.pullY !== pullTo.y) {
         const remainderNow = pullChangedAt === null ? 0 : settleRemainder(now - pullChangedAt, settleMs);
         pullFrom = {
@@ -1716,6 +1725,9 @@ function AmbientMemberBody({
         };
         pullTo = { x: p.pullX, y: p.pullY };
         pullChangedAt = now;
+        settleMs = settleDurationMs(
+          tileHere <= 0 ? 0 : Math.hypot(pullTo.x - pullFrom.x, pullTo.y - pullFrom.y) / tileHere,
+        );
       }
       const remainder = pullChangedAt === null ? 0 : settleRemainder(now - pullChangedAt, settleMs);
       if (remainder === 0) pullChangedAt = null;
@@ -1723,16 +1735,18 @@ function AmbientMemberBody({
         x: feet.x + pullTo.x + (pullFrom.x - pullTo.x) * remainder,
         y: feet.y + pullTo.y + (pullFrom.y - pullTo.y) * remainder,
       };
-      // 4. The clip phase, by distance walked on screen or by time.
-      const tileHere = p.tile * p.scale;
+      // 4. The clip phase, by distance walked on screen or by time. While a
+      //    settle is still crossing the floor the body walks it; the use
+      //    pose starts when the settle lands.
+      const wantedClip = remainder > 0 ? clipWhileSettling(p.clip) : p.clip;
       const movedTiles =
         lastDrawn === null || tileHere <= 0
           ? 0
           : Math.hypot(drawn.x - lastDrawn.x, drawn.y - lastDrawn.y) / tileHere;
       lastDrawn = drawn;
-      if (p.clip !== runningClip) {
+      if (wantedClip !== runningClip) {
         outgoingFrames = sampleMemberAnimation(runningClip, phase).frames;
-        runningClip = p.clip;
+        runningClip = wantedClip;
         clipChangedAt = now;
         phase = memberAnimationStartPhase(runningClip, p.index);
       }
@@ -1997,11 +2011,23 @@ function poseOpacityValues(): Readonly<Record<FloorSpritePose, Animated.Value>> 
   return values as Readonly<Record<FloorSpritePose, Animated.Value>>;
 }
 
-/** The union of two clips' poses, in `FLOOR_SPRITE_POSES` order, so the mounted stack is stable across a clip change. */
+/**
+ * The union of two clips' poses, in `FLOOR_SPRITE_POSES` order, so the
+ * mounted stack is stable across a clip change — PLUS the poses of the clip
+ * the frame loop runs while a settle onto the current clip's station is
+ * still crossing (`clipWhileSettling`: the walk, for a use clip). Measured
+ * before this line existed: a member entering `using` walked its glide for
+ * one render, then the re-render on the next sim tick mounted only the use
+ * poses, and the body was INVISIBLE for the rest of the glide (0.7 s with
+ * no pose at opacity above 0) until the settle landed. The loop writes
+ * opacities into whatever is mounted; what is mounted has to include what
+ * the loop can choose.
+ */
 function posesToMount(current: MemberAnimationClip, previous: MemberAnimationClip): readonly FloorSpritePose[] {
   const wanted = new Set<FloorSpritePose>();
   for (const pose of memberAnimationPoses(current)) wanted.add(pose);
   for (const pose of memberAnimationPoses(previous)) wanted.add(pose);
+  for (const pose of memberAnimationPoses(clipWhileSettling(current))) wanted.add(pose);
   const ordered: FloorSpritePose[] = [];
   for (const pose of FLOOR_SPRITE_POSES) if (wanted.has(pose)) ordered.push(pose);
   return ordered;

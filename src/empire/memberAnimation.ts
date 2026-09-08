@@ -410,3 +410,33 @@ export function settleRemainder(elapsedMs: number, durationMs: number): number {
   if (elapsedMs <= 0) return 1;
   return 1 - easeOutCubic(elapsedMs / durationMs);
 }
+
+/**
+ * How long a settle of `distanceTiles` takes: one `FLOOR_MEMBER_SETTLE_MS`
+ * per tile of pull, and never less than one tile's worth. A settle is a
+ * presentation move — the body crossing from the cell it walked to onto the
+ * bench the sim says it is on — and the first VL-2 build gave every settle
+ * the same 360 ms whatever its length. Measured on the garage bench
+ * (`tools/measure-world-performance.mjs`'s stall probe, `3a06169e`): the
+ * pull there is about 2.5 tiles, so the body crossed it at 2.0 tiles per
+ * 100 ms — three times the sim's walking rate — and the probe read that as
+ * its largest single-frame step (0.342 tiles), larger than anything the
+ * stall itself produced. Per-tile timing makes a long pull a glide at about
+ * walking speed instead of a whoosh; a short pull keeps the sit-down beat.
+ * Non-finite or sub-tile distances get one tile's worth.
+ */
+export function settleDurationMs(distanceTiles: number): number {
+  const tiles = Number.isFinite(distanceTiles) && distanceTiles > 1 ? distanceTiles : 1;
+  return EMPIRE_TUNING.FLOOR_MEMBER_SETTLE_MS * tiles;
+}
+
+/**
+ * The clip to run WHILE a settle is still crossing the floor: a body gliding
+ * onto a bench is walking there, so a use clip waits until the settle has
+ * landed and the walk plays over the glide (its phase is distance-driven,
+ * so the steps come from the glide itself). Every other clip runs as is —
+ * a leaving member is already on `walk`, and a wait or idle has no pull.
+ */
+export function clipWhileSettling(target: MemberAnimationClip): MemberAnimationClip {
+  return target === 'use-bench' || target === 'use-bar' || target === 'use-generic' ? 'walk' : target;
+}

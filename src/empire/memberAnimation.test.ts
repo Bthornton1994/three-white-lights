@@ -27,6 +27,8 @@ import {
   memberAnimationStartPhase,
   sampleMemberAnimation,
   samplePlayback,
+  clipWhileSettling,
+  settleDurationMs,
   settleRemainder,
 } from './memberAnimation';
 
@@ -325,6 +327,34 @@ describe('blend and snapshot helpers', () => {
       last = at;
     }
     expect(largest).toBeCloseTo(Math.hypot(10, 20) / frames, 9);
+  });
+
+  it('times a settle per tile of pull, never under one tile, so a long pull glides at about walking speed', () => {
+    const settle = EMPIRE_TUNING.FLOOR_MEMBER_SETTLE_MS;
+    expect(settleDurationMs(0)).toBe(settle);
+    expect(settleDurationMs(1 / 2)).toBe(settle);
+    expect(settleDurationMs(1)).toBe(settle);
+    expect(settleDurationMs(5 / 2)).toBeCloseTo(settle * (5 / 2), 9);
+    expect(settleDurationMs(Number.NaN)).toBe(settle);
+    expect(settleDurationMs(Number.POSITIVE_INFINITY)).toBe(settle);
+    // The rate this buys, in the sim's own units: one tile per settle is
+    // within a tenth of the sim's walking rate (STEP per TICK), read off the
+    // same tuning the sim reads, so the glide and the walk that leads into
+    // it look like one motion.
+    const walkTilesPerMs = EMPIRE_TUNING.FLOOR_SIM_STEP_PROGRESS_PER_TICK / EMPIRE_TUNING.FLOOR_SIM_TICK_INTERVAL_MS;
+    const settleTilesPerMs = 1 / settle;
+    expect(Math.abs(settleTilesPerMs - walkTilesPerMs) / walkTilesPerMs).toBeLessThan(1 / 10);
+  });
+
+  it('walks through a settle onto a station and lies down only once it has landed', () => {
+    let checked = 0;
+    for (const clip of MEMBER_ANIMATION_CLIPS) {
+      const during = clipWhileSettling(clip);
+      if (clip === 'use-bench' || clip === 'use-bar' || clip === 'use-generic') expect(during).toBe('walk');
+      else expect(during).toBe(clip);
+      checked += 1;
+    }
+    expect(checked).toBe(MEMBER_ANIMATION_CLIPS.length);
   });
 
   it('eases a settle out: the whole jump at the moment of it, nothing on or past the duration, monotone between', () => {

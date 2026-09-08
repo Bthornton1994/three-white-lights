@@ -2764,12 +2764,16 @@ export const EMPIRE_TUNING = Object.freeze({
   FLOOR_MEMBER_GAIT_BOUNCE_PIXELS: 3,
 
   /**
-   * How long the renderer takes to ease a member from the cell it walked
-   * to onto its bench when the sim says `using`, and back onto the floor
-   * when it says `leaving` — the two moments the drawn position moves
-   * without the cell moving. Longer than one sim tick
-   * (`FLOOR_SIM_TICK_INTERVAL_MS`) so the settle reads as sitting down
-   * rather than as a snap.
+   * How long the renderer takes to ease a member ONE TILE of the way from
+   * the cell it walked to onto its bench when the sim says `using`, and
+   * back onto the floor when it says `leaving` — the two moments the drawn
+   * position moves without the cell moving. A pull longer than a tile takes
+   * proportionally longer (`memberAnimation.ts`'s `settleDurationMs`), so a
+   * long pull glides at about the sim's walking rate — one tile per 360 ms
+   * against 0.34 tiles per 120 ms tick — with the walk clip playing over
+   * it, rather than whooshing across in a fixed beat. Longer than one sim
+   * tick (`FLOOR_SIM_TICK_INTERVAL_MS`) so the last tile still reads as
+   * sitting down rather than as a snap.
    */
   FLOOR_MEMBER_SETTLE_MS: 360,
 
