@@ -1,0 +1,73 @@
+{
+  "dissolve": {
+    "bench-setup>bench-mount": {
+      "outgoingFrame": 4,
+      "incomingFrame": 0,
+      "iou": 0.3318443966979532,
+      "intersection": 5869,
+      "union": 17686,
+      "iouWithoutBar": 0.4184371880792813,
+      "rootGapPx": 0.11321098225789683
+    },
+    "bench-dismount>bench-finish": {
+      "outgoingFrame": 2,
+      "incomingFrame": 0,
+      "iou": 0.3318443966979532,
+      "intersection": 5869,
+      "union": 17686,
+      "iouWithoutBar": 0.4184371880792813,
+      "rootGapPx": 0.11321098225789683
+    }
+  },
+  "phoneIdle": {
+    "bodyPx": 74,
+    "restFrame": 0,
+    "peakFrame": 6,
+    "diffLevels": 16,
+    "bodyPixels": 788,
+    "changedPixels": 229,
+    "fraction": 0.2906091370558376,
+    "fullSizeFraction": 0.3258999681427206,
+    "waitFraction": 0.2672919109026964
+  },
+  "recolour": {
+    "presser": {
+      "referencePixels": 2273,
+      "targetPixels": 2989,
+      "reference": {
+        "p10": [
+          193,
+          176,
+          146
+        ],
+        "p50": [
+          238,
+          215,
+          175
+        ],
+        "p90": [
+          248,
+          222,
+          181
+        ]
+      },
+      "targetBefore": {
+        "p10": [
+          6,
+          6,
+          9
+        ],
+        "p50": [
+          35,
+          26,
+          24
+        ],
+        "p90": [
+          106,
+          59,
+          34
+        ]
+      }
+    }
+  }
+}

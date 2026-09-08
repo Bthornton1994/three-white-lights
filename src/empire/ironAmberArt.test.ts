@@ -144,8 +144,10 @@ describe('Iron & Amber owned-art adapter', () => {
         strips += 1;
       }
     }
-    expect(strips).toBe(8);
+    // Ten since art round 2: the bench is setup, mount, press, dismount, finish.
+    expect(strips).toBe(10);
     expect(ironAmberMemberMotionUri('powerlifter', 'walk')).toBe('/empire-art/member-motion-powerlifter-walk.png');
+    expect(ironAmberMemberMotionUri('powerlifter', 'bench-mount')).toBe('/empire-art/member-motion-powerlifter-bench-mount.png');
   });
 
   it('does not import, require, or embed payloads in its own source — its one import is the sibling clip table', () => {

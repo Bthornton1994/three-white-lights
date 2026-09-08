@@ -4,1463 +4,1825 @@
   "stridePx": 176.2709245552329,
   "strideTiles": 1.1016932784702058,
   "clips": {
-    "walk": [
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 181.29085382057877,
-          "y": 248.90985567469664
-        },
-        "plantedHeel": {
-          "x": 159.30333445051807,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 70.07384676739755,
-          "top": 25.94036521726074,
-          "right": 198.29480964621706,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 170.27392103587647,
-          "y": 250.61858847722468
-        },
-        "plantedHeel": {
-          "x": 148.11333209503954,
-          "y": 252
-        },
-        "rootAdvance": 11.016932784702057,
-        "barCentre": null,
-        "bounds": {
-          "left": 62.78077415478248,
-          "top": 23.650400176473774,
-          "right": 187.1551006265724,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 159.25698825117462,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 137.05338494000011,
-          "y": 252
-        },
-        "rootAdvance": 22.033865569404114,
-        "barCentre": null,
-        "bounds": {
-          "left": 60.76292802670803,
-          "top": 22.351334306599405,
-          "right": 175.9659879031944,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 148.24005546647263,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 126.03645215529811,
-          "y": 252
-        },
-        "rootAdvance": 33.05079835410617,
-        "barCentre": null,
-        "bounds": {
-          "left": 80.67809176287045,
-          "top": 21.191408514646078,
-          "right": 168.68190171160572,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 137.22312268177026,
-          "y": 252.00000000000003
-        },
-        "plantedHeel": {
-          "x": 115.09054694339682,
-          "y": 250.2254321131151
-        },
-        "rootAdvance": 44.06773113880823,
-        "barCentre": null,
-        "bounds": {
-          "left": 90.43609988250853,
-          "top": 20.398482424854116,
-          "right": 176.63163422089127,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 126.20618989706851,
-          "y": 251.99999999999997
-        },
-        "plantedHeel": {
-          "x": 104.38912929399505,
-          "y": 247.8749707101864
-        },
-        "rootAdvance": 55.084663923510284,
-        "barCentre": null,
-        "bounds": {
-          "left": 88.08021882593329,
-          "top": 20.357639984154055,
-          "right": 185.6403541875069,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 115.18925711236659,
-          "y": 251.99999999999997
-        },
-        "plantedHeel": {
-          "x": 93.94833506478301,
-          "y": 245.53291173954779
-        },
-        "rootAdvance": 66.10159670821234,
-        "barCentre": null,
-        "bounds": {
-          "left": 82.07751983035647,
-          "top": 21.407730047215246,
-          "right": 194.05786298116985,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 104.17232432766417,
-          "y": 252.00000000000003
-        },
-        "plantedHeel": {
-          "x": 83.78941304438189,
-          "y": 243.19449447119342
-        },
-        "rootAdvance": 77.1185294929144,
-        "barCentre": null,
-        "bounds": {
-          "left": 76.9022795909038,
-          "top": 23.686519104046006,
-          "right": 200.92359251326343,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "farFoot",
-        "plantedSole": {
-          "x": 181.29085382057877,
-          "y": 248.90985567469664
-        },
-        "plantedHeel": {
-          "x": 159.30333445051807,
-          "y": 252
-        },
-        "rootAdvance": 88.13546227761645,
-        "barCentre": null,
-        "bounds": {
-          "left": 70.07384676739755,
-          "top": 25.94036521726074,
-          "right": 207.19596456961614,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "farFoot",
-        "plantedSole": {
-          "x": 170.27392103587647,
-          "y": 250.61858847722468
-        },
-        "plantedHeel": {
-          "x": 148.11333209503954,
-          "y": 252
-        },
-        "rootAdvance": 99.1523950623185,
-        "barCentre": null,
-        "bounds": {
-          "left": 62.78077415478248,
-          "top": 23.650400176473774,
-          "right": 203.05349221986083,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "farFoot",
-        "plantedSole": {
-          "x": 159.25698825117462,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 137.05338494000011,
-          "y": 252
-        },
-        "rootAdvance": 110.16932784702057,
-        "barCentre": null,
-        "bounds": {
-          "left": 60.76292802670803,
-          "top": 22.351334306599405,
-          "right": 198.0766306884385,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "farFoot",
-        "plantedSole": {
-          "x": 148.24005546647263,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 126.03645215529811,
-          "y": 252
-        },
-        "rootAdvance": 121.18626063172263,
-        "barCentre": null,
-        "bounds": {
-          "left": 80.67809176287045,
-          "top": 21.191408514646078,
-          "right": 189.20897605938612,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "farFoot",
-        "plantedSole": {
-          "x": 137.22312268177026,
-          "y": 252.00000000000003
-        },
-        "plantedHeel": {
-          "x": 115.09054694339682,
-          "y": 250.2254321131151
-        },
-        "rootAdvance": 132.20319341642468,
-        "barCentre": null,
-        "bounds": {
-          "left": 90.80102585927904,
-          "top": 20.398482424854116,
-          "right": 176.42470935853765,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "farFoot",
-        "plantedSole": {
-          "x": 126.20618989706851,
-          "y": 251.99999999999997
-        },
-        "plantedHeel": {
-          "x": 104.38912929399505,
-          "y": 247.8749707101864
-        },
-        "rootAdvance": 143.22012620112673,
-        "barCentre": null,
-        "bounds": {
-          "left": 90.36733603996845,
-          "top": 20.357639984154055,
-          "right": 167.82716446394198,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "farFoot",
-        "plantedSole": {
-          "x": 115.18925711236659,
-          "y": 251.99999999999997
-        },
-        "plantedHeel": {
-          "x": 93.94833506478301,
-          "y": 245.53291173954779
-        },
-        "rootAdvance": 154.2370589858288,
-        "barCentre": null,
-        "bounds": {
-          "left": 90.09797050433724,
-          "top": 21.407730047215246,
-          "right": 184.43450604686223,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "farFoot",
-        "plantedSole": {
-          "x": 104.17232432766417,
-          "y": 252.00000000000003
-        },
-        "plantedHeel": {
-          "x": 83.78941304438189,
-          "y": 243.19449447119342
-        },
-        "rootAdvance": 165.25399177053086,
-        "barCentre": null,
-        "bounds": {
-          "left": 80.3485270219402,
-          "top": 23.686519104046006,
-          "right": 191.35209945449395,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      }
-    ],
-    "idle": [
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 86.26779949573792,
-          "top": 21.004028349654313,
-          "right": 171.2075814780148,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 85.68283275984155,
-          "top": 20.951285696935265,
-          "right": 170.6508436855163,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 84.22826503822643,
-          "top": 20.839931071173048,
-          "right": 169.25325713644028,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 83.6496490526621,
-          "top": 20.803589760333324,
-          "right": 168.6919965113376,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 84.22826503822643,
-          "top": 20.839931071173048,
-          "right": 169.25325713644028,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 85.68283275984155,
-          "top": 20.951285696935265,
-          "right": 170.6508436855163,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 86.26779949573792,
-          "top": 21.004028349654313,
-          "right": 171.2075814780148,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 86.00138411480752,
-          "top": 21.059397354167544,
-          "right": 170.97111003923067,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 85.3361261370152,
-          "top": 21.200296972040803,
-          "right": 170.37944873173052,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 85.07034559513535,
-          "top": 21.257646417390156,
-          "right": 170.14259988808766,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 85.3361261370152,
-          "top": 21.200296972040803,
-          "right": 170.37944873173052,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 86.00138411480752,
-          "top": 21.059397354167544,
-          "right": 170.97111003923067,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      }
-    ],
-    "wait": [
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 156.82395272793434,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 134.62034941675984,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 86.26779949573792,
-          "top": 21.579506968343033,
-          "right": 173.5329523799541,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 156.82395272793434,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 134.62034941675984,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 85.52393213030456,
-          "top": 21.474177117383704,
-          "right": 173.5329523799541,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 156.82395272793434,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 134.62034941675984,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 83.67906829352081,
-          "top": 21.253228380831615,
-          "right": 173.5329523799541,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 156.82395272793434,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 134.62034941675984,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 82.94721762994855,
-          "top": 21.181803360333987,
-          "right": 173.5329523799541,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 156.82395272793434,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 134.62034941675984,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 83.67906829352081,
-          "top": 21.253228380831615,
-          "right": 173.5329523799541,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 156.82395272793434,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 134.62034941675984,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 85.52393213030456,
-          "top": 21.474177117383704,
-          "right": 173.5329523799541,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 156.82395272793434,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 134.62034941675984,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 86.26779949573792,
-          "top": 21.579506968343033,
-          "right": 173.5329523799541,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 156.82395272793434,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 134.62034941675984,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 86.16103214478582,
-          "top": 21.690399517051844,
-          "right": 173.5329523799541,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 156.82395272793434,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 134.62034941675984,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 85.89467565725923,
-          "top": 21.97392282932853,
-          "right": 173.5329523799541,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 156.82395272793434,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 134.62034941675984,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 85.78836728585625,
-          "top": 22.08983887417697,
-          "right": 173.5329523799541,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 156.82395272793434,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 134.62034941675984,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 85.89467565725923,
-          "top": 21.97392282932853,
-          "right": 173.5329523799541,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 156.82395272793434,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 134.62034941675984,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 86.16103214478582,
-          "top": 21.690399517051844,
-          "right": 173.5329523799541,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      }
-    ],
-    "walk-to-wait": [
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 181.29085382057877,
-          "y": 248.90985567469664
-        },
-        "plantedHeel": {
-          "x": 159.30333445051807,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 70.07384676739755,
-          "top": 25.94036521726074,
-          "right": 198.29480964621706,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 163.44833619048782,
-          "y": 251.65554627691722
-        },
-        "plantedHeel": {
-          "x": 141.24740486694523,
-          "y": 251.99999999999997
-        },
-        "rootAdvance": 17.842517630090953,
-        "barCentre": null,
-        "bounds": {
-          "left": 58.78055940172822,
-          "top": 22.858332603006865,
-          "right": 180.20632938079075,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 155.13020284683418,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 132.92659953565965,
-          "y": 252
-        },
-        "rootAdvance": 26.160650973744623,
-        "barCentre": null,
-        "bounds": {
-          "left": 87.72423251857536,
-          "top": 21.48146751211393,
-          "right": 171.83920249885395,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 31.044651803377377,
-        "barCentre": null,
-        "bounds": {
-          "left": 86.26779949573792,
-          "top": 21.004028349654313,
-          "right": 171.2075814780148,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      }
-    ],
-    "wait-to-walk": [
-      {
-        "plantedFoot": "farFoot",
-        "plantedSole": {
-          "x": 140.3444012442617,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 118.14079793308717,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 86.26779949573792,
-          "top": 21.004028349654313,
-          "right": 171.2075814780148,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "farFoot",
-        "plantedSole": {
-          "x": 131.4644227021174,
-          "y": 251.99999999999997
-        },
-        "plantedHeel": {
-          "x": 109.39162078370089,
-          "y": 249.59346401016964
-        },
-        "rootAdvance": 8.879978542144272,
-        "barCentre": null,
-        "bounds": {
-          "left": 88.7621924064726,
-          "top": 20.405480530890138,
-          "right": 173.39417299454564,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "farFoot",
-        "plantedSole": {
-          "x": 117.19363559039576,
-          "y": 251.99999999999997
-        },
-        "plantedHeel": {
-          "x": 95.82658577750604,
-          "y": 245.96268418140232
-        },
-        "rootAdvance": 23.150765653865932,
-        "barCentre": null,
-        "bounds": {
-          "left": 90.13282716546735,
-          "top": 21.12672287856504,
-          "right": 183.17661623724769,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "farFoot",
-        "plantedSole": {
-          "x": 93.1553915429623,
-          "y": 252.00000000000003
-        },
-        "plantedHeel": {
-          "x": 73.9265070199329,
-          "y": 240.89819834441278
-        },
-        "rootAdvance": 47.18900970129937,
-        "barCentre": null,
-        "bounds": {
-          "left": 70.07384676739755,
-          "top": 27.2802616746958,
-          "right": 198.29480964621706,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      }
-    ],
-    "bench-setup": [
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 86.26779949573792,
-          "top": 21.004028349654313,
-          "right": 171.2075814780148,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 74.86276809805867,
-          "top": 42.731577729891136,
-          "right": 193.00081386716948,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 44.665937614290485,
-          "top": 69.612239266003,
-          "right": 173.60960397480127,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 42.870247390148876,
-          "top": 75.51306149835537,
-          "right": 220.14257132651983,
-          "bottom": 252.54934233216983
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 65.0103326674574,
-          "top": 85.21509524826374,
-          "right": 256,
-          "bottom": 252.08932607459295
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 103.5,
-          "y": 60.5
-        },
-        "bounds": {
-          "left": 8,
-          "top": 20,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 110.5,
-          "y": 56.5
-        },
-        "bounds": {
-          "left": 15,
-          "top": 16,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 117.5,
-          "y": 52.5
-        },
-        "bounds": {
-          "left": 22,
-          "top": 12,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      }
-    ],
-    "bench-press": [
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 117.5,
-          "y": 52.5
-        },
-        "bounds": {
-          "left": 22,
-          "top": 12,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 117.5,
-          "y": 52.5
-        },
-        "bounds": {
-          "left": 22,
-          "top": 12,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 117.83333333333331,
-          "y": 54.27777777777778
-        },
-        "bounds": {
-          "left": 22.33333333333333,
-          "top": 13.777777777777779,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 119.1875,
-          "y": 61.5
-        },
-        "bounds": {
-          "left": 23.6875,
-          "top": 21,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 121.41666666666669,
-          "y": 73.38888888888889
-        },
-        "bounds": {
-          "left": 25.91666666666667,
-          "top": 32.888888888888886,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 122.97916666666669,
-          "y": 81.72222222222223
-        },
-        "bounds": {
-          "left": 27.47916666666667,
-          "top": 41.22222222222223,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 123.5,
-          "y": 84.5
-        },
-        "bounds": {
-          "left": 28,
-          "top": 44,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 123.5,
-          "y": 84.5
-        },
-        "bounds": {
-          "left": 28,
-          "top": 44,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 122.5,
-          "y": 79.16666666666669
-        },
-        "bounds": {
-          "left": 27,
-          "top": 38.666666666666686,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 121.25,
-          "y": 72.5
-        },
-        "bounds": {
-          "left": 25.75,
-          "top": 32,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 120,
-          "y": 65.83333333333331
-        },
-        "bounds": {
-          "left": 24.5,
-          "top": 25.333333333333314,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 118.75,
-          "y": 59.166666666666686
-        },
-        "bounds": {
-          "left": 23.25,
-          "top": 18.666666666666686,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      }
-    ],
-    "bench-finish": [
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 117.5,
-          "y": 52.5
-        },
-        "bounds": {
-          "left": 22,
-          "top": 12,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 110.5,
-          "y": 56.5
-        },
-        "bounds": {
-          "left": 15,
-          "top": 16,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": {
-          "x": 103.5,
-          "y": 60.5
-        },
-        "bounds": {
-          "left": 8,
-          "top": 20,
-          "right": 240,
-          "bottom": 246
-        },
-        "puppet": "presser"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 65.0103326674574,
-          "top": 85.21509524826374,
-          "right": 256,
-          "bottom": 252.08932607459295
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": null,
-        "plantedSole": null,
-        "plantedHeel": null,
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 42.870247390148876,
-          "top": 75.51306149835537,
-          "right": 220.14257132651983,
-          "bottom": 252.54934233216983
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 44.665937614290485,
-          "top": 69.612239266003,
-          "right": 173.60960397480127,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 74.86276809805867,
-          "top": 42.731577729891136,
-          "right": 193.00081386716948,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      },
-      {
-        "plantedFoot": "nearFoot",
-        "plantedSole": {
-          "x": 150.24620201720137,
-          "y": 252
-        },
-        "plantedHeel": {
-          "x": 128.04259870602687,
-          "y": 252
-        },
-        "rootAdvance": 0,
-        "barCentre": null,
-        "bounds": {
-          "left": 86.26779949573792,
-          "top": 21.004028349654313,
-          "right": 171.2075814780148,
-          "bottom": 256
-        },
-        "puppet": "walker"
-      }
-    ]
+    "walk": {
+      "cycleAdvancePx": 176.2709245552329,
+      "frames": [
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 181.29085382057877,
+            "y": 248.90985567469664
+          },
+          "plantedHeel": {
+            "x": 159.30333445051807,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 70.07384676739755,
+            "top": 25.94036521726074,
+            "right": 198.29480964621706,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 141.42978224422922
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 170.27392103587647,
+            "y": 250.61858847722468
+          },
+          "plantedHeel": {
+            "x": 148.11333209503954,
+            "y": 252
+          },
+          "rootAdvance": 11.016932784702057,
+          "barCentre": null,
+          "bounds": {
+            "left": 62.78077415478248,
+            "top": 23.650400176473774,
+            "right": 187.1551006265724,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 139.13981720344225
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 159.25698825117462,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 137.05338494000011,
+            "y": 252
+          },
+          "rootAdvance": 22.033865569404114,
+          "barCentre": null,
+          "bounds": {
+            "left": 60.76292802670803,
+            "top": 22.351334306599405,
+            "right": 175.9659879031944,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 137.84075133356788
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 148.24005546647263,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 126.03645215529811,
+            "y": 252
+          },
+          "rootAdvance": 33.05079835410617,
+          "barCentre": null,
+          "bounds": {
+            "left": 80.67809176287045,
+            "top": 21.191408514646078,
+            "right": 168.68190171160572,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.68082554161455
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 137.22312268177026,
+            "y": 252.00000000000003
+          },
+          "plantedHeel": {
+            "x": 115.09054694339682,
+            "y": 250.2254321131151
+          },
+          "rootAdvance": 44.06773113880823,
+          "barCentre": null,
+          "bounds": {
+            "left": 90.43609988250853,
+            "top": 20.398482424854116,
+            "right": 176.63163422089127,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 135.8878994518226
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 126.20618989706851,
+            "y": 251.99999999999997
+          },
+          "plantedHeel": {
+            "x": 104.38912929399505,
+            "y": 247.8749707101864
+          },
+          "rootAdvance": 55.084663923510284,
+          "barCentre": null,
+          "bounds": {
+            "left": 88.08021882593329,
+            "top": 20.357639984154055,
+            "right": 185.6403541875069,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 135.84705701112253
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 115.18925711236659,
+            "y": 251.99999999999997
+          },
+          "plantedHeel": {
+            "x": 93.94833506478301,
+            "y": 245.53291173954779
+          },
+          "rootAdvance": 66.10159670821234,
+          "barCentre": null,
+          "bounds": {
+            "left": 82.07751983035647,
+            "top": 21.407730047215246,
+            "right": 194.05786298116985,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.89714707418372
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 104.17232432766417,
+            "y": 252.00000000000003
+          },
+          "plantedHeel": {
+            "x": 83.78941304438189,
+            "y": 243.19449447119342
+          },
+          "rootAdvance": 77.1185294929144,
+          "barCentre": null,
+          "bounds": {
+            "left": 76.9022795909038,
+            "top": 23.686519104046006,
+            "right": 200.92359251326343,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 139.17593613101448
+          }
+        },
+        {
+          "plantedFoot": "farFoot",
+          "plantedSole": {
+            "x": 181.29085382057877,
+            "y": 248.90985567469664
+          },
+          "plantedHeel": {
+            "x": 159.30333445051807,
+            "y": 252
+          },
+          "rootAdvance": 88.13546227761645,
+          "barCentre": null,
+          "bounds": {
+            "left": 70.07384676739755,
+            "top": 25.94036521726074,
+            "right": 207.19596456961614,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 141.42978224422922
+          }
+        },
+        {
+          "plantedFoot": "farFoot",
+          "plantedSole": {
+            "x": 170.27392103587647,
+            "y": 250.61858847722468
+          },
+          "plantedHeel": {
+            "x": 148.11333209503954,
+            "y": 252
+          },
+          "rootAdvance": 99.1523950623185,
+          "barCentre": null,
+          "bounds": {
+            "left": 62.78077415478248,
+            "top": 23.650400176473774,
+            "right": 203.05349221986083,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 139.13981720344225
+          }
+        },
+        {
+          "plantedFoot": "farFoot",
+          "plantedSole": {
+            "x": 159.25698825117462,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 137.05338494000011,
+            "y": 252
+          },
+          "rootAdvance": 110.16932784702057,
+          "barCentre": null,
+          "bounds": {
+            "left": 60.76292802670803,
+            "top": 22.351334306599405,
+            "right": 198.0766306884385,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 137.84075133356788
+          }
+        },
+        {
+          "plantedFoot": "farFoot",
+          "plantedSole": {
+            "x": 148.24005546647263,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 126.03645215529811,
+            "y": 252
+          },
+          "rootAdvance": 121.18626063172263,
+          "barCentre": null,
+          "bounds": {
+            "left": 80.67809176287045,
+            "top": 21.191408514646078,
+            "right": 189.20897605938612,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.68082554161455
+          }
+        },
+        {
+          "plantedFoot": "farFoot",
+          "plantedSole": {
+            "x": 137.22312268177026,
+            "y": 252.00000000000003
+          },
+          "plantedHeel": {
+            "x": 115.09054694339682,
+            "y": 250.2254321131151
+          },
+          "rootAdvance": 132.20319341642468,
+          "barCentre": null,
+          "bounds": {
+            "left": 90.80102585927904,
+            "top": 20.398482424854116,
+            "right": 176.42470935853765,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 135.8878994518226
+          }
+        },
+        {
+          "plantedFoot": "farFoot",
+          "plantedSole": {
+            "x": 126.20618989706851,
+            "y": 251.99999999999997
+          },
+          "plantedHeel": {
+            "x": 104.38912929399505,
+            "y": 247.8749707101864
+          },
+          "rootAdvance": 143.22012620112673,
+          "barCentre": null,
+          "bounds": {
+            "left": 90.36733603996845,
+            "top": 20.357639984154055,
+            "right": 167.82716446394198,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 135.84705701112253
+          }
+        },
+        {
+          "plantedFoot": "farFoot",
+          "plantedSole": {
+            "x": 115.18925711236659,
+            "y": 251.99999999999997
+          },
+          "plantedHeel": {
+            "x": 93.94833506478301,
+            "y": 245.53291173954779
+          },
+          "rootAdvance": 154.2370589858288,
+          "barCentre": null,
+          "bounds": {
+            "left": 90.09797050433724,
+            "top": 21.407730047215246,
+            "right": 184.43450604686223,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.89714707418372
+          }
+        },
+        {
+          "plantedFoot": "farFoot",
+          "plantedSole": {
+            "x": 104.17232432766417,
+            "y": 252.00000000000003
+          },
+          "plantedHeel": {
+            "x": 83.78941304438189,
+            "y": 243.19449447119342
+          },
+          "rootAdvance": 165.25399177053086,
+          "barCentre": null,
+          "bounds": {
+            "left": 80.3485270219402,
+            "top": 23.686519104046006,
+            "right": 191.35209945449395,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 139.17593613101448
+          }
+        }
+      ]
+    },
+    "idle": {
+      "cycleAdvancePx": 0,
+      "frames": [
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 150.24620201720137,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 128.04259870602687,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 86.26779949573792,
+            "top": 21.004028349654313,
+            "right": 171.2075814780148,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.6787217346008
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 150.24620201720137,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 128.04259870602687,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 85.75287212558517,
+            "top": 20.79817000400282,
+            "right": 170.49491317595167,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.6787217346008
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 150.24620201720137,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 128.04259870602687,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 84.24647202498474,
+            "top": 20.313987701832666,
+            "right": 168.70536244225707,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.6787217346008
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 150.24620201720137,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 128.04259870602687,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 83.51942283983081,
+            "top": 20.13256349034917,
+            "right": 167.98647836498895,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.6787217346008
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 150.24620201720137,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 128.04259870602687,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 83.10889439453305,
+            "top": 20.04337155569793,
+            "right": 167.5888793990091,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.6787217346008
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 150.24620201720137,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 128.04259870602687,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 82.08648025378734,
+            "top": 19.825378757731286,
+            "right": 166.95520166922114,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.6787217346008
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 150.24620201720137,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 128.04259870602687,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 81.6791469373216,
+            "top": 19.740182659230534,
+            "right": 166.95520166922114,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.6787217346008
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 150.24620201720137,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 128.04259870602687,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 82.40260894888401,
+            "top": 19.91207193210056,
+            "right": 166.95520166922114,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.6787217346008
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 150.24620201720137,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 128.04259870602687,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 84.21888657217616,
+            "top": 20.372633079208597,
+            "right": 168.71350382895704,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.6787217346008
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 150.24620201720137,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 128.04259870602687,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 84.94835649843257,
+            "top": 20.569132729217095,
+            "right": 169.43105468840292,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.6787217346008
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 150.24620201720137,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 128.04259870602687,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 85.35928459789585,
+            "top": 20.663818031327665,
+            "right": 169.82787600566056,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.6787217346008
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 150.24620201720137,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 128.04259870602687,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 86.07182123205887,
+            "top": 20.905430575596,
+            "right": 170.814872764239,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.6787217346008
+          }
+        }
+      ]
+    },
+    "wait": {
+      "cycleAdvancePx": 0,
+      "frames": [
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 156.82395272793434,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 134.62034941675984,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 86.26779949573792,
+            "top": 21.579506968343033,
+            "right": 173.5329523799541,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 137.25420035328952
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 156.82395272793434,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 134.62034941675984,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 85.5937710036986,
+            "top": 21.32148891247703,
+            "right": 173.5329523799541,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 137.25420035328952
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 156.82395272793434,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 134.62034941675984,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 83.69473074637335,
+            "top": 20.732634845536722,
+            "right": 173.5329523799541,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 137.25420035328952
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 156.82395272793434,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 134.62034941675984,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 82.81272708675183,
+            "top": 20.51969401887422,
+            "right": 173.5329523799541,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 137.25420035328952
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 156.82395272793434,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 134.62034941675984,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 82.55860266422576,
+            "top": 20.47234571168088,
+            "right": 173.5329523799541,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 137.25420035328952
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 156.82395272793434,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 134.62034941675984,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 81.92880061080179,
+            "top": 20.358993755382862,
+            "right": 173.5329523799541,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 137.25420035328952
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 156.82395272793434,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 134.62034941675984,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 81.6791469373216,
+            "top": 20.315661277919254,
+            "right": 173.5329523799541,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 137.25420035328952
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 156.82395272793434,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 134.62034941675984,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 82.561055326044,
+            "top": 20.532379370559397,
+            "right": 173.5329523799541,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 137.25420035328952
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 156.82395272793434,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 134.62034941675984,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 84.77847196477876,
+            "top": 21.130834629545653,
+            "right": 173.5329523799541,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 137.25420035328952
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 156.82395272793434,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 134.62034941675984,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 85.67034956352914,
+            "top": 21.39275769271846,
+            "right": 173.5329523799541,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 137.25420035328952
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 156.82395272793434,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 134.62034941675984,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 85.92024054511808,
+            "top": 21.432259243338535,
+            "right": 173.5329523799541,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 137.25420035328952
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 156.82395272793434,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 134.62034941675984,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 86.23166651782971,
+            "top": 21.536009148068523,
+            "right": 173.5329523799541,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 137.25420035328952
+          }
+        }
+      ]
+    },
+    "walk-to-wait": {
+      "cycleAdvancePx": 31.044651803377377,
+      "frames": [
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 181.29085382057877,
+            "y": 248.90985567469664
+          },
+          "plantedHeel": {
+            "x": 159.30333445051807,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 70.07384676739755,
+            "top": 25.94036521726074,
+            "right": 198.29480964621706,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 141.42978224422922
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 170.9426365527863,
+            "y": 250.51619954482584
+          },
+          "plantedHeel": {
+            "x": 148.78866769370316,
+            "y": 252
+          },
+          "rootAdvance": 10.348217267792458,
+          "barCentre": null,
+          "bounds": {
+            "left": 63.193688509298916,
+            "top": 23.753067160479624,
+            "right": 187.83399533564136,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 139.2424841874481
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 160.59441928499385,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 138.39081597381931,
+            "y": 252
+          },
+          "rootAdvance": 20.696434535584917,
+          "barCentre": null,
+          "bounds": {
+            "left": 60.00955505604329,
+            "top": 22.550756863571188,
+            "right": 177.30341893701362,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 138.05917624690807
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 150.2462020172014,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 128.04259870602687,
+            "y": 252
+          },
+          "rootAdvance": 31.044651803377377,
+          "barCentre": null,
+          "bounds": {
+            "left": 86.26779949573793,
+            "top": 21.004028349654313,
+            "right": 171.2075814780148,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.6787217346008
+          }
+        }
+      ]
+    },
+    "wait-to-walk": {
+      "cycleAdvancePx": 47.189009701299355,
+      "frames": [
+        {
+          "plantedFoot": "farFoot",
+          "plantedSole": {
+            "x": 140.3444012442617,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 118.14079793308717,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 86.26779949573792,
+            "top": 21.004028349654313,
+            "right": 171.2075814780148,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.6787217346008
+          }
+        },
+        {
+          "plantedFoot": "farFoot",
+          "plantedSole": {
+            "x": 124.61473134382862,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 102.81839923331269,
+            "y": 247.76680894264246
+          },
+          "rootAdvance": 15.729669900433118,
+          "barCentre": null,
+          "bounds": {
+            "left": 89.57967451455329,
+            "top": 20.482396848715076,
+            "right": 178.2390344095785,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.04288150854603
+          }
+        },
+        {
+          "plantedFoot": "farFoot",
+          "plantedSole": {
+            "x": 108.8850614433954,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 88.10042504253772,
+            "y": 244.1898214051059
+          },
+          "rootAdvance": 31.459339800866235,
+          "barCentre": null,
+          "bounds": {
+            "left": 84.8454135689365,
+            "top": 22.55725330501972,
+            "right": 188.39141960839723,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 138.0466703319882
+          }
+        },
+        {
+          "plantedFoot": "farFoot",
+          "plantedSole": {
+            "x": 93.15539154296249,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 73.92650701993307,
+            "y": 240.89819834441278
+          },
+          "rootAdvance": 47.189009701299355,
+          "barCentre": null,
+          "bounds": {
+            "left": 70.07384676739773,
+            "top": 27.280261674695716,
+            "right": 198.29480964621695,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 142.7696787016642
+          }
+        }
+      ]
+    },
+    "bench-setup": {
+      "cycleAdvancePx": 0,
+      "frames": [
+        {
+          "plantedFoot": "farFoot",
+          "plantedSole": {
+            "x": 140.3444012442617,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 118.14079793308717,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 86.26779949573792,
+            "top": 21.004028349654313,
+            "right": 171.2075814780148,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.6787217346008
+          }
+        },
+        {
+          "plantedFoot": "farFoot",
+          "plantedSole": {
+            "x": 140.34440124426166,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 118.14079793308714,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 88.63366876423609,
+            "top": 34.9704329598683,
+            "right": 206.77171453334694,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 116.87415466235731,
+            "y": 147.06763489077832
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 186.18872040599962,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 163.9851170948251,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 103.37337497897438,
+            "top": 43.966093162449624,
+            "right": 238.14928483436205,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 137.98451924646997,
+            "y": 158.5391003077769
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 186.18872040599962,
+            "y": 251.99999999999997
+          },
+          "plantedHeel": {
+            "x": 163.9851170948251,
+            "y": 251.99999999999997
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 84.03348671223218,
+            "top": 26.849109336527896,
+            "right": 215.47622235263907,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 159.9168808933695,
+            "y": 154.14635842849844
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 186.18872040599962,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 163.9851170948251,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 69.84444660690991,
+            "top": 44.184496984470115,
+            "right": 246.48989656535102,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 180,
+            "y": 152.1132109822579
+          }
+        }
+      ]
+    },
+    "bench-mount": {
+      "cycleAdvancePx": 0,
+      "frames": [
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 103.5,
+            "y": 60.5
+          },
+          "bounds": {
+            "left": 8,
+            "top": 20,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        },
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 110.5,
+            "y": 56.5
+          },
+          "bounds": {
+            "left": 15,
+            "top": 16,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        },
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 117.5,
+            "y": 52.5
+          },
+          "bounds": {
+            "left": 22,
+            "top": 12,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        }
+      ]
+    },
+    "bench-press": {
+      "cycleAdvancePx": 0,
+      "frames": [
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 117.5,
+            "y": 52.5
+          },
+          "bounds": {
+            "left": 22,
+            "top": 12,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        },
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 117.5,
+            "y": 52.5
+          },
+          "bounds": {
+            "left": 22,
+            "top": 12,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        },
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 117.83333333333331,
+            "y": 54.27777777777778
+          },
+          "bounds": {
+            "left": 22.33333333333333,
+            "top": 13.777777777777779,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        },
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 119.1875,
+            "y": 61.5
+          },
+          "bounds": {
+            "left": 23.6875,
+            "top": 21,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        },
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 121.41666666666669,
+            "y": 73.38888888888889
+          },
+          "bounds": {
+            "left": 25.91666666666667,
+            "top": 32.888888888888886,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        },
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 122.97916666666669,
+            "y": 81.72222222222223
+          },
+          "bounds": {
+            "left": 27.47916666666667,
+            "top": 41.22222222222223,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        },
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 123.5,
+            "y": 84.5
+          },
+          "bounds": {
+            "left": 28,
+            "top": 44,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        },
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 123.5,
+            "y": 84.5
+          },
+          "bounds": {
+            "left": 28,
+            "top": 44,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        },
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 122.5,
+            "y": 79.16666666666669
+          },
+          "bounds": {
+            "left": 27,
+            "top": 38.666666666666686,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        },
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 121.25,
+            "y": 72.5
+          },
+          "bounds": {
+            "left": 25.75,
+            "top": 32,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        },
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 120,
+            "y": 65.83333333333331
+          },
+          "bounds": {
+            "left": 24.5,
+            "top": 25.333333333333314,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        },
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 118.75,
+            "y": 59.166666666666686
+          },
+          "bounds": {
+            "left": 23.25,
+            "top": 18.666666666666686,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        }
+      ]
+    },
+    "bench-dismount": {
+      "cycleAdvancePx": 0,
+      "frames": [
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 117.5,
+            "y": 52.5
+          },
+          "bounds": {
+            "left": 22,
+            "top": 12,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        },
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 110.5,
+            "y": 56.5
+          },
+          "bounds": {
+            "left": 15,
+            "top": 16,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        },
+        {
+          "plantedFoot": null,
+          "plantedSole": null,
+          "plantedHeel": null,
+          "rootAdvance": 0,
+          "barCentre": {
+            "x": 103.5,
+            "y": 60.5
+          },
+          "bounds": {
+            "left": 8,
+            "top": 20,
+            "right": 240,
+            "bottom": 246
+          },
+          "puppet": "presser",
+          "root": {
+            "x": 180,
+            "y": 152
+          }
+        }
+      ]
+    },
+    "bench-finish": {
+      "cycleAdvancePx": 0,
+      "frames": [
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 186.18872040599962,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 163.9851170948251,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 69.84444660690991,
+            "top": 44.184496984470115,
+            "right": 246.48989656535102,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 180,
+            "y": 152.1132109822579
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 186.18872040599962,
+            "y": 251.99999999999997
+          },
+          "plantedHeel": {
+            "x": 163.9851170948251,
+            "y": 251.99999999999997
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 84.03348671223218,
+            "top": 26.849109336527896,
+            "right": 215.47622235263907,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 159.9168808933695,
+            "y": 154.14635842849844
+          }
+        },
+        {
+          "plantedFoot": "nearFoot",
+          "plantedSole": {
+            "x": 186.18872040599962,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 163.9851170948251,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 103.37337497897438,
+            "top": 43.966093162449624,
+            "right": 238.14928483436205,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 137.98451924646997,
+            "y": 158.5391003077769
+          }
+        },
+        {
+          "plantedFoot": "farFoot",
+          "plantedSole": {
+            "x": 140.34440124426166,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 118.14079793308714,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 88.63366876423609,
+            "top": 34.9704329598683,
+            "right": 206.77171453334694,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 116.87415466235731,
+            "y": 147.06763489077832
+          }
+        },
+        {
+          "plantedFoot": "farFoot",
+          "plantedSole": {
+            "x": 140.3444012442617,
+            "y": 252
+          },
+          "plantedHeel": {
+            "x": 118.14079793308717,
+            "y": 252
+          },
+          "rootAdvance": 0,
+          "barCentre": null,
+          "bounds": {
+            "left": 86.26779949573792,
+            "top": 21.004028349654313,
+            "right": 171.2075814780148,
+            "bottom": 256
+          },
+          "puppet": "walker",
+          "root": {
+            "x": 128,
+            "y": 136.6787217346008
+          }
+        }
+      ]
+    }
   }
 }

@@ -54,8 +54,10 @@ import {
   MEMBER_MOTION_CANVAS_PX,
   MEMBER_MOTION_CLIP_SPECS,
   MEMBER_MOTION_CLIPS,
+  MEMBER_MOTION_DISSOLVE_EDGES,
   MEMBER_MOTION_PRODUCTION_TYPES,
   MEMBER_MOTION_TRANSITIONS,
+  memberMotionDissolveEdge,
   memberMotionStripStem,
   type MemberMotionClip,
 } from './memberMotionClips';
@@ -83,6 +85,17 @@ const SHEET_DIR = path.join(ROOT, 'docs', 'design', 'living-gym-world', 'vl-3');
 
 const CLIPS = memberRigClips();
 const WALK = CLIPS.walk.frames;
+
+const last = (clip: MemberMotionClip): RigFrame => {
+  const frame = CLIPS[clip].frames[CLIPS[clip].frames.length - 1];
+  if (frame === undefined) throw new Error(`${clip} has no frames`);
+  return frame;
+};
+const first = (clip: MemberMotionClip): RigFrame => {
+  const frame = CLIPS[clip].frames[0];
+  if (frame === undefined) throw new Error(`${clip} has no frames`);
+  return frame;
+};
 
 /** Every number reachable in a frame, for the NaN sweep. */
 function numbersOf(value: unknown, out: number[] = []): number[] {
@@ -129,6 +142,10 @@ describe('memberRig: the clip table', () => {
       });
       total += CLIPS[clip].frames.length;
     }
+    // Ten clips: 16 + 12 + 12 + 4 + 4 + 5 + 3 + 12 + 3 + 5. The bench split
+    // (art round 2) moved three presser frames out of each eight-frame
+    // bench clip into mount and dismount, so the total is unchanged.
+    expect(MEMBER_MOTION_CLIPS.length).toBe(10);
     expect(total).toBe(76);
   });
 
@@ -271,34 +288,70 @@ describe('memberRig: the stands and the transitions', () => {
     expect(Math.hypot(from.root.x - to.root.x, from.root.y - to.root.y), `${label}: root`).toBeLessThanOrEqual(rootTolerance);
   };
 
-  const last = (clip: MemberMotionClip): RigFrame => {
-    const frame = CLIPS[clip].frames[CLIPS[clip].frames.length - 1];
-    if (frame === undefined) throw new Error(`${clip} has no frames`);
-    return frame;
-  };
-  const first = (clip: MemberMotionClip): RigFrame => {
-    const frame = CLIPS[clip].frames[0];
-    if (frame === undefined) throw new Error(`${clip} has no frames`);
-    return frame;
-  };
-
-  it('meets across every edge the runtime cuts along', () => {
+  it('meets across every HARD-CUT edge the runtime cuts along, and the two dissolve edges are the only ones that change puppet', () => {
     // The end of the outgoing clip against the start of the incoming one,
-    // for every edge in the table whose two ends are drawn by the same
-    // puppet. Bench-setup → bench-press and bench-press → bench-finish are
-    // presser to presser; walk-to-wait → wait and wait-to-walk → walk are
-    // walker to walker. The edges INTO a looping clip from a looping clip
-    // (wait ↔ idle) compare first frame to first frame, because the runtime
-    // may cut at any phase and the two stands share a shape.
+    // for every edge in the table except the two dissolves. The edges INTO
+    // a looping clip from a looping clip (wait ↔ idle) compare first frame
+    // to first frame, because the runtime may cut at any phase and the two
+    // stands share a shape. Bench-mount → bench-press and bench-press →
+    // bench-dismount are presser to presser at lockout.
     let checked = 0;
+    let dissolves = 0;
     for (const [from, to] of MEMBER_MOTION_TRANSITIONS) {
       const outgoing = MEMBER_MOTION_CLIP_SPECS[from].loop ? first(from) : last(from);
       const incoming = first(to);
+      if (memberMotionDissolveEdge(from, to)) {
+        expect(outgoing.puppet, `${from} → ${to}`).not.toBe(incoming.puppet);
+        dissolves += 1;
+        continue;
+      }
       meets(outgoing, incoming, `${from} → ${to}`);
       checked += 1;
     }
-    expect(checked).toBe(MEMBER_MOTION_TRANSITIONS.length);
+    expect(checked + dissolves).toBe(MEMBER_MOTION_TRANSITIONS.length);
     expect(checked).toBe(14);
+    expect(dissolves).toBe(2);
+    expect(dissolves).toBe(MEMBER_MOTION_DISSOLVE_EDGES.length);
+  });
+
+  it('retimes the standing transitions like the walk: uniform root advance, the planted ball at one world x', () => {
+    for (const clip of ['walk-to-wait', 'wait-to-walk'] as const) {
+      const frames = CLIPS[clip].frames;
+      const cycle = CLIPS[clip].cycleAdvancePx;
+      expect(cycle, clip).toBeGreaterThan(20);
+      expect(cycle, clip).toBeLessThan(60);
+      const step = cycle / (frames.length - 1);
+      frames.forEach((frame, i) => {
+        expect(frame.rootAdvance, `${clip}#${i}`).toBeCloseTo(i * step, 6);
+        expect(frame.root.x, `${clip}#${i}`).toBe(MEMBER_MOTION_CANVAS_PX / 2);
+      });
+      const xs = frames.map((frame) => plantedWorldX(frame));
+      for (const x of xs) expect(x).not.toBeNull();
+      const world = xs as number[];
+      const drift = Math.max(...world) - Math.min(...world);
+      expect(drift, clip).toBeLessThanOrEqual(EMPIRE_TUNING.FLOOR_MEMBER_MOTION_FOOT_DRIFT_TOLERANCE_PX);
+      // The last frame IS the end pose (t = 1), not a step short of it. The
+      // bisection lands a hair below 1 where the retreat curve goes flat.
+      const end = frames[frames.length - 1];
+      if (end === undefined) throw new Error('no frames');
+      expect(end.time).toBeCloseTo(1, 6);
+      expect(end.rootAdvance).toBeCloseTo(cycle, 9);
+    }
+  });
+
+  it('reports cycleAdvancePx per clip: the stride for the walk, the total for the transitions, zero for stands and the bench', () => {
+    expect(CLIPS.walk.cycleAdvancePx).toBeCloseTo(authoredStridePx(), 9);
+    for (const clip of ['idle', 'wait', 'bench-setup', 'bench-mount', 'bench-press', 'bench-dismount', 'bench-finish'] as const) {
+      expect(CLIPS[clip].cycleAdvancePx, clip).toBe(0);
+    }
+    expect(CLIPS['walk-to-wait'].cycleAdvancePx).toBeCloseTo(last('walk-to-wait').rootAdvance, 9);
+    expect(CLIPS['wait-to-walk'].cycleAdvancePx).toBeCloseTo(last('wait-to-walk').rootAdvance, 9);
+    // Non-vacuity: the two totals are the measured 31.0 and 47.2 canvas px
+    // (the body walks over its planted foot as it stops, and off it as it starts).
+    expect(CLIPS['walk-to-wait'].cycleAdvancePx).toBeGreaterThan(30);
+    expect(CLIPS['walk-to-wait'].cycleAdvancePx).toBeLessThan(32);
+    expect(CLIPS['wait-to-walk'].cycleAdvancePx).toBeGreaterThan(46);
+    expect(CLIPS['wait-to-walk'].cycleAdvancePx).toBeLessThan(48);
   });
 
   it('starts walk-to-wait from the walk’s contact pose and ends wait-to-walk on it', () => {
@@ -306,9 +359,11 @@ describe('memberRig: the stands and the transitions', () => {
     meets(last('wait-to-walk'), first('walk'), 'wait-to-walk[last] vs walk[0]');
   });
 
-  it('starts bench-finish where bench-press starts and ends it where idle starts', () => {
-    meets(first('bench-finish'), first('bench-press'), 'bench-finish[0] vs bench-press[0]');
+  it('starts bench-dismount where bench-press starts, ends bench-mount there too, and ends bench-finish where idle starts', () => {
+    meets(first('bench-dismount'), first('bench-press'), 'bench-dismount[0] vs bench-press[0]');
+    meets(last('bench-mount'), first('bench-press'), 'bench-mount[last] vs bench-press[0]');
     meets(last('bench-finish'), first('idle'), 'bench-finish[last] vs idle[0]');
+    meets(first('bench-setup'), first('idle'), 'bench-setup[0] vs idle[0]');
   });
 
   it('keeps both feet on the ground line through a stand, and the far foot behind the near one', () => {
@@ -328,24 +383,30 @@ describe('memberRig: the stands and the transitions', () => {
     expect(spread(wait)).toBe(2 * EMPIRE_TUNING.FLOOR_MEMBER_MOTION_STANCE_DEGREES.wait);
   });
 
-  it('breathes: the torso pitches back by the breath knob a quarter of the way through an idle', () => {
+  it('breathes once per cycle: torso, chin and shoulders at the knobs’ full amplitude half way round, and rest at frame 0', () => {
     const rest = first('idle');
-    const peak = CLIPS.idle.frames[3];
-    if (peak === undefined) throw new Error('no frame');
-    const torsoRise = (peak.angles.torso ?? 0) - (rest.angles.torso ?? 0);
-    // Breath plus half the idle's sway (the lean peaks at the same key).
+    const peak = CLIPS.idle.frames[6];
+    const quarter = CLIPS.idle.frames[3];
+    if (peak === undefined || quarter === undefined) throw new Error('no frame');
+    const breath = EMPIRE_TUNING.FLOOR_MEMBER_MOTION_BREATH_DEGREES;
+    const nod = EMPIRE_TUNING.FLOOR_MEMBER_MOTION_BREATH_NOD_DEGREES;
+    const shoulder = EMPIRE_TUNING.FLOOR_MEMBER_MOTION_BREATH_SHOULDER_DEGREES;
+    // Half way round: the full inhale, no sway (the sway crosses zero there).
+    expect((peak.angles.torso ?? 0) - (rest.angles.torso ?? 0)).toBeCloseTo(breath, 6);
+    expect((peak.angles.head ?? 0) - (rest.angles.head ?? 0)).toBeCloseTo(breath + nod, 6);
+    expect((rest.angles.nearUpperArm ?? 0) - (peak.angles.nearUpperArm ?? 0)).toBeCloseTo(shoulder, 6);
+    expect((rest.angles.farUpperArm ?? 0) - (peak.angles.farUpperArm ?? 0)).toBeCloseTo(shoulder, 6);
+    // A quarter of the way: half the inhale plus the full sway of the idle.
     const sway = EMPIRE_TUNING.FLOOR_MEMBER_WAIT_SWAY_DEGREES * EMPIRE_TUNING.FLOOR_MEMBER_MOTION_IDLE_SWAY_FRACTION;
-    expect(torsoRise).toBeCloseTo(EMPIRE_TUNING.FLOOR_MEMBER_MOTION_BREATH_DEGREES + sway, 6);
-  });
-
-  it('reports the standing transitions’ root advance for the runtime to apply', () => {
-    // The body walks over its planted foot as it stops, and off it as it
-    // starts; a runtime that holds the anchor still through these 220 ms
-    // clips lets the feet slide by exactly these amounts (canvas px).
-    expect(last('walk-to-wait').rootAdvance).toBeGreaterThan(20);
-    expect(last('walk-to-wait').rootAdvance).toBeLessThan(60);
-    expect(last('wait-to-walk').rootAdvance).toBeGreaterThan(20);
-    expect(last('wait-to-walk').rootAdvance).toBeLessThan(60);
+    expect((quarter.angles.torso ?? 0) - (rest.angles.torso ?? 0)).toBeCloseTo(breath / 2 + sway, 6);
+    // Frames 0 and 6 are no longer the same pose (round 1's were byte-identical).
+    expect(largestAngleGap(rest, peak).gap).toBeGreaterThan(1);
+    // The wait's sway is the larger of the two.
+    const waitQuarter = CLIPS.wait.frames[3];
+    if (waitQuarter === undefined) throw new Error('no frame');
+    const waitLean = (waitQuarter.angles.torso ?? 0) - (first('wait').angles.torso ?? 0) - breath / 2;
+    expect(waitLean).toBeCloseTo(EMPIRE_TUNING.FLOOR_MEMBER_WAIT_SWAY_DEGREES, 6);
+    expect(waitLean).toBeGreaterThan(sway);
   });
 });
 
@@ -392,39 +453,156 @@ describe('memberRig: the bench', () => {
   });
 
   it('keeps the presser’s body block still: the root and the pelvis never move', () => {
-    for (const clip of ['bench-setup', 'bench-press', 'bench-finish'] as const) {
+    for (const clip of ['bench-mount', 'bench-press', 'bench-dismount'] as const) {
       for (const frame of CLIPS[clip].frames) {
-        if (frame.puppet !== 'presser') continue;
+        expect(frame.puppet, `${clip}#${frame.index}`).toBe('presser');
         expect(frame.root).toEqual({ x: PUPPETS.presser.rootPivot[0], y: PUPPETS.presser.rootPivot[1] });
         expect(frame.rootAdvance).toBe(0);
       }
     }
-  });
-
-  it('brings the walker’s lying pelvis to the presser’s, so the dissolve is at one place', () => {
-    const setup = CLIPS['bench-setup'].frames;
-    const lying = setup[4];
-    const racked = setup[5];
-    if (lying === undefined || racked === undefined) throw new Error('no frames');
-    expect(lying.puppet).toBe('walker');
-    expect(racked.puppet).toBe('presser');
-    expect(Math.abs(lying.root.x - racked.root.x)).toBeLessThanOrEqual(EMPIRE_TUNING.FLOOR_MEMBER_MOTION_ROOT_TOLERANCE_PX);
-    expect(Math.abs(lying.root.y - racked.root.y)).toBeLessThanOrEqual(EMPIRE_TUNING.FLOOR_MEMBER_MOTION_ROOT_TOLERANCE_PX);
-    // Lying flat: torso pointing back along the bench.
-    expect(lying.angles.torso).toBe(270);
-  });
-
-  it('plants the feet through the sit and the stand, and only there', () => {
-    const planted = (clip: MemberMotionClip): (string | null)[] => CLIPS[clip].frames.map((frame) => frame.plantedFoot);
-    expect(planted('bench-setup')).toEqual(['nearFoot', 'nearFoot', 'nearFoot', null, null, null, null, null]);
-    expect(planted('bench-finish')).toEqual([null, null, null, null, null, 'nearFoot', 'nearFoot', 'nearFoot']);
     for (const clip of ['bench-setup', 'bench-finish'] as const) {
-      for (const frame of CLIPS[clip].frames) {
-        if (frame.plantedFoot === null) continue;
-        expect(lowestSoleY(frame, frame.plantedFoot), `${clip}#${frame.index}`).toBeCloseTo(groundLineY(), 6);
-        expect(plantedWorldX(frame), `${clip}#${frame.index}`).toBeCloseTo(plantedWorldX(CLIPS[clip].frames[clip === 'bench-setup' ? 0 : 7] as RigFrame) as number, 6);
-      }
+      for (const frame of CLIPS[clip].frames) expect(frame.puppet, `${clip}#${frame.index}`).toBe('walker');
     }
+  });
+
+  it('mounts from the racked bar to lockout and dismounts back: the two clips are each other reversed', () => {
+    const mount = CLIPS['bench-mount'].frames;
+    const dismount = CLIPS['bench-dismount'].frames;
+    expect(mount.length).toBe(3);
+    expect(dismount.length).toBe(3);
+    mount.forEach((frame, i) => {
+      const mirror = dismount[dismount.length - 1 - i];
+      if (mirror === undefined) throw new Error('no frame');
+      expect(frame.barCentre?.x).toBeCloseTo(mirror.barCentre?.x ?? Number.NaN, 9);
+      expect(frame.barCentre?.y).toBeCloseTo(mirror.barCentre?.y ?? Number.NaN, 9);
+    });
+    // The racked bar sits back toward the head and lower than lockout; the mount lifts it up and forward.
+    const racked = mount[0]?.barCentre;
+    const lockout = mount[2]?.barCentre;
+    if (racked === undefined || racked === null || lockout === undefined || lockout === null) throw new Error('no bar');
+    expect(racked.x).toBeLessThan(lockout.x);
+    expect(racked.y).toBeGreaterThan(lockout.y);
+    expect(Math.hypot(racked.x - lockout.x, racked.y - lockout.y)).toBeGreaterThan(10);
+  });
+
+  it('holds the pelvis at one canvas point across each dissolve edge, walker to presser and back', () => {
+    let checked = 0;
+    for (const [from, to] of MEMBER_MOTION_DISSOLVE_EDGES) {
+      const outgoing = last(from);
+      const incoming = first(to);
+      expect(new Set([outgoing.puppet, incoming.puppet]), `${from} → ${to}`).toEqual(new Set(['walker', 'presser']));
+      const gap = Math.hypot(outgoing.root.x - incoming.root.x, outgoing.root.y - incoming.root.y);
+      expect(gap, `${from} → ${to}: pelvis gap ${gap.toFixed(2)} px`).toBeLessThanOrEqual(EMPIRE_TUNING.FLOOR_MEMBER_MOTION_ROOT_TOLERANCE_PX);
+      // Measured 0.11 px after the round-2 posing; the solve puts the lying
+      // walker's hips within a pixel of the presser painting's own pelvis.
+      expect(gap).toBeLessThan(1);
+      checked += 1;
+    }
+    expect(checked).toBe(2);
+  });
+
+  it('poses the lying walker on the presser’s body line: torso rising toward a head on the left, hands up at the bar', () => {
+    const lying = last('bench-setup');
+    expect(first('bench-finish').angles).toEqual(lying.angles);
+    // The presser's pelvis → neck line is about 248°; a flat side-view back would be 270°.
+    expect(lying.angles.torso).toBeGreaterThan(240);
+    expect(lying.angles.torso).toBeLessThan(256);
+    const crown = framePoint(lying, 'head', [128, 9]);
+    expect(crown.x).toBeLessThan(lying.root.x - 60);
+    expect(crown.y).toBeLessThan(lying.root.y);
+    const neck = framePoint(lying, 'torso', [124, 44]);
+    const nearHand = framePoint(lying, 'nearForearm', [170, 126]);
+    expect(nearHand.y).toBeLessThan(neck.y - 40);
+    // Knees up, feet under the pelvis: the near ankle within 20 px of the hips in x.
+    const ankle = framePoint(lying, 'nearShin', [148, 212]);
+    expect(Math.abs(ankle.x - lying.root.x)).toBeLessThan(20);
+  });
+
+  it('measured the dissolve overlap at bake time above the registered floor, both edges, and wrote it beside the sheets', () => {
+    const file = path.join(SHEET_DIR, 'member-motion-measurements.json');
+    expect(existsSync(file), file).toBe(true);
+    const onDisk = JSON.parse(readFileSync(file, 'utf8')) as {
+      readonly dissolve: Record<string, { readonly iou: number; readonly iouWithoutBar: number; readonly rootGapPx: number; readonly union: number }>;
+    };
+    const keys = Object.keys(onDisk.dissolve).sort();
+    expect(keys).toEqual(MEMBER_MOTION_DISSOLVE_EDGES.map(([a, b]) => `${a}>${b}`).sort());
+    for (const key of keys) {
+      const edge = onDisk.dissolve[key];
+      if (edge === undefined) throw new Error(key);
+      expect(edge.iou, key).toBeGreaterThanOrEqual(EMPIRE_TUNING.FLOOR_MEMBER_MOTION_DISSOLVE_IOU_MIN);
+      expect(edge.iouWithoutBar, key).toBeGreaterThanOrEqual(edge.iou);
+      expect(edge.union, key).toBeGreaterThan(10000);
+      expect(edge.rootGapPx, key).toBeLessThanOrEqual(EMPIRE_TUNING.FLOOR_MEMBER_MOTION_ROOT_TOLERANCE_PX);
+    }
+    // Round 1 measured 0.189 on this pair; a regression to that shape is red.
+    expect(Math.min(...keys.map((key) => onDisk.dissolve[key]?.iou ?? 0))).toBeGreaterThan(0.25);
+  });
+
+  it('spreads the hips’ travel to the bench over the seated, lean-back and lying frames in near-equal thirds, monotone', () => {
+    const setup = CLIPS['bench-setup'].frames.map((frame) => frame.root.x);
+    const finish = CLIPS['bench-finish'].frames.map((frame) => frame.root.x);
+    expect(setup.length).toBe(5);
+    // Frames 1 → 4: step-sink, seated, lean-back, lying.
+    const at = (i: number): number => {
+      const x = setup[i];
+      if (x === undefined) throw new Error(`no frame ${i}`);
+      return x;
+    };
+    const moves = [at(2) - at(1), at(3) - at(2), at(4) - at(3)];
+    const total = at(4) - at(1);
+    expect(total).toBeGreaterThan(50);
+    for (const move of moves) {
+      expect(move).toBeGreaterThan(0);
+      expect(move).toBeLessThanOrEqual(total / 3 + EMPIRE_TUNING.FLOOR_MEMBER_MOTION_SCOOT_SLACK_PX);
+    }
+    // Round 1: 53.4 then 46.0 over two frames after a 22.5 px sit-back. Now
+    // three moves near 21 px each; the largest is pinned so a regression to a
+    // two-frame scoot is red rather than merely over the slack.
+    expect(Math.max(...moves)).toBeLessThan(24);
+    // The finish is the setup reversed, frame for frame.
+    expect(finish).toEqual([...setup].reverse());
+    // The lying hips are the presser's pelvis; the stand is on the centre line.
+    expect(setup[4]).toBe(PUPPETS.presser.rootPivot[0]);
+    expect(setup[0]).toBe(MEMBER_MOTION_CANVAS_PX / 2);
+  });
+
+  it('plants a foot in every bench frame — the far foot at the stand spot, then the near foot at the seat spot — each on the ground line', () => {
+    const planted = (clip: MemberMotionClip): (string | null)[] => CLIPS[clip].frames.map((frame) => frame.plantedFoot);
+    expect(planted('bench-setup')).toEqual(['farFoot', 'farFoot', 'nearFoot', 'nearFoot', 'nearFoot']);
+    expect(planted('bench-finish')).toEqual(['nearFoot', 'nearFoot', 'nearFoot', 'farFoot', 'farFoot']);
+    for (const clip of ['bench-setup', 'bench-finish'] as const) {
+      const runs = new Map<string, number[]>();
+      for (const frame of CLIPS[clip].frames) {
+        if (frame.plantedFoot === null) throw new Error(`${clip}#${frame.index} plants nothing`);
+        expect(lowestSoleY(frame, frame.plantedFoot), `${clip}#${frame.index}`).toBeCloseTo(groundLineY(), 6);
+        const x = plantedWorldX(frame);
+        if (x === null) throw new Error('no sole');
+        runs.set(frame.plantedFoot, [...(runs.get(frame.plantedFoot) ?? []), x]);
+      }
+      for (const [foot, xs] of runs) {
+        expect(Math.max(...xs) - Math.min(...xs), `${clip} ${foot}`).toBeLessThanOrEqual(EMPIRE_TUNING.FLOOR_MEMBER_MOTION_FOOT_DRIFT_TOLERANCE_PX);
+      }
+      // The seat spot is ahead of the stand spot: the near foot steps forward to the bench.
+      const stand = runs.get('farFoot') ?? [];
+      const seat = runs.get('nearFoot') ?? [];
+      expect(Math.min(...seat)).toBeGreaterThan(Math.max(...stand) + 30);
+    }
+  });
+
+  it('states the one slide the sit still has: the far foot closes up from the stand spot to the seat spot between frames 1 and 2', () => {
+    const setup = CLIPS['bench-setup'].frames;
+    const farBall = (frame: RigFrame): number => {
+      const foot = PUPPETS.walker.parts.find((p) => p.name === 'farFoot');
+      if (foot?.sole === undefined) throw new Error('no far foot');
+      return framePoint(frame, 'farFoot', foot.sole.ball).x;
+    };
+    const stepSink = setup[1];
+    const seated = setup[2];
+    if (stepSink === undefined || seated === undefined) throw new Error('no frames');
+    const slide = farBall(seated) - farBall(stepSink);
+    // Measured 45 px; recorded as a residual, bounded so it cannot grow into a lunge.
+    expect(slide).toBeGreaterThan(30);
+    expect(slide).toBeLessThan(60);
   });
 });
 
@@ -472,7 +650,7 @@ describe('memberRig: the baked artefacts on disk are this rig’s', () => {
         strips += 1;
       }
     }
-    expect(strips).toBe(8);
+    expect(strips).toBe(10);
   });
 
   it('wrote metadata that equals memberRigMetadata() today, so a stale bake is red rather than silent', () => {
@@ -488,8 +666,37 @@ describe('memberRig: the baked artefacts on disk are this rig’s', () => {
     expect(meta.strideTiles).toBeCloseTo((meta.stridePx * EMPIRE_TUNING.FLOOR_MEMBER_DRAW_SCALE_TILES) / MEMBER_MOTION_CANVAS_PX, 9);
     expect(meta.strideTiles).toBeGreaterThan(1.09);
     expect(meta.strideTiles).toBeLessThan(1.11);
-    expect(meta.clips.walk.length).toBe(16);
-    expect(meta.clips['bench-press'].every((frame) => frame.barCentre !== null)).toBe(true);
-    expect(meta.clips.walk.every((frame) => frame.barCentre === null && frame.plantedSole !== null)).toBe(true);
+    expect(meta.clips.walk.frames.length).toBe(16);
+    expect(meta.clips.walk.cycleAdvancePx).toBeCloseTo(meta.stridePx, 9);
+    expect(meta.clips['bench-press'].frames.every((frame) => frame.barCentre !== null)).toBe(true);
+    expect(meta.clips.walk.frames.every((frame) => frame.barCentre === null && frame.plantedSole !== null)).toBe(true);
+    for (const clip of MEMBER_MOTION_CLIPS) {
+      expect(meta.clips[clip].cycleAdvancePx, clip).toBe(CLIPS[clip].cycleAdvancePx);
+      meta.clips[clip].frames.forEach((frame, i) => expect(frame.root, `${clip}#${i}`).toEqual(CLIPS[clip].frames[i]?.root));
+    }
+  });
+
+  it('measured the idle breath legible at phone size: at least the registered fraction of a front-row body’s pixels move', () => {
+    const file = path.join(SHEET_DIR, 'member-motion-measurements.json');
+    const onDisk = JSON.parse(readFileSync(file, 'utf8')) as {
+      readonly phoneIdle: {
+        readonly bodyPx: number;
+        readonly restFrame: number;
+        readonly peakFrame: number;
+        readonly bodyPixels: number;
+        readonly changedPixels: number;
+        readonly fraction: number;
+        readonly waitFraction: number;
+      };
+    };
+    expect(onDisk.phoneIdle.bodyPx).toBe(EMPIRE_TUNING.FLOOR_MEMBER_MOTION_PHONE_BODY_PX);
+    expect(onDisk.phoneIdle.restFrame).toBe(0);
+    expect(onDisk.phoneIdle.peakFrame).toBe(6);
+    // Non-vacuity: a body of hundreds of pixels at 74 px tall, not an empty mask.
+    expect(onDisk.phoneIdle.bodyPixels).toBeGreaterThan(500);
+    expect(onDisk.phoneIdle.fraction).toBeGreaterThanOrEqual(EMPIRE_TUNING.FLOOR_MEMBER_MOTION_IDLE_BREATH_VISIBLE_FRACTION);
+    expect(onDisk.phoneIdle.waitFraction).toBeGreaterThanOrEqual(EMPIRE_TUNING.FLOOR_MEMBER_MOTION_IDLE_BREATH_VISIBLE_FRACTION);
+    // Round 1 measured 0 of 739: frames 0 and 6 were the same pose.
+    expect(onDisk.phoneIdle.changedPixels).toBeGreaterThan(0);
   });
 });

@@ -81,19 +81,41 @@ export interface PuppetPart {
   readonly fills?: readonly PuppetFill[];
 }
 
+/**
+ * A garment recolour by QUANTILE MATCHING (art round 2): every pixel of the
+ * target region is ranked by luminance among the region's pixels and given
+ * the colour at the same rank in the reference garment's pixels. The
+ * result carries the reference cloth's own colours AND its own contrast
+ * range — the darkest fold of the tank becomes the darkest fold of the tee,
+ * its median its median — with no authored shadow / lit pair and no gamma.
+ * Round 1 remapped the tank's luminance through a gamma onto two typed
+ * colours and it read as flat cream with an orange rim; the measured tee
+ * is (228, 211, 174) at its tenth percentile and (246, 221, 180) at its
+ * median, which the bake now reads off the painting rather than trusting.
+ */
 export interface PuppetRecolour {
-  /** Region of the source, in source pixels, whose dark pixels are remapped. */
+  /** Region of the source, in source pixels, to recolour: the garment, cut as tight as the painting allows. */
   readonly polygon: PuppetPolygon;
-  /** Luminance (mean of RGB) below which a pixel in the region is fully remapped. */
-  readonly darkMax: number;
-  /** Luminance width above `darkMax` over which the remap fades out, so the tank's warm edge highlight blends instead of outlining. */
-  readonly softBand: number;
-  /** Exponent applied to luminance / darkMax before mixing, lifting compressed shadow. */
-  readonly gamma: number;
-  /** RGB at the dark end of the remap. */
-  readonly shadow: readonly [number, number, number];
-  /** RGB at the lit end of the remap. */
-  readonly lit: readonly [number, number, number];
+  /**
+   * Pixels inside the polygon that are skin rather than cloth are left
+   * alone: warm (red − blue at least `minChroma`) AND lit (luminance at
+   * least `minLuminance`). The garment's own warm rim light is darker than
+   * this and is remapped as its brightest cloth, which is what it is.
+   */
+  readonly skin: { readonly minChroma: number; readonly minLuminance: number };
+  /** The garment whose colours are borrowed. */
+  readonly reference: {
+    readonly source: PuppetSource;
+    /** Regions of the reference painting, in its source pixels, that hold the garment. Union. */
+    readonly polygons: readonly PuppetPolygon[];
+    /**
+     * Cloth classifier inside those regions: blue at least `minBlueOverRed`
+     * of red (skin is far warmer) and luminance at least `minLuminance`
+     * (the joggers' waistband is darker). Only pixels passing it are the
+     * reference distribution.
+     */
+    readonly cloth: { readonly minBlueOverRed: number; readonly minLuminance: number };
+  };
 }
 
 export interface PuppetIkChain {
@@ -453,14 +475,27 @@ export const PRESSER: Puppet = Object.freeze<Puppet>({
       tip: NEAR_GRIP,
     },
   ],
+  // The tank, read off a luminance / chroma class map of the painting at
+  // 1 px: the near strap runs diagonally over the near shoulder from
+  // (92, 100) to (101, 108); the far strap's cloth sits at rows 105–108
+  // between x 120 and 140, which round 1's polygon cut off and left as a
+  // black wedge; the hem against the black shorts is still an authored
+  // guess on a painting where both garments are black.
   recolour: {
     polygon: [
-      [92, 110],
-      [100, 102],
-      [118, 104],
-      [128, 110],
+      [92, 99],
+      [97, 99],
+      [97, 103],
+      [102, 107],
+      [104, 108],
+      [106, 103],
+      [112, 102],
+      [114, 108],
+      [122, 110],
+      [128, 105],
       [140, 104],
-      [154, 106],
+      [150, 103],
+      [158, 104],
       [178, 118],
       [190, 128],
       [182, 140],
@@ -468,13 +503,38 @@ export const PRESSER: Puppet = Object.freeze<Puppet>({
       [142, 150],
       [120, 152],
       [98, 146],
-      [90, 130],
+      [92, 132],
+      [96, 112],
+      [92, 106],
     ],
-    darkMax: 100,
-    softBand: 45,
-    gamma: 0.45,
-    shadow: [150, 118, 90],
-    lit: [245, 222, 182],
+    skin: { minChroma: 60, minLuminance: 120 },
+    reference: {
+      source: 'member-walk-a-right',
+      // The tee: the torso below the neck and above the waistband, and the
+      // near sleeve.
+      polygons: [
+        [
+          [92, 48],
+          [150, 48],
+          [152, 58],
+          [143, 62],
+          [141, 100],
+          [146, 112],
+          [100, 112],
+          [96, 100],
+          [88, 100],
+          [86, 60],
+        ],
+        [
+          [134, 50],
+          [156, 54],
+          [160, 76],
+          [140, 76],
+          [136, 66],
+        ],
+      ],
+      cloth: { minBlueOverRed: 0.62, minLuminance: 60 },
+    },
   },
   ik: [
     { upper: 'nearUpperArm', fore: 'nearForearm', target: { part: 'bar', point: NEAR_GRIP }, bend: -1 },
@@ -594,8 +654,30 @@ function otherSide(angles: Readonly<Record<string, number>>): Readonly<Record<st
   return out;
 }
 
-/** A stand: feet apart by ±stance, arms hanging, torso upright, plus a lean and a breath. */
-function stand(stance: number, lean: number, breath: number): Readonly<Record<string, number>> {
+/**
+ * The amplitudes of one full inhale, degrees: the torso pitching back, the
+ * chin lifting on top of that, the upper arms lifting away from the body.
+ * All three are knobs (`FLOOR_MEMBER_MOTION_BREATH_*`); this file authors
+ * where in the cycle they peak.
+ */
+export interface PuppetBreath {
+  readonly torso: number;
+  readonly nod: number;
+  readonly shoulder: number;
+}
+
+const NO_BREATH: PuppetBreath = { torso: 0, nod: 0, shoulder: 0 };
+
+/**
+ * A stand: feet apart by ±stance, arms hanging, torso upright, plus a lean
+ * and `inhale` (0..1) of a breath. The head is a child of the torso but its
+ * angle is absolute, so it is given the torso's pitch AND the nod: without
+ * the pitch the head would stay level while the chest rose and read as a
+ * counter-nod.
+ */
+function stand(stance: number, lean: number, breath: PuppetBreath, inhale: number): Readonly<Record<string, number>> {
+  const pitch = breath.torso * inhale;
+  const shoulder = breath.shoulder * inhale;
   return {
     nearThigh: stance,
     nearShin: stance,
@@ -603,22 +685,50 @@ function stand(stance: number, lean: number, breath: number): Readonly<Record<st
     farThigh: -stance,
     farShin: -stance,
     farFoot: FOOT_FLAT,
-    nearUpperArm: 4 - breath,
-    nearForearm: 12,
-    farUpperArm: -6 - breath,
-    farForearm: 2,
-    torso: UP + lean + breath,
-    head: UP + lean - 2,
+    nearUpperArm: 4 - shoulder,
+    nearForearm: 12 - shoulder,
+    farUpperArm: -6 - shoulder,
+    farForearm: 2 - shoulder,
+    torso: UP + lean + pitch,
+    head: UP + lean - 2 + pitch + breath.nod * inhale,
   };
 }
 
-/** Half way down to the seat: knees bending, torso leaning forward for balance, arms out. */
-const HALF_SIT: Readonly<Record<string, number>> = {
-  nearThigh: 50,
-  nearShin: -10,
-  nearFoot: FOOT_FLAT,
-  farThigh: 46,
-  farShin: -14,
+/**
+ * THE BENCH, art round 2. Five walker poses put a standing man on the bench
+ * lying where the presser painting's pelvis is, (180, 152), with every
+ * frame's feet planted:
+ *
+ *   0 stand     both feet at the stand spot (the idle's), root on the centre line
+ *   1 step-sink far foot planted at the stand spot, the near foot stepping
+ *               toward the bench edge, knees bending, hips sinking back a
+ *               little over the far foot
+ *   2 seated    both feet at the seat spot under the bench edge, the near
+ *               foot planted; hips a third of the way to the presser's
+ *   3 lean-back torso half way down, knees rising, hips two thirds of the way
+ *   4 lying     the presser's body line in side view — head to the left and
+ *               up, torso rising toward the head, knees up with the feet
+ *               under the pelvis, arms reaching up to the racked bar
+ *
+ * The hips travel from the step-sink to the lying pose in three near-equal
+ * moves (`memberRig.test.ts` pins each at no more than a third plus
+ * `FLOOR_MEMBER_MOTION_SCOOT_SLACK_PX`), which replaces round 1's sit-back
+ * then 100 px scoot. The seated and lean-back roots are SOLVED from the
+ * planted near foot, so the thirds are authored through the thigh and shin
+ * angles below rather than typed as roots. Round 1's lying pose was a flat
+ * side-view man (torso 270°, head far left, arms folded); this one is posed
+ * to the PRESSER's silhouette so the dissolve between the two paintings
+ * overlaps as far as two drawings allow — the bake measures that as
+ * intersection over union. The far foot closes up from the stand spot to the
+ * seat spot between frames 1 and 2, in the air: a two-foot drawing cannot
+ * step twice in five frames, and that is the one slide the sit still has.
+ */
+const STEP_SINK: Readonly<Record<string, number>> = {
+  nearThigh: 45,
+  nearShin: 10,
+  nearFoot: FOOT_FLAT + 12,
+  farThigh: 30,
+  farShin: -24,
   farFoot: FOOT_FLAT,
   nearUpperArm: 30,
   nearForearm: 50,
@@ -628,65 +738,70 @@ const HALF_SIT: Readonly<Record<string, number>> = {
   head: UP - 8,
 };
 
-/** Sitting on the bench edge: thighs forward and level, shins down, feet flat. */
+/** Sitting on the bench edge: thighs a little above level, shins near vertical, hands on the thighs. */
 const SEATED: Readonly<Record<string, number>> = {
-  nearThigh: 88,
-  nearShin: 4,
+  nearThigh: 55,
+  nearShin: -12,
   nearFoot: FOOT_FLAT,
-  farThigh: 84,
-  farShin: 0,
+  farThigh: 57,
+  farShin: -14,
   farFoot: FOOT_FLAT,
-  nearUpperArm: 40,
-  nearForearm: 70,
-  farUpperArm: 36,
-  farForearm: 66,
+  nearUpperArm: 60,
+  nearForearm: 90,
+  farUpperArm: 54,
+  farForearm: 84,
   torso: UP - 6,
   head: UP - 4,
 };
 
-/** Leaning back half way onto the pad, arms folding toward the chest. */
+/** Leaning back half way onto the pad, knees rising, arms coming up toward the bar. */
 const LEAN_BACK: Readonly<Record<string, number>> = {
-  nearThigh: 84,
-  nearShin: 4,
+  nearThigh: 40,
+  nearShin: -30,
   nearFoot: FOOT_FLAT,
-  farThigh: 80,
-  farShin: 0,
+  farThigh: 44,
+  farShin: -28,
   farFoot: FOOT_FLAT,
-  nearUpperArm: 70,
-  nearForearm: 130,
-  farUpperArm: 56,
-  farForearm: 120,
-  torso: 226,
-  head: 222,
+  nearUpperArm: 140,
+  nearForearm: 170,
+  farUpperArm: 130,
+  farForearm: 160,
+  torso: 215,
+  head: 210,
 };
 
-/** Lying flat, head to the left, arms folded on the chest, knees up with feet down. */
+/**
+ * Lying on the presser's body line: torso rising toward the head at the
+ * left, knees up with the feet under the pelvis, both arms up to the racked
+ * bar's grips. The presser's own line, read off its painting: pelvis
+ * (180, 152) to the neck (115, 110) is about 248°; its near thigh runs to a
+ * knee at about (205, 185) and its shin back down to a foot at (172, 240).
+ */
 const LYING: Readonly<Record<string, number>> = {
-  nearThigh: 66,
-  nearShin: 2,
+  nearThigh: 23,
+  nearShin: -42,
   nearFoot: FOOT_FLAT,
-  farThigh: 62,
-  farShin: -2,
+  farThigh: 66,
+  farShin: -16,
   farFoot: FOOT_FLAT,
-  nearUpperArm: 100,
-  nearForearm: 200,
-  farUpperArm: 74,
-  farForearm: 80,
-  torso: BACK,
-  head: BACK - 4,
+  nearUpperArm: 150,
+  nearForearm: 210,
+  farUpperArm: 165,
+  farForearm: 185,
+  torso: 248,
+  head: 240,
 };
 
 /**
  * Roots, canvas px. A standing clip's root sits on the canvas centre line
  * with y solved from the planted foot (the 0 is never drawn). The bench
- * clips are world-frame: the sit is solved from the planted feet, then
- * the lie-back scoots the hips up and back onto the pad to meet the
- * presser painting's own pelvis at (180, 152), so the dissolve between the
- * two bodies is a short one at the same place rather than a jump.
+ * clips are world-frame: the stand is anchored on the centre line, the
+ * lying pose on the presser painting's own pelvis (180, 152), and every
+ * frame between is solved from its planted foot. Only the anchors' x is
+ * read; y is always solved.
  */
 const STAND_ROOT: PuppetPointTuple = [CANVAS_CENTRE_X, 0];
-const LEAN_BACK_ROOT: PuppetPointTuple = [134, 170];
-const LYING_ROOT: PuppetPointTuple = [180, 155];
+const LYING_ROOT: PuppetPointTuple = [180, 152];
 
 const PRESSER_ANGLES: Readonly<Record<string, number>> = {};
 /** The presser's root is the painting's own pelvis: the body block never moves. */
@@ -734,15 +849,21 @@ export const WALK_SEGMENT: PuppetSegment = {
 };
 
 /**
- * The idle and wait breathe on the same shape: a breath is the torso
- * pitching back and the shoulders lifting by `breath` degrees, peaking a
- * quarter and three quarters through; the weight shift is a lean of
- * ±`sway` degrees over the cycle. The amplitudes are knobs the rig passes
- * in (`FLOOR_MEMBER_MOTION_BREATH_DEGREES`, `FLOOR_MEMBER_WAIT_SWAY_DEGREES`
- * and the idle fraction), so this file authors the SHAPE and the tuning
- * file the amount.
+ * The idle and wait breathe on the same shape: ONE breath per cycle — the
+ * torso pitching back, the chin lifting and the shoulders rising by the
+ * `breath` amplitudes, from rest at the start to the full inhale half way
+ * round and back — and a weight shift of ±`sway` degrees of lean, a full
+ * sine over the same cycle (peaking a quarter and three quarters through).
+ * The amplitudes are knobs the rig passes in (`FLOOR_MEMBER_MOTION_BREATH_*`,
+ * `FLOOR_MEMBER_WAIT_SWAY_DEGREES` and the idle fraction), so this file
+ * authors the SHAPE and the tuning file the amount.
+ *
+ * Round 1 peaked the breath a quarter AND three quarters through, which made
+ * frames 0 and 6 of a twelve-frame idle byte-identical — a clip period
+ * `FLOOR_MEMBER_IDLE_BREATH_PERIOD_MS` calls "one breath" held two. One
+ * breath per cycle is what that knob's own comment says.
  */
-export function standingSegment(stance: number, sway: number, breath: number, frames: number): PuppetSegment {
+export function standingSegment(stance: number, sway: number, breath: PuppetBreath, frames: number): PuppetSegment {
   return {
     puppet: 'walker',
     frames: [0, frames],
@@ -750,16 +871,21 @@ export function standingSegment(stance: number, sway: number, breath: number, fr
     mirrorSecondHalf: false,
     frame: 'body',
     keys: [
-      walkerKey(0, 'in-out', stand(stance, 0, 0), STAND_ROOT),
-      walkerKey(0.25, 'in-out', stand(stance, sway, breath), STAND_ROOT),
-      walkerKey(0.5, 'in-out', stand(stance, 0, 0), STAND_ROOT),
-      walkerKey(0.75, 'in-out', stand(stance, -sway, breath), STAND_ROOT),
+      walkerKey(0, 'in-out', stand(stance, 0, breath, 0), STAND_ROOT),
+      walkerKey(0.25, 'in-out', stand(stance, sway, breath, 1 / 2), STAND_ROOT),
+      walkerKey(0.5, 'in-out', stand(stance, 0, breath, 1), STAND_ROOT),
+      walkerKey(0.75, 'in-out', stand(stance, -sway, breath, 1 / 2), STAND_ROOT),
     ],
     plant: { runs: [{ fromFrame: 0, toFrame: frames, foot: 'nearFoot', anchorFrame: 0 }], retime: false },
   };
 }
 
-/** The last step settling to feet together: from the contact pose to the stand. */
+/**
+ * The last step settling to feet together: from the contact pose to the
+ * stand. Retimed like the walk (art round 2): the sample times are solved
+ * so the planted near foot retreats by the same amount every frame, and the
+ * runtime drives the clip by distance over that total.
+ */
 export function walkToWaitSegment(stance: number, frames: number): PuppetSegment {
   return {
     puppet: 'walker',
@@ -770,16 +896,16 @@ export function walkToWaitSegment(stance: number, frames: number): PuppetSegment
     keys: [
       walkerKey(0, 'out', GAIT.contact, STAND_ROOT),
       walkerKey(0.5, 'out', GAIT.down, STAND_ROOT),
-      walkerKey(1, 'out', stand(stance, 0, 0), STAND_ROOT),
+      walkerKey(1, 'out', stand(stance, 0, NO_BREATH, 0), STAND_ROOT),
     ],
-    plant: { runs: [{ fromFrame: 0, toFrame: frames, foot: 'nearFoot', anchorFrame: 0 }], retime: false },
+    plant: { runs: [{ fromFrame: 0, toFrame: frames, foot: 'nearFoot', anchorFrame: 0 }], retime: true },
   };
 }
 
 /**
  * The first step out of a stand: the far foot stays planted while the near
  * leg swings forward through the OTHER step's up pose (near leg forward,
- * far leg pushing) to the contact pose.
+ * far leg pushing) to the contact pose. Retimed like the walk.
  */
 export function waitToWalkSegment(stance: number, frames: number): PuppetSegment {
   return {
@@ -789,86 +915,99 @@ export function waitToWalkSegment(stance: number, frames: number): PuppetSegment
     mirrorSecondHalf: false,
     frame: 'body',
     keys: [
-      walkerKey(0, 'in', stand(stance, 0, 0), STAND_ROOT),
+      walkerKey(0, 'in', stand(stance, 0, NO_BREATH, 0), STAND_ROOT),
       walkerKey(0.5, 'in', otherSide(GAIT.up), STAND_ROOT),
       walkerKey(1, 'in', GAIT.contact, STAND_ROOT),
     ],
-    plant: { runs: [{ fromFrame: 0, toFrame: frames, foot: 'farFoot', anchorFrame: 0 }], retime: false },
+    plant: { runs: [{ fromFrame: 0, toFrame: frames, foot: 'farFoot', anchorFrame: 0 }], retime: true },
   };
 }
 
-/** How many frames at the start of the setup's sit (and the end of the finish's) have both feet on the floor. */
-const SIT_PLANTED_FRAMES = 3;
-const SIT_FRAMES = 5;
+/** The walker's five bench keys, stand → lying, at equal spacing. */
+const BENCH_WALKER_KEYS = (stance: number): readonly PuppetKey[] => [
+  walkerKey(0, 'in-out', stand(stance, 0, NO_BREATH, 0), STAND_ROOT),
+  walkerKey(0.25, 'in-out', STEP_SINK, STAND_ROOT),
+  walkerKey(0.5, 'in-out', SEATED, STAND_ROOT),
+  walkerKey(0.75, 'in-out', LEAN_BACK, STAND_ROOT),
+  walkerKey(1, 'in-out', LYING, LYING_ROOT),
+];
+
+/** The same keys played backwards: t → 1 − t. Every interval is `in-out`, which is its own reverse. */
+function reversedKeys(keys: readonly PuppetKey[]): readonly PuppetKey[] {
+  return [...keys].reverse().map((key) => ({ ...key, t: 1 - key.t }));
+}
+
+/** Frames of the setup during which the FAR foot holds the stand spot (the stand and the step-sink). */
+const BENCH_STAND_PLANTED_FRAMES = 2;
 
 /**
- * Sit, lie back, cut to the presser on the racked bar, unrack. Frames 0–4
- * are the walker — feet planted through the sit, then the scoot onto the
- * pad — and 5–7 the presser.
+ * Step to the bench, sit, lean back, lie down: the walker alone (art round
+ * 2 moved the presser's reach for the bar into `bench-mount`). Frames 0–1
+ * plant the far foot at the stand spot, anchored on the centred stand;
+ * frames 2–4 plant the near foot at the seat spot, anchored on the lying
+ * pose over the presser's pelvis, so the seated and lean-back roots are
+ * solved from where the lying feet are rather than authored.
  */
-export function benchSetupSegments(stance: number): readonly PuppetSegment[] {
-  return [
-    {
-      puppet: 'walker',
-      frames: [0, SIT_FRAMES],
-      cyclic: false,
-      mirrorSecondHalf: false,
-      frame: 'world',
-      keys: [
-        walkerKey(0, 'in-out', stand(stance, 0, 0), STAND_ROOT),
-        walkerKey(0.25, 'in-out', HALF_SIT, STAND_ROOT),
-        walkerKey(0.5, 'in-out', SEATED, STAND_ROOT),
-        walkerKey(0.75, 'in-out', LEAN_BACK, LEAN_BACK_ROOT),
-        walkerKey(1, 'in-out', LYING, LYING_ROOT),
+export function benchSetupSegment(stance: number): PuppetSegment {
+  const frames = EMPIRE_TUNING.FLOOR_MEMBER_MOTION_FRAMES['bench-setup'];
+  return {
+    puppet: 'walker',
+    frames: [0, frames],
+    cyclic: false,
+    mirrorSecondHalf: false,
+    frame: 'world',
+    keys: BENCH_WALKER_KEYS(stance),
+    plant: {
+      runs: [
+        { fromFrame: 0, toFrame: BENCH_STAND_PLANTED_FRAMES, foot: 'farFoot', anchorFrame: 0 },
+        { fromFrame: BENCH_STAND_PLANTED_FRAMES, toFrame: frames, foot: 'nearFoot', anchorFrame: frames - 1 },
       ],
-      plant: { runs: [{ fromFrame: 0, toFrame: SIT_PLANTED_FRAMES, foot: 'nearFoot', anchorFrame: 0 }], retime: false },
+      retime: false,
     },
-    {
-      puppet: 'presser',
-      frames: [SIT_FRAMES, EMPIRE_TUNING.FLOOR_MEMBER_MOTION_FRAMES['bench-setup']],
-      cyclic: false,
-      mirrorSecondHalf: false,
-      frame: 'world',
-      keys: [presserKey(0, 'in-out', BAR_RACKED), presserKey(0.5, 'in-out', BAR_HALF_RACKED), presserKey(1, 'in-out', BAR_LOCKOUT)],
-      plant: null,
-    },
-  ];
+  };
 }
 
-/** Rerack, sit up, stand: the setup reversed, the stand anchored on the centre line so it meets the idle. */
-export function benchFinishSegments(stance: number): readonly PuppetSegment[] {
-  const total = EMPIRE_TUNING.FLOOR_MEMBER_MOTION_FRAMES['bench-finish'];
-  const presserFrames = total - SIT_FRAMES;
-  return [
-    {
-      puppet: 'presser',
-      frames: [0, presserFrames],
-      cyclic: false,
-      mirrorSecondHalf: false,
-      frame: 'world',
-      keys: [presserKey(0, 'in-out', BAR_LOCKOUT), presserKey(0.5, 'in-out', BAR_HALF_RACKED), presserKey(1, 'in-out', BAR_RACKED)],
-      plant: null,
-    },
-    {
-      puppet: 'walker',
-      frames: [presserFrames, total],
-      cyclic: false,
-      mirrorSecondHalf: false,
-      frame: 'world',
-      keys: [
-        walkerKey(0, 'in-out', LYING, LYING_ROOT),
-        walkerKey(0.25, 'in-out', LEAN_BACK, LEAN_BACK_ROOT),
-        walkerKey(0.5, 'in-out', SEATED, STAND_ROOT),
-        walkerKey(0.75, 'in-out', HALF_SIT, STAND_ROOT),
-        walkerKey(1, 'in-out', stand(stance, 0, 0), STAND_ROOT),
+/** Sit up, stand: the setup reversed, the stand anchored on the centre line so it meets the idle. */
+export function benchFinishSegment(stance: number): PuppetSegment {
+  const frames = EMPIRE_TUNING.FLOOR_MEMBER_MOTION_FRAMES['bench-finish'];
+  return {
+    puppet: 'walker',
+    frames: [0, frames],
+    cyclic: false,
+    mirrorSecondHalf: false,
+    frame: 'world',
+    keys: reversedKeys(BENCH_WALKER_KEYS(stance)),
+    plant: {
+      runs: [
+        { fromFrame: 0, toFrame: frames - BENCH_STAND_PLANTED_FRAMES, foot: 'nearFoot', anchorFrame: 0 },
+        { fromFrame: frames - BENCH_STAND_PLANTED_FRAMES, toFrame: frames, foot: 'farFoot', anchorFrame: frames - 1 },
       ],
-      plant: {
-        runs: [{ fromFrame: SIT_FRAMES - SIT_PLANTED_FRAMES, toFrame: SIT_FRAMES, foot: 'nearFoot', anchorFrame: SIT_FRAMES - 1 }],
-        retime: false,
-      },
+      retime: false,
     },
-  ];
+  };
 }
+
+/** The presser taking the racked bar to lockout: racked, half way, lockout. */
+export const BENCH_MOUNT_SEGMENT: PuppetSegment = {
+  puppet: 'presser',
+  frames: [0, EMPIRE_TUNING.FLOOR_MEMBER_MOTION_FRAMES['bench-mount']],
+  cyclic: false,
+  mirrorSecondHalf: false,
+  frame: 'world',
+  keys: [presserKey(0, 'in-out', BAR_RACKED), presserKey(0.5, 'in-out', BAR_HALF_RACKED), presserKey(1, 'in-out', BAR_LOCKOUT)],
+  plant: null,
+};
+
+/** The presser racking the bar: lockout, half way, racked — the mount reversed. */
+export const BENCH_DISMOUNT_SEGMENT: PuppetSegment = {
+  puppet: 'presser',
+  frames: [0, EMPIRE_TUNING.FLOOR_MEMBER_MOTION_FRAMES['bench-dismount']],
+  cyclic: false,
+  mirrorSecondHalf: false,
+  frame: 'world',
+  keys: reversedKeys(BENCH_MOUNT_SEGMENT.keys),
+  plant: null,
+};
 
 /** One press: lockout held, controlled descent, bottom held, drive. */
 export const BENCH_PRESS_SEGMENT: PuppetSegment = {
