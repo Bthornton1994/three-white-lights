@@ -600,22 +600,17 @@ export const SQUAT_VISUAL = Object.freeze({
  * because it is not a feel value a playtester turns with a stopwatch — it is a
  * bound on what the server will accept from a client.
  *
- * WHAT IT IS NOT: a solution to long-run progression pacing, and at the shipped
- * MAX value it is not even a brake. 6% per session sits ABOVE the largest jump
- * this loop can produce (the readiness nudge, `+5%` at `primed`), so it never
- * binds on an honest session and the compounding described in `session.ts`'s
- * header runs straight past it. It is a guard against a client reporting
- * nonsense, in the same spirit as `INJURY_MAX_CHANCE_PER_SESSION` being
- * currently slack.
+ * WHAT IT IS NOT: a solution to long-run progression pacing. 6% per session
+ * sits ABOVE `STIMULUS_LOAD_ADJUSTMENT_PERCENT_MAX` (3%) and above the old
+ * unearned primed tap (5%), so it never binds on an honest session. It is a
+ * guard against a client reporting nonsense, in the same spirit as
+ * `INJURY_MAX_CHANCE_PER_SESSION` being currently slack.
  *
  * DO NOT REPURPOSE EITHER END AS THE SESSION-OVER-SESSION PACING LEVER. Growth
- * ACROSS sessions still needs to be coupled to RPE/effort history rather than
- * paid flat for three self-reported taps, and that coupling is a recorded
- * dependency on the fatigue/progression module (GDD §3.4) — unrelated to the
- * range below, which is about ONE session's own execution, not the sequence of
- * sessions. Tightening MAX instead would put a pacing constant in the wrong
- * file, ahead of the thing it is meant to pace, for somebody else to unpick
- * later.
+ * ACROSS sessions is coupled to RPE/effort history in `fatigue.ts`
+ * (`stimulusLoadAdjustmentPercent`, GDD §3.4). The range below is about ONE
+ * session's own execution, not the sequence of sessions. Tightening MAX
+ * instead would put a pacing constant in the wrong file.
  *
  * MIN is Sprint 3's addition: `nextBestE1rm` scales the fraction it actually
  * grants, LINEARLY, between MIN (a set graded `executionQuality` 0 — the

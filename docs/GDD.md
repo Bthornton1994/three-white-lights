@@ -353,36 +353,39 @@ Fatigue operates on a **same-day / next-day horizon**, not multi-week arcs. Push
 too hard today → tomorrow's session starts harder. Multi-week arcs belong to
 Career mode.
 
-#### Required of this module: couple the nudge to training stimulus — RULED
+#### Required of this module: couple the nudge to training stimulus — RULED, and now built
 
-**This is a stated requirement for whoever builds fatigue/progression properly,
-not a suggestion.** It is recorded here because the daily loop was built first
-and cannot satisfy it alone.
+Session-over-session growth — the load "nudge" that decides how much heavier
+today's bar is than the e1RM it was prescribed from — **scales with RPE and
+effort history of this lift.** It is not a flat constant, and it is not a
+reward for opening the app and tapping *good / fresh / fired up*.
 
-Session-over-session growth — the readiness "nudge" that decides how much heavier
-today's bar is than the e1RM it was prescribed from — **must scale with RPE and
-effort history. It must not stay a flat constant.** Growth is earned by training
-stimulus; it is not a reward for opening the app and tapping *good / fresh /
-fired up*.
+`fatigue.ts`'s `stimulusLoadAdjustmentPercent` reads the hidden ledger for
+recent sessions of the prescribed lift and returns a percentage
+`session.ts` applies at `choose-rpe`. Empty or recovery history is 0, so a
+first session cannot mint a PR. Stimulus is successful prescribed volume
+(sets × reps actually completed as prescribed) times a saturating effort
+weight: RPE 6 is recovery and earns nothing; RPE 8, 9 and 10 of the same
+completed volume earn the same percent. Choosing a harder menu option is
+not a reward. A missed set does not count as completed work; a session of
+only to-failure reports earns 0. Other lifts do not feed it. Check-in taps
+still move windows and bar-speed cues; they do not move the bar.
 
-What the daily loop ships today, and why that is knowingly incomplete: the nudge
-is a flat percentage keyed only to the three check-in taps, which nothing
-verifies against the fatigue ledger. Measured over 30 sessions with every set hit
-exactly on target, a 200 kg e1RM becomes **200.00 kg** at neutral and **770.65 kg**
-at primed, with a PR reported on **30 of 30** sessions. The optimal play is
-therefore the lightest rung plus a primed tap — the easiest possible session
-paying the maximum reward.
+A completed 5×3 at RPE 8+ earns 2% for the next session of this lift
+(placeholder; playtesting owns the pace). The cap is 3%.
 
-**`e1rm.ts` is correct and is not the defect.** Its chart-cancellation property —
-a set hit exactly on target reports exactly the e1RM it was prescribed from — is
-the round-trip guarantee the whole domain layer rests on, and it must be left
-untouched. The gap is upstream of it: nothing yet decides how much stimulus
-*earns* a heavier prescription. Do not "fix" the curve by paying higher RPE rungs
-more; that is the two-parts-disagree failure CLAUDE.md's one-formula rule exists
-to prevent, and it is a separate open question below.
+**`e1rm.ts` is correct and is untouched.** Its chart-cancellation property —
+a set hit exactly on target reports exactly the e1RM it was prescribed from —
+is the round-trip guarantee the whole domain layer rests on. Do not "fix"
+the curve by paying higher RPE rungs more for the same relative performance
+today; that is the two-parts-disagree failure CLAUDE.md's one-formula rule
+exists to prevent. Higher rungs pay in difficulty, fatigue cost, injury
+exposure and whether the work completes — not in a larger next-session
+percent for the same successful volume.
 
-Until this module exists, the daily loop's growth curve is not a shipping
-progression model and must not be tuned as though it were.
+The check-in tap table (`READINESS_LOAD_ADJUSTMENT_PERCENT`) remains a
+readout of the three answers so a handed-in report can still name a percent.
+It is no longer the player path.
 
 ### 3.5 Injury Setbacks
 
@@ -5317,21 +5320,19 @@ for three entries; corrected here rather than left as decoration.)
       entry gate here would be inventing the calendar. Recorded rather than
       papered over.
 
-- [x] **Session-over-session growth is not coupled to training stimulus —
-      RULED, and deferred by decision rather than by oversight.** The readiness
-      nudge is a flat constant keyed only to the three check-in taps, so a primed
-      tap is free, unverified and strictly dominant: 200 kg → 770.65 kg over 30
-      sessions, a PR on 30 of 30. **`e1rm.ts` and its cancellation property are
-      correct and stay untouched — that is not the bug.** The gap is that nothing
-      yet decides how much stimulus *earns* a heavier prescription, and the fix
-      belongs to the fatigue/progression module, which does not exist yet.
-      Building a stopgap in the daily loop would be work thrown away plus a
-      constant someone later has to unpick, so it is deliberately **not** fixed
-      now. The requirement is written into **§3.4** as a stated condition on that
-      module: the nudge must scale with RPE and effort history. Until then the
-      loop's growth curve is not a shipping progression model and must not be
-      tuned as one. The tests that cover it pin **actual** behaviour with a
-      pointer to §3.4, so the gap is visible in the suite rather than implied.
+- [x] **Session-over-session growth is coupled to training stimulus —
+      RULED, and now built in `fatigue.ts`.** The player path applies
+      `stimulusLoadAdjustmentPercent` at `choose-rpe`: recent successful
+      prescribed volume on this lift, not three readiness taps, and not
+      a higher menu pick. Empty or recovery history is 0, so a first
+      session holds; a completed 5×3 at RPE 8+ earns a heavier bar the
+      next time this lift is trained; RPE 8, 9 and 10 of the same volume
+      earn the same percent; a miss does not count as completed work.
+      **`e1rm.ts` and its cancellation property stay untouched.** The old
+      primed-tap compounding (200 kg → 770.65 kg over 30 sessions, a PR
+      on 30 of 30) is still what `prescribeSession` does if handed a +5%
+      report; it is no longer what the session loop feeds it. Tests pin
+      both.
 
 - [ ] **The cut-in cap is first-come across time. The same-lift bomb-out case is
       now closed by a disqualifier; the cross-lift case is not.** §7.2 caps

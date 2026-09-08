@@ -2602,6 +2602,24 @@ Residuals, recorded rather than papered over:
 - ON DECK / YOUR OPENER chrome overlap is A1 residue.
 - A3–A7 not started. Physical glass remains A0-DEVICE-01.
 
+### FILED 2026-09-07: GDD §3.4 STIMULUS-COUPLED GROWTH (MECHANICS, NOT ART)
+
+Session A mechanics on `grok/session-a-iron-amber-training-art-01` at
+PR #48 (`20bda71d` contract freeze). Lift presentation, A0, A2 identity,
+and `src/empire/**` untouched.
+
+The daily loop's load nudge now scales with this lift's successful
+prescribed work, not with check-in taps and not with a harder RPE
+menu pick. `stimulusLoadAdjustmentPercent` in `fatigue.ts` reads the
+ledger (volume × saturating effort; RPE 8/9/10 of the same completed
+volume earn the same percent; misses do not count as completed work);
+`choose-rpe` in `session.ts` applies it. Check-in taps still move
+windows and bar-speed; they do not mint the bar. `e1rm.ts`
+cancellation is unchanged. Empty/recovery history is 0, so a first
+session holds.
+
+Do not merge PR #48. Presentation contract stays frozen.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a

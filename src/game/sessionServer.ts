@@ -178,7 +178,7 @@
 
 import { CAREER_TUNING, type CareerFederationId } from '../career/careerTuning';
 import { DOTS_TOTAL_UNIT } from './dots';
-import { estimateE1rm, tryEstimateE1rm } from './e1rm';
+import { estimateE1rm, tryEstimateE1rm, TO_FAILURE_RPE } from './e1rm';
 import {
   EMPTY_FATIGUE_STATE,
   LUCKIEST_ROLLS,
@@ -691,10 +691,22 @@ export function bestE1rmFromSets(
  * The reported sets, as the one `SessionRecord` `fatigue.ts` folds into the
  * ledger. GDD §3.2 is one session per day, so one record per day.
  *
- * `topRpe` is the hardest RPE reported, `workSets` the number of sets, and
- * `repsPerSet` the mean rounded up — `fatigue.ts` takes a rectangle, and
- * rounding the ragged real session UP is the direction that cannot understate
- * what it cost.
+ * The rectangle is SUCCESSFUL PRESCRIBED WORK, because the same row now
+ * feeds both hidden strain and the GDD §3.4 load nudge:
+ *
+ *   - `topRpe` is the hardest RPE among sets that made the prescribed
+ *     reps. A miss reports `TO_FAILURE_RPE` (10) for the e1RM chart;
+ *     counting that as the session's top RPE was paying failure as if
+ *     it were harder successful training.
+ *   - `workSets` / `repsPerSet` come from those completed sets only, so
+ *     a last-set miss keeps the earlier work and does not invent reps
+ *     for the miss. Rounding a ragged session UP used to be the strain-
+ *     conservative direction; it is also how a miss rounded into a
+ *     completed 5×3 @ RPE 10.
+ *   - A session of only to-failure reports (every set short of the
+ *     prescribed reps) still records as RPE 10 with the missed volume,
+ *     so strain still sees the grind. Stimulus then earns 0 — failing
+ *     RPE 10 cannot outgrow completing RPE 8.
  *
  * NO WEIGHT FIELD, which is `fatigue.ts`'s design and not an omission: strain is
  * a function of RPE, sets and reps, so a lifter whose e1RM has doubled and who
@@ -706,18 +718,26 @@ export function fatigueRecordFor(
   sets: readonly TrainingSetReport[],
 ): SessionRecord | null {
   if (sets.length === 0) return null;
+  const prescribedReps = SESSION_TUNING.REPS_PER_SET;
+  const completed: TrainingSetReport[] = [];
+  const missed: TrainingSetReport[] = [];
+  for (const set of sets) {
+    if (set.reps >= prescribedReps) completed.push(set);
+    else missed.push(set);
+  }
+  const source = completed.length > 0 ? completed : missed;
   let topRpe = Number.NEGATIVE_INFINITY;
   let totalReps = 0;
-  for (const set of sets) {
+  for (const set of source) {
     if (set.rpe > topRpe) topRpe = set.rpe;
     totalReps += set.reps;
   }
   return {
     day,
     lift,
-    topRpe,
-    workSets: sets.length,
-    repsPerSet: Math.ceil(totalReps / sets.length),
+    topRpe: completed.length > 0 ? topRpe : TO_FAILURE_RPE,
+    workSets: source.length,
+    repsPerSet: totalReps / source.length,
   };
 }
 

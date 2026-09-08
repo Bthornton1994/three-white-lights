@@ -41,7 +41,7 @@ import { receiveSnapshot } from './sessionClient';
 import { KILOGRAMS_PER_POUND } from './dots';
 import { RPE_LOADING_TUNING } from './rpe';
 import { LIFT_ORDER, type LiftKind } from './meet';
-import { SIM_LIFTS, UNLUCKIEST_ROLLS, LUCKIEST_ROLLS } from './fatigue';
+import { SIM_LIFTS, UNLUCKIEST_ROLLS, LUCKIEST_ROLLS, recordSession } from './fatigue';
 import {
   createSession,
   liftForDay,
@@ -138,6 +138,23 @@ function playAgainst(
         : stepSession(state, { kind: 'rep-resolved', outcome: 'good-lift', executionQuality: 1 });
   }
   return { state, lift };
+}
+
+function withEarnedWork(record: ServerRecord, lift: LiftKind, beforeDay: number): ServerRecord {
+  return {
+    ...record,
+    fatigue: recordSession(
+      record.fatigue,
+      {
+        day: beforeDay,
+        lift,
+        topRpe: 9,
+        workSets: SESSION_TUNING.WORK_SETS,
+        repsPerSet: SESSION_TUNING.REPS_PER_SET,
+      },
+      LUCKIEST_ROLLS,
+    ).state,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -861,18 +878,18 @@ describe('nextBestE1rm', () => {
   });
 
   it('the cap does not bind on anything this loop can produce, at full execution quality', () => {
-    // The largest honest jump is the readiness nudge at `primed`, +5%. If the
-    // cap ever starts biting on a real session the close-out would show a
-    // number the maths does not support, so this is a real check and not a
-    // restatement of the constant. `playAgainst` plays every rep at
-    // `executionQuality: 1`, so MAX is the fraction in play here, same as
-    // before this field existed.
-    const record = newServerRecord(SIGNUP_DAY);
-    const played = playAgainst(record, 0, PRIMED, 10);
+    // The largest honest jump is now the earned stimulus cap (4%), still
+    // below MAX (6%). If the per-session guard ever starts biting on a real
+    // session the close-out would show a number the maths does not support.
+    const record = withEarnedWork(newServerRecord(SIGNUP_DAY), liftForDay(0), -1);
+    const played = playAgainst(record, 0, NEUTRAL, 10);
     const closeOut = played.state.closeOut!;
     const held = record.bestE1rmKg[played.lift]!;
     expect(closeOut.sessionE1rmKg).not.toBeNull();
     expect(nextBestE1rm(held, estimate(closeOut.sessionE1rmKg!))).toBe(closeOut.sessionE1rmKg);
+    expect(
+      (closeOut.sessionE1rmKg! - held) / held,
+    ).toBeLessThan(SESSION_PROGRESSION_GUARD.MAX_E1RM_GAIN_FRACTION_PER_SESSION);
   });
 });
 
@@ -1099,18 +1116,68 @@ describe('applying a training session', () => {
 });
 
 describe('the ledger entry a session leaves', () => {
-  it('takes the hardest RPE and rounds the ragged session up to a rectangle', () => {
-    const record = fatigueRecordFor(4, 'squat', [
+  it('counts completed-as-prescribed work, not a miss as a harder RPE', () => {
+    const mixed = fatigueRecordFor(4, 'squat', [
       set('squat', 150, 3, 8),
       set('squat', 150, 2, 10),
       set('squat', 150, 3, 8),
     ]);
-    expect(record).toEqual({
+    expect(mixed).toEqual({
+      day: 4,
+      lift: 'squat',
+      topRpe: 8,
+      workSets: 2,
+      repsPerSet: 3,
+    });
+  });
+
+  it('keeps earlier work on a last-set miss and does not pay for the missed set', () => {
+    const lastMiss = fatigueRecordFor(4, 'squat', [
+      set('squat', 150, 3, 8),
+      set('squat', 150, 3, 8),
+      set('squat', 150, 3, 8),
+      set('squat', 150, 3, 8),
+      set('squat', 150, 1, 10),
+    ]);
+    expect(lastMiss).toEqual({
+      day: 4,
+      lift: 'squat',
+      topRpe: 8,
+      workSets: 4,
+      repsPerSet: 3,
+    });
+  });
+
+  it('records a to-failure-only session as RPE 10 with the missed volume', () => {
+    const failed = fatigueRecordFor(4, 'squat', [
+      set('squat', 150, 2, 10),
+      set('squat', 150, 2, 10),
+      set('squat', 150, 2, 10),
+      set('squat', 150, 2, 10),
+      set('squat', 150, 2, 10),
+    ]);
+    expect(failed).toEqual({
       day: 4,
       lift: 'squat',
       topRpe: 10,
-      workSets: 3,
-      // 8 reps over 3 sets rounds UP, so the ledger cannot understate the cost.
+      workSets: 5,
+      repsPerSet: 2,
+    });
+  });
+
+  it('counts a completed RPE 10 as prescribed work, not as a miss', () => {
+    const completedTen = fatigueRecordFor(4, 'squat', [
+      set('squat', 150, 3, 10),
+      set('squat', 150, 3, 10),
+      set('squat', 150, 3, 10),
+      set('squat', 150, 3, 10),
+      set('squat', 150, 3, 10),
+    ]);
+    expect(completedTen).toEqual({
+      day: 4,
+      lift: 'squat',
+      topRpe: 10,
+      workSets: 5,
       repsPerSet: 3,
     });
   });
@@ -1173,7 +1240,7 @@ describe('today, for the client to prescribe from', () => {
 
 describe('the whole round trip — client proposes, server publishes, client reads', () => {
   it('ends with a CONFIRMED e1RM and streak, and an unmoved Total', () => {
-    const record = newServerRecord(SIGNUP_DAY);
+    const record = withEarnedWork(newServerRecord(SIGNUP_DAY), liftForDay(0), -1);
     const seed = receiveProgressionSnapshot(snapshotWireFor(record, null));
     expect(seed.ok).toBe(true);
     if (!seed.ok) return;
@@ -1181,7 +1248,7 @@ describe('the whole round trip — client proposes, server publishes, client rea
     expect(seeded.ok).toBe(true);
     if (!seeded.ok) return;
 
-    const played = playAgainst(record, 0, PRIMED, 8);
+    const played = playAgainst(record, 0, NEUTRAL, 8);
     const closeOut = played.state.closeOut!;
     const proposal = sessionProposal(closeOut, WALL_CLOCK)!;
     const proposed = proposeChange(
@@ -1268,63 +1335,67 @@ describe('the whole round trip — client proposes, server publishes, client rea
     expect(trail).toHaveLength(10);
 
     // ------------------------------------------------------------------
-    // THE MAGNITUDE. Pinned as MEASURED CURRENT BEHAVIOUR, not as a target.
+    // THE MAGNITUDE. Player path: stimulus, not taps. GDD §3.4.
     // ------------------------------------------------------------------
-    // Days 0-4 are the neutral half: the load goes out through a chart cell and
-    // the estimate comes back through the same cell, so nothing moves. That is
-    // `e1rm.ts`'s cancellation working exactly as designed.
-    //
-    // Days 5-9 are the primed half, and every one of them is a PR — including
-    // days 8 and 9, which are the SECOND time this lifter trained that lift and
-    // are computed from the number the first one minted. That compounding is
-    // the known gap: the readiness nudge is a flat constant paid for three taps
-    // rather than something coupled to training stimulus, and coupling it is a
-    // recorded dependency on the fatigue/progression work (GDD §3.4). When it
-    // lands, these numbers are what has to change.
-    const neutralHalf = trail.slice(0, 5);
+    // The first time each lift is trained there is no history of that lift,
+    // so the earned percent is 0 and e1RM holds. Later sessions of the same
+    // lift can PR, but only from work already in the ledger — the primed
+    // taps on days 5-9 are not a free 5-for-5.
+    const seen = new Set<LiftKind>();
+    for (const step of trail) {
+      if (!seen.has(step.lift)) {
+        expect(step.isPr, `first ${step.lift} on day ${step.day}`).toBe(false);
+        expect(step.afterKg, `first ${step.lift}`).toBe(step.beforeKg);
+        seen.add(step.lift);
+      }
+    }
+    expect(seen.size).toBe(LIFT_ORDER.length);
+
     const primedHalf = trail.slice(5);
-    expect(neutralHalf.filter((step) => step.isPr)).toEqual([]);
-    for (const step of neutralHalf) {
-      expect(step.afterKg, `day ${step.day} ${step.lift}`).toBe(step.beforeKg);
-    }
-    expect(primedHalf.filter((step) => step.isPr)).toHaveLength(5);
+    expect(primedHalf.filter((step) => step.isPr).length).toBeLessThan(5);
 
-    // Hand-written per lift, from the seed magnitudes in
-    // `SESSION_TUNING.STARTING_E1RM.kilograms` (squat 180, bench 120,
-    // deadlift 220).
-    expect(primedHalf.map((step) => step.lift)).toEqual([
-      'deadlift',
-      'squat',
-      'bench',
-      'deadlift',
-      'squat',
-    ]);
-    expect(primedHalf[0]!.afterKg).toBeCloseTo(228.1134, 4); // 220 -> +3.7%
-    expect(primedHalf[1]!.afterKg).toBeCloseTo(188.172, 3); // 180 -> +4.5%
-    expect(primedHalf[2]!.afterKg).toBeCloseTo(124.5655, 4); // 120 -> +3.8%
-    // The compounding ones: each is the previous PR's number, nudged again.
-    expect(primedHalf[3]!.beforeKg).toBeCloseTo(228.1134, 4);
-    expect(primedHalf[3]!.afterKg).toBeCloseTo(238.2287, 4);
-    expect(primedHalf[4]!.beforeKg).toBeCloseTo(188.172, 3);
-    expect(primedHalf[4]!.afterKg).toBeCloseTo(195.2278, 4);
-
-    // Five primed sessions across three lifts, and every lift's published best
-    // is above where it started. Nothing here caps it: the one guard in the
-    // path is 6% per session against a 5% nudge.
-    expect(record.bestE1rmKg.squat).toBeCloseTo(195.2278, 4);
-    expect(record.bestE1rmKg.bench).toBeCloseTo(124.5655, 4);
-    expect(record.bestE1rmKg.deadlift).toBeCloseTo(238.2287, 4);
-    expect(record.bestE1rmKg.squat! / SESSION_TUNING.STARTING_E1RM.kilograms.squat).toBeCloseTo(1.0846, 4);
-    expect(
-      record.bestE1rmKg.deadlift! / SESSION_TUNING.STARTING_E1RM.kilograms.deadlift,
-    ).toBeCloseTo(1.0829, 4);
-    // Two sessions on one lift, eight percent. Written as an explicit bound so
-    // that a change which makes it worse fails here rather than passing.
-    for (const lift of LIFT_ORDER) {
-      const grown = record.bestE1rmKg[lift]! / SESSION_TUNING.STARTING_E1RM.kilograms[lift];
-      expect(grown, `${lift} grew`).toBeGreaterThan(1);
-      expect(grown, `${lift} grew`).toBeLessThan(1.09);
+    // Hard work on squat grows squat and leaves the others. Stimulus is
+    // present on the next session of this lift; snap-down can swallow a
+    // single step at some loads, so keep training until the number moves,
+    // bounded.
+    let squatDay = day;
+    while (liftForDay(squatDay) !== 'squat') squatDay += 1;
+    const firstHard = playAgainst(record, squatDay, NEUTRAL, 9);
+    const afterFirst = applyTrainingSession(
+      record,
+      squatDay,
+      sessionProposal(firstHard.state.closeOut!, WALL_CLOCK)!,
+      'p-hard-1',
+    );
+    expect(afterFirst.ok).toBe(true);
+    if (!afterFirst.ok) return;
+    record = afterFirst.value.record;
+    const beforeBlock = record.bestE1rmKg.squat;
+    const benchBefore = record.bestE1rmKg.bench;
+    let moved = false;
+    let lastKg = beforeBlock ?? 0;
+    for (let extra = 1; extra <= 6; extra += 1) {
+      const nextDay = squatDay + extra * SESSION_TUNING.LIFT_ROTATION.length;
+      const played = playAgainst(record, nextDay, NEUTRAL, 9);
+      expect(played.state.plan?.loadAdjustmentPercent).toBeGreaterThan(0);
+      const applied = applyTrainingSession(
+        record,
+        nextDay,
+        sessionProposal(played.state.closeOut!, WALL_CLOCK)!,
+        `p-hard-${extra + 1}`,
+      );
+      expect(applied.ok).toBe(true);
+      if (!applied.ok) return;
+      record = applied.value.record;
+      lastKg = applied.value.bestE1rmKg;
+      if (lastKg > (beforeBlock ?? 0)) {
+        moved = true;
+        break;
+      }
     }
+    expect(moved, 'earned stimulus eventually moves this lift’s e1RM').toBe(true);
+    expect(record.bestE1rmKg.bench).toBe(benchBefore);
+    expect(lastKg / SESSION_TUNING.STARTING_E1RM.kilograms.squat).toBeLessThan(1.2);
   });
 });
 
