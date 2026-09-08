@@ -173,17 +173,27 @@ if (CATCH_UP_RATE === null) {
   console.error('FLOOR_MEMBER_CATCH_UP_RATE not found in empireTuning.ts');
   process.exit(2);
 }
+const SPEED_JITTER_FRACTION = numberInSource(tuningSource, 'FLOOR_SIM_SPEED_JITTER_FRACTION');
+if (SPEED_JITTER_FRACTION === null) {
+  console.error('FLOOR_SIM_SPEED_JITTER_FRACTION not found in empireTuning.ts');
+  process.exit(2);
+}
 /**
- * The ceiling on ordinary movement, in tiles per 100 ms: the sim's own step
- * rate, times the renderer's bounded catch-up, times a tolerance for the
- * sampling grain (a ~100 ms interval holds six or seven 16.7 ms frames, so
- * one interval can carry up to ~17% more playback than the next). The step
- * is measured on the longer axis of the feet's movement: the sim steps
- * between four-neighbour cells, so one step is one axis, and the projected
- * row height is a little under a tile width, so the axis read is the
- * larger of the two anyway.
+ * The ceiling on ordinary movement, in tiles per 100 ms: the sim's FASTEST
+ * seeded step rate — `speedOf` in floorSim.ts jitters each member's step by
+ * ±FLOOR_SIM_SPEED_JITTER_FRACTION, so the base step alone under-derives
+ * the ceiling by that fraction for half the roster (VL-2B: a member at
+ * +20% sat at 93% of the old ceiling before any sampling error) — times
+ * the renderer's bounded catch-up, times a tolerance for the sampling grain
+ * (a ~100 ms interval holds six or seven 16.7 ms frames, so one interval
+ * can carry up to ~17% more playback than the next). The step is measured
+ * on the longer axis of the feet's movement: the sim steps between
+ * four-neighbour cells, so one step is one axis, and the projected row
+ * height is a little under a tile width, so the axis read is the larger of
+ * the two anyway.
  */
-const ORDINARY_TILES_PER_100MS = (STEP_PER_TICK / TICK_MS) * 100 * (1 + CATCH_UP_RATE) * RATE_TOLERANCE;
+const ORDINARY_TILES_PER_100MS =
+  ((STEP_PER_TICK * (1 + SPEED_JITTER_FRACTION)) / TICK_MS) * 100 * (1 + CATCH_UP_RATE) * RATE_TOLERANCE;
 
 const SHA = execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim();
 const DIRTY = execSync('git status --porcelain --untracked-files=no', { cwd: ROOT }).toString().trim() !== '';

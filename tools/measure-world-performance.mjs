@@ -51,10 +51,11 @@
  *                it: the largest post-stall single-frame step, pairs whose
  *                depth scale changed excluded (that is the disclosed size
  *                step below, a React render, not the frame loop), must be
- *                at or under 3 × cap / FLOOR_MEMBER_SETTLE_MS — an ease-out
- *                cubic's steepest `cap` milliseconds, whatever the pull's
- *                length — times SETTLE_STALL_TOLERANCE for the sampler
- *                seeing two writes in one frame. Red exits 1. If no member
+ *                at or under cap × (3 / FLOOR_MEMBER_SETTLE_MS + the fastest
+ *                seeded walker's catch-up rate) — an ease-out cubic's
+ *                steepest `cap` milliseconds whatever the pull's length,
+ *                plus the seat step the timeline plays in the same frame.
+ *                Derived from source, no tolerance. Red exits 1. If no member
  *                enters `using` inside SETTLE_EDGE_BUDGET_MS the arm is a
  *                named SKIP, recorded as such, never a silent pass.
  *
@@ -96,8 +97,6 @@ const SAMPLE_MS = Number(arg('--sample-ms', '15000'));
 const STALL_MS = Number(arg('--stall-ms', '400'));
 const STALL_FOLLOW_MS = 2000;
 const SETTLE_EDGE_BUDGET_MS = 60000;
-/** The rAF sampler can see two renderer writes in one frame (it races the frame loop for order); 1.3 is the same allowance capture-living-world.mjs gives its walking-rate ceiling. */
-const SETTLE_STALL_TOLERANCE = 1.3;
 const LONG_FRAME_MS = 50;
 const VERY_LONG_FRAME_MS = 100;
 const VIEWPORTS = [
@@ -117,12 +116,28 @@ const TICK_MS = numberInSource(tuningSource, 'FLOOR_SIM_TICK_INTERVAL_MS');
 const STEP_PER_TICK = numberInSource(tuningSource, 'FLOOR_SIM_STEP_PROGRESS_PER_TICK');
 const SETTLE_MS = numberInSource(tuningSource, 'FLOOR_MEMBER_SETTLE_MS');
 const FRAME_CAP_MS = numberInSource(tuningSource, 'FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS');
-if (DRAW_SCALE_TILES === null || TICK_MS === null || STEP_PER_TICK === null || SETTLE_MS === null || FRAME_CAP_MS === null) {
-  console.error('could not read FLOOR_MEMBER_DRAW_SCALE_TILES / FLOOR_SIM_TICK_INTERVAL_MS / FLOOR_SIM_STEP_PROGRESS_PER_TICK / FLOOR_MEMBER_SETTLE_MS / FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS from empireTuning.ts');
+const CATCH_UP_RATE = numberInSource(tuningSource, 'FLOOR_MEMBER_CATCH_UP_RATE');
+const SPEED_JITTER_FRACTION = numberInSource(tuningSource, 'FLOOR_SIM_SPEED_JITTER_FRACTION');
+if (
+  DRAW_SCALE_TILES === null || TICK_MS === null || STEP_PER_TICK === null || SETTLE_MS === null ||
+  FRAME_CAP_MS === null || CATCH_UP_RATE === null || SPEED_JITTER_FRACTION === null
+) {
+  console.error('could not read FLOOR_MEMBER_DRAW_SCALE_TILES / FLOOR_SIM_TICK_INTERVAL_MS / FLOOR_SIM_STEP_PROGRESS_PER_TICK / FLOOR_MEMBER_SETTLE_MS / FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS / FLOOR_MEMBER_CATCH_UP_RATE / FLOOR_SIM_SPEED_JITTER_FRACTION from empireTuning.ts');
   process.exit(2);
 }
-/** VL-2B: an ease-out cubic's steepest `cap` milliseconds, in tiles, whatever the pull's length — the most the capped settle can move in one frame. */
-const SETTLE_STALL_STEP_BOUND_TILES = ((3 * FRAME_CAP_MS) / SETTLE_MS) * SETTLE_STALL_TOLERANCE;
+/**
+ * VL-2B: the most one capped frame can move a body that is BOTH settling
+ * onto its bench and stepping onto its seat — the two things the first
+ * frame after a stall at the `using` edge carries. An ease-out cubic's
+ * steepest `cap` milliseconds is 3 / FLOOR_MEMBER_SETTLE_MS per ms whatever
+ * the pull's length; the playback timeline adds the fastest seeded walker
+ * at its bounded catch-up. Derived from source, no tolerance: a single
+ * write is the same size on either clock. Measured at cap 34: 0.368 and
+ * 0.371 against 0.415, which is why the timeline term is in the bound —
+ * the settle's own share is about 0.28.
+ */
+const SETTLE_STALL_STEP_BOUND_TILES =
+  FRAME_CAP_MS * (3 / SETTLE_MS + ((STEP_PER_TICK * (1 + SPEED_JITTER_FRACTION)) * (1 + CATCH_UP_RATE)) / TICK_MS);
 const SHA = execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim();
 const DIRTY = execSync('git status --porcelain --untracked-files=no', { cwd: ROOT }).toString().trim() !== '';
 
@@ -538,7 +553,7 @@ async function runViewport(browser, viewport) {
     note(`${viewport.name} settle stall SKIPPED: no member entered using within ${SETTLE_EDGE_BUDGET_MS} ms — the arm did not run`);
   } else {
     note(
-      `${viewport.name} settle stall ${STALL_MS}ms at ${settleStall.memberId}'s using edge (t=${settleStall.edgeAtMs.toFixed(0)}ms): first post-stall step ${settleStall.firstStepAfterStallTiles?.toFixed(3)} tiles, max ${settleStall.maxStepAfterStallTiles.toFixed(3)} tiles at t=${settleStall.maxStepAfterStallAtMs?.toFixed(0)}ms over ${settleStall.pairsJudged} pairs (${settleStall.scaleStepsSkipped} size-step pair(s) excluded), bound ${SETTLE_STALL_STEP_BOUND_TILES.toFixed(3)} = 3 x ${FRAME_CAP_MS} / ${SETTLE_MS} x ${SETTLE_STALL_TOLERANCE}: ${settleStall.bounded ? 'ok' : 'FAIL'}`,
+      `${viewport.name} settle stall ${STALL_MS}ms at ${settleStall.memberId}'s using edge (t=${settleStall.edgeAtMs.toFixed(0)}ms): first post-stall step ${settleStall.firstStepAfterStallTiles?.toFixed(3)} tiles, max ${settleStall.maxStepAfterStallTiles.toFixed(3)} tiles at t=${settleStall.maxStepAfterStallAtMs?.toFixed(0)}ms over ${settleStall.pairsJudged} pairs (${settleStall.scaleStepsSkipped} size-step pair(s) excluded), bound ${SETTLE_STALL_STEP_BOUND_TILES.toFixed(3)} = ${FRAME_CAP_MS} x (3/${SETTLE_MS} + ${STEP_PER_TICK}x(1+${SPEED_JITTER_FRACTION})x(1+${CATCH_UP_RATE})/${TICK_MS}): ${settleStall.bounded ? 'ok' : 'FAIL'}`,
     );
   }
   if (pageErrors.length > 0) note(`${viewport.name} PAGE ERRORS: ${pageErrors.join(' | ')}`);

@@ -62,12 +62,24 @@
  *   beforeState       BEFORE, one member `using` and one `queuing` at once.
  *   capacityOffered   the panel's Capacity row is the purchasable control,
  *                     not `-unavailable` (whose text is reported if it is).
+ *   capacityReachable VL-2B: at press time the Capacity row is inside the
+ *                     viewport and the browser's own hit-test at its centre
+ *                     (`document.elementFromPoint`, the test a touch goes
+ *                     through) resolves inside the row — so the synthetic
+ *                     click is a harness convenience, not a way past an
+ *                     occluding dock. Measured on the default garage layout:
+ *                     it resolves to the row.
  *   priceCharged      the HUD dropped by exactly the price, within a
  *                     tolerance DERIVED from the HUD's own "earning N per
  *                     hour" rate over the page-clock interval between the
  *                     two reads (the clock accrues while the run reads).
  *   capacityDone      `floorgrid-station-panel-upgrade-capacity-done` present
- *                     after the press.
+ *                     after the press AND drawn: its computed text colour
+ *                     differs from the first opaque background behind it.
+ *                     VL-2B: the row used to be black text on the black
+ *                     panel — present, inside the viewport, invisible — and
+ *                     this verdict read it as a pass; a critic read the
+ *                     pixels. `Presence is not visibility`.
  *   throughputUnchanged the Throughput row is STILL the purchasable control
  *                     (not `-done`) after buying Capacity — the
  *                     "bayThroughput unchanged" witness.
@@ -100,11 +112,60 @@
  *                     this ceiling would therefore fail ordinary walking,
  *                     which is a stricter formula, not the same one. The
  *                     per-frame maxima are RECORDED as numbers, not judged.
+ *                     VL-2B, AFTER MEASURING THE SAMPLER AGAINST THE RENDERER:
+ *                     the rAF sampler races the frame loop for order within
+ *                     a frame, and under the purchase re-render's 26-40 ms
+ *                     main-thread stall it read lumps of +11 px in one
+ *                     sample that a MutationObserver on the same roots
+ *                     showed the renderer never wrote (largest write 7.1 px).
+ *                     Then measured one level further: the renderer's writes
+ *                     are a constant 0.057 tiles apiece — exactly 16.7 ms of
+ *                     playback — landing 9-14 ms apart on the wall clock,
+ *                     because this headless browser's requestAnimationFrame
+ *                     timestamp always steps 16.7 ms while late callbacks
+ *                     bunch up in wall time (a clock probe: 179 frames,
+ *                     timestamps summing to exactly the wall's 3000 ms, 14
+ *                     of them advancing >15 ms of timestamp in <12 ms of
+ *                     wall). The renderer moves by its timestamps, as the
+ *                     directory's clock ban requires, so a WALL-clock rate
+ *                     over-reads it by up to 2.4x in a replay burst and a
+ *                     vsync-locked device never shows this. So: the rAF
+ *                     record's `t` is the FRAME timestamp (the renderer's
+ *                     clock) and the judged rate is read on it; the sampler
+ *                     runs after the frame loop in every frame (both
+ *                     re-register at the end of their callbacks, so the
+ *                     order is fixed) — and then that read was measured to
+ *                     see a write one frame LATE and two at once (+0.0 px,
+ *                     then +10.9, on the purchase frame), a sampling phase
+ *                     that reads as 1.5x walking over the window holding
+ *                     it. So the judged rate is read off the WRITE LOG —
+ *                     every record is a write the renderer made — stamped
+ *                     with the frame timestamp a one-line rAF ticker holds
+ *                     when the mutation's microtask runs. Race-free
+ *                     positions on the renderer's clock. The rAF record
+ *                     keeps the settle bound (it carries the lifecycle
+ *                     edges) and its rate is recorded as a number. The ceiling itself now includes the sim's speed
+ *                     jitter (FLOOR_SIM_SPEED_JITTER_FRACTION): the base
+ *                     step under-derived it by that fraction for half the
+ *                     roster.
+ *   ghostPoseHeld     VL-2B: across every sampled frame of the transition
+ *                     the ghost's VISIBLE pose image (the most opaque of its
+ *                     pose stack, read off the DOM as the sibling reads it)
+ *                     is a using-bench frame — the relocated bench user
+ *                     never stands up. Catches a zero-distance settle that
+ *                     swaps the clip to walk (a critic found that the
+ *                     data-clip attribute, a React prop, could not see it).
  *   secondBenchVisible AFTER, `floorgrid-bay-expansion` and its sprite are
  *                     attached, have non-empty boxes inside the viewport,
  *                     effective opacity above zero up the parent chain, and a
  *                     picture behind the sprite — drawn, not merely mounted.
  *   twoUsing          two members `using` at the same sampled moment.
+ *   usingOnBench      VL-2B: AFTER, every using member's drawn box overlaps
+ *                     one of the two bench boxes — where the bodies are, not
+ *                     only that they exist — polled for as long as the
+ *                     longest garage settle takes, because a body assigned
+ *                     a seat glides onto its pad at walking speed and a
+ *                     single read at the edge finds it beside the bench.
  *   sameIds           the AFTER id set equals the BEFORE id set.
  *   queueHeadTookSeat the member with `data-queuerank` 0 at the press is one
  *                     of the two `using` members when twoUsing first holds.
@@ -203,6 +264,7 @@ const SETTLE_MS = numberInSource(tuningSource, 'FLOOR_MEMBER_SETTLE_MS');
 const TICK_MS = numberInSource(tuningSource, 'FLOOR_SIM_TICK_INTERVAL_MS');
 const STEP_PER_TICK = numberInSource(tuningSource, 'FLOOR_SIM_STEP_PROGRESS_PER_TICK');
 const CATCH_UP_RATE = numberInSource(tuningSource, 'FLOOR_MEMBER_CATCH_UP_RATE');
+const SPEED_JITTER_FRACTION = numberInSource(tuningSource, 'FLOOR_SIM_SPEED_JITTER_FRACTION');
 const RENDER_DELAY_TICKS = numberInSource(tuningSource, 'FLOOR_MEMBER_RENDER_DELAY_TICKS');
 // The price is a key INSIDE a block; `numberInSource` would answer with the
 // first `capacity:` anywhere in the file, which is the wrong question.
@@ -213,6 +275,7 @@ const missing = Object.entries({
   FLOOR_SIM_TICK_INTERVAL_MS: TICK_MS,
   FLOOR_SIM_STEP_PROGRESS_PER_TICK: STEP_PER_TICK,
   FLOOR_MEMBER_CATCH_UP_RATE: CATCH_UP_RATE,
+  FLOOR_SIM_SPEED_JITTER_FRACTION: SPEED_JITTER_FRACTION,
   FLOOR_MEMBER_RENDER_DELAY_TICKS: RENDER_DELAY_TICKS,
   'STATION_UPGRADE_COST_GYM_BUCKS.capacity': CAPACITY_PRICE,
 })
@@ -241,7 +304,11 @@ if (RATE_TOLERANCE === null || SETTLE_TILES === null) {
   process.exit(2);
 }
 /** The sibling's ceiling, its formula verbatim: sim rate × bounded catch-up × sampling tolerance. */
-const ORDINARY_TILES_PER_100MS = (STEP_PER_TICK / TICK_MS) * 100 * (1 + CATCH_UP_RATE) * RATE_TOLERANCE;
+// VL-2B: the sim's FASTEST seeded step, not the base — `speedOf` jitters
+// each member by ±FLOOR_SIM_SPEED_JITTER_FRACTION, the same correction the
+// sibling's ceiling now carries.
+const ORDINARY_TILES_PER_100MS =
+  ((STEP_PER_TICK * (1 + SPEED_JITTER_FRACTION)) / TICK_MS) * 100 * (1 + CATCH_UP_RATE) * RATE_TOLERANCE;
 /** The sim's own walking rate, for the reader: what a glide "at walking speed" should read. */
 const WALK_TILES_PER_100MS = (STEP_PER_TICK / TICK_MS) * 100;
 /** The settle's per-tile pace, for the reader: one `FLOOR_MEMBER_SETTLE_MS` per tile of pull. */
@@ -299,6 +366,43 @@ async function syntheticClick(page, testId) {
     if (node === null) return false;
     node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, altKey: false, view: window }));
     return true;
+  }, testId);
+}
+
+/**
+ * VL-2B: what a finger would meet, and whether the text is drawn. `Presence
+ * is not visibility`: a row can be attached, inside the viewport and still
+ * be black text on a black panel (found by a critic reading the purchase
+ * frame's pixels, then fixed in FloorGrid.tsx). So a row's computed text
+ * colour is compared with the first opaque background behind it, and the
+ * browser's own hit-test at the row's centre — `document.elementFromPoint`,
+ * the same test a touch goes through — must resolve inside the row.
+ */
+async function rowRead(page, testId) {
+  return page.evaluate((id) => {
+    const node = document.querySelector(`[data-testid="${id}"]`);
+    if (node === null) return null;
+    const b = node.getBoundingClientRect();
+    const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
+    let background = null;
+    let at = node;
+    while (at !== null) {
+      const c = getComputedStyle(at).backgroundColor;
+      if (c !== '' && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') {
+        background = c;
+        break;
+      }
+      at = at.parentElement;
+    }
+    return {
+      box: { x: b.x, y: b.y, w: b.width, h: b.height },
+      insideViewport: b.width > 0 && b.height > 0 && b.x >= 0 && b.y >= 0 && b.x + b.width <= innerWidth && b.y + b.height <= innerHeight,
+      hitTestInsideRow: hit !== null && (hit === node || node.contains(hit)),
+      hitTestId: hit === null ? null : (hit.closest('[data-testid]')?.getAttribute('data-testid') ?? hit.tagName),
+      color: getComputedStyle(node).color,
+      background,
+      text: node.textContent,
+    };
   }, testId);
 }
 
@@ -445,6 +549,23 @@ async function pressAndSample(page, pressTestId, sampleMs) {
             fx: b.x + b.width / 2,
             fy: b.y + b.height,
             w: b.width,
+            // The visible pose image: the most opaque of the pose stack,
+            // opacity read from the img's PARENT up to the root (the web
+            // renderer draws an Image as a div with the picture as a
+            // background and an accessibility img at opacity 0 inside).
+            sprite: (() => {
+              let best = null;
+              for (const img of node.querySelectorAll('img')) {
+                let opacity = 1;
+                let at = img.parentElement;
+                while (at !== null && at !== node.parentElement) {
+                  opacity *= Number(getComputedStyle(at).opacity);
+                  at = at.parentElement;
+                }
+                if (best === null || opacity > best.opacity) best = { src: img.getAttribute('src'), opacity };
+              }
+              return best === null ? null : best.src;
+            })(),
           };
         });
       const bucksText = () => {
@@ -456,13 +577,62 @@ async function pressAndSample(page, pressTestId, sampleMs) {
       const pre = readMembers();
       const preBucks = bucksText();
       const pressAt = performance.now();
+      // The renderer's own writes, race-free: one record per transform
+      // write on a member root, stamped when it landed.
+      const writes = [];
+      const parseTranslate = (text) => {
+        const m = /translate\(\s*([-\d.]+)px,\s*([-\d.]+)px\)/.exec(text) || /translateX\(([-\d.]+)px\)\s*translateY\(([-\d.]+)px\)/.exec(text);
+        if (m) return { x: Number(m[1]), y: Number(m[2]) };
+        const mm = /matrix\(([^)]+)\)/.exec(text);
+        if (mm) {
+          const parts = mm[1].split(',').map(Number);
+          return { x: parts[4], y: parts[5] };
+        }
+        return null;
+      };
+      // The renderer's clock for each write: a one-line rAF ticker keeps
+      // the latest frame timestamp, and a mutation's microtask runs right
+      // after the callback that made it, so the write is stamped with the
+      // frame it landed in (a constant one-frame offset either way, which
+      // a windowed rate does not see).
+      let latestFrameTime = pressAt;
+      let tickerLive = true;
+      const ticker = (frameTime) => {
+        latestFrameTime = frameTime;
+        if (tickerLive) requestAnimationFrame(ticker);
+      };
+      requestAnimationFrame(ticker);
+      const observer = new MutationObserver((records) => {
+        const t = performance.now() - pressAt;
+        const ft = latestFrameTime - pressAt;
+        for (const record of records) {
+          const node = record.target;
+          if (!(node instanceof HTMLElement)) continue;
+          const id = node.getAttribute('data-memberid');
+          if (id === null) continue;
+          const p = parseTranslate(node.style.transform);
+          if (p === null) continue;
+          writes.push({ t, ft, id, x: p.x, y: p.y, w: node.getBoundingClientRect().width, lifecycle: node.getAttribute('data-lifecycle'), tick: node.getAttribute('data-tick') });
+        }
+      });
+      observer.observe(document.body, { attributes: true, attributeFilter: ['style'], subtree: true });
       target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, altKey: false, view: window }));
       const frames = [];
       await new Promise((resolve) => {
-        const step = () => {
+        const step = (frameTime) => {
+          // The FRAME timestamp, not the wall clock: it is the renderer's
+          // own clock (the frame loop advances by requestAnimationFrame's
+          // timestamp, per the directory's clock ban). In this headless
+          // browser the timestamp always steps 16.7 ms while callbacks land
+          // 7-29 ms apart on the wall clock (measured: 179 frames, 14 with
+          // the timestamp advancing >15 ms and the wall <12), so a rate read
+          // on the wall clock inflates during a replay burst by up to 2.4x
+          // and says nothing about the renderer. The wall clock is kept for
+          // the sampling budget only.
           const now = performance.now();
           frames.push({
-            t: now - pressAt,
+            t: frameTime - pressAt,
+            wallT: now - pressAt,
             members: readMembers(),
             expansion: document.querySelectorAll('[data-testid="floorgrid-bay-expansion"]').length,
             bucks: bucksText(),
@@ -472,7 +642,9 @@ async function pressAndSample(page, pressTestId, sampleMs) {
         };
         requestAnimationFrame(step);
       });
-      return { pressed: true, pressAt, pre, preBucks, frames, endAt: performance.now() };
+      observer.disconnect();
+      tickerLive = false;
+      return { pressed: true, pressAt, pre, preBucks, frames, writes, endAt: performance.now() };
     },
     { pressTestId, sampleMs },
   );
@@ -588,6 +760,59 @@ function analyseMotion(frames) {
     perMember[id] = r;
   }
   return perMember;
+}
+
+/**
+ * VL-2B: the renderer's own transform writes per member, over the same
+ * sliding window and against the same ceiling as `analyseMotion`, minus
+ * the sampler's race. Settle windows come from the rAF record's lifecycle
+ * edges (a write log has no lifecycle edge of its own). A member that
+ * wrote nothing did not move and is absent here.
+ */
+function analyseWrites(writes, motion) {
+  const byId = new Map();
+  for (const w of writes) {
+    if (!byId.has(w.id)) byId.set(w.id, []);
+    byId.get(w.id).push(w);
+  }
+  const out = {};
+  for (const [id, list] of byId) {
+    const edges = motion[id]?.settleEdges ?? [];
+    const inSettle = (t) => edges.some((e) => t >= e.t && t <= e.t + SETTLE_MS);
+    const r = { id, writes: list.length, maxWriteStepTiles: 0, maxWriteStepAt: null, maxWriteWindowRateTilesPer100ms: 0, maxWriteWindowRateAt: null };
+    // Windows on the FRAME clock (`ft`), the renderer's own; the wall
+    // clock (`t`) is kept on every record for the reader.
+    const at = (w) => (typeof w.ft === 'number' ? w.ft : w.t);
+    for (let k = 1; k < list.length; k += 1) {
+      const here = list[k];
+      const prev = list[k - 1];
+      const tilePx = Math.max(here.w / DRAW_SCALE_TILES, 1);
+      const step = Math.max(Math.abs(here.x - prev.x), Math.abs(here.y - prev.y)) / tilePx;
+      if (step > r.maxWriteStepTiles) {
+        r.maxWriteStepTiles = step;
+        r.maxWriteStepAt = { t: Number(here.t.toFixed(1)), dtMs: Number((here.t - prev.t).toFixed(1)), tick: here.tick, lifecycle: here.lifecycle };
+      }
+      let j = k - 1;
+      while (j > 0 && at(here) - at(list[j]) < WINDOW_MS) j -= 1;
+      const from = list[j];
+      const wdt = at(here) - at(from);
+      // Only a FULL window is judged: the ceiling's tolerance was derived
+      // for ~100 ms, and a shorter window at the start of the record read
+      // a capped catch-up frame plus ordinary walking as 0.735 tiles per
+      // 100 ms over 60 ms of it. The half-window leniency the rAF record
+      // keeps is recorded there as a number, never judged.
+      if (wdt < WINDOW_MS) continue;
+      if (inSettle(at(here)) || inSettle(at(from))) continue;
+      const rate = Math.max(Math.abs(here.x - from.x), Math.abs(here.y - from.y)) / tilePx / (wdt / 100);
+      if (rate > r.maxWriteWindowRateTilesPer100ms) {
+        r.maxWriteWindowRateTilesPer100ms = rate;
+        r.maxWriteWindowRateAt = { t: Number(here.t.toFixed(1)), ft: Number(at(here).toFixed(1)), windowMs: Number(wdt.toFixed(1)), tick: here.tick, lifecycle: here.lifecycle };
+      }
+    }
+    r.withinWriteCeiling = r.maxWriteWindowRateTilesPer100ms <= ORDINARY_TILES_PER_100MS;
+    out[id] = r;
+  }
+  return out;
 }
 
 /** Frames where two members share a `data-cell` and one of them is `using` — reported, not judged. */
@@ -758,6 +983,7 @@ async function runViewport(browser, viewport) {
   if (!panelOpen) {
     note(`${vp} the station panel did not open off floorgrid-fixed-flat-bench (bench found: ${benchPressed})`);
     result.verdicts.capacityOffered = false;
+    result.verdicts.capacityReachable = false;
   } else {
     const rows = {
       capacity: await countOf(page, CAPACITY_ROW),
@@ -768,6 +994,14 @@ async function runViewport(browser, viewport) {
     };
     panelState = { beforePress: rows, capacityRowText: await textOf(page, CAPACITY_ROW) };
     result.verdicts.capacityOffered = rows.capacity === 1 && rows.capacityUnavailable === 0 && rows.capacityDone === 0;
+    // VL-2B: the row a finger would meet — inside the viewport and the
+    // browser's own hit-test resolving inside it — read at press time, so
+    // the synthetic click below is a convenience for the harness and not a
+    // way past an occluding dock.
+    const capacityRow = await rowRead(page, CAPACITY_ROW);
+    panelState.capacityRow = capacityRow;
+    result.verdicts.capacityReachable = capacityRow !== null && capacityRow.insideViewport && capacityRow.hitTestInsideRow;
+    note(`${vp} Capacity row at press: ${capacityRow === null ? 'absent' : `box ${JSON.stringify(capacityRow.box)}, inside viewport ${capacityRow.insideViewport}, hit-test resolves to ${capacityRow.hitTestId} (${capacityRow.hitTestInsideRow ? 'inside the row' : 'NOT the row'}), text ${capacityRow.color} on ${capacityRow.background}`}`);
     if (!result.verdicts.capacityOffered) {
       const why = (await textOf(page, `${CAPACITY_ROW}-unavailable`)) ?? (await textOf(page, `${CAPACITY_ROW}-done`)) ?? '(row absent)';
       note(`${vp} Capacity is NOT purchasable: "${why}" — rows ${JSON.stringify(rows)}`);
@@ -804,7 +1038,14 @@ async function runViewport(browser, viewport) {
         preBucksText: transition.preBucksText,
       };
       result.verdicts.priceCharged = drop !== null && Math.abs(drop - CAPACITY_PRICE) <= tolerance;
-      result.verdicts.capacityDone = rowsAfter.capacityDone === 1 && rowsAfter.capacity === 0;
+      const doneRow = await rowRead(page, `${CAPACITY_ROW}-done`);
+      panelState.doneRow = doneRow;
+      // Present AND drawn: the done row's text colour must differ from the
+      // first opaque background behind it (the black-on-black case reads
+      // rgb(0, 0, 0) on rgb(0, 0, 0) and is a FAIL here, not a pass).
+      const doneVisible = doneRow !== null && doneRow.insideViewport && doneRow.color !== doneRow.background;
+      result.verdicts.capacityDone = rowsAfter.capacityDone === 1 && rowsAfter.capacity === 0 && doneVisible;
+      note(`${vp} done row: ${doneRow === null ? 'absent' : `text ${doneRow.color} on ${doneRow.background}, inside viewport ${doneRow.insideViewport}${doneVisible ? '' : ' — NOT VISIBLE'}`}`);
       result.verdicts.throughputUnchanged = rowsAfter.throughput === 1 && rowsAfter.throughputDone === 0;
       note(
         `${vp} pressed Capacity: gym bucks ${bucksBefore.value} -> ${bucksAfter.value} (drop ${drop === null ? '-' : drop.toFixed(3)}, price ${CAPACITY_PRICE}, tolerance ${tolerance.toFixed(4)} over ${elapsedS.toFixed(2)} s at ${bucksBefore.ratePerHour}/h); rows after ${JSON.stringify(rowsAfter)}; done row "${panelState.capacityDoneText}"; throughput row "${panelState.throughputRowText}"`,
@@ -829,6 +1070,7 @@ async function runViewport(browser, viewport) {
       }
     }
     const motion = analyseMotion(frames);
+    const writeMotion = analyseWrites(transition.writes ?? [], motion);
     const shared = sharedCellFrames(frames);
     const dts = frames.slice(1).map((f, i) => f.t - frames[i].t);
     const ghostId = result.before.usingIds[0] ?? null;
@@ -900,6 +1142,8 @@ async function runViewport(browser, viewport) {
               }),
             },
       sharedCell: { exact: shared.exact, roundedOnly: shared.rounded.filter((r) => !shared.exact.some((e) => e.frame === r.frame && e.cell === r.cell)) },
+      // Every renderer write, for the reader: wall t, frame ft, translate, box width, tick, lifecycle.
+      writes: (transition.writes ?? []).map((w) => ({ t: Number(w.t.toFixed(1)), ft: typeof w.ft === 'number' ? Number(w.ft.toFixed(1)) : null, id: w.id, x: Number(w.x.toFixed(2)), y: Number(w.y.toFixed(2)), w: Number(w.w.toFixed(1)), tick: w.tick, lifecycle: w.lifecycle })),
       // The whole record, for the reader; the strip and the numbers above are derived from it.
       frames: frames.map((f) => ({
         t: Number(f.t.toFixed(1)),
@@ -910,7 +1154,30 @@ async function runViewport(browser, viewport) {
     };
     result.verdicts.identity = identityBreaks.length === 0;
     const members = Object.values(motion);
-    result.verdicts.noTeleport = members.every((m) => m.withinOrdinaryCeiling && m.withinSettleBound);
+    // VL-2B: the ordinary ceiling is judged on the WRITE LOG stamped with
+    // the FRAME clock — race-free positions (each record is a write the
+    // renderer made) on the renderer's own clock (a replay burst of late
+    // frames, each claiming 16.7 ms and landing 7-12 ms apart on the wall,
+    // is not read as speed). The rAF record, which carries the lifecycle
+    // edges, keeps the settle bound and its own rate as a recorded number:
+    // it can read a write one frame late and then two at once (+0.0 then
+    // +10.9 px, measured), which is a sampling phase and not motion.
+    result.verdicts.noTeleport = members.every(
+      (m) => (writeMotion[m.id]?.withinWriteCeiling ?? true) && m.withinSettleBound,
+    );
+    result.transition = result.transition ?? {};
+    // Only the frames in which the contract still says the ghost is `using`:
+    // a ghost whose session ends inside the window leaves the bench and
+    // walks, and walk frames are then correct (measured: a late purchase at
+    // tick 23 had the ghost `leaving` at tick 39, 1.8 s into the record).
+    const ghostUsingFrames = ghostId === null ? [] : frames.map((f) => f.members.find((x) => x.id === ghostId)).filter((m) => m !== undefined && m.lifecycle === 'using');
+    const ghostSprites = ghostUsingFrames.map((m) => m.sprite ?? null);
+    result.verdicts.ghostPoseHeld =
+      ghost !== null && ghostSprites.length > 0 && ghostSprites.every((src) => typeof src === 'string' && src.includes('using'));
+    result.ghostSprites = [...new Set(ghostSprites)];
+    result.ghostUsingFrames = ghostUsingFrames.length;
+    result.writeMotion = writeMotion;
+    result.maxWriteWindowRateTilesPer100ms = Math.max(0, ...Object.values(writeMotion).map((m) => m.maxWriteWindowRateTilesPer100ms));
     result.maxWindowRateTilesPer100ms = Math.max(...members.map((m) => m.maxWindowRateTilesPer100ms));
     result.maxFrameStepTiles = Math.max(...members.map((m) => m.maxFrameStepTiles));
     result.maxSettleExcessTiles = Math.max(...members.map((m) => m.maxSettleExcessTiles));
@@ -919,9 +1186,10 @@ async function runViewport(browser, viewport) {
     );
     for (const m of members) {
       note(
-        `${vp}   ${m.id} ${m.lifecycles.join('>')} cells ${m.cells.map((c) => `${c.cell}@t${c.t}/tick${c.tick}`).join(' -> ')} | window rate max ${m.maxWindowRateTilesPer100ms.toFixed(3)} tiles/100ms (ceiling ${ORDINARY_TILES_PER_100MS.toFixed(3)}) at ${JSON.stringify(m.maxWindowRateAt)} | frame step max ${m.maxFrameStepTiles.toFixed(3)} tiles at ${JSON.stringify(m.maxFrameStepAt)} | frame rate max ${m.maxFrameRateTilesPer100ms.toFixed(3)} | settle excess ${m.maxSettleExcessTiles.toFixed(3)} (raw ${m.maxSettleRawTiles.toFixed(3)}, bound ${SETTLE_TILES}) edges ${JSON.stringify(m.settleEdges)} | net ${m.netDisplacementTiles.toFixed(3)} tiles, peak excursion ${m.maxExcursionTiles.toFixed(3)} at t=${m.maxExcursionAt?.t ?? '-'}`,
+        `${vp}   ${m.id} ${m.lifecycles.join('>')} cells ${m.cells.map((c) => `${c.cell}@t${c.t}/tick${c.tick}`).join(' -> ')} | window rate max ${m.maxWindowRateTilesPer100ms.toFixed(3)} tiles/100ms (ceiling ${ORDINARY_TILES_PER_100MS.toFixed(3)}) at ${JSON.stringify(m.maxWindowRateAt)} | frame step max ${m.maxFrameStepTiles.toFixed(3)} tiles at ${JSON.stringify(m.maxFrameStepAt)} | frame rate max ${m.maxFrameRateTilesPer100ms.toFixed(3)} | settle excess ${m.maxSettleExcessTiles.toFixed(3)} (raw ${m.maxSettleRawTiles.toFixed(3)}, bound ${SETTLE_TILES}) edges ${JSON.stringify(m.settleEdges)} | net ${m.netDisplacementTiles.toFixed(3)} tiles, peak excursion ${m.maxExcursionTiles.toFixed(3)} at t=${m.maxExcursionAt?.t ?? '-'} | WRITES ${writeMotion[m.id] === undefined ? 'none' : `${writeMotion[m.id].writes}, window rate max ${writeMotion[m.id].maxWriteWindowRateTilesPer100ms.toFixed(3)} tiles/100ms (${writeMotion[m.id].withinWriteCeiling ? 'ok' : 'ABOVE'} the ceiling) at ${JSON.stringify(writeMotion[m.id].maxWriteWindowRateAt)}, max write ${writeMotion[m.id].maxWriteStepTiles.toFixed(3)} tiles at ${JSON.stringify(writeMotion[m.id].maxWriteStepAt)}`}`,
       );
     }
+    if (ghost !== null) note(`${vp} GHOST POSE: ${result.verdicts.ghostPoseHeld ? 'held' : 'NOT HELD'} over ${result.ghostUsingFrames} using frames — visible pose images while using: ${result.ghostSprites.join(', ')}`);
     if (ghost !== null) {
       const g = result.transition.ghost;
       note(
@@ -935,9 +1203,11 @@ async function runViewport(browser, viewport) {
   } else {
     result.verdicts.identity = false;
     result.verdicts.noTeleport = false;
+    result.verdicts.ghostPoseHeld = false;
     if (result.verdicts.priceCharged === undefined) {
       result.verdicts.priceCharged = false;
       result.verdicts.capacityDone = false;
+      result.verdicts.capacityReachable = result.verdicts.capacityReachable ?? false;
       result.verdicts.throughputUnchanged = false;
     }
   }
@@ -966,6 +1236,38 @@ async function runViewport(browser, viewport) {
   result.verdicts.secondBenchVisible = expansion !== null && expansionDrawn(expansion);
   const afterUsing = after === null ? [] : after.members.filter((m) => m.lifecycle === 'using').map((m) => m.id);
   result.verdicts.twoUsing = afterUsing.length >= 2 || firstTwoUsing !== null;
+  // VL-2B: WHERE the using bodies are, not only that they exist — each
+  // using member's drawn box overlaps one of the two bench boxes (the
+  // sibling's `using` overlap verdict, carried over). A renderer that drew
+  // a using body off its bench would leave every count above green.
+  // A body assigned a seat GLIDES onto its pad at walking speed (the settle,
+  // up to a few tiles at FLOOR_MEMBER_SETTLE_MS per tile), so a single read
+  // at the assignment edge finds it mid-glide beside the bench. Polled
+  // instead, for as long as the longest garage pull takes, and the time it
+  // took is recorded — the settle's own duration, read off the world.
+  const overlaps = (a, b) =>
+    a !== null && b !== null && a.w > 0 && b.w > 0 && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const benchBoxes = [after === null ? null : after.benchBox, expansion === null || expansion.bay === null ? null : expansion.bay.box].filter((box) => box !== null && box !== undefined);
+  const placementBudgetMs = SETTLE_MS * SETTLE_TILES + TRANSITION_SAMPLE_MS;
+  const placementStart = Date.now();
+  let usingPlacement = [];
+  let placedAfterMs = null;
+  if (after !== null) {
+    while (Date.now() - placementStart < placementBudgetMs) {
+      const snapshot = await membersSnapshot(page);
+      usingPlacement = snapshot.members
+        .filter((m) => m.lifecycle === 'using')
+        .map((m) => ({ id: m.id, cell: m.cell, box: m.box, onBench: benchBoxes.some((bench) => overlaps(m.box, bench)) }));
+      if (usingPlacement.length >= 2 && usingPlacement.every((m) => m.onBench)) {
+        placedAfterMs = Date.now() - placementStart;
+        break;
+      }
+      await page.waitForTimeout(100);
+    }
+  }
+  result.verdicts.usingOnBench = placedAfterMs !== null;
+  result.usingPlacement = { members: usingPlacement, placedAfterMs, budgetMs: placementBudgetMs };
+  note(`${vp} using bodies on benches: ${usingPlacement.map((m) => `${m.id}@${m.cell}=${m.onBench ? 'on a bench' : 'OFF'}`).join(' ') || 'none'} — ${placedAfterMs === null ? `NOT all on a bench within ${placementBudgetMs} ms` : `all on a bench ${placedAfterMs} ms after the AFTER read`} (bench boxes ${JSON.stringify(benchBoxes)})`);
   result.after =
     after === null
       ? null
@@ -1028,12 +1330,15 @@ const VERDICT_ORDER = [
   'capacityOne',
   'beforeState',
   'capacityOffered',
+  'capacityReachable',
   'priceCharged',
   'capacityDone',
   'throughputUnchanged',
   'identity',
   'noTeleport',
+  'ghostPoseHeld',
   'secondBenchVisible',
+  'usingOnBench',
   'twoUsing',
   'sameIds',
   'queueHeadTookSeat',
@@ -1050,7 +1355,7 @@ let exitCode = 0;
 try {
   note(`VL-2B capacity proof at ${SHA}${DIRTY ? ' (DIRTY TREE)' : ''} url=${URL}`);
   note(
-    `price ${CAPACITY_PRICE} gym bucks; ceiling ${ORDINARY_TILES_PER_100MS.toFixed(3)} tiles/100ms = (${STEP_PER_TICK}/${TICK_MS})*100*(1+${CATCH_UP_RATE})*${RATE_TOLERANCE}; walk ${WALK_TILES_PER_100MS.toFixed(3)}; settle ${SETTLE_MS} ms/tile = ${SETTLE_TILES_PER_100MS.toFixed(3)} tiles/100ms; settle bound ${SETTLE_TILES} tiles; draw scale ${DRAW_SCALE_TILES}; render delay ${RENDER_DELAY_TICKS} tick(s); window ${WINDOW_MS} ms; transition ${TRANSITION_SAMPLE_MS} ms`,
+    `price ${CAPACITY_PRICE} gym bucks; ceiling ${ORDINARY_TILES_PER_100MS.toFixed(3)} tiles/100ms = (${STEP_PER_TICK}*(1+${SPEED_JITTER_FRACTION})/${TICK_MS})*100*(1+${CATCH_UP_RATE})*${RATE_TOLERANCE}; walk ${WALK_TILES_PER_100MS.toFixed(3)}; settle ${SETTLE_MS} ms/tile = ${SETTLE_TILES_PER_100MS.toFixed(3)} tiles/100ms; settle bound ${SETTLE_TILES} tiles; draw scale ${DRAW_SCALE_TILES}; render delay ${RENDER_DELAY_TICKS} tick(s); window ${WINDOW_MS} ms; transition ${TRANSITION_SAMPLE_MS} ms`,
   );
   const results = [];
   for (const viewport of VIEWPORTS) {

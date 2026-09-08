@@ -2951,15 +2951,23 @@ export const EMPIRE_TUNING = Object.freeze({
    * placed exactly at a member's `using` edge: the first write after the
    * stall moved the body 0.700 tiles on the uncapped tree and 0.394 with
    * this cap, against about 0.30 at an unstalled settle start — the
-   * ease-out's own steep first frames. The cap's bound is
-   * 3 × cap / FLOOR_MEMBER_SETTLE_MS ≈ 0.42 tiles, the steepest 50 ms an
-   * ease-out cubic has, whatever the pull's length. Capped, a stall pauses every
-   * animation and resumes it where it was; the playback clock's own
-   * bounded catch-up (`FLOOR_MEMBER_CATCH_UP_RATE`) then recovers the
-   * lag. Three 60 Hz frames: an ordinary frame never reaches it, so it
-   * changes nothing until something has actually stalled.
+   * ease-out's own steep first frames — at a first cut of 50 ms; at this
+   * value 0.368 / 0.371 (390x844 / 375x812, the perf tool's judged arm), of
+   * which about 0.28 is the settle's steepest 34 ms and the rest the
+   * one-tile seat step the playback timeline plays in the same frame.
+   * Capped, a stall pauses every animation and resumes it
+   * where it was; the playback clock's own bounded catch-up
+   * (`FLOOR_MEMBER_CATCH_UP_RATE`) then recovers the lag. Two 60 Hz frames
+   * and a hair: an ordinary frame never reaches it, a 30 Hz frame (33.3
+   * ms) sits just under it, so it changes nothing until something has
+   * actually stalled. Why two frames and not three: the walking ceiling
+   * the evidence tools check is a 100 ms window, and a window holding one
+   * capped catch-up frame carries (100 + cap) ms of walking — at 50 ms
+   * that read 0.51 tiles per 100 ms on the fastest seeded walker against
+   * a 0.506 ceiling (the renderer's own writes, the purchase frame); at
+   * 34 ms the worst such window is 1.34 × the walk, inside the ceiling.
    */
-  FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS: 50,
+  FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS: 34,
 
   /**
    * How long, in milliseconds, the previous clip's frame fades out while

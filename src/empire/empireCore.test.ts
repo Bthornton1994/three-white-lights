@@ -3914,7 +3914,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // floorCamera.ts, FloorGrid.tsx's `floorgrid-member-pose-` testID template
     // and the `deg` interpolation strings. Read from this assertion's own
     // failure value.
-    expect(singleQuoted.size).toBe(904);
+    // 904 -> 905: VL-2B seats matched to benches by cell ('expansion' as a
+    // bench source argument). Read from this assertion's own failure value.
+    expect(singleQuoted.size).toBe(905);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4794,7 +4796,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'slim',
       'slots',
       'sound',
-      'space',
+      'source', // VL-2B: a bench's source, passed to occupiedBySource in FloorGrid.tsx
+  'space',
       'space-around',
       'space-between',
       'space-level',
@@ -5001,7 +5004,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1276 -> 1277: VL-1 FloorGrid.tsx `./presentationState` specifier.
     // 1277 -> 1295: VL-2's seventeen space-free strings above plus one
     // spaced string. Read from this assertion's own failure value.
-    expect(stringsChecked).toBe(1295);
+    // 1295 -> 1296: VL-2B 'source' (seats matched to benches by cell). Read
+    // from this assertion's own failure value.
+    expect(stringsChecked).toBe(1296);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were

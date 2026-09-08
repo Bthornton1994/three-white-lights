@@ -305,7 +305,9 @@ import { type ManagedGym, maintenancePrompt } from './management';
 import { type MemberType } from './members';
 import {
   presentationWorld,
+  type PresentationCell,
   type PresentationMember,
+  type PresentationSeat,
   type PresentationStation,
   type PresentationWorld,
 } from './presentationState';
@@ -493,6 +495,17 @@ const FLOOR_PLATE_LOADING_COLOR = 'crimson';
 const FLOOR_PLATE_LOADING_HOLE_COLOR = 'white';
 /** The contextual station panel's own backing, the same quiet slate the tray chip already reads against. */
 const FLOOR_STATION_PANEL_BACKGROUND_COLOR = 'black';
+/**
+ * VL-2B: the panel's text. Every prose row in the station and member panels
+ * used to carry no colour at all, and the web renderer's default `Text`
+ * colour is black — black on the black panel above. A read-only critic
+ * found it by reading the purchase frame's PIXELS: the top of the panel was
+ * a uniform black rectangle where the identity, operation, condition,
+ * manager and "second bench" rows sit, while every DOM-presence check
+ * around them stayed green. Named CSS, like the colours beside it, so no
+ * palette-module crossing.
+ */
+const FLOOR_STATION_PANEL_TEXT_COLOR = 'white';
 /** The panel's action-button chrome — amber fill, iron label, matching GymScreen. */
 const FLOOR_STATION_PANEL_BUTTON_BACKGROUND_COLOR = 'goldenrod';
 const FLOOR_STATION_PANEL_BUTTON_BORDER_COLOR = 'goldenrod';
@@ -506,6 +519,9 @@ const FLOOR_STATION_PANEL_BUTTON_TEXT_COLOR = 'black';
  * button` carries, for the identical WebKit click-delegation reason.
  */
 const panelStyles = StyleSheet.create({
+  text: {
+    color: FLOOR_STATION_PANEL_TEXT_COLOR,
+  },
   panel: {
     marginTop: EMPIRE_TUNING.FLOOR_STATION_PANEL_MARGIN_TOP_PIXELS,
     padding: EMPIRE_TUNING.FLOOR_STATION_PANEL_PADDING_PIXELS,
@@ -1050,17 +1066,72 @@ function plateLoadingTestId(ref: FloorStationRef, expansion: boolean): string {
 }
 
 /**
+ * VL-2B: the Chebyshev distance from a cell to a footprint rectangle — 0
+ * inside it, 1 on any cell touching it (edge or corner). A seat is one of
+ * its bench's approach cells (`floorSim.ts`), so the bench a seat touches is
+ * the bench it belongs to.
+ */
+function cellToFootprintDistance(cell: PresentationCell, position: GridPosition, footprint: GridSize): number {
+  const dx =
+    cell.x < position.x
+      ? position.x - cell.x
+      : cell.x >= position.x + footprint.width
+        ? cell.x - (position.x + footprint.width - 1)
+        : 0;
+  const dy =
+    cell.y < position.y
+      ? position.y - cell.y
+      : cell.y >= position.y + footprint.height
+        ? cell.y - (position.y + footprint.height - 1)
+        : 0;
+  return Math.max(dx, dy);
+}
+
+/**
+ * VL-2B: which contract seat sits at each drawn bench, matched by the
+ * seat's own CELL and never by array index. `floorSim.ts` builds a
+ * station's `useCells` by walking its benches in order and SKIPPING a
+ * bench whose approach cells are all taken, so `seats[i]` is `benches[i]`
+ * only while every bench got a seat — a correspondence the contract does
+ * not promise and this renderer briefly assumed (a critic found it, not a
+ * playtest). Each seat goes to the nearest bench that has no seat yet;
+ * two benches sharing an approach cell resolve by that nearest-footprint
+ * rule and then by bench order. One slot per bench, the seat or null.
+ */
+function seatsByBench(
+  contract: PresentationStation | undefined,
+  benches: readonly { readonly position: GridPosition; readonly footprint: GridSize }[],
+): readonly (PresentationSeat | null)[] {
+  const slots: (PresentationSeat | null)[] = benches.map(() => null);
+  if (contract === undefined) return slots;
+  for (const seat of contract.seats) {
+    let best = -1;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (let index = 0; index < benches.length; index += 1) {
+      const bench = benches[index];
+      if (bench === undefined || slots[index] !== null) continue;
+      const distance = cellToFootprintDistance(seat.cell, bench.position, bench.footprint);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = index;
+      }
+    }
+    if (best >= 0) slots[best] = seat;
+  }
+  return slots;
+}
+
+/**
  * VL-2B (contract frozen at `124fb132`): which physical bench a `using`
  * member is drawn on, read off `PresentationStation.seats` by IDENTITY —
- * `seats[i].usingId === member.id` — and never by walking `FloorSimMember`
- * against `useCells` (VL-1's `memberUsesCell`, deleted). `seats[i]` is
- * `useCells[i]` by the contract's construction and `benches[i]` by
- * `trainingStation.ts`'s, which is the one correspondence this file still
- * relies on and cannot read from the contract. A `using` member on NO seat
- * — the one stale ghost-reserve snapshot after a live Capacity purchase —
- * falls back to the primary bench; the next sim step seats it and the
- * frame loop glides the same body there (see the relocation note in the
- * loop). Nothing is fabricated for that frame.
+ * the seat whose `usingId` is this member — and placed on the bench that
+ * seat's cell touches (`seatsByBench`), never by walking `FloorSimMember`
+ * against `useCells` (VL-1's `memberUsesCell`, deleted) and never by array
+ * index. A `using` member on NO seat — the one stale ghost-reserve
+ * snapshot after a live Capacity purchase — falls back to the primary
+ * bench; the next sim step seats it and the frame loop keeps the same body
+ * where it is (see the relocation note in the loop). Nothing is fabricated
+ * for that frame.
  */
 function usingBenchFor(
   member: PresentationMember,
@@ -1073,15 +1144,11 @@ function usingBenchFor(
     source: 'primary',
   };
   if (station.ref.kind !== 'training' || bay.benches.length === 0) return fallback;
-  let index = -1;
-  for (let i = 0; i < station.seats.length; i += 1) {
-    const seat = station.seats[i];
-    if (seat !== undefined && seat.usingId === member.id) {
-      index = i;
-      break;
-    }
+  const seats = seatsByBench(station, bay.benches);
+  for (let index = 0; index < seats.length; index += 1) {
+    if (seats[index]?.usingId === member.id) return bay.benches[index] ?? fallback;
   }
-  return index >= 0 ? (bay.benches[index] ?? fallback) : fallback;
+  return fallback;
 }
 
 interface StationHighlightBox {
@@ -1126,12 +1193,16 @@ function stationHighlightBoxes(
     });
   }
   const boxes: StationHighlightBox[] = [];
+  const seats = seatsByBench(
+    contract,
+    benches.map((row) => row.bench),
+  );
   for (let index = 0; index < benches.length; index += 1) {
     const row = benches[index];
     if (row === undefined) continue;
-    const seat = contract.seats[index];
-    const usingHere = seat !== undefined && seat.usingId !== null;
-    const loadingHere = seat !== undefined && seat.changeoverTicks > 0;
+    const seat = seats[index] ?? null;
+    const usingHere = seat !== null && seat.usingId !== null;
+    const loadingHere = seat !== null && seat.changeoverTicks > 0;
     const activity: 'using' | 'claimed' | 'loading' | null = usingHere
       ? 'using'
       : loadingHere
@@ -1196,14 +1267,19 @@ function plateLoadingLayers(
       expansion: false,
     });
   }
+  const seats = seatsByBench(
+    contract,
+    benches.map((row) => row.bench),
+  );
   for (let index = 0; index < benches.length; index += 1) {
     const row = benches[index];
     if (row === undefined) continue;
     // VL-2B: the seat's remaining changeover is the contract's
-    // `seats[i].changeoverTicks` — the authoritative fact that this seat is
-    // in changeover — not a read of `sim.changeovers` here. The TOTAL the
-    // progress is measured against is the capability's own accessor above.
-    const remaining = contract?.seats[index]?.changeoverTicks ?? 0;
+    // `seats[index]?.changeoverTicks` for the seat at THIS bench — the
+    // authoritative fact that this seat is in changeover — not a read of
+    // `sim.changeovers` here. The TOTAL the progress is measured against is
+    // the capability's own accessor above.
+    const remaining = seats[index]?.changeoverTicks ?? 0;
     if (remaining <= 0) continue;
     const progress = plateLoadingProgress(remaining, total);
     // VL-2: the discs travel across the bench's DRAWN box — the footprint
@@ -1700,7 +1776,7 @@ function AmbientMemberBody({
       // of landing the stall's worth of motion in one write (measured, see
       // the knob's own comment).
       const elapsed =
-        lastNow === null ? 0 : Math.min(now - lastNow, EMPIRE_TUNING.FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS);
+        lastNow === null ? 0 : Math.max(0, Math.min(now - lastNow, EMPIRE_TUNING.FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS));
       lastNow = now;
       if (settleElapsedMs !== null) settleElapsedMs += elapsed;
       if (blendElapsedMs !== null) blendElapsedMs += elapsed;
@@ -1708,42 +1784,76 @@ function AmbientMemberBody({
       //    re-rendered with a moved anchor (a layout change) replaces it.
       const tileHere = p.tile * p.scale;
       const newest = snapshots[snapshots.length - 1];
+      // VL-2B — A RELOCATION IS NOT A STEP. A tick whose feet point is
+      // further than a stride from the previous snapshot is the sim
+      // moving this member somewhere in one step — the ghost-reserve
+      // rebuild after a live Capacity purchase relocates the `using`
+      // member from its old approach cell onto a new seat, three tiles
+      // on the garage (measured: 5,0 -> 2,2 at the first post-purchase
+      // tick). The timeline would slide it there in one tick, eight
+      // times walking speed. Instead the buffer is rebased onto the new
+      // point and the difference joins the settle offset, so the SAME
+      // body glides from where it was drawn to where the contract says
+      // it is, at walking speed, walking (`clipWhileSettling`). Not a
+      // teleport, not a duplicate, not a fabricated seat, and the sim is
+      // not delayed — only the drawing catches up. `relocate` is the one
+      // routine for it, reached from BOTH intake branches below: the new
+      // tick, and the same tick re-rendered with a moved point — because
+      // the purchase's own re-plan moves a SEEKING member's contract
+      // point within the tick it lands on (measured: 5,2.59 -> 5,4, 1.4
+      // tiles), and treating that as a layout nudge snapped the body half
+      // the way (0.74 tiles in one write, a critic's instrument caught
+      // it). A layout nudge moves every body a few pixels; a relocation
+      // moves one body a tile or more, and the stride is the line.
+      const relocate = (): void => {
+        // The compensation is anchored on where the body is DRAWN this
+        // instant — the playback point between two older snapshots, up to
+        // two ticks behind the newest — not on the newest snapshot. Anchored
+        // on the newest, the rebase threw that lag away in one frame:
+        // measured as a 0.947-tile write on a walker the purchase re-planned
+        // two tiles sideways (its playback was 1.5 ticks behind after the
+        // purchase's long frames). Anchored on the drawn point, the first
+        // frame after a relocation draws exactly where the last one did.
+        const drawnFeet = (playTick === null ? null : samplePlayback(snapshots, playTick)) ?? newest ?? p.position;
+        const jumpX = p.position.x - drawnFeet.x;
+        const jumpY = p.position.y - drawnFeet.y;
+        const remainderNow =
+          settleElapsedMs === null ? 0 : settleRemainder(settleElapsedMs, settleMs);
+        pullFrom = {
+          x: pullTo.x + (pullFrom.x - pullTo.x) * remainderNow - jumpX,
+          y: pullTo.y + (pullFrom.y - pullTo.y) * remainderNow - jumpY,
+        };
+        // A relocation whose pull cancels it — the relocated bench user
+        // that was already drawn on its bench — has nothing to glide,
+        // and a zero-distance settle would still run one tile's worth
+        // and swap the lying body to the walk clip for it (a critic
+        // found that, not an instrument). Under a pixel: no settle.
+        const glidePixels = Math.hypot(pullTo.x - pullFrom.x, pullTo.y - pullFrom.y);
+        if (glidePixels < 1) {
+          settleElapsedMs = null;
+        } else {
+          settleElapsedMs = 0;
+          settleMs = settleDurationMs(glidePixels / tileHere);
+        }
+        for (let i = 0; i < snapshots.length; i += 1) {
+          const held = snapshots[i];
+          if (held !== undefined) snapshots[i] = { tick: held.tick, x: p.position.x, y: p.position.y };
+        }
+      };
+      const isRelocation = (jumpX: number, jumpY: number): boolean =>
+        tileHere > 0 && Math.hypot(jumpX, jumpY) / tileHere > EMPIRE_TUNING.FLOOR_MEMBER_STRIDE_TILES;
       if (newest === undefined || newest.tick !== p.tick) {
-        // VL-2B — A RELOCATION IS NOT A STEP. A new tick whose feet point
-        // is further than a stride from the previous snapshot is the sim
-        // moving this member somewhere in one step — the ghost-reserve
-        // rebuild after a live Capacity purchase relocates the `using`
-        // member from its old approach cell onto a new seat, three tiles
-        // on the garage (measured: 5,0 -> 2,2 at the first post-purchase
-        // tick). The timeline would slide it there in one tick, eight
-        // times walking speed. Instead the buffer is rebased onto the new
-        // point and the difference joins the settle offset, so the SAME
-        // body glides from where it was drawn to where the contract says
-        // it is, at walking speed, walking (`clipWhileSettling`). Not a
-        // teleport, not a duplicate, not a fabricated seat, and the sim is
-        // not delayed — only the drawing catches up.
-        if (newest !== undefined && tileHere > 0) {
-          const jumpX = p.position.x - newest.x;
-          const jumpY = p.position.y - newest.y;
-          if (Math.hypot(jumpX, jumpY) / tileHere > EMPIRE_TUNING.FLOOR_MEMBER_STRIDE_TILES) {
-            const remainderNow =
-              settleElapsedMs === null ? 0 : settleRemainder(settleElapsedMs, settleMs);
-            pullFrom = {
-              x: pullTo.x + (pullFrom.x - pullTo.x) * remainderNow - jumpX,
-              y: pullTo.y + (pullFrom.y - pullTo.y) * remainderNow - jumpY,
-            };
-            settleElapsedMs = 0;
-            settleMs = settleDurationMs(
-              Math.hypot(pullTo.x - pullFrom.x, pullTo.y - pullFrom.y) / tileHere,
-            );
-            for (let i = 0; i < snapshots.length; i += 1) {
-              const held = snapshots[i];
-              if (held !== undefined) snapshots[i] = { tick: held.tick, x: p.position.x, y: p.position.y };
-            }
-          }
+        if (newest !== undefined && isRelocation(p.position.x - newest.x, p.position.y - newest.y)) {
+          relocate();
         }
         snapshots.push({ tick: p.tick, x: p.position.x, y: p.position.y });
       } else if (newest.x !== p.position.x || newest.y !== p.position.y) {
+        // The same tick, re-rendered with a moved point: a layout nudge
+        // replaces the snapshot in place; a relocation (see above) is
+        // glided the same way it is on a new tick.
+        if (isRelocation(p.position.x - newest.x, p.position.y - newest.y)) {
+          relocate();
+        }
         snapshots[snapshots.length - 1] = { tick: p.tick, x: p.position.x, y: p.position.y };
       }
       // 2. The playback clock, then the walked feet point along the buffer;
@@ -1764,10 +1874,16 @@ function AmbientMemberBody({
           y: pullTo.y + (pullFrom.y - pullTo.y) * remainderNow,
         };
         pullTo = { x: p.pullX, y: p.pullY };
-        settleElapsedMs = 0;
-        settleMs = settleDurationMs(
-          tileHere <= 0 ? 0 : Math.hypot(pullTo.x - pullFrom.x, pullTo.y - pullFrom.y) / tileHere,
-        );
+        // Same rule as the relocation above: a pull that moved under a
+        // pixel (a layout nudge, or the relocation's own cancelled pull)
+        // starts no settle, so the clip stays where it is.
+        const pullPixels = Math.hypot(pullTo.x - pullFrom.x, pullTo.y - pullFrom.y);
+        if (pullPixels < 1) {
+          settleElapsedMs = null;
+        } else {
+          settleElapsedMs = 0;
+          settleMs = settleDurationMs(tileHere <= 0 ? 0 : pullPixels / tileHere);
+        }
       }
       const remainder = settleElapsedMs === null ? 0 : settleRemainder(settleElapsedMs, settleMs);
       if (remainder === 0) settleElapsedMs = null;
@@ -2543,8 +2659,11 @@ export function FloorGrid(props: FloorGridProps) {
   // member on no seat) lights none rather than inventing one.
   const bayRef: FloorStationRef = { kind: 'training', station: COMPETITION_BENCH_BAY };
   const bayContract = contractStationByKey.get(stationKey(bayRef));
-  const primaryOccupied = (bayContract?.seats[0]?.usingId ?? null) !== null;
-  const expansionOccupied = (bayContract?.seats[1]?.usingId ?? null) !== null;
+  const baySeats = seatsByBench(bayContract, bay.benches);
+  const occupiedBySource = (source: BayBench['source']): boolean =>
+    bay.benches.some((bench, index) => bench.source === source && (baySeats[index]?.usingId ?? null) !== null);
+  const primaryOccupied = occupiedBySource('primary');
+  const expansionOccupied = occupiedBySource('expansion');
   const bayLevels = stationLevels(capability, COMPETITION_BENCH_BAY);
   const bayQualityMark = bay.complete && bayLevels.quality > 0;
   const bayThroughputMark = bay.complete && bayLevels.throughput > 0;
@@ -3583,17 +3702,17 @@ export function FloorGrid(props: FloorGridProps) {
             return (
               <>
                 {living === null ? null : (
-                  <Text testID={'floorgrid-member-panel-display-name'}>{living.displayName}</Text>
+                  <Text testID={'floorgrid-member-panel-display-name'} style={panelStyles.text}>{living.displayName}</Text>
                 )}
-                <Text testID={'floorgrid-member-panel-identity'}>
+                <Text testID={'floorgrid-member-panel-identity'} style={panelStyles.text}>
                   {playerFacingMemberTypeLabel(selectedMember.type)}
                 </Text>
                 {living === null ? null : (
                   <>
-                    <Text testID={'floorgrid-member-panel-short-id'}>
+                    <Text testID={'floorgrid-member-panel-short-id'} style={panelStyles.text}>
                       {playerFacingMemberShortId(living.id)}
                     </Text>
-                    <Text testID={'floorgrid-member-panel-tenure'}>
+                    <Text testID={'floorgrid-member-panel-tenure'} style={panelStyles.text}>
                       {playerFacingTenureLine(living.joinedAtSeconds, gymClockSeconds)}
                     </Text>
                     {(() => {
@@ -3601,37 +3720,37 @@ export function FloorGrid(props: FloorGridProps) {
                       const retention = livingMemberRetentionPressure(experience);
                       return (
                         <>
-                          <Text testID={'floorgrid-member-panel-experience'}>
+                          <Text testID={'floorgrid-member-panel-experience'} style={panelStyles.text}>
                             {`RECENT EXPERIENCE ${experience.labels.overall}`}
                           </Text>
                           {experience.status === 'forming' ? (
-                            <Text testID={'floorgrid-member-panel-no-history'}>
+                            <Text testID={'floorgrid-member-panel-no-history'} style={panelStyles.text}>
                               {experience.reasons[0]?.text}
                             </Text>
                           ) : (
                             <>
-                              <Text testID={'floorgrid-member-panel-experience-components'}>
-                                <Text testID={'floorgrid-member-panel-experience-wait'}>
+                              <Text testID={'floorgrid-member-panel-experience-components'} style={panelStyles.text}>
+                                <Text testID={'floorgrid-member-panel-experience-wait'} style={panelStyles.text}>
                                   {`WAIT ${experience.labels.wait}`}
                                 </Text>
                                 {' / '}
-                                <Text testID={'floorgrid-member-panel-experience-training'}>
+                                <Text testID={'floorgrid-member-panel-experience-training'} style={panelStyles.text}>
                                   {`TRAINING ${experience.labels.training}`}
                                 </Text>
                                 {' / '}
-                                <Text testID={'floorgrid-member-panel-experience-reliability'}>
+                                <Text testID={'floorgrid-member-panel-experience-reliability'} style={panelStyles.text}>
                                   {`SERVICE ${experience.labels.reliability}`}
                                 </Text>
                               </Text>
-                              <Text testID={'floorgrid-member-panel-experience-reason'}>
+                              <Text testID={'floorgrid-member-panel-experience-reason'} style={panelStyles.text}>
                                 {experience.reasons.map((reason) => reason.text).join(' ')}
                               </Text>
                             </>
                           )}
-                          <Text testID={'floorgrid-member-panel-membership'}>
+                          <Text testID={'floorgrid-member-panel-membership'} style={panelStyles.text}>
                             {`MEMBERSHIP ${retention.label}`}
                           </Text>
-                          <Text testID={'floorgrid-member-panel-membership-reason'}>
+                          <Text testID={'floorgrid-member-panel-membership-reason'} style={panelStyles.text}>
                             {retention.reasons.map((reason) => reason.text).join(' ')}
                           </Text>
                         </>
@@ -3642,6 +3761,7 @@ export function FloorGrid(props: FloorGridProps) {
                         <Text
                           key={`visit-${visit.observedAtTick}-${visitIndex}`}
                           testID={`floorgrid-member-panel-visit-${visitIndex}`}
+                          style={panelStyles.text}
                         >
                           {playerFacingServiceVisitLine(visit)}
                         </Text>
@@ -3652,7 +3772,7 @@ export function FloorGrid(props: FloorGridProps) {
               </>
             );
           })()}
-          <Text testID={'floorgrid-member-panel-state'}>
+          <Text testID={'floorgrid-member-panel-state'} style={panelStyles.text}>
             {playerFacingMemberActivityLine(
               selectedMember.state,
               selectedMember.target === null ? null : refToken(selectedMember.target),
@@ -3675,7 +3795,7 @@ export function FloorGrid(props: FloorGridProps) {
       panelManagerEffect === null ||
       selectedMember !== null ? null : (
         <ScrollView testID={'floorgrid-station-panel'} style={panelStyles.panel}>
-          <Text testID={'floorgrid-station-panel-identity'}>
+          <Text testID={'floorgrid-station-panel-identity'} style={panelStyles.text}>
             {playerFacingEquipmentLabel(panelIdentity.item)}
           </Text>
           {/*
@@ -3685,7 +3805,7 @@ export function FloorGrid(props: FloorGridProps) {
             panel and the floor light the same snapshot; no fake
             "efficiency score" is computed here.
           */}
-          <Text testID={'floorgrid-station-panel-operation'}>
+          <Text testID={'floorgrid-station-panel-operation'} style={panelStyles.text}>
             {playerFacingStationOperation(panelOperation, panelLoadingSeats)}
           </Text>
           {/*
@@ -3699,7 +3819,7 @@ export function FloorGrid(props: FloorGridProps) {
             line reads exactly as it did before for every already-tested
             non-dormant state — see `stationConditionView`'s own comment.
           */}
-          <Text testID={'floorgrid-station-panel-condition'}>
+          <Text testID={'floorgrid-station-panel-condition'} style={panelStyles.text}>
             Condition {displayConditionPercent(panelCondition.condition)}% — repair{' '}
             {panelCondition.blocksRecovery
               ? panelCondition.repairCostGymBucks
@@ -3716,7 +3836,7 @@ export function FloorGrid(props: FloorGridProps) {
             new plain-JSX-text chunk to `empireCore.test.ts`'s JSX census.
           */}
           {panelCondition.dormant ? (
-            <Text testID={'floorgrid-station-panel-recovery'}>
+            <Text testID={'floorgrid-station-panel-recovery'} style={panelStyles.text}>
               {panelCondition.blocksRecovery
                 ? `recovery repair required — condition ${displayConditionPercent(panelCondition.condition)}% is below the reopening minimum of ${displayConditionPercent(EMPIRE_TUNING.RECOVERY_CONDITION_MIN)}%`
                 : `condition ${displayConditionPercent(panelCondition.condition)}% clears the reopening minimum of ${displayConditionPercent(EMPIRE_TUNING.RECOVERY_CONDITION_MIN)}% — not blocking recovery`}
@@ -3729,7 +3849,7 @@ export function FloorGrid(props: FloorGridProps) {
             (Stage B's own measurement, CLAUDE.md) reads here as "never
             repairs automatically", not as a vague "management" line.
           */}
-          <Text testID={'floorgrid-station-panel-manager'}>
+          <Text testID={'floorgrid-station-panel-manager'} style={panelStyles.text}>
             {panelManagerEffect.hired
               ? panelManagerEffect.wouldAutoRepairNow
                 ? `your ${panelManagerEffect.tier} manager repairs this automatically below condition ${panelManagerEffect.autoRepairCondition}`
@@ -3743,7 +3863,7 @@ export function FloorGrid(props: FloorGridProps) {
             (panelStation.kind === 'training'
               ? COMPETITION_BENCH_BAY_PRIMARY
               : panelStation.item) ? (
-            <Text testID={'floorgrid-station-panel-review-note'}>
+            <Text testID={'floorgrid-station-panel-review-note'} style={panelStyles.text}>
               the standing maintenance review is currently about this item
             </Text>
           ) : null}
@@ -3759,6 +3879,7 @@ export function FloorGrid(props: FloorGridProps) {
                     <Text
                       key={axis}
                       testID={`floorgrid-station-panel-upgrade-${axis}-done`}
+                      style={panelStyles.text}
                     >
                       {`${playerFacingUpgradeLabel(axis)} — ${playerFacingUpgradeEffect(axis)}`}
                     </Text>
@@ -3769,6 +3890,7 @@ export function FloorGrid(props: FloorGridProps) {
                     <Text
                       key={axis}
                       testID={`floorgrid-station-panel-upgrade-${axis}-unavailable`}
+                      style={panelStyles.text}
                     >
                       {`${playerFacingUpgradeLabel(axis)} — ${playerFacingUpgradeRefuse('no-second-position')}`}
                     </Text>
@@ -3779,6 +3901,7 @@ export function FloorGrid(props: FloorGridProps) {
                     <Text
                       key={axis}
                       testID={`floorgrid-station-panel-upgrade-${axis}-unavailable`}
+                      style={panelStyles.text}
                     >
                       {`${playerFacingUpgradeLabel(axis)} needs ${cost} gym bucks — you have ${managed.gym.ladder.gymBucks}`}
                     </Text>
@@ -3829,11 +3952,11 @@ export function FloorGrid(props: FloorGridProps) {
             reachable for a routine-worn one.
           */}
           {panelCondition.isSound && !panelCondition.blocksRecovery ? (
-            <Text testID={'floorgrid-station-panel-repair-unavailable'}>
+            <Text testID={'floorgrid-station-panel-repair-unavailable'} style={panelStyles.text}>
               no routine maintenance needed — nothing to repair
             </Text>
           ) : panelCondition.repairCostGymBucks > managed.gym.ladder.gymBucks ? (
-            <Text testID={'floorgrid-station-panel-repair-unavailable'}>
+            <Text testID={'floorgrid-station-panel-repair-unavailable'} style={panelStyles.text}>
               needs {panelCondition.repairCostGymBucks} gym bucks — you have{' '}
               {managed.gym.ladder.gymBucks}
             </Text>
