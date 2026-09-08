@@ -9,11 +9,10 @@
  * that reason.
  *
  * `file` is a REQUIRED, non-nullable prop on `RiveView` — this component does
- * not mount it at all until `useRiveFile` has actually resolved one, which
- * with this spike's deliberately-invalid placeholder asset never happens (see
- * `riveSpikeTypes.ts`). What's exercised instead is the full load attempt and
- * its error path, reported through `onStatus` rather than crashing the
- * screen.
+ * not mount it at all until `useRiveFile` has actually resolved one. The
+ * asset is real (`riveSpikeTypes.ts`); a load failure is still reported
+ * through `onStatus` rather than crashing the screen. Not executed here —
+ * no native toolchain — see ADR-001 §7.
  */
 import React, { useEffect, useRef } from 'react';
 import { View } from 'react-native';
@@ -25,16 +24,16 @@ import {
   type ViewModelNumberProperty,
 } from '@rive-app/react-native';
 
-import { SPIKE_SIGNAL_FIELDS, spikeSignalAt } from './spikeSignal';
+import { spikeSignalAt } from './spikeSignal';
 import { SPIKE_STAGE } from './spikeTuning';
-import type { RiveSpikeStageComponent, RiveSpikeStageProps } from './riveSpikeTypes';
+import { SPIKE_BOUND_PROPERTY, type RiveSpikeStageComponent, type RiveSpikeStageProps } from './riveSpikeTypes';
 
 // A STRING LITERAL, NOT THE CONSTANT `riveSpikeTypes.ts` DOCUMENTS. Metro
 // collects dependencies statically and refuses `require(someVariable)` at
 // bundle time, so the path is spelled out here and the constant is kept as
 // the documented home of "where a real .riv goes".
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const SPIKE_ASSET = require('../../../assets/dev/rive-spike.riv');
+const SPIKE_ASSET = require('../../../assets/dev/quick_start.riv');
 
 
 export function RiveSpikeStage({ onStatus }: RiveSpikeStageProps): React.ReactElement {
@@ -43,7 +42,7 @@ export function RiveSpikeStage({ onStatus }: RiveSpikeStageProps): React.ReactEl
     riveFile,
     { async: true },
   );
-  const propsRef = useRef<Partial<Record<string, ViewModelNumberProperty>>>({});
+  const healthRef = useRef<ViewModelNumberProperty | null>(null);
 
   useEffect(() => {
     if (fileError) {
@@ -58,18 +57,14 @@ export function RiveSpikeStage({ onStatus }: RiveSpikeStageProps): React.ReactEl
       onStatus({ phase: 'loading' });
       return;
     }
-    propsRef.current = Object.fromEntries(
-      SPIKE_SIGNAL_FIELDS.map((field) => [field, instance.numberProperty(field)]),
-    );
+    healthRef.current = instance.numberProperty(SPIKE_BOUND_PROPERTY) ?? null;
     onStatus({ phase: 'bound' });
   }, [fileError, instanceError, isLoading, instance, onStatus]);
 
   useEffect(() => {
     const id = setInterval(() => {
       const frame = spikeSignalAt(Date.now());
-      for (const field of SPIKE_SIGNAL_FIELDS) {
-        propsRef.current[field]?.set(frame[field]);
-      }
+      healthRef.current?.set(frame.barHeight * SPIKE_STAGE.HEALTH_SPAN);
     }, SPIKE_STAGE.FRAME_INTERVAL_MS);
     return () => clearInterval(id);
   }, []);

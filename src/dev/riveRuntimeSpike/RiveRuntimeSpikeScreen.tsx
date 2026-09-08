@@ -11,15 +11,15 @@
  * whether the athlete looks right. There is no athlete here. The values fed
  * to it are `spikeSignal.ts`'s synthetic sine/ease curves, never `LiftState`.
  *
- * It cannot prove real on-screen rendering or frame pacing in THIS
- * environment: no legally-usable `.riv` binary is obtainable here (see
- * `assets/dev/rive-spike.riv.README.md`), so the bundled asset is a
- * deliberately invalid placeholder and both runtimes correctly reject it.
- * What that still proves, honestly: the dependency installs clean against
- * this repo's exact RN/Expo/React versions, the Metro `.riv` asset pipeline
- * resolves, the hook wiring for a ViewModel numeric binding compiles and
- * mounts on both platforms, and the failure path is caught and displayed
- * rather than crashing the app.
+ * The asset is REAL — the vendor's MIT-licensed quick-start health bar
+ * (`assets/dev/THIRD-PARTY-RIVE-ASSETS.md`), obtained over this sandbox's
+ * git path after the vendor's asset host and every npm tarball turned out
+ * empty of one. It exposes one number, `health`; the synthetic feed's
+ * `barHeight` is written to it at 60 Hz, so the bar drains and refills once
+ * per synthetic rep. That is what lets the probe photograph a graphic that
+ * MOVES under a continuous ViewModel write, on web — the thing the earlier
+ * placeholder could not show. Still not shown here: native (no toolchain),
+ * and anything about an athlete.
  *
  * ---------------------------------------------------------------------------
  * WHY THIS IS SAFE TO SHIP ON A BRANCH WITHOUT BEING A PLAYER SURFACE
@@ -60,7 +60,7 @@ function statusLine(status: RiveSpikeStatus): string {
     case 'loading':
       return 'loading…';
     case 'bound':
-      return 'bound — writing 5 fields at 60fps';
+      return 'bound — writing health at 60fps';
     case 'error':
       return `error: ${status.message}`;
   }

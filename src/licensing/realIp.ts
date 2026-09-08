@@ -987,7 +987,14 @@ export const UNREADABLE_BY_THIS_AUDIT: readonly UnreadableGroup[] = Object.freez
   // real `.riv` (a binary) would be classified. When a real asset replaces
   // it, this row stays true; had the placeholder been text, the row would
   // have sat in the text census and gone stale the day the real file landed.
-  { extension: '.riv', reason: 'nul-byte', count: 1 },
+  //
+  // 1 -> 3 on 2026-09-08: two REAL test assets landed beside the placeholder,
+  // `assets/dev/quick_start.riv` and `rewards.riv`, MIT, from the vendor's own
+  // runtime repository — provenance, hashes and the licence text are in
+  // `assets/dev/THIRD-PARTY-RIVE-ASSETS.md`. Dev-only fixtures for the runtime
+  // spike and the `.riv` schema diagnostic; neither is an athlete and neither
+  // is on the player path. The placeholder stays as the error-path fixture.
+  { extension: '.riv', reason: 'nul-byte', count: 3 },
   { extension: '.wav', reason: 'nul-byte', count: 7 },
   { extension: '.webp', reason: 'nul-byte', count: 2 },
 ]);

@@ -31,21 +31,29 @@ export interface RiveSpikeStageProps {
 export type RiveSpikeStageComponent = (props: RiveSpikeStageProps) => React.ReactElement;
 
 /**
- * `assets/dev/rive-spike.riv` is a DELIBERATELY INVALID placeholder, not a
- * real Rive asset — see `assets/dev/rive-spike.riv.README.md` for exactly
- * why (network-blocked in this environment, and no npm package ships a
- * redistributable one to fall back on). A developer with Rive editor access
- * who wants to actually SEE something render replaces those bytes with a
- * real `.riv` at this same path and NEITHER stage's code changes: native
- * resolves it through `require()` (an asset id, per `src/art/riv.d.ts`), web
- * resolves the same `require()` through `Image.resolveAssetSource` to a
- * fetchable URL.
+ * `assets/dev/quick_start.riv` is a REAL Rive asset — the vendor's own
+ * quick-start health bar, MIT, provenance and licence text in
+ * `assets/dev/THIRD-PARTY-RIVE-ASSETS.md`. It is not an athlete and is never
+ * presented as one; it is what turns this spike from "compiles, mounts, fails
+ * cleanly" into "draws, and moves under a 60 Hz ViewModel write". The
+ * deliberately invalid `rive-spike.riv` stays beside it as the error-path
+ * fixture `tools/rivSchema.mjs` and `src/art/rivContract.test.ts` refuse.
  *
  * DOCUMENTATION, NOT THE `require()` ARGUMENT. Both stages spell the path out
  * as a string literal, because Metro collects dependencies statically and
  * refuses `require(someVariable)` at bundle time — the first probe of this
  * spike timed out on exactly that. This constant exists so the location is
  * written down once; `riveSpikeTypes.test.ts` pins that both stages still
- * require this same path.
+ * require this same path, and that the bytes there are a real `.riv` whose
+ * hash the provenance file names.
  */
-export const SPIKE_RIV_ASSET_RELATIVE_PATH = '../../../assets/dev/rive-spike.riv';
+export const SPIKE_RIV_ASSET_RELATIVE_PATH = '../../../assets/dev/quick_start.riv';
+
+/**
+ * The one ViewModel number the asset exposes (`tools/rivSchema.mjs` reads it:
+ * `health_bar_01.health`). The synthetic feed's `barHeight` is written here,
+ * scaled by `SPIKE_STAGE.HEALTH_SPAN`; the feed's other four fields have no
+ * home on this file and are computed, not written — the shape of a real
+ * multi-field tick is still exercised, the count of writes per frame is not.
+ */
+export const SPIKE_BOUND_PROPERTY = 'health';

@@ -2,7 +2,15 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { createLift, stepLift, type LiftInput, type LiftState } from '../game/lift';
+import {
+  createLift,
+  LIFT_OUTCOMES,
+  LIFT_PHASES,
+  MISS_REASONS,
+  stepLift,
+  type LiftInput,
+  type LiftState,
+} from '../game/lift';
 import { LIFT_TUNING } from '../game/liftTuning';
 import { liftPresentation, type LiftPresentationState } from '../game/liftPresentation';
 import { codeOnly } from '../tuning/audit';
@@ -13,6 +21,8 @@ import {
   heightsPerSecond,
   plateSlotsFrom,
   rigInputPaths,
+  rigInputSpec,
+  rigInputValues,
   type AthleteRigInputs,
 } from './athleteRig';
 
@@ -188,6 +198,58 @@ describe('athleteRigInputsFrom carries the contract to the rig', () => {
   it('is pure — the same contract tick maps to the same record', () => {
     const view = playedRep(0.8)[25]!;
     expect(athleteRigInputsFrom(view)).toEqual(athleteRigInputsFrom(view));
+  });
+
+  it('types every path, and its enum sets are the engine’s own lists plus none — read from lift.ts HERE, never in the binding', () => {
+    const spec = rigInputSpec();
+    const byPath = new Map(spec.map((input) => [input.path, input]));
+    const values = (path: string): readonly string[] => {
+      const input = byPath.get(path);
+      return input?.type === 'enum' ? input.values : [];
+    };
+    // The binding builds these from Record<contract union, true>; the engine's
+    // runtime arrays are the independent oracle that the unions are complete.
+    expect([...values('phase')].sort()).toEqual([...LIFT_PHASES].sort());
+    expect([...values('outcome')].sort()).toEqual([...LIFT_OUTCOMES, 'none'].sort());
+    expect([...values('missReason')].sort()).toEqual([...MISS_REASONS, 'none'].sort());
+    expect([...values('lift')].sort()).toEqual(['bench', 'deadlift', 'squat']);
+    expect([...values('effortBand')].sort()).toEqual(['easy', 'failing', 'grind', 'hard', 'normal']);
+    expect(byPath.get('barHeight')?.type).toBe('number');
+    expect(byPath.get('held')?.type).toBe('boolean');
+    expect(byPath.get('plates/0/on')?.type).toBe('boolean');
+    expect(byPath.get('plates/0/size')?.type).toBe('number');
+    expect(spec.map((input) => input.path)).toEqual(rigInputPaths());
+  });
+
+  it('rigInputValues carries the record’s values, one entry per path, in spec order', () => {
+    const view = playedRep(0.8)[25]!;
+    const inputs = athleteRigInputsFrom(view);
+    const writes = rigInputValues(inputs);
+    expect(writes.map((w) => w.path)).toEqual(rigInputPaths());
+    const at = (path: string) => writes.find((w) => w.path === path)?.value;
+    expect(at('barHeight')).toBe(inputs.barHeight);
+    expect(at('phase')).toBe(inputs.phase);
+    expect(at('held')).toBe(inputs.held);
+    expect(at('plates/0/on')).toBe(inputs.plates[0]!.on);
+    expect(at('plates/0/size')).toBe(inputs.plates[0]!.size);
+    // Every enum write is one of its own declared values.
+    for (const w of writes) {
+      if (w.type === 'enum') expect(w.values, `${w.path} = ${w.value}`).toContain(w.value);
+    }
+  });
+
+  it('both production stages write through rigInputValues and name no path themselves', () => {
+    for (const stage of ['AthleteStage.native.tsx', 'AthleteStage.web.tsx']) {
+      // RAW, NOT codeOnly: a quoted path is a STRING LITERAL, and codeOnly
+      // blanks string literals — measured: under codeOnly a stage that wrote
+      // `vmi.number('barHeight')` by hand passed this scan, because the
+      // quotes were still there and the name inside them was not.
+      const source = readFileSync(new URL(`../session/${stage}`, import.meta.url), 'utf8');
+      expect(source.includes('rigInputValues('), `${stage} loops the spec`).toBe(true);
+      // A hand-written path is the second list this module exists to delete.
+      const handNamed = [...source.matchAll(/(?:Property|\.number|\.boolean|\.enum)\(\s*['"`]([a-zA-Z/0-9]+)['"`]\s*\)/g)].map((m) => m[1]);
+      expect(handNamed, `${stage} names a path`).toEqual([]);
+    }
   });
 
   it('names every ViewModel path the .riv must expose, from the record itself', () => {

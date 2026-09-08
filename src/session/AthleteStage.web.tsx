@@ -5,10 +5,16 @@
  * file's header. The web runtime's binding API differs in shape (a
  * `ViewModelInstanceNumber` with a `.value` setter rather than a Nitro
  * `numberProperty(...).set(...)`), which is the whole reason there are two
- * files — measured in ADR-001 §4a, mirrored from the spike's web stage.
+ * files — measured in ADR-001 §4a, mirrored from the spike's web stage. Like
+ * the native stage it names no path: it loops `rigInputValues`, the one list
+ * the `.riv` is also checked against.
+ *
+ * The engine is self-hosted and the asset URI is resolved through
+ * `expo-asset`, both via `riveWebEngine.ts` — the two web-only facts the
+ * runtime spike measured (a blocked CDN, and `react-native-web` having no
+ * `Image.resolveAssetSource`).
  */
 import React, { useEffect, useRef } from 'react';
-import { Image } from 'react-native';
 import {
   useRive,
   useViewModel,
@@ -18,59 +24,34 @@ import {
 
 import type { LiftStageProps } from '../lift/LiftStage';
 import { liftPresentation } from '../game/liftPresentation';
-import { athleteRigInputsFrom, type AthleteRigInputs } from '../art/athleteRig';
-import { ATHLETE_RIG } from '../art/spriteTuning';
+import { athleteRigInputsFrom, rigInputValues, type AthleteRigInputs } from '../art/athleteRig';
 import { priorFromHistory } from './athleteStagePrior';
 import type { AthleteStageComponent } from './athleteStageTypes';
 import { ATHLETE_RIV_ASSET } from './athleteAsset';
+import { riveAssetUri, selfHostRiveEngine } from './riveWebEngine';
 
-const ATHLETE_SRC = Image.resolveAssetSource(ATHLETE_RIV_ASSET).uri;
-
-function setNumber(vmi: ViewModelInstance, path: string, value: number): void {
-  const prop = vmi.number(path);
-  if (prop) prop.value = value;
-}
-function setBoolean(vmi: ViewModelInstance, path: string, value: boolean): void {
-  const prop = vmi.boolean(path);
-  if (prop) prop.value = value;
-}
-function setEnum(vmi: ViewModelInstance, path: string, value: string): void {
-  const prop = vmi.enum(path);
-  if (prop) prop.value = value;
-}
+selfHostRiveEngine();
+const ATHLETE_SRC = riveAssetUri(ATHLETE_RIV_ASSET);
 
 function writeInputs(vmi: ViewModelInstance, inputs: AthleteRigInputs): void {
-  setEnum(vmi, 'lift', inputs.lift);
-  setEnum(vmi, 'phase', inputs.phase);
-  setNumber(vmi, 'barHeight', inputs.barHeight);
-  setNumber(vmi, 'barVelocity', inputs.barVelocity);
-  setBoolean(vmi, 'motionSampleValid', inputs.motionSampleValid);
-  setNumber(vmi, 'integratorVelocity', inputs.integratorVelocity);
-  setNumber(vmi, 'strain', inputs.strain);
-  setNumber(vmi, 'grindIntensity', inputs.grindIntensity);
-  setEnum(vmi, 'effortBand', inputs.effortBand);
-  setNumber(vmi, 'barTiltDeg', inputs.barTiltDeg);
-  setNumber(vmi, 'barForwardPx', inputs.barForwardPx);
-  setNumber(vmi, 'barLateralPx', inputs.barLateralPx);
-  setNumber(vmi, 'barBendPx', inputs.barBendPx);
-  setNumber(vmi, 'commandGlow', inputs.commandGlow);
-  setBoolean(vmi, 'held', inputs.held);
-  setBoolean(vmi, 'pressCommandLive', inputs.pressCommandLive);
-  setBoolean(vmi, 'lockoutHoldLive', inputs.lockoutHoldLive);
-  setNumber(vmi, 'chalk', inputs.chalk);
-  setBoolean(vmi, 'depthAchieved', inputs.depthAchieved);
-  setBoolean(vmi, 'lockedOut', inputs.lockedOut);
-  setBoolean(vmi, 'complete', inputs.complete);
-  setEnum(vmi, 'outcome', inputs.outcome);
-  setEnum(vmi, 'missReason', inputs.missReason);
-  setNumber(vmi, 'totalKg', inputs.totalKg);
-  setNumber(vmi, 'platesOverflow', inputs.platesOverflow);
-  setNumber(vmi, 'seed', inputs.seed);
-  for (let i = 0; i < ATHLETE_RIG.PLATE_SLOTS_PER_SIDE; i += 1) {
-    const slot = inputs.plates[i];
-    if (slot === undefined) break;
-    setBoolean(vmi, `plates/${i}/on`, slot.on);
-    setNumber(vmi, `plates/${i}/size`, slot.size);
+  for (const input of rigInputValues(inputs)) {
+    switch (input.type) {
+      case 'number': {
+        const prop = vmi.number(input.path);
+        if (prop) prop.value = input.value;
+        break;
+      }
+      case 'boolean': {
+        const prop = vmi.boolean(input.path);
+        if (prop) prop.value = input.value;
+        break;
+      }
+      case 'enum': {
+        const prop = vmi.enum(input.path);
+        if (prop) prop.value = input.value;
+        break;
+      }
+    }
   }
 }
 

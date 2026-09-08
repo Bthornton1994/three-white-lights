@@ -354,8 +354,13 @@ const PINNED = Object.freeze({
    * `src/art/athleteRig.ts` + test, `src/session/AthleteStage.native.tsx`,
    * `.web.tsx`, `AthleteStage.d.ts`, `athleteStageTypes.ts`,
    * `athleteStagePrior.ts` + test, `athleteAsset.ts`.
+   *
+   * 373 -> 379 with the `.riv` schema diagnostic and the real test asset's
+   * provenance: `tools/rivSchema.mjs` + `.d.mts`, `src/art/rivContract.ts` +
+   * test, `src/session/riveWebEngine.ts`, `assets/dev/THIRD-PARTY-RIVE-ASSETS.md`.
+   * The two `.riv` binaries beside it are not text and are not read.
    */
-  SCANNED_FILES: 373,
+  SCANNED_FILES: 379,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -417,8 +422,10 @@ const PINNED = Object.freeze({
    *
    * 115 -> 117 with `src/art/athleteRig.test.ts` and
    * `src/session/athleteStagePrior.test.ts`.
+   *
+   * 117 -> 118 with `src/art/rivContract.test.ts`.
    */
-  TEST_FILES: 117,
+  TEST_FILES: 118,
 });
 
 /**

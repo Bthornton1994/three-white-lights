@@ -184,24 +184,153 @@ export function athleteRigInputsFrom(view: LiftPresentationState): AthleteRigInp
   };
 }
 
+/** What a rig input is, in the ViewModel's own type vocabulary. */
+export type RigInputType = 'number' | 'boolean' | 'enum';
+
 /**
- * Every ViewModel property path the `.riv` must expose, derived from the
- * record's own keys so the list and the type cannot drift. Plate slots are
- * `plates/<i>/on` and `plates/<i>/size` in Rive's nested-path grammar.
+ * One ViewModel property the `.riv` must expose: its path, its type, and —
+ * for an enum — every value the binding can ever write to it, which the
+ * authored enum must carry or the write is a silent no-op at runtime.
  */
-export function rigInputPaths(): readonly string[] {
-  const sample = athleteRigInputsFrom(EMPTY_VIEW);
-  const paths: string[] = [];
-  for (const key of Object.keys(sample) as (keyof AthleteRigInputs)[]) {
-    if (key === 'plates') {
-      for (let i = 0; i < ATHLETE_RIG.PLATE_SLOTS_PER_SIDE; i += 1) {
-        paths.push(`plates/${i}/on`, `plates/${i}/size`);
-      }
-    } else {
-      paths.push(key);
+export type RigInputSpec =
+  | { readonly path: string; readonly type: 'number' }
+  | { readonly path: string; readonly type: 'boolean' }
+  | { readonly path: string; readonly type: 'enum'; readonly values: readonly string[] };
+
+/** A spec entry carrying the value the binding writes this tick. */
+export type RigInputValue =
+  | { readonly path: string; readonly type: 'number'; readonly value: number }
+  | { readonly path: string; readonly type: 'boolean'; readonly value: boolean }
+  | { readonly path: string; readonly type: 'enum'; readonly values: readonly string[]; readonly value: string };
+
+// THE ENUM VALUE SETS ARE EXHAUSTIVE BY CONSTRUCTION, NOT BY CARE. Each is a
+// `Record` keyed on the contract's own union type, so a member the contract
+// adds is a compile error here until it is listed, and a member listed here
+// that the contract does not have is an excess-property error. No runtime
+// list is copied from `lift.ts` — the binding still imports only the contract.
+const LIFT_VALUES: Record<LiftPresentationState['kind'], true> = {
+  squat: true,
+  bench: true,
+  deadlift: true,
+};
+const PHASE_VALUES: Record<LiftPresentationState['phase'], true> = {
+  BRACE: true,
+  DESCENT: true,
+  HOLE: true,
+  ASCENT: true,
+  LOCKOUT: true,
+  RESOLVED: true,
+};
+const EFFORT_BAND_VALUES: Record<LiftEffortBand, true> = {
+  easy: true,
+  normal: true,
+  hard: true,
+  grind: true,
+  failing: true,
+};
+const OUTCOME_VALUES: Record<AthleteRigInputs['outcome'], true> = {
+  'good-lift': true,
+  grind: true,
+  miss: true,
+  none: true,
+};
+const MISS_REASON_VALUES: Record<AthleteRigInputs['missReason'], true> = {
+  'no-depth': true,
+  buried: true,
+  stalled: true,
+  timeout: true,
+  dropped: true,
+  none: true,
+};
+
+function enumInput(path: string, value: string, set: Record<string, true>): RigInputValue {
+  return { path, type: 'enum', values: Object.keys(set), value };
+}
+
+/**
+ * The entries one record key contributes. A `switch` over `keyof
+ * AthleteRigInputs` with a `never` default, so a field added to the record
+ * cannot be forgotten here — the stage writers and the `.riv` schema diff
+ * both read this and nothing else.
+ */
+function rigInputsForKey(key: keyof AthleteRigInputs, inputs: AthleteRigInputs): readonly RigInputValue[] {
+  switch (key) {
+    case 'lift':
+      return [enumInput(key, inputs.lift, LIFT_VALUES)];
+    case 'phase':
+      return [enumInput(key, inputs.phase, PHASE_VALUES)];
+    case 'effortBand':
+      return [enumInput(key, inputs.effortBand, EFFORT_BAND_VALUES)];
+    case 'outcome':
+      return [enumInput(key, inputs.outcome, OUTCOME_VALUES)];
+    case 'missReason':
+      return [enumInput(key, inputs.missReason, MISS_REASON_VALUES)];
+    case 'barHeight':
+    case 'barVelocity':
+    case 'integratorVelocity':
+    case 'strain':
+    case 'grindIntensity':
+    case 'barTiltDeg':
+    case 'barForwardPx':
+    case 'barLateralPx':
+    case 'barBendPx':
+    case 'commandGlow':
+    case 'chalk':
+    case 'totalKg':
+    case 'platesOverflow':
+    case 'seed':
+      return [{ path: key, type: 'number', value: inputs[key] }];
+    case 'motionSampleValid':
+    case 'held':
+    case 'pressCommandLive':
+    case 'lockoutHoldLive':
+    case 'depthAchieved':
+    case 'lockedOut':
+    case 'complete':
+      return [{ path: key, type: 'boolean', value: inputs[key] }];
+    case 'plates':
+      // Nested-path grammar: `plates/<i>/on`, `plates/<i>/size`.
+      return inputs.plates.flatMap((slot, i): readonly RigInputValue[] => [
+        { path: `plates/${i}/on`, type: 'boolean', value: slot.on },
+        { path: `plates/${i}/size`, type: 'number', value: slot.size },
+      ]);
+    default: {
+      const unhandled: never = key;
+      throw new Error(`rig input without a ViewModel entry: ${String(unhandled)}`);
     }
   }
-  return paths;
+}
+
+/**
+ * Every write a stage makes this tick — path, type and value — in record
+ * order. Both production stages loop over this rather than naming paths
+ * themselves, so the list the `.riv` is checked against and the list the
+ * runtime is written with are one list.
+ */
+export function rigInputValues(inputs: AthleteRigInputs): readonly RigInputValue[] {
+  const out: RigInputValue[] = [];
+  for (const key of Object.keys(inputs) as (keyof AthleteRigInputs)[]) {
+    out.push(...rigInputsForKey(key, inputs));
+  }
+  return out;
+}
+
+/**
+ * Every ViewModel property the `.riv` must expose, typed, derived from the
+ * record itself so the list and the type cannot drift. This is what
+ * `src/art/rivContract.ts` diffs an authored asset against.
+ */
+export function rigInputSpec(): readonly RigInputSpec[] {
+  return rigInputValues(athleteRigInputsFrom(EMPTY_VIEW)).map((input): RigInputSpec =>
+    input.type === 'enum'
+      ? { path: input.path, type: 'enum', values: input.values }
+      : { path: input.path, type: input.type },
+  );
+}
+
+/** The paths alone — `rigInputSpec()` without the types. */
+export function rigInputPaths(): readonly string[] {
+  return rigInputSpec().map((input) => input.path);
 }
 
 /**

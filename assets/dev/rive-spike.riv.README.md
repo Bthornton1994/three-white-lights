@@ -1,39 +1,28 @@
-# `rive-spike.riv` is not a real Rive asset
+# `rive-spike.riv` is not a real Rive asset — and that is now its only job
 
-This file exists only so `require('./rive-spike.riv')` resolves at Metro
-bundle time — a static `require()` of a file that does not exist fails the
-whole bundle, not just the component that references it. Its bytes are
-deliberately invalid (not the real Rive `RIVE` magic-byte format), which
-means both the native (`@rive-app/react-native`) and web (`@rive-app/canvas`)
-runtimes correctly reject it at load time — measured on web as the runtime's
-own `Bad header` / `The file failed to load`. The bytes also carry a NUL on
-purpose: `src/licensing/realIp.ts` classifies any file with a NUL byte as
-binary and keeps it out of its text-extension census, which is exactly how a
-real `.riv` (a binary) reads — so swapping in a real asset later changes
-nothing in that census either way.
+This file's bytes are deliberately invalid (not the `RIVE` magic-byte format),
+with a NUL on purpose so `src/licensing/realIp.ts` classifies it as binary
+and keeps it out of its text-extension census. Both runtimes reject it at
+load — measured on web as the engine's own `Bad header` / `The file failed
+to load`, and `tools/rivSchema.mjs` refuses it by magic before the engine is
+asked. It is the ERROR-PATH FIXTURE: `src/art/rivContract.test.ts` pins that
+an invalid file reads as invalid and diffs as every path missing, and
+`src/dev/riveRuntimeSpike/riveSpikeTypes.test.ts` pins that it is still not
+a Rive file. `src/session/athleteAsset.ts` still points at it, because no
+production athlete `.riv` exists and the standing rule is no placeholder
+athlete — the production stage pair mounts nowhere until one does.
 
-**Why a real one isn't here instead.** This environment's outbound network is
-allowlisted to package registries and the source host only under
-organization policy. `cdn.rive.app` — the source of Rive's own
-published demo assets, including the one their README uses as an example —
-is not reachable (measured: `CONNECT tunnel failed, response 403`). No
-npm-published Rive package (`@rive-app/react-native`, `@rive-app/canvas`,
-`@rive-app/react-canvas`, the legacy `rive-react-native`, `rive-canvas`,
-`@remotion/rive`) bundles a redistributable `.riv` in its published tarball
-(checked directly: zero `.riv` files across all of them). Nothing in this
-sandbox can author a real one — that needs the Rive editor, per
-`docs/design/ATHLETE-ASSET-PIPELINE.md`.
+**The spike no longer loads this file.** Since 2026-09-08 it loads
+`assets/dev/quick_start.riv`, a real, MIT-licensed test asset — see
+`THIRD-PARTY-RIVE-ASSETS.md` beside it for provenance, hash and licence text.
 
-**What this placeholder DOES let the spike prove, honestly:** the package
-installs and resolves against this repo's exact dependency versions; the
-`.riv` Metro asset extension and `require()` path work end to end; the
-native/web hook wiring for a ViewModel binding compiles and mounts; the
-error-handling path — one of the ruling's explicit verification targets — is
-real, caught, and displayed rather than crashing the app.
-
-**What it does NOT prove:** that anything actually renders, that a real
-ViewModel's numeric properties actually update on screen, frame pacing, or
-memory behavior under sustained real animation. Those need a real `.riv` —
-drop one at this same path (`assets/dev/rive-spike.riv`) with a ViewModel
-exposing `repProgress` / `barHeight` / `barVelocity` / `strain` /
-`grindIntensity` number properties, and nothing else in the spike changes.
+**The earlier claim, corrected rather than deleted.** A previous version of
+this README said no legally usable `.riv` was obtainable here. The two facts
+it rested on are still true: `cdn.rive.app` is not reachable (`CONNECT
+tunnel failed, response 403`), and no npm-published Rive package bundles a
+`.riv` in its tarball (zero across six packages, checked). The conclusion
+was false, because a third channel was never tried: this sandbox's git path
+to the source host is open, and the vendor's own runtime repositories are
+MIT with their example assets committed in-tree. "We looked and found none"
+was a measurement at the channels somebody happened to try, read as a
+property — the shape CLAUDE.md warns about, one level out from tests.

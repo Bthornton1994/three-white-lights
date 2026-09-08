@@ -364,6 +364,41 @@ ANIMATION or SOFT-FEEL gate moves; the runtime decision stays PROVISIONAL
 with its closing condition now written into ADR-001's status line. Bench and
 deadlift stay blocked. PR #48 not merged.
 
+#### CROSSING FILED BY THE VISUAL LANE, BEFORE THE WORK, 2026-09-08 — a `.riv` schema reader under `tools/`, and the real test asset it reads
+
+Filed here first, per the procedure above. `tools/**` is the mechanics
+lane's; the ruling lets the visual lane ADD a visual grader there by filing
+it in this section. This is that filing.
+
+1. **`tools/rivSchema.mjs` and `tools/rivSchema.d.mts` — new, additive.** A
+   headless reader that loads a `.riv` through `@rive-app/canvas` in Node
+   (the same engine the web stage runs, with the two DOM shims the
+   upstream runtime's own codegen uses) and prints the file's artboards,
+   state machines and every ViewModel property with its type. Its consumer
+   is `src/art/rivContract.ts` (visual lane), which diffs that schema
+   against `rigInputPaths()` — the handoff check for any authored athlete
+   asset. It declares NO dev-server URL, so `tools/devServerSentinel.test.ts`'s
+   census does not see it and `gateDevServer` is not owed. It touches no
+   existing tool.
+2. **`tools/testPathRefs.test.ts`** — the two counts, for the new files.
+   Registry data under the registry ruling.
+3. **`src/game/guaranteeTags.test.ts`** — census pins only if the tree-wide
+   walk moves; no new tag, no new witness.
+4. **`src/tuning/audit.ts` / `audit.test.ts` / `index.ts` — NOT touched.**
+   The new `src/art/rivContract.ts` carries no bare literal; the spike's one
+   new number lives in the already-registered `spikeTuning.ts`.
+
+**The acquisition path, recorded because the placeholder's README said the
+opposite and was right only about npm.** No npm tarball ships a `.riv`, and
+the vendor's asset host is blocked — both still true. But this sandbox's git
+path to the source host is open, and the vendor's own React Native runtime
+repository is MIT (one `LICENSE` at the root, no asset-specific notice, no
+LFS) and carries its example `.riv` files in-tree. Two of them, neither
+cited to a marketplace listing in the example source that uses them, are
+copied to `assets/dev/` with the licence text, upstream commit, path and
+SHA-256 beside them. They are a health bar and a rewards card — dev-only
+test fixtures, never an athlete, never on the player path.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion

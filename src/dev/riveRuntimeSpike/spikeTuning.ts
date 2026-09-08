@@ -35,6 +35,12 @@ export const SPIKE_STAGE = Object.freeze({
   FRAME_INTERVAL_MS: 1000 / 60,
   /** Fixed stage height, dp. */
   HEIGHT: 320,
+  /**
+   * The test asset's one number, `health`, is authored 0..100 (its own state
+   * machine reads it against that range). The synthetic 0..1 `barHeight` is
+   * scaled onto it so the bar visibly drains and refills once per rep.
+   */
+  HEALTH_SPAN: 100,
 });
 
 /** The dev screen's chrome. Colours come from `LIFT_PALETTE`, not here. */

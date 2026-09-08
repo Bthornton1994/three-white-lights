@@ -1,8 +1,9 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { SPIKE_RIV_ASSET_RELATIVE_PATH } from './riveSpikeTypes';
+import { SPIKE_BOUND_PROPERTY, SPIKE_RIV_ASSET_RELATIVE_PATH } from './riveSpikeTypes';
 
 const STAGES = ['RiveSpikeStage.native.tsx', 'RiveSpikeStage.web.tsx'] as const;
 
@@ -18,15 +19,28 @@ describe('the spike asset path is written down once and required as a literal', 
       // And not the constant — a `require(SPIKE_RIV_ASSET_RELATIVE_PATH)` is
       // the bundle-time failure this test exists to keep out.
       expect(source.includes('require(SPIKE_RIV_ASSET_RELATIVE_PATH)'), `${stage} requires a variable`).toBe(false);
+      // Both write the one property the file exposes, by the shared name.
+      expect(source.includes('SPIKE_BOUND_PROPERTY'), `${stage} binds the documented property`).toBe(true);
     }
+    expect(SPIKE_BOUND_PROPERTY).toBe('health');
   });
 
-  it('the placeholder asset exists at that path, so the require resolves at bundle time', () => {
+  it('the asset at that path is a real Rive file whose hash the provenance record names', () => {
     const bytes = readFileSync(new URL(`./${SPIKE_RIV_ASSET_RELATIVE_PATH}`, import.meta.url));
     expect(bytes.length).toBeGreaterThan(0);
-    // And it is the DELIBERATE placeholder, not a real Rive file: Rive's format
-    // opens with the bytes 'RIVE'. If someone drops a real asset here, this
-    // reddens so the ADR's spike section gets re-measured rather than read stale.
-    expect(bytes.subarray(0, 4).toString('latin1'), 'a real .riv arrived — re-measure the spike').not.toBe('RIVE');
+    // Rive's format opens with the bytes 'RIVE'. Until 2026-09-08 this test
+    // pinned the OPPOSITE — that the path held the deliberate placeholder —
+    // and reddened on purpose when a real asset arrived so §7 was re-measured.
+    // It was; this is the other side of that pin.
+    expect(bytes.subarray(0, 4).toString('latin1')).toBe('RIVE');
+    const provenance = readFileSync(new URL('../../../assets/dev/THIRD-PARTY-RIVE-ASSETS.md', import.meta.url), 'utf8');
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    expect(provenance.includes(sha256), 'the bytes shipped are the bytes the licence record describes').toBe(true);
+  });
+
+  it('the deliberate placeholder still exists for the error path, and is still not a Rive file', () => {
+    const bytes = readFileSync(new URL('../../../assets/dev/rive-spike.riv', import.meta.url));
+    expect(bytes.length).toBeGreaterThan(0);
+    expect(bytes.subarray(0, 4).toString('latin1')).not.toBe('RIVE');
   });
 });
