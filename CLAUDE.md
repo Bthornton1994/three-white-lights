@@ -447,6 +447,395 @@ increase slice (that is next, after VL-2 is stable and Grok's mechanics
 land), G.2C3 / G.2D / G.2E, or any Session A work, and does not merge #46 /
 #49 / #51 / #52.
 
+### VL-2 DELIVERED — production world presentation, Claude Code Session B; gates stated separately
+
+Branch `claude/empire-s5-visual-lane`. Code HEAD `ce15bf6d`; evidence commit
+`5282bba4` (regenerated on the committed tree, stamped `ce15bf6d`, clean).
+Seven commits on top of the crossing entry `bb5cdf92`: `3a06169e` (the
+slice), `9479c7f0` (the settle glides at walking speed; the tween knob),
+`3c1f270b` (what the stall probe reads), `39032282` (a disc-size change
+that turned out to be a no-op), `ce15bf6d` (the retraction and the disc
+knob), `5282bba4` (evidence). Draft only. Not merged. Grok's contract
+branch moved `8b273ffa` → `124fb132` while this slice was mid-edit; per the
+brief it was NOT merged mid-edit, and at the clean checkpoint it was
+integrated deliberately, tested, and DEFERRED — see the entry that follows
+this record.
+
+**What was built, in the brief's four priorities.**
+
+1. **Member animation — the architecture is production-capable, the assets are
+   not, and this record does not call them so.** `memberAnimation.ts` is a
+   data-driven clip system: seven clips (`walk`, `idle`, `wait`, `use-bench`,
+   `use-bar`, `use-generic`, `interrupted`), each a pose sequence over a
+   phase. The walk is phased by DISTANCE TRAVELLED on screen (stride
+   `FLOOR_MEMBER_STRIDE_TILES`), not by the sim tick, so a member that moves
+   faster steps faster and a stalled member stops mid-stride; bounce and lean
+   are locked to that same phase. Idle/wait/interrupted are phased by a
+   renderer clock (breath + sway); the use clips hold each keypose for
+   `FLOOR_MEMBER_REP_HOLD_FRACTION` of `FLOOR_MEMBER_REP_PERIOD_MS` and
+   crossfade between holds. Clip changes crossfade over
+   `FLOOR_MEMBER_CLIP_BLEND_MS`. Every pose image a clip can reach is
+   PRE-MOUNTED and driven by an `Animated.Value` opacity, so a frame change
+   is an opacity write and never a mount, an unmount or a `source` swap.
+   One `requestAnimationFrame` loop per body writes position, lift, lean and
+   pose opacities straight into animated values — no React re-render per
+   frame, no sim step from an animation frame (contract §9).
+   **The assets are the two shipped keyposes per (state, facing)**; the walk's
+   two step frames differ on 2.9% of their pixels, so the leg alternation a
+   player sees is a frame swap plus bounce and lean, not a drawn gait. Adding
+   real frames is a table change in `MEMBER_ANIMATION_CLIPS`'s pose lists
+   and a PNG per pose; nothing else moves.
+2. **One scene, one projection.** `floorCamera.ts` maps the sim's tile grid
+   onto the painted floor band of the facility scene: a pinhole ground-plane
+   projection (scale is 1/depth — the reciprocal of the scale is linear in
+   the row, pinned by test), back row standing `FLOOR_CAMERA_BACK_INSET_PIXELS`
+   in front of the painted wall seam (`FLOOR_SCENE_FLOOR_SEAM_FRACTION` per
+   rung, read off the real PNGs), front row at scale 1, scene art cover-fit
+   to the stage. Members, stations, the expansion bay, the plate tree and
+   placed items all go through it; every body and station is scaled by its
+   depth and z-ordered by its feet row, so a member walking toward the back
+   wall shrinks and rises and a member in front of the bench draws over it.
+   A using member is pulled toward the station's centred position with an
+   eased `settleRemainder`, and draws one z-step above the station, so the
+   lying body composites over the bench rather than beside it. Build keeps
+   the orthographic plan through the same interface (`orthographicFloorCamera`,
+   pinned as the identity).
+3. **Diagnostics retired from Play only where the world carries the read.**
+   The green station outline and the khaki queue-cell squares are transparent
+   geometry anchors on Play (testIDs kept; the evidence tools measure the
+   using member's box against them) and return under Build or the diagnostics
+   toggle. The three occupancy cards became one quiet left-aligned caption
+   strip, clear of the BUILD FAB, that explains and does not stand in for the
+   world. RETAINED: the hidden diagnostics toggle and its readout, the member
+   and station panels, every Build overlay, and — pre-existing, not VL-2's —
+   the Iron & Amber slice's own hiding of the bay label, piece names and
+   state cues on Play (see the tool findings below).
+4. **Measured on the real Play surface** (`tools/measure-world-performance.mjs`,
+   headless Chromium, both phone viewports, committed tree, idle CPU):
+   at `ce15bf6d`, `docs/design/living-gym-world/vl-2/perf.txt`:
+
+   | | 390×844 | 375×812 |
+   |---|---|---|
+   | entities on the floor | 3 members, 9 pose images, 6 stations, 61 floor nodes | same |
+   | frames over 15 s | 899, mean 16.68 ms, p95 16.70, p99 16.80, max 33.3 | 898, mean 16.70 ms, p99 16.80, max 33.4 |
+   | long frames (>50 ms / >100 ms) | 0 / 0 | 0 / 0 |
+   | mean fps | 59.9 | 59.9 |
+   | heap, 15 s | 53.4 → 116.5 MB raw; 34.9 MB after a forced GC | 53.7 → 120.0 MB raw; 34.9 MB after GC |
+   | bench tap → panel / → closed | 18.1 ms / 11.3 ms | 16.5 ms / 11.8 ms |
+   | 400 ms stall, walk/wait member | max step 0.049 tiles, max rate 0.295 vs sim 0.283 tiles/100 ms, lag 0.63 tiles | max step 0.059, rate 0.353, lag 0.58 |
+
+   Headless desktop Chromium in a container, NOT a phone — the tool says so
+   in its first line. The raw heap growth is garbage (the 35 MB after a
+   forced GC is the retained set), the frame pacing is the browser's own
+   16.7 ms cadence with no frame dropped, and a tap opens the station panel
+   inside one frame.
+   **The stall question, answered by design rather than eased over.** The
+   renderer draws from a tick-indexed playback timeline
+   (`advancePlaybackTick` / `samplePlayback`): it runs
+   `FLOOR_MEMBER_RENDER_DELAY_TICKS` behind the newest snapshot, advances at
+   sim rate, and when it falls more than `FLOOR_MEMBER_CATCH_UP_BEHIND_TICKS`
+   behind it catches up at (1 + `FLOOR_MEMBER_CATCH_UP_RATE`)× — never a
+   teleport, never an unbounded sprint. After a main-thread stall the drawn
+   position therefore LAGS the sim by a bounded, exposed amount: the drawn
+   node carries `data-tick`, `data-cell` and `data-anchor`, and the capture
+   tool reads the lag from them rather than hiding it. Stall probe: at `ce15bf6d`, a 400 ms
+   busy-wait on the main thread while following one member: max frame gap
+   400 ms (the stall itself), then max single-frame step 0.049 / 0.059
+   tiles, max rate 0.295 / 0.353 tiles per 100 ms against the sim's 0.283
+   (the bounded catch-up, never above 1.1× for more than a frame or two),
+   drawn-vs-contract lag 0.63 / 0.58 tiles — at 390×844 / 375×812, both
+   runs following a member that walked and waited.
+   **What the probe actually found, and what changed because of it.** On
+   the first committed VL-2 tree (`3a06169e`) the probe's largest
+   single-frame step at 390×844 was 0.342 tiles — and it was NOT from the
+   stall. It landed 1.2 s after the stall, at the moment the followed
+   member reached the bench: the station settle, which eased every pull in
+   one fixed 360 ms, and the garage bench's pull is about 2.5 tiles (the
+   lying body's target sits over the bench art, not on the approach cell),
+   so the body crossed at 2.0 tiles per 100 ms — three times the sim's
+   walking rate. That is an eased whoosh, not a teleport, but it is the
+   kind of thing the brief said not to hide. The settle is now timed PER
+   TILE of pull (`settleDurationMs`: one `FLOOR_MEMBER_SETTLE_MS` per tile,
+   never under one tile — one tile per 360 ms against the sim's 0.34 tiles
+   per 120 ms, within a tenth), and while it crosses, the body runs the
+   WALK clip (`clipWhileSettling`), whose distance-driven phase turns the
+   glide into steps; the use pose lands with the body. A member now walks
+   onto the bench and lies down instead of sliding onto it lying. **And
+   the first cut of that fix had the body INVISIBLE for the glide**, found
+   by a 50 ms probe of the visible pose per frame rather than by the
+   suite: the loop chose the walk clip while the settle crossed, but the
+   mounted pose stack followed the prop clip, so the re-render on the next
+   sim tick unmounted the walk images and the loop wrote opacities into
+   nothing for 0.7 s. `posesToMount` now mounts the settling clip's poses
+   too; the same probe afterwards shows walk frames every 50 ms across the
+   glide and the use pose landing with the body. The
+   375×812 run had followed a member that only waited and walked, and its
+   numbers — max step 0.049 tiles, max rate 0.293 against the sim's 0.283,
+   lag 0.63 tiles — are the timeline behaving exactly as designed.
+   **Residual, disclosed and not fixed: the body's SIZE still steps.** At
+   the moment the sim assigns a member to the bench, its depth scale goes
+   from the approach cell's to the bench's in one render (0.70 → 0.85 on
+   the garage, a 22% size step, measured per frame); the position glides,
+   the size does not. That step read at the box bottom-centre is the
+   0.342-tile "single-frame step" the probe still reports on any run that
+   follows a member onto the bench, and the probe's "drawn-vs-contract lag"
+   counts the settle's own pull while a glide is in flight (~2.4 tiles at
+   the start of every bench glide, by design). Both are now stated in the
+   tool's own header rather than left to be misread. The fix is an eased
+   scale along the settle (a feet-anchored transform scale); it is the next
+   round's, because it reshapes how the body's box is laid out and every
+   evidence tool reads that box.
+
+   **A second finding, seen by opening the evidence rather than reading
+   its verdicts — and diagnosed wrong once before it was diagnosed right.**
+   All thirteen capture verdicts were true and the "leaving" frame showed
+   three red balloons over the bench. They are Stage D2.2's plate-changeover
+   discs. Commit `39032282` blamed VL-2 for sizing them off the bench's
+   drawn art box and "fixed" it by sizing off the footprint's short side —
+   a no-op, because the bench footprint is 2×4 and its short side IS two
+   tiles either way; measured before and after in the served bundle at
+   35.9 px, identical, which is how the wrong diagnosis was caught. The
+   real cause: VL-2's stage-fit Play tile is about 40 px where the plan's
+   was 28, so a disc at 45% of two tiles grew with the world. The fix is
+   the knob: `FLOOR_PLATE_LOADING.discSizeFraction` 0.45 → 0.25, half a
+   tile — the width of a plate on the painted bar — measured live at
+   19.9 px afterwards. A feel value, tuned by eye on the evidence, not
+   asserted right. The discs themselves (a red mark with a white rim,
+   three of them moving along the bench while plates are changed) are a
+   pre-VL-2 read and are RETAINED: the world has no other way yet to say
+   "plates are being changed", and the brief says not to remove information
+   the world does not carry.
+
+**Files changed.** `src/empire/floorCamera.ts` (+test, new), `src/empire/memberAnimation.ts`
+(+test, new), `src/empire/FloorGrid.tsx`, `src/empire/empireTuning.ts`,
+`src/empire/GymScreen.test.ts`, `src/empire/ironAmberArt.test.ts`,
+`src/empire/directoryWalk.test.ts`, `src/empire/empireCore.test.ts`,
+`src/empire/empireTuning.test.ts`, `src/empire/empireForbiddenOutput.test.ts`,
+`public/empire-art/{eq-flat-bench,eq-quality-bench,member-using-bench-b-left,
+member-using-bench-b-right,member-serious-lifter-left,member-serious-lifter-right}.png`
+(re-keyed in place), `tools/rekey-empire-art.mjs` (new),
+`tools/measure-world-performance.mjs` (new), `tools/capture-living-world.mjs`,
+`tools/verify-floor-reachability.mjs`, `docs/GDD.md` (§5.14 one paragraph),
+`CLAUDE.md` (ownership bullets, this record), and the evidence under
+`docs/design/living-gym-world/vl-2/`.
+
+**Crossings — one, into Grok's sim block, and it is a deletion.**
+`empireTuning.ts` is otherwise shared-append only (the VL-2 block, all
+`'knob'`; three retired VL-1/P4 cadence knobs removed from Claude's own
+blocks: `FLOOR_MEMBER_GAIT_HALF_CYCLE_MS`, `FLOOR_SPRITE_WALK_FRAME_TICKS`,
+`FLOOR_SPRITE_REP_FRAME_TICKS`). **`FLOOR_SIM_MOVE_TWEEN_MS` (120) is removed
+from the Grok-owned Phase 3 sim-cadence block.** The crossing entry above
+said it would be parked on `AWAITING_CONSUMER` for Grok to retire; that
+turned out not to be a state the tree admits. Its only reader was the VL-1
+renderer's per-tick `Animated.timing` walk tween, which VL-2's playback
+timeline replaced (the timeline's cadence is `FLOOR_SIM_TICK_INTERVAL_MS`
+itself), and `floorSim.test.ts`'s partition — every `FLOOR_SIM_*` key is
+read by the sim or by the renderer, set-equal in both directions — reddened
+on the unread key (`expected 10 to be 11`, whole suite at `03:49`). Parking
+it would have left a Grok-owned test red on origin; deleting it is the one
+state both lanes' tests accept. Two pins in Grok's `floorSim.test.ts` moved
+with it (block 25→24, renderer reads 11→10), data only, commented at the
+site. If Grok would rather have had this routed, say so here and the next
+one is routed. Grok's contract head `124fb132` still carries the knob and
+its two pins, so the integration below re-removes it once. `docs/GDD.md` §5.14: one paragraph recording the owner's
+override of "top-down/orthogonal, not isometric" for the Play surface. The
+whole-directory census tests (`empireForbiddenOutput.test.ts`,
+`directoryWalk.test.ts`, `empireCore.test.ts`, `empireTuning.test.ts`)
+re-pinned from failure values, per this file's rule for shared census files:
+`empireForbiddenOutput.test.ts` — seven runs, every number read from its own
+failure value and never computed: modules 31→33, exports 484→506,
+exempt leaves 403→426, branch points 513→536, literal positions 4619→4670,
+distinct literal members 274→283, constructor calls examined 3838→3969,
+drive rows 621222→621527 (nodes 6752001, strings 31138110, distinct 4457,
+stacks 6440), overflow rows 7572→7832 (pairs 6844, skipped 583, argument
+re-reads 1219, points 389, nodes 1621699, strings 11231583, distinct 4555,
+closures declined 1472), callback pass points 2462 / calls 5244766 /
+recorded 8708520 / refused 420, channel sites 1130→1198 (FloorGrid returns
+86→99, floorCamera 11, memberAnimation 43 + 1 exported binding), call
+targets function 2002 / member 1771 / module-variable 87, AST nodes
+examined 90495→94884, screen disagreements 102→103, six new literal for-of
+axes declared (`stepping`, `useClass`, `ordinal`, `ms`, `phase`, `at`), the
+kinded-return census for the ladder arms, and 18 new exempt-leaf rows with
+the three retired knobs' rows removed. `empireCore.test.ts` — shipped list
++2, mention pairs 216→230, single-quoted strings 887→904, template chunks
+390→391, fenced 31→33, import specifiers 143→149, tuning literal count
+458→480. `empireTuning.test.ts` — examined 211→226, probed 1055→1130,
+`AWAITING_CONSUMER` +`FLOOR_SIM_MOVE_TWEEN_MS`. `directoryWalk.test.ts` —
+modules 31→33, files 66→70. `GymScreen.test.ts` — source pins for the
+camera and animation imports. `ironAmberArt.test.ts` — new: reads each
+scene PNG's IHDR to pin `FLOOR_SCENE_ART_ASPECT` and each fixed-art file's
+`FLOOR_FIXED_ART_HEIGHT_OVER_WIDTH` within 3%.
+
+**`tools/verify-floor-reachability.mjs`, run against VL-2 and against the
+pre-VL-2 tree, because thirteen claims failed and the question was whose.**
+The VL-2 tree at `3a06169e`: **104 of 119 claims hold, 3 are the tool's
+own named SKIPs, 12 fail.** Re-run on the final tree (`ce15bf6d`): 103 /
+3 / 13 — the same twelve plus 8b's second half, which read the `using`
+station highlight only after its own 20-second wait on the invisible cue
+had outlived that member's set, so the highlight was gone (`box=null`).
+That is timing downstream of the same pre-existing cue failure, not a new
+subject. The pre-VL-2 tree (`bfca7a09`, run from a probe worktree
+on a second port, same tool): **69 of 80 hold, the same 3 SKIPs, 7 fail, and
+the run then aborted at claim 80 on a `locator.click` timeout** in S4b's 9g
+section, before it could reach the 13-series at all. The two runs were
+compared claim by claim:
+
+- **The tool could not run at all on either tree until one stacking fix.**
+  Its second claim force-clicks the visually hidden `floorgrid-diagnostics-
+  toggle`; `floorgrid-scroll-x` stacks at z-index 1 above it, so the click
+  landed on the world on BOTH trees (measured: `elementFromPoint` at the
+  toggle's centre returned `floorgrid-grid` on each). VL-2 fixes it in
+  `FloorGrid.tsx` (the toggle stacks at `FLOOR_DRAGGING_Z_INDEX`); the
+  baseline probe had the same one-line fix applied locally so it could run
+  past claim 2. So the tool had been vacuous — "checked NOTHING about the
+  played path", in its own words — since before VL-1, and nobody had run it.
+- **Seven failures are identical on both trees and pre-date VL-2**: gap 1
+  ×3 (the piece names on the power bar and plates, and the "bench bay" world
+  label, are not drawn on Play), 8b/8c (the `floorsim-cue-*` state bubbles
+  are attached at opacity 0 on Play), and Phase 4 ×2 (the member shadow's
+  black is read as a "flat placeholder colour"). All three families are the
+  Iron & Amber slice's own Play design — at `bfca7a09` the bay label is
+  already `buildMode &&`-gated, the piece text already `!buildMode ? null`,
+  the cue already `opacity: onPress === undefined ? 1 : 0`, and the shadow
+  already black-with-opacity — and that slice's commits say "does not claim
+  visual PASS". The claims describe the pre-art Play surface and were never
+  re-graded against the art one. VL-2 did not rewrite them to pass: a
+  failing claim that tells the truth about an un-regraded design change is
+  worth more than a rewritten one.
+- **Five failures (13a, 13b, 13g, 13i, 13j) are the same pre-existing gap
+  seen from the Stage C station-tap flow**: the tap target D.1b chose — the
+  "bench bay" label — is not on Play, so the panel-open sequence that starts
+  from it cannot start. The baseline never reached these claims (it aborted
+  at claim 80), so they are attributed by source rather than by run: the
+  `buildMode &&` gate on that label is in `bfca7a09` unchanged. On Play the
+  panel still opens from the bench art itself (`floorgrid-fixed-flat-bench`
+  keeps its `onPress`), which is what 13b's "panel count 0 -> 1" shows.
+- **One failure was VL-2's, and it is closed in the tool rather than in the
+  world**: 13a-13e read mats' offset from the grid once on Build (right after
+  the drag) and once on Play (before the removal press). VL-2 draws Play
+  through the projection and Build through the plan, so the two reads
+  differed by the projection with no placement action between them
+  ({x:231,y:1} against {x:232,y:338}). Both reads are now taken on Play, and
+  the claim holds.
+- **Claim 9g, where the baseline ABORTED, passes on VL-2** — the
+  `locator.click` that timed out on the old tree is not intercepted on the
+  new one (highlights are `pointerEvents: 'none'` and members are
+  depth-ordered rather than blanket-stacked). Recorded as an observation,
+  not a claim: the tool's own message does not name what intercepted it.
+
+What this leaves for whoever owns the next Play round: three families of
+Play claims in `tools/verify-floor-reachability.mjs` that describe the
+pre-art surface (bay label, piece names, cue bubbles) and one that reads a
+shadow as a placeholder. Either the Play surface gets those reads back in
+its own register, or the claims are re-scoped to Build where the elements
+still draw. Not decided here — it is a design call about the Iron & Amber
+surface, not a VL-2 defect.
+
+**Three whole-suite failures that were red at `bfca7a09` before this slice
+started, measured there rather than assumed** (run in the same probe
+worktree, same commands): `src/game/guaranteeTags.test.ts` "resolves every
+tag in the tree to exactly one live test" — `livingMemberRetention.test.ts`
+declares `[g2b-forming]` and no comment in the tree references it (Stage
+G.2B, Grok's file; Session A's test); and `src/cutin/cutInWiring.test.ts`'s
+two prose scans, which read a `GymScreen.test.ts` comment about the
+contextual station panel as a claim that the cut-in's picture is the panel
+— that comment pre-dates VL-2 unchanged. None of the three is touched here:
+the first needs a comment in a Grok-owned test or a title change; the
+second and third are a Session A instrument reading Stage C.1 prose and
+are that instrument's owner's call. Named so the next reader does not
+attribute them to this slice.
+
+**Native.** **NOT RUN. Exact blocker:** this container has no native toolchain —
+`adb`, `emulator`, `xcrun` and `eas` are all absent from `PATH`,
+`ANDROID_HOME` is unset, and outbound egress to `exp.host` and ngrok (the
+two routes `expo start --tunnel` needs) is blocked by the network policy.
+Nothing about native feel is inferred from browser capture. A phone build
+needs either a machine with the Android SDK / Xcode, or a tunnel egress
+exception for this environment.
+
+**Continuous evidence.** `docs/design/living-gym-world/vl-2/` at `5282bba4`:
+per viewport (390×844, 375×812) five lifecycle frames (seeking, queuing,
+using, leaving, seeking again), a lifecycle strip and a `.webm`, plus
+`notes.json`/`notes.txt` from `tools/capture-living-world.mjs` and
+`perf.json`/`perf.txt` from `tools/measure-world-performance.mjs`, all
+stamped `ce15bf6d` with the tree clean. Thirteen of thirteen capture
+verdicts true at both viewports — identity, travel, no teleport, using,
+release, continues, queue observed, station, scene, layout, gait (≥3
+distinct walk images: step-a / stand / step-b, both facings), rep cycle
+(both bench keyposes while `using`), depth (scales 0.70–0.92 across the
+floor). Ordinary walking rate 0.379 / 0.383 tiles per 100 ms against a
+0.405 ceiling read from source (sim step ÷ tick × (1 + catch-up) × 1.3);
+settle excess over the walking allowance 0.62 / 0.49 tiles on a raw 3.5 /
+3.3-tile pull; drawn-vs-anchor lag under 0.9 tiles outside settle
+windows. The frames were opened, not only their verdicts read — which is
+how the disc finding above was found and how the first "fix" for it was
+caught being a no-op.
+
+**Gates, stated separately.**
+- Visual: TECHNICAL PASS on the committed evidence (scene coherent on the
+  painted floor, depth scaling, stations on the plane, keyed art clean);
+  the owner's read is the gate.
+- Animation: architecture PASS (clip system, phase-locked gait, rAF path,
+  bounded catch-up — every property pinned); ASSETS NOT PASSED and not
+  claimed: two keyposes per state is what ships.
+- World Legibility: evidence shows walking/waiting/using/queue positions
+  readable from the world alone at both viewports; the owner decides.
+- Soft-Feel: NOT CLAIMED. Automated capture cannot claim it.
+- Owner Playtest: OPEN. Only Bryant closes it.
+
+**Ready for Bryant?** Yes, for the web dev harness, as the next phone-shaped
+playtest of a PRESENTATION slice — with the residuals above stated up
+front: two keyposes per state (not production animation), the size step
+at the bench, the Iron & Amber Play labels/cues the tool still expects,
+and no native evidence. Not ready as a phone build: nothing here was run
+on a device, and this environment cannot produce one. What the next
+combined slice needs from Grok is the contract at `124fb132` typechecking
+(below); the visible capacity-1 → queue → capacity-2 → relief slice is
+blocked on nothing else on this side.
+
+
+### GROK'S CONTRACT `124fb132` WAS INTEGRATED AT THE CHECKPOINT, TESTED, AND
+### DEFERRED — IT DOES NOT TYPECHECK ON ITS OWN BRANCH
+
+Per the VL-2 brief ("reach a clean checkpoint first, then deliberately
+integrate and test it"), `origin/grok/session-b-presentation-contract` at
+`124fb132` was merged into `claude/empire-s5-visual-lane` at `5282bba4`
+with `--no-commit`. What it carries is additive and welcome:
+`PresentationStation.seats` (per-seat `{ cell, usingId, changeoverTicks }`),
+`presentationSeats()`, a contract note that FloorGrid should read
+`seats[i].usingId` instead of its local `memberUsesCell` walk, and ~600
+lines of `presentationState.test.ts` proving live Capacity throughput. The
+merge conflicted only in the shared census file, on twelve one-line pins,
+which is the expected shape.
+
+**Then `npx tsc --noEmit` reported six errors, all in Grok's new
+`src/empire/presentationState.test.ts`, and none of them from the merge:**
+`head` possibly undefined (lines 398, 403, 408), `queuedAt` possibly null
+(412), a `string` passed where a `GymMemberId` brand is required (475), and
+a type predicate whose type is not assignable to its parameter (512).
+Verified in isolation: a detached worktree at `124fb132` with nothing else
+in it fails `tsc --noEmit` with the identical six. `vitest` runs the file
+regardless (esbuild strips types), which is presumably how it was green on
+that branch.
+
+**So the merge was aborted, and the visual-lane branch stays at the clean
+checkpoint with Grok's contract at `8b273ffa`.** Integrating it would have
+put a red typecheck on this branch, which is exactly what the checkpoint
+discipline exists to refuse. Nothing in VL-2 needs `seats` yet; the VL-1
+bounded read (`memberUsesCell`) stays as it is until the contract lands
+clean. **For Grok Build Session B:** the six lines above are yours; once
+`124fb132`'s successor typechecks, this lane integrates it in one merge
+(twelve census pins re-read from failure values, `FloorGrid.tsx` switched to
+`seats[i].usingId`, the `FLOOR_SIM_MOVE_TWEEN_MS` deletion re-applied over
+your copy of the block), and the combined capacity slice can start.
+
+**Probe worktrees left in place rather than deleted**, per "push before you
+clean up": `scratchpad/wt-vl1` holds `bfca7a09` plus a 13-line local copy
+of the diagnostics-toggle stacking fix on a local-only branch
+`claude/vl1-baseline-probe` (never pushed; it exists only so the tool could
+run past its second claim on the old tree). The detached `124fb132` probe
+was removed; it held nothing.
+
 ### Branch / worktree policy
 
 | Lane | Branches | Worktree |
