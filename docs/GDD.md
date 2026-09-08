@@ -2099,6 +2099,15 @@ finished meet (unreachable through the app's own controls now) is disclosed as
 the server's sentence on the recap beat rather than dressed as a screen —
 `MeetScreen`'s refused arm.
 
+**BUILT (Career Loop V1).** Enter is server-gated: `CareerServerPort.enterMeet`
+looks the id up on the calendar, runs `entryVerdict`, and returns the
+reconstructed `MeetDefinition`. In-progress entry persists as a save-envelope
+sibling (`enteredMeetId`), not a `ServerRecord` field, and survives reload
+until a successful Meet Day settlement clears it. Recording a Career-calendar
+meet the lifter never entered is refused (`NOT_ENTERED`); a client-supplied
+definition is ignored when a booking is in force. Qualification still reads
+the best competition Total, never e1RM.
+
 ### 6.2 Attempt Loop
 
 Order: squat → bench → deadlift. Three attempts each.

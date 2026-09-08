@@ -80,8 +80,10 @@
  *
  * BUILT IN SPRINT 1c: ENTERING a meet from the calendar. The seam the 1b
  * version of this header predicted — `CareerMeet -> MeetDefinition` — is
- * `careerMeet.ts`, and it is crossed exactly once, in `enterMeet` below, at
- * the instant an enterable row is pressed. `open-meet` is deleted rather than
+ * `careerMeet.ts`. Career Loop V1 gates that seam on the server: `enterMeet`
+ * below asks `CareerServerPort.enterMeet` for the reconstructed definition
+ * rather than adapting the row locally, so a client-forged qualification
+ * cannot walk into weigh-in. `open-meet` is deleted rather than
  * repointed: the session's chrome offers CAREER, the calendar's rows offer
  * the meets, and the played meet marks itself ALREADY_ENTERED through the
  * banked result's own id (see `careerMeet.ts`'s header for the identity
@@ -123,8 +125,8 @@ import {
 import { MEET_ENTRY, MEET_LOCAL, type KilogramMeetEntry, type MeetDefinition } from '../game/meetTuning';
 import type { CareerMeet } from '../career/calendar';
 import { CAREER_COPY } from '../career/careerTuning';
-import { meetDefinitionFor } from '../game/careerMeet';
 import { kilogramMeetEntryFrom } from '../game/lifterEntry';
+import { streakDayFromLocalWallClock } from '../game/streak';
 import { SHELL_COPY, SHELL_LAYOUT, SHELL_NAV, type EmpirePhase } from './shellTuning';
 import type { CareerSurfacePhase } from '../meet/careerSurface';
 import type { LifterSurfacePhase } from '../meet/lifterSurface';
@@ -334,11 +336,23 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   const enterMeet = useCallback((meet: CareerMeet) => {
     const profile = appLifterPort().openingProfile();
     if (profile === null) return;
-    setEnteredMeet(meetDefinitionFor(meet));
-    setEnteredEntry(kilogramMeetEntryFrom(profile, meet.federationId, MEET_ENTRY.lot));
-    setMeetPhase(null);
-    setMeetCutIn(false);
-    setRoute((current) => navigate(current, 'enter-meet'));
+    const now = new Date();
+    const today = streakDayFromLocalWallClock({
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+      day: now.getDate(),
+      hour: now.getHours(),
+    });
+    void appCareerPort()
+      .enterMeet(meet.id, today)
+      .then((response) => {
+        if (response.kind !== 'entered') return;
+        setEnteredMeet(response.definition);
+        setEnteredEntry(kilogramMeetEntryFrom(profile, meet.federationId, MEET_ENTRY.lot));
+        setMeetPhase(null);
+        setMeetCutIn(false);
+        setRoute((current) => navigate(current, 'enter-meet'));
+      });
   }, []);
   const leaveMeet = useCallback(() => {
     setEnteredMeet(null);

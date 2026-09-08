@@ -39,6 +39,9 @@ import {
   type CareerServerError,
 } from './careerServer';
 import type { CareerLifter } from '../career/eligibility';
+import { careerPresentationFor, type CareerPresentationState } from '../career/careerPresentation';
+import type { CareerLoopError } from './careerLoop';
+import type { MeetDefinition } from './meetTuning';
 import {
   readFederation,
   readMeets,
@@ -61,16 +64,17 @@ export type CareerServerResponse =
   /** The server refused. Nothing moved; the proposal is dead. */
   | { readonly kind: 'refused'; readonly error: CareerServerError };
 
+export type CareerEnterResponse =
+  | { readonly kind: 'entered'; readonly meetId: string; readonly definition: MeetDefinition }
+  | { readonly kind: 'refused'; readonly error: CareerLoopError };
+
 /**
  * The whole of the career surface's access to the server.
  *
- * `chooseFederation` returns a PROMISE for the reason `recordMeetResult`
- * does: a real Edge Function is a network call, and the in-flight state has
- * to be one the app genuinely passes through. There is no day parameter —
- * what refuses a choice is what is already on the record, never the calendar
- * — and there is no read method, because everything the career renders comes
- * back through the snapshot wire into the cache and out of the accessors
- * below.
+ * `chooseFederation` and `enterMeet` return a PROMISE for the reason
+ * `recordMeetResult` does: a real Edge Function is a network call, and the
+ * in-flight state has to be one the app genuinely passes through. Booking a
+ * meet is not a progression proposal — it moves no Total, e1RM, or credit.
  */
 export interface CareerServerPort {
   /** The snapshot the app opens on. Shared with both other port halves. */
@@ -80,6 +84,14 @@ export interface CareerServerPort {
     proposal: ProposalOfKind<'choose-federation'>,
     proposalId: ProposalId,
   ) => Promise<CareerServerResponse>;
+  /**
+   * Book a Career meet. Server-gated: the id is looked up on the calendar,
+   * eligibility is `entryVerdict`'s, and the runnable definition is
+   * reconstructed rather than trusted from the client.
+   */
+  readonly enterMeet: (meetId: string, day: number) => Promise<CareerEnterResponse>;
+  /** The in-progress Career booking, or null. Save-envelope sibling, not a ConfirmedFact. */
+  readonly openingEnteredMeetId: () => string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -131,4 +143,27 @@ export function careerCalendarFromCache(
   const lifter = careerLifterFromCache(cache);
   if (lifter === null) return null;
   return careerCalendarFor(lifter, today, horizonDays);
+}
+
+/**
+ * Renderer-independent Career presentation, or `null` before the first
+ * snapshot. `enteredMeetId` is the save-envelope sibling the port holds —
+ * not a cache fact, because a booking is not a ConfirmedFact.
+ */
+export function careerPresentationFromCache(
+  cache: ProgressionCache,
+  today: number,
+  enteredMeetId: string | null,
+): CareerPresentationState | null {
+  const federation = federationFromCache(cache);
+  if (federation === null) return null;
+  const lifter = careerLifterFromCache(cache);
+  const meets = readingValue(readMeets(cache)) ?? [];
+  return careerPresentationFor({
+    today,
+    federationChosen: federation.chosen,
+    enteredMeetId,
+    lifter,
+    history: meets.map((meet) => ({ meetId: meet.meetId, totalKg: meet.totalKg })),
+  });
 }

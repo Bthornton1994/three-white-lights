@@ -329,8 +329,11 @@ const PINNED = Object.freeze({
    *
    * 346 -> 349 with the physical-opportunity module: `trainingProgress.ts`,
    * `trainingProgress.test.ts`, and `trainingProgress.geometry.redteam.test.ts`.
+   *
+   * 349 -> 354 with Career Loop V1: `careerPresentation.ts` + test,
+   * `careerLoop.ts` + test, and `careerLoop.redteam.test.ts`.
    */
-  SCANNED_FILES: 349,
+  SCANNED_FILES: 354,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -382,8 +385,11 @@ const PINNED = Object.freeze({
    *
    * 113 -> 115 with the two tests beside that module:
    * `trainingProgress.test.ts` and `trainingProgress.geometry.redteam.test.ts`.
+   *
+   * 115 -> 118 with Career Loop V1: `careerPresentation.test.ts`,
+   * `careerLoop.test.ts`, `careerLoop.redteam.test.ts`.
    */
-  TEST_FILES: 115,
+  TEST_FILES: 118,
 });
 
 /**

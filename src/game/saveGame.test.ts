@@ -132,7 +132,19 @@ describe('the save round-trips every record the server can hold', () => {
       expect(decoded.record, name).toEqual(record);
       expect(decoded.savedAtIso).toBe(SAVED_AT);
       expect(decoded.profile, name).toBeNull();
+      expect(decoded.enteredMeetId, name).toBeNull();
     }
+  });
+
+  it('a booked Career meet survives encode/decode as a sibling, not a ServerRecord field', () => {
+    const bookedId = 'meridian-local-2026-01-03';
+    const text = encodeSavedGame(newServerRecord(SIGNUP_DAY), SAVED_AT, null, bookedId);
+    const decoded = decodeSavedGame(text);
+    expect(decoded.ok, decoded.ok ? '' : decoded.detail).toBe(true);
+    if (!decoded.ok) return;
+    expect(decoded.enteredMeetId).toBe(bookedId);
+    expect(decoded.record).toEqual(newServerRecord(SIGNUP_DAY));
+    expect('enteredMeetId' in decoded.record).toBe(false);
   });
 
   it('writes the envelope it says it writes', () => {
@@ -142,6 +154,7 @@ describe('the save round-trips every record the server can hold', () => {
     expect(parsed.version).toBe(SAVE_VERSION);
     expect(parsed.savedAtIso).toBe(SAVED_AT);
     expect(Object.keys(parsed).sort()).toEqual([
+      'enteredMeetId',
       'fatigue',
       'format',
       'profile',
@@ -151,6 +164,7 @@ describe('the save round-trips every record the server can hold', () => {
       'wire',
     ]);
     expect(parsed.profile).toBeNull();
+    expect(parsed.enteredMeetId).toBeNull();
   });
 });
 
@@ -238,8 +252,30 @@ describe('a save is untrusted input, and every refusal is driven', () => {
     );
   });
 
+  it('validates the in-progress Career booking — fail closed, never guess', () => {
+    expectRefusal(
+      tampered((s) => {
+        s.enteredMeetId = '';
+      }),
+      'BAD_ENTERED_MEET',
+    );
+    expectRefusal(
+      tampered((s) => {
+        s.enteredMeetId = 12;
+      }),
+      'BAD_ENTERED_MEET',
+    );
+    expectRefusal(
+      tampered((s) => {
+        delete s.enteredMeetId;
+      }),
+      'BAD_ENTERED_MEET',
+    );
+  });
+
   it('the refusal codes are the closed set the shell will key copy to', () => {
     expect([...SAVE_REFUSAL_CODES].sort()).toEqual([
+      'BAD_ENTERED_MEET',
       'BAD_FATIGUE',
       'BAD_TRAINING_PROGRESS',
       'BAD_WIRE',
@@ -312,13 +348,31 @@ describe('schema stability', () => {
     }
   });
 
-  it('the current encoder writes version 3 with a training-progress sibling, and that golden stays readable', () => {
-    expect(encodeSavedGame(newServerRecord(SIGNUP_DAY), '2026-08-19T00:00:00.000Z')).toBe(GOLDEN_V3);
-    const decoded = decodeSavedGame(GOLDEN_V3);
-    expect(decoded.ok, decoded.ok ? '' : decoded.detail).toBe(true);
-    if (decoded.ok) {
-      expect(decoded.record).toEqual(newServerRecord(SIGNUP_DAY));
-      expect(decoded.profile).toBeNull();
+  it('the current encoder writes version 4 with an entered-meet sibling, and GOLDEN_V3 stays readable', () => {
+    const GOLDEN_V4 =
+      '{"format":"three-white-lights-save","version":4,"savedAtIso":"2026-08-19T00:00:00.000Z",' +
+      '"wire":{"revision":0,"totalKg":null,"bestE1rmKg":{"squat":180,"bench":120,"deadlift":220},' +
+      '"streak":{"signupDay":20000,"currentStreak":0,"longestStreak":0,"lastTrainedDay":null,' +
+      '"entitlement":{"windowIndex":0,"coveredDaysLeft":2,"purchasedDaysLeft":0},' +
+      '"armedEntitlement":{"windowIndex":0,"coveredDaysLeft":2,"purchasedDaysLeft":0},' +
+      '"entitlementArmed":true,"recoveryDayProtectionEnabled":true,"hasBankedFirstRecoveryDaySave":false},' +
+      '"meets":[],"wallet":{"gymBucks":0,"chalk":0},"federation":{"id":"meridian","chosen":false},' +
+      '"acknowledgedProposalId":null},"fatigue":{"sessions":[],"injury":null},"profile":null,' +
+      '"trainingProgressCredit":{"squat":0,"bench":0,"deadlift":0},"enteredMeetId":null}';
+    expect(encodeSavedGame(newServerRecord(SIGNUP_DAY), '2026-08-19T00:00:00.000Z')).toBe(GOLDEN_V4);
+    const decodedV4 = decodeSavedGame(GOLDEN_V4);
+    expect(decodedV4.ok, decodedV4.ok ? '' : decodedV4.detail).toBe(true);
+    if (decodedV4.ok) {
+      expect(decodedV4.record).toEqual(newServerRecord(SIGNUP_DAY));
+      expect(decodedV4.profile).toBeNull();
+      expect(decodedV4.enteredMeetId).toBeNull();
+    }
+    const decodedV3 = decodeSavedGame(GOLDEN_V3);
+    expect(decodedV3.ok, decodedV3.ok ? '' : decodedV3.detail).toBe(true);
+    if (decodedV3.ok) {
+      expect(decodedV3.record).toEqual(newServerRecord(SIGNUP_DAY));
+      expect(decodedV3.profile).toBeNull();
+      expect(decodedV3.enteredMeetId).toBeNull();
     }
   });
 });

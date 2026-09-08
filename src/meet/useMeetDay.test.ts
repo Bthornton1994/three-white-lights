@@ -225,7 +225,7 @@ describe('a refused meet submission is disclosed rather than dropped', () => {
   });
 
   it('hands the error out of the hook, so a screen has something to read', () => {
-    expect(SOURCE).toMatch(/readonly submissionError: MeetServerError \| null;/);
+    expect(SOURCE).toMatch(/readonly submissionError: MeetRecordError \| null;/);
     expect(SOURCE).toMatch(/return \{[^}]*submissionError[^}]*\};/s);
   });
 

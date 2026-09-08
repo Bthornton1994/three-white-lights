@@ -74,6 +74,7 @@
  */
 
 import type { CareerMeetOutcome } from './careerServer';
+import type { CareerLoopError } from './careerLoop';
 import type { FatigueState } from './fatigue';
 import { LIFT_ORDER, type LiftKind } from './meet';
 import type { ConfirmedMeetFacts } from './meetDay';
@@ -177,6 +178,8 @@ export interface RecordedMeet extends ConfirmedMeetFacts {
 }
 
 /** What the `record-meet-result` endpoint answered with. */
+export type MeetRecordError = MeetServerError | CareerLoopError;
+
 export type MeetServerResponse =
   /** The response body, exactly as an Edge Function would send it. */
   | {
@@ -185,7 +188,7 @@ export type MeetServerResponse =
       readonly result: RecordedMeet;
     }
   /** The server refused. Nothing moved; the proposal is dead. */
-  | { readonly kind: 'refused'; readonly error: MeetServerError };
+  | { readonly kind: 'refused'; readonly error: MeetRecordError };
 
 /**
  * The whole of meet day's access to the server.
