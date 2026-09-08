@@ -206,6 +206,17 @@
  *    strip. Each member root also carries `data-cell` / `data-anchor` /
  *    `data-scale` / `data-clip` so a tool can measure the drawn body
  *    against the contract rather than trust this file.
+ * 5. VL-3 — THE FRAME LOOP IS A PURE STEPPER AND THE PRODUCTION BODY IS A
+ *    STRIP. `AmbientMemberBody`'s per-frame logic lives in
+ *    `memberMotion.ts`; a production member type (`memberMotionProduction-
+ *    Type`) is drawn from eight pre-mounted baked strips, one per clip in
+ *    `memberMotionClips.ts`, shifted to the frame the stepper chose and
+ *    mirrored as a whole for the left facing; every other type keeps the
+ *    pose stack. The body's depth is a root `scale` transform from the
+ *    DRAWN point, so a seat assignment eases the size with the position.
+ *    The root adds `data-frame` / `data-facing`, rewritten by the loop, and
+ *    an evidence-only trace sink (`globalThis.__empireMotionTrace`, see the
+ *    component) hands a tool the stepper's output per frame directly.
  */
 
 import { useEffect, useRef, useState, type ReactElement } from 'react';
@@ -223,26 +234,30 @@ import {
 import { EMPIRE_TUNING } from './empireTuning';
 import {
   type FloorCamera,
+  floorDepthFrame,
   orthographicFloorCamera,
   perspectiveFloorCamera,
   projectFloorPoint,
 } from './floorCamera';
 import {
   type MemberAnimationClip,
-  type MemberAnimationFrame,
-  type MemberPlaybackSnapshot,
-  advanceMemberAnimationPhase,
-  advancePlaybackTick,
   clipWhileSettling,
-  memberAnimationBlend,
   memberAnimationClipFor,
   memberAnimationPoses,
-  memberAnimationStartPhase,
-  sampleMemberAnimation,
-  samplePlayback,
-  settleDurationMs,
-  settleRemainder,
 } from './memberAnimation';
+import {
+  type MemberMotionInput,
+  type MemberMotionState,
+  createMemberMotion,
+  memberMotionStripClips,
+  stepMemberMotion,
+} from './memberMotion';
+import {
+  type MemberMotionClip,
+  type MemberMotionProductionType,
+  MEMBER_MOTION_CLIP_SPECS,
+  memberMotionProductionType,
+} from './memberMotionClips';
 import {
   type FixedFurnitureItem,
   type FloorSpriteFacing,
@@ -255,6 +270,7 @@ import {
 import {
   ironAmberFixedUri,
   ironAmberFloorPlaneUri,
+  ironAmberMemberMotionStripUri,
   ironAmberMemberUri,
   ironAmberPlateTreeUri,
   ironAmberSessionUri,
@@ -1511,6 +1527,20 @@ interface AmbientMemberBodyProps {
    */
   readonly queueRank: number | null;
   /**
+   * VL-3: the camera's depth frame — the band's back edge in stage y, its
+   * screen depth, and its back scale (`floorDepthFrame`) — so the frame
+   * loop can turn the point it DRAWS back into a depth scale every frame
+   * (`depthScaleFromStageY`) instead of stepping to the contract's `scale`
+   * in one render. Three plain numbers, computed by the camera, never
+   * compared; `depthSpan` is 0 under Build's plan camera, which reads as
+   * scale 1 everywhere. Numbers rather than the camera object or a
+   * scale-at-y function because this prop surface is pinned to carry no
+   * callable and no nested interface it does not already carry.
+   */
+  readonly depthBackY: number;
+  readonly depthSpan: number;
+  readonly depthBackScale: number;
+  /**
    * LAST ON PURPOSE, and the reason is in another session's file. The
    * `MUTATION_WITNESSES` row for `ambient-member-props-hold-no-channel` in
    * `src/game/guaranteeTags.test.ts` anchors its planted mutation on the text
@@ -1628,6 +1658,20 @@ interface AmbientMemberBodyProps {
  * `width`/`height` (`AMBIENT_MEMBER_FOOTPRINT_TILES` scaled by `tile`) the
  * single-`View` version carried, so a bounding-box read still covers the
  * whole visible member.
+ *
+ * VL-3: THE FRAME LOOP IS `memberMotion.ts`'s STEPPER, and the body has an
+ * evidence-only TRACE SINK. Per frame the effect below reads the latest
+ * props off a ref, calls `stepMemberMotion` on state held in a ref across
+ * renders, and writes the output into animated values — root offset and
+ * depth scale, lift, lean, facing mirror, pose opacities or strip
+ * opacity/shift. Then, if `globalThis.__empireMotionTrace` is an array (a
+ * capture tool attaches one; the app never creates or reads it), it pushes
+ * one record — identity, frame time, capped elapsed, tick, lifecycle, clip,
+ * strip frame, phase, facing, drawn point, depth scale, contract point and
+ * pull, settling / relocating / transitioning and the edge taken — up to
+ * `FLOOR_MEMBER_MOTION_TRACE_CAP` records, so a forgotten sink is bounded.
+ * The root also carries `data-frame` and `data-facing`, rewritten by the
+ * loop when they change. Details in the effect's own comment.
  */
 function AmbientMemberBody({
   index,
@@ -1649,41 +1693,79 @@ function AmbientMemberBody({
   pullY,
   target,
   queueRank,
+  depthBackY,
+  depthSpan,
+  depthBackScale,
   selectedName,
   onPress,
 }: AmbientMemberBodyProps) {
-  // VL-2: every drawn size is the front-row size times the camera's depth
-  // scale at this body's feet. The box is `FLOOR_MEMBER_DRAW_SCALE_TILES`
-  // tiles on a side at that depth, its bottom-centre on `position`.
-  const bodySide = EMPIRE_TUNING.FLOOR_MEMBER_DRAW_SCALE_TILES * tile * scale;
-  const shadowWidth = EMPIRE_TUNING.FLOOR_MEMBER_SHADOW_WIDTH_FRACTION * tile * scale;
-  const shadowHeight = EMPIRE_TUNING.FLOOR_MEMBER_SHADOW_HEIGHT_FRACTION * tile * scale;
+  // VL-3: the body's LAYOUT box is the FRONT-ROW size — `FLOOR_MEMBER_DRAW_
+  // SCALE_TILES` tiles a side at `tile` — and its depth is a `scale`
+  // transform on the root, written every frame from the stepper's drawn
+  // point. VL-2 sized the box by the contract's `scale` in render, which is
+  // why a seat assignment stepped the body 0.70 -> 0.85 in one frame while
+  // its position glided; a transform scales every child (sprite, shadow,
+  // cue) by the same eased factor, and the bounding box the evidence tools
+  // read is the transformed one. `scale` the prop still stamps `data-scale`.
+  const bodySide = EMPIRE_TUNING.FLOOR_MEMBER_DRAW_SCALE_TILES * tile;
+  const shadowWidth = EMPIRE_TUNING.FLOOR_MEMBER_SHADOW_WIDTH_FRACTION * tile;
+  const shadowHeight = EMPIRE_TUNING.FLOOR_MEMBER_SHADOW_HEIGHT_FRACTION * tile;
+  // VL-3: which pipeline draws this body — the baked strips for a production
+  // type, the two-keypose pose stack for every other. Fixed for the mount.
+  const production = memberMotionProductionType(type);
 
-  // The per-body animated values: the root's offset (the walk), the body's
-  // lift (bounce / breath) and lean, and one opacity per sprite pose (the
-  // frame). Created once per mounted body; written every animation frame by
-  // the loop below and read by the styles, so a frame never re-renders React.
+  // The per-body animated values: the root's offset (the walk) and depth
+  // scale, the body's lift (bounce / breath) and lean, the strip stack's
+  // facing mirror, one opacity per sprite pose (the legacy frame) and one
+  // opacity plus one horizontal shift per production clip strip (the frame
+  // is a `translateX` of `-frame * bodySide` inside a clipping box). Created
+  // once per mounted body; written every animation frame by the loop below
+  // and read by the styles, so a frame never re-renders React.
   const rootOffset = useRef(
-    new Animated.ValueXY({ x: position.x - bodySide / 2, y: position.y - bodySide }),
+    new Animated.ValueXY({ x: position.x - bodySide / 2, y: position.y - (bodySide * scale) / 2 - bodySide / 2 }),
   ).current;
+  const bodyScale = useRef(new Animated.Value(scale)).current;
   const lift = useRef(new Animated.Value(0)).current;
   const lean = useRef(new Animated.Value(0)).current;
+  const facingSign = useRef(new Animated.Value(facing === 'left' ? -1 : 1)).current;
   const poseOpacity = useRef(poseOpacityValues()).current;
+  const stripOpacity = useRef(stripValues()).current;
+  const stripShift = useRef(stripValues()).current;
 
   // The latest props, for the frame loop. `requestAnimationFrame`'s callback
   // closes over the render it was created in, so without this the loop
   // would go on drawing the anchor as it stood when the body mounted.
   // Written after every render (no dependency array), which runs before
   // any frame fires.
-  const latest = useRef({ position, scale, clip, state, facing, tile, index, tick, pullX, pullY });
-  useEffect(() => {
-    latest.current = { position, scale, clip, state, facing, tile, index, tick, pullX, pullY };
+  const latest = useRef({
+    position, scale, clip, state, facing, tile, index, tick, pullX, pullY,
+    memberId, cellX, cellY, depthBackY, depthSpan, depthBackScale,
   });
+  useEffect(() => {
+    latest.current = {
+      position, scale, clip, state, facing, tile, index, tick, pullX, pullY,
+      memberId, cellX, cellY, depthBackY, depthSpan, depthBackScale,
+    };
+  });
+
+  // VL-3: THE STEPPER'S STATE LIVES IN A REF ACROSS RENDERS. Created on the
+  // first frame from the props as they stand then, and only ever advanced by
+  // `stepMemberMotion`; a re-render with identical props does not touch it,
+  // so a re-render restarts no clip, no settle and no blend
+  // (`memberMotion.test.ts` pins that at the stepper).
+  const motion = useRef<MemberMotionState | null>(null);
+  // The root's host node, for the two evidence attributes the loop writes
+  // per frame (`data-frame`, `data-facing`); null where there is no DOM.
+  const rootNode = useRef<View | null>(null);
+  // The facing and frame the root MOUNTS with. Fixed for the mount on
+  // purpose: React rewrites a `data-*` attribute only when its prop value
+  // changes, so a constant leaves the loop's per-frame writes in place.
+  const mountFacing = useRef(facing).current;
 
   // The previous clip's poses stay mounted for one render after a clip
   // change, so the loop's blend has both the outgoing and the incoming
   // frame to write to. `FLOOR_MEMBER_CLIP_BLEND_MS` is one tick long for
-  // exactly that reason (see the knob).
+  // exactly that reason (see the knob). Legacy pose stack only.
   const previousClip = useRef(clip);
   useEffect(() => {
     previousClip.current = clip;
@@ -1697,57 +1779,39 @@ function AmbientMemberBody({
   // same key, and the seal census pins DISTINCT members against its two
   // declared lists. One effect keeps the key one-to-one with the site.
   //
-  // VL-2 — THE FRAME LOOP. VL-1 ran two `Animated` timers per body: a
-  // looping bounce on its own clock and a per-tick `Animated.timing` tween
-  // toward each new position. Both are gone. One `requestAnimationFrame`
-  // loop per body now does, every frame, in this order:
+  // VL-3 — THE FRAME LOOP IS A PURE STEP. VL-2 / VL-2B's per-frame logic —
+  // the tick-indexed playback timeline behind the newest snapshot with its
+  // bounded catch-up, the eased pull onto and off a station timed per tile,
+  // the relocation rebase anchored on the drawn point, the zero-distance
+  // guard, the clip phase by distance drawn or time elapsed, the one-tick
+  // blend, and the `FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS` cap on what one frame
+  // may advance — now lives in `memberMotion.ts` (`stepMemberMotion`), where
+  // each rule is a node test, together with VL-3's continuity rules: facing
+  // from the drawn velocity with hysteresis, the depth scale from the drawn
+  // point, clip transitions walked only along `MEMBER_MOTION_TRANSITIONS`,
+  // per-member phase desync. This effect does three things per frame: read
+  // the latest props off the ref, call the stepper, and write its output
+  // into the animated values (root offset and scale, lift, lean, facing
+  // mirror, one opacity per mounted pose or one opacity and shift per strip).
+  // `Animated.Value.setValue` on a value bound in a style updates the node
+  // directly; React is not re-rendered by any of this.
   //
-  //   1. THE WALK — a playback timeline in sim ticks. Every tick's feet
-  //      point is filed as a snapshot under its tick; a playback clock
-  //      advances one tick per `FLOOR_SIM_TICK_INTERVAL_MS` of real time,
-  //      `FLOOR_MEMBER_RENDER_DELAY_TICKS` behind the newest snapshot, and
-  //      the feet are drawn between the two snapshots it sits between
-  //      (`advancePlaybackTick`, `samplePlayback`). So the drawn speed is
-  //      the sim's own speed: a tick that arrives late leaves the clock
-  //      holding on the newest snapshot, and a main-thread stall is drawn
-  //      as a stall. When the clock has fallen more than
-  //      `FLOOR_MEMBER_CATCH_UP_BEHIND_TICKS` behind it runs faster by
-  //      `FLOOR_MEMBER_CATCH_UP_RATE` — a bounded catch-up whose ceiling
-  //      the evidence tool reads from source and checks — never a jump.
-  //      VL-1's tween retargeted FROM its in-flight position over a fresh
-  //      full duration, which is why it caught up at ~0.5 tiles per 100 ms
-  //      after a stall; a first VL-2 trial that simply interpolated to
-  //      each new anchor over one tick did the same when ticks arrived
-  //      bunched after a harness stall, which is what this replaced.
-  //      `data-cell` / `data-anchor` / `data-tick` on the root let the
-  //      evidence tool measure the drawn-versus-contract gap instead of
-  //      trusting this comment. The two lifecycle moments that move the
-  //      body without the cell moving — onto and off a station — are an
-  //      eased PULL added on top of the walked feet point, timed per tile
-  //      of pull (`settleDurationMs`, `settleRemainder`) so a long pull
-  //      glides at about walking speed with the WALK clip playing over it
-  //      (`clipWhileSettling`) and the use pose lands with the body; the
-  //      timeline never sees that jump either. The first VL-2 build settled
-  //      every pull in one fixed 360 ms, and the garage bench's ~2.5-tile
-  //      pull crossed at three times walking speed — the stall probe's
-  //      largest single-frame step, and not from the stall.
-  //   2. THE PHASE — the clip's phase advances by tiles the body actually
-  //      moved on screen this frame (the walk) or by the frame's elapsed
-  //      milliseconds (everything else), per `memberAnimation.ts`. A clip
-  //      change restarts the phase at the body's own stagger and starts a
-  //      one-tick blend from the outgoing clip's last frames.
-  //   3. THE SAMPLE — `sampleMemberAnimation` returns the frame(s) to show
-  //      and the lift and lean to show them with, all off that one phase.
-  //   4. THE WRITE — the root's offset (walk), the inner view's lift and
-  //      lean, and one opacity per mounted pose (frame, times the blend).
-  //      `Animated.Value.setValue` on a value bound in a style updates the
-  //      node directly; React is not re-rendered by any of this, which is
-  //      the property that lets a warehouse's forty bodies run it.
+  // THE TRACE SINK, evidence only. Once per frame, after stepping, if
+  // `globalThis.__empireMotionTrace` is an array (a capture tool attaches
+  // one before it samples; nothing in the app creates or reads it), one
+  // record per body is pushed: the stepper's output plus identity — member
+  // id, frame time, capped elapsed, tick, lifecycle, clip, strip frame,
+  // phase, facing, drawn point, depth scale, tile size at this depth, the
+  // contract point and pull, and the settling / relocating flags and the
+  // edge taken. The tool reads the per-frame drawn displacement straight
+  // off it rather than inferring it from a `MutationObserver`, whose
+  // coalescing VL-2B measured. Pushes stop at
+  // `FLOOR_MEMBER_MOTION_TRACE_CAP` records until the tool truncates the
+  // array, so a forgotten sink cannot grow the heap without bound.
   //
   // No `Date`, no `performance`: the only clock is the timestamp
   // `requestAnimationFrame` hands its callback, per the directory's own
-  // clock ban. VL-2B: each frame's elapsed is capped at
-  // `FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS` before it advances anything. Where there is no `requestAnimationFrame` (the node test
+  // clock ban. Where there is no `requestAnimationFrame` (the node test
   // harness) the loop simply does not run and the body draws its first
   // frame at its anchor.
   useEffect(() => {
@@ -1755,176 +1819,93 @@ function AmbientMemberBody({
       return undefined;
     }
     let handle = 0;
-    let lastNow: number | null = null;
-    const snapshots: MemberPlaybackSnapshot[] = [];
-    let playTick: number | null = null;
-    let pullFrom: FloorTilePoint = { x: latest.current.pullX, y: latest.current.pullY };
-    let pullTo: FloorTilePoint = pullFrom;
-    let settleElapsedMs: number | null = null;
-    let lastDrawn: FloorTilePoint | null = null;
-    let runningClip = latest.current.clip;
-    let outgoingFrames: readonly MemberAnimationFrame[] = [];
-    let blendElapsedMs: number | null = null;
-    let phase = memberAnimationStartPhase(runningClip, latest.current.index);
-    let settleMs = settleDurationMs(0);
+    let writtenFrame = '';
+    let writtenFacing = '';
     const frame = (now: number): void => {
       const p = latest.current;
-      // VL-2B: one frame advances at most `FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS`
-      // of animation, however long the main thread was away. The settle and
-      // the blend run on accumulated capped elapsed, never on a wall-clock
-      // difference, so a stalled frame resumes them where they were instead
-      // of landing the stall's worth of motion in one write (measured, see
-      // the knob's own comment).
-      const elapsed =
-        lastNow === null ? 0 : Math.max(0, Math.min(now - lastNow, EMPIRE_TUNING.FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS));
-      lastNow = now;
-      if (settleElapsedMs !== null) settleElapsedMs += elapsed;
-      if (blendElapsedMs !== null) blendElapsedMs += elapsed;
-      // 1. Snapshot intake: a new tick files a new snapshot; the same tick
-      //    re-rendered with a moved anchor (a layout change) replaces it.
-      const tileHere = p.tile * p.scale;
-      const newest = snapshots[snapshots.length - 1];
-      // VL-2B — A RELOCATION IS NOT A STEP. A tick whose feet point is
-      // further than a stride from the previous snapshot is the sim
-      // moving this member somewhere in one step — the ghost-reserve
-      // rebuild after a live Capacity purchase relocates the `using`
-      // member from its old approach cell onto a new seat, three tiles
-      // on the garage (measured: 5,0 -> 2,2 at the first post-purchase
-      // tick). The timeline would slide it there in one tick, eight
-      // times walking speed. Instead the buffer is rebased onto the new
-      // point and the difference joins the settle offset, so the SAME
-      // body glides from where it was drawn to where the contract says
-      // it is, at walking speed, walking (`clipWhileSettling`). Not a
-      // teleport, not a duplicate, not a fabricated seat, and the sim is
-      // not delayed — only the drawing catches up. `relocate` is the one
-      // routine for it, reached from BOTH intake branches below: the new
-      // tick, and the same tick re-rendered with a moved point — because
-      // the purchase's own re-plan moves a SEEKING member's contract
-      // point within the tick it lands on (measured: 5,2.59 -> 5,4, 1.4
-      // tiles), and treating that as a layout nudge snapped the body half
-      // the way (0.74 tiles in one write, a critic's instrument caught
-      // it). A layout nudge moves every body a few pixels; a relocation
-      // moves one body a tile or more, and the stride is the line.
-      const relocate = (): void => {
-        // The compensation is anchored on where the body is DRAWN this
-        // instant — the playback point between two older snapshots, up to
-        // two ticks behind the newest — not on the newest snapshot. Anchored
-        // on the newest, the rebase threw that lag away in one frame:
-        // measured as a 0.947-tile write on a walker the purchase re-planned
-        // two tiles sideways (its playback was 1.5 ticks behind after the
-        // purchase's long frames). Anchored on the drawn point, the first
-        // frame after a relocation draws exactly where the last one did.
-        const drawnFeet = (playTick === null ? null : samplePlayback(snapshots, playTick)) ?? newest ?? p.position;
-        const jumpX = p.position.x - drawnFeet.x;
-        const jumpY = p.position.y - drawnFeet.y;
-        const remainderNow =
-          settleElapsedMs === null ? 0 : settleRemainder(settleElapsedMs, settleMs);
-        pullFrom = {
-          x: pullTo.x + (pullFrom.x - pullTo.x) * remainderNow - jumpX,
-          y: pullTo.y + (pullFrom.y - pullTo.y) * remainderNow - jumpY,
-        };
-        // A relocation whose pull cancels it — the relocated bench user
-        // that was already drawn on its bench — has nothing to glide,
-        // and a zero-distance settle would still run one tile's worth
-        // and swap the lying body to the walk clip for it (a critic
-        // found that, not an instrument). Under a pixel: no settle.
-        const glidePixels = Math.hypot(pullTo.x - pullFrom.x, pullTo.y - pullFrom.y);
-        if (glidePixels < 1) {
-          settleElapsedMs = null;
-        } else {
-          settleElapsedMs = 0;
-          settleMs = settleDurationMs(glidePixels / tileHere);
-        }
-        for (let i = 0; i < snapshots.length; i += 1) {
-          const held = snapshots[i];
-          if (held !== undefined) snapshots[i] = { tick: held.tick, x: p.position.x, y: p.position.y };
-        }
+      const input: MemberMotionInput = {
+        tick: p.tick,
+        position: p.position,
+        pullX: p.pullX,
+        pullY: p.pullY,
+        tile: p.tile,
+        scale: p.scale,
+        clip: p.clip,
+        lifecycle: p.state,
+        facing: p.facing,
+        index: p.index,
+        depth: { backY: p.depthBackY, span: p.depthSpan, backScale: p.depthBackScale },
       };
-      const isRelocation = (jumpX: number, jumpY: number): boolean =>
-        tileHere > 0 && Math.hypot(jumpX, jumpY) / tileHere > EMPIRE_TUNING.FLOOR_MEMBER_STRIDE_TILES;
-      if (newest === undefined || newest.tick !== p.tick) {
-        if (newest !== undefined && isRelocation(p.position.x - newest.x, p.position.y - newest.y)) {
-          relocate();
-        }
-        snapshots.push({ tick: p.tick, x: p.position.x, y: p.position.y });
-      } else if (newest.x !== p.position.x || newest.y !== p.position.y) {
-        // The same tick, re-rendered with a moved point: a layout nudge
-        // replaces the snapshot in place; a relocation (see above) is
-        // glided the same way it is on a new tick.
-        if (isRelocation(p.position.x - newest.x, p.position.y - newest.y)) {
-          relocate();
-        }
-        snapshots[snapshots.length - 1] = { tick: p.tick, x: p.position.x, y: p.position.y };
-      }
-      // 2. The playback clock, then the walked feet point along the buffer;
-      //    snapshots the clock has passed are dropped.
-      const latestTick = (snapshots[snapshots.length - 1] as MemberPlaybackSnapshot).tick;
-      playTick = advancePlaybackTick(playTick, latestTick, elapsed);
-      while (snapshots.length > 2 && (snapshots[1] as MemberPlaybackSnapshot).tick <= playTick) {
-        snapshots.shift();
-      }
-      const feet = samplePlayback(snapshots, playTick) ?? p.position;
-      // 3. The eased pull onto or off a station: a changed pull starts a new
-      //    settle from wherever the previous one had got to, timed by how
-      //    far it has to cross in tiles at this body's depth.
-      if (p.pullX !== pullTo.x || p.pullY !== pullTo.y) {
-        const remainderNow = settleElapsedMs === null ? 0 : settleRemainder(settleElapsedMs, settleMs);
-        pullFrom = {
-          x: pullTo.x + (pullFrom.x - pullTo.x) * remainderNow,
-          y: pullTo.y + (pullFrom.y - pullTo.y) * remainderNow,
-        };
-        pullTo = { x: p.pullX, y: p.pullY };
-        // Same rule as the relocation above: a pull that moved under a
-        // pixel (a layout nudge, or the relocation's own cancelled pull)
-        // starts no settle, so the clip stays where it is.
-        const pullPixels = Math.hypot(pullTo.x - pullFrom.x, pullTo.y - pullFrom.y);
-        if (pullPixels < 1) {
-          settleElapsedMs = null;
-        } else {
-          settleElapsedMs = 0;
-          settleMs = settleDurationMs(tileHere <= 0 ? 0 : pullPixels / tileHere);
+      if (motion.current === null) motion.current = createMemberMotion(input, production);
+      const out = stepMemberMotion(motion.current, input, now);
+      // The write. The root is a front-row-sized box scaled about its
+      // centre, so its top-left is placed such that the SCALED box's
+      // bottom-centre lands on the drawn feet point.
+      const side = EMPIRE_TUNING.FLOOR_MEMBER_DRAW_SCALE_TILES * p.tile;
+      rootOffset.setValue({ x: out.drawn.x - side / 2, y: out.drawn.y - (side * out.scale) / 2 - side / 2 });
+      bodyScale.setValue(out.scale);
+      lift.setValue(out.lift);
+      lean.setValue(out.lean);
+      facingSign.setValue(out.facing === 'left' ? -1 : 1);
+      if (out.draw.kind === 'poses') {
+        for (const pose of FLOOR_SPRITE_POSES) poseOpacity[pose].setValue(out.draw.opacity[pose]);
+      } else {
+        for (const stripClip of memberMotionStripClips()) {
+          let opacity = 0;
+          let shift: number | null = null;
+          for (const layer of out.draw.layers) {
+            if (layer.clip !== stripClip) continue;
+            opacity += layer.opacity;
+            shift = -layer.frame * side;
+          }
+          stripOpacity[stripClip].setValue(opacity > 1 ? 1 : opacity);
+          if (shift !== null) stripShift[stripClip].setValue(shift);
         }
       }
-      const remainder = settleElapsedMs === null ? 0 : settleRemainder(settleElapsedMs, settleMs);
-      if (remainder === 0) settleElapsedMs = null;
-      const drawn: FloorTilePoint = {
-        x: feet.x + pullTo.x + (pullFrom.x - pullTo.x) * remainder,
-        y: feet.y + pullTo.y + (pullFrom.y - pullTo.y) * remainder,
-      };
-      // 4. The clip phase, by distance walked on screen or by time. While a
-      //    settle is still crossing the floor the body walks it; the use
-      //    pose starts when the settle lands.
-      const wantedClip = remainder > 0 ? clipWhileSettling(p.clip) : p.clip;
-      const movedTiles =
-        lastDrawn === null || tileHere <= 0
-          ? 0
-          : Math.hypot(drawn.x - lastDrawn.x, drawn.y - lastDrawn.y) / tileHere;
-      lastDrawn = drawn;
-      if (wantedClip !== runningClip) {
-        outgoingFrames = sampleMemberAnimation(runningClip, phase).frames;
-        runningClip = wantedClip;
-        blendElapsedMs = 0;
-        phase = memberAnimationStartPhase(runningClip, p.index);
-      }
-      phase = advanceMemberAnimationPhase(runningClip, phase, movedTiles, elapsed);
-      const sample = sampleMemberAnimation(runningClip, phase);
-      const blend = blendElapsedMs === null ? 1 : memberAnimationBlend(blendElapsedMs);
-      if (blend >= 1) {
-        blendElapsedMs = null;
-        outgoingFrames = [];
-      }
-      // 5. The write.
-      const side = EMPIRE_TUNING.FLOOR_MEMBER_DRAW_SCALE_TILES * tileHere;
-      rootOffset.setValue({ x: drawn.x - side / 2, y: drawn.y - side });
-      lift.setValue(-sample.liftPixels * p.scale);
-      lean.setValue(p.facing === 'left' ? -sample.leanDegrees : sample.leanDegrees);
-      for (const pose of FLOOR_SPRITE_POSES) {
-        let opacity = 0;
-        for (const shown of sample.frames) if (shown.pose === pose) opacity += shown.opacity * blend;
-        for (const fading of outgoingFrames) {
-          if (fading.pose === pose) opacity += fading.opacity * (1 - blend);
+      // The two per-frame evidence attributes, written only when they change.
+      const node = rootNode.current as unknown as { setAttribute?: unknown } | null;
+      if (node !== null && typeof node.setAttribute === 'function') {
+        const setAttribute = node.setAttribute as (name: string, value: string) => void;
+        const frameAttr = out.draw.kind === 'strip' ? String(out.draw.frame) : '';
+        if (frameAttr !== writtenFrame) {
+          writtenFrame = frameAttr;
+          setAttribute.call(node, 'data-frame', frameAttr);
         }
-        poseOpacity[pose].setValue(opacity > 1 ? 1 : opacity);
+        if (out.facing !== writtenFacing) {
+          writtenFacing = out.facing;
+          setAttribute.call(node, 'data-facing', out.facing);
+        }
+      }
+      // The trace sink (see the header of this effect).
+      const sink = (globalThis as { __empireMotionTrace?: unknown }).__empireMotionTrace;
+      if (Array.isArray(sink) && sink.length < EMPIRE_TUNING.FLOOR_MEMBER_MOTION_TRACE_CAP) {
+        sink.push({
+          memberId: p.memberId,
+          now,
+          elapsedMs: out.elapsedMs,
+          tick: p.tick,
+          playTick: out.playTick,
+          lifecycle: p.state,
+          clip: out.draw.clip,
+          frame: out.draw.kind === 'strip' ? out.draw.frame : null,
+          phase: out.phase,
+          facing: out.facing,
+          drawnX: out.drawn.x,
+          drawnY: out.drawn.y,
+          scale: out.scale,
+          tileHere: out.tileHere,
+          contractX: p.position.x,
+          contractY: p.position.y,
+          cellX: p.cellX,
+          cellY: p.cellY,
+          pullX: p.pullX,
+          pullY: p.pullY,
+          blend: out.blend,
+          settling: out.settling,
+          relocating: out.relocating,
+          transitioning: out.transitioning,
+          transition: out.transition,
+        });
       }
       handle = requestAnimationFrame(frame);
     };
@@ -1933,7 +1914,7 @@ function AmbientMemberBody({
     return () => {
       cancelAnimationFrame(handle);
     };
-  }, [lean, lift, poseOpacity, rootOffset]);
+  }, [bodyScale, facingSign, lean, lift, poseOpacity, production, rootOffset, stripOpacity, stripShift]);
 
   const cueScale =
     state === 'interrupted' ? EMPIRE_TUNING.FLOOR_SIM_INTERRUPTED_CUE_SCALE : 1;
@@ -1941,6 +1922,7 @@ function AmbientMemberBody({
 
   return (
     <Animated.View
+      ref={rootNode}
       testID={`floorgrid-ambient-${index}`}
       // Stage C.1d: this animated root IS the member. Play passes onPress
       // and a filling Pressable rides the same transform; Build passes
@@ -1968,6 +1950,10 @@ function AmbientMemberBody({
           tick: String(tick),
           scale: String(scale),
           clip,
+          // VL-3: the strip frame and the drawn facing, owned by the frame
+          // loop after mount (it rewrites the attribute when either changes).
+          frame: production ? '0' : undefined,
+          facing: mountFacing,
         },
       } as object)}
       style={{
@@ -1984,10 +1970,11 @@ function AmbientMemberBody({
           state === 'leaving' && onPress === undefined
             ? EMPIRE_TUNING.FLOOR_SIM_LEAVING_OPACITY
             : 1,
-        // The frame loop owns the whole position; `left`/`top` stay at
-        // zero. The lift and lean live on the inner view so the grounding
-        // shadow below stays on the floor while the body moves over it.
-        transform: [{ translateX: rootOffset.x }, { translateY: rootOffset.y }],
+        // The frame loop owns the whole position and, VL-3, the depth
+        // scale; `left`/`top` stay at zero. The lift and lean live on the
+        // inner view so the grounding shadow below stays on the floor while
+        // the body moves over it.
+        transform: [{ translateX: rootOffset.x }, { translateY: rootOffset.y }, { scale: bodyScale }],
       }}
     >
       {/*
@@ -2040,13 +2027,36 @@ function AmbientMemberBody({
           <index>` is the stack's box (what the browser checks read); the
           visible frame is whichever image the loop has at opacity 1.
         */}
-        <View
-          testID={`floorgrid-member-sprite-${index}`}
-          pointerEvents={'none'}
-          style={{ position: 'absolute', left: 0, top: 0, width: bodySide, height: bodySide }}
-        >
-          {memberPoseImages(mountedPoses, poseOpacity, type, facing, bodySide, index)}
-        </View>
+        {production ? (
+          // VL-3: the production body is eight pre-mounted strips, one per
+          // clip, each `frames × bodySide` wide inside a `bodySide`-square
+          // clipping box; the active clip's strip is shifted to its frame
+          // and lit, the others sit at opacity 0, and the two dissolves
+          // crossfade two strips. The left facing is a mirror of the whole
+          // stack — strips are authored facing right, never a second file.
+          <Animated.View
+            testID={`floorgrid-member-sprite-${index}`}
+            pointerEvents={'none'}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width: bodySide,
+              height: bodySide,
+              transform: [{ scaleX: facingSign }],
+            }}
+          >
+            {memberStripImages(type, stripOpacity, stripShift, bodySide, index)}
+          </Animated.View>
+        ) : (
+          <View
+            testID={`floorgrid-member-sprite-${index}`}
+            pointerEvents={'none'}
+            style={{ position: 'absolute', left: 0, top: 0, width: bodySide, height: bodySide }}
+          >
+            {memberPoseImages(mountedPoses, poseOpacity, type, facing, bodySide, index)}
+          </View>
+        )}
         {/*
           GDD §5.13 presentation Phase 3 — the state cue, in the register
           §5.13 names by hand ("a visible reaction cue (RCT's thought-bubble
@@ -2229,6 +2239,68 @@ function memberPoseImages(
   return images;
 }
 
+/** One `Animated.Value` per production clip strip, at 0. */
+function stripValues(): Readonly<Record<MemberMotionClip, Animated.Value>> {
+  const values: Partial<Record<MemberMotionClip, Animated.Value>> = {};
+  for (const clip of memberMotionStripClips()) values[clip] = new Animated.Value(0);
+  return values as Readonly<Record<MemberMotionClip, Animated.Value>>;
+}
+
+/**
+ * VL-3: the pre-mounted strip images of one production body. Each clip's
+ * strip is `frames` canvases wide, drawn `side * frames` by `side` with
+ * `resizeMode 'stretch'` so one frame is exactly `side` square with the feet
+ * at its bottom centre — the geometry a painting draws with — inside a
+ * `side`-square clipping box, shifted by the clip's `translateX` value to
+ * the frame the loop chose and lit by its opacity value. A C-style loop
+ * rather than `.map`, for the channel census, as `memberPoseImages` above.
+ */
+function memberStripImages(
+  type: MemberMotionProductionType,
+  opacities: Readonly<Record<MemberMotionClip, Animated.Value>>,
+  shifts: Readonly<Record<MemberMotionClip, Animated.Value>>,
+  side: number,
+  index: number,
+): readonly ReactElement[] {
+  const images: ReactElement[] = [];
+  const clips = memberMotionStripClips();
+  for (let at = 0; at < clips.length; at += 1) {
+    const clip = clips[at];
+    if (clip === undefined) continue;
+    images.push(
+      <Animated.View
+        key={clip}
+        testID={`floorgrid-member-strip-${index}-${clip}`}
+        pointerEvents={'none'}
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: side,
+          height: side,
+          overflow: 'hidden',
+          opacity: opacities[clip],
+        }}
+      >
+        <Animated.Image
+          source={{ uri: ironAmberMemberMotionStripUri(type, clip) }}
+          resizeMode={'stretch'}
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: side * MEMBER_MOTION_CLIP_SPECS[clip].frames,
+            height: side,
+            transform: [{ translateX: shifts[clip] }],
+          }}
+          {...({ pointerEvents: 'none' } as object)}
+        />
+      </Animated.View>,
+    );
+  }
+  return images;
+}
+
 export function FloorGrid(props: FloorGridProps) {
   const { owned, barbellOwned, floor, dispatch, managed, capability, buildMode, livingMembers, gymClockSeconds } =
     props;
@@ -2254,6 +2326,9 @@ export function FloorGrid(props: FloorGridProps) {
   const camera: FloorCamera = buildMode
     ? orthographicFloorCamera(grid, tile)
     : perspectiveFloorCamera(stageSize, grid, floor.rung);
+  // VL-3: the camera's depth frame, handed to every body as three numbers so
+  // its frame loop can invert the point it draws back to a depth scale.
+  const depthFrame = floorDepthFrame(camera);
   // Play's camera is a function of the MEASURED stage, and the first render
   // happens before `onLayout` has measured anything. Drawing the world
   // against a 0×0 stage put every body a few hundred pixels above the floor
@@ -3443,6 +3518,9 @@ export function FloorGrid(props: FloorGridProps) {
                   pullY={draw.anchor.pull.y}
                   target={draw.member.target}
                   queueRank={draw.member.queueRank}
+                  depthBackY={depthFrame.backY}
+                  depthSpan={depthFrame.span}
+                  depthBackScale={depthFrame.backScale}
                   selectedName={
                     selectedMemberIndex === draw.ordinal
                       ? (livingMemberAtIndex(livingMembers, draw.ordinal)?.displayName ??

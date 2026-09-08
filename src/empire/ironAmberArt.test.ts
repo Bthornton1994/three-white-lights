@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { EMPIRE_TUNING } from './empireTuning';
 import { FLOOR_SPRITE_FACINGS, FLOOR_SPRITE_POSES } from './floorSprites';
 import {
+  ironAmberMemberMotionStripUri,
   IRON_AMBER_ART_STEMS,
   ironAmberArtRoot,
   ironAmberArtUri,
@@ -21,6 +22,7 @@ import {
   ironAmberPlateTreeUri,
   ironAmberSessionUri,
 } from './ironAmberArt';
+import { MEMBER_MOTION_CLIPS, MEMBER_MOTION_PRODUCTION_TYPES, memberMotionStripStem } from './memberMotionClips';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ART_DIR = path.join(HERE, '..', '..', 'public', 'empire-art');
@@ -125,6 +127,22 @@ describe('Iron & Amber owned-art adapter', () => {
       aspects += 1;
     }
     expect(aspects).toBe(Object.keys(stemFor).length);
+  });
+
+  it('VL-3: names a motion strip by the clip table\'s own stem for every production type and clip, and does not list it on disk yet', () => {
+    let named = 0;
+    for (const type of MEMBER_MOTION_PRODUCTION_TYPES) {
+      for (const clip of MEMBER_MOTION_CLIPS) {
+        const stem = memberMotionStripStem(type, clip);
+        expect(ironAmberMemberMotionStripUri(type, clip)).toBe(`/empire-art/${stem}.png`);
+        // The strips arrive from the art pass; until they are on disk the
+        // closed list must not name them, or the provenance join above goes red.
+        expect(IRON_AMBER_ART_STEMS).not.toContain(stem);
+        named += 1;
+      }
+    }
+    expect(named).toBe(MEMBER_MOTION_PRODUCTION_TYPES.length * MEMBER_MOTION_CLIPS.length);
+    expect(named).toBe(8);
   });
 
   it('does not import, require, or embed payloads in its own source', () => {

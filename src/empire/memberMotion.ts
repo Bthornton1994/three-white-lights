@@ -184,7 +184,7 @@ export interface MemberMotionOutput {
   readonly scale: number;
   /** One tile at the contract point's depth, in pixels — the stride's and the settle's unit. */
   readonly tileHere: number;
-  /** The inner view's vertical offset, in pixels, as written (negative is up). */
+  /** The inner view's vertical offset at the FRONT-ROW scale, in pixels, as written (negative is up); the root's depth transform scales it. */
   readonly lift: number;
   /** The inner view's lean, in degrees, as written (signed by facing). */
   readonly lean: number;
@@ -544,7 +544,7 @@ export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput,
       drawn,
       scale,
       tileHere,
-      lift: -sample.liftPixels * scale,
+      lift: -sample.liftPixels,
       lean: facing === 'left' ? -sample.leanDegrees : sample.leanDegrees,
       facing,
       phase: state.phase,

@@ -168,6 +168,18 @@ export function ironAmberMemberUri(type: string, pose: string, facing: string): 
   return png(memberStem(type, pose, facing));
 }
 
+/**
+ * VL-3: the baked motion strip of one production member type and clip —
+ * `member-motion-<type>-<clip>.png`, the stem `memberMotionClips.ts`'s
+ * `memberMotionStripStem` spells (this module imports nothing, so the shape
+ * is repeated here and `ironAmberArt.test.ts` pins the two agree). NOT on
+ * `IRON_AMBER_ART_STEMS` until the strips land from the art pass: that list
+ * is joined to disk, and a stem on it with no file is red.
+ */
+export function ironAmberMemberMotionStripUri(type: string, clip: string): string {
+  return png(`member-motion-${type}-${clip}`);
+}
+
 export function ironAmberFixedUri(item: string, quality: boolean): string | null {
   if (item === 'flat-bench' && quality) return png('eq-quality-bench');
   const hit = FIXED_BY_ITEM[item];
