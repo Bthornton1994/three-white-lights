@@ -73,6 +73,7 @@ with its state machine named — draws a graphic that follows a continuous
 player path stays untouched.
 
 Does not prove: anything about an athlete (this is a health bar), the
-native half (no toolchain here), how a rig with forty-two inputs paces
+native half (no toolchain here), how a rig with forty-three inputs paces
+(forty-two when this was written; `depth` was bound on 2026-09-08)
 (this file has one), or responsive sizing (a fixed 320 dp stage). See
 ADR-001 §7 and §9.

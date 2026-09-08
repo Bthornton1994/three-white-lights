@@ -758,6 +758,60 @@ build (`OWNER_BLOCKED_EXPO_AUTH`); no native runtime; no VISUAL, ANIMATION
 or SOFT-FEEL gate moves; bench and deadlift blocked; PR #48 not merged;
 `ATHLETE_RIG.TRAINING_STAGE` still `'schematic'`.
 
+**Addendum, 2026-09-08 — the cloud build was completed OUTSIDE the sandbox,
+and the sandbox is the reason.** With a real `EXPO_TOKEN` in hand,
+`npx eas-cli whoami` still failed here: `api.expo.dev:443` is denied by
+this environment's egress policy (the agent proxy logs `gateway answered
+403 to CONNECT (policy denial)`, and its README classes a 403 as a policy
+denial to report, never to retry). Every `eas` subcommand is an API call,
+so no credential changes that from inside. Bryant ran the official flow on
+his own machine and pushed the link commit `02aceea4` — `app.json` gains
+`owner: bthornton1994s-team` and `extra.eas.projectId:
+37ea7a85-87f5-49fd-a63a-edea55ece38f`, nothing else moves; verified by
+parsing the file, `name` / `slug` / `scheme` / `android.package` intact.
+That is an OWNER's edit of a shared file, recorded here as such, not a
+lane crossing. The sentence "`eas init` … is not run until this commit
+exists and Expo authentication is present" from the identity addendum
+above is discharged by that commit; the review it asked for is the parse.
+
+The result, recorded separately so a build is never read as a runtime:
+
+    ANDROID_PREBUILD_PREFLIGHT   PASS  (re-taken at 02aceea4 after the two
+                                        link keys landed: byte-identical)
+    NATIVE_BUILD                 PASS  (EAS cloud, Android development APK,
+                                        build 29d41836-300d-4958-aec5-adbe4d920724,
+                                        owner-supplied — docs/design/evidence/
+                                        eas-cloud-build/)
+    NATIVE_RUNTIME               NOT RUN — DEVICE_UNAVAILABLE (no Android
+                                        phone; no emulator here)
+    RIVE_NATIVE_DIAGNOSTIC       NOT RUN
+
+Not claimed: native Rive success, device performance, any measurement
+from the APK. ADR-001 §7 now carries the emulator/device procedure step
+by step — install, Metro, the launcher URL that must NOT open the spike,
+the scheme link that must (warm via the `url` event and cold via the
+initial URL, both of which `devRoute.ts` reads), the driven-pixel
+readback that distinguishes BOUND from DRIVEN, unmount/remount, rotation,
+`gfxinfo` pacing — for whichever target arrives first; an emulator's
+numbers are labelled emulator. Every other place that said
+`OWNER_BLOCKED_EXPO_AUTH` / `OWNER_BLOCKED_DEVICE` / "physical Android
+device" (the ADR, the pipeline doc, the preflight README and script,
+`tools/athleteIntake.mjs` step 7, the spike README's "forty-two") is
+corrected; this file's dated entries above are left as the record of what
+was true when written.
+
+**Registry data, called out per the ruling's condition 3:** `testPathRefs`
+425 → 427 (the cloud-build README and `build.json`); `realIp` unchanged —
+Expo, EAS and Android are not on the table, and `owner` is one more
+`app.json` string the scan walks and matches nothing. Inherited reds
+unchanged in nature.
+
+**Still not done, and not claimed:** no athlete `.riv`, `.rev`, reference
+sheet or provenance; no room plate; no native runtime; no VISUAL,
+ANIMATION or SOFT-FEEL gate moves; bench and deadlift blocked; PR #48 not
+merged; `ATHLETE_RIG.TRAINING_STAGE` still `'schematic'`; no emulator
+installed here without a ruling.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion

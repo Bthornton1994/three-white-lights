@@ -5,11 +5,14 @@ DISPOSABLE copy of the project (`preflight.sh` — node_modules symlinked, the
 generated `android/` read and thrown away; the repository's gitignored
 `android/` stays absent). `preflight.json` is the machine record;
 `prebuild-output.txt` is the command's own output. `measuredAt` in the record is the
-commit the copy was taken from.
+commit the copy was taken from — re-taken at `02aceea4`, the EAS project-link
+commit, after `owner` and `extra.eas.projectId` landed in `app.json`: the
+record and the output came back byte-identical apart from the stamp.
 
-**What this is not:** a native build. No Gradle ran, no APK exists, no device
-saw anything. NATIVE_BUILD is the owner's EAS cloud build
-(`OWNER_BLOCKED_EXPO_AUTH`, ADR-001 §7) and NATIVE_RUNTIME is a device fact.
+**What this is not:** a native build. No Gradle ran here, no APK was produced
+here, no device saw anything. NATIVE_BUILD is the owner's EAS cloud build —
+now done, PASS, recorded in `../eas-cloud-build/` (ADR-001 §7) — and
+NATIVE_RUNTIME is a runtime fact, `DEVICE_UNAVAILABLE` today.
 This preflight only removes the class of failure a cloud build would report
 back an hour later: a config plugin that refuses, an identity that did not
 flow, a library that did not autolink.

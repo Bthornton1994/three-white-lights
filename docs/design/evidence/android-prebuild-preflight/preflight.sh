@@ -6,8 +6,9 @@
 # there, and the generated `android/` is READ — manifest, gradle identity,
 # strings, autolinking — then thrown away. Nothing is written into the
 # repository; `android/` stays gitignored and absent. The label this earns is
-# ANDROID_PREBUILD_PREFLIGHT, never NATIVE_BUILD: no Gradle ran, no APK exists,
-# the cloud build is the owner's (ADR-001 §7, OWNER_BLOCKED_EXPO_AUTH).
+# ANDROID_PREBUILD_PREFLIGHT, never NATIVE_BUILD: no Gradle runs, no APK is
+# produced here; the cloud build is the owner's (ADR-001 §7 — done, PASS,
+# recorded in ../eas-cloud-build/).
 #
 #   usage: OUT=<dir> bash docs/design/evidence/android-prebuild-preflight/preflight.sh
 set -euo pipefail

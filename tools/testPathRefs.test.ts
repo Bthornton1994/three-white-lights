@@ -405,8 +405,12 @@ const PINNED = Object.freeze({
    * + test) and the host-runtime soak's record (`soak.json` and its README;
    * the PNGs are binary and not read). One test file, so `TEST_FILES`
    * 129 -> 130.
+   *
+   * 425 -> 427 with the owner-supplied EAS cloud build record,
+   * `docs/design/evidence/eas-cloud-build/` (README, `build.json`). No test
+   * file among them; `TEST_FILES` stays 130.
    */
-  SCANNED_FILES: 425,
+  SCANNED_FILES: 427,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.

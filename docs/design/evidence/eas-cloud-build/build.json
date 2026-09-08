@@ -1,0 +1,30 @@
+{
+  "label": "EAS_CLOUD_BUILD",
+  "evidenceClass": "owner-supplied",
+  "measuredBy": "Bryant, outside this sandbox — api.expo.dev:443 is denied at the environment's egress proxy (HTTP 403 to CONNECT), so no EAS command ran here; nothing in this record was measured by the visual lane",
+  "recordedAt": "02aceea4d8ed8b3db5deb457ac37f0e8e5629d81",
+  "linkCommit": "02aceea4d8ed8b3db5deb457ac37f0e8e5629d81",
+  "expoOwner": "bthornton1994s-team",
+  "project": "@bthornton1994s-team/three-white-lights",
+  "easProjectId": "37ea7a85-87f5-49fd-a63a-edea55ece38f",
+  "easBuildId": "29d41836-300d-4958-aec5-adbe4d920724",
+  "platform": "android",
+  "profile": "development",
+  "profileSource": "eas.json — developmentClient true, distribution internal, android.buildType apk, appVersionSource local",
+  "artifact": "Android development APK (expo-dev-client)",
+  "result": "PASS",
+  "gates": {
+    "ANDROID_PREBUILD_PREFLIGHT": "PASS — docs/design/evidence/android-prebuild-preflight/, re-taken at the link commit",
+    "NATIVE_BUILD": "PASS — this record",
+    "NATIVE_RUNTIME": "NOT_RUN — DEVICE_UNAVAILABLE (no Android phone; no emulator in this sandbox)",
+    "RIVE_NATIVE_DIAGNOSTIC": "NOT_RUN"
+  },
+  "notClaimed": [
+    "native Rive success",
+    "device performance or frame pacing",
+    "the dev-client deep link opening the spike on a device",
+    "any measurement taken from the APK"
+  ],
+  "sourceCommitOnBuildPage": null,
+  "sourceCommitNote": "the commit EAS stamped on the build page was not read from this sandbox; the build is reported by its owner as taken from the visual branch at the link commit above"
+}

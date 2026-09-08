@@ -3,16 +3,19 @@
 **Status:** **PROVISIONAL — RIVE LEADING CANDIDATE.** Not FINAL. Not merged.
 **Gate lines, per the 2026-09-08 ruling:** WEB REAL-ASSET TECHNICAL = PASS
 (§7, on a licensed diagnostic asset — a health bar, whose performance is NOT
-generalised to an athlete); NATIVE_BUILD = **`OWNER_BLOCKED_EXPO_AUTH`**
-(EAS cloud development build configured, not launched — §7 has the exact
-commands); ANDROID_PREBUILD_PREFLIGHT = **PASS** (a disposable
+generalised to an athlete); NATIVE_BUILD = **PASS** (EAS cloud
+development build, Android APK, build `29d41836-300d-4958-aec5-adbe4d920724`,
+completed by the owner OUTSIDE this sandbox — `api.expo.dev` is denied at
+the egress proxy; owner-supplied record in
+`docs/design/evidence/eas-cloud-build/`; §7); ANDROID_PREBUILD_PREFLIGHT = **PASS** (a disposable
 `expo prebuild` read back — identity, scheme, Rive + Nitro autolinked,
 dev client resolved; `docs/design/evidence/android-prebuild-preflight/`;
 not a build); HOST-RUNTIME SOAK = **RECORDED** (the web host on the
 diagnostic asset under sustained writes, resizes, a frozen tab, stalls,
 route cycles and in-page remounts; `docs/design/evidence/host-runtime-soak/`;
-not athlete performance); NATIVE_RUNTIME = **`OWNER_BLOCKED_DEVICE`** (never inferred
-from a build); ATHLETE = NOT BUILT
+not athlete performance); NATIVE_RUNTIME = **NOT RUN — `DEVICE_UNAVAILABLE`**
+(no Android phone exists, no emulator here; never inferred from the build);
+RIVE_NATIVE_DIAGNOSTIC = **NOT RUN** (no `.riv` has loaded on Android); ATHLETE = NOT BUILT
 (`ASSET_AUTHORING_BLOCKED`, §9); VISUAL / ANIMATION / SOFT-FEEL = NOT PASSED
 and never self-claimed; OWNER PLAYTEST = Bryant's alone.
 **What closes it, exactly — BOTH, not either:** (1) the native runtime
@@ -28,7 +31,9 @@ than re-argued.
 **Date:** 2026-09-07; amended the same day against the modern runtime (§4a).
 **Decision owner:** Claude Code Session A — visual / animation / player-experience
 **Measured at:** `20a1aa55` (PR #48 head) for §2–§4 and §8; `55f86007` plus the
-visual branch's working tree for §4a, §5a, §6 and §7.
+visual branch's working tree for §4a, §5a, §6 and §7; `02aceea4` (the EAS
+project-link commit) for the preflight re-take and the owner-supplied cloud
+build record in §7.
 
 **Why "provisional" is in the title line.** The first draft of this ADR
 evaluated `rive-react-native@9.8.5` — Rive's LEGACY React Native package — and
@@ -379,9 +384,9 @@ how the "one number" claim above was established rather than assumed.
 | Verification target | Result |
 | --- | --- |
 | Native runtime installs cleanly | **YES** — `npm install` clean against RN 0.86.2 / React 19.2.3 / Expo 57; **zero new `npm audit` advisories** (19 before, the identical 19 after, diffed by package). |
-| Expo development build works | **CONFIGURED FOR EAS CLOUD, NOT YET BUILT** — `expo-dev-client` installed at the SDK pin, `eas.json` `development` profile (development client, internal distribution, Android APK), `app.json` carries `scheme` and `android.package`. `expo prebuild --platform android` in a disposable copy: exit 0, `namespace`/`applicationId` `com.threewhitelights.app`, `app_name` "Three White Lights", manifest schemes `threewhitelights` and `exp+three-white-lights`, `@rive-app/react-native` + `react-native-nitro-modules` in the RN autolinking config, `expo-dev-client`/`-launcher`/`-menu` resolved, `newArchEnabled`, `hermesEnabled` — the record and the script are `docs/design/evidence/android-prebuild-preflight/` (ANDROID_PREBUILD_PREFLIGHT; one warning: `userInterfaceStyle` without `expo-system-ui`, owner's call). The cloud build itself: **`OWNER_BLOCKED_EXPO_AUTH`** — see the runbook below. |
+| Expo development build works | **BUILT — EAS cloud, Android development APK, PASS.** Build `29d41836-300d-4958-aec5-adbe4d920724` under project `37ea7a85-87f5-49fd-a63a-edea55ece38f` (`@bthornton1994s-team/three-white-lights`), run by the owner outside this sandbox because `api.expo.dev` answers 403 at the egress proxy; the record is owner-supplied, `docs/design/evidence/eas-cloud-build/`. What was configured on the branch for it: `expo-dev-client` installed at the SDK pin, `eas.json` `development` profile (development client, internal distribution, Android APK), `app.json` carries `scheme` and `android.package`. `expo prebuild --platform android` in a disposable copy: exit 0, `namespace`/`applicationId` `com.threewhitelights.app`, `app_name` "Three White Lights", manifest schemes `threewhitelights` and `exp+three-white-lights`, `@rive-app/react-native` + `react-native-nitro-modules` in the RN autolinking config, `expo-dev-client`/`-launcher`/`-menu` resolved, `newArchEnabled`, `hermesEnabled` — the record and the script are `docs/design/evidence/android-prebuild-preflight/` (ANDROID_PREBUILD_PREFLIGHT; one warning: `userInterfaceStyle` without `expo-system-ui`, owner's call). The preflight was re-taken at the link commit `02aceea4`, after `owner` and `extra.eas.projectId` landed in `app.json`: a byte-identical record apart from the stamp. |
 | iOS path | **NOT EXECUTABLE HERE** (no macOS/Xcode) and no EAS iOS profile defined; nobody has asked for one. |
-| Android path | **NATIVE_BUILD: not yet attempted** (EAS cloud, blocked on Expo auth). **NATIVE_RUNTIME: not yet attempted** (needs a device). The two are kept separate on purpose — a green build is not a running runtime. |
+| Android path | **NATIVE_BUILD: PASS** (EAS cloud, owner-supplied — the row above). **NATIVE_RUNTIME: NOT RUN — DEVICE_UNAVAILABLE** (no Android phone; no emulator in this sandbox). **RIVE_NATIVE_DIAGNOSTIC: NOT RUN.** The three are kept separate on purpose — a green build is not a running runtime, and a running app is not yet a drawn `.riv`. The procedure that takes the missing two is in the runbook below, written for whichever target arrives first. |
 | Web/PWA counterpart | **EXECUTED** — see the probe record below. |
 | The web host under abuse | **HOST-RUNTIME SOAK RECORDED** (`docs/design/evidence/host-runtime-soak/`): the diagnostic asset under a 60 Hz write for 90 s, six resizes 375×812 ⇄ 390×844, a tab switch and a Page-Lifecycle freeze/resume, three 800 ms main-thread stalls, twelve route enter/leave cycles with CDP listener counts, and 60 s of in-page unmount/remount through the spike's `spike-cycle` mode. The README beside the record carries the numbers. Not athlete performance — one bound number, not forty-three. |
 | The athlete, when it arrives | **HARNESS AND GATE READY, ROUTE LIVE** — `node tools/athleteAccept.mjs --web` (intake → corpus → composition → the dev-only acceptance harness at `?dev-rive-spike=1&dev-mode=athlete-accept`, which replays the six canonical mechanics traces through the real `AthleteStage` inside the composed stage and reads the canvas back per scenario). Driven today: `ATHLETE_ACCEPT: ASSET_MISSING`, composition PASS at both phone viewports, 0 page errors — `docs/design/evidence/athlete-acceptance/`. |
@@ -438,7 +443,7 @@ literal, pinned by `riveSpikeTypes.test.ts`); `react-native-web` having no
 `src/session/riveWebEngine.ts`); the status line printing `[object Object]`
 for a Rive `onLoadError` event (fixed — the event's fields).
 
-### Not executed here, and what closes it — the EAS cloud path (ruled 2026-09-08)
+### The EAS cloud path (ruled 2026-09-08) — built outside the sandbox; the runtime smoke not yet run
 
 "No local Android SDK" was the wrong classification of the native blocker.
 This is an Expo project; EAS cloud build compiles the development client
@@ -461,38 +466,114 @@ the same `?dev-rive-spike=1` query as web, still `__DEV__`-gated, tested).
 read the profile without an account, so the profile's validity is asserted
 by the schema it follows, not by the tool — recorded as a limit.
 
-**`OWNER_BLOCKED_EXPO_AUTH`.** `npx eas-cli whoami` reads `Not logged in`
-and `EXPO_TOKEN` is unset. No credential is invented and none is committed.
-Bryant, from the visual branch at the commit this section names:
+**NATIVE_BUILD — PASS, recorded 2026-09-08 from the owner's run, not from
+here.** The three commands this section used to owe the owner —
+`eas-cli login` / `init` / `build --platform android --profile development`
+— were run by Bryant on a machine outside this sandbox, and the result was
+reported back: Expo owner `bthornton1994s-team`, project
+`@bthornton1994s-team/three-white-lights`, EAS project ID
+`37ea7a85-87f5-49fd-a63a-edea55ece38f` (written into `app.json` as
+`extra.eas.projectId` by the link commit `02aceea4`, with `owner`), build
+ID `29d41836-300d-4958-aec5-adbe4d920724`, an Android development APK,
+**PASS**. `docs/design/evidence/eas-cloud-build/` holds the record and says
+on its face that it is owner-supplied. No credential was committed; none is
+in this tree.
 
-```
-npx eas-cli login                      # or: export EXPO_TOKEN=<an expo.dev access token>
-npx eas-cli init                       # links the project; writes extra.eas.projectId into app.json
-npx eas-cli build --platform android --profile development
-```
+**Why outside, so nobody retries it here:** `api.expo.dev:443` is denied by
+this environment's egress policy — the proxy's status endpoint logs
+`gateway answered 403 to CONNECT (policy denial)` for the host, and its
+README classes a 403 as an organisation policy denial to report, never to
+retry or route around. Every `eas` subcommand is an API call, so a valid
+token changes nothing from inside. Recorded as a property of the sandbox,
+not of the project.
 
-and records: source SHA, EAS build ID, Expo SDK (57), Android build type
-(`apk`, development client), the artifact type (an installable `.apk` from
-the build page), and the build result. That result is **NATIVE_BUILD**, and
-only that.
+**NATIVE_RUNTIME — NOT RUN, `DEVICE_UNAVAILABLE`. RIVE_NATIVE_DIAGNOSTIC —
+NOT RUN.** No Android phone exists, and no emulator is installed here (and
+none is installed here without an explicit ruling). The procedure below is
+written for whichever target arrives first, so it can be executed without
+re-deriving anything. An emulator answers the mechanical questions — install,
+launch, route, load, bind, drive, unmount/remount, rotation, crash-free
+minutes — and its pacing numbers are labelled *emulator*, never *device
+performance*. Physical-device performance and OWNER PLAYTEST stay separate
+gates whatever the emulator says.
 
-**`OWNER_BLOCKED_DEVICE` — NATIVE_RUNTIME, kept separate from the build.**
-On a physical Android device (or a usable emulator), install the APK, then:
+*On the machine that runs it — not this sandbox:* Android SDK platform-tools
+(`adb`); either a device with USB debugging or an emulator (for example
+`sdkmanager "platform-tools" "emulator" "system-images;android-35;google_apis;x86_64"`,
+`avdmanager create avd -n twl -k "system-images;android-35;google_apis;x86_64"`,
+`emulator -avd twl`); a checkout of this branch with `npm install` done;
+and the APK downloaded from the build page for build
+`29d41836-300d-4958-aec5-adbe4d920724` — **download it, do not rebuild.**
 
-```
-adb install <the .apk>
-adb shell am start -W -a android.intent.action.VIEW \
-  -d "threewhitelights://?dev-rive-spike=1" com.threewhitelights.app
-```
+1. **Install.** `adb devices` lists exactly one target. `adb install -r
+   <the .apk>` prints `Success`. `adb shell dumpsys package
+   com.threewhitelights.app | grep -E "versionName|versionCode"` reads
+   `1.0.0` / `1` (the preflight record's identity).
+2. **Serve the bundle.** A development build carries no JavaScript; it loads
+   it from Metro. In the checkout: `npx expo start --dev-client --port 8081`
+   (`tools/dev-web.sh` is the WEB server and is not this). An emulator
+   reaches the host at `10.0.2.2`; a USB device needs
+   `adb reverse tcp:8081 tcp:8081` or the machine's LAN address.
+3. **Plain launch shows the shell, never the spike.** Open the app through the
+   dev client's own URL — this is the URL `devRouteQuery.ts` refuses by
+   design:
+   ```
+   adb shell am start -W -a android.intent.action.VIEW \
+     -d "exp+three-white-lights://expo-development-client/?url=http%3A%2F%2F10.0.2.2%3A8081" \
+     com.threewhitelights.app
+   ```
+   The bundle loads and the SHELL renders (Create Your Lifter on a fresh
+   install). The spike must not appear. Record a screenshot:
+   `adb exec-out screencap -p > shell.png`.
+4. **The dev route, warm.** With the app running, send the scheme link —
+   `devRoute.ts` listens for the `url` event, so this is the path Android
+   actually delivers to a running app:
+   ```
+   adb shell am start -W -a android.intent.action.VIEW \
+     -d "threewhitelights://?dev-rive-spike=1" com.threewhitelights.app
+   ```
+   The spike screen replaces the shell. Then the cold form: `adb shell am
+   force-stop com.threewhitelights.app`, the same command again; the dev
+   launcher forwards the link to the last-opened project and the hook reads
+   it from `Linking.getInitialURL()`. Both must open the spike; a value
+   other than `1` (`?dev-rive-spike=true`) must not — send it and confirm
+   the shell.
+5. **Load and bind.** Read the status line on screen (testID
+   `dev-rive-spike-status`): it must reach `bound — writing health at 60fps`
+   with the artboard's state machine running (`SPIKE_STATE_MACHINE` in the
+   spike's source). Anything beginning `error:` is the finding, verbatim.
+6. **DRIVEN, not merely BOUND — the §7 finding as a check.** Two screenshots
+   450 ms apart while the status reads `bound`:
+   `adb exec-out screencap -p > a.png; sleep 0.45; adb exec-out screencap -p > b.png`.
+   Count differing pixels inside the stage (`compare -metric AE a.png b.png
+   diff.png`, or a pixel loop over the two PNGs). Thousands changed and the
+   readout visibly different = driven. **0 changed = bound, not driven —
+   the exact failure the web run found first; reject, do not rationalise.**
+7. **Unmount / remount.** Press Back (or navigate away) and re-send the
+   step-4 link, three times. `adb logcat -d | grep -E "FATAL|AndroidRuntime|
+   Rive"` shows no crash and no runtime error; the status returns to
+   `bound` each time; one stage, not a stack of them.
+8. **Rotation.** `adb shell settings put system accelerometer_rotation 0 &&
+   adb shell settings put system user_rotation 1` (landscape), observe the
+   stage re-lay out and keep drawing, then `user_rotation 0`. No crash, no
+   frozen canvas.
+9. **Minutes, and pacing where the target exposes it.** Leave the spike
+   writing for ≥ 3 minutes. `adb shell dumpsys gfxinfo com.threewhitelights.app
+   reset` at the start; at the end `adb shell dumpsys gfxinfo
+   com.threewhitelights.app` — record Total frames, Janky frames, and the
+   50th / 90th / 99th percentiles. On an emulator these are labelled
+   emulator numbers; on a device they are the first device numbers.
+10. **When the athlete exists, the same route carries the acceptance mode:**
+    `threewhitelights://?dev-rive-spike=1&dev-mode=athlete-accept` replays
+    the canonical trace corpus through the real `AthleteStage` — intake
+    step 7 of `ATHLETE-ASSET-PIPELINE.md` §12a.
 
-and verify, reading the screen and the status line rather than the build
-log: the app installs; the spike opens ONLY through that link (a plain
-launch shows the shell, never the spike); `quick_start.riv` loads; the
-status reads `bound` with `State Machine 1` running; the health bar
-visibly drains and refills under the 60 Hz ViewModel write; no crash;
-leaving and re-entering the spike (unmount/remount) works; rotation and
-resize are sane; the writes keep going for minutes; frame pacing where the
-device exposes it. Nothing on that list is inferred from a green build.
+*Record:* `docs/design/evidence/native-runtime-smoke/` — `smoke.json`
+(target: emulator or device, model, Android API, the APK's build ID, each
+step's result, the gfxinfo numbers) and the PNGs from steps 3 and 6. On an
+emulator PASS, NATIVE_RUNTIME reads **RECORDED (emulator)** and
+RIVE_NATIVE_DIAGNOSTIC reads **PASS (emulator)**; a device replaces both
+labels. Nothing on this list is inferred from the green build.
 
 **Executable here, and executed:** nothing native beyond prebuild and
 autolinking, unchanged. The local gap, re-measured on this container and
@@ -514,8 +595,12 @@ kept as the record of why the build is a cloud build:
   60 Hz write with the graphic following it at an undisturbed frame
   cadence, error handling, player-path isolation. Not measured: the rig's
   forty-three inputs (this file has one), responsive sizing, a long soak.
-- **Native: UNVERIFIED.** Everything measurable without a toolchain passed
-  (install, prebuild, autolinking, types). Nothing requiring one was run.
+- **Native: BUILD PASS (owner-supplied), RUNTIME NOT RUN.** Everything
+  measurable without a running Android target passed — install, prebuild,
+  autolinking, types, and the EAS cloud development build (§7, built
+  outside the sandbox). Nothing requiring a running target was run: no
+  `.riv` has loaded on Android, no ViewModel has bound there, no pixel has
+  been read back. `DEVICE_UNAVAILABLE`, with the procedure written.
 - **Overall: Rive stays LEADING CANDIDATE. Not FINAL.** The status line's
   closing condition is unchanged — a real `.riv` whose ViewModel takes the
   `rigInputPaths()` set at 60 Hz without dropped frames. This round proved

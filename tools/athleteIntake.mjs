@@ -101,8 +101,10 @@ export const REMAINING_STEPS = Object.freeze([
   {
     step: 7,
     title: 'native performance',
-    command: 'the EAS development build (eas.json `development`) on a physical Android device, same rep',
-    gate: 'installs, mounts, drives, survives unmount/remount and rotation, keeps pacing; NATIVE_RUNTIME is a device fact, never inferred from the build',
+    command:
+      'the EAS development build (eas.json `development`; build 29d41836 is PASS, docs/design/evidence/eas-cloud-build/) on an Android runtime target — ' +
+      'a device, or an emulator for the mechanical half — same rep, via threewhitelights://?dev-rive-spike=1&dev-mode=athlete-accept (ADR-001 §7 procedure); no target exists today (DEVICE_UNAVAILABLE)',
+    gate: 'installs, mounts, drives, survives unmount/remount and rotation, keeps pacing; NATIVE_RUNTIME is a runtime fact, never inferred from the build; emulator pacing is never device performance',
   },
   {
     step: 8,

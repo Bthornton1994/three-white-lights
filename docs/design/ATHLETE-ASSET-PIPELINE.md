@@ -1,6 +1,6 @@
 # The canonical athlete asset pipeline
 
-**Status:** Specification, complete to the editor handoff. No production asset exists yet — see §2 (`ASSET_AUTHORING_BLOCKED`, `NATIVE_RUNTIME_BLOCKED`).
+**Status:** Specification, complete to the editor handoff. No production asset exists yet — see §2 (`ASSET_AUTHORING_BLOCKED`). The native build is done (EAS cloud, owner-supplied record, ADR-001 §7); the native runtime is `DEVICE_UNAVAILABLE` — not run, no Android target exists.
 **Date:** 2026-09-07
 **Owner:** Claude Code Session A — visual / animation / player-experience
 **Measured at:** `20a1aa55` on `grok/session-a-iron-amber-training-art-01` (PR #48 head)
@@ -58,7 +58,7 @@ blocker. The editor handoff is now zero-ambiguity from this side:
 | Rive authoring handoff — canvas, artboard and state-machine names, the `Athlete` ViewModel with all 43 inputs and enum values, bone hierarchy, IK, meshes, plate slots, bar transform, deformation limits, top/bottom references, five miss resolutions, layer order, export name, validation command, acceptance checklist | `docs/design/RIVE-AUTHORING-HANDOFF.md` | written; the `.riv` `ASSET_AUTHORING_BLOCKED` (no Rive editor; no generator or format work by ruling) |
 | Input manifest, generated from the binding and pinned to it by `src/art/rivContract.test.ts` | `docs/design/athlete-rig-manifest.json` | current |
 | The command that decides acceptance — every lift artboard present, same-named state machine, default ViewModel exposing the full contract; fails closed | `node tools/rivContract.mjs <file.riv> [--artboard squat]` | shipped, tested against the real diagnostic assets (NOT SATISFIED, as they should be) |
-| Native runtime | ADR-001 §7 | reclassified 2026-09-08: the build is an EAS CLOUD build (`eas.json` `development`, `expo-dev-client` installed) — NATIVE_BUILD `OWNER_BLOCKED_EXPO_AUTH` (the exact commands are in §7), NATIVE_RUNTIME `OWNER_BLOCKED_DEVICE`; the missing local SDK is the record of why it is a cloud build, not the blocker |
+| Native runtime | ADR-001 §7 | NATIVE_BUILD **PASS** — EAS cloud development build, Android APK, build `29d41836-300d-4958-aec5-adbe4d920724`, run by the owner outside the sandbox (`api.expo.dev` is denied at its egress proxy); record in `docs/design/evidence/eas-cloud-build/`. NATIVE_RUNTIME **NOT RUN — `DEVICE_UNAVAILABLE`** (no Android phone; no emulator here); RIVE_NATIVE_DIAGNOSTIC **NOT RUN**. The emulator/device procedure is written in §7, step by step, for whichever target arrives first |
 | Intake flow for `athlete-01.riv` | §12a, `node tools/athleteIntake.mjs` | written; the command runs steps 1–3 and names 4–8; the player-path gate `ATHLETE_RIG.TRAINING_STAGE` is closed and pinned |
 
 ## 3. Canonical identity — the character bible
@@ -443,7 +443,7 @@ own output.
 | 4 | The squat state machine actually DRIVES | repoint `src/session/athleteAsset.ts` at the delivered file and flip `ATHLETE_RIV_IS_PLACEHOLDER` (`athleteAsset.test.ts` pins both); `tools/dev-web.sh`; `node tools/athleteAccept.mjs --web` — the dev-only harness (`?dev-rive-spike=1&dev-mode=athlete-accept`) replays the canonical trace corpus (`docs/design/athlete-traces/`) through the REAL `AthleteStage` and reads the canvas back per scenario | the canvas changes within every scenario; 0 changed pixels is BOUND, not DRIVEN (ADR-001 §7) — reject |
 | 5 | The REAL `LiftPresentationState` moves it | the same run: the harness hands the stage `LiftState` + history from the real mechanic, and its probe reports `barHeight` / `depth` / `phase` / `outcome` per tick; the stages call `liftPresentation(state, totalKg, prior)` and nothing else (`athleteRig.test.ts` pins it) | clean make, grinding make, no-depth, stalled, buried and timeout — six scenarios from the simulation alone, every ending shown |
 | 6 | Web performance | `node tools/athleteAccept.mjs --web` records rAF pacing per scenario at 390×844 (the readback the spike probe used) | 60 Hz over a full rep with the 43-input write; no frame over 33 ms while the scene draws |
-| 7 | Native performance | the EAS development build on a physical Android device, same rep (ADR-001 §7) | installs, mounts, drives, survives unmount/remount and rotation, keeps pacing — a device fact, never inferred from the build |
+| 7 | Native performance | the EAS development build (build `29d41836-300d-4958-aec5-adbe4d920724`, already PASS) on an Android runtime target — a device, or an emulator for the mechanical half — same rep, through `threewhitelights://?dev-rive-spike=1&dev-mode=athlete-accept` (ADR-001 §7 has the exact procedure). No target exists today: `DEVICE_UNAVAILABLE` | installs, mounts, drives, survives unmount/remount and rotation, keeps pacing — a runtime fact, never inferred from the build; emulator pacing is labelled emulator, never device performance |
 | 8 | Mount as the squat player-path CANDIDATE | `ATHLETE_RIG.TRAINING_STAGE = 'athlete'` and the pin in `src/session/trainingStageGate.test.ts`, in the commit that records the grade | a human graded VISUAL / ANIMATION / SOFT-FEEL; OWNER PLAYTEST is Bryant's alone |
 
 The gate at step 8 is one tuning value (`src/art/spriteTuning.ts`), read by
