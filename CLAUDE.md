@@ -318,6 +318,124 @@ native.
 **Not started, per the brief:** no capacity-upgrade proof, no G.2C3 / G.2D /
 G.2E, no Session A file, no merge of #46 / #49 / #51 / #52.
 
+### Crossing VL-2 — Claude Code Session B, production world presentation, written before the work
+
+Branch `claude/empire-s5-visual-lane`, continuing from `bfca7a09` (VL-1
+accepted, not restarted). Grok's contract head is still `8b273ffa` at the
+time of writing — checked with `git fetch` before this entry, and it will be
+checked again at every clean checkpoint; a new contract SHA is integrated at
+a checkpoint, never mid-edit. Draft only. Not merged.
+
+**The slice, in the brief's four priorities.** (1) Replace the two-frame
+member presentation with a production-capable animation approach: a
+data-driven clip system where locomotion is phased by DISTANCE TRAVELLED on
+screen rather than by the sim tick, waiting/idle/use are phased by a
+renderer clock, the bounce and lean are locked to the same phase as the
+frame, transitions into and out of a station are their own eased beat, and
+the per-frame work is written straight into animated values by one
+`requestAnimationFrame` loop per body — no React re-render per frame and no
+sim step from an animation frame (contract §9). (2) Fix perspective as one
+scene problem: a single ground-plane projection (`floorCamera.ts`) maps the
+sim's tile grid onto the painted floor band of the facility scene, so a
+member walking toward the back wall shrinks and rises and a station sits on
+the same plane its users stand on; Build keeps the orthographic plan through
+the same function in its identity mode. (3) Retire Phase 3 diagnostics from
+Play only where the world now carries the read: the green station outline
+and khaki queue-cell squares become transparent geometry anchors in Play
+(their testIDs stay, because the evidence tools read their boxes), and the
+three occupancy cards become one quiet caption strip that explains without
+standing in for the world. (4) Measure the real Play surface: frame timing,
+long frames, entity count, interaction latency, heap, plus a deliberate
+main-thread stall to characterise how the drawn position follows the sim
+afterwards — reported as measured, with the lag exposed on the drawn node
+rather than eased over.
+
+**What the measurement behind priority 1 found, recorded so the next reader
+does not re-derive it.** The two shipped walk frames differ on 2.9% of their
+pixels — the same pose twice — so the walk cycle today has no leg
+alternation at all, only a bounce. The bar frames differ on 42% (a real rep).
+`eq-flat-bench.png` carries hot-pink generation-key remnants on 12% of its
+opaque pixels (the enclosed side panels a flood fill from outside could not
+reach), `eq-quality-bench.png` 1.5%, `member-using-bench-b-*` 2.4%,
+`member-serious-lifter-*` 1.4%. Those are keying defects, not design, and
+they are visible on Play today.
+
+**Files in Claude Code Session B's own lane, edited freely:**
+`src/empire/FloorGrid.tsx`, `src/empire/GymScreen.tsx` (if the scene
+composition needs a hook for the floor band), `src/empire/ironAmberArt.ts`
+and its test, `src/empire/GymScreen.test.ts` (pins), two NEW pure modules
+beside the existing ones — `src/empire/floorCamera.ts` and
+`src/empire/memberAnimation.ts`, each with its own `.test.ts`, zero React,
+zero I/O, per this file's "Pure logic is separate from UI" — the
+`public/empire-art/*.png` member and bench files named above (re-keyed by a
+new `tools/rekey-empire-art.mjs`, which is Session B's by authorship the
+same way `tools/verify-floor-reachability.mjs` is under Crossing 7),
+`tools/capture-living-world.mjs`, a new `tools/measure-world-performance.mjs`
+(Session B's by authorship, same rule), and the evidence they write under
+`docs/design/living-gym-world/vl-2/`.
+
+**Why two new modules in `src/empire/` and not elsewhere.** This file's own
+v2 rule: new modules land beside the v1 ones because a new top-level
+directory is a crossing and the existing directory's guards conscript every
+arriving module automatically — the import fence, the directory walk, the
+string and leaf censuses, the tuning grammar. Both modules are Claude-owned
+under the ownership table's own reasoning for `floorSprites.ts` and
+`stationView.ts`: pure TypeScript whose whole subject is how Grok's truth is
+drawn (a projection and an animation phase), holding no economic, queue,
+placement or member-decision truth. They will be added to the ownership
+table as Claude's when this slice is recorded as delivered.
+
+**Shared-append, under the rule the CURRENT organization table states for
+`empireTuning.ts`:** a block of new `FLOOR_SCENE_*` / `FLOOR_CAMERA_*` /
+`FLOOR_MEMBER_*` / `FLOOR_STATION_ART_*` presentation knobs (the scene art's
+aspect and painted floor seam, the camera's back-row scale and insets,
+stride length, rep period and holds, crossfade, sway, lean, the fixed-art
+aspect ratios) with their `EMPIRE_TUNING_CLASSIFICATION` rows, all `'knob'`,
+all provisional under "Game Feel Values Must Be Tunable". One VL-1 knob
+whose only reader is replaced — `FLOOR_MEMBER_GAIT_HALF_CYCLE_MS`, the
+time-based gait cadence that the distance-phased walk retires — is REMOVED
+rather than left on `AWAITING_CONSUMER`, because a knob nothing reads is the
+thing that list exists to make visible, not to hold. No Grok-owned value is
+retuned.
+
+**Pin-only updates in the census/fence tests, taken as data, every new
+value read from its own failure:** `empireTuning.test.ts`,
+`empireCore.test.ts`, `empireForbiddenOutput.test.ts` (exempt rows for the
+new leaves, `DECLARED_AMBIENT_MEMBER_BODY_PROPS` rows where the prop surface
+changes — `pose` becomes a clip name plus a use class, and a depth scale and
+camera frame arrive as plain numbers — `DECLARED_RETURNED_CLOSURE_SITES` if
+the per-body effect's cleanup moves, and the cascade every exempt leaf
+causes), `directoryWalk.test.ts` (two new shipped modules), and
+`GymScreen.test.ts`. No predicate, instrument, walk or declared list changes
+shape; the `AmbientMemberBodyProps` witness anchor (`readonly tile: number;`
+last) is preserved.
+
+**Not touched, and read only:** `presentationState.ts`, `floorSim.ts`,
+`floor.ts`, `worldView.ts`, `stationView.ts`, `livingMembers.ts`, the
+reducer half of `ladderView.tsx`, the contract document, `src/tuning/`,
+`src/game/`, `src/shell/`, and every Session A directory. Queue fairness,
+member decisions, capacity mechanics, economy and staff mechanics are not
+changed or invented; the sim tick stays component-local at the contract's
+cadence. If the slice needs a fact the contract does not expose, that is a
+request to the Grok lane recorded here, not a re-derivation.
+
+**Native, stated up front.** This container has no device, no emulator, no
+Android SDK (`adb`/`emulator` absent, `ANDROID_HOME` unset), no iOS
+toolchain, and its egress to the tunnel and build services is blocked
+(measured: both return no response). So this slice produces web evidence
+only and reports that blocker exactly; nothing about native feel is inferred
+from a browser capture.
+
+**Gates this slice may and may not move.** It can produce evidence for
+ANIMATION (architecture and what the frames on hand can show), WORLD
+LEGIBILITY, and PERFORMANCE, and can state a Visual verdict only as a
+residual list. It does not close SOFT-FEEL or OWNER PLAYTEST; only Bryant
+closes OWNER PLAYTEST. Two-frame assets will not be called production
+animation. It does not start the capacity → visible queue → capacity
+increase slice (that is next, after VL-2 is stable and Grok's mechanics
+land), G.2C3 / G.2D / G.2E, or any Session A work, and does not merge #46 /
+#49 / #51 / #52.
+
 ### Branch / worktree policy
 
 | Lane | Branches | Worktree |
