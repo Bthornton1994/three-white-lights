@@ -338,7 +338,9 @@ const SETTLE_TILES_PER_100MS = 100 / SETTLE_MS;
  * The frame loop's own largest per-frame TIMELINE step for a walker: one
  * capped frame (`FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS` of playback) at the
  * bounded catch-up rate on the fastest seeded stride. Printed beside every
- * member's `max write` because a write-log record can carry MORE than one
+ * member's `max write` — with the sibling tool's settle-frame bound, cap x
+ * (3 / SETTLE_MS + that walking step per ms), for a member whose max write
+ * is a settle frame — because a write-log record can carry MORE than one
  * frame's write (the header's coalescing paragraph): a `max write` above
  * this number is the observer's delivery, not a renderer step. Measured on
  * a frame-loop trace across a purchase at 390x844: the loop's largest
@@ -1219,7 +1221,7 @@ async function runViewport(browser, viewport) {
     );
     for (const m of members) {
       note(
-        `${vp}   ${m.id} ${m.lifecycles.join('>')} cells ${m.cells.map((c) => `${c.cell}@t${c.t}/tick${c.tick}`).join(' -> ')} | window rate max ${m.maxWindowRateTilesPer100ms.toFixed(3)} tiles/100ms (ceiling ${ORDINARY_TILES_PER_100MS.toFixed(3)}) at ${JSON.stringify(m.maxWindowRateAt)} | frame step max ${m.maxFrameStepTiles.toFixed(3)} tiles at ${JSON.stringify(m.maxFrameStepAt)} | frame rate max ${m.maxFrameRateTilesPer100ms.toFixed(3)} | settle excess ${m.maxSettleExcessTiles.toFixed(3)} (raw ${m.maxSettleRawTiles.toFixed(3)}, bound ${SETTLE_TILES}) edges ${JSON.stringify(m.settleEdges)} | net ${m.netDisplacementTiles.toFixed(3)} tiles, peak excursion ${m.maxExcursionTiles.toFixed(3)} at t=${m.maxExcursionAt?.t ?? '-'} | WRITES ${writeMotion[m.id] === undefined ? 'none' : `${writeMotion[m.id].writes}, window rate max ${writeMotion[m.id].maxWriteWindowRateTilesPer100ms.toFixed(3)} tiles/100ms (${writeMotion[m.id].withinWriteCeiling ? 'ok' : 'ABOVE'} the ceiling) at ${JSON.stringify(writeMotion[m.id].maxWriteWindowRateAt)}, max write ${writeMotion[m.id].maxWriteStepTiles.toFixed(3)} tiles at ${JSON.stringify(writeMotion[m.id].maxWriteStepAt)} (loop's per-frame bound ${FRAME_STEP_BOUND_TILES.toFixed(3)}; a record can carry two frames' writes, see header)`}`,
+        `${vp}   ${m.id} ${m.lifecycles.join('>')} cells ${m.cells.map((c) => `${c.cell}@t${c.t}/tick${c.tick}`).join(' -> ')} | window rate max ${m.maxWindowRateTilesPer100ms.toFixed(3)} tiles/100ms (ceiling ${ORDINARY_TILES_PER_100MS.toFixed(3)}) at ${JSON.stringify(m.maxWindowRateAt)} | frame step max ${m.maxFrameStepTiles.toFixed(3)} tiles at ${JSON.stringify(m.maxFrameStepAt)} | frame rate max ${m.maxFrameRateTilesPer100ms.toFixed(3)} | settle excess ${m.maxSettleExcessTiles.toFixed(3)} (raw ${m.maxSettleRawTiles.toFixed(3)}, bound ${SETTLE_TILES}) edges ${JSON.stringify(m.settleEdges)} | net ${m.netDisplacementTiles.toFixed(3)} tiles, peak excursion ${m.maxExcursionTiles.toFixed(3)} at t=${m.maxExcursionAt?.t ?? '-'} | WRITES ${writeMotion[m.id] === undefined ? 'none' : `${writeMotion[m.id].writes}, window rate max ${writeMotion[m.id].maxWriteWindowRateTilesPer100ms.toFixed(3)} tiles/100ms (${writeMotion[m.id].withinWriteCeiling ? 'ok' : 'ABOVE'} the ceiling) at ${JSON.stringify(writeMotion[m.id].maxWriteWindowRateAt)}, max write ${writeMotion[m.id].maxWriteStepTiles.toFixed(3)} tiles at ${JSON.stringify(writeMotion[m.id].maxWriteStepAt)} (the loop's per-frame WALKING bound is ${FRAME_STEP_BOUND_TILES.toFixed(3)}; a settle's first capped frame is the sibling's ${(FRAME_CAP_MS * (3 / SETTLE_MS + ((STEP_PER_TICK * (1 + SPEED_JITTER_FRACTION)) * (1 + CATCH_UP_RATE)) / TICK_MS)).toFixed(3)}; a record can carry two frames' writes, see header)`}`,
       );
     }
     if (ghost !== null) note(`${vp} GHOST POSE: ${result.verdicts.ghostPoseHeld ? 'held' : 'NOT HELD'} over ${result.ghostUsingFrames} using frames — visible pose images while using: ${result.ghostSprites.join(', ')}`);
