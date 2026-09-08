@@ -17,10 +17,12 @@ import {
   ironAmberFixedUri,
   ironAmberFloorPlaneUri,
   ironAmberFloorUri,
+  ironAmberMemberMotionUri,
   ironAmberMemberUri,
   ironAmberPlateTreeUri,
   ironAmberSessionUri,
 } from './ironAmberArt';
+import { MEMBER_MOTION_CLIPS, MEMBER_MOTION_CLIP_SPECS, MEMBER_MOTION_PRODUCTION_TYPES, memberMotionStripStem } from './memberMotionClips';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ART_DIR = path.join(HERE, '..', '..', 'public', 'empire-art');
@@ -127,11 +129,32 @@ describe('Iron & Amber owned-art adapter', () => {
     expect(aspects).toBe(Object.keys(stemFor).length);
   });
 
-  it('does not import, require, or embed payloads in its own source', () => {
+  it('VL-3: serves one strip per production type per clip, named by memberMotionStripStem, each on disk at frames × canvas', () => {
+    let strips = 0;
+    for (const type of MEMBER_MOTION_PRODUCTION_TYPES) {
+      for (const clip of MEMBER_MOTION_CLIPS) {
+        const stem = memberMotionStripStem(type, clip);
+        expect(ironAmberMemberMotionUri(type, clip)).toBe(`/empire-art/${stem}.png`);
+        expect(IRON_AMBER_ART_STEMS).toContain(stem);
+        const bytes = readFileSync(path.join(ART_DIR, `${stem}.png`));
+        expect(bytes.readUInt32BE(16), `${stem} width`).toBe(
+          MEMBER_MOTION_CLIP_SPECS[clip].frames * EMPIRE_TUNING.FLOOR_MEMBER_MOTION_CANVAS_PX,
+        );
+        expect(bytes.readUInt32BE(20), `${stem} height`).toBe(EMPIRE_TUNING.FLOOR_MEMBER_MOTION_CANVAS_PX);
+        strips += 1;
+      }
+    }
+    expect(strips).toBe(8);
+    expect(ironAmberMemberMotionUri('powerlifter', 'walk')).toBe('/empire-art/member-motion-powerlifter-walk.png');
+  });
+
+  it('does not import, require, or embed payloads in its own source — its one import is the sibling clip table', () => {
     const source = readFileSync(path.join(HERE, 'ironAmberArt.ts'), 'utf8');
     expect(source).not.toMatch(/\brequire\s*\(/);
-    expect(source).not.toMatch(/\bfrom\s+['"]/);
+    const imports = [...source.matchAll(/\bfrom\s+['"]([^'"]+)['"]/g)].map((m) => m[1]);
+    expect(imports).toEqual(['./memberMotionClips']);
     expect(source).not.toMatch(/data:image\//);
     expect(source).not.toMatch(/https?:\/\//);
+    expect(source).not.toMatch(/\.png['"]\s*\)/);
   });
 });
