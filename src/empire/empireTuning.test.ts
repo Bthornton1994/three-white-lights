@@ -740,7 +740,12 @@ describe('§5.5 social', () => {
     // 201 -> 202: Stage G.1C LIVING_MEMBER_WAIT_VERY_LONG_MIN_TICKS.
     // 202 -> 203: Stage G.2A LIVING_MEMBER_EXPERIENCE.
     // 203 -> 204: Stage G.2B LIVING_MEMBER_RETENTION.
-    expect(examined).toBe(204);
+    // 204 -> 211: VL-1's seven FLOOR_MEMBER_* presentation knobs (draw
+    // scale, gait half-cycle, gait bounce, settle, three shadow numbers) —
+    // renderer geometry and easing, none of them a cadence in any unit
+    // training moves. Pinned from the real value under CLAUDE.md's
+    // "Crossing VL-1" (shared-append to empireTuning.ts; this line is data).
+    expect(examined).toBe(211);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -769,7 +774,8 @@ describe('§5.5 social', () => {
     // 1005 -> 1010: Stage G.1C one more wait-band entry × 5 banned units.
     // 1010 -> 1015: Stage G.2A LIVING_MEMBER_EXPERIENCE × 5 banned units.
     // 1015 -> 1020: Stage G.2B LIVING_MEMBER_RETENTION × 5 banned units.
-    expect(probed).toBe(1020);
+    // 1020 -> 1055: VL-1's seven FLOOR_MEMBER_* entries × 5 banned units.
+    expect(probed).toBe(1055);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

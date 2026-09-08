@@ -2698,7 +2698,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // and names FloorGrid / floorSim in its header.
     // 197 -> 213: presentationState.ts contract plus worldView header naming it.
     // 213 -> 214: floorSim.ts header names presentationState.ts as a claimantsOf consumer.
-    expect(pairs).toBe(214);
+    // 214 -> 216: VL-1 (CLAUDE.md "Crossing VL-1") — FloorGrid.tsx imports
+    // presentationState.ts and its header names the contract it now draws
+    // from. Read from this assertion's own failure value; pin is data.
+    expect(pairs).toBe(216);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3892,7 +3895,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 874 -> 882: living-world occupancy/activity vocabulary and ./worldView.
     // 882 -> 883: presentationState.ts FloorState['placements'] index access.
     // 883 -> 886: presentationState.ts three coherent-snapshot refuse messages.
-    expect(singleQuoted.size).toBe(886);
+    // 886 -> 887: VL-1 FloorGrid.tsx — the `floorgrid-member-shadow-` testID
+    // template and the `./presentationState` specifier (one of the two is a
+    // template head the set already held). Read from this assertion's own
+    // failure value.
+    expect(singleQuoted.size).toBe(887);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4066,6 +4073,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './management',
       './members',
       './npc',
+      // VL-1 (CLAUDE.md "Crossing VL-1"): `FloorGrid.tsx`'s new edge to the
+      // Session B presentation-state contract. An import specifier, not a
+      // name.
+      './presentationState',
       './production',
       './recruitment',
       './reputation',
@@ -4948,7 +4959,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 1261 -> 1271: living-world singleQuoted 874 -> 882 and templateChunks 387 -> 389.
     // 1271 -> 1273: presentationState.ts specifier + refuseWith template chunk.
     // 1273 -> 1276: three coherent-snapshot refuse messages.
-    expect(stringsChecked).toBe(1276);
+    // 1276 -> 1277: VL-1 FloorGrid.tsx `./presentationState` specifier.
+    expect(stringsChecked).toBe(1277);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5341,6 +5353,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         // that arithmetic.
         './management',
         './members',
+        // VL-1 (CLAUDE.md "Crossing VL-1"): the Session B presentation-state
+        // contract — the members FloorGrid draws are `presentationWorld`'s
+        // rows, read and never written.
+        './presentationState',
         './sessions',
         // Stage C's own small selector — see that file's header.
         './stationView',
@@ -5610,7 +5626,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // each gain one `./ironAmberArt` edge. The adapter itself has zero imports.
     // 127 -> 129: worldView.ts `./floorSim` plus FloorGrid `./worldView`.
     // 129 -> 142: presentationState.ts thirteen intra-directory imports.
-    expect(specifiers).toBe(142);
+    // 142 -> 143: VL-1 FloorGrid.tsx `./presentationState` (CLAUDE.md
+    // "Crossing VL-1"). Read from this assertion's own failure value.
+    expect(specifiers).toBe(143);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
@@ -5825,7 +5843,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 435 -> 448: Stage G.2A LIVING_MEMBER_EXPERIENCE leaves (13 findings;
     // trainingQualityScore 1 is ALWAYS_STRUCTURAL).
     // 448 -> 451: Stage G.2B LIVING_MEMBER_RETENTION three label mins.
-    ).toBe(451);
+    // 451 -> 458: VL-1's seven FLOOR_MEMBER_* presentation knobs (CLAUDE.md
+    // "Crossing VL-1", shared-append). Read from this assertion's own failure
+    // value.
+    ).toBe(458);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

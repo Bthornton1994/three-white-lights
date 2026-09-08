@@ -2760,6 +2760,60 @@ export const EMPIRE_TUNING = Object.freeze({
    * magnitude. Zero would make Quality a paint-only axis.
    */
   STATION_QUALITY_AFFINITY_BONUS: 0.25,
+
+  // -------------------------------------------------------------------------
+  // Claude Code Session B — VL-1 living-world presentation knobs.
+  //
+  // Shared-append under CLAUDE.md's "Crossing VL-1": renderer-only numbers
+  // `FloorGrid.tsx` reads to draw a member the contract hands it. None of
+  // them is read by `floorSim.ts` or `presentationState.ts`, none changes a
+  // cell, a queue, a timer or a purse, and every one is PROVISIONAL under
+  // "Game Feel Values Must Be Tunable" — the tunable version, not a
+  // playtested one. They live here because `src/tuning/audit.ts` refuses a
+  // bare number in a `.tsx`, which is the right refusal.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Side of the square box a member's sprite is drawn in, in tiles. The sim
+   * footprint stays `AMBIENT_MEMBER_FOOTPRINT_TILES` (1×1) and the sim cell
+   * is untouched; the sprite is drawn larger than its cell with its feet on
+   * the cell's bottom edge, so a standing figure is taller than the floor
+   * tile it occupies instead of being a 1-tile token. A lying (`using`)
+   * pose centres the same box on its bench instead. 1.6 is a first-pass
+   * read at 390×844 where a garage tile is ~46 px, giving a ~74 px figure.
+   */
+  FLOOR_MEMBER_DRAW_SCALE_TILES: 1.6,
+
+  /**
+   * Half-cycle of the walking bounce, in milliseconds — one bounce per
+   * sprite step frame. 240 = `FLOOR_SIM_TICK_INTERVAL_MS` (120) ×
+   * `FLOOR_SPRITE_WALK_FRAME_TICKS` (2), written as the literal because this
+   * object cannot reference its own other keys while it is being built; if
+   * either of those moves, this does not move with it — a drift risk stated
+   * rather than hidden, the same one `STATION_TAP_MAX_DRAG_PIXELS` carries.
+   */
+  FLOOR_MEMBER_GAIT_HALF_CYCLE_MS: 240,
+
+  /** Peak lift of the walking bounce, in pixels. Small on purpose; the step frames carry the read. */
+  FLOOR_MEMBER_GAIT_BOUNCE_PIXELS: 3,
+
+  /**
+   * How long the renderer takes to ease a member from the cell it walked
+   * to onto its bench when the sim says `using`, and back onto the floor
+   * when it says `leaving` — the two moments the drawn position moves
+   * without the cell moving. Longer than `FLOOR_SIM_MOVE_TWEEN_MS` so the
+   * settle reads as sitting down rather than as a snap.
+   */
+  FLOOR_MEMBER_SETTLE_MS: 360,
+
+  /** Grounding shadow under a standing member's feet: width as a fraction of one tile. */
+  FLOOR_MEMBER_SHADOW_WIDTH_FRACTION: 0.8,
+
+  /** Grounding shadow height as a fraction of one tile — a flat ellipse, not a disc. */
+  FLOOR_MEMBER_SHADOW_HEIGHT_FRACTION: 0.22,
+
+  /** Grounding shadow opacity over the painted floor. */
+  FLOOR_MEMBER_SHADOW_OPACITY: 0.35,
 } satisfies EmpireTuningRecord);
 
 /**
@@ -2992,4 +3046,12 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   STATION_STOCK_TRAINING_EXPERIENCE: 'knob',
   STATION_QUALITY_TRAINING_EXPERIENCE: 'knob',
   STATION_QUALITY_AFFINITY_BONUS: 'knob',
+
+  FLOOR_MEMBER_DRAW_SCALE_TILES: 'knob',
+  FLOOR_MEMBER_GAIT_HALF_CYCLE_MS: 'knob',
+  FLOOR_MEMBER_GAIT_BOUNCE_PIXELS: 'knob',
+  FLOOR_MEMBER_SETTLE_MS: 'knob',
+  FLOOR_MEMBER_SHADOW_WIDTH_FRACTION: 'knob',
+  FLOOR_MEMBER_SHADOW_HEIGHT_FRACTION: 'knob',
+  FLOOR_MEMBER_SHADOW_OPACITY: 'knob',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

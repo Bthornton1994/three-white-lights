@@ -1931,7 +1931,12 @@ describe('Iron & Amber presentation — Gym Empire home chrome', () => {
     expect(source).toMatch(/from '\.\/worldView'/);
     expect(source).toMatch(/worldFrame\(/);
     expect(source).toMatch(/floorsim-queue-cell-/);
-    expect(source).toMatch(/queueOccupancyViews\(world\.stations, tile\)/);
+    // VL-1: the occupancy convenience frame is `occupancyFrame` now that
+    // `contractWorld` is the members' source; the queue cells still come from
+    // `worldView.ts`.
+    expect(source).toMatch(/queueOccupancyViews\(occupancyFrame\.stations, tile\)/);
+    expect(source).toMatch(/presentationWorld\(\{ sim, floor, roster: livingMembers, managed, capability \}\)/);
+    expect(source).toMatch(/key=\{draw\.member\.id\}/);
     expect(source).not.toMatch(/opacity: buildMode \? 1 : 0/);
   });
 

@@ -152,6 +152,24 @@
  * world from `worldView.ts`. Occupancy cards explain the same numbers; they
  * are not the occupancy. Station outlines and plate-loading discs stay
  * visible on Play. Cue bubbles stay Build-only. No new simulation.
+ *
+ * VL-1 — CLAUDE CODE SESSION B'S FIRST SLICE ON THE PRESENTATION CONTRACT
+ * (CLAUDE.md "Crossing VL-1", `docs/design/SESSION-B-PRESENTATION-CONTRACT.md`).
+ * Members are drawn from `presentationWorld(...)`'s `PresentationMember`
+ * rows, keyed by the contract's `id` rather than by array position, with
+ * `lifecycle`, `cell` / `next` / `progress`, `target` and `queueRank` read
+ * off that object and nothing re-derived from the raw sim member. The lerp
+ * between `cell` and `next`, the walking bounce, the eased settle onto a
+ * bench, the grounding shadow, feet-on-cell draw order and the larger drawn
+ * body are this file's visual interpretation; the sim tick stays exactly
+ * where contract §9 says it stays. The station highlight boxes, plate discs
+ * and the tap panels still read the same `FloorSimState` snapshot through
+ * `floorSim.ts` / `stationView.ts`'s own functions — they were already
+ * reads of Grok-owned truth and are not re-derived here either. Each member
+ * root also carries `data-memberid` / `data-lifecycle` / `data-target` /
+ * `data-queuerank` so `tools/capture-living-world.mjs` can follow one member
+ * by contract identity across frames; those are evidence attributes, not a
+ * card, and nothing reads them back.
  */
 
 import { useEffect, useRef, useState, type ReactElement } from 'react';
@@ -221,12 +239,18 @@ import {
   playerFacingMemberShortId,
   playerFacingServiceVisitLine,
   playerFacingTenureLine,
+  type GymMemberId,
   type LivingMemberRoster,
 } from './livingMembers';
 import { livingMemberExperience } from './livingMemberExperience';
 import { livingMemberRetentionPressure } from './livingMemberRetention';
 import { type ManagedGym, maintenancePrompt } from './management';
 import { type MemberType } from './members';
+import {
+  presentationWorld,
+  type PresentationMember,
+  type PresentationWorld,
+} from './presentationState';
 import { type SessionEquipmentItem } from './sessions';
 import {
   isStationUpgradeSlice,
@@ -269,7 +293,6 @@ import {
   type CompetitionBenchBay,
 } from './trainingStation';
 import {
-  memberWorldPoint,
   worldFrame,
   type WorldStationView,
 } from './worldView';
@@ -588,17 +611,21 @@ interface FloorTilePoint {
 }
 
 /**
- * Where to draw a member this instant: its cell, or a linear interpolation
- * between its cell and the cell it is stepping into.
+ * Where a member stands this instant, in tiles: its cell, or the linear
+ * interpolation between its cell and the cell it is stepping into.
  *
- * `floorSim.ts`'s own header states the contract this reads — "a member holds
- * `cell` (where it is), `next` (the cell it is stepping into, or null when it
- * is standing still) and `progress` in [0, 1) toward `next`. The renderer
- * lerps between the two." This is that lerp and nothing else: no behaviour is
- * decided here, and the sim's own numbers are not adjusted, only positioned.
+ * The three inputs are the contract's (`PresentationMember.cell` / `next` /
+ * `progress`, contract §3), and the contract hands the lerp itself to this
+ * file — "Claude owns interpolation, easing, gait, visual speed". This is that
+ * lerp and nothing else: no behaviour is decided here, and the sim's own
+ * numbers are not adjusted, only positioned.
  */
-function memberTilePoint(member: FloorSimMember): FloorTilePoint {
-  return memberWorldPoint(member);
+function memberTilePoint(member: PresentationMember): FloorTilePoint {
+  if (member.next === null) return { x: member.cell.x, y: member.cell.y };
+  return {
+    x: member.cell.x + (member.next.x - member.cell.x) * member.progress,
+    y: member.cell.y + (member.next.y - member.cell.y) * member.progress,
+  };
 }
 
 /**
@@ -637,14 +664,14 @@ const USING_POSE: Readonly<
  * the directory's own rules. The five sim states keep their distinct cue
  * bubbles regardless of pose.
  */
-function memberPose(member: FloorSimMember, tick: number): FloorSpritePose {
-  if (member.state === 'using' && member.target !== null) {
+function memberPose(member: PresentationMember, tick: number, stagger: number): FloorSpritePose {
+  if (member.lifecycle === 'using' && member.target !== null) {
     const poses = USING_POSE[stationUseClassFor(member.target)];
-    const rep = Math.floor(tick / EMPIRE_TUNING.FLOOR_SPRITE_REP_FRAME_TICKS) + member.index;
+    const rep = Math.floor(tick / EMPIRE_TUNING.FLOOR_SPRITE_REP_FRAME_TICKS) + stagger;
     return rep % 2 === 0 ? poses.a : poses.b;
   }
   if (member.next === null) return 'stand';
-  const frame = Math.floor(tick / EMPIRE_TUNING.FLOOR_SPRITE_WALK_FRAME_TICKS) + member.index;
+  const frame = Math.floor(tick / EMPIRE_TUNING.FLOOR_SPRITE_WALK_FRAME_TICKS) + stagger;
   return frame % 2 === 0 ? 'step-a' : 'step-b';
 }
 
@@ -682,30 +709,51 @@ function stationAnchor(position: GridPosition, footprint: GridSize): FloorTilePo
 }
 
 /**
- * GDD §5.13 P4b: where to DRAW a member this instant. For everything except
- * `using` it is the sim's own interpolated tile point, exactly as Phase 3
- * wired it. While `using`, the drawn position is pulled from the sim's use
- * cell toward THAT bench's anchor by the class's
- * `FLOOR_SIM_USING_ANCHOR_BIAS` fraction, so the body meets the furniture
- * (on the bench, under the bar, at the machine face) instead of standing on
- * the adjacent cell beside a green box. Capacity's second user is pulled
- * onto the second bench, not onto the primary. RENDERER ONLY, the same
- * additive register as the walk tween: the sim's `cell` is never touched,
- * no state is kept, and the offset exists only while the sim says `using`.
+ * VL-1: the top-left corner, in tiles, of the square box a member's sprite
+ * is drawn in this instant. The box is `FLOOR_MEMBER_DRAW_SCALE_TILES` on a
+ * side — larger than the 1×1 sim footprint — and for every state except
+ * `using` it is placed with its feet on the interpolated cell: centred on
+ * the cell horizontally, bottom edge on the cell's bottom edge, so a
+ * standing figure is taller than the tile it occupies rather than a token
+ * squashed into it. That is a drawing decision; `memberTilePoint` is still
+ * the only positional read of the contract.
+ *
+ * GDD §5.13 P4b, carried forward: while `using`, the box is pulled from
+ * that feet-on-cell placement toward being CENTRED on the member's own
+ * bench by the class's `FLOOR_SIM_USING_ANCHOR_BIAS` fraction, so a lying
+ * body meets the furniture instead of standing beside a green outline.
+ * Capacity's second user is pulled onto the second bench, not the primary.
+ * Renderer only, the same additive register as the walk tween: the sim's
+ * `cell` is never touched, no state is kept, and the offset exists only
+ * while the contract says `using`. The bench-to-floor move on `leaving` and
+ * the floor-to-bench move on `using` are the two moments the drawn origin
+ * jumps without the cell moving, and `AmbientMemberBody` eases exactly those
+ * two over `FLOOR_MEMBER_SETTLE_MS` rather than the one-tick walk tween.
  */
-function memberDrawPoint(
-  member: FloorSimMember,
+function memberDrawOrigin(
+  member: PresentationMember,
   station: FloorStation | undefined,
   bay: CompetitionBenchBay,
 ): FloorTilePoint {
+  const scale = EMPIRE_TUNING.FLOOR_MEMBER_DRAW_SCALE_TILES;
+  const footprint = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES;
   const base = memberTilePoint(member);
-  if (member.state !== 'using' || member.target === null || station === undefined) return base;
+  const standing: FloorTilePoint = {
+    x: base.x + (footprint.width - scale) / 2,
+    y: base.y + footprint.height - scale,
+  };
+  if (member.lifecycle !== 'using' || member.target === null || station === undefined) {
+    return standing;
+  }
   const bias = EMPIRE_TUNING.FLOOR_SIM_USING_ANCHOR_BIAS[stationUseClassFor(member.target)];
   const bench = usingBenchFor(member, station, bay);
-  const anchor = stationAnchor(bench.position, bench.footprint);
+  const centred: FloorTilePoint = {
+    x: bench.position.x + (bench.footprint.width - scale) / 2,
+    y: bench.position.y + (bench.footprint.height - scale) / 2,
+  };
   return {
-    x: base.x + (anchor.x - base.x) * bias,
-    y: base.y + (anchor.y - base.y) * bias,
+    x: standing.x + (centred.x - standing.x) * bias,
+    y: standing.y + (centred.y - standing.y) * bias,
   };
 }
 
@@ -719,11 +767,11 @@ function memberDrawPoint(
  * keeping sim-adjacent state of its own, which the Phase 3 wiring rules out.
  */
 function memberFacing(
-  member: FloorSimMember,
+  member: PresentationMember,
   station: FloorStation | undefined,
   bay: CompetitionBenchBay,
 ): FloorSpriteFacing {
-  if (member.state === 'using' && station !== undefined) {
+  if (member.lifecycle === 'using' && station !== undefined) {
     const bench = usingBenchFor(member, station, bay);
     return stationAnchor(bench.position, bench.footprint).x < member.cell.x ? 'left' : 'right';
   }
@@ -836,7 +884,7 @@ function memberUsesCell(
 }
 
 function usingBenchFor(
-  member: FloorSimMember,
+  member: PresentationMember,
   station: FloorStation,
   bay: CompetitionBenchBay,
 ): BayBench {
@@ -1122,6 +1170,26 @@ interface AmbientMemberBodyProps {
    */
   readonly onPress?: () => void;
   /**
+   * VL-1: the contract's stable member identity (`PresentationMember.id`),
+   * carried onto the drawn root as `data-memberid` so the evidence tool can
+   * follow ONE member by identity rather than by array position. A branded
+   * string, read straight off the contract; never written, never a dispatch.
+   */
+  readonly memberId: GymMemberId;
+  /**
+   * VL-1: the station this member has claimed, from the contract, carried
+   * onto the drawn root as `data-target` (its `floorStationRefKey`). The
+   * pose class and facing already key off the station the caller resolves
+   * from the same ref; this prop exists only for the evidence attribute.
+   */
+  readonly target: FloorStationRef | null;
+  /**
+   * VL-1: `PresentationMember.queueRank` — 0 is next to be served, `null`
+   * when not claiming — carried onto the drawn root as `data-queuerank`.
+   * An integer rank, not a balance; presentation reads it and writes nothing.
+   */
+  readonly queueRank: number | null;
+  /**
    * LAST ON PURPOSE, and the reason is in another session's file. The
    * `MUTATION_WITNESSES` row for `ambient-member-props-hold-no-channel` in
    * `src/game/guaranteeTags.test.ts` anchors its planted mutation on the text
@@ -1240,6 +1308,7 @@ interface AmbientMemberBodyProps {
  */
 function AmbientMemberBody({
   index,
+  memberId,
   type,
   position,
   tile,
@@ -1248,11 +1317,21 @@ function AmbientMemberBody({
   stranded,
   pose,
   facing,
+  target,
+  queueRank,
   selectedName,
   onPress,
 }: AmbientMemberBodyProps) {
-  const footprintWidth = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.width * tile;
-  const footprintHeight = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.height * tile;
+  // VL-1: the drawn box is `FLOOR_MEMBER_DRAW_SCALE_TILES` on a side, and
+  // `memberDrawOrigin` has already placed it feet-on-cell (or centred on the
+  // bench), so this component still draws exactly the box it is handed.
+  const footprintWidth = EMPIRE_TUNING.FLOOR_MEMBER_DRAW_SCALE_TILES * tile;
+  const footprintHeight = EMPIRE_TUNING.FLOOR_MEMBER_DRAW_SCALE_TILES * tile;
+  const shadowWidth = EMPIRE_TUNING.FLOOR_MEMBER_SHADOW_WIDTH_FRACTION * tile;
+  const shadowHeight = EMPIRE_TUNING.FLOOR_MEMBER_SHADOW_HEIGHT_FRACTION * tile;
+  // Whether a step is in flight, read off the pose the caller already chose
+  // from the contract's `next` — the one fact the walking bounce keys on.
+  const stepping = pose === 'step-a' || pose === 'step-b';
 
   const bob = useRef(new Animated.Value(0)).current;
 
@@ -1268,23 +1347,34 @@ function AmbientMemberBody({
   // THE `using` PULSE THAT USED TO SHARE THIS EFFECT IS GONE, AND ITS TWO
   // KNOBS RETIRED WITH IT — GDD §5.13's P4b ruling replaces the pulse bob
   // with the sprite-level rep cycle (`FLOOR_SPRITE_REP_FRAME_TICKS`) as the
-  // "working a set" read. The Phase 2 idle bob stays for every state,
-  // untouched per PLAYTEST 4b's ruling, and no longer restarts on a state
-  // change: with the pulse gone, `state` is no longer a dependency here.
+  // "working a set" read.
+  //
+  // VL-1: the one loop now has two cadences. While a step is in flight it
+  // runs at `FLOOR_MEMBER_GAIT_HALF_CYCLE_MS` — one bounce per step frame —
+  // and lifts the body by `FLOOR_MEMBER_GAIT_BOUNCE_PIXELS`; standing or
+  // waiting it is the Phase 2 idle bob at its own untouched knobs. The
+  // amplitude is chosen below by state, so a lying (`using`) body neither
+  // bounces nor bobs. `stepping` is therefore a dependency: the loop is
+  // restarted at the other cadence when a member starts or stops walking.
+  // Still one effect and one cleanup, for the returned-closure census's
+  // reason stated above.
   useEffect(() => {
     const lane = index % EMPIRE_TUNING.AMBIENT_MEMBER_BOB_STAGGER_LANES;
-    const delay = lane * EMPIRE_TUNING.AMBIENT_MEMBER_BOB_STAGGER_STEP_MS;
+    const delay = stepping ? 0 : lane * EMPIRE_TUNING.AMBIENT_MEMBER_BOB_STAGGER_STEP_MS;
+    const halfCycle = stepping
+      ? EMPIRE_TUNING.FLOOR_MEMBER_GAIT_HALF_CYCLE_MS
+      : EMPIRE_TUNING.AMBIENT_MEMBER_BOB_HALF_CYCLE_MS;
     const bobLoop = Animated.loop(
       Animated.sequence([
         Animated.delay(delay),
         Animated.timing(bob, {
           toValue: 1,
-          duration: EMPIRE_TUNING.AMBIENT_MEMBER_BOB_HALF_CYCLE_MS,
+          duration: halfCycle,
           useNativeDriver: false,
         }),
         Animated.timing(bob, {
           toValue: 0,
-          duration: EMPIRE_TUNING.AMBIENT_MEMBER_BOB_HALF_CYCLE_MS,
+          duration: halfCycle,
           useNativeDriver: false,
         }),
       ]),
@@ -1294,11 +1384,18 @@ function AmbientMemberBody({
     return () => {
       bobLoop.stop();
     };
-  }, [bob, index]);
+  }, [bob, index, stepping]);
 
+  // Upward while walking (a bounce lifts the body), the gentle Phase 2 bob
+  // while standing or waiting, and nothing at all while lying on a bench.
+  const lift = stepping
+    ? -EMPIRE_TUNING.FLOOR_MEMBER_GAIT_BOUNCE_PIXELS
+    : state === 'using'
+      ? 0
+      : EMPIRE_TUNING.AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS;
   const bobTranslateY = bob.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, EMPIRE_TUNING.AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS],
+    outputRange: [0, lift],
   });
 
   // GDD §5.13 presentation Phase 3 — THE WALK. The sim advances a member by a
@@ -1318,17 +1415,32 @@ function AmbientMemberBody({
   // out its remaining `FLOOR_SIM_MOVE_TWEEN_MS` against a value nothing reads
   // and then stops by itself. That residual is why this is a comment and not
   // a silence.
+  //
+  // VL-1 — THE SETTLE. Two moments move the drawn origin without the cell
+  // moving: the contract turning `using` (the box is pulled from the feet-
+  // on-cell placement onto the bench) and it turning `leaving` (pulled
+  // back). A one-tick linear tween reads those as a snap, so exactly those
+  // two transitions — detected as a state change into or out of `using`,
+  // held in a ref so the next tick's walk is linear again — ease out over
+  // `FLOOR_MEMBER_SETTLE_MS` instead. Every other retarget is the Phase 3
+  // linear tween, unchanged.
   const walk = useRef(
     new Animated.ValueXY({ x: position.x * tile, y: position.y * tile }),
   ).current;
+  const lastState = useRef(state);
   useEffect(() => {
+    const settling =
+      lastState.current !== state && (state === 'using' || lastState.current === 'using');
+    lastState.current = state;
     Animated.timing(walk, {
       toValue: { x: position.x * tile, y: position.y * tile },
-      duration: EMPIRE_TUNING.FLOOR_SIM_MOVE_TWEEN_MS,
-      easing: Easing.linear,
+      duration: settling
+        ? EMPIRE_TUNING.FLOOR_MEMBER_SETTLE_MS
+        : EMPIRE_TUNING.FLOOR_SIM_MOVE_TWEEN_MS,
+      easing: settling ? Easing.out(Easing.cubic) : Easing.linear,
       useNativeDriver: false,
     }).start();
-  }, [walk, position.x, position.y, tile]);
+  }, [walk, position.x, position.y, tile, state]);
 
   const cueScale =
     state === 'interrupted' ? EMPIRE_TUNING.FLOOR_SIM_INTERRUPTED_CUE_SCALE : 1;
@@ -1345,6 +1457,21 @@ function AmbientMemberBody({
       // nothing and the whole token is out of hit-testing so stations
       // remain tappable underneath.
       pointerEvents={onPress === undefined ? 'none' : 'box-none'}
+      // VL-1: contract identity and lifecycle on the drawn root as data
+      // attributes (react-native-web maps `dataSet` to `data-*`), so the
+      // evidence tool follows one member by `data-memberid` across frames
+      // and reads what the contract says it is doing from the same node.
+      // Evidence only — nothing in this file reads them back.
+      {...({
+        dataSet: {
+          memberid: memberId,
+          lifecycle: state,
+          // Absent, not empty, when there is no target or no rank — the
+          // attribute is simply not written for that frame.
+          target: target === null ? undefined : floorStationRefKey(target),
+          queuerank: queueRank === null ? undefined : String(queueRank),
+        },
+      } as object)}
       style={{
         position: 'absolute',
         left: 0,
@@ -1352,20 +1479,53 @@ function AmbientMemberBody({
         width: footprintWidth,
         height: footprintHeight,
         zIndex: EMPIRE_TUNING.FLOOR_SIM_MEMBER_Z_INDEX,
-        // `leaving` is the one state drawn at less than full strength — a
-        // member that has finished with a machine and is stepping away.
-        opacity: state === 'leaving' ? EMPIRE_TUNING.FLOOR_SIM_LEAVING_OPACITY : 1,
-        // Two additive transforms: the tweened walk and the Phase 2 idle
-        // bob. `left`/`top` stay at zero so the walk owns the whole position
-        // and the bob rides on top of it. (P4b: the `using` pulse transform
-        // is gone — the rep-cycle sprite frames are the working read now.)
-        transform: [
-          { translateX: walk.x },
-          { translateY: walk.y },
-          { translateY: bobTranslateY },
-        ],
+        // VL-1: on Play a member stepping away from a bench is drawn at full
+        // strength — a person, not a ghost. Build keeps the Phase 3
+        // `leaving` fade as its diagnostic read of the fifth state.
+        opacity:
+          state === 'leaving' && onPress === undefined
+            ? EMPIRE_TUNING.FLOOR_SIM_LEAVING_OPACITY
+            : 1,
+        // The tweened walk owns the whole position; `left`/`top` stay at
+        // zero. VL-1 moved the bob onto an inner view so the grounding
+        // shadow below stays on the floor while the body lifts.
+        transform: [{ translateX: walk.x }, { translateY: walk.y }],
       }}
     >
+      {/*
+        VL-1: the grounding shadow — a flat ellipse under the feet, on the
+        floor, outside the bounce transform so the body lifts off it during a
+        step. Not drawn while lying on a bench. `AMBIENT_MEMBER_BORDER_COLOR`
+        is the named black this file already carries; the opacity and
+        geometry are the registered `FLOOR_MEMBER_SHADOW_*` knobs.
+      */}
+      {state === 'using' ? null : (
+        <View
+          testID={`floorgrid-member-shadow-${index}`}
+          pointerEvents={'none'}
+          style={{
+            position: 'absolute',
+            left: (footprintWidth - shadowWidth) / 2,
+            top: footprintHeight - shadowHeight / 2,
+            width: shadowWidth,
+            height: shadowHeight,
+            borderRadius: shadowHeight,
+            backgroundColor: AMBIENT_MEMBER_BORDER_COLOR,
+            opacity: EMPIRE_TUNING.FLOOR_MEMBER_SHADOW_OPACITY,
+          }}
+        />
+      )}
+      <Animated.View
+        pointerEvents={'none'}
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: footprintWidth,
+          height: footprintHeight,
+          transform: [{ translateY: bobTranslateY }],
+        }}
+      >
       {/*
         GDD §5.13 presentation Phase 4: the member is the sprite now — one
         pre-upscaled indexed PNG per (type, pose, facing), drawn at the same
@@ -1482,6 +1642,7 @@ function AmbientMemberBody({
           }}
         />
       ) : null}
+      </Animated.View>
       {onPress === undefined ? null : (
         <Pressable
           accessibilityRole={'button'}
@@ -1847,7 +2008,31 @@ export function FloorGrid(props: FloorGridProps) {
   // render and is stored nowhere, the same "read model, never a `FloorState`"
   // discipline `fixedFloorFurniture` already carries.
   const stations = floorStations(simContext);
-  const world = worldFrame(sim, stations);
+  // VL-1 — THE CONTRACT READ. `presentationWorld` refuses a snapshot whose
+  // roster does not match its sim (contract §5), and there is exactly one
+  // render on which this component hands it such a pair: the render right
+  // after a relocation, when `floor.rung` and `livingMembers` are already
+  // the new gym's and `sim` is still the old one — the rung effect below
+  // rebuilds the sim on the NEXT commit. A refusal thrown from inside render
+  // would take the whole screen down for that one frame, so the same
+  // coherence the contract checks is asked here first, in the contract's own
+  // terms (rung, roster length, id-by-position) — a guard against a known
+  // transient, not a second implementation of anything the contract decides.
+  // On that frame no member is drawn; on every other frame the members are
+  // the contract's.
+  const contractCoherent =
+    simRung.current === floor.rung &&
+    sim.members.length === livingMembers.members.length &&
+    sim.members.every(
+      (member, ordinal) => livingMembers.members[ordinal]?.id === member.memberId,
+    );
+  const contractWorld: PresentationWorld | null = contractCoherent
+    ? presentationWorld({ sim, floor, roster: livingMembers, managed, capability })
+    : null;
+  // `worldView.ts`'s occupancy convenience still supplies the occupied queue
+  // CELLS (a geometry the contract does not carry — it carries `queueIds`
+  // and `queueRank`, which is what order is read from).
+  const occupancyFrame = worldFrame(sim, stations);
   // GDD §5.13 P4b: the same read model keyed for lookup, so a `using`
   // member's draw bias and facing resolve against the identical stations the
   // sim was stepped with this render — one derivation, no second copy.
@@ -1855,14 +2040,19 @@ export function FloorGrid(props: FloorGridProps) {
   for (const station of stations) {
     stationByRefKey.set(stationKey(station.ref), station);
   }
+  // VL-1: which stations are in use, read off the contract's own per-station
+  // `usingIds` rather than off raw sim members. Only the `'using'` reading
+  // is consumed below (the fixed furniture's occupied sprite swap); the
+  // `'claimed'` arm is kept so the map's vocabulary is unchanged.
   const stationActivity = new Map<string, 'using' | 'claimed'>();
-  for (const member of sim.members) {
-    if (member.target === null) continue;
-    const key = stationKey(member.target);
-    if (member.state === 'using') {
-      stationActivity.set(key, 'using');
-    } else if (!stationActivity.has(key)) {
-      stationActivity.set(key, 'claimed');
+  if (contractWorld !== null) {
+    for (const station of contractWorld.stations) {
+      const key = stationKey(station.ref);
+      if (station.usingIds.length > 0) {
+        stationActivity.set(key, 'using');
+      } else if (station.queueIds.length > 0 || station.approachingIds.length > 0) {
+        stationActivity.set(key, 'claimed');
+      }
     }
   }
   // Stage D.1 — Capacity is a second physical bench, drawn as a real
@@ -1882,6 +2072,24 @@ export function FloorGrid(props: FloorGridProps) {
   const bayThroughputMark = bay.complete && bayLevels.throughput > 0;
   const capacityFits = capacityRealizesOn(floor, barbellOwned);
   const stateCounts = floorSimStateCounts(sim);
+
+  // VL-1 — what to draw for each contract member this instant: its station
+  // (for the pose class, the bench anchor and the facing), and the drawn
+  // origin. Sorted by that origin's row so a member lower on the floor paints
+  // over one behind it — feet-on-cell depth from document order, with every
+  // member at the same registered z-index. The ordinal is the contract row's
+  // position, which equals the sim's roster index (the contract builds its
+  // rows in sim order and refuses a roster that does not line up), and it is
+  // used only for the verifier-stable `floorgrid-ambient-<n>` testID, the
+  // tap-selection index and the animation stagger — identity is `member.id`.
+  const memberDraws = (contractWorld === null ? [] : contractWorld.members).map(
+    (member, ordinal) => {
+      const station =
+        member.target === null ? undefined : stationByRefKey.get(stationKey(member.target));
+      return { member, ordinal, station, origin: memberDrawOrigin(member, station, bay) };
+    },
+  );
+  memberDraws.sort((left, right) => left.origin.y - right.origin.y);
 
   /**
    * GDD §5.14 Stage C — item 9's tap/drag disambiguation. `origin` says
@@ -2063,7 +2271,17 @@ export function FloorGrid(props: FloorGridProps) {
           </Pressable>
         </View>
       )}
-      <View testID={'floorgrid-scroll-x'} style={{ flex: 1, zIndex: 1 }}>
+      {/*
+        VL-1: this full-width stage box clips. A member's drawn body is wider
+        than its cell (`FLOOR_MEMBER_DRAW_SCALE_TILES`), so one standing on
+        the last column reaches a few pixels past the grid — and, measured at
+        390×844, three pixels past the viewport, which is a horizontal page
+        overflow. Clipping here, at the stage's own edge rather than at the
+        grid's, loses those few pixels of an arm and nothing else: heads above
+        the top row and feet on the bottom row stay inside this box, and the
+        panels below the grid are siblings of it, not children.
+      */}
+      <View testID={'floorgrid-scroll-x'} style={{ flex: 1, zIndex: 1, overflow: 'hidden' }}>
         <View testID={'floorgrid-scroll-y'} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <View
             testID={'floorgrid-grid'}
@@ -2512,7 +2730,7 @@ export function FloorGrid(props: FloorGridProps) {
                 )),
               )
             }
-            {buildMode ? null : queueOccupancyViews(world.stations, tile)}
+            {buildMode ? null : queueOccupancyViews(occupancyFrame.stations, tile)}
             {
               // GDD §5.13 presentation Phase 3: the members, at the position
               // the sim puts them at this instant. Still non-draggable, still
@@ -2523,41 +2741,34 @@ export function FloorGrid(props: FloorGridProps) {
               // own `Animated.Value`s and its own start/stop lifecycles,
               // which `.map` cannot give a hook directly).
               //
-              // Keyed by `member.index`, which `floorSim.ts` documents as
-              // stable for the life of a sim — so a member keeps its own
-              // animated values across ticks instead of being remounted and
-              // snapping.
-              sim.members.map((member) => {
-                // P4b: the member's own station, when it has one — what the
-                // using-pose class, the draw bias and the facing all key on.
-                const station =
-                  member.target === null
-                    ? undefined
-                    : stationByRefKey.get(stationKey(member.target));
-                return (
-                  <AmbientMemberBody
-                    key={`ambient-${member.index}`}
-                    index={member.index}
-                    type={member.type}
-                    position={memberDrawPoint(member, station, bay)}
-                    tile={tile}
-                    state={member.state}
-                    interruptedBy={member.interruptedBy}
-                    stranded={member.strandedAt !== null}
-                    pose={memberPose(member, sim.tick)}
-                    facing={memberFacing(member, station, bay)}
-                    selectedName={
-                      selectedMemberIndex === member.index
-                        ? (livingMemberAtIndex(livingMembers, member.index)?.displayName ??
-                          undefined)
-                        : undefined
-                    }
-                    onPress={
-                      buildMode ? undefined : () => toggleSelectedMember(member.index)
-                    }
-                  />
-                );
-              })
+              // VL-1: each row is a contract `PresentationMember`, keyed by
+              // its `id` — the identity the contract names — so a member
+              // keeps its own animated values across ticks and across the
+              // depth re-sort above instead of being remounted and snapping.
+              memberDraws.map((draw) => (
+                <AmbientMemberBody
+                  key={draw.member.id}
+                  index={draw.ordinal}
+                  memberId={draw.member.id}
+                  type={draw.member.type}
+                  position={draw.origin}
+                  tile={tile}
+                  state={draw.member.lifecycle}
+                  interruptedBy={draw.member.interruptedBy}
+                  stranded={draw.member.stranded}
+                  pose={memberPose(draw.member, sim.tick, draw.ordinal)}
+                  facing={memberFacing(draw.member, draw.station, bay)}
+                  target={draw.member.target}
+                  queueRank={draw.member.queueRank}
+                  selectedName={
+                    selectedMemberIndex === draw.ordinal
+                      ? (livingMemberAtIndex(livingMembers, draw.ordinal)?.displayName ??
+                        undefined)
+                      : undefined
+                  }
+                  onPress={buildMode ? undefined : () => toggleSelectedMember(draw.ordinal)}
+                />
+              ))
             }
             {buildMode && bay.complete && bay.primary !== null
               ? (
