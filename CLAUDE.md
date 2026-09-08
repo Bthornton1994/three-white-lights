@@ -1264,6 +1264,121 @@ Nothing here was run on a device.
 `scratchpad/wt-capacity` (detached probe at `42ebdc53`, the proof tool's first
 home) are left in place per "push before you clean up".
 
+### VL-3 — PRODUCTION MOTION / WORLD FEEL: THE GATES AS THE HUMAN CORRECTED THEM, THE TICK-28 FREEZE, AND THE SCOPE, WRITTEN BEFORE THE WORK
+
+Ruled by the human after VL-2B, delivered as a brief to Claude Code Session B.
+Accepted technical checkpoint: `claude/empire-s5-visual-lane` at `15feb260`.
+That checkpoint is not rewritten, and no Grok mechanics are changed to solve a
+renderer problem.
+
+**The gates, recorded precisely as corrected — the VL-2B record above said
+"met" for several of these and the human's list is the one that stands:**
+
+| gate | state |
+|---|---|
+| CONTRACT INTEGRATION | PASS |
+| PER-SEAT CONSUMPTION | PASS |
+| CAPACITY VISUAL PROOF | PASS |
+| IDENTITY | PASS |
+| GHOST BOUNDARY | PASS |
+| PERSPECTIVE | TECHNICAL PASS |
+| WEB FRAME LOOP | TECHNICAL PASS |
+| PRODUCTION ANIMATION | NOT PASS |
+| VISUAL | NOT PASS |
+| WORLD LEGIBILITY | NOT PASS |
+| SOFT-FEEL | NOT PASS |
+| OWNER PLAYTEST | NOT PASS |
+| NATIVE PERFORMANCE | NOT RUN |
+
+The ruling's own sentence, kept verbatim because it is the bar: *"The
+existing two-keypose art set cannot receive Production Animation PASS.
+Interpolation/crossfade does not turn two authored poses into a production
+character animation system."* `memberAnimation.ts`'s header already said as
+much of itself; this entry records that the human agreed.
+
+**THE TICK-28 COLLISION IS FROZEN.** The transient VL-2B reported for Grok —
+at tick 28 the seeking member's contract point passes through cell 2,2 while
+the relocated member is `using` it — is Grok's to rule on, and Grok B is
+investigating the authoritative pathing truth. Until a new mechanics SHA is
+deliberately integrated, the renderer stays faithful to the contract: no
+collision-offset hack, no hidden body, no z-order trick that masks the
+overlap, no presentation-only detour. A VL-3 piece that made the overlap
+disappear on screen would be a defect, not a fix, and the motion proof reads
+the overlap off the trace rather than looking away from it.
+
+**THE VL-3 GOAL, in the brief's words:** make one member in the persistent gym
+feel like a continuously animated person, not a translated sprite. One
+production-quality member, not forty polished placeholders. Automated evidence
+may close TECHNICAL MOTION, IDENTITY, OCCUPANCY and PERFORMANCE-WEB; only
+Bryant closes VISUAL, WORLD LEGIBILITY, ANIMATION FEEL, SOFT-FEEL and OWNER
+PLAYTEST, and no production claim for native comes from browser evidence.
+
+**The design, decided from the tree rather than from preference, so the
+other lanes can see what is being built:**
+
+- **The animation representation is a cut-out puppet over the EXISTING
+  Iron & Amber paintings, posed by an authored skeleton and baked to
+  multi-pose strips.** The member paintings under `public/empire-art/` are
+  painterly and photoreal-leaning (a walking man in a beige tee, a presser in
+  a black tank on a bar); a procedurally rasterised figure in `src/art/`'s
+  pixel register would not belong in that room, and no artist is in this
+  container. So `member-walk-a-right.png` and `member-using-bench-a-right.png`
+  are cut into parts — head, torso, two-segment arms and legs, the bar — each
+  with a pivot at its parent joint, and a rig (`src/empire/memberRig.ts`, pure,
+  tested) poses them from keyframes: a sixteen-pose walk with contact, down,
+  passing and up on each leg and the root's advance DERIVED from the planted
+  foot so the feet cannot skate; breathing and weight-shift idles; the bench
+  as setup → press → finish. `tools/bake-member-motion.mjs` rasterises the
+  posed parts into one strip per clip and a contact sheet a critic can look
+  at. The clip vocabulary, frame counts, drives and the allowed transitions
+  are one table, `src/empire/memberMotionClips.ts`, that the rig, the bake and
+  the runtime all `satisfies`; the pose count per clip the brief asks to be
+  reported is that table.
+- **The runtime plays strips, and the frame loop becomes a pure step.**
+  `FloorGrid.tsx`'s VL-2/VL-2B frame loop (timeline, settle, relocation, cap)
+  moves behaviour-for-behaviour into `src/empire/memberMotion.ts`, a pure
+  per-frame stepper, so the continuity rules the brief lists — facing from
+  the DRAWN velocity with hysteresis rather than a one-frame contract flip,
+  depth scale from the DRAWN point rather than the contract point so a seat
+  assignment cannot pop the size, transitions walked only along the clip
+  table's edges, per-member phase offsets so no two bodies breathe in step,
+  no clip reset on a harmless re-render — are tested in node, and so the
+  per-frame drawn displacement is read DIRECTLY off the stepper by an
+  attached trace sink rather than inferred from a `MutationObserver`, whose
+  coalescing VL-2B measured and the brief rules out as proof.
+- **The mechanics path and the playback clock are unchanged.** Grok's
+  contract is consumed exactly as VL-2B left it; the bounded stall recovery
+  (`FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS`) is preserved and re-measured.
+- **One identity.** The production pipeline applies to the member type the
+  garage roster gives `member:n1:2`, the member the living-world capture
+  follows (`MEMBER_MOTION_PRODUCTION_TYPES`); measured rather than assumed,
+  `equipmentBiasedMemberTypes([])` at the garage returns the powerlifter
+  alone, so all three garage members are that type and share the one
+  puppet, and the other types keep VL-2B's draw unchanged. The bench paintings' black kit is recoloured toward the
+  walker's at bake time so one person walks up and lies down, and the
+  side-view stand and the three-quarter bench painting meet in a short
+  dissolve at the moment both bodies are horizontal — the residual that
+  choice leaves is stated where it sits.
+- **The owner route is a standalone web entry, not a shell edit.** The brief
+  asks for a clean route opening directly into the persistent Gym Empire
+  proof and also says not to touch Session A. `src/shell/` is Session A's, so
+  the route is a repository-root Vite entry in the shape `ladder-dev.tsx`
+  already set — it mounts the real `GymScreen` on Play with no shell chrome,
+  no test cards, no diagnostics and no developer prose in view — and the
+  in-app path through the shell's own controls stays the played path the
+  capacity proof drives.
+
+**Files.** New: `src/empire/memberMotionClips.ts`, `memberPuppet.ts`,
+`memberRig.ts`, `memberMotion.ts` and their tests; `tools/bake-member-motion.mjs`,
+`tools/capture-motion-proof.mjs`; `public/empire-art/member-motion-*.png`;
+`owner-playtest.html` / `owner-playtest.tsx`. Edited: `FloorGrid.tsx`,
+`ironAmberArt.ts`, `memberAnimation.ts`, `empireTuning.ts` (three appended
+feel knobs: `FLOOR_MEMBER_IDLE_BREATH_PERIOD_MS`, `FLOOR_MEMBER_GAIT_TRANSITION_MS`,
+`FLOOR_MEMBER_BENCH_SETUP_MS`), the measure and capture tools, and the shared
+`src/empire/` census tests re-pinned from their own failure values. Nothing
+under `src/shell/`, `src/game/`, `src/tuning/` or any other Session A
+directory; nothing on #52; nothing merged.
+
 ### Branch / worktree policy
 
 | Lane | Branches | Worktree |

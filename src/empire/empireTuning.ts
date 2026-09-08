@@ -2897,6 +2897,54 @@ export const EMPIRE_TUNING = Object.freeze({
   FLOOR_MEMBER_WAIT_SWAY_DEGREES: 1.5,
 
   /**
+   * VL-3: one breath of a standing production member's idle clip, in
+   * milliseconds — the chest rise and fall the rig authors over twelve
+   * poses. Slower than the wait sway on purpose: a body with nowhere to be
+   * settles; a body in a line shifts.
+   */
+  FLOOR_MEMBER_IDLE_BREATH_PERIOD_MS: 3200,
+
+  /**
+   * VL-3: the gait's settle into a stand and its first step out of one
+   * (`walk-to-wait`, `wait-to-walk`), in milliseconds — four poses each, so
+   * a body never cuts from mid-stride to standing or back.
+   */
+  FLOOR_MEMBER_GAIT_TRANSITION_MS: 220,
+
+  /**
+   * VL-3: sitting on the bench edge, lying back, reaching the racked bar and
+   * unracking it (`bench-setup`), and the reverse (`bench-finish`), in
+   * milliseconds each — eight poses each.
+   */
+  FLOOR_MEMBER_BENCH_SETUP_MS: 900,
+
+  /**
+   * VL-3: authored poses per production motion clip — the frame counts the
+   * rig produces, the bake writes and the runtime plays (one row per
+   * `MEMBER_MOTION_CLIPS` entry; `memberMotionClips.ts` `satisfies` the
+   * closed list). Sixteen for a full gait cycle is two eight-pose steps:
+   * contact, down, passing, up on each leg. Twelve for a breath or a rep,
+   * eight for a bench setup or finish, four for a gait transition.
+   */
+  FLOOR_MEMBER_MOTION_FRAMES: Object.freeze({
+    walk: 16,
+    idle: 12,
+    wait: 12,
+    'walk-to-wait': 4,
+    'wait-to-walk': 4,
+    'bench-setup': 8,
+    'bench-press': 12,
+    'bench-finish': 8,
+  }),
+
+  /**
+   * VL-3: the square canvas of one baked motion frame, in pixels, feet at
+   * the bottom centre — the paintings' own canvas, so a strip frame draws
+   * with the geometry `FloorGrid.tsx` already gives a painting.
+   */
+  FLOOR_MEMBER_MOTION_CANVAS_PX: 256,
+
+  /**
    * One rep of a `using` member's two-keypose cycle, in milliseconds. The
    * cycle holds each keypose for `FLOOR_MEMBER_REP_HOLD_FRACTION` of this
    * and crossfades between them for the rest, so a press reads as a
@@ -3255,6 +3303,11 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_MEMBER_LEAN_DEGREES: 'knob',
   FLOOR_MEMBER_WAIT_SWAY_PERIOD_MS: 'knob',
   FLOOR_MEMBER_WAIT_SWAY_DEGREES: 'knob',
+  FLOOR_MEMBER_IDLE_BREATH_PERIOD_MS: 'knob',
+  FLOOR_MEMBER_GAIT_TRANSITION_MS: 'knob',
+  FLOOR_MEMBER_BENCH_SETUP_MS: 'knob',
+  FLOOR_MEMBER_MOTION_FRAMES: 'knob',
+  FLOOR_MEMBER_MOTION_CANVAS_PX: 'knob',
   FLOOR_MEMBER_REP_PERIOD_MS: 'knob',
   FLOOR_MEMBER_REP_HOLD_FRACTION: 'knob',
   FLOOR_MEMBER_RENDER_DELAY_TICKS: 'knob',
