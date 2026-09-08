@@ -144,7 +144,26 @@
  *                     when the mutation's microtask runs. Race-free
  *                     positions on the renderer's clock. The rAF record
  *                     keeps the settle bound (it carries the lifecycle
- *                     edges) and its rate is recorded as a number. The ceiling itself now includes the sim's speed
+ *                     edges) and its rate is recorded as a number.
+ *                     AND THE WRITE LOG HAS ITS OWN LIMIT, MEASURED ONE LEVEL
+ *                     FURTHER DOWN: a record's DELTA can carry two frames'
+ *                     writes. When this browser bunches frames, the
+ *                     observer's callback can land after the frame loop
+ *                     has written twice, and the record reads the current
+ *                     style, so consecutive records differ by two frames'
+ *                     motion. A trace inside the frame loop across a
+ *                     purchase (390x844) read a largest per-frame drawn
+ *                     step of 5.49 px — exactly one capped catch-up frame
+ *                     at that body's depth — while the write log of the
+ *                     same run read 7.9 px; the committed evidence's 0.182
+ *                     tiles on the walking bystander is the same shape (a
+ *                     capped frame plus an ordinary one, 7.84 px). So `max
+ *                     write` is an UPPER bound on the renderer's per-frame
+ *                     step and is printed beside the loop's own bound
+ *                     (`FRAME_STEP_BOUND_TILES`); the judged quantity — the
+ *                     full-window rate — sums the same motion whether the
+ *                     observer delivers it as one record or two, so
+ *                     coalescing cannot move it. The ceiling itself now includes the sim's speed
  *                     jitter (FLOOR_SIM_SPEED_JITTER_FRACTION): the base
  *                     step under-derived it by that fraction for half the
  *                     roster.
@@ -266,6 +285,7 @@ const STEP_PER_TICK = numberInSource(tuningSource, 'FLOOR_SIM_STEP_PROGRESS_PER_
 const CATCH_UP_RATE = numberInSource(tuningSource, 'FLOOR_MEMBER_CATCH_UP_RATE');
 const SPEED_JITTER_FRACTION = numberInSource(tuningSource, 'FLOOR_SIM_SPEED_JITTER_FRACTION');
 const RENDER_DELAY_TICKS = numberInSource(tuningSource, 'FLOOR_MEMBER_RENDER_DELAY_TICKS');
+const FRAME_CAP_MS = numberInSource(tuningSource, 'FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS');
 // The price is a key INSIDE a block; `numberInSource` would answer with the
 // first `capacity:` anywhere in the file, which is the wrong question.
 const CAPACITY_PRICE = numberInBlock(tuningSource, 'STATION_UPGRADE_COST_GYM_BUCKS', 'capacity');
@@ -277,6 +297,7 @@ const missing = Object.entries({
   FLOOR_MEMBER_CATCH_UP_RATE: CATCH_UP_RATE,
   FLOOR_SIM_SPEED_JITTER_FRACTION: SPEED_JITTER_FRACTION,
   FLOOR_MEMBER_RENDER_DELAY_TICKS: RENDER_DELAY_TICKS,
+  FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS: FRAME_CAP_MS,
   'STATION_UPGRADE_COST_GYM_BUCKS.capacity': CAPACITY_PRICE,
 })
   .filter(([, v]) => v === null)
@@ -313,6 +334,18 @@ const ORDINARY_TILES_PER_100MS =
 const WALK_TILES_PER_100MS = (STEP_PER_TICK / TICK_MS) * 100;
 /** The settle's per-tile pace, for the reader: one `FLOOR_MEMBER_SETTLE_MS` per tile of pull. */
 const SETTLE_TILES_PER_100MS = 100 / SETTLE_MS;
+/**
+ * The frame loop's own largest per-frame TIMELINE step for a walker: one
+ * capped frame (`FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS` of playback) at the
+ * bounded catch-up rate on the fastest seeded stride. Printed beside every
+ * member's `max write` because a write-log record can carry MORE than one
+ * frame's write (the header's coalescing paragraph): a `max write` above
+ * this number is the observer's delivery, not a renderer step. Measured on
+ * a frame-loop trace across a purchase at 390x844: the loop's largest
+ * per-frame drawn step was 5.49 px = this bound at that body's depth, in
+ * the same run whose write log read 7.9 px.
+ */
+const FRAME_STEP_BOUND_TILES = (FRAME_CAP_MS / TICK_MS) * (1 + CATCH_UP_RATE) * STEP_PER_TICK * (1 + SPEED_JITTER_FRACTION);
 
 const SHA = execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim();
 const DIRTY = execSync('git status --porcelain --untracked-files=no', { cwd: ROOT }).toString().trim() !== '';
@@ -1186,7 +1219,7 @@ async function runViewport(browser, viewport) {
     );
     for (const m of members) {
       note(
-        `${vp}   ${m.id} ${m.lifecycles.join('>')} cells ${m.cells.map((c) => `${c.cell}@t${c.t}/tick${c.tick}`).join(' -> ')} | window rate max ${m.maxWindowRateTilesPer100ms.toFixed(3)} tiles/100ms (ceiling ${ORDINARY_TILES_PER_100MS.toFixed(3)}) at ${JSON.stringify(m.maxWindowRateAt)} | frame step max ${m.maxFrameStepTiles.toFixed(3)} tiles at ${JSON.stringify(m.maxFrameStepAt)} | frame rate max ${m.maxFrameRateTilesPer100ms.toFixed(3)} | settle excess ${m.maxSettleExcessTiles.toFixed(3)} (raw ${m.maxSettleRawTiles.toFixed(3)}, bound ${SETTLE_TILES}) edges ${JSON.stringify(m.settleEdges)} | net ${m.netDisplacementTiles.toFixed(3)} tiles, peak excursion ${m.maxExcursionTiles.toFixed(3)} at t=${m.maxExcursionAt?.t ?? '-'} | WRITES ${writeMotion[m.id] === undefined ? 'none' : `${writeMotion[m.id].writes}, window rate max ${writeMotion[m.id].maxWriteWindowRateTilesPer100ms.toFixed(3)} tiles/100ms (${writeMotion[m.id].withinWriteCeiling ? 'ok' : 'ABOVE'} the ceiling) at ${JSON.stringify(writeMotion[m.id].maxWriteWindowRateAt)}, max write ${writeMotion[m.id].maxWriteStepTiles.toFixed(3)} tiles at ${JSON.stringify(writeMotion[m.id].maxWriteStepAt)}`}`,
+        `${vp}   ${m.id} ${m.lifecycles.join('>')} cells ${m.cells.map((c) => `${c.cell}@t${c.t}/tick${c.tick}`).join(' -> ')} | window rate max ${m.maxWindowRateTilesPer100ms.toFixed(3)} tiles/100ms (ceiling ${ORDINARY_TILES_PER_100MS.toFixed(3)}) at ${JSON.stringify(m.maxWindowRateAt)} | frame step max ${m.maxFrameStepTiles.toFixed(3)} tiles at ${JSON.stringify(m.maxFrameStepAt)} | frame rate max ${m.maxFrameRateTilesPer100ms.toFixed(3)} | settle excess ${m.maxSettleExcessTiles.toFixed(3)} (raw ${m.maxSettleRawTiles.toFixed(3)}, bound ${SETTLE_TILES}) edges ${JSON.stringify(m.settleEdges)} | net ${m.netDisplacementTiles.toFixed(3)} tiles, peak excursion ${m.maxExcursionTiles.toFixed(3)} at t=${m.maxExcursionAt?.t ?? '-'} | WRITES ${writeMotion[m.id] === undefined ? 'none' : `${writeMotion[m.id].writes}, window rate max ${writeMotion[m.id].maxWriteWindowRateTilesPer100ms.toFixed(3)} tiles/100ms (${writeMotion[m.id].withinWriteCeiling ? 'ok' : 'ABOVE'} the ceiling) at ${JSON.stringify(writeMotion[m.id].maxWriteWindowRateAt)}, max write ${writeMotion[m.id].maxWriteStepTiles.toFixed(3)} tiles at ${JSON.stringify(writeMotion[m.id].maxWriteStepAt)} (loop's per-frame bound ${FRAME_STEP_BOUND_TILES.toFixed(3)}; a record can carry two frames' writes, see header)`}`,
       );
     }
     if (ghost !== null) note(`${vp} GHOST POSE: ${result.verdicts.ghostPoseHeld ? 'held' : 'NOT HELD'} over ${result.ghostUsingFrames} using frames — visible pose images while using: ${result.ghostSprites.join(', ')}`);
@@ -1355,7 +1388,7 @@ let exitCode = 0;
 try {
   note(`VL-2B capacity proof at ${SHA}${DIRTY ? ' (DIRTY TREE)' : ''} url=${URL}`);
   note(
-    `price ${CAPACITY_PRICE} gym bucks; ceiling ${ORDINARY_TILES_PER_100MS.toFixed(3)} tiles/100ms = (${STEP_PER_TICK}*(1+${SPEED_JITTER_FRACTION})/${TICK_MS})*100*(1+${CATCH_UP_RATE})*${RATE_TOLERANCE}; walk ${WALK_TILES_PER_100MS.toFixed(3)}; settle ${SETTLE_MS} ms/tile = ${SETTLE_TILES_PER_100MS.toFixed(3)} tiles/100ms; settle bound ${SETTLE_TILES} tiles; draw scale ${DRAW_SCALE_TILES}; render delay ${RENDER_DELAY_TICKS} tick(s); window ${WINDOW_MS} ms; transition ${TRANSITION_SAMPLE_MS} ms`,
+    `price ${CAPACITY_PRICE} gym bucks; ceiling ${ORDINARY_TILES_PER_100MS.toFixed(3)} tiles/100ms = (${STEP_PER_TICK}*(1+${SPEED_JITTER_FRACTION})/${TICK_MS})*100*(1+${CATCH_UP_RATE})*${RATE_TOLERANCE}; walk ${WALK_TILES_PER_100MS.toFixed(3)}; settle ${SETTLE_MS} ms/tile = ${SETTLE_TILES_PER_100MS.toFixed(3)} tiles/100ms; settle bound ${SETTLE_TILES} tiles; draw scale ${DRAW_SCALE_TILES}; render delay ${RENDER_DELAY_TICKS} tick(s); window ${WINDOW_MS} ms; transition ${TRANSITION_SAMPLE_MS} ms; per-frame step bound ${FRAME_STEP_BOUND_TILES.toFixed(3)} tiles = (${FRAME_CAP_MS}/${TICK_MS})*(1+${CATCH_UP_RATE})*${STEP_PER_TICK}*(1+${SPEED_JITTER_FRACTION})`,
   );
   const results = [];
   for (const viewport of VIEWPORTS) {
@@ -1388,6 +1421,8 @@ try {
       settleTilesPer100ms: SETTLE_TILES_PER_100MS,
       windowMs: WINDOW_MS,
       transitionSampleMs: TRANSITION_SAMPLE_MS,
+      frameCapMs: FRAME_CAP_MS,
+      frameStepBoundTiles: FRAME_STEP_BOUND_TILES,
     },
     results,
     notes,
