@@ -29,8 +29,8 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 
 export const README_NAME = 'README.md';
 
-/** Load `src/art/athleteTraces.ts` through a scoped `.ts` loader. */
-export function loadTraces() {
+/** Load any repo `.ts` module through a scoped `.ts` loader (CommonJS transpile, no bundler). */
+export function loadTsModule(relPath) {
   const ts = require('typescript');
   const Module = require('node:module');
   const extensions = Module._extensions;
@@ -48,11 +48,16 @@ export function loadTraces() {
     module._compile(outputText, filename);
   };
   try {
-    return require(path.join(REPO_ROOT, 'src/art/athleteTraces.ts'));
+    return require(path.join(REPO_ROOT, relPath));
   } finally {
     if (previous === undefined) delete extensions['.ts'];
     else extensions['.ts'] = previous;
   }
+}
+
+/** Load `src/art/athleteTraces.ts`. */
+export function loadTraces() {
+  return loadTsModule('src/art/athleteTraces.ts');
 }
 
 /** The README the corpus carries: what each file is and how to reproduce it. Generated, so `check` pins it too. */

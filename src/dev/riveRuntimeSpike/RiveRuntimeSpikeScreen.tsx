@@ -38,6 +38,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { LIFT_PALETTE } from '../../lift/liftPalette';
 import { AthleteAcceptanceScreen } from '../athleteAcceptance/AthleteAcceptanceScreen';
+import { OwnerPlaytestScreen } from '../athleteAcceptance/OwnerPlaytestScreen';
 import { useDevMode } from './devMode';
 import { RiveSpikeStage } from './RiveSpikeStage';
 import type { RiveSpikeStatus } from './riveSpikeTypes';
@@ -80,6 +81,11 @@ export function RiveRuntimeSpikeScreen(): React.ReactElement {
 
   if (mode === 'athlete-accept') {
     return <AthleteAcceptanceScreen />;
+  }
+  // The owner's play route: the real shell, athlete stage on the training
+  // squat, gate unflipped, fail-closed without the asset.
+  if (mode === 'owner-playtest') {
+    return <OwnerPlaytestScreen />;
   }
 
   return (

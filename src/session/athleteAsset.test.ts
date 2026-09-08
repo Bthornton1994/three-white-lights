@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
 const SOURCE = readFileSync(path.join(HERE, 'athleteAsset.ts'), 'utf8');
+const STATUS = readFileSync(path.join(HERE, 'athleteAssetStatus.ts'), 'utf8');
 const ATHLETE_FILE = path.join(REPO, 'assets', 'athlete', 'athlete-01.riv');
 
 function requiredPath(): string {
@@ -19,10 +20,18 @@ function requiredPath(): string {
   return m![1]!;
 }
 function placeholderFlag(): boolean {
-  const m = SOURCE.match(/export const ATHLETE_RIV_IS_PLACEHOLDER = (true|false);/);
+  const m = STATUS.match(/export const ATHLETE_RIV_IS_PLACEHOLDER = (true|false);/);
   expect(m, 'the flag is a literal boolean').not.toBeNull();
   return m![1] === 'true';
 }
+
+describe('athleteAssetStatus.ts — the flag lives in a module the player bundle can carry', () => {
+  it('has no require in it, and athleteAsset.ts re-exports it rather than declaring a second one', () => {
+    expect(STATUS).not.toMatch(/require\(/);
+    expect(SOURCE).toMatch(/export \{ ATHLETE_RIV_IS_PLACEHOLDER \} from '\.\/athleteAssetStatus';/);
+    expect(SOURCE, 'one definition of the flag').not.toMatch(/export const ATHLETE_RIV_IS_PLACEHOLDER/);
+  });
+});
 
 describe('athleteAsset.ts — the reference and the flag cannot move alone', () => {
   it('the flag is true exactly when the require points into assets/dev', () => {

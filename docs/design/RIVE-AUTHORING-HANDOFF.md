@@ -318,3 +318,96 @@ To print this document's schema from the code: `node tools/rivContract.mjs --man
   anywhere on the athlete, the bar or the plates.
 - Do not rename a path to something nicer; the host writes these exact
   strings.
+
+## 12. Body coherence — rejections, not notes (ruled 2026-09-08)
+
+The rig is a body that DEFORMS between poses; it never teleports between
+drawings. Each line is a rejection at intake (§15 below), on any frame of
+any scenario including the five misses:
+
+| Rule | What the rig must do | What is rejected |
+| --- | --- | --- |
+| Hands attached to the bar | Two-bone IK shoulder → grip point on `bar_shaft` (§6); the bar is `bar_anchor`'s child, so the hand cannot leave it | Any frame with daylight between a hand and the bar |
+| Bar coherent with the shoulders and back | `bar_root` is the trap anchor's child; it leads or lags the traps only through the authored `barForwardPx` / `barBendPx` / `barTiltDeg` inputs | The bar sliding on the back, floating above the traps, or moving on its own timeline |
+| Feet planted | `root` is mid-foot; `foot_near` / `foot_far` are IK targets that are never animated; the whole squat happens above them | Heel lift, a slide, a re-plant, feet leaving the floor line (`floorY` in the composition) |
+| Knees and hips believable | Knee tracks over the toes on a pole target; flexion inside §6's limits; the pelvis travels, the feet do not | Hyperextension, a knee that caves into a broken joint, a hip that drops without the knee bending |
+| Torso angle continuous | 10° at brace → 45° ± 5° at depth → ≤ 15° at lockout, as a function of `barHeight` (§5) | A step change between poses; the torso snapping at a phase boundary |
+| No floating limbs | Every limb is a child in the §6 hierarchy; nothing is keyed in world space | A forearm or shin that stays where it was while the body moves |
+| No whole-body scaling as motion | Depth comes from bone rotation and weighted-mesh deformation. Scale on `root`, `pelvis` or the artboard is not a squat | The body shrinking to "go down" or growing to "come up"; a perspective breath above 2 % on anything but the far limbs |
+| Deform, never swap | One drawing set, weighted to bones; a pose is reached by moving them | Two drawings for one body part (a top and a bottom) crossfaded — the JPEG swap this project rejected, in a different container |
+
+## 13. Motion beats → inputs → the corpus witness
+
+The ruling names nine beats. None is a clip the host names; each is what
+the rig does with the inputs it is given, and each is witnessed by a file
+in `docs/design/athlete-traces/` (the real mechanic, replayed by the
+acceptance harness — measured 2026-09-08 on the current corpus):
+
+| # | Beat | What the rig reads | Authored in | Witnessed by |
+| --- | --- | --- | --- | --- |
+| 1 | Setup / brace | `phase` brace, `barHeight` 1.0, `strain` rising, `held` | `pose` at 1.0 + `effort` | every trace, the opening ticks |
+| 2 | Descent | `phase` descent, `barHeight` falling, `barVelocity` < 0 with `motionSampleValid` | `pose` blend, descent intent | every trace |
+| 3 | Depth approach | `barHeight` → 0.2 (judged depth), `depth` → 1.0 | `pose` 0.2 key | clean make (min `barHeight` 0.03), grinding make, stalled, timeout, buried |
+| 4 | Authored bottom | `barHeight` ≈ 0 / `depth` ≥ 1; buried collapse on `depth` 1.0 → 1.3 | `pose` 0.0 key + the `depth` blend | clean / grinding / stalled at `depth` 0.97–0.98; buried at 1.31; timeout at 1.26 |
+| 5 | Reversal | `barVelocity` crosses from < 0 to > 0; `phase` hole → ascent | ascent intent blend | clean make tick 65, grinding make tick 91, stalled tick 91 |
+| 6 | Drive | `phase` ascent, `barVelocity` > 0, `integratorVelocity` | `pose` rising | clean make, grinding make, no-depth (cut high: min `barHeight` 0.52) |
+| 7 | Grind / stall | `grindIntensity` 0 → 1 in the stick band (`barHeight` ≈ 0.34), `effortBand` hard / grind / failing, `strain` to 0.91 | `grind` layer | grinding make (`grindIntensity` 1.0 over 231 ticks), stalled, timeout, no-depth |
+| 8 | Lockout | `lockedOut`, `phase` lockout, `complete`, `outcome` good-lift / grind | `pose` 1.0 + `resolution` | clean make, grinding make |
+| 9 | Failure | `complete` + `outcome` miss + `missReason` | `resolution` (§8) | no-depth, stalled, buried, timeout — `dropped` is authored, and whether the engine produces it is the mechanics lane's fact |
+
+`node tools/athleteTraces.mjs check` pins these files to the engine, so
+the witness column cannot drift from the mechanic without a red.
+
+## 14. Authoring environment — exact requirements, and why this one is not it
+
+**PRODUCTION ATHLETE AUTHORING = BLOCKED — RIVE EDITOR / ASSET AUTHOR
+REQUIRED.** Measured 2026-09-08 from the engineering sandbox: `rive.app`,
+`editor.rive.app` and `app.rive.app` answer `403` to CONNECT at the
+egress proxy, there is no display, and no authoring binary exists. What an
+author needs:
+
+- **The Rive editor** — web (`rive.app`) or desktop — with an account. It is
+  a GUI application; there is no headless authoring path, and by ruling no
+  generator, no format reverse-engineering and no renamed JSON / SVG stands
+  in for it.
+- **Data Binding** (ViewModels, enums, nested lists for the plate slots),
+  bones, weighted meshes, IK constraints, a state machine with layers and
+  blend states — all editor features, no plugin.
+- **A runtime format the shipped runtimes read.** Web: `@rive-app/canvas`
+  2.42.0 (through `@rive-app/react-canvas` 4.34.1). Native:
+  `@rive-app/react-native` 0.4.20, which resolves `rive-android` /
+  `RiveRuntime` at the versions its own `build.gradle` / podspec name
+  (`getRiveAndroidVersion()`, `RiveRuntimeIOSVersion`). A file exported
+  from an editor newer than the runtime reads fails at load, loudly — the
+  acceptance harness reports it as `RUNTIME_ERROR`, and the answer is the
+  editor's export target, never a hand-edited file. The provenance package
+  records the editor version beside the SHA-256.
+- **Exports:** `athlete-01.riv` (runtime file), `athlete-01.rev` (the
+  editor's backup), the reference sheet PNG, `ATHLETE-01-PROVENANCE.md`
+  (§1). Acceptance is §10's command, then §15.
+- **Skills:** character rigging in Rive (bones, meshes, IK) and
+  state-machine authoring against data-bound inputs, working from this
+  document and `ATHLETE-SOURCE-PACKAGE.md`. Nothing in either is
+  negotiable at delivery; a rejection goes back with the command's output.
+
+## 15. Intake inspection — steps 6 to 11, what the reviewer looks at
+
+Steps 0–5 of the intake (`ATHLETE-ASSET-PIPELINE.md` §12a) are mechanical:
+`node tools/athleteAccept.mjs --web`. Steps 6–11 are eyes on the screen,
+on two routes: the acceptance route replays the canonical corpus
+(`?dev-rive-spike=1&dev-mode=athlete-accept`); the owner-playtest route is
+the real session with the athlete stage under a dev-only override, gate
+unflipped (`?dev-rive-spike=1&dev-mode=owner-playtest`, ADR-001 §7).
+
+| Step | Look at | With | Reject on |
+| --- | --- | --- | --- |
+| 6 Deformation | every scenario, lockout against bottom | screenshots from the acceptance run, a ruler on limb lengths | any limb-length change; a thigh that thins at depth; a belt that stretches; a singlet welded to the torso |
+| 7 Hands / bar | every frame of every scenario | scrub the acceptance playback | daylight between hand and bar, or bar and traps, on any tick, including the misses |
+| 8 Feet / ground | every frame | the composition's floor guide on the acceptance route | heel lift, slide, re-plant, a foot off the floor line |
+| 9 Bottom / depth | clean make at its minimum `barHeight`; buried miss | the judged-depth line (§7) | hip crease above the knee at "depth"; the buried collapse reading as a scale rather than a fold |
+| 10 Grind | grinding make between reversal and lockout | `grindIntensity` in the probe beside the picture | tremor or creep that does not scale with intensity, or is non-zero at 0; a grind that looks like a slower good lift |
+| 11 Failure | no-depth, stalled, buried, timeout | the probe's `outcome` / `missReason` beside the picture | any miss that is the success frozen, reversed or merely truncated; two misses that look the same |
+
+A technical PASS from the harness is not a VISUAL pass. Only Bryant closes
+VISUAL, ANIMATION FEEL, SOFT FEEL and OWNER PLAYTEST; steps 6–11 are how he
+looks, not a claim this side can make.

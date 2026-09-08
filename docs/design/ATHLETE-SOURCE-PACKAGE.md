@@ -301,7 +301,7 @@ lane, and OWNER PLAYTEST is Bryant's alone.
 | --- | --- | --- |
 | The three views, the reference sheet, the silhouette render | No illustrator and no owned image pipeline in this environment; an AI-generated pose frame is a ruled rejection for the player path. | A human illustrator (or an owned/licensed image pipeline) drawing to §1–§9. |
 | The empty side-on room plate | Same. The existing plates are painted scenes with a lifter in them (§8). | Same, to §6 and §8. |
-| The rig and the `.riv` | No Rive editor here; by ruling no binary generator, no format reverse-engineering, no replacement format. | An editor author working from `docs/design/RIVE-AUTHORING-HANDOFF.md`; acceptance is `node tools/rivContract.mjs assets/athlete/athlete-01.riv --artboard squat`. |
+| The rig and the `.riv` | No Rive editor here — measured 2026-09-08: `rive.app`, `editor.rive.app` and `app.rive.app` answer 403 at the egress proxy, no display, no authoring binary; by ruling no binary generator, no format reverse-engineering, no replacement format, no diagnostic file promoted. **PRODUCTION ATHLETE AUTHORING = BLOCKED — RIVE EDITOR / ASSET AUTHOR REQUIRED.** | An editor author working from `docs/design/RIVE-AUTHORING-HANDOFF.md` (§14 there lists the exact environment); acceptance is `node tools/rivContract.mjs assets/athlete/athlete-01.riv --artboard squat`, then handoff §15. |
 
 Not blocked, and done: this specification; the handoff; the input manifest
 (`docs/design/athlete-rig-manifest.json`, pinned to the binding by test); the

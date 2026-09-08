@@ -17,8 +17,10 @@ diagnostic asset under sustained writes, resizes, a frozen tab, stalls,
 route cycles and in-page remounts; `docs/design/evidence/host-runtime-soak/`;
 not athlete performance); NATIVE_RUNTIME = **NOT RUN — `DEVICE_UNAVAILABLE`**
 (no Android phone exists, no emulator here; never inferred from the build);
-RIVE_NATIVE_DIAGNOSTIC = **NOT RUN** (no `.riv` has loaded on Android); ATHLETE = NOT BUILT
-(`ASSET_AUTHORING_BLOCKED`, §9); VISUAL / ANIMATION / SOFT-FEEL = NOT PASSED
+RIVE_NATIVE_DIAGNOSTIC = **NOT RUN** (no `.riv` has loaded on Android); ATHLETE = NOT BUILT —
+**PRODUCTION ATHLETE AUTHORING = BLOCKED, RIVE EDITOR / ASSET AUTHOR
+REQUIRED** (measured 2026-09-08: the editor hosts answer 403 at the egress
+proxy, no display, no authoring binary; `ASSET_AUTHORING_BLOCKED`, §9); VISUAL / ANIMATION / SOFT-FEEL = NOT PASSED
 and never self-claimed; OWNER PLAYTEST = Bryant's alone.
 **What closes it, exactly — BOTH, not either:** (1) the native runtime
 executing a real `.riv` on a device or simulator, and (2) an actual athlete
@@ -568,7 +570,38 @@ and the APK downloaded from the build page for build
 10. **When the athlete exists, the same route carries the acceptance mode:**
     `threewhitelights://?dev-rive-spike=1&dev-mode=athlete-accept` replays
     the canonical trace corpus through the real `AthleteStage` — intake
-    step 7 of `ATHLETE-ASSET-PIPELINE.md` §12a.
+    step 7 of `ATHLETE-ASSET-PIPELINE.md` §12a — and the owner's play
+    route, `threewhitelights://?dev-rive-spike=1&dev-mode=owner-playtest`:
+    the REAL shell and session with the training squat on the athlete
+    stage under a dev-only override, `ATHLETE_RIG.TRAINING_STAGE`
+    unflipped, failing closed to `athlete-asset-missing` while the asset
+    is absent (§12a step 7b).
+
+**After the production athlete is integrated — the native sequence, in
+this order (ruled 2026-09-08), none of it before real assets exist unless
+a native regression demands it:** (1) the disposable native preflight
+(`docs/design/evidence/android-prebuild-preflight/preflight.sh`) at the
+integration HEAD; (2) one fresh EAS Android development build from THAT
+HEAD — the executed build `29d41836` is historical evidence for its own
+source and proves nothing about the athlete HEAD; (3) the emulator or
+device launch above; (4) the Rive native diagnostic (steps 4–6, on the
+spike asset); (5) the athlete runtime (step 10, acceptance mode, all six
+scenarios); (6) the performance capture — `gfxinfo` on the target, and
+the same metric set the web harness records (mean FPS, p95, worst, long
+tasks, memory trend, one artboard / one state machine); (7) the owner /
+device playtest as available, on the owner-playtest route. NATIVE RUNTIME
+TECHNICAL is closeable from here on that evidence; VISUAL, ANIMATION
+FEEL, SOFT FEEL and OWNER PLAYTEST are not.
+
+**What the web performance capture measures, and what it cannot.** Per
+scenario: rAF gaps → mean FPS, mean / p95 / worst interval, frames over
+33 ms (`frameMetricsFrom`, tested); `PerformanceObserver` long tasks
+(count, total, worst); `performance.memory` samples → a least-squares
+MB/min trend (`memoryTrendFrom`, tested); the canvas count, which must
+read 1 for one artboard and one state machine. NOT measured: the Rive
+runtime's own advance and draw cost — `@rive-app/react-canvas` does not
+expose it, and the harness does not estimate it; long tasks are the
+honest proxy for main-thread cost. No screenshot-only claim is made.
 
 *Record:* `docs/design/evidence/native-runtime-smoke/` — `smoke.json`
 (target: emulator or device, model, Android API, the APK's build ID, each

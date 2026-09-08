@@ -1347,6 +1347,20 @@ export const ATHLETE_RIG = Object.freeze({
    * flip is this one value, in the commit that records the human grade.
    */
   TRAINING_STAGE: 'schematic' as TrainingStageKind,
+  /**
+   * The fail-closed panel the athlete arm draws when it is selected while
+   * `ATHLETE_RIV_IS_PLACEHOLDER` is still true (`trainingStageSelect.ts`):
+   * an explicit statement that the asset has not arrived, never the
+   * schematic, never a diagnostic file. Layout only.
+   */
+  ASSET_MISSING_PANEL: {
+    FONT_SIZE: 12,
+    PADDING: 16,
+    LINE_GAP: 6,
+    HEADING: 'ATHLETE ASSET MISSING',
+    LINE_ONE: 'assets/athlete/athlete-01.riv has not arrived.',
+    LINE_TWO: 'No schematic, no substitute — the stage fails closed until intake passes.',
+  },
 });
 
 /** The two things the training squat can draw; see `ATHLETE_RIG.TRAINING_STAGE`. */

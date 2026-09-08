@@ -232,6 +232,13 @@ rules so the two meet on one stage.
 - **Layer order, back to front:** room → rack → far-sleeve plates → athlete
   and bar (one rig) → near-sleeve plates → chalk. The near sleeve sits in
   front of the athlete so the bar reads as loaded, not as painted on.
+- **Equipment is persistent (ruled 2026-09-08).** The same bar every
+  session — 20 kg plus two 2.5 kg collars, `BAR_AND_COLLARS_KG` = 25 — the
+  same rack, the same room; 2200 mm of bar against a 1750 mm athlete
+  (source package §5). Plates are ATTACHED: a disc sits on the sleeve at its
+  slot pitch, its face toward the camera, its rim on the shaft. A disc
+  floating off the sleeve, a flat decorative circle, or a stack that grows
+  past the sleeve is a rejection at intake step 6, not a note.
 
 Nothing here needs a mechanical fact the contract does not carry.
 
@@ -413,6 +420,19 @@ bound ViewModel, a status line reading "bound", and zero changed pixels.
 - The silhouette test (§3) passed at the real on-screen size.
 - `.riv` plus editor source plus reference sheet, all owned or licensed.
 
+**Naming and versioning (ruled 2026-09-08).** `assets/athlete/athlete-01.riv`
+(runtime), `athlete-01.rev` (editor backup), `athlete-01-reference-sheet.png`,
+`ATHLETE-01-PROVENANCE.md` — those exact names; `tools/athleteIntake.mjs`
+reads them by name. A re-export of the same rig is a new SHA-256 line in the
+provenance, not a new version. A breaking rig change — a renamed or removed
+input, a changed enum, a changed artboard or state-machine name — bumps a
+suffix (`athlete-01-v2.riv`) and is a new intake from step 0; the host
+references one path (`src/session/athleteAsset.ts`) and the manifest
+(`docs/design/athlete-rig-manifest.json`) is regenerated in the same
+commit if the contract itself moved. The contract, not the file, is the
+versioned thing: any version must still pass `node tools/rivContract.mjs
+… --artboard squat` against the current `rigInputSpec()`.
+
 **None of these gates is closeable by an automated test.** Technical and
 integration evidence can be produced from here; VISUAL, ANIMATION and
 SOFT-FEEL cannot, and OWNER PLAYTEST is Bryant's alone.
@@ -442,8 +462,9 @@ own output.
 | 3 | Reject on non-zero | (the same command) | any non-zero is a rejection, verbatim, back to the author |
 | 4 | The squat state machine actually DRIVES | repoint `src/session/athleteAsset.ts` at the delivered file and flip `ATHLETE_RIV_IS_PLACEHOLDER` (`athleteAsset.test.ts` pins both); `tools/dev-web.sh`; `node tools/athleteAccept.mjs --web` — the dev-only harness (`?dev-rive-spike=1&dev-mode=athlete-accept`) replays the canonical trace corpus (`docs/design/athlete-traces/`) through the REAL `AthleteStage` and reads the canvas back per scenario | the canvas changes within every scenario; 0 changed pixels is BOUND, not DRIVEN (ADR-001 §7) — reject |
 | 5 | The REAL `LiftPresentationState` moves it | the same run: the harness hands the stage `LiftState` + history from the real mechanic, and its probe reports `barHeight` / `depth` / `phase` / `outcome` per tick; the stages call `liftPresentation(state, totalKg, prior)` and nothing else (`athleteRig.test.ts` pins it) | clean make, grinding make, no-depth, stalled, buried and timeout — six scenarios from the simulation alone, every ending shown |
-| 6 | Web performance | `node tools/athleteAccept.mjs --web` records rAF pacing per scenario at 390×844 (the readback the spike probe used) | 60 Hz over a full rep with the 43-input write; no frame over 33 ms while the scene draws |
+| 6 | Web performance | `node tools/athleteAccept.mjs --web` records, per scenario at 390×844: mean FPS, mean / p95 / worst frame interval, frames over 33 ms, main-thread long tasks, a `performance.memory` trend across the run (MB/min from a fit), and the canvas count — through the tested reducers in `src/dev/athleteAcceptance/frameMetrics.ts`, never a screenshot-only claim. The Rive runtime's own advance/draw cost is not exposed by `@rive-app/react-canvas` and is not estimated | near 60 FPS over a full rep with the 43-input write; no frame over 33 ms while the scene draws; one canvas (one artboard, one state machine); a flat heap |
 | 7 | Native performance | the EAS development build (build `29d41836-300d-4958-aec5-adbe4d920724`, already PASS) on an Android runtime target — a device, or an emulator for the mechanical half — same rep, through `threewhitelights://?dev-rive-spike=1&dev-mode=athlete-accept` (ADR-001 §7 has the exact procedure). No target exists today: `DEVICE_UNAVAILABLE` | installs, mounts, drives, survives unmount/remount and rotation, keeps pacing — a runtime fact, never inferred from the build; emulator pacing is labelled emulator, never device performance |
+| 7b | The owner's play route | `?dev-rive-spike=1&dev-mode=owner-playtest` on a web dev server, or the same query on the scheme link of a development build (ADR-001 §7): the REAL shell and session with the training squat drawing the athlete stage under a dev-only override (`src/session/athleteStageOverride.ts`), `ATHLETE_RIG.TRAINING_STAGE` unflipped. Without the asset the stage fails closed to `athlete-asset-missing` — never the schematic | Bryant plays ordinary sessions; the inspection is handoff §15 steps 6–11; SOFT FEEL and OWNER PLAYTEST are his to close and the tool claims nothing |
 | 8 | Mount as the squat player-path CANDIDATE | `ATHLETE_RIG.TRAINING_STAGE = 'athlete'` and the pin in `src/session/trainingStageGate.test.ts`, in the commit that records the grade | a human graded VISUAL / ANIMATION / SOFT-FEEL; OWNER PLAYTEST is Bryant's alone |
 
 The gate at step 8 is one tuning value (`src/art/spriteTuning.ts`), read by

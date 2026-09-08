@@ -2121,8 +2121,19 @@ const SHELL_SCANS = Object.freeze({
    * happens in a pure module rather than in a component, and every function it
    * calls belongs to `src/empire/`. `stepSession` and `stepMeetDay` stay banned
    * everywhere in this directory, `empireFloor.ts` included.
+   *
+   * 7 -> 8 when `src/dev/athleteAcceptance/OwnerPlaytestScreen.tsx` arrived:
+   * the mount walk finds it because it mounts `<AppShell>` — the REAL shell,
+   * under a React context override that selects the athlete stage arm — on
+   * the dev-only owner-playtest route (`?dev-rive-spike=1&dev-mode=owner-
+   * playtest`, `__DEV__` only, no `resolveEntry` arm). It feeds the shell a
+   * `location.search` read like `App.tsx` does, and it steps nothing: the
+   * guards below run over it exactly as they run over `App.tsx`. Registered
+   * here by the visual lane for an artifact it owns, under the registry
+   * ruling, and called out in CLAUDE.md because `src/shell/**` is a shared
+   * surface rather than one of the ruling's named registries.
    */
-  FILES: 7,
+  FILES: 8,
   /**
    * Names the router may not reach for: a state machine step, a progression
    * read, or a progression write. GDD §12.3 and CLAUDE.md's "client is a

@@ -10,14 +10,17 @@
  *
  * WHEN `assets/athlete/athlete-01.riv` LANDS (intake step 4, `docs/design/
  * ATHLETE-ASSET-PIPELINE.md` §12a): repoint the `require` at it and flip
- * `ATHLETE_RIV_IS_PLACEHOLDER` to `false` IN THE SAME COMMIT. The acceptance
- * harness (`src/dev/athleteAcceptance/`) reads the flag and reports
- * `ASSET_MISSING` instead of mounting a stage on a file that is not an
- * athlete; `athleteAsset.test.ts` pins the flag to the path and the path to
- * the file on disk, so neither can move alone.
+ * `ATHLETE_RIV_IS_PLACEHOLDER` (`athleteAssetStatus.ts` — a require-free
+ * module, so the player-path stage can read it without bundling this file)
+ * to `false` IN THE SAME COMMIT. The acceptance harness
+ * (`src/dev/athleteAcceptance/`) reads the flag and reports `ASSET_MISSING`
+ * instead of mounting a stage on a file that is not an athlete; the training
+ * stage's athlete arm fails closed on it; `athleteAsset.test.ts` pins the
+ * flag to the path and the path to the file on disk, so neither can move
+ * alone.
  */
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 export const ATHLETE_RIV_ASSET: number = require('../../assets/dev/rive-spike.riv');
 
-/** True while `ATHLETE_RIV_ASSET` is the placeholder, not `assets/athlete/athlete-01.riv`. */
-export const ATHLETE_RIV_IS_PLACEHOLDER = true;
+/** One definition, in the require-free module; re-exported here for the stages and the harness. */
+export { ATHLETE_RIV_IS_PLACEHOLDER } from './athleteAssetStatus';

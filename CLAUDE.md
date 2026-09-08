@@ -985,6 +985,76 @@ module, not an edit). Own-lane files that move:
 Rive architecture change; no mechanics change; `TRAINING_STAGE` not
 flipped; PR #48 not merged.
 
+**Done the same day, and what it measured.** Filed at `4f92dafc`; the work
+is the commit after it. `tsc` clean. The touched-file set — 18 files, 335
+tests — reads 17 green and the inherited `realIp` pair (the open-results
+project name in code position in `AppShell.tsx` / `shellWiring.test.ts`,
+183 vs 180, unchanged in nature); `guaranteeTags` census unmoved;
+`streakEntitlement` and `devServerSentinel` red only on their inherited
+findings. Three things the filing above said "no shared file moves" about
+turned out to need a census row, and each is called out here rather than
+left to the diff:
+
+- **`src/shell/shellWiring.test.ts` `SHELL_SCANS.FILES` 7 → 8.** The
+  shell's mount walk finds every file that mounts `<AppShell>`, and the
+  owner-playtest screen does — that is the whole point of the route: the
+  REAL shell, under a React context override, on a dev-only query. The
+  screen feeds the shell a `location.search` read exactly as `App.tsx`
+  does (the first draft passed `null` and the twin guard reddened three
+  ways, correctly), and every guard the walk runs over `App.tsx` now runs
+  over it. One count in a `src/shell/` test, registering an artifact this
+  lane owns, under the registry ruling's five conditions — and flagged
+  because `src/shell/**` is a shared surface, not a named registry; the
+  precedent is the fifth entry's `athleteAccept.mjs` row.
+- **`src/session/athleteAssetStatus.ts`, split out of `athleteAsset.ts`.**
+  `TrainingLiftStage.tsx` needs the placeholder flag to fail closed, and
+  `athleteAsset.ts` carries the `require('../../assets/dev/rive-spike.riv')`
+  the flag describes — importing it would put the diagnostic `.riv` on the
+  player bundle. The flag lives in a require-free module, `athleteAsset.ts`
+  re-exports it, and `athleteAsset.test.ts` pins both halves (no `require(`
+  in the status module; the re-export in the asset module).
+- **`tools/testPathRefs.test.ts` 427 → 434 / 130 → 132** for the seven new
+  files. `src/tuning/*` untouched: the seven reducer constants and the
+  panel copy live in already-registered blocks (`ACCEPTANCE_METRICS` in the
+  spike's `local` home, `ATHLETE_RIG.ASSET_MISSING_PANEL` in
+  `spriteTuning.ts`) — the audit found seven bare literals in the first
+  draft, including the `01` in a JSX text node, and all seven moved.
+
+**What the route is, exactly, so nobody reads it as a flip.** `?dev-rive-
+spike=1&dev-mode=owner-playtest` (the existing gate, one more `dev-mode`
+value, `App.tsx` untouched, no `resolveEntry` arm) renders `AppShell`
+inside `AthleteStageOverrideContext.Provider value="athlete"`;
+`trainingStageGate.test.ts` walks `src/` and pins that provider to exactly
+one file, `src/dev/athleteAcceptance/OwnerPlaytestScreen.tsx`. Production
+mounts no provider, the context defaults to `null`, `selectTrainingStageArm`
+reads `override ?? gate`, and the gate is `'schematic'` — so the player
+path is byte-for-byte what it was. On the route, with the asset still the
+placeholder, the squat stage renders the `athlete-asset-missing` panel
+(`ATHLETE_RIG.ASSET_MISSING_PANEL`, naming `assets/athlete/athlete-01.riv`)
+and nothing else: no schematic, no substitute, no diagnostic file. The
+selector's 36-case table is walked in `trainingStageSelect.test.ts`.
+
+**What the performance capture measures, stated with its limit.**
+`tools/athleteAccept.mjs --web` now records, per scenario, rAF frame gaps
+reduced through `frameMetricsFrom` (frames, mean ms, mean FPS, p95 nearest-
+rank, worst, over-33 ms), long tasks, `performance.memory` samples reduced
+through `memoryTrendFrom` (start/end/delta MB, least-squares slope per
+minute), and the canvas count — with a FAIL on any reached scenario that
+mounts other than one canvas. The reducers are tested in
+`frameMetrics.test.ts` and loaded into the tool through the shared
+`loadTsModule` so there is one copy. Rive's own advance/draw cost is not
+exposed by `@rive-app/react-canvas` and is recorded as NOT MEASURABLE, not
+estimated. No number is claimed from this round: the athlete arm has no
+asset, so the harness still exits 2 `ASSET_MISSING` before any scenario
+mounts (`tools/athleteAccept.test.ts`).
+
+**Still not done, and not claimed:** no athlete `.riv` / `.rev` /
+reference sheet / provenance; no room plate; no native runtime; no fresh
+EAS build from this HEAD (owner's, per the fourth entry's addendum); no
+VISUAL, ANIMATION or SOFT-FEEL gate moves; bench and deadlift blocked;
+`ATHLETE_RIG.TRAINING_STAGE` still `'schematic'`; PR #48 not merged;
+nothing merged anywhere. RIVE stays PROVISIONAL.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion

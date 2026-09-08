@@ -20,7 +20,9 @@ describe('devModeRequestedBy — the second key on the spike route', () => {
     expect(devModeRequestedBy('threewhitelights://?dev-rive-spike=1&dev-mode=athlete-accept')).toBe('athlete-accept');
     expect(devModeRequestedBy('threewhitelights://x/y?dev-mode=athlete-accept&dev-rive-spike=1#f')).toBe('athlete-accept');
     expect(DEV_MODE_QUERY_KEY).toBe('dev-mode');
-    expect([...DEV_MODES]).toEqual(['athlete-accept', 'spike-cycle']);
+    expect([...DEV_MODES]).toEqual(['athlete-accept', 'spike-cycle', 'owner-playtest']);
+    expect(devModeRequestedBy('?dev-rive-spike=1&dev-mode=owner-playtest')).toBe('owner-playtest');
+    expect(devModeRequestedBy('threewhitelights://?dev-rive-spike=1&dev-mode=owner-playtest')).toBe('owner-playtest');
     expect(devModeRequestedBy('?dev-rive-spike=1&dev-mode=spike-cycle')).toBe('spike-cycle');
   });
 

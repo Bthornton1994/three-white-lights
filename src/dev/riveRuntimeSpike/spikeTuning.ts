@@ -65,6 +65,27 @@ export const SPIKE_LAYOUT = Object.freeze({
   HEADING_GAP: 8,
   STATUS_SIZE: 12,
   STATUS_GAP: 12,
+  /** The owner-playtest strip over the real shell: readable, and clearly not part of the game. */
+  OWNER_STRIP_OPACITY: 0.85,
+});
+
+/**
+ * The acceptance harness's metric DEFINITIONS (`src/dev/athleteAcceptance/
+ * frameMetrics.ts`, tested): what counts as a dropped frame, which
+ * percentile is reported, and the unit conversions. Definitions, not knobs —
+ * changing `DROPPED_FRAME_MS` changes what the record calls a drop, so it is
+ * pinned here where the record's reader can find it.
+ */
+export const ACCEPTANCE_METRICS = Object.freeze({
+  /** Two 60 Hz frames: a gap past this is a dropped frame. */
+  DROPPED_FRAME_MS: 33,
+  /** The percentile the record reports beside mean and worst. */
+  P95: 0.95,
+  MS_PER_SECOND: 1000,
+  MS_PER_MINUTE: 60_000,
+  BYTES_PER_MB: 1_048_576,
+  /** Two decimals in the record. */
+  ROUND: 100,
 });
 
 /**

@@ -409,8 +409,14 @@ const PINNED = Object.freeze({
    * 425 -> 427 with the owner-supplied EAS cloud build record,
    * `docs/design/evidence/eas-cloud-build/` (README, `build.json`). No test
    * file among them; `TEST_FILES` stays 130.
+   *
+   * 427 -> 434 with the owner-playtest route and the fail-closed stage
+   * selector: `src/dev/athleteAcceptance/OwnerPlaytestScreen.tsx`,
+   * `frameMetrics.ts` (+ test), `src/session/athleteAssetStatus.ts`,
+   * `athleteStageOverride.ts`, `trainingStageSelect.ts` (+ test). Two test
+   * files, so `TEST_FILES` 130 -> 132.
    */
-  SCANNED_FILES: 427,
+  SCANNED_FILES: 434,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -493,8 +499,11 @@ const PINNED = Object.freeze({
    * (SCANNED_FILES 421).
    *
    * 129 -> 130 with `src/session/athleteComposedStage.test.ts` (SCANNED_FILES 425).
+   *
+   * 130 -> 132 with `src/dev/athleteAcceptance/frameMetrics.test.ts` and
+   * `src/session/trainingStageSelect.test.ts` (SCANNED_FILES 434).
    */
-  TEST_FILES: 130,
+  TEST_FILES: 132,
 });
 
 /**

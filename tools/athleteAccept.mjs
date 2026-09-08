@@ -46,6 +46,7 @@ import { existsSync, mkdirSync, readdirSync, writeFileSync, writeSync } from 'no
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { loadTsModule } from './athleteTraces.mjs';
 import { gateDevServer } from './devServerSentinel.mjs';
 import { armFreshLifterPerBoot } from './freshLifterBoundary.mjs';
 
@@ -194,6 +195,8 @@ async function webSmoke() {
       return { verdict: 'FAIL', detail: report.status };
     }
     // PLAYING: follow each scenario through the probe, reading the canvas back.
+    const frameMetrics = loadTsModule('src/dev/athleteAcceptance/frameMetrics.ts');
+    const memorySamples = [];
     const ids = report.probe.scenarioIds ?? [];
     for (const id of ids) {
       const deadline = Date.now() + 120_000;
@@ -225,22 +228,39 @@ async function webSmoke() {
           }
           return { width: canvas.width, height: canvas.height, totalPixels: previous.length / 4, changedPerSample: samples, maxChanged: Math.max(...samples) };
         });
-        entry.framePacing = await page.evaluate(() => new Promise((resolve) => {
-          const gaps = []; let last = performance.now(); const end = last + 2000;
+        // Raw samples out of the page; the arithmetic is `frameMetricsFrom` /
+        // `memoryTrendFrom` (src/dev/athleteAcceptance/frameMetrics.ts, tested),
+        // loaded once below — no second copy of the formula lives in this tool.
+        const raw = await page.evaluate(() => new Promise((resolve) => {
+          const gaps = []; const longTasks = []; const memory = [];
+          const mem = () => (performance.memory ? { tMs: performance.now(), bytes: performance.memory.usedJSHeapSize } : null);
+          let observer = null;
+          try {
+            observer = new PerformanceObserver((list) => { for (const e of list.getEntries()) longTasks.push(+e.duration.toFixed(1)); });
+            observer.observe({ type: 'longtask', buffered: false });
+          } catch { observer = null; }
+          const m0 = mem(); if (m0) memory.push(m0);
+          let last = performance.now(); const end = last + 2000;
           function tick(now) { gaps.push(now - last); last = now; if (now < end) requestAnimationFrame(tick); else finish(); }
           function finish() {
             gaps.shift();
-            const sorted = [...gaps].sort((a, b) => a - b);
-            const q = (p) => sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
-            resolve({ frames: gaps.length, meanMs: +(gaps.reduce((a, b) => a + b, 0) / gaps.length).toFixed(2), p95Ms: +q(0.95).toFixed(2), maxMs: +Math.max(...gaps).toFixed(2), over33ms: gaps.filter((g) => g > 33).length });
+            if (observer) observer.disconnect();
+            const m1 = mem(); if (m1) memory.push(m1);
+            resolve({ gaps, longTasks, memory, canvases: document.querySelectorAll('canvas').length, memoryApi: performance.memory ? 'performance.memory' : null });
           }
           requestAnimationFrame(tick);
         }));
+        entry.framePacing = { ...frameMetrics.frameMetricsFrom(raw.gaps), longTasks: raw.longTasks.length, longTaskMs: +raw.longTasks.reduce((a, b) => a + b, 0).toFixed(1), worstLongTaskMs: raw.longTasks.length ? Math.max(...raw.longTasks) : 0 };
+        entry.canvases = raw.canvases;
+        entry.memory = raw.memory;
+        memorySamples.push(...raw.memory);
         entry.probeAfter = await readProbe();
         await page.screenshot({ path: path.join(out, `${id}.png`) });
       }
       report.scenarios.push(entry);
     }
+    report.memoryTrend = frameMetrics.memoryTrendFrom(memorySamples);
+    report.performance = summarisePerformance(report.scenarios, report.memoryTrend);
     finish(report, consoleLines, pageErrors);
     await browser.close();
     const unreached = report.scenarios.filter((s) => !s.reached).map((s) => s.scenario);
@@ -250,13 +270,27 @@ async function webSmoke() {
     if (unreached.length > 0) return { verdict: 'FAIL', detail: `scenarios never reached: ${unreached.join(', ')}` };
     if (bound.length > 0) return { verdict: 'FAIL', detail: `BOUND, not DRIVEN — 0 changed pixels on: ${bound.join(', ')}` };
     if (slow.length > 0) return { verdict: 'FAIL', detail: `frames over 33 ms on: ${slow.join(', ')}` };
-    return { verdict: 'PASS', detail: `${report.scenarios.length} scenarios driven; canvas moved on each; no frame over 33 ms; 0 page errors` };
+    const extraCanvases = report.scenarios.filter((s) => s.reached && s.canvases !== 1).map((s) => `${s.scenario}=${s.canvases}`);
+    if (extraCanvases.length > 0) return { verdict: 'FAIL', detail: `one artboard and one state machine means ONE canvas; read: ${extraCanvases.join(', ')}` };
+    return { verdict: 'PASS', detail: `${report.scenarios.length} scenarios driven; canvas moved on each; no frame over 33 ms; one canvas throughout; 0 page errors; ${report.performance}` };
   } catch (err) {
     report.failure = String(err?.message ?? err);
     finish(report, consoleLines, pageErrors);
     await browser.close();
     return { verdict: 'FAIL', detail: report.failure };
   }
+}
+
+/** One line of the numbers the ruling asks for — never a screenshot-only claim. */
+function summarisePerformance(scenarios, memoryTrend) {
+  const paced = scenarios.filter((s) => s.framePacing);
+  if (paced.length === 0) return 'no pacing samples';
+  const fps = paced.map((s) => s.framePacing.meanFps);
+  const p95 = Math.max(...paced.map((s) => s.framePacing.p95Ms));
+  const worst = Math.max(...paced.map((s) => s.framePacing.worstMs));
+  const longTasks = paced.reduce((a, s) => a + s.framePacing.longTasks, 0);
+  const mem = memoryTrend ? `heap ${memoryTrend.startMb}→${memoryTrend.endMb} MB (${memoryTrend.slopeMbPerMin} MB/min)` : 'heap n/a';
+  return `mean FPS ${Math.min(...fps)}–${Math.max(...fps)}, p95 ${p95} ms, worst ${worst} ms, long tasks ${longTasks}, ${mem}, canvases ${[...new Set(paced.map((s) => s.canvases))].join('/')}`;
 }
 
 function finish(report, consoleLines, pageErrors) {
