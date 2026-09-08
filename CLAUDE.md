@@ -601,6 +601,16 @@ the inherited pair; `src/tuning/*` untouched. Inherited reds unchanged.
 executed; no athlete `.riv`; no VISUAL, ANIMATION or SOFT-FEEL gate moves;
 bench and deadlift blocked; PR #48 not merged; RIVE stays PROVISIONAL.
 
+**Addendum, filed before the edit, 2026-09-08 — `app.json` identity.** Human
+ruling at `3c7c8fa5`: the EAS project must not be created under the generic
+`name: "app"` / `slug: "app"`. The visual lane changes exactly two values in
+`app.json` — `name` → `Three White Lights`, `slug` → `three-white-lights` —
+and nothing else; `scheme` and `android.package` stay as filed above. This
+is the one shared-file edit of the identity round; `eas init` (which writes
+`extra.eas.projectId`) is not run until this commit exists and Expo
+authentication is present, and that later edit is reviewed rather than
+accepted wholesale.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion
