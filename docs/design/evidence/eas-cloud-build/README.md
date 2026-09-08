@@ -36,6 +36,13 @@ again.
 | NATIVE_RUNTIME | **NOT RUN — DEVICE_UNAVAILABLE.** No Android phone exists; no emulator in this sandbox. A green build is not a running runtime, and this record is never read as one. |
 | RIVE_NATIVE_DIAGNOSTIC | **NOT RUN.** Whether `@rive-app/react-native` loads a `.riv`, binds a ViewModel and draws on Android is unmeasured. |
 
+## Status after the `expo-system-ui` change (`083a8c8f`)
+
+| | |
+| --- | --- |
+| LATEST EXECUTED NATIVE BUILD | **PASS** at its recorded source — build `29d41836-300d-4958-aec5-adbe4d920724`, taken from the visual branch at the link commit `02aceea4` |
+| CURRENT HEAD NATIVE BUILD | **NOT RE-RUN** — `083a8c8f` adds `expo-system-ui` and its config plugin, a native dependency/config change, so the old APK does not prove the new HEAD builds. Not a failure. The next fresh EAS development build is taken from the then-current approved visual HEAD when an Android runtime target exists, or before native runtime acceptance. |
+
 **Not claimed:** native Rive success; device performance; the deep link
 opening the spike on a device; any measurement taken from the APK. The
 procedure that would take those measurements — on an emulator or a

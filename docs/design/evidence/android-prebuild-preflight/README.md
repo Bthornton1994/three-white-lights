@@ -6,8 +6,11 @@ generated `android/` read and thrown away; the repository's gitignored
 `android/` stays absent). `preflight.json` is the machine record;
 `prebuild-output.txt` is the command's own output. `measuredAt` in the record is the
 commit the copy was taken from — re-taken at `02aceea4`, the EAS project-link
-commit, after `owner` and `extra.eas.projectId` landed in `app.json`: the
-record and the output came back byte-identical apart from the stamp.
+commit, after `owner` and `extra.eas.projectId` landed in `app.json` (the
+record and the output came back byte-identical apart from the stamp), and
+again at `083a8c8f`, after `expo-system-ui` landed: the only changes are the
+new `systemUi` field reading `light`, `expo-system-ui` in the Expo module
+list, and the `userInterfaceStyle` warning gone.
 
 **What this is not:** a native build. No Gradle ran here, no APK was produced
 here, no device saw anything. NATIVE_BUILD is the owner's EAS cloud build —
@@ -28,17 +31,19 @@ flow, a library that did not autolink.
 | `MainActivity` | exported, LAUNCHER intent, BROWSABLE VIEW intent, portrait |
 | Rive + Nitro | `@rive-app/react-native` 0.4.20 and `react-native-nitro-modules` 0.35.10 both in the React Native autolinking config with their `android/` source dirs |
 | Dev client | `expo-dev-client` 57.0.18, `expo-dev-launcher`, `expo-dev-menu` resolved by Expo autolinking; `EX_DEV_CLIENT_NETWORK_INSPECTOR=true` |
+| `userInterfaceStyle` | `expo-system-ui` 57.0.3 resolved by Expo autolinking and its config plugin run (`"plugins": ["expo-system-ui"]`); the generated `strings.xml` carries `expo_system_ui_user_interface_style = light` (`systemUi.userInterfaceStyle` in the record) — the setting Android used to ignore |
 | Architecture | `newArchEnabled=true`, `hermesEnabled=true`, four ABIs |
 | Updates | `expo.modules.updates.ENABLED=false` (no OTA in a dev build) |
 
 ## Warnings, reported and deliberately not fixed
 
-- `» android: userInterfaceStyle: Install expo-system-ui in your project to
-  enable this feature.` — `app.json` sets `userInterfaceStyle`; without
-  `expo-system-ui` Android ignores it. Repository-owned. Not fixed tonight
-  because the fix is a new dependency, and the night ruling moves no
-  dependency the native build does not need. Owner's call: add
-  `expo-system-ui` or drop the key.
+- **CLOSED at `083a8c8f`, by ruling.** The night's record read `» android:
+  userInterfaceStyle: Install expo-system-ui in your project to enable this
+  feature.` — `app.json` sets `userInterfaceStyle`; without `expo-system-ui`
+  Android ignores it. Repository-owned; not fixed that night because the fix
+  is a new dependency the night ruling did not authorise. Authorised the next
+  day: `expo-system-ui` at the SDK pin plus the explicit plugin entry, and
+  this re-take shows the warning gone and the light style written.
 - `› Using react-native@0.86.2 instead of recommended react-native@0.86.0.` —
   Expo SDK 57's recommendation versus the installed patch. Informational.
 - Prebuild rewrites the copy's `package.json` scripts (`expo start --android`

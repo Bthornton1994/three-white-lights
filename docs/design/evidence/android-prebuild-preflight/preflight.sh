@@ -59,6 +59,8 @@ const record = {
     updatesEnabled: (manifest.match(/expo\.modules\.updates\.ENABLED" android:value="([^"]+)"/) || [])[1] ?? null,
     screenOrientation: (manifest.match(/android:screenOrientation="([^"]+)"/) || [])[1] ?? null,
   },
+  // expo-system-ui's Android plugin writes the style as a strings.xml item; null = the plugin did not run.
+  systemUi: { userInterfaceStyle: (strings.match(/name="expo_system_ui_user_interface_style"[^>]*>([^<]+)</) || [])[1] ?? null },
   gradleProperties: { newArchEnabled: prop('newArchEnabled'), hermesEnabled: prop('hermesEnabled'), reactNativeArchitectures: prop('reactNativeArchitectures'), devClientNetworkInspector: prop('EX_DEV_CLIENT_NETWORK_INSPECTOR'), edgeToEdgeEnabled: prop('edgeToEdgeEnabled') },
   autolinking: {
     reactNativeLibraries: Object.keys(rn.dependencies ?? {}).sort(),

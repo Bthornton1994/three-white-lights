@@ -4,7 +4,7 @@
     "NATIVE_BUILD",
     "NATIVE_RUNTIME"
   ],
-  "measuredAt": "02aceea4d8ed8b3db5deb457ac37f0e8e5629d81",
+  "measuredAt": "083a8c8fe0e6e6af0bcee8d7fc0ea60b211e21cf",
   "prebuildExit": 0,
   "identity": {
     "namespace": "com.threewhitelights.app",
@@ -25,6 +25,9 @@
     "browsableViewIntent": true,
     "updatesEnabled": "false",
     "screenOrientation": "portrait"
+  },
+  "systemUi": {
+    "userInterfaceStyle": "light"
   },
   "gradleProperties": {
     "newArchEnabled": "true",
@@ -69,6 +72,7 @@
       "expo-modules-core",
       "expo-router",
       "expo-status-bar",
+      "expo-system-ui",
       "expo-updates-interface"
     ],
     "rive": true,
@@ -84,8 +88,7 @@
     "expo": "57.0.9"
   },
   "warnings": [
-    "› Using react-native@0.86.2 instead of recommended react-native@0.86.0.",
-    "» android: userInterfaceStyle: Install expo-system-ui in your project to enable this feature."
+    "› Using react-native@0.86.2 instead of recommended react-native@0.86.0."
   ],
   "filesGenerated": [
     ".gitignore",

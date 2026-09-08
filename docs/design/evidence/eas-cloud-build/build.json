@@ -26,5 +26,15 @@
     "any measurement taken from the APK"
   ],
   "sourceCommitOnBuildPage": null,
-  "sourceCommitNote": "the commit EAS stamped on the build page was not read from this sandbox; the build is reported by its owner as taken from the visual branch at the link commit above"
+  "sourceCommitNote": "the commit EAS stamped on the build page was not read from this sandbox; the build is reported by its owner as taken from the visual branch at the link commit above",
+  "latestExecutedNativeBuild": {
+    "status": "PASS",
+    "easBuildId": "29d41836-300d-4958-aec5-adbe4d920724",
+    "source": "visual branch at the link commit 02aceea4 (owner-reported)"
+  },
+  "currentHeadNativeBuild": {
+    "status": "NOT_RE_RUN",
+    "since": "083a8c8f — expo-system-ui dependency and config plugin added",
+    "note": "not a failure; the executed APK does not prove the new HEAD builds; next fresh EAS development build when an Android runtime target exists or before native runtime acceptance"
+  }
 }

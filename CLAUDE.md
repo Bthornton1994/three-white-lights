@@ -880,6 +880,53 @@ under the registry ruling's five conditions and flagged because
 registries. If a human reads it as a crossing, it is one filed in the
 same commit as the edit, and is recorded here as such rather than hidden.
 
+**Done, and what it measured.** Filed at `e188fa41`; the isolated config
+fix is `083a8c8f` (three shared files, nothing else); the boundary fix
+above is `bda7df2a`; the evidence follows. `npx expo install` was blocked
+exactly as recorded for `expo-dev-client` (Expo's API answers Forbidden
+through the proxy), so `npm install expo-system-ui@~57.0.2` did it —
+**57.0.3 installed**, the lock moving for that package and its one nested
+dependency only; `expo` and `react-native` untouched. `app.json` gains
+`"plugins": ["expo-system-ui"]` and nothing else; every identity value
+parsed back byte-identical, `userInterfaceStyle` still `light`. Proof the
+warning is gone, from two instruments: `expo config --type introspect`
+resolves the plugin with an empty stderr and writes the `strings.xml`
+item `expo_system_ui_user_interface_style = light` (`translatable:
+false`); the disposable prebuild re-taken at `083a8c8f` exits 0, its
+`warnings` array is down to the informational React Native patch note,
+the record's new `systemUi.userInterfaceStyle` reads `light`, and
+identity, schemes, Rive + Nitro autolinking, the dev client and every
+version are byte-identical to the night's record. `npm audit`'s package
+set is identical before and after (19 advisories, same names). `tsc`
+clean.
+
+**One finding outside this change, reported and not acted on:** the CI
+audit gate (`.github/scripts/audit-gate.mjs`, pinned 2026-08-13) reads
+two leaf advisories beyond its three-GHSA remainder —
+`GHSA-6gmq-8vp8-gcm6` on `@xmldom/xmldom` (reached through `expo` →
+`@expo/cli` and `@expo/config-plugins`) and `GHSA-vcc3-ghjq-m6fr` on
+`decode-uri-component` (through `expo-router` → `query-string`). Neither
+package is reachable from `expo-system-ui`, both were in the audit set
+before this install, and the gate fires only on `claude/agent-config-
+setup-m2r6ny`. Newer advisories against pre-existing transitives; the
+allowlist is `.github/` stewardship and is not edited from this lane.
+
+**Native build status, precisely:** the executed EAS build `29d41836`
+stays **PASS at its recorded source** (the branch at `02aceea4`). The
+current HEAD is **NOT RE-RUN** after the `expo-system-ui`
+dependency/config change — not a failure; the old APK is not read as
+proof the new HEAD builds. The next fresh EAS development build is taken
+from the then-current approved visual HEAD when an Android runtime target
+exists, or before native runtime acceptance.
+
+**FROZEN.** Session A visual engineering invents no further work package.
+Remaining blockers are external: `athlete-01.riv`, `athlete-01.rev`, the
+reference sheet, `ATHLETE-01-PROVENANCE.md`, the empty side-on room plate,
+an Android runtime target. Not done, not claimed: no placeholder athlete;
+bench and deadlift not started; Rive architecture unchanged; mechanics
+untouched; `ATHLETE_RIG.TRAINING_STAGE` still `'schematic'`; PR #48 not
+merged.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion

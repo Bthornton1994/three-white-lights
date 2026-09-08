@@ -5,7 +5,5 @@
 - Updating package.json
 ✔ Updated package.json
 - Running prebuild
-» android: userInterfaceStyle: Install expo-system-ui in your project to enable this feature.
-- Running prebuild
 ✔ Finished prebuild
 PREBUILD_EXIT=0
