@@ -103,7 +103,7 @@ Torso angle and shin angle are from vertical; hip is the hip joint's height
 above the floor. **Bar over mid-foot at every key** (horizontal offset from
 the mid-foot origin within ±20 mm) except the buried collapse.
 
-| `barHeight` | Beat | bar drop from lockout (mm) | bar canvas y | torso | shin | hip joint (mm) | what must read |
+| `barHeight` (`depth` for the buried row — `barHeight` is clamped at 0 there) | Beat | bar drop from lockout (mm) | bar canvas y | torso | shin | hip joint (mm) | what must read |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1.00 | brace / lockout | 0 | 553 | 10° | 5° | 930 | Already under load: air in, belt tight, ribs down. |
 | 0.75 | early descent | 180 | 657 | 20° | 15° | 781 | Hips back and down, knees start forward. |
@@ -111,7 +111,7 @@ the mid-foot origin within ±20 mm) except the buried collapse.
 | 0.34 | **the stick** (`STICK.HEIGHT_FRAC`, `src/art/spriteTuning.ts`) | 475 | 827 | 30° descending / **36° ascending** | 28° | 539 | On the way up: hips rise ahead of the chest, torso briefly closes, bar speed near zero. The grind's home. |
 | 0.20 | **judged depth** (`DEPTH_LEGAL.squat 0.8`, `src/game/liftTuning.ts`) | 576 | 885 | 31° | 30° | **428** | Hip joint at or below the knee joint (knee joint 435 mm with the shin at 30°); the hip crease is visibly below the top of the knee. `depthAchieved` flips here; it must be legible at phone size. |
 | 0.00 | **the hole** (`DEPTH_IDEAL.squat 1.0`) | 720 | 968 | **45° ± 5°** | 35° | **362** | Maximum lean, maximum knee flexion, shins forward, hip 54 mm below the knee joint. |
-| −0.30 | **buried** (`DEPTH_COLLAPSE.squat 1.3`) | 936 | 1093 | 60° | 35° | ≈ 250 | Collapse, not a deeper squat: the athlete folds, the bar rolls forward of mid-foot by ~150 mm. This is the `buried` miss's picture, authored as failure. |
+| `depth` 1.30 (`barHeight` 0) | **buried** (`DEPTH_COLLAPSE.squat 1.3`) | 936 | 1093 | 60° | 35° | ≈ 250 | Collapse, not a deeper squat: the athlete folds, the bar rolls forward of mid-foot by ~150 mm. This is the `buried` miss's picture, authored as failure. Keyed on `depth`: the contract clamps `barHeight` to 0..1, so nothing below the hole reaches the rig through it. |
 
 Derivation, so an illustrator can check it rather than trust it: bar drop =
 hip drop + torso height lost to lean, where the lost height is
@@ -197,7 +197,7 @@ hole and lockout lines.
 | Sticking band (`0.34 ± 0.14`) | centre 827, band 769 … 885 | 993, 895 … 1093 | Where the simulation's stall lives (`STICK` in `spriteTuning.ts`); the grind pose is authored here. |
 | Judged depth (`barHeight = 0.2`) | 885 | 828 | Hip joint at/below the knee joint. The sport's fact. |
 | Hole (`barHeight = 0`) | 968 | 748 | The authored bottom. |
-| Buried (`barHeight = −0.3`) | 1093 | 532 | Collapse. |
+| Buried (`depth = 1.3`, `barHeight = 0`) | 1093 | 532 | Collapse. |
 | Crown at lockout | 390 | 1750 | The athlete's height on the canvas: 1010 px. |
 
 The sticking band's lower edge and the judged-depth line coincide

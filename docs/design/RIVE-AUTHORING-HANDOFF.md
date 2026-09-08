@@ -40,9 +40,15 @@ ViewModel — so this document cannot drift from the code without a red test.
 | Scale | **0.577 px per mm** — the 1750 mm athlete stands **1010 px** tall, crown at y ≈ 390 |
 | Sprite-px → canvas-px | **× 16.8** (the sim's bar offsets arrive in a 60-px-tall sprite unit; 1010 / 60) |
 
-`barHeight` may clip below 0 (a buried descent, down to about −0.3 → y ≈ 1093)
-and fractionally above 1 (a lockout overshoot). Author the pose blend to
-extrapolate gracefully for a short way past both lines rather than clamping.
+`barHeight` is CLAMPED to 0..1 by the contract (`clamp01(1 − depth)` in the
+sim) — it never reads below 0 or above 1. A buried descent is carried by
+`depth`, which keeps rising past 1 to the sim's collapse depth (1.3) while
+`barHeight` sits at 0: key the collapse pose on `depth` (depth 1.3 → bar
+y ≈ 1093, the same line the source package derives). An earlier draft of
+this section said `barHeight` clips to −0.3; the trace corpus
+(`docs/design/athlete-traces/buried-miss.json`) read 0 on every buried tick
+and the chain guard (`src/art/rigContractChain.test.ts`) now holds this
+table to the binding.
 
 ## 3. Artboards and state machines
 
@@ -81,7 +87,8 @@ and `size` (number). The host writes `plates/3/on`, `plates/3/size`.
 | --- | --- | --- | --- |
 | `lift` | enum — values `squat`, `bench`, `deadlift` | `squat` \| `bench` \| `deadlift` | Which skeleton. v1 authors `squat`; the other two are reserved. |
 | `phase` | enum — values `BRACE`, `DESCENT`, `HOLE`, `ASCENT`, `LOCKOUT`, `RESOLVED` | the six beats | The mechanic's beat. NOT the pose driver — see `barHeight`. Keys state transitions. |
-| `barHeight` | number | `0..1`, may clip below 0 and above 1 | 0 = authored bottom of the hole, 1 = lockout. **THE pose driver.** Continuous through descent and ascent. |
+| `barHeight` | number | `0..1`, clamped | 0 = authored bottom of the hole, 1 = lockout. **THE pose driver.** Continuous through descent and ascent. Never below 0: see `depth`. |
+| `depth` | number | `0..1`, rising past 1 on a buried descent (to ≈ 1.3) | 0 = standing, 1 = the authored bottom. The ONLY input that carries the buried collapse — `barHeight` floors at 0 there. Key the `buried` pose on `depth > 1`. |
 | `barVelocity` | number | heights / second, signed | Actual bar motion: `+` rising, `−` descending. `0` means rest ONLY when `motionSampleValid`. |
 | `motionSampleValid` | boolean | — | False on an unpaired snapshot: then `barVelocity` is 0 for lack of a sample, not because the bar sat still. |
 | `integratorVelocity` | number | heights / second | The ascent force integrator; 0 through the descent by design. Stall/grind feel reads this, not `barVelocity`. |
@@ -137,7 +144,9 @@ assume a rep duration: the grind lasts as long as the simulation says.
 
 1. **`pose`** — a 1D blend state driven by `barHeight`: keyframed poses at
    `barHeight` 1.0 (lockout / brace), 0.75, 0.5, **0.34 (the stick)**, 0.2
-   (judged depth), 0.0 (the hole), −0.3 (buried). Descent and ascent read the
+   (judged depth), 0.0 (the hole); the buried collapse is a second blend
+   on `depth` from 1.0 to 1.3, additive past the hole, because `barHeight`
+   never goes below 0. Descent and ascent read the
    same curve; `barVelocity`'s sign selects a small additive "intent" blend
    (torso angle closes on the way up, opens on the way down — see §7 of the
    source package). This layer alone must produce a legible rep.
@@ -230,9 +239,10 @@ root                      (floor, mid-foot; never moves)
   phone size; `depthAchieved` flips true here.
 - **Bottom / hole (`barHeight = 0`, y = 968):** maximum torso lean (45°),
   maximum knee flexion, shins forward, bar over mid-foot.
-- **Buried (`barHeight < 0`):** past the authored bottom, down to about −0.3
-  (y ≈ 1093): the athlete is folding, the bar drifts forward — the picture
-  of a rep that went too deep and is about to be lost.
+- **Buried (`depth > 1`, `barHeight = 0`):** past the authored bottom, up to
+  depth 1.3 (bar y ≈ 1093): the athlete is folding, the bar drifts forward —
+  the picture of a rep that went too deep and is about to be lost. Keyed on
+  `depth`, not on `barHeight`, which sits at 0 the whole way down.
 - **The stick (`barHeight ≈ 0.34`):** hips risen ahead of the chest, torso
   angle briefly closed, bar speed near zero. The grind layer's home.
 

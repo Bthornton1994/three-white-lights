@@ -46,6 +46,10 @@
       "type": "number"
     },
     {
+      "path": "depth",
+      "type": "number"
+    },
+    {
       "path": "barVelocity",
       "type": "number"
     },

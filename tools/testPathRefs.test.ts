@@ -379,8 +379,12 @@ const PINNED = Object.freeze({
    * and the seven generated records under `docs/design/athlete-traces/` (six
    * scenario JSON files and the README). One test file among the ten, so
    * `TEST_FILES` moves with it, 121 -> 122.
+   *
+   * 400 -> 401 with `src/art/rigContractChain.test.ts` — the contract → rig →
+   * manifest → handoff → corpus chain guard. A test with no module beside it,
+   * so both pins move by one: `TEST_FILES` 122 -> 123.
    */
-  SCANNED_FILES: 400,
+  SCANNED_FILES: 401,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -452,8 +456,10 @@ const PINNED = Object.freeze({
    *
    * 121 -> 122 with `src/art/athleteTraces.test.ts`, the test half of the ten
    * files that moved `SCANNED_FILES` to 400 above.
+   *
+   * 122 -> 123 with `src/art/rigContractChain.test.ts` (SCANNED_FILES 401).
    */
-  TEST_FILES: 122,
+  TEST_FILES: 123,
 });
 
 /**

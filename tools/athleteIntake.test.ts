@@ -89,6 +89,64 @@ describe('tools/athleteIntake.mjs', () => {
     expect(r.out).not.toContain('step 2');
   });
 
+  it('rejects a malformed provenance package — binary bytes, JSON, or the right words in the wrong grammar — naming every line', () => {
+    const dir = scratchDir();
+    copyFileSync(QUICK_START, path.join(dir, 'athlete-01.riv'));
+    writeFileSync(path.join(dir, 'athlete-01.rev'), '');
+    writeFileSync(path.join(dir, 'athlete-01-reference-sheet.png'), '');
+    const malformed: readonly [string, Buffer | string][] = [
+      ['binary', Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0xff, 0xfe, 0x0d, 0x0a, 0x1a, 0x0a])],
+      ['json', JSON.stringify({ 'SHA-256': 'abc', Licence: 'x', Artist: 'y', Marks: 'none', 'Editor source': 'athlete-01.rev' })],
+      ['prose', 'The SHA-256 is fine and the licence is owned; the artist attests there are no marks; editor source is the rev.'],
+    ];
+    for (const [label, body] of malformed) {
+      writeFileSync(path.join(dir, 'ATHLETE-01-PROVENANCE.md'), body);
+      const r = run(dir);
+      expect(r.status, label).toBe(1);
+      expect(r.out, label).toContain('PROVENANCE_INCOMPLETE');
+      // Every attested line is reported missing — a package with no readable
+      // `Key: value` line has none of the five, and the report says so.
+      expect(r.out, label).toMatch(/missing: line `SHA-256:`/);
+      expect(r.out, label).toMatch(/missing: line `Licen\[cs\]e:`/);
+      expect(r.out, label).toMatch(/missing: line `\(Author\|Artist\):`/);
+      expect(r.out, label).toMatch(/missing: line `Marks:`/);
+      expect(r.out, label).toMatch(/missing: line `Editor source:`/);
+      expect(r.out, `${label}: the hash is not compared`).not.toContain('HASH_MISMATCH');
+      expect(r.out, `${label}: the contract is not asked`).not.toContain('step 2');
+    }
+  });
+
+  it('rejects a package missing only the .rev, and one missing only the reference sheet, naming exactly the absent sibling', () => {
+    for (const absent of ['athlete-01.rev', 'athlete-01-reference-sheet.png'] as const) {
+      const dir = scratchDir();
+      copyFileSync(QUICK_START, path.join(dir, 'athlete-01.riv'));
+      for (const sibling of ['athlete-01.rev', 'athlete-01-reference-sheet.png']) {
+        if (sibling !== absent) writeFileSync(path.join(dir, sibling), '');
+      }
+      writeFileSync(path.join(dir, 'ATHLETE-01-PROVENANCE.md'), fullProvenance(path.join(dir, 'athlete-01.riv')));
+      const r = run(dir);
+      expect(r.status, absent).toBe(1);
+      expect(r.out, absent).toContain('PROVENANCE_INCOMPLETE');
+      expect(r.out, absent).toContain(`missing: ${absent} beside the .riv`);
+      const missingLines = r.out.split('\n').filter((l) => l.includes('  missing: '));
+      expect(missingLines, `${absent}: exactly one item is missing`).toHaveLength(1);
+      expect(r.out, absent).not.toContain('step 2');
+    }
+  });
+
+  it('reads the attested SHA-256 case-insensitively — an uppercase hash is the same attestation', () => {
+    const dir = scratchDir();
+    copyFileSync(QUICK_START, path.join(dir, 'athlete-01.riv'));
+    writeFileSync(path.join(dir, 'athlete-01.rev'), '');
+    writeFileSync(path.join(dir, 'athlete-01-reference-sheet.png'), '');
+    const upper = fullProvenance(path.join(dir, 'athlete-01.riv')).replace(/^SHA-256: (.+)$/m, (_m, h: string) => `SHA-256: ${h.toUpperCase()}`);
+    expect(upper).toMatch(/SHA-256: [0-9A-F]{64}/);
+    writeFileSync(path.join(dir, 'ATHLETE-01-PROVENANCE.md'), upper);
+    const r = run(dir);
+    expect(r.out).toContain('step 1 ok');
+    expect(r.out, 'then the contract decides').toContain('CONTRACT_NOT_SATISFIED');
+  });
+
   it('reaches step 2 on a complete package and rejects a real file that is not the athlete', () => {
     const dir = scratchDir();
     copyFileSync(QUICK_START, path.join(dir, 'athlete-01.riv'));

@@ -379,7 +379,7 @@ how the "one number" claim above was established rather than assumed.
 | Web/PWA counterpart | **EXECUTED** — see the probe record below. |
 | Same presentation state feeds both runtimes | **YES, structurally** — one `spikeSignal.ts` feed, two platform stages, one shared signature pinned three ways; the web stage's binding calls run every frame in the browser, against a real file. |
 | Data Binding / ViewModel numeric updates | **MEASURED on web, on a real `.riv` (2026-09-08).** The bound number moves the shape: two canvas readbacks 450 ms apart differ in 5,918 px (max channel delta 255), the readout going `100` → `14` and the bar's fill and colour with it. AND the finding that came first: with no state machine named, the instance binds, the status reads `bound`, and **0 px change** — data binding drives a state machine, so the stages now name theirs and the contract diff checks for one. |
-| Continuous high-frequency values | **The 60 Hz write loop ran in the browser against a drawing scene**; frame pacing below. One number on this file — the forty-two-input rig is not yet measured. |
+| Continuous high-frequency values | **The 60 Hz write loop ran in the browser against a drawing scene**; frame pacing below. One number on this file — the forty-three-input rig is not yet measured. |
 | Responsive sizing | Not measured — a fixed 320 dp stage. Deferred to the production stage. |
 | Load/unload lifecycle | **EXECUTED** — mount, load attempt, status transition, unmount on navigation away; no page errors on the player path. |
 | Frame pacing | **MEASURED on web while a real graphic follows the writes** — below. |
@@ -402,7 +402,7 @@ the record's, not rounded from memory. **This is the real-asset record of
 | Scene motion | canvas 716×640, **5918 of 458240 px changed** across 450 ms, max channel delta 255 | **The graphic follows the writes.** `HEALTH 100` and a full green bar, then `HEALTH 14` and a short red bar — the file's own state machine reading the bound number. |
 | Canvases on the page | 1 | `RiveComponent` mounted its canvas. |
 | Page errors (uncaught) | 0 | Nothing thrown to the app. |
-| rAF pacing, 5 s, under the 60 Hz write loop, scene drawing | 300 frames — mean 16.67 ms, p50 16.7, p95 16.7, max 16.8; frames over 33 ms: 0 | The write loop, React and a live Rive scene together do not disturb the frame cadence. One bound number — the rig's forty-two are not yet measured. |
+| rAF pacing, 5 s, under the 60 Hz write loop, scene drawing | 300 frames — mean 16.67 ms, p50 16.7, p95 16.7, max 16.8; frames over 33 ms: 0 | The write loop, React and a live Rive scene together do not disturb the frame cadence. One bound number — the rig's forty-three are not yet measured. |
 | JS heap, 10 s sample | 192.3 MB → 194.7 MB (Δ +2.35 MB); the two earlier runs of the same probe read −5.44 MB and −0.02 MB | Garbage-collector noise around a flat line across three runs, not a trend. A longer soak is a device question. |
 | Player path (`/`, no flag) | shell in 1013 ms; `app-shell` present: True; `dev-rive-spike` present: **False**; address bar: `""`; page errors: 0 | **The spike is not on the player path.** |
 | Wrong flag value (`?dev-rive-spike=0`) | opens the spike: **False** | The gate needs the exact value, not the key. |
@@ -505,7 +505,7 @@ kept as the record of why the build is a cloud build:
   real `.riv` loaded and its ViewModel bound, a state machine driven by a
   60 Hz write with the graphic following it at an undisturbed frame
   cadence, error handling, player-path isolation. Not measured: the rig's
-  forty-two inputs (this file has one), responsive sizing, a long soak.
+  forty-three inputs (this file has one), responsive sizing, a long soak.
 - **Native: UNVERIFIED.** Everything measurable without a toolchain passed
   (install, prebuild, autolinking, types). Nothing requiring one was run.
 - **Overall: Rive stays LEADING CANDIDATE. Not FINAL.** The status line's
@@ -607,7 +607,7 @@ editor handoff is zero-ambiguity: the source-art package
 relationship, posture at every reference line, wardrobe, scale, light, the
 floor/lockout/depth/stick lines, the silhouette test, the three views and
 the empty side-on room plate as deliverables); the Rive authoring handoff
-(`docs/design/RIVE-AUTHORING-HANDOFF.md` — canvas, names, the 42-input
+(`docs/design/RIVE-AUTHORING-HANDOFF.md` — canvas, names, the 43-input
 `Athlete` ViewModel with every enum value, rig and state-machine plan,
 deformation limits, five miss resolutions, layer order, export naming);
 the generated input manifest (`docs/design/athlete-rig-manifest.json`,

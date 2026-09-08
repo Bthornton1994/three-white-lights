@@ -76,6 +76,15 @@ export interface AthleteRigInputs {
   readonly phase: LiftPresentationState['phase'];
   /** 0 = hole/floor, 1 = lockout. THE driver. */
   readonly barHeight: number;
+  /**
+   * 0 = standing, 1 = the authored bottom; keeps rising past 1 on a buried
+   * descent (to the sim's collapse depth) while `barHeight` floors at 0 —
+   * the contract clamps height to 0..1. This is the only input that can
+   * carry the buried collapse; a rig keyed on `barHeight` alone cannot see
+   * it. Found by the chain guard, not assumed: the handoff had told the
+   * artist `barHeight` goes to −0.3, and the trace corpus read 0.
+   */
+  readonly depth: number;
   /** Heights per second, signed. +rise / -descend. 0 is rest only if `motionSampleValid`. */
   readonly barVelocity: number;
   readonly motionSampleValid: boolean;
@@ -157,6 +166,7 @@ export function athleteRigInputsFrom(view: LiftPresentationState): AthleteRigInp
     lift: view.kind,
     phase: view.phase,
     barHeight: view.barHeight,
+    depth: view.depth,
     barVelocity: heightsPerSecond(view.barVelocity),
     motionSampleValid: view.motionSampleValid,
     integratorVelocity: heightsPerSecond(view.integratorVelocity),
@@ -266,6 +276,7 @@ function rigInputsForKey(key: keyof AthleteRigInputs, inputs: AthleteRigInputs):
     case 'missReason':
       return [enumInput(key, inputs.missReason, MISS_REASON_VALUES)];
     case 'barHeight':
+    case 'depth':
     case 'barVelocity':
     case 'integratorVelocity':
     case 'strain':

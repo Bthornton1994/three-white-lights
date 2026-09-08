@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { isRivMagic, readRivSchema, type RivSchema } from '../../tools/rivSchema.mjs';
+import { isRivMagic, readRivSchema, type RivProperty, type RivSchema } from '../../tools/rivSchema.mjs';
 import { rigInputSpec, rigLiftArtboards } from './athleteRig';
 import { diffRivContract, flattenViewModel, rigManifest } from './rivContract';
 import { ATHLETE_RIG } from './spriteTuning';
@@ -243,6 +243,176 @@ describe('diffRivContract', () => {
     expect(good.artboards.length).toBe(3);
   });
 });
+
+/**
+ * FAIL-CLOSED MUTANTS. Each row takes the satisfying schema, breaks one thing
+ * an authoring pass could plausibly get wrong, and names the finding the
+ * squat-artboard diff must report. The unmutated schema is asserted satisfied
+ * beside them, and the row count is pinned, so an empty table cannot pass.
+ * Constructed schemas, not files: no `.riv` generator exists here by ruling,
+ * and the reader (`tools/rivSchema.mjs`) is pinned against upstream's own
+ * manifests on the two real assets above.
+ */
+type Mutant = {
+  readonly name: string;
+  readonly mutate: (good: RivSchema) => RivSchema;
+  readonly finding: (diff: ReturnType<typeof diffRivContract>) => void;
+};
+
+function withAthlete(good: RivSchema, edit: (athlete: Record<string, RivProperty>) => void): RivSchema {
+  const athlete: Record<string, RivProperty> = { ...good.viewModels['Athlete']! };
+  edit(athlete);
+  return { ...good, viewModels: { ...good.viewModels, Athlete: athlete } };
+}
+function withSlot(good: RivSchema, edit: (slot: Record<string, RivProperty>) => void): RivSchema {
+  const slot: Record<string, RivProperty> = { ...good.viewModels['PlateSlot']! };
+  edit(slot);
+  return { ...good, viewModels: { ...good.viewModels, PlateSlot: slot } };
+}
+const squatOf = (diff: ReturnType<typeof diffRivContract>) => diff.artboards.find((a) => a.artboard === 'squat')!;
+
+const FAIL_CLOSED_MUTANTS: readonly Mutant[] = [
+  {
+    name: 'the squat artboard is missing (bench and deadlift authored, squat forgotten)',
+    mutate: (g) => ({ ...g, artboards: g.artboards.filter((a) => a !== 'squat') }),
+    finding: (d) => {
+      expect(d.missingArtboards).toEqual(['squat']);
+      expect(squatOf(d).present).toBe(false);
+    },
+  },
+  {
+    name: 'the squat artboard carries a state machine with the wrong name',
+    mutate: (g) => ({ ...g, stateMachines: { ...g.stateMachines, squat: ['State Machine 1'] } }),
+    finding: (d) => {
+      expect(d.missingArtboards).toEqual(['squat']);
+      expect(squatOf(d).stateMachine).toBe(false);
+      expect(squatOf(d).missing, 'the ViewModel itself still binds').toEqual([]);
+    },
+  },
+  {
+    name: 'the squat artboard has no default ViewModel',
+    mutate: (g) => ({ ...g, defaultViewModelByArtboard: { ...g.defaultViewModelByArtboard, squat: null } }),
+    finding: (d) => {
+      expect(d.missingArtboards).toEqual(['squat']);
+      expect(squatOf(d).viewModel).toBeNull();
+      expect(squatOf(d).missing.length).toBe(rigInputSpec().length);
+    },
+  },
+  {
+    name: 'one input is missing (barHeight, the pose driver)',
+    mutate: (g) => withAthlete(g, (a) => { delete a['barHeight']; }),
+    finding: (d) => expect(squatOf(d).missing).toEqual(['barHeight']),
+  },
+  {
+    name: 'one input has the wrong type (held authored as a number)',
+    mutate: (g) => withAthlete(g, (a) => { a['held'] = { type: 'number' }; }),
+    finding: (d) => expect(squatOf(d).wrongType).toEqual([{ path: 'held', expected: 'boolean', actual: 'number' }]),
+  },
+  {
+    name: 'an enum is missing a member the binding writes (effortBand without grind)',
+    mutate: (g) => withAthlete(g, (a) => { a['effortBand'] = { type: 'enum', values: ['easy', 'normal', 'hard', 'failing'] }; }),
+    finding: (d) => expect(squatOf(d).missingEnumValues).toEqual([{ path: 'effortBand', values: ['grind'] }]),
+  },
+  {
+    name: 'an enum member is renamed (outcome authored with goodLift for good-lift)',
+    mutate: (g) => withAthlete(g, (a) => { a['outcome'] = { type: 'enum', values: ['goodLift', 'grind', 'miss', 'none'] }; }),
+    finding: (d) => expect(squatOf(d).missingEnumValues).toEqual([{ path: 'outcome', values: ['good-lift'] }]),
+  },
+  {
+    name: 'an enum is authored as a string property',
+    mutate: (g) => withAthlete(g, (a) => { a['phase'] = { type: 'string' }; }),
+    finding: (d) => expect(squatOf(d).wrongType).toEqual([{ path: 'phase', expected: 'enum', actual: 'string' }]),
+  },
+  {
+    name: 'a plate slot property has the wrong path (enabled instead of on)',
+    mutate: (g) => withSlot(g, (s) => { delete s['on']; s['enabled'] = { type: 'boolean' }; }),
+    finding: (d) => {
+      expect(squatOf(d).missing).toEqual(Array.from({ length: ATHLETE_RIG.PLATE_SLOTS_PER_SIDE }, (_, i) => `plates/${i}/on`));
+      expect(squatOf(d).extra).toContain('plates/0/enabled');
+    },
+  },
+  {
+    name: 'a plate slot property has the wrong type (size authored as a string)',
+    mutate: (g) => withSlot(g, (s) => { s['size'] = { type: 'string' }; }),
+    finding: (d) => expect(squatOf(d).wrongType.map((w) => w.path)).toEqual(Array.from({ length: ATHLETE_RIG.PLATE_SLOTS_PER_SIDE }, (_, i) => `plates/${i}/size`)),
+  },
+  {
+    name: 'the sleeve is one slot short',
+    mutate: (g) => {
+      const slots = { ...g.viewModels['PlateSlots']! };
+      delete slots[String(ATHLETE_RIG.PLATE_SLOTS_PER_SIDE - 1)];
+      return { ...g, viewModels: { ...g.viewModels, PlateSlots: slots } };
+    },
+    finding: (d) => {
+      const last = ATHLETE_RIG.PLATE_SLOTS_PER_SIDE - 1;
+      expect(squatOf(d).missing).toEqual([`plates/${last}/on`, `plates/${last}/size`]);
+    },
+  },
+  {
+    name: 'the plates container is flattened to the root (plates_0_on) instead of nested',
+    mutate: (g) => withAthlete(g, (a) => {
+      delete a['plates'];
+      for (let i = 0; i < ATHLETE_RIG.PLATE_SLOTS_PER_SIDE; i += 1) {
+        a[`plates_${i}_on`] = { type: 'boolean' };
+        a[`plates_${i}_size`] = { type: 'number' };
+      }
+    }),
+    finding: (d) => {
+      expect(squatOf(d).missing.length).toBe(2 * ATHLETE_RIG.PLATE_SLOTS_PER_SIDE);
+      expect(squatOf(d).missing.every((p) => p.startsWith('plates/'))).toBe(true);
+    },
+  },
+  {
+    name: 'the plates container references a ViewModel the file does not define',
+    mutate: (g) => withAthlete(g, (a) => { a['plates'] = { type: 'viewModel', ref: 'Sleeve' }; }),
+    finding: (d) => expect(squatOf(d).missing.length).toBe(2 * ATHLETE_RIG.PLATE_SLOTS_PER_SIDE),
+  },
+  {
+    name: 'the squat artboard’s default ViewModel is a different, unrelated model',
+    mutate: (g) => ({ ...g, defaultViewModelByArtboard: { ...g.defaultViewModelByArtboard, squat: 'PlateSlot' } }),
+    finding: (d) => {
+      expect(squatOf(d).viewModel).toBe('PlateSlot');
+      expect(squatOf(d).missing.length).toBe(rigInputSpec().length);
+    },
+  },
+];
+
+describe('fail-closed mutants of a satisfying schema, on the squat artboard the v1 intake accepts', () => {
+  const spec = rigInputSpec();
+  const good = schemaSatisfying(spec);
+  const squatOnly = { artboards: ['squat'] } as const;
+
+  it('the unmutated schema is accepted — the table below has something to break', () => {
+    const diff = diffRivContract(good, spec, squatOnly);
+    expect(diff.satisfied).toBe(true);
+    expect(squatOf(diff).satisfied).toBe(true);
+    expect(FAIL_CLOSED_MUTANTS.length, 'mutants driven').toBe(14);
+  });
+
+  it.each(FAIL_CLOSED_MUTANTS.map((m) => [m.name, m] as const))('%s → rejected, with the finding named', (_name, mutant) => {
+    const diff = diffRivContract(mutant.mutate(good), spec, squatOnly);
+    expect(diff.satisfied).toBe(false);
+    expect(squatOf(diff).satisfied).toBe(false);
+    mutant.finding(diff);
+    // The mutation did not leak: the good schema still passes afterwards.
+    expect(diffRivContract(good, spec, squatOnly).satisfied).toBe(true);
+  });
+
+  it('an EXTRA authored enum value or property is not a rejection — the binding never writes it, and it is reported as extra', () => {
+    const generous = withAthlete(good, (a) => {
+      a['outcome'] = { type: 'enum', values: [...LIFT_OUTCOME_VALUES, 'bonus'] };
+      a['blink'] = { type: 'trigger' };
+    });
+    const diff = diffRivContract(generous, spec, squatOnly);
+    expect(diff.satisfied).toBe(true);
+    expect(squatOf(diff).extra).toEqual(['blink']);
+  });
+});
+
+const LIFT_OUTCOME_VALUES = (() => {
+  const outcome = rigInputSpec().find((s) => s.path === 'outcome');
+  return outcome?.type === 'enum' ? outcome.values : [];
+})();
 
 const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
