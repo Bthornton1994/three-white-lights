@@ -1,15 +1,15 @@
-VL-2 living-world capture at ce15bf6dc6254f916c7d455f70660ff1a887fa8b url=http://localhost:8081
+VL-2 living-world capture at 83471f873962a04bd7bf42e0769c9d545a6533b1 url=http://localhost:8081
 390x844 following member:n1:2 — 3 members drawn, targets ["queuing@training:competition-bench-bay","seeking@training:competition-bench-bay","using@training:competition-bench-bay"]
-390x844 t=0.0s seeking target=training:competition-bench-bay rank=1 box=(108,459)
-390x844 t=2.6s queuing target=training:competition-bench-bay rank=1 box=(221,451)
-390x844 t=13.3s using target=training:competition-bench-bay rank=- box=(224,409)
-390x844 t=17.6s leaving target=- rank=- box=(176,477)
-390x844 t=18.3s seeking target=- rank=- box=(260,416)
-390x844 verdicts {"identity":true,"travel":true,"noTeleport":true,"using":true,"release":true,"continues":true,"queueObserved":true,"station":true,"scene":true,"layout":true,"gait":true,"repCycle":true,"depth":true} samples=158 travelled=10.01 tiles maxOrdinaryRate=0.379 tiles/100ms (ceiling 0.405) maxSettleExcess=0.619 (raw 3.532) tiles maxLag=0.677 tiles tile=32.7px walkFrames=member-walk-a-right.png,member-walk-b-right.png,member-powerlifter-right.png,member-powerlifter-left.png,member-walk-a-left.png,member-walk-b-left.png useFrames=member-walk-b-left.png,member-using-bench-a-left.png,member-using-bench-b-left.png scales=0.6996466431095406,0.7073717161091307,0.7253950791933108,0.7443609022556391,0.773574370667172,0.7951807228915663,0.8051745545900623,0.8286089191182519,0.8422285228392333,0.853448275862069,0.87982288268832,0.8920739022636065,0.9078796126706625,0.9209302325581395
+390x844 t=0.0s seeking target=training:competition-bench-bay rank=1 box=(106,461)
+390x844 t=2.8s queuing target=training:competition-bench-bay rank=1 box=(221,447)
+390x844 t=13.4s using target=training:competition-bench-bay rank=- box=(238,416)
+390x844 t=17.6s leaving target=- rank=- box=(163,476)
+390x844 t=18.3s seeking target=- rank=- box=(253,417)
+390x844 verdicts {"identity":true,"travel":true,"noTeleport":true,"using":true,"release":true,"continues":true,"queueObserved":true,"station":true,"scene":true,"layout":true,"gait":true,"repCycle":true,"depth":true} samples=144 travelled=9.68 tiles maxOrdinaryRate=0.342 tiles/100ms (ceiling 0.506) maxSettleExcess=0.000 (raw 3.358) tiles maxLag=0.788 tiles tile=32.7px walkFrames=member-walk-a-right.png,member-walk-b-right.png,member-powerlifter-right.png,member-powerlifter-left.png,member-walk-a-left.png,member-walk-b-left.png useFrames=member-powerlifter-left.png,member-walk-b-left.png,member-using-bench-a-left.png,member-using-bench-b-left.png scales=0.6996466431095406,0.7073717161091307,0.7253950791933108,0.7443609022556391,0.773574370667172,0.7951807228915663,0.8051745545900623,0.8180287089221732,0.8286089191182519,0.853448275862069,0.87982288268832,0.8920739022636065,0.9209302325581395
 375x812 following member:n1:2 — 3 members drawn, targets ["queuing@training:competition-bench-bay","seeking@training:competition-bench-bay","using@training:competition-bench-bay"]
-375x812 t=0.0s seeking target=training:competition-bench-bay rank=1 box=(105,442)
-375x812 t=2.7s queuing target=training:competition-bench-bay rank=1 box=(212,431)
-375x812 t=13.3s using target=training:competition-bench-bay rank=- box=(227,399)
-375x812 t=17.6s leaving target=- rank=- box=(157,457)
-375x812 t=18.3s seeking target=- rank=- box=(240,401)
-375x812 verdicts {"identity":true,"travel":true,"noTeleport":true,"using":true,"release":true,"continues":true,"queueObserved":true,"station":true,"scene":true,"layout":true,"gait":true,"repCycle":true,"depth":true} samples=158 travelled=9.8 tiles maxOrdinaryRate=0.383 tiles/100ms (ceiling 0.405) maxSettleExcess=0.485 (raw 3.281) tiles maxLag=0.723 tiles tile=31.4px walkFrames=member-walk-a-right.png,member-walk-b-right.png,member-powerlifter-right.png,member-powerlifter-left.png,member-walk-a-left.png,member-walk-b-left.png useFrames=member-powerlifter-left.png,member-walk-b-left.png,member-using-bench-a-left.png,member-using-bench-b-left.png scales=0.6996466431095406,0.7073717161091307,0.7253950791933108,0.7443609022556391,0.773574370667172,0.7951807228915663,0.8051745545900623,0.8180287089221732,0.8286089191182519,0.853448275862069,0.87982288268832,0.8920739022636065,0.9078796126706625,0.9209302325581395
+375x812 t=0.0s seeking target=training:competition-bench-bay rank=1 box=(104,448)
+375x812 t=2.9s queuing target=training:competition-bench-bay rank=1 box=(211,420)
+375x812 t=13.4s using target=training:competition-bench-bay rank=- box=(222,399)
+375x812 t=17.6s leaving target=- rank=- box=(169,458)
+375x812 t=18.3s seeking target=- rank=- box=(257,400)
+375x812 verdicts {"identity":true,"travel":true,"noTeleport":true,"using":true,"release":true,"continues":true,"queueObserved":true,"station":true,"scene":true,"layout":true,"gait":true,"repCycle":true,"depth":true} samples=147 travelled=10.17 tiles maxOrdinaryRate=0.369 tiles/100ms (ceiling 0.506) maxSettleExcess=0.117 (raw 3.728) tiles maxLag=0.545 tiles tile=31.4px walkFrames=member-walk-a-right.png,member-powerlifter-right.png,member-walk-b-right.png,member-walk-a-left.png,member-powerlifter-left.png,member-walk-b-left.png useFrames=member-walk-b-left.png,member-powerlifter-left.png,member-using-bench-a-left.png,member-using-bench-b-left.png scales=0.6996466431095406,0.7073717161091307,0.7253950791933108,0.7443609022556391,0.7531111179620208,0.773574370667172,0.7951807228915663,0.8051745545900623,0.8180287089221732,0.8286089191182519,0.853448275862069,0.864970992854638,0.87982288268832,0.8920739022636065,0.9209302325581395

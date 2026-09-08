@@ -1,0 +1,72 @@
+VL-2B capacity proof at 83471f873962a04bd7bf42e0769c9d545a6533b1 url=http://localhost:8081
+price 180 gym bucks; ceiling 0.506 tiles/100ms = (0.34*(1+0.25)/120)*100*(1+0.1)*1.3; walk 0.283; settle 360 ms/tile = 0.278 tiles/100ms; settle bound 3 tiles; draw scale 1.6; render delay 1 tick(s); window 100 ms; transition 2500 ms
+390x844 reached the gym at http://localhost:8081/ (no query string)
+390x844 gym bucks 0 -> 357.84 after 1 press(es) of gymscreen-advance-offline-259200; price 180; HUD rate 60/h
+390x844 BEFORE tick 10: member:n1:1=queuing(q0)@6,0 member:n1:0=using@5,0 member:n1:2=seeking(q1)@2,4 — expansion nodes 0, bench box {"x":155.09375,"y":474.8125,"w":79.796875,"h":79.796875}
+390x844 Capacity row at press: box {"x":12,"y":569,"w":366,"h":44}, inside viewport true, hit-test resolves to floorgrid-station-panel-upgrade-capacity (inside the row), text rgb(0, 0, 0) on rgb(218, 165, 32)
+390x844 panel open: Capacity row "Second bench — two can train at once (180)"; throughput purchasable true
+390x844 done row: text rgb(255, 255, 255) on rgb(0, 0, 0), inside viewport true
+390x844 pressed Capacity: gym bucks 357.84 -> 177.83999999999997 (drop 180.000, price 180, tolerance 0.0977 over 2.63 s at 60/h); rows after {"capacity":0,"capacityDone":1,"throughput":1,"throughputDone":0}; done row "Second bench — two can train at once"; throughput row "Plate tree — faster plate changes (30)"
+390x844 TRANSITION 147 frames over 2500 ms (mean 17.12 ms, max gap 66.6 ms); tick 12 -> 33; purchase landed {"frame":0,"t":0.6,"tick":"12"}; expansion first {"frame":0,"t":0.6,"tick":"12"}; two using first frame 2 t=83.9 tick 13
+390x844   member:n1:1 queuing>using cells 6,0@t0.6/tick12 -> 7,0@t83.9/tick13 | window rate max 0.183 tiles/100ms (ceiling 0.506) at {"t":550.5,"windowMs":100,"tick":"17","fromCell":"7,0","toCell":"7,0","lifecycle":"using"} | frame step max 0.288 tiles at {"t":133.9,"dtMs":16.6,"tick":"13","fromCell":"7,0","toCell":"7,0","lifecycle":"using"} | frame rate max 1.737 | settle excess 1.139 (raw 1.646, bound 3) edges [{"t":83.9,"tick":"13","from":"queuing","to":"using"}] | net 1.806 tiles, peak excursion 1.806 at t=867.2 | WRITES 48, window rate max 0.166 tiles/100ms (ok the ceiling) at {"t":559.5,"ft":550.5,"windowMs":100,"tick":"17","lifecycle":"using"}, max write 0.288 tiles at {"t":136.9,"dtMs":24.9,"tick":"13","lifecycle":"using"}
+390x844   member:n1:0 using cells 5,0@t0.6/tick12 -> 2,2@t83.9/tick13 | window rate max 0.000 tiles/100ms (ceiling 0.506) at null | frame step max 0.000 tiles at null | frame rate max 0.000 | settle excess 0.000 (raw 0.000, bound 3) edges [] | net 0.000 tiles, peak excursion 0.000 at t=- | WRITES none
+390x844   member:n1:2 seeking>queuing cells 2.8182006126176566,4@t0.6/tick12 -> 3,4@t83.9/tick13 -> 2.5908996936911715,4@t167.2/tick14 -> 2.1817993873823434,4@t267.2/tick15 -> 2,4@t383.9/tick16 -> 2,3.5908996936911715@t500.5/tick17 -> 2,3.1817993873823434@t617.2/tick18 -> 2,3@t750.5/tick19 -> 2,2.5908996936911715@t867.2/tick20 -> 2,2.1817993873823434@t983.8/tick21 -> 2,2@t1100.5/tick22 -> 1.5908996936911717,2@t1217.2/tick23 -> 1.1817993873823434,2@t1350.5/tick24 -> 1,2@t1467.2/tick25 | window rate max 0.411 tiles/100ms (ceiling 0.506) at {"t":167.2,"windowMs":100,"tick":"14","fromCell":"2.8182006126176566,4","toCell":"2.5908996936911715,4","lifecycle":"seeking"} | frame step max 0.182 tiles at {"t":133.9,"dtMs":16.6,"tick":"13","fromCell":"3,4","toCell":"3,4","lifecycle":"seeking"} | frame rate max 1.098 | settle excess 0.000 (raw 0.000, bound 3) edges [] | net 2.083 tiles, peak excursion 2.083 at t=1750.5 | WRITES 118, window rate max 0.375 tiles/100ms (ok the ceiling) at {"t":518.6,"ft":483.9,"windowMs":100,"tick":"17","lifecycle":"seeking"}, max write 0.182 tiles at {"t":136.9,"dtMs":24.9,"tick":"13","lifecycle":"seeking"}
+390x844 GHOST POSE: held over 147 using frames — visible pose images while using: /empire-art/member-using-bench-b-left.png, /empire-art/member-using-bench-b-right.png, /empire-art/member-using-bench-a-right.png
+390x844 GHOST member:n1:0: contract cell 5,0 -> 2,2 (3 tiles on the longer axis) landed tick 13 at t=83.9 ms; drawn feet: net displacement 0 tiles start-to-end, peak excursion 0 tiles from the start at null, moving from t=null to t=null ms; max window rate 0 tiles/100ms vs ceiling 0.506 (walk 0.283, settle-per-tile 0.278); max frame step 0 tiles; within the ordinary ceiling
+390x844 OBSERVATION shared cell while one is using: 7 frame(s) exact — first {"frame":62,"t":1100.5,"cell":"2,2","members":["member:n1:2:seeking@tick22","member:n1:0:using@tick22"]}, last {"frame":68,"t":1200.5,"cell":"2,2","members":["member:n1:2:seeking@tick22","member:n1:0:using@tick22"]}, ticks 22; 15 more frame(s) on the rounded cell only
+390x844 using bodies on benches: member:n1:0@2,2=on a bench member:n1:1@7,0=on a bench — all on a bench 6 ms after the AFTER read (bench boxes [{"x":155.09375,"y":474.8125,"w":79.796875,"h":79.796875},{"x":234.890625,"y":474.8125,"w":79.796875,"h":79.796875}])
+390x844 AFTER (18 ms): member:n1:2=queuing(q0)@1,2 member:n1:0=using@2,2 member:n1:1=using@7,0 tick 36; expansion {"box":{"x":234.890625,"y":474.8125,"w":79.796875,"h":79.796875},"opacity":1} sprite {"x":234.890625,"y":474.8125,"w":79.796875,"h":79.796875} opacity 1 src eq-flat-bench.png bg true; first two-using {"source":"transition","frame":2,"t":83.9,"tick":"13","usingIds":["member:n1:0","member:n1:1"],"queuingIds":[],"members":["member:n1:0=using@2,2","member:n1:1=using@7,0","member:n1:2=seeking(q0)@3,4"]}; queue {"head":"member:n1:1","queuingAtPress":1,"queuingAtBefore":1,"queuingWhenTwoUsing":0,"rankedAtPress":2,"rankedAfter":1}
+390x844 ok   playedPath
+390x844 ok   funded
+390x844 ok   capacityOne
+390x844 ok   beforeState
+390x844 ok   capacityOffered
+390x844 ok   capacityReachable
+390x844 ok   priceCharged
+390x844 ok   capacityDone
+390x844 ok   throughputUnchanged
+390x844 ok   identity
+390x844 ok   noTeleport
+390x844 ok   ghostPoseHeld
+390x844 ok   secondBenchVisible
+390x844 ok   usingOnBench
+390x844 ok   twoUsing
+390x844 ok   sameIds
+390x844 ok   queueHeadTookSeat
+390x844 ok   queueShortened
+390x844 ok   layout
+375x812 reached the gym at http://localhost:8081/ (no query string)
+375x812 gym bucks 0 -> 357.84 after 1 press(es) of gymscreen-advance-offline-259200; price 180; HUD rate 60/h
+375x812 BEFORE tick 10: member:n1:1=queuing(q0)@6,0 member:n1:0=using@5,0 member:n1:2=seeking(q1)@2,4 — expansion nodes 0, bench box {"x":149.1875,"y":455.53125,"w":76.59375,"h":76.59375}
+375x812 Capacity row at press: box {"x":12,"y":547,"w":351,"h":44}, inside viewport true, hit-test resolves to floorgrid-station-panel-upgrade-capacity (inside the row), text rgb(0, 0, 0) on rgb(218, 165, 32)
+375x812 panel open: Capacity row "Second bench — two can train at once (180)"; throughput purchasable true
+375x812 done row: text rgb(255, 255, 255) on rgb(0, 0, 0), inside viewport true
+375x812 pressed Capacity: gym bucks 357.84 -> 177.83999999999997 (drop 180.000, price 180, tolerance 0.0974 over 2.62 s at 60/h); rows after {"capacity":0,"capacityDone":1,"throughput":1,"throughputDone":0}; done row "Second bench — two can train at once"; throughput row "Plate tree — faster plate changes (30)"
+375x812 TRANSITION 147 frames over 2500 ms (mean 17.12 ms, max gap 66.7 ms); tick 12 -> 33; purchase landed {"frame":0,"t":4.9,"tick":"12"}; expansion first {"frame":0,"t":4.9,"tick":"12"}; two using first frame 2 t=88.2 tick 13
+375x812   member:n1:1 queuing>using cells 6,0@t4.9/tick12 -> 7,0@t88.2/tick13 | window rate max 0.183 tiles/100ms (ceiling 0.506) at {"t":554.9,"windowMs":100,"tick":"17","fromCell":"7,0","toCell":"7,0","lifecycle":"using"} | frame step max 0.288 tiles at {"t":138.3,"dtMs":16.7,"tick":"13","fromCell":"7,0","toCell":"7,0","lifecycle":"using"} | frame rate max 1.735 | settle excess 1.139 (raw 1.646, bound 3) edges [{"t":88.2,"tick":"13","from":"queuing","to":"using"}] | net 1.806 tiles, peak excursion 1.806 at t=854.9 | WRITES 48, window rate max 0.166 tiles/100ms (ok the ceiling) at {"t":572.6,"ft":554.9,"windowMs":100,"tick":"17","lifecycle":"using"}, max write 0.288 tiles at {"t":155.3,"dtMs":32.2,"tick":"13","lifecycle":"using"}
+375x812   member:n1:0 using cells 5,0@t4.9/tick12 -> 2,2@t88.2/tick13 | window rate max 0.000 tiles/100ms (ceiling 0.506) at null | frame step max 0.000 tiles at null | frame rate max 0.000 | settle excess 0.000 (raw 0.000, bound 3) edges [] | net 0.000 tiles, peak excursion 0.000 at t=- | WRITES none
+375x812   member:n1:2 seeking>queuing cells 2.8182006126176566,4@t4.9/tick12 -> 3,4@t88.2/tick13 -> 2.5908996936911715,4@t171.5/tick14 -> 2.1817993873823434,4@t288.2/tick15 -> 2,4@t404.9/tick16 -> 2,3.5908996936911715@t538.2/tick17 -> 2,3.1817993873823434@t654.8/tick18 -> 2,3@t771.6/tick19 -> 2,2.5908996936911715@t904.8/tick20 -> 2,2.1817993873823434@t1004.8/tick21 -> 2,2@t1138.2/tick22 -> 1.5908996936911717,2@t1254.8/tick23 -> 1.1817993873823434,2@t1371.5/tick24 -> 1,2@t1488.2/tick25 | window rate max 0.488 tiles/100ms (ceiling 0.506) at {"t":221.6,"windowMs":100,"tick":"14","fromCell":"3,4","toCell":"2.5908996936911715,4","lifecycle":"seeking"} | frame step max 0.182 tiles at {"t":138.3,"dtMs":16.7,"tick":"13","fromCell":"3,4","toCell":"3,4","lifecycle":"seeking"} | frame rate max 1.089 | settle excess 0.000 (raw 0.000, bound 3) edges [] | net 2.031 tiles, peak excursion 2.031 at t=1771.5 | WRITES 119, window rate max 0.375 tiles/100ms (ok the ceiling) at {"t":552.3,"ft":521.5,"windowMs":100,"tick":"17","lifecycle":"seeking"}, max write 0.182 tiles at {"t":155.3,"dtMs":32.2,"tick":"13","lifecycle":"seeking"}
+375x812 GHOST POSE: held over 147 using frames — visible pose images while using: /empire-art/member-using-bench-b-left.png, /empire-art/member-using-bench-b-right.png, /empire-art/member-using-bench-a-right.png
+375x812 GHOST member:n1:0: contract cell 5,0 -> 2,2 (3 tiles on the longer axis) landed tick 13 at t=88.2 ms; drawn feet: net displacement 0 tiles start-to-end, peak excursion 0 tiles from the start at null, moving from t=null to t=null ms; max window rate 0 tiles/100ms vs ceiling 0.506 (walk 0.283, settle-per-tile 0.278); max frame step 0 tiles; within the ordinary ceiling
+375x812 OBSERVATION shared cell while one is using: 7 frame(s) exact — first {"frame":64,"t":1138.2,"cell":"2,2","members":["member:n1:2:seeking@tick22","member:n1:0:using@tick22"]}, last {"frame":70,"t":1238.2,"cell":"2,2","members":["member:n1:2:seeking@tick22","member:n1:0:using@tick22"]}, ticks 22; 15 more frame(s) on the rounded cell only
+375x812 using bodies on benches: member:n1:0@2,2=on a bench member:n1:1@7,0=on a bench — all on a bench 10 ms after the AFTER read (bench boxes [{"x":149.1875,"y":455.53125,"w":76.59375,"h":76.59375},{"x":225.796875,"y":455.53125,"w":76.59375,"h":76.59375}])
+375x812 AFTER (27 ms): member:n1:2=queuing(q0)@1,2 member:n1:0=using@2,2 member:n1:1=using@7,0 tick 36; expansion {"box":{"x":225.796875,"y":455.53125,"w":76.59375,"h":76.59375},"opacity":1} sprite {"x":225.796875,"y":455.53125,"w":76.59375,"h":76.59375} opacity 1 src eq-flat-bench.png bg true; first two-using {"source":"transition","frame":2,"t":88.2,"tick":"13","usingIds":["member:n1:0","member:n1:1"],"queuingIds":[],"members":["member:n1:0=using@2,2","member:n1:1=using@7,0","member:n1:2=seeking(q0)@3,4"]}; queue {"head":"member:n1:1","queuingAtPress":1,"queuingAtBefore":1,"queuingWhenTwoUsing":0,"rankedAtPress":2,"rankedAfter":1}
+375x812 ok   playedPath
+375x812 ok   funded
+375x812 ok   capacityOne
+375x812 ok   beforeState
+375x812 ok   capacityOffered
+375x812 ok   capacityReachable
+375x812 ok   priceCharged
+375x812 ok   capacityDone
+375x812 ok   throughputUnchanged
+375x812 ok   identity
+375x812 ok   noTeleport
+375x812 ok   ghostPoseHeld
+375x812 ok   secondBenchVisible
+375x812 ok   usingOnBench
+375x812 ok   twoUsing
+375x812 ok   sameIds
+375x812 ok   queueHeadTookSeat
+375x812 ok   queueShortened
+375x812 ok   layout

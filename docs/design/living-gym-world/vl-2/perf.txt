@@ -1,11 +1,13 @@
-VL-2 performance measurement at ce15bf6dc6254f916c7d455f70660ff1a887fa8b url=http://localhost:8081 sample=15000ms stall=400ms — headless desktop browser in a container, NOT a phone
+VL-2 performance measurement at 83471f873962a04bd7bf42e0769c9d545a6533b1 url=http://localhost:8081 sample=15000ms stall=400ms — headless desktop browser in a container, NOT a phone
 390x844 entities members=3 poseImages=9 stations=6 floorNodes=61 docNodes=376
-390x844 frames n=899 mean=16.68ms p50=16.70 p95=16.70 p99=16.80 max=33.30 long(>50ms)=0 veryLong(>100ms)=0 fps(mean)=59.9
-390x844 heap used 53.4MB -> 116.5MB raw, 34.9MB after a forced GC, over 15000ms; DOM nodes 859 -> 820; layouts 15 -> 95
-390x844 interaction bench-tap -> panel 18.1ms, tap -> closed 11.3ms
-390x844 stall 400ms on member:n1:0 (wait/walk): max frame gap 400ms, max single-frame step 0.049 tiles at t=2005ms, max rate 0.295 tiles/100ms vs sim 0.283, max drawn-vs-contract lag 0.631 tiles
+390x844 frames n=890 mean=16.85ms p50=16.70 p95=16.80 p99=16.80 max=66.70 long(>50ms)=1 veryLong(>100ms)=0 fps(mean)=59.3
+390x844 heap used 53.8MB -> 126.5MB raw, 34.9MB after a forced GC, over 15000ms; DOM nodes 863 -> 820; layouts 17 -> 97
+390x844 interaction bench-tap -> panel 27.3ms, tap -> closed 17.0ms
+390x844 stall 400ms on member:n1:0 (wait/walk/use-bench): max frame gap 400ms, max single-frame step 0.344 tiles at t=1571ms, max rate 2.074 tiles/100ms vs sim 0.283, max drawn-vs-contract lag 2.600 tiles
+390x844 settle stall 400ms at member:n1:1's using edge (t=6832ms): first post-stall step 0.368 tiles, max 0.368 tiles at t=7247ms over 115 pairs (0 size-step pair(s) excluded), bound 0.416 = 34 x (3/360 + 0.34x(1+0.25)x(1+0.1)/120): ok
 375x812 entities members=3 poseImages=9 stations=6 floorNodes=61 docNodes=376
-375x812 frames n=898 mean=16.70ms p50=16.70 p95=16.70 p99=16.80 max=33.40 long(>50ms)=0 veryLong(>100ms)=0 fps(mean)=59.9
-375x812 heap used 53.7MB -> 120.0MB raw, 34.9MB after a forced GC, over 15000ms; DOM nodes 863 -> 820; layouts 14 -> 95
-375x812 interaction bench-tap -> panel 16.5ms, tap -> closed 11.8ms
-375x812 stall 400ms on member:n1:2 (wait): max frame gap 400ms, max single-frame step 0.059 tiles at t=32ms, max rate 0.353 tiles/100ms vs sim 0.283, max drawn-vs-contract lag 0.583 tiles
+375x812 frames n=889 mean=16.87ms p50=16.70 p95=16.80 p99=16.80 max=50.10 long(>50ms)=1 veryLong(>100ms)=0 fps(mean)=59.3
+375x812 heap used 53.1MB -> 95.5MB raw, 34.9MB after a forced GC, over 15000ms; DOM nodes 863 -> 820; layouts 15 -> 95
+375x812 interaction bench-tap -> panel 33.5ms, tap -> closed 39.2ms
+375x812 stall 400ms on member:n1:0 (wait/walk/use-bench): max frame gap 400ms, max single-frame step 0.344 tiles at t=1931ms, max rate 2.061 tiles/100ms vs sim 0.283, max drawn-vs-contract lag 2.581 tiles
+375x812 settle stall 400ms at member:n1:1's using edge (t=7171ms): first post-stall step 0.368 tiles, max 0.368 tiles at t=7577ms over 120 pairs (0 size-step pair(s) excluded), bound 0.416 = 34 x (3/360 + 0.34x(1+0.25)x(1+0.1)/120): ok
