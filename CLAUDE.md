@@ -836,6 +836,434 @@ of the diagnostics-toggle stacking fix on a local-only branch
 run past its second claim on the old tree). The detached `124fb132` probe
 was removed; it held nothing.
 
+**Superseded — see "VL-2B DELIVERED" below: `124fb132` was integrated at
+`513707b2` after the human's ruling made it the frozen contract, with the six
+type errors closed in Grok's test file as a recorded crossing.**
+
+### VL-2B DELIVERED — Grok's contract `124fb132` integrated, per-seat occupancy consumed from it, the ghost-reserve boundary held; gates stated separately
+
+Branch `claude/empire-s5-visual-lane`, Claude Code Session B. **Integration
+merge SHA `513707b2`** — parents `42ebdc53` (this lane's VL-2 record) and
+`124fb132` (Grok's Session B contract, draft PR #52); a normal merge commit,
+no rebase, no force-push, both lanes' CLAUDE.md text preserved (the merge
+touched this file on two lines, Grok's governance bullet). Then, on top:
+`3171d87c` (per-seat consumption, the relocation glide, the proof tool),
+`cb468918` (the frame-elapsed cap and the judged settle-stall arm),
+`83471f87` (seats matched to benches by cell, no zero-distance settle,
+relocations anchored on the drawn point, the panel's prose drawn, the cap
+at two frames, the proof judged on the renderer's own writes and clock —
+the corrections a read-only critic pass and four measurements forced),
+`91d85a90` (the three evidence bundles regenerated on that tree, each
+stamped clean), `4a55f608` and `a2872e45` (the proof tool's write log
+given its own measured limit, after that evidence exposed it),
+`a248972b` (the capacity proof regenerated on `a2872e45`), and this
+record last. Draft only; nothing merged to
+`main`; #46, #49, #51 and #52 not merged; nothing under Session A touched
+(`git diff 513707b2..HEAD --stat` names only `src/empire/**`, `tools/`,
+`docs/design/living-gym-world/**` and this file). **This entry supersedes
+the deferral entry above** — the ruling that followed it made `124fb132`
+the frozen contract, and the six type errors that entry refused to carry
+were closed at the integration rather than waited out.
+
+**Crossing 1, in Grok's own test file — four type-only fixes in
+`src/empire/presentationState.test.ts`, recorded here because it is a
+Grok-owned file.** `tsc --noEmit` on `124fb132` in isolation fails with six
+errors, all in that file, none in shipped code. They were fixed at the merge
+with the smallest edits that typecheck and change no assertion: import `type
+GymMemberId` from `./livingMembers`; the head lookup rewritten as `const
+headId = queuedAt.queueIds[0]; const head = world.members.find((member) =>
+member.id === headId);` with its guard reading `if (usingId === undefined ||
+head === undefined || head.waitTicks === null)`; the first `readonly usingIds:
+readonly string[]` in a local shape narrowed to `readonly GymMemberId[]` (a
+second identical shape further down was left alone — it typechecked); and the
+null filter given its predicate, `.filter((id): id is GymMemberId => id !==
+null)`. After: `tsc --noEmit` exit 0; that file 24 of 24 tests green. Grok
+may rewrite any of the four; the constraint is only that the branch stays
+typecheck-clean.
+
+**Crossing 2, in Grok's `src/empire/floorSim.test.ts` — one source pin moved
+from the raw accessor to the contract read.** `draws plate loading from
+FloorSimState.changeovers, with one sim tick timer` pinned that `FloorGrid.tsx`
+calls `seatChangeoverTicks(changeovers, …)`. It no longer does — the per-seat
+remaining ticks reach the renderer as the contract's `seats[i].changeoverTicks`,
+which `presentationState.ts` computes from the same `FloorSimState.changeovers`
+with the same accessor — so the pin now asserts `seats[index]?.changeoverTicks`
+is read and the direct accessor call is absent. The pin that `sim.changeovers`
+is still read stays true: that read is the tap panel's `stationChangeoverSeats`.
+
+**The shared census, re-pinned from failure values at every commit, every
+number read off its own red run and none derived.** The four commit messages
+carry the numbers; the shape is what matters here: the merge moved twelve
+one-line pins (Grok's contract additions), the consumption moved ten
+(`memberUsesCell` and `cellsEqual` deleted, the relocation rebase's locals,
+the line-numbered fresh-receiver and screen-disagreement rows), the cap moved
+twenty-three (one tuning leaf ripples through every leaf-keyed census — the
+domain, exempt, branch-point and overflow passes, the ROSTER_SHAPE row, the
+audit census in `empireCore.test.ts`, the key and probe counts in
+`empireTuning.test.ts`), and the seats-by-cell round moved fourteen (three
+new functions, one new `.map` on a parameter filed under
+`DECLARED_MEMBER_CALLS_ON_PARAMETERS`, one new single-quoted string). Whole
+suite on `83471f87`: 109 files, 4177 tests, 4174 passed, 3 failed, 615 s under
+the watchdog — the same three pre-existing Session A
+failures (`cutInWiring.test.ts` ×2, `guaranteeTags.test.ts` `g2b-forming`)
+that were red on `513707b2` and before it; `src/empire` fully green;
+`tsc --noEmit` exit 0.
+
+**What was built — per-seat occupancy is READ, not reconstructed, and the
+seat finds its bench by its own cell.** VL-1's `memberUsesCell` — the walk
+over `FloorSimMember` against `useCells` — is deleted, and every question
+the renderer asks about a seat goes to `PresentationStation.seats`: the
+bay's two bench sprites' occupied variants, the per-bench highlight boxes
+(`usingIds` / `queueIds` / `approachingIds` for who is here, the seat's
+`usingId` / `changeoverTicks` per bench), the plate-loading discs (the seat's
+`changeoverTicks`; the total they are measured against is still the
+capability's own accessor), and `usingBenchFor`, keyed by IDENTITY — the seat
+whose `usingId` is this member. **The seat-to-bench correspondence is by
+CELL, never by array index.** The first cut indexed `seats[i]` against
+`benches[i]`; a critic read `floorSim.ts`'s seat builder and found it walks
+the benches in order and SKIPS a bench whose approach cells are all taken,
+so `seats[i]` is `benches[i]` only while every bench got a seat — a
+correspondence the contract does not promise. `seatsByBench` now matches
+each contract seat to the drawn bench its cell touches (Chebyshev distance to
+the footprint, nearest first, one seat per bench, bench order on a tie), and
+the bay's occupied sprites are keyed by bench SOURCE (`primary` /
+`expansion`) rather than position. The renderer decides which sprite to
+light; the seat's cell stays Grok's fact. *A request for Grok, not a
+crossing:* a `benchIndex` (or the bench's footprint) on `PresentationSeat`
+would make the nearest-footprint rule unnecessary; until then the rule is
+stated at the function and holds on every layout where a seat is one of its
+own bench's approach cells, which is how `floorSim.ts` makes them.
+`FloorGrid` keeps a second map, `contractStationByKey`, keyed like the raw
+station map; the raw map now serves the tap panel's geometry and the
+queue-cell occupancy convenience only. Queue geometry still reads
+`worldView.occupiedQueueCells` and is not service rank; `queueIds` /
+`queueRank` are untouched; `changeoverTicks` is consumed only as the fact
+that a seat is in changeover.
+
+**The ghost-reserve boundary — one member, one body, no snap, no fabricated
+seat, no pose pop, the sim not delayed.** After a live Capacity purchase the
+contract emits one stale snapshot: the `using` member still at its old cell
+with every `seats[].usingId` null. Measured on the played path, the sim
+relocates that member from `5,0` to `2,2` — three tiles on the longer axis —
+on the first post-purchase tick. Three things hold that boundary:
+
+1. **Presentation reads the seat, so the stale frame lights NO bench and
+   fabricates none.** `usingBenchFor` finds no seat naming the member and
+   falls back to the primary bench for the pull — the bench the sim seats it
+   on one tick later — so the drawn anchor does not move. Disclosed as a
+   one-tick coincidence with the default layout rather than a law.
+2. **A relocation is not a step.** The frame loop treats a new tick whose feet
+   point moved more than `FLOOR_MEMBER_STRIDE_TILES` (1.1 tiles at that body's
+   depth) from the previous snapshot as a relocation: the playback buffer is
+   rebased onto the new point and the difference joins the eased pull, so the
+   SAME body glides from where it was drawn to where the contract now says it
+   is at the settle's pace — `FLOOR_MEMBER_SETTLE_MS` per tile, walking on
+   average, an ease-out cubic — instead of the timeline sliding it there in
+   one tick.
+   The margin is measured against the sim's own movement rule: `floorSim.ts`'s
+   `STEPS` is the four-neighbour set, a step advances
+   `FLOOR_SIM_STEP_PROGRESS_PER_TICK` = 0.34 of a cell per tick with
+   `FLOOR_SIM_SPEED_JITTER_FRACTION` = ±0.25, so no ordinary tick moves a
+   member more than 0.425 tiles and no relocation the sim performs is shorter
+   than two. Pre-glide, the same boundary drew the ghost on an out-and-back
+   excursion of 2.0 tiles at 1.7 tiles per 100 ms; every run since reads 0.
+   Two corrections the proof's write log then forced, both on members the
+   purchase re-plans rather than the ghost: the same rule now covers a
+   contract point that moves within the tick it lands on (the purchase's
+   own re-plan moved a SEEKING member 1.4 tiles at the same tick, and the
+   layout-nudge branch snapped it half the way — 0.74 tiles in one write),
+   and the compensation is anchored on where the body is DRAWN, not on the
+   newest snapshot (anchored on the newest, a walker whose playback was 1.5
+   ticks behind after the purchase's long frames lost that lag in one write
+   — 0.947 tiles). After both, the largest single write on any member across
+   the purchase is the capped frame itself.
+3. **A cancelled relocation starts no settle.** The critic pass found that
+   the rebase, which cancels the relocated bench user's jump exactly (its pull
+   is the bench), then started a settle of ZERO distance — and
+   `settleDurationMs` floors a sub-tile settle at one tile's worth, so the
+   lying body swapped to the WALK clip for 360 ms while never moving. The
+   `data-clip` attribute every instrument read is the React prop, which never
+   changed, so no instrument could see it. Both the rebase and the
+   pull-change branch now start no settle for a move under a pixel, and the
+   proof gained a `ghostPoseHeld` verdict that reads the ghost's VISIBLE pose
+   image (the most opaque of its stack, off the DOM) at every sampled frame:
+   held at both viewports, use-bench frames only.
+
+**The station panel's prose was black on black, and the purchase's own
+witness read it as present.** Every prose row of the station and member
+panels carried no colour, the web renderer's default `Text` colour is black,
+and the panel's backing is black: identity, operation, condition, manager and
+the "Second bench — two can train at once" row were a uniform black
+rectangle in the purchase frames (a critic read the pixels; confirmed here by
+computed style, rgb(0, 0, 0) on rgb(0, 0, 0), and by opening the frame). The
+proof's `capacityDone` verdict was a DOM-presence read and passed. Fixed
+with an explicit panel text colour on all twenty-six prose rows, and the
+verdict now asserts the row's computed colour differs from the first opaque
+background behind it. *Presence is not visibility*, on a row this lane
+shipped and photographed.
+
+**A delayed frame must not become a visible teleport — measured on the settle
+path, found unbounded, bounded with one knob, and the knob then sized by
+measurement.** The VL-2 timeline is bounded under a stall by construction
+(the playback clock can never pass its newest snapshot and the sim stalls
+with the renderer: 0.049 tiles for the largest single-frame step on a walking
+body). The eased settle onto a bench had no such bound — a pure function of
+wall-clock time — and the VL-2 probe never caught it because its member
+happened to be walking when the stall hit. Measured with a probe that stalls
+the main thread for 400 ms in the very task that sees a member's `using`
+edge (375x812): the first frame after the stall moved the body **0.700
+tiles** before the knob. `FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS` caps what one
+frame may advance — the playback clock, the settle and the clip blend now run
+on accumulated capped elapsed, never on wall-clock differences. At a first
+cut of 50 ms the first post-stall step read 0.394; but a 100 ms walking
+window holding one capped catch-up frame carries (100 + cap) ms of walking,
+and at 50 ms that read 0.51 tiles per 100 ms on the fastest seeded walker
+against a 0.506 ceiling — on the renderer's own writes, so not a sampling
+artefact. **At 34 ms (two 60 Hz frames and a hair; a 30 Hz frame sits just
+under it)** the worst such window is 1.34× the walk and the first post-stall
+settle step reads 0.368 / 0.371 (390x844 / 375x812). **The check behind the
+claim:** `tools/measure-world-performance.mjs`'s judged settle-stall arm —
+it waits for the next `using` edge, stalls in that same task, samples the
+drawn box every frame, excludes pairs whose depth scale changed (the
+disclosed assignment size step, a React render), and exits 1 if the largest
+post-stall single-frame step exceeds a bound derived from source with no
+tolerance: cap × (3 / `FLOOR_MEMBER_SETTLE_MS` + the fastest seeded walker's
+catch-up rate) = 0.415 tiles, both terms a capped frame carries (the
+ease-out's steepest `cap` ms, and the seat step the timeline plays in the
+same frame). No edge inside 60 s is a named SKIP, never a silent pass.
+
+**The proof measures the renderer, not the sampler — four measurements, each
+one level under the last, kept because the sequence is the argument.** The
+first two committed proof runs read `FAIL noTeleport` on a walking BYSTANDER
+(never the ghost) at 0.44–0.66 tiles per 100 ms against a 0.405 ceiling, and
+three critics rightly refused a red record with no disposition. Measured
+rather than waived:
+
+1. *The ceiling omitted the sim's speed jitter.* It was derived from the base
+   step, and `speedOf` jitters each member by ±`FLOOR_SIM_SPEED_JITTER_FRACTION`;
+   a +20% walker sat at 93% of the old ceiling before any sampling error.
+   Both `capture-living-world.mjs` and the proof now read the jitter into the
+   ceiling (0.405 → 0.506).
+2. *The rAF sampler read lumps the renderer never wrote.* A `MutationObserver`
+   on the same roots across the same purchase: the bystander's largest write
+   was 7.1 px (0.17 tiles, the one delayed purchase frame) where the sampler
+   had read +11 px in one sample.
+3. *A wall-clock rate over-reads this headless browser's renderer by up to
+   2.4×.* Its `requestAnimationFrame` timestamp always steps 16.7 ms while
+   late callbacks bunch 7–12 ms apart on the wall (a clock probe: 179 frames,
+   timestamps summing to exactly the wall's 3000 ms, 14 of them advancing
+   >15 ms of timestamp in <12 ms of wall). The renderer moves by its
+   timestamps, as this directory's clock ban requires; a vsync-locked device
+   never shows this.
+4. *Even on the frame clock the rAF sampler can see a write one frame late and
+   then two at once* (+0.0 px then +10.9 on the purchase frame), a sampling
+   phase that reads as 1.5× walking over the window holding it.
+
+So the judged rate is now read off the write log — every record a write the
+renderer made — stamped with the frame timestamp a one-line rAF ticker holds
+when the mutation's microtask runs; only full 100 ms windows are judged; the
+rAF record keeps the settle bound (it carries the lifecycle edges) and its
+own rate as a recorded number. **Result: the walking bystander reads 0.370 / 0.381
+tiles per 100 ms on the write log at 390x844 / 375x812 — its seeded walk
+(0.409 per tick) times the 1.1× catch-up is 0.375 — against the 0.506
+ceiling.**
+
+5. *And the write log has a limit of its own, found by the regenerated
+   evidence and measured one level further down.* The first clean run's log
+   read a largest single write of 0.182 tiles on the bystander at both
+   viewports, where the frame loop's own worst case for a walker is one
+   capped catch-up frame: (34 / 120) × 1.1 × 0.409 = 0.127 tiles at that
+   stride. A trace planted inside the frame loop for one purchase (390x844,
+   reverted before any commit) read the loop's largest per-frame drawn step
+   at 5.49 px — exactly that bound at the body's depth — in a run whose
+   write log read 7.9 px. When this browser bunches frames, the observer's
+   callback can land after the loop has written twice, and a record reads
+   the current style, so consecutive records differ by two frames' motion.
+   The tool's header now says so; it reads `FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS`
+   and prints the loop's walking bound (0.132 at the fastest seeded stride)
+   and the sibling's settle-frame bound (0.416) beside every `max write`
+   (`4a55f608`, `a2872e45`). Across four proof runs, two viewports each, the
+   bystander's max write read 0.116, 0.125, 0.128, 0.176, 0.177, 0.182, 0.182
+   and 0.195 tiles — under the bound when the observer kept up, one extra
+   frame when it did not. The
+   judged quantity, the full-window rate, sums the same motion whether the
+   observer delivers it as one record or two, so coalescing cannot move a
+   verdict; only the recorded per-write maximum over-reads, and it now says
+   by how much.
+
+**Capacity visual proof — `tools/capture-capacity-proof.mjs`, run on the
+committed tree against the real Play surface, no reload between BEFORE and
+AFTER, no query string, the bench and the panel pressed the way a player
+presses them.** Evidence in `docs/design/living-gym-world/vl-2b/` (before /
+purchase / after frames, a strip and a webm per viewport, `notes.json` with
+every sampled frame and every renderer write, `notes.txt`). Nineteen
+verdicts per viewport, stamped `a2872e45`, committed at `a248972b`:
+
+| verdict | 390x844 | 375x812 |
+|---|---|---|
+| `playedPath` | the gym reached by the in-app control, address bar with no query string | same |
+| `funded` | 0 → 357.84 gym bucks by one press of the 72-hour advance | same |
+| `capacityOne`, `beforeState` | tick 11: one `using` at 5,0, one `queuing` at 6,0, one `seeking` | tick 12, same shape |
+| `capacityOffered`, `capacityReachable` | the Capacity row inside the viewport; the browser's hit-test at its centre resolves inside the row | same |
+| `priceCharged` | 357.84 → 177.84, a drop of 180.000 against a price of 180 | same |
+| `capacityDone` | the done row present, white on black, inside the viewport | same |
+| `throughputUnchanged` | the Plate tree row still offered at 30 | same |
+| `identity`, `sameIds` | the same three ids at every one of 146 frames, one node each | 144 frames |
+| `noTeleport` | bystander 0.370 tiles per 100 ms on the write log, ceiling 0.506 | 0.381 |
+| `ghostPoseHeld` | a use-bench image at all 146 using frames, no transform written | 144 |
+| `secondBenchVisible` | the expansion bench drawn at opacity 1 beside the first | same |
+| `usingOnBench` | both using boxes on bench boxes 11 ms after the AFTER read | 3 ms |
+| `twoUsing`, `queueHeadTookSeat`, `queueShortened` | two `using` at tick 15 (frame 2, 98 ms after the press): the queue head on the new seat 7,0, the relocated user on 2,2, nobody left queuing | tick 16 (frame 1, 90 ms) |
+| `layout` | the primary bench where it was | same |
+
+**Performance and the living-world capture, regenerated on the same tree
+with each bundle stamped on a clean tree** (the three tools were run with
+each other's outputs stashed, because a tool's own output in the evidence
+directory is a modified tracked file to the next tool's stamp):
+
+`tools/measure-world-performance.mjs` (stamped `83471f87`, committed
+`91d85a90`): 59.3 fps mean at both viewports over 15 s (890 / 889 frames,
+p95 16.8 ms, one frame over 50 ms, none over 100), heap 34.9 MB after a
+forced GC, bench tap to panel 27 / 34 ms. The judged settle-stall arm: a
+400 ms stall in the task that sees the next `using` edge lands a first
+post-stall step of 0.368 tiles at both viewports against the source-derived
+bound 0.416 = 34 × (3 / 360 + 0.34 × 1.25 × 1.1 / 120), over 115 / 120
+pairs with no size-step pair excluded — ok. The unjudged VL-2 stall arm,
+this time landing on a member at its use-bench edge, recorded a largest
+single-frame step of 0.344 tiles (under the same bound), a drawn-versus-
+contract lag of 2.6 tiles (the three-tile relocation glide in progress, by
+design) and a per-pair wall-clock rate of 2.07 tiles per 100 ms — the
+wall-clock over-read of a front-loaded ease, the same shape the proof's
+sampler section above names; recorded, not judged.
+
+`tools/capture-living-world.mjs` (same stamp and commit): 13 of 13 checks
+at both viewports, one member followed seeking → queuing → using → leaving
+→ seeking over 18 s, 9.68 / 10.17 tiles travelled, max ordinary rate
+0.342 / 0.369 tiles per 100 ms against the 0.506 ceiling.
+
+**A transient the presentation does not mask, reported for Grok with the exact
+ticks.** At tick 28 at both viewports — 1.65 s and 1.51 s after
+the press — the seeking member's contract point passes through cell 2,2
+while the relocated member is `using` at 2,2: seven consecutive frames on
+the exact cell and fourteen more on the rounded one, with `seats[].usingId`
+naming the user throughout. The renderer draws each body where the contract puts
+it and does not hide the overlap; whether a seeking member may path through
+an occupied seat cell is mechanics and is Grok's to rule on.
+
+**The critic pass, and what it changed.** Four read-only critics graded the
+tree at `cb468918` (integration; per-seat consumption; identity, ghost,
+movement under a delayed frame; the two instruments), then three independent
+refuters tried to break every finding. Twenty findings; three
+refuters each, except the six raised by the instruments critic, whose
+refuters died on the session's usage limit and are therefore NOT refuted —
+they are listed here as acted on by measurement, not as dismissed. All four
+graders returned **not-met** on the tree they were shown, and each verdict
+was earned:
+
+- *Integration:* the shared file still said the merge was ABORTED, and the
+  merge commit's message claimed a record this file did not carry —
+  confirmed by three refuters. This entry is the record, and the deferral
+  entry above now points here.
+- *Per-seat:* `seats[i]` indexed against `benches[i]` with the sim's seat
+  builder able to skip a bench — two of three refuters confirmed it from
+  `floorSim.ts` (the third refuted it against the uncommitted fix already in
+  the worktree). Fixed: seats matched by cell. The tap panel still reading
+  `sim.members` — confirmed by three refuters; stated as a residual below.
+- *Renderer:* the zero-distance settle that popped the relocated bench
+  user's pose to the walk clip for 360 ms — confirmed by three refuters, one
+  of them by mechanism from the committed diff. Fixed, and given a verdict
+  (`ghostPoseHeld`) that reads the visible pose off the DOM. A one-tile
+  queue-to-seat cell jump under the relocation threshold (two of three
+  confirmed) is stated as a residual. The negative-elapsed note: clamped.
+- *Instruments:* the red `noTeleport` record with no disposition (three
+  refuters confirmed the red; three refuted a claim that it had been
+  COMMITTED — it had not), the ceiling without the jitter, the sub-100 ms
+  windows judged at a 100 ms tolerance — all closed by the four
+  measurements above. The black-on-black done row: confirmed by opening the
+  purchase frame's pixels, then by computed style (rgb(0, 0, 0) on
+  rgb(0, 0, 0)); fixed with an explicit panel text colour on every prose
+  row of the station and member panels, and `capacityDone` now asserts the
+  contrast. The occlusion claim: measured false on the default layout —
+  the browser's own hit-test at the Capacity row's centre resolves to the
+  row — and `capacityReachable` now asserts exactly that at press time. The
+  settle-stall bound's missing timeline term: derived in, tolerance
+  dropped. The missing where-are-the-bodies verdict: `usingOnBench`,
+  polled through the settle because a body assigned a seat glides onto its
+  pad. Five findings were refuted outright (the arm with "no recorded run"
+  had one; the glide that "fired zero times" fires and cancels by design;
+  the ghost-frame fallback is disclosed at the function).
+
+Every finding the critics could name is now either fixed on this tree with
+a check behind it, or written below as a residual with its number.
+
+**Gates, stated separately, in the brief's own names.**
+
+- **CONTRACT 124FB INTEGRATION — met.** Merge `513707b2`; contract frozen;
+  `presentationWorld(...)` is the only source of member and seat truth in
+  `FloorGrid.tsx`; two crossings into Grok-owned test files recorded above;
+  `presentationState.ts` byte-identical to `124fb132`.
+- **PER-SEAT CONTRACT CONSUMPTION — met.** `memberUsesCell` gone; the seat's
+  `usingId` / `changeoverTicks` read at every seat-level draw, matched to its
+  bench by cell; queue geometry still from `occupiedQueueCells`; `queueIds` /
+  `queueRank` untouched. *Residual, stated:* the tap panel's read model
+  (`stationOperationView`, `stationChangeoverSeats` in `stationView.ts`) still
+  takes `sim.members` / `sim.changeovers` — a panel, not the world, and a
+  Grok test pins that read; moving it onto the contract is a small
+  `stationView.ts` change plus a crossing into `floorSim.test.ts`, written
+  here first when it is taken.
+- **IDENTITY CONTINUITY — met by measurement.** `identity` and `sameIds` true
+  at every sampled frame at both viewports; one DOM node per member through
+  the purchase in the write log (the bench-taker's node is re-ordered by
+  depth, never re-created).
+- **GHOST-RESERVE PRESENTATION — met by measurement.** The ghost's drawn
+  excursion is 0 at both viewports and it writes no transform; its visible
+  pose stays a use-bench frame at every sample; no duplicate node; no seat lit
+  while `seats[].usingId` is null; two members using at the first
+  post-purchase tick, so mechanics were not delayed.
+- **MOVEMENT, ANIMATION, PERSPECTIVE COHERENCE — unchanged from VL-2 and
+  re-measured on this tree**; see the capture line above. Technical pass only.
+- **STATION OCCUPANCY — met per seat.** Two benches light for two users; the
+  stale frame lights none.
+- **QUEUE LEGIBILITY — met by measurement.** `queueHeadTookSeat` and
+  `queueShortened` true at both viewports.
+- **CAPACITY VISUAL PROOF — delivered, 19 of 19 verdicts at both viewports.** Same gym, same
+  ids, no reset, no room swap, no management-card substitute; the second
+  physical bench is drawn and the previous queue head takes it while the
+  first user keeps the first.
+- **PERFORMANCE — measured, see the perf line above.** A delayed purchase
+  frame is absorbed as at most one capped frame of walking (0.132 tiles at
+  the fastest stride; the write log's larger readings are two frames in one
+  record, above); a 400 ms stall at a settle edge as 0.368 against a
+  source-derived 0.416 bound, judged.
+- **VISUAL, WORLD LEGIBILITY, SOFT-FEEL — not claimed from automated
+  evidence.** The frames and the webm are for a human to read.
+- **OWNER PLAYTEST — open. Bryant alone closes it.** No native toolchain in
+  this container (`adb` / `emulator` / `xcrun` / `eas` absent, tunnel egress
+  blocked), so the phone path is the human's.
+
+**Residuals, stated rather than hidden.** The tap panel's read model, above.
+The queue head's one-tile step from its queue cell onto the seat cell is
+played by the timeline over one tick (0.83 tiles per 100 ms, under the settle
+window the tool exempts) on top of its eased pull — a compound move the
+relocation rebase deliberately does not catch below 1.1 tiles; a dedicated
+relocation threshold knob would make it a walk. `capture-living-world.mjs`
+still samples on the wall clock from outside the page and can read a replay
+burst as speed under CPU contention (it did once this round, at 0.474 against
+the old 0.405 ceiling, and reads 0.36–0.37 quiet); its ceiling now carries the
+jitter, its sampler is not rewritten. `seatsByBench`'s nearest-footprint rule
+is a renderer choice where two benches share an approach cell. The size step
+at seat assignment is unchanged from VL-2. The relocation glide and the seat
+settle share `FLOOR_MEMBER_SETTLE_MS`'s ease-out cubic: walking pace on
+average (360 ms per tile against a 0.283-tiles-per-100-ms walk), but the
+curve's first frames run at up to three times its mean, which is what the
+perf tool's unjudged arm reads as a 2.07 wall-clock rate at a glide's start;
+a linear or ease-in-out glide is a knob, not a mechanic, and is left as one.
+The write log's coalescing, above, bounds what `max write` can prove.
+Nothing here was run on a device.
+`scratchpad/wt-vl1` (local-only probe branch, never pushed) and
+`scratchpad/wt-capacity` (detached probe at `42ebdc53`, the proof tool's first
+home) are left in place per "push before you clean up".
+
 ### Branch / worktree policy
 
 | Lane | Branches | Worktree |
