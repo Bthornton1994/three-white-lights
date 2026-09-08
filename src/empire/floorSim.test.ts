@@ -659,30 +659,32 @@ const SWEEP_CENSUS = Object.freeze({
   // four-phase values, kept so the deltas are legible rather than asserted:
   // seeking 904, queuing 511, using 542, leaving 452, interrupted 183.
   ENTRIES: Object.freeze({
-    seeking: 872,
-    queuing: 457,
-    using: 413,
-    leaving: 326,
-    interrupted: 270,
+    seeking: 890,
+    queuing: 450,
+    using: 412,
+    leaving: 325,
+    interrupted: 289,
   }),
   // Four-phase values: 'target-removed' 150, 'target-moved' 33, and
   // 'route-blocked' did not exist. Instrumented on the shipped four-phase
   // sweep, the branch that now raises 'route-blocked' fired 0 times across all
   // 66240 observations, which is why the fifth phase exists.
+  // Occupied-cell pathing (VL-2B) treats use cells as transit-blocked, which
+  // moves these pins; each is read from its own assertion's failure value.
   CAUSES: Object.freeze({
-    'target-removed': 215,
-    'target-moved': 39,
-    'route-blocked': 16,
+    'target-removed': 218,
+    'target-moved': 37,
+    'route-blocked': 34,
   }),
   // The source arms of the beat, measured for the first time this round.
   SOURCES: Object.freeze({
-    seeking: 99,
-    queuing: 99,
+    seeking: 120,
+    queuing: 97,
     using: 72,
   }),
   STRANDED_OBSERVATIONS: 18,
   STRANDED_MEMBERS: 2,
-  LONGEST_STILL: 57,
+  LONGEST_STILL: 61,
   LONGEST_QUEUE: 3,
 });
 
@@ -1577,9 +1579,9 @@ describe('the sim is deterministic, and the seed is doing work', () => {
     const moved = (seed: number): number =>
       firstTargets(seed).filter((choice, index) => choice !== base[index]).length;
     expect(moved(FLOOR_SIM_SWEEP.SEEDS[0] as number)).toBe(0);
-    expect(moved(FLOOR_SIM_SWEEP.SEEDS[1] as number)).toBe(5);
-    expect(moved(FLOOR_SIM_SWEEP.SEEDS[2] as number)).toBe(5);
-    expect(moved(FLOOR_SIM_SWEEP.SEEDS[3] as number)).toBe(4);
+    expect(moved(FLOOR_SIM_SWEEP.SEEDS[1] as number)).toBe(2);
+    expect(moved(FLOOR_SIM_SWEEP.SEEDS[2] as number)).toBe(2);
+    expect(moved(FLOOR_SIM_SWEEP.SEEDS[3] as number)).toBe(2);
     // The ceiling, recorded so the three numbers above read against something.
     expect(base.length).toBe(8);
   });
@@ -1684,7 +1686,7 @@ describe('a member type changes where a member goes', () => {
       athlete: disagreements('athlete'),
       'serious-lifter': disagreements('serious-lifter'),
     }).toEqual({
-      bodybuilder: 8,
+      bodybuilder: 7,
       powerlifter: 4,
       athlete: 2,
       'serious-lifter': 1,

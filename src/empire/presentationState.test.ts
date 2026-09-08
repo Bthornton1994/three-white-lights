@@ -915,6 +915,23 @@ describe('presentationState.ts — live Capacity red team', () => {
       expect(bay.queueIds).toEqual(queued.map((member) => memberIdForIndex(input.roster, member.index)));
       for (const member of world.members) {
         if (member.lifecycle === 'interrupted') interrupted += 1;
+        if (member.lifecycle !== 'seeking' && member.lifecycle !== 'queuing') continue;
+        for (const seat of bay.seats) {
+          const onSeat =
+            (member.cell.x === seat.cell.x && member.cell.y === seat.cell.y) ||
+            (member.next !== null &&
+              member.next.x === seat.cell.x &&
+              member.next.y === seat.cell.y);
+          if (!onSeat) continue;
+          expect(
+            seat.usingId === null || seat.usingId === member.id,
+            `${member.id} ${member.lifecycle} transited occupied ${cellKey(seat.cell)}`,
+          ).toBe(true);
+          expect(
+            seat.changeoverTicks === 0,
+            `${member.id} ${member.lifecycle} transited changeover ${cellKey(seat.cell)}`,
+          ).toBe(true);
+        }
       }
       const ghosts = ghostIds(bay);
       if (ghosts.length > 0) ghostAfterFirstStep += 1;

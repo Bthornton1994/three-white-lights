@@ -204,7 +204,9 @@ export const DIRECTORY_WALK = Object.freeze({
   // 60 -> 62: Iron & Amber owned-art adapter and its test.
   // 62 -> 64: living-world projector and its test.
   // 64 -> 66: presentation-state contract and its test.
-  DIRECTORY_FILES: 66,
+  // 66 -> 67: occupied-cell pathing red team (`floorSim.occupiedPathing.test.ts`).
+  // One test file, no new shipped module. Read from this pin's own failure value.
+  DIRECTORY_FILES: 67,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**

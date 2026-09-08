@@ -74,11 +74,25 @@
  * cell per tick moves, which is why `FLOOR_SIM_STEP_PROGRESS_PER_TICK` above 1
  * would be discarded rather than fast — the tuning test pins that bound.
  *
- * A member occupies exactly one cell, and members do not block each other.
- * That is a design decision with a real consequence and it is stated rather
- * than buried: two bodies may share a tile, and a renderer that wants them
- * fanned out does the fanning. It is also what makes the liveness argument in
- * §4 hold, because mutual blocking is where a floor sim grows deadlocks.
+ * A member occupies exactly one cell, and members do not block each other
+ * on aisle tiles. That is a design decision with a real consequence and it
+ * is stated rather than buried: two bodies may share a corridor tile, and a
+ * renderer that wants them fanned out does the fanning. It is also what
+ * makes the liveness argument in §4 hold, because mutual blocking is where
+ * a floor sim grows deadlocks.
+ *
+ * Working pads are not aisles. `useCells` are the seats a member stands on
+ * while using a station. Furniture footprints stay in `blocked`. Use cells
+ * stay walkable for standing — a user must occupy their assigned pad, and
+ * live Capacity relocates a displaced user onto the primary pad — but they
+ * are transit-blocked for everyone who is not taking that pad as their
+ * current goal. Queue-goal distance fields treat every use cell as blocked;
+ * a seat-goal field leaves only that seat walkable among use cells. Greedy
+ * STEPS descent then cannot walk a seeker through an occupied or changeover
+ * pad on the way to a queue cell. VL-2B measured the defect: after live
+ * Capacity the relocated user stood on `(2,2)` while a seeker transited
+ * that same pad for seven ticks because the field still treated it as
+ * corridor. Members still do not block each other.
  *
  * ===========================================================================
  * 3. Queues are DERIVED, so they cannot drift from the members
@@ -617,6 +631,35 @@ function manhattan(left: GridPosition, right: GridPosition): number {
   return Math.abs(left.x - right.x) + Math.abs(left.y - right.y);
 }
 
+/** True when `cell` is one of this plan's station use cells (working pads). */
+function isStationUseCell(stations: readonly FloorStation[], cell: GridPosition): boolean {
+  for (const station of stations) {
+    for (const use of station.useCells) {
+      if (sameCell(use, cell)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Furniture/expansion blocked map plus use cells treated as transit-blocked,
+ * except `except` (the destination pad of a seat-goal field).
+ */
+function withTransitBlocked(
+  blocked: readonly boolean[],
+  grid: GridSize,
+  useCells: readonly GridPosition[],
+  except: GridPosition | null,
+): readonly boolean[] {
+  const next = blocked.slice();
+  for (const cell of useCells) {
+    if (except !== null && sameCell(cell, except)) continue;
+    if (!insideGrid(cell, grid)) continue;
+    next[cellIndex(cell, grid)] = true;
+  }
+  return next;
+}
+
 function refsEqual(left: FloorStationRef, right: FloorStationRef): boolean {
   if (left.kind !== right.kind) return false;
   if (left.kind === 'training' && right.kind === 'training') {
@@ -891,6 +934,11 @@ function routePlan(context: FloorSimContext): RoutePlan {
     seated.push({ occupant, useCells: Object.freeze(useCells) });
   }
 
+  const allUseCells: GridPosition[] = [];
+  for (const { useCells } of seated) {
+    for (const cell of useCells) allUseCells.push(cell);
+  }
+
   const takenQueueCells = new Set<number>();
   const stations: FloorStation[] = [];
   const fields: (readonly (readonly number[])[])[] = [];
@@ -928,10 +976,16 @@ function routePlan(context: FloorSimContext): RoutePlan {
         queueCells,
       }),
     );
+    // Seat fields: this pad is the source, other pads are transit-blocked.
+    // Queue fields: every pad is transit-blocked. Working pads are not aisles.
     fields.push(
       Object.freeze([
-        ...useCells.map((cell) => distanceField(cell, grid, blocked)),
-        ...queueCells.map((cell) => distanceField(cell, grid, blocked)),
+        ...useCells.map((cell) =>
+          distanceField(cell, grid, withTransitBlocked(blocked, grid, allUseCells, cell)),
+        ),
+        ...queueCells.map((cell) =>
+          distanceField(cell, grid, withTransitBlocked(blocked, grid, allUseCells, null)),
+        ),
       ]),
     );
   }
@@ -1154,19 +1208,23 @@ function stepDownField(
 
 /** The walkable neighbour furthest from `from`, for a member stepping off a machine. */
 function stepAwayFrom(cell: GridPosition, from: GridPosition, plan: RoutePlan): GridPosition | null {
-  let best: GridPosition | null = null;
-  let bestDistance = manhattan(cell, from);
-  for (const step of STEPS) {
-    const neighbour: GridPosition = { x: cell.x + step.x, y: cell.y + step.y };
-    if (!insideGrid(neighbour, plan.grid)) continue;
-    if (plan.blocked[cellIndex(neighbour, plan.grid)] === true) continue;
-    const distance = manhattan(neighbour, from);
-    if (distance > bestDistance) {
-      bestDistance = distance;
-      best = neighbour;
+  const pick = (allowUse: boolean): GridPosition | null => {
+    let best: GridPosition | null = null;
+    let bestDistance = manhattan(cell, from);
+    for (const step of STEPS) {
+      const neighbour: GridPosition = { x: cell.x + step.x, y: cell.y + step.y };
+      if (!insideGrid(neighbour, plan.grid)) continue;
+      if (plan.blocked[cellIndex(neighbour, plan.grid)] === true) continue;
+      if (!allowUse && isStationUseCell(plan.stations, neighbour)) continue;
+      const distance = manhattan(neighbour, from);
+      if (distance > bestDistance) {
+        bestDistance = distance;
+        best = neighbour;
+      }
     }
-  }
-  return best;
+    return best;
+  };
+  return pick(false) ?? pick(true);
 }
 
 /** A wander leg for a member with nowhere to be: a seeded direction, held for a few ticks. */
@@ -1177,16 +1235,20 @@ function stepWander(
   index: number,
   tick: number,
 ): GridPosition | null {
-  const leg = Math.floor(tick / EMPIRE_TUNING.FLOOR_SIM_WANDER_HOLD_TICKS);
-  const first = hashOf([seed, index, leg]) % STEPS.length;
-  for (let offset = 0; offset < STEPS.length; offset += 1) {
-    const step = STEPS[(first + offset) % STEPS.length] as GridPosition;
-    const neighbour: GridPosition = { x: cell.x + step.x, y: cell.y + step.y };
-    if (!insideGrid(neighbour, plan.grid)) continue;
-    if (plan.blocked[cellIndex(neighbour, plan.grid)] === true) continue;
-    return neighbour;
-  }
-  return null;
+  const pick = (allowUse: boolean): GridPosition | null => {
+    const leg = Math.floor(tick / EMPIRE_TUNING.FLOOR_SIM_WANDER_HOLD_TICKS);
+    const first = hashOf([seed, index, leg]) % STEPS.length;
+    for (let offset = 0; offset < STEPS.length; offset += 1) {
+      const step = STEPS[(first + offset) % STEPS.length] as GridPosition;
+      const neighbour: GridPosition = { x: cell.x + step.x, y: cell.y + step.y };
+      if (!insideGrid(neighbour, plan.grid)) continue;
+      if (plan.blocked[cellIndex(neighbour, plan.grid)] === true) continue;
+      if (!allowUse && isStationUseCell(plan.stations, neighbour)) continue;
+      return neighbour;
+    }
+    return null;
+  };
+  return pick(false) ?? pick(true);
 }
 
 /** The nearest walkable cell to `from`, by (distance, y, x) — where a member built on is moved to. */
@@ -1547,7 +1609,11 @@ function advanceMember(
 
   // seeking or queuing, with or without a target.
   if (relocated.target === null) {
-    const walked = continueStep(relocated, plan, speed);
+    const idle =
+      relocated.next !== null && isStationUseCell(plan.stations, relocated.next)
+        ? Object.freeze({ ...relocated, next: null, progress: 0 })
+        : relocated;
+    const walked = continueStep(idle, plan, speed);
     const stepped = beginStep(
       walked,
       stepWander(walked.cell, plan, seed, relocated.index, tick),
@@ -1586,7 +1652,13 @@ function advanceMember(
   const goalField = goals[
     canServe ? Math.max(useIndex, 0) : station.useCells.length + queueIndex
   ] as readonly number[];
-  const walked = continueStep(relocated, plan, speed);
+  const inFlight =
+    relocated.next !== null &&
+    isStationUseCell(plan.stations, relocated.next) &&
+    !sameCell(relocated.next, goalCell)
+      ? Object.freeze({ ...relocated, next: null, progress: 0 })
+      : relocated;
+  const walked = continueStep(inFlight, plan, speed);
   if ((goalField[cellIndex(walked.cell, plan.grid)] as number) === UNREACHABLE) {
     // ROUTE LOST — the liveness hole this file found in itself, and the §5.13
     // case that section does not name. The member's target has neither moved

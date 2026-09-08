@@ -430,7 +430,7 @@ describe('Stage G.2A — reliability', () => {
 
 describe('Stage G.2A.1 — training mapping candidates', () => {
   const stockWait = 0.31368001276156227;
-  const capacityWait = 0.6197135473011088;
+  const capacityWait = 0.5925639189078646;
   const throughputWait = 0.4271760601788676;
   const severeWait = waitDecay(180, KNOBS.waitDecayTicks);
   const maps = Object.freeze([0.75, 0.82, 0.9] as const);
@@ -490,7 +490,7 @@ describe('Stage G.2A.1 — training mapping candidates', () => {
 describe('Stage G.2A.1 — composite candidates against actual overall labels', () => {
   const stockGarage = scored(0.31368001276156227, 0.82, 1);
   const qualityGarage = scored(0.31368001276156227, 1, 1);
-  const capacityGarage = scored(0.6197135473011088, 0.82, 1);
+  const capacityGarage = scored(0.5925639189078646, 0.82, 1);
   const throughputGarage = scored(0.4271760601788676, 0.82, 1);
   const excellentStock = scored(1, 0.82, 1);
   const excellentQuality = scored(1, 1, 1);
@@ -539,11 +539,11 @@ describe('Stage G.2A.1 — composite candidates against actual overall labels', 
     expect(qualityGarage.geometric.overall).toBe('Mixed');
     expect(qualityGarage.bottleneck.score).toBeCloseTo(0.5424533418410415, 10);
     expect(qualityGarage.bottleneck.overall).toBe('Rough');
-    expect(capacityGarage.arithmetic.score).toBeCloseTo(0.8132378491003696, 10);
+    expect(capacityGarage.arithmetic.score).toBeCloseTo(0.8041879729692881, 10);
     expect(capacityGarage.arithmetic.overall).toBe('Good');
-    expect(capacityGarage.geometric.score).toBeCloseTo(0.7979976532673189, 10);
+    expect(capacityGarage.geometric.score).toBeCloseTo(0.786169791495582, 10);
     expect(capacityGarage.geometric.overall).toBe('Good');
-    expect(capacityGarage.bottleneck.score).toBeCloseTo(0.7164756982007392, 10);
+    expect(capacityGarage.bottleneck.score).toBeCloseTo(0.6983759459385763, 10);
     expect(capacityGarage.bottleneck.overall).toBe('Mixed');
     expect(throughputGarage.arithmetic.score).toBeCloseTo(0.7490586867262892, 10);
     expect(throughputGarage.arithmetic.overall).toBe('Mixed');
@@ -855,13 +855,13 @@ describe('Stage G.2A.1 — exact 1000-tick Garage fixture table', () => {
 
     expect(stock.meanRawQueueWaitTicks).toBeCloseTo(128.13333333333334, 10);
     expect(quality.meanRawQueueWaitTicks).toBeCloseTo(128.13333333333334, 10);
-    expect(capacity.meanRawQueueWaitTicks).toBeCloseTo(54.333333333333336, 10);
+    expect(capacity.meanRawQueueWaitTicks).toBeCloseTo(59.333333333333336, 10);
     expect(throughput.meanRawQueueWaitTicks).toBeCloseTo(93.66666666666667, 10);
     expect(stock.meanRawQueueWaitTicks).not.toBeCloseTo(G1_WAIT.stockMean, 1);
 
     expect(stock.meanWait).toBeCloseTo(0.31368001276156227, 10);
     expect(quality.meanWait).toBeCloseTo(0.31368001276156227, 10);
-    expect(capacity.meanWait).toBeCloseTo(0.6197135473011088, 10);
+    expect(capacity.meanWait).toBeCloseTo(0.5925639189078646, 10);
     expect(throughput.meanWait).toBeCloseTo(0.4271760601788676, 10);
     expect(stock.meanTraining).toBe(0.82);
     expect(quality.meanTraining).toBe(1);
@@ -873,16 +873,16 @@ describe('Stage G.2A.1 — exact 1000-tick Garage fixture table', () => {
     expect(throughput.meanReliability).toBe(1);
     expect(stock.meanComposite).toBeCloseTo(0.6358163851139348, 10);
     expect(quality.meanComposite).toBeCloseTo(0.6792981493971691, 10);
-    expect(capacity.meanComposite).toBeCloseTo(0.7966705618221184, 10);
+    expect(capacity.meanComposite).toBeCloseTo(0.7860114101220862, 10);
     expect(throughput.meanComposite).toBeCloseTo(0.704912410827251, 10);
 
     expect(stock.overall).toEqual({ Mixed: 3 });
     expect(quality.overall).toEqual({ Mixed: 3 });
-    expect(capacity.overall).toEqual({ Mixed: 2, Good: 1 });
+    expect(capacity.overall).toEqual({ Mixed: 1, Good: 2 });
     expect(throughput.overall).toEqual({ Mixed: 3 });
     expect(stock.waitLabels).toEqual({ Rough: 3 });
     expect(quality.waitLabels).toEqual({ Rough: 3 });
-    expect(capacity.waitLabels).toEqual({ Manageable: 2, Easy: 1 });
+    expect(capacity.waitLabels).toEqual({ Manageable: 3 });
     expect(throughput.waitLabels).toEqual({ Strained: 3 });
     expect(stock.trainingLabels).toEqual({ Solid: 3 });
     expect(quality.trainingLabels).toEqual({ Excellent: 3 });
@@ -941,24 +941,24 @@ describe('Stage G.2A.1 — exact 1000-tick Garage fixture table', () => {
     const niaCapacity = capacity.named[0];
     const omarCapacity = capacity.named[1];
     const wrenCapacity = capacity.named[2];
-    expect(niaCapacity?.components?.wait).toBeCloseTo(0.5786213355567446, 10);
+    expect(niaCapacity?.components?.wait).toBeCloseTo(0.5591753034099118, 10);
     expect(niaCapacity?.components?.training).toBe(0.82);
-    expect(niaCapacity?.composite).toBeCloseTo(0.7799547942004615, 10);
+    expect(niaCapacity?.composite).toBeCloseTo(0.771117592724495, 10);
     expect(niaCapacity?.overall).toBe('Mixed');
     expect(niaCapacity?.reasons).toEqual([
       'Waiting has been more reasonable.',
       'Training has been a regular gym session.',
     ]);
-    expect(omarCapacity?.components?.wait).toBeCloseTo(0.7279314942997821, 10);
-    expect(omarCapacity?.composite).toBeCloseTo(0.8419793765980876, 10);
+    expect(omarCapacity?.components?.wait).toBeCloseTo(0.5987706032875961, 10);
+    expect(omarCapacity?.composite).toBeCloseTo(0.7889051193390234, 10);
     expect(omarCapacity?.overall).toBe('Good');
     expect(omarCapacity?.reasons).toEqual([
-      'Service has been prompt.',
+      'Waiting has been more reasonable.',
       'Training has been a regular gym session.',
     ]);
-    expect(wrenCapacity?.components?.wait).toBeCloseTo(0.5525878120468001, 10);
-    expect(wrenCapacity?.composite).toBeCloseTo(0.7680775146678058, 10);
-    expect(wrenCapacity?.overall).toBe('Mixed');
+    expect(wrenCapacity?.components?.wait).toBeCloseTo(0.6197458500260858, 10);
+    expect(wrenCapacity?.composite).toBeCloseTo(0.7980115183027399, 10);
+    expect(wrenCapacity?.overall).toBe('Good');
     expect(wrenCapacity?.reasons).toEqual([
       'Waiting has been more reasonable.',
       'Training has been a regular gym session.',
