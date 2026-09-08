@@ -40,6 +40,19 @@
  *                renderer's rule is that a stall is drawn as a stall and
  *                never as a faster walk, and this is where that rule is
  *                measured rather than described.
+ *   sim tick rate VL-3: sim ticks per second, read off the drawn roots'
+ *                `data-tick` attribute at every animation frame of the
+ *                same `SAMPLE_MS` window (the renderer stamps the newest
+ *                snapshot's tick per member; the largest tick seen per
+ *                frame is the sim's clock as the page can see it), against
+ *                the nominal 1000 / FLOOR_SIM_TICK_INTERVAL_MS read from
+ *                source. Reported, never judged: a headless browser's
+ *                `setInterval` runs late under load and that lateness is
+ *                what the number shows. Printed, per viewport, on ONE
+ *                labelled SUMMARY line together with the mean, p95 and
+ *                WORST frame interval and the entity count — the five
+ *                numbers VL-3's brief asks to read side by side — and
+ *                written to perf.json under `summary`.
  *   settle stall VL-2B: the same stall placed EXACTLY at a member's `using`
  *                edge — the moment its eased pull onto the bench starts —
  *                then the body's drawn box sampled every frame. The settle
@@ -193,23 +206,68 @@ async function entityCount(page) {
   });
 }
 
+/**
+ * Frame intervals over `ms`, and — VL-3 — the sim tick visible on the drawn
+ * roots at each frame (`data-tick`, the newest snapshot the renderer has
+ * played; the largest across members is the sim's clock as the page can
+ * see it), so a tick rate can be read from the same window as the pacing.
+ */
 async function frameTimes(page, ms) {
   return page.evaluate(
     (durationMs) =>
       new Promise((resolve) => {
         const intervals = [];
+        const ticks = [];
         let last = null;
         const start = performance.now();
         const step = (now) => {
           if (last !== null) intervals.push(now - last);
           last = now;
+          let tick = null;
+          for (const node of document.querySelectorAll('[data-memberid]')) {
+            const t = Number(node.getAttribute('data-tick'));
+            if (Number.isFinite(t) && (tick === null || t > tick)) tick = t;
+          }
+          ticks.push({ t: now - start, tick });
           if (now - start < durationMs) requestAnimationFrame(step);
-          else resolve(intervals);
+          else resolve({ intervals, ticks });
         };
         requestAnimationFrame(step);
       }),
     ms,
   );
+}
+
+/**
+ * VL-3: ticks observed per second across the sampled window — the number
+ * of distinct tick VALUES seen after the first, over the frame-clock span
+ * between the first and last frame that carried one — beside the nominal
+ * rate. `tickJumpsOverOne` counts frames whose tick advanced by more than
+ * one: ticks the sim ran that no drawn frame showed (a stalled main
+ * thread runs several timer callbacks back to back).
+ */
+function summariseTicks(ticks) {
+  const carried = ticks.filter((s) => s.tick !== null);
+  if (carried.length < 2) return { framesWithTick: carried.length, ticksObserved: 0, spanMs: 0, ticksPerSecond: null, nominalTicksPerSecond: 1000 / TICK_MS, tickJumpsOverOne: 0, firstTick: null, lastTick: null };
+  let observed = 0;
+  let jumps = 0;
+  for (let i = 1; i < carried.length; i += 1) {
+    const d = carried[i].tick - carried[i - 1].tick;
+    if (d > 0) observed += 1;
+    if (d > 1) jumps += 1;
+  }
+  const spanMs = carried[carried.length - 1].t - carried[0].t;
+  return {
+    framesWithTick: carried.length,
+    ticksObserved: observed,
+    tickAdvance: carried[carried.length - 1].tick - carried[0].tick,
+    spanMs,
+    ticksPerSecond: spanMs > 0 ? (carried[carried.length - 1].tick - carried[0].tick) / (spanMs / 1000) : null,
+    nominalTicksPerSecond: 1000 / TICK_MS,
+    tickJumpsOverOne: jumps,
+    firstTick: carried[0].tick,
+    lastTick: carried[carried.length - 1].tick,
+  };
 }
 
 function summarise(intervals) {
@@ -504,8 +562,9 @@ async function runViewport(browser, viewport) {
 
   const entities = await entityCount(page);
   const heapStart = await metrics(session);
-  const intervals = await frameTimes(page, SAMPLE_MS);
+  const { intervals, ticks } = await frameTimes(page, SAMPLE_MS);
   const frames = summarise(intervals);
+  const simTicks = summariseTicks(ticks);
   // The heap before and after a forced collection: a browser lets the heap
   // grow until it decides to collect, so the raw end figure mostly measures
   // when the collector last ran. The post-GC figure is what the world
@@ -522,6 +581,18 @@ async function runViewport(browser, viewport) {
     viewport: viewport.name,
     entities,
     frames,
+    simTicks,
+    // VL-3: the five numbers the brief asks to read side by side, under
+    // named keys, the same values the SUMMARY line prints.
+    summary: {
+      meanFrameIntervalMs: frames.meanMs,
+      p95FrameIntervalMs: frames.p95Ms,
+      worstFrameIntervalMs: frames.maxMs,
+      entityCount: entities.members,
+      entityCountDetail: entities,
+      simTicksPerSecond: simTicks.ticksPerSecond,
+      simTicksPerSecondNominal: simTicks.nominalTicksPerSecond,
+    },
     heapStart,
     heapEndRaw,
     heapEnd,
@@ -539,6 +610,9 @@ async function runViewport(browser, viewport) {
   );
   note(
     `${viewport.name} frames n=${frames.frames} mean=${frames.meanMs?.toFixed(2)}ms p50=${frames.p50Ms?.toFixed(2)} p95=${frames.p95Ms?.toFixed(2)} p99=${frames.p99Ms?.toFixed(2)} max=${frames.maxMs?.toFixed(2)} long(>${LONG_FRAME_MS}ms)=${frames.longFrames} veryLong(>${VERY_LONG_FRAME_MS}ms)=${frames.veryLongFrames} fps(mean)=${frames.fpsFromMean?.toFixed(1)}`,
+  );
+  note(
+    `${viewport.name} SUMMARY meanFrameInterval=${frames.meanMs?.toFixed(2)}ms p95FrameInterval=${frames.p95Ms?.toFixed(2)}ms worstFrameInterval=${frames.maxMs?.toFixed(2)}ms entities=${entities.members} (members; ${entities.poseImages} pose images, ${entities.stationChips} stations, ${entities.floorNodes} floor nodes) simTickRate=${simTicks.ticksPerSecond === null ? 'n/a' : simTicks.ticksPerSecond.toFixed(3)}/s (nominal ${simTicks.nominalTicksPerSecond.toFixed(3)}/s = 1000/${TICK_MS}; ${simTicks.tickAdvance ?? 0} ticks over ${simTicks.spanMs.toFixed(0)}ms, ${simTicks.ticksObserved} frames advanced it, ${simTicks.tickJumpsOverOne} by more than one)`,
   );
   note(
     `${viewport.name} heap used ${(heapStart.jsHeapUsedBytes / 1048576).toFixed(1)}MB -> ${(heapEndRaw.jsHeapUsedBytes / 1048576).toFixed(1)}MB raw, ${(heapEnd.jsHeapUsedBytes / 1048576).toFixed(1)}MB after a forced GC, over ${SAMPLE_MS}ms; DOM nodes ${heapStart.domNodes} -> ${heapEnd.domNodes}; layouts ${heapStart.layoutCount} -> ${heapEnd.layoutCount}`,
