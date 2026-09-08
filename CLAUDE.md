@@ -1368,6 +1368,22 @@ other lanes can see what is being built:**
   in-app path through the shell's own controls stays the played path the
   capacity proof drives.
 
+**Crossing VL-3a, taken and recorded here as this section requires — one
+`data` row in `src/tuning/audit.ts`'s `SOURCE_RULES` and the matching
+allowlist entry in `src/tuning/audit.test.ts`, for
+`src/empire/memberPuppet.ts`.** That file is hand-authored art data in exactly
+the sense `src/art/rig.ts` gives the phrase — part polygons, pivots, sole
+points and keyframe angles read off two paintings — and its header says so;
+unregistered, the magic-number audit reports 449 rows, every one in that file
+and none in any other VL-3 module (`memberRig.ts` holds no bare number).
+`src/tuning/` is the one surface both sessions share and this file's rule is
+that a row there is announced here; the precedent is the `empireTuning.ts` and
+`careerTuning.ts` rows, which Session A applied from Session B's text. This
+time the row is applied directly, beside the `rig.ts` row it mirrors, because
+waiting would leave the audit red on a pushed branch; classification `data`,
+so no `src/tuning/index.ts` row. If Session A would rather it had been a
+request, say so here and Session B will route the next one that way.
+
 **Files.** New: `src/empire/memberMotionClips.ts`, `memberPuppet.ts`,
 `memberRig.ts`, `memberMotion.ts` and their tests; `tools/bake-member-motion.mjs`,
 `tools/capture-motion-proof.mjs`; `public/empire-art/member-motion-*.png`;

@@ -378,6 +378,17 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     kind: 'data',
     why: 'POSES / RIG_GEOMETRY / POSE_DEPTH_ANCHORS — hand-authored landmark drawings.',
   }),
+  // VL-3 (Claude Code Session B, CLAUDE.md "VL-3"): the cut-out puppet's
+  // part atlas and keyframes over the two Iron & Amber paintings — the same
+  // argument as `rig.ts`, one directory over: a pivot cannot move without
+  // the polygon around it being re-cut, and a contact-pose thigh angle
+  // cannot turn without the gait being re-authored against it. What CAN be
+  // turned lives in `empireTuning.ts` under `FLOOR_MEMBER_MOTION_*`.
+  'src/empire/memberPuppet.ts': Object.freeze({
+    role: 'constants',
+    kind: 'data',
+    why: 'WALKER / PRESSER / GAIT and the bench keys — hand-authored part polygons, pivots, sole points and keyframe angles over the two Iron & Amber paintings; see the file header.',
+  }),
   'src/art/spriteMarks.ts': Object.freeze({
     role: 'constants',
     kind: 'data',
