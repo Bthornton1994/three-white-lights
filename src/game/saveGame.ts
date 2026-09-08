@@ -98,8 +98,15 @@ export const SAVE_VERSION_V2 = 2 as const;
  */
 export const SAVE_VERSION_TRAINING_PROGRESS = 3 as const;
 
+/**
+ * Schema version that first carried the in-progress Career meet booking as a
+ * sibling of the progression wire. Not a `ServerRecord` field — `meetServer.ts`
+ * is frozen against growing another copy-through. v1–v3 migrate as `null`.
+ */
+export const SAVE_VERSION_ENTERED_MEET = 4 as const;
+
 /** This build's schema version. */
-export const SAVE_VERSION = SAVE_VERSION_TRAINING_PROGRESS;
+export const SAVE_VERSION = SAVE_VERSION_ENTERED_MEET;
 
 /** The envelope, as written. `wire` is the progression boundary's own shape. */
 export interface SavedGameV1 {
@@ -128,12 +135,28 @@ export interface SavedGameV2 {
  */
 export interface SavedGameV3 {
   readonly format: typeof SAVE_FORMAT;
+  readonly version: typeof SAVE_VERSION_TRAINING_PROGRESS;
+  readonly savedAtIso: string;
+  readonly wire: ProgressionSnapshotWire;
+  readonly fatigue: FatigueState;
+  readonly profile: LifterProfile | null;
+  readonly trainingProgressCredit: TrainingProgressCredit;
+}
+
+/**
+ * Version 4 adds the in-progress Career meet booking beside the wire.
+ * Same standing as fatigue / credit: JSON, round-trippable, never a
+ * ConfirmedFact. Cleared when a meet result settles.
+ */
+export interface SavedGameV4 {
+  readonly format: typeof SAVE_FORMAT;
   readonly version: typeof SAVE_VERSION;
   readonly savedAtIso: string;
   readonly wire: ProgressionSnapshotWire;
   readonly fatigue: FatigueState;
   readonly profile: LifterProfile | null;
   readonly trainingProgressCredit: TrainingProgressCredit;
+  readonly enteredMeetId: string | null;
 }
 
 /**
@@ -148,11 +171,18 @@ export const SAVE_REFUSAL_CODES = [
   'BAD_WIRE',
   'BAD_FATIGUE',
   'BAD_TRAINING_PROGRESS',
+  'BAD_ENTERED_MEET',
 ] as const;
 export type SaveRefusalCode = (typeof SAVE_REFUSAL_CODES)[number];
 
 export type SaveDecodeResult =
-  | { readonly ok: true; readonly record: ServerRecord; readonly savedAtIso: string; readonly profile: LifterProfile | null }
+  | {
+      readonly ok: true;
+      readonly record: ServerRecord;
+      readonly savedAtIso: string;
+      readonly profile: LifterProfile | null;
+      readonly enteredMeetId: string | null;
+    }
   | { readonly ok: false; readonly code: SaveRefusalCode; readonly detail: string };
 
 function refused(code: SaveRefusalCode, detail: string): SaveDecodeResult {
@@ -165,8 +195,9 @@ export function encodeSavedGame(
   record: ServerRecord,
   savedAtIso: string,
   profile: LifterProfile | null = null,
+  enteredMeetId: string | null = null,
 ): string {
-  const save: SavedGameV3 = {
+  const save: SavedGameV4 = {
     format: SAVE_FORMAT,
     version: SAVE_VERSION,
     savedAtIso,
@@ -176,6 +207,7 @@ export function encodeSavedGame(
     trainingProgressCredit: copyTrainingProgressCredit(
       record.trainingProgressCredit ?? EMPTY_TRAINING_PROGRESS_CREDIT,
     ),
+    enteredMeetId,
   };
   return JSON.stringify(save);
 }
@@ -278,6 +310,16 @@ function decodeTrainingProgress(
   return { ok: true, state: next };
 }
 
+function decodeEnteredMeetId(
+  value: unknown,
+): { ok: true; id: string | null } | { ok: false; detail: string } {
+  if (value === null) return { ok: true, id: null };
+  if (typeof value !== 'string' || value.length === 0) {
+    return { ok: false, detail: 'enteredMeetId must be a non-empty string or null' };
+  }
+  return { ok: true, id: value };
+}
+
 /**
  * A save string back into a `ServerRecord`, or a refusal that says why.
  *
@@ -341,6 +383,15 @@ export function decodeSavedGame(text: string): SaveDecodeResult {
     trainingProgressCredit = decodedCredit.state;
   }
 
+  let enteredMeetId: string | null = null;
+  if (envelope.version >= SAVE_VERSION_ENTERED_MEET) {
+    const decodedEntry = decodeEnteredMeetId(
+      (envelope as { enteredMeetId?: unknown }).enteredMeetId,
+    );
+    if (!decodedEntry.ok) return refused('BAD_ENTERED_MEET', decodedEntry.detail);
+    enteredMeetId = decodedEntry.id;
+  }
+
   const envelopeProfile = (envelope as { profile?: unknown }).profile;
   let profile: LifterProfile | null = null;
   if (envelope.version >= SAVE_VERSION_V2 && envelopeProfile !== undefined && envelopeProfile !== null) {
@@ -354,6 +405,7 @@ export function decodeSavedGame(text: string): SaveDecodeResult {
     ok: true,
     savedAtIso: envelope.savedAtIso,
     profile,
+    enteredMeetId,
     // SEALED LIKE EVERY OTHER §7.5 PRODUCER — this is a route into permanent
     // progression (the row a whole career resumes from), and the parsed wire's
     // arrays arrive from JSON.parse thawed, so the deep seal here is doing

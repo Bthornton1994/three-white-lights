@@ -64,8 +64,12 @@ import {
   type MeetRecap,
 } from '../game/meetDay';
 import { finalMeetTotal } from '../game/meet';
-import { meetDayFactsFromCache, type MeetServerPort, type RecordedMeet } from '../game/meetClient';
-import type { MeetServerError } from '../game/meetServer';
+import {
+  meetDayFactsFromCache,
+  type MeetRecordError,
+  type MeetServerPort,
+  type RecordedMeet,
+} from '../game/meetClient';
 import {
   asProposalId,
   emptyProjection,
@@ -126,7 +130,7 @@ export interface MeetDayLoop {
    *
    * IT IS NO LONGER ONLY THEORETICAL. See MEET_ALREADY_RECORDED below.
    */
-  readonly submissionError: MeetServerError | null;
+  readonly submissionError: MeetRecordError | null;
   readonly dispatch: (event: MeetDayEvent) => void;
   readonly restart: () => void;
 }
@@ -198,7 +202,7 @@ export function useMeetDay(
 
   const [state, setState] = useState<MeetDayState>(() => initial ?? buildMeet());
   const [applied, setApplied] = useState<RecordedMeet | null>(null);
-  const [submissionError, setSubmissionError] = useState<MeetServerError | null>(null);
+  const [submissionError, setSubmissionError] = useState<MeetRecordError | null>(null);
   const submittedRef = useRef<string>('');
   const proposalSeq = useRef<number>(0);
 

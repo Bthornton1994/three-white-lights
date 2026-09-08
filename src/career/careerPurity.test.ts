@@ -68,6 +68,7 @@ const ELIGIBILITY_PATH = path.join(HERE, 'eligibility.ts');
 
 const SHIPPED = [
   'calendar.ts',
+  'careerPresentation.ts',
   'careerSweep.ts',
   'careerTuning.ts',
   'eligibility.ts',
@@ -84,6 +85,7 @@ type ShippedName = (typeof SHIPPED)[number];
  */
 const ALLOWED_SPECIFIERS: Readonly<Record<ShippedName, readonly string[]>> = {
   'calendar.ts': ['./careerTuning', './federation', '../game/streak'],
+  'careerPresentation.ts': ['./calendar', './careerTuning', './eligibility', '../game/streak'],
   'careerSweep.ts': [
     '../game/prng',
     '../game/streak',
@@ -416,12 +418,12 @@ function plantM12(source: string): string {
 describe('the career directory is fenced as a whole, not file by file', () => {
   it('has shipped modules to scan, so the scans below are not empty', () => {
     expect(shippedOnDisk()).toEqual([...SHIPPED]);
-    expect(SHIPPED.length).toBe(5);
+    expect(SHIPPED.length).toBe(6);
   });
 
   it('ships no sibling extension the .ts filter would not open', () => {
     // M1 was a .ts file the directory claim never opened. A .tsx/.js next to
-    // these five would be the same miss with a different suffix.
+    // these six would be the same miss with a different suffix.
     const extras = readdirSync(HERE)
       .filter((name) => /\.(tsx|mts|cts|js|mjs|cjs)$/.test(name))
       .sort();
@@ -435,9 +437,9 @@ describe('the career directory is fenced as a whole, not file by file', () => {
       expect(ALLOWED_SPECIFIERS[name].length, `${name} has no allowed-import pin`).toBeGreaterThan(0);
       edges += ALLOWED_SPECIFIERS[name].length;
     }
-    // 3 + 6 + 1 + 3 + 1. A module added without a row fails the keys pin
+    // 3 + 4 + 6 + 1 + 3 + 1. A module added without a row fails the keys pin
     // above; a row that thinned out moves this count.
-    expect(edges).toBe(14);
+    expect(edges).toBe(18);
   });
 });
 
@@ -480,7 +482,7 @@ describe('shipped career modules import only the pinned specifiers', () => {
         seen += 1;
       }
     }
-    expect(seen).toBe(14);
+    expect(seen).toBe(18);
   });
 
   it('only the sweep may reach the generator, and it reaches it by the pinned specifier', () => {

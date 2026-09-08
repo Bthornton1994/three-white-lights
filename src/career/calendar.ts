@@ -69,7 +69,7 @@ import {
   type CareerRuleset,
   type MeetSchedulingMode,
 } from './careerTuning';
-import { federationById, tierIndex } from './federation';
+import { federationById, tierIndex, CAREER_FEDERATION_IDS } from './federation';
 
 /**
  * One dated event on the calendar.
@@ -183,6 +183,65 @@ export function careerMeetFor(
     dateIso,
     qualifyingTotalKg: qualifyingTotalKgFor(tier),
   };
+}
+
+/**
+ * Reconstruct the scheduled meet a stored id names, or `null` if the string
+ * is not one this calendar can have produced.
+ *
+ * Parse from the RIGHT, because both the federation and the tier may contain
+ * hyphens (`anvil-coast`, `campaign-worlds`). The tail is a civil date
+ * `YYYY-MM-DD`; the longest matching tier wins; the rest is the federation.
+ * A well-formed id for a day that is not that tier's meet day is still
+ * `null` — the calendar does not invent meets it would not have scheduled.
+ */
+const TIERS_LONGEST_FIRST: readonly CareerMeetTier[] = [...MEET_TIER_ORDER].sort(
+  (a, b) => b.length - a.length,
+);
+
+const CAREER_MEET_ID_TAIL = /^(.+)-(\d{4}-\d{2}-\d{2})$/;
+const CAREER_MEET_DATE_ISO = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function isCareerFederationId(value: string): value is CareerFederationId {
+  return (CAREER_FEDERATION_IDS as readonly string[]).includes(value);
+}
+
+export function careerMeetFromId(id: string): CareerMeet | null {
+  if (typeof id !== 'string' || id.length === 0) return null;
+  const tail = CAREER_MEET_ID_TAIL.exec(id);
+  if (tail === null) return null;
+  const rest = tail[1];
+  const dateIso = tail[2];
+  if (rest === undefined || dateIso === undefined) return null;
+  const dateParts = CAREER_MEET_DATE_ISO.exec(dateIso);
+  if (dateParts === null) return null;
+  const [, yearText, monthText, dayText] = dateParts;
+  if (yearText === undefined || monthText === undefined || dayText === undefined) return null;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const dayOfMonth = Number(dayText);
+  let day: StreakDay;
+  try {
+    day = streakDayFromCivilDate({ year, month, day: dayOfMonth });
+  } catch {
+    return null;
+  }
+  if (isoDateOf(day) !== dateIso) return null;
+  let tier: CareerMeetTier | null = null;
+  let federationPart: string | null = null;
+  for (const candidate of TIERS_LONGEST_FIRST) {
+    const suffix = `-${candidate}`;
+    if (rest.endsWith(suffix)) {
+      tier = candidate;
+      federationPart = rest.slice(0, rest.length - suffix.length);
+      break;
+    }
+  }
+  if (tier === null || federationPart === null || !isCareerFederationId(federationPart)) {
+    return null;
+  }
+  if (!isMeetDayForTier(tier, day)) return null;
+  return careerMeetFor(federationPart, tier, day);
 }
 
 /**

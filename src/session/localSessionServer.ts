@@ -69,7 +69,8 @@ import {
   type SessionServerResponse,
 } from '../game/sessionClient';
 import type { CareerServerPort, CareerServerResponse } from '../game/careerClient';
-import { applyFederationChoice } from '../game/careerServer';
+import { applyFederationChoice, careerLifterFor } from '../game/careerServer';
+import { applyEnterMeet, authorizeCareerMeetRecord, isCareerMeetId } from '../game/careerLoop';
 import type { MeetBrief, MeetServerPort, MeetServerResponse } from '../game/meetClient';
 import { applyMeetResult } from '../game/meetServer';
 import type { MeetDefinition } from '../game/meetTuning';
@@ -153,6 +154,8 @@ export interface LocalSessionServerOptions {
    * save is the source, then null.
    */
   readonly profile?: LifterProfile | null;
+  /** In-progress Career booking. An explicit record's tests start at null unless set. */
+  readonly enteredMeetId?: string | null;
   /** Entropy for minting a lifter id. Injected so tests are deterministic. */
   readonly entropy?: () => string;
 }
@@ -186,6 +189,7 @@ export function localSessionServer(options: LocalSessionServerOptions = {}): Loc
   const fresh = () => newServerRecord(options.freshSignupDay ?? SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY);
   let record: ServerRecord;
   let profile: LifterProfile | null;
+  let enteredMeetId: string | null = options.enteredMeetId ?? null;
   if (options.record !== undefined) {
     record = options.record;
     profile = options.profile === undefined ? null : options.profile;
@@ -210,6 +214,7 @@ export function localSessionServer(options: LocalSessionServerOptions = {}): Loc
       } else {
         record = decoded.record;
         profile = decoded.profile;
+        enteredMeetId = decoded.enteredMeetId;
       }
     }
   }
@@ -228,7 +233,7 @@ export function localSessionServer(options: LocalSessionServerOptions = {}): Loc
   const persist = (): void => {
     if (store === null) return;
     try {
-      store.save(encodeSavedGame(record, nowIso(), profile));
+      store.save(encodeSavedGame(record, nowIso(), profile, enteredMeetId));
     } catch (error) {
       console.warn(`localSessionServer: persisting the row failed — ${String(error)}`);
     }
@@ -309,9 +314,27 @@ export function localSessionServer(options: LocalSessionServerOptions = {}): Loc
       proposalId: ProposalId,
     ): Promise<MeetServerResponse> {
       await sleep(latencyMs);
-      const applied = applyMeetResult(record, day, meet, proposal, proposalId);
+      let definition = meet;
+      if (enteredMeetId !== null) {
+        const authorized = authorizeCareerMeetRecord(enteredMeetId, proposal.report.meetId);
+        if (!authorized.ok) return { kind: 'refused', error: authorized.error };
+        definition = authorized.value.definition;
+      } else if (
+        isCareerMeetId(proposal.report.meetId) &&
+        !record.meets.some((stored) => stored.meetId === proposal.report.meetId)
+      ) {
+        return {
+          kind: 'refused',
+          error: {
+            code: 'NOT_ENTERED',
+            message: 'Enter this meet from the Career calendar before recording a result.',
+          },
+        };
+      }
+      const applied = applyMeetResult(record, day, definition, proposal, proposalId);
       if (!applied.ok) return { kind: 'refused', error: applied.error };
       record = applied.value.record;
+      enteredMeetId = null;
       persist();
       return {
         kind: 'recorded',
@@ -356,6 +379,28 @@ export function localSessionServer(options: LocalSessionServerOptions = {}): Loc
       record = applied.value.record;
       persist();
       return { kind: 'chosen', wire: applied.value.wire };
+    },
+
+    openingEnteredMeetId(): string | null {
+      return enteredMeetId;
+    },
+
+    /**
+     * Book a Career meet. Sets the in-progress Career booking.
+     * Reconstructs the runnable definition from the calendar; the client
+     * cannot supply a forged `MeetDefinition`.
+     */
+    async enterMeet(meetId: string, day: number) {
+      await sleep(latencyMs);
+      const applied = applyEnterMeet(careerLifterFor(record), enteredMeetId, meetId, day);
+      if (!applied.ok) return { kind: 'refused' as const, error: applied.error };
+      enteredMeetId = applied.value.enteredMeetId;
+      persist();
+      return {
+        kind: 'entered' as const,
+        meetId: applied.value.enteredMeetId,
+        definition: applied.value.definition,
+      };
     },
 
     openingProfile(): LifterProfile | null {

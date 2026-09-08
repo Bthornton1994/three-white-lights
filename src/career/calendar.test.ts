@@ -4,6 +4,7 @@ import { addDays, civilDateFromStreakDay, streakDayFromCivilDate, type StreakDay
 import { CAREER_TUNING, MEET_TIER_ORDER, type CareerMeetTier } from './careerTuning';
 import {
   careerMeetFor,
+  careerMeetFromId,
   collidingMeetDays,
   isMeetDayForTier,
   isoDateOf,
@@ -239,5 +240,46 @@ describe('one meet', () => {
       dateIso: '2026-01-08',
       qualifyingTotalKg: 550,
     });
+  });
+});
+
+describe('careerMeetFromId reconstructs a scheduled meet from its derived id', () => {
+  it('round-trips every federation and tier on that tier’s own series day', () => {
+    const ids = new Set<string>();
+    for (const federationId of ['meridian', 'ironline', 'grandhall', 'anvil-coast'] as const) {
+      for (const tier of MEET_TIER_ORDER) {
+        const meet = careerMeetFor(federationId, tier, addDays(ANCHOR, CAREER_TUNING.PHASE_DAYS[tier]));
+        const parsed = careerMeetFromId(meet.id);
+        expect(parsed, meet.id).toEqual(meet);
+        ids.add(meet.id);
+      }
+    }
+    expect(ids.size).toBe(20);
+  });
+
+  it('parses hyphenated federation and hyphenated tier from the right', () => {
+    const campaign = careerMeetFor(
+      'anvil-coast',
+      'campaign-worlds',
+      addDays(ANCHOR, CAREER_TUNING.PHASE_DAYS['campaign-worlds']),
+    );
+    const competitive = careerMeetFor(
+      'anvil-coast',
+      'competitive-worlds',
+      addDays(ANCHOR, CAREER_TUNING.PHASE_DAYS['competitive-worlds']),
+    );
+    expect(careerMeetFromId(campaign.id)?.tier).toBe('campaign-worlds');
+    expect(careerMeetFromId(competitive.id)?.tier).toBe('competitive-worlds');
+    expect(careerMeetFromId(campaign.id)?.federationId).toBe('anvil-coast');
+  });
+
+  it('refuses strings the calendar would not have produced', () => {
+    expect(careerMeetFromId('')).toBeNull();
+    expect(careerMeetFromId('local-open-2026')).toBeNull();
+    expect(careerMeetFromId('meridian-local-2026-01-04')).toBeNull();
+    expect(careerMeetFromId('meridian-local-2026-02-31')).toBeNull();
+    expect(careerMeetFromId('not-a-fed-local-2026-01-03')).toBeNull();
+    expect(careerMeetFromId('meridian-local-extra-2026-01-03')).toBeNull();
+    expect(careerMeetFromId('meridian-worlds-2026-01-09')).toBeNull();
   });
 });
