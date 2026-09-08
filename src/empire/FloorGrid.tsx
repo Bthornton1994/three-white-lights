@@ -1670,7 +1670,8 @@ function AmbientMemberBody({
   //
   // No `Date`, no `performance`: the only clock is the timestamp
   // `requestAnimationFrame` hands its callback, per the directory's own
-  // clock ban. Where there is no `requestAnimationFrame` (the node test
+  // clock ban. VL-2B: each frame's elapsed is capped at
+  // `FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS` before it advances anything. Where there is no `requestAnimationFrame` (the node test
   // harness) the loop simply does not run and the body draws its first
   // frame at its anchor.
   useEffect(() => {
@@ -1683,17 +1684,26 @@ function AmbientMemberBody({
     let playTick: number | null = null;
     let pullFrom: FloorTilePoint = { x: latest.current.pullX, y: latest.current.pullY };
     let pullTo: FloorTilePoint = pullFrom;
-    let pullChangedAt: number | null = null;
+    let settleElapsedMs: number | null = null;
     let lastDrawn: FloorTilePoint | null = null;
     let runningClip = latest.current.clip;
     let outgoingFrames: readonly MemberAnimationFrame[] = [];
-    let clipChangedAt: number | null = null;
+    let blendElapsedMs: number | null = null;
     let phase = memberAnimationStartPhase(runningClip, latest.current.index);
     let settleMs = settleDurationMs(0);
     const frame = (now: number): void => {
       const p = latest.current;
-      const elapsed = lastNow === null ? 0 : now - lastNow;
+      // VL-2B: one frame advances at most `FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS`
+      // of animation, however long the main thread was away. The settle and
+      // the blend run on accumulated capped elapsed, never on a wall-clock
+      // difference, so a stalled frame resumes them where they were instead
+      // of landing the stall's worth of motion in one write (measured, see
+      // the knob's own comment).
+      const elapsed =
+        lastNow === null ? 0 : Math.min(now - lastNow, EMPIRE_TUNING.FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS);
       lastNow = now;
+      if (settleElapsedMs !== null) settleElapsedMs += elapsed;
+      if (blendElapsedMs !== null) blendElapsedMs += elapsed;
       // 1. Snapshot intake: a new tick files a new snapshot; the same tick
       //    re-rendered with a moved anchor (a layout change) replaces it.
       const tileHere = p.tile * p.scale;
@@ -1717,12 +1727,12 @@ function AmbientMemberBody({
           const jumpY = p.position.y - newest.y;
           if (Math.hypot(jumpX, jumpY) / tileHere > EMPIRE_TUNING.FLOOR_MEMBER_STRIDE_TILES) {
             const remainderNow =
-              pullChangedAt === null ? 0 : settleRemainder(now - pullChangedAt, settleMs);
+              settleElapsedMs === null ? 0 : settleRemainder(settleElapsedMs, settleMs);
             pullFrom = {
               x: pullTo.x + (pullFrom.x - pullTo.x) * remainderNow - jumpX,
               y: pullTo.y + (pullFrom.y - pullTo.y) * remainderNow - jumpY,
             };
-            pullChangedAt = now;
+            settleElapsedMs = 0;
             settleMs = settleDurationMs(
               Math.hypot(pullTo.x - pullFrom.x, pullTo.y - pullFrom.y) / tileHere,
             );
@@ -1748,19 +1758,19 @@ function AmbientMemberBody({
       //    settle from wherever the previous one had got to, timed by how
       //    far it has to cross in tiles at this body's depth.
       if (p.pullX !== pullTo.x || p.pullY !== pullTo.y) {
-        const remainderNow = pullChangedAt === null ? 0 : settleRemainder(now - pullChangedAt, settleMs);
+        const remainderNow = settleElapsedMs === null ? 0 : settleRemainder(settleElapsedMs, settleMs);
         pullFrom = {
           x: pullTo.x + (pullFrom.x - pullTo.x) * remainderNow,
           y: pullTo.y + (pullFrom.y - pullTo.y) * remainderNow,
         };
         pullTo = { x: p.pullX, y: p.pullY };
-        pullChangedAt = now;
+        settleElapsedMs = 0;
         settleMs = settleDurationMs(
           tileHere <= 0 ? 0 : Math.hypot(pullTo.x - pullFrom.x, pullTo.y - pullFrom.y) / tileHere,
         );
       }
-      const remainder = pullChangedAt === null ? 0 : settleRemainder(now - pullChangedAt, settleMs);
-      if (remainder === 0) pullChangedAt = null;
+      const remainder = settleElapsedMs === null ? 0 : settleRemainder(settleElapsedMs, settleMs);
+      if (remainder === 0) settleElapsedMs = null;
       const drawn: FloorTilePoint = {
         x: feet.x + pullTo.x + (pullFrom.x - pullTo.x) * remainder,
         y: feet.y + pullTo.y + (pullFrom.y - pullTo.y) * remainder,
@@ -1777,14 +1787,14 @@ function AmbientMemberBody({
       if (wantedClip !== runningClip) {
         outgoingFrames = sampleMemberAnimation(runningClip, phase).frames;
         runningClip = wantedClip;
-        clipChangedAt = now;
+        blendElapsedMs = 0;
         phase = memberAnimationStartPhase(runningClip, p.index);
       }
       phase = advanceMemberAnimationPhase(runningClip, phase, movedTiles, elapsed);
       const sample = sampleMemberAnimation(runningClip, phase);
-      const blend = clipChangedAt === null ? 1 : memberAnimationBlend(now - clipChangedAt);
+      const blend = blendElapsedMs === null ? 1 : memberAnimationBlend(blendElapsedMs);
       if (blend >= 1) {
-        clipChangedAt = null;
+        blendElapsedMs = null;
         outgoingFrames = [];
       }
       // 5. The write.

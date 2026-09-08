@@ -5910,7 +5910,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // audit does count); FLOOR_MEMBER_RENDER_DELAY_TICKS is 1 and is not.
     // Read from this assertion's own failure value.
     // 480 -> 479: FLOOR_SIM_MOVE_TWEEN_MS (120) removed in VL-2.
-    ).toBe(479);
+    // 479 -> 480: VL-2B FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS (50). Read from
+    // this assertion's own failure value.
+    ).toBe(480);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

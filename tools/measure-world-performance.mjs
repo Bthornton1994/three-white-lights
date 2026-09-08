@@ -40,6 +40,23 @@
  *                renderer's rule is that a stall is drawn as a stall and
  *                never as a faster walk, and this is where that rule is
  *                measured rather than described.
+ *   settle stall VL-2B: the same stall placed EXACTLY at a member's `using`
+ *                edge — the moment its eased pull onto the bench starts —
+ *                then the body's drawn box sampled every frame. The settle
+ *                used to be a pure function of wall-clock time, so a stall
+ *                during it landed the stall's worth of easing in the first
+ *                frame after (measured 0.700 tiles for a 400 ms stall on
+ *                the uncapped tree). `FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS`
+ *                bounds what one frame may advance, and this arm JUDGES
+ *                it: the largest post-stall single-frame step, pairs whose
+ *                depth scale changed excluded (that is the disclosed size
+ *                step below, a React render, not the frame loop), must be
+ *                at or under 3 × cap / FLOOR_MEMBER_SETTLE_MS — an ease-out
+ *                cubic's steepest `cap` milliseconds, whatever the pull's
+ *                length — times SETTLE_STALL_TOLERANCE for the sampler
+ *                seeing two writes in one frame. Red exits 1. If no member
+ *                enters `using` inside SETTLE_EDGE_BUDGET_MS the arm is a
+ *                named SKIP, recorded as such, never a silent pass.
  *
  * Usage: node tools/measure-world-performance.mjs [--url http://localhost:8081]
  *          [--out <dir>] [--sample-ms 15000] [--stall-ms 400]
@@ -78,6 +95,9 @@ const OUT = arg('--out', join(ROOT, 'docs', 'design', 'living-gym-world', 'vl-2'
 const SAMPLE_MS = Number(arg('--sample-ms', '15000'));
 const STALL_MS = Number(arg('--stall-ms', '400'));
 const STALL_FOLLOW_MS = 2000;
+const SETTLE_EDGE_BUDGET_MS = 60000;
+/** The rAF sampler can see two renderer writes in one frame (it races the frame loop for order); 1.3 is the same allowance capture-living-world.mjs gives its walking-rate ceiling. */
+const SETTLE_STALL_TOLERANCE = 1.3;
 const LONG_FRAME_MS = 50;
 const VERY_LONG_FRAME_MS = 100;
 const VIEWPORTS = [
@@ -95,10 +115,14 @@ const tuningSource = readFileSync(join(ROOT, 'src', 'empire', 'empireTuning.ts')
 const DRAW_SCALE_TILES = numberInSource(tuningSource, 'FLOOR_MEMBER_DRAW_SCALE_TILES');
 const TICK_MS = numberInSource(tuningSource, 'FLOOR_SIM_TICK_INTERVAL_MS');
 const STEP_PER_TICK = numberInSource(tuningSource, 'FLOOR_SIM_STEP_PROGRESS_PER_TICK');
-if (DRAW_SCALE_TILES === null || TICK_MS === null || STEP_PER_TICK === null) {
-  console.error('could not read FLOOR_MEMBER_DRAW_SCALE_TILES / FLOOR_SIM_TICK_INTERVAL_MS / FLOOR_SIM_STEP_PROGRESS_PER_TICK from empireTuning.ts');
+const SETTLE_MS = numberInSource(tuningSource, 'FLOOR_MEMBER_SETTLE_MS');
+const FRAME_CAP_MS = numberInSource(tuningSource, 'FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS');
+if (DRAW_SCALE_TILES === null || TICK_MS === null || STEP_PER_TICK === null || SETTLE_MS === null || FRAME_CAP_MS === null) {
+  console.error('could not read FLOOR_MEMBER_DRAW_SCALE_TILES / FLOOR_SIM_TICK_INTERVAL_MS / FLOOR_SIM_STEP_PROGRESS_PER_TICK / FLOOR_MEMBER_SETTLE_MS / FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS from empireTuning.ts');
   process.exit(2);
 }
+/** VL-2B: an ease-out cubic's steepest `cap` milliseconds, in tiles, whatever the pull's length — the most the capped settle can move in one frame. */
+const SETTLE_STALL_STEP_BOUND_TILES = ((3 * FRAME_CAP_MS) / SETTLE_MS) * SETTLE_STALL_TOLERANCE;
 const SHA = execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim();
 const DIRTY = execSync('git status --porcelain --untracked-files=no', { cwd: ROOT }).toString().trim() !== '';
 
@@ -290,6 +314,112 @@ async function stallProbe(page, memberId) {
   );
 }
 
+/**
+ * VL-2B: wait for the next member to enter `using`, stall the main thread
+ * IN THAT SAME TASK (so the settle's first frame is the first frame after
+ * the stall), then sample the body's drawn box every frame. Resolves null
+ * if no member enters `using` inside `SETTLE_EDGE_BUDGET_MS`.
+ */
+async function settleStallProbe(page) {
+  return page.evaluate(
+    ({ stallMs, followMs, drawScaleTiles, edgeBudgetMs }) =>
+      new Promise((resolve) => {
+        const samples = [];
+        const start = performance.now();
+        let target = null;
+        let stalledAt = null;
+        const read = (node, now) => {
+          const r = node.getBoundingClientRect();
+          return {
+            t: now - start,
+            x: r.x + r.width / 2,
+            y: r.y + r.height,
+            tilePx: r.width / drawScaleTiles,
+            scale: Number(node.getAttribute('data-scale') || '1'),
+            clip: node.getAttribute('data-clip'),
+            lifecycle: node.getAttribute('data-lifecycle'),
+            cell: node.getAttribute('data-cell'),
+          };
+        };
+        const observer = new MutationObserver((records) => {
+          if (target !== null) return;
+          for (const record of records) {
+            const node = record.target;
+            if (!(node instanceof HTMLElement)) continue;
+            if (record.oldValue === 'using' || node.getAttribute('data-lifecycle') !== 'using') continue;
+            target = node.getAttribute('data-memberid');
+            observer.disconnect();
+            const edgeAt = performance.now() - start;
+            samples.push(read(node, performance.now()));
+            const until = performance.now() + stallMs;
+            while (performance.now() < until) {
+              // busy-wait: the main thread is blocked at the settle's first frame
+            }
+            stalledAt = performance.now() - start;
+            const step = (now) => {
+              const live = document.querySelector(`[data-memberid="${target}"]`);
+              if (live !== null) samples.push(read(live, now));
+              if (now - start - stalledAt < followMs) requestAnimationFrame(step);
+              else resolve({ target, edgeAt, stalledAt, samples });
+            };
+            requestAnimationFrame(step);
+            return;
+          }
+        });
+        observer.observe(document.body, { attributes: true, attributeFilter: ['data-lifecycle'], attributeOldValue: true, subtree: true });
+        setTimeout(() => {
+          if (target === null) {
+            observer.disconnect();
+            resolve(null);
+          }
+        }, edgeBudgetMs);
+      }),
+    { stallMs: STALL_MS, followMs: STALL_FOLLOW_MS, drawScaleTiles: DRAW_SCALE_TILES, edgeBudgetMs: SETTLE_EDGE_BUDGET_MS },
+  );
+}
+
+function analyseSettleStall(probe) {
+  if (probe === null) return null;
+  const { samples, stalledAt } = probe;
+  let firstStepTiles = null;
+  let maxStepTiles = 0;
+  let maxStepAt = null;
+  let scaleStepsSkipped = 0;
+  let pairs = 0;
+  for (let i = 1; i < samples.length; i += 1) {
+    const prev = samples[i - 1];
+    const s = samples[i];
+    if (s.t < stalledAt) continue;
+    // A pair whose depth scale changed is the assignment size step — a React
+    // render of the box, the disclosed residual in this file's header — not
+    // a frame-loop write, so it is counted and excluded rather than judged.
+    if (s.scale !== prev.scale) {
+      scaleStepsSkipped += 1;
+      continue;
+    }
+    const dist = Math.hypot(s.x - prev.x, s.y - prev.y) / Math.max(s.tilePx, 1);
+    pairs += 1;
+    if (firstStepTiles === null) firstStepTiles = dist;
+    if (dist > maxStepTiles) {
+      maxStepTiles = dist;
+      maxStepAt = s.t;
+    }
+  }
+  return {
+    memberId: probe.target,
+    edgeAtMs: probe.edgeAt,
+    stalledAtMs: stalledAt,
+    samples: samples.length,
+    pairsJudged: pairs,
+    scaleStepsSkipped,
+    firstStepAfterStallTiles: firstStepTiles,
+    maxStepAfterStallTiles: maxStepTiles,
+    maxStepAfterStallAtMs: maxStepAt,
+    boundTiles: SETTLE_STALL_STEP_BOUND_TILES,
+    bounded: pairs > 0 && maxStepTiles <= SETTLE_STALL_STEP_BOUND_TILES,
+  };
+}
+
 function analyseStall(probe) {
   const { samples, stalledAt } = probe;
   let maxStepTiles = 0;
@@ -371,6 +501,7 @@ async function runViewport(browser, viewport) {
   const interaction = await interactionLatency(page);
   const memberId = await followedMemberId(page);
   const stall = memberId === null ? null : analyseStall(await stallProbe(page, memberId));
+  const settleStall = analyseSettleStall(await settleStallProbe(page));
 
   const result = {
     viewport: viewport.name,
@@ -385,6 +516,7 @@ async function runViewport(browser, viewport) {
         : heapEnd.jsHeapUsedBytes - heapStart.jsHeapUsedBytes,
     interaction,
     stall: stall === null ? null : { memberId, stallMs: STALL_MS, ...stall },
+    settleStall: settleStall === null ? { skipped: `no member entered using within ${SETTLE_EDGE_BUDGET_MS} ms` } : { stallMs: STALL_MS, ...settleStall },
     pageErrors,
   };
   note(
@@ -400,6 +532,13 @@ async function runViewport(browser, viewport) {
   if (stall !== null) {
     note(
       `${viewport.name} stall ${STALL_MS}ms on ${memberId} (${stall.clipsSeen.join('/')}): max frame gap ${stall.maxFrameGapMs.toFixed(0)}ms, max single-frame step ${stall.maxSingleFrameStepTiles.toFixed(3)} tiles at t=${stall.maxSingleFrameStepAtMs?.toFixed(0)}ms, max rate ${stall.maxRateTilesPer100ms.toFixed(3)} tiles/100ms vs sim ${stall.simRateTilesPer100ms.toFixed(3)}, max drawn-vs-contract lag ${stall.maxDrawnVsContractLagTiles.toFixed(3)} tiles`,
+    );
+  }
+  if (settleStall === null) {
+    note(`${viewport.name} settle stall SKIPPED: no member entered using within ${SETTLE_EDGE_BUDGET_MS} ms — the arm did not run`);
+  } else {
+    note(
+      `${viewport.name} settle stall ${STALL_MS}ms at ${settleStall.memberId}'s using edge (t=${settleStall.edgeAtMs.toFixed(0)}ms): first post-stall step ${settleStall.firstStepAfterStallTiles?.toFixed(3)} tiles, max ${settleStall.maxStepAfterStallTiles.toFixed(3)} tiles at t=${settleStall.maxStepAfterStallAtMs?.toFixed(0)}ms over ${settleStall.pairsJudged} pairs (${settleStall.scaleStepsSkipped} size-step pair(s) excluded), bound ${SETTLE_STALL_STEP_BOUND_TILES.toFixed(3)} = 3 x ${FRAME_CAP_MS} / ${SETTLE_MS} x ${SETTLE_STALL_TOLERANCE}: ${settleStall.bounded ? 'ok' : 'FAIL'}`,
     );
   }
   if (pageErrors.length > 0) note(`${viewport.name} PAGE ERRORS: ${pageErrors.join(' | ')}`);
@@ -422,6 +561,7 @@ try {
     const result = await runViewport(browser, viewport);
     results.push(result);
     if (result.pageErrors.length > 0) exitCode = 1;
+    if (result.settleStall !== null && result.settleStall.bounded === false) exitCode = 1;
   }
   const summary = {
     sha: SHA,
@@ -431,6 +571,7 @@ try {
     harness: 'headless desktop browser in a container; not a device',
     sampleMs: SAMPLE_MS,
     stallMs: STALL_MS,
+    settleStallStepBoundTiles: SETTLE_STALL_STEP_BOUND_TILES,
     longFrameMs: LONG_FRAME_MS,
     veryLongFrameMs: VERY_LONG_FRAME_MS,
     results,

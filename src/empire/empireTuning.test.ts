@@ -760,7 +760,9 @@ describe('§5.5 social', () => {
     // FLOOR_MEMBER_CATCH_UP_BEHIND_TICKS, FLOOR_MEMBER_CATCH_UP_RATE — added
     // after the first pin. Read from this assertion's own failure value.
     // 226 -> 225: FLOOR_SIM_MOVE_TWEEN_MS removed (see empireTuning.ts).
-    expect(examined).toBe(225);
+    // 225 -> 226: VL-2B FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS. Read from this
+    // assertion's own failure value.
+    expect(examined).toBe(226);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -791,7 +793,8 @@ describe('§5.5 social', () => {
     // 1015 -> 1020: Stage G.2B LIVING_MEMBER_RETENTION × 5 banned units.
     // 1020 -> 1055: VL-1's seven FLOOR_MEMBER_* entries × 5 banned units.
     // 1055 -> 1125: VL-2's 225 keys × 5 banned units.
-    expect(probed).toBe(1125); // 225 keys × 5 banned units
+    // 1125 -> 1130: VL-2B FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS × 5 banned units.
+    expect(probed).toBe(1130); // 226 keys × 5 banned units
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

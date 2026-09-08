@@ -1955,7 +1955,7 @@ const SURFACE_CENSUS = Object.freeze({
 // for, the same as `isSoundCondition`'s addition above. Read from this pin's
 // own failure value.
   // 3970 -> 4024: Stage C.1b GymSurface / furniture-place unions and FloorState.furniture.
-  LITERAL_POSITIONS: 4677, // VL-2 unions and prop positions, tween knob removed; +1 presentation-state PresentationSeat field (124fb132)
+  LITERAL_POSITIONS: 4678, // VL-2 unions and prop positions, tween knob removed; +1 presentation-state PresentationSeat field (124fb132); VL-2B frame cap +1
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -3194,7 +3194,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // and FloorGrid presentation helpers. Read from this pin's own failure.
   // 3361 -> 3375: Stage D2.1A live-Capacity seat assignment / relocate helpers.
   // 3375 -> 3405: Stage D2.1B changeover helpers + FloorGrid loading path.
-  CALLS_EXAMINED: 3986, // VL-2 camera / animation / anchor / settle helpers, +8 presentationSeats freeze calls (124fb132); VL-2B seat consumption +1. Read from this pin.
+  CALLS_EXAMINED: 3987, // VL-2 camera / animation / anchor / settle helpers, +8 presentationSeats freeze calls (124fb132); VL-2B seat consumption +1, frame cap +1. Read from this pin.
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -4808,6 +4808,10 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
     'A PLAYBACK RATE MULTIPLIER, dimensionless — how much faster than the sim\'s rate the playback clock advances while catching up, the bounded ceiling the evidence tool checks the drawn speed against. Multiplied into a tick step; never compared against a caller-supplied value.',
   ),
   ...exemptTable(
+    'FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS',
+    'A RENDERING/TIMING CAP, in milliseconds — the most animation time one rendered frame may advance; FloorGrid.tsx takes the minimum of it and the frame\'s real elapsed before advancing the playback clock, the settle and the blend. Compared only against the renderer\'s own frame interval, never against a caller-supplied value.',
+  ),
+  ...exemptTable(
     'FLOOR_MEMBER_CLIP_BLEND_MS',
     'A RENDERING/TIMING DURATION, in milliseconds — how long an outgoing clip\'s frame fades while the incoming one rises when a body changes clip; memberAnimation.ts divides elapsed time by it into an opacity. Never compared against a caller-supplied value.',
   ),
@@ -5737,6 +5741,9 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   // VL-1: one renderer duration above ROSTER_SHAPE's ceiling (the gait
   // half-cycle that used to sit beside it was retired by VL-2).
   'ROSTER_SHAPE/FLOOR_MEMBER_SETTLE_MS=360',
+  // VL-2B: the frame-elapsed cap, one renderer duration above ROSTER_SHAPE's
+  // ceiling. Read from this assertion's own failure value.
+  'ROSTER_SHAPE/FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS=50',
   // VL-2 (CLAUDE.md "Crossing VL-2"): the scene painting's pixel size and
   // the two clip periods sit above COUNT's and DAY's ceilings as well as
   // ROSTER_SHAPE's; the front inset and the clip blend only above
@@ -6032,7 +6039,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // x2, FLOOR_SCENE_FLOOR_SEAM_FRACTION x4, FLOOR_FIXED_ART_HEIGHT_OVER_WIDTH x5)
   // minus the three retired gait/sprite-tick knobs. Read from this pin.
   // 426 -> 425: FLOOR_SIM_MOVE_TWEEN_MS removed in VL-2.
-  EXEMPT: 425,
+  EXEMPT: 426, // VL-2B: +FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS. Read from this pin.
   // 154 -> 196: the same 42 new leaves. 251 -> 264: the same 13 new leaves.
   // 264 -> 266: the same 2 new leaves.
   // 266 -> 273: the same 7 new leaves.
@@ -6074,7 +6081,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 511 -> 534: VL-2's 27 new presentation leaves minus the three retired
   // cadence knobs, all exempt — see EXEMPT above. Read from this pin's own
   // failure value.
-  TUNING_NUMERIC_LEAVES: 533, // VL-2: +26 leaves, -3 retired cadence knobs, -FLOOR_SIM_MOVE_TWEEN_MS. Read from this pin.
+  TUNING_NUMERIC_LEAVES: 534, // VL-2: +26 leaves, -3 retired cadence knobs, -FLOOR_SIM_MOVE_TWEEN_MS; VL-2B +FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS. Read from this pin.
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -6115,7 +6122,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 456 -> 457: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS.
   // 466 -> 475: Stage D2.2 nine new numeric leaves (1 filed + 8 exempt).
   // 506 -> 513: VL-1 seven exempt leaves. Read from this pin.
-  BRANCH_POINTS: 535, // VL-2: +23 exempt leaves, then FLOOR_SIM_MOVE_TWEEN_MS removed. Read from this pin.
+  BRANCH_POINTS: 536, // VL-2: +23 exempt leaves, then FLOOR_SIM_MOVE_TWEEN_MS removed. Read from this pin. VL-2B frame cap +1. Read from this pin.
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
@@ -6183,7 +6190,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // 2428 -> 2433: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS across
   // five domains that carry it under their ceiling; ROSTER_SHAPE omits it.
   // 2662 -> 2702: VL-1 seven exempt leaves obliging every domain. Read from this pin.
-  CONTAINMENT_CHECKS: 2822, // VL-2 foreign points, FLOOR_SIM_MOVE_TWEEN_MS removed. Read from this pin.
+  CONTAINMENT_CHECKS: 2827, // VL-2 foreign points, FLOOR_SIM_MOVE_TWEEN_MS removed; VL-2B frame cap +5. Read from this pin.
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -6261,7 +6268,7 @@ const DOMAIN_CENSUS = Object.freeze({
     // above ROSTER_SHAPE's ceiling (17); STATION_THROUGHPUT_CHANGEOVER_TICKS=6
     // does not.
     // 223 -> 225: Stage D2.2 two watched QA grains (1800, 3600).
-    ROSTER_SHAPE: 236, // VL-2: six leaves above the roster ceiling arrive, the gait half-cycle and tween knobs leave
+    ROSTER_SHAPE: 237, // VL-2: six leaves above the roster ceiling arrive, the gait half-cycle and tween knobs leave; VL-2B frame cap +1
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -11009,7 +11016,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 358 -> 359: Stage C.1c CONDITION_PERCENT_SCALE=100 dropped above ROSTER_SHAPE.
   // 362 -> 363: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS=18 dropped
   // above ROSTER_SHAPE.
-  POINTS: 388, // VL-2: 76 + 76 + 236. Read from this pin.
+  POINTS: 389, // VL-2: 76 + 76 + 236; VL-2B frame cap +1 (ROSTER_SHAPE 237). Read from this pin.
   /** Of those, how many at least one subject was driven at. */
   // Tracks POINTS 1:1 again (218), confirmed by running the assertion below
   // rather than assumed. PLAYTEST 4: tracks POINTS 1:1 again (222), confirmed
@@ -11031,7 +11038,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 344 -> 357: GDD §5.14 Stage B, tracks POINTS 1:1 again (see POINTS
   // above), confirmed by running this exact assertion.
   // Stage C.1b: FLOOR_TILE_PIXELS_MAX drop is now driven; tracks POINTS 1:1.
-  POINTS_DRIVEN: 388, // VL-2: more dropped durations, tween knob removed (VL-1: 376). Read from this pin.
+  POINTS_DRIVEN: 389, // VL-2: more dropped durations, tween knob removed (VL-1: 376); VL-2B frame cap +1. Read from this pin.
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
@@ -11076,7 +11083,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // COUNT/DAY/ROSTER_SHAPE. Measured off this assertion rather than
   // hand-derived per domain.
   // 6250 -> 6273: Stage C.1b one more dropped point × argument-heavy subjects.
-  PAIRS_DRIVEN: 6821, // VL-2: more dropped points, tween knob removed. Read from this pin.
+  PAIRS_DRIVEN: 6844, // VL-2: more dropped points, tween knob removed; VL-2B frame cap +23. Read from this pin.
   // GDD §5.13 presentation Phase 3: PAIRS_SKIPPED re-measured (495 -> 517),
   // a real failure value this round's own run produced.
   // GDD §5.14 Stage B: re-measured (517 -> 561), a real failure value this
@@ -11175,7 +11182,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // the next run's real failure.
   // Stage C.1b: furniture layout + dock-driven GymScreen trees add overflow
   // rows. Re-measured by running this assertion.
-  ROWS: 7809, // VL-2: more dropped durations widen the overflow pass; tween knob removed. Read from this pin.
+  ROWS: 7832, // VL-2: more dropped durations widen the overflow pass; tween knob removed; VL-2B frame cap +23. Read from this pin.
   // GDD §5.13 presentation Phase 3: re-measured (942486 -> 947983), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (947983 -> 960248).
@@ -11193,7 +11200,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // GDD §5.14 Stage B: thirteen new dropped points. Read from this pin's own
   // failure value.
   // 1355914 -> 1357825: Stage C.1b overflow GymScreen trees. Measured.
-  NODES: 1_618_684, // VL-2: more dropped durations. Read from this pin.
+  NODES: 1_620_089, // VL-2: more dropped durations. Read from this pin. VL-2B frame cap (was 1_618_684). Read from this run's own measurement.
   // GDD §5.13 presentation Phase 3: re-measured (6413124 -> 6446099), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (6446099 -> 6540148).
@@ -11212,7 +11219,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // GDD §5.14 Stage B: thirteen new dropped points. Read from this pin's own
   // failure value.
   // 9415846 -> 9429777: Stage C.1b overflow strings. Measured.
-  STRINGS: 11_208_820, // VL-2: more dropped durations. Read from this pin.
+  STRINGS: 11_218_703, // VL-2: more dropped durations. Read from this pin. VL-2B frame cap. Read from this pin.
   // GDD §5.13 presentation Phase 3: re-measured (4366 -> 4378), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (4378 -> 4381).
@@ -11296,7 +11303,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 1328 -> 1336: Stage C.1b overflow declined closures. Measured.
   // 1344 -> 1368: Stage D overflow declined closures. Measured.
   // 1368 -> 1376: Stage D2.1B four new overflow drive invocations.
-  CLOSURES_DECLINED: 1464, // VL-2: more dropped durations. Read from this pin.
+  CLOSURES_DECLINED: 1472, // VL-2: more dropped durations; VL-2B frame cap +8. Read from this pin.
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -11355,7 +11362,7 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // refused the same way. Measured off this assertion.
   // Stage C.1b: one more refused overflow arm from the widened ROSTER_SHAPE
   // drop (FLOOR_TILE_PIXELS_MAX). Re-measured by running this assertion.
-  ['beginRecruitment#refused', 236], // VL-2: six dropped above ROSTER_SHAPE arrive, two leave (gait half-cycle, tween)
+  ['beginRecruitment#refused', 237], // VL-2: six dropped above ROSTER_SHAPE arrive, two leave (gait half-cycle, tween); VL-2B frame cap +1
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
@@ -11996,7 +12003,7 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 31_138_120, // VL-2: foreign-point widening; settle helpers; +6 presentationWorld seats keys (124fb132). Read from this pin.
+  STRINGS: 31_138_123, // VL-2: foreign-point widening; settle helpers; +6 presentationWorld seats keys (124fb132); VL-2B frame cap +3. Read from this pin.
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -12106,7 +12113,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
   // 3973 -> 3975: Stage D2 reset-gym copy / wear-truth strings. Read from
   // this pin's own failure value.
-  DISTINCT_STRINGS: 4459, // VL-2 clip / camera literals; tween knob removed; +3 seats / usingId / changeoverTicks (124fb132). Read from this pin.
+  DISTINCT_STRINGS: 4460, // VL-2B frame cap +1. // VL-2 clip / camera literals; tween knob removed; +3 seats / usingId / changeoverTicks (124fb132). Read from this pin.
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
   DEPTH_CUTS: 7,
   /**
@@ -16555,8 +16562,8 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'FloorGrid.tsx:1071 returned=unfollowable:station',
   'FloorGrid.tsx:1072 returned=unfollowable:station',
   'FloorGrid.tsx:1072 returned=unfollowable:station',
-  'FloorGrid.tsx:3571 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:3589 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:3581 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:3599 callee=fresh:ArrowFunction',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -16614,7 +16621,7 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'FloorGrid.tsx:1072 GridSize asked=true walked=false',
   'FloorGrid.tsx:1072 GridSize asked=true walked=false',
   'FloorGrid.tsx:1084 BayBench | undefined asked=true walked=false',
-  'FloorGrid.tsx:2460 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:2470 FloorSimState asked=true walked=false',
   // VL-2: `memberAnchorFor`'s `MemberAnchor` return carries a `FloorTilePoint`,
   // an interface the control asks about and the walk declines the same way.
   'FloorGrid.tsx:922 FloorTilePoint asked=true walked=false',
@@ -16985,7 +16992,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1502 -> 1513: Stage D2 Set.has / Object.freeze / stationByRefKey.get.
   // 1513 -> 1517: Stage D2.1A useCells/blocked/has member calls on live relocate.
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
-  member: 1781, // VL-2 (posesToMount's settling-clip loop); +3 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDraws.sort, Easing.out, String() VL-2B: 1777 -> 1781.
+  member: 1782, // VL-2 (posesToMount's settling-clip loop); +3 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDraws.sort, Easing.out, String() VL-2B: 1777 -> 1781; frame cap (Math.min) -> 1782.
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -17334,7 +17341,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
   // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
   // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
-  NODES_EXAMINED: 95_370, // VL-2 camera + settle helpers, plate-sized discs; +235 presentationSeats (124fb132); VL-2B seat consumption + relocation glide +101 (VL-1: 90_495). Read from this pin.
+  NODES_EXAMINED: 95_391, // VL-2 camera + settle helpers, plate-sized discs; +235 presentationSeats (124fb132); VL-2B seat consumption + relocation glide +101, frame cap +21 (VL-1: 90_495). Read from this pin.
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

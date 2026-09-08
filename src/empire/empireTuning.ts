@@ -2938,6 +2938,30 @@ export const EMPIRE_TUNING = Object.freeze({
   FLOOR_MEMBER_CATCH_UP_RATE: 0.1,
 
   /**
+   * VL-2B (CLAUDE.md "VL-2B DELIVERED", Claude Code Session B): the most
+   * animation time, in milliseconds, one rendered frame may advance. The
+   * frame loop's `elapsed` is capped here before it drives the playback
+   * clock, the eased settle and the clip blend. After a main-thread stall
+   * the next frame's real elapsed is the whole stall; uncapped, the settle
+   * — a function of elapsed alone — lands most of its pull in that one
+   * frame, where the playback clock cannot, because it can never pass its
+   * newest snapshot and the sim stalls with the renderer (measured: a
+   * 400 ms stall on a walking body drew a 0.049-tile single-frame step).
+   * The settle had no such bound. Measured at 375x812 with a 400 ms stall
+   * placed exactly at a member's `using` edge: the first write after the
+   * stall moved the body 0.700 tiles on the uncapped tree and 0.394 with
+   * this cap, against about 0.30 at an unstalled settle start — the
+   * ease-out's own steep first frames. The cap's bound is
+   * 3 × cap / FLOOR_MEMBER_SETTLE_MS ≈ 0.42 tiles, the steepest 50 ms an
+   * ease-out cubic has, whatever the pull's length. Capped, a stall pauses every
+   * animation and resumes it where it was; the playback clock's own
+   * bounded catch-up (`FLOOR_MEMBER_CATCH_UP_RATE`) then recovers the
+   * lag. Three 60 Hz frames: an ordinary frame never reaches it, so it
+   * changes nothing until something has actually stalled.
+   */
+  FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS: 50,
+
+  /**
    * How long, in milliseconds, the previous clip's frame fades out while
    * the next clip's fades in when a member changes what it is doing —
    * standing to walking, walking to lying on the bench, and back. Short:
@@ -3228,6 +3252,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_MEMBER_RENDER_DELAY_TICKS: 'knob',
   FLOOR_MEMBER_CATCH_UP_BEHIND_TICKS: 'knob',
   FLOOR_MEMBER_CATCH_UP_RATE: 'knob',
+  FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS: 'knob',
   FLOOR_MEMBER_CLIP_BLEND_MS: 'knob',
   FLOOR_STATION_PAD_FRACTION: 'knob',
   FLOOR_FIXED_ART_HEIGHT_OVER_WIDTH: 'knob',
