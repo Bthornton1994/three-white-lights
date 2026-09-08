@@ -136,7 +136,7 @@ is the guarantee. Do not read it as "mixing floors is impossible by API shape."
 
 Do not reconstruct queue order from HUD labels or from `queueCells` geometry. Use `queueIds` / `queueRank`.
 
-`seats[i].usingId` is who occupies that use cell right now. A lifecycle-using member can briefly be on no seat during a live Capacity rebuild (ghost-reserve). If `seats[i].usingId` is set, that id is in `usingIds`. Claude must not walk `FloorSimMember` lists against `useCells`.
+`seats[i].usingId` is who occupies that use cell right now. A lifecycle-using member can briefly be on no seat during a live Capacity rebuild (ghost-reserve). In the proven garage fixture that window is one stale snapshot: immediately after the capability swap, `usingIds` still names the original user while every `seats[].usingId` is null, because they still stand at the old approach cell (`5,0`) and the new `useCells` are `2,2` and `7,0`. The first `stepFloorSim` relocates them onto the primary; ghost ticks after that step are 0. Dual occupancy follows in 4 ticks; the prior queue head takes the new seat. If `seats[i].usingId` is set, that id is in `usingIds`. Claude must not walk `FloorSimMember` lists against `useCells`.
 
 Incomplete Competition Bench Bay (any of power-bar / comp-plates / flat-bench off the floor) is not a training station.
 
