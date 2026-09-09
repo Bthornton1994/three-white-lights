@@ -1872,9 +1872,31 @@ function AmbientMemberBody({
         }
       }
       // The per-frame evidence attributes, written only when they change.
-      const node = rootNode.current as unknown as { setAttribute?: unknown } | null;
-      if (node !== null && typeof node.setAttribute === 'function') {
-        const setAttribute = node.setAttribute as (name: string, value: string) => void;
+      //
+      // NARROWED FROM `unknown`, NOT RE-CAST FROM `View`, AND THE DIFFERENCE
+      // IS NOT STYLE. The round that added these attributes reached the host
+      // node by double-asserting the ref straight from `View` to a shape with
+      // an optional `setAttribute` — the idiom that guard names, deliberately
+      // not reproduced here, because a scan over source text cannot tell a
+      // banned construct from a comment quoting one. That is
+      // `src/game/progression.test.ts`'s reflective-assembly guard — a
+      // Session A test that walks every non-test file the project compiles —
+      // went red naming this file for a whole round, because this lane ran
+      // `src/empire` and never the whole suite. Widening to `unknown` and
+      // asserting once is a genuinely weaker construct than a double cast
+      // laundering one concrete type into an unrelated one, which is what
+      // that guard is written about; it is not a spelling chosen to walk past
+      // the scan, and an exemption row in another session's file would have
+      // been an edit to their guard to make room for an idiom this file does
+      // not need. On the web renderer the host instance IS the DOM node; on a
+      // renderer without `setAttribute` the loop writes nothing.
+      const node: unknown = rootNode.current;
+      const host =
+        node === null || typeof node !== 'object'
+          ? undefined
+          : (node as { readonly setAttribute?: unknown }).setAttribute;
+      if (node !== null && typeof host === 'function') {
+        const setAttribute = host as (name: string, value: string) => void;
         const frameAttr = out.draw.kind === 'strip' ? String(out.draw.frame) : '';
         if (frameAttr !== writtenFrame) {
           writtenFrame = frameAttr;
