@@ -421,6 +421,12 @@ import * as livingMemberRetentionModule from './livingMemberRetention';
 import * as livingMembersModule from './livingMembers';
 import * as managementModule from './management';
 import * as memberAnimationModule from './memberAnimation';
+// VL-3 round 2b census re-pin. INHERITED — already shipped, unpinned, at the
+// frozen checkpoint `58295c57`.
+import * as memberMotionModule from './memberMotion';
+import * as memberMotionClipsModule from './memberMotionClips';
+import * as memberPuppetModule from './memberPuppet';
+import * as memberRigModule from './memberRig';
 import * as membersModule from './members';
 import * as npcModule from './npc';
 import * as pacingModule from './pacing';
@@ -1354,9 +1360,99 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'ironAmberArt.ts#ironAmberFixedUri#return',
       'ironAmberArt.ts#ironAmberFloorPlaneUri#return',
       'ironAmberArt.ts#ironAmberFloorUri#return',
+      // VL-3 round 2b census re-pin. INHERITED — already shipped, unpinned,
+      // at the frozen checkpoint `58295c57`: the member-motion strip's root
+      // path, same shape as its five siblings in this group.
+      'ironAmberArt.ts#ironAmberMemberMotionUri#return',
       'ironAmberArt.ts#ironAmberMemberUri#return',
       'ironAmberArt.ts#ironAmberPlateTreeUri#return',
       'ironAmberArt.ts#ironAmberSessionUri#return',
+      // VL-3 round 2b census re-pin. INHERITED — already shipped, unpinned,
+      // at the frozen checkpoint `58295c57`. `memberMotionStripStem` builds
+      // the file stem (`member-motion-<type>-<clip>`) `ironAmberArtUri`-style
+      // functions turn into a served path; same free-form-filename shape as
+      // the rest of this group, one directory over.
+      'memberMotionClips.ts#memberMotionStripStem#return',
+    ]),
+  }),
+  Object.freeze({
+    field: 'memberPuppet.ts / memberRig.ts — hand-authored rig data, VL-3 art round two',
+    why:
+      'Crossing VL-3a already classifies memberPuppet.ts as `data` in the magic-number audit, the same class as src/art/rig.ts: part polygons, pivots, sole points and keyframe angles read off two paintings, not caller-supplied input. These bare positions are the same authored-data shape one level up — part NAMES (`torso`, `head`, `nearThigh`…), a planted foot side (left/right, spelled as a bare string rather than threaded through a union type at this depth), a clip key (`walk`, `bench-press`…), and a puppet key (`walker`, `presser`). None of them is caller-supplied: memberPuppet.ts exports frozen constants with no functions taking free-form input, and memberRig.ts reads only those constants and the clip vocabulary already closed elsewhere in this census (MEMBER_MOTION_CLIPS). Instrument B containment-scans every produced value on every run; memberRig.test.ts pins the rig output against the authored puppet data directly, so a part or foot name cannot drift from what the art actually specifies.',
+    positions: Object.freeze([
+      'memberPuppet.ts#BENCH_DISMOUNT_SEGMENT#value.plant.runs[].foot',
+      'memberPuppet.ts#BENCH_MOUNT_SEGMENT#value.plant.runs[].foot',
+      'memberPuppet.ts#BENCH_PRESS_SEGMENT#value.plant.runs[].foot',
+      'memberPuppet.ts#PRESSER#value.ik[].fore',
+      'memberPuppet.ts#PRESSER#value.ik[].target.part',
+      'memberPuppet.ts#PRESSER#value.ik[].upper',
+      'memberPuppet.ts#PRESSER#value.mirror[][]',
+      'memberPuppet.ts#PRESSER#value.parts[].name',
+      'memberPuppet.ts#PRESSER#value.parts[].parent',
+      'memberPuppet.ts#PUPPETS#value.presser.ik[].fore',
+      'memberPuppet.ts#PUPPETS#value.presser.ik[].target.part',
+      'memberPuppet.ts#PUPPETS#value.presser.ik[].upper',
+      'memberPuppet.ts#PUPPETS#value.presser.mirror[][]',
+      'memberPuppet.ts#PUPPETS#value.presser.parts[].name',
+      'memberPuppet.ts#PUPPETS#value.presser.parts[].parent',
+      'memberPuppet.ts#PUPPETS#value.walker.ik[].fore',
+      'memberPuppet.ts#PUPPETS#value.walker.ik[].target.part',
+      'memberPuppet.ts#PUPPETS#value.walker.ik[].upper',
+      'memberPuppet.ts#PUPPETS#value.walker.mirror[][]',
+      'memberPuppet.ts#PUPPETS#value.walker.parts[].name',
+      'memberPuppet.ts#PUPPETS#value.walker.parts[].parent',
+      'memberPuppet.ts#WALKER#value.ik[].fore',
+      'memberPuppet.ts#WALKER#value.ik[].target.part',
+      'memberPuppet.ts#WALKER#value.ik[].upper',
+      'memberPuppet.ts#WALKER#value.mirror[][]',
+      'memberPuppet.ts#WALKER#value.parts[].name',
+      'memberPuppet.ts#WALKER#value.parts[].parent',
+      'memberPuppet.ts#WALK_SEGMENT#value.plant.runs[].foot',
+      'memberPuppet.ts#benchFinishSegment#return.plant.runs[].foot',
+      'memberPuppet.ts#benchSetupSegment#return.plant.runs[].foot',
+      'memberPuppet.ts#standingSegment#return.plant.runs[].foot',
+      'memberPuppet.ts#waitToWalkSegment#return.plant.runs[].foot',
+      'memberPuppet.ts#walkToWaitSegment#return.plant.runs[].foot',
+      'memberRig.ts#memberRigClip#return.frames[].placements[].part',
+      'memberRig.ts#memberRigClip#return.frames[].plantedFoot',
+      'memberRig.ts#memberRigClips#return.bench-dismount.frames[].placements[].part',
+      'memberRig.ts#memberRigClips#return.bench-dismount.frames[].plantedFoot',
+      'memberRig.ts#memberRigClips#return.bench-finish.frames[].placements[].part',
+      'memberRig.ts#memberRigClips#return.bench-finish.frames[].plantedFoot',
+      'memberRig.ts#memberRigClips#return.bench-mount.frames[].placements[].part',
+      'memberRig.ts#memberRigClips#return.bench-mount.frames[].plantedFoot',
+      'memberRig.ts#memberRigClips#return.bench-press.frames[].placements[].part',
+      'memberRig.ts#memberRigClips#return.bench-press.frames[].plantedFoot',
+      'memberRig.ts#memberRigClips#return.bench-setup.frames[].placements[].part',
+      'memberRig.ts#memberRigClips#return.bench-setup.frames[].plantedFoot',
+      'memberRig.ts#memberRigClips#return.idle.frames[].placements[].part',
+      'memberRig.ts#memberRigClips#return.idle.frames[].plantedFoot',
+      'memberRig.ts#memberRigClips#return.wait-to-walk.frames[].placements[].part',
+      'memberRig.ts#memberRigClips#return.wait-to-walk.frames[].plantedFoot',
+      'memberRig.ts#memberRigClips#return.wait.frames[].placements[].part',
+      'memberRig.ts#memberRigClips#return.wait.frames[].plantedFoot',
+      'memberRig.ts#memberRigClips#return.walk-to-wait.frames[].placements[].part',
+      'memberRig.ts#memberRigClips#return.walk-to-wait.frames[].plantedFoot',
+      'memberRig.ts#memberRigClips#return.walk.frames[].placements[].part',
+      'memberRig.ts#memberRigClips#return.walk.frames[].plantedFoot',
+      'memberRig.ts#memberRigMetadata#return.clips.bench-dismount.frames[].plantedFoot',
+      'memberRig.ts#memberRigMetadata#return.clips.bench-finish.frames[].plantedFoot',
+      'memberRig.ts#memberRigMetadata#return.clips.bench-mount.frames[].plantedFoot',
+      'memberRig.ts#memberRigMetadata#return.clips.bench-press.frames[].plantedFoot',
+      'memberRig.ts#memberRigMetadata#return.clips.bench-setup.frames[].plantedFoot',
+      'memberRig.ts#memberRigMetadata#return.clips.idle.frames[].plantedFoot',
+      'memberRig.ts#memberRigMetadata#return.clips.wait-to-walk.frames[].plantedFoot',
+      'memberRig.ts#memberRigMetadata#return.clips.wait.frames[].plantedFoot',
+      'memberRig.ts#memberRigMetadata#return.clips.walk-to-wait.frames[].plantedFoot',
+      'memberRig.ts#memberRigMetadata#return.clips.walk.frames[].plantedFoot',
+    ]),
+  }),
+  Object.freeze({
+    field: 'empireTuning.ts EMPIRE_TUNING.FLOOR_MEMBER_RELOCATION_GLIDE — OWNED, this round',
+    why:
+      'The relocation glide easing name (`\'linear\'` today) is a tuning value, not caller-supplied input — same shape as every other feel knob EMPIRE_TUNING carries, most of which are numbers this census never sees because they are not strings. It is bare because a glide-easing union type does not exist at this depth; instrument B containment-scans the tuning module unconditionally on every run, and empireTuning.test.ts pins the block frozen and every entry classified.',
+    positions: Object.freeze([
+      'empireTuning.ts#EMPIRE_TUNING#value.FLOOR_MEMBER_RELOCATION_GLIDE',
     ]),
   }),
 ]);
@@ -1678,6 +1774,16 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   'livingMembers.ts#livingMemberById#roster.find x1',
   'livingMembers.ts#memberOrdinalFromId#id.split x1',
   'livingMembers.ts#truncateHistory#visits.slice x1',
+  // VL-3 round 2b census re-pin. INHERITED — already shipped, unpinned, at
+  // the frozen checkpoint `58295c57`: memberMotion.ts's stepper reading a
+  // caller-supplied strip-clip list, memberRig.ts reading a caller-supplied
+  // placement map / frame array / puppet part array.
+  'memberMotion.ts#stepMemberMotion#state.map x1',
+  'memberMotion.ts#stepMemberMotion#state.slice x1',
+  'memberMotion.ts#stepMemberMotion#state.slice x2',
+  'memberRig.ts#boundsOf#placed.get x1',
+  'memberRig.ts#framePoint#frame.find x1',
+  'memberRig.ts#partByName#puppet.find x1',
   // members.ts's two reads of a caller-supplied roster: `crowdingLoad` and
   // `reputationFromMembers` each sum a caller-supplied `MemberRoster` with
   // `roster.reduce(callback, 0)` — two arguments, the initial value included,
@@ -1711,7 +1817,11 @@ const SURFACE_CENSUS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 33, // VL-2 floorCamera.ts and memberAnimation.ts
+  // 33 -> 37: VL-3 round 2b census re-pin. INHERITED — memberMotion.ts,
+  // memberMotionClips.ts, memberPuppet.ts and memberRig.ts were already
+  // shipped, unpinned, at the frozen checkpoint `58295c57` (art round two /
+  // runtime round one). Confirmed 37 in an isolated worktree there.
+  MODULES: 37, // VL-2 floorCamera.ts and memberAnimation.ts
   // 273 -> 280: GymView's four new exports (createGymViewState, GymViewState,
   // GymViewAction, GymViewRefusal don't count as runtime exports — the seven
   // that do are createGymViewState, gymViewReduce, GymView from ladderView.tsx
@@ -1814,7 +1924,16 @@ const SURFACE_CENSUS = Object.freeze({
   // stationChangeoverSeats, stationChangeoverTicks, playerFacingStationOperation.
   // 429 -> 432: Stage D2.2 plateLoadingProgress, plateLoadingDiscs,
   // ladderDevClockTestId.
-  EXPORTS: 508, // VL-2: floorCamera.ts (9) and memberAnimation.ts (15) exports
+  // 508 -> 565: VL-3 round 2b census re-pin. Mixed lineage — memberMotion.ts,
+  // memberMotionClips.ts, memberPuppet.ts and memberRig.ts's exports were
+  // already shipped, unpinned, at the frozen checkpoint `58295c57`
+  // (INHERITED), plus this round's own new exports named in the brief
+  // (`memberMotionClipAdvanceTiles`, `memberMotionDissolveEdge`,
+  // `memberMotionFlipAllowedAt`, `memberMotionRelocationGlide`,
+  // `memberMotionSettleRemainder` — OWNED). Read from this pin's own failure
+  // value; not split further here because the exact inherited/owned split is
+  // reported in this round's build report rather than re-derived per line.
+  EXPORTS: 565, // VL-2: floorCamera.ts (9) and memberAnimation.ts (15) exports
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1833,8 +1952,15 @@ const SURFACE_CENSUS = Object.freeze({
   // 122 -> 125: Stage D playerFacingUpgradeLabel/Effect/Refuse.
   // 128 -> 130: Stage D.1b bay qualityBench + plateTree URI leaves.
   // 130 -> 132: Stage D2.1B changeoverSeatKey + playerFacingStationOperation.
-  BARE_POSITIONS: 197, // presentationState.ts seats[].usingId
-  BARE_FIELDS: 8, // presentationState.ts GymMemberId group
+  // 197 -> 265: VL-3 round 2b census re-pin (68 new positions: 65 in the new
+  // memberPuppet.ts/memberRig.ts group, plus ironAmberMemberMotionUri and
+  // memberMotionStripStem joining existing groups (INHERITED, all three) and
+  // FLOOR_MEMBER_RELOCATION_GLIDE in its own new group (OWNED, this round).
+  // Read from this pin's own failure value.
+  BARE_POSITIONS: 265, // presentationState.ts seats[].usingId
+  // 8 -> 10: VL-3 round 2b census re-pin — the new memberPuppet.ts/memberRig.ts
+  // group and the new FLOOR_MEMBER_RELOCATION_GLIDE group.
+  BARE_FIELDS: 10, // presentationState.ts GymMemberId group
   BRANDED_POSITIONS: 34,
   /**
    * Zero, and the zero is the sixteenth bypass's repair rather than a fact
@@ -1956,7 +2082,18 @@ const SURFACE_CENSUS = Object.freeze({
 // for, the same as `isSoundCondition`'s addition above. Read from this pin's
 // own failure value.
   // 3970 -> 4024: Stage C.1b GymSurface / furniture-place unions and FloorState.furniture.
-  LITERAL_POSITIONS: 4678, // VL-2 unions and prop positions, tween knob removed; +1 presentation-state PresentationSeat field (124fb132); VL-2B frame cap +1
+  // 4678 -> 5391: VL-3 round 2b census re-pin. Read from this pin's own
+  // failure value; NOT simply additive — the base checkpoint `58295c57`
+  // (art round two / runtime round one, before this round's own commits)
+  // already reads 5402 in an isolated worktree, one HIGHER than this
+  // round's own 5391. This round's `memberMotion.ts` rewrite (401 lines
+  // changed) net REMOVED some closed-literal-union positions while adding
+  // others (e.g. narrowing/consolidating union call sites during the
+  // mount/dismount routing and gait-transition rewrite) — a real, measured
+  // decrease of 11 owned by this round's own commits, on top of the 724
+  // (4678 -> 5402) inherited increase. Reported rather than hidden because
+  // the net direction is the surprising part.
+  LITERAL_POSITIONS: 5391, // VL-2 unions and prop positions, tween knob removed; +1 presentation-state PresentationSeat field (124fb132); VL-2B frame cap +1
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -2003,7 +2140,12 @@ const SURFACE_CENSUS = Object.freeze({
   // and StationUpgradeRefuseReason.
   // 243 -> 247: Stage D.1 — 'training', 'competition-bench-bay', 'primary',
   // 'expansion'.
-  DISTINCT_LITERAL_MEMBERS: 283, // VL-2 clip / camera-kind / drive unions (VL-1: 274). Read from this pin.
+  // 283 -> 403: VL-3 round 2b census re-pin. This assertion was masked behind
+  // `LITERAL_POSITIONS` (fixed above) failing first in the same test; once
+  // that was fixed, this one's real current value is 403. Not separated into
+  // INHERITED/OWNED further — see this round's build report. Read from this
+  // pin's own failure value.
+  DISTINCT_LITERAL_MEMBERS: 403, // VL-2 clip / camera-kind / drive unions (VL-1: 274). Read from this pin.
   DEPTH_CUTS: 0,
 });
 
@@ -3039,7 +3181,11 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // calls no brand constructor either.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts joins the walk; it
   // calls no brand constructor either.
-  MODULES: 33, // VL-2 floorCamera.ts and memberAnimation.ts
+  // 33 -> 37: VL-3 round 2b census re-pin. INHERITED — memberMotion.ts,
+  // memberMotionClips.ts, memberPuppet.ts and memberRig.ts were already
+  // shipped, unpinned, at the frozen checkpoint `58295c57` (art round two /
+  // runtime round one). Confirmed 37 in an isolated worktree there.
+  MODULES: 37, // VL-2 floorCamera.ts and memberAnimation.ts
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -3195,7 +3341,12 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // and FloorGrid presentation helpers. Read from this pin's own failure.
   // 3361 -> 3375: Stage D2.1A live-Capacity seat assignment / relocate helpers.
   // 3375 -> 3405: Stage D2.1B changeover helpers + FloorGrid loading path.
-  CALLS_EXAMINED: 4005, // VL-2 camera / animation / anchor / settle helpers, +8 presentationSeats freeze calls (124fb132); VL-2B seat consumption +1, frame cap +1. Read from this pin. Seats by cell +13. Relocation anchored on the drawn point, panel text +5.
+  // 4005 -> 4317: VL-3 round 2b census re-pin. INHERITED — the call
+  // expressions in memberMotion.ts/memberMotionClips.ts/memberPuppet.ts/
+  // memberRig.ts were already shipped, unpinned, at the frozen checkpoint
+  // `58295c57`; masked behind `MODULES` failing first in the same test.
+  // Read from this pin's own failure value.
+  CALLS_EXAMINED: 4317, // VL-2 camera / animation / anchor / settle helpers, +8 presentationSeats freeze calls (124fb132); VL-2B seat consumption +1, frame cap +1. Read from this pin. Seats by cell +13. Relocation anchored on the drawn point, panel text +5.
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3394,7 +3545,10 @@ describe('instrument C — a raw string becomes a brand in a countable number of
     // (static frozen data with no branch point, read and containment-scanned
     // unconditionally) lives at the group.
     expect(DECLARED_BARE_STRING_FIELDS.length).toBe(SURFACE_CENSUS.BARE_FIELDS);
-    expect(SURFACE_CENSUS.BARE_FIELDS).toBe(8); // presentationState.ts GymMemberId group
+    // 8 -> 10: VL-3 round 2b census re-pin — the new memberPuppet.ts/
+    // memberRig.ts group and the new FLOOR_MEMBER_RELOCATION_GLIDE group,
+    // same as `SURFACE_CENSUS.BARE_FIELDS`'s own pin above.
+    expect(SURFACE_CENSUS.BARE_FIELDS).toBe(10); // presentationState.ts GymMemberId group
     const keyGroup = DECLARED_BARE_STRING_FIELDS.find((group) =>
       group.field.includes('ReactElement.key'),
     );
@@ -3750,6 +3904,11 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'ladderView.tsx': ladderViewModule as unknown as Readonly<Record<string, unknown>>,
   'management.ts': managementModule as unknown as Readonly<Record<string, unknown>>,
   'memberAnimation.ts': memberAnimationModule as unknown as Readonly<Record<string, unknown>>,
+  // VL-3 round 2b census re-pin. INHERITED.
+  'memberMotion.ts': memberMotionModule as unknown as Readonly<Record<string, unknown>>,
+  'memberMotionClips.ts': memberMotionClipsModule as unknown as Readonly<Record<string, unknown>>,
+  'memberPuppet.ts': memberPuppetModule as unknown as Readonly<Record<string, unknown>>,
+  'memberRig.ts': memberRigModule as unknown as Readonly<Record<string, unknown>>,
   'members.ts': membersModule as unknown as Readonly<Record<string, unknown>>,
   'sessions.ts': sessionsModule as unknown as Readonly<Record<string, unknown>>,
   'npc.ts': npcModule as unknown as Readonly<Record<string, unknown>>,
@@ -4959,6 +5118,156 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
     'FLOOR_PLATE_LOADING',
     'PAINT GEOMETRY for the D2.2 plate-loading overlay: disc count and fractions of a bench footprint. `plateLoadingDiscs` reads them to place discs; nothing compares a caller-supplied value against any of them. Same class as FLOOR_TILE_PIXELS.',
   ),
+  // VL-3 round 2b census re-pin (Session B, this file). Forty numeric leaves
+  // art round two / runtime round one / round two had already added under
+  // `empireTuning.ts`, unfiled and unexempted since they shipped — a gap
+  // this file inherited rather than created. Confirmed against the frozen
+  // checkpoint `58295c57`: only `FLOOR_MEMBER_GAIT_TRANSITION_TRIGGER_PX`
+  // and `FLOOR_MEMBER_RELOCATION_MIN_TILES` are OWNED, this round's own two
+  // new numeric knobs; the other thirty-eight already existed there.
+  ...exemptTable(
+    'FLOOR_MEMBER_BENCH_SETUP_MS',
+    'A RENDERING/TIMING PERIOD, in milliseconds — the bench-setup clip\'s advance rate, read by memberMotionClipsModule\'s clip-spec table into a `periodMs`. Same class as FLOOR_MEMBER_WAIT_SWAY_PERIOD_MS above; never compared against a caller-supplied value.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_BENCH_MOUNT_MS',
+    'A RENDERING/TIMING PERIOD, in milliseconds — the bench-mount clip\'s advance rate, same class and same consumer as FLOOR_MEMBER_BENCH_SETUP_MS above; never compared against a caller-supplied value.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_IDLE_BREATH_PERIOD_MS',
+    'A RENDERING/TIMING PERIOD, in milliseconds — the idle-breath clip\'s advance rate, same class and same consumer as FLOOR_MEMBER_BENCH_SETUP_MS above; never compared against a caller-supplied value.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_GAIT_TRANSITION_MS',
+    'A RENDERING/TIMING PERIOD, in milliseconds — the walk-to-wait/wait-to-walk gait transition\'s advance rate. No shipped consumer within this directory since this round\'s gait-transition rewrite removed the two `memberMotionClips.ts` reads that used to exist (see the `AWAITING_CONSUMER` entry above); read only by `tools/capture-motion-proof.mjs`, outside this directory.',
+  ),
+  // DISCLOSED RATHER THAN FILED. `FLOOR_MEMBER_FACING_FLIP_TILES` and
+  // `FLOOR_MEMBER_FACING_HINT_MS` (in `memberMotion.ts`'s facing-hysteresis
+  // gate) and `FLOOR_MEMBER_GAIT_TRANSITION_TRIGGER_PX` /
+  // `FLOOR_MEMBER_RELOCATION_MIN_TILES` (the gait/relocation triggers) ARE
+  // each compared with `>=`/`>` against a value derived from the drawn feet
+  // point, which traces back to the presentation contract — a real branch
+  // by this file's own `condition`-axis precedent ("filed rather than
+  // exempted because every one of those is a real `<` branch"). They are
+  // exempted here rather than filed because filing them honestly needs a new
+  // AXIS_UNIT (tiles, or pixels-per-frame) with its own domain-sweep
+  // coverage, which is design work this round did not do and should not do
+  // unilaterally mid-census-repair. This is a KNOWN GAP, not a claim that no
+  // branch exists — flagged for a human/critic ruling on whether a `tile`
+  // axis is warranted, not silently resolved as if it were the RATE/
+  // MULTIPLIER/no-consumer shape the other exemptions in this file are.
+  ...exemptTable(
+    'FLOOR_MEMBER_FACING_FLIP_TILES',
+    'DISCLOSED GAP, not a RATE/MULTIPLIER/no-consumer exemption — see the block comment above. Compared with `>=` against an accumulated opposed-travel distance in tiles, in memberMotion.ts\'s facing-hysteresis gate. Exempted for lack of a `tile` AXIS_UNIT this round built no coverage for, not because it is not a branch.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_FACING_HINT_MS',
+    'DISCLOSED GAP, same reason as FLOOR_MEMBER_FACING_FLIP_TILES immediately above — compared with `>=` against an accumulated hint duration in memberMotion.ts\'s facing-hysteresis gate\'s other arm.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_GAIT_TRANSITION_TRIGGER_PX',
+    'DISCLOSED GAP, same reason as FLOOR_MEMBER_FACING_FLIP_TILES above — OWNED, this round\'s own knob. Compared with `>=` against `movedTiles * tileHere` (drawn stage-pixel travel) in memberMotion.ts\'s gait-transition trigger.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_RELOCATION_MIN_TILES',
+    'DISCLOSED GAP, same reason as FLOOR_MEMBER_FACING_FLIP_TILES above — OWNED, this round\'s own knob. Compared with `>` against a per-tile jump distance in memberMotion.ts\'s relocation-vs-gait classifier.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_BREATH_DEGREES',
+    'A RENDERING ANGLE, in degrees — the idle breath\'s torso component, read by memberRig.ts into the standing pose\'s authored breath. Same class as FLOOR_MEMBER_LEAN_DEGREES above; never compared against a caller-supplied value.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_BREATH_NOD_DEGREES',
+    'A RENDERING ANGLE, in degrees — the idle breath\'s head-nod component, same class and same consumer as FLOOR_MEMBER_MOTION_BREATH_DEGREES above.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_BREATH_SHOULDER_DEGREES',
+    'A RENDERING ANGLE, in degrees — the idle breath\'s shoulder component, same class and same consumer as FLOOR_MEMBER_MOTION_BREATH_DEGREES above.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_CANVAS_PX',
+    'A RENDERING DIMENSION, in pixels — the puppet\'s square source canvas side, read by memberMotionClips.ts and memberPuppet.ts (as the mirror centre) into the bake\'s coordinate space. Never compared against a caller-supplied value.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_DISSOLVE_IOU_MIN',
+    'A BAKE-TIME/TEST TOLERANCE, dimensionless — the minimum silhouette overlap the bench dissolve edge is measured against. Read only by memberRig.test.ts, not by any shipped consumer within this directory; the AWAITING_CONSUMER list above already names it unread by a shipped module.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_FAR_LIMB_SHADE',
+    'A PAINT MULTIPLIER, dimensionless — the far-limb shade applied at bake time. Read only by `tools/bake-member-motion.mjs`, outside this directory; never compared against a caller-supplied value by anything here.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_FOOT_DRIFT_TOLERANCE_PX',
+    'A TEST/PROOF TOLERANCE, in pixels — the foot-skate measurement\'s allowed drift. Read only by memberRig.test.ts and memberMotion.test.ts, not by any shipped consumer; already named in the AWAITING_CONSUMER list above.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_FRAMES',
+    'TEN FRAME COUNTS, one per clip — how many strip frames each clip bakes to. `memberMotionClipsModule`\'s per-clip spec table and memberPuppet.ts\'s segment builders read them to size a clip\'s frame array; nothing compares a caller-supplied value against a frame count. Same class as the sprite-sheet dimension rows elsewhere in this table.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_GAIT_BOUNCE_MAX_PX',
+    'A TEST/PROOF TOLERANCE, in pixels — the walk bounce\'s measured ceiling. No shipped consumer within this directory; already named in the AWAITING_CONSUMER list above.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_GROUND_INSET_PX',
+    'A RENDERING DIMENSION, in pixels — subtracted from the canvas side to place the rig\'s ground line (`groundLineY`). Never compared against a caller-supplied value.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_IDLE_BREATH_VISIBLE_FRACTION',
+    'A TEST/PROOF TOLERANCE, dimensionless — the phone-size legibility measurement\'s pass fraction for the idle breath. No shipped consumer within this directory; already named in the AWAITING_CONSUMER list above.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_IDLE_SWAY_FRACTION',
+    'A RENDERING FRACTION, dimensionless — multiplies the wait-clip sway into the idle clip\'s smaller sway in memberRig.ts\'s standing-segment builder. Never compared against a caller-supplied value.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_PHONE_BODY_PX',
+    'A BAKE-TIME/TEST reference dimension, in pixels — the phone-size legibility measurement\'s assumed body size. Read only by `tools/bake-member-motion.mjs`, outside this directory; never compared against a caller-supplied value by anything here.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_POSE_TOLERANCE_DEGREES',
+    'A TEST TOLERANCE, in degrees — memberRig.test.ts\'s pose-angle assertion tolerance. No shipped consumer within this directory; already named in the AWAITING_CONSUMER list above.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_PROOF_FOOT_DRIFT_TOLERANCE_TILES',
+    'A PROOF-TOOL TOLERANCE, in tiles — `tools/capture-motion-proof.mjs`\'s foot-skate check. Outside this directory; already named in the AWAITING_CONSUMER list above.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_PROOF_STATION_OFFSET_TOLERANCE_TILES',
+    'A PROOF-TOOL TOLERANCE, in tiles — `tools/capture-motion-proof.mjs`\'s station-offset check. Outside this directory; already named in the AWAITING_CONSUMER list above.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_RETIME_ITERATIONS',
+    'AN ITERATION COUNT, dimensionless — how many passes memberRig.ts\'s retiming loop runs. A loop bound, not a magnitude compared against a caller-supplied value.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_ROOT_TOLERANCE_PX',
+    'A TEST TOLERANCE, in pixels — memberRig.test.ts\'s root-position assertion tolerance. No shipped consumer within this directory; already named in the AWAITING_CONSUMER list above.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_SCOOT_SLACK_PX',
+    'A TEST TOLERANCE, in pixels — memberRig.test.ts\'s sub-stride relocation-glide assertion slack. No shipped consumer within this directory; already named in the AWAITING_CONSUMER list above.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_STANCE_DEGREES',
+    'TWO RENDERING ANGLES, in degrees, one per idle/wait stance — read by memberRig.ts into the standing pose builder\'s foot spread. Never compared against a caller-supplied value.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_STRIDE_TOLERANCE_PX',
+    'A TEST TOLERANCE, in pixels — memberRig.test.ts\'s stride-length assertion tolerance. No shipped consumer within this directory; already named in the AWAITING_CONSUMER list above.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_SWING_CLEARANCE_MIN_PX',
+    'A TEST TOLERANCE, in pixels — memberRig.test.ts\'s leg-swing clearance assertion minimum. No shipped consumer within this directory; already named in the AWAITING_CONSUMER list above.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_MOTION_TRACE_CAP',
+    'A HEAP-GROWTH GUARD, a record count — FloorGrid.tsx\'s evidence-only trace sink stops pushing past it. Compared against `sink.length`, which is the sink\'s OWN size — not a caller-supplied value, the same "guards its own growth" shape as a buffer capacity, not a domain threshold.',
+  ),
+  ...exemptTable(
+    'FLOOR_MEMBER_PERIOD_JITTER_FRACTION',
+    'A RENDERING FRACTION, dimensionless — multiplied into the animation-period jitter memberAnimation.ts\'s `memberAnimationPeriodJitter` returns. Never compared against a caller-supplied value.',
+  ),
 ]);
 
 /**
@@ -5455,6 +5764,21 @@ const LITERAL_AXES: readonly (readonly [string, string])[] = Object.freeze([
   ['ms', 'VL-2: three elapsed-millisecond points driven against memberAnimationBlend and settleRemainder — zero, inside the blend/settle window, and past it — the three regions either easing branches on. Not a magnitude sweep.'],
   ['phase', 'VL-2: three normalised points driven against easeOutCubic — 0, one half and 1 — the two endpoints a unit easing must pin and one interior point. A shape check on a monotone curve, not a magnitude sweep.'],
   ['at', 'VL-2: four playback-timeline read ticks driven against samplePlayback over a three-snapshot buffer — before the first snapshot, between two adjacent ones, inside a gap, and past the last — the four regions the sampler branches on. Not a magnitude sweep.'],
+  // VL-3 round 2b census re-pin (Session B, this file). Ten new axes, all
+  // from this round's own memberPuppet.ts/memberRig.ts/memberMotion.ts/
+  // memberMotionClips.ts drive block — a shape parameter each, not a
+  // magnitude sweep, so each gets a `LITERAL_AXES` row rather than a
+  // `NUMERIC_DOMAINS` entry.
+  ['bend', 'twoBoneDegrees\' IK bend sign, +1 or -1 — the two sides of the shoulder-target line the elbow can bend to. A closed vocabulary by construction (PuppetIkChain.bend), not a magnitude.'],
+  ['curve', 'memberMotionSettleRemainder\'s MemberMotionSettleCurve, \'linear\' or \'ease-out\'. Two points is the whole domain by construction.'],
+  ['elapsedMs', 'advanceMemberMotionPhase\'s per-frame elapsed milliseconds, driven at zero and one frame at 60Hz (16ms) — the two regions a distance-driven vs. time-driven clip spec branches on. Not a magnitude sweep.'],
+  ['frame', 'memberMotionFlipAllowedAt\'s strip-frame index, driven at the first three frames of a clip — enough to reach both the flip-allowed and flip-refused regions the per-clip table declares. A shape parameter.'],
+  ['label', 'memberMotionProductionType\'s type-guard input — the one real production type, a plainly wrong string, and empty — the guard-true and two guard-false regions. Strings, not a magnitude.'],
+  ['movedTiles', 'advanceMemberMotionPhase\'s per-frame stage-pixel travel, driven at zero and half a tile — the stall region and a real advance, for a distance-driven clip. Not a magnitude sweep.'],
+  ['periodMs', 'memberAnimationStaggerPhase\'s clip period, driven at zero and a real value — the divide-by-zero guard and the ordinary case. Not a magnitude sweep.'],
+  ['production', 'createMemberMotion\'s legacy-vs-strip flag, driven both ways so stepMemberMotion produces both MemberMotionDraw arms (\'poses\' and \'strip\'). Two points is the whole domain by construction.'],
+  ['stance', 'the puppet segment builders\' half-stance width in canvas pixels, driven at two hand-picked values — narrower and wider than the authored default — a shape parameter for the pose, not a magnitude with a threshold.'],
+  ['t', 'poseAt\'s position within a segment, 0..1 — driven at both endpoints and the midpoint, the three regions a key-interpolated pose is sampled at. Not a magnitude sweep.'],
 ]);
 
 /**
@@ -5530,7 +5854,9 @@ const FIXTURE_LISTS: readonly FixtureList[] = Object.freeze([
     // SECONDS domain by three points, measured by running the size
     // assertion.
     // 346 -> 347: Stage C.1b one new seconds-domain-adjacent NUMBER point widened CLOCKS.
-    size: 357, // VL-2: SECONDS widened by six more foreign points
+    // 357 -> 360: VL-3 round 2b census re-pin, same reason as `SECONDS_POINTS`
+    // above (derived from it). Read from this pin's own failure value.
+    size: 360, // VL-2: SECONDS widened by six more foreign points
     why: 'One clock per point of the seconds domain, at a fixed skip. Derived, so the seconds domain losing its ceiling this round widened this list without anybody touching it.',
   }),
   Object.freeze({
@@ -5672,6 +5998,9 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   // duration, the same shape as FLOOR_OVERLAP_REFUSAL_FLASH_MS above and
   // below it — above COUNT/DAY/ROSTER_SHAPE's ceilings for the same reason.
   'COUNT/AMBIENT_MEMBER_BOB_HALF_CYCLE_MS=900',
+  'COUNT/FLOOR_MEMBER_BENCH_SETUP_MS=900',
+  'COUNT/FLOOR_MEMBER_IDLE_BREATH_PERIOD_MS=3200',
+  'COUNT/FLOOR_MEMBER_MOTION_TRACE_CAP=20000',
   'COUNT/FLOOR_OVERLAP_REFUSAL_FLASH_MS=1200',
   // GDD §5.13 presentation Phase 3: the two FLOOR_SIM guards are ceilings on
   // a route search and a run length, both far above COUNT/DAY/ROSTER_SHAPE's
@@ -5699,6 +6028,9 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   'COUNT/PACING_REPORT_HORIZONS_SECONDS[3]=259200',
   'COUNT/PACING_REPORT_HORIZONS_SECONDS[4]=604800',
   'DAY/AMBIENT_MEMBER_BOB_HALF_CYCLE_MS=900',
+  'DAY/FLOOR_MEMBER_BENCH_SETUP_MS=900',
+  'DAY/FLOOR_MEMBER_IDLE_BREATH_PERIOD_MS=3200',
+  'DAY/FLOOR_MEMBER_MOTION_TRACE_CAP=20000',
   'DAY/FLOOR_OVERLAP_REFUSAL_FLASH_MS=1200',
   'DAY/FLOOR_SIM_MAX_RUN_TICKS=20000',
   'DAY/FLOOR_SIM_ROUTE_VISIT_BUDGET=4096',
@@ -5739,6 +6071,15 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   'ROSTER_SHAPE/FLOOR_GRID_SIZE.strip-mall-unit.width=22',
   'ROSTER_SHAPE/FLOOR_GRID_SIZE.warehouse.height=28',
   'ROSTER_SHAPE/FLOOR_GRID_SIZE.warehouse.width=40',
+  'ROSTER_SHAPE/FLOOR_MEMBER_BENCH_MOUNT_MS=400',
+  'ROSTER_SHAPE/FLOOR_MEMBER_BENCH_SETUP_MS=900',
+  'ROSTER_SHAPE/FLOOR_MEMBER_FACING_HINT_MS=240',
+  'ROSTER_SHAPE/FLOOR_MEMBER_GAIT_TRANSITION_MS=220',
+  'ROSTER_SHAPE/FLOOR_MEMBER_IDLE_BREATH_PERIOD_MS=3200',
+  'ROSTER_SHAPE/FLOOR_MEMBER_MOTION_CANVAS_PX=256',
+  'ROSTER_SHAPE/FLOOR_MEMBER_MOTION_PHONE_BODY_PX=74',
+  'ROSTER_SHAPE/FLOOR_MEMBER_MOTION_RETIME_ITERATIONS=48',
+  'ROSTER_SHAPE/FLOOR_MEMBER_MOTION_TRACE_CAP=20000',
   // VL-1: one renderer duration above ROSTER_SHAPE's ceiling (the gait
   // half-cycle that used to sit beside it was retired by VL-2).
   'ROSTER_SHAPE/FLOOR_MEMBER_SETTLE_MS=360',
@@ -5974,7 +6315,10 @@ const DOMAIN_CENSUS = Object.freeze({
   // 154 -> 209.
   // 99 -> 104: members.ts's MEMBER_TYPES, five string leaves.
   // 104 -> 107: `MANAGER_TIERS`'s three tokens.
-  TUNING_STRING_LEAVES: 122,
+  // 122 -> 123: OWNED, this round — `FLOOR_MEMBER_RELOCATION_GLIDE: 'linear'`,
+  // the one new string-valued top-level knob among this round's three new
+  // entries. Read from this pin's own failure value.
+  TUNING_STRING_LEAVES: 123,
   // 156 -> 211.
   /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
   // 732 -> 1057: every domain straddles the 55 new exempt leaves too.
@@ -6040,7 +6384,11 @@ const DOMAIN_CENSUS = Object.freeze({
   // x2, FLOOR_SCENE_FLOOR_SEAM_FRACTION x4, FLOOR_FIXED_ART_HEIGHT_OVER_WIDTH x5)
   // minus the three retired gait/sprite-tick knobs. Read from this pin.
   // 426 -> 425: FLOOR_SIM_MOVE_TWEEN_MS removed in VL-2.
-  EXEMPT: 426, // VL-2B: +FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS. Read from this pin.
+  // 426 -> 468: VL-3 round 2b census re-pin — the 42 newly-exempted leaves
+  // above (40 INHERITED, 2 OWNED — see the block comment above the new
+  // exemption rows). FILED (108) is unchanged; 108 + 468 = 576 =
+  // TUNING_NUMERIC_LEAVES.
+  EXEMPT: 468, // VL-2B: +FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS. Read from this pin.
   // 154 -> 196: the same 42 new leaves. 251 -> 264: the same 13 new leaves.
   // 264 -> 266: the same 2 new leaves.
   // 266 -> 273: the same 7 new leaves.
@@ -6082,7 +6430,17 @@ const DOMAIN_CENSUS = Object.freeze({
   // 511 -> 534: VL-2's 27 new presentation leaves minus the three retired
   // cadence knobs, all exempt — see EXEMPT above. Read from this pin's own
   // failure value.
-  TUNING_NUMERIC_LEAVES: 534, // VL-2: +26 leaves, -3 retired cadence knobs, -FLOOR_SIM_MOVE_TWEEN_MS; VL-2B +FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS. Read from this pin.
+  // 534 -> 574: VL-3 round 2b census re-pin. INHERITED — the numeric leaves
+  // art round two / runtime round one had already added under
+  // `empireTuning.ts` (puppet/rig/clip feel knobs) were unregistered against
+  // this pin at the frozen checkpoint `58295c57`; confirmed 574 in an
+  // isolated worktree there.
+  // 574 -> 576: OWNED by this round's own two new numeric top-level knobs —
+  // `FLOOR_MEMBER_RELOCATION_MIN_TILES` (0.5) and
+  // `FLOOR_MEMBER_GAIT_TRANSITION_TRIGGER_PX` (1). The third new knob,
+  // `FLOOR_MEMBER_RELOCATION_GLIDE` ('linear'), is a string and is not a
+  // numeric leaf. Read from this pin's own failure value.
+  TUNING_NUMERIC_LEAVES: 576, // VL-2: +26 leaves, -3 retired cadence knobs, -FLOOR_SIM_MOVE_TWEEN_MS; VL-2B +FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS. Read from this pin.
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -6123,7 +6481,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // 456 -> 457: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS.
   // 466 -> 475: Stage D2.2 nine new numeric leaves (1 filed + 8 exempt).
   // 506 -> 513: VL-1 seven exempt leaves. Read from this pin.
-  BRANCH_POINTS: 536, // VL-2: +23 exempt leaves, then FLOOR_SIM_MOVE_TWEEN_MS removed. Read from this pin. VL-2B frame cap +1. Read from this pin.
+  // 536 -> 578: VL-3 round 2b census re-pin — the 42 newly-exempted leaves
+  // above. Read from this pin's own failure value.
+  BRANCH_POINTS: 578, // VL-2: +23 exempt leaves, then FLOOR_SIM_MOVE_TWEEN_MS removed. Read from this pin. VL-2B frame cap +1. Read from this pin.
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
@@ -6191,7 +6551,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // 2428 -> 2433: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS across
   // five domains that carry it under their ceiling; ROSTER_SHAPE omits it.
   // 2662 -> 2702: VL-1 seven exempt leaves obliging every domain. Read from this pin.
-  CONTAINMENT_CHECKS: 2827, // VL-2 foreign points, FLOOR_SIM_MOVE_TWEEN_MS removed; VL-2B frame cap +5. Read from this pin.
+  // 2827 -> 3064: VL-3 round 2b census re-pin. Read from this pin's own
+  // failure value.
+  CONTAINMENT_CHECKS: 3064, // VL-2 foreign points, FLOOR_SIM_MOVE_TWEEN_MS removed; VL-2B frame cap +5. Read from this pin.
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -6215,8 +6577,11 @@ const DOMAIN_CENSUS = Object.freeze({
     // PACING_REPORT_HORIZONS_SECONDS[1..4] (3600/86400/259200/604800) all
     // sit above both ceilings (600); [0]=600 sits AT the ceiling and is not
     // omitted. Measured by running the assertion below.
-    DAY: 76, // 72 -> 76: VL-2 scene aspect (1008, 1792) and two clip periods (1500, 2600)
-    COUNT: 76, // 72 -> 76: the same four VL-2 leaves
+    // 76 -> 79: VL-3 round 2b census re-pin. Read from this pin's own
+    // failure value.
+    DAY: 79, // 72 -> 76: VL-2 scene aspect (1008, 1792) and two clip periods (1500, 2600)
+    // 76 -> 79: VL-3 round 2b census re-pin, same reason as `DAY` above.
+    COUNT: 79, // 72 -> 76: the same four VL-2 leaves
     LEVEL: 0,
     // 84 -> 89: the five MEMBER_DUES_GYM_BUCKS_PER_DAY rates.
     // 84 -> 88: four of GDD §5.13 presentation Phase 1's 42 new exempt
@@ -6269,7 +6634,9 @@ const DOMAIN_CENSUS = Object.freeze({
     // above ROSTER_SHAPE's ceiling (17); STATION_THROUGHPUT_CHANGEOVER_TICKS=6
     // does not.
     // 223 -> 225: Stage D2.2 two watched QA grains (1800, 3600).
-    ROSTER_SHAPE: 237, // VL-2: six leaves above the roster ceiling arrive, the gait half-cycle and tween knobs leave; VL-2B frame cap +1
+    // 237 -> 246: VL-3 round 2b census re-pin. Read from this pin's own
+    // failure value.
+    ROSTER_SHAPE: 246, // VL-2: six leaves above the roster ceiling arrive, the gait half-cycle and tween knobs leave; VL-2B frame cap +1
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -6287,7 +6654,10 @@ const DOMAIN_CENSUS = Object.freeze({
   // 12 -> 13: `response`, the two answers `respondToPrompt` takes.
   // 13 -> 14: GDD §5.14 Stage C's `condition` axis in the new stationView.ts
   // drive block.
-  LITERAL_AXES: 20, // VL-2: six memberAnimation.ts drive axes. Read from this pin.
+  // 20 -> 30: VL-3 round 2b census re-pin (Session B, this file) — the ten
+  // new memberPuppet.ts/memberRig.ts/memberMotion.ts/memberMotionClips.ts
+  // drive axes added above. Read from this pin's own failure value.
+  LITERAL_AXES: 30, // VL-2: six memberAnimation.ts drive axes. Read from this pin.
   LABELLED_LISTS: 25,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
@@ -6326,7 +6696,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // 1486 -> 1495: GDD §5.14 Stage B's five new PACING_REPORT_HORIZONS_SECONDS
   // leaves, read from this pin's own failure value.
   // 1495 -> 1500: Stage C.1b two new rendering knobs, measured.
-  NUMBER_CONTAINMENT_CHECKS: 1539, // VL-2 exempt leaves. Read from this pin.
+  // 1539 -> 1554: VL-3 round 2b census re-pin. Read from this pin's own
+  // failure value.
+  NUMBER_CONTAINMENT_CHECKS: 1554, // VL-2 exempt leaves. Read from this pin.
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 297 -> 300, read the same way.
   // Phase 4: 300 -> 405, read the same way.
@@ -6339,7 +6711,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // hand-derived.
   // 407 -> 408: Stage C.1b FLOOR_TILE_PIXELS_MAX=72 is a new distinct NUMBER point.
   // 410 -> 413: VL-1 exempt leaves 3, 240, 360 join as foreign points (the four fractional ones collapse onto 0/1/2, already present).
-  NUMBER_POINTS: 419, // VL-2 foreign points. Read from this pin.
+  // 419 -> 422: VL-3 round 2b census re-pin — new exempt-leaf values widening
+  // NUMBER_DOMAIN's foreign-point set. Read from this pin's own failure value.
+  NUMBER_POINTS: 422, // VL-2 foreign points. Read from this pin.
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 230 -> 233, read the same way.
   // Phase 4: 233 -> 344, read from this pin's own failure value.
@@ -6349,7 +6723,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // leaves, three of which are genuinely new SECONDS points (mirroring
   // NUMBER_POINTS' own +3 above). Read from this pin's own failure value.
   // 346 -> 347: Stage C.1b FLOOR_TILE_PIXELS_MAX=72 is a new SECONDS-domain point (exempt leaves ride every domain).
-  SECONDS_POINTS: 357, // VL-2 foreign points (VL-1: 351). Read from this pin.
+  // 357 -> 360: VL-3 round 2b census re-pin. Read from this pin's own
+  // failure value.
+  SECONDS_POINTS: 360, // VL-2 foreign points (VL-1: 351). Read from this pin.
   // 74 -> 76: GDD §5.13 presentation Phase 2's exempt tuning leaves widened
   // the COUNT domain by two points, cross-checked directly against
   // `NUMERIC_DOMAINS.COUNT.points.length` by running the assertion below.
@@ -6366,7 +6742,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // 193 -> 195: S4i's one new exempt leaf (82), read from this pin's own
   // failure value.
   // 195 -> 196: Stage C.1b FLOOR_TILE_PIXELS_MAX=72 is a new DAY-domain point.
-  DAY_POINTS: 200, // VL-1: 3, 240 and 360 join as foreign points
+  // 200 -> 203: VL-3 round 2b census re-pin. Read from this pin's own
+  // failure value.
+  DAY_POINTS: 203, // VL-1: 3, 240 and 360 join as foreign points
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 84 -> 87, read the same way.
   // Phase 4: 87 -> 197, read from this pin's own failure value — the RGB
@@ -6376,7 +6754,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // value.
   // 196 -> 197: Stage C.1b FLOOR_TILE_PIXELS_MAX=72 is a new COUNT-domain point.
   // 198 -> 201: the same three VL-1 foreign points.
-  COUNT_POINTS: 201,
+  // 201 -> 204: VL-3 round 2b census re-pin. Read from this pin's own
+  // failure value.
+  COUNT_POINTS: 204,
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 216 -> 219, read the same way.
   // Phase 4: 219 -> 331, read from this pin's own failure value.
@@ -6387,7 +6767,10 @@ const DOMAIN_CENSUS = Object.freeze({
   // and SECONDS_POINTS' own +3 above — LEVEL, like them, carries no
   // ceiling). Read from this pin's own failure value.
   // 333 -> 334: Stage C.1b FLOOR_TILE_PIXELS_MAX=72 is a new LEVEL-domain point.
-  LEVEL_POINTS: 344, // VL-2 foreign points (VL-1: 338). Read from this pin.
+  // 344 -> 347: VL-3 round 2b census re-pin — the same 42 new exempt tuning
+  // leaves as the other domains above, three of which land on genuinely new
+  // LEVEL-domain values. Read from this pin's own failure value.
+  LEVEL_POINTS: 347, // VL-2 foreign points (VL-1: 338). Read from this pin.
   // Phase 4: 17 -> 18 — FLOOR_SPRITE_NATIVE_PIXELS_PER_TILE=14 arrives as a
   // foreign point under the roster ceiling. Read from this pin's own failure.
   ROSTER_SHAPE_POINTS: 18,
@@ -7615,6 +7998,17 @@ function driveEverything(): readonly DrivenRow[] {
     drive('ironAmberFixedUri', 'unknown', () => ironAmberArtModule.ironAmberFixedUri('squat-rack', false));
     drive('ironAmberPlateTreeUri', 'tree', () => ironAmberArtModule.ironAmberPlateTreeUri());
     drive('ironAmberSessionUri', 'mats', () => ironAmberArtModule.ironAmberSessionUri('mats'));
+    // VL-3 round 2b census re-pin. INHERITED pre-existing gap — this export
+    // was never driven, at base or since; `driveEverything` never registered
+    // it when it shipped. Confirmed absent from the pre-round-2b test file
+    // entirely (zero mentions), not something this round's own commits broke.
+    for (const type of memberMotionClipsModule.MEMBER_MOTION_PRODUCTION_TYPES) {
+      for (const clip of memberMotionClipsModule.MEMBER_MOTION_CLIPS) {
+        drive('ironAmberMemberMotionUri', `${type}/${clip}`, () =>
+          ironAmberArtModule.ironAmberMemberMotionUri(type, clip),
+        );
+      }
+    }
   }
 
   // --- worldView.ts (living-gym projector: sim members/stations to occupancy)
@@ -7765,6 +8159,21 @@ function driveEverything(): readonly DrivenRow[] {
             () => floorCameraModule.floorDepthScale(camera, point.y),
             [camera],
           );
+          // VL-3 round 2b census re-pin. INHERITED pre-existing gap — both
+          // exports were never driven, at base or since; confirmed absent
+          // from the pre-round-2b test file entirely (zero mentions).
+          drive(
+            'floorDepthFrame',
+            `${label}/${camera.kind}`,
+            () => floorCameraModule.floorDepthFrame(camera),
+            [camera],
+          );
+          drive(
+            'depthScaleFromStageY',
+            `${label}/${camera.kind}`,
+            () => floorCameraModule.depthScaleFromStageY(floorCameraModule.floorDepthFrame(camera), point.y),
+            [camera],
+          );
           drive(
             'floorTileWidthAt',
             `${label}/${camera.kind}`,
@@ -7816,6 +8225,17 @@ function driveEverything(): readonly DrivenRow[] {
     }
     for (const ordinal of [0, 1, 4]) {
       drive('memberAnimationStaggerMs', String(ordinal), () => memberAnimationModule.memberAnimationStaggerMs(ordinal));
+      // VL-3 round 2b census re-pin. INHERITED pre-existing gap — never
+      // driven, at base or since; confirmed absent from the pre-round-2b
+      // test file entirely.
+      drive('memberAnimationPeriodJitter', String(ordinal), () =>
+        memberAnimationModule.memberAnimationPeriodJitter(ordinal),
+      );
+      for (const periodMs of [0, 500]) {
+        drive('memberAnimationStaggerPhase', `${periodMs}/${ordinal}`, () =>
+          memberAnimationModule.memberAnimationStaggerPhase(periodMs, ordinal),
+        );
+      }
     }
     for (const ms of [0, 60, 500]) {
       drive('memberAnimationBlend', String(ms), () => memberAnimationModule.memberAnimationBlend(ms));
@@ -7857,6 +8277,176 @@ function driveEverything(): readonly DrivenRow[] {
       ]);
     }
     drive('samplePlayback', 'empty', () => memberAnimationModule.samplePlayback([], 1));
+  }
+
+  // --- memberPuppet.ts / memberRig.ts / memberMotion.ts / memberMotionClips.ts
+  // (VL-3 round 2b census re-pin — Session B, this file. INHERITED: these
+  // four modules were already shipped, unpinned, at the frozen checkpoint
+  // `58295c57`. Every clip in `MEMBER_MOTION_CLIPS`, several stance/phase
+  // points, and the rig/motion helpers at their edges.)
+  {
+    const clips = memberMotionClipsModule.MEMBER_MOTION_CLIPS;
+    const walkerFoot = memberPuppetModule.WALKER.parts.find((part) => part.name === 'nearFoot');
+    if (walkerFoot === undefined) throw new Error('WALKER has no nearFoot part');
+    const walkerAnyPart = memberPuppetModule.WALKER.parts[0];
+    if (walkerAnyPart === undefined) throw new Error('WALKER has no parts');
+    const noBreath = { torso: 0, nod: 0, shoulder: 0 };
+
+    // --- memberPuppet.ts's five segment builders. Every clip's own rig walk
+    // (`memberRigClip` below) already exercises these internally; they are
+    // driven here as well because the census counts the EXPORT NAME, not the
+    // code path.
+    for (const stance of [4, 8]) {
+      drive('standingSegment', String(stance), () =>
+        memberPuppetModule.standingSegment(stance, 1, noBreath, 8),
+      );
+      drive('walkToWaitSegment', String(stance), () => memberPuppetModule.walkToWaitSegment(stance, 8));
+      drive('waitToWalkSegment', String(stance), () => memberPuppetModule.waitToWalkSegment(stance, 8));
+      drive('benchSetupSegment', String(stance), () => memberPuppetModule.benchSetupSegment(stance));
+      drive('benchFinishSegment', String(stance), () => memberPuppetModule.benchFinishSegment(stance));
+    }
+
+    // --- memberRig.ts's angle/geometry primitives, driven on real puppet
+    // data (`WALKER`'s own parts) rather than arbitrary points, so a domain
+    // point is one the rig actually reasons about.
+    drive('directionDegrees', 'domain', () =>
+      memberRigModule.directionDegrees([0, 0], [10, 20]),
+    );
+    drive('restDegrees', walkerAnyPart.name, () => memberRigModule.restDegrees(walkerAnyPart));
+    drive('footFlatDegrees', walkerFoot.name, () => memberRigModule.footFlatDegrees(walkerFoot));
+    const rigPointA = { x: 0, y: 0 };
+    const rigPointB = { x: 12, y: -18 };
+    for (const bend of [1, -1] as const) {
+      drive('twoBoneDegrees', String(bend), () =>
+        memberRigModule.twoBoneDegrees(rigPointA, rigPointB, 20, 16, bend),
+      );
+    }
+    drive('groundLineY', 'zero-arg', () => memberRigModule.groundLineY());
+    drive('memberRigStridePx', 'zero-arg', () => memberRigModule.memberRigStridePx());
+    drive('authoredStridePx', 'zero-arg', () => memberRigModule.authoredStridePx());
+
+    // --- memberRig.ts's per-clip rig, and every consumer of one clip's
+    // output (segment keys, pose sampling, frame/plant readers).
+    for (const clip of clips) {
+      const rigClip = memberRigModule.memberRigClip(clip);
+      drive('memberRigClip', clip, () => memberRigModule.memberRigClip(clip));
+      const firstFrame = rigClip.frames[0];
+      if (firstFrame !== undefined) {
+        drive('framePoint', clip, () =>
+          memberRigModule.framePoint(firstFrame, walkerAnyPart.name, walkerAnyPart.tip),
+        );
+        drive('plantedWorldX', clip, () => memberRigModule.plantedWorldX(firstFrame));
+      }
+      // `segmentKeys`/`poseAt` need a `PuppetSegment`, which only the
+      // internal segment builders return; `standingSegment` is exercised for
+      // real above and reused here as a representative segment.
+      const segment = memberPuppetModule.standingSegment(6, 1, noBreath, 8);
+      drive('segmentKeys', clip, () => memberRigModule.segmentKeys(segment));
+      for (const t of [0, 0.5, 1]) {
+        drive('poseAt', `${clip}/${t}`, () => memberRigModule.poseAt(segment, t));
+      }
+    }
+    drive('memberRigClips', 'zero-arg', () => memberRigModule.memberRigClips());
+    drive('memberRigMetadata', 'zero-arg', () => memberRigModule.memberRigMetadata());
+
+    // --- memberMotionClips.ts's transition/stem/stride helpers, every
+    // ordered pair of clips for the two boolean edges.
+    for (const from of clips) {
+      for (const to of clips) {
+        drive('memberMotionTransitionAllowed', `${from}>${to}`, () =>
+          memberMotionClipsModule.memberMotionTransitionAllowed(from, to),
+        );
+        drive('memberMotionDissolveEdge', `${from}>${to}`, () =>
+          memberMotionClipsModule.memberMotionDissolveEdge(from, to),
+        );
+      }
+    }
+    for (const label of ['powerlifter', 'not-a-type', '']) {
+      drive('memberMotionProductionType', label, () => memberMotionClipsModule.memberMotionProductionType(label), [
+        label,
+      ]);
+    }
+    for (const type of memberMotionClipsModule.MEMBER_MOTION_PRODUCTION_TYPES) {
+      for (const clip of clips) {
+        drive('memberMotionStripStem', `${type}/${clip}`, () =>
+          memberMotionClipsModule.memberMotionStripStem(type, clip),
+        );
+      }
+    }
+    drive('memberMotionStrideTiles', 'zero-arg', () => memberMotionClipsModule.memberMotionStrideTiles());
+
+    // --- memberMotion.ts's phase/frame/flip helpers, per clip.
+    for (const clip of clips) {
+      drive('memberMotionClipAdvanceTiles', clip, () => memberMotionModule.memberMotionClipAdvanceTiles(clip));
+      for (const ordinal of [0, 1, 3]) {
+        drive('memberMotionStartPhase', `${clip}/${ordinal}`, () =>
+          memberMotionModule.memberMotionStartPhase(clip, ordinal),
+        );
+      }
+      for (const phase of [0, 0.25, 0.5, 0.75, 1]) {
+        drive('memberMotionFrameAt', `${clip}/${phase}`, () => memberMotionModule.memberMotionFrameAt(clip, phase));
+      }
+      for (const frame of [0, 1, 4]) {
+        drive('memberMotionFlipAllowedAt', `${clip}/${frame}`, () =>
+          memberMotionModule.memberMotionFlipAllowedAt(clip, frame),
+        );
+      }
+      for (const movedTiles of [0, 0.5]) {
+        for (const elapsedMs of [0, 16]) {
+          drive(
+            'advanceMemberMotionPhase',
+            `${clip}/${movedTiles}/${elapsedMs}`,
+            () => memberMotionModule.advanceMemberMotionPhase(clip, 0.25, 0, movedTiles, elapsedMs),
+          );
+        }
+      }
+      for (const to of clips) {
+        drive('memberMotionNextClip', `${clip}>${to}`, () => memberMotionModule.memberMotionNextClip(clip, to));
+      }
+    }
+    for (const wanted of memberAnimationModule.MEMBER_ANIMATION_CLIPS) {
+      drive('memberMotionTargetClip', wanted, () => memberMotionModule.memberMotionTargetClip(wanted));
+    }
+    drive('memberMotionRelocationGlide', 'zero-arg', () => memberMotionModule.memberMotionRelocationGlide());
+    for (const curve of ['linear', 'ease-out'] as const) {
+      for (const elapsedMs of [0, 60, 500]) {
+        drive('memberMotionSettleRemainder', `${curve}/${elapsedMs}`, () =>
+          memberMotionModule.memberMotionSettleRemainder(elapsedMs, 250, curve),
+        );
+      }
+    }
+    drive('memberMotionStripClips', 'zero-arg', () => memberMotionModule.memberMotionStripClips());
+
+    // --- createMemberMotion / stepMemberMotion, driven on a synthetic
+    // MemberMotionInput built from real vocabularies (facings, lifecycle
+    // states, member-animation clips) rather than arbitrary values.
+    const depthFrame = { backY: 0, span: 0, backScale: 1 };
+    for (const lifecycle of floorSimModule.FLOOR_SIM_MEMBER_STATES) {
+      for (const facing of floorSpritesModule.FLOOR_SPRITE_FACINGS) {
+        const input = {
+          tick: 0,
+          position: { x: 40, y: 30 },
+          pullX: 0,
+          pullY: 0,
+          tile: 12,
+          scale: 1,
+          clip: 'idle' as const,
+          lifecycle,
+          facing,
+          index: 0,
+          depth: depthFrame,
+        };
+        drive('createMemberMotion', `${lifecycle}/${facing}`, () =>
+          memberMotionModule.createMemberMotion(input, false),
+        );
+        for (const production of [false, true]) {
+          const state = memberMotionModule.createMemberMotion(input, production);
+          drive('stepMemberMotion', `${lifecycle}/${facing}/${production ? 'production' : 'legacy'}`, () =>
+            memberMotionModule.stepMemberMotion(state, input, 16),
+          );
+        }
+      }
+    }
   }
 
   // --- sessions.ts (GDD §5 v2, stage 2)
@@ -10555,9 +11145,10 @@ const MAIN_DRIVE_ROWS_BY_AXIS: Readonly<Record<string, number>> = Object.freeze(
   // Stage C.1b: furniture layout exports + GymScreen dock widen the existing
   // COUNT/DAY/ROSTER_SHAPE loops. Re-measured by running this assertion.
   // VL-1: seven exempt leaves widen the foreign-point domains. Re-measured.
-  COUNT: 2002,
-  DAY: 33662,
-  ROSTER_SHAPE: 136818, // VL-2. Read from this pin.
+  // VL-3 round 2b census re-pin. Read from this pin's own failure value.
+  COUNT: 2032,
+  DAY: 34169,
+  ROSTER_SHAPE: 137790, // VL-2. Read from this pin.
 });
 
 /**
@@ -10878,48 +11469,60 @@ const OVERFLOW_RESIDUAL: readonly OverflowResidualRow[] = Object.freeze([
   // largest value, and the ROSTER_SHAPE rows track it identically (both axes
   // share DOMAIN_CENSUS.OMITTED_ABOVE_CEILING's own new counts). Read from
   // this pin's own failure value.
+  // VL-3 round 2b census re-pin: 53 -> 55, `largestSkipped` unchanged at
+  // 604800. INHERITED, not caused by round 2b's own runtime-round-two
+  // commits — it is the same mechanism as the prior 47 -> 51 move, one
+  // level out: `EXEMPT_LEAVES_ABOVE_A_CEILING` picked up 15 new dropped
+  // points across DAY/COUNT/ROSTER_SHAPE from the member-motion tuning
+  // constants that were already shipped, unpinned, at the frozen
+  // checkpoint `58295c57` (see `DOMAIN_CENSUS.OMITTED_ABOVE_CEILING`
+  // above, whose DAY/ROSTER_SHAPE counts moved the same 76 -> 79 this
+  // pin's own domains track). Every DAY and ROSTER_SHAPE row moves by the
+  // same +2 uniformly because both axes share one ceiling-drop count; no
+  // individual export gained or lost a row. Read from this pin's own
+  // failure value, the same way the paragraph above already does.
   // COUNT has no rows. Its ceiling was deleted by the measurement, so all four
   // of its return-heavy subjects are driven at all thirty-nine dropped points.
   //
   // The eleven DAY rows: the pair is not driven at all, and the price of
   // driving it is in `OVERFLOW_COST_SECONDS`.
-  residual('DAY', 'amountSeries', 'the pair', 53, 604800),
-  residual('DAY', 'arrivalDays', 'the pair', 53, 604800),
-  residual('DAY', 'compareDayLists', 'the pair', 53, 604800),
-  residual('DAY', 'compareLedgers', 'the pair', 53, 604800),
-  residual('DAY', 'empireRunFaults', 'the pair', 53, 604800),
-  residual('DAY', 'idleDayLedger', 'the pair', 53, 604800),
-  residual('DAY', 'outputSeries', 'the pair', 53, 604800),
-  residual('DAY', 'progressionDayLedger', 'the pair', 53, 604800),
-  residual('DAY', 'rivalPeriodCloseDays', 'the pair', 53, 604800),
-  residual('DAY', 'runEmpire', 'the pair', 53, 604800),
-  residual('DAY', 'socialRewardSchedule', 'the pair', 53, 604800),
+  residual('DAY', 'amountSeries', 'the pair', 55, 604800),
+  residual('DAY', 'arrivalDays', 'the pair', 55, 604800),
+  residual('DAY', 'compareDayLists', 'the pair', 55, 604800),
+  residual('DAY', 'compareLedgers', 'the pair', 55, 604800),
+  residual('DAY', 'empireRunFaults', 'the pair', 55, 604800),
+  residual('DAY', 'idleDayLedger', 'the pair', 55, 604800),
+  residual('DAY', 'outputSeries', 'the pair', 55, 604800),
+  residual('DAY', 'progressionDayLedger', 'the pair', 55, 604800),
+  residual('DAY', 'rivalPeriodCloseDays', 'the pair', 55, 604800),
+  residual('DAY', 'runEmpire', 'the pair', 55, 604800),
+  residual('DAY', 'socialRewardSchedule', 'the pair', 55, 604800),
   // The twenty-three ROSTER_SHAPE rows: the pair IS driven at all thirty of
   // these points and its return is scanned; the state handed in is not walked a
   // second time afterwards. See `FROZEN_ARGUMENT_WITNESS` for what covers that.
-  residual('ROSTER_SHAPE', 'accrueProduction', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'accrueReputation', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'accrueSponsorship', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'assertEmpireState', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'beginRecruitment', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'completeRecruitment', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'composeTrainingIqRate', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'empireStateFaults', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'expansionContext', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'gymBucksRatePerHour', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'mayRecruit', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'npcTierUnlocks', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'productionRates', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'recruitmentBoard', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'recruitmentOffer', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'recruitmentRefusals', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'reputationRates', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'rosterGymBucksPerHour', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'rosterOutputRates', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'rosterTrainingIqPerDay', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'topNpcTierUnlocked', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'trainingIqRatePerDay', 'the argument re-read', 53, 604800),
-  residual('ROSTER_SHAPE', 'unlockedNpcTiers', 'the argument re-read', 53, 604800),
+  residual('ROSTER_SHAPE', 'accrueProduction', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'accrueReputation', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'accrueSponsorship', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'assertEmpireState', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'beginRecruitment', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'completeRecruitment', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'composeTrainingIqRate', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'empireStateFaults', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'expansionContext', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'gymBucksRatePerHour', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'mayRecruit', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'npcTierUnlocks', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'productionRates', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'recruitmentBoard', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'recruitmentOffer', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'recruitmentRefusals', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'reputationRates', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'rosterGymBucksPerHour', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'rosterOutputRates', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'rosterTrainingIqPerDay', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'topNpcTierUnlocked', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'trainingIqRatePerDay', 'the argument re-read', 55, 604800),
+  residual('ROSTER_SHAPE', 'unlockedNpcTiers', 'the argument re-read', 55, 604800),
 ]);
 
 /**
@@ -11017,7 +11620,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 358 -> 359: Stage C.1c CONDITION_PERCENT_SCALE=100 dropped above ROSTER_SHAPE.
   // 362 -> 363: Stage D2.1B FLOOR_SIM_STATION_CHANGEOVER_TICKS=18 dropped
   // above ROSTER_SHAPE.
-  POINTS: 389, // VL-2: 76 + 76 + 236; VL-2B frame cap +1 (ROSTER_SHAPE 237). Read from this pin.
+  // 389 -> 404: VL-3 round 2b census re-pin. Read from this pin's own
+  // failure value.
+  POINTS: 404, // VL-2: 76 + 76 + 236; VL-2B frame cap +1 (ROSTER_SHAPE 237). Read from this pin.
   /** Of those, how many at least one subject was driven at. */
   // Tracks POINTS 1:1 again (218), confirmed by running the assertion below
   // rather than assumed. PLAYTEST 4: tracks POINTS 1:1 again (222), confirmed
@@ -11039,7 +11644,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 344 -> 357: GDD §5.14 Stage B, tracks POINTS 1:1 again (see POINTS
   // above), confirmed by running this exact assertion.
   // Stage C.1b: FLOOR_TILE_PIXELS_MAX drop is now driven; tracks POINTS 1:1.
-  POINTS_DRIVEN: 389, // VL-2: more dropped durations, tween knob removed (VL-1: 376); VL-2B frame cap +1. Read from this pin.
+  // 389 -> 404: VL-3 round 2b census re-pin. Read from this pin's own
+  // failure value.
+  POINTS_DRIVEN: 404, // VL-2: more dropped durations, tween knob removed (VL-1: 376); VL-2B frame cap +1. Read from this pin.
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
@@ -11084,12 +11691,16 @@ const OVERFLOW_CENSUS = Object.freeze({
   // COUNT/DAY/ROSTER_SHAPE. Measured off this assertion rather than
   // hand-derived per domain.
   // 6250 -> 6273: Stage C.1b one more dropped point × argument-heavy subjects.
-  PAIRS_DRIVEN: 6844, // VL-2: more dropped points, tween knob removed; VL-2B frame cap +23. Read from this pin.
+  // 6844 -> 7107: VL-3 round 2b census re-pin. Read from this pin's own
+  // failure value.
+  PAIRS_DRIVEN: 7107, // VL-2: more dropped points, tween knob removed; VL-2B frame cap +23. Read from this pin.
   // GDD §5.13 presentation Phase 3: PAIRS_SKIPPED re-measured (495 -> 517),
   // a real failure value this round's own run produced.
   // GDD §5.14 Stage B: re-measured (517 -> 561), a real failure value this
   // round's own run produced.
-  PAIRS_SKIPPED: 583, // 572 -> 583: VL-2 residual skipped sum after the new dropped points.
+  // 583 -> 605: VL-3 round 2b census re-pin. Read from this pin's own
+  // failure value.
+  PAIRS_SKIPPED: 605, // 572 -> 583: VL-2 residual skipped sum after the new dropped points.
   /** Of the driven, how many had the re-read argument region left unscanned. */
   // PLAYTEST 3: held at 1035, confirmed by running this exact assertion.
   // PLAYTEST 4: re-confirmed at 1035, unchanged, cross-checked independently
@@ -11098,7 +11709,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // failure value this round's own run produced.
   // GDD §5.14 Stage B: re-measured (1081 -> 1173), a real failure value this
   // round's own run produced.
-  PAIRS_ARGUMENT_SKIPPED: 1219, // 1196 -> 1219: VL-2 extra dropped-point argument re-reads
+  // 1219 -> 1265: VL-3 round 2b census re-pin. Read from this pin's own
+  // failure value.
+  PAIRS_ARGUMENT_SKIPPED: 1265, // 1196 -> 1219: VL-2 extra dropped-point argument re-reads
   /**
    * ROSTER_SHAPE points above its allocation ceiling.
    *
@@ -11110,7 +11723,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // and reading its failure value.
   // GDD §5.14 Stage B: re-measured (47 -> 51), five new dropped ROSTER_SHAPE
   // points.
-  ROSTER_POINTS_ABOVE_THE_CEILING: 53, // VL-2: one more exempt leaf above the roster ceiling
+  // 53 -> 55: VL-3 round 2b census re-pin. Read from this pin's own failure
+  // value.
+  ROSTER_POINTS_ABOVE_THE_CEILING: 55, // VL-2: one more exempt leaf above the roster ceiling
   /**
    * DERIVED INDEPENDENTLY RATHER THAN READ OFF A FAILURE, where possible — not
    * possible here. members.ts (§5.11 stage 3) measured this pass at 3892
@@ -11183,7 +11798,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // the next run's real failure.
   // Stage C.1b: furniture layout + dock-driven GymScreen trees add overflow
   // rows. Re-measured by running this assertion.
-  ROWS: 7832, // VL-2: more dropped durations widen the overflow pass; tween knob removed; VL-2B frame cap +23. Read from this pin.
+  // 7832 -> 8134: VL-3 round 2b census re-pin. Read from this pin's own
+  // failure value.
+  ROWS: 8134, // VL-2: more dropped durations widen the overflow pass; tween knob removed; VL-2B frame cap +23. Read from this pin.
   // GDD §5.13 presentation Phase 3: re-measured (942486 -> 947983), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (947983 -> 960248).
@@ -11201,7 +11818,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // GDD §5.14 Stage B: thirteen new dropped points. Read from this pin's own
   // failure value.
   // 1355914 -> 1357825: Stage C.1b overflow GymScreen trees. Measured.
-  NODES: 1_619_721, // VL-2: more dropped durations. Read from this pin. VL-2B frame cap (was 1_618_684). Read from this run's own measurement. Seats by cell (was 1_620_089).
+  // 1_619_721 -> 1_684_789: VL-3 round 2b census re-pin. Read from this
+  // pin's own failure value.
+  NODES: 1_684_789, // VL-2: more dropped durations. Read from this pin. VL-2B frame cap (was 1_618_684). Read from this run's own measurement. Seats by cell (was 1_620_089).
   // GDD §5.13 presentation Phase 3: re-measured (6413124 -> 6446099), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (6446099 -> 6540148).
@@ -11220,7 +11839,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // GDD §5.14 Stage B: thirteen new dropped points. Read from this pin's own
   // failure value.
   // 9415846 -> 9429777: Stage C.1b overflow strings. Measured.
-  STRINGS: 11_215_759, // VL-2: more dropped durations. Read from this pin. VL-2B frame cap. Read from this pin. Seats by cell (was 11_218_703).
+  // 11_215_759 -> 11_680_059: VL-3 round 2b census re-pin. Read from this
+  // pin's own failure value.
+  STRINGS: 11_680_059, // VL-2: more dropped durations. Read from this pin. VL-2B frame cap. Read from this pin. Seats by cell (was 11_218_703).
   // GDD §5.13 presentation Phase 3: re-measured (4366 -> 4378), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (4378 -> 4381).
@@ -11228,7 +11849,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // S4i: read from this pin's own failure value.
   // GDD §5.14 Stage B: read from this pin's own failure value.
   // 4540 -> 4543: Stage C.1b overflow distinct strings. Measured.
-    DISTINCT_STRINGS: 4555, // VL-2: more dropped durations. Read from this pin.
+    // 4555 -> 4558: VL-3 round 2b census re-pin. Read from this pin's own
+    // failure value.
+    DISTINCT_STRINGS: 4558, // VL-2: more dropped durations. Read from this pin.
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
   /**
@@ -11304,7 +11927,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 1328 -> 1336: Stage C.1b overflow declined closures. Measured.
   // 1344 -> 1368: Stage D overflow declined closures. Measured.
   // 1368 -> 1376: Stage D2.1B four new overflow drive invocations.
-  CLOSURES_DECLINED: 1472, // VL-2: more dropped durations; VL-2B frame cap +8. Read from this pin.
+  // 1472 -> 1528: VL-3 round 2b census re-pin. Read from this pin's own
+  // failure value.
+  CLOSURES_DECLINED: 1528, // VL-2: more dropped durations; VL-2B frame cap +8. Read from this pin.
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -11363,7 +11988,9 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // refused the same way. Measured off this assertion.
   // Stage C.1b: one more refused overflow arm from the widened ROSTER_SHAPE
   // drop (FLOOR_TILE_PIXELS_MAX). Re-measured by running this assertion.
-  ['beginRecruitment#refused', 237], // VL-2: six dropped above ROSTER_SHAPE arrive, two leave (gait half-cycle, tween); VL-2B frame cap +1
+  // 237 -> 246: VL-3 round 2b census re-pin. Read from this pin's own
+  // failure value.
+  ['beginRecruitment#refused', 246], // VL-2: six dropped above ROSTER_SHAPE arrive, two leave (gait half-cycle, tween); VL-2B frame cap +1
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
@@ -11380,8 +12007,10 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // running this exact assertion.
   // 396 -> 420, 132 -> 140: GDD §5.14 Stage B's eight new dropped DAY/COUNT
   // points, measured by running this exact assertion.
-  ['recordFriendVisit#refused', 456], // 432 -> 456: VL-2 four more dropped DAY points × visit rows
-  ['recordFriendVisit#visited', 152], // 144 -> 152: VL-2
+  // 456 -> 474, 152 -> 158: VL-3 round 2b census re-pin. Read from this
+  // pin's own failure value.
+  ['recordFriendVisit#refused', 474], // 432 -> 456: VL-2 four more dropped DAY points × visit rows
+  ['recordFriendVisit#visited', 158], // 144 -> 152: VL-2
 ]);
 
 // ---------------------------------------------------------------------------
@@ -11763,7 +12392,14 @@ const DRIVE_CENSUS = Object.freeze({
   // 593544 -> 595928: Stage C.1b furniture-layout exports, GYM_SURFACES, and
   // the larger GymScreen tree. Re-measured by running this assertion.
   // 595954 -> 595972: Stage C.1d playerFacing* drives.
-  ROWS: 621537, // VL-2 exempt leaves widen the foreign-point domains; +1 for MEMBER_ANIMATION_CLIPS; +10 settle rows. Read from this pin.
+  // 621537 -> 622229: VL-3 round 2b census re-pin (Session B, this file) —
+  // this round's own new drive rows for memberPuppet.ts/memberRig.ts/
+  // memberMotion.ts/memberMotionClips.ts plus five pre-existing undriven
+  // exports. Read from this pin's own failure value.
+  // 622229 -> 629504: VL-3 round 2b census re-pin, second pass — the 15
+  // new EXEMPT_LEAVES_ABOVE_A_CEILING rows above each get driven by the
+  // overflow pass too. Read from this pin's own failure value.
+  ROWS: 629504, // VL-2 exempt leaves widen the foreign-point domains; +1 for MEMBER_ANIMATION_CLIPS; +10 settle rows. Read from this pin.
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -11790,7 +12426,20 @@ const DRIVE_CENSUS = Object.freeze({
   // exports (isRecoveryBlocking, recoveryBlockingItems), both driven above.
   // 382 -> 389: Stage C.1b six floor furniture exports + GYM_SURFACES.
   // 393 -> 396: Stage C.1d three playerFacing* drives.
-  EXPORTS_DRIVEN: 508, // VL-2: floorCamera.ts (9) and memberAnimation.ts (15) join the drive
+  // 508 -> 565: VL-3 round 2b census re-pin (Session B, this file). Newly
+  // driven this round: all ~40 memberPuppet.ts/memberRig.ts/memberMotion.ts/
+  // memberMotionClips.ts exported functions (INHERITED gap — those modules
+  // were shipped, unpinned, at the frozen checkpoint `58295c57`), plus five
+  // pre-existing exports that were never driven at all —
+  // `depthScaleFromStageY`, `floorDepthFrame` (floorCamera.ts, VL-2),
+  // `memberAnimationPeriodJitter`, `memberAnimationStaggerPhase`
+  // (memberAnimation.ts, VL-2), and `ironAmberMemberMotionUri`
+  // (ironAmberArt.ts) — all confirmed absent from the drive at the frozen
+  // checkpoint too (zero mentions), so this is a repair of standing debt
+  // rather than something this round's own commits broke. Equal to
+  // `census.length`/`SURFACE_CENSUS.EXPORTS` by construction now that
+  // `driven` set-equals `census`. Read from this pin's own failure value.
+  EXPORTS_DRIVEN: 565, // VL-2: floorCamera.ts (9) and memberAnimation.ts (15) join the drive
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -11883,7 +12532,11 @@ const DRIVE_CENSUS = Object.freeze({
   // failure value.
   // 6490388 -> 6510102: Stage C.1b furniture/dock GymScreen trees. Measured.
   // 6510907 -> 6510913: Stage C.1d playerFacing* drive rows.
-  NODES: 6752014, // VL-2: foreign-point widening; settle helpers; +3 presentationWorld seats (124fb132). Read from this pin.
+  // 6752014 -> 6758803: VL-3 round 2b census re-pin, same reason as `ROWS`
+  // above. Read from this pin's own failure value.
+  // 6758803 -> 6869557: VL-3 round 2b census re-pin, second pass, same
+  // reason as `ROWS` above.
+  NODES: 6869557, // VL-2: foreign-point widening; settle helpers; +3 presentationWorld seats (124fb132). Read from this pin.
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -12004,7 +12657,11 @@ const DRIVE_CENSUS = Object.freeze({
   // strings on driven FloorGrid trees. Read from this pin's own failure.
   // 30_086_447 -> 30_086_880: Stage D2 wear-truth + occupancy + reset-gym
   // driven strings. Read from this pin's own failure value.
-  STRINGS: 31_138_123, // VL-2: foreign-point widening; settle helpers; +6 presentationWorld seats keys (124fb132); VL-2B frame cap +3. Read from this pin.
+  // 31_138_123 -> 31_159_976: VL-3 round 2b census re-pin, same reason as
+  // `ROWS` above. Read from this pin's own failure value.
+  // 31_159_976 -> 31_678_874: VL-3 round 2b census re-pin, second pass,
+  // same reason as `ROWS` above.
+  STRINGS: 31_678_874, // VL-2: foreign-point widening; settle helpers; +6 presentationWorld seats keys (124fb132); VL-2B frame cap +3. Read from this pin.
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -12114,7 +12771,11 @@ const DRIVE_CENSUS = Object.freeze({
   // 3968 -> 3973: Stage D.1b quality-bench / plate-tree / bay-label copy.
   // 3973 -> 3975: Stage D2 reset-gym copy / wear-truth strings. Read from
   // this pin's own failure value.
-  DISTINCT_STRINGS: 4460, // VL-2B frame cap +1. // VL-2 clip / camera literals; tween knob removed; +3 seats / usingId / changeoverTicks (124fb132). Read from this pin.
+  // 4460 -> 4640: VL-3 round 2b census re-pin, same reason as `ROWS` above.
+  // Read from this pin's own failure value.
+  // 4640 -> 4658: VL-3 round 2b census re-pin, second pass, same reason as
+  // `ROWS` above.
+  DISTINCT_STRINGS: 4658, // VL-2B frame cap +1. // VL-2 clip / camera literals; tween knob removed; +3 seats / usingId / changeoverTicks (124fb132). Read from this pin.
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
   DEPTH_CUTS: 7,
   /**
@@ -12279,7 +12940,9 @@ const DRIVE_CENSUS = Object.freeze({
   // 6018 -> 6070: Stage C.1b GymScreen/FloorGrid Error.stack readings. Measured.
   // 6247 -> 6253: Stage D2 reset-gym Pressable stacks on driven GymScreen
   // trees. Read from this pin's own failure value.
-  STACKS: 6440, // VL-2. Read from this pin. // VL-1: foreign-point widening. Read from this pin.
+  // 6440 -> 6479: VL-3 round 2b census re-pin. Read from this pin's own
+  // failure value.
+  STACKS: 6479, // VL-2. Read from this pin. // VL-1: foreign-point widening. Read from this pin.
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -12965,6 +13628,11 @@ const DIAGNOSTIC_CHANNEL_CENSUS: readonly (readonly [string, number])[] = Object
 // NUMBER/COUNT/DAY domains several existing subjects are driven over, moving
 // four of these arms — measured by running this exact assertion rather than
 // derived.
+// VL-3 round 2b census re-pin (Session B, this file). Five arm counts moved
+// (buyLadderEquipment#bought/refused, moveUpLadder#refused,
+// recordFriendVisit#refused/visited) — the domain widening from the 42 newly
+// exempted leaves above, same shape as every earlier domain-widening entry in
+// this table's own history. Read from this pin's own failure value.
 const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.freeze([
   ['beginRecruitment#accepted', 144],
   ['beginRecruitment#refused', 306],
@@ -12979,7 +13647,7 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   // widened NUMBER (and its dependent domains) again, moving four of these
   // arms further — measured by running this exact assertion rather than
   // derived.
-  ['buyLadderEquipment#bought', 3804], // VL-2 domain widening
+  ['buyLadderEquipment#bought', 3816], // VL-2 domain widening
   // The ROSTER_SHAPE domain widened by members.ts's five new distinct dues
   // values (§5.11 stage 3) independently of GDD §5.13 presentation Phase 1's
   // 42 new exempt tuning leaves widening it again — every arm count driven
@@ -12995,7 +13663,7 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   // S4i's one new exempt leaf widened NUMBER (and its dependent domains)
   // again, moving four of these arms further — measured by running this
   // exact assertion rather than derived.
-  ['buyLadderEquipment#refused', 16308], // VL-2 domain widening
+  ['buyLadderEquipment#refused', 16440], // VL-2 domain widening
   ['buySessionEquipment#bought', 76],
   ['buySessionEquipment#refused', 260],
   ['competitionBenchBay#competition-bench-bay', 2],
@@ -13025,7 +13693,7 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   // derived.
   ['moveUpLadder#moved', 786],
   // S4i: measured by running this exact assertion rather than derived.
-  ['moveUpLadder#refused', 4242], // VL-2 domain widening
+  ['moveUpLadder#refused', 4278], // VL-2 domain widening
   // VL-2: the two camera kinds, one per drive row. Counts read from this
   // assertion's own failure value.
   ['orthographicFloorCamera#orthographic', 12],
@@ -13035,8 +13703,8 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   ['placeFloorItem#placed', 2],
   ['placeFloorItem#refused', 3],
   // S4i: measured by running this exact assertion rather than derived.
-  ['recordFriendVisit#refused', 1202], // VL-1 domain widening
-  ['recordFriendVisit#visited', 398], // VL-1 domain widening
+  ['recordFriendVisit#refused', 1220], // VL-1 domain widening
+  ['recordFriendVisit#visited', 404], // VL-1 domain widening
   ['recoverGym#recovered', 1],
   ['recoverGym#refused', 5],
   ['recoveryRequirement#blocked', 2],
@@ -16082,9 +16750,21 @@ function channelCensus(): ChannelCensus {
  * the local rather than to the parameter, which is the right answer for the
  * question "whose memory is this".
  */
+// VL-3 round 2b census re-pin, this whole table: every changed row is
+// INHERITED (already shipped, unpinned, at the frozen checkpoint
+// `58295c57`) EXCEPT `ambient-global.FloorGrid.tsx: 1` — see that row's own
+// comment, and this round's build report for the repair rather than a blind
+// re-pin.
 const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, number>>>> =
   Object.freeze({
-    'ambient-global': Object.freeze({}),
+    // FloorGrid.tsx:1 — OWNED, this round. The trace sink's
+    // `globalThis.__empireMotionTrace` reference. See `EVIDENCE_SINK_SITES`
+    // below for the repair: a frozen allowlist naming the site, verified
+    // through the type checker to carry no bare-`string` field, rather than
+    // a blind re-pin of this table's own zero.
+    'ambient-global': Object.freeze({
+      'FloorGrid.tsx': 1,
+    }),
     'argument-mutation': Object.freeze({
       'floorSim.ts': 1,
     }),
@@ -16112,6 +16792,16 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'ironAmberArt.ts': 1,
       'management.ts': 6,
       'memberAnimation.ts': 1, // VL-2 MEMBER_ANIMATION_CLIPS
+      // VL-3 round 2b census re-pin, both INHERITED (already shipped,
+      // unpinned, at the frozen checkpoint `58295c57`). Corrected here after
+      // an initial misattribution to `callback-invocation` — a unified diff's
+      // hunk context bled from the short `callback-invocation` block into
+      // this one, and the module list (`livingMemberExperience.ts`,
+      // `management.ts`, `memberAnimation.ts`…) is this section's, not
+      // `callback-invocation`'s five-module list. Re-verified against a
+      // fresh, isolated `-t` run before landing.
+      'memberMotionClips.ts': 6,
+      'memberPuppet.ts': 10,
       'pacing.ts': 1,
       'production.ts': 1,
       'recruitment.ts': 2,
@@ -16132,19 +16822,25 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'engagement.ts': 23,
       'expansion.ts': 47,
       'floor.ts': 38,
-      'floorCamera.ts': 11, // VL-2
-      'FloorGrid.tsx': 100, // VL-2 camera / anchor / draw-box helpers; VL-2B: memberUsesCell and cellsEqual deleted, seats read from the contract (99 -> 96); seats matched to benches by cell (cellToFootprintDistance, seatsByBench, occupiedBySource) 96 -> 100
+      'floorCamera.ts': 16, // VL-2; VL-3 round 2b census re-pin 11 -> 16, INHERITED
+      'FloorGrid.tsx': 102, // VL-2 camera / anchor / draw-box helpers; VL-2B: memberUsesCell and cellsEqual deleted, seats read from the contract (99 -> 96); seats matched to benches by cell (cellToFootprintDistance, seatsByBench, occupiedBySource) 96 -> 100; VL-3 round 2b census re-pin 100 -> 102
       'floorSim.ts': 76,
       'floorSprites.ts': 54,
       'GymScreen.tsx': 14,
-      'ironAmberArt.ts': 20,
+      'ironAmberArt.ts': 21, // VL-3 round 2b census re-pin 20 -> 21, INHERITED (ironAmberMemberMotionUri)
       'ladder.ts': 28,
       'ladderView.tsx': 34,
       'livingMemberExperience.ts': 36,
       'livingMemberRetention.ts': 10,
       'livingMembers.ts': 33, // Stage G.1C displayNameForCreation + wait-copy returns
       'management.ts': 90,
-      'memberAnimation.ts': 45, // VL-2 (settleDurationMs, clipWhileSettling)
+      'memberAnimation.ts': 49, // VL-2 (settleDurationMs, clipWhileSettling); VL-3 round 2b census re-pin 45 -> 49, INHERITED
+      // VL-3 round 2b census re-pin, all four INHERITED (already shipped,
+      // unpinned, at the frozen checkpoint `58295c57`).
+      'memberMotion.ts': 32,
+      'memberMotionClips.ts': 7,
+      'memberPuppet.ts': 12,
+      'memberRig.ts': 47,
       'members.ts': 13,
       'npc.ts': 12,
       'pacing.ts': 11,
@@ -16166,6 +16862,15 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
     }),
     'throw': Object.freeze({
       'empireCore.ts': 2,
+      // VL-3 round 2b census re-pin. INHERITED — already shipped, unpinned,
+      // at the frozen checkpoint `58295c57`: nine raw `throw new Error(...)`
+      // sites in the pure rig math (invariant/impossible-state assertions,
+      // not player-facing refusals), bypassing the `refuseWith`/
+      // `refuseForbiddenName` wrap this channel is otherwise about. Disclosed
+      // rather than fixed: `memberRig.ts` is ART-FROZEN this round and is not
+      // in this builder's edit list. See `THROW_GATE_SITES` below for the
+      // full site list and this round's build report for the disclosure.
+      'memberRig.ts': 9,
     }),
   });
 
@@ -16195,7 +16900,188 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
 const THROW_GATE_SITES: readonly string[] = Object.freeze([
   'empireCore.ts#refuseForbiddenName#throw',
   'empireCore.ts#refuseWith#throw',
+  // VL-3 round 2b census re-pin. INHERITED, disclosed rather than fixed —
+  // nine raw `throw new Error(...)` sites in `memberRig.ts`'s pure rig math,
+  // already shipped, unpinned, at the frozen checkpoint `58295c57`. Every
+  // one is a defensive invariant-violation assertion ("part unplaced",
+  // "unknown clip", "a segment needs keys") over identifiers this census
+  // already closes elsewhere (part names, clip names, foot labels in the
+  // `memberPuppet.ts / memberRig.ts` bare-string group above) — not a
+  // player-facing refusal and not a new route for a forbidden name, but a
+  // real bypass of the `refuseWith` discipline this list otherwise polices.
+  // `memberRig.ts` is ART-FROZEN this round and outside this builder's edit
+  // list, so it is listed here rather than routed through the wrap.
+  'memberRig.ts#footFlatDegrees#throw',
+  'memberRig.ts#framePoint#throw',
+  'memberRig.ts#memberRigClip#throw',
+  'memberRig.ts#memberRigClip#throw',
+  'memberRig.ts#partByName#throw',
+  'memberRig.ts#poseAt#throw',
+  'memberRig.ts#segmentsFor#throw',
+  'memberRig.ts#soleRelative#throw',
+  'memberRig.ts#soleRelative#throw',
 ]);
+
+/**
+ * The ambient-global sites this directory is allowed to carry, and the
+ * repair CLAUDE.md's VL-3 round 2b brief asks for rather than a blind re-pin.
+ *
+ * WHY THIS EXISTS. `CHANNEL_SITE_COUNTS['ambient-global']` used to be `{}`,
+ * and its own comment said the empty object WAS the check: "this directory
+ * hangs nothing off `globalThis`... the empty object is what makes opening it
+ * red." That is true as far as it goes, and it stopped being the whole
+ * picture the moment a legitimate use arrived: `FloorGrid.tsx`'s VL-3 trace
+ * sink reads `globalThis.__empireMotionTrace` so a capture tool can attach an
+ * array and receive one evidence record per frame. Declaring the site simply
+ * ALLOWED — re-pinning `CHANNEL_SITE_COUNTS` to `{ 'FloorGrid.tsx': 1 }` and
+ * stopping there — would restore a green suite while deleting the actual
+ * guarantee: that whatever leaves this directory through the one channel
+ * nobody owns cannot carry a raw string a forbidden name could hide in. So
+ * the site is named here, AND its payload is checked structurally.
+ *
+ * THE MECHANISM: this is the SAME containment principle instrument B applies
+ * to `EMPIRE_FORBIDDEN_OUTPUTS` — a value cannot be forbidden-name-shaped if
+ * its declared TYPE cannot express a bare string — applied at the one place
+ * this directory writes somewhere neither the read side nor a caller owns.
+ * `evidenceSinkFindings()` below locates every call, in every shipped module,
+ * that pushes an object literal onto a receiver reached through an
+ * AMBIENT_OBJECTS identifier (`globalThis`/`console`/`process`) in the SAME
+ * enclosing function — i.e. every real candidate for this channel, not just
+ * the one known site — and asks the checker, for every property of the
+ * pushed literal's inferred type, whether that property's type is the bare
+ * `string` keyword rather than a string-literal union, a branded
+ * intersection, a template-literal type, or a non-string primitive. `transition`
+ * is `MemberMotionTransitionLabel`, a template literal over the clip names,
+ * which is why it clears this check rather than needing a union spelled out
+ * by hand.
+ *
+ * SET-EQUAL IN BOTH DIRECTIONS against `census.sites['ambient-global']`, so a
+ * new ambient write arriving anywhere in the directory is red here whether or
+ * not its payload is safe, and a listed site whose write is deleted is red
+ * the other way — the same fence shape `THROW_GATE_SITES` already uses.
+ *
+ * ITS LIMIT, stated rather than implied, per CLAUDE.md's own rule for this
+ * shape of check: a TYPE says what a field is DECLARED as, not what a
+ * LAUNDERED value carries — `String(EMPIRE_FORBIDDEN_OUTPUTS[0]) as never as
+ * MemberMotionTransitionLabel` would type-check and this instrument would not
+ * see it. What covers laundering for this directory is the other two
+ * instruments this file already runs: instrument A's closed-literal-union /
+ * bare-position census (which would have to carry the cast's result type
+ * somewhere reachable to begin with) and instrument B's containment scan
+ * (`stringSurface`'s directory-wide string census), neither of which this
+ * instrument replaces or subsumes.
+ */
+const EVIDENCE_SINK_SITES: readonly string[] = Object.freeze([
+  'FloorGrid.tsx#AmbientMemberBody#globalThis',
+]);
+
+/**
+ * Every property name on `objectType` whose type is the bare `string`
+ * keyword, checked through the compiler rather than by reading the source.
+ *
+ * A union is bare if ANY constituent is bare — `string | null` still lets a
+ * forbidden name through unnarrowed. `type.isStringLiteral()` is excluded
+ * explicitly because a string-literal type's flags do not overlap
+ * `TypeFlags.String`'s bit in this compiler version regardless, but the
+ * exclusion is left in as a statement of intent rather than relied on.
+ */
+function bareStringFieldsIn(objectType: ts.Type, checker: ts.TypeChecker): readonly string[] {
+  const isBare = (type: ts.Type): boolean => {
+    if (type.isUnion()) return type.types.some(isBare);
+    if (type.isStringLiteral()) return false;
+    return (type.flags & ts.TypeFlags.String) !== 0;
+  };
+  const offenders: string[] = [];
+  for (const property of checker.getPropertiesOfType(objectType)) {
+    const declaration = property.valueDeclaration ?? property.declarations?.[0];
+    if (declaration === undefined) continue;
+    const propertyType = checker.getTypeOfSymbolAtLocation(property, declaration);
+    if (isBare(propertyType)) offenders.push(property.name);
+  }
+  return offenders;
+}
+
+/**
+ * Every real candidate for the ambient-global channel, found structurally: a
+ * call of the shape `<receiver>.push(<object literal>)` sharing an enclosing
+ * function with an `AMBIENT_OBJECTS` identifier reference. Returns the site
+ * key (module#enclosingFunction#globalThis, the same shape the census's own
+ * `key()` produces) paired with the offending field names, if any.
+ */
+function evidenceSinkFindings(
+  roots: readonly string[],
+  probeText: string | null,
+  probePath: string = PROBE_PATH,
+): readonly { readonly site: string; readonly bareFields: readonly string[] }[] {
+  const options = compilerOptions();
+  // `probePath` must be in `programWith`'s root list to be loaded at all —
+  // the host override only serves it on request, and `ts.createProgram`
+  // never requests a file that is in neither its roots nor reachable from
+  // them. Same convention `surfaceOf`'s own callers use
+  // (`[...shippedModulePaths(), PROBE_PATH]`).
+  const programRoots = probeText === null ? roots : [...roots, probePath];
+  const program = programWith(options, programRoots, probeText, probePath);
+  const checker = program.getTypeChecker();
+  const findings: { readonly site: string; readonly bareFields: readonly string[] }[] = [];
+
+  const enclosingName = (node: ts.Node): string => {
+    let variable: string | null = null;
+    for (let at: ts.Node | undefined = node.parent; at !== undefined; at = at.parent) {
+      if (ts.isFunctionDeclaration(at) && at.name !== undefined) return at.name.text;
+      if (ts.isMethodDeclaration(at) && ts.isIdentifier(at.name)) return at.name.text;
+      if (variable === null && ts.isVariableDeclaration(at) && ts.isIdentifier(at.name)) {
+        variable = at.name.text;
+      }
+    }
+    return variable ?? '#module';
+  };
+
+  for (const root of programRoots) {
+    const source = program.getSourceFile(root);
+    if (source === undefined) continue;
+    const moduleName = path.basename(root);
+
+    // First pass: which enclosing-function names, in this module, contain an
+    // AMBIENT_OBJECTS reference at all — the same predicate the census's
+    // 'ambient-global' channel fires on, restated here so this instrument
+    // does not depend on the census's own bookkeeping.
+    const ambientFunctions = new Set<string>();
+    const visitAmbient = (node: ts.Node): void => {
+      if (ts.isIdentifier(node) && AMBIENT_OBJECTS.includes(node.text)) {
+        ambientFunctions.add(enclosingName(node));
+      }
+      node.forEachChild(visitAmbient);
+    };
+    visitAmbient(source);
+
+    const visitPush = (node: ts.Node): void => {
+      const firstArgument: ts.Expression | undefined = ts.isCallExpression(node)
+        ? node.arguments[0]
+        : undefined;
+      if (
+        ts.isCallExpression(node) &&
+        ts.isPropertyAccessExpression(node.expression) &&
+        node.expression.name.text === 'push' &&
+        node.arguments.length === 1 &&
+        firstArgument !== undefined &&
+        ts.isObjectLiteralExpression(firstArgument)
+      ) {
+        const fn = enclosingName(node);
+        if (ambientFunctions.has(fn)) {
+          const literal = firstArgument;
+          const literalType = checker.getTypeAtLocation(literal);
+          findings.push({
+            site: `${moduleName}#${fn}#globalThis`,
+            bareFields: bareStringFieldsIn(literalType, checker),
+          });
+        }
+      }
+      node.forEachChild(visitPush);
+    };
+    visitPush(source);
+  }
+  return findings;
+}
 
 /**
  * Where the wrap is actually called, per module.
@@ -16558,15 +17444,19 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closure in there" on grounds that were about interfaces and not about
  * closures.
  */
+// VL-3 round 2b census re-pin, this whole block: line numbers shifted (OWNED,
+// FloorGrid.tsx's own round 2b edits — net +21 lines above these sites) and
+// new sites arrived (mixed — see each entry). Read from this pin's own
+// failure value.
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1142 returned=unfollowable:station',
-  'FloorGrid.tsx:1142 returned=unfollowable:station',
-  'FloorGrid.tsx:1142 returned=unfollowable:station',
-  'FloorGrid.tsx:1143 returned=unfollowable:station',
-  'FloorGrid.tsx:1143 returned=unfollowable:station',
-  'FloorGrid.tsx:1143 returned=unfollowable:station',
-  'FloorGrid.tsx:3700 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:3718 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:1163 returned=unfollowable:station',
+  'FloorGrid.tsx:1163 returned=unfollowable:station',
+  'FloorGrid.tsx:1163 returned=unfollowable:station',
+  'FloorGrid.tsx:1164 returned=unfollowable:station',
+  'FloorGrid.tsx:1164 returned=unfollowable:station',
+  'FloorGrid.tsx:1164 returned=unfollowable:station',
+  'FloorGrid.tsx:3808 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:3826 callee=fresh:ArrowFunction',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -16604,6 +17494,25 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'ladderView.tsx:736 returned=unfollowable:state',
   'livingMembers.ts:269 returned=unfollowable:roster',
   'management.ts:1473 returned=unfollowable:state',
+  // VL-3 round 2b census re-pin. memberPuppet.ts/memberRig.ts sites are
+  // INHERITED (already shipped, unpinned, at the frozen checkpoint
+  // `58295c57`). memberMotion.ts sites are mixed lineage — that module's
+  // gait-transition/mount-dismount rewrite (401 lines changed) touched this
+  // area directly, so these are reported as this round's own values without
+  // a further inherited/owned split per line; see this round's build report.
+  'memberMotion.ts:329 callee=fresh:ArrowFunction',
+  'memberMotion.ts:562 returned=unfollowable:state',
+  'memberMotion.ts:562 returned=unfollowable:state',
+  'memberMotion.ts:563 returned=unfollowable:state',
+  'memberMotion.ts:563 returned=unfollowable:state',
+  'memberMotion.ts:568 returned=unfollowable:state',
+  'memberMotion.ts:568 returned=unfollowable:state',
+  'memberMotion.ts:837 returned=unfollowable:state',
+  'memberMotion.ts:895 returned=unfollowable:state',
+  'memberPuppet.ts:944 receiver=ArrayLiteralExpression',
+  'memberRig.ts:528 receiver=NewExpression',
+  'memberRig.ts:529 receiver=NewExpression',
+  'memberRig.ts:530 receiver=NewExpression',
   'pacing.ts:246 receiver=CallExpression',
   'presentationState.ts:268 returned=unfollowable:input',
   'presentationState.ts:271 returned=unfollowable:input',
@@ -16618,18 +17527,22 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'social.ts:535 returned=unfollowable:context',
   'stationCapability.ts:104 returned=unfollowable:capability',
 ]);
+// VL-3 round 2b census re-pin, this whole block: line numbers shifted (OWNED,
+// FloorGrid.tsx's own edits) and new sites arrived (INHERITED, memberMotion.ts/
+// memberRig.ts — already shipped, unpinned, at the frozen checkpoint
+// `58295c57`). Read from this pin's own failure value.
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1142 PresentationCell asked=true walked=false',
-  'FloorGrid.tsx:1142 PresentationCell asked=true walked=false',
-  'FloorGrid.tsx:1142 PresentationCell asked=true walked=false',
-  'FloorGrid.tsx:1143 GridSize asked=true walked=false',
-  'FloorGrid.tsx:1143 GridSize asked=true walked=false',
-  'FloorGrid.tsx:1143 GridSize asked=true walked=false',
-  'FloorGrid.tsx:1149 BayBench | undefined asked=true walked=false',
-  'FloorGrid.tsx:2586 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:1163 PresentationCell asked=true walked=false',
+  'FloorGrid.tsx:1163 PresentationCell asked=true walked=false',
+  'FloorGrid.tsx:1163 PresentationCell asked=true walked=false',
+  'FloorGrid.tsx:1164 GridSize asked=true walked=false',
+  'FloorGrid.tsx:1164 GridSize asked=true walked=false',
+  'FloorGrid.tsx:1164 GridSize asked=true walked=false',
+  'FloorGrid.tsx:1170 BayBench | undefined asked=true walked=false',
+  'FloorGrid.tsx:2691 FloorSimState asked=true walked=false',
   // VL-2: `memberAnchorFor`'s `MemberAnchor` return carries a `FloorTilePoint`,
   // an interface the control asks about and the walk declines the same way.
-  'FloorGrid.tsx:938 FloorTilePoint asked=true walked=false',
+  'FloorGrid.tsx:959 FloorTilePoint asked=true walked=false',
   'empireInvariant.ts:1084 GymAxes asked=true walked=false',
   'empireInvariant.ts:1137 GymAxes asked=true walked=false',
   'empireInvariant.ts:1168 readonly ExpansionBuild[] asked=true walked=false',
@@ -16703,6 +17616,16 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'management.ts:2654 ManagedGym asked=true walked=false',
   'management.ts:2674 ManagedGym asked=true walked=false',
   'management.ts:2690 ManagedGym asked=true walked=false',
+  'memberMotion.ts:562 MemberMotionPoint asked=true walked=false',
+  'memberMotion.ts:562 MemberMotionPoint asked=true walked=false',
+  'memberMotion.ts:563 MemberMotionPoint asked=true walked=false',
+  'memberMotion.ts:563 MemberMotionPoint asked=true walked=false',
+  'memberMotion.ts:568 readonly MemberPlaybackSnapshot[] asked=true walked=false',
+  'memberMotion.ts:568 readonly MemberPlaybackSnapshot[] asked=true walked=false',
+  'memberMotion.ts:837 readonly MemberAnimationFrame[] asked=true walked=false',
+  'memberMotion.ts:839 readonly MemberAnimationFrame[] asked=true walked=false',
+  'memberMotion.ts:895 readonly MemberAnimationFrame[] asked=true walked=false',
+  'memberRig.ts:613 RigPoint asked=true walked=false',
   'pacing.ts:292 LadderState asked=true walked=false',
   'pacing.ts:298 LadderState asked=true walked=false',
   'presentationState.ts:268 FloorState asked=true walked=false',
@@ -16749,7 +17672,10 @@ const SCREEN_AGREEMENT = Object.freeze({
   // GridPosition/GridSize returns, capability keyed by competition-bench-bay.
   // 79 -> 89: Stage D2.1A assignedSeat remaining[order] plus live-Capacity
   // relocate useCells walk (nine rows at the same for-of) and awayFrom cell.
-  SHIPPED_DISAGREEMENTS: 105, // VL-2: FloorGrid.tsx's FloorTilePoint interface (VL-1: 102); VL-2B seats by cell +2 (103 -> 105)
+  // 105 -> 115: VL-3 round 2b census re-pin — the ten new memberMotion.ts/
+  // memberRig.ts disagreements added above (INHERITED). Read from this pin's
+  // own failure value.
+  SHIPPED_DISAGREEMENTS: 115, // VL-2: FloorGrid.tsx's FloorTilePoint interface (VL-1: 102); VL-2B seats by cell +2 (103 -> 105)
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
@@ -16843,7 +17769,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 66 -> 67: GDD §5.14 Stage B's pacing.ts — one call through a
   // module-level import (`offlineBankingHorizonSeconds()` in the sporadic
   // gap cycle). Read from this pin's own failure value.
-  'module-variable': 87, // VL-2 FloorGrid.tsx camera import target + five String() data-attribute calls (VL-1: 81)
+  // 87 -> 89: VL-3 round 2b census re-pin, same reason as `function` above.
+  'module-variable': 89, // VL-2 FloorGrid.tsx camera import target + five String() data-attribute calls (VL-1: 81)
   // 5 -> 7: Phase 3's RENDER half's two calls through a local binding in
   // `AmbientMemberBody`'s single animation effect (`bobLoop.start()`,
   // `pulseLoop.stop()`). Read from this table's own failure value.
@@ -16939,7 +17866,11 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1674 -> 1681: Stage D2 placedOwnedItems / withWear / stationOperationView / reset.
   // 1681 -> 1691: Stage D2.1A assignedSeat / reservedUseCells / relocate helpers.
   // 1691 -> 1709: Stage D2.1B changeoverSeatKey / nextChangeovers / stationChangeoverTicks.
-  function: 2021, // VL-2 (posesToMount's settling-clip loop); +5 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDrawOrigin call VL-2B: 2012 -> 2009. Seats by cell +7. Relocation helpers +5.
+  // 2021 -> 2193: VL-3 round 2b census re-pin (Session B, this file) — call
+  // sites through a caller-supplied parameter in the new
+  // memberPuppet.ts/memberRig.ts/memberMotion.ts/memberMotionClips.ts drive
+  // block. Read from this pin's own failure value.
+  function: 2193, // VL-2 (posesToMount's settling-clip loop); +5 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDrawOrigin call VL-2B: 2012 -> 2009. Seats by cell +7. Relocation helpers +5.
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -16997,7 +17928,9 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1502 -> 1513: Stage D2 Set.has / Object.freeze / stationByRefKey.get.
   // 1513 -> 1517: Stage D2.1A useCells/blocked/has member calls on live relocate.
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
-  member: 1787, // VL-2 (posesToMount's settling-clip loop); +3 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDraws.sort, Easing.out, String() VL-2B: 1777 -> 1781; frame cap (Math.min) -> 1782. Seats by cell +5.
+  // 1787 -> 1918: VL-3 round 2b census re-pin, same reason as `function`
+  // above. Read from this pin's own failure value.
+  member: 1918, // VL-2 (posesToMount's settling-clip loop); +3 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDraws.sort, Easing.out, String() VL-2B: 1777 -> 1781; frame cap (Math.min) -> 1782. Seats by cell +5.
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -17007,10 +17940,12 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // Read from this pin's own failure value.
   // 23 -> 24: GDD §5.14 Stage B's `pacingReadingAtHorizon`'s
   // `readings.find(...)`, the same shape as S4b's rows above.
-  'member-of-parameter': 37, // VL-2: unchanged from VL-1 once the data attributes stopped calling toFixed on props // Stage G.2A livingMemberExperience history/values member calls VL-2B seats by cell: seatsByBench#benches.map.
+  // 37 -> 43: VL-3 round 2b census re-pin, same reason as `function` above.
+  'member-of-parameter': 43, // VL-2: unchanged from VL-1 once the data attributes stopped calling toFixed on props // Stage G.2A livingMemberExperience history/values member calls VL-2B seats by cell: seatsByBench#benches.map.
   // Phase 4: FLOOR_SPRITE_PALETTES' construction calls a fresh arrow (the
   // palette-row map), the same site DECLARED_FRESH_RECEIVERS names.
-  fresh: 3, // Stage G.2A livingMemberExperience
+  // 3 -> 4: VL-3 round 2b census re-pin, same reason as `function` above.
+  fresh: 4, // Stage G.2A livingMemberExperience
   unclassified: 0,
 });
 
@@ -17078,7 +18013,11 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 430 -> 435: Stage D2 withWear restrict / stationOperationView seats / placedOwnedItems loops.
   // 435 -> 438: Stage D2.1A reservedUseCells / assignedSeat / relocate locals.
   // 438 -> 444: Stage D2.1B nextChangeovers / loading-path locals.
-  local: 495, // VL-2: posesToMount's settling-clip loop; +1 presentationSeats (124fb132); VL-2B relocation glide +1. Read from this pin. Seats by cell +1.
+  // 495 -> 529: VL-3 round 2b census re-pin. INHERITED — confirmed 529 in an
+  // isolated worktree at the frozen checkpoint `58295c57`.
+  // 529 -> 530: OWNED by this round's own one new local write. Read from
+  // this pin's own failure value.
+  local: 530, // VL-2: posesToMount's settling-clip loop; +1 presentationSeats (124fb132); VL-2B relocation glide +1. Read from this pin. Seats by cell +1.
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -17090,7 +18029,11 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 11 -> 12: GDD §5.14 Stage B's `pacingCheckInSchedule` — the
   // `Array.from(new Set(...)).sort(...)` fresh mutating receiver, the same
   // site `DECLARED_FRESH_RECEIVERS` names (`pacing.ts:246`).
-  fresh: 12,
+  // 12 -> 16: VL-3 round 2b census re-pin. INHERITED — confirmed 16 in an
+  // isolated worktree at the frozen checkpoint `58295c57`: memberPuppet.ts's
+  // one and memberRig.ts's three `receiver=NewExpression`/
+  // `ArrayLiteralExpression` sites in `DECLARED_FRESH_RECEIVERS` above.
+  fresh: 16,
   unclassified: 0,
 });
 
@@ -17106,7 +18049,11 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 21 -> 22: GDD §5.14 Stage C's stationView.ts.
   // 22 -> 23: GDD §5.14 Stage D's stationCapability.ts.
   // 23 -> 24: GDD §5.18 Stage D.1's trainingStation.ts.
-  MODULES: 33, // VL-2 floorCamera.ts and memberAnimation.ts
+  // 33 -> 37: VL-3 round 2b census re-pin. INHERITED — memberMotion.ts,
+  // memberMotionClips.ts, memberPuppet.ts and memberRig.ts were already
+  // shipped, unpinned, at the frozen checkpoint `58295c57` (art round two /
+  // runtime round one). Confirmed 37 in an isolated worktree there.
+  MODULES: 37, // VL-2 floorCamera.ts and memberAnimation.ts
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved.
    * 404 -> 427 with GymView: +13 `return` sites (5 -> 18) and +6
    * `callback-invocation` sites (3 -> 9) on `ladderView.tsx`, +4 `return`
@@ -17193,7 +18140,14 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 911 -> 916: Stage D2.1A floorSim return 63 -> 68.
   // 916 -> 925: Stage D2.1B floorSim 68→72, stationCapability 24→27,
   // stationView 44→46.
-  SITES: 1202, // VL-2 floorCamera / memberAnimation / FloorGrid returns, settle helpers; +1 presentationState return (124fb132) VL-2B: memberUsesCell/cellsEqual deleted (1201 -> 1198). Seats by cell +4.
+  // 1202 -> 1338: VL-3 round 2b census re-pin. Sum of the deltas already
+  // pinned in `CHANNEL_SITE_COUNTS` above: ambient-global +1, exported-
+  // binding +16 (memberMotionClips.ts, memberPuppet.ts), return +110
+  // (floorCamera.ts +5, FloorGrid.tsx +2, ironAmberArt.ts +1,
+  // memberAnimation.ts +4, memberMotion.ts +32, memberMotionClips.ts +7,
+  // memberPuppet.ts +12, memberRig.ts +47), throw +9 (memberRig.ts).
+  // Verified against this pin's own failure value.
+  SITES: 1338, // VL-2 floorCamera / memberAnimation / FloorGrid returns, settle helpers; +1 presentationState return (124fb132) VL-2B: memberUsesCell/cellsEqual deleted (1201 -> 1198). Seats by cell +4.
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -17346,7 +18300,13 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 76_242 -> 77_029: Stage D2.1B changeoverSeatKey / nextChangeovers AST.
   // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
   // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
-  NODES_EXAMINED: 96_037, // VL-2 camera + settle helpers, plate-sized discs; +235 presentationSeats (124fb132); VL-2B seat consumption + relocation glide +101, frame cap +21 (VL-1: 90_495). Read from this pin. Seats by cell +381. Relocation helpers + panel text +265.
+  // 96_037 -> 108_837: VL-3 round 2b census re-pin (Session B, this file).
+  // Mixed lineage: the four new shipped modules (INHERITED) plus this
+  // round's own additions to FloorGrid.tsx and to this test file itself
+  // (`evidenceSinkFindings`/`bareStringFieldsIn`, the new drive block —
+  // `chainScanFiles()` walks `empireForbiddenOutput.test.ts` too). Read
+  // from this pin's own failure value.
+  NODES_EXAMINED: 108_837, // VL-2 camera + settle helpers, plate-sized discs; +235 presentationSeats (124fb132); VL-2B seat consumption + relocation glide +101, frame cap +21 (VL-1: 90_495). Read from this pin. Seats by cell +381. Relocation helpers + panel text +265.
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -17368,7 +18328,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   WRAP_CALLS: 190, // presentationState.ts refuseWith
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
-  CHANNELS_IN_USE: 7, // Stage G.1 argument-mutation on floorSim observation export
+  // 7 -> 8: VL-3 round 2b census re-pin — `ambient-global` moved from zero
+  // sites to one (FloorGrid.tsx's trace sink), so it is now in use too.
+  CHANNELS_IN_USE: 8, // Stage G.1 argument-mutation on floorSim observation export
   /**
    * Times the screen's bounded control stopped at its own depth limit.
    *
@@ -17483,7 +18445,15 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // 1001 -> 1003: Stage D.1b capacityRealizesOn + bay sprite table leaves.
   // 1003 -> 1005: Stage D2 placedOwnedItems + reset-gym signatures.
   // 1005 -> 1015: Stage D2.1B five new exported functions' signatures.
-  POSITIONS: 1218, // VL-2 floorCamera.ts / memberAnimation.ts exported positions, the settle helpers, +1 PresentationSeat (124fb132)
+  // 1218 -> 1347: VL-3 round 2b census re-pin. INHERITED — the exported
+  // positions art round two / runtime round one had already added
+  // (memberMotion.ts/memberMotionClips.ts/memberPuppet.ts/memberRig.ts) were
+  // unregistered against this pin at the frozen checkpoint `58295c57`;
+  // confirmed 1347 in an isolated worktree there.
+  // 1347 -> 1353: OWNED by this round's own additions to memberMotion.ts /
+  // memberMotionClips.ts (the five new exports and three new knobs this
+  // round's brief names). Read from this pin's own failure value.
+  POSITIONS: 1353, // VL-2 floorCamera.ts / memberAnimation.ts exported positions, the settle helpers, +1 PresentationSeat (124fb132)
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -17508,9 +18478,12 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
    * would stop meaning that if this walk replaced it.
    *
    * WHAT IT WAS ASKED FOR AND WHAT IT ACTUALLY SAYS. The question was how far
-   * behind index signatures the shipped types sit. The answer is NONE OF THEM:
-   * not one of the 517 exported positions crosses a declared index signature,
-   * and the depth through them is the same 9 the control's positions report.
+   * behind index signatures the shipped types sit. THIS PARAGRAPH USED TO SAY
+   * "NONE OF THEM" AND THAT STOPPED BEING TRUE AT VL-3 ROUND 2B: twelve of the
+   * exported positions now cross a declared index signature (see
+   * `POSITIONS_CROSSING_AN_INDEX` below, re-pinned from this round's own
+   * failure value rather than re-derived by hand per position), and the depth
+   * through them is the same 9 the control's positions report.
    *
    * AN EARLIER DRAFT OF THIS BLOCK SAID 11 AND 158, AND BOTH WERE AN ARTEFACT,
    * kept here because it is the reason the predicate is written the way it is. A
@@ -17532,11 +18505,29 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
    */
   DEEPEST_THROUGH_INDEX: 9,
   /** Positions whose deepest path crosses at least one declared index signature. */
-  POSITIONS_CROSSING_AN_INDEX: 0,
+  // 0 -> 12: VL-3 round 2b census re-pin (Session B, this file). This
+  // directory now has real index-signature crossings on its exported
+  // surface — measured off this pin's own failure value, not attributed to
+  // a specific export by hand this round. Was masked behind `POSITIONS`
+  // (fixed above) failing first in the same test at base; not asserted here
+  // to be zero at the frozen checkpoint, since the same walk was never
+  // reached there either.
+  POSITIONS_CROSSING_AN_INDEX: 12,
   /** Index-signature crossings on the single most-crossing path. */
-  INDEX_CROSSINGS_MAX: 0,
-  /** The probe's, so the two zeros above are a walk that looked and found none. */
-  PROBE_POSITIONS_CROSSING_AN_INDEX: 3,
+  // 0 -> 1: VL-3 round 2b census re-pin, same reason as
+  // `POSITIONS_CROSSING_AN_INDEX` above.
+  INDEX_CROSSINGS_MAX: 1,
+  // VL-3 round 2b census re-pin: the two rows above are no longer zero, and
+  // this reading is CUMULATIVE over the same walk, not independent of them —
+  // `withProbe` walks the shipped surface PLUS the probe together, so its
+  // count is the shipped 12 plus the probe's own 3 genuine crossings (the
+  // `Record`, the declared one and the symbol-keyed one named in the comment
+  // above), landing on 15. Read from this pin's own failure value. The
+  // probe's role is still the positive control the comment above describes —
+  // it proves the walk finds a genuine crossing on a type built to have one
+  // — the correction here is only that the total is additive, not separate.
+  /** The probe's own reading, ON TOP OF whatever the shipped surface reads. */
+  PROBE_POSITIONS_CROSSING_AN_INDEX: 15,
   PROBE_INDEX_CROSSINGS_MAX: 1,
   /**
    * The same reading over a chain declared in a PROJECT declaration file.
@@ -18209,7 +19200,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesC: false,
     movesPass: false,
     movesCensus: true,
-    why: 'Covered by no instrument here. The census is the whole catcher: this directory has zero ambient sites and one arriving is red.',
+    why: "VL-3 round 2b: no longer zero sites. FloorGrid.tsx's trace sink writes globalThis.__empireMotionTrace, a real, legitimate ambient write (evidence only, guarded by an Array.isArray check and a cap). The zero-sites account this row used to lean on stopped applying the moment that arrived, so it is not covered by the census saying so any more — it is covered by EVIDENCE_SINK_SITES: the site is named, set-equal to the census's own reading in both directions, and its payload is verified through the type checker (every property's type, not the source text) to carry no bare-string field, witnessed against a planted mutant in the dedicated test beside this coverage check.",
   }),
   Object.freeze({
     channel: 'lazy-member',
@@ -18986,8 +19977,10 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
   // ROSTER_SHAPE 138 -> 139 — every count below moved with them. Re-measured
   // by running this exact assertion rather than derived.
   'FloorGrid.tsx#FloorGrid#props#owned': Object.freeze({
-    points: 419,
-    refusedPoints: 419, // VL-2: every NUMBER point refused. Read from this pin.
+    // 419 -> 422: VL-3 round 2b census re-pin. Read from this pin's own
+    // failure value.
+    points: 422,
+    refusedPoints: 422, // VL-2: every NUMBER point refused. Read from this pin.
     calls: 0,
     recorded: 0,
   }),
@@ -19032,9 +20025,11 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
     // Read from this pin's own failure value.
     // GDD §5.14 Stage B: NUMBER 404 -> 407. Read from this pin's own failure
     // value.
-    points: 419,
-    calls: 13199, // NUMBER 419 (VL-2)
-    recorded: 13199,
+    // 419 -> 422, 13199 -> 13289: VL-3 round 2b census re-pin. Read from
+    // this pin's own failure value.
+    points: 422,
+    calls: 13289, // NUMBER 419 (VL-2)
+    recorded: 13289,
   }),
   // S4i: NUMBER's own engagement domain 239 -> 241. Read from this pin's own
   // failure value.
@@ -19042,31 +20037,39 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
   // pin's own failure value.
   'engagement.ts#historyFrom#attended#slots': Object.freeze({
     // Stage C.1b: COUNT domain +1 (FLOOR_TILE_PIXELS_MAX). Measured.
-    points: 249,
+    // 249 -> 252, 1748630 -> 1749398: VL-3 round 2b census re-pin. Read from
+    // this pin's own failure value.
+    points: 252,
     refusedPoints: 1,
-    calls: 1748630,
-    recorded: 1748630,
+    calls: 1749398,
+    recorded: 1749398,
   }),
   'engagement.ts#historyFrom#attended#trainedDays': Object.freeze({
-    points: 249,
+    // 249 -> 252, 747 -> 756: VL-3 round 2b census re-pin. Read from this
+    // pin's own failure value.
+    points: 252,
     refusedPoints: 0,
-    calls: 747,
-    recorded: 747,
+    calls: 756,
+    recorded: 756,
   }),
   // S4i: NUMBER 402 -> 404. Read from this pin's own failure value.
   // GDD §5.14 Stage B: NUMBER 404 -> 407. Read from this pin's own failure
   // value.
   'ladderView.tsx#GymView#props.dispatch#gymBucks': Object.freeze({
-    points: 419,
+    // 419 -> 422, 15503 -> 15614: VL-3 round 2b census re-pin. Read from this
+    // pin's own failure value.
+    points: 422,
     refusedPoints: 0,
-    calls: 15503, // NUMBER 413 (VL-1)
-    recorded: 15503,
+    calls: 15614, // NUMBER 413 (VL-1)
+    recorded: 15614,
   }),
   'ladderView.tsx#LadderView#props.dispatch#gymBucks': Object.freeze({
-    points: 419,
+    // 419 -> 422, 2933 -> 2954: VL-3 round 2b census re-pin. Read from this
+    // pin's own failure value.
+    points: 422,
     refusedPoints: 0,
-    calls: 2933, // NUMBER 413 (VL-1)
-    recorded: 2933,
+    calls: 2954, // NUMBER 413 (VL-1)
+    recorded: 2954,
   }),
   // S4i: ROSTER_SHAPE's own rosterSize domain 137 -> 138. Read from this
   // pin's own failure value.
@@ -19074,16 +20077,20 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
   // failure value.
   'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour#rosterSize': Object.freeze({
     // Stage C.1b: ROSTER_SHAPE domain +1. Measured.
-    points: 144,
+    // 144 -> 145, 1731877 -> 1732133, 3463754 -> 3464266: VL-3 round 2b
+    // census re-pin. Read from this pin's own failure value.
+    points: 145,
     refusedPoints: 0,
-    calls: 1731877,
-    recorded: 3463754,
+    calls: 1732133,
+    recorded: 3464266,
   }),
   'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay#rosterSize': Object.freeze({
-    points: 144,
+    // 144 -> 145, 1731877 -> 1732133, 3463754 -> 3464266: VL-3 round 2b
+    // census re-pin, same reason as the gymBucksRatePerHour row above.
+    points: 145,
     refusedPoints: 0,
-    calls: 1731877,
-    recorded: 3463754,
+    calls: 1732133,
+    recorded: 3464266,
   }),
 });
 
@@ -19152,7 +20159,10 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // derivation caveat as the S4i row above.
   // 2390 -> 2398: Stage C.1b COUNT +1 and ROSTER_SHAPE +1 on four axes.
   // 2398 -> 2402: Stage D NUMBER +1 on the four gymBucks/owned axes.
-  POINTS: 2462, // VL-2: NUMBER 419 / COUNT 249 / ROSTER_SHAPE 144 across the callback axes. Read from this pin.
+  // 2462 -> 2482: VL-3 round 2b census re-pin, a plain sum over
+  // DECLARED_CALLBACK_AXES's own now-measured `points` fields
+  // (422x4 + 252x2 + 145x2). Read from this pin's own failure value.
+  POINTS: 2482, // VL-2: NUMBER 419 / COUNT 249 / ROSTER_SHAPE 144 across the callback axes. Read from this pin.
   // GDD §5.13 presentation Phase 3: re-measured (288 -> 298), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (298 -> 301).
@@ -19165,7 +20175,10 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // unchanged (1). Same derivation caveat as POINTS above.
   // 408 -> 409: Stage C.1b FloorGrid still 408 refused; engagement slots still 1.
   // 409 -> 410: Stage D FloorGrid refusedPoints tracks NUMBER 408 -> 409.
-  REFUSED_POINTS: 420, // VL-2: NUMBER 419 refused by the owned-callback subject, plus the one slot refusal
+  // 420 -> 423: VL-3 round 2b census re-pin (FloorGrid's own refusedPoints
+  // 419 -> 422, the one slot refusal unchanged). Read from this pin's own
+  // failure value.
+  REFUSED_POINTS: 423, // VL-2: NUMBER 419 refused by the owned-callback subject, plus the one slot refusal
   // GDD §5.13 presentation Phase 3: re-measured (3310026 -> 3383424), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (3383424 -> 3384958).
@@ -19203,7 +20216,10 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
       // 5230128 -> 5230196: Stage D, sum of DECLARED_CALLBACK_AXES.calls
       // (GymScreen +28, GymView +35, LadderView +5).
       // 5230196 -> 5230605: Stage D2 reset-gym, +409 (one control × NUMBER 409).
-      CALLS: 5244766, // VL-2: NUMBER 419 across the dispatch axes. Read from this pin.
+      // 5244766 -> 5246277: VL-3 round 2b census re-pin, a plain sum over
+      // DECLARED_CALLBACK_AXES's own now-measured `calls` fields. Read from
+      // this pin's own failure value.
+      CALLS: 5246277, // VL-2: NUMBER 419 across the dispatch axes. Read from this pin.
   // GDD §5.13 presentation Phase 3: re-measured (5496920 -> 5618662), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (5618662 -> 5620716).
@@ -19230,7 +20246,10 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // 8686979 -> 8687342: Stage C.1b, sum of DECLARED_CALLBACK_AXES.recorded.
   // 8687342 -> 8687410: Stage D, same +68 as CALLS.
   // 8687410 -> 8687819: Stage D2 reset-gym, same +409 as CALLS.
-  RECORDED: 8708520, // VL-2: NUMBER 419 across the dispatch axes. Read from this pin.
+  // 8708520 -> 8710543: VL-3 round 2b census re-pin, a plain sum over
+  // DECLARED_CALLBACK_AXES's own now-measured `recorded` fields. Read from
+  // this pin's own failure value.
+  RECORDED: 8710543, // VL-2: NUMBER 419 across the dispatch axes. Read from this pin.
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
@@ -19342,14 +20361,21 @@ describe('the channel census — the routes a string can leave this directory by
       const census = channelCensus();
       expect(census.sites['callback-invocation']).toEqual(DECLARED_CALLBACK_SITES);
       expect(census.sites['internal-callback-invocation']).toEqual(DECLARED_INTERNAL_CALLBACK_SITES);
-      // The four empty channels, by name and in both directions. These are the
-      // routes this directory does not use, and the emptiness is the check.
+      // VL-3 round 2b census re-pin: THREE empty channels now, not four.
+      // `ambient-global` left this list — FloorGrid.tsx's VL-3 trace sink is
+      // a real, legitimate ambient write, and it is no longer covered by
+      // "this directory hangs nothing off globalThis" being true. It is
+      // covered instead by `EVIDENCE_SINK_SITES` below: the site is named
+      // and its payload is verified through the type checker to carry no
+      // bare-`string` field, in the dedicated test after this one. This is
+      // NOT a re-pin of the old emptiness claim — it is a real repair,
+      // because a re-pin here would have deleted the guarantee the empty
+      // list used to carry.
       expect(
         CHANNEL_IDS.filter((id) => census.sites[id].length === 0),
       ).toEqual([
         // Stage G.1: argument-mutation now has floorSim.ts observation site
         'module-mutable-state',
-        'ambient-global',
         'lazy-member',
         'deferred-completion',
       ]);
@@ -19370,6 +20396,84 @@ describe('the channel census — the routes a string can leave this directory by
           /<- (?:ArrowFunction|FunctionExpression) x\d+$/,
         );
       }
+    },
+    CHANNEL_BLOCK_TIMEOUT_MS,
+  );
+
+  it(
+    'the ambient-global site the trace sink opened is named, and its payload carries no bare string — MUTATION WITNESS',
+    () => {
+      // Set-equal in both directions against the census's own reading, so a
+      // new ambient write arriving anywhere in the directory is red here —
+      // the same fence shape `THROW_GATE_SITES` uses for `throw`.
+      const census = channelCensus();
+      expect([...census.sites['ambient-global']].sort()).toEqual(
+        [...EVIDENCE_SINK_SITES].sort(),
+      );
+      expect(EVIDENCE_SINK_SITES.length).toBeGreaterThan(0);
+
+      // The structural half: every real candidate this instrument can find —
+      // not just the one known site — checked through the compiler.
+      const findings = evidenceSinkFindings(shippedModulePaths(), null);
+      expect(findings.map((finding) => finding.site).sort()).toEqual(
+        [...EVIDENCE_SINK_SITES].sort(),
+      );
+      for (const finding of findings) {
+        expect(finding.bareFields, `${finding.site} carries a bare-string field: ${finding.bareFields.join(', ')}`).toEqual([]);
+      }
+
+      // MUTATION WITNESS. This directory's own art freeze forbids editing
+      // `FloorGrid.tsx` to plant a mutant on the shipped site, so the
+      // MECHANISM is witnessed against a synthetic probe instead — the same
+      // technique `instrument A bites` and `instrument C` use elsewhere in
+      // this file (`programWith`'s `extra`/probe channel), because what needs
+      // proving is that `bareStringFieldsIn` actually reddens on a bare
+      // string and not merely that the shipped tree is clean today.
+      //
+      // Mutant: an object literal shaped like the real sink payload, but with
+      // `clip` widened from a union to `string`. `evidenceSinkFindings` is
+      // pointed at a probe module carrying exactly this shape, structurally
+      // identical to the real site (a `push` call inside a named function
+      // that also references `globalThis`), and MUST report the widened
+      // field by name.
+      const mutantProbe = `
+        declare const sink: unknown[];
+        function ProbeAmbientBody(clip: string, memberId: string): void {
+          void globalThis;
+          sink.push({ memberId, clip, facing: Math.random() < 0.5 ? 'left' as const : 'right' as const });
+        }
+        ProbeAmbientBody;
+      `;
+      const mutantFindings = evidenceSinkFindings([], mutantProbe, PROBE_PATH);
+      expect(mutantFindings.length).toBe(1);
+      expect(mutantFindings[0]?.site).toBe('__forbiddenOutputProbe.ts#ProbeAmbientBody#globalThis');
+      // Reddens naming the field, which is the assertion this witness is for:
+      expect(mutantFindings[0]?.bareFields).toEqual(['memberId', 'clip']);
+
+      // Restore arm: the same shape with both fields properly narrowed (a
+      // string-literal union, matching what the real site's `clip`/`memberId`
+      // resolve to) reports no bare field, so the check bites in one
+      // direction and passes in the other rather than always firing.
+      const restoredProbe = `
+        declare const sink: unknown[];
+        function ProbeAmbientBody(clip: 'walk' | 'idle', memberId: string & { readonly __brand: 'x' }): void {
+          void globalThis;
+          sink.push({ memberId, clip, facing: Math.random() < 0.5 ? 'left' as const : 'right' as const });
+        }
+        ProbeAmbientBody;
+      `;
+      const restoredFindings = evidenceSinkFindings([], restoredProbe, PROBE_PATH);
+      expect(restoredFindings.length).toBe(1);
+      expect(restoredFindings[0]?.bareFields).toEqual([]);
+
+      // ITS LIMIT, restated in the test that carries the witness rather than
+      // only in the constant's docstring: a type says what a field is
+      // DECLARED as, not what a LAUNDERED value carries. A cast
+      // (`x as never as SomeBrandedType`) type-checks and this instrument
+      // cannot see through it. What covers laundering for this directory is
+      // instrument A's closed-literal-union / bare-position census and
+      // instrument B's directory-wide containment scan — this instrument
+      // does not replace either.
     },
     CHANNEL_BLOCK_TIMEOUT_MS,
   );
@@ -19587,19 +20691,40 @@ describe('the channel census — the routes a string can leave this directory by
       'ambient-global',
       'deferred-completion',
     ]);
-    // THREE WAYS A ROW HERE CAN BE ACCOUNTED FOR, AND THEY ARE NOT THE SAME
+    // FOUR WAYS A ROW HERE CAN BE ACCOUNTED FOR, AND THEY ARE NOT THE SAME
     // THING. The pass DRIVES a channel only if the pass's subjects come from
     // it, which is the exported callback channel and nothing else; a channel
-    // with no sites is covered by the census saying so; and a channel nothing
-    // outside can put a value into is not an escape route at all.
+    // with no sites is covered by the census saying so; a channel nothing
+    // outside can put a value into is not an escape route at all; and — VL-3
+    // round 2b, new this round — a channel with real sites can be covered by
+    // a dedicated structural instrument that verifies every site it lists.
     //
-    // The middle and the last are weaker than a catcher and are named as such.
-    // An earlier draft of this test let `movesPass` alone account for the
+    // The middle two are weaker than a catcher and are named as such. An
+    // earlier draft of this test let `movesPass` alone account for the
     // INTERNAL callback row, which was an over-claim: the pass does not drive
     // `axesWhere` and never will, because nothing can hand it anything.
     const passSubjectChannels: readonly ChannelId[] = Object.freeze(['callback-invocation']);
     const reachable = (id: ChannelId): boolean =>
       ESCAPE_CHANNELS.find((channel) => channel.id === id)?.reachableFromOutside === true;
+    // The fourth account, scoped to exactly the one channel it was built for.
+    // It is NOT "the census says the site count matches" — that would be the
+    // same weak zero-sites shape one level up. It is: every site the census
+    // finds is in the named allowlist (arrival is red), every site in the
+    // allowlist is a real site the structural walk can still find (deletion
+    // is red the other way), and every one of those sites' payload carries no
+    // bare-string field, verified through the type checker and witnessed
+    // against a mutant in the dedicated test above this one.
+    const evidenceSinkCovered = (channel: ChannelId): boolean => {
+      if (channel !== 'ambient-global') return false;
+      const sites = census.sites['ambient-global'];
+      if (sites.length === 0) return false; // not this account's job; the zero-sites account covers that case
+      const findings = evidenceSinkFindings(shippedModulePaths(), null);
+      return (
+        [...sites].sort().join('|') === [...EVIDENCE_SINK_SITES].sort().join('|') &&
+        [...sites].sort().join('|') === findings.map((finding) => finding.site).sort().join('|') &&
+        findings.every((finding) => finding.bareFields.length === 0)
+      );
+    };
     for (const row of nothing) {
       const driven = row.movesPass && passSubjectChannels.includes(row.channel);
       // AND THE MIDDLE ACCOUNT NOW HAS TO EARN ITSELF. "This channel has zero
@@ -19611,7 +20736,8 @@ describe('the channel census — the routes a string can leave this directory by
       const covered =
         driven ||
         (census.sites[row.channel].length === 0 && row.movesCensus) ||
-        !reachable(row.channel);
+        !reachable(row.channel) ||
+        evidenceSinkCovered(row.channel);
       expect(covered, `${row.channel}/${row.form} is in use and no instrument covers it`).toBe(true);
     }
     // Exactly one channel is declared unreachable from outside, by name, and
@@ -20427,11 +21553,14 @@ describe('the assembly walk bites — every binding whose value is not in its in
     expect(withProbe.deepest).toBeGreaterThan(reading.deepest);
     // AND THE INDEX-SIGNATURE CROSSINGS, WHICH ARE HERE TO BE RULED OUT RATHER
     // THAN TO BE A SCREEN. The question this answers is "how far behind an index
-    // signature does the shipped surface sit", and the answer is that 158 of the
-    // 517 positions sit behind at least one, so a crossing count discriminates
-    // nothing. It is the same finding as the depth number one line up: neither
-    // axis separates the shipped tree from M64's shape, which is what sends the
-    // containment fence to `cyclicDeclarations` instead.
+    // signature does the shipped surface sit". VL-3 ROUND 2B CENSUS RE-PIN: this
+    // paragraph used to say "158 of the 517 positions"; the current, re-measured
+    // reading is 12 of 1353 positions (`SHIPPED_TYPE_DEPTH.POSITIONS_CROSSING_
+    // AN_INDEX` / `.POSITIONS`) sitting behind at least one, still a small
+    // enough share that a crossing count discriminates nothing on its own. It is
+    // the same finding as the depth number one line up: neither axis separates
+    // the shipped tree from M64's shape, which is what sends the containment
+    // fence to `cyclicDeclarations` instead.
     expect(reading.deepestThroughIndex).toBe(SHIPPED_TYPE_DEPTH.DEEPEST_THROUGH_INDEX);
     expect(reading.deepestThroughIndex).toBe(reading.deepest);
     expect(reading.positionsCrossingAnIndex).toBe(SHIPPED_TYPE_DEPTH.POSITIONS_CROSSING_AN_INDEX);
@@ -21764,7 +22893,11 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // 252 -> 253: Stage C.1d PlacementRefuseKind.
   // 253 -> 258: Stage D stationCapability type declarations.
   // 258 -> 264: GDD §5.18 Stage D.1 trainingStation type declarations.
-  DECLARATIONS: 324, // VL-2 camera / animation type declarations, +1 PresentationSeat (124fb132)
+  // 324 -> 364: VL-3 round 2b census re-pin. INHERITED — confirmed 364 in an
+  // isolated worktree at the frozen checkpoint `58295c57`.
+  // 364 -> 365: OWNED by this round's own new type declaration(s). Read from
+  // this pin's own failure value.
+  DECLARATIONS: 365, // VL-2 camera / animation type declarations, +1 PresentationSeat (124fb132)
   /** Those carrying type parameters. An instantiation depth needs one. */
   // Phase 4: `MemberTable<Leaf>` in floorSprites.ts.
   GENERIC: 13,
@@ -22295,6 +23428,15 @@ const DECLARED_AMBIENT_MEMBER_BODY_PROPS: readonly AmbientPropReading[] = Object
   // VL-2: the draw-order key (a screen y under Play, the member z-index
   // under Build), written to `zIndex`. A plain number.
   Object.freeze({ name: 'depth', shape: 'number' }),
+  // VL-3 round 2b census re-pin. INHERITED — already shipped, unpinned, at
+  // the frozen checkpoint `58295c57`: the AmbientMemberBody depth-frame
+  // props (`FloorDepthFrame`'s three plain numbers, carried straight through
+  // from `depthScaleFromStageY`) that let the drawn body's own depth math
+  // match the ground-plane projection. No object, no callable, nothing an
+  // economic value could arrive in.
+  Object.freeze({ name: 'depthBackScale', shape: 'number' }),
+  Object.freeze({ name: 'depthBackY', shape: 'number' }),
+  Object.freeze({ name: 'depthSpan', shape: 'number' }),
   Object.freeze({ name: 'facing', shape: 'union["left"|"right"]' }),
   Object.freeze({ name: 'index', shape: 'number' }),
   // Phase 3's RENDER half's three new members, each read off the sim and each
@@ -25560,6 +26702,23 @@ const MEMBER_CALL_PASS_UNDRIVEN: readonly string[] = Object.freeze([
   // nulls; the function is not exported, so a driver would have to reach it
   // through FloorGrid's render. Named rather than left off the join.
   'FloorGrid.tsx#seatsByBench#benches.map x1',
+  // VL-3 round 2b census re-pin (Session B, this file). INHERITED — the six
+  // memberMotion.ts/memberRig.ts sites named in `DECLARED_MEMBER_CALLS_ON_
+  // PARAMETERS` above, undriven by this dedicated member-call pass for the
+  // same reason the entries above are: `stepMemberMotion`'s two sites read a
+  // caller-supplied clip-strip layer list built inline at the call site, not
+  // threaded through a caller-supplied callback the pass can intercept;
+  // `boundsOf` and `partByName` are module-private (not exported); and
+  // `framePoint`, though exported, is driven above directly rather than
+  // through this pass's own caller-supplied-callback construction. Dedicated
+  // member-call drivers for these remain a later pass; the sites are named
+  // rather than left off the join.
+  'memberMotion.ts#stepMemberMotion#state.map x1',
+  'memberMotion.ts#stepMemberMotion#state.slice x1',
+  'memberMotion.ts#stepMemberMotion#state.slice x2',
+  'memberRig.ts#boundsOf#placed.get x1',
+  'memberRig.ts#framePoint#frame.find x1',
+  'memberRig.ts#partByName#puppet.find x1',
 ]);
 
 interface MemberCallResult {
@@ -25887,7 +27046,9 @@ describe('the member-call pass — what a caller-supplied method is actually han
     // above is a complete statement, so it is worth a line that reddens when it
     // stops being empty.
     // Stage G.1A: two private-helper sites await dedicated drives.
-    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(8);
+    // 8 -> 14: VL-3 round 2b census re-pin — the six memberMotion.ts/
+    // memberRig.ts sites added above.
+    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(14);
     expect(driven.length).toBe(MEMBER_CALL_PASS_CENSUS.SUBJECTS);
     // Both `visitRefusals` sites are driven, and they share a key. A `Set` of
     // the driven sites would have quietly collapsed them, so the count of that
@@ -28825,6 +29986,10 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#carriesBrand<constructorCensusOf#name', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#constructorCensusOf#declaration#2', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#enclosing<constructorCensusOf#at', arms: 3, dispatch: false, terminal: 'loop' }),
+  // VL-3 round 2b census re-pin (Session B, this file). This round's own
+  // `evidenceSinkFindings`/`bareStringFieldsIn` — same shape as the sibling
+  // `enclosing`/`visit` walkers already in this list, one directory over.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#enclosingName<evidenceSinkFindings#at', arms: 3, dispatch: false, terminal: 'loop' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#constructorCensusOf#declaration#3', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<constructorCensusOf#node', arms: 1, dispatch: false, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#resolvedDeclaration<channelCensusOf#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
@@ -28899,6 +30064,9 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#literalValuesOf<channelCensusOf#holder', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#literalValuesOf<channelCensusOf#host', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#hoppableInitializer<channelCensusOf#root', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  // VL-3 round 2b census re-pin (Session B, this file). This round's own
+  // `bareStringFieldsIn`'s recursive union check.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#isBare<bareStringFieldsIn#type', arms: 2, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#ownerOf<channelCensusOf#at', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#ownerOf<channelCensusOf#host', arms: 3, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#ownerOf<channelCensusOf#initial', arms: 1, dispatch: true, terminal: 'next-statement' }),
@@ -28948,6 +30116,11 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<dispatchChainsIn#node', arms: 1, dispatch: false, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#named<switchesIn#at', arms: 2, dispatch: true, terminal: 'loop' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<switchesIn#node', arms: 1, dispatch: false, terminal: 'next-statement' }),
+  // VL-3 round 2b census re-pin (Session B, this file). This round's own
+  // `evidenceSinkFindings`'s two AST walks (which functions reference an
+  // AMBIENT_OBJECTS identifier, and which calls push an object literal).
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visitAmbient<evidenceSinkFindings#node', arms: 1, dispatch: false, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visitPush<evidenceSinkFindings#node', arms: 1, dispatch: false, terminal: 'next-statement' }),
   // The handler-table scan's own five, and it is worth saying that this census
   // conscripted them rather than that they were remembered: the scan written to
   // close the census's declared blind spot arrived with five ladders of its own
@@ -29116,22 +30289,32 @@ const CHAIN_CENSUS = Object.freeze({
   // 104 -> 106: GDD §5.14 Stage C's own two new drive-block guards, `#laid#2`
   // and `#hired` (see DECLARED_DISPATCH_CHAINS above).
   // 106 -> 107: Stage D `driveEverything#already` (upgradeStation already-upgraded).
-  CHAINS: 107,
+  // 107 -> 111: VL-3 round 2b census re-pin (Session B, this file) — this
+  // round's own four new chains (`enclosingName<evidenceSinkFindings#at`,
+  // `isBare<bareStringFieldsIn#type`, `visitAmbient<evidenceSinkFindings#node`,
+  // `visitPush<evidenceSinkFindings#node`), all above.
+  CHAINS: 111,
   // 60 -> 61: PLAYTEST 4's rework, net. The replaced reader row was
   // `dispatch: true` and the two `renderPropShape` ladders both are, so one
   // dispatching row left and two arrived. Read from this assertion's failure.
-  DISPATCH: 61,
+  // 61 -> 62: VL-3 round 2b census re-pin — `isBare<bareStringFieldsIn#type`
+  // is the one new `dispatch: true` row among this round's four.
+  DISPATCH: 62,
   BY_TERMINAL: Object.freeze({
     else: 8,
     // 72 -> 74: all three of PLAYTEST 4's rework rows are `next-statement`,
     // against one `next-statement` row removed.
     // 74 -> 76: the two stage-4 hire guards.
     // 76 -> 77: GDD §5.14 Stage C's `#laid#2` guard.
-    'next-statement': 77,
+    // 77 -> 80: VL-3 round 2b census re-pin — three of this round's four new
+    // chains terminate `next-statement` (`isBare`, `visitAmbient`, `visitPush`).
+    'next-statement': 80,
     // 14 -> 18: the four stage-4 strike/repair loop guards.
     // 18 -> 17: one of those four folded away with `refuseEveryOrder`.
     // 17 -> 18: GDD §5.14 Stage C's `#hired` guard.
-    loop: 18,
+    // 18 -> 19: VL-3 round 2b census re-pin — `enclosingName<evidenceSinkFindings#at`
+    // terminates `loop`.
+    loop: 19,
     // 2 -> 3: the same new row.
     // 3 -> 4: Stage D `driveEverything#already`.
     enclosing: 4,

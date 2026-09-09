@@ -177,7 +177,13 @@ export const DIRECTORY_WALK = Object.freeze({
   // Play world's ground-plane projection (`floorCamera.ts`) and the member
   // animation clips (`memberAnimation.ts`), both pure. Read from this pin's
   // own failure value.
-  SHIPPED_MODULES: 33,
+  // 33 -> 37: VL-3 round 2b census re-pin (Session B, this file). INHERITED,
+  // not caused by this round's own commits — `memberMotion.ts`,
+  // `memberMotionClips.ts`, `memberPuppet.ts` and `memberRig.ts` were already
+  // shipped, unpinned, at the frozen checkpoint `58295c57` (art round two /
+  // runtime round one). Confirmed in an isolated worktree at that commit,
+  // where the live walk already returns 37.
+  SHIPPED_MODULES: 37,
   /**
    * Files the shared walk hands the censuses today, tests included.
    *
@@ -209,7 +215,14 @@ export const DIRECTORY_WALK = Object.freeze({
   // 62 -> 64: living-world projector and its test.
   // 64 -> 66: presentation-state contract and its test.
   // 66 -> 70: VL-2's `floorCamera.ts` / `memberAnimation.ts` and their tests.
-  DIRECTORY_FILES: 70,
+  // 70 -> 76: VL-3 round 2b census re-pin (Session B, this file). INHERITED
+  // from art round two / runtime round one, already present unpinned at the
+  // frozen checkpoint `58295c57`: `memberMotion.ts` + `memberMotion.test.ts`,
+  // `memberMotionClips.ts`, `memberPuppet.ts`, `memberRig.ts` +
+  // `memberRig.test.ts` — six files, none added by this round's own commits.
+  // Read from this pin's own failure value; confirmed against `58295c57` in
+  // an isolated worktree, where the live walk already reads 76.
+  DIRECTORY_FILES: 76,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**
@@ -989,6 +1002,13 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'livingMembers.ts',
       'management.ts',
       'memberAnimation.ts',
+      // VL-3 round 2b census re-pin: these four were already shipped,
+      // unpinned, at the frozen checkpoint `58295c57` (art round two /
+      // runtime round one). INHERITED, not new this round.
+      'memberMotion.ts',
+      'memberMotionClips.ts',
+      'memberPuppet.ts',
+      'memberRig.ts',
       'members.ts',
       'npc.ts',
       'pacing.ts',

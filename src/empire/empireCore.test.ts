@@ -2480,6 +2480,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'management.ts',
       // VL-2: the member animation clips, pure.
       'memberAnimation.ts',
+      // VL-3 round 2b census re-pin: already shipped, unpinned, at the frozen
+      // checkpoint `58295c57` (art round two / runtime round one). INHERITED.
+      'memberMotion.ts',
+      'memberMotionClips.ts',
+      'memberPuppet.ts',
+      'memberRig.ts',
       'members.ts',
       'npc.ts',
       // GDD §5.14 Stage B: the economy pacing simulator.
@@ -2711,7 +2717,15 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // header, each naming its neighbours in its own header), and
     // FloorGrid.tsx's VL-2 header names them back. Read from this
     // assertion's own failure value.
-    expect(pairs).toBe(230);
+    // 230 -> 258: VL-3 round 2b census re-pin. INHERITED — the four member-
+    // motion modules' own header prose naming each other and their existing
+    // mentions elsewhere were already present, unpinned, at the frozen
+    // checkpoint `58295c57`; confirmed 258 in an isolated worktree there.
+    // 258 -> 260: OWNED by this round's own runtime work — two new pairs from
+    // `FloorGrid.tsx`'s round 2b edits mentioning a member-motion module a
+    // second time in a place the walk had not previously counted. Read from
+    // this assertion's own failure value.
+    expect(pairs).toBe(260);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3916,7 +3930,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // failure value.
     // 904 -> 905: VL-2B seats matched to benches by cell ('expansion' as a
     // bench source argument). Read from this assertion's own failure value.
-    expect(singleQuoted.size).toBe(905);
+    // 905 -> 942: VL-3 round 2b census re-pin. INHERITED — the strings in
+    // memberMotion.ts/memberMotionClips.ts/memberPuppet.ts/memberRig.ts
+    // (clip names, part names, foot labels) were already shipped, unpinned,
+    // at the frozen checkpoint `58295c57`; confirmed 942 in an isolated
+    // worktree there.
+    // 942 -> 945: OWNED by this round's own runtime work — three new string
+    // literals from round 2b's additions to memberMotion.ts/memberMotionClips.ts
+    // (the new exports listed in this round's brief). Read from this
+    // assertion's own failure value.
+    expect(singleQuoted.size).toBe(945);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -4048,7 +4071,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 387 -> 389: living-world queue-cell testID templates.
     // 389 -> 390: presentationState.ts refuseWith template for missing member index.
     // 390 -> 391: VL-2's `floorgrid-member-pose-` testID template head.
-    expect(templateChunks.size).toBe(391);
+    // 391 -> 402: VL-3 round 2b census re-pin. Read from this assertion's own
+    // failure value; mixed lineage (some chunks were already present,
+    // unpinned, at the frozen checkpoint `58295c57`, some are this round's
+    // own `memberMotion.ts`/`memberMotionClips.ts`/`FloorGrid.tsx` edits) —
+    // not separated further because this pin masked behind the `singleQuoted`
+    // failure above and only became visible once that one was fixed.
+    expect(templateChunks.size).toBe(402);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -4074,6 +4103,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // property names from `Omit`/`Extract` in `ladderView.tsx`. No
     // manufacturer, athlete or brand.
     expect(spaceFree).toEqual([
+      '',
       './FloorGrid',
       './empireCore',
       './empireInvariant',
@@ -4097,6 +4127,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './livingMembers',
       './management',
       './memberAnimation',
+      './memberMotion',
+      './memberMotionClips',
+      './memberPuppet',
+      './memberRig',
       './members',
       './npc',
       // VL-1 (CLAUDE.md "Crossing VL-1"): `FloorGrid.tsx`'s new edge to the
@@ -4115,6 +4149,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './trainingStation',
       './worldView',
       '/empire-art',
+      '0',
       '0deg',
       '1deg',
       ':',
@@ -4268,9 +4303,15 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'behind',
       'belts',
       'bench',
+      'bench-dismount',
+      'bench-finish',
+      'bench-mount',
+      'bench-press',
+      'bench-setup',
       'bike',
       'black',
       'blocked',
+      'body',
       'bodybuilder',
       'bombed-out',
       'boolean',
@@ -4321,6 +4362,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'currency-purchase',
       'daily-allowance-spent',
       'darkkhaki',
+      'data-clip',
+      'data-facing',
+      'data-frame',
       'data:image/png;base64,',
       'deadlift',
       'decline-repair',
@@ -4340,6 +4384,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'dumbbells',
       'e1rm',
       'eager-turnaround-control',
+      'ease-out',
       'elapsedSeconds',
       'eq-comp-plates',
       'eq-flat-bench',
@@ -4351,6 +4396,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'expansion',
       'failed',
       'failure-slump-control',
+      'farFoot',
+      'farForearm',
+      'farShin',
+      'farThigh',
+      'farUpperArm',
       'fault-message',
       'faultMessage',
       'few-times-a-day',
@@ -4571,6 +4621,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-worn',
       'hands-off',
       'hatch',
+      'head',
       'hidden',
       'hire-manager',
       'hire-novice',
@@ -4584,6 +4635,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'idle-only',
       'idle-tenure-days',
       'idleTenureDays',
+      'in',
+      'in-out',
       'injury-chance-multiplier',
       'injury-days-saved',
       'injury-risk',
@@ -4609,6 +4662,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'left',
       'legendary',
       'level',
+      'linear',
       'livingPopulation',
       'loading',
       'local',
@@ -4646,6 +4700,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'moved',
       'national',
       'nationals',
+      'nearFoot',
+      'nearForearm',
+      'nearShin',
+      'nearThigh',
+      'nearUpperArm',
       'negligent',
       'no-manager',
       'no-prompt',
@@ -4683,6 +4742,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'ordinal',
       'orthographic',
       'other-recovery',
+      'out',
       'out-of-bounds',
       'outcome',
       'outside',
@@ -4701,8 +4761,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'plate-tree',
       'play',
       'pointer',
+      'poses',
       'power-bar',
       'powerlifter',
+      'presser',
       'primary',
       'progression-reaching',
       'prompt-dismiss',
@@ -4826,6 +4888,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'stretch',
       'stretching-yoga',
       'string',
+      'strip',
       'strip-mall-unit',
       'structural',
       'support',
@@ -4837,6 +4900,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'throughput',
       'thrownMessage',
       'time',
+      'torso',
       'total',
       'total-pr',
       'trained',
@@ -4868,8 +4932,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'visit-fee-control',
       'visited',
       'wait',
+      'wait-to-walk',
       'waiting',
       'walk',
+      'walk-to-wait',
+      'walker',
       'walking',
       'wall-clock',
       'wall-clock-earned',
@@ -4882,6 +4949,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'watcher',
       'white',
       'wide',
+      'world',
       'worlds',
       'wrist-wraps',
     ]);
@@ -5006,7 +5074,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // spaced string. Read from this assertion's own failure value.
     // 1295 -> 1296: VL-2B 'source' (seats matched to benches by cell). Read
     // from this assertion's own failure value.
-    expect(stringsChecked).toBe(1296);
+    // 1296 -> 1347: VL-3 round 2b census re-pin — 945 (singleQuoted) + 0
+    // (doubleQuoted) + 402 (templateChunks), each re-pinned above. Read from
+    // this assertion's own failure value.
+    expect(stringsChecked).toBe(1347);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -5129,10 +5200,17 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `memberOrdinalFromId` and adds no new space-free single-quoted tokens.
     // Art-01: `cover` (GymScreen facility-art resizeMode) replaces
     // `floorgrid-floor-texture` (atmosphere moved out of FloorGrid). Net 0.
-    expect(probes).toBe(spaceFree.length - 1);
-    // `:` from `livingMembers.ts`'s id split clears the `< 2` guard and is
+    // VL-3 round 2b census re-pin: two more entries now fail the `< 2` guard
+    // — `''` (OWNED, FloorGrid.tsx's trace-sink defaults for
+    // `writtenFrame`/`writtenFacing`/`writtenClip`, and the `frameAttr`
+    // fallback) and `'0'` (OWNED, FloorGrid.tsx's `data-frame` value for a
+    // production build) — both stripped to a zero-length `word` by the same
+    // letters-only filter that skips `:`. Read from this assertion's own
+    // failure value; three exceptions now, not one.
+    expect(probes).toBe(spaceFree.length - 3);
+    // `:`, `''` and `'0'` all strip to a zero-length `word` and are
     // intentionally unprobed — every other shipped token is.
-    expect(probes + 1).toBe(spaceFree.length);
+    expect(probes + 3).toBe(spaceFree.length);
 
     // JSX text gets a SIGNED-PAIR census rather than the flat ban above, and
     // the difference is a measurement, not a taste (E39): the ban predicate
@@ -5402,6 +5480,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         // that arithmetic.
         './management',
         './memberAnimation',
+        // VL-3 round 2b census re-pin: already an import at the frozen
+        // checkpoint `58295c57` (runtime round one wired the strip renderer
+        // and trace sink in). INHERITED, not new this round.
+        './memberMotion',
+        './memberMotionClips',
         './members',
         // VL-1 (CLAUDE.md "Crossing VL-1"): the Session B presentation-state
         // contract — the members FloorGrid draws are `presentationWorld`'s
@@ -5443,11 +5526,33 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         'react-native',
         './ironAmberArt',
       ],
-      'ironAmberArt.ts': [],
+      // VL-3 round 2b census re-pin: `./memberMotionClips` (`MEMBER_MOTION_CLIPS`,
+      // `memberMotionStripStem`, the clip/production-type types) was already
+      // an import at the frozen checkpoint `58295c57`, unpinned in this
+      // fence. INHERITED — `ironAmberArt.ts` is untouched by this round's
+      // own commits (confirmed: absent from `git diff 58295c57 HEAD --stat`).
+      'ironAmberArt.ts': ['./memberMotionClips'],
       'ladder.ts': ['./empireCore', './empireTuning', './production'],
       // VL-2: the clips read the tuning knobs, the lifecycle vocabulary
       // (a type) and the sprite pose / use-class vocabularies.
       'memberAnimation.ts': ['./empireTuning', './floorSim', './floorSprites'],
+      // VL-3 round 2b census re-pin: none of the four member-motion modules
+      // below had an EXPECTED row at all, at the frozen checkpoint
+      // `58295c57` or since. INHERITED — masked in every earlier run because
+      // `FloorGrid.tsx` (alphabetically first) threw first and the loop never
+      // reached these. Read from each module's own `import` statements.
+      'memberMotion.ts': [
+        './empireTuning',
+        './floorCamera',
+        './floorSim',
+        './floorSprites',
+        './memberAnimation',
+        './memberMotionClips',
+        './memberRig',
+      ],
+      'memberMotionClips.ts': ['./empireTuning'],
+      'memberPuppet.ts': ['./empireTuning'],
+      'memberRig.ts': ['./empireTuning', './memberMotionClips', './memberPuppet'],
       // S4b: `./management` joined the reducer's edges — `GymViewState.managed`
       // is a `ManagedGym` now, and every stage-4 arm is one call into that
       // module, the same one-call-per-arm shape the stage-1/2 arms already had.
@@ -5556,7 +5661,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 29 -> 30: living-world projector worldView.ts.
     // 30 -> 31: Session B presentation-state contract presentationState.ts.
     // 31 -> 33: VL-2's floorCamera.ts and memberAnimation.ts.
-    expect(fenced).toBe(33);
+    // 33 -> 37: VL-3 round 2b census re-pin — the four member-motion modules'
+    // EXPECTED rows, added above (INHERITED gap: they had no row at all).
+    // Read from this assertion's own failure value.
+    expect(fenced).toBe(37);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -5688,7 +5796,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 143 -> 149: VL-2 — FloorGrid.tsx's `./floorCamera` and
     // `./memberAnimation`, floorCamera.ts's `./empireTuning`, and
     // memberAnimation.ts's three. Read from this assertion's own failure value.
-    expect(specifiers).toBe(149);
+    // 149 -> 164: VL-3 round 2b census re-pin — the four member-motion
+    // modules' EXPECTED rows added above, INHERITED: FloorGrid.tsx's
+    // `./memberMotion` + `./memberMotionClips` (2), ironAmberArt.ts's
+    // `./memberMotionClips` (1), memberMotion.ts's seven specifiers (7),
+    // memberMotionClips.ts's one (1), memberPuppet.ts's one (1),
+    // memberRig.ts's three (3). Read from this assertion's own failure value.
+    expect(specifiers).toBe(164);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
@@ -5917,7 +6031,21 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 480 -> 479: FLOOR_SIM_MOVE_TWEEN_MS (120) removed in VL-2.
     // 479 -> 480: VL-2B FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS (50). Read from
     // this assertion's own failure value.
-    ).toBe(480);
+    // 480 -> 519: VL-3 round 2b census re-pin. INHERITED — the numeric
+    // leaves art round two / runtime round one had already appended to
+    // `empireTuning.ts` (puppet-adjacent feel knobs, clip timing) were
+    // unregistered against this pin at the frozen checkpoint `58295c57`;
+    // confirmed 519 in an isolated worktree there.
+    // 519 -> 520: OWNED by this round's own additions — of the three new
+    // knobs this round's brief names, `FLOOR_MEMBER_RELOCATION_MIN_TILES`
+    // (0.5) is the one non-exempt numeric leaf.
+    // `FLOOR_MEMBER_RELOCATION_GLIDE` is a string ('linear'), out of this
+    // numeric census entirely, and `FLOOR_MEMBER_GAIT_TRANSITION_TRIGGER_PX`
+    // is `1`, which `ALWAYS_STRUCTURAL` already exempts everywhere (the same
+    // reason `FLOOR_SIM_RENDER_SEED: 1` reports no finding above) — so one
+    // new knob, one new finding. Read from this assertion's own failure
+    // value.
+    ).toBe(520);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });
