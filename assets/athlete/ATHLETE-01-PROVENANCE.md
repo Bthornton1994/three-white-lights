@@ -52,6 +52,16 @@ The current native Rive artwork is a structural rig prototype. Because the
 editor's runtime renderer was unavailable in this session and image import
 was not stable, visual parity with the supplied captures is not confirmed.
 
+## Latest authoring attempt
+
+On 2026-09-09, a layered vector SVG was uploaded through the Rive Assets
+panel. The editor crashed before the asset appeared. A second upload using a
+minimal three-shape SVG produced the same crash. After recovery, the Assets
+panel was still empty. The editor diagnostics reported WebGL2 unavailable,
+CPU fallback, and worker renderer creation failure. The Publish menu still
+showed `Upgrade` for both runtime and library export. No `.riv` or `.rev`
+bytes were produced by this attempt.
+
 ## Acceptance boundary
 
 The corrected reference sheet is supplied beside this record as a source
