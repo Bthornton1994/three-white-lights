@@ -169,9 +169,12 @@
  *                     roster.
  *   ghostPoseHeld     VL-2B: across every sampled frame of the transition
  *                     (VL-3: a production body's visible image is a bench
- *                     strip — `member-motion-<type>-bench-{setup,press,
- *                     finish}.png` — and counts as a use-bench frame; the
- *                     legacy `using-bench` paintings still do)
+ *                     strip — `member-motion-<type>-bench-{setup,mount,
+ *                     press,dismount,finish}.png` (runtime round two widened
+ *                     this from {setup,press,finish} once the bench split
+ *                     into five clips and the routing began actually
+ *                     visiting mount/dismount) — and counts as a use-bench
+ *                     frame; the legacy `using-bench` paintings still do)
  *                     the ghost's VISIBLE pose image (the most opaque of its
  *                     pose stack, read off the DOM as the sibling reads it)
  *                     is a using-bench frame — the relocated bench user
@@ -1212,7 +1215,7 @@ async function runViewport(browser, viewport) {
     const ghostUsingFrames = ghostId === null ? [] : frames.map((f) => f.members.find((x) => x.id === ghostId)).filter((m) => m !== undefined && m.lifecycle === 'using');
     const ghostSprites = ghostUsingFrames.map((m) => m.sprite ?? null);
     result.verdicts.ghostPoseHeld =
-      ghost !== null && ghostSprites.length > 0 && ghostSprites.every((src) => typeof src === 'string' && (src.includes('using') || /member-motion-[a-z-]+-bench-(setup|press|finish)\.png/.test(src)));
+      ghost !== null && ghostSprites.length > 0 && ghostSprites.every((src) => typeof src === 'string' && (src.includes('using') || /member-motion-[a-z-]+-bench-(setup|mount|press|dismount|finish)\.png/.test(src)));
     result.ghostSprites = [...new Set(ghostSprites)];
     result.ghostUsingFrames = ghostUsingFrames.length;
     result.writeMotion = writeMotion;

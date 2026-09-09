@@ -36,19 +36,22 @@
  * clock. A clip that does not loop holds its last frame when its cycle ends
  * and the runtime takes the next edge.
  *
- * THE STANDING TRANSITIONS' CONVENTION (art round 2, decided). `walk-to-wait`
- * and `wait-to-walk` are BODY-FRAME like the walk — the root is pinned at the
- * canvas centre and the body walks over its planted foot as it stops, or off
- * it as it starts — and the rig now solves their sample times so the planted
- * foot retreats by the SAME amount every frame, exactly as the walk's do.
- * `memberRigMetadata()` reports each clip's `cycleAdvancePx`: the root's
- * total advance over the clip (the walk's stride; the transitions' totals;
- * 0 for the stands and every bench clip). The runtime's next round drives
- * these two clips by DISTANCE — phase advances by drawn feet travel over
- * `cycleAdvancePx` — and shows frame k at phase k / (frames − 1), which is
- * where the rig drew it; this table still lists them as time-driven until
- * that runtime lands, so the drive column here is the runtime's current
- * behaviour rather than the convention's end state.
+ * THE STANDING TRANSITIONS' CONVENTION (art round 2, decided; consumed by
+ * the runtime round after it). `walk-to-wait` and `wait-to-walk` are
+ * BODY-FRAME like the walk — the root is pinned at the canvas centre and the
+ * body walks over its planted foot as it stops, or off it as it starts — and
+ * the rig solves their sample times so the planted foot retreats by the SAME
+ * amount every frame, exactly as the walk's do. `memberRigMetadata()`
+ * reports each clip's `cycleAdvancePx`: the root's total advance over the
+ * clip (the walk's stride; the transitions' totals; 0 for the stands and
+ * every bench clip). VL-3's runtime round two drives these two clips by
+ * DISTANCE — phase advances by drawn feet travel over `cycleAdvancePx`
+ * converted to tiles (`memberMotionClipAdvanceTiles` in `memberMotion.ts`,
+ * which is the only module downstream of the rig, so the conversion cannot
+ * live here without a cycle) — and shows frame k at phase k / (frames − 1),
+ * which is where the rig drew it, so the runtime's phase and the rig's
+ * authored planting agree by construction. `drive: 'distance'` below is that
+ * end state, not the runtime's earlier time-driven placeholder.
  */
 
 import { EMPIRE_TUNING } from './empireTuning';
@@ -113,14 +116,14 @@ export const MEMBER_MOTION_CLIP_SPECS: Readonly<Record<MemberMotionClip, MemberM
     }),
     'walk-to-wait': Object.freeze({
       frames: EMPIRE_TUNING.FLOOR_MEMBER_MOTION_FRAMES['walk-to-wait'],
-      drive: 'time',
-      periodMs: EMPIRE_TUNING.FLOOR_MEMBER_GAIT_TRANSITION_MS,
+      drive: 'distance',
+      periodMs: null,
       loop: false,
     }),
     'wait-to-walk': Object.freeze({
       frames: EMPIRE_TUNING.FLOOR_MEMBER_MOTION_FRAMES['wait-to-walk'],
-      drive: 'time',
-      periodMs: EMPIRE_TUNING.FLOOR_MEMBER_GAIT_TRANSITION_MS,
+      drive: 'distance',
+      periodMs: null,
       loop: false,
     }),
     'bench-setup': Object.freeze({

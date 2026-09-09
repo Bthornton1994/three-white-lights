@@ -209,14 +209,19 @@
  * 5. VL-3 — THE FRAME LOOP IS A PURE STEPPER AND THE PRODUCTION BODY IS A
  *    STRIP. `AmbientMemberBody`'s per-frame logic lives in
  *    `memberMotion.ts`; a production member type (`memberMotionProduction-
- *    Type`) is drawn from eight pre-mounted baked strips, one per clip in
+ *    Type`) is drawn from ten pre-mounted baked strips, one per clip in
  *    `memberMotionClips.ts`, shifted to the frame the stepper chose and
- *    mirrored as a whole for the left facing; every other type keeps the
- *    pose stack. The body's depth is a root `scale` transform from the
- *    DRAWN point, so a seat assignment eases the size with the position.
- *    The root adds `data-frame` / `data-facing`, rewritten by the loop, and
- *    an evidence-only trace sink (`globalThis.__empireMotionTrace`, see the
- *    component) hands a tool the stepper's output per frame directly.
+ *    mirrored as a whole for the left facing (gated to the frames item 5 of
+ *    runtime round two names — a flip mid-stride would swap the planted
+ *    foot across the body); every other type keeps the pose stack. The
+ *    body's depth is a root `scale` transform from the DRAWN point, so a
+ *    seat assignment eases the size with the position. The root adds
+ *    `data-frame` / `data-facing`, and — a production body only, runtime
+ *    round two — `data-clip` carrying the clip actually DRAWN rather than
+ *    the legacy pose vocabulary the static `clip` prop still names, all
+ *    rewritten by the loop only when they change; an evidence-only trace
+ *    sink (`globalThis.__empireMotionTrace`, see the component) hands a
+ *    tool the stepper's output per frame directly.
  */
 
 import { useEffect, useRef, useState, type ReactElement } from 'react';
@@ -1755,8 +1760,9 @@ function AmbientMemberBody({
   // re-render restarts no clip, no settle and no blend
   // (`memberMotion.test.ts` pins that at the stepper).
   const motion = useRef<MemberMotionState | null>(null);
-  // The root's host node, for the two evidence attributes the loop writes
-  // per frame (`data-frame`, `data-facing`); null where there is no DOM.
+  // The root's host node, for the evidence attributes the loop writes per
+  // frame (`data-frame`, `data-facing`, and — production bodies, runtime
+  // round two — `data-clip`); null where there is no DOM.
   const rootNode = useRef<View | null>(null);
   // The facing and frame the root MOUNTS with. Fixed for the mount on
   // purpose: React rewrites a `data-*` attribute only when its prop value
@@ -1822,6 +1828,7 @@ function AmbientMemberBody({
     let handle = 0;
     let writtenFrame = '';
     let writtenFacing = '';
+    let writtenClip = '';
     const frame = (now: number): void => {
       const p = latest.current;
       const input: MemberMotionInput = {
@@ -1864,7 +1871,7 @@ function AmbientMemberBody({
           if (shift !== null) stripShift[stripClip].setValue(shift);
         }
       }
-      // The two per-frame evidence attributes, written only when they change.
+      // The per-frame evidence attributes, written only when they change.
       const node = rootNode.current as unknown as { setAttribute?: unknown } | null;
       if (node !== null && typeof node.setAttribute === 'function') {
         const setAttribute = node.setAttribute as (name: string, value: string) => void;
@@ -1876,6 +1883,20 @@ function AmbientMemberBody({
         if (out.facing !== writtenFacing) {
           writtenFacing = out.facing;
           setAttribute.call(node, 'data-facing', out.facing);
+        }
+        // Runtime round two: a production body's `data-clip` is the clip
+        // ACTUALLY DRAWN (`bench-press`, `bench-mount`, ...) rather than the
+        // contract's legacy wish (`use-bench`) the static prop still carries
+        // for a legacy body — an instrument reading this attribute for a
+        // production member now sees the same vocabulary
+        // `MEMBER_MOTION_CLIPS` and `memberMotionTransitionAllowed` do,
+        // instead of a name the clip table has never heard of. Legacy
+        // bodies keep the pose vocabulary already on the static `dataSet`
+        // prop below (`clip`) and this write never fires for them, since
+        // `out.draw.kind` is `'poses'` there.
+        if (out.draw.kind === 'strip' && out.draw.clip !== writtenClip) {
+          writtenClip = out.draw.clip;
+          setAttribute.call(node, 'data-clip', out.draw.clip);
         }
       }
       // The trace sink (see the header of this effect).
@@ -1951,9 +1972,16 @@ function AmbientMemberBody({
           anchor: `${String(position.x + pullX)},${String(position.y + pullY)}`,
           tick: String(tick),
           scale: String(scale),
-          clip,
-          // VL-3: the strip frame and the drawn facing, owned by the frame
-          // loop after mount (it rewrites the attribute when either changes).
+          // Runtime round two: `clip` is the legacy pose-stack VOCABULARY
+          // (the contract's wish, e.g. `use-bench`) and is only meaningful
+          // for a legacy body — a production body's frame loop owns this
+          // attribute from mount (below), writing the DRAWN clip
+          // (`bench-press`, ...) instead, so the static wish value is never
+          // shown even for the one frame before the first rAF callback.
+          clip: production ? undefined : clip,
+          // VL-3: the strip frame, the drawn facing and — production only,
+          // runtime round two — the drawn clip, owned by the frame loop
+          // after mount (it rewrites the attribute when it changes).
           frame: production ? '0' : undefined,
           facing: mountFacing,
         },
