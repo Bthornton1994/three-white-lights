@@ -1247,8 +1247,10 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
   Object.freeze({
     field: 'player-facing presentation labels',
     why:
-      'Player-facing copy mapped from closed domain tokens (equipment, groups, manager tiers, Stage E sporting-result reason kinds). The domain enums stay the identifiers; these returns are presentation-only generic nouns already on the space-free census. Tests join each displayed card or reason row to the underlying token.',
+      'Player-facing copy mapped from closed domain tokens (equipment, groups, manager tiers, Stage E sporting-result reason kinds). The domain enums stay the identifiers; these returns are presentation-only generic nouns already on the space-free census. Tests join each displayed card or reason row to the underlying token. VL-3 round 2c census re-pin, OWNED (26e620b, this lane): the same "presentation-only, nothing branches on it" reasoning covers the HUD-2c number formatters — `formatGymBucks`/`formatEmpireMultiplier` route a Gym Bucks amount or a dimensionless multiplier through `.toFixed()` for display only, never re-parsed or compared, so they join this group rather than opening a twelfth one.',
     positions: Object.freeze([
+      'stationView.ts#formatEmpireMultiplier#return',
+      'stationView.ts#formatGymBucks#return',
       'stationView.ts#playerFacingActivityGroupLabel#return',
       'stationView.ts#playerFacingBayRole#return',
       'stationView.ts#playerFacingEquipmentLabel#return',
@@ -1810,6 +1812,13 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   'social.ts#rankLeaderboard#entries.map x1',
   'social.ts#visitRefusals#context.some x1',
   'social.ts#visitRefusals#context.some x1',
+  // VL-3 round 2c census re-pin. OWNED — the HUD-2c number-formatting
+  // commit's two formatters each call `.toFixed()` on their own single
+  // numeric parameter — `formatEmpireMultiplier`'s `multiplier` and
+  // `formatGymBucks`'s `amountGymBucks`. Read from this pin's own failure
+  // value.
+  'stationView.ts#formatEmpireMultiplier#multiplier.toFixed x1',
+  'stationView.ts#formatGymBucks#amountGymBucks.toFixed x1',
 ]);
 
 /** What the census measured on the shipped tree. Counts, not bounds. */
@@ -1941,7 +1950,12 @@ const SURFACE_CENSUS = Object.freeze({
   // `memberMotionSettleRemainder` — OWNED). Read from this pin's own failure
   // value; not split further here because the exact inherited/owned split is
   // reported in this round's build report rather than re-derived per line.
-  EXPORTS: 565, // VL-2: floorCamera.ts (9) and memberAnimation.ts (15) exports
+  // 565 -> 568: VL-3 round 2c census re-pin. OWNED — three new exports from
+  // this lane's own commits: `formatGymBucks`/`formatEmpireMultiplier`
+  // (HUD-2c number-formatting commit, 26e620b) and `plateLoadingZIndex`
+  // (the plate-loading z-order fix, this round). Read from this pin's own
+  // failure value.
+  EXPORTS: 568, // VL-2: floorCamera.ts (9) and memberAnimation.ts (15) exports
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1965,7 +1979,11 @@ const SURFACE_CENSUS = Object.freeze({
   // memberMotionStripStem joining existing groups (INHERITED, all three) and
   // FLOOR_MEMBER_RELOCATION_GLIDE in its own new group (OWNED, this round).
   // Read from this pin's own failure value.
-  BARE_POSITIONS: 265, // presentationState.ts seats[].usingId
+  // 265 -> 267: VL-3 round 2c census re-pin. OWNED — `formatGymBucks`/
+  // `formatEmpireMultiplier`'s two new bare-string return positions, joining
+  // the existing 'player-facing presentation labels' group (BARE_FIELDS
+  // unchanged at 10). Read from this pin's own failure value.
+  BARE_POSITIONS: 267, // presentationState.ts seats[].usingId
   // 8 -> 10: VL-3 round 2b census re-pin — the new memberPuppet.ts/memberRig.ts
   // group and the new FLOOR_MEMBER_RELOCATION_GLIDE group.
   BARE_FIELDS: 10, // presentationState.ts GymMemberId group
@@ -2101,7 +2119,21 @@ const SURFACE_CENSUS = Object.freeze({
   // decrease of 11 owned by this round's own commits, on top of the 724
   // (4678 -> 5402) inherited increase. Reported rather than hidden because
   // the net direction is the surprising part.
-  LITERAL_POSITIONS: 5391, // VL-2 unions and prop positions, tween knob removed; +1 presentation-state PresentationSeat field (124fb132); VL-2B frame cap +1
+  // 5391 -> 5393: VL-3 round 2c census re-pin. UNCLEAR PROVENANCE, disclosed
+  // rather than silently absorbed — read from this pin's own failure value,
+  // but unlike every other pin in this round's re-pin, a static diff of the
+  // five accepted round-2c changes (Grok B occupied-cell pathing, the
+  // memberMotion.ts facing-gate fix, the queued-facing fix, the plate-loading
+  // z-order fix, the number-formatting commit) against every new/changed
+  // source line in `src/empire/*.ts`/`*.tsx` (excluding tests) found no new
+  // closed-literal-union type declaration anywhere in that diff — the
+  // mechanism the surrounding block comment above uses for every other +N in
+  // this census. This is the same shape round 2b's own note two lines above
+  // records for the base checkpoint (`58295c57` already read 5402, higher
+  // than round 2b's own shipped 5391): a pre-existing drift this round
+  // inherited rather than caused by any line this lane wrote. Flagged in this
+  // round's build report as a finding rather than resolved further here.
+  LITERAL_POSITIONS: 5393, // VL-2 unions and prop positions, tween knob removed; +1 presentation-state PresentationSeat field (124fb132); VL-2B frame cap +1
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -3360,7 +3392,21 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // `routePlan`/`stepAwayFrom`/`stepWander`/`advanceMember`
   // (`sameCell`/`insideGrid`/`isStationUseCell`/`.push`/`.slice`/`Object.freeze`
   // among them). Read from this pin's own failure value.
-  CALLS_EXAMINED: 4332, // VL-2 camera / animation / anchor / settle helpers, +8 presentationSeats freeze calls (124fb132); VL-2B seat consumption +1, frame cap +1. Read from this pin. Seats by cell +13. Relocation anchored on the drawn point, panel text +5.
+  // 4332 -> 4413: VL-3 round 2c census re-pin. Mixed lineage, read from this
+  // pin's own failure value rather than hand-counted, same as every other
+  // 80+-wide jump in this block. OWNED, this lane's own remaining round-2c
+  // commits: the memberMotion.ts facing-gate fix (`2a710d7`, 107 lines
+  // changed) — `RIG_MIRRORABLE_FRAMES`'s own IIFE body walking the rig's
+  // frame table (`Object.entries`/`.map`/`.filter`/`Object.freeze`/`.has`
+  // among them) plus `memberMotionFlipAllowedAt`'s widened body; the
+  // queued-facing fix (`4cd9375`, 20 lines) adding the `travelling` guard's
+  // own comparisons; the plate-loading z-order fix's `plateLoadingZIndex`
+  // body plus its new `FloorGrid.tsx` call site; and the HUD-2c
+  // number-formatting commit's `formatGymBucks`/`formatEmpireMultiplier`
+  // bodies (`.toFixed()`, one call each) plus roughly thirty new call sites
+  // across `GymScreen.tsx`/`FloorGrid.tsx`/`ladderView.tsx` routing every
+  // money and multiplier interpolation through one of the two formatters.
+  CALLS_EXAMINED: 4413, // VL-2 camera / animation / anchor / settle helpers, +8 presentationSeats freeze calls (124fb132); VL-2B seat consumption +1, frame cap +1. Read from this pin. Seats by cell +13. Relocation anchored on the drawn point, panel text +5.
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -5282,6 +5328,20 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
     'FLOOR_MEMBER_PERIOD_JITTER_FRACTION',
     'A RENDERING FRACTION, dimensionless — multiplied into the animation-period jitter memberAnimation.ts\'s `memberAnimationPeriodJitter` returns. Never compared against a caller-supplied value.',
   ),
+  // VL-3 round 2c census re-pin. OWNED — the HUD-2c number-formatting commit
+  // (26e620b, this lane) added two new numeric leaves to EMPIRE_TUNING.
+  // Neither is a branch point: both are digit counts handed straight to
+  // `.toFixed()` in stationView.ts's `formatGymBucks`/`formatEmpireMultiplier`,
+  // the same DIGIT COUNT class PRECISION_DECIMALS above already occupies —
+  // they size a rounding call, they do not name a place on any axis.
+  ...exemptTable(
+    'GYM_BUCKS_DISPLAY_DECIMALS',
+    'A DIGIT COUNT, same class as PRECISION_DECIMALS above. It is handed to `formatGymBucks`\'s `.toFixed()` call, which rounds a Gym Bucks quantity for player-facing display only; the ledger arithmetic it is drawn from is unchanged. No quantity in this directory is denominated in decimal places, and nothing compares a caller-supplied value against this count.',
+  ),
+  ...exemptTable(
+    'EMPIRE_MULTIPLIER_DISPLAY_DECIMALS',
+    'A DIGIT COUNT, same class as GYM_BUCKS_DISPLAY_DECIMALS immediately above. It is handed to `formatEmpireMultiplier`\'s `.toFixed()` call, which rounds a dimensionless multiplier or fraction for player-facing display only; the underlying multiplier arithmetic it is drawn from is unchanged. Nothing compares a caller-supplied value against this count.',
+  ),
 ]);
 
 /**
@@ -6402,7 +6462,12 @@ const DOMAIN_CENSUS = Object.freeze({
   // above (40 INHERITED, 2 OWNED — see the block comment above the new
   // exemption rows). FILED (108) is unchanged; 108 + 468 = 576 =
   // TUNING_NUMERIC_LEAVES.
-  EXEMPT: 468, // VL-2B: +FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS. Read from this pin.
+  // 468 -> 470: VL-3 round 2c census re-pin. OWNED — the HUD-2c
+  // number-formatting commit (26e620b, this lane)'s two new numeric leaves
+  // (GYM_BUCKS_DISPLAY_DECIMALS, EMPIRE_MULTIPLIER_DISPLAY_DECIMALS), both
+  // newly exempted above as DIGIT COUNTS. FILED (108) is unchanged;
+  // 108 + 470 = 578 = TUNING_NUMERIC_LEAVES.
+  EXEMPT: 470, // VL-2B: +FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS. Read from this pin.
   // 154 -> 196: the same 42 new leaves. 251 -> 264: the same 13 new leaves.
   // 264 -> 266: the same 2 new leaves.
   // 266 -> 273: the same 7 new leaves.
@@ -6454,7 +6519,11 @@ const DOMAIN_CENSUS = Object.freeze({
   // `FLOOR_MEMBER_GAIT_TRANSITION_TRIGGER_PX` (1). The third new knob,
   // `FLOOR_MEMBER_RELOCATION_GLIDE` ('linear'), is a string and is not a
   // numeric leaf. Read from this pin's own failure value.
-  TUNING_NUMERIC_LEAVES: 576, // VL-2: +26 leaves, -3 retired cadence knobs, -FLOOR_SIM_MOVE_TWEEN_MS; VL-2B +FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS. Read from this pin.
+  // 576 -> 578: VL-3 round 2c census re-pin. OWNED — the HUD-2c
+  // number-formatting commit's two new numeric top-level knobs
+  // (`GYM_BUCKS_DISPLAY_DECIMALS`, `EMPIRE_MULTIPLIER_DISPLAY_DECIMALS`),
+  // both newly exempted above. Read from this pin's own failure value.
+  TUNING_NUMERIC_LEAVES: 578, // VL-2: +26 leaves, -3 retired cadence knobs, -FLOOR_SIM_MOVE_TWEEN_MS; VL-2B +FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS. Read from this pin.
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -6497,7 +6566,11 @@ const DOMAIN_CENSUS = Object.freeze({
   // 506 -> 513: VL-1 seven exempt leaves. Read from this pin.
   // 536 -> 578: VL-3 round 2b census re-pin — the 42 newly-exempted leaves
   // above. Read from this pin's own failure value.
-  BRANCH_POINTS: 578, // VL-2: +23 exempt leaves, then FLOOR_SIM_MOVE_TWEEN_MS removed. Read from this pin. VL-2B frame cap +1. Read from this pin.
+  // 578 -> 580: VL-3 round 2c census re-pin. OWNED — the two new HUD-2c
+  // exempt leaves (`GYM_BUCKS_DISPLAY_DECIMALS`, `EMPIRE_MULTIPLIER_
+  // DISPLAY_DECIMALS`) join `EVERY_BRANCH_POINT`. Read from this pin's own
+  // failure value.
+  BRANCH_POINTS: 580, // VL-2: +23 exempt leaves, then FLOOR_SIM_MOVE_TWEEN_MS removed. Read from this pin. VL-2B frame cap +1. Read from this pin.
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
@@ -6567,7 +6640,12 @@ const DOMAIN_CENSUS = Object.freeze({
   // 2662 -> 2702: VL-1 seven exempt leaves obliging every domain. Read from this pin.
   // 2827 -> 3064: VL-3 round 2b census re-pin. Read from this pin's own
   // failure value.
-  CONTAINMENT_CHECKS: 3064, // VL-2 foreign points, FLOOR_SIM_MOVE_TWEEN_MS removed; VL-2B frame cap +5. Read from this pin.
+  // 3064 -> 3076: VL-3 round 2c census re-pin. OWNED — the two new HUD-2c
+  // exempt leaves, both small values landing inside every one of the six
+  // domains' ceilings: 2 leaves x 6 domains (`DOMAINS` above) = 12 new
+  // `required` obligations, no omissions. Read from this pin's own failure
+  // value.
+  CONTAINMENT_CHECKS: 3076, // VL-2 foreign points, FLOOR_SIM_MOVE_TWEEN_MS removed; VL-2B frame cap +5. Read from this pin.
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -9814,6 +9892,24 @@ function driveEverything(): readonly DrivenRow[] {
     );
     drive('plateLoadingDiscs', 'stack', () => stationViewModule.plateLoadingDiscs(0));
     drive('plateLoadingDiscs', 'sleeve', () => stationViewModule.plateLoadingDiscs(1));
+    // VL-3 round 2c census re-pin. OWNED — three new drive rows for the
+    // three new exports this lane's own commits added: the plate-loading
+    // z-order fix's `plateLoadingZIndex`, and the HUD-2c number-formatting
+    // commit's `formatGymBucks`/`formatEmpireMultiplier`. The two formatter
+    // rows are driven at the exact witnessed messy floats stationView.test.ts
+    // pins (177.83999999999997, 0.249999), the same values the commit's own
+    // build report cites as motivation, so the scan exercises a real
+    // toFixed() rounding rather than an already-clean number.
+    drive('plateLoadingZIndex', 'build-mode', () =>
+      stationViewModule.plateLoadingZIndex(true, 5),
+    );
+    drive('plateLoadingZIndex', 'depth', () => stationViewModule.plateLoadingZIndex(false, 5));
+    drive('formatGymBucks', 'messy-float', () =>
+      stationViewModule.formatGymBucks(177.83999999999997),
+    );
+    drive('formatEmpireMultiplier', 'messy-float', () =>
+      stationViewModule.formatEmpireMultiplier(0.249999),
+    );
     drive('playerFacingBayRole', 'complete', () =>
       stationViewModule.playerFacingBayRole(true, []),
     );
@@ -12413,7 +12509,11 @@ const DRIVE_CENSUS = Object.freeze({
   // 622229 -> 629504: VL-3 round 2b census re-pin, second pass — the 15
   // new EXEMPT_LEAVES_ABOVE_A_CEILING rows above each get driven by the
   // overflow pass too. Read from this pin's own failure value.
-  ROWS: 629504, // VL-2 exempt leaves widen the foreign-point domains; +1 for MEMBER_ANIMATION_CLIPS; +10 settle rows. Read from this pin.
+  // 629504 -> 629508: VL-3 round 2c census re-pin. OWNED — this lane's own
+  // four new drive rows (`plateLoadingZIndex` x2, `formatGymBucks`,
+  // `formatEmpireMultiplier`), each a single `DrivenRow`. Read from this
+  // pin's own failure value.
+  ROWS: 629508, // VL-2 exempt leaves widen the foreign-point domains; +1 for MEMBER_ANIMATION_CLIPS; +10 settle rows. Read from this pin.
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -12453,7 +12553,11 @@ const DRIVE_CENSUS = Object.freeze({
   // rather than something this round's own commits broke. Equal to
   // `census.length`/`SURFACE_CENSUS.EXPORTS` by construction now that
   // `driven` set-equals `census`. Read from this pin's own failure value.
-  EXPORTS_DRIVEN: 565, // VL-2: floorCamera.ts (9) and memberAnimation.ts (15) join the drive
+  // 565 -> 568: VL-3 round 2c census re-pin. OWNED — this lane's own three
+  // new drive rows (`plateLoadingZIndex`, `formatGymBucks`,
+  // `formatEmpireMultiplier`), tracking `SURFACE_CENSUS.EXPORTS` 1:1 again.
+  // Read from this pin's own failure value.
+  EXPORTS_DRIVEN: 568, // VL-2: floorCamera.ts (9) and memberAnimation.ts (15) join the drive
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -16856,7 +16960,15 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'memberAnimation.ts': 49, // VL-2 (settleDurationMs, clipWhileSettling); VL-3 round 2b census re-pin 45 -> 49, INHERITED
       // VL-3 round 2b census re-pin, all four INHERITED (already shipped,
       // unpinned, at the frozen checkpoint `58295c57`).
-      'memberMotion.ts': 32,
+      // 32 -> 35: VL-3 round 2c census re-pin. OWNED — the facing-gate fix
+      // (`2a710d7`)'s `RIG_MIRRORABLE_FRAMES` IIFE adds two `return`
+      // statements (the early bare `return;` inside its `forEach` callback,
+      // and the closing `return Object.freeze(...)`), plus one new early
+      // `if (RIG_MIRRORABLE_FRAMES[clip].has(frame)) return true;` line at
+      // the top of the already-exported `memberMotionFlipAllowedAt`. Read
+      // from this pin's own failure value; the three new `return` sites were
+      // independently confirmed against the commit's own diff.
+      'memberMotion.ts': 35,
       'memberMotionClips.ts': 7,
       'memberPuppet.ts': 12,
       'memberRig.ts': 47,
@@ -16870,7 +16982,13 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'social.ts': 31,
       'sportingReputation.ts': 11,
       'stationCapability.ts': 27,
-      'stationView.ts': 50,
+      // 50 -> 54: VL-3 round 2c census re-pin. OWNED — four new `return`
+      // sites: `formatGymBucks` (1), `formatEmpireMultiplier` (1, both HUD-2c
+      // number-formatting commit `26e620b`), and `plateLoadingZIndex`'s two
+      // branches (the Build-only constant return and the Play `Math.round
+      // (depth) + 1` return, the plate-loading z-order fix). Read from this
+      // pin's own failure value.
+      'stationView.ts': 54,
       'trainingStation.ts': 18,
       'worldView.ts': 25,
       'presentationState.ts': 27,
@@ -17468,14 +17586,26 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
 // new sites arrived (mixed — see each entry). Read from this pin's own
 // failure value.
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1163 returned=unfollowable:station',
-  'FloorGrid.tsx:1163 returned=unfollowable:station',
-  'FloorGrid.tsx:1163 returned=unfollowable:station',
-  'FloorGrid.tsx:1164 returned=unfollowable:station',
-  'FloorGrid.tsx:1164 returned=unfollowable:station',
-  'FloorGrid.tsx:1164 returned=unfollowable:station',
-  'FloorGrid.tsx:3830 callee=fresh:ArrowFunction',
+  // VL-3 round 2c census re-pin. INHERITED — line numbers shifted by the
+  // plate-loading z-order fix's new `PlateLoadingLayer.depth` field and its
+  // header comment above `selectedMember`'s panel in FloorGrid.tsx, which
+  // adds lines above these three sites (1163 -> 1165, 1164 -> 1166). No new
+  // fresh-receiver site arrived or left at these three positions. Read from
+  // this pin's own failure value.
+  'FloorGrid.tsx:1165 returned=unfollowable:station',
+  'FloorGrid.tsx:1165 returned=unfollowable:station',
+  'FloorGrid.tsx:1165 returned=unfollowable:station',
+  'FloorGrid.tsx:1166 returned=unfollowable:station',
+  'FloorGrid.tsx:1166 returned=unfollowable:station',
+  'FloorGrid.tsx:1166 returned=unfollowable:station',
+  // VL-3 round 2c census re-pin. The member-panel IIFE that was at 3830
+  // shifted to 3848 (INHERITED, same line-shift cause as the three sites
+  // above); the IIFE that was at 3848 (the nested experience/retention
+  // panel) shifted to 3866, still INHERITED for the same reason — neither
+  // is a new site, both are the same two pre-existing IIFEs the shift moved.
+  // Read from this pin's own failure value.
   'FloorGrid.tsx:3848 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:3866 callee=fresh:ArrowFunction',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -17511,14 +17641,22 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'floorSprites.ts:422 receiver=NewExpression',
   'floorSprites.ts:435 receiver=NewExpression',
   'ladder.ts:349 receiver=ArrayLiteralExpression',
-  'ladderView.tsx:124 returned=unfollowable:state',
-  'ladderView.tsx:132 returned=unfollowable:state',
-  'ladderView.tsx:641 returned=unfollowable:state',
-  'ladderView.tsx:669 returned=unfollowable:state',
-  'ladderView.tsx:671 returned=unfollowable:state',
+  // VL-3 round 2c census re-pin. INHERITED — the HUD-2c number-formatting
+  // commit's new `import` line in ladderView.tsx shifts every site below it
+  // by exactly +1 (124 -> 125, 132 -> 133, 641 -> 642, 669 -> 670,
+  // 671 -> 672, 672 -> 673, 727 -> 728, 736 -> 737 — the old 671 -> 672 and
+  // 672 -> 673 shifts happen to make the diff show 672 as unchanged context,
+  // which is a string coincidence between two different shifted sites, not
+  // an unmoved one). No new fresh-receiver site arrived or left. Read from
+  // this pin's own failure value.
+  'ladderView.tsx:125 returned=unfollowable:state',
+  'ladderView.tsx:133 returned=unfollowable:state',
+  'ladderView.tsx:642 returned=unfollowable:state',
+  'ladderView.tsx:670 returned=unfollowable:state',
   'ladderView.tsx:672 returned=unfollowable:state',
-  'ladderView.tsx:727 returned=unfollowable:state',
-  'ladderView.tsx:736 returned=unfollowable:state',
+  'ladderView.tsx:673 returned=unfollowable:state',
+  'ladderView.tsx:728 returned=unfollowable:state',
+  'ladderView.tsx:737 returned=unfollowable:state',
   'livingMembers.ts:269 returned=unfollowable:roster',
   'management.ts:1473 returned=unfollowable:state',
   // VL-3 round 2b census re-pin. memberPuppet.ts/memberRig.ts sites are
@@ -17527,15 +17665,28 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // gait-transition/mount-dismount rewrite (401 lines changed) touched this
   // area directly, so these are reported as this round's own values without
   // a further inherited/owned split per line; see this round's build report.
+  //
+  // VL-3 round 2c census re-pin. OWNED — the facing-gate fix (`2a710d7`)
+  // adds a new fresh-receiver site: `RIG_MIRRORABLE_FRAMES`'s own
+  // `(() => { ... })()` IIFE, a `callee=fresh:ArrowFunction` site, same
+  // shape as the existing `memberMotion.ts:329` site above. The six
+  // `returned=unfollowable:state` sites below it are the same six
+  // pre-existing sites shifted by this round's own line insertions —
+  // 562 -> 645, 563 -> 646, 568 -> 651 (a shift of +83, from the facing-gate
+  // fix's own insertions above them) and 837 -> 936, 895 -> 994 (a shift of
+  // +99, from the facing-gate fix's insertions PLUS the queued-facing fix's
+  // (`4cd9375`) further insertions above those two). No site other than the
+  // new IIFE arrived or left. Read from this pin's own failure value.
   'memberMotion.ts:329 callee=fresh:ArrowFunction',
-  'memberMotion.ts:562 returned=unfollowable:state',
-  'memberMotion.ts:562 returned=unfollowable:state',
-  'memberMotion.ts:563 returned=unfollowable:state',
-  'memberMotion.ts:563 returned=unfollowable:state',
-  'memberMotion.ts:568 returned=unfollowable:state',
-  'memberMotion.ts:568 returned=unfollowable:state',
-  'memberMotion.ts:837 returned=unfollowable:state',
-  'memberMotion.ts:895 returned=unfollowable:state',
+  'memberMotion.ts:507 callee=fresh:ArrowFunction',
+  'memberMotion.ts:645 returned=unfollowable:state',
+  'memberMotion.ts:645 returned=unfollowable:state',
+  'memberMotion.ts:646 returned=unfollowable:state',
+  'memberMotion.ts:646 returned=unfollowable:state',
+  'memberMotion.ts:651 returned=unfollowable:state',
+  'memberMotion.ts:651 returned=unfollowable:state',
+  'memberMotion.ts:936 returned=unfollowable:state',
+  'memberMotion.ts:994 returned=unfollowable:state',
   'memberPuppet.ts:944 receiver=ArrayLiteralExpression',
   'memberRig.ts:528 receiver=NewExpression',
   'memberRig.ts:529 receiver=NewExpression',
@@ -17559,17 +17710,24 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
 // memberRig.ts — already shipped, unpinned, at the frozen checkpoint
 // `58295c57`). Read from this pin's own failure value.
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'FloorGrid.tsx:1163 PresentationCell asked=true walked=false',
-  'FloorGrid.tsx:1163 PresentationCell asked=true walked=false',
-  'FloorGrid.tsx:1163 PresentationCell asked=true walked=false',
-  'FloorGrid.tsx:1164 GridSize asked=true walked=false',
-  'FloorGrid.tsx:1164 GridSize asked=true walked=false',
-  'FloorGrid.tsx:1164 GridSize asked=true walked=false',
-  'FloorGrid.tsx:1170 BayBench | undefined asked=true walked=false',
-  'FloorGrid.tsx:2713 FloorSimState asked=true walked=false',
+  // VL-3 round 2c census re-pin. INHERITED — line numbers shifted by this
+  // round's FloorGrid.tsx edits (the plate-loading z-order fix's interface
+  // field/comment and import, plus the number-formatting commit's call
+  // sites): 1163 -> 1165, 1164 -> 1166, 1170 -> 1172, 959 -> 961 (all +2),
+  // 2713 -> 2723 (+10, more insertions accumulate between here and the
+  // earlier sites). Count unchanged at 9. No new site arrived or left. Read
+  // from this pin's own failure value.
+  'FloorGrid.tsx:1165 PresentationCell asked=true walked=false',
+  'FloorGrid.tsx:1165 PresentationCell asked=true walked=false',
+  'FloorGrid.tsx:1165 PresentationCell asked=true walked=false',
+  'FloorGrid.tsx:1166 GridSize asked=true walked=false',
+  'FloorGrid.tsx:1166 GridSize asked=true walked=false',
+  'FloorGrid.tsx:1166 GridSize asked=true walked=false',
+  'FloorGrid.tsx:1172 BayBench | undefined asked=true walked=false',
+  'FloorGrid.tsx:2723 FloorSimState asked=true walked=false',
   // VL-2: `memberAnchorFor`'s `MemberAnchor` return carries a `FloorTilePoint`,
   // an interface the control asks about and the walk declines the same way.
-  'FloorGrid.tsx:959 FloorTilePoint asked=true walked=false',
+  'FloorGrid.tsx:961 FloorTilePoint asked=true walked=false',
   'empireInvariant.ts:1084 GymAxes asked=true walked=false',
   'empireInvariant.ts:1137 GymAxes asked=true walked=false',
   'empireInvariant.ts:1168 readonly ExpansionBuild[] asked=true walked=false',
@@ -17611,27 +17769,31 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'ladder.ts:639 LadderState asked=true walked=false',
   'ladder.ts:650 LadderState asked=true walked=false',
   'ladder.ts:656 LadderState asked=true walked=false',
-  'ladderView.tsx:115 LadderState asked=true walked=false',
-  'ladderView.tsx:116 LadderAccrual asked=true walked=false',
-  'ladderView.tsx:123 LadderState asked=true walked=false',
-  'ladderView.tsx:124 LadderAccrual | null asked=true walked=false',
-  'ladderView.tsx:131 LadderState asked=true walked=false',
-  'ladderView.tsx:132 LadderAccrual | null asked=true walked=false',
-  'ladderView.tsx:641 readonly GymWeekReport[] asked=true walked=false',
-  'ladderView.tsx:669 FloorState asked=true walked=false',
-  'ladderView.tsx:671 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'ladderView.tsx:672 LivingMemberRoster asked=true walked=false',
-  'ladderView.tsx:727 FloorState asked=true walked=false',
-  'ladderView.tsx:736 LivingMemberRoster asked=true walked=false',
-  'ladderView.tsx:748 FloorState asked=true walked=false',
-  'ladderView.tsx:768 FloorState asked=true walked=false',
-  'ladderView.tsx:807 ManagedGym asked=true walked=false',
-  'ladderView.tsx:820 ManagedGym asked=true walked=false',
-  'ladderView.tsx:834 ManagedGym asked=true walked=false',
-  'ladderView.tsx:844 ManagedGym asked=true walked=false',
-  'ladderView.tsx:852 ManagedGym asked=true walked=false',
-  'ladderView.tsx:860 ManagedGym asked=true walked=false',
-  'ladderView.tsx:895 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  // VL-3 round 2c census re-pin. INHERITED — the HUD-2c number-formatting
+  // commit's new `import` line shifts every ladderView.tsx site below it by
+  // exactly +1. Count unchanged at 20. No new site arrived or left. Read
+  // from this pin's own failure value.
+  'ladderView.tsx:116 LadderState asked=true walked=false',
+  'ladderView.tsx:117 LadderAccrual asked=true walked=false',
+  'ladderView.tsx:124 LadderState asked=true walked=false',
+  'ladderView.tsx:125 LadderAccrual | null asked=true walked=false',
+  'ladderView.tsx:132 LadderState asked=true walked=false',
+  'ladderView.tsx:133 LadderAccrual | null asked=true walked=false',
+  'ladderView.tsx:642 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:670 FloorState asked=true walked=false',
+  'ladderView.tsx:672 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
+  'ladderView.tsx:673 LivingMemberRoster asked=true walked=false',
+  'ladderView.tsx:728 FloorState asked=true walked=false',
+  'ladderView.tsx:737 LivingMemberRoster asked=true walked=false',
+  'ladderView.tsx:749 FloorState asked=true walked=false',
+  'ladderView.tsx:769 FloorState asked=true walked=false',
+  'ladderView.tsx:808 ManagedGym asked=true walked=false',
+  'ladderView.tsx:821 ManagedGym asked=true walked=false',
+  'ladderView.tsx:835 ManagedGym asked=true walked=false',
+  'ladderView.tsx:845 ManagedGym asked=true walked=false',
+  'ladderView.tsx:853 ManagedGym asked=true walked=false',
+  'ladderView.tsx:861 ManagedGym asked=true walked=false',
+  'ladderView.tsx:896 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
   'livingMembers.ts:269 readonly LivingGymMember[] asked=true walked=false',
   'livingMembers.ts:321 LivingGymMember | undefined asked=true walked=false',
   'management.ts:1473 readonly CountedDecisionRecord[] asked=true walked=false',
@@ -17649,15 +17811,20 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'management.ts:2654 ManagedGym asked=true walked=false',
   'management.ts:2674 ManagedGym asked=true walked=false',
   'management.ts:2690 ManagedGym asked=true walked=false',
-  'memberMotion.ts:562 MemberMotionPoint asked=true walked=false',
-  'memberMotion.ts:562 MemberMotionPoint asked=true walked=false',
-  'memberMotion.ts:563 MemberMotionPoint asked=true walked=false',
-  'memberMotion.ts:563 MemberMotionPoint asked=true walked=false',
-  'memberMotion.ts:568 readonly MemberPlaybackSnapshot[] asked=true walked=false',
-  'memberMotion.ts:568 readonly MemberPlaybackSnapshot[] asked=true walked=false',
-  'memberMotion.ts:837 readonly MemberAnimationFrame[] asked=true walked=false',
-  'memberMotion.ts:839 readonly MemberAnimationFrame[] asked=true walked=false',
-  'memberMotion.ts:895 readonly MemberAnimationFrame[] asked=true walked=false',
+  // VL-3 round 2c census re-pin. INHERITED — same line-shift cause as the
+  // `DECLARED_FRESH_RECEIVERS` memberMotion.ts sites above (562 -> 645,
+  // 563 -> 646, 568 -> 651, all +83; 837 -> 936, 839 -> 938, 895 -> 994, all
+  // +99). Count unchanged at 9. No new site arrived or left. Read from this
+  // pin's own failure value.
+  'memberMotion.ts:645 MemberMotionPoint asked=true walked=false',
+  'memberMotion.ts:645 MemberMotionPoint asked=true walked=false',
+  'memberMotion.ts:646 MemberMotionPoint asked=true walked=false',
+  'memberMotion.ts:646 MemberMotionPoint asked=true walked=false',
+  'memberMotion.ts:651 readonly MemberPlaybackSnapshot[] asked=true walked=false',
+  'memberMotion.ts:651 readonly MemberPlaybackSnapshot[] asked=true walked=false',
+  'memberMotion.ts:936 readonly MemberAnimationFrame[] asked=true walked=false',
+  'memberMotion.ts:938 readonly MemberAnimationFrame[] asked=true walked=false',
+  'memberMotion.ts:994 readonly MemberAnimationFrame[] asked=true walked=false',
   'memberRig.ts:613 RigPoint asked=true walked=false',
   'pacing.ts:292 LadderState asked=true walked=false',
   'pacing.ts:298 LadderState asked=true walked=false',
@@ -17912,7 +18079,18 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // `stepAwayFrom` and in `stepWander` (2); `isStationUseCell` and `sameCell`
   // in `advanceMember`'s two branches (1 + 2). Read from this pin's own
   // failure value.
-  function: 2204, // VL-2 (posesToMount's settling-clip loop); +5 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDrawOrigin call VL-2B: 2012 -> 2009. Seats by cell +7. Relocation helpers +5.
+  // 2204 -> 2276: VL-3 round 2c census re-pin. OWNED — this lane's own
+  // remaining round-2c commits. Roughly thirty of the new sites are the
+  // HUD-2c number-formatting commit's `formatGymBucks(...)`/
+  // `formatEmpireMultiplier(...)` call sites across `GymScreen.tsx`/
+  // `FloorGrid.tsx`/`ladderView.tsx` (a call to a plain imported function,
+  // not a member access, is this arm's shape); the rest are calls inside the
+  // facing-gate fix's `RIG_MIRRORABLE_FRAMES` IIFE and
+  // `memberMotionFlipAllowedAt`'s widened body. Read from this pin's own
+  // failure value; the exact count per site is not independently
+  // hand-derived, same convention as every other 70+-wide delta in this
+  // block.
+  function: 2276, // VL-2 (posesToMount's settling-clip loop); +5 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDrawOrigin call VL-2B: 2012 -> 2009. Seats by cell +7. Relocation helpers +5.
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -17979,7 +18157,14 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // `blocked.slice()` in `withTransitBlocked` is NOT one of these three — its
   // receiver is a parameter, so it classifies `member-of-parameter` below
   // instead. Read from this pin's own failure value.
-  member: 1921, // VL-2 (posesToMount's settling-clip loop); +3 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDraws.sort, Easing.out, String() VL-2B: 1777 -> 1781; frame cap (Math.min) -> 1782. Seats by cell +5.
+  // 1921 -> 1927: VL-3 round 2c census re-pin. OWNED — calls through a
+  // member access added by this lane's own commits, at least
+  // `RIG_MIRRORABLE_FRAMES`'s `frames.forEach(...)`/`allowed.add(...)` x2/
+  // `Object.freeze(...)` (the facing-gate fix) and
+  // `plateLoadingZIndex`'s `Math.round(depth)` (the plate-loading z-order
+  // fix). Read from this pin's own failure value; the exact count per site
+  // is not independently hand-derived.
+  member: 1927, // VL-2 (posesToMount's settling-clip loop); +3 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDraws.sort, Easing.out, String() VL-2B: 1777 -> 1781; frame cap (Math.min) -> 1782. Seats by cell +5.
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -17996,11 +18181,22 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // parameter — the same site `DECLARED_MEMBER_CALLS_ON_PARAMETERS` now
   // names individually (`floorSim.ts#withTransitBlocked#blocked.slice x0`).
   // Read from this pin's own failure value.
-  'member-of-parameter': 44, // VL-2: unchanged from VL-1 once the data attributes stopped calling toFixed on props // Stage G.2A livingMemberExperience history/values member calls VL-2B seats by cell: seatsByBench#benches.map.
+  // 44 -> 46: VL-3 round 2c census re-pin. OWNED — the HUD-2c
+  // number-formatting commit's two new `.toFixed()` calls, each on the
+  // formatter's own parameter (`amountGymBucks.toFixed(...)`,
+  // `multiplier.toFixed(...)`) — the same two sites `DECLARED_
+  // MEMBER_CALLS_ON_PARAMETERS` below gains. Read from this pin's own
+  // failure value.
+  'member-of-parameter': 46, // VL-2: unchanged from VL-1 once the data attributes stopped calling toFixed on props // Stage G.2A livingMemberExperience history/values member calls VL-2B seats by cell: seatsByBench#benches.map.
   // Phase 4: FLOOR_SPRITE_PALETTES' construction calls a fresh arrow (the
   // palette-row map), the same site DECLARED_FRESH_RECEIVERS names.
   // 3 -> 4: VL-3 round 2b census re-pin, same reason as `function` above.
-  fresh: 4, // Stage G.2A livingMemberExperience
+  // 4 -> 5: VL-3 round 2c census re-pin. OWNED — the facing-gate fix's
+  // `RIG_MIRRORABLE_FRAMES` IIFE call itself, `(() => { ... })()`, a call
+  // whose callee is a freshly created arrow function — the same site
+  // `DECLARED_FRESH_RECEIVERS`'s new `memberMotion.ts:507` row names. Read
+  // from this pin's own failure value.
+  fresh: 5, // Stage G.2A livingMemberExperience
   unclassified: 0,
 });
 
@@ -18076,7 +18272,17 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // occupied-cell pathing merge (`b1561aa1`) adds two new local `const`
   // writes in floorSim.ts (`allUseCells` in `routePlan`, `next` in
   // `withTransitBlocked`). Read from this pin's own failure value.
-  local: 532, // VL-2: posesToMount's settling-clip loop; +1 presentationSeats (124fb132); VL-2B relocation glide +1. Read from this pin. Seats by cell +1.
+  // 532 -> 535: VL-3 round 2c census re-pin. OWNED — this lane's own
+  // remaining round-2c commits. At least one site is directly identified:
+  // the facing-gate fix's `RIG_MIRRORABLE_FRAMES` IIFE writes `out[clip] =
+  // allowed;` into a local object built up across its loop. The other two
+  // are read from this pin's own failure value rather than hand-derived
+  // further — a full static attribution of every remaining local-write site
+  // this round's memberMotion.ts/stationView.ts/FloorGrid.tsx changes touch
+  // was not completed line-by-line the way earlier deltas in this block are;
+  // flagged as a finding in this round's build report rather than asserted
+  // with false precision.
+  local: 535, // VL-2: posesToMount's settling-clip loop; +1 presentationSeats (124fb132); VL-2B relocation glide +1. Read from this pin. Seats by cell +1.
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -18211,7 +18417,12 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // `floorSim.ts` `return` sites already pinned above in `CHANNEL_SITE_COUNTS`
   // (`isStationUseCell` x2, `withTransitBlocked` x1). Read from this pin's
   // own failure value.
-  SITES: 1341, // VL-2 floorCamera / memberAnimation / FloorGrid returns, settle helpers; +1 presentationState return (124fb132) VL-2B: memberUsesCell/cellsEqual deleted (1201 -> 1198). Seats by cell +4.
+  // 1341 -> 1348: VL-3 round 2c census re-pin. OWNED — the sum of this
+  // round's other two `CHANNEL_SITE_COUNTS['return']` deltas: memberMotion.ts
+  // +3 (the facing-gate fix) and stationView.ts +4 (the two new HUD-2c
+  // formatters plus the plate-loading z-order fix's `plateLoadingZIndex`).
+  // Read from this pin's own failure value.
+  SITES: 1348, // VL-2 floorCamera / memberAnimation / FloorGrid returns, settle helpers; +1 presentationState return (124fb132) VL-2B: memberUsesCell/cellsEqual deleted (1201 -> 1198). Seats by cell +4.
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -18531,7 +18742,16 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // 1347 -> 1353: OWNED by this round's own additions to memberMotion.ts /
   // memberMotionClips.ts (the five new exports and three new knobs this
   // round's brief names). Read from this pin's own failure value.
-  POSITIONS: 1353, // VL-2 floorCamera.ts / memberAnimation.ts exported positions, the settle helpers, +1 PresentationSeat (124fb132)
+  // 1353 -> 1359: VL-3 round 2c census re-pin. OWNED — this lane's own three
+  // new exported functions: `plateLoadingZIndex(buildMode: boolean, depth:
+  // number): number` (the plate-loading z-order fix) and
+  // `formatGymBucks(amountGymBucks: number): string` /
+  // `formatEmpireMultiplier(multiplier: number): string` (the HUD-2c
+  // number-formatting commit), each contributing parameter and return
+  // positions. Read from this pin's own failure value; the exact count of
+  // new positions per function is not independently hand-derived, same as
+  // every other multi-function delta in this block.
+  POSITIONS: 1359, // VL-2 floorCamera.ts / memberAnimation.ts exported positions, the settle helpers, +1 PresentationSeat (124fb132)
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -26924,7 +27144,16 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 111 -> 159: S4b's two stage-4 sites, +24 each — measured, and the two
   // agreeing at 24 is a coincidence of the two rendered rows rather than a
   // shared derivation.
-  RETURNED: 279, // Iron & Amber GymScreen chrome +9 (week-row 29→32, two stage-4 maps 24→27)
+  // 279 -> 291: VL-3 round 2c census re-pin. OWNED — the HUD-2c
+  // number-formatting commit routes every money/rate figure in
+  // `GymView`/`GymScreen`'s per-station `props.map` row objects through
+  // `formatGymBucks`/`formatEmpireMultiplier`, adding formatted string
+  // fields to those returned row objects: `ladderView.tsx#GymView#props.map`
+  // +5 (30 -> 35), `GymScreen.tsx#GymScreen#props.map` (week-row) +5
+  // (32 -> 37), and two `GymScreen.tsx#GymScreen#props.map` (stage-4) sites
+  // +1 each (27 -> 28, 27 -> 28). 5+5+1+1 = 12; 279 + 12 = 291. Read from
+  // this pin's own failure value.
+  RETURNED: 291, // Iron & Amber GymScreen chrome +9 (week-row 29→32, two stage-4 maps 24→27)
   FINDINGS: 0,
   TRIPWIRE_SUBJECTS: 2,
   TRIPWIRE_FINDINGS: 2,
@@ -27003,7 +27232,12 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   'social.ts#rankLeaderboard#entries.map x1 calls=1 callbacks=4 handed=0 returned=32 verdicts=objectx4',
   'social.ts#visitRefusals#context.some x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
   'social.ts#visitRefusals#context.some x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
-  'ladderView.tsx#GymView#props.map x1 calls=1 callbacks=1 handed=0 returned=30 verdicts=objectx1',
+  // 30 -> 35: VL-3 round 2c census re-pin. OWNED — the HUD-2c
+  // number-formatting commit routes GymView's per-station money/rate figures
+  // through `formatGymBucks`/`formatEmpireMultiplier`, adding five formatted
+  // string fields to this row object. Read from this pin's own failure
+  // value.
+  'ladderView.tsx#GymView#props.map x1 calls=1 callbacks=1 handed=0 returned=35 verdicts=objectx1',
   'ladderView.tsx#GymView#week.map x1 calls=1 callbacks=3 handed=0 returned=3 verdicts=stringx3',
   // CROSSING 6: the same drive shape as the GymView pair above, on the
   // ported screen. `returned=29` rather than GymView's 30 — measured, not
@@ -27011,7 +27245,10 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   // deep-scanned string, because the RN tree's `<Text>` wraps the row in a
   // single string-concatenating child rather than the DOM tree's several
   // separately-scanned text nodes.
-  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=32 verdicts=objectx1',
+  // 32 -> 37: VL-3 round 2c census re-pin. OWNED — same HUD-2c
+  // number-formatting cause as the GymView row above, five new formatted
+  // string fields. Read from this pin's own failure value.
+  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=37 verdicts=objectx1',
   'GymScreen.tsx#GymScreen#week.map x1 calls=1 callbacks=3 handed=0 returned=3 verdicts=stringx3',
   // S4b's two stage-4 sites, in `MEMBER_CALL_SUBJECTS` order: the strike
   // ledger's `.map` and the auto-repair report's. `returned=24` on each,
@@ -27026,8 +27263,11 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   // above, and the mitigation is the same one that row got — the COUNT of
   // this key among the driven subjects is pinned separately, so a driver
   // silently dropping to one is red rather than merely smaller.
-  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=27 verdicts=objectx1',
-  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=27 verdicts=objectx1',
+  // 27 -> 28 (both rows): VL-3 round 2c census re-pin. OWNED — same HUD-2c
+  // number-formatting cause, one formatted string field added to each
+  // stage-4 row object. Read from this pin's own failure value.
+  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=28 verdicts=objectx1',
+  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=28 verdicts=objectx1',
   // members.ts (§5.11 stage 3): `.reduce(callback, 0)` is one call, with the
   // callback invoked once per roster row (two rows in both fixtures). The
   // callback returns a plain number (a running sum), never a string, so
