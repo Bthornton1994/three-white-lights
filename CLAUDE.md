@@ -1395,6 +1395,78 @@ feel knobs: `FLOOR_MEMBER_IDLE_BREATH_PERIOD_MS`, `FLOOR_MEMBER_GAIT_TRANSITION_
 under `src/shell/`, `src/game/`, `src/tuning/` or any other Session A
 directory; nothing on #52; nothing merged.
 
+### VL-3 ROUND 2B — THE CONTAINER RESET TOOK A ROUND'S WORK, AND THE BRIEF THAT LOST IT WAS MINE
+
+Recorded before this round's work, as this section requires, and led with the
+failure because it is the reusable part.
+
+**What was lost.** The seventeenth tree death took the whole scratchpad: every
+worktree, every unpushed branch, the task list. `claude/vl3-runtime-2` at
+`9893f8d2` — VL-3's runtime round two, roughly seventy-five minutes of work —
+is gone. `git cat-file -t 9893f8d2` answers *"Not a valid object name"* and
+`git ls-remote --heads origin 'refs/heads/claude/vl3*'` returns nothing.
+
+**Why it was lost, stated as my error rather than the environment's.** Every
+VL-3 builder brief I wrote carried the line **"Never push."** I wrote it to keep
+builders off shared branches, and it did that; it also meant three parallel
+agents accumulated work that existed in exactly one place, on a machine this
+file already records as having rewound sixteen times. The Working Style section
+two screens down says *"Push after every commit. A local commit is not a durable
+artifact here,"* and I read it as advice to the lead rather than a constraint I
+had to pass down. **A builder that cannot push cannot survive a rewind, and the
+instruction that stops it pushing is the instruction that loses its work.**
+
+**The fix, in every brief from here:** each builder owns one `claude/*` branch
+and pushes it to origin after every commit, with the four-attempt backoff and an
+`ls-remote` check, and reports the remote SHA. "Never push" narrows to "never
+push to `main`, to the lane branch, or to another builder's branch," which is
+the property I actually wanted.
+
+**What survived, and it is everything else:** `58295c57` on
+`claude/empire-s5-visual-lane` — the scaffold, art rounds one and two (ten clips,
+ten strips, the sheets), runtime round one (the `memberMotion.ts` stepper, the
+strip renderer, the trace sink), the instruments, the owner route, and Crossing
+VL-3a. Origin was the only surviving copy for the tenth time in this run.
+
+**THE ROUND'S SCOPE, RULED BY A HUMAN: TECHNICAL CONVERGENCE ONLY, AROUND FROZEN
+ART.** The art integrated at `58295c57` is **temporarily frozen**. Not because it
+is finished — two residuals are named below and are not to be argued away — but
+so the runtime around it can be proven production-capable before the art itself
+is judged. Out of scope this round, by name: new character art direction, another
+puppet bake meant to fix aesthetics, silhouette or perspective redesign, another
+dissolve trick to conceal the side-view-to-three-quarter swap, aesthetic recolour
+iteration, UI redesign, mechanics changes, and visual collision avoidance. **If a
+test would only go green by changing art, the answer is to classify it as a
+residual, not to edit the art.**
+
+**The two human-visible residuals carried forward from art round two, recorded so
+no automated result reads as their resolution:**
+
+- **A.** The bench transition now meets at one pelvis with real silhouette
+  overlap (measured intersection-over-union 33.2%, 41.8% ignoring the bar), and
+  it still reads as a **side-view to three-quarter cut-out-puppet swap**.
+- **B.** The breath and head nod are now measurable at phone size (idle frames 0
+  and 6 differ on 29.1% of the body's pixels at 74 px, against 0.0% before) and
+  remain **intentionally subtle**; whether they read on a phone is a human call.
+
+**The gates this round may close** — TECHNICAL MOTION, RUNTIME TRANSITION,
+IDENTITY, SEAT/OCCUPANCY CONSUMPTION, PERFORMANCE-WEB, EVIDENCE HARNESS — and
+**the gates it may not**: VISUAL, WORLD LEGIBILITY, ANIMATION FEEL, SOFT-FEEL,
+OWNER PLAYTEST, NATIVE PERFORMANCE. Web performance is reported as web
+performance; no native number is fabricated from a browser.
+
+**The tick-28 freeze is unchanged and is now sharper.** Grok B's occupied-cell
+pathing correction has not been accepted at a new frozen SHA, so the mechanics
+residual stays explicit and visible in the evidence: the renderer draws the
+overlap the contract produces. An unaccepted mechanics merge is not integrated to
+improve a video.
+
+**Models, since the run is now mixed.** Fable 5.1 is usage-blocked; Opus 5
+supervises integration and Sonnet 5 High runs the bounded implementation and test
+workers. Neither substitutes for Fable's visual judgement, and this entry does
+not pretend otherwise — the handoff packet at the end of the round exists exactly
+because that judgement is the thing this round cannot supply.
+
 ### Branch / worktree policy
 
 | Lane | Branches | Worktree |
