@@ -12784,7 +12784,12 @@ const DRIVE_CENSUS = Object.freeze({
   // `ROWS` above. Read from this pin's own failure value.
   // 31_159_976 -> 31_678_874: VL-3 round 2b census re-pin, second pass,
   // same reason as `ROWS` above.
-  STRINGS: 31_678_874, // VL-2: foreign-point widening; settle helpers; +6 presentationWorld seats keys (124fb132); VL-2B frame cap +3. Read from this pin.
+  // 31_678_874 -> 31_679_181: VL-3 round 2c (Session B, this lane). OWNED —
+  // the same `stationView.ts` formatters that moved `NODES` above. It
+  // surfaced only after `NODES` was pinned: both assertions sit in one test,
+  // so the first failure hid the second until it passed. Read from this
+  // pin's own failure value on the merged tree.
+  STRINGS: 31_679_181, // VL-2: foreign-point widening; settle helpers; +6 presentationWorld seats keys (124fb132); VL-2B frame cap +3. Read from this pin.
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -12898,7 +12903,14 @@ const DRIVE_CENSUS = Object.freeze({
   // Read from this pin's own failure value.
   // 4640 -> 4658: VL-3 round 2b census re-pin, second pass, same reason as
   // `ROWS` above.
-  DISTINCT_STRINGS: 4658, // VL-2B frame cap +1. // VL-2 clip / camera literals; tween knob removed; +3 seats / usingId / changeoverTicks (124fb132). Read from this pin.
+  // 4658 -> 4697: VL-3 round 2c (Session B, this lane). OWNED — the third
+  // and last of the cascade in this one test, behind `NODES` and `STRINGS`.
+  // The player-facing number formatting changes the STRINGS the drive
+  // produces, so distinct values move with them: a HUD row that read
+  // `177.83999999999997` now reads `177.92`, and every formatted site is a
+  // different literal than it was. Read from this pin's own failure value on
+  // the merged tree.
+  DISTINCT_STRINGS: 4697, // VL-2B frame cap +1. // VL-2 clip / camera literals; tween knob removed; +3 seats / usingId / changeoverTicks (124fb132). Read from this pin.
   // 0 -> 1: Stage C.1b GymScreen tree one node deeper than VALUE_WALK_MAX_DEPTH.
   DEPTH_CUTS: 7,
   /**
