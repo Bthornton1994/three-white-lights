@@ -691,43 +691,208 @@ describe('phase desync (d) and no reset on a harmless re-render (e)', () => {
   });
 });
 
-describe('facing flip gate: mid-stride flips are blocked (e)', () => {
-  it('allows a flip only at the frames item 5 names, and never on a bench clip touching the bar', () => {
-    // idle / wait: every frame (symmetric sway).
-    for (let f = 0; f < MEMBER_MOTION_CLIP_SPECS.idle.frames; f += 1) expect(memberMotionFlipAllowedAt('idle', f)).toBe(true);
-    for (let f = 0; f < MEMBER_MOTION_CLIP_SPECS.wait.frames; f += 1) expect(memberMotionFlipAllowedAt('wait', f)).toBe(true);
-    // walk: only the two ground-contact frames, 0 and the midpoint.
-    const walkFrames = MEMBER_MOTION_CLIP_SPECS.walk.frames;
-    const walkAllowed: number[] = [];
-    for (let f = 0; f < walkFrames; f += 1) if (memberMotionFlipAllowedAt('walk', f)) walkAllowed.push(f);
-    expect(walkAllowed).toEqual([0, walkFrames / 2]);
-    // walk-to-wait: only its last frame (already at rest).
-    const wtwFrames = MEMBER_MOTION_CLIP_SPECS['walk-to-wait'].frames;
-    for (let f = 0; f < wtwFrames; f += 1) {
-      expect(memberMotionFlipAllowedAt('walk-to-wait', f)).toBe(f === wtwFrames - 1);
+describe('facing flip gate: mid-stride flips are blocked, bench-exit flips are not (e)', () => {
+  /**
+   * The frames the AUTHORED half of the gate has always allowed, restated
+   * here rather than imported, so this test still fails if that half is
+   * quietly narrowed. VL-3 round 2c widened the gate by unioning the rig's
+   * own plantless / handover frames onto this list; it removed nothing, and
+   * the first assertion below is what holds that promise.
+   */
+  const AUTHORED: Readonly<Record<MemberMotionClip, readonly number[]>> = {
+    idle: Array.from({ length: MEMBER_MOTION_CLIP_SPECS.idle.frames }, (_unused, f) => f),
+    wait: Array.from({ length: MEMBER_MOTION_CLIP_SPECS.wait.frames }, (_unused, f) => f),
+    walk: [0, MEMBER_MOTION_CLIP_SPECS.walk.frames / 2],
+    'walk-to-wait': [MEMBER_MOTION_CLIP_SPECS['walk-to-wait'].frames - 1],
+    'wait-to-walk': [0],
+    'bench-setup': [0],
+    'bench-mount': [],
+    'bench-press': [],
+    'bench-dismount': [],
+    'bench-finish': [MEMBER_MOTION_CLIP_SPECS['bench-finish'].frames - 1],
+  };
+
+  const RIG_META = memberRigMetadata();
+
+  /** The rig's own reading of a frame: nothing planted, or the plant hands over here. */
+  function rigAllows(clip: MemberMotionClip, frame: number): boolean {
+    const frames = RIG_META.clips[clip].frames;
+    const here = frames[frame];
+    if (here === undefined) return false;
+    if (here.plantedFoot === null) return true;
+    return frame > 0 && frames[frame - 1]?.plantedFoot !== here.plantedFoot;
+  }
+
+  function allowedFrames(clip: MemberMotionClip): number[] {
+    const out: number[] = [];
+    for (let f = 0; f < MEMBER_MOTION_CLIP_SPECS[clip].frames; f += 1) {
+      if (memberMotionFlipAllowedAt(clip, f)) out.push(f);
     }
-    // wait-to-walk: only its first frame (not yet moved).
-    const wwFrames = MEMBER_MOTION_CLIP_SPECS['wait-to-walk'].frames;
-    for (let f = 0; f < wwFrames; f += 1) {
-      expect(memberMotionFlipAllowedAt('wait-to-walk', f)).toBe(f === 0);
-    }
-    // bench-setup: only its first frame (still standing, not yet on the bench).
-    const setupFrames = MEMBER_MOTION_CLIP_SPECS['bench-setup'].frames;
-    for (let f = 0; f < setupFrames; f += 1) {
-      expect(memberMotionFlipAllowedAt('bench-setup', f)).toBe(f === 0);
-    }
-    // bench-finish: only its last frame (back on its feet).
-    const finishFrames = MEMBER_MOTION_CLIP_SPECS['bench-finish'].frames;
-    for (let f = 0; f < finishFrames; f += 1) {
-      expect(memberMotionFlipAllowedAt('bench-finish', f)).toBe(f === finishFrames - 1);
-    }
-    // mount / press / dismount: never, at any frame — a member on the bar
-    // never reads as anything but wrong mirrored.
-    for (const clip of ['bench-mount', 'bench-press', 'bench-dismount'] as const) {
-      for (let f = 0; f < MEMBER_MOTION_CLIP_SPECS[clip].frames; f += 1) {
-        expect(memberMotionFlipAllowedAt(clip, f)).toBe(false);
+    return out;
+  }
+
+  it('never narrows: every frame the authored list allows is still allowed', () => {
+    for (const clip of MEMBER_MOTION_CLIPS) {
+      for (const frame of AUTHORED[clip]) {
+        expect(memberMotionFlipAllowedAt(clip, frame)).toBe(true);
       }
     }
+  });
+
+  it('allows exactly the authored frames unioned with the rig\'s plantless and handover frames, and nothing else', () => {
+    let rigOnly = 0;
+    for (const clip of MEMBER_MOTION_CLIPS) {
+      const expected: number[] = [];
+      for (let f = 0; f < MEMBER_MOTION_CLIP_SPECS[clip].frames; f += 1) {
+        const authored = AUTHORED[clip].includes(f);
+        const rig = rigAllows(clip, f);
+        if (authored || rig) expected.push(f);
+        if (rig && !authored) rigOnly += 1;
+      }
+      expect({ clip, allowed: allowedFrames(clip) }).toEqual({ clip, allowed: expected });
+    }
+    // NON-VACUITY: the union is not the authored list. Round 2c measured the
+    // rig contributing 20 frames the authored list refused — bench-mount 0-2,
+    // bench-press 0-11 and bench-dismount 0-2 (plantless), plus bench-setup
+    // f2 and bench-finish f3 (the plant handing over). Pinned as a count so
+    // a rig re-author that silently drops the contribution reddens here
+    // rather than leaving this test comparing two identical lists.
+    expect(rigOnly).toBe(20);
+  });
+
+  it('still refuses every frame of the walk that is not a ground contact', () => {
+    // The defect this gate exists for is unchanged: mid-stride the walk
+    // plants a foot on every frame and hands over only at 0 and the midpoint.
+    expect(allowedFrames('walk')).toEqual([0, MEMBER_MOTION_CLIP_SPECS.walk.frames / 2]);
+    const refused = MEMBER_MOTION_CLIP_SPECS.walk.frames - 2;
+    expect(refused).toBeGreaterThan(0);
+  });
+
+  it('allows every frame of the bench exit, because the rig plants nothing there', () => {
+    // bench-dismount: the member is off the ground line on all three frames.
+    for (let f = 0; f < MEMBER_MOTION_CLIP_SPECS['bench-dismount'].frames; f += 1) {
+      expect(RIG_META.clips['bench-dismount'].frames[f]?.plantedFoot).toBeNull();
+      expect(memberMotionFlipAllowedAt('bench-dismount', f)).toBe(true);
+    }
+    // bench-finish f3 is the handover: the authored sole jumps there anyway.
+    const finish = RIG_META.clips['bench-finish'].frames;
+    expect(finish[2]?.plantedFoot).not.toBe(finish[3]?.plantedFoot);
+    expect(memberMotionFlipAllowedAt('bench-finish', 3)).toBe(true);
+  });
+});
+
+describe('VL-3 round 2c: a member leaving a bench the other way turns within the hysteresis', () => {
+  /**
+   * THE WITNESS THE ROUND 2C BRIEF ASKED FOR, KEPT AS A TEST.
+   *
+   * Round 2b left `facingStable` red and named two mechanisms. One is the
+   * ART residual (the sim walks members toward and away from the camera and
+   * the art has only side-view gaits) and is not a runtime defect. The other
+   * is this one, and it is: a member leaving a bench in the direction
+   * opposite the station's facing was DRAWN travelling that way while
+   * `facing` still said the other, because the flip gate refused every frame
+   * of `bench-dismount` and all but the last of `bench-finish`.
+   *
+   * Driven here at 60 Hz through the shipped garage camera at the evidence
+   * tools' 390-wide stage. Before the fix the disagreement ran 62 consecutive
+   * moving frames. It must now be no longer than the hysteresis itself —
+   * which is a REQUIREMENT, not a defect: `FLOOR_MEMBER_FACING_FLIP_TILES`
+   * of opposed travel is what stops a body chattering on sub-pixel noise,
+   * and the frames it costs are frames the body is meant to spend committed
+   * to its old facing.
+   */
+  const BENCH = Object.freeze({ x: 5, y: 2 });
+
+  function driveBenchExit(): { readonly longestRun: number; readonly flipAt: number | null; readonly movingFrames: number; readonly flips: number } {
+    const b = body({ tick: 0, cell: BENCH, clip: 'use-bench', lifecycle: 'using', facing: 'right' }, true);
+    let now = 0;
+    for (let i = 0; i < 60; i += 1) {
+      const tick = Math.floor(now / TICK_MS);
+      step(b, inputOf({ tick, cell: BENCH, clip: 'use-bench', lifecycle: 'using', facing: 'right' }), now);
+      now += FRAME_MS;
+    }
+    const leaveStart = Math.floor(now / TICK_MS);
+    let previousX: number | null = null;
+    let previousFacing: FloorSpriteFacing = 'right';
+    let run = 0;
+    let longestRun = 0;
+    let flipAt: number | null = null;
+    let movingFrames = 0;
+    let flips = 0;
+    for (let i = 0; i < 200; i += 1) {
+      const tick = Math.floor(now / TICK_MS);
+      const cellX = BENCH.x - STEP_TILES * (tick - leaveStart);
+      const out = step(b, inputOf({ tick, cell: { x: cellX, y: BENCH.y }, clip: 'walk', lifecycle: 'leaving', facing: 'left' }), now);
+      const dx = previousX === null ? 0 : out.drawn.x - previousX;
+      previousX = out.drawn.x;
+      if (out.facing !== previousFacing) {
+        flips += 1;
+        if (flipAt === null) flipAt = i;
+        previousFacing = out.facing;
+      }
+      // A frame counts as moving only above a sub-pixel floor, so numeric
+      // noise is not judged as travel.
+      const moving = Math.abs(dx) > SUB_PIXEL_PX;
+      if (moving) movingFrames += 1;
+      if (moving && (dx < 0) !== (out.facing === 'left')) {
+        run += 1;
+        if (run > longestRun) longestRun = run;
+      } else {
+        run = 0;
+      }
+      now += FRAME_MS;
+    }
+    return { longestRun, flipAt, movingFrames, flips };
+  }
+
+  /** Half a pixel: below this a frame is noise, not travel. */
+  const SUB_PIXEL_PX = 0.5;
+
+  it('turns within the hysteresis rather than walking backwards through the whole exit', () => {
+    const measured = driveBenchExit();
+    // NON-VACUITY: the drive really does walk, and really does turn once.
+    expect(measured.movingFrames).toBeGreaterThan(100);
+    expect(measured.flips).toBe(1);
+    // The hysteresis, derived rather than written: the flip needs
+    // FLOOR_MEMBER_FACING_FLIP_TILES of opposed travel, and the exit is
+    // drawn at a measured 1.755 px per frame at this bench's depth.
+    const tilePx = 37.17;
+    const perFramePx = 1.755;
+    const hysteresisFrames = Math.ceil((EMPIRE_TUNING.FLOOR_MEMBER_FACING_FLIP_TILES * tilePx) / perFramePx);
+    expect(measured.longestRun).toBeLessThanOrEqual(hysteresisFrames);
+    // And well inside the instrument's own bar, one gait transition of
+    // disagreement at a 60 Hz frame clock.
+    const instrumentBar = Math.ceil(EMPIRE_TUNING.FLOOR_MEMBER_GAIT_TRANSITION_MS / FRAME_MS);
+    expect(measured.longestRun).toBeLessThan(instrumentBar);
+    // The flip lands on a bench-dismount frame — the rig plants nothing
+    // there — not on the far side of bench-finish.
+    expect(measured.flipAt).not.toBeNull();
+    expect(measured.flipAt as number).toBeLessThan(20);
+  });
+
+  it('does not chatter: a body jittering under the flip threshold never turns', () => {
+    // The same exit, but the contract barely moves. Opposed travel never
+    // reaches FLOOR_MEMBER_FACING_FLIP_TILES, so the hysteresis must hold
+    // the facing for the whole drive even though every bench-exit frame is
+    // now flip-ALLOWED.
+    const b = body({ tick: 0, cell: BENCH, clip: 'use-bench', lifecycle: 'using', facing: 'right' }, true);
+    let now = 0;
+    for (let i = 0; i < 60; i += 1) {
+      const tick = Math.floor(now / TICK_MS);
+      step(b, inputOf({ tick, cell: BENCH, clip: 'use-bench', lifecycle: 'using', facing: 'right' }), now);
+      now += FRAME_MS;
+    }
+    let turned = 0;
+    for (let i = 0; i < 200; i += 1) {
+      const tick = Math.floor(now / TICK_MS);
+      // A hundredth of a tile of jitter either way — two orders below the
+      // flip threshold, and alternating so it never accumulates.
+      const cellX = BENCH.x + (i % 2 === 0 ? -0.01 : 0.01);
+      const out = step(b, inputOf({ tick, cell: { x: cellX, y: BENCH.y }, clip: 'walk', lifecycle: 'leaving', facing: 'left' }), now);
+      if (out.facing !== 'right') turned += 1;
+      now += FRAME_MS;
+    }
+    expect(turned).toBe(0);
   });
 });
 

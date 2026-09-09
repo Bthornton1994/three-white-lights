@@ -475,24 +475,107 @@ export function memberMotionFrameAt(clip: MemberMotionClip, phase: number): numb
 }
 
 /**
+ * The frames of each clip a left-right mirror may land on WITHOUT moving a
+ * foot the rig had planted — read from the rig's own solved frames once at
+ * module load, beside `RIG_CYCLE_ADVANCE_PX` and for the same reason (the
+ * FK is pure but not free).
+ *
+ * Two facts about a frame make a mirror harmless, and both are the rig's to
+ * state rather than this file's to guess:
+ *
+ *   1. NOTHING IS PLANTED (`plantedFoot === null`). A mirror reflects the
+ *      body about its root; if no foot is in contact, there is no contact
+ *      point for it to move. Measured on the shipped rig: every frame of
+ *      `bench-mount` (3), `bench-press` (12) and `bench-dismount` (3) is
+ *      plantless — the member is on the bar, feet off the design's ground
+ *      line — and no frame of any other clip is.
+ *
+ *   2. THE PLANT HANDS OVER ON THIS FRAME — the planted foot differs from
+ *      the one the PREVIOUS FRAME OF THE SAME CLIP planted. At such a frame
+ *      the authored sole already jumps across the body (measured on
+ *      `bench-finish` f3: 186.19 px to 140.34 px in a 256 px canvas), so a
+ *      mirror introduces no discontinuity that the art does not already
+ *      have there. The clip's FIRST frame is deliberately NOT counted: its
+ *      run may have begun in the clip before it, which this table cannot
+ *      see, and `walk-to-wait` f0 is exactly that case — it continues the
+ *      walk's own nearFoot plant (both at sole x 181.29).
+ *
+ * Neither rule can be stated by reading this file. Both were wrong to
+ * hardcode and are now derived, so a re-authored rig moves them without an
+ * edit here.
+ */
+const RIG_MIRRORABLE_FRAMES: Readonly<Record<MemberMotionClip, ReadonlySet<number>>> = (() => {
+  const metadata = memberRigMetadata();
+  const out: Partial<Record<MemberMotionClip, ReadonlySet<number>>> = {};
+  for (const clip of MEMBER_MOTION_CLIPS) {
+    const frames = metadata.clips[clip].frames;
+    const allowed = new Set<number>();
+    frames.forEach((frame, index) => {
+      if (frame.plantedFoot === null) {
+        allowed.add(index);
+        return;
+      }
+      if (index > 0 && frames[index - 1]?.plantedFoot !== frame.plantedFoot) allowed.add(index);
+    });
+    out[clip] = allowed;
+  }
+  return Object.freeze(out as Record<MemberMotionClip, ReadonlySet<number>>);
+})();
+
+/**
  * Whether a facing flip may take effect while a production strip is showing
  * `clip` at `frame` (e). A flip mirrors the whole body left-right about its
  * root, so mid-stride it swaps which foot is forward WITHOUT moving either
- * foot — the planted one jumps across the body. Gated to frames where that
- * either does not matter (`idle` / `wait`, whose authored sway is
- * left-right symmetric enough that a mirror reads as the same pose — every
- * frame) or does no damage (a frame where the pose is already planted /
- * symmetric): the walk's two ground-contact frames (0, the leading foot's
- * contact, and the midpoint, the trailing foot's — `frames / 2`, not
- * `frames - 1`, since the walk LOOPS and its last frame is one step short of
- * the next contact); the standing end of each gait transition (`walk-to-
- * wait`'s last frame, already at rest; `wait-to-walk`'s first, not yet
+ * foot — the planted one jumps across the body.
+ *
+ * TWO SOURCES, UNIONED, AND THE SECOND IS WHY THIS FUNCTION CHANGED.
+ *
+ * The first is the authored list this function has always carried, kept
+ * verbatim: `idle` / `wait` on every frame (their sway is symmetric enough
+ * that a mirror reads as the same pose, and a standing body must be able to
+ * turn the instant its contract says so); the walk's two ground-contact
+ * frames (0, the leading foot's, and `frames / 2`, the trailing foot's —
+ * not `frames - 1`, since the walk LOOPS and its last frame is one step
+ * short of the next contact); the standing end of each gait transition
+ * (`walk-to-wait`'s last, already at rest; `wait-to-walk`'s first, not yet
  * moved); and the bench walker's frames away from the bar (`bench-setup`'s
- * first frame, still standing; `bench-finish`'s last, back on its feet).
- * `bench-mount`, `bench-press` and `bench-dismount` never allow one — there
- * is no frame of a member on the bar that a mirror does not visibly wrong.
+ * first, still standing; `bench-finish`'s last, back on its feet).
+ *
+ * The second is `RIG_MIRRORABLE_FRAMES` — the frames the RIG says carry no
+ * plant to break. It is a union, never a filter: every frame the authored
+ * list allowed is still allowed, and no frame is taken away.
+ *
+ * WHAT THAT UNION FIXES, MEASURED RATHER THAN ARGUED. The authored list
+ * refused a flip on all 3 frames of `bench-dismount` and on 4 of the 5
+ * frames of `bench-finish`, on the stated ground that "there is no frame of
+ * a member on the bar that a mirror does not visibly wrong". That sentence
+ * is true of `bench-mount` and `bench-press` and FALSE of the exit: driven
+ * at 60 Hz through the shipped camera, a member leaving a bench to the left
+ * is DRAWN travelling left at 1.755 px per frame from the sixth frame of
+ * the exit, while `facing` stays `right` for 62 consecutive moving frames —
+ * the whole of the dismount and all but the last frame of the finish. The
+ * hysteresis is satisfied within about six of those frames; the other ~56
+ * are this gate withholding a flip it has already earned. A body walking
+ * backwards for a second is a worse artefact than a mirrored pose, and the
+ * rig says the mirror was never the artefact here anyway: all three
+ * `bench-dismount` frames plant nothing, and `bench-finish` f3 is where the
+ * plant hands over and the sole jumps regardless.
+ *
+ * The rig adds exactly five frames to the authored list — `bench-mount`
+ * 0-2, `bench-press` 0-11, `bench-dismount` 0-2 (plantless), plus
+ * `bench-setup` f2 and `bench-finish` f3 (handovers) — and adds nothing to
+ * `walk`, `walk-to-wait`, `wait-to-walk`, `idle` or `wait`, whose authored
+ * frames it already agrees with or leaves alone. `bench-mount` and
+ * `bench-press` gaining frames is inert in practice: a body on the bar is
+ * `using`, and the `using` arm takes the station's facing, which does not
+ * change while it is held there.
+ *
+ * NO ART MOVED FOR THIS. The strips, the puppet and the rig are byte-
+ * identical; what changed is which of the frames they already contain this
+ * function is willing to mirror.
  */
 export function memberMotionFlipAllowedAt(clip: MemberMotionClip, frame: number): boolean {
+  if (RIG_MIRRORABLE_FRAMES[clip].has(frame)) return true;
   if (clip === 'idle' || clip === 'wait') return true;
   if (clip === 'walk') {
     const frames = MEMBER_MOTION_CLIP_SPECS.walk.frames;
