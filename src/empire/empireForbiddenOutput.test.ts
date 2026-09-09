@@ -12654,7 +12654,11 @@ const DRIVE_CENSUS = Object.freeze({
   // above. Read from this pin's own failure value.
   // 6758803 -> 6869557: VL-3 round 2b census re-pin, second pass, same
   // reason as `ROWS` above.
-  NODES: 6869557, // VL-2: foreign-point widening; settle helpers; +3 presentationWorld seats (124fb132). Read from this pin.
+  // 6869557 -> 6869561: VL-3 round 2c census re-pin. OWNED — this lane's own
+  // four new drive rows (`plateLoadingZIndex` x2, `formatGymBucks`,
+  // `formatEmpireMultiplier`), one node each from the returned value walk.
+  // Read from this pin's own failure value.
+  NODES: 6869561, // VL-2: foreign-point widening; settle helpers; +3 presentationWorld seats (124fb132). Read from this pin.
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -18595,7 +18599,20 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // `stepAwayFrom`/`stepWander`/`advanceMember`) plus OWNED (this round's own
   // re-pinned array entries and re-pin comments added to this file, which the
   // walk also counts). Read from this pin's own failure value.
-  NODES_EXAMINED: 109_099, // VL-2 camera + settle helpers, plate-sized discs; +235 presentationSeats (124fb132); VL-2B seat consumption + relocation glide +101, frame cap +21 (VL-1: 90_495). Read from this pin. Seats by cell +381. Relocation helpers + panel text +265.
+  // 109_099 -> 109_521: VL-3 round 2c census re-pin, second pass. MIXED, same
+  // self-referential reason as the entry directly above — the walk covers
+  // this test file's own source, and by this point in the round it also
+  // covers this file's own OWNED re-pin comments and array entries for the
+  // three new stationView.ts exports and the memberMotion.ts facing-gate
+  // fix (formatGymBucks/formatEmpireMultiplier/plateLoadingZIndex drive
+  // rows, DECLARED_FRESH_RECEIVERS/SHIPPED_SCREEN_DISAGREEMENTS/
+  // DECLARED_CALL_TARGETS/DECLARED_MEMBER_CALLS_ON_PARAMETERS/
+  // MEMBER_CALL_PASS_UNDRIVEN updates and their own explanatory comments),
+  // on top of the Grok B occupied-cell pathing merge nodes already counted
+  // above. Read from this pin's own failure value; not decomposed further
+  // into INHERITED/OWNED per node, since this pin moves with the census
+  // file's own edit volume by construction.
+  NODES_EXAMINED: 109_521, // VL-2 camera + settle helpers, plate-sized discs; +235 presentationSeats (124fb132); VL-2B seat consumption + relocation glide +101, frame cap +21 (VL-1: 90_495). Read from this pin. Seats by cell +381. Relocation helpers + panel text +265.
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -27024,6 +27041,14 @@ const MEMBER_CALL_PASS_UNDRIVEN: readonly string[] = Object.freeze([
   'memberRig.ts#boundsOf#placed.get x1',
   'memberRig.ts#framePoint#frame.find x1',
   'memberRig.ts#partByName#puppet.find x1',
+  // VL-3 round 2c census re-pin. OWNED — the HUD-2c number-formatting
+  // commit's two `.toFixed()` calls. Same shape as `withTransitBlocked#
+  // blocked.slice x0` above: the single argument is a plain number
+  // (`EMPIRE_TUNING.GYM_BUCKS_DISPLAY_DECIMALS`/`EMPIRE_MULTIPLIER_
+  // DISPLAY_DECIMALS`), not a caller-supplied callback, so there is no
+  // callback for this dedicated member-call pass to intercept or drive.
+  'stationView.ts#formatEmpireMultiplier#multiplier.toFixed x1',
+  'stationView.ts#formatGymBucks#amountGymBucks.toFixed x1',
 ]);
 
 interface MemberCallResult {
@@ -27378,7 +27403,11 @@ describe('the member-call pass — what a caller-supplied method is actually han
     // `floorSim.ts#withTransitBlocked#blocked.slice x0`, undriven for the
     // same private-helper/fresh-literal reason as
     // `floorSim.ts#advanceMember#observations.push x1` above it.
-    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(15);
+    // 15 -> 17: VL-3 round 2c census re-pin. OWNED — the HUD-2c
+    // number-formatting commit's two `.toFixed()` sites, undriven because
+    // their single argument is a plain number rather than a caller-supplied
+    // callback.
+    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(17);
     expect(driven.length).toBe(MEMBER_CALL_PASS_CENSUS.SUBJECTS);
     // Both `visitRefusals` sites are driven, and they share a key. A `Set` of
     // the driven sites would have quietly collapsed them, so the count of that
