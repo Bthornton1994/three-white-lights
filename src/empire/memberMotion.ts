@@ -174,6 +174,9 @@ export type MemberMotionDraw =
     };
 
 /** Everything the renderer writes for one body after one step. */
+/** A transition edge as `from>to`, over the clip vocabulary and nothing else. */
+export type MemberMotionTransitionLabel = `${MemberMotionClip}>${MemberMotionClip}`;
+
 export interface MemberMotionOutput {
   /** The capped elapsed this frame advanced by, in milliseconds. */
   readonly elapsedMs: number;
@@ -200,8 +203,14 @@ export interface MemberMotionOutput {
   readonly relocating: boolean;
   /** A transition clip is running or a blend is in flight. */
   readonly transitioning: boolean;
-  /** The edge taken this frame as `from>to`, or null. */
-  readonly transition: string | null;
+  /**
+   * The edge taken this frame as `from>to`, or null. Typed as a template
+   * literal over the clip vocabulary, not `string`, so the evidence-only
+   * trace sink that copies this record onto a `globalThis` key carries no
+   * bare-string field a laundered name could ride out on — the shared
+   * forbidden-output census verifies that through the checker.
+   */
+  readonly transition: MemberMotionTransitionLabel | null;
   readonly draw: MemberMotionDraw;
 }
 
@@ -606,7 +615,7 @@ export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput,
   let motionClip = state.motionClip;
   let motionPhase = state.motionPhase;
   let motionOutgoing = state.motionOutgoing;
-  let transition: string | null = null;
+  let transition: MemberMotionTransitionLabel | null = null;
   if (motionClip !== target) {
     const spec = MEMBER_MOTION_CLIP_SPECS[motionClip];
     const finished = spec.loop || motionPhase >= 1;
