@@ -851,18 +851,34 @@ export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput,
   // bodies only (`memberMotionFlipAllowedAt`): a flip mid-stride mirrors the
   // planted foot across the body, so a threshold crossing this frame is
   // held (the accumulator is NOT reset) until a frame the gate allows.
+  //
+  // THE STATION ARM IS SCOPED TO A BODY THAT IS NOT TRAVELLING, AND THAT
+  // SCOPE IS THE ROUND 2C FIX. A `using` or `queuing` body takes its
+  // station's side at once, which is right for a body standing at a bench or
+  // waiting in a queue and WRONG for one still walking to its queue cell:
+  // `memberFacing` hands a queued member the STATION's side, so a member
+  // approaching a queue slot from the far side was drawn facing the station
+  // while its own feet carried it the other way. Measured on the played path
+  // at 375x812: the flip to `left` lands on the first frame of the walk
+  // (tick 65) while the drawn point is still moving RIGHT at 1.89 px per
+  // frame, and it keeps moving right for seven more frames — an 11-frame
+  // disagreement run and, over the stance it spans, a 0.92-tile foot skate.
+  // A travelling body therefore goes to the velocity arm below, whose
+  // hysteresis is what stops it chattering; the station's side is taken the
+  // moment the body actually stops, unchanged from before.
+  const travelling = drawnDx !== 0 && tileHere > 0;
   let facing = state.facing;
   let facingOpposedTiles = state.facingOpposedTiles;
   let facingHintMs = state.facingHintMs;
   if (!state.production) {
     facing = p.facing;
-  } else if (p.lifecycle === 'using' || p.lifecycle === 'queuing') {
+  } else if (!travelling && (p.lifecycle === 'using' || p.lifecycle === 'queuing')) {
     if (p.facing !== facing && memberMotionFlipAllowedAt(motionClip, frame)) {
       facing = p.facing;
     }
     facingOpposedTiles = 0;
     facingHintMs = 0;
-  } else if (drawnDx !== 0 && tileHere > 0) {
+  } else if (travelling) {
     const movingLeft = drawnDx < 0;
     if (movingLeft !== (facing === 'left')) {
       facingOpposedTiles += Math.abs(drawnDx) / tileHere;

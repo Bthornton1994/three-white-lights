@@ -896,6 +896,75 @@ describe('VL-3 round 2c: a member leaving a bench the other way turns within the
   });
 });
 
+describe('VL-3 round 2c: a queued member still walking faces the way it walks, not the station', () => {
+  /**
+   * THE SECOND RUNTIME FACING DEFECT ROUND 2C FOUND, and it was found by
+   * reading the trace rather than by reasoning about the code.
+   *
+   * `memberFacing` hands a `queuing` member the STATION's side, and the
+   * stepper took that side AT ONCE for any `using` or `queuing` body. That
+   * is right for a body standing in a queue and wrong for one still walking
+   * to its queue cell from the far side: measured on the played path at
+   * 375x812, the facing flipped to `left` on the first frame of the walk
+   * (tick 65) while the drawn point was still moving RIGHT at 1.89 px per
+   * frame, and the body kept moving right for seven more frames — an
+   * 11-frame disagreement run, and a 0.92-tile foot skate over the stance
+   * it spanned.
+   *
+   * The station arm is now scoped to a body that is not travelling. A
+   * queued body that has stopped still takes its station's side at once,
+   * which the second test below holds.
+   */
+  const QUEUE = Object.freeze({ x: 6, y: 1 });
+
+  it('walking rightward into a queue whose station is to the left does not face left while travelling right', () => {
+    // Approach the queue cell from the LEFT (so the feet travel right) while
+    // the contract insists on the station's side, `left`.
+    const b = body({ tick: 0, cell: { x: 1, y: QUEUE.y }, clip: 'walk', lifecycle: 'queuing', facing: 'left' }, true);
+    let now = 0;
+    let previousX: number | null = null;
+    let movingRight = 0;
+    let facingLeftWhileMovingRight = 0;
+    for (let i = 0; i < 120; i += 1) {
+      const tick = Math.floor(now / TICK_MS);
+      const cellX = Math.min(1 + STEP_TILES * tick, QUEUE.x);
+      const out = step(b, inputOf({ tick, cell: { x: cellX, y: QUEUE.y }, clip: 'walk', lifecycle: 'queuing', facing: 'left' }), now);
+      const dx = previousX === null ? 0 : out.drawn.x - previousX;
+      previousX = out.drawn.x;
+      if (dx > 0.5) {
+        movingRight += 1;
+        if (out.facing === 'left') facingLeftWhileMovingRight += 1;
+      }
+      now += FRAME_MS;
+    }
+    // NON-VACUITY: the drive really does travel rightward for a long stretch.
+    expect(movingRight).toBeGreaterThan(30);
+    // The hysteresis still costs frames — the body starts facing left and
+    // must earn its turn — but not the whole approach.
+    const hysteresisFrames = Math.ceil(
+      (EMPIRE_TUNING.FLOOR_MEMBER_FACING_FLIP_TILES * CAMERA.tile) / 1.0,
+    );
+    expect(facingLeftWhileMovingRight).toBeLessThan(hysteresisFrames);
+    expect(facingLeftWhileMovingRight).toBeLessThan(movingRight);
+  });
+
+  it('a queued member that has STOPPED still takes its station side at once', () => {
+    // Parked on the queue cell, contract facing left, body facing right.
+    // Nothing travels, so the station arm applies exactly as before.
+    const b = body({ tick: 0, cell: QUEUE, clip: 'wait', lifecycle: 'queuing', facing: 'right' }, true);
+    let now = 0;
+    for (let i = 0; i < 30; i += 1) {
+      const tick = Math.floor(now / TICK_MS);
+      step(b, inputOf({ tick, cell: QUEUE, clip: 'wait', lifecycle: 'queuing', facing: 'right' }), now);
+      now += FRAME_MS;
+    }
+    const tick = Math.floor(now / TICK_MS);
+    const out = step(b, inputOf({ tick, cell: QUEUE, clip: 'wait', lifecycle: 'queuing', facing: 'left' }), now);
+    // One frame, no hysteresis, no hint window: the station's side, at once.
+    expect(out.facing).toBe('left');
+  });
+});
+
 describe('gait transitions are distance-driven, and planting holds across the cut (VL-3 runtime round two, item 2)', () => {
   const RIG = memberRigMetadata();
   const SIDE = EMPIRE_TUNING.FLOOR_MEMBER_DRAW_SCALE_TILES * CAMERA.tile;

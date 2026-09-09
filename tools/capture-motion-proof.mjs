@@ -446,6 +446,17 @@ const SETTLE_MS = T.FLOOR_MEMBER_SETTLE_MS;
 const BACK_SCALE = T.FLOOR_CAMERA_BACK_SCALE;
 const GAIT_TRANSITION_MS = T.FLOOR_MEMBER_GAIT_TRANSITION_MS;
 const FOOT_TOLERANCE = T.FLOOR_MEMBER_MOTION_PROOF_FOOT_DRIFT_TOLERANCE_TILES;
+/**
+ * The most a foot measured off the SHOWN strip frame can saw, in tiles,
+ * with the body perfectly planted — one authored frame of the walk's own
+ * stride. Derived from the rig and the clip table, never written: the walk
+ * has `MEMBER_MOTION_CLIP_SPECS.walk.frames` frames over `strideTiles` of
+ * authored advance, so consecutive frames retreat the planted sole by
+ * `strideTiles / frames` while the drawn point moves continuously between
+ * them. Null until the rig loads. REPORTED ONLY — no verdict reads it.
+ */
+const QUANTISATION_BOUND_TILES = () =>
+  rigMetadata === null ? null : rigMetadata.strideTiles / clips.MEMBER_MOTION_CLIP_SPECS.walk.frames;
 const STATION_TOLERANCE = T.FLOOR_MEMBER_MOTION_PROOF_STATION_OFFSET_TOLERANCE_TILES;
 const GRID_ROWS = T['FLOOR_GRID_SIZE.garage.height'];
 /** The loop's largest per-frame WALKING step: one capped frame at the bounded catch-up on the fastest seeded stride (capture-capacity-proof.mjs's bound, same formula). */
@@ -905,6 +916,18 @@ function analyseFoot(subject, frontTile) {
     const mirror = r.facing === 'left' ? -1 : 1;
     const worldX = r.drawnX + mirror * (sole.x - CANVAS_PX / 2) * (side / CANVAS_PX);
     const tile = tileAt(frontTile, r.scale);
+    // THE SAME FOOT POINT WITH THE STRIP'S FRAME QUANTISATION TAKEN OUT —
+    // REPORTED, NEVER JUDGED. The verdict below is computed from `xs`
+    // exactly as before; `continuousXs` is a second series carried beside it
+    // so a reader can see how much of a stance's drift is the discrete strip
+    // and how much is the body. The walk's authored sole retreats in 16
+    // equal steps (`plantedSole.x(k) = plantedSole.x(0) - k x stridePx/16`,
+    // read from the rig), while the drawn point moves continuously between
+    // them, so a foot measured off the SHOWN frame necessarily saws by up to
+    // one step — `stridePx/16`, `QUANTISATION_BOUND_TILES` below. Replacing
+    // the shown frame's sole with the one the stance's own phase implies
+    // removes exactly that term and nothing else.
+    const phaseHere = Number(r.phase);
     if (
       current !== null &&
       current.key === footKey &&
@@ -912,6 +935,9 @@ function analyseFoot(subject, frontTile) {
       r.now - current.lastNow <= CAP_MS * 4
     ) {
       current.xs.push(worldX / tile);
+      current.continuousXs.push(
+        (r.drawnX + mirror * (current.sole0 - (phaseHere - current.phase0) * rigMetadata.stridePx - CANVAS_PX / 2) * (side / CANVAS_PX)) / tile,
+      );
       current.drawnXs.push(r.drawnX);
       current.drawnYs.push(r.drawnY);
       current.lastNow = r.now;
@@ -920,7 +946,19 @@ function analyseFoot(subject, frontTile) {
         stances.push(current);
         if (current.key === footKey && current.facing !== r.facing) facingFlipBreaks += 1;
       }
-      current = { key: footKey, facing: r.facing, xs: [worldX / tile], drawnXs: [r.drawnX], drawnYs: [r.drawnY], startNow: r.now, lastNow: r.now, tick: r.tick };
+      current = {
+        key: footKey,
+        facing: r.facing,
+        xs: [worldX / tile],
+        continuousXs: [worldX / tile],
+        sole0: sole.x,
+        phase0: phaseHere,
+        drawnXs: [r.drawnX],
+        drawnYs: [r.drawnY],
+        startNow: r.now,
+        lastNow: r.now,
+        tick: r.tick,
+      };
     }
   }
   if (current !== null) stances.push(current);
@@ -955,6 +993,8 @@ function analyseFoot(subject, frontTile) {
       tick: s.tick,
       frames: s.xs.length,
       driftTiles: Math.max(...s.xs) - Math.min(...s.xs),
+      // Reported, never judged — see the collection site's header.
+      continuousDriftTiles: Math.max(...s.continuousXs) - Math.min(...s.continuousXs),
       facing: s.facing,
       netDrawnDeltaPx: netDrawnDelta,
       netDrawnDeltaYPx: netDrawnDeltaY,
@@ -986,8 +1026,29 @@ function analyseFoot(subject, frontTile) {
   const max = Math.max(...horizontal.map((d) => d.driftTiles));
   const mean = horizontal.reduce((a, d) => a + d.driftTiles, 0) / horizontal.length;
   const worst = horizontal.find((d) => d.driftTiles === max);
+  // THE DECOMPOSITION, REPORTED BESIDE THE VERDICT AND CHANGING NO VERDICT.
+  // `ok` above is still `max <= FOOT_TOLERANCE` over `driftTiles`, computed
+  // from the shown frame exactly as it always was. What follows says how
+  // much of that number the strip's own 16-frame quantisation accounts for,
+  // and splits the stances by whether their travel is purely horizontal
+  // (net dy exactly 0 — a member walking along a row) or mixed (net dy
+  // non-zero but smaller than net dx — a member turning a corner, where a
+  // side-view-only gait is being drawn on partly toward/away travel and the
+  // depth-axis limitation this tool already names for wholly depth-axis
+  // stances applies in part).
+  const pureHorizontal = horizontal.filter((d) => d.netDrawnDeltaYPx === 0);
+  const mixedAxis = horizontal.filter((d) => d.netDrawnDeltaYPx !== 0);
+  const maxOf = (list, key) => (list.length === 0 ? null : Math.max(...list.map((d) => d[key])));
   return {
     ok: max <= FOOT_TOLERANCE,
+    quantisationBoundTiles: QUANTISATION_BOUND_TILES(),
+    continuousMaxDriftTiles: maxOf(horizontal, 'continuousDriftTiles'),
+    pureHorizontalStances: pureHorizontal.length,
+    pureHorizontalMaxDriftTiles: maxOf(pureHorizontal, 'driftTiles'),
+    pureHorizontalContinuousMaxDriftTiles: maxOf(pureHorizontal, 'continuousDriftTiles'),
+    mixedAxisStances: mixedAxis.length,
+    mixedAxisMaxDriftTiles: maxOf(mixedAxis, 'driftTiles'),
+    mixedAxisContinuousMaxDriftTiles: maxOf(mixedAxis, 'continuousDriftTiles'),
     stances: horizontal.length,
     maxDriftTiles: max,
     meanDriftTiles: mean,
@@ -1357,7 +1418,7 @@ async function runViewport(browser, viewport) {
   note(`${vp} transitionsLegal DOM: ${domClips.changes} clip change(s), ${domClips.illegal.length} off the table${domClips.illegal.length > 0 ? ` — first ${JSON.stringify(domClips.illegal[0])}` : ''}${domClips.foreignClips.length > 0 ? `; clip names NOT in MEMBER_MOTION_CLIPS: ${domClips.foreignClips.join(', ')}${domClipsAreKnownPendingLegacy ? ' — KNOWN PENDING: all of them are memberAnimation.ts\'s legacy vocabulary, which data-clip still carries (CLAUDE.md "VL-3"); DOM is EXCLUDED from this verdict\'s judgement, TRACE clip is authoritative' : ' — UNRECOGNISED (not legacy, not production): these DO gate the verdict'}` : ''}${traceClips === null ? '' : ` | TRACE: ${traceClips.changes} change(s), ${traceClips.illegal.length} off the table${traceClips.foreignClips.length > 0 ? `, foreign ${traceClips.foreignClips.join(', ')}` : ''}`}; edges read from memberMotionClips.ts: ${TRANSITIONS.length}`);
   note(`${vp} scaleContinuous DOM: max |Δscale| per frame ${fmt(domScale.maxStep, 4)} over ${domScale.pairs} pairs at ${JSON.stringify(domScale.at)}${domScaleIsStaleAttribute ? ' — KNOWN, DOCUMENTED: data-scale is the CONTRACT prop (render-time only, never frame-loop-written); DOM is EXCLUDED from this verdict because TRACE independently proves the PAINTED scale is continuous' : ''}${traceScale === null ? '' : ` | TRACE: ${fmt(traceScale.maxStep, 4)} over ${traceScale.pairs} pairs at ${JSON.stringify(traceScale.at)}`}; bound ${fmt(SCALE_STEP_BOUND, 4)} = ${fmt(SETTLE_FRAME_BOUND_TILES)} tiles/frame × (1/${BACK_SCALE} − 1)/${GRID_ROWS} rows (settle-frame bound ${CAP_MS} × (3/${SETTLE_MS} + ${STEP_PER_TICK}×(1+${JITTER})×(1+${CATCH_UP})/${TICK_MS}))`);
   if (gait !== null) note(`${vp} gaitCycle ${gait.ok === null ? `SKIP: ${gait.skip}` : `ORDINARY: ${gait.pairs} walk pairs, backwards ${gait.backwards}, skips over ${gait.maxSkipAllowed} ${gait.skips} (max skip seen ${gait.maxSkip}; allowed = ceil(${fmt(FRAME_STEP_BOUND_TILES)} tiles × ${WALK_FRAMES} / ${STRIDE_TILES})); SETTLING (clipWhileSettling plays 'walk' up to the settle bound, judged separately): ${gait.settlingPairs} pair(s), backwards ${gait.settlingBackwards}, skips over ${gait.settlingMaxSkipAllowed} ${gait.settlingSkips} (allowed = ceil(${fmt(SETTLE_FRAME_BOUND_TILES)} tiles × ${WALK_FRAMES} / ${STRIDE_TILES})); histogram ${JSON.stringify(gait.histogram)}, unseen ${JSON.stringify(gait.unseen)}`}`);
-  if (foot !== null) note(`${vp} walkFootPlanted / noSkate ${foot.ok === null ? `SKIP: ${foot.skip}` : `${foot.stances} horizontal-axis stance(s), max drift ${fmt(foot.maxDriftTiles, 4)} tiles, mean ${fmt(foot.meanDriftTiles, 4)}, tolerance ${FOOT_TOLERANCE} (FLOOR_MEMBER_MOTION_PROOF_FOOT_DRIFT_TOLERANCE_TILES); worst ${JSON.stringify(foot.worst)}; ${foot.stancesWhereTravelDisagreesWithFacing} of ${foot.stances} stance(s) have net stage travel disagreeing with the stance's own facing (MECHANISM: the rig's rootAdvance design requires travel = mirror×Δ(rootAdvance)×(side/canvas) — verified algebraically against the shipped rig data — so a facing/travel disagreement, the same fact facingStable measures independently, IS a foot skate under this design, not a measurement artefact); a stance also breaks on a facing change (${foot.facingFlipBreaks} broken there — the mirror's sign flips at a facing change, a coordinate discontinuity, not a skate) and excludes settling walk-frames (${foot.settlingWalkFramesExcluded} excluded); foot world x = drawnX + (plantedSole.x − ${CANVAS_PX}/2) × (bodySide/${CANVAS_PX}), bodySide = ${DRAW_SCALE_TILES} × ${fmt(frontTile, 1)} px × scale`}${foot.depthAxisNote ? ` | SCOPE: ${foot.depthAxisNote}` : (foot.ok !== null ? ' | SCOPE: 0 depth-axis stances excluded (every stance this run was horizontal-axis)' : '')}`);
+  if (foot !== null) note(`${vp} walkFootPlanted / noSkate ${foot.ok === null ? `SKIP: ${foot.skip}` : `${foot.stances} horizontal-axis stance(s), max drift ${fmt(foot.maxDriftTiles, 4)} tiles, mean ${fmt(foot.meanDriftTiles, 4)}, tolerance ${FOOT_TOLERANCE} (FLOOR_MEMBER_MOTION_PROOF_FOOT_DRIFT_TOLERANCE_TILES); worst ${JSON.stringify(foot.worst)}; ${foot.stancesWhereTravelDisagreesWithFacing} of ${foot.stances} stance(s) have net stage travel disagreeing with the stance's own facing (MECHANISM: the rig's rootAdvance design requires travel = mirror×Δ(rootAdvance)×(side/canvas) — verified algebraically against the shipped rig data — so a facing/travel disagreement, the same fact facingStable measures independently, IS a foot skate under this design, not a measurement artefact); a stance also breaks on a facing change (${foot.facingFlipBreaks} broken there — the mirror's sign flips at a facing change, a coordinate discontinuity, not a skate) and excludes settling walk-frames (${foot.settlingWalkFramesExcluded} excluded); foot world x = drawnX + (plantedSole.x − ${CANVAS_PX}/2) × (bodySide/${CANVAS_PX}), bodySide = ${DRAW_SCALE_TILES} × ${fmt(frontTile, 1)} px × scale`}${foot.depthAxisNote ? ` | SCOPE: ${foot.depthAxisNote}` : (foot.ok !== null ? ' | SCOPE: 0 depth-axis stances excluded (every stance this run was horizontal-axis)' : '')}${foot.ok === null ? '' : ` | DECOMPOSITION (reported, judged by nothing — the verdict above is unchanged): frame-quantisation bound ${fmt(QUANTISATION_BOUND_TILES(), 5)} tiles = strideTiles / walk frames, the most a perfectly planted foot measured off the SHOWN frame can saw. Re-measuring the same stances against the sole the stance's own phase implies, which removes that term and nothing else, gives max ${fmt(foot.continuousMaxDriftTiles, 4)} tiles. Split by travel axis: ${foot.pureHorizontalStances} stance(s) with net dy exactly 0 (a member walking along a row) read max ${fmt(foot.pureHorizontalMaxDriftTiles, 4)} shown / ${fmt(foot.pureHorizontalContinuousMaxDriftTiles, 4)} continuous; ${foot.mixedAxisStances} stance(s) with net dy non-zero but under net dx (a member turning a corner, so a side-view-only gait is drawn on PARTLY toward/away travel — the depth-axis limitation named above, applying in part rather than wholly) read max ${fmt(foot.mixedAxisMaxDriftTiles, 4)} shown / ${fmt(foot.mixedAxisContinuousMaxDriftTiles, 4)} continuous`}`);
   if (snap !== null) note(`${vp} noFamilySnap ${snap.changes} clip change(s) across all members (${snap.settlingChanges} while settling), max move at a NON-settling change ${fmt(snap.maxMoveAtChangeTiles, 4)} tiles vs ${fmt(FRAME_STEP_BOUND_TILES)} = (${CAP_MS}/${TICK_MS})×(1+${CATCH_UP})×${STEP_PER_TICK}×(1+${JITTER}); max move at a SETTLING change ${fmt(snap.maxSettlingMoveAtChangeTiles, 4)} tiles vs ${fmt(SETTLE_FRAME_BOUND_TILES)}; worst ${JSON.stringify(snap.worst)}; worst settling ${JSON.stringify(snap.worstSettling)}; frame resets off an edge or a (skip-aware) wrap ${snap.frameResets.length}${snap.frameResets.length > 0 ? ` — first ${JSON.stringify(snap.frameResets[0])}` : ''}`);
   if (station !== null) note(`${vp} stationAttached ${station.ok === null ? `SKIP: ${station.skip}` : `${station.bench}: ${station.pressFrames} bench-press frames, offset spread ${fmt(station.offsetSpreadTiles, 4)} tiles vs ${STATION_TOLERANCE}; setup ${station.setupFrames} frames with ${station.setupViolations} growth(s) over the tolerance; finish ${station.finishFrames} frames with ${station.finishViolations} shrink(s)`}`);
   if (facing !== null) note(`${vp} facingStable ${facing.flips} facing flip(s); minimum judged motion ${fmt(facing.minMotionTiles, 4)} tiles/frame = ${facing.minMotionDerivation} (frames below it excluded from judgement, ${facing.framesExcludedBelowMinMotion} excluded); ${facing.framesJudged} moving frames judged, ${facing.disagreementRuns} disagreement run(s), longest ${facing.longestRun} vs N=${facing.N} = ceil(${GAIT_TRANSITION_MS} / ${fmt(facing.meanFrameMs, 2)} ms mean frame); worst ${JSON.stringify(facing.worstAt)}`);
