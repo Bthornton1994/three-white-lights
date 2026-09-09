@@ -348,6 +348,7 @@ import {
   type StationManagerEffectView,
   type StationOperationView,
   displayConditionPercent,
+  formatGymBucks,
   playerFacingBayRole,
   playerFacingEquipmentLabel,
   playerFacingMemberActivityLine,
@@ -3951,9 +3952,11 @@ export function FloorGrid(props: FloorGridProps) {
           */}
           <Text testID={'floorgrid-station-panel-condition'} style={panelStyles.text}>
             Condition {displayConditionPercent(panelCondition.condition)}% — repair{' '}
-            {panelCondition.blocksRecovery
-              ? panelCondition.repairCostGymBucks
-              : panelCondition.displayRepairCostGymBucks}{' '}
+            {formatGymBucks(
+              panelCondition.blocksRecovery
+                ? panelCondition.repairCostGymBucks
+                : panelCondition.displayRepairCostGymBucks,
+            )}{' '}
             gym bucks
           </Text>
           {/*
@@ -4033,7 +4036,7 @@ export function FloorGrid(props: FloorGridProps) {
                       testID={`floorgrid-station-panel-upgrade-${axis}-unavailable`}
                       style={panelStyles.text}
                     >
-                      {`${playerFacingUpgradeLabel(axis)} needs ${cost} gym bucks — you have ${managed.gym.ladder.gymBucks}`}
+                      {`${playerFacingUpgradeLabel(axis)} needs ${formatGymBucks(cost)} gym bucks — you have ${formatGymBucks(managed.gym.ladder.gymBucks)}`}
                     </Text>
                   );
                 }
@@ -4048,7 +4051,7 @@ export function FloorGrid(props: FloorGridProps) {
                     }
                   >
                     <Text style={panelStyles.buttonText}>
-                      {`${playerFacingUpgradeLabel(axis)} — ${playerFacingUpgradeEffect(axis)} (${cost})`}
+                      {`${playerFacingUpgradeLabel(axis)} — ${playerFacingUpgradeEffect(axis)} (${formatGymBucks(cost)})`}
                     </Text>
                   </Pressable>
                 );
@@ -4087,8 +4090,8 @@ export function FloorGrid(props: FloorGridProps) {
             </Text>
           ) : panelCondition.repairCostGymBucks > managed.gym.ladder.gymBucks ? (
             <Text testID={'floorgrid-station-panel-repair-unavailable'} style={panelStyles.text}>
-              needs {panelCondition.repairCostGymBucks} gym bucks — you have{' '}
-              {managed.gym.ladder.gymBucks}
+              needs {formatGymBucks(panelCondition.repairCostGymBucks)} gym bucks — you have{' '}
+              {formatGymBucks(managed.gym.ladder.gymBucks)}
             </Text>
           ) : (
             <Pressable
@@ -4106,7 +4109,7 @@ export function FloorGrid(props: FloorGridProps) {
               }
             >
               <Text style={panelStyles.buttonText}>
-                repair for {panelCondition.repairCostGymBucks}
+                repair for {formatGymBucks(panelCondition.repairCostGymBucks)}
               </Text>
             </Pressable>
           )}
@@ -4176,7 +4179,7 @@ export function FloorGrid(props: FloorGridProps) {
             onPress={() => dispatch({ kind: 'repair-item', item: panelEquipment })}
           >
             <Text style={panelStyles.buttonText}>
-              repair for {stationConditionView(managed, panelEquipment).repairCostGymBucks}
+              repair for {formatGymBucks(stationConditionView(managed, panelEquipment).repairCostGymBucks)}
             </Text>
           </Pressable>
           <Pressable

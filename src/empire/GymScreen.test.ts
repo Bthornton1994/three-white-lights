@@ -137,6 +137,8 @@ import {
 import { scrubPrecision } from './production';
 import {
   displayConditionPercent,
+  formatEmpireMultiplier,
+  formatGymBucks,
   playerFacingActivityGroupLabel,
   playerFacingEquipmentLabel,
   playerFacingManagerCapability,
@@ -398,13 +400,13 @@ function expectScreenMatchesState(root: Rendered, state: GymViewState): number {
   expect(textOf(findByTestId(root, 'gymscreen-rung'))).toContain(String(gym.ladder.rung));
   compared += 1;
   expect(textOf(findByTestId(root, 'gymscreen-rate'))).toContain(
-    String(ladderIncomeRatePerHour(gym.ladder.rung)),
+    formatGymBucks(ladderIncomeRatePerHour(gym.ladder.rung)),
   );
   compared += 1;
-  expect(textOf(findByTestId(root, 'gymscreen-gym-bucks'))).toContain(String(gym.ladder.gymBucks));
+  expect(textOf(findByTestId(root, 'gymscreen-gym-bucks'))).toContain(formatGymBucks(gym.ladder.gymBucks));
   compared += 1;
   expect(textOf(findByTestId(root, 'gymscreen-accelerated-bucks'))).toContain(
-    String(gym.acceleratedGymBucks),
+    formatGymBucks(gym.acceleratedGymBucks),
   );
   compared += 1;
   // The ladder shop: cost, min rung and the buy control's presence, per item.
@@ -415,7 +417,7 @@ function expectScreenMatchesState(root: Rendered, state: GymViewState): number {
     expect(textOf(findByTestId(root, `gymscreen-shop-name-${item}`))).toBe(
       playerFacingEquipmentLabel(item),
     );
-    expect(ladderShopText).toContain(String(ladderEquipmentCost(item)));
+    expect(ladderShopText).toContain(formatGymBucks(ladderEquipmentCost(item)));
     if (ownedLadder.has(item)) {
       // An owned item offers neither a control nor a reason — the row says
       // "- owned" and that is the whole story.
@@ -441,7 +443,7 @@ function expectScreenMatchesState(root: Rendered, state: GymViewState): number {
       playerFacingEquipmentLabel(item),
     );
     expect(sessionShopText).toContain(playerFacingActivityGroupLabel(sessionEquipmentGroup(item)));
-    expect(sessionShopText).toContain(String(sessionEquipmentCost(item)));
+    expect(sessionShopText).toContain(formatGymBucks(sessionEquipmentCost(item)));
     expect(sessionShopText).toContain(sessionEquipmentMinRung(item));
     if (ownedSession.has(item)) {
       expect(findAllByTestId(root, `gymscreen-buy-session-${item}`).length, item).toBe(0);
@@ -497,10 +499,10 @@ function expectScreenMatchesState(root: Rendered, state: GymViewState): number {
     }
   }
   const previewText = textOf(findByTestId(root, 'gymscreen-week-preview'));
-  expect(previewText).toContain(String(previewEffects.residualCarryMultiplier));
-  expect(previewText).toContain(String(previewEffects.injuryChanceMultiplier));
-  expect(previewText).toContain(String(previewEffects.techniqueQualityBonus));
-  expect(previewText).toContain(String(previewEffects.ceilingGrowthPerWeek));
+  expect(previewText).toContain(formatEmpireMultiplier(previewEffects.residualCarryMultiplier));
+  expect(previewText).toContain(formatEmpireMultiplier(previewEffects.injuryChanceMultiplier));
+  expect(previewText).toContain(formatEmpireMultiplier(previewEffects.techniqueQualityBonus));
+  expect(previewText).toContain(formatEmpireMultiplier(previewEffects.ceilingGrowthPerWeek));
   compared += 4;
   const availableText = textOf(findByTestId(root, 'gymscreen-available-now'));
   const available = availableActivities(gym.sessionEquipment);
@@ -516,10 +518,10 @@ function expectScreenMatchesState(root: Rendered, state: GymViewState): number {
   for (const week of weekLog) {
     const entryText = textOf(findByTestId(root, `gymscreen-week-log-${week.weekIndex}`));
     for (const outcome of week.slots) expectOutcomeInText(entryText, outcome);
-    expect(entryText).toContain(String(week.effects.residualCarryMultiplier));
-    expect(entryText).toContain(String(week.effects.injuryChanceMultiplier));
-    expect(entryText).toContain(String(week.effects.techniqueQualityBonus));
-    expect(entryText).toContain(String(week.effects.ceilingGrowthPerWeek));
+    expect(entryText).toContain(formatEmpireMultiplier(week.effects.residualCarryMultiplier));
+    expect(entryText).toContain(formatEmpireMultiplier(week.effects.injuryChanceMultiplier));
+    expect(entryText).toContain(formatEmpireMultiplier(week.effects.techniqueQualityBonus));
+    expect(entryText).toContain(formatEmpireMultiplier(week.effects.ceilingGrowthPerWeek));
     compared += 1;
   }
   // §5.11 stage 4's half of the same screen, graded at every state this
@@ -553,7 +555,7 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
   // individual item already read "as new".
   const worn = wornItems(managed);
   expect(textOf(findByTestId(root, 'gymscreen-full-repair'))).toBe(
-    `Full repair: ${worn.length === 0 ? 0 : fullRepairCostGymBucks(managed)} gym bucks`,
+    `Full repair: ${formatGymBucks(worn.length === 0 ? 0 : fullRepairCostGymBucks(managed))} gym bucks`,
   );
   compared += 1;
   expect(textOf(findByTestId(root, 'gymscreen-worn'))).toBe(
@@ -589,7 +591,7 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
     compared += 6;
   } else {
     expect(textOf(findByTestId(root, 'gymscreen-prompt-item'))).toBe(
-      `maintenance review: ${prompt.item} at ${displayConditionPercent(itemCondition(managed, prompt.item))}% — repair costs ${displayRepairCost(prompt.repairCostGymBucks)} gym bucks`,
+      `maintenance review: ${prompt.item} at ${displayConditionPercent(itemCondition(managed, prompt.item))}% — repair costs ${formatGymBucks(displayRepairCost(prompt.repairCostGymBucks))} gym bucks`,
     );
     for (const id of answerControls.slice(1)) expect(findAllByTestId(root, id).length, id).toBe(1);
     // The review's own repair control is gated on the dust threshold or on
@@ -647,7 +649,7 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
   for (let index = 0; index < managed.strikes.length; index += 1) {
     const record = managed.strikes[index] as CountedDecisionRecord;
     expect(textOf(findByTestId(root, `gymscreen-strike-${index}`))).toBe(
-      `${record.decision} at ${record.atSeconds}s, price shown ${record.shownCostGymBucks} gym bucks`,
+      `${record.decision} at ${record.atSeconds}s, price shown ${formatGymBucks(record.shownCostGymBucks)} gym bucks`,
     );
     compared += 3;
   }
@@ -657,7 +659,7 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
   if (managed.manager === null) {
     for (const tier of EMPIRE_TUNING.MANAGER_TIERS) {
       expect(textOf(findByTestId(root, `gymscreen-manager-tier-${tier}`))).toBe(
-        `${tier}: hire ${managerHireCostGymBucks(tier)} gym bucks, wage ${managerWageRatePerBankedHour(tier)}/hour, ${playerFacingManagerCapability(tier)}`,
+        `${tier}: hire ${formatGymBucks(managerHireCostGymBucks(tier))} gym bucks, wage ${formatGymBucks(managerWageRatePerBankedHour(tier))}/hour, ${playerFacingManagerCapability(tier)}`,
       );
       compared += expectGatedControl(
         root,
@@ -673,7 +675,7 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
     const tier = managed.manager.tier;
     const managerText = textOf(findByTestId(root, 'gymscreen-manager-state'));
     expect(managerText).toContain(
-      `manager: ${tier} — ${managerWageRatePerBankedHour(tier)} gym bucks per banked hour, ${playerFacingManagerCapability(tier)}`,
+      `manager: ${tier} — ${formatGymBucks(managerWageRatePerBankedHour(tier))} gym bucks per banked hour, ${playerFacingManagerCapability(tier)}`,
     );
     expect(managerText.includes('hired while the gym was already warned')).toBe(
       managed.manager.hiredUnderWarning,
@@ -710,7 +712,7 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
   );
   if (recovery.kind !== 'not-dormant') {
     expect(textOf(findByTestId(root, 'gymscreen-recovery-cost'))).toBe(
-      `reopening would cost ${recoveryRepairCostGymBucks(managed)} gym bucks in repairs`,
+      `reopening would cost ${formatGymBucks(recoveryRepairCostGymBucks(managed))} gym bucks in repairs`,
     );
   }
   expect(findAllByTestId(root, 'gymscreen-recover').length).toBe(
@@ -734,11 +736,11 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
     compared += 1;
   } else {
     expect(textOf(findByTestId(root, 'gymscreen-check-in-costs'))).toBe(
-      `since the last update: condition took ${report.incomeDeductedGymBucks} gym bucks off the accrual and paid ${report.incomePaidGymBucks} at ${report.incomeMultiplier}, wore the gym down by ${report.meanConditionWear}, paid ${report.wagePaidGymBucks} in wages (unpaid ${report.wageShortfallGymBucks}), and the manager repaired ${report.autoRepairs.length} item(s) for ${report.autoRepairSpendGymBucks}`,
+      `since the last update: condition took ${formatGymBucks(report.incomeDeductedGymBucks)} gym bucks off the accrual and paid ${formatGymBucks(report.incomePaidGymBucks)} at ${formatEmpireMultiplier(report.incomeMultiplier)}, wore the gym down by ${formatEmpireMultiplier(report.meanConditionWear)}, paid ${formatGymBucks(report.wagePaidGymBucks)} in wages (unpaid ${formatGymBucks(report.wageShortfallGymBucks)}), and the manager repaired ${report.autoRepairs.length} item(s) for ${formatGymBucks(report.autoRepairSpendGymBucks)}`,
     );
     for (const repair of report.autoRepairs) {
       expect(textOf(findByTestId(root, `gymscreen-auto-repair-${repair.item}`))).toBe(
-        `your manager repaired ${repair.item} for ${repair.costGymBucks} gym bucks`,
+        `your manager repaired ${repair.item} for ${formatGymBucks(repair.costGymBucks)} gym bucks`,
       );
       compared += 2;
     }
@@ -1313,7 +1315,7 @@ describe('stage 4: the per-item repair row and the bulk line are gated on condit
     expect(wornItems(worn.managed).length).toBe(0);
     const root = render(worn, []);
     expect(textOf(findByTestId(root, 'gymscreen-full-repair'))).toBe(
-      'Full repair: 0 gym bucks',
+      `Full repair: ${formatGymBucks(0)} gym bucks`,
     );
     expectManagementMatchesState(root, worn);
   });
@@ -1347,7 +1349,7 @@ describe('stage 4: the per-item repair row and the bulk line are gated on condit
     const totalCost = fullRepairCostGymBucks(worn.managed);
     expect(totalCost).toBeGreaterThan(0);
     expect(textOf(findByTestId(root, 'gymscreen-full-repair'))).toBe(
-      `Full repair: ${totalCost} gym bucks`,
+      `Full repair: ${formatGymBucks(totalCost)} gym bucks`,
     );
     expectManagementMatchesState(root, worn);
   });
@@ -1363,7 +1365,7 @@ describe('stage 4: the repair decision, priced before it is taken', () => {
     expect(quoted).toBeGreaterThan(0);
     // The price is on the screen BEFORE the press — read it off the drawn tree.
     const before = render(reviewed, []);
-    expect(textOf(findByTestId(before, 'gymscreen-prompt-item'))).toContain(`${quoted} gym bucks`);
+    expect(textOf(findByTestId(before, 'gymscreen-prompt-item'))).toContain(`${formatGymBucks(quoted)} gym bucks`);
     // S4f: the station panel and the scheduled review read DIFFERENT pools —
     // `gymscreen-worn`'s own text says so, and this fixture drives the
     // disagreement rather than assuming it away. At the FIRST review
@@ -1426,7 +1428,7 @@ describe('stage 4: staffing, on the screen', () => {
     );
     const staffed = render(hired, []);
     expect(textOf(findByTestId(staffed, 'gymscreen-manager-state'))).toContain(
-      `${managerWageRatePerBankedHour('steady')} gym bucks per banked hour`,
+      `${formatGymBucks(managerWageRatePerBankedHour('steady'))} gym bucks per banked hour`,
     );
     expect(textOf(findByTestId(staffed, 'gymscreen-manager-state'))).toContain(
       playerFacingManagerCapability('steady'),
@@ -1462,11 +1464,11 @@ describe('stage 4: staffing, on the screen', () => {
     const root = render(played, []);
     for (const repair of (report as NonNullable<typeof report>).autoRepairs) {
       expect(textOf(findByTestId(root, `gymscreen-auto-repair-${repair.item}`))).toBe(
-        `your manager repaired ${repair.item} for ${repair.costGymBucks} gym bucks`,
+        `your manager repaired ${repair.item} for ${formatGymBucks(repair.costGymBucks)} gym bucks`,
       );
     }
     expect(textOf(findByTestId(root, 'gymscreen-check-in-costs'))).toContain(
-      `paid ${(report as NonNullable<typeof report>).wagePaidGymBucks} in wages`,
+      `paid ${formatGymBucks((report as NonNullable<typeof report>).wagePaidGymBucks)} in wages`,
     );
     expectManagementMatchesState(root, played);
   });
@@ -1514,7 +1516,7 @@ describe('stage 4: dormancy is reached by refusals and left by a repair investme
     const quoted = recoveryRepairCostGymBucks(played.managed);
     expect(quoted).toBeGreaterThan(0);
     expect(textOf(findByTestId(dormant, 'gymscreen-recovery-cost'))).toContain(
-      `reopening would cost ${quoted} gym bucks`,
+      `reopening would cost ${formatGymBucks(quoted)} gym bucks`,
     );
     expect(dispatchThrough(played, { kind: 'recover-gym' }).lastRefusal).toBe(
       'equipment-below-recovery-minimum',

@@ -2725,7 +2725,17 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `FloorGrid.tsx`'s round 2b edits mentioning a member-motion module a
     // second time in a place the walk had not previously counted. Read from
     // this assertion's own failure value.
-    expect(pairs).toBe(260);
+    // 260 -> 264: VL-3 round 2c (HUD-2c, the raw-float-in-the-HUD fix). Four
+    // new pairs, enumerated by diffing this exact walk against the pre-round
+    // tree rather than hand-counted: `empireTuning.ts -> ladderView.tsx` and
+    // `empireTuning.ts -> production.ts` (the two new display-decimals doc
+    // comments naming both files for the first time), `stationView.ts ->
+    // production.ts` (the new `formatGymBucks`/`formatEmpireMultiplier`
+    // doc comments naming `production.ts`'s accrual/`scrubPrecision`
+    // arithmetic), and `ladderView.tsx -> stationView.ts` (ladderView.tsx's
+    // new `./stationView` import — it previously drew no display formatting
+    // from that module at all). Nothing was removed.
+    expect(pairs).toBe(264);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -5556,6 +5566,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // S4b: `./management` joined the reducer's edges — `GymViewState.managed`
       // is a `ManagedGym` now, and every stage-4 arm is one call into that
       // module, the same one-call-per-arm shape the stage-1/2 arms already had.
+      // VL-3 round 2c: `./stationView` joined too — `LadderView` and `GymView`
+      // now route every player-facing Gym Bucks / multiplier string through
+      // `formatGymBucks`/`formatEmpireMultiplier` rather than printing the
+      // raw accrued float (the HUD-2c fix; see `EMPIRE_TUNING.
+      // GYM_BUCKS_DISPLAY_DECIMALS`'s own header).
       'ladderView.tsx': [
         './empireTuning',
         './floor',
@@ -5565,6 +5580,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './management',
         './sessions',
         './stationCapability',
+        './stationView',
         './trainingStation',
       ],
       // §5.11 stage 4. Five edges: the throw gate, the tuning block, the
@@ -5802,7 +5818,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `./memberMotionClips` (1), memberMotion.ts's seven specifiers (7),
     // memberMotionClips.ts's one (1), memberPuppet.ts's one (1),
     // memberRig.ts's three (3). Read from this assertion's own failure value.
-    expect(specifiers).toBe(164);
+    // 164 -> 165: VL-3 round 2c — `ladderView.tsx`'s new `./stationView`
+    // specifier (the HUD-2c float-formatting fix). One new edge.
+    expect(specifiers).toBe(165);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
@@ -6045,7 +6063,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // reason `FLOOR_SIM_RENDER_SEED: 1` reports no finding above) — so one
     // new knob, one new finding. Read from this assertion's own failure
     // value.
-    ).toBe(520);
+    // 520 -> 522: VL-3 round 2c (HUD-2c, the raw-float-in-the-HUD fix) added
+    // two display-only knobs — `GYM_BUCKS_DISPLAY_DECIMALS` (2) and
+    // `EMPIRE_MULTIPLIER_DISPLAY_DECIMALS` (3) — both non-exempt numeric
+    // leaves, so two new findings. Read from this assertion's own failure
+    // value.
+    ).toBe(522);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

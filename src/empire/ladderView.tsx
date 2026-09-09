@@ -57,6 +57,7 @@ import {
   nextLadderRung,
   unlockedLifts,
 } from './ladder';
+import { formatEmpireMultiplier, formatGymBucks } from './stationView';
 
 // ---------------------------------------------------------------------------
 // The view's state and actions — a thin envelope over LadderState
@@ -159,18 +160,18 @@ export function LadderView(props: LadderViewProps) {
       <h1>the ladder</h1>
       <p>
         rung <strong data-testid={'ladder-rung'}>{ladder.rung}</strong> earning{' '}
-        <span data-testid={'ladder-rate'}>{ladderIncomeRatePerHour(ladder.rung)}</span> gym bucks
+        <span data-testid={'ladder-rate'}>{formatGymBucks(ladderIncomeRatePerHour(ladder.rung))}</span> gym bucks
         per hour
       </p>
       <p>
-        gym bucks: <strong data-testid={'ladder-gym-bucks'}>{ladder.gymBucks}</strong> clock:{' '}
+        gym bucks: <strong data-testid={'ladder-gym-bucks'}>{formatGymBucks(ladder.gymBucks)}</strong> clock:{' '}
         <span data-testid={'ladder-clock'}>{describeLadderClock(ladder.collectedAt)}</span>
       </p>
       <p data-testid={'ladder-lifts'}>lifts unlocked: {unlockedLifts(ladder.equipment).join(', ')}</p>
       {lastAccrual === null ? null : (
         <p data-testid={'ladder-accrual'}>
           last advance banked {lastAccrual.secondsBanked}s of {lastAccrual.secondsElapsed}s, paid{' '}
-          {lastAccrual.gymBucks} gym bucks, cap discarded {lastAccrual.secondsDiscarded}s
+          {formatGymBucks(lastAccrual.gymBucks)} gym bucks, cap discarded {lastAccrual.secondsDiscarded}s
         </p>
       )}
       {lastRefusal === null ? null : (
@@ -179,7 +180,7 @@ export function LadderView(props: LadderViewProps) {
       <ul data-testid={'ladder-shop'}>
         {EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS.map((item) => (
           <li key={item}>
-            {item} costs {ladderEquipmentCost(item)} gym bucks, fits from{' '}
+            {item} costs {formatGymBucks(ladderEquipmentCost(item))} gym bucks, fits from{' '}
             {ladderEquipmentMinRung(item)}
             {owned.has(item) ? (
               ' - owned'
@@ -198,7 +199,7 @@ export function LadderView(props: LadderViewProps) {
         <p data-testid={'ladder-move'}>top of the ladder - the portfolio arrives with stage four</p>
       ) : (
         <p data-testid={'ladder-move'}>
-          next: {destination} for {ladderMoveCost(destination)} gym bucks{' '}
+          next: {destination} for {formatGymBucks(ladderMoveCost(destination))} gym bucks{' '}
           <button data-testid={'move-up'} onClick={() => props.dispatch({ kind: 'move-up' })}>
             relocate
           </button>
@@ -953,26 +954,26 @@ export function GymView(props: GymViewProps) {
       </p>
       <p>
         rung <strong data-testid={'gym-rung'}>{gym.ladder.rung}</strong> earning{' '}
-        <span data-testid={'gym-rate'}>{ladderIncomeRatePerHour(gym.ladder.rung)}</span> gym bucks
+        <span data-testid={'gym-rate'}>{formatGymBucks(ladderIncomeRatePerHour(gym.ladder.rung))}</span> gym bucks
         per hour
       </p>
       <p>
-        gym bucks: <strong data-testid={'gym-gym-bucks'}>{gym.ladder.gymBucks}</strong> accelerated:{' '}
-        <strong data-testid={'gym-accelerated-bucks'}>{gym.acceleratedGymBucks}</strong> clock:{' '}
+        gym bucks: <strong data-testid={'gym-gym-bucks'}>{formatGymBucks(gym.ladder.gymBucks)}</strong> accelerated:{' '}
+        <strong data-testid={'gym-accelerated-bucks'}>{formatGymBucks(gym.acceleratedGymBucks)}</strong> clock:{' '}
         <span data-testid={'gym-clock'}>{describeLadderClock(gym.ladder.collectedAt)}</span>
       </p>
       <p data-testid={'gym-lifts'}>lifts unlocked: {unlockedLifts(gym.ladder.equipment).join(', ')}</p>
       {lastAccrual === null ? null : (
         <p data-testid={'gym-accrual'}>
           last advance banked {lastAccrual.secondsBanked}s of {lastAccrual.secondsElapsed}s, paid{' '}
-          {lastAccrual.gymBucks} gym bucks, cap discarded {lastAccrual.secondsDiscarded}s
+          {formatGymBucks(lastAccrual.gymBucks)} gym bucks, cap discarded {lastAccrual.secondsDiscarded}s
         </p>
       )}
       {lastRefusal === null ? null : <p data-testid={'gym-refusal'}>refused: {lastRefusal}</p>}
       <ul data-testid={'gym-ladder-shop'}>
         {EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS.map((item) => (
           <li key={item}>
-            {item} costs {ladderEquipmentCost(item)} gym bucks, fits from{' '}
+            {item} costs {formatGymBucks(ladderEquipmentCost(item))} gym bucks, fits from{' '}
             {ladderEquipmentMinRung(item)}
             {ownedLadder.has(item) ? (
               ' - owned'
@@ -990,7 +991,7 @@ export function GymView(props: GymViewProps) {
       <ul data-testid={'gym-session-shop'}>
         {EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS.map((item) => (
           <li key={item}>
-            {item} ({sessionEquipmentGroup(item)}) costs {sessionEquipmentCost(item)} gym bucks,
+            {item} ({sessionEquipmentGroup(item)}) costs {formatGymBucks(sessionEquipmentCost(item))} gym bucks,
             fits from {sessionEquipmentMinRung(item)}
             {ownedSession.has(item) ? (
               ' - owned'
@@ -1009,7 +1010,7 @@ export function GymView(props: GymViewProps) {
         <p data-testid={'gym-move'}>top of the ladder - the portfolio arrives with stage four</p>
       ) : (
         <p data-testid={'gym-move'}>
-          next: {destination} for {ladderMoveCost(destination)} gym bucks{' '}
+          next: {destination} for {formatGymBucks(ladderMoveCost(destination))} gym bucks{' '}
           <button data-testid={'gym-move-up'} onClick={() => props.dispatch({ kind: 'move-up' })}>
             relocate
           </button>
@@ -1036,18 +1037,20 @@ export function GymView(props: GymViewProps) {
           </p>
         ))}
         <p data-testid={'gym-week-preview'}>
-          if this week ended now: residual carry {previewEffects.residualCarryMultiplier}, injury
-          chance {previewEffects.injuryChanceMultiplier}, technique bonus{' '}
-          {previewEffects.techniqueQualityBonus}, ceiling growth {previewEffects.ceilingGrowthPerWeek}
+          if this week ended now: residual carry {formatEmpireMultiplier(previewEffects.residualCarryMultiplier)}, injury
+          chance {formatEmpireMultiplier(previewEffects.injuryChanceMultiplier)}, technique bonus{' '}
+          {formatEmpireMultiplier(previewEffects.techniqueQualityBonus)}, ceiling growth{' '}
+          {formatEmpireMultiplier(previewEffects.ceilingGrowthPerWeek)}
         </p>
       </section>
       <ul data-testid={'gym-week-log'}>
         {weekLog.map((week) => (
           <li data-testid={`gym-week-log-${week.weekIndex}`} key={week.weekIndex}>
             week {week.weekIndex}: {week.slots.map(describeSlotOutcome).join('; ')} — residual carry{' '}
-            {week.effects.residualCarryMultiplier}, injury chance{' '}
-            {week.effects.injuryChanceMultiplier}, technique bonus{' '}
-            {week.effects.techniqueQualityBonus}, ceiling growth {week.effects.ceilingGrowthPerWeek}
+            {formatEmpireMultiplier(week.effects.residualCarryMultiplier)}, injury chance{' '}
+            {formatEmpireMultiplier(week.effects.injuryChanceMultiplier)}, technique bonus{' '}
+            {formatEmpireMultiplier(week.effects.techniqueQualityBonus)}, ceiling growth{' '}
+            {formatEmpireMultiplier(week.effects.ceilingGrowthPerWeek)}
           </li>
         ))}
       </ul>

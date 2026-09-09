@@ -279,6 +279,8 @@ import { FLOOR_SPRITE_URIS } from './floorSprites';
 import { ironAmberFixedUri, ironAmberFloorUri, ironAmberSessionUri } from './ironAmberArt';
 import {
   displayConditionPercent,
+  formatEmpireMultiplier,
+  formatGymBucks,
   playerFacingActivityGroupLabel,
   playerFacingEquipmentLabel,
   playerFacingManagerCapability,
@@ -677,16 +679,16 @@ export function GymScreen(props: GymViewProps) {
         </View>
         <View style={styles.hudStats}>
           <Text testID={'gymscreen-gym-bucks'} style={[styles.hudPrimary, styles.hudStat]}>
-            gym bucks: {gym.ladder.gymBucks}
+            gym bucks: {formatGymBucks(gym.ladder.gymBucks)}
           </Text>
           <Text testID={'gymscreen-rate'} style={[styles.hudText, styles.hudStat]}>
-            earning {ladderIncomeRatePerHour(gym.ladder.rung)} gym bucks per hour
+            earning {formatGymBucks(ladderIncomeRatePerHour(gym.ladder.rung))} gym bucks per hour
           </Text>
           <Text testID={'gymscreen-rung'} style={styles.hudPrimary}>rung {gym.ladder.rung}</Text>
         </View>
         <View style={styles.hudMeta}>
           <Text testID={'gymscreen-accelerated-bucks'} style={styles.hudText}>
-            accelerated: {gym.acceleratedGymBucks}
+            accelerated: {formatGymBucks(gym.acceleratedGymBucks)}
           </Text>
           <Text testID={'gymscreen-clock'} style={styles.hudText}>
             clock: {describeLadderClock(gym.ladder.collectedAt)}
@@ -783,13 +785,13 @@ export function GymScreen(props: GymViewProps) {
               {EMPIRE_TUNING.MANAGER_TIERS.map((tier) => (
                 <View key={tier}>
                   <Text style={styles.copy} testID={`gymscreen-manager-tier-${tier}`}>
-                    {tier}: hire {managerHireCostGymBucks(tier)} gym bucks, wage{' '}
-                    {managerWageRatePerBankedHour(tier)}/hour, {playerFacingManagerCapability(tier)}
+                    {tier}: hire {formatGymBucks(managerHireCostGymBucks(tier))} gym bucks, wage{' '}
+                    {formatGymBucks(managerWageRatePerBankedHour(tier))}/hour, {playerFacingManagerCapability(tier)}
                   </Text>
                   {managerHireCostGymBucks(tier) > gym.ladder.gymBucks ? (
                     <Text style={styles.copy} testID={`gymscreen-hire-${tier}-unavailable`}>
-                      needs {managerHireCostGymBucks(tier)} gym bucks — you have{' '}
-                      {gym.ladder.gymBucks}
+                      needs {formatGymBucks(managerHireCostGymBucks(tier))} gym bucks — you have{' '}
+                      {formatGymBucks(gym.ladder.gymBucks)}
                     </Text>
                   ) : (
                     <Pressable
@@ -807,7 +809,7 @@ export function GymScreen(props: GymViewProps) {
           ) : (
             <>
               <Text style={styles.copy} testID={'gymscreen-manager-state'}>
-                manager: {managed.manager.tier} — {managerWageRatePerBankedHour(managed.manager.tier)}{' '}
+                manager: {managed.manager.tier} — {formatGymBucks(managerWageRatePerBankedHour(managed.manager.tier))}{' '}
                 gym bucks per banked hour, {playerFacingManagerCapability(managed.manager.tier)}
                 {managed.manager.hiredUnderWarning ? ' — hired while the gym was already warned' : null}
               </Text>
@@ -867,7 +869,7 @@ export function GymScreen(props: GymViewProps) {
           directory for it to duplicate.
         */}
         <Text style={styles.copy} testID={'gymscreen-full-repair'}>
-          Full repair: {worn.length === 0 ? 0 : fullRepairCostGymBucks(managed)} gym bucks
+          Full repair: {formatGymBucks(worn.length === 0 ? 0 : fullRepairCostGymBucks(managed))} gym bucks
         </Text>
         {/*
           This line and the maintenance review below it read DIFFERENT pools,
@@ -898,7 +900,7 @@ export function GymScreen(props: GymViewProps) {
             <Text style={styles.copy} testID={'gymscreen-prompt-item'}>
               maintenance review: {prompt.item} at{' '}
               {displayConditionPercent(itemCondition(managed, prompt.item))}% — repair costs{' '}
-              {displayRepairCost(prompt.repairCostGymBucks)} gym bucks
+              {formatGymBucks(displayRepairCost(prompt.repairCostGymBucks))} gym bucks
             </Text>
             <Text style={styles.copy} testID={'gymscreen-prompt-stakes'}>
               {prompt.alreadyRefused
@@ -913,7 +915,8 @@ export function GymScreen(props: GymViewProps) {
               </Text>
             ) : prompt.repairCostGymBucks > gym.ladder.gymBucks ? (
               <Text style={styles.copy} testID={'gymscreen-prompt-repair-unavailable'}>
-                needs {prompt.repairCostGymBucks} gym bucks — you have {gym.ladder.gymBucks}
+                needs {formatGymBucks(prompt.repairCostGymBucks)} gym bucks — you have{' '}
+                {formatGymBucks(gym.ladder.gymBucks)}
               </Text>
             ) : (
               <Pressable
@@ -922,7 +925,7 @@ export function GymScreen(props: GymViewProps) {
                 style={styles.button}
                 onPress={() => dispatch({ kind: 'answer-prompt', response: 'repair' })}
               >
-                <Text style={styles.buttonText}>repair for {prompt.repairCostGymBucks}</Text>
+                <Text style={styles.buttonText}>repair for {formatGymBucks(prompt.repairCostGymBucks)}</Text>
               </Pressable>
             )}
             <Pressable
@@ -950,7 +953,7 @@ export function GymScreen(props: GymViewProps) {
           </Text>
           {managed.strikes.map((record, index) => (
             <Text style={styles.copy} testID={`gymscreen-strike-${index}`} key={`${record.decision}-${index}`}>
-              {record.decision} at {record.atSeconds}s, price shown {record.shownCostGymBucks} gym
+              {record.decision} at {record.atSeconds}s, price shown {formatGymBucks(record.shownCostGymBucks)} gym
               bucks
             </Text>
           ))}
@@ -996,7 +999,7 @@ export function GymScreen(props: GymViewProps) {
           */}
           {recovery.kind === 'not-dormant' ? null : (
             <Text style={styles.copy} testID={'gymscreen-recovery-cost'}>
-              reopening would cost {recoveryRepairCostGymBucks(managed)} gym bucks in repairs
+              reopening would cost {formatGymBucks(recoveryRepairCostGymBucks(managed))} gym bucks in repairs
             </Text>
           )}
           {/*
@@ -1077,7 +1080,7 @@ export function GymScreen(props: GymViewProps) {
               <View style={styles.shopCardBody}>
                 <Text style={styles.copy} testID={`gymscreen-shop-name-${item}`}>{playerFacingEquipmentLabel(item)}</Text>
                 <Text style={styles.copy}>
-                  {ladderEquipmentCost(item)} gym bucks · {ladderEquipmentMinRung(item)}
+                  {formatGymBucks(ladderEquipmentCost(item))} gym bucks · {ladderEquipmentMinRung(item)}
                   {owned ? ' · owned' : null}
                 </Text>
                 {owned ? (
@@ -1089,7 +1092,8 @@ export function GymScreen(props: GymViewProps) {
                   </Text>
                 ) : tooPoor ? (
                   <Text style={styles.copy} testID={`gymscreen-buy-ladder-${item}-unavailable`}>
-                    needs {ladderEquipmentCost(item)} gym bucks — you have {gym.ladder.gymBucks}
+                    needs {formatGymBucks(ladderEquipmentCost(item))} gym bucks — you have{' '}
+                    {formatGymBucks(gym.ladder.gymBucks)}
                   </Text>
                 ) : (
                   <Pressable
@@ -1128,7 +1132,7 @@ export function GymScreen(props: GymViewProps) {
                 <Text style={styles.copy} testID={`gymscreen-shop-name-${item}`}>{playerFacingEquipmentLabel(item)}</Text>
                 <Text style={styles.copy}>
                   {playerFacingActivityGroupLabel(sessionEquipmentGroup(item))} ·{' '}
-                  {sessionEquipmentCost(item)} gym bucks · {sessionEquipmentMinRung(item)}
+                  {formatGymBucks(sessionEquipmentCost(item))} gym bucks · {sessionEquipmentMinRung(item)}
                   {owned ? ' · owned' : null}
                 </Text>
                 {owned ? (
@@ -1146,7 +1150,8 @@ export function GymScreen(props: GymViewProps) {
                     style={[styles.button, styles.buttonDisabled]}
                   >
                     <Text style={styles.buttonTextDisabled}>
-                      needs {sessionEquipmentCost(item)} gym bucks — you have {gym.ladder.gymBucks}
+                      needs {formatGymBucks(sessionEquipmentCost(item))} gym bucks — you have{' '}
+                      {formatGymBucks(gym.ladder.gymBucks)}
                     </Text>
                   </Pressable>
                 ) : (
@@ -1170,12 +1175,13 @@ export function GymScreen(props: GymViewProps) {
         ) : (
           <>
             <Text style={styles.copy}>
-              next: {destination} for {ladderMoveCost(destination)} gym bucks
+              next: {destination} for {formatGymBucks(ladderMoveCost(destination))} gym bucks
             </Text>
             {/* `moveUpLadder`'s `'not-enough-gym-bucks'` arm, drawn instead of pressed for. */}
             {ladderMoveCost(destination) > gym.ladder.gymBucks ? (
               <Text style={styles.copy} testID={'gymscreen-move-up-unavailable'}>
-                needs {ladderMoveCost(destination)} gym bucks — you have {gym.ladder.gymBucks}
+                needs {formatGymBucks(ladderMoveCost(destination))} gym bucks — you have{' '}
+                {formatGymBucks(gym.ladder.gymBucks)}
               </Text>
             ) : (
               <Pressable
@@ -1198,7 +1204,7 @@ export function GymScreen(props: GymViewProps) {
       <View testID={'gymscreen-more-debug'}>
         <Text style={styles.copy}>
           clock: {describeLadderClock(gym.ladder.collectedAt)} — accelerated:{' '}
-          {gym.acceleratedGymBucks}
+          {formatGymBucks(gym.acceleratedGymBucks)}
         </Text>
       </View>
       <View testID={'gymscreen-week'}>
@@ -1231,18 +1237,20 @@ export function GymScreen(props: GymViewProps) {
           </View>
         ))}
         <Text style={styles.copy} testID={'gymscreen-week-preview'}>
-          if this week ended now: residual carry {previewEffects.residualCarryMultiplier}, injury
-          chance {previewEffects.injuryChanceMultiplier}, technique bonus{' '}
-          {previewEffects.techniqueQualityBonus}, ceiling growth {previewEffects.ceilingGrowthPerWeek}
+          if this week ended now: residual carry {formatEmpireMultiplier(previewEffects.residualCarryMultiplier)}, injury
+          chance {formatEmpireMultiplier(previewEffects.injuryChanceMultiplier)}, technique bonus{' '}
+          {formatEmpireMultiplier(previewEffects.techniqueQualityBonus)}, ceiling growth{' '}
+          {formatEmpireMultiplier(previewEffects.ceilingGrowthPerWeek)}
         </Text>
       </View>
       <View testID={'gymscreen-week-log'}>
         {weekLog.map((week) => (
           <Text style={styles.copy} testID={`gymscreen-week-log-${week.weekIndex}`} key={week.weekIndex}>
             week {week.weekIndex}: {week.slots.map(describeSlotOutcome).join('; ')} — residual carry{' '}
-            {week.effects.residualCarryMultiplier}, injury chance {week.effects.injuryChanceMultiplier},
-            technique bonus {week.effects.techniqueQualityBonus}, ceiling growth{' '}
-            {week.effects.ceilingGrowthPerWeek}
+            {formatEmpireMultiplier(week.effects.residualCarryMultiplier)}, injury chance{' '}
+            {formatEmpireMultiplier(week.effects.injuryChanceMultiplier)},
+            technique bonus {formatEmpireMultiplier(week.effects.techniqueQualityBonus)}, ceiling growth{' '}
+            {formatEmpireMultiplier(week.effects.ceilingGrowthPerWeek)}
           </Text>
         ))}
       </View>
@@ -1281,25 +1289,26 @@ export function GymScreen(props: GymViewProps) {
         {lastAccrual === null ? null : (
           <Text style={styles.copy} testID={'gymscreen-accrual'}>
             last advance banked {lastAccrual.secondsBanked}s of {lastAccrual.secondsElapsed}s, paid{' '}
-            {lastAccrual.gymBucks} gym bucks, cap discarded {lastAccrual.secondsDiscarded}s
+            {formatGymBucks(lastAccrual.gymBucks)} gym bucks, cap discarded {lastAccrual.secondsDiscarded}s
           </Text>
         )}
         {lastManagementReport === null ? null : (
           <Text style={styles.copy} testID={'gymscreen-check-in-costs'}>
-            since the last update: condition took {lastManagementReport.incomeDeductedGymBucks} gym bucks off
-            the accrual and paid {lastManagementReport.incomePaidGymBucks} at{' '}
-            {lastManagementReport.incomeMultiplier}, wore the gym down by{' '}
-            {lastManagementReport.meanConditionWear}, paid {lastManagementReport.wagePaidGymBucks} in
-            wages (unpaid {lastManagementReport.wageShortfallGymBucks}), and the manager repaired{' '}
+            since the last update: condition took {formatGymBucks(lastManagementReport.incomeDeductedGymBucks)} gym bucks off
+            the accrual and paid {formatGymBucks(lastManagementReport.incomePaidGymBucks)} at{' '}
+            {formatEmpireMultiplier(lastManagementReport.incomeMultiplier)}, wore the gym down by{' '}
+            {formatEmpireMultiplier(lastManagementReport.meanConditionWear)}, paid{' '}
+            {formatGymBucks(lastManagementReport.wagePaidGymBucks)} in
+            wages (unpaid {formatGymBucks(lastManagementReport.wageShortfallGymBucks)}), and the manager repaired{' '}
             {lastManagementReport.autoRepairs.length} item(s) for{' '}
-            {lastManagementReport.autoRepairSpendGymBucks}
+            {formatGymBucks(lastManagementReport.autoRepairSpendGymBucks)}
           </Text>
         )}
         {lastManagementReport === null
           ? null
           : lastManagementReport.autoRepairs.map((repair) => (
               <Text style={styles.copy} testID={`gymscreen-auto-repair-${repair.item}`} key={repair.item}>
-                your manager repaired {repair.item} for {repair.costGymBucks} gym bucks
+                your manager repaired {repair.item} for {formatGymBucks(repair.costGymBucks)} gym bucks
               </Text>
             ))}
       </View>
