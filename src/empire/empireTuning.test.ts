@@ -778,7 +778,12 @@ describe('§5.5 social', () => {
     // `FLOOR_MEMBER_RELOCATION_MIN_TILES`, `FLOOR_MEMBER_RELOCATION_GLIDE`,
     // `FLOOR_MEMBER_GAIT_TRANSITION_TRIGGER_PX`. Read from this assertion's
     // own failure value.
-    expect(examined).toBe(259);
+    // 259 -> 261: VL-3 round 2c (HUD-2c) — two new top-level keys,
+    // `GYM_BUCKS_DISPLAY_DECIMALS` and `EMPIRE_MULTIPLIER_DISPLAY_DECIMALS`,
+    // the presentation-only rounding constants that stop a raw accrued float
+    // from reaching the player-facing HUD. Read from this assertion's own
+    // failure value.
+    expect(examined).toBe(261);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -816,7 +821,10 @@ describe('§5.5 social', () => {
     // 1280 -> 1295: OWNED by this round's own three new top-level keys × 5
     // banned units (256 -> 259 above). Read from this assertion's own
     // failure value.
-    expect(probed).toBe(1295); // 259 keys × 5 banned units
+    // 1295 -> 1305: VL-3 round 2c (HUD-2c) — two new top-level keys × 5
+    // banned units (259 -> 261 above). Read from this assertion's own
+    // failure value.
+    expect(probed).toBe(1305); // 261 keys × 5 banned units
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

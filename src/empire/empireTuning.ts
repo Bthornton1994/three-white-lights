@@ -1591,6 +1591,36 @@ export const EMPIRE_TUNING = Object.freeze({
    */
   CONDITION_PERCENT_SCALE: 100,
 
+  /**
+   * Presentation only: decimal places a Gym Bucks quantity (a wallet balance,
+   * a cost, or a per-hour rate) is rounded to before it reaches player-facing
+   * text. `production.ts`'s accrual arithmetic and `management.ts`'s wear/
+   * income math are real-valued and accumulate ordinary IEEE-754 noise (a
+   * balance can read `177.83999999999997` internally) — that noise is a
+   * property of floating-point addition, not a design decision, and nothing
+   * upstream of display should be made to avoid it. This constant is the
+   * single place that stops it reaching a screen: every player-facing money
+   * string in `GymScreen.tsx`, `ladderView.tsx` and `FloorGrid.tsx` is routed
+   * through `stationView.ts`'s `formatGymBucks`, never printed raw. Does not
+   * change any stored balance, cost, or rate — display rounds, the ledger
+   * does not.
+   */
+  GYM_BUCKS_DISPLAY_DECIMALS: 2,
+
+  /**
+   * Presentation only: decimal places a dimensionless empire multiplier or
+   * fraction (income multiplier, residual-carry multiplier, injury-chance
+   * multiplier, mean condition wear) is rounded to before it reaches
+   * player-facing text. These already pass through `production.ts`'s
+   * `scrubPrecision` (`PRECISION_DECIMALS`, 6dp) for engine-internal noise
+   * control, but 6 decimal places is still an ugly, illegible string on a
+   * screen (`0.166666`) — this is a second, tighter rounding applied only at
+   * the point a number becomes text for a human to read, via `stationView.ts`'s
+   * `formatEmpireMultiplier`. Does not change any stored multiplier or any
+   * arithmetic that consumes one.
+   */
+  EMPIRE_MULTIPLIER_DISPLAY_DECIMALS: 3,
+
   /** Border thickness, in pixels, of the floor grid's own outer frame. Read by `FloorGrid.tsx` only. */
   FLOOR_GRID_BORDER_WIDTH_PIXELS: 1,
 
@@ -3483,6 +3513,8 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_TILE_PIXELS_MAX: 'knob',
   FLOOR_STAGE_PADDING_PIXELS: 'knob',
   CONDITION_PERCENT_SCALE: 'knob',
+  GYM_BUCKS_DISPLAY_DECIMALS: 'knob',
+  EMPIRE_MULTIPLIER_DISPLAY_DECIMALS: 'knob',
   FLOOR_GRID_BORDER_WIDTH_PIXELS: 'knob',
   FLOOR_GRID_LINE_WIDTH_PIXELS: 'knob',
   FLOOR_ITEM_BORDER_WIDTH_PIXELS: 'knob',

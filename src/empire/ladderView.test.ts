@@ -83,6 +83,7 @@ import {
   relocateFloorState,
   removeFloorItem,
 } from './floor';
+import { formatEmpireMultiplier, formatGymBucks } from './stationView';
 
 const T = EMPIRE_TUNING;
 
@@ -170,10 +171,10 @@ function expectScreenMatchesState(root: Rendered, ladder: LadderState): number {
   expect(textOf(findByTestId(root, 'ladder-rung'))).toBe(ladder.rung);
   compared += 1;
   expect(textOf(findByTestId(root, 'ladder-rate'))).toBe(
-    String(ladderIncomeRatePerHour(ladder.rung)),
+    formatGymBucks(ladderIncomeRatePerHour(ladder.rung)),
   );
   compared += 1;
-  expect(textOf(findByTestId(root, 'ladder-gym-bucks'))).toBe(String(ladder.gymBucks));
+  expect(textOf(findByTestId(root, 'ladder-gym-bucks'))).toBe(formatGymBucks(ladder.gymBucks));
   compared += 1;
   expect(textOf(findByTestId(root, 'ladder-clock'))).toBe(describeLadderClock(ladder.collectedAt));
   compared += 1;
@@ -186,7 +187,7 @@ function expectScreenMatchesState(root: Rendered, ladder: LadderState): number {
   const shopText = textOf(findByTestId(root, 'ladder-shop'));
   for (const item of T.LADDER_EQUIPMENT_ITEMS) {
     expect(shopText).toContain(
-      `${item} costs ${ladderEquipmentCost(item)} gym bucks, fits from ${ladderEquipmentMinRung(item)}`,
+      `${item} costs ${formatGymBucks(ladderEquipmentCost(item))} gym bucks, fits from ${ladderEquipmentMinRung(item)}`,
     );
     compared += 1;
     const buyButtons = findAllByTestId(root, `buy-${item}`);
@@ -202,7 +203,7 @@ function expectScreenMatchesState(root: Rendered, ladder: LadderState): number {
     expect(findAllByTestId(root, 'move-up').length).toBe(0);
   } else {
     expect(moveText).toContain(
-      `next: ${destination} for ${ladderMoveCost(destination)} gym bucks`,
+      `next: ${destination} for ${formatGymBucks(ladderMoveCost(destination))} gym bucks`,
     );
     expect(findAllByTestId(root, 'move-up').length).toBe(1);
   }
@@ -339,7 +340,7 @@ describe('a played run: press, reduce, re-render, and the numbers stay the pure 
       // The accrual report on the next screen is the direct call's report.
       const after = render(view, []);
       expect(textOf(findByTestId(after, 'ladder-accrual'))).toBe(
-        `last advance banked ${direct.accrual.secondsBanked}s of ${direct.accrual.secondsElapsed}s, paid ${direct.accrual.gymBucks} gym bucks, cap discarded ${direct.accrual.secondsDiscarded}s`,
+        `last advance banked ${direct.accrual.secondsBanked}s of ${direct.accrual.secondsElapsed}s, paid ${formatGymBucks(direct.accrual.gymBucks)} gym bucks, cap discarded ${direct.accrual.secondsDiscarded}s`,
       );
       quantitiesCompared += expectScreenMatchesState(after, pure);
       screensGraded += 1;
@@ -452,9 +453,9 @@ function expectGymScreenMatchesState(root: Rendered, state: GymViewState): numbe
   compared += 3;
   expect(textOf(findByTestId(root, 'gym-rung'))).toBe(gym.ladder.rung);
   compared += 1;
-  expect(textOf(findByTestId(root, 'gym-gym-bucks'))).toBe(String(gym.ladder.gymBucks));
+  expect(textOf(findByTestId(root, 'gym-gym-bucks'))).toBe(formatGymBucks(gym.ladder.gymBucks));
   compared += 1;
-  expect(textOf(findByTestId(root, 'gym-accelerated-bucks'))).toBe(String(gym.acceleratedGymBucks));
+  expect(textOf(findByTestId(root, 'gym-accelerated-bucks'))).toBe(formatGymBucks(gym.acceleratedGymBucks));
   compared += 1;
   // The ladder shop: cost, min rung and the buy control's presence, per item.
   const ladderShopText = textOf(findByTestId(root, 'gym-ladder-shop'));
@@ -470,7 +471,7 @@ function expectGymScreenMatchesState(root: Rendered, state: GymViewState): numbe
   const ownedSession = new Set<string>(gym.sessionEquipment);
   for (const item of T.SESSION_EQUIPMENT_ITEMS) {
     expect(sessionShopText).toContain(
-      `${item} (${sessionEquipmentGroup(item)}) costs ${sessionEquipmentCost(item)} gym bucks, fits from ${sessionEquipmentMinRung(item)}`,
+      `${item} (${sessionEquipmentGroup(item)}) costs ${formatGymBucks(sessionEquipmentCost(item))} gym bucks, fits from ${sessionEquipmentMinRung(item)}`,
     );
     const buyButtons = findAllByTestId(root, `gym-buy-session-${item}`);
     expect(buyButtons.length, item).toBe(ownedSession.has(item) ? 0 : 1);
@@ -491,10 +492,10 @@ function expectGymScreenMatchesState(root: Rendered, state: GymViewState): numbe
     }
   }
   const previewText = textOf(findByTestId(root, 'gym-week-preview'));
-  expect(previewText).toContain(String(previewEffects.residualCarryMultiplier));
-  expect(previewText).toContain(String(previewEffects.injuryChanceMultiplier));
-  expect(previewText).toContain(String(previewEffects.techniqueQualityBonus));
-  expect(previewText).toContain(String(previewEffects.ceilingGrowthPerWeek));
+  expect(previewText).toContain(formatEmpireMultiplier(previewEffects.residualCarryMultiplier));
+  expect(previewText).toContain(formatEmpireMultiplier(previewEffects.injuryChanceMultiplier));
+  expect(previewText).toContain(formatEmpireMultiplier(previewEffects.techniqueQualityBonus));
+  expect(previewText).toContain(formatEmpireMultiplier(previewEffects.ceilingGrowthPerWeek));
   compared += 4;
   const availableText = textOf(findByTestId(root, 'gym-available-now'));
   const available = availableActivities(gym.sessionEquipment);
@@ -510,10 +511,10 @@ function expectGymScreenMatchesState(root: Rendered, state: GymViewState): numbe
   for (const week of weekLog) {
     const entryText = textOf(findByTestId(root, `gym-week-log-${week.weekIndex}`));
     for (const outcome of week.slots) expectOutcomeInText(entryText, outcome);
-    expect(entryText).toContain(String(week.effects.residualCarryMultiplier));
-    expect(entryText).toContain(String(week.effects.injuryChanceMultiplier));
-    expect(entryText).toContain(String(week.effects.techniqueQualityBonus));
-    expect(entryText).toContain(String(week.effects.ceilingGrowthPerWeek));
+    expect(entryText).toContain(formatEmpireMultiplier(week.effects.residualCarryMultiplier));
+    expect(entryText).toContain(formatEmpireMultiplier(week.effects.injuryChanceMultiplier));
+    expect(entryText).toContain(formatEmpireMultiplier(week.effects.techniqueQualityBonus));
+    expect(entryText).toContain(formatEmpireMultiplier(week.effects.ceilingGrowthPerWeek));
     compared += 1;
   }
   return compared;

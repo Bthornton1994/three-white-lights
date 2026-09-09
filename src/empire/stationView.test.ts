@@ -18,6 +18,8 @@ import { buySessionEquipment, withLadder } from './sessions';
 import {
   displayConditionPercent,
   displayRepairCostBySoundness,
+  formatEmpireMultiplier,
+  formatGymBucks,
   isRecoveryBlocking,
   isSoundCondition,
   playerFacingActivityGroupLabel,
@@ -125,6 +127,66 @@ describe('stationView.ts — GDD §5.14 Stage C', () => {
     expect(displayConditionPercent(1)).toBe(100);
     expect(displayConditionPercent(0.5)).toBe(50);
     expect(displayConditionPercent(0.966)).toBe(97);
+  });
+
+  /**
+   * VL-3 round 2c (HUD-2c): the raw-float-in-the-HUD fix. Captured evidence
+   * showed `177.83999999999997`, `0.249999` and `0.166666` reaching the
+   * player-facing screen verbatim — ordinary floating-point accrual noise,
+   * and 6-decimal `scrubPrecision` engine noise, printed without any display
+   * rounding at all. `formatGymBucks`/`formatEmpireMultiplier` are the one
+   * place that stops it. Deleting either `.toFixed(...)` call (i.e.
+   * replacing the function body with `return String(amountGymBucks);` /
+   * `return String(multiplier);`) makes every assertion below fail, because
+   * `String(177.83999999999997)` is `'177.83999999999997'`, not `'177.84'`,
+   * and `String(0.166666)` is `'0.166666'`, not `'0.167'` — this is the exact
+   * mutation a builder must apply and watch redden before trusting this
+   * test as a witness.
+   */
+  it('formats a Gym Bucks quantity to a fixed, player-legible number of decimal places — the witnessed defect, reproduced and closed', () => {
+    // The exact witnessed value from the captured HUD evidence.
+    expect(formatGymBucks(177.83999999999997)).toBe('177.84');
+    // Whole numbers still carry the decimal places, so "gym bucks: 5.00"
+    // reads consistently rather than jumping between 0 and 2 decimal places
+    // depending on whether accrual noise happened to be present.
+    expect(formatGymBucks(0)).toBe('0.00');
+    expect(formatGymBucks(5)).toBe('5.00');
+    expect(formatGymBucks(604.8)).toBe('604.80');
+    // The general property: no matter how many decimal digits the input
+    // float carries, the formatted string carries exactly
+    // `GYM_BUCKS_DISPLAY_DECIMALS` of them — never more, never fewer, never
+    // the raw unrounded representation.
+    const messyInputs = [0.1 + 0.2, 1 / 3, 12345.6789012345, 1e-10, 691.2, -0];
+    for (const value of messyInputs) {
+      const formatted = formatGymBucks(value);
+      const decimalPart = formatted.split('.')[1] ?? '';
+      expect(decimalPart.length, `formatGymBucks(${value}) = ${formatted}`).toBe(
+        EMPIRE_TUNING.GYM_BUCKS_DISPLAY_DECIMALS,
+      );
+      // And it never contains more digits after the point than the ones
+      // asserted above — a raw float leak would show 15-17 significant
+      // digits, not `GYM_BUCKS_DISPLAY_DECIMALS`.
+      expect(formatted).not.toBe(String(value));
+    }
+  });
+
+  it('formats a dimensionless empire multiplier/fraction to a fixed, player-legible number of decimal places — the other two witnessed values', () => {
+    // The exact witnessed values from the captured HUD evidence — both are
+    // `scrubPrecision`'s 6-decimal-place engine noise, still too long to
+    // read as a HUD number.
+    expect(formatEmpireMultiplier(0.249999)).toBe('0.250');
+    expect(formatEmpireMultiplier(0.166666)).toBe('0.167');
+    expect(formatEmpireMultiplier(0)).toBe('0.000');
+    expect(formatEmpireMultiplier(0.35)).toBe('0.350');
+    const messyInputs = [1 / 6, 1 / 3, 2 / 3, 0.123456789];
+    for (const value of messyInputs) {
+      const formatted = formatEmpireMultiplier(value);
+      const decimalPart = formatted.split('.')[1] ?? '';
+      expect(decimalPart.length, `formatEmpireMultiplier(${value}) = ${formatted}`).toBe(
+        EMPIRE_TUNING.EMPIRE_MULTIPLIER_DISPLAY_DECIMALS,
+      );
+      expect(formatted).not.toBe(String(value));
+    }
   });
 
   it('describes manager capability without raw 0–1 thresholds', () => {

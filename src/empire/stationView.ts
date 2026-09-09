@@ -103,6 +103,35 @@ export function displayConditionPercent(condition: number): number {
   return Math.round(condition * EMPIRE_TUNING.CONDITION_PERCENT_SCALE);
 }
 
+/**
+ * The one place a Gym Bucks quantity (a wallet balance, a cost, an accrual, a
+ * per-hour rate) is turned into player-facing text. `production.ts`'s accrual
+ * arithmetic is real-valued and accumulates ordinary floating-point noise —
+ * a live balance can be `177.83999999999997` internally — and that noise is a
+ * property of the accrual math, not something display should paper over by
+ * asking the engine to round differently. This rounds only the STRING a
+ * player reads; the underlying number, and every real spend or accrual
+ * computed from it, is untouched. See `EMPIRE_TUNING.GYM_BUCKS_DISPLAY_
+ * DECIMALS`'s own header for the full reasoning.
+ */
+export function formatGymBucks(amountGymBucks: number): string {
+  return amountGymBucks.toFixed(EMPIRE_TUNING.GYM_BUCKS_DISPLAY_DECIMALS);
+}
+
+/**
+ * The one place a dimensionless empire multiplier or fraction (income
+ * multiplier, residual-carry multiplier, injury-chance multiplier, mean
+ * condition wear) is turned into player-facing text. These values already
+ * pass through `production.ts`'s `scrubPrecision` for engine-internal noise
+ * control (6 decimal places), which is still an illegible string on a screen
+ * (`0.166666`) — this applies the tighter, display-only rounding
+ * `EMPIRE_TUNING.EMPIRE_MULTIPLIER_DISPLAY_DECIMALS` names. Does not change
+ * the stored multiplier or any arithmetic that reads it.
+ */
+export function formatEmpireMultiplier(multiplier: number): string {
+  return multiplier.toFixed(EMPIRE_TUNING.EMPIRE_MULTIPLIER_DISPLAY_DECIMALS);
+}
+
 /** Concise player-facing manager capability. Novice's 0 threshold means none. */
 export function playerFacingManagerCapability(tier: ManagerTier): string {
   const threshold = managerAutoRepairCondition(tier);
