@@ -35,6 +35,20 @@
  * clip advances one full cycle per `periodMs` of the renderer's own frame
  * clock. A clip that does not loop holds its last frame when its cycle ends
  * and the runtime takes the next edge.
+ *
+ * THE STANDING TRANSITIONS' CONVENTION (art round 2, decided). `walk-to-wait`
+ * and `wait-to-walk` are BODY-FRAME like the walk — the root is pinned at the
+ * canvas centre and the body walks over its planted foot as it stops, or off
+ * it as it starts — and the rig now solves their sample times so the planted
+ * foot retreats by the SAME amount every frame, exactly as the walk's do.
+ * `memberRigMetadata()` reports each clip's `cycleAdvancePx`: the root's
+ * total advance over the clip (the walk's stride; the transitions' totals;
+ * 0 for the stands and every bench clip). The runtime's next round drives
+ * these two clips by DISTANCE — phase advances by drawn feet travel over
+ * `cycleAdvancePx` — and shows frame k at phase k / (frames − 1), which is
+ * where the rig drew it; this table still lists them as time-driven until
+ * that runtime lands, so the drive column here is the runtime's current
+ * behaviour rather than the convention's end state.
  */
 
 import { EMPIRE_TUNING } from './empireTuning';
@@ -51,11 +65,15 @@ export const MEMBER_MOTION_CLIPS = Object.freeze([
   'walk-to-wait',
   /** The first step out of a stand. */
   'wait-to-walk',
-  /** Sit on the bench edge, lie back, reach the racked bar, unrack. */
+  /** The side-view walker: step to the bench, sit on its edge, lean back, lie down. Five poses; ends lying. */
   'bench-setup',
+  /** The three-quarter presser: take the racked bar, half way, lockout. Three poses; starts under the rack. */
+  'bench-mount',
   /** One press: lockout, controlled descent, bottom, drive. */
   'bench-press',
-  /** Rerack, sit up, stand. */
+  /** The presser: lockout, half way, racked. Three poses; ends under the rack. */
+  'bench-dismount',
+  /** The walker: lying, lean back, seated, half-sit, stand. Five poses; starts lying. */
   'bench-finish',
 ] as const);
 export type MemberMotionClip = (typeof MEMBER_MOTION_CLIPS)[number];
@@ -111,11 +129,23 @@ export const MEMBER_MOTION_CLIP_SPECS: Readonly<Record<MemberMotionClip, MemberM
       periodMs: EMPIRE_TUNING.FLOOR_MEMBER_BENCH_SETUP_MS,
       loop: false,
     }),
+    'bench-mount': Object.freeze({
+      frames: EMPIRE_TUNING.FLOOR_MEMBER_MOTION_FRAMES['bench-mount'],
+      drive: 'time',
+      periodMs: EMPIRE_TUNING.FLOOR_MEMBER_BENCH_MOUNT_MS,
+      loop: false,
+    }),
     'bench-press': Object.freeze({
       frames: EMPIRE_TUNING.FLOOR_MEMBER_MOTION_FRAMES['bench-press'],
       drive: 'time',
       periodMs: EMPIRE_TUNING.FLOOR_MEMBER_REP_PERIOD_MS,
       loop: true,
+    }),
+    'bench-dismount': Object.freeze({
+      frames: EMPIRE_TUNING.FLOOR_MEMBER_MOTION_FRAMES['bench-dismount'],
+      drive: 'time',
+      periodMs: EMPIRE_TUNING.FLOOR_MEMBER_BENCH_MOUNT_MS,
+      loop: false,
     }),
     'bench-finish': Object.freeze({
       frames: EMPIRE_TUNING.FLOOR_MEMBER_MOTION_FRAMES['bench-finish'],
@@ -129,8 +159,14 @@ export const MEMBER_MOTION_CLIP_SPECS: Readonly<Record<MemberMotionClip, MemberM
  * The edges a body may take between clips, as `from → to`. A clip change the
  * runtime wants that is not an edge here is routed through the transition
  * clips (walk ↔ wait through `walk-to-wait` / `wait-to-walk`, the bench
- * through setup and finish); `memberMotion.ts` asserts every change it makes
- * is on this list, and the motion proof reads the same list off the trace.
+ * through setup → mount and dismount → finish); `memberMotion.ts` asserts
+ * every change it makes is on this list, and the motion proof reads the same
+ * list off the trace.
+ *
+ * Every edge is a HARD CUT except the two in `MEMBER_MOTION_DISSOLVE_EDGES`,
+ * so `memberRig.test.ts` holds the pose either side of every other edge
+ * within `FLOOR_MEMBER_MOTION_POSE_TOLERANCE_DEGREES` and the root within
+ * `FLOOR_MEMBER_MOTION_ROOT_TOLERANCE_PX`.
  */
 export const MEMBER_MOTION_TRANSITIONS: readonly (readonly [MemberMotionClip, MemberMotionClip])[] =
   Object.freeze([
@@ -144,16 +180,41 @@ export const MEMBER_MOTION_TRANSITIONS: readonly (readonly [MemberMotionClip, Me
     ['idle', 'wait'],
     ['wait', 'bench-setup'],
     ['idle', 'bench-setup'],
-    ['bench-setup', 'bench-press'],
-    ['bench-press', 'bench-finish'],
+    ['bench-setup', 'bench-mount'],
+    ['bench-mount', 'bench-press'],
+    ['bench-press', 'bench-dismount'],
+    ['bench-dismount', 'bench-finish'],
     ['bench-finish', 'idle'],
     ['bench-finish', 'wait-to-walk'],
+  ] as const);
+
+/**
+ * The two edges where the PUPPET changes — the side-view walker lying on
+ * the bench gives way to the three-quarter presser under the racked bar,
+ * and the reverse — and the runtime crossfades over
+ * `FLOOR_MEMBER_CLIP_BLEND_MS` instead of cutting. A strip is one image, so
+ * a dissolve can only sit on an edge between two clips, never inside one;
+ * that is why the bench is five clips rather than three. The rig authors
+ * the two frames either side of each to put the pelvis at one canvas point
+ * and to overlap in silhouette as far as two different drawings allow; the
+ * bake measures that overlap (intersection over union of the opaque masks)
+ * and `memberRig.test.ts` pins it above `FLOOR_MEMBER_MOTION_DISSOLVE_IOU_MIN`.
+ */
+export const MEMBER_MOTION_DISSOLVE_EDGES: readonly (readonly [MemberMotionClip, MemberMotionClip])[] =
+  Object.freeze([
+    ['bench-setup', 'bench-mount'],
+    ['bench-dismount', 'bench-finish'],
   ] as const);
 
 /** Whether `from → to` is an edge of `MEMBER_MOTION_TRANSITIONS`. */
 export function memberMotionTransitionAllowed(from: MemberMotionClip, to: MemberMotionClip): boolean {
   if (from === to) return true;
   return MEMBER_MOTION_TRANSITIONS.some(([a, b]) => a === from && b === to);
+}
+
+/** Whether `from → to` is one of the two dissolve edges. */
+export function memberMotionDissolveEdge(from: MemberMotionClip, to: MemberMotionClip): boolean {
+  return MEMBER_MOTION_DISSOLVE_EDGES.some(([a, b]) => a === from && b === to);
 }
 
 /** Every baked frame is this many pixels square, feet at the bottom centre — the paintings' own canvas. */

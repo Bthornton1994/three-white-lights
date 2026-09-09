@@ -33,7 +33,7 @@ The import fence is unchanged: FloorGrid still cannot `require()` a PNG.
 | `member-walk-a/b-*.png` | Two-frame walk | text-to-image + image-to-image + flip |
 | `member-using-bench-a/b-*.png` | Two-frame bench press | text-to-image + image-to-image + flip |
 | `member-using-bar-a/b-*.png` | Two-frame bar work | text-to-image + image-to-image + flip |
-| `member-motion-powerlifter-<clip>.png` (walk, idle, wait, walk-to-wait, wait-to-walk, bench-setup, bench-press, bench-finish) | VL-3 production motion strips: one 256 px frame per authored pose, side by side, feet at the bottom centre, authored facing right | derived from `member-walk-a-right.png` and `member-using-bench-a-right.png` by `tools/bake-member-motion.mjs` — a cut-out puppet (`src/empire/memberPuppet.ts`) posed by `src/empire/memberRig.ts`; the bench painting's tank recoloured toward the walker's tee at bake time; no new generated pixels |
+| `member-motion-powerlifter-<clip>.png` (walk, idle, wait, walk-to-wait, wait-to-walk, bench-setup, bench-mount, bench-press, bench-dismount, bench-finish) | VL-3 production motion strips: one 256 px frame per authored pose, side by side, feet at the bottom centre, authored facing right | derived from `member-walk-a-right.png` and `member-using-bench-a-right.png` by `tools/bake-member-motion.mjs` — a cut-out puppet (`src/empire/memberPuppet.ts`) posed by `src/empire/memberRig.ts`; the bench painting's tank quantile-matched onto the walker's tee at bake time (art round 2); no new generated pixels |
 
 ## Screenshot evidence (architectural proof, not Visual PASS)
 

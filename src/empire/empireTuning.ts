@@ -2912,11 +2912,21 @@ export const EMPIRE_TUNING = Object.freeze({
   FLOOR_MEMBER_GAIT_TRANSITION_MS: 220,
 
   /**
-   * VL-3: sitting on the bench edge, lying back, reaching the racked bar and
-   * unracking it (`bench-setup`), and the reverse (`bench-finish`), in
-   * milliseconds each — eight poses each.
+   * VL-3: the side-view walker stepping to the bench, sitting on its edge
+   * and lying back (`bench-setup`), and the reverse (`bench-finish`), in
+   * milliseconds each — five poses each. The presser's reach for the racked
+   * bar is a separate clip timed by `FLOOR_MEMBER_BENCH_MOUNT_MS`.
    */
   FLOOR_MEMBER_BENCH_SETUP_MS: 900,
+
+  /**
+   * VL-3 art round 2: the three-quarter presser taking the racked bar to
+   * lockout (`bench-mount`) and racking it again (`bench-dismount`), in
+   * milliseconds each — three poses each. Split out of the setup so the
+   * cut from the side-view walker to the presser sits on a clip EDGE, where
+   * the runtime can dissolve it, rather than inside one strip.
+   */
+  FLOOR_MEMBER_BENCH_MOUNT_MS: 400,
 
   /**
    * VL-3: authored poses per production motion clip — the frame counts the
@@ -2924,7 +2934,8 @@ export const EMPIRE_TUNING = Object.freeze({
    * `MEMBER_MOTION_CLIPS` entry; `memberMotionClips.ts` `satisfies` the
    * closed list). Sixteen for a full gait cycle is two eight-pose steps:
    * contact, down, passing, up on each leg. Twelve for a breath or a rep,
-   * eight for a bench setup or finish, four for a gait transition.
+   * five for the walker's bench setup or finish, three for the presser's
+   * mount or dismount, four for a gait transition.
    */
   FLOOR_MEMBER_MOTION_FRAMES: Object.freeze({
     walk: 16,
@@ -2932,9 +2943,11 @@ export const EMPIRE_TUNING = Object.freeze({
     wait: 12,
     'walk-to-wait': 4,
     'wait-to-walk': 4,
-    'bench-setup': 8,
+    'bench-setup': 5,
+    'bench-mount': 3,
     'bench-press': 12,
-    'bench-finish': 8,
+    'bench-dismount': 3,
+    'bench-finish': 5,
   }),
 
   /**
@@ -3231,6 +3244,60 @@ export const EMPIRE_TUNING = Object.freeze({
    * authored swing (a foot below the line is a foot through the floor).
    */
   FLOOR_MEMBER_MOTION_SWING_CLEARANCE_MIN_PX: 0,
+
+  /**
+   * VL-3 art round 2: the head's nod on a breath, in degrees — the chin
+   * lifting with the inhale on top of the torso's pitch, so a breath moves
+   * the silhouette's top edge and not only its shoulders. Measured because
+   * the round-1 breath was invisible at phone size: 0 of a 74 px body's
+   * pixels changed between the idle's rest and its peak.
+   */
+  FLOOR_MEMBER_MOTION_BREATH_NOD_DEGREES: 3,
+
+  /**
+   * VL-3 art round 2: the upper arms' lift on a breath, in degrees of
+   * rotation away from the body — a cut-out puppet's shoulder rise. Round 1
+   * tied this to `FLOOR_MEMBER_MOTION_BREATH_DEGREES`; it is its own knob so
+   * the shoulders can be turned without the torso.
+   */
+  FLOOR_MEMBER_MOTION_BREATH_SHOULDER_DEGREES: 4,
+
+  /**
+   * VL-3 art round 2: the body height, in screen pixels, at which the idle
+   * breath's legibility is measured — the garage front row's drawn body
+   * (`FLOOR_MEMBER_DRAW_SCALE_TILES` tiles at the front-row tile). The bake
+   * downsamples the idle's rest and peak frames to this height and counts
+   * the pixels that change.
+   */
+  FLOOR_MEMBER_MOTION_PHONE_BODY_PX: 74,
+
+  /**
+   * VL-3 art round 2: the least fraction of a phone-size body's pixels
+   * that must differ between the idle's rest frame (0) and its full-breath
+   * frame (half way round) for the breath to count as visible. The bake
+   * measures it at `FLOOR_MEMBER_MOTION_PHONE_BODY_PX`; the rig test pins
+   * the measurement against this floor.
+   */
+  FLOOR_MEMBER_MOTION_IDLE_BREATH_VISIBLE_FRACTION: 0.04,
+
+  /**
+   * VL-3 art round 2: the least intersection-over-union of the two opaque
+   * silhouettes either side of a dissolve edge (`MEMBER_MOTION_DISSOLVE_EDGES`
+   * — the lying walker against the racked presser, and back) that the bake's
+   * measurement must reach. A floor rather than a target: the presser holds
+   * a bar and plates the walker cannot, so the union is always the larger.
+   */
+  FLOOR_MEMBER_MOTION_DISSOLVE_IOU_MIN: 0.3,
+
+  /**
+   * VL-3 art round 2: slack, in canvas pixels, on the rule that the hips
+   * travel from the bench's half-sit to the lying pose in three equal
+   * moves (seated, lean-back, lying), none larger than a third of the
+   * total. The seated and lean-back roots are SOLVED from the planted foot,
+   * so the thirds are authored through leg angles and land near, not on,
+   * the exact division.
+   */
+  FLOOR_MEMBER_MOTION_SCOOT_SLACK_PX: 2,
 } satisfies EmpireTuningRecord);
 
 /**
@@ -3481,6 +3548,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_MEMBER_IDLE_BREATH_PERIOD_MS: 'knob',
   FLOOR_MEMBER_GAIT_TRANSITION_MS: 'knob',
   FLOOR_MEMBER_BENCH_SETUP_MS: 'knob',
+  FLOOR_MEMBER_BENCH_MOUNT_MS: 'knob',
   FLOOR_MEMBER_MOTION_FRAMES: 'knob',
   FLOOR_MEMBER_MOTION_CANVAS_PX: 'knob',
   FLOOR_MEMBER_REP_PERIOD_MS: 'knob',
@@ -3510,4 +3578,10 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_MEMBER_MOTION_IDLE_SWAY_FRACTION: 'knob',
   FLOOR_MEMBER_MOTION_STANCE_DEGREES: 'knob',
   FLOOR_MEMBER_MOTION_SWING_CLEARANCE_MIN_PX: 'knob',
+  FLOOR_MEMBER_MOTION_BREATH_NOD_DEGREES: 'knob',
+  FLOOR_MEMBER_MOTION_BREATH_SHOULDER_DEGREES: 'knob',
+  FLOOR_MEMBER_MOTION_PHONE_BODY_PX: 'knob',
+  FLOOR_MEMBER_MOTION_IDLE_BREATH_VISIBLE_FRACTION: 'knob',
+  FLOOR_MEMBER_MOTION_DISSOLVE_IOU_MIN: 'knob',
+  FLOOR_MEMBER_MOTION_SCOOT_SLACK_PX: 'knob',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

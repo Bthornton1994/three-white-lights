@@ -61,16 +61,19 @@ import {
   type MemberMotionClip,
 } from './memberMotionClips';
 import {
+  BENCH_DISMOUNT_SEGMENT,
+  BENCH_MOUNT_SEGMENT,
   BENCH_PRESS_SEGMENT,
   HALF_TURN_DEGREES,
   PUPPETS,
   WALK_SEGMENT,
-  benchFinishSegments,
-  benchSetupSegments,
+  benchFinishSegment,
+  benchSetupSegment,
   standingSegment,
   waitToWalkSegment,
   walkToWaitSegment,
   type Puppet,
+  type PuppetBreath,
   type PuppetEase,
   type PuppetKey,
   type PuppetPart,
@@ -130,6 +133,13 @@ export interface RigFrame {
 export interface RigClip {
   readonly clip: MemberMotionClip;
   readonly frames: readonly RigFrame[];
+  /**
+   * The root's total advance over the clip, canvas px: the walk's stride,
+   * a retimed standing transition's total (its last frame's `rootAdvance`),
+   * and 0 for the stands and every bench clip. A runtime driving the clip by
+   * distance advances one full phase per this much drawn feet travel.
+   */
+  readonly cycleAdvancePx: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -447,7 +457,11 @@ function retimedSamples(
 function segmentsFor(clip: MemberMotionClip): readonly PuppetSegment[] {
   const frames = MEMBER_MOTION_CLIP_SPECS[clip].frames;
   const stance = EMPIRE_TUNING.FLOOR_MEMBER_MOTION_STANCE_DEGREES;
-  const breath = EMPIRE_TUNING.FLOOR_MEMBER_MOTION_BREATH_DEGREES;
+  const breath: PuppetBreath = {
+    torso: EMPIRE_TUNING.FLOOR_MEMBER_MOTION_BREATH_DEGREES,
+    nod: EMPIRE_TUNING.FLOOR_MEMBER_MOTION_BREATH_NOD_DEGREES,
+    shoulder: EMPIRE_TUNING.FLOOR_MEMBER_MOTION_BREATH_SHOULDER_DEGREES,
+  };
   const waitSway = EMPIRE_TUNING.FLOOR_MEMBER_WAIT_SWAY_DEGREES;
   switch (clip) {
     case 'walk':
@@ -461,11 +475,15 @@ function segmentsFor(clip: MemberMotionClip): readonly PuppetSegment[] {
     case 'wait-to-walk':
       return [waitToWalkSegment(stance.idle, frames)];
     case 'bench-setup':
-      return benchSetupSegments(stance.idle);
+      return [benchSetupSegment(stance.idle)];
+    case 'bench-mount':
+      return [BENCH_MOUNT_SEGMENT];
     case 'bench-press':
       return [BENCH_PRESS_SEGMENT];
+    case 'bench-dismount':
+      return [BENCH_DISMOUNT_SEGMENT];
     case 'bench-finish':
-      return benchFinishSegments(stance.idle);
+      return [benchFinishSegment(stance.idle)];
     default: {
       const never: never = clip;
       throw new Error(`unknown clip ${String(never)}`);
@@ -513,12 +531,18 @@ function segmentFrames(segment: PuppetSegment): SegmentFrame[] {
   const canvasCentre = MEMBER_MOTION_CANVAS_PX / 2;
 
   if (segment.plant !== null && segment.plant.retime) {
-    // The walk: uniform advance, sample times solved per run.
-    const advance = authoredStridePx() / count;
+    // Uniform advance, sample times solved per run. The walk (cyclic): one
+    // sixteenth of the stride per frame, frame k at k × that. A standing
+    // transition (not cyclic): the run spans the whole segment and its
+    // first and last frames ARE the end poses, so the advance is the
+    // planted foot's total retreat over (frames − 1), and frame k sits at
+    // k × that — the last frame at the full total.
     for (const run of segment.plant.runs) {
       const runCount = run.toFrame - run.fromFrame;
       const t0 = segment.cyclic ? run.fromFrame / count : run.fromFrame / (count - 1);
-      const t1 = segment.cyclic ? run.toFrame / count : run.toFrame / (count - 1);
+      const t1 = segment.cyclic ? run.toFrame / count : (run.toFrame - 1) / (count - 1);
+      const ballAt = (t: number): number => soleRelative(puppet, poseAt(segment, t), run.foot).ballX;
+      const advance = segment.cyclic ? authoredStridePx() / count : (ballAt(t0) - ballAt(t1)) / Math.max(1, runCount - 1);
       const solved = retimedSamples(segment, run.foot, t0, t1, runCount, advance);
       for (let i = 0; i < runCount; i += 1) {
         const frame = run.fromFrame + i;
@@ -635,7 +659,21 @@ export function memberRigClip(clip: MemberMotionClip): RigClip {
   if (frames.length !== spec.frames) {
     throw new Error(`${clip}: segments author ${frames.length} frames, the clip table asks for ${spec.frames}`);
   }
-  return { clip, frames };
+  return { clip, frames, cycleAdvancePx: cycleAdvanceOf(clip, frames) };
+}
+
+/**
+ * The root's advance over a whole clip: the walk's stride (its last frame
+ * sits one sixteenth short of the cycle, so the stride is not the last
+ * frame's advance), a retimed non-cyclic clip's last-frame advance, and 0
+ * for anything drawn in the world frame or with no root travel.
+ */
+function cycleAdvanceOf(clip: MemberMotionClip, frames: readonly RigFrame[]): number {
+  const segments = segmentsFor(clip);
+  const retimedCyclic = segments.some((segment) => segment.plant !== null && segment.plant.retime && segment.cyclic);
+  if (retimedCyclic) return authoredStridePx();
+  const last = frames[frames.length - 1];
+  return last === undefined ? 0 : last.rootAdvance;
 }
 
 /** Every clip in the table. */
@@ -657,6 +695,14 @@ export interface RigFrameMetadata {
   readonly barCentre: RigPoint | null;
   readonly bounds: RigBox;
   readonly puppet: PuppetName;
+  /** The pelvis on the canvas as drawn — what the dissolve edges hold at one point. */
+  readonly root: RigPoint;
+}
+
+export interface RigClipMetadata {
+  /** See `RigClip.cycleAdvancePx`. */
+  readonly cycleAdvancePx: number;
+  readonly frames: readonly RigFrameMetadata[];
 }
 
 export interface MemberRigMetadata {
@@ -666,22 +712,26 @@ export interface MemberRigMetadata {
   readonly stridePx: number;
   /** The same in tiles at the body's draw scale. */
   readonly strideTiles: number;
-  readonly clips: Readonly<Record<MemberMotionClip, readonly RigFrameMetadata[]>>;
+  readonly clips: Readonly<Record<MemberMotionClip, RigClipMetadata>>;
 }
 
 export function memberRigMetadata(): MemberRigMetadata {
-  const clips: Partial<Record<MemberMotionClip, readonly RigFrameMetadata[]>> = {};
+  const clips: Partial<Record<MemberMotionClip, RigClipMetadata>> = {};
   const all = memberRigClips();
   for (const clip of MEMBER_MOTION_CLIPS) {
-    clips[clip] = all[clip].frames.map((frame) => ({
-      plantedFoot: frame.plantedFoot,
-      plantedSole: frame.plantedSole,
-      plantedHeel: frame.plantedHeel,
-      rootAdvance: frame.rootAdvance,
-      barCentre: frame.barCentre,
-      bounds: frame.bounds,
-      puppet: frame.puppet,
-    }));
+    clips[clip] = {
+      cycleAdvancePx: all[clip].cycleAdvancePx,
+      frames: all[clip].frames.map((frame) => ({
+        plantedFoot: frame.plantedFoot,
+        plantedSole: frame.plantedSole,
+        plantedHeel: frame.plantedHeel,
+        rootAdvance: frame.rootAdvance,
+        barCentre: frame.barCentre,
+        bounds: frame.bounds,
+        puppet: frame.puppet,
+        root: frame.root,
+      })),
+    };
   }
   const stridePx = authoredStridePx();
   return {
@@ -689,7 +739,7 @@ export function memberRigMetadata(): MemberRigMetadata {
     groundLineY: groundLineY(),
     stridePx,
     strideTiles: (stridePx * EMPIRE_TUNING.FLOOR_MEMBER_DRAW_SCALE_TILES) / MEMBER_MOTION_CANVAS_PX,
-    clips: clips as Readonly<Record<MemberMotionClip, readonly RigFrameMetadata[]>>,
+    clips: clips as Readonly<Record<MemberMotionClip, RigClipMetadata>>,
   };
 }
 
