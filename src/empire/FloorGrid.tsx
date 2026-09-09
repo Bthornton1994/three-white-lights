@@ -359,6 +359,7 @@ import {
   playerFacingUpgradeRefuse,
   plateLoadingDiscs,
   plateLoadingProgress,
+  plateLoadingZIndex,
   stationConditionView,
   stationIdentityView,
   stationManagerEffectView,
@@ -1247,6 +1248,13 @@ function stationHighlightBoxes(
 interface PlateLoadingLayer {
   readonly key: string;
   readonly testID: string;
+  // The bench this layer's discs sit on top of, PLAY'S own depth measure
+  // (`stationDrawBox`'s `depth` field: a projected screen-y under
+  // perspective, unused under Build). `plateLoadingZIndex` reads this so a
+  // layer never loses a stacking-order comparison against the bench it is
+  // drawn on top of — see that function's own header for why the constant
+  // this replaced could not do that on Play.
+  readonly depth: number;
   readonly discs: readonly {
     readonly index: number;
     readonly left: number;
@@ -1323,6 +1331,7 @@ function plateLoadingLayers(
     layers.push({
       key: testID,
       testID,
+      depth: box.depth,
       discs: Object.freeze(discs),
     });
   }
@@ -3525,7 +3534,15 @@ export function FloorGrid(props: FloorGridProps) {
                       position: 'absolute',
                       left: 0,
                       top: 0,
-                      zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
+                      // The bench's own furniture chip draws at
+                      // `Math.round(box.depth)` on Play (a projected
+                      // screen-y, not the small Build-only ordinal below),
+                      // so a layer stacked at the flat constant lost every
+                      // comparison against its own bench and had its discs'
+                      // lower half painted over. `plateLoadingZIndex` reads
+                      // this layer's own `depth` on Play and keeps the flat
+                      // constant only under Build, where every chip is 0.
+                      zIndex: plateLoadingZIndex(buildMode, layer.depth),
                     }}
                   >
                     {plateLoadingDiscViews(layer)}

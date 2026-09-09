@@ -519,3 +519,41 @@ export function plateLoadingDiscs(progress: number): readonly PlateLoadingDisc[]
   }
   return Object.freeze(discs);
 }
+
+/**
+ * Stacking order for the D2.2 plate-loading discs, on the same axis
+ * `FloorGrid.tsx` already draws every other Play element on: depth, the
+ * projected screen-y of a station's own drawn box (`stationDrawBox`'s
+ * `depth` field, rounded to a `zIndex`).
+ *
+ * Under Build, `FloorGrid.tsx` gives every furniture chip a flat `zIndex`
+ * of 0 and the discs the small ordinal `FLOOR_SIM_STATION_HIGHLIGHT_
+ * Z_INDEX` (2) — a fixed on-top-of-the-chip ordering, not a depth sort, so
+ * the constant is correct there and this function keeps it.
+ *
+ * Under Play the SAME furniture chip's `zIndex` is `Math.round(box.depth)`
+ * — a projected screen-y, ordinarily in the hundreds — because Play sorts
+ * every element (stations, members) by how low on screen its own footprint
+ * sits. A discs layer that kept the small Build-only constant on Play lost
+ * every one of those comparisons against ITS OWN bench: `FLOOR_PLATE_
+ * LOADING.railYFraction` draws the discs inside the bench's own drawn box,
+ * near its head end, so the bench's furniture chip painted OVER the lower
+ * half of every disc — two crimson-and-white crescents at the head of an
+ * empty bench, immediately after a member dismounts (the moment
+ * `nextChangeovers` arms the seat). Recorded as the unidentified residual
+ * in `docs/design/living-gym-world/vl-3/HANDOFF.md` and visible in
+ * `handoff-bench-04-dismount.png`.
+ *
+ * The fix keys off the SAME depth the bench used, one above it — the same
+ * "depth of the thing it decorates, plus one" shape `FloorGrid.tsx` already
+ * uses for a member's own state cue (`FLOOR_SIM_MEMBER_Z_INDEX + 1` is
+ * Build-only there; Play uses the member's own `depth + 1` the same way).
+ * `depth` is a screen-y in ordinary floating-point pixels, not an integer,
+ * which is why this rounds before adding 1 rather than after — matching
+ * `Math.round(box.depth)` exactly, so the "+1" is never lost to rounding
+ * two different depths onto the same integer.
+ */
+export function plateLoadingZIndex(buildMode: boolean, depth: number): number {
+  if (buildMode) return EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX;
+  return Math.round(depth) + 1;
+}
