@@ -1,6 +1,6 @@
 # `athlete-01` provenance
 
-Status: `RIVE_EXPORT_PENDING` — the authored Rive file is saved in the
+Status: `RIVE_EXPORT_PENDING` - the authored Rive file is saved in the
 authenticated editor, but this account's runtime (`.riv`) and backup (`.rev`)
 exports are gated behind a Rive plan upgrade. This record is intentionally
 not an acceptance attestation until those bytes are available.
@@ -43,8 +43,10 @@ pending the same account entitlement as the `.riv` export.
 The earlier flat-vector reference board and companion placeholder athlete
 renders were withdrawn because they did not match the supplied cinematic
 captures. `athlete-01-reference-sheet.png` is now a contact sheet made from
-the supplied `IMG_1127.jpeg`, `IMG_1129.jpeg`, and `IMG_1130.jpeg` squat
-captures. It is a reference board only, not a Rive runtime export.
+the supplied `IMG_1127.jpeg`, `IMG_1129.jpeg`, and `IMG_1130.jpeg` captures.
+`IMG_1127.jpeg` is standing deadlift context; `IMG_1129.jpeg` and
+`IMG_1130.jpeg` are the squat frames. The sheet is a reference board only,
+not a Rive runtime export.
 
 The current native Rive artwork is a structural rig prototype. Because the
 editor's runtime renderer was unavailable in this session and image import
