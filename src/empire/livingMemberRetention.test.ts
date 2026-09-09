@@ -250,11 +250,11 @@ describe('Stage G.2B — common pressure mapping candidates', () => {
     const stock = 0.6358163851139348;
     const quality = 0.6792981493971691;
     const throughput = 0.704912410827251;
-    const capacity = 0.7966705618221184;
+    const capacity = 0.7860114101220862;
     expect(linearPressure(stock)).toBeCloseTo(0.3641836148860652, 10);
     expect(linearPressure(quality)).toBeCloseTo(0.3207018506028309, 10);
     expect(linearPressure(throughput)).toBeCloseTo(0.295087589172749, 10);
-    expect(linearPressure(capacity)).toBeCloseTo(0.2033294381778816, 10);
+    expect(linearPressure(capacity)).toBeCloseTo(0.2139885898779138, 10);
     expect(convexPressure(capacity) / convexPressure(stock)).toBeLessThan(
       linearPressure(capacity) / linearPressure(stock),
     );
@@ -407,27 +407,27 @@ describe('Stage G.2B — Garage fixture table', () => {
 
     expect(stock.meanComposite).toBeCloseTo(0.6358163851139348, 10);
     expect(quality.meanComposite).toBeCloseTo(0.6792981493971691, 10);
-    expect(capacity.meanComposite).toBeCloseTo(0.7966705618221184, 10);
+    expect(capacity.meanComposite).toBeCloseTo(0.7860114101220862, 10);
     expect(throughput.meanComposite).toBeCloseTo(0.704912410827251, 10);
     expect(stock.meanPressure).toBeCloseTo(1 - 0.6358163851139348, 10);
     expect(quality.meanPressure).toBeCloseTo(1 - 0.6792981493971691, 10);
-    expect(capacity.meanPressure).toBeCloseTo(1 - 0.7966705618221184, 10);
+    expect(capacity.meanPressure).toBeCloseTo(1 - 0.7860114101220862, 10);
     expect(throughput.meanPressure).toBeCloseTo(1 - 0.704912410827251, 10);
     expect(quality.meanPressure).toBeLessThan(stock.meanPressure);
     expect(throughput.meanPressure).toBeLessThan(stock.meanPressure);
     expect(capacity.meanPressure).toBeLessThan(throughput.meanPressure);
     expect(stock.overall).toEqual({ Mixed: 3 });
     expect(quality.overall).toEqual({ Mixed: 3 });
-    expect(capacity.overall).toEqual({ Mixed: 2, Good: 1 });
+    expect(capacity.overall).toEqual({ Mixed: 1, Good: 2 });
     expect(throughput.overall).toEqual({ Mixed: 3 });
     expect(stock.waitLabels).toEqual({ Rough: 3 });
     expect(quality.waitLabels).toEqual({ Rough: 3 });
-    expect(capacity.waitLabels).toEqual({ Manageable: 2, Easy: 1 });
+    expect(capacity.waitLabels).toEqual({ Manageable: 3 });
     expect(throughput.waitLabels).toEqual({ Strained: 3 });
     expect(stock.membership).toEqual({ Watching: 3 });
     expect(quality.membership).toEqual({ Watching: 3 });
     expect(throughput.membership).toEqual({ Watching: 3 });
-    expect(capacity.membership).toEqual({ Watching: 2, Stable: 1 });
+    expect(capacity.membership).toEqual({ Watching: 1, Stable: 2 });
     expect(stock.roster.members.length).toBe(3);
     expect(quality.roster.members.length).toBe(3);
     expect(capacity.roster.members.length).toBe(3);
@@ -469,7 +469,7 @@ describe('Stage G.2B — human-history table', () => {
     expect(wrenThroughput?.overall).toBe('Mixed');
     expect(wrenThroughput?.membership).toBe('Watching');
     expect(wrenThroughput?.pressure ?? 1).toBeLessThan(wren?.pressure ?? 0);
-    expect(omarCapacity?.waitLabel).toBe('Easy');
+    expect(omarCapacity?.waitLabel).toBe('Manageable');
     expect(omarCapacity?.trainingLabel).toBe('Solid');
     expect(omarCapacity?.overall).toBe('Good');
     expect(omarCapacity?.membership).toBe('Stable');

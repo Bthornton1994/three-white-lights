@@ -222,7 +222,15 @@ export const DIRECTORY_WALK = Object.freeze({
   // `memberRig.test.ts` — six files, none added by this round's own commits.
   // Read from this pin's own failure value; confirmed against `58295c57` in
   // an isolated worktree, where the live walk already reads 76.
-  DIRECTORY_FILES: 76,
+  // 76 -> 77: VL-3 round 2c integration of the accepted Grok B occupied-cell
+  // pathing correction (`grok/session-b-occupied-cell-pathing-01` at
+  // `b1561aa1`), which adds `floorSim.occupiedPathing.test.ts`. One test file,
+  // no new shipped module. The two sides of that merge moved this pin in the
+  // same direction for unrelated reasons — 76 from this lane's art and runtime
+  // files, 67 from Grok's one red-team file — so neither side's number is
+  // the merged number. Read from this pin's own failure value on the merged
+  // tree, not by adding the two.
+  DIRECTORY_FILES: 77,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**

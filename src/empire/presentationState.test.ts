@@ -916,6 +916,47 @@ describe('presentationState.ts — live Capacity red team', () => {
       expect(bay.queueIds).toEqual(queued.map((member) => memberIdForIndex(input.roster, member.index)));
       for (const member of world.members) {
         if (member.lifecycle === 'interrupted') interrupted += 1;
+        if (member.lifecycle !== 'seeking' && member.lifecycle !== 'queuing') continue;
+        for (const seat of bay.seats) {
+          const onSeat =
+            (member.cell.x === seat.cell.x && member.cell.y === seat.cell.y) ||
+            (member.next !== null &&
+              member.next.x === seat.cell.x &&
+              member.next.y === seat.cell.y);
+          if (!onSeat) continue;
+          expect(
+            seat.usingId === null || seat.usingId === member.id,
+            `${member.id} ${member.lifecycle} transited occupied ${cellKey(seat.cell)}`,
+          ).toBe(true);
+          expect(
+            seat.changeoverTicks === 0,
+            `${member.id} ${member.lifecycle} transited changeover ${cellKey(seat.cell)}`,
+          ).toBe(true);
+        }
+      }
+      for (const simMember of input.sim.members) {
+        if (simMember.state === 'leaving' && simMember.next !== null) {
+          for (const seat of bay.seats) {
+            if (simMember.next.x !== seat.cell.x || simMember.next.y !== seat.cell.y) continue;
+            const ownFormer =
+              simMember.awayFrom !== null &&
+              simMember.awayFrom.x === seat.cell.x &&
+              simMember.awayFrom.y === seat.cell.y;
+            expect(ownFormer, `${simMember.memberId} leaving next onto ${cellKey(seat.cell)}`).toBe(
+              true,
+            );
+          }
+        }
+        if (simMember.state === 'seeking' && simMember.target === null) {
+          for (const seat of bay.seats) {
+            const onSeat =
+              (simMember.cell.x === seat.cell.x && simMember.cell.y === seat.cell.y) ||
+              (simMember.next !== null &&
+                simMember.next.x === seat.cell.x &&
+                simMember.next.y === seat.cell.y);
+            expect(onSeat, `${simMember.memberId} wandered onto ${cellKey(seat.cell)}`).toBe(false);
+          }
+        }
       }
       const ghosts = ghostIds(bay);
       if (ghosts.length > 0) ghostAfterFirstStep += 1;

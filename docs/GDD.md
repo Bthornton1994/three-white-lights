@@ -4159,6 +4159,18 @@ waiting lifter sat, two simultaneous users, queue 2→1, ~4 seconds. No
 presentation snap worth fixing. Capacity live-transition is closed.
 Do not reopen it.
 
+**Occupied-cell pathing (VL-2B).** Not a D2.1A reopen. Live Capacity's
+new primary use cell `(2,2)` is a working pad, not an aisle. A seeking
+member whose greedy STEPS descent transited that pad while the relocated
+user stood on it is a FloorSim defect. Queue-goal distance fields treat
+every use cell as transit-blocked; a seat-goal field leaves only that
+seat walkable among use cells. In-flight `next` onto a foreign pad is
+dropped. Wander and leave never choose a foreign use cell as a liveness
+fallback — occupied, empty, or in changeover. A boxed pad stands rather
+than stepping onto another pad. Members still do not block each other
+on aisle tiles. FIFO, ghost-reserve, identity, and the dual-occupancy
+proof stay. Do not add renderer collision offsets.
+
 **Stage D2.1B — Throughput changeover + opening agency.** Authorized
 after that replay. Throughput at 0.65 use-shortening was not a real
 alternative: after ~26s the panel still read "In use by Powerlifter, 2

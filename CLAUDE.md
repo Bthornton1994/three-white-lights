@@ -1597,7 +1597,7 @@ OWNER PLAYTEST and NATIVE PERFORMANCE are untouched and remain Bryant's.
 |---|---|---|
 | Grok Build Session A | Session A mechanics branches | own worktree; stays out of `src/empire/**`; owns lift / RPE / fatigue / progression math and the lift presentation contract |
 | Claude Code Session A | Session A visual branches | own worktree; stays out of `src/empire/**`; owns athlete presentation, Session A rendering, training UI/UX |
-| Grok Build Session B | `grok/session-b-*` (mechanics / contract). Current contract lane: `grok/session-b-presentation-contract` (draft PR #52), stacked on living-world #51 | do not rebase or merge Session A or `main` |
+| Grok Build Session B | `grok/session-b-*` (mechanics / contract). Frozen contract: `grok/session-b-presentation-contract` (draft PR #52 @ `124fb132`). Current occupied-cell pathing lane: `grok/session-b-occupied-cell-pathing-01` stacked on #52. Do not stack this on host persistence #55. | do not rebase or merge Session A or `main`; do not rewrite #52; do not reopen #53/#55 |
 | Claude Code Session B | visual stacked drafts: #46 Iron & Amber home, #49 art-01/art-02, #51 living-world occupancy renderer | do not modify #46 / #49 / #51 contents from the Grok lane; do not merge them |
 
 - Name every Session B worktree branch `claude/*` or `grok/session-b-*` so the
