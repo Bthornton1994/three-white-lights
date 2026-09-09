@@ -1,15 +1,15 @@
-VL-2 performance measurement at c8e07e23a581b4b11f2dc83a223b100c3d1eb57e url=http://localhost:8082 sample=15000ms stall=400ms — headless desktop browser in a container, NOT a phone
-390x844 entities members=3 poseImages=9 stations=6 floorNodes=61 docNodes=376
-390x844 frames n=894 mean=16.78ms p50=16.70 p95=16.80 p99=16.80 max=50.00 long(>50ms)=0 veryLong(>100ms)=0 fps(mean)=59.6
-390x844 SUMMARY meanFrameInterval=16.78ms p95FrameInterval=16.80ms worstFrameInterval=50.00ms entities=3 (members; 9 pose images, 6 stations, 61 floor nodes) simTickRate=8.334/s (nominal 8.333/s = 1000/120; 125 ticks over 14999ms, 125 frames advanced it, 0 by more than one)
-390x844 heap used 50.7MB -> 46.8MB raw, 35.3MB after a forced GC, over 15000ms; DOM nodes 863 -> 820; layouts 16 -> 98
-390x844 interaction bench-tap -> panel 25.5ms, tap -> closed 16.5ms
-390x844 stall 400ms on member:n1:2 (walk/wait): max frame gap 400ms, max single-frame step 0.065 tiles at t=53ms, max rate 0.387 tiles/100ms vs sim 0.283, max drawn-vs-contract lag 0.557 tiles
-390x844 settle stall 400ms at member:n1:0's using edge (t=48ms): first post-stall step 0.371 tiles, max 0.371 tiles at t=461ms over 121 pairs (0 size-step pair(s) excluded), bound 0.416 = 34 x (3/360 + 0.34x(1+0.25)x(1+0.1)/120): ok
-375x812 entities members=3 poseImages=9 stations=6 floorNodes=61 docNodes=376
-375x812 frames n=895 mean=16.78ms p50=16.70 p95=16.70 p99=16.80 max=49.90 long(>50ms)=0 veryLong(>100ms)=0 fps(mean)=59.6
-375x812 SUMMARY meanFrameInterval=16.78ms p95FrameInterval=16.70ms worstFrameInterval=49.90ms entities=3 (members; 9 pose images, 6 stations, 61 floor nodes) simTickRate=8.324/s (nominal 8.333/s = 1000/120; 125 ticks over 15016ms, 125 frames advanced it, 0 by more than one)
-375x812 heap used 50.9MB -> 78.7MB raw, 34.9MB after a forced GC, over 15000ms; DOM nodes 863 -> 820; layouts 15 -> 96
-375x812 interaction bench-tap -> panel 24.8ms, tap -> closed 20.5ms
-375x812 stall 400ms on member:n1:0 (wait/walk): max frame gap 400ms, max single-frame step 0.049 tiles at t=2005ms, max rate 0.291 tiles/100ms vs sim 0.283, max drawn-vs-contract lag 0.699 tiles
-375x812 settle stall 400ms at member:n1:0's using edge (t=54ms): first post-stall step 0.366 tiles, max 0.366 tiles at t=460ms over 120 pairs (0 size-step pair(s) excluded), bound 0.416 = 34 x (3/360 + 0.34x(1+0.25)x(1+0.1)/120): ok
+VL-2 performance measurement at 4bb6862180f24c5da5c287bab2b08cc55bae9dfc url=http://localhost:8084 sample=15000ms stall=400ms — headless desktop browser in a container, NOT a phone
+390x844 entities members=3 poseImages=0 stations=6 floorNodes=154 docNodes=469
+390x844 frames n=876 mean=17.12ms p50=16.70 p95=16.80 p99=33.30 max=83.30 long(>50ms)=4 veryLong(>100ms)=0 fps(mean)=58.4
+390x844 SUMMARY meanFrameInterval=17.12ms p95FrameInterval=16.80ms worstFrameInterval=83.30ms meanFps=58.4 framesOver33ms=13/876 entities=3 (members; 0 pose images, 6 stations, 154 floor nodes) simTickRate=8.334/s (nominal 8.333/s = 1000/120; 125 ticks over 14999ms, 125 frames advanced it, 0 by more than one) — SEPARATE CLOCK FROM meanFps ABOVE, never conflated — maxWalkingStep=0.049 tiles (bound 0.132 = 34/120×(1+0.1)×0.34×(1+0.25)) maxSettleStep=0.372 tiles (bound 0.416 = 34×(3/360 + 0.34×(1+0.25)×(1+0.1)/120)) — TWO DIFFERENT BOUNDS, a walking frame and a settling frame are never judged against the same number
+390x844 heap used 54.0MB -> 94.8MB raw, 36.0MB after a forced GC, over 15000ms; DOM nodes 963 -> 942; layouts 10 -> 63
+390x844 interaction bench-tap -> panel 42.5ms, tap -> closed 42.4ms
+390x844 stall 400ms on member:n1:0 (wait/wait-to-walk/walk): max frame gap 400ms, max single-frame step (any pair) 0.199 tiles at t=1550ms; WALKING-ONLY (64 pair(s), 32 excluded for touching 'using') max step 0.049 tiles at t=1466ms vs bound 0.132 (one capped frame at the bounded catch-up on the fastest seeded stride): ok, max rate 1.191 tiles/100ms vs sim 0.283, max drawn-vs-contract lag 3.172 tiles
+390x844 settle stall 400ms at member:n1:1's using edge (t=6800ms): first post-stall step 0.113 tiles, max 0.372 tiles at t=7261ms over 117 pairs (0 size-step pair(s) excluded), bound 0.416 = 34 x (3/360 + 0.34x(1+0.25)x(1+0.1)/120): ok
+375x812 entities members=3 poseImages=0 stations=6 floorNodes=154 docNodes=469
+375x812 frames n=872 mean=17.22ms p50=16.70 p95=16.80 p99=33.40 max=66.70 long(>50ms)=3 veryLong(>100ms)=0 fps(mean)=58.1
+375x812 SUMMARY meanFrameInterval=17.22ms p95FrameInterval=16.80ms worstFrameInterval=66.70ms meanFps=58.1 framesOver33ms=20/872 entities=3 (members; 0 pose images, 6 stations, 154 floor nodes) simTickRate=8.324/s (nominal 8.333/s = 1000/120; 125 ticks over 15016ms, 125 frames advanced it, 0 by more than one) — SEPARATE CLOCK FROM meanFps ABOVE, never conflated — maxWalkingStep=0.049 tiles (bound 0.132 = 34/120×(1+0.1)×0.34×(1+0.25)) maxSettleStep=0.331 tiles (bound 0.416 = 34×(3/360 + 0.34×(1+0.25)×(1+0.1)/120)) — TWO DIFFERENT BOUNDS, a walking frame and a settling frame are never judged against the same number
+375x812 heap used 45.4MB -> 106.3MB raw, 36.1MB after a forced GC, over 15000ms; DOM nodes 963 -> 942; layouts 11 -> 64
+375x812 interaction bench-tap -> panel 57.0ms, tap -> closed 48.3ms
+375x812 stall 400ms on member:n1:0 (walk-to-wait/wait/wait-to-walk/walk): max frame gap 417ms, max single-frame step (any pair) 0.199 tiles at t=1605ms; WALKING-ONLY (64 pair(s), 27 excluded for touching 'using') max step 0.049 tiles at t=1538ms vs bound 0.132 (one capped frame at the bounded catch-up on the fastest seeded stride): ok, max rate 1.198 tiles/100ms vs sim 0.283, max drawn-vs-contract lag 3.252 tiles
+375x812 settle stall 400ms at member:n1:1's using edge (t=6893ms): first post-stall step 0.000 tiles, max 0.331 tiles at t=7396ms over 114 pairs (0 size-step pair(s) excluded), bound 0.416 = 34 x (3/360 + 0.34x(1+0.25)x(1+0.1)/120): ok

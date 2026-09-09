@@ -1,20 +1,22 @@
-VL-3 owner route check at c8e07e23a581b4b11f2dc83a223b100c3d1eb57e url=http://localhost:5173/owner-playtest.html?scenario=capacity — opened BY URL with the scenario query on purpose; this is the owner's route, not the played in-app path
-390x844 opened http://localhost:5173/owner-playtest.html?scenario=capacity (the scenario route)
+VL-3 owner route check at a2cdd571f4b92dcc7178face93da36d840118c1b url=http://localhost:5174/owner-playtest.html?scenario=capacity — opened BY URL with the scenario query on purpose; this is the owner's route, not the played in-app path
+390x844 opened http://localhost:5174/owner-playtest.html?scenario=capacity (the scenario route)
 390x844 HUD "gym bucks: 357.84" — Capacity price 180: funded
-390x844 floor drawn with 3 member(s) ["member:n1:1=queuing@5,1","member:n1:2=seeking@1.4091003063088283,2","member:n1:0=using@5,0"]; BUILD fab drawn, dock drawn; shell pill absent; diagnostics readout in the More drawer, not drawn; dev controls in the More drawer, not drawn; diagnostics toggle opacity 0
-390x844 queue: one using and one queuing after 7 ms — ["member:n1:1=queuing@5,0 tick5","member:n1:2=seeking@2,2.4091003063088285 tick5","member:n1:0=using@5,0 tick5"]
+390x844 floor drawn with 3 member(s) ["member:n1:1=queuing@5,0.6370472032693215","member:n1:2=seeking@1.8182006126176566,2","member:n1:0=using@5,0"]; BUILD fab drawn, dock drawn; shell pill absent; diagnostics readout in the More drawer, not drawn; dev controls in the More drawer, not drawn; diagnostics toggle opacity 0
+390x844 pipeline: 3 member(s), 3 drawing the production strips, 0 drawing the pre-VL-3 pose stack
+390x844 queue: one using and one queuing after 23 ms — ["member:n1:1=queuing@5.725905593461357,0 tick7","member:n1:2=seeking@2,3 tick7","member:n1:0=using@5,0 tick7"]
 390x844 bench pressed: true; station panel opened
 390x844 Capacity row "Second bench — two can train at once (180)" box {"x":12,"y":569,"w":366,"h":44}, inside viewport true, hit-test resolves to floorgrid-station-panel-upgrade-capacity
 390x844 pressed Capacity: gym bucks 357.84 -> 177.83999999999997 (price 180)
 390x844 expansion bench drawn: bay {"x":234.890625,"y":474.8125,"w":79.796875,"h":79.796875} opacity 1, sprite opacity 1, picture eq-flat-bench.png
-390x844 relief: two using after 5 ms — ["member:n1:0=using@2,2 tick11","member:n1:1=using@7,0 tick11","member:n1:2=seeking@2,3.5908996936911715 tick11"]
-390x844 one second later: ticks 12 -> 21, drawn boxes moved
+390x844 relief: two using after 13 ms — ["member:n1:0=using@2,2 tick16","member:n1:1=using@7,0 tick16","member:n1:2=seeking@2,4 tick16"]
+390x844 one second later: ticks 17 -> 26, drawn boxes moved
 390x844 ok   routeIsScenario
 390x844 ok   funded
 390x844 ok   floorAndMembersDrawn
 390x844 ok   playSurface
 390x844 ok   noShellChrome
 390x844 ok   noDiagnosticsOnPlay
+390x844 ok   memberDrawnFromStrips
 390x844 ok   queueForms
 390x844 ok   benchOpensPanel
 390x844 ok   capacityOffered
@@ -24,3 +26,30 @@ VL-3 owner route check at c8e07e23a581b4b11f2dc83a223b100c3d1eb57e url=http://lo
 390x844 ok   queueRelieved
 390x844 ok   stillMoving
 390x844 ok   noPageErrors
+375x812 opened http://localhost:5174/owner-playtest.html?scenario=capacity (the scenario route)
+375x812 HUD "gym bucks: 357.84" — Capacity price 180: funded
+375x812 floor drawn with 3 member(s) ["member:n1:1=queuing@5,0.6370472032693215","member:n1:2=seeking@1.8182006126176566,2","member:n1:0=using@5,0"]; BUILD fab drawn, dock drawn; shell pill absent; diagnostics readout in the More drawer, not drawn; dev controls in the More drawer, not drawn; diagnostics toggle opacity 0
+375x812 pipeline: 3 member(s), 3 drawing the production strips, 0 drawing the pre-VL-3 pose stack
+375x812 queue: one using and one queuing after 11 ms — ["member:n1:1=queuing@5.362952796730679,0 tick6","member:n1:2=seeking@2,2.8182006126176566 tick6","member:n1:0=using@5,0 tick6"]
+375x812 bench pressed: true; station panel opened
+375x812 Capacity row "Second bench — two can train at once (180)" box {"x":12,"y":547,"w":351,"h":44}, inside viewport true, hit-test resolves to floorgrid-station-panel-upgrade-capacity
+375x812 pressed Capacity: gym bucks 357.84 -> 177.83999999999997 (price 180)
+375x812 expansion bench drawn: bay {"x":225.796875,"y":455.53125,"w":76.59375,"h":76.59375} opacity 1, sprite opacity 1, picture eq-flat-bench.png
+375x812 relief: two using after 12 ms — ["member:n1:0=using@2,2 tick12","member:n1:1=using@7,0 tick12","member:n1:2=seeking@2.8182006126176566,4 tick12"]
+375x812 one second later: ticks 14 -> 23, drawn boxes moved
+375x812 ok   routeIsScenario
+375x812 ok   funded
+375x812 ok   floorAndMembersDrawn
+375x812 ok   playSurface
+375x812 ok   noShellChrome
+375x812 ok   noDiagnosticsOnPlay
+375x812 ok   memberDrawnFromStrips
+375x812 ok   queueForms
+375x812 ok   benchOpensPanel
+375x812 ok   capacityOffered
+375x812 ok   capacityReachable
+375x812 ok   priceCharged
+375x812 ok   secondBenchDrawn
+375x812 ok   queueRelieved
+375x812 ok   stillMoving
+375x812 ok   noPageErrors
