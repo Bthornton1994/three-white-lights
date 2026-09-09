@@ -32,6 +32,7 @@ import {
   playerFacingUpgradeRefuse,
   plateLoadingDiscs,
   plateLoadingProgress,
+  plateLoadingZIndex,
   recoveryBlockingItems,
   stationConditionView,
   stationIdentityView,
@@ -592,6 +593,71 @@ describe('Stage D2.2 plate-loading progress — same job, duration-scaled', () =
     const mid = plateLoadingDiscs(0.5);
     expect(mid[0]?.xFraction).toBeCloseTo(layout.sleeveXFraction, 10);
     expect(mid[layout.discCount - 1]?.xFraction).toBeCloseTo(layout.sourceXFraction, 10);
+  });
+});
+
+describe('plateLoadingZIndex — the discs never lose a stacking comparison against their own bench', () => {
+  // `docs/design/living-gym-world/vl-3/HANDOFF.md`'s unidentified residual:
+  // two red/white discs with their lower half painted over, at the head of
+  // an empty bench right after dismount. `FloorGrid.tsx` draws a bench's
+  // own furniture chip at `zIndex: Math.round(box.depth)` on Play (a
+  // projected screen-y, ordinarily in the hundreds) and used to draw the
+  // plate-loading discs at the small Build-only ordinal constant
+  // regardless of camera mode — so on Play the bench's own chip painted
+  // over its own discs. These pin the fixed behaviour directly: reverting
+  // `plateLoadingZIndex`'s Play branch to the old flat constant (mutating
+  // `return Math.round(depth) + 1;` back to
+  // `return EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX;`) reddens
+  // both `wins the comparison` cases below, because the constant (2) sits
+  // far under any realistic bench depth.
+
+  it('on Build, ignores depth entirely and returns the small ordinal constant', () => {
+    const constant = EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX;
+    expect(plateLoadingZIndex(true, 0)).toBe(constant);
+    expect(plateLoadingZIndex(true, 500)).toBe(constant);
+    expect(plateLoadingZIndex(true, -1)).toBe(constant);
+  });
+
+  it('on Play, wins the comparison against its own bench at a realistic mid-floor depth', () => {
+    // A bench drawn mid-floor on a phone-sized stage: `box.depth` is the
+    // projected front-edge screen-y, and the furniture chip's own `zIndex`
+    // is `Math.round(box.depth)` — see `FloorGrid.tsx`'s furniture render.
+    const benchDepth = 480.4;
+    const benchZIndex = Math.round(benchDepth);
+    const discZIndex = plateLoadingZIndex(false, benchDepth);
+    expect(discZIndex).toBeGreaterThan(benchZIndex);
+  });
+
+  it('on Play, wins the comparison at the depth measured from the dismount residual capture', () => {
+    // The exact region `handoff-bench-04-dismount.png` shows the defect in
+    // (crop coordinates from that capture): a bench footprint whose front
+    // edge projects to roughly y=505 on a 390x844 capture.
+    const benchDepth = 505;
+    const benchZIndex = Math.round(benchDepth);
+    expect(plateLoadingZIndex(false, benchDepth)).toBeGreaterThan(benchZIndex);
+  });
+
+  it('on Play, wins the comparison across a swept range of depths, not just one measured point', () => {
+    for (let depth = 0; depth <= 1000; depth += 17.3) {
+      const benchZIndex = Math.round(depth);
+      expect(plateLoadingZIndex(false, depth)).toBeGreaterThan(benchZIndex);
+    }
+  });
+
+  it('rounds before adding the offset, so two depths that round to the same integer still win', () => {
+    // `Math.round(479.6) === Math.round(480.1) === 480`. If the "+1" were
+    // applied before rounding, the fractional part could round it back
+    // down to tie the bench's own (also rounded) zIndex instead of beating
+    // it. Pinning both confirms the offset survives the rounding either way.
+    expect(plateLoadingZIndex(false, 479.6)).toBe(481);
+    expect(plateLoadingZIndex(false, 480.1)).toBe(481);
+    expect(plateLoadingZIndex(false, 479.6)).toBeGreaterThan(Math.round(479.6));
+    expect(plateLoadingZIndex(false, 480.1)).toBeGreaterThan(Math.round(480.1));
+  });
+
+  it('at depth 0, still strictly above a same-depth bench, and above the Build constant', () => {
+    expect(plateLoadingZIndex(false, 0)).toBe(1);
+    expect(plateLoadingZIndex(false, 0)).toBeGreaterThan(Math.round(0));
   });
 });
 
