@@ -1055,6 +1055,58 @@ VISUAL, ANIMATION or SOFT-FEEL gate moves; bench and deadlift blocked;
 `ATHLETE_RIG.TRAINING_STAGE` still `'schematic'`; PR #48 not merged;
 nothing merged anywhere. RIVE stays PROVISIONAL.
 
+#### RULED 2026-09-09: VISUAL ENGINEERING FREEZE — ACCEPTED CHECKPOINT `41a3c779`
+
+Human ruling. The production-athlete preparation round is accepted and the
+branch is frozen at `41a3c779c21978ad08da8c31a56a00f4ac3c9373`. This entry
+is the one docs-only commit after that checkpoint, so the ruling lives in
+the tree the other lanes read rather than in a conversation they cannot;
+it changes no source file.
+
+**PRODUCTION ATHLETE AUTHORING = BLOCKED — RIVE EDITOR / ASSET AUTHOR
+REQUIRED.** The visual lane adds no engineering while the production
+athlete is absent. Refused by name: another placeholder athlete; improving
+the schematic; bench or deadlift animation; another animation abstraction;
+expanding the acceptance harness; more performance instrumentation;
+flipping `TRAINING_STAGE`; a new EAS build merely to stay busy; any Grok
+mechanics edit; merging PR #48. The owner-playtest route, the fail-closed
+athlete arm, the input manifest, the corpus, the intake gate, the room
+specification and the native sequence are ruled sufficient.
+
+Closed technical work, as ruled:
+
+    VISUAL ARCHITECTURE                  PASS
+    MECHANICS -> RIG INPUT PIPELINE      PASS
+    ATHLETE INPUT CONTRACT               PASS
+    TRACE CORPUS                         PASS
+    ASSET INTAKE GATE                    PASS
+    OWNER PLAYTEST ROUTE                 PASS
+    FAIL-CLOSED MISSING-ASSET BEHAVIOR   PASS
+    WEB PERFORMANCE HARNESS              READY, NOT RUN WITH PRODUCTION ATHLETE
+    NATIVE PLAN                          READY
+
+Open production gates, as ruled:
+
+    PRODUCTION ATHLETE        BLOCKED
+    PRODUCTION ROOM           MISSING
+    RIVE PRODUCTION BINDING   NOT RUN
+    CONTINUOUS SQUAT          NOT RUN
+    CURRENT-HEAD EAS BUILD    NOT RUN
+    ANDROID RUNTIME           NOT RUN
+    VISUAL                    NOT PASS
+    ANIMATION FEEL            NOT PASS
+    SOFT FEEL                 NOT PASS
+    OWNER PLAYTEST            NOT PASS
+
+**Resume condition.** This branch resumes only when one of two things
+arrives: `athlete-01.riv` + `athlete-01.rev` + the provenance/reference
+package, or a concrete defect found in the existing integration pipeline.
+When the real athlete arrives the next task is, in order and immediately:
+asset intake → bind squat → clean make → grind → buried/failure → web
+performance → production room composition → fresh EAS build → Android
+runtime → owner playtest. No work is invented before that. The lane
+returns only if the branch state changes or the production asset arrives.
+
 ### Session B's scope, stated exactly
 
 **GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion
