@@ -112,6 +112,11 @@ const STALL_FOLLOW_MS = 2000;
 const SETTLE_EDGE_BUDGET_MS = 60000;
 const LONG_FRAME_MS = 50;
 const VERY_LONG_FRAME_MS = 100;
+// VL-3's own brief names 33ms specifically (a dropped frame at a 30fps
+// budget, half of a 60fps one) as a threshold to report beside mean/p95/
+// worst — kept distinct from the pre-existing 50ms / 100ms "long frame"
+// thresholds above rather than replacing either.
+const FRAME_33_MS = 33;
 const VIEWPORTS = [
   { name: '390x844', width: 390, height: 844 },
   { name: '375x812', width: 375, height: 812 },
@@ -151,6 +156,19 @@ if (
  */
 const SETTLE_STALL_STEP_BOUND_TILES =
   FRAME_CAP_MS * (3 / SETTLE_MS + ((STEP_PER_TICK * (1 + SPEED_JITTER_FRACTION)) * (1 + CATCH_UP_RATE)) / TICK_MS);
+/**
+ * VL-3: the loop's largest per-frame WALKING step — one capped frame at the
+ * bounded catch-up on the fastest seeded stride. Same formula as
+ * `tools/capture-motion-proof.mjs`'s `FRAME_STEP_BOUND_TILES`; kept here as
+ * its own named constant (not imported) because the two tools' `numberInSource`
+ * reads are independent statements of the same fact, per `readTuning.mjs`'s
+ * own rule for why a tuned number is read from source rather than typed
+ * twice — the two derivations agreeing is itself part of the evidence.
+ * Distinct from `SETTLE_STALL_STEP_BOUND_TILES` above, which bounds a frame
+ * that is BOTH settling and stepping: "a settle frame and a walking frame
+ * have different bounds" (VL-3's own brief).
+ */
+const WALKING_FRAME_STEP_BOUND_TILES = (FRAME_CAP_MS / TICK_MS) * (1 + CATCH_UP_RATE) * STEP_PER_TICK * (1 + SPEED_JITTER_FRACTION);
 const SHA = execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim();
 const DIRTY = execSync('git status --porcelain --untracked-files=no', { cwd: ROOT }).toString().trim() !== '';
 
@@ -280,6 +298,7 @@ function summarise(intervals) {
     p95Ms: percentile(sorted, 0.95),
     p99Ms: percentile(sorted, 0.99),
     maxMs: sorted.length === 0 ? null : sorted[sorted.length - 1],
+    framesOver33Ms: intervals.filter((v) => v > FRAME_33_MS).length,
     longFrames: intervals.filter((v) => v > LONG_FRAME_MS).length,
     veryLongFrames: intervals.filter((v) => v > VERY_LONG_FRAME_MS).length,
     fpsFromMean: intervals.length === 0 ? null : 1000 / (total / intervals.length),
@@ -501,6 +520,22 @@ function analyseStall(probe) {
   let maxLagTiles = 0;
   let maxLagAt = null;
   let maxRateTilesPer100ms = 0;
+  // MEASURED (this round): `followedMemberId` may pick a member that reaches
+  // (or is already in) `using` DURING the 2s follow window — this arm's own
+  // header calls it "the followed member", not "a purely walking member",
+  // and `clipsSeen` below can include `use-bench`. A pair touching `using`
+  // therefore legitimately includes the settle-onto-the-bench glide (the
+  // SETTLE bound's subject, not the walking bound's) — judging every pair
+  // against the walking-only bound produced a false FAIL the first time this
+  // was run (0.198 / 0.190 tiles vs a 0.132 bound, on a member whose
+  // `clipsSeen` was `wait/walk/use-bench`). So the walking-bound judgement
+  // below excludes any pair touching `using`; `maxStepTiles` itself (the
+  // general, unfiltered "largest single-frame step this probe saw") is
+  // UNCHANGED and still reported for its own sake.
+  let maxWalkingStepTiles = 0;
+  let maxWalkingStepAt = null;
+  let walkingPairs = 0;
+  let usingExcludedPairs = 0;
   for (let i = 0; i < samples.length; i += 1) {
     const s = samples[i];
     // Lag: drawn feet point vs the projected anchor of the latest tick. The
@@ -519,6 +554,15 @@ function analyseStall(probe) {
       }
       const rate = dist / Math.max(gap / 100, 0.01);
       maxRateTilesPer100ms = Math.max(maxRateTilesPer100ms, rate);
+      if (s.lifecycle === 'using' || prev.lifecycle === 'using') {
+        usingExcludedPairs += 1;
+      } else {
+        walkingPairs += 1;
+        if (dist > maxWalkingStepTiles) {
+          maxWalkingStepTiles = dist;
+          maxWalkingStepAt = s.t;
+        }
+      }
     }
   }
   // The lag: (drawn - anchor) minus its resting value, in tiles.
@@ -548,6 +592,16 @@ function analyseStall(probe) {
     maxDrawnVsContractLagTiles: maxLagTiles,
     maxLagAtMs: maxLagAt,
     clipsSeen: [...new Set(samples.map((s) => s.clip))],
+    // VL-3: judged against the ordinary-walking bound, on the PAIRS THAT
+    // NEVER TOUCH `using` only (see the header above) — a settle/relocation
+    // sized pair would need `SETTLE_STALL_STEP_BOUND_TILES` instead, which is
+    // what the settle-stall arm below already judges.
+    maxWalkingStepTiles,
+    maxWalkingStepAtMs: maxWalkingStepAt,
+    walkingPairs,
+    usingExcludedPairs,
+    walkingBoundTiles: WALKING_FRAME_STEP_BOUND_TILES,
+    walkingBounded: walkingPairs > 0 && maxWalkingStepTiles <= WALKING_FRAME_STEP_BOUND_TILES,
   };
 }
 
@@ -582,16 +636,30 @@ async function runViewport(browser, viewport) {
     entities,
     frames,
     simTicks,
-    // VL-3: the five numbers the brief asks to read side by side, under
-    // named keys, the same values the SUMMARY line prints.
+    // VL-3: the numbers the brief asks to read side by side, under named
+    // keys, the same values the SUMMARY line prints. `simTicksPerSecond` is
+    // reported on its OWN line, separate from `meanFpsFromFrameInterval` —
+    // sim tick rate and paint frame rate are two different clocks and this
+    // tool measures both without conflating them.
     summary: {
       meanFrameIntervalMs: frames.meanMs,
       p95FrameIntervalMs: frames.p95Ms,
       worstFrameIntervalMs: frames.maxMs,
+      meanFpsFromFrameInterval: frames.fpsFromMean,
+      framesOver33Ms: frames.framesOver33Ms,
       entityCount: entities.members,
       entityCountDetail: entities,
       simTicksPerSecond: simTicks.ticksPerSecond,
       simTicksPerSecondNominal: simTicks.nominalTicksPerSecond,
+      // "Largest walking advancement per frame" vs "largest settle
+      // advancement per frame" — VL-3's own brief: the two have different
+      // bounds (one capped frame at the bounded catch-up on the fastest
+      // seeded stride, vs the ease-out's steepest cap × 3 / SETTLE_MS) and
+      // are reported and judged separately, never merged into one number.
+      maxWalkingStepTiles: stall === null ? null : stall.maxWalkingStepTiles,
+      walkingStepBoundTiles: WALKING_FRAME_STEP_BOUND_TILES,
+      maxSettleStepTiles: settleStall === null ? null : settleStall.maxStepAfterStallTiles,
+      settleStepBoundTiles: SETTLE_STALL_STEP_BOUND_TILES,
     },
     heapStart,
     heapEndRaw,
@@ -612,7 +680,7 @@ async function runViewport(browser, viewport) {
     `${viewport.name} frames n=${frames.frames} mean=${frames.meanMs?.toFixed(2)}ms p50=${frames.p50Ms?.toFixed(2)} p95=${frames.p95Ms?.toFixed(2)} p99=${frames.p99Ms?.toFixed(2)} max=${frames.maxMs?.toFixed(2)} long(>${LONG_FRAME_MS}ms)=${frames.longFrames} veryLong(>${VERY_LONG_FRAME_MS}ms)=${frames.veryLongFrames} fps(mean)=${frames.fpsFromMean?.toFixed(1)}`,
   );
   note(
-    `${viewport.name} SUMMARY meanFrameInterval=${frames.meanMs?.toFixed(2)}ms p95FrameInterval=${frames.p95Ms?.toFixed(2)}ms worstFrameInterval=${frames.maxMs?.toFixed(2)}ms entities=${entities.members} (members; ${entities.poseImages} pose images, ${entities.stationChips} stations, ${entities.floorNodes} floor nodes) simTickRate=${simTicks.ticksPerSecond === null ? 'n/a' : simTicks.ticksPerSecond.toFixed(3)}/s (nominal ${simTicks.nominalTicksPerSecond.toFixed(3)}/s = 1000/${TICK_MS}; ${simTicks.tickAdvance ?? 0} ticks over ${simTicks.spanMs.toFixed(0)}ms, ${simTicks.ticksObserved} frames advanced it, ${simTicks.tickJumpsOverOne} by more than one)`,
+    `${viewport.name} SUMMARY meanFrameInterval=${frames.meanMs?.toFixed(2)}ms p95FrameInterval=${frames.p95Ms?.toFixed(2)}ms worstFrameInterval=${frames.maxMs?.toFixed(2)}ms meanFps=${frames.fpsFromMean?.toFixed(1)} framesOver33ms=${frames.framesOver33Ms}/${frames.frames} entities=${entities.members} (members; ${entities.poseImages} pose images, ${entities.stationChips} stations, ${entities.floorNodes} floor nodes) simTickRate=${simTicks.ticksPerSecond === null ? 'n/a' : simTicks.ticksPerSecond.toFixed(3)}/s (nominal ${simTicks.nominalTicksPerSecond.toFixed(3)}/s = 1000/${TICK_MS}; ${simTicks.tickAdvance ?? 0} ticks over ${simTicks.spanMs.toFixed(0)}ms, ${simTicks.ticksObserved} frames advanced it, ${simTicks.tickJumpsOverOne} by more than one) — SEPARATE CLOCK FROM meanFps ABOVE, never conflated — maxWalkingStep=${stall === null ? 'n/a' : stall.maxWalkingStepTiles.toFixed(3)} tiles (bound ${WALKING_FRAME_STEP_BOUND_TILES.toFixed(3)} = ${FRAME_CAP_MS}/${TICK_MS}×(1+${CATCH_UP_RATE})×${STEP_PER_TICK}×(1+${SPEED_JITTER_FRACTION})) maxSettleStep=${settleStall === null ? 'n/a' : settleStall.maxStepAfterStallTiles.toFixed(3)} tiles (bound ${SETTLE_STALL_STEP_BOUND_TILES.toFixed(3)} = ${FRAME_CAP_MS}×(3/${SETTLE_MS} + ${STEP_PER_TICK}×(1+${SPEED_JITTER_FRACTION})×(1+${CATCH_UP_RATE})/${TICK_MS})) — TWO DIFFERENT BOUNDS, a walking frame and a settling frame are never judged against the same number`,
   );
   note(
     `${viewport.name} heap used ${(heapStart.jsHeapUsedBytes / 1048576).toFixed(1)}MB -> ${(heapEndRaw.jsHeapUsedBytes / 1048576).toFixed(1)}MB raw, ${(heapEnd.jsHeapUsedBytes / 1048576).toFixed(1)}MB after a forced GC, over ${SAMPLE_MS}ms; DOM nodes ${heapStart.domNodes} -> ${heapEnd.domNodes}; layouts ${heapStart.layoutCount} -> ${heapEnd.layoutCount}`,
@@ -620,7 +688,7 @@ async function runViewport(browser, viewport) {
   note(`${viewport.name} interaction bench-tap -> panel ${interaction.openMs === null ? 'n/a' : interaction.openMs.toFixed(1) + 'ms'}, tap -> closed ${interaction.closeMs === null ? 'n/a' : interaction.closeMs.toFixed(1) + 'ms'}`);
   if (stall !== null) {
     note(
-      `${viewport.name} stall ${STALL_MS}ms on ${memberId} (${stall.clipsSeen.join('/')}): max frame gap ${stall.maxFrameGapMs.toFixed(0)}ms, max single-frame step ${stall.maxSingleFrameStepTiles.toFixed(3)} tiles at t=${stall.maxSingleFrameStepAtMs?.toFixed(0)}ms, max rate ${stall.maxRateTilesPer100ms.toFixed(3)} tiles/100ms vs sim ${stall.simRateTilesPer100ms.toFixed(3)}, max drawn-vs-contract lag ${stall.maxDrawnVsContractLagTiles.toFixed(3)} tiles`,
+      `${viewport.name} stall ${STALL_MS}ms on ${memberId} (${stall.clipsSeen.join('/')}): max frame gap ${stall.maxFrameGapMs.toFixed(0)}ms, max single-frame step (any pair) ${stall.maxSingleFrameStepTiles.toFixed(3)} tiles at t=${stall.maxSingleFrameStepAtMs?.toFixed(0)}ms; WALKING-ONLY (${stall.walkingPairs} pair(s), ${stall.usingExcludedPairs} excluded for touching 'using') max step ${stall.maxWalkingStepTiles.toFixed(3)} tiles at t=${stall.maxWalkingStepAtMs?.toFixed(0)}ms vs bound ${WALKING_FRAME_STEP_BOUND_TILES.toFixed(3)} (one capped frame at the bounded catch-up on the fastest seeded stride): ${stall.walkingBounded ? 'ok' : 'FAIL'}, max rate ${stall.maxRateTilesPer100ms.toFixed(3)} tiles/100ms vs sim ${stall.simRateTilesPer100ms.toFixed(3)}, max drawn-vs-contract lag ${stall.maxDrawnVsContractLagTiles.toFixed(3)} tiles`,
     );
   }
   if (settleStall === null) {
@@ -651,6 +719,7 @@ try {
     results.push(result);
     if (result.pageErrors.length > 0) exitCode = 1;
     if (result.settleStall !== null && result.settleStall.bounded === false) exitCode = 1;
+    if (result.stall !== null && result.stall.walkingBounded === false) exitCode = 1;
   }
   const summary = {
     sha: SHA,

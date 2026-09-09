@@ -32,37 +32,50 @@
  *   2. THE FRAME-LOOP TRACE — `window.__empireMotionTrace`, an array this
  *      tool creates EMPTY in an init script before the page loads, into
  *      which `FloorGrid.tsx`'s frame loop pushes ONE RECORD PER MEMBER PER
- *      FRAME:
+ *      FRAME. Read directly off the shipped `sink.push({...})` call rather
+ *      than assumed (an earlier draft of this tool guessed a narrower shape
+ *      and never matched the tree it ran on):
  *
- *        { memberId, now, elapsedMs, tick, lifecycle, clip, frame, phase,
- *          facing, drawnX, drawnY, scale, tileHere, contractX, contractY,
- *          pullX, pullY, settling, relocating, transition }
+ *        { memberId, now, elapsedMs, tick, playTick, lifecycle, clip, frame,
+ *          phase, facing, drawnX, drawnY, scale, tileHere, contractX,
+ *          contractY, cellX, cellY, pullX, pullY, blend, settling,
+ *          relocating, transitioning, transition }
  *
  *      `now` is the frame timestamp the loop advanced by, `elapsedMs` the
  *      capped elapsed it applied, `drawnX`/`drawnY` the feet point it wrote
- *      in stage pixels (the box's bottom centre — the point the timeline
- *      moves), `scale` the depth scale it drew at, `frame` the strip frame
- *      index, `facing` 'left' | 'right'. A record missing any of those keys
- *      is reported by key name. If the array is still empty after the run
- *      the runtime contract is absent, and walkFootPlanted, noSkate,
- *      gaitCycle, noFamilySnap, stationAttached, facingStable and the trace
- *      half of identity / scaleContinuous / transitionsLegal are SKIP.
- *      The `MutationObserver` write log VL-2B measured is NOT used for any
- *      per-frame displacement here: it coalesces two frames into one record
- *      when this browser bunches frames (CLAUDE.md "VL-2B DELIVERED",
- *      measurement 5), so it is not proof of a per-frame step.
+ *      in stage pixels — CONFIRMED against `memberMotion.ts`'s own type
+ *      (`MemberMotionOutput.drawn`: "The feet point the body is drawn at, in
+ *      stage pixels") and against `FloorGrid.tsx`'s box transform, which
+ *      places the SCALED box's bottom-centre exactly at `(drawn.x, drawn.y)`
+ *      — `scale` the depth scale AT THE DRAWN POINT (`depthScaleFromStageY`
+ *      of `drawn.y`, not the contract's own `scale` prop — the two differ
+ *      while a settle or relocation is easing the drawn point toward the
+ *      contract's), `frame` the strip frame index, `facing` 'left' | 'right'.
+ *      A record missing any of those keys is reported by key name. If the
+ *      array is still empty after the run the runtime contract is absent,
+ *      and walkFootPlanted, noSkate, gaitCycle, noFamilySnap, stationAttached,
+ *      facingStable and the trace half of identity / scaleContinuous /
+ *      transitionsLegal are SKIP. The `MutationObserver` write log VL-2B
+ *      measured is NOT used for any per-frame displacement here: it
+ *      coalesces two frames into one record when this browser bunches frames
+ *      (CLAUDE.md "VL-2B DELIVERED", measurement 5), so it is not proof of a
+ *      per-frame step.
  *
- *   3. THE RIG'S PER-FRAME METADATA — an export of `src/empire/memberRig.ts`
- *      named `memberRigFrameMetadata`, a function of a production member
- *      type returning, per clip, an array of `frames` entries:
+ *   3. THE RIG'S PER-FRAME METADATA — `src/empire/memberRig.ts`'s
+ *      `memberRigMetadata()`, ALIGNED to the real export at 58295c57 (an
+ *      earlier draft of this tool called a `memberRigFrameMetadata(type)`
+ *      that never existed). Takes NO argument — VL-3 rigs exactly one
+ *      production puppet, asserted below — and returns:
  *
- *        { foot: { x, y } | null, rootAdvance: { x, y }, bar: { x, y } | null,
- *          body: { x, y, width, height } }
+ *        { canvasPx, groundLineY, stridePx, strideTiles,
+ *          clips: { [clip]: { cycleAdvancePx, frames: [{ plantedFoot,
+ *            plantedSole, plantedHeel, rootAdvance, barCentre, bounds,
+ *            puppet, root }] } } }
  *
  *      in canvas pixels (`MEMBER_MOTION_CANVAS_PX` square, feet at the
- *      bottom centre, authored facing right), plus `strideCanvasPx` and
- *      `strideTiles`. `foot` is the PLANTED foot's sole point for a walk
- *      frame. Without it walkFootPlanted and noSkate are SKIP, named.
+ *      bottom centre, authored facing right). `plantedSole` is the PLANTED
+ *      foot's sole point for a walk frame, `plantedFoot` names which foot.
+ *      Without it walkFootPlanted and noSkate are SKIP, named.
  *
  * ===========================================================================
  * THE VERDICTS, each judged against a bound whose derivation is printed
@@ -203,12 +216,46 @@ const BASE_URL = arg('--url', 'http://localhost:8081');
 const OUT = arg('--out', join(ROOT, 'docs', 'design', 'living-gym-world', 'vl-3', 'motion'));
 const MAX_MS = Number(arg('--max-ms', '120000'));
 const TRACE_GLOBAL = '__empireMotionTrace';
-const RIG_EXPORT = 'memberRigFrameMetadata';
+// ALIGNED against the shipped export at 58295c57: `memberRig.ts` exports
+// `memberRigMetadata()` — no argument, one puppet (VL-3 draws exactly one
+// production type) — not the round-one tool's guessed `memberRigFrameMetadata
+// (type)`. Read the export itself rather than trusting either name.
+const RIG_EXPORT = 'memberRigMetadata';
+// ALIGNED against `FloorGrid.tsx`'s real trace push (the `sink.push({...})`
+// call in the frame-loop effect) — read directly off the source at 58295c57,
+// not assumed from the tool's own prior header. `playTick` and `blend` /
+// `transitioning` were added by the runtime lane since the round-one tool was
+// written; `cellX`/`cellY` ship too (the contract tile point) though this
+// tool does not consume them (the DOM's `data-cell` already carries the same
+// fact for the shared-cell observation).
 const TRACE_KEYS = [
-  'memberId', 'now', 'elapsedMs', 'tick', 'lifecycle', 'clip', 'frame', 'phase', 'facing',
-  'drawnX', 'drawnY', 'scale', 'tileHere', 'contractX', 'contractY', 'pullX', 'pullY',
-  'settling', 'relocating', 'transition',
+  'memberId', 'now', 'elapsedMs', 'tick', 'playTick', 'lifecycle', 'clip', 'frame', 'phase',
+  'facing', 'drawnX', 'drawnY', 'scale', 'tileHere', 'contractX', 'contractY', 'cellX', 'cellY',
+  'pullX', 'pullY', 'blend', 'settling', 'relocating', 'transitioning', 'transition',
 ];
+// The legacy (VL-2) clip vocabulary `data-clip` is bound to (`memberAnimation.
+// ts`'s `MemberAnimationClip` — the `clip` PROP FloorGrid.tsx stamps onto the
+// attribute at RENDER time and never rewrites per frame; only `data-frame` /
+// `data-facing` are frame-loop writes, per FloorGrid.tsx's own header). A
+// production body's DRAWN clip (the trace's `clip`, `out.draw.clip`) is one of
+// MEMBER_MOTION_CLIPS; the DOM attribute a browser check reads is still this
+// list until the runtime lane also rewrites `data-clip` per frame — CLAUDE.md
+// "VL-3" names this a known-pending state explicitly. Read from the shipped
+// module rather than hand-copied, so a change to that table is a compile
+// error here too, not a silent drift.
+let legacyClipVocabulary;
+try {
+  legacyClipVocabulary = (await import(pathToFileURL(join(ROOT, 'src', 'empire', 'memberAnimation.ts')).href))
+    .MEMBER_ANIMATION_CLIPS;
+} catch (error) {
+  console.error(`could not load src/empire/memberAnimation.ts through type stripping: ${error.message}`);
+  process.exit(2);
+}
+if (!Array.isArray(legacyClipVocabulary) || legacyClipVocabulary.length === 0) {
+  console.error('memberAnimation.ts is missing MEMBER_ANIMATION_CLIPS');
+  process.exit(2);
+}
+const LEGACY_CLIPS = new Set(legacyClipVocabulary);
 /** A frame-to-frame move under this many tiles is sub-pixel at every size drawn here and carries no direction. */
 const MOTIONLESS_TILES = 0.01;
 const BAY_TARGET = 'training:competition-bench-bay';
@@ -234,7 +281,7 @@ try {
   console.error(`could not load src/empire/memberMotionClips.ts through type stripping: ${error.message}`);
   process.exit(2);
 }
-const CLIP_EXPORTS = ['MEMBER_MOTION_CLIPS', 'MEMBER_MOTION_CLIP_SPECS', 'MEMBER_MOTION_TRANSITIONS', 'MEMBER_MOTION_CANVAS_PX', 'memberMotionStrideTiles', 'MEMBER_MOTION_PRODUCTION_TYPES'];
+const CLIP_EXPORTS = ['MEMBER_MOTION_CLIPS', 'MEMBER_MOTION_CLIP_SPECS', 'MEMBER_MOTION_TRANSITIONS', 'MEMBER_MOTION_CANVAS_PX', 'memberMotionStrideTiles', 'MEMBER_MOTION_PRODUCTION_TYPES', 'memberMotionStripStem'];
 const missingClipExports = CLIP_EXPORTS.filter((name) => clips[name] === undefined);
 if (missingClipExports.length > 0) {
   console.error(`memberMotionClips.ts is missing: ${missingClipExports.join(', ')}`);
@@ -247,31 +294,74 @@ const CANVAS_PX = clips.MEMBER_MOTION_CANVAS_PX;
 const STRIDE_TILES = clips.memberMotionStrideTiles();
 const PRODUCTION_TYPES = [...clips.MEMBER_MOTION_PRODUCTION_TYPES];
 const edgeAllowed = (from, to) => from === to || TRANSITIONS.includes(`${from}>${to}`);
+const memberMotionStripStem = clips.memberMotionStripStem;
+// Every (type, clip) stem this tree's clip table asks the bake to have
+// written, e.g. `member-motion-powerlifter-walk` — used both to find a
+// missing strip on disk and to recognise a strip src the runtime actually
+// draws (Part C, below).
+const STRIP_STEMS = PRODUCTION_TYPES.flatMap((type) => MOTION_CLIPS.map((clip) => memberMotionStripStem(type, clip)));
 
 // ---------------------------------------------------------------------------
-// Contract 3: the rig's per-frame metadata (optional at this tool's birth).
+// Contract 3: the rig's per-frame metadata.
 // ---------------------------------------------------------------------------
+// ALIGNED shape, read from `memberRig.ts`'s real `MemberRigMetadata` /
+// `RigClipMetadata` / `RigFrameMetadata` interfaces at 58295c57:
+//   memberRigMetadata(): { canvasPx, groundLineY, stridePx, strideTiles,
+//     clips: { [clip]: { cycleAdvancePx, frames: [{ plantedFoot, plantedSole,
+//       plantedHeel, rootAdvance, barCentre, bounds, puppet, root }] } } }
+// — ONE call, no `type` argument (VL-3 draws exactly one production puppet;
+// MEMBER_MOTION_PRODUCTION_TYPES.length === 1 is asserted below so this stays
+// true rather than assumed), and `foot`/`strideCanvasPx` never existed under
+// those names.
 let rigMetadata = null;
+// Kept even when `rigMetadata` above is null for a frame-shape problem — the
+// art/runtime alignment check (Part C) diffs whatever the export returns
+// against the bake's on-disk snapshot regardless of whether this tool's own
+// stricter per-frame shape checks passed.
+let rigMetadataRaw = null;
 let rigStatus;
 const rigPath = join(ROOT, 'src', 'empire', 'memberRig.ts');
 if (!existsSync(rigPath)) {
   rigStatus = `MISSING CONTRACT: src/empire/memberRig.ts does not exist (export ${RIG_EXPORT} expected)`;
+} else if (PRODUCTION_TYPES.length !== 1) {
+  // Not a contract absence, but the one-puppet assumption `memberRigMetadata`
+  // encodes (no `type` argument) no longer holding — report it the same way
+  // rather than silently reading metadata for the wrong (or an arbitrary) type.
+  rigStatus = `MISSING CONTRACT: MEMBER_MOTION_PRODUCTION_TYPES now has ${PRODUCTION_TYPES.length} entries (${PRODUCTION_TYPES.join(', ')}) but memberRigMetadata() takes no type argument — this tool's foot/scale reads assume the single-puppet contract`;
 } else {
   try {
     const rig = await import(pathToFileURL(rigPath).href);
     if (typeof rig[RIG_EXPORT] !== 'function') {
       rigStatus = `MISSING CONTRACT: src/empire/memberRig.ts exports no function ${RIG_EXPORT} (exports: ${Object.keys(rig).join(', ') || 'none'})`;
     } else {
-      rigMetadata = rig[RIG_EXPORT](PRODUCTION_TYPES[0]);
+      const raw = rig[RIG_EXPORT]();
+      rigMetadataRaw = raw;
       const problems = [];
+      if (typeof raw?.canvasPx !== 'number') problems.push('canvasPx missing or not a number');
+      if (typeof raw?.stridePx !== 'number') problems.push('stridePx missing or not a number');
+      if (typeof raw?.strideTiles !== 'number') problems.push('strideTiles missing or not a number');
+      if (raw?.canvasPx !== CANVAS_PX) problems.push(`canvasPx ${raw?.canvasPx} disagrees with memberMotionClips.ts's MEMBER_MOTION_CANVAS_PX ${CANVAS_PX}`);
       for (const clip of MOTION_CLIPS) {
-        const frames = rigMetadata?.[clip]?.frames;
-        if (!Array.isArray(frames)) problems.push(`${clip}: no frames array`);
-        else if (frames.length !== CLIP_SPECS[clip].frames) problems.push(`${clip}: ${frames.length} frames, table says ${CLIP_SPECS[clip].frames}`);
+        const clipMeta = raw?.clips?.[clip];
+        const frames = clipMeta?.frames;
+        if (!Array.isArray(frames)) {
+          problems.push(`${clip}: no clips.${clip}.frames array`);
+          continue;
+        }
+        if (frames.length !== CLIP_SPECS[clip].frames) problems.push(`${clip}: ${frames.length} frames, table says ${CLIP_SPECS[clip].frames}`);
+        if (typeof clipMeta.cycleAdvancePx !== 'number') problems.push(`${clip}: cycleAdvancePx missing`);
+        for (const [i, f] of frames.entries()) {
+          if (f === undefined || f === null) { problems.push(`${clip}#${i}: frame missing`); continue; }
+          if (!('plantedFoot' in f) || !('plantedSole' in f) || !('rootAdvance' in f) || !('bounds' in f)) {
+            problems.push(`${clip}#${i}: missing plantedFoot/plantedSole/rootAdvance/bounds`);
+          }
+        }
       }
-      if (typeof rigMetadata?.strideCanvasPx !== 'number' || typeof rigMetadata?.strideTiles !== 'number') problems.push('strideCanvasPx / strideTiles missing');
-      rigStatus = problems.length === 0 ? `rig metadata loaded from ${RIG_EXPORT}('${PRODUCTION_TYPES[0]}'): stride ${rigMetadata.strideCanvasPx} canvas px = ${rigMetadata.strideTiles} tiles` : `MISSING CONTRACT: ${RIG_EXPORT} shape — ${problems.join('; ')}`;
-      if (problems.length > 0) rigMetadata = null;
+      rigMetadata = problems.length === 0 ? raw : null;
+      rigStatus =
+        problems.length === 0
+          ? `rig metadata loaded from ${RIG_EXPORT}(): stride ${raw.stridePx} canvas px = ${raw.strideTiles} tiles, canvas ${raw.canvasPx}px, groundLineY ${raw.groundLineY}`
+          : `MISSING CONTRACT: ${RIG_EXPORT} shape — ${problems.join('; ')}`;
     }
   } catch (error) {
     rigStatus = `MISSING CONTRACT: src/empire/memberRig.ts failed to load: ${error.message.split('\n')[0]}`;
@@ -330,10 +420,82 @@ const SCALE_STEP_BOUND = SETTLE_FRAME_BOUND_TILES * SCALE_PER_TILE_MAX;
 /** Walk frames one capped walking frame may skip: the frames that many tiles of stride cover, rounded up. */
 const WALK_FRAMES = CLIP_SPECS.walk.frames;
 const GAIT_MAX_SKIP = Math.ceil((FRAME_STEP_BOUND_TILES * WALK_FRAMES) / STRIDE_TILES);
+/**
+ * MEASURED (this round): a walk-clip frame pair whose trace record carries
+ * `settling: true` plays `clipWhileSettling(p.clip)` (`memberMotion.ts`'s own
+ * rule) while the drawn point glides at up to `SETTLE_FRAME_BOUND_TILES` per
+ * frame — 0.42 tiles, against the ordinary walking bound's 0.13 — so it can
+ * legitimately skip further into the 16-frame cycle than `GAIT_MAX_SKIP`
+ * allows. First measured live: two members' walk-clip pairs skipped 3 frames
+ * (`GAIT_MAX_SKIP` 2) while `settling: true` and `lifecycle: 'using'`
+ * (settling ONTO a bench, still playing the walk clip on the way) — the
+ * exact "settle frame and a walking frame have different bounds" distinction
+ * this file's brief asks measure-world-performance.mjs to report. Applying
+ * ONE bound to both frame classes is the tool's own error, not the
+ * renderer's; this is a second, wider bound for the settling class, not a
+ * loosening of the walking one.
+ */
+const GAIT_MAX_SKIP_SETTLING = Math.ceil((SETTLE_FRAME_BOUND_TILES * WALK_FRAMES) / STRIDE_TILES);
 
 const SHA = execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim();
 const DIRTY = execSync('git status --porcelain --untracked-files=no', { cwd: ROOT }).toString().trim() !== '';
 mkdirSync(OUT, { recursive: true });
+
+// ---------------------------------------------------------------------------
+// PART C — ART / RUNTIME ALIGNMENT DETECTION (new this round).
+// ---------------------------------------------------------------------------
+// Reads `memberMotionClips.ts` (already loaded), the disk under
+// `public/empire-art/`, and the bake's own recorded snapshot under
+// `docs/design/living-gym-world/vl-3/member-motion-metadata.json`; the
+// per-viewport half (drawn data-clip vocabulary, unreachable clips, an
+// unexpected fallback to the pre-VL-3 two-keypose assets) is measured live
+// per viewport, below, against what the running page actually draws.
+const ART_DIR = join(ROOT, 'public', 'empire-art');
+const METADATA_SNAPSHOT_PATH = join(ROOT, 'docs', 'design', 'living-gym-world', 'vl-3', 'member-motion-metadata.json');
+
+/** Every (production type, clip) whose baked strip file is missing on disk. */
+function missingStrips() {
+  const missing = [];
+  for (const type of PRODUCTION_TYPES) {
+    for (const clip of MOTION_CLIPS) {
+      const stem = memberMotionStripStem(type, clip);
+      const file = join(ART_DIR, `${stem}.png`);
+      if (!existsSync(file)) missing.push({ type, clip, file });
+    }
+  }
+  return missing;
+}
+
+/**
+ * The bake's on-disk snapshot vs a fresh call of `memberRigMetadata()`,
+ * compared the same way `memberRig.test.ts`'s own "wrote metadata that
+ * equals memberRigMetadata() today" test does (`JSON.parse(JSON.stringify(...))`
+ * round-trip on both sides, deep equal) — an independent instrument re-check
+ * of the same guarantee, not a replacement for that node test.
+ */
+function staleStripMetadata() {
+  if (!existsSync(METADATA_SNAPSHOT_PATH)) {
+    return { checked: false, reason: `no snapshot at ${METADATA_SNAPSHOT_PATH}` };
+  }
+  if (rigMetadataRaw === null) {
+    return { checked: false, reason: `memberRigMetadata() could not be called live: ${rigStatus}` };
+  }
+  let onDisk;
+  try {
+    onDisk = JSON.parse(readFileSync(METADATA_SNAPSHOT_PATH, 'utf8'));
+  } catch (error) {
+    return { checked: false, reason: `snapshot did not parse as JSON: ${error.message}` };
+  }
+  const live = JSON.parse(JSON.stringify(rigMetadataRaw));
+  const same = JSON.stringify(onDisk) === JSON.stringify(live);
+  return { checked: true, stale: !same, snapshotPath: METADATA_SNAPSHOT_PATH };
+}
+
+const MISSING_STRIPS = missingStrips();
+const STALE_METADATA = staleStripMetadata();
+note(
+  `art/runtime alignment (static): ${STRIP_STEMS.length} expected strip(s) across ${PRODUCTION_TYPES.length} production type(s) x ${MOTION_CLIPS.length} clips, missing ${MISSING_STRIPS.length}${MISSING_STRIPS.length > 0 ? ` — ${MISSING_STRIPS.map((m) => `${m.type}/${m.clip}`).join(', ')}` : ''}; metadata snapshot ${STALE_METADATA.checked ? (STALE_METADATA.stale ? 'STALE against memberRigMetadata()' : 'matches memberRigMetadata()') : `NOT CHECKED (${STALE_METADATA.reason})`}`,
+);
 
 // ---------------------------------------------------------------------------
 // The page
@@ -399,6 +561,26 @@ async function subjectStatus(page, id) {
       overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
     };
   }, id);
+}
+
+/**
+ * PART C, live half: which rendering pipeline is currently mounted under
+ * each drawn member — `floorgrid-member-strip-*` (production, the baked
+ * strips) or `floorgrid-member-pose-*` (the pre-VL-3 two-keypose pose
+ * stack). Polled at the cycle-tracking loop's own cadence (every ~250ms via
+ * the caller), never from the per-frame rAF sampler — the per-frame sampler
+ * feeds walkFootPlanted/gaitCycle/tickRate, and a DOM subtree walk with
+ * getComputedStyle on every frame would be exactly the kind of main-thread
+ * work those timing-sensitive verdicts are trying to measure the ABSENCE of.
+ */
+async function pipelineSnapshot(page) {
+  return page.evaluate(() =>
+    [...document.querySelectorAll('[data-memberid]')].map((n) => ({
+      id: n.getAttribute('data-memberid'),
+      strip: n.querySelector('[data-testid^="floorgrid-member-strip-"]') !== null,
+      pose: n.querySelector('[data-testid^="floorgrid-member-pose-"]') !== null,
+    })),
+  );
 }
 
 async function stopAndCollect(page) {
@@ -592,6 +774,15 @@ function analyseGait(subject) {
   let skips = 0;
   let maxSkip = 0;
   let pairs = 0;
+  // A pair spanning a settling frame (`memberMotion.ts`'s `clipWhileSettling`
+  // plays 'walk' while a body glides onto or off a station, at up to
+  // `SETTLE_FRAME_BOUND_TILES` per frame — over 3x the ordinary walking
+  // bound) is judged against `GAIT_MAX_SKIP_SETTLING`, not `GAIT_MAX_SKIP`.
+  // Counted and reported separately so the ordinary-walk bound is never
+  // silently widened by a settle pair passing under it.
+  let settlingPairs = 0;
+  let settlingSkips = 0;
+  let settlingBackwards = 0;
   for (let i = 0; i < walk.length; i += 1) {
     const f = Number(walk[i].frame);
     if (Number.isInteger(f) && f >= 0 && f < WALK_FRAMES) seen[f] += 1;
@@ -599,50 +790,125 @@ function analyseGait(subject) {
     if (walk[i].now - walk[i - 1].now > CAP_MS * 4) continue; // a break in the walk, not a step within it
     const prev = Number(walk[i - 1].frame);
     const d = ((f - prev) % WALK_FRAMES + WALK_FRAMES) % WALK_FRAMES;
-    pairs += 1;
-    // d is 0 (hold), 1..maxSkip (advance), else either backwards or a skip.
-    if (d > GAIT_MAX_SKIP && d < WALK_FRAMES - GAIT_MAX_SKIP) skips += 1;
-    if (d >= WALK_FRAMES - GAIT_MAX_SKIP && d !== 0) backwards += 1;
-    if (d > 0 && d <= GAIT_MAX_SKIP) maxSkip = Math.max(maxSkip, d);
+    const settlingPair = walk[i - 1].settling === true || walk[i].settling === true;
+    const allowed = settlingPair ? GAIT_MAX_SKIP_SETTLING : GAIT_MAX_SKIP;
+    if (settlingPair) settlingPairs += 1;
+    else pairs += 1;
+    // d is 0 (hold), 1..allowed (advance), else either backwards or a skip.
+    if (d > allowed && d < WALK_FRAMES - allowed) {
+      if (settlingPair) settlingSkips += 1;
+      else skips += 1;
+    }
+    if (d >= WALK_FRAMES - allowed && d !== 0) {
+      if (settlingPair) settlingBackwards += 1;
+      else backwards += 1;
+    }
+    if (d > 0 && d <= allowed && !settlingPair) maxSkip = Math.max(maxSkip, d);
   }
   const unseen = seen.map((n, i) => (n === 0 ? i : null)).filter((i) => i !== null);
-  return { ok: pairs > 0 && backwards === 0 && skips === 0 && unseen.length === 0, pairs, backwards, skips, maxSkip, maxSkipAllowed: GAIT_MAX_SKIP, histogram: seen, unseen };
+  return {
+    ok: pairs > 0 && backwards === 0 && skips === 0 && unseen.length === 0 && settlingBackwards === 0 && settlingSkips === 0,
+    pairs, backwards, skips, maxSkip, maxSkipAllowed: GAIT_MAX_SKIP, histogram: seen, unseen,
+    settlingPairs, settlingSkips, settlingBackwards, settlingMaxSkipAllowed: GAIT_MAX_SKIP_SETTLING,
+  };
 }
 
 function analyseFoot(subject, frontTile) {
   if (rigMetadata === null) return { ok: null, skip: rigStatus };
-  const walkFrames = rigMetadata.walk.frames;
+  // ALIGNED: the real shape is `rigMetadata.clips.walk.frames[i]`, and the
+  // planted point is `plantedSole` (a canvas RigPoint), not `foot`.
+  const walkFrames = rigMetadata.clips.walk.frames;
   const stances = [];
   let current = null;
+  let facingFlipBreaks = 0;
+  let settlingExcluded = 0;
   for (const r of subject) {
     const isWalk = r.clip === 'walk';
-    const meta = isWalk ? walkFrames[Number(r.frame)] : undefined;
-    const foot = meta?.foot ?? null;
-    if (!isWalk || foot === null) {
+    // MEASURED (this round): `memberMotion.ts`'s facing rule snaps the
+    // contract's OWN facing instantly while `queuing`/`using` — no
+    // hysteresis — and the whole strip is mirrored (`scaleX: facingSign`)
+    // about the canvas centre. A "world foot x" computed from the canvas
+    // offset therefore has a real discontinuity exactly at a facing flip
+    // (the mirror term's sign flips) even though the same physical foot
+    // stays visually planted either side of it — this is a property of the
+    // COORDINATE SYSTEM, not a skate. First measured live: a flip mid-run
+    // of otherwise-contiguous frame indices (e.g. frame 5, facing left ->
+    // frame 5, facing right, 17ms later) produced a 0.7-0.8 tile "drift"
+    // that a facing-aware stance break reduces to noise (see the report).
+    // A stance is also broken on a `settling` frame — see `analyseGait`'s
+    // header for why a settling frame's motion is a different regime.
+    const settling = r.settling === true;
+    const meta = isWalk && !settling ? walkFrames[Number(r.frame)] : undefined;
+    const sole = meta?.plantedSole ?? null;
+    if (!isWalk || sole === null || settling) {
+      if (settling && isWalk) settlingExcluded += 1;
       if (current !== null) stances.push(current);
       current = null;
       continue;
     }
-    const footKey = meta.plantedFoot ?? `${foot.x},${foot.y}`;
+    const footKey = meta.plantedFoot ?? `${sole.x},${sole.y}`;
     const side = DRAW_SCALE_TILES * tileAt(frontTile, r.scale);
     const mirror = r.facing === 'left' ? -1 : 1;
-    const worldX = r.drawnX + mirror * (foot.x - CANVAS_PX / 2) * (side / CANVAS_PX);
+    const worldX = r.drawnX + mirror * (sole.x - CANVAS_PX / 2) * (side / CANVAS_PX);
     const tile = tileAt(frontTile, r.scale);
-    if (current !== null && current.key === footKey && r.now - current.lastNow <= CAP_MS * 4) {
+    if (
+      current !== null &&
+      current.key === footKey &&
+      current.facing === r.facing &&
+      r.now - current.lastNow <= CAP_MS * 4
+    ) {
       current.xs.push(worldX / tile);
+      current.drawnXs.push(r.drawnX);
       current.lastNow = r.now;
     } else {
-      if (current !== null) stances.push(current);
-      current = { key: footKey, xs: [worldX / tile], startNow: r.now, lastNow: r.now, tick: r.tick };
+      if (current !== null) {
+        stances.push(current);
+        if (current.key === footKey && current.facing !== r.facing) facingFlipBreaks += 1;
+      }
+      current = { key: footKey, facing: r.facing, xs: [worldX / tile], drawnXs: [r.drawnX], startNow: r.now, lastNow: r.now, tick: r.tick };
     }
   }
   if (current !== null) stances.push(current);
   const measured = stances.filter((s) => s.xs.length >= 2);
   if (measured.length === 0) return { ok: null, skip: `zero stances with two or more frames (walk records ${subject.filter((r) => r.clip === 'walk').length})` };
-  const drifts = measured.map((s) => ({ startNow: s.startNow, tick: s.tick, frames: s.xs.length, driftTiles: Math.max(...s.xs) - Math.min(...s.xs) }));
+  // MEASURED (this round), the mechanism behind every large drift this tool
+  // has found once the coordinate artefacts above are excluded: the rig's
+  // `rootAdvance` design requires the body's actual stage-pixel travel over
+  // the stance to equal `mirror × Δ(rootAdvance) × (side/canvas)` — verified
+  // algebraically against the shipped rig data
+  // (`sole.x(k) = sole.x(stance start) - rootAdvance(k)` holds exactly). So
+  // the foot drifts if, and only if, the body's OBSERVED travel direction
+  // disagrees with what its `facing` implies over the stance — the same
+  // fact `facingStable` measures, from the trace's own velocity-vs-facing
+  // test, not re-derived here. Reported per stance so a reader does not have
+  // to re-run the algebra by hand to see the correlation.
+  const drifts = measured.map((s) => {
+    const netDrawnDelta = s.drawnXs[s.drawnXs.length - 1] - s.drawnXs[0];
+    const expectedSign = s.facing === 'left' ? -1 : 1;
+    return {
+      startNow: s.startNow,
+      tick: s.tick,
+      frames: s.xs.length,
+      driftTiles: Math.max(...s.xs) - Math.min(...s.xs),
+      facing: s.facing,
+      netDrawnDeltaPx: netDrawnDelta,
+      travelAgreesWithFacing: Math.abs(netDrawnDelta) < 1 || Math.sign(netDrawnDelta) === expectedSign,
+    };
+  });
   const max = Math.max(...drifts.map((d) => d.driftTiles));
   const mean = drifts.reduce((a, d) => a + d.driftTiles, 0) / drifts.length;
-  return { ok: max <= FOOT_TOLERANCE, stances: drifts.length, maxDriftTiles: max, meanDriftTiles: mean, worst: drifts.find((d) => d.driftTiles === max), tolerance: FOOT_TOLERANCE };
+  const worst = drifts.find((d) => d.driftTiles === max);
+  return {
+    ok: max <= FOOT_TOLERANCE,
+    stances: drifts.length,
+    maxDriftTiles: max,
+    meanDriftTiles: mean,
+    worst,
+    tolerance: FOOT_TOLERANCE,
+    facingFlipBreaks,
+    settlingWalkFramesExcluded: settlingExcluded,
+    stancesWhereTravelDisagreesWithFacing: drifts.filter((d) => !d.travelAgreesWithFacing).length,
+  };
 }
 
 function analyseFamilySnap(by, frontTile) {
@@ -654,19 +920,57 @@ function analyseFamilySnap(by, frontTile) {
       const b = list[i];
       const tile = tileAt(frontTile, b.scale);
       const moved = Math.hypot(b.drawnX - a.drawnX, b.drawnY - a.drawnY) / tile;
-      if (a.clip !== b.clip) changes.push({ id, at: b.now, from: a.clip, to: b.clip, movedTiles: moved, legal: edgeAllowed(a.clip, b.clip) });
+      const settlingPair = a.settling === true || b.settling === true;
+      if (a.clip !== b.clip) changes.push({ id, at: b.now, from: a.clip, to: b.clip, movedTiles: moved, legal: edgeAllowed(a.clip, b.clip), settling: settlingPair });
       const fa = Number(a.frame);
       const fb = Number(b.frame);
       if (fb === 0 && fa !== 0) {
         const spec = CLIP_SPECS[a.clip];
-        const wrap = a.clip === b.clip && spec !== undefined && spec.loop && fa === spec.frames - 1;
+        // MEASURED (this round): a capped catch-up frame can skip PAST the
+        // wrap point — e.g. walk frame 14 -> 0, having skipped 15 entirely —
+        // exactly the same skip the walk's own gaitCycle bound already
+        // permits (`GAIT_MAX_SKIP` / `GAIT_MAX_SKIP_SETTLING`). Requiring the
+        // literal `fa === frames - 1` (a one-frame wrap) is too strict for
+        // the walk specifically, which is distance-driven and shares its
+        // skip bound with gaitCycle; every other clip here is time-driven
+        // and keeps the original exact-wrap rule, since no evidence has
+        // shown a skip-across-wrap on any of them and widening a rule with
+        // no measured cause is exactly what this file's rules refuse.
+        let wrap = a.clip === b.clip && spec !== undefined && spec.loop && fa === spec.frames - 1;
+        if (!wrap && a.clip === 'walk' && b.clip === 'walk') {
+          const d = ((fb - fa) % WALK_FRAMES + WALK_FRAMES) % WALK_FRAMES;
+          const allowed = settlingPair ? GAIT_MAX_SKIP_SETTLING : GAIT_MAX_SKIP;
+          wrap = d > 0 && d <= allowed;
+        }
         const edge = a.clip !== b.clip && edgeAllowed(a.clip, b.clip);
-        if (!wrap && !edge) resets.push({ id, at: b.now, clip: b.clip, fromFrame: fa, sameClip: a.clip === b.clip });
+        if (!wrap && !edge) resets.push({ id, at: b.now, clip: b.clip, fromFrame: fa, sameClip: a.clip === b.clip, settling: settlingPair });
       }
     }
   }
-  const maxMove = changes.length === 0 ? 0 : Math.max(...changes.map((c) => c.movedTiles));
-  return { ok: changes.length > 0 && maxMove < FRAME_STEP_BOUND_TILES && resets.length === 0, changes: changes.length, maxMoveAtChangeTiles: maxMove, bound: FRAME_STEP_BOUND_TILES, worst: changes.find((c) => c.movedTiles === maxMove) ?? null, frameResets: resets };
+  // The max-move-at-change bound is settle-aware the same way: a clip change
+  // that lands on a settling pair (e.g. the walk -> its transition clip, or
+  // into a bench clip, right as the settle starts) is judged against the
+  // wider settle bound instead of the ordinary walking one.
+  const nonSettling = changes.filter((c) => !c.settling);
+  const settling = changes.filter((c) => c.settling);
+  const maxMove = nonSettling.length === 0 ? 0 : Math.max(...nonSettling.map((c) => c.movedTiles));
+  const maxSettlingMove = settling.length === 0 ? 0 : Math.max(...settling.map((c) => c.movedTiles));
+  return {
+    ok:
+      changes.length > 0 &&
+      maxMove < FRAME_STEP_BOUND_TILES &&
+      maxSettlingMove < SETTLE_FRAME_BOUND_TILES &&
+      resets.length === 0,
+    changes: changes.length,
+    maxMoveAtChangeTiles: maxMove,
+    bound: FRAME_STEP_BOUND_TILES,
+    worst: nonSettling.find((c) => c.movedTiles === maxMove) ?? null,
+    settlingChanges: settling.length,
+    maxSettlingMoveAtChangeTiles: maxSettlingMove,
+    settlingBound: SETTLE_FRAME_BOUND_TILES,
+    worstSettling: settling.find((c) => c.movedTiles === maxSettlingMove) ?? null,
+    frameResets: resets,
+  };
 }
 
 function analyseStation(subject, samples, gridBox, frontTile) {
@@ -771,10 +1075,18 @@ async function runViewport(browser, viewport) {
   const t0 = Date.now();
   const lifecycles = [];
   const clipsSeen = new Set();
+  // PART C, live: id -> { strip: seen?, pose: seen? } across the whole run.
+  const pipelinesByMember = new Map();
   let last = null;
   let n = 0;
   while (Date.now() - t0 < MAX_MS) {
     const s = await subjectStatus(page, subject.id);
+    for (const p of await pipelineSnapshot(page)) {
+      const at = pipelinesByMember.get(p.id) ?? { strip: false, pose: false };
+      at.strip = at.strip || p.strip;
+      at.pose = at.pose || p.pose;
+      pipelinesByMember.set(p.id, at);
+    }
     if (s.lifecycle !== null && s.lifecycle !== last) {
       n += 1;
       lifecycles.push({ t: Date.now() - t0, lifecycle: s.lifecycle, tick: s.tick });
@@ -814,6 +1126,16 @@ async function runViewport(browser, viewport) {
   const domIdentity = analyseDomIdentity(samples, subject.id);
   const tickRate = analyseTickRate(samples);
   const domClips = analyseClipChanges(domRows, (r) => r.clip, 'DOM data-clip');
+  // KNOWN PENDING (CLAUDE.md "VL-3"): `data-clip` is stamped from the `clip`
+  // PROP at render time — `memberAnimation.ts`'s legacy 7-name vocabulary —
+  // and the frame loop rewrites only `data-frame` / `data-facing` per frame
+  // (`FloorGrid.tsx`'s own header). So a production body's DOM attribute
+  // reads a legacy name until the parallel runtime lane also rewrites
+  // `data-clip`. Detected, not assumed: true only when EVERY foreign name DOM
+  // shows is a member of that legacy vocabulary — a foreign name outside both
+  // tables is a real defect and must still gate the verdict below.
+  const domClipsAreKnownPendingLegacy =
+    domClips.foreignClips.length > 0 && domClips.foreignClips.every((c) => LEGACY_CLIPS.has(c));
   const domScale = analyseScale(domRows, (r) => r.scaleNum);
   const shared = sharedCellFrames(samples);
   result.dom = { samples: samples.length, meanFrameMs, identity: domIdentity, tickRate, clipChanges: domClips, scale: domScale };
@@ -844,6 +1166,41 @@ async function runViewport(browser, viewport) {
     result.trace = { ...result.trace, identity: traceIdentity, clipChanges: traceClips, scale: traceScale, gait, foot, familySnap: snap, station, facing, subjectRecords: subjectTrace.length, members: [...by.keys()] };
   }
 
+  // ---- PART C, live half ----
+  // Unreachable clip: in MEMBER_MOTION_CLIPS, never seen as a TRACE `clip`
+  // (the actually-drawn clip) across any member's whole run. Reported by
+  // name, never failed — several are lifecycle-gated (e.g. `idle` needs a
+  // member with nowhere to be, which one full seek->queue->use->leave cycle
+  // does not guarantee) and this run follows one lifecycle, not every clip.
+  const clipsDrawnInTrace = shape.present ? new Set(trace.map((r) => r.clip)) : null;
+  const unreachableClips = clipsDrawnInTrace === null ? null : MOTION_CLIPS.filter((c) => !clipsDrawnInTrace.has(c));
+  // Unexpected fallback: every garage member is the production type
+  // (`memberMotionClips.ts`'s own header: "equipmentBiasedMemberTypes([]) at
+  // the garage returns the powerlifter alone, so all three garage members
+  // are that type" — this tool does not re-derive that fact, it is stated
+  // here as the assumption the verdict below rests on). So ANY member ever
+  // observed mounting a `floorgrid-member-pose-*` (the pre-VL-3 two-keypose
+  // stack) rather than `floorgrid-member-strip-*` is a real defect, not a
+  // pending state — unlike the `data-clip` vocabulary lag above.
+  const legacyFallbackMembers = [...pipelinesByMember.entries()].filter(([, p]) => p.pose === true).map(([id]) => id);
+  result.artAlignment = {
+    missingStrips: MISSING_STRIPS,
+    staleMetadata: STALE_METADATA,
+    unreachableClips,
+    pipelinesByMember: Object.fromEntries(pipelinesByMember),
+    legacyFallbackMembers,
+  };
+  result.verdicts.noUnexpectedLegacyFallback = legacyFallbackMembers.length === 0;
+  result.verdicts.noMissingStrips = MISSING_STRIPS.length === 0;
+  // Staleness is reported as a verdict only when it could actually be
+  // checked; an unreachable snapshot or a broken live call is a SKIP, not a
+  // silent pass — the same discipline the contract SKIPs above use.
+  if (STALE_METADATA.checked) result.verdicts.stripMetadataFresh = STALE_METADATA.stale === false;
+  else result.skipped.stripMetadataFresh = STALE_METADATA.reason;
+  note(
+    `${vp} art/runtime alignment (live): unreachable clip(s) ${unreachableClips === null ? 'SKIP (no trace)' : unreachableClips.length === 0 ? 'none' : unreachableClips.join(', ')}; legacy two-keypose fallback observed on ${legacyFallbackMembers.length === 0 ? 'no member' : legacyFallbackMembers.join(', ')} (${pipelinesByMember.size} member(s) polled, pipelines ${JSON.stringify(Object.fromEntries(pipelinesByMember))}); missing strip(s) ${MISSING_STRIPS.length}; metadata snapshot ${STALE_METADATA.checked ? (STALE_METADATA.stale ? 'STALE' : 'fresh') : `SKIP (${STALE_METADATA.reason})`}`,
+  );
+
   const judge = (name, dom, tr, skipReason) => {
     // A verdict is judged on what exists: DOM-only verdicts on the DOM,
     // trace verdicts on the trace; when a trace verdict's contract is
@@ -861,24 +1218,41 @@ async function runViewport(browser, viewport) {
   const traceSkip = shape.present ? null : shape.reason;
   judge('identity', domIdentity, traceIdentity, traceSkip);
   judge('tickRate', tickRate, null, null);
-  judge('transitionsLegal', domClips, traceClips, traceSkip);
+  // While DOM's foreign clips are ALL known-pending legacy names, do not let
+  // the DOM half gate the judged verdict — the TRACE clip (`out.draw.clip`)
+  // is the actually-drawn production clip and is the authoritative read
+  // until the runtime rewrites `data-clip` too. CLAUDE.md "VL-3": "do not
+  // fail the run on it alone."
+  judge('transitionsLegal', domClipsAreKnownPendingLegacy ? null : domClips, traceClips, traceSkip);
   judge('gaitCycle', null, gait, traceSkip);
   judge('walkFootPlanted', null, foot, traceSkip);
   judge('noSkate', null, foot === null ? null : { ...foot, ok: foot.ok === null ? null : foot.meanDriftTiles <= FOOT_TOLERANCE && foot.maxDriftTiles <= FOOT_TOLERANCE }, traceSkip);
   judge('noFamilySnap', null, snap, traceSkip);
   judge('stationAttached', null, station, traceSkip);
-  judge('scaleContinuous', domScale, traceScale, null);
+  // KNOWN, DOCUMENTED RESIDUAL (CLAUDE.md "VL-2B DELIVERED" / FloorGrid.tsx's
+  // own comment on `AmbientMemberBody`: "`scale` the prop still stamps
+  // `data-scale`"). `data-scale` is written from the CONTRACT's `scale` prop
+  // at RENDER time, never from the frame loop — VL-3's `bodyScale` animated
+  // value (what is actually PAINTED, sampled by TRACE's `scale`) is the one
+  // that now scales from the drawn point continuously. So DOM alone can show
+  // the VL-2B seat-assignment step (0.70 -> 0.85 in one render) while the
+  // painted body never actually stepped — the same "stale evidence channel,
+  // not a stale render" shape as `data-clip` above, and it is judged the
+  // same way: DOM is excluded from the verdict ONLY when TRACE independently
+  // proves the painted scale is continuous.
+  const domScaleIsStaleAttribute = traceScale !== null && traceScale.ok === true && domScale.ok === false;
+  judge('scaleContinuous', domScaleIsStaleAttribute ? null : domScale, traceScale, null);
   judge('facingStable', null, facing, traceSkip);
   result.verdicts.layout = pageErrors.length === 0 && !samples.some((s) => s.overflowX);
 
   // ---- the numbers, each beside its derivation ----
   note(`${vp} identity DOM: ${domIdentity.samples} frames, followed id resolved to exactly one node in all but ${domIdentity.subjectFramesNotExactlyOne}, duplicate-id frames ${domIdentity.duplicateIdFrames}, ids ${domIdentity.ids.join(', ')}${traceIdentity === null ? '' : ` | TRACE: ${traceIdentity.frames} frames, gaps ${traceIdentity.gaps}, duplicate records ${traceIdentity.duplicates}, records over the ${CAP_MS} ms cap ${traceIdentity.overCap}, per member ${JSON.stringify(traceIdentity.perMember)}`}`);
   note(`${vp} tickRate ${tickRate.ok === undefined ? tickRate.reason : `${fmt(tickRate.ticksPerSecond)}/s measured (${tickRate.tickAdvance} ticks over ${fmt(tickRate.spanMs, 0)} ms) vs nominal ${fmt(tickRate.nominal)}/s = 1000/${TICK_MS}; deviation ${fmt(tickRate.deviation * 100, 2)}% vs tolerance ${fmt(tickRate.tolerance * 100, 2)}% = mean frame ${fmt(tickRate.meanFrameMs, 2)} ms / ${TICK_MS} + 1/${tickRate.tickAdvance}`}`);
-  note(`${vp} transitionsLegal DOM: ${domClips.changes} clip change(s), ${domClips.illegal.length} off the table${domClips.illegal.length > 0 ? ` — first ${JSON.stringify(domClips.illegal[0])}` : ''}${domClips.foreignClips.length > 0 ? `; clip names NOT in MEMBER_MOTION_CLIPS: ${domClips.foreignClips.join(', ')} (VL-2's vocabulary, so this tree draws no production clip yet)` : ''}${traceClips === null ? '' : ` | TRACE: ${traceClips.changes} change(s), ${traceClips.illegal.length} off the table${traceClips.foreignClips.length > 0 ? `, foreign ${traceClips.foreignClips.join(', ')}` : ''}`}; edges read from memberMotionClips.ts: ${TRANSITIONS.length}`);
-  note(`${vp} scaleContinuous DOM: max |Δscale| per frame ${fmt(domScale.maxStep, 4)} over ${domScale.pairs} pairs at ${JSON.stringify(domScale.at)}${traceScale === null ? '' : ` | TRACE: ${fmt(traceScale.maxStep, 4)} over ${traceScale.pairs} pairs at ${JSON.stringify(traceScale.at)}`}; bound ${fmt(SCALE_STEP_BOUND, 4)} = ${fmt(SETTLE_FRAME_BOUND_TILES)} tiles/frame × (1/${BACK_SCALE} − 1)/${GRID_ROWS} rows (settle-frame bound ${CAP_MS} × (3/${SETTLE_MS} + ${STEP_PER_TICK}×(1+${JITTER})×(1+${CATCH_UP})/${TICK_MS}))`);
-  if (gait !== null) note(`${vp} gaitCycle ${gait.ok === null ? `SKIP: ${gait.skip}` : `${gait.pairs} walk pairs, backwards ${gait.backwards}, skips over ${gait.maxSkipAllowed} ${gait.skips} (max skip seen ${gait.maxSkip}; allowed = ceil(${fmt(FRAME_STEP_BOUND_TILES)} tiles × ${WALK_FRAMES} / ${STRIDE_TILES})), histogram ${JSON.stringify(gait.histogram)}, unseen ${JSON.stringify(gait.unseen)}`}`);
-  if (foot !== null) note(`${vp} walkFootPlanted / noSkate ${foot.ok === null ? `SKIP: ${foot.skip}` : `${foot.stances} stance(s), max drift ${fmt(foot.maxDriftTiles, 4)} tiles, mean ${fmt(foot.meanDriftTiles, 4)}, tolerance ${FOOT_TOLERANCE} (FLOOR_MEMBER_MOTION_PROOF_FOOT_DRIFT_TOLERANCE_TILES); worst ${JSON.stringify(foot.worst)}; foot world x = drawnX + (footX − ${CANVAS_PX}/2) × (bodySide/${CANVAS_PX}), bodySide = ${DRAW_SCALE_TILES} × ${fmt(frontTile, 1)} px × scale`}`);
-  if (snap !== null) note(`${vp} noFamilySnap ${snap.changes} clip change(s) across all members, max move at a change ${fmt(snap.maxMoveAtChangeTiles, 4)} tiles vs a walking frame's ${fmt(FRAME_STEP_BOUND_TILES)} = (${CAP_MS}/${TICK_MS})×(1+${CATCH_UP})×${STEP_PER_TICK}×(1+${JITTER}); worst ${JSON.stringify(snap.worst)}; frame resets off an edge or a wrap ${snap.frameResets.length}${snap.frameResets.length > 0 ? ` — first ${JSON.stringify(snap.frameResets[0])}` : ''}`);
+  note(`${vp} transitionsLegal DOM: ${domClips.changes} clip change(s), ${domClips.illegal.length} off the table${domClips.illegal.length > 0 ? ` — first ${JSON.stringify(domClips.illegal[0])}` : ''}${domClips.foreignClips.length > 0 ? `; clip names NOT in MEMBER_MOTION_CLIPS: ${domClips.foreignClips.join(', ')}${domClipsAreKnownPendingLegacy ? ' — KNOWN PENDING: all of them are memberAnimation.ts\'s legacy vocabulary, which data-clip still carries (CLAUDE.md "VL-3"); DOM is EXCLUDED from this verdict\'s judgement, TRACE clip is authoritative' : ' — UNRECOGNISED (not legacy, not production): these DO gate the verdict'}` : ''}${traceClips === null ? '' : ` | TRACE: ${traceClips.changes} change(s), ${traceClips.illegal.length} off the table${traceClips.foreignClips.length > 0 ? `, foreign ${traceClips.foreignClips.join(', ')}` : ''}`}; edges read from memberMotionClips.ts: ${TRANSITIONS.length}`);
+  note(`${vp} scaleContinuous DOM: max |Δscale| per frame ${fmt(domScale.maxStep, 4)} over ${domScale.pairs} pairs at ${JSON.stringify(domScale.at)}${domScaleIsStaleAttribute ? ' — KNOWN, DOCUMENTED: data-scale is the CONTRACT prop (render-time only, never frame-loop-written); DOM is EXCLUDED from this verdict because TRACE independently proves the PAINTED scale is continuous' : ''}${traceScale === null ? '' : ` | TRACE: ${fmt(traceScale.maxStep, 4)} over ${traceScale.pairs} pairs at ${JSON.stringify(traceScale.at)}`}; bound ${fmt(SCALE_STEP_BOUND, 4)} = ${fmt(SETTLE_FRAME_BOUND_TILES)} tiles/frame × (1/${BACK_SCALE} − 1)/${GRID_ROWS} rows (settle-frame bound ${CAP_MS} × (3/${SETTLE_MS} + ${STEP_PER_TICK}×(1+${JITTER})×(1+${CATCH_UP})/${TICK_MS}))`);
+  if (gait !== null) note(`${vp} gaitCycle ${gait.ok === null ? `SKIP: ${gait.skip}` : `ORDINARY: ${gait.pairs} walk pairs, backwards ${gait.backwards}, skips over ${gait.maxSkipAllowed} ${gait.skips} (max skip seen ${gait.maxSkip}; allowed = ceil(${fmt(FRAME_STEP_BOUND_TILES)} tiles × ${WALK_FRAMES} / ${STRIDE_TILES})); SETTLING (clipWhileSettling plays 'walk' up to the settle bound, judged separately): ${gait.settlingPairs} pair(s), backwards ${gait.settlingBackwards}, skips over ${gait.settlingMaxSkipAllowed} ${gait.settlingSkips} (allowed = ceil(${fmt(SETTLE_FRAME_BOUND_TILES)} tiles × ${WALK_FRAMES} / ${STRIDE_TILES})); histogram ${JSON.stringify(gait.histogram)}, unseen ${JSON.stringify(gait.unseen)}`}`);
+  if (foot !== null) note(`${vp} walkFootPlanted / noSkate ${foot.ok === null ? `SKIP: ${foot.skip}` : `${foot.stances} stance(s), max drift ${fmt(foot.maxDriftTiles, 4)} tiles, mean ${fmt(foot.meanDriftTiles, 4)}, tolerance ${FOOT_TOLERANCE} (FLOOR_MEMBER_MOTION_PROOF_FOOT_DRIFT_TOLERANCE_TILES); worst ${JSON.stringify(foot.worst)}; ${foot.stancesWhereTravelDisagreesWithFacing} of ${foot.stances} stance(s) have net stage travel disagreeing with the stance's own facing (MECHANISM: the rig's rootAdvance design requires travel = mirror×Δ(rootAdvance)×(side/canvas) — verified algebraically against the shipped rig data — so a facing/travel disagreement, the same fact facingStable measures independently, IS a foot skate under this design, not a measurement artefact); a stance also breaks on a facing change (${foot.facingFlipBreaks} broken there — the mirror's sign flips at a facing change, a coordinate discontinuity, not a skate) and excludes settling walk-frames (${foot.settlingWalkFramesExcluded} excluded); foot world x = drawnX + (plantedSole.x − ${CANVAS_PX}/2) × (bodySide/${CANVAS_PX}), bodySide = ${DRAW_SCALE_TILES} × ${fmt(frontTile, 1)} px × scale`}`);
+  if (snap !== null) note(`${vp} noFamilySnap ${snap.changes} clip change(s) across all members (${snap.settlingChanges} while settling), max move at a NON-settling change ${fmt(snap.maxMoveAtChangeTiles, 4)} tiles vs ${fmt(FRAME_STEP_BOUND_TILES)} = (${CAP_MS}/${TICK_MS})×(1+${CATCH_UP})×${STEP_PER_TICK}×(1+${JITTER}); max move at a SETTLING change ${fmt(snap.maxSettlingMoveAtChangeTiles, 4)} tiles vs ${fmt(SETTLE_FRAME_BOUND_TILES)}; worst ${JSON.stringify(snap.worst)}; worst settling ${JSON.stringify(snap.worstSettling)}; frame resets off an edge or a (skip-aware) wrap ${snap.frameResets.length}${snap.frameResets.length > 0 ? ` — first ${JSON.stringify(snap.frameResets[0])}` : ''}`);
   if (station !== null) note(`${vp} stationAttached ${station.ok === null ? `SKIP: ${station.skip}` : `${station.bench}: ${station.pressFrames} bench-press frames, offset spread ${fmt(station.offsetSpreadTiles, 4)} tiles vs ${STATION_TOLERANCE}; setup ${station.setupFrames} frames with ${station.setupViolations} growth(s) over the tolerance; finish ${station.finishFrames} frames with ${station.finishViolations} shrink(s)`}`);
   if (facing !== null) note(`${vp} facingStable ${facing.flips} facing flip(s); ${facing.framesJudged} moving frames judged, ${facing.disagreementRuns} disagreement run(s), longest ${facing.longestRun} vs N=${facing.N} = ceil(${GAIT_TRANSITION_MS} / ${fmt(facing.meanFrameMs, 2)} ms mean frame); worst ${JSON.stringify(facing.worstAt)}`);
   note(`${vp} OBSERVATION (tick-28, unjudged) shared cell while one is using: ${shared.exact.length} frame(s) exact${shared.exact.length > 0 ? ` — ticks ${[...new Set(shared.exact.flatMap((s) => s.members.map((m) => m.split('@tick')[1])))].join(',')}, first ${JSON.stringify(shared.exact[0])}` : ''}; ${shared.roundedOnly.length} more on the rounded cell only`);
@@ -892,7 +1266,14 @@ async function runViewport(browser, viewport) {
   return result;
 }
 
-const VERDICT_ORDER = ['playedPath', 'cycle', 'identity', 'tickRate', 'transitionsLegal', 'gaitCycle', 'walkFootPlanted', 'noSkate', 'noFamilySnap', 'stationAttached', 'scaleContinuous', 'facingStable', 'layout'];
+const VERDICT_ORDER = [
+  'playedPath', 'cycle', 'identity', 'tickRate', 'transitionsLegal', 'gaitCycle', 'walkFootPlanted',
+  'noSkate', 'noFamilySnap', 'stationAttached', 'scaleContinuous', 'facingStable', 'layout',
+  // PART C — art/runtime alignment. unreachableClips is reported in the note
+  // line above, never judged (CLAUDE.md's own instruction: "report
+  // unreachable ones by name rather than failing").
+  'noMissingStrips', 'stripMetadataFresh', 'noUnexpectedLegacyFallback',
+];
 
 const browser = await chromium.launch({
   headless: true,
