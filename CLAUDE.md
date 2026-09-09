@@ -1697,6 +1697,94 @@ code change with a test behind it — `src/tuning/audit.test.ts` and
 `src/licensing/realIp.test.ts` (104 tests) are the pair to run after touching
 either.
 
+### VL-3 ROUND 2C — TWO INHERITED FAILURES ARE SESSION B'S FILES, NOT SESSION A'S
+
+Filed by Claude Code Session B on the visual lane. **Correcting this lane's
+own round-2b report**, which called the whole-suite residue "four inherited
+Session A failures". Inherited is right. Session A's is wrong, and it matters
+because it parked two fixable items in the wrong lane's queue.
+
+Measured at the round-2b checkpoint `27dcd665` and again on the round-2c
+tree: the same four fail, with byte-identical payloads, and **all four name
+`src/empire/**` files**.
+
+**1. `cutInWiring.test.ts` x2 — Session A's guard, Session B's prose, and the
+predicate is the reason.** `panelClaimsIn` walks every prose file in the tree
+and reddens on `src/empire/GymScreen.test.ts`, for this sentence:
+
+> `// screen — that control is the contextual station panel's now`
+
+That comment is about a REPAIR CONTROL moving to the contextual station
+panel. It says nothing about the cut-in. The guard's own header records why
+it matches anyway: the verb list was removed and **bare `panel` was put in**,
+deliberately, because four one-edit rewrites of the real claims had walked
+past the narrower predicate. That was the right call for the defect it was
+chasing and it has a cross-lane cost nobody priced: any Session B prose
+containing that shape now reddens a Session A test.
+
+**This lane did NOT reword its comment to make the guard green**, and the
+reason is the one this file already records for three other instruments.
+Rewording accurate prose to dodge an over-matching scan hides the cost
+instead of paying it, leaves the predicate untouched, and reddens again on
+the next Session B file that mentions a panel. The predicate is
+`src/cutin/`'s, which is Session A's, so narrowing it is Session A's call and
+a crossing this lane may not make. Named here so it is a decision rather
+than a standing red.
+
+**2. `guaranteeTags.test.ts` x2 — `g2b-forming`, and the obvious fix is a
+trap.** `src/empire/livingMemberRetention.test.ts:201` titles a test
+`[g2b-forming]`, and no comment in the tree references that id. It has been
+that way since at least the frozen base `124fb132`, so it predates this whole
+arc.
+
+The prose it should bind to **already exists and is already true** —
+`livingMemberRetention.ts`'s own header, item 2: *"Forming experience
+produces forming retention ... `forming`, `pressure` `null`, and label
+`Still forming`"*. So tagging it would not be manufacturing a guarantee.
+
+**It still cannot be closed from this lane, and that is the useful part.**
+This file's own bar is that a tag must survive a mutation check WHEN IT IS
+DECLARED, with the witness recorded in `MUTATION_WITNESSES` — which lives in
+`src/game/guaranteeTags.test.ts`, a Session A file. Tagging the prose without
+the witness would resolve one assertion and move the failure to the witness
+bar, which is a worse state than an honest orphan: a tag that resolves is not
+a tag that bites, and this file has already measured a quarter of a checked
+sample failing exactly that way. This is the same gap already filed above as
+Session B's open crossing 2 — `src/empire/**` has declared guarantees and
+zero `MUTATION_WITNESSES` entries. It is still open, and this is a second
+instance of it.
+
+**Neither was fixed this round, both are reported with the exact fix
+available, and the full suite is NOT claimed green.** 112 files, 4268 tests,
+4 failed.
+
+**3. AND ONE OF THE TWO GUARDS THIS FILE TELLS YOU TO RUN AFTER TOUCHING
+PROSE DOES NOT EXIST ON THIS BRANCH.** Found while running them, not looked
+for. `npx vitest run tools/claudeIndex.test.ts src/licensing/realIp.test.ts
+src/tuning/audit.test.ts` reported `Test Files 2 passed (2)` against three
+paths — the silent-filter behaviour this file already documents, working
+exactly as recorded, and the only reason it was noticed is that this file
+also says to read the file count against the number of paths you passed.
+
+Verified against origin rather than concluded from a grep, because this file
+records a session that got this exact question wrong on a rewound tree:
+`tools/claudeIndex.test.ts` is absent from `HEAD`, and `git log --all` shows
+it was ADDED by `22ada1e`, which **is not an ancestor of this lane's HEAD**.
+It was never deleted here; it never arrived. This branch forked before
+Session D's index work landed.
+
+**So the sentence in this file that says a `##` heading added without a
+matching index row goes red is FALSE on this branch** — measured on this tree
+at `2 failed | 4 passed` when it was true, and there is no such guard here at
+all. The claim is accurate about the tree it was measured on and stale about
+this one, which is the shape this file warns about eight times over. The
+Session B entry added above is a `###`, which that guard would not scope
+anyway; the point is the guidance, not this edit. `realIp.test.ts` and
+`audit.test.ts` were both run and are green (104 tests).
+
+Not fixed from here: merging Session D's branch is a cross-lane act this lane
+may not take, and the index table itself is not this lane's file.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
