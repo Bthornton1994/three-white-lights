@@ -26,13 +26,20 @@
  *      so a stall pauses them and they resume where they were.
  *   2. SNAPSHOT INTAKE. A new tick files a snapshot; the same tick re-rendered
  *      with a moved point replaces it in place; and a point that moved more
- *      than a stride (`FLOOR_MEMBER_STRIDE_TILES` at this body's depth) from
- *      the previous snapshot — on either branch — is a RELOCATION: the buffer
- *      is rebased onto the new point and the difference joins the eased pull,
+ *      than `FLOOR_MEMBER_RELOCATION_MIN_TILES` (runtime round two; pinned
+ *      above the sim's largest ordinary tick — `FLOOR_SIM_STEP_PROGRESS_PER_
+ *      TICK` × its jitter — and below a stride, so a re-plan the sim performs
+ *      WITHIN one stride is caught even though it is smaller than the
+ *      relocation check used to require) at this body's depth from the
+ *      previous snapshot — on either branch — is a RELOCATION: the buffer is
+ *      rebased onto the new point and the difference joins the eased pull,
  *      anchored on where the body is DRAWN this instant, so the same body
- *      glides there at the settle's pace instead of the timeline sliding it
- *      in one tick. A relocation whose pull cancels it (under a pixel) starts
- *      no settle.
+ *      glides there instead of the timeline sliding it in one tick — at the
+ *      settle's ease-out pace for a seat pull, or `FLOOR_MEMBER_RELOCATION_
+ *      GLIDE`'s curve for a relocation (`memberMotionSettleRemainder`;
+ *      default linear, so a sub-stride re-plan does not front-load most of
+ *      its travel into the glide's first frames). A relocation whose pull
+ *      cancels it (under a pixel) starts no settle.
  *   3. THE PLAYBACK CLOCK (`advancePlaybackTick`) and the walked feet point
  *      (`samplePlayback`): the sim's own rate, never past the newest snapshot,
  *      bounded catch-up.
@@ -63,14 +70,17 @@
  *   c. CLIP TRANSITIONS WALKED ONLY ALONG `MEMBER_MOTION_TRANSITIONS` for
  *      production bodies: the contract's wish (walk / wait / idle / using)
  *      becomes a target clip, and the stepper takes one edge per frame along
- *      the shortest path to it; a non-looping clip holds its last frame until
- *      its cycle ends and only then takes the next edge; the edge OUT of the
- *      distance-driven walk waits for the drawn feet to stop, so "the last
- *      step settling into a stand" never plays on moving feet. A crossfade of
- *      `FLOOR_MEMBER_CLIP_BLEND_MS` sits on the two edges where the painting
- *      changes from the side-view body to the three-quarter presser and back
- *      (`MEMBER_MOTION_DISSOLVE_EDGES`); every other edge is a hard cut, which
- *      is what the transition clips are authored for.
+ *      the shortest path to it (a BFS over the table, so `bench-setup →
+ *      bench-mount → bench-press` and `bench-press → bench-dismount →
+ *      bench-finish` are walked with no special casing here — the table
+ *      alone decides there is no direct family jump); a non-looping clip
+ *      holds its last frame until its cycle ends and only then takes the
+ *      next edge. A crossfade of `FLOOR_MEMBER_CLIP_BLEND_MS` sits on the two
+ *      edges where the painting changes (`memberMotionDissolveEdge`, read
+ *      from `./memberMotionClips` — the rig, the bake and the runtime now
+ *      share the one list rather than three that can drift apart, which is
+ *      what runtime round two found had already happened to this file's own
+ *      copy); every other edge is a hard cut.
  *   d. PHASE DESYNC: a time clip starts at the body's stagger phase
  *      (`memberAnimationStaggerPhase`) and runs at its own jittered period
  *      (`memberAnimationPeriodJitter`), both from the roster ordinal.
@@ -78,6 +88,29 @@
  *      and only ever advanced (each frame returns the next state; the one
  *      handed in is never written); an input identical to the last one
  *      advances the phase by the elapsed time and restarts nothing.
+ *   f. RUNTIME ROUND TWO — THE GAIT TRANSITIONS ARE DISTANCE-DRIVEN, LIKE THE
+ *      WALK. `walk-to-wait` and `wait-to-walk` advance by drawn feet travel
+ *      over the rig's own solved root advance for those clips
+ *      (`memberMotionClipAdvanceTiles`), not the frame clock, so the planted
+ *      foot's retreat and the runtime's phase agree by construction. Leaving
+ *      the walk is PRE-EMPTIVE: once the contract's wish has already left
+ *      'walk' (the sim's own, earlier signal that no more steps are coming —
+ *      waiting for the newest snapshot to repeat instead was measured to
+ *      arrive only after the feet had already stopped, leaving the
+ *      transition nothing to spend and playing effectively zero of its
+ *      frames) and what remains to walk is at most one cycle of
+ *      `walk-to-wait`'s own advance, the edge is taken with a FITTED start
+ *      phase so the clip's last frame lands exactly when the feet do,
+ *      however early inside that cycle it fires. Leaving a stand keys on
+ *      REAL DRAWN MOTION (`FLOOR_MEMBER_GAIT_TRANSITION_TRIGGER_PX`) rather
+ *      than the wish, because a queue shuffle can move the drawn feet a
+ *      whole tile while the wish never leaves 'wait' (queue repositioning is
+ *      not a `stepping` edge the way a real walk is) — without this a
+ *      one-cell shuffle played entirely in the standing pose (measured, then
+ *      fixed). Every other edge out of a non-looping clip waits only for it
+ *      to finish (phase 1), never for the feet to be still, which would
+ *      strand `wait-to-walk` forever once the walk it hands off to keeps
+ *      them moving.
  *
  * ITS LIMITS, stated where they sit. The production clip table has no
  * reaction clip, so an `interrupted` production body stands (`idle`) and
@@ -111,12 +144,15 @@ import {
   type MemberPlaybackSnapshot,
 } from './memberAnimation';
 import {
+  MEMBER_MOTION_CANVAS_PX,
   MEMBER_MOTION_CLIPS,
   MEMBER_MOTION_CLIP_SPECS,
   MEMBER_MOTION_TRANSITIONS,
+  memberMotionDissolveEdge,
   memberMotionStrideTiles,
   type MemberMotionClip,
 } from './memberMotionClips';
+import { memberRigMetadata } from './memberRig';
 
 /** A point in stage pixels. */
 export interface MemberMotionPoint {
@@ -232,6 +268,8 @@ export interface MemberMotionState {
   readonly pullTo: MemberMotionPoint;
   readonly settleElapsedMs: number | null;
   readonly settleMs: number;
+  /** Which curve the CURRENT settle eases along — set when a new one starts, read every frame it crosses. */
+  readonly settleCurve: MemberMotionSettleCurve;
   readonly lastDrawn: MemberMotionPoint | null;
   /** The legacy pose stack's running clip, phase and one-tick blend. */
   readonly runningClip: MemberAnimationClip;
@@ -258,23 +296,79 @@ export interface MemberMotionStep {
 
 /**
  * The two edges where the painting changes — the side-view body sits and
- * lies back (`bench-setup`), then the three-quarter presser takes over
- * (`bench-press`), and the reverse — get a `FLOOR_MEMBER_CLIP_BLEND_MS`
- * dissolve; the rig authors the frames either side of each to meet at the
- * same canvas position, and the dissolve takes the edge off what remains.
- * Every other edge in `MEMBER_MOTION_TRANSITIONS` is a hard cut. A strip is
- * one image, so a dissolve can only sit on an edge between two clips, never
- * inside one — which is why the cut is placed at the clip boundary.
+ * lies back (`bench-setup`), then the three-quarter presser takes the racked
+ * bar (`bench-mount`), and the reverse (`bench-dismount` → `bench-finish`) —
+ * get a `FLOOR_MEMBER_CLIP_BLEND_MS` dissolve; every other edge in
+ * `MEMBER_MOTION_TRANSITIONS` is a hard cut. This used to be a second,
+ * independent list here, and runtime round two found it had drifted from the
+ * clip table's own `MEMBER_MOTION_DISSOLVE_EDGES` (still naming
+ * `bench-setup → bench-press`, from before the bench was split into five
+ * clips) — a pair that is no longer even a table edge, so no dissolve could
+ * ever fire. `memberMotionDissolveEdge`, imported from `./memberMotionClips`,
+ * is now the only copy of this fact; the table, the bake and the runtime
+ * read the same list rather than three that can drift apart again.
  */
-export const MEMBER_MOTION_DISSOLVE_EDGES: readonly (readonly [MemberMotionClip, MemberMotionClip])[] =
-  Object.freeze([
-    ['bench-setup', 'bench-press'],
-    ['bench-press', 'bench-finish'],
-  ] as const);
 
-/** Whether the edge `from → to` is one of the dissolves. */
-export function memberMotionEdgeDissolves(from: MemberMotionClip, to: MemberMotionClip): boolean {
-  return MEMBER_MOTION_DISSOLVE_EDGES.some(([a, b]) => a === from && b === to);
+/**
+ * A distance-driven clip's root advance over one full cycle, in tiles at the
+ * body's draw scale — the unit `advanceMemberMotionPhase` divides drawn feet
+ * travel by, and the frame `memberMotionFrameAt` shows depends on landing at
+ * the same fraction. The walk's is the registered stride knob
+ * (`FLOOR_MEMBER_STRIDE_TILES`, tuned independently of the rig, kept as a
+ * playtester's single dial on the gait's length). `walk-to-wait` and
+ * `wait-to-walk` read the rig's own solved root advance for their retimed
+ * frames (`memberRigMetadata().clips[clip].cycleAdvancePx`), converted to
+ * tiles the same way the rig's own `strideTiles` is — so the runtime spends
+ * exactly the drawn travel the rig authored the planted foot to retreat by,
+ * and the two agree without either side hardcoding the other's number.
+ *
+ * The rig's FK is pure but not free, so `memberRigMetadata()` is read once
+ * at module load and memoized (`RIG_CYCLE_ADVANCE_PX`) rather than per frame
+ * or per call — measured under 54 ms for the whole clip table in node.
+ */
+const RIG_CYCLE_ADVANCE_PX: Readonly<Record<MemberMotionClip, number>> = (() => {
+  const metadata = memberRigMetadata();
+  const out: Partial<Record<MemberMotionClip, number>> = {};
+  for (const clip of MEMBER_MOTION_CLIPS) out[clip] = metadata.clips[clip].cycleAdvancePx;
+  return Object.freeze(out as Record<MemberMotionClip, number>);
+})();
+
+/** See `RIG_CYCLE_ADVANCE_PX`'s header. */
+export function memberMotionClipAdvanceTiles(clip: MemberMotionClip): number {
+  if (clip === 'walk') return memberMotionStrideTiles();
+  return (RIG_CYCLE_ADVANCE_PX[clip] * EMPIRE_TUNING.FLOOR_MEMBER_DRAW_SCALE_TILES) / MEMBER_MOTION_CANVAS_PX;
+}
+
+/** The curve a settle eases along: VL-2B's ease-out cubic for a seat pull, or a relocation's own knob. */
+export type MemberMotionSettleCurve = 'linear' | 'ease-out';
+
+/**
+ * `FLOOR_MEMBER_RELOCATION_GLIDE`, parsed totally — anything other than the
+ * literal `'linear'` is `'ease-out'`, so a bad or future value never throws
+ * and never silently disables the glide.
+ */
+export function memberMotionRelocationGlide(): MemberMotionSettleCurve {
+  return EMPIRE_TUNING.FLOOR_MEMBER_RELOCATION_GLIDE === 'linear' ? 'linear' : 'ease-out';
+}
+
+/**
+ * The eased remainder of a settle under `curve`: `settleRemainder`'s ease-out
+ * cubic (`memberAnimation.ts`, VL-2B, unchanged) for a seat pull, or linear —
+ * `1 − clamp(elapsed / duration, 0, 1)` — for a relocation when
+ * `FLOOR_MEMBER_RELOCATION_GLIDE` asks for it. `settleRemainder` itself takes
+ * no curve argument (a VL-2B module this piece does not own), so the choice
+ * is made here rather than there.
+ */
+export function memberMotionSettleRemainder(
+  elapsedMs: number,
+  durationMs: number,
+  curve: MemberMotionSettleCurve,
+): number {
+  if (curve === 'linear') {
+    if (!(durationMs > 0)) return 0;
+    return Math.max(0, Math.min(1, 1 - elapsedMs / durationMs));
+  }
+  return settleRemainder(elapsedMs, durationMs);
 }
 
 /**
@@ -346,7 +440,7 @@ export function advanceMemberMotionPhase(
   const spec = MEMBER_MOTION_CLIP_SPECS[clip];
   const period =
     spec.drive === 'distance'
-      ? memberMotionStrideTiles()
+      ? memberMotionClipAdvanceTiles(clip)
       : (spec.periodMs ?? 0) * memberAnimationPeriodJitter(ordinal);
   const step = spec.drive === 'distance' ? movedTiles : elapsedMs;
   const base = Number.isFinite(phase) && phase > 0 ? phase : 0;
@@ -357,11 +451,58 @@ export function advanceMemberMotionPhase(
   return spec.loop ? wrapUnit(advanced) : Math.min(advanced, 1);
 }
 
-/** The strip frame index a clip shows at `phase`: floor(phase × frames), never past the last frame. */
+/**
+ * The strip frame index a clip shows at `phase`. A LOOPING clip divides its
+ * cycle into `frames` equal buckets — floor(phase × frames) — because there
+ * is no first-or-last frame to land phase 0 or 1 on exactly. A NON-LOOPING
+ * clip's frames are authored (or, for `walk-to-wait` / `wait-to-walk`,
+ * retimed) at k / (frames − 1) of the clip's own advance, so the runtime
+ * shows the frame NEAREST that fraction — round(phase × (frames − 1)) — which
+ * is what puts the rig's frame k exactly at drawn-distance k / (frames − 1)
+ * of the clip's total, agreeing with the phase `advanceMemberMotionPhase`
+ * produces frame-for-frame rather than only at the two endpoints (both
+ * formulas already agree there: phase 0 → frame 0, phase 1 → frame
+ * frames − 1).
+ */
 export function memberMotionFrameAt(clip: MemberMotionClip, phase: number): number {
-  const frames = MEMBER_MOTION_CLIP_SPECS[clip].frames;
+  const spec = MEMBER_MOTION_CLIP_SPECS[clip];
+  const frames = spec.frames;
   const p = Number.isFinite(phase) ? Math.max(0, Math.min(phase, 1)) : 0;
+  if (!spec.loop && frames > 1) {
+    return Math.min(Math.max(Math.round(p * (frames - 1)), 0), frames - 1);
+  }
   return Math.min(Math.floor(p * frames), frames - 1);
+}
+
+/**
+ * Whether a facing flip may take effect while a production strip is showing
+ * `clip` at `frame` (e). A flip mirrors the whole body left-right about its
+ * root, so mid-stride it swaps which foot is forward WITHOUT moving either
+ * foot — the planted one jumps across the body. Gated to frames where that
+ * either does not matter (`idle` / `wait`, whose authored sway is
+ * left-right symmetric enough that a mirror reads as the same pose — every
+ * frame) or does no damage (a frame where the pose is already planted /
+ * symmetric): the walk's two ground-contact frames (0, the leading foot's
+ * contact, and the midpoint, the trailing foot's — `frames / 2`, not
+ * `frames - 1`, since the walk LOOPS and its last frame is one step short of
+ * the next contact); the standing end of each gait transition (`walk-to-
+ * wait`'s last frame, already at rest; `wait-to-walk`'s first, not yet
+ * moved); and the bench walker's frames away from the bar (`bench-setup`'s
+ * first frame, still standing; `bench-finish`'s last, back on its feet).
+ * `bench-mount`, `bench-press` and `bench-dismount` never allow one — there
+ * is no frame of a member on the bar that a mirror does not visibly wrong.
+ */
+export function memberMotionFlipAllowedAt(clip: MemberMotionClip, frame: number): boolean {
+  if (clip === 'idle' || clip === 'wait') return true;
+  if (clip === 'walk') {
+    const frames = MEMBER_MOTION_CLIP_SPECS.walk.frames;
+    return frame === 0 || frame === Math.floor(frames / 2);
+  }
+  if (clip === 'walk-to-wait') return frame === MEMBER_MOTION_CLIP_SPECS['walk-to-wait'].frames - 1;
+  if (clip === 'wait-to-walk') return frame === 0;
+  if (clip === 'bench-setup') return frame === 0;
+  if (clip === 'bench-finish') return frame === MEMBER_MOTION_CLIP_SPECS['bench-finish'].frames - 1;
+  return false;
 }
 
 /** `value` wrapped into [0, 1). */
@@ -382,6 +523,10 @@ export function createMemberMotion(input: MemberMotionInput, production: boolean
     pullTo: { x: input.pullX, y: input.pullY },
     settleElapsedMs: null,
     settleMs: settleDurationMs(0),
+    // No settle is running at creation, so the curve is inert; 'ease-out'
+    // matches VL-2B's only settle kind so a body's very first pull (before
+    // any relocation) behaves exactly as it always did.
+    settleCurve: 'ease-out',
     lastDrawn: null,
     runningClip: input.clip,
     phase: memberAnimationStartPhase(input.clip, input.index),
@@ -413,6 +558,7 @@ export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput,
   let blendElapsedMs = state.blendElapsedMs === null ? null : state.blendElapsedMs + elapsed;
   let motionBlendElapsedMs = state.motionBlendElapsedMs === null ? null : state.motionBlendElapsedMs + elapsed;
   let settleMs = state.settleMs;
+  let settleCurve = state.settleCurve;
   let pullFrom = state.pullFrom;
   let pullTo = state.pullTo;
 
@@ -428,7 +574,7 @@ export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput,
       (state.playTick === null ? null : samplePlayback(snapshots, state.playTick)) ?? newest ?? p.position;
     const jumpX = p.position.x - drawnFeet.x;
     const jumpY = p.position.y - drawnFeet.y;
-    const remainderNow = settleElapsedMs === null ? 0 : settleRemainder(settleElapsedMs, settleMs);
+    const remainderNow = settleElapsedMs === null ? 0 : memberMotionSettleRemainder(settleElapsedMs, settleMs, settleCurve);
     pullFrom = {
       x: pullTo.x + (pullFrom.x - pullTo.x) * remainderNow - jumpX,
       y: pullTo.y + (pullFrom.y - pullTo.y) * remainderNow - jumpY,
@@ -439,11 +585,13 @@ export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput,
     } else {
       settleElapsedMs = 0;
       settleMs = settleDurationMs(glidePixels / tileHere);
+      // (3) A relocation glides on its own knob, never the seat pull's ease-out.
+      settleCurve = memberMotionRelocationGlide();
     }
     snapshots = snapshots.map((held) => ({ tick: held.tick, x: p.position.x, y: p.position.y }));
   };
   const isRelocation = (jumpX: number, jumpY: number): boolean =>
-    tileHere > 0 && Math.hypot(jumpX, jumpY) / tileHere > EMPIRE_TUNING.FLOOR_MEMBER_STRIDE_TILES;
+    tileHere > 0 && Math.hypot(jumpX, jumpY) / tileHere > EMPIRE_TUNING.FLOOR_MEMBER_RELOCATION_MIN_TILES;
   if (newest === undefined || newest.tick !== p.tick) {
     if (newest !== undefined && isRelocation(p.position.x - newest.x, p.position.y - newest.y)) {
       relocate();
@@ -468,7 +616,7 @@ export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput,
 
   // 4. THE EASED PULL.
   if (p.pullX !== pullTo.x || p.pullY !== pullTo.y) {
-    const remainderNow = settleElapsedMs === null ? 0 : settleRemainder(settleElapsedMs, settleMs);
+    const remainderNow = settleElapsedMs === null ? 0 : memberMotionSettleRemainder(settleElapsedMs, settleMs, settleCurve);
     pullFrom = {
       x: pullTo.x + (pullFrom.x - pullTo.x) * remainderNow,
       y: pullTo.y + (pullFrom.y - pullTo.y) * remainderNow,
@@ -480,9 +628,11 @@ export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput,
     } else {
       settleElapsedMs = 0;
       settleMs = settleDurationMs(tileHere <= 0 ? 0 : pullPixels / tileHere);
+      // The seat settle always eases out, whatever curve a relocation just left behind.
+      settleCurve = 'ease-out';
     }
   }
-  const remainder = settleElapsedMs === null ? 0 : settleRemainder(settleElapsedMs, settleMs);
+  const remainder = settleElapsedMs === null ? 0 : memberMotionSettleRemainder(settleElapsedMs, settleMs, settleCurve);
   if (remainder === 0) settleElapsedMs = null;
   const drawn: MemberMotionPoint = {
     x: feet.x + pullTo.x + (pullFrom.x - pullTo.x) * remainder,
@@ -497,21 +647,143 @@ export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput,
   // 5. THE DEPTH SCALE, from the drawn point (b).
   const scale = depthScaleFromStageY(p.depth, drawn.y);
 
-  // 6. FACING (a).
+  // 6. THE CLIP the body wants this frame.
+  const wantedClip = remainder > 0 ? clipWhileSettling(p.clip) : p.clip;
+
+  // 7. THE PRODUCTION STRIP'S CLIP AND FRAME (c), resolved BEFORE facing (a)
+  // so the flip gate below reads the frame this step actually draws, not
+  // the one it is about to leave. A legacy body's motionClip/motionPhase are
+  // simply carried unchanged — its own branch further down never touches
+  // them, exactly as before this reordering.
+  let motionClip = state.motionClip;
+  let motionPhase = state.motionPhase;
+  let motionOutgoing = state.motionOutgoing;
+  let transition: MemberMotionTransitionLabel | null = null;
+  let frame = 0;
+  let motionBlend = 1;
+  if (state.production) {
+    let justEnteredFromWalk = false;
+    const wish = memberMotionTargetClip(wantedClip);
+    // (e, f) A queue shuffle can move the drawn feet a whole tile while the
+    // CONTRACT's own wish never leaves 'wait' — queue repositioning is not a
+    // `stepping` edge the way a real walk is, so `wish` alone stays 'wait'
+    // the entire time — and a stand that only ever watches `wish` for the
+    // walk edge would draw the sway pose sliding across the floor. So
+    // leaving a stand keys on there being REAL drawn motion this frame
+    // instead: once the played feet have actually moved (`movedTiles`,
+    // already net of the playback clock's own catch-up) by at least
+    // `FLOOR_MEMBER_GAIT_TRANSITION_TRIGGER_PX`, the body is walking
+    // whatever the wish says. `wish` still governs every other edge,
+    // including the ones OUT of the transition clips this override starts.
+    const target =
+      (motionClip === 'wait' || motionClip === 'idle') &&
+      wish === motionClip &&
+      movedTiles * tileHere >= EMPIRE_TUNING.FLOOR_MEMBER_GAIT_TRANSITION_TRIGGER_PX
+        ? 'walk'
+        : wish;
+    if (motionClip !== target) {
+      let ready: boolean;
+      let fittedStartPhase = 0;
+      if (motionClip === 'walk') {
+        // (a, b) Leave the walk once the SIM has committed to a stop —
+        // `wish` itself leaving 'walk' — rather than once the newest
+        // snapshot repeats the previous one: that reading only becomes true
+        // after the drawn feet have already arrived, so it leaves nothing
+        // for the transition clip to spend and plays it for effectively
+        // zero frames (measured). `wish`'s edge is the earlier, playable
+        // signal, because the render delay buffers the drawn feet a tick
+        // behind the sim's own decision. Once the stop is known, leave as
+        // soon as what remains to walk is at most one cycle of
+        // `walk-to-wait`'s own advance, with the START PHASE fitted so the
+        // clip's last frame lands exactly when the feet do, however early
+        // inside that last cycle the edge actually fires.
+        //
+        // "Remaining" is the distance from the DRAWN point to where the
+        // body will finally rest once both the playback timeline has caught
+        // up to its newest tick AND any eased pull has finished —
+        // `newest + pullTo`, not `newest` alone. A body approaching a
+        // station is walking under an eased PULL (`clipWhileSettling` shows
+        // 'walk' while it settles), not a tick-by-tick step, so its
+        // remaining distance is almost entirely pull, and `newest` (the
+        // tick point, pinned at the queue cell for the whole approach)
+        // alone would read as permanently far from `drawn` — measured to
+        // strand the walk clip forever the first time this was tried, since
+        // the tick point never moves once a member is using.
+        const stopKnown = wish !== 'walk';
+        const newest = snapshots[snapshots.length - 1] as MemberPlaybackSnapshot;
+        const restingX = newest.x + pullTo.x;
+        const restingY = newest.y + pullTo.y;
+        const remainingTiles = tileHere > 0 ? Math.hypot(restingX - drawn.x, restingY - drawn.y) / tileHere : 0;
+        const advanceTiles = memberMotionClipAdvanceTiles('walk-to-wait');
+        ready = stopKnown && remainingTiles <= advanceTiles;
+        fittedStartPhase = advanceTiles > 0 ? Math.max(0, Math.min(1, 1 - remainingTiles / advanceTiles)) : 1;
+      } else {
+        // Every other edge, including the transition clips' own exits,
+        // waits only for the outgoing clip to finish (c) — a non-looping
+        // distance clip's phase reaches 1 exactly when its fitted start's
+        // remaining distance has been walked (`wait-to-walk`), or the feet
+        // have stopped moving (`walk-to-wait`, by the same construction in
+        // reverse) — never for the feet to be still, which would strand
+        // `wait-to-walk` forever once the walk it hands off to keeps them
+        // moving.
+        const spec = MEMBER_MOTION_CLIP_SPECS[motionClip];
+        ready = spec.loop || motionPhase >= 1;
+      }
+      if (ready) {
+        const next = memberMotionNextClip(motionClip, target);
+        if (next !== null && next !== motionClip) {
+          const from = motionClip;
+          motionOutgoing = memberMotionDissolveEdge(from, next)
+            ? { clip: from, frame: memberMotionFrameAt(from, motionPhase) }
+            : null;
+          motionBlendElapsedMs = motionOutgoing === null ? null : 0;
+          motionClip = next;
+          motionPhase = from === 'walk' ? fittedStartPhase : memberMotionStartPhase(next, p.index);
+          transition = `${from}>${next}`;
+          // `fittedStartPhase` already measured "remaining" against THIS
+          // frame's drawn point — the frame's own `movedTiles` is already
+          // baked into it. Advancing again below with the same `movedTiles`
+          // would spend it twice, which is what produced the ~0.24-phase
+          // (roughly one contract tick's worth of travel) discontinuity
+          // measured at the cut before this guard existed. Skip this one
+          // frame's advance for a walk-originated edge only; every other
+          // edge starts at a motion-independent phase (0) and is meant to
+          // take this same frame's travel as its first real step.
+          justEnteredFromWalk = from === 'walk';
+        }
+      }
+    }
+    if (!justEnteredFromWalk) {
+      motionPhase = advanceMemberMotionPhase(motionClip, motionPhase, p.index, movedTiles, elapsed);
+    }
+    frame = memberMotionFrameAt(motionClip, motionPhase);
+    motionBlend = motionBlendElapsedMs === null ? 1 : memberAnimationBlend(motionBlendElapsedMs);
+    if (motionBlend >= 1) {
+      motionBlendElapsedMs = null;
+      motionOutgoing = null;
+    }
+  }
+
+  // 8. FACING (a), gated to the frame just resolved above — production
+  // bodies only (`memberMotionFlipAllowedAt`): a flip mid-stride mirrors the
+  // planted foot across the body, so a threshold crossing this frame is
+  // held (the accumulator is NOT reset) until a frame the gate allows.
   let facing = state.facing;
   let facingOpposedTiles = state.facingOpposedTiles;
   let facingHintMs = state.facingHintMs;
   if (!state.production) {
     facing = p.facing;
   } else if (p.lifecycle === 'using' || p.lifecycle === 'queuing') {
-    facing = p.facing;
+    if (p.facing !== facing && memberMotionFlipAllowedAt(motionClip, frame)) {
+      facing = p.facing;
+    }
     facingOpposedTiles = 0;
     facingHintMs = 0;
   } else if (drawnDx !== 0 && tileHere > 0) {
     const movingLeft = drawnDx < 0;
     if (movingLeft !== (facing === 'left')) {
       facingOpposedTiles += Math.abs(drawnDx) / tileHere;
-      if (facingOpposedTiles >= EMPIRE_TUNING.FLOOR_MEMBER_FACING_FLIP_TILES) {
+      if (facingOpposedTiles >= EMPIRE_TUNING.FLOOR_MEMBER_FACING_FLIP_TILES && memberMotionFlipAllowedAt(motionClip, frame)) {
         facing = movingLeft ? 'left' : 'right';
         facingOpposedTiles = 0;
       }
@@ -523,7 +795,7 @@ export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput,
     facingOpposedTiles = 0;
     if (p.facing !== facing) {
       facingHintMs += elapsed;
-      if (facingHintMs >= EMPIRE_TUNING.FLOOR_MEMBER_FACING_HINT_MS) {
+      if (facingHintMs >= EMPIRE_TUNING.FLOOR_MEMBER_FACING_HINT_MS && memberMotionFlipAllowedAt(motionClip, frame)) {
         facing = p.facing;
         facingHintMs = 0;
       }
@@ -531,9 +803,6 @@ export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput,
       facingHintMs = 0;
     }
   }
-
-  // 7. THE CLIP the body wants this frame.
-  const wantedClip = remainder > 0 ? clipWhileSettling(p.clip) : p.clip;
 
   const carried = {
     production: state.production,
@@ -544,6 +813,7 @@ export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput,
     pullTo,
     settleElapsedMs,
     settleMs,
+    settleCurve,
     lastDrawn: drawn,
     facing,
     facingOpposedTiles,
@@ -610,41 +880,12 @@ export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput,
     };
   }
 
-  // The production strip: one edge per frame along the table (c).
-  const target = memberMotionTargetClip(wantedClip);
-  let motionClip = state.motionClip;
-  let motionPhase = state.motionPhase;
-  let motionOutgoing = state.motionOutgoing;
-  let transition: MemberMotionTransitionLabel | null = null;
-  if (motionClip !== target) {
-    const spec = MEMBER_MOTION_CLIP_SPECS[motionClip];
-    const finished = spec.loop || motionPhase >= 1;
-    // The edge out of the distance-driven walk waits for the feet to stop.
-    const feetStill = spec.drive !== 'distance' || movedTiles === 0;
-    if (finished && feetStill) {
-      const next = memberMotionNextClip(motionClip, target);
-      if (next !== null && next !== motionClip) {
-        const from = motionClip;
-        motionOutgoing = memberMotionEdgeDissolves(from, next)
-          ? { clip: from, frame: memberMotionFrameAt(from, motionPhase) }
-          : null;
-        motionBlendElapsedMs = motionOutgoing === null ? null : 0;
-        motionClip = next;
-        motionPhase = memberMotionStartPhase(next, p.index);
-        transition = `${from}>${next}`;
-      }
-    }
-  }
-  motionPhase = advanceMemberMotionPhase(motionClip, motionPhase, p.index, movedTiles, elapsed);
-  const frame = memberMotionFrameAt(motionClip, motionPhase);
-  const blend = motionBlendElapsedMs === null ? 1 : memberAnimationBlend(motionBlendElapsedMs);
-  if (blend >= 1) {
-    motionBlendElapsedMs = null;
-    motionOutgoing = null;
-  }
-  const layers: MemberMotionStripLayer[] = [{ clip: motionClip, frame, opacity: blend }];
+  // The production strip: `motionClip`/`motionPhase`/`frame`/`motionOutgoing`/
+  // `motionBlend`/`transition` were all resolved in step 7, above the facing
+  // gate — nothing left to decide here but the layers to draw.
+  const layers: MemberMotionStripLayer[] = [{ clip: motionClip, frame, opacity: motionBlend }];
   if (motionOutgoing !== null) {
-    layers.push({ clip: motionOutgoing.clip, frame: motionOutgoing.frame, opacity: 1 - blend });
+    layers.push({ clip: motionOutgoing.clip, frame: motionOutgoing.frame, opacity: 1 - motionBlend });
   }
   return {
     state: Object.freeze({
@@ -665,8 +906,8 @@ export function stepMemberMotion(state: MemberMotionState, p: MemberMotionInput,
       lift: 0,
       lean: 0,
       phase: motionPhase,
-      blend,
-      transitioning: blend < 1 || !MEMBER_MOTION_CLIP_SPECS[motionClip].loop,
+      blend: motionBlend,
+      transitioning: motionBlend < 1 || !MEMBER_MOTION_CLIP_SPECS[motionClip].loop,
       transition,
       draw: { kind: 'strip', clip: motionClip, frame, layers },
     },

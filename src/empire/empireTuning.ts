@@ -2789,6 +2789,38 @@ export const EMPIRE_TUNING = Object.freeze({
    */
   FLOOR_MEMBER_SETTLE_MS: 360,
 
+  /**
+   * VL-3 runtime round two: the least a member's contract point may move in
+   * one tick, in tiles at that body's depth, before the runtime treats it as
+   * a RELOCATION (a glide) rather than an ordinary walked step. Below the
+   * sim's largest ordinary tick — `FLOOR_SIM_STEP_PROGRESS_PER_TICK` (0.34)
+   * at its widest jitter (`FLOOR_SIM_SPEED_JITTER_FRACTION`, ±0.25), 0.425 —
+   * and below `FLOOR_MEMBER_STRIDE_TILES` (1.1), the threshold this
+   * superseded. Round two's own measurement found the sim can re-plan a
+   * seeking member 0.82 tiles in one tick — under the old 1.1 threshold, so
+   * the timeline played it as an ordinary step at over the walk's rate — and
+   * this sits strictly between the two so every sub-stride re-plan the sim
+   * performs is still caught as a relocation. Unplayed: nobody has watched
+   * this exact value on a phone.
+   */
+  FLOOR_MEMBER_RELOCATION_MIN_TILES: 0.5,
+
+  /**
+   * VL-3 runtime round two: the curve a RELOCATION glides along —
+   * `memberMotionRelocationGlide` in `memberMotion.ts` parses this totally,
+   * so any value other than the literal `'linear'` reads as `'ease-out'`.
+   * The seat pull that eases a member onto or off a bench always keeps
+   * `'ease-out'` (`FLOOR_MEMBER_SETTLE_MS`'s own header); this knob is for
+   * the OTHER kind of settle, the one a relocation starts when the sim
+   * re-plans a member's path. Default `'linear'` because an ease-out's
+   * steepest slope sits at its START, and a relocation is typically a small,
+   * sub-stride correction (see `FLOOR_MEMBER_RELOCATION_MIN_TILES`) rather
+   * than the multi-tile ghost-reserve pull `'ease-out'` was tuned for — a
+   * short glide front-loaded by an ease-out reads as a snap followed by a
+   * crawl, where a linear glide reads as a walked step. Unplayed.
+   */
+  FLOOR_MEMBER_RELOCATION_GLIDE: 'linear',
+
   /** Grounding shadow under a standing member's feet: width as a fraction of one tile. */
   FLOOR_MEMBER_SHADOW_WIDTH_FRACTION: 0.8,
 
@@ -2906,10 +2938,35 @@ export const EMPIRE_TUNING = Object.freeze({
 
   /**
    * VL-3: the gait's settle into a stand and its first step out of one
-   * (`walk-to-wait`, `wait-to-walk`), in milliseconds — four poses each, so
-   * a body never cuts from mid-stride to standing or back.
+   * (`walk-to-wait`, `wait-to-walk`) used to be timed by this, before
+   * runtime round two made both DISTANCE-driven (`memberMotionClipAdvanceTiles`
+   * in `memberMotion.ts`, reading the rig's own solved root advance) so the
+   * planted foot's retreat and the runtime's phase agree by construction —
+   * a time-driven transition could not make that guarantee, since a body
+   * stalled mid-glide would keep the clock running while the feet stood
+   * still. No module under `src/empire/` reads this any more
+   * (`empireTuning.test.ts`'s `AWAITING_CONSUMER`); `tools/capture-motion-
+   * proof.mjs` still does, outside this directory's own scan, so it is not
+   * deleted out from under that tool mid-round.
    */
   FLOOR_MEMBER_GAIT_TRANSITION_MS: 220,
+
+  /**
+   * VL-3 runtime round two: the least real drawn motion, in stage pixels,
+   * that counts as "the feet have started walking" for a standing body
+   * (`wait` / `idle`) — the trigger for leaving a stand for `wait-to-walk`.
+   * Not simply `movedTiles > 0`: a one-cell queue shuffle can move the drawn
+   * feet a whole tile while the CONTRACT's own wish never leaves 'wait'
+   * (queue repositioning is not a `stepping` edge the way a real walk is),
+   * so the trigger has to read real drawn distance rather than the wish —
+   * see `stepMemberMotion`'s header (e, f). A small stage-pixel floor, not
+   * zero, so a settle's or a relocation glide's asymptotic tail (which can
+   * leave a standing body with a vanishingly small but nonzero `movedTiles`
+   * for several frames as an ease-out cubic approaches its target) does not
+   * read as the first step of a walk. Unplayed: nobody has watched this
+   * value on a phone.
+   */
+  FLOOR_MEMBER_GAIT_TRANSITION_TRIGGER_PX: 1,
 
   /**
    * VL-3: the side-view walker stepping to the bench, sitting on its edge
@@ -3531,6 +3588,8 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_MEMBER_DRAW_SCALE_TILES: 'knob',
   FLOOR_MEMBER_GAIT_BOUNCE_PIXELS: 'knob',
   FLOOR_MEMBER_SETTLE_MS: 'knob',
+  FLOOR_MEMBER_RELOCATION_MIN_TILES: 'knob',
+  FLOOR_MEMBER_RELOCATION_GLIDE: 'knob',
   FLOOR_MEMBER_SHADOW_WIDTH_FRACTION: 'knob',
   FLOOR_MEMBER_SHADOW_HEIGHT_FRACTION: 'knob',
   FLOOR_MEMBER_SHADOW_OPACITY: 'knob',
@@ -3547,6 +3606,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_MEMBER_WAIT_SWAY_DEGREES: 'knob',
   FLOOR_MEMBER_IDLE_BREATH_PERIOD_MS: 'knob',
   FLOOR_MEMBER_GAIT_TRANSITION_MS: 'knob',
+  FLOOR_MEMBER_GAIT_TRANSITION_TRIGGER_PX: 'knob',
   FLOOR_MEMBER_BENCH_SETUP_MS: 'knob',
   FLOOR_MEMBER_BENCH_MOUNT_MS: 'knob',
   FLOOR_MEMBER_MOTION_FRAMES: 'knob',
