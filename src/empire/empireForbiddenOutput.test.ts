@@ -1731,6 +1731,14 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   // Stage G.1: floorSim observation buffer and livingMembers roster helpers.
   'floorSim.ts#advanceMember#observations.push x1',
   'floorSim.ts#createFloorSimState#context.map x1',
+  // VL-3 round 2c census re-pin. INHERITED — the accepted Grok B
+  // occupied-cell pathing merge (`b1561aa1`) adds `withTransitBlocked`'s own
+  // `blocked.slice()`, called with zero arguments (a whole-array copy) on
+  // the `blocked: readonly boolean[]` parameter. Unlike Phase 3/Phase 4
+  // below, this one was not rewritten as a loop — a receiver-only copy has
+  // no callback to enumerate, so there is nothing here for
+  // `MEMBER_CALL_PASS_UNDRIVEN` to need a driver for.
+  'floorSim.ts#withTransitBlocked#blocked.slice x0',
   // GDD §5.13 presentation Phase 3 adds NO ROW HERE, and that is a decision
   // rather than an absence. floorSim.ts's first draft had six array-method
   // calls whose receiver was a parameter — `members.map`, `members.filter`,
@@ -3346,7 +3354,13 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // memberRig.ts were already shipped, unpinned, at the frozen checkpoint
   // `58295c57`; masked behind `MODULES` failing first in the same test.
   // Read from this pin's own failure value.
-  CALLS_EXAMINED: 4317, // VL-2 camera / animation / anchor / settle helpers, +8 presentationSeats freeze calls (124fb132); VL-2B seat consumption +1, frame cap +1. Read from this pin. Seats by cell +13. Relocation anchored on the drawn point, panel text +5.
+  // 4317 -> 4332: VL-3 round 2c census re-pin. INHERITED — the accepted Grok B
+  // occupied-cell pathing merge (`b1561aa1`, GDD §5.13/§5.14 floorSim.ts) adds
+  // `isStationUseCell` and `withTransitBlocked`, plus new call expressions in
+  // `routePlan`/`stepAwayFrom`/`stepWander`/`advanceMember`
+  // (`sameCell`/`insideGrid`/`isStationUseCell`/`.push`/`.slice`/`Object.freeze`
+  // among them). Read from this pin's own failure value.
+  CALLS_EXAMINED: 4332, // VL-2 camera / animation / anchor / settle helpers, +8 presentationSeats freeze calls (124fb132); VL-2B seat consumption +1, frame cap +1. Read from this pin. Seats by cell +13. Relocation anchored on the drawn point, panel text +5.
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -16824,7 +16838,12 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'floor.ts': 38,
       'floorCamera.ts': 16, // VL-2; VL-3 round 2b census re-pin 11 -> 16, INHERITED
       'FloorGrid.tsx': 102, // VL-2 camera / anchor / draw-box helpers; VL-2B: memberUsesCell and cellsEqual deleted, seats read from the contract (99 -> 96); seats matched to benches by cell (cellToFootprintDistance, seatsByBench, occupiedBySource) 96 -> 100; VL-3 round 2b census re-pin 100 -> 102
-      'floorSim.ts': 76,
+      // 76 -> 79: VL-3 round 2c census re-pin. INHERITED — the accepted Grok B
+      // occupied-cell pathing merge (`b1561aa1`) adds `isStationUseCell` (two
+      // `return` statements) and `withTransitBlocked` (one `return`
+      // statement); no existing function in this file gained or lost a
+      // `return`. Read from this pin's own failure value.
+      'floorSim.ts': 79,
       'floorSprites.ts': 54,
       'GymScreen.tsx': 14,
       'ironAmberArt.ts': 21, // VL-3 round 2b census re-pin 20 -> 21, INHERITED (ironAmberMemberMotionUri)
@@ -17471,14 +17490,22 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'floor.ts:653 returned=unfollowable:floor',
   'floor.ts:663 returned=unfollowable:floor',
   'floor.ts:671 returned=unfollowable:floor',
-  'floorSim.ts:1113 returned=unfollowable:member',
-  'floorSim.ts:1114 returned=unfollowable:member',
-  'floorSim.ts:1134 returned=unfollowable:walk',
-  'floorSim.ts:693 receiver=NewExpression',
-  'floorSim.ts:765 returned=unfollowable:context',
-  'floorSim.ts:768 receiver=NewExpression',
-  'floorSim.ts:915 receiver=ArrayLiteralExpression',
-  'floorSim.ts:969 returned=unfollowable:plan',
+  // VL-3 round 2c census re-pin. INHERITED — line numbers shifted by the
+  // accepted Grok B occupied-cell pathing merge (`b1561aa1`), which adds
+  // ~97 lines above these sites (`isStationUseCell`, `withTransitBlocked`);
+  // no new fresh-receiver site arrived or left. Old values, for the record:
+  // floorSim.ts:1113 -> 1178, floorSim.ts:1114 -> 1179, floorSim.ts:1134 ->
+  // 1199, floorSim.ts:693 -> 747, floorSim.ts:765 -> 819, floorSim.ts:768 ->
+  // 822, floorSim.ts:915 -> 974, floorSim.ts:969 -> 1034. Read from this
+  // pin's own failure value.
+  'floorSim.ts:1034 returned=unfollowable:plan',
+  'floorSim.ts:1178 returned=unfollowable:member',
+  'floorSim.ts:1179 returned=unfollowable:member',
+  'floorSim.ts:1199 returned=unfollowable:walk',
+  'floorSim.ts:747 receiver=NewExpression',
+  'floorSim.ts:819 returned=unfollowable:context',
+  'floorSim.ts:822 receiver=NewExpression',
+  'floorSim.ts:974 receiver=ArrayLiteralExpression',
   'floorSprites.ts:1256 callee=fresh:ArrowFunction',
   'floorSprites.ts:363 receiver=NewExpression',
   'floorSprites.ts:422 receiver=NewExpression',
@@ -17556,25 +17583,31 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'floor.ts:653 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
   'floor.ts:663 Readonly<Partial<Record<"comp-plates" | "power-bar" | "flat-bench" | "squat-rack", GridPosition>>> asked=true walked=false',
   'floor.ts:671 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
-  'floorSim.ts:1113 GridPosition asked=true walked=false',
-  'floorSim.ts:1114 GridPosition | null asked=true walked=false',
-  'floorSim.ts:1134 GridPosition asked=true walked=false',
-  'floorSim.ts:1310 GridPosition | undefined asked=true walked=false',
-  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1499 readonly GridPosition[] asked=true walked=false',
-  'floorSim.ts:1535 GridPosition asked=true walked=false',
-  'floorSim.ts:1753 FloorSimState asked=true walked=false',
-  'floorSim.ts:1908 FloorSimState asked=true walked=false',
-  'floorSim.ts:765 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
-  'floorSim.ts:960 readonly FloorStation[] asked=true walked=false',
-  'floorSim.ts:969 readonly FloorStation[] asked=true walked=false',
+  // VL-3 round 2c census re-pin. INHERITED — line numbers shifted by the
+  // accepted Grok B occupied-cell pathing merge (`b1561aa1`); count unchanged
+  // at 19. Old values, for the record: floorSim.ts:1113 -> 1178, :1114 ->
+  // 1179, :1134 -> 1199, :1310 -> 1377, :1499 (x9) -> 1566, :1535 -> 1602,
+  // :1753 -> 1830, :1908 -> 1985, :765 -> 819, :960 -> 1025, :969 -> 1034.
+  // Read from this pin's own failure value.
+  'floorSim.ts:1025 readonly FloorStation[] asked=true walked=false',
+  'floorSim.ts:1034 readonly FloorStation[] asked=true walked=false',
+  'floorSim.ts:1178 GridPosition asked=true walked=false',
+  'floorSim.ts:1179 GridPosition | null asked=true walked=false',
+  'floorSim.ts:1199 GridPosition asked=true walked=false',
+  'floorSim.ts:1377 GridPosition | undefined asked=true walked=false',
+  'floorSim.ts:1566 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1566 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1566 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1566 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1566 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1566 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1566 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1566 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1566 readonly GridPosition[] asked=true walked=false',
+  'floorSim.ts:1602 GridPosition asked=true walked=false',
+  'floorSim.ts:1830 FloorSimState asked=true walked=false',
+  'floorSim.ts:1985 FloorSimState asked=true walked=false',
+  'floorSim.ts:819 Readonly<Partial<Record<"competition-bench-bay", StationAxisLevels>>> asked=true walked=false',
   'ladder.ts:639 LadderState asked=true walked=false',
   'ladder.ts:650 LadderState asked=true walked=false',
   'ladder.ts:656 LadderState asked=true walked=false',
@@ -17870,7 +17903,16 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // sites through a caller-supplied parameter in the new
   // memberPuppet.ts/memberRig.ts/memberMotion.ts/memberMotionClips.ts drive
   // block. Read from this pin's own failure value.
-  function: 2193, // VL-2 (posesToMount's settling-clip loop); +5 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDrawOrigin call VL-2B: 2012 -> 2009. Seats by cell +7. Relocation helpers +5.
+  // 2193 -> 2204: VL-3 round 2c census re-pin. INHERITED — the accepted Grok
+  // B occupied-cell pathing merge (`b1561aa1`) adds eleven bare-identifier
+  // calls to declared module functions: `isStationUseCell`'s own
+  // `sameCell` (1); `withTransitBlocked`'s `sameCell`/`insideGrid`/
+  // `cellIndex` (3); two `withTransitBlocked(...)` calls in `routePlan`'s
+  // `fields.push` seat/queue-field callbacks (2); `isStationUseCell` in
+  // `stepAwayFrom` and in `stepWander` (2); `isStationUseCell` and `sameCell`
+  // in `advanceMember`'s two branches (1 + 2). Read from this pin's own
+  // failure value.
+  function: 2204, // VL-2 (posesToMount's settling-clip loop); +5 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDrawOrigin call VL-2B: 2012 -> 2009. Seats by cell +7. Relocation helpers +5.
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -17930,7 +17972,14 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1517 -> 1529: Stage D2.1B changeovers Object.keys / freeze / occupancy members.
   // 1787 -> 1918: VL-3 round 2b census re-pin, same reason as `function`
   // above. Read from this pin's own failure value.
-  member: 1918, // VL-2 (posesToMount's settling-clip loop); +3 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDraws.sort, Easing.out, String() VL-2B: 1777 -> 1781; frame cap (Math.min) -> 1782. Seats by cell +5.
+  // 1918 -> 1921: VL-3 round 2c census re-pin. INHERITED — the accepted Grok
+  // B occupied-cell pathing merge (`b1561aa1`) adds three member-call sites:
+  // `allUseCells.push(cell)` in `routePlan`, and one `Object.freeze(...)` in
+  // each of `advanceMember`'s two branches (the `idle`/`inFlight` rebind).
+  // `blocked.slice()` in `withTransitBlocked` is NOT one of these three — its
+  // receiver is a parameter, so it classifies `member-of-parameter` below
+  // instead. Read from this pin's own failure value.
+  member: 1921, // VL-2 (posesToMount's settling-clip loop); +3 presentationSeats (124fb132). Read from this pin. // VL-1 FloorGrid.tsx memberDraws.sort, Easing.out, String() VL-2B: 1777 -> 1781; frame cap (Math.min) -> 1782. Seats by cell +5.
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -17941,7 +17990,13 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 23 -> 24: GDD §5.14 Stage B's `pacingReadingAtHorizon`'s
   // `readings.find(...)`, the same shape as S4b's rows above.
   // 37 -> 43: VL-3 round 2b census re-pin, same reason as `function` above.
-  'member-of-parameter': 43, // VL-2: unchanged from VL-1 once the data attributes stopped calling toFixed on props // Stage G.2A livingMemberExperience history/values member calls VL-2B seats by cell: seatsByBench#benches.map.
+  // 43 -> 44: VL-3 round 2c census re-pin. INHERITED — the accepted Grok B
+  // occupied-cell pathing merge (`b1561aa1`) adds `withTransitBlocked`'s own
+  // `blocked.slice()`, a method call on the `blocked: readonly boolean[]`
+  // parameter — the same site `DECLARED_MEMBER_CALLS_ON_PARAMETERS` now
+  // names individually (`floorSim.ts#withTransitBlocked#blocked.slice x0`).
+  // Read from this pin's own failure value.
+  'member-of-parameter': 44, // VL-2: unchanged from VL-1 once the data attributes stopped calling toFixed on props // Stage G.2A livingMemberExperience history/values member calls VL-2B seats by cell: seatsByBench#benches.map.
   // Phase 4: FLOOR_SPRITE_PALETTES' construction calls a fresh arrow (the
   // palette-row map), the same site DECLARED_FRESH_RECEIVERS names.
   // 3 -> 4: VL-3 round 2b census re-pin, same reason as `function` above.
@@ -18017,7 +18072,11 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // isolated worktree at the frozen checkpoint `58295c57`.
   // 529 -> 530: OWNED by this round's own one new local write. Read from
   // this pin's own failure value.
-  local: 530, // VL-2: posesToMount's settling-clip loop; +1 presentationSeats (124fb132); VL-2B relocation glide +1. Read from this pin. Seats by cell +1.
+  // 530 -> 532: VL-3 round 2c census re-pin. INHERITED — the accepted Grok B
+  // occupied-cell pathing merge (`b1561aa1`) adds two new local `const`
+  // writes in floorSim.ts (`allUseCells` in `routePlan`, `next` in
+  // `withTransitBlocked`). Read from this pin's own failure value.
+  local: 532, // VL-2: posesToMount's settling-clip loop; +1 presentationSeats (124fb132); VL-2B relocation glide +1. Read from this pin. Seats by cell +1.
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -18147,7 +18206,12 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // memberAnimation.ts +4, memberMotion.ts +32, memberMotionClips.ts +7,
   // memberPuppet.ts +12, memberRig.ts +47), throw +9 (memberRig.ts).
   // Verified against this pin's own failure value.
-  SITES: 1338, // VL-2 floorCamera / memberAnimation / FloorGrid returns, settle helpers; +1 presentationState return (124fb132) VL-2B: memberUsesCell/cellsEqual deleted (1201 -> 1198). Seats by cell +4.
+  // 1338 -> 1341: VL-3 round 2c census re-pin. INHERITED — the accepted Grok
+  // B occupied-cell pathing merge (`b1561aa1`) adds the three new
+  // `floorSim.ts` `return` sites already pinned above in `CHANNEL_SITE_COUNTS`
+  // (`isStationUseCell` x2, `withTransitBlocked` x1). Read from this pin's
+  // own failure value.
+  SITES: 1341, // VL-2 floorCamera / memberAnimation / FloorGrid returns, settle helpers; +1 presentationState return (124fb132) VL-2B: memberUsesCell/cellsEqual deleted (1201 -> 1198). Seats by cell +4.
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -18312,7 +18376,15 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // (`evidenceSinkFindings`/`bareStringFieldsIn`, the new drive block —
   // `chainScanFiles()` walks `empireForbiddenOutput.test.ts` too). Read
   // from this pin's own failure value.
-  NODES_EXAMINED: 108_853, // VL-2 camera + settle helpers, plate-sized discs; +235 presentationSeats (124fb132); VL-2B seat consumption + relocation glide +101, frame cap +21 (VL-1: 90_495). Read from this pin. Seats by cell +381. Relocation helpers + panel text +265.
+  // 108_853 -> 109_099: VL-3 round 2c census re-pin. MIXED — same reason as
+  // the entry directly above: this walk covers `empireForbiddenOutput.
+  // test.ts`'s own source, so the +246 nodes are INHERITED (the accepted
+  // Grok B occupied-cell pathing merge `b1561aa1`'s new `isStationUseCell`/
+  // `withTransitBlocked` functions and their new call sites in `routePlan`/
+  // `stepAwayFrom`/`stepWander`/`advanceMember`) plus OWNED (this round's own
+  // re-pinned array entries and re-pin comments added to this file, which the
+  // walk also counts). Read from this pin's own failure value.
+  NODES_EXAMINED: 109_099, // VL-2 camera + settle helpers, plate-sized discs; +235 presentationSeats (124fb132); VL-2B seat consumption + relocation glide +101, frame cap +21 (VL-1: 90_495). Read from this pin. Seats by cell +381. Relocation helpers + panel text +265.
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -26693,6 +26765,13 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
 const MEMBER_CALL_PASS_UNDRIVEN: readonly string[] = Object.freeze([
   // Stage G.1A: private helpers whose parameters are fresh literals at every call site.
   'floorSim.ts#advanceMember#observations.push x1',
+  // VL-3 round 2c census re-pin. INHERITED — the accepted Grok B occupied-cell
+  // pathing merge (`b1561aa1`) adds `withTransitBlocked`, module-private (not
+  // exported) and called only from `routePlan` with a fresh local `blocked`
+  // copy and a fresh-literal `except` — the same "private helper, fresh
+  // literal at every call site" shape as `advanceMember#observations.push`
+  // directly above. Named rather than left off the join.
+  'floorSim.ts#withTransitBlocked#blocked.slice x0',
   'livingMembers.ts#truncateHistory#visits.slice x1',
   // Stage G.2A: history.map ×3, history.filter, and private geometricMean.
   // Dedicated member-call drivers remain a later pass; the sites are named
@@ -27054,7 +27133,12 @@ describe('the member-call pass — what a caller-supplied method is actually han
     // Stage G.1A: two private-helper sites await dedicated drives.
     // 8 -> 14: VL-3 round 2b census re-pin — the six memberMotion.ts/
     // memberRig.ts sites added above.
-    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(14);
+    // 14 -> 15: VL-3 round 2c census re-pin. INHERITED — the accepted Grok B
+    // occupied-cell pathing merge (`b1561aa1`) adds
+    // `floorSim.ts#withTransitBlocked#blocked.slice x0`, undriven for the
+    // same private-helper/fresh-literal reason as
+    // `floorSim.ts#advanceMember#observations.push x1` above it.
+    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(15);
     expect(driven.length).toBe(MEMBER_CALL_PASS_CENSUS.SUBJECTS);
     // Both `visitRefusals` sites are driven, and they share a key. A `Set` of
     // the driven sites would have quietly collapsed them, so the count of that
