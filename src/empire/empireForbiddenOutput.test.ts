@@ -17455,8 +17455,8 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'FloorGrid.tsx:1164 returned=unfollowable:station',
   'FloorGrid.tsx:1164 returned=unfollowable:station',
   'FloorGrid.tsx:1164 returned=unfollowable:station',
-  'FloorGrid.tsx:3808 callee=fresh:ArrowFunction',
-  'FloorGrid.tsx:3826 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:3830 callee=fresh:ArrowFunction',
+  'FloorGrid.tsx:3848 callee=fresh:ArrowFunction',
   'empireInvariant.ts:1084 returned=unfollowable:state',
   'empireInvariant.ts:1137 returned=unfollowable:gymState',
   'empireInvariant.ts:1168 returned=unfollowable:gym',
@@ -17539,7 +17539,7 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'FloorGrid.tsx:1164 GridSize asked=true walked=false',
   'FloorGrid.tsx:1164 GridSize asked=true walked=false',
   'FloorGrid.tsx:1170 BayBench | undefined asked=true walked=false',
-  'FloorGrid.tsx:2691 FloorSimState asked=true walked=false',
+  'FloorGrid.tsx:2713 FloorSimState asked=true walked=false',
   // VL-2: `memberAnchorFor`'s `MemberAnchor` return carries a `FloorTilePoint`,
   // an interface the control asks about and the walk declines the same way.
   'FloorGrid.tsx:959 FloorTilePoint asked=true walked=false',
@@ -18301,12 +18301,18 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 78_280 -> 78_294: Stage D2.2 station-panel maxHeight × garage.height.
   // 78_294 -> 78_305: plateLoadingProgress last-visible-frame sleeve map.
   // 96_037 -> 108_837: VL-3 round 2b census re-pin (Session B, this file).
+  // 108_837 -> 108_853: +16 nodes, OWNED by this lane and by the lead
+  // rather than by the census worker — FloorGrid.tsx's host-node read was
+  // rewritten to narrow from `unknown` instead of double-asserting a `View`,
+  // which is what took `src/game/progression.test.ts`'s reflective-assembly
+  // guard off this file. The two fresh-receiver rows below moved 22 lines for
+  // the same edit's comment.
   // Mixed lineage: the four new shipped modules (INHERITED) plus this
   // round's own additions to FloorGrid.tsx and to this test file itself
   // (`evidenceSinkFindings`/`bareStringFieldsIn`, the new drive block —
   // `chainScanFiles()` walks `empireForbiddenOutput.test.ts` too). Read
   // from this pin's own failure value.
-  NODES_EXAMINED: 108_837, // VL-2 camera + settle helpers, plate-sized discs; +235 presentationSeats (124fb132); VL-2B seat consumption + relocation glide +101, frame cap +21 (VL-1: 90_495). Read from this pin. Seats by cell +381. Relocation helpers + panel text +265.
+  NODES_EXAMINED: 108_853, // VL-2 camera + settle helpers, plate-sized discs; +235 presentationSeats (124fb132); VL-2B seat consumption + relocation glide +101, frame cap +21 (VL-1: 90_495). Read from this pin. Seats by cell +381. Relocation helpers + panel text +265.
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

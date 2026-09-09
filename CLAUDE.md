@@ -1467,6 +1467,130 @@ workers. Neither substitutes for Fable's visual judgement, and this entry does
 not pretend otherwise — the handoff packet at the end of the round exists exactly
 because that judgement is the thing this round cannot supply.
 
+### VL-3 ROUND 2B DELIVERED — THE RUNTIME REBUILT AND PROVEN, THE INSTRUMENTS ALIGNED, AND THE ONE VERDICT THAT IS STILL RED IS DIAGNOSED RATHER THAN SCOPED AWAY
+
+Branch `claude/empire-s5-visual-lane`, Claude Code Session B, on top of the
+frozen checkpoint `58295c57`. Four builders, all on Sonnet 5 High under Opus 5
+integration because Fable was usage-blocked, **and every one of them pushed its
+own branch** — `claude/vl3-runtime-2b`, `claude/vl3-instruments-2b`,
+`claude/vl3-census-2b`, `claude/vl3-evidence-2b` — which is the fix for the loss
+recorded in the entry above. Nothing merged to `main`; #46, #49, #51 and #52
+untouched; no mechanics changed; the tick-28 overlap still drawn as the contract
+produces it.
+
+**THE RUNTIME.** The ten-clip table is consumed: `bench-setup` → `bench-mount` →
+`bench-press` → `bench-dismount` → `bench-finish`, with the crossfade read from
+the contract's own `MEMBER_MOTION_DISSOLVE_EDGES` after a **stale second copy of
+that list was found hardcoded inside `memberMotion.ts`, still naming the
+pre-split pair** — so no dissolve could ever have fired. The gait transitions are
+distance-driven off the rig's own `cycleAdvancePx` (31.04 and 47.19 canvas px
+against the walk's 176.27 stride). Sub-stride relocations glide on
+`FLOOR_MEMBER_RELOCATION_MIN_TILES` (0.5, above the sim's largest ordinary step
+0.425 and below the stride) with `FLOOR_MEMBER_RELOCATION_GLIDE` choosing a
+linear curve, which closes the intermittent `noTeleport` red. Facing flips are
+gated to frames where the pose allows one — 30 of 76. `data-clip` now carries the
+clip actually drawn rather than the contract's legacy wish.
+
+**VERIFIED BY THE LEAD RATHER THAN TAKEN FROM THE BUILDER**, on the merged tree,
+through the app's own controls: over 45 s and 7,869 trace records with zero page
+errors, **all ten clips are drawn and eleven distinct transition edges occur,
+every one of them legal**, and each clip's duration matches its knob — setup
+883 ms against a 900 ms knob, mount 400 ms, dismount 383 ms, finish 884 ms. The
+five table edges never observed are lifecycle-gated rather than broken, and are
+named as such.
+
+**THE ONE RED VERDICT, AND WHY IT IS NOT A TOLERANCE PROBLEM.**
+`walkFootPlanted` / `noSkate` / `facingStable` fail, and the cause was measured
+from the trace rather than argued: `floorSim.ts` moves members on a
+**four-neighbour grid**, so a member regularly walks straight toward or away from
+the camera, and the art has **only side-view walk cycles** — there is no
+toward-camera gait. Measured windows across a full sixteen-frame cycle: net dx
+−1.8 px against net dy +25.5 px; −1.1 against +13.8; −1.9 against −15.4. The
+proof's foot-planting formula is horizontal-only, so it was reporting geometry as
+skate. The verdict is now scoped to horizontal stances with the depth-axis
+stances **counted and named** (9 of 17 and 10 of 17 excluded, their own max drift
+reported unjudged), and `facingStable` gained a derived minimum-motion floor
+which took its longest disagreement run from 62 frames to 17. **Both are still
+red after honest scoping and neither the tolerance nor the frozen art was
+touched.** What remains is a real finding for a later round: during
+`bench-dismount` → `bench-finish` the drawn point travels 65–75 px while facing
+stays locked and opposite, because the flip gate deliberately forbids a flip in
+those clips. Whether a person standing up off a bench *should* turn is a feel
+question, not one this round may answer.
+
+**Two repairs of this instrument have now each declared their own successor**
+(depth axis, then bench-clip facing lock), which is the pattern this file's own
+"When Every Repair Declares Its Own Successor, Change The Instrument" section
+says to notice rather than to iterate through. It is noticed here, and the third
+scoping pass was **not** taken.
+
+**THE CENSUS.** `src/empire` is green: **39 files, 1303 tests, exit 0**. Every
+moved pin is classified OWNED, INHERITED or ENVIRONMENT with its old and new
+value, and most are INHERITED — art round two's four modules were never re-pinned.
+The ambient-global channel guard, reddened by the evidence-only trace sink, was
+**repaired rather than re-pinned**: `EVIDENCE_SINK_SITES` names the site, is
+set-equal against the census's live sites in both directions, and verifies
+through the type checker that the pushed record carries no bare-`string` field.
+It is mutation-tested — a synthetic probe pushing `{clip: string, memberId:
+string}` is caught naming both fields, and a narrow-typed probe reports none —
+and its limit is written beside it: a declared type says what a field is declared
+as, not what a laundered value carries.
+
+**A GUARD IN SESSION A'S TERRITORY HAD BEEN RED FOR A WHOLE ROUND, NAMING OUR
+FILE, AND NOBODY IN THIS LANE SAW IT BECAUSE WE ONLY EVER RAN `src/empire`.**
+`src/game/progression.test.ts` walks every non-test file the project compiles and
+refuses four laundering idioms unless a file is excused by name and count. VL-3's
+runtime round one reached the member root's host node by double-asserting the ref
+from `View` to a shape with an optional `setAttribute`, and that guard has been
+red naming `src/empire/FloorGrid.tsx` since `f780521` — measured red at the frozen
+checkpoint too, so it predates round 2b. **Fixed in our own file rather than by
+adding an exemption row to Session A's test**: the loop now widens the ref to
+`unknown` and asserts once, which is a weaker construct than laundering one
+concrete type into an unrelated one. A row in that file would have been an edit to
+another session's guard to make room for an idiom this file does not need, and no
+ruling covers that allowlist the way one covers the covered-day list. The comment
+beside the fix **describes** the old idiom instead of quoting it, because a source
+scan cannot tell a banned construct from a comment citing one.
+
+**AND CLAUDE.md'S OWN "THREE PRE-EXISTING SESSION A FAILURES" NOTE WAS STALE AND
+UNDERCOUNTING.** The whole suite carries four inherited failures outside this
+lane, not three: `cutInWiring.test.ts` ×2 as recorded, and `guaranteeTags.test.ts`
+**×2** — the documented `g2b-forming` one plus a cascaded second assertion,
+`expected 240 to be 239`, on the tree-wide paragraph census this file's own
+history says has been owed a two-row bump since the S4d round. That count is
+corrected here rather than left reading as a complete list.
+
+**PERFORMANCE, WEB ONLY, REPORTED SEPARATELY AS THE RULING ASKS** (headless
+Chromium in a container, not a phone; no native number is inferred from it):
+mean 58.4 / 58.1 fps, p95 frame interval 16.80 ms at both viewports, worst 83.3 /
+66.7 ms, frames over 33 ms 13 of 876 and 20 of 872, entity count 3, **sim tick
+rate 8.334 / 8.324 per second against a nominal 8.333 — reported separately from
+the frame rate**, largest walking advancement 0.049 tiles per frame against a
+derived bound of 0.132, largest settle advancement 0.372 / 0.331 against 0.416.
+Every movement number is read from the frame loop's own trace; the
+MutationObserver write log is not used as per-frame displacement proof.
+
+**The other instruments, at both viewports:** capacity proof 18 of 18, owner route
+16 of 16, living-world capture 13 of 13, art/runtime alignment clean — 10 of 10
+strips present, metadata fresh against the rig, zero unreachable clips, and **zero
+of three members falling back to the old two-keypose assets**.
+
+**THE HANDOFF PACKET** is `docs/design/living-gym-world/vl-3/HANDOFF.md` plus ten
+images: the owner view, a 390x844 Play surface, the bench setup / mount / press /
+dismount sequence, an idle-wait sample, a walking sample and a capacity
+before/after pair. Its header says plainly that nothing in it is a pass. It
+carries residuals A–G with measured numbers, and two player-visible defects the
+captures show and this round did not fix under the technical-only scope: the HUD
+prints unrounded floating point (`0.249999`, `177.83999999999997`) in three
+independent captures, and two small red-and-white shapes sit at the head of the
+empty bench in the dismount frame that nobody has identified.
+
+**Gates.** This round closed TECHNICAL MOTION on the transition axis, RUNTIME
+TRANSITION, IDENTITY, SEAT/OCCUPANCY CONSUMPTION, PERFORMANCE-WEB and EVIDENCE
+HARNESS. **It did not close the foot-planting axis of TECHNICAL MOTION**, which is
+red with its mechanism named. VISUAL, WORLD LEGIBILITY, ANIMATION FEEL, SOFT-FEEL,
+OWNER PLAYTEST and NATIVE PERFORMANCE are untouched and remain Bryant's.
+
 ### Branch / worktree policy
 
 | Lane | Branches | Worktree |
