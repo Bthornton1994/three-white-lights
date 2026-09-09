@@ -30,7 +30,11 @@
  *      dev-controls block is drawn on the Play surface (present in the DOM
  *      under the More drawer is fine — that drawer is the product's own —
  *      but nothing of it may be VISIBLE on Play: effective opacity, box
- *      inside the viewport).
+ *      inside the viewport). VL-3, added this round: assert at least one
+ *      member is drawn from the production strips
+ *      (`floorgrid-member-strip-*`) and none from the pre-VL-3 two-keypose
+ *      pose stack (`floorgrid-member-pose-*`) — read from the DOM, not the
+ *      contract, since a member root nests its own sprite testid.
  *   4. Photograph BEFORE. Wait until one member is `using` and one `queuing`
  *      (the queue the scenario is about), photograph QUEUE.
  *   5. Press the bench (the same synthetic click on the bench art the
@@ -118,6 +122,24 @@ const VISIBILITY_READER = `
 
 async function visibility(page, testId) {
   return page.evaluate(`(${VISIBILITY_READER})(${JSON.stringify(testId)})`);
+}
+
+/**
+ * VL-3, added this round: is at least one drawn member using the production
+ * strip pipeline (`floorgrid-member-strip-*`, the baked motion strips), never
+ * the pre-VL-3 two-keypose pose stack (`floorgrid-member-pose-*`)? A member
+ * root CONTAINS its sprite testid as a descendant (`FloorGrid.tsx`'s own
+ * nesting), so this reads the DOM directly rather than trusting a clip name.
+ */
+async function stripPipelineObserved(page) {
+  return page.evaluate(() => {
+    const roots = [...document.querySelectorAll('[data-memberid]')];
+    return {
+      members: roots.length,
+      strip: roots.filter((n) => n.querySelector('[data-testid^="floorgrid-member-strip-"]') !== null).length,
+      pose: roots.filter((n) => n.querySelector('[data-testid^="floorgrid-member-pose-"]') !== null).length,
+    };
+  });
 }
 
 async function members(page) {
@@ -239,6 +261,10 @@ async function runViewport(browser, viewport) {
   note(
     `${vp} floor ${floor.drawn ? 'drawn' : 'NOT drawn'} with ${initial.length} member(s) ${JSON.stringify(initial.map((m) => `${m.id}=${m.lifecycle}@${m.cell}`))}; BUILD fab ${fab.drawn ? 'drawn' : 'absent'}, dock ${dock.drawn ? 'drawn' : 'absent'}; shell pill ${shellPill.present ? 'PRESENT' : 'absent'}; diagnostics readout ${diagnostics.present ? (diagnostics.drawn ? 'DRAWN ON PLAY' : 'in the More drawer, not drawn') : 'absent'}; dev controls ${devControls.present ? (devControls.drawn ? 'DRAWN ON PLAY' : 'in the More drawer, not drawn') : 'absent'}; diagnostics toggle opacity ${diagnosticsToggle.present ? diagnosticsToggle.opacity : 'absent'}`,
   );
+  const pipeline = await stripPipelineObserved(page);
+  result.pipeline = pipeline;
+  result.verdicts.memberDrawnFromStrips = pipeline.strip > 0 && pipeline.pose === 0;
+  note(`${vp} pipeline: ${pipeline.members} member(s), ${pipeline.strip} drawing the production strips, ${pipeline.pose} drawing the pre-VL-3 pose stack`);
   await shot('before');
 
   // ---- 4. the queue the scenario is about -----------------------------------
@@ -325,6 +351,7 @@ const VERDICT_ORDER = [
   'playSurface',
   'noShellChrome',
   'noDiagnosticsOnPlay',
+  'memberDrawnFromStrips',
   'queueForms',
   'benchOpensPanel',
   'capacityOffered',

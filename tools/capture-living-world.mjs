@@ -84,11 +84,42 @@
  */
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { registerHooks } from 'node:module';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 
 import { numberInSource, parserSelfTest } from './readTuning.mjs';
+
+// VL-3, this round: TypeScript loading so the production clip vocabulary
+// used below is READ FROM the shipped table (`tools/sprites.mjs`'s own
+// resolve-hook shape, matching `tools/capture-motion-proof.mjs`) rather than
+// hardcoded — a clip added or renamed there is a compile error here too.
+// `globalThis.URL`, not the bare global — this file (unlike
+// capture-motion-proof.mjs, which learned this the hard way and renamed its
+// own to `BASE_URL`) declares a module-level `const URL = arg('--url', ...)`
+// BELOW, which shadows the global `URL` constructor for the rest of this
+// module's scope, including inside this hook. `new URL(...)` here threw
+// "URL is not a constructor", was swallowed by the catch, and fell through
+// to Node's default resolver — silently disabling the whole hook rather than
+// failing loudly. Measured directly (temporary logging), not guessed:
+// renaming this file's ~700 other `URL` references was the larger, riskier
+// edit; qualifying the four call sites that need the real constructor is the
+// smaller one.
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    const relative = specifier.startsWith('./') || specifier.startsWith('../');
+    if (relative && !/\.[cm]?[jt]s$/.test(specifier)) {
+      try {
+        const url = new globalThis.URL(`${specifier}.ts`, context.parentURL ?? import.meta.url);
+        if (existsSync(fileURLToPath(url))) return { url: url.href, shortCircuit: true };
+      } catch {
+        /* fall through */
+      }
+    }
+    return nextResolve(specifier, context);
+  },
+});
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -195,6 +226,22 @@ if (SPEED_JITTER_FRACTION === null) {
 const ORDINARY_TILES_PER_100MS =
   ((STEP_PER_TICK * (1 + SPEED_JITTER_FRACTION)) / TICK_MS) * 100 * (1 + CATCH_UP_RATE) * RATE_TOLERANCE;
 
+// VL-3, this round: the production clip vocabulary, loaded from
+// `memberMotionClips.ts` — optional (an old tree has no such file), so its
+// absence degrades gait/repCycle back to the pre-VL-3 pose-stack reading
+// rather than failing this whole tool.
+let stripStems = null;
+try {
+  const clips = await import(pathToFileURL(join(ROOT, 'src', 'empire', 'memberMotionClips.ts')).href);
+  if (typeof clips.memberMotionStripStem === 'function' && Array.isArray(clips.MEMBER_MOTION_CLIPS) && Array.isArray(clips.MEMBER_MOTION_PRODUCTION_TYPES)) {
+    stripStems = new Set(
+      clips.MEMBER_MOTION_PRODUCTION_TYPES.flatMap((type) => clips.MEMBER_MOTION_CLIPS.map((clip) => clips.memberMotionStripStem(type, clip))),
+    );
+  }
+} catch {
+  stripStems = null;
+}
+
 const SHA = execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim();
 const DIRTY = execSync('git status --porcelain --untracked-files=no', { cwd: ROOT }).toString().trim() !== '';
 
@@ -236,6 +283,13 @@ async function worldSnapshot(page, followId) {
         cell: node.getAttribute('data-cell'),
         anchor: node.getAttribute('data-anchor'),
         scale: node.getAttribute('data-scale'),
+        // VL-3: the production strip's frame index — `data-frame`, written
+        // by the frame loop per frame (`FloorGrid.tsx`'s own header). Only
+        // meaningful when `sprite` below is a strip file (a strip's `src`
+        // never changes as its frame advances — translateX moves inside a
+        // clipping box — so `sprite` alone under-counts a production body's
+        // distinct poses; see `poseIdentity` below).
+        frame: node.getAttribute('data-frame'),
         box: boxOf(node),
         // VL-2: the sprite is a stack of pose images; the visible one is the
         // most opaque, read off the DOM rather than reported by the renderer.
@@ -405,9 +459,19 @@ async function runViewport(browser, viewport) {
     const tilePx = me.box.w / DRAW_SCALE_TILES;
     result.tilePx = tilePx;
     if (me.scale !== null) scalesSeen.add(me.scale);
-    if (me.sprite !== null) {
-      if (me.clip === 'walk') walkSprites.add(me.sprite);
-      if (me.lifecycle === 'using') useSprites.add(me.sprite);
+    // VL-3: a production body's `sprite` src is one strip FILE per clip —
+    // every frame of that clip shares the same src, the frame moves inside
+    // it via `translateX` — so `sprite` alone answers "which clip", not
+    // "which pose". `poseIdentity` is `sprite` for a legacy pose (unchanged
+    // reading) and `sprite#frame` for a strip, extending the existing
+    // gait/repCycle checks FROM THE CLIP TABLE (`stripStems`, loaded above)
+    // rather than hardcoding a filename pattern.
+    const spriteStem = me.sprite === null ? null : me.sprite.split('/').pop()?.replace(/\.png$/, '') ?? null;
+    const isStrip = stripStems !== null && spriteStem !== null && stripStems.has(spriteStem);
+    const poseIdentity = me.sprite === null ? null : isStrip ? `${me.sprite}#${me.frame}` : me.sprite;
+    if (poseIdentity !== null) {
+      if (me.clip === 'walk') walkSprites.add(poseIdentity);
+      if (me.lifecycle === 'using') useSprites.add(poseIdentity);
     }
     // Motion is measured at the FEET — the bottom-centre of the drawn box,
     // the point the renderer's timeline moves. The box's top-left also moves
