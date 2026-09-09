@@ -88,6 +88,13 @@ describe('the block is frozen and every entry is classified', () => {
       'FLOOR_FIXED_ART_HEIGHT_OVER_WIDTH',
       'FLOOR_FIXED_FURNITURE_LAYOUT',
       'FLOOR_GRID_SIZE',
+      // VL-3 round 2b census re-pin (Session B, this file). INHERITED — both
+      // already shipped, unpinned, at the frozen checkpoint `58295c57` (art
+      // round two / runtime round one): the puppet's per-clip frame counts
+      // and the idle/wait stance angles. Confirmed in an isolated worktree
+      // there.
+      'FLOOR_MEMBER_MOTION_FRAMES',
+      'FLOOR_MEMBER_MOTION_STANCE_DEGREES',
       'FLOOR_PLATE_LOADING',
       // VL-2: the scene paintings' size and per-rung floor seam.
       'FLOOR_SCENE_ART_ASPECT',
@@ -762,7 +769,16 @@ describe('§5.5 social', () => {
     // 226 -> 225: FLOOR_SIM_MOVE_TWEEN_MS removed (see empireTuning.ts).
     // 225 -> 226: VL-2B FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS. Read from this
     // assertion's own failure value.
-    expect(examined).toBe(226);
+    // 226 -> 256: VL-3 round 2b census re-pin. INHERITED — the top-level
+    // keys art round two / runtime round one had already appended to
+    // `empireTuning.ts` (member-motion feel knobs) were already present,
+    // unpinned, at the frozen checkpoint `58295c57`; confirmed 256 in an
+    // isolated worktree there.
+    // 256 -> 259: OWNED by this round's own three new top-level keys —
+    // `FLOOR_MEMBER_RELOCATION_MIN_TILES`, `FLOOR_MEMBER_RELOCATION_GLIDE`,
+    // `FLOOR_MEMBER_GAIT_TRANSITION_TRIGGER_PX`. Read from this assertion's
+    // own failure value.
+    expect(examined).toBe(259);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -794,7 +810,13 @@ describe('§5.5 social', () => {
     // 1020 -> 1055: VL-1's seven FLOOR_MEMBER_* entries × 5 banned units.
     // 1055 -> 1125: VL-2's 225 keys × 5 banned units.
     // 1125 -> 1130: VL-2B FLOOR_MEMBER_FRAME_ELAPSED_CAP_MS × 5 banned units.
-    expect(probed).toBe(1130); // 226 keys × 5 banned units
+    // 1130 -> 1280: VL-3 round 2b census re-pin. INHERITED — 30 keys already
+    // present, unpinned, at the frozen checkpoint `58295c57` × 5 banned units
+    // (226 -> 256 above).
+    // 1280 -> 1295: OWNED by this round's own three new top-level keys × 5
+    // banned units (256 -> 259 above). Read from this assertion's own
+    // failure value.
+    expect(probed).toBe(1295); // 259 keys × 5 banned units
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {
@@ -838,6 +860,39 @@ const AWAITING_CONSUMER: readonly string[] = [
   // `AppShell.tsx`'s `GymHost`, for the harness's ms<->s conversion — outside
   // `shippedModuleNames()`'s reach for the identical reason.
   'MILLISECONDS_PER_SECOND',
+  // VL-3 round 2b census re-pin (Session B, this file). INHERITED — all
+  // twelve `FLOOR_MEMBER_MOTION_*` knobs below were already unread inside
+  // `src/empire/`, unpinned, at the frozen checkpoint `58295c57`. Verified
+  // by grep, per entry: the ten non-`PROOF_` knobs are read only by
+  // `memberRig.test.ts` (a test, not a shipped module) and, for two of them
+  // (`FAR_LIMB_SHADE`, `PHONE_BODY_PX`), also by `tools/bake-member-motion.mjs`
+  // — the ART FREEZE bake tool, outside `src/empire/` and outside this
+  // round's touch. The two `_PROOF_` knobs are read only by
+  // `tools/capture-motion-proof.mjs`, via a source-text regex
+  // (`numberInSource`) rather than a property read, which is also outside
+  // `shippedModuleNames()`'s reach.
+  'FLOOR_MEMBER_MOTION_DISSOLVE_IOU_MIN',
+  'FLOOR_MEMBER_MOTION_FAR_LIMB_SHADE',
+  'FLOOR_MEMBER_MOTION_FOOT_DRIFT_TOLERANCE_PX',
+  'FLOOR_MEMBER_MOTION_GAIT_BOUNCE_MAX_PX',
+  'FLOOR_MEMBER_MOTION_IDLE_BREATH_VISIBLE_FRACTION',
+  'FLOOR_MEMBER_MOTION_PHONE_BODY_PX',
+  'FLOOR_MEMBER_MOTION_POSE_TOLERANCE_DEGREES',
+  'FLOOR_MEMBER_MOTION_PROOF_FOOT_DRIFT_TOLERANCE_TILES',
+  'FLOOR_MEMBER_MOTION_PROOF_STATION_OFFSET_TOLERANCE_TILES',
+  'FLOOR_MEMBER_MOTION_ROOT_TOLERANCE_PX',
+  'FLOOR_MEMBER_MOTION_SCOOT_SLACK_PX',
+  'FLOOR_MEMBER_MOTION_STRIDE_TOLERANCE_PX',
+  'FLOOR_MEMBER_MOTION_SWING_CLEARANCE_MIN_PX',
+  // OWNED by this round's own runtime work. At `58295c57`,
+  // `memberMotionClips.ts` read `EMPIRE_TUNING.FLOOR_MEMBER_GAIT_TRANSITION_MS`
+  // twice (a genuine in-directory consumer); this round's gait-transition
+  // rewrite removed both reads (confirmed by diffing the base worktree
+  // against this tree), and today the only reader left is
+  // `tools/capture-motion-proof.mjs`'s `numberInSource` scrape, outside
+  // `src/empire/`. A knob that went from consumed to unread inside this
+  // directory is exactly what this list exists to surface.
+  'FLOOR_MEMBER_GAIT_TRANSITION_MS',
 ];
 
 /**
