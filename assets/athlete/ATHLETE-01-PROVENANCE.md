@@ -1,160 +1,126 @@
 # `athlete-01` provenance
 
-Status: `RIVE_MCP_UNREACHABLE` — this Cloud Agent run cannot author or
-export the production Rive asset. Official Rive MCP is a localhost bridge
-to the Rive Early Access desktop Editor (`http://127.0.0.1:9791/mcp`). That
-server is not present in this remote environment, so no native vector
-rebuild, contract-preserving edit, `.riv` export, or `.rev` export was
-performed. No fabricated runtime or editor bytes were committed.
+Status: `EXPORTED_NOT_SATISFIED` — desktop Rive MCP authoring ran on the
+owner machine against Early Access file `athlete-01` (file id `2567995`).
+Native vector artwork, group hierarchy, continuous `barHeight` pose binds,
+`.riv`, and `.rev` were produced. The 43-input contract is **not** fully
+satisfied: nested `plates/0..7/{on,size}` does not survive `.riv` export
+(see Failures).
 
-SHA-256: `PENDING_RIVE_RUNTIME_EXPORT`
+SHA-256: `d735e08fb95d4b5549e047e4697883aabcb9e91789a4aea9678e6047f35495e3`
 
-License: The reference captures were supplied by Bryant Thornton for this
-project. Redistribution and production rights for the source captures have
-not been independently verified. They are used only as visual references and
-are not embedded in the runtime asset.
+License: Owned for this project’s redistribution of the authored Rive
+runtime/editor siblings committed here. Reference captures remain
+owner-supplied visual reference only and are not embedded in the `.riv`.
 
-Author: Cursor Cloud Agents `bc-61cb68cc-219c-415c-9336-e13c4f4cd5ca` and
-`bc-adc29394-1d25-487e-a67d-816ccec30aa3`, continuing the PR #60 handoff on
-2026-09-10. Prior editor authoring remains attributed to the Codex Work Mode
-pass of 2026-09-09.
+Artist: Cursor desktop Agent on the owner machine (local Rive MCP → Early
+Access), PR #60 branch `codex/athlete-01-rive-authoring`, 2026-09-10.
 
-Marks: The supplied captures visibly contain gym/equipment details and
-apparel markings. Their ownership and clearance are not independently
-verified. No claim is made that any native Rive artwork in the open editor
-file reproduces those details or any person's likeness. This run produced
-no new artwork bytes.
+Marks: No real federation wordmark, shoe/apparel brand, sponsor mark, or
+claimed likeness of a real lifter is attested in the native vector layers
+authored in this pass (fictional tattooed male powerlifter silhouette in
+Iron & Amber light; face is mass/beard silhouette only).
 
-Editor source: Prior authenticated editor file remains
-`athlete-01`, file id `2567995`,
-https://editor.rive.app/file/untitled/2567995. The editable `.rev` sibling
-was not exported in this run. Official Rive docs require the Early Access
-desktop app on the same machine as the MCP client; Cloud Agents do not
-inherit that localhost bridge.
+Editor source: `assets/athlete/athlete-01.rev` (exported sibling of
+`athlete-01.riv`). Cloud editor file remains
+https://editor.rive.app/file/athlete-01/2567995.
 
 ## Inspected repository contract (this run)
-
-Located and inspected on branch `codex/athlete-01-rive-authoring` (PR #60):
 
 | Artifact | Path | Result |
 | --- | --- | --- |
 | Source package | `docs/design/ATHLETE-SOURCE-PACKAGE.md` | present |
 | Authoring handoff | `docs/design/RIVE-AUTHORING-HANDOFF.md` | present |
 | Rig manifest | `docs/design/athlete-rig-manifest.json` | present; **43 inputs** |
-| Contract print | `node tools/rivContract.mjs --manifest` | exit **0**; 43 inputs |
+| Contract print | `node tools/rivContract.mjs --manifest` | exit **0** |
 | Reference sheet | `assets/athlete/athlete-01-reference-sheet.png` | present |
-| Intake | `node tools/athleteIntake.mjs --dir assets/athlete` | exit **2** |
-| Contract vs `.riv` | `node tools/rivContract.mjs assets/athlete/athlete-01.riv --artboard squat` | exit **1** (`ENOENT`) |
-| Runtime export | `assets/athlete/athlete-01.riv` | **missing** |
-| Editor backup | `assets/athlete/athlete-01.rev` | **missing** |
-| Empty room plate | `assets/iron-amber/squat-room-side.jpg` | **missing** (intake step 0 note) |
+| Runtime export | `assets/athlete/athlete-01.riv` | **present** (10948 bytes) |
+| Editor backup | `assets/athlete/athlete-01.rev` | **present** (39772 bytes) |
+| Intake | `node tools/athleteIntake.mjs --dir assets/athlete` | exit **1** after provenance update expected **1** until contract SATISFIED (hash now matches) |
+| Contract vs `.riv` | `node tools/rivContract.mjs assets/athlete/athlete-01.riv --artboard squat` | exit **1** `NOT SATISFIED` — 16 missing `plates/<i>/on|size` |
+| Empty room plate | `assets/iron-amber/squat-room-side.jpg` | **missing** (intake step 0 note only) |
 
-Exact intake stdout (first recorded 2026-09-10T14:41:54Z; reconfirmed
-2026-09-10T14:49:16Z on `bc-adc29394` after `npm install`):
-
-```
-step 0 note: room plate assets/iron-amber/squat-room-side.jpg is not there yet — the rig can be validated, the composite cannot be graded (source package §8)
-INTAKE_WAITING: ASSET_MISSING — assets/athlete/athlete-01.riv is not there yet
-```
-
-Exact contract probe against the missing `.riv` (2026-09-10T14:49:16Z,
-after `npm install`):
+### Exact contract result (2026-09-10 desktop MCP run)
 
 ```
 node tools/rivContract.mjs assets/athlete/athlete-01.riv --artboard squat
-→ ENOENT: no such file or directory, open 'assets/athlete/athlete-01.riv'
+→ artboard squat present, state machine squat present, default ViewModel Athlete
+→ missing: plates/0/on … plates/7/size (16 paths)
+→ extra: plates/on, plates/size, _plates_list_legacy, _platesBank_unused/…
+→ satisfied: false
 exit 1
 ```
 
-Exact Rive MCP probe from Cloud Agent VMs (`bc-61cb68cc` and
-`bc-adc29394`):
+Schema probe: exported ViewModels are only `Athlete` and `PlateSlot`.
+`Athlete.plates` resolves as `viewModel` → `PlateSlot` (so `plates/on` and
+`plates/size` appear), not `plates → PlateSlots → 0..7 → PlateSlot`.
+
+### Exact intake result before this provenance hash write
 
 ```
-curl -sS -m 3 http://127.0.0.1:9791/mcp
-→ curl: (7) Failed to connect to 127.0.0.1 port 9791 after 0 ms: Couldn't connect to server
-port 9791 not listening
+step 0 note: room plate assets/iron-amber/squat-room-side.jpg is not there yet
+INTAKE_REJECTED: PROVENANCE_HASH_MISMATCH — step 1
+  ATHLETE-01-PROVENANCE.md names pending_rive_runtime_export
+  athlete-01.riv is d735e08fb95d4b5549e047e4697883aabcb9e91789a4aea9678e6047f35495e3
+exit 1
 ```
 
-Dynamic MCP catalog for both Cloud Agent runs contained no `rive` / Rive
-namespace (available namespaces: cursor, cursor-cloud,
-cursor-subscriptions, Github, Gmail, Granola, Notion, Ramp, Supabase,
-Vercel). `GetDynamicTools` for namespace `rive` returned namespace not found.
-No self-hosted Cursor workers were connected that could reach a local
-Early Access editor.
+After this file’s `SHA-256` line matches the `.riv`, intake advances to
+contract step 2 and still rejects on `NOT SATISFIED`.
 
-### Owner evidence vs Cloud Agent reachability (2026-09-10T14:51Z)
+## Completed in the editor (this run)
 
-The owner supplied screenshots showing:
+- Opened Early Access file `athlete-01` via Rive MCP (`session_info` OK).
+- Preserved artboard `squat` (1152×1728), state machine `squat`, enums
+  `LiftKind` / `PhaseKind` / `EffortBandKind` / `OutcomeKind` / `MissReasonKind`,
+  and the non-plate Athlete inputs from the 43-input manifest.
+- Built native editable vector layers (no image sequence / pose swap):
+  Iron & Amber room, rack + J-cups, tattooed male powerlifter masses
+  (singlet, belt, knee sleeve, shoes, hair/beard mass, tattoo overlays),
+  bar/collars/plates, chalk.
+- Built transform group hierarchy under `root` (feet, pelvis/spine/chest,
+  limbs, `bar_root` / sleeves) — **Bone objects could not be created**
+  (no MCP bone-create tool; `mesh_rigging_tool` binds existing bones only).
+- Bound `barHeight` through formula converters to continuous pose drivers
+  (`bar_root.y`, `pelvis.y`, torso lean, thigh rotation).
+- Hid legacy geometric prototype shapes (opacity 0; not deleted).
+- Exported `athlete-01.riv` and `athlete-01.rev` successfully (account had
+  export entitlement on this desktop session).
 
-1. Cursor **Configure rive** with Source `User` `~/.cursor/mcp.json` ON,
-   Environments **Local → Connected**, and Read tools enabled
-   (`session_info`, `query_property_keys`, `query_objects`,
-   `query_property_values`, …).
-2. Rive Early Access desktop with file open, `-> squat Active`, and the
-   current structural geometric prototype (head/torso/limb blocks, bar,
-   plates, rack, platform) — not the production tattooed male rebuild.
+## Failures (exact — nothing fabricated past these)
 
-That proves the desktop Cursor session on the owner's machine has Rive MCP
-+ Early Access. It does **not** expose those tools to this remote Cloud
-Agent VM. Re-probe at 2026-09-10T14:51Z on `bc-adc29394` again found:
-
-- no `rive` namespace in the Cloud Agent MCP catalog
-- `127.0.0.1:9791` connection refused
-- zero connected self-hosted workers
-
-Unblock requires an agent runtime that shares the owner's localhost Rive
-bridge (local Cursor Agent chat, or a self-hosted Cursor worker on that
-machine). Cloud Agents cannot author through a desktop-only localhost MCP.
-
-## Authored scope (prior editor claim — unverified by this run)
-
-The previous PR record claimed, in the authenticated editor only:
-
-- Artboard: `squat`, 1152 × 1728.
-- Default ViewModel: `Athlete`, with the exact 43-input contract from
-  `docs/design/athlete-rig-manifest.json`.
-- State machine: `squat`; continuous motion timeline `squat_motion`; authored
-  `grind`, `failure_no_depth`, `failure_buried`, `failure_stalled`,
-  `failure_timeout`, and `failure_dropped` states/timelines.
-
-This Cloud Agent could not open, inspect, rebuild, or export that editor
-file through Rive MCP. The continuous squat sequence
-brace → descent → depth → hole → reversal → drive → grind → lockout → failure
-was therefore not visually rebuilt or mechanically re-validated against a
-`.riv` in this run.
-
-## Visual / design note (not resolved here)
-
-`docs/design/ATHLETE-SOURCE-PACKAGE.md` still specifies a gender-neutral,
-face-not-authored-at-v1 silhouette with no likeness. The PR #60 brief and
-supplied captures ask for a coherent realistic tattooed male powerlifter in
-the Iron & Amber gym. That design tension remains open; it was not silently
-resolved by fabricating art.
-
-## Prior authoring attempt (retained)
-
-On 2026-09-09, a layered vector SVG was uploaded through the Rive Assets
-panel. The editor crashed before the asset appeared. A second upload using a
-minimal three-shape SVG produced the same crash. After recovery, the Assets
-panel was still empty. The editor diagnostics reported WebGL2 unavailable,
-CPU fallback, and worker renderer creation failure. The Publish menu still
-showed `Upgrade` for both runtime and library export. No `.riv` or `.rev`
-bytes were produced by that attempt.
+1. **Nested `PlateSlots` does not export.** ViewModels created through
+   MCP `viewmodel_editor.createViewModels` (including `PlateSlots` /
+   `AthleteContract` / `PlateBank`) do **not** appear in
+   `get_scripting_reference` `Data {…}` and are **absent** from
+   `viewModelCount()` in the exported `.riv`. Binding an MCP-created VM as
+   the artboard default exported `defaultViewModel: null`. Self-nesting
+   `PlateSlot → PlateSlot` for slots `0..7` is rejected by the editor
+   (“recursive viewmodel reference”). Therefore the host paths
+   `plates/0/on` … `plates/7/size` cannot be satisfied by export from this
+   MCP session.
+2. **`capture_artboard` returns a blank frame** even after adding opaque
+   shapes with non-zero path width/height; computed width/height stay 0.
+   Host also logs `No WebGL support. Image mesh will not be drawn.` Visual
+   QA could not be pixel-verified via MCP capture.
+3. **No Bone create API** in the connected Rive MCP toolset; IK/bone weights
+   from the handoff §6 plan were not applied. Pose uses group transforms +
+   `barHeight` converters.
+4. **State machine cleanup incomplete.** `squat` still contains leftover
+   duplicate failure animation states / unconditional transitions from the
+   prior prototype; Entry was pointed at `squat_motion`, but the full
+   layered pose/effort/grind/cue/resolution plan with conditioned
+   `outcome` / `missReason` branches was not finished.
+5. **Room plate** `assets/iron-amber/squat-room-side.jpg` still missing
+   (intake step 0 note only).
+6. **Contract / intake mechanical gates** still fail closed on (1).
 
 ## Acceptance boundary
 
-No production acceptance is claimed. Required before acceptance:
+No production acceptance. Next unblock for contract SATISFIED:
 
-1. Run authoring from a **desktop** Cursor session on the same machine as
-   Rive Early Access with MCP `http://127.0.0.1:9791/mcp` connected and
-   `athlete-01` open.
-2. Rebuild native editable vector artwork + rig; preserve the exact 43-input
-   `Athlete` contract and continuous squat / failure state machine plan.
-3. Export `assets/athlete/athlete-01.riv` and `assets/athlete/athlete-01.rev`
-   (account must have `.riv` / `.rev` export entitlement — prior editor
-   showed `Upgrade`).
-4. Replace `SHA-256:` above with the actual `.riv` hash.
-5. Re-run:
-   - `node tools/athleteIntake.mjs --dir assets/athlete`
-   - `node tools/rivContract.mjs assets/athlete/athlete-01.riv --artboard squat`
-6. Complete remaining device / human visual gates (intake steps 4–8).
+1. In Early Access UI (or a future MCP that registers nested VMs into
+   exportable `Data`), author `PlateSlots` with properties `0`…`7` each a
+   `PlateSlot`, set `Athlete.plates` → `PlateSlots`, re-export `.riv`/`.rev`.
+2. Re-run intake + `rivContract … --artboard squat` to exit 0.
+3. Human VISUAL / ANIMATION / SOFT-FEEL + OWNER PLAYTEST remain owed.
