@@ -48,11 +48,22 @@ type NativePlateSlot = {
   numberProperty: (name: string) => { set: (value: number) => void } | undefined;
 };
 
+/**
+ * Mint a blank PlateSlot for List.addInstance.
+ *
+ * Pinned `@rive-app/react-native@0.4.20` declares BOTH:
+ * - `ViewModel.createInstance()` — sync blank instance (deprecated in typings)
+ * - `ViewModel.createBlankInstanceAsync()` — preferred in current RN docs
+ *
+ * Official docs (`runtimes/react-native/data-binding` Lists) show the async
+ * path. This stage writes once per tick synchronously, so the sync blank
+ * factory is the API that matches the write surface. Fail closed when the
+ * ViewModel is missing or `modelName` is not PlateSlot.
+ */
 function createPlateSlot(file: RiveFile | null): unknown | null {
-  // Pinned `@rive-app/react-native`: ViewModel.createInstance() is the sync
-  // blank-instance factory List.addInstance accepts on this version.
   const model = file?.viewModelByName(ATHLETE_PLATE_SLOT);
   if (model === undefined) return null;
+  if (model.modelName !== ATHLETE_PLATE_SLOT) return null;
   return model.createInstance() ?? null;
 }
 
@@ -61,12 +72,16 @@ function writeInputs(file: RiveFile | null, instance: ViewModelInstance, inputs:
   const plates = applyAthletePlatesList(list, () => createPlateSlot(file), inputs.plates, {
     viewModelName: (item) => {
       const slot = item as NativePlateSlot;
-      // Native HybridObject exposes instanceName, not viewModelName. A slot
-      // with writable on/size from a PlateSlot factory is accepted as typed.
-      if (slot.booleanProperty?.(PLATE_SLOT_ON) && slot.numberProperty?.(PLATE_SLOT_SIZE)) {
-        return ATHLETE_PLATE_SLOT;
+      // Native ViewModelInstance exposes `instanceName`, not the ViewModel
+      // type. Fail closed unless both PlateSlot fields are present and
+      // writable — a missing property is not a PlateSlot.
+      if (typeof slot.booleanProperty !== 'function' || typeof slot.numberProperty !== 'function') {
+        return null;
       }
-      return null;
+      if (!slot.booleanProperty(PLATE_SLOT_ON) || !slot.numberProperty(PLATE_SLOT_SIZE)) {
+        return null;
+      }
+      return ATHLETE_PLATE_SLOT;
     },
     writeOn: (item, value) => {
       const prop = (item as NativePlateSlot).booleanProperty(PLATE_SLOT_ON);

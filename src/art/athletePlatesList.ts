@@ -11,8 +11,9 @@
  * Pure helpers live here so web and native stages share one grammar and one
  * normalize + write rule. Platform write surfaces differ (web `.value` vs
  * native `.set()`); each stage supplies accessors and a real PlateSlot
- * factory from its pinned runtime (`ViewModel.instance()` on canvas,
- * `ViewModel.createInstance()` on native).
+ * factory from its pinned runtime (`ViewModel.instance()` on canvas;
+ * `ViewModel.createInstance()` on native — the sync blank twin of
+ * `createBlankInstanceAsync` in `@rive-app/react-native@0.4.20`).
  */
 import { ATHLETE_RIG } from './spriteTuning';
 

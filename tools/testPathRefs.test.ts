@@ -419,8 +419,9 @@ const PINNED = Object.freeze({
    * 434 -> 436 with the plates List adapter (`src/art/athletePlatesList.ts`
    * and its test). One test file, so `TEST_FILES` 132 -> 133.
    * 437 -> 438 with `src/art/athletePlatesRuntime.test.ts`.
+   * 438 -> 439 with `src/art/athletePlatesNativeApi.test.ts`.
    */
-  SCANNED_FILES: 438,
+  SCANNED_FILES: 439,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -509,8 +510,9 @@ const PINNED = Object.freeze({
    * 132 -> 133 with `src/art/athletePlatesList.test.ts` (SCANNED_FILES 436).
    * SCANNED_FILES 436 -> 437 once both halves of that pair are tracked.
    * 133 -> 134 with `src/art/athletePlatesRuntime.test.ts` (SCANNED_FILES 438).
+   * 134 -> 135 with `src/art/athletePlatesNativeApi.test.ts` (SCANNED_FILES 439).
    */
-  TEST_FILES: 134,
+  TEST_FILES: 135,
 });
 
 /**
