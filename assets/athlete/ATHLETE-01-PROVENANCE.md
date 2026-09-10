@@ -4,7 +4,7 @@ Status: **NO-GO for production visual acceptance.** Mechanical contract +
 intake remain satisfiable; visual fidelity, bone/IK, WebGL2 pixel proof,
 native List runtime, and full CI are not.
 
-HEAD (this report): `8b9c87b7f4c330aba16ca91f87caa6188adf8435` on
+HEAD (this report): `e70f29c0feff7c5b3be64220ab7d1cd9c7d7d89a` on
 `codex/athlete-01-rive-authoring`. Asset bytes unchanged from prior export
 unless a new Rive export lands.
 
