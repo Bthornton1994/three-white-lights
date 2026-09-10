@@ -5,8 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { isRivMagic, readRivSchema, type RivProperty, type RivSchema } from '../../tools/rivSchema.mjs';
+import { ATHLETE_PLATE_SLOT, ATHLETE_PLATES_LIST } from './athletePlatesList';
 import { rigInputSpec, rigLiftArtboards } from './athleteRig';
-import { diffRivContract, flattenViewModel, rigManifest } from './rivContract';
+import { diffRivContract, flattenViewModel, platesListContractGaps, rigManifest } from './rivContract';
 import { ATHLETE_RIG } from './spriteTuning';
 
 const asset = (name: string): Uint8Array =>
@@ -111,28 +112,27 @@ describe('tools/rivSchema.mjs reads a real .riv headlessly', () => {
   });
 });
 
-/** A schema that satisfies the spec exactly — plates as nested `plates -> <i> -> {on,size}` models. */
+/** A schema that satisfies the spec — plates as a native List of PlateSlot. */
 function schemaSatisfying(spec = rigInputSpec()): RivSchema {
-  const root: Record<string, { type: 'number' | 'boolean' | 'enum' | 'viewModel'; values?: string[]; ref?: string }> = {};
-  const slot: Record<string, { type: 'number' | 'boolean' }> = {};
-  const slots: Record<string, { type: 'viewModel'; ref: string }> = {};
+  const root: Record<string, RivProperty> = {};
   for (const input of spec) {
-    const parts = input.path.split('/');
-    if (parts[0] === 'plates') {
-      slots[parts[1]!] = { type: 'viewModel', ref: 'PlateSlot' };
-      slot[parts[2]!] = { type: input.type as 'number' | 'boolean' };
-      continue;
-    }
-    root[input.path] = input.type === 'enum' ? { type: 'enum', values: [...input.values] } : { type: input.type };
+    if (input.path.startsWith('plates/')) continue;
+    root[input.path] =
+      input.type === 'enum'
+        ? { type: 'enum', values: [...input.values] }
+        : { type: input.type };
   }
-  root['plates'] = { type: 'viewModel', ref: 'PlateSlots' };
+  root['plates'] = { type: 'list', itemRef: 'PlateSlot' };
   const lifts = rigLiftArtboards();
   return {
     valid: true,
     artboards: [...lifts],
     defaultArtboard: lifts[0] ?? null,
     stateMachines: Object.fromEntries(lifts.map((lift) => [lift, [lift]])),
-    viewModels: { Athlete: root, PlateSlots: slots, PlateSlot: slot },
+    viewModels: {
+      Athlete: root,
+      PlateSlot: { on: { type: 'boolean' }, size: { type: 'number' } },
+    },
     defaultViewModel: 'Athlete',
     defaultViewModelByArtboard: Object.fromEntries(lifts.map((lift) => [lift, 'Athlete'])),
   };
@@ -163,7 +163,7 @@ describe('diffRivContract', () => {
     expect(diff.satisfied).toBe(false);
   });
 
-  it('a schema built from the spec satisfies it, through the nested plate slots', () => {
+  it('a schema built from the spec satisfies it, through the plates List', () => {
     const spec = rigInputSpec();
     const diff = diffRivContract(schemaSatisfying(spec), spec, { artboards: rigLiftArtboards() });
     const { artboards, ...top } = diff;
@@ -181,9 +181,60 @@ describe('diffRivContract', () => {
     expect(artboards.map((a) => [a.artboard, a.present, a.stateMachine, a.viewModel, a.satisfied])).toEqual(
       rigLiftArtboards().map((name) => [name, true, true, 'Athlete', true]),
     );
-    // NON-VACUITY: the flattened schema has exactly one leaf per spec entry.
-    const leaves = flattenViewModel(schemaSatisfying(spec), 'Athlete').filter((f) => f.property.type !== 'viewModel');
+    // NON-VACUITY: the flattened schema has exactly one leaf per spec entry
+    // (the List container itself is not a leaf the binding writes).
+    const leaves = flattenViewModel(schemaSatisfying(spec), 'Athlete').filter(
+      (f) => f.property.type !== 'viewModel' && f.property.type !== 'list',
+    );
     expect(leaves.length).toBe(spec.length);
+  });
+
+  it('a missing plates List leaves every plate path unsatisfied', () => {
+    const spec = rigInputSpec();
+    const good = schemaSatisfying(spec);
+    const athlete = { ...good.viewModels['Athlete']! };
+    delete athlete[ATHLETE_PLATES_LIST];
+    const mutant: RivSchema = { ...good, viewModels: { ...good.viewModels, Athlete: athlete } };
+    const diff = diffRivContract(mutant, spec);
+    expect(diff.satisfied).toBe(false);
+    expect(diff.missing.filter((p) => p.startsWith('plates/'))).toHaveLength(2 * ATHLETE_RIG.PLATE_SLOTS_PER_SIDE);
+    expect(platesListContractGaps(mutant, 'Athlete')).toHaveLength(2 * ATHLETE_RIG.PLATE_SLOTS_PER_SIDE);
+  });
+
+  it('a plates List pointing at the wrong item ViewModel fails closed', () => {
+    const spec = rigInputSpec();
+    const good = schemaSatisfying(spec);
+    const athlete = {
+      ...good.viewModels['Athlete']!,
+      [ATHLETE_PLATES_LIST]: { type: 'list' as const, itemRef: 'NotPlateSlot' },
+    };
+    const mutant: RivSchema = { ...good, viewModels: { ...good.viewModels, Athlete: athlete } };
+    expect(diffRivContract(mutant, spec).satisfied).toBe(false);
+    expect(platesListContractGaps(mutant, 'Athlete').length).toBeGreaterThan(0);
+  });
+
+  it('a PlateSlot missing on or size fails the List contract', () => {
+    const spec = rigInputSpec();
+    const good = schemaSatisfying(spec);
+    const mutant: RivSchema = {
+      ...good,
+      viewModels: {
+        ...good.viewModels,
+        [ATHLETE_PLATE_SLOT]: { on: { type: 'boolean' } },
+      },
+    };
+    expect(diffRivContract(mutant, spec).satisfied).toBe(false);
+  });
+
+  it('a plates property that is still a nested ViewModel does not satisfy the List route', () => {
+    const spec = rigInputSpec();
+    const good = schemaSatisfying(spec);
+    const athlete = {
+      ...good.viewModels['Athlete']!,
+      [ATHLETE_PLATES_LIST]: { type: 'viewModel' as const, ref: ATHLETE_PLATE_SLOT },
+    };
+    const mutant: RivSchema = { ...good, viewModels: { ...good.viewModels, Athlete: athlete } };
+    expect(diffRivContract(mutant, spec).satisfied).toBe(false);
   });
 
   it('a renamed path, a retyped path and a missing enum value are each named, not merged', () => {
@@ -337,21 +388,19 @@ const FAIL_CLOSED_MUTANTS: readonly Mutant[] = [
     finding: (d) => expect(squatOf(d).wrongType.map((w) => w.path)).toEqual(Array.from({ length: ATHLETE_RIG.PLATE_SLOTS_PER_SIDE }, (_, i) => `plates/${i}/size`)),
   },
   {
-    name: 'the sleeve is one slot short',
-    mutate: (g) => {
-      const slots = { ...g.viewModels['PlateSlots']! };
-      delete slots[String(ATHLETE_RIG.PLATE_SLOTS_PER_SIDE - 1)];
-      return { ...g, viewModels: { ...g.viewModels, PlateSlots: slots } };
-    },
+    name: 'the plates List is missing its item typing (itemRef null)',
+    mutate: (g) => withAthlete(g, (a) => {
+      a[ATHLETE_PLATES_LIST] = { type: 'list', itemRef: null };
+    }),
     finding: (d) => {
-      const last = ATHLETE_RIG.PLATE_SLOTS_PER_SIDE - 1;
-      expect(squatOf(d).missing).toEqual([`plates/${last}/on`, `plates/${last}/size`]);
+      expect(squatOf(d).missing.length).toBe(2 * ATHLETE_RIG.PLATE_SLOTS_PER_SIDE);
+      expect(squatOf(d).missing.every((p) => p.startsWith('plates/'))).toBe(true);
     },
   },
   {
-    name: 'the plates container is flattened to the root (plates_0_on) instead of nested',
+    name: 'the plates container is flattened to the root (plates_0_on) instead of a List',
     mutate: (g) => withAthlete(g, (a) => {
-      delete a['plates'];
+      delete a[ATHLETE_PLATES_LIST];
       for (let i = 0; i < ATHLETE_RIG.PLATE_SLOTS_PER_SIDE; i += 1) {
         a[`plates_${i}_on`] = { type: 'boolean' };
         a[`plates_${i}_size`] = { type: 'number' };
@@ -363,8 +412,8 @@ const FAIL_CLOSED_MUTANTS: readonly Mutant[] = [
     },
   },
   {
-    name: 'the plates container references a ViewModel the file does not define',
-    mutate: (g) => withAthlete(g, (a) => { a['plates'] = { type: 'viewModel', ref: 'Sleeve' }; }),
+    name: 'the plates property is still a nested ViewModel instead of a List',
+    mutate: (g) => withAthlete(g, (a) => { a[ATHLETE_PLATES_LIST] = { type: 'viewModel', ref: 'Sleeve' }; }),
     finding: (d) => expect(squatOf(d).missing.length).toBe(2 * ATHLETE_RIG.PLATE_SLOTS_PER_SIDE),
   },
   {

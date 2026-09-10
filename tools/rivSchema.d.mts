@@ -20,6 +20,12 @@ export interface RivProperty {
   readonly values?: readonly string[];
   /** Present when `type` is `viewModel`: the referenced ViewModel's name, or null if unresolved. */
   readonly ref?: string | null;
+  /**
+   * Present when `type` is `list`: the ViewModel name of the first list item
+   * when the default instance carries any, else null. Lists are not nested
+   * path containers — `plates/0/on` is not a schema path.
+   */
+  readonly itemRef?: string | null;
 }
 
 export interface RivSchema {

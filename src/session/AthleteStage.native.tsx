@@ -29,13 +29,44 @@ import {
 
 import type { LiftStageProps } from '../lift/LiftStage';
 import { liftPresentation } from '../game/liftPresentation';
+import {
+  ATHLETE_PLATES_LIST,
+  normalizePlatesListLength,
+  parsePlatePath,
+  platesListItemAt,
+  PLATE_SLOT_ON,
+  PLATE_SLOT_SIZE,
+  type PlatesListLike,
+} from '../art/athletePlatesList';
 import { athleteRigInputsFrom, rigInputValues, type AthleteRigInputs } from '../art/athleteRig';
+import { ATHLETE_RIG } from '../art/spriteTuning';
 import { priorFromHistory } from './athleteStagePrior';
 import type { AthleteStageComponent } from './athleteStageTypes';
 import { ATHLETE_RIV_ASSET } from './athleteAsset';
 
+type NativePlateSlot = {
+  booleanProperty: (name: string) => { set: (value: boolean) => void } | undefined;
+  numberProperty: (name: string) => { set: (value: number) => void } | undefined;
+};
+
 function writeInputs(instance: ViewModelInstance, inputs: AthleteRigInputs): void {
-  for (const input of rigInputValues(inputs)) {
+  const values = [...rigInputValues(inputs)];
+  const list = instance.listProperty(ATHLETE_PLATES_LIST) as PlatesListLike | null | undefined;
+  normalizePlatesListLength(list, ATHLETE_RIG.PLATE_SLOTS_PER_SIDE, () => null);
+
+  for (const input of values) {
+    const plate = parsePlatePath(input.path);
+    if (plate !== null) {
+      if (list == null || list.length !== ATHLETE_RIG.PLATE_SLOTS_PER_SIDE) continue;
+      const item = platesListItemAt(list, plate.index) as NativePlateSlot | undefined;
+      if (item == null) continue;
+      if (plate.field === 'on' && input.type === 'boolean') {
+        item.booleanProperty(PLATE_SLOT_ON)?.set(input.value);
+      } else if (plate.field === 'size' && input.type === 'number') {
+        item.numberProperty(PLATE_SLOT_SIZE)?.set(input.value);
+      }
+      continue;
+    }
     switch (input.type) {
       case 'number':
         instance.numberProperty(input.path)?.set(input.value);

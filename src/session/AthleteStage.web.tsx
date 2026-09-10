@@ -24,7 +24,17 @@ import {
 
 import type { LiftStageProps } from '../lift/LiftStage';
 import { liftPresentation } from '../game/liftPresentation';
+import {
+  ATHLETE_PLATES_LIST,
+  normalizePlatesListLength,
+  parsePlatePath,
+  platesListItemAt,
+  PLATE_SLOT_ON,
+  PLATE_SLOT_SIZE,
+  type PlatesListLike,
+} from '../art/athletePlatesList';
 import { athleteRigInputsFrom, rigInputValues, type AthleteRigInputs } from '../art/athleteRig';
+import { ATHLETE_RIG } from '../art/spriteTuning';
 import { priorFromHistory } from './athleteStagePrior';
 import type { AthleteStageComponent } from './athleteStageTypes';
 import { ATHLETE_RIV_ASSET } from './athleteAsset';
@@ -33,8 +43,31 @@ import { riveAssetUri, selfHostRiveEngine } from './riveWebEngine';
 selfHostRiveEngine();
 const ATHLETE_SRC = riveAssetUri(ATHLETE_RIV_ASSET);
 
+type WebPlateSlot = {
+  boolean: (name: string) => { value: boolean } | null;
+  number: (name: string) => { value: number } | null;
+};
+
 function writeInputs(vmi: ViewModelInstance, inputs: AthleteRigInputs): void {
-  for (const input of rigInputValues(inputs)) {
+  const values = [...rigInputValues(inputs)];
+  const list = vmi.list(ATHLETE_PLATES_LIST) as PlatesListLike | null;
+  normalizePlatesListLength(list, ATHLETE_RIG.PLATE_SLOTS_PER_SIDE, () => null);
+
+  for (const input of values) {
+    const plate = parsePlatePath(input.path);
+    if (plate !== null) {
+      if (list == null || list.length !== ATHLETE_RIG.PLATE_SLOTS_PER_SIDE) continue;
+      const item = platesListItemAt(list, plate.index) as WebPlateSlot | undefined;
+      if (item == null) continue;
+      if (plate.field === 'on' && input.type === 'boolean') {
+        const prop = item.boolean(PLATE_SLOT_ON);
+        if (prop) prop.value = input.value;
+      } else if (plate.field === 'size' && input.type === 'number') {
+        const prop = item.number(PLATE_SLOT_SIZE);
+        if (prop) prop.value = input.value;
+      }
+      continue;
+    }
     switch (input.type) {
       case 'number': {
         const prop = vmi.number(input.path);

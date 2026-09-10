@@ -300,7 +300,9 @@ function rigInputsForKey(key: keyof AthleteRigInputs, inputs: AthleteRigInputs):
     case 'complete':
       return [{ path: key, type: 'boolean', value: inputs[key] }];
     case 'plates':
-      // Nested-path grammar: `plates/<i>/on`, `plates/<i>/size`.
+      // Logical nested-path grammar: `plates/<i>/on`, `plates/<i>/size`.
+      // Runtime writes go through the native List adapter in
+      // `athletePlatesList.ts` — path lookups are not aliases on the VMI.
       return inputs.plates.flatMap((slot, i): readonly RigInputValue[] => [
         { path: `plates/${i}/on`, type: 'boolean', value: slot.on },
         { path: `plates/${i}/size`, type: 'number', value: slot.size },
