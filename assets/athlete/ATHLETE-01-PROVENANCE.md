@@ -82,6 +82,30 @@ Vercel). `GetDynamicTools` for namespace `rive` returned namespace not found.
 No self-hosted Cursor workers were connected that could reach a local
 Early Access editor.
 
+### Owner evidence vs Cloud Agent reachability (2026-09-10T14:51Z)
+
+The owner supplied screenshots showing:
+
+1. Cursor **Configure rive** with Source `User` `~/.cursor/mcp.json` ON,
+   Environments **Local → Connected**, and Read tools enabled
+   (`session_info`, `query_property_keys`, `query_objects`,
+   `query_property_values`, …).
+2. Rive Early Access desktop with file open, `-> squat Active`, and the
+   current structural geometric prototype (head/torso/limb blocks, bar,
+   plates, rack, platform) — not the production tattooed male rebuild.
+
+That proves the desktop Cursor session on the owner's machine has Rive MCP
++ Early Access. It does **not** expose those tools to this remote Cloud
+Agent VM. Re-probe at 2026-09-10T14:51Z on `bc-adc29394` again found:
+
+- no `rive` namespace in the Cloud Agent MCP catalog
+- `127.0.0.1:9791` connection refused
+- zero connected self-hosted workers
+
+Unblock requires an agent runtime that shares the owner's localhost Rive
+bridge (local Cursor Agent chat, or a self-hosted Cursor worker on that
+machine). Cloud Agents cannot author through a desktop-only localhost MCP.
+
 ## Authored scope (prior editor claim — unverified by this run)
 
 The previous PR record claimed, in the authenticated editor only:
