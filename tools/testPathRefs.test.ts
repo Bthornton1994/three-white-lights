@@ -420,8 +420,10 @@ const PINNED = Object.freeze({
    * and its test). One test file, so `TEST_FILES` 132 -> 133.
    * 437 -> 438 with `src/art/athletePlatesRuntime.test.ts`.
    * 438 -> 439 with `src/art/athletePlatesNativeApi.test.ts`.
+   * 439 -> 441 with `tools/athleteWebglCapture.mjs` + its test (WebGL2/canvas
+   * QA harness for athlete-01 runtime PNGs).
    */
-  SCANNED_FILES: 439,
+  SCANNED_FILES: 441,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -511,8 +513,9 @@ const PINNED = Object.freeze({
    * SCANNED_FILES 436 -> 437 once both halves of that pair are tracked.
    * 133 -> 134 with `src/art/athletePlatesRuntime.test.ts` (SCANNED_FILES 438).
    * 134 -> 135 with `src/art/athletePlatesNativeApi.test.ts` (SCANNED_FILES 439).
+   * 135 -> 136 with `tools/athleteWebglCapture.test.ts` (SCANNED_FILES 441).
    */
-  TEST_FILES: 135,
+  TEST_FILES: 136,
 });
 
 /**

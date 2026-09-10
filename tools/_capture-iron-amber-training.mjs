@@ -17,7 +17,9 @@ const flag = (name, dflt) => {
   return i === -1 ? dflt : args[i + 1];
 };
 
-const url = flag('url', 'http://127.0.0.1:8080');
+// House census in tools/devServerSentinel.test.ts keys on
+// flag('url', 'http://localhost:…'); keep that shape so the twin guard sees us.
+const url = flag('url', 'http://localhost:8080');
 gateDevServer({ url });
 const outDir = path.resolve(flag('out', '.gauntlet/shots/iron-amber-training'));
 await mkdir(outDir, { recursive: true });

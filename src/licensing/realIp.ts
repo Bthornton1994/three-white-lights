@@ -977,7 +977,10 @@ export interface UnreadableGroup {
  */
 export const UNREADABLE_BY_THIS_AUDIT: readonly UnreadableGroup[] = Object.freeze([
   { extension: '.jpeg', reason: 'nul-byte', count: 1 },
-  { extension: '.jpg', reason: 'nul-byte', count: 10 },
+  // 10 -> 11 with the empty side-on room plate
+  // `assets/iron-amber/squat-room-side.jpg` (PR #60 athlete intake). Binary,
+  // filename only — not a painted lifter scene.
+  { extension: '.jpg', reason: 'nul-byte', count: 11 },
   // 10 -> 12 with the Rive runtime spike's two browser screenshots under
   // `docs/design/evidence/rive-spike/` (ADR-001 §7). Binary, filename only.
   // 12 -> 13 with the spike's second frame, `spike-route-later.png` — the
@@ -988,7 +991,11 @@ export const UNREADABLE_BY_THIS_AUDIT: readonly UnreadableGroup[] = Object.freez
   // three frames (`docs/design/evidence/host-runtime-soak/`). Binary,
   // filename only, dev evidence — never an athlete. A count edited under the
   // census ruling for artifacts the visual lane owns, and flagged in CLAUDE.md.
-  { extension: '.png', reason: 'nul-byte', count: 19 },
+  // 19 -> 20 with `assets/athlete/athlete-01-reference-sheet.png` (owner
+  // visual reference for PR #60 authoring; not embedded in the .riv).
+  { extension: '.png', reason: 'nul-byte', count: 20 },
+  // Editor backup sibling of athlete-01.riv (PR #60). Binary, filename only.
+  { extension: '.rev', reason: 'nul-byte', count: 1 },
   // `.riv` ARRIVED WITH THE SPIKE, AS A BINARY ROW ON PURPOSE. The committed
   // `assets/dev/rive-spike.riv` is a deliberately-invalid placeholder — see
   // its README — and carries a NUL so this census classifies it the way a
@@ -1002,7 +1009,9 @@ export const UNREADABLE_BY_THIS_AUDIT: readonly UnreadableGroup[] = Object.freez
   // `assets/dev/THIRD-PARTY-RIVE-ASSETS.md`. Dev-only fixtures for the runtime
   // spike and the `.riv` schema diagnostic; neither is an athlete and neither
   // is on the player path. The placeholder stays as the error-path fixture.
-  { extension: '.riv', reason: 'nul-byte', count: 3 },
+  // 3 -> 4 with `assets/athlete/athlete-01.riv` (PR #60 authored athlete;
+  // player mount / TRAINING_STAGE still closed).
+  { extension: '.riv', reason: 'nul-byte', count: 4 },
   { extension: '.wav', reason: 'nul-byte', count: 7 },
   { extension: '.webp', reason: 'nul-byte', count: 2 },
 ]);
