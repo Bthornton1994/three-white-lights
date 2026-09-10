@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AthleteStage.web — the production athlete on `@rive-app/react-canvas`.
  *
  * Same job and same non-mount status as `AthleteStage.native.tsx`; see that
@@ -21,20 +21,19 @@ import {
   useViewModelInstance,
   type ViewModelInstance,
 } from '@rive-app/react-canvas';
+import type { Rive } from '@rive-app/canvas';
 
 import type { LiftStageProps } from '../lift/LiftStage';
 import { liftPresentation } from '../game/liftPresentation';
 import {
+  ATHLETE_PLATE_SLOT,
   ATHLETE_PLATES_LIST,
-  normalizePlatesListLength,
-  parsePlatePath,
-  platesListItemAt,
+  applyAthletePlatesList,
   PLATE_SLOT_ON,
   PLATE_SLOT_SIZE,
   type PlatesListLike,
 } from '../art/athletePlatesList';
 import { athleteRigInputsFrom, rigInputValues, type AthleteRigInputs } from '../art/athleteRig';
-import { ATHLETE_RIG } from '../art/spriteTuning';
 import { priorFromHistory } from './athleteStagePrior';
 import type { AthleteStageComponent } from './athleteStageTypes';
 import { ATHLETE_RIV_ASSET } from './athleteAsset';
@@ -44,30 +43,42 @@ selfHostRiveEngine();
 const ATHLETE_SRC = riveAssetUri(ATHLETE_RIV_ASSET);
 
 type WebPlateSlot = {
+  readonly viewModelName?: string;
   boolean: (name: string) => { value: boolean } | null;
   number: (name: string) => { value: number } | null;
 };
 
-function writeInputs(vmi: ViewModelInstance, inputs: AthleteRigInputs): void {
-  const values = [...rigInputValues(inputs)];
-  const list = vmi.list(ATHLETE_PLATES_LIST) as PlatesListLike | null;
-  normalizePlatesListLength(list, ATHLETE_RIG.PLATE_SLOTS_PER_SIDE, () => null);
+function createPlateSlot(rive: Rive | null): unknown | null {
+  // Pinned `@rive-app/canvas` / react-canvas: ViewModel.instance() yields a
+  // blank PlateSlot suitable for List.addInstance.
+  const model = rive?.viewModelByName(ATHLETE_PLATE_SLOT) ?? null;
+  if (model === null) return null;
+  return model.instance();
+}
 
-  for (const input of values) {
-    const plate = parsePlatePath(input.path);
-    if (plate !== null) {
-      if (list == null || list.length !== ATHLETE_RIG.PLATE_SLOTS_PER_SIDE) continue;
-      const item = platesListItemAt(list, plate.index) as WebPlateSlot | undefined;
-      if (item == null) continue;
-      if (plate.field === 'on' && input.type === 'boolean') {
-        const prop = item.boolean(PLATE_SLOT_ON);
-        if (prop) prop.value = input.value;
-      } else if (plate.field === 'size' && input.type === 'number') {
-        const prop = item.number(PLATE_SLOT_SIZE);
-        if (prop) prop.value = input.value;
-      }
-      continue;
-    }
+function writeInputs(rive: Rive | null, vmi: ViewModelInstance, inputs: AthleteRigInputs): void {
+  const list = vmi.list(ATHLETE_PLATES_LIST) as PlatesListLike | null;
+  const plates = applyAthletePlatesList(list, () => createPlateSlot(rive), inputs.plates, {
+    viewModelName: (item) => (item as WebPlateSlot).viewModelName ?? null,
+    writeOn: (item, value) => {
+      const prop = (item as WebPlateSlot).boolean(PLATE_SLOT_ON);
+      if (!prop) return false;
+      prop.value = value;
+      return true;
+    },
+    writeSize: (item, value) => {
+      const prop = (item as WebPlateSlot).number(PLATE_SLOT_SIZE);
+      if (!prop) return false;
+      prop.value = value;
+      return true;
+    },
+  });
+  if (!plates.ok) {
+    throw new Error(`athlete plates List write failed: ${plates.reason ?? 'unknown'}`);
+  }
+
+  for (const input of rigInputValues(inputs)) {
+    if (input.path.startsWith('plates/')) continue;
     switch (input.type) {
       case 'number': {
         const prop = vmi.number(input.path);
@@ -113,12 +124,14 @@ export const AthleteStage: AthleteStageComponent = ({ state, history, totalKg }:
   const instance = useViewModelInstance(viewModel, { useDefault: true, rive });
   const instanceRef = useRef<ViewModelInstance | null>(null);
   instanceRef.current = instance;
+  const riveRef = useRef<Rive | null>(null);
+  riveRef.current = rive ?? null;
 
   useEffect(() => {
     const vmi = instanceRef.current;
     if (vmi === null) return;
-    writeInputs(vmi, athleteRigInputsFrom(view));
-  }, [view, instance]);
+    writeInputs(riveRef.current, vmi, athleteRigInputsFrom(view));
+  }, [view, instance, rive]);
 
   return <RiveComponent style={{ flex: 1, alignSelf: 'stretch' }} />;
 };

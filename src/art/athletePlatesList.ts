@@ -1,4 +1,4 @@
-/**
+﻿/**
  * athletePlatesList — the runtime adapter for `Athlete.plates` as a native
  * Rive List of `PlateSlot` items.
  *
@@ -9,8 +9,10 @@
  * the ViewModel, and they do not rewrite the manifest.
  *
  * Pure helpers live here so web and native stages share one grammar and one
- * normalize rule. Platform write surfaces differ (web `.value` vs native
- * `.set()`); each stage maps through the shared path parse.
+ * normalize + write rule. Platform write surfaces differ (web `.value` vs
+ * native `.set()`); each stage supplies accessors and a real PlateSlot
+ * factory from its pinned runtime (`ViewModel.instance()` on canvas,
+ * `ViewModel.createInstance()` on native).
  */
 import { ATHLETE_RIG } from './spriteTuning';
 
@@ -65,8 +67,8 @@ export interface NormalizePlatesResult {
 
 /**
  * Establish exactly `count` list items. Oversized lists drop from the end;
- * short lists append instances from `createSlot`. Stops (ok: false) when the
- * list is missing or a required factory cannot supply an item.
+ * short / empty lists append instances from `createSlot`. Stops (ok: false)
+ * when the list is missing or a required factory cannot supply an item.
  */
 export function normalizePlatesListLength(
   list: PlatesListLike | null | undefined,
@@ -92,4 +94,92 @@ export function platesListItemAt(list: PlatesListLike, index: number): unknown {
   if (typeof list.instanceAt === 'function') return list.instanceAt(index);
   if (typeof list.getInstanceAt === 'function') return list.getInstanceAt(index);
   return undefined;
+}
+
+/** One authored sleeve slot from `AthleteRigInputs.plates`. */
+export interface PlateSlotValues {
+  readonly on: boolean;
+  readonly size: number;
+}
+
+/**
+ * Platform accessors for one list item. `writeOn` / `writeSize` return false
+ * when the property is missing — never a silent no-op from this adapter.
+ */
+export interface PlateSlotAccess {
+  /** ViewModel type name (`PlateSlot`). Null/undefined fails closed. */
+  readonly viewModelName: (item: unknown) => string | null | undefined;
+  readonly writeOn: (item: unknown, value: boolean) => boolean;
+  readonly writeSize: (item: unknown, value: number) => boolean;
+}
+
+export interface ApplyPlatesResult {
+  readonly ok: boolean;
+  readonly length: number;
+  readonly written: number;
+  readonly reason?: string;
+}
+
+/**
+ * Normalize `Athlete.plates` to exactly eight `PlateSlot` items, then write
+ * all sixteen logical paths. Fails closed on a missing list, factory, item,
+ * wrong item type, or missing writable `on`/`size` — never skips a path.
+ */
+export function applyAthletePlatesList(
+  list: PlatesListLike | null | undefined,
+  createSlot: () => unknown | null | undefined,
+  plates: readonly PlateSlotValues[],
+  access: PlateSlotAccess,
+): ApplyPlatesResult {
+  const expected = ATHLETE_RIG.PLATE_SLOTS_PER_SIDE;
+  if (plates.length !== expected) {
+    return {
+      ok: false,
+      length: list?.length ?? 0,
+      written: 0,
+      reason: `expected ${expected} plate slots in inputs, got ${plates.length}`,
+    };
+  }
+
+  const norm = normalizePlatesListLength(list, expected, createSlot);
+  if (!norm.ok || list == null) {
+    return { ok: false, length: norm.length, written: 0, reason: norm.reason };
+  }
+
+  let written = 0;
+  for (let i = 0; i < expected; i += 1) {
+    const item = platesListItemAt(list, i);
+    if (item == null) {
+      return { ok: false, length: norm.length, written, reason: `plates[${i}] missing after normalize` };
+    }
+    const model = access.viewModelName(item);
+    if (model !== ATHLETE_PLATE_SLOT) {
+      return {
+        ok: false,
+        length: norm.length,
+        written,
+        reason: `plates[${i}] type is ${model ?? 'missing'}, expected ${ATHLETE_PLATE_SLOT}`,
+      };
+    }
+    const slot = plates[i]!;
+    if (!access.writeOn(item, slot.on)) {
+      return { ok: false, length: norm.length, written, reason: `plates[${i}].on not writable` };
+    }
+    written += 1;
+    if (!access.writeSize(item, slot.size)) {
+      return { ok: false, length: norm.length, written, reason: `plates[${i}].size not writable` };
+    }
+    written += 1;
+  }
+
+  return { ok: true, length: norm.length, written };
+}
+
+/** The sixteen logical plate paths in index order — for tests and audits. */
+export function plateLogicalPaths(): readonly string[] {
+  const paths: string[] = [];
+  for (let i = 0; i < ATHLETE_RIG.PLATE_SLOTS_PER_SIDE; i += 1) {
+    paths.push(`plates/${i}/on`, `plates/${i}/size`);
+  }
+  return paths;
 }

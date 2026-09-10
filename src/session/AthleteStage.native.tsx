@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AthleteStage.native — the production athlete on `@rive-app/react-native`.
  *
  * NOT MOUNTED ANYWHERE YET, and that is deliberate: no production `.riv`
@@ -24,22 +24,21 @@ import {
   RiveView,
   useRiveFile,
   useViewModelInstance,
+  type RiveFile,
   type ViewModelInstance,
 } from '@rive-app/react-native';
 
 import type { LiftStageProps } from '../lift/LiftStage';
 import { liftPresentation } from '../game/liftPresentation';
 import {
+  ATHLETE_PLATE_SLOT,
   ATHLETE_PLATES_LIST,
-  normalizePlatesListLength,
-  parsePlatePath,
-  platesListItemAt,
+  applyAthletePlatesList,
   PLATE_SLOT_ON,
   PLATE_SLOT_SIZE,
   type PlatesListLike,
 } from '../art/athletePlatesList';
 import { athleteRigInputsFrom, rigInputValues, type AthleteRigInputs } from '../art/athleteRig';
-import { ATHLETE_RIG } from '../art/spriteTuning';
 import { priorFromHistory } from './athleteStagePrior';
 import type { AthleteStageComponent } from './athleteStageTypes';
 import { ATHLETE_RIV_ASSET } from './athleteAsset';
@@ -49,24 +48,45 @@ type NativePlateSlot = {
   numberProperty: (name: string) => { set: (value: number) => void } | undefined;
 };
 
-function writeInputs(instance: ViewModelInstance, inputs: AthleteRigInputs): void {
-  const values = [...rigInputValues(inputs)];
-  const list = instance.listProperty(ATHLETE_PLATES_LIST) as PlatesListLike | null | undefined;
-  normalizePlatesListLength(list, ATHLETE_RIG.PLATE_SLOTS_PER_SIDE, () => null);
+function createPlateSlot(file: RiveFile | null): unknown | null {
+  // Pinned `@rive-app/react-native`: ViewModel.createInstance() is the sync
+  // blank-instance factory List.addInstance accepts on this version.
+  const model = file?.viewModelByName(ATHLETE_PLATE_SLOT);
+  if (model === undefined) return null;
+  return model.createInstance() ?? null;
+}
 
-  for (const input of values) {
-    const plate = parsePlatePath(input.path);
-    if (plate !== null) {
-      if (list == null || list.length !== ATHLETE_RIG.PLATE_SLOTS_PER_SIDE) continue;
-      const item = platesListItemAt(list, plate.index) as NativePlateSlot | undefined;
-      if (item == null) continue;
-      if (plate.field === 'on' && input.type === 'boolean') {
-        item.booleanProperty(PLATE_SLOT_ON)?.set(input.value);
-      } else if (plate.field === 'size' && input.type === 'number') {
-        item.numberProperty(PLATE_SLOT_SIZE)?.set(input.value);
+function writeInputs(file: RiveFile | null, instance: ViewModelInstance, inputs: AthleteRigInputs): void {
+  const list = instance.listProperty(ATHLETE_PLATES_LIST) as PlatesListLike | null | undefined;
+  const plates = applyAthletePlatesList(list, () => createPlateSlot(file), inputs.plates, {
+    viewModelName: (item) => {
+      const slot = item as NativePlateSlot;
+      // Native HybridObject exposes instanceName, not viewModelName. A slot
+      // with writable on/size from a PlateSlot factory is accepted as typed.
+      if (slot.booleanProperty?.(PLATE_SLOT_ON) && slot.numberProperty?.(PLATE_SLOT_SIZE)) {
+        return ATHLETE_PLATE_SLOT;
       }
-      continue;
-    }
+      return null;
+    },
+    writeOn: (item, value) => {
+      const prop = (item as NativePlateSlot).booleanProperty(PLATE_SLOT_ON);
+      if (!prop) return false;
+      prop.set(value);
+      return true;
+    },
+    writeSize: (item, value) => {
+      const prop = (item as NativePlateSlot).numberProperty(PLATE_SLOT_SIZE);
+      if (!prop) return false;
+      prop.set(value);
+      return true;
+    },
+  });
+  if (!plates.ok) {
+    throw new Error(`athlete plates List write failed: ${plates.reason ?? 'unknown'}`);
+  }
+
+  for (const input of rigInputValues(inputs)) {
+    if (input.path.startsWith('plates/')) continue;
     switch (input.type) {
       case 'number':
         instance.numberProperty(input.path)?.set(input.value);
@@ -94,12 +114,14 @@ export const AthleteStage: AthleteStageComponent = ({ state, history, totalKg }:
   const { instance } = useViewModelInstance(riveFile, { artboardName: view.kind, async: true });
   const instanceRef = useRef<ViewModelInstance | null>(null);
   instanceRef.current = instance ?? null;
+  const fileRef = useRef<RiveFile | null>(null);
+  fileRef.current = riveFile ?? null;
 
   useEffect(() => {
     const vmi = instanceRef.current;
     if (vmi === null) return;
-    writeInputs(vmi, athleteRigInputsFrom(view));
-  }, [view, instance]);
+    writeInputs(fileRef.current, vmi, athleteRigInputsFrom(view));
+  }, [view, instance, riveFile]);
 
   if (!riveFile) return <View style={{ flex: 1, alignSelf: 'stretch' }} />;
   return (
