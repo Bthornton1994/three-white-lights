@@ -14,9 +14,10 @@ project. Redistribution and production rights for the source captures have
 not been independently verified. They are used only as visual references and
 are not embedded in the runtime asset.
 
-Author: Cursor Cloud Agent (`bc-61cb68cc-219c-415c-9336-e13c4f4cd5ca`),
-continuing the PR #60 handoff on 2026-09-10. Prior editor authoring remains
-attributed to the Codex Work Mode pass of 2026-09-09.
+Author: Cursor Cloud Agents `bc-61cb68cc-219c-415c-9336-e13c4f4cd5ca` and
+`bc-adc29394-1d25-487e-a67d-816ccec30aa3`, continuing the PR #60 handoff on
+2026-09-10. Prior editor authoring remains attributed to the Codex Work Mode
+pass of 2026-09-09.
 
 Marks: The supplied captures visibly contain gym/equipment details and
 apparel markings. Their ownership and clearance are not independently
@@ -48,14 +49,25 @@ Located and inspected on branch `codex/athlete-01-rive-authoring` (PR #60):
 | Editor backup | `assets/athlete/athlete-01.rev` | **missing** |
 | Empty room plate | `assets/iron-amber/squat-room-side.jpg` | **missing** (intake step 0 note) |
 
-Exact intake stdout (2026-09-10T14:41:54Z, reconfirmed after `npm install`):
+Exact intake stdout (first recorded 2026-09-10T14:41:54Z; reconfirmed
+2026-09-10T14:49:16Z on `bc-adc29394` after `npm install`):
 
 ```
 step 0 note: room plate assets/iron-amber/squat-room-side.jpg is not there yet — the rig can be validated, the composite cannot be graded (source package §8)
 INTAKE_WAITING: ASSET_MISSING — assets/athlete/athlete-01.riv is not there yet
 ```
 
-Exact Rive MCP probe from this Cloud Agent VM:
+Exact contract probe against the missing `.riv` (2026-09-10T14:49:16Z,
+after `npm install`):
+
+```
+node tools/rivContract.mjs assets/athlete/athlete-01.riv --artboard squat
+→ ENOENT: no such file or directory, open 'assets/athlete/athlete-01.riv'
+exit 1
+```
+
+Exact Rive MCP probe from Cloud Agent VMs (`bc-61cb68cc` and
+`bc-adc29394`):
 
 ```
 curl -sS -m 3 http://127.0.0.1:9791/mcp
@@ -63,9 +75,12 @@ curl -sS -m 3 http://127.0.0.1:9791/mcp
 port 9791 not listening
 ```
 
-Dynamic MCP catalog for this run contained no `rive` / Rive namespace
-(available namespaces: cursor, cursor-cloud, cursor-subscriptions, Github,
-Gmail, Granola, Notion, Ramp, Supabase, Vercel).
+Dynamic MCP catalog for both Cloud Agent runs contained no `rive` / Rive
+namespace (available namespaces: cursor, cursor-cloud,
+cursor-subscriptions, Github, Gmail, Granola, Notion, Ramp, Supabase,
+Vercel). `GetDynamicTools` for namespace `rive` returned namespace not found.
+No self-hosted Cursor workers were connected that could reach a local
+Early Access editor.
 
 ## Authored scope (prior editor claim — unverified by this run)
 
