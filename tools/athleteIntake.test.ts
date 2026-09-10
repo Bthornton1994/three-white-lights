@@ -177,10 +177,10 @@ describe('tools/athleteIntake.mjs', () => {
     expect(r.out).toContain('CONTRACT_NOT_SATISFIED');
   });
 
-  it('step 0 — reports the missing room plate as a note, never a rejection, at the default location', () => {
+  it('step 0 — accepts the empty side-on room plate at the default location when present', () => {
     const r = run();
     // Path separators follow the host (`path.join`); match the basename only.
-    expect(r.out).toMatch(/step 0 note: room plate .*squat-room-side\.jpg is not there yet/);
+    expect(r.out).toMatch(/step 0 ok: room plate .*squat-room-side\.jpg present, 1152 x 1728/);
     expect(r.out).toContain('INTAKE_MECHANICAL_CHECKS_PASSED');
     expect(r.status).toBe(0);
   });
