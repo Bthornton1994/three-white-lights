@@ -38,9 +38,15 @@ afterEach(() => {
 });
 
 describe('tools/athleteAccept.mjs', () => {
-  it('with no athlete: intake WAITING, corpus PASS, web SKIPPED, the human gates OWED, exit 2', () => {
-    expect(existsSync(path.join(REPO, 'assets', 'athlete', 'athlete-01.riv'))).toBe(false);
-    const r = run();
+  it('with no athlete (isolated empty --dir): intake WAITING, corpus PASS, web SKIPPED, the human gates OWED, exit 2', () => {
+    // The default assets/athlete/ may hold an authored file while the player
+    // mount stays closed. The ASSET_MISSING arm is still owed — drive it
+    // against an empty scratch tree, not against the repo default path.
+    const dir = scratchDir();
+    const room = path.join(dir, 'squat-room-side.jpg');
+    // Room missing is reported as a note by intake; the WAITING verdict is
+    // keyed on the athlete package, not the room.
+    const r = run(['--dir', dir, '--room', room]);
     expect(r.status, r.out).toBe(2);
     expect(r.out).toContain('athlete-accept: intake: WAITING — ASSET_MISSING');
     expect(r.out).toContain('athlete-accept: corpus: PASS — 6 records current');

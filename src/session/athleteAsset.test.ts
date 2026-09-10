@@ -42,12 +42,18 @@ describe('athleteAsset.ts — the reference and the flag cannot move alone', () 
     expect(existsSync(path.resolve(HERE, rel)), `${rel} exists`).toBe(true);
   });
 
-  it('while the flag is true the athlete has not arrived; once it has, the require must point at it', () => {
-    if (placeholderFlag()) {
-      expect(existsSync(ATHLETE_FILE), 'assets/athlete/athlete-01.riv is on disk but athleteAsset.ts still points at the placeholder — repoint the require and flip the flag').toBe(false);
-    } else {
+  it('flag false means the require is the production athlete and that file exists; flag true may coexist with an authored-but-unmounted .riv', () => {
+    // Authored bytes can land under assets/athlete/ for intake / contract /
+    // WebGL QA while ATHLETE_RIV_IS_PLACEHOLDER stays true and
+    // TRAINING_STAGE stays schematic — player mount is a separate flip.
+    // The old pin (flag true ⟹ file absent) was valid only before any
+    // authored file existed; isolating the no-athlete assumption here keeps
+    // that intent without forcing a premature mount.
+    if (!placeholderFlag()) {
       expect(requiredPath()).toBe('../../assets/athlete/athlete-01.riv');
       expect(existsSync(ATHLETE_FILE)).toBe(true);
+    } else {
+      expect(requiredPath()).toBe('../../assets/dev/rive-spike.riv');
     }
   });
 

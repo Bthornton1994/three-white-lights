@@ -21,8 +21,13 @@ describe('Iron & Amber training path wiring', () => {
 
   it('TrainingLiftStage mounts the continuous squat scene, not squat JPEGs', () => {
     const stage = source('TrainingLiftStage.tsx');
+    // Schematic arm still draws SquatScene; athlete arm is gated and fail-closed.
+    // Kind routing lives in selectTrainingStageArm (kind passed as props.state.config.kind).
     expect(stage).toContain("from './SquatScene'");
-    expect(stage).toContain("kind === 'squat'");
+    expect(stage).toContain("from './trainingStageSelect'");
+    expect(stage).toContain('selectTrainingStageArm');
+    expect(stage).toContain("case 'schematic'");
+    expect(stage).toContain('<SquatScene');
     expect(stage).not.toContain("from '../../assets/iron-amber/squat-brace.jpg'");
     expect(stage).not.toContain('makeSpriteImage');
     expect(stage).not.toContain('GymSceneLayer');

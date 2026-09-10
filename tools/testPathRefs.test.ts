@@ -415,8 +415,15 @@ const PINNED = Object.freeze({
    * `frameMetrics.ts` (+ test), `src/session/athleteAssetStatus.ts`,
    * `athleteStageOverride.ts`, `trainingStageSelect.ts` (+ test). Two test
    * files, so `TEST_FILES` 130 -> 132.
+   *
+   * 434 -> 436 with the plates List adapter (`src/art/athletePlatesList.ts`
+   * and its test). One test file, so `TEST_FILES` 132 -> 133.
+   * 437 -> 438 with `src/art/athletePlatesRuntime.test.ts`.
+   * 438 -> 439 with `src/art/athletePlatesNativeApi.test.ts`.
+   * 439 -> 441 with `tools/athleteWebglCapture.mjs` + its test (WebGL2/canvas
+   * QA harness for athlete-01 runtime PNGs).
    */
-  SCANNED_FILES: 434,
+  SCANNED_FILES: 441,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -502,8 +509,13 @@ const PINNED = Object.freeze({
    *
    * 130 -> 132 with `src/dev/athleteAcceptance/frameMetrics.test.ts` and
    * `src/session/trainingStageSelect.test.ts` (SCANNED_FILES 434).
+   * 132 -> 133 with `src/art/athletePlatesList.test.ts` (SCANNED_FILES 436).
+   * SCANNED_FILES 436 -> 437 once both halves of that pair are tracked.
+   * 133 -> 134 with `src/art/athletePlatesRuntime.test.ts` (SCANNED_FILES 438).
+   * 134 -> 135 with `src/art/athletePlatesNativeApi.test.ts` (SCANNED_FILES 439).
+   * 135 -> 136 with `tools/athleteWebglCapture.test.ts` (SCANNED_FILES 441).
    */
-  TEST_FILES: 132,
+  TEST_FILES: 136,
 });
 
 /**

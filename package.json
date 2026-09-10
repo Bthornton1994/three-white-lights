@@ -28,6 +28,7 @@
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
+    "@rive-app/webgl2": "^2.42.0",
     "@types/react": "~19.2.2",
     "@vitest/coverage-v8": "^4.1.10",
     "playwright": "^1.62.1",

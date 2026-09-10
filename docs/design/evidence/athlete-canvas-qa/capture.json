@@ -1,0 +1,181 @@
+{
+  "tool": "athleteWebglCapture.mjs",
+  "startedAt": "2026-09-10T19:33:01.725Z",
+  "riv": "assets/athlete/athlete-01.riv",
+  "rivSha256": "395fb526a1d4f636c863c7cb7cbf07462422138883e3e043e9929972e4563d51",
+  "runtime": "@rive-app/canvas",
+  "runtimeFlag": "canvas",
+  "beats": [
+    {
+      "id": "brace",
+      "file": "docs/design/evidence/athlete-canvas-qa/brace.png",
+      "pngSha256": "e08750fe4f9fd2545e377972b8dae2aa8fd6138eae75580cdeec527765fb58d9",
+      "sample": {
+        "mode": "2d",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 912600,
+        "nonBlack": 912600,
+        "maxChannel": 232,
+        "blank": false
+      }
+    },
+    {
+      "id": "judged-depth",
+      "file": "docs/design/evidence/athlete-canvas-qa/judged-depth.png",
+      "pngSha256": "bc931e157310d1201cf14deaaf8eeceb05d9d71b2d5412c1bd677001fc71ebb1",
+      "sample": {
+        "mode": "2d",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 912600,
+        "nonBlack": 912600,
+        "maxChannel": 232,
+        "blank": false
+      }
+    },
+    {
+      "id": "hole",
+      "file": "docs/design/evidence/athlete-canvas-qa/hole.png",
+      "pngSha256": "fe3731904857a3beb63d6930b5ea60e710af318de440a973441aea498a98f672",
+      "sample": {
+        "mode": "2d",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 912600,
+        "nonBlack": 912600,
+        "maxChannel": 232,
+        "blank": false
+      }
+    },
+    {
+      "id": "reversal",
+      "file": "docs/design/evidence/athlete-canvas-qa/reversal.png",
+      "pngSha256": "7e29e9cfba2491bfc409fc355739444295faa7a603dd982a791b5431eb117241",
+      "sample": {
+        "mode": "2d",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 912600,
+        "nonBlack": 912600,
+        "maxChannel": 232,
+        "blank": false
+      }
+    },
+    {
+      "id": "grind",
+      "file": "docs/design/evidence/athlete-canvas-qa/grind.png",
+      "pngSha256": "23cc24791c5fb2eb63bd511eed19923d9b69a9e80868deab08be6aab6cebbb8e",
+      "sample": {
+        "mode": "2d",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 912600,
+        "nonBlack": 912600,
+        "maxChannel": 232,
+        "blank": false
+      }
+    },
+    {
+      "id": "lockout",
+      "file": "docs/design/evidence/athlete-canvas-qa/lockout.png",
+      "pngSha256": "db138f3ccf0f085e5e2e8ae728630630c038970fb3b81cfba1a2df7350c09025",
+      "sample": {
+        "mode": "2d",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 912600,
+        "nonBlack": 912600,
+        "maxChannel": 232,
+        "blank": false
+      }
+    },
+    {
+      "id": "no-depth",
+      "file": "docs/design/evidence/athlete-canvas-qa/no-depth.png",
+      "pngSha256": "d390d1f950b478fef8414fb2c18e3f74fca5affd3ae621960e006a793317c2ce",
+      "sample": {
+        "mode": "2d",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 912600,
+        "nonBlack": 912600,
+        "maxChannel": 232,
+        "blank": false
+      }
+    },
+    {
+      "id": "buried",
+      "file": "docs/design/evidence/athlete-canvas-qa/buried.png",
+      "pngSha256": "fe3731904857a3beb63d6930b5ea60e710af318de440a973441aea498a98f672",
+      "sample": {
+        "mode": "2d",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 912600,
+        "nonBlack": 912600,
+        "maxChannel": 232,
+        "blank": false
+      }
+    },
+    {
+      "id": "stalled",
+      "file": "docs/design/evidence/athlete-canvas-qa/stalled.png",
+      "pngSha256": "4bce6498315a02fd400a25e438df4b8ab8f04e76a8d6a89472f6988905e634cc",
+      "sample": {
+        "mode": "2d",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 912600,
+        "nonBlack": 912600,
+        "maxChannel": 232,
+        "blank": false
+      }
+    },
+    {
+      "id": "timeout",
+      "file": "docs/design/evidence/athlete-canvas-qa/timeout.png",
+      "pngSha256": "d0d32b8ee5dc55e8b138ec60c8cd2f018c63eeb885d7a847b3014d80c93de246",
+      "sample": {
+        "mode": "2d",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 912600,
+        "nonBlack": 912600,
+        "maxChannel": 232,
+        "blank": false
+      }
+    },
+    {
+      "id": "dropped",
+      "file": "docs/design/evidence/athlete-canvas-qa/dropped.png",
+      "pngSha256": "7c701d4f61a45628a7d130635f98ef4f037c7d4b78945deb0c2e8f286951f1ca",
+      "sample": {
+        "mode": "2d",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 912600,
+        "nonBlack": 912600,
+        "maxChannel": 232,
+        "blank": false
+      }
+    }
+  ],
+  "webgl2": true,
+  "verdict": "PIXELS_PRESENT",
+  "console": [
+    "[warning] Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently"
+  ],
+  "blankBeats": 0
+}

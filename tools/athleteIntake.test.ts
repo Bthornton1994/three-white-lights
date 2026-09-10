@@ -1,9 +1,10 @@
 /**
  * The intake command is driven end to end against every mechanical outcome
- * it can reach today: no asset, a package with missing lines, a package
- * whose hash names other bytes, and a complete package around a file the
- * contract refuses. The one outcome it cannot reach — exit 0 — needs an
- * authored athlete, and its absence is asserted rather than assumed.
+ * it can reach today: a complete authored athlete at the default location
+ * (exit 0 through step 3), a package with missing lines, a package whose
+ * hash names other bytes, and a complete package around a file the
+ * contract refuses. Scratch dirs still cover the reject arms; the default
+ * `assets/athlete/` path is the live package.
  */
 import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -49,11 +50,15 @@ function fullProvenance(rivPath: string): string {
 }
 
 describe('tools/athleteIntake.mjs', () => {
-  it('reports ASSET_MISSING with exit 2 at the default location — no athlete has arrived', () => {
-    expect(existsSync(path.join(REPO, 'assets', 'athlete', 'athlete-01.riv'))).toBe(false);
+  it('passes mechanical steps 1–3 at the default location when the authored athlete is present', () => {
+    expect(existsSync(path.join(REPO, 'assets', 'athlete', 'athlete-01.riv'))).toBe(true);
     const r = run();
-    expect(r.status).toBe(2);
-    expect(r.out).toContain('INTAKE_WAITING: ASSET_MISSING');
+    expect(r.status).toBe(0);
+    expect(r.out).toContain('step 1 ok');
+    expect(r.out).toContain('step 2 ok');
+    expect(r.out).toContain('SATISFIED');
+    expect(r.out).toContain('INTAKE_MECHANICAL_CHECKS_PASSED');
+    expect(r.out).not.toContain('ASSET_MISSING');
   });
 
   it('rejects at step 1 when the provenance package is absent or short, naming every missing item', () => {
@@ -172,11 +177,12 @@ describe('tools/athleteIntake.mjs', () => {
     expect(r.out).toContain('CONTRACT_NOT_SATISFIED');
   });
 
-  it('step 0 — reports the missing room plate as a note, never a rejection, at the default location', () => {
+  it('step 0 — accepts the empty side-on room plate at the default location when present', () => {
     const r = run();
-    expect(r.out).toContain('step 0 note: room plate assets/iron-amber/squat-room-side.jpg is not there yet');
-    expect(r.out).toContain('ASSET_MISSING');
-    expect(r.status).toBe(2);
+    // Path separators follow the host (`path.join`); match the basename only.
+    expect(r.out).toMatch(/step 0 ok: room plate .*squat-room-side\.jpg present, 1152 x 1728/);
+    expect(r.out).toContain('INTAKE_MECHANICAL_CHECKS_PASSED');
+    expect(r.status).toBe(0);
   });
 
   it('step 0 — refuses every existing painted squat scene by name, before reading the rig at all', () => {
@@ -206,8 +212,8 @@ describe('tools/athleteIntake.mjs', () => {
     const right = run(undefined, room);
     expect(right.out).toContain('step 0 ok');
     expect(right.out).toContain('1152 x 1728');
-    expect(right.out, 'then the rig check proceeds').toContain('ASSET_MISSING');
-    expect(right.status).toBe(2);
+    expect(right.out, 'then the rig check proceeds').toContain('INTAKE_MECHANICAL_CHECKS_PASSED');
+    expect(right.status).toBe(0);
   });
 
   it('names the five remaining steps in order in its source, ending at the human gate', () => {

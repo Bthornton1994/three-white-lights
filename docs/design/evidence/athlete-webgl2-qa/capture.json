@@ -1,0 +1,179 @@
+{
+  "tool": "athleteWebglCapture.mjs",
+  "startedAt": "2026-09-10T19:32:56.118Z",
+  "riv": "assets/athlete/athlete-01.riv",
+  "rivSha256": "395fb526a1d4f636c863c7cb7cbf07462422138883e3e043e9929972e4563d51",
+  "runtime": "@rive-app/webgl2",
+  "runtimeFlag": "webgl2",
+  "beats": [
+    {
+      "id": "brace",
+      "file": "docs/design/evidence/athlete-webgl2-qa/brace.png",
+      "pngSha256": "ec87bbb465c0496af0fb8b46d3e439d7b88e33c89b0298d569fb17300c60516a",
+      "sample": {
+        "mode": "webgl-readPixels",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 0,
+        "nonBlack": 0,
+        "maxChannel": 0,
+        "blank": true
+      }
+    },
+    {
+      "id": "judged-depth",
+      "file": "docs/design/evidence/athlete-webgl2-qa/judged-depth.png",
+      "pngSha256": "f0de83e66de8aa7fe4a47b72f0b0152eb31dd89e816199905cc47428899d450a",
+      "sample": {
+        "mode": "webgl-readPixels",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 0,
+        "nonBlack": 0,
+        "maxChannel": 0,
+        "blank": true
+      }
+    },
+    {
+      "id": "hole",
+      "file": "docs/design/evidence/athlete-webgl2-qa/hole.png",
+      "pngSha256": "007f2ddcfc947338a0b703fcf735fc98390051d213a05b0d09bf0ab451a2d3bc",
+      "sample": {
+        "mode": "webgl-readPixels",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 0,
+        "nonBlack": 0,
+        "maxChannel": 0,
+        "blank": true
+      }
+    },
+    {
+      "id": "reversal",
+      "file": "docs/design/evidence/athlete-webgl2-qa/reversal.png",
+      "pngSha256": "f0ef6b729d85626b2af9fc2bef8e58024e9c8dfe73f5bc00cb10c510a27c30de",
+      "sample": {
+        "mode": "webgl-readPixels",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 0,
+        "nonBlack": 0,
+        "maxChannel": 0,
+        "blank": true
+      }
+    },
+    {
+      "id": "grind",
+      "file": "docs/design/evidence/athlete-webgl2-qa/grind.png",
+      "pngSha256": "64940a0c0fcbab295a983d5655cecc789c27e93480bc7f8587b360495fae5bd9",
+      "sample": {
+        "mode": "webgl-readPixels",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 0,
+        "nonBlack": 0,
+        "maxChannel": 0,
+        "blank": true
+      }
+    },
+    {
+      "id": "lockout",
+      "file": "docs/design/evidence/athlete-webgl2-qa/lockout.png",
+      "pngSha256": "9af36b99cb1a95b4e1665f8d83763cdd5f6d700b79ed4cb508c728e0cc7b5e9f",
+      "sample": {
+        "mode": "webgl-readPixels",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 0,
+        "nonBlack": 0,
+        "maxChannel": 0,
+        "blank": true
+      }
+    },
+    {
+      "id": "no-depth",
+      "file": "docs/design/evidence/athlete-webgl2-qa/no-depth.png",
+      "pngSha256": "7ee85514e0817bc50a14c90538a9a0f28ce2d003c4c395b86c5755804d83662e",
+      "sample": {
+        "mode": "webgl-readPixels",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 0,
+        "nonBlack": 0,
+        "maxChannel": 0,
+        "blank": true
+      }
+    },
+    {
+      "id": "buried",
+      "file": "docs/design/evidence/athlete-webgl2-qa/buried.png",
+      "pngSha256": "007f2ddcfc947338a0b703fcf735fc98390051d213a05b0d09bf0ab451a2d3bc",
+      "sample": {
+        "mode": "webgl-readPixels",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 0,
+        "nonBlack": 0,
+        "maxChannel": 0,
+        "blank": true
+      }
+    },
+    {
+      "id": "stalled",
+      "file": "docs/design/evidence/athlete-webgl2-qa/stalled.png",
+      "pngSha256": "c64d91aba38a7f144a32ce6b40ddf0214e851c2547a8ebf1c701a73fb1597e08",
+      "sample": {
+        "mode": "webgl-readPixels",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 0,
+        "nonBlack": 0,
+        "maxChannel": 0,
+        "blank": true
+      }
+    },
+    {
+      "id": "timeout",
+      "file": "docs/design/evidence/athlete-webgl2-qa/timeout.png",
+      "pngSha256": "fc99d2f9bd7d485f9be5d11b1e9d6245f0e62c4a069edf471fe34fdf3ab599a1",
+      "sample": {
+        "mode": "webgl-readPixels",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 0,
+        "nonBlack": 0,
+        "maxChannel": 0,
+        "blank": true
+      }
+    },
+    {
+      "id": "dropped",
+      "file": "docs/design/evidence/athlete-webgl2-qa/dropped.png",
+      "pngSha256": "44dcb5d6f0937d60f615aab0216c8eed5ebf1d05102a01f1dd127e454fb3abda",
+      "sample": {
+        "mode": "webgl-readPixels",
+        "width": 780,
+        "height": 1170,
+        "totalPixels": 912600,
+        "nonTransparent": 0,
+        "nonBlack": 0,
+        "maxChannel": 0,
+        "blank": true
+      }
+    }
+  ],
+  "webgl2": true,
+  "verdict": "BLANK_FRAMES",
+  "console": [],
+  "blankBeats": 11
+}

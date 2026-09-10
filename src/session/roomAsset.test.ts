@@ -22,8 +22,13 @@ describe('roomAsset.ts — the room plate reference and its flag move together, 
   });
 
   it('never requires a painted squat scene, in any state', () => {
-    expect(CODE).not.toMatch(/require\(/);
     expect(SOURCE).not.toMatch(/squat-(brace|hole|drive)\.jpg'\)/);
     expect(ROOM_ASSET_PATH).toBe('assets/iron-amber/squat-room-side.jpg');
+    if (ROOM_ASSET_IS_MISSING) {
+      expect(CODE).not.toMatch(/require\(/);
+    } else {
+      expect(SOURCE).toContain(`require('../../${ROOM_ASSET_PATH}')`);
+      expect(typeof ROOM_ASSET).toBe('number');
+    }
   });
 });

@@ -14,6 +14,7 @@
  * for the cases no shipped asset reaches yet.
  */
 import type { RivInvalid, RivProperty, RivPropertyType, RivSchema } from '../../tools/rivSchema.mjs';
+import { ATHLETE_PLATE_SLOT, ATHLETE_PLATES_LIST } from './athletePlatesList';
 import { rigInputSpec, rigLiftArtboards, type RigInputSpec, type RigInputType } from './athleteRig';
 import { ATHLETE_RIG } from './spriteTuning';
 
@@ -27,6 +28,12 @@ export interface FlatRivProperty {
  * Every property reachable from `viewModel`, nested references expanded to
  * slash paths, containers included. Depth-capped so a self-referencing
  * model terminates.
+ *
+ * Native Lists are not nested ViewModels. When `Athlete.plates` is a List
+ * whose items are `PlateSlot`, the walk synthesises the logical contract
+ * paths `plates/<i>/on|size` from the item ViewModel — the same paths
+ * `rigInputSpec()` names — without claiming those strings exist as runtime
+ * path lookups (stages write through indexed List access).
  */
 export function flattenViewModel(schema: RivSchema, viewModel: string): readonly FlatRivProperty[] {
   const out: FlatRivProperty[] = [];
@@ -37,6 +44,16 @@ export function flattenViewModel(schema: RivSchema, viewModel: string): readonly
       const path = prefix === '' ? key : `${prefix}/${key}`;
       out.push({ path, property });
       if (property.type === 'viewModel' && property.ref) walk(property.ref, path, depth + 1);
+      if (
+        property.type === 'list' &&
+        key === ATHLETE_PLATES_LIST &&
+        property.itemRef === ATHLETE_PLATE_SLOT &&
+        schema.viewModels[ATHLETE_PLATE_SLOT] !== undefined
+      ) {
+        for (let i = 0; i < ATHLETE_RIG.PLATE_SLOTS_PER_SIDE; i += 1) {
+          walk(ATHLETE_PLATE_SLOT, `${path}/${i}`, depth + 1);
+        }
+      }
     }
   };
   walk(viewModel, '', 0);
@@ -119,6 +136,7 @@ const EVERYTHING_MISSING = (spec: readonly RigInputSpec[]): RivViewModelDiff => 
 export function diffViewModel(schema: RivSchema, spec: readonly RigInputSpec[], viewModel: string | null): RivViewModelDiff {
   if (viewModel === null || schema.viewModels[viewModel] === undefined) return EVERYTHING_MISSING(spec);
 
+  const platesGap = platesListContractGaps(schema, viewModel);
   const exposed = new Map<string, RivProperty>();
   for (const flat of flattenViewModel(schema, viewModel)) exposed.set(flat.path, flat.property);
 
@@ -144,8 +162,16 @@ export function diffViewModel(schema: RivSchema, spec: readonly RigInputSpec[], 
 
   const specified = new Set(spec.map((input) => input.path));
   const extra = [...exposed.entries()]
-    .filter(([path, property]) => !specified.has(path) && property.type !== 'viewModel')
+    .filter(([path, property]) => !specified.has(path) && property.type !== 'viewModel' && property.type !== 'list')
     .map(([path]) => path);
+
+  // Surface List-shape failures on the plates paths so a missing List is not
+  // reported as sixteen silent path misses alone — the gap names the structure.
+  if (platesGap.length > 0) {
+    for (const path of platesGap) {
+      if (!missing.includes(path)) missing.push(path);
+    }
+  }
 
   return {
     viewModel,
@@ -155,6 +181,28 @@ export function diffViewModel(schema: RivSchema, spec: readonly RigInputSpec[], 
     extra,
     satisfied: missing.length === 0 && wrongType.length === 0 && missingEnumValues.length === 0,
   };
+}
+
+/**
+ * Structural gaps for the List plates route. Empty when `Athlete.plates` is a
+ * List of `PlateSlot`. Returns the sixteen logical plate paths when the List
+ * shape is wrong. Field-level PlateSlot defects (`on`/`size`) are left to
+ * flatten + the ordinary path diff — this helper only refuses a non-List.
+ */
+export function platesListContractGaps(schema: RivSchema, viewModel: string): readonly string[] {
+  const platePaths = Array.from({ length: ATHLETE_RIG.PLATE_SLOTS_PER_SIDE }, (_, i) => [
+    `plates/${i}/on`,
+    `plates/${i}/size`,
+  ]).flat();
+
+  const root = schema.viewModels[viewModel];
+  if (root === undefined) return platePaths;
+
+  const plates = root[ATHLETE_PLATES_LIST];
+  if (plates === undefined || plates.type !== 'list') return platePaths;
+  if (plates.itemRef !== ATHLETE_PLATE_SLOT) return platePaths;
+  if (schema.viewModels[ATHLETE_PLATE_SLOT] === undefined) return platePaths;
+  return [];
 }
 
 /**

@@ -114,6 +114,21 @@ function describeProperty(property, instance) {
     }
     return { type: 'enum', values: [...values] };
   }
+  // Native Lists carry item ViewModels, not nested path children. Read the
+  // first authored item's model name when the instance has any entries so
+  // `rivContract` can require `PlateSlot` without inventing path aliases.
+  if (property.type === 'list') {
+    let itemRef = null;
+    try {
+      const list = instance?.list?.(property.name);
+      if (list && list.length > 0) {
+        itemRef = list.instanceAt(0)?.viewModelName ?? null;
+      }
+    } catch {
+      itemRef = null;
+    }
+    return { type: 'list', itemRef };
+  }
   return { type: property.type };
 }
 
@@ -162,9 +177,17 @@ export async function readRivSchema(bytes) {
     } catch {
       instance = null;
     }
+    // Prefer the default instance for List item typing: a blank `instance()`
+    // has length 0 even when the authored default carries PlateSlot entries.
+    let typedInstance = instance;
+    try {
+      typedInstance = vm.defaultInstance?.() ?? instance;
+    } catch {
+      typedInstance = instance;
+    }
     const properties = {};
     for (const property of vm.properties) {
-      properties[property.name] = describeProperty(property, instance);
+      properties[property.name] = describeProperty(property, typedInstance);
     }
     viewModels[vm.name] = properties;
   }
