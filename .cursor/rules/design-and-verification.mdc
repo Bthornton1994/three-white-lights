@@ -1,0 +1,38 @@
+---
+description: Three White Lights visual, motion, browser, and evidence routing
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Three White Lights Project rules
+
+Read VISION.md, GDD.md, accepted mockups, applicable stage gates, and current branch instructions before changing visual or gameplay surfaces.
+
+## Visual authority
+
+- Determine the authoritative visual direction before implementation.
+- If VISION, GDD, mockups, screenshots, or existing approved fixtures conflict, record the conflict and stop for a product decision.
+- External UI skills may improve an approved direction. They may not silently replace it with a new aesthetic.
+- Audit an existing surface before redesigning it.
+- Preserve product-specific identity, honest states, loading/error/empty behavior, responsive layouts, and accessibility.
+
+## Motion
+
+- Prefer transform and opacity for continuous motion.
+- Avoid layout thrashing, unbounded requestAnimationFrame loops, and scroll-driven polling.
+- Pause or stop off-screen motion where appropriate.
+- Respect prefers-reduced-motion.
+- Verify motion at the required mobile viewport and on the browser path used by the stage gate.
+
+## Engineering and evidence
+
+- Use a bounded plan for non-trivial changes.
+- Use behavior tests for behavior changes and systematic debugging for failures.
+- Before claiming completion or a passing gate, run the proving command fresh and report the exact result.
+- A screenshot or agent report is not independent review. Use a separate fresh context for review.
+- Do not merge, close, rebase, deploy, publish, or claim validation without authorization and evidence.
+
+## Scope boundary
+
+Three White Lights is not the StageForge product boundary. Do not add a StageForge adapter or SceneManifest/GLB coupling under this rule. Record cross-repo findings as architecture evidence only.
