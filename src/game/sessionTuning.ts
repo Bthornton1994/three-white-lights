@@ -545,10 +545,10 @@ export const IRON_AMBER = Object.freeze({
   CUE_X_RATIO: 0.5,
   CUE_Y_RATIO: 0.58,
   CUE_TARGET_STROKE: 1,
-  PLATE_SCALE: 1.14,
+  PLATE_SCALE: 1,
   SQUAT_CROP_Y: 0,
-  BENCH_CROP_Y: 18,
-  DEADLIFT_CROP_Y: -42,
+  BENCH_CROP_Y: 16,
+  DEADLIFT_CROP_Y: -20,
 });
 
 /**
