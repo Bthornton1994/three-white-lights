@@ -1,14 +1,32 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-09-13T18:43:36.622Z",
-    "url": "http://127.0.0.1:8081",
+    "capturedAt": "2026-09-13T20:51:56.228Z",
+    "url": "http://localhost:8081",
     "sourceRoot": "/workspace",
-    "commit": "65f61c7f",
+    "commit": "820b03c2",
     "branch": "cursor/session-a-iron-amber-quality-1c66",
     "workingTree": "clean",
     "dirtyPaths": [
-      "M .gauntlet/shots/lift-press/press.json",
-      " M .gauntlet/shots/meet/sound.json"
+      "M .gauntlet/shots/cutin-cap/cap.json",
+      " M .gauntlet/shots/cutin-cap/cut-in-leg-2.png",
+      " M .gauntlet/shots/cutin-cap/leg-1-recap.png",
+      " M .gauntlet/shots/cutin-cap/leg-2-bombed.png",
+      " M .gauntlet/shots/cutin/debug-meet-bombed.png",
+      " M .gauntlet/shots/cutin/frames.json",
+      " M .gauntlet/shots/cutin/live-after-auto-dismiss.png",
+      " M .gauntlet/shots/cutin/live-mid-hold.png",
+      " M .gauntlet/shots/lift-press/press.json",
+      " M .gauntlet/shots/meet/sound.json",
+      " M .gauntlet/shots/shell/02-meet-from-session.png",
+      " M .gauntlet/shots/shell/04-recap-with-way-back.png",
+      " M .gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+      " M .gauntlet/shots/shell/04b-second-meet-real-recap.png",
+      " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+      " M .gauntlet/shots/shell/11-already-trained-reaches-meet.png",
+      " M .gauntlet/shots/shell/12-openers-follow-the-session.png",
+      " M .gauntlet/shots/shell/13-recap-before-the-return-leg.png",
+      " M .gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
+      " M .gauntlet/shots/shell/route.json"
     ],
     "instrument": {
       "capture-cutin.mjs": "6b735d315332a467",
@@ -233,14 +251,14 @@
     }
   ],
   "leavesOnItsOwn": {
-    "stillUpAt": 702,
+    "stillUpAt": 701,
     "stillUp": true,
-    "goneAt": 959,
+    "goneAt": 900,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 2,
-    "goneAt": 3,
+    "tappedAt": 3,
+    "goneAt": 4,
     "dismissTookMs": 1,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
@@ -251,8 +269,8 @@
     "onWalkout": null,
     "onBombOut": "THAT IS THE MEET",
     "addressBar": {
-      "walkout": "http://127.0.0.1:8081/?meet=walkout-third",
-      "bombed": "http://127.0.0.1:8081/?meet=bombed"
+      "walkout": "http://localhost:8081/?meet=walkout-third",
+      "bombed": "http://localhost:8081/?meet=bombed"
     },
     "urlFaults": []
   },
