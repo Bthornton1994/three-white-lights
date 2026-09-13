@@ -29,7 +29,8 @@
  */
 
 import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
 import Animated, {
   ReduceMotion,
   useAnimatedStyle,
@@ -118,7 +119,7 @@ export function BriefingView({
           <Text style={styles.prompt}>{SESSION_COPY.BRIEFING_PROMPT}</Text>
           <View style={styles.ladder} testID="session-rpe-ladder">
             {SESSION_TUNING.RPE_CHOICES.map((rpe, index) => (
-              <Pressable
+              <MotionPressable
                 key={rpe}
                 testID={`session-rpe-${rpe}`}
                 accessibilityRole="button"
@@ -135,7 +136,7 @@ export function BriefingView({
                 ]}
               >
                 <Text style={styles.rungLabel}>{rpe}</Text>
-              </Pressable>
+              </MotionPressable>
             ))}
           </View>
           <Text style={styles.hint}>{SESSION_COPY.BRIEFING_RPE_HINT}</Text>
