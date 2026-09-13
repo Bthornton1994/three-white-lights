@@ -336,8 +336,10 @@ const PINNED = Object.freeze({
    *
    * 344 -> 345 with A-VIS critic stills: `tools/_capture-a-vis-fix.mjs`.
    * Evidence PNGs under `docs/design/evidence/` are unread binaries.
+   *
+   * 345 -> 346 with emptied-hall bookends: `src/meet/MeetBookendRoom.tsx`.
    */
-  SCANNED_FILES: 345,
+  SCANNED_FILES: 346,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
