@@ -3,9 +3,11 @@
  *
  * PURE. No React, no Skia, no I/O. In, a card built by
  * `src/game/resultCard.ts`; out, an `IndexGrid` of palette indices, exactly
- * like `renderLifterFrame` in `src/art/lifterSprite.ts`. `ResultCardView.tsx` is
- * the only file that turns one into pixels on a screen, and `tools/shoot.mjs`
- * is what proves it does.
+ * like `renderLifterFrame` in `src/art/lifterSprite.ts`. This grid is the
+ * GDD §7.1 artifact and the substrate `renderResultCard.test.ts` probes.
+ * The shareable surface a player sees and captures is `ResultCardView`'s
+ * paper sheet (GDD §6.5 / §12.2 Result card bar). The GDD does not resolve
+ * that split; this file does not rewrite it.
  *
  * WHAT THIS FILE IS ALLOWED TO DECIDE: where a thing goes. It reads every
  * coordinate from `cardTuning.ts` and every colour from `sheetPalette.ts`. It

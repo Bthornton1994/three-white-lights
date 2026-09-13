@@ -8,10 +8,11 @@
  *
  * THE INTERNAL RESOLUTION IS FIXED AND THE SCALE IS AN INTEGER. GDD §7.1:
  * "pick a fixed internal resolution early and use nearest-neighbor scaling
- * throughout. Retrofitting this later is painful." The card is authored at
- * `CARD.W x CARD.H` and only ever upscaled by a whole number, so a source pixel
- * is always exactly N device pixels square. A layout that needs a size between
- * two integer scales letterboxes the smaller one; it does not interpolate.
+ * throughout. Retrofitting this later is painful." The *grid* below is authored
+ * at `CARD.W x CARD.H` and only ever upscaled by a whole number. The shareable
+ * surface a player sees is `PAPER` in `ResultCardView` — see that block. Do
+ * not treat this header as a silent rewrite of §7.1; the conflict with §6.5 /
+ * §7.3 / §12.2's Result card bar is unresolved in the GDD.
  *
  * WHY 192 x 240: 4:5, the portrait aspect every social feed crops to without
  * letterboxing, and both axes are multiples of 8 (the SNES tile). At the
@@ -476,6 +477,12 @@ export const FOOTER = {
 export const CARD_LABELS = {
   BODYWEIGHT_SUFFIX: ' KG',
   /**
+   * Document kind on the letterhead, the way a published results PDF titles
+   * itself. Ours. Not a real federation's "Official Results" mark — GDD §11
+   * leaves that licensing open, and this card ships none of those marks.
+   */
+  DOCUMENT_KIND: 'RESULTS',
+  /**
    * There is no CLASS_PREFIX any more. The class number now ends the category
    * phrase ("MEN'S RAW OPEN 93") the way the reference board sets it, which
    * both says whose class it is and costs four pixels LESS than the bare word
@@ -518,4 +525,54 @@ export const CARD_SCREEN = {
   /** "Share your result". */
   HINT_FONT: 12,
   HINT_GAP: 14,
+} as const;
+
+/**
+ * The shareable sheet as a printed object, in logical points.
+ *
+ * GDD §6.5 and §12.2's Result card bar A/B this against a real federation
+ * scoresheet. GDD §7.3 names the result card a Tier 3 high-fidelity surface —
+ * large, static, where type has to read. The 192×240 nearest-neighbour grid
+ * above remains the §7.1 sprite-era artifact (`renderResultCard`); this block is
+ * what `ResultCardView` draws. The GDD does not resolve §7.1 "throughout"
+ * against those three sections for this surface. This file does not rewrite
+ * that conflict. Presentation follows the Result card bar.
+ *
+ * Authored against a 390-wide phone. UNTUNED (GDD §12.1).
+ */
+export const PAPER = {
+  W: 358,
+  PAD_X: 16,
+  PAD_Y: 16,
+  FED_SIZE: 11,
+  FED_TRACKING: 2.2,
+  DOCUMENT_SIZE: 11,
+  DOCUMENT_TRACKING: 2.2,
+  MEET_SIZE: 17,
+  META_SIZE: 11,
+  META_TRACKING: 0.4,
+  NAME_SIZE: 20,
+  CATEGORY_SIZE: 11,
+  CATEGORY_TRACKING: 0.3,
+  GRID_HEAD_SIZE: 10,
+  GRID_HEAD_TRACKING: 0.8,
+  LIFT_COL_W: 72,
+  CELL_H: 36,
+  CELL_FONT: 13,
+  LIFT_LABEL_SIZE: 11,
+  CELL_PAD: 4,
+  /** Inset of a good/miss fill inside its column, so the table rule stays visible. */
+  CELL_INSET: 1,
+  TOTAL_LABEL_SIZE: 11,
+  TOTAL_VALUE_SIZE: 28,
+  SCORE_LABEL_SIZE: 10,
+  SCORE_VALUE_SIZE: 16,
+  SCORE_H: 40,
+  FOOTER_SIZE: 10,
+  FOOTER_TRACKING: 1.8,
+  RULE: 1,
+  DOUBLE_RULE_GAP: 2,
+  SECTION_GAP: 12,
+  MASTHEAD_GAP: 4,
+  NAME_GAP: 4,
 } as const;

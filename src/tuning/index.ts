@@ -338,9 +338,10 @@ export const TUNING = Object.freeze({
   shell: Object.freeze({ SHELL_NAV, SHELL_LAYOUT, SHELL_COPY, MOTION_PRESSABLE }),
 
   /**
-   * THE RESULT CARD. Sheet layout in card pixels, plus `CARD_SCREEN`, the
-   * React Native chrome around it in logical points. The two are different
-   * units and the block comments say which is which.
+   * THE RESULT CARD. The §7.1 pixel grid (`CARD` etc.), plus `PAPER`, the
+   * shareable scoresheet in logical points, plus `CARD_SCREEN`, the React
+   * Native chrome around it. The GDD does not resolve §7.1 against §6.5 /
+   * §7.3 / §12.2's Result card bar; `PAPER` is the surface that bar grades.
    */
   card: Object.freeze({
     CARD: CARD_TUNING.CARD,
@@ -355,6 +356,7 @@ export const TUNING = Object.freeze({
     FOOTER: CARD_TUNING.FOOTER,
     CARD_LABELS: CARD_TUNING.CARD_LABELS,
     CARD_SCREEN: CARD_TUNING.CARD_SCREEN,
+    PAPER: CARD_TUNING.PAPER,
   }),
 
   /**

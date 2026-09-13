@@ -338,8 +338,10 @@ const PINNED = Object.freeze({
    * Evidence PNGs under `docs/design/evidence/` are unread binaries.
    *
    * 345 -> 346 with emptied-hall bookends: `src/meet/MeetBookendRoom.tsx`.
+   *
+   * 346 -> 347 with the shareable paper scoresheet: `src/card/paperSheet.test.ts`.
    */
-  SCANNED_FILES: 346,
+  SCANNED_FILES: 347,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -390,8 +392,10 @@ const PINNED = Object.freeze({
    * and `ironAmberWiring.test.ts`.
    *
    * 111 -> 112 with Meet Day stills: `src/meet/ironAmberHall.test.ts`.
+   *
+   * 112 -> 113 with the shareable paper scoresheet: `src/card/paperSheet.test.ts`.
    */
-  TEST_FILES: 112,
+  TEST_FILES: 113,
 });
 
 /**
