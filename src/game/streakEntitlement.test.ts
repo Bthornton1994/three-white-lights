@@ -1110,7 +1110,8 @@ const PURCHASED_DAY_SCAN = {
    * its eligibility rules mentions a purchase or a covered day, which is the
    * answer this pin exists to make somebody produce rather than assume.
    */
-  SOURCE_DIRECTORIES: 13,
+  /** 13 -> 14 with the shared motion primitive in `src/ui/`. */
+  SOURCE_DIRECTORIES: 14,
 
   /**
    * The files that currently contain at least one matching declaration, as

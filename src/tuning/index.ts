@@ -123,7 +123,7 @@ import {
   CUT_IN_PANEL,
   CUT_IN_TUNING,
 } from '../cutin/cutInTuning';
-import { SHELL_COPY, SHELL_LAYOUT, SHELL_NAV } from '../shell/shellTuning';
+import { MOTION_PRESSABLE, SHELL_COPY, SHELL_LAYOUT, SHELL_NAV } from '../shell/shellTuning';
 import { PALETTE_BANKS, PAL, RAMPS } from '../art/palette';
 import { GYM, GYM_BANKS, GYM_RAMPS } from '../art/gymPalette';
 import { SHEET, SHEET_BANK } from '../card/sheetPalette';
@@ -335,7 +335,7 @@ export const TUNING = Object.freeze({
    * live rep costs the rep — if that turns out to be over-cautious, this is the
    * line to move.
    */
-  shell: Object.freeze({ SHELL_NAV, SHELL_LAYOUT, SHELL_COPY }),
+  shell: Object.freeze({ SHELL_NAV, SHELL_LAYOUT, SHELL_COPY, MOTION_PRESSABLE }),
 
   /**
    * THE RESULT CARD. Sheet layout in card pixels, plus `CARD_SCREEN`, the

@@ -65,8 +65,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { MotionPressable } from '../ui/MotionPressable';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { LiftStage } from '../session/TrainingLiftStage';
 import { useLiftLoop } from '../lift/useLiftLoop';
@@ -151,7 +150,7 @@ export function AttemptView({
 
   return (
     <View style={styles.root} testID="meet-attempt" {...SUPPRESS_CONTEXT_MENU}>
-      <MotionPressable
+      <Pressable
         style={styles.stage}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
@@ -199,7 +198,7 @@ export function AttemptView({
               : resolution.detail}
           </Text>
         </View>
-      </MotionPressable>
+      </Pressable>
     </View>
   );
 }

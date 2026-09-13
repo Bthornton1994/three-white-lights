@@ -13,6 +13,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { MOTION_PRESSABLE } from '../shell/shellTuning';
+
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export interface MotionPressableProps
@@ -37,13 +39,13 @@ export function MotionPressable({
 }: MotionPressableProps): React.ReactElement {
   const pressed = useSharedValue(0);
   const pressStyle = useAnimatedStyle(() => ({
-    opacity: 1 - pressed.value * 0.08,
-    transform: [{ scale: 1 - pressed.value * 0.018 }],
+    opacity: 1 - pressed.value * (1 - MOTION_PRESSABLE.PRESSED_OPACITY),
+    transform: [{ scale: 1 - pressed.value * (1 - MOTION_PRESSABLE.PRESSED_SCALE) }],
   }));
 
   const handlePressIn = (event: GestureResponderEvent): void => {
     pressed.value = withTiming(1, {
-      duration: 90,
+      duration: MOTION_PRESSABLE.PRESS_IN_MS,
       reduceMotion: ReduceMotion.System,
     });
     onPressIn?.(event);
@@ -51,7 +53,7 @@ export function MotionPressable({
 
   const handlePressOut = (event: GestureResponderEvent): void => {
     pressed.value = withTiming(0, {
-      duration: 140,
+      duration: MOTION_PRESSABLE.PRESS_OUT_MS,
       reduceMotion: ReduceMotion.System,
     });
     onPressOut?.(event);

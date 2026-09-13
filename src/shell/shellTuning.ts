@@ -29,6 +29,19 @@ import type { CareerSurfacePhase } from '../meet/careerSurface';
 import type { LifterSurfacePhase } from '../meet/lifterSurface';
 
 /**
+ * Press feedback shared by non-mechanic controls.
+ *
+ * The lift surface itself remains a literal Pressable because its guardrail
+ * audits the exact touch target; this block tunes the surrounding chrome.
+ */
+export const MOTION_PRESSABLE = Object.freeze({
+  PRESSED_OPACITY: 0.92,
+  PRESSED_SCALE: 0.982,
+  PRESS_IN_MS: 90,
+  PRESS_OUT_MS: 140,
+});
+
+/**
  * WHEN THE SHELL'S CHROME IS ALLOWED ON SCREEN.
  *
  * Not a style choice: a navigation pill drawn over a live set is a mis-tap

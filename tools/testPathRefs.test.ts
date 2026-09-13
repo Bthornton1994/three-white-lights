@@ -330,8 +330,11 @@ const PINNED = Object.freeze({
    *
    * 341 -> 343 with Meet Day Iron & Amber stills: `ironAmberHall.ts` and
    * `ironAmberHall.test.ts`.
+   *
+   * 343 -> 344 with the shared press-feedback primitive:
+   * `src/ui/MotionPressable.tsx`.
    */
-  SCANNED_FILES: 343,
+  SCANNED_FILES: 344,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.

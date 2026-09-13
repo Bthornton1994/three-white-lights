@@ -92,8 +92,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { MotionPressable } from '../ui/MotionPressable';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -203,7 +202,7 @@ function ShellNav({
   const copy = INTENT_COPY[intent];
   return (
     <Animated.View style={style} pointerEvents="box-none">
-      <MotionPressable
+      <Pressable
         style={styles.nav}
         accessibilityRole="button"
         accessibilityLabel={copy.label}
@@ -213,7 +212,7 @@ function ShellNav({
         testID={`shell-${intent}`}
       >
         <Text style={styles.navLabel}>{copy.label}</Text>
-      </MotionPressable>
+      </Pressable>
     </Animated.View>
   );
 }
