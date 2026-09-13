@@ -62,7 +62,7 @@ const SRC_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '
 const meetLayoutSource = await readFile(path.join(SRC_ROOT, 'src/game/meetTuning.ts'), 'utf8');
 if (
   !meetLayoutSource.includes('HALL_HUD_HEIGHT: 64') ||
-  !meetLayoutSource.includes('HALL_COMMAND_HEIGHT: 140')
+  !meetLayoutSource.includes('HALL_COMMAND_HEIGHT: 180')
 ) {
   throw new Error(
     'capture-meet HALL_HUD_HEIGHT_PT / HALL_COMMAND_HEIGHT_PT no longer match MEET_LAYOUT',
@@ -180,7 +180,7 @@ const STAGED = new Set([
  * still measures the still, not the overlay lamps.
  */
 const HALL_HUD_HEIGHT_PT = 64;
-const HALL_COMMAND_HEIGHT_PT = 140;
+const HALL_COMMAND_HEIGHT_PT = 180;
 
 async function hallRegion() {
   const box = await page.evaluate(() => {

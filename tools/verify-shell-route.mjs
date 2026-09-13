@@ -4134,7 +4134,7 @@ const REP_HALL_SEEN = {
  * `meetTuning.ts` / `sessionTuning.ts` by `checkMeetRestatementsMatchTuning`.
  */
 const HALL_HUD_HEIGHT_RESTATED = 64;
-const HALL_COMMAND_HEIGHT_RESTATED = 140;
+const HALL_COMMAND_HEIGHT_RESTATED = 180;
 const CUE_Y_RATIO_RESTATED = 0.58;
 /**
  * Instrument margin above the cue centre, in CSS pixels. Not a game-feel
