@@ -1992,6 +1992,17 @@ const note = (text) => {
   observations.push(entry);
   log.push(entry);
 };
+/**
+ * A named check that could not be run on the played path — neither a pass
+ * nor a fail. `check(false, 'SKIPPED: …')` still counts as a failure; use
+ * this when the beat is real in the app but the A2 Create federation pick
+ * means the played arm never mounts it.
+ */
+const skipped = [];
+const skip = (what, why) => {
+  skipped.push({ what, why });
+  log.push(`  SKIP  ${what} — ${why}`);
+};
 
 const browser = await chromium.launch({
   args: [
@@ -8236,6 +8247,7 @@ await writeFile(
       careerLegs,
       checks,
       notes: observations,
+      skipped,
       failures,
       pageErrors,
     },
@@ -8252,5 +8264,5 @@ if (failures.length > 0) {
   process.exit(1);
 }
 console.log(
-  `PASSED ${checks.length} checks against the running app (and ${observations.length} note(s), which are not checks).`,
+  `PASSED ${checks.length} checks against the running app (and ${observations.length} note(s) and ${skipped.length} named skip(s), which are not checks).`,
 );
