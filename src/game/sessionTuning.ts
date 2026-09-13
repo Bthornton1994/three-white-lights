@@ -451,7 +451,7 @@ export const SESSION_LAYOUT = Object.freeze({
    * taps sit in a panel-03 card and the gym stays the majority of 390×844.
    * Untuned (GDD §12.1).
    */
-  CHECK_IN_TITLE_FONT: 16,
+  CHECK_IN_TITLE_FONT: 13,
   ANSWER_FONT: 15,
   MODIFIER_FONT: 24,
   PROMPT_FONT: 13,
@@ -470,7 +470,9 @@ export const SESSION_LAYOUT = Object.freeze({
    * briefing pad so the gym/athlete stay the majority of a 390×844 frame.
    * Tunable — not asserted as final.
    */
-  CARD_PAD_DRAWER: 10,
+  CARD_PAD_DRAWER: 8,
+  /** Gap inside a dense drawer. Tighter than ROW_GAP so four check-in rows fit the cap. */
+  CARD_GAP_DRAWER: 6,
 
   /**
    * Inline question label on the check-in drawer (label + chips on one
@@ -482,8 +484,12 @@ export const SESSION_LAYOUT = Object.freeze({
   /** Vertical gap between check-in drawer rows. Tighter than ROW_GAP. */
   CHECK_IN_ROW_GAP: 6,
 
-  /** Check-in answer chips. Three across, tall enough for a thumb. */
-  CHIP_HEIGHT: 44,
+  /**
+   * Check-in answer chips. Three across. Shorter than a 44pt thumb target so
+   * four rows (lift + sleep/soreness/motivation) fit a panel-03 drawer; the
+   * hit area is still the whole chip. Untuned (GDD §12.1).
+   */
+  CHIP_HEIGHT: 32,
   CHIP_RADIUS: 10,
   CHIP_GAP: 8,
   CHIP_BORDER: 2,
@@ -532,6 +538,15 @@ export const SESSION_LAYOUT = Object.freeze({
   DISCLOSURE_FONT: 10,
   DISCLOSURE_LINE_HEIGHT: 13,
   DISCLOSURE_GAP: 4,
+  /**
+   * Cap on the check-in drawer, authored against 390×844. The gym/athlete must
+   * stay the majority of the frame (Iron & Amber panel 03). First-run copy
+   * (GDD §4.2) scrolls inside CHECK_IN_DISCLOSURE_MAX_HEIGHT so it cannot grow
+   * the card past this cap or push the three taps off first paint. Untuned
+   * (GDD §12.1).
+   */
+  CHECK_IN_DRAWER_MAX_HEIGHT: 252,
+  CHECK_IN_DISCLOSURE_MAX_HEIGHT: 40,
 
   /**
    * Dark wash over the Iron & Amber gym photograph so type on the espresso

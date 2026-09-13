@@ -76,6 +76,7 @@ export function IronAmberCard({
   children,
   testID,
   dense = false,
+  maxHeight,
 }: {
   readonly children: React.ReactNode;
   readonly testID?: string;
@@ -84,9 +85,21 @@ export function IronAmberCard({
    * must leave the gym in frame (Iron & Amber panel 03).
    */
   readonly dense?: boolean;
+  /**
+   * Check-in only. Caps the drawer so the gym stays the majority of 390×844.
+   * Close-out and briefing omit it.
+   */
+  readonly maxHeight?: number;
 }): React.ReactElement {
   return (
-    <View style={[styles.card, dense ? styles.cardDense : null]} testID={testID}>
+    <View
+      style={[
+        styles.card,
+        dense ? styles.cardDense : null,
+        maxHeight === undefined ? null : [styles.cardCapped, { maxHeight }],
+      ]}
+      testID={testID}
+    >
       {children}
     </View>
   );
@@ -231,5 +244,9 @@ const styles = StyleSheet.create({
   },
   cardDense: {
     padding: L.CARD_PAD_DRAWER,
+    gap: L.CARD_GAP_DRAWER,
+  },
+  cardCapped: {
+    overflow: 'hidden',
   },
 });

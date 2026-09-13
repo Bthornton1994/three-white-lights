@@ -32,7 +32,7 @@
  */
 
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MotionPressable } from '../ui/MotionPressable';
 
 import { SESSION_COPY, SESSION_LAYOUT, SESSION_TUNING, type CheckInQuestion } from '../game/sessionTuning';
@@ -130,8 +130,9 @@ export function CheckInView({
       testID="session-check-in"
       gymTestID="iron-amber-check-in-gym"
       liftKind={lift}
+      scroll={false}
     >
-      <IronAmberCard dense>
+      <IronAmberCard dense maxHeight={L.CHECK_IN_DRAWER_MAX_HEIGHT}>
         <Text style={styles.title}>{SESSION_COPY.CHECK_IN_TITLE}</Text>
         <View style={styles.row} testID="check-in-lift">
           <Text style={styles.question}>{SESSION_COPY.CHECK_IN_LIFT_QUESTION}</Text>
@@ -192,7 +193,13 @@ export function CheckInView({
           block is a footnote, not a wall — A-VIS-01: facility stays first.
         */}
         {disclosures.length > 0 ? (
-          <View style={styles.disclosures} testID="check-in-disclosures">
+          <ScrollView
+            style={styles.disclosureScroll}
+            contentContainerStyle={styles.disclosureScrollContent}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+            testID="check-in-disclosures"
+          >
             <Text style={styles.disclosureTitle}>{SESSION_COPY.FIRST_RUN_TITLE}</Text>
             {disclosures.map((disclosure) => (
               <Text
@@ -203,7 +210,7 @@ export function CheckInView({
                 {disclosure.line}
               </Text>
             ))}
-          </View>
+          </ScrollView>
         ) : null}
       </IronAmberCard>
     </IronAmberRoom>
@@ -255,7 +262,10 @@ const styles = StyleSheet.create({
     color: SESSION_PALETTE.IVORY,
     fontWeight: '700',
   },
-  disclosures: {
+  disclosureScroll: {
+    maxHeight: L.CHECK_IN_DISCLOSURE_MAX_HEIGHT,
+  },
+  disclosureScrollContent: {
     gap: L.DISCLOSURE_GAP,
   },
   disclosureTitle: {

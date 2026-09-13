@@ -95,6 +95,9 @@ describe('Iron & Amber training path wiring', () => {
     expect(room).toContain('CARD_PAD_DRAWER');
     expect(source('CheckInView.tsx')).toContain('liftKind={lift}');
     expect(source('CheckInView.tsx')).toContain('<IronAmberCard dense');
+    expect(source('CheckInView.tsx')).toContain('CHECK_IN_DRAWER_MAX_HEIGHT');
+    expect(source('CheckInView.tsx')).toContain('CHECK_IN_DISCLOSURE_MAX_HEIGHT');
+    expect(source('CheckInView.tsx')).toContain('scroll={false}');
     expect(source('CloseOutView.tsx')).toContain('liftKind={closeOut.lift}');
     expect(source('CloseOutView.tsx')).toContain('<IronAmberCard dense');
     expect(source('CloseOutView.tsx')).toContain('DRAWER_NUMBER_FONT');

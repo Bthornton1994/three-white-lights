@@ -402,6 +402,16 @@ describe('no feel value lives outside sessionTuning.ts', () => {
     }
   });
 
+  it('the check-in drawer leaves the gym the majority of the 390×844 frame', () => {
+    // Authored against SESSION_LAYOUT's own 390×844 note. The gym is the
+    // majority when the docked drawer plus the pill-band clearance is less
+    // than half the frame — Iron & Amber panel 03, not a full-screen form.
+    const frame = 844;
+    expect(
+      SESSION_LAYOUT.CHECK_IN_DRAWER_MAX_HEIGHT + SESSION_LAYOUT.ROOM_FOOT_CLEARANCE,
+    ).toBeLessThan(frame / 2);
+  });
+
   it('the screens read their geometry from SESSION_LAYOUT', () => {
     const code = uiSources.map((s) => codeOnly(s.source)).join('\n');
     const used = Object.keys(SESSION_LAYOUT).filter((key) => code.includes(key));
