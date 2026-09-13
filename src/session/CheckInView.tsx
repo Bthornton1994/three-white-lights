@@ -28,7 +28,8 @@
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
 
 import { SESSION_COPY, SESSION_LAYOUT, SESSION_TUNING, type CheckInQuestion } from '../game/sessionTuning';
 import type { CheckInTap, PartialCheckIn } from '../game/session';
@@ -130,7 +131,7 @@ export function CheckInView({
             {SESSION_TUNING.LIFT_ROTATION.map((option) => {
               const isChosen = option === lift;
               return (
-                <Pressable
+                <MotionPressable
                   key={option}
                   testID={`check-in-lift-${option}`}
                   accessibilityRole="button"
@@ -142,7 +143,7 @@ export function CheckInView({
                   <Text style={[styles.chipLabel, isChosen ? styles.chipLabelChosen : null]}>
                     {SESSION_COPY.LIFT_LABEL[option]}
                   </Text>
-                </Pressable>
+                </MotionPressable>
               );
             })}
           </View>
@@ -156,7 +157,7 @@ export function CheckInView({
                 {row.options.map((option) => {
                   const isChosen = chosen === option.value;
                   return (
-                    <Pressable
+                    <MotionPressable
                       key={option.value}
                       testID={`check-in-${row.question}-${option.value}`}
                       accessibilityRole="button"
@@ -168,7 +169,7 @@ export function CheckInView({
                       <Text style={[styles.chipLabel, isChosen ? styles.chipLabelChosen : null]}>
                         {option.label}
                       </Text>
-                    </Pressable>
+                    </MotionPressable>
                   );
                 })}
               </View>
