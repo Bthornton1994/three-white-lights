@@ -1,9 +1,9 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-09-13T20:51:56.228Z",
+    "capturedAt": "2026-09-13T22:41:49.600Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/workspace",
-    "commit": "820b03c2",
+    "commit": "c2f966e1",
     "branch": "cursor/session-a-iron-amber-quality-1c66",
     "workingTree": "clean",
     "dirtyPaths": [
@@ -13,8 +13,7 @@
       " M .gauntlet/shots/cutin-cap/leg-2-bombed.png",
       " M .gauntlet/shots/cutin/debug-meet-bombed.png",
       " M .gauntlet/shots/cutin/frames.json",
-      " M .gauntlet/shots/cutin/live-after-auto-dismiss.png",
-      " M .gauntlet/shots/cutin/live-mid-hold.png",
+      " M .gauntlet/shots/cutin/live-after-tap.png",
       " M .gauntlet/shots/lift-press/press.json",
       " M .gauntlet/shots/meet/sound.json",
       " M .gauntlet/shots/shell/02-meet-from-session.png",
@@ -251,9 +250,9 @@
     }
   ],
   "leavesOnItsOwn": {
-    "stillUpAt": 701,
+    "stillUpAt": 702,
     "stillUp": true,
-    "goneAt": 900,
+    "goneAt": 915,
     "behind": true
   },
   "tapDismissed": {
