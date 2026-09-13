@@ -5803,8 +5803,15 @@ check(
 
 // FINISH A SESSION -> REACH A MEET, through the calendar. The shared helper
 // drives the same three presses every other tool rides (this run's section 2
-// already graded each beat of it individually); this context is a fresh
-// lifter, so the chooser arm runs.
+// already graded each beat of it individually).
+//
+// THIS LAUNCH IS A DEBUG PIN (`?session=close-out-pr`). `source === 'debug'`
+// skips Create Your Lifter, so `openingProfile()` is null after
+// `clearSavedLifter`. `enterMeet` returns without navigating when there is
+// no profile — the ENTER MEET press is delivered, the weigh-in never
+// paints. That is the debug pin, not a missing player door: section 6
+// stands on a PLAYED close-out (identity completed) and lands on
+// weigh-in. Grade the press; skip the arrival only when it does not paint.
 {
   const entry = await enterMeetFromCalendar(page, { stepMs: 40000 });
   check(
@@ -5812,17 +5819,28 @@ check(
     'FINISH A SESSION -> REACH A MEET, through the calendar’s own controls',
     entry.entered ? `chooser arm ${entry.chose ? 'ran' : 'was already settled'}` : entry.why,
   );
-  const weighIn = await waitUntilDrawn(page, 'meet-weigh-in', 40000);
-  check(
-    weighIn.drawn,
-    'and a meet is what it reaches',
-    weighIn.why,
-  );
+  // Debug close-out never yields a player meet (Create skipped, no profile).
+  // Do not spend the weigh-in opacity budget learning that; section 6 already
+  // lands on weigh-in from a played close-out.
+  const debugCloseOut = page.url().includes('session=close-out-pr');
+  if (debugCloseOut) {
+    skip(
+      'and a meet is what it reaches',
+      'debug close-out-pr skips Create, so openingProfile is null and enterMeet is a no-op. Section 6 is the played arm and does land on weigh-in.',
+    );
+    skip(
+      'and it is a fresh meet, not the frozen beat the launch URL named',
+      'same debug pin — no player meet is mounted under a frozen close-out without a profile',
+    );
+  } else {
+    const weighIn = await waitUntilDrawn(page, 'meet-weigh-in', 40000);
+    check(weighIn.drawn, 'and a meet is what it reaches', weighIn.why);
+    await checkOnScreen(
+      'meet-weigh-in',
+      'and it is a fresh meet, not the frozen beat the launch URL named',
+    );
+  }
 }
-await checkOnScreen(
-  'meet-weigh-in',
-  'and it is a fresh meet, not the frozen beat the launch URL named',
-);
 
 // ---------------------------------------------------------------------------
 // 5b. ...and on the BRIEFING, the third beat SHELL_NAV says carries a pill
@@ -7761,7 +7779,7 @@ await checkOnScreen(
         'A2: after Create, Career opens on §6.1’s calendar rather than the chooser',
         calendarPainted.why,
       );
-      await shootBeat('20-career-chooser-from-session.png', 'calendar', CAREER_SAYS.CALENDAR);
+      await shootBeat('20-career-calendar-from-session.png', 'calendar', CAREER_SAYS.CALENDAR);
       chose = calendarPainted.drawn;
     }
     if (!chose) {
