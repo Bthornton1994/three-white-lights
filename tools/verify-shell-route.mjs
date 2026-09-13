@@ -649,6 +649,8 @@ const CAREER_TIER_ROWS = Object.freeze([
 const CAREER_FED_IDS = Object.freeze(['meridian', 'ironline', 'grandhall', 'anvil-coast']);
 /** CAREER_FEDERATIONS[1].name — the calendar the fresh leg lands on. */
 const CAREER_IRONLINE_NAME = 'Ironline Open Alliance';
+/** CAREER_FEDERATIONS meridian — the federation A2 Create submits (`CREATE_LIFTER.FED`). */
+const CAREER_MERIDIAN_NAME = 'Meridian Barbell Union';
 
 /**
  * WHAT EACH PHOTOGRAPHED BEAT SAYS ON SCREEN, so a filename can be checked
@@ -1816,14 +1818,17 @@ const CHROME_BAND_CLEARANCE_PX = NAV_TOP_Y - CHROME_BAND_TOP_Y;
  * that, because the line count is the tight half and a pixel ceiling one font
  * metric away from red would be a flaky check rather than a strict one.
  *
- *     22 x 1.35  +  ROW_GAP 10  +  13 x 1.35  =  57.25 px
+ *     22 x 1.40  +  ROW_GAP 10  +  13 x 1.40  =  59.00 px
  *
- * against a block that measures 26 + 10 + 15 = 51.
+ * against a block that measures 26 + 10 + 15 = 51 on the sprite-era
+ * layout and 58px on Iron Amber (same 22/13 fonts and 10px gap; this
+ * host's line-height is ~1.37). 1.35 left 0.75px of slack and reddened
+ * a two-line card. The line COUNT is still the tight half.
  */
 const ALREADY_TRAINED_LINES = Object.freeze({ HEADLINE: 1, SUBHEAD: 1 });
 const ALREADY_TRAINED_MAX_LINE_BOXES =
   ALREADY_TRAINED_LINES.HEADLINE + ALREADY_TRAINED_LINES.SUBHEAD;
-const LINE_BOX_FACTOR = 1.35;
+const LINE_BOX_FACTOR = 1.4;
 const ALREADY_TRAINED_MAX_COPY_HEIGHT_PX =
   ALREADY_TRAINED_LINES.HEADLINE * SESSION_LAYOUT_RESTATED.HEADLINE_FONT * LINE_BOX_FACTOR +
   SESSION_LAYOUT_RESTATED.ROW_GAP +
@@ -3152,12 +3157,24 @@ async function checkNavTableMatchesTuning() {
   const sawItOn = [...pillDrawnOnBeatInTheBrowser].sort();
   const neverSeen = shouldCarry.filter((beat) => !sawItOn.includes(beat));
   const unexpected = sawItOn.filter((beat) => !shouldCarry.includes(beat));
+  // A2 Create Your Lifter submits the federation (`completeCreateIfNeeded`
+  // presses `lifter-fed-meridian`). GDD §2.1's Career chooser still exists
+  // for chosen:false leftover rows and SHELL_NAV still lists `choosing`,
+  // but the played path never mounts it. A listed beat with no sighting
+  // would otherwise read as a missing pill rather than a spent pick.
+  if (neverSeen.includes('choosing')) {
+    skip(
+      'EVERY beat SHELL_NAV says carries a pill was SEEN DRAWN and HIT-TESTED in a browser above — choosing',
+      'A2 Create spends GDD §2.1’s pick; the played path opens Career on the calendar. The chooser remains a real beat for chosen:false rows.',
+    );
+  }
+  const neverSeenPlayed = neverSeen.filter((beat) => beat !== 'choosing');
   check(
-    neverSeen.length === 0 && unexpected.length === 0,
+    neverSeenPlayed.length === 0 && unexpected.length === 0,
     'EVERY beat SHELL_NAV says carries a pill was SEEN DRAWN and HIT-TESTED in a browser above, and no other beat was',
-    neverSeen.length === 0 && unexpected.length === 0
+    neverSeenPlayed.length === 0 && unexpected.length === 0
       ? `${sawItOn.length} of ${shouldCarry.length}: ${sawItOn.join(', ')}`
-      : `${neverSeen.length > 0 ? `listed and never seen with a pill on it: ${neverSeen.join(', ')}. ` : ''}` +
+      : `${neverSeenPlayed.length > 0 ? `listed and never seen with a pill on it: ${neverSeenPlayed.join(', ')}. ` : ''}` +
         `${unexpected.length > 0 ? `seen with a pill and not listed: ${unexpected.join(', ')}.` : ''}`,
   );
 }
@@ -5150,23 +5167,47 @@ check(
 // PRESS BY PRESS RATHER THAN THROUGH THE SHARED HELPER, because this is the
 // section that GRADES the entry path itself: every other tool rides
 // `enterMeetFromCalendar.mjs` and this is where each of its beats is asserted
-// against the app. A fresh lifter has no federation, so the calendar's gate —
-// GDD §2.1's one pick — is part of the path to a first meet, and it is driven
-// here rather than skipped around.
+// against the app.
+//
+// A2 Create Your Lifter submits the federation (`lifter-fed-meridian`).
+// After identity, Career opens on §6.1's calendar. The chooser remains
+// for chosen:false leftover rows; the played first-meet path does not
+// mount it. Drive whichever beat is actually up.
 await press(
   NAV_OPEN_CAREER,
   'career-screen',
   'PRESSING IT OPENS THE CAREER SURFACE — no URL typed, no query string',
 );
-await checkOnScreen(
-  'career-choosing',
-  'a fresh lifter meets GDD §2.1’s chooser first: the pick gates the calendar, and no meet exists behind an unchosen federation',
-);
-await press(
-  'career-fed-meridian',
-  'career-calendar',
-  'CHOOSING A FEDERATION SETTLES INTO §6.1’s CALENDAR — the choose round trip ran through the app’s own machinery',
-);
+{
+  const chooser = await onScreen('career-choosing');
+  const calendar = await onScreen('career-calendar');
+  if (chooser.on) {
+    check(
+      true,
+      'a fresh lifter meets GDD §2.1’s chooser first: the pick gates the calendar, and no meet exists behind an unchosen federation',
+      chooser.why,
+    );
+    await press(
+      'career-fed-meridian',
+      'career-calendar',
+      'CHOOSING A FEDERATION SETTLES INTO §6.1’s CALENDAR — the choose round trip ran through the app’s own machinery',
+    );
+  } else {
+    skip(
+      'a fresh lifter meets GDD §2.1’s chooser first: the pick gates the calendar, and no meet exists behind an unchosen federation',
+      'A2 Create already chose the federation; Career opens on the calendar rather than the chooser',
+    );
+    skip(
+      'CHOOSING A FEDERATION SETTLES INTO §6.1’s CALENDAR — the choose round trip ran through the app’s own machinery',
+      'the pick was spent at Create Your Lifter; a second choose-federation is a server refusal',
+    );
+    check(
+      calendar.on,
+      'A2: after Create, Career opens on §6.1’s calendar — the federation pick is already spent',
+      calendar.why,
+    );
+  }
+}
 check(
   !page.url().includes('?'),
   'CONTROL: the calendar is the one the PLAYER reached — no query string at the moment it is read',
@@ -5760,11 +5801,12 @@ check(
     'FINISH A SESSION -> REACH A MEET, through the calendar’s own controls',
     entry.entered ? `chooser arm ${entry.chose ? 'ran' : 'was already settled'}` : entry.why,
   );
-  await page
-    .getByTestId('meet-screen')
-    .waitFor({ state: 'visible', timeout: 40000 })
-    .catch(() => {});
-  check(await visible('meet-screen'), 'and a meet is what it reaches');
+  const weighIn = await waitUntilDrawn(page, 'meet-weigh-in', 40000);
+  check(
+    weighIn.drawn,
+    'and a meet is what it reaches',
+    weighIn.why,
+  );
 }
 await checkOnScreen(
   'meet-weigh-in',
@@ -7639,42 +7681,78 @@ await checkOnScreen(
       `the page is on ${JSON.stringify(page.url())}`,
     );
     check(!(await visible('session-screen')), 'and the daily session is no longer on screen');
-    const chooserPainted = await waitUntilDrawn(page, 'career-choosing', settleMs);
-    check(
-      chooserPainted.drawn,
-      'GDD §2.1’s chooser has PAINTED — opacity, not merely mounted after a cold hydrate',
-      chooserPainted.why,
-    );
-    await checkOnScreen(
-      'career-choosing',
-      'GDD §2.1’s chooser is what a fresh lifter gets — `chosen` is false, so the calendar is gated behind the pick',
-    );
-    check(
-      !(await visible('career-calendar')),
-      'and the calendar is NOT drawn beside it — the gate is a gate, not a default',
-    );
-    for (const fed of CAREER_FED_IDS) {
-      await checkOnScreen(`career-fed-${fed}`, `the ${fed} card is drawn — one per federation, §2.1’s four`);
+    const calendarPainted = await waitUntilDrawn(page, 'career-calendar', settleMs);
+    const chooserPainted = await onScreen('career-choosing');
+    let chose = false;
+    if (chooserPainted.on) {
+      check(
+        chooserPainted.on,
+        'GDD §2.1’s chooser has PAINTED — opacity, not merely mounted after a cold hydrate',
+        chooserPainted.why,
+      );
+      await checkOnScreen(
+        'career-choosing',
+        'GDD §2.1’s chooser is what a fresh lifter gets — `chosen` is false, so the calendar is gated behind the pick',
+      );
+      check(
+        !(await visible('career-calendar')),
+        'and the calendar is NOT drawn beside it — the gate is a gate, not a default',
+      );
+      for (const fed of CAREER_FED_IDS) {
+        await checkOnScreen(`career-fed-${fed}`, `the ${fed} card is drawn — one per federation, §2.1’s four`);
+      }
+
+      const chooserLeave = await waitUntilDrawn(page, NAV_LEAVE_CAREER, CHROME_WINDOWS.pillArrivalMs);
+      check(
+        chooserLeave.drawn,
+        `the way back is on the chooser (${NAV_LEAVE_CAREER}) — a player may walk away without choosing`,
+        `${chooserLeave.why} — bound ${CHROME_WINDOWS.pillArrivalMs}ms`,
+      );
+      const chooserLeaveHit = await hitTest(NAV_LEAVE_CAREER);
+      check(chooserLeaveHit.hit, 'and it is what a thumb would hit there', `elementFromPoint -> ${chooserLeaveHit.why}`);
+      sawPillOn('choosing', openCareerDrawn && chooserLeave.drawn, chooserLeaveHit.hit);
+      await shootBeat('20-career-chooser-from-session.png', 'chooser', CAREER_SAYS.CHOOSER);
+
+      chose = await press(
+        'career-fed-ironline',
+        'career-calendar',
+        'CHOOSING A FEDERATION SETTLES INTO THE CALENDAR — the optimistic round trip, driven end to end on a press',
+      );
+    } else {
+      skip(
+        'GDD §2.1’s chooser has PAINTED — opacity, not merely mounted after a cold hydrate',
+        'A2 Create already spent the pick; career-choosing is not mounted',
+      );
+      skip(
+        'GDD §2.1’s chooser is what a fresh lifter gets — `chosen` is false, so the calendar is gated behind the pick',
+        'A2 Create Your Lifter submits the federation; Career opens on the calendar',
+      );
+      skip(
+        'and the calendar is NOT drawn beside it — the gate is a gate, not a default',
+        'the calendar is the beat this lifter is on',
+      );
+      for (const fed of CAREER_FED_IDS) {
+        skip(
+          `the ${fed} card is drawn — one per federation, §2.1’s four`,
+          'the chooser is not mounted after A2 Create',
+        );
+      }
+      skip(
+        `the way back is on the chooser (${NAV_LEAVE_CAREER}) — a player may walk away without choosing`,
+        'the chooser is not mounted; the leave pill is asserted on the calendar below',
+      );
+      skip(
+        'CHOOSING A FEDERATION SETTLES INTO THE CALENDAR — the optimistic round trip, driven end to end on a press',
+        'the pick was spent at Create; a second choose-federation is a server refusal',
+      );
+      check(
+        calendarPainted.drawn,
+        'A2: after Create, Career opens on §6.1’s calendar rather than the chooser',
+        calendarPainted.why,
+      );
+      await shootBeat('20-career-chooser-from-session.png', 'calendar', CAREER_SAYS.CALENDAR);
+      chose = calendarPainted.drawn;
     }
-
-    // THE CHOOSER IS NOT A TRAP. Both of the surface's beats carry the way
-    // back; this is the 'choosing' sighting the permission-side pin grades.
-    const chooserLeave = await waitUntilDrawn(page, NAV_LEAVE_CAREER, CHROME_WINDOWS.pillArrivalMs);
-    check(
-      chooserLeave.drawn,
-      `the way back is on the chooser (${NAV_LEAVE_CAREER}) — a player may walk away without choosing`,
-      `${chooserLeave.why} — bound ${CHROME_WINDOWS.pillArrivalMs}ms`,
-    );
-    const chooserLeaveHit = await hitTest(NAV_LEAVE_CAREER);
-    check(chooserLeaveHit.hit, 'and it is what a thumb would hit there', `elementFromPoint -> ${chooserLeaveHit.why}`);
-    sawPillOn('choosing', openCareerDrawn && chooserLeave.drawn, chooserLeaveHit.hit);
-    await shootBeat('20-career-chooser-from-session.png', 'chooser', CAREER_SAYS.CHOOSER);
-
-    const chose = await press(
-      'career-fed-ironline',
-      'career-calendar',
-      'CHOOSING A FEDERATION SETTLES INTO THE CALENDAR — the optimistic round trip, driven end to end on a press',
-    );
     if (!chose) {
       check(false, 'SKIPPED: the calendar checks need the federation choice to have landed');
     } else {
@@ -7698,7 +7776,7 @@ await checkOnScreen(
         rowsSeen.push({ tier, drawn, text });
       }
       check(
-        rowsSeen.every((row) => row.text !== null && row.text.includes('Ironline')),
+        rowsSeen.every((row) => row.text !== null && row.text.includes(chooserPainted.on ? 'Ironline' : 'Meridian')),
         'EVERY row is the CHOSEN federation’s — the choice reached the server and came back on the snapshot, not a default render',
         rowsSeen.map((row) => `${row.tier}: ${JSON.stringify((row.text ?? '').slice(0, 60))}`).join('; '),
       );
@@ -8084,6 +8162,11 @@ async function checkCareerRestatementsMatchTuning() {
       careerText.includes(`name: '${CAREER_IRONLINE_NAME}'`),
       'and the name the fresh leg reads off the chosen calendar is the federation’s own',
       `looked for name: '${CAREER_IRONLINE_NAME}' in careerTuning.ts`,
+    );
+    check(
+      careerText.includes(`name: '${CAREER_MERIDIAN_NAME}'`),
+      'and the name A2 Create submits is the federation’s own',
+      `looked for name: '${CAREER_MERIDIAN_NAME}' in careerTuning.ts`,
     );
   }
 
