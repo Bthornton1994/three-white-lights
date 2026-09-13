@@ -27,7 +27,8 @@
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
 
 import { SESSION_COPY, SESSION_LAYOUT } from '../game/sessionTuning';
 import { useOfferCutIn } from '../cutin/CutInHost';
@@ -65,7 +66,7 @@ export function RestView({
   useOfferCutIn([{ kind: 'work-set', loadRatio, isTopSet: true }]);
 
   return (
-    <Pressable
+    <MotionPressable
       style={styles.press}
       onPress={onBeginSet}
       accessibilityRole="button"
@@ -92,7 +93,7 @@ export function RestView({
           <Text style={styles.weight}>{`${weightKg} kg`}</Text>
         </IronAmberCard>
       </IronAmberRoom>
-    </Pressable>
+    </MotionPressable>
   );
 }
 
