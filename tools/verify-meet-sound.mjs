@@ -61,7 +61,7 @@
 import { chromium } from 'playwright';
 import { gateDevServer } from './devServerSentinel.mjs';
 import { armFreshLifterPerBoot } from './freshLifterBoundary.mjs';
-import { enterMeetFromCalendar } from './enterMeetFromCalendar.mjs';
+import { enterMeetFromCalendar, completeCreateIfNeeded } from './enterMeetFromCalendar.mjs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -787,25 +787,23 @@ const ruleForLine = (line) =>
   PLAYED_WALKOUT_CUES.find((r) => (line ?? '').includes(r.line)) ?? null;
 
 await page.goto(url, { waitUntil: 'load' });
-let openedOnSession = true;
+const created = await completeCreateIfNeeded(page);
+let openedOnSession = created.why == null;
 try {
   // The same cold-start deadline every beat in section 1 waits on. A first load
-  // has to bundle before it can draw anything.
+  // has to bundle before it can draw anything. A2 Create Your Lifter is in
+  // front of that screen on a fresh lifter; complete it first or this wait
+  // photographs the form for two minutes and reports the session never drew.
+  if (created.why) throw new Error(created.why);
   await page.getByTestId('session-screen').waitFor({ state: 'visible', timeout: COLD_LOAD_TIMEOUT_MS });
 } catch {
   openedOnSession = false;
 }
-// The way in is Sprint 1c's calendar drive — CAREER pill, chooser if asked,
-// then a row's ENTER MEET — shared with every tool in
-// `enterMeetFromCalendar.mjs`. `MEET_DRIVE.BEAT_TIMEOUT_MS` per step, so this
-// section introduces no deadline of its own: the driver's own three presses
-// use the same one, and a second number here would be a second answer to "the
-// app has stopped advancing". It is a robot's patience, not game feel.
 const entryDrawn = openedOnSession
   ? await enterMeetFromCalendar(page, { stepMs: MEET_DRIVE.BEAT_TIMEOUT_MS }).then((entry) =>
       entry.entered ? { drawn: true, why: 'entered' } : { drawn: false, why: entry.why },
     )
-  : { drawn: false, why: 'the app never drew the daily session' };
+  : { drawn: false, why: created.why ?? 'the app never drew the daily session' };
 if (entryDrawn.drawn) {
   try {
     await page

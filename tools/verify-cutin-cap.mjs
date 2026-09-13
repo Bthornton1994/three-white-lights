@@ -200,7 +200,7 @@
 import { chromium } from 'playwright';
 import { gateDevServer } from './devServerSentinel.mjs';
 import { armFreshLifterPerBoot } from './freshLifterBoundary.mjs';
-import { enterMeetFromCalendar } from './enterMeetFromCalendar.mjs';
+import { enterMeetFromCalendar, completeCreateIfNeeded } from './enterMeetFromCalendar.mjs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -1169,6 +1169,10 @@ let teardowns = 0;
 let drive = null;
 
 await page.goto(url, { waitUntil: 'load' });
+const created = await completeCreateIfNeeded(page);
+if (created.why) {
+  check(false, "the app opens on GDD §3.2's daily session with no query string", created.why);
+}
 const booted = await until((s) => s.checkIn, CAP_DRIVE.BOOT_TIMEOUT_MS);
 check(booted.ok, "the app opens on GDD §3.2's daily session with no query string", `search=${JSON.stringify(booted.state.search)} after ${booted.ms}ms`);
 check(booted.state.search === '', 'CONTROL: the address bar carries no query string — this is the played arm, not a debug frame', JSON.stringify(booted.state.search));
