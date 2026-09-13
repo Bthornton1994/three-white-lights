@@ -495,6 +495,60 @@ export const SESSION_LAYOUT = Object.freeze({
   DISCLOSURE_FONT: 11,
   DISCLOSURE_LINE_HEIGHT: 16,
   DISCLOSURE_GAP: 8,
+
+  /**
+   * Dark wash over the Iron & Amber gym photograph so type on the espresso
+   * card stays readable. The gym is the room; this is contrast, not a
+   * second backdrop.
+   */
+  BRIEFING_SCRIM: 0.32,
+  BRIEFING_CARD_PAD: 18,
+  BRIEFING_CARD_RADIUS: 14,
+  BRIEFING_CARD_BORDER: 1,
+  BRIEFING_CARD_MARGIN_V: 24,
+
+  /**
+   * Gym-as-room chrome. The card docks above the shell's pill band
+   * (`SHELL_LAYOUT` 44 + two wrapping 38px rows + gap). Brand sits at the
+   * top like the Iron & Amber mockup. Untuned (GDD §12.1).
+   */
+  ROOM_FOOT_CLEARANCE: 140,
+  ROOM_BRAND_PAD_TOP: 28,
+  ROOM_BODY_PAD_TOP: 88,
+
+  /** Compact HUD over the live-set plate. Untuned (GDD §12.1). */
+  SET_HUD_PAD: 10,
+  SET_HUD_HEIGHT: 56,
+  SET_HUD_SCRIM: 0.42,
+  SET_COMMAND_HEIGHT: 92,
+  SET_COMMAND_SCRIM: 0.55,
+
+  /** Wordmark + three lights. Nostalgia as a restrained accent, not a sprite. */
+  BRAND_TRACK: 4,
+  BRAND_LIGHT_R: 4,
+  BRAND_LIGHT_GAP: 6,
+  BRAND_GAP: 10,
+  BRAND_LIGHT_COUNT: 3,
+});
+
+/**
+ * Height cuts and crop for Iron & Amber training plates. Authored here so
+ * `src/session/` does not grow bare literals. Deadlift cuts must never select
+ * a squat plate. Cue placement is a fraction of the live plate box — not
+ * sprite-era `CUE_X` / `CUE_Y`.
+ */
+export const IRON_AMBER = Object.freeze({
+  SQUAT_HOLE_MAX: 0.42,
+  BENCH_CHEST_MAX: 0.4,
+  DEADLIFT_FLOOR_MAX: 0.34,
+  DEADLIFT_LOCKOUT_MIN: 0.78,
+  CUE_X_RATIO: 0.5,
+  CUE_Y_RATIO: 0.58,
+  CUE_TARGET_STROKE: 1,
+  PLATE_SCALE: 1.14,
+  SQUAT_CROP_Y: 0,
+  BENCH_CROP_Y: 18,
+  DEADLIFT_CROP_Y: -42,
 });
 
 /**
@@ -546,6 +600,8 @@ export const SESSION_PROGRESSION_GUARD = Object.freeze({
  */
 export const SESSION_COPY = Object.freeze({
   /** GDD §3.2: "3 taps: sleep / soreness / motivation". */
+  BRAND_WORDMARK: 'THREE WHITE LIGHTS',
+  ROOM_LABEL: 'Training gym',
   CHECK_IN_TITLE: 'HOW ARE YOU TODAY?',
   CHECK_IN_LIFT_QUESTION: 'TODAY',
   CHECK_IN_QUESTION: Object.freeze({

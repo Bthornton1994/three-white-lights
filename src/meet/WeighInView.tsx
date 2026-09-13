@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     gap: L.ROW_GAP,
   },
   eyebrow: {
-    color: MEET_PALETTE.TEXT_DIM,
+    color: MEET_PALETTE.AMBER,
     fontSize: L.EYEBROW_FONT,
     letterSpacing: L.WIDE_LETTER_SPACING,
   },

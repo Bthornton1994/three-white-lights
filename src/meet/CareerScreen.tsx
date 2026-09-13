@@ -202,7 +202,7 @@ function CalendarRow({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: MEET_PALETTE.BACKDROP,
+    backgroundColor: MEET_PALETTE.ESPRESSO,
   },
   choosing: {
     flex: 1,
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
     gap: L.CAREER_ROW_GAP,
   },
   title: {
-    color: MEET_PALETTE.TEXT,
+    color: MEET_PALETTE.AMBER,
     fontSize: L.HEADLINE_FONT,
     fontWeight: '700',
     letterSpacing: L.WIDE_LETTER_SPACING,

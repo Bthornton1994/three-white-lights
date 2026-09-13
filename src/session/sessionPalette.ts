@@ -19,14 +19,25 @@ import { LIFT_PALETTE } from '../lift/liftPalette';
 export const SESSION_PALETTE = Object.freeze({
   ...LIFT_PALETTE,
 
+  /** Iron & Amber chrome. Not on LIFT_PALETTE — A0 freeze owns that file. */
+  ESPRESSO: '#14100d',
+  ESPRESSO_EDGE: '#3a2a1c',
+  AMBER: '#c9a15b',
+  AMBER_INK: '#1a1008',
+  IVORY: '#f3ead8',
+
+  /** Warm type on the gym photograph. Overrides the cool lift-stage ivory. */
+  TEXT: '#f3ead8',
+  TEXT_DIM: '#c4b49a',
+
   /** An unanswered check-in chip, and the one the finger landed on. */
-  CHIP: '#1c2230',
-  CHIP_EDGE: '#2c3242',
-  CHIP_CHOSEN: '#38445c',
-  CHIP_CHOSEN_EDGE: '#7fb2ff',
+  CHIP: '#1c1814',
+  CHIP_EDGE: '#3a2a1c',
+  CHIP_CHOSEN: '#2a2018',
+  CHIP_CHOSEN_EDGE: '#c9a15b',
 
   /** The RPE the ladder opens on, before the player moves off it. */
-  RPE_SUGGESTED_EDGE: '#4d5769',
+  RPE_SUGGESTED_EDGE: '#c9a15b',
 
   /** The modifier line. Warm when primed, cool when grinding. */
   MODIFIER_UP: '#ffd75e',
@@ -40,13 +51,30 @@ export const SESSION_PALETTE = Object.freeze({
   /** Set-counter pips: done, current, still to come. */
   PIP_DONE: '#7ddc8f',
   PIP_LIVE: '#ffd75e',
-  PIP_TODO: '#2c3242',
+  PIP_TODO: '#3a2a1c',
+
+  /**
+   * Cue / armed rings drawn ON the photograph. The lift-stage TRACE/CUE
+   * hues stay cool for Meet Day pixel tests; a cool ring on espresso
+   * plates reads as the old debug overlay.
+   */
+  PLATE_CUE: '#d4b07a',
+  PLATE_CUE_PERFECT: '#ffd75e',
+  PLATE_CUE_TARGET: '#c9a15b',
+  PLATE_ARMED: '#f3ead8',
 
   /** The primary action button on the close-out. */
-  ACTION: '#38445c',
-  ACTION_TEXT: '#e8ecf4',
+  ACTION: '#c9a15b',
+  ACTION_TEXT: '#1a1008',
 
-  DIVIDER: '#242b39',
+  DIVIDER: '#3a2a1c',
+
+  /**
+   * Iron & Amber facility card. Warm espresso so the gym photograph stays
+   * the room and the type sits on a card, not on a cool debug panel.
+   */
+  CARD: '#14100d',
+  CARD_EDGE: '#3a2a1c',
 
   /**
    * How sure a progression number is (`progression.ts`'s `ProgressionReading`).

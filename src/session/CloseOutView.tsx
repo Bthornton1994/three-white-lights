@@ -95,6 +95,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
+  ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -114,6 +115,7 @@ import type { ProgressionReading } from '../game/progression';
 import type { SessionCloseOut } from '../game/session';
 import { useOfferCutIn } from '../cutin/CutInHost';
 import { SESSION_PALETTE } from './sessionPalette';
+import { IronAmberCard, IronAmberRoom } from './IronAmberRoom';
 
 const L = SESSION_LAYOUT;
 
@@ -177,7 +179,10 @@ function Row({
   useEffect(() => {
     shown.value = withDelay(
       index * SESSION_TUNING.CLOSE_OUT_ROW_STAGGER_MS,
-      withTiming(1, { duration: SESSION_TUNING.CLOSE_OUT_ROW_FADE_MS }),
+      withTiming(1, {
+        duration: SESSION_TUNING.CLOSE_OUT_ROW_FADE_MS,
+        reduceMotion: ReduceMotion.System,
+      }),
     );
   }, [index, shown]);
   const style = useAnimatedStyle(() => ({ opacity: shown.value }));
@@ -301,7 +306,9 @@ export function CloseOutView({
       : SESSION_PALETTE.MISS;
 
   return (
-    <View style={styles.root} testID="session-close-out">
+    <IronAmberRoom testID="session-close-out" gymTestID="iron-amber-close-out-gym">
+      <IronAmberCard>
+      <View style={styles.stack}>
       <Row index={SESSION_TUNING.CLOSE_OUT_ROW_ORDER.CALL}>
         <Text style={[styles.headline, { color: headlineColour }]} testID="close-out-headline">
           {closeOut.headline}
@@ -388,17 +395,16 @@ export function CloseOutView({
           {closeOut.canPropose ? SESSION_COPY.CLOSE_OUT_DONE : SESSION_COPY.CLOSE_OUT_RETRY}
         </Text>
       </Pressable>
-    </View>
+      </View>
+      </IronAmberCard>
+    </IronAmberRoom>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: L.SCREEN_PAD,
+  stack: {
     gap: L.STAT_ROW_GAP,
+    alignItems: 'center',
   },
   row: {
     alignItems: 'center',

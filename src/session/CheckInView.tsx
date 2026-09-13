@@ -35,6 +35,7 @@ import type { CheckInTap, PartialCheckIn } from '../game/session';
 import type { OnboardingDisclosure } from '../game/onboardingDisclosure';
 import type { LiftKind } from '../game/meet';
 import { SESSION_PALETTE } from './sessionPalette';
+import { IronAmberCard, IronAmberRoom } from './IronAmberRoom';
 
 const L = SESSION_LAYOUT;
 
@@ -120,89 +121,89 @@ export function CheckInView({
   onChooseLift,
 }: CheckInViewProps): React.ReactElement {
   return (
-    <View style={styles.root} testID="session-check-in">
-      <Text style={styles.title}>{SESSION_COPY.CHECK_IN_TITLE}</Text>
-      <View style={styles.row} testID="check-in-lift">
-        <Text style={styles.question}>{SESSION_COPY.CHECK_IN_LIFT_QUESTION}</Text>
-        <View style={styles.chips}>
-          {SESSION_TUNING.LIFT_ROTATION.map((option) => {
-            const isChosen = option === lift;
-            return (
-              <Pressable
-                key={option}
-                testID={`check-in-lift-${option}`}
-                accessibilityRole="button"
-                onPress={() => onChooseLift(option)}
-                style={[styles.chip, isChosen ? styles.chipChosen : null]}
-              >
-                <Text style={[styles.chipLabel, isChosen ? styles.chipLabelChosen : null]}>
-                  {SESSION_COPY.LIFT_LABEL[option]}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-      {ROWS.map((row) => {
-        const chosen = row.chosen(answers);
-        return (
-          <View key={row.question} style={styles.row} testID={`check-in-${row.question}`}>
-            <Text style={styles.question}>{SESSION_COPY.CHECK_IN_QUESTION[row.question]}</Text>
-            <View style={styles.chips}>
-              {row.options.map((option) => {
-                const isChosen = chosen === option.value;
-                return (
-                  <Pressable
-                    key={option.value}
-                    testID={`check-in-${row.question}-${option.value}`}
-                    accessibilityRole="button"
-                    onPress={() => onTap(option.tap)}
-                    style={[styles.chip, isChosen ? styles.chipChosen : null]}
-                  >
-                    <Text style={[styles.chipLabel, isChosen ? styles.chipLabelChosen : null]}>
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+    <IronAmberRoom testID="session-check-in" gymTestID="iron-amber-check-in-gym">
+      <IronAmberCard>
+        <Text style={styles.title}>{SESSION_COPY.CHECK_IN_TITLE}</Text>
+        <View style={styles.row} testID="check-in-lift">
+          <Text style={styles.question}>{SESSION_COPY.CHECK_IN_LIFT_QUESTION}</Text>
+          <View style={styles.chips}>
+            {SESSION_TUNING.LIFT_ROTATION.map((option) => {
+              const isChosen = option === lift;
+              return (
+                <Pressable
+                  key={option}
+                  testID={`check-in-lift-${option}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isChosen }}
+                  accessibilityLabel={SESSION_COPY.LIFT_LABEL[option]}
+                  onPress={() => onChooseLift(option)}
+                  style={[styles.chip, isChosen ? styles.chipChosen : null]}
+                >
+                  <Text style={[styles.chipLabel, isChosen ? styles.chipLabelChosen : null]}>
+                    {SESSION_COPY.LIFT_LABEL[option]}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
-        );
-      })}
-      {/*
-        GDD §4.2's first-run disclosures, BELOW all three question rows on
-        purpose: this screen is held to §12.2's time-to-first-input bar, so the
-        first tap has to stay on the first paint. Text costs no tap and no
-        navigation; a screen in front of the questions would cost both.
-      */}
-      {disclosures.length > 0 ? (
-        <View style={styles.disclosures} testID="check-in-disclosures">
-          <Text style={styles.disclosureTitle}>{SESSION_COPY.FIRST_RUN_TITLE}</Text>
-          {disclosures.map((disclosure) => (
-            <Text
-              key={disclosure.id}
-              testID={`check-in-disclosure-${disclosure.id}`}
-              style={styles.disclosureLine}
-            >
-              {disclosure.line}
-            </Text>
-          ))}
         </View>
-      ) : null}
-    </View>
+        {ROWS.map((row) => {
+          const chosen = row.chosen(answers);
+          return (
+            <View key={row.question} style={styles.row} testID={`check-in-${row.question}`}>
+              <Text style={styles.question}>{SESSION_COPY.CHECK_IN_QUESTION[row.question]}</Text>
+              <View style={styles.chips}>
+                {row.options.map((option) => {
+                  const isChosen = chosen === option.value;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      testID={`check-in-${row.question}-${option.value}`}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isChosen }}
+                      accessibilityLabel={option.label}
+                      onPress={() => onTap(option.tap)}
+                      style={[styles.chip, isChosen ? styles.chipChosen : null]}
+                    >
+                      <Text style={[styles.chipLabel, isChosen ? styles.chipLabelChosen : null]}>
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          );
+        })}
+        {/*
+          GDD §4.2's first-run disclosures, BELOW all three question rows on
+          purpose: this screen is held to §12.2's time-to-first-input bar, so the
+          first tap has to stay on the first paint. Text costs no tap and no
+          navigation; a screen in front of the questions would cost both.
+        */}
+        {disclosures.length > 0 ? (
+          <View style={styles.disclosures} testID="check-in-disclosures">
+            <Text style={styles.disclosureTitle}>{SESSION_COPY.FIRST_RUN_TITLE}</Text>
+            {disclosures.map((disclosure) => (
+              <Text
+                key={disclosure.id}
+                testID={`check-in-disclosure-${disclosure.id}`}
+                style={styles.disclosureLine}
+              >
+                {disclosure.line}
+              </Text>
+            ))}
+          </View>
+        ) : null}
+      </IronAmberCard>
+    </IronAmberRoom>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: L.SCREEN_PAD,
-    gap: L.SECTION_GAP,
-  },
   title: {
-    color: SESSION_PALETTE.TEXT,
-    fontSize: L.TITLE_FONT,
+    color: SESSION_PALETTE.AMBER,
+    fontSize: L.HEADLINE_FONT,
     fontWeight: '700',
     letterSpacing: L.LETTER_SPACING,
     textAlign: 'center',
@@ -238,7 +239,7 @@ const styles = StyleSheet.create({
     fontSize: L.ANSWER_FONT,
   },
   chipLabelChosen: {
-    color: SESSION_PALETTE.TEXT,
+    color: SESSION_PALETTE.IVORY,
     fontWeight: '700',
   },
   disclosures: {

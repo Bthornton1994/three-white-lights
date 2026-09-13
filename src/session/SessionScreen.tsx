@@ -58,6 +58,7 @@ import { CheckInView } from './CheckInView';
 import { CloseOutView } from './CloseOutView';
 import { RestView } from './RestView';
 import { SESSION_PALETTE } from './sessionPalette';
+import { IronAmberCard, IronAmberRoom } from './IronAmberRoom';
 import { SetView } from './SetView';
 import { useSession, type SessionPreviewFrame } from './useSession';
 
@@ -69,10 +70,12 @@ const L = SESSION_LAYOUT;
  */
 function AlreadyTrained(): React.ReactElement {
   return (
-    <View style={styles.centred} testID="session-already-trained">
-      <Text style={styles.headline}>{SESSION_COPY.ALREADY_TRAINED_HEADLINE}</Text>
-      <Text style={styles.subhead}>{SESSION_COPY.ALREADY_TRAINED_SUBHEAD}</Text>
-    </View>
+    <IronAmberRoom testID="session-already-trained" gymTestID="iron-amber-trained-gym">
+      <IronAmberCard>
+        <Text style={styles.headline}>{SESSION_COPY.ALREADY_TRAINED_HEADLINE}</Text>
+        <Text style={styles.subhead}>{SESSION_COPY.ALREADY_TRAINED_SUBHEAD}</Text>
+      </IronAmberCard>
+    </IronAmberRoom>
   );
 }
 
@@ -222,20 +225,14 @@ export function SessionScreen({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: SESSION_PALETTE.BACKDROP,
-  },
-  centred: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: L.ROW_GAP,
-    paddingHorizontal: L.SCREEN_PAD,
+    backgroundColor: SESSION_PALETTE.CARD,
   },
   headline: {
-    color: SESSION_PALETTE.TEXT,
+    color: SESSION_PALETTE.AMBER,
     fontSize: L.HEADLINE_FONT,
     fontWeight: '700',
     letterSpacing: L.LETTER_SPACING,
+    textAlign: 'center',
   },
   subhead: {
     color: SESSION_PALETTE.TEXT_DIM,

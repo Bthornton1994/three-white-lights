@@ -103,7 +103,7 @@ import Animated, {
 import { CareerScreen } from '../meet/CareerScreen';
 import { LifterScreen } from '../meet/LifterScreen';
 import { EmpireScreen } from './EmpireScreen';
-import { LIFT_PALETTE } from '../lift/liftPalette';
+import { SESSION_PALETTE } from '../session/sessionPalette';
 import { LiftScreen } from '../lift/LiftScreen';
 import { MeetScreen } from '../meet/MeetScreen';
 import { SessionScreen } from '../session/SessionScreen';
@@ -367,7 +367,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   const leaveCareer = useCallback(() => {
     setRoute((current) => navigate(current, 'leave-career'));
   }, []);
-  const openLifter = useCallback(() => {
+  const openLifterCard = useCallback(() => {
     setLifterPhase(null);
     setLifterOpened(true);
     setRoute((current) => navigate(current, 'open-lifter'));
@@ -420,7 +420,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
       case 'leave-career':
         return leaveCareer;
       case 'open-lifter':
-        return openLifter;
+        return openLifterCard;
       case 'leave-lifter':
         return leaveLifter;
     }
@@ -558,7 +558,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: LIFT_PALETTE.BACKDROP,
+    backgroundColor: SESSION_PALETTE.ESPRESSO,
   },
   /** A mounted surface that is the one on screen. */
   surface: {
@@ -604,11 +604,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: L.NAV_RADIUS,
     borderWidth: L.NAV_BORDER,
-    borderColor: LIFT_PALETTE.PANEL_EDGE,
-    backgroundColor: LIFT_PALETTE.PANEL,
+    borderColor: SESSION_PALETTE.ESPRESSO_EDGE,
+    backgroundColor: SESSION_PALETTE.ESPRESSO,
   },
   navLabel: {
-    color: LIFT_PALETTE.TEXT_DIM,
+    color: SESSION_PALETTE.IVORY,
     fontSize: L.NAV_FONT,
     fontWeight: '700',
     letterSpacing: L.NAV_LETTER_SPACING,

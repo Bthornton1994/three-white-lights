@@ -35,7 +35,7 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LiftStage } from '../lift/LiftStage';
+import { LiftStage } from './TrainingLiftStage';
 import { useLiftLoop } from '../lift/useLiftLoop';
 import { totalKgFor } from '../lift/liftFrame';
 import {
@@ -45,7 +45,7 @@ import {
   SUPPRESS_CONTEXT_MENU,
 } from '../lift/pressGuard';
 import { pressCommandIsLive, promptFor, type LiftOutcome } from '../game/lift';
-import { LIFT_COPY, LIFT_TUNING } from '../game/liftTuning';
+import { LIFT_COPY } from '../game/liftTuning';
 import { SESSION_COPY, SESSION_LAYOUT, SESSION_TUNING } from '../game/sessionTuning';
 import {
   currentSetNumber,
@@ -54,7 +54,6 @@ import {
   type SessionState,
 } from '../game/session';
 import { SESSION_PALETTE } from './sessionPalette';
-import { LIFT_PALETTE } from '../lift/liftPalette';
 
 const L = SESSION_LAYOUT;
 
@@ -152,36 +151,6 @@ export function SetView({ state, onRepResolved }: SetViewProps): React.ReactElem
 
   return (
     <View style={styles.root} testID="session-set" {...SUPPRESS_CONTEXT_MENU}>
-      <View style={styles.header}>
-        <Text style={styles.setLabel} testID="session-set-label">
-          {`${SESSION_COPY.SET_LABEL} ${setNumber} ${SESSION_COPY.SET_OF} ${plan.workSets}`}
-        </Text>
-        <Text style={styles.weight} testID="session-weight">
-          {`${totalKg} kg`}
-        </Text>
-        <RepPips reps={plan.repsPerSet} done={state.repIndex} live={!resolved} />
-        <Text
-          style={[
-            styles.prompt,
-            pressCommandIsLive(loop.state)
-              ? {
-                  fontSize: LIFT_TUNING.LAYOUT.HEADLINE_FONT,
-                  color: LIFT_PALETTE.CUE_PERFECT,
-                }
-              : null,
-            resolution === null ? null : { color: OUTCOME_COLOUR[resolution.outcome] },
-          ]}
-          testID="session-prompt"
-        >
-          {resolution === null ? promptFor(loop.state) : resolution.headline}
-        </Text>
-        <Text style={styles.detail} testID="session-detail">
-          {resolution === null || resolution.detail === ''
-            ? LIFT_COPY.SUBTITLE[loop.state.config.kind]
-            : resolution.detail}
-        </Text>
-      </View>
-
       <Pressable
         style={styles.stage}
         onPressIn={onPressIn}
@@ -190,6 +159,34 @@ export function SetView({ state, onRepResolved }: SetViewProps): React.ReactElem
         {...PRESS_WITHOUT_DELAY}
       >
         <LiftStage state={loop.state} history={loop.history} totalKg={totalKg} />
+        <View style={styles.hudScrim} pointerEvents="none" />
+        <View style={styles.hud} pointerEvents="none">
+          <Text style={styles.setLabel} testID="session-set-label">
+            {`${SESSION_COPY.SET_LABEL} ${setNumber} ${SESSION_COPY.SET_OF} ${plan.workSets}`}
+          </Text>
+          <Text style={styles.weight} testID="session-weight">
+            {`${totalKg} kg`}
+          </Text>
+          <RepPips reps={plan.repsPerSet} done={state.repIndex} live={!resolved} />
+        </View>
+        <View style={styles.commandScrim} pointerEvents="none" />
+        <View style={styles.command} pointerEvents="none">
+          <Text
+            style={[
+              styles.prompt,
+              pressCommandIsLive(loop.state) ? styles.promptLive : null,
+              resolution === null ? null : { color: OUTCOME_COLOUR[resolution.outcome] },
+            ]}
+            testID="session-prompt"
+          >
+            {resolution === null ? promptFor(loop.state) : resolution.headline}
+          </Text>
+          <Text style={styles.detail} testID="session-detail">
+            {resolution === null || resolution.detail === ''
+              ? LIFT_COPY.SUBTITLE[loop.state.config.kind]
+              : resolution.detail}
+          </Text>
+        </View>
       </Pressable>
     </View>
   );
@@ -198,27 +195,44 @@ export function SetView({ state, onRepResolved }: SetViewProps): React.ReactElem
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    alignItems: 'center',
     // The INHERITED half, on the root so it reaches the copy — see
     // `src/lift/pressGuard.ts`. On the stage it would reach only the Skia
     // canvas, where no selection is possible in the first place.
     ...PRESS_NOT_SELECT,
   },
-  header: {
+  hudScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: L.SET_HUD_HEIGHT,
+    backgroundColor: SESSION_PALETTE.CARD,
+    opacity: L.SET_HUD_SCRIM,
+  },
+  hud: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: L.ROW_GAP / 2,
-    paddingVertical: L.ROW_GAP,
+    justifyContent: 'space-between',
+    gap: L.ROW_GAP,
+    height: L.SET_HUD_HEIGHT,
+    paddingHorizontal: L.SET_HUD_PAD,
   },
   setLabel: {
-    color: SESSION_PALETTE.TEXT,
+    color: SESSION_PALETTE.AMBER,
     fontSize: L.LABEL_FONT,
     fontWeight: '700',
     letterSpacing: L.LETTER_SPACING,
   },
   weight: {
-    color: SESSION_PALETTE.TEXT_DIM,
-    fontSize: L.LABEL_FONT,
+    color: SESSION_PALETTE.TEXT,
+    fontSize: L.PLAN_FONT,
     letterSpacing: L.LETTER_SPACING,
+    flex: 1,
+    textAlign: 'center',
   },
   pips: {
     flexDirection: 'row',
@@ -235,17 +249,42 @@ const styles = StyleSheet.create({
   pipTodo: { backgroundColor: SESSION_PALETTE.PIP_TODO },
   prompt: {
     color: SESSION_PALETTE.TEXT,
-    fontSize: L.PROMPT_FONT,
+    fontSize: L.HEADLINE_FONT,
     fontWeight: '700',
     letterSpacing: L.LETTER_SPACING,
+    textAlign: 'center',
+  },
+  promptLive: {
+    color: SESSION_PALETTE.AMBER,
   },
   detail: {
     color: SESSION_PALETTE.TEXT_DIM,
     fontSize: L.HINT_FONT,
+    textAlign: 'center',
+  },
+  commandScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: L.SET_COMMAND_HEIGHT,
+    backgroundColor: SESSION_PALETTE.CARD,
+    opacity: L.SET_COMMAND_SCRIM,
+  },
+  command: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: L.SET_COMMAND_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: L.ROW_GAP / 2,
+    paddingHorizontal: L.SET_HUD_PAD,
   },
   stage: {
-    width: LIFT_TUNING.LAYOUT.STAGE_W,
-    height: LIFT_TUNING.LAYOUT.STAGE_H,
+    flex: 1,
+    alignSelf: 'stretch',
     // The half that does NOT inherit, so it has to be here, on the element the
     // press lands in. Without it this Pressable computes `touch-action:
     // manipulation` and 20px of finger drift hands the descent to the browser.

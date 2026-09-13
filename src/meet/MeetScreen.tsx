@@ -373,7 +373,7 @@ function bombedLiftOf(state: MeetDayState): 'squat' | 'bench' | 'deadlift' {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: MEET_PALETTE.BACKDROP,
+    backgroundColor: MEET_PALETTE.ESPRESSO,
   },
   waiting: {
     flex: 1,

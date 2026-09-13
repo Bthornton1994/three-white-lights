@@ -188,6 +188,8 @@ describe('no screen can reach the hidden ledger', () => {
     'RestView.tsx',
     'SessionScreen.tsx',
     'SetView.tsx',
+    'IronAmberRoom.tsx',
+    'TrainingLiftStage.tsx',
   ];
 
   it('finds the screens at all', () => {

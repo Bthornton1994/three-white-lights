@@ -32,6 +32,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SESSION_COPY, SESSION_LAYOUT } from '../game/sessionTuning';
 import { useOfferCutIn } from '../cutin/CutInHost';
 import { SESSION_PALETTE } from './sessionPalette';
+import { IronAmberCard, IronAmberRoom } from './IronAmberRoom';
 
 const L = SESSION_LAYOUT;
 
@@ -65,48 +66,52 @@ export function RestView({
 
   return (
     <Pressable
-      style={styles.root}
+      style={styles.press}
       onPress={onBeginSet}
       accessibilityRole="button"
+      accessibilityLabel={SESSION_COPY.REST_PROMPT}
       testID="session-rest"
     >
-      <Text style={styles.prompt}>{SESSION_COPY.REST_PROMPT}</Text>
-      <View style={styles.pips} testID="session-set-pips">
-        {Array.from({ length: workSets }, (_unused, index) => (
-          <View
-            key={index}
-            style={[
-              styles.pip,
-              index < nextSet - 1 ? styles.pipDone : styles.pipTodo,
-            ]}
-          />
-        ))}
-      </View>
-      <Text style={styles.next} testID="session-next-set">
-        {`${SESSION_COPY.REST_NEXT} · ${SESSION_COPY.SET_LABEL} ${nextSet} ${SESSION_COPY.SET_OF} ${workSets}`}
-      </Text>
-      <Text style={styles.weight}>{`${weightKg} kg`}</Text>
+      <IronAmberRoom gymTestID="iron-amber-rest-gym" brand={false} scroll={false}>
+        <IronAmberCard>
+          <Text style={styles.prompt}>{SESSION_COPY.REST_PROMPT}</Text>
+          <View style={styles.pips} testID="session-set-pips">
+            {Array.from({ length: workSets }, (_unused, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.pip,
+                  index < nextSet - 1 ? styles.pipDone : styles.pipTodo,
+                ]}
+              />
+            ))}
+          </View>
+          <Text style={styles.next} testID="session-next-set">
+            {`${SESSION_COPY.REST_NEXT} · ${SESSION_COPY.SET_LABEL} ${nextSet} ${SESSION_COPY.SET_OF} ${workSets}`}
+          </Text>
+          <Text style={styles.weight}>{`${weightKg} kg`}</Text>
+        </IronAmberCard>
+      </IronAmberRoom>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  press: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: L.ROW_GAP,
   },
   prompt: {
-    color: SESSION_PALETTE.TEXT,
+    color: SESSION_PALETTE.AMBER,
     fontSize: L.HEADLINE_FONT,
     fontWeight: '700',
     letterSpacing: L.LETTER_SPACING,
+    textAlign: 'center',
   },
   pips: {
     flexDirection: 'row',
     gap: L.PIP_GAP,
     paddingVertical: L.ROW_GAP,
+    justifyContent: 'center',
   },
   pip: {
     width: L.PIP_SIZE * 2,
@@ -119,9 +124,11 @@ const styles = StyleSheet.create({
     color: SESSION_PALETTE.TEXT_DIM,
     fontSize: L.PROMPT_FONT,
     letterSpacing: L.LETTER_SPACING,
+    textAlign: 'center',
   },
   weight: {
-    color: SESSION_PALETTE.TEXT_DIM,
+    color: SESSION_PALETTE.TEXT,
     fontSize: L.PLAN_FONT,
+    textAlign: 'center',
   },
 });

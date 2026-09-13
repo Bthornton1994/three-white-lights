@@ -88,6 +88,7 @@ export function LifterScreen({
               testID="lifter-sex-male"
               accessibilityRole="button"
               accessibilityLabel={CAREER_COPY.LIFTER_SEX_MALE}
+              accessibilityState={{ selected: loop.sexDraft === 'male' }}
             >
               <Text style={styles.choiceLabel}>{CAREER_COPY.LIFTER_SEX_MALE}</Text>
             </Pressable>
@@ -97,6 +98,7 @@ export function LifterScreen({
               testID="lifter-sex-female"
               accessibilityRole="button"
               accessibilityLabel={CAREER_COPY.LIFTER_SEX_FEMALE}
+              accessibilityState={{ selected: loop.sexDraft === 'female' }}
             >
               <Text style={styles.choiceLabel}>{CAREER_COPY.LIFTER_SEX_FEMALE}</Text>
             </Pressable>
@@ -126,6 +128,7 @@ export function LifterScreen({
                   testID={`lifter-fed-${option.id}`}
                   accessibilityRole="button"
                   accessibilityLabel={option.name}
+                  accessibilityState={{ selected: loop.federationDraft === option.id }}
                 >
                   <Text style={styles.cardName}>{option.name}</Text>
                   <Text style={styles.cardRuleset}>{option.rulesetText}</Text>
@@ -263,7 +266,7 @@ export function LifterScreen({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: MEET_PALETTE.BACKDROP,
+    backgroundColor: MEET_PALETTE.ESPRESSO,
   },
   create: {
     paddingHorizontal: L.SCREEN_PAD,
@@ -278,7 +281,7 @@ const styles = StyleSheet.create({
     gap: L.ROW_GAP,
   },
   title: {
-    color: MEET_PALETTE.TEXT,
+    color: MEET_PALETTE.AMBER,
     fontSize: L.HEADLINE_FONT,
     fontWeight: '700',
     letterSpacing: L.WIDE_LETTER_SPACING,
@@ -305,8 +308,8 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: L.CARD_BORDER,
-    borderColor: MEET_PALETTE.PANEL_EDGE,
-    backgroundColor: MEET_PALETTE.PANEL,
+    borderColor: MEET_PALETTE.CARD_EDGE,
+    backgroundColor: MEET_PALETTE.CARD,
     borderRadius: L.STEPPER_RADIUS,
     color: MEET_PALETTE.TEXT,
     fontSize: L.SUBHEAD_FONT,
@@ -329,14 +332,14 @@ const styles = StyleSheet.create({
   },
   choice: {
     borderWidth: L.CARD_BORDER,
-    borderColor: MEET_PALETTE.CARD_SAFE_EDGE,
-    backgroundColor: MEET_PALETTE.CARD_SAFE,
+    borderColor: MEET_PALETTE.CARD_EDGE,
+    backgroundColor: MEET_PALETTE.CARD,
     borderRadius: L.CARD_RADIUS,
     paddingHorizontal: L.CARD_PAD,
     paddingVertical: L.CAREER_ROW_PAD_V,
   },
   choiceOn: {
-    borderColor: MEET_PALETTE.WALKOUT_URGENT,
+    borderColor: MEET_PALETTE.AMBER,
   },
   choiceLabel: {
     color: MEET_PALETTE.TEXT,
@@ -349,8 +352,8 @@ const styles = StyleSheet.create({
   },
   card: {
     borderWidth: L.CARD_BORDER,
-    borderColor: MEET_PALETTE.CARD_SAFE_EDGE,
-    backgroundColor: MEET_PALETTE.CARD_SAFE,
+    borderColor: MEET_PALETTE.CARD_EDGE,
+    backgroundColor: MEET_PALETTE.CARD,
     borderRadius: L.CARD_RADIUS,
     paddingHorizontal: L.CARD_PAD,
     paddingVertical: L.CAREER_ROW_PAD_V,
@@ -370,15 +373,15 @@ const styles = StyleSheet.create({
     marginTop: L.SECTION_GAP,
     alignSelf: 'stretch',
     borderWidth: L.CARD_BORDER,
-    borderColor: MEET_PALETTE.CARD_SAFE_EDGE,
-    backgroundColor: MEET_PALETTE.CARD_SAFE,
+    borderColor: MEET_PALETTE.AMBER,
+    backgroundColor: MEET_PALETTE.ACTION,
     borderRadius: L.CARD_RADIUS,
     paddingHorizontal: L.CARD_PAD,
     paddingVertical: L.CAREER_ROW_PAD_V,
     alignItems: 'center',
   },
   actionLabel: {
-    color: MEET_PALETTE.TEXT,
+    color: MEET_PALETTE.ACTION_TEXT,
     fontSize: L.LABEL_FONT,
     fontWeight: '700',
     letterSpacing: L.WIDE_LETTER_SPACING,
