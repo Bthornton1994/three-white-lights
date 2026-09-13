@@ -10,13 +10,13 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
 
 import { CAREER_COPY, LIFTER_IDENTITY } from '../career/careerTuning';
 import type { LifterServerPort } from '../game/lifterClient';
@@ -124,7 +124,7 @@ export function LifterScreen({
 
           <Text style={styles.label}>{CAREER_COPY.LIFTER_SEX_LABEL}</Text>
           <View style={styles.row}>
-            <Pressable
+            <MotionPressable
               style={[styles.choice, loop.sexDraft === 'male' ? styles.choiceOn : null]}
               onPress={() => loop.setSexDraft('male')}
               testID="lifter-sex-male"
@@ -133,8 +133,8 @@ export function LifterScreen({
               accessibilityState={{ selected: loop.sexDraft === 'male' }}
             >
               <Text style={styles.choiceLabel}>{CAREER_COPY.LIFTER_SEX_MALE}</Text>
-            </Pressable>
-            <Pressable
+            </MotionPressable>
+            <MotionPressable
               style={[styles.choice, loop.sexDraft === 'female' ? styles.choiceOn : null]}
               onPress={() => loop.setSexDraft('female')}
               testID="lifter-sex-female"
@@ -143,7 +143,7 @@ export function LifterScreen({
               accessibilityState={{ selected: loop.sexDraft === 'female' }}
             >
               <Text style={styles.choiceLabel}>{CAREER_COPY.LIFTER_SEX_FEMALE}</Text>
-            </Pressable>
+            </MotionPressable>
           </View>
 
           <Text style={styles.label}>{CAREER_COPY.LIFTER_BODYWEIGHT_LABEL}</Text>
@@ -163,7 +163,7 @@ export function LifterScreen({
           {loop.confirmedFederation === null ? (
             <View style={styles.cards}>
               {loop.options.map((option) => (
-                <Pressable
+                <MotionPressable
                   key={option.id}
                   style={[styles.card, loop.federationDraft === option.id ? styles.choiceOn : null]}
                   onPress={() => loop.setFederationDraft(option.id)}
@@ -174,7 +174,7 @@ export function LifterScreen({
                 >
                   <Text style={styles.cardName}>{option.name}</Text>
                   <Text style={styles.cardRuleset}>{option.rulesetText}</Text>
-                </Pressable>
+                </MotionPressable>
               ))}
             </View>
           ) : (
@@ -189,7 +189,7 @@ export function LifterScreen({
             </View>
           )}
 
-          <Pressable
+          <MotionPressable
             style={styles.action}
             onPress={loop.create}
             disabled={loop.inFlight}
@@ -200,7 +200,7 @@ export function LifterScreen({
             <Text style={styles.actionLabel}>
               {loop.inFlight ? CAREER_COPY.LIFTER_CREATE_PENDING : CAREER_COPY.LIFTER_CREATE_ACTION}
             </Text>
-          </Pressable>
+          </MotionPressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -282,25 +282,25 @@ export function LifterScreen({
 
         {editing ? (
           <View style={styles.row}>
-            <Pressable style={styles.action} onPress={loop.saveEdit} testID="lifter-save-edits">
+            <MotionPressable style={styles.action} onPress={loop.saveEdit} testID="lifter-save-edits">
               <Text style={styles.actionLabel}>{CAREER_COPY.LIFTER_SAVE_EDITS}</Text>
-            </Pressable>
-            <Pressable style={styles.choice} onPress={loop.cancelEdit} testID="lifter-cancel-edits">
+            </MotionPressable>
+            <MotionPressable style={styles.choice} onPress={loop.cancelEdit} testID="lifter-cancel-edits">
               <Text style={styles.choiceLabel}>{CAREER_COPY.LIFTER_CANCEL_EDITS}</Text>
-            </Pressable>
+            </MotionPressable>
           </View>
         ) : (
           <View style={styles.row}>
-            <Pressable style={styles.choice} onPress={loop.beginEditName} testID="lifter-edit-name">
+            <MotionPressable style={styles.choice} onPress={loop.beginEditName} testID="lifter-edit-name">
               <Text style={styles.choiceLabel}>{CAREER_COPY.LIFTER_EDIT_NAME}</Text>
-            </Pressable>
-            <Pressable
+            </MotionPressable>
+            <MotionPressable
               style={styles.choice}
               onPress={loop.beginEditBodyweight}
               testID="lifter-edit-bodyweight"
             >
               <Text style={styles.choiceLabel}>{CAREER_COPY.LIFTER_EDIT_BODYWEIGHT}</Text>
-            </Pressable>
+            </MotionPressable>
           </View>
         )}
         </View>
