@@ -216,6 +216,7 @@ import {
   stringInSource,
 } from './readTuning.mjs';
 import { SESSION_DRIVE, SESSION_PROMPTS, adaptDepthSearch, freshDepthSearch } from './sessionDrive.mjs';
+import { driveMeetToItsEnd } from './meetDrive.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -451,7 +452,13 @@ const capturedFrom = (() => {
    * standing there.
    */
   record.instrument = Object.fromEntries(
-    ['verify-cutin-cap.mjs', 'sessionDrive.mjs', 'readTuning.mjs', 'enterMeetFromCalendar.mjs'].map((name) => {
+    [
+      'verify-cutin-cap.mjs',
+      'sessionDrive.mjs',
+      'meetDrive.mjs',
+      'readTuning.mjs',
+      'enterMeetFromCalendar.mjs',
+    ].map((name) => {
       const file = path.join(path.dirname(fileURLToPath(import.meta.url)), name);
       try {
         return [name, createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16)];
@@ -1228,8 +1235,16 @@ if (booted.ok) {
     check(onMeet.ok, `leg ${leg.n}: meet day was reached with a finger, not a URL — ${leg.why}`, `search=${JSON.stringify(onMeet.state.search)}`);
     if (!onMeet.ok) break;
 
-    drive = await driveMeet(leg.intent, search);
-    search = drive.search;
+    // MAKE uses the shared meet driver (per-lift holds, brace elapse, cue
+    // taps). The local hold-and-release loop bombs a squat in three tries on
+    // this surface; `verify-meet-sound` already proved the shared driver can
+    // finish attempts here. MISS stays the 80ms release — that is the robot
+    // being deliberately bad so GDD §6.3's bomb-out is guaranteed.
+    drive =
+      leg.intent === 'make'
+        ? await driveMeetToItsEnd(page, { recapSettleMs: RECAP_SETTLE_MS })
+        : await driveMeet(leg.intent, search);
+    if (drive.search !== undefined) search = drive.search;
     legRecords.push({
       n: leg.n,
       intent: leg.intent,
