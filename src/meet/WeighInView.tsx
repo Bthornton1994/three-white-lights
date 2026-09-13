@@ -12,7 +12,8 @@
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
 
 import { MEET_COPY, MEET_LAYOUT } from '../game/meetTuning';
 import { formatWeight } from '../game/resultCard';
@@ -75,14 +76,14 @@ export function WeighInView({
         {weighIn.flavourText}
       </Text>
 
-      <Pressable
+      <MotionPressable
         style={styles.action}
         accessibilityRole="button"
         onPress={onConfirm}
         testID="weigh-in-action"
       >
         <Text style={styles.actionLabel}>{MEET_COPY.WEIGH_IN_ACTION}</Text>
-      </Pressable>
+      </MotionPressable>
     </View>
   );
 }
