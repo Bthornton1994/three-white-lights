@@ -59,6 +59,40 @@ export const CREATE_LIFTER = Object.freeze({
 });
 
 /**
+ * Wait until Create, the card, or the daily session has actually painted.
+ *
+ * `completeCreateIfNeeded` used to ask `isVisible()` on the same tick as
+ * `goto`'s `load` event. On a cold bundle that is still a blank document, so
+ * it reported "Create is not showing" and the caller waited two minutes for
+ * `session-screen`. Training capture already had this wait; the played-arm
+ * verifiers did not.
+ */
+export async function waitForCreateOrSession(page, timeoutMs = 90000) {
+  await page.waitForFunction(
+    () => {
+      const ids = [
+        'lifter-create',
+        'lifter-card',
+        'session-check-in',
+        'session-screen',
+        'career-calendar',
+        'career-choosing',
+      ];
+      return ids.some((id) => {
+        const el = document.querySelector(`[data-testid="${id}"]`);
+        if (el === null) return false;
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden') return false;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      });
+    },
+    null,
+    { timeout: timeoutMs },
+  );
+}
+
+/**
  * Complete Create Your Lifter when it is the surface on screen.
  *
  * First-run with no profile forces the creating beat, which has no leave
@@ -77,6 +111,8 @@ export async function completeCreateIfNeeded(page, options = {}) {
   const sexTestId = options.sexTestId ?? CREATE_LIFTER.SEX_MALE;
   const fedTestId = options.fedTestId ?? CREATE_LIFTER.FED;
   const leaveAfter = options.leaveAfter !== false;
+
+  await waitForCreateOrSession(page, stepMs).catch(() => {});
 
   const createUp = await page
     .getByTestId(CREATE_LIFTER.SCREEN)

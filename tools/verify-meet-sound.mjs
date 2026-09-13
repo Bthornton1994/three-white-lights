@@ -535,6 +535,13 @@ let failures = 0;
 for (const beat of EXPECTED) {
   const route = beat.moment === null ? (beat.route ?? '') : `?meet=${beat.moment}`;
   await page.goto(`${url}${route}`, { waitUntil: 'load' });
+  // A2 Create Your Lifter sits in front of GDD §3.2. Debug `?meet=` frames skip
+  // it; the Sim-session row is `/` and does not. completeCreateIfNeeded waits
+  // until Create (or the session) has painted, so a same-tick isVisible()
+  // cannot report the form as absent while Metro is still bundling.
+  if (beat.screen === 'session-screen') {
+    await completeCreateIfNeeded(page, { stepMs: COLD_LOAD_TIMEOUT_MS });
+  }
   // WHETHER THE SCREEN ARRIVED IS THE WHOLE DIFFERENCE ON A SILENT BEAT, and
   // for a round this `catch` swallowed it under a comment claiming otherwise.
   //
@@ -787,7 +794,7 @@ const ruleForLine = (line) =>
   PLAYED_WALKOUT_CUES.find((r) => (line ?? '').includes(r.line)) ?? null;
 
 await page.goto(url, { waitUntil: 'load' });
-const created = await completeCreateIfNeeded(page);
+const created = await completeCreateIfNeeded(page, { stepMs: COLD_LOAD_TIMEOUT_MS });
 let openedOnSession = created.why == null;
 try {
   // The same cold-start deadline every beat in section 1 waits on. A first load
