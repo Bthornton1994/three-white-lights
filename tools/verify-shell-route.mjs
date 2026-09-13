@@ -137,6 +137,14 @@
  *      `?career=` arm in `resolveEntry`, so the played arm is the only arm,
  *      and the address bar is asserted bare at every read.
  *
+ *  13. THE MY LIFTER SURFACE IS OPENED AND LEFT THE WAY A PLAYER DOES IT, in
+ *      section 12 below. `SHELL_NAV.LIFTER_PHASES` is the card and its two
+ *      edits, never creating (identity has no leave chrome). The same
+ *      permission-side pin that caught `floor` missing after the Empire
+ *      merge is what makes an unprobed `card` / `editing-name` /
+ *      `editing-bodyweight` red rather than a quiet omission. There is no
+ *      `?lifter=` arm in `resolveEntry`.
+ *
  * "ON SCREEN" HERE MEANS DRAWN, NOT MOUNTED. Every positive check above goes
  * through `onScreen`, which measures the element's effective opacity, because
  * Playwright's `isVisible()` and `elementFromPoint` DO NOT CONSIDER OPACITY and
@@ -223,6 +231,7 @@ import {
   driveMeetToItsEnd,
   freshMeetSearches,
   holdsIn,
+  liftFromAttemptLabel,
   effectiveOpacity,
   waitUntilDrawn,
 } from './meetDrive.mjs';
@@ -549,6 +558,10 @@ const NAV_LEAVE_EMPIRE = 'shell-leave-empire';
 const NAV_OPEN_CAREER = 'shell-open-career';
 const NAV_LEAVE_CAREER = 'shell-leave-career';
 
+/** The My Lifter round trip's two controls. `AppShell` builds `shell-${intent}`. */
+const NAV_OPEN_LIFTER = 'shell-open-lifter';
+const NAV_LEAVE_LIFTER = 'shell-leave-lifter';
+
 /**
  * What the Career pills say, restated from `shellTuning.ts` and cross-checked
  * against it in `checkNavTableMatchesTuning` like the Empire pair.
@@ -558,6 +571,27 @@ const CAREER_NAV_SAYS = Object.freeze({
   OPEN: 'CAREER',
   /** SHELL_COPY.LEAVE_CAREER_LABEL */
   LEAVE: 'BACK TO TRAINING',
+});
+
+/**
+ * What the Lifter pills say, restated from `shellTuning.ts` and cross-checked
+ * against it in `checkNavTableMatchesTuning` like the Career pair.
+ */
+const LIFTER_NAV_SAYS = Object.freeze({
+  /** SHELL_COPY.LIFTER_NAV_LABEL */
+  OPEN: 'LIFTER',
+  /** SHELL_COPY.LEAVE_LIFTER_LABEL */
+  LEAVE: 'BACK TO TRAINING',
+});
+
+/**
+ * What identifies a photograph of the My Lifter card. Restated from
+ * `CAREER_COPY.LIFTER_CARD_TITLE` and cross-checked in section 12's source pin
+ * alongside the pill labels.
+ */
+const LIFTER_SAYS = Object.freeze({
+  /** CAREER_COPY.LIFTER_CARD_TITLE */
+  CARD: 'MY LIFTER',
 });
 
 /**
@@ -1458,6 +1492,13 @@ const SHELL_NAV_EXPECTED = Object.freeze({
    * be a trap a player can only leave by choosing.
    */
   CAREER_PHASES: Object.freeze(['choosing', 'calendar']),
+  /**
+   * The My Lifter card and its two edits. Creating is deliberately absent:
+   * identity has no leave chrome, and `SHELL_NAV.LIFTER_PHASES` does not
+   * list it. The permission-side pin below requires each of these three
+   * to have been seen drawn with BACK TO TRAINING.
+   */
+  LIFTER_PHASES: Object.freeze(['card', 'editing-name', 'editing-bodyweight']),
 });
 
 /**
@@ -1541,6 +1582,14 @@ const PILL_IS_A_TUNING_CHOICE = Object.freeze([
   // and both carry the pill today — which section 11 sees drawn and hit-tests.
   'choosing',
   'calendar',
+  // My Lifter. `creating` is on this list rather than NEVER: it is not a
+  // mechanic, but it carries no pill today (identity is required before the
+  // rest of the app). The card and its edits carry one, which section 12
+  // sees drawn and hit-tests.
+  'creating',
+  'card',
+  'editing-name',
+  'editing-bodyweight',
 ]);
 
 /**
@@ -1993,6 +2042,14 @@ async function open(search, waitFor, settle = settleMs) {
     await page.getByTestId(waitFor).waitFor({ state: 'visible', timeout: 120000 });
   }
   await page.waitForTimeout(settle);
+  // A non-debug launch paints GDD §3.2's check-in. Playwright's visible wait
+  // on `session-screen` can fire on a half-hydrated Expo tree (the noscript
+  // "enable JavaScript" line is still in `body.textContent`); the Career
+  // chooser photograph then reads as the check-in. Opacity on the check-in
+  // itself is the hydrate gate.
+  if (search === '/' || search === '') {
+    await waitUntilDrawn(page, 'session-check-in', 120000);
+  }
 }
 
 /**
@@ -2257,8 +2314,14 @@ async function drawnTextBox(id) {
     // font sizes and the DRAWN gap between rows against the tuning module they
     // are supposed to come from. See `SESSION_LAYOUT_RESTATED`.
     const rows = [];
+    const brand = root.querySelector('[data-testid="iron-amber-brand"]');
     for (const node of root.querySelectorAll('*')) {
       if (node.querySelector('*') !== null) continue; // leaves only
+      // The Iron & Amber wordmark sits inside the already-trained room as a
+      // brand header, not as the copy this measurement is about. Including
+      // it turns "one headline, one subhead" into three line boxes and a
+      // height that names the gym photograph rather than the card.
+      if (brand !== null && brand.contains(node)) continue;
       const text = (node.textContent ?? '').trim();
       if (text === '') continue;
       const r = node.getBoundingClientRect();
@@ -2570,6 +2633,12 @@ const GAME_PHASE_LISTS = Object.freeze([
    * compared against, and a rename moves only one side.
    */
   Object.freeze({ file: ['src', 'meet', 'careerSurface.ts'], name: 'CareerSurfacePhase', shape: 'union' }),
+  /**
+   * The My Lifter surface's beats, a type union like Career's, declared in
+   * the surface's own pure module. `creating` is a real beat with no pill;
+   * the other three are `SHELL_NAV.LIFTER_PHASES`.
+   */
+  Object.freeze({ file: ['src', 'meet', 'lifterSurface.ts'], name: 'LifterSurfacePhase', shape: 'union' }),
 ]);
 
 /**
@@ -2881,12 +2950,7 @@ async function checkNavTableMatchesTuning() {
         `${notInTuning.length > 0 ? `in this tool and not in shellTuning.ts: ${notInTuning.join(', ')}.` : ''}`,
   );
 
-  for (const [name, expected] of [
-    ['SESSION_PHASES', SHELL_NAV_EXPECTED.SESSION_PHASES],
-    ['MEET_PHASES', SHELL_NAV_EXPECTED.MEET_PHASES],
-    ['EMPIRE_PHASES', SHELL_NAV_EXPECTED.EMPIRE_PHASES],
-    ['CAREER_PHASES', SHELL_NAV_EXPECTED.CAREER_PHASES],
-  ]) {
+  for (const [name, expected] of Object.entries(SHELL_NAV_EXPECTED)) {
     const inTuning = phaseListInSource(source, name);
     const mine = [...expected].sort();
     check(
@@ -2932,6 +2996,8 @@ async function checkNavTableMatchesTuning() {
     ['LEAVE_EMPIRE_LABEL', EMPIRE_NAV_SAYS.LEAVE],
     ['CAREER_NAV_LABEL', CAREER_NAV_SAYS.OPEN],
     ['LEAVE_CAREER_LABEL', CAREER_NAV_SAYS.LEAVE],
+    ['LIFTER_NAV_LABEL', LIFTER_NAV_SAYS.OPEN],
+    ['LEAVE_LIFTER_LABEL', LIFTER_NAV_SAYS.LEAVE],
     ...EMPIRE_FLOOR_READS.map((row) => [row.copy, row.label]),
   ]) {
     const theirs = copyLineInSource(source, name);
@@ -3296,7 +3362,7 @@ async function probeTheHallUnderTheRep() {
   });
   check(
     control.differing <= P.SAME_PICTURE_MAX_PX,
-    'CONTROL: and it says IDENTICAL for two CALM reps at two different weights — so the band holds the room and nothing else',
+    'CONTROL: and it says IDENTICAL for two CALM reps at two different weights of the SAME lift — so the band holds the room and nothing else',
     `${JSON.stringify(seen.calmLabel)} vs ${JSON.stringify(seen.calmAgainLabel)}: ${control.differing} of ${control.total} px moved (max channel delta ${control.maxChannelDelta})`,
   );
 }
@@ -4127,8 +4193,10 @@ const REP_HALL_SEEN = {
  * print different kilograms, and the cue ring pulses on `state.tick`, so a
  * band that includes either of those would fail the identical-room control
  * between two CALM reps. The band is therefore the ceiling and upper wall:
- * below the HUD, above `CUE_Y_RATIO`, which is identical between any two reps
- * in the same venue unless the hall's wash/zoom moved.
+ * below the HUD, above `CUE_Y_RATIO`. Iron Amber stills are lift-specific
+ * (squat / bench / deadlift plates), so the identical-room control only
+ * compares two calm reps of the SAME lift — two weights on one platform,
+ * not squat-2 vs bench-2.
  *
  * `HALL_HUD_HEIGHT`, `HALL_COMMAND_HEIGHT` and `CUE_Y_RATIO` are restated from
  * `meetTuning.ts` / `sessionTuning.ts` by `checkMeetRestatementsMatchTuning`.
@@ -4205,6 +4273,12 @@ async function photographTheHallUnderTheRep(box, walkoutLine, attemptLabel) {
   if (REP_HALL_SEEN.calm === null) {
     REP_HALL_SEEN.calm = decodePng(png);
     REP_HALL_SEEN.calmLabel = attemptLabel;
+    return;
+  }
+  // Iron Amber plates are per lift. A second calm of a DIFFERENT lift is a
+  // different room, not the negative control. Wait for another weight of
+  // the same lift the first calm was on.
+  if (liftFromAttemptLabel(attemptLabel) !== liftFromAttemptLabel(REP_HALL_SEEN.calmLabel)) {
     return;
   }
   REP_HALL_SEEN.calmAgain = decodePng(png);
@@ -7565,6 +7639,12 @@ await checkOnScreen(
       `the page is on ${JSON.stringify(page.url())}`,
     );
     check(!(await visible('session-screen')), 'and the daily session is no longer on screen');
+    const chooserPainted = await waitUntilDrawn(page, 'career-choosing', settleMs);
+    check(
+      chooserPainted.drawn,
+      'GDD §2.1’s chooser has PAINTED — opacity, not merely mounted after a cold hydrate',
+      chooserPainted.why,
+    );
     await checkOnScreen(
       'career-choosing',
       'GDD §2.1’s chooser is what a fresh lifter gets — `chosen` is false, so the calendar is gated behind the pick',
@@ -7775,6 +7855,148 @@ await checkOnScreen(
 }
 
 // ###########################################################################
+// ###  12. THE MY LIFTER SURFACE, OPENED AND LEFT THE WAY A PLAYER DOES       #
+// ###      (card + both edit beats — SHELL_NAV.LIFTER_PHASES)              #
+// ###########################################################################
+//
+// THE LIST THAT WAS NOT HERE. `SHELL_NAV` grew `LIFTER_PHASES` when My Lifter
+// was wired; this table kept four lists, `pillBeats` was the union of four,
+// and `card` / `editing-name` / `editing-bodyweight` were cross-checked against
+// nothing and probed nowhere. The permission-side pin then reported them as
+// listed-and-never-seen. Same failure shape as `EMPIRE_PHASES` after the
+// GDD §5 merge — see the header of `SHELL_NAV_EXPECTED`.
+//
+// `resolveEntry` has no `?lifter=` arm. Creating has no leave chrome; this
+// leg starts after Create has already run (`open()` completes it) and
+// presses LIFTER on the check-in.
+{
+  const startedAt = Date.now();
+  await open('/', 'session-screen');
+  check(
+    !page.url().includes('?'),
+    'CONTROL: the Lifter leg starts on the shipped route — the address bar carries no query string',
+    `the page is on ${JSON.stringify(page.url())}`,
+  );
+
+  const openLifterDrawn = await checkOnScreen(
+    NAV_OPEN_LIFTER,
+    `the way to My Lifter is on the check-in (${NAV_OPEN_LIFTER})`,
+  );
+  const openLifterHit = await hitTest(NAV_OPEN_LIFTER);
+  check(
+    openLifterHit.hit,
+    'and the point a thumb would land on belongs to it',
+    `elementFromPoint -> ${openLifterHit.why}`,
+  );
+  const openLifterLabel = (await page.getByTestId(NAV_OPEN_LIFTER).textContent().catch(() => null))
+    ?.trim();
+  check(
+    openLifterLabel === LIFTER_NAV_SAYS.OPEN,
+    `and it is the Lifter pill rather than a neighbour — it says ${JSON.stringify(LIFTER_NAV_SAYS.OPEN)}`,
+    `the control says ${JSON.stringify(openLifterLabel)}`,
+  );
+
+  const reachedLifter = await press(
+    NAV_OPEN_LIFTER,
+    'lifter-card',
+    'PRESSING IT REACHES THE MY LIFTER CARD — no URL typed, and there is no query string that would open it',
+  );
+  if (!reachedLifter) {
+    check(
+      false,
+      'SKIPPED: the Lifter surface checks need the pill to have landed, and there is no debug URL to open it with',
+    );
+  } else {
+    check(
+      !page.url().includes('?'),
+      'CONTROL: and the surface is the one the PLAYER opened — the address bar still carries no query string',
+      `the page is on ${JSON.stringify(page.url())}`,
+    );
+    check(!(await visible('session-screen')), 'and the daily session is no longer on screen');
+    await checkOnScreen('lifter-card', 'the My Lifter card is what a created lifter gets');
+    await shootBeat('23-lifter-card-from-session.png', 'card', LIFTER_SAYS.CARD);
+
+    const cardLeave = await waitUntilDrawn(page, NAV_LEAVE_LIFTER, CHROME_WINDOWS.pillArrivalMs);
+    check(
+      cardLeave.drawn,
+      `the way back is on the card (${NAV_LEAVE_LIFTER})`,
+      `${cardLeave.why} — bound ${CHROME_WINDOWS.pillArrivalMs}ms`,
+    );
+    const cardLeaveHit = await hitTest(NAV_LEAVE_LIFTER);
+    check(cardLeaveHit.hit, 'and it is what a thumb would hit there', `elementFromPoint -> ${cardLeaveHit.why}`);
+    sawPillOn('card', openLifterDrawn && cardLeave.drawn, cardLeaveHit.hit);
+
+    const editingName = await press(
+      'lifter-edit-name',
+      'lifter-name-input',
+      'PRESSING EDIT NAME REACHES THE NAME EDIT — one of the three beats SHELL_NAV.LIFTER_PHASES lists',
+    );
+    if (!editingName) {
+      check(false, 'SKIPPED: the editing-name pill sighting needs the name field to have drawn');
+    } else {
+      const nameLeave = await waitUntilDrawn(page, NAV_LEAVE_LIFTER, CHROME_WINDOWS.pillArrivalMs);
+      check(
+        nameLeave.drawn,
+        `the way back is still on the name edit (${NAV_LEAVE_LIFTER})`,
+        `${nameLeave.why} — bound ${CHROME_WINDOWS.pillArrivalMs}ms`,
+      );
+      const nameLeaveHit = await hitTest(NAV_LEAVE_LIFTER);
+      check(
+        nameLeaveHit.hit,
+        'and it is what a thumb would hit on the name edit',
+        `elementFromPoint -> ${nameLeaveHit.why}`,
+      );
+      sawPillOn('editing-name', nameLeave.drawn, nameLeaveHit.hit);
+      await page.getByTestId('lifter-cancel-edits').click({ timeout: 20000 }).catch(() => {});
+      await page.waitForTimeout(settleMs);
+    }
+
+    const editingWeight = await press(
+      'lifter-edit-bodyweight',
+      'lifter-bodyweight-input',
+      'PRESSING EDIT BODYWEIGHT REACHES THE WEIGHT EDIT — the last of SHELL_NAV.LIFTER_PHASES',
+    );
+    if (!editingWeight) {
+      check(false, 'SKIPPED: the editing-bodyweight pill sighting needs the weight field to have drawn');
+    } else {
+      const weightLeave = await waitUntilDrawn(page, NAV_LEAVE_LIFTER, CHROME_WINDOWS.pillArrivalMs);
+      check(
+        weightLeave.drawn,
+        `the way back is still on the bodyweight edit (${NAV_LEAVE_LIFTER})`,
+        `${weightLeave.why} — bound ${CHROME_WINDOWS.pillArrivalMs}ms`,
+      );
+      const weightLeaveHit = await hitTest(NAV_LEAVE_LIFTER);
+      check(
+        weightLeaveHit.hit,
+        'and it is what a thumb would hit on the bodyweight edit',
+        `elementFromPoint -> ${weightLeaveHit.why}`,
+      );
+      sawPillOn('editing-bodyweight', weightLeave.drawn, weightLeaveHit.hit);
+    }
+
+    const returned = await press(
+      NAV_LEAVE_LIFTER,
+      'session-screen',
+      'AND PRESSING IT RETURNS TO THE DAILY SESSION — the Lifter round trip closes with a mouse',
+    );
+    if (returned) {
+      check(
+        !page.url().includes('?'),
+        'CONTROL: and the session it lands on is the shipped route — no query string at any moment of the trip',
+        `the page is on ${JSON.stringify(page.url())}`,
+      );
+      check(!(await visible('lifter-screen')), 'and the Lifter surface is no longer on screen');
+      check(
+        await visible('session-check-in'),
+        'it lands on GDD §3.2’s check-in — the beat this leg departed from',
+      );
+      await page.screenshot({ path: path.join(outDir, '24-lifter-round-trip-closed.png') });
+    }
+  }
+  note(`the Lifter round trip cost ${Date.now() - startedAt}ms of wall clock`);
+}
+
+// ###########################################################################
 // ###  8a. GDD §6.3 — "THE REAL TENSION", ON EVERY MEET A PLAYER OPENED     #
 // ###########################################################################
 //
@@ -7824,6 +8046,7 @@ async function checkCareerRestatementsMatchTuning() {
       ['BELOW_QUALIFYING_TOTAL', CAREER_SAYS.BELOW_QUALIFYING],
       ['ALREADY_ENTERED', CAREER_SAYS.ALREADY_ENTERED],
       ['ENTER_MEET_LABEL', CAREER_SAYS.ENTER],
+      ['LIFTER_CARD_TITLE', LIFTER_SAYS.CARD],
     ]) {
       check(
         careerText.includes(`${name}: '${mine}'`),

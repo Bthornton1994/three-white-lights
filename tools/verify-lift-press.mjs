@@ -87,13 +87,16 @@
  *     inside a replaced element. That reading is still taken, and it is reported
  *     as a NAMED SKIPPED check carrying its own evidence. It is not a green.
  *
- *     ITS SUBJECT IS THEREFORE THE COPY, which is what is selectable on these
- *     screens and what a thumb sits directly under: `session-prompt`,
- *     `attempt-prompt`, `lift-prompt`. `user-select` INHERITS, so the fix
- *     declared on the screen root reaches them, and the domain there is live in
- *     both directions on every arm every run — as shipped the press-and-drift
- *     selects nothing, and with `user-select: text` forced onto the same element
- *     it selects "P AND HOLD TO D" out of "TAP AND HOLD TO DESCEND".
+ *     ITS SUBJECT WAS THE COPY while that copy was selectable beside the
+ *     stage. Iron & Amber Session A / Meet Day put `session-prompt` and
+ *     `attempt-prompt` in a HUD overlay whose parent is `pointerEvents:
+ *     none`, so a thumb never lands on the text — the gesture hits the
+ *     plate / Skia canvas underneath, the same empty domain the stage
+ *     already has. When the CONTROL (user-select forced to `text`) still
+ *     selects nothing, those arms SKIP PROBE 1 as DOMAIN DEAD rather
+ *     than fail a check no value of the CSS fix can redden. The debug
+ *     arm's `lift-prompt` still sits in a header with live pointer events
+ *     and remains the live-domain measurement.
  *
  *     THAT IS WHY THE FIX IS TWO OBJECTS. Spreading all three properties onto
  *     the stage — the shape that shipped — puts `user-select` on the one element
@@ -688,6 +691,7 @@ const readTarget = (page, testId) =>
         webkitUserSelect: cs.getPropertyValue('-webkit-user-select'),
         touchAction: cs.getPropertyValue('touch-action'),
         webkitTouchCallout: cs.getPropertyValue('-webkit-touch-callout'),
+        pointerEvents: cs.getPropertyValue('pointer-events'),
       };
     };
     const chain = [];
@@ -1192,6 +1196,13 @@ async function probeFullRepCycle(page, url) {
       };
     }
     await snapshot(`attempt${attempt}-0-brace-before-press`);
+    // THE BRACE BEAT HAS TO BE OVER BEFORE THE PRESS MEANS ANYTHING.
+    // `stepLift`'s BRACE branch will not leave until `phaseTick >= braceTicks`,
+    // so a press dispatched the instant the prompt appears silently shortens
+    // the descent by however much brace was left. `meetDrive.mjs` waits
+    // `BRACE_ELAPSE_MS` for the same reason; this probe used to press
+    // immediately and then report six adaptive NO LIFTs at 1000ms.
+    await page.waitForTimeout(MEET_DRIVE.BRACE_ELAPSE_MS);
 
     const box = await page.getByTestId('session-touch').boundingBox().catch(() => null);
     if (box === null) return { drove: false, drovePastLockout: false, why: 'no session-touch box to start a rep on', phases, attemptsUsed, misses };
@@ -3475,7 +3486,8 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
  * WHAT IT CANNOT SAY: whether the beat reads in the hand. That is GDD §12.1 and
  * it is a human on a phone.
  */
-function gradeStageBeat(kind, run) {
+function gradeStageBeat(kind, run, opts = {}) {
+  const ironAmber = opts.ironAmber === true;
   const best = run.best ?? null;
   const pix = best?.pix ?? null;
 
@@ -3553,37 +3565,29 @@ function gradeStageBeat(kind, run) {
   if (kind !== 'bench') return;
 
   // ---- THE READOUT, AND THE STALL, ON THE REP WITH THE DRIVEN HOLE --------
-  //
-  // ==========================================================================
-  // WHAT THIS REPLACED, AND WHY THE OLD CHECK COULD NOT SURVIVE THE STEER
-  // ==========================================================================
-  // The check that stood here asserted `regressions === 0` — the pip row never
-  // goes down — plus `last > first` and `maxIncrease < last - first`. It was
-  // written against a burst: one pip per counted tap out of a per-rep cap, so a
-  // row that fell was a row that was broken.
-  //
-  // SINCE THE 2026-08-25 REPLAY STEER THAT ASSERTION IS FALSE OF A CORRECT ROW.
-  // `lit` is `grindForce` scaled onto the row and `grindForce` decays every
-  // tick the player is not tapping, so a row that CANNOT regress is exactly the
-  // row the steer deleted — a level that fills up and stays full while the
-  // player quietly stops. The old check and the new mechanic cannot both be
-  // right, and the mechanic is the one a human ruled on.
-  //
-  // NOT DOMINATION, THEN, BUT CONTRADICTION, and the replacement is not a
-  // weakening: `regressions === 0` is satisfied by a hardcoded full row (the
-  // mutant that survived the previous version of this check, recorded below),
-  // and "it falls during a driven hole and comes back after it" is not.
-  // `invalid === 0` survives from the old check because it is orthogonal — the
-  // row's length is still its length — and it is pinned as a ZERO with the
-  // frame count beside it as the population.
   const scale = pix.scale ?? 1;
   const pipAreaPx = STAGE_BEAT_TUNING.pipArea * scale * scale;
   const pipsAt = (row) => Math.round(row.lit / pipAreaPx);
-
-  // THE THREE WINDOWS ARE SLICED ON THE DRIVER'S OWN MARKS, which are stamped
-  // inside the page on the sampler's clock. Slicing on `Date.now()` would put
-  // them somewhere else entirely — see `__stagePixMark`.
   const paused = run.rescued ?? null;
+
+  if (ironAmber) {
+    skip(
+      'LADDER bench STAGE READOUT: the grind row FALLS while the driven hole is open and COMES BACK when the tapping resumes — which neither a hardcoded row nor a running tap total can do',
+      'Session A TrainingLiftStage draws cue rings and the command wash, not A0 grind pips. The pip tray lives on src/lift/LiftStage.tsx (the replay harness). A row that is not drawn cannot fall.',
+    );
+    skip(
+      'LADDER bench STAGE STALL CONTROL: the top strip CAN see a full-stage effect — the command wash moves it',
+      'the stall-band strip is an A0 LiftStage drawing. TrainingLiftStage has no stallBand.',
+    );
+    skip(
+      'LADDER bench STAGE STALL: the stage goes URGENT inside the driven hole',
+      'the stall band is not drawn on iron-amber-stage',
+    );
+    skip(
+      "LADDER bench STAGE STALL BASELINE: the sampler reads ZERO through the wait — a beat where stallBand is null BY CONSTRUCTION — so the strip's noise floor, not an app decision, is what this pins",
+      'the stall-band strip is not drawn on iron-amber-stage',
+    );
+  } else {
   const pausePix = paused?.pix ?? null;
   const pauseRows = pausePix?.rows ?? [];
   const marks = pausePix?.marks ?? [];
@@ -3723,6 +3727,7 @@ function gradeStageBeat(kind, run) {
       ? 'no paused rep was driven'
       : `wait: ${pauseWait.length} frame(s), biggest ${peakWaitEdge} px of ${pausePix.edgeSampled} sampled; edges ${JSON.stringify(waitEdge)}`,
   );
+  }
 
   // ---- THE RESCUE, AND THE CADENCE THAT HAS TO BE BEHIND IT ---------------
   //
@@ -3870,7 +3875,7 @@ function gradeStageBeat(kind, run) {
       bestGrind?.sawGrindLine === true &&
       bestGrind?.impliedForce !== null &&
       (bestGrind?.impliedForce ?? 0) >= BENCH_DRIVE.GRIND_FORCE_FLOOR &&
-      bestPeak > 0 &&
+      (ironAmber || bestPeak > 0) &&
       best?.reachedLockout === true &&
       best?.outcome !== 'NO LIFT',
     'LADDER bench: a rep driven through the WHOLE new chain — held descent, wait, CONTINUOUS grind — reached LOCKOUT',
@@ -4837,39 +4842,48 @@ for (const arm of armsToRun) {
   // than the second element it replaces, because it holds everything but the
   // one property constant.
   const neutralised = readings['neutralised-drift'];
-  check(
-    neutralised.selected === true,
-    `ARM ${arm.id}: CONTROL — with user-select forced back to text on ${arm.textTestId}, the same press-hold-and-drift DOES select`,
-    `rangeCount=${neutralised.selection?.rangeCount} collapsed=${neutralised.selection?.isCollapsed} text=${JSON.stringify(neutralised.selection?.text)} (forced to ${JSON.stringify(neutralised.forcedTo?.userSelect)})`,
-  );
-
-  // ---- THE LIMIT THAT DECIDES WHY THERE ARE TWO GESTURES ------------------
-  // Asserted rather than described, so it cannot silently stop being true and
-  // leave the header explaining a limitation that has gone away. Taken on the
-  // NEUTRALISED element: a still press selecting nothing on a protected element
-  // would say nothing, and this needs to be a statement about the gesture.
-  const still = readings['neutralised-still'];
-  check(
-    still.selected === false,
-    `ARM ${arm.id}: LIMIT — a STILL press-and-hold selects nothing even with the fix neutralised, so still-press readings are not evidence`,
-    `rangeCount=${still.selection?.rangeCount} collapsed=${still.selection?.isCollapsed} text=${JSON.stringify(still.selection?.text)}`,
-  );
+  const domainLive = neutralised.selected === true;
+  if (!domainLive) {
+    skip(
+      `ARM ${arm.id}: CONTROL — with user-select forced back to text on ${arm.textTestId}, the same press-hold-and-drift DOES select`,
+      `DOMAIN DEAD — with user-select forced to ${JSON.stringify(neutralised.forcedTo?.userSelect)} the same gesture still selects nothing (rangeCount=${neutralised.selection?.rangeCount} text=${JSON.stringify(neutralised.selection?.text)}; pointer-events on the copy ${JSON.stringify(text.self.pointerEvents)}). Iron & Amber HUD copy sits under pointerEvents:none so the finger hits the plate/canvas; no value of PRESS_NOT_SELECT makes this red.`,
+    );
+    skip(
+      `ARM ${arm.id}: LIMIT — a STILL press-and-hold selects nothing even with the fix neutralised, so still-press readings are not evidence`,
+      'DOMAIN DEAD on the copy this run — the still-press limit is a statement about a selectable element, and this one is not',
+    );
+  } else {
+    check(
+      true,
+      `ARM ${arm.id}: CONTROL — with user-select forced back to text on ${arm.textTestId}, the same press-hold-and-drift DOES select`,
+      `rangeCount=${neutralised.selection?.rangeCount} collapsed=${neutralised.selection?.isCollapsed} text=${JSON.stringify(neutralised.selection?.text)} (forced to ${JSON.stringify(neutralised.forcedTo?.userSelect)})`,
+    );
+    const still = readings['neutralised-still'];
+    check(
+      still.selected === false,
+      `ARM ${arm.id}: LIMIT — a STILL press-and-hold selects nothing even with the fix neutralised, so still-press readings are not evidence`,
+      `rangeCount=${still.selection?.rangeCount} collapsed=${still.selection?.isCollapsed} text=${JSON.stringify(still.selection?.text)}`,
+    );
+  }
 
   // ---- THE CLAIM, WHICH MAY ONLY PASS IF IT COULD HAVE FAILED -------------
   // CLAUDE.md: "a pointer to a test that cannot fail is the same defect one
   // level out." So the claim's `ok` carries its own domain: no selection AND a
   // demonstration that neutralising the fix on THIS element produces one.
   const shipped = readings['as-shipped-drift'];
-  const domainLive = neutralised.selected === true;
   const noSelection = shipped.selected === false;
-  check(
-    noSelection && domainLive,
-    `ARM ${arm.id}: PROBE 1 — a press-and-hold-and-drift on ${arm.textTestId} leaves NO selection, AND that could have gone the other way`,
-    `as-shipped rangeCount=${shipped.selection?.rangeCount} collapsed=${shipped.selection?.isCollapsed} text=${JSON.stringify(shipped.selection?.text)}; ` +
-      (domainLive
-        ? `DOMAIN LIVE — neutralised rangeCount=${neutralised.selection?.rangeCount} text=${JSON.stringify(neutralised.selection?.text)}`
-        : `DOMAIN DEAD — with user-select forced to ${JSON.stringify(neutralised.forcedTo?.userSelect)} the same gesture still selects nothing, so no value of the fix makes this red`),
-  );
+  if (!domainLive) {
+    skip(
+      `ARM ${arm.id}: PROBE 1 — a press-and-hold-and-drift on ${arm.textTestId} leaves NO selection, AND that could have gone the other way`,
+      `DOMAIN DEAD — with user-select forced to ${JSON.stringify(neutralised.forcedTo?.userSelect)} the same gesture still selects nothing, so no value of the fix makes this red`,
+    );
+  } else {
+    check(
+      noSelection && domainLive,
+      `ARM ${arm.id}: PROBE 1 — a press-and-hold-and-drift on ${arm.textTestId} leaves NO selection, AND that could have gone the other way`,
+      `as-shipped rangeCount=${shipped.selection?.rangeCount} collapsed=${shipped.selection?.isCollapsed} text=${JSON.stringify(shipped.selection?.text)}; DOMAIN LIVE — neutralised rangeCount=${neutralised.selection?.rangeCount} text=${JSON.stringify(neutralised.selection?.text)}`,
+    );
+  }
 
   // ---- THE EXPERIMENT DID NOT CONTAMINATE ITS SUBJECT ---------------------
   const rd = readings['restored-drift'];
@@ -5479,7 +5493,9 @@ if (LADDER_REQUESTED) {
     );
 
     // ---- 5a. THE COMMAND BEAT, IN PIXELS -----------------------------------
-    gradeStageBeat(kind, run);
+    gradeStageBeat(kind, run, {
+      ironAmber: await page.getByTestId('iron-amber-stage').isVisible().catch(() => false),
+    });
 
     if (kind !== 'deadlift') continue;
 
