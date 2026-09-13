@@ -333,8 +333,11 @@ const PINNED = Object.freeze({
    *
    * 343 -> 344 with the shared press-feedback primitive:
    * `src/ui/MotionPressable.tsx`.
+   *
+   * 344 -> 345 with A-VIS critic stills: `tools/_capture-a-vis-fix.mjs`.
+   * Evidence PNGs under `docs/design/evidence/` are unread binaries.
    */
-  SCANNED_FILES: 344,
+  SCANNED_FILES: 345,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.

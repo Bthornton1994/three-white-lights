@@ -410,9 +410,10 @@ describe('the real-IP audit has something to audit', () => {
     // and a wrapper that stopped agreeing with what it wraps shows up here.
     const counted = census.reduce((sum, r) => sum + r.count, 0);
     expect(CENSUS_FILES.length).toBe(censusText.length + counted);
-    // The pin above fixes `counted` at 10 + 7 + 2, so a separate `toBe(19)` here
-    // would be strictly dominated by it — deleted rather than left standing, per
-    // the standing domination rule. 19 is the number; the pin is where it lives.
+    // The pin above fixes `counted` at 1 jpeg + 19 jpg + 13 png + 7 wav + 2 webp,
+    // so a separate `toBe(42)` here would be strictly dominated by it — deleted
+    // rather than left standing, per the standing domination rule. 42 is the
+    // number; the pin is where it lives.
   });
 
   it('agrees with the repository about which files exist', () => {

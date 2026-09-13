@@ -1128,7 +1128,10 @@ const GUARANTEE_COVERAGE = {
   // 317 -> 316 ON Session A Meet Day stills: VerdictView dropped the sprite-hall
   // comment block that tripped the capitalised-absolute heuristic. The tagged
   // guarantee `bar-stays-on-his-back-for-the-call` still lives in meetStage.test.ts.
-  TREE_WIDE: 316,
+  // 316 -> 315 ON A-VIS-03: CutInView left the 16-bit portrait grid. The
+  // Skia-nearest-neighbour composition paragraph no longer trips the
+  // capitalised-absolute heuristic. No tagged guarantee moved.
+  TREE_WIDE: 315,
 } as const;
 
 // ---------------------------------------------------------------------------

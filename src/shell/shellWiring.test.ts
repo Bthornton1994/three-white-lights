@@ -2736,6 +2736,7 @@ describe('the browser tools’ fresh-lifter boundary matches the app’s save', 
       .sort();
     // The census, pinned: an empty scan would pass the loop below over nothing.
     expect(browserTools, 'tools that open a browser context').toEqual([
+      '_capture-a-vis-fix.mjs',
       '_capture-a2-lifter.mjs',
       '_capture-iron-amber-training.mjs',
       'capture-cutin.mjs',

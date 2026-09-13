@@ -44,8 +44,9 @@ export interface IronAmberRoomProps {
   readonly testID?: string;
   readonly gymTestID: string;
   /**
-   * When set, the room is the day's lifter plate (briefing). Omitted, the
-   * empty gym — check-in, rest, close-out, already-trained.
+   * When set, the room is the day's lifter plate. Check-in, briefing and
+   * close-out pass the lift so the athlete stays in frame (panel 03).
+   * Omitted, the empty gym — rest, already-trained.
    */
   readonly liftKind?: LiftKind;
   readonly brand?: boolean;

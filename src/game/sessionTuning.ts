@@ -446,6 +446,12 @@ export const SESSION_LAYOUT = Object.freeze({
 
   TITLE_FONT: 13,
   QUESTION_FONT: 11,
+  /**
+   * Check-in drawer title. Smaller than HEADLINE_FONT so the three GDD §3.2
+   * taps sit in a panel-03 card and the gym stays the majority of 390×844.
+   * Untuned (GDD §12.1).
+   */
+  CHECK_IN_TITLE_FONT: 16,
   ANSWER_FONT: 15,
   MODIFIER_FONT: 24,
   PROMPT_FONT: 13,
@@ -464,7 +470,17 @@ export const SESSION_LAYOUT = Object.freeze({
    * briefing pad so the gym/athlete stay the majority of a 390×844 frame.
    * Tunable — not asserted as final.
    */
-  CARD_PAD_DRAWER: 12,
+  CARD_PAD_DRAWER: 10,
+
+  /**
+   * Inline question label on the check-in drawer (label + chips on one
+   * row). Wide enough for MOTIVATION at QUESTION_FONT without stacking
+   * the label above the chips — that stack is what turned first paint
+   * into a full-screen form. Untuned (GDD §12.1).
+   */
+  CHECK_IN_LABEL_COL: 78,
+  /** Vertical gap between check-in drawer rows. Tighter than ROW_GAP. */
+  CHECK_IN_ROW_GAP: 6,
 
   /** Check-in answer chips. Three across, tall enough for a thumb. */
   CHIP_HEIGHT: 44,
@@ -493,6 +509,14 @@ export const SESSION_LAYOUT = Object.freeze({
   /** Close-out stat rows. Tunable — not asserted as final. */
   STAT_ROW_GAP: 12,
   DIVIDER_HEIGHT: 1,
+  /**
+   * Close-out drawer number and strip. The stacked 44pt e1RM plus three
+   * centred columns occluded the athlete (A-VIS-02). These sit the payoff
+   * in a panel-03 card. Untuned (GDD §12.1).
+   */
+  DRAWER_NUMBER_FONT: 28,
+  DRAWER_STAT_GAP: 6,
+  DRAWER_STRIP_GAP: 12,
 
   /**
    * The first-run disclosure block on the check-in (GDD §4.2).
@@ -505,9 +529,9 @@ export const SESSION_LAYOUT = Object.freeze({
    * text set at the same tight leading as a chip label is the shape that reads
    * as a wall.
    */
-  DISCLOSURE_FONT: 11,
-  DISCLOSURE_LINE_HEIGHT: 16,
-  DISCLOSURE_GAP: 8,
+  DISCLOSURE_FONT: 10,
+  DISCLOSURE_LINE_HEIGHT: 13,
+  DISCLOSURE_GAP: 4,
 
   /**
    * Dark wash over the Iron & Amber gym photograph so type on the espresso

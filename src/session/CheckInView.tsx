@@ -13,6 +13,10 @@
  * question. There is no splash, no home screen and no "start session" button
  * in front of it, because every one of those is a tap that answers nothing.
  *
+ * Presentation (A-VIS-01): Iron & Amber panel 03 facility-first. The three
+ * taps stay; the card is a compact drawer over the day's lifter plate, not a
+ * full-screen form. GDD §3.2 is the path, not the layout.
+ *
  * ---------------------------------------------------------------------------
  * WHAT THIS FILE IS AND IS NOT ALLOWED TO KNOW
  * ---------------------------------------------------------------------------
@@ -184,7 +188,8 @@ export function CheckInView({
           GDD §4.2's first-run disclosures, BELOW all three question rows on
           purpose: this screen is held to §12.2's time-to-first-input bar, so the
           first tap has to stay on the first paint. Text costs no tap and no
-          navigation; a screen in front of the questions would cost both.
+          navigation; a screen in front of the questions would cost both. The
+          block is a footnote, not a wall — A-VIS-01: facility stays first.
         */}
         {disclosures.length > 0 ? (
           <View style={styles.disclosures} testID="check-in-disclosures">
@@ -208,20 +213,23 @@ export function CheckInView({
 const styles = StyleSheet.create({
   title: {
     color: SESSION_PALETTE.AMBER,
-    fontSize: L.HEADLINE_FONT,
+    fontSize: L.CHECK_IN_TITLE_FONT,
     fontWeight: '700',
     letterSpacing: L.LETTER_SPACING,
-    textAlign: 'center',
   },
   row: {
-    gap: L.ROW_GAP,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: L.CHECK_IN_ROW_GAP,
   },
   question: {
     color: SESSION_PALETTE.TEXT_DIM,
     fontSize: L.QUESTION_FONT,
-    letterSpacing: L.LETTER_SPACING,
+    width: L.CHECK_IN_LABEL_COL,
+    flexShrink: 0,
   },
   chips: {
+    flex: 1,
     flexDirection: 'row',
     gap: L.CHIP_GAP,
   },

@@ -68,6 +68,9 @@ describe('Iron & Amber training path wiring', () => {
     expect(checkIn).toContain('iron-amber-check-in-gym');
     expect(checkIn).toContain('IronAmberRoom');
     expect(checkIn).toContain('testID={`check-in-${row.question}-${option.value}`}');
+    expect(checkIn).toContain('CHECK_IN_LABEL_COL');
+    expect(checkIn).toContain('flexDirection: \'row\'');
+    expect(checkIn).toContain('check-in-disclosures');
     const screen = source('SessionScreen.tsx');
     expect(screen).toContain('<CheckInView');
     expect(screen).toContain("state.phase === 'check-in'");
@@ -94,6 +97,8 @@ describe('Iron & Amber training path wiring', () => {
     expect(source('CheckInView.tsx')).toContain('<IronAmberCard dense');
     expect(source('CloseOutView.tsx')).toContain('liftKind={closeOut.lift}');
     expect(source('CloseOutView.tsx')).toContain('<IronAmberCard dense');
+    expect(source('CloseOutView.tsx')).toContain('DRAWER_NUMBER_FONT');
+    expect(source('CloseOutView.tsx')).toContain('styles.strip');
     expect(source('RestView.tsx')).not.toContain('liftKind');
     expect(source('SessionScreen.tsx')).not.toContain('liftKind');
   });

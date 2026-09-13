@@ -2,12 +2,13 @@
  * CutInView.tsx — the interrupt, on screen.
  *
  * A THIN LAYER. It decides nothing: whether a cut-in fires is `cutInGate.ts`'s,
- * what it shows is `cutInArt.ts`'s, and how long it lasts is `CutInHost.tsx`'s
+ * what it shows is `cutInArt.ts` (identity caption through §7.3) plus the
+ * owned Iron & Amber still, and how long it lasts is `CutInHost.tsx`'s
  * timer. Its LAYOUT numbers are all `CUT_IN_LAYOUT`'s; the one number it takes
  * from anywhere else is `CUT_IN_TUNING.ENTER_MS`, the arrival duration, which
  * lives with the gate's other timings because it is a beat and not a box. What
- * is left here is one full-screen `Pressable`, a Skia image and two lines of
- * type.
+ * is left here is one full-screen `Pressable`, an Iron & Amber still, and two
+ * lines of type.
  *
  * ---------------------------------------------------------------------------
  * THE WHOLE SCREEN IS THE DISMISS TARGET
@@ -34,39 +35,23 @@
  * out, which is the tax the rule exists to remove.
  *
  * ---------------------------------------------------------------------------
- * IT IS PLACEHOLDER ART, AND WHAT MAKES IT PLACEHOLDER IS THE TABLE IT READS
+ * THE PICTURE IS AN IRON & AMBER STILL, NOT A 16-BIT PORTRAIT
  * ---------------------------------------------------------------------------
- * GDD §7.2 says to cut cut-in art entirely from the early prototypes, and §11
- * records the working assumption this run applies. Nothing is drawn here or in
- * `cutInArt.ts` — `cutInArt.test.ts` reads both files and fails on an authored
- * drawing. What arrives on screen is `renderCutIn`'s CUT-IN GRID: the Tier 3
- * drawing `partners.ts` already holds, stamped into a cut-in-shaped composition
- * of a ground, two rules and a well, with ONE line of Tier 3 caption under it.
+ * A-VIS-03: the interrupt must leave 16-bit portrait language and sit in the
+ * same stills system as check-in / briefing / the live set. GDD §7.1 remains
+ * documented (owner ruling A-DES-01) and is not rewritten here. `renderCutIn`
+ * still composes the Tier 3 grid for the table witness (GDD §7.2 / §7.3);
+ * this view does not mount that grid, does not nearest-neighbour upscale it,
+ * and does not draw the placeholder face as the interrupt.
  *
- * THE SAME WITNESS, NOT THE SAME PICTURE. `cutInArt.ts` reads the table through
- * `tier3Of(entry, live.slot, CUT_IN_SURFACE)` — the identical §7.3 door
- * `src/licensing/renderPanels.ts` goes through — and stamps with that module's
- * own `drawArt`. So a licensed portrait later is still a row in `partners.ts`
- * and this file still does not change. What it does NOT do is mount
- * `renderPanel`: that is the character-select / shop composition, it draws all
- * three tiers at once by design, and on the interrupt beat it printed the
- * partner's name twice with `COMPACT BUILD` under it over a colorway strip. GDD
- * §7.2 rules on this by name, and §7.2 also records why it was a §7.3 failure
- * rather than an ugly frame: no row of the table could have removed that build
- * label, so the promise that the art pass is a data change was false as written
- * while the cut-in read the panel.
+ * Identity copy still comes through `tier3Of(entry, live.slot, CUT_IN_SURFACE)`
+ * — the same §7.3 door — so a licensed caption later is still a row in
+ * `partners.ts`. The still file is `CUT_IN_ART.STILL`: owned JPEGs under
+ * `assets/iron-amber/`, no third-party marks.
  *
- * SO THERE IS NO TIER 2 AND NO TIER 1 FURNITURE ON THIS SCREEN — no name tag, no
- * colorway swatches, no build label. The one identity line is the Tier 3
- * CAPTION, because the caption is a field of the same `Tier3Content` as the
- * drawing and therefore follows the slot. That ruling is PER MOMENT, and the
- * per-moment table is `CUT_IN_ART.SLOT` in `cutInTuning.ts`: point a beat at
- * `wordmark` or `product` there and the picture and the line move together,
- * which a name tag would not. `cutInArt.ts`'s header states the cost.
- *
- * NEAREST NEIGHBOUR ONLY (GDD §7.1), the same two ways `LicensedPanelView` and
- * `ResultCardView` do it: `FilterMode.Nearest` with mipmaps off, and a whole
- * number for `scale` chosen by `cutInScaleFor`.
+ * It used to mount `renderPanel`, which is the character-select / shop
+ * composition. THAT WAS A §7.3 DEFECT. GDD §7.2 rules on the shop panel by
+ * name. This file still does not mount it.
  *
  * ---------------------------------------------------------------------------
  * THE SCRIM IS A SEPARATE LAYER FROM THE ARRIVAL
@@ -119,54 +104,39 @@
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import {
-  AlphaType,
-  Canvas,
-  ColorType,
-  FilterMode,
-  Image,
-  MipmapMode,
-  Skia,
-  type SkImage,
-} from '@shopify/react-native-skia';
 
-import { RGBA } from '../art/palette';
-import { sheetGridToRgba } from '../card/sheetPalette';
 import type { LicensingCatalogue } from '../licensing/catalogue';
+import { tier3Of } from '../licensing/tiers';
 import { LIFT_PALETTE } from '../lift/liftPalette';
-import { cutInScaleFor, renderCutIn } from './cutInArt';
-import type { LiveCutIn } from './cutInGate';
-import { CUT_IN_COPY, CUT_IN_LAYOUT, CUT_IN_TUNING } from './cutInTuning';
+import { SESSION_PALETTE } from '../session/sessionPalette';
+import { CUT_IN_SURFACE, cutInIdentity } from './cutInArt';
+import type { CutInMoment, LiveCutIn } from './cutInGate';
+import { CUT_IN_ART, CUT_IN_COPY, CUT_IN_LAYOUT, CUT_IN_TUNING } from './cutInTuning';
+import gymBriefing from '../../assets/iron-amber/gym-briefing.jpg';
+import squatBrace from '../../assets/iron-amber/squat-brace.jpg';
+import squatDrive from '../../assets/iron-amber/squat-drive.jpg';
+import meetWalkThird from '../../assets/iron-amber/meet-squat-walk-third.jpg';
 
 const L = CUT_IN_LAYOUT;
 
-/** Build the Skia image for a live cut-in. Same path as `LicensedPanelView`. */
-function makeCutInImage(
-  catalogue: LicensingCatalogue,
-  live: LiveCutIn,
-): { image: SkImage | null; w: number; h: number } {
-  const grid = renderCutIn(catalogue, live);
-  const bytes = sheetGridToRgba(grid);
-  const data = Skia.Data.fromBytes(bytes);
-  const image = Skia.Image.MakeImage(
-    {
-      width: grid.w,
-      height: grid.h,
-      alphaType: AlphaType.Unpremul,
-      colorType: ColorType.RGBA_8888,
-    },
-    data,
-    grid.w * RGBA.BYTES_PER_PIXEL,
-  );
-  return { image, w: grid.w, h: grid.h };
+const STILL_SOURCE: Record<CutInMoment, number> = {
+  'third-attempt-walkout': meetWalkThird,
+  'personal-record': squatDrive,
+  'bomb-out': gymBriefing,
+  'coach-heavy-set': squatBrace,
+};
+
+function cutInCaption(catalogue: LicensingCatalogue, live: LiveCutIn): string {
+  const entry = cutInIdentity(catalogue, live.identityId);
+  return tier3Of(entry, live.slot, CUT_IN_SURFACE).caption;
 }
 
 export interface CutInViewProps {
   readonly live: LiveCutIn;
   readonly catalogue: LicensingCatalogue;
-  /** Viewport width in logical points. The panel picks its own whole scale. */
+  /** Viewport width in logical points. The card sizes to it. */
   readonly availableWidth: number;
   /** GDD §7.2's "tap to dismiss". The whole screen calls this. */
   readonly onDismiss: () => void;
@@ -178,14 +148,14 @@ export function CutInView({
   availableWidth,
   onDismiss,
 }: CutInViewProps): React.ReactElement {
-  const { image, w, h } = React.useMemo(
-    () => makeCutInImage(catalogue, live),
+  const caption = React.useMemo(
+    () => cutInCaption(catalogue, live),
     [catalogue, live],
   );
-  const scale = cutInScaleFor(w, availableWidth);
+  const cardW = availableWidth - L.SCREEN_PAD * 2;
 
   // It CUTS in. A short rise rather than a fade-up, because §7.2's whole
-  // argument is that the thing interrupts.
+  // argument is that the thing interrupts. `CUT_IN_TUNING.ENTER_MS`.
   const arrived = useSharedValue(0);
   React.useEffect(() => {
     arrived.value = 0;
@@ -218,29 +188,31 @@ export function CutInView({
         */}
         <View style={[StyleSheet.absoluteFill, styles.scrim]} testID="cut-in-scrim" />
 
-        <View style={{ width: w * scale, height: h * scale }} testID="cut-in-art">
-          <Canvas style={{ width: w * scale, height: h * scale }}>
-            {image === null ? null : (
-              <Image
-                image={image}
-                x={0}
-                y={0}
-                width={w * scale}
-                height={h * scale}
-                fit="fill"
-                sampling={{ filter: FilterMode.Nearest, mipmap: MipmapMode.None }}
-              />
-            )}
-          </Canvas>
+        <View style={[styles.card, { width: cardW }]}>
+          <View
+            style={[styles.still, { width: cardW - L.CARD_PAD * 2, height: L.STILL_H }]}
+            testID="cut-in-art"
+          >
+            <Image
+              source={STILL_SOURCE[live.moment]}
+              style={styles.stillImage}
+              resizeMode="cover"
+              accessible
+              accessibilityRole="image"
+              accessibilityLabel={caption}
+              accessibilityHint={CUT_IN_ART.STILL[live.moment]}
+            />
+          </View>
+          <Text style={styles.identity} testID="cut-in-identity">
+            {caption}
+          </Text>
+          <Text style={styles.line} testID="cut-in-line">
+            {CUT_IN_COPY.LINE[live.moment]}
+          </Text>
+          <Text style={styles.hint} testID="cut-in-skip-hint">
+            {CUT_IN_COPY.SKIP_HINT}
+          </Text>
         </View>
-
-        <Text style={styles.line} testID="cut-in-line">
-          {CUT_IN_COPY.LINE[live.moment]}
-        </Text>
-
-        <Text style={styles.hint} testID="cut-in-skip-hint">
-          {CUT_IN_COPY.SKIP_HINT}
-        </Text>
       </Animated.View>
     </Pressable>
   );
@@ -262,15 +234,39 @@ const styles = StyleSheet.create({
     backgroundColor: LIFT_PALETTE.BACKDROP,
     opacity: L.SCRIM_OPACITY,
   },
+  card: {
+    padding: L.CARD_PAD,
+    borderRadius: L.CARD_RADIUS,
+    borderWidth: L.CARD_EDGE,
+    borderColor: SESSION_PALETTE.CARD_EDGE,
+    backgroundColor: SESSION_PALETTE.CARD,
+    gap: L.ROW_GAP,
+    alignItems: 'center',
+  },
+  still: {
+    overflow: 'hidden',
+    borderRadius: L.STILL_RADIUS,
+  },
+  stillImage: {
+    width: '100%',
+    height: '100%',
+  },
+  identity: {
+    color: SESSION_PALETTE.AMBER,
+    fontSize: L.IDENTITY_FONT,
+    fontWeight: '700',
+    letterSpacing: L.LETTER_SPACING,
+    textAlign: 'center',
+  },
   line: {
-    color: LIFT_PALETTE.TEXT,
+    color: SESSION_PALETTE.IVORY,
     fontSize: L.LINE_FONT,
     fontWeight: '700',
     letterSpacing: L.LETTER_SPACING,
     textAlign: 'center',
   },
   hint: {
-    color: LIFT_PALETTE.TEXT_DIM,
+    color: SESSION_PALETTE.TEXT_DIM,
     fontSize: L.HINT_FONT,
     letterSpacing: L.LETTER_SPACING,
     opacity: L.HINT_OPACITY,
