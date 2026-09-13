@@ -20,7 +20,8 @@
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
@@ -77,38 +78,38 @@ export function OpenersView({
                   {overridden[lift] ? MEET_COPY.OPENERS_CHANGED : MEET_COPY.OPENERS_SUGGESTED}
                 </Text>
               </View>
-              <Pressable
+              <MotionPressable
                 style={styles.stepper}
                 accessibilityRole="button"
                 onPress={() => onSet(lift, openersKg[lift] - stepKg)}
                 testID={`opener-down-${lift}`}
               >
                 <Text style={styles.stepperLabel}>−</Text>
-              </Pressable>
+              </MotionPressable>
               <Text style={styles.weight} testID={`opener-weight-${lift}`}>
                 {formatWeight(openersKg[lift])}
               </Text>
-              <Pressable
+              <MotionPressable
                 style={styles.stepper}
                 accessibilityRole="button"
                 onPress={() => onSet(lift, openersKg[lift] + stepKg)}
                 testID={`opener-up-${lift}`}
               >
                 <Text style={styles.stepperLabel}>+</Text>
-              </Pressable>
+              </MotionPressable>
             </View>
           </Row>
         ))}
       </View>
 
-      <Pressable
+      <MotionPressable
         style={styles.action}
         accessibilityRole="button"
         onPress={onConfirm}
         testID="openers-action"
       >
         <Text style={styles.actionLabel}>{MEET_COPY.OPENERS_ACTION}</Text>
-      </Pressable>
+      </MotionPressable>
     </View>
   );
 }
