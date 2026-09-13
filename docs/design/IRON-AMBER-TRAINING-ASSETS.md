@@ -20,7 +20,7 @@ Metro `require` of each `.jpg`. TypeScript sees them through `src/session/jpg.d.
 | Briefing gym | `src/session/BriefingView.tsx` | same gym plate via `IronAmberRoom` |
 | Close-out gym | `src/session/CloseOutView.tsx` | same gym plate |
 | Live set | `src/session/TrainingLiftStage.tsx` | `PLATE_SOURCE[ironAmberPlateFor(kind, phase, height)]` |
-| Crop | `ironAmberCropShift(kind)` | per-lift translate so the bar stays in frame |
+| Cover | `ironAmberPlateLayout(kind, w, h)` | cover-focus so the bar stays in frame (not JPEG intrinsic size) |
 | Wiring | `src/session/SetView.tsx` | mounts `TrainingLiftStage` as `LiftStage` |
 
 Meet Day still draws `src/lift/LiftStage.tsx` (sprite stage). A0 lift files

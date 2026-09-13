@@ -25,6 +25,7 @@ describe('Iron & Amber training path wiring', () => {
     expect(stage).toContain("from '../../assets/iron-amber/squat-brace.jpg'");
     expect(stage).toContain("from '../../assets/iron-amber/bench-brace.jpg'");
     expect(stage).toContain('ironAmberPlateFor');
+    expect(stage).toContain('ironAmberPlateLayout');
     expect(stage).toContain('testID={`iron-amber-plate-${plateId}`}');
     expect(stage).not.toContain('makeSpriteImage');
     expect(stage).not.toContain('GymSceneLayer');
@@ -66,6 +67,14 @@ describe('Iron & Amber training path wiring', () => {
     expect(room).toContain('ROOM_BRAND_PAD_TOP');
     expect(room).toContain('justifyContent: \'flex-end\'');
     expect(room).toContain('ScrollView');
+    expect(room).toContain('ironAmberGymLayout');
+  });
+
+  it('Create Lifter sits in the gym room, not on a blank espresso field', () => {
+    const lifter = source('../meet/LifterScreen.tsx');
+    expect(lifter).toContain('iron-amber-create-gym');
+    expect(lifter).toContain('ironAmberGymLayout');
+    expect(lifter).toContain('from \'../../assets/iron-amber/gym-briefing.jpg\'');
   });
 
   it('rest, close-out and already-trained still use the gym as the room', () => {

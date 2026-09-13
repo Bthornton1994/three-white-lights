@@ -47,6 +47,18 @@ export const IRON_AMBER_PLATE_FILES = Object.freeze({
   'deadlift-lockout': 'deadlift-lockout.jpg',
 } as const satisfies Record<IronAmberPlateId, string>);
 
+export type IronAmberCoverRect = {
+  readonly width: number;
+  readonly height: number;
+  readonly left: number;
+  readonly top: number;
+};
+
+export type IronAmberFocus = {
+  readonly x: number;
+  readonly y: number;
+};
+
 export function ironAmberPlateFor(
   kind: LiftKind,
   phase: LiftPhase,
@@ -79,8 +91,69 @@ export function ironAmberPlateFor(
   return 'squat-brace';
 }
 
-export function ironAmberCropShift(kind: LiftKind): number {
-  if (kind === 'deadlift') return IRON_AMBER.DEADLIFT_CROP_Y;
-  if (kind === 'bench') return IRON_AMBER.BENCH_CROP_Y;
-  return IRON_AMBER.SQUAT_CROP_Y;
+export function ironAmberPlateFocus(kind: LiftKind): IronAmberFocus {
+  if (kind === 'deadlift') {
+    return { x: IRON_AMBER.DEADLIFT_FOCUS_X, y: IRON_AMBER.DEADLIFT_FOCUS_Y };
+  }
+  if (kind === 'bench') {
+    return { x: IRON_AMBER.BENCH_FOCUS_X, y: IRON_AMBER.BENCH_FOCUS_Y };
+  }
+  return { x: IRON_AMBER.SQUAT_FOCUS_X, y: IRON_AMBER.SQUAT_FOCUS_Y };
+}
+
+/**
+ * object-fit: cover with object-position, in layout pixels.
+ *
+ * A pan is clamped so the still always covers the box. Without the clamp,
+ * FOCUS_Y on a height-fitted plate opens a gap at the opposite edge.
+ */
+export function ironAmberCoverRect(
+  srcW: number,
+  srcH: number,
+  boxW: number,
+  boxH: number,
+  focusX: number,
+  focusY: number,
+  scale: number,
+): IronAmberCoverRect {
+  if (boxW <= 0 || boxH <= 0 || srcW <= 0 || srcH <= 0 || scale <= 0) {
+    return { width: 0, height: 0, left: 0, top: 0 };
+  }
+  const cover = Math.max(boxW / srcW, boxH / srcH) * scale;
+  const width = srcW * cover;
+  const height = srcH * cover;
+  const minLeft = boxW - width;
+  const minTop = boxH - height;
+  const left = Math.min(0, Math.max(minLeft, boxW / 2 - width * focusX));
+  const top = Math.min(0, Math.max(minTop, boxH / 2 - height * focusY));
+  return { width, height, left, top };
+}
+
+export function ironAmberPlateLayout(
+  kind: LiftKind,
+  boxW: number,
+  boxH: number,
+): IronAmberCoverRect {
+  const focus = ironAmberPlateFocus(kind);
+  return ironAmberCoverRect(
+    IRON_AMBER.PLATE_SRC_W,
+    IRON_AMBER.PLATE_SRC_H,
+    boxW,
+    boxH,
+    focus.x,
+    focus.y,
+    IRON_AMBER.PLATE_SCALE,
+  );
+}
+
+export function ironAmberGymLayout(boxW: number, boxH: number): IronAmberCoverRect {
+  return ironAmberCoverRect(
+    IRON_AMBER.GYM_SRC_W,
+    IRON_AMBER.GYM_SRC_H,
+    boxW,
+    boxH,
+    IRON_AMBER.GYM_FOCUS_X,
+    IRON_AMBER.GYM_FOCUS_Y,
+    IRON_AMBER.GYM_SCALE,
+  );
 }

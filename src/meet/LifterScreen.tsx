@@ -5,8 +5,9 @@
  * Total and e1RM are drawn from the card facts, never computed here.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -19,13 +20,52 @@ import {
 
 import { CAREER_COPY, LIFTER_IDENTITY } from '../career/careerTuning';
 import type { LifterServerPort } from '../game/lifterClient';
+import { SESSION_COPY } from '../game/sessionTuning';
 import { MEET_LAYOUT } from '../game/meetTuning';
 import { formatWeight } from '../game/resultCard';
+import { ironAmberGymLayout } from '../session/ironAmberPlates';
 import { MEET_PALETTE } from './meetPalette';
 import { useLifter } from './useLifter';
 import type { LifterSurfacePhase } from './lifterSurface';
+import gymBriefing from '../../assets/iron-amber/gym-briefing.jpg';
 
 const L = MEET_LAYOUT;
+
+function LifterGym({ testID }: { readonly testID: string }): React.ReactElement {
+  const [box, setBox] = useState({ width: 0, height: 0 });
+  const gym = ironAmberGymLayout(box.width, box.height);
+  return (
+    <View
+      style={styles.gymClip}
+      pointerEvents="none"
+      onLayout={(event) => {
+        const next = event.nativeEvent.layout;
+        setBox({ width: next.width, height: next.height });
+      }}
+    >
+      {box.width <= 0 ? null : (
+        <Image
+          source={gymBriefing}
+          style={[
+            styles.gym,
+            {
+              width: gym.width,
+              height: gym.height,
+              left: gym.left,
+              top: gym.top,
+            },
+          ]}
+          resizeMode="stretch"
+          accessible
+          accessibilityRole="image"
+          accessibilityLabel={SESSION_COPY.ROOM_LABEL}
+          testID={testID}
+        />
+      )}
+      <View style={styles.gymScrim} />
+    </View>
+  );
+}
 
 export interface LifterScreenProps {
   readonly serverPort: LifterServerPort;
@@ -52,11 +92,13 @@ export function LifterScreen({
         behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
         testID="lifter-screen"
       >
+        <LifterGym testID="iron-amber-create-gym" />
         <ScrollView
           contentContainerStyle={styles.create}
           keyboardShouldPersistTaps="handled"
           testID="lifter-create"
         >
+          <View style={styles.formCard}>
           <Text style={styles.title} testID="lifter-create-title">
             {CAREER_COPY.LIFTER_CREATE_TITLE}
           </Text>
@@ -159,6 +201,7 @@ export function LifterScreen({
               {loop.inFlight ? CAREER_COPY.LIFTER_CREATE_PENDING : CAREER_COPY.LIFTER_CREATE_ACTION}
             </Text>
           </Pressable>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     );
@@ -169,7 +212,9 @@ export function LifterScreen({
 
   return (
     <View style={styles.root} testID="lifter-screen">
+      <LifterGym testID="iron-amber-lifter-gym" />
       <ScrollView contentContainerStyle={styles.cardPage} testID="lifter-card">
+        <View style={styles.formCard}>
         <Text style={styles.title} testID="lifter-card-title">
           {CAREER_COPY.LIFTER_CARD_TITLE}
         </Text>
@@ -258,6 +303,7 @@ export function LifterScreen({
             </Pressable>
           </View>
         )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -266,7 +312,36 @@ export function LifterScreen({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    overflow: 'hidden',
     backgroundColor: MEET_PALETTE.ESPRESSO,
+  },
+  gymClip: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  gym: {
+    position: 'absolute',
+  },
+  gymScrim: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: MEET_PALETTE.ESPRESSO,
+    opacity: L.LIFTER_ROOM_SCRIM,
+  },
+  formCard: {
+    padding: L.CARD_PAD,
+    borderRadius: L.CARD_RADIUS,
+    borderWidth: L.CARD_BORDER,
+    borderColor: MEET_PALETTE.CARD_EDGE,
+    backgroundColor: MEET_PALETTE.CARD,
+    gap: L.ROW_GAP,
   },
   create: {
     paddingHorizontal: L.SCREEN_PAD,

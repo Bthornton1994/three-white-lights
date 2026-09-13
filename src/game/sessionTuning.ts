@@ -532,10 +532,17 @@ export const SESSION_LAYOUT = Object.freeze({
 });
 
 /**
- * Height cuts and crop for Iron & Amber training plates. Authored here so
- * `src/session/` does not grow bare literals. Deadlift cuts must never select
- * a squat plate. Cue placement is a fraction of the live plate box — not
- * sprite-era `CUE_X` / `CUE_Y`.
+ * Height cuts and cover-focus for Iron & Amber training plates. Authored here
+ * so `src/session/` does not grow bare literals. Deadlift cuts must never
+ * select a squat plate. Cue placement is a fraction of the live plate box —
+ * not sprite-era `CUE_X` / `CUE_Y`.
+ *
+ * Cover math lives in `ironAmberPlates.ts`. RN-web `<Image>` with
+ * `left/top/right/bottom: 0` keeps the JPEG's intrinsic size, so the live set
+ * used to show the top-left of a 1152×1728 still (a brick wall, not the lift).
+ * Layout is therefore explicit pixels from these source sizes + focus, clamped
+ * so a pan cannot open a gap. PLATE_SCALE > 1 is the only way FOCUS_Y can
+ * move; at scale 1 the tall phone axis is already filled. Untuned (GDD §12.1).
  */
 export const IRON_AMBER = Object.freeze({
   SQUAT_HOLE_MAX: 0.42,
@@ -545,10 +552,20 @@ export const IRON_AMBER = Object.freeze({
   CUE_X_RATIO: 0.5,
   CUE_Y_RATIO: 0.58,
   CUE_TARGET_STROKE: 1,
-  PLATE_SCALE: 1,
-  SQUAT_CROP_Y: 0,
-  BENCH_CROP_Y: 16,
-  DEADLIFT_CROP_Y: -20,
+  PLATE_SRC_W: 1152,
+  PLATE_SRC_H: 1728,
+  GYM_SRC_W: 1008,
+  GYM_SRC_H: 1792,
+  PLATE_SCALE: 1.08,
+  GYM_SCALE: 1,
+  SQUAT_FOCUS_X: 0.5,
+  SQUAT_FOCUS_Y: 0.46,
+  BENCH_FOCUS_X: 0.52,
+  BENCH_FOCUS_Y: 0.48,
+  DEADLIFT_FOCUS_X: 0.47,
+  DEADLIFT_FOCUS_Y: 0.64,
+  GYM_FOCUS_X: 0.58,
+  GYM_FOCUS_Y: 0.42,
 });
 
 /**

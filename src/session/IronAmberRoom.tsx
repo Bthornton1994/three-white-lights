@@ -6,7 +6,7 @@
  * (facility behind, status card in front). Not a sprite raster and not a
  * second debug backdrop.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Image,
   ScrollView,
@@ -19,6 +19,7 @@ import {
 
 import { SESSION_COPY, SESSION_LAYOUT } from '../game/sessionTuning';
 import { SESSION_PALETTE } from './sessionPalette';
+import { ironAmberGymLayout } from './ironAmberPlates';
 import gymBriefing from '../../assets/iron-amber/gym-briefing.jpg';
 
 const L = SESSION_LAYOUT;
@@ -72,6 +73,8 @@ export function IronAmberRoom({
   scroll = true,
   style,
 }: IronAmberRoomProps): React.ReactElement {
+  const [box, setBox] = useState({ width: 0, height: 0 });
+  const gymLayout = ironAmberGymLayout(box.width, box.height);
   const bodyStyle = [
     styles.body,
     brand ? styles.bodyWithBrand : styles.bodyWithoutBrand,
@@ -79,16 +82,33 @@ export function IronAmberRoom({
   const body = <View style={bodyStyle}>{children}</View>;
 
   return (
-    <View style={[styles.root, style]} testID={testID}>
+    <View
+      style={[styles.root, style]}
+      testID={testID}
+      onLayout={(event) => {
+        const next = event.nativeEvent.layout;
+        setBox({ width: next.width, height: next.height });
+      }}
+    >
+      {box.width <= 0 ? null : (
       <Image
         source={gymBriefing}
-        style={styles.gym}
-        resizeMode="cover"
+        style={[
+          styles.gym,
+          {
+            width: gymLayout.width,
+            height: gymLayout.height,
+            left: gymLayout.left,
+            top: gymLayout.top,
+          },
+        ]}
+        resizeMode="stretch"
         accessible
         accessibilityRole="image"
         accessibilityLabel={SESSION_COPY.ROOM_LABEL}
         testID={gymTestID}
       />
+      )}
       <View style={styles.scrim} pointerEvents="none" />
       {brand ? <BrandMark /> : null}
       {scroll ? (
@@ -115,10 +135,6 @@ const styles = StyleSheet.create({
   },
   gym: {
     position: 'absolute',
-    left: 0,
-    top: 0,
-    right: 0,
-    bottom: 0,
   },
   scrim: {
     position: 'absolute',

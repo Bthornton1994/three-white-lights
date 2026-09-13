@@ -28,7 +28,7 @@ import {
 } from '../lift/liftFrame';
 import type { LiftStageProps } from '../lift/LiftStage';
 import { SESSION_PALETTE } from './sessionPalette';
-import { ironAmberCropShift, ironAmberPlateFor, type IronAmberPlateId } from './ironAmberPlates';
+import { ironAmberPlateFor, ironAmberPlateLayout, type IronAmberPlateId } from './ironAmberPlates';
 
 import squatBrace from '../../assets/iron-amber/squat-brace.jpg';
 import squatHole from '../../assets/iron-amber/squat-hole.jpg';
@@ -58,7 +58,7 @@ const PLATE_SOURCE: Record<Exclude<IronAmberPlateId, 'gym-briefing'>, number> = 
 export function TrainingLiftStage({ state }: LiftStageProps): React.ReactElement {
   const [box, setBox] = useState({ width: 0, height: 0 });
   const plateId = ironAmberPlateFor(state.config.kind, state.phase, state.height);
-  const cropY = ironAmberCropShift(state.config.kind);
+  const plateLayout = ironAmberPlateLayout(state.config.kind, box.width, box.height);
   const ring = cueRing(cueProgress(state));
   const flash = hitFlash(state);
   const pulse = cuePulse(state.tick);
@@ -78,19 +78,24 @@ export function TrainingLiftStage({ state }: LiftStageProps): React.ReactElement
         setBox({ width: next.width, height: next.height });
       }}
     >
+      {box.width <= 0 ? null : (
       <Image
         source={PLATE_SOURCE[plateId]}
         style={[
           styles.plate,
           {
-            transform: [{ scale: IRON_AMBER.PLATE_SCALE }, { translateY: cropY }],
+            width: plateLayout.width,
+            height: plateLayout.height,
+            left: plateLayout.left,
+            top: plateLayout.top,
           },
         ]}
-        resizeMode="cover"
+        resizeMode="stretch"
         accessibilityRole="image"
         accessibilityLabel={SESSION_COPY.LIFT_LABEL[state.config.kind]}
         testID={`iron-amber-plate-${plateId}`}
       />
+      )}
       {box.width <= 0 ? null : (
         <Canvas style={styles.overlay}>
           {hit === null ? null : (
@@ -182,10 +187,6 @@ const styles = StyleSheet.create({
   },
   plate: {
     position: 'absolute',
-    left: 0,
-    top: 0,
-    right: 0,
-    bottom: 0,
   },
   overlay: {
     position: 'absolute',

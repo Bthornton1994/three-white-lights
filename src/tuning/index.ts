@@ -67,6 +67,7 @@ import * as SPRITE_TUNING_MODULE from '../art/spriteTuning';
 import { LIFT_COPY, LIFT_TUNING } from '../game/liftTuning';
 import {
   CHECK_IN_QUESTIONS,
+  IRON_AMBER,
   SESSION_COPY,
   SESSION_LAYOUT,
   SESSION_PREVIEW,
@@ -212,6 +213,7 @@ export const TUNING = Object.freeze({
     SESSION_PREVIEW,
     SESSION_PROGRESSION_GUARD,
     CHECK_IN_QUESTIONS,
+    IRON_AMBER,
   }),
 
   /**

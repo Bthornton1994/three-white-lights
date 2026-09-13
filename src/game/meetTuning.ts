@@ -1768,6 +1768,13 @@ export const MEET_LAYOUT = Object.freeze({
   /** Extra scroll pad so the Create action stays reachable above a phone keyboard. */
   LIFTER_KEYBOARD_CLEARANCE: 280,
 
+  /**
+   * Wash over the Iron & Amber gym still on Create / My Lifter so the form
+   * stays readable. Same job as SESSION_LAYOUT.BRIEFING_SCRIM; authored here
+   * because this screen lives under meet chrome. Untuned (GDD §12.1).
+   */
+  LIFTER_ROOM_SCRIM: 0.45,
+
   // THE WALKOUT'S BAR GRAPHIC USED TO BE HERE, and it is gone rather than
   // unused. `BAR_W / BAR_H / PLATE_W / PLATE_GAP / PLATE_MAX_H / PLATE_MIN_H`
   // sized a barbell drawn out of `Animated.View`s with `backgroundColor`,
