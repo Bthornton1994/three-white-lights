@@ -34,7 +34,8 @@
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
@@ -134,14 +135,14 @@ export function BombOutView({ bombedLift, attempts, onDone }: BombOutViewProps):
       </Line>
 
       <Line index={MEET_TUNING.BOMB_OUT_ROW_ORDER.ACTION}>
-        <Pressable
+        <MotionPressable
           style={styles.action}
           accessibilityRole="button"
           onPress={onDone}
           testID="bomb-out-action"
         >
           <Text style={styles.actionLabel}>{MEET_COPY.BOMB_OUT_ACTION}</Text>
-        </Pressable>
+        </MotionPressable>
       </Line>
     </View>
   );
