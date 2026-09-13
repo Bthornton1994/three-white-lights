@@ -4,7 +4,7 @@ Owned illustrated stills for Session A (daily loop and Meet Day). Generated
 2026-09-13 from the binding mockup `docs/design/iron-and-amber-reference.jpeg`
 (panel 03: warm gym atmosphere + athletic HUD). These are not third-party stock,
 not sprite rasters, not a CSS recolor of the old stage, and they do not carry
-third-party brand marks.
+third-party marks. HUD chrome is the React overlay, not pixels in the JPEG.
 
 The plates are the gameplay surface: check-in, briefing, live squat/bench/deadlift,
 rest, close-out, walk-out, attempt, verdict, and attempt-select fill the room.
@@ -31,9 +31,10 @@ picture.
 
 ## Provenance
 
-Cursor GenerateImage, rights-clean illustrated facility stills. Gym briefing and
-lift plates share one locker-room: bare brick, unbranded plates, no posters.
-Source size 720×1280 JPEG.
+Cursor GenerateImage, rights-clean illustrated facility stills matching mockup
+panel 03's garage: brick, amber lights, original Three White Lights posters,
+plants, crate copy, unbranded plates. Chrome stays a React overlay — the JPEGs
+are the room, not the HUD. Source size 720×1280 JPEG.
 
 | Plate | File |
 | --- | --- |
