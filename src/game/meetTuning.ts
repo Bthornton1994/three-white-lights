@@ -1768,6 +1768,12 @@ export const MEET_LAYOUT = Object.freeze({
   /** Extra scroll pad so the Create action stays reachable above a phone keyboard. */
   LIFTER_KEYBOARD_CLEARANCE: 280,
 
+  /** First-paint pad on Create — CAREER_PAD_TOP is too tall once the gym card wraps the form. */
+  LIFTER_CREATE_PAD_TOP: 16,
+
+  /** Two-up federation chooser on a 390-wide phone. Untuned (GDD §12.1). */
+  FEDERATION_CARD_MIN_W: 148,
+
   /**
    * Wash over the Iron & Amber gym still on Create / My Lifter so the form
    * stays readable. Same job as SESSION_LAYOUT.BRIEFING_SCRIM; authored here

@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
   },
   create: {
     paddingHorizontal: L.SCREEN_PAD,
-    paddingTop: L.CAREER_PAD_TOP,
+    paddingTop: L.LIFTER_CREATE_PAD_TOP,
     paddingBottom: L.LIFTER_KEYBOARD_CLEARANCE,
     gap: L.ROW_GAP,
   },
@@ -423,9 +423,13 @@ const styles = StyleSheet.create({
     letterSpacing: L.LETTER_SPACING,
   },
   cards: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: L.CAREER_ROW_GAP,
   },
   card: {
+    flexGrow: 1,
+    flexBasis: L.FEDERATION_CARD_MIN_W,
     borderWidth: L.CARD_BORDER,
     borderColor: MEET_PALETTE.CARD_EDGE,
     backgroundColor: MEET_PALETTE.CARD,
@@ -445,7 +449,7 @@ const styles = StyleSheet.create({
     letterSpacing: L.LETTER_SPACING,
   },
   action: {
-    marginTop: L.SECTION_GAP,
+    marginTop: L.ROW_GAP,
     alignSelf: 'stretch',
     borderWidth: L.CARD_BORDER,
     borderColor: MEET_PALETTE.AMBER,
