@@ -511,6 +511,15 @@ describe('MEET_LAYOUT', () => {
     // the integer scale GDD §7.1 requires, so there is no fractional column.
     expect(LIFT_TUNING.LAYOUT.STAGE_W).toBe(PHONE_WIDTH_PT);
   });
+
+  it('the bookend card leaves the emptied hall the majority of the 390×844 frame', () => {
+    // Same majority claim as SESSION_LAYOUT.CHECK_IN_DRAWER_MAX_HEIGHT: a
+    // full-screen espresso slab is the failure critic #12 photographed.
+    const frame = 844;
+    expect(
+      MEET_LAYOUT.BOOKEND_CARD_MAX_HEIGHT + MEET_LAYOUT.BOOKEND_FOOT_CLEARANCE,
+    ).toBeLessThan(frame / 2);
+  });
 });
 
 describe('MEET_TUNING.HALL (GDD §12.2 — the beats happen somewhere)', () => {
@@ -518,9 +527,11 @@ describe('MEET_TUNING.HALL (GDD §12.2 — the beats happen somewhere)', () => {
     // The ORDERING is the design claim; the values are a starting point that
     // nobody has looked at on a phone (see the header of `meetTuning.ts`). The
     // walkout is three short lines over the hall and the hall is the beat; the
-    // judging screen has to let three lamps be the brightest thing on it; the
-    // attempt choice is a decision with a paragraph on each card.
-    expect(MEET_TUNING.HALL.WALKOUT_SCRIM).toBeLessThan(MEET_TUNING.HALL.JUDGING_SCRIM);
+    // bookend card sits over the emptied hall and must not hide it the way
+    // CHOICE would; the judging screen has to let three lamps be the brightest
+    // thing on it; the attempt choice is a decision with a paragraph on each card.
+    expect(MEET_TUNING.HALL.WALKOUT_SCRIM).toBeLessThan(MEET_TUNING.HALL.BOOKEND_SCRIM);
+    expect(MEET_TUNING.HALL.BOOKEND_SCRIM).toBeLessThan(MEET_TUNING.HALL.JUDGING_SCRIM);
     expect(MEET_TUNING.HALL.JUDGING_SCRIM).toBeLessThan(MEET_TUNING.HALL.CHOICE_SCRIM);
   });
 
@@ -532,6 +543,6 @@ describe('MEET_TUNING.HALL (GDD §12.2 — the beats happen somewhere)', () => {
       expect(value, name).toBeLessThan(1);
     }
     // ...and the loop is not vacuous.
-    expect(Object.keys(MEET_TUNING.HALL).length).toBe(3);
+    expect(Object.keys(MEET_TUNING.HALL).length).toBe(4);
   });
 });

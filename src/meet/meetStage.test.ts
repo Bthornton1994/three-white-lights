@@ -288,6 +288,14 @@ const STAGED_BEATS: readonly { readonly beat: string; readonly file: string }[] 
   { beat: 'the rep', file: MEET_ATTEMPT },
   { beat: 'deliberation and verdict', file: 'meet/VerdictView.tsx' },
   { beat: 'attempt-select', file: 'meet/AttemptSelectView.tsx' },
+  // Pre-meet paperwork and endings dock over the emptied hall (`meet-empty.jpg`)
+  // so the room the bomb-out cut-in already shows is also the player-facing
+  // bookend. GDD §6.1 / §6.3 / §6.5 still describe the beats; the black slab
+  // was not the emptied field §6.3 named.
+  { beat: 'weigh-in', file: 'meet/WeighInView.tsx' },
+  { beat: 'openers', file: 'meet/OpenersView.tsx' },
+  { beat: 'bomb-out', file: 'meet/BombOutView.tsx' },
+  { beat: 'recap', file: 'meet/RecapView.tsx' },
 ];
 
 /**
@@ -300,29 +308,10 @@ const STAGED_BEATS: readonly { readonly beat: string; readonly file: string }[] 
  */
 const UNSTAGED_BEATS: readonly { readonly beat: string; readonly file: string; readonly why: string }[] = [
   {
-    beat: 'weigh-in',
-    file: 'meet/WeighInView.tsx',
-    why: 'GDD §6.1 pre-meet paperwork, in a back room hours before the platform.',
+    beat: 'result-card',
+    file: 'card/ResultCardScreen.tsx',
+    why: 'GDD §6.5 shareable federation sheet. A hall behind the card would make it a meet beat, not a sheet.',
   },
-  {
-    beat: 'openers',
-    file: 'meet/OpenersView.tsx',
-    why: 'Also §6.1, and also not on the platform: this is a form handed to the table.',
-  },
-  {
-    beat: 'bomb-out',
-    file: 'meet/BombOutView.tsx',
-    why: 'GDD §6.3 asks for somber and non-punitive. The hall has emptied; the empty field IS the beat.',
-  },
-  {
-    beat: 'recap',
-    file: 'meet/RecapView.tsx',
-    why: 'GDD §6.5 is a results sheet, read after the meet, not a moment in it.',
-  },
-  // The 'recap placeholder' row was deleted with the placeholder, as its own
-  // `why` instructed (Sprint 1c: the calendar refuses a re-entry before a meet
-  // opens, and a refusal that still lands is disclosed as one text line inside
-  // MeetScreen's refused arm — no view file, no room, no row).
 ];
 
 /**
@@ -336,11 +325,12 @@ const UNSTAGED_BEATS: readonly { readonly beat: string; readonly file: string; r
 export function resolveBeatVenue(source: string, liftStageSource: string): GymVenue | null {
   const staged = resolveStageVenue(source, liftStageSource);
   if (staged !== null) return staged;
-  if (meetHallElementIn(source) === null) return null;
-  // `MeetHallView` takes no venue: it IS the meet hall, and the room it draws is
-  // `MEET_HALL_SCENE`, built from `MEET_TUNING.VENUE`. A screen cannot ask it
-  // for the training gym, which is the point.
-  return MEET_HALL_SCENE.venue;
+  if (meetHallElementIn(source) !== null) return MEET_HALL_SCENE.venue;
+  // Weigh-in / openers / bomb-out / recap dock over the emptied hall through
+  // `MeetBookendRoom`, which owns the `MeetHallView`. A silently-unreadable
+  // wrapper is the same failure mode as an unreadable venue prop.
+  if (source.includes('<MeetBookendRoom')) return MEET_HALL_SCENE.venue;
+  return null;
 }
 
 /**
@@ -370,6 +360,9 @@ describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
     // The positive control for the resolver below. Without it, a resolver that
     // returned the meet venue for everything would pass every beat.
     expect(resolveBeatVenue('  <MeetHallView lifter={null} scrim={x} />', liftStage)).toBe(
+      MEET_HALL_SCENE.venue,
+    );
+    expect(resolveBeatVenue('  <MeetBookendRoom testID="meet-weigh-in">', liftStage)).toBe(
       MEET_HALL_SCENE.venue,
     );
     expect(resolveBeatVenue('<LiftStage state={s} history={h} totalKg={k} />', liftStage)).toBe(
@@ -441,6 +434,36 @@ describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
     expect(hall).toContain('ironAmberHallPlateId');
     expect(read('meet/MeetHallView.tsx')).toContain('testID="meet-hall"');
     expect(Number.isInteger(LIFT_TUNING.FEEDBACK.SPRITE_SCALE)).toBe(true);
+  });
+
+  it('docks weigh-in, openers, bomb-out and recap over the emptied hall', () => {
+    // THE HOLE CRITIC #12 NAMED: those four were espresso slabs while
+    // `meet-empty.jpg` already existed and the bomb-out cut-in already used it.
+    const room = read('meet/MeetBookendRoom.tsx');
+    const element = meetHallElementIn(room);
+    expect(element, 'MeetBookendRoom draws no MeetHallView').not.toBeNull();
+    expect(element ?? '', 'the bookend still puts a lifter on the platform').toContain(
+      'lifter={null}',
+    );
+    expect(element ?? '', 'the bookend hides the hall behind CHOICE_SCRIM').toContain(
+      'MEET_TUNING.HALL.BOOKEND_SCRIM',
+    );
+    expect(codeOnly(room), 'the bookend went back to the rest gym').not.toContain('gym-briefing');
+    expect(codeOnly(room), 'the bookend grew a StageForge adapter').not.toContain('StageForge');
+    for (const file of [
+      'meet/WeighInView.tsx',
+      'meet/OpenersView.tsx',
+      'meet/BombOutView.tsx',
+      'meet/RecapView.tsx',
+    ]) {
+      expect(read(file), `${file} no longer docks through MeetBookendRoom`).toContain(
+        '<MeetBookendRoom',
+      );
+      expect(
+        meetHallElementIn(read(file)),
+        `${file} inlines a hall instead of the shared emptied-hall wrapper`,
+      ).toBeNull();
+    }
   });
 
   it('draws the walkout bar through the SPRITE, not out of Views', () => {

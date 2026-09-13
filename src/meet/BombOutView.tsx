@@ -44,6 +44,7 @@ import type { MeetDayAttempt } from '../game/meetDay';
 import { useOfferCutIn } from '../cutin/CutInHost';
 import { playBeat } from './meetFeedback';
 import { AttemptBoard } from './AttemptBoard';
+import { MeetBookendRoom } from './MeetBookendRoom';
 import { MEET_PALETTE } from './meetPalette';
 
 const L = MEET_LAYOUT;
@@ -110,7 +111,8 @@ export function BombOutView({ bombedLift, attempts, onDone }: BombOutViewProps):
   }, []);
 
   return (
-    <View style={styles.root} testID="meet-bombed">
+    <MeetBookendRoom testID="meet-bombed">
+      <View style={styles.root}>
       <Line index={MEET_TUNING.BOMB_OUT_ROW_ORDER.CALL}>
         <Text style={styles.call} testID="bomb-out-call">
           {MEET_COPY.BOMB_OUT_CALL}
@@ -144,17 +146,16 @@ export function BombOutView({ bombedLift, attempts, onDone }: BombOutViewProps):
           <Text style={styles.actionLabel}>{MEET_COPY.BOMB_OUT_ACTION}</Text>
         </MotionPressable>
       </Line>
-    </View>
+      </View>
+    </MeetBookendRoom>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: L.SCREEN_PAD,
-    gap: L.SECTION_GAP,
+    alignSelf: 'stretch',
+    gap: L.BOOKEND_CARD_GAP,
   },
   line: {
     alignItems: 'center',

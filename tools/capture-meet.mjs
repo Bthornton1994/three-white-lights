@@ -148,11 +148,13 @@ page.on('console', (m) => {
  * broken module by construction would be worth nothing. `meetStage.test.ts`
  * holds the same split as `STAGED_BEATS` / `UNSTAGED_BEATS`.
  *
- * The unstaged ones are the pre-meet paperwork (weigh-in, openers), the recap,
- * and the bomb-out — where GDD §6.3 wants a somber, emptied room and the empty
- * field IS the beat.
+ * The unstaged one is the shareable federation sheet (`recap-card`). Weigh-in,
+ * openers, bomb-out and recap dock over the emptied hall — GDD §6.3's empty
+ * field is `meet-empty.jpg`, not a black slab.
  */
 const STAGED = new Set([
+  'weigh-in',
+  'openers',
   'walkout',
   'walkout-third',
   'walkout-unrack',
@@ -165,6 +167,8 @@ const STAGED = new Set([
   'verdict-split-red',
   'select-after-make',
   'select-after-miss',
+  'bombed',
+  'recap',
 ]);
 
 /**

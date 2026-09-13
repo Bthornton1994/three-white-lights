@@ -73,7 +73,7 @@
  */
 
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { MotionPressable } from '../ui/MotionPressable';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
@@ -84,6 +84,7 @@ import type { CareerMeetOutcome } from '../game/careerServer';
 import { useOfferCutIn } from '../cutin/CutInHost';
 import { AttemptBoard } from './AttemptBoard';
 import { careerRecapLines } from './careerSurface';
+import { MeetBookendRoom } from './MeetBookendRoom';
 import { MEET_PALETTE } from './meetPalette';
 
 const L = MEET_LAYOUT;
@@ -169,7 +170,8 @@ export function RecapView({
   ]);
 
   return (
-    <ScrollView contentContainerStyle={styles.root} testID="meet-recap">
+    <MeetBookendRoom testID="meet-recap">
+      <View style={styles.root}>
       <Text style={styles.eyebrow}>{MEET_COPY.RECAP_EYEBROW}</Text>
 
       <Block index={MEET_TUNING.RECAP_ROW_ORDER.TOTAL}>
@@ -257,18 +259,16 @@ export function RecapView({
           <Text style={styles.actionLabel}>{MEET_COPY.RECAP_ACTION}</Text>
         </MotionPressable>
       </Block>
-    </ScrollView>
+      </View>
+    </MeetBookendRoom>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
-    flexGrow: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: L.SCREEN_PAD,
-    paddingVertical: L.SECTION_GAP,
-    gap: L.SECTION_GAP,
+    alignSelf: 'stretch',
+    gap: L.BOOKEND_CARD_GAP,
   },
   block: {
     alignItems: 'center',

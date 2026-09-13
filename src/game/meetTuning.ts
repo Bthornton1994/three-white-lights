@@ -352,6 +352,8 @@ export const MEET_TUNING = Object.freeze({
    *
    *   WALKOUT   lightest. The hall IS the beat. There are three short lines over
    *             it and nothing to read carefully.
+   *   BOOKEND   paperwork and endings over the emptied hall (`lifter={null}`).
+   *             The still has to read — CHOICE would hide it. Untuned.
    *   JUDGING   middle. The three lamps have to be the brightest thing on the
    *             screen, and the room is what they are hanging in.
    *   CHOICE    heaviest. GDD §6.3's screen is a decision with two cards and a
@@ -362,6 +364,7 @@ export const MEET_TUNING = Object.freeze({
    */
   HALL: Object.freeze({
     WALKOUT_SCRIM: 0.12,
+    BOOKEND_SCRIM: 0.4,
     JUDGING_SCRIM: 0.46,
     CHOICE_SCRIM: 0.8,
   }),
@@ -1795,6 +1798,16 @@ export const MEET_LAYOUT = Object.freeze({
   HALL_RISE_ZOOM: 0.02,
   HALL_LOAD_ZOOM: 0.01,
   ATTEMPT_DETAIL_LINES: 4,
+
+  /**
+   * Compact espresso card over the emptied hall on weigh-in, openers,
+   * bomb-out and recap. Same job as SESSION_LAYOUT.CHECK_IN_DRAWER_MAX_HEIGHT:
+   * the still stays the majority of 390×844. Untuned (GDD §12.1).
+   */
+  BOOKEND_CARD_MAX_HEIGHT: 280,
+  BOOKEND_FOOT_CLEARANCE: 120,
+  BOOKEND_CARD_PAD: 12,
+  BOOKEND_CARD_GAP: 8,
 
   // THE WALKOUT'S BAR GRAPHIC USED TO BE HERE, and it is gone rather than
   // unused. `BAR_W / BAR_H / PLATE_W / PLATE_GAP / PLATE_MAX_H / PLATE_MIN_H`

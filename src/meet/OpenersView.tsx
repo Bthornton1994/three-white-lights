@@ -27,6 +27,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } fro
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
 import { LIFT_ORDER, type LiftKind } from '../game/meet';
 import { formatWeight } from '../game/resultCard';
+import { MeetBookendRoom } from './MeetBookendRoom';
 import { MEET_PALETTE } from './meetPalette';
 
 const L = MEET_LAYOUT;
@@ -61,7 +62,8 @@ export function OpenersView({
   onConfirm,
 }: OpenersViewProps): React.ReactElement {
   return (
-    <View style={styles.root} testID="meet-openers">
+    <MeetBookendRoom testID="meet-openers">
+      <View style={styles.root}>
       <Text style={styles.eyebrow}>{MEET_COPY.OPENERS_EYEBROW}</Text>
       <Text style={styles.hint}>{MEET_COPY.OPENERS_HINT}</Text>
       <Text style={styles.getIn} testID="openers-get-in">
@@ -110,17 +112,16 @@ export function OpenersView({
       >
         <Text style={styles.actionLabel}>{MEET_COPY.OPENERS_ACTION}</Text>
       </MotionPressable>
-    </View>
+      </View>
+    </MeetBookendRoom>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: L.SCREEN_PAD,
-    gap: L.ROW_GAP,
+    alignSelf: 'stretch',
+    gap: L.BOOKEND_CARD_GAP,
   },
   eyebrow: {
     color: MEET_PALETTE.TEXT_DIM,
@@ -196,7 +197,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: L.BUTTON_RADIUS,
     backgroundColor: MEET_PALETTE.ACTION,
-    marginTop: L.SECTION_GAP,
+    marginTop: L.BOOKEND_CARD_GAP,
   },
   actionLabel: {
     color: MEET_PALETTE.ACTION_TEXT,
