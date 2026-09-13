@@ -1,9 +1,9 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-09-13T12:58:39.181Z",
+    "capturedAt": "2026-09-13T13:56:10.426Z",
     "url": "http://127.0.0.1:8081",
     "sourceRoot": "/workspace",
-    "commit": "9926517a",
+    "commit": "2e95ffda",
     "branch": "cursor/session-a-iron-amber-quality-1c66",
     "workingTree": "clean",
     "dirtyPaths": [
@@ -58,11 +58,11 @@
         }
       },
       "scrim": {
-        "blended": 934929,
-        "opaqueBackdrop": 849,
+        "blended": 934581,
+        "opaqueBackdrop": 1197,
         "untouched": 0
       },
-      "pixelHash": 2574727127
+      "pixelHash": 1145512709
     },
     {
       "moment": "personal-record",
@@ -106,11 +106,11 @@
         }
       },
       "scrim": {
-        "blended": 867544,
-        "opaqueBackdrop": 794,
+        "blended": 867114,
+        "opaqueBackdrop": 1224,
         "untouched": 0
       },
-      "pixelHash": 894574565
+      "pixelHash": 2600469981
     },
     {
       "moment": "bomb-out",
@@ -154,11 +154,11 @@
         }
       },
       "scrim": {
-        "blended": 922449,
-        "opaqueBackdrop": 849,
+        "blended": 922101,
+        "opaqueBackdrop": 1197,
         "untouched": 0
       },
-      "pixelHash": 3530511755
+      "pixelHash": 2413218623
     },
     {
       "moment": "coach-heavy-set",
@@ -202,25 +202,25 @@
         }
       },
       "scrim": {
-        "blended": 930009,
-        "opaqueBackdrop": 849,
+        "blended": 929661,
+        "opaqueBackdrop": 1197,
         "untouched": 0
       },
-      "pixelHash": 1939846563
+      "pixelHash": 1227862794
     }
   ],
   "artDiffs": [
     {
       "a": "third-attempt-walkout",
       "b": "personal-record",
-      "differing": 592,
+      "differing": 259,
       "total": 361152,
       "alignedToEachOwnBox": true
     },
     {
       "a": "personal-record",
       "b": "bomb-out",
-      "differing": 592,
+      "differing": 259,
       "total": 361152,
       "alignedToEachOwnBox": true
     },
@@ -233,14 +233,14 @@
     }
   ],
   "leavesOnItsOwn": {
-    "stillUpAt": 702,
+    "stillUpAt": 700,
     "stillUp": true,
-    "goneAt": 899,
+    "goneAt": 930,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 14,
-    "goneAt": 24,
+    "tappedAt": 15,
+    "goneAt": 25,
     "dismissTookMs": 10,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,

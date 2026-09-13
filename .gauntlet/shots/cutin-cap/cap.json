@@ -1,14 +1,21 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-09-13T12:59:09.319Z",
+    "capturedAt": "2026-09-13T13:56:38.785Z",
     "url": "http://127.0.0.1:8081",
-    "commit": "9926517a",
+    "commit": "2e95ffda",
     "branch": "cursor/session-a-iron-amber-quality-1c66",
     "workingTree": "clean",
     "dirtyPaths": [
-      "M .gauntlet/shots/cutin/debug-meet-bombed.png",
+      "M .gauntlet/shots/cutin/baseline-no-cutin.png",
+      " M .gauntlet/shots/cutin/bomb-out.png",
+      " M .gauntlet/shots/cutin/coach-heavy-set.png",
+      " M .gauntlet/shots/cutin/debug-meet-bombed.png",
       " M .gauntlet/shots/cutin/frames.json",
+      " M .gauntlet/shots/cutin/live-after-auto-dismiss.png",
+      " M .gauntlet/shots/cutin/live-after-tap.png",
       " M .gauntlet/shots/cutin/live-mid-hold.png",
+      " M .gauntlet/shots/cutin/personal-record.png",
+      " M .gauntlet/shots/cutin/third-attempt-walkout.png",
       " M .gauntlet/shots/lift-press/press.json",
       " M .gauntlet/shots/meet/sound.json"
     ],
@@ -64,18 +71,18 @@
           "reachedCommand": false,
           "benchDescent": null,
           "grind": null,
-          "reachedLockout": true,
-          "drivesTapped": 4,
+          "reachedLockout": false,
+          "drivesTapped": 3,
           "downCommandSeen": false,
           "drove": true,
-          "feedback": "It stopped, and you kept driving."
+          "feedback": "The bar won that one."
         },
         {
           "attempt": "SQUAT · ATTEMPT 3 OF 3",
           "played": true,
           "kind": "squat",
           "holdMs": 840,
-          "fps": 59.9,
+          "fps": 60.7,
           "fpsKeepsUp": true,
           "fpsWhy": null,
           "reachedDescent": true,
@@ -83,7 +90,7 @@
           "benchDescent": null,
           "grind": null,
           "reachedLockout": false,
-          "drivesTapped": 5,
+          "drivesTapped": 4,
           "downCommandSeen": false,
           "drove": true,
           "feedback": "The bar won that one."
@@ -93,13 +100,13 @@
           "played": true,
           "kind": "bench",
           "holdMs": null,
-          "fps": 59.9,
+          "fps": 60.7,
           "fpsKeepsUp": true,
           "fpsWhy": null,
           "reachedDescent": true,
           "reachedCommand": true,
           "benchDescent": {
-            "heldMs": 1048,
+            "heldMs": 1030,
             "deadlineMs": 6060,
             "leftBecause": "beat",
             "loop": {
@@ -108,16 +115,16 @@
             }
           },
           "grind": {
-            "dispatched": 44,
-            "ms": 1747,
+            "dispatched": 42,
+            "ms": 1663,
             "periodMs": 40,
             "budgetMs": 14199,
             "attempts": 237,
             "gaps": {
-              "n": 43,
+              "n": 41,
               "meanMs": 40,
               "minMs": 39,
-              "maxMs": 42
+              "maxMs": 41
             },
             "impliedForce": 1,
             "sawCommandLine": true,
@@ -147,7 +154,7 @@
           "reachedDescent": true,
           "reachedCommand": true,
           "benchDescent": {
-            "heldMs": 1087,
+            "heldMs": 1085,
             "deadlineMs": 6060,
             "leftBecause": "beat",
             "loop": {
@@ -156,13 +163,13 @@
             }
           },
           "grind": {
-            "dispatched": 51,
-            "ms": 2019,
+            "dispatched": 50,
+            "ms": 1984,
             "periodMs": 40,
             "budgetMs": 14199,
             "attempts": 237,
             "gaps": {
-              "n": 50,
+              "n": 49,
               "meanMs": 40,
               "minMs": 39,
               "maxMs": 41
@@ -204,16 +211,16 @@
             }
           },
           "grind": {
-            "dispatched": 68,
-            "ms": 2708,
+            "dispatched": 72,
+            "ms": 2865,
             "periodMs": 40,
             "budgetMs": 14199,
             "attempts": 237,
             "gaps": {
-              "n": 67,
+              "n": 71,
               "meanMs": 40,
               "minMs": 39,
-              "maxMs": 43
+              "maxMs": 41
             },
             "impliedForce": 1,
             "sawCommandLine": true,
@@ -237,7 +244,7 @@
           "played": true,
           "kind": "deadlift",
           "holdMs": null,
-          "fps": 60.8,
+          "fps": 59.9,
           "fpsKeepsUp": true,
           "fpsWhy": null,
           "reachedDescent": false,
@@ -255,7 +262,7 @@
           "played": true,
           "kind": "deadlift",
           "holdMs": null,
-          "fps": 59.8,
+          "fps": 60.5,
           "fpsKeepsUp": true,
           "fpsWhy": null,
           "reachedDescent": false,
@@ -287,8 +294,8 @@
           "feedback": "The bar won that one."
         }
       ],
-      "ms": 103449,
-      "stuckBecause": "settled after 566ms"
+      "ms": 102880,
+      "stuckBecause": "settled after 569ms"
     },
     {
       "n": 2,
@@ -318,28 +325,28 @@
           "feedback": "Too deep to recover."
         }
       ],
-      "ms": 55513,
+      "ms": 55560,
       "stuckBecause": null
     }
   ],
   "cutIns": [
     {
       "leg": 2,
-      "at": 203482,
+      "at": 202922,
       "line": "THAT IS THE MEET",
       "hint": "TAP TO SKIP",
       "over": [
         "meet-bombed"
       ],
       "search": "",
-      "goneAt": 205208
+      "goneAt": 204663
     }
   ],
   "gateDecisions": [
     {
       "seq": 0,
       "leg": 1,
-      "at": 1833,
+      "at": 1859,
       "sessionId": "meet-20709",
       "beatKinds": [
         "meet-walkout"
@@ -354,7 +361,7 @@
     {
       "seq": 1,
       "leg": 1,
-      "at": 11969,
+      "at": 11856,
       "sessionId": "meet-20709",
       "beatKinds": [
         "meet-walkout"
@@ -369,7 +376,7 @@
     {
       "seq": 2,
       "leg": 1,
-      "at": 22382,
+      "at": 21838,
       "sessionId": "meet-20709",
       "beatKinds": [
         "meet-walkout"
@@ -384,7 +391,7 @@
     {
       "seq": 3,
       "leg": 1,
-      "at": 34232,
+      "at": 33144,
       "sessionId": "meet-20709",
       "beatKinds": [
         "meet-walkout"
@@ -399,7 +406,7 @@
     {
       "seq": 4,
       "leg": 1,
-      "at": 46114,
+      "at": 44954,
       "sessionId": "meet-20709",
       "beatKinds": [
         "meet-walkout"
@@ -414,7 +421,7 @@
     {
       "seq": 5,
       "leg": 1,
-      "at": 58163,
+      "at": 57021,
       "sessionId": "meet-20709",
       "beatKinds": [
         "meet-walkout"
@@ -429,7 +436,7 @@
     {
       "seq": 6,
       "leg": 1,
-      "at": 72584,
+      "at": 71655,
       "sessionId": "meet-20709",
       "beatKinds": [
         "meet-walkout"
@@ -444,7 +451,7 @@
     {
       "seq": 7,
       "leg": 1,
-      "at": 83314,
+      "at": 82419,
       "sessionId": "meet-20709",
       "beatKinds": [
         "meet-walkout"
@@ -459,7 +466,7 @@
     {
       "seq": 8,
       "leg": 1,
-      "at": 93946,
+      "at": 93069,
       "sessionId": "meet-20709",
       "beatKinds": [
         "meet-walkout"
@@ -474,7 +481,7 @@
     {
       "seq": 9,
       "leg": 1,
-      "at": 105176,
+      "at": 104615,
       "sessionId": "meet-20709",
       "beatKinds": [
         "record",
@@ -490,7 +497,7 @@
     {
       "seq": 10,
       "leg": 2,
-      "at": 148227,
+      "at": 147633,
       "sessionId": "meet-20709",
       "beatKinds": [
         "meet-walkout"
@@ -505,7 +512,7 @@
     {
       "seq": 11,
       "leg": 2,
-      "at": 165726,
+      "at": 165133,
       "sessionId": "meet-20709",
       "beatKinds": [
         "meet-walkout"
@@ -520,7 +527,7 @@
     {
       "seq": 12,
       "leg": 2,
-      "at": 183225,
+      "at": 182666,
       "sessionId": "meet-20709",
       "beatKinds": [
         "meet-walkout"
@@ -535,7 +542,7 @@
     {
       "seq": 13,
       "leg": 2,
-      "at": 203482,
+      "at": 202922,
       "sessionId": "meet-20709",
       "beatKinds": [
         "meet-over"
@@ -557,13 +564,13 @@
     {
       "file": "cut-in-leg-2.png",
       "leg": 2,
-      "artOpacity": 0.986387,
-      "lineOpacity": 0.986387,
+      "artOpacity": 0.999965,
+      "lineOpacity": 0.999965,
       "afterEnterMs": 120
     }
   ],
-  "recorderPolls": 13208,
-  "recorderWorstGapMs": 201,
+  "recorderPolls": 13182,
+  "recorderWorstGapMs": 199,
   "browserMutationWitnesses": [
     {
       "subject": "src/meet/BombOutView.tsx",
@@ -634,12 +641,12 @@
     {
       "ok": true,
       "what": "leg 1: the 'recap' screen is DRAWN, not merely mounted, before the shutter",
-      "detail": "probed recap-action: effective opacity 0.995 after 1480ms (5 x RECAP_ROW_STAGGER_MS + RECAP_ROW_FADE_MS, read from meetTuning.ts)"
+      "detail": "probed recap-action: effective opacity 1.000 after 1480ms (5 x RECAP_ROW_STAGGER_MS + RECAP_ROW_FADE_MS, read from meetTuning.ts)"
     },
     {
       "ok": true,
       "what": "leg 1: the meet surface really went away — CutInHost un-mounted",
-      "detail": "back on the check-in after 3ms, meet-screen present: false"
+      "detail": "back on the check-in after 1ms, meet-screen present: false"
     },
     {
       "ok": true,
@@ -654,7 +661,7 @@
     {
       "ok": true,
       "what": "CONTROL: the in-page recorder ran at all",
-      "detail": "13208 polls at a nominal 16ms, worst gap 201ms against a whole beat of 1720ms; without this, \"no second cut-in\" is what a dead instrument reports — and a single stall longer than one beat hides a whole cut-in while every other line stays green"
+      "detail": "13182 polls at a nominal 16ms, worst gap 199ms against a whole beat of 1720ms; without this, \"no second cut-in\" is what a dead instrument reports — and a single stall longer than one beat hides a whole cut-in while every other line stays green"
     },
     {
       "ok": true,
@@ -714,7 +721,7 @@
     {
       "ok": true,
       "what": "GDD §7.2 / §12.3: ONE SITTING, ONE CUT-IN — 2 legs of one meet-day sitting fired exactly 1",
-      "detail": "leg 2 @203482ms \"THAT IS THE MEET\" over meet-bombed gone at 205208ms after 1726ms"
+      "detail": "leg 2 @202922ms \"THAT IS THE MEET\" over meet-bombed gone at 204663ms after 1741ms"
     },
     {
       "ok": true,
@@ -724,12 +731,12 @@
     {
       "ok": true,
       "what": "GDD §7.2: every overlay was up for ONE whole beat — not two reconciled into one, and none left on screen",
-      "detail": "spans [1726]ms against ENTER_MS + HOLD_MS = 1720ms (+400ms slack, so the threshold is 2120ms against a merged pair's ~3440ms); 0 over the threshold, 0 still up when the run ended"
+      "detail": "spans [1741]ms against ENTER_MS + HOLD_MS = 1720ms (+400ms slack, so the threshold is 2120ms against a merged pair's ~3440ms); 0 over the threshold, 0 still up when the run ended"
     },
     {
       "ok": true,
       "what": "GDD §7.2: the cut-in was PHOTOGRAPHED — 1 frame, with its art AND its line drawn rather than merely mounted",
-      "detail": "cut-in-leg-2.png (leg 2): cut-in-art effective opacity 0.986, cut-in-line 0.986, taken 120ms after the overlay appeared (ENTER_MS, read from cutInTuning.ts) — floor 0.9"
+      "detail": "cut-in-leg-2.png (leg 2): cut-in-art effective opacity 1.000, cut-in-line 1.000, taken 120ms after the overlay appeared (ENTER_MS, read from cutInTuning.ts) — floor 0.9"
     }
   ],
   "failures": [],
