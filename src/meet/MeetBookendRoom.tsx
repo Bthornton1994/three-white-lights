@@ -39,8 +39,9 @@ export interface MeetBookendRoomProps {
   readonly testID: string;
   /**
    * Pinned under the scroll so the beat's only action stays on first paint.
-   * Weigh-in, openers and recap pass their gold button here. Bomb-out keeps
-   * its action inside the silence stagger so nothing is tappable through it.
+   * Weigh-in, openers and recap pass it immediately. Bomb-out wraps the same
+   * slot in its silence stagger so the gold button is not live through the
+   * quiet.
    */
   readonly footer?: React.ReactNode;
 }
@@ -99,7 +100,7 @@ const styles = StyleSheet.create({
     backgroundColor: MEET_PALETTE.CARD,
   },
   cardScroll: {
-    maxHeight: L.BOOKEND_SCROLL_MAX_HEIGHT,
+    height: L.BOOKEND_SCROLL_MAX_HEIGHT,
   },
   cardContent: {
     padding: L.BOOKEND_CARD_PAD,

@@ -111,7 +111,21 @@ export function BombOutView({ bombedLift, attempts, onDone }: BombOutViewProps):
   }, []);
 
   return (
-    <MeetBookendRoom testID="meet-bombed">
+    <MeetBookendRoom
+      testID="meet-bombed"
+      footer={
+        <Line index={MEET_TUNING.BOMB_OUT_ROW_ORDER.ACTION}>
+          <MotionPressable
+            style={styles.action}
+            accessibilityRole="button"
+            onPress={onDone}
+            testID="bomb-out-action"
+          >
+            <Text style={styles.actionLabel}>{MEET_COPY.BOMB_OUT_ACTION}</Text>
+          </MotionPressable>
+        </Line>
+      }
+    >
       <View style={styles.root}>
       <Line index={MEET_TUNING.BOMB_OUT_ROW_ORDER.CALL}>
         <Text style={styles.call} testID="bomb-out-call">
@@ -134,17 +148,6 @@ export function BombOutView({ bombedLift, attempts, onDone }: BombOutViewProps):
         <Text style={styles.kept} testID="bomb-out-kept">
           {MEET_COPY.BOMB_OUT_KEPT}
         </Text>
-      </Line>
-
-      <Line index={MEET_TUNING.BOMB_OUT_ROW_ORDER.ACTION}>
-        <MotionPressable
-          style={styles.action}
-          accessibilityRole="button"
-          onPress={onDone}
-          testID="bomb-out-action"
-        >
-          <Text style={styles.actionLabel}>{MEET_COPY.BOMB_OUT_ACTION}</Text>
-        </MotionPressable>
       </Line>
       </View>
     </MeetBookendRoom>
