@@ -1,9 +1,9 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-09-13T03:36:33.490Z",
-    "url": "http://localhost:8081",
+    "capturedAt": "2026-09-13T06:41:10.590Z",
+    "url": "http://127.0.0.1:8081",
     "sourceRoot": "/workspace",
-    "commit": "863ebf19",
+    "commit": "30eb9fde",
     "branch": "cursor/session-a-iron-amber-quality-1c66",
     "workingTree": "clean",
     "dirtyPaths": [],
@@ -232,13 +232,13 @@
   "leavesOnItsOwn": {
     "stillUpAt": 700,
     "stillUp": true,
-    "goneAt": 888,
+    "goneAt": 885,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 4,
-    "goneAt": 12,
-    "dismissTookMs": 8,
+    "tappedAt": 3,
+    "goneAt": 13,
+    "dismissTookMs": 10,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
     "holdReadFromSourceMs": 1720
@@ -248,8 +248,8 @@
     "onWalkout": null,
     "onBombOut": "THAT IS THE MEET",
     "addressBar": {
-      "walkout": "http://localhost:8081/?meet=walkout-third",
-      "bombed": "http://localhost:8081/?meet=bombed"
+      "walkout": "http://127.0.0.1:8081/?meet=walkout-third",
+      "bombed": "http://127.0.0.1:8081/?meet=bombed"
     },
     "urlFaults": []
   },
