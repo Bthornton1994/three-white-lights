@@ -3,14 +3,16 @@
  *
  * The played lift still comes from `useLiftLoop` / `stepLift`. This file only
  * replaces the training-path picture: owned gym stills instead of the sprite
- * raster. Meet Day keeps `src/lift/LiftStage.tsx`.
+ * raster. Meet Day's attempt mounts this same stage. The A0 sprite file stays
+ * at `src/lift/LiftStage.tsx`.
  *
  * The plate is the room. Skia draws only the command and cue rings the
  * mechanic still needs on web (GDD §6.2) — not the bar-path TRACE panel, which
  * reads as a hole cut out of the photograph.
  *
  * Exported as `LiftStage` so the press-surface walk in `liftInput.test.ts`
- * still finds a stage inside `SetView`.
+ * still finds a stage inside `SetView` and `AttemptView`. `src/lift/LiftStage.tsx`
+ * remains the A0 sprite harness.
  */
 import React, { useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
@@ -55,7 +57,10 @@ const PLATE_SOURCE: Record<Exclude<IronAmberPlateId, 'gym-briefing'>, number> = 
   'deadlift-lockout': deadliftLockout,
 };
 
-export function TrainingLiftStage({ state }: LiftStageProps): React.ReactElement {
+export function TrainingLiftStage({
+  state,
+  crowdRisePx = 0,
+}: LiftStageProps): React.ReactElement {
   const [box, setBox] = useState({ width: 0, height: 0 });
   const plateId = ironAmberPlateFor(state.config.kind, state.phase, state.height);
   const plateLayout = ironAmberPlateLayout(state.config.kind, box.width, box.height);
@@ -68,6 +73,7 @@ export function TrainingLiftStage({ state }: LiftStageProps): React.ReactElement
   const cueX = box.width * IRON_AMBER.CUE_X_RATIO;
   const cueY = box.height * IRON_AMBER.CUE_Y_RATIO;
   const scale = box.width <= 0 ? 0 : box.width / STAGE.STAGE_W;
+  const riseWash = crowdRisePx * IRON_AMBER.HALL_RISE_WASH;
 
   return (
     <View
@@ -95,6 +101,13 @@ export function TrainingLiftStage({ state }: LiftStageProps): React.ReactElement
         accessibilityLabel={SESSION_COPY.LIFT_LABEL[state.config.kind]}
         testID={`iron-amber-plate-${plateId}`}
       />
+      )}
+      {riseWash <= 0 ? null : (
+        <View
+          style={[styles.wash, { opacity: riseWash }]}
+          pointerEvents="none"
+          testID="iron-amber-hall-rise"
+        />
       )}
       {box.width <= 0 ? null : (
         <Canvas style={styles.overlay}>
@@ -194,5 +207,13 @@ const styles = StyleSheet.create({
     top: 0,
     right: 0,
     bottom: 0,
+  },
+  wash: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: SESSION_PALETTE.AMBER,
   },
 });

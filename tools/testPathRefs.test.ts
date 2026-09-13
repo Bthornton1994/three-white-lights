@@ -327,8 +327,11 @@ const PINNED = Object.freeze({
    * (`IRON-AND-AMBER-REFERENCE.md`, `IRON-AMBER-TRAINING-ASSETS.md`).
    * Binary plates (`.jpg` / the reference `.jpeg`) are unread and do not
    * move this pin.
+   *
+   * 341 -> 343 with Meet Day Iron & Amber stills: `ironAmberHall.ts` and
+   * `ironAmberHall.test.ts`.
    */
-  SCANNED_FILES: 341,
+  SCANNED_FILES: 343,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -377,8 +380,10 @@ const PINNED = Object.freeze({
    *
    * 109 -> 111 with Iron & Amber training plates: `ironAmberPlates.test.ts`
    * and `ironAmberWiring.test.ts`.
+   *
+   * 111 -> 112 with Meet Day stills: `src/meet/ironAmberHall.test.ts`.
    */
-  TEST_FILES: 111,
+  TEST_FILES: 112,
 });
 
 /**

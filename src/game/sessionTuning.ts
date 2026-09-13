@@ -553,20 +553,25 @@ export const IRON_AMBER = Object.freeze({
   CUE_X_RATIO: 0.5,
   CUE_Y_RATIO: 0.58,
   CUE_TARGET_STROKE: 1,
-  PLATE_SRC_W: 1152,
-  PLATE_SRC_H: 1728,
-  GYM_SRC_W: 1008,
-  GYM_SRC_H: 1792,
+  PLATE_SRC_W: 720,
+  PLATE_SRC_H: 1280,
+  GYM_SRC_W: 720,
+  GYM_SRC_H: 1280,
   PLATE_SCALE: 1.08,
   GYM_SCALE: 1,
   SQUAT_FOCUS_X: 0.5,
   SQUAT_FOCUS_Y: 0.46,
-  BENCH_FOCUS_X: 0.52,
-  BENCH_FOCUS_Y: 0.48,
-  DEADLIFT_FOCUS_X: 0.47,
-  DEADLIFT_FOCUS_Y: 0.64,
-  GYM_FOCUS_X: 0.58,
+  BENCH_FOCUS_X: 0.5,
+  BENCH_FOCUS_Y: 0.44,
+  DEADLIFT_FOCUS_X: 0.5,
+  DEADLIFT_FOCUS_Y: 0.52,
+  GYM_FOCUS_X: 0.5,
   GYM_FOCUS_Y: 0.42,
+  /**
+   * Extra espresso-amber wash per crowd row on a meet attempt. Same job the
+   * sprite seating wave used to do: an urgent hall reads warmer. Untuned.
+   */
+  HALL_RISE_WASH: 0.035,
 });
 
 /**

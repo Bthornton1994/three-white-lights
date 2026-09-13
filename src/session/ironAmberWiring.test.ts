@@ -35,11 +35,17 @@ describe('Iron & Amber training path wiring', () => {
     expect(stage).toContain('testID="iron-amber-stage"');
   });
 
-  it('Meet Day still draws the sprite LiftStage, not the training plates', () => {
+  it('Meet Day mounts the same Iron & Amber plates as training', () => {
     const attempt = source('../meet/AttemptView.tsx');
-    expect(attempt).toContain("from '../lift/LiftStage'");
-    expect(attempt).not.toContain('TrainingLiftStage');
-    expect(attempt).not.toContain('iron-amber');
+    expect(attempt).toContain("from '../session/TrainingLiftStage'");
+    expect(attempt).not.toContain("from '../lift/LiftStage'");
+    expect(attempt).toContain('<LiftStage');
+    expect(attempt).toContain('venue={MEET_TUNING.VENUE}');
+    const hall = source('../meet/MeetHallView.tsx');
+    expect(hall).toContain('gym-briefing.jpg');
+    expect(hall).toContain('ironAmberHallPlateId');
+    expect(hall).not.toContain('makeSpriteImage');
+    expect(hall).not.toContain('GymSceneLayer');
   });
 
   it('Check-in stays on the GDD §3.2 path, with the gym as the room', () => {

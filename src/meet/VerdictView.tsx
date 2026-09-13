@@ -82,7 +82,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
-import { LIFT_TUNING } from '../game/liftTuning';
 import {
   deliberationMs,
   isUrgentAttempt,
@@ -246,6 +245,19 @@ export function VerdictView({
 
   return (
     <View style={styles.root} testID={revealed ? 'meet-verdict' : 'meet-deliberation'}>
+      <View style={styles.hall}>
+        <MeetHallView
+          lifter={{
+            kind: attempt.lift,
+            totalKg: attempt.weightKg,
+            barAndCollarsKg,
+            loadRatio,
+            pose,
+          }}
+          scrim={MEET_TUNING.HALL.JUDGING_SCRIM}
+          crowdRisePx={crowdRisePx}
+        />
+      </View>
       <View style={styles.panel}>
         <Text style={styles.eyebrow} testID="verdict-attempt">
           {`${liftLabel} · ${formatWeight(attempt.weightKg)}`}
@@ -281,14 +293,6 @@ export function VerdictView({
           </Animated.View>
         ) : null}
       </View>
-
-      {/* He has not left the platform. The bar is still loaded and the room is
-          still full; that is what the wait is. */}
-      <MeetHallView
-        lifter={{ totalKg: attempt.weightKg, barAndCollarsKg, loadRatio, pose }}
-        scrim={MEET_TUNING.HALL.JUDGING_SCRIM}
-        crowdRisePx={crowdRisePx}
-      />
     </View>
   );
 }
@@ -296,8 +300,13 @@ export function VerdictView({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
+  },
+  hall: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
   },
   panel: {
     flex: 1,
@@ -306,7 +315,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: L.SCREEN_PAD,
     gap: L.SECTION_GAP,
-    maxHeight: LIFT_TUNING.LAYOUT.STAGE_H,
+    zIndex: 1,
   },
   eyebrow: {
     color: MEET_PALETTE.TEXT_DIM,

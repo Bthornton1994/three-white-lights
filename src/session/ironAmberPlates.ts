@@ -1,9 +1,9 @@
 /**
  * Iron & Amber training plates — which owned still a live training rep shows.
  *
- * Session A training path only. Meet Day keeps the sprite stage in `src/lift`.
- * Heights come from `IRON_AMBER` in sessionTuning; this file does not retune
- * the lift mechanic.
+ * Session A presentation — training and Meet Day stills. Heights come from
+ * `IRON_AMBER` in sessionTuning; this file does not retune the lift mechanic.
+ * `src/lift/LiftStage.tsx` stays the A0 sprite harness.
  */
 import { IRON_AMBER } from '../game/sessionTuning';
 import type { LiftKind } from '../game/meet';

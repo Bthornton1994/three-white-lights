@@ -73,7 +73,7 @@ import {
   liftContactShadow,
 } from '../art/gymScene';
 import { BAR_AND_COLLARS_KG } from '../art/plates';
-import { GYM_VENUE, GYM_VENUE_PROPS, type GymVenue } from '../art/gymTuning';
+import { GYM_VENUE, type GymVenue } from '../art/gymTuning';
 import { liftStageScene, renderGymScene } from '../art/gymScene';
 import type { IndexGrid } from '../art/raster';
 import { codeOnly } from '../tuning/audit';
@@ -152,13 +152,6 @@ function roomFor(venue: GymVenue): IndexGrid {
 function countOf(grid: IndexGrid, index: number): number {
   let n = 0;
   for (let i = 0; i < grid.data.length; i += 1) if (grid.data[i] === index) n += 1;
-  return n;
-}
-
-function differingPixels(a: IndexGrid, b: IndexGrid): number {
-  expect(a.data.length, 'the two rooms are not the same box').toBe(b.data.length);
-  let n = 0;
-  for (let i = 0; i < a.data.length; i += 1) if (a.data[i] !== b.data[i]) n += 1;
   return n;
 }
 
@@ -255,50 +248,24 @@ describe('a meet attempt is not lifted in the training gym (GDD §6, §12.2)', (
     expect(meetVenue).not.toBe(setVenue);
   });
 
-  it('renders a materially different room for each, in pixels', () => {
-    // THE ASSERTION THIS FILE IS FOR. Not "a venue constant exists" and not
-    // "the two specs differ" — the two grids the screens actually draw.
-    if (meetVenue === null || setVenue === null) throw new Error('no stage to compare');
-    const meetRoom = roomFor(meetVenue);
-    const gymRoom = roomFor(setVenue);
-    const differing = differingPixels(meetRoom, gymRoom);
-
-    // A room that differed in a handful of pixels would satisfy `not.toEqual`
-    // and be the same room. A third of the background is the bound; the two
-    // venues currently differ in about 44% of it.
-    const THIRD = meetRoom.data.length / 3;
-    expect(differing).toBeGreaterThan(THIRD);
+  it('AttemptView mounts the Iron & Amber stage, not the sprite gym', () => {
+    const attempt = read(MEET_ATTEMPT);
+    expect(attempt).toContain("from '../session/TrainingLiftStage'");
+    expect(attempt).not.toContain("from '../lift/LiftStage'");
+    expect(codeOnly(attempt)).not.toContain('GymSceneLayer');
+    expect(codeOnly(attempt)).not.toContain('makeSpriteImage');
   });
 
-  it('puts a crowd behind the meet and none behind the Sim set', () => {
-    if (meetVenue === null || setVenue === null) throw new Error('no stage to compare');
-    const meetRoom = roomFor(meetVenue);
-    const gymRoom = roomFor(setVenue);
-    // The crowd is the thing GDD §6 is about: a competition is watched.
-    expect(crowdPixels(meetRoom)).toBeGreaterThan(0);
-    expect(crowdPixels(gymRoom)).toBe(0);
-    // ...and the training gym's high windows are not in a meet hall.
-    expect(countOf(gymRoom, GYM.GLASS_DIM)).toBeGreaterThan(0);
-    expect(countOf(meetRoom, GYM.GLASS_DIM)).toBe(0);
+  it('the meet hall still is not the sprite gym', () => {
+    const hall = codeOnly(read('meet/MeetHallView.tsx'));
+    expect(hall).toContain('ironAmberHallPlateId');
+    expect(hall).toContain('ironAmberHallLayout');
+    expect(hall).not.toContain('GymSceneLayer');
+    expect(hall).not.toContain('makeSpriteImage');
+    expect(hall).not.toContain('FilterMode');
   });
 
-  it('furnishes the two rooms differently — no training kit on a platform', () => {
-    if (meetVenue === null || setVenue === null) throw new Error('no stage to compare');
-    const onPlatform = new Set(GYM_VENUE_PROPS[meetVenue].map((p) => p.ART));
-    const inGym = new Set(GYM_VENUE_PROPS[setVenue].map((p) => p.ART));
-    expect(onPlatform.has('JUDGE_TABLE')).toBe(true);
-    expect(inGym.has('JUDGE_TABLE')).toBe(false);
-    // The venue table's own switches agree with what was rendered above.
-    expect(GYM_VENUE[meetVenue].CROWD).toBe(true);
-    expect(GYM_VENUE[setVenue].CROWD).toBe(false);
-    expect(GYM_VENUE[meetVenue].BLOCK_WALL).toBe(false);
-    expect(GYM_VENUE[setVenue].BLOCK_WALL).toBe(true);
-  });
-
-  it('leaves every other screen in the training gym', () => {
-    // The other direction, and the reason `venue` is opt-in rather than
-    // required: a daily session must not acquire a crowd. `LiftScreen` is the
-    // standalone mechanic harness and belongs in the gym too.
+  it('leaves the mechanic harness in the training gym', () => {
     expect(resolveStageVenue(read(SESSION_SET), liftStage)).toBe(defaultVenueIn(liftStage));
     expect(resolveStageVenue(read(LIFT_HARNESS), liftStage)).toBe(defaultVenueIn(liftStage));
     expect(defaultVenueIn(liftStage)).toBe('training-gym');
@@ -434,10 +401,6 @@ describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
       const venue = resolveBeatVenue(source, liftStage);
       expect(venue, `${file} draws no room at all`).not.toBeNull();
       expect(venue, `${file} draws the wrong room`).toBe(MEET_TUNING.VENUE);
-      // ...and the room that resolves to really is a hall with people in it,
-      // measured on pixels rather than taken from the name.
-      if (venue === null) throw new Error('unreachable');
-      expect(crowdPixels(roomFor(venue))).toBeGreaterThan(0);
     });
   }
 
@@ -467,18 +430,16 @@ describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
     expect(listed.size).toBe(STAGED_BEATS.length + UNSTAGED_BEATS.length);
   });
 
-  it('draws the hall nearest-neighbour at an integer scale (GDD §7.1)', () => {
-    // The rule that the old walkout broke: it drew its barbell as anti-aliased
-    // vector rectangles two seconds before the player squatted a pixel bar.
-    const hall = read('meet/MeetHallView.tsx');
-    // Both images — the room and the figure — pin the filter and the mipmap.
-    const nearest = hall.split('filter: FilterMode.Nearest, mipmap: MipmapMode.None').length - 1;
-    expect(nearest, 'a MeetHallView image samples with something other than Nearest').toBe(2);
-    // ...and neither of them is sized by a number of its own: they take the
-    // sprite's box, whose scale `gymScene.test.ts` proves is an integer shared
-    // with the room's.
-    expect(hall).toContain('width={SPRITE_BOX.w}');
-    expect(hall).toContain('height={SPRITE_BOX.h}');
+  it('draws the hall as an Iron & Amber still, not a nearest-neighbour sprite', () => {
+    // Closed-beta presentation: Meet Day uses the same owned plates as
+    // training. GDD §7.1 still governs the A0 sprite harness in src/lift;
+    // this file no longer draws that lattice as the primary picture.
+    const hall = codeOnly(read('meet/MeetHallView.tsx'));
+    expect(hall, 'MeetHallView still samples a sprite').not.toContain('FilterMode');
+    expect(hall, 'MeetHallView still sizes a sprite cell').not.toContain('SPRITE_BOX');
+    expect(hall).toContain('ironAmberHallLayout');
+    expect(hall).toContain('ironAmberHallPlateId');
+    expect(read('meet/MeetHallView.tsx')).toContain('testID="meet-hall"');
     expect(Number.isInteger(LIFT_TUNING.FEEDBACK.SPRITE_SCALE)).toBe(true);
   });
 
@@ -563,12 +524,14 @@ describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
     // anyway would satisfy everything above — the same failure the
     // `SCENES[venue]` check above exists for.
     const hall = codeOnly(read('meet/MeetHallView.tsx'));
-    expect(hall, 'MeetHallView ignores the pose it is handed').toContain('walkoutLifterFrame(pose');
-    expect(hall, 'MeetHallView draws a fixed room again').toContain('hallScene(crowdRisePx)');
+    expect(hall, 'MeetHallView ignores the pose it is handed').toContain('pose?.stage');
     expect(hall, 'MeetHallView ignores where the walk-out puts him').toContain('pose?.bodyDxPx');
-    expect(hall, 'MeetHallView pins itself to one room').not.toContain(
-      'spec={MEET_HALL_SCENE}',
+    expect(hall, 'MeetHallView ignores crowd rise').toContain('crowdRisePx');
+    expect(hall, 'MeetHallView no longer frames the still from the sheet').toContain(
+      'ironAmberHallLayout',
     );
+    expect(hall, 'MeetHallView went back to the sprite gym').not.toContain('hallScene(');
+    expect(hall, 'MeetHallView still rasters a lifter frame').not.toContain('walkoutLifterFrame');
 
     // AND THE CLOCK IS REAL. `useHallStep` is what turns elapsed time into a
     // frame index; a `WalkoutView` that sampled a constant instead would hold

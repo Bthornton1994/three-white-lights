@@ -1781,6 +1781,21 @@ export const MEET_LAYOUT = Object.freeze({
    */
   LIFTER_ROOM_SCRIM: 0.45,
 
+  /**
+   * Iron & Amber Meet Day HUD — same overlay system as the training set.
+   * Untuned (GDD §12.1). HALL_WALK_SHIFT is CSS pixels of plate pan per
+   * sprite-sheet bodyDxPx so the walk-out still moves after sprites leave.
+   */
+  HALL_HUD_HEIGHT: 64,
+  HALL_HUD_SCRIM: 0.42,
+  HALL_HUD_PAD: 12,
+  HALL_COMMAND_HEIGHT: 140,
+  HALL_COMMAND_SCRIM: 0.5,
+  HALL_WALK_SHIFT: 8,
+  HALL_RISE_ZOOM: 0.02,
+  HALL_LOAD_ZOOM: 0.01,
+  ATTEMPT_DETAIL_LINES: 4,
+
   // THE WALKOUT'S BAR GRAPHIC USED TO BE HERE, and it is gone rather than
   // unused. `BAR_W / BAR_H / PLATE_W / PLATE_GAP / PLATE_MAX_H / PLATE_MIN_H`
   // sized a barbell drawn out of `Animated.View`s with `backgroundColor`,

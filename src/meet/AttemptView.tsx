@@ -67,7 +67,7 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LiftStage } from '../lift/LiftStage';
+import { LiftStage } from '../session/TrainingLiftStage';
 import { useLiftLoop } from '../lift/useLiftLoop';
 import {
   PRESS_NOT_SELECT,
@@ -76,13 +76,12 @@ import {
   SUPPRESS_CONTEXT_MENU,
 } from '../lift/pressGuard';
 import { pressCommandIsLive, promptFor, type LiftResolution } from '../game/lift';
-import { LIFT_COPY, LIFT_TUNING } from '../game/liftTuning';
+import { LIFT_COPY } from '../game/liftTuning';
 import { ATTEMPTS_PER_LIFT } from '../game/meet';
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
 import { attemptConfigFor, liveAttemptWeightText, meetCommandFor, type MeetDayState } from '../game/meetDay';
 import { settledCrowdRisePx, walkoutRequestFor } from './walkout';
 import { MEET_PALETTE } from './meetPalette';
-import { LIFT_PALETTE } from '../lift/liftPalette';
 
 const L = MEET_LAYOUT;
 
@@ -151,53 +150,6 @@ export function AttemptView({
 
   return (
     <View style={styles.root} testID="meet-attempt" {...SUPPRESS_CONTEXT_MENU}>
-      <View style={styles.copy}>
-      <View style={styles.header}>
-        <Text style={styles.eyebrow} testID="attempt-label">
-          {`${MEET_COPY.LIFT_LABEL[live.lift]} · ${MEET_COPY.ATTEMPT_LABEL} ${live.attemptNumber} ${MEET_COPY.ATTEMPT_OF} ${ATTEMPTS_PER_LIFT}`}
-        </Text>
-        <Text style={styles.weight} testID="attempt-weight">
-          {/*
-            THE UNIT COMES OFF THE MEET, NOT OFF THIS FILE. This line used to be
-            `${formatWeight(live.weightKg)} kg` — a suffix typed here, over a
-            number this screen cannot know the unit of, on a platform `meet.ts`
-            will happily run under `POUND_MEET_RULES`. `liveAttemptWeightText`
-            reads `meetLoadingRules(state.meet).unit`, which is the meet's own
-            answer.
-          */}
-          {liveAttemptWeightText(state)}
-        </Text>
-        <Text
-          style={[
-            styles.prompt,
-            pressCommandIsLive(loop.state)
-              ? {
-                  fontSize: LIFT_TUNING.LAYOUT.HEADLINE_FONT,
-                  color: LIFT_PALETTE.CUE_PERFECT,
-                }
-              : null,
-          ]}
-          testID="attempt-prompt"
-        >
-          {resolution === null ? promptFor(loop.state) : resolution.headline}
-        </Text>
-        <Text style={styles.detail} testID="attempt-detail">
-          {resolution === null || resolution.detail === ''
-            ? LIFT_COPY.SUBTITLE[loop.state.config.kind]
-            : resolution.detail}
-        </Text>
-      </View>
-      </View>
-
-      {command === null ? null : (
-        <Text
-          style={[styles.command, command.live ? styles.commandLive : null]}
-          testID="meet-command"
-        >
-          {command.text}
-        </Text>
-      )}
-
       <Pressable
         style={styles.stage}
         onPressIn={onPressIn}
@@ -212,6 +164,40 @@ export function AttemptView({
           venue={MEET_TUNING.VENUE}
           crowdRisePx={crowdRisePx}
         />
+        <View style={styles.hudScrim} pointerEvents="none" />
+        <View style={styles.hud} pointerEvents="none">
+          <Text style={styles.eyebrow} testID="attempt-label">
+            {`${MEET_COPY.LIFT_LABEL[live.lift]} · ${MEET_COPY.ATTEMPT_LABEL} ${live.attemptNumber} ${MEET_COPY.ATTEMPT_OF} ${ATTEMPTS_PER_LIFT}`}
+          </Text>
+          <Text style={styles.weight} testID="attempt-weight">
+            {liveAttemptWeightText(state)}
+          </Text>
+        </View>
+        {command === null ? null : (
+          <Text
+            style={[styles.liveCommand, command.live ? styles.commandLive : null]}
+            testID="meet-command"
+          >
+            {command.text}
+          </Text>
+        )}
+        <View style={styles.commandScrim} pointerEvents="none" />
+        <View style={styles.command} pointerEvents="none">
+          <Text
+            style={[
+              styles.prompt,
+              pressCommandIsLive(loop.state) ? styles.promptLive : null,
+            ]}
+            testID="attempt-prompt"
+          >
+            {resolution === null ? promptFor(loop.state) : resolution.headline}
+          </Text>
+          <Text style={styles.detail} testID="attempt-detail" numberOfLines={L.ATTEMPT_DETAIL_LINES}>
+            {resolution === null || resolution.detail === ''
+              ? LIFT_COPY.SUBTITLE[loop.state.config.kind]
+              : resolution.detail}
+          </Text>
+        </View>
       </Pressable>
     </View>
   );
@@ -220,36 +206,34 @@ export function AttemptView({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    alignItems: 'center',
-    // THE HALL IS PINNED TO THE BOTTOM OF THE FRAME, on this screen and on every
-    // other staged beat. Before this the stage sat directly under the header and
-    // the bottom 29% of the screen was flat black under the room's own floor —
-    // measured off `live-attempt.png`, 244 of 844 points. Now the platform is on
-    // the floor of the phone and the copy is centred in what is left, which is
-    // the same shape `WalkoutView` and `VerdictView` use, so the player's eye
-    // lands in the same place across all three beats.
-    justifyContent: 'flex-end',
-    // The INHERITED half, on the root so it reaches the copy — see
-    // `src/lift/pressGuard.ts`. On the stage it would reach only the Skia
-    // canvas, where no selection is possible in the first place.
     ...PRESS_NOT_SELECT,
   },
-  copy: {
-    flex: 1,
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    justifyContent: 'center',
-    maxHeight: LIFT_TUNING.LAYOUT.STAGE_H,
+  hudScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: L.HALL_HUD_HEIGHT,
+    backgroundColor: MEET_PALETTE.CARD,
+    opacity: L.HALL_HUD_SCRIM,
   },
-  header: {
+  hud: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: L.ROW_GAP / 2,
-    paddingVertical: L.ROW_GAP,
+    justifyContent: 'space-between',
+    height: L.HALL_HUD_HEIGHT,
+    paddingHorizontal: L.HALL_HUD_PAD,
+    gap: L.ROW_GAP,
   },
   eyebrow: {
-    color: MEET_PALETTE.TEXT_DIM,
+    color: MEET_PALETTE.AMBER,
     fontSize: L.EYEBROW_FONT,
     letterSpacing: L.LETTER_SPACING,
+    fontWeight: '700',
   },
   weight: {
     color: MEET_PALETTE.TEXT,
@@ -259,33 +243,57 @@ const styles = StyleSheet.create({
   },
   prompt: {
     color: MEET_PALETTE.TEXT,
-    fontSize: L.TITLE_FONT,
+    fontSize: L.HEADLINE_FONT,
     fontWeight: '700',
     letterSpacing: L.LETTER_SPACING,
+    textAlign: 'center',
+  },
+  promptLive: {
+    color: MEET_PALETTE.AMBER,
   },
   detail: {
     color: MEET_PALETTE.TEXT_DIM,
     fontSize: L.HINT_FONT,
+    textAlign: 'center',
   },
-  command: {
+  liveCommand: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: L.HALL_COMMAND_HEIGHT,
     color: MEET_PALETTE.TEXT,
     fontSize: L.COMMAND_FONT,
     fontWeight: '800',
     letterSpacing: L.WIDE_LETTER_SPACING,
     textAlign: 'center',
-    paddingBottom: L.ROW_GAP,
   },
   commandLive: {
-    color: LIFT_PALETTE.CUE_PERFECT,
+    color: MEET_PALETTE.AMBER,
     fontSize: L.COMMAND_LIVE_FONT,
   },
+  commandScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: L.HALL_COMMAND_HEIGHT,
+    backgroundColor: MEET_PALETTE.CARD,
+    opacity: L.HALL_COMMAND_SCRIM,
+  },
+  command: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: L.HALL_COMMAND_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: L.ROW_GAP / 2,
+    paddingHorizontal: L.HALL_HUD_PAD,
+  },
   stage: {
-    width: LIFT_TUNING.LAYOUT.STAGE_W,
-    height: LIFT_TUNING.LAYOUT.STAGE_H,
-    // The half that does NOT inherit, so it has to be here, on the element the
-    // press lands in. Without it this Pressable computes `touch-action:
-    // manipulation` and 20px of finger drift hands the attempt to the browser —
-    // and a meet attempt is one attempt (GDD §6.2), so there is no retry.
+    flex: 1,
+    alignSelf: 'stretch',
     ...PRESS_NOT_TAKEN,
   },
 });

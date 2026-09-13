@@ -1,124 +1,68 @@
 /**
- * MeetHallView — the hall, behind whatever the beat is saying.
+ * MeetHallView — the room behind a meet-day beat.
  *
  * ---------------------------------------------------------------------------
  * WHAT IT IS FOR
  * ---------------------------------------------------------------------------
- * GDD §12.2 judges meet day against "real powerlifting broadcast footage — a
- * third-attempt walkout". A broadcast walkout is the moment the hall is MOST
- * visible: the crowd on its feet, the spotters stepping back, the panel seated.
- * Before this, ours removed the building — the walk-out, the deliberation, the
- * lights and the one-way choice after a miss were all text on a black field, and
- * the only frame in the sequence with a room in it was the one where the player
- * is pressing the screen.
+ * GDD §12.2 judges meet day against a third-attempt walkout. The hall has to
+ * be visible: crowd, platform, the weight on the bar. This layer is a
+ * BACKGROUND. It has no button and never decides the meet.
  *
- * This is the layer that puts them somewhere. It is a BACKGROUND, drawn behind
- * a screen's own content: it has no text, no button and no state, and it never
- * decides anything about the meet.
+ * Closed-beta Iron & Amber presentation: owned illustrated stills, the same
+ * cover-focus system training uses. Sprite rasters stay in `src/lift` (A0
+ * harness) and in `meetHall.ts` / `walkout.ts` as the timing sheet. GDD §7.1
+ * is unchanged; this file no longer draws that lattice as the primary picture.
  *
  * ---------------------------------------------------------------------------
- * AND NOW IT MOVES — BUT ONLY WHERE IT IS ASKED TO
+ * CHANNELS THIS FILE DOES NOT OWN
  * ---------------------------------------------------------------------------
- * It used to draw ONE memoised still of the brace over a static room, for every
- * beat, for the whole beat. So the walk-out contained no walk-out, and the room
- * behind an opener was byte-identical to the room behind a third attempt with
- * nothing banked.
+ *   `lifter.pose`     walk-out sheet frame — unrack, steps, settle. Omitted,
+ *                     the still is the settled brace.
+ *   `crowdRisePx`     scene rows the seating has come up by. Zoom + wash.
+ *   `platesLoaded`    discs landed so far. Omitted, the bar is fully loaded.
  *
- * Two optional channels fix that, and this file owns neither of them:
- *
- *   `lifter.pose`   one frame of `src/meet/walkout.ts`'s timing sheet — the
- *                   unrack, the steps back, the settle. Omitted, the lifter is
- *                   drawn at the settled brace, which is what every beat AFTER
- *                   the walk-out wants and is exactly what this file drew
- *                   before.
- *   `crowdRisePx`   scene rows the seating has come up by. Omitted or 0, the
- *                   room is `MEET_HALL_SCENE` itself and the raster is
- *                   byte-for-byte the room every previous pass measured.
- *
- * SCARCITY IS THE POINT (GDD §7.2). Nothing here animates on its own. A beat
- * that hands over neither channel gets the still it always got, and most of the
- * staged beats do exactly that.
- *
- * ---------------------------------------------------------------------------
- * THE SAME ROOM, THE SAME BOX, THE SAME LATTICE AS THE REP
- * ---------------------------------------------------------------------------
- * `MEET_HALL_SCENE` is `liftStageScene()` with `MEET_TUNING.VENUE` — the exact
- * spec `LiftStage` builds for the attempt — and the image is placed at
- * `GYM_LIFT_STAGE`'s own origin and integer scale. So the hall behind the
- * walkout and the hall behind the rep are the same pixels in the same place, and
- * the cut between them is a cut in a continuous shot rather than a teleport.
- *
- * NEAREST NEIGHBOUR, INTEGER SCALE (GDD §7.1). Both images below pin
- * `FilterMode.Nearest` with mipmaps off and take their size from
- * `GYM_LIFT_STAGE.SCALE` / `LIFT_TUNING.FEEDBACK.SPRITE_SCALE`, which are
- * integers checked against each other by `gymScene.test.ts`. The walk-out's
- * sideways travel is a whole number of SPRITE pixels multiplied by that same
- * integer scale, so a moving figure lands on the lattice on every frame — which
- * is why the sheet quantises `bodyDxPx` rather than easing a float.
- *
- * ---------------------------------------------------------------------------
- * THE BAR LOADS BY CLIPPING, NOT BY A SECOND DRAWING
- * ---------------------------------------------------------------------------
- * See `meetHall.ts`. Two sprite frames of the same pose — one with a bare bar,
- * one fully loaded — and a window that widens from the shaft outward. The
- * plates that appear are `renderLifterFrame`'s own discs at their real relative
- * diameters, in the sprite palette, on the sprite's pixel grid. The bare frame
- * is now the loaded frame's own spec with the plates taken off, so the two are
- * the same drawing of the same man whatever the walk-out is doing to him.
- *
- * ---------------------------------------------------------------------------
- * RASTER COST, SINCE THIS FILE NOW REDRAWS
- * ---------------------------------------------------------------------------
- * `useSpriteImage` caches on `frameKey`, the same idiom `LiftStage` uses for the
- * rep. Measured: an opener's sheet resolves to eighteen distinct sprite drawings
- * over its 2,400 ms and the longest third attempt in the piece to TWENTY over
- * 4,800, rather than one per display frame — so that is at most twenty rasters
- * for a whole beat, and the two the tail's brace adds are the bar rocking under
- * him. The ROOM is cached by `GymSceneLayer` on its fields, and `crowdRisePx` is
- * whole rows, so a hall that comes up costs one extra room raster per row it
- * rises: at most nine across the walk-out's ramp and the tail's together
- * (`MEET_TUNING.WALKOUT_TAIL.HUSH_CROWD_RISE_PX`), and nothing after that.
- *
- * ---------------------------------------------------------------------------
- * NOT VERIFIED ON A DEVICE
- * ---------------------------------------------------------------------------
- * Same status as `GymSceneView.tsx` and `LifterSpriteView.tsx`: this type-checks
- * against the installed Skia types and follows the same documented paths those
- * files do. `tools/capture-meet.mjs` is what actually proves the pixels.
- *
- * NO ARITHMETIC AND NO GAME MATH HERE. The scene, the frame specs, the
- * choreography and the reveal geometry are all `meetHall.ts`'s and
- * `walkout.ts`'s, which are pure and tested.
+ * NO ARITHMETIC AND NO GAME MATH HERE. Plate choice and cover-focus are
+ * `ironAmberHall.ts`.
  */
 
-import React, { useMemo, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
-import {
-  Canvas,
-  FilterMode,
-  Group,
-  Image as SkiaImage,
-  MipmapMode,
-  Rect,
-  rect,
-  type SkImage,
-} from '@shopify/react-native-skia';
+import React, { useState } from 'react';
+import { Image, StyleSheet, View } from 'react-native';
 
-import { GymSceneLayer } from '../art/GymSceneView';
-import { makeSpriteImage } from '../art/LifterSpriteView';
-import type { LifterFrameSpec } from '../art/lifterSprite';
-import { CENTER_X } from '../art/spriteTuning';
-import { LIFT_TUNING } from '../game/liftTuning';
-import { SPRITE_BOX, frameKey } from '../lift/liftFrame';
-import { hallLifterFrame, hallPlateCount, hallScene, plateRevealPx } from './meetHall';
-import { walkoutLifterFrame, type WalkoutFrame } from './walkout';
+import { IRON_AMBER, SESSION_COPY } from '../game/sessionTuning';
+import { MEET_COPY } from '../game/meetTuning';
+import type { LiftKind } from '../game/meet';
+import { hallPlateCount } from './meetHall';
+import { ironAmberHallLayout, ironAmberHallPlateId } from './ironAmberHall';
+import type { WalkoutFrame } from './walkout';
 import { MEET_PALETTE } from './meetPalette';
 
-const L = LIFT_TUNING.LAYOUT;
-const SPRITE_SCALE = LIFT_TUNING.FEEDBACK.SPRITE_SCALE;
+import gymBriefing from '../../assets/iron-amber/gym-briefing.jpg';
+import squatBrace from '../../assets/iron-amber/squat-brace.jpg';
+import squatHole from '../../assets/iron-amber/squat-hole.jpg';
+import squatDrive from '../../assets/iron-amber/squat-drive.jpg';
+import benchBrace from '../../assets/iron-amber/bench-brace.jpg';
+import benchChest from '../../assets/iron-amber/bench-chest.jpg';
+import benchPress from '../../assets/iron-amber/bench-press.jpg';
+import deadliftFloor from '../../assets/iron-amber/deadlift-floor.jpg';
+import deadliftKnee from '../../assets/iron-amber/deadlift-knee.jpg';
+import deadliftLockout from '../../assets/iron-amber/deadlift-lockout.jpg';
+
+const PLATE_SOURCE = {
+  'gym-briefing': gymBriefing,
+  'squat-brace': squatBrace,
+  'squat-hole': squatHole,
+  'squat-drive': squatDrive,
+  'bench-brace': benchBrace,
+  'bench-chest': benchChest,
+  'bench-press': benchPress,
+  'deadlift-floor': deadliftFloor,
+  'deadlift-knee': deadliftKnee,
+  'deadlift-lockout': deadliftLockout,
+} as const;
 
 /** Who is on the platform, and what is on their back. */
 export interface MeetHallLifter {
+  readonly kind: LiftKind;
   /** Everything on the bar, including bar and collars, kg. */
   readonly totalKg: number;
   /** What the bar and collars weigh on their own, kg. */
@@ -131,20 +75,13 @@ export interface MeetHallLifter {
    */
   readonly platesLoaded?: number | undefined;
   /**
-   * One frame of the walk-out's timing sheet (`src/meet/walkout.ts`) — the
-   * unrack, a step, the settle. Omitted, he is drawn at the settled brace and
-   * does not move, which is right for the deliberation, the verdict and the
-   * attempt choice and was wrong for exactly one beat.
+   * One frame of the walk-out's timing sheet. Omitted, he is at the settled
+   * brace and does not move.
    */
   readonly pose?: WalkoutFrame | undefined;
 }
 
 export interface MeetHallViewProps {
-  /**
-   * The lifter, or `null` for an empty platform. Between attempts nobody is
-   * standing on it, and drawing one there would be a lie about where the lifter
-   * is (GDD §6.3's choice is made off the platform).
-   */
   readonly lifter: MeetHallLifter | null;
   /**
    * How far the room is held back under whatever is drawn over it, 0..1.
@@ -152,30 +89,9 @@ export interface MeetHallViewProps {
    */
   readonly scrim: number;
   /**
-   * Scene rows the seating has come up by. Omitted or 0, the hall is seated and
-   * the room is the same object every other beat draws. `MEET_TUNING.CROWD` owns
-   * when this is non-zero; a screen reads a ramp, never a number.
+   * Scene rows the seating has come up by. Omitted or 0, the hall is seated.
    */
   readonly crowdRisePx?: number | undefined;
-}
-
-/**
- * The sprite, rasterised at most once per drawing.
- *
- * The same cache `LiftStage`'s `useSpriteImage` keeps, for the same reason: a
- * 96x72 per-pixel shading pass is far too much to redo on a display frame that
- * is showing a drawing it already has.
- */
-function useSpriteImage(spec: LifterFrameSpec | null): SkImage | null {
-  const cache = useRef<{ key: string; image: SkImage | null }>({ key: '', image: null });
-  return useMemo(() => {
-    if (spec === null) return null;
-    const key = frameKey(spec);
-    if (cache.current.key === key) return cache.current.image;
-    const image = makeSpriteImage(spec);
-    cache.current = { key, image };
-    return image;
-  }, [spec]);
 }
 
 export function MeetHallView({
@@ -183,108 +99,93 @@ export function MeetHallView({
   scrim,
   crowdRisePx = 0,
 }: MeetHallViewProps): React.ReactElement {
-  const totalKg = lifter === null ? null : lifter.totalKg;
-  const barKg = lifter === null ? null : lifter.barAndCollarsKg;
-  const loadRatio = lifter === null ? null : lifter.loadRatio;
+  const [box, setBox] = useState({ width: 0, height: 0 });
+  const empty = lifter === null;
   const pose = lifter?.pose ?? null;
-
-  // THE DRAWING. With a walk-out frame it is that frame; without one it is the
-  // settled brace, which is the frame the rep itself begins from. Memoised on
-  // the values that shape it rather than on the lifter object, so a re-render
-  // for a plate landing does not build a new spec and miss the raster cache.
-  const loadedSpec = useMemo<LifterFrameSpec | null>(() => {
-    if (totalKg === null || barKg === null || loadRatio === null) return null;
-    if (pose === null) return hallLifterFrame(loadRatio, totalKg, barKg);
-    return walkoutLifterFrame(pose, totalKg, barKg);
-  }, [totalKg, barKg, loadRatio, pose]);
-
-  // The SAME drawing with the plates taken off. Built from the loaded spec
-  // rather than rebuilt from the pose, so the two can never be two poses — which
-  // is what would put a seam down the middle of a man while the bar loads.
-  const bareSpec = useMemo<LifterFrameSpec | null>(
-    () => (loadedSpec === null || barKg === null ? null : { ...loadedSpec, totalKg: barKg }),
-    [loadedSpec, barKg],
+  const kind = lifter?.kind ?? null;
+  const plateId = ironAmberHallPlateId(kind, pose?.stage ?? null, empty);
+  const platesShown =
+    lifter === null
+      ? 0
+      : (lifter.platesLoaded ?? hallPlateCount(lifter.totalKg, lifter.barAndCollarsKg));
+  const layout = ironAmberHallLayout(
+    box.width,
+    box.height,
+    plateId,
+    pose?.bodyDxPx ?? 0,
+    crowdRisePx,
+    platesShown,
   );
-
-  const loadedImage = useSpriteImage(loadedSpec);
-  const bareImage = useSpriteImage(bareSpec);
-
-  // How much of the loaded bar is showing. `undefined` means "already loaded",
-  // which resolves to the whole stack and therefore to the whole cell.
-  const reveal = useMemo(() => {
-    if (totalKg === null || barKg === null) return 0;
-    const shown = lifter?.platesLoaded ?? hallPlateCount(totalKg, barKg);
-    return plateRevealPx(shown, totalKg, barKg);
-  }, [totalKg, barKg, lifter?.platesLoaded]);
-
-  // Where he is standing. Whole SPRITE pixels times the integer scale, so a
-  // stepping lifter stays on the same lattice as the room behind him.
-  const spriteX = SPRITE_BOX.x + (pose?.bodyDxPx ?? 0) * SPRITE_SCALE;
-  const centreX = spriteX + CENTER_X * SPRITE_SCALE;
-  const window = rect(
-    centreX - reveal * SPRITE_SCALE,
-    SPRITE_BOX.y,
-    reveal * SPRITE_SCALE * 2,
-    SPRITE_BOX.h,
-  );
+  const riseWash = crowdRisePx * IRON_AMBER.HALL_RISE_WASH;
+  const label =
+    plateId === 'gym-briefing'
+      ? SESSION_COPY.ROOM_LABEL
+      : MEET_COPY.LIFT_LABEL[kind ?? 'squat'];
 
   return (
-    // THE `testID` IS ON THE VIEW, NOT ON THE CANVAS, and that is not a style
-    // choice: Skia's web `Canvas` does not forward `testID` to the DOM, so a
-    // marker on it is invisible to `tools/capture-meet.mjs` — which is the one
-    // instrument that can say "there is a building in this shot" by looking at
-    // the running app rather than at the source. It was on the Canvas first, and
-    // the capture reported every staged beat as roomless while the pixels showed
-    // a hall.
-    <View style={styles.canvas} testID="meet-hall">
-    <Canvas style={styles.canvas}>
-      {/* The last fractional row of the stage lands on this rather than on
-          nothing — the same job the base fill does in `LiftStage`. */}
-      <Rect x={0} y={0} width={L.STAGE_W} height={L.STAGE_H} color={MEET_PALETTE.STAGE} />
-
-      <GymSceneLayer spec={hallScene(crowdRisePx)} />
-
-      {/* The bare bar, then the loaded bar through a widening window. */}
-      {bareImage === null ? null : (
-        <SkiaImage
-          image={bareImage}
-          x={spriteX}
-          y={SPRITE_BOX.y}
-          width={SPRITE_BOX.w}
-          height={SPRITE_BOX.h}
-          fit="fill"
-          sampling={{ filter: FilterMode.Nearest, mipmap: MipmapMode.None }}
+    <View
+      style={styles.root}
+      testID="meet-hall"
+      onLayout={(event) => {
+        const next = event.nativeEvent.layout;
+        setBox({ width: next.width, height: next.height });
+      }}
+    >
+      {box.width <= 0 ? null : (
+        <Image
+          source={PLATE_SOURCE[plateId]}
+          style={[
+            styles.plate,
+            {
+              width: layout.width,
+              height: layout.height,
+              left: layout.left,
+              top: layout.top,
+            },
+          ]}
+          resizeMode="stretch"
+          accessibilityRole="image"
+          accessibilityLabel={label}
+          testID={`iron-amber-hall-${plateId}`}
         />
       )}
-      {loadedImage === null ? null : (
-        <Group clip={window}>
-          <SkiaImage
-            image={loadedImage}
-            x={spriteX}
-            y={SPRITE_BOX.y}
-            width={SPRITE_BOX.w}
-            height={SPRITE_BOX.h}
-            fit="fill"
-            sampling={{ filter: FilterMode.Nearest, mipmap: MipmapMode.None }}
-          />
-        </Group>
+      {riseWash <= 0 ? null : (
+        <View
+          style={[styles.wash, { opacity: riseWash }]}
+          pointerEvents="none"
+          testID="iron-amber-hall-rise"
+        />
       )}
-
-      {/* The scrim. Flat alpha over the finished image, so it dims the room
-          without resampling a single pixel of it. */}
-      <Rect
-        x={0}
-        y={0}
-        width={L.STAGE_W}
-        height={L.STAGE_H}
-        color={MEET_PALETTE.BACKDROP}
-        opacity={scrim}
-      />
-    </Canvas>
+      <View style={[styles.scrim, { opacity: scrim }]} pointerEvents="none" />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  canvas: { width: L.STAGE_W, height: L.STAGE_H },
+  root: {
+    flex: 1,
+    alignSelf: 'stretch',
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: MEET_PALETTE.CARD,
+  },
+  plate: {
+    position: 'absolute',
+  },
+  wash: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: MEET_PALETTE.AMBER,
+  },
+  scrim: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: MEET_PALETTE.CARD,
+  },
 });

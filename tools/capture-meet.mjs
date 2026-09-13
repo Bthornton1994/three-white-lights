@@ -58,6 +58,17 @@ const dpr = Number(flag('dpr', '2'));
 // shorter settle photographs it with its last line — the way out — missing.
 const settleMs = Number(flag('settle', '5200'));
 
+const SRC_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const meetLayoutSource = await readFile(path.join(SRC_ROOT, 'src/game/meetTuning.ts'), 'utf8');
+if (
+  !meetLayoutSource.includes('HALL_HUD_HEIGHT: 64') ||
+  !meetLayoutSource.includes('HALL_COMMAND_HEIGHT: 140')
+) {
+  throw new Error(
+    'capture-meet HALL_HUD_HEIGHT_PT / HALL_COMMAND_HEIGHT_PT no longer match MEET_LAYOUT',
+  );
+}
+
 /**
  * The beats, in loop order. Restated here rather than imported from the
  * TypeScript module on purpose: this tool is a second, independent statement of
@@ -163,7 +174,13 @@ const STAGED = new Set([
  * for what this tool is being asked: "do these two frames differ BELOW THE COPY
  * BLOCK". A hard-coded y would silently start measuring the wrong band the day
  * the layout moved, and the answer it produced would still look like a number.
+ *
+ * HUD / command insets are restated from MEET_LAYOUT so a full-bleed hall
+ * still measures the still, not the overlay lamps.
  */
+const HALL_HUD_HEIGHT_PT = 64;
+const HALL_COMMAND_HEIGHT_PT = 140;
+
 async function hallRegion() {
   const box = await page.evaluate(() => {
     const node = document.querySelector('[data-testid="meet-hall"]');
@@ -172,11 +189,26 @@ async function hallRegion() {
     return { x: rect.x, y: rect.y, w: rect.width, h: rect.height };
   });
   if (box === null) return null;
+  // Interior of the still, excluding the HUD/command overlays restated from
+  // MEET_LAYOUT.HALL_HUD_HEIGHT / HALL_COMMAND_HEIGHT. A full-bleed hall's
+  // bounding box includes those overlays; measuring them would make a no-lift
+  // differ from deliberation because the lamps changed, not the room.
+  const insetTop = HALL_HUD_HEIGHT_PT;
+  const insetBottom = HALL_COMMAND_HEIGHT_PT;
+  const innerH = box.h - insetTop - insetBottom;
+  if (innerH <= 0) {
+    return {
+      x: Math.round(box.x * dpr),
+      y: Math.round(box.y * dpr),
+      w: Math.round(box.w * dpr),
+      h: Math.round(box.h * dpr),
+    };
+  }
   return {
     x: Math.round(box.x * dpr),
-    y: Math.round(box.y * dpr),
+    y: Math.round((box.y + insetTop) * dpr),
     w: Math.round(box.w * dpr),
-    h: Math.round(box.h * dpr),
+    h: Math.round(innerH * dpr),
   };
 }
 

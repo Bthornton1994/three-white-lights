@@ -271,9 +271,9 @@ const styles = StyleSheet.create({
   hall: {
     position: 'absolute',
     left: 0,
+    top: 0,
     right: 0,
     bottom: 0,
-    alignItems: 'center',
     pointerEvents: 'none',
   },
   eyebrow: {
