@@ -93,7 +93,8 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
 import Animated, {
   ReduceMotion,
   useAnimatedStyle,
@@ -385,7 +386,7 @@ export function CloseOutView({
         </Text>
       </Row>
 
-      <Pressable
+      <MotionPressable
         style={styles.action}
         accessibilityRole="button"
         onPress={closeOut.canPropose ? onDone : onRetry}
@@ -394,7 +395,7 @@ export function CloseOutView({
         <Text style={styles.actionLabel}>
           {closeOut.canPropose ? SESSION_COPY.CLOSE_OUT_DONE : SESSION_COPY.CLOSE_OUT_RETRY}
         </Text>
-      </Pressable>
+      </MotionPressable>
       </View>
       </IronAmberCard>
     </IronAmberRoom>
