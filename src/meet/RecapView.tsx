@@ -73,7 +73,8 @@
  */
 
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { LIFT_ORDER } from '../game/meet';
@@ -247,14 +248,14 @@ export function RecapView({
       )}
 
       <Block index={MEET_TUNING.RECAP_ROW_ORDER.CARD}>
-        <Pressable
+        <MotionPressable
           style={styles.action}
           accessibilityRole="button"
           onPress={onSeeCard}
           testID="recap-action"
         >
           <Text style={styles.actionLabel}>{MEET_COPY.RECAP_ACTION}</Text>
-        </Pressable>
+        </MotionPressable>
       </Block>
     </ScrollView>
   );
