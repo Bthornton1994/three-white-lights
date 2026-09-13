@@ -114,17 +114,17 @@ import { SESSION_PALETTE } from '../session/sessionPalette';
 import { CUT_IN_SURFACE, cutInIdentity } from './cutInArt';
 import type { CutInMoment, LiveCutIn } from './cutInGate';
 import { CUT_IN_ART, CUT_IN_COPY, CUT_IN_LAYOUT, CUT_IN_TUNING } from './cutInTuning';
-import gymBriefing from '../../assets/iron-amber/gym-briefing.jpg';
 import squatBrace from '../../assets/iron-amber/squat-brace.jpg';
 import squatDrive from '../../assets/iron-amber/squat-drive.jpg';
 import meetWalkThird from '../../assets/iron-amber/meet-squat-walk-third.jpg';
+import meetEmpty from '../../assets/iron-amber/meet-empty.jpg';
 
 const L = CUT_IN_LAYOUT;
 
 const STILL_SOURCE: Record<CutInMoment, number> = {
   'third-attempt-walkout': meetWalkThird,
   'personal-record': squatDrive,
-  'bomb-out': gymBriefing,
+  'bomb-out': meetEmpty,
   'coach-heavy-set': squatBrace,
 };
 

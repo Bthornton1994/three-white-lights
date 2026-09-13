@@ -363,4 +363,15 @@ describe('A-VIS-03 — the player-facing cut-in is an Iron & Amber still', () =>
       expect(source('CutInView.tsx'), file).toContain(file.replace('.jpg', ''));
     }
   });
+
+  it('bomb-out uses the emptied meet hall, not the daily-rest gym', () => {
+    // GDD §7.2's somber counterpart. gym-briefing.jpg is the rest-day garage
+    // (empty rack, driveway car, LIFT GOOD PEOPLE crate) — the same plate as
+    // 08b-rest. A critic that opened cut-in-leg-2.png / bomb-out.png saw that
+    // crop and failed the intensity bar.
+    expect(CUT_IN_ART.STILL['bomb-out']).toBe('meet-empty.jpg');
+    expect(CUT_IN_ART.STILL['bomb-out']).not.toBe('gym-briefing.jpg');
+    expect(VIEW).toMatch(/meet-empty\.jpg/);
+    expect(VIEW).not.toMatch(/gym-briefing/);
+  });
 });

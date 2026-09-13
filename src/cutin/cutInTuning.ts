@@ -304,11 +304,16 @@ export const CUT_IN_ART = Object.freeze({
    * the 16-bit Tier 3 grid. GDD §7.1 stays documented (A-DES-01); the
    * overlay leaves the pixel-portrait language. Captions still come from
    * `tier3Of`. Filenames under `assets/iron-amber/`. Untuned.
+   *
+   * bomb-out is the emptied meet hall, not the daily-rest garage. GDD §7.2's
+   * somber counterpart is leftover plates and empty judge chairs after a
+   * meet that ended with nothing on the board — not a crop of the rest-day
+   * rack, driveway, and crate. Existing owned still; do not mint one.
    */
   STILL: Object.freeze<Record<CutInMoment, string>>({
     'third-attempt-walkout': 'meet-squat-walk-third.jpg',
     'personal-record': 'squat-drive.jpg',
-    'bomb-out': 'gym-briefing.jpg',
+    'bomb-out': 'meet-empty.jpg',
     'coach-heavy-set': 'squat-brace.jpg',
   }),
 });
