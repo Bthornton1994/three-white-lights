@@ -258,11 +258,14 @@ export function VerdictView({
           crowdRisePx={crowdRisePx}
         />
       </View>
-      <View style={styles.panel}>
+      <View style={styles.hudScrim} pointerEvents="none" />
+      <View style={styles.hud} pointerEvents="none">
         <Text style={styles.eyebrow} testID="verdict-attempt">
           {`${liftLabel} · ${formatWeight(attempt.weightKg)}`}
         </Text>
-
+      </View>
+      <View style={styles.commandScrim} pointerEvents="none" />
+      <View style={styles.command} pointerEvents="none">
         <View style={styles.lamps} testID="verdict-lamps">
           {attempt.lights.map((light, seat) => (
             <Lamp key={seat} light={light} seat={seat} revealed={revealed} />
@@ -308,19 +311,51 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
-  panel: {
-    flex: 1,
-    alignSelf: 'stretch',
+  hudScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: L.HALL_HUD_HEIGHT,
+    backgroundColor: MEET_PALETTE.CARD,
+    opacity: L.HALL_HUD_SCRIM,
+  },
+  hud: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: L.HALL_HUD_HEIGHT,
+    paddingHorizontal: L.HALL_HUD_PAD,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  commandScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: L.HALL_COMMAND_HEIGHT,
+    backgroundColor: MEET_PALETTE.CARD,
+    opacity: L.HALL_COMMAND_SCRIM,
+  },
+  command: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: L.HALL_COMMAND_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: L.SCREEN_PAD,
-    gap: L.SECTION_GAP,
-    zIndex: 1,
+    gap: L.ROW_GAP,
+    paddingHorizontal: L.HALL_HUD_PAD,
   },
   eyebrow: {
-    color: MEET_PALETTE.TEXT_DIM,
+    color: MEET_PALETTE.AMBER,
     fontSize: L.EYEBROW_FONT,
     letterSpacing: L.WIDE_LETTER_SPACING,
+    fontWeight: '700',
   },
   lamps: {
     flexDirection: 'row',
