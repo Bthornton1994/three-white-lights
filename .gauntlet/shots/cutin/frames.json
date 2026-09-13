@@ -1,12 +1,15 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-09-13T07:34:50.325Z",
+    "capturedAt": "2026-09-13T08:53:58.957Z",
     "url": "http://127.0.0.1:8081",
     "sourceRoot": "/workspace",
-    "commit": "22330dd7",
+    "commit": "c56f5e0f",
     "branch": "cursor/session-a-iron-amber-quality-1c66",
     "workingTree": "clean",
-    "dirtyPaths": [],
+    "dirtyPaths": [
+      "M .gauntlet/shots/lift-press/press.json",
+      " M .gauntlet/shots/meet/sound.json"
+    ],
     "instrument": {
       "capture-cutin.mjs": "6b735d315332a467",
       "png.mjs": "6356a0d0b0dcb696"
@@ -230,15 +233,15 @@
     }
   ],
   "leavesOnItsOwn": {
-    "stillUpAt": 701,
+    "stillUpAt": 700,
     "stillUp": true,
-    "goneAt": 802,
+    "goneAt": 811,
     "behind": true
   },
   "tapDismissed": {
     "tappedAt": 4,
-    "goneAt": 5,
-    "dismissTookMs": 1,
+    "goneAt": 13,
+    "dismissTookMs": 9,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
     "holdReadFromSourceMs": 1720
