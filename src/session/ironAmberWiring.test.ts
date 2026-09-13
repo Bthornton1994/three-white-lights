@@ -25,6 +25,8 @@ describe('Iron & Amber training path wiring', () => {
     expect(stage).toContain("from '../../assets/iron-amber/squat-brace.jpg'");
     expect(stage).toContain("from '../../assets/iron-amber/bench-brace.jpg'");
     expect(stage).toContain('ironAmberPlateFor');
+    expect(stage).toContain('meetAttemptPlateId');
+    expect(stage).toContain('meet-squat-brace.jpg');
     expect(stage).toContain('ironAmberPlateLayout');
     expect(stage).toContain('crowdRisePx');
     expect(stage).toContain('testID={`iron-amber-plate-${plateId}`}');
@@ -36,14 +38,17 @@ describe('Iron & Amber training path wiring', () => {
     expect(stage).toContain('testID="iron-amber-stage"');
   });
 
-  it('Meet Day mounts the same Iron & Amber plates as training', () => {
+  it('Meet Day hall mounts packed-platform stills, not the training garage', () => {
     const attempt = source('../meet/AttemptView.tsx');
     expect(attempt).toContain("from '../session/TrainingLiftStage'");
     expect(attempt).not.toContain("from '../lift/LiftStage'");
     expect(attempt).toContain('<LiftStage');
     expect(attempt).toContain('venue={MEET_TUNING.VENUE}');
     const hall = source('../meet/MeetHallView.tsx');
-    expect(hall).toContain('gym-briefing.jpg');
+    expect(hall).toContain('meet-empty.jpg');
+    expect(hall).toContain('meet-squat-brace.jpg');
+    expect(hall).not.toContain("from '../../assets/iron-amber/gym-briefing.jpg'");
+    expect(hall).not.toContain("from '../../assets/iron-amber/squat-brace.jpg'");
     expect(hall).toContain('ironAmberHallPlateId');
     expect(hall).not.toContain('makeSpriteImage');
     expect(hall).not.toContain('GymSceneLayer');

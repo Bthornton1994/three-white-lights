@@ -10,6 +10,9 @@
  * mechanic still needs on web (GDD §6.2) — not the bar-path TRACE panel, which
  * reads as a hole cut out of the photograph.
  *
+ * Meet Day's attempt passes `MEET_TUNING.VENUE` and this stage then loads
+ * the packed-platform stills, not the training garage.
+ *
  * Exported as `LiftStage` so the press-surface walk in `liftInput.test.ts`
  * still finds a stage inside `SetView` and `AttemptView`. `src/lift/LiftStage.tsx`
  * remains the A0 sprite harness.
@@ -21,6 +24,7 @@ import { Canvas, Circle, Group, Rect } from '@shopify/react-native-skia';
 import { LIFT_TUNING } from '../game/liftTuning';
 import { cueProgress } from '../game/lift';
 import { IRON_AMBER, SESSION_COPY } from '../game/sessionTuning';
+import { MEET_TUNING } from '../game/meetTuning';
 import {
   commandHit,
   cuePulse,
@@ -31,6 +35,7 @@ import {
 import type { LiftStageProps } from '../lift/LiftStage';
 import { SESSION_PALETTE } from './sessionPalette';
 import { ironAmberPlateFor, ironAmberPlateLayout, type IronAmberPlateId } from './ironAmberPlates';
+import { meetAttemptPlateId, type MeetHallPlateId } from '../meet/ironAmberHall';
 
 import squatBrace from '../../assets/iron-amber/squat-brace.jpg';
 import squatHole from '../../assets/iron-amber/squat-hole.jpg';
@@ -41,6 +46,10 @@ import benchPress from '../../assets/iron-amber/bench-press.jpg';
 import deadliftFloor from '../../assets/iron-amber/deadlift-floor.jpg';
 import deadliftKnee from '../../assets/iron-amber/deadlift-knee.jpg';
 import deadliftLockout from '../../assets/iron-amber/deadlift-lockout.jpg';
+import meetSquatWalk from '../../assets/iron-amber/meet-squat-walk.jpg';
+import meetSquatBrace from '../../assets/iron-amber/meet-squat-brace.jpg';
+import meetBench from '../../assets/iron-amber/meet-bench.jpg';
+import meetDeadlift from '../../assets/iron-amber/meet-deadlift.jpg';
 
 const STAGE = LIFT_TUNING.LAYOUT;
 const F = LIFT_TUNING.FEEDBACK;
@@ -57,12 +66,26 @@ const PLATE_SOURCE: Record<Exclude<IronAmberPlateId, 'gym-briefing'>, number> = 
   'deadlift-lockout': deadliftLockout,
 };
 
+const MEET_ATTEMPT_SOURCE: Record<Exclude<MeetHallPlateId, 'meet-empty'>, number> = {
+  'meet-squat-walk': meetSquatWalk,
+  'meet-squat-brace': meetSquatBrace,
+  'meet-bench': meetBench,
+  'meet-deadlift': meetDeadlift,
+};
+
 export function TrainingLiftStage({
   state,
   crowdRisePx = 0,
+  venue,
 }: LiftStageProps): React.ReactElement {
   const [box, setBox] = useState({ width: 0, height: 0 });
-  const plateId = ironAmberPlateFor(state.config.kind, state.phase, state.height);
+  const onMeet = venue === MEET_TUNING.VENUE;
+  const plateId = onMeet
+    ? meetAttemptPlateId(state.config.kind, state.phase)
+    : ironAmberPlateFor(state.config.kind, state.phase, state.height);
+  const plateSource = onMeet
+    ? MEET_ATTEMPT_SOURCE[meetAttemptPlateId(state.config.kind, state.phase)]
+    : PLATE_SOURCE[ironAmberPlateFor(state.config.kind, state.phase, state.height)];
   const plateLayout = ironAmberPlateLayout(
     state.config.kind,
     box.width,
@@ -91,7 +114,7 @@ export function TrainingLiftStage({
     >
       {box.width <= 0 ? null : (
       <Image
-        source={PLATE_SOURCE[plateId]}
+        source={plateSource}
         style={[
           styles.plate,
           {

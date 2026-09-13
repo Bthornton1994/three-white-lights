@@ -8,10 +8,11 @@
  * be visible: crowd, platform, the weight on the bar. This layer is a
  * BACKGROUND. It has no button and never decides the meet.
  *
- * Closed-beta Iron & Amber presentation: owned illustrated stills, the same
- * cover-focus system training uses. Sprite rasters stay in `src/lift` (A0
- * harness) and in `meetHall.ts` / `walkout.ts` as the timing sheet. GDD §7.1
- * is unchanged; this file no longer draws that lattice as the primary picture.
+ * Closed-beta Iron & Amber presentation: owned illustrated MEET VENUE
+ * stills (platform, crowd, judges) — not the training garage. Sprite rasters
+ * stay in `src/lift` (A0 harness) and in `meetHall.ts` / `walkout.ts` as the
+ * timing sheet. GDD §7.1 is unchanged; this file no longer draws that lattice
+ * as the primary picture.
  *
  * ---------------------------------------------------------------------------
  * CHANNELS THIS FILE DOES NOT OWN
@@ -28,37 +29,31 @@
 import React, { useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 
-import { IRON_AMBER, SESSION_COPY } from '../game/sessionTuning';
+import { IRON_AMBER } from '../game/sessionTuning';
 import { MEET_COPY } from '../game/meetTuning';
 import type { LiftKind } from '../game/meet';
 import { hallPlateCount } from './meetHall';
-import { ironAmberHallLayout, ironAmberHallPlateId } from './ironAmberHall';
+import {
+  ironAmberHallLayout,
+  ironAmberHallPlateId,
+  type MeetHallPlateId,
+} from './ironAmberHall';
 import type { WalkoutFrame } from './walkout';
 import { MEET_PALETTE } from './meetPalette';
 
-import gymBriefing from '../../assets/iron-amber/gym-briefing.jpg';
-import squatBrace from '../../assets/iron-amber/squat-brace.jpg';
-import squatHole from '../../assets/iron-amber/squat-hole.jpg';
-import squatDrive from '../../assets/iron-amber/squat-drive.jpg';
-import benchBrace from '../../assets/iron-amber/bench-brace.jpg';
-import benchChest from '../../assets/iron-amber/bench-chest.jpg';
-import benchPress from '../../assets/iron-amber/bench-press.jpg';
-import deadliftFloor from '../../assets/iron-amber/deadlift-floor.jpg';
-import deadliftKnee from '../../assets/iron-amber/deadlift-knee.jpg';
-import deadliftLockout from '../../assets/iron-amber/deadlift-lockout.jpg';
+import meetEmpty from '../../assets/iron-amber/meet-empty.jpg';
+import meetSquatWalk from '../../assets/iron-amber/meet-squat-walk.jpg';
+import meetSquatBrace from '../../assets/iron-amber/meet-squat-brace.jpg';
+import meetBench from '../../assets/iron-amber/meet-bench.jpg';
+import meetDeadlift from '../../assets/iron-amber/meet-deadlift.jpg';
 
-const PLATE_SOURCE = {
-  'gym-briefing': gymBriefing,
-  'squat-brace': squatBrace,
-  'squat-hole': squatHole,
-  'squat-drive': squatDrive,
-  'bench-brace': benchBrace,
-  'bench-chest': benchChest,
-  'bench-press': benchPress,
-  'deadlift-floor': deadliftFloor,
-  'deadlift-knee': deadliftKnee,
-  'deadlift-lockout': deadliftLockout,
-} as const;
+const PLATE_SOURCE: Record<MeetHallPlateId, number> = {
+  'meet-empty': meetEmpty,
+  'meet-squat-walk': meetSquatWalk,
+  'meet-squat-brace': meetSquatBrace,
+  'meet-bench': meetBench,
+  'meet-deadlift': meetDeadlift,
+};
 
 /** Who is on the platform, and what is on their back. */
 export interface MeetHallLifter {
@@ -118,9 +113,7 @@ export function MeetHallView({
   );
   const riseWash = crowdRisePx * IRON_AMBER.HALL_RISE_WASH;
   const label =
-    plateId === 'gym-briefing'
-      ? SESSION_COPY.ROOM_LABEL
-      : MEET_COPY.LIFT_LABEL[kind ?? 'squat'];
+    plateId === 'meet-empty' ? MEET_COPY.OPENERS_ACTION : MEET_COPY.LIFT_LABEL[kind ?? 'squat'];
 
   return (
     <View
