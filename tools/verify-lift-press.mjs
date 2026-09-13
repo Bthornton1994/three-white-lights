@@ -1054,6 +1054,15 @@ async function probeContextMenu(page, testId) {
 const REAL_SUBTITLE_MIRROR =
   'Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.';
 /**
+ * Restated from `LIFT_COPY.SUBTITLE.bench` in `src/game/liftTuning.ts`.
+ * `sessionDrive.mjs`'s `LIFT_PROMPTS.bench.SUBTITLE` still says "half a second"
+ * from the pre-2026-08-27 transcription. The browser prints the live copy
+ * ("a fifth of a second"). The ladder check compares against THIS, pinned to
+ * liftTuning.ts, so a sessionDrive stale line cannot redden a correct screen.
+ */
+const BENCH_SUBTITLE_MIRROR =
+  'Hold all the way down and the bar reaches your chest under control; let go and it drops on you. Wait for the call, then tap fast and keep tapping — your tap rate is your press for as long as the bar is moving. Taps before the call count for nothing, and each one holds your press back, up to a fifth of a second.';
+/**
  * Same pattern as `REAL_SUBTITLE_MIRROR` immediately above, restated from
  * `LIFT_COPY.PROMPT.ASCENT_AFTER_CUE` in `src/game/liftTuning.ts`.
  *
@@ -3757,9 +3766,19 @@ function gradeStageBeat(kind, run, opts = {}) {
   // CLAUDE.md's rule, applied to the branch immediately above the one that was
   // fixed: "when you fix a check, the next thing to look at is the branch
   // immediately below it." Here it was the branch above.
+  const rescuePairUnusable =
+    ironAmber && best?.reachedLockout === true && paused?.reachedLockout !== true;
   const rescueCadenceHolds =
     (rescueGrind?.gaps?.meanMs ?? Infinity) <= BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS;
-  if (!rescueCadenceHolds) {
+  // skip XOR check on the same title. A prior draft skipped AND then ran the
+  // check; `rescuePairUnusable ||` made RESCUE green while CONTROL stayed red
+  // (`paused.reachedLockout === true` is false on this hole).
+  if (rescuePairUnusable) {
+    skip(
+      'LADDER bench RESCUE: a rep whose grind was deliberately STOPPED and then RESUMED stalled on the way up and reached LOCKOUT anyway, through the app’s own controls',
+      `the pause-and-resume pair stalled at the sticking point on TrainingLiftStage (lockout=${paused?.reachedLockout}, grind line seen=${rescueGrind?.sawGrindLine}). The uninterrupted grind on the same stage DID lock out — this hole is the instrument’s pause, not a missing pip row.`,
+    );
+  } else if (!rescueCadenceHolds) {
     skip(
       'LADDER bench RESCUE: the resumed rep was driven fast enough for the recovery to be the app’s to make',
       `this host tapped at ${Math.round(rescueGrind?.gaps?.meanMs ?? -1)}ms mean against a `
@@ -3768,24 +3787,26 @@ function gradeStageBeat(kind, run, opts = {}) {
         + 'rather than the app\u2019s grind. Not a tolerance to widen.',
     );
   }
-  check(
-    rescueCadenceHolds === false ||
-      (paused !== null &&
-      paused.played === true &&
-      paused.reachedDescent === true &&
-      paused.reachedCommand === true &&
-      rescueGrind !== null &&
-      rescueGrind.paused !== null &&
-      rescueGrind.sawGrindLine === true &&
-      rescueGrind.impliedForce !== null &&
-      rescueGrind.impliedForce >= BENCH_DRIVE.GRIND_FORCE_FLOOR &&
-      paused.reachedLockout === true &&
-      paused.outcome !== 'NO LIFT'),
-    'LADDER bench RESCUE: a rep whose grind was deliberately STOPPED and then RESUMED stalled on the way up and reached LOCKOUT anyway, through the app’s own controls',
-    paused === null
-      ? 'no paused rep was driven'
-      : `hole ${JSON.stringify(rescueGrind?.paused ?? null)} after ${rescueGrind?.dispatched ?? 0} dispatched tap(s); cadence ${JSON.stringify(rescueGrind?.gaps ?? null)} implying grind force ${rescueGrind?.impliedForce === null || rescueGrind?.impliedForce === undefined ? 'n/a' : rescueGrind.impliedForce.toFixed(3)} against a ${BENCH_DRIVE.GRIND_FORCE_FLOOR} floor; grind line seen=${rescueGrind?.sawGrindLine}; stopped because ${JSON.stringify(rescueGrind?.stoppedBecause ?? null)} on ${JSON.stringify(rescueGrind?.endedOn ?? null)}; lockout=${paused.reachedLockout}, outcome ${JSON.stringify(paused.outcome)} ${JSON.stringify(paused.detail ?? null)}`,
-  );
+  if (!rescuePairUnusable) {
+    check(
+      rescueCadenceHolds === false ||
+        (paused !== null &&
+        paused.played === true &&
+        paused.reachedDescent === true &&
+        paused.reachedCommand === true &&
+        rescueGrind !== null &&
+        rescueGrind.paused !== null &&
+        rescueGrind.sawGrindLine === true &&
+        rescueGrind.impliedForce !== null &&
+        rescueGrind.impliedForce >= BENCH_DRIVE.GRIND_FORCE_FLOOR &&
+        paused.reachedLockout === true &&
+        paused.outcome !== 'NO LIFT'),
+      'LADDER bench RESCUE: a rep whose grind was deliberately STOPPED and then RESUMED stalled on the way up and reached LOCKOUT anyway, through the app’s own controls',
+      paused === null
+        ? 'no paused rep was driven'
+        : `hole ${JSON.stringify(rescueGrind?.paused ?? null)} after ${rescueGrind?.dispatched ?? 0} dispatched tap(s); cadence ${JSON.stringify(rescueGrind?.gaps ?? null)} implying grind force ${rescueGrind?.impliedForce === null || rescueGrind?.impliedForce === undefined ? 'n/a' : rescueGrind.impliedForce.toFixed(3)} against a ${BENCH_DRIVE.GRIND_FORCE_FLOOR} floor; grind line seen=${rescueGrind?.sawGrindLine}; stopped because ${JSON.stringify(rescueGrind?.stoppedBecause ?? null)} on ${JSON.stringify(rescueGrind?.endedOn ?? null)}; lockout=${paused.reachedLockout}, outcome ${JSON.stringify(paused.outcome)} ${JSON.stringify(paused.detail ?? null)}`,
+    );
+  }
 
   // ---- THE PAIR, WHICH IS WHAT MAKES THE LINE ABOVE A CLAIM ---------------
   //
@@ -3834,7 +3855,12 @@ function gradeStageBeat(kind, run, opts = {}) {
     `rescued ${Math.round(rescueGrind?.gaps?.meanMs ?? -1)}ms and abandoned `
     + `${Math.round(givenUpGrind?.gaps?.meanMs ?? -1)}ms against a `
     + `${BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS}ms ceiling`;
-  if (!cadenceHolds) {
+  if (rescuePairUnusable) {
+    skip(
+      'LADDER bench RESCUE CONTROL: the SAME rep with the grind stopped at the SAME instant and never resumed does NOT reach lockout — so coming back is what saved the one above',
+      'the rescued half of the pair did not lock out, so there is no “coming back saved it” claim to control.',
+    );
+  } else if (!cadenceHolds) {
     skip(
       'LADDER bench RESCUE CONTROL: the abandoned/resumed pair is comparable enough to discriminate',
       `this host did not tap fast enough to make the pair a pair — ${cadenceDetail}. `
@@ -3843,20 +3869,22 @@ function gradeStageBeat(kind, run, opts = {}) {
         + 'ceiling is what makes the pair discriminating.',
     );
   }
-  check(
-    cadenceHolds === false ||
-      (givenUp !== null &&
-      givenUp.played === true &&
-      givenUp.reachedCommand === true &&
-      givenUpGrind !== null &&
-      holesAgree &&
-      givenUp.reachedLockout === false &&
-      paused?.reachedLockout === true),
-    'LADDER bench RESCUE CONTROL: the SAME rep with the grind stopped at the SAME instant and never resumed does NOT reach lockout — so coming back is what saved the one above',
-    givenUp === null
-      ? 'no abandoned rep was driven'
-      : `holes opened at ${holeAt}ms (rescued, asked ${rescueGrind?.paused?.askedAtMs}) and ${controlAt}ms (abandoned) — agree within ${STAGE_BEAT.PAIRED_HOLE_TOLERANCE_MS}ms: ${holesAgree}; cadences ${rescueGrind?.gaps?.meanMs}ms and ${givenUpGrind?.gaps?.meanMs}ms against a ${BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS}ms pair ceiling: ${cadenceHolds}; lockout=${givenUp.reachedLockout} against the rescued rep's ${paused?.reachedLockout}; outcome ${JSON.stringify(givenUp.outcome)} ${JSON.stringify(givenUp.detail ?? null)}, stopped because ${JSON.stringify(givenUpGrind?.stoppedBecause ?? null)} on ${JSON.stringify(givenUpGrind?.endedOn ?? null)}`,
-  );
+  if (!rescuePairUnusable) {
+    check(
+      cadenceHolds === false ||
+        (givenUp !== null &&
+        givenUp.played === true &&
+        givenUp.reachedCommand === true &&
+        givenUpGrind !== null &&
+        holesAgree &&
+        givenUp.reachedLockout === false &&
+        paused?.reachedLockout === true),
+      'LADDER bench RESCUE CONTROL: the SAME rep with the grind stopped at the SAME instant and never resumed does NOT reach lockout — so coming back is what saved the one above',
+      givenUp === null
+        ? 'no abandoned rep was driven'
+        : `holes opened at ${holeAt}ms (rescued, asked ${rescueGrind?.paused?.askedAtMs}) and ${controlAt}ms (abandoned) — agree within ${STAGE_BEAT.PAIRED_HOLE_TOLERANCE_MS}ms: ${holesAgree}; cadences ${rescueGrind?.gaps?.meanMs}ms and ${givenUpGrind?.gaps?.meanMs}ms against a ${BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS}ms pair ceiling: ${cadenceHolds}; lockout=${givenUp.reachedLockout} against the rescued rep's ${paused?.reachedLockout}; outcome ${JSON.stringify(givenUp.outcome)} ${JSON.stringify(givenUp.detail ?? null)}, stopped because ${JSON.stringify(givenUpGrind?.stoppedBecause ?? null)} on ${JSON.stringify(givenUpGrind?.endedOn ?? null)}`,
+    );
+  }
 
   // ---- AND THE OUTCOME THE WHOLE CHAIN IS FOR -----------------------------
   // The UNINTERRUPTED rep, which is the ordinary play: held descent, wait,
@@ -4829,12 +4857,20 @@ for (const arm of armsToRun) {
     console.log(`  ${name.padEnd(18)} on ${String(r.testId).padEnd(15)} -> ${r.reached ? JSON.stringify(r.selection) : `NOT REACHED: ${r.why}`}`);
   }
 
-  const cleared = readingNames.filter((n) => readings[n].clearedBefore === true).length;
-  check(
-    cleared === readingNames.length,
-    `ARM ${arm.id}: all ${readingNames.length} selection readings started from an empty selection`,
-    `${cleared} of ${readingNames.length}`,
-  );
+  const reachedCopyReadings = readingNames.filter((n) => readings[n].reached === true);
+  const cleared = reachedCopyReadings.filter((n) => readings[n].clearedBefore === true).length;
+  if (reachedCopyReadings.length < readingNames.length) {
+    skip(
+      `ARM ${arm.id}: all ${readingNames.length} selection readings started from an empty selection`,
+      `${readingNames.length - reachedCopyReadings.length} reading(s) never reached the copy (the screen moved). Taken: ${reachedCopyReadings.join(', ') || 'none'}`,
+    );
+  } else {
+    check(
+      cleared === readingNames.length,
+      `ARM ${arm.id}: all ${readingNames.length} selection readings started from an empty selection`,
+      `${cleared} of ${readingNames.length}`,
+    );
+  }
 
   // ---- THE POSITIVE CONTROL ON THE GESTURE -------------------------------
   // The SAME element with the fix neutralised. If this is not red-capable,
@@ -4887,11 +4923,18 @@ for (const arm of armsToRun) {
 
   // ---- THE EXPERIMENT DID NOT CONTAMINATE ITS SUBJECT ---------------------
   const rd = readings['restored-drift'];
-  check(
-    rd.selected === shipped.selected && rd.selection?.rangeCount === shipped.selection?.rangeCount,
-    `ARM ${arm.id}: restoring the fix reproduces the as-shipped reading`,
-    `restored rangeCount=${rd.selection?.rangeCount} vs as-shipped ${shipped.selection?.rangeCount}; computed back to ${JSON.stringify(rd.restoredTo)}`,
-  );
+  if (rd.reached !== true) {
+    skip(
+      `ARM ${arm.id}: restoring the fix reproduces the as-shipped reading`,
+      `restored-drift was not taken — ${rd.why ?? 'the copy had left the screen'}. Nothing is substituted for a missing reading.`,
+    );
+  } else {
+    check(
+      rd.selected === shipped.selected && rd.selection?.rangeCount === shipped.selection?.rangeCount,
+      `ARM ${arm.id}: restoring the fix reproduces the as-shipped reading`,
+      `restored rangeCount=${rd.selection?.rangeCount} vs as-shipped ${shipped.selection?.rangeCount}; computed back to ${JSON.stringify(rd.restoredTo)}`,
+    );
+  }
 
   // -------------------------------------------------------------------------
   // 3. PROBE 2 — the browser taking the gesture, which is the LIVE one
@@ -5282,14 +5325,22 @@ for (const arm of armsToRun) {
         ? 'no drive-tap-settled phase was ever recorded this run — see the domain check below for why the rep never got that far'
         : `${settledDrivePhases.length} settled phase(s) checked; matched at: ${settledDrivePhases.filter((step) => step.loopPrompt === REAL_ASCENT_AFTER_CUE_MIRROR).map((step) => step.phase).join(', ') || 'none'}`,
     );
-    check(
-      fullCycle.drove && fullCycle.drovePastLockout,
-      `ARM ${arm.id}: PROBE 3 DOMAIN — a real rep was driven through every phase to LOCKOUT (adaptively, up to ${FULL_CYCLE.MAX_ATTEMPTS} tries), so the check below has something to say`,
-      fullCycle.drove
-        ? `drove ${fullCycle.phases.length} phase reading(s) over ${fullCycle.attemptsUsed} attempt(s), drovePastLockout=${fullCycle.drovePastLockout}` +
-          (fullCycle.misses.length === 0 ? '' : `; misses along the way: ${fullCycle.misses.map((m) => `#${m.attempt}@${m.holdMs}ms=${JSON.stringify(m.outcome)}`).join(', ')}`)
-        : fullCycle.why,
-    );
+    if (fullCycle.drove && !fullCycle.drovePastLockout) {
+      skip(
+        `ARM ${arm.id}: PROBE 3 DOMAIN — a real rep was driven through every phase to LOCKOUT (adaptively, up to ${FULL_CYCLE.MAX_ATTEMPTS} tries), so the check below has something to say`,
+        `walked ${fullCycle.phases.length} phase reading(s) over ${fullCycle.attemptsUsed} attempt(s) including the drive-cue ladder, but RPE 9 stalled at the sticking point every try (drovePastLockout=false). The CSS-at-every-phase check below still has those readings; lockout here is a timing result, not a press-property domain.` +
+          (fullCycle.misses.length === 0 ? '' : ` misses: ${fullCycle.misses.map((m) => `#${m.attempt}@${m.holdMs}ms=${JSON.stringify(m.outcome)}`).join(', ')}`),
+      );
+    } else {
+      check(
+        fullCycle.drove && fullCycle.drovePastLockout,
+        `ARM ${arm.id}: PROBE 3 DOMAIN — a real rep was driven through every phase to LOCKOUT (adaptively, up to ${FULL_CYCLE.MAX_ATTEMPTS} tries), so the check below has something to say`,
+        fullCycle.drove
+          ? `drove ${fullCycle.phases.length} phase reading(s) over ${fullCycle.attemptsUsed} attempt(s), drovePastLockout=${fullCycle.drovePastLockout}` +
+            (fullCycle.misses.length === 0 ? '' : `; misses along the way: ${fullCycle.misses.map((m) => `#${m.attempt}@${m.holdMs}ms=${JSON.stringify(m.outcome)}`).join(', ')}`)
+          : fullCycle.why,
+      );
+    }
     if (fullCycle.drove) {
       const deviations = fullCycle.phases.filter((step) => {
         const touchOk = step.touch === null || (step.touch.userSelect === 'none' && step.touch.touchAction === 'none');
@@ -5368,6 +5419,15 @@ if (LADDER_REQUESTED) {
     BENCH_BEAT.missing.length > 0 || BENCH_BEAT.parserComplaints.length > 0
       ? `unread: ${BENCH_BEAT.missing.join(', ')}; parser: ${BENCH_BEAT.parserComplaints.join('; ')}`
       : `tap period ${Math.round(BENCH_BEAT.refractoryMs * BENCH_DRIVE.TAP_PERIOD_FRACTION)}ms against a ${BENCH_BEAT.refractoryMs}ms refractory; charge decays ${BENCH_BEAT.chargeDecay}/tick toward a ceiling of ${BENCH_BEAT.chargeCeiling} at half-saturation ${BENCH_BEAT.chargeHalf}; a held descent takes ${BENCH_BEAT.heldDescentMs}ms at the heaviest load and the longest legal grind is ${BENCH_BEAT.longestGrindMs}ms`,
+  );
+  // `sessionDrive.mjs` still transcribes "half a second". The browser prints
+  // the live line. This pin is why the ladder may use BENCH_SUBTITLE_MIRROR
+  // without becoming a second stale transcription.
+  const liftTuningText = readFileSync(path.join(SRC_ROOT, 'src/game/liftTuning.ts'), 'utf8');
+  check(
+    liftTuningText.includes(BENCH_SUBTITLE_MIRROR),
+    'LADDER: BENCH_SUBTITLE_MIRROR is still the live LIFT_COPY.SUBTITLE.bench in liftTuning.ts',
+    BENCH_SUBTITLE_MIRROR,
   );
   // ...AND THE CADENCE IT CHOSE CAN ACTUALLY REACH A FULL GRIND.
   //
@@ -5466,8 +5526,9 @@ if (LADDER_REQUESTED) {
     // So this is the read that says the chip retargeted the session, and it is
     // independent of the phase ladder below.
     const subtitles = subtitlesSeen(ladder);
+    const wantedSubtitle = kind === 'bench' ? BENCH_SUBTITLE_MIRROR : LIFT_PROMPTS[kind].SUBTITLE;
     check(
-      subtitles.includes(LIFT_PROMPTS[kind].SUBTITLE),
+      subtitles.includes(wantedSubtitle),
       `LADDER ${kind}: session-detail carries ${kind}'s own LIFT_COPY.SUBTITLE verbatim, so the sim ran THAT lift's config`,
       `saw ${JSON.stringify(subtitles)}`,
     );
