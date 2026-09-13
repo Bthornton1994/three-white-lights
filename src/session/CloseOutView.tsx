@@ -307,8 +307,12 @@ export function CloseOutView({
       : SESSION_PALETTE.MISS;
 
   return (
-    <IronAmberRoom testID="session-close-out" gymTestID="iron-amber-close-out-gym">
-      <IronAmberCard>
+    <IronAmberRoom
+      testID="session-close-out"
+      gymTestID="iron-amber-close-out-gym"
+      liftKind={closeOut.lift}
+    >
+      <IronAmberCard dense>
       <View style={styles.stack}>
       <Row index={SESSION_TUNING.CLOSE_OUT_ROW_ORDER.CALL}>
         <Text style={[styles.headline, { color: headlineColour }]} testID="close-out-headline">

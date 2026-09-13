@@ -122,8 +122,12 @@ export function CheckInView({
   onChooseLift,
 }: CheckInViewProps): React.ReactElement {
   return (
-    <IronAmberRoom testID="session-check-in" gymTestID="iron-amber-check-in-gym">
-      <IronAmberCard>
+    <IronAmberRoom
+      testID="session-check-in"
+      gymTestID="iron-amber-check-in-gym"
+      liftKind={lift}
+    >
+      <IronAmberCard dense>
         <Text style={styles.title}>{SESSION_COPY.CHECK_IN_TITLE}</Text>
         <View style={styles.row} testID="check-in-lift">
           <Text style={styles.question}>{SESSION_COPY.CHECK_IN_LIFT_QUESTION}</Text>

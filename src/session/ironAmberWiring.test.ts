@@ -89,7 +89,13 @@ describe('Iron & Amber training path wiring', () => {
     expect(room).toContain('ironAmberBriefingPlate');
     expect(room).toContain('ironAmberPlateLayout');
     expect(room).toContain("from '../../assets/iron-amber/squat-brace.jpg'");
-    expect(source('CheckInView.tsx')).not.toContain('liftKind');
+    expect(room).toContain('CARD_PAD_DRAWER');
+    expect(source('CheckInView.tsx')).toContain('liftKind={lift}');
+    expect(source('CheckInView.tsx')).toContain('<IronAmberCard dense');
+    expect(source('CloseOutView.tsx')).toContain('liftKind={closeOut.lift}');
+    expect(source('CloseOutView.tsx')).toContain('<IronAmberCard dense');
+    expect(source('RestView.tsx')).not.toContain('liftKind');
+    expect(source('SessionScreen.tsx')).not.toContain('liftKind');
   });
 
   it('the gym room docks the card above the shell pill band', () => {

@@ -459,8 +459,15 @@ export const SESSION_LAYOUT = Object.freeze({
   STAT_FONT: 26,
   LETTER_SPACING: 2,
 
+  /**
+   * Bottom-docked session cards (check-in, close-out). Tighter than the
+   * briefing pad so the gym/athlete stay the majority of a 390×844 frame.
+   * Tunable — not asserted as final.
+   */
+  CARD_PAD_DRAWER: 12,
+
   /** Check-in answer chips. Three across, tall enough for a thumb. */
-  CHIP_HEIGHT: 52,
+  CHIP_HEIGHT: 44,
   CHIP_RADIUS: 10,
   CHIP_GAP: 8,
   CHIP_BORDER: 2,
@@ -483,8 +490,8 @@ export const SESSION_LAYOUT = Object.freeze({
   BUTTON_RADIUS: 10,
   BUTTON_FONT: 13,
 
-  /** Close-out stat rows. */
-  STAT_ROW_GAP: 18,
+  /** Close-out stat rows. Tunable — not asserted as final. */
+  STAT_ROW_GAP: 12,
   DIVIDER_HEIGHT: 1,
 
   /**

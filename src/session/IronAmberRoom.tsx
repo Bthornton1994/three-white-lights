@@ -74,12 +74,18 @@ function BrandMark(): React.ReactElement {
 export function IronAmberCard({
   children,
   testID,
+  dense = false,
 }: {
   readonly children: React.ReactNode;
   readonly testID?: string;
+  /**
+   * Check-in / close-out drawer. The briefing card stays padded; these two
+   * must leave the gym in frame (Iron & Amber panel 03).
+   */
+  readonly dense?: boolean;
 }): React.ReactElement {
   return (
-    <View style={styles.card} testID={testID}>
+    <View style={[styles.card, dense ? styles.cardDense : null]} testID={testID}>
       {children}
     </View>
   );
@@ -221,5 +227,8 @@ const styles = StyleSheet.create({
     borderColor: SESSION_PALETTE.CARD_EDGE,
     backgroundColor: SESSION_PALETTE.CARD,
     gap: L.ROW_GAP,
+  },
+  cardDense: {
+    padding: L.CARD_PAD_DRAWER,
   },
 });
