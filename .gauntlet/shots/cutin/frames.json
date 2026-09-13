@@ -1,9 +1,9 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-09-13T16:45:28.447Z",
+    "capturedAt": "2026-09-13T17:40:03.446Z",
     "url": "http://127.0.0.1:8081",
     "sourceRoot": "/workspace",
-    "commit": "ec97e0c0",
+    "commit": "a1e8d2f8",
     "branch": "cursor/session-a-iron-amber-quality-1c66",
     "workingTree": "clean",
     "dirtyPaths": [
@@ -158,7 +158,7 @@
         "opaqueBackdrop": 392,
         "untouched": 75263
       },
-      "pixelHash": 3758300113
+      "pixelHash": 268933702
     },
     {
       "moment": "coach-heavy-set",
@@ -220,14 +220,14 @@
     {
       "a": "personal-record",
       "b": "bomb-out",
-      "differing": 262839,
+      "differing": 262854,
       "total": 263760,
       "alignedToEachOwnBox": true
     },
     {
       "a": "bomb-out",
       "b": "coach-heavy-set",
-      "differing": 262825,
+      "differing": 262852,
       "total": 263760,
       "alignedToEachOwnBox": true
     }
@@ -235,13 +235,13 @@
   "leavesOnItsOwn": {
     "stillUpAt": 701,
     "stillUp": true,
-    "goneAt": 913,
+    "goneAt": 904,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 3,
-    "goneAt": 4,
-    "dismissTookMs": 1,
+    "tappedAt": 4,
+    "goneAt": 6,
+    "dismissTookMs": 2,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
     "holdReadFromSourceMs": 1720
