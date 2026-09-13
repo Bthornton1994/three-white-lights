@@ -520,8 +520,9 @@ export const SESSION_LAYOUT = Object.freeze({
   SET_HUD_PAD: 10,
   SET_HUD_HEIGHT: 56,
   SET_HUD_SCRIM: 0.42,
-  SET_COMMAND_HEIGHT: 92,
+  SET_COMMAND_HEIGHT: 130,
   SET_COMMAND_SCRIM: 0.55,
+  SET_COMMAND_DETAIL_LINES: 4,
 
   /** Wordmark + three lights. Nostalgia as a restrained accent, not a sprite. */
   BRAND_TRACK: 4,

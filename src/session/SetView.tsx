@@ -181,7 +181,7 @@ export function SetView({ state, onRepResolved }: SetViewProps): React.ReactElem
           >
             {resolution === null ? promptFor(loop.state) : resolution.headline}
           </Text>
-          <Text style={styles.detail} testID="session-detail">
+          <Text style={styles.detail} testID="session-detail" numberOfLines={L.SET_COMMAND_DETAIL_LINES}>
             {resolution === null || resolution.detail === ''
               ? LIFT_COPY.SUBTITLE[loop.state.config.kind]
               : resolution.detail}
