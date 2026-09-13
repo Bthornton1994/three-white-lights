@@ -37,9 +37,19 @@ export interface MeetBookendRoomProps {
   readonly children: React.ReactNode;
   /** The beat's own screen testID — capture tools wait on this node. */
   readonly testID: string;
+  /**
+   * Pinned under the scroll so the beat's only action stays on first paint.
+   * Weigh-in, openers and recap pass their gold button here. Bomb-out keeps
+   * its action inside the silence stagger so nothing is tappable through it.
+   */
+  readonly footer?: React.ReactNode;
 }
 
-export function MeetBookendRoom({ children, testID }: MeetBookendRoomProps): React.ReactElement {
+export function MeetBookendRoom({
+  children,
+  testID,
+  footer,
+}: MeetBookendRoomProps): React.ReactElement {
   return (
     <View style={styles.root} testID={testID}>
       <View style={styles.hall} pointerEvents="none">
@@ -55,6 +65,7 @@ export function MeetBookendRoom({ children, testID }: MeetBookendRoomProps): Rea
           >
             {children}
           </ScrollView>
+          {footer === undefined ? null : <View style={styles.footer}>{footer}</View>}
         </View>
       </View>
     </View>
@@ -88,11 +99,16 @@ const styles = StyleSheet.create({
     backgroundColor: MEET_PALETTE.CARD,
   },
   cardScroll: {
-    maxHeight: L.BOOKEND_CARD_MAX_HEIGHT,
+    maxHeight: L.BOOKEND_SCROLL_MAX_HEIGHT,
   },
   cardContent: {
     padding: L.BOOKEND_CARD_PAD,
     gap: L.BOOKEND_CARD_GAP,
     alignItems: 'stretch',
+  },
+  footer: {
+    paddingHorizontal: L.BOOKEND_CARD_PAD,
+    paddingBottom: L.BOOKEND_CARD_PAD,
+    paddingTop: L.BOOKEND_CARD_GAP,
   },
 });

@@ -464,6 +464,9 @@ describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
         `${file} inlines a hall instead of the shared emptied-hall wrapper`,
       ).toBeNull();
     }
+    expect(read('meet/WeighInView.tsx')).toContain('footer={');
+    expect(read('meet/OpenersView.tsx')).toContain('footer={');
+    expect(read('meet/RecapView.tsx')).toContain('footer={');
   });
 
   it('draws the walkout bar through the SPRITE, not out of Views', () => {

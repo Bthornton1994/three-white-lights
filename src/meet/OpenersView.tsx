@@ -62,7 +62,19 @@ export function OpenersView({
   onConfirm,
 }: OpenersViewProps): React.ReactElement {
   return (
-    <MeetBookendRoom testID="meet-openers">
+    <MeetBookendRoom
+      testID="meet-openers"
+      footer={
+        <MotionPressable
+          style={styles.action}
+          accessibilityRole="button"
+          onPress={onConfirm}
+          testID="openers-action"
+        >
+          <Text style={styles.actionLabel}>{MEET_COPY.OPENERS_ACTION}</Text>
+        </MotionPressable>
+      }
+    >
       <View style={styles.root}>
       <Text style={styles.eyebrow}>{MEET_COPY.OPENERS_EYEBROW}</Text>
       <Text style={styles.hint}>{MEET_COPY.OPENERS_HINT}</Text>
@@ -103,15 +115,6 @@ export function OpenersView({
           </Row>
         ))}
       </View>
-
-      <MotionPressable
-        style={styles.action}
-        accessibilityRole="button"
-        onPress={onConfirm}
-        testID="openers-action"
-      >
-        <Text style={styles.actionLabel}>{MEET_COPY.OPENERS_ACTION}</Text>
-      </MotionPressable>
       </View>
     </MeetBookendRoom>
   );
@@ -150,7 +153,7 @@ const styles = StyleSheet.create({
   rowInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: L.OPENER_ROW_HEIGHT,
+    height: L.BOOKEND_OPENER_ROW_HEIGHT,
     gap: L.ROW_GAP,
   },
   rowLabel: {
@@ -197,7 +200,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: L.BUTTON_RADIUS,
     backgroundColor: MEET_PALETTE.ACTION,
-    marginTop: L.BOOKEND_CARD_GAP,
   },
   actionLabel: {
     color: MEET_PALETTE.ACTION_TEXT,

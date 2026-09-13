@@ -1808,6 +1808,13 @@ export const MEET_LAYOUT = Object.freeze({
   BOOKEND_FOOT_CLEARANCE: 120,
   BOOKEND_CARD_PAD: 12,
   BOOKEND_CARD_GAP: 8,
+  /**
+   * Scrollable body above a pinned action. Untuned. `BUTTON_HEIGHT` plus pad
+   * and gap sit below this inside `BOOKEND_CARD_MAX_HEIGHT`.
+   */
+  BOOKEND_SCROLL_MAX_HEIGHT: 210,
+  /** Opener rows inside the bookend card. Untuned. */
+  BOOKEND_OPENER_ROW_HEIGHT: 48,
 
   // THE WALKOUT'S BAR GRAPHIC USED TO BE HERE, and it is gone rather than
   // unused. `BAR_W / BAR_H / PLATE_W / PLATE_GAP / PLATE_MAX_H / PLATE_MIN_H`

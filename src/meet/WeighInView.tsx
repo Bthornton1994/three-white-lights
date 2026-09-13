@@ -41,7 +41,19 @@ export function WeighInView({
   onConfirm,
 }: WeighInViewProps): React.ReactElement {
   return (
-    <MeetBookendRoom testID="meet-weigh-in">
+    <MeetBookendRoom
+      testID="meet-weigh-in"
+      footer={
+        <MotionPressable
+          style={styles.action}
+          accessibilityRole="button"
+          onPress={onConfirm}
+          testID="weigh-in-action"
+        >
+          <Text style={styles.actionLabel}>{MEET_COPY.WEIGH_IN_ACTION}</Text>
+        </MotionPressable>
+      }
+    >
       <View style={styles.root}>
       <Text style={styles.eyebrow}>{MEET_COPY.WEIGH_IN_EYEBROW}</Text>
       <Text style={styles.federation}>{federation.toUpperCase()}</Text>
@@ -77,15 +89,6 @@ export function WeighInView({
       >
         {weighIn.flavourText}
       </Text>
-
-      <MotionPressable
-        style={styles.action}
-        accessibilityRole="button"
-        onPress={onConfirm}
-        testID="weigh-in-action"
-      >
-        <Text style={styles.actionLabel}>{MEET_COPY.WEIGH_IN_ACTION}</Text>
-      </MotionPressable>
       </View>
     </MeetBookendRoom>
   );
@@ -164,7 +167,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: L.BUTTON_RADIUS,
     backgroundColor: MEET_PALETTE.ACTION,
-    marginTop: L.BOOKEND_CARD_GAP,
   },
   actionLabel: {
     color: MEET_PALETTE.ACTION_TEXT,

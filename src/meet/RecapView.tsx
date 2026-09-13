@@ -170,7 +170,21 @@ export function RecapView({
   ]);
 
   return (
-    <MeetBookendRoom testID="meet-recap">
+    <MeetBookendRoom
+      testID="meet-recap"
+      footer={
+        <Block index={MEET_TUNING.RECAP_ROW_ORDER.CARD}>
+          <MotionPressable
+            style={styles.action}
+            accessibilityRole="button"
+            onPress={onSeeCard}
+            testID="recap-action"
+          >
+            <Text style={styles.actionLabel}>{MEET_COPY.RECAP_ACTION}</Text>
+          </MotionPressable>
+        </Block>
+      }
+    >
       <View style={styles.root}>
       <Text style={styles.eyebrow}>{MEET_COPY.RECAP_EYEBROW}</Text>
 
@@ -248,17 +262,6 @@ export function RecapView({
           ))}
         </Block>
       )}
-
-      <Block index={MEET_TUNING.RECAP_ROW_ORDER.CARD}>
-        <MotionPressable
-          style={styles.action}
-          accessibilityRole="button"
-          onPress={onSeeCard}
-          testID="recap-action"
-        >
-          <Text style={styles.actionLabel}>{MEET_COPY.RECAP_ACTION}</Text>
-        </MotionPressable>
-      </Block>
       </View>
     </MeetBookendRoom>
   );
