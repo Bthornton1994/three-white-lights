@@ -1,12 +1,15 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-09-13T15:40:42.916Z",
-    "url": "http://localhost:8081",
+    "capturedAt": "2026-09-13T16:45:28.447Z",
+    "url": "http://127.0.0.1:8081",
     "sourceRoot": "/workspace",
-    "commit": "824b31e9",
+    "commit": "ec97e0c0",
     "branch": "cursor/session-a-iron-amber-quality-1c66",
     "workingTree": "clean",
-    "dirtyPaths": [],
+    "dirtyPaths": [
+      "M .gauntlet/shots/lift-press/press.json",
+      " M .gauntlet/shots/meet/sound.json"
+    ],
     "instrument": {
       "capture-cutin.mjs": "6b735d315332a467",
       "png.mjs": "6356a0d0b0dcb696"
@@ -55,11 +58,11 @@
         }
       },
       "scrim": {
-        "blended": 951863,
-        "opaqueBackdrop": 826,
-        "untouched": 80481
+        "blended": 950842,
+        "opaqueBackdrop": 392,
+        "untouched": 81936
       },
-      "pixelHash": 3685110088
+      "pixelHash": 2536997001
     },
     {
       "moment": "personal-record",
@@ -103,11 +106,11 @@
         }
       },
       "scrim": {
-        "blended": 907616,
-        "opaqueBackdrop": 822,
-        "untouched": 64492
+        "blended": 902548,
+        "opaqueBackdrop": 379,
+        "untouched": 70003
       },
-      "pixelHash": 1627890798
+      "pixelHash": 250830533
     },
     {
       "moment": "bomb-out",
@@ -151,11 +154,11 @@
         }
       },
       "scrim": {
-        "blended": 944314,
-        "opaqueBackdrop": 826,
-        "untouched": 75550
+        "blended": 945035,
+        "opaqueBackdrop": 392,
+        "untouched": 75263
       },
-      "pixelHash": 2864766690
+      "pixelHash": 3758300113
     },
     {
       "moment": "coach-heavy-set",
@@ -199,11 +202,11 @@
         }
       },
       "scrim": {
-        "blended": 947568,
-        "opaqueBackdrop": 826,
-        "untouched": 79856
+        "blended": 947704,
+        "opaqueBackdrop": 392,
+        "untouched": 80154
       },
-      "pixelHash": 2971347731
+      "pixelHash": 3592009154
     }
   ],
   "artDiffs": [
@@ -232,12 +235,12 @@
   "leavesOnItsOwn": {
     "stillUpAt": 701,
     "stillUp": true,
-    "goneAt": 905,
+    "goneAt": 913,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 2,
-    "goneAt": 3,
+    "tappedAt": 3,
+    "goneAt": 4,
     "dismissTookMs": 1,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
@@ -248,8 +251,8 @@
     "onWalkout": null,
     "onBombOut": "THAT IS THE MEET",
     "addressBar": {
-      "walkout": "http://localhost:8081/?meet=walkout-third",
-      "bombed": "http://localhost:8081/?meet=bombed"
+      "walkout": "http://127.0.0.1:8081/?meet=walkout-third",
+      "bombed": "http://127.0.0.1:8081/?meet=bombed"
     },
     "urlFaults": []
   },
