@@ -18,9 +18,24 @@ import {
 } from 'react-native';
 
 import { SESSION_COPY, SESSION_LAYOUT } from '../game/sessionTuning';
+import type { LiftKind } from '../game/meet';
 import { SESSION_PALETTE } from './sessionPalette';
-import { ironAmberGymLayout } from './ironAmberPlates';
+import {
+  ironAmberBriefingPlate,
+  ironAmberGymLayout,
+  ironAmberPlateLayout,
+  type IronAmberBriefingPlateId,
+} from './ironAmberPlates';
 import gymBriefing from '../../assets/iron-amber/gym-briefing.jpg';
+import squatBrace from '../../assets/iron-amber/squat-brace.jpg';
+import benchBrace from '../../assets/iron-amber/bench-brace.jpg';
+import deadliftFloor from '../../assets/iron-amber/deadlift-floor.jpg';
+
+const BRIEFING_PLATE_SOURCE: Record<IronAmberBriefingPlateId, number> = {
+  'squat-brace': squatBrace,
+  'bench-brace': benchBrace,
+  'deadlift-floor': deadliftFloor,
+};
 
 const L = SESSION_LAYOUT;
 
@@ -28,6 +43,11 @@ export interface IronAmberRoomProps {
   readonly children: React.ReactNode;
   readonly testID?: string;
   readonly gymTestID: string;
+  /**
+   * When set, the room is the day's lifter plate (briefing). Omitted, the
+   * empty gym — check-in, rest, close-out, already-trained.
+   */
+  readonly liftKind?: LiftKind;
   readonly brand?: boolean;
   /**
    * Rest is itself a Pressable. A ScrollView inside it would eat the skip-rest
@@ -69,12 +89,20 @@ export function IronAmberRoom({
   children,
   testID,
   gymTestID,
+  liftKind,
   brand = true,
   scroll = true,
   style,
 }: IronAmberRoomProps): React.ReactElement {
   const [box, setBox] = useState({ width: 0, height: 0 });
-  const gymLayout = ironAmberGymLayout(box.width, box.height);
+  const gymLayout =
+    liftKind === undefined
+      ? ironAmberGymLayout(box.width, box.height)
+      : ironAmberPlateLayout(liftKind, box.width, box.height);
+  const gymSource =
+    liftKind === undefined
+      ? gymBriefing
+      : BRIEFING_PLATE_SOURCE[ironAmberBriefingPlate(liftKind)];
   const bodyStyle = [
     styles.body,
     brand ? styles.bodyWithBrand : styles.bodyWithoutBrand,
@@ -92,7 +120,7 @@ export function IronAmberRoom({
     >
       {box.width <= 0 ? null : (
       <Image
-        source={gymBriefing}
+        source={gymSource}
         style={[
           styles.gym,
           {

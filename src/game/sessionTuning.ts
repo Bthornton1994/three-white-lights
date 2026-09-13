@@ -468,6 +468,12 @@ export const SESSION_LAYOUT = Object.freeze({
   /** The RPE ladder. Five across, so each is narrower than a chip. */
   RPE_CHIP_HEIGHT: 60,
   RPE_CHIP_GAP: 6,
+  /**
+   * Digit size on the RPE chips. Larger than ANSWER_FONT so 6–10 stay
+   * readable at 390×844; the gold suggested chip is the briefing CTA.
+   * Tunable — not asserted as final.
+   */
+  RPE_CHIP_FONT: 22,
 
   /** The set counter pips shown above the stage while a set is live. */
   PIP_SIZE: 8,

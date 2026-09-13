@@ -60,6 +60,29 @@ export type IronAmberFocus = {
   readonly y: number;
 };
 
+export type IronAmberBriefingPlateId =
+  | 'squat-brace'
+  | 'bench-brace'
+  | 'deadlift-floor';
+
+/**
+ * The still behind the daily briefing card.
+ *
+ * Check-in / rest / close-out keep the empty gym (`gym-briefing`). The
+ * briefing is the day's lift choice, so the room is the athlete on that
+ * lift's bar — not a second START control and not a raw-weight picker
+ * (GDD §3.3).
+ */
+export function ironAmberBriefingPlate(kind: LiftKind): IronAmberBriefingPlateId {
+  if (kind === 'deadlift') {
+    return 'deadlift-floor';
+  }
+  if (kind === 'bench') {
+    return 'bench-brace';
+  }
+  return 'squat-brace';
+}
+
 export function ironAmberPlateFor(
   kind: LiftKind,
   phase: LiftPhase,

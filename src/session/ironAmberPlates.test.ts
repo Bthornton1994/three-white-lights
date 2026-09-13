@@ -8,6 +8,7 @@ import { MEET_LAYOUT } from '../game/meetTuning';
 import {
   IRON_AMBER_PLATE_FILES,
   IRON_AMBER_PLATE_IDS,
+  ironAmberBriefingPlate,
   ironAmberCoverRect,
   ironAmberGymLayout,
   ironAmberPlateFocus,
@@ -96,6 +97,13 @@ describe('Iron & Amber training plates', () => {
     const urgent = ironAmberPlateLayout('squat', PHONE_W, PHONE_H, MEET_LAYOUT.HALL_WALK_SHIFT);
     expect(urgent.width).toBeGreaterThan(calm.width);
     expect(urgent.height).toBeGreaterThan(calm.height);
+  });
+
+  it('the briefing room uses the brace/floor still for the day’s lift', () => {
+    expect(ironAmberBriefingPlate('squat')).toBe('squat-brace');
+    expect(ironAmberBriefingPlate('bench')).toBe('bench-brace');
+    expect(ironAmberBriefingPlate('deadlift')).toBe('deadlift-floor');
+    expect(ironAmberBriefingPlate('squat')).not.toBe('gym-briefing');
   });
 
   it('a pan cannot open a gap at the opposite edge', () => {

@@ -73,12 +73,23 @@ describe('Iron & Amber training path wiring', () => {
     expect(screen).toContain("state.phase === 'check-in'");
   });
 
-  it('BriefingView loads the gym plate behind the readiness card', () => {
+  it('BriefingView loads the day’s lifter plate and a gold RPE 8 chip', () => {
     const briefing = source('BriefingView.tsx');
     expect(briefing).toContain('gymTestID="iron-amber-briefing-gym"');
+    expect(briefing).toContain('liftKind={lift}');
     expect(briefing).toContain('testID="session-briefing"');
     expect(briefing).toContain('testID="session-rpe-ladder"');
+    expect(briefing).toContain('SESSION_PALETTE.AMBER');
+    expect(briefing).toContain('RPE_SUGGESTED_EDGE');
+    expect(briefing).toContain('AMBER_INK');
+    expect(briefing).toContain('RPE_CHIP_FONT');
+    expect(briefing).not.toContain('START BENCH');
     expect(briefing).not.toContain('session-check-in');
+    const room = source('IronAmberRoom.tsx');
+    expect(room).toContain('ironAmberBriefingPlate');
+    expect(room).toContain('ironAmberPlateLayout');
+    expect(room).toContain("from '../../assets/iron-amber/squat-brace.jpg'");
+    expect(source('CheckInView.tsx')).not.toContain('liftKind');
   });
 
   it('the gym room docks the card above the shell pill band', () => {
