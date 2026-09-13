@@ -971,7 +971,7 @@ export interface UnreadableGroup {
  */
 export const UNREADABLE_BY_THIS_AUDIT: readonly UnreadableGroup[] = Object.freeze([
   { extension: '.jpeg', reason: 'nul-byte', count: 1 },
-  { extension: '.jpg', reason: 'nul-byte', count: 17 },
+  { extension: '.jpg', reason: 'nul-byte', count: 19 },
   { extension: '.png', reason: 'nul-byte', count: 10 },
   { extension: '.wav', reason: 'nul-byte', count: 7 },
   { extension: '.webp', reason: 'nul-byte', count: 2 },

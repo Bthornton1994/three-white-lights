@@ -31,6 +31,8 @@ const L = MEET_LAYOUT;
 
 export type MeetHallPlateId =
   | 'meet-empty'
+  | 'meet-squat-unrack'
+  | 'meet-squat-unrack-third'
   | 'meet-squat-walk'
   | 'meet-squat-walk-third'
   | 'meet-squat-brace'
@@ -38,15 +40,19 @@ export type MeetHallPlateId =
   | 'meet-bench'
   | 'meet-deadlift';
 
-/** Press-surface stills. The attempt stage cannot take an attempt number. */
+/** Press-surface stills. The last squat uses the packed-third brace/walk. */
 export type MeetAttemptPlateId =
   | 'meet-squat-walk'
+  | 'meet-squat-walk-third'
   | 'meet-squat-brace'
+  | 'meet-squat-brace-third'
   | 'meet-bench'
   | 'meet-deadlift';
 
 export const MEET_HALL_PLATE_IDS = Object.freeze([
   'meet-empty',
+  'meet-squat-unrack',
+  'meet-squat-unrack-third',
   'meet-squat-walk',
   'meet-squat-walk-third',
   'meet-squat-brace',
@@ -57,6 +63,8 @@ export const MEET_HALL_PLATE_IDS = Object.freeze([
 
 export const MEET_HALL_PLATE_FILES = Object.freeze({
   'meet-empty': 'meet-empty.jpg',
+  'meet-squat-unrack': 'meet-squat-unrack.jpg',
+  'meet-squat-unrack-third': 'meet-squat-unrack-third.jpg',
   'meet-squat-walk': 'meet-squat-walk.jpg',
   'meet-squat-walk-third': 'meet-squat-walk-third.jpg',
   'meet-squat-brace': 'meet-squat-brace.jpg',
@@ -73,7 +81,6 @@ export function ironAmberHallPlateId(
 ): MeetHallPlateId {
   if (empty || kind === null) return 'meet-empty';
   const third = attemptNumber === ATTEMPTS_PER_LIFT;
-  const walking = stage === 'STEP' || stage === 'UNRACK';
   if (kind === 'deadlift') {
     if (stage === 'LOAD') return 'meet-empty';
     return 'meet-deadlift';
@@ -81,21 +88,29 @@ export function ironAmberHallPlateId(
   if (kind === 'bench') {
     return 'meet-bench';
   }
-  if (walking) return third ? 'meet-squat-walk-third' : 'meet-squat-walk';
+  if (stage === 'UNRACK') return third ? 'meet-squat-unrack-third' : 'meet-squat-unrack';
+  if (stage === 'STEP') return third ? 'meet-squat-walk-third' : 'meet-squat-walk';
   return third ? 'meet-squat-brace-third' : 'meet-squat-brace';
 }
 
 /**
  * The still behind a meet *attempt* (the press surface), as opposed to the
  * walk-out hall. One plate per lift: the hall is the venue, not a garage
- * pose ladder. LiftStage cannot take an attempt number, so this is the opener
- * stack; the walk-out and verdict pick the packed-third still themselves.
+ * pose ladder. The last squat uses the packed-third still so the press
+ * surface matches the walk-out that just ran.
  */
-export function meetAttemptPlateId(kind: LiftKind, phase: LiftPhase): MeetAttemptPlateId {
+export function meetAttemptPlateId(
+  kind: LiftKind,
+  phase: LiftPhase,
+  attemptNumber: AttemptNumber | null,
+): MeetAttemptPlateId {
   if (kind === 'deadlift') return 'meet-deadlift';
   if (kind === 'bench') return 'meet-bench';
-  if (phase === 'ASCENT' || phase === 'LOCKOUT') return 'meet-squat-walk';
-  return 'meet-squat-brace';
+  const third = attemptNumber === ATTEMPTS_PER_LIFT;
+  if (phase === 'ASCENT' || phase === 'LOCKOUT') {
+    return third ? 'meet-squat-walk-third' : 'meet-squat-walk';
+  }
+  return third ? 'meet-squat-brace-third' : 'meet-squat-brace';
 }
 
 function kindFromPlate(plateId: Exclude<MeetHallPlateId, 'meet-empty'>): LiftKind {

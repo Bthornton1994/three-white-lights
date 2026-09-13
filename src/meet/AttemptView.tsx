@@ -163,6 +163,7 @@ export function AttemptView({
           totalKg={live.weightKg}
           venue={MEET_TUNING.VENUE}
           crowdRisePx={crowdRisePx}
+          attemptNumber={live.attemptNumber}
         />
         <View style={styles.hudScrim} pointerEvents="none" />
         <View style={styles.hud} pointerEvents="none">

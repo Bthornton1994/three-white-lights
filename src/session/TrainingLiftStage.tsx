@@ -32,6 +32,7 @@ import {
   hitFlash,
   stageArmed,
 } from '../lift/liftFrame';
+import type { AttemptNumber } from '../game/meet';
 import type { LiftStageProps } from '../lift/LiftStage';
 import { SESSION_PALETTE } from './sessionPalette';
 import { ironAmberPlateFor, ironAmberPlateLayout, type IronAmberPlateId } from './ironAmberPlates';
@@ -47,7 +48,9 @@ import deadliftFloor from '../../assets/iron-amber/deadlift-floor.jpg';
 import deadliftKnee from '../../assets/iron-amber/deadlift-knee.jpg';
 import deadliftLockout from '../../assets/iron-amber/deadlift-lockout.jpg';
 import meetSquatWalk from '../../assets/iron-amber/meet-squat-walk.jpg';
+import meetSquatWalkThird from '../../assets/iron-amber/meet-squat-walk-third.jpg';
 import meetSquatBrace from '../../assets/iron-amber/meet-squat-brace.jpg';
+import meetSquatBraceThird from '../../assets/iron-amber/meet-squat-brace-third.jpg';
 import meetBench from '../../assets/iron-amber/meet-bench.jpg';
 import meetDeadlift from '../../assets/iron-amber/meet-deadlift.jpg';
 
@@ -68,23 +71,30 @@ const PLATE_SOURCE: Record<Exclude<IronAmberPlateId, 'gym-briefing'>, number> = 
 
 const MEET_ATTEMPT_SOURCE: Record<MeetAttemptPlateId, number> = {
   'meet-squat-walk': meetSquatWalk,
+  'meet-squat-walk-third': meetSquatWalkThird,
   'meet-squat-brace': meetSquatBrace,
+  'meet-squat-brace-third': meetSquatBraceThird,
   'meet-bench': meetBench,
   'meet-deadlift': meetDeadlift,
+};
+
+type TrainingLiftStageProps = LiftStageProps & {
+  readonly attemptNumber?: AttemptNumber | null;
 };
 
 export function TrainingLiftStage({
   state,
   crowdRisePx = 0,
   venue,
-}: LiftStageProps): React.ReactElement {
+  attemptNumber = null,
+}: TrainingLiftStageProps): React.ReactElement {
   const [box, setBox] = useState({ width: 0, height: 0 });
   const onMeet = venue === MEET_TUNING.VENUE;
   const plateId = onMeet
-    ? meetAttemptPlateId(state.config.kind, state.phase)
+    ? meetAttemptPlateId(state.config.kind, state.phase, attemptNumber)
     : ironAmberPlateFor(state.config.kind, state.phase, state.height);
   const plateSource = onMeet
-    ? MEET_ATTEMPT_SOURCE[meetAttemptPlateId(state.config.kind, state.phase)]
+    ? MEET_ATTEMPT_SOURCE[meetAttemptPlateId(state.config.kind, state.phase, attemptNumber)]
     : PLATE_SOURCE[ironAmberPlateFor(state.config.kind, state.phase, state.height)];
   const plateLayout = ironAmberPlateLayout(
     state.config.kind,

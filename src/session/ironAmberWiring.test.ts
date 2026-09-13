@@ -27,6 +27,8 @@ describe('Iron & Amber training path wiring', () => {
     expect(stage).toContain('ironAmberPlateFor');
     expect(stage).toContain('meetAttemptPlateId');
     expect(stage).toContain('meet-squat-brace.jpg');
+    expect(stage).toContain('meet-squat-brace-third.jpg');
+    expect(stage).toContain('attemptNumber');
     expect(stage).toContain('ironAmberPlateLayout');
     expect(stage).toContain('crowdRisePx');
     expect(stage).toContain('testID={`iron-amber-plate-${plateId}`}');
@@ -44,10 +46,13 @@ describe('Iron & Amber training path wiring', () => {
     expect(attempt).not.toContain("from '../lift/LiftStage'");
     expect(attempt).toContain('<LiftStage');
     expect(attempt).toContain('venue={MEET_TUNING.VENUE}');
+    expect(attempt).toContain('attemptNumber={live.attemptNumber}');
     const hall = source('../meet/MeetHallView.tsx');
     expect(hall).toContain('meet-empty.jpg');
     expect(hall).toContain('meet-squat-brace.jpg');
     expect(hall).toContain('meet-squat-brace-third.jpg');
+    expect(hall).toContain('meet-squat-unrack.jpg');
+    expect(hall).toContain('meet-squat-unrack-third.jpg');
     expect(hall).toContain('meet-squat-walk-third.jpg');
     expect(hall).toContain('lifter?.attemptNumber');
     expect(hall).not.toContain("from '../../assets/iron-amber/gym-briefing.jpg'");

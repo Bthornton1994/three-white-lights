@@ -1,4 +1,4 @@
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -30,7 +30,7 @@ describe('Iron & Amber meet hall stills', () => {
 
   it('the step and the unrack are not the settled brace', () => {
     expect(ironAmberHallPlateId('squat', 'STEP', false, OPENER)).toBe('meet-squat-walk');
-    expect(ironAmberHallPlateId('squat', 'UNRACK', false, OPENER)).toBe('meet-squat-walk');
+    expect(ironAmberHallPlateId('squat', 'UNRACK', false, OPENER)).toBe('meet-squat-unrack');
     expect(ironAmberHallPlateId('squat', 'SET', false, OPENER)).toBe('meet-squat-brace');
     expect(ironAmberHallPlateId('squat', 'HUSH', false, OPENER)).toBe('meet-squat-brace');
     expect(ironAmberHallPlateId('bench', 'STEP', false, OPENER)).toBe('meet-bench');
@@ -42,7 +42,7 @@ describe('Iron & Amber meet hall stills', () => {
 
   it('the last squat draws the packed-third bar, not the opener stack', () => {
     expect(ironAmberHallPlateId('squat', 'STEP', false, THIRD)).toBe('meet-squat-walk-third');
-    expect(ironAmberHallPlateId('squat', 'UNRACK', false, THIRD)).toBe('meet-squat-walk-third');
+    expect(ironAmberHallPlateId('squat', 'UNRACK', false, THIRD)).toBe('meet-squat-unrack-third');
     expect(ironAmberHallPlateId('squat', 'SET', false, THIRD)).toBe('meet-squat-brace-third');
     expect(ironAmberHallPlateId('squat', 'HUSH', false, THIRD)).toBe('meet-squat-brace-third');
     expect(ironAmberHallPlateId('squat', null, false, THIRD)).toBe('meet-squat-brace-third');
@@ -85,10 +85,25 @@ describe('Iron & Amber meet hall stills', () => {
     }
   });
 
+  it('the unrack still is not a crop of the walk still', () => {
+    const unrack = readFileSync(path.join(ASSET_DIR, MEET_HALL_PLATE_FILES['meet-squat-unrack']));
+    const walk = readFileSync(path.join(ASSET_DIR, MEET_HALL_PLATE_FILES['meet-squat-walk']));
+    const unrackThird = readFileSync(
+      path.join(ASSET_DIR, MEET_HALL_PLATE_FILES['meet-squat-unrack-third']),
+    );
+    const walkThird = readFileSync(
+      path.join(ASSET_DIR, MEET_HALL_PLATE_FILES['meet-squat-walk-third']),
+    );
+    expect(unrack.equals(walk), 'opener unrack is the walk jpeg').toBe(false);
+    expect(unrackThird.equals(walkThird), 'third unrack is the walk jpeg').toBe(false);
+  });
+
   it('a meet attempt still is the hall, never a garage pose', () => {
-    expect(meetAttemptPlateId('squat', 'BRACE')).toBe('meet-squat-brace');
-    expect(meetAttemptPlateId('squat', 'ASCENT')).toBe('meet-squat-walk');
-    expect(meetAttemptPlateId('bench', 'HOLE')).toBe('meet-bench');
-    expect(meetAttemptPlateId('deadlift', 'LOCKOUT')).toBe('meet-deadlift');
+    expect(meetAttemptPlateId('squat', 'BRACE', OPENER)).toBe('meet-squat-brace');
+    expect(meetAttemptPlateId('squat', 'ASCENT', OPENER)).toBe('meet-squat-walk');
+    expect(meetAttemptPlateId('squat', 'BRACE', THIRD)).toBe('meet-squat-brace-third');
+    expect(meetAttemptPlateId('squat', 'ASCENT', THIRD)).toBe('meet-squat-walk-third');
+    expect(meetAttemptPlateId('bench', 'HOLE', OPENER)).toBe('meet-bench');
+    expect(meetAttemptPlateId('deadlift', 'LOCKOUT', OPENER)).toBe('meet-deadlift');
   });
 });

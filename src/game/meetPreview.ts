@@ -614,6 +614,13 @@ function bombTheSquat(lift: LiftKind): RepStyle {
   return lift === 'squat' ? 'dumped' : 'perfect';
 }
 
+/** Two missed openers, then the last squat declared. The bomb-risk third. */
+function bombRiskThirdOnTheBar(): MeetDayState {
+  const first = takeAttempt(openedMeet(), 'dumped');
+  const second = takeAttempt(chooseOption(first, 'repeat'), 'dumped');
+  return chooseOption(second, 'repeat');
+}
+
 /**
  * The state a preview beat renders.
  *
@@ -637,12 +644,10 @@ export function previewStateFor(request: MeetPreviewRequest): MeetDayState {
       // state for all three: what differs between them is only which instant of
       // the beat is held (`holdWalkoutAtMs`), so a critic comparing the frames
       // is comparing the choreography and nothing else.
-      const first = takeAttempt(openedMeet(), 'dumped');
-      const second = takeAttempt(chooseOption(first, 'repeat'), 'dumped');
-      return chooseOption(second, 'repeat');
+      return bombRiskThirdOnTheBar();
     }
     case 'lift':
-      return takeAttempt(openedMeet(), 'perfect', 'lift');
+      return takeAttempt(bombRiskThirdOnTheBar(), 'perfect', 'lift');
     case 'deliberation':
       return takeAttempt(openedMeet(), 'marginal', 'deliberation');
     case 'verdict-good':
@@ -653,9 +658,7 @@ export function previewStateFor(request: MeetPreviewRequest): MeetDayState {
       // combination that reaches the urgent cheer. Built from the same
       // `takeAttempt` ladder as `walkout-third` rather than a hand-made state,
       // so it is the app's own arithmetic deciding this is urgent.
-      const first = takeAttempt(openedMeet(), 'dumped');
-      const second = takeAttempt(chooseOption(first, 'repeat'), 'dumped');
-      return takeAttempt(chooseOption(second, 'repeat'), 'perfect', 'verdict');
+      return takeAttempt(bombRiskThirdOnTheBar(), 'perfect', 'verdict');
     }
     case 'verdict-split':
       return takeAttempt(openedMeet(), 'marginal', 'verdict');

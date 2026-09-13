@@ -42,6 +42,8 @@ import type { WalkoutFrame } from './walkout';
 import { MEET_PALETTE } from './meetPalette';
 
 import meetEmpty from '../../assets/iron-amber/meet-empty.jpg';
+import meetSquatUnrack from '../../assets/iron-amber/meet-squat-unrack.jpg';
+import meetSquatUnrackThird from '../../assets/iron-amber/meet-squat-unrack-third.jpg';
 import meetSquatWalk from '../../assets/iron-amber/meet-squat-walk.jpg';
 import meetSquatWalkThird from '../../assets/iron-amber/meet-squat-walk-third.jpg';
 import meetSquatBrace from '../../assets/iron-amber/meet-squat-brace.jpg';
@@ -51,6 +53,8 @@ import meetDeadlift from '../../assets/iron-amber/meet-deadlift.jpg';
 
 const PLATE_SOURCE: Record<MeetHallPlateId, number> = {
   'meet-empty': meetEmpty,
+  'meet-squat-unrack': meetSquatUnrack,
+  'meet-squat-unrack-third': meetSquatUnrackThird,
   'meet-squat-walk': meetSquatWalk,
   'meet-squat-walk-third': meetSquatWalkThird,
   'meet-squat-brace': meetSquatBrace,

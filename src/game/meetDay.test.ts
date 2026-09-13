@@ -1767,6 +1767,8 @@ describe('the ?meet= preview beats', () => {
     const opener = previewStateFor({ moment: 'walkout' });
     expect(opener.live?.attemptNumber).toBe(1);
     expect(third.live?.walkoutMs ?? 0).toBeGreaterThan(opener.live?.walkoutMs ?? 0);
+    const lifting = previewStateFor({ moment: 'lift' });
+    expect(lifting.live?.attemptNumber).toBe(ATTEMPTS_PER_LIFT);
 
     const afterMake = previewStateFor({ moment: 'select-after-make' });
     const afterMiss = previewStateFor({ moment: 'select-after-miss' });
