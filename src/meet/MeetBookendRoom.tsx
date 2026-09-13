@@ -16,6 +16,10 @@
  * emptied still (check-in / briefing language). The shareable federation sheet
  * (`ResultCardScreen`) stays a sheet — it is not this wrapper.
  *
+ * The gold action is pinned in `footer`. The three openers and the recap
+ * board live in `sport`, pinned above that action, so first paint cannot crop
+ * the meet off while flavour copy scrolls.
+ *
  * Presentation, not a GDD rewrite. §6.1 still describes weigh-in content
  * (class, flavour, no dieting mechanic). This file does not move those beats
  * onto a loaded platform: `lifter={null}` is `meet-empty.jpg`.
@@ -44,13 +48,21 @@ export interface MeetBookendRoomProps {
    * quiet.
    */
   readonly footer?: React.ReactNode;
+  /**
+   * Pinned between the copy scroll and the gold action. Openers pass the
+   * three lift rows; recap passes the attempt boards plus DOTS/place. Copy
+   * may scroll; the sport may not. Weigh-in and bomb-out omit it.
+   */
+  readonly sport?: React.ReactNode;
 }
 
 export function MeetBookendRoom({
   children,
   testID,
   footer,
+  sport,
 }: MeetBookendRoomProps): React.ReactElement {
+  const hasSport = sport !== undefined;
   return (
     <View style={styles.root} testID={testID}>
       <View style={styles.hall} pointerEvents="none">
@@ -59,13 +71,18 @@ export function MeetBookendRoom({
       <View style={styles.body} pointerEvents="box-none">
         <View style={styles.card} testID={`${testID}-card`}>
           <ScrollView
-            style={styles.cardScroll}
+            style={hasSport ? styles.copyScroll : styles.cardScroll}
             contentContainerStyle={styles.cardContent}
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator
             keyboardShouldPersistTaps="handled"
           >
             {children}
           </ScrollView>
+          {sport === undefined ? null : (
+            <View style={styles.sport} testID={`${testID}-sport`}>
+              {sport}
+            </View>
+          )}
           {footer === undefined ? null : <View style={styles.footer}>{footer}</View>}
         </View>
       </View>
@@ -102,10 +119,20 @@ const styles = StyleSheet.create({
   cardScroll: {
     height: L.BOOKEND_SCROLL_MAX_HEIGHT,
   },
+  copyScroll: {
+    height: L.BOOKEND_COPY_SCROLL_HEIGHT,
+  },
   cardContent: {
     padding: L.BOOKEND_CARD_PAD,
     gap: L.BOOKEND_CARD_GAP,
     alignItems: 'stretch',
+  },
+  sport: {
+    maxHeight: L.BOOKEND_SPORT_MAX_HEIGHT,
+    overflow: 'hidden',
+    paddingHorizontal: L.BOOKEND_CARD_PAD,
+    paddingBottom: L.BOOKEND_CARD_GAP,
+    gap: L.BOOKEND_CARD_GAP,
   },
   footer: {
     paddingHorizontal: L.BOOKEND_CARD_PAD,

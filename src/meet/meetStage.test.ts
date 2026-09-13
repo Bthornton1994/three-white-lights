@@ -468,6 +468,12 @@ describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
     expect(read('meet/OpenersView.tsx')).toContain('footer={');
     expect(read('meet/RecapView.tsx')).toContain('footer={');
     expect(read('meet/BombOutView.tsx')).toContain('footer={');
+    expect(read('meet/OpenersView.tsx')).toContain('sport={');
+    expect(read('meet/RecapView.tsx')).toContain('sport={');
+    expect(read('meet/OpenersView.tsx')).toContain('opener-row-${lift}');
+    expect(read('meet/RecapView.tsx')).toContain('recap-dots');
+    expect(read('meet/RecapView.tsx')).toContain('AttemptBoard');
+    expect(read('meet/MeetBookendRoom.tsx')).toContain('testID={`${testID}-sport`}');
   });
 
   it('draws the walkout bar through the SPRITE, not out of Views', () => {

@@ -64,6 +64,41 @@ export function OpenersView({
   return (
     <MeetBookendRoom
       testID="meet-openers"
+      sport={
+        <View style={styles.rows}>
+          {LIFT_ORDER.map((lift, index) => (
+            <Row key={lift} index={index}>
+              <View style={styles.rowInner} testID={`opener-row-${lift}`}>
+                <View style={styles.rowLabel}>
+                  <Text style={styles.liftLabel}>{MEET_COPY.LIFT_LABEL[lift]}</Text>
+                  <Text style={styles.source}>
+                    {overridden[lift] ? MEET_COPY.OPENERS_CHANGED : MEET_COPY.OPENERS_SUGGESTED}
+                  </Text>
+                </View>
+                <MotionPressable
+                  style={styles.stepper}
+                  accessibilityRole="button"
+                  onPress={() => onSet(lift, openersKg[lift] - stepKg)}
+                  testID={`opener-down-${lift}`}
+                >
+                  <Text style={styles.stepperLabel}>−</Text>
+                </MotionPressable>
+                <Text style={styles.weight} testID={`opener-weight-${lift}`}>
+                  {formatWeight(openersKg[lift])}
+                </Text>
+                <MotionPressable
+                  style={styles.stepper}
+                  accessibilityRole="button"
+                  onPress={() => onSet(lift, openersKg[lift] + stepKg)}
+                  testID={`opener-up-${lift}`}
+                >
+                  <Text style={styles.stepperLabel}>+</Text>
+                </MotionPressable>
+              </View>
+            </Row>
+          ))}
+        </View>
+      }
       footer={
         <MotionPressable
           style={styles.action}
@@ -81,40 +116,6 @@ export function OpenersView({
       <Text style={styles.getIn} testID="openers-get-in">
         {MEET_COPY.OPENERS_GET_IN}
       </Text>
-
-      <View style={styles.rows}>
-        {LIFT_ORDER.map((lift, index) => (
-          <Row key={lift} index={index}>
-            <View style={styles.rowInner} testID={`opener-row-${lift}`}>
-              <View style={styles.rowLabel}>
-                <Text style={styles.liftLabel}>{MEET_COPY.LIFT_LABEL[lift]}</Text>
-                <Text style={styles.source}>
-                  {overridden[lift] ? MEET_COPY.OPENERS_CHANGED : MEET_COPY.OPENERS_SUGGESTED}
-                </Text>
-              </View>
-              <MotionPressable
-                style={styles.stepper}
-                accessibilityRole="button"
-                onPress={() => onSet(lift, openersKg[lift] - stepKg)}
-                testID={`opener-down-${lift}`}
-              >
-                <Text style={styles.stepperLabel}>−</Text>
-              </MotionPressable>
-              <Text style={styles.weight} testID={`opener-weight-${lift}`}>
-                {formatWeight(openersKg[lift])}
-              </Text>
-              <MotionPressable
-                style={styles.stepper}
-                accessibilityRole="button"
-                onPress={() => onSet(lift, openersKg[lift] + stepKg)}
-                testID={`opener-up-${lift}`}
-              >
-                <Text style={styles.stepperLabel}>+</Text>
-              </MotionPressable>
-            </View>
-          </Row>
-        ))}
-      </View>
       </View>
     </MeetBookendRoom>
   );

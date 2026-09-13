@@ -172,24 +172,9 @@ export function RecapView({
   return (
     <MeetBookendRoom
       testID="meet-recap"
-      footer={
-        <Block index={MEET_TUNING.RECAP_ROW_ORDER.CARD}>
-          <MotionPressable
-            style={styles.action}
-            accessibilityRole="button"
-            onPress={onSeeCard}
-            testID="recap-action"
-          >
-            <Text style={styles.actionLabel}>{MEET_COPY.RECAP_ACTION}</Text>
-          </MotionPressable>
-        </Block>
-      }
-    >
-      <View style={styles.root}>
-      <Text style={styles.eyebrow}>{MEET_COPY.RECAP_EYEBROW}</Text>
-
+      sport={
+        <>
       <Block index={MEET_TUNING.RECAP_ROW_ORDER.TOTAL}>
-        <Text style={styles.totalLabel}>{MEET_COPY.RECAP_TOTAL_LABEL}</Text>
         <Text
           style={[styles.total, recap.isTotalPr ? styles.totalPr : null]}
           testID="recap-total"
@@ -204,25 +189,9 @@ export function RecapView({
             {recap.prText}
           </Text>
         )}
-        {/* GDD §6.5's career lines (Sprint 1b), on the total's own beat: the
-            standing career best and the tiers this result newly qualified —
-            `careerRecapLines` over the server's own outcome, nothing derived
-            here. Same stagger slot as the total, because they are about it. */}
-        {career === null
-          ? null
-          : careerRecapLines(career).map((line) => (
-              <Text
-                key={line.kind}
-                style={[styles.prText, line.kind === 'qualified' ? styles.prTextHot : null]}
-                testID={`recap-${line.kind}`}
-              >
-                {line.text}
-              </Text>
-            ))}
       </Block>
 
       <Block index={MEET_TUNING.RECAP_ROW_ORDER.LIFTS}>
-        <Text style={styles.sectionLabel}>{MEET_COPY.RECAP_ATTEMPTS_LABEL}</Text>
         <View style={styles.boards}>
           {LIFT_ORDER.map((lift, index) => (
             <AttemptBoard
@@ -251,6 +220,34 @@ export function RecapView({
           </Text>
         </Block>
       </View>
+        </>
+      }
+      footer={
+        <Block index={MEET_TUNING.RECAP_ROW_ORDER.CARD}>
+          <MotionPressable
+            style={styles.action}
+            accessibilityRole="button"
+            onPress={onSeeCard}
+            testID="recap-action"
+          >
+            <Text style={styles.actionLabel}>{MEET_COPY.RECAP_ACTION}</Text>
+          </MotionPressable>
+        </Block>
+      }
+    >
+      <View style={styles.root}>
+      <Text style={styles.eyebrow}>{MEET_COPY.RECAP_EYEBROW}</Text>
+        {career === null
+          ? null
+          : careerRecapLines(career).map((line) => (
+              <Text
+                key={line.kind}
+                style={[styles.prText, line.kind === 'qualified' ? styles.prTextHot : null]}
+                testID={`recap-${line.kind}`}
+              >
+                {line.text}
+              </Text>
+            ))}
 
       {recap.whyLines.length === 0 ? null : (
         <Block index={MEET_TUNING.RECAP_ROW_ORDER.WHY}>
@@ -283,14 +280,9 @@ const styles = StyleSheet.create({
     fontSize: L.EYEBROW_FONT,
     letterSpacing: L.WIDE_LETTER_SPACING,
   },
-  totalLabel: {
-    color: MEET_PALETTE.TEXT_DIM,
-    fontSize: L.LABEL_FONT,
-    letterSpacing: L.WIDE_LETTER_SPACING,
-  },
   total: {
     color: MEET_PALETTE.TOTAL,
-    fontSize: L.BIG_NUMBER_FONT,
+    fontSize: L.BOOKEND_TOTAL_FONT,
     fontWeight: '700',
   },
   totalPr: {
@@ -319,6 +311,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignSelf: 'stretch',
     justifyContent: 'space-around',
+    minHeight: L.BOOKEND_SUMMARY_HEIGHT,
   },
   summaryValue: {
     color: MEET_PALETTE.TEXT,

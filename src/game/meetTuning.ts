@@ -1803,16 +1803,35 @@ export const MEET_LAYOUT = Object.freeze({
    * Compact espresso card over the emptied hall on weigh-in, openers,
    * bomb-out and recap. Same job as SESSION_LAYOUT.CHECK_IN_DRAWER_MAX_HEIGHT:
    * the still stays the majority of 390×844. Untuned (GDD §12.1).
+   *
+   * CARD + FOOT must stay under half of 844 so the emptied hall is the majority.
+   * The sport slot (openers' three lifts, recap boards + DOTS/place) is pinned
+   * above the gold action so first paint cannot crop the meet off.
    */
-  BOOKEND_CARD_MAX_HEIGHT: 280,
-  BOOKEND_FOOT_CLEARANCE: 120,
+  BOOKEND_CARD_MAX_HEIGHT: 340,
+  BOOKEND_FOOT_CLEARANCE: 80,
   BOOKEND_CARD_PAD: 12,
   BOOKEND_CARD_GAP: 8,
   /**
-   * Scrollable body above a pinned action. Untuned. `BUTTON_HEIGHT` plus pad
-   * and gap sit below this inside `BOOKEND_CARD_MAX_HEIGHT`.
+   * Scrollable copy when the card has no pinned sport (weigh-in, bomb-out).
+   * Untuned. `BUTTON_HEIGHT` plus pad and gap sit below this inside the card.
    */
   BOOKEND_SCROLL_MAX_HEIGHT: 210,
+  /**
+   * Scrollable copy when sport is pinned (openers, recap). Flavour and
+   * "why it matters" may sit under this; the lifts may not. Untuned.
+   */
+  BOOKEND_COPY_SCROLL_HEIGHT: 56,
+  /**
+   * Pinned sport band: three opener rows, or recap boards + DOTS/place.
+   * Untuned. Must cover `LIFT_ORDER.length` rows of `BOOKEND_OPENER_ROW_HEIGHT`
+   * and of `BOARD_CELL_H`.
+   */
+  BOOKEND_SPORT_MAX_HEIGHT: 214,
+  /** Recap total inside the bookend, smaller than the full-screen numeral. Untuned. */
+  BOOKEND_TOTAL_FONT: 30,
+  /** Recap DOTS/place row inside the sport band. Untuned. */
+  BOOKEND_SUMMARY_HEIGHT: 40,
   /** Opener rows inside the bookend card. Untuned. */
   BOOKEND_OPENER_ROW_HEIGHT: 48,
 
