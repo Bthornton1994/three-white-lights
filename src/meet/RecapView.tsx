@@ -204,22 +204,24 @@ export function RecapView({
         </View>
       </Block>
 
-      <View style={styles.summary}>
-        <Block index={MEET_TUNING.RECAP_ROW_ORDER.DOTS}>
-          <Text style={styles.summaryValue} testID="recap-dots">
-            {recap.dotsText}
-          </Text>
-          <Text style={styles.summaryLabel}>{MEET_COPY.RECAP_DOTS_LABEL}</Text>
-        </Block>
-        <Block index={MEET_TUNING.RECAP_ROW_ORDER.PLACE}>
-          <Text style={styles.summaryValue} testID="recap-place">
-            {recap.placeText}
-          </Text>
-          <Text style={styles.summaryLabel}>
-            {`${MEET_COPY.RECAP_PLACE_LABEL} ${MEET_COPY.RECAP_OF_FIELD} ${recap.fieldSize}`}
-          </Text>
-        </Block>
-      </View>
+      <Block index={MEET_TUNING.RECAP_ROW_ORDER.DOTS}>
+        <View style={styles.summary}>
+          <View style={styles.summaryCol}>
+            <Text style={styles.summaryValue} testID="recap-dots">
+              {recap.dotsText}
+            </Text>
+            <Text style={styles.summaryLabel}>{MEET_COPY.RECAP_DOTS_LABEL}</Text>
+          </View>
+          <View style={styles.summaryCol}>
+            <Text style={styles.summaryValue} testID="recap-place">
+              {recap.placeText}
+            </Text>
+            <Text style={styles.summaryLabel}>
+              {`${MEET_COPY.RECAP_PLACE_LABEL} ${MEET_COPY.RECAP_OF_FIELD} ${recap.fieldSize}`}
+            </Text>
+          </View>
+        </View>
+      </Block>
         </>
       }
       footer={
@@ -312,6 +314,10 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     justifyContent: 'space-around',
     minHeight: L.BOOKEND_SUMMARY_HEIGHT,
+  },
+  summaryCol: {
+    flex: 1,
+    alignItems: 'center',
   },
   summaryValue: {
     color: MEET_PALETTE.TEXT,

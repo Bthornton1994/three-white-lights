@@ -1821,13 +1821,13 @@ export const MEET_LAYOUT = Object.freeze({
    * Scrollable copy when sport is pinned (openers, recap). Flavour and
    * "why it matters" may sit under this; the lifts may not. Untuned.
    */
-  BOOKEND_COPY_SCROLL_HEIGHT: 56,
+  BOOKEND_COPY_SCROLL_HEIGHT: 46,
   /**
    * Pinned sport band: three opener rows, or recap boards + DOTS/place.
    * Untuned. Must cover `LIFT_ORDER.length` rows of `BOOKEND_OPENER_ROW_HEIGHT`
    * and of `BOARD_CELL_H`.
    */
-  BOOKEND_SPORT_MAX_HEIGHT: 214,
+  BOOKEND_SPORT_MAX_HEIGHT: 224,
   /** Recap total inside the bookend, smaller than the full-screen numeral. Untuned. */
   BOOKEND_TOTAL_FONT: 30,
   /** Recap DOTS/place row inside the sport band. Untuned. */
