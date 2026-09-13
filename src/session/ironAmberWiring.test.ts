@@ -47,6 +47,9 @@ describe('Iron & Amber training path wiring', () => {
     const hall = source('../meet/MeetHallView.tsx');
     expect(hall).toContain('meet-empty.jpg');
     expect(hall).toContain('meet-squat-brace.jpg');
+    expect(hall).toContain('meet-squat-brace-third.jpg');
+    expect(hall).toContain('meet-squat-walk-third.jpg');
+    expect(hall).toContain('lifter?.attemptNumber');
     expect(hall).not.toContain("from '../../assets/iron-amber/gym-briefing.jpg'");
     expect(hall).not.toContain("from '../../assets/iron-amber/squat-brace.jpg'");
     expect(hall).toContain('ironAmberHallPlateId');

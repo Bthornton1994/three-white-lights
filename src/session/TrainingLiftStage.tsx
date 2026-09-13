@@ -35,7 +35,7 @@ import {
 import type { LiftStageProps } from '../lift/LiftStage';
 import { SESSION_PALETTE } from './sessionPalette';
 import { ironAmberPlateFor, ironAmberPlateLayout, type IronAmberPlateId } from './ironAmberPlates';
-import { meetAttemptPlateId, type MeetHallPlateId } from '../meet/ironAmberHall';
+import { meetAttemptPlateId, type MeetAttemptPlateId } from '../meet/ironAmberHall';
 
 import squatBrace from '../../assets/iron-amber/squat-brace.jpg';
 import squatHole from '../../assets/iron-amber/squat-hole.jpg';
@@ -66,7 +66,7 @@ const PLATE_SOURCE: Record<Exclude<IronAmberPlateId, 'gym-briefing'>, number> = 
   'deadlift-lockout': deadliftLockout,
 };
 
-const MEET_ATTEMPT_SOURCE: Record<Exclude<MeetHallPlateId, 'meet-empty'>, number> = {
+const MEET_ATTEMPT_SOURCE: Record<MeetAttemptPlateId, number> = {
   'meet-squat-walk': meetSquatWalk,
   'meet-squat-brace': meetSquatBrace,
   'meet-bench': meetBench,

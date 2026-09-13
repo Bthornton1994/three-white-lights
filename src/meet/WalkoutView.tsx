@@ -337,6 +337,7 @@ export function WalkoutView({
             totalKg: attempt.weightKg,
             barAndCollarsKg,
             loadRatio,
+            attemptNumber: attempt.attemptNumber,
             platesLoaded,
             pose,
           }}

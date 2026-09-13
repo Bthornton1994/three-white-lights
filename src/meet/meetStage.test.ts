@@ -503,6 +503,9 @@ describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
     expect(walkout ?? '', 'the walkout never brings the hall up').toContain(
       'crowdRisePx={pose.crowdRisePx}',
     );
+    expect(walkout ?? '', 'the walkout hides which attempt this is').toContain(
+      'attemptNumber: attempt.attemptNumber',
+    );
 
     // ...and the verdict brings it up too, which is the crowd's other moment —
     // GATED ON A GOOD LIFT AND ON THE LIGHTS BEING OUT. A hall that reacted
@@ -527,6 +530,7 @@ describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
     expect(hall, 'MeetHallView ignores the pose it is handed').toContain('pose?.stage');
     expect(hall, 'MeetHallView ignores where the walk-out puts him').toContain('pose?.bodyDxPx');
     expect(hall, 'MeetHallView ignores crowd rise').toContain('crowdRisePx');
+    expect(hall, 'MeetHallView ignores which attempt this is').toContain('lifter?.attemptNumber');
     expect(hall, 'MeetHallView no longer frames the still from the sheet').toContain(
       'ironAmberHallLayout',
     );
@@ -781,6 +785,10 @@ describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
       verdict ?? '',
       'the bar the wait is drawn with is not the attempt’s bar',
     ).toContain('totalKg: attempt.weightKg');
+    expect(
+      verdict ?? '',
+      'the wait hides which attempt this is',
+    ).toContain('attemptNumber: attempt.attemptNumber');
     // ...and nothing is holding discs back: `platesLoaded` is the walk-out's
     // channel, and a verdict that passed one would be drawing a part-loaded bar.
     expect(verdict ?? '', 'the verdict hides part of the stack').not.toMatch(

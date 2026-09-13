@@ -252,6 +252,7 @@ export function VerdictView({
             totalKg: attempt.weightKg,
             barAndCollarsKg,
             loadRatio,
+            attemptNumber: attempt.attemptNumber,
             pose,
           }}
           scrim={MEET_TUNING.HALL.JUDGING_SCRIM}

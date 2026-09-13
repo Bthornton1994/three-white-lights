@@ -31,7 +31,7 @@ import { Image, StyleSheet, View } from 'react-native';
 
 import { IRON_AMBER } from '../game/sessionTuning';
 import { MEET_COPY } from '../game/meetTuning';
-import type { LiftKind } from '../game/meet';
+import type { AttemptNumber, LiftKind } from '../game/meet';
 import { hallPlateCount } from './meetHall';
 import {
   ironAmberHallLayout,
@@ -43,14 +43,18 @@ import { MEET_PALETTE } from './meetPalette';
 
 import meetEmpty from '../../assets/iron-amber/meet-empty.jpg';
 import meetSquatWalk from '../../assets/iron-amber/meet-squat-walk.jpg';
+import meetSquatWalkThird from '../../assets/iron-amber/meet-squat-walk-third.jpg';
 import meetSquatBrace from '../../assets/iron-amber/meet-squat-brace.jpg';
+import meetSquatBraceThird from '../../assets/iron-amber/meet-squat-brace-third.jpg';
 import meetBench from '../../assets/iron-amber/meet-bench.jpg';
 import meetDeadlift from '../../assets/iron-amber/meet-deadlift.jpg';
 
 const PLATE_SOURCE: Record<MeetHallPlateId, number> = {
   'meet-empty': meetEmpty,
   'meet-squat-walk': meetSquatWalk,
+  'meet-squat-walk-third': meetSquatWalkThird,
   'meet-squat-brace': meetSquatBrace,
+  'meet-squat-brace-third': meetSquatBraceThird,
   'meet-bench': meetBench,
   'meet-deadlift': meetDeadlift,
 };
@@ -64,6 +68,8 @@ export interface MeetHallLifter {
   readonly barAndCollarsKg: number;
   /** Attempt weight over the lifter's best single — how hard he is drawn. */
   readonly loadRatio: number;
+  /** Which attempt this is. The last one draws the packed-third bar. */
+  readonly attemptNumber: AttemptNumber;
   /**
    * Discs per side that have landed so far. Omitted, the bar is already loaded,
    * which is what every beat after the walk-out wants.
@@ -98,7 +104,12 @@ export function MeetHallView({
   const empty = lifter === null;
   const pose = lifter?.pose ?? null;
   const kind = lifter?.kind ?? null;
-  const plateId = ironAmberHallPlateId(kind, pose?.stage ?? null, empty);
+  const plateId = ironAmberHallPlateId(
+    kind,
+    pose?.stage ?? null,
+    empty,
+    lifter?.attemptNumber ?? null,
+  );
   const platesShown =
     lifter === null
       ? 0

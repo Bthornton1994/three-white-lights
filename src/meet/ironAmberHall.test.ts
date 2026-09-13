@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { ATTEMPTS_PER_LIFT } from '../game/meet';
 import { IRON_AMBER } from '../game/sessionTuning';
 import { MEET_LAYOUT } from '../game/meetTuning';
 import {
@@ -13,6 +14,9 @@ import {
   MEET_HALL_PLATE_IDS,
 } from './ironAmberHall';
 
+const OPENER = 1 as const;
+const THIRD = ATTEMPTS_PER_LIFT;
+
 const ASSET_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../assets/iron-amber');
 
 const PHONE_W = 390;
@@ -20,24 +24,33 @@ const PHONE_H = 844;
 
 describe('Iron & Amber meet hall stills', () => {
   it('an empty platform is the meet hall, never a training garage plate', () => {
-    expect(ironAmberHallPlateId('squat', 'SET', true)).toBe('meet-empty');
-    expect(ironAmberHallPlateId(null, null, true)).toBe('meet-empty');
+    expect(ironAmberHallPlateId('squat', 'SET', true, OPENER)).toBe('meet-empty');
+    expect(ironAmberHallPlateId(null, null, true, null)).toBe('meet-empty');
   });
 
   it('the step and the unrack are not the settled brace', () => {
-    expect(ironAmberHallPlateId('squat', 'STEP', false)).toBe('meet-squat-walk');
-    expect(ironAmberHallPlateId('squat', 'UNRACK', false)).toBe('meet-squat-walk');
-    expect(ironAmberHallPlateId('squat', 'SET', false)).toBe('meet-squat-brace');
-    expect(ironAmberHallPlateId('squat', 'HUSH', false)).toBe('meet-squat-brace');
-    expect(ironAmberHallPlateId('bench', 'STEP', false)).toBe('meet-bench');
-    expect(ironAmberHallPlateId('bench', 'SET', false)).toBe('meet-bench');
-    expect(ironAmberHallPlateId('deadlift', 'LOAD', false)).toBe('meet-empty');
-    expect(ironAmberHallPlateId('deadlift', 'STEP', false)).toBe('meet-deadlift');
-    expect(ironAmberHallPlateId('deadlift', 'HUSH', false)).toBe('meet-deadlift');
+    expect(ironAmberHallPlateId('squat', 'STEP', false, OPENER)).toBe('meet-squat-walk');
+    expect(ironAmberHallPlateId('squat', 'UNRACK', false, OPENER)).toBe('meet-squat-walk');
+    expect(ironAmberHallPlateId('squat', 'SET', false, OPENER)).toBe('meet-squat-brace');
+    expect(ironAmberHallPlateId('squat', 'HUSH', false, OPENER)).toBe('meet-squat-brace');
+    expect(ironAmberHallPlateId('bench', 'STEP', false, OPENER)).toBe('meet-bench');
+    expect(ironAmberHallPlateId('bench', 'SET', false, OPENER)).toBe('meet-bench');
+    expect(ironAmberHallPlateId('deadlift', 'LOAD', false, OPENER)).toBe('meet-empty');
+    expect(ironAmberHallPlateId('deadlift', 'STEP', false, OPENER)).toBe('meet-deadlift');
+    expect(ironAmberHallPlateId('deadlift', 'HUSH', false, OPENER)).toBe('meet-deadlift');
+  });
+
+  it('the last squat draws the packed-third bar, not the opener stack', () => {
+    expect(ironAmberHallPlateId('squat', 'STEP', false, THIRD)).toBe('meet-squat-walk-third');
+    expect(ironAmberHallPlateId('squat', 'UNRACK', false, THIRD)).toBe('meet-squat-walk-third');
+    expect(ironAmberHallPlateId('squat', 'SET', false, THIRD)).toBe('meet-squat-brace-third');
+    expect(ironAmberHallPlateId('squat', 'HUSH', false, THIRD)).toBe('meet-squat-brace-third');
+    expect(ironAmberHallPlateId('squat', null, false, THIRD)).toBe('meet-squat-brace-third');
+    expect(ironAmberHallPlateId('bench', 'SET', false, THIRD)).toBe('meet-bench');
   });
 
   it('a missing pose is the settled still, so deliberation and a no-lift match', () => {
-    expect(ironAmberHallPlateId('squat', null, false)).toBe('meet-squat-brace');
+    expect(ironAmberHallPlateId('squat', null, false, OPENER)).toBe('meet-squat-brace');
     const settled = ironAmberHallLayout(PHONE_W, PHONE_H, 'meet-squat-brace', 0, 0, 0);
     const omitted = ironAmberHallLayout(PHONE_W, PHONE_H, 'meet-squat-brace', 0, 0, 0);
     expect(omitted).toEqual(settled);
