@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { IRON_AMBER } from '../game/sessionTuning';
+import { MEET_LAYOUT } from '../game/meetTuning';
 import {
   IRON_AMBER_PLATE_FILES,
   IRON_AMBER_PLATE_IDS,
@@ -88,6 +89,13 @@ describe('Iron & Amber training plates', () => {
     expect(gym.height).toBeGreaterThanOrEqual(PHONE_H);
     expect(gym.left + gym.width).toBeGreaterThanOrEqual(PHONE_W);
     expect(gym.top + gym.height).toBeGreaterThanOrEqual(PHONE_H);
+  });
+
+  it('crowd rise on a meet attempt zooms the same still training uses', () => {
+    const calm = ironAmberPlateLayout('squat', PHONE_W, PHONE_H, 0);
+    const urgent = ironAmberPlateLayout('squat', PHONE_W, PHONE_H, MEET_LAYOUT.HALL_WALK_SHIFT);
+    expect(urgent.width).toBeGreaterThan(calm.width);
+    expect(urgent.height).toBeGreaterThan(calm.height);
   });
 
   it('a pan cannot open a gap at the opposite edge', () => {

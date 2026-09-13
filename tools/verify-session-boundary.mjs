@@ -75,7 +75,6 @@ const check = (ok, what, detail) => {
 };
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
   args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });

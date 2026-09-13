@@ -601,7 +601,6 @@ const RECAP_SETTLE_MS = latencyMs + CAP_DRIVE.BEAT_TIMEOUT_MS;
 await mkdir(outDir, { recursive: true });
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
   args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: dpr });

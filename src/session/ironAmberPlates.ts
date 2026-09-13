@@ -6,6 +6,7 @@
  * `src/lift/LiftStage.tsx` stays the A0 sprite harness.
  */
 import { IRON_AMBER } from '../game/sessionTuning';
+import { MEET_LAYOUT } from '../game/meetTuning';
 import type { LiftKind } from '../game/meet';
 import type { LiftPhase } from '../game/lift';
 
@@ -133,6 +134,7 @@ export function ironAmberPlateLayout(
   kind: LiftKind,
   boxW: number,
   boxH: number,
+  crowdRisePx = 0,
 ): IronAmberCoverRect {
   const focus = ironAmberPlateFocus(kind);
   return ironAmberCoverRect(
@@ -142,7 +144,7 @@ export function ironAmberPlateLayout(
     boxH,
     focus.x,
     focus.y,
-    IRON_AMBER.PLATE_SCALE,
+    IRON_AMBER.PLATE_SCALE + crowdRisePx * MEET_LAYOUT.HALL_RISE_ZOOM,
   );
 }
 

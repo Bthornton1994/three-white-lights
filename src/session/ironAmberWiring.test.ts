@@ -26,6 +26,7 @@ describe('Iron & Amber training path wiring', () => {
     expect(stage).toContain("from '../../assets/iron-amber/bench-brace.jpg'");
     expect(stage).toContain('ironAmberPlateFor');
     expect(stage).toContain('ironAmberPlateLayout');
+    expect(stage).toContain('crowdRisePx');
     expect(stage).toContain('testID={`iron-amber-plate-${plateId}`}');
     expect(stage).not.toContain('makeSpriteImage');
     expect(stage).not.toContain('GymSceneLayer');

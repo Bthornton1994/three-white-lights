@@ -63,7 +63,12 @@ export function TrainingLiftStage({
 }: LiftStageProps): React.ReactElement {
   const [box, setBox] = useState({ width: 0, height: 0 });
   const plateId = ironAmberPlateFor(state.config.kind, state.phase, state.height);
-  const plateLayout = ironAmberPlateLayout(state.config.kind, box.width, box.height);
+  const plateLayout = ironAmberPlateLayout(
+    state.config.kind,
+    box.width,
+    box.height,
+    crowdRisePx,
+  );
   const ring = cueRing(cueProgress(state));
   const flash = hitFlash(state);
   const pulse = cuePulse(state.tick);

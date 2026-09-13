@@ -1940,7 +1940,6 @@ const note = (text) => {
 };
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
   args: [
     '--no-sandbox',
     '--disable-dev-shm-usage',
@@ -3264,7 +3263,7 @@ async function probeTheHallUnderTheRep() {
   check(
     true,
     'the hall-under-the-rep probe ran on two PLAYED attempts, reached with a mouse and no query string',
-    `calm ${JSON.stringify(seen.calmLabel)} vs urgent ${JSON.stringify(seen.urgentLabel)} (line ${JSON.stringify((seen.urgentLine ?? '').trim())}), band ${region.w}x${region.h} CSS px above the sprite cell`,
+    `calm ${JSON.stringify(seen.calmLabel)} vs urgent ${JSON.stringify(seen.urgentLabel)} (line ${JSON.stringify((seen.urgentLine ?? '').trim())}), band ${region.w}x${region.h} CSS px below the HUD and above the cue`,
   );
 
   // (1) THE DECISIVE ONE. On the build this closes, the two rooms are the same
@@ -3799,27 +3798,38 @@ async function checkMeetRestatementsMatchTuning() {
     `meet.ts ${JSON.stringify(liftOrder)} vs this tool ${JSON.stringify([...LIFT_ORDER_RESTATED].sort())}`,
   );
 
-  // THE STAGE GEOMETRY THE HALL-UNDER-THE-REP BAND IS CUT FROM. Same
-  // arrangement as `MOTION_MS` above: three numbers this tool restates, read
-  // back out of the module that owns them, so a re-tune moves the band instead
-  // of silently moving what it is looking at.
-  const gymWhere = path.join(srcRoot, 'src', 'art', 'gymTuning.ts');
-  const gymText = await readFile(gymWhere, 'utf8').catch(() => null);
-  if (gymText === null) {
-    check(false, 'this tool’s stage geometry is cross-checked against gymTuning.ts', `could not read ${gymWhere}`);
+  // THE HUD / COMMAND INSETS THE HALL-UNDER-THE-REP BAND IS CUT FROM.
+  // Meet Day's attempt is a full-bleed Iron & Amber still with athletic HUD
+  // overlaid. The band has to sit below that HUD and above the cue, or two
+  // calm reps at different weights fail the identical-room control because
+  // the kilograms moved. Same arrangement as `MOTION_MS`: restated from the
+  // modules that own the numbers.
+  if (meetText === null) {
+    check(false, 'the hall-under-the-rep HUD insets are restated from meetTuning.ts', `could not read ${meetWhere}`);
   } else {
     for (const [name, mine] of [
-      ['ORIGIN_Y', STAGE_ORIGIN_Y_RESTATED],
-      ['SCALE', STAGE_SCALE_RESTATED],
-      ['SPRITE_Y', SPRITE_TOP_ROW_RESTATED],
+      ['HALL_HUD_HEIGHT', HALL_HUD_HEIGHT_RESTATED],
+      ['HALL_COMMAND_HEIGHT', HALL_COMMAND_HEIGHT_RESTATED],
     ]) {
-      const theirs = numberInBlock(gymText, 'GYM_LIFT_STAGE', name);
+      const theirs = numberInBlock(meetText, 'MEET_LAYOUT', name);
       check(
         theirs === mine,
-        `the hall-under-the-rep band is cut from GYM_LIFT_STAGE.${name}, and this tool restates it`,
-        `gymTuning.ts ${theirs} vs this tool ${mine}`,
+        `the hall-under-the-rep band is cut below MEET_LAYOUT.${name}, and this tool restates it`,
+        `meetTuning.ts ${theirs} vs this tool ${mine}`,
       );
     }
+  }
+  const sessionWhere = path.join(srcRoot, 'src', 'game', 'sessionTuning.ts');
+  const sessionText = await readFile(sessionWhere, 'utf8').catch(() => null);
+  if (sessionText === null) {
+    check(false, 'this tool’s cue inset is cross-checked against sessionTuning.ts', `could not read ${sessionWhere}`);
+  } else {
+    const theirs = numberInBlock(sessionText, 'IRON_AMBER', 'CUE_Y_RATIO');
+    check(
+      theirs === CUE_Y_RATIO_RESTATED,
+      'the hall-under-the-rep band stops above IRON_AMBER.CUE_Y_RATIO, and this tool restates it',
+      `sessionTuning.ts ${theirs} vs this tool ${CUE_Y_RATIO_RESTATED}`,
+    );
   }
 
   // The pin on `careerCalendarPlaceholder.ts`'s LINE was retired with the
@@ -4106,52 +4116,52 @@ const REP_HALL_SEEN = {
 };
 
 /**
- * The rows of the lift stage that hold the room and NOTHING ELSE.
+ * The rows of the attempt still that hold the room and NOTHING ELSE.
  *
  * ---------------------------------------------------------------------------
- * WHY THE BAND STOPS AT `SPRITE_Y` RATHER THAN AT THE SEATING'S OWN EDGE
+ * WHY THE BAND SITS BELOW THE HUD AND ABOVE THE CUE
  * ---------------------------------------------------------------------------
- * The two shots being compared are two different attempts, so the bar carries
- * different plates and the figure is drawn with different strain. Everything
- * that can differ for a reason other than the crowd is BELOW the sprite cell's
- * top row, so the band is the stage from its top edge down to there: wall,
- * lights, banner, the seating, and the top of the bar-path panel — all of which
- * are identical between any two reps in the same venue unless the hall moved.
+ * Meet Day's attempt is a full-bleed Iron & Amber still. Athletic HUD
+ * (attempt label, kilograms) sits in the top `HALL_HUD_HEIGHT` points and the
+ * command sits in the bottom `HALL_COMMAND_HEIGHT`. Two different attempts
+ * print different kilograms, and the cue ring pulses on `state.tick`, so a
+ * band that includes either of those would fail the identical-room control
+ * between two CALM reps. The band is therefore the ceiling and upper wall:
+ * below the HUD, above `CUE_Y_RATIO`, which is identical between any two reps
+ * in the same venue unless the hall's wash/zoom moved.
  *
- * IT CONTAINS THE WHOLE CHANGE, measured on the renderer rather than assumed:
- * a hall at `HUSH_CROWD_RISE_PX` differs from a seated one in 1,633 of the
- * composite's 22,490 scene pixels, and every one of them is in scene rows 76 to
- * 95. The sprite cell starts at row 97.
- *
- * Both numbers are `GYM_LIFT_STAGE`'s and are cross-checked against
- * `src/art/gymTuning.ts` by `checkGymRestatementsMatchTuning`, the same
- * arrangement `MOTION_MS` has with `meetTuning.ts`.
+ * `HALL_HUD_HEIGHT`, `HALL_COMMAND_HEIGHT` and `CUE_Y_RATIO` are restated from
+ * `meetTuning.ts` / `sessionTuning.ts` by `checkMeetRestatementsMatchTuning`.
  */
-const STAGE_ORIGIN_Y_RESTATED = 1;
-const STAGE_SCALE_RESTATED = 3;
-const SPRITE_TOP_ROW_RESTATED = 97;
+const HALL_HUD_HEIGHT_RESTATED = 64;
+const HALL_COMMAND_HEIGHT_RESTATED = 140;
+const CUE_Y_RATIO_RESTATED = 0.58;
+/**
+ * Instrument margin above the cue centre, in CSS pixels. Not a game-feel
+ * value — it only keeps the shrinking ring out of a band that has to stay
+ * identical across two calm reps.
+ */
+const CUE_CLEARANCE_PX = 72;
 
 const REP_HALL_PROBE = Object.freeze({
-  /** CSS pixels from the top of the stage box to the top of the sprite cell. */
-  BAND_H: STAGE_ORIGIN_Y_RESTATED + SPRITE_TOP_ROW_RESTATED * STAGE_SCALE_RESTATED,
+  HUD_H: HALL_HUD_HEIGHT_RESTATED,
+  COMMAND_H: HALL_COMMAND_HEIGHT_RESTATED,
+  CUE_Y_RATIO: CUE_Y_RATIO_RESTATED,
+  CUE_CLEARANCE_PX,
   /**
    * The same two numbers `WALKOUT_TAIL_PROBE` uses, and for the same reason: a
-   * software-rasterised canvas is not bit-reproducible, and this must stay far
-   * below what one row of seating moves.
+   * software-rasterised still is not bit-reproducible, and this must stay far
+   * below what the amber wash moves.
    */
   SAME_PICTURE_TOLERANCE: 12,
   SAME_PICTURE_MAX_PX: 40,
   /**
    * How much of the band one standing hall has to move.
    *
-   * A FLOOR, NOT A PIN, because it is a function of `HUSH_CROWD_RISE_PX`, which
-   * a playtest pass will turn. Derived from the renderer rather than guessed:
-   * `MEET_TUNING.CROWD`'s own table puts rise 6 at 1,373 changed scene pixels
-   * and rise 8 at 1,633, and the shot is at CSS scale where one scene pixel is
-   * `SCALE` x `SCALE` = 9 CSS pixels. The floor is set at rise 6's figure with
-   * the panel's share removed (275 of the 1,373 sit behind the bar-path board,
-   * measured), so losing two rows of travel does not fail the run:
-   * (1373 - 275) x 9 = 9,882.
+   * A FLOOR, NOT A PIN. The Iron & Amber wash is `HALL_RISE_WASH` per crowd
+   * row across the whole still, so an urgent hush (`HUSH_CROWD_RISE_PX` = 8)
+   * tints every pixel in this band. The floor sits an order of magnitude under
+   * that so a re-tune of the wash does not fail the run.
    */
   MIN_STANDING_CHANGE_PX: 9882,
 });
@@ -4169,11 +4179,19 @@ async function photographTheHallUnderTheRep(box, walkoutLine, attemptLabel) {
   const calm = said.includes(MEET_TAIL_SAYS.WALK_IT_OUT);
   if (calm && REP_HALL_SEEN.calmAgain !== null) return;
   if (!calm && REP_HALL_SEEN.urgent !== null) return;
+  const P = REP_HALL_PROBE;
+  const boxH = Math.round(box.height);
+  const boxW = Math.round(box.width);
+  const cueTop = Math.round(boxH * P.CUE_Y_RATIO) - P.CUE_CLEARANCE_PX;
+  const commandTop = boxH - P.COMMAND_H;
+  const bandBottom = Math.min(cueTop, commandTop);
+  const bandH = Math.max(0, bandBottom - P.HUD_H);
+  if (bandH <= 0) return;
   const clip = {
     x: Math.round(box.x),
-    y: Math.round(box.y),
-    width: Math.round(box.width),
-    height: Math.min(REP_HALL_PROBE.BAND_H, Math.round(box.height)),
+    y: Math.round(box.y + P.HUD_H),
+    width: boxW,
+    height: bandH,
   };
   const png = await page.screenshot({ clip, scale: 'css' }).catch(() => null);
   if (png === null) return;

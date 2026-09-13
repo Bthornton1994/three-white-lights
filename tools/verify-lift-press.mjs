@@ -4582,7 +4582,6 @@ async function settleAfterGesture(page, arm, label) {
 await mkdir(outDir, { recursive: true });
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
   args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const context = await browser.newContext({

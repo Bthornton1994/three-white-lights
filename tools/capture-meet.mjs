@@ -121,7 +121,8 @@ const MOMENT_SCREEN = {
 };
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
+  // Playwright's bundled Chromium. A pinned /opt/pw-browsers/chromium path
+  // is not present on every VM and made Meet recapture UNVERIFIABLE.
   args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 
