@@ -410,6 +410,11 @@ describe('no feel value lives outside sessionTuning.ts', () => {
     expect(
       SESSION_LAYOUT.CHECK_IN_DRAWER_MAX_HEIGHT + SESSION_LAYOUT.ROOM_FOOT_CLEARANCE,
     ).toBeLessThan(frame / 2);
+    // The §4.2 footnote cannot be as tall as a chip row — that is the lecture
+    // wall that covered the gym on first paint.
+    expect(SESSION_LAYOUT.CHECK_IN_DISCLOSURE_MAX_HEIGHT).toBeLessThan(
+      SESSION_LAYOUT.CHIP_HEIGHT,
+    );
   });
 
   it('the screens read their geometry from SESSION_LAYOUT', () => {

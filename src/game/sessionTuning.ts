@@ -471,7 +471,7 @@ export const SESSION_LAYOUT = Object.freeze({
    * Tunable — not asserted as final.
    */
   CARD_PAD_DRAWER: 8,
-  /** Gap inside a dense drawer. Tighter than ROW_GAP so four check-in rows fit the cap. */
+  /** Gap inside a dense drawer. Tighter than ROW_GAP so the check-in band fits the cap. */
   CARD_GAP_DRAWER: 6,
 
   /**
@@ -485,11 +485,11 @@ export const SESSION_LAYOUT = Object.freeze({
   CHECK_IN_ROW_GAP: 6,
 
   /**
-   * Check-in answer chips. Three across. Shorter than a 44pt thumb target so
-   * four rows (lift + sleep/soreness/motivation) fit a panel-03 drawer; the
-   * hit area is still the whole chip. Untuned (GDD §12.1).
+   * Check-in answer chips. Shorter than a 44pt thumb target so the lift
+   * strip plus the three-question band fit a panel-03 drawer; the hit
+   * area is still the whole chip. Untuned (GDD §12.1).
    */
-  CHIP_HEIGHT: 32,
+  CHIP_HEIGHT: 28,
   CHIP_RADIUS: 10,
   CHIP_GAP: 8,
   CHIP_BORDER: 2,
@@ -540,13 +540,13 @@ export const SESSION_LAYOUT = Object.freeze({
   DISCLOSURE_GAP: 4,
   /**
    * Cap on the check-in drawer, authored against 390×844. The gym/athlete must
-   * stay the majority of the frame (Iron & Amber panel 03). First-run copy
-   * (GDD §4.2) scrolls inside CHECK_IN_DISCLOSURE_MAX_HEIGHT so it cannot grow
-   * the card past this cap or push the three taps off first paint. Untuned
-   * (GDD §12.1).
+   * stay the majority of the frame (Iron & Amber panel 03 / briefing card).
+   * Lift strip + three-question band stay inside this cap; first-run copy
+   * (GDD §4.2) is a one-line footnote that scrolls so it cannot grow the card
+   * or push the three taps off first paint. Untuned (GDD §12.1).
    */
-  CHECK_IN_DRAWER_MAX_HEIGHT: 252,
-  CHECK_IN_DISCLOSURE_MAX_HEIGHT: 40,
+  CHECK_IN_DRAWER_MAX_HEIGHT: 208,
+  CHECK_IN_DISCLOSURE_MAX_HEIGHT: 18,
 
   /**
    * Dark wash over the Iron & Amber gym photograph so type on the espresso
