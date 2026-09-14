@@ -575,4 +575,30 @@ export const PAPER = {
   SECTION_GAP: 12,
   MASTHEAD_GAP: 4,
   NAME_GAP: 4,
+  /**
+   * Compact flight table. Authored against a 390-wide phone. UNTUNED.
+   *
+   * Two lines per lifter: identity + Weight/Total/Dots on the first, the nine
+   * attempts grouped squat → bench → deadlift on the second. That is [R9]
+   * grouping without twelve extra columns, and without a squat+bench
+   * subtotal ([R8] published pages do not print one; the live-board reference
+   * does).
+   */
+  FLIGHT: {
+    HEAD_H: 16,
+    NAME_H: 18,
+    ATTEMPT_H: 22,
+    PLACE_W: 28,
+    WEIGHT_W: 44,
+    TOTAL_W: 50,
+    DOTS_W: 48,
+    NAME_SIZE: 11,
+    META_SIZE: 10,
+    ATTEMPT_FONT: 10,
+    HEAD_SIZE: 9,
+    LIFT_HEAD_SIZE: 8,
+    ATTEMPT_PAD: 2,
+    SECTION_SIZE: 10,
+    SECTION_TRACKING: 0.6,
+  },
 } as const;

@@ -340,8 +340,11 @@ const PINNED = Object.freeze({
    * 345 -> 346 with emptied-hall bookends: `src/meet/MeetBookendRoom.tsx`.
    *
    * 346 -> 347 with the shareable paper scoresheet: `src/card/paperSheet.test.ts`.
+   *
+   * 347 -> 349 with the shareable flight: `src/game/resultFlight.ts` and
+   * `src/game/resultFlight.test.ts`.
    */
-  SCANNED_FILES: 347,
+  SCANNED_FILES: 349,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -394,8 +397,10 @@ const PINNED = Object.freeze({
    * 111 -> 112 with Meet Day stills: `src/meet/ironAmberHall.test.ts`.
    *
    * 112 -> 113 with the shareable paper scoresheet: `src/card/paperSheet.test.ts`.
+   *
+   * 113 -> 114 with the shareable flight: `src/game/resultFlight.test.ts`.
    */
-  TEST_FILES: 113,
+  TEST_FILES: 114,
 });
 
 /**

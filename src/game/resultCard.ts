@@ -455,6 +455,33 @@ export const RESULT_SHEET_COLUMNS: readonly ResultSheetColumn[] = [
 ] as const;
 
 /**
+ * Compact flight columns on a portrait shareable sheet.
+ *
+ * [R8] meet-page order, compressed so a 390-wide phone can hold a field:
+ * Place, Lifter, Weight, Total, Dots. Sex, division, equipment and class sit
+ * on the section heading over the table — the same job [R8] gives
+ * `divheader`. Per-attempt cells sit on a second line, grouped under each lift
+ * ([R9]), rather than as twelve extra columns.
+ *
+ * No squat+bench subtotal. The committed live-board reference prints one; [R8]
+ * published meet pages do not. This list follows [R8].
+ */
+export const RESULT_FLIGHT_SUMMARY_COLUMNS: readonly ResultSheetColumnId[] = [
+  'place',
+  'lifter',
+  'bodyweight',
+  'total',
+  'dots',
+];
+
+export function sheetColumnHeading(id: ResultSheetColumnId): string {
+  for (const column of RESULT_SHEET_COLUMNS) {
+    if (column.id === id) return column.heading;
+  }
+  throw new RangeError(`resultCard: no heading for column "${id}"`);
+}
+
+/**
  * The attempt grid's own headings, for a card that stacks the three lifts as
  * rows instead of running [R8]'s one long line. Same information, transposed:
  * [R9] groups four cells under each lift's name and we turn that group into a
@@ -702,6 +729,13 @@ export interface ResultCard {
   readonly meet: ResultCardMeetHeader;
   readonly lifter: ResultCardLifterHeader;
   readonly rows: readonly [LiftRow, LiftRow, LiftRow];
+  /**
+   * The flight this placing is a rank in. Always includes the player. Extra
+   * rows are caller-supplied competitors already ranked outside this module —
+   * this file prints `placing`, it does not compute one. Empty of NPCs when
+   * the caller has no field; the paper sheet still draws the player's row.
+   */
+  readonly field: readonly ResultCardFlightRow[];
   /** Ordered summary block: TOTAL, DOTS, PLACE. */
   readonly summary: readonly [ResultCardSummaryRow, ResultCardSummaryRow, ResultCardSummaryRow];
   /** The official total, or null. Never a provisional running sum. */
@@ -712,6 +746,35 @@ export interface ResultCard {
   readonly bombedLift: LiftKind | null;
   /** The DOTS outcome the summary was built from — no score when no total. */
   readonly dots: DotsOutcome;
+}
+
+/**
+ * One competitor on the shareable sheet. Ranked by the caller (`meetBoard`).
+ * Sex is the category the sheet is headed with: a local flight is one
+ * division, and NPC fixtures do not carry a sex of their own.
+ */
+export interface ResultCardFlightEntry {
+  readonly id: string;
+  readonly name: string;
+  readonly sex: DotsSex;
+  readonly bodyweightKg: number;
+  readonly isPlayer: boolean;
+  readonly state: MeetState;
+  readonly placing: number | null;
+}
+
+export interface ResultCardFlightRow {
+  readonly id: string;
+  readonly isPlayer: boolean;
+  readonly place: number | null;
+  readonly placeText: string;
+  readonly name: string;
+  readonly bodyweightText: string;
+  readonly rows: readonly [LiftRow, LiftRow, LiftRow];
+  readonly totalKg: number | null;
+  readonly totalText: string;
+  readonly dotsText: string;
+  readonly bombed: boolean;
 }
 
 export interface ResultCardMeetInput {
@@ -747,6 +810,13 @@ export interface ResultCardInput {
    * known; supplying one for a lifter with no total is refused.
    */
   readonly placing?: number;
+  /**
+   * The rest of the flight. Ranked already — this module will not invent a
+   * third placing algorithm. Omit when the field is not known; the sheet then
+   * still carries the player's own row so Place is never a rank in an empty
+   * room that the renderer has to special-case.
+   */
+  readonly field?: readonly ResultCardFlightEntry[];
 }
 
 export type ResultCardErrorCode =
@@ -852,6 +922,80 @@ function buildLiftRow(state: MeetState, lift: LiftKind): LiftRow {
   };
 }
 
+function liftTuple(state: MeetState): readonly [LiftRow, LiftRow, LiftRow] {
+  const rows = LIFT_ORDER.map((lift) => buildLiftRow(state, lift));
+  const [squatRow, benchRow, deadliftRow] = rows;
+  if (squatRow === undefined || benchRow === undefined || deadliftRow === undefined) {
+    throw new Error('resultCard: a meet must have exactly three lifts');
+  }
+  return [squatRow, benchRow, deadliftRow];
+}
+
+function flightPlaceText(totalKg: number | null, placing: number | null): {
+  readonly place: number | null;
+  readonly placeText: string;
+} {
+  if (totalKg === null) {
+    return { place: null, placeText: PLACE_NO_TOTAL_DISPLAY };
+  }
+  if (placing === null) {
+    return { place: null, placeText: NO_VALUE_DISPLAY };
+  }
+  return { place: placing, placeText: String(placing) };
+}
+
+function buildFlightRow(entry: ResultCardFlightEntry): ResultCardFlightRow {
+  const reading = readTotal(entry.state);
+  const rows = liftTuple(entry.state);
+  if (reading.kind === 'in-progress' || reading.unit !== DOTS_TOTAL_UNIT) {
+    return {
+      id: entry.id,
+      isPlayer: entry.isPlayer,
+      place: null,
+      placeText: NO_VALUE_DISPLAY,
+      name: entry.name.trim(),
+      bodyweightText: formatBodyweight(entry.bodyweightKg),
+      rows,
+      totalKg: null,
+      totalText: NO_VALUE_DISPLAY,
+      dotsText: DOTS_NO_TOTAL_DISPLAY,
+      bombed: false,
+    };
+  }
+  const dots = evaluateMeetDots(entry.sex, entry.bodyweightKg, reading);
+  const totalKg = reading.kind === 'final' ? reading.total : null;
+  const placed = flightPlaceText(totalKg, entry.placing);
+  return {
+    id: entry.id,
+    isPlayer: entry.isPlayer,
+    place: placed.place,
+    placeText: placed.placeText,
+    name: entry.name.trim(),
+    bodyweightText: formatBodyweight(entry.bodyweightKg),
+    rows,
+    totalKg,
+    totalText: totalKg === null ? NO_VALUE_DISPLAY : formatWeight(totalKg),
+    dotsText: formatDotsOutcome(dots),
+    bombed: reading.kind === 'no-total',
+  };
+}
+
+function compareFlightName(a: string, b: string): number {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+}
+
+function sortFlightRows(rows: readonly ResultCardFlightRow[]): readonly ResultCardFlightRow[] {
+  return [...rows].sort((a, b) => {
+    if (a.place === null && b.place === null) return compareFlightName(a.name, b.name);
+    if (a.place === null) return 1;
+    if (b.place === null) return -1;
+    if (a.place !== b.place) return a.place - b.place;
+    return compareFlightName(a.name, b.name);
+  });
+}
+
 function sexText(sex: DotsSex): string {
   // [R6]'s language pack renders sex as the single letters M / F.
   return sex === 'male' ? 'M' : 'F';
@@ -866,7 +1010,7 @@ function sexText(sex: DotsSex): string {
  * outcome carries no `score` field to default.
  */
 export function buildResultCard(input: ResultCardInput): ResultCardResult {
-  const { meet, lifter, state, placing } = input;
+  const { meet, lifter, state, placing, field: fieldInput } = input;
 
   if (lifter.name.trim() === '') {
     return { ok: false, error: { code: 'INVALID_LIFTER', message: 'A result card needs the lifter’s name.' } };
@@ -927,11 +1071,7 @@ export function buildResultCard(input: ResultCardInput): ResultCardResult {
   }
 
   const dots = evaluateMeetDots(lifter.sex, lifter.bodyweightKg, reading);
-  const rows = LIFT_ORDER.map((lift) => buildLiftRow(state, lift));
-  const [squatRow, benchRow, deadliftRow] = rows;
-  if (squatRow === undefined || benchRow === undefined || deadliftRow === undefined) {
-    throw new Error('resultCard: a meet must have exactly three lifts');
-  }
+  const [squatRow, benchRow, deadliftRow] = liftTuple(state);
 
   const totalKg = reading.kind === 'final' ? reading.total : null;
   const totalText = totalKg === null ? NO_VALUE_DISPLAY : formatWeight(totalKg);
@@ -949,6 +1089,28 @@ export function buildResultCard(input: ResultCardInput): ResultCardResult {
     weightClassText: lifter.weightClassKg ?? weightClassString(lifter.bodyweightKg, classes),
   };
 
+  const playerId =
+    (fieldInput ?? []).find((entry) => entry.isPlayer)?.id ?? 'player';
+  const playerFlight: ResultCardFlightRow = {
+    id: playerId,
+    isPlayer: true,
+    place: placed && placing !== undefined ? placing : null,
+    placeText,
+    name: lifter.name.trim(),
+    bodyweightText: formatBodyweight(lifter.bodyweightKg),
+    rows: [squatRow, benchRow, deadliftRow],
+    totalKg,
+    totalText,
+    dotsText,
+    bombed: reading.kind === 'no-total',
+  };
+  const field = sortFlightRows([
+    playerFlight,
+    ...(fieldInput ?? [])
+      .filter((entry) => !entry.isPlayer)
+      .map((entry) => buildFlightRow(entry)),
+  ]);
+
   const card: ResultCard = {
     meet: {
       federation: meet.federation.toUpperCase(),
@@ -965,6 +1127,7 @@ export function buildResultCard(input: ResultCardInput): ResultCardResult {
       bodyweightText: formatBodyweight(lifter.bodyweightKg),
     },
     rows: [squatRow, benchRow, deadliftRow],
+    field,
     summary: [
       { id: 'total', label: 'TOTAL', value: totalText, hasValue: totalKg !== null },
       { id: 'dots', label: 'DOTS', value: dotsText, hasValue: hasDotsScore(dots) },
@@ -1125,5 +1288,12 @@ export function resultCardStrings(card: ResultCard): readonly string[] {
     for (const cell of row.attempts) out.push(cell.text);
   }
   for (const summaryRow of card.summary) out.push(summaryRow.label, summaryRow.value);
+  for (const row of card.field) {
+    out.push(row.placeText, row.name, row.bodyweightText, row.totalText, row.dotsText);
+    for (const lift of row.rows) {
+      out.push(lift.label, lift.bestText);
+      for (const cell of lift.attempts) out.push(cell.text);
+    }
+  }
   return out.filter((text) => text !== '');
 }

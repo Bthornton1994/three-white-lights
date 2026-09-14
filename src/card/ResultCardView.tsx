@@ -14,6 +14,10 @@
  * (the same 5-bit paper bank, expanded to CSS) so the sheet and the grid
  * renderer cannot drift onto two palettes.
  *
+ * The body is a flight table, not a one-name plaque. Place is a rank in a
+ * field. The committed live-board reference prints a squat+bench subtotal;
+ * [R8] published meet pages do not, and this sheet follows [R8].
+ *
  * There is no loaded-bar motif here. A published results sheet records
  * attempts, a best, a total, DOTS and place. Plate colours are gameplay
  * language on the platform, not a cartoon on a scoresheet.
@@ -25,15 +29,17 @@ import { StyleSheet, Text, View } from 'react-native';
 import {
   ATTEMPT_GRID_HEADINGS,
   NO_VALUE_DISPLAY,
+  sheetColumnHeading,
   type AttemptCell,
   type LiftRow,
   type ResultCard,
-  type ResultCardSummaryRow,
+  type ResultCardFlightRow,
 } from '../game/resultCard';
-import { CARD_LABELS, FOOTER, LIFTER_STRIP, PAPER } from './cardTuning';
+import { CARD_LABELS, FOOTER, PAPER } from './cardTuning';
 import { SHEET_CSS } from './sheetPalette';
 
 const P = PAPER;
+const F = PAPER.FLIGHT;
 const C = SHEET_CSS;
 
 export interface ResultCardViewProps {
@@ -74,47 +80,82 @@ function AttemptFigure({ cell }: { readonly cell: AttemptCell }): React.ReactEle
   );
 }
 
-function LiftLine({ row, odd }: { readonly row: LiftRow; readonly odd: boolean }): React.ReactElement {
+function LiftGroup({ row }: { readonly row: LiftRow }): React.ReactElement {
   return (
-    <View style={[styles.gridRow, odd ? styles.rowOdd : styles.rowEven]}>
-      <View style={styles.liftCol}>
-        <Text style={styles.liftLabel}>{row.label}</Text>
-      </View>
+    <View style={styles.liftGroup}>
       {row.attempts.map((cell) => (
         <View key={cell.attemptNumber} style={styles.cell}>
           <AttemptFigure cell={cell} />
         </View>
       ))}
-      <View style={styles.cell}>
-        <View style={styles.bestFill}>
-          <Text
-            style={[
-              styles.cellText,
-              row.bestText === NO_VALUE_DISPLAY ? styles.inkSoft : styles.cellInk,
-            ]}
-          >
-            {row.bestText}
-          </Text>
-        </View>
+    </View>
+  );
+}
+
+function FlightHead({ card }: { readonly card: ResultCard }): React.ReactElement {
+  return (
+    <View style={styles.flightHead}>
+      <View style={styles.summaryHead}>
+        <Text style={[styles.headText, styles.placeCol]}>{sheetColumnHeading('place')}</Text>
+        <Text style={[styles.headText, styles.nameCol]}>{sheetColumnHeading('lifter')}</Text>
+        <Text style={[styles.headText, styles.weightCol]}>{sheetColumnHeading('bodyweight')}</Text>
+        <Text style={[styles.headText, styles.totalCol]}>{sheetColumnHeading('total')}</Text>
+        <Text style={[styles.headText, styles.dotsCol]}>{sheetColumnHeading('dots')}</Text>
+      </View>
+      <View style={styles.attemptHead}>
+        {card.rows.map((row) => (
+          <View key={row.lift} style={styles.liftGroupHead}>
+            <Text style={styles.liftHead}>{row.label}</Text>
+            <View style={styles.attemptNums}>
+              {ATTEMPT_GRID_HEADINGS.attempts.map((heading) => (
+                <Text key={heading} style={styles.attemptHeadText}>
+                  {heading}
+                </Text>
+              ))}
+            </View>
+          </View>
+        ))}
       </View>
     </View>
   );
 }
 
-function ScoreCell({ row }: { readonly row: ResultCardSummaryRow }): React.ReactElement {
+function FlightRowView({
+  row,
+  odd,
+}: {
+  readonly row: ResultCardFlightRow;
+  readonly odd: boolean;
+}): React.ReactElement {
   return (
-    <View style={styles.scoreCell}>
-      <Text style={styles.scoreLabel}>{row.label}</Text>
-      <Text style={[styles.scoreValue, row.hasValue ? styles.cellInk : styles.inkSoft]}>{row.value}</Text>
+    <View
+      style={[styles.flightRow, row.isPlayer ? styles.playerRow : odd ? styles.rowOdd : styles.rowEven]}
+      testID={`result-card-flight-row-${row.id}`}
+    >
+      <View style={styles.summaryRow}>
+        <Text style={[styles.placeText, styles.placeCol]}>{row.placeText}</Text>
+        <Text style={[styles.nameText, styles.nameCol]} numberOfLines={1}>
+          {row.name.toUpperCase()}
+        </Text>
+        <Text style={[styles.metaText, styles.weightCol]}>{row.bodyweightText}</Text>
+        <Text style={[styles.totalText, styles.totalCol, row.totalKg === null ? styles.inkSoft : styles.cellInk]}>
+          {row.totalText}
+        </Text>
+        <Text style={[styles.metaText, styles.dotsCol, row.dotsText === NO_VALUE_DISPLAY ? styles.inkSoft : styles.cellInk]}>
+          {row.dotsText}
+        </Text>
+      </View>
+      <View style={styles.attemptRow}>
+        {row.rows.map((lift) => (
+          <LiftGroup key={lift.lift} row={lift} />
+        ))}
+      </View>
     </View>
   );
 }
 
 export function ResultCardView({ card }: ResultCardViewProps): React.ReactElement {
-  const [total, dots, place] = card.summary;
   const location = card.meet.locationText !== '' ? card.meet.locationText : card.meet.locationShortText;
-  const category = `${card.lifter.categoryText}${LIFTER_STRIP.META_SEPARATOR}${card.lifter.bodyweightText}${CARD_LABELS.BODYWEIGHT_SUFFIX}`;
-  const totalValue = total.hasValue ? `${total.value} ${CARD_LABELS.UNIT}` : total.value;
 
   return (
     <View style={styles.sheet} testID="result-card-sheet">
@@ -132,35 +173,13 @@ export function ResultCardView({ card }: ResultCardViewProps): React.ReactElemen
 
       <DoubleRule />
 
-      <View style={styles.lifter}>
-        <Text style={styles.lifterName}>{card.lifter.name.toUpperCase()}</Text>
-        <Text style={styles.category}>{category}</Text>
-      </View>
+      <Text style={styles.section}>{card.lifter.categoryText}</Text>
 
-      <View style={styles.grid}>
-        <View style={styles.gridHead}>
-          <Text style={styles.liftHead}>{ATTEMPT_GRID_HEADINGS.lift}</Text>
-          {ATTEMPT_GRID_HEADINGS.attempts.map((heading) => (
-            <Text key={heading} style={styles.cellHead}>
-              {heading}
-            </Text>
-          ))}
-          <Text style={styles.cellHead}>{ATTEMPT_GRID_HEADINGS.best}</Text>
-        </View>
-        {card.rows.map((row, index) => (
-          <LiftLine key={row.lift} row={row} odd={index % 2 === 1} />
+      <View style={styles.flight} testID="result-card-flight">
+        <FlightHead card={card} />
+        {card.field.map((row, index) => (
+          <FlightRowView key={row.id} row={row} odd={index % 2 === 1} />
         ))}
-      </View>
-
-      <View style={styles.totalRow}>
-        <Text style={styles.totalLabel}>{total.label}</Text>
-        <Text style={[styles.totalValue, total.hasValue ? styles.cellInk : styles.inkSoft]}>{totalValue}</Text>
-      </View>
-
-      <View style={styles.scoreRow}>
-        <ScoreCell row={dots} />
-        <View style={styles.scoreSplit} />
-        <ScoreCell row={place} />
       </View>
 
       <View style={styles.footer}>
@@ -221,38 +240,59 @@ const styles = StyleSheet.create({
     height: P.RULE,
     backgroundColor: C.INK,
   },
-  lifter: {
+  section: {
     marginTop: P.SECTION_GAP,
-    gap: P.NAME_GAP,
-  },
-  lifterName: {
-    color: C.INK,
-    fontSize: P.NAME_SIZE,
+    color: C.INK_SOFT,
+    fontSize: F.SECTION_SIZE,
+    letterSpacing: F.SECTION_TRACKING,
     fontWeight: '700',
   },
-  category: {
-    color: C.INK_SOFT,
-    fontSize: P.CATEGORY_SIZE,
-    letterSpacing: P.CATEGORY_TRACKING,
-  },
-  grid: {
-    marginTop: P.SECTION_GAP,
+  flight: {
+    marginTop: P.NAME_GAP,
     borderTopWidth: P.RULE,
     borderBottomWidth: P.RULE,
     borderColor: C.INK,
   },
-  gridHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: P.CELL_H,
+  flightHead: {
     backgroundColor: C.PAPER_SHADE,
     borderBottomWidth: P.RULE,
     borderBottomColor: C.INK,
   },
-  gridRow: {
+  summaryHead: {
     flexDirection: 'row',
-    alignItems: 'stretch',
-    minHeight: P.CELL_H,
+    alignItems: 'center',
+    height: F.HEAD_H,
+  },
+  attemptHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingBottom: F.ATTEMPT_PAD,
+  },
+  headText: {
+    color: C.INK_SOFT,
+    fontSize: F.HEAD_SIZE,
+    letterSpacing: P.GRID_HEAD_TRACKING,
+    fontWeight: '700',
+  },
+  liftHead: {
+    color: C.INK_SOFT,
+    fontSize: F.LIFT_HEAD_SIZE,
+    letterSpacing: P.GRID_HEAD_TRACKING,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  attemptNums: {
+    flexDirection: 'row',
+  },
+  attemptHeadText: {
+    flex: 1,
+    color: C.INK_SOFT,
+    fontSize: F.LIFT_HEAD_SIZE,
+    fontWeight: '700',
+    textAlign: 'right',
+    paddingHorizontal: P.CELL_PAD,
+  },
+  flightRow: {
     borderBottomWidth: P.RULE,
     borderBottomColor: C.RULE,
   },
@@ -262,32 +302,72 @@ const styles = StyleSheet.create({
   rowOdd: {
     backgroundColor: C.PAPER_ALT,
   },
-  liftHead: {
-    width: P.LIFT_COL_W,
-    paddingHorizontal: P.CELL_PAD,
-    color: C.INK_SOFT,
-    fontSize: P.GRID_HEAD_SIZE,
-    letterSpacing: P.GRID_HEAD_TRACKING,
-    fontWeight: '700',
+  playerRow: {
+    backgroundColor: C.PAPER_SHADE,
   },
-  cellHead: {
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: F.NAME_H,
+  },
+  attemptRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    minHeight: F.ATTEMPT_H,
+    paddingBottom: F.ATTEMPT_PAD,
+  },
+  placeCol: {
+    width: F.PLACE_W,
+    paddingHorizontal: P.CELL_PAD,
+  },
+  nameCol: {
     flex: 1,
     paddingHorizontal: P.CELL_PAD,
-    color: C.INK_SOFT,
-    fontSize: P.GRID_HEAD_SIZE,
-    letterSpacing: P.GRID_HEAD_TRACKING,
-    fontWeight: '700',
+  },
+  weightCol: {
+    width: F.WEIGHT_W,
+    paddingHorizontal: P.CELL_PAD,
     textAlign: 'right',
   },
-  liftCol: {
-    width: P.LIFT_COL_W,
-    justifyContent: 'center',
+  totalCol: {
+    width: F.TOTAL_W,
     paddingHorizontal: P.CELL_PAD,
+    textAlign: 'right',
   },
-  liftLabel: {
+  dotsCol: {
+    width: F.DOTS_W,
+    paddingHorizontal: P.CELL_PAD,
+    textAlign: 'right',
+  },
+  placeText: {
     color: C.INK,
-    fontSize: P.LIFT_LABEL_SIZE,
+    fontSize: F.NAME_SIZE,
     fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  nameText: {
+    color: C.INK,
+    fontSize: F.NAME_SIZE,
+    fontWeight: '700',
+  },
+  metaText: {
+    color: C.INK,
+    fontSize: F.META_SIZE,
+    fontVariant: ['tabular-nums'],
+    textAlign: 'right',
+  },
+  totalText: {
+    fontSize: F.NAME_SIZE,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+    textAlign: 'right',
+  },
+  liftGroup: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  liftGroupHead: {
+    flex: 1,
   },
   cell: {
     flex: 1,
@@ -305,15 +385,8 @@ const styles = StyleSheet.create({
   cellMiss: {
     backgroundColor: C.NOLIFT_LIGHT,
   },
-  bestFill: {
-    flex: 1,
-    margin: P.CELL_INSET,
-    backgroundColor: C.PAPER_SHADE,
-    justifyContent: 'center',
-    paddingHorizontal: P.CELL_PAD,
-  },
   cellText: {
-    fontSize: P.CELL_FONT,
+    fontSize: F.ATTEMPT_FONT,
     fontVariant: ['tabular-nums'],
     textAlign: 'right',
   },
@@ -329,50 +402,6 @@ const styles = StyleSheet.create({
   struck: {
     textDecorationLine: 'line-through',
     textDecorationColor: C.NOLIFT_DARK,
-  },
-  totalRow: {
-    marginTop: P.SECTION_GAP,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-  },
-  totalLabel: {
-    color: C.INK_SOFT,
-    fontSize: P.TOTAL_LABEL_SIZE,
-    letterSpacing: P.FED_TRACKING,
-    fontWeight: '700',
-  },
-  totalValue: {
-    fontSize: P.TOTAL_VALUE_SIZE,
-    fontWeight: '700',
-    fontVariant: ['tabular-nums'],
-  },
-  scoreRow: {
-    marginTop: P.SECTION_GAP,
-    flexDirection: 'row',
-    height: P.SCORE_H,
-    borderTopWidth: P.RULE,
-    borderBottomWidth: P.RULE,
-    borderColor: C.RULE,
-  },
-  scoreCell: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  scoreSplit: {
-    width: P.RULE,
-    backgroundColor: C.RULE,
-  },
-  scoreLabel: {
-    color: C.INK_SOFT,
-    fontSize: P.SCORE_LABEL_SIZE,
-    letterSpacing: P.FED_TRACKING,
-    fontWeight: '700',
-  },
-  scoreValue: {
-    fontSize: P.SCORE_VALUE_SIZE,
-    fontWeight: '700',
-    fontVariant: ['tabular-nums'],
   },
   footer: {
     marginTop: P.SECTION_GAP,

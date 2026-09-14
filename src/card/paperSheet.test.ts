@@ -22,11 +22,11 @@ describe('the shareable sheet is a printed scoresheet', () => {
   });
 
   it('sets type large enough to read as a sheet, not as a sprite caption', () => {
-    expect(PAPER.CELL_FONT).toBeGreaterThanOrEqual(12);
-    expect(PAPER.NAME_SIZE).toBeGreaterThanOrEqual(18);
-    expect(PAPER.TOTAL_VALUE_SIZE).toBeGreaterThanOrEqual(24);
     expect(PAPER.MEET_SIZE).toBeGreaterThanOrEqual(16);
-    expect(PAPER.SCORE_VALUE_SIZE).toBeGreaterThanOrEqual(14);
+    expect(PAPER.FLIGHT.NAME_SIZE).toBeGreaterThanOrEqual(11);
+    expect(PAPER.FLIGHT.ATTEMPT_FONT).toBeGreaterThanOrEqual(10);
+    expect(PAPER.FLIGHT.META_SIZE).toBeGreaterThanOrEqual(10);
+    expect(PAPER.FED_SIZE).toBeGreaterThanOrEqual(11);
   });
 
   it('does not nearest-neighbour a 16-bit grid or draw a cartoon bar', () => {
@@ -49,11 +49,10 @@ describe('the shareable sheet is a printed scoresheet', () => {
       'card.meet.federation',
       'card.meet.name',
       'card.meet.dateText',
-      'card.lifter.name',
       'card.lifter.categoryText',
+      'card.field',
+      'sheetColumnHeading',
       'ATTEMPT_GRID_HEADINGS',
-      'card.rows',
-      'total.value',
       'FOOTER.WORDMARK',
       'CARD_LABELS.DOCUMENT_KIND',
     ]) {
@@ -61,6 +60,15 @@ describe('the shareable sheet is a printed scoresheet', () => {
     }
     expect(CARD_LABELS.DOCUMENT_KIND).toBe('RESULTS');
     expect(FOOTER.WORDMARK).toBe('THREE WHITE LIGHTS');
+  });
+
+  it('prints the flight, so place is a rank in a field', () => {
+    expect(VIEW).toContain('card.field');
+    expect(VIEW).toContain('row.isPlayer');
+    expect(VIEW).toContain('sheetColumnHeading');
+    expect(VIEW).toContain('FlightRowView');
+    expect(VIEW).toContain('playerRow');
+    expect(VIEW).not.toContain('ScoreCell');
   });
 
   it('strikes a missed attempt and colours the cell, without a plate stack', () => {

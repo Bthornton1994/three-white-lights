@@ -20,9 +20,10 @@
  * is in `src/game/meetDay.ts` with the rules of the sport in `src/game/meet.ts`
  * behind it.
  *
- * The one branch that is not a phase is the card: `MeetRecap.card` is a built
- * `ResultCard` and `ResultCardScreen` takes one and nothing else, so the
- * hand-off GDD §6.5 asks for is a state flag here and no new rendering at all.
+ * The one branch that is not a phase is the card: `shareableResultCard`
+ * attaches the flight to the recap's `ResultCard` (GDD §6.5 / §6.6) and
+ * `ResultCardScreen` takes that card and nothing else. Ranking stays in
+ * `meetBoard.ts`; this file still computes no Total and no place.
  *
  * ---------------------------------------------------------------------------
  * THE WHOLE MEET IS ONE CUT-IN SESSION (GDD §7.2)
@@ -48,6 +49,7 @@ import { cutInSessionId, cutInSessionSeed } from '../cutin/cutInGate';
 import { meetLoadingRules } from '../game/meet';
 import { MEET_COPY } from '../game/meetTuning';
 import { WEIGHT_CLASSES_KG, lifterCategoryText, weightClassString } from '../game/resultCard';
+import { shareableResultCard } from '../game/resultFlight';
 import {
   attemptDecisionFor,
   boardFor,
@@ -236,7 +238,7 @@ export function MeetScreen({
         );
 
   if (cardOpen && recap !== null) {
-    return <ResultCardScreen card={recap.card} />;
+    return <ResultCardScreen card={shareableResultCard(state, recap)} />;
   }
 
   return (
