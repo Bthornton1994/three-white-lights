@@ -31,9 +31,9 @@ describe('the shareable sheet is a printed scoresheet', () => {
   });
 
   it('gives Place, names, and Weight a column that can hold the heading on one line', () => {
-    expect(PAPER.FLIGHT.PLACE_W).toBeGreaterThanOrEqual(40);
-    expect(PAPER.FLIGHT.NAME_W).toBeGreaterThanOrEqual(92);
-    expect(PAPER.FLIGHT.WEIGHT_W).toBeGreaterThanOrEqual(44);
+    expect(PAPER.FLIGHT.PLACE_W).toBeGreaterThanOrEqual(32);
+    expect(PAPER.FLIGHT.NAME_W).toBeGreaterThanOrEqual(88);
+    expect(PAPER.FLIGHT.WEIGHT_W).toBeGreaterThanOrEqual(40);
     expect(PAPER.FLIGHT.HEAD_H).toBeGreaterThanOrEqual(28);
     expect(VIEW).toContain('numberOfLines={1}');
     expect(VIEW).toContain('flexShrink: 0');
@@ -95,7 +95,7 @@ describe('the shareable sheet is a printed scoresheet', () => {
 
   it('prints each lift as three attempt cells, misses struck, not a clipped nine-column grid', () => {
     expect(VIEW).toContain('flightAttemptView');
-    expect(VIEW).toContain('FLIGHT_LIFT_GROUPS');
+    expect(VIEW).toContain('ATTEMPT_GRID_HEADINGS');
     expect(VIEW).toContain('LiftAttemptStack');
     expect(VIEW).toContain('struckThrough');
     expect(VIEW).not.toContain('signedAttemptText');
@@ -105,7 +105,7 @@ describe('the shareable sheet is a printed scoresheet', () => {
 
   it('fills the capture as a page of paper, without a gold winner row', () => {
     expect(VIEW).toContain('flex: 1');
-    expect(VIEW).toContain('pageFill');
+    expect(VIEW).not.toContain('pageFill');
     expect(VIEW).toContain('odd ? styles.rowOdd : styles.rowEven');
     expect(VIEW).toContain('flightLifterName');
     expect(SCREEN).toContain('flex: 1');

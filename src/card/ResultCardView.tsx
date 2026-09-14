@@ -34,6 +34,7 @@ import React from 'react';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import {
+  ATTEMPT_GRID_HEADINGS,
   FLIGHT_LIFT_GROUPS,
   NO_VALUE_DISPLAY,
   RESULT_FLIGHT_TABLE_COLUMNS,
@@ -121,6 +122,7 @@ function FlightHead(): React.ReactElement {
           align={id === 'place' || id === 'lifter' ? 'left' : 'right'}
         />
       ))}
+      <View style={styles.indexCol} />
       {FLIGHT_LIFT_GROUPS.map((group) => (
         <View key={group.headingId} style={styles.liftCol}>
           <Text style={[styles.headText, styles.liftHeadText, styles.headRight]} numberOfLines={1}>
@@ -149,6 +151,7 @@ function LiftAttemptStack({
         if (attempt === null) {
           return <View key={id} />;
         }
+        const printed = attempt.struckThrough ? `-${attempt.text}` : attempt.text;
         return (
           <Text
             key={id}
@@ -159,7 +162,7 @@ function LiftAttemptStack({
             ]}
             numberOfLines={1}
           >
-            {attempt.text}
+            {printed}
           </Text>
         );
       })}
@@ -250,6 +253,13 @@ function FlightRowView({
       {beforeLifts.map((id) => (
         <FlightCell key={id} row={row} id={id} />
       ))}
+      <View style={styles.indexCol}>
+        {ATTEMPT_GRID_HEADINGS.attempts.map((label) => (
+          <Text key={label} style={styles.attemptIndex} numberOfLines={1}>
+            {label}
+          </Text>
+        ))}
+      </View>
       {FLIGHT_LIFT_GROUPS.map((group) => (
         <LiftAttemptStack key={group.headingId} row={row} attempts={group.attempts} />
       ))}
@@ -287,8 +297,6 @@ export function ResultCardView({ card }: ResultCardViewProps): React.ReactElemen
           <FlightRowView key={row.id} row={row} odd={index % 2 === 1} />
         ))}
       </View>
-
-      <View style={styles.pageFill} />
 
       <View style={styles.footer}>
         <View style={styles.rule} />
@@ -411,9 +419,6 @@ const styles = StyleSheet.create({
     // Same zebra as every other place. A gold #1 fill is souvenir-poster
     // language; a published meet table does not shade the winner. Untuned.
   },
-  pageFill: {
-    flex: 1,
-  },
   placeCol: {
     width: F.PLACE_W,
     flexShrink: 0,
@@ -437,6 +442,13 @@ const styles = StyleSheet.create({
     minWidth: 0,
     paddingHorizontal: F.LIFT_PAD,
     justifyContent: 'center',
+  },
+  indexCol: {
+    width: F.INDEX_W,
+    flexShrink: 0,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingRight: 2,
   },
   totalCol: {
     width: F.TOTAL_W,
@@ -477,19 +489,27 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     textAlign: 'right',
   },
+  attemptIndex: {
+    color: C.INK_SOFT,
+    fontSize: F.ATTEMPT_SIZE,
+    fontWeight: '700',
+    fontStyle: 'normal',
+    textAlign: 'right',
+    lineHeight: F.ATTEMPT_SIZE + 2,
+  },
   attemptText: {
     fontSize: F.ATTEMPT_SIZE,
     fontWeight: '400',
     fontStyle: 'normal',
     fontVariant: ['tabular-nums'],
     textAlign: 'right',
+    lineHeight: F.ATTEMPT_SIZE + 2,
   },
   attemptBest: {
     fontWeight: '700',
   },
   attemptMiss: {
     color: C.INK_SOFT,
-    textDecorationLine: 'line-through',
   },
   cellInk: {
     color: C.INK,
