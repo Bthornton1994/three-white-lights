@@ -1,22 +1,14 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-09-14T13:49:47.639Z",
+    "capturedAt": "2026-09-14T14:48:35.130Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/workspace",
-    "commit": "84c7bb4b",
+    "commit": "18a1ecbc",
     "branch": "cursor/session-a-iron-amber-quality-1c66",
     "workingTree": "clean",
     "dirtyPaths": [
-      "M .gauntlet/shots/cutin-cap/cap.json",
-      " M .gauntlet/shots/cutin/debug-meet-bombed.png",
-      " M .gauntlet/shots/cutin/frames.json",
-      " M .gauntlet/shots/lift-press/press.json",
-      " M .gauntlet/shots/meet/sound.json",
-      " M .gauntlet/shots/shell/06-card-with-way-back.png",
-      " M .gauntlet/shots/shell/11-already-trained-reaches-meet.png",
-      " M .gauntlet/shots/shell/13-recap-before-the-return-leg.png",
-      " M .gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
-      " M .gauntlet/shots/shell/route.json"
+      "M .gauntlet/shots/lift-press/press.json",
+      " M .gauntlet/shots/meet/sound.json"
     ],
     "instrument": {
       "capture-cutin.mjs": "6b735d315332a467",
@@ -243,12 +235,12 @@
   "leavesOnItsOwn": {
     "stillUpAt": 701,
     "stillUp": true,
-    "goneAt": 897,
+    "goneAt": 887,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 2,
-    "goneAt": 3,
+    "tappedAt": 3,
+    "goneAt": 4,
     "dismissTookMs": 1,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
