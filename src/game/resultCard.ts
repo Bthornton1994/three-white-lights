@@ -457,26 +457,83 @@ export const RESULT_SHEET_COLUMNS: readonly ResultSheetColumn[] = [
 /**
  * One published-table row on a portrait shareable sheet.
  *
- * [R8] meet-page order, compressed so a 390-wide phone can hold a field:
- * Place, Lifter, Weight, best squat, best bench, best deadlift, Total, points.
- * Sex, division, equipment and class sit on the section heading over the table
- * — the same job [R8] gives `divheader`. The lift columns are BESTS. Per-attempt
- * cells are data on the card (`signedAttemptText`); they are not twelve extra
- * columns and they are not a history stacked under the best.
+ * Identity follows [R8] meet-page order, compressed so a 390-wide phone can
+ * hold a field: Place, Lifter, Weight, then each lift's three attempts,
+ * Total, points. Sex, division, equipment and class sit on the section
+ * heading over the table — the same job [R8] gives `divheader`.
+ *
+ * The lift columns are the three attempts [R9] groups under each lift on a
+ * lifter page. A fourth BEST column is still on `RESULT_SHEET_COLUMNS` and on
+ * each `LiftRow`; it does not get its own cell here, because nine attempt
+ * cells plus identity already fill 390. The made best among the three is
+ * the cell `flightAttemptView` marks `best`. Misses use `AttemptCell.text`
+ * plus `struckThrough`, not a minus sign.
  *
  * No squat+bench subtotal. The committed live-board reference prints one; [R8]
- * published meet pages do not. This list follows [R8].
+ * published meet pages do not.
  */
 export const RESULT_FLIGHT_TABLE_COLUMNS: readonly ResultSheetColumnId[] = [
   'place',
   'lifter',
   'bodyweight',
-  'bestSquat',
-  'bestBench',
-  'bestDeadlift',
+  'squat1',
+  'squat2',
+  'squat3',
+  'bench1',
+  'bench2',
+  'bench3',
+  'deadlift1',
+  'deadlift2',
+  'deadlift3',
   'total',
   'dots',
 ];
+
+const FLIGHT_ATTEMPT_COLUMN_SPEC: Readonly<
+  Partial<Record<ResultSheetColumnId, { readonly lift: LiftKind; readonly index: 0 | 1 | 2 }>>
+> = {
+  squat1: { lift: 'squat', index: 0 },
+  squat2: { lift: 'squat', index: 1 },
+  squat3: { lift: 'squat', index: 2 },
+  bench1: { lift: 'bench', index: 0 },
+  bench2: { lift: 'bench', index: 1 },
+  bench3: { lift: 'bench', index: 2 },
+  deadlift1: { lift: 'deadlift', index: 0 },
+  deadlift2: { lift: 'deadlift', index: 1 },
+  deadlift3: { lift: 'deadlift', index: 2 },
+};
+
+/** Group labels over the three-attempt blocks on the shareable sheet. */
+export const FLIGHT_LIFT_GROUPS: readonly {
+  readonly headingId: 'bestSquat' | 'bestBench' | 'bestDeadlift';
+}[] = [{ headingId: 'bestSquat' }, { headingId: 'bestBench' }, { headingId: 'bestDeadlift' }];
+
+export interface FlightAttemptView {
+  readonly text: string;
+  readonly struckThrough: boolean;
+  readonly best: boolean;
+}
+
+/**
+ * One attempt cell as the shareable sheet prints it: the called weight,
+ * struck when missed, `best` on the good lift that matches `LiftRow.bestKg`.
+ */
+export function flightAttemptView(
+  row: ResultCardFlightRow,
+  id: ResultSheetColumnId,
+): FlightAttemptView | null {
+  const spec = FLIGHT_ATTEMPT_COLUMN_SPEC[id];
+  if (spec === undefined) return null;
+  const lift = row.rows.find((item) => item.lift === spec.lift);
+  if (lift === undefined) return null;
+  const cell = lift.attempts[spec.index];
+  if (cell === undefined) return null;
+  return {
+    text: cell.text,
+    struckThrough: cell.struckThrough,
+    best: cell.mark === 'good' && lift.bestKg !== null && cell.weightKg === lift.bestKg,
+  };
+}
 
 export function sheetColumnHeading(id: ResultSheetColumnId): string {
   for (const column of RESULT_SHEET_COLUMNS) {
@@ -489,11 +546,15 @@ export function sheetColumnHeading(id: ResultSheetColumnId): string {
  * Headings on the shareable flight table.
  *
  * Same words as `sheetColumnHeading` except the points column, which the
- * summary block already prints as `DOTS` (GDD §6.4). [R6] still names the
- * long-row heading `Dots`; that citation stays on `RESULT_SHEET_COLUMNS`.
+ * summary block already prints as `DOTS` (GDD §6.4), and the nine attempt
+ * columns, which print `ATTEMPT_GRID_HEADINGS` `1`/`2`/`3` under the lift
+ * group label. [R6] still names the long-row heading `Dots` and the
+ * per-attempt columns `S1`..`D3`; those citations stay on `RESULT_SHEET_COLUMNS`.
  */
 export function flightColumnHeading(id: ResultSheetColumnId): string {
   if (id === 'dots') return 'DOTS';
+  const spec = FLIGHT_ATTEMPT_COLUMN_SPEC[id];
+  if (spec !== undefined) return ATTEMPT_GRID_HEADINGS.attempts[spec.index];
   return sheetColumnHeading(id);
 }
 
@@ -515,12 +576,11 @@ export function flightLifterName(name: string): string {
 }
 
 /**
- * The attempt grid's own headings, for a card that stacks the three lifts as
- * rows instead of running [R8]'s one long line. Same information, transposed:
- * [R9] groups four cells under each lift's name and we turn that group into a
- * row. The headings themselves are ours — [R6]/OpenLifter call the per-attempt
- * columns "S1".."D3" — and so is `BEST`, since [R9]'s fourth cell is a fourth
- * attempt rather than a best. See [R9] for why we keep a best there anyway.
+ * The attempt grid's own headings. The shareable sheet prints `1`/`2`/`3`
+ * under each lift group; `BEST` is the heading on the transposed one-lifter
+ * grid in `renderResultCard`. [R6]/OpenLifter call the per-attempt columns
+ * "S1".."D3". `BEST` is ours, since [R9]'s fourth cell is a fourth attempt
+ * rather than a best. See [R9] for why we keep a best on `LiftRow` anyway.
  */
 export const ATTEMPT_GRID_HEADINGS = {
   lift: 'LIFT',

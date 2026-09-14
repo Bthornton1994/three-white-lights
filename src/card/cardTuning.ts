@@ -547,7 +547,7 @@ export const CARD_SCREEN = {
  */
 export const PAPER = {
   W: 388,
-  PAD_X: 8,
+  PAD_X: 6,
   PAD_Y: 14,
   FED_SIZE: 11,
   FED_TRACKING: 2.2,
@@ -583,41 +583,41 @@ export const PAPER = {
   /**
    * Published flight table. Authored against a 390-wide phone. UNTUNED.
    *
-   * One row per lifter: Place, Lifter, Weight, Squat, Bench, Deadlift, Total,
-   * DOTS. Those lift columns are BESTS. That is the default published meet
-   * table a weekly reader parses ([R8]). The live-board reference and a
-   * lifter's attempt grid print every attempt as a peer cell; this sheet does
-   * not stack a history under the best, and it does not wrap nine chips onto
-   * a second line. No squat+bench subtotal ([R8] published pages do not;
-   * the live-board reference does).
+   * One row per lifter: Place, Lifter, Weight, three squat attempts, three
+   * bench, three deadlift, Total, DOTS. Attempt cells are peers — the
+   * scoresheet grid — not a best with a history stacked under it. No
+   * squat+bench subtotal ([R8] published pages do not; the live-board
+   * reference does).
    *
    * The table stays packed (ROW_H is a floor, not a stretch). The sheet
    * itself fills the capture so the cream under a six-row class is the rest
    * of the page, not a postage stamp on a poster. No gold #1 fill — every
    * place zebras the same way.
    *
-   * Column widths have to hold the [R8] headings on one line (`Place`,
-   * `Weight`). A 28pt Place column wrapped to "Pla / ce" on a 390-wide
-   * capture. Deadlift is the long heading: HEAD_H is tall enough for two
-   * lines so it does not paint into the row below. NAME_W has to hold the
-   * longest name on the local field ("Rex Pembroke").
+   * Identity columns are as narrow as the heading still fits (`Place`,
+   * `Weight`, `Total`). Attempt columns flex over the rest so `117.5` can
+   * land. NAME_W has to hold the longest name on the local field
+   * ("Rex Pembroke").
    */
   FLIGHT: {
-    HEAD_H: 28,
-    ROW_H: 26,
-    NAME_W: 96,
-    PLACE_W: 40,
-    WEIGHT_W: 44,
-    TOTAL_W: 46,
-    DOTS_W: 44,
-    LIFT_PAD: 1,
-    NAME_SIZE: 11,
-    BEST_SIZE: 12,
-    META_SIZE: 11,
-    HEAD_SIZE: 8,
+    HEAD_H: 18,
+    GROUP_H: 14,
+    ROW_H: 22,
+    NAME_W: 74,
+    PLACE_W: 30,
+    WEIGHT_W: 34,
+    TOTAL_W: 36,
+    DOTS_W: 38,
+    LIFT_PAD: 0,
+    NAME_SIZE: 10,
+    BEST_SIZE: 10,
+    ATTEMPT_SIZE: 8,
+    META_SIZE: 9,
+    HEAD_SIZE: 7,
     HEAD_TRACKING: 0,
     LIFT_HEAD_SIZE: 7,
-    ROW_PAD_Y: 4,
+    GROUP_SIZE: 8,
+    ROW_PAD_Y: 2,
     SECTION_SIZE: 10,
     SECTION_TRACKING: 0.6,
   },

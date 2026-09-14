@@ -5,7 +5,14 @@ import { placingForMeet } from './meetBoard';
 import { buildMeetRecap, type MeetDayState } from './meetDay';
 import { MEET_ENTRY, MEET_FIELD_FIXTURE, MEET_PREVIEW } from './meetTuning';
 import { SHAREABLE_PREVIEW_NAME, previewStateFor } from './meetPreview';
-import { WEIGHT_CLASSES_KG, flightLifterName, signedAttemptText, weightClassString } from './resultCard';
+import {
+  RESULT_FLIGHT_TABLE_COLUMNS,
+  WEIGHT_CLASSES_KG,
+  flightAttemptView,
+  flightLifterName,
+  signedAttemptText,
+  weightClassString,
+} from './resultCard';
 import { flightEntriesForCard, shareableResultCard } from './resultFlight';
 
 function confirmedForPreview(state: MeetDayState) {
@@ -91,5 +98,23 @@ describe('the shareable card carries the flight', () => {
     const bench = harrow.rows.find((lift) => lift.lift === 'bench');
     expect(bench?.bestText).toBe('117.5');
     expect(bench?.attempts.map((cell) => signedAttemptText(cell))).toEqual(['107.5', '117.5', '-120']);
+    expect(RESULT_FLIGHT_TABLE_COLUMNS).toContain('squat1');
+    expect(RESULT_FLIGHT_TABLE_COLUMNS).not.toContain('bestSquat');
+    expect(flightAttemptView(harrow, 'bench1')).toEqual({
+      text: '107.5',
+      struckThrough: false,
+      best: false,
+    });
+    expect(flightAttemptView(harrow, 'bench2')).toEqual({
+      text: '117.5',
+      struckThrough: false,
+      best: true,
+    });
+    expect(flightAttemptView(harrow, 'bench3')).toEqual({
+      text: '120',
+      struckThrough: true,
+      best: false,
+    });
+    expect(flightAttemptView(harrow, 'total')).toBeNull();
   });
 });

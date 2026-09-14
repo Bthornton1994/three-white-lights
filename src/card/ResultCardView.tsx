@@ -16,12 +16,10 @@
  *
  * The body is a published meet table, not a one-name plaque, not a two-line
  * recap, and not a box-score with a best stacked over an attempt history. One
- * row per lifter. Place is a rank in a field. Squat, bench and deadlift print
- * their bests — the same columns a published meet page shows. Per-attempt
- * cells live on the live board and on a lifter's attempt grid; [R8] meet
- * pages do not put them in the lift column. No squat+bench subtotal, for the
- * same reason. Misses that are not the best are recorded in the card's data
- * (`signedAttemptText`); they are not a second grammar on this sheet.
+ * row per lifter. Place is a rank in a field. Each lift is three attempt
+ * cells — the scoresheet grid — driven by `RESULT_FLIGHT_TABLE_COLUMNS` and
+ * `flightAttemptView`. Misses are struck. The made best is the heavier weight,
+ * not a fourth column. No squat+bench subtotal.
  *
  * The sheet fills the phone. The table does not stretch with it — six packed
  * rows on a full page of paper, footer rule at the bottom. No gold winner
@@ -35,11 +33,13 @@ import React from 'react';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import {
+  FLIGHT_LIFT_GROUPS,
   NO_VALUE_DISPLAY,
   RESULT_FLIGHT_TABLE_COLUMNS,
+  flightAttemptView,
   flightColumnHeading,
   flightLifterName,
-  type LiftRow,
+  sheetColumnHeading,
   type ResultCard,
   type ResultCardFlightRow,
   type ResultSheetColumnId,
@@ -77,30 +77,13 @@ function colStyle(id: ResultSheetColumnId): StyleProp<ViewStyle> {
       return styles.nameCol;
     case 'bodyweight':
       return styles.weightCol;
-    case 'bestSquat':
-    case 'bestBench':
-    case 'bestDeadlift':
-      return styles.liftCol;
     case 'total':
       return styles.totalCol;
     case 'dots':
       return styles.dotsCol;
     default:
-      return styles.liftCol;
+      return styles.attemptCol;
   }
-}
-
-function LiftBestCell({ row }: { readonly row: LiftRow }): React.ReactElement {
-  return (
-    <View style={styles.liftCol}>
-      <Text
-        style={[styles.bestText, row.bestKg === null ? styles.inkSoft : styles.cellInk]}
-        numberOfLines={1}
-      >
-        {row.bestText}
-      </Text>
-    </View>
-  );
 }
 
 function HeadCell({
@@ -110,16 +93,11 @@ function HeadCell({
   readonly id: ResultSheetColumnId;
   readonly align: 'left' | 'right';
 }): React.ReactElement {
-  const liftHead = id === 'bestSquat' || id === 'bestBench' || id === 'bestDeadlift';
   return (
     <View style={[styles.headCell, colStyle(id)]}>
       <Text
-        style={[
-          styles.headText,
-          liftHead ? styles.liftHeadText : null,
-          align === 'right' ? styles.headRight : null,
-        ]}
-        numberOfLines={2}
+        style={[styles.headText, align === 'right' ? styles.headRight : null]}
+        numberOfLines={1}
       >
         {flightColumnHeading(id)}
       </Text>
@@ -129,14 +107,106 @@ function HeadCell({
 
 function FlightHead(): React.ReactElement {
   return (
-    <View style={styles.flightHead}>
-      {RESULT_FLIGHT_TABLE_COLUMNS.map((id) => (
-        <HeadCell
-          key={id}
-          id={id}
-          align={id === 'place' || id === 'lifter' ? 'left' : 'right'}
-        />
-      ))}
+    <View style={styles.flightHeadBlock}>
+      <View style={styles.flightHeadGroups}>
+        <View style={styles.placeCol} />
+        <View style={styles.nameCol} />
+        <View style={styles.weightCol} />
+        {FLIGHT_LIFT_GROUPS.map((group) => (
+          <View key={group.headingId} style={styles.liftGroup}>
+            <Text style={styles.liftGroupText} numberOfLines={1}>
+              {sheetColumnHeading(group.headingId)}
+            </Text>
+          </View>
+        ))}
+        <View style={styles.totalCol} />
+        <View style={styles.dotsCol} />
+      </View>
+      <View style={styles.flightHead}>
+        {RESULT_FLIGHT_TABLE_COLUMNS.map((id) => (
+          <HeadCell
+            key={id}
+            id={id}
+            align={id === 'place' || id === 'lifter' ? 'left' : 'right'}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function FlightCell({
+  row,
+  id,
+}: {
+  readonly row: ResultCardFlightRow;
+  readonly id: ResultSheetColumnId;
+}): React.ReactElement {
+  const attempt = flightAttemptView(row, id);
+  if (attempt !== null) {
+    return (
+      <View style={styles.attemptCol}>
+        <Text
+          style={[
+            styles.attemptText,
+            attempt.struckThrough ? styles.attemptMiss : styles.cellInk,
+            attempt.best ? styles.attemptBest : null,
+          ]}
+          numberOfLines={1}
+        >
+          {attempt.text}
+        </Text>
+      </View>
+    );
+  }
+
+  if (id === 'place') {
+    return (
+      <View style={styles.placeCol}>
+        <Text style={styles.placeText} numberOfLines={1}>
+          {row.placeText}
+        </Text>
+      </View>
+    );
+  }
+  if (id === 'lifter') {
+    return (
+      <View style={styles.nameCol}>
+        <Text style={styles.nameText} numberOfLines={1}>
+          {flightLifterName(row.name)}
+        </Text>
+      </View>
+    );
+  }
+  if (id === 'bodyweight') {
+    return (
+      <View style={styles.weightCol}>
+        <Text style={styles.metaText} numberOfLines={1}>
+          {row.bodyweightText}
+        </Text>
+      </View>
+    );
+  }
+  if (id === 'total') {
+    return (
+      <View style={styles.totalCol}>
+        <Text
+          style={[styles.totalText, row.totalKg === null ? styles.inkSoft : styles.cellInk]}
+          numberOfLines={1}
+        >
+          {row.totalText}
+        </Text>
+      </View>
+    );
+  }
+  return (
+    <View style={styles.dotsCol}>
+      <Text
+        style={[styles.metaText, row.dotsText === NO_VALUE_DISPLAY ? styles.inkSoft : styles.cellInk]}
+        numberOfLines={1}
+      >
+        {row.dotsText}
+      </Text>
     </View>
   );
 }
@@ -157,40 +227,9 @@ function FlightRowView({
       ]}
       testID={`result-card-flight-row-${row.id}`}
     >
-      <View style={styles.placeCol}>
-        <Text style={styles.placeText} numberOfLines={1}>
-          {row.placeText}
-        </Text>
-      </View>
-      <View style={styles.nameCol}>
-        <Text style={styles.nameText} numberOfLines={1}>
-          {flightLifterName(row.name)}
-        </Text>
-      </View>
-      <View style={styles.weightCol}>
-        <Text style={styles.metaText} numberOfLines={1}>
-          {row.bodyweightText}
-        </Text>
-      </View>
-      {row.rows.map((lift) => (
-        <LiftBestCell key={lift.lift} row={lift} />
+      {RESULT_FLIGHT_TABLE_COLUMNS.map((id) => (
+        <FlightCell key={id} row={row} id={id} />
       ))}
-      <View style={styles.totalCol}>
-        <Text
-          style={[styles.totalText, row.totalKg === null ? styles.inkSoft : styles.cellInk]}
-          numberOfLines={1}
-        >
-          {row.totalText}
-        </Text>
-      </View>
-      <View style={styles.dotsCol}>
-        <Text
-          style={[styles.metaText, row.dotsText === NO_VALUE_DISPLAY ? styles.inkSoft : styles.cellInk]}
-          numberOfLines={1}
-        >
-          {row.dotsText}
-        </Text>
-      </View>
     </View>
   );
 }
@@ -254,22 +293,26 @@ const styles = StyleSheet.create({
     fontSize: P.FED_SIZE,
     letterSpacing: P.FED_TRACKING,
     fontWeight: '700',
+    fontStyle: 'normal',
   },
   documentKind: {
     color: C.INK_SOFT,
     fontSize: P.DOCUMENT_SIZE,
     letterSpacing: P.DOCUMENT_TRACKING,
     fontWeight: '700',
+    fontStyle: 'normal',
   },
   meetName: {
     color: C.INK,
     fontSize: P.MEET_SIZE,
     fontWeight: '700',
+    fontStyle: 'normal',
   },
   meta: {
     color: C.INK_SOFT,
     fontSize: P.META_SIZE,
     letterSpacing: P.META_TRACKING,
+    fontStyle: 'normal',
   },
   doubleRule: {
     marginTop: P.SECTION_GAP,
@@ -289,6 +332,7 @@ const styles = StyleSheet.create({
     fontSize: F.SECTION_SIZE,
     letterSpacing: F.SECTION_TRACKING,
     fontWeight: '700',
+    fontStyle: 'normal',
   },
   flight: {
     marginTop: P.NAME_GAP,
@@ -296,15 +340,34 @@ const styles = StyleSheet.create({
     borderBottomWidth: P.RULE,
     borderColor: C.INK,
   },
-  flightHead: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+  flightHeadBlock: {
     backgroundColor: C.PAPER_SHADE,
     borderBottomWidth: P.RULE,
     borderBottomColor: C.INK,
+  },
+  flightHeadGroups: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    minHeight: F.GROUP_H,
+    paddingTop: F.ROW_PAD_Y,
+  },
+  liftGroup: {
+    flex: 3,
+    minWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  liftGroupText: {
+    color: C.INK,
+    fontSize: F.GROUP_SIZE,
+    fontWeight: '700',
+    fontStyle: 'normal',
+  },
+  flightHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     minHeight: F.HEAD_H,
     paddingBottom: F.ROW_PAD_Y,
-    paddingTop: F.ROW_PAD_Y,
   },
   headCell: {
     justifyContent: 'flex-end',
@@ -314,12 +377,10 @@ const styles = StyleSheet.create({
     fontSize: F.HEAD_SIZE,
     letterSpacing: F.HEAD_TRACKING,
     fontWeight: '700',
+    fontStyle: 'normal',
   },
   headRight: {
     textAlign: 'right',
-  },
-  liftHeadText: {
-    fontSize: F.LIFT_HEAD_SIZE,
   },
   flightRow: {
     flexDirection: 'row',
@@ -361,8 +422,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: P.CELL_PAD,
     justifyContent: 'center',
   },
-  liftCol: {
+  attemptCol: {
     flex: 1,
+    minWidth: 0,
     paddingHorizontal: F.LIFT_PAD,
     justifyContent: 'center',
   },
@@ -382,30 +444,42 @@ const styles = StyleSheet.create({
     color: C.INK,
     fontSize: F.NAME_SIZE,
     fontWeight: '700',
+    fontStyle: 'normal',
     fontVariant: ['tabular-nums'],
   },
   nameText: {
     color: C.INK,
     fontSize: F.NAME_SIZE,
-    fontWeight: '700',
+    fontWeight: '500',
+    fontStyle: 'normal',
   },
   metaText: {
     color: C.INK,
     fontSize: F.META_SIZE,
+    fontStyle: 'normal',
     fontVariant: ['tabular-nums'],
     textAlign: 'right',
   },
   totalText: {
     fontSize: F.BEST_SIZE,
     fontWeight: '700',
+    fontStyle: 'normal',
     fontVariant: ['tabular-nums'],
     textAlign: 'right',
   },
-  bestText: {
-    fontSize: F.BEST_SIZE,
-    fontWeight: '700',
+  attemptText: {
+    fontSize: F.ATTEMPT_SIZE,
+    fontWeight: '400',
+    fontStyle: 'normal',
     fontVariant: ['tabular-nums'],
     textAlign: 'right',
+  },
+  attemptBest: {
+    fontWeight: '700',
+  },
+  attemptMiss: {
+    color: C.INK_SOFT,
+    textDecorationLine: 'line-through',
   },
   cellInk: {
     color: C.INK,

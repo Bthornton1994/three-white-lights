@@ -343,9 +343,15 @@ describe('the sourcing ledger describes the constants it cites', () => {
       'place',
       'lifter',
       'bodyweight',
-      'bestSquat',
-      'bestBench',
-      'bestDeadlift',
+      'squat1',
+      'squat2',
+      'squat3',
+      'bench1',
+      'bench2',
+      'bench3',
+      'deadlift1',
+      'deadlift2',
+      'deadlift3',
       'total',
       'dots',
     ]);
@@ -360,7 +366,11 @@ describe('the sourcing ledger describes the constants it cites', () => {
     expect(sheetColumnHeading('dots')).toBe('Dots');
     expect(flightColumnHeading('dots')).toBe('DOTS');
     expect(flightColumnHeading('bestSquat')).toBe('Squat');
+    expect(flightColumnHeading('squat1')).toBe('1');
+    expect(flightColumnHeading('bench2')).toBe('2');
+    expect(flightColumnHeading('deadlift3')).toBe('3');
     expect(RESULT_FLIGHT_TABLE_COLUMNS).not.toContain('subtotal');
+    expect(RESULT_FLIGHT_TABLE_COLUMNS).not.toContain('bestSquat');
   });
 
   it('cites the lifter page for the attempt columns, and admits what differs', () => {
