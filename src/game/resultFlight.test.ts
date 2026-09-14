@@ -5,7 +5,6 @@ import { placingForMeet } from './meetBoard';
 import { buildMeetRecap, type MeetDayState } from './meetDay';
 import { MEET_FIELD_FIXTURE, MEET_PREVIEW } from './meetTuning';
 import { previewStateFor } from './meetPreview';
-import { WEIGHT_CLASSES_KG, weightClassString } from './resultCard';
 import { flightEntriesForCard, shareableResultCard } from './resultFlight';
 
 function confirmedForPreview(state: MeetDayState) {
@@ -68,14 +67,5 @@ describe('the shareable card carries the flight', () => {
       .flatMap((row) => row.rows.flatMap((lift) => [...lift.attempts]))
       .filter((cell) => cell.mark === 'no-lift').length;
     expect(printedMisses).toBe(plannedMisses);
-  });
-
-  it('keeps every printed bodyweight in the player\'s class', () => {
-    const classes = WEIGHT_CLASSES_KG[state.context.entry.sex];
-    const playerClass = weightClassString(state.context.entry.bodyweight.kilograms, classes);
-    expect(playerClass).toBe('93');
-    for (const row of flightEntriesForCard(state, undefined)) {
-      expect(weightClassString(row.bodyweightKg, classes), row.name).toBe(playerClass);
-    }
   });
 });

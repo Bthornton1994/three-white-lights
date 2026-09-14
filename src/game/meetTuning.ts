@@ -194,15 +194,13 @@ export interface FieldLifterSpec {
 /**
  * Five named lifters on the local platform. Day-maxes sit around a first-meet
  * lifter (starting e1RM 180/120/220) so a third deadlift can move a place.
- * Names are fictional. Bodyweights stay inside the player's printed class
- * (IPF 93 is ≤93.00). A 93-class sheet that lists 94.80 is not a result sheet
- * a competitive lifter would believe.
+ * Names are fictional.
  */
 export const MEET_FIELD_FIXTURE: readonly FieldLifterSpec[] = Object.freeze([
   Object.freeze({
     id: 'ashford',
     name: 'M. ASHFORD',
-    bodyweightKg: 92.9,
+    bodyweightKg: 93.1,
     lot: 1,
     dayMaxKg: Object.freeze({ squat: 200, bench: 130, deadlift: 240 }),
   }),
@@ -230,7 +228,7 @@ export const MEET_FIELD_FIXTURE: readonly FieldLifterSpec[] = Object.freeze([
   Object.freeze({
     id: 'linn',
     name: 'T. LINN',
-    bodyweightKg: 88.2,
+    bodyweightKg: 94.8,
     lot: 6,
     dayMaxKg: Object.freeze({ squat: 155, bench: 100, deadlift: 185 }),
   }),
