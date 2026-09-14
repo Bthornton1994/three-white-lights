@@ -598,11 +598,12 @@ export const PAPER = {
    */
   FLIGHT: {
     HEAD_H: 28,
-    NAME_W: 72,
+    NAME_W: 100,
     PLACE_W: 40,
     WEIGHT_W: 44,
-    TOTAL_W: 44,
-    DOTS_W: 42,
+    TOTAL_W: 42,
+    DOTS_W: 40,
+    LIFT_PAD: 1,
     NAME_SIZE: 11,
     BEST_SIZE: 12,
     META_SIZE: 10,

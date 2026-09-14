@@ -32,6 +32,7 @@ describe('the shareable sheet is a printed scoresheet', () => {
 
   it('gives Place and Weight a column that can hold the heading on one line', () => {
     expect(PAPER.FLIGHT.PLACE_W).toBeGreaterThanOrEqual(40);
+    expect(PAPER.FLIGHT.NAME_W).toBeGreaterThanOrEqual(96);
     expect(PAPER.FLIGHT.WEIGHT_W).toBeGreaterThanOrEqual(44);
     expect(PAPER.FLIGHT.HEAD_H).toBeGreaterThanOrEqual(28);
     expect(VIEW).toContain('numberOfLines={1}');

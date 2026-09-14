@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   },
   liftCol: {
     flex: 1,
-    paddingHorizontal: P.CELL_PAD,
+    paddingHorizontal: F.LIFT_PAD,
     justifyContent: 'flex-start',
   },
   totalCol: {
