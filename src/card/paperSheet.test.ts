@@ -100,6 +100,15 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(VIEW).not.toContain('NOLIFT_LIGHT');
     expect(VIEW).not.toContain('GOOD_LIGHT');
   });
+
+  it('fills the capture as a page of paper, without a gold winner row', () => {
+    expect(VIEW).toContain('flex: 1');
+    expect(VIEW).toContain('pageFill');
+    expect(VIEW).toContain('odd ? styles.rowOdd : styles.rowEven');
+    expect(VIEW).toContain('flightLifterName');
+    expect(SCREEN).toContain('flex: 1');
+    expect(PAPER.FLIGHT.ROW_H).toBeLessThanOrEqual(26);
+  });
 });
 
 describe('paper ink comes from the sheet bank', () => {

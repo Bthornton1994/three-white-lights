@@ -591,16 +591,21 @@ export const PAPER = {
    * a second line. No squat+bench subtotal ([R8] published pages do not;
    * the live-board reference does).
    *
+   * The table stays packed (ROW_H is a floor, not a stretch). The sheet
+   * itself fills the capture so the cream under a six-row class is the rest
+   * of the page, not a postage stamp on a poster. No gold #1 fill — every
+   * place zebras the same way.
+   *
    * Column widths have to hold the [R8] headings on one line (`Place`,
    * `Weight`). A 28pt Place column wrapped to "Pla / ce" on a 390-wide
    * capture. Deadlift is the long heading: HEAD_H is tall enough for two
    * lines so it does not paint into the row below. NAME_W has to hold the
-   * longest name on the local field.
+   * longest name on the local field, surname-first ("PEMBROKE, R.").
    */
   FLIGHT: {
     HEAD_H: 28,
-    ROW_H: 34,
-    NAME_W: 92,
+    ROW_H: 26,
+    NAME_W: 96,
     PLACE_W: 40,
     WEIGHT_W: 44,
     TOTAL_W: 46,
@@ -612,7 +617,7 @@ export const PAPER = {
     HEAD_SIZE: 8,
     HEAD_TRACKING: 0,
     LIFT_HEAD_SIZE: 7,
-    ROW_PAD_Y: 8,
+    ROW_PAD_Y: 4,
     SECTION_SIZE: 10,
     SECTION_TRACKING: 0.6,
   },

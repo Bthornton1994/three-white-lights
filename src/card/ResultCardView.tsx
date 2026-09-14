@@ -23,6 +23,10 @@
  * same reason. Misses that are not the best are recorded in the card's data
  * (`signedAttemptText`); they are not a second grammar on this sheet.
  *
+ * The sheet fills the phone. The table does not stretch with it — six packed
+ * rows on a full page of paper, footer rule at the bottom. No gold winner
+ * fill; zebra is the same at every place.
+ *
  * There is no loaded-bar motif here. Plate colours are gameplay language on
  * the platform, not a cartoon on a scoresheet.
  */
@@ -34,6 +38,7 @@ import {
   NO_VALUE_DISPLAY,
   RESULT_FLIGHT_TABLE_COLUMNS,
   flightColumnHeading,
+  flightLifterName,
   type LiftRow,
   type ResultCard,
   type ResultCardFlightRow,
@@ -145,7 +150,11 @@ function FlightRowView({
 }): React.ReactElement {
   return (
     <View
-      style={[styles.flightRow, row.isPlayer ? styles.playerRow : odd ? styles.rowOdd : styles.rowEven]}
+      style={[
+        styles.flightRow,
+        odd ? styles.rowOdd : styles.rowEven,
+        row.isPlayer ? styles.playerRow : null,
+      ]}
       testID={`result-card-flight-row-${row.id}`}
     >
       <View style={styles.placeCol}>
@@ -155,7 +164,7 @@ function FlightRowView({
       </View>
       <View style={styles.nameCol}>
         <Text style={styles.nameText} numberOfLines={1}>
-          {row.name.toUpperCase()}
+          {flightLifterName(row.name)}
         </Text>
       </View>
       <View style={styles.weightCol}>
@@ -214,6 +223,8 @@ export function ResultCardView({ card }: ResultCardViewProps): React.ReactElemen
         ))}
       </View>
 
+      <View style={styles.pageFill} />
+
       <View style={styles.footer}>
         <View style={styles.rule} />
       </View>
@@ -223,6 +234,7 @@ export function ResultCardView({ card }: ResultCardViewProps): React.ReactElemen
 
 const styles = StyleSheet.create({
   sheet: {
+    flex: 1,
     width: P.W,
     backgroundColor: C.PAPER,
     paddingHorizontal: P.PAD_X,
@@ -325,7 +337,11 @@ const styles = StyleSheet.create({
     backgroundColor: C.PAPER_ALT,
   },
   playerRow: {
-    backgroundColor: C.PAPER_SHADE,
+    // Same zebra as every other place. A gold #1 fill is souvenir-poster
+    // language; a published meet table does not shade the winner. Untuned.
+  },
+  pageFill: {
+    flex: 1,
   },
   placeCol: {
     width: F.PLACE_W,

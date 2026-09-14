@@ -43,6 +43,7 @@ const styles = StyleSheet.create({
     paddingBottom: CARD_SCREEN.LEAVE_CLEARANCE,
   },
   sheet: {
+    flex: 1,
     width: '100%',
     alignItems: 'center',
   },

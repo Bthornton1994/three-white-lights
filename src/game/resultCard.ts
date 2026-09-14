@@ -498,6 +498,22 @@ export function flightColumnHeading(id: ResultSheetColumnId): string {
 }
 
 /**
+ * Surname first, the way a published meet table sets a name ("ASHFORD, M.").
+ *
+ * The fixture and the identity scan keep "M. ASHFORD" — an initial and a
+ * surname, not a realistic given name (GDD §12.3). The sheet rearranges that
+ * same string. Names that are not "X. SURNAME" print unchanged.
+ */
+export function flightLifterName(name: string): string {
+  const trimmed = name.trim();
+  const match = /^([A-Za-z])\.\s+(.+)$/.exec(trimmed);
+  if (match === null || match[1] === undefined || match[2] === undefined) {
+    return trimmed.toUpperCase();
+  }
+  return `${match[2]}, ${match[1]}.`.toUpperCase();
+}
+
+/**
  * The attempt grid's own headings, for a card that stacks the three lifts as
  * rows instead of running [R8]'s one long line. Same information, transposed:
  * [R9] groups four cells under each lift's name and we turn that group into a

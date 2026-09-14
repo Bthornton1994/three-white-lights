@@ -25,6 +25,7 @@ import {
   resultSheetLine,
   sheetColumnHeading,
   flightColumnHeading,
+  flightLifterName,
   signedAttemptText,
   weightClassString,
   type ResultCard,
@@ -905,6 +906,19 @@ describe('competition rules the card can never break', () => {
 // ---------------------------------------------------------------------------
 // Formatting
 // ---------------------------------------------------------------------------
+
+describe('flightLifterName', () => {
+  it('prints the surname first, the way a published table sets a name', () => {
+    expect(flightLifterName('M. ASHFORD')).toBe('ASHFORD, M.');
+    expect(flightLifterName('R. PEMBROKE')).toBe('PEMBROKE, R.');
+    expect(flightLifterName('A. LIFTER')).toBe('LIFTER, A.');
+  });
+
+  it('leaves a name that is not an initial-plus-surname alone', () => {
+    expect(flightLifterName('PEPPER POTTS')).toBe('PEPPER POTTS');
+    expect(flightLifterName('')).toBe('');
+  });
+});
 
 describe('formatWeight', () => {
   it('hides trailing zeros the way a results sheet does', () => {
