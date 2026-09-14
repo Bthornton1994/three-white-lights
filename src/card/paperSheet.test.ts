@@ -29,6 +29,15 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(PAPER.FED_SIZE).toBeGreaterThanOrEqual(11);
   });
 
+  it('gives Place and Weight a column that can hold the heading on one line', () => {
+    expect(PAPER.FLIGHT.PLACE_W).toBeGreaterThanOrEqual(40);
+    expect(PAPER.FLIGHT.WEIGHT_W).toBeGreaterThanOrEqual(52);
+    expect(PAPER.FLIGHT.HEAD_H).toBeGreaterThanOrEqual(18);
+    expect(PAPER.FLIGHT.ATTEMPT_HEAD_H).toBeGreaterThanOrEqual(24);
+    expect(VIEW).toContain('numberOfLines={1}');
+    expect(VIEW).toContain('flexShrink: 0');
+  });
+
   it('does not nearest-neighbour a 16-bit grid or draw a cartoon bar', () => {
     expect(VIEW).not.toContain('@shopify/react-native-skia');
     expect(VIEW).not.toContain('FilterMode');

@@ -583,19 +583,25 @@ export const PAPER = {
    * grouping without twelve extra columns, and without a squat+bench
    * subtotal ([R8] published pages do not print one; the live-board reference
    * does).
+   *
+   * Column widths have to hold the [R8] headings on one line (`Place`,
+   * `Weight`). A 28pt Place column wrapped to "Pla / ce" on a 390-wide
+   * capture; HEAD_H 16 then painted that wrap into the lift-group labels.
    */
   FLIGHT: {
-    HEAD_H: 16,
-    NAME_H: 18,
+    HEAD_H: 20,
+    ATTEMPT_HEAD_H: 28,
+    NAME_H: 20,
     ATTEMPT_H: 22,
-    PLACE_W: 28,
-    WEIGHT_W: 44,
+    PLACE_W: 44,
+    WEIGHT_W: 58,
     TOTAL_W: 50,
     DOTS_W: 48,
     NAME_SIZE: 11,
     META_SIZE: 10,
     ATTEMPT_FONT: 10,
     HEAD_SIZE: 9,
+    HEAD_TRACKING: 0,
     LIFT_HEAD_SIZE: 8,
     ATTEMPT_PAD: 2,
     SECTION_SIZE: 10,

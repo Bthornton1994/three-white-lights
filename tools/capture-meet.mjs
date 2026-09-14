@@ -244,7 +244,8 @@ let blocked = 0;
 let motionless = 0;
 
 for (const moment of MOMENTS) {
-  await page.goto(`${url}?meet=${moment}`, { waitUntil: 'load' });
+  process.stderr.write(`capture-meet ${moment}\n`);
+  await page.goto(`${url}?meet=${moment}`, { waitUntil: 'load', timeout: 90000 });
   const expected = MOMENT_SCREEN[moment];
   let showed = true;
   try {
@@ -492,7 +493,7 @@ if (has('live')) {
   // screens with no preview state, so this shows that the walkout, deliberation
   // and verdict beats actually ELAPSE rather than merely having durations — the
   // one thing a frozen capture cannot show.
-  await page.goto(`${url}?meet=live`, { waitUntil: 'load' });
+  await page.goto(`${url}?meet=live`, { waitUntil: 'load', timeout: 90000 });
   await page.getByTestId('meet-weigh-in').waitFor({ state: 'visible', timeout: 120000 });
   const started = Date.now();
   await page.getByTestId('weigh-in-action').click();

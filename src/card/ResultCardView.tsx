@@ -24,7 +24,7 @@
  */
 
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import {
   ATTEMPT_GRID_HEADINGS,
@@ -92,23 +92,43 @@ function LiftGroup({ row }: { readonly row: LiftRow }): React.ReactElement {
   );
 }
 
+function HeadCell({
+  id,
+  align,
+  style,
+}: {
+  readonly id: 'place' | 'lifter' | 'bodyweight' | 'total' | 'dots';
+  readonly align: 'left' | 'right';
+  readonly style: StyleProp<ViewStyle>;
+}): React.ReactElement {
+  return (
+    <View style={[styles.headCell, style]}>
+      <Text style={[styles.headText, align === 'right' ? styles.headRight : null]} numberOfLines={1}>
+        {sheetColumnHeading(id)}
+      </Text>
+    </View>
+  );
+}
+
 function FlightHead({ card }: { readonly card: ResultCard }): React.ReactElement {
   return (
     <View style={styles.flightHead}>
       <View style={styles.summaryHead}>
-        <Text style={[styles.headText, styles.placeCol]}>{sheetColumnHeading('place')}</Text>
-        <Text style={[styles.headText, styles.nameCol]}>{sheetColumnHeading('lifter')}</Text>
-        <Text style={[styles.headText, styles.weightCol]}>{sheetColumnHeading('bodyweight')}</Text>
-        <Text style={[styles.headText, styles.totalCol]}>{sheetColumnHeading('total')}</Text>
-        <Text style={[styles.headText, styles.dotsCol]}>{sheetColumnHeading('dots')}</Text>
+        <HeadCell id="place" align="left" style={styles.placeCol} />
+        <HeadCell id="lifter" align="left" style={styles.nameCol} />
+        <HeadCell id="bodyweight" align="right" style={styles.weightCol} />
+        <HeadCell id="total" align="right" style={styles.totalCol} />
+        <HeadCell id="dots" align="right" style={styles.dotsCol} />
       </View>
       <View style={styles.attemptHead}>
         {card.rows.map((row) => (
           <View key={row.lift} style={styles.liftGroupHead}>
-            <Text style={styles.liftHead}>{row.label}</Text>
+            <Text style={styles.liftHead} numberOfLines={1}>
+              {row.label}
+            </Text>
             <View style={styles.attemptNums}>
               {ATTEMPT_GRID_HEADINGS.attempts.map((heading) => (
-                <Text key={heading} style={styles.attemptHeadText}>
+                <Text key={heading} style={styles.attemptHeadText} numberOfLines={1}>
                   {heading}
                 </Text>
               ))}
@@ -133,17 +153,37 @@ function FlightRowView({
       testID={`result-card-flight-row-${row.id}`}
     >
       <View style={styles.summaryRow}>
-        <Text style={[styles.placeText, styles.placeCol]}>{row.placeText}</Text>
-        <Text style={[styles.nameText, styles.nameCol]} numberOfLines={1}>
-          {row.name.toUpperCase()}
-        </Text>
-        <Text style={[styles.metaText, styles.weightCol]}>{row.bodyweightText}</Text>
-        <Text style={[styles.totalText, styles.totalCol, row.totalKg === null ? styles.inkSoft : styles.cellInk]}>
-          {row.totalText}
-        </Text>
-        <Text style={[styles.metaText, styles.dotsCol, row.dotsText === NO_VALUE_DISPLAY ? styles.inkSoft : styles.cellInk]}>
-          {row.dotsText}
-        </Text>
+        <View style={styles.placeCol}>
+          <Text style={styles.placeText} numberOfLines={1}>
+            {row.placeText}
+          </Text>
+        </View>
+        <View style={styles.nameCol}>
+          <Text style={styles.nameText} numberOfLines={1}>
+            {row.name.toUpperCase()}
+          </Text>
+        </View>
+        <View style={styles.weightCol}>
+          <Text style={styles.metaText} numberOfLines={1}>
+            {row.bodyweightText}
+          </Text>
+        </View>
+        <View style={styles.totalCol}>
+          <Text
+            style={[styles.totalText, row.totalKg === null ? styles.inkSoft : styles.cellInk]}
+            numberOfLines={1}
+          >
+            {row.totalText}
+          </Text>
+        </View>
+        <View style={styles.dotsCol}>
+          <Text
+            style={[styles.metaText, row.dotsText === NO_VALUE_DISPLAY ? styles.inkSoft : styles.cellInk]}
+            numberOfLines={1}
+          >
+            {row.dotsText}
+          </Text>
+        </View>
       </View>
       <View style={styles.attemptRow}>
         {row.rows.map((lift) => (
@@ -262,17 +302,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     height: F.HEAD_H,
+    overflow: 'hidden',
   },
   attemptHead: {
     flexDirection: 'row',
     alignItems: 'flex-end',
+    height: F.ATTEMPT_HEAD_H,
     paddingBottom: F.ATTEMPT_PAD,
+    borderTopWidth: P.RULE,
+    borderTopColor: C.RULE,
+  },
+  headCell: {
+    justifyContent: 'center',
   },
   headText: {
     color: C.INK_SOFT,
     fontSize: F.HEAD_SIZE,
-    letterSpacing: P.GRID_HEAD_TRACKING,
+    letterSpacing: F.HEAD_TRACKING,
     fontWeight: '700',
+  },
+  headRight: {
+    textAlign: 'right',
   },
   liftHead: {
     color: C.INK_SOFT,
@@ -318,26 +368,32 @@ const styles = StyleSheet.create({
   },
   placeCol: {
     width: F.PLACE_W,
+    flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
+    justifyContent: 'center',
   },
   nameCol: {
     flex: 1,
     paddingHorizontal: P.CELL_PAD,
+    justifyContent: 'center',
   },
   weightCol: {
     width: F.WEIGHT_W,
+    flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
-    textAlign: 'right',
+    justifyContent: 'center',
   },
   totalCol: {
     width: F.TOTAL_W,
+    flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
-    textAlign: 'right',
+    justifyContent: 'center',
   },
   dotsCol: {
     width: F.DOTS_W,
+    flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
-    textAlign: 'right',
+    justifyContent: 'center',
   },
   placeText: {
     color: C.INK,
