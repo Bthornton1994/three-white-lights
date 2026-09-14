@@ -14,11 +14,14 @@
  * (the same 5-bit paper bank, expanded to CSS) so the sheet and the grid
  * renderer cannot drift onto two palettes.
  *
- * The body is a flight table, not a one-name plaque. Place is a rank in a
- * field. Missed attempts are struck and tinted; good attempts are ink on
- * paper, not scoreboard pills. The committed live-board reference paints every
- * cell; [R8] published meet pages do not. This sheet follows [R8] for that
- * too. No squat+bench subtotal, for the same reason.
+ * The body is a published flight table, not a one-name plaque and not a
+ * two-line recap. One row per lifter. Place is a rank in a field. Squat,
+ * bench and deadlift bests are first-class columns. Missed attempts are
+ * signed negatives, struck and tinted; good attempts are ink on paper, not
+ * scoreboard pills. The committed live-board reference paints every cell and a
+ * squat+bench subtotal; [R8] published meet pages do not. This sheet follows
+ * [R8] for the subtotal. It keeps the three attempts visible inside each lift
+ * cell so a miss is still a recorded fact, not a vanished chip.
  *
  * There is no loaded-bar motif here. A published results sheet records
  * attempts, a best, a total, DOTS and place. Plate colours are gameplay
@@ -29,13 +32,15 @@ import React from 'react';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import {
-  ATTEMPT_GRID_HEADINGS,
   NO_VALUE_DISPLAY,
-  sheetColumnHeading,
+  RESULT_FLIGHT_TABLE_COLUMNS,
+  flightColumnHeading,
+  signedAttemptText,
   type AttemptCell,
   type LiftRow,
   type ResultCard,
   type ResultCardFlightRow,
+  type ResultSheetColumnId,
 } from '../game/resultCard';
 import { CARD_LABELS, PAPER } from './cardTuning';
 import { SHEET_CSS } from './sheetPalette';
@@ -62,33 +67,60 @@ function DoubleRule(): React.ReactElement {
   );
 }
 
-function AttemptFigure({ cell }: { readonly cell: AttemptCell }): React.ReactElement {
-  if (cell.text === '') {
-    return <View style={styles.cellFill} />;
+function colStyle(id: ResultSheetColumnId): StyleProp<ViewStyle> {
+  switch (id) {
+    case 'place':
+      return styles.placeCol;
+    case 'lifter':
+      return styles.nameCol;
+    case 'bodyweight':
+      return styles.weightCol;
+    case 'bestSquat':
+    case 'bestBench':
+    case 'bestDeadlift':
+      return styles.liftCol;
+    case 'total':
+      return styles.totalCol;
+    case 'dots':
+      return styles.dotsCol;
+    default:
+      return styles.liftCol;
+  }
+}
+
+function SignedAttempt({ cell }: { readonly cell: AttemptCell }): React.ReactElement {
+  const text = signedAttemptText(cell);
+  if (text === '') {
+    return <View style={styles.attemptLine} />;
   }
   const miss = cell.mark === 'no-lift';
   return (
-    <View style={[styles.cellFill, miss ? styles.cellMiss : null]}>
+    <View style={[styles.attemptLine, miss ? styles.attemptMiss : null]}>
       <Text
         style={[
-          styles.cellText,
+          styles.attemptText,
           miss ? styles.cellMissText : styles.cellInk,
           cell.struckThrough ? styles.struck : null,
         ]}
+        numberOfLines={1}
       >
-        {cell.text}
+        {text}
       </Text>
     </View>
   );
 }
 
-function LiftGroup({ row }: { readonly row: LiftRow }): React.ReactElement {
+function LiftBestCell({ row }: { readonly row: LiftRow }): React.ReactElement {
   return (
-    <View style={styles.liftGroup}>
+    <View style={styles.liftCol}>
+      <Text
+        style={[styles.bestText, row.bestKg === null ? styles.inkSoft : styles.cellInk]}
+        numberOfLines={1}
+      >
+        {row.bestText}
+      </Text>
       {row.attempts.map((cell) => (
-        <View key={cell.attemptNumber} style={styles.cell}>
-          <AttemptFigure cell={cell} />
-        </View>
+        <SignedAttempt key={cell.attemptNumber} cell={cell} />
       ))}
     </View>
   );
@@ -97,47 +129,37 @@ function LiftGroup({ row }: { readonly row: LiftRow }): React.ReactElement {
 function HeadCell({
   id,
   align,
-  style,
 }: {
-  readonly id: 'place' | 'lifter' | 'bodyweight' | 'total' | 'dots';
+  readonly id: ResultSheetColumnId;
   readonly align: 'left' | 'right';
-  readonly style: StyleProp<ViewStyle>;
 }): React.ReactElement {
+  const liftHead = id === 'bestSquat' || id === 'bestBench' || id === 'bestDeadlift';
   return (
-    <View style={[styles.headCell, style]}>
-      <Text style={[styles.headText, align === 'right' ? styles.headRight : null]} numberOfLines={1}>
-        {sheetColumnHeading(id)}
+    <View style={[styles.headCell, colStyle(id)]}>
+      <Text
+        style={[
+          styles.headText,
+          liftHead ? styles.liftHeadText : null,
+          align === 'right' ? styles.headRight : null,
+        ]}
+        numberOfLines={2}
+      >
+        {flightColumnHeading(id)}
       </Text>
     </View>
   );
 }
 
-function FlightHead({ card }: { readonly card: ResultCard }): React.ReactElement {
+function FlightHead(): React.ReactElement {
   return (
     <View style={styles.flightHead}>
-      <View style={styles.summaryHead}>
-        <HeadCell id="place" align="left" style={styles.placeCol} />
-        <HeadCell id="lifter" align="left" style={styles.nameCol} />
-        <HeadCell id="bodyweight" align="right" style={styles.weightCol} />
-        <HeadCell id="total" align="right" style={styles.totalCol} />
-        <HeadCell id="dots" align="right" style={styles.dotsCol} />
-      </View>
-      <View style={styles.attemptHead}>
-        {card.rows.map((row) => (
-          <View key={row.lift} style={styles.liftGroupHead}>
-            <Text style={styles.liftHead} numberOfLines={1}>
-              {row.label}
-            </Text>
-            <View style={styles.attemptNums}>
-              {ATTEMPT_GRID_HEADINGS.attempts.map((heading) => (
-                <Text key={heading} style={styles.attemptHeadText} numberOfLines={1}>
-                  {heading}
-                </Text>
-              ))}
-            </View>
-          </View>
-        ))}
-      </View>
+      {RESULT_FLIGHT_TABLE_COLUMNS.map((id) => (
+        <HeadCell
+          key={id}
+          id={id}
+          align={id === 'place' || id === 'lifter' ? 'left' : 'right'}
+        />
+      ))}
     </View>
   );
 }
@@ -154,43 +176,39 @@ function FlightRowView({
       style={[styles.flightRow, row.isPlayer ? styles.playerRow : odd ? styles.rowOdd : styles.rowEven]}
       testID={`result-card-flight-row-${row.id}`}
     >
-      <View style={styles.summaryRow}>
-        <View style={styles.placeCol}>
-          <Text style={styles.placeText} numberOfLines={1}>
-            {row.placeText}
-          </Text>
-        </View>
-        <View style={styles.nameCol}>
-          <Text style={styles.nameText} numberOfLines={1}>
-            {row.name.toUpperCase()}
-          </Text>
-        </View>
-        <View style={styles.weightCol}>
-          <Text style={styles.metaText} numberOfLines={1}>
-            {row.bodyweightText}
-          </Text>
-        </View>
-        <View style={styles.totalCol}>
-          <Text
-            style={[styles.totalText, row.totalKg === null ? styles.inkSoft : styles.cellInk]}
-            numberOfLines={1}
-          >
-            {row.totalText}
-          </Text>
-        </View>
-        <View style={styles.dotsCol}>
-          <Text
-            style={[styles.metaText, row.dotsText === NO_VALUE_DISPLAY ? styles.inkSoft : styles.cellInk]}
-            numberOfLines={1}
-          >
-            {row.dotsText}
-          </Text>
-        </View>
+      <View style={styles.placeCol}>
+        <Text style={styles.placeText} numberOfLines={1}>
+          {row.placeText}
+        </Text>
       </View>
-      <View style={styles.attemptRow}>
-        {row.rows.map((lift) => (
-          <LiftGroup key={lift.lift} row={lift} />
-        ))}
+      <View style={styles.nameCol}>
+        <Text style={styles.nameText} numberOfLines={1}>
+          {row.name.toUpperCase()}
+        </Text>
+      </View>
+      <View style={styles.weightCol}>
+        <Text style={styles.metaText} numberOfLines={1}>
+          {row.bodyweightText}
+        </Text>
+      </View>
+      {row.rows.map((lift) => (
+        <LiftBestCell key={lift.lift} row={lift} />
+      ))}
+      <View style={styles.totalCol}>
+        <Text
+          style={[styles.totalText, row.totalKg === null ? styles.inkSoft : styles.cellInk]}
+          numberOfLines={1}
+        >
+          {row.totalText}
+        </Text>
+      </View>
+      <View style={styles.dotsCol}>
+        <Text
+          style={[styles.metaText, row.dotsText === NO_VALUE_DISPLAY ? styles.inkSoft : styles.cellInk]}
+          numberOfLines={1}
+        >
+          {row.dotsText}
+        </Text>
       </View>
     </View>
   );
@@ -218,7 +236,7 @@ export function ResultCardView({ card }: ResultCardViewProps): React.ReactElemen
       <Text style={styles.section}>{card.lifter.categoryText}</Text>
 
       <View style={styles.flight} testID="result-card-flight">
-        <FlightHead card={card} />
+        <FlightHead />
         {card.field.map((row, index) => (
           <FlightRowView key={row.id} row={row} odd={index % 2 === 1} />
         ))}
@@ -295,26 +313,17 @@ const styles = StyleSheet.create({
     borderColor: C.INK,
   },
   flightHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     backgroundColor: C.PAPER_SHADE,
     borderBottomWidth: P.RULE,
     borderBottomColor: C.INK,
-  },
-  summaryHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: F.HEAD_H,
-    overflow: 'hidden',
-  },
-  attemptHead: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    height: F.ATTEMPT_HEAD_H,
-    paddingBottom: F.ATTEMPT_PAD,
-    borderTopWidth: P.RULE,
-    borderTopColor: C.RULE,
+    minHeight: F.HEAD_H,
+    paddingBottom: F.ROW_PAD_Y,
+    paddingTop: F.ROW_PAD_Y,
   },
   headCell: {
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
   },
   headText: {
     color: C.INK_SOFT,
@@ -325,27 +334,16 @@ const styles = StyleSheet.create({
   headRight: {
     textAlign: 'right',
   },
-  liftHead: {
-    color: C.INK_SOFT,
+  liftHeadText: {
     fontSize: F.LIFT_HEAD_SIZE,
-    letterSpacing: P.GRID_HEAD_TRACKING,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  attemptNums: {
-    flexDirection: 'row',
-  },
-  attemptHeadText: {
-    flex: 1,
-    color: C.INK_SOFT,
-    fontSize: F.LIFT_HEAD_SIZE,
-    fontWeight: '700',
-    textAlign: 'right',
-    paddingHorizontal: P.CELL_PAD,
   },
   flightRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     borderBottomWidth: P.RULE,
     borderBottomColor: C.RULE,
+    paddingTop: F.ROW_PAD_Y,
+    paddingBottom: F.ROW_PAD_Y,
   },
   rowEven: {
     backgroundColor: C.PAPER,
@@ -356,45 +354,40 @@ const styles = StyleSheet.create({
   playerRow: {
     backgroundColor: C.PAPER_SHADE,
   },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: F.NAME_H,
-  },
-  attemptRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    minHeight: F.ATTEMPT_H,
-    paddingBottom: F.ATTEMPT_PAD,
-  },
   placeCol: {
     width: F.PLACE_W,
     flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
   nameCol: {
-    flex: 1,
+    width: F.NAME_W,
+    flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
   weightCol: {
     width: F.WEIGHT_W,
     flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+  },
+  liftCol: {
+    flex: 1,
+    paddingHorizontal: P.CELL_PAD,
+    justifyContent: 'flex-start',
   },
   totalCol: {
     width: F.TOTAL_W,
     flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
   dotsCol: {
     width: F.DOTS_W,
     flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
   placeText: {
     color: C.INK,
@@ -414,32 +407,27 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   totalText: {
-    fontSize: F.NAME_SIZE,
+    fontSize: F.BEST_SIZE,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
     textAlign: 'right',
   },
-  liftGroup: {
-    flex: 1,
-    flexDirection: 'row',
+  bestText: {
+    fontSize: F.BEST_SIZE,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+    textAlign: 'right',
+    marginBottom: P.CELL_INSET,
   },
-  liftGroupHead: {
-    flex: 1,
-  },
-  cell: {
-    flex: 1,
+  attemptLine: {
+    height: F.ATTEMPT_LINE_H,
     justifyContent: 'center',
+    paddingHorizontal: P.CELL_INSET,
   },
-  cellFill: {
-    flex: 1,
-    margin: P.CELL_INSET,
-    justifyContent: 'center',
-    paddingHorizontal: P.CELL_PAD,
-  },
-  cellMiss: {
+  attemptMiss: {
     backgroundColor: C.NOLIFT_LIGHT,
   },
-  cellText: {
+  attemptText: {
     fontSize: F.ATTEMPT_FONT,
     fontVariant: ['tabular-nums'],
     textAlign: 'right',

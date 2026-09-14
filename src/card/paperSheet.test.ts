@@ -24,6 +24,7 @@ describe('the shareable sheet is a printed scoresheet', () => {
   it('sets type large enough to read as a sheet, not as a sprite caption', () => {
     expect(PAPER.MEET_SIZE).toBeGreaterThanOrEqual(16);
     expect(PAPER.FLIGHT.NAME_SIZE).toBeGreaterThanOrEqual(11);
+    expect(PAPER.FLIGHT.BEST_SIZE).toBeGreaterThanOrEqual(12);
     expect(PAPER.FLIGHT.ATTEMPT_FONT).toBeGreaterThanOrEqual(10);
     expect(PAPER.FLIGHT.META_SIZE).toBeGreaterThanOrEqual(10);
     expect(PAPER.FED_SIZE).toBeGreaterThanOrEqual(11);
@@ -31,9 +32,8 @@ describe('the shareable sheet is a printed scoresheet', () => {
 
   it('gives Place and Weight a column that can hold the heading on one line', () => {
     expect(PAPER.FLIGHT.PLACE_W).toBeGreaterThanOrEqual(40);
-    expect(PAPER.FLIGHT.WEIGHT_W).toBeGreaterThanOrEqual(52);
-    expect(PAPER.FLIGHT.HEAD_H).toBeGreaterThanOrEqual(18);
-    expect(PAPER.FLIGHT.ATTEMPT_HEAD_H).toBeGreaterThanOrEqual(24);
+    expect(PAPER.FLIGHT.WEIGHT_W).toBeGreaterThanOrEqual(44);
+    expect(PAPER.FLIGHT.HEAD_H).toBeGreaterThanOrEqual(28);
     expect(VIEW).toContain('numberOfLines={1}');
     expect(VIEW).toContain('flexShrink: 0');
   });
@@ -60,8 +60,8 @@ describe('the shareable sheet is a printed scoresheet', () => {
       'card.meet.dateText',
       'card.lifter.categoryText',
       'card.field',
-      'sheetColumnHeading',
-      'ATTEMPT_GRID_HEADINGS',
+      'flightColumnHeading',
+      'RESULT_FLIGHT_TABLE_COLUMNS',
       'CARD_LABELS.DOCUMENT_KIND',
     ]) {
       expect(VIEW, token).toContain(token);
@@ -82,10 +82,15 @@ describe('the shareable sheet is a printed scoresheet', () => {
   it('prints the flight, so place is a rank in a field', () => {
     expect(VIEW).toContain('card.field');
     expect(VIEW).toContain('row.isPlayer');
-    expect(VIEW).toContain('sheetColumnHeading');
+    expect(VIEW).toContain('flightColumnHeading');
+    expect(VIEW).toContain('RESULT_FLIGHT_TABLE_COLUMNS');
     expect(VIEW).toContain('FlightRowView');
+    expect(VIEW).toContain('LiftBestCell');
+    expect(VIEW).toContain('row.bestText');
+    expect(VIEW).toContain('signedAttemptText');
     expect(VIEW).toContain('playerRow');
     expect(VIEW).not.toContain('ScoreCell');
+    expect(VIEW).not.toContain('ATTEMPT_GRID_HEADINGS');
   });
 
   it('strikes a missed attempt without painting goods as scoreboard pills', () => {
@@ -93,6 +98,7 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(VIEW).toContain('NOLIFT_LIGHT');
     expect(VIEW).not.toContain('GOOD_LIGHT');
     expect(VIEW).toContain('textDecorationLine');
+    expect(VIEW).toContain('signedAttemptText');
   });
 });
 

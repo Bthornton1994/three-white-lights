@@ -9,7 +9,7 @@ import {
   NO_VALUE_DISPLAY,
   PLACE_NO_TOTAL_DISPLAY,
   RESULT_CARD_CSV_HEADER,
-  RESULT_FLIGHT_SUMMARY_COLUMNS,
+  RESULT_FLIGHT_TABLE_COLUMNS,
   RESULT_SHEET_COLUMNS,
   SEX_CATEGORY_WORD,
   WEIGHT_CLASSES_KG,
@@ -24,6 +24,8 @@ import {
   resultCardStrings,
   resultSheetLine,
   sheetColumnHeading,
+  flightColumnHeading,
+  signedAttemptText,
   weightClassString,
   type ResultCard,
   type ResultCardInput,
@@ -336,13 +338,28 @@ describe('the sourcing ledger describes the constants it cites', () => {
     expect(IPF_2503_HEADER.indexOf('Place')).toBe(20);
     expect(IPF_2503_HEADER.indexOf('Equipment')).toBe(22);
     expect(RESULT_SHEET_COLUMNS.map((column) => column.id).indexOf('place')).toBe(0);
-    expect(RESULT_FLIGHT_SUMMARY_COLUMNS).toEqual(['place', 'lifter', 'bodyweight', 'total', 'dots']);
-    expect(RESULT_FLIGHT_SUMMARY_COLUMNS.every((id) => RESULT_SHEET_COLUMNS.some((column) => column.id === id))).toBe(
+    expect(RESULT_FLIGHT_TABLE_COLUMNS).toEqual([
+      'place',
+      'lifter',
+      'bodyweight',
+      'bestSquat',
+      'bestBench',
+      'bestDeadlift',
+      'total',
+      'dots',
+    ]);
+    expect(RESULT_FLIGHT_TABLE_COLUMNS.every((id) => RESULT_SHEET_COLUMNS.some((column) => column.id === id))).toBe(
       true,
     );
     expect(sheetColumnHeading('place')).toBe('Place');
     expect(sheetColumnHeading('bodyweight')).toBe('Weight');
-    expect(RESULT_FLIGHT_SUMMARY_COLUMNS).not.toContain('subtotal');
+    expect(sheetColumnHeading('bestSquat')).toBe('Squat');
+    expect(sheetColumnHeading('bestBench')).toBe('Bench');
+    expect(sheetColumnHeading('bestDeadlift')).toBe('Deadlift');
+    expect(sheetColumnHeading('dots')).toBe('Dots');
+    expect(flightColumnHeading('dots')).toBe('DOTS');
+    expect(flightColumnHeading('bestSquat')).toBe('Squat');
+    expect(RESULT_FLIGHT_TABLE_COLUMNS).not.toContain('subtotal');
   });
 
   it('cites the lifter page for the attempt columns, and admits what differs', () => {
@@ -522,6 +539,7 @@ describe('attempt cells', () => {
     expect(first.struckThrough).toBe(false);
     expect(first.text).toBe('155');
     expect(first.signedWeightKg).toBe(155);
+    expect(signedAttemptText(first)).toBe('155');
   });
 
   it('strikes a missed attempt through and records it as a negative weight', () => {
@@ -532,6 +550,7 @@ describe('attempt cells', () => {
     // which is the convention published results actually use.
     expect(third.text).toBe('166');
     expect(third.signedWeightKg).toBe(-166);
+    expect(signedAttemptText(third)).toBe('-166');
   });
 
   it('takes the best from the heaviest GOOD attempt, not the heaviest attempt', () => {

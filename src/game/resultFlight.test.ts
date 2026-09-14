@@ -5,7 +5,7 @@ import { placingForMeet } from './meetBoard';
 import { buildMeetRecap, type MeetDayState } from './meetDay';
 import { MEET_FIELD_FIXTURE, MEET_PREVIEW } from './meetTuning';
 import { previewStateFor } from './meetPreview';
-import { WEIGHT_CLASSES_KG, weightClassString } from './resultCard';
+import { WEIGHT_CLASSES_KG, signedAttemptText, weightClassString } from './resultCard';
 import { flightEntriesForCard, shareableResultCard } from './resultFlight';
 
 function confirmedForPreview(state: MeetDayState) {
@@ -74,5 +74,11 @@ describe('the shareable card carries the flight', () => {
       .flatMap((row) => row.rows.flatMap((lift) => [...lift.attempts]))
       .filter((cell) => cell.mark === 'no-lift').length;
     expect(printedMisses).toBe(plannedMisses);
+    const harrow = card.field.find((row) => row.name === 'J. HARROW');
+    expect(harrow).toBeDefined();
+    if (harrow === undefined) throw new Error('J. HARROW missing from the flight');
+    const bench = harrow.rows.find((lift) => lift.lift === 'bench');
+    expect(bench?.bestText).toBe('117.5');
+    expect(bench?.attempts.map((cell) => signedAttemptText(cell))).toEqual(['107.5', '117.5', '-120']);
   });
 });

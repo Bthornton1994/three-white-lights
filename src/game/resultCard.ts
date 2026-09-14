@@ -455,21 +455,25 @@ export const RESULT_SHEET_COLUMNS: readonly ResultSheetColumn[] = [
 ] as const;
 
 /**
- * Compact flight columns on a portrait shareable sheet.
+ * One published-table row on a portrait shareable sheet.
  *
  * [R8] meet-page order, compressed so a 390-wide phone can hold a field:
- * Place, Lifter, Weight, Total, Dots. Sex, division, equipment and class sit
- * on the section heading over the table — the same job [R8] gives
- * `divheader`. Per-attempt cells sit on a second line, grouped under each lift
- * ([R9]), rather than as twelve extra columns.
+ * Place, Lifter, Weight, best squat, best bench, best deadlift, Total, points.
+ * Sex, division, equipment and class sit on the section heading over the table
+ * — the same job [R8] gives `divheader`. Per-attempt cells are not twelve extra
+ * columns: they sit inside each lift cell as signed figures ([R3]), under the
+ * first-class best.
  *
  * No squat+bench subtotal. The committed live-board reference prints one; [R8]
  * published meet pages do not. This list follows [R8].
  */
-export const RESULT_FLIGHT_SUMMARY_COLUMNS: readonly ResultSheetColumnId[] = [
+export const RESULT_FLIGHT_TABLE_COLUMNS: readonly ResultSheetColumnId[] = [
   'place',
   'lifter',
   'bodyweight',
+  'bestSquat',
+  'bestBench',
+  'bestDeadlift',
   'total',
   'dots',
 ];
@@ -479,6 +483,18 @@ export function sheetColumnHeading(id: ResultSheetColumnId): string {
     if (column.id === id) return column.heading;
   }
   throw new RangeError(`resultCard: no heading for column "${id}"`);
+}
+
+/**
+ * Headings on the shareable flight table.
+ *
+ * Same words as `sheetColumnHeading` except the points column, which the
+ * summary block already prints as `DOTS` (GDD §6.4). [R6] still names the
+ * long-row heading `Dots`; that citation stays on `RESULT_SHEET_COLUMNS`.
+ */
+export function flightColumnHeading(id: ResultSheetColumnId): string {
+  if (id === 'dots') return 'DOTS';
+  return sheetColumnHeading(id);
 }
 
 /**
@@ -519,6 +535,17 @@ export function formatWeight(weight: number): string {
   // cannot, and the trim restores "192.5" from "192.50" and "200" from "200.00".
   const fixed = value.toFixed(2);
   return fixed.includes('.') ? fixed.replace(/0+$/, '').replace(/\.$/, '') : fixed;
+}
+
+/**
+ * One attempt as a published results sheet records it [R3]: made positive,
+ * missed NEGATIVE, blank when not taken. `AttemptCell.text` stays the weight
+ * as called; the sign lives here so a renderer cannot invent a second miss
+ * grammar inside a `.tsx` file.
+ */
+export function signedAttemptText(cell: AttemptCell): string {
+  if (cell.signedWeightKg === 0) return '';
+  return formatWeight(cell.signedWeightKg);
 }
 
 /** A bodyweight, which real sheets print to two places even when round ([R2]). */

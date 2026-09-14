@@ -546,9 +546,9 @@ export const CARD_SCREEN = {
  * Authored against a 390-wide phone. UNTUNED (GDD §12.1).
  */
 export const PAPER = {
-  W: 358,
-  PAD_X: 16,
-  PAD_Y: 16,
+  W: 388,
+  PAD_X: 10,
+  PAD_Y: 14,
   FED_SIZE: 11,
   FED_TRACKING: 2.2,
   DOCUMENT_SIZE: 11,
@@ -581,34 +581,37 @@ export const PAPER = {
   MASTHEAD_GAP: 4,
   NAME_GAP: 4,
   /**
-   * Compact flight table. Authored against a 390-wide phone. UNTUNED.
+   * Published flight table. Authored against a 390-wide phone. UNTUNED.
    *
-   * Two lines per lifter: identity + Weight/Total/Dots on the first, the nine
-   * attempts grouped squat → bench → deadlift on the second. That is [R9]
-   * grouping without twelve extra columns, and without a squat+bench
-   * subtotal ([R8] published pages do not print one; the live-board reference
-   * does).
+   * One row per lifter: Place, Lifter, Weight, best squat, best bench, best
+   * deadlift, Total, DOTS. That is the default published-results table a weekly
+   * reader parses, not a two-line recap with identity on one line and nine
+   * attempt chips on the next. Missed attempts stay visible as signed
+   * negatives inside the lift cell; they are not a second wrap of scoreboard
+   * chips. No squat+bench subtotal ([R8] published pages do not print one; the
+   * live-board reference does).
    *
    * Column widths have to hold the [R8] headings on one line (`Place`,
    * `Weight`). A 28pt Place column wrapped to "Pla / ce" on a 390-wide
-   * capture; HEAD_H 16 then painted that wrap into the lift-group labels.
+   * capture. Deadlift is the long heading: HEAD_H is tall enough for two
+   * lines so it does not paint into the row below.
    */
   FLIGHT: {
-    HEAD_H: 20,
-    ATTEMPT_HEAD_H: 28,
-    NAME_H: 20,
-    ATTEMPT_H: 22,
-    PLACE_W: 44,
-    WEIGHT_W: 58,
-    TOTAL_W: 50,
-    DOTS_W: 48,
+    HEAD_H: 28,
+    NAME_W: 72,
+    PLACE_W: 40,
+    WEIGHT_W: 44,
+    TOTAL_W: 44,
+    DOTS_W: 42,
     NAME_SIZE: 11,
+    BEST_SIZE: 12,
     META_SIZE: 10,
     ATTEMPT_FONT: 10,
-    HEAD_SIZE: 9,
+    ATTEMPT_LINE_H: 14,
+    HEAD_SIZE: 8,
     HEAD_TRACKING: 0,
     LIFT_HEAD_SIZE: 8,
-    ATTEMPT_PAD: 2,
+    ROW_PAD_Y: 6,
     SECTION_SIZE: 10,
     SECTION_TRACKING: 0.6,
   },
