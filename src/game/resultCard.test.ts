@@ -912,6 +912,7 @@ describe('flightLifterName', () => {
     expect(flightLifterName('M. ASHFORD')).toBe('ASHFORD, M.');
     expect(flightLifterName('R. PEMBROKE')).toBe('PEMBROKE, R.');
     expect(flightLifterName('A. LIFTER')).toBe('LIFTER, A.');
+    expect(flightLifterName('R. VELLUM')).toBe('VELLUM, R.');
   });
 
   it('leaves a name that is not an initial-plus-surname alone', () => {

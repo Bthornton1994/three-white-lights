@@ -28,11 +28,14 @@
  *   - THE FEDERATION AND THE MEET NAME. Both invented (GDD §11 leaves
  *     licensing open), and both are strings the weigh-in and the result card
  *     print.
- *   - THE LIFTER AND THE FIELD. `MEET_ENTRY.name` reaches the weigh-in, the
- *     recap and the shareable card. A1's named flight (`MEET_FIELD_FIXTURE`)
- *     is scanned here too — invented initials and surnames, not a real
- *     athlete roster. `ghostTotalsKg` remains a kilogram list for the residual
- *     placing helper; live placing is the fixture replayed through `meet.ts`.
+ *   - THE LIFTER AND THE FIELD. `MEET_ENTRY.name` reaches the weigh-in and
+ *     in-meet debug beats. GDD §6.5's recap and shareable card preview print
+ *     `SHAREABLE_PREVIEW_NAME` (same spelling Create Lifter tests use) so
+ *     the published table is not a job-title row. A1's named flight
+ *     (`MEET_FIELD_FIXTURE`) is scanned here too — invented initials and
+ *     surnames, not a real athlete roster. `ghostTotalsKg` remains a
+ *     kilogram list for the residual placing helper; live placing is the
+ *     fixture replayed through `meet.ts`.
  *   - THE SOUND CUES. New in this piece, and named after what they are.
  *
  * ===========================================================================
@@ -58,6 +61,7 @@ import {
   type RenderableString,
 } from '../licensing/realIp';
 import { GYM_BANNER, GYM_CROWD, GYM_PROPS_MEET } from '../art/gymTuning';
+import { SHAREABLE_PREVIEW_NAME } from '../game/meetPreview';
 import { MEET_COPY, MEET_ENTRY, MEET_FIELD_FIXTURE, MEET_LOCAL, MEET_SOUND_IDS } from '../game/meetTuning';
 import { everySoundFileName, fileNameForCue } from './soundAssets';
 
@@ -94,6 +98,7 @@ function meetRenderableStrings(): readonly RenderableString[] {
     { surface: 'meet', path: 'MEET_LOCAL.state', value: MEET_LOCAL.state },
     { surface: 'meet', path: 'MEET_LOCAL.country', value: MEET_LOCAL.country },
     { surface: 'meet', path: 'MEET_ENTRY.name', value: MEET_ENTRY.name },
+    { surface: 'meet', path: 'SHAREABLE_PREVIEW_NAME', value: SHAREABLE_PREVIEW_NAME },
     { surface: 'meet', path: 'MEET_ENTRY.division', value: MEET_ENTRY.division },
     { surface: 'meet', path: 'MEET_ENTRY.equipment', value: MEET_ENTRY.equipment },
   ];
@@ -133,6 +138,7 @@ describe('nothing meet day can draw is a real identity (GDD §12.3)', () => {
     const paths = strings.map((s) => s.path);
     expect(paths).toContain('MEET_LOCAL.federation');
     expect(paths).toContain('MEET_ENTRY.name');
+    expect(paths).toContain('SHAREABLE_PREVIEW_NAME');
     expect(paths).toContain(`MEET_FIELD_FIXTURE.${MEET_FIELD_FIXTURE[0]!.id}.name`);
     expect(strings.every((s) => s.value.length >= 0)).toBe(true);
   });
@@ -161,6 +167,15 @@ describe('nothing meet day can draw is a real identity (GDD §12.3)', () => {
     // obviously unfilled rather than as a plausible competitor, which is the
     // failure mode §12.3 names: a "realistic" placeholder.
     expect(MEET_ENTRY.name).toMatch(/^[A-Z]\.\s+LIFTER$/);
+  });
+
+  it('prints the shareable sheet as a produced identity, not that job title', () => {
+    // A2 freeze: the fixture constant stays the placeholder. The GDD §6.5
+    // photograph uses the Create Lifter spelling so a weekly reader is not
+    // asked to believe a job title won the flight.
+    expect(SHAREABLE_PREVIEW_NAME).not.toBe(MEET_ENTRY.name);
+    expect(SHAREABLE_PREVIEW_NAME).not.toMatch(/LIFTER/);
+    expect(SHAREABLE_PREVIEW_NAME).toMatch(/^[A-Z]\.\s+[A-Z][A-Z-]*$/);
   });
 
   it('invents a federation and a meet, and does not leave them blank', () => {

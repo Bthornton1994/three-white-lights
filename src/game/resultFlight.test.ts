@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { finalMeetTotal } from './meet';
 import { placingForMeet } from './meetBoard';
 import { buildMeetRecap, type MeetDayState } from './meetDay';
-import { MEET_FIELD_FIXTURE, MEET_PREVIEW } from './meetTuning';
-import { previewStateFor } from './meetPreview';
-import { WEIGHT_CLASSES_KG, signedAttemptText, weightClassString } from './resultCard';
+import { MEET_ENTRY, MEET_FIELD_FIXTURE, MEET_PREVIEW } from './meetTuning';
+import { SHAREABLE_PREVIEW_NAME, previewStateFor } from './meetPreview';
+import { WEIGHT_CLASSES_KG, flightLifterName, signedAttemptText, weightClassString } from './resultCard';
 import { flightEntriesForCard, shareableResultCard } from './resultFlight';
 
 function confirmedForPreview(state: MeetDayState) {
@@ -40,6 +40,17 @@ describe('the shareable card carries the flight', () => {
     expect(entries.map((row) => row.name)).toEqual(
       expect.arrayContaining(MEET_FIELD_FIXTURE.map((spec) => spec.name)),
     );
+  });
+
+  it('names the player with the produced identity, not the debug job title', () => {
+    expect(MEET_ENTRY.name).toBe('A. LIFTER');
+    expect(previewStateFor({ moment: 'weigh-in' }).context.entry.name).toBe(MEET_ENTRY.name);
+    expect(state.context.entry.name).toBe(SHAREABLE_PREVIEW_NAME);
+    expect(previewStateFor({ moment: 'recap' }).context.entry.name).toBe(SHAREABLE_PREVIEW_NAME);
+    const player = flightEntriesForCard(state, undefined).find((row) => row.isPlayer);
+    expect(player?.name).toBe(SHAREABLE_PREVIEW_NAME);
+    expect(flightLifterName(player?.name ?? '')).toBe('VELLUM, R.');
+    expect(flightLifterName(player?.name ?? '')).not.toMatch(/LIFTER/);
   });
 
   it('uses the same placing comparator as the board, then prints it', () => {
