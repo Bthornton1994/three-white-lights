@@ -460,9 +460,9 @@ export const RESULT_SHEET_COLUMNS: readonly ResultSheetColumn[] = [
  * [R8] meet-page order, compressed so a 390-wide phone can hold a field:
  * Place, Lifter, Weight, best squat, best bench, best deadlift, Total, points.
  * Sex, division, equipment and class sit on the section heading over the table
- * — the same job [R8] gives `divheader`. Per-attempt cells are not twelve extra
- * columns: they sit inside each lift cell as signed figures ([R3]), under the
- * first-class best.
+ * — the same job [R8] gives `divheader`. The lift columns are BESTS. Per-attempt
+ * cells are data on the card (`signedAttemptText`); they are not twelve extra
+ * columns and they are not a history stacked under the best.
  *
  * No squat+bench subtotal. The committed live-board reference prints one; [R8]
  * published meet pages do not. This list follows [R8].

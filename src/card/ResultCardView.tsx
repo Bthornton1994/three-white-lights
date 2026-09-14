@@ -14,18 +14,17 @@
  * (the same 5-bit paper bank, expanded to CSS) so the sheet and the grid
  * renderer cannot drift onto two palettes.
  *
- * The body is a published flight table, not a one-name plaque and not a
- * two-line recap. One row per lifter. Place is a rank in a field. Squat,
- * bench and deadlift bests are first-class columns. Missed attempts are
- * signed negatives, struck and tinted; good attempts are ink on paper, not
- * scoreboard pills. The committed live-board reference paints every cell and a
- * squat+bench subtotal; [R8] published meet pages do not. This sheet follows
- * [R8] for the subtotal. It keeps the three attempts visible inside each lift
- * cell so a miss is still a recorded fact, not a vanished chip.
+ * The body is a published meet table, not a one-name plaque, not a two-line
+ * recap, and not a box-score with a best stacked over an attempt history. One
+ * row per lifter. Place is a rank in a field. Squat, bench and deadlift print
+ * their bests — the same columns a published meet page shows. Per-attempt
+ * cells live on the live board and on a lifter's attempt grid; [R8] meet
+ * pages do not put them in the lift column. No squat+bench subtotal, for the
+ * same reason. Misses that are not the best are recorded in the card's data
+ * (`signedAttemptText`); they are not a second grammar on this sheet.
  *
- * There is no loaded-bar motif here. A published results sheet records
- * attempts, a best, a total, DOTS and place. Plate colours are gameplay
- * language on the platform, not a cartoon on a scoresheet.
+ * There is no loaded-bar motif here. Plate colours are gameplay language on
+ * the platform, not a cartoon on a scoresheet.
  */
 
 import React from 'react';
@@ -35,8 +34,6 @@ import {
   NO_VALUE_DISPLAY,
   RESULT_FLIGHT_TABLE_COLUMNS,
   flightColumnHeading,
-  signedAttemptText,
-  type AttemptCell,
   type LiftRow,
   type ResultCard,
   type ResultCardFlightRow,
@@ -88,28 +85,6 @@ function colStyle(id: ResultSheetColumnId): StyleProp<ViewStyle> {
   }
 }
 
-function SignedAttempt({ cell }: { readonly cell: AttemptCell }): React.ReactElement {
-  const text = signedAttemptText(cell);
-  if (text === '') {
-    return <View style={styles.attemptLine} />;
-  }
-  const miss = cell.mark === 'no-lift';
-  return (
-    <View style={[styles.attemptLine, miss ? styles.attemptMiss : null]}>
-      <Text
-        style={[
-          styles.attemptText,
-          miss ? styles.cellMissText : styles.cellInk,
-          cell.struckThrough ? styles.struck : null,
-        ]}
-        numberOfLines={1}
-      >
-        {text}
-      </Text>
-    </View>
-  );
-}
-
 function LiftBestCell({ row }: { readonly row: LiftRow }): React.ReactElement {
   return (
     <View style={styles.liftCol}>
@@ -119,9 +94,6 @@ function LiftBestCell({ row }: { readonly row: LiftRow }): React.ReactElement {
       >
         {row.bestText}
       </Text>
-      {row.attempts.map((cell) => (
-        <SignedAttempt key={cell.attemptNumber} cell={cell} />
-      ))}
     </View>
   );
 }
@@ -339,11 +311,12 @@ const styles = StyleSheet.create({
   },
   flightRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     borderBottomWidth: P.RULE,
     borderBottomColor: C.RULE,
     paddingTop: F.ROW_PAD_Y,
     paddingBottom: F.ROW_PAD_Y,
+    minHeight: F.ROW_H,
   },
   rowEven: {
     backgroundColor: C.PAPER,
@@ -358,36 +331,36 @@ const styles = StyleSheet.create({
     width: F.PLACE_W,
     flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
   },
   nameCol: {
     width: F.NAME_W,
     flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
   },
   weightCol: {
     width: F.WEIGHT_W,
     flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
   },
   liftCol: {
     flex: 1,
     paddingHorizontal: F.LIFT_PAD,
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
   },
   totalCol: {
     width: F.TOTAL_W,
     flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
   },
   dotsCol: {
     width: F.DOTS_W,
     flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
   },
   placeText: {
     color: C.INK,
@@ -417,33 +390,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
     textAlign: 'right',
-    marginBottom: P.CELL_INSET,
-  },
-  attemptLine: {
-    height: F.ATTEMPT_LINE_H,
-    justifyContent: 'center',
-    paddingHorizontal: P.CELL_INSET,
-  },
-  attemptMiss: {
-    backgroundColor: C.NOLIFT_LIGHT,
-  },
-  attemptText: {
-    fontSize: F.ATTEMPT_FONT,
-    fontVariant: ['tabular-nums'],
-    textAlign: 'right',
   },
   cellInk: {
     color: C.INK,
   },
-  cellMissText: {
-    color: C.NOLIFT_DARK,
-  },
   inkSoft: {
     color: C.INK_SOFT,
-  },
-  struck: {
-    textDecorationLine: 'line-through',
-    textDecorationColor: C.NOLIFT_DARK,
   },
   footer: {
     marginTop: P.SECTION_GAP,

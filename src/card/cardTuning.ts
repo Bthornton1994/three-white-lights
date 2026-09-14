@@ -583,36 +583,36 @@ export const PAPER = {
   /**
    * Published flight table. Authored against a 390-wide phone. UNTUNED.
    *
-   * One row per lifter: Place, Lifter, Weight, best squat, best bench, best
-   * deadlift, Total, DOTS. That is the default published-results table a weekly
-   * reader parses, not a two-line recap with identity on one line and nine
-   * attempt chips on the next. Missed attempts stay visible as signed
-   * negatives inside the lift cell; they are not a second wrap of scoreboard
-   * chips. No squat+bench subtotal ([R8] published pages do not print one; the
-   * live-board reference does).
+   * One row per lifter: Place, Lifter, Weight, Squat, Bench, Deadlift, Total,
+   * DOTS. Those lift columns are BESTS. That is the default published meet
+   * table a weekly reader parses ([R8]). The live-board reference and a
+   * lifter's attempt grid print every attempt as a peer cell; this sheet does
+   * not stack a history under the best, and it does not wrap nine chips onto
+   * a second line. No squat+bench subtotal ([R8] published pages do not;
+   * the live-board reference does).
    *
    * Column widths have to hold the [R8] headings on one line (`Place`,
    * `Weight`). A 28pt Place column wrapped to "Pla / ce" on a 390-wide
    * capture. Deadlift is the long heading: HEAD_H is tall enough for two
-   * lines so it does not paint into the row below.
+   * lines so it does not paint into the row below. NAME_W has to hold the
+   * longest name on the local field.
    */
   FLIGHT: {
     HEAD_H: 28,
+    ROW_H: 36,
     NAME_W: 100,
     PLACE_W: 40,
     WEIGHT_W: 44,
-    TOTAL_W: 42,
-    DOTS_W: 40,
-    LIFT_PAD: 1,
-    NAME_SIZE: 11,
-    BEST_SIZE: 12,
-    META_SIZE: 10,
-    ATTEMPT_FONT: 10,
-    ATTEMPT_LINE_H: 14,
+    TOTAL_W: 48,
+    DOTS_W: 46,
+    LIFT_PAD: 2,
+    NAME_SIZE: 12,
+    BEST_SIZE: 13,
+    META_SIZE: 11,
     HEAD_SIZE: 8,
     HEAD_TRACKING: 0,
     LIFT_HEAD_SIZE: 8,
-    ROW_PAD_Y: 6,
+    ROW_PAD_Y: 8,
     SECTION_SIZE: 10,
     SECTION_TRACKING: 0.6,
   },

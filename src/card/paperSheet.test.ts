@@ -25,7 +25,6 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(PAPER.MEET_SIZE).toBeGreaterThanOrEqual(16);
     expect(PAPER.FLIGHT.NAME_SIZE).toBeGreaterThanOrEqual(11);
     expect(PAPER.FLIGHT.BEST_SIZE).toBeGreaterThanOrEqual(12);
-    expect(PAPER.FLIGHT.ATTEMPT_FONT).toBeGreaterThanOrEqual(10);
     expect(PAPER.FLIGHT.META_SIZE).toBeGreaterThanOrEqual(10);
     expect(PAPER.FED_SIZE).toBeGreaterThanOrEqual(11);
   });
@@ -88,18 +87,18 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(VIEW).toContain('FlightRowView');
     expect(VIEW).toContain('LiftBestCell');
     expect(VIEW).toContain('row.bestText');
-    expect(VIEW).toContain('signedAttemptText');
     expect(VIEW).toContain('playerRow');
     expect(VIEW).not.toContain('ScoreCell');
     expect(VIEW).not.toContain('ATTEMPT_GRID_HEADINGS');
+    expect(VIEW).not.toContain('signedAttemptText');
   });
 
-  it('strikes a missed attempt without painting goods as scoreboard pills', () => {
-    expect(VIEW).toContain('struckThrough');
-    expect(VIEW).toContain('NOLIFT_LIGHT');
+  it('prints each lift as a published meet-page best, not a stacked attempt history', () => {
+    expect(VIEW).toContain('row.bestText');
+    expect(VIEW).not.toContain('signedAttemptText');
+    expect(VIEW).not.toContain('struckThrough');
+    expect(VIEW).not.toContain('NOLIFT_LIGHT');
     expect(VIEW).not.toContain('GOOD_LIGHT');
-    expect(VIEW).toContain('textDecorationLine');
-    expect(VIEW).toContain('signedAttemptText');
   });
 });
 
