@@ -1131,7 +1131,11 @@ const GUARANTEE_COVERAGE = {
   // 316 -> 315 ON A-VIS-03: CutInView left the 16-bit portrait grid. The
   // Skia-nearest-neighbour composition paragraph no longer trips the
   // capitalised-absolute heuristic. No tagged guarantee moved.
-  TREE_WIDE: 315,
+  // 315 -> 314 ON the shareable paper sheet: ResultCardView left the
+  // nearest-neighbour Skia upscale. The composition paragraph that used
+  // a capitalised-absolute no longer trips the heuristic. No tagged
+  // guarantee moved.
+  TREE_WIDE: 314,
 } as const;
 
 // ---------------------------------------------------------------------------
