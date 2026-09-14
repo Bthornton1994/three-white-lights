@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     justifyContent: 'center',
     alignItems: 'flex-end',
-    paddingRight: 2,
+    paddingRight: F.INDEX_PAD,
   },
   totalCol: {
     width: F.TOTAL_W,

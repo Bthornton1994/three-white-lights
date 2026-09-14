@@ -607,6 +607,7 @@ export const PAPER = {
     TOTAL_W: 42,
     DOTS_W: 44,
     INDEX_W: 12,
+    INDEX_PAD: 2,
     LIFT_PAD: 1,
     NAME_SIZE: 11,
     BEST_SIZE: 12,
