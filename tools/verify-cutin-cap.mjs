@@ -983,6 +983,12 @@ async function driveMeet(intent, searchIn) {
   let search = searchIn;
   for (;;) {
     const state = await read();
+    // Photograph before branching. A walk-out interrupt that un-mounts
+    // `meet-walkout` would otherwise fall through to the 40ms wait at the
+    // bottom of this loop and never enter `until`, which is the only place
+    // the shutter used to run. The in-page recorder still saw those overlays
+    // (1.7s spans, zero frames).
+    await maybePhotographCutIn(state);
 
     if (meetIsOver(state)) {
       const settled = await until((s) => s.recap || s.refused || s.bombed, RECAP_SETTLE_MS);
