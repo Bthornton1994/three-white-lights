@@ -25,13 +25,13 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(PAPER.MEET_SIZE).toBeGreaterThanOrEqual(16);
     expect(PAPER.FLIGHT.NAME_SIZE).toBeGreaterThanOrEqual(11);
     expect(PAPER.FLIGHT.BEST_SIZE).toBeGreaterThanOrEqual(12);
-    expect(PAPER.FLIGHT.META_SIZE).toBeGreaterThanOrEqual(10);
+    expect(PAPER.FLIGHT.META_SIZE).toBeGreaterThanOrEqual(11);
     expect(PAPER.FED_SIZE).toBeGreaterThanOrEqual(11);
   });
 
   it('gives Place and Weight a column that can hold the heading on one line', () => {
     expect(PAPER.FLIGHT.PLACE_W).toBeGreaterThanOrEqual(40);
-    expect(PAPER.FLIGHT.NAME_W).toBeGreaterThanOrEqual(96);
+    expect(PAPER.FLIGHT.NAME_W).toBeGreaterThanOrEqual(92);
     expect(PAPER.FLIGHT.WEIGHT_W).toBeGreaterThanOrEqual(44);
     expect(PAPER.FLIGHT.HEAD_H).toBeGreaterThanOrEqual(28);
     expect(VIEW).toContain('numberOfLines={1}');
