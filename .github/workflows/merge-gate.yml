@@ -9,14 +9,52 @@
 #   push to the integration branch — the SHA that actually reached origin.
 #     This run has already shipped a red tip from a merge that looked clean
 #     in isolation; a PR-only gate would not have seen that commit.
+#
+# Conservation (phase 2):
+#   - Workflow concurrency cancels superseded pull_request runs only.
+#     Push runs keep cancel-in-progress false so an integration-tip gate is
+#     not dropped by a later push of a different SHA.
+#   - Checkout is depth=1. Freeze guards still git-diff historical SHAs;
+#     those objects are fetched explicitly. Do not restore fetch-depth: 0.
+#     Do not delete the freeze guards.
+#   - PR/push path-ignore skips inert docs/reference and README-only diffs.
+#     CLAUDE.md is NOT ignored (tools/claudeIndex.test.ts reads it).
+#   - Branch filters limit the expensive gate to main and the Session A
+#     integration line. Feature-head stacks do not each pay a full suite.
+#   - npm cache via setup-node, timeout, tsc + vitest, audit-gate: kept.
+#   - No Playwright browser install. No StageForge adapter. Does not close PRs.
+#
+# Path-filtered workflows can skip. merge-gate-guard.yml is the always-run
+# required-check placeholder so a later required status cannot stick on a
+# skipped gate.
 
 name: merge-gate
 
 on:
   pull_request:
+    branches:
+      - main
+      - grok/session-a-main-loop
+    paths-ignore:
+      - 'README.md'
+      - 'BUILD_PROMPT_CLAUDE.md'
+      - 'docs/reference/**'
+      - '.cursor/**'
   push:
     branches:
-      - claude/agent-config-setup-m2r6ny
+      - grok/session-a-main-loop
+    paths-ignore:
+      - 'README.md'
+      - 'BUILD_PROMPT_CLAUDE.md'
+      - 'docs/reference/**'
+      - '.cursor/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
   gate:
@@ -24,11 +62,18 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
+
+      - name: Fetch freeze SHAs for git-diff guards
+        run: |
+          node .github/scripts/fetch-freeze-shas.mjs --self-test
+          node .github/scripts/fetch-freeze-shas.mjs
 
       - name: Install
         run: npm ci
