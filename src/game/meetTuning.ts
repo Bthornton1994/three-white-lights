@@ -196,7 +196,7 @@ export interface FieldLifterSpec {
  * lifter (starting e1RM 180/120/220) so a third deadlift can move a place.
  * Names are fictional.
  *
- * Bodyweights make the player's class on this sheet. IPF-style men's 93 is
+ * Bodyweights make the player's class on this sheet. Men's 93 here is
  * ≤93.00 (`WEIGHT_CLASSES_KG.male` in resultCard.ts). A row over that limit
  * is a 105 kg lifter printed in MEN'S RAW OPEN 93.
  */

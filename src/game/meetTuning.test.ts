@@ -357,7 +357,7 @@ describe('MEET_ENTRY', () => {
 });
 
 describe('MEET_FIELD_FIXTURE', () => {
-  it('every named competitor makes the same IPF-style class as the player', () => {
+  it('every named competitor makes the same weight class as the player', () => {
     const classes = WEIGHT_CLASSES_KG[MEET_ENTRY.sex];
     const playerClass = weightClassString(MEET_ENTRY.bodyweight.kilograms, classes);
     expect(playerClass).toBe('93');
