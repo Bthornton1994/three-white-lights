@@ -30,9 +30,9 @@
  *     print.
  *   - THE LIFTER AND THE FIELD. `MEET_ENTRY.name` reaches the weigh-in and
  *     in-meet debug beats. GDD §6.5's recap and shareable card preview print
- *     `SHAREABLE_PREVIEW_NAME` (same spelling Create Lifter tests use) so
+ *     `SHAREABLE_PREVIEW_NAME` (a given name a published table would print) so
  *     the published table is not a job-title row. A1's named flight
- *     (`MEET_FIELD_FIXTURE`) is scanned here too — invented initials and
+ *     (`MEET_FIELD_FIXTURE`) is scanned here too — invented given names and
  *     surnames, not a real athlete roster. `ghostTotalsKg` remains a
  *     kilogram list for the residual placing helper; live placing is the
  *     fixture replayed through `meet.ts`.
@@ -175,7 +175,7 @@ describe('nothing meet day can draw is a real identity (GDD §12.3)', () => {
     // asked to believe a job title won the flight.
     expect(SHAREABLE_PREVIEW_NAME).not.toBe(MEET_ENTRY.name);
     expect(SHAREABLE_PREVIEW_NAME).not.toMatch(/LIFTER/);
-    expect(SHAREABLE_PREVIEW_NAME).toMatch(/^[A-Z]\.\s+[A-Z][A-Z-]*$/);
+    expect(SHAREABLE_PREVIEW_NAME).toMatch(/^[A-Z][a-z]+(?:[ -][A-Z][a-z]+)+$/);
   });
 
   it('invents a federation and a meet, and does not leave them blank', () => {
@@ -197,7 +197,7 @@ describe('nothing meet day can draw is a real identity (GDD §12.3)', () => {
     }
     expect(MEET_FIELD_FIXTURE.length).toBeGreaterThan(2);
     for (const spec of MEET_FIELD_FIXTURE) {
-      expect(spec.name).toMatch(/^[A-Z]\.\s+[A-Z][A-Z-]*$/);
+      expect(spec.name).toMatch(/^[A-Z][a-z]+(?:[ -][A-Z][a-z]+)+$/);
     }
   });
 

@@ -49,7 +49,7 @@ describe('the shareable card carries the flight', () => {
     expect(previewStateFor({ moment: 'recap' }).context.entry.name).toBe(SHAREABLE_PREVIEW_NAME);
     const player = flightEntriesForCard(state, undefined).find((row) => row.isPlayer);
     expect(player?.name).toBe(SHAREABLE_PREVIEW_NAME);
-    expect(flightLifterName(player?.name ?? '')).toBe('VELLUM, R.');
+    expect(flightLifterName(player?.name ?? '')).toBe(SHAREABLE_PREVIEW_NAME);
     expect(flightLifterName(player?.name ?? '')).not.toMatch(/LIFTER/);
   });
 
@@ -69,7 +69,7 @@ describe('the shareable card carries the flight', () => {
     expect(player?.place).toBe(placing.place);
     expect(player?.placeText).toBe(built.recap.placeText);
     expect(player?.bodyweightText).toBe('92.40');
-    expect(card.field.some((row) => row.name === 'M. ASHFORD')).toBe(true);
+    expect(card.field.some((row) => row.name === 'Cal Wether')).toBe(true);
     for (const row of card.field) {
       expect(
         weightClassString(Number(row.bodyweightText), WEIGHT_CLASSES_KG.male),
@@ -85,9 +85,9 @@ describe('the shareable card carries the flight', () => {
       .flatMap((row) => row.rows.flatMap((lift) => [...lift.attempts]))
       .filter((cell) => cell.mark === 'no-lift').length;
     expect(printedMisses).toBe(plannedMisses);
-    const harrow = card.field.find((row) => row.name === 'J. HARROW');
+    const harrow = card.field.find((row) => row.name === 'Jon Harrow');
     expect(harrow).toBeDefined();
-    if (harrow === undefined) throw new Error('J. HARROW missing from the flight');
+    if (harrow === undefined) throw new Error('Jon Harrow missing from the flight');
     const bench = harrow.rows.find((lift) => lift.lift === 'bench');
     expect(bench?.bestText).toBe('117.5');
     expect(bench?.attempts.map((cell) => signedAttemptText(cell))).toEqual(['107.5', '117.5', '-120']);

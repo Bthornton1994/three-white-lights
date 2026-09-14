@@ -498,17 +498,18 @@ export function flightColumnHeading(id: ResultSheetColumnId): string {
 }
 
 /**
- * Surname first, the way a published meet table sets a name ("ASHFORD, M.").
+ * How a published meet page sets a name.
  *
- * The fixture and the identity scan keep "M. ASHFORD" — an initial and a
- * surname, not a realistic given name (GDD §12.3). The sheet rearranges that
- * same string. Names that are not "X. SURNAME" print unchanged.
+ * Published meet tables print given name then surname. An
+ * initial-plus-surname string (the debug fixture `A. LIFTER`) still
+ * rearranges to surname-first so a job title is not mistaken for a
+ * forename. Given names already in "First Last" form print as stored.
  */
 export function flightLifterName(name: string): string {
   const trimmed = name.trim();
   const match = /^([A-Za-z])\.\s+(.+)$/.exec(trimmed);
   if (match === null || match[1] === undefined || match[2] === undefined) {
-    return trimmed.toUpperCase();
+    return trimmed;
   }
   return `${match[2]}, ${match[1]}.`.toUpperCase();
 }

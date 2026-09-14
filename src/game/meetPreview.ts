@@ -232,12 +232,13 @@ export function previewContext(): MeetDayContext {
  * GDD §6.5 / §12.2 Result card bar is a published table a weekly reader
  * A/Bs against a real federation sheet. A first-place row that prints
  * that job title fails the bar. Career Meet's produced identity is the
- * A2 seam (`kilogramMeetEntryFrom`); Create Lifter tests already use
- * this spelling. The overlay is the debug photograph of that sheet.
- * Lot, bodyweight, sex, division, and equipment stay `MEET_ENTRY` so
- * class and totals do not move.
+ * A2 seam (`kilogramMeetEntryFrom`). Create Lifter persistence tests
+ * still use an initial-plus-surname spelling; this overlay is the
+ * given name a published meet table would print. Lot, bodyweight, sex,
+ * division, and equipment stay `MEET_ENTRY` so class and totals do not
+ * move.
  */
-export const SHAREABLE_PREVIEW_NAME = 'R. VELLUM';
+export const SHAREABLE_PREVIEW_NAME = 'Ada Vellum';
 
 function shareablePreviewContext(): MeetDayContext {
   return {

@@ -600,7 +600,7 @@ export const PAPER = {
    * `Weight`). A 28pt Place column wrapped to "Pla / ce" on a 390-wide
    * capture. Deadlift is the long heading: HEAD_H is tall enough for two
    * lines so it does not paint into the row below. NAME_W has to hold the
-   * longest name on the local field, surname-first ("PEMBROKE, R.").
+   * longest name on the local field ("Rex Pembroke").
    */
   FLIGHT: {
     HEAD_H: 28,

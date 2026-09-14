@@ -160,8 +160,8 @@ describe('platform order — weight then lot', () => {
   it('names who just went and who is on deck from the same order', () => {
     const field = buildMeetField(MEET_FIELD_FIXTURE, DEFAULT_MEET_RULES, SEED, playerLot);
     const reveal = revealForDeclaration('squat', 1, 160);
-    expect(whoJustWent(field, reveal, 160, MEET_ENTRY.name)).toBe('R. PEMBROKE');
-    expect(onDeckName(field, reveal, 160, MEET_ENTRY.name)).toBe('J. HARROW');
+    expect(whoJustWent(field, reveal, 160, MEET_ENTRY.name)).toBe('Rex Pembroke');
+    expect(onDeckName(field, reveal, 160, MEET_ENTRY.name)).toBe('Jon Harrow');
   });
 
   it('equal-weight later lot is on deck after the player at 165', () => {
@@ -176,9 +176,9 @@ describe('platform order — weight then lot', () => {
     ].sort(comparePlatformOrder);
     const playerIndex = ordered.findIndex((slot) => slot.name === MEET_ENTRY.name);
     expect(playerIndex).toBeGreaterThanOrEqual(0);
-    expect(ordered[playerIndex + 1]?.name).toBe('R. PEMBROKE');
-    expect(onDeckName(field, reveal, 165, MEET_ENTRY.name)).toBe('R. PEMBROKE');
-    expect(whoJustWent(field, reveal, 165, MEET_ENTRY.name)).toBe('T. LINN');
+    expect(ordered[playerIndex + 1]?.name).toBe('Rex Pembroke');
+    expect(onDeckName(field, reveal, 165, MEET_ENTRY.name)).toBe('Rex Pembroke');
+    expect(whoJustWent(field, reveal, 165, MEET_ENTRY.name)).toBe('Ned Linn');
   });
 });
 
