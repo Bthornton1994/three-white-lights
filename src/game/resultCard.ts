@@ -463,11 +463,12 @@ export const RESULT_SHEET_COLUMNS: readonly ResultSheetColumn[] = [
  * heading over the table — the same job [R8] gives `divheader`.
  *
  * The lift columns are the three attempts [R9] groups under each lift on a
- * lifter page. A fourth BEST column is still on `RESULT_SHEET_COLUMNS` and on
- * each `LiftRow`; it does not get its own cell here, because nine attempt
- * cells plus identity already fill 390. The made best among the three is
- * the cell `flightAttemptView` marks `best`. Misses use `AttemptCell.text`
- * plus `struckThrough`, not a minus sign.
+ * lifter page. A 390-wide phone cannot hold nine peer columns beside a name
+ * without clipping kilos, so the sheet prints those three attempts as a
+ * stack under the lift heading. A fourth BEST column is still on
+ * `RESULT_SHEET_COLUMNS` and on each `LiftRow`; it does not get its own cell
+ * here. The made best among the three is the cell `flightAttemptView` marks
+ * `best`. Misses use `AttemptCell.text` plus `struckThrough`, not a minus sign.
  *
  * No squat+bench subtotal. The committed live-board reference prints one; [R8]
  * published meet pages do not.
@@ -503,10 +504,15 @@ const FLIGHT_ATTEMPT_COLUMN_SPEC: Readonly<
   deadlift3: { lift: 'deadlift', index: 2 },
 };
 
-/** Group labels over the three-attempt blocks on the shareable sheet. */
+/** Group labels over the three stacked attempts on the shareable sheet. */
 export const FLIGHT_LIFT_GROUPS: readonly {
   readonly headingId: 'bestSquat' | 'bestBench' | 'bestDeadlift';
-}[] = [{ headingId: 'bestSquat' }, { headingId: 'bestBench' }, { headingId: 'bestDeadlift' }];
+  readonly attempts: readonly [ResultSheetColumnId, ResultSheetColumnId, ResultSheetColumnId];
+}[] = [
+  { headingId: 'bestSquat', attempts: ['squat1', 'squat2', 'squat3'] },
+  { headingId: 'bestBench', attempts: ['bench1', 'bench2', 'bench3'] },
+  { headingId: 'bestDeadlift', attempts: ['deadlift1', 'deadlift2', 'deadlift3'] },
+];
 
 export interface FlightAttemptView {
   readonly text: string;

@@ -23,19 +23,18 @@ describe('the shareable sheet is a printed scoresheet', () => {
 
   it('sets type large enough to read as a sheet, not as a sprite caption', () => {
     expect(PAPER.MEET_SIZE).toBeGreaterThanOrEqual(16);
-    expect(PAPER.FLIGHT.NAME_SIZE).toBeGreaterThanOrEqual(10);
-    expect(PAPER.FLIGHT.BEST_SIZE).toBeGreaterThanOrEqual(10);
-    expect(PAPER.FLIGHT.ATTEMPT_SIZE).toBeGreaterThanOrEqual(8);
-    expect(PAPER.FLIGHT.META_SIZE).toBeGreaterThanOrEqual(9);
+    expect(PAPER.FLIGHT.NAME_SIZE).toBeGreaterThanOrEqual(11);
+    expect(PAPER.FLIGHT.BEST_SIZE).toBeGreaterThanOrEqual(12);
+    expect(PAPER.FLIGHT.ATTEMPT_SIZE).toBeGreaterThanOrEqual(10);
+    expect(PAPER.FLIGHT.META_SIZE).toBeGreaterThanOrEqual(11);
     expect(PAPER.FED_SIZE).toBeGreaterThanOrEqual(11);
   });
 
   it('gives Place, names, and Weight a column that can hold the heading on one line', () => {
-    expect(PAPER.FLIGHT.PLACE_W).toBeGreaterThanOrEqual(28);
-    expect(PAPER.FLIGHT.NAME_W).toBeGreaterThanOrEqual(70);
-    expect(PAPER.FLIGHT.WEIGHT_W).toBeGreaterThanOrEqual(32);
-    expect(PAPER.FLIGHT.HEAD_H).toBeGreaterThanOrEqual(16);
-    expect(PAPER.FLIGHT.GROUP_H).toBeGreaterThanOrEqual(12);
+    expect(PAPER.FLIGHT.PLACE_W).toBeGreaterThanOrEqual(40);
+    expect(PAPER.FLIGHT.NAME_W).toBeGreaterThanOrEqual(92);
+    expect(PAPER.FLIGHT.WEIGHT_W).toBeGreaterThanOrEqual(44);
+    expect(PAPER.FLIGHT.HEAD_H).toBeGreaterThanOrEqual(28);
     expect(VIEW).toContain('numberOfLines={1}');
     expect(VIEW).toContain('flexShrink: 0');
   });
@@ -87,16 +86,17 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(VIEW).toContain('flightColumnHeading');
     expect(VIEW).toContain('RESULT_FLIGHT_TABLE_COLUMNS');
     expect(VIEW).toContain('FlightRowView');
-    expect(VIEW).toContain('FlightCell');
+    expect(VIEW).toContain('LiftAttemptStack');
     expect(VIEW).toContain('flightAttemptView');
     expect(VIEW).toContain('playerRow');
     expect(VIEW).not.toContain('ScoreCell');
     expect(VIEW).not.toContain('LiftBestCell');
   });
 
-  it('prints each lift as three attempt cells, misses struck, not a stacked history', () => {
+  it('prints each lift as three attempt cells, misses struck, not a clipped nine-column grid', () => {
     expect(VIEW).toContain('flightAttemptView');
     expect(VIEW).toContain('FLIGHT_LIFT_GROUPS');
+    expect(VIEW).toContain('LiftAttemptStack');
     expect(VIEW).toContain('struckThrough');
     expect(VIEW).not.toContain('signedAttemptText');
     expect(VIEW).not.toContain('NOLIFT_LIGHT');
@@ -109,7 +109,8 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(VIEW).toContain('odd ? styles.rowOdd : styles.rowEven');
     expect(VIEW).toContain('flightLifterName');
     expect(SCREEN).toContain('flex: 1');
-    expect(PAPER.FLIGHT.ROW_H).toBeLessThanOrEqual(26);
+    expect(PAPER.FLIGHT.ROW_H).toBeGreaterThanOrEqual(40);
+    expect(PAPER.FLIGHT.ROW_H).toBeLessThanOrEqual(52);
   });
 });
 
