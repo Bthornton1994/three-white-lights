@@ -34,7 +34,8 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(PAPER.FLIGHT.PLACE_W).toBeGreaterThanOrEqual(32);
     expect(PAPER.FLIGHT.NAME_W).toBeGreaterThanOrEqual(88);
     expect(PAPER.FLIGHT.WEIGHT_W).toBeGreaterThanOrEqual(40);
-    expect(PAPER.FLIGHT.HEAD_H).toBeGreaterThanOrEqual(28);
+    expect(PAPER.FLIGHT.DOTS_W).toBeGreaterThanOrEqual(48);
+    expect(PAPER.FLIGHT.HEAD_H).toBeGreaterThanOrEqual(20);
     expect(VIEW).toContain('numberOfLines={1}');
     expect(VIEW).toContain('flexShrink: 0');
   });
@@ -62,7 +63,8 @@ describe('the shareable sheet is a printed scoresheet', () => {
       'card.lifter.categoryText',
       'card.field',
       'flightColumnHeading',
-      'RESULT_FLIGHT_TABLE_COLUMNS',
+      'RESULT_CLASS_TABLE_COLUMNS',
+      'RESULT_ATTEMPT_TABLE_COLUMNS',
       'CARD_LABELS.DOCUMENT_KIND',
     ]) {
       expect(VIEW, token).toContain(token);
@@ -84,33 +86,39 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(VIEW).toContain('card.field');
     expect(VIEW).toContain('row.isPlayer');
     expect(VIEW).toContain('flightColumnHeading');
-    expect(VIEW).toContain('RESULT_FLIGHT_TABLE_COLUMNS');
-    expect(VIEW).toContain('FlightRowView');
-    expect(VIEW).toContain('LiftAttemptStack');
+    expect(VIEW).toContain('RESULT_CLASS_TABLE_COLUMNS');
+    expect(VIEW).toContain('RESULT_ATTEMPT_TABLE_COLUMNS');
+    expect(VIEW).toContain('ClassRowView');
+    expect(VIEW).toContain('AttemptRowView');
     expect(VIEW).toContain('flightAttemptView');
+    expect(VIEW).toContain('flightBestText');
     expect(VIEW).toContain('playerRow');
     expect(VIEW).not.toContain('ScoreCell');
     expect(VIEW).not.toContain('LiftBestCell');
+    expect(VIEW).not.toContain('LiftAttemptStack');
   });
 
-  it('prints each lift as three attempt cells, misses struck, not a clipped nine-column grid', () => {
+  it('prints each lift as S1..D3 peer cells, misses struck, one row per competitor', () => {
     expect(VIEW).toContain('flightAttemptView');
-    expect(VIEW).toContain('ATTEMPT_GRID_HEADINGS');
-    expect(VIEW).toContain('LiftAttemptStack');
+    expect(VIEW).toContain('sheetColumnHeading');
+    expect(VIEW).toContain('RESULT_ATTEMPT_TABLE_COLUMNS');
     expect(VIEW).toContain('struckThrough');
     expect(VIEW).not.toContain('signedAttemptText');
     expect(VIEW).not.toContain('NOLIFT_LIGHT');
     expect(VIEW).not.toContain('GOOD_LIGHT');
+    expect(VIEW).not.toContain('LiftAttemptStack');
+    expect(PAPER.FLIGHT.ATTEMPT_COL_W).toBeGreaterThanOrEqual(30);
+    expect(PAPER.FLIGHT.ATTEMPT_ROW_H).toBeLessThanOrEqual(28);
   });
 
-  it('fills the capture as a page of paper, without a gold winner row', () => {
-    expect(VIEW).toContain('flex: 1');
+  it('packs the sheet around the tables, without a gold winner row', () => {
+    expect(VIEW).not.toContain('flex: 1');
     expect(VIEW).not.toContain('pageFill');
     expect(VIEW).toContain('odd ? styles.rowOdd : styles.rowEven');
     expect(VIEW).toContain('flightLifterName');
     expect(SCREEN).toContain('flex: 1');
-    expect(PAPER.FLIGHT.ROW_H).toBeGreaterThanOrEqual(40);
-    expect(PAPER.FLIGHT.ROW_H).toBeLessThanOrEqual(52);
+    expect(PAPER.FLIGHT.ROW_H).toBeGreaterThanOrEqual(20);
+    expect(PAPER.FLIGHT.ROW_H).toBeLessThanOrEqual(28);
   });
 });
 

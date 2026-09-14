@@ -14,17 +14,13 @@
  * (the same 5-bit paper bank, expanded to CSS) so the sheet and the grid
  * renderer cannot drift onto two palettes.
  *
- * The body is a published meet table, not a one-name plaque, not a two-line
- * recap, and not a box-score with a best stacked over an attempt history. One
- * row per lifter. Place is a rank in a field. Each lift is three attempt
- * cells — the scoresheet grid — driven by `RESULT_FLIGHT_TABLE_COLUMNS` and
- * `flightAttemptView`. On 390-wide paper those three sit in a stack under the
- * lift heading so the kilos stay whole. Misses are struck. The made best is
- * the heavier weight, not a fourth column. No squat+bench subtotal.
+ * Two published tables, one competitor per row on each. The class table is
+ * the [R8] meet page (bests). The attempt table is S1..D3 ([R6]). Misses
+ * are struck. No squat+bench subtotal. No gold winner fill; zebra is the
+ * same at every place.
  *
- * The sheet fills the phone. The table does not stretch with it — six packed
- * rows on a full page of paper, footer rule at the bottom. No gold winner
- * fill; zebra is the same at every place.
+ * The sheet hugs the tables. Leftover cream on a tall phone is outside the
+ * document, not empty page inside it.
  *
  * There is no loaded-bar motif here. Plate colours are gameplay language on
  * the platform, not a cartoon on a scoresheet.
@@ -34,11 +30,11 @@ import React from 'react';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import {
-  ATTEMPT_GRID_HEADINGS,
-  FLIGHT_LIFT_GROUPS,
   NO_VALUE_DISPLAY,
-  RESULT_FLIGHT_TABLE_COLUMNS,
+  RESULT_ATTEMPT_TABLE_COLUMNS,
+  RESULT_CLASS_TABLE_COLUMNS,
   flightAttemptView,
+  flightBestText,
   flightColumnHeading,
   flightLifterName,
   sheetColumnHeading,
@@ -51,6 +47,7 @@ import { SHEET_CSS } from './sheetPalette';
 
 const P = PAPER;
 const F = PAPER.FLIGHT;
+const CERT = PAPER.CERT;
 const C = SHEET_CSS;
 
 export interface ResultCardViewProps {
@@ -71,7 +68,7 @@ function DoubleRule(): React.ReactElement {
   );
 }
 
-function identityCol(id: ResultSheetColumnId): StyleProp<ViewStyle> | null {
+function classCol(id: ResultSheetColumnId): StyleProp<ViewStyle> | null {
   switch (id) {
     case 'place':
       return styles.placeCol;
@@ -79,6 +76,10 @@ function identityCol(id: ResultSheetColumnId): StyleProp<ViewStyle> | null {
       return styles.nameCol;
     case 'bodyweight':
       return styles.weightCol;
+    case 'bestSquat':
+    case 'bestBench':
+    case 'bestDeadlift':
+      return styles.bestCol;
     case 'total':
       return styles.totalCol;
     case 'dots':
@@ -88,89 +89,27 @@ function identityCol(id: ResultSheetColumnId): StyleProp<ViewStyle> | null {
   }
 }
 
-function HeadCell({
-  id,
-  align,
-}: {
-  readonly id: ResultSheetColumnId;
-  readonly align: 'left' | 'right';
-}): React.ReactElement {
-  const col = identityCol(id);
-  if (col === null) return <></>;
+function ClassHead(): React.ReactElement {
   return (
-    <View style={[styles.headCell, col]}>
-      <Text
-        style={[styles.headText, align === 'right' ? styles.headRight : null]}
-        numberOfLines={1}
-      >
-        {flightColumnHeading(id)}
-      </Text>
-    </View>
-  );
-}
-
-function FlightHead(): React.ReactElement {
-  const identity = RESULT_FLIGHT_TABLE_COLUMNS.filter((id) => identityCol(id) !== null);
-  const beforeLifts = identity.filter((id) => id !== 'total' && id !== 'dots');
-  const afterLifts = identity.filter((id) => id === 'total' || id === 'dots');
-  return (
-    <View style={styles.flightHead}>
-      {beforeLifts.map((id) => (
-        <HeadCell
-          key={id}
-          id={id}
-          align={id === 'place' || id === 'lifter' ? 'left' : 'right'}
-        />
-      ))}
-      <View style={styles.indexCol} />
-      {FLIGHT_LIFT_GROUPS.map((group) => (
-        <View key={group.headingId} style={styles.liftCol}>
-          <Text style={[styles.headText, styles.liftHeadText, styles.headRight]} numberOfLines={1}>
-            {sheetColumnHeading(group.headingId)}
-          </Text>
-        </View>
-      ))}
-      {afterLifts.map((id) => (
-        <HeadCell key={id} id={id} align="right" />
-      ))}
-    </View>
-  );
-}
-
-function LiftAttemptStack({
-  row,
-  attempts,
-}: {
-  readonly row: ResultCardFlightRow;
-  readonly attempts: readonly [ResultSheetColumnId, ResultSheetColumnId, ResultSheetColumnId];
-}): React.ReactElement {
-  return (
-    <View style={styles.liftCol}>
-      {attempts.map((id) => {
-        const attempt = flightAttemptView(row, id);
-        if (attempt === null) {
-          return <View key={id} />;
-        }
-        const printed = attempt.struckThrough ? `-${attempt.text}` : attempt.text;
-        return (
+    <View style={styles.tableHead}>
+      {RESULT_CLASS_TABLE_COLUMNS.map((id) => (
+        <View key={id} style={[styles.headCell, classCol(id)]}>
           <Text
-            key={id}
             style={[
-              styles.attemptText,
-              attempt.struckThrough ? styles.attemptMiss : styles.cellInk,
-              attempt.best ? styles.attemptBest : null,
+              styles.headText,
+              id === 'place' || id === 'lifter' ? null : styles.headRight,
             ]}
             numberOfLines={1}
           >
-            {printed}
+            {flightColumnHeading(id)}
           </Text>
-        );
-      })}
+        </View>
+      ))}
     </View>
   );
 }
 
-function FlightCell({
+function ClassCell({
   row,
   id,
 }: {
@@ -204,6 +143,19 @@ function FlightCell({
       </View>
     );
   }
+  const best = flightBestText(row, id);
+  if (best !== null) {
+    return (
+      <View style={styles.bestCol}>
+        <Text
+          style={[styles.bestText, best === NO_VALUE_DISPLAY ? styles.inkSoft : styles.cellInk]}
+          numberOfLines={1}
+        >
+          {best}
+        </Text>
+      </View>
+    );
+  }
   if (id === 'total') {
     return (
       <View style={styles.totalCol}>
@@ -231,41 +183,88 @@ function FlightCell({
   return null;
 }
 
-function FlightRowView({
+function ClassRowView({
   row,
   odd,
 }: {
   readonly row: ResultCardFlightRow;
   readonly odd: boolean;
 }): React.ReactElement {
-  const identity = RESULT_FLIGHT_TABLE_COLUMNS.filter((id) => identityCol(id) !== null);
-  const beforeLifts = identity.filter((id) => id !== 'total' && id !== 'dots');
-  const afterLifts = identity.filter((id) => id === 'total' || id === 'dots');
   return (
     <View
-      style={[
-        styles.flightRow,
-        odd ? styles.rowOdd : styles.rowEven,
-        row.isPlayer ? styles.playerRow : null,
-      ]}
+      style={[styles.tableRow, odd ? styles.rowOdd : styles.rowEven, row.isPlayer ? styles.playerRow : null]}
       testID={`result-card-flight-row-${row.id}`}
     >
-      {beforeLifts.map((id) => (
-        <FlightCell key={id} row={row} id={id} />
+      {RESULT_CLASS_TABLE_COLUMNS.map((id) => (
+        <ClassCell key={id} row={row} id={id} />
       ))}
-      <View style={styles.indexCol}>
-        {ATTEMPT_GRID_HEADINGS.attempts.map((label) => (
-          <Text key={label} style={styles.attemptIndex} numberOfLines={1}>
-            {label}
-          </Text>
-        ))}
+    </View>
+  );
+}
+
+function AttemptHead(): React.ReactElement {
+  return (
+    <View style={styles.tableHead}>
+      <View style={styles.attemptNameCol}>
+        <Text style={styles.headText} numberOfLines={1}>
+          {flightColumnHeading('lifter')}
+        </Text>
       </View>
-      {FLIGHT_LIFT_GROUPS.map((group) => (
-        <LiftAttemptStack key={group.headingId} row={row} attempts={group.attempts} />
+      {RESULT_ATTEMPT_TABLE_COLUMNS.map((id) => (
+        <View key={id} style={styles.attemptCol}>
+          <Text style={[styles.headText, styles.headRight]} numberOfLines={1}>
+            {sheetColumnHeading(id)}
+          </Text>
+        </View>
       ))}
-      {afterLifts.map((id) => (
-        <FlightCell key={id} row={row} id={id} />
-      ))}
+    </View>
+  );
+}
+
+function AttemptRowView({
+  row,
+  odd,
+}: {
+  readonly row: ResultCardFlightRow;
+  readonly odd: boolean;
+}): React.ReactElement {
+  return (
+    <View style={[styles.attemptRow, odd ? styles.rowOdd : styles.rowEven, row.isPlayer ? styles.playerRow : null]}>
+      <View style={styles.attemptNameCol}>
+        <Text style={styles.nameText} numberOfLines={1}>
+          {flightLifterName(row.name)}
+        </Text>
+      </View>
+      {RESULT_ATTEMPT_TABLE_COLUMNS.map((id) => {
+        const attempt = flightAttemptView(row, id);
+        if (attempt === null) {
+          return <View key={id} style={styles.attemptCol} />;
+        }
+        const printed = attempt.struckThrough ? `-${attempt.text}` : attempt.text;
+        return (
+          <View key={id} style={styles.attemptCol}>
+            <Text
+              style={[
+                styles.attemptText,
+                attempt.struckThrough ? styles.attemptMiss : styles.cellInk,
+                attempt.best ? styles.attemptBest : null,
+              ]}
+              numberOfLines={1}
+            >
+              {printed}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function SignLine({ label }: { readonly label: string }): React.ReactElement {
+  return (
+    <View style={styles.signLine}>
+      <Text style={styles.certText}>{label}</Text>
+      <View style={styles.signRule} />
     </View>
   );
 }
@@ -291,15 +290,35 @@ export function ResultCardView({ card }: ResultCardViewProps): React.ReactElemen
 
       <Text style={styles.section}>{card.lifter.categoryText}</Text>
 
-      <View style={styles.flight} testID="result-card-flight">
-        <FlightHead />
+      <View style={styles.table} testID="result-card-flight">
+        <ClassHead />
         {card.field.map((row, index) => (
-          <FlightRowView key={row.id} row={row} odd={index % 2 === 1} />
+          <ClassRowView key={row.id} row={row} odd={index % 2 === 1} />
         ))}
       </View>
 
-      <View style={styles.footer}>
+      <Text style={styles.section}>{CARD_LABELS.ATTEMPTS_SECTION}</Text>
+
+      <View style={styles.table} testID="result-card-attempts">
+        <AttemptHead />
+        {card.field.map((row, index) => (
+          <AttemptRowView key={row.id} row={row} odd={index % 2 === 1} />
+        ))}
+      </View>
+
+      <View style={styles.cert}>
         <View style={styles.rule} />
+        <Text style={styles.certText}>{CARD_LABELS.POSTED}</Text>
+        <View style={styles.signBlock}>
+          <SignLine label={CARD_LABELS.REFEREE_1} />
+          <SignLine label={CARD_LABELS.REFEREE_2} />
+          <SignLine label={CARD_LABELS.REFEREE_3} />
+          <SignLine label={CARD_LABELS.TECHNICAL_SECRETARY} />
+        </View>
+        <View style={styles.mastheadRow}>
+          <Text style={styles.certText}>{CARD_LABELS.UNSIGNED}</Text>
+          <Text style={styles.certText}>{CARD_LABELS.PAGE}</Text>
+        </View>
       </View>
     </View>
   );
@@ -307,7 +326,6 @@ export function ResultCardView({ card }: ResultCardViewProps): React.ReactElemen
 
 const styles = StyleSheet.create({
   sheet: {
-    flex: 1,
     width: P.W,
     backgroundColor: C.PAPER,
     paddingHorizontal: P.PAD_X,
@@ -368,13 +386,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontStyle: 'normal',
   },
-  flight: {
+  table: {
     marginTop: P.NAME_GAP,
     borderTopWidth: P.RULE,
     borderBottomWidth: P.RULE,
     borderColor: C.INK,
   },
-  flightHead: {
+  tableHead: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     backgroundColor: C.PAPER_SHADE,
@@ -397,10 +415,7 @@ const styles = StyleSheet.create({
   headRight: {
     textAlign: 'right',
   },
-  liftHeadText: {
-    fontSize: F.LIFT_HEAD_SIZE,
-  },
-  flightRow: {
+  tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: P.RULE,
@@ -408,6 +423,15 @@ const styles = StyleSheet.create({
     paddingTop: F.ROW_PAD_Y,
     paddingBottom: F.ROW_PAD_Y,
     minHeight: F.ROW_H,
+  },
+  attemptRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: P.RULE,
+    borderBottomColor: C.RULE,
+    paddingTop: F.ROW_PAD_Y,
+    paddingBottom: F.ROW_PAD_Y,
+    minHeight: F.ATTEMPT_ROW_H,
   },
   rowEven: {
     backgroundColor: C.PAPER,
@@ -431,24 +455,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: P.CELL_PAD,
     justifyContent: 'center',
   },
+  attemptNameCol: {
+    width: F.NAME_W,
+    flexShrink: 0,
+    paddingHorizontal: P.CELL_PAD,
+    justifyContent: 'center',
+  },
   weightCol: {
     width: F.WEIGHT_W,
     flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
     justifyContent: 'center',
   },
-  liftCol: {
-    flex: 1,
-    minWidth: 0,
-    paddingHorizontal: F.LIFT_PAD,
+  bestCol: {
+    width: F.BEST_COL_W,
+    flexShrink: 0,
+    paddingHorizontal: P.CELL_PAD,
     justifyContent: 'center',
   },
-  indexCol: {
-    width: F.INDEX_W,
+  attemptCol: {
+    width: F.ATTEMPT_COL_W,
     flexShrink: 0,
     justifyContent: 'center',
-    alignItems: 'flex-end',
-    paddingRight: F.INDEX_PAD,
   },
   totalCol: {
     width: F.TOTAL_W,
@@ -482,6 +510,13 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     textAlign: 'right',
   },
+  bestText: {
+    fontSize: F.BEST_SIZE,
+    fontWeight: '700',
+    fontStyle: 'normal',
+    fontVariant: ['tabular-nums'],
+    textAlign: 'right',
+  },
   totalText: {
     fontSize: F.BEST_SIZE,
     fontWeight: '700',
@@ -489,21 +524,12 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     textAlign: 'right',
   },
-  attemptIndex: {
-    color: C.INK_SOFT,
-    fontSize: F.ATTEMPT_SIZE,
-    fontWeight: '700',
-    fontStyle: 'normal',
-    textAlign: 'right',
-    lineHeight: F.ATTEMPT_SIZE + 2,
-  },
   attemptText: {
     fontSize: F.ATTEMPT_SIZE,
     fontWeight: '400',
     fontStyle: 'normal',
     fontVariant: ['tabular-nums'],
     textAlign: 'right',
-    lineHeight: F.ATTEMPT_SIZE + 2,
   },
   attemptBest: {
     fontWeight: '700',
@@ -517,7 +543,32 @@ const styles = StyleSheet.create({
   inkSoft: {
     color: C.INK_SOFT,
   },
-  footer: {
+  cert: {
     marginTop: P.SECTION_GAP,
+    gap: CERT.LINE_GAP,
+  },
+  signBlock: {
+    gap: CERT.BLOCK_GAP,
+    marginTop: CERT.SIGN_GAP - CERT.LINE_GAP,
+  },
+  signLine: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: CERT.LINE_GAP,
+  },
+  signRule: {
+    flexGrow: 1,
+    height: P.RULE,
+    backgroundColor: C.RULE,
+    marginBottom: P.RULE,
+    minWidth: CERT.SIGN_RULE_W,
+  },
+  certText: {
+    color: C.INK_SOFT,
+    fontSize: CERT.SIZE,
+    letterSpacing: CERT.TRACKING,
+    fontWeight: '700',
+    fontStyle: 'normal',
   },
 });

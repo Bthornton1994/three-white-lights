@@ -1,5 +1,5 @@
 /**
- * ResultCardScreen.tsx — the shareable federation sheet fills the phone.
+ * ResultCardScreen.tsx — the shareable federation sheet on the phone.
  *
  * GDD §6.5: formatted like a real federation result sheet. The captured
  * 390×844 is this screen. A competitive lifter A/Bs the paper, not a game
@@ -43,7 +43,6 @@ const styles = StyleSheet.create({
     paddingBottom: CARD_SCREEN.LEAVE_CLEARANCE,
   },
   sheet: {
-    flex: 1,
     width: '100%',
     alignItems: 'center',
   },

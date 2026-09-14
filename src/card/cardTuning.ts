@@ -482,6 +482,15 @@ export const CARD_LABELS = {
    * leaves that licensing open, and this card ships none of those marks.
    */
   DOCUMENT_KIND: 'RESULTS',
+  /** Second table on the shareable sheet: OpenLifter S1..D3 listing. */
+  ATTEMPTS_SECTION: 'ATTEMPTS',
+  POSTED: 'POSTED AT THE END OF FLIGHT A',
+  UNSIGNED: 'UNOFFICIAL UNTIL SIGNED',
+  TECHNICAL_SECRETARY: 'TECHNICAL SECRETARY',
+  PAGE: 'PAGE 1 OF 1',
+  REFEREE_1: 'REFEREE 1',
+  REFEREE_2: 'REFEREE 2',
+  REFEREE_3: 'REFEREE 3',
   /**
    * There is no CLASS_PREFIX any more. The class number now ends the category
    * phrase ("MEN'S RAW OPEN 93") the way the reference board sets it, which
@@ -547,7 +556,7 @@ export const CARD_SCREEN = {
  */
 export const PAPER = {
   W: 388,
-  PAD_X: 8,
+  PAD_X: 6,
   PAD_Y: 14,
   FED_SIZE: 11,
   FED_TRACKING: 2.2,
@@ -581,34 +590,29 @@ export const PAPER = {
   MASTHEAD_GAP: 4,
   NAME_GAP: 4,
   /**
-   * Published flight table. Authored against a 390-wide phone. UNTUNED.
+   * Published flight tables. Authored against a 390-wide phone. UNTUNED.
    *
-   * One row per lifter: Place, Lifter, Weight, squat attempts, bench
-   * attempts, deadlift attempts, Total, DOTS. Nine attempt facts, stacked
-   * three under each lift heading so a 390-wide capture can hold the kilos
-   * without clipping. No squat+bench subtotal ([R8] published pages do not;
-   * the live-board reference does).
-   *
-   * The table stays packed (ROW_H is a floor for three attempt lines, not a
-   * stretch). The sheet itself fills the capture so the cream under a
-   * six-row class is the rest of the page, not a postage stamp on a poster.
-   * No gold #1 fill — every place zebras the same way.
+   * Two one-row tables: class bests ([R8] Place, Lifter, Weight, Squat,
+   * Bench, Deadlift, Total, DOTS) then S1..D3 attempts. Nine attempt
+   * facts do not share a row with Place + Weight + Total + DOTS at this
+   * width. ROW_H is a single line, not a stack. The sheet hugs the tables
+   * so leftover cream on a tall phone is outside the document.
    *
    * Column widths have to hold the [R8] headings on one line (`Place`,
    * `Weight`). NAME_W has to hold the longest name on the local field
    * ("Rex Pembroke").
    */
   FLIGHT: {
-    HEAD_H: 28,
-    ROW_H: 44,
-    NAME_W: 90,
-    PLACE_W: 34,
+    HEAD_H: 22,
+    ROW_H: 22,
+    ATTEMPT_ROW_H: 22,
+    NAME_W: 88,
+    PLACE_W: 32,
     WEIGHT_W: 40,
-    TOTAL_W: 42,
-    DOTS_W: 44,
-    INDEX_W: 12,
-    INDEX_PAD: 2,
-    LIFT_PAD: 1,
+    BEST_COL_W: 42,
+    TOTAL_W: 40,
+    DOTS_W: 50,
+    ATTEMPT_COL_W: 32,
     NAME_SIZE: 11,
     BEST_SIZE: 12,
     ATTEMPT_SIZE: 10,
@@ -616,8 +620,16 @@ export const PAPER = {
     HEAD_SIZE: 8,
     HEAD_TRACKING: 0,
     LIFT_HEAD_SIZE: 7,
-    ROW_PAD_Y: 3,
+    ROW_PAD_Y: 2,
     SECTION_SIZE: 10,
     SECTION_TRACKING: 0.6,
+  },
+  CERT: {
+    SIZE: 8,
+    TRACKING: 0.7,
+    LINE_GAP: 6,
+    SIGN_GAP: 10,
+    SIGN_RULE_W: 96,
+    BLOCK_GAP: 10,
   },
 } as const;

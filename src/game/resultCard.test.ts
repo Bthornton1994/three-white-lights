@@ -8,7 +8,9 @@ import {
   MONTH_ABBREVIATIONS,
   NO_VALUE_DISPLAY,
   PLACE_NO_TOTAL_DISPLAY,
+  RESULT_ATTEMPT_TABLE_COLUMNS,
   RESULT_CARD_CSV_HEADER,
+  RESULT_CLASS_TABLE_COLUMNS,
   RESULT_FLIGHT_TABLE_COLUMNS,
   RESULT_SHEET_COLUMNS,
   SEX_CATEGORY_WORD,
@@ -371,6 +373,29 @@ describe('the sourcing ledger describes the constants it cites', () => {
     expect(flightColumnHeading('deadlift3')).toBe('3');
     expect(RESULT_FLIGHT_TABLE_COLUMNS).not.toContain('subtotal');
     expect(RESULT_FLIGHT_TABLE_COLUMNS).not.toContain('bestSquat');
+    expect(RESULT_CLASS_TABLE_COLUMNS).toEqual([
+      'place',
+      'lifter',
+      'bodyweight',
+      'bestSquat',
+      'bestBench',
+      'bestDeadlift',
+      'total',
+      'dots',
+    ]);
+    expect(RESULT_ATTEMPT_TABLE_COLUMNS).toEqual([
+      'squat1',
+      'squat2',
+      'squat3',
+      'bench1',
+      'bench2',
+      'bench3',
+      'deadlift1',
+      'deadlift2',
+      'deadlift3',
+    ]);
+    expect(sheetColumnHeading('squat1')).toBe('S1');
+    expect(sheetColumnHeading('deadlift3')).toBe('D3');
   });
 
   it('cites the lifter page for the attempt columns, and admits what differs', () => {

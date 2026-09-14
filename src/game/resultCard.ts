@@ -455,20 +455,21 @@ export const RESULT_SHEET_COLUMNS: readonly ResultSheetColumn[] = [
 ] as const;
 
 /**
- * One published-table row on a portrait shareable sheet.
+ * Facts the shareable sheet carries for a flight, as one list.
  *
  * Identity follows [R8] meet-page order, compressed so a 390-wide phone can
  * hold a field: Place, Lifter, Weight, then each lift's three attempts,
  * Total, points. Sex, division, equipment and class sit on the section
  * heading over the table — the same job [R8] gives `divheader`.
  *
- * The lift columns are the three attempts [R9] groups under each lift on a
- * lifter page. A 390-wide phone cannot hold nine peer columns beside a name
- * without clipping kilos, so the sheet prints those three attempts as a
- * stack under the lift heading. A fourth BEST column is still on
- * `RESULT_SHEET_COLUMNS` and on each `LiftRow`; it does not get its own cell
- * here. The made best among the three is the cell `flightAttemptView` marks
- * `best`. Misses use `AttemptCell.text` plus `struckThrough`, not a minus sign.
+ * Nine attempt facts plus Place, Weight, Total and DOTS do not fit as
+ * peer columns beside a name at 390 without clipping kilos. The sheet
+ * therefore prints two one-row tables: `RESULT_CLASS_TABLE_COLUMNS` is the
+ * [R8] meet page (bests), and `RESULT_ATTEMPT_TABLE_COLUMNS` is the
+ * OpenLifter S1..D3 listing ([R6]). A fourth BEST column stays on
+ * `RESULT_SHEET_COLUMNS` and on each `LiftRow`; `flightAttemptView` still
+ * marks the made best among the three. Misses use `AttemptCell.text` plus
+ * `struckThrough`.
  *
  * No squat+bench subtotal. The committed live-board reference prints one; [R8]
  * published meet pages do not.
@@ -488,6 +489,38 @@ export const RESULT_FLIGHT_TABLE_COLUMNS: readonly ResultSheetColumnId[] = [
   'deadlift3',
   'total',
   'dots',
+];
+
+/**
+ * [R8] meet-page columns: one competitor, one row, bests rather than
+ * attempts. The class heading already names sex / kit / division / class.
+ */
+export const RESULT_CLASS_TABLE_COLUMNS: readonly ResultSheetColumnId[] = [
+  'place',
+  'lifter',
+  'bodyweight',
+  'bestSquat',
+  'bestBench',
+  'bestDeadlift',
+  'total',
+  'dots',
+];
+
+/**
+ * OpenLifter per-attempt listing ([R6] `S1`..`D3`). Name plus nine
+ * peer attempt columns; place, weight, total and DOTS live on the class
+ * table so the kilos stay whole.
+ */
+export const RESULT_ATTEMPT_TABLE_COLUMNS: readonly ResultSheetColumnId[] = [
+  'squat1',
+  'squat2',
+  'squat3',
+  'bench1',
+  'bench2',
+  'bench3',
+  'deadlift1',
+  'deadlift2',
+  'deadlift3',
 ];
 
 const FLIGHT_ATTEMPT_COLUMN_SPEC: Readonly<
@@ -539,6 +572,21 @@ export function flightAttemptView(
     struckThrough: cell.struckThrough,
     best: cell.mark === 'good' && lift.bestKg !== null && cell.weightKg === lift.bestKg,
   };
+}
+
+const FLIGHT_BEST_COLUMN_LIFT: Readonly<Partial<Record<ResultSheetColumnId, LiftKind>>> = {
+  bestSquat: 'squat',
+  bestBench: 'bench',
+  bestDeadlift: 'deadlift',
+};
+
+/** Best good kilo for a class-table lift column, or `NO_VALUE_DISPLAY`. */
+export function flightBestText(row: ResultCardFlightRow, id: ResultSheetColumnId): string | null {
+  const lift = FLIGHT_BEST_COLUMN_LIFT[id];
+  if (lift === undefined) return null;
+  const liftRow = row.rows.find((item) => item.lift === lift);
+  if (liftRow === undefined) return null;
+  return liftRow.bestText;
 }
 
 export function sheetColumnHeading(id: ResultSheetColumnId): string {

@@ -6,9 +6,12 @@ import { buildMeetRecap, type MeetDayState } from './meetDay';
 import { MEET_ENTRY, MEET_FIELD_FIXTURE, MEET_PREVIEW } from './meetTuning';
 import { SHAREABLE_PREVIEW_NAME, previewStateFor } from './meetPreview';
 import {
+  RESULT_ATTEMPT_TABLE_COLUMNS,
+  RESULT_CLASS_TABLE_COLUMNS,
   RESULT_FLIGHT_TABLE_COLUMNS,
   WEIGHT_CLASSES_KG,
   flightAttemptView,
+  flightBestText,
   flightLifterName,
   signedAttemptText,
   weightClassString,
@@ -116,5 +119,10 @@ describe('the shareable card carries the flight', () => {
       best: false,
     });
     expect(flightAttemptView(harrow, 'total')).toBeNull();
+    expect(flightBestText(harrow, 'bestBench')).toBe('117.5');
+    expect(flightBestText(harrow, 'bench3')).toBeNull();
+    expect(RESULT_CLASS_TABLE_COLUMNS).toContain('bestSquat');
+    expect(RESULT_ATTEMPT_TABLE_COLUMNS).toContain('squat1');
+    expect(RESULT_ATTEMPT_TABLE_COLUMNS).not.toContain('bestSquat');
   });
 });
