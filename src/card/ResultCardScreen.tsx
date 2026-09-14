@@ -1,20 +1,22 @@
 /**
- * ResultCardScreen.tsx — chrome around the shareable federation sheet.
+ * ResultCardScreen.tsx — the shareable federation sheet fills the phone.
  *
- * The sheet itself is `ResultCardView`. Everything here is the desk it sits
- * on. GDD §6.5: this beat is a sheet, not a meet-day room — no hall, no emptied
- * platform still. Espresso chrome keeps it in the Iron & Amber world without
- * staging it. The captured image (`recap-card`) is this screen; the object a
- * competitive lifter A/Bs is the paper on it.
+ * GDD §6.5: formatted like a real federation result sheet. The captured
+ * 390×844 is this screen. A competitive lifter A/Bs the paper, not a game
+ * share-card sitting on espresso with "MEET COMPLETE" / "Share your result"
+ * around it. The shell still draws the way back (`shell-leave-meet`); this
+ * file leaves clearance for that pill and does not restyle it.
+ *
+ * No hall. No emptied platform still.
  */
 
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { MEET_PALETTE } from '../meet/meetPalette';
 import type { ResultCard } from '../game/resultCard';
 import { ResultCardView } from './ResultCardView';
 import { CARD_SCREEN } from './cardTuning';
+import { SHEET_CSS } from './sheetPalette';
 
 export interface ResultCardScreenProps {
   readonly card: ResultCard;
@@ -23,14 +25,11 @@ export interface ResultCardScreenProps {
 }
 
 export function ResultCardScreen({ card }: ResultCardScreenProps): React.ReactElement {
-  const bombed = card.bombedLift !== null;
   return (
     <View style={styles.root} testID="result-card-screen">
-      <Text style={styles.eyebrow}>{bombed ? 'MEET OVER' : 'MEET COMPLETE'}</Text>
-      <View style={styles.cardFrame} testID="result-card">
+      <View style={styles.sheet} testID="result-card">
         <ResultCardView card={card} />
       </View>
-      <Text style={styles.hint}>{bombed ? 'No total. It happens. Next one.' : 'Share your result'}</Text>
     </View>
   );
 }
@@ -39,24 +38,12 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: MEET_PALETTE.ESPRESSO,
-    paddingVertical: CARD_SCREEN.PAD_Y,
+    backgroundColor: SHEET_CSS.PAPER,
+    paddingTop: CARD_SCREEN.PAD_Y,
+    paddingBottom: CARD_SCREEN.LEAVE_CLEARANCE,
   },
-  eyebrow: {
-    color: MEET_PALETTE.TEXT_DIM,
-    fontSize: CARD_SCREEN.EYEBROW_FONT,
-    letterSpacing: CARD_SCREEN.EYEBROW_TRACKING,
-    marginBottom: CARD_SCREEN.EYEBROW_GAP,
-  },
-  cardFrame: {
-    borderWidth: CARD_SCREEN.FRAME_BORDER,
-    borderColor: MEET_PALETTE.ESPRESSO_EDGE,
-    backgroundColor: MEET_PALETTE.ESPRESSO,
-  },
-  hint: {
-    color: MEET_PALETTE.TEXT_DIM,
-    fontSize: CARD_SCREEN.HINT_FONT,
-    marginTop: CARD_SCREEN.HINT_GAP,
+  sheet: {
+    width: '100%',
+    alignItems: 'center',
   },
 });

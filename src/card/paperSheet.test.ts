@@ -62,13 +62,21 @@ describe('the shareable sheet is a printed scoresheet', () => {
       'card.field',
       'sheetColumnHeading',
       'ATTEMPT_GRID_HEADINGS',
-      'FOOTER.WORDMARK',
       'CARD_LABELS.DOCUMENT_KIND',
     ]) {
       expect(VIEW, token).toContain(token);
     }
     expect(CARD_LABELS.DOCUMENT_KIND).toBe('RESULTS');
     expect(FOOTER.WORDMARK).toBe('THREE WHITE LIGHTS');
+    expect(VIEW).not.toContain('FOOTER.WORDMARK');
+  });
+
+  it('is the sheet, not a game share-card around the sheet', () => {
+    expect(SCREEN).not.toContain('MEET COMPLETE');
+    expect(SCREEN).not.toContain('Share your result');
+    expect(SCREEN).not.toContain('MEET_PALETTE');
+    expect(SCREEN).toContain('SHEET_CSS.PAPER');
+    expect(SCREEN).toContain('CARD_SCREEN.LEAVE_CLEARANCE');
   });
 
   it('prints the flight, so place is a rank in a field', () => {
@@ -80,10 +88,10 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(VIEW).not.toContain('ScoreCell');
   });
 
-  it('strikes a missed attempt and colours the cell, without a plate stack', () => {
+  it('strikes a missed attempt without painting goods as scoreboard pills', () => {
     expect(VIEW).toContain('struckThrough');
     expect(VIEW).toContain('NOLIFT_LIGHT');
-    expect(VIEW).toContain('GOOD_LIGHT');
+    expect(VIEW).not.toContain('GOOD_LIGHT');
     expect(VIEW).toContain('textDecorationLine');
   });
 });

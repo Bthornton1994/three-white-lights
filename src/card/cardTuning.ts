@@ -515,7 +515,12 @@ export const CARD_LABELS = {
 export const CARD_SCREEN = {
   /** Breathing room above and below the whole stack. */
   PAD_Y: 16,
-  /** "MEET COMPLETE" / "MEET OVER". */
+  /**
+   * Room under the sheet for the shell's way-back pill. The pill is the
+   * card's only exit (verify-shell-route 06-card). UNTUNED.
+   */
+  LEAVE_CLEARANCE: 88,
+  /** "MEET COMPLETE" / "MEET OVER" — kept for the recap bookend, not this screen. */
   EYEBROW_FONT: 12,
   EYEBROW_TRACKING: 2,
   /** Gap between the eyebrow and the card frame. */

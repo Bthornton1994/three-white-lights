@@ -15,8 +15,10 @@
  * renderer cannot drift onto two palettes.
  *
  * The body is a flight table, not a one-name plaque. Place is a rank in a
- * field. The committed live-board reference prints a squat+bench subtotal;
- * [R8] published meet pages do not, and this sheet follows [R8].
+ * field. Missed attempts are struck and tinted; good attempts are ink on
+ * paper, not scoreboard pills. The committed live-board reference paints every
+ * cell; [R8] published meet pages do not. This sheet follows [R8] for that
+ * too. No squat+bench subtotal, for the same reason.
  *
  * There is no loaded-bar motif here. A published results sheet records
  * attempts, a best, a total, DOTS and place. Plate colours are gameplay
@@ -35,7 +37,7 @@ import {
   type ResultCard,
   type ResultCardFlightRow,
 } from '../game/resultCard';
-import { CARD_LABELS, FOOTER, PAPER } from './cardTuning';
+import { CARD_LABELS, PAPER } from './cardTuning';
 import { SHEET_CSS } from './sheetPalette';
 
 const P = PAPER;
@@ -66,7 +68,7 @@ function AttemptFigure({ cell }: { readonly cell: AttemptCell }): React.ReactEle
   }
   const miss = cell.mark === 'no-lift';
   return (
-    <View style={[styles.cellFill, miss ? styles.cellMiss : styles.cellGood]}>
+    <View style={[styles.cellFill, miss ? styles.cellMiss : null]}>
       <Text
         style={[
           styles.cellText,
@@ -224,7 +226,6 @@ export function ResultCardView({ card }: ResultCardViewProps): React.ReactElemen
 
       <View style={styles.footer}>
         <View style={styles.rule} />
-        <Text style={styles.wordmark}>{FOOTER.WORDMARK}</Text>
       </View>
     </View>
   );
@@ -435,9 +436,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: P.CELL_PAD,
   },
-  cellGood: {
-    backgroundColor: C.GOOD_LIGHT,
-  },
   cellMiss: {
     backgroundColor: C.NOLIFT_LIGHT,
   },
@@ -461,13 +459,5 @@ const styles = StyleSheet.create({
   },
   footer: {
     marginTop: P.SECTION_GAP,
-    gap: P.NAME_GAP,
-    alignItems: 'center',
-  },
-  wordmark: {
-    color: C.INK_SOFT,
-    fontSize: P.FOOTER_SIZE,
-    letterSpacing: P.FOOTER_TRACKING,
-    fontWeight: '700',
   },
 });
