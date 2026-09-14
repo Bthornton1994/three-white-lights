@@ -5,6 +5,7 @@ import { placingForMeet } from './meetBoard';
 import { buildMeetRecap, type MeetDayState } from './meetDay';
 import { MEET_FIELD_FIXTURE, MEET_PREVIEW } from './meetTuning';
 import { previewStateFor } from './meetPreview';
+import { WEIGHT_CLASSES_KG, weightClassString } from './resultCard';
 import { flightEntriesForCard, shareableResultCard } from './resultFlight';
 
 function confirmedForPreview(state: MeetDayState) {
@@ -58,6 +59,12 @@ describe('the shareable card carries the flight', () => {
     expect(player?.placeText).toBe(built.recap.placeText);
     expect(player?.bodyweightText).toBe('92.40');
     expect(card.field.some((row) => row.name === 'M. ASHFORD')).toBe(true);
+    for (const row of card.field) {
+      expect(
+        weightClassString(Number(row.bodyweightText), WEIGHT_CLASSES_KG.male),
+        `${row.name} at ${row.bodyweightText} kg`,
+      ).toBe(card.lifter.weightClassText);
+    }
     const plannedMisses = state.field.cards.reduce(
       (count, cardRow) => count + cardRow.plan.filter((attempt) => !attempt.good).length,
       0,

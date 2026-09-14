@@ -195,12 +195,16 @@ export interface FieldLifterSpec {
  * Five named lifters on the local platform. Day-maxes sit around a first-meet
  * lifter (starting e1RM 180/120/220) so a third deadlift can move a place.
  * Names are fictional.
+ *
+ * Bodyweights make the player's class on this sheet. IPF-style men's 93 is
+ * ≤93.00 (`WEIGHT_CLASSES_KG.male` in resultCard.ts). A row over that limit
+ * is a 105 kg lifter printed in MEN'S RAW OPEN 93.
  */
 export const MEET_FIELD_FIXTURE: readonly FieldLifterSpec[] = Object.freeze([
   Object.freeze({
     id: 'ashford',
     name: 'M. ASHFORD',
-    bodyweightKg: 93.1,
+    bodyweightKg: 92.9,
     lot: 1,
     dayMaxKg: Object.freeze({ squat: 200, bench: 130, deadlift: 240 }),
   }),
@@ -228,7 +232,7 @@ export const MEET_FIELD_FIXTURE: readonly FieldLifterSpec[] = Object.freeze([
   Object.freeze({
     id: 'linn',
     name: 'T. LINN',
-    bodyweightKg: 94.8,
+    bodyweightKg: 90.4,
     lot: 6,
     dayMaxKg: Object.freeze({ squat: 155, bench: 100, deadlift: 185 }),
   }),

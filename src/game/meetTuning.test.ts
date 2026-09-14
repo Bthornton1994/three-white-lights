@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { LIFT_TUNING } from './liftTuning';
 import { JUDGE_COUNT, LIFT_ORDER, DEFAULT_MEET_RULES } from './meet';
+import { WEIGHT_CLASSES_KG, weightClassString } from './resultCard';
 import { MEET_COPY, MEET_ENTRY, MEET_FIELD_FIXTURE, MEET_LAYOUT, MEET_LOCAL, MEET_PREVIEW, MEET_TUNING } from './meetTuning';
 import {
   deliberates,
@@ -352,6 +353,20 @@ describe('MEET_ENTRY', () => {
     expect(MEET_ENTRY.bodyweight.kilograms).toBeGreaterThan(0);
     expect(MEET_ENTRY.lot).toBeGreaterThan(0);
     expect(new Set(MEET_FIELD_FIXTURE.map((spec) => spec.lot)).has(MEET_ENTRY.lot)).toBe(false);
+  });
+});
+
+describe('MEET_FIELD_FIXTURE', () => {
+  it('every named competitor makes the same IPF-style class as the player', () => {
+    const classes = WEIGHT_CLASSES_KG[MEET_ENTRY.sex];
+    const playerClass = weightClassString(MEET_ENTRY.bodyweight.kilograms, classes);
+    expect(playerClass).toBe('93');
+    for (const spec of MEET_FIELD_FIXTURE) {
+      expect(
+        weightClassString(spec.bodyweightKg, classes),
+        `${spec.name} at ${spec.bodyweightKg} kg`,
+      ).toBe(playerClass);
+    }
   });
 });
 
