@@ -1,0 +1,31 @@
+# merge-gate-guard.yml — always-run placeholder for the path-filtered gate.
+#
+# merge-gate.yml skips on README / docs/reference-only diffs. If that workflow
+# is later marked required, a skipped check blocks the PR. This job reports
+# on every pull_request targeting the same branches, with no path filter.
+#
+# Does not close PRs. Does not checkout. Does not install Playwright.
+# Not a GDD §12.2 bar. Not a StageForge adapter.
+
+name: merge-gate-guard
+
+on:
+  pull_request:
+    branches:
+      - main
+      - grok/session-a-main-loop
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  required:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Required-check placeholder
+        run: echo "merge-gate may path-skip; this guard always reports. Does not close PRs."
