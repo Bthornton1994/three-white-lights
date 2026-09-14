@@ -1,9 +1,9 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-09-14T06:32:32.748Z",
+    "capturedAt": "2026-09-14T07:41:54.427Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/workspace",
-    "commit": "bb8dac57",
+    "commit": "602f2564",
     "branch": "cursor/session-a-iron-amber-quality-1c66",
     "workingTree": "clean",
     "dirtyPaths": [
@@ -235,13 +235,13 @@
   "leavesOnItsOwn": {
     "stillUpAt": 701,
     "stillUp": true,
-    "goneAt": 883,
+    "goneAt": 886,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 2,
-    "goneAt": 11,
-    "dismissTookMs": 9,
+    "tappedAt": 7,
+    "goneAt": 8,
+    "dismissTookMs": 1,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
     "holdReadFromSourceMs": 1720
