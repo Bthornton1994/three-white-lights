@@ -1,0 +1,66 @@
+{
+  "parent": "04ab61ca910ff1376e1082221781690733594451",
+  "art_sha": "10132d72a59a1c0e4d47c9ff68c4df9cbd950d34",
+  "viewports": {
+    "phone": {
+      "css": "390x844",
+      "dsf": 2,
+      "title_currentSrc": "/sprites/title.png",
+      "title_natural": "1008x1792",
+      "title_box": "390x844",
+      "objectPosition": "50% 42%",
+      "overflowX": false
+    },
+    "desktop": {
+      "css": "1280x800",
+      "title_currentSrc": "/sprites/title-wide.png",
+      "title_natural": "1792x1008",
+      "title_box": "1280x800",
+      "objectPosition": "50% 50%",
+      "overflowX": false
+    }
+  },
+  "card_boxes_phone": [
+    {"src": "/sprites/squat/frame-03.png", "w": 162, "h": 104},
+    {"src": "/sprites/squat-max/frame-03.png", "w": 162, "h": 104},
+    {"src": "/sprites/bench/frame-03.png", "w": 162, "h": 104},
+    {"src": "/sprites/bench-max/frame-03.png", "w": 162, "h": 104},
+    {"src": "/sprites/deadlift/frame-06.png", "w": 162, "h": 104},
+    {"src": "/sprites/deadlift-max/frame-06.png", "w": 162, "h": 104}
+  ],
+  "card_boxes_desktop": [
+    {"src": "/sprites/squat/frame-03.png", "w": 190, "h": 190},
+    {"src": "/sprites/squat-max/frame-03.png", "w": 190, "h": 190},
+    {"src": "/sprites/bench/frame-03.png", "w": 190, "h": 190},
+    {"src": "/sprites/bench-max/frame-03.png", "w": 190, "h": 190},
+    {"src": "/sprites/deadlift/frame-06.png", "w": 190, "h": 190},
+    {"src": "/sprites/deadlift-max/frame-06.png", "w": 190, "h": 190}
+  ],
+  "image_rendering": {
+    "title": "pixelated",
+    "liftCard": "pixelated",
+    "stageBg": "pixelated",
+    "stageLifter": "pixelated"
+  },
+  "pageerrors": [],
+  "lockout_bbox": {
+    "setup_frame01": {"bbox": [54, 139, 268, 318], "h": 179},
+    "lockout_frame06": {"bbox": [10, 12, 310, 319], "h": 307},
+    "lockout_max_frame06": {"bbox": [4, 10, 316, 319], "h": 309},
+    "silhouette_delta_01_06": 31774,
+    "silhouette_delta_lockout_light_max": 11782
+  },
+  "tests": {
+    "arcade_npm_test": "53/53",
+    "workspace_test_arcade": "46/46",
+    "check_sprites": "ok"
+  },
+  "gameplay_unchanged_vs_parent": [
+    "arcade/src/feel.ts",
+    "arcade/src/loop",
+    "arcade/src/math",
+    "arcade/src/ui/share.ts",
+    "arcade/src/SpriteStage.tsx",
+    "visualEffort MAX_LOAD_RATIO 0.96"
+  ]
+}

@@ -10,11 +10,13 @@ masters, and PRs #63 #66 #67 #68 were not modified.
 ## What improved
 
 - Deadlift judged frame is a standing lockout, not a setup rewind.
-  Head is in frame. Light vs max lockout are different (more plates / mass).
+  Head is in frame (bbox y=12..319, h=307 vs setup h=179). Silhouette
+  Δ(01,06)=31774. Light vs max lockout are different (more plates / mass).
 - Title has no “POWER LIFTING” wordmark. HTML is the title. Phone uses a
   9:16 master; desktop uses 16:9 so the head is not cropped.
-- Lift cards are two-up Light | Max at 104px (phone) / larger (desktop),
+- Lift cards are two-up Light | Max at 162×104 (phone) / 190×190 (desktop),
   not a 96×84 smear. Squat hole, bench pause, deadlift lockout all show.
+  Max art is on the select screen.
 - Idle / success / miss share the identity lock more closely.
 
 ## Residual defects
@@ -34,9 +36,10 @@ masters, and PRs #63 #66 #67 #68 were not modified.
 Stop iterating Imagine. Commission original 320×320 (or 80×80) frames from a
 pixel artist with a model sheet, then NEAREST-index only for palette/alpha.
 
-## Checks
+## Checks (evidence run)
 
 - `check_sprites.py` ok, including lockout≠setup silhouette ≥2500.
 - Arcade tests 53/53. Workspace `test:arcade` 46/46.
 - Chromium `image-rendering: pixelated` on title, cards, stage.
-- No overflowX at 390 or 1280.
+- No overflowX at 390 or 1280. No pageerror.
+- Card boxes 162×104 (phone) and 190×190 (desktop), Light and Max on every lift.
