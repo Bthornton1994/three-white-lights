@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { LIFT_SHEETS, poseForScreen } from "./sheets.ts";
+import { LIFT_SHEETS, SCENE, poseForScreen } from "./sheets.ts";
 
 describe("sprite package identity", () => {
   it("gives squat, bench, and deadlift distinct sheet paths", () => {
@@ -38,5 +38,14 @@ describe("sprite package identity", () => {
     const lockout = readFileSync("public/sprites/deadlift/frame-06.png");
     assert.equal(setup.equals(lockout), false);
     assert.equal(poseForScreen("timing", "deadlift", 0.95), "lock");
+  });
+
+  it("serves PNG title and platform scenes, not noisy JPEGs", () => {
+    assert.equal(SCENE.title.endsWith(".png"), true);
+    assert.equal(SCENE.platform.endsWith(".png"), true);
+    assert.equal(existsSync(`public${SCENE.title}`), true);
+    assert.equal(existsSync(`public${SCENE.platform}`), true);
+    assert.equal(existsSync("public/sprites/title.jpg"), false);
+    assert.equal(existsSync("public/sprites/platform.jpg"), false);
   });
 });
