@@ -620,7 +620,8 @@ export const PAPER = {
    * NAME_W holds the longest name on the local field ("Rex Pembroke").
    */
   FLIGHT: {
-    HEAD_H: 48,
+    HEAD_H: 44,
+    LIFT_LABEL_H: 16,
     ROW_H: 26,
     ATTEMPT_ROW_H: 26,
     ATTEMPT_COLS: 9,

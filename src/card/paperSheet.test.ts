@@ -32,6 +32,7 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(PAPER.FLIGHT.ATTEMPT_COLS).toBe(9);
     expect(PAPER.FLIGHT.BEST_COLS).toBe(3);
     expect(PAPER.FLIGHT.ATTEMPTS_PER_LIFT).toBe(3);
+    expect(PAPER.FLIGHT.HEAD_H).toBeGreaterThan(PAPER.FLIGHT.LIFT_LABEL_H);
     expect(PAPER_SCALE).toBe(CARD_SCREEN.PHONE_W / PAPER.W);
     expect(paperSheetHeight(6)).toBeGreaterThan(PAPER.FLIGHT.HEAD_H + 6 * PAPER.FLIGHT.ROW_H);
     expect(paperSheetHeight(6)).toBe(PAPER_PAGE_H);
@@ -141,8 +142,10 @@ describe('the shareable sheet is a printed scoresheet', () => {
   it('prints each lift as grouped 1/2/3 plus Best in the placing row, misses signed', () => {
     expect(VIEW).toContain('flightAttemptView');
     expect(VIEW).toContain('flightBestText');
-    expect(VIEW).toContain('FLIGHT_LIFT_GROUPS');
     expect(VIEW).toContain('group.bestId');
+    expect(VIEW).toContain('tableLiftHead');
+    expect(VIEW).toContain('tableColHead');
+    expect(VIEW).toContain('liftGroupLabel');
     expect(VIEW).toContain('signedText');
     expect(VIEW).not.toContain('textDecorationLine');
     expect(VIEW).not.toContain('NOLIFT_LIGHT');

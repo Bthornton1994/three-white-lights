@@ -82,32 +82,44 @@ function attemptCellStyle(id: ResultSheetColumnId) {
 function FlightHead(): React.ReactElement {
   return (
     <View style={styles.tableHead}>
-      <View style={[styles.placeCol, styles.headCell]}>
-        <Text style={styles.headText} numberOfLines={1}>
-          {flightColumnHeading('place')}
-        </Text>
+      <View style={styles.tableLiftHead}>
+        <View style={styles.placeCol} />
+        <View style={styles.lotCol} />
+        <View style={styles.nameCol} />
+        <View style={styles.weightCol} />
+        {FLIGHT_LIFT_GROUPS.map((group) => (
+          <View key={group.headingId} style={styles.liftGroupLabel}>
+            <Text style={styles.liftHeadText} numberOfLines={1}>
+              {flightColumnHeading(group.headingId)}
+            </Text>
+          </View>
+        ))}
+        <View style={styles.totalCol} />
+        <View style={styles.dotsCol} />
       </View>
-      <View style={[styles.lotCol, styles.headCell]}>
-        <Text style={styles.headText} numberOfLines={1}>
-          {CARD_LABELS.LOT}
-        </Text>
-      </View>
-      <View style={[styles.nameCol, styles.headCell]}>
-        <Text style={styles.headText} numberOfLines={1}>
-          {flightColumnHeading('lifter')}
-        </Text>
-      </View>
-      <View style={[styles.weightCol, styles.headCell]}>
-        <Text style={[styles.headText, styles.headRight]} numberOfLines={1}>
-          {flightColumnHeading('bodyweight')}
-        </Text>
-      </View>
-      {FLIGHT_LIFT_GROUPS.map((group) => (
-        <View key={group.headingId} style={styles.liftGroup}>
-          <Text style={styles.liftHeadText} numberOfLines={1}>
-            {flightColumnHeading(group.headingId)}
+      <View style={styles.tableColHead}>
+        <View style={[styles.placeCol, styles.headCell]}>
+          <Text style={styles.headText} numberOfLines={1}>
+            {flightColumnHeading('place')}
           </Text>
-          <View style={styles.liftGroupAttempts}>
+        </View>
+        <View style={[styles.lotCol, styles.headCell]}>
+          <Text style={styles.headText} numberOfLines={1}>
+            {CARD_LABELS.LOT}
+          </Text>
+        </View>
+        <View style={[styles.nameCol, styles.headCell]}>
+          <Text style={styles.headText} numberOfLines={1}>
+            {flightColumnHeading('lifter')}
+          </Text>
+        </View>
+        <View style={[styles.weightCol, styles.headCell]}>
+          <Text style={[styles.headText, styles.headRight]} numberOfLines={1}>
+            {flightColumnHeading('bodyweight')}
+          </Text>
+        </View>
+        {FLIGHT_LIFT_GROUPS.map((group) => (
+          <View key={group.headingId} style={styles.liftGroup}>
             {group.attempts.map((id) => (
               <View key={id} style={styles.attemptCol}>
                 <Text style={[styles.headText, styles.headRight]} numberOfLines={1}>
@@ -115,23 +127,23 @@ function FlightHead(): React.ReactElement {
                 </Text>
               </View>
             ))}
-            <View key={group.bestId} style={[styles.bestCol, styles.attemptColGroupEnd]}>
+            <View key={group.bestId} style={[styles.bestCol, styles.attemptColLiftEnd]}>
               <Text style={[styles.headText, styles.headRight]} numberOfLines={1}>
                 {CARD_LABELS.BEST}
               </Text>
             </View>
           </View>
+        ))}
+        <View style={[styles.totalCol, styles.headCell]}>
+          <Text style={[styles.headText, styles.headRight]} numberOfLines={1}>
+            {flightColumnHeading('total')}
+          </Text>
         </View>
-      ))}
-      <View style={[styles.totalCol, styles.headCell]}>
-        <Text style={[styles.headText, styles.headRight]} numberOfLines={1}>
-          {flightColumnHeading('total')}
-        </Text>
-      </View>
-      <View style={[styles.dotsCol, styles.headCell]}>
-        <Text style={[styles.headText, styles.headRight]} numberOfLines={1}>
-          {flightColumnHeading('dots')}
-        </Text>
+        <View style={[styles.dotsCol, styles.headCell]}>
+          <Text style={[styles.headText, styles.headRight]} numberOfLines={1}>
+            {flightColumnHeading('dots')}
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -412,14 +424,21 @@ const styles = StyleSheet.create({
     borderColor: C.INK,
   },
   tableHead: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
     backgroundColor: C.PAPER_SHADE,
     borderBottomWidth: P.RULE,
     borderBottomColor: C.INK,
     minHeight: F.HEAD_H,
+  },
+  tableLiftHead: {
+    height: F.LIFT_LABEL_H,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  tableColHead: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    minHeight: F.HEAD_H - F.LIFT_LABEL_H,
     paddingBottom: F.ROW_PAD_Y,
-    paddingTop: F.ROW_PAD_Y,
   },
   headCell: {
     justifyContent: 'flex-end',
@@ -438,21 +457,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontStyle: 'normal',
     textAlign: 'center',
-    width: '100%',
-    height: F.LIFT_HEAD_SIZE + F.ROW_PAD_Y,
   },
   headRight: {
     textAlign: 'right',
   },
-  liftGroup: {
+  liftGroupLabel: {
     width: F.ATTEMPT_COL_W * F.ATTEMPTS_PER_LIFT + F.BEST_COL_W,
     flexShrink: 0,
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     boxSizing: 'border-box',
     borderRightWidth: F.CELL_RULE,
     borderRightColor: C.INK,
   },
-  liftGroupAttempts: {
+  liftGroup: {
+    width: F.ATTEMPT_COL_W * F.ATTEMPTS_PER_LIFT + F.BEST_COL_W,
+    flexShrink: 0,
     flexDirection: 'row',
   },
   tableRow: {
