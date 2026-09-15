@@ -100,4 +100,33 @@ describe("attempt resolution", () => {
     assert.equal(meet.totalKg, 0);
     assert.equal(meet.score, 0);
   });
+
+  it("cleared-key squat save is Streak 75 / Total 2235 at session streak 1", () => {
+    const miss1 = resolveAttempt({
+      attempt: 1,
+      weightKg: 162.5,
+      e1rmKg: 180,
+      grades: ["miss", "miss"],
+      fatigue: 0,
+    });
+    const miss2 = resolveAttempt({
+      attempt: 2,
+      weightKg: 172.5,
+      e1rmKg: 180,
+      grades: ["miss", "miss"],
+      fatigue: 0,
+    });
+    const make = resolveAttempt({
+      attempt: 3,
+      weightKg: 180,
+      e1rmKg: 180,
+      grades: ["great", "great"],
+      fatigue: 0,
+    });
+    const meet = scoreMeet("squat", 180, [162.5, 172.5, 180], [miss1, miss2, make], 0, 1);
+    assert.equal(meet.breakdown.streak, 75);
+    assert.equal(meet.breakdown.total, 2235);
+    const doubled = scoreMeet("squat", 180, [162.5, 172.5, 180], [miss1, miss2, make], 0, 2);
+    assert.notEqual(doubled.breakdown.total, 2235);
+  });
 });

@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
-    "test": "node --experimental-strip-types --test src/math/*.test.ts src/loop/*.test.ts src/sprites/*.test.ts"
+    "test": "node --experimental-strip-types --test src/math/*.test.ts src/loop/*.test.ts src/sprites/*.test.ts src/ui/*.test.ts"
   },
   "dependencies": {
     "react": "^18.3.1",

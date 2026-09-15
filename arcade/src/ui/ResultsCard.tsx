@@ -1,12 +1,7 @@
 import { forwardRef } from "react";
 import { FEEL, LIFT_COPY } from "../feel.ts";
 import type { ArcadeMeet } from "../math/types.ts";
-
-function lightGlyph(color: ArcadeMeet["outcomes"][number]["lights"][number]): string {
-  if (color === "white") return "○";
-  if (color === "red") return "●";
-  return "·";
-}
+import { judgeLightGlyphs } from "./share.ts";
 
 export const ResultsCard = forwardRef<HTMLElement, { meet: ArcadeMeet }>(function ResultsCard(
   { meet },
@@ -55,7 +50,7 @@ function AttemptLine({
     <>
       <span>A{outcome.attempt}</span>
       <strong>
-        {mark} {outcome.lights.map(lightGlyph).join(" ")} · RPE {outcome.impliedRpe.toFixed(1)}
+        {mark} {judgeLightGlyphs(outcome.lights)} · RPE {outcome.impliedRpe.toFixed(1)}
       </strong>
     </>
   );

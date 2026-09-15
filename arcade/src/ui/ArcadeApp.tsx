@@ -7,11 +7,13 @@ import {
   continueAfterOutcome,
   finishTiming,
   initialState,
+  persistFinishedMeet,
   recordTap,
   resetToTitle,
   setAttempts,
   startTiming,
   startWalkout,
+  tickTiming,
   type ArcadeState,
 } from "../loop/machine.ts";
 import { cuesForLift, sequenceDurationMs } from "../loop/timing.ts";
@@ -50,13 +52,16 @@ function reducedMotion(): boolean {
 
 export function ArcadeApp() {
   const [state, setState] = useState<ArcadeState>(() => initialState(null));
-  const [clock, setClock] = useState(0);
   const started = useRef(0);
   const cardRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     setState((s) => ({ ...s, sessionStreak: initialState(storage()).sessionStreak }));
   }, []);
+
+  useEffect(() => {
+    persistFinishedMeet(state, storage());
+  }, [state.screen, state.sessionStreak, state.meet]);
 
   useEffect(() => {
     if (state.screen !== "timing") {
@@ -67,11 +72,11 @@ export function ArcadeApp() {
     const tick = (now: number): void => {
       const duration = state.lift ? sequenceDurationMs(state.lift) : 1;
       const elapsed = now - started.current;
-      setClock(elapsed);
       if (elapsed >= duration) {
-        setState((s) => finishTiming(s));
+        setState((s) => finishTiming(tickTiming(s, elapsed)));
         return;
       }
+      setState((s) => tickTiming(s, elapsed));
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
@@ -114,7 +119,7 @@ export function ArcadeApp() {
   const duration = sequenceDurationMs(lift);
   const progress =
     state.screen === "timing"
-      ? Math.min(1, clock / duration)
+      ? Math.min(1, state.timingElapsedMs / duration)
       : state.screen === "success" || state.screen === "judging"
         ? 1
         : state.screen === "failure" || state.screen === "bomb"
@@ -139,7 +144,7 @@ export function ArcadeApp() {
       return;
     }
     haptic(FEEL.HAPTIC_MS.hit);
-    setState((s) => recordTap(s, index, clock));
+    setState((s) => recordTap(s, index, s.timingElapsedMs));
   };
 
   const primary = (): void => {
@@ -156,7 +161,9 @@ export function ArcadeApp() {
       return;
     }
     if (state.screen === "success" || state.screen === "failure") {
-      setState((s) => continueAfterOutcome(s, storage()));
+      const next = continueAfterOutcome(state);
+      persistFinishedMeet(next, storage());
+      setState(next);
       return;
     }
     if (state.screen === "transition") {
@@ -266,7 +273,7 @@ export function ArcadeApp() {
             lift={lift}
             screen={state.screen}
             progress={progress}
-            clockMs={clock}
+            clockMs={state.timingElapsedMs}
             lights={lights}
             weightKg={weight}
           />

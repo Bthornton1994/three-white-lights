@@ -30,6 +30,8 @@ export type ArcadeState = {
   lastOutcome: AttemptOutcome | null;
   meet: ArcadeMeet | null;
   sessionStreak: number;
+  /** Elapsed ms of the current timing sequence. Reset atomically in startTiming. */
+  timingElapsedMs: number;
 };
 
 export function initialState(storage: Pick<Storage, "getItem"> | null = null): ArcadeState {
@@ -45,6 +47,7 @@ export function initialState(storage: Pick<Storage, "getItem"> | null = null): A
     lastOutcome: null,
     meet: null,
     sessionStreak: readSessionStreak(storage),
+    timingElapsedMs: 0,
   };
 }
 
@@ -62,6 +65,7 @@ export function chooseLift(state: ArcadeState, lift: LiftId): ArcadeState {
     pendingGrades: [],
     lastOutcome: null,
     meet: null,
+    timingElapsedMs: 0,
   };
 }
 
@@ -76,11 +80,20 @@ export function startWalkout(state: ArcadeState): ArcadeState {
   if (!state.lift) {
     return state;
   }
-  return { ...state, screen: "walkout", pendingGrades: [] };
+  return { ...state, screen: "walkout", pendingGrades: [], timingElapsedMs: 0 };
 }
 
 export function startTiming(state: ArcadeState): ArcadeState {
-  return { ...state, screen: "timing", pendingGrades: [] };
+  // Clock and grades reset in the same state object as the screen change so
+  // the first timing render cannot paint the previous attempt's elapsed frame.
+  return { ...state, screen: "timing", pendingGrades: [], timingElapsedMs: 0 };
+}
+
+export function tickTiming(state: ArcadeState, elapsedMs: number): ArcadeState {
+  if (state.screen !== "timing") {
+    return state;
+  }
+  return { ...state, timingElapsedMs: Math.max(0, elapsedMs) };
 }
 
 export function recordTap(
@@ -139,12 +152,20 @@ export function afterJudging(state: ArcadeState): ArcadeState {
   };
 }
 
-export function continueAfterOutcome(
-  state: ArcadeState,
-  storage: Pick<Storage, "getItem" | "setItem"> | null = null,
-): ArcadeState {
+/**
+ * Pure transition off success/failure. Safe to use as a React setState
+ * updater: React may invoke it more than once with the same snapshot.
+ * Persistence belongs in persistFinishedMeet, not here.
+ */
+export function continueAfterOutcome(state: ArcadeState): ArcadeState {
+  if (state.screen !== "success" && state.screen !== "failure") {
+    return state;
+  }
   const outcome = state.lastOutcome;
   if (!outcome || !state.lift) {
+    return state;
+  }
+  if (state.outcomes[state.outcomes.length - 1] === outcome) {
     return state;
   }
   const outcomes = [...state.outcomes, outcome];
@@ -161,16 +182,15 @@ export function continueAfterOutcome(
       hiddenFatigue: fatigue,
       currentAttempt: nextAttempt,
       lastOutcome: outcome,
+      timingElapsedMs: 0,
     };
   }
 
-  const incoming = readSessionStreak(storage);
   const persisted = nextSessionStreak(
-    incoming,
+    state.sessionStreak,
     bombed,
     outcomes.some((o) => o.made),
   );
-  writeSessionStreak(storage, persisted);
   const meet = scoreMeet(
     state.lift,
     state.e1rmKg,
@@ -186,7 +206,18 @@ export function continueAfterOutcome(
     hiddenFatigue: fatigue,
     meet,
     sessionStreak: persisted,
+    timingElapsedMs: 0,
   };
+}
+
+export function persistFinishedMeet(
+  state: ArcadeState,
+  storage: Pick<Storage, "setItem"> | null = null,
+): void {
+  if (state.screen !== "results" && state.screen !== "bomb") {
+    return;
+  }
+  writeSessionStreak(storage, state.sessionStreak);
 }
 
 export function openResults(state: ArcadeState): ArcadeState {

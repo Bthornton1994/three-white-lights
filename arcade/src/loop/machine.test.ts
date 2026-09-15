@@ -7,15 +7,20 @@ import {
   continueAfterOutcome,
   finishTiming,
   initialState,
+  persistFinishedMeet,
   recordTap,
   startTiming,
   startWalkout,
+  tickTiming,
+  type ArcadeState,
 } from "./machine.ts";
 import { cuesForLift, sequenceDurationMs } from "./timing.ts";
+import { readSessionStreak } from "../math/streak.ts";
 
 describe("arcade loop machine", () => {
   it("starts on the title screen", () => {
     assert.equal(initialState().screen, "title");
+    assert.equal(initialState().timingElapsedMs, 0);
   });
 
   it("runs lift → attempts → walkout → timing → judging → success", () => {
@@ -79,6 +84,27 @@ describe("arcade loop machine", () => {
     assert.deepEqual(dead, ["pull", "lock"]);
   });
 
+  it("resets timing elapsed atomically on every startTiming entry", () => {
+    let state = chooseLift(initialState(), "squat");
+    state = startWalkout(state);
+    state = startTiming(state);
+    assert.equal(state.timingElapsedMs, 0);
+    state = tickTiming(state, 1840);
+    assert.equal(state.timingElapsedMs, 1840);
+    state = startWalkout(state);
+    assert.equal(state.timingElapsedMs, 0);
+    state = startTiming(state);
+    assert.equal(state.screen, "timing");
+    assert.equal(state.timingElapsedMs, 0);
+    assert.equal(state.pendingGrades.length, 0);
+  });
+
+  it("does not tick a leftover clock onto a non-timing screen", () => {
+    const idle = tickTiming(chooseLift(initialState(), "bench"), 900);
+    assert.equal(idle.screen, "attempts");
+    assert.equal(idle.timingElapsedMs, 0);
+  });
+
   it("bombs after three misses and writes a zero total", () => {
     const storage = memoryStorage();
     let state = chooseLift(initialState(storage), "deadlift");
@@ -88,19 +114,81 @@ describe("arcade loop machine", () => {
       state = finishTiming(state);
       state = afterJudging(state);
       assert.equal(state.screen, "failure");
-      state = continueAfterOutcome(state, storage);
+      state = continueAfterOutcome(state);
     }
+    persistFinishedMeet(state, storage);
     assert.equal(state.screen, "bomb");
     assert.equal(state.meet?.bombed, true);
     assert.equal(state.meet?.totalKg, 0);
+    assert.equal(readSessionStreak(storage), 0);
+  });
+
+  it("cleared-key oracle stays Streak 75 / Total 2235 with one increment", () => {
+    const storage = memoryStorage();
+    const success = clearedKeyThirdMake(initialState(storage));
+    assert.equal(success.sessionStreak, 0);
+
+    const first = continueAfterOutcome(success);
+    const second = continueAfterOutcome(success);
+    persistFinishedMeet(first, storage);
+    persistFinishedMeet(second, storage);
+
+    assert.equal(first.meet?.breakdown.streak, 75);
+    assert.equal(first.meet?.breakdown.total, 2235);
+    assert.equal(second.meet?.breakdown.streak, 75);
+    assert.equal(second.meet?.breakdown.total, 2235);
+    assert.equal(first.sessionStreak, 1);
+    assert.equal(second.sessionStreak, 1);
+    assert.equal(readSessionStreak(storage), 1);
+
+    const replay = continueAfterOutcome(first);
+    persistFinishedMeet(replay, storage);
+    assert.equal(replay.sessionStreak, 1);
+    assert.equal(replay.meet?.breakdown.total, 2235);
+    assert.equal(readSessionStreak(storage), 1);
   });
 
   it("returns to lift select without leftover meet state", () => {
     const next = backToLiftSelect();
     assert.equal(next.screen, "lift");
     assert.equal(next.meet, null);
+    assert.equal(next.timingElapsedMs, 0);
   });
 });
+
+function missAttempt(state: ArcadeState): ArcadeState {
+  let next = startWalkout(state);
+  next = startTiming(next);
+  next = finishTiming(next);
+  return afterJudging(next);
+}
+
+function greatAttempt(state: ArcadeState): ArcadeState {
+  const lift = state.lift;
+  assert.ok(lift);
+  let next = startWalkout(state);
+  next = startTiming(next);
+  const duration = sequenceDurationMs(lift);
+  const cues = cuesForLift(lift, next.hiddenFatigue);
+  cues.forEach((cue, i) => {
+    next = recordTap(next, i, cue.center * duration);
+  });
+  next = finishTiming(next);
+  return afterJudging(next);
+}
+
+function clearedKeyThirdMake(state: ArcadeState): ArcadeState {
+  let next = chooseLift(state, "squat");
+  next = missAttempt(next);
+  next = continueAfterOutcome(next);
+  next = missAttempt(next);
+  next = continueAfterOutcome(next);
+  next = greatAttempt(next);
+  assert.equal(next.screen, "success");
+  assert.equal(next.lastOutcome?.made, true);
+  assert.deepEqual(next.lastOutcome?.grades, ["great", "great"]);
+  return next;
+}
 
 function memoryStorage(): Storage {
   const data = new Map<string, string>();

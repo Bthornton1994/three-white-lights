@@ -39,7 +39,8 @@ title
 ```bash
 cd arcade
 npm install
-npm test          # 43 tests: math, loop, 2-good/2-great contract, distinct sprite paths
+npm test          # math, loop, 2-good/2-great contract, distinct sprite paths,
+                  # timing-clock reset, streak oracle (75 / 2235), share glyphs
 npm run dev       # Vite, default :5173
 ```
 
@@ -51,6 +52,14 @@ npm run dev       # Vite, default :5173
 - Visible amber band is the graded good zone. Taps outside it are early, late, or miss.
 - Do **not** retune `src/feel.ts` on this pass.
 - Walkout copy is lift-specific. Deadlift frame 6 is a lockout, not a setup rewind.
+
+## Cursor code correctness (this pass)
+
+- Timing elapsed resets to 0 in the same `startTiming` state object as the screen change.
+- `continueAfterOutcome` is pure (no storage I/O). Streak persist is `persistFinishedMeet`.
+- Cleared-key oracle: squat miss / miss / two-greats → **Streak 75 / Total 2235**, even if the updater runs twice.
+- Share PNG rows include judge-light glyphs (`○` / `●`).
+- Judging contract and `src/feel.ts` are unchanged.
 
 ## What to verify (human playtest owns feel)
 
@@ -108,7 +117,7 @@ Manual check-in, staff, shop, build mode, gym economy, accounts, multiplayer, Ri
 
 ## Suggested Cursor QA sequence
 
-1. `cd arcade && npm test` — expect 34 pass.
+1. `cd arcade && npm test` — expect the judging contract plus streak/share/timing regressions to pass.
 2. `npm run dev` — play squat 2/3 makes to the card.
 3. Play bench and deadlift far enough to confirm **distinct** walkout/timing poses (no squat reuse).
 4. Miss all three → bomb-out card, total 0.
