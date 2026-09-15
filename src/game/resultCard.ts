@@ -550,13 +550,15 @@ export const FLIGHT_LIFT_GROUPS: readonly {
 
 export interface FlightAttemptView {
   readonly text: string;
+  readonly signedText: string;
   readonly struckThrough: boolean;
   readonly best: boolean;
 }
 
 /**
  * One attempt cell as the shareable sheet prints it: the called weight,
- * struck when missed, `best` on the good lift that matches `LiftRow.bestKg`.
+ * signed negative when missed [R3]/[R4], `best` on the good lift that
+ * matches `LiftRow.bestKg`.
  */
 export function flightAttemptView(
   row: ResultCardFlightRow,
@@ -570,6 +572,7 @@ export function flightAttemptView(
   if (cell === undefined) return null;
   return {
     text: cell.text,
+    signedText: signedAttemptText(cell),
     struckThrough: cell.struckThrough,
     best: cell.mark === 'good' && lift.bestKg !== null && cell.weightKg === lift.bestKg,
   };

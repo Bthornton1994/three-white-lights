@@ -9,7 +9,7 @@
  *
  * The sheet is authored wider than a phone so one packed scoresheet row
  * can hold unclipped kilos. This screen scales that page to PHONE_W.
- * Height is the share frame. Officials sit on the foot of the page.
+ * Height is the share frame. The table sits under the letterhead.
  *
  * No hall. No emptied platform still.
  */

@@ -108,16 +108,19 @@ describe('the shareable card carries the flight', () => {
     expect(RESULT_FLIGHT_TABLE_COLUMNS).not.toContain('bestSquat');
     expect(flightAttemptView(harrow, 'bench1')).toEqual({
       text: '107.5',
+      signedText: '107.5',
       struckThrough: false,
       best: false,
     });
     expect(flightAttemptView(harrow, 'bench2')).toEqual({
       text: '117.5',
+      signedText: '117.5',
       struckThrough: false,
       best: true,
     });
     expect(flightAttemptView(harrow, 'bench3')).toEqual({
       text: '120',
+      signedText: '-120',
       struckThrough: true,
       best: false,
     });
@@ -135,16 +138,19 @@ describe('the shareable card carries the flight', () => {
     expect(mira.totalText).toBe('545');
     expect(flightAttemptView(mira, 'deadlift1')).toEqual({
       text: '205',
+      signedText: '205',
       struckThrough: false,
       best: false,
     });
     expect(flightAttemptView(mira, 'deadlift2')).toEqual({
       text: '222.5',
+      signedText: '222.5',
       struckThrough: false,
       best: false,
     });
     expect(flightAttemptView(mira, 'deadlift3')).toEqual({
       text: '230',
+      signedText: '230',
       struckThrough: false,
       best: true,
     });

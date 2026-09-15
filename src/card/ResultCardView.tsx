@@ -16,12 +16,12 @@
  *
  * One packed table: Place, Lot, Lifter, Wt kg, then Squat/Bench/Deadlift
  * as grouped 1/2/3 cells, then Total and DOTS. Attempts sit in the placing
- * row. Misses are the called weight struck through. No squat+bench
+ * row. Misses are the called weight signed negative. No squat+bench
  * subtotal. No gold winner fill; zebra is the same at every place.
  *
  * Authored wider than a phone. ResultCardScreen scales the page so the
- * whole row is in the 390 frame. The sheet fills that frame: letterhead
- * and table at the head, officials on the foot. No unused zebra pad.
+ * whole row is in the 390 frame. The sheet is a posted results dump:
+ * letterhead and table, leftover page below. No signature form.
  *
  * There is no loaded-bar motif here. Plate colours are gameplay language on
  * the platform, not a cartoon on a scoresheet.
@@ -46,7 +46,6 @@ import { SHEET_CSS } from './sheetPalette';
 
 const P = PAPER;
 const F = PAPER.FLIGHT;
-const CERT = PAPER.CERT;
 const MARK = PAPER.MARK;
 const C = SHEET_CSS;
 
@@ -235,26 +234,14 @@ function FlightRowView({
                 styles.attemptText,
                 attempt.struckThrough ? styles.attemptMiss : styles.cellInk,
                 attempt.best ? styles.attemptBest : null,
-                attempt.struckThrough ? styles.attemptStrike : null,
               ]}
               numberOfLines={1}
             >
-              {attempt.text}
+              {attempt.signedText}
             </Text>
           </View>
         );
       })}
-    </View>
-  );
-}
-
-function SignLine({ role, name }: { readonly role: string; readonly name: string }): React.ReactElement {
-  return (
-    <View style={styles.signLine}>
-      <Text style={styles.certText}>{role}</Text>
-      <View style={styles.signRule}>
-        <Text style={styles.signName}>{name}</Text>
-      </View>
     </View>
   );
 }
@@ -292,21 +279,6 @@ export function ResultCardView({ card }: ResultCardViewProps): React.ReactElemen
         {card.field.map((row, index) => (
           <FlightRowView key={row.id} row={row} odd={index % 2 === 1} />
         ))}
-      </View>
-
-      <View style={styles.cert}>
-        <View style={styles.rule} />
-        <Text style={styles.certText}>{CARD_LABELS.POSTED}</Text>
-        <View style={styles.signBlock}>
-          <SignLine role={CARD_LABELS.REFEREE_1} name={CARD_LABELS.REFEREE_1_NAME} />
-          <SignLine role={CARD_LABELS.REFEREE_2} name={CARD_LABELS.REFEREE_2_NAME} />
-          <SignLine role={CARD_LABELS.REFEREE_3} name={CARD_LABELS.REFEREE_3_NAME} />
-          <SignLine role={CARD_LABELS.TECHNICAL_SECRETARY} name={CARD_LABELS.SECRETARY_NAME} />
-        </View>
-        <View style={styles.mastheadRow}>
-          <Text style={styles.certText}>{CARD_LABELS.UNSIGNED}</Text>
-          <Text style={styles.certText}>{CARD_LABELS.PAGE}</Text>
-        </View>
       </View>
     </View>
   );
@@ -574,51 +546,10 @@ const styles = StyleSheet.create({
   attemptMiss: {
     color: C.INK_SOFT,
   },
-  attemptStrike: {
-    textDecorationLine: 'line-through',
-  },
   cellInk: {
     color: C.INK,
   },
   inkSoft: {
     color: C.INK_SOFT,
-  },
-  cert: {
-    minHeight: P.CERT_BLOCK_H,
-    marginTop: CERT.PIN_TOP,
-    paddingTop: P.SECTION_GAP,
-    gap: CERT.LINE_GAP,
-    justifyContent: 'space-between',
-  },
-  signBlock: {
-    gap: CERT.BLOCK_GAP,
-    marginTop: CERT.SIGN_GAP - CERT.LINE_GAP,
-  },
-  signLine: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: CERT.LINE_GAP,
-  },
-  signRule: {
-    flexGrow: 1,
-    borderBottomWidth: P.RULE,
-    borderBottomColor: C.INK,
-    marginBottom: P.RULE,
-    minWidth: CERT.SIGN_RULE_W,
-    alignItems: 'flex-end',
-  },
-  signName: {
-    color: C.INK,
-    fontSize: CERT.NAME_SIZE,
-    fontWeight: '700',
-    fontStyle: 'normal',
-  },
-  certText: {
-    color: C.INK_SOFT,
-    fontSize: CERT.SIZE,
-    letterSpacing: CERT.TRACKING,
-    fontWeight: '700',
-    fontStyle: 'normal',
   },
 });

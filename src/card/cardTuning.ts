@@ -573,7 +573,7 @@ export const CARD_SCREEN = {
  * UNTUNED (GDD §12.1).
  */
 export const PAPER = {
-  W: 590,
+  W: 644,
   PAD_X: 6,
   PAD_Y: 28,
   FED_SIZE: 16,
@@ -609,17 +609,17 @@ export const PAPER = {
   NAME_GAP: 6,
   /**
    * One packed scoresheet table. Column widths are the 390 two-table
-   * grammar laid on one row: ATTEMPT_COL_W 32 held "217.5" on the
+   * grammar laid on one row: ATTEMPT_COL_W 38 holds "-217.5" on the
    * attempt table; that width is kept. Lot sits after Place. The
-   * sheet fills the share frame as a posted page: letterhead, six
-   * placing rows, officials. No unused zebra pad. Untuned.
+   * sheet is a posted results dump: letterhead, six placing rows,
+   * leftover page below the flight. No signature form. Untuned.
    *
    * NAME_W holds the longest name on the local field ("Rex Pembroke").
    */
   FLIGHT: {
-    HEAD_H: 48,
-    ROW_H: 44,
-    ATTEMPT_ROW_H: 44,
+    HEAD_H: 36,
+    ROW_H: 22,
+    ATTEMPT_ROW_H: 22,
     ATTEMPT_COLS: 9,
     ATTEMPTS_PER_LIFT: 3,
     NAME_W: 88,
@@ -629,7 +629,7 @@ export const PAPER = {
     BEST_COL_W: 42,
     TOTAL_W: 52,
     DOTS_W: 50,
-    ATTEMPT_COL_W: 32,
+    ATTEMPT_COL_W: 38,
     NAME_SIZE: 11,
     BEST_SIZE: 12,
     ATTEMPT_SIZE: 10,
@@ -637,7 +637,7 @@ export const PAPER = {
     HEAD_SIZE: 8,
     HEAD_TRACKING: 0,
     LIFT_HEAD_SIZE: 8,
-    ROW_PAD_Y: 4,
+    ROW_PAD_Y: 2,
     SECTION_SIZE: 14,
     SECTION_TRACKING: 0.6,
     /**
@@ -647,12 +647,11 @@ export const PAPER = {
     CELL_RULE: 2,
   },
   /**
-   * Natural height of the letterhead and the officials block. Leftover
-   * page below the packed flight is not unused zebra; ResultCardView pins
-   * the cert to the foot of PAPER_PAGE_H. Untuned.
+   * Natural height of the letterhead. Packed flight sits under it on a
+   * posted page. No signature form. Untuned.
    */
-  MASTHEAD_BLOCK_H: 128,
-  CERT_BLOCK_H: 200,
+  MASTHEAD_BLOCK_H: 96,
+  CERT_BLOCK_H: 0,
   /** Top and bottom page padding in paperSheetHeight. */
   VERTICAL_PADS: 2,
   /** Top and bottom table rules in paperSheetHeight. */
@@ -669,11 +668,6 @@ export const PAPER = {
     SIGN_RULE_W: 96,
     BLOCK_GAP: 16,
     NAME_SIZE: 16,
-    /**
-     * With the sheet at PAPER_PAGE_H, this sits the officials on the
-     * foot of the page rather than under a short hugged table. Untuned.
-     */
-    PIN_TOP: 'auto',
   },
   MARK: {
     SIZE: 13,
@@ -688,9 +682,8 @@ export const PAPER_SCALE = CARD_SCREEN.PHONE_W / PAPER.W;
 
 /**
  * Authored height of the posted sheet for `fieldCount` filled rows.
- * Packed letterhead, table, and officials, then the share-frame
- * ceiling so leftover cream is page below the flight, not a short
- * diploma on the screen. No unused zebra pad.
+ * Packed letterhead and table on a full share-frame page. Leftover
+ * cream is unused page below the flight, not a signature form.
  */
 export function paperSheetHeight(fieldCount: number): number {
   const f = PAPER.FLIGHT;

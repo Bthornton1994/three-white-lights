@@ -88,7 +88,6 @@ describe('the shareable sheet is a printed scoresheet', () => {
       'CARD_LABELS.FED_MARK',
       'CARD_LABELS.LOT',
       'CARD_LABELS.WEIGHTS_IN',
-      'CARD_LABELS.REFEREE_1_NAME',
     ]) {
       expect(VIEW, token).toContain(token);
     }
@@ -133,16 +132,15 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(VIEW).not.toContain('LiftAttemptStack');
   });
 
-  it('prints each lift as grouped 1/2/3 cells in the placing row, misses struck', () => {
+  it('prints each lift as grouped 1/2/3 cells in the placing row, misses signed', () => {
     expect(VIEW).toContain('flightAttemptView');
     expect(VIEW).toContain('FLIGHT_LIFT_GROUPS');
-    expect(VIEW).toContain('struckThrough');
-    expect(VIEW).toContain('textDecorationLine');
-    expect(VIEW).not.toContain('signedAttemptText');
+    expect(VIEW).toContain('signedText');
+    expect(VIEW).not.toContain('textDecorationLine');
     expect(VIEW).not.toContain('NOLIFT_LIGHT');
     expect(VIEW).not.toContain('GOOD_LIGHT');
     expect(VIEW).not.toContain('LiftAttemptStack');
-    expect(PAPER.FLIGHT.ATTEMPT_COL_W).toBeGreaterThanOrEqual(30);
+    expect(PAPER.FLIGHT.ATTEMPT_COL_W).toBeGreaterThanOrEqual(38);
     expect(PAPER.FLIGHT.ATTEMPT_ROW_H).toBeLessThanOrEqual(48);
   });
 
@@ -152,13 +150,12 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(VIEW).not.toContain('EmptyRow');
     expect(VIEW).not.toContain('blankBand');
     expect(VIEW).not.toContain('playerRow');
+    expect(VIEW).not.toContain('SignLine');
+    expect(VIEW).not.toContain('CERT.PIN_TOP');
     expect(VIEW).toContain('odd ? styles.rowOdd : styles.rowEven');
     expect(VIEW).toContain('flightLifterName');
     expect(VIEW).toContain('paperSheetHeight');
     expect(VIEW).toContain('MASTHEAD_BLOCK_H');
-    expect(VIEW).toContain('CERT_BLOCK_H');
-    expect(VIEW).toContain('CERT.PIN_TOP');
-    expect(PAPER.CERT.PIN_TOP).toBe('auto');
     expect(SCREEN).toContain('flex: 1');
     expect(PAPER.FLIGHT.ROW_H).toBeGreaterThanOrEqual(20);
     expect(PAPER.FLIGHT.ROW_H).toBeLessThanOrEqual(48);
@@ -168,13 +165,12 @@ describe('the shareable sheet is a printed scoresheet', () => {
     ).toBeLessThan(PAPER_PAGE_H);
   });
 
-  it('prints named officials, not blank signature seats', () => {
-    expect(CARD_LABELS.REFEREE_1_NAME).toMatch(/[A-Z]/);
-    expect(CARD_LABELS.REFEREE_2_NAME).toMatch(/[A-Z]/);
-    expect(CARD_LABELS.REFEREE_3_NAME).toMatch(/[A-Z]/);
-    expect(CARD_LABELS.SECRETARY_NAME).toMatch(/[A-Z]/);
-    expect(VIEW).toContain('CARD_LABELS.REFEREE_1_NAME');
-    expect(VIEW).toContain('CARD_LABELS.SECRETARY_NAME');
+  it('does not print a signature form on the posted dump', () => {
+    expect(VIEW).not.toContain('CARD_LABELS.REFEREE_1_NAME');
+    expect(VIEW).not.toContain('CARD_LABELS.SECRETARY_NAME');
+    expect(VIEW).not.toContain('CARD_LABELS.POSTED');
+    expect(VIEW).not.toContain('CARD_LABELS.UNSIGNED');
+    expect(VIEW).not.toContain('SignLine');
   });
 });
 
