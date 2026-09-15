@@ -104,7 +104,7 @@ function FlightHead(): React.ReactElement {
       </View>
       {FLIGHT_LIFT_GROUPS.map((group) => (
         <View key={group.headingId} style={styles.liftGroup}>
-          <Text style={[styles.liftHeadText, styles.headRight]} numberOfLines={1}>
+          <Text style={styles.liftHeadText} numberOfLines={1}>
             {flightColumnHeading(group.headingId)}
           </Text>
           <View style={styles.liftGroupAttempts}>
@@ -437,6 +437,9 @@ const styles = StyleSheet.create({
     letterSpacing: F.HEAD_TRACKING,
     fontWeight: '700',
     fontStyle: 'normal',
+    textAlign: 'center',
+    width: '100%',
+    height: F.LIFT_HEAD_SIZE + F.ROW_PAD_Y,
   },
   headRight: {
     textAlign: 'right',
@@ -444,7 +447,7 @@ const styles = StyleSheet.create({
   liftGroup: {
     width: F.ATTEMPT_COL_W * F.ATTEMPTS_PER_LIFT + F.BEST_COL_W,
     flexShrink: 0,
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     boxSizing: 'border-box',
     borderRightWidth: F.CELL_RULE,
     borderRightColor: C.INK,
