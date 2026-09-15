@@ -4,10 +4,10 @@
 Native character canvas is 80x80, then nearest-neighbor 4x.
 Palette is SNES/Genesis-sized. Alpha is binary. No chroma key.
 
-Craft notes (visual only — not feel / judging):
-- Limbs are banded cylinders, not radial clay sausages.
-- Quads, delts, and traps are separate volumes.
-- Light vs max attempts use different pose tables and plate stacks.
+Craft pass (visual only — not feel / judging):
+- One original lifter: high-and-tight hair, heavy brow, square jaw, amber chevron.
+- Fists wrap the bar. Shoes plant. Plates sit on the sleeve with hubs.
+- Light vs max keep separate pose tables. Draw order puts the bar on the body.
 """
 
 from __future__ import annotations
@@ -40,6 +40,7 @@ FLUSH0 = (124, 58, 42)
 FLUSH1 = (156, 78, 54)
 HAIR0 = (36, 26, 20)
 HAIR1 = (68, 48, 34)
+HAIR2 = (98, 72, 50)
 SING0 = (28, 26, 34)
 SING1 = (52, 48, 62)
 SING2 = (86, 80, 98)
@@ -47,6 +48,7 @@ BELT = (16, 14, 12)
 BUCKLE = (196, 168, 88)
 SHOE0 = (22, 20, 20)
 SHOE1 = (48, 44, 44)
+SHOE2 = (88, 84, 82)
 CHALK = (236, 230, 218)
 BAR0 = (112, 112, 120)
 BAR1 = (196, 196, 204)
@@ -65,8 +67,9 @@ BRICK1 = (64, 42, 34)
 BRICK2 = (82, 54, 42)
 CROWD0 = (34, 26, 24)
 CROWD1 = (56, 40, 34)
+MOUTH = (92, 38, 36)
+SHADOW = (14, 12, 11)
 
-# Craft constants — visual only. Tuned by hand later. Not feel / judging.
 HEAD_W = 16
 HEAD_H = 13
 LIMB_THIGH = 5
@@ -81,7 +84,6 @@ SQUAT_STRAIN = {"light": frozenset({2, 3}), "max": frozenset({1, 2, 3, 4, 5})}
 BENCH_STRAIN = {"light": frozenset({2, 3}), "max": frozenset({1, 2, 3, 4, 5})}
 DEAD_STRAIN = {"light": frozenset({1, 2}), "max": frozenset({0, 1, 2, 3, 4, 5})}
 
-# Light = speed/opener line. Max = grind line. Same phase index, different body.
 SQUAT_DROP = {
     "light": (0, 3, 6, 4, 2, 0),
     "max": (2, 9, 14, 11, 6, 2),
@@ -128,6 +130,7 @@ PLATE_LOADS = {
 FACE_PAL = {
     "H": HAIR0,
     "h": HAIR1,
+    "k": HAIR2,
     "S": SKIN1,
     "s": SKIN2,
     "L": SKIN3,
@@ -144,87 +147,93 @@ FACE_PAL = {
     "B": HAIR0,
     "W": CHALK,
     "o": SKIN0,
+    "M": MOUTH,
+    "J": SKIN0,
+    "a": HAIR1,
+    "u": STEEL,
 }
 
+# Distinct original lifter: high-and-tight fade, heavy brow, boxer's nose, square jaw.
+# Stamps are 16 wide. Spaces are transparent. Pixel clusters, not blended ovals.
 PROFILE_OK = [
-    "   hhhhhhhh    ",
-    "  hhHHHHHHhh   ",
-    " hhHHSLLSSShh  ",
-    "ehHSSEElDSSSs  ",
-    "eeHSSSo nSSnL  ",
-    " eSSSSSSSSSss  ",
-    "  SSSSmmmmSSs  ",
-    "  sSSSSSSSSS   ",
-    "   sSSSSSSs    ",
-    "    nSSSn      ",
-    "    nSSSn      ",
-    "     nnn       ",
+    "    hhhhhh      ",
+    "   hkHHHHHah    ",
+    "  hhHHLLkHHah   ",
+    " ehHSEElLDSkah  ",
+    "eehSSSo  nSShh  ",
+    "  eSSSSnSSSSs   ",
+    "   sSSJmmJSs    ",
+    "   sSSSSSSSs    ",
+    "    nSSSSSn     ",
+    "    nJSSJn      ",
+    "     nnnn       ",
+    "      nn        ",
 ]
 PROFILE_STRAIN = [
-    "   hhhhhhhh    ",
-    "  hhHHHHHHhh   ",
-    " hhHHBBLLSShh  ",
-    "ehHSBllfFDSSs  ",
-    "eeHFFfo nSSnL  ",
-    " eSSFfSTTTTTs  ",
-    "  SSFmWWWWWm   ",
-    "  sFFfSSSSSS   ",
-    "   FSSSSfF     ",
-    "    nVVVn      ",
-    "    nSSSn      ",
-    "     nnn       ",
+    "    hhhhhh      ",
+    "   hkHHHHHah    ",
+    "  hhHBBLLBBah   ",
+    " ehHFBllfDSkah  ",
+    "eehFFFo  nFShh  ",
+    "  eSSFfTTTTs    ",
+    "   FFmWWWWWm    ",
+    "   FSSSSSSf     ",
+    "    nVVVVn      ",
+    "    nJSSJn      ",
+    "     nnnn       ",
+    "      nn        ",
 ]
 PROFILE_MISS = [
-    "   hhhhhhhh    ",
-    "  hhHHHHHHhh   ",
-    " hhHHBBLLSShh  ",
-    "ehHSSSBBlSSSs  ",
-    "eeHSSSo nSSnL  ",
-    " eSSSSSSSSSss  ",
-    "  SSSS    mSs  ",
-    "  sSSSSSSSSS   ",
-    "   sSSSSSSs    ",
-    "    nSSSn      ",
-    "    nSSSn      ",
-    "     nnn       ",
+    "    hhhhhh      ",
+    "   hkHHHHHah    ",
+    "  hhHHLLkHHah   ",
+    " ehHSElLDSkah   ",
+    "eehSSSo  nSShh  ",
+    "  eSSS    SSs   ",
+    "   sSSMMMMSs    ",
+    "   sSSSSSSSs    ",
+    "    nSSSSSn     ",
+    "    nJSSJn      ",
+    "     nnnn       ",
+    "      nn        ",
 ]
 PROFILE_GRIN = [
-    "   hhhhhhhh    ",
-    "  hhHHHHHHhh   ",
-    " hhHHSLLSSShh  ",
-    "ehHSSEElDSSSs  ",
-    "eeHSSSo nSSnL  ",
-    " eSSSSSSSSSss  ",
-    "  SSSSTTmmTTs  ",
-    "  sSSSSSSSSS   ",
-    "   sSSSSSSs    ",
-    "    nSSSn      ",
-    "    nSSSn      ",
-    "     nnn       ",
+    "    hhhhhh      ",
+    "   hkHHHHHah    ",
+    "  hhHHLLkHHah   ",
+    " ehHSEElLDSkah  ",
+    "eehSSSo  nSShh  ",
+    "  eSSSSnSSSSs   ",
+    "   sSSTTmmTTs   ",
+    "   sSSSSSSSs    ",
+    "    nSSSSSn     ",
+    "    nJSSJn      ",
+    "     nnnn       ",
+    "      nn        ",
 ]
 FRONT_OK = [
-    "   hhhhhhhhh   ",
-    "  hhHHHHHHHhh  ",
-    " hHHSLLLLSSHHh ",
-    "ehSSEElSSEElSse",
-    "eeSSSSsoNsSSSse",
-    " hSSSSmmmmSSSs ",
-    "  sSSSSSSSSSs  ",
-    "   sSSSSSSSs   ",
-    "    nnnnnnn    ",
-    "     nnnnn     ",
+    "    hhhhhhh     ",
+    "   hkHHHHHHah   ",
+    "  hHHLLLLkHHah  ",
+    " ehSEElSSEElSse ",
+    " eeSSSSoNoSSSS  ",
+    "  hSSSJmmmJSSs  ",
+    "   sSSSSSSSSs   ",
+    "    sSSSSSSs    ",
+    "     nJJJJn     ",
+    "      nnnn      ",
 ]
 FRONT_STRAIN = [
-    "   hhhhhhhhh   ",
-    "  hhHHHHHHHhh  ",
-    " hHHBBLLLBBHHh ",
-    "ehSFBllSSBllFse",
-    "eeSFfSsoNsFfSse",
-    " hSSS      SSs ",
-    "  SSFmWWWWFmS  ",
-    "   FSSSSSSfF   ",
-    "    nVVnnVV    ",
-    "     nnnnn     ",
+    "    hhhhhhh     ",
+    "   hkHHHHHHah   ",
+    "  hHHBBLLLBBHh  ",
+    " ehSFBllSSBllFe ",
+    " eeSFfSoNoSfFS  ",
+    "  hSS      SSs  ",
+    "   SSFmWWWWFm   ",
+    "    FSSSSSSf    ",
+    "     nVVVVn     ",
+    "      nnnn      ",
 ]
 
 
@@ -262,13 +271,19 @@ class C:
                 if col is not None:
                     self.set(x + i, y + j, col)
 
+    def blit(self, other: "C", ox: int, oy: int) -> None:
+        for y in range(other.h):
+            for x in range(other.w):
+                col = other.get(x, y)
+                if col is not None:
+                    self.set(ox + x, oy + y, col)
+
     def band(self, x: int, y: int, u: float, dark: tuple[int, int, int], mid: tuple[int, int, int], light: tuple[int, int, int]) -> tuple[int, int, int]:
-        # Hard 2-band + 1px dither seam. Soft 3-tone ramps read as modern AA.
         dith = ((x ^ y) & 1) == 0
-        if u > 0.08:
-            return light if u > 0.18 or not dith else mid
-        if u < -0.08:
-            return dark if u < -0.18 or not dith else mid
+        if u > 0.10:
+            return light if u > 0.22 or not dith else mid
+        if u < -0.10:
+            return dark if u < -0.22 or not dith else mid
         return mid
 
     def disc(self, cx: int, cy: int, r: int, mid: tuple[int, int, int], hi: tuple[int, int, int] | None = None) -> None:
@@ -390,17 +405,28 @@ class C:
 def sweat(c: C, x: int, y: int) -> None:
     c.set(x, y, CHALK)
     c.set(x, y + 1, CHALK)
-    c.set(x + 1, y + 1, CHALK)
+    c.set(x + 1, y + 1, SKIN2)
 
 
 def chalk_puff(c: C, x: int, y: int) -> None:
-    for px, py in ((0, 0), (1, -1), (2, 0), (1, 1), (-1, 0), (3, -1), (0, -2)):
+    for px, py in ((0, 0), (1, -1), (2, 0), (1, 1), (-1, 0), (3, -1), (0, -2), (2, -2)):
         c.set(x + px, y + py, CHALK if (px + py) & 1 == 0 else TAPE)
 
 
 def grind_ticks(c: C, x: int, y: int) -> None:
-    for px, py in ((-3, -1), (-4, 1), (3, 0), (4, 2), (-2, 3)):
+    for px, py in ((-3, -1), (-4, 1), (3, 0), (4, 2), (-2, 3), (5, -1)):
         c.set(x + px, y + py, CHALK)
+
+
+def contact_shadow(c: C, cx: int, cy: int, rx: int, ry: int = 2) -> None:
+    c.banded_oval(cx, cy, rx, ry, SHADOW, IRON0, IRON1)
+
+
+def ear(c: C, x: int, y: int) -> None:
+    c.set(x, y, SKIN0)
+    c.set(x, y + 1, SKIN1)
+    c.set(x, y + 2, SKIN0)
+    c.set(x - 1, y + 1, SKIN0)
 
 
 def head_profile(c: C, x: int, y: int, mode: str = "ok") -> None:
@@ -410,52 +436,72 @@ def head_profile(c: C, x: int, y: int, mode: str = "ok") -> None:
         "miss": PROFILE_MISS,
         "grin": PROFILE_GRIN,
     }.get(mode, PROFILE_OK)
-    dark, mid, light = (FLUSH0, SKIN1, SKIN2) if mode == "strain" else (SKIN0, SKIN1, SKIN2)
-    c.banded_oval(x + 8, y + 6, 6, 6, dark, mid, light)
     c.stamp(x, y, rows, FACE_PAL)
+    ear(c, x + 1, y + 5)
+    # Hard brow shelf — one cluster, not a blended oval under the stamp.
+    c.rect(x + 6, y + 3, 5, 1, HAIR0)
+    c.set(x + 11, y + 4, SKIN0)
+    c.set(x + 5, y + 2, HAIR1)
     if mode == "strain":
         sweat(c, x + 14, y + 1)
-        sweat(c, x + 2, y + 3)
+        sweat(c, x + 1, y + 3)
+        c.rect(x + 6, y + 3, 5, 1, HAIR0)
+        c.set(x + 12, y + 6, FLUSH0)
 
 
 def head_front(c: C, x: int, y: int, mode: str = "ok") -> None:
     rows = FRONT_STRAIN if mode == "strain" else FRONT_OK
-    dark, mid, light = (FLUSH0, SKIN1, SKIN2) if mode == "strain" else (SKIN0, SKIN1, SKIN2)
-    c.banded_oval(x + 8, y + 5, 7, 6, dark, mid, light)
     c.stamp(x, y, rows, FACE_PAL)
+    c.rect(x + 4, y + 3, 3, 1, HAIR0)
+    c.rect(x + 9, y + 3, 3, 1, HAIR0)
+    c.set(x + 2, y + 5, SKIN0)
+    c.set(x + 13, y + 5, SKIN0)
     if mode == "strain":
         sweat(c, x + 15, y)
         sweat(c, x + 1, y + 2)
 
 
-def shoe(c: C, x: int, y: int, facing: int = 1) -> None:
+def shoe(c: C, x: int, y: int, facing: int = 1, heel: bool = True) -> None:
+    contact_shadow(c, x + 6, y + 6, 8, 2)
     if facing >= 0:
-        c.rect(x, y + 1, 13, 4, SHOE0)
-        c.rect(x + 1, y, 9, 3, SHOE1)
-        c.rect(x + 9, y + 2, 5, 3, SHOE0)
-        c.rect(x, y + 4, 13, 2, OUTLINE)
-        c.rect(x + 1, y + 3, 3, 2, IRON1)
-        c.rect(x + 4, y + 3, 3, 1, AMBER0)
-        c.set(x + 7, y + 1, STEEL)
-        c.set(x + 5, y + 1, BAR1)
+        if heel:
+            c.rect(x, y + 3, 5, 4, SHOE0)
+            c.rect(x + 1, y + 1, 4, 3, SHOE1)
+            c.set(x + 1, y + 4, IRON0)
+        c.rect(x + 3, y + 1, 11, 5, SHOE0)
+        c.rect(x + 4, y, 8, 3, SHOE1)
+        c.rect(x + 10, y + 2, 5, 3, SHOE2)
+        c.rect(x + 3, y + 5, 12, 2, OUTLINE)
+        c.rect(x + 5, y + 3, 4, 1, AMBER0)
+        c.set(x + 8, y + 1, STEEL)
+        c.set(x + 6, y + 1, BAR1)
+        c.set(x + 12, y + 3, CHALK)
+        c.set(x + 13, y + 4, SHOE1)
     else:
-        c.rect(x, y + 1, 13, 4, SHOE0)
-        c.rect(x + 3, y, 9, 3, SHOE1)
-        c.rect(x, y + 2, 5, 3, SHOE0)
-        c.rect(x, y + 4, 13, 2, OUTLINE)
-        c.rect(x + 9, y + 3, 3, 2, IRON1)
-        c.rect(x + 6, y + 3, 3, 1, AMBER0)
-        c.set(x + 5, y + 1, STEEL)
-        c.set(x + 7, y + 1, BAR1)
+        if heel:
+            c.rect(x + 8, y + 3, 5, 4, SHOE0)
+            c.rect(x + 8, y + 1, 4, 3, SHOE1)
+            c.set(x + 11, y + 4, IRON0)
+        c.rect(x, y + 1, 11, 5, SHOE0)
+        c.rect(x + 2, y, 8, 3, SHOE1)
+        c.rect(x, y + 2, 5, 3, SHOE2)
+        c.rect(x, y + 5, 12, 2, OUTLINE)
+        c.rect(x + 4, y + 3, 4, 1, AMBER0)
+        c.set(x + 6, y + 1, STEEL)
+        c.set(x + 8, y + 1, BAR1)
+        c.set(x + 2, y + 3, CHALK)
+        c.set(x + 1, y + 4, SHOE1)
 
 
 def shoe_front(c: C, x: int, y: int) -> None:
-    c.rect(x, y + 1, 11, 4, SHOE0)
+    contact_shadow(c, x + 5, y + 6, 7, 2)
+    c.rect(x, y + 1, 11, 5, SHOE0)
     c.rect(x + 1, y, 9, 3, SHOE1)
-    c.rect(x, y + 4, 11, 2, OUTLINE)
-    c.rect(x + 3, y + 3, 4, 1, AMBER0)
+    c.rect(x, y + 5, 11, 2, OUTLINE)
+    c.rect(x + 3, y + 3, 5, 1, AMBER0)
     c.rect(x + 1, y + 3, 2, 2, IRON1)
     c.set(x + 5, y + 1, STEEL)
+    c.set(x + 7, y + 1, BAR1)
 
 
 def wrap(c: C, x: int, y: int, w: int, h: int = WRAP_H) -> None:
@@ -471,25 +517,75 @@ def wrap(c: C, x: int, y: int, w: int, h: int = WRAP_H) -> None:
 
 def sleeve(c: C, x: int, y: int, w: int, h: int = 5) -> None:
     c.rect(x, y, w, h, SING0)
-    c.rect(x + 1, y + 1, max(1, w - 2), h - 2, SING1)
+    c.rect(x + 1, y + 1, max(1, w - 2), h - 2, AMBER1)
+    c.rect(x + 1, y + 2, max(1, w - 2), 1, AMBER0)
     c.rect(x, y + h - 1, w, 1, AMBER0)
 
 
+def fist(c: C, x: int, y: int, facing: int = 1) -> None:
+    """Closed hand wrapping a horizontal bar. y is bar center."""
+    if facing >= 0:
+        wrap(c, x - 1, y + 2, 4, 2)
+        c.rect(x, y - 2, 5, 5, SKIN1)
+        c.rect(x + 1, y - 1, 3, 3, SKIN2)
+        c.set(x, y - 2, SKIN0)
+        c.set(x + 1, y - 3, SKIN2)
+        c.set(x + 3, y - 3, SKIN2)
+        c.set(x + 2, y - 2, SKIN3)
+        c.set(x + 4, y - 1, SKIN0)
+        c.set(x + 1, y + 1, SKIN0)
+        c.set(x + 3, y + 1, SKIN0)
+        # Thumb wrapping over the far side of the bar.
+        c.set(x + 5, y, SKIN1)
+        c.set(x + 5, y - 1, SKIN2)
+        c.set(x + 6, y, SKIN0)
+        c.set(x + 2, y, CHALK)
+        c.set(x + 4, y + 1, CHALK)
+    else:
+        wrap(c, x + 2, y + 2, 4, 2)
+        c.rect(x, y - 2, 5, 5, SKIN1)
+        c.rect(x + 1, y - 1, 3, 3, SKIN2)
+        c.set(x + 4, y - 2, SKIN0)
+        c.set(x + 3, y - 3, SKIN2)
+        c.set(x + 1, y - 3, SKIN2)
+        c.set(x + 2, y - 2, SKIN3)
+        c.set(x, y - 1, SKIN0)
+        c.set(x + 3, y + 1, SKIN0)
+        c.set(x + 1, y + 1, SKIN0)
+        c.set(x - 1, y, SKIN1)
+        c.set(x - 1, y - 1, SKIN2)
+        c.set(x - 2, y, SKIN0)
+        c.set(x + 2, y, CHALK)
+        c.set(x, y + 1, CHALK)
+
+
 def hand(c: C, x: int, y: int, grip: bool = False) -> None:
-    wrap(c, x, y + 2, 3, 2)
-    c.rect(x, y, 3, 3, SKIN1)
+    if grip:
+        fist(c, x, y, 1)
+        return
+    wrap(c, x, y + 3, 3, 2)
+    c.rect(x, y, 4, 4, SKIN1)
     c.set(x + 1, y + 1, SKIN2)
     c.set(x + 2, y + 2, SKIN0)
-    if grip:
-        c.set(x, y - 1, SKIN1)
-        c.set(x + 1, y - 1, CHALK)
-        c.set(x + 2, y - 1, SKIN0)
-        c.set(x + 3, y, SKIN1)
-    else:
-        c.set(x + 3, y, SKIN2)
-        c.set(x + 4, y + 1, SKIN1)
-        c.set(x + 3, y + 2, SKIN0)
-        c.set(x + 2, y + 3, CHALK)
+    c.set(x + 2, y - 1, SKIN3)
+    # Three fingers, not a mitt.
+    c.set(x + 4, y, SKIN2)
+    c.set(x + 5, y, SKIN1)
+    c.set(x + 4, y + 1, SKIN0)
+    c.set(x + 5, y + 2, SKIN1)
+    c.set(x + 4, y + 2, SKIN2)
+    c.set(x + 6, y + 1, SKIN0)
+    c.set(x + 3, y + 3, CHALK)
+    c.set(x + 6, y, SKIN1)
+
+
+def chevron(c: C, x: int, y: int) -> None:
+    c.set(x, y, AMBER1)
+    c.set(x - 1, y + 1, AMBER0)
+    c.set(x + 1, y + 1, AMBER0)
+    c.set(x - 2, y + 2, AMBER1)
+    c.set(x + 2, y + 2, AMBER1)
+    c.set(x, y + 1, AMBER2)
 
 
 def singlet(
@@ -509,28 +605,32 @@ def singlet(
         cx = int(round(top_x + (bot_x - top_x) * t))
         w = max(3, int(round(top_w + (bot_w - top_w) * t)))
         c.set(cx + w // 2 - 1, y, AMBER1 if y % 2 == 0 else AMBER2)
-        c.set(cx + w // 2 - 2, y, AMBER0)
-        if strain and (y + cx) % 4 == 0:
-            c.set(cx - 1, y, SING0)
+        c.set(cx - w // 2 + 1, y, AMBER0)
+        if strain and 0.3 < t < 0.7 and (y + cx) % 3 == 0:
+            c.set(cx - 2, y, SING0)
+            c.set(cx + 1, y, SING0)
+        if 0.45 < t < 0.7 and y % 4 == 0:
             c.set(cx, y, SING0)
-    strap_w = 2
-    c.rect(top_x - top_w // 2 + 3, top_y - 3, strap_w, 4, SING2)
-    c.rect(top_x + top_w // 2 - 5, top_y - 3, strap_w, 4, SING2)
+    # Thick straps, not 1px ribbons.
+    c.rect(top_x - top_w // 2 + 2, top_y - 5, 3, 6, SING2)
+    c.rect(top_x + top_w // 2 - 5, top_y - 5, 3, 6, SING2)
+    c.set(top_x - top_w // 2 + 3, top_y - 5, AMBER1)
+    c.set(top_x + top_w // 2 - 4, top_y - 5, AMBER1)
     neck = max(3, top_w - 10)
-    c.rect(top_x - neck // 2, top_y, neck, 1, SKIN1)
-    if strain:
-        c.rect(top_x - 3, top_y + span // 3, 6, 1, SING0)
+    c.rect(top_x - neck // 2, top_y, neck, 2, SKIN1)
+    c.set(top_x - neck // 2, top_y + 1, SKIN0)
+    c.set(top_x + neck // 2 - 1, top_y + 1, SKIN0)
+    chevron(c, top_x, top_y + 3)
 
 
 def belt(c: C, x: int, y: int, w: int, cinch: bool = False) -> None:
     h = BELT_H if cinch else 3
     c.rect(x, y, w, h, BELT)
-    for xx in range(x + 1, x + w - 1, 2):
-        c.set(xx, y + 1, IRON1)
-        if h > 3:
-            c.set(xx + 1, y + 2, IRON2)
-    c.rect(x + w // 2 - 2, y, 5, h, BUCKLE)
-    c.rect(x + w // 2 - 1, y + 1, 3, max(1, h - 2), AMBER1)
+    for xx in range(x + 2, x + w - 2, 3):
+        c.set(xx, y + 1, IRON2)
+    c.rect(x + w // 2 - 3, y, 6, h, BUCKLE)
+    c.rect(x + w // 2 - 2, y + 1, 4, max(1, h - 2), AMBER1)
+    c.set(x + w // 2, y + 1, IRON0)
     if cinch:
         c.rect(x, y, 1, h, OUTLINE)
         c.rect(x + w - 1, y, 1, h, OUTLINE)
@@ -556,8 +656,9 @@ def plate(c: C, cx: int, cy: int, r: int, color: tuple[int, int, int]) -> None:
                     c.set(x, y, BLACKP)
     hub = max(2, r // 3)
     c.banded_disc(cx, cy, hub, STEEL, BAR0, BAR1)
+    c.set(cx, cy, CHALK)
     for y in range(cy - r + 1, cy + r):
-        for x in range(cx + r - 4, cx + r + 1):
+        for x in range(cx + r - 3, cx + r + 1):
             d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy)
             if inner * inner < d2 <= r * r:
                 c.set(x, y, color)
@@ -572,21 +673,23 @@ def bar(c: C, x0: int, x1: int, y: int, loaded: str = "meet", bend: int = 0) -> 
             c.set(x, yy - 1, BAR0)
             c.set(x, yy, BAR1)
             c.set(x, yy + 1, BAR0)
-            if 10 < x < x1 - 10 and x % 2 == 0:
+            if 12 < x < x1 - 12 and x % 2 == 0:
                 c.set(x, yy - 1, STEEL)
     else:
         c.rect(x0, y - 1, x1 - x0, 3, BAR0)
         c.rect(x0, y, x1 - x0, 1, BAR1)
-        for x in range(x0 + 10, x1 - 10, 2):
+        for x in range(x0 + 12, x1 - 12, 2):
             c.set(x, y - 1, STEEL)
     stack = PLATE_LOADS[loaded]
     ox = 0
     for r, col in stack:
-        plate(c, x0 - 2 - ox, y + (bend if bend else 0) // 2, r, col)
-        plate(c, x1 + 2 + ox, y + (bend if bend else 0) // 2, r, col)
+        plate(c, x0 - 1 - ox, y + (bend if bend else 0) // 2, r, col)
+        plate(c, x1 + 1 + ox, y + (bend if bend else 0) // 2, r, col)
         ox += max(3, r // 3 + 2)
-    c.rect(x0 + 1, y - 2, 2, 5, BAR1)
-    c.rect(x1 - 3, y - 2, 2, 5, BAR1)
+    c.rect(x0 + 2, y - 2, 3, 5, BAR1)
+    c.rect(x1 - 5, y - 2, 3, 5, BAR1)
+    c.rect(x0 + 3, y - 3, 1, 7, STEEL)
+    c.rect(x1 - 4, y - 3, 1, 7, STEEL)
 
 
 def skin_tones(strain: bool) -> tuple[tuple[int, int, int], tuple[int, int, int], tuple[int, int, int]]:
@@ -601,8 +704,11 @@ def mass(load: str, strain: bool, base: int) -> int:
 
 
 def traps(c: C, sh_x: int, sh_y: int, dark: tuple[int, int, int], mid: tuple[int, int, int], light: tuple[int, int, int], wide: bool) -> None:
-    rx = 7 if wide else 5
-    c.banded_oval(sh_x, sh_y + 1, rx, 3, dark, mid, light)
+    rx = 8 if wide else 6
+    c.banded_oval(sh_x, sh_y + 1, rx, 4, dark, mid, light)
+    c.set(sh_x - 2, sh_y, dark)
+    c.set(sh_x + 2, sh_y, light)
+    c.set(sh_x, sh_y - 1, mid)
 
 
 def delts(
@@ -617,22 +723,63 @@ def delts(
     far_l: tuple[int, int, int],
     bulky: bool,
 ) -> None:
-    r = 4 if bulky else 3
-    c.banded_disc(sh_x - 7, sh_y + 3, r, far_d, far_m, far_l)
-    c.banded_disc(sh_x + 7, sh_y + 3, r, dark, mid, light)
+    r = 5 if bulky else 4
+    c.banded_disc(sh_x - 8, sh_y + 3, r, far_d, far_m, far_l)
+    c.banded_disc(sh_x + 8, sh_y + 3, r, dark, mid, light)
+    c.set(sh_x + 10, sh_y + 1, light)
+    c.set(sh_x - 10, sh_y + 2, far_d)
 
 
 def quad_bulge(c: C, x: int, y: int, dark: tuple[int, int, int], mid: tuple[int, int, int], light: tuple[int, int, int], bulky: bool) -> None:
-    c.banded_oval(x, y, 4 if bulky else 3, 5 if bulky else 4, dark, mid, light)
-    c.set(x + 1, y - 1, light)
+    c.banded_oval(x, y, 4 if bulky else 3, 6 if bulky else 5, dark, mid, light)
+    c.set(x + 2, y - 2, light)
     c.set(x - 1, y + 2, dark)
+    c.set(x + 1, y + 1, mid)
+    c.set(x + 2, y + 3, dark)
+
+
+def calf_diamond(c: C, x: int, y: int, dark: tuple[int, int, int], mid: tuple[int, int, int], light: tuple[int, int, int]) -> None:
+    c.set(x, y, light)
+    c.set(x + 1, y + 1, light)
+    c.set(x, y + 1, mid)
+    c.set(x - 1, y + 1, dark)
+    c.set(x, y + 2, dark)
+
+
+def lat_flare(c: C, sh_x: int, sh_y: int, bulky: bool) -> None:
+    rx = 6 if bulky else 4
+    ry = 7 if bulky else 5
+    c.banded_oval(sh_x - 7, sh_y + 10, rx, ry, SING0, SING1, SING2)
+    c.banded_oval(sh_x + 7, sh_y + 10, rx, ry, SING0, SING1, SING2)
+
+
+def crotch_split(c: C, hip_x: int, hip_y: int, depth: int = 8) -> None:
+    """Keep thighs from fusing into a wedge at the hole."""
+    for dy in range(depth):
+        c.set(hip_x, hip_y + 2 + dy, OUTLINE)
+        if dy > 1:
+            c.set(hip_x - 1, hip_y + 2 + dy, SING0)
+            c.set(hip_x + 1, hip_y + 2 + dy, SING0)
+        if dy > 4:
+            c.set(hip_x - 2, hip_y + 2 + dy, SING0)
+            c.set(hip_x + 2, hip_y + 2 + dy, SING0)
+
+
+def glute(c: C, x: int, y: int, dark: tuple[int, int, int], mid: tuple[int, int, int], light: tuple[int, int, int], bulky: bool) -> None:
+    c.banded_oval(x, y, 6 if bulky else 5, 4 if bulky else 3, dark, mid, light)
 
 
 def pecs(c: C, sh_x: int, sh_y: int, strain: bool) -> None:
     col = SING0 if strain else SING1
-    c.banded_oval(sh_x - 4, sh_y + 7, 4, 3, SING0, col, SING2)
-    c.banded_oval(sh_x + 4, sh_y + 7, 4, 3, SING0, col, SING2)
+    c.banded_oval(sh_x - 5, sh_y + 7, 5, 3, SING0, col, SING2)
+    c.banded_oval(sh_x + 5, sh_y + 7, 5, 3, SING0, col, SING2)
     c.rect(sh_x - 1, sh_y + 6, 3, 1, SING0)
+
+
+def neck(c: C, sh_x: int, sh_y: int, dark: tuple[int, int, int], mid: tuple[int, int, int], light: tuple[int, int, int]) -> None:
+    c.banded_capsule(sh_x, sh_y, sh_x + 1, sh_y - 5, 3, dark, mid, light, False, False)
+    c.set(sh_x - 2, sh_y - 1, dark)
+    c.set(sh_x + 3, sh_y - 2, light)
 
 
 def lifter_stand(c: C, x: int, y: int, mode: str = "ok", arms: str = "down") -> None:
@@ -643,14 +790,19 @@ def lifter_stand(c: C, x: int, y: int, mode: str = "ok", arms: str = "down") -> 
     far_d, far_m, far_l = SKIN0, SKIN1, SKIN0
     r_th = mass("light", strain, LIMB_THIGH)
     r_arm = mass("light", strain, LIMB_ARM)
+    contact_shadow(c, x - 8, y + 4, 7, 2)
+    contact_shadow(c, x + 8, y + 4, 7, 2)
     c.banded_capsule(x - 4, hip_y + 2, x - 7, y - 11, r_th, far_d, far_m, far_l, False, True)
     c.banded_capsule(x - 7, y - 11, x - 8, y - 2, LIMB_CALF, far_d, far_m, far_l, False, True)
+    calf_diamond(c, x - 8, y - 8, far_d, far_m, far_l)
     shoe(c, x - 16, y - 2, -1)
     sleeve(c, x - 10, y - 14, 7)
     wrap(c, x - 9, y - 8, 6)
+    glute(c, x, hip_y + 2, SING0, SING1, SING2, False)
     c.banded_capsule(x + 4, hip_y + 2, x + 7, y - 11, r_th, dark, mid, light, False, True)
     quad_bulge(c, x + 7, hip_y + 8, dark, mid, light, strain)
     c.banded_capsule(x + 7, y - 11, x + 7, y - 2, LIMB_CALF, dark, mid, light, False, True)
+    calf_diamond(c, x + 8, y - 8, dark, mid, light)
     shoe(c, x + 2, y - 2, 1)
     sleeve(c, x + 4, y - 14, 7)
     wrap(c, x + 5, y - 8, 6)
@@ -666,9 +818,9 @@ def lifter_stand(c: C, x: int, y: int, mode: str = "ok", arms: str = "down") -> 
         hand(c, x + 10, sh_y + 19)
     elif arms == "rack":
         c.banded_capsule(x - 8, sh_y + 4, x - 15, sh_y + 11, r_arm, far_d, far_m, far_l, False, True)
-        hand(c, x - 17, sh_y + 9, True)
+        fist(c, x - 18, sh_y + 10, -1)
         c.banded_capsule(x + 8, sh_y + 4, x + 15, sh_y + 11, r_arm, dark, mid, light, False, True)
-        hand(c, x + 15, sh_y + 9, True)
+        fist(c, x + 15, sh_y + 10, 1)
     elif arms == "up":
         c.banded_capsule(x - 8, sh_y + 4, x - 13, sh_y - 11, r_arm, far_d, mid, light, False, True)
         hand(c, x - 15, sh_y - 14)
@@ -680,8 +832,8 @@ def lifter_stand(c: C, x: int, y: int, mode: str = "ok", arms: str = "down") -> 
         c.banded_capsule(x - 8, sh_y + 4, x - 17, sh_y + 8, r_arm, far_d, far_m, far_l, False, True)
         hand(c, x - 20, sh_y + 6)
     face = "strain" if strain else "miss" if mode == "miss" else "grin" if mode == "grin" else "ok"
-    c.banded_capsule(x, sh_y, x + 1, sh_y - 3, 2, dark, mid, light, False, False)
-    head_profile(c, x - 5, sh_y - 15, face)
+    neck(c, x, sh_y, dark, mid, light)
+    head_profile(c, x - 5, sh_y - 16, face)
 
 
 def squat(c: C, phase: int, load: str = "light") -> None:
@@ -699,38 +851,52 @@ def squat(c: C, phase: int, load: str = "light") -> None:
     r_th = mass(load, strain, LIMB_THIGH)
     r_arm = mass(load, strain, LIMB_ARM)
     bend = 3 if load == "max" and phase in (2, 3, 4) else 0
-    bar(c, 8, 72, sh_y - 3, "max" if load == "max" else "light", bend)
     knee_y = foot - 15 + drop // 5
+    bulky = load == "max" or strain
+    # Far leg, then near, then torso, THEN bar on the traps, THEN fists.
     c.banded_capsule(hip_x - 4, hip_y + 2, hip_x - 7 - wide, knee_y, r_th, far_d, far_m, far_l, False, True)
-    c.banded_capsule(hip_x - 7 - wide, knee_y, hip_x - 8 - wide // 2, foot - 2, LIMB_CALF, far_d, far_m, far_l, False, True)
+    c.banded_capsule(hip_x - 7 - wide, knee_y, hip_x - 7 - wide, foot - 2, LIMB_CALF, far_d, far_m, far_l, False, True)
+    calf_diamond(c, hip_x - 8 - wide, knee_y + 4, far_d, far_m, far_l)
     shoe(c, hip_x - 17 - wide // 2, foot - 2, -1)
     sleeve(c, hip_x - 10 - wide, knee_y - 2, 8)
     wrap(c, hip_x - 9 - wide, knee_y + 3, 6)
+    glute(c, hip_x - 1, hip_y + 3, SING0, SING1, SING2, bulky)
     c.banded_capsule(hip_x + 4, hip_y + 2, hip_x + 9 + wide, knee_y, r_th, dark, mid, light, False, True)
-    quad_bulge(c, hip_x + 7 + wide // 2, (hip_y + knee_y) // 2 + 1, dark, mid, light, load == "max" or strain)
-    c.banded_capsule(hip_x + 9 + wide, knee_y, hip_x + 8 + wide // 2, foot - 2, LIMB_CALF, dark, mid, light, False, True)
+    quad_bulge(c, hip_x + 7 + wide // 2, (hip_y + knee_y) // 2 + 1, dark, mid, light, bulky)
+    c.banded_capsule(hip_x + 9 + wide, knee_y, hip_x + 9 + wide, foot - 2, LIMB_CALF, dark, mid, light, False, True)
+    calf_diamond(c, hip_x + 10 + wide, knee_y + 4, dark, mid, light)
     shoe(c, hip_x + 3 + wide // 2, foot - 2, 1)
     sleeve(c, hip_x + 6 + wide, knee_y - 2, 8)
     wrap(c, hip_x + 7 + wide, knee_y + 3, 6)
+    crotch_split(c, hip_x, hip_y, 9 if load == "max" else 7)
     tw = 20 if load == "max" else 16
     bw = 16 if load == "max" else 12
     singlet(c, sh_x, sh_y, tw, hip_x, hip_y, bw, strain)
     pecs(c, sh_x, sh_y, strain)
     traps(c, sh_x, sh_y, dark, mid, light, load == "max")
-    delts(c, sh_x, sh_y, dark, mid, light, far_d, far_m, far_l, load == "max" or strain)
+    delts(c, sh_x, sh_y, dark, mid, light, far_d, far_m, far_l, bulky)
     belt(c, hip_x - 8, hip_y, 16, strain or load == "max")
     elbow_drop = 12 if load == "max" else 8
     c.banded_capsule(sh_x - 8, sh_y + 5, sh_x - 16, sh_y + elbow_drop, r_arm, far_d, far_m, far_l, False, True)
-    hand(c, sh_x - 18, sh_y + elbow_drop - 2, True)
     c.banded_capsule(sh_x + 8, sh_y + 5, sh_x + 16, sh_y + elbow_drop, r_arm, dark, mid, light, False, True)
-    hand(c, sh_x + 16, sh_y + elbow_drop - 2, True)
+    # Trap shelf so the bar sits in the meat, not floating in front of a sausage torso.
+    c.rect(sh_x - 6, sh_y - 1, 12, 2, SKIN0)
+    c.rect(sh_x - 4, sh_y - 2, 8, 1, SKIN1)
+    bar(c, 12, 68, sh_y - 2, "max" if load == "max" else "light", bend)
+    # Lower trap wrapping under the bar so it reads as on the back.
+    c.rect(sh_x - 5, sh_y, 10, 2, SKIN1)
+    c.set(sh_x - 3, sh_y - 1, SKIN0)
+    c.set(sh_x + 3, sh_y - 1, SKIN2)
+    c.set(sh_x, sh_y, SKIN0)
+    fist(c, sh_x - 20, sh_y + elbow_drop - 3, -1)
+    fist(c, sh_x + 16, sh_y + elbow_drop - 3, 1)
     if load == "max":
         chalk_puff(c, sh_x + 16, sh_y + 2)
         grind_ticks(c, sh_x, sh_y + 8)
         if phase in (2, 3):
             chalk_puff(c, sh_x - 18, sh_y + 4)
-    c.banded_capsule(sh_x, sh_y, sh_x + 1, sh_y - 3, 2, dark, mid, light, False, False)
-    head_profile(c, sh_x - 5, sh_y - 15, "strain" if strain or load == "max" else "ok")
+    neck(c, sh_x, sh_y, dark, mid, light)
+    head_profile(c, sh_x - 5, sh_y - 16, "strain" if strain or load == "max" else "ok")
 
 
 def deadlift(c: C, phase: int, load: str = "light") -> None:
@@ -746,33 +912,42 @@ def deadlift(c: C, phase: int, load: str = "light") -> None:
     r_th = mass(load, strain, LIMB_THIGH)
     r_arm = mass(load, strain, LIMB_ARM)
     bend = 4 if load == "max" and phase <= 4 else 0
-    bar(c, 8, 72, bar_y, "max" if load == "max" else "light", bend)
+    bulky = load == "max" or strain
+    if phase <= 1:
+        contact_shadow(c, 20, bar_y + 8, 8, 2)
+        contact_shadow(c, 60, bar_y + 8, 8, 2)
     c.banded_capsule(x - 5, hip_y + 2, x - 7, foot - 11, r_th, far_d, far_m, far_l, False, True)
     c.banded_capsule(x - 7, foot - 11, x - 8, foot - 2, LIMB_CALF, far_d, far_m, far_l, False, True)
-    shoe(c, x - 16, foot - 2, -1)
+    calf_diamond(c, x - 8, foot - 8, far_d, far_m, far_l)
+    shoe(c, x - 16, foot - 2, -1, heel=False)
     sleeve(c, x - 10, foot - 16, 7)
     wrap(c, x - 9, foot - 10, 6)
+    glute(c, x, hip_y + 2, SING0, SING1, SING2, bulky)
     c.banded_capsule(x + 3, hip_y + 2, x + 6, foot - 11, r_th, dark, mid, light, False, True)
-    quad_bulge(c, x + 7, hip_y + 7, dark, mid, light, load == "max" or strain)
+    quad_bulge(c, x + 7, hip_y + 7, dark, mid, light, bulky)
     c.banded_capsule(x + 6, foot - 11, x + 7, foot - 2, LIMB_CALF, dark, mid, light, False, True)
-    shoe(c, x + 2, foot - 2, 1)
+    calf_diamond(c, x + 8, foot - 8, dark, mid, light)
+    shoe(c, x + 2, foot - 2, 1, heel=False)
     sleeve(c, x + 4, foot - 16, 7)
     wrap(c, x + 5, foot - 10, 6)
     tw = 18 if load == "max" else 16
     singlet(c, sh_x, sh_y, tw, x, hip_y, 14, strain)
     pecs(c, sh_x, sh_y, strain)
     traps(c, sh_x, sh_y, dark, mid, light, load == "max")
-    delts(c, sh_x, sh_y, dark, mid, light, far_d, far_m, far_l, load == "max" or strain)
+    delts(c, sh_x, sh_y, dark, mid, light, far_d, far_m, far_l, bulky)
+    if not hinge:
+        lat_flare(c, sh_x, sh_y, bulky)
     belt(c, x - 8, hip_y - 1, 16, strain or load == "max")
     c.banded_capsule(sh_x - 6, sh_y + 6, 26, bar_y, r_arm, far_d, far_m, far_l, False, True)
     c.banded_capsule(sh_x + 6, sh_y + 6, 52, bar_y, r_arm, dark, mid, light, False, True)
-    hand(c, 24, bar_y - 1, True)
-    hand(c, 51, bar_y - 1, True)
+    bar(c, 12, 68, bar_y, "max" if load == "max" else "light", bend)
+    fist(c, 22, bar_y, -1)
+    fist(c, 51, bar_y, 1)
     head_x = sh_x + (1 if hinge else -5)
-    head_y = sh_y - (13 if hinge else 15)
+    head_y = sh_y - (14 if hinge else 16)
     head_x = min(max(head_x, 1), CW - HEAD_W - 1)
     head_y = min(max(head_y, 1), CH - HEAD_H - 4)
-    c.banded_capsule(sh_x + 1, sh_y, head_x + 7, head_y + HEAD_H - 1, 2, dark, mid, light, False, False)
+    neck(c, sh_x, sh_y, dark, mid, light)
     if load == "max":
         chalk_puff(c, 22, bar_y - 6)
         grind_ticks(c, sh_x, sh_y + 6)
@@ -781,40 +956,47 @@ def deadlift(c: C, phase: int, load: str = "light") -> None:
     head_profile(c, head_x, head_y, "strain" if strain or load == "max" else "ok")
 
 
+def bench_rack(c: C) -> None:
+    c.rect(6, 12, 5, 54, IRON2)
+    c.rect(69, 12, 5, 54, IRON2)
+    c.rect(4, 62, 9, 5, IRON1)
+    c.rect(67, 62, 9, 5, IRON1)
+    c.rect(6, 20, 8, 3, IRON3)
+    c.rect(66, 20, 8, 3, IRON3)
+    c.set(10, 21, STEEL)
+    c.set(70, 21, STEEL)
+
+
 def bench(c: C, phase: int, load: str = "light") -> None:
     bar_y = BENCH_BAR_Y[load][phase]
     arch = BENCH_ARCH[load][phase]
     strain = phase in BENCH_STRAIN[load]
     dark, mid, light = skin_tones(strain)
-    c.rect(7, 14, 5, 52, IRON2)
-    c.rect(68, 14, 5, 52, IRON2)
-    c.rect(5, 64, 9, 4, IRON1)
-    c.rect(66, 64, 9, 4, IRON1)
-    c.rect(7, 22, 7, 3, IRON3)
-    c.rect(66, 22, 7, 3, IRON3)
-    c.rect(16, 46 - arch, 48, 7, IRON2)
-    c.rect(18, 44 - arch, 44, 3, IRON3)
-    c.rect(36, 52 - arch, 7, 16, IRON1)
-    c.rect(29, 66, 20, 4, IRON2)
+    bench_rack(c)
+    pad_y = 46 - arch
+    contact_shadow(c, 40, pad_y + 12, 22, 3)
+    c.rect(16, pad_y, 48, 8, IRON2)
+    c.rect(18, pad_y - 2, 44, 4, IRON3)
+    c.rect(20, pad_y - 3, 40, 2, TAPE)
+    c.rect(36, pad_y + 6, 8, 16, IRON1)
+    c.rect(28, 66, 22, 4, IRON2)
     torso_y = 38 - arch
-    for xx in range(20, 58):
-        for yy in range(torso_y, torso_y + 9):
-            t = (xx - 20) / 38.0
-            fold = strain and (xx + yy) % 5 == 0
-            if t < 0.18:
-                col = SING2 if (xx + yy) & 1 else SING1
-            elif t > 0.78:
-                col = SING0 if (xx + yy) & 1 else SING1
-            else:
-                col = SING2 if (xx ^ yy) & 1 else SING1
-            if fold:
-                col = SING0
-            c.set(xx, yy, col)
-    c.rect(20, torso_y - 1, 2, 6, SING2)
-    c.rect(54, torso_y - 1, 2, 6, SING2)
-    c.rect(36, torso_y - 1, 3, 10, AMBER1)
+    # Chest volume, not a flat singlet rectangle.
+    c.banded_oval(38, torso_y + 5, 20, 8, SING0, SING1, SING2)
+    c.banded_trap(38, torso_y, 36, 38, torso_y + 10, 32, SING0, SING1, SING2)
+    pecs(c, 38, torso_y - 1, strain)
+    for xx in range(22, 54):
+        yy = torso_y + 8
+        if strain and (xx + yy) % 5 == 0:
+            c.set(xx, yy, SING0)
+    c.rect(20, torso_y - 3, 3, 8, SING2)
+    c.rect(53, torso_y - 3, 3, 8, SING2)
+    c.set(21, torso_y - 3, AMBER1)
+    c.set(54, torso_y - 3, AMBER1)
+    c.rect(36, torso_y - 1, 4, 11, AMBER1)
     c.set(37, torso_y + 1, AMBER2)
-    belt(c, 32, torso_y + 6, 14, strain or load == "max")
+    chevron(c, 38, torso_y + 2)
+    belt(c, 32, torso_y + 7, 14, strain or load == "max")
     c.banded_capsule(56, 44, 66, 54, 4, SKIN0, SKIN1, SKIN0)
     c.banded_capsule(66, 54, 68, 68, 3, SKIN0, SKIN1, SKIN0)
     shoe_front(c, 64, 66)
@@ -829,37 +1011,38 @@ def bench(c: C, phase: int, load: str = "light") -> None:
     flare = 6 if load == "max" else 0
     c.banded_capsule(26, 40, 20 - flare, bar_y, r_arm, dark, mid, light)
     c.banded_capsule(48, 40, 58 + flare, bar_y, r_arm, dark, mid, light)
-    c.banded_disc(24, 38, 3, dark, mid, light)
-    c.banded_disc(50, 38, 3, dark, mid, light)
-    hand(c, 18 - flare, bar_y - 1, True)
-    hand(c, 56 + flare, bar_y - 1, True)
+    c.banded_disc(24, 38, 4, dark, mid, light)
+    c.banded_disc(50, 38, 4, dark, mid, light)
     c.banded_capsule(22, 38, 18, 35, 3, dark, mid, light)
     bend = 3 if load == "max" and phase in (2, 3, 4) else 0
-    bar(c, 10, 70, bar_y, "max" if load == "max" else "light", bend)
+    bar(c, 12, 68, bar_y, "max" if load == "max" else "light", bend)
+    fist(c, 16 - flare, bar_y, -1)
+    fist(c, 56 + flare, bar_y, 1)
     if load == "max":
         chalk_puff(c, 28, bar_y - 5)
         grind_ticks(c, 40, torso_y + 2)
-    head_front(c, 24, 28 - arch, "strain" if strain or load == "max" else "ok")
+    head_front(c, 22, 26 - arch, "strain" if strain or load == "max" else "ok")
 
 
 def idle(c: C, i: int) -> None:
     lifter_stand(c, 40, 74, "ok", "down")
     if i % 2:
         c.rect(32, 33, 14, 1, SING2)
+        c.set(48, 18, CHALK)
 
 
 def success(c: C, i: int) -> None:
     arms = ["out", "out", "up", "up"][i]
     lifter_stand(c, 40, 74, "grin", arms)
     if i >= 2:
-        for pt in ((58, 16), (61, 14), (63, 17), (56, 13), (60, 12), (64, 15)):
+        for pt in ((58, 16), (61, 14), (63, 17), (56, 13), (60, 12), (64, 15), (54, 15)):
             c.set(*pt, CHALK)
 
 
 def miss(c: C, i: int) -> None:
     x = 40 + i
     lifter_stand(c, x, 74, "miss", "down")
-    c.rect(x - 2, 20, 8, 1, HAIR0)
+    c.rect(x - 2, 18, 8, 1, HAIR0)
 
 
 def plates_prop(c: C, i: int) -> None:
@@ -871,9 +1054,12 @@ def plates_prop(c: C, i: int) -> None:
         plate(c, 48, y, 8 - n, cols[(i + n + 2) % 6])
 
 
-def crowd_figure(c: C, x: int, y: int, shade: tuple[int, int, int]) -> None:
+def crowd_figure(c: C, x: int, y: int, shade: tuple[int, int, int], accent: tuple[int, int, int] | None = None) -> None:
     c.banded_oval(x, y, 4, 4, CROWD0, shade, IRON3)
-    c.rect(x - 5, y + 4, 11, 10, shade)
+    c.set(x - 1, y, SKIN0)
+    c.set(x + 1, y, SKIN1)
+    shirt = accent or shade
+    c.rect(x - 5, y + 4, 11, 10, shirt)
     c.rect(x - 6, y + 6, 4, 6, CROWD0)
     c.rect(x + 3, y + 6, 4, 6, CROWD0)
     if (x + y) % 3 == 0:
@@ -881,55 +1067,65 @@ def crowd_figure(c: C, x: int, y: int, shade: tuple[int, int, int]) -> None:
 
 
 def crowd_bank(c: C, y: int, w: int, rows: int = 2) -> None:
+    accents = (CROWD1, AMBER0, IRON3, CROWD0, SING1)
     for row in range(rows):
         yy = y + row * 7
         stagger = 5 if row % 2 else 0
         for i, x in enumerate(range(6 + stagger, w - 8, 9)):
             shade = CROWD1 if (i + row) % 2 == 0 else CROWD0
-            crowd_figure(c, x, yy, shade)
+            crowd_figure(c, x, yy, shade, accents[(i + row) % len(accents)])
+
+
+def judge_lights(c: C, cx: int, cy: int) -> None:
+    c.rect(cx - 32, cy - 8, 64, 16, IRON0)
+    c.rect(cx - 30, cy - 6, 60, 12, IRON1)
+    c.rect(cx - 28, cy - 4, 56, 8, BELT)
+    for i, x in enumerate((cx - 18, cx, cx + 18)):
+        c.banded_disc(x, cy, 5, STEEL, CHALK, TAPE)
+        c.banded_disc(x, cy, 3, CHALK, TAPE, AMBER2)
+        c.set(x, cy, CHALK)
 
 
 def platform_scene(w: int = 320, h: int = 180) -> C:
     c = C(w, h)
     c.fill(IRON0)
-    for y in range(8, 104, 8):
+    for y in range(8, 100, 8):
         stagger = 8 if (y // 8) % 2 else 0
         for x in range(-8 + stagger, w + 8, 16):
             col = BRICK1 if ((x // 16) + (y // 8)) % 2 == 0 else BRICK0
             if ((x // 16) + y) % 7 == 0:
                 col = BRICK2
             c.rect(x, y, 15, 7, col)
-    c.rect(0, 0, w, 8, IRON1)
-    c.rect(24, 0, 3, 104, IRON2)
-    c.rect(w - 28, 0, 3, 104, IRON2)
-    c.rect(w // 2 - 1, 8, 2, 10, STEEL)
-    c.banded_oval(w // 2, 20, 6, 3, AMBER0, AMBER1, AMBER2)
-    for y in range(22, 120):
-        half = 18 + (y - 22) // 2
+            c.set(x + 14, y + 6, IRON0)
+    c.rect(0, 0, w, 10, IRON1)
+    c.rect(22, 0, 4, 100, IRON2)
+    c.rect(w - 26, 0, 4, 100, IRON2)
+    c.rect(w // 2 - 2, 8, 4, 14, STEEL)
+    c.banded_oval(w // 2, 22, 10, 4, AMBER0, AMBER1, AMBER2)
+    for y in range(24, 118):
+        half = 22 + (y - 24) // 2
         for x in range(w // 2 - half, w // 2 + half + 1):
             if 0 <= x < w and (x + y) % 2 == 0 and (x + 2 * y) % 5 != 0:
                 if c.get(x, y) in (BRICK0, BRICK1, BRICK2, IRON0):
                     c.set(x, y, AMBER0 if abs(x - w // 2) < half // 3 and y % 3 == 0 else IRON2)
-    crowd_bank(c, 86, w, 3)
-    c.rect(0, 112, w, h - 112, IRON1)
-    c.rect(50, 124, w - 100, 36, WOOD0)
-    for y in range(126, 158, 2):
-        for x in range(52, w - 52, 2):
-            if (x // 2 + y // 2) % 3 == 0:
-                c.set(x, y, WOOD1)
-            elif (x + y) % 11 == 0:
-                c.set(x, y, WOOD2)
-    c.rect(58, 130, w - 116, 2, TAPE)
-    c.rect(58, 152, w - 116, 2, TAPE)
-    c.rect(58, 130, 2, 24, TAPE)
-    c.rect(w - 60, 130, 2, 24, TAPE)
-    c.rect(w - 36, 68, 3, 50, STEEL)
+    crowd_bank(c, 82, w, 3)
+    c.rect(0, 110, w, h - 110, IRON1)
+    c.rect(44, 122, w - 88, 40, WOOD0)
+    for y in range(124, 160, 3):
+        c.rect(46, y, w - 92, 1, WOOD1 if (y // 3) % 2 == 0 else WOOD2)
+        for x in range(48, w - 48, 18):
+            c.set(x, y + 1, WOOD0)
+    c.rect(56, 128, w - 112, 2, TAPE)
+    c.rect(56, 154, w - 112, 2, TAPE)
+    c.rect(56, 128, 2, 28, TAPE)
+    c.rect(w - 58, 128, 2, 28, TAPE)
+    c.rect(w - 34, 64, 4, 54, STEEL)
     for i, col in enumerate((RED, BLUE, YELLOW, GREEN)):
-        plate(c, w - 34, 76 + i * 11, 7, col)
-    c.rect(18, 118, 28, 10, IRON2)
-    for i, col in enumerate((CHALK, CHALK, CHALK)):
-        c.banded_disc(26 + i * 8, 122, 3, IRON1, col, TAPE)
-    c.banded_oval(30, 150, 7, 3, IRON2, IRON3, CHALK)
+        plate(c, w - 32, 74 + i * 12, 8, col)
+    c.rect(16, 116, 30, 12, IRON2)
+    for i in range(3):
+        c.banded_disc(24 + i * 9, 121, 4, IRON1, CHALK, TAPE)
+    c.banded_oval(36, 154, 8, 3, IRON2, IRON3, CHALK)
     return c
 
 
@@ -937,42 +1133,48 @@ def title_scene() -> C:
     w, h = 160, 224
     c = C(w, h)
     c.fill(IRON0)
-    for y in range(0, 142, 8):
+    for y in range(0, 138, 8):
         stagger = 8 if (y // 8) % 2 else 0
         for x in range(-8 + stagger, w + 8, 16):
             col = BRICK1 if ((x // 16) + (y // 8)) % 2 == 0 else BRICK0
             c.rect(x, y, 15, 7, col)
-    c.rect(0, 0, w, 7, IRON1)
-    c.rect(18, 0, 3, 142, IRON2)
-    c.rect(w - 22, 0, 3, 142, IRON2)
-    c.rect(48, 10, 64, 12, IRON1)
-    c.rect(50, 12, 60, 8, BELT)
-    for x, col in ((62, CHALK), (80, CHALK), (98, CHALK)):
-        c.banded_disc(x, 16, 3, IRON2, col, TAPE)
-    c.rect(28, 8, 2, 18, STEEL)
-    c.banded_oval(29, 28, 5, 3, AMBER0, AMBER1, AMBER2)
-    for y in range(30, 160):
-        half = 10 + (y - 30) // 2
-        for x in range(20, min(w - 1, 29 + half)):
-            dx = abs(x - (29 + half // 3))
+            c.set(x + 14, y + 6, IRON0)
+    c.rect(0, 0, w, 12, IRON1)
+    c.rect(16, 0, 4, 138, IRON2)
+    c.rect(w - 20, 0, 4, 138, IRON2)
+    judge_lights(c, 80, 18)
+    c.rect(26, 8, 3, 22, STEEL)
+    c.banded_oval(27, 32, 8, 4, AMBER0, AMBER1, AMBER2)
+    for y in range(34, 150):
+        half = 12 + (y - 34) // 2
+        for x in range(18, min(w - 1, 28 + half)):
+            dx = abs(x - (28 + half // 3))
             if dx <= half and (x + y) % 2 == 0 and (x * 2 + y) % 5 != 0:
                 if c.get(x, y) in (BRICK0, BRICK1, BRICK2, IRON0):
                     c.set(x, y, AMBER0 if dx < half // 2 and y % 3 == 0 else IRON2)
-    crowd_bank(c, 118, w, 3)
-    c.rect(0, 150, w, h - 150, IRON1)
-    c.rect(18, 168, 124, 40, WOOD0)
-    for y in range(170, 206, 2):
-        for x in range(20, 140, 2):
-            if (x + y) % 4 == 0:
-                c.set(x, y, WOOD1)
-    c.rect(28, 176, 104, 2, TAPE)
-    c.rect(28, 198, 104, 2, TAPE)
-    c.rect(28, 176, 2, 24, TAPE)
-    c.rect(130, 176, 2, 24, TAPE)
-    bar(c, 46, 114, 188, "max")
-    c.rect(142, 88, 3, 64, STEEL)
+    crowd_bank(c, 108, w, 3)
+    c.rect(0, 146, w, h - 146, IRON1)
+    c.rect(14, 164, 132, 44, WOOD0)
+    for y in range(166, 204, 3):
+        c.rect(16, y, 128, 1, WOOD1 if (y // 3) % 2 == 0 else WOOD2)
+        for x in range(20, 140, 16):
+            c.set(x, y + 1, WOOD0)
+    c.rect(24, 172, 112, 2, TAPE)
+    c.rect(24, 198, 112, 2, TAPE)
+    c.rect(24, 172, 2, 28, TAPE)
+    c.rect(134, 172, 2, 28, TAPE)
+    contact_shadow(c, 80, 206, 28, 4)
+    hero = C(CW, CH)
+    squat(hero, 0, "max")
+    # Plant feet on the taped platform with the bar clearly above the wood.
+    c.blit(hero, 40, 118)
+    c.rect(142, 86, 4, 64, STEEL)
     for i, col in enumerate((RED, BLUE, YELLOW, GREEN)):
-        plate(c, 144, 98 + i * 12, 6, col)
+        plate(c, 144, 96 + i * 13, 7, col)
+    # Side judge table — three white lights, not a brick void.
+    c.rect(6, 150, 22, 10, IRON2)
+    for i in range(3):
+        c.banded_disc(12 + i * 7, 155, 3, STEEL, CHALK, TAPE)
     return c
 
 
@@ -1079,6 +1281,35 @@ def export_evidence() -> None:
         compare.paste(a, (i * 320, 0), a)
         compare.paste(b, (i * 320, 320), b)
     compare.save(EVIDENCE / "light-vs-max.png")
+    # Blind A/B vs previous tip 633e5930
+    before_dir = EVIDENCE / "before-633e5930"
+    if before_dir.exists():
+        ab = Image.new("RGB", (640, 960), (0, 0, 0))
+        pairs2 = (
+            ("squat-03.png", "squat", "frame-03.png"),
+            ("squat-max-03.png", "squat-max", "frame-03.png"),
+            ("bench-03.png", "bench", "frame-03.png"),
+        )
+        for i, (old_name, folder, fname) in enumerate(pairs2):
+            old = Image.open(before_dir / old_name).convert("RGBA")
+            new = Image.open(OUT / folder / fname).convert("RGBA")
+            ab.paste(old, (0, i * 320), old)
+            ab.paste(new, (320, i * 320), new)
+        ab.save(EVIDENCE / "before-after-craft.png")
+        if (before_dir / "title.png").exists() and (before_dir / "deadlift-06.png").exists():
+            title_ab = Image.new("RGB", (640, 640), (0, 0, 0))
+            old_t = Image.open(before_dir / "title.png").convert("RGB")
+            new_t = Image.open(OUT / "title.png").convert("RGB")
+            # Title is 640x896 at 4x of 160x224; crop a 320x320 window of the stage.
+            old_crop = old_t.resize((320, 448), Image.NEAREST).crop((0, 0, 320, 320))
+            new_crop = new_t.resize((320, 448), Image.NEAREST).crop((0, 0, 320, 320))
+            title_ab.paste(old_crop, (0, 0))
+            title_ab.paste(new_crop, (320, 0))
+            old_l = Image.open(before_dir / "deadlift-06.png").convert("RGBA")
+            new_l = Image.open(OUT / "deadlift" / "frame-06.png").convert("RGBA")
+            title_ab.paste(old_l, (0, 320), old_l)
+            title_ab.paste(new_l, (320, 320), new_l)
+            title_ab.save(EVIDENCE / "before-after-title-lockout.png")
     for name in ("title.png", "platform.png"):
         src = OUT / name
         if src.exists():

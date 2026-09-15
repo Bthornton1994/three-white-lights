@@ -1,46 +1,67 @@
-# Visual self-critique — effort states + SNES sports bar
+# Visual self-critique — SNES sports craft pass on `633e5930`
 
-**Self-assessment: ISSUES_REMAIN.** This pass cannot self-certify MERGE_OK or a Slam Masters / Super Punch-Out A/B. Independent QA owns the bar.
+**Self-assessment: ISSUES_REMAIN.** This pass cannot self-certify MERGE_OK or a Slam Masters / Super Punch-Out / NBA Jam A/B. Independent QA owns the bar and must judge the exact SHA this file ships with.
 
-Baseline for this repair is audited tip `dd57ae89` (PR #68). Work continues on PR #69 atop the #68/#66 stack. `src/feel.ts`, judging, timing windows, scoring, and share logic were not touched.
+Parent tip: `633e5930a057153f2ffc1b334cb62d0c63b623c4` (PR #69). `src/feel.ts`, judging, timing windows, scoring, effort-state mapping (`visualEffort` / `MAX_LOAD_RATIO 0.96`), and share logic were not touched. Pose tables (`SQUAT_*`, `DEAD_*`, `BENCH_*`) are unchanged.
+
+## What this pass changed (craft only)
+
+Authored 80×80 → 4× nearest package, same frame paths and counts.
+
+- Face stamps are the face (no blended oval underneath). High-and-tight fade, heavy brow shelf, boxer's nose, stubble, ear, strain teeth.
+- Fists wrap the bar with a thumb over the far side and a knuckle row. Open hands show three fingers.
+- Trap shelf so a squat bar sits in the meat: bar drawn, then lower trap wrapping under it.
+- Lifting shoes with a raised heel wedge, strap, and contact shadow.
+- Black singlet, thicker straps, amber side piping, chest chevron (original mark — not a licensed logo).
+- Crotch split on the squat hole so thighs do not fuse into a wedge. Shins more vertical. Calf diamond + quad bulge.
+- Deadlift lockout adds lat flare. Bench torso is a chest volume, not a flat rectangle.
+- Draw order: far limb → torso → bar → trap wrap → fists → neck/head.
+- Title: three white judge lights, spotlight, crowd bank, standing loaded max squat on the taped platform, plate tree, side light table.
+
+Light vs max pose tables are the same as `633e5930`. Silhouette QA still requires ≥900 px delta on frames 01/03/06.
 
 ## Blind A/B (what a still image shows)
 
-Compared side-by-side in `visual-after/light-vs-max.png` (top = opener/light, bottom = max):
+Compared in `visual-after/before-after-craft.png` (left = `633e5930`, right = this pass) and `light-vs-max.png` (top = opener, bottom = max):
 
-| Lift | Light read | Max read | Distinct? |
-|---|---|---|---|
-| Squat hole | Upright, shallow, green/yellow stack, calm face | Deep, leaned, red stack, chalk / grind ticks | Yes — different body line, not a recolor |
-| Bench pause | Bar high, elbows in, small plates | Bar crushed to chest, flared elbows, red stack | Yes |
-| Deadlift setup | Higher hips, steeper back | Low hinge, almost horizontal back | Yes |
-| Deadlift lockout | Stacked upright | Lean-back / hyperextension, red stack | Yes |
+| Shot | Read |
+|---|---|
+| Squat hole light | Bar on the back, heels down, amber knee sleeves, chevron |
+| Squat hole max | Deeper, leaned, red stack, chalk, grimace — still a different body line |
+| Bench pause light vs max | High bar / crushed chest + flared elbows |
+| Deadlift setup vs lockout | Floor hinge vs standing lockout (frame 06 ≠ 01) |
+| Title | Three white lights + loaded lifter on taped wood, not an empty brick hall |
 
-Three-lift silhouettes stay distinct (`three-lift-silhouettes.png`): squat = bar on back / depth; bench = supine + rack; deadlift = floor hinge. Deadlift frame 06 is still a lockout, not a setup rewind. Binary alpha and no magenta chroma are preserved.
+Lift identities stay distinct (`three-lift-silhouettes.png`): squat = bar on back; bench = supine + rack; deadlift = floor hinge. Binary alpha and no magenta chroma are preserved.
 
-Against a real SNES sports/fighting sheet (Slam Masters Haggar, Super Punch-Out Little Mac): ours is still authored-in-code. Faces, hands, and cloth folds do not match that craft density. The A/B on *effort* is now readable. The A/B on *16-bit sports craft* is still lost.
+Against a real SNES sports/fighting sheet (Slam Masters Haggar, Super Punch-Out Little Mac, NBA Jam): this is still **authored-in-code**. Pixel clusters are denser than the mannequin tip, but they are not a hand-pixelled sports sprite. A critic can still fail the craft A/B on mass, cloth, and face density.
 
 ## Residual issues (do not treat as pass)
 
-1. **Craft still pastiche.** Banded volumes and pec/quad marks are better than the mannequin tip, but not hand-pixelled SNES sports sprites. A critic can still fail the sports-game A/B on mass and costume.
-2. **Max squat hole still packs tight at 80×80.** Depth and lean read; thighs can merge toward a wedge. Waist is there; Slam Masters clustering is not.
-3. **Weight is posed, not timed.** Max sheets are a different pose table. Bar-speed curves still come from the untouched timing machine. Whether a max *animates* heavier in-hand is unverified.
-4. **Title/platform** gained a crowd bank and a loaded bar. Still a brick wall and a taped platform, not a Genesis title.
-5. **In-app attempts screen shows the opener (light) sheet.** Max only appears when weight / e1RM ≥ 0.96 (third attempt). A reviewer who only screenshots A1 will not see the grind line.
+1. **Craft still procedural.** Chevrons, fists, brow shelves, and trap wrap help identity; they do not equal a scanned SNES sheet.
+2. **Max squat hole still packs tight at 80×80.** Depth, lean, and crotch split read; thighs can still crowd. The split is a patch, not Slam Masters clustering.
+3. **Weight is posed, not timed.** Max sheets remain a different pose table. Bar-speed still comes from the untouched timing machine.
+4. **Title is a better stage, not a Genesis title card.** Spotlight + hero + three white lights. No baked wordmark (copy stays HTML). Crowd is still stamp figures. A still of the loaded squat can read heavy/wide rather than fully locked standing.
+5. **In-app attempts screen shows the opener (light) sheet.** Max only appears when weight / e1RM ≥ 0.96 (third attempt). Unchanged mapping.
+6. **Hair silhouette is still a tight cap** at 16×12. Fade and brow help; it is not Little Mac hair density.
+7. **Bench from 3/4 remains the hardest read.** Chest volume and arch help; the supine body is still a short oval on a pad.
 
 ## Before / after paths
 
-| Artifact | Before (`dd57ae89`) | After |
+| Artifact | Before (`633e5930`) | After |
 |---|---|---|
-| Squat hole | `visual-before/sprites/squat/frame-03.png` | `visual-after/sprites/squat/frame-03.png` + `squat-max/frame-03.png` |
-| Bench pause | `visual-before/sprites/bench/frame-03.png` | `visual-after/sprites/bench/frame-03.png` + `bench-max/frame-03.png` |
-| Deadlift setup / lock | `visual-before/sprites/deadlift/frame-01.png` + `frame-06.png` | light + `deadlift-max/` counterparts |
-| Effort trio | n/a (same six poses) | `visual-after/light-vs-max.png` |
-| Column A/B | `visual-before/` sprites | `visual-after/before-after-light-max.png` |
-| In-app 390×844 | `visual-before/app-*.png` | `visual-after/app-*.png` |
-| Critique | this file | this file |
+| Squat / bench / deadlift frames | `visual-after/before-633e5930/` | `public/sprites/{lift,lift-max}/` |
+| Column A/B | `before-after-craft.png` | left old / right new |
+| Title + lockout A/B | `before-after-title-lockout.png` | left old / right new |
+| Effort trio | `light-vs-max.png` | opener vs grind |
+| In-app 390×844 | recaptured `app-*.png` after smoke | this pass |
+
+## Why this does not meet the sports-game craft bar (self)
+
+Slam Masters / Super Punch-Out / NBA Jam sprites were hand-clustered: cloth folds, face planes, and weight reads are painted pixel-by-pixel. This package is a constructed original lifter with a consistent silhouette language, cleaned chroma, and distinct light/max poses — closer than the mannequin tip, still authored-in-code. Independent QA must make the A/B call on the exact SHA.
 
 ## Checks performed
 
-- `scripts/check_sprites.py`: binary alpha, no chroma, ≤48 colors, light≠max, silhouette delta ≥ 900 px on frames 01/03/06.
-- 52 unit tests. Deadlift 06 ≠ 01. `visualEffort(162, 180) === "light"`, `visualEffort(180, 180) === "max"`.
-- No edits to `src/feel.ts`, `src/loop/machine.ts`, `src/loop/timing.ts`, `src/math/score.ts`, or `src/ui/share.ts`.
+- `scripts/check_sprites.py`: binary alpha, no chroma, ≤48 colors/sprite, ≤64 title/platform, light≠max, silhouette delta ≥ 900 px on frames 01/03/06, deadlift 06 ≠ 01.
+- 52 arcade unit tests. `visualEffort(162, 180) === "light"`, `visualEffort(180, 180) === "max"`.
+- No edits to `src/feel.ts`, `src/loop/machine.ts`, `src/loop/timing.ts`, `src/math/score.ts`, `src/ui/share.ts`, or `visualEffort`.
