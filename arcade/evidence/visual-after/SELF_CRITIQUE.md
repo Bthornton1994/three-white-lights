@@ -1,6 +1,6 @@
 # Visual self-critique — Iron & Amber Arcade sprite pass
 
-**Verdict: ISSUES_REMAIN.** This pass cannot self-certify a SNES/Genesis sports A/B (GDD §12.2 / §7.1). It removes the agreed defects (fringe, chroma, noisy title) and keeps lift-specific silhouettes.
+**Verdict: ISSUES_REMAIN.** This pass cannot self-certify a SNES/Genesis sports A/B (GDD §12.2 / §7.1). It removes the agreed defects (fringe, chroma, noisy title) and keeps lift-specific silhouettes. An independent critic confirmed the bar is still lost: heads/bodies remain simpler than Slam Masters / Street Fighter II sheets, and a maximal attempt still uses the same six poses as a light one.
 
 ## What changed
 
