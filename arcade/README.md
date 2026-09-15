@@ -42,9 +42,9 @@ Cursor QA: see [`CURSOR_QA.md`](CURSOR_QA.md).
 ## Known defects
 
 - Two in-window good taps now keep a 2-white majority. Feel values in `src/feel.ts` are still **untuned**.
-- Deadlift frame 6 is a standing lockout, not a setup rewind. Mid-pull head is inside the canvas. Magenta haze can still appear around some lift silhouettes.
-- Success frames had remaining purple chroma specks removed; they are not SNES A/B approved.
-- Sprite quality is below a SNES sports A/B bar; lifts are distinct, not approved.
+- Deadlift frame 6 is a standing hip lockout, not a setup rewind. Mid-pull head stays in-canvas.
+- Sprite package was replaced with authored 16-bit frames (binary alpha, no magenta key). This is **not** a SNES sports A/B pass — faces, mass, and grind still need a human art pass.
+- Title/platform are indexed PNGs (no JPEG grain). Spotlight dither is clean, not film grain; it is still simpler than a Genesis title backdrop.
 
 ## Out of scope
 

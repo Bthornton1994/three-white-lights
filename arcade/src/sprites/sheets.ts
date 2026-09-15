@@ -80,8 +80,8 @@ export const MISS_FRAMES = [
 ] as const;
 
 export const SCENE = {
-  title: "/sprites/title.jpg",
-  platform: "/sprites/platform.jpg",
+  title: "/sprites/title.png",
+  platform: "/sprites/platform.png",
   identity: "/sprites/identity.png",
 } as const;
 
