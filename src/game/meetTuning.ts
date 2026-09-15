@@ -199,6 +199,8 @@ export interface FieldLifterSpec {
    * not a wall of makes; these flags are the local flight's card, not a
    * physiology model. Untuned. Mira Quill is a full card so her printed
    * 190 / 125 / 230 stay put. Jon Harrow's bench third stays a miss.
+   * After a missed second the third repeats that weight — the federated
+   * retake, not an automatic jump.
    */
   readonly attemptGood: Readonly<Record<LiftKind, FieldAttemptGoods>>;
 }
@@ -220,7 +222,7 @@ export const MEET_FIELD_FIXTURE: readonly FieldLifterSpec[] = Object.freeze([
     lot: 1,
     dayMaxKg: Object.freeze({ squat: 200, bench: 130, deadlift: 240 }),
     attemptGood: Object.freeze({
-      squat: Object.freeze([true, true, false]) as FieldAttemptGoods,
+      squat: Object.freeze([true, false, true]) as FieldAttemptGoods,
       bench: LIFT_MADE,
       deadlift: Object.freeze([true, true, false]) as FieldAttemptGoods,
     }),
@@ -264,7 +266,7 @@ export const MEET_FIELD_FIXTURE: readonly FieldLifterSpec[] = Object.freeze([
     lot: 6,
     dayMaxKg: Object.freeze({ squat: 155, bench: 100, deadlift: 185 }),
     attemptGood: Object.freeze({
-      squat: Object.freeze([true, true, false]) as FieldAttemptGoods,
+      squat: Object.freeze([true, false, true]) as FieldAttemptGoods,
       bench: Object.freeze([true, true, false]) as FieldAttemptGoods,
       deadlift: Object.freeze([true, true, false]) as FieldAttemptGoods,
     }),

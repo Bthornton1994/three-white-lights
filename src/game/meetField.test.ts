@@ -235,6 +235,21 @@ describe('A1-NPC-SIM-01 miss discriminator includes lift', () => {
     expect(misses.length).toBe(9);
     const mira = field.cards.find((card) => card.lifter.name === 'Mira Quill');
     expect(mira?.plan.every((row) => row.good)).toBe(true);
+    const harrowSquat = field.cards
+      .find((card) => card.lifter.name === 'Jon Harrow')
+      ?.plan.filter((row) => row.lift === 'squat');
+    expect(harrowSquat?.map((row) => row.weightKg)).toEqual([160, 175, 175]);
+    expect(harrowSquat?.map((row) => row.good)).toEqual([true, false, true]);
+    for (const card of field.cards) {
+      for (const lift of LIFT_ORDER) {
+        const rows = card.plan.filter((row) => row.lift === lift);
+        const second = rows[1];
+        const third = rows[2];
+        if (second !== undefined && !second.good) {
+          expect(third?.weightKg, `${card.lifter.name} ${lift}`).toBe(second.weightKg);
+        }
+      }
+    }
     const harrowBench3 = field.cards
       .find((card) => card.lifter.name === 'Jon Harrow')
       ?.plan.find((row) => row.lift === 'bench' && row.attemptNumber === 3);

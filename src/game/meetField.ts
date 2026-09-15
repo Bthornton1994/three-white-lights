@@ -4,8 +4,8 @@
  * A1: a few named competitors on this flight, not a giant fake leaderboard
  * and not GDD §5 empire NPCs. Every published kg / best / Total / bomb-out
  * is produced by `meet.ts`. Make/miss on the local fixture is authored on
- * each spec so the posted class dump is an attempt grid. The result is not
- * fake.
+ * each spec so the posted class dump is an attempt grid. A missed second
+ * is retaken at the same weight. The result is not fake.
  *
  * A1.1: same-weight platform order is declared weight, then lot. Replay of a
  * fixture card either completes all nine attempts or fails closed. Standing
@@ -112,15 +112,25 @@ function planLift(
   spec: FieldLifterSpec,
 ): readonly FieldAttemptPlan[] {
   const opener = roundCall(dayMaxKg * MEET_TUNING.FIELD.OPENER_FRAC, lift, rules, 'down');
-  const secondRaw = roundCall(dayMaxKg * MEET_TUNING.FIELD.SECOND_FRAC, lift, rules, 'up');
-  const minSecond = roundCall(opener + rules.minIncrement, lift, rules, 'up');
-  const second = secondRaw >= minSecond ? secondRaw : minSecond;
-  const thirdRaw = roundCall(dayMaxKg, lift, rules, 'up');
-  const minThird = roundCall(second + rules.minIncrement, lift, rules, 'up');
-  const third = thirdRaw >= minThird ? thirdRaw : minThird;
   const openerN = ATTEMPT_NUMBERS[0];
   const secondN = ATTEMPT_NUMBERS[1];
   const thirdN = ATTEMPT_NUMBERS[2];
+  let second: number;
+  if (!goods[0]) {
+    second = opener;
+  } else {
+    const secondRaw = roundCall(dayMaxKg * MEET_TUNING.FIELD.SECOND_FRAC, lift, rules, 'up');
+    const minSecond = roundCall(opener + rules.minIncrement, lift, rules, 'up');
+    second = secondRaw >= minSecond ? secondRaw : minSecond;
+  }
+  let third: number;
+  if (!goods[1]) {
+    third = second;
+  } else {
+    const thirdRaw = roundCall(dayMaxKg, lift, rules, 'up');
+    const minThird = roundCall(second + rules.minIncrement, lift, rules, 'up');
+    third = thirdRaw >= minThird ? thirdRaw : minThird;
+  }
   return [
     {
       lift,
