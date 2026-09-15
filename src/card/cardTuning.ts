@@ -573,7 +573,7 @@ export const CARD_SCREEN = {
  * UNTUNED (GDD §12.1).
  */
 export const PAPER = {
-  W: 578,
+  W: 590,
   PAD_X: 6,
   PAD_Y: 14,
   FED_SIZE: 16,
@@ -627,7 +627,7 @@ export const PAPER = {
     LOT_W: 28,
     WEIGHT_W: 40,
     BEST_COL_W: 42,
-    TOTAL_W: 40,
+    TOTAL_W: 52,
     DOTS_W: 50,
     ATTEMPT_COL_W: 32,
     NAME_SIZE: 11,

@@ -50,6 +50,7 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(PAPER.FLIGHT.LOT_W).toBeGreaterThanOrEqual(24);
     expect(PAPER.FLIGHT.NAME_W).toBeGreaterThanOrEqual(88);
     expect(PAPER.FLIGHT.WEIGHT_W).toBeGreaterThanOrEqual(40);
+    expect(PAPER.FLIGHT.TOTAL_W).toBeGreaterThanOrEqual(52);
     expect(PAPER.FLIGHT.DOTS_W).toBeGreaterThanOrEqual(48);
     expect(PAPER.FLIGHT.HEAD_H).toBeGreaterThanOrEqual(20);
     expect(VIEW).toContain('numberOfLines={1}');
