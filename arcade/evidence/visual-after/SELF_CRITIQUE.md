@@ -17,6 +17,9 @@ Replaced the 384px anti-aliased illustration package with authored 80×80 indexe
 | Bench pause | `visual-before/sprites/bench/frame-03.png` | `visual-after/sprites/bench/frame-03.png` |
 | Deadlift setup / lock | `visual-before/sprites/deadlift/frame-01.png` + `frame-06.png` | `visual-after/sprites/deadlift/frame-01.png` + `frame-06.png` |
 | Three-lift read | lift-select cards on #66 tip | `visual-after/three-lift-silhouettes.png` |
+| In-app title 390×844 | `visual-before/title-screen.png` | `visual-after/app-title.png` |
+| In-app lift select | `visual-before/lift-select.png` | `visual-after/app-lift-select.png` |
+| In-app squat / bench / deadlift | `visual-before/squat-success.png` | `app-attempts-squat.png`, `app-attempts-bench.png`, `app-attempts-deadlift.png` |
 
 ## Honest gaps vs the bar
 
