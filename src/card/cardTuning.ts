@@ -573,7 +573,7 @@ export const CARD_SCREEN = {
  * UNTUNED (GDD §12.1).
  */
 export const PAPER = {
-  W: 644,
+  W: 680,
   PAD_X: 6,
   PAD_Y: 28,
   FED_SIZE: 16,
@@ -609,7 +609,7 @@ export const PAPER = {
   NAME_GAP: 6,
   /**
    * One packed scoresheet table. Column widths are the 390 two-table
-   * grammar laid on one row: ATTEMPT_COL_W 38 holds "-217.5" on the
+   * grammar laid on one row: ATTEMPT_COL_W 42 holds "-217.5" on the
    * attempt table; that width is kept. Lot sits after Place. The
    * sheet is a posted results dump: letterhead, six placing rows,
    * leftover page below the flight. No signature form. Untuned.
@@ -618,8 +618,8 @@ export const PAPER = {
    */
   FLIGHT: {
     HEAD_H: 36,
-    ROW_H: 22,
-    ATTEMPT_ROW_H: 22,
+    ROW_H: 26,
+    ATTEMPT_ROW_H: 26,
     ATTEMPT_COLS: 9,
     ATTEMPTS_PER_LIFT: 3,
     NAME_W: 88,
@@ -629,11 +629,11 @@ export const PAPER = {
     BEST_COL_W: 42,
     TOTAL_W: 52,
     DOTS_W: 50,
-    ATTEMPT_COL_W: 38,
-    NAME_SIZE: 11,
-    BEST_SIZE: 12,
-    ATTEMPT_SIZE: 10,
-    META_SIZE: 11,
+    ATTEMPT_COL_W: 42,
+    NAME_SIZE: 12,
+    BEST_SIZE: 13,
+    ATTEMPT_SIZE: 12,
+    META_SIZE: 12,
     HEAD_SIZE: 8,
     HEAD_TRACKING: 0,
     LIFT_HEAD_SIZE: 8,

@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   attemptBest: {
-    fontWeight: '700',
+    fontWeight: '500',
   },
   attemptMiss: {
     color: C.INK_SOFT,

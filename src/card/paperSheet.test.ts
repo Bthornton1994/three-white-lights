@@ -140,7 +140,7 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(VIEW).not.toContain('NOLIFT_LIGHT');
     expect(VIEW).not.toContain('GOOD_LIGHT');
     expect(VIEW).not.toContain('LiftAttemptStack');
-    expect(PAPER.FLIGHT.ATTEMPT_COL_W).toBeGreaterThanOrEqual(38);
+    expect(PAPER.FLIGHT.ATTEMPT_COL_W).toBeGreaterThanOrEqual(42);
     expect(PAPER.FLIGHT.ATTEMPT_ROW_H).toBeLessThanOrEqual(48);
   });
 
