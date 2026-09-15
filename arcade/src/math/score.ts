@@ -26,14 +26,13 @@ export function lightsFor(
   if (!made) {
     return ["red", "red", "red"];
   }
-  const sloppy = grades.filter((g) => g !== "great").length;
-  if (sloppy === 0) {
+  // In-window "good" is still a make. Two goods must keep a 2-white majority
+  // so the lift is not flipped to a no-lift after the window was hit.
+  // Great vs good still differs in skill points and the three-white bonus.
+  if (grades.every((g) => g === "great")) {
     return ["white", "white", "white"];
   }
-  if (sloppy === 1) {
-    return ["white", "white", "red"];
-  }
-  return ["white", "red", "red"];
+  return ["white", "white", "red"];
 }
 
 export function resolveAttempt(input: {

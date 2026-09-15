@@ -1,3 +1,4 @@
+import { laneWindowPercent } from "../loop/timing.ts";
 import type { TimingCue } from "../math/types.ts";
 
 type Props = {
@@ -10,14 +11,12 @@ export function TimingLane({ cues, progress, durationMs }: Props) {
   return (
     <div className="lane" aria-hidden="true">
       {cues.map((cue) => {
-        const half = durationMs <= 0 ? 0 : cue.windowMs / durationMs / 2;
-        const left = Math.max(0, (cue.center - half) * 100);
-        const width = Math.min(100 - left, half * 2 * 100);
+        const band = laneWindowPercent(cue, durationMs);
         return (
           <span
             key={cue.id}
             className="lane-window"
-            style={{ left: `${left}%`, width: `${width}%` }}
+            style={{ left: `${band.leftPct}%`, width: `${band.widthPct}%` }}
           />
         );
       })}

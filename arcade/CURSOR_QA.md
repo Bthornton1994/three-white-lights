@@ -39,9 +39,18 @@ title
 ```bash
 cd arcade
 npm install
-npm test          # 34 tests: math, loop, distinct sprite paths
+npm test          # 43 tests: math, loop, 2-good/2-great contract, distinct sprite paths
 npm run dev       # Vite, default :5173
 ```
+
+## P1 contract (this repair)
+
+- Two in-window **good** taps = at least two white lights and a made lift.
+- Two **great** taps = three white lights and a made lift.
+- One valid cue + one miss = no lift.
+- Visible amber band is the graded good zone. Taps outside it are early, late, or miss.
+- Do **not** retune `src/feel.ts` on this pass.
+- Walkout copy is lift-specific. Deadlift frame 6 is a lockout, not a setup rewind.
 
 ## What to verify (human playtest owns feel)
 

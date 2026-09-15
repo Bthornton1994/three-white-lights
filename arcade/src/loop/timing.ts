@@ -90,6 +90,22 @@ export function missedCue(): TimingGrade {
   return "miss";
 }
 
+/**
+ * Visible amber band matches the graded "good" zone (not the outer early/late
+ * fringe). Taps inside this band are great or good. Taps outside are early,
+ * late, or miss.
+ */
+export function laneWindowPercent(
+  cue: TimingCue,
+  durationMs: number,
+): { leftPct: number; widthPct: number } {
+  const half =
+    durationMs <= 0 ? 0 : (cue.windowMs / durationMs / 2) * FEEL.GOOD_HALF_WINDOW;
+  const leftPct = Math.max(0, (cue.center - half) * 100);
+  const widthPct = Math.min(100 - leftPct, half * 2 * 100);
+  return { leftPct, widthPct };
+}
+
 export function spriteFrameIndex(lift: LiftId, progress: number, frameCount: number): number {
   const clamped = Math.min(1, Math.max(0, progress));
   const max = Math.max(1, frameCount);

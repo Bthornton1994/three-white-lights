@@ -37,6 +37,39 @@ describe("arcade loop machine", () => {
     assert.equal(state.screen, "success");
   });
 
+  it("makes a lift from two in-window good taps", () => {
+    let state = chooseLift(initialState(), "squat");
+    state = startWalkout(state);
+    state = startTiming(state);
+    const duration = sequenceDurationMs("squat");
+    const cues = cuesForLift("squat", 0);
+    cues.forEach((cue, i) => {
+      const half = (cue.windowMs / duration / 2) * 0.6;
+      state = recordTap(state, i, (cue.center + half) * duration);
+    });
+    assert.deepEqual(state.pendingGrades, ["good", "good"]);
+    state = finishTiming(state);
+    assert.equal(state.lastOutcome?.made, true);
+    assert.equal(state.lastOutcome?.lights.filter((c) => c === "white").length, 2);
+    state = afterJudging(state);
+    assert.equal(state.screen, "success");
+  });
+
+  it("fails a lift from one valid cue plus one miss", () => {
+    let state = chooseLift(initialState(), "bench");
+    state = startWalkout(state);
+    state = startTiming(state);
+    const duration = sequenceDurationMs("bench");
+    const cues = cuesForLift("bench", 0);
+    const first = cues[0];
+    assert.ok(first);
+    state = recordTap(state, 0, first.center * duration);
+    state = finishTiming(state);
+    assert.equal(state.lastOutcome?.made, false);
+    state = afterJudging(state);
+    assert.equal(state.screen, "failure");
+  });
+
   it("uses lift-specific cues, never squat labels on bench or deadlift", () => {
     const squat = cuesForLift("squat", 0).map((c) => c.id);
     const bench = cuesForLift("bench", 0).map((c) => c.id);

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { LIFT_SHEETS, poseForScreen } from "./sheets.ts";
 
@@ -31,5 +31,12 @@ describe("sprite package identity", () => {
         assert.equal(existsSync(`public${frame}`), true, frame);
       }
     }
+  });
+
+  it("does not rewind the deadlift lockout to the setup pose", () => {
+    const setup = readFileSync("public/sprites/deadlift/frame-01.png");
+    const lockout = readFileSync("public/sprites/deadlift/frame-06.png");
+    assert.equal(setup.equals(lockout), false);
+    assert.equal(poseForScreen("timing", "deadlift", 0.95), "lock");
   });
 });

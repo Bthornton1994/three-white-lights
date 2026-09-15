@@ -15,6 +15,51 @@ describe("attempt resolution", () => {
     assert.equal(outcome.lights.filter((c) => c === "white").length, 2);
   });
 
+  it("makes a lift on two in-window good taps", () => {
+    const outcome = resolveAttempt({
+      attempt: 1,
+      weightKg: 162.5,
+      e1rmKg: 180,
+      grades: ["good", "good"],
+      fatigue: 0,
+    });
+    assert.equal(outcome.made, true);
+    assert.equal(outcome.lights.filter((c) => c === "white").length, 2);
+    assert.ok(outcome.skillPoints > 0);
+  });
+
+  it("makes a lift on two great taps with three whites", () => {
+    const outcome = resolveAttempt({
+      attempt: 1,
+      weightKg: 162.5,
+      e1rmKg: 180,
+      grades: ["great", "great"],
+      fatigue: 0,
+    });
+    assert.equal(outcome.made, true);
+    assert.deepEqual(outcome.lights, ["white", "white", "white"]);
+    const good = resolveAttempt({
+      attempt: 1,
+      weightKg: 162.5,
+      e1rmKg: 180,
+      grades: ["good", "good"],
+      fatigue: 0,
+    });
+    assert.ok(outcome.skillPoints > good.skillPoints);
+  });
+
+  it("fails a lift on one valid cue plus one miss", () => {
+    const outcome = resolveAttempt({
+      attempt: 1,
+      weightKg: 162.5,
+      e1rmKg: 180,
+      grades: ["good", "miss"],
+      fatigue: 0,
+    });
+    assert.equal(outcome.made, false);
+    assert.deepEqual(outcome.lights, ["red", "red", "red"]);
+  });
+
   it("red-lights a miss", () => {
     const outcome = resolveAttempt({
       attempt: 1,

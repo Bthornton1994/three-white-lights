@@ -41,9 +41,10 @@ Cursor QA: see [`CURSOR_QA.md`](CURSOR_QA.md).
 
 ## Known defects
 
-- Magenta chroma-key fringes remain on processed lift frames.
+- Two in-window good taps now keep a 2-white majority. Feel values in `src/feel.ts` are still **untuned**.
+- Deadlift frame 6 is a standing lockout, not a setup rewind. Mid-pull head is inside the canvas. Magenta haze can still appear around some lift silhouettes.
+- Success frames had remaining purple chroma specks removed; they are not SNES A/B approved.
 - Sprite quality is below a SNES sports A/B bar; lifts are distinct, not approved.
-- Timing windows are playable, not claimed correct.
 
 ## Out of scope
 

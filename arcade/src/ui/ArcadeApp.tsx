@@ -25,6 +25,12 @@ import { TimingLane } from "./TimingLane.tsx";
 
 const LIFTS: LiftId[] = ["squat", "bench", "deadlift"];
 
+const WALKOUT_COPY: Record<LiftId, string> = {
+  squat: "Walk out. Brace. Set the bar on the back.",
+  bench: "Unrack. Settle the blades. Wait for the start.",
+  deadlift: "Approach the bar. Set the hips. Wait for the pull.",
+};
+
 function haptic(ms: number): void {
   if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
     navigator.vibrate(ms);
@@ -283,7 +289,7 @@ export function ArcadeApp() {
             ) : null}
 
             {state.screen === "walkout" ? (
-              <p className="lede">Walkout. Set the back. Wait for the cue.</p>
+              <p className="lede">{WALKOUT_COPY[lift]}</p>
             ) : null}
             {state.screen === "judging" ? <p className="lede">Judges deliberating.</p> : null}
 
