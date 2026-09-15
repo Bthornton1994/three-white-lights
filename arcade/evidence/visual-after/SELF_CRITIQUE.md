@@ -1,50 +1,49 @@
-# Visual self-critique — draw-then-index pass on `79f2baa`
+# Visual self-critique — integer-grid NEAREST export
 
-**Self-assessment: ISSUES_REMAIN.** This pass cannot self-certify MERGE_OK or a
-Slam Masters / Super Punch-Out / NBA Jam A/B. Independent QA owns the bar.
+**Self-assessment: ISSUES_REMAIN.** Not MERGE_OK. Independent QA owns the
+SNES/Genesis sports A/B.
 
-Parent tip: `79f2baace7e811ecb1e8840aacb6a8a659fd6b6a`. `arcade/src/`, `feel.ts`,
-pose tables, judging, timing, scoring, and `visualEffort` (0.96) were not touched.
+Parent of this integer-grid pass: `28da52c090f46b70eda3ec1f64d1fb9549105b34`.
+`feel.ts`, pose tables, judging, timing, scoring, and `visualEffort` (0.96)
+were not touched. CSS only gained `-moz-crisp-edges` next to existing
+`pixelated`.
 
-## Art method
+## Recommendation: NEAREST (production)
 
-Imagine-drawn 16-bit sports sheets → chroma key → integer-index to 80×80 → 4×
-nearest. Documented in `arcade/evidence/art-source/ART_METHOD.md`.
-`build_sprites.py` did **not** produce this package.
+Same 320×320 master, two 80×80 exports (factor 4):
 
-## What a still image shows
+| | NEAREST | BOX |
+|---|---|---|
+| Clusters | Harder, stair-step, keeps master palette pixels | Softer, averaged, new in-between colors |
+| Silhouette | Slightly noisier edge | Slightly fuller mass |
+| Hands / bar / plates | Speckled but 1:1 with the master | Blended discs |
+| 4× inspection | Chunkier SNES-like blocks | Muddy blocks |
+| In-app 390 / desktop | Same poses; difference is small at card size | Same |
 
-High-res working sheets (`art-source/*.jpg`) read as pixel-art sports drawings:
-squat walkout/hole/lockout, deadlift floor vs lockout, supine bench, light vs
-max plate color and grind. Indexed 80×80 runtime frames keep those silhouettes
-but smear cluster density.
+**Ship NEAREST.** It is the only method that preserves authored pixels from the
+320 master. BOX hides those clusters behind a fractional average — the opposite
+of this pass. The comparison does **not** make the 80px package look
+hand-pixelled.
 
-| Shot | Read |
-|---|---|
-| Squat hole light | Bar on the back, heels down, split thighs |
-| Squat hole max | Deeper, red stack, grimace |
-| Bench pause | Supine on a pad, not a standing squat |
-| Deadlift 01 vs 06 | Floor hinge vs standing lockout |
-| Title | Spotlight hall + loaded lifter; a faint wordmark may remain |
+The **320×320 master** is still the better picture. Runtime PNGs are 80
+NEAREST-upscaled to 320 so the engine’s native grid is 80. That upsample cannot
+invent clusters the 80 grid dropped.
 
-## Residual issues (do not treat as pass)
+## Residual defects
 
-1. **80×80 is a downsample, not a hand-pixel grid.** Imagine emits ~1k JPEG
-   "pixel-style" drawings. Integer indexing cannot recover clusters that were
-   never authored on an 80×80 lattice. Phone-size 4× frames look posterized.
-2. **Identity drift.** Some idle/miss cells grow a beard or shift the hairline.
-3. **Title wordmark.** Imagine kept painting "POWER LIFTING" into the scene
-   after two removal edits. HTML copy is still the real title.
-4. **Bench 3/4 remains the weakest lift** at 80×80 even though the working
-   sheet is clearly supine.
-5. **JPEG chroma.** The key is a pink field, not exact `#FF00FF`. Fringe is
-   forced to binary alpha; some edge pixels are sacrificed.
-6. **This workflow cannot honestly claim SNES sports craft at the runtime
-   size.** The working sheets are the closest this stack gets. Independent QA
-   should judge both the working JPEGs and the indexed 80×80 package.
+1. 80×80 is still a downsample of Imagine JPEG “pixel-style” art, not a
+   hand-authored 80 lattice.
+2. Squat hole: thighs/shins/hands/bar read, but packed and posterized.
+3. Bench 3/4 is the weakest lift at 80; the 320 master is clearer.
+4. Deadlift hinge vs lockout stay distinct; lockout still blocky.
+5. Title may retain a faint wordmark. HTML copy is the real title.
+6. Identity drift on some idle/miss cells (beard/hairline).
+7. Using the 320 master at runtime would look better than 80×4. That is a
+   separate packaging choice, not a reason to pick BOX.
 
 ## Checks
 
-- `scripts/check_sprites.py`: binary alpha, no chroma, ≤48 colors, light≠max,
-  silhouette delta ≥ 900 on frames 01/03/06, deadlift 06 ≠ 01.
-- Pose tables and `visualEffort` unchanged.
+- `check_sprites.py` ok: binary alpha, no chroma, ≤48/≤64, light≠max,
+  silhouette Δ ≥900 on 01/03/06, deadlift 06 ≠ 01.
+- Chromium computed `image-rendering: pixelated` on title, lift-card, stage.
+- Arcade tests 52/52. Workspace `test:arcade` 45/45.

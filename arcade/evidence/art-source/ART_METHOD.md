@@ -1,33 +1,37 @@
-# Art method — draw-then-index (PR #69)
+# Art method — integer-grid export (PR #69)
 
-Production sprites in `arcade/public/sprites/` are **not** drawn by
-`scripts/build_sprites.py`. That script remains as unused geometric tooling.
+Production sprites are **not** drawn by `scripts/build_sprites.py`.
 
-## Source
+## Source masters (kept separate)
 
-1. Canonical identity is an Imagine pixel-art still of an original powerlifter
-   (high-and-tight hair, black singlet, amber chest chevron, belt, knee sleeves,
-   lifting shoes). Path: `identity.jpg`.
-2. Each action is an Imagine sheet edit-chained from that identity against a
-   layout guide (`2x3-layout-guide.png` / `2x2-layout-guide.png`):
-   - squat / squat-max / bench / bench-max / deadlift / deadlift-max (`2×3`)
-   - idle / success / miss (`2×2`)
-   - plates (`2×3`)
-   - title and platform as full scenes
-3. Imagine writes JPEG. The field is hot-pink, not exact `#FF00FF`.
+1. Imagine-drawn sheets live in `art-source/*.jpg`.
+2. Each cell is chroma-keyed, cropped, then **padded** (no resample) to the
+   next multiple of 320.
+3. **NEAREST** down to a true **320×320** master (`art-source/masters-320/`).
+   The factor is always an integer (1 or 2).
+4. Masters are median-cut quantized (no dither) with **binary alpha**.
 
-## Index / export
+## Production export
 
 `scripts/index_drawn_sprites.py`:
 
-1. chroma-key the pink/magenta JPEG field
-2. split the grid
-3. crop the subject
-4. integer BOX snap, then nearest into **80×80**
-5. median-cut quantize (no dither), binary alpha, strip leftover chroma
-6. nearest-neighbor **4×** to the 320×320 runtime frames
+- Native 80×80 = **NEAREST** 320→80 (factor **4** only)
+- Runtime 320×320 = **NEAREST** 80→320 (factor **4** only)
+- Title/platform: pad so dimensions divide the native grid, then NEAREST
 
-Native 80×80 frames: `art-source/native-80/`.
-Runtime frames keep the existing paths under `public/sprites/`.
+**No BOX, bilinear, bicubic, Lanczos, antialiasing, or fractional scales**
+on the production path.
 
-Pose tables, `feel.ts`, `visualEffort`, and `arcade/src/` are untouched.
+## Comparison-only
+
+BOX 320→80 (then NEAREST 4×) is written under
+`evidence/visual-after/nearest-vs-box/` and `native-80-box/`. It is not shipped
+as `public/sprites/`.
+
+## Browser
+
+`.title-art`, `.stage-bg`, `.stage-lifter`, `.lift-card img` use
+`image-rendering: pixelated` (`-moz-crisp-edges` first). Computed style in
+Chromium is `pixelated`.
+
+Pose tables, `feel.ts`, `visualEffort`, and gameplay were not touched.

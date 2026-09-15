@@ -3,36 +3,60 @@
     "squat": [
       {
         "path": "public/sprites/squat/frame-01.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/squat/frame-02.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/squat/frame-03.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/squat/frame-04.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/squat/frame-05.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/squat/frame-06.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
@@ -41,36 +65,60 @@
     "squat-max": [
       {
         "path": "public/sprites/squat-max/frame-01.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/squat-max/frame-02.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/squat-max/frame-03.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/squat-max/frame-04.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/squat-max/frame-05.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/squat-max/frame-06.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
@@ -79,36 +127,60 @@
     "bench": [
       {
         "path": "public/sprites/bench/frame-01.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/bench/frame-02.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/bench/frame-03.png",
-        "colors": 42,
+        "size": [
+          320,
+          320
+        ],
+        "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/bench/frame-04.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/bench/frame-05.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/bench/frame-06.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
@@ -117,36 +189,60 @@
     "bench-max": [
       {
         "path": "public/sprites/bench-max/frame-01.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/bench-max/frame-02.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/bench-max/frame-03.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/bench-max/frame-04.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/bench-max/frame-05.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/bench-max/frame-06.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
@@ -155,36 +251,60 @@
     "deadlift": [
       {
         "path": "public/sprites/deadlift/frame-01.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/deadlift/frame-02.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/deadlift/frame-03.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/deadlift/frame-04.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/deadlift/frame-05.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/deadlift/frame-06.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
@@ -193,36 +313,60 @@
     "deadlift-max": [
       {
         "path": "public/sprites/deadlift-max/frame-01.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/deadlift-max/frame-02.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/deadlift-max/frame-03.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/deadlift-max/frame-04.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/deadlift-max/frame-05.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/deadlift-max/frame-06.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
@@ -231,24 +375,40 @@
     "idle": [
       {
         "path": "public/sprites/idle/frame-01.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/idle/frame-02.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/idle/frame-03.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/idle/frame-04.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
@@ -257,24 +417,40 @@
     "success": [
       {
         "path": "public/sprites/success/frame-01.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/success/frame-02.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/success/frame-03.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/success/frame-04.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
@@ -283,24 +459,40 @@
     "miss": [
       {
         "path": "public/sprites/miss/frame-01.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/miss/frame-02.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/miss/frame-03.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/miss/frame-04.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
@@ -309,36 +501,60 @@
     "plates": [
       {
         "path": "public/sprites/plates/frame-01.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/plates/frame-02.png",
-        "colors": 43,
+        "size": [
+          320,
+          320
+        ],
+        "colors": 42,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/plates/frame-03.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/plates/frame-04.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/plates/frame-05.png",
-        "colors": 43,
+        "size": [
+          320,
+          320
+        ],
+        "colors": 40,
         "semi": 0,
         "mag": 0
       },
       {
         "path": "public/sprites/plates/frame-06.png",
+        "size": [
+          320,
+          320
+        ],
         "colors": 43,
         "semi": 0,
         "mag": 0
@@ -348,11 +564,22 @@
   "scenes": {
     "title": {
       "path": "public/sprites/title.png",
-      "colors": 60
+      "colors": 60,
+      "resample": "NEAREST",
+      "pad": [
+        1280,
+        1792
+      ]
     },
     "platform": {
       "path": "public/sprites/platform.png",
-      "colors": 60
+      "colors": 60,
+      "resample": "NEAREST",
+      "pad": [
+        1920,
+        1080
+      ]
     }
-  }
+  },
+  "method": "NEAREST 320->80 factor 4 from padded integer master"
 }

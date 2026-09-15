@@ -1,0 +1,2 @@
+Columns left -> right: NEAREST 80 upscaled 4x | BOX 80 upscaled 4x | NEAREST 80 native-enlarged | BOX 80 native-enlarged
+All 80px exports come from the same 320x320 master.
