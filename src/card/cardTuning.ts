@@ -651,6 +651,14 @@ export const PAPER = {
    */
   MASTHEAD_BLOCK_H: 96,
   CERT_BLOCK_H: 168,
+  /** Top and bottom page padding in paperSheetHeight. */
+  VERTICAL_PADS: 2,
+  /** Top and bottom table rules in paperSheetHeight. */
+  SHEET_RULE_EDGES: 2,
+  /** Category line plus WEIGHTS_IN line. */
+  SECTION_LINES: 2,
+  /** NAME_GAP slots around those two section lines. */
+  SECTION_NAME_GAPS: 3,
   CERT: {
     SIZE: 12,
     TRACKING: 0.7,
@@ -679,13 +687,13 @@ export function paperSheetHeight(fieldCount: number): number {
   const f = PAPER.FLIGHT;
   const rows = Math.max(0, fieldCount);
   return (
-    PAPER.PAD_Y * 2 +
+    PAPER.PAD_Y * PAPER.VERTICAL_PADS +
     PAPER.MASTHEAD_BLOCK_H +
     PAPER.SECTION_GAP +
     PAPER.DOUBLE_RULE_GAP +
-    PAPER.RULE * 2 +
-    PAPER.NAME_GAP * 3 +
-    f.SECTION_SIZE * 2 +
+    PAPER.RULE * PAPER.SHEET_RULE_EDGES +
+    PAPER.NAME_GAP * PAPER.SECTION_NAME_GAPS +
+    f.SECTION_SIZE * PAPER.SECTION_LINES +
     f.HEAD_H +
     rows * f.ROW_H +
     PAPER.SECTION_GAP +
