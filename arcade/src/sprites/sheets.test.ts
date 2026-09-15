@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { LIFT_SHEETS, poseForScreen } from "./sheets.ts";
+import { LIFT_CARD, LIFT_SHEETS, LIFT_SHEETS_MAX, SCENE, poseForScreen, visualEffort } from "./sheets.ts";
 
 describe("sprite package identity", () => {
   it("gives squat, bench, and deadlift distinct sheet paths", () => {
@@ -38,5 +38,43 @@ describe("sprite package identity", () => {
     const lockout = readFileSync("public/sprites/deadlift/frame-06.png");
     assert.equal(setup.equals(lockout), false);
     assert.equal(poseForScreen("timing", "deadlift", 0.95), "lock");
+  });
+
+  it("presents lift-select cards from 320 masters in light and max", () => {
+    for (const lift of ["squat", "bench", "deadlift"] as const) {
+      assert.equal(existsSync(`public${LIFT_CARD[lift].light}`), true);
+      assert.equal(existsSync(`public${LIFT_CARD[lift].max}`), true);
+      assert.equal(
+        readFileSync(`public${LIFT_CARD[lift].light}`).equals(readFileSync(`public${LIFT_CARD[lift].max}`)),
+        false,
+      );
+    }
+    assert.equal(LIFT_CARD.deadlift.light.endsWith("frame-06.png"), true);
+  });
+
+  it("splits opener-weight sheets from maximal-attempt sheets", () => {
+    for (const lift of ["squat", "bench", "deadlift"] as const) {
+      assert.notEqual(LIFT_SHEETS[lift].src, LIFT_SHEETS_MAX[lift].src);
+      assert.equal(LIFT_SHEETS_MAX[lift].fallbackLift, lift);
+      assert.equal(existsSync(`public${LIFT_SHEETS_MAX[lift].src}`), true, LIFT_SHEETS_MAX[lift].src);
+      for (let i = 0; i < LIFT_SHEETS[lift].frames.length; i += 1) {
+        const light = LIFT_SHEETS[lift].frames[i];
+        const heavy = LIFT_SHEETS_MAX[lift].frames[i];
+        assert.equal(existsSync(`public${heavy}`), true, heavy);
+        assert.equal(readFileSync(`public${light}`).equals(readFileSync(`public${heavy}`)), false);
+      }
+    }
+    assert.equal(visualEffort(162, 180), "light");
+    assert.equal(visualEffort(180, 180), "max");
+  });
+
+  it("serves PNG title and platform scenes, not noisy JPEGs", () => {
+    assert.equal(SCENE.title.endsWith(".png"), true);
+    assert.equal(SCENE.platform.endsWith(".png"), true);
+    assert.equal(existsSync(`public${SCENE.title}`), true);
+    assert.equal(existsSync(`public${SCENE.platform}`), true);
+    assert.equal(existsSync("public/sprites/title.jpg"), false);
+    assert.equal(existsSync("public/sprites/platform.jpg"), false);
+    assert.equal(existsSync(`public${SCENE.titleWide}`), true);
   });
 });

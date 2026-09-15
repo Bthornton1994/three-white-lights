@@ -39,8 +39,9 @@ title
 ```bash
 cd arcade
 npm install
-npm test          # 50 tests: math, loop, 2-good/2-great contract, distinct sprite paths,
-                  # timing-clock reset, streak oracle (75 / 2235), share glyphs
+npm test          # 52 tests: math, loop, 2-good/2-great, sprite paths/PNG scenes,
+                  # light-vs-max sheets, timing-clock reset, streak oracle (75 / 2235),
+                  # share glyphs plus scripts/check_sprites.py (binary alpha, no chroma)
 npm run dev       # Vite, default :5173
 ```
 
@@ -105,11 +106,18 @@ Agents must not pass feel. Human playtesting owns windows, haptics, and animatio
 
 ## Known defects (do not treat as pass)
 
-- **Magenta chroma fringes** on processed sprite frames (`#FF00FF` key leftover, especially squat/bench/deadlift silhouettes).
-- Sprite package is new 16-bit generated art, **below** a real SNES/Genesis sports A/B. Distinct, not approved.
-- Timing windows are playable after a widen from ~160 ms, **untuned**.
+- Sprite package is authored 16-bit (hard pixels, ≤32 colors, binary alpha). **Magenta chroma and silhouette fringe are removed.** Light vs max now uses separate 6-frame sheets (plates, compression, strain). This is still **below** a real SNES/Genesis sports A/B — faces, muscle mass, and grind weight need a human art pass.
+- Title/platform are indexed PNGs. JPEG spotlight grain is gone. The backdrop is cleaner, not a finished Genesis title.
+- Timing windows are playable after a widen from ~160 ms, **untuned**. `src/feel.ts` was not retuned on the art pass.
 - Hidden-fatigue copy is honest; there is still no bar-speed animation curve beyond frame index vs progress.
 - Share uses a canvas redraw of the sheet; native share sheet depends on the browser.
+
+## Visual evidence (art pass)
+
+Before (PR #66 visual baseline `5ed7dba`; rebased onto later #66 tip): `arcade/evidence/visual-before/`
+After: `arcade/evidence/visual-after/`
+
+Self-critique: `arcade/evidence/visual-after/SELF_CRITIQUE.md`. Visual bar is **ISSUES_REMAIN** — agents cannot self-certify the SNES sports A/B. Light vs max comparison: `visual-after/light-vs-max.png` and `before-after-light-max.png`.
 
 ## Out of scope (refuse if asked to add here)
 
@@ -117,7 +125,7 @@ Manual check-in, staff, shop, build mode, gym economy, accounts, multiplayer, Ri
 
 ## Suggested Cursor QA sequence
 
-1. `cd arcade && npm test` — expect the judging contract plus streak/share/timing regressions to pass.
+1. `cd arcade && npm test` — judging + streak/share/timing + sprite QA.
 2. `npm run dev` — play squat 2/3 makes to the card.
 3. Play bench and deadlift far enough to confirm **distinct** walkout/timing poses (no squat reuse).
 4. Miss all three → bomb-out card, total 0.

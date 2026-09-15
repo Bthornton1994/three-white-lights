@@ -1,0 +1,262 @@
+{
+  "pass": "pass4-lockout-identity-title",
+  "deadlift": [
+    {
+      "path": "public/sprites/deadlift/frame-01.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/deadlift/frame-02.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/deadlift/frame-03.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/deadlift/frame-04.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/deadlift/frame-05.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/deadlift/frame-06.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    }
+  ],
+  "deadlift-max": [
+    {
+      "path": "public/sprites/deadlift-max/frame-01.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/deadlift-max/frame-02.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/deadlift-max/frame-03.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/deadlift-max/frame-04.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/deadlift-max/frame-05.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/deadlift-max/frame-06.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    }
+  ],
+  "idle": [
+    {
+      "path": "public/sprites/idle/frame-01.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/idle/frame-02.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/idle/frame-03.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/idle/frame-04.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    }
+  ],
+  "success": [
+    {
+      "path": "public/sprites/success/frame-01.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/success/frame-02.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/success/frame-03.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/success/frame-04.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    }
+  ],
+  "miss": [
+    {
+      "path": "public/sprites/miss/frame-01.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/miss/frame-02.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/miss/frame-03.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    },
+    {
+      "path": "public/sprites/miss/frame-04.png",
+      "size": [
+        320,
+        320
+      ],
+      "colors": 43,
+      "semi": 0,
+      "mag": 0
+    }
+  ],
+  "title": {
+    "path": "public/sprites/title.png",
+    "size": [
+      1792,
+      1008
+    ],
+    "colors": 60,
+    "resample": "none"
+  }
+}

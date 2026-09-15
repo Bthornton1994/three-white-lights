@@ -1,0 +1,801 @@
+{
+  "production": [
+    {
+      "path": "public/sprites/bench/frame-01.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 33990,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/bench/frame-02.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 33034,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/bench/frame-03.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 32969,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/bench/frame-04.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 34152,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/bench/frame-05.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 34709,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/bench/frame-06.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 34633,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/bench-max/frame-01.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 29079,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/bench-max/frame-02.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 31980,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/bench-max/frame-03.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 30833,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/bench-max/frame-04.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 32063,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/bench-max/frame-05.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 26672,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/bench-max/frame-06.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 31733,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/deadlift/frame-01.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 22799,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/deadlift/frame-02.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 21933,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/deadlift/frame-03.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 22932,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/deadlift/frame-04.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 21696,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/deadlift/frame-05.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 21448,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/deadlift/frame-06.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 21950,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/deadlift-max/frame-01.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 21419,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/deadlift-max/frame-02.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 22463,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/deadlift-max/frame-03.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 22018,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/deadlift-max/frame-04.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 21588,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/deadlift-max/frame-05.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 22536,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/deadlift-max/frame-06.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 22947,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/identity.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 14969,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/idle/frame-01.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 10278,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/idle/frame-02.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 10225,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/idle/frame-03.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 10321,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/idle/frame-04.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 10278,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/miss/frame-01.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 10649,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/miss/frame-02.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 10588,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/miss/frame-03.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 18961,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/miss/frame-04.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 21814,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/plates/frame-01.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 25416,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/plates/frame-02.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 27349,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/plates/frame-03.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 27397,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/plates/frame-04.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 27210,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/plates/frame-05.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 27165,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/plates/frame-06.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 55076,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/platform.png",
+      "size": [
+        1280,
+        720
+      ],
+      "mode": "RGB",
+      "colors": 60,
+      "semi": 0,
+      "mag": 0,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/squat/frame-01.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 20381,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/squat/frame-02.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 19487,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/squat/frame-03.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 18746,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/squat/frame-04.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 20835,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/squat/frame-05.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 19641,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/squat/frame-06.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 20237,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/squat-max/frame-01.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 22886,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/squat-max/frame-02.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 22399,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/squat-max/frame-03.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 23772,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/squat-max/frame-04.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 24030,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/squat-max/frame-05.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 23549,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/squat-max/frame-06.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 23830,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/success/frame-01.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 10456,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/success/frame-02.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 10648,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/success/frame-03.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 9747,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/success/frame-04.png",
+      "size": [
+        320,
+        320
+      ],
+      "mode": "RGBA",
+      "colors": 43,
+      "semi": 0,
+      "mag": 0,
+      "opaque": 9561,
+      "binary_alpha": true,
+      "pass": true
+    },
+    {
+      "path": "public/sprites/title.png",
+      "size": [
+        640,
+        896
+      ],
+      "mode": "RGB",
+      "colors": 60,
+      "semi": 0,
+      "mag": 0,
+      "binary_alpha": true,
+      "pass": true
+    }
+  ],
+  "fail": []
+}

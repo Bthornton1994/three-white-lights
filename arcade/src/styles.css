@@ -54,7 +54,8 @@
   flex-direction: column;
   min-height: 100dvh;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .title-art,
@@ -64,6 +65,8 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center 42%;
+  image-rendering: -moz-crisp-edges;
   image-rendering: pixelated;
   pointer-events: none;
 }
@@ -214,10 +217,11 @@ h2 {
 .stage-lifter {
   position: absolute;
   left: 50%;
-  bottom: 6%;
-  width: min(78vw, 420px);
+  bottom: 4%;
+  width: min(70vw, 360px);
   height: auto;
   transform: translateX(-50%);
+  image-rendering: -moz-crisp-edges;
   image-rendering: pixelated;
   pointer-events: none;
   filter: drop-shadow(0 18px 18px rgb(0 0 0 / 0.45));
@@ -230,36 +234,81 @@ h2 {
 
 .lift-card {
   display: grid;
-  grid-template-columns: 96px 1fr;
-  gap: 12px;
-  align-items: center;
+  gap: 6px;
   text-align: left;
   background: var(--color-iron-2);
   border: 1px solid var(--color-border);
-  border-radius: 20px;
-  padding: 10px 14px 10px 10px;
+  border-radius: 16px;
+  padding: 6px 8px 8px;
   color: inherit;
-  min-height: 96px;
 }
 
-.lift-card img {
-  width: 96px;
-  height: 84px;
+.lift-card-art {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.lift-card-art figure {
+  margin: 0;
+  background: var(--color-iron);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.lift-card-art img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  max-height: 104px;
   object-fit: contain;
+  image-rendering: -moz-crisp-edges;
   image-rendering: pixelated;
+  background: #120f0c;
+}
+
+.lift-card-art figcaption {
+  margin: 0;
+  padding: 4px 6px 6px;
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-amber);
 }
 
 .lift-card b {
   display: block;
   font-family: var(--font-display);
-  font-size: 1.4rem;
+  font-size: 1.28rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .lift-card span {
   color: var(--color-muted);
-  font-size: 0.88rem;
+  font-size: 0.86rem;
+}
+
+@media (min-width: 860px) {
+  .lift-grid {
+    grid-template-columns: repeat(3, 1fr);
+    align-items: stretch;
+  }
+
+  .lift-card-art img {
+    max-height: none;
+  }
+
+  .title-art,
+  .stage-bg {
+    object-position: center center;
+  }
+
+  .stage-lifter {
+    width: min(42vw, 400px);
+  }
 }
 
 .attempt-list {
