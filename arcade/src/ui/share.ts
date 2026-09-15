@@ -37,7 +37,7 @@ export function shareCardRows(meet: ArcadeMeet): Array<[string, string]> {
 }
 
 export type ShareDrawContext = {
-  fillStyle: string;
+  fillStyle: string | CanvasGradient | CanvasPattern;
   font: string;
   fillRect(x: number, y: number, w: number, h: number): void;
   fillText(text: string, x: number, y: number, maxWidth?: number): void;

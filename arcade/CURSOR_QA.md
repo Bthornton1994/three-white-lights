@@ -39,7 +39,7 @@ title
 ```bash
 cd arcade
 npm install
-npm test          # math, loop, 2-good/2-great contract, distinct sprite paths,
+npm test          # 50 tests: math, loop, 2-good/2-great contract, distinct sprite paths,
                   # timing-clock reset, streak oracle (75 / 2235), share glyphs
 npm run dev       # Vite, default :5173
 ```
