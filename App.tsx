@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 
 import { AppShell } from './src/shell/AppShell';
-import { LIFT_PALETTE } from './src/lift/liftPalette';
+import { SESSION_PALETTE } from './src/session/sessionPalette';
 
 // THE APP OPENS INTO THE DAILY SESSION LOOP (GDD §3.2): readiness check-in ->
 // modifier -> the work sets, on the lift mechanic -> close-out. There is no
@@ -55,6 +55,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LIFT_PALETTE.BACKDROP,
+    backgroundColor: SESSION_PALETTE.ESPRESSO,
   },
 });

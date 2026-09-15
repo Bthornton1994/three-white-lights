@@ -8,7 +8,10 @@ import {
   MONTH_ABBREVIATIONS,
   NO_VALUE_DISPLAY,
   PLACE_NO_TOTAL_DISPLAY,
+  RESULT_ATTEMPT_TABLE_COLUMNS,
   RESULT_CARD_CSV_HEADER,
+  RESULT_CLASS_TABLE_COLUMNS,
+  RESULT_FLIGHT_TABLE_COLUMNS,
   RESULT_SHEET_COLUMNS,
   SEX_CATEGORY_WORD,
   WEIGHT_CLASSES_KG,
@@ -22,6 +25,10 @@ import {
   resultCardEntriesCsvRow,
   resultCardStrings,
   resultSheetLine,
+  sheetColumnHeading,
+  flightColumnHeading,
+  flightLifterName,
+  signedAttemptText,
   weightClassString,
   type ResultCard,
   type ResultCardInput,
@@ -334,6 +341,65 @@ describe('the sourcing ledger describes the constants it cites', () => {
     expect(IPF_2503_HEADER.indexOf('Place')).toBe(20);
     expect(IPF_2503_HEADER.indexOf('Equipment')).toBe(22);
     expect(RESULT_SHEET_COLUMNS.map((column) => column.id).indexOf('place')).toBe(0);
+    expect(RESULT_FLIGHT_TABLE_COLUMNS).toEqual([
+      'place',
+      'lifter',
+      'bodyweight',
+      'squat1',
+      'squat2',
+      'squat3',
+      'bestSquat',
+      'bench1',
+      'bench2',
+      'bench3',
+      'bestBench',
+      'deadlift1',
+      'deadlift2',
+      'deadlift3',
+      'bestDeadlift',
+      'total',
+      'dots',
+    ]);
+    expect(RESULT_FLIGHT_TABLE_COLUMNS.every((id) => RESULT_SHEET_COLUMNS.some((column) => column.id === id))).toBe(
+      true,
+    );
+    expect(sheetColumnHeading('place')).toBe('Place');
+    expect(sheetColumnHeading('bodyweight')).toBe('Weight');
+    expect(sheetColumnHeading('bestSquat')).toBe('Squat');
+    expect(sheetColumnHeading('bestBench')).toBe('Bench');
+    expect(sheetColumnHeading('bestDeadlift')).toBe('Deadlift');
+    expect(sheetColumnHeading('dots')).toBe('Dots');
+    expect(flightColumnHeading('dots')).toBe('DOTS');
+    expect(flightColumnHeading('bestSquat')).toBe('Squat');
+    expect(flightColumnHeading('bodyweight')).toBe('Wt kg');
+    expect(flightColumnHeading('squat1')).toBe('1');
+    expect(flightColumnHeading('bench2')).toBe('2');
+    expect(flightColumnHeading('deadlift3')).toBe('3');
+    expect(RESULT_FLIGHT_TABLE_COLUMNS).not.toContain('subtotal');
+    expect(RESULT_FLIGHT_TABLE_COLUMNS).toContain('bestSquat');
+    expect(RESULT_CLASS_TABLE_COLUMNS).toEqual([
+      'place',
+      'lifter',
+      'bodyweight',
+      'bestSquat',
+      'bestBench',
+      'bestDeadlift',
+      'total',
+      'dots',
+    ]);
+    expect(RESULT_ATTEMPT_TABLE_COLUMNS).toEqual([
+      'squat1',
+      'squat2',
+      'squat3',
+      'bench1',
+      'bench2',
+      'bench3',
+      'deadlift1',
+      'deadlift2',
+      'deadlift3',
+    ]);
+    expect(sheetColumnHeading('squat1')).toBe('S1');
+    expect(sheetColumnHeading('deadlift3')).toBe('D3');
   });
 
   it('cites the lifter page for the attempt columns, and admits what differs', () => {
@@ -513,6 +579,7 @@ describe('attempt cells', () => {
     expect(first.struckThrough).toBe(false);
     expect(first.text).toBe('155');
     expect(first.signedWeightKg).toBe(155);
+    expect(signedAttemptText(first)).toBe('155');
   });
 
   it('strikes a missed attempt through and records it as a negative weight', () => {
@@ -523,6 +590,7 @@ describe('attempt cells', () => {
     // which is the convention published results actually use.
     expect(third.text).toBe('166');
     expect(third.signedWeightKg).toBe(-166);
+    expect(signedAttemptText(third)).toBe('-166');
   });
 
   it('takes the best from the heaviest GOOD attempt, not the heaviest attempt', () => {
@@ -878,6 +946,22 @@ describe('competition rules the card can never break', () => {
 // Formatting
 // ---------------------------------------------------------------------------
 
+describe('flightLifterName', () => {
+  it('prints the surname first, the way a published table sets a name', () => {
+    expect(flightLifterName('M. ASHFORD')).toBe('ASHFORD, M.');
+    expect(flightLifterName('R. PEMBROKE')).toBe('PEMBROKE, R.');
+    expect(flightLifterName('A. LIFTER')).toBe('LIFTER, A.');
+    expect(flightLifterName('R. VELLUM')).toBe('VELLUM, R.');
+    expect(flightLifterName('Ada Vellum')).toBe('Ada Vellum');
+    expect(flightLifterName('Rex Pembroke')).toBe('Rex Pembroke');
+  });
+
+  it('leaves a name that is not an initial-plus-surname alone', () => {
+    expect(flightLifterName('PEPPER POTTS')).toBe('PEPPER POTTS');
+    expect(flightLifterName('')).toBe('');
+  });
+});
+
 describe('formatWeight', () => {
   it('hides trailing zeros the way a results sheet does', () => {
     expect(formatWeight(200)).toBe('200');
@@ -1128,6 +1212,65 @@ describe('the lifter’s category', () => {
       lifter: { ...REDMARSH_INPUT.lifter, division: '', equipment: '   ' },
     });
     expect(bare.lifter.categoryText).toBe("WOMEN'S 47");
+  });
+});
+
+describe('the flight on the shareable sheet', () => {
+  const OTHER_STATE = runMeet([
+    [140, GOOD],
+    [145, GOOD],
+    [150, GOOD],
+    [90, GOOD],
+    [95, GOOD],
+    [100, NO_LIFT],
+    [150, GOOD],
+    [160, GOOD],
+    [165, GOOD],
+  ]);
+
+  it('always carries the player as a field row', () => {
+    const card = cardOf(REDMARSH_INPUT);
+    expect(card.field).toHaveLength(1);
+    expect(card.field[0]?.isPlayer).toBe(true);
+    expect(card.field[0]?.name).toBe('Ivy Redmarsh');
+    expect(card.field[0]?.placeText).toBe('2');
+    expect(card.field[0]?.bodyweightText).toBe('46.70');
+    expect(card.field[0]?.lotText).toBe(NO_VALUE_DISPLAY);
+  });
+
+  it('prints other rows, bodyweight, and a missed attempt without ranking them itself', () => {
+    const card = cardOf({
+      ...REDMARSH_INPUT,
+      field: [
+        {
+          id: 'player',
+          name: 'Ivy Redmarsh',
+          sex: 'female',
+          bodyweightKg: 46.7,
+          isPlayer: true,
+          state: REDMARSH_STATE,
+          placing: 2,
+        },
+        {
+          id: 'other',
+          name: 'N. Other',
+          sex: 'female',
+          bodyweightKg: 46.1,
+          isPlayer: false,
+          state: OTHER_STATE,
+          placing: 1,
+        },
+      ],
+    });
+    expect(card.field).toHaveLength(2);
+    expect(card.field[0]?.name).toBe('N. Other');
+    expect(card.field[0]?.placeText).toBe('1');
+    expect(card.field[0]?.bodyweightText).toBe('46.10');
+    expect(card.field[0]?.isPlayer).toBe(false);
+    expect(card.field[1]?.isPlayer).toBe(true);
+    expect(card.field[0]?.rows[1].attempts[2]?.mark).toBe('no-lift');
+    expect(card.field[0]?.rows[1].attempts[2]?.struckThrough).toBe(true);
+    expect(resultCardStrings(card)).toContain('N. Other');
   });
 });
 

@@ -137,6 +137,14 @@
  *      `?career=` arm in `resolveEntry`, so the played arm is the only arm,
  *      and the address bar is asserted bare at every read.
  *
+ *  13. THE MY LIFTER SURFACE IS OPENED AND LEFT THE WAY A PLAYER DOES IT, in
+ *      section 12 below. `SHELL_NAV.LIFTER_PHASES` is the card and its two
+ *      edits, never creating (identity has no leave chrome). The same
+ *      permission-side pin that caught `floor` missing after the Empire
+ *      merge is what makes an unprobed `card` / `editing-name` /
+ *      `editing-bodyweight` red rather than a quiet omission. There is no
+ *      `?lifter=` arm in `resolveEntry`.
+ *
  * "ON SCREEN" HERE MEANS DRAWN, NOT MOUNTED. Every positive check above goes
  * through `onScreen`, which measures the element's effective opacity, because
  * Playwright's `isVisible()` and `elementFromPoint` DO NOT CONSIDER OPACITY and
@@ -223,6 +231,7 @@ import {
   driveMeetToItsEnd,
   freshMeetSearches,
   holdsIn,
+  liftFromAttemptLabel,
   effectiveOpacity,
   waitUntilDrawn,
 } from './meetDrive.mjs';
@@ -549,6 +558,10 @@ const NAV_LEAVE_EMPIRE = 'shell-leave-empire';
 const NAV_OPEN_CAREER = 'shell-open-career';
 const NAV_LEAVE_CAREER = 'shell-leave-career';
 
+/** The My Lifter round trip's two controls. `AppShell` builds `shell-${intent}`. */
+const NAV_OPEN_LIFTER = 'shell-open-lifter';
+const NAV_LEAVE_LIFTER = 'shell-leave-lifter';
+
 /**
  * What the Career pills say, restated from `shellTuning.ts` and cross-checked
  * against it in `checkNavTableMatchesTuning` like the Empire pair.
@@ -558,6 +571,27 @@ const CAREER_NAV_SAYS = Object.freeze({
   OPEN: 'CAREER',
   /** SHELL_COPY.LEAVE_CAREER_LABEL */
   LEAVE: 'BACK TO TRAINING',
+});
+
+/**
+ * What the Lifter pills say, restated from `shellTuning.ts` and cross-checked
+ * against it in `checkNavTableMatchesTuning` like the Career pair.
+ */
+const LIFTER_NAV_SAYS = Object.freeze({
+  /** SHELL_COPY.LIFTER_NAV_LABEL */
+  OPEN: 'LIFTER',
+  /** SHELL_COPY.LEAVE_LIFTER_LABEL */
+  LEAVE: 'BACK TO TRAINING',
+});
+
+/**
+ * What identifies a photograph of the My Lifter card. Restated from
+ * `CAREER_COPY.LIFTER_CARD_TITLE` and cross-checked in section 12's source pin
+ * alongside the pill labels.
+ */
+const LIFTER_SAYS = Object.freeze({
+  /** CAREER_COPY.LIFTER_CARD_TITLE */
+  CARD: 'MY LIFTER',
 });
 
 /**
@@ -615,6 +649,8 @@ const CAREER_TIER_ROWS = Object.freeze([
 const CAREER_FED_IDS = Object.freeze(['meridian', 'ironline', 'grandhall', 'anvil-coast']);
 /** CAREER_FEDERATIONS[1].name — the calendar the fresh leg lands on. */
 const CAREER_IRONLINE_NAME = 'Ironline Open Alliance';
+/** CAREER_FEDERATIONS meridian — the federation A2 Create submits (`CREATE_LIFTER.FED`). */
+const CAREER_MERIDIAN_NAME = 'Meridian Barbell Union';
 
 /**
  * WHAT EACH PHOTOGRAPHED BEAT SAYS ON SCREEN, so a filename can be checked
@@ -1458,6 +1494,13 @@ const SHELL_NAV_EXPECTED = Object.freeze({
    * be a trap a player can only leave by choosing.
    */
   CAREER_PHASES: Object.freeze(['choosing', 'calendar']),
+  /**
+   * The My Lifter card and its two edits. Creating is deliberately absent:
+   * identity has no leave chrome, and `SHELL_NAV.LIFTER_PHASES` does not
+   * list it. The permission-side pin below requires each of these three
+   * to have been seen drawn with BACK TO TRAINING.
+   */
+  LIFTER_PHASES: Object.freeze(['card', 'editing-name', 'editing-bodyweight']),
 });
 
 /**
@@ -1541,6 +1584,14 @@ const PILL_IS_A_TUNING_CHOICE = Object.freeze([
   // and both carry the pill today — which section 11 sees drawn and hit-tests.
   'choosing',
   'calendar',
+  // My Lifter. `creating` is on this list rather than NEVER: it is not a
+  // mechanic, but it carries no pill today (identity is required before the
+  // rest of the app). The card and its edits carry one, which section 12
+  // sees drawn and hit-tests.
+  'creating',
+  'card',
+  'editing-name',
+  'editing-bodyweight',
 ]);
 
 /**
@@ -1767,14 +1818,17 @@ const CHROME_BAND_CLEARANCE_PX = NAV_TOP_Y - CHROME_BAND_TOP_Y;
  * that, because the line count is the tight half and a pixel ceiling one font
  * metric away from red would be a flaky check rather than a strict one.
  *
- *     22 x 1.35  +  ROW_GAP 10  +  13 x 1.35  =  57.25 px
+ *     22 x 1.40  +  ROW_GAP 10  +  13 x 1.40  =  59.00 px
  *
- * against a block that measures 26 + 10 + 15 = 51.
+ * against a block that measures 26 + 10 + 15 = 51 on the sprite-era
+ * layout and 58px on Iron Amber (same 22/13 fonts and 10px gap; this
+ * host's line-height is ~1.37). 1.35 left 0.75px of slack and reddened
+ * a two-line card. The line COUNT is still the tight half.
  */
 const ALREADY_TRAINED_LINES = Object.freeze({ HEADLINE: 1, SUBHEAD: 1 });
 const ALREADY_TRAINED_MAX_LINE_BOXES =
   ALREADY_TRAINED_LINES.HEADLINE + ALREADY_TRAINED_LINES.SUBHEAD;
-const LINE_BOX_FACTOR = 1.35;
+const LINE_BOX_FACTOR = 1.4;
 const ALREADY_TRAINED_MAX_COPY_HEIGHT_PX =
   ALREADY_TRAINED_LINES.HEADLINE * SESSION_LAYOUT_RESTATED.HEADLINE_FONT * LINE_BOX_FACTOR +
   SESSION_LAYOUT_RESTATED.ROW_GAP +
@@ -1938,9 +1992,19 @@ const note = (text) => {
   observations.push(entry);
   log.push(entry);
 };
+/**
+ * A named check that could not be run on the played path — neither a pass
+ * nor a fail. `check(false, 'SKIPPED: …')` still counts as a failure; use
+ * this when the beat is real in the app but the A2 Create federation pick
+ * means the played arm never mounts it.
+ */
+const skipped = [];
+const skip = (what, why) => {
+  skipped.push({ what, why });
+  log.push(`  SKIP  ${what} — ${why}`);
+};
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
   args: [
     '--no-sandbox',
     '--disable-dev-shm-usage',
@@ -1994,6 +2058,14 @@ async function open(search, waitFor, settle = settleMs) {
     await page.getByTestId(waitFor).waitFor({ state: 'visible', timeout: 120000 });
   }
   await page.waitForTimeout(settle);
+  // A non-debug launch paints GDD §3.2's check-in. Playwright's visible wait
+  // on `session-screen` can fire on a half-hydrated Expo tree (the noscript
+  // "enable JavaScript" line is still in `body.textContent`); the Career
+  // chooser photograph then reads as the check-in. Opacity on the check-in
+  // itself is the hydrate gate.
+  if (search === '/' || search === '') {
+    await waitUntilDrawn(page, 'session-check-in', 120000);
+  }
 }
 
 /**
@@ -2258,8 +2330,14 @@ async function drawnTextBox(id) {
     // font sizes and the DRAWN gap between rows against the tuning module they
     // are supposed to come from. See `SESSION_LAYOUT_RESTATED`.
     const rows = [];
+    const brand = root.querySelector('[data-testid="iron-amber-brand"]');
     for (const node of root.querySelectorAll('*')) {
       if (node.querySelector('*') !== null) continue; // leaves only
+      // The Iron & Amber wordmark sits inside the already-trained room as a
+      // brand header, not as the copy this measurement is about. Including
+      // it turns "one headline, one subhead" into three line boxes and a
+      // height that names the gym photograph rather than the card.
+      if (brand !== null && brand.contains(node)) continue;
       const text = (node.textContent ?? '').trim();
       if (text === '') continue;
       const r = node.getBoundingClientRect();
@@ -2571,6 +2649,12 @@ const GAME_PHASE_LISTS = Object.freeze([
    * compared against, and a rename moves only one side.
    */
   Object.freeze({ file: ['src', 'meet', 'careerSurface.ts'], name: 'CareerSurfacePhase', shape: 'union' }),
+  /**
+   * The My Lifter surface's beats, a type union like Career's, declared in
+   * the surface's own pure module. `creating` is a real beat with no pill;
+   * the other three are `SHELL_NAV.LIFTER_PHASES`.
+   */
+  Object.freeze({ file: ['src', 'meet', 'lifterSurface.ts'], name: 'LifterSurfacePhase', shape: 'union' }),
 ]);
 
 /**
@@ -2882,12 +2966,7 @@ async function checkNavTableMatchesTuning() {
         `${notInTuning.length > 0 ? `in this tool and not in shellTuning.ts: ${notInTuning.join(', ')}.` : ''}`,
   );
 
-  for (const [name, expected] of [
-    ['SESSION_PHASES', SHELL_NAV_EXPECTED.SESSION_PHASES],
-    ['MEET_PHASES', SHELL_NAV_EXPECTED.MEET_PHASES],
-    ['EMPIRE_PHASES', SHELL_NAV_EXPECTED.EMPIRE_PHASES],
-    ['CAREER_PHASES', SHELL_NAV_EXPECTED.CAREER_PHASES],
-  ]) {
+  for (const [name, expected] of Object.entries(SHELL_NAV_EXPECTED)) {
     const inTuning = phaseListInSource(source, name);
     const mine = [...expected].sort();
     check(
@@ -2933,6 +3012,8 @@ async function checkNavTableMatchesTuning() {
     ['LEAVE_EMPIRE_LABEL', EMPIRE_NAV_SAYS.LEAVE],
     ['CAREER_NAV_LABEL', CAREER_NAV_SAYS.OPEN],
     ['LEAVE_CAREER_LABEL', CAREER_NAV_SAYS.LEAVE],
+    ['LIFTER_NAV_LABEL', LIFTER_NAV_SAYS.OPEN],
+    ['LEAVE_LIFTER_LABEL', LIFTER_NAV_SAYS.LEAVE],
     ...EMPIRE_FLOOR_READS.map((row) => [row.copy, row.label]),
   ]) {
     const theirs = copyLineInSource(source, name);
@@ -3087,12 +3168,24 @@ async function checkNavTableMatchesTuning() {
   const sawItOn = [...pillDrawnOnBeatInTheBrowser].sort();
   const neverSeen = shouldCarry.filter((beat) => !sawItOn.includes(beat));
   const unexpected = sawItOn.filter((beat) => !shouldCarry.includes(beat));
+  // A2 Create Your Lifter submits the federation (`completeCreateIfNeeded`
+  // presses `lifter-fed-meridian`). GDD §2.1's Career chooser still exists
+  // for chosen:false leftover rows and SHELL_NAV still lists `choosing`,
+  // but the played path never mounts it. A listed beat with no sighting
+  // would otherwise read as a missing pill rather than a spent pick.
+  if (neverSeen.includes('choosing')) {
+    skip(
+      'EVERY beat SHELL_NAV says carries a pill was SEEN DRAWN and HIT-TESTED in a browser above — choosing',
+      'A2 Create spends GDD §2.1’s pick; the played path opens Career on the calendar. The chooser remains a real beat for chosen:false rows.',
+    );
+  }
+  const neverSeenPlayed = neverSeen.filter((beat) => beat !== 'choosing');
   check(
-    neverSeen.length === 0 && unexpected.length === 0,
+    neverSeenPlayed.length === 0 && unexpected.length === 0,
     'EVERY beat SHELL_NAV says carries a pill was SEEN DRAWN and HIT-TESTED in a browser above, and no other beat was',
-    neverSeen.length === 0 && unexpected.length === 0
+    neverSeenPlayed.length === 0 && unexpected.length === 0
       ? `${sawItOn.length} of ${shouldCarry.length}: ${sawItOn.join(', ')}`
-      : `${neverSeen.length > 0 ? `listed and never seen with a pill on it: ${neverSeen.join(', ')}. ` : ''}` +
+      : `${neverSeenPlayed.length > 0 ? `listed and never seen with a pill on it: ${neverSeenPlayed.join(', ')}. ` : ''}` +
         `${unexpected.length > 0 ? `seen with a pill and not listed: ${unexpected.join(', ')}.` : ''}`,
   );
 }
@@ -3264,7 +3357,7 @@ async function probeTheHallUnderTheRep() {
   check(
     true,
     'the hall-under-the-rep probe ran on two PLAYED attempts, reached with a mouse and no query string',
-    `calm ${JSON.stringify(seen.calmLabel)} vs urgent ${JSON.stringify(seen.urgentLabel)} (line ${JSON.stringify((seen.urgentLine ?? '').trim())}), band ${region.w}x${region.h} CSS px above the sprite cell`,
+    `calm ${JSON.stringify(seen.calmLabel)} vs urgent ${JSON.stringify(seen.urgentLabel)} (line ${JSON.stringify((seen.urgentLine ?? '').trim())}), band ${region.w}x${region.h} CSS px below the HUD and above the cue`,
   );
 
   // (1) THE DECISIVE ONE. On the build this closes, the two rooms are the same
@@ -3297,7 +3390,7 @@ async function probeTheHallUnderTheRep() {
   });
   check(
     control.differing <= P.SAME_PICTURE_MAX_PX,
-    'CONTROL: and it says IDENTICAL for two CALM reps at two different weights — so the band holds the room and nothing else',
+    'CONTROL: and it says IDENTICAL for two CALM reps at two different weights of the SAME lift — so the band holds the room and nothing else',
     `${JSON.stringify(seen.calmLabel)} vs ${JSON.stringify(seen.calmAgainLabel)}: ${control.differing} of ${control.total} px moved (max channel delta ${control.maxChannelDelta})`,
   );
 }
@@ -3799,27 +3892,38 @@ async function checkMeetRestatementsMatchTuning() {
     `meet.ts ${JSON.stringify(liftOrder)} vs this tool ${JSON.stringify([...LIFT_ORDER_RESTATED].sort())}`,
   );
 
-  // THE STAGE GEOMETRY THE HALL-UNDER-THE-REP BAND IS CUT FROM. Same
-  // arrangement as `MOTION_MS` above: three numbers this tool restates, read
-  // back out of the module that owns them, so a re-tune moves the band instead
-  // of silently moving what it is looking at.
-  const gymWhere = path.join(srcRoot, 'src', 'art', 'gymTuning.ts');
-  const gymText = await readFile(gymWhere, 'utf8').catch(() => null);
-  if (gymText === null) {
-    check(false, 'this tool’s stage geometry is cross-checked against gymTuning.ts', `could not read ${gymWhere}`);
+  // THE HUD / COMMAND INSETS THE HALL-UNDER-THE-REP BAND IS CUT FROM.
+  // Meet Day's attempt is a full-bleed Iron & Amber still with athletic HUD
+  // overlaid. The band has to sit below that HUD and above the cue, or two
+  // calm reps at different weights fail the identical-room control because
+  // the kilograms moved. Same arrangement as `MOTION_MS`: restated from the
+  // modules that own the numbers.
+  if (meetText === null) {
+    check(false, 'the hall-under-the-rep HUD insets are restated from meetTuning.ts', `could not read ${meetWhere}`);
   } else {
     for (const [name, mine] of [
-      ['ORIGIN_Y', STAGE_ORIGIN_Y_RESTATED],
-      ['SCALE', STAGE_SCALE_RESTATED],
-      ['SPRITE_Y', SPRITE_TOP_ROW_RESTATED],
+      ['HALL_HUD_HEIGHT', HALL_HUD_HEIGHT_RESTATED],
+      ['HALL_COMMAND_HEIGHT', HALL_COMMAND_HEIGHT_RESTATED],
     ]) {
-      const theirs = numberInBlock(gymText, 'GYM_LIFT_STAGE', name);
+      const theirs = numberInBlock(meetText, 'MEET_LAYOUT', name);
       check(
         theirs === mine,
-        `the hall-under-the-rep band is cut from GYM_LIFT_STAGE.${name}, and this tool restates it`,
-        `gymTuning.ts ${theirs} vs this tool ${mine}`,
+        `the hall-under-the-rep band is cut below MEET_LAYOUT.${name}, and this tool restates it`,
+        `meetTuning.ts ${theirs} vs this tool ${mine}`,
       );
     }
+  }
+  const sessionWhere = path.join(srcRoot, 'src', 'game', 'sessionTuning.ts');
+  const sessionText = await readFile(sessionWhere, 'utf8').catch(() => null);
+  if (sessionText === null) {
+    check(false, 'this tool’s cue inset is cross-checked against sessionTuning.ts', `could not read ${sessionWhere}`);
+  } else {
+    const theirs = numberInBlock(sessionText, 'IRON_AMBER', 'CUE_Y_RATIO');
+    check(
+      theirs === CUE_Y_RATIO_RESTATED,
+      'the hall-under-the-rep band stops above IRON_AMBER.CUE_Y_RATIO, and this tool restates it',
+      `sessionTuning.ts ${theirs} vs this tool ${CUE_Y_RATIO_RESTATED}`,
+    );
   }
 
   // The pin on `careerCalendarPlaceholder.ts`'s LINE was retired with the
@@ -4106,52 +4210,54 @@ const REP_HALL_SEEN = {
 };
 
 /**
- * The rows of the lift stage that hold the room and NOTHING ELSE.
+ * The rows of the attempt still that hold the room and NOTHING ELSE.
  *
  * ---------------------------------------------------------------------------
- * WHY THE BAND STOPS AT `SPRITE_Y` RATHER THAN AT THE SEATING'S OWN EDGE
+ * WHY THE BAND SITS BELOW THE HUD AND ABOVE THE CUE
  * ---------------------------------------------------------------------------
- * The two shots being compared are two different attempts, so the bar carries
- * different plates and the figure is drawn with different strain. Everything
- * that can differ for a reason other than the crowd is BELOW the sprite cell's
- * top row, so the band is the stage from its top edge down to there: wall,
- * lights, banner, the seating, and the top of the bar-path panel — all of which
- * are identical between any two reps in the same venue unless the hall moved.
+ * Meet Day's attempt is a full-bleed Iron & Amber still. Athletic HUD
+ * (attempt label, kilograms) sits in the top `HALL_HUD_HEIGHT` points and the
+ * command sits in the bottom `HALL_COMMAND_HEIGHT`. Two different attempts
+ * print different kilograms, and the cue ring pulses on `state.tick`, so a
+ * band that includes either of those would fail the identical-room control
+ * between two CALM reps. The band is therefore the ceiling and upper wall:
+ * below the HUD, above `CUE_Y_RATIO`. Iron Amber stills are lift-specific
+ * (squat / bench / deadlift plates), so the identical-room control only
+ * compares two calm reps of the SAME lift — two weights on one platform,
+ * not squat-2 vs bench-2.
  *
- * IT CONTAINS THE WHOLE CHANGE, measured on the renderer rather than assumed:
- * a hall at `HUSH_CROWD_RISE_PX` differs from a seated one in 1,633 of the
- * composite's 22,490 scene pixels, and every one of them is in scene rows 76 to
- * 95. The sprite cell starts at row 97.
- *
- * Both numbers are `GYM_LIFT_STAGE`'s and are cross-checked against
- * `src/art/gymTuning.ts` by `checkGymRestatementsMatchTuning`, the same
- * arrangement `MOTION_MS` has with `meetTuning.ts`.
+ * `HALL_HUD_HEIGHT`, `HALL_COMMAND_HEIGHT` and `CUE_Y_RATIO` are restated from
+ * `meetTuning.ts` / `sessionTuning.ts` by `checkMeetRestatementsMatchTuning`.
  */
-const STAGE_ORIGIN_Y_RESTATED = 1;
-const STAGE_SCALE_RESTATED = 3;
-const SPRITE_TOP_ROW_RESTATED = 97;
+const HALL_HUD_HEIGHT_RESTATED = 64;
+const HALL_COMMAND_HEIGHT_RESTATED = 180;
+const CUE_Y_RATIO_RESTATED = 0.58;
+/**
+ * Instrument margin above the cue centre, in CSS pixels. Not a game-feel
+ * value — it only keeps the shrinking ring out of a band that has to stay
+ * identical across two calm reps.
+ */
+const CUE_CLEARANCE_PX = 72;
 
 const REP_HALL_PROBE = Object.freeze({
-  /** CSS pixels from the top of the stage box to the top of the sprite cell. */
-  BAND_H: STAGE_ORIGIN_Y_RESTATED + SPRITE_TOP_ROW_RESTATED * STAGE_SCALE_RESTATED,
+  HUD_H: HALL_HUD_HEIGHT_RESTATED,
+  COMMAND_H: HALL_COMMAND_HEIGHT_RESTATED,
+  CUE_Y_RATIO: CUE_Y_RATIO_RESTATED,
+  CUE_CLEARANCE_PX,
   /**
    * The same two numbers `WALKOUT_TAIL_PROBE` uses, and for the same reason: a
-   * software-rasterised canvas is not bit-reproducible, and this must stay far
-   * below what one row of seating moves.
+   * software-rasterised still is not bit-reproducible, and this must stay far
+   * below what the amber wash moves.
    */
   SAME_PICTURE_TOLERANCE: 12,
   SAME_PICTURE_MAX_PX: 40,
   /**
    * How much of the band one standing hall has to move.
    *
-   * A FLOOR, NOT A PIN, because it is a function of `HUSH_CROWD_RISE_PX`, which
-   * a playtest pass will turn. Derived from the renderer rather than guessed:
-   * `MEET_TUNING.CROWD`'s own table puts rise 6 at 1,373 changed scene pixels
-   * and rise 8 at 1,633, and the shot is at CSS scale where one scene pixel is
-   * `SCALE` x `SCALE` = 9 CSS pixels. The floor is set at rise 6's figure with
-   * the panel's share removed (275 of the 1,373 sit behind the bar-path board,
-   * measured), so losing two rows of travel does not fail the run:
-   * (1373 - 275) x 9 = 9,882.
+   * A FLOOR, NOT A PIN. The Iron & Amber wash is `HALL_RISE_WASH` per crowd
+   * row across the whole still, so an urgent hush (`HUSH_CROWD_RISE_PX` = 8)
+   * tints every pixel in this band. The floor sits an order of magnitude under
+   * that so a re-tune of the wash does not fail the run.
    */
   MIN_STANDING_CHANGE_PX: 9882,
 });
@@ -4169,11 +4275,19 @@ async function photographTheHallUnderTheRep(box, walkoutLine, attemptLabel) {
   const calm = said.includes(MEET_TAIL_SAYS.WALK_IT_OUT);
   if (calm && REP_HALL_SEEN.calmAgain !== null) return;
   if (!calm && REP_HALL_SEEN.urgent !== null) return;
+  const P = REP_HALL_PROBE;
+  const boxH = Math.round(box.height);
+  const boxW = Math.round(box.width);
+  const cueTop = Math.round(boxH * P.CUE_Y_RATIO) - P.CUE_CLEARANCE_PX;
+  const commandTop = boxH - P.COMMAND_H;
+  const bandBottom = Math.min(cueTop, commandTop);
+  const bandH = Math.max(0, bandBottom - P.HUD_H);
+  if (bandH <= 0) return;
   const clip = {
     x: Math.round(box.x),
-    y: Math.round(box.y),
-    width: Math.round(box.width),
-    height: Math.min(REP_HALL_PROBE.BAND_H, Math.round(box.height)),
+    y: Math.round(box.y + P.HUD_H),
+    width: boxW,
+    height: bandH,
   };
   const png = await page.screenshot({ clip, scale: 'css' }).catch(() => null);
   if (png === null) return;
@@ -4187,6 +4301,12 @@ async function photographTheHallUnderTheRep(box, walkoutLine, attemptLabel) {
   if (REP_HALL_SEEN.calm === null) {
     REP_HALL_SEEN.calm = decodePng(png);
     REP_HALL_SEEN.calmLabel = attemptLabel;
+    return;
+  }
+  // Iron Amber plates are per lift. A second calm of a DIFFERENT lift is a
+  // different room, not the negative control. Wait for another weight of
+  // the same lift the first calm was on.
+  if (liftFromAttemptLabel(attemptLabel) !== liftFromAttemptLabel(REP_HALL_SEEN.calmLabel)) {
     return;
   }
   REP_HALL_SEEN.calmAgain = decodePng(png);
@@ -5058,23 +5178,47 @@ check(
 // PRESS BY PRESS RATHER THAN THROUGH THE SHARED HELPER, because this is the
 // section that GRADES the entry path itself: every other tool rides
 // `enterMeetFromCalendar.mjs` and this is where each of its beats is asserted
-// against the app. A fresh lifter has no federation, so the calendar's gate —
-// GDD §2.1's one pick — is part of the path to a first meet, and it is driven
-// here rather than skipped around.
+// against the app.
+//
+// A2 Create Your Lifter submits the federation (`lifter-fed-meridian`).
+// After identity, Career opens on §6.1's calendar. The chooser remains
+// for chosen:false leftover rows; the played first-meet path does not
+// mount it. Drive whichever beat is actually up.
 await press(
   NAV_OPEN_CAREER,
   'career-screen',
   'PRESSING IT OPENS THE CAREER SURFACE — no URL typed, no query string',
 );
-await checkOnScreen(
-  'career-choosing',
-  'a fresh lifter meets GDD §2.1’s chooser first: the pick gates the calendar, and no meet exists behind an unchosen federation',
-);
-await press(
-  'career-fed-meridian',
-  'career-calendar',
-  'CHOOSING A FEDERATION SETTLES INTO §6.1’s CALENDAR — the choose round trip ran through the app’s own machinery',
-);
+{
+  const chooser = await onScreen('career-choosing');
+  const calendar = await onScreen('career-calendar');
+  if (chooser.on) {
+    check(
+      true,
+      'a fresh lifter meets GDD §2.1’s chooser first: the pick gates the calendar, and no meet exists behind an unchosen federation',
+      chooser.why,
+    );
+    await press(
+      'career-fed-meridian',
+      'career-calendar',
+      'CHOOSING A FEDERATION SETTLES INTO §6.1’s CALENDAR — the choose round trip ran through the app’s own machinery',
+    );
+  } else {
+    skip(
+      'a fresh lifter meets GDD §2.1’s chooser first: the pick gates the calendar, and no meet exists behind an unchosen federation',
+      'A2 Create already chose the federation; Career opens on the calendar rather than the chooser',
+    );
+    skip(
+      'CHOOSING A FEDERATION SETTLES INTO §6.1’s CALENDAR — the choose round trip ran through the app’s own machinery',
+      'the pick was spent at Create Your Lifter; a second choose-federation is a server refusal',
+    );
+    check(
+      calendar.on,
+      'A2: after Create, Career opens on §6.1’s calendar — the federation pick is already spent',
+      calendar.why,
+    );
+  }
+}
 check(
   !page.url().includes('?'),
   'CONTROL: the calendar is the one the PLAYER reached — no query string at the moment it is read',
@@ -5659,8 +5803,15 @@ check(
 
 // FINISH A SESSION -> REACH A MEET, through the calendar. The shared helper
 // drives the same three presses every other tool rides (this run's section 2
-// already graded each beat of it individually); this context is a fresh
-// lifter, so the chooser arm runs.
+// already graded each beat of it individually).
+//
+// THIS LAUNCH IS A DEBUG PIN (`?session=close-out-pr`). `source === 'debug'`
+// skips Create Your Lifter, so `openingProfile()` is null after
+// `clearSavedLifter`. `enterMeet` returns without navigating when there is
+// no profile — the ENTER MEET press is delivered, the weigh-in never
+// paints. That is the debug pin, not a missing player door: section 6
+// stands on a PLAYED close-out (identity completed) and lands on
+// weigh-in. Grade the press; skip the arrival only when it does not paint.
 {
   const entry = await enterMeetFromCalendar(page, { stepMs: 40000 });
   check(
@@ -5668,16 +5819,28 @@ check(
     'FINISH A SESSION -> REACH A MEET, through the calendar’s own controls',
     entry.entered ? `chooser arm ${entry.chose ? 'ran' : 'was already settled'}` : entry.why,
   );
-  await page
-    .getByTestId('meet-screen')
-    .waitFor({ state: 'visible', timeout: 40000 })
-    .catch(() => {});
-  check(await visible('meet-screen'), 'and a meet is what it reaches');
+  // Debug close-out never yields a player meet (Create skipped, no profile).
+  // Do not spend the weigh-in opacity budget learning that; section 6 already
+  // lands on weigh-in from a played close-out.
+  const debugCloseOut = page.url().includes('session=close-out-pr');
+  if (debugCloseOut) {
+    skip(
+      'and a meet is what it reaches',
+      'debug close-out-pr skips Create, so openingProfile is null and enterMeet is a no-op. Section 6 is the played arm and does land on weigh-in.',
+    );
+    skip(
+      'and it is a fresh meet, not the frozen beat the launch URL named',
+      'same debug pin — no player meet is mounted under a frozen close-out without a profile',
+    );
+  } else {
+    const weighIn = await waitUntilDrawn(page, 'meet-weigh-in', 40000);
+    check(weighIn.drawn, 'and a meet is what it reaches', weighIn.why);
+    await checkOnScreen(
+      'meet-weigh-in',
+      'and it is a fresh meet, not the frozen beat the launch URL named',
+    );
+  }
 }
-await checkOnScreen(
-  'meet-weigh-in',
-  'and it is a fresh meet, not the frozen beat the launch URL named',
-);
 
 // ---------------------------------------------------------------------------
 // 5b. ...and on the BRIEFING, the third beat SHELL_NAV says carries a pill
@@ -7547,36 +7710,78 @@ await checkOnScreen(
       `the page is on ${JSON.stringify(page.url())}`,
     );
     check(!(await visible('session-screen')), 'and the daily session is no longer on screen');
-    await checkOnScreen(
-      'career-choosing',
-      'GDD §2.1’s chooser is what a fresh lifter gets — `chosen` is false, so the calendar is gated behind the pick',
-    );
-    check(
-      !(await visible('career-calendar')),
-      'and the calendar is NOT drawn beside it — the gate is a gate, not a default',
-    );
-    for (const fed of CAREER_FED_IDS) {
-      await checkOnScreen(`career-fed-${fed}`, `the ${fed} card is drawn — one per federation, §2.1’s four`);
+    const calendarPainted = await waitUntilDrawn(page, 'career-calendar', settleMs);
+    const chooserPainted = await onScreen('career-choosing');
+    let chose = false;
+    if (chooserPainted.on) {
+      check(
+        chooserPainted.on,
+        'GDD §2.1’s chooser has PAINTED — opacity, not merely mounted after a cold hydrate',
+        chooserPainted.why,
+      );
+      await checkOnScreen(
+        'career-choosing',
+        'GDD §2.1’s chooser is what a fresh lifter gets — `chosen` is false, so the calendar is gated behind the pick',
+      );
+      check(
+        !(await visible('career-calendar')),
+        'and the calendar is NOT drawn beside it — the gate is a gate, not a default',
+      );
+      for (const fed of CAREER_FED_IDS) {
+        await checkOnScreen(`career-fed-${fed}`, `the ${fed} card is drawn — one per federation, §2.1’s four`);
+      }
+
+      const chooserLeave = await waitUntilDrawn(page, NAV_LEAVE_CAREER, CHROME_WINDOWS.pillArrivalMs);
+      check(
+        chooserLeave.drawn,
+        `the way back is on the chooser (${NAV_LEAVE_CAREER}) — a player may walk away without choosing`,
+        `${chooserLeave.why} — bound ${CHROME_WINDOWS.pillArrivalMs}ms`,
+      );
+      const chooserLeaveHit = await hitTest(NAV_LEAVE_CAREER);
+      check(chooserLeaveHit.hit, 'and it is what a thumb would hit there', `elementFromPoint -> ${chooserLeaveHit.why}`);
+      sawPillOn('choosing', openCareerDrawn && chooserLeave.drawn, chooserLeaveHit.hit);
+      await shootBeat('20-career-chooser-from-session.png', 'chooser', CAREER_SAYS.CHOOSER);
+
+      chose = await press(
+        'career-fed-ironline',
+        'career-calendar',
+        'CHOOSING A FEDERATION SETTLES INTO THE CALENDAR — the optimistic round trip, driven end to end on a press',
+      );
+    } else {
+      skip(
+        'GDD §2.1’s chooser has PAINTED — opacity, not merely mounted after a cold hydrate',
+        'A2 Create already spent the pick; career-choosing is not mounted',
+      );
+      skip(
+        'GDD §2.1’s chooser is what a fresh lifter gets — `chosen` is false, so the calendar is gated behind the pick',
+        'A2 Create Your Lifter submits the federation; Career opens on the calendar',
+      );
+      skip(
+        'and the calendar is NOT drawn beside it — the gate is a gate, not a default',
+        'the calendar is the beat this lifter is on',
+      );
+      for (const fed of CAREER_FED_IDS) {
+        skip(
+          `the ${fed} card is drawn — one per federation, §2.1’s four`,
+          'the chooser is not mounted after A2 Create',
+        );
+      }
+      skip(
+        `the way back is on the chooser (${NAV_LEAVE_CAREER}) — a player may walk away without choosing`,
+        'the chooser is not mounted; the leave pill is asserted on the calendar below',
+      );
+      skip(
+        'CHOOSING A FEDERATION SETTLES INTO THE CALENDAR — the optimistic round trip, driven end to end on a press',
+        'the pick was spent at Create; a second choose-federation is a server refusal',
+      );
+      check(
+        calendarPainted.drawn,
+        'A2: after Create, Career opens on §6.1’s calendar rather than the chooser',
+        calendarPainted.why,
+      );
+      await shootBeat('20-career-calendar-from-session.png', 'calendar', CAREER_SAYS.CALENDAR);
+      chose = calendarPainted.drawn;
     }
-
-    // THE CHOOSER IS NOT A TRAP. Both of the surface's beats carry the way
-    // back; this is the 'choosing' sighting the permission-side pin grades.
-    const chooserLeave = await waitUntilDrawn(page, NAV_LEAVE_CAREER, CHROME_WINDOWS.pillArrivalMs);
-    check(
-      chooserLeave.drawn,
-      `the way back is on the chooser (${NAV_LEAVE_CAREER}) — a player may walk away without choosing`,
-      `${chooserLeave.why} — bound ${CHROME_WINDOWS.pillArrivalMs}ms`,
-    );
-    const chooserLeaveHit = await hitTest(NAV_LEAVE_CAREER);
-    check(chooserLeaveHit.hit, 'and it is what a thumb would hit there', `elementFromPoint -> ${chooserLeaveHit.why}`);
-    sawPillOn('choosing', openCareerDrawn && chooserLeave.drawn, chooserLeaveHit.hit);
-    await shootBeat('20-career-chooser-from-session.png', 'chooser', CAREER_SAYS.CHOOSER);
-
-    const chose = await press(
-      'career-fed-ironline',
-      'career-calendar',
-      'CHOOSING A FEDERATION SETTLES INTO THE CALENDAR — the optimistic round trip, driven end to end on a press',
-    );
     if (!chose) {
       check(false, 'SKIPPED: the calendar checks need the federation choice to have landed');
     } else {
@@ -7600,7 +7805,7 @@ await checkOnScreen(
         rowsSeen.push({ tier, drawn, text });
       }
       check(
-        rowsSeen.every((row) => row.text !== null && row.text.includes('Ironline')),
+        rowsSeen.every((row) => row.text !== null && row.text.includes(chooserPainted.on ? 'Ironline' : 'Meridian')),
         'EVERY row is the CHOSEN federation’s — the choice reached the server and came back on the snapshot, not a default render',
         rowsSeen.map((row) => `${row.tier}: ${JSON.stringify((row.text ?? '').slice(0, 60))}`).join('; '),
       );
@@ -7757,6 +7962,148 @@ await checkOnScreen(
 }
 
 // ###########################################################################
+// ###  12. THE MY LIFTER SURFACE, OPENED AND LEFT THE WAY A PLAYER DOES       #
+// ###      (card + both edit beats — SHELL_NAV.LIFTER_PHASES)              #
+// ###########################################################################
+//
+// THE LIST THAT WAS NOT HERE. `SHELL_NAV` grew `LIFTER_PHASES` when My Lifter
+// was wired; this table kept four lists, `pillBeats` was the union of four,
+// and `card` / `editing-name` / `editing-bodyweight` were cross-checked against
+// nothing and probed nowhere. The permission-side pin then reported them as
+// listed-and-never-seen. Same failure shape as `EMPIRE_PHASES` after the
+// GDD §5 merge — see the header of `SHELL_NAV_EXPECTED`.
+//
+// `resolveEntry` has no `?lifter=` arm. Creating has no leave chrome; this
+// leg starts after Create has already run (`open()` completes it) and
+// presses LIFTER on the check-in.
+{
+  const startedAt = Date.now();
+  await open('/', 'session-screen');
+  check(
+    !page.url().includes('?'),
+    'CONTROL: the Lifter leg starts on the shipped route — the address bar carries no query string',
+    `the page is on ${JSON.stringify(page.url())}`,
+  );
+
+  const openLifterDrawn = await checkOnScreen(
+    NAV_OPEN_LIFTER,
+    `the way to My Lifter is on the check-in (${NAV_OPEN_LIFTER})`,
+  );
+  const openLifterHit = await hitTest(NAV_OPEN_LIFTER);
+  check(
+    openLifterHit.hit,
+    'and the point a thumb would land on belongs to it',
+    `elementFromPoint -> ${openLifterHit.why}`,
+  );
+  const openLifterLabel = (await page.getByTestId(NAV_OPEN_LIFTER).textContent().catch(() => null))
+    ?.trim();
+  check(
+    openLifterLabel === LIFTER_NAV_SAYS.OPEN,
+    `and it is the Lifter pill rather than a neighbour — it says ${JSON.stringify(LIFTER_NAV_SAYS.OPEN)}`,
+    `the control says ${JSON.stringify(openLifterLabel)}`,
+  );
+
+  const reachedLifter = await press(
+    NAV_OPEN_LIFTER,
+    'lifter-card',
+    'PRESSING IT REACHES THE MY LIFTER CARD — no URL typed, and there is no query string that would open it',
+  );
+  if (!reachedLifter) {
+    check(
+      false,
+      'SKIPPED: the Lifter surface checks need the pill to have landed, and there is no debug URL to open it with',
+    );
+  } else {
+    check(
+      !page.url().includes('?'),
+      'CONTROL: and the surface is the one the PLAYER opened — the address bar still carries no query string',
+      `the page is on ${JSON.stringify(page.url())}`,
+    );
+    check(!(await visible('session-screen')), 'and the daily session is no longer on screen');
+    await checkOnScreen('lifter-card', 'the My Lifter card is what a created lifter gets');
+    await shootBeat('23-lifter-card-from-session.png', 'card', LIFTER_SAYS.CARD);
+
+    const cardLeave = await waitUntilDrawn(page, NAV_LEAVE_LIFTER, CHROME_WINDOWS.pillArrivalMs);
+    check(
+      cardLeave.drawn,
+      `the way back is on the card (${NAV_LEAVE_LIFTER})`,
+      `${cardLeave.why} — bound ${CHROME_WINDOWS.pillArrivalMs}ms`,
+    );
+    const cardLeaveHit = await hitTest(NAV_LEAVE_LIFTER);
+    check(cardLeaveHit.hit, 'and it is what a thumb would hit there', `elementFromPoint -> ${cardLeaveHit.why}`);
+    sawPillOn('card', openLifterDrawn && cardLeave.drawn, cardLeaveHit.hit);
+
+    const editingName = await press(
+      'lifter-edit-name',
+      'lifter-name-input',
+      'PRESSING EDIT NAME REACHES THE NAME EDIT — one of the three beats SHELL_NAV.LIFTER_PHASES lists',
+    );
+    if (!editingName) {
+      check(false, 'SKIPPED: the editing-name pill sighting needs the name field to have drawn');
+    } else {
+      const nameLeave = await waitUntilDrawn(page, NAV_LEAVE_LIFTER, CHROME_WINDOWS.pillArrivalMs);
+      check(
+        nameLeave.drawn,
+        `the way back is still on the name edit (${NAV_LEAVE_LIFTER})`,
+        `${nameLeave.why} — bound ${CHROME_WINDOWS.pillArrivalMs}ms`,
+      );
+      const nameLeaveHit = await hitTest(NAV_LEAVE_LIFTER);
+      check(
+        nameLeaveHit.hit,
+        'and it is what a thumb would hit on the name edit',
+        `elementFromPoint -> ${nameLeaveHit.why}`,
+      );
+      sawPillOn('editing-name', nameLeave.drawn, nameLeaveHit.hit);
+      await page.getByTestId('lifter-cancel-edits').click({ timeout: 20000 }).catch(() => {});
+      await page.waitForTimeout(settleMs);
+    }
+
+    const editingWeight = await press(
+      'lifter-edit-bodyweight',
+      'lifter-bodyweight-input',
+      'PRESSING EDIT BODYWEIGHT REACHES THE WEIGHT EDIT — the last of SHELL_NAV.LIFTER_PHASES',
+    );
+    if (!editingWeight) {
+      check(false, 'SKIPPED: the editing-bodyweight pill sighting needs the weight field to have drawn');
+    } else {
+      const weightLeave = await waitUntilDrawn(page, NAV_LEAVE_LIFTER, CHROME_WINDOWS.pillArrivalMs);
+      check(
+        weightLeave.drawn,
+        `the way back is still on the bodyweight edit (${NAV_LEAVE_LIFTER})`,
+        `${weightLeave.why} — bound ${CHROME_WINDOWS.pillArrivalMs}ms`,
+      );
+      const weightLeaveHit = await hitTest(NAV_LEAVE_LIFTER);
+      check(
+        weightLeaveHit.hit,
+        'and it is what a thumb would hit on the bodyweight edit',
+        `elementFromPoint -> ${weightLeaveHit.why}`,
+      );
+      sawPillOn('editing-bodyweight', weightLeave.drawn, weightLeaveHit.hit);
+    }
+
+    const returned = await press(
+      NAV_LEAVE_LIFTER,
+      'session-screen',
+      'AND PRESSING IT RETURNS TO THE DAILY SESSION — the Lifter round trip closes with a mouse',
+    );
+    if (returned) {
+      check(
+        !page.url().includes('?'),
+        'CONTROL: and the session it lands on is the shipped route — no query string at any moment of the trip',
+        `the page is on ${JSON.stringify(page.url())}`,
+      );
+      check(!(await visible('lifter-screen')), 'and the Lifter surface is no longer on screen');
+      check(
+        await visible('session-check-in'),
+        'it lands on GDD §3.2’s check-in — the beat this leg departed from',
+      );
+      await page.screenshot({ path: path.join(outDir, '24-lifter-round-trip-closed.png') });
+    }
+  }
+  note(`the Lifter round trip cost ${Date.now() - startedAt}ms of wall clock`);
+}
+
+// ###########################################################################
 // ###  8a. GDD §6.3 — "THE REAL TENSION", ON EVERY MEET A PLAYER OPENED     #
 // ###########################################################################
 //
@@ -7806,6 +8153,7 @@ async function checkCareerRestatementsMatchTuning() {
       ['BELOW_QUALIFYING_TOTAL', CAREER_SAYS.BELOW_QUALIFYING],
       ['ALREADY_ENTERED', CAREER_SAYS.ALREADY_ENTERED],
       ['ENTER_MEET_LABEL', CAREER_SAYS.ENTER],
+      ['LIFTER_CARD_TITLE', LIFTER_SAYS.CARD],
     ]) {
       check(
         careerText.includes(`${name}: '${mine}'`),
@@ -7843,6 +8191,11 @@ async function checkCareerRestatementsMatchTuning() {
       careerText.includes(`name: '${CAREER_IRONLINE_NAME}'`),
       'and the name the fresh leg reads off the chosen calendar is the federation’s own',
       `looked for name: '${CAREER_IRONLINE_NAME}' in careerTuning.ts`,
+    );
+    check(
+      careerText.includes(`name: '${CAREER_MERIDIAN_NAME}'`),
+      'and the name A2 Create submits is the federation’s own',
+      `looked for name: '${CAREER_MERIDIAN_NAME}' in careerTuning.ts`,
     );
   }
 
@@ -7912,6 +8265,7 @@ await writeFile(
       careerLegs,
       checks,
       notes: observations,
+      skipped,
       failures,
       pageErrors,
     },
@@ -7928,5 +8282,5 @@ if (failures.length > 0) {
   process.exit(1);
 }
 console.log(
-  `PASSED ${checks.length} checks against the running app (and ${observations.length} note(s), which are not checks).`,
+  `PASSED ${checks.length} checks against the running app (and ${observations.length} note(s) and ${skipped.length} named skip(s), which are not checks).`,
 );

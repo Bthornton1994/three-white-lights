@@ -8,10 +8,11 @@
  *
  * THE INTERNAL RESOLUTION IS FIXED AND THE SCALE IS AN INTEGER. GDD §7.1:
  * "pick a fixed internal resolution early and use nearest-neighbor scaling
- * throughout. Retrofitting this later is painful." The card is authored at
- * `CARD.W x CARD.H` and only ever upscaled by a whole number, so a source pixel
- * is always exactly N device pixels square. A layout that needs a size between
- * two integer scales letterboxes the smaller one; it does not interpolate.
+ * throughout. Retrofitting this later is painful." The *grid* below is authored
+ * at `CARD.W x CARD.H` and only ever upscaled by a whole number. The shareable
+ * surface a player sees is `PAPER` in `ResultCardView` — see that block. Do
+ * not treat this header as a silent rewrite of §7.1; the conflict with §6.5 /
+ * §7.3 / §12.2's Result card bar is unresolved in the GDD.
  *
  * WHY 192 x 240: 4:5, the portrait aspect every social feed crops to without
  * letterboxing, and both axes are multiples of 8 (the SNES tile). At the
@@ -476,6 +477,34 @@ export const FOOTER = {
 export const CARD_LABELS = {
   BODYWEIGHT_SUFFIX: ' KG',
   /**
+   * Document kind on the letterhead, the way a published results PDF titles
+   * itself. Ours. Not a real federation's "Official Results" mark — GDD §11
+   * leaves that licensing open, and this card ships none of those marks.
+   */
+  DOCUMENT_KIND: 'RESULTS',
+  POSTED: 'POSTED AT THE END OF FLIGHT A',
+  UNSIGNED: 'UNOFFICIAL UNTIL SIGNED',
+  TECHNICAL_SECRETARY: 'TECHNICAL SECRETARY',
+  PAGE: 'PAGE 1 OF 1',
+  REFEREE_1: 'REFEREE 1',
+  REFEREE_2: 'REFEREE 2',
+  REFEREE_3: 'REFEREE 3',
+  /**
+   * Named officials on the shareable sheet. Fictional. A blank signature
+   * rule with only a seat title is a poster; a working scoresheet has
+   * names on those lines.
+   */
+  REFEREE_1_NAME: 'HELEN MARCH',
+  REFEREE_2_NAME: 'CARL VOSS',
+  REFEREE_3_NAME: 'LENA KEANE',
+  SECRETARY_NAME: 'PIA ALDEN',
+  FLIGHT_META: 'SESSION 1  ·  PLATFORM 1  ·  FLIGHT A',
+  BEST: 'Best',
+  WEIGHTS_IN: 'ALL WEIGHTS IN KG',
+  /** Typographic mark for Northern Barbell Federation. Ours, not a licensed crest. */
+  FED_MARK: 'NBF',
+  LOT: 'Lot',
+  /**
    * There is no CLASS_PREFIX any more. The class number now ends the category
    * phrase ("MEN'S RAW OPEN 93") the way the reference board sets it, which
    * both says whose class it is and costs four pixels LESS than the bare word
@@ -506,9 +535,17 @@ export const CARD_LABELS = {
  * audit found them. UNTUNED, like everything else here.
  */
 export const CARD_SCREEN = {
+  /** Authored phone, the viewport GDD §12.2 says to judge readability at. */
+  PHONE_W: 390,
+  PHONE_H: 844,
   /** Breathing room above and below the whole stack. */
   PAD_Y: 16,
-  /** "MEET COMPLETE" / "MEET OVER". */
+  /**
+   * Room under the sheet for the shell's way-back pill. The pill is the
+   * card's only exit (verify-shell-route 06-card). UNTUNED.
+   */
+  LEAVE_CLEARANCE: 88,
+  /** "MEET COMPLETE" / "MEET OVER" — kept for the recap bookend, not this screen. */
   EYEBROW_FONT: 12,
   EYEBROW_TRACKING: 2,
   /** Gap between the eyebrow and the card frame. */
@@ -519,3 +556,178 @@ export const CARD_SCREEN = {
   HINT_FONT: 12,
   HINT_GAP: 14,
 } as const;
+
+/**
+ * The shareable sheet as a printed object, in logical points.
+ *
+ * GDD §6.5 and §12.2's Result card bar A/B this against a real federation
+ * scoresheet. GDD §7.3 names the result card a Tier 3 high-fidelity surface —
+ * large, static, where type has to read. The 192×240 nearest-neighbour grid
+ * above remains the §7.1 sprite-era artifact (`renderResultCard`); this block is
+ * what `ResultCardView` draws. The GDD does not resolve §7.1 "throughout"
+ * against those three sections for this surface. This file does not rewrite
+ * that conflict. Presentation follows the Result card bar.
+ *
+ * Authored wider than a phone so Place, Lot, name, bodyweight, nine
+ * attempt cells, Total and DOTS can sit on one row without clipping a
+ * kilo like "217.5". ResultCardScreen scales this page to PHONE_W.
+ * Height is a full share-frame page so leftover cream is unused letter,
+ * not a short slip on a desk. UNTUNED (GDD §12.1).
+ */
+export const PAPER = {
+  W: 806,
+  PAD_X: 6,
+  PAD_Y: 28,
+  FED_SIZE: 16,
+  FED_TRACKING: 2.2,
+  DOCUMENT_SIZE: 16,
+  DOCUMENT_TRACKING: 2.2,
+  MEET_SIZE: 28,
+  META_SIZE: 14,
+  META_TRACKING: 0.4,
+  NAME_SIZE: 20,
+  CATEGORY_SIZE: 14,
+  CATEGORY_TRACKING: 0.3,
+  GRID_HEAD_SIZE: 10,
+  GRID_HEAD_TRACKING: 0.8,
+  LIFT_COL_W: 72,
+  CELL_H: 36,
+  CELL_FONT: 13,
+  LIFT_LABEL_SIZE: 11,
+  CELL_PAD: 4,
+  /** Inset of a good/miss fill inside its column, so the table rule stays visible. */
+  CELL_INSET: 1,
+  TOTAL_LABEL_SIZE: 11,
+  TOTAL_VALUE_SIZE: 28,
+  SCORE_LABEL_SIZE: 10,
+  SCORE_VALUE_SIZE: 16,
+  SCORE_H: 40,
+  FOOTER_SIZE: 10,
+  FOOTER_TRACKING: 1.8,
+  RULE: 1,
+  DOUBLE_RULE_GAP: 2,
+  SECTION_GAP: 16,
+  MASTHEAD_GAP: 8,
+  NAME_GAP: 6,
+  /**
+   * One packed scoresheet table. Column widths are the 390 two-table
+   * grammar laid on one row: ATTEMPT_COL_W 42 holds "-217.5" on the
+   * attempt table; that width is kept. Each lift then has BEST_COL_W
+   * for the good kilo that lift puts in the Total. Lot sits after
+   * Place. The sheet is a posted class dump: letterhead and six
+   * placing rows on a full page. No signature form. Untuned.
+   *
+   * NAME_W holds the longest name on the local field ("Rex Pembroke").
+   */
+  FLIGHT: {
+    HEAD_H: 44,
+    LIFT_LABEL_H: 16,
+    ROW_H: 26,
+    ATTEMPT_ROW_H: 26,
+    ATTEMPT_COLS: 9,
+    BEST_COLS: 3,
+    ATTEMPTS_PER_LIFT: 3,
+    NAME_W: 88,
+    PLACE_W: 32,
+    LOT_W: 28,
+    WEIGHT_W: 40,
+    BEST_COL_W: 42,
+    TOTAL_W: 52,
+    DOTS_W: 50,
+    ATTEMPT_COL_W: 42,
+    NAME_SIZE: 11,
+    BEST_SIZE: 13,
+    ATTEMPT_SIZE: 12,
+    META_SIZE: 11,
+    HEAD_SIZE: 8,
+    HEAD_TRACKING: 0,
+    LIFT_HEAD_SIZE: 8,
+    ROW_PAD_Y: 2,
+    SECTION_SIZE: 14,
+    SECTION_TRACKING: 0.6,
+    /**
+     * Vertical rule between peer cells. Authored thicker than PAPER.RULE
+     * so the line still paints after PAPER_SCALE (~0.66). Untuned.
+     */
+    CELL_RULE: 2,
+  },
+  /**
+   * Natural height of the letterhead. Packed flight sits under it.
+   * No signature form. Untuned.
+   */
+  MASTHEAD_BLOCK_H: 96,
+  CERT_BLOCK_H: 0,
+  /** Top and bottom page padding in paperSheetHeight. */
+  VERTICAL_PADS: 2,
+  /** Top and bottom table rules in paperSheetHeight. */
+  SHEET_RULE_EDGES: 2,
+  /** Category line plus WEIGHTS_IN line. */
+  SECTION_LINES: 2,
+  /** NAME_GAP slots around those two section lines. */
+  SECTION_NAME_GAPS: 3,
+  CERT: {
+    SIZE: 13,
+    TRACKING: 0.7,
+    LINE_GAP: 12,
+    SIGN_GAP: 16,
+    SIGN_RULE_W: 96,
+    BLOCK_GAP: 16,
+    NAME_SIZE: 16,
+  },
+  MARK: {
+    SIZE: 13,
+    PAD_X: 5,
+    PAD_Y: 3,
+    GAP: 8,
+  },
+} as const;
+
+/** Phone width over paper width. ResultCardScreen applies this once. */
+export const PAPER_SCALE = CARD_SCREEN.PHONE_W / PAPER.W;
+
+/**
+ * Authored height of the posted sheet for `fieldCount` filled rows.
+ * Packed letterhead and table on a full share-frame page. Leftover
+ * cream is unused letter below the class, with a page tail at the foot,
+ * not a signature form.
+ */
+export function paperSheetHeight(fieldCount: number): number {
+  const f = PAPER.FLIGHT;
+  const rows = Math.max(0, fieldCount);
+  const packed =
+    PAPER.PAD_Y * PAPER.VERTICAL_PADS +
+    PAPER.MASTHEAD_BLOCK_H +
+    PAPER.SECTION_GAP +
+    PAPER.DOUBLE_RULE_GAP +
+    PAPER.RULE * PAPER.SHEET_RULE_EDGES +
+    PAPER.NAME_GAP * PAPER.SECTION_NAME_GAPS +
+    f.SECTION_SIZE * PAPER.SECTION_LINES +
+    f.HEAD_H +
+    rows * f.ROW_H +
+    PAPER.SECTION_GAP +
+    PAPER.CERT_BLOCK_H;
+  return Math.max(packed, PAPER_PAGE_H);
+}
+
+/**
+ * Authored page ceiling after PAPER_SCALE, so the sheet stays above
+ * the leave pill. A six-lifter class dump fills this letter height.
+ */
+export const PAPER_PAGE_H = Math.round(
+  (CARD_SCREEN.PHONE_H - CARD_SCREEN.PAD_Y - CARD_SCREEN.LEAVE_CLEARANCE) / PAPER_SCALE,
+);
+
+/** Inner width of the packed score table, excluding page padding. */
+export function paperFlightInnerWidth(): number {
+  const f = PAPER.FLIGHT;
+  return (
+    f.PLACE_W +
+    f.LOT_W +
+    f.NAME_W +
+    f.WEIGHT_W +
+    f.ATTEMPT_COLS * f.ATTEMPT_COL_W +
+    f.BEST_COLS * f.BEST_COL_W +
+    f.TOTAL_W +
+    f.DOTS_W
+  );
+}

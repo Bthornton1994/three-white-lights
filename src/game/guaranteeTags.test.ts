@@ -1125,7 +1125,17 @@ const GUARANTEE_COVERAGE = {
   // so the live board is a named fixture scanned by the same file. The old
   // wording tripped the capitalised-absolute heuristic; the new one does not.
   // No tagged guarantee moved.
-  TREE_WIDE: 317,
+  // 317 -> 316 ON Session A Meet Day stills: VerdictView dropped the sprite-hall
+  // comment block that tripped the capitalised-absolute heuristic. The tagged
+  // guarantee `bar-stays-on-his-back-for-the-call` still lives in meetStage.test.ts.
+  // 316 -> 315 ON A-VIS-03: CutInView left the 16-bit portrait grid. The
+  // Skia-nearest-neighbour composition paragraph no longer trips the
+  // capitalised-absolute heuristic. No tagged guarantee moved.
+  // 315 -> 314 ON the shareable paper sheet: ResultCardView left the
+  // nearest-neighbour Skia upscale. The composition paragraph that used
+  // a capitalised-absolute no longer trips the heuristic. No tagged
+  // guarantee moved.
+  TREE_WIDE: 314,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -4174,7 +4184,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     // described, and the check names it.
     guarantee: 'bar-stays-on-his-back-for-the-call',
     mutatedFile: 'src/meet/VerdictView.tsx',
-    mutated: 'lifter={{ totalKg: attempt.weightKg, barAndCollarsKg, loadRatio, pose }}',
+    mutated: 'kind: attempt.lift,\n            totalKg: attempt.weightKg,',
     testFile: 'src/meet/meetStage.test.ts',
     redAssertion: "'the bar the wait is drawn with is not the attempt\u2019s bar',",
     observed:

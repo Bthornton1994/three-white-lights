@@ -109,7 +109,7 @@ export function chan8To5(c8: number): number {
  *
  * Straight (non-premultiplied), row-major, no row padding. Named here rather
  * than left inline because `rgba.ts`, `sheetPalette.ts`, `LifterSpriteView.tsx`
- * and `ResultCardView.tsx` each carried their own bare `4` for the stride and
+ * and `LicensedPanelView.tsx` each carried their own bare `4` for the stride and
  * bare `255` for opaque. Four copies of a format constant is three too many,
  * and two of them were in components.
  *

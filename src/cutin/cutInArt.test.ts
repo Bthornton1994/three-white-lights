@@ -10,7 +10,7 @@
  * nothing.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -334,5 +334,44 @@ describe('THIS PIECE AUTHORS NO CUT-IN ART — GDD §7.2, §11', () => {
     // It names the catalogue only as a TYPE and takes it as an argument, so the
     // table is data the caller supplies and not a hard-coded dependency.
     expect(ART).not.toMatch(/from '\.\.\/licensing\/partners'/);
+  });
+});
+
+describe('A-VIS-03 — the player-facing cut-in is an Iron & Amber still', () => {
+  const VIEW = withoutComments(source('CutInView.tsx'));
+
+  it('CutInView does not nearest-neighbour a 16-bit portrait grid', () => {
+    expect(VIEW).not.toMatch(/FilterMode/);
+    expect(VIEW).not.toMatch(/MipmapMode/);
+    expect(VIEW).not.toMatch(/\bSkia\b/);
+    expect(VIEW).not.toMatch(/renderCutIn/);
+    expect(VIEW).not.toMatch(/makeCutInImage/);
+    expect(VIEW).toMatch(/assets\/iron-amber/);
+    expect(VIEW).toMatch(/tier3Of\(/);
+    expect(VIEW).toMatch(/CUT_IN_SURFACE/);
+  });
+
+  it('CUT_IN_ART.STILL names owned plates that exist on disk', () => {
+    const repo = path.resolve(HERE, '../..');
+    const files = Object.values(CUT_IN_ART.STILL);
+    expect(files.length).toBe(4);
+    expect(new Set(files).size).toBe(4);
+    for (const file of files) {
+      const abs = path.join(repo, 'assets/iron-amber', file);
+      expect(existsSync(abs), abs).toBe(true);
+      expect(statSync(abs).size, abs).toBeGreaterThan(80_000);
+      expect(source('CutInView.tsx'), file).toContain(file.replace('.jpg', ''));
+    }
+  });
+
+  it('bomb-out uses the emptied meet hall, not the daily-rest gym', () => {
+    // GDD §7.2's somber counterpart. gym-briefing.jpg is the rest-day garage
+    // (empty rack, driveway car, LIFT GOOD PEOPLE crate) — the same plate as
+    // 08b-rest. A critic that opened cut-in-leg-2.png / bomb-out.png saw that
+    // crop and failed the intensity bar.
+    expect(CUT_IN_ART.STILL['bomb-out']).toBe('meet-empty.jpg');
+    expect(CUT_IN_ART.STILL['bomb-out']).not.toBe('gym-briefing.jpg');
+    expect(VIEW).toMatch(/meet-empty\.jpg/);
+    expect(VIEW).not.toMatch(/gym-briefing/);
   });
 });

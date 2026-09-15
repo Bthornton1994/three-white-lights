@@ -144,7 +144,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
-import { LIFT_TUNING } from '../game/liftTuning';
 import type { LiveAttempt } from '../game/meetDay';
 import { useOfferCutIn } from '../cutin/CutInHost';
 import { playBeat } from './meetFeedback';
@@ -331,15 +330,32 @@ export function WalkoutView({
 
   return (
     <View style={styles.root} testID="meet-walkout">
-      <View style={styles.copy}>
+      <View style={styles.hall}>
+        <MeetHallView
+          lifter={{
+            kind: attempt.lift,
+            totalKg: attempt.weightKg,
+            barAndCollarsKg,
+            loadRatio,
+            attemptNumber: attempt.attemptNumber,
+            platesLoaded,
+            pose,
+          }}
+          scrim={MEET_TUNING.HALL.WALKOUT_SCRIM}
+          crowdRisePx={pose.crowdRisePx}
+        />
+      </View>
+      <View style={styles.hudScrim} pointerEvents="none" />
+      <View style={styles.hud} pointerEvents="none">
         <Text style={styles.eyebrow} testID="walkout-attempt">
           {`${liftLabel} · ${MEET_COPY.ATTEMPT_LABEL} ${attempt.attemptNumber} ${MEET_COPY.ATTEMPT_OF} ${ATTEMPTS_PER_LIFT}`}
         </Text>
-
         <Text style={styles.weight} testID="walkout-weight">
           {formatWeight(attempt.weightKg)}
         </Text>
-
+      </View>
+      <View style={styles.commandScrim} pointerEvents="none" />
+      <View style={styles.command} pointerEvents="none">
         <Animated.View style={lineStyle}>
           <Text style={[styles.line, urgent ? styles.lineUrgent : null]} testID="walkout-line">
             {line}
@@ -351,18 +367,6 @@ export function WalkoutView({
           </Text>
         )}
       </View>
-
-      <MeetHallView
-        lifter={{
-          totalKg: attempt.weightKg,
-          barAndCollarsKg,
-          loadRatio,
-          platesLoaded,
-          pose,
-        }}
-        scrim={MEET_TUNING.HALL.WALKOUT_SCRIM}
-        crowdRisePx={pose.crowdRisePx}
-      />
     </View>
   );
 }
@@ -370,31 +374,64 @@ export function WalkoutView({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    alignItems: 'center',
-    // The hall is pinned to the bottom of the frame on every staged beat, so its
-    // floor is the floor of the screen and the copy sits in the dark above it.
-    justifyContent: 'flex-end',
-    backgroundColor: MEET_PALETTE.WALKOUT_BACKDROP,
   },
-  copy: {
-    // Whatever is left above the hall, with the copy centred in it. Reading the
-    // stage's own height rather than restating it keeps the two from drifting.
-    flex: 1,
-    alignSelf: 'stretch',
+  hall: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+  },
+  hudScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: L.HALL_HUD_HEIGHT,
+    backgroundColor: MEET_PALETTE.CARD,
+    opacity: L.HALL_HUD_SCRIM,
+  },
+  hud: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: L.HALL_HUD_HEIGHT,
+    paddingHorizontal: L.HALL_HUD_PAD,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: L.ROW_GAP,
+  },
+  commandScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: L.HALL_COMMAND_HEIGHT,
+    backgroundColor: MEET_PALETTE.CARD,
+    opacity: L.HALL_COMMAND_SCRIM,
+  },
+  command: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: L.HALL_COMMAND_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: L.SCREEN_PAD,
     gap: L.ROW_GAP,
-    maxHeight: LIFT_TUNING.LAYOUT.STAGE_H,
+    paddingHorizontal: L.HALL_HUD_PAD,
   },
   eyebrow: {
-    color: MEET_PALETTE.WALKOUT_TEXT,
+    color: MEET_PALETTE.AMBER,
     fontSize: L.EYEBROW_FONT,
     letterSpacing: L.WIDE_LETTER_SPACING,
+    fontWeight: '700',
   },
   weight: {
     color: MEET_PALETTE.TEXT,
-    fontSize: L.BIG_NUMBER_FONT,
+    fontSize: L.MID_NUMBER_FONT,
     fontWeight: '700',
   },
   line: {

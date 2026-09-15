@@ -67,6 +67,7 @@ import * as SPRITE_TUNING_MODULE from '../art/spriteTuning';
 import { LIFT_COPY, LIFT_TUNING } from '../game/liftTuning';
 import {
   CHECK_IN_QUESTIONS,
+  IRON_AMBER,
   SESSION_COPY,
   SESSION_LAYOUT,
   SESSION_PREVIEW,
@@ -122,7 +123,7 @@ import {
   CUT_IN_PANEL,
   CUT_IN_TUNING,
 } from '../cutin/cutInTuning';
-import { SHELL_COPY, SHELL_LAYOUT, SHELL_NAV } from '../shell/shellTuning';
+import { MOTION_PRESSABLE, SHELL_COPY, SHELL_LAYOUT, SHELL_NAV } from '../shell/shellTuning';
 import { PALETTE_BANKS, PAL, RAMPS } from '../art/palette';
 import { GYM, GYM_BANKS, GYM_RAMPS } from '../art/gymPalette';
 import { SHEET, SHEET_BANK } from '../card/sheetPalette';
@@ -212,6 +213,7 @@ export const TUNING = Object.freeze({
     SESSION_PREVIEW,
     SESSION_PROGRESSION_GUARD,
     CHECK_IN_QUESTIONS,
+    IRON_AMBER,
   }),
 
   /**
@@ -333,12 +335,13 @@ export const TUNING = Object.freeze({
    * live rep costs the rep — if that turns out to be over-cautious, this is the
    * line to move.
    */
-  shell: Object.freeze({ SHELL_NAV, SHELL_LAYOUT, SHELL_COPY }),
+  shell: Object.freeze({ SHELL_NAV, SHELL_LAYOUT, SHELL_COPY, MOTION_PRESSABLE }),
 
   /**
-   * THE RESULT CARD. Sheet layout in card pixels, plus `CARD_SCREEN`, the
-   * React Native chrome around it in logical points. The two are different
-   * units and the block comments say which is which.
+   * THE RESULT CARD. The §7.1 pixel grid (`CARD` etc.), plus `PAPER`, the
+   * shareable scoresheet in logical points, plus `CARD_SCREEN`, the React
+   * Native chrome around it. The GDD does not resolve §7.1 against §6.5 /
+   * §7.3 / §12.2's Result card bar; `PAPER` is the surface that bar grades.
    */
   card: Object.freeze({
     CARD: CARD_TUNING.CARD,
@@ -353,6 +356,7 @@ export const TUNING = Object.freeze({
     FOOTER: CARD_TUNING.FOOTER,
     CARD_LABELS: CARD_TUNING.CARD_LABELS,
     CARD_SCREEN: CARD_TUNING.CARD_SCREEN,
+    PAPER: CARD_TUNING.PAPER,
   }),
 
   /**

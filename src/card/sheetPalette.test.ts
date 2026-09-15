@@ -7,8 +7,10 @@ import {
   SHEET_BANK,
   SHEET_BANK_INDEX,
   SHEET_PALETTE_INDEX_COUNT,
+  SHEET_CSS,
   findUnallocatedSheetIndices,
   sheetColorAt,
+  sheetCss,
   sheetGridToRgba,
 } from './sheetPalette';
 
@@ -173,5 +175,13 @@ describe('findUnallocatedSheetIndices', () => {
     const grid = createGrid(2, 1, SHEET.PAPER);
     grid.data[1] = PAL.STEEL_MID;
     expect(findUnallocatedSheetIndices(grid)).toEqual([]);
+  });
+});
+
+describe('sheetCss', () => {
+  it('matches SHEET_CSS for every named slot', () => {
+    expect(SHEET_CSS.PAPER).toMatch(/^#[0-9a-f]{6}$/);
+    expect(SHEET_CSS.INK).toBe(sheetCss(SHEET.INK));
+    expect(SHEET_CSS.INK).not.toBe(SHEET_CSS.PAPER);
   });
 });

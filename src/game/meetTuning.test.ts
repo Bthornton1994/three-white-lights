@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { LIFT_TUNING } from './liftTuning';
 import { JUDGE_COUNT, LIFT_ORDER, DEFAULT_MEET_RULES } from './meet';
+import { WEIGHT_CLASSES_KG, weightClassString } from './resultCard';
 import { MEET_COPY, MEET_ENTRY, MEET_FIELD_FIXTURE, MEET_LAYOUT, MEET_LOCAL, MEET_PREVIEW, MEET_TUNING } from './meetTuning';
 import {
   deliberates,
@@ -355,6 +356,20 @@ describe('MEET_ENTRY', () => {
   });
 });
 
+describe('MEET_FIELD_FIXTURE', () => {
+  it('every named competitor makes the same weight class as the player', () => {
+    const classes = WEIGHT_CLASSES_KG[MEET_ENTRY.sex];
+    const playerClass = weightClassString(MEET_ENTRY.bodyweight.kilograms, classes);
+    expect(playerClass).toBe('93');
+    for (const spec of MEET_FIELD_FIXTURE) {
+      expect(
+        weightClassString(spec.bodyweightKg, classes),
+        `${spec.name} at ${spec.bodyweightKg} kg`,
+      ).toBe(playerClass);
+    }
+  });
+});
+
 describe('the copy', () => {
   it('names the bite GDD §6.3 is built on', () => {
     // Not a spelling check: this string is the one place the screen explains
@@ -511,6 +526,38 @@ describe('MEET_LAYOUT', () => {
     // the integer scale GDD §7.1 requires, so there is no fractional column.
     expect(LIFT_TUNING.LAYOUT.STAGE_W).toBe(PHONE_WIDTH_PT);
   });
+
+  it('the bookend card leaves the emptied hall the majority of the 390×844 frame', () => {
+    // Same majority claim as SESSION_LAYOUT.CHECK_IN_DRAWER_MAX_HEIGHT: a
+    // full-screen espresso slab is the failure critic #12 photographed.
+    const frame = 844;
+    expect(
+      MEET_LAYOUT.BOOKEND_CARD_MAX_HEIGHT + MEET_LAYOUT.BOOKEND_FOOT_CLEARANCE,
+    ).toBeLessThan(frame / 2);
+    expect(
+      MEET_LAYOUT.BOOKEND_SCROLL_MAX_HEIGHT +
+        MEET_LAYOUT.BUTTON_HEIGHT +
+        MEET_LAYOUT.BOOKEND_CARD_PAD +
+        MEET_LAYOUT.BOOKEND_CARD_GAP,
+    ).toBeLessThanOrEqual(MEET_LAYOUT.BOOKEND_CARD_MAX_HEIGHT);
+    expect(
+      MEET_LAYOUT.BOOKEND_COPY_SCROLL_HEIGHT +
+        MEET_LAYOUT.BOOKEND_SPORT_MAX_HEIGHT +
+        MEET_LAYOUT.BUTTON_HEIGHT +
+        MEET_LAYOUT.BOOKEND_CARD_PAD +
+        MEET_LAYOUT.BOOKEND_CARD_GAP,
+    ).toBeLessThanOrEqual(MEET_LAYOUT.BOOKEND_CARD_MAX_HEIGHT);
+    expect(
+      LIFT_ORDER.length * MEET_LAYOUT.BOOKEND_OPENER_ROW_HEIGHT +
+        (LIFT_ORDER.length - 1) * MEET_LAYOUT.ROW_GAP,
+    ).toBeLessThanOrEqual(MEET_LAYOUT.BOOKEND_SPORT_MAX_HEIGHT);
+    expect(
+      MEET_LAYOUT.BOOKEND_TOTAL_FONT +
+        LIFT_ORDER.length * MEET_LAYOUT.BOARD_CELL_H +
+        (LIFT_ORDER.length - 1) * MEET_LAYOUT.BOARD_GAP +
+        MEET_LAYOUT.BOOKEND_SUMMARY_HEIGHT,
+    ).toBeLessThanOrEqual(MEET_LAYOUT.BOOKEND_SPORT_MAX_HEIGHT);
+  });
 });
 
 describe('MEET_TUNING.HALL (GDD §12.2 — the beats happen somewhere)', () => {
@@ -518,9 +565,11 @@ describe('MEET_TUNING.HALL (GDD §12.2 — the beats happen somewhere)', () => {
     // The ORDERING is the design claim; the values are a starting point that
     // nobody has looked at on a phone (see the header of `meetTuning.ts`). The
     // walkout is three short lines over the hall and the hall is the beat; the
-    // judging screen has to let three lamps be the brightest thing on it; the
-    // attempt choice is a decision with a paragraph on each card.
-    expect(MEET_TUNING.HALL.WALKOUT_SCRIM).toBeLessThan(MEET_TUNING.HALL.JUDGING_SCRIM);
+    // bookend card sits over the emptied hall and must not hide it the way
+    // CHOICE would; the judging screen has to let three lamps be the brightest
+    // thing on it; the attempt choice is a decision with a paragraph on each card.
+    expect(MEET_TUNING.HALL.WALKOUT_SCRIM).toBeLessThan(MEET_TUNING.HALL.BOOKEND_SCRIM);
+    expect(MEET_TUNING.HALL.BOOKEND_SCRIM).toBeLessThan(MEET_TUNING.HALL.JUDGING_SCRIM);
     expect(MEET_TUNING.HALL.JUDGING_SCRIM).toBeLessThan(MEET_TUNING.HALL.CHOICE_SCRIM);
   });
 
@@ -532,6 +581,6 @@ describe('MEET_TUNING.HALL (GDD §12.2 — the beats happen somewhere)', () => {
       expect(value, name).toBeLessThan(1);
     }
     // ...and the loop is not vacuous.
-    expect(Object.keys(MEET_TUNING.HALL).length).toBe(3);
+    expect(Object.keys(MEET_TUNING.HALL).length).toBe(4);
   });
 });

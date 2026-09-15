@@ -2037,7 +2037,7 @@ describe('the Empire round trip keeps both of its surfaces', () => {
   it('the Lifter surface re-reports on activation, and the shell tells it which surface is up', () => {
     expect(forgetsBeatOnArrival('lifter')).toBe(true);
     expect(isPersistentSurface('lifter')).toBe(true);
-    expect(bodyOfCallback('openLifter')).toMatch(/setLifterPhase\(null\)/);
+    expect(bodyOfCallback('openLifterCard')).toMatch(/setLifterPhase\(null\)/);
     const lifterScreen = codeOnly(source('src/meet/LifterScreen.tsx'));
     expect(lifterScreen).toMatch(/onPhase\?\.\(loop\.phase\);\s*\}, \[onPhase, active, loop\.phase\]\);/);
     expect(
@@ -2736,7 +2736,9 @@ describe('the browser tools’ fresh-lifter boundary matches the app’s save', 
       .sort();
     // The census, pinned: an empty scan would pass the loop below over nothing.
     expect(browserTools, 'tools that open a browser context').toEqual([
+      '_capture-a-vis-fix.mjs',
       '_capture-a2-lifter.mjs',
+      '_capture-iron-amber-training.mjs',
       'capture-cutin.mjs',
       'capture-lift.mjs',
       'capture-meet.mjs',

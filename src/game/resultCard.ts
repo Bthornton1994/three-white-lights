@@ -455,12 +455,205 @@ export const RESULT_SHEET_COLUMNS: readonly ResultSheetColumn[] = [
 ] as const;
 
 /**
- * The attempt grid's own headings, for a card that stacks the three lifts as
- * rows instead of running [R8]'s one long line. Same information, transposed:
- * [R9] groups four cells under each lift's name and we turn that group into a
- * row. The headings themselves are ours — [R6]/OpenLifter call the per-attempt
- * columns "S1".."D3" — and so is `BEST`, since [R9]'s fourth cell is a fourth
- * attempt rather than a best. See [R9] for why we keep a best there anyway.
+ * Facts the shareable sheet carries for a flight, as one list.
+ *
+ * Identity follows [R8] meet-page order, compressed so a 390-wide phone can
+ * hold a field: Place, Lifter, Weight, then each lift's three attempts,
+ * Total, points. Sex, division, equipment and class sit on the section
+ * heading over the table — the same job [R8] gives `divheader`.
+ *
+ * Nine attempt facts, three lift bests, Place, Weight, Total and DOTS
+ * do not fit as peer columns beside a name at 390 without clipping kilos.
+ * The shareable sheet prints `RESULT_FLIGHT_TABLE_COLUMNS` as one packed
+ * row on paper wider than a phone. Each lift is 1/2/3 plus the best that
+ * the Total is made of. `RESULT_CLASS_TABLE_COLUMNS` is the [R8] meet
+ * page (bests only), and `RESULT_ATTEMPT_TABLE_COLUMNS` is the
+ * OpenLifter S1..D3 listing ([R6]). Misses use `AttemptCell.text` plus
+ * `struckThrough`.
+ *
+ * No squat+bench subtotal. The committed live-board reference prints one; [R8]
+ * published meet pages do not. The lift best is not a subtotal.
+ */
+export const RESULT_FLIGHT_TABLE_COLUMNS: readonly ResultSheetColumnId[] = [
+  'place',
+  'lifter',
+  'bodyweight',
+  'squat1',
+  'squat2',
+  'squat3',
+  'bestSquat',
+  'bench1',
+  'bench2',
+  'bench3',
+  'bestBench',
+  'deadlift1',
+  'deadlift2',
+  'deadlift3',
+  'bestDeadlift',
+  'total',
+  'dots',
+];
+
+/**
+ * [R8] meet-page columns: one competitor, one row, bests rather than
+ * attempts. The class heading already names sex / kit / division / class.
+ */
+export const RESULT_CLASS_TABLE_COLUMNS: readonly ResultSheetColumnId[] = [
+  'place',
+  'lifter',
+  'bodyweight',
+  'bestSquat',
+  'bestBench',
+  'bestDeadlift',
+  'total',
+  'dots',
+];
+
+/**
+ * OpenLifter per-attempt listing ([R6] `S1`..`D3`). Name plus nine
+ * peer attempt columns; place, weight, total and DOTS live on the class
+ * table so the kilos stay whole.
+ */
+export const RESULT_ATTEMPT_TABLE_COLUMNS: readonly ResultSheetColumnId[] = [
+  'squat1',
+  'squat2',
+  'squat3',
+  'bench1',
+  'bench2',
+  'bench3',
+  'deadlift1',
+  'deadlift2',
+  'deadlift3',
+];
+
+const FLIGHT_ATTEMPT_COLUMN_SPEC: Readonly<
+  Partial<Record<ResultSheetColumnId, { readonly lift: LiftKind; readonly index: 0 | 1 | 2 }>>
+> = {
+  squat1: { lift: 'squat', index: 0 },
+  squat2: { lift: 'squat', index: 1 },
+  squat3: { lift: 'squat', index: 2 },
+  bench1: { lift: 'bench', index: 0 },
+  bench2: { lift: 'bench', index: 1 },
+  bench3: { lift: 'bench', index: 2 },
+  deadlift1: { lift: 'deadlift', index: 0 },
+  deadlift2: { lift: 'deadlift', index: 1 },
+  deadlift3: { lift: 'deadlift', index: 2 },
+};
+
+/** Group labels over 1/2/3 and the lift best on the shareable sheet. */
+export const FLIGHT_LIFT_GROUPS: readonly {
+  readonly headingId: 'bestSquat' | 'bestBench' | 'bestDeadlift';
+  readonly attempts: readonly [ResultSheetColumnId, ResultSheetColumnId, ResultSheetColumnId];
+  readonly bestId: 'bestSquat' | 'bestBench' | 'bestDeadlift';
+}[] = [
+  { headingId: 'bestSquat', attempts: ['squat1', 'squat2', 'squat3'], bestId: 'bestSquat' },
+  { headingId: 'bestBench', attempts: ['bench1', 'bench2', 'bench3'], bestId: 'bestBench' },
+  { headingId: 'bestDeadlift', attempts: ['deadlift1', 'deadlift2', 'deadlift3'], bestId: 'bestDeadlift' },
+];
+
+export interface FlightAttemptView {
+  readonly text: string;
+  readonly signedText: string;
+  readonly struckThrough: boolean;
+  readonly best: boolean;
+}
+
+/**
+ * One attempt cell as the shareable sheet prints it: the called weight,
+ * signed negative when missed [R3]/[R4], `best` on the good lift that
+ * matches `LiftRow.bestKg`.
+ */
+export function flightAttemptView(
+  row: ResultCardFlightRow,
+  id: ResultSheetColumnId,
+): FlightAttemptView | null {
+  const spec = FLIGHT_ATTEMPT_COLUMN_SPEC[id];
+  if (spec === undefined) return null;
+  const lift = row.rows.find((item) => item.lift === spec.lift);
+  if (lift === undefined) return null;
+  const cell = lift.attempts[spec.index];
+  if (cell === undefined) return null;
+  return {
+    text: cell.text,
+    signedText: signedAttemptText(cell),
+    struckThrough: cell.struckThrough,
+    best: cell.mark === 'good' && lift.bestKg !== null && cell.weightKg === lift.bestKg,
+  };
+}
+
+const FLIGHT_BEST_COLUMN_LIFT: Readonly<Partial<Record<ResultSheetColumnId, LiftKind>>> = {
+  bestSquat: 'squat',
+  bestBench: 'bench',
+  bestDeadlift: 'deadlift',
+};
+
+/** Best good kilo for a class-table lift column, or `NO_VALUE_DISPLAY`. */
+export function flightBestText(row: ResultCardFlightRow, id: ResultSheetColumnId): string | null {
+  const lift = FLIGHT_BEST_COLUMN_LIFT[id];
+  if (lift === undefined) return null;
+  const liftRow = row.rows.find((item) => item.lift === lift);
+  if (liftRow === undefined) return null;
+  return liftRow.bestText;
+}
+
+export function sheetColumnHeading(id: ResultSheetColumnId): string {
+  for (const column of RESULT_SHEET_COLUMNS) {
+    if (column.id === id) return column.heading;
+  }
+  throw new RangeError(`resultCard: no heading for column "${id}"`);
+}
+
+/**
+ * Headings on the shareable flight table.
+ *
+ * Same words as `sheetColumnHeading` except the points column, which the
+ * summary block already prints as `DOTS` (GDD §6.4), and the nine attempt
+ * columns, which print `ATTEMPT_GRID_HEADINGS` `1`/`2`/`3` under the lift
+ * group label. [R6] still names the long-row heading `Dots` and the
+ * per-attempt columns `S1`..`D3`; those citations stay on `RESULT_SHEET_COLUMNS`.
+ */
+export function flightColumnHeading(id: ResultSheetColumnId): string {
+  if (id === 'dots') return 'DOTS';
+  if (id === 'bodyweight') return 'Wt kg';
+  const spec = FLIGHT_ATTEMPT_COLUMN_SPEC[id];
+  if (spec !== undefined) return ATTEMPT_GRID_HEADINGS.attempts[spec.index];
+  return sheetColumnHeading(id);
+}
+
+/** Lot as a scoresheet prints it, or `NO_VALUE_DISPLAY` when the entry has none. */
+export function flightLotFields(lot: number | undefined): {
+  readonly lot: number | null;
+  readonly lotText: string;
+} {
+  if (lot === undefined || !Number.isInteger(lot) || lot < 1) {
+    return { lot: null, lotText: NO_VALUE_DISPLAY };
+  }
+  return { lot, lotText: String(lot) };
+}
+
+/**
+ * How a published meet page sets a name.
+ *
+ * Published meet tables print given name then surname. An
+ * initial-plus-surname string (the debug fixture `A. LIFTER`) still
+ * rearranges to surname-first so a job title is not mistaken for a
+ * forename. Given names already in "First Last" form print as stored.
+ */
+export function flightLifterName(name: string): string {
+  const trimmed = name.trim();
+  const match = /^([A-Za-z])\.\s+(.+)$/.exec(trimmed);
+  if (match === null || match[1] === undefined || match[2] === undefined) {
+    return trimmed;
+  }
+  return `${match[2]}, ${match[1]}.`.toUpperCase();
+}
+
+/**
+ * The attempt grid's own headings. The shareable sheet prints `1`/`2`/`3`
+ * under each lift group; `BEST` is the heading on the transposed one-lifter
+ * grid in `renderResultCard`. [R6]/OpenLifter call the per-attempt columns
+ * "S1".."D3". `BEST` is ours, since [R9]'s fourth cell is a fourth attempt
+ * rather than a best. See [R9] for why we keep a best on `LiftRow` anyway.
  */
 export const ATTEMPT_GRID_HEADINGS = {
   lift: 'LIFT',
@@ -492,6 +685,17 @@ export function formatWeight(weight: number): string {
   // cannot, and the trim restores "192.5" from "192.50" and "200" from "200.00".
   const fixed = value.toFixed(2);
   return fixed.includes('.') ? fixed.replace(/0+$/, '').replace(/\.$/, '') : fixed;
+}
+
+/**
+ * One attempt as a published results sheet records it [R3]: made positive,
+ * missed NEGATIVE, blank when not taken. `AttemptCell.text` stays the weight
+ * as called; the sign lives here so a renderer cannot invent a second miss
+ * grammar inside a `.tsx` file.
+ */
+export function signedAttemptText(cell: AttemptCell): string {
+  if (cell.signedWeightKg === 0) return '';
+  return formatWeight(cell.signedWeightKg);
 }
 
 /** A bodyweight, which real sheets print to two places even when round ([R2]). */
@@ -702,6 +906,13 @@ export interface ResultCard {
   readonly meet: ResultCardMeetHeader;
   readonly lifter: ResultCardLifterHeader;
   readonly rows: readonly [LiftRow, LiftRow, LiftRow];
+  /**
+   * The flight this placing is a rank in. Always includes the player. Extra
+   * rows are caller-supplied competitors already ranked outside this module —
+   * this file prints `placing`, it does not compute one. Empty of NPCs when
+   * the caller has no field; the paper sheet still draws the player's row.
+   */
+  readonly field: readonly ResultCardFlightRow[];
   /** Ordered summary block: TOTAL, DOTS, PLACE. */
   readonly summary: readonly [ResultCardSummaryRow, ResultCardSummaryRow, ResultCardSummaryRow];
   /** The official total, or null. Never a provisional running sum. */
@@ -712,6 +923,39 @@ export interface ResultCard {
   readonly bombedLift: LiftKind | null;
   /** The DOTS outcome the summary was built from — no score when no total. */
   readonly dots: DotsOutcome;
+}
+
+/**
+ * One competitor on the shareable sheet. Ranked by the caller (`meetBoard`).
+ * Sex is the category the sheet is headed with: a local flight is one
+ * division, and NPC fixtures do not carry a sex of their own.
+ */
+export interface ResultCardFlightEntry {
+  readonly id: string;
+  readonly name: string;
+  readonly sex: DotsSex;
+  readonly bodyweightKg: number;
+  readonly isPlayer: boolean;
+  readonly state: MeetState;
+  readonly placing: number | null;
+  /** Competition-order lot. Omitted when the caller has none to print. */
+  readonly lot?: number;
+}
+
+export interface ResultCardFlightRow {
+  readonly id: string;
+  readonly isPlayer: boolean;
+  readonly place: number | null;
+  readonly placeText: string;
+  readonly name: string;
+  readonly lot: number | null;
+  readonly lotText: string;
+  readonly bodyweightText: string;
+  readonly rows: readonly [LiftRow, LiftRow, LiftRow];
+  readonly totalKg: number | null;
+  readonly totalText: string;
+  readonly dotsText: string;
+  readonly bombed: boolean;
 }
 
 export interface ResultCardMeetInput {
@@ -747,6 +991,13 @@ export interface ResultCardInput {
    * known; supplying one for a lifter with no total is refused.
    */
   readonly placing?: number;
+  /**
+   * The rest of the flight. Ranked already — this module will not invent a
+   * third placing algorithm. Omit when the field is not known; the sheet then
+   * still carries the player's own row so Place is never a rank in an empty
+   * room that the renderer has to special-case.
+   */
+  readonly field?: readonly ResultCardFlightEntry[];
 }
 
 export type ResultCardErrorCode =
@@ -852,6 +1103,85 @@ function buildLiftRow(state: MeetState, lift: LiftKind): LiftRow {
   };
 }
 
+function liftTuple(state: MeetState): readonly [LiftRow, LiftRow, LiftRow] {
+  const rows = LIFT_ORDER.map((lift) => buildLiftRow(state, lift));
+  const [squatRow, benchRow, deadliftRow] = rows;
+  if (squatRow === undefined || benchRow === undefined || deadliftRow === undefined) {
+    throw new Error('resultCard: a meet must have exactly three lifts');
+  }
+  return [squatRow, benchRow, deadliftRow];
+}
+
+function flightPlaceText(totalKg: number | null, placing: number | null): {
+  readonly place: number | null;
+  readonly placeText: string;
+} {
+  if (totalKg === null) {
+    return { place: null, placeText: PLACE_NO_TOTAL_DISPLAY };
+  }
+  if (placing === null) {
+    return { place: null, placeText: NO_VALUE_DISPLAY };
+  }
+  return { place: placing, placeText: String(placing) };
+}
+
+function buildFlightRow(entry: ResultCardFlightEntry): ResultCardFlightRow {
+  const reading = readTotal(entry.state);
+  const rows = liftTuple(entry.state);
+  const lot = flightLotFields(entry.lot);
+  if (reading.kind === 'in-progress' || reading.unit !== DOTS_TOTAL_UNIT) {
+    return {
+      id: entry.id,
+      isPlayer: entry.isPlayer,
+      place: null,
+      placeText: NO_VALUE_DISPLAY,
+      name: entry.name.trim(),
+      lot: lot.lot,
+      lotText: lot.lotText,
+      bodyweightText: formatBodyweight(entry.bodyweightKg),
+      rows,
+      totalKg: null,
+      totalText: NO_VALUE_DISPLAY,
+      dotsText: DOTS_NO_TOTAL_DISPLAY,
+      bombed: false,
+    };
+  }
+  const dots = evaluateMeetDots(entry.sex, entry.bodyweightKg, reading);
+  const totalKg = reading.kind === 'final' ? reading.total : null;
+  const placed = flightPlaceText(totalKg, entry.placing);
+  return {
+    id: entry.id,
+    isPlayer: entry.isPlayer,
+    place: placed.place,
+    placeText: placed.placeText,
+    name: entry.name.trim(),
+    lot: lot.lot,
+    lotText: lot.lotText,
+    bodyweightText: formatBodyweight(entry.bodyweightKg),
+    rows,
+    totalKg,
+    totalText: totalKg === null ? NO_VALUE_DISPLAY : formatWeight(totalKg),
+    dotsText: formatDotsOutcome(dots),
+    bombed: reading.kind === 'no-total',
+  };
+}
+
+function compareFlightName(a: string, b: string): number {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+}
+
+function sortFlightRows(rows: readonly ResultCardFlightRow[]): readonly ResultCardFlightRow[] {
+  return [...rows].sort((a, b) => {
+    if (a.place === null && b.place === null) return compareFlightName(a.name, b.name);
+    if (a.place === null) return 1;
+    if (b.place === null) return -1;
+    if (a.place !== b.place) return a.place - b.place;
+    return compareFlightName(a.name, b.name);
+  });
+}
+
 function sexText(sex: DotsSex): string {
   // [R6]'s language pack renders sex as the single letters M / F.
   return sex === 'male' ? 'M' : 'F';
@@ -866,7 +1196,7 @@ function sexText(sex: DotsSex): string {
  * outcome carries no `score` field to default.
  */
 export function buildResultCard(input: ResultCardInput): ResultCardResult {
-  const { meet, lifter, state, placing } = input;
+  const { meet, lifter, state, placing, field: fieldInput } = input;
 
   if (lifter.name.trim() === '') {
     return { ok: false, error: { code: 'INVALID_LIFTER', message: 'A result card needs the lifter’s name.' } };
@@ -927,11 +1257,7 @@ export function buildResultCard(input: ResultCardInput): ResultCardResult {
   }
 
   const dots = evaluateMeetDots(lifter.sex, lifter.bodyweightKg, reading);
-  const rows = LIFT_ORDER.map((lift) => buildLiftRow(state, lift));
-  const [squatRow, benchRow, deadliftRow] = rows;
-  if (squatRow === undefined || benchRow === undefined || deadliftRow === undefined) {
-    throw new Error('resultCard: a meet must have exactly three lifts');
-  }
+  const [squatRow, benchRow, deadliftRow] = liftTuple(state);
 
   const totalKg = reading.kind === 'final' ? reading.total : null;
   const totalText = totalKg === null ? NO_VALUE_DISPLAY : formatWeight(totalKg);
@@ -949,6 +1275,31 @@ export function buildResultCard(input: ResultCardInput): ResultCardResult {
     weightClassText: lifter.weightClassKg ?? weightClassString(lifter.bodyweightKg, classes),
   };
 
+  const playerFromField = (fieldInput ?? []).find((entry) => entry.isPlayer);
+  const playerId = playerFromField?.id ?? 'player';
+  const playerLot = flightLotFields(playerFromField?.lot);
+  const playerFlight: ResultCardFlightRow = {
+    id: playerId,
+    isPlayer: true,
+    place: placed && placing !== undefined ? placing : null,
+    placeText,
+    name: lifter.name.trim(),
+    lot: playerLot.lot,
+    lotText: playerLot.lotText,
+    bodyweightText: formatBodyweight(lifter.bodyweightKg),
+    rows: [squatRow, benchRow, deadliftRow],
+    totalKg,
+    totalText,
+    dotsText,
+    bombed: reading.kind === 'no-total',
+  };
+  const field = sortFlightRows([
+    playerFlight,
+    ...(fieldInput ?? [])
+      .filter((entry) => !entry.isPlayer)
+      .map((entry) => buildFlightRow(entry)),
+  ]);
+
   const card: ResultCard = {
     meet: {
       federation: meet.federation.toUpperCase(),
@@ -965,6 +1316,7 @@ export function buildResultCard(input: ResultCardInput): ResultCardResult {
       bodyweightText: formatBodyweight(lifter.bodyweightKg),
     },
     rows: [squatRow, benchRow, deadliftRow],
+    field,
     summary: [
       { id: 'total', label: 'TOTAL', value: totalText, hasValue: totalKg !== null },
       { id: 'dots', label: 'DOTS', value: dotsText, hasValue: hasDotsScore(dots) },
@@ -1125,5 +1477,12 @@ export function resultCardStrings(card: ResultCard): readonly string[] {
     for (const cell of row.attempts) out.push(cell.text);
   }
   for (const summaryRow of card.summary) out.push(summaryRow.label, summaryRow.value);
+  for (const row of card.field) {
+    out.push(row.placeText, row.name, row.bodyweightText, row.totalText, row.dotsText);
+    for (const lift of row.rows) {
+      out.push(lift.label, lift.bestText);
+      for (const cell of lift.attempts) out.push(cell.text);
+    }
+  }
   return out.filter((text) => text !== '');
 }

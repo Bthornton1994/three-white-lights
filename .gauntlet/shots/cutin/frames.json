@@ -1,27 +1,24 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-19T16:03:55.784Z",
-    "url": "http://localhost:8081",
-    "sourceRoot": "/home/user/three-white-lights",
-    "commit": "9cdbed1",
-    "branch": "claude/agent-config-setup-m2r6ny",
+    "capturedAt": "2026-09-15T19:38:17.291Z",
+    "url": "http://127.0.0.1:8081",
+    "sourceRoot": "/workspace",
+    "commit": "52c7aa65",
+    "branch": "cursor/session-a-iron-amber-quality-1c66",
     "workingTree": "clean",
     "dirtyPaths": [
-      "M .gauntlet/evidence/suite.txt",
-      " D .gauntlet/shots/cutin/debug-meet-bombed.png",
-      " D .gauntlet/shots/cutin/debug-meet-walkout-third.png",
-      " D .gauntlet/shots/cutin/frames.json",
-      " D .gauntlet/shots/cutin/live-after-tap.png"
+      "M .gauntlet/shots/lift-press/press.json",
+      " M .gauntlet/shots/meet/sound.json"
     ],
     "instrument": {
-      "capture-cutin.mjs": "367c7225d1e82841",
+      "capture-cutin.mjs": "6b735d315332a467",
       "png.mjs": "6356a0d0b0dcb696"
     }
   },
   "frames": [
     {
       "moment": "third-attempt-walkout",
-      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/third-attempt-walkout.png",
+      "file": "/workspace/.gauntlet/shots/cutin/third-attempt-walkout.png",
       "name": "third-attempt-walkout.png",
       "expectedLine": "LAST ONE",
       "seen": {
@@ -30,22 +27,22 @@
         "hint": "TAP TO SKIP",
         "scrim": true,
         "art": {
-          "x": 24,
-          "y": 255,
-          "w": 342,
-          "h": 264
+          "x": 38,
+          "y": 261.5,
+          "w": 314,
+          "h": 210
         },
         "lineBox": {
-          "x": 131.375,
-          "y": 535,
-          "w": 127.234375,
-          "h": 26
+          "x": 134.03125,
+          "y": 521.5,
+          "w": 121.921875,
+          "h": 30
         },
         "hintBox": {
-          "x": 150.78125,
-          "y": 577,
-          "w": 88.4375,
-          "h": 12
+          "x": 152.765625,
+          "y": 567.5,
+          "w": 84.46875,
+          "h": 15
         },
         "behind": true,
         "corners": {
@@ -61,15 +58,15 @@
         }
       },
       "scrim": {
-        "blended": 58892,
-        "opaqueBackdrop": 33054,
-        "untouched": 846034
+        "blended": 977063,
+        "opaqueBackdrop": 492,
+        "untouched": 55615
       },
-      "pixelHash": 3627325843
+      "pixelHash": 3366652868
     },
     {
       "moment": "personal-record",
-      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/personal-record.png",
+      "file": "/workspace/.gauntlet/shots/cutin/personal-record.png",
       "name": "personal-record.png",
       "expectedLine": "NOBODY HAS SEEN YOU DO THIS",
       "seen": {
@@ -78,22 +75,22 @@
         "hint": "TAP TO SKIP",
         "scrim": true,
         "art": {
-          "x": 24,
-          "y": 242,
-          "w": 342,
-          "h": 264
+          "x": 38,
+          "y": 246.5,
+          "w": 314,
+          "h": 210
         },
         "lineBox": {
-          "x": 24,
-          "y": 522,
-          "w": 342,
-          "h": 52
+          "x": 39,
+          "y": 506.5,
+          "w": 312,
+          "h": 60
         },
         "hintBox": {
-          "x": 150.78125,
-          "y": 590,
-          "w": 88.4375,
-          "h": 12
+          "x": 152.765625,
+          "y": 582.5,
+          "w": 84.46875,
+          "h": 15
         },
         "behind": true,
         "corners": {
@@ -109,15 +106,15 @@
         }
       },
       "scrim": {
-        "blended": 13095,
-        "opaqueBackdrop": 33114,
-        "untouched": 833895
+        "blended": 930380,
+        "opaqueBackdrop": 461,
+        "untouched": 42089
       },
-      "pixelHash": 3462249653
+      "pixelHash": 2851466275
     },
     {
       "moment": "bomb-out",
-      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/bomb-out.png",
+      "file": "/workspace/.gauntlet/shots/cutin/bomb-out.png",
       "name": "bomb-out.png",
       "expectedLine": "THAT IS THE MEET",
       "seen": {
@@ -126,22 +123,22 @@
         "hint": "TAP TO SKIP",
         "scrim": true,
         "art": {
-          "x": 24,
-          "y": 255,
-          "w": 342,
-          "h": 264
+          "x": 38,
+          "y": 261.5,
+          "w": 314,
+          "h": 210
         },
         "lineBox": {
-          "x": 78.359375,
-          "y": 535,
-          "w": 233.265625,
-          "h": 26
+          "x": 82.09375,
+          "y": 521.5,
+          "w": 225.8125,
+          "h": 30
         },
         "hintBox": {
-          "x": 150.78125,
-          "y": 577,
-          "w": 88.4375,
-          "h": 12
+          "x": 152.765625,
+          "y": 567.5,
+          "w": 84.46875,
+          "h": 15
         },
         "behind": true,
         "corners": {
@@ -157,15 +154,15 @@
         }
       },
       "scrim": {
-        "blended": 47920,
-        "opaqueBackdrop": 33054,
-        "untouched": 845982
+        "blended": 975046,
+        "opaqueBackdrop": 492,
+        "untouched": 45152
       },
-      "pixelHash": 345416966
+      "pixelHash": 564490991
     },
     {
       "moment": "coach-heavy-set",
-      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/coach-heavy-set.png",
+      "file": "/workspace/.gauntlet/shots/cutin/coach-heavy-set.png",
       "name": "coach-heavy-set.png",
       "expectedLine": "THAT MOVED",
       "seen": {
@@ -174,22 +171,22 @@
         "hint": "TAP TO SKIP",
         "scrim": true,
         "art": {
-          "x": 24,
-          "y": 255,
-          "w": 342,
-          "h": 264
+          "x": 38,
+          "y": 261.5,
+          "w": 314,
+          "h": 210
         },
         "lineBox": {
-          "x": 113.09375,
-          "y": 535,
-          "w": 163.8125,
-          "h": 26
+          "x": 113.6875,
+          "y": 521.5,
+          "w": 162.609375,
+          "h": 30
         },
         "hintBox": {
-          "x": 150.78125,
-          "y": 577,
-          "w": 88.4375,
-          "h": 12
+          "x": 152.765625,
+          "y": 567.5,
+          "w": 84.46875,
+          "h": 15
         },
         "behind": true,
         "corners": {
@@ -205,46 +202,46 @@
         }
       },
       "scrim": {
-        "blended": 55148,
-        "opaqueBackdrop": 33054,
-        "untouched": 845982
+        "blended": 976233,
+        "opaqueBackdrop": 492,
+        "untouched": 51525
       },
-      "pixelHash": 509932265
+      "pixelHash": 4112263455
     }
   ],
   "artDiffs": [
     {
       "a": "third-attempt-walkout",
       "b": "personal-record",
-      "differing": 0,
-      "total": 361152,
+      "differing": 262801,
+      "total": 263760,
       "alignedToEachOwnBox": true
     },
     {
       "a": "personal-record",
       "b": "bomb-out",
-      "differing": 0,
-      "total": 361152,
+      "differing": 262854,
+      "total": 263760,
       "alignedToEachOwnBox": true
     },
     {
       "a": "bomb-out",
       "b": "coach-heavy-set",
-      "differing": 34164,
-      "total": 361152,
+      "differing": 262852,
+      "total": 263760,
       "alignedToEachOwnBox": true
     }
   ],
   "leavesOnItsOwn": {
-    "stillUpAt": 701,
+    "stillUpAt": 702,
     "stillUp": true,
-    "goneAt": 1571,
+    "goneAt": 876,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 13,
-    "goneAt": 15,
-    "dismissTookMs": 2,
+    "tappedAt": 3,
+    "goneAt": 4,
+    "dismissTookMs": 1,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
     "holdReadFromSourceMs": 1720
@@ -254,8 +251,8 @@
     "onWalkout": null,
     "onBombOut": "THAT IS THE MEET",
     "addressBar": {
-      "walkout": "http://localhost:8081/?meet=walkout-third",
-      "bombed": "http://localhost:8081/?meet=bombed"
+      "walkout": "http://127.0.0.1:8081/?meet=walkout-third",
+      "bombed": "http://127.0.0.1:8081/?meet=bombed"
     },
     "urlFaults": []
   },

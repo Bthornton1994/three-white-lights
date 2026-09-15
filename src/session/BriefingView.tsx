@@ -22,15 +22,18 @@
  * GDD §3.3: "Player selects RPE target (6-10), NOT raw weight." Printing the
  * bar next to each rung would turn the choice back into picking a weight off a
  * list, which is the thing the mode exists not to be. The weight appears on the
- * platform, once the choice is made.
+ * platform, once the choice is made. The gold RPE 8 chip IS the primary
+ * action — there is no second START tap that duplicates the choice.
  *
  * NO FATIGUE METER (GDD §3.4, §12.3). The only quantity on this screen is the
  * player's own check-in percentage.
  */
 
 import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
 import Animated, {
+  ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -40,6 +43,7 @@ import { SESSION_COPY, SESSION_LAYOUT, SESSION_TUNING } from '../game/sessionTun
 import type { InjuryNotice, ReadinessReport } from '../game/fatigue';
 import type { LiftKind } from '../game/meet';
 import { SESSION_PALETTE } from './sessionPalette';
+import { IronAmberCard, IronAmberRoom } from './IronAmberRoom';
 
 const L = SESSION_LAYOUT;
 
@@ -89,59 +93,76 @@ export function BriefingView({
 }: BriefingViewProps): React.ReactElement {
   const reveal = useSharedValue(0);
   useEffect(() => {
-    reveal.value = withTiming(1, { duration: SESSION_TUNING.BRIEFING_REVEAL_MS });
+    reveal.value = withTiming(1, {
+      duration: SESSION_TUNING.BRIEFING_REVEAL_MS,
+      reduceMotion: ReduceMotion.System,
+    });
   }, [reveal]);
   const ladderStyle = useAnimatedStyle(() => ({ opacity: reveal.value }));
 
   return (
-    <View style={styles.root} testID="session-briefing">
-      <Text style={styles.lift}>{SESSION_COPY.LIFT_LABEL[lift]}</Text>
-      <Text
-        style={[styles.modifier, { color: modifierColour(readiness.loadAdjustmentPercent) }]}
-        testID="session-modifier"
-      >
-        {readiness.label}
-      </Text>
-      <Text style={styles.plan} testID="session-plan">
-        {`${workSets} ${SESSION_COPY.BRIEFING_PLAN} × ${repsPerSet}`}
-      </Text>
+    <IronAmberRoom
+      testID="session-briefing"
+      gymTestID="iron-amber-briefing-gym"
+      liftKind={lift}
+    >
+      <IronAmberCard>
+        <Text style={styles.lift}>{SESSION_COPY.LIFT_LABEL[lift]}</Text>
+        <Text
+          style={[styles.modifier, { color: modifierColour(readiness.loadAdjustmentPercent) }]}
+          testID="session-modifier"
+        >
+          {readiness.label}
+        </Text>
+        <Text style={styles.plan} testID="session-plan">
+          {`${workSets} ${SESSION_COPY.BRIEFING_PLAN} × ${repsPerSet}`}
+        </Text>
 
-      {injury === null ? null : <InjuryLine injury={injury} />}
+        {injury === null ? null : <InjuryLine injury={injury} />}
 
-      <Animated.View style={[styles.ladderBlock, ladderStyle]}>
-        <Text style={styles.prompt}>{SESSION_COPY.BRIEFING_PROMPT}</Text>
-        <View style={styles.ladder} testID="session-rpe-ladder">
-          {SESSION_TUNING.RPE_CHOICES.map((rpe, index) => (
-            <Pressable
-              key={rpe}
-              testID={`session-rpe-${rpe}`}
-              accessibilityRole="button"
-              disabled={!ladderReady}
-              onPress={() => onChooseRpe(rpe)}
-              style={[
-                styles.rung,
-                index === SESSION_TUNING.DEFAULT_RPE_INDEX ? styles.rungSuggested : null,
-              ]}
-            >
-              <Text style={styles.rungLabel}>{rpe}</Text>
-            </Pressable>
-          ))}
-        </View>
-        <Text style={styles.hint}>{SESSION_COPY.BRIEFING_RPE_HINT}</Text>
-      </Animated.View>
-    </View>
+        <Animated.View style={[styles.ladderBlock, ladderStyle]}>
+          <Text style={styles.prompt}>{SESSION_COPY.BRIEFING_PROMPT}</Text>
+          <View style={styles.ladder} testID="session-rpe-ladder">
+            {SESSION_TUNING.RPE_CHOICES.map((rpe, index) => (
+              <MotionPressable
+                key={rpe}
+                testID={`session-rpe-${rpe}`}
+                accessibilityRole="button"
+                accessibilityLabel={`${SESSION_COPY.BRIEFING_PROMPT} ${rpe}`}
+                accessibilityState={{
+                  disabled: !ladderReady,
+                  selected: index === SESSION_TUNING.DEFAULT_RPE_INDEX,
+                }}
+                disabled={!ladderReady}
+                onPress={() => onChooseRpe(rpe)}
+                style={[
+                  styles.rung,
+                  index === SESSION_TUNING.DEFAULT_RPE_INDEX ? styles.rungSuggested : null,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.rungLabel,
+                    index === SESSION_TUNING.DEFAULT_RPE_INDEX
+                      ? styles.rungLabelSuggested
+                      : null,
+                  ]}
+                >
+                  {rpe}
+                </Text>
+              </MotionPressable>
+            ))}
+          </View>
+          <Text style={styles.hint}>{SESSION_COPY.BRIEFING_RPE_HINT}</Text>
+        </Animated.View>
+      </IronAmberCard>
+    </IronAmberRoom>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: L.SCREEN_PAD,
-    gap: L.ROW_GAP,
-  },
   lift: {
-    color: SESSION_PALETTE.TEXT_DIM,
+    color: SESSION_PALETTE.AMBER,
     fontSize: L.LABEL_FONT,
     letterSpacing: L.LETTER_SPACING,
     textAlign: 'center',
@@ -194,16 +215,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: L.CHIP_RADIUS,
     borderWidth: L.CHIP_BORDER,
-    borderColor: SESSION_PALETTE.CHIP_EDGE,
+    borderColor: SESSION_PALETTE.TEXT_DIM,
     backgroundColor: SESSION_PALETTE.CHIP,
   },
   rungSuggested: {
     borderColor: SESSION_PALETTE.RPE_SUGGESTED_EDGE,
+    backgroundColor: SESSION_PALETTE.AMBER,
   },
   rungLabel: {
     color: SESSION_PALETTE.TEXT,
-    fontSize: L.ANSWER_FONT,
+    fontSize: L.RPE_CHIP_FONT,
     fontWeight: '700',
+  },
+  rungLabelSuggested: {
+    color: SESSION_PALETTE.AMBER_INK,
   },
   hint: {
     color: SESSION_PALETTE.TEXT_DIM,

@@ -32,7 +32,8 @@
  */
 
 import React, { useEffect } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
 
 import { MEET_LAYOUT } from '../game/meetTuning';
 import type { CareerMeet } from '../career/calendar';
@@ -104,7 +105,7 @@ export function CareerScreen({
           )}
           <View style={styles.cards}>
             {loop.options.map((option) => (
-              <Pressable
+              <MotionPressable
                 key={option.id}
                 style={styles.card}
                 accessibilityRole="button"
@@ -115,7 +116,7 @@ export function CareerScreen({
               >
                 <Text style={styles.cardName}>{option.name}</Text>
                 <Text style={styles.cardRuleset}>{option.rulesetText}</Text>
-              </Pressable>
+              </MotionPressable>
             ))}
           </View>
           {loop.inFlight ? (
@@ -184,7 +185,7 @@ function CalendarRow({
         </Text>
       )}
       {row.enterable && onEnterMeet !== undefined ? (
-        <Pressable
+        <MotionPressable
           style={styles.enter}
           accessibilityRole="button"
           accessibilityLabel={CAREER_COPY.ENTER_MEET_LABEL}
@@ -193,7 +194,7 @@ function CalendarRow({
           testID={`career-enter-${row.tier}`}
         >
           <Text style={styles.enterLabel}>{CAREER_COPY.ENTER_MEET_LABEL}</Text>
-        </Pressable>
+        </MotionPressable>
       ) : null}
     </View>
   );
@@ -202,7 +203,7 @@ function CalendarRow({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: MEET_PALETTE.BACKDROP,
+    backgroundColor: MEET_PALETTE.ESPRESSO,
   },
   choosing: {
     flex: 1,
@@ -216,7 +217,7 @@ const styles = StyleSheet.create({
     gap: L.CAREER_ROW_GAP,
   },
   title: {
-    color: MEET_PALETTE.TEXT,
+    color: MEET_PALETTE.AMBER,
     fontSize: L.HEADLINE_FONT,
     fontWeight: '700',
     letterSpacing: L.WIDE_LETTER_SPACING,

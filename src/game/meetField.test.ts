@@ -160,8 +160,8 @@ describe('platform order — weight then lot', () => {
   it('names who just went and who is on deck from the same order', () => {
     const field = buildMeetField(MEET_FIELD_FIXTURE, DEFAULT_MEET_RULES, SEED, playerLot);
     const reveal = revealForDeclaration('squat', 1, 160);
-    expect(whoJustWent(field, reveal, 160, MEET_ENTRY.name)).toBe('R. PEMBROKE');
-    expect(onDeckName(field, reveal, 160, MEET_ENTRY.name)).toBe('J. HARROW');
+    expect(whoJustWent(field, reveal, 160, MEET_ENTRY.name)).toBe('Rex Pembroke');
+    expect(onDeckName(field, reveal, 160, MEET_ENTRY.name)).toBe('Jon Harrow');
   });
 
   it('equal-weight later lot is on deck after the player at 165', () => {
@@ -176,9 +176,9 @@ describe('platform order — weight then lot', () => {
     ].sort(comparePlatformOrder);
     const playerIndex = ordered.findIndex((slot) => slot.name === MEET_ENTRY.name);
     expect(playerIndex).toBeGreaterThanOrEqual(0);
-    expect(ordered[playerIndex + 1]?.name).toBe('R. PEMBROKE');
-    expect(onDeckName(field, reveal, 165, MEET_ENTRY.name)).toBe('R. PEMBROKE');
-    expect(whoJustWent(field, reveal, 165, MEET_ENTRY.name)).toBe('T. LINN');
+    expect(ordered[playerIndex + 1]?.name).toBe('Rex Pembroke');
+    expect(onDeckName(field, reveal, 165, MEET_ENTRY.name)).toBe('Rex Pembroke');
+    expect(whoJustWent(field, reveal, 165, MEET_ENTRY.name)).toBe('Ned Linn');
   });
 });
 
@@ -227,6 +227,34 @@ describe('A1-NPC-SIM-01 miss discriminator includes lift', () => {
     expect(
       a.cards.map((card) => card.plan.map((row) => row.good)),
     ).toEqual(b.cards.map((card) => card.plan.map((row) => row.good)));
+  });
+
+  it('authors a local attempt grid rather than a wall of makes', () => {
+    const field = buildMeetField(MEET_FIELD_FIXTURE, DEFAULT_MEET_RULES, SEED, MEET_ENTRY.lot);
+    const misses = field.cards.flatMap((card) => card.plan.filter((row) => !row.good));
+    expect(misses.length).toBe(9);
+    const mira = field.cards.find((card) => card.lifter.name === 'Mira Quill');
+    expect(mira?.plan.every((row) => row.good)).toBe(true);
+    const harrowSquat = field.cards
+      .find((card) => card.lifter.name === 'Jon Harrow')
+      ?.plan.filter((row) => row.lift === 'squat');
+    expect(harrowSquat?.map((row) => row.weightKg)).toEqual([160, 175, 175]);
+    expect(harrowSquat?.map((row) => row.good)).toEqual([true, false, true]);
+    for (const card of field.cards) {
+      for (const lift of LIFT_ORDER) {
+        const rows = card.plan.filter((row) => row.lift === lift);
+        const second = rows[1];
+        const third = rows[2];
+        if (second !== undefined && !second.good) {
+          expect(third?.weightKg, `${card.lifter.name} ${lift}`).toBe(second.weightKg);
+        }
+      }
+    }
+    const harrowBench3 = field.cards
+      .find((card) => card.lifter.name === 'Jon Harrow')
+      ?.plan.find((row) => row.lift === 'bench' && row.attemptNumber === 3);
+    expect(harrowBench3?.good).toBe(false);
+    expect(harrowBench3?.weightKg).toBe(120);
   });
 });
 

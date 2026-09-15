@@ -1767,6 +1767,8 @@ describe('the ?meet= preview beats', () => {
     const opener = previewStateFor({ moment: 'walkout' });
     expect(opener.live?.attemptNumber).toBe(1);
     expect(third.live?.walkoutMs ?? 0).toBeGreaterThan(opener.live?.walkoutMs ?? 0);
+    const lifting = previewStateFor({ moment: 'lift' });
+    expect(lifting.live?.attemptNumber).toBe(ATTEMPTS_PER_LIFT);
 
     const afterMake = previewStateFor({ moment: 'select-after-make' });
     const afterMiss = previewStateFor({ moment: 'select-after-miss' });
@@ -1789,14 +1791,14 @@ describe('the ?meet= preview beats', () => {
 });
 
 describe('ON DECK is a declared-attempt fact', () => {
-  it('names nobody on attempt-select, then R. PEMBROKE after squat 2 is declared at 165', () => {
+  it('names nobody on attempt-select, then Rex Pembroke after squat 2 is declared at 165', () => {
     const opened = openedMeet(startingE1rmMeetContext());
     expect(opened.phase).toBe('walkout');
     expect(opened.live).not.toBeNull();
     expect(opened.live?.lift).toBe('squat');
     expect(opened.live?.attemptNumber).toBe(1);
     expect(opened.live?.weightKg).toBe(160);
-    expect(flightOnDeckText(opened)).toBe('J. HARROW');
+    expect(flightOnDeckText(opened)).toBe('Jon Harrow');
 
     const afterMake = take(opened, 'perfect');
     expect(afterMake.phase).toBe('attempt-select');
@@ -1821,7 +1823,7 @@ describe('ON DECK is a declared-attempt fact', () => {
       playerWeightKg: 165,
       afterPlayer: false,
     });
-    expect(flightOnDeckText(declared)).toBe('R. PEMBROKE');
+    expect(flightOnDeckText(declared)).toBe('Rex Pembroke');
 
     const ordered = [
       ...declared.field.cards.map((card) => {
@@ -1831,7 +1833,7 @@ describe('ON DECK is a declared-attempt fact', () => {
       { name: MEET_ENTRY.name, weightKg: 165, lot: MEET_ENTRY.lot },
     ].sort(comparePlatformOrder);
     const playerIndex = ordered.findIndex((slot) => slot.name === MEET_ENTRY.name);
-    expect(ordered[playerIndex + 1]?.name).toBe('R. PEMBROKE');
+    expect(ordered[playerIndex + 1]?.name).toBe('Rex Pembroke');
     expect(flightOnDeckText(declared)).toBe(ordered[playerIndex + 1]?.name ?? null);
   });
 });

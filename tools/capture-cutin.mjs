@@ -283,7 +283,6 @@ const SCRIM_MUST_BLEND_AT_LEAST = 2000;
 const BACKDROP = [0x12, 0x14, 0x1a];
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
   args: [
     '--no-sandbox',
     '--disable-dev-shm-usage',

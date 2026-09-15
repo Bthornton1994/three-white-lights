@@ -82,7 +82,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
-import { LIFT_TUNING } from '../game/liftTuning';
 import {
   deliberationMs,
   isUrgentAttempt,
@@ -246,11 +245,28 @@ export function VerdictView({
 
   return (
     <View style={styles.root} testID={revealed ? 'meet-verdict' : 'meet-deliberation'}>
-      <View style={styles.panel}>
+      <View style={styles.hall}>
+        <MeetHallView
+          lifter={{
+            kind: attempt.lift,
+            totalKg: attempt.weightKg,
+            barAndCollarsKg,
+            loadRatio,
+            attemptNumber: attempt.attemptNumber,
+            pose,
+          }}
+          scrim={MEET_TUNING.HALL.JUDGING_SCRIM}
+          crowdRisePx={crowdRisePx}
+        />
+      </View>
+      <View style={styles.hudScrim} pointerEvents="none" />
+      <View style={styles.hud} pointerEvents="none">
         <Text style={styles.eyebrow} testID="verdict-attempt">
           {`${liftLabel} · ${formatWeight(attempt.weightKg)}`}
         </Text>
-
+      </View>
+      <View style={styles.commandScrim} pointerEvents="none" />
+      <View style={styles.command} pointerEvents="none">
         <View style={styles.lamps} testID="verdict-lamps">
           {attempt.lights.map((light, seat) => (
             <Lamp key={seat} light={light} seat={seat} revealed={revealed} />
@@ -281,14 +297,6 @@ export function VerdictView({
           </Animated.View>
         ) : null}
       </View>
-
-      {/* He has not left the platform. The bar is still loaded and the room is
-          still full; that is what the wait is. */}
-      <MeetHallView
-        lifter={{ totalKg: attempt.weightKg, barAndCollarsKg, loadRatio, pose }}
-        scrim={MEET_TUNING.HALL.JUDGING_SCRIM}
-        crowdRisePx={crowdRisePx}
-      />
     </View>
   );
 }
@@ -296,22 +304,59 @@ export function VerdictView({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
   },
-  panel: {
-    flex: 1,
-    alignSelf: 'stretch',
+  hall: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+  },
+  hudScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: L.HALL_HUD_HEIGHT,
+    backgroundColor: MEET_PALETTE.CARD,
+    opacity: L.HALL_HUD_SCRIM,
+  },
+  hud: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: L.HALL_HUD_HEIGHT,
+    paddingHorizontal: L.HALL_HUD_PAD,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  commandScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: L.HALL_COMMAND_HEIGHT,
+    backgroundColor: MEET_PALETTE.CARD,
+    opacity: L.HALL_COMMAND_SCRIM,
+  },
+  command: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: L.HALL_COMMAND_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: L.SCREEN_PAD,
-    gap: L.SECTION_GAP,
-    maxHeight: LIFT_TUNING.LAYOUT.STAGE_H,
+    gap: L.ROW_GAP,
+    paddingHorizontal: L.HALL_HUD_PAD,
   },
   eyebrow: {
-    color: MEET_PALETTE.TEXT_DIM,
+    color: MEET_PALETTE.AMBER,
     fontSize: L.EYEBROW_FONT,
     letterSpacing: L.WIDE_LETTER_SPACING,
+    fontWeight: '700',
   },
   lamps: {
     flexDirection: 'row',

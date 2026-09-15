@@ -392,6 +392,24 @@ const REFLECTIVE_ASSEMBLY_EXEMPTIONS: readonly {
       'this scan was tightened, so the line is new to the scan and not new to the tree, ' +
       'and it was read before it was excused.',
   },
+  {
+    file: 'src/game/meetField.ts',
+    idiom: 'Object.assign',
+    n: 6,
+    lines: [
+      "throw Object.assign(new Error(fixtureError(lifterId, 'plan is not a full card').message), {",
+      'throw Object.assign(new Error(fixtureError(lifterId, declared.error.message).message), {',
+      'throw Object.assign(new Error(fixtureError(lifterId, resolved.error.message).message), {',
+      "throw Object.assign(new Error(fixtureError(lifterId, 'card did not complete').message), {",
+      "throw Object.assign(new Error(fixtureError(lifterId, 'resolved fewer attempts than planned').message), {",
+      "throw Object.assign(new Error(fixtureError(spec.id, 'lot collides on this flight').message), {",
+    ],
+    why:
+      'A1 flight replay tags fixture Errors with a code and lifterId. The assign ' +
+      'is onto an Error, not a progression record or wire. Named here because A1 ' +
+      'landed the six throws after this sweep, and an unexcused Object.assign in ' +
+      'shipped code is the thing the sweep exists to make a human read.',
+  },
 ];
 
 /** The form a matched line is pinned in: trimmed, whitespace runs collapsed. */

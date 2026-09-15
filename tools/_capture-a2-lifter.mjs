@@ -24,7 +24,7 @@ const flag = (name, dflt) => {
   return i === -1 ? dflt : args[i + 1];
 };
 
-const url = flag('url', 'http://127.0.0.1:8080');
+const url = flag('url', 'http://localhost:8081');
 gateDevServer({ url });
 const outDir = path.resolve(flag('out', '.gauntlet/shots/a2-lifter'));
 const width = Number(flag('w', '390'));

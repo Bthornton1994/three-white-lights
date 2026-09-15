@@ -970,7 +970,9 @@ export interface UnreadableGroup {
  * the same cost `REVIEWABLE_CITATIONS` already charges, for a stronger reason.
  */
 export const UNREADABLE_BY_THIS_AUDIT: readonly UnreadableGroup[] = Object.freeze([
-  { extension: '.png', reason: 'nul-byte', count: 10 },
+  { extension: '.jpeg', reason: 'nul-byte', count: 1 },
+  { extension: '.jpg', reason: 'nul-byte', count: 19 },
+  { extension: '.png', reason: 'nul-byte', count: 13 },
   { extension: '.wav', reason: 'nul-byte', count: 7 },
   { extension: '.webp', reason: 'nul-byte', count: 2 },
 ]);
@@ -1936,7 +1938,7 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'src/game/resultCard.test.ts', name: 'OPL', where: 'comment', count: 2 },
   { file: 'src/game/resultCard.ts', name: 'IPF', where: 'comment', count: 3 },
   { file: 'src/game/resultCard.ts', name: 'NPL', where: 'comment', count: 1 },
-  { file: 'src/game/resultCard.ts', name: 'OpenLifter', where: 'comment', count: 12 },
+  { file: 'src/game/resultCard.ts', name: 'OpenLifter', where: 'comment', count: 14 },
   { file: 'src/game/resultCard.ts', name: 'OpenPowerlifting', where: 'comment', count: 16 },
   { file: 'src/game/resultCard.ts', name: 'OPL', where: 'comment', count: 4 },
   { file: 'src/game/resultCard.ts', name: 'SBD', where: 'comment', count: 2 },

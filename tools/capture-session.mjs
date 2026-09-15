@@ -76,7 +76,6 @@ const MOMENTS = [
 ];
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
   args: [
     '--no-sandbox',
     '--disable-dev-shm-usage',

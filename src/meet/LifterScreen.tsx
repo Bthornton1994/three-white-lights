@@ -5,27 +5,67 @@
  * Total and e1RM are drawn from the card facts, never computed here.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
 
 import { CAREER_COPY, LIFTER_IDENTITY } from '../career/careerTuning';
 import type { LifterServerPort } from '../game/lifterClient';
+import { SESSION_COPY } from '../game/sessionTuning';
 import { MEET_LAYOUT } from '../game/meetTuning';
 import { formatWeight } from '../game/resultCard';
+import { ironAmberGymLayout } from '../session/ironAmberPlates';
 import { MEET_PALETTE } from './meetPalette';
 import { useLifter } from './useLifter';
 import type { LifterSurfacePhase } from './lifterSurface';
+import gymBriefing from '../../assets/iron-amber/gym-briefing.jpg';
 
 const L = MEET_LAYOUT;
+
+function LifterGym({ testID }: { readonly testID: string }): React.ReactElement {
+  const [box, setBox] = useState({ width: 0, height: 0 });
+  const gym = ironAmberGymLayout(box.width, box.height);
+  return (
+    <View
+      style={styles.gymClip}
+      pointerEvents="none"
+      onLayout={(event) => {
+        const next = event.nativeEvent.layout;
+        setBox({ width: next.width, height: next.height });
+      }}
+    >
+      {box.width <= 0 ? null : (
+        <Image
+          source={gymBriefing}
+          style={[
+            styles.gym,
+            {
+              width: gym.width,
+              height: gym.height,
+              left: gym.left,
+              top: gym.top,
+            },
+          ]}
+          resizeMode="stretch"
+          accessible
+          accessibilityRole="image"
+          accessibilityLabel={SESSION_COPY.ROOM_LABEL}
+          testID={testID}
+        />
+      )}
+      <View style={styles.gymScrim} />
+    </View>
+  );
+}
 
 export interface LifterScreenProps {
   readonly serverPort: LifterServerPort;
@@ -52,11 +92,13 @@ export function LifterScreen({
         behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
         testID="lifter-screen"
       >
+        <LifterGym testID="iron-amber-create-gym" />
         <ScrollView
           contentContainerStyle={styles.create}
           keyboardShouldPersistTaps="handled"
           testID="lifter-create"
         >
+          <View style={styles.formCard}>
           <Text style={styles.title} testID="lifter-create-title">
             {CAREER_COPY.LIFTER_CREATE_TITLE}
           </Text>
@@ -82,24 +124,26 @@ export function LifterScreen({
 
           <Text style={styles.label}>{CAREER_COPY.LIFTER_SEX_LABEL}</Text>
           <View style={styles.row}>
-            <Pressable
+            <MotionPressable
               style={[styles.choice, loop.sexDraft === 'male' ? styles.choiceOn : null]}
               onPress={() => loop.setSexDraft('male')}
               testID="lifter-sex-male"
               accessibilityRole="button"
               accessibilityLabel={CAREER_COPY.LIFTER_SEX_MALE}
+              accessibilityState={{ selected: loop.sexDraft === 'male' }}
             >
               <Text style={styles.choiceLabel}>{CAREER_COPY.LIFTER_SEX_MALE}</Text>
-            </Pressable>
-            <Pressable
+            </MotionPressable>
+            <MotionPressable
               style={[styles.choice, loop.sexDraft === 'female' ? styles.choiceOn : null]}
               onPress={() => loop.setSexDraft('female')}
               testID="lifter-sex-female"
               accessibilityRole="button"
               accessibilityLabel={CAREER_COPY.LIFTER_SEX_FEMALE}
+              accessibilityState={{ selected: loop.sexDraft === 'female' }}
             >
               <Text style={styles.choiceLabel}>{CAREER_COPY.LIFTER_SEX_FEMALE}</Text>
-            </Pressable>
+            </MotionPressable>
           </View>
 
           <Text style={styles.label}>{CAREER_COPY.LIFTER_BODYWEIGHT_LABEL}</Text>
@@ -119,17 +163,18 @@ export function LifterScreen({
           {loop.confirmedFederation === null ? (
             <View style={styles.cards}>
               {loop.options.map((option) => (
-                <Pressable
+                <MotionPressable
                   key={option.id}
                   style={[styles.card, loop.federationDraft === option.id ? styles.choiceOn : null]}
                   onPress={() => loop.setFederationDraft(option.id)}
                   testID={`lifter-fed-${option.id}`}
                   accessibilityRole="button"
                   accessibilityLabel={option.name}
+                  accessibilityState={{ selected: loop.federationDraft === option.id }}
                 >
                   <Text style={styles.cardName}>{option.name}</Text>
                   <Text style={styles.cardRuleset}>{option.rulesetText}</Text>
-                </Pressable>
+                </MotionPressable>
               ))}
             </View>
           ) : (
@@ -144,7 +189,7 @@ export function LifterScreen({
             </View>
           )}
 
-          <Pressable
+          <MotionPressable
             style={styles.action}
             onPress={loop.create}
             disabled={loop.inFlight}
@@ -155,7 +200,8 @@ export function LifterScreen({
             <Text style={styles.actionLabel}>
               {loop.inFlight ? CAREER_COPY.LIFTER_CREATE_PENDING : CAREER_COPY.LIFTER_CREATE_ACTION}
             </Text>
-          </Pressable>
+          </MotionPressable>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     );
@@ -166,7 +212,9 @@ export function LifterScreen({
 
   return (
     <View style={styles.root} testID="lifter-screen">
+      <LifterGym testID="iron-amber-lifter-gym" />
       <ScrollView contentContainerStyle={styles.cardPage} testID="lifter-card">
+        <View style={styles.formCard}>
         <Text style={styles.title} testID="lifter-card-title">
           {CAREER_COPY.LIFTER_CARD_TITLE}
         </Text>
@@ -234,27 +282,28 @@ export function LifterScreen({
 
         {editing ? (
           <View style={styles.row}>
-            <Pressable style={styles.action} onPress={loop.saveEdit} testID="lifter-save-edits">
+            <MotionPressable style={styles.action} onPress={loop.saveEdit} testID="lifter-save-edits">
               <Text style={styles.actionLabel}>{CAREER_COPY.LIFTER_SAVE_EDITS}</Text>
-            </Pressable>
-            <Pressable style={styles.choice} onPress={loop.cancelEdit} testID="lifter-cancel-edits">
+            </MotionPressable>
+            <MotionPressable style={styles.choice} onPress={loop.cancelEdit} testID="lifter-cancel-edits">
               <Text style={styles.choiceLabel}>{CAREER_COPY.LIFTER_CANCEL_EDITS}</Text>
-            </Pressable>
+            </MotionPressable>
           </View>
         ) : (
           <View style={styles.row}>
-            <Pressable style={styles.choice} onPress={loop.beginEditName} testID="lifter-edit-name">
+            <MotionPressable style={styles.choice} onPress={loop.beginEditName} testID="lifter-edit-name">
               <Text style={styles.choiceLabel}>{CAREER_COPY.LIFTER_EDIT_NAME}</Text>
-            </Pressable>
-            <Pressable
+            </MotionPressable>
+            <MotionPressable
               style={styles.choice}
               onPress={loop.beginEditBodyweight}
               testID="lifter-edit-bodyweight"
             >
               <Text style={styles.choiceLabel}>{CAREER_COPY.LIFTER_EDIT_BODYWEIGHT}</Text>
-            </Pressable>
+            </MotionPressable>
           </View>
         )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -263,11 +312,40 @@ export function LifterScreen({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: MEET_PALETTE.BACKDROP,
+    overflow: 'hidden',
+    backgroundColor: MEET_PALETTE.ESPRESSO,
+  },
+  gymClip: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  gym: {
+    position: 'absolute',
+  },
+  gymScrim: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: MEET_PALETTE.ESPRESSO,
+    opacity: L.LIFTER_ROOM_SCRIM,
+  },
+  formCard: {
+    padding: L.CARD_PAD,
+    borderRadius: L.CARD_RADIUS,
+    borderWidth: L.CARD_BORDER,
+    borderColor: MEET_PALETTE.CARD_EDGE,
+    backgroundColor: MEET_PALETTE.CARD,
+    gap: L.ROW_GAP,
   },
   create: {
     paddingHorizontal: L.SCREEN_PAD,
-    paddingTop: L.CAREER_PAD_TOP,
+    paddingTop: L.LIFTER_CREATE_PAD_TOP,
     paddingBottom: L.LIFTER_KEYBOARD_CLEARANCE,
     gap: L.ROW_GAP,
   },
@@ -278,7 +356,7 @@ const styles = StyleSheet.create({
     gap: L.ROW_GAP,
   },
   title: {
-    color: MEET_PALETTE.TEXT,
+    color: MEET_PALETTE.AMBER,
     fontSize: L.HEADLINE_FONT,
     fontWeight: '700',
     letterSpacing: L.WIDE_LETTER_SPACING,
@@ -305,8 +383,8 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: L.CARD_BORDER,
-    borderColor: MEET_PALETTE.PANEL_EDGE,
-    backgroundColor: MEET_PALETTE.PANEL,
+    borderColor: MEET_PALETTE.CARD_EDGE,
+    backgroundColor: MEET_PALETTE.CARD,
     borderRadius: L.STEPPER_RADIUS,
     color: MEET_PALETTE.TEXT,
     fontSize: L.SUBHEAD_FONT,
@@ -329,14 +407,14 @@ const styles = StyleSheet.create({
   },
   choice: {
     borderWidth: L.CARD_BORDER,
-    borderColor: MEET_PALETTE.CARD_SAFE_EDGE,
-    backgroundColor: MEET_PALETTE.CARD_SAFE,
+    borderColor: MEET_PALETTE.CARD_EDGE,
+    backgroundColor: MEET_PALETTE.CARD,
     borderRadius: L.CARD_RADIUS,
     paddingHorizontal: L.CARD_PAD,
     paddingVertical: L.CAREER_ROW_PAD_V,
   },
   choiceOn: {
-    borderColor: MEET_PALETTE.WALKOUT_URGENT,
+    borderColor: MEET_PALETTE.AMBER,
   },
   choiceLabel: {
     color: MEET_PALETTE.TEXT,
@@ -345,12 +423,16 @@ const styles = StyleSheet.create({
     letterSpacing: L.LETTER_SPACING,
   },
   cards: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: L.CAREER_ROW_GAP,
   },
   card: {
+    flexGrow: 1,
+    flexBasis: L.FEDERATION_CARD_MIN_W,
     borderWidth: L.CARD_BORDER,
-    borderColor: MEET_PALETTE.CARD_SAFE_EDGE,
-    backgroundColor: MEET_PALETTE.CARD_SAFE,
+    borderColor: MEET_PALETTE.CARD_EDGE,
+    backgroundColor: MEET_PALETTE.CARD,
     borderRadius: L.CARD_RADIUS,
     paddingHorizontal: L.CARD_PAD,
     paddingVertical: L.CAREER_ROW_PAD_V,
@@ -367,18 +449,18 @@ const styles = StyleSheet.create({
     letterSpacing: L.LETTER_SPACING,
   },
   action: {
-    marginTop: L.SECTION_GAP,
+    marginTop: L.ROW_GAP,
     alignSelf: 'stretch',
     borderWidth: L.CARD_BORDER,
-    borderColor: MEET_PALETTE.CARD_SAFE_EDGE,
-    backgroundColor: MEET_PALETTE.CARD_SAFE,
+    borderColor: MEET_PALETTE.AMBER,
+    backgroundColor: MEET_PALETTE.ACTION,
     borderRadius: L.CARD_RADIUS,
     paddingHorizontal: L.CARD_PAD,
     paddingVertical: L.CAREER_ROW_PAD_V,
     alignItems: 'center',
   },
   actionLabel: {
-    color: MEET_PALETTE.TEXT,
+    color: MEET_PALETTE.ACTION_TEXT,
     fontSize: L.LABEL_FONT,
     fontWeight: '700',
     letterSpacing: L.WIDE_LETTER_SPACING,

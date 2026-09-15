@@ -76,7 +76,6 @@ const LABELS = { 1: 'maximal', 0.88: 'default', 0.75: 'moderate', 0.55: 'light' 
 const labelFor = (load) => LABELS[load] ?? `load-${String(load).replace('.', '_')}`;
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
   args: [
     '--no-sandbox',
     '--disable-dev-shm-usage',

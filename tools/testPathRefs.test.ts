@@ -320,8 +320,31 @@ const PINNED = Object.freeze({
    *
    * 320 -> 332 with A2 My Lifter: six identity modules, five tests, and
    * `tools/_capture-a2-lifter.mjs`.
+   *
+   * 332 -> 341 with Iron & Amber training quality: `TrainingLiftStage.tsx`,
+   * `ironAmberPlates.ts`, `IronAmberRoom.tsx`, two tests, `src/session/jpg.d.ts`,
+   * `tools/_capture-iron-amber-training.mjs`, and the two design docs
+   * (`IRON-AND-AMBER-REFERENCE.md`, `IRON-AMBER-TRAINING-ASSETS.md`).
+   * Binary plates (`.jpg` / the reference `.jpeg`) are unread and do not
+   * move this pin.
+   *
+   * 341 -> 343 with Meet Day Iron & Amber stills: `ironAmberHall.ts` and
+   * `ironAmberHall.test.ts`.
+   *
+   * 343 -> 344 with the shared press-feedback primitive:
+   * `src/ui/MotionPressable.tsx`.
+   *
+   * 344 -> 345 with A-VIS critic stills: `tools/_capture-a-vis-fix.mjs`.
+   * Evidence PNGs under `docs/design/evidence/` are unread binaries.
+   *
+   * 345 -> 346 with emptied-hall bookends: `src/meet/MeetBookendRoom.tsx`.
+   *
+   * 346 -> 347 with the shareable paper scoresheet: `src/card/paperSheet.test.ts`.
+   *
+   * 347 -> 349 with the shareable flight: `src/game/resultFlight.ts` and
+   * `src/game/resultFlight.test.ts`.
    */
-  SCANNED_FILES: 332,
+  SCANNED_FILES: 349,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -367,8 +390,17 @@ const PINNED = Object.freeze({
    *
    * 104 -> 109 with A2: `lifterProfile.test.ts`, `lifterEntry.test.ts`,
    * `lifterPersist.test.ts`, `lifterSurface.test.ts`, `a2LifterFreeze.test.ts`.
+   *
+   * 109 -> 111 with Iron & Amber training plates: `ironAmberPlates.test.ts`
+   * and `ironAmberWiring.test.ts`.
+   *
+   * 111 -> 112 with Meet Day stills: `src/meet/ironAmberHall.test.ts`.
+   *
+   * 112 -> 113 with the shareable paper scoresheet: `src/card/paperSheet.test.ts`.
+   *
+   * 113 -> 114 with the shareable flight: `src/game/resultFlight.test.ts`.
    */
-  TEST_FILES: 109,
+  TEST_FILES: 114,
 });
 
 /**

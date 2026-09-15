@@ -56,6 +56,11 @@ export const SHEET_BANK_INDEX = 3;
 /** Total index space once this bank is included. */
 export const SHEET_PALETTE_INDEX_COUNT = (SHEET_BANK_INDEX + 1) * BANK_SIZE;
 
+/** Digits in one 8-bit channel when printed as hex. */
+const HEX_CHANNEL_DIGITS = 2;
+/** Radix `Number#toString` uses for a hex channel. */
+const HEX_RADIX = 16;
+
 const SHEET_COLORS: readonly Rgb5[] = [
   [31, 0, 31], //  0 transparent sentinel (magenta; never rendered)
   [3, 3, 4], //  1 INK           near-black, faintly cool — printer's black
@@ -140,3 +145,44 @@ export function findUnallocatedSheetIndices(grid: IndexGrid): number[] {
   }
   return [...bad].sort((a, b) => a - b);
 }
+
+function hex2(channel: number): string {
+  return channel.toString(HEX_RADIX).padStart(HEX_CHANNEL_DIGITS, '0');
+}
+
+/**
+ * A sheet-bank (or sprite-bank) index as a CSS hex triple.
+ *
+ * `ResultCardView` paints paper in React Native, so it cannot use palette
+ * indices. The triples still come from this bank — one colour source, two
+ * encodings — rather than a second palette that could drift from the grid
+ * renderer. Throws on an unallocated index: a silent `#000000` would look
+ * like printer's black and hide the bug.
+ */
+export function sheetCss(index: number): string {
+  const c5 = sheetColorAt(index);
+  if (c5 === undefined) {
+    throw new RangeError(`sheetCss: unallocated index ${index}`);
+  }
+  const [r, g, b] = rgb5ToRgb8(c5);
+  return `#${hex2(r)}${hex2(g)}${hex2(b)}`;
+}
+
+/** Named CSS colours for the shareable paper sheet. Same slots as `SHEET`. */
+export const SHEET_CSS = {
+  INK: sheetCss(SHEET.INK),
+  INK_SOFT: sheetCss(SHEET.INK_SOFT),
+  RULE: sheetCss(SHEET.RULE),
+  PAPER: sheetCss(SHEET.PAPER),
+  PAPER_ALT: sheetCss(SHEET.PAPER_ALT),
+  PAPER_SHADE: sheetCss(SHEET.PAPER_SHADE),
+  BAND_DARK: sheetCss(SHEET.BAND_DARK),
+  BAND_MID: sheetCss(SHEET.BAND_MID),
+  BAND_INK: sheetCss(SHEET.BAND_INK),
+  GOOD_DARK: sheetCss(SHEET.GOOD_DARK),
+  GOOD_LIGHT: sheetCss(SHEET.GOOD_LIGHT),
+  NOLIFT_DARK: sheetCss(SHEET.NOLIFT_DARK),
+  NOLIFT_LIGHT: sheetCss(SHEET.NOLIFT_LIGHT),
+  ACCENT: sheetCss(SHEET.ACCENT),
+  ACCENT_HI: sheetCss(SHEET.ACCENT_HI),
+} as const;

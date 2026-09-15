@@ -3,9 +3,9 @@
  *
  * Everything above it is pure: `renderPanels.ts` produces palette indices,
  * `sheetGridToRgba` turns those into bytes, and this file is the thin layer that
- * hands the bytes to Skia. Same shape as `ResultCardView.tsx` and
- * `LifterSpriteView.tsx`, deliberately — a third rendering idiom in the same app
- * is how three pieces start to look like three products.
+ * hands the bytes to Skia. Same shape as `LifterSpriteView.tsx`, deliberately —
+ * a second rendering idiom in the same app is how two pieces start to look
+ * like two products. The shareable result card is a paper sheet, not this path.
  *
  * NEAREST NEIGHBOUR ONLY. GDD §7.1 requires it. Two things enforce it here:
  * `sampling` is pinned to `FilterMode.Nearest` with mipmaps off, and `scale` is
@@ -15,7 +15,7 @@
  *
  * NOT VERIFIED ON A DEVICE. It type-checks against the installed
  * @shopify/react-native-skia types and follows the same documented raw-pixel
- * path the result card already uses, and it has been photographed in the Expo
+ * path `LifterSpriteView` already uses, and it has been photographed in the Expo
  * WEB build by `tools/shoot.mjs`. Nothing in this run has run it on a phone.
  */
 

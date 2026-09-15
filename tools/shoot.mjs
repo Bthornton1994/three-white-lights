@@ -37,7 +37,6 @@ const wait = Number(flag('wait', '3500'));
 const sel = flag('sel', null);
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
   args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const page = await browser.newPage({

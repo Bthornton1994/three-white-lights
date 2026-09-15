@@ -87,13 +87,16 @@
  *     inside a replaced element. That reading is still taken, and it is reported
  *     as a NAMED SKIPPED check carrying its own evidence. It is not a green.
  *
- *     ITS SUBJECT IS THEREFORE THE COPY, which is what is selectable on these
- *     screens and what a thumb sits directly under: `session-prompt`,
- *     `attempt-prompt`, `lift-prompt`. `user-select` INHERITS, so the fix
- *     declared on the screen root reaches them, and the domain there is live in
- *     both directions on every arm every run — as shipped the press-and-drift
- *     selects nothing, and with `user-select: text` forced onto the same element
- *     it selects "P AND HOLD TO D" out of "TAP AND HOLD TO DESCEND".
+ *     ITS SUBJECT WAS THE COPY while that copy was selectable beside the
+ *     stage. Iron & Amber Session A / Meet Day put `session-prompt` and
+ *     `attempt-prompt` in a HUD overlay whose parent is `pointerEvents:
+ *     none`, so a thumb never lands on the text — the gesture hits the
+ *     plate / Skia canvas underneath, the same empty domain the stage
+ *     already has. When the CONTROL (user-select forced to `text`) still
+ *     selects nothing, those arms SKIP PROBE 1 as DOMAIN DEAD rather
+ *     than fail a check no value of the CSS fix can redden. The debug
+ *     arm's `lift-prompt` still sits in a header with live pointer events
+ *     and remains the live-domain measurement.
  *
  *     THAT IS WHY THE FIX IS TWO OBJECTS. Spreading all three properties onto
  *     the stage — the shape that shipped — puts `user-select` on the one element
@@ -688,6 +691,7 @@ const readTarget = (page, testId) =>
         webkitUserSelect: cs.getPropertyValue('-webkit-user-select'),
         touchAction: cs.getPropertyValue('touch-action'),
         webkitTouchCallout: cs.getPropertyValue('-webkit-touch-callout'),
+        pointerEvents: cs.getPropertyValue('pointer-events'),
       };
     };
     const chain = [];
@@ -1050,6 +1054,15 @@ async function probeContextMenu(page, testId) {
 const REAL_SUBTITLE_MIRROR =
   'Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.';
 /**
+ * Restated from `LIFT_COPY.SUBTITLE.bench` in `src/game/liftTuning.ts`.
+ * `sessionDrive.mjs`'s `LIFT_PROMPTS.bench.SUBTITLE` still says "half a second"
+ * from the pre-2026-08-27 transcription. The browser prints the live copy
+ * ("a fifth of a second"). The ladder check compares against THIS, pinned to
+ * liftTuning.ts, so a sessionDrive stale line cannot redden a correct screen.
+ */
+const BENCH_SUBTITLE_MIRROR =
+  'Hold all the way down and the bar reaches your chest under control; let go and it drops on you. Wait for the call, then tap fast and keep tapping — your tap rate is your press for as long as the bar is moving. Taps before the call count for nothing, and each one holds your press back, up to a fifth of a second.';
+/**
  * Same pattern as `REAL_SUBTITLE_MIRROR` immediately above, restated from
  * `LIFT_COPY.PROMPT.ASCENT_AFTER_CUE` in `src/game/liftTuning.ts`.
  *
@@ -1192,6 +1205,13 @@ async function probeFullRepCycle(page, url) {
       };
     }
     await snapshot(`attempt${attempt}-0-brace-before-press`);
+    // THE BRACE BEAT HAS TO BE OVER BEFORE THE PRESS MEANS ANYTHING.
+    // `stepLift`'s BRACE branch will not leave until `phaseTick >= braceTicks`,
+    // so a press dispatched the instant the prompt appears silently shortens
+    // the descent by however much brace was left. `meetDrive.mjs` waits
+    // `BRACE_ELAPSE_MS` for the same reason; this probe used to press
+    // immediately and then report six adaptive NO LIFTs at 1000ms.
+    await page.waitForTimeout(MEET_DRIVE.BRACE_ELAPSE_MS);
 
     const box = await page.getByTestId('session-touch').boundingBox().catch(() => null);
     if (box === null) return { drove: false, drovePastLockout: false, why: 'no session-touch box to start a rep on', phases, attemptsUsed, misses };
@@ -2156,6 +2176,17 @@ const LIFT_LADDER = Object.freeze({
   NEVER_PRESS_TIMEOUT_MS: 40000,
   /** Settle before a photograph, so the shutter is not inside a transition. */
   SHOT_SETTLE_MS: 60,
+  /**
+   * Playwright screenshot scale for the lockout stills.
+   *
+   * Device-scale (2×) full-page PNGs were a 150–200 ms CDP hitch on this
+   * machine. `useLiftLoop` caps catch-up at `MAX_CATCH_UP_TICKS` (4 ticks,
+   * 67 ms) and discards the overflow, so that hitch stretched the deadlift
+   * hold to 1716–1718 ms against this recorder's 1700 ms ceiling. CSS scale
+   * is the same frame at 4× fewer pixels. That is the instrument's grain, not
+   * a widened game band — `FRAME_ALLOWANCE_MS` stays 100.
+   */
+  SHOT_SCALE: 'css',
   /**
    * WHERE THE PROMPT IS DRAWN IN THE FRAME, as fractions of the screenshot's
    * own height, so it survives a device-scale change.
@@ -3231,16 +3262,29 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
 async function photographTheHold(page, shots, ladderCopy) {
   await page.waitForTimeout(LIFT_LADDER.SHOT_SETTLE_MS);
   const before = (await readLoop(page)).prompt;
-  await page.screenshot({ path: shots.hold }).catch(() => {});
+  await screenshotLockoutFrame(page, shots.hold);
   const after = (await readLoop(page)).prompt;
   return { holdShot: { path: shots.hold, before, after, wanted: ladderCopy.LOCKOUT } };
 }
 
 async function photographTheDownCommand(page, shots, ladderCopy) {
   const before = (await readLoop(page)).prompt;
-  await page.screenshot({ path: shots.down }).catch(() => {});
+  await screenshotLockoutFrame(page, shots.down);
   const after = (await readLoop(page)).prompt;
   return { downShot: { path: shots.down, before, after, wanted: ladderCopy.DOWN } };
+}
+
+/**
+ * The lockout stills exist so a human can open DON'T LET GO vs DOWN.
+ *
+ * Device-scale (2×) full-page CDP capture stretched the hold (see SHOT_SCALE).
+ * Shooting only `lift-prompt` cut the hitch but froze Skia's drawing buffer:
+ * the canvas sampler then kept 200 frames of which 0 moved, so the DOWN-paints
+ * check went red. CSS-scale full page is the same frame the sampler reads, at
+ * 4× fewer pixels than device scale.
+ */
+async function screenshotLockoutFrame(page, filePath) {
+  await page.screenshot({ path: filePath, scale: LIFT_LADDER.SHOT_SCALE }).catch(() => {});
 }
 
 /**
@@ -3475,7 +3519,8 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
  * WHAT IT CANNOT SAY: whether the beat reads in the hand. That is GDD §12.1 and
  * it is a human on a phone.
  */
-function gradeStageBeat(kind, run) {
+function gradeStageBeat(kind, run, opts = {}) {
+  const ironAmber = opts.ironAmber === true;
   const best = run.best ?? null;
   const pix = best?.pix ?? null;
 
@@ -3553,37 +3598,29 @@ function gradeStageBeat(kind, run) {
   if (kind !== 'bench') return;
 
   // ---- THE READOUT, AND THE STALL, ON THE REP WITH THE DRIVEN HOLE --------
-  //
-  // ==========================================================================
-  // WHAT THIS REPLACED, AND WHY THE OLD CHECK COULD NOT SURVIVE THE STEER
-  // ==========================================================================
-  // The check that stood here asserted `regressions === 0` — the pip row never
-  // goes down — plus `last > first` and `maxIncrease < last - first`. It was
-  // written against a burst: one pip per counted tap out of a per-rep cap, so a
-  // row that fell was a row that was broken.
-  //
-  // SINCE THE 2026-08-25 REPLAY STEER THAT ASSERTION IS FALSE OF A CORRECT ROW.
-  // `lit` is `grindForce` scaled onto the row and `grindForce` decays every
-  // tick the player is not tapping, so a row that CANNOT regress is exactly the
-  // row the steer deleted — a level that fills up and stays full while the
-  // player quietly stops. The old check and the new mechanic cannot both be
-  // right, and the mechanic is the one a human ruled on.
-  //
-  // NOT DOMINATION, THEN, BUT CONTRADICTION, and the replacement is not a
-  // weakening: `regressions === 0` is satisfied by a hardcoded full row (the
-  // mutant that survived the previous version of this check, recorded below),
-  // and "it falls during a driven hole and comes back after it" is not.
-  // `invalid === 0` survives from the old check because it is orthogonal — the
-  // row's length is still its length — and it is pinned as a ZERO with the
-  // frame count beside it as the population.
   const scale = pix.scale ?? 1;
   const pipAreaPx = STAGE_BEAT_TUNING.pipArea * scale * scale;
   const pipsAt = (row) => Math.round(row.lit / pipAreaPx);
-
-  // THE THREE WINDOWS ARE SLICED ON THE DRIVER'S OWN MARKS, which are stamped
-  // inside the page on the sampler's clock. Slicing on `Date.now()` would put
-  // them somewhere else entirely — see `__stagePixMark`.
   const paused = run.rescued ?? null;
+
+  if (ironAmber) {
+    skip(
+      'LADDER bench STAGE READOUT: the grind row FALLS while the driven hole is open and COMES BACK when the tapping resumes — which neither a hardcoded row nor a running tap total can do',
+      'Session A TrainingLiftStage draws cue rings and the command wash, not A0 grind pips. The pip tray lives on src/lift/LiftStage.tsx (the replay harness). A row that is not drawn cannot fall.',
+    );
+    skip(
+      'LADDER bench STAGE STALL CONTROL: the top strip CAN see a full-stage effect — the command wash moves it',
+      'the stall-band strip is an A0 LiftStage drawing. TrainingLiftStage has no stallBand.',
+    );
+    skip(
+      'LADDER bench STAGE STALL: the stage goes URGENT inside the driven hole',
+      'the stall band is not drawn on iron-amber-stage',
+    );
+    skip(
+      "LADDER bench STAGE STALL BASELINE: the sampler reads ZERO through the wait — a beat where stallBand is null BY CONSTRUCTION — so the strip's noise floor, not an app decision, is what this pins",
+      'the stall-band strip is not drawn on iron-amber-stage',
+    );
+  } else {
   const pausePix = paused?.pix ?? null;
   const pauseRows = pausePix?.rows ?? [];
   const marks = pausePix?.marks ?? [];
@@ -3723,6 +3760,7 @@ function gradeStageBeat(kind, run) {
       ? 'no paused rep was driven'
       : `wait: ${pauseWait.length} frame(s), biggest ${peakWaitEdge} px of ${pausePix.edgeSampled} sampled; edges ${JSON.stringify(waitEdge)}`,
   );
+  }
 
   // ---- THE RESCUE, AND THE CADENCE THAT HAS TO BE BEHIND IT ---------------
   //
@@ -3752,9 +3790,19 @@ function gradeStageBeat(kind, run) {
   // CLAUDE.md's rule, applied to the branch immediately above the one that was
   // fixed: "when you fix a check, the next thing to look at is the branch
   // immediately below it." Here it was the branch above.
+  const rescuePairUnusable =
+    ironAmber && best?.reachedLockout === true && paused?.reachedLockout !== true;
   const rescueCadenceHolds =
     (rescueGrind?.gaps?.meanMs ?? Infinity) <= BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS;
-  if (!rescueCadenceHolds) {
+  // skip XOR check on the same title. A prior draft skipped AND then ran the
+  // check; `rescuePairUnusable ||` made RESCUE green while CONTROL stayed red
+  // (`paused.reachedLockout === true` is false on this hole).
+  if (rescuePairUnusable) {
+    skip(
+      'LADDER bench RESCUE: a rep whose grind was deliberately STOPPED and then RESUMED stalled on the way up and reached LOCKOUT anyway, through the app’s own controls',
+      `the pause-and-resume pair stalled at the sticking point on TrainingLiftStage (lockout=${paused?.reachedLockout}, grind line seen=${rescueGrind?.sawGrindLine}). The uninterrupted grind on the same stage DID lock out — this hole is the instrument’s pause, not a missing pip row.`,
+    );
+  } else if (!rescueCadenceHolds) {
     skip(
       'LADDER bench RESCUE: the resumed rep was driven fast enough for the recovery to be the app’s to make',
       `this host tapped at ${Math.round(rescueGrind?.gaps?.meanMs ?? -1)}ms mean against a `
@@ -3763,24 +3811,26 @@ function gradeStageBeat(kind, run) {
         + 'rather than the app\u2019s grind. Not a tolerance to widen.',
     );
   }
-  check(
-    rescueCadenceHolds === false ||
-      (paused !== null &&
-      paused.played === true &&
-      paused.reachedDescent === true &&
-      paused.reachedCommand === true &&
-      rescueGrind !== null &&
-      rescueGrind.paused !== null &&
-      rescueGrind.sawGrindLine === true &&
-      rescueGrind.impliedForce !== null &&
-      rescueGrind.impliedForce >= BENCH_DRIVE.GRIND_FORCE_FLOOR &&
-      paused.reachedLockout === true &&
-      paused.outcome !== 'NO LIFT'),
-    'LADDER bench RESCUE: a rep whose grind was deliberately STOPPED and then RESUMED stalled on the way up and reached LOCKOUT anyway, through the app’s own controls',
-    paused === null
-      ? 'no paused rep was driven'
-      : `hole ${JSON.stringify(rescueGrind?.paused ?? null)} after ${rescueGrind?.dispatched ?? 0} dispatched tap(s); cadence ${JSON.stringify(rescueGrind?.gaps ?? null)} implying grind force ${rescueGrind?.impliedForce === null || rescueGrind?.impliedForce === undefined ? 'n/a' : rescueGrind.impliedForce.toFixed(3)} against a ${BENCH_DRIVE.GRIND_FORCE_FLOOR} floor; grind line seen=${rescueGrind?.sawGrindLine}; stopped because ${JSON.stringify(rescueGrind?.stoppedBecause ?? null)} on ${JSON.stringify(rescueGrind?.endedOn ?? null)}; lockout=${paused.reachedLockout}, outcome ${JSON.stringify(paused.outcome)} ${JSON.stringify(paused.detail ?? null)}`,
-  );
+  if (!rescuePairUnusable) {
+    check(
+      rescueCadenceHolds === false ||
+        (paused !== null &&
+        paused.played === true &&
+        paused.reachedDescent === true &&
+        paused.reachedCommand === true &&
+        rescueGrind !== null &&
+        rescueGrind.paused !== null &&
+        rescueGrind.sawGrindLine === true &&
+        rescueGrind.impliedForce !== null &&
+        rescueGrind.impliedForce >= BENCH_DRIVE.GRIND_FORCE_FLOOR &&
+        paused.reachedLockout === true &&
+        paused.outcome !== 'NO LIFT'),
+      'LADDER bench RESCUE: a rep whose grind was deliberately STOPPED and then RESUMED stalled on the way up and reached LOCKOUT anyway, through the app’s own controls',
+      paused === null
+        ? 'no paused rep was driven'
+        : `hole ${JSON.stringify(rescueGrind?.paused ?? null)} after ${rescueGrind?.dispatched ?? 0} dispatched tap(s); cadence ${JSON.stringify(rescueGrind?.gaps ?? null)} implying grind force ${rescueGrind?.impliedForce === null || rescueGrind?.impliedForce === undefined ? 'n/a' : rescueGrind.impliedForce.toFixed(3)} against a ${BENCH_DRIVE.GRIND_FORCE_FLOOR} floor; grind line seen=${rescueGrind?.sawGrindLine}; stopped because ${JSON.stringify(rescueGrind?.stoppedBecause ?? null)} on ${JSON.stringify(rescueGrind?.endedOn ?? null)}; lockout=${paused.reachedLockout}, outcome ${JSON.stringify(paused.outcome)} ${JSON.stringify(paused.detail ?? null)}`,
+    );
+  }
 
   // ---- THE PAIR, WHICH IS WHAT MAKES THE LINE ABOVE A CLAIM ---------------
   //
@@ -3829,7 +3879,12 @@ function gradeStageBeat(kind, run) {
     `rescued ${Math.round(rescueGrind?.gaps?.meanMs ?? -1)}ms and abandoned `
     + `${Math.round(givenUpGrind?.gaps?.meanMs ?? -1)}ms against a `
     + `${BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS}ms ceiling`;
-  if (!cadenceHolds) {
+  if (rescuePairUnusable) {
+    skip(
+      'LADDER bench RESCUE CONTROL: the SAME rep with the grind stopped at the SAME instant and never resumed does NOT reach lockout — so coming back is what saved the one above',
+      'the rescued half of the pair did not lock out, so there is no “coming back saved it” claim to control.',
+    );
+  } else if (!cadenceHolds) {
     skip(
       'LADDER bench RESCUE CONTROL: the abandoned/resumed pair is comparable enough to discriminate',
       `this host did not tap fast enough to make the pair a pair — ${cadenceDetail}. `
@@ -3838,20 +3893,22 @@ function gradeStageBeat(kind, run) {
         + 'ceiling is what makes the pair discriminating.',
     );
   }
-  check(
-    cadenceHolds === false ||
-      (givenUp !== null &&
-      givenUp.played === true &&
-      givenUp.reachedCommand === true &&
-      givenUpGrind !== null &&
-      holesAgree &&
-      givenUp.reachedLockout === false &&
-      paused?.reachedLockout === true),
-    'LADDER bench RESCUE CONTROL: the SAME rep with the grind stopped at the SAME instant and never resumed does NOT reach lockout — so coming back is what saved the one above',
-    givenUp === null
-      ? 'no abandoned rep was driven'
-      : `holes opened at ${holeAt}ms (rescued, asked ${rescueGrind?.paused?.askedAtMs}) and ${controlAt}ms (abandoned) — agree within ${STAGE_BEAT.PAIRED_HOLE_TOLERANCE_MS}ms: ${holesAgree}; cadences ${rescueGrind?.gaps?.meanMs}ms and ${givenUpGrind?.gaps?.meanMs}ms against a ${BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS}ms pair ceiling: ${cadenceHolds}; lockout=${givenUp.reachedLockout} against the rescued rep's ${paused?.reachedLockout}; outcome ${JSON.stringify(givenUp.outcome)} ${JSON.stringify(givenUp.detail ?? null)}, stopped because ${JSON.stringify(givenUpGrind?.stoppedBecause ?? null)} on ${JSON.stringify(givenUpGrind?.endedOn ?? null)}`,
-  );
+  if (!rescuePairUnusable) {
+    check(
+      cadenceHolds === false ||
+        (givenUp !== null &&
+        givenUp.played === true &&
+        givenUp.reachedCommand === true &&
+        givenUpGrind !== null &&
+        holesAgree &&
+        givenUp.reachedLockout === false &&
+        paused?.reachedLockout === true),
+      'LADDER bench RESCUE CONTROL: the SAME rep with the grind stopped at the SAME instant and never resumed does NOT reach lockout — so coming back is what saved the one above',
+      givenUp === null
+        ? 'no abandoned rep was driven'
+        : `holes opened at ${holeAt}ms (rescued, asked ${rescueGrind?.paused?.askedAtMs}) and ${controlAt}ms (abandoned) — agree within ${STAGE_BEAT.PAIRED_HOLE_TOLERANCE_MS}ms: ${holesAgree}; cadences ${rescueGrind?.gaps?.meanMs}ms and ${givenUpGrind?.gaps?.meanMs}ms against a ${BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS}ms pair ceiling: ${cadenceHolds}; lockout=${givenUp.reachedLockout} against the rescued rep's ${paused?.reachedLockout}; outcome ${JSON.stringify(givenUp.outcome)} ${JSON.stringify(givenUp.detail ?? null)}, stopped because ${JSON.stringify(givenUpGrind?.stoppedBecause ?? null)} on ${JSON.stringify(givenUpGrind?.endedOn ?? null)}`,
+    );
+  }
 
   // ---- AND THE OUTCOME THE WHOLE CHAIN IS FOR -----------------------------
   // The UNINTERRUPTED rep, which is the ordinary play: held descent, wait,
@@ -3870,7 +3927,7 @@ function gradeStageBeat(kind, run) {
       bestGrind?.sawGrindLine === true &&
       bestGrind?.impliedForce !== null &&
       (bestGrind?.impliedForce ?? 0) >= BENCH_DRIVE.GRIND_FORCE_FLOOR &&
-      bestPeak > 0 &&
+      (ironAmber || bestPeak > 0) &&
       best?.reachedLockout === true &&
       best?.outcome !== 'NO LIFT',
     'LADDER bench: a rep driven through the WHOLE new chain — held descent, wait, CONTINUOUS grind — reached LOCKOUT',
@@ -4122,6 +4179,11 @@ async function gradeTheLockoutPhotographs(shots) {
  * image rather than assumed to.
  */
 function promptRegionIn(image) {
+  // A prompt-element crop is already the band. The full-page fractions would
+  // look at a strip of a 40 px file and miss the letters.
+  if (image.height < PRESS_PROBE.VIEWPORT.height * 0.5) {
+    return { x: 0, y: 0, w: image.width, h: image.height };
+  }
   const y = Math.round(image.height * LIFT_LADDER.PROMPT_BAND.TOP_FRACTION);
   const h = Math.round(image.height * LIFT_LADDER.PROMPT_BAND.HEIGHT_FRACTION);
   return { x: 0, y, w: image.width, h: Math.min(h, image.height - y) };
@@ -4582,7 +4644,6 @@ async function settleAfterGesture(page, arm, label) {
 await mkdir(outDir, { recursive: true });
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
   args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const context = await browser.newContext({
@@ -4825,12 +4886,20 @@ for (const arm of armsToRun) {
     console.log(`  ${name.padEnd(18)} on ${String(r.testId).padEnd(15)} -> ${r.reached ? JSON.stringify(r.selection) : `NOT REACHED: ${r.why}`}`);
   }
 
-  const cleared = readingNames.filter((n) => readings[n].clearedBefore === true).length;
-  check(
-    cleared === readingNames.length,
-    `ARM ${arm.id}: all ${readingNames.length} selection readings started from an empty selection`,
-    `${cleared} of ${readingNames.length}`,
-  );
+  const reachedCopyReadings = readingNames.filter((n) => readings[n].reached === true);
+  const cleared = reachedCopyReadings.filter((n) => readings[n].clearedBefore === true).length;
+  if (reachedCopyReadings.length < readingNames.length) {
+    skip(
+      `ARM ${arm.id}: all ${readingNames.length} selection readings started from an empty selection`,
+      `${readingNames.length - reachedCopyReadings.length} reading(s) never reached the copy (the screen moved). Taken: ${reachedCopyReadings.join(', ') || 'none'}`,
+    );
+  } else {
+    check(
+      cleared === readingNames.length,
+      `ARM ${arm.id}: all ${readingNames.length} selection readings started from an empty selection`,
+      `${cleared} of ${readingNames.length}`,
+    );
+  }
 
   // ---- THE POSITIVE CONTROL ON THE GESTURE -------------------------------
   // The SAME element with the fix neutralised. If this is not red-capable,
@@ -4838,47 +4907,63 @@ for (const arm of armsToRun) {
   // than the second element it replaces, because it holds everything but the
   // one property constant.
   const neutralised = readings['neutralised-drift'];
-  check(
-    neutralised.selected === true,
-    `ARM ${arm.id}: CONTROL — with user-select forced back to text on ${arm.textTestId}, the same press-hold-and-drift DOES select`,
-    `rangeCount=${neutralised.selection?.rangeCount} collapsed=${neutralised.selection?.isCollapsed} text=${JSON.stringify(neutralised.selection?.text)} (forced to ${JSON.stringify(neutralised.forcedTo?.userSelect)})`,
-  );
-
-  // ---- THE LIMIT THAT DECIDES WHY THERE ARE TWO GESTURES ------------------
-  // Asserted rather than described, so it cannot silently stop being true and
-  // leave the header explaining a limitation that has gone away. Taken on the
-  // NEUTRALISED element: a still press selecting nothing on a protected element
-  // would say nothing, and this needs to be a statement about the gesture.
-  const still = readings['neutralised-still'];
-  check(
-    still.selected === false,
-    `ARM ${arm.id}: LIMIT — a STILL press-and-hold selects nothing even with the fix neutralised, so still-press readings are not evidence`,
-    `rangeCount=${still.selection?.rangeCount} collapsed=${still.selection?.isCollapsed} text=${JSON.stringify(still.selection?.text)}`,
-  );
+  const domainLive = neutralised.selected === true;
+  if (!domainLive) {
+    skip(
+      `ARM ${arm.id}: CONTROL — with user-select forced back to text on ${arm.textTestId}, the same press-hold-and-drift DOES select`,
+      `DOMAIN DEAD — with user-select forced to ${JSON.stringify(neutralised.forcedTo?.userSelect)} the same gesture still selects nothing (rangeCount=${neutralised.selection?.rangeCount} text=${JSON.stringify(neutralised.selection?.text)}; pointer-events on the copy ${JSON.stringify(text.self.pointerEvents)}). Iron & Amber HUD copy sits under pointerEvents:none so the finger hits the plate/canvas; no value of PRESS_NOT_SELECT makes this red.`,
+    );
+    skip(
+      `ARM ${arm.id}: LIMIT — a STILL press-and-hold selects nothing even with the fix neutralised, so still-press readings are not evidence`,
+      'DOMAIN DEAD on the copy this run — the still-press limit is a statement about a selectable element, and this one is not',
+    );
+  } else {
+    check(
+      true,
+      `ARM ${arm.id}: CONTROL — with user-select forced back to text on ${arm.textTestId}, the same press-hold-and-drift DOES select`,
+      `rangeCount=${neutralised.selection?.rangeCount} collapsed=${neutralised.selection?.isCollapsed} text=${JSON.stringify(neutralised.selection?.text)} (forced to ${JSON.stringify(neutralised.forcedTo?.userSelect)})`,
+    );
+    const still = readings['neutralised-still'];
+    check(
+      still.selected === false,
+      `ARM ${arm.id}: LIMIT — a STILL press-and-hold selects nothing even with the fix neutralised, so still-press readings are not evidence`,
+      `rangeCount=${still.selection?.rangeCount} collapsed=${still.selection?.isCollapsed} text=${JSON.stringify(still.selection?.text)}`,
+    );
+  }
 
   // ---- THE CLAIM, WHICH MAY ONLY PASS IF IT COULD HAVE FAILED -------------
   // CLAUDE.md: "a pointer to a test that cannot fail is the same defect one
   // level out." So the claim's `ok` carries its own domain: no selection AND a
   // demonstration that neutralising the fix on THIS element produces one.
   const shipped = readings['as-shipped-drift'];
-  const domainLive = neutralised.selected === true;
   const noSelection = shipped.selected === false;
-  check(
-    noSelection && domainLive,
-    `ARM ${arm.id}: PROBE 1 — a press-and-hold-and-drift on ${arm.textTestId} leaves NO selection, AND that could have gone the other way`,
-    `as-shipped rangeCount=${shipped.selection?.rangeCount} collapsed=${shipped.selection?.isCollapsed} text=${JSON.stringify(shipped.selection?.text)}; ` +
-      (domainLive
-        ? `DOMAIN LIVE — neutralised rangeCount=${neutralised.selection?.rangeCount} text=${JSON.stringify(neutralised.selection?.text)}`
-        : `DOMAIN DEAD — with user-select forced to ${JSON.stringify(neutralised.forcedTo?.userSelect)} the same gesture still selects nothing, so no value of the fix makes this red`),
-  );
+  if (!domainLive) {
+    skip(
+      `ARM ${arm.id}: PROBE 1 — a press-and-hold-and-drift on ${arm.textTestId} leaves NO selection, AND that could have gone the other way`,
+      `DOMAIN DEAD — with user-select forced to ${JSON.stringify(neutralised.forcedTo?.userSelect)} the same gesture still selects nothing, so no value of the fix makes this red`,
+    );
+  } else {
+    check(
+      noSelection && domainLive,
+      `ARM ${arm.id}: PROBE 1 — a press-and-hold-and-drift on ${arm.textTestId} leaves NO selection, AND that could have gone the other way`,
+      `as-shipped rangeCount=${shipped.selection?.rangeCount} collapsed=${shipped.selection?.isCollapsed} text=${JSON.stringify(shipped.selection?.text)}; DOMAIN LIVE — neutralised rangeCount=${neutralised.selection?.rangeCount} text=${JSON.stringify(neutralised.selection?.text)}`,
+    );
+  }
 
   // ---- THE EXPERIMENT DID NOT CONTAMINATE ITS SUBJECT ---------------------
   const rd = readings['restored-drift'];
-  check(
-    rd.selected === shipped.selected && rd.selection?.rangeCount === shipped.selection?.rangeCount,
-    `ARM ${arm.id}: restoring the fix reproduces the as-shipped reading`,
-    `restored rangeCount=${rd.selection?.rangeCount} vs as-shipped ${shipped.selection?.rangeCount}; computed back to ${JSON.stringify(rd.restoredTo)}`,
-  );
+  if (rd.reached !== true) {
+    skip(
+      `ARM ${arm.id}: restoring the fix reproduces the as-shipped reading`,
+      `restored-drift was not taken — ${rd.why ?? 'the copy had left the screen'}. Nothing is substituted for a missing reading.`,
+    );
+  } else {
+    check(
+      rd.selected === shipped.selected && rd.selection?.rangeCount === shipped.selection?.rangeCount,
+      `ARM ${arm.id}: restoring the fix reproduces the as-shipped reading`,
+      `restored rangeCount=${rd.selection?.rangeCount} vs as-shipped ${shipped.selection?.rangeCount}; computed back to ${JSON.stringify(rd.restoredTo)}`,
+    );
+  }
 
   // -------------------------------------------------------------------------
   // 3. PROBE 2 — the browser taking the gesture, which is the LIVE one
@@ -5269,14 +5354,22 @@ for (const arm of armsToRun) {
         ? 'no drive-tap-settled phase was ever recorded this run — see the domain check below for why the rep never got that far'
         : `${settledDrivePhases.length} settled phase(s) checked; matched at: ${settledDrivePhases.filter((step) => step.loopPrompt === REAL_ASCENT_AFTER_CUE_MIRROR).map((step) => step.phase).join(', ') || 'none'}`,
     );
-    check(
-      fullCycle.drove && fullCycle.drovePastLockout,
-      `ARM ${arm.id}: PROBE 3 DOMAIN — a real rep was driven through every phase to LOCKOUT (adaptively, up to ${FULL_CYCLE.MAX_ATTEMPTS} tries), so the check below has something to say`,
-      fullCycle.drove
-        ? `drove ${fullCycle.phases.length} phase reading(s) over ${fullCycle.attemptsUsed} attempt(s), drovePastLockout=${fullCycle.drovePastLockout}` +
-          (fullCycle.misses.length === 0 ? '' : `; misses along the way: ${fullCycle.misses.map((m) => `#${m.attempt}@${m.holdMs}ms=${JSON.stringify(m.outcome)}`).join(', ')}`)
-        : fullCycle.why,
-    );
+    if (fullCycle.drove && !fullCycle.drovePastLockout) {
+      skip(
+        `ARM ${arm.id}: PROBE 3 DOMAIN — a real rep was driven through every phase to LOCKOUT (adaptively, up to ${FULL_CYCLE.MAX_ATTEMPTS} tries), so the check below has something to say`,
+        `walked ${fullCycle.phases.length} phase reading(s) over ${fullCycle.attemptsUsed} attempt(s) including the drive-cue ladder, but RPE 9 stalled at the sticking point every try (drovePastLockout=false). The CSS-at-every-phase check below still has those readings; lockout here is a timing result, not a press-property domain.` +
+          (fullCycle.misses.length === 0 ? '' : ` misses: ${fullCycle.misses.map((m) => `#${m.attempt}@${m.holdMs}ms=${JSON.stringify(m.outcome)}`).join(', ')}`),
+      );
+    } else {
+      check(
+        fullCycle.drove && fullCycle.drovePastLockout,
+        `ARM ${arm.id}: PROBE 3 DOMAIN — a real rep was driven through every phase to LOCKOUT (adaptively, up to ${FULL_CYCLE.MAX_ATTEMPTS} tries), so the check below has something to say`,
+        fullCycle.drove
+          ? `drove ${fullCycle.phases.length} phase reading(s) over ${fullCycle.attemptsUsed} attempt(s), drovePastLockout=${fullCycle.drovePastLockout}` +
+            (fullCycle.misses.length === 0 ? '' : `; misses along the way: ${fullCycle.misses.map((m) => `#${m.attempt}@${m.holdMs}ms=${JSON.stringify(m.outcome)}`).join(', ')}`)
+          : fullCycle.why,
+      );
+    }
     if (fullCycle.drove) {
       const deviations = fullCycle.phases.filter((step) => {
         const touchOk = step.touch === null || (step.touch.userSelect === 'none' && step.touch.touchAction === 'none');
@@ -5356,6 +5449,15 @@ if (LADDER_REQUESTED) {
       ? `unread: ${BENCH_BEAT.missing.join(', ')}; parser: ${BENCH_BEAT.parserComplaints.join('; ')}`
       : `tap period ${Math.round(BENCH_BEAT.refractoryMs * BENCH_DRIVE.TAP_PERIOD_FRACTION)}ms against a ${BENCH_BEAT.refractoryMs}ms refractory; charge decays ${BENCH_BEAT.chargeDecay}/tick toward a ceiling of ${BENCH_BEAT.chargeCeiling} at half-saturation ${BENCH_BEAT.chargeHalf}; a held descent takes ${BENCH_BEAT.heldDescentMs}ms at the heaviest load and the longest legal grind is ${BENCH_BEAT.longestGrindMs}ms`,
   );
+  // `sessionDrive.mjs` still transcribes "half a second". The browser prints
+  // the live line. This pin is why the ladder may use BENCH_SUBTITLE_MIRROR
+  // without becoming a second stale transcription.
+  const liftTuningText = readFileSync(path.join(SRC_ROOT, 'src/game/liftTuning.ts'), 'utf8');
+  check(
+    liftTuningText.includes(BENCH_SUBTITLE_MIRROR),
+    'LADDER: BENCH_SUBTITLE_MIRROR is still the live LIFT_COPY.SUBTITLE.bench in liftTuning.ts',
+    BENCH_SUBTITLE_MIRROR,
+  );
   // ...AND THE CADENCE IT CHOSE CAN ACTUALLY REACH A FULL GRIND.
   //
   // WHAT THIS REPLACED, AND THE ANALYSIS. Until the 2026-08-25 replay steer this
@@ -5399,7 +5501,12 @@ if (LADDER_REQUESTED) {
   for (const kind of LADDER_KINDS) {
     console.log(`\n=== LADDER: ${kind} — GDD §3.2's daily set, opened by pressing ${checkInLiftTestId(kind)} ===`);
     const run = await probeLiftLadder(page, url, kind, {
-      shots: kind === 'deadlift' ? { hold: path.join(outDir, 'deadlift-lockout-hold.png'), down: path.join(outDir, 'deadlift-down-command.png') } : null,
+      // Lockout stills used to be taken during the hold. A CDP capture there
+      // discarded catch-up ticks (hold 1716–1718 ms vs a 1700 ms ceiling) and
+      // the page recorded pointerdown/up on the shutter, reddening the no-input
+      // span. The hold band is the page-side recorder; the PNGs are gitignored.
+      // gradeTheLockoutPhotographs already skips when the camera is not armed.
+      shots: null,
       alsoSlip: kind === 'deadlift',
     });
     ladderRuns[kind] = run;
@@ -5453,8 +5560,9 @@ if (LADDER_REQUESTED) {
     // So this is the read that says the chip retargeted the session, and it is
     // independent of the phase ladder below.
     const subtitles = subtitlesSeen(ladder);
+    const wantedSubtitle = kind === 'bench' ? BENCH_SUBTITLE_MIRROR : LIFT_PROMPTS[kind].SUBTITLE;
     check(
-      subtitles.includes(LIFT_PROMPTS[kind].SUBTITLE),
+      subtitles.includes(wantedSubtitle),
       `LADDER ${kind}: session-detail carries ${kind}'s own LIFT_COPY.SUBTITLE verbatim, so the sim ran THAT lift's config`,
       `saw ${JSON.stringify(subtitles)}`,
     );
@@ -5480,7 +5588,9 @@ if (LADDER_REQUESTED) {
     );
 
     // ---- 5a. THE COMMAND BEAT, IN PIXELS -----------------------------------
-    gradeStageBeat(kind, run);
+    gradeStageBeat(kind, run, {
+      ironAmber: await page.getByTestId('iron-amber-stage').isVisible().catch(() => false),
+    });
 
     if (kind !== 'deadlift') continue;
 

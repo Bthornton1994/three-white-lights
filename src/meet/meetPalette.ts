@@ -38,6 +38,15 @@ import { LIFT_PALETTE } from '../lift/liftPalette';
 export const MEET_PALETTE = Object.freeze({
   ...LIFT_PALETTE,
 
+  ESPRESSO: '#14100d',
+  ESPRESSO_EDGE: '#3a2a1c',
+  AMBER: '#c9a15b',
+  AMBER_INK: '#1a1008',
+  IVORY: '#f3ead8',
+
+  TEXT: '#f3ead8',
+  TEXT_DIM: '#c4b49a',
+
   /** The three lights. */
   LIGHT_WHITE: '#f4f6fb',
   LIGHT_WHITE_EDGE: '#ffffff',
@@ -70,11 +79,15 @@ export const MEET_PALETTE = Object.freeze({
   BOMB_DIM: '#6b7488',
 
   /** The recap. */
-  TOTAL: '#f4f6fb',
+  TOTAL: '#f3ead8',
   PR: '#ffd75e',
-  DIVIDER: '#242b39',
-  ACTION: '#38445c',
-  ACTION_TEXT: '#e8ecf4',
+  DIVIDER: '#3a2a1c',
+  ACTION: '#c9a15b',
+  ACTION_TEXT: '#1a1008',
+
+  /** Iron & Amber facility chrome around meet-day beats that are not the live attempt. */
+  CARD: '#14100d',
+  CARD_EDGE: '#3a2a1c',
 
   /** The attempt board's cells. */
   BOARD_GOOD: '#1e3324',

@@ -179,6 +179,11 @@ export interface StandingMeetRecord {
  * One named competitor on the flight. Day-max is the load their attempts are
  * planned from; published kg still comes out of `meet.ts`.
  */
+/** Make/miss for one lift's three attempts, in attempt order. */
+export type FieldAttemptGoods = readonly [boolean, boolean, boolean];
+
+const LIFT_MADE: FieldAttemptGoods = Object.freeze([true, true, true]);
+
 export interface FieldLifterSpec {
   readonly id: string;
   readonly name: string;
@@ -189,48 +194,82 @@ export interface FieldLifterSpec {
    */
   readonly lot: number;
   readonly dayMaxKg: Readonly<Record<LiftKind, number>>;
+  /**
+   * Authored make/miss per lift. The posted class dump is an attempt grid,
+   * not a wall of makes; these flags are the local flight's card, not a
+   * physiology model. Untuned. Mira Quill is a full card so her printed
+   * 190 / 125 / 230 stay put. Jon Harrow's bench third stays a miss.
+   * After a missed second the third repeats that weight — the federated
+   * retake, not an automatic jump.
+   */
+  readonly attemptGood: Readonly<Record<LiftKind, FieldAttemptGoods>>;
 }
 
 /**
  * Five named lifters on the local platform. Day-maxes sit around a first-meet
  * lifter (starting e1RM 180/120/220) so a third deadlift can move a place.
  * Names are fictional.
+ *
+ * Bodyweights make the player's class on this sheet. Men's 93 here is
+ * ≤93.00 (`WEIGHT_CLASSES_KG.male` in resultCard.ts). A row over that limit
+ * is a 105 kg lifter printed in MEN'S RAW OPEN 93.
  */
 export const MEET_FIELD_FIXTURE: readonly FieldLifterSpec[] = Object.freeze([
   Object.freeze({
     id: 'ashford',
-    name: 'M. ASHFORD',
-    bodyweightKg: 93.1,
+    name: 'Cal Wether',
+    bodyweightKg: 92.9,
     lot: 1,
     dayMaxKg: Object.freeze({ squat: 200, bench: 130, deadlift: 240 }),
+    attemptGood: Object.freeze({
+      squat: Object.freeze([true, false, true]) as FieldAttemptGoods,
+      bench: LIFT_MADE,
+      deadlift: Object.freeze([true, true, false]) as FieldAttemptGoods,
+    }),
   }),
   Object.freeze({
     id: 'quill',
-    name: 'S. QUILL',
+    name: 'Mira Quill',
     bodyweightKg: 89.6,
     lot: 2,
     dayMaxKg: Object.freeze({ squat: 190, bench: 125, deadlift: 230 }),
+    attemptGood: Object.freeze({ squat: LIFT_MADE, bench: LIFT_MADE, deadlift: LIFT_MADE }),
   }),
   Object.freeze({
     id: 'harrow',
-    name: 'J. HARROW',
+    name: 'Jon Harrow',
     bodyweightKg: 92.0,
     lot: 4,
     dayMaxKg: Object.freeze({ squat: 180, bench: 120, deadlift: 220 }),
+    attemptGood: Object.freeze({
+      squat: Object.freeze([true, false, true]) as FieldAttemptGoods,
+      bench: Object.freeze([true, true, false]) as FieldAttemptGoods,
+      deadlift: LIFT_MADE,
+    }),
   }),
   Object.freeze({
     id: 'pembroke',
-    name: 'R. PEMBROKE',
+    name: 'Rex Pembroke',
     bodyweightKg: 87.4,
     lot: 5,
     dayMaxKg: Object.freeze({ squat: 170, bench: 110, deadlift: 205 }),
+    attemptGood: Object.freeze({
+      squat: LIFT_MADE,
+      bench: Object.freeze([true, false, true]) as FieldAttemptGoods,
+      deadlift: Object.freeze([true, true, false]) as FieldAttemptGoods,
+    }),
   }),
   Object.freeze({
     id: 'linn',
-    name: 'T. LINN',
-    bodyweightKg: 94.8,
+    name: 'Ned Linn',
+    bodyweightKg: 90.4,
     lot: 6,
     dayMaxKg: Object.freeze({ squat: 155, bench: 100, deadlift: 185 }),
+    attemptGood: Object.freeze({
+      squat: Object.freeze([true, false, true]) as FieldAttemptGoods,
+      bench: Object.freeze([true, true, false]) as FieldAttemptGoods,
+      deadlift: Object.freeze([true, true, false]) as FieldAttemptGoods,
+    }),
   }),
 ]);
 
@@ -326,8 +365,10 @@ export const MEET_TUNING = Object.freeze({
   /**
    * How fixture NPCs plan attempts. Cheaper than the player's mechanic; the
    * published kg still comes out of `meet.ts`. Fractions of day-max, rounded
-   * onto the declaration grid. A third-attempt miss is a seeded chance so a
-   * flight is not a wall of identical makes.
+   * onto the declaration grid. Make/miss on this local flight is authored on
+   * each spec (`attemptGood`) so the posted class dump is an attempt grid.
+   * MISS_THIRD_CHANCE / MISS_SEED_STRIDE stay named for a later draw; this
+   * fixture does not read them.
    */
   FIELD: Object.freeze({
     OPENER_FRAC: 0.9,
@@ -352,6 +393,8 @@ export const MEET_TUNING = Object.freeze({
    *
    *   WALKOUT   lightest. The hall IS the beat. There are three short lines over
    *             it and nothing to read carefully.
+   *   BOOKEND   paperwork and endings over the emptied hall (`lifter={null}`).
+   *             The still has to read — CHOICE would hide it. Untuned.
    *   JUDGING   middle. The three lamps have to be the brightest thing on the
    *             screen, and the room is what they are hanging in.
    *   CHOICE    heaviest. GDD §6.3's screen is a decision with two cards and a
@@ -362,6 +405,7 @@ export const MEET_TUNING = Object.freeze({
    */
   HALL: Object.freeze({
     WALKOUT_SCRIM: 0.12,
+    BOOKEND_SCRIM: 0.4,
     JUDGING_SCRIM: 0.46,
     CHOICE_SCRIM: 0.8,
   }),
@@ -1767,6 +1811,70 @@ export const MEET_LAYOUT = Object.freeze({
 
   /** Extra scroll pad so the Create action stays reachable above a phone keyboard. */
   LIFTER_KEYBOARD_CLEARANCE: 280,
+
+  /** First-paint pad on Create — CAREER_PAD_TOP is too tall once the gym card wraps the form. */
+  LIFTER_CREATE_PAD_TOP: 16,
+
+  /** Two-up federation chooser on a 390-wide phone. Untuned (GDD §12.1). */
+  FEDERATION_CARD_MIN_W: 148,
+
+  /**
+   * Wash over the Iron & Amber gym still on Create / My Lifter so the form
+   * stays readable. Same job as SESSION_LAYOUT.BRIEFING_SCRIM; authored here
+   * because this screen lives under meet chrome. Untuned (GDD §12.1).
+   */
+  LIFTER_ROOM_SCRIM: 0.45,
+
+  /**
+   * Iron & Amber Meet Day HUD — same overlay system as the training set.
+   * Untuned (GDD §12.1). HALL_WALK_SHIFT is CSS pixels of plate pan per
+   * sprite-sheet bodyDxPx so the walk-out still moves after sprites leave.
+   */
+  HALL_HUD_HEIGHT: 64,
+  HALL_HUD_SCRIM: 0.42,
+  HALL_HUD_PAD: 12,
+  HALL_COMMAND_HEIGHT: 180,
+  HALL_COMMAND_SCRIM: 0.5,
+  HALL_WALK_SHIFT: 8,
+  HALL_RISE_ZOOM: 0.02,
+  HALL_LOAD_ZOOM: 0.01,
+  ATTEMPT_DETAIL_LINES: 4,
+
+  /**
+   * Compact espresso card over the emptied hall on weigh-in, openers,
+   * bomb-out and recap. Same job as SESSION_LAYOUT.CHECK_IN_DRAWER_MAX_HEIGHT:
+   * the still stays the majority of 390×844. Untuned (GDD §12.1).
+   *
+   * CARD + FOOT must stay under half of 844 so the emptied hall is the majority.
+   * The sport slot (openers' three lifts, recap boards + DOTS/place) is pinned
+   * above the gold action so first paint cannot crop the meet off.
+   */
+  BOOKEND_CARD_MAX_HEIGHT: 340,
+  BOOKEND_FOOT_CLEARANCE: 80,
+  BOOKEND_CARD_PAD: 12,
+  BOOKEND_CARD_GAP: 8,
+  /**
+   * Scrollable copy when the card has no pinned sport (weigh-in, bomb-out).
+   * Untuned. `BUTTON_HEIGHT` plus pad and gap sit below this inside the card.
+   */
+  BOOKEND_SCROLL_MAX_HEIGHT: 210,
+  /**
+   * Scrollable copy when sport is pinned (openers, recap). Flavour and
+   * "why it matters" may sit under this; the lifts may not. Untuned.
+   */
+  BOOKEND_COPY_SCROLL_HEIGHT: 46,
+  /**
+   * Pinned sport band: three opener rows, or recap boards + DOTS/place.
+   * Untuned. Must cover `LIFT_ORDER.length` rows of `BOOKEND_OPENER_ROW_HEIGHT`
+   * and of `BOARD_CELL_H`.
+   */
+  BOOKEND_SPORT_MAX_HEIGHT: 224,
+  /** Recap total inside the bookend, smaller than the full-screen numeral. Untuned. */
+  BOOKEND_TOTAL_FONT: 30,
+  /** Recap DOTS/place row inside the sport band. Untuned. */
+  BOOKEND_SUMMARY_HEIGHT: 40,
+  /** Opener rows inside the bookend card. Untuned. */
+  BOOKEND_OPENER_ROW_HEIGHT: 48,
 
   // THE WALKOUT'S BAR GRAPHIC USED TO BE HERE, and it is gone rather than
   // unused. `BAR_W / BAR_H / PLATE_W / PLATE_GAP / PLATE_MAX_H / PLATE_MIN_H`

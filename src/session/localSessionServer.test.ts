@@ -115,14 +115,18 @@ describe('the stand-in server port', () => {
     //
     // SIX, SINCE MEET DAY AND THE CAREER WERE WIRED TO THE SAME ROW.
     // `meetBrief` and `recordMeetResult` are the meet half and
-    // `chooseFederation` is the career's; the count is pinned rather than
-    // bounded so that a seventh — in particular a `record` getter, which is
-    // the only method that could put the bypass back — is a failure and not a
-    // silent widening.
+    // `chooseFederation` is the career's; A2 added the four identity methods.
+    // The count is pinned rather than bounded so that an eleventh — in particular
+    // a `record` getter, which is the only method that could put the bypass back —
+    // is a failure and not a silent widening.
     const port = localSessionServer({ record: storedRecord(), sleep: instantly });
     expect(Object.keys(port).sort()).toEqual([
       'chooseFederation',
+      'createProfile',
+      'editProfileBodyweight',
+      'editProfileName',
       'meetBrief',
+      'openingProfile',
       'openingSnapshot',
       'recordMeetResult',
       'recordTrainingSession',

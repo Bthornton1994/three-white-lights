@@ -67,7 +67,7 @@ const BLANK = '.';
  * NEAREST NEIGHBOUR BY CONSTRUCTION. GDD §7.1 requires it and there is no
  * interpolation to get wrong here: each source pixel becomes a `scale x scale`
  * block. `scale` is rounded and floored at 1 for the same reason
- * `ResultCardView` rounds its own — a fractional scale makes some source pixels
+ * `LifterSpriteView` rounds its own — a fractional scale makes some source pixels
  * two device pixels wide and some three, and that shimmer is the fastest way to
  * make pixel art look like a photograph of pixel art.
  */
@@ -427,7 +427,7 @@ export function renderCharacterSelect(catalogue: LicensingCatalogue): IndexGrid 
  *
  * Floors at 1 rather than going fractional: a layout that needs a size between
  * two integer scales letterboxes the smaller one, which is the rule
- * `ResultCardView` and `LifterSpriteView` already follow (GDD §7.1).
+ * `LifterSpriteView` already follows (GDD §7.1).
  */
 export function scaleToFit(sheetW: number, available: number): number {
   return Math.max(1, Math.min(LICENSING_SCREEN.MAX_SCALE, Math.floor(available / sheetW)));

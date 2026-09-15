@@ -298,6 +298,24 @@ export const CUT_IN_ART = Object.freeze({
 
   /** The coach is a different face from the lifter's. Also a placeholder id. */
   COACH_IDENTITY_ID: 'teodor-kessling',
+
+  /**
+   * Player-facing interrupt still (A-VIS-03). Owned Iron & Amber JPEGs, not
+   * the 16-bit Tier 3 grid. GDD §7.1 stays documented (A-DES-01); the
+   * overlay leaves the pixel-portrait language. Captions still come from
+   * `tier3Of`. Filenames under `assets/iron-amber/`. Untuned.
+   *
+   * bomb-out is the emptied meet hall, not the daily-rest garage. GDD §7.2's
+   * somber counterpart is leftover plates and empty judge chairs after a
+   * meet that ended with nothing on the board — not a crop of the rest-day
+   * rack, driveway, and crate. Existing owned still; do not mint one.
+   */
+  STILL: Object.freeze<Record<CutInMoment, string>>({
+    'third-attempt-walkout': 'meet-squat-walk-third.jpg',
+    'personal-record': 'squat-drive.jpg',
+    'bomb-out': 'meet-empty.jpg',
+    'coach-heavy-set': 'squat-brace.jpg',
+  }),
 });
 
 /**
@@ -424,6 +442,17 @@ export const CUT_IN_LAYOUT = Object.freeze({
   HINT_OPACITY: 0.55,
   /** The whole-number upscale ceiling for the cut-in grid inside the overlay. */
   MAX_SCALE: 3,
+  /**
+   * Iron & Amber still well (A-VIS-03). Tall enough for the athlete, short
+   * enough that the espresso card does not become a second full-screen form.
+   * Untuned (GDD §12.1).
+   */
+  STILL_H: 210,
+  STILL_RADIUS: 10,
+  CARD_RADIUS: 14,
+  CARD_PAD: 14,
+  IDENTITY_FONT: 13,
+  CARD_EDGE: 1,
 });
 
 /**

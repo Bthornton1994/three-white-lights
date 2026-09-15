@@ -86,15 +86,17 @@
  * screen below it does not show would be the same class of lie as showing a
  * projection as confirmed.
  *
- * There is still no cut-in ART (§7.2, GDD §11): what mounts is `cutInArt.ts`'s
- * own composition around the placeholder Tier 3 DRAWING the licensing table
- * already holds, read through §7.3's surface witness. It is not the shop panel:
- * GDD §7.2 rules on that by name.
+ * Licensed cut-in ART is still unbuilt (GDD §7.1 documented only, A-DES-01;
+ * §7.2, GDD §11). The player-facing interrupt shows an owned Iron & Amber
+ * plate; identity copy still comes through §7.3's surface witness. It is not
+ * the shop panel: GDD §7.2 rules on that by name.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
 import Animated, {
+  ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -114,6 +116,7 @@ import type { ProgressionReading } from '../game/progression';
 import type { SessionCloseOut } from '../game/session';
 import { useOfferCutIn } from '../cutin/CutInHost';
 import { SESSION_PALETTE } from './sessionPalette';
+import { IronAmberCard, IronAmberRoom } from './IronAmberRoom';
 
 const L = SESSION_LAYOUT;
 
@@ -177,7 +180,10 @@ function Row({
   useEffect(() => {
     shown.value = withDelay(
       index * SESSION_TUNING.CLOSE_OUT_ROW_STAGGER_MS,
-      withTiming(1, { duration: SESSION_TUNING.CLOSE_OUT_ROW_FADE_MS }),
+      withTiming(1, {
+        duration: SESSION_TUNING.CLOSE_OUT_ROW_FADE_MS,
+        reduceMotion: ReduceMotion.System,
+      }),
     );
   }, [index, shown]);
   const style = useAnimatedStyle(() => ({ opacity: shown.value }));
@@ -301,7 +307,13 @@ export function CloseOutView({
       : SESSION_PALETTE.MISS;
 
   return (
-    <View style={styles.root} testID="session-close-out">
+    <IronAmberRoom
+      testID="session-close-out"
+      gymTestID="iron-amber-close-out-gym"
+      liftKind={closeOut.lift}
+    >
+      <IronAmberCard dense>
+      <View style={styles.stack}>
       <Row index={SESSION_TUNING.CLOSE_OUT_ROW_ORDER.CALL}>
         <Text style={[styles.headline, { color: headlineColour }]} testID="close-out-headline">
           {closeOut.headline}
@@ -321,20 +333,22 @@ export function CloseOutView({
             and a copy edit could turn a wrong opener into a right one. The
             screen renders the label exactly as before.
           */}
-          <Text style={styles.statLabel} testID={`close-out-e1rm-lift-${e1rm.lift}`}>
-            {`${SESSION_COPY.LIFT_LABEL[e1rm.lift]} ${SESSION_COPY.CLOSE_OUT_E1RM_LABEL}`}
-          </Text>
-          <Provisional certainty={e1rm.reading.kind} tagTestID="close-out-e1rm-tag">
-            <View style={styles.numberRow}>
-              <Text
-                style={[styles.bigNumber, isPr ? styles.bigNumberPr : null]}
-                testID="close-out-e1rm"
-              >
-                {shownE1rm.toFixed(SESSION_TUNING.E1RM_DISPLAY_DECIMALS)}
-              </Text>
-              <Text style={styles.unit}>kg</Text>
-            </View>
-          </Provisional>
+          <View style={styles.payoff}>
+            <Text style={styles.statLabel} testID={`close-out-e1rm-lift-${e1rm.lift}`}>
+              {`${SESSION_COPY.LIFT_LABEL[e1rm.lift]} ${SESSION_COPY.CLOSE_OUT_E1RM_LABEL}`}
+            </Text>
+            <Provisional certainty={e1rm.reading.kind} tagTestID="close-out-e1rm-tag">
+              <View style={styles.numberRow}>
+                <Text
+                  style={[styles.bigNumber, isPr ? styles.bigNumberPr : null]}
+                  testID="close-out-e1rm"
+                >
+                  {shownE1rm.toFixed(SESSION_TUNING.E1RM_DISPLAY_DECIMALS)}
+                </Text>
+                <Text style={styles.unit}>kg</Text>
+              </View>
+            </Provisional>
+          </View>
         </Row>
       ) : null}
 
@@ -354,6 +368,7 @@ export function CloseOutView({
 
       <View style={styles.divider} />
 
+      <View style={styles.strip}>
       <Row index={SESSION_TUNING.CLOSE_OUT_ROW_ORDER.STREAK}>
         <Provisional
           certainty={readings.streakDays.kind}
@@ -377,8 +392,9 @@ export function CloseOutView({
           {closeOut.barSpeedText}
         </Text>
       </Row>
+      </View>
 
-      <Pressable
+      <MotionPressable
         style={styles.action}
         accessibilityRole="button"
         onPress={closeOut.canPropose ? onDone : onRetry}
@@ -387,33 +403,42 @@ export function CloseOutView({
         <Text style={styles.actionLabel}>
           {closeOut.canPropose ? SESSION_COPY.CLOSE_OUT_DONE : SESSION_COPY.CLOSE_OUT_RETRY}
         </Text>
-      </Pressable>
-    </View>
+      </MotionPressable>
+      </View>
+      </IronAmberCard>
+    </IronAmberRoom>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: L.SCREEN_PAD,
-    gap: L.STAT_ROW_GAP,
+  stack: {
+    gap: L.DRAWER_STAT_GAP,
+    alignItems: 'stretch',
   },
   row: {
     alignItems: 'center',
-    gap: L.ROW_GAP / 2,
+    gap: L.DRAWER_STAT_GAP / 2,
+  },
+  payoff: {
+    alignItems: 'center',
+    gap: L.DRAWER_STAT_GAP / 2,
+  },
+  strip: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-evenly',
+    gap: L.DRAWER_STRIP_GAP,
   },
   provisional: {
     alignItems: 'center',
-    gap: L.ROW_GAP / 2,
+    gap: L.DRAWER_STAT_GAP / 2,
   },
   tag: {
     fontSize: L.LABEL_FONT,
     letterSpacing: L.LETTER_SPACING,
   },
   headline: {
-    fontSize: L.HEADLINE_FONT,
+    fontSize: L.CHECK_IN_TITLE_FONT,
     fontWeight: '700',
     letterSpacing: L.LETTER_SPACING,
   },
@@ -425,12 +450,13 @@ const styles = StyleSheet.create({
   numberRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: L.ROW_GAP / 2,
+    gap: L.DRAWER_STAT_GAP / 2,
   },
   bigNumber: {
     color: SESSION_PALETTE.TEXT,
-    fontSize: L.BIG_NUMBER_FONT,
+    fontSize: L.DRAWER_NUMBER_FONT,
     fontWeight: '700',
+    maxHeight: L.BIG_NUMBER_FONT,
   },
   bigNumberPr: {
     color: SESSION_PALETTE.PR,
@@ -438,7 +464,7 @@ const styles = StyleSheet.create({
   unit: {
     color: SESSION_PALETTE.TEXT_DIM,
     fontSize: L.UNIT_FONT,
-    paddingBottom: L.ROW_GAP,
+    paddingBottom: L.DRAWER_STAT_GAP / 2,
   },
   divider: {
     height: L.DIVIDER_HEIGHT,
@@ -462,6 +488,7 @@ const styles = StyleSheet.create({
   },
   action: {
     alignSelf: 'stretch',
+    marginTop: L.STAT_ROW_GAP / 2,
     height: L.BUTTON_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',

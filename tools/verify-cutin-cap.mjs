@@ -200,7 +200,7 @@
 import { chromium } from 'playwright';
 import { gateDevServer } from './devServerSentinel.mjs';
 import { armFreshLifterPerBoot } from './freshLifterBoundary.mjs';
-import { enterMeetFromCalendar } from './enterMeetFromCalendar.mjs';
+import { enterMeetFromCalendar, completeCreateIfNeeded } from './enterMeetFromCalendar.mjs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -216,6 +216,7 @@ import {
   stringInSource,
 } from './readTuning.mjs';
 import { SESSION_DRIVE, SESSION_PROMPTS, adaptDepthSearch, freshDepthSearch } from './sessionDrive.mjs';
+import { driveMeetToItsEnd } from './meetDrive.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -451,7 +452,13 @@ const capturedFrom = (() => {
    * standing there.
    */
   record.instrument = Object.fromEntries(
-    ['verify-cutin-cap.mjs', 'sessionDrive.mjs', 'readTuning.mjs', 'enterMeetFromCalendar.mjs'].map((name) => {
+    [
+      'verify-cutin-cap.mjs',
+      'sessionDrive.mjs',
+      'meetDrive.mjs',
+      'readTuning.mjs',
+      'enterMeetFromCalendar.mjs',
+    ].map((name) => {
       const file = path.join(path.dirname(fileURLToPath(import.meta.url)), name);
       try {
         return [name, createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16)];
@@ -601,7 +608,6 @@ const RECAP_SETTLE_MS = latencyMs + CAP_DRIVE.BEAT_TIMEOUT_MS;
 await mkdir(outDir, { recursive: true });
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
   args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: dpr });
@@ -821,18 +827,77 @@ async function effectiveOpacity(id) {
  */
 const cutInShots = [];
 let currentLeg = 0;
+let shutterBusy = false;
+
+/**
+ * Presence as the in-page recorder already knows it, not only as `read()`
+ * happened to sample. `read().cutIn` and `__cutInCap.up` are the same
+ * selector; the difference is WHEN they are asked. The recorder is asked
+ * every 16ms. `read()` is asked when a driver is between its own waits.
+ */
+async function overlayIsUp() {
+  return page
+    .evaluate(() => {
+      const rec = window.__cutInCap;
+      const node = document.querySelector('[data-testid="cut-in"]');
+      return (rec !== undefined && rec.up === true) || node !== null;
+    })
+    .catch(() => false);
+}
+
 async function maybePhotographCutIn(state) {
   if (cutInShots.length >= CAP_DRIVE.CUT_IN_SHOTS_MAX) return false;
-  if (!state.cutIn) return false;
-  await page.waitForTimeout(enterMs);
-  const still = await read();
-  if (!still.cutIn) return true;
-  const artOpacity = await effectiveOpacity('cut-in-art');
-  const lineOpacity = await effectiveOpacity('cut-in-line');
-  const file = `cut-in-leg-${currentLeg}.png`;
-  await page.screenshot({ path: path.join(outDir, file) });
-  cutInShots.push({ file, leg: currentLeg, artOpacity, lineOpacity, afterEnterMs: enterMs });
-  return true;
+  if (shutterBusy) return false;
+  const up = state.cutIn === true || (await overlayIsUp());
+  if (!up) return false;
+  shutterBusy = true;
+  try {
+    await page.waitForTimeout(enterMs);
+    const still = await read();
+    const recorderUp = await overlayIsUp();
+    if (!still.cutIn && !recorderUp) return true;
+    const artOpacity = await effectiveOpacity('cut-in-art');
+    const lineOpacity = await effectiveOpacity('cut-in-line');
+    const file = `cut-in-leg-${currentLeg}.png`;
+    await page.screenshot({ path: path.join(outDir, file) });
+    cutInShots.push({ file, leg: currentLeg, artOpacity, lineOpacity, afterEnterMs: enterMs });
+    return true;
+  } finally {
+    shutterBusy = false;
+  }
+}
+
+/**
+ * Photograph while another driver owns the page.
+ *
+ * Leg 1 (`intent: 'make'`) calls `driveMeetToItsEnd` from `meetDrive.mjs`.
+ * That file has no shutter. Photographing at the top of THIS file's
+ * `driveMeet` only covers the miss / bomb-out legs. On a sitting whose grant
+ * is the third-attempt walk-out, the overlay lives entirely inside the shared
+ * driver — the in-page recorder logs a 1.7s span, and Node's `read()` never
+ * runs while it is up. That is the "no frame was taken" red after 97ea5ebc.
+ *
+ * The loop uses a Node timer, not `page.waitForTimeout`, so it can fire
+ * `evaluate` / `screenshot` while the shared driver is between mouse events.
+ */
+async function withCutInShutter(run) {
+  let stop = false;
+  const loop = (async () => {
+    while (!stop) {
+      if (await overlayIsUp()) {
+        await maybePhotographCutIn({ cutIn: true });
+      }
+      await new Promise((resolve) => {
+        setTimeout(resolve, CAP_DRIVE.POLL_MS);
+      });
+    }
+  })();
+  try {
+    return await run();
+  } finally {
+    stop = true;
+    await loop;
+  }
 }
 
 /**
@@ -862,7 +927,7 @@ async function until(done, timeoutMs) {
     if (await maybePhotographCutIn(state)) state = await read();
     if (done(state)) return { ok: true, state, ms: Date.now() - started };
     if (Date.now() - started >= timeoutMs) return { ok: false, state, ms: Date.now() - started };
-    await page.waitForTimeout(CAP_DRIVE.POLL_MS);
+    await settleWatching(CAP_DRIVE.POLL_MS);
   }
 }
 
@@ -941,14 +1006,14 @@ async function playOneAttempt(intent, holdMsIn) {
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 
   await page.mouse.down();
-  await page.waitForTimeout(intent === 'miss' ? CAP_DRIVE.MISS_RELEASE_MS : holdMsIn);
+  await settleWatching(intent === 'miss' ? CAP_DRIVE.MISS_RELEASE_MS : holdMsIn);
   await page.mouse.up();
 
   const drive = await until((s) => saying(s, SESSION_PROMPTS.DRIVE) || !s.attempt, CAP_DRIVE.ASCENT_TIMEOUT_MS);
   if (saying(drive.state, SESSION_PROMPTS.DRIVE)) {
     await page.mouse.down();
     await until((s) => !s.attempt, CAP_DRIVE.ASCENT_TIMEOUT_MS);
-    await page.waitForTimeout(CAP_DRIVE.DRIVE_HOLD_EXTRA_MS);
+    await settleWatching(CAP_DRIVE.DRIVE_HOLD_EXTRA_MS);
     await page.mouse.up();
   }
 
@@ -977,6 +1042,12 @@ async function driveMeet(intent, searchIn) {
   let search = searchIn;
   for (;;) {
     const state = await read();
+    // Photograph before branching. A walk-out interrupt that un-mounts
+    // `meet-walkout` would otherwise fall through to the 40ms wait at the
+    // bottom of this loop and never enter `until`. Necessary for THIS
+    // driver; not sufficient for leg 1, which never enters this function
+    // (see `withCutInShutter`).
+    await maybePhotographCutIn(state);
 
     if (meetIsOver(state)) {
       const settled = await until((s) => s.recap || s.refused || s.bombed, RECAP_SETTLE_MS);
@@ -1046,7 +1117,7 @@ async function driveMeet(intent, searchIn) {
       if (intent === 'make') search = adaptFromMeet(search, rep.feedback);
       continue;
     }
-    await page.waitForTimeout(CAP_DRIVE.POLL_MS);
+    await settleWatching(CAP_DRIVE.POLL_MS);
   }
 }
 
@@ -1170,6 +1241,10 @@ let teardowns = 0;
 let drive = null;
 
 await page.goto(url, { waitUntil: 'load' });
+const created = await completeCreateIfNeeded(page);
+if (created.why) {
+  check(false, "the app opens on GDD §3.2's daily session with no query string", created.why);
+}
 const booted = await until((s) => s.checkIn, CAP_DRIVE.BOOT_TIMEOUT_MS);
 check(booted.ok, "the app opens on GDD §3.2's daily session with no query string", `search=${JSON.stringify(booted.state.search)} after ${booted.ms}ms`);
 check(booted.state.search === '', 'CONTROL: the address bar carries no query string — this is the played arm, not a debug frame', JSON.stringify(booted.state.search));
@@ -1225,8 +1300,17 @@ if (booted.ok) {
     check(onMeet.ok, `leg ${leg.n}: meet day was reached with a finger, not a URL — ${leg.why}`, `search=${JSON.stringify(onMeet.state.search)}`);
     if (!onMeet.ok) break;
 
-    drive = await driveMeet(leg.intent, search);
-    search = drive.search;
+    // MAKE uses the shared meet driver (per-lift holds, brace elapse, cue
+    // taps). The local hold-and-release loop bombs a squat in three tries on
+    // this surface; `verify-meet-sound` already proved the shared driver can
+    // finish attempts here. MISS stays the 80ms release — that is the robot
+    // being deliberately bad so GDD §6.3's bomb-out is guaranteed.
+    drive = await withCutInShutter(() =>
+      leg.intent === 'make'
+        ? driveMeetToItsEnd(page, { recapSettleMs: RECAP_SETTLE_MS })
+        : driveMeet(leg.intent, search),
+    );
+    if (drive.search !== undefined) search = drive.search;
     legRecords.push({
       n: leg.n,
       intent: leg.intent,

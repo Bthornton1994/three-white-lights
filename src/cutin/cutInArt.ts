@@ -3,8 +3,9 @@
  *
  * PURE: zero React, zero I/O. It returns an `IndexGrid` of palette indices, the
  * same currency `renderResultCard.ts`, `renderPanels.ts` and `renderLifterFrame`
- * all trade in, and `CutInView.tsx` is the only thing that turns one into
- * pixels. That split is the house rule and this file does not invent a second.
+ * all trade in. The player-facing interrupt (`CutInView.tsx`) shows an Iron &
+ * Amber still; this module remains the §7.3 table witness and the grid tests.
+ * That split is the house rule and this file does not invent a second.
  *
  * ===========================================================================
  * THERE IS NO CUT-IN ART IN THIS REPOSITORY AND THIS FILE DOES NOT DRAW ANY

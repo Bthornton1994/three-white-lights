@@ -222,6 +222,34 @@ export function previewContext(): MeetDayContext {
   };
 }
 
+/**
+ * The name the shareable-sheet debug preview prints.
+ *
+ * `MEET_ENTRY.name` stays `A. LIFTER` — A2 freeze: that constant is the
+ * debug/test fixture, not a produced identity. GDD §12.3 pins it as a
+ * job-title placeholder so nobody mistakes the fixture for a person.
+ *
+ * GDD §6.5 / §12.2 Result card bar is a published table a weekly reader
+ * A/Bs against a real federation sheet. A first-place row that prints
+ * that job title fails the bar. Career Meet's produced identity is the
+ * A2 seam (`kilogramMeetEntryFrom`). Create Lifter persistence tests
+ * still use an initial-plus-surname spelling; this overlay is the
+ * given name a published meet table would print. Lot, bodyweight, sex,
+ * division, and equipment stay `MEET_ENTRY` so class and totals do not
+ * move.
+ */
+export const SHAREABLE_PREVIEW_NAME = 'Ada Vellum';
+
+function shareablePreviewContext(): MeetDayContext {
+  return {
+    ...previewContext(),
+    entry: {
+      ...MEET_ENTRY,
+      name: SHAREABLE_PREVIEW_NAME,
+    },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Scripted reps, played on the real mechanic
 // ---------------------------------------------------------------------------
@@ -614,6 +642,13 @@ function bombTheSquat(lift: LiftKind): RepStyle {
   return lift === 'squat' ? 'dumped' : 'perfect';
 }
 
+/** Two missed openers, then the last squat declared. The bomb-risk third. */
+function bombRiskThirdOnTheBar(): MeetDayState {
+  const first = takeAttempt(openedMeet(), 'dumped');
+  const second = takeAttempt(chooseOption(first, 'repeat'), 'dumped');
+  return chooseOption(second, 'repeat');
+}
+
 /**
  * The state a preview beat renders.
  *
@@ -637,12 +672,10 @@ export function previewStateFor(request: MeetPreviewRequest): MeetDayState {
       // state for all three: what differs between them is only which instant of
       // the beat is held (`holdWalkoutAtMs`), so a critic comparing the frames
       // is comparing the choreography and nothing else.
-      const first = takeAttempt(openedMeet(), 'dumped');
-      const second = takeAttempt(chooseOption(first, 'repeat'), 'dumped');
-      return chooseOption(second, 'repeat');
+      return bombRiskThirdOnTheBar();
     }
     case 'lift':
-      return takeAttempt(openedMeet(), 'perfect', 'lift');
+      return takeAttempt(bombRiskThirdOnTheBar(), 'perfect', 'lift');
     case 'deliberation':
       return takeAttempt(openedMeet(), 'marginal', 'deliberation');
     case 'verdict-good':
@@ -653,9 +686,7 @@ export function previewStateFor(request: MeetPreviewRequest): MeetDayState {
       // combination that reaches the urgent cheer. Built from the same
       // `takeAttempt` ladder as `walkout-third` rather than a hand-made state,
       // so it is the app's own arithmetic deciding this is urgent.
-      const first = takeAttempt(openedMeet(), 'dumped');
-      const second = takeAttempt(chooseOption(first, 'repeat'), 'dumped');
-      return takeAttempt(chooseOption(second, 'repeat'), 'perfect', 'verdict');
+      return takeAttempt(bombRiskThirdOnTheBar(), 'perfect', 'verdict');
     }
     case 'verdict-split':
       return takeAttempt(openedMeet(), 'marginal', 'verdict');
@@ -671,7 +702,11 @@ export function previewStateFor(request: MeetPreviewRequest): MeetDayState {
       return playMeet(bombTheSquat, () => 'repeat');
     case 'recap':
     case 'recap-card':
-      return playMeet(ALL_GOOD);
+      // GDD §6.5 recap and shareable card are one meet. They share this
+      // produced-identity overlay so the board and the sheet do not
+      // name two different lifters. Weigh-in and in-meet debug beats
+      // still use `previewContext()` / `MEET_ENTRY`.
+      return playMeet(ALL_GOOD, () => 'small', shareablePreviewContext());
     default:
       return createMeetDay(previewContext());
   }

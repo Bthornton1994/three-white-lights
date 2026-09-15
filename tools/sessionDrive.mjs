@@ -70,6 +70,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { completeCreateIfNeeded } from './enterMeetFromCalendar.mjs';
 
 import {
   blockInSource,
@@ -946,6 +947,10 @@ export async function openSessionToFirstSet(
   lift = null,
 ) {
   await page.goto(url, { waitUntil: 'load' });
+  const created = await completeCreateIfNeeded(page);
+  if (created.why) {
+    return { reached: false, why: created.why };
+  }
   await page
     .getByTestId('check-in-sleep-good')
     .waitFor({ state: 'visible', timeout: SESSION_DRIVE.FIRST_SET_TIMEOUT_MS });

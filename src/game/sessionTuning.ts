@@ -446,6 +446,12 @@ export const SESSION_LAYOUT = Object.freeze({
 
   TITLE_FONT: 13,
   QUESTION_FONT: 11,
+  /**
+   * Check-in drawer title. Smaller than HEADLINE_FONT so the three GDD §3.2
+   * taps sit in a panel-03 card and the gym stays the majority of 390×844.
+   * Untuned (GDD §12.1).
+   */
+  CHECK_IN_TITLE_FONT: 13,
   ANSWER_FONT: 15,
   MODIFIER_FONT: 24,
   PROMPT_FONT: 13,
@@ -459,8 +465,31 @@ export const SESSION_LAYOUT = Object.freeze({
   STAT_FONT: 26,
   LETTER_SPACING: 2,
 
-  /** Check-in answer chips. Three across, tall enough for a thumb. */
-  CHIP_HEIGHT: 52,
+  /**
+   * Bottom-docked session cards (check-in, close-out). Tighter than the
+   * briefing pad so the gym/athlete stay the majority of a 390×844 frame.
+   * Tunable — not asserted as final.
+   */
+  CARD_PAD_DRAWER: 8,
+  /** Gap inside a dense drawer. Tighter than ROW_GAP so the check-in band fits the cap. */
+  CARD_GAP_DRAWER: 6,
+
+  /**
+   * Inline question label on the check-in drawer (label + chips on one
+   * row). Wide enough for MOTIVATION at QUESTION_FONT without stacking
+   * the label above the chips — that stack is what turned first paint
+   * into a full-screen form. Untuned (GDD §12.1).
+   */
+  CHECK_IN_LABEL_COL: 78,
+  /** Vertical gap between check-in drawer rows. Tighter than ROW_GAP. */
+  CHECK_IN_ROW_GAP: 6,
+
+  /**
+   * Check-in answer chips. Shorter than a 44pt thumb target so the lift
+   * strip plus the three-question band fit a panel-03 drawer; the hit
+   * area is still the whole chip. Untuned (GDD §12.1).
+   */
+  CHIP_HEIGHT: 28,
   CHIP_RADIUS: 10,
   CHIP_GAP: 8,
   CHIP_BORDER: 2,
@@ -468,6 +497,12 @@ export const SESSION_LAYOUT = Object.freeze({
   /** The RPE ladder. Five across, so each is narrower than a chip. */
   RPE_CHIP_HEIGHT: 60,
   RPE_CHIP_GAP: 6,
+  /**
+   * Digit size on the RPE chips. Larger than ANSWER_FONT so 6–10 stay
+   * readable at 390×844; the gold suggested chip is the briefing CTA.
+   * Tunable — not asserted as final.
+   */
+  RPE_CHIP_FONT: 22,
 
   /** The set counter pips shown above the stage while a set is live. */
   PIP_SIZE: 8,
@@ -477,9 +512,17 @@ export const SESSION_LAYOUT = Object.freeze({
   BUTTON_RADIUS: 10,
   BUTTON_FONT: 13,
 
-  /** Close-out stat rows. */
-  STAT_ROW_GAP: 18,
+  /** Close-out stat rows. Tunable — not asserted as final. */
+  STAT_ROW_GAP: 12,
   DIVIDER_HEIGHT: 1,
+  /**
+   * Close-out drawer number and strip. The stacked 44pt e1RM plus three
+   * centred columns occluded the athlete (A-VIS-02). These sit the payoff
+   * in a panel-03 card. Untuned (GDD §12.1).
+   */
+  DRAWER_NUMBER_FONT: 28,
+  DRAWER_STAT_GAP: 6,
+  DRAWER_STRIP_GAP: 12,
 
   /**
    * The first-run disclosure block on the check-in (GDD §4.2).
@@ -492,9 +535,95 @@ export const SESSION_LAYOUT = Object.freeze({
    * text set at the same tight leading as a chip label is the shape that reads
    * as a wall.
    */
-  DISCLOSURE_FONT: 11,
-  DISCLOSURE_LINE_HEIGHT: 16,
-  DISCLOSURE_GAP: 8,
+  DISCLOSURE_FONT: 10,
+  DISCLOSURE_LINE_HEIGHT: 13,
+  DISCLOSURE_GAP: 4,
+  /**
+   * Cap on the check-in drawer, authored against 390×844. The gym/athlete must
+   * stay the majority of the frame (Iron & Amber panel 03 / briefing card).
+   * Lift strip + three-question band stay inside this cap; first-run copy
+   * (GDD §4.2) is a one-line footnote that scrolls so it cannot grow the card
+   * or push the three taps off first paint. Untuned (GDD §12.1).
+   */
+  CHECK_IN_DRAWER_MAX_HEIGHT: 208,
+  CHECK_IN_DISCLOSURE_MAX_HEIGHT: 18,
+
+  /**
+   * Dark wash over the Iron & Amber gym photograph so type on the espresso
+   * card stays readable. The gym is the room; this is contrast, not a
+   * second backdrop.
+   */
+  BRIEFING_SCRIM: 0.32,
+  BRIEFING_CARD_PAD: 18,
+  BRIEFING_CARD_RADIUS: 14,
+  BRIEFING_CARD_BORDER: 1,
+  BRIEFING_CARD_MARGIN_V: 24,
+
+  /**
+   * Gym-as-room chrome. The card docks above the shell's pill band
+   * (`SHELL_LAYOUT` 44 + two wrapping 38px rows + gap). Brand sits at the
+   * top like the Iron & Amber mockup. Untuned (GDD §12.1).
+   */
+  ROOM_FOOT_CLEARANCE: 140,
+  ROOM_BRAND_PAD_TOP: 28,
+  ROOM_BODY_PAD_TOP: 88,
+
+  /** Compact HUD over the live-set plate. Untuned (GDD §12.1). */
+  SET_HUD_PAD: 10,
+  SET_HUD_HEIGHT: 56,
+  SET_HUD_SCRIM: 0.42,
+  SET_COMMAND_HEIGHT: 130,
+  SET_COMMAND_SCRIM: 0.55,
+  SET_COMMAND_DETAIL_LINES: 4,
+
+  /** Wordmark + three lights. Nostalgia as a restrained accent, not a sprite. */
+  BRAND_TRACK: 4,
+  BRAND_LIGHT_R: 4,
+  BRAND_LIGHT_GAP: 6,
+  BRAND_GAP: 10,
+  BRAND_LIGHT_COUNT: 3,
+});
+
+/**
+ * Height cuts and cover-focus for Iron & Amber training plates. Authored here
+ * so `src/session/` does not grow bare literals. Deadlift cuts must never
+ * select a squat plate. Cue placement is a fraction of the live plate box —
+ * not sprite-era `CUE_X` / `CUE_Y`.
+ *
+ * Cover math lives in `ironAmberPlates.ts`. RN-web `<Image>` with
+ * `left/top/right/bottom: 0` keeps the JPEG's intrinsic size, so the live set
+ * used to show the top-left of a 1152×1728 still (a brick wall, not the lift).
+ * Layout is therefore explicit pixels from these source sizes + focus, clamped
+ * so a pan cannot open a gap. PLATE_SCALE > 1 is the only way FOCUS_Y can
+ * move; at scale 1 the tall phone axis is already filled. Untuned (GDD §12.1).
+ */
+export const IRON_AMBER = Object.freeze({
+  SQUAT_HOLE_MAX: 0.42,
+  BENCH_CHEST_MAX: 0.4,
+  DEADLIFT_FLOOR_MAX: 0.34,
+  DEADLIFT_LOCKOUT_MIN: 0.78,
+  CUE_X_RATIO: 0.5,
+  CUE_Y_RATIO: 0.58,
+  CUE_TARGET_STROKE: 1,
+  PLATE_SRC_W: 720,
+  PLATE_SRC_H: 1280,
+  GYM_SRC_W: 720,
+  GYM_SRC_H: 1280,
+  PLATE_SCALE: 1.08,
+  GYM_SCALE: 1,
+  SQUAT_FOCUS_X: 0.5,
+  SQUAT_FOCUS_Y: 0.46,
+  BENCH_FOCUS_X: 0.5,
+  BENCH_FOCUS_Y: 0.44,
+  DEADLIFT_FOCUS_X: 0.5,
+  DEADLIFT_FOCUS_Y: 0.52,
+  GYM_FOCUS_X: 0.5,
+  GYM_FOCUS_Y: 0.42,
+  /**
+   * Extra espresso-amber wash per crowd row on a meet attempt. Same job the
+   * sprite seating wave used to do: an urgent hall reads warmer. Untuned.
+   */
+  HALL_RISE_WASH: 0.035,
 });
 
 /**
@@ -546,6 +675,8 @@ export const SESSION_PROGRESSION_GUARD = Object.freeze({
  */
 export const SESSION_COPY = Object.freeze({
   /** GDD §3.2: "3 taps: sleep / soreness / motivation". */
+  BRAND_WORDMARK: 'THREE WHITE LIGHTS',
+  ROOM_LABEL: 'Training gym',
   CHECK_IN_TITLE: 'HOW ARE YOU TODAY?',
   CHECK_IN_LIFT_QUESTION: 'TODAY',
   CHECK_IN_QUESTION: Object.freeze({

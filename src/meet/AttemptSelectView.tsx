@@ -66,7 +66,8 @@
  */
 
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
@@ -103,7 +104,7 @@ function OptionCard({
   const style = useAnimatedStyle(() => ({ opacity: shown.value }));
   return (
     <Animated.View style={[styles.cardWrap, style]}>
-      <Pressable
+      <MotionPressable
         accessibilityRole="button"
         onPress={() => onChoose(option.weightKg)}
         testID={`attempt-option-${option.id}`}
@@ -137,7 +138,7 @@ function OptionCard({
             {stake.text}
           </Text>
         ))}
-      </Pressable>
+      </MotionPressable>
     </Animated.View>
   );
 }
@@ -271,9 +272,9 @@ const styles = StyleSheet.create({
   hall: {
     position: 'absolute',
     left: 0,
+    top: 0,
     right: 0,
     bottom: 0,
-    alignItems: 'center',
     pointerEvents: 'none',
   },
   eyebrow: {

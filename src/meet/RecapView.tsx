@@ -73,7 +73,8 @@
  */
 
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { LIFT_ORDER } from '../game/meet';
@@ -83,6 +84,7 @@ import type { CareerMeetOutcome } from '../game/careerServer';
 import { useOfferCutIn } from '../cutin/CutInHost';
 import { AttemptBoard } from './AttemptBoard';
 import { careerRecapLines } from './careerSurface';
+import { MeetBookendRoom } from './MeetBookendRoom';
 import { MEET_PALETTE } from './meetPalette';
 
 const L = MEET_LAYOUT;
@@ -168,11 +170,11 @@ export function RecapView({
   ]);
 
   return (
-    <ScrollView contentContainerStyle={styles.root} testID="meet-recap">
-      <Text style={styles.eyebrow}>{MEET_COPY.RECAP_EYEBROW}</Text>
-
+    <MeetBookendRoom
+      testID="meet-recap"
+      sport={
+        <>
       <Block index={MEET_TUNING.RECAP_ROW_ORDER.TOTAL}>
-        <Text style={styles.totalLabel}>{MEET_COPY.RECAP_TOTAL_LABEL}</Text>
         <Text
           style={[styles.total, recap.isTotalPr ? styles.totalPr : null]}
           testID="recap-total"
@@ -187,25 +189,9 @@ export function RecapView({
             {recap.prText}
           </Text>
         )}
-        {/* GDD §6.5's career lines (Sprint 1b), on the total's own beat: the
-            standing career best and the tiers this result newly qualified —
-            `careerRecapLines` over the server's own outcome, nothing derived
-            here. Same stagger slot as the total, because they are about it. */}
-        {career === null
-          ? null
-          : careerRecapLines(career).map((line) => (
-              <Text
-                key={line.kind}
-                style={[styles.prText, line.kind === 'qualified' ? styles.prTextHot : null]}
-                testID={`recap-${line.kind}`}
-              >
-                {line.text}
-              </Text>
-            ))}
       </Block>
 
       <Block index={MEET_TUNING.RECAP_ROW_ORDER.LIFTS}>
-        <Text style={styles.sectionLabel}>{MEET_COPY.RECAP_ATTEMPTS_LABEL}</Text>
         <View style={styles.boards}>
           {LIFT_ORDER.map((lift, index) => (
             <AttemptBoard
@@ -218,22 +204,52 @@ export function RecapView({
         </View>
       </Block>
 
-      <View style={styles.summary}>
-        <Block index={MEET_TUNING.RECAP_ROW_ORDER.DOTS}>
-          <Text style={styles.summaryValue} testID="recap-dots">
-            {recap.dotsText}
-          </Text>
-          <Text style={styles.summaryLabel}>{MEET_COPY.RECAP_DOTS_LABEL}</Text>
+      <Block index={MEET_TUNING.RECAP_ROW_ORDER.DOTS}>
+        <View style={styles.summary}>
+          <View style={styles.summaryCol}>
+            <Text style={styles.summaryValue} testID="recap-dots">
+              {recap.dotsText}
+            </Text>
+            <Text style={styles.summaryLabel}>{MEET_COPY.RECAP_DOTS_LABEL}</Text>
+          </View>
+          <View style={styles.summaryCol}>
+            <Text style={styles.summaryValue} testID="recap-place">
+              {recap.placeText}
+            </Text>
+            <Text style={styles.summaryLabel}>
+              {`${MEET_COPY.RECAP_PLACE_LABEL} ${MEET_COPY.RECAP_OF_FIELD} ${recap.fieldSize}`}
+            </Text>
+          </View>
+        </View>
+      </Block>
+        </>
+      }
+      footer={
+        <Block index={MEET_TUNING.RECAP_ROW_ORDER.CARD}>
+          <MotionPressable
+            style={styles.action}
+            accessibilityRole="button"
+            onPress={onSeeCard}
+            testID="recap-action"
+          >
+            <Text style={styles.actionLabel}>{MEET_COPY.RECAP_ACTION}</Text>
+          </MotionPressable>
         </Block>
-        <Block index={MEET_TUNING.RECAP_ROW_ORDER.PLACE}>
-          <Text style={styles.summaryValue} testID="recap-place">
-            {recap.placeText}
-          </Text>
-          <Text style={styles.summaryLabel}>
-            {`${MEET_COPY.RECAP_PLACE_LABEL} ${MEET_COPY.RECAP_OF_FIELD} ${recap.fieldSize}`}
-          </Text>
-        </Block>
-      </View>
+      }
+    >
+      <View style={styles.root}>
+      <Text style={styles.eyebrow}>{MEET_COPY.RECAP_EYEBROW}</Text>
+        {career === null
+          ? null
+          : careerRecapLines(career).map((line) => (
+              <Text
+                key={line.kind}
+                style={[styles.prText, line.kind === 'qualified' ? styles.prTextHot : null]}
+                testID={`recap-${line.kind}`}
+              >
+                {line.text}
+              </Text>
+            ))}
 
       {recap.whyLines.length === 0 ? null : (
         <Block index={MEET_TUNING.RECAP_ROW_ORDER.WHY}>
@@ -245,29 +261,16 @@ export function RecapView({
           ))}
         </Block>
       )}
-
-      <Block index={MEET_TUNING.RECAP_ROW_ORDER.CARD}>
-        <Pressable
-          style={styles.action}
-          accessibilityRole="button"
-          onPress={onSeeCard}
-          testID="recap-action"
-        >
-          <Text style={styles.actionLabel}>{MEET_COPY.RECAP_ACTION}</Text>
-        </Pressable>
-      </Block>
-    </ScrollView>
+      </View>
+    </MeetBookendRoom>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
-    flexGrow: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: L.SCREEN_PAD,
-    paddingVertical: L.SECTION_GAP,
-    gap: L.SECTION_GAP,
+    alignSelf: 'stretch',
+    gap: L.BOOKEND_CARD_GAP,
   },
   block: {
     alignItems: 'center',
@@ -279,14 +282,9 @@ const styles = StyleSheet.create({
     fontSize: L.EYEBROW_FONT,
     letterSpacing: L.WIDE_LETTER_SPACING,
   },
-  totalLabel: {
-    color: MEET_PALETTE.TEXT_DIM,
-    fontSize: L.LABEL_FONT,
-    letterSpacing: L.WIDE_LETTER_SPACING,
-  },
   total: {
     color: MEET_PALETTE.TOTAL,
-    fontSize: L.BIG_NUMBER_FONT,
+    fontSize: L.BOOKEND_TOTAL_FONT,
     fontWeight: '700',
   },
   totalPr: {
@@ -315,6 +313,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignSelf: 'stretch',
     justifyContent: 'space-around',
+    minHeight: L.BOOKEND_SUMMARY_HEIGHT,
+  },
+  summaryCol: {
+    flex: 1,
+    alignItems: 'center',
   },
   summaryValue: {
     color: MEET_PALETTE.TEXT,

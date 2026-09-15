@@ -12,11 +12,13 @@
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
 
 import { MEET_COPY, MEET_LAYOUT } from '../game/meetTuning';
 import { formatWeight } from '../game/resultCard';
 import type { WeighIn } from '../game/meetDay';
+import { MeetBookendRoom } from './MeetBookendRoom';
 import { MEET_PALETTE } from './meetPalette';
 
 const L = MEET_LAYOUT;
@@ -39,7 +41,20 @@ export function WeighInView({
   onConfirm,
 }: WeighInViewProps): React.ReactElement {
   return (
-    <View style={styles.root} testID="meet-weigh-in">
+    <MeetBookendRoom
+      testID="meet-weigh-in"
+      footer={
+        <MotionPressable
+          style={styles.action}
+          accessibilityRole="button"
+          onPress={onConfirm}
+          testID="weigh-in-action"
+        >
+          <Text style={styles.actionLabel}>{MEET_COPY.WEIGH_IN_ACTION}</Text>
+        </MotionPressable>
+      }
+    >
+      <View style={styles.root}>
       <Text style={styles.eyebrow}>{MEET_COPY.WEIGH_IN_EYEBROW}</Text>
       <Text style={styles.federation}>{federation.toUpperCase()}</Text>
       <Text style={styles.meetName} testID="meet-name">
@@ -74,29 +89,19 @@ export function WeighInView({
       >
         {weighIn.flavourText}
       </Text>
-
-      <Pressable
-        style={styles.action}
-        accessibilityRole="button"
-        onPress={onConfirm}
-        testID="weigh-in-action"
-      >
-        <Text style={styles.actionLabel}>{MEET_COPY.WEIGH_IN_ACTION}</Text>
-      </Pressable>
-    </View>
+      </View>
+    </MeetBookendRoom>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: L.SCREEN_PAD,
-    gap: L.ROW_GAP,
+    alignSelf: 'stretch',
+    gap: L.BOOKEND_CARD_GAP,
   },
   eyebrow: {
-    color: MEET_PALETTE.TEXT_DIM,
+    color: MEET_PALETTE.AMBER,
     fontSize: L.EYEBROW_FONT,
     letterSpacing: L.WIDE_LETTER_SPACING,
   },
@@ -131,7 +136,7 @@ const styles = StyleSheet.create({
   stats: {
     flexDirection: 'row',
     gap: L.SECTION_GAP,
-    paddingVertical: L.SECTION_GAP,
+    paddingVertical: L.BOOKEND_CARD_GAP,
   },
   stat: {
     alignItems: 'center',
@@ -162,7 +167,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: L.BUTTON_RADIUS,
     backgroundColor: MEET_PALETTE.ACTION,
-    marginTop: L.SECTION_GAP,
   },
   actionLabel: {
     color: MEET_PALETTE.ACTION_TEXT,
