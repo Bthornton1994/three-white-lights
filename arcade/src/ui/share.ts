@@ -19,65 +19,88 @@ export async function shareResultsCard(node: HTMLElement, filename: string): Pro
   link.click();
 }
 
-function collectCssText(): string {
-  const parts: string[] = [];
-  for (const sheet of Array.from(document.styleSheets)) {
-    try {
-      for (const rule of Array.from(sheet.cssRules)) {
-        parts.push(rule.cssText);
-      }
-    } catch {
-      // Skip unreadable sheets (cross-origin).
-    }
-  }
-  return parts.join("\n");
-}
+const CLEAR = new Set(["", "transparent", "rgba(0, 0, 0, 0)"]);
 
-/** SVG snapshot of the on-screen sheet — used by share and tests. */
-export function cardNodeToSvg(node: HTMLElement): string {
-  const width = Math.max(320, Math.ceil(node.offsetWidth || node.scrollWidth || 320));
-  const height = Math.max(240, Math.ceil(node.offsetHeight || node.scrollHeight || 240));
-  const css = collectCssText().replace(/]]>/g, "");
-  const markup = node.outerHTML;
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
-    `<foreignObject x="0" y="0" width="${width}" height="${height}">`,
-    `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;margin:0;">`,
-    `<style>${css}</style>`,
-    markup,
-    `</div></foreignObject></svg>`,
-  ].join("");
-}
-
+/**
+ * Paint the live scoresheet into a PNG. SVG foreignObject taints the canvas
+ * in Chromium, so this walks computed layout instead of dumping innerText.
+ */
 export async function cardNodeToPng(node: HTMLElement): Promise<string> {
-  const width = Math.max(320, Math.ceil(node.offsetWidth || node.scrollWidth || 320));
-  const height = Math.max(240, Math.ceil(node.offsetHeight || node.scrollHeight || 240));
-  const svg = cardNodeToSvg(node);
-  const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  try {
-    const image = await loadImage(url);
-    const canvas = document.createElement("canvas");
-    canvas.width = width * 2;
-    canvas.height = height * 2;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      throw new Error("canvas unavailable");
-    }
-    ctx.fillStyle = "#f3ead8";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/png");
-  } finally {
-    URL.revokeObjectURL(url);
+  const box = node.getBoundingClientRect();
+  const width = Math.max(320, Math.ceil(box.width || node.offsetWidth || 320));
+  const height = Math.max(240, Math.ceil(box.height || node.offsetHeight || 240));
+  const canvas = document.createElement("canvas");
+  canvas.width = width * 2;
+  canvas.height = height * 2;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("canvas unavailable");
   }
+  ctx.scale(2, 2);
+  ctx.fillStyle = "#f3ead8";
+  ctx.fillRect(0, 0, width, height);
+  paintElement(ctx, node, box.left, box.top);
+  return canvas.toDataURL("image/png");
 }
 
-function loadImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("card snapshot failed"));
-    image.src = url;
-  });
+export function paintElement(
+  ctx: CanvasRenderingContext2D,
+  el: Element,
+  originX: number,
+  originY: number,
+): void {
+  const r = el.getBoundingClientRect();
+  const x = r.left - originX;
+  const y = r.top - originY;
+  const style = getComputedStyle(el);
+  const bg = style.backgroundColor;
+  if (bg && !CLEAR.has(bg)) {
+    ctx.fillStyle = bg;
+    if (el.tagName === "I") {
+      ctx.beginPath();
+      ctx.arc(x + r.width / 2, y + r.height / 2, Math.max(1, r.width / 2), 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillRect(x, y, r.width, r.height);
+    }
+  }
+  const borderW = Number.parseFloat(style.borderTopWidth);
+  if (borderW > 0 && style.borderTopStyle !== "none") {
+    ctx.strokeStyle = style.borderTopColor;
+    ctx.lineWidth = borderW;
+    if (el.tagName === "I") {
+      ctx.beginPath();
+      ctx.arc(
+        x + r.width / 2,
+        y + r.height / 2,
+        Math.max(0.5, r.width / 2 - borderW / 2),
+        0,
+        Math.PI * 2,
+      );
+      ctx.stroke();
+    } else {
+      ctx.strokeRect(x + borderW / 2, y + borderW / 2, r.width - borderW, r.height - borderW);
+    }
+  }
+  for (const child of Array.from(el.childNodes)) {
+    if (child.nodeType === Node.ELEMENT_NODE) {
+      paintElement(ctx, child as Element, originX, originY);
+    } else if (child.nodeType === Node.TEXT_NODE) {
+      const raw = child.textContent ?? "";
+      if (!raw.trim()) {
+        continue;
+      }
+      const range = document.createRange();
+      range.selectNodeContents(child);
+      const tr = range.getBoundingClientRect();
+      ctx.fillStyle = style.color;
+      ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      ctx.textBaseline = "top";
+      let painted = raw.replace(/\s+/g, " ").trim();
+      if (style.textTransform === "uppercase") {
+        painted = painted.toUpperCase();
+      }
+      ctx.fillText(painted, tr.left - originX, tr.top - originY);
+    }
+  }
 }
