@@ -249,6 +249,44 @@ button:disabled {
   text-transform: uppercase;
 }
 
+.sheet-meet,
+.sheet-id {
+  margin: 0 0 6px;
+  font-size: 0.88rem;
+}
+
+.sheet-lights {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sheet-lights span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sheet-lights i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid #4a433c;
+  display: inline-block;
+}
+
+.sheet-lights i.white {
+  background: #f4f0e8;
+}
+
+.sheet-lights i.red {
+  background: #c82020;
+}
+
 .sheet-grid {
   width: 100%;
   border-collapse: collapse;

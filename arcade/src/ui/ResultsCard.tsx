@@ -1,68 +1,106 @@
 import { forwardRef } from "react";
-import { FEEL } from "../feel";
-import type { ArcadeMeet } from "../math/types";
+import { FEEL, type LiftId } from "../feel";
+import type { ArcadeMeet, AttemptOutcome } from "../math/types";
 
 type Props = {
   meet: ArcadeMeet;
 };
+
+const LIFT_ROW: LiftId[] = ["squat", "bench", "deadlift"];
+const LIFT_LABEL: Record<LiftId, string> = {
+  squat: "Squat",
+  bench: "Bench",
+  deadlift: "Deadlift",
+};
+
+function attemptCell(meet: ArcadeMeet, lift: LiftId, index: 0 | 1 | 2): string {
+  if (lift !== meet.lift) {
+    return "—";
+  }
+  const row: AttemptOutcome | undefined = meet.outcomes[index];
+  if (!row) {
+    return "—";
+  }
+  return row.made ? row.weightKg.toFixed(1) : `-${row.weightKg.toFixed(1)}`;
+}
+
+function bestCell(meet: ArcadeMeet, lift: LiftId): string {
+  if (lift !== meet.lift || meet.bestKg <= 0) {
+    return "—";
+  }
+  return meet.bestKg.toFixed(1);
+}
 
 export const ResultsCard = forwardRef<HTMLElement, Props>(function ResultsCard(
   { meet },
   ref,
 ) {
   const date = new Date().toISOString().slice(0, 10);
+  const place = meet.bombed ? "DQ" : "—";
   return (
     <article className="card-sheet" ref={ref} aria-label="Shareable results card">
       <div className="card-head">
-        <span>{FEEL.FEDERATION}</span>
+        <span>Iron &amp; Amber Athletic</span>
         <span>{date}</span>
       </div>
-      <h2 className="card-title">{FEEL.TITLE}</h2>
-      <p>
-        {FEEL.MEET_NAME} · {FEEL.LIFTER_NAME} · {FEEL.BODYWEIGHT_KG}.0 kg · {FEEL.SEX}
+      <p className="sheet-meet">
+        {FEEL.MEET_NAME} · Local · Raw · Open · 83 kg
+      </p>
+      <p className="sheet-id">
+        {FEEL.LIFTER_NAME} · Lot 12 · BWT {FEEL.BODYWEIGHT_KG}.0 · {FEEL.SEX}
       </p>
       <table className="sheet-grid">
         <thead>
           <tr>
-            <th>Lift</th>
-            <th>Att</th>
-            <th>Kg</th>
-            <th>RPE</th>
-            <th>Lights</th>
+            <th> </th>
+            <th>1st</th>
+            <th>2nd</th>
+            <th>3rd</th>
+            <th>Best</th>
           </tr>
         </thead>
         <tbody>
-          {meet.outcomes.map((row) => (
-            <tr key={row.attempt} className={row.made ? "make" : "miss"}>
-              <td>{meet.lift}</td>
-              <td>{row.attempt}</td>
-              <td>{row.made ? row.weightKg.toFixed(1) : `-${row.weightKg.toFixed(1)}`}</td>
-              <td>{row.impliedRpe.toFixed(1)}</td>
-              <td>{row.lights.map((c) => (c === "white" ? "W" : "R")).join(" ")}</td>
+          {LIFT_ROW.map((lift) => (
+            <tr key={lift}>
+              <td>{LIFT_LABEL[lift]}</td>
+              <td className={attemptCell(meet, lift, 0).startsWith("-") ? "miss" : "make"}>
+                {attemptCell(meet, lift, 0)}
+              </td>
+              <td className={attemptCell(meet, lift, 1).startsWith("-") ? "miss" : "make"}>
+                {attemptCell(meet, lift, 1)}
+              </td>
+              <td className={attemptCell(meet, lift, 2).startsWith("-") ? "miss" : "make"}>
+                {attemptCell(meet, lift, 2)}
+              </td>
+              <td>{bestCell(meet, lift)}</td>
             </tr>
           ))}
         </tbody>
       </table>
       <div className={`totals${meet.bombed ? " bomb" : ""}`}>
         <div>
-          <span>Best</span>
-          <strong>{meet.bestKg.toFixed(1)}</strong>
+          <span>Total</span>
+          <strong>{meet.bombed ? "—" : meet.totalKg.toFixed(1)}</strong>
         </div>
         <div>
           <span>DOTS</span>
-          <strong>{meet.dots.toFixed(2)}</strong>
+          <strong>{meet.bombed ? "—" : meet.dots.toFixed(2)}</strong>
         </div>
         <div>
-          <span>Score</span>
-          <strong>{meet.score}</strong>
+          <span>Place</span>
+          <strong>{place}</strong>
         </div>
       </div>
-      <p className="hint">
-        e1RM from best single uses Epley: {meet.e1rmFromBestKg.toFixed(1)} kg.
-        {meet.bombed
-          ? " Bomb-out: no successful attempt, total zero."
-          : " Total is the best successful attempt."}
-      </p>
+      <div className="sheet-lights" aria-label="Referee lights by attempt">
+        {meet.outcomes.map((row) => (
+          <span key={row.attempt}>
+            A{row.attempt}
+            {row.lights.map((color, i) => (
+              <i key={i} className={color} />
+            ))}
+          </span>
+        ))}
+      </div>
     </article>
   );
 });

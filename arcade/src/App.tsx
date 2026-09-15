@@ -88,6 +88,17 @@ export function App() {
     setState((s) => recordTap(s, index, clock));
   };
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.code === "Space" || event.key === "Enter") {
+        event.preventDefault();
+        tap();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   return (
     <main className="app">
       <header className="mast">
@@ -124,7 +135,18 @@ export function App() {
               </button>
             ))}
           </div>
-          <SpriteStage lift="deadlift" progress={0.9} weightKg={200} e1rmKg={200} screen="lift" />
+          <div className="col">
+            {LIFTS.map((id) => (
+              <SpriteStage
+                key={id}
+                lift={id}
+                progress={id === "deadlift" ? 0.9 : 0.5}
+                weightKg={FEEL.DEFAULT_E1RM_KG[id]}
+                e1rmKg={FEEL.DEFAULT_E1RM_KG[id]}
+                screen="timing"
+              />
+            ))}
+          </div>
         </section>
       ) : null}
 
@@ -192,7 +214,9 @@ export function App() {
           <div className="lights" aria-label="Judge lights">
             {(state.screen === "walkout" || state.screen === "timing" ? ["off", "off", "off"] : lights).map(
               (color, i) => (
-                <span key={i} className={color} />
+                <span key={i} className={color}>
+                  {color === "white" ? "W" : color === "red" ? "R" : "·"}
+                </span>
               ),
             )}
           </div>
@@ -219,7 +243,7 @@ export function App() {
               <p className="lede">{state.lastOutcome?.cue}</p>
               <p className="hint">Implied RPE {state.lastOutcome?.impliedRpe.toFixed(1)}</p>
               <button className="primary" type="button" onClick={() => setState(continueAfterOutcome(state))}>
-                Next attempt
+                {state.currentAttempt === 3 ? "See the card" : "Next attempt"}
               </button>
             </>
           ) : null}
@@ -261,6 +285,7 @@ export function App() {
       {state.screen === "results" && state.meet ? (
         <section className="panel">
           <ResultsCard meet={state.meet} ref={cardRef} />
+          <p className="hint">Arcade skill {state.meet.score}. Not a federation total.</p>
           <button
             className="primary"
             type="button"
