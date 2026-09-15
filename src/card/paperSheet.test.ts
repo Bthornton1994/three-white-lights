@@ -30,6 +30,7 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(PAPER.W).toBeGreaterThan(CARD_SCREEN.PHONE_W);
     expect(PAPER.W).toBe(paperFlightInnerWidth() + 2 * PAPER.PAD_X);
     expect(PAPER.FLIGHT.ATTEMPT_COLS).toBe(9);
+    expect(PAPER.FLIGHT.BEST_COLS).toBe(3);
     expect(PAPER.FLIGHT.ATTEMPTS_PER_LIFT).toBe(3);
     expect(PAPER_SCALE).toBe(CARD_SCREEN.PHONE_W / PAPER.W);
     expect(paperSheetHeight(6)).toBeGreaterThan(PAPER.FLIGHT.HEAD_H + 6 * PAPER.FLIGHT.ROW_H);
@@ -87,6 +88,7 @@ describe('the shareable sheet is a printed scoresheet', () => {
       'CARD_LABELS.DOCUMENT_KIND',
       'CARD_LABELS.FED_MARK',
       'CARD_LABELS.LOT',
+      'CARD_LABELS.BEST',
       'CARD_LABELS.WEIGHTS_IN',
     ]) {
       expect(VIEW, token).toContain(token);
@@ -121,7 +123,9 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(VIEW).not.toContain('LiftAttemptStack');
     expect(VIEW).not.toContain('ClassRowView');
     expect(VIEW).not.toContain('AttemptRowView');
-    expect(VIEW).not.toContain('flightBestText');
+    expect(VIEW).toContain('flightBestText');
+    expect(VIEW).toContain('CARD_LABELS.BEST');
+    expect(CARD_LABELS.BEST).toBe('Best');
   });
 
   it('draws a full-height scoresheet grid so peer kilos do not run together', () => {
@@ -134,9 +138,11 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(VIEW).not.toContain('LiftAttemptStack');
   });
 
-  it('prints each lift as grouped 1/2/3 cells in the placing row, misses signed', () => {
+  it('prints each lift as grouped 1/2/3 plus Best in the placing row, misses signed', () => {
     expect(VIEW).toContain('flightAttemptView');
+    expect(VIEW).toContain('flightBestText');
     expect(VIEW).toContain('FLIGHT_LIFT_GROUPS');
+    expect(VIEW).toContain('group.bestId');
     expect(VIEW).toContain('signedText');
     expect(VIEW).not.toContain('textDecorationLine');
     expect(VIEW).not.toContain('NOLIFT_LIGHT');

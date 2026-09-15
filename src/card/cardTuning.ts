@@ -499,6 +499,7 @@ export const CARD_LABELS = {
   REFEREE_3_NAME: 'LENA KEANE',
   SECRETARY_NAME: 'PIA ALDEN',
   FLIGHT_META: 'SESSION 1  ·  PLATFORM 1  ·  FLIGHT A',
+  BEST: 'Best',
   WEIGHTS_IN: 'ALL WEIGHTS IN KG',
   /** Typographic mark for Northern Barbell Federation. Ours, not a licensed crest. */
   FED_MARK: 'NBF',
@@ -574,7 +575,7 @@ export const CARD_SCREEN = {
  * not a short slip on a desk. UNTUNED (GDD §12.1).
  */
 export const PAPER = {
-  W: 680,
+  W: 806,
   PAD_X: 6,
   PAD_Y: 28,
   FED_SIZE: 16,
@@ -611,9 +612,10 @@ export const PAPER = {
   /**
    * One packed scoresheet table. Column widths are the 390 two-table
    * grammar laid on one row: ATTEMPT_COL_W 42 holds "-217.5" on the
-   * attempt table; that width is kept. Lot sits after Place. The
-   * sheet is a posted class dump: letterhead and six placing rows on a
-   * full page. No signature form. Untuned.
+   * attempt table; that width is kept. Each lift then has BEST_COL_W
+   * for the good kilo that lift puts in the Total. Lot sits after
+   * Place. The sheet is a posted class dump: letterhead and six
+   * placing rows on a full page. No signature form. Untuned.
    *
    * NAME_W holds the longest name on the local field ("Rex Pembroke").
    */
@@ -622,6 +624,7 @@ export const PAPER = {
     ROW_H: 26,
     ATTEMPT_ROW_H: 26,
     ATTEMPT_COLS: 9,
+    BEST_COLS: 3,
     ATTEMPTS_PER_LIFT: 3,
     NAME_W: 88,
     PLACE_W: 32,
@@ -722,6 +725,7 @@ export function paperFlightInnerWidth(): number {
     f.NAME_W +
     f.WEIGHT_W +
     f.ATTEMPT_COLS * f.ATTEMPT_COL_W +
+    f.BEST_COLS * f.BEST_COL_W +
     f.TOTAL_W +
     f.DOTS_W
   );

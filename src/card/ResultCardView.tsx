@@ -15,8 +15,9 @@
  * renderer cannot drift onto two palettes.
  *
  * One packed table: Place, Lot, Lifter, Wt kg, then Squat/Bench/Deadlift
- * as grouped 1/2/3 cells, then Total and DOTS. Attempts sit in the placing
- * row. Misses are the called weight signed negative. No squat+bench
+ * as grouped 1/2/3 plus Best, then Total and DOTS. Attempts sit in the
+ * placing row. The Best cell is the good kilo that lift contributes to
+ * the Total. Misses are the called weight signed negative. No squat+bench
  * subtotal. No gold winner fill; zebra is the same at every place.
  *
  * Authored wider than a phone. ResultCardScreen scales the page so the
@@ -37,6 +38,7 @@ import {
   NO_VALUE_DISPLAY,
   RESULT_FLIGHT_TABLE_COLUMNS,
   flightAttemptView,
+  flightBestText,
   flightColumnHeading,
   flightLifterName,
   type ResultCard,
@@ -70,7 +72,7 @@ function DoubleRule(): React.ReactElement {
 }
 
 function isLiftGroupEnd(id: ResultSheetColumnId): boolean {
-  return id === 'squat3' || id === 'bench3' || id === 'deadlift3';
+  return id === 'bestSquat' || id === 'bestBench' || id === 'bestDeadlift';
 }
 
 function attemptCellStyle(id: ResultSheetColumnId) {
@@ -106,19 +108,18 @@ function FlightHead(): React.ReactElement {
             {flightColumnHeading(group.headingId)}
           </Text>
           <View style={styles.liftGroupAttempts}>
-            {group.attempts.map((id, index) => (
-              <View
-                key={id}
-                style={[
-                  styles.attemptCol,
-                  index === F.ATTEMPTS_PER_LIFT - 1 && styles.attemptColGroupEnd,
-                ]}
-              >
+            {group.attempts.map((id) => (
+              <View key={id} style={styles.attemptCol}>
                 <Text style={[styles.headText, styles.headRight]} numberOfLines={1}>
                   {flightColumnHeading(id)}
                 </Text>
               </View>
             ))}
+            <View key={group.bestId} style={[styles.bestCol, styles.attemptColGroupEnd]}>
+              <Text style={[styles.headText, styles.headRight]} numberOfLines={1}>
+                {CARD_LABELS.BEST}
+              </Text>
+            </View>
           </View>
         </View>
       ))}
@@ -224,6 +225,25 @@ function FlightRowView({
         }
         if (id === 'lifter' || id === 'bodyweight' || id === 'total' || id === 'dots') {
           return <IdentityCell key={id} row={row} id={id} />;
+        }
+        const bestText = flightBestText(row, id);
+        if (bestText !== null) {
+          return (
+            <View
+              key={id}
+              style={[styles.bestCol, isLiftGroupEnd(id) && styles.attemptColLiftEnd]}
+            >
+              <Text
+                style={[
+                  styles.bestText,
+                  bestText === NO_VALUE_DISPLAY ? styles.inkSoft : styles.cellInk,
+                ]}
+                numberOfLines={1}
+              >
+                {bestText}
+              </Text>
+            </View>
+          );
         }
         const attempt = flightAttemptView(row, id);
         if (attempt === null) {
@@ -422,7 +442,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   liftGroup: {
-    width: F.ATTEMPT_COL_W * F.ATTEMPTS_PER_LIFT,
+    width: F.ATTEMPT_COL_W * F.ATTEMPTS_PER_LIFT + F.BEST_COL_W,
     flexShrink: 0,
     justifyContent: 'space-between',
     boxSizing: 'border-box',
@@ -493,18 +513,26 @@ const styles = StyleSheet.create({
   },
   /**
    * Header: the lift-group wrapper already carries the INK edge, so the
-   * last 1/2/3 cell drops its peer rule rather than doubling it.
+   * Best cell drops its peer rule rather than doubling it.
    */
   attemptColGroupEnd: {
     borderRightWidth: 0,
   },
   /**
-   * Body and blank form lines have no lift-group wrapper. The last cell
-   * of squat / bench / deadlift takes the INK edge so a made third stays
-   * in its own cell against the next zebra row.
+   * Body rows have no lift-group wrapper. The Best cell of squat / bench /
+   * deadlift takes the INK edge so the lift's result stays in its own
+   * cell against the next zebra row.
    */
   attemptColLiftEnd: {
     borderRightColor: C.INK,
+  },
+  bestCol: {
+    width: F.BEST_COL_W,
+    flexShrink: 0,
+    justifyContent: 'center',
+    boxSizing: 'border-box',
+    borderRightWidth: F.CELL_RULE,
+    borderRightColor: C.RULE,
   },
   totalCol: {
     width: F.TOTAL_W,
@@ -552,6 +580,13 @@ const styles = StyleSheet.create({
   attemptText: {
     fontSize: F.ATTEMPT_SIZE,
     fontWeight: '400',
+    fontStyle: 'normal',
+    fontVariant: ['tabular-nums'],
+    textAlign: 'right',
+  },
+  bestText: {
+    fontSize: F.BEST_SIZE,
+    fontWeight: '500',
     fontStyle: 'normal',
     fontVariant: ['tabular-nums'],
     textAlign: 'right',

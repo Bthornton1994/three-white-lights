@@ -348,12 +348,15 @@ describe('the sourcing ledger describes the constants it cites', () => {
       'squat1',
       'squat2',
       'squat3',
+      'bestSquat',
       'bench1',
       'bench2',
       'bench3',
+      'bestBench',
       'deadlift1',
       'deadlift2',
       'deadlift3',
+      'bestDeadlift',
       'total',
       'dots',
     ]);
@@ -373,7 +376,7 @@ describe('the sourcing ledger describes the constants it cites', () => {
     expect(flightColumnHeading('bench2')).toBe('2');
     expect(flightColumnHeading('deadlift3')).toBe('3');
     expect(RESULT_FLIGHT_TABLE_COLUMNS).not.toContain('subtotal');
-    expect(RESULT_FLIGHT_TABLE_COLUMNS).not.toContain('bestSquat');
+    expect(RESULT_FLIGHT_TABLE_COLUMNS).toContain('bestSquat');
     expect(RESULT_CLASS_TABLE_COLUMNS).toEqual([
       'place',
       'lifter',

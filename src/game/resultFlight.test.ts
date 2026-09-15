@@ -106,7 +106,7 @@ describe('the shareable card carries the flight', () => {
     expect(bench?.bestText).toBe('117.5');
     expect(bench?.attempts.map((cell) => signedAttemptText(cell))).toEqual(['107.5', '117.5', '-120']);
     expect(RESULT_FLIGHT_TABLE_COLUMNS).toContain('squat1');
-    expect(RESULT_FLIGHT_TABLE_COLUMNS).not.toContain('bestSquat');
+    expect(RESULT_FLIGHT_TABLE_COLUMNS).toContain('bestSquat');
     expect(flightAttemptView(harrow, 'bench1')).toEqual({
       text: '107.5',
       signedText: '107.5',
@@ -126,8 +126,16 @@ describe('the shareable card carries the flight', () => {
       best: false,
     });
     expect(flightAttemptView(harrow, 'total')).toBeNull();
+    expect(flightBestText(harrow, 'bestSquat')).toBe('175');
     expect(flightBestText(harrow, 'bestBench')).toBe('117.5');
+    expect(flightBestText(harrow, 'bestDeadlift')).toBe('220');
     expect(flightBestText(harrow, 'bench3')).toBeNull();
+    const ada = card.field.find((row) => row.isPlayer);
+    expect(ada).toBeDefined();
+    if (ada === undefined) throw new Error('player missing from the flight');
+    expect(flightBestText(ada, 'bestSquat')).toBe('217.5');
+    expect(flightBestText(ada, 'bestBench')).toBe('140');
+    expect(flightBestText(ada, 'bestDeadlift')).toBe('255');
     expect(RESULT_CLASS_TABLE_COLUMNS).toContain('bestSquat');
     expect(RESULT_ATTEMPT_TABLE_COLUMNS).toContain('squat1');
     expect(RESULT_ATTEMPT_TABLE_COLUMNS).not.toContain('bestSquat');

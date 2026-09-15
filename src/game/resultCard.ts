@@ -462,18 +462,17 @@ export const RESULT_SHEET_COLUMNS: readonly ResultSheetColumn[] = [
  * Total, points. Sex, division, equipment and class sit on the section
  * heading over the table — the same job [R8] gives `divheader`.
  *
- * Nine attempt facts plus Place, Weight, Total and DOTS do not fit as
- * peer columns beside a name at 390 without clipping kilos. The shareable
- * sheet prints `RESULT_FLIGHT_TABLE_COLUMNS` as one packed row on paper
- * wider than a phone. `RESULT_CLASS_TABLE_COLUMNS` is the [R8] meet
- * page (bests), and `RESULT_ATTEMPT_TABLE_COLUMNS` is the
- * OpenLifter S1..D3 listing ([R6]). A fourth BEST column stays on
- * `RESULT_SHEET_COLUMNS` and on each `LiftRow`; `flightAttemptView` still
- * marks the made best among the three. Misses use `AttemptCell.text` plus
+ * Nine attempt facts, three lift bests, Place, Weight, Total and DOTS
+ * do not fit as peer columns beside a name at 390 without clipping kilos.
+ * The shareable sheet prints `RESULT_FLIGHT_TABLE_COLUMNS` as one packed
+ * row on paper wider than a phone. Each lift is 1/2/3 plus the best that
+ * the Total is made of. `RESULT_CLASS_TABLE_COLUMNS` is the [R8] meet
+ * page (bests only), and `RESULT_ATTEMPT_TABLE_COLUMNS` is the
+ * OpenLifter S1..D3 listing ([R6]). Misses use `AttemptCell.text` plus
  * `struckThrough`.
  *
  * No squat+bench subtotal. The committed live-board reference prints one; [R8]
- * published meet pages do not.
+ * published meet pages do not. The lift best is not a subtotal.
  */
 export const RESULT_FLIGHT_TABLE_COLUMNS: readonly ResultSheetColumnId[] = [
   'place',
@@ -482,12 +481,15 @@ export const RESULT_FLIGHT_TABLE_COLUMNS: readonly ResultSheetColumnId[] = [
   'squat1',
   'squat2',
   'squat3',
+  'bestSquat',
   'bench1',
   'bench2',
   'bench3',
+  'bestBench',
   'deadlift1',
   'deadlift2',
   'deadlift3',
+  'bestDeadlift',
   'total',
   'dots',
 ];
@@ -538,14 +540,15 @@ const FLIGHT_ATTEMPT_COLUMN_SPEC: Readonly<
   deadlift3: { lift: 'deadlift', index: 2 },
 };
 
-/** Group labels over the three stacked attempts on the shareable sheet. */
+/** Group labels over 1/2/3 and the lift best on the shareable sheet. */
 export const FLIGHT_LIFT_GROUPS: readonly {
   readonly headingId: 'bestSquat' | 'bestBench' | 'bestDeadlift';
   readonly attempts: readonly [ResultSheetColumnId, ResultSheetColumnId, ResultSheetColumnId];
+  readonly bestId: 'bestSquat' | 'bestBench' | 'bestDeadlift';
 }[] = [
-  { headingId: 'bestSquat', attempts: ['squat1', 'squat2', 'squat3'] },
-  { headingId: 'bestBench', attempts: ['bench1', 'bench2', 'bench3'] },
-  { headingId: 'bestDeadlift', attempts: ['deadlift1', 'deadlift2', 'deadlift3'] },
+  { headingId: 'bestSquat', attempts: ['squat1', 'squat2', 'squat3'], bestId: 'bestSquat' },
+  { headingId: 'bestBench', attempts: ['bench1', 'bench2', 'bench3'], bestId: 'bestBench' },
+  { headingId: 'bestDeadlift', attempts: ['deadlift1', 'deadlift2', 'deadlift3'], bestId: 'bestDeadlift' },
 ];
 
 export interface FlightAttemptView {
