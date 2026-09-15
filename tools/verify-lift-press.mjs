@@ -2177,6 +2177,17 @@ const LIFT_LADDER = Object.freeze({
   /** Settle before a photograph, so the shutter is not inside a transition. */
   SHOT_SETTLE_MS: 60,
   /**
+   * Playwright screenshot scale for the lockout stills.
+   *
+   * Device-scale (2×) full-page PNGs were a 150–200 ms CDP hitch on this
+   * machine. `useLiftLoop` caps catch-up at `MAX_CATCH_UP_TICKS` (4 ticks,
+   * 67 ms) and discards the overflow, so that hitch stretched the deadlift
+   * hold to 1716–1718 ms against this recorder's 1700 ms ceiling. CSS scale
+   * is the same frame at 4× fewer pixels. That is the instrument's grain, not
+   * a widened game band — `FRAME_ALLOWANCE_MS` stays 100.
+   */
+  SHOT_SCALE: 'css',
+  /**
    * WHERE THE PROMPT IS DRAWN IN THE FRAME, as fractions of the screenshot's
    * own height, so it survives a device-scale change.
    *
@@ -3251,16 +3262,33 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
 async function photographTheHold(page, shots, ladderCopy) {
   await page.waitForTimeout(LIFT_LADDER.SHOT_SETTLE_MS);
   const before = (await readLoop(page)).prompt;
-  await page.screenshot({ path: shots.hold }).catch(() => {});
+  await screenshotLockoutFrame(page, shots.hold);
   const after = (await readLoop(page)).prompt;
   return { holdShot: { path: shots.hold, before, after, wanted: ladderCopy.LOCKOUT } };
 }
 
 async function photographTheDownCommand(page, shots, ladderCopy) {
   const before = (await readLoop(page)).prompt;
-  await page.screenshot({ path: shots.down }).catch(() => {});
+  await screenshotLockoutFrame(page, shots.down);
   const after = (await readLoop(page)).prompt;
   return { downShot: { path: shots.down, before, after, wanted: ladderCopy.DOWN } };
+}
+
+/**
+ * The lockout stills exist so a human can open DON'T LET GO vs DOWN. A
+ * full-page device-scale CDP capture was stretching the hold (see SHOT_SCALE).
+ * The prompt element is the region `promptRegionIn` grades; shooting it
+ * directly is the same comparison with a hitch that fits inside one catch-up
+ * cap.
+ */
+async function screenshotLockoutFrame(page, filePath) {
+  const prompt = page.getByTestId('lift-prompt');
+  const box = await prompt.boundingBox().catch(() => null);
+  if (box !== null && box.width >= 8 && box.height >= 8) {
+    await prompt.screenshot({ path: filePath, scale: LIFT_LADDER.SHOT_SCALE }).catch(() => {});
+    return;
+  }
+  await page.screenshot({ path: filePath, scale: LIFT_LADDER.SHOT_SCALE }).catch(() => {});
 }
 
 /**
@@ -4155,6 +4183,11 @@ async function gradeTheLockoutPhotographs(shots) {
  * image rather than assumed to.
  */
 function promptRegionIn(image) {
+  // A prompt-element crop is already the band. The full-page fractions would
+  // look at a strip of a 40 px file and miss the letters.
+  if (image.height < PRESS_PROBE.VIEWPORT.height * 0.5) {
+    return { x: 0, y: 0, w: image.width, h: image.height };
+  }
   const y = Math.round(image.height * LIFT_LADDER.PROMPT_BAND.TOP_FRACTION);
   const h = Math.round(image.height * LIFT_LADDER.PROMPT_BAND.HEIGHT_FRACTION);
   return { x: 0, y, w: image.width, h: Math.min(h, image.height - y) };
