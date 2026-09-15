@@ -16,6 +16,7 @@ import {
   PAPER_PAGE_H,
   PAPER_SCALE,
   paperFlightInnerWidth,
+  paperSheetHeight,
 } from './cardTuning';
 import { SHEET, SHEET_CSS, sheetCss } from './sheetPalette';
 import { codeOnly } from '../tuning/audit';
@@ -31,8 +32,9 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(PAPER.FLIGHT.ATTEMPT_COLS).toBe(9);
     expect(PAPER.FLIGHT.ATTEMPTS_PER_LIFT).toBe(3);
     expect(PAPER_SCALE).toBe(CARD_SCREEN.PHONE_W / PAPER.W);
-    expect(PAPER_PAGE_H).toBeGreaterThan(PAPER.FLIGHT.ROW_H);
-    expect(SCREEN).toContain('PAPER_SCALE');
+    expect(paperSheetHeight(6)).toBeGreaterThan(PAPER.FLIGHT.HEAD_H + 6 * PAPER.FLIGHT.ROW_H);
+    expect(paperSheetHeight(6)).toBeLessThan(PAPER_PAGE_H);
+    expect(SCREEN).toContain('paperSheetHeight');
     expect(SCREEN).toContain('PAPER_PAGE_H');
   });
 
@@ -107,13 +109,12 @@ describe('the shareable sheet is a printed scoresheet', () => {
 
   it('prints the flight, so place is a rank in a field', () => {
     expect(VIEW).toContain('card.field');
-    expect(VIEW).toContain('row.isPlayer');
     expect(VIEW).toContain('flightColumnHeading');
     expect(VIEW).toContain('RESULT_FLIGHT_TABLE_COLUMNS');
     expect(VIEW).toContain('FlightRowView');
     expect(VIEW).toContain('flightAttemptView');
     expect(VIEW).toContain('row.lotText');
-    expect(VIEW).toContain('playerRow');
+    expect(VIEW).not.toContain('playerRow');
     expect(VIEW).not.toContain('ScoreCell');
     expect(VIEW).not.toContain('LiftBestCell');
     expect(VIEW).not.toContain('LiftAttemptStack');
@@ -145,12 +146,15 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(PAPER.FLIGHT.ATTEMPT_ROW_H).toBeLessThanOrEqual(28);
   });
 
-  it('fills the page with form lines, without a gold winner row', () => {
+  it('hugs the filled flight, with no unused form pad and no winner wash', () => {
     expect(VIEW).not.toContain('flex: 1');
     expect(VIEW).not.toContain('pageFill');
+    expect(VIEW).not.toContain('EmptyRow');
+    expect(VIEW).not.toContain('blankBand');
+    expect(VIEW).not.toContain('playerRow');
     expect(VIEW).toContain('odd ? styles.rowOdd : styles.rowEven');
     expect(VIEW).toContain('flightLifterName');
-    expect(VIEW).toContain('EmptyRow');
+    expect(VIEW).toContain('paperSheetHeight');
     expect(SCREEN).toContain('flex: 1');
     expect(PAPER.FLIGHT.ROW_H).toBeGreaterThanOrEqual(20);
     expect(PAPER.FLIGHT.ROW_H).toBeLessThanOrEqual(28);

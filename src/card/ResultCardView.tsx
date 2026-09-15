@@ -20,8 +20,7 @@
  * subtotal. No gold winner fill; zebra is the same at every place.
  *
  * Authored wider than a phone. ResultCardScreen scales the page so the
- * whole row is in the 390 frame. Blank form lines fill the page down to
- * the named officials.
+ * whole row is in the 390 frame. The sheet hugs the filled flight.
  *
  * There is no loaded-bar motif here. Plate colours are gameplay language on
  * the platform, not a cartoon on a scoresheet.
@@ -33,7 +32,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import {
   FLIGHT_LIFT_GROUPS,
   NO_VALUE_DISPLAY,
-  RESULT_ATTEMPT_TABLE_COLUMNS,
   RESULT_FLIGHT_TABLE_COLUMNS,
   flightAttemptView,
   flightColumnHeading,
@@ -42,7 +40,7 @@ import {
   type ResultCardFlightRow,
   type ResultSheetColumnId,
 } from '../game/resultCard';
-import { CARD_LABELS, PAPER, PAPER_PAGE_H } from './cardTuning';
+import { CARD_LABELS, PAPER, paperSheetHeight } from './cardTuning';
 import { SHEET_CSS } from './sheetPalette';
 
 const P = PAPER;
@@ -206,7 +204,7 @@ function FlightRowView({
 }): React.ReactElement {
   return (
     <View
-      style={[styles.tableRow, odd ? styles.rowOdd : styles.rowEven, row.isPlayer ? styles.playerRow : null]}
+      style={[styles.tableRow, odd ? styles.rowOdd : styles.rowEven]}
       testID={`result-card-flight-row-${row.id}`}
     >
       {RESULT_FLIGHT_TABLE_COLUMNS.map((id) => {
@@ -249,22 +247,6 @@ function FlightRowView({
   );
 }
 
-function EmptyRow({ odd }: { readonly odd: boolean }): React.ReactElement {
-  return (
-    <View style={[styles.tableRow, odd ? styles.rowOdd : styles.rowEven]}>
-      <View style={styles.placeCol} />
-      <View style={styles.lotCol} />
-      <View style={styles.nameCol} />
-      <View style={styles.weightCol} />
-      {RESULT_ATTEMPT_TABLE_COLUMNS.map((id) => (
-        <View key={id} style={attemptCellStyle(id)} />
-      ))}
-      <View style={styles.totalCol} />
-      <View style={styles.dotsCol} />
-    </View>
-  );
-}
-
 function SignLine({ role, name }: { readonly role: string; readonly name: string }): React.ReactElement {
   return (
     <View style={styles.signLine}>
@@ -278,10 +260,9 @@ function SignLine({ role, name }: { readonly role: string; readonly name: string
 
 export function ResultCardView({ card }: ResultCardViewProps): React.ReactElement {
   const location = card.meet.locationText !== '' ? card.meet.locationText : card.meet.locationShortText;
-  const filled = card.field.length;
 
   return (
-    <View style={styles.sheet} testID="result-card-sheet">
+    <View style={[styles.sheet, { height: paperSheetHeight(card.field.length) }]} testID="result-card-sheet">
       <View style={styles.masthead}>
         <View style={styles.mastheadRow}>
           <View style={styles.fedRow}>
@@ -312,12 +293,6 @@ export function ResultCardView({ card }: ResultCardViewProps): React.ReactElemen
         ))}
       </View>
 
-      <View style={styles.blankBand}>
-        {Array.from({ length: F.ATTEMPT_COLS + filled }, (_, index) => (
-          <EmptyRow key={`blank-${index}`} odd={(filled + index) % 2 === 1} />
-        ))}
-      </View>
-
       <View style={styles.cert}>
         <View style={styles.rule} />
         <Text style={styles.certText}>{CARD_LABELS.POSTED}</Text>
@@ -339,7 +314,6 @@ export function ResultCardView({ card }: ResultCardViewProps): React.ReactElemen
 const styles = StyleSheet.create({
   sheet: {
     width: P.W,
-    height: PAPER_PAGE_H,
     backgroundColor: C.PAPER,
     paddingHorizontal: P.PAD_X,
     paddingTop: P.PAD_Y,
@@ -481,10 +455,6 @@ const styles = StyleSheet.create({
   rowOdd: {
     backgroundColor: C.PAPER_ALT,
   },
-  playerRow: {
-    // Same zebra as every other place. A gold #1 fill is souvenir-poster
-    // language; a published meet table does not shade the winner. Untuned.
-  },
   placeCol: {
     width: F.PLACE_W,
     flexShrink: 0,
@@ -608,12 +578,6 @@ const styles = StyleSheet.create({
   },
   inkSoft: {
     color: C.INK_SOFT,
-  },
-  blankBand: {
-    flexGrow: 1,
-    overflow: 'hidden',
-    borderBottomWidth: P.RULE,
-    borderBottomColor: C.INK,
   },
   cert: {
     marginTop: P.SECTION_GAP,
