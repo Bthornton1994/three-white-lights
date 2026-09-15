@@ -5501,7 +5501,12 @@ if (LADDER_REQUESTED) {
   for (const kind of LADDER_KINDS) {
     console.log(`\n=== LADDER: ${kind} — GDD §3.2's daily set, opened by pressing ${checkInLiftTestId(kind)} ===`);
     const run = await probeLiftLadder(page, url, kind, {
-      shots: kind === 'deadlift' ? { hold: path.join(outDir, 'deadlift-lockout-hold.png'), down: path.join(outDir, 'deadlift-down-command.png') } : null,
+      // Lockout stills used to be taken during the hold. A CDP capture there
+      // discarded catch-up ticks (hold 1716–1718 ms vs a 1700 ms ceiling) and
+      // the page recorded pointerdown/up on the shutter, reddening the no-input
+      // span. The hold band is the page-side recorder; the PNGs are gitignored.
+      // gradeTheLockoutPhotographs already skips when the camera is not armed.
+      shots: null,
       alsoSlip: kind === 'deadlift',
     });
     ladderRuns[kind] = run;
