@@ -8,11 +8,15 @@ Production path (no BOX / bilinear / Lanczos / fractional scales):
   3. pad to the next multiple of 320 (no resampling)
   4. NEAREST down to a true 320x320 master  (factor is an integer)
   5. quantize + binary alpha on the master
-  6. NEAREST 320 -> 80 for the native export  (factor 4)
-  7. NEAREST 80 -> 320 for the runtime PNG     (factor 4)
+  6. PRODUCTION sprite = that 320 master (not an 80 upsample)
+  7. Native 80 = NEAREST 320 -> 80 (factor 4) — evidence only
 
 BOX 320 -> 80 exists only as a comparison artifact under
 evidence/visual-after/nearest-vs-box/. It is not the production package.
+
+The engine already loads 320x320 PNGs and CSS-scales them with
+image-rendering: pixelated to min(78vw, 420px). Shipping the 80-grid
+upsample throws away authored clusters the 320 master still has.
 
 Pose tables in build_sprites.py are unused by this exporter.
 """
@@ -23,7 +27,7 @@ import json
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "public" / "sprites"
@@ -184,16 +188,25 @@ def export_scene(raw: Path, dest: Path, runtime: tuple[int, int], colors: int, r
     padded = pad_rect_multiple(im, native[0], native[1], (20, 17, 15))
     if padded.size[0] % native[0] or padded.size[1] % native[1]:
         raise SystemExit(f"scene pad {padded.size} not divisible by {native}")
+    factor_w = padded.size[0] // native[0]
+    factor_h = padded.size[1] // native[1]
     small = padded.resize(native, resample)
     q = small.quantize(colors=colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
     out = q.convert("RGB").resize(runtime, Image.Resampling.NEAREST)
     dest.parent.mkdir(parents=True, exist_ok=True)
     out.save(dest)
     n = len(set(out.getdata()))
-    print(f"{dest.name} {out.size} colors={n} resample={resample.name}")
+    print(f"{dest.name} {out.size} colors={n} resample={resample.name} pad={padded.size} factor={factor_w}x{factor_h}")
     if n > 64:
         raise SystemExit(f"QA fail {dest} {n} colors")
-    return {"path": str(dest.relative_to(ROOT)), "colors": n, "resample": resample.name, "pad": list(padded.size)}
+    return {
+        "path": str(dest.relative_to(ROOT)),
+        "colors": n,
+        "resample": resample.name,
+        "pad": list(padded.size),
+        "native": list(native),
+        "factor": [factor_w, factor_h],
+    }
 
 
 MANIFEST = {
@@ -229,10 +242,9 @@ def save_grid(name: str, cells: list[Image.Image], cols: int) -> list[dict]:
         master.save(master_dir / stem)
         qa_frame(near80, near_dir / stem)
         qa_frame(box80, box_dir / stem)
-        runtime_im = near80.resize((MASTER, MASTER), Image.Resampling.NEAREST)
-        rec = qa_frame(runtime_im, out_dir / stem)
+        rec = qa_frame(master, out_dir / stem)
         recs.append(rec)
-        runtime.append(runtime_im)
+        runtime.append(master)
         print(f"{name}/{stem} colors={rec['colors']}")
     sheet_of(runtime, cols).save(out_dir / "sheet-transparent.png")
     return recs
@@ -241,13 +253,54 @@ def save_grid(name: str, cells: list[Image.Image], cols: int) -> list[dict]:
 def export_identity() -> None:
     rgba = to_rgba(WORKING / "identity.jpg")
     save_grid("identity-single", [rgba], 1)
-    # identity lives at package root, not identity-single/
     src = OUT / "identity-single" / "frame-01.png"
     dest = OUT / "identity.png"
     Image.open(src).save(dest)
     (WORKING / "native-80").mkdir(parents=True, exist_ok=True)
     Image.open(WORKING / "native-80" / "identity-single" / "frame-01.png").save(WORKING / "native-80" / "identity.png")
     Image.open(WORKING / "masters-320" / "identity-single" / "frame-01.png").save(WORKING / "masters-320" / "identity.png")
+
+
+def _label_bar(text: str, width: int, height: int = 28) -> Image.Image:
+    bar = Image.new("RGB", (width, height), (18, 15, 12))
+    draw = ImageDraw.Draw(bar)
+    try:
+        font = ImageFont.load_default()
+    except Exception:
+        font = None
+    draw.text((8, 7), text, fill=(243, 197, 106), font=font)
+    return bar
+
+
+def opaque_thirds(im: Image.Image) -> dict[str, tuple[int, int, int, int]]:
+    arr = np.array(im)
+    ys, xs = np.where(arr[:, :, 3] >= 128)
+    if ys.size == 0:
+        return {
+            "upper-bar-hands": (40, 20, 280, 140),
+            "mid-thighs-chest": (40, 120, 280, 230),
+            "lower-shins-plates": (20, 210, 300, 320),
+        }
+    x0, x1 = int(xs.min()), int(xs.max()) + 1
+    y0, y1 = int(ys.min()), int(ys.max()) + 1
+    h = max(1, y1 - y0)
+    t1 = y0 + h // 3
+    t2 = y0 + (2 * h) // 3
+    pad = 4
+    x0 = max(0, x0 - pad)
+    x1 = min(im.size[0], x1 + pad)
+    return {
+        "upper-bar-hands": (x0, max(0, y0 - pad), x1, t1),
+        "mid-thighs-chest": (x0, t1, x1, t2),
+        "lower-shins-plates": (x0, t2, x1, min(im.size[1], y1 + pad)),
+    }
+
+
+def _paste_rgba(canvas: Image.Image, im: Image.Image, xy: tuple[int, int]) -> None:
+    if im.mode == "RGBA":
+        canvas.paste(im, xy, im)
+    else:
+        canvas.paste(im, xy)
 
 
 def comparison_sheet() -> None:
@@ -262,43 +315,117 @@ def comparison_sheet() -> None:
         ("deadlift", "frame-06.png", "deadlift-lockout"),
         ("deadlift-max", "frame-01.png", "deadlift-setup-max"),
         ("idle", "frame-01.png", "idle"),
+        ("plates", "frame-01.png", "plates"),
+        ("success", "frame-01.png", "success"),
     ]
     dest_dir = EVIDENCE / "nearest-vs-box"
     dest_dir.mkdir(parents=True, exist_ok=True)
+    crop_dir = dest_dir / "anatomy-crops"
+    crop_dir.mkdir(parents=True, exist_ok=True)
     rows = []
+    header = _label_bar("320 MASTER  |  NEAREST 80 x4  |  BOX 80 x4", MASTER * 3)
     for folder, fname, label in keys:
+        master = Image.open(WORKING / "masters-320" / folder / fname).convert("RGBA")
         n80 = Image.open(WORKING / "native-80" / folder / fname).convert("RGBA")
         b80 = Image.open(EVIDENCE / "native-80-box" / folder / fname).convert("RGBA")
         n4 = n80.resize((MASTER, MASTER), Image.Resampling.NEAREST)
         b4 = b80.resize((MASTER, MASTER), Image.Resampling.NEAREST)
-        row = Image.new("RGB", (MASTER * 4, MASTER), (12, 10, 8))
-        row.paste(n80.resize((MASTER, MASTER), Image.Resampling.NEAREST), (0, 0), n80.resize((MASTER, MASTER), Image.Resampling.NEAREST))
-        row.paste(b80.resize((MASTER, MASTER), Image.Resampling.NEAREST), (MASTER, 0), b80.resize((MASTER, MASTER), Image.Resampling.NEAREST))
-        row.paste(n4, (MASTER * 2, 0), n4)
-        row.paste(b4, (MASTER * 3, 0), b4)
+        row = Image.new("RGB", (MASTER * 3, MASTER + 28), (12, 10, 8))
+        row.paste(_label_bar(label, MASTER * 3), (0, 0))
+        _paste_rgba(row, master, (0, 28))
+        _paste_rgba(row, n4, (MASTER, 28))
+        _paste_rgba(row, b4, (MASTER * 2, 28))
         row.save(dest_dir / f"{label}.png")
-        # native 80 pair
         pair = Image.new("RGB", (NATIVE * 2, NATIVE), (12, 10, 8))
-        pair.paste(n80, (0, 0), n80)
-        pair.paste(b80, (NATIVE, 0), b80)
+        _paste_rgba(pair, n80, (0, 0))
+        _paste_rgba(pair, b80, (NATIVE, 0))
         pair.resize((NATIVE * 2 * 4, NATIVE * 4), Image.Resampling.NEAREST).save(dest_dir / f"{label}-native80.png")
+        n4.save(dest_dir / f"{label}-nearest-crop.png")
+        b4.save(dest_dir / f"{label}-box-crop.png")
+        master.save(dest_dir / f"{label}-master.png")
+        # anatomy thirds: same box on master / nearest / box
+        thirds = opaque_thirds(master)
+        atlas_w = 160
+        atlas = Image.new("RGB", (atlas_w * 3, 22 + 110 * 3), (12, 10, 8))
+        atlas.paste(_label_bar(f"{label}  master | nearest | box", atlas_w * 3, 22), (0, 0))
+        for ri, (rname, box) in enumerate(thirds.items()):
+            for ci, src in enumerate((master, n4, b4)):
+                chip = src.crop(box).resize((atlas_w, 108), Image.Resampling.NEAREST)
+                _paste_rgba(atlas, chip, (ci * atlas_w, 22 + ri * 110))
+            chip_name = rname.split("-")[0]
+            master.crop(box).resize((box[2] - box[0], box[3] - box[1]), Image.Resampling.NEAREST).save(
+                crop_dir / f"{label}-{chip_name}-master.png"
+            )
+            n4.crop(box).save(crop_dir / f"{label}-{chip_name}-nearest.png")
+            b4.crop(box).save(crop_dir / f"{label}-{chip_name}-box.png")
+        atlas.save(crop_dir / f"{label}-atlas.png")
         rows.append(row)
-        # contact crops from 4x nearest vs box (thighs / hands / plates)
-        def crop_band(im: Image.Image, box: tuple[int, int, int, int], name: str) -> None:
-            im.crop(box).save(dest_dir / name)
-
-        crop_band(n4, (80, 40, 240, 280), f"{label}-nearest-crop.png")
-        crop_band(b4, (80, 40, 240, 280), f"{label}-box-crop.png")
     if rows:
-        strip = Image.new("RGB", (MASTER * 4, MASTER * len(rows)), (12, 10, 8))
-        for i, row in enumerate(rows):
-            strip.paste(row, (0, i * MASTER))
+        strip = Image.new("RGB", (MASTER * 3, 28 + (MASTER + 28) * len(rows)), (12, 10, 8))
+        strip.paste(header, (0, 0))
+        y = 28
+        for row in rows:
+            strip.paste(row, (0, y))
+            y += row.size[1]
         strip.save(dest_dir / "sheet-all.png")
         (dest_dir / "COLUMNS.txt").write_text(
-            "Columns left -> right: NEAREST 80 upscaled 4x | BOX 80 upscaled 4x | "
-            "NEAREST 80 native-enlarged | BOX 80 native-enlarged\n"
-            "All 80px exports come from the same 320x320 master.\n"
+            "Columns left -> right: 320 MASTER | NEAREST 80 upscaled 4x | BOX 80 upscaled 4x\n"
+            "All 80px exports come from the same 320x320 master with an integer factor of 4.\n"
+            "Production sprites are the 320 masters, not the 80 upsample.\n"
+            "anatomy-crops/ uses opaque-bbox vertical thirds: upper-bar-hands, mid-thighs-chest, lower-shins-plates.\n"
+            "native80 files are NEAREST | BOX at 80, then NEAREST-enlarged 4x for inspection.\n"
         )
+
+
+def rgba_stats(path: Path) -> dict:
+    im = Image.open(path)
+    arr = np.array(im)
+    rec: dict = {"path": str(path.relative_to(ROOT)), "size": list(im.size), "mode": im.mode}
+    if arr.ndim == 3 and arr.shape[2] == 4:
+        a = arr[:, :, 3]
+        rgb = arr[:, :, :3]
+        opaque = a == 255
+        rec["colors"] = len({tuple(p) for p in rgb[opaque]}) if opaque.any() else 0
+        rec["semi"] = int(((a > 0) & (a < 255)).sum())
+        rec["mag"] = int(chroma_fail(rgb, a).sum())
+        rec["opaque"] = int(opaque.sum())
+        rec["binary_alpha"] = rec["semi"] == 0
+    else:
+        data = list(im.convert("RGB").getdata())
+        rec["colors"] = len(set(data))
+        rec["semi"] = 0
+        rec["mag"] = 0
+        rec["binary_alpha"] = True
+    rec["pass"] = rec["semi"] == 0 and rec["mag"] == 0 and rec["colors"] <= (64 if "title" in path.name or "platform" in path.name else 48)
+    return rec
+
+
+def export_palette_report() -> None:
+    recs = []
+    for path in sorted(OUT.rglob("*.png")):
+        if path.name.startswith("sheet-"):
+            continue
+        recs.append(rgba_stats(path))
+    dest = EVIDENCE / "nearest-vs-box" / "PALETTE_ALPHA.json"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(json.dumps({"production": recs, "fail": [r for r in recs if not r["pass"]]}, indent=2))
+    lines = [
+        "# Palette / alpha validation — production 320 masters",
+        "",
+        "Binary alpha, no magenta chroma, sprite ≤48 colors, title/platform ≤64.",
+        "",
+        "| file | size | colors | semi | mag | pass |",
+        "|---|---|---:|---:|---:|---|",
+    ]
+    for r in recs:
+        lines.append(
+            f"| `{r['path']}` | {r['size'][0]}×{r['size'][1]} | {r['colors']} | {r['semi']} | {r['mag']} | {'yes' if r['pass'] else 'NO'} |"
+        )
+    fails = [r for r in recs if not r["pass"]]
+    lines.append("")
+    lines.append(f"Failures: {len(fails)}")
+    (EVIDENCE / "nearest-vs-box" / "PALETTE_ALPHA.md").write_text("\n".join(lines) + "\n")
+    print(f"palette report {len(recs)} files, fails={len(fails)}")
 
 
 def export_evidence() -> None:
@@ -360,11 +487,16 @@ def export_evidence() -> None:
     Image.open(OUT / "title.png").save(EVIDENCE / "title.png")
     Image.open(OUT / "platform.png").save(EVIDENCE / "platform.png")
     comparison_sheet()
+    export_palette_report()
 
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    report: dict = {"grids": {}, "scenes": {}, "method": "NEAREST 320->80 factor 4 from padded integer master"}
+    report: dict = {
+        "grids": {},
+        "scenes": {},
+        "method": "production = 320 master (integer pad + NEAREST). native 80 = NEAREST 4:1 evidence. BOX comparison-only.",
+    }
     export_identity()
     for name, (fname, rows, cols) in MANIFEST.items():
         raw = WORKING / fname
@@ -378,7 +510,6 @@ def main() -> None:
     report["scenes"]["platform"] = export_scene(
         WORKING / "platform.jpg", OUT / "platform.png", (1280, 720), SCENE_COLORS, Image.Resampling.NEAREST
     )
-    # BOX scene comparison only
     export_scene(
         WORKING / "title.jpg",
         EVIDENCE / "nearest-vs-box" / "title-box.png",
@@ -396,7 +527,6 @@ def main() -> None:
     for jpeg in (OUT / "title.jpg", OUT / "platform.jpg"):
         if jpeg.exists():
             jpeg.unlink()
-    # drop the identity-single runtime folder; identity.png is the public file
     ident_dir = OUT / "identity-single"
     if ident_dir.exists():
         for p in ident_dir.glob("*"):

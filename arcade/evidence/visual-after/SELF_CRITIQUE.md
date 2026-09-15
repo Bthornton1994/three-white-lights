@@ -1,49 +1,58 @@
-# Visual self-critique — integer-grid NEAREST export
+# Visual self-critique — integer-grid 320 master production
 
 **Self-assessment: ISSUES_REMAIN.** Not MERGE_OK. Independent QA owns the
 SNES/Genesis sports A/B.
 
-Parent of this integer-grid pass: `28da52c090f46b70eda3ec1f64d1fb9549105b34`.
+Parent of this integer-grid pass: `f987db66f4904eed0e0f617790d69fecb0254676`
+(which still shipped 80 NEAREST-upsampled to 320). That upsample is what
+smashed thighs / hands / plates. This commit ships the 320 master instead.
+
 `feel.ts`, pose tables, judging, timing, scoring, and `visualEffort` (0.96)
-were not touched. CSS only gained `-moz-crisp-edges` next to existing
-`pixelated`.
+were not touched. CSS already had `-moz-crisp-edges` + `pixelated`.
 
-## Recommendation: NEAREST (production)
+## Recommendation: 320 MASTER (production)
 
-Same 320×320 master, two 80×80 exports (factor 4):
+Same 320×320 master, two 80×80 exports (factor 4), plus the master itself:
 
-| | NEAREST | BOX |
-|---|---|---|
-| Clusters | Harder, stair-step, keeps master palette pixels | Softer, averaged, new in-between colors |
-| Silhouette | Slightly noisier edge | Slightly fuller mass |
-| Hands / bar / plates | Speckled but 1:1 with the master | Blended discs |
-| 4× inspection | Chunkier SNES-like blocks | Muddy blocks |
-| In-app 390 / desktop | Same poses; difference is small at card size | Same |
+| | 320 master | NEAREST 80 ×4 | BOX 80 ×4 |
+|---|---|---|---|
+| Clusters | Authored 320 pixels kept | Stair-step, 16× area loss | Averaged, new in-between colors |
+| Silhouette | Readable athlete | Noisy / packed | Slightly fuller mush |
+| Hands / bar / plates | Discs and fingers still count | Speckled 1:1 with 80 grid | Blended discs |
+| 4× inspection | The picture | Chunkier SNES-like blocks of a worse picture | Muddy blocks of a worse picture |
+| In-app 390 / desktop | Lift cards and walkout readable | Cards collapse to blobs | Same blobs, slightly softer |
 
-**Ship NEAREST.** It is the only method that preserves authored pixels from the
-320 master. BOX hides those clusters behind a fractional average — the opposite
-of this pass. The comparison does **not** make the 80px package look
-hand-pixelled.
+**Ship the 320 master.** It is the only integer-grid path that preserves
+authored clusters. Between the two 80 methods, NEAREST is less dishonest than
+BOX (it does not invent colors), but **the 80 comparison does not make the
+package look hand-pixelled.** Using that A/B to pick a winner at 80 hides the
+real defect: 80 is the wrong native grid for this art.
 
-The **320×320 master** is still the better picture. Runtime PNGs are 80
-NEAREST-upscaled to 320 so the engine’s native grid is 80. That upsample cannot
-invent clusters the 80 grid dropped.
+Title/platform stay NEAREST integer-pad (factors 8 and 6). BOX title is
+comparison-only.
+
+Chromium computed `image-rendering: pixelated` on `.title-art`,
+`.lift-card img`, `.stage-bg`, `.stage-lifter` at 390×844 and 1280×800.
 
 ## Residual defects
 
-1. 80×80 is still a downsample of Imagine JPEG “pixel-style” art, not a
-   hand-authored 80 lattice.
-2. Squat hole: thighs/shins/hands/bar read, but packed and posterized.
-3. Bench 3/4 is the weakest lift at 80; the 320 master is clearer.
-4. Deadlift hinge vs lockout stay distinct; lockout still blocky.
-5. Title may retain a faint wordmark. HTML copy is the real title.
+1. 320 masters are still indexed Imagine JPEGs, not a hand-authored SNES
+   lattice. Palette is posterized; outlines are not 16-bit sports-clean.
+2. Squat hole: thighs / shins / hands / bar / plates read at 320; packed and
+   still “painted then indexed.”
+3. Bench 3/4 is the weakest lift identity; chest / arm / bar read, but the
+   bench furniture is noisy.
+4. Deadlift hinge vs lockout stay distinct; lockout is blocky.
+5. Title may retain a faint “POWER LIFTING” wordmark. HTML copy is the real
+   title.
 6. Identity drift on some idle/miss cells (beard/hairline).
-7. Using the 320 master at runtime would look better than 80×4. That is a
-   separate packaging choice, not a reason to pick BOX.
+7. Lift-select cards are 96×84. Even the 320 master is then CSS-downscaled;
+   `pixelated` keeps chunks, but this is not a dedicated 80 UI icon.
+8. Light vs max is a separate sheet, not a weight-of-the-bar read at card size.
 
 ## Checks
 
 - `check_sprites.py` ok: binary alpha, no chroma, ≤48/≤64, light≠max,
   silhouette Δ ≥900 on 01/03/06, deadlift 06 ≠ 01.
-- Chromium computed `image-rendering: pixelated` on title, lift-card, stage.
+- Palette report: 57 production files, 0 fails (`nearest-vs-box/PALETTE_ALPHA.md`).
 - Arcade tests 52/52. Workspace `test:arcade` 45/45.

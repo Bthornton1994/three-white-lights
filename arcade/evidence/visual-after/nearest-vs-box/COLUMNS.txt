@@ -1,2 +1,5 @@
-Columns left -> right: NEAREST 80 upscaled 4x | BOX 80 upscaled 4x | NEAREST 80 native-enlarged | BOX 80 native-enlarged
-All 80px exports come from the same 320x320 master.
+Columns left -> right: 320 MASTER | NEAREST 80 upscaled 4x | BOX 80 upscaled 4x
+All 80px exports come from the same 320x320 master with an integer factor of 4.
+Production sprites are the 320 masters, not the 80 upsample.
+anatomy-crops/ uses opaque-bbox vertical thirds: upper-bar-hands, mid-thighs-chest, lower-shins-plates.
+native80 files are NEAREST | BOX at 80, then NEAREST-enlarged 4x for inspection.

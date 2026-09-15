@@ -515,7 +515,7 @@
           320,
           320
         ],
-        "colors": 42,
+        "colors": 43,
         "semi": 0,
         "mag": 0
       },
@@ -545,7 +545,7 @@
           320,
           320
         ],
-        "colors": 40,
+        "colors": 43,
         "semi": 0,
         "mag": 0
       },
@@ -569,6 +569,14 @@
       "pad": [
         1280,
         1792
+      ],
+      "native": [
+        160,
+        224
+      ],
+      "factor": [
+        8,
+        8
       ]
     },
     "platform": {
@@ -578,8 +586,16 @@
       "pad": [
         1920,
         1080
+      ],
+      "native": [
+        320,
+        180
+      ],
+      "factor": [
+        6,
+        6
       ]
     }
   },
-  "method": "NEAREST 320->80 factor 4 from padded integer master"
+  "method": "production = 320 master (integer pad + NEAREST). native 80 = NEAREST 4:1 evidence. BOX comparison-only."
 }
