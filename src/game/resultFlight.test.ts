@@ -98,6 +98,7 @@ describe('the shareable card carries the flight', () => {
       .flatMap((row) => row.rows.flatMap((lift) => [...lift.attempts]))
       .filter((cell) => cell.mark === 'no-lift').length;
     expect(printedMisses).toBe(plannedMisses);
+    expect(plannedMisses).toBe(9);
     const harrow = card.field.find((row) => row.name === 'Jon Harrow');
     expect(harrow).toBeDefined();
     if (harrow === undefined) throw new Error('Jon Harrow missing from the flight');

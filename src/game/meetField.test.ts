@@ -228,6 +228,19 @@ describe('A1-NPC-SIM-01 miss discriminator includes lift', () => {
       a.cards.map((card) => card.plan.map((row) => row.good)),
     ).toEqual(b.cards.map((card) => card.plan.map((row) => row.good)));
   });
+
+  it('authors a local attempt grid rather than a wall of makes', () => {
+    const field = buildMeetField(MEET_FIELD_FIXTURE, DEFAULT_MEET_RULES, SEED, MEET_ENTRY.lot);
+    const misses = field.cards.flatMap((card) => card.plan.filter((row) => !row.good));
+    expect(misses.length).toBe(9);
+    const mira = field.cards.find((card) => card.lifter.name === 'Mira Quill');
+    expect(mira?.plan.every((row) => row.good)).toBe(true);
+    const harrowBench3 = field.cards
+      .find((card) => card.lifter.name === 'Jon Harrow')
+      ?.plan.find((row) => row.lift === 'bench' && row.attemptNumber === 3);
+    expect(harrowBench3?.good).toBe(false);
+    expect(harrowBench3?.weightKg).toBe(120);
+  });
 });
 
 describe('standing record is not a current competitor', () => {

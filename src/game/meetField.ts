@@ -3,7 +3,8 @@
  *
  * A1: a few named competitors on this flight, not a giant fake leaderboard
  * and not GDD §5 empire NPCs. Every published kg / best / Total / bomb-out
- * is produced by `meet.ts`. The make/miss draw is cheaper. The result is not
+ * is produced by `meet.ts`. Make/miss on the local fixture is authored on
+ * each spec so the posted class dump is an attempt grid. The result is not
  * fake.
  *
  * A1.1: same-weight platform order is declared weight, then lot. Replay of a
@@ -31,7 +32,6 @@ import {
   type MeetLoadingRules,
   type MeetState,
 } from './meet';
-import { nextRandom, seedState } from './prng';
 import { MEET_TUNING, type FieldLifterSpec } from './meetTuning';
 
 export const FIXTURE_REPLAY_FAILED = 'FIXTURE_REPLAY_FAILED';
@@ -100,11 +100,15 @@ function roundCall(weight: number, lift: LiftKind, rules: MeetLoadingRules, mode
   return roundToCallableWeightIgnoringTheCard(weight, lift, rules, mode);
 }
 
+function lightsFor(good: boolean): JudgePanel {
+  return good ? WHITE : RED;
+}
+
 function planLift(
   lift: LiftKind,
   dayMaxKg: number,
   rules: MeetLoadingRules,
-  missThirdAttempt: boolean,
+  goods: readonly [boolean, boolean, boolean],
   spec: FieldLifterSpec,
 ): readonly FieldAttemptPlan[] {
   const opener = roundCall(dayMaxKg * MEET_TUNING.FIELD.OPENER_FRAC, lift, rules, 'down');
@@ -114,14 +118,37 @@ function planLift(
   const thirdRaw = roundCall(dayMaxKg, lift, rules, 'up');
   const minThird = roundCall(second + rules.minIncrement, lift, rules, 'up');
   const third = thirdRaw >= minThird ? thirdRaw : minThird;
-  const thirdGood = !missThirdAttempt;
   const openerN = ATTEMPT_NUMBERS[0];
   const secondN = ATTEMPT_NUMBERS[1];
   const thirdN = ATTEMPT_NUMBERS[2];
   return [
-    { lift, attemptNumber: openerN, weightKg: opener, good: true, lights: WHITE, lot: spec.lot, lifterId: spec.id },
-    { lift, attemptNumber: secondN, weightKg: second, good: true, lights: WHITE, lot: spec.lot, lifterId: spec.id },
-    { lift, attemptNumber: thirdN, weightKg: third, good: thirdGood, lights: thirdGood ? WHITE : RED, lot: spec.lot, lifterId: spec.id },
+    {
+      lift,
+      attemptNumber: openerN,
+      weightKg: opener,
+      good: goods[0],
+      lights: lightsFor(goods[0]),
+      lot: spec.lot,
+      lifterId: spec.id,
+    },
+    {
+      lift,
+      attemptNumber: secondN,
+      weightKg: second,
+      good: goods[1],
+      lights: lightsFor(goods[1]),
+      lot: spec.lot,
+      lifterId: spec.id,
+    },
+    {
+      lift,
+      attemptNumber: thirdN,
+      weightKg: third,
+      good: goods[2],
+      lights: lightsFor(goods[2]),
+      lot: spec.lot,
+      lifterId: spec.id,
+    },
   ];
 }
 
@@ -182,18 +209,6 @@ export function replayFixtureCard(
   return meet;
 }
 
-/**
- * A1-NPC-SIM-01: the discriminator includes lift, so a bench-third miss does
- * not force the same NPC's deadlift-third miss.
- */
-function missThird(seed: number, index: number, lift: LiftKind): boolean {
-  const liftIndex = LIFT_ORDER.indexOf(lift) + 1;
-  const draw = nextRandom(
-    seedState(seed + (index + 1) * MEET_TUNING.FIELD.MISS_SEED_STRIDE + liftIndex),
-  );
-  return draw.value < MEET_TUNING.FIELD.MISS_THIRD_CHANCE;
-}
-
 function assertUniqueLots(specs: readonly FieldLifterSpec[], playerLot: number): void {
   const seen = new Set<number>();
   seen.add(playerLot);
@@ -214,13 +229,13 @@ export function buildMeetField(
   seed: number,
   playerLot: number,
 ): MeetField {
+  void seed;
   assertUniqueLots(specs, playerLot);
-  const cards: FieldCard[] = specs.map((spec, index) => {
+  const cards: FieldCard[] = specs.map((spec) => {
     const dayMaxKg = spec.dayMaxKg;
     const plan: FieldAttemptPlan[] = [];
     for (const lift of LIFT_ORDER) {
-      const miss = missThird(seed, index, lift) && lift !== 'squat';
-      plan.push(...planLift(lift, dayMaxKg[lift], rules, miss, spec));
+      plan.push(...planLift(lift, dayMaxKg[lift], rules, spec.attemptGood[lift], spec));
     }
     const meet = replayFixtureCard(plan, rules, spec.id);
     return {

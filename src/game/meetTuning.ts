@@ -179,6 +179,11 @@ export interface StandingMeetRecord {
  * One named competitor on the flight. Day-max is the load their attempts are
  * planned from; published kg still comes out of `meet.ts`.
  */
+/** Make/miss for one lift's three attempts, in attempt order. */
+export type FieldAttemptGoods = readonly [boolean, boolean, boolean];
+
+const LIFT_MADE: FieldAttemptGoods = Object.freeze([true, true, true]);
+
 export interface FieldLifterSpec {
   readonly id: string;
   readonly name: string;
@@ -189,6 +194,13 @@ export interface FieldLifterSpec {
    */
   readonly lot: number;
   readonly dayMaxKg: Readonly<Record<LiftKind, number>>;
+  /**
+   * Authored make/miss per lift. The posted class dump is an attempt grid,
+   * not a wall of makes; these flags are the local flight's card, not a
+   * physiology model. Untuned. Mira Quill is a full card so her printed
+   * 190 / 125 / 230 stay put. Jon Harrow's bench third stays a miss.
+   */
+  readonly attemptGood: Readonly<Record<LiftKind, FieldAttemptGoods>>;
 }
 
 /**
@@ -207,6 +219,11 @@ export const MEET_FIELD_FIXTURE: readonly FieldLifterSpec[] = Object.freeze([
     bodyweightKg: 92.9,
     lot: 1,
     dayMaxKg: Object.freeze({ squat: 200, bench: 130, deadlift: 240 }),
+    attemptGood: Object.freeze({
+      squat: Object.freeze([true, true, false]) as FieldAttemptGoods,
+      bench: LIFT_MADE,
+      deadlift: Object.freeze([true, true, false]) as FieldAttemptGoods,
+    }),
   }),
   Object.freeze({
     id: 'quill',
@@ -214,6 +231,7 @@ export const MEET_FIELD_FIXTURE: readonly FieldLifterSpec[] = Object.freeze([
     bodyweightKg: 89.6,
     lot: 2,
     dayMaxKg: Object.freeze({ squat: 190, bench: 125, deadlift: 230 }),
+    attemptGood: Object.freeze({ squat: LIFT_MADE, bench: LIFT_MADE, deadlift: LIFT_MADE }),
   }),
   Object.freeze({
     id: 'harrow',
@@ -221,6 +239,11 @@ export const MEET_FIELD_FIXTURE: readonly FieldLifterSpec[] = Object.freeze([
     bodyweightKg: 92.0,
     lot: 4,
     dayMaxKg: Object.freeze({ squat: 180, bench: 120, deadlift: 220 }),
+    attemptGood: Object.freeze({
+      squat: Object.freeze([true, false, true]) as FieldAttemptGoods,
+      bench: Object.freeze([true, true, false]) as FieldAttemptGoods,
+      deadlift: LIFT_MADE,
+    }),
   }),
   Object.freeze({
     id: 'pembroke',
@@ -228,6 +251,11 @@ export const MEET_FIELD_FIXTURE: readonly FieldLifterSpec[] = Object.freeze([
     bodyweightKg: 87.4,
     lot: 5,
     dayMaxKg: Object.freeze({ squat: 170, bench: 110, deadlift: 205 }),
+    attemptGood: Object.freeze({
+      squat: LIFT_MADE,
+      bench: Object.freeze([true, false, true]) as FieldAttemptGoods,
+      deadlift: Object.freeze([true, true, false]) as FieldAttemptGoods,
+    }),
   }),
   Object.freeze({
     id: 'linn',
@@ -235,6 +263,11 @@ export const MEET_FIELD_FIXTURE: readonly FieldLifterSpec[] = Object.freeze([
     bodyweightKg: 90.4,
     lot: 6,
     dayMaxKg: Object.freeze({ squat: 155, bench: 100, deadlift: 185 }),
+    attemptGood: Object.freeze({
+      squat: Object.freeze([true, true, false]) as FieldAttemptGoods,
+      bench: Object.freeze([true, true, false]) as FieldAttemptGoods,
+      deadlift: Object.freeze([true, true, false]) as FieldAttemptGoods,
+    }),
   }),
 ]);
 
@@ -330,8 +363,10 @@ export const MEET_TUNING = Object.freeze({
   /**
    * How fixture NPCs plan attempts. Cheaper than the player's mechanic; the
    * published kg still comes out of `meet.ts`. Fractions of day-max, rounded
-   * onto the declaration grid. A third-attempt miss is a seeded chance so a
-   * flight is not a wall of identical makes.
+   * onto the declaration grid. Make/miss on this local flight is authored on
+   * each spec (`attemptGood`) so the posted class dump is an attempt grid.
+   * MISS_THIRD_CHANCE / MISS_SEED_STRIDE stay named for a later draw; this
+   * fixture does not read them.
    */
   FIELD: Object.freeze({
     OPENER_FRAC: 0.9,
