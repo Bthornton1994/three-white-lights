@@ -121,6 +121,16 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(VIEW).not.toContain('flightBestText');
   });
 
+  it('draws a full-height scoresheet grid so peer kilos do not run together', () => {
+    expect(PAPER.FLIGHT.CELL_RULE).toBeGreaterThanOrEqual(2);
+    expect(VIEW).toContain('borderRightWidth');
+    expect(VIEW).toContain('attemptColLiftEnd');
+    expect(VIEW).toContain('attemptColGroupEnd');
+    expect(VIEW).toContain('isLiftGroupEnd');
+    expect(VIEW).toContain('headCell');
+    expect(VIEW).not.toContain('LiftAttemptStack');
+  });
+
   it('prints each lift as grouped 1/2/3 cells in the placing row, misses struck', () => {
     expect(VIEW).toContain('flightAttemptView');
     expect(VIEW).toContain('FLIGHT_LIFT_GROUPS');

@@ -640,6 +640,11 @@ export const PAPER = {
     ROW_PAD_Y: 2,
     SECTION_SIZE: 13,
     SECTION_TRACKING: 0.6,
+    /**
+     * Vertical rule between peer cells. Authored thicker than PAPER.RULE
+     * so the line still paints after PAPER_SCALE (~0.675). Untuned.
+     */
+    CELL_RULE: 2,
   },
   CERT: {
     SIZE: 12,

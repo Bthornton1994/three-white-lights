@@ -69,25 +69,33 @@ function DoubleRule(): React.ReactElement {
   );
 }
 
+function isLiftGroupEnd(id: ResultSheetColumnId): boolean {
+  return id === 'squat3' || id === 'bench3' || id === 'deadlift3';
+}
+
+function attemptCellStyle(id: ResultSheetColumnId) {
+  return [styles.attemptCol, isLiftGroupEnd(id) && styles.attemptColLiftEnd];
+}
+
 function FlightHead(): React.ReactElement {
   return (
     <View style={styles.tableHead}>
-      <View style={styles.placeCol}>
+      <View style={[styles.placeCol, styles.headCell]}>
         <Text style={styles.headText} numberOfLines={1}>
           {flightColumnHeading('place')}
         </Text>
       </View>
-      <View style={styles.lotCol}>
+      <View style={[styles.lotCol, styles.headCell]}>
         <Text style={styles.headText} numberOfLines={1}>
           {CARD_LABELS.LOT}
         </Text>
       </View>
-      <View style={styles.nameCol}>
+      <View style={[styles.nameCol, styles.headCell]}>
         <Text style={styles.headText} numberOfLines={1}>
           {flightColumnHeading('lifter')}
         </Text>
       </View>
-      <View style={styles.weightCol}>
+      <View style={[styles.weightCol, styles.headCell]}>
         <Text style={[styles.headText, styles.headRight]} numberOfLines={1}>
           {flightColumnHeading('bodyweight')}
         </Text>
@@ -98,8 +106,14 @@ function FlightHead(): React.ReactElement {
             {flightColumnHeading(group.headingId)}
           </Text>
           <View style={styles.liftGroupAttempts}>
-            {group.attempts.map((id) => (
-              <View key={id} style={styles.attemptCol}>
+            {group.attempts.map((id, index) => (
+              <View
+                key={id}
+                style={[
+                  styles.attemptCol,
+                  index === F.ATTEMPTS_PER_LIFT - 1 && styles.attemptColGroupEnd,
+                ]}
+              >
                 <Text style={[styles.headText, styles.headRight]} numberOfLines={1}>
                   {flightColumnHeading(id)}
                 </Text>
@@ -108,12 +122,12 @@ function FlightHead(): React.ReactElement {
           </View>
         </View>
       ))}
-      <View style={styles.totalCol}>
+      <View style={[styles.totalCol, styles.headCell]}>
         <Text style={[styles.headText, styles.headRight]} numberOfLines={1}>
           {flightColumnHeading('total')}
         </Text>
       </View>
-      <View style={styles.dotsCol}>
+      <View style={[styles.dotsCol, styles.headCell]}>
         <Text style={[styles.headText, styles.headRight]} numberOfLines={1}>
           {flightColumnHeading('dots')}
         </Text>
@@ -213,10 +227,10 @@ function FlightRowView({
         }
         const attempt = flightAttemptView(row, id);
         if (attempt === null) {
-          return <View key={id} style={styles.attemptCol} />;
+          return <View key={id} style={attemptCellStyle(id)} />;
         }
         return (
-          <View key={id} style={styles.attemptCol}>
+          <View key={id} style={attemptCellStyle(id)}>
             <Text
               style={[
                 styles.attemptText,
@@ -243,7 +257,7 @@ function EmptyRow({ odd }: { readonly odd: boolean }): React.ReactElement {
       <View style={styles.nameCol} />
       <View style={styles.weightCol} />
       {RESULT_ATTEMPT_TABLE_COLUMNS.map((id) => (
-        <View key={id} style={styles.attemptCol} />
+        <View key={id} style={attemptCellStyle(id)} />
       ))}
       <View style={styles.totalCol} />
       <View style={styles.dotsCol} />
@@ -413,13 +427,16 @@ const styles = StyleSheet.create({
   },
   tableHead: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'stretch',
     backgroundColor: C.PAPER_SHADE,
     borderBottomWidth: P.RULE,
     borderBottomColor: C.INK,
     minHeight: F.HEAD_H,
     paddingBottom: F.ROW_PAD_Y,
     paddingTop: F.ROW_PAD_Y,
+  },
+  headCell: {
+    justifyContent: 'flex-end',
   },
   headText: {
     color: C.INK_SOFT,
@@ -441,13 +458,16 @@ const styles = StyleSheet.create({
   liftGroup: {
     width: F.ATTEMPT_COL_W * F.ATTEMPTS_PER_LIFT,
     flexShrink: 0,
+    justifyContent: 'space-between',
+    borderRightWidth: F.CELL_RULE,
+    borderRightColor: C.INK,
   },
   liftGroupAttempts: {
     flexDirection: 'row',
   },
   tableRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     borderBottomWidth: P.RULE,
     borderBottomColor: C.RULE,
     paddingTop: F.ROW_PAD_Y,
@@ -469,35 +489,62 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
     justifyContent: 'center',
+    borderRightWidth: F.CELL_RULE,
+    borderRightColor: C.RULE,
   },
   lotCol: {
     width: F.LOT_W,
     flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
     justifyContent: 'center',
+    borderRightWidth: F.CELL_RULE,
+    borderRightColor: C.RULE,
   },
   nameCol: {
     width: F.NAME_W,
     flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
     justifyContent: 'center',
+    borderRightWidth: F.CELL_RULE,
+    borderRightColor: C.RULE,
   },
   weightCol: {
     width: F.WEIGHT_W,
     flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
     justifyContent: 'center',
+    borderRightWidth: F.CELL_RULE,
+    borderRightColor: C.INK,
   },
   attemptCol: {
     width: F.ATTEMPT_COL_W,
     flexShrink: 0,
     justifyContent: 'center',
+    borderRightWidth: F.CELL_RULE,
+    borderRightColor: C.RULE,
+  },
+  /**
+   * Header: the lift-group wrapper already carries the INK edge, so the
+   * last 1/2/3 cell drops its peer rule rather than doubling it.
+   */
+  attemptColGroupEnd: {
+    borderRightWidth: 0,
+  },
+  /**
+   * Body and blank form lines have no lift-group wrapper. The last cell
+   * of squat / bench / deadlift takes the INK edge so a made third stays
+   * in its own cell against the next zebra row.
+   */
+  attemptColLiftEnd: {
+    borderRightColor: C.INK,
   },
   totalCol: {
     width: F.TOTAL_W,
     flexShrink: 0,
     paddingHorizontal: P.CELL_PAD,
     justifyContent: 'center',
+    borderRightWidth: F.CELL_RULE,
+    borderRightColor: C.INK,
   },
   dotsCol: {
     width: F.DOTS_W,

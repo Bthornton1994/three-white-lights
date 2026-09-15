@@ -128,5 +128,25 @@ describe('the shareable card carries the flight', () => {
     expect(RESULT_ATTEMPT_TABLE_COLUMNS).toContain('squat1');
     expect(RESULT_ATTEMPT_TABLE_COLUMNS).not.toContain('bestSquat');
     expect(harrow.lotText).toBe('4');
+    const mira = card.field.find((row) => row.name === 'Mira Quill');
+    expect(mira).toBeDefined();
+    if (mira === undefined) throw new Error('Mira Quill missing from the flight');
+    expect(mira.rows.map((lift) => lift.bestText)).toEqual(['190', '125', '230']);
+    expect(mira.totalText).toBe('545');
+    expect(flightAttemptView(mira, 'deadlift1')).toEqual({
+      text: '205',
+      struckThrough: false,
+      best: false,
+    });
+    expect(flightAttemptView(mira, 'deadlift2')).toEqual({
+      text: '222.5',
+      struckThrough: false,
+      best: false,
+    });
+    expect(flightAttemptView(mira, 'deadlift3')).toEqual({
+      text: '230',
+      struckThrough: false,
+      best: true,
+    });
   });
 });
