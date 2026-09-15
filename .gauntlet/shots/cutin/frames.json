@@ -1,9 +1,9 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-09-15T02:27:14.320Z",
+    "capturedAt": "2026-09-15T04:11:05.026Z",
     "url": "http://127.0.0.1:8081",
     "sourceRoot": "/workspace",
-    "commit": "171ff916",
+    "commit": "2c8212bf",
     "branch": "cursor/session-a-iron-amber-quality-1c66",
     "workingTree": "clean",
     "dirtyPaths": [
@@ -58,11 +58,11 @@
         }
       },
       "scrim": {
-        "blended": 968591,
-        "opaqueBackdrop": 9016,
-        "untouched": 55563
+        "blended": 977063,
+        "opaqueBackdrop": 492,
+        "untouched": 55615
       },
-      "pixelHash": 1529450748
+      "pixelHash": 3366652868
     },
     {
       "moment": "personal-record",
@@ -106,11 +106,11 @@
         }
       },
       "scrim": {
-        "blended": 921924,
-        "opaqueBackdrop": 8959,
-        "untouched": 42047
+        "blended": 930380,
+        "opaqueBackdrop": 461,
+        "untouched": 42089
       },
-      "pixelHash": 3596295770
+      "pixelHash": 2851466275
     },
     {
       "moment": "bomb-out",
@@ -154,11 +154,11 @@
         }
       },
       "scrim": {
-        "blended": 966573,
-        "opaqueBackdrop": 9016,
-        "untouched": 45101
+        "blended": 975046,
+        "opaqueBackdrop": 492,
+        "untouched": 45152
       },
-      "pixelHash": 1384837155
+      "pixelHash": 564490991
     },
     {
       "moment": "coach-heavy-set",
@@ -202,11 +202,11 @@
         }
       },
       "scrim": {
-        "blended": 967761,
-        "opaqueBackdrop": 9016,
-        "untouched": 51473
+        "blended": 976233,
+        "opaqueBackdrop": 492,
+        "untouched": 51525
       },
-      "pixelHash": 826526827
+      "pixelHash": 4112263455
     }
   ],
   "artDiffs": [
@@ -233,15 +233,15 @@
     }
   ],
   "leavesOnItsOwn": {
-    "stillUpAt": 701,
+    "stillUpAt": 700,
     "stillUp": true,
-    "goneAt": 882,
+    "goneAt": 873,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 3,
+    "tappedAt": 2,
     "goneAt": 11,
-    "dismissTookMs": 8,
+    "dismissTookMs": 9,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
     "holdReadFromSourceMs": 1720
