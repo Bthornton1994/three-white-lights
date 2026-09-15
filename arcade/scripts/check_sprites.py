@@ -62,7 +62,17 @@ def main() -> None:
             heavy = (max_dir / frame).read_bytes()
             if light == heavy:
                 raise SystemExit(f"{lift} {frame} is identical for light and max")
+            if silhouette_delta(light_dir / frame, max_dir / frame) < 900:
+                raise SystemExit(f"{lift} {frame} light/max silhouettes are too similar")
     print("sprite QA ok")
+
+
+def silhouette_delta(a: Path, b: Path) -> int:
+    ia = Image.open(a).convert("RGBA")
+    ib = Image.open(b).convert("RGBA")
+    da = list(ia.getdata())
+    db = list(ib.getdata())
+    return sum(1 for pa, pb in zip(da, db, strict=True) if pa != pb)
 
 
 if __name__ == "__main__":

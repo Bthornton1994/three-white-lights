@@ -79,43 +79,44 @@ WRAP_H = 3
 
 SQUAT_STRAIN = {"light": frozenset({2, 3}), "max": frozenset({1, 2, 3, 4, 5})}
 BENCH_STRAIN = {"light": frozenset({2, 3}), "max": frozenset({1, 2, 3, 4, 5})}
-DEAD_STRAIN = {"light": frozenset({1, 2}), "max": frozenset({0, 1, 2, 3, 4})}
+DEAD_STRAIN = {"light": frozenset({1, 2}), "max": frozenset({0, 1, 2, 3, 4, 5})}
 
+# Light = speed/opener line. Max = grind line. Same phase index, different body.
 SQUAT_DROP = {
-    "light": (0, 5, 10, 7, 3, 0),
-    "max": (1, 7, 12, 9, 5, 1),
+    "light": (0, 3, 6, 4, 2, 0),
+    "max": (2, 9, 14, 11, 6, 2),
 }
 SQUAT_WIDE = {
-    "light": (4, 6, 10, 8, 5, 4),
-    "max": (5, 8, 11, 9, 6, 5),
+    "light": (3, 4, 6, 5, 3, 3),
+    "max": (6, 10, 13, 11, 7, 6),
 }
 SQUAT_LEAN = {
-    "light": (0, 1, 3, 2, 1, 0),
-    "max": (1, 3, 5, 4, 2, 1),
+    "light": (0, 0, 1, 0, 0, 0),
+    "max": (2, 5, 8, 6, 3, 2),
 }
 DEAD_BAR_Y = {
-    "light": (68, 60, 54, 49, 46, 44),
-    "max": (70, 64, 58, 52, 48, 44),
+    "light": (66, 58, 52, 48, 45, 43),
+    "max": (71, 66, 60, 54, 48, 43),
 }
 DEAD_HIP_Y = {
-    "light": (58, 56, 54, 52, 51, 50),
-    "max": (62, 60, 57, 54, 52, 49),
+    "light": (54, 53, 52, 51, 50, 49),
+    "max": (64, 62, 58, 54, 52, 52),
 }
 DEAD_SH_X = {
-    "light": (50, 47, 44, 41, 39, 37),
-    "max": (52, 50, 47, 43, 40, 37),
+    "light": (46, 43, 41, 39, 38, 37),
+    "max": (54, 52, 48, 42, 36, 32),
 }
 DEAD_SH_Y = {
-    "light": (42, 38, 34, 32, 31, 29),
-    "max": (46, 42, 38, 34, 32, 28),
+    "light": (38, 35, 33, 31, 30, 28),
+    "max": (48, 44, 40, 34, 30, 24),
 }
 BENCH_BAR_Y = {
-    "light": (20, 28, 36, 30, 24, 18),
-    "max": (22, 32, 42, 36, 28, 17),
+    "light": (18, 24, 30, 26, 22, 16),
+    "max": (24, 34, 44, 38, 30, 16),
 }
 BENCH_ARCH = {
-    "light": (0, 1, 1, 1, 0, 0),
-    "max": (1, 2, 3, 2, 1, 0),
+    "light": (0, 0, 1, 0, 0, 0),
+    "max": (1, 3, 4, 3, 2, 0),
 }
 
 PLATE_LOADS = {
@@ -219,8 +220,8 @@ FRONT_STRAIN = [
     " hHHBBLLLBBHHh ",
     "ehSFBllSSBllFse",
     "eeSFfSsoNsFfSse",
-    " hSSSTWWWWTSSs ",
-    "  SSFmWWWWmFS  ",
+    " hSSS      SSs ",
+    "  SSFmWWWWFmS  ",
     "   FSSSSSSfF   ",
     "    nVVnnVV    ",
     "     nnnnn     ",
@@ -262,11 +263,12 @@ class C:
                     self.set(x + i, y + j, col)
 
     def band(self, x: int, y: int, u: float, dark: tuple[int, int, int], mid: tuple[int, int, int], light: tuple[int, int, int]) -> tuple[int, int, int]:
+        # Hard 2-band + 1px dither seam. Soft 3-tone ramps read as modern AA.
         dith = ((x ^ y) & 1) == 0
-        if u > 0.34:
-            return light if not (u < 0.42 and dith) else mid
-        if u < -0.34:
-            return dark if not (u > -0.42 and dith) else mid
+        if u > 0.08:
+            return light if u > 0.18 or not dith else mid
+        if u < -0.08:
+            return dark if u < -0.18 or not dith else mid
         return mid
 
     def disc(self, cx: int, cy: int, r: int, mid: tuple[int, int, int], hi: tuple[int, int, int] | None = None) -> None:
@@ -396,6 +398,11 @@ def chalk_puff(c: C, x: int, y: int) -> None:
         c.set(x + px, y + py, CHALK if (px + py) & 1 == 0 else TAPE)
 
 
+def grind_ticks(c: C, x: int, y: int) -> None:
+    for px, py in ((-3, -1), (-4, 1), (3, 0), (4, 2), (-2, 3)):
+        c.set(x + px, y + py, CHALK)
+
+
 def head_profile(c: C, x: int, y: int, mode: str = "ok") -> None:
     rows = {
         "ok": PROFILE_OK,
@@ -470,17 +477,19 @@ def sleeve(c: C, x: int, y: int, w: int, h: int = 5) -> None:
 
 def hand(c: C, x: int, y: int, grip: bool = False) -> None:
     wrap(c, x, y + 2, 3, 2)
-    c.rect(x, y, 4, 3, SKIN1)
+    c.rect(x, y, 3, 3, SKIN1)
     c.set(x + 1, y + 1, SKIN2)
-    c.set(x + 3, y, SKIN2)
     c.set(x + 2, y + 2, SKIN0)
     if grip:
-        c.set(x + 1, y - 1, SKIN1)
-        c.set(x + 2, y - 1, CHALK)
-        c.set(x + 3, y - 1, SKIN0)
+        c.set(x, y - 1, SKIN1)
+        c.set(x + 1, y - 1, CHALK)
+        c.set(x + 2, y - 1, SKIN0)
+        c.set(x + 3, y, SKIN1)
     else:
-        c.set(x + 4, y + 1, SKIN2)
-        c.set(x + 3, y + 2, CHALK)
+        c.set(x + 3, y, SKIN2)
+        c.set(x + 4, y + 1, SKIN1)
+        c.set(x + 3, y + 2, SKIN0)
+        c.set(x + 2, y + 3, CHALK)
 
 
 def singlet(
@@ -615,6 +624,15 @@ def delts(
 
 def quad_bulge(c: C, x: int, y: int, dark: tuple[int, int, int], mid: tuple[int, int, int], light: tuple[int, int, int], bulky: bool) -> None:
     c.banded_oval(x, y, 4 if bulky else 3, 5 if bulky else 4, dark, mid, light)
+    c.set(x + 1, y - 1, light)
+    c.set(x - 1, y + 2, dark)
+
+
+def pecs(c: C, sh_x: int, sh_y: int, strain: bool) -> None:
+    col = SING0 if strain else SING1
+    c.banded_oval(sh_x - 4, sh_y + 7, 4, 3, SING0, col, SING2)
+    c.banded_oval(sh_x + 4, sh_y + 7, 4, 3, SING0, col, SING2)
+    c.rect(sh_x - 1, sh_y + 6, 3, 1, SING0)
 
 
 def lifter_stand(c: C, x: int, y: int, mode: str = "ok", arms: str = "down") -> None:
@@ -637,6 +655,7 @@ def lifter_stand(c: C, x: int, y: int, mode: str = "ok", arms: str = "down") -> 
     sleeve(c, x + 4, y - 14, 7)
     wrap(c, x + 5, y - 8, 6)
     singlet(c, x, sh_y, 18, x, hip_y, 14, strain)
+    pecs(c, x, sh_y, strain)
     traps(c, x, sh_y, dark, mid, light, False)
     delts(c, x, sh_y, dark, mid, light, far_d, far_m, far_l, strain)
     belt(c, x - 8, hip_y - 1, 16, strain)
@@ -679,7 +698,7 @@ def squat(c: C, phase: int, load: str = "light") -> None:
     far_d, far_m, far_l = SKIN0, SKIN1, SKIN0
     r_th = mass(load, strain, LIMB_THIGH)
     r_arm = mass(load, strain, LIMB_ARM)
-    bend = 2 if load == "max" and phase in (2, 3) else 0
+    bend = 3 if load == "max" and phase in (2, 3, 4) else 0
     bar(c, 8, 72, sh_y - 3, "max" if load == "max" else "light", bend)
     knee_y = foot - 15 + drop // 5
     c.banded_capsule(hip_x - 4, hip_y + 2, hip_x - 7 - wide, knee_y, r_th, far_d, far_m, far_l, False, True)
@@ -693,21 +712,25 @@ def squat(c: C, phase: int, load: str = "light") -> None:
     shoe(c, hip_x + 3 + wide // 2, foot - 2, 1)
     sleeve(c, hip_x + 6 + wide, knee_y - 2, 8)
     wrap(c, hip_x + 7 + wide, knee_y + 3, 6)
-    tw = 20 if load == "max" else 18
-    bw = 16 if load == "max" else 14
+    tw = 20 if load == "max" else 16
+    bw = 16 if load == "max" else 12
     singlet(c, sh_x, sh_y, tw, hip_x, hip_y, bw, strain)
+    pecs(c, sh_x, sh_y, strain)
     traps(c, sh_x, sh_y, dark, mid, light, load == "max")
     delts(c, sh_x, sh_y, dark, mid, light, far_d, far_m, far_l, load == "max" or strain)
     belt(c, hip_x - 8, hip_y, 16, strain or load == "max")
-    c.banded_capsule(sh_x - 8, sh_y + 5, sh_x - 15, sh_y + 10, r_arm, far_d, far_m, far_l, False, True)
-    hand(c, sh_x - 17, sh_y + 8, True)
-    c.banded_capsule(sh_x + 8, sh_y + 5, sh_x + 15, sh_y + 10, r_arm, dark, mid, light, False, True)
-    hand(c, sh_x + 15, sh_y + 8, True)
-    if load == "max" and phase in (2, 3):
+    elbow_drop = 12 if load == "max" else 8
+    c.banded_capsule(sh_x - 8, sh_y + 5, sh_x - 16, sh_y + elbow_drop, r_arm, far_d, far_m, far_l, False, True)
+    hand(c, sh_x - 18, sh_y + elbow_drop - 2, True)
+    c.banded_capsule(sh_x + 8, sh_y + 5, sh_x + 16, sh_y + elbow_drop, r_arm, dark, mid, light, False, True)
+    hand(c, sh_x + 16, sh_y + elbow_drop - 2, True)
+    if load == "max":
         chalk_puff(c, sh_x + 16, sh_y + 2)
-        chalk_puff(c, sh_x - 18, sh_y + 4)
+        grind_ticks(c, sh_x, sh_y + 8)
+        if phase in (2, 3):
+            chalk_puff(c, sh_x - 18, sh_y + 4)
     c.banded_capsule(sh_x, sh_y, sh_x + 1, sh_y - 3, 2, dark, mid, light, False, False)
-    head_profile(c, sh_x - 5, sh_y - 15, "strain" if strain else "ok")
+    head_profile(c, sh_x - 5, sh_y - 15, "strain" if strain or load == "max" else "ok")
 
 
 def deadlift(c: C, phase: int, load: str = "light") -> None:
@@ -722,7 +745,7 @@ def deadlift(c: C, phase: int, load: str = "light") -> None:
     far_d, far_m, far_l = SKIN0, SKIN1, SKIN0
     r_th = mass(load, strain, LIMB_THIGH)
     r_arm = mass(load, strain, LIMB_ARM)
-    bend = 3 if load == "max" and phase <= 3 else 0
+    bend = 4 if load == "max" and phase <= 4 else 0
     bar(c, 8, 72, bar_y, "max" if load == "max" else "light", bend)
     c.banded_capsule(x - 5, hip_y + 2, x - 7, foot - 11, r_th, far_d, far_m, far_l, False, True)
     c.banded_capsule(x - 7, foot - 11, x - 8, foot - 2, LIMB_CALF, far_d, far_m, far_l, False, True)
@@ -737,6 +760,7 @@ def deadlift(c: C, phase: int, load: str = "light") -> None:
     wrap(c, x + 5, foot - 10, 6)
     tw = 18 if load == "max" else 16
     singlet(c, sh_x, sh_y, tw, x, hip_y, 14, strain)
+    pecs(c, sh_x, sh_y, strain)
     traps(c, sh_x, sh_y, dark, mid, light, load == "max")
     delts(c, sh_x, sh_y, dark, mid, light, far_d, far_m, far_l, load == "max" or strain)
     belt(c, x - 8, hip_y - 1, 16, strain or load == "max")
@@ -749,10 +773,12 @@ def deadlift(c: C, phase: int, load: str = "light") -> None:
     head_x = min(max(head_x, 1), CW - HEAD_W - 1)
     head_y = min(max(head_y, 1), CH - HEAD_H - 4)
     c.banded_capsule(sh_x + 1, sh_y, head_x + 7, head_y + HEAD_H - 1, 2, dark, mid, light, False, False)
-    if load == "max" and phase in (1, 2, 3):
+    if load == "max":
         chalk_puff(c, 22, bar_y - 6)
-        chalk_puff(c, 54, bar_y - 5)
-    head_profile(c, head_x, head_y, "strain" if strain else "ok")
+        grind_ticks(c, sh_x, sh_y + 6)
+        if phase <= 3:
+            chalk_puff(c, 54, bar_y - 5)
+    head_profile(c, head_x, head_y, "strain" if strain or load == "max" else "ok")
 
 
 def bench(c: C, phase: int, load: str = "light") -> None:
@@ -800,19 +826,20 @@ def bench(c: C, phase: int, load: str = "light") -> None:
     sleeve(c, 59, 53, 6)
     wrap(c, 59, 59, 5)
     r_arm = mass(load, strain, LIMB_ARM)
-    flare = 2 if load == "max" and phase in (2, 3) else 0
-    c.banded_capsule(26, 40, 22 - flare, bar_y, r_arm, dark, mid, light)
-    c.banded_capsule(48, 40, 56 + flare, bar_y, r_arm, dark, mid, light)
+    flare = 6 if load == "max" else 0
+    c.banded_capsule(26, 40, 20 - flare, bar_y, r_arm, dark, mid, light)
+    c.banded_capsule(48, 40, 58 + flare, bar_y, r_arm, dark, mid, light)
     c.banded_disc(24, 38, 3, dark, mid, light)
     c.banded_disc(50, 38, 3, dark, mid, light)
-    hand(c, 20 - flare, bar_y - 1, True)
-    hand(c, 54 + flare, bar_y - 1, True)
+    hand(c, 18 - flare, bar_y - 1, True)
+    hand(c, 56 + flare, bar_y - 1, True)
     c.banded_capsule(22, 38, 18, 35, 3, dark, mid, light)
-    bend = 2 if load == "max" and phase in (2, 3) else 0
+    bend = 3 if load == "max" and phase in (2, 3, 4) else 0
     bar(c, 10, 70, bar_y, "max" if load == "max" else "light", bend)
-    if load == "max" and phase in (2, 3):
+    if load == "max":
         chalk_puff(c, 28, bar_y - 5)
-    head_front(c, 24, 28 - arch, "strain" if strain else "ok")
+        grind_ticks(c, 40, torso_y + 2)
+    head_front(c, 24, 28 - arch, "strain" if strain or load == "max" else "ok")
 
 
 def idle(c: C, i: int) -> None:
