@@ -39,9 +39,9 @@ title
 ```bash
 cd arcade
 npm install
-npm test          # 51 tests: math, loop, 2-good/2-great, sprite paths/PNG scenes,
-                  # timing-clock reset, streak oracle (75 / 2235), share glyphs
-                  # plus scripts/check_sprites.py (binary alpha, no chroma)
+npm test          # 52 tests: math, loop, 2-good/2-great, sprite paths/PNG scenes,
+                  # light-vs-max sheets, timing-clock reset, streak oracle (75 / 2235),
+                  # share glyphs plus scripts/check_sprites.py (binary alpha, no chroma)
 npm run dev       # Vite, default :5173
 ```
 
@@ -106,7 +106,7 @@ Agents must not pass feel. Human playtesting owns windows, haptics, and animatio
 
 ## Known defects (do not treat as pass)
 
-- Sprite package is authored 16-bit (hard pixels, ≤32 colors, binary alpha). **Magenta chroma and silhouette fringe are removed.** This is still **below** a real SNES/Genesis sports A/B — faces, muscle mass, and grind weight need a human art pass.
+- Sprite package is authored 16-bit (hard pixels, ≤32 colors, binary alpha). **Magenta chroma and silhouette fringe are removed.** Light vs max now uses separate 6-frame sheets (plates, compression, strain). This is still **below** a real SNES/Genesis sports A/B — faces, muscle mass, and grind weight need a human art pass.
 - Title/platform are indexed PNGs. JPEG spotlight grain is gone. The backdrop is cleaner, not a finished Genesis title.
 - Timing windows are playable after a widen from ~160 ms, **untuned**. `src/feel.ts` was not retuned on the art pass.
 - Hidden-fatigue copy is honest; there is still no bar-speed animation curve beyond frame index vs progress.
@@ -117,7 +117,7 @@ Agents must not pass feel. Human playtesting owns windows, haptics, and animatio
 Before (PR #66 visual baseline `5ed7dba`; rebased onto later #66 tip): `arcade/evidence/visual-before/`
 After: `arcade/evidence/visual-after/`
 
-Self-critique: `arcade/evidence/visual-after/SELF_CRITIQUE.md`. Visual bar is **ISSUES_REMAIN** — agents cannot self-certify the SNES sports A/B.
+Self-critique: `arcade/evidence/visual-after/SELF_CRITIQUE.md`. Visual bar is **ISSUES_REMAIN** — agents cannot self-certify the SNES sports A/B. Light vs max comparison: `visual-after/light-vs-max.png` and `before-after-light-max.png`.
 
 ## Out of scope (refuse if asked to add here)
 

@@ -52,6 +52,16 @@ def main() -> None:
     lock = (SPRITES / "deadlift" / "frame-06.png").read_bytes()
     if setup == lock:
         raise SystemExit("deadlift lockout rewound to setup")
+    for lift in ("squat", "bench", "deadlift"):
+        light_dir = SPRITES / lift
+        max_dir = SPRITES / f"{lift}-max"
+        if not max_dir.exists():
+            raise SystemExit(f"missing maximal sheet {max_dir}")
+        for frame in ("frame-01.png", "frame-03.png", "frame-06.png"):
+            light = (light_dir / frame).read_bytes()
+            heavy = (max_dir / frame).read_bytes()
+            if light == heavy:
+                raise SystemExit(f"{lift} {frame} is identical for light and max")
     print("sprite QA ok")
 
 

@@ -1,7 +1,7 @@
 import type { LiftId } from "../feel.ts";
 import type { Screen } from "../loop/machine.ts";
 import type { JudgeColor } from "../math/types.ts";
-import { SCENE, frameSrcFor } from "../sprites/sheets.ts";
+import { SCENE, frameSrcFor, visualEffort } from "../sprites/sheets.ts";
 
 type Props = {
   lift: LiftId;
@@ -10,10 +10,11 @@ type Props = {
   clockMs: number;
   lights: [JudgeColor, JudgeColor, JudgeColor];
   weightKg: number;
+  e1rmKg: number;
 };
 
-export function SpriteStage({ lift, screen, progress, clockMs, lights }: Props) {
-  const src = frameSrcFor(lift, screen, progress, clockMs);
+export function SpriteStage({ lift, screen, progress, clockMs, lights, weightKg, e1rmKg }: Props) {
+  const src = frameSrcFor(lift, screen, progress, clockMs, visualEffort(weightKg, e1rmKg));
   const showLights = screen !== "title" && screen !== "lift" && screen !== "attempts";
   return (
     <div className="stage-wrap" aria-hidden="true">

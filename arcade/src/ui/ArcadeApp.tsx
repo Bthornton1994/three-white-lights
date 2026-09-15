@@ -217,6 +217,7 @@ export function ArcadeApp() {
             clockMs={0}
             lights={["off", "off", "off"]}
             weightKg={state.attemptsKg[0] ?? 20}
+            e1rmKg={state.e1rmKg}
           />
           <div className="panel">
             <p className="kicker">{LIFT_COPY[lift].checks}</p>
@@ -276,6 +277,7 @@ export function ArcadeApp() {
             clockMs={state.timingElapsedMs}
             lights={lights}
             weightKg={weight}
+            e1rmKg={state.e1rmKg}
           />
           <div className="panel">
             <div className="hud">

@@ -79,11 +79,73 @@ export const MISS_FRAMES = [
   "/sprites/miss/frame-04.png",
 ] as const;
 
+export const LIFT_SHEETS_MAX: Record<LiftId, LiftSheet> = {
+  squat: {
+    src: "/sprites/squat-max/sheet-transparent.png",
+    frames: [
+      "/sprites/squat-max/frame-01.png",
+      "/sprites/squat-max/frame-02.png",
+      "/sprites/squat-max/frame-03.png",
+      "/sprites/squat-max/frame-04.png",
+      "/sprites/squat-max/frame-05.png",
+      "/sprites/squat-max/frame-06.png",
+    ],
+    frameCount: 6,
+    cols: 3,
+    rows: 2,
+    fallbackLift: "squat",
+  },
+  bench: {
+    src: "/sprites/bench-max/sheet-transparent.png",
+    frames: [
+      "/sprites/bench-max/frame-01.png",
+      "/sprites/bench-max/frame-02.png",
+      "/sprites/bench-max/frame-03.png",
+      "/sprites/bench-max/frame-04.png",
+      "/sprites/bench-max/frame-05.png",
+      "/sprites/bench-max/frame-06.png",
+    ],
+    frameCount: 6,
+    cols: 3,
+    rows: 2,
+    fallbackLift: "bench",
+  },
+  deadlift: {
+    src: "/sprites/deadlift-max/sheet-transparent.png",
+    frames: [
+      "/sprites/deadlift-max/frame-01.png",
+      "/sprites/deadlift-max/frame-02.png",
+      "/sprites/deadlift-max/frame-03.png",
+      "/sprites/deadlift-max/frame-04.png",
+      "/sprites/deadlift-max/frame-05.png",
+      "/sprites/deadlift-max/frame-06.png",
+    ],
+    frameCount: 6,
+    cols: 3,
+    rows: 2,
+    fallbackLift: "deadlift",
+  },
+};
+
 export const SCENE = {
   title: "/sprites/title.png",
   platform: "/sprites/platform.png",
   identity: "/sprites/identity.png",
 } as const;
+
+/** Visual-only load split. Not a judging or timing threshold. */
+export const VISUAL = {
+  MAX_LOAD_RATIO: 0.96,
+} as const;
+
+export type VisualEffort = "light" | "max";
+
+export function visualEffort(weightKg: number, e1rmKg: number): VisualEffort {
+  if (e1rmKg <= 0) {
+    return "light";
+  }
+  return weightKg / e1rmKg >= VISUAL.MAX_LOAD_RATIO ? "max" : "light";
+}
 
 export type SpritePose =
   | "idle"
@@ -122,7 +184,13 @@ export function poseForScreen(screen: Screen, lift: LiftId, progress: number): S
   return "lock";
 }
 
-export function frameSrcFor(lift: LiftId, screen: Screen, progress: number, clockMs: number): string {
+export function frameSrcFor(
+  lift: LiftId,
+  screen: Screen,
+  progress: number,
+  clockMs: number,
+  effort: VisualEffort = "light",
+): string {
   if (screen === "title" || screen === "lift") {
     const idle = IDLE_FRAMES[Math.floor(clockMs / 280) % IDLE_FRAMES.length];
     return idle ?? IDLE_FRAMES[0];
@@ -135,7 +203,7 @@ export function frameSrcFor(lift: LiftId, screen: Screen, progress: number, cloc
     const i = Math.min(MISS_FRAMES.length - 1, Math.floor(Math.max(progress, 0.5) * MISS_FRAMES.length));
     return MISS_FRAMES[i] ?? MISS_FRAMES[0];
   }
-  const sheet = LIFT_SHEETS[lift];
+  const sheet = effort === "max" ? LIFT_SHEETS_MAX[lift] : LIFT_SHEETS[lift];
   const idx = Math.min(sheet.frameCount - 1, Math.floor(Math.min(1, Math.max(0, progress)) * sheet.frameCount));
   return sheet.frames[idx] ?? sheet.frames[0];
 }
