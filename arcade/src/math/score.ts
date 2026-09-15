@@ -30,10 +30,9 @@ export function lightsFor(
   if (sloppy === 0) {
     return ["white", "white", "white"];
   }
-  if (sloppy === 1) {
-    return ["white", "white", "red"];
-  }
-  return ["white", "red", "red"];
+  // In-window "good" is still a make. Two goods must keep a 2-white majority
+  // so the lift is not flipped to a no-lift after the window was hit.
+  return ["white", "white", "red"];
 }
 
 export function resolveAttempt(input: {

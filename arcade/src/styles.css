@@ -109,6 +109,12 @@ h2 {
   gap: 8px;
 }
 
+.row.lifts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
 .col {
   display: flex;
   flex-direction: column;
@@ -135,9 +141,12 @@ button.ghost {
 
 button.lift {
   flex: 1;
+  min-width: 0;
+  padding: 0 6px;
   background: var(--charcoal);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
+  font-size: 0.82rem;
 }
 
 button.lift[aria-pressed="true"] {
@@ -281,6 +290,7 @@ button:disabled {
 
 .sheet-lights i.white {
   background: #f4f0e8;
+  border-color: #1c120e;
 }
 
 .sheet-lights i.red {

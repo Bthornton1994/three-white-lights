@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cuesForLift, gradeTap, sequenceDurationMs } from "./timing";
+import { cuesForLift, gradeTap, laneWindowPercent, sequenceDurationMs } from "./timing";
 
 describe("lift-specific timing", () => {
   it("gives squat depth + drive, bench pause + press, deadlift pull + lockout", () => {
@@ -24,5 +24,18 @@ describe("lift-specific timing", () => {
       throw new Error("missing lockout cue");
     }
     expect(tired.windowMs).toBeLessThan(fresh.windowMs);
+  });
+
+  it("shrinks the visible amber band when fatigued", () => {
+    const duration = sequenceDurationMs("squat");
+    const fresh = cuesForLift("squat", 0)[0];
+    const tired = cuesForLift("squat", 0.8)[0];
+    if (!fresh || !tired) {
+      throw new Error("missing depth cue");
+    }
+    const freshBand = laneWindowPercent(fresh, duration);
+    const tiredBand = laneWindowPercent(tired, duration);
+    expect(tiredBand.widthPct).toBeLessThan(freshBand.widthPct);
+    expect(freshBand.widthPct).not.toBe(12);
   });
 });
