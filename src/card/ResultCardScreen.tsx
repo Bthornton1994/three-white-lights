@@ -9,7 +9,9 @@
  *
  * The sheet is authored wider than a phone so one packed scoresheet row
  * can hold unclipped kilos. This screen scales that page to PHONE_W.
- * Height is the share frame. The table sits under the letterhead.
+ * Height hugs the letterhead and the flight, capped so the leave pill
+ * stays clear. Leftover phone is PAPER_SHADE from the same bank — desk
+ * around a posted dump — not unused letter stock and not espresso chrome.
  *
  * No hall. No emptied platform still.
  */
@@ -45,7 +47,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: SHEET_CSS.PAPER,
+    backgroundColor: SHEET_CSS.PAPER_SHADE,
     paddingTop: CARD_SCREEN.PAD_Y,
     paddingBottom: CARD_SCREEN.LEAVE_CLEARANCE,
   },

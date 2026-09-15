@@ -20,8 +20,10 @@
  * subtotal. No gold winner fill; zebra is the same at every place.
  *
  * Authored wider than a phone. ResultCardScreen scales the page so the
- * whole row is in the 390 frame. The sheet is a posted results dump:
- * letterhead and table, leftover page below. No signature form.
+ * whole row is in the 390 frame. The sheet is a posted class dump:
+ * letterhead (federation, meet, date, location) and the placing table.
+ * Height hugs that flight. No session / platform / flight line — that is
+ * meet-day logistics, not a published class listing. No signature form.
  *
  * There is no loaded-bar motif here. Plate colours are gameplay language on
  * the platform, not a cartoon on a scoresheet.
@@ -266,7 +268,6 @@ export function ResultCardView({ card }: ResultCardViewProps): React.ReactElemen
           <Text style={styles.meta}>{card.meet.dateText}</Text>
           <Text style={styles.meta}>{location.toUpperCase()}</Text>
         </View>
-        <Text style={styles.meta}>{CARD_LABELS.FLIGHT_META}</Text>
       </View>
 
       <DoubleRule />

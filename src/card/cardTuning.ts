@@ -570,6 +570,7 @@ export const CARD_SCREEN = {
  * Authored wider than a phone so Place, Lot, name, bodyweight, nine
  * attempt cells, Total and DOTS can sit on one row without clipping a
  * kilo like "217.5". ResultCardScreen scales this page to PHONE_W.
+ * Height hugs the packed flight so leftover phone is not empty letter.
  * UNTUNED (GDD §12.1).
  */
 export const PAPER = {
@@ -611,8 +612,8 @@ export const PAPER = {
    * One packed scoresheet table. Column widths are the 390 two-table
    * grammar laid on one row: ATTEMPT_COL_W 42 holds "-217.5" on the
    * attempt table; that width is kept. Lot sits after Place. The
-   * sheet is a posted results dump: letterhead, six placing rows,
-   * leftover page below the flight. No signature form. Untuned.
+   * sheet is a posted class dump: letterhead and six placing rows.
+   * Height hugs those rows. No signature form. Untuned.
    *
    * NAME_W holds the longest name on the local field ("Rex Pembroke").
    */
@@ -647,8 +648,8 @@ export const PAPER = {
     CELL_RULE: 2,
   },
   /**
-   * Natural height of the letterhead. Packed flight sits under it on a
-   * posted page. No signature form. Untuned.
+   * Natural height of the letterhead. Packed flight sits under it.
+   * No signature form. Untuned.
    */
   MASTHEAD_BLOCK_H: 96,
   CERT_BLOCK_H: 0,
@@ -682,13 +683,14 @@ export const PAPER_SCALE = CARD_SCREEN.PHONE_W / PAPER.W;
 
 /**
  * Authored height of the posted sheet for `fieldCount` filled rows.
- * Packed letterhead and table on a full share-frame page. Leftover
- * cream is unused page below the flight, not a signature form.
+ * Packed letterhead and table only. ResultCardScreen caps this at
+ * PAPER_PAGE_H so the leave pill stays clear. Leftover phone around
+ * the dump is the screen, not unused letter stock.
  */
 export function paperSheetHeight(fieldCount: number): number {
   const f = PAPER.FLIGHT;
   const rows = Math.max(0, fieldCount);
-  const packed =
+  return (
     PAPER.PAD_Y * PAPER.VERTICAL_PADS +
     PAPER.MASTHEAD_BLOCK_H +
     PAPER.SECTION_GAP +
@@ -699,13 +701,14 @@ export function paperSheetHeight(fieldCount: number): number {
     f.HEAD_H +
     rows * f.ROW_H +
     PAPER.SECTION_GAP +
-    PAPER.CERT_BLOCK_H;
-  return Math.max(packed, PAPER_PAGE_H);
+    PAPER.CERT_BLOCK_H
+  );
 }
 
 /**
  * Authored page ceiling after PAPER_SCALE, so the sheet stays above
- * the leave pill. A six-lifter flight fills this.
+ * the leave pill. A six-lifter dump is shorter than this; the screen
+ * keeps the leftover as desk, not unused letter.
  */
 export const PAPER_PAGE_H = Math.round(
   (CARD_SCREEN.PHONE_H - CARD_SCREEN.PAD_Y - CARD_SCREEN.LEAVE_CLEARANCE) / PAPER_SCALE,
