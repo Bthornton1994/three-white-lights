@@ -4,7 +4,7 @@
 
 ## What changed
 
-Replaced the 384px anti-aliased illustration package with authored 80×80 indexed sprites (4× nearest-neighbor). Title and platform are PNG scenes, not grainy JPEGs. `src/feel.ts` and judging were not touched.
+Replaced the 384px anti-aliased illustration package with authored 80×80 indexed sprites (4× nearest-neighbor). Title and platform are PNG scenes, not grainy JPEGs. `src/feel.ts` and judging were not touched. Finalized on PR #66 tip `cac0dfaf` (Cursor code: machine/share/results). Art branch does not rewrite those files.
 
 ## Before / after
 
