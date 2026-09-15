@@ -129,9 +129,30 @@ export const LIFT_SHEETS_MAX: Record<LiftId, LiftSheet> = {
 
 export const SCENE = {
   title: "/sprites/title.png",
+  titleWide: "/sprites/title-wide.png",
   platform: "/sprites/platform.png",
   identity: "/sprites/identity.png",
 } as const;
+
+/** Lift-select card art. Presentation only — not a gameplay input. */
+export const LIFT_CARD: Record<LiftId, { light: string; max: string; pose: string }> = {
+  squat: {
+    light: "/sprites/squat/frame-03.png",
+    max: "/sprites/squat-max/frame-03.png",
+    pose: "Depth",
+  },
+  bench: {
+    light: "/sprites/bench/frame-03.png",
+    max: "/sprites/bench-max/frame-03.png",
+    pose: "Pause",
+  },
+  deadlift: {
+    light: "/sprites/deadlift/frame-06.png",
+    max: "/sprites/deadlift-max/frame-06.png",
+    pose: "Lockout",
+  },
+};
+
 
 /** Visual-only load split. Not a judging or timing threshold. */
 export const VISUAL = {

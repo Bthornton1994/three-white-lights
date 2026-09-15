@@ -52,6 +52,8 @@ def main() -> None:
     lock = (SPRITES / "deadlift" / "frame-06.png").read_bytes()
     if setup == lock:
         raise SystemExit("deadlift lockout rewound to setup")
+    if silhouette_delta(SPRITES / "deadlift" / "frame-01.png", SPRITES / "deadlift" / "frame-06.png") < 2500:
+        raise SystemExit("deadlift lockout silhouette is too close to setup")
     for lift in ("squat", "bench", "deadlift"):
         light_dir = SPRITES / lift
         max_dir = SPRITES / f"{lift}-max"

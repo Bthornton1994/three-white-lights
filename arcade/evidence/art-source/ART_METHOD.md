@@ -1,46 +1,29 @@
-# Art method — integer-grid export (PR #69)
+# Art method — pass 4 lockout / cards / title (PR #69)
 
-Production sprites are **not** drawn by `scripts/build_sprites.py`.
+Stage production remains **320×320 masters**. Not 80×4.
 
-## Source masters (kept separate)
+## What this pass changed
 
-1. Imagine-drawn sheets live in `art-source/*.jpg`.
-2. Each cell is chroma-keyed, cropped, then **padded** (no resample) to the
-   next multiple of 320.
-3. **NEAREST** down to a true **320×320** master (`art-source/masters-320/`).
-   The factor is always an integer (1 or 2).
-4. Masters are median-cut quantized (no dither) with **binary alpha**.
+1. **Deadlift lockout** re-authored from the identity lock as a standing
+   finish (knees locked, hips through, bar at mid-thigh, head in frame).
+   Setup hinge stays frame-01. Silhouette Δ(01,06) ≈ 39k px.
+2. **Title** is two quantized scene masters, no wordmark:
+   - `title.png` 1008×1792 (phone)
+   - `title-wide.png` 1792×1008 (desktop ≥860px)
+3. **Idle / success / miss** re-drawn from the same identity lock.
+4. **Squat and bench 320 masters were not regenerated.**
+5. **Lift cards** no longer 96×84. Each card shows Light | Max from the
+   320 masters (hole / pause / lockout). Phone ~104px tall; desktop uncapped
+   in a 3-column grid.
 
-## Production export
+## Source
 
-`scripts/index_drawn_sprites.py`:
+Imagine draw-then-index, identity lock `426f1eb0`, integer-grid 320 export
+(`import_pass4.py`). Magenta keyed, binary alpha, ≤48 sprite colors.
 
-- **Production `public/sprites` = the 320×320 master** (integer-grid, binary
-  alpha, ≤48 colors). The engine already loads 320×320 PNGs.
-- Native 80×80 = **NEAREST** 320→80 (factor **4** only) — evidence only
-- BOX 320→80 (then NEAREST 4×) — comparison only, never shipped
-- Title/platform: pad so dimensions divide the native grid, then NEAREST
-  (title pad 1280×1792 → 160×224 factor 8; platform 1920×1080 → 320×180 factor 6)
+## Honest limit
 
-**No BOX, bilinear, bicubic, Lanczos, antialiasing, or fractional scales**
-on the production path.
-
-Shipping the 80-grid upsample as the runtime PNG throws away authored
-clusters. Stage CSS size is `min(78vw, 420px)` with `image-rendering:
-pixelated`, so the 320 master is near-native on phone and a small integer-ish
-upscale on desktop.
-
-## Comparison-only
-
-BOX 320→80 and NEAREST 80 live under
-`evidence/visual-after/nearest-vs-box/` and `native-80-box/`.
-`art-source/native-80/` is the NEAREST 80 evidence grid.
-`art-source/masters-320/` is the source of production.
-
-## Browser
-
-`.title-art`, `.stage-bg`, `.stage-lifter`, `.lift-card img` use
-`image-rendering: pixelated` (`-moz-crisp-edges` first). Computed style in
-Chromium is `pixelated` on title, lift-card, stage background, and lifter.
-
-Pose tables, `feel.ts`, `visualEffort` (0.96), and gameplay were not touched.
+This is still Imagine-indexed illustration, not hand-authored SNES pixels.
+Independent QA owns the sports-craft call. If this still fails Slam Masters /
+NBA Jam quality, the next source should be a human pixel artist in Aseprite
+(true 320 lattice), not another generator pass.

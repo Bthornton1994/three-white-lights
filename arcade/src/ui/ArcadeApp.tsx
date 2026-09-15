@@ -19,7 +19,7 @@ import {
 import { cuesForLift, sequenceDurationMs } from "../loop/timing.ts";
 import { nudgeAttempt } from "../math/attempts.ts";
 import type { JudgeColor } from "../math/types.ts";
-import { LIFT_SHEETS, SCENE } from "../sprites/sheets.ts";
+import { LIFT_CARD, SCENE } from "../sprites/sheets.ts";
 import { ResultsCard } from "./ResultsCard.tsx";
 import { shareResultsCard } from "./share.ts";
 import { SpriteStage } from "./SpriteStage.tsx";
@@ -196,7 +196,16 @@ export function ArcadeApp() {
                   type="button"
                   onClick={() => setState((s) => chooseLift(s, id))}
                 >
-                  <img src={LIFT_SHEETS[id].frames[id === "deadlift" ? 0 : 2]} alt="" />
+                  <div className="lift-card-art">
+                    <figure>
+                      <img src={LIFT_CARD[id].light} alt="" />
+                      <figcaption>Light</figcaption>
+                    </figure>
+                    <figure>
+                      <img src={LIFT_CARD[id].max} alt="" />
+                      <figcaption>Max</figcaption>
+                    </figure>
+                  </div>
                   <span>
                     <b>{LIFT_COPY[id].name}</b>
                     {LIFT_COPY[id].cue}
@@ -406,7 +415,10 @@ export function ArcadeApp() {
 function TitleScreen({ onStart, streak }: { onStart: () => void; streak: number }) {
   return (
     <section className="arcade-screen">
-      <img className="title-art" src={SCENE.title} alt="" />
+      <picture>
+        <source media="(min-width: 860px)" srcSet={SCENE.titleWide} />
+        <img className="title-art" src={SCENE.title} alt="" />
+      </picture>
       <div className="title-veil" />
       <div className="title-copy">
         <p className="kicker">{FEEL.FEDERATION}</p>
