@@ -21,9 +21,9 @@
  *
  * Authored wider than a phone. ResultCardScreen scales the page so the
  * whole row is in the 390 frame. The sheet is a posted class dump:
- * letterhead (federation, meet, date, location) and the placing table.
- * Height hugs that flight. No session / platform / flight line — that is
- * meet-day logistics, not a published class listing. No signature form.
+ * letterhead (federation, meet, date, location) and the placing table
+ * on a full share-frame page. No session / platform / flight line — that
+ * is meet-day logistics, not a published class listing. No signature form.
  *
  * There is no loaded-bar motif here. Plate colours are gameplay language on
  * the platform, not a cartoon on a scoresheet.
@@ -281,6 +281,14 @@ export function ResultCardView({ card }: ResultCardViewProps): React.ReactElemen
           <FlightRowView key={row.id} row={row} odd={index % 2 === 1} />
         ))}
       </View>
+
+      <View style={styles.pageTail}>
+        <View style={styles.rule} />
+        <View style={styles.mastheadRow}>
+          <Text style={styles.meta}>{CARD_LABELS.PAGE}</Text>
+          <Text style={styles.meta}>{card.meet.dateText}</Text>
+        </View>
+      </View>
     </View>
   );
 }
@@ -295,6 +303,13 @@ const styles = StyleSheet.create({
     borderWidth: P.RULE,
     borderColor: C.INK,
     boxSizing: 'border-box',
+  },
+  pageTail: {
+    position: 'absolute',
+    left: P.PAD_X,
+    right: P.PAD_X,
+    bottom: P.PAD_Y,
+    gap: P.DOUBLE_RULE_GAP,
   },
   masthead: {
     minHeight: P.MASTHEAD_BLOCK_H,

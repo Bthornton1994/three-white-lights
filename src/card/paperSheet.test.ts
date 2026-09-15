@@ -33,7 +33,7 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(PAPER.FLIGHT.ATTEMPTS_PER_LIFT).toBe(3);
     expect(PAPER_SCALE).toBe(CARD_SCREEN.PHONE_W / PAPER.W);
     expect(paperSheetHeight(6)).toBeGreaterThan(PAPER.FLIGHT.HEAD_H + 6 * PAPER.FLIGHT.ROW_H);
-    expect(paperSheetHeight(6)).toBeLessThan(PAPER_PAGE_H);
+    expect(paperSheetHeight(6)).toBe(PAPER_PAGE_H);
     expect(SCREEN).toContain('paperSheetHeight');
     expect(SCREEN).toContain('PAPER_PAGE_H');
   });
@@ -102,7 +102,8 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(SCREEN).not.toContain('MEET COMPLETE');
     expect(SCREEN).not.toContain('Share your result');
     expect(SCREEN).not.toContain('MEET_PALETTE');
-    expect(SCREEN).toContain('SHEET_CSS.PAPER_SHADE');
+    expect(SCREEN).toContain('SHEET_CSS.PAPER');
+    expect(SCREEN).not.toContain('SHEET_CSS.PAPER_SHADE');
     expect(VIEW).toContain('backgroundColor: C.PAPER');
     expect(SCREEN).toContain('CARD_SCREEN.LEAVE_CLEARANCE');
   });
@@ -145,7 +146,7 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(PAPER.FLIGHT.ATTEMPT_ROW_H).toBeLessThanOrEqual(48);
   });
 
-  it('hugs the posted class dump, with no unused form pad and no winner wash', () => {
+  it('fills the share frame, with no unused form pad and no winner wash', () => {
     expect(VIEW).not.toContain('flex: 1');
     expect(VIEW).not.toContain('pageFill');
     expect(VIEW).not.toContain('EmptyRow');
@@ -160,7 +161,7 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(SCREEN).toContain('flex: 1');
     expect(PAPER.FLIGHT.ROW_H).toBeGreaterThanOrEqual(20);
     expect(PAPER.FLIGHT.ROW_H).toBeLessThanOrEqual(48);
-    expect(paperSheetHeight(6)).toBeLessThan(PAPER_PAGE_H);
+    expect(paperSheetHeight(6)).toBe(PAPER_PAGE_H);
     expect(
       PAPER.MASTHEAD_BLOCK_H + PAPER.FLIGHT.HEAD_H + 6 * PAPER.FLIGHT.ROW_H + PAPER.CERT_BLOCK_H,
     ).toBeLessThan(PAPER_PAGE_H);
@@ -171,9 +172,11 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(VIEW).not.toContain('SESSION 1');
     expect(VIEW).not.toContain('PLATFORM 1');
     expect(VIEW).not.toContain('FLIGHT A');
+    expect(VIEW).toContain('CARD_LABELS.PAGE');
+    expect(VIEW).toContain('pageTail');
     expect(VIEW).toContain('card.lifter.categoryText');
     expect(VIEW).toContain('card.meet.dateText');
-    expect(SCREEN).toContain('SHEET_CSS.PAPER_SHADE');
+    expect(SCREEN).toContain('SHEET_CSS.PAPER');
   });
 
   it('does not print a signature form on the posted dump', () => {
