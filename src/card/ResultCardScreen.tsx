@@ -7,6 +7,9 @@
  * around it. The shell still draws the way back (`shell-leave-meet`); this
  * file leaves clearance for that pill and does not restyle it.
  *
+ * The sheet is authored wider than a phone so one packed scoresheet row
+ * can hold unclipped kilos. This screen scales that page to PHONE_W.
+ *
  * No hall. No emptied platform still.
  */
 
@@ -15,7 +18,7 @@ import { StyleSheet, View } from 'react-native';
 
 import type { ResultCard } from '../game/resultCard';
 import { ResultCardView } from './ResultCardView';
-import { CARD_SCREEN } from './cardTuning';
+import { CARD_SCREEN, PAPER, PAPER_PAGE_H, PAPER_SCALE } from './cardTuning';
 import { SHEET_CSS } from './sheetPalette';
 
 export interface ResultCardScreenProps {
@@ -27,8 +30,10 @@ export interface ResultCardScreenProps {
 export function ResultCardScreen({ card }: ResultCardScreenProps): React.ReactElement {
   return (
     <View style={styles.root} testID="result-card-screen">
-      <View style={styles.sheet} testID="result-card">
-        <ResultCardView card={card} />
+      <View style={styles.slot} testID="result-card">
+        <View style={styles.scaled}>
+          <ResultCardView card={card} />
+        </View>
       </View>
     </View>
   );
@@ -42,8 +47,15 @@ const styles = StyleSheet.create({
     paddingTop: CARD_SCREEN.PAD_Y,
     paddingBottom: CARD_SCREEN.LEAVE_CLEARANCE,
   },
-  sheet: {
-    width: '100%',
-    alignItems: 'center',
+  slot: {
+    width: CARD_SCREEN.PHONE_W,
+    height: PAPER_PAGE_H * PAPER_SCALE,
+    overflow: 'hidden',
+  },
+  scaled: {
+    width: PAPER.W,
+    height: PAPER_PAGE_H,
+    transform: [{ scale: PAPER_SCALE }],
+    transformOrigin: 'top left',
   },
 });

@@ -368,6 +368,7 @@ describe('the sourcing ledger describes the constants it cites', () => {
     expect(sheetColumnHeading('dots')).toBe('Dots');
     expect(flightColumnHeading('dots')).toBe('DOTS');
     expect(flightColumnHeading('bestSquat')).toBe('Squat');
+    expect(flightColumnHeading('bodyweight')).toBe('Wt kg');
     expect(flightColumnHeading('squat1')).toBe('1');
     expect(flightColumnHeading('bench2')).toBe('2');
     expect(flightColumnHeading('deadlift3')).toBe('3');
@@ -1231,6 +1232,7 @@ describe('the flight on the shareable sheet', () => {
     expect(card.field[0]?.name).toBe('Ivy Redmarsh');
     expect(card.field[0]?.placeText).toBe('2');
     expect(card.field[0]?.bodyweightText).toBe('46.70');
+    expect(card.field[0]?.lotText).toBe(NO_VALUE_DISPLAY);
   });
 
   it('prints other rows, bodyweight, and a missed attempt without ranking them itself', () => {

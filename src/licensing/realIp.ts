@@ -1889,7 +1889,6 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'src/art/spriteTuning.ts', name: 'IPF', where: 'comment', count: 1 },
   { file: 'src/art/spriteTuning.ts', name: 'Ryu', where: 'comment', count: 1 },
   { file: 'src/art/spriteTuning.ts', name: 'SNES', where: 'comment', count: 3 },
-  { file: 'src/card/cardTuning.ts', name: 'OpenLifter', where: 'comment', count: 1 },
   { file: 'src/card/cardTuning.ts', name: 'SNES', where: 'comment', count: 1 },
   { file: 'src/card/renderResultCard.test.ts', name: 'IPF', where: 'comment', count: 1 },
   { file: 'src/card/sampleCards.ts', name: 'NPL', where: 'comment', count: 1 },

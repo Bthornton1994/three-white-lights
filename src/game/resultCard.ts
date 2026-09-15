@@ -463,9 +463,10 @@ export const RESULT_SHEET_COLUMNS: readonly ResultSheetColumn[] = [
  * heading over the table — the same job [R8] gives `divheader`.
  *
  * Nine attempt facts plus Place, Weight, Total and DOTS do not fit as
- * peer columns beside a name at 390 without clipping kilos. The sheet
- * therefore prints two one-row tables: `RESULT_CLASS_TABLE_COLUMNS` is the
- * [R8] meet page (bests), and `RESULT_ATTEMPT_TABLE_COLUMNS` is the
+ * peer columns beside a name at 390 without clipping kilos. The shareable
+ * sheet prints `RESULT_FLIGHT_TABLE_COLUMNS` as one packed row on paper
+ * wider than a phone. `RESULT_CLASS_TABLE_COLUMNS` is the [R8] meet
+ * page (bests), and `RESULT_ATTEMPT_TABLE_COLUMNS` is the
  * OpenLifter S1..D3 listing ([R6]). A fourth BEST column stays on
  * `RESULT_SHEET_COLUMNS` and on each `LiftRow`; `flightAttemptView` still
  * marks the made best among the three. Misses use `AttemptCell.text` plus
@@ -607,9 +608,21 @@ export function sheetColumnHeading(id: ResultSheetColumnId): string {
  */
 export function flightColumnHeading(id: ResultSheetColumnId): string {
   if (id === 'dots') return 'DOTS';
+  if (id === 'bodyweight') return 'Wt kg';
   const spec = FLIGHT_ATTEMPT_COLUMN_SPEC[id];
   if (spec !== undefined) return ATTEMPT_GRID_HEADINGS.attempts[spec.index];
   return sheetColumnHeading(id);
+}
+
+/** Lot as a scoresheet prints it, or `NO_VALUE_DISPLAY` when the entry has none. */
+export function flightLotFields(lot: number | undefined): {
+  readonly lot: number | null;
+  readonly lotText: string;
+} {
+  if (lot === undefined || !Number.isInteger(lot) || lot < 1) {
+    return { lot: null, lotText: NO_VALUE_DISPLAY };
+  }
+  return { lot, lotText: String(lot) };
 }
 
 /**
@@ -919,6 +932,8 @@ export interface ResultCardFlightEntry {
   readonly isPlayer: boolean;
   readonly state: MeetState;
   readonly placing: number | null;
+  /** Competition-order lot. Omitted when the caller has none to print. */
+  readonly lot?: number;
 }
 
 export interface ResultCardFlightRow {
@@ -927,6 +942,8 @@ export interface ResultCardFlightRow {
   readonly place: number | null;
   readonly placeText: string;
   readonly name: string;
+  readonly lot: number | null;
+  readonly lotText: string;
   readonly bodyweightText: string;
   readonly rows: readonly [LiftRow, LiftRow, LiftRow];
   readonly totalKg: number | null;
@@ -1105,6 +1122,7 @@ function flightPlaceText(totalKg: number | null, placing: number | null): {
 function buildFlightRow(entry: ResultCardFlightEntry): ResultCardFlightRow {
   const reading = readTotal(entry.state);
   const rows = liftTuple(entry.state);
+  const lot = flightLotFields(entry.lot);
   if (reading.kind === 'in-progress' || reading.unit !== DOTS_TOTAL_UNIT) {
     return {
       id: entry.id,
@@ -1112,6 +1130,8 @@ function buildFlightRow(entry: ResultCardFlightEntry): ResultCardFlightRow {
       place: null,
       placeText: NO_VALUE_DISPLAY,
       name: entry.name.trim(),
+      lot: lot.lot,
+      lotText: lot.lotText,
       bodyweightText: formatBodyweight(entry.bodyweightKg),
       rows,
       totalKg: null,
@@ -1129,6 +1149,8 @@ function buildFlightRow(entry: ResultCardFlightEntry): ResultCardFlightRow {
     place: placed.place,
     placeText: placed.placeText,
     name: entry.name.trim(),
+    lot: lot.lot,
+    lotText: lot.lotText,
     bodyweightText: formatBodyweight(entry.bodyweightKg),
     rows,
     totalKg,
@@ -1247,14 +1269,17 @@ export function buildResultCard(input: ResultCardInput): ResultCardResult {
     weightClassText: lifter.weightClassKg ?? weightClassString(lifter.bodyweightKg, classes),
   };
 
-  const playerId =
-    (fieldInput ?? []).find((entry) => entry.isPlayer)?.id ?? 'player';
+  const playerFromField = (fieldInput ?? []).find((entry) => entry.isPlayer);
+  const playerId = playerFromField?.id ?? 'player';
+  const playerLot = flightLotFields(playerFromField?.lot);
   const playerFlight: ResultCardFlightRow = {
     id: playerId,
     isPlayer: true,
     place: placed && placing !== undefined ? placing : null,
     placeText,
     name: lifter.name.trim(),
+    lot: playerLot.lot,
+    lotText: playerLot.lotText,
     bodyweightText: formatBodyweight(lifter.bodyweightKg),
     rows: [squatRow, benchRow, deadliftRow],
     totalKg,

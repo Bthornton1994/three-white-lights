@@ -8,17 +8,32 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { CARD_LABELS, CARD_SCREEN, FOOTER, PAPER } from './cardTuning';
+import {
+  CARD_LABELS,
+  CARD_SCREEN,
+  FOOTER,
+  PAPER,
+  PAPER_PAGE_H,
+  PAPER_SCALE,
+  paperFlightInnerWidth,
+} from './cardTuning';
 import { SHEET, SHEET_CSS, sheetCss } from './sheetPalette';
 import { codeOnly } from '../tuning/audit';
 
-const PHONE_WIDTH_PT = 390;
 const VIEW = codeOnly(readFileSync(path.join(__dirname, 'ResultCardView.tsx'), 'utf8'));
 const SCREEN = codeOnly(readFileSync(path.join(__dirname, 'ResultCardScreen.tsx'), 'utf8'));
 
 describe('the shareable sheet is a printed scoresheet', () => {
-  it('fits a 390-wide phone with its hairline frame', () => {
-    expect(PAPER.W + 2 * CARD_SCREEN.FRAME_BORDER).toBeLessThanOrEqual(PHONE_WIDTH_PT);
+  it('authors a packed row wider than a phone and scales it to 390', () => {
+    expect(CARD_SCREEN.PHONE_W).toBe(390);
+    expect(PAPER.W).toBeGreaterThan(CARD_SCREEN.PHONE_W);
+    expect(PAPER.W).toBe(paperFlightInnerWidth() + 2 * PAPER.PAD_X);
+    expect(PAPER.FLIGHT.ATTEMPT_COLS).toBe(9);
+    expect(PAPER.FLIGHT.ATTEMPTS_PER_LIFT).toBe(3);
+    expect(PAPER_SCALE).toBe(CARD_SCREEN.PHONE_W / PAPER.W);
+    expect(PAPER_PAGE_H).toBeGreaterThan(PAPER.FLIGHT.ROW_H);
+    expect(SCREEN).toContain('PAPER_SCALE');
+    expect(SCREEN).toContain('PAPER_PAGE_H');
   });
 
   it('sets type large enough to read as a sheet, not as a sprite caption', () => {
@@ -30,8 +45,9 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(PAPER.FED_SIZE).toBeGreaterThanOrEqual(11);
   });
 
-  it('gives Place, names, and Weight a column that can hold the heading on one line', () => {
+  it('gives Place, Lot, names, and Weight a column that can hold the heading on one line', () => {
     expect(PAPER.FLIGHT.PLACE_W).toBeGreaterThanOrEqual(32);
+    expect(PAPER.FLIGHT.LOT_W).toBeGreaterThanOrEqual(24);
     expect(PAPER.FLIGHT.NAME_W).toBeGreaterThanOrEqual(88);
     expect(PAPER.FLIGHT.WEIGHT_W).toBeGreaterThanOrEqual(40);
     expect(PAPER.FLIGHT.DOTS_W).toBeGreaterThanOrEqual(48);
@@ -63,13 +79,19 @@ describe('the shareable sheet is a printed scoresheet', () => {
       'card.lifter.categoryText',
       'card.field',
       'flightColumnHeading',
-      'RESULT_CLASS_TABLE_COLUMNS',
-      'RESULT_ATTEMPT_TABLE_COLUMNS',
+      'RESULT_FLIGHT_TABLE_COLUMNS',
+      'FLIGHT_LIFT_GROUPS',
       'CARD_LABELS.DOCUMENT_KIND',
+      'CARD_LABELS.FED_MARK',
+      'CARD_LABELS.LOT',
+      'CARD_LABELS.WEIGHTS_IN',
+      'CARD_LABELS.REFEREE_1_NAME',
     ]) {
       expect(VIEW, token).toContain(token);
     }
     expect(CARD_LABELS.DOCUMENT_KIND).toBe('RESULTS');
+    expect(CARD_LABELS.FED_MARK).toBe('NBF');
+    expect(CARD_LABELS.LOT).toBe('Lot');
     expect(FOOTER.WORDMARK).toBe('THREE WHITE LIGHTS');
     expect(VIEW).not.toContain('FOOTER.WORDMARK');
   });
@@ -86,23 +108,24 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(VIEW).toContain('card.field');
     expect(VIEW).toContain('row.isPlayer');
     expect(VIEW).toContain('flightColumnHeading');
-    expect(VIEW).toContain('RESULT_CLASS_TABLE_COLUMNS');
-    expect(VIEW).toContain('RESULT_ATTEMPT_TABLE_COLUMNS');
-    expect(VIEW).toContain('ClassRowView');
-    expect(VIEW).toContain('AttemptRowView');
+    expect(VIEW).toContain('RESULT_FLIGHT_TABLE_COLUMNS');
+    expect(VIEW).toContain('FlightRowView');
     expect(VIEW).toContain('flightAttemptView');
-    expect(VIEW).toContain('flightBestText');
+    expect(VIEW).toContain('row.lotText');
     expect(VIEW).toContain('playerRow');
     expect(VIEW).not.toContain('ScoreCell');
     expect(VIEW).not.toContain('LiftBestCell');
     expect(VIEW).not.toContain('LiftAttemptStack');
+    expect(VIEW).not.toContain('ClassRowView');
+    expect(VIEW).not.toContain('AttemptRowView');
+    expect(VIEW).not.toContain('flightBestText');
   });
 
-  it('prints each lift as S1..D3 peer cells, misses struck, one row per competitor', () => {
+  it('prints each lift as grouped 1/2/3 cells in the placing row, misses struck', () => {
     expect(VIEW).toContain('flightAttemptView');
-    expect(VIEW).toContain('sheetColumnHeading');
-    expect(VIEW).toContain('RESULT_ATTEMPT_TABLE_COLUMNS');
+    expect(VIEW).toContain('FLIGHT_LIFT_GROUPS');
     expect(VIEW).toContain('struckThrough');
+    expect(VIEW).toContain('textDecorationLine');
     expect(VIEW).not.toContain('signedAttemptText');
     expect(VIEW).not.toContain('NOLIFT_LIGHT');
     expect(VIEW).not.toContain('GOOD_LIGHT');
@@ -111,14 +134,24 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(PAPER.FLIGHT.ATTEMPT_ROW_H).toBeLessThanOrEqual(28);
   });
 
-  it('packs the sheet around the tables, without a gold winner row', () => {
+  it('fills the page with form lines, without a gold winner row', () => {
     expect(VIEW).not.toContain('flex: 1');
     expect(VIEW).not.toContain('pageFill');
     expect(VIEW).toContain('odd ? styles.rowOdd : styles.rowEven');
     expect(VIEW).toContain('flightLifterName');
+    expect(VIEW).toContain('EmptyRow');
     expect(SCREEN).toContain('flex: 1');
     expect(PAPER.FLIGHT.ROW_H).toBeGreaterThanOrEqual(20);
     expect(PAPER.FLIGHT.ROW_H).toBeLessThanOrEqual(28);
+  });
+
+  it('prints named officials, not blank signature seats', () => {
+    expect(CARD_LABELS.REFEREE_1_NAME).toMatch(/[A-Z]/);
+    expect(CARD_LABELS.REFEREE_2_NAME).toMatch(/[A-Z]/);
+    expect(CARD_LABELS.REFEREE_3_NAME).toMatch(/[A-Z]/);
+    expect(CARD_LABELS.SECRETARY_NAME).toMatch(/[A-Z]/);
+    expect(VIEW).toContain('CARD_LABELS.REFEREE_1_NAME');
+    expect(VIEW).toContain('CARD_LABELS.SECRETARY_NAME');
   });
 });
 

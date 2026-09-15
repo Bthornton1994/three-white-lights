@@ -79,7 +79,10 @@ describe('the shareable card carries the flight', () => {
     expect(player?.place).toBe(placing.place);
     expect(player?.placeText).toBe(built.recap.placeText);
     expect(player?.bodyweightText).toBe('92.40');
+    expect(player?.lotText).toBe('3');
     expect(card.field.some((row) => row.name === 'Cal Wether')).toBe(true);
+    const cal = card.field.find((row) => row.name === 'Cal Wether');
+    expect(cal?.lotText).toBe('1');
     for (const row of card.field) {
       expect(
         weightClassString(Number(row.bodyweightText), WEIGHT_CLASSES_KG.male),
@@ -124,5 +127,6 @@ describe('the shareable card carries the flight', () => {
     expect(RESULT_CLASS_TABLE_COLUMNS).toContain('bestSquat');
     expect(RESULT_ATTEMPT_TABLE_COLUMNS).toContain('squat1');
     expect(RESULT_ATTEMPT_TABLE_COLUMNS).not.toContain('bestSquat');
+    expect(harrow.lotText).toBe('4');
   });
 });

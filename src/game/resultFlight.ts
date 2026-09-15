@@ -69,6 +69,7 @@ export function flightEntriesForCard(
       isPlayer: true,
       state: state.meet,
       placing: playerPlace,
+      lot: entry.lot,
     },
     ...state.field.cards.map((card) => ({
       id: card.lifter.id,
@@ -78,6 +79,7 @@ export function flightEntriesForCard(
       isPlayer: false,
       state: card.meet,
       placing: placed.placeById.get(card.lifter.id) ?? null,
+      lot: card.lifter.lot,
     })),
   ];
 }

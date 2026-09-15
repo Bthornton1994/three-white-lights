@@ -482,8 +482,6 @@ export const CARD_LABELS = {
    * leaves that licensing open, and this card ships none of those marks.
    */
   DOCUMENT_KIND: 'RESULTS',
-  /** Second table on the shareable sheet: OpenLifter S1..D3 listing. */
-  ATTEMPTS_SECTION: 'ATTEMPTS',
   POSTED: 'POSTED AT THE END OF FLIGHT A',
   UNSIGNED: 'UNOFFICIAL UNTIL SIGNED',
   TECHNICAL_SECRETARY: 'TECHNICAL SECRETARY',
@@ -491,6 +489,20 @@ export const CARD_LABELS = {
   REFEREE_1: 'REFEREE 1',
   REFEREE_2: 'REFEREE 2',
   REFEREE_3: 'REFEREE 3',
+  /**
+   * Named officials on the shareable sheet. Fictional. A blank signature
+   * rule with only a seat title is a poster; a working scoresheet has
+   * names on those lines.
+   */
+  REFEREE_1_NAME: 'HELEN MARCH',
+  REFEREE_2_NAME: 'CARL VOSS',
+  REFEREE_3_NAME: 'LENA KEANE',
+  SECRETARY_NAME: 'PIA ALDEN',
+  FLIGHT_META: 'SESSION 1  ·  PLATFORM 1  ·  FLIGHT A',
+  WEIGHTS_IN: 'ALL WEIGHTS IN KG',
+  /** Typographic mark for Northern Barbell Federation. Ours, not a licensed crest. */
+  FED_MARK: 'NBF',
+  LOT: 'Lot',
   /**
    * There is no CLASS_PREFIX any more. The class number now ends the category
    * phrase ("MEN'S RAW OPEN 93") the way the reference board sets it, which
@@ -522,6 +534,9 @@ export const CARD_LABELS = {
  * audit found them. UNTUNED, like everything else here.
  */
 export const CARD_SCREEN = {
+  /** Authored phone, the viewport GDD §12.2 says to judge readability at. */
+  PHONE_W: 390,
+  PHONE_H: 844,
   /** Breathing room above and below the whole stack. */
   PAD_Y: 16,
   /**
@@ -552,21 +567,24 @@ export const CARD_SCREEN = {
  * against those three sections for this surface. This file does not rewrite
  * that conflict. Presentation follows the Result card bar.
  *
- * Authored against a 390-wide phone. UNTUNED (GDD §12.1).
+ * Authored wider than a phone so Place, Lot, name, bodyweight, nine
+ * attempt cells, Total and DOTS can sit on one row without clipping a
+ * kilo like "217.5". ResultCardScreen scales this page to PHONE_W.
+ * UNTUNED (GDD §12.1).
  */
 export const PAPER = {
-  W: 388,
+  W: 578,
   PAD_X: 6,
   PAD_Y: 14,
-  FED_SIZE: 11,
+  FED_SIZE: 16,
   FED_TRACKING: 2.2,
-  DOCUMENT_SIZE: 11,
+  DOCUMENT_SIZE: 16,
   DOCUMENT_TRACKING: 2.2,
-  MEET_SIZE: 17,
-  META_SIZE: 11,
+  MEET_SIZE: 24,
+  META_SIZE: 14,
   META_TRACKING: 0.4,
   NAME_SIZE: 20,
-  CATEGORY_SIZE: 11,
+  CATEGORY_SIZE: 14,
   CATEGORY_TRACKING: 0.3,
   GRID_HEAD_SIZE: 10,
   GRID_HEAD_TRACKING: 0.8,
@@ -590,24 +608,23 @@ export const PAPER = {
   MASTHEAD_GAP: 4,
   NAME_GAP: 4,
   /**
-   * Published flight tables. Authored against a 390-wide phone. UNTUNED.
+   * One packed scoresheet table. Column widths are the 390 two-table
+   * grammar laid on one row: ATTEMPT_COL_W 32 held "217.5" on the
+   * attempt table; that width is kept. Lot sits after Place. The page
+   * is taller than the filled rows so blank form lines reach the
+   * officials block, like a working sheet rather than a hugging poster.
    *
-   * Two one-row tables: class bests ([R8] Place, Lifter, Weight, Squat,
-   * Bench, Deadlift, Total, DOTS) then S1..D3 attempts. Nine attempt
-   * facts do not share a row with Place + Weight + Total + DOTS at this
-   * width. ROW_H is a single line, not a stack. The sheet hugs the tables
-   * so leftover cream on a tall phone is outside the document.
-   *
-   * Column widths have to hold the [R8] headings on one line (`Place`,
-   * `Weight`). NAME_W has to hold the longest name on the local field
-   * ("Rex Pembroke").
+   * NAME_W holds the longest name on the local field ("Rex Pembroke").
    */
   FLIGHT: {
-    HEAD_H: 22,
+    HEAD_H: 36,
     ROW_H: 22,
     ATTEMPT_ROW_H: 22,
+    ATTEMPT_COLS: 9,
+    ATTEMPTS_PER_LIFT: 3,
     NAME_W: 88,
     PLACE_W: 32,
+    LOT_W: 28,
     WEIGHT_W: 40,
     BEST_COL_W: 42,
     TOTAL_W: 40,
@@ -619,17 +636,49 @@ export const PAPER = {
     META_SIZE: 11,
     HEAD_SIZE: 8,
     HEAD_TRACKING: 0,
-    LIFT_HEAD_SIZE: 7,
+    LIFT_HEAD_SIZE: 8,
     ROW_PAD_Y: 2,
-    SECTION_SIZE: 10,
+    SECTION_SIZE: 13,
     SECTION_TRACKING: 0.6,
   },
   CERT: {
-    SIZE: 8,
+    SIZE: 12,
     TRACKING: 0.7,
-    LINE_GAP: 6,
-    SIGN_GAP: 10,
+    LINE_GAP: 8,
+    SIGN_GAP: 12,
     SIGN_RULE_W: 96,
-    BLOCK_GAP: 10,
+    BLOCK_GAP: 12,
+    NAME_SIZE: 14,
+  },
+  MARK: {
+    SIZE: 13,
+    PAD_X: 5,
+    PAD_Y: 3,
+    GAP: 8,
   },
 } as const;
+
+/** Phone width over paper width. ResultCardScreen applies this once. */
+export const PAPER_SCALE = CARD_SCREEN.PHONE_W / PAPER.W;
+
+/**
+ * Authored page height so that, after PAPER_SCALE, the sheet fills the
+ * phone above the leave pill. Blank form lines occupy the leftover.
+ */
+export const PAPER_PAGE_H = Math.round(
+  (CARD_SCREEN.PHONE_H - CARD_SCREEN.PAD_Y - CARD_SCREEN.LEAVE_CLEARANCE) / PAPER_SCALE,
+);
+
+/** Inner width of the packed score table, excluding page padding. */
+export function paperFlightInnerWidth(): number {
+  const f = PAPER.FLIGHT;
+  return (
+    f.PLACE_W +
+    f.LOT_W +
+    f.NAME_W +
+    f.WEIGHT_W +
+    f.ATTEMPT_COLS * f.ATTEMPT_COL_W +
+    f.TOTAL_W +
+    f.DOTS_W
+  );
+}
