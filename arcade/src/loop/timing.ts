@@ -89,3 +89,15 @@ export function gradeTap(
 export function missedCue(): TimingGrade {
   return "miss";
 }
+
+/** Visible amber band as a fraction of the lane, matching the graded window. */
+export function laneWindowPercent(
+  cue: TimingCue,
+  durationMs: number,
+): { leftPct: number; widthPct: number } {
+  const width = durationMs <= 0 ? 0 : cue.windowMs / durationMs;
+  return {
+    leftPct: (cue.center - width / 2) * 100,
+    widthPct: width * 100,
+  };
+}

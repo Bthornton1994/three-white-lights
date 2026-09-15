@@ -14,6 +14,18 @@ describe("attempt resolution + score", () => {
     expect(outcome.lights.filter((c) => c === "white").length).toBeGreaterThanOrEqual(2);
   });
 
+  it("makes a lift on two in-window good taps", () => {
+    const outcome = resolveAttempt({
+      attempt: 1,
+      weightKg: 162.5,
+      e1rmKg: 180,
+      grades: ["good", "good"],
+      fatigue: 0,
+    });
+    expect(outcome.made).toBe(true);
+    expect(outcome.lights.filter((c) => c === "white").length).toBeGreaterThanOrEqual(2);
+  });
+
   it("misses when a cue is late", () => {
     const outcome = resolveAttempt({
       attempt: 2,

@@ -128,7 +128,7 @@ export function App() {
       {state.screen === "lift" ? (
         <section className="panel">
           <h2>Choose a lift</h2>
-          <div className="row">
+          <div className="row lifts">
             {LIFTS.map((id) => (
               <button key={id} className="lift" type="button" onClick={() => setState(chooseLift(state, id))}>
                 {id}
@@ -227,6 +227,7 @@ export function App() {
                 cues={cues}
                 progress={progress}
                 activeIndex={activeIndex < 0 ? cues.length : activeIndex}
+                durationMs={duration}
               />
               <button className="primary" type="button" onClick={tap}>
                 {cues[state.pendingGrades.length]?.label ?? "HOLD"}
