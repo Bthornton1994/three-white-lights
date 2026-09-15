@@ -33,7 +33,7 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(PAPER.FLIGHT.ATTEMPTS_PER_LIFT).toBe(3);
     expect(PAPER_SCALE).toBe(CARD_SCREEN.PHONE_W / PAPER.W);
     expect(paperSheetHeight(6)).toBeGreaterThan(PAPER.FLIGHT.HEAD_H + 6 * PAPER.FLIGHT.ROW_H);
-    expect(paperSheetHeight(6)).toBeLessThan(PAPER_PAGE_H);
+    expect(paperSheetHeight(6)).toBe(PAPER_PAGE_H);
     expect(SCREEN).toContain('paperSheetHeight');
     expect(SCREEN).toContain('PAPER_PAGE_H');
   });
@@ -143,10 +143,10 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(VIEW).not.toContain('GOOD_LIGHT');
     expect(VIEW).not.toContain('LiftAttemptStack');
     expect(PAPER.FLIGHT.ATTEMPT_COL_W).toBeGreaterThanOrEqual(30);
-    expect(PAPER.FLIGHT.ATTEMPT_ROW_H).toBeLessThanOrEqual(28);
+    expect(PAPER.FLIGHT.ATTEMPT_ROW_H).toBeLessThanOrEqual(48);
   });
 
-  it('hugs the filled flight, with no unused form pad and no winner wash', () => {
+  it('fills the share frame, with no unused form pad and no winner wash', () => {
     expect(VIEW).not.toContain('flex: 1');
     expect(VIEW).not.toContain('pageFill');
     expect(VIEW).not.toContain('EmptyRow');
@@ -155,9 +155,17 @@ describe('the shareable sheet is a printed scoresheet', () => {
     expect(VIEW).toContain('odd ? styles.rowOdd : styles.rowEven');
     expect(VIEW).toContain('flightLifterName');
     expect(VIEW).toContain('paperSheetHeight');
+    expect(VIEW).toContain('MASTHEAD_BLOCK_H');
+    expect(VIEW).toContain('CERT_BLOCK_H');
+    expect(VIEW).toContain('CERT.PIN_TOP');
+    expect(PAPER.CERT.PIN_TOP).toBe('auto');
     expect(SCREEN).toContain('flex: 1');
     expect(PAPER.FLIGHT.ROW_H).toBeGreaterThanOrEqual(20);
-    expect(PAPER.FLIGHT.ROW_H).toBeLessThanOrEqual(28);
+    expect(PAPER.FLIGHT.ROW_H).toBeLessThanOrEqual(48);
+    expect(paperSheetHeight(6)).toBe(PAPER_PAGE_H);
+    expect(
+      PAPER.MASTHEAD_BLOCK_H + PAPER.FLIGHT.HEAD_H + 6 * PAPER.FLIGHT.ROW_H + PAPER.CERT_BLOCK_H,
+    ).toBeLessThan(PAPER_PAGE_H);
   });
 
   it('prints named officials, not blank signature seats', () => {

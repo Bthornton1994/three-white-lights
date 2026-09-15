@@ -9,7 +9,7 @@
  *
  * The sheet is authored wider than a phone so one packed scoresheet row
  * can hold unclipped kilos. This screen scales that page to PHONE_W.
- * Height hugs the filled flight. Leftover cream is the screen.
+ * Height is the share frame. Officials sit on the foot of the page.
  *
  * No hall. No emptied platform still.
  */

@@ -575,12 +575,12 @@ export const CARD_SCREEN = {
 export const PAPER = {
   W: 590,
   PAD_X: 6,
-  PAD_Y: 14,
+  PAD_Y: 28,
   FED_SIZE: 16,
   FED_TRACKING: 2.2,
   DOCUMENT_SIZE: 16,
   DOCUMENT_TRACKING: 2.2,
-  MEET_SIZE: 24,
+  MEET_SIZE: 28,
   META_SIZE: 14,
   META_TRACKING: 0.4,
   NAME_SIZE: 20,
@@ -604,21 +604,22 @@ export const PAPER = {
   FOOTER_TRACKING: 1.8,
   RULE: 1,
   DOUBLE_RULE_GAP: 2,
-  SECTION_GAP: 12,
-  MASTHEAD_GAP: 4,
-  NAME_GAP: 4,
+  SECTION_GAP: 16,
+  MASTHEAD_GAP: 8,
+  NAME_GAP: 6,
   /**
    * One packed scoresheet table. Column widths are the 390 two-table
    * grammar laid on one row: ATTEMPT_COL_W 32 held "217.5" on the
    * attempt table; that width is kept. Lot sits after Place. The
-   * sheet hugs the filled flight; leftover cream is the screen.
+   * sheet fills the share frame as a posted page: letterhead, six
+   * placing rows, officials. No unused zebra pad. Untuned.
    *
    * NAME_W holds the longest name on the local field ("Rex Pembroke").
    */
   FLIGHT: {
-    HEAD_H: 36,
-    ROW_H: 22,
-    ATTEMPT_ROW_H: 22,
+    HEAD_H: 48,
+    ROW_H: 44,
+    ATTEMPT_ROW_H: 44,
     ATTEMPT_COLS: 9,
     ATTEMPTS_PER_LIFT: 3,
     NAME_W: 88,
@@ -629,15 +630,15 @@ export const PAPER = {
     TOTAL_W: 52,
     DOTS_W: 50,
     ATTEMPT_COL_W: 32,
-    NAME_SIZE: 11,
-    BEST_SIZE: 12,
-    ATTEMPT_SIZE: 10,
-    META_SIZE: 11,
-    HEAD_SIZE: 8,
+    NAME_SIZE: 13,
+    BEST_SIZE: 14,
+    ATTEMPT_SIZE: 12,
+    META_SIZE: 12,
+    HEAD_SIZE: 10,
     HEAD_TRACKING: 0,
-    LIFT_HEAD_SIZE: 8,
-    ROW_PAD_Y: 2,
-    SECTION_SIZE: 13,
+    LIFT_HEAD_SIZE: 10,
+    ROW_PAD_Y: 4,
+    SECTION_SIZE: 14,
     SECTION_TRACKING: 0.6,
     /**
      * Vertical rule between peer cells. Authored thicker than PAPER.RULE
@@ -646,11 +647,12 @@ export const PAPER = {
     CELL_RULE: 2,
   },
   /**
-   * Hug height of the letterhead and the officials block, so the sheet
-   * is a posted table rather than a pad of unused form lines. Untuned.
+   * Natural height of the letterhead and the officials block. Leftover
+   * page below the packed flight is not unused zebra; ResultCardView pins
+   * the cert to the foot of PAPER_PAGE_H. Untuned.
    */
-  MASTHEAD_BLOCK_H: 96,
-  CERT_BLOCK_H: 168,
+  MASTHEAD_BLOCK_H: 128,
+  CERT_BLOCK_H: 200,
   /** Top and bottom page padding in paperSheetHeight. */
   VERTICAL_PADS: 2,
   /** Top and bottom table rules in paperSheetHeight. */
@@ -660,13 +662,18 @@ export const PAPER = {
   /** NAME_GAP slots around those two section lines. */
   SECTION_NAME_GAPS: 3,
   CERT: {
-    SIZE: 12,
+    SIZE: 13,
     TRACKING: 0.7,
-    LINE_GAP: 8,
-    SIGN_GAP: 12,
+    LINE_GAP: 12,
+    SIGN_GAP: 16,
     SIGN_RULE_W: 96,
-    BLOCK_GAP: 12,
-    NAME_SIZE: 14,
+    BLOCK_GAP: 16,
+    NAME_SIZE: 16,
+    /**
+     * With the sheet at PAPER_PAGE_H, this sits the officials on the
+     * foot of the page rather than under a short hugged table. Untuned.
+     */
+    PIN_TOP: 'auto',
   },
   MARK: {
     SIZE: 13,
@@ -680,13 +687,15 @@ export const PAPER = {
 export const PAPER_SCALE = CARD_SCREEN.PHONE_W / PAPER.W;
 
 /**
- * Authored height of the packed sheet for `fieldCount` filled rows.
- * No unused zebra pad. ResultCardScreen scales this, not the phone.
+ * Authored height of the posted sheet for `fieldCount` filled rows.
+ * Packed letterhead, table, and officials, then the share-frame
+ * ceiling so leftover cream is page below the flight, not a short
+ * diploma on the screen. No unused zebra pad.
  */
 export function paperSheetHeight(fieldCount: number): number {
   const f = PAPER.FLIGHT;
   const rows = Math.max(0, fieldCount);
-  return (
+  const packed =
     PAPER.PAD_Y * PAPER.VERTICAL_PADS +
     PAPER.MASTHEAD_BLOCK_H +
     PAPER.SECTION_GAP +
@@ -697,13 +706,13 @@ export function paperSheetHeight(fieldCount: number): number {
     f.HEAD_H +
     rows * f.ROW_H +
     PAPER.SECTION_GAP +
-    PAPER.CERT_BLOCK_H
-  );
+    PAPER.CERT_BLOCK_H;
+  return Math.max(packed, PAPER_PAGE_H);
 }
 
 /**
  * Authored page ceiling after PAPER_SCALE, so the sheet stays above
- * the leave pill. A six-lifter flight hugs below this.
+ * the leave pill. A six-lifter flight fills this.
  */
 export const PAPER_PAGE_H = Math.round(
   (CARD_SCREEN.PHONE_H - CARD_SCREEN.PAD_Y - CARD_SCREEN.LEAVE_CLEARANCE) / PAPER_SCALE,

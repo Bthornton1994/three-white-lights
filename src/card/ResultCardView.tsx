@@ -20,7 +20,8 @@
  * subtotal. No gold winner fill; zebra is the same at every place.
  *
  * Authored wider than a phone. ResultCardScreen scales the page so the
- * whole row is in the 390 frame. The sheet hugs the filled flight.
+ * whole row is in the 390 frame. The sheet fills that frame: letterhead
+ * and table at the head, officials on the foot. No unused zebra pad.
  *
  * There is no loaded-bar motif here. Plate colours are gameplay language on
  * the platform, not a cartoon on a scoresheet.
@@ -320,9 +321,12 @@ const styles = StyleSheet.create({
     paddingBottom: P.PAD_Y,
     borderWidth: P.RULE,
     borderColor: C.INK,
+    boxSizing: 'border-box',
   },
   masthead: {
+    minHeight: P.MASTHEAD_BLOCK_H,
     gap: P.MASTHEAD_GAP,
+    justifyContent: 'space-between',
   },
   mastheadRow: {
     flexDirection: 'row',
@@ -580,8 +584,11 @@ const styles = StyleSheet.create({
     color: C.INK_SOFT,
   },
   cert: {
-    marginTop: P.SECTION_GAP,
+    minHeight: P.CERT_BLOCK_H,
+    marginTop: CERT.PIN_TOP,
+    paddingTop: P.SECTION_GAP,
     gap: CERT.LINE_GAP,
+    justifyContent: 'space-between',
   },
   signBlock: {
     gap: CERT.BLOCK_GAP,
