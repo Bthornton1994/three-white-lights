@@ -3275,19 +3275,15 @@ async function photographTheDownCommand(page, shots, ladderCopy) {
 }
 
 /**
- * The lockout stills exist so a human can open DON'T LET GO vs DOWN. A
- * full-page device-scale CDP capture was stretching the hold (see SHOT_SCALE).
- * The prompt element is the region `promptRegionIn` grades; shooting it
- * directly is the same comparison with a hitch that fits inside one catch-up
- * cap.
+ * The lockout stills exist so a human can open DON'T LET GO vs DOWN.
+ *
+ * Device-scale (2×) full-page CDP capture stretched the hold (see SHOT_SCALE).
+ * Shooting only `lift-prompt` cut the hitch but froze Skia's drawing buffer:
+ * the canvas sampler then kept 200 frames of which 0 moved, so the DOWN-paints
+ * check went red. CSS-scale full page is the same frame the sampler reads, at
+ * 4× fewer pixels than device scale.
  */
 async function screenshotLockoutFrame(page, filePath) {
-  const prompt = page.getByTestId('lift-prompt');
-  const box = await prompt.boundingBox().catch(() => null);
-  if (box !== null && box.width >= 8 && box.height >= 8) {
-    await prompt.screenshot({ path: filePath, scale: LIFT_LADDER.SHOT_SCALE }).catch(() => {});
-    return;
-  }
   await page.screenshot({ path: filePath, scale: LIFT_LADDER.SHOT_SCALE }).catch(() => {});
 }
 
