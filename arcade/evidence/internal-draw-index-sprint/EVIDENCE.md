@@ -24,7 +24,18 @@
 | Title 390×844 approx | `arcade/evidence/internal-draw-index-sprint/after/title-390x844-cover-approx.png` |
 | Title 1280×800 approx | `arcade/evidence/internal-draw-index-sprint/after/title-wide-1280x800-cover-approx.png` |
 
-Browser captures of the running app (390×844 and 1280×800) are added after the first commit, under `after/browser/`.
+Browser captures of the running app:
+
+| Viewport | Screen | Path |
+| --- | --- | --- |
+| 390×844 | Title | `after/browser/mobile-390x844-title.png` |
+| 390×844 | Lift select (cards) | `after/browser/mobile-390x844-lift-select.png` |
+| 390×844 | Lift select full | `after/browser/mobile-390x844-lift-select-full.png` |
+| 390×844 | Squat attempts / stage | `after/browser/mobile-390x844-squat-attempts.png` |
+| 1280×800 | Title | `after/browser/desktop-1280x800-title.png` |
+| 1280×800 | Lift select | `after/browser/desktop-1280x800-lift-select.png` |
+
+`arcade npm test`: 53/53 + `check_sprites.py` ok. `feel.ts` untouched.
 
 ## Corrections vs 1151569
 

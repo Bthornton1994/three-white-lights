@@ -967,7 +967,7 @@ def render_title_portrait() -> Pix:
 def render_title_wide() -> Pix:
     p = Pix(448, 252)
     gym_backdrop(p, 448, 252)
-    blit(p, render_identity(), 24, 70)
+    blit(p, render_identity(), 144, 62)
     return p
 
 
