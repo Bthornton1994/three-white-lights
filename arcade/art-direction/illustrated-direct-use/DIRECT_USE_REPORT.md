@@ -4,7 +4,7 @@
 **Labels:** `ILLUSTRATED_DIRECT_USE`, `DO_NOT_MERGE`
 **Branch:** `cursor/illustrated-direct-use-8271`
 **Fable SoT (CoS):** `e9916eef091bd4ccce915e536902b8e739059e92` (PR #71)
-**This tip:** `d6e09030b13e0b83596604022c9f9bd7898f4bd2`
+**Proof tip:** `1e4b10c1efa42b0a8b7a65e451ac65121949acd0` (evidence commit; later commits may sit on top)
 **feel.ts SHA256:** `b26c21b520d17a8e87e6abac17661fc219870a2320a376b5b1b1adfe0bc2425c` (identical to SoT)
 
 ## What this is
