@@ -1,0 +1,38 @@
+{
+  "tool": "Gamma MCP generate_image (connected via claude.ai connector)",
+  "workspace_plan_limits_at_failure": {
+    "creditsRemaining_before": 400,
+    "maxGenerateCards": 10,
+    "availableImageModels": [
+      "ideogram-v3-turbo",
+      "flux-1-quick",
+      "flux-kontext-fast",
+      "luma-photon-flash-1",
+      "gpt-image-1-mini-low",
+      "flux-2-klein"
+    ]
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "mode": "referenceImages (2 subject refs: model-sheet 3/4 view, squat-hole light panel)",
+      "result": "FAILED 403 planLimitExceeded: 'Reference images are not available on this workspace plan'",
+      "credits_deducted": 0
+    },
+    {
+      "n": 2,
+      "id": "6ez2vCS66sCPwId4s7auA",
+      "mode": "text-only, type=illustration, sizePreset=social-square",
+      "result": "completed",
+      "output": "2048x2048 JPEG (lossy, no alpha) at cdn.gamma.app",
+      "credits_deducted": 70,
+      "credits_remaining": 330,
+      "purpose": "capability probe only; NOT a proof frame. Prompt derived from MODEL_SHEET.md, POSES.md squat frame 3 and AI-REF-04 light panel.",
+      "output_url": "https://cdn.gamma.app/8k040o9xoqd9uqy/design-anything/6ez2vCS66sCPwId4s7auA/YtVEMF0GRhAzFzgxdrwf3.jpg",
+      "retrieval": "FAILED: sandbox egress proxy denied CONNECT to cdn.gamma.app (403 policy); WebFetch reported EGRESS_BLOCKED. Pixels never entered the sandbox."
+    }
+  ],
+  "total_generations_billed": 1,
+  "probe_prompt": "16-bit SNES/Genesis-era pixel-art game sprite illustration of a fictional heavyweight powerlifter named Reed Hale: stocky and thick-trunked, not bodybuilder-lean, mid-thirties, short dark flat-top haircut with shaved sides, full dark beard joined to the moustache, heavy brow, short thick neck, wide shoulders and traps, big forearms, heavy thighs. He wears an iron-black singlet with wide straps and a single amber chevron on the chest, a black lever belt with an amber buckle, burgundy knee sleeves, white wrist wraps with chalk on the hands, and flat black powerlifting shoes. Full body, three-quarter front view turned about 35 degrees so his right side is nearer the camera. Pose: low-bar back squat at the bottom of the hole, hip crease below the knee, torso leaned about 35 degrees, knees pushed out, shins slightly forward, elbows down and back, bar resting across the rear delts, calm braced expression. Light competition load: one red 25 kg plate and one blue 20 kg plate on each side of the bar with collars; the bar is straight. Warm amber key light from the upper left with cool violet shadow tones, muted iron-and-amber palette, clean plane-based pixel shading with deliberate pixel clusters. Isolated on a completely flat, uniform, solid bright green (#00FF00) chroma-key background with no floor, no platform, no shadow, no spotlight cone, no vignette, no frame, no text.",
+  "verdict": "FABLE_PRESERVATION_FAILED (see CAPABILITY_REPORT.md; the Gamma probe is not part of the proof)"
+}

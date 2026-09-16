@@ -1,0 +1,92 @@
+{
+ "frame-light-binary-alpha": {
+  "opaque_px": 111448,
+  "semi_px": 0,
+  "transparent_px": 346472
+ },
+ "frame-light": {
+  "size": [
+   636,
+   720
+  ],
+  "opaque_px": 95688,
+  "semi_px": 26277,
+  "transparent_px": 335955,
+  "opaque_px_with_rgb_changed": 0,
+  "semi_px_with_rgb_changed": 0,
+  "opaque_bbox": [
+   43,
+   167,
+   628,
+   601
+  ],
+  "unique_colours_out_opaque": 229,
+  "unique_colours_src_same_region": 229
+ },
+ "frame-max-binary-alpha": {
+  "opaque_px": 137638,
+  "semi_px": 0,
+  "transparent_px": 320282
+ },
+ "frame-max": {
+  "size": [
+   636,
+   720
+  ],
+  "opaque_px": 122871,
+  "semi_px": 24922,
+  "transparent_px": 310127,
+  "opaque_px_with_rgb_changed": 0,
+  "semi_px_with_rgb_changed": 0,
+  "opaque_bbox": [
+   7,
+   158,
+   636,
+   606
+  ],
+  "unique_colours_out_opaque": 197,
+  "unique_colours_src_same_region": 197
+ },
+ "card-light": {
+  "size": [
+   380,
+   380
+  ],
+  "box": [
+   128,
+   150,
+   508,
+   530
+  ],
+  "opaque_px": 66837,
+  "semi_px": 17381
+ },
+ "card-max": {
+  "size": [
+   380,
+   380
+  ],
+  "box": [
+   128,
+   150,
+   508,
+   530
+  ],
+  "opaque_px": 82427,
+  "semi_px": 15565
+ },
+ "matting": {
+  "tool": "rembg 2.0.84 (MIT) model u2net (Apache-2.0 weights from github.com/danielgatis/rembg releases), alpha_matting=True (pymatting), fg_thr=240 bg_thr=15 erode=8",
+  "candidates_tried": [
+   "isnet-anime",
+   "isnet-general-use",
+   "u2net",
+   "u2net_human_seg",
+   "silueta"
+  ],
+  "variants": [
+   "plain",
+   "alpha matting"
+  ]
+ }
+}

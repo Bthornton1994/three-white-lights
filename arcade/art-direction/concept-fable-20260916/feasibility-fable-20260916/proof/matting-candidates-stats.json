@@ -1,0 +1,122 @@
+{
+ "isnet-anime-plain/light": {
+  "sec": 0.9,
+  "opaque": 10,
+  "semi": 182041,
+  "transparent": 275869
+ },
+ "isnet-anime-plain/max": {
+  "sec": 0.8,
+  "opaque": 0,
+  "semi": 127490,
+  "transparent": 330430
+ },
+ "isnet-anime-am/light": {
+  "sec": 3.9,
+  "opaque": 57978,
+  "semi": 70576,
+  "transparent": 329366
+ },
+ "isnet-anime-am/max": {
+  "sec": 0.9,
+  "opaque": 0,
+  "semi": 127490,
+  "transparent": 330430
+ },
+ "isnet-general-use-plain/light": {
+  "sec": 0.8,
+  "opaque": 348,
+  "semi": 124124,
+  "transparent": 333448
+ },
+ "isnet-general-use-plain/max": {
+  "sec": 0.8,
+  "opaque": 226,
+  "semi": 154684,
+  "transparent": 303010
+ },
+ "isnet-general-use-am/light": {
+  "sec": 1.6,
+  "opaque": 83893,
+  "semi": 30960,
+  "transparent": 343067
+ },
+ "isnet-general-use-am/max": {
+  "sec": 1.4,
+  "opaque": 119690,
+  "semi": 31682,
+  "transparent": 306548
+ },
+ "u2net-plain/light": {
+  "sec": 0.3,
+  "opaque": 3602,
+  "semi": 119497,
+  "transparent": 334821
+ },
+ "u2net-plain/max": {
+  "sec": 0.3,
+  "opaque": 2246,
+  "semi": 146365,
+  "transparent": 309309
+ },
+ "u2net-am/light": {
+  "sec": 0.8,
+  "opaque": 95688,
+  "semi": 26277,
+  "transparent": 335955
+ },
+ "u2net-am/max": {
+  "sec": 0.8,
+  "opaque": 122871,
+  "semi": 24922,
+  "transparent": 310127
+ },
+ "u2net_human_seg-plain/light": {
+  "sec": 0.3,
+  "opaque": 7151,
+  "semi": 74247,
+  "transparent": 376522
+ },
+ "u2net_human_seg-plain/max": {
+  "sec": 0.3,
+  "opaque": 1423,
+  "semi": 95041,
+  "transparent": 361456
+ },
+ "u2net_human_seg-am/light": {
+  "sec": 0.6,
+  "opaque": 64051,
+  "semi": 16970,
+  "transparent": 376899
+ },
+ "u2net_human_seg-am/max": {
+  "sec": 0.9,
+  "opaque": 64891,
+  "semi": 29363,
+  "transparent": 363666
+ },
+ "silueta-plain/light": {
+  "sec": 0.5,
+  "opaque": 735,
+  "semi": 122472,
+  "transparent": 334713
+ },
+ "silueta-plain/max": {
+  "sec": 0.5,
+  "opaque": 528,
+  "semi": 148289,
+  "transparent": 309103
+ },
+ "silueta-am/light": {
+  "sec": 1.4,
+  "opaque": 76104,
+  "semi": 43946,
+  "transparent": 337870
+ },
+ "silueta-am/max": {
+  "sec": 1.0,
+  "opaque": 117911,
+  "semi": 29055,
+  "transparent": 310954
+ }
+}
