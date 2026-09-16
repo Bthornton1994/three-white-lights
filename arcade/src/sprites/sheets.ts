@@ -58,6 +58,8 @@ export const LIFT_SHEETS: Record<LiftId, LiftSheet> = {
   },
 };
 
+export type VisualEffort = "light" | "max";
+
 export const IDLE_FRAMES = [
   "/sprites/idle/frame-01.png",
   "/sprites/idle/frame-02.png",
@@ -65,19 +67,26 @@ export const IDLE_FRAMES = [
   "/sprites/idle/frame-04.png",
 ] as const;
 
-export const SUCCESS_FRAMES = [
-  "/sprites/success/frame-01.png",
-  "/sprites/success/frame-02.png",
-  "/sprites/success/frame-03.png",
-  "/sprites/success/frame-04.png",
-] as const;
+function outcomeFolder(kind: "success" | "miss", lift: LiftId, effort: VisualEffort): string {
+  const suffix = effort === "max" ? "-max" : "";
+  return `/sprites/${kind}-${lift}${suffix}`;
+}
 
-export const MISS_FRAMES = [
-  "/sprites/miss/frame-01.png",
-  "/sprites/miss/frame-02.png",
-  "/sprites/miss/frame-03.png",
-  "/sprites/miss/frame-04.png",
-] as const;
+export function outcomeFrames(kind: "success" | "miss", lift: LiftId, effort: VisualEffort): readonly string[] {
+  const folder = outcomeFolder(kind, lift, effort);
+  return [
+    `${folder}/frame-01.png`,
+    `${folder}/frame-02.png`,
+    `${folder}/frame-03.png`,
+    `${folder}/frame-04.png`,
+  ] as const;
+}
+
+/** @deprecated Shared sheets were a squat-miss / deadlift-hinge bug. Use outcomeFrames. */
+export const SUCCESS_FRAMES = outcomeFrames("success", "squat", "light");
+
+/** @deprecated Shared sheets were a squat-miss / deadlift-hinge bug. Use outcomeFrames. */
+export const MISS_FRAMES = outcomeFrames("miss", "squat", "light");
 
 export const LIFT_SHEETS_MAX: Record<LiftId, LiftSheet> = {
   squat: {
@@ -159,8 +168,6 @@ export const VISUAL = {
   MAX_LOAD_RATIO: 0.96,
 } as const;
 
-export type VisualEffort = "light" | "max";
-
 export function visualEffort(weightKg: number, e1rmKg: number): VisualEffort {
   if (e1rmKg <= 0) {
     return "light";
@@ -217,12 +224,14 @@ export function frameSrcFor(
     return idle ?? IDLE_FRAMES[0];
   }
   if (screen === "success") {
-    const i = Math.min(SUCCESS_FRAMES.length - 1, Math.floor(progress * SUCCESS_FRAMES.length));
-    return SUCCESS_FRAMES[i] ?? SUCCESS_FRAMES[0];
+    const frames = outcomeFrames("success", lift, effort);
+    const i = Math.min(frames.length - 1, Math.floor(progress * frames.length));
+    return frames[i] ?? frames[0];
   }
   if (screen === "failure" || screen === "bomb") {
-    const i = Math.min(MISS_FRAMES.length - 1, Math.floor(Math.max(progress, 0.5) * MISS_FRAMES.length));
-    return MISS_FRAMES[i] ?? MISS_FRAMES[0];
+    const frames = outcomeFrames("miss", lift, effort);
+    const i = Math.min(frames.length - 1, Math.floor(Math.max(progress, 0.5) * frames.length));
+    return frames[i] ?? frames[0];
   }
   const sheet = effort === "max" ? LIFT_SHEETS_MAX[lift] : LIFT_SHEETS[lift];
   const idx = Math.min(sheet.frameCount - 1, Math.floor(Math.min(1, Math.max(0, progress)) * sheet.frameCount));
