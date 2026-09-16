@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { LIFT_CARD, LIFT_SHEETS, LIFT_SHEETS_MAX, SCENE, poseForScreen, visualEffort } from "./sheets.ts";
+import { LIFT_CARD, LIFT_SHEETS, LIFT_SHEETS_MAX, SCENE, frameSrcFor, poseForScreen, visualEffort } from "./sheets.ts";
 
 describe("sprite package identity", () => {
   it("gives squat, bench, and deadlift distinct sheet paths", () => {
@@ -78,5 +78,20 @@ describe("sprite package identity", () => {
     assert.equal(existsSync("public/sprites/title.jpg"), false);
     assert.equal(existsSync("public/sprites/platform.jpg"), false);
     assert.equal(existsSync(`public${SCENE.titleWide}`), true);
+  });
+
+  it("routes squat miss and success to squat sheets, never a shared deadlift hinge", () => {
+    const squatMiss = frameSrcFor("squat", "failure", 0.75, 0, "max");
+    const squatGood = frameSrcFor("squat", "success", 0.5, 0, "light");
+    const benchGood = frameSrcFor("bench", "success", 0.5, 0, "light");
+    const deadMiss = frameSrcFor("deadlift", "failure", 0.75, 0, "light");
+    assert.equal(squatMiss.includes("miss-squat-max"), true, squatMiss);
+    assert.equal(squatGood.includes("success-squat"), true, squatGood);
+    assert.equal(squatMiss.includes("deadlift"), false);
+    assert.equal(benchGood.includes("success-bench"), true, benchGood);
+    assert.equal(deadMiss.includes("miss-deadlift"), true, deadMiss);
+    assert.equal(existsSync(`public${squatMiss}`), true);
+    assert.equal(existsSync(`public${benchGood}`), true);
+    assert.equal(existsSync(`public${deadMiss}`), true);
   });
 });

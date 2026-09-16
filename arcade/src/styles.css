@@ -218,7 +218,9 @@ h2 {
   position: absolute;
   left: 50%;
   bottom: 4%;
-  width: min(70vw, 360px);
+  width: 320px;
+  max-width: 320px;
+  max-height: 320px;
   height: auto;
   transform: translateX(-50%);
   image-rendering: -moz-crisp-edges;
@@ -258,10 +260,11 @@ h2 {
 
 .lift-card-art img {
   display: block;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 1;
+  width: 104px;
+  height: 104px;
   max-height: 104px;
+  margin: 0 auto;
+  aspect-ratio: 1;
   object-fit: contain;
   image-rendering: -moz-crisp-edges;
   image-rendering: pixelated;
@@ -298,7 +301,9 @@ h2 {
   }
 
   .lift-card-art img {
-    max-height: none;
+    width: 208px;
+    height: 208px;
+    max-height: 208px;
   }
 
   .title-art,
@@ -307,7 +312,9 @@ h2 {
   }
 
   .stage-lifter {
-    width: min(42vw, 400px);
+    width: 320px;
+    max-width: 320px;
+    max-height: 320px;
   }
 }
 
