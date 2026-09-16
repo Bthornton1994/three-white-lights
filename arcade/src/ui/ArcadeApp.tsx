@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FEEL, LIFT_COPY, type LiftId } from "../feel.ts";
+import { ILLUSTRATED_EDITION } from "../illustrated/edition.ts";
+import { LIFT_STILLS, RESULTS_BACKDROP, RESULTS_SHEET_ART } from "../illustrated/assets.ts";
+import { ILLUSTRATED_MOTION } from "../illustrated/motion.ts";
+import { applyProofToState, readProofQuery } from "../illustrated/proof.ts";
 import {
   afterJudging,
   backToLiftSelect,
@@ -19,9 +23,10 @@ import {
 import { cuesForLift, sequenceDurationMs } from "../loop/timing.ts";
 import { nudgeAttempt } from "../math/attempts.ts";
 import type { JudgeColor } from "../math/types.ts";
-import { LIFT_CARD, SCENE } from "../sprites/sheets.ts";
 import { ResultsCard } from "./ResultsCard.tsx";
 import { shareResultsCard } from "./share.ts";
+import { IllustratedArt, IllustratedTimingStage, IllustratedTitleArt } from "./IllustratedArt.tsx";
+import { IllustratedBanner } from "./IllustratedBanner.tsx";
 import { SpriteStage } from "./SpriteStage.tsx";
 import { TimingLane } from "./TimingLane.tsx";
 
@@ -51,20 +56,30 @@ function reducedMotion(): boolean {
 }
 
 export function ArcadeApp() {
-  const [state, setState] = useState<ArcadeState>(() => initialState(null));
+  const [state, setState] = useState<ArcadeState>(() => applyProofToState(initialState(null)));
   const started = useRef(0);
   const cardRef = useRef<HTMLElement>(null);
+  const proof = readProofQuery();
 
   useEffect(() => {
+    if (proof.screen) {
+      return;
+    }
     setState((s) => ({ ...s, sessionStreak: initialState(storage()).sessionStreak }));
-  }, []);
+  }, [proof.screen]);
 
   useEffect(() => {
+    if (proof.screen) {
+      return;
+    }
     persistFinishedMeet(state, storage());
-  }, [state.screen, state.sessionStreak, state.meet]);
+  }, [state.screen, state.sessionStreak, state.meet, proof.screen]);
 
   useEffect(() => {
     if (state.screen !== "timing") {
+      return;
+    }
+    if (proof.freeze) {
       return;
     }
     started.current = performance.now();
@@ -81,9 +96,12 @@ export function ArcadeApp() {
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [state.screen, state.lift, state.currentAttempt]);
+  }, [state.screen, state.lift, state.currentAttempt, proof.freeze]);
 
   useEffect(() => {
+    if (proof.freeze) {
+      return;
+    }
     const delay = reducedMotion() ? 80 : undefined;
     if (state.screen === "walkout") {
       const id = window.setTimeout(
@@ -100,7 +118,7 @@ export function ArcadeApp() {
       return () => window.clearTimeout(id);
     }
     return undefined;
-  }, [state.screen]);
+  }, [state.screen, proof.freeze]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -177,34 +195,43 @@ export function ArcadeApp() {
   };
 
   return (
-    <main className="arcade-root">
+    <main className="arcade-root illustrated-edition">
+      <IllustratedBanner />
       {state.screen === "title" ? <TitleScreen onStart={primary} streak={state.sessionStreak} /> : null}
 
       {state.screen === "lift" ? (
-        <section className="arcade-screen">
-          <img className="title-art" src={SCENE.platform} alt="" />
+        <section className="arcade-screen" data-proof-screen="lift">
+          <IllustratedArt
+            src={RESULTS_BACKDROP.src}
+            alt=""
+            objectPosition={ILLUSTRATED_MOTION.RESULTS_BACKDROP_POSITION}
+            kenBurns
+          />
           <div className="title-veil" />
           <div className="panel">
             <p className="kicker">{FEEL.FEDERATION}</p>
             <h2>Choose a lift</h2>
-            <p className="hint">Each lift has its own timing. Fatigue stays hidden.</p>
+            <p className="hint">
+              Each lift has its own timing. Fatigue stays hidden. Stills are Fable concept
+              references — not dedicated select cards.
+            </p>
             <div className="lift-grid">
               {LIFTS.map((id) => (
                 <button
                   key={id}
-                  className="lift-card"
+                  className="lift-card illustrated-lift-card"
                   type="button"
                   onClick={() => setState((s) => chooseLift(s, id))}
                 >
-                  <div className="lift-card-art">
-                    <figure>
-                      <img src={LIFT_CARD[id].light} alt="" />
-                      <figcaption>Light</figcaption>
-                    </figure>
-                    <figure>
-                      <img src={LIFT_CARD[id].max} alt="" />
-                      <figcaption>Max</figcaption>
-                    </figure>
+                  <div className="illustrated-lift-still-wrap">
+                    <img
+                      src={LIFT_STILLS[id].src}
+                      alt=""
+                      style={{ objectPosition: ILLUSTRATED_MOTION.LIFT_CARD_OBJECT_POSITION }}
+                    />
+                    {LIFT_STILLS[id].limited ? (
+                      <span className="illustrated-chip">LIMITED</span>
+                    ) : null}
                   </div>
                   <span>
                     <b>{LIFT_COPY[id].name}</b>
@@ -278,16 +305,20 @@ export function ArcadeApp() {
       state.screen === "failure" ||
       state.screen === "transition" ||
       state.screen === "bomb" ? (
-        <section className="arcade-screen">
-          <SpriteStage
-            lift={lift}
-            screen={state.screen}
-            progress={progress}
-            clockMs={state.timingElapsedMs}
-            lights={lights}
-            weightKg={weight}
-            e1rmKg={state.e1rmKg}
-          />
+        <section className="arcade-screen" data-proof-screen={state.screen === "timing" ? "timing" : undefined}>
+          {state.screen === "timing" ? (
+            <IllustratedTimingStage lift={lift} progress={progress} lights={lights} />
+          ) : (
+            <SpriteStage
+              lift={lift}
+              screen={state.screen}
+              progress={progress}
+              clockMs={state.timingElapsedMs}
+              lights={lights}
+              weightKg={weight}
+              e1rmKg={state.e1rmKg}
+            />
+          )}
           <div className="panel">
             <div className="hud">
               <span>
@@ -362,8 +393,13 @@ export function ArcadeApp() {
       ) : null}
 
       {state.screen === "results" && state.meet ? (
-        <section className="arcade-screen">
-          <img className="title-art" src={SCENE.platform} alt="" />
+        <section className="arcade-screen" data-proof-screen="results">
+          <IllustratedArt
+            src={RESULTS_BACKDROP.src}
+            alt=""
+            objectPosition={ILLUSTRATED_MOTION.RESULTS_BACKDROP_POSITION}
+            kenBurns
+          />
           <div className="title-veil" />
           <div className="panel">
             <p className="kicker">{FEEL.FEDERATION}</p>
@@ -386,7 +422,13 @@ export function ArcadeApp() {
                 <b>{state.meet.breakdown.total}</b>
               </div>
             </div>
-            <ResultsCard meet={state.meet} ref={cardRef} />
+            <div className="illustrated-results-wrap">
+              <div className="illustrated-results-portrait">
+                <img src={RESULTS_SHEET_ART.src} alt="" />
+                <span className="illustrated-chip">LIMITED — no dedicated results-card art</span>
+              </div>
+              <ResultsCard meet={state.meet} ref={cardRef} />
+            </div>
             <div className="stack">
               <button
                 className="btn btn-primary"
@@ -414,15 +456,13 @@ export function ArcadeApp() {
 
 function TitleScreen({ onStart, streak }: { onStart: () => void; streak: number }) {
   return (
-    <section className="arcade-screen">
-      <picture>
-        <source media="(min-width: 860px)" srcSet={SCENE.titleWide} />
-        <img className="title-art" src={SCENE.title} alt="" />
-      </picture>
+    <section className="arcade-screen" data-proof-screen="title">
+      <IllustratedTitleArt />
       <div className="title-veil" />
       <div className="title-copy">
         <p className="kicker">{FEEL.FEDERATION}</p>
         <h1>Three White Lights</h1>
+        <p className="illustrated-edition-name">{ILLUSTRATED_EDITION.NAME}</p>
         <p className="lede">
           One lift. Three attempts. Timing is the sport. Fatigue stays hidden and shows up in bar
           speed.
