@@ -14,9 +14,18 @@ describe("illustrated edition safeguards", () => {
   });
 
   it("parses proof query without touching scoring modules' contracts", () => {
-    assert.deepEqual(readProofQuery("?proof=timing"), { screen: "timing", freeze: true });
-    assert.deepEqual(readProofQuery("?proof=results&freeze=0"), { screen: "results", freeze: false });
-    assert.deepEqual(readProofQuery(""), { screen: null, freeze: false });
+    assert.deepEqual(readProofQuery("?proof=timing"), { screen: "timing", freeze: true, lift: null });
+    assert.deepEqual(readProofQuery("?proof=timing&lift=bench"), {
+      screen: "timing",
+      freeze: true,
+      lift: "bench",
+    });
+    assert.deepEqual(readProofQuery("?proof=results&freeze=0"), {
+      screen: "results",
+      freeze: false,
+      lift: null,
+    });
+    assert.deepEqual(readProofQuery(""), { screen: null, freeze: false, lift: null });
   });
 
   it("builds a results fixture through resolveAttempt and scoreMeet", () => {
@@ -28,5 +37,8 @@ describe("illustrated edition safeguards", () => {
     const next = applyProofToState(initialState(null), "?proof=results");
     assert.equal(next.screen, "results");
     assert.equal(next.meet?.bestKg, meet.bestKg);
+    const benchTiming = applyProofToState(initialState(null), "?proof=timing&lift=bench");
+    assert.equal(benchTiming.screen, "timing");
+    assert.equal(benchTiming.lift, "bench");
   });
 });

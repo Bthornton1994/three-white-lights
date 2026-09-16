@@ -1,13 +1,15 @@
 import type { LiftId } from "../feel.ts";
 
 /**
- * Direct-use map onto existing Fable PR #71 stills.
- * Paths are runtime URLs served from unmodified copies of the concept files.
+ * Direct-use map onto existing Fable PR #71 stills, plus owner-revised
+ * bench stills stored outside the concept SoT folder.
  * Do not point these at templates/, palette swatches, or PR #72 sprites.
  */
 
 export const FABLE_REF_DIR = "art-direction/concept-fable-20260916/reference-ai";
 export const ILLUSTRATED_PUBLIC_DIR = "/illustrated/fable-20260916";
+export const ILLUSTRATED_DIRECT_USE_DIR = "/illustrated/direct-use";
+export const ILLUSTRATED_DIRECT_USE_REPO = "art-direction/illustrated-direct-use/assets";
 
 export type IllustratedStill = {
   file: string;
@@ -31,7 +33,8 @@ export const FABLE_STILLS = {
     limited: false,
     limitedReason: null,
   },
-  bench: {
+  /** PR #71 concept still. Kept for SoT hash-lock. Not loaded on bench select/timing. */
+  benchOriginal: {
     file: "AI-REF-02-BENCH-THREE-QUARTER.png",
     src: `${ILLUSTRATED_PUBLIC_DIR}/AI-REF-02-BENCH-THREE-QUARTER.png`,
     repoPath: `${FABLE_REF_DIR}/AI-REF-02-BENCH-THREE-QUARTER.png`,
@@ -39,7 +42,7 @@ export const FABLE_STILLS = {
     width: 1024,
     height: 1058,
     limited: true,
-    limitedReason: "Single bench still; not a dedicated select card or timing sequence.",
+    limitedReason: "Superseded on bench select/timing by bench-revised-20260916.png.",
   },
   deadlift: {
     file: "AI-REF-03-DEADLIFT-SETUP-LOCKOUT-MAX.png",
@@ -73,23 +76,50 @@ export const FABLE_STILLS = {
   },
 } as const satisfies Record<string, IllustratedStill>;
 
+/** Owner-revised mid-press bench. Direct-use path only. Not a Fable SoT overwrite. */
+export const BENCH_REVISED: IllustratedStill = {
+  file: "bench-revised-20260916.png",
+  src: `${ILLUSTRATED_DIRECT_USE_DIR}/bench-revised-20260916.png`,
+  repoPath: `${ILLUSTRATED_DIRECT_USE_REPO}/bench-revised-20260916.png`,
+  sha256: "6ded9e1d74512e42527a3e1e4d86d915d210f8326a07b331c34973c4ab99548b",
+  width: 1233,
+  height: 1275,
+  limited: true,
+  limitedReason: "Owner-revised mid-press still; not a dedicated select card or timing sequence.",
+};
+
+export const BENCH_RACKED_NOT_SELECTED: IllustratedStill = {
+  file: "bench-racked-20260916.png",
+  src: `${ILLUSTRATED_DIRECT_USE_DIR}/not-selected/bench-racked-20260916.png`,
+  repoPath: `${ILLUSTRATED_DIRECT_USE_REPO}/not-selected/bench-racked-20260916.png`,
+  sha256: "c718bca6b06d24b87c3c900d83e019618bd2b37878bcd42020bf66816cd20d65",
+  width: 1234,
+  height: 1275,
+  limited: true,
+  limitedReason: "Not selected: racked pose, mangled viewer-right hand.",
+};
+
 export const TITLE_STILL = FABLE_STILLS.title;
 export const RESULTS_BACKDROP = FABLE_STILLS.title;
 export const RESULTS_SHEET_ART = FABLE_STILLS.modelSheet;
 
 export const LIFT_STILLS: Record<LiftId, IllustratedStill> = {
   squat: FABLE_STILLS.squat,
-  bench: FABLE_STILLS.bench,
+  bench: BENCH_REVISED,
   deadlift: FABLE_STILLS.deadlift,
 };
 
-/** Designated Independent QA timing capture. Deadlift has the only setup→finish sequence. */
+/** Designated Independent QA timing capture for the original four-screen proof. */
 export const TIMING_PROOF_LIFT: LiftId = "deadlift";
 
 export const FABLE_STILL_LIST: readonly IllustratedStill[] = [
   FABLE_STILLS.modelSheet,
-  FABLE_STILLS.bench,
+  FABLE_STILLS.benchOriginal,
   FABLE_STILLS.deadlift,
   FABLE_STILLS.squat,
   FABLE_STILLS.title,
 ];
+
+export function isLegacyBenchSrc(src: string): boolean {
+  return src.includes("AI-REF-02-BENCH-THREE-QUARTER");
+}

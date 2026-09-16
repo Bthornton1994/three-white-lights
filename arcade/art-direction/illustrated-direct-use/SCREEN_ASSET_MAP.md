@@ -25,10 +25,10 @@ Banners are left intact (no crop-out in the file).
 
 | Screen | File(s) | Status | Honest gap |
 | --- | --- | --- | --- |
-| Title | `AI-REF-05` as the full-bleed still | **WIRED** | No portrait `title.png` (1008×1792) and no `title-wide.png` (1792×1008). One 1280×754 landscape still is used at both 390×844 and 1280×800 via `object-fit: cover` + camera. Phone crop is severe. Hallucinated poster copy remains in the bitmap. |
-| Lift selection | `AI-REF-04` squat, `AI-REF-02` bench, `AI-REF-03` deadlift as one still per lift. Backdrop: `AI-REF-05`. | **WIRED / LIMITED** | No dedicated lift-select cards (no 52-lattice crops, no separate light/max pair files). Squat and deadlift stills are diptychs, not single-pose select cards. No Fable `platform.png`. |
+| Title | `AI-REF-05` in an upper letterbox on phone (`object-fit: contain`); cover on desktop | **WIRED / LIMITED** | No portrait master. Phone uses contain so the “THREE WHITE LIGHTS” lockup stays readable. Hallucinated PRESS START remains in the bitmap. |
+| Lift selection | squat `AI-REF-04`, **bench `bench-revised-20260916.png`**, deadlift `AI-REF-03`. Backdrop: `AI-REF-05`. | **WIRED / LIMITED** | Bench select loads **only** the owner-revised mid-press still. `AI-REF-02` is not loaded on this screen. No dedicated 52-lattice cards. |
 | Results card | Backdrop `AI-REF-05`. Card portrait region: `AI-REF-01` displayed **contain** (whole sheet, not a masked head crop). | **LIMITED** | **No dedicated results-card illustration exists.** Federation sheet layout stays the existing `ResultsCard`. Share PNG is unchanged (no Fable composite). |
-| One timing screen | Designated proof: **deadlift** using `AI-REF-03`. Camera pans setup → lockout with progress. Squat (`AI-REF-04`) and bench (`AI-REF-02`) stills are also wired so those lifts do not fall back to PR #70 sprites on the timing screen. | **WIRED / LIMITED** | No per-frame timing sheets. Squat diptych is light-vs-max, not a descent sequence. Bench is a single still (zoom only). |
+| Timing | Designated original proof: **deadlift** `AI-REF-03`. **Bench timing** uses **only** `bench-revised-20260916.png`. Squat uses `AI-REF-04`. | **WIRED / LIMITED** | No per-frame timing sheets. `AI-REF-02` is not loaded on bench timing. |
 
 ## Not wired (and why)
 
@@ -38,7 +38,8 @@ Banners are left intact (no crop-out in the file).
 | `palette/iron-amber-v2-swatches.png` | Palette sheet, not a scene. |
 | `baseline/desktop-1280x800-attempts-clip.png` | Screenshot of the old loop, not Fable concept art. |
 | Any PR #72 sprite / lattice export | Wrong quality target. Not present on this tip. |
-| New generated images | Forbidden. |
+| New generated images | Forbidden. Owner-supplied bench revisions live under `illustrated-direct-use/assets/`, not in the Fable SoT folder. |
+| `AI-REF-02` on bench select/timing | Superseded by `bench-revised-20260916.png`. Original file is preserved, not loaded on those two screens. |
 
 ## Screens outside proof scope
 

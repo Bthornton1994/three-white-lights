@@ -3,3 +3,4 @@ dist
 .DS_Store
 *.log
 public/illustrated/fable-20260916/*.png
+public/illustrated/direct-use/*.png

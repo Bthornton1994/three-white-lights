@@ -33,6 +33,9 @@ It is not a new game, not a GDD rewrite, and not a production visual lock.
   approved visual source of truth (strongest work so far).
 - Files live in `arcade/art-direction/concept-fable-20260916/`, especially
   `reference-ai/AI-REF-0{1-5}-*.png`.
+- Owner-revised bench stills for the PR #73 follow-up live under
+  `illustrated-direct-use/assets/` (versioned; not written into `reference-ai/`).
+  Bench select and bench timing load only `bench-revised-20260916.png`.
 - `FABLE_PRESERVATION_FAILED`, if it appears on other branches, names a
   **sprite extraction** failure. It does not mean the Fable concept is unusable.
 - PR #72 (`44fa0652495cea0c92c0d4e14f1c5c10fc6d6cc6`) is a technical

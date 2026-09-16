@@ -15,19 +15,25 @@ const FABLE_FILES: Record<string, string> = {
   "AI-REF-05-TITLE-SCREEN.png": "1bc09ab2231eb7a91fe7289cacfea23a5ac1a1dfc94402570806b614ff299d2f",
 };
 
+const REVISED_FILES: Record<string, string> = {
+  "bench-revised-20260916.png": "6ded9e1d74512e42527a3e1e4d86d915d210f8326a07b331c34973c4ab99548b",
+};
+
 function sha256(path: string): string {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
-function syncFableStills(): void {
-  const srcDir = resolve(root, "art-direction/concept-fable-20260916/reference-ai");
-  const destDir = resolve(root, "public/illustrated/fable-20260916");
+function copyLocked(
+  srcDir: string,
+  destDir: string,
+  files: Record<string, string>,
+): void {
   mkdirSync(destDir, { recursive: true });
-  for (const [name, expected] of Object.entries(FABLE_FILES)) {
+  for (const [name, expected] of Object.entries(files)) {
     const src = resolve(srcDir, name);
     const got = sha256(src);
     if (got !== expected) {
-      throw new Error(`refusing mutated Fable still ${name}: ${got}`);
+      throw new Error(`refusing mutated still ${name}: ${got}`);
     }
     const dest = resolve(destDir, name);
     cpSync(src, dest);
@@ -37,14 +43,27 @@ function syncFableStills(): void {
   }
 }
 
+function syncIllustratedStills(): void {
+  copyLocked(
+    resolve(root, "art-direction/concept-fable-20260916/reference-ai"),
+    resolve(root, "public/illustrated/fable-20260916"),
+    FABLE_FILES,
+  );
+  copyLocked(
+    resolve(root, "art-direction/illustrated-direct-use/assets"),
+    resolve(root, "public/illustrated/direct-use"),
+    REVISED_FILES,
+  );
+}
+
 function fableIllustratedPlugin(): Plugin {
   return {
     name: "fable-illustrated-sync",
     buildStart() {
-      syncFableStills();
+      syncIllustratedStills();
     },
     configureServer() {
-      syncFableStills();
+      syncIllustratedStills();
     },
   };
 }

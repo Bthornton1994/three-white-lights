@@ -227,6 +227,7 @@ export function ArcadeApp() {
                     <img
                       src={LIFT_STILLS[id].src}
                       alt=""
+                      data-illustrated-file={LIFT_STILLS[id].file}
                       style={{ objectPosition: ILLUSTRATED_MOTION.LIFT_CARD_OBJECT_POSITION }}
                     />
                     {LIFT_STILLS[id].limited ? (
@@ -460,7 +461,7 @@ function TitleScreen({ onStart, streak }: { onStart: () => void; streak: number 
       <IllustratedTitleArt />
       <div className="title-veil" />
       {TITLE_STILL.limited ? (
-        <span className="illustrated-chip illustrated-chip-title">LIMITED — no portrait title master</span>
+        <span className="illustrated-chip illustrated-chip-title">LIMITED — landscape still, letterboxed on phone</span>
       ) : null}
       <div className="title-copy">
         <p className="kicker">{FEEL.FEDERATION}</p>

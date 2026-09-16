@@ -20,6 +20,7 @@ production bar, and it does not reopen the PR #72 conversion pipeline.
 Start here:
 
 1. `DECISION.md` — product decision, allowed motion, forbidden work
-2. `SCREEN_ASSET_MAP.md` — which existing Fable files wire to which screens
-3. `RIGHTS_PROVENANCE_CHECKLIST.md` — production gate (mostly UNKNOWN)
-4. `DIRECT_USE_REPORT.md` — proof outcome and the verdict token
+2. `SCREEN_ASSET_MAP.md` — which existing Fable files (and the owner-revised bench) wire to which screens
+3. `assets/README.md` — versioned owner-revised stills (not Fable SoT)
+4. `RIGHTS_PROVENANCE_CHECKLIST.md` — production gate (mostly UNKNOWN)
+5. `DIRECT_USE_REPORT.md` — proof outcome and the verdict token

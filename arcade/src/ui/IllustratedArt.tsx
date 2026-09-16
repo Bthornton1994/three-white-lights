@@ -11,6 +11,7 @@ type ArtProps = {
   scale?: number;
   kenBurns?: boolean;
   className?: string;
+  file?: string;
 };
 
 export function IllustratedArt({
@@ -20,6 +21,7 @@ export function IllustratedArt({
   scale = 1,
   kenBurns = false,
   className,
+  file,
 }: ArtProps) {
   const style: CSSProperties = {
     objectPosition,
@@ -32,7 +34,13 @@ export function IllustratedArt({
   const imgClass = kenBurns ? "illustrated-still illustrated-ken-burns" : "illustrated-still";
   return (
     <div className={`illustrated-stage ${className ?? ""}`} aria-hidden={alt === ""}>
-      <img className={imgClass} src={src} alt={alt} style={style} />
+      <img
+        className={imgClass}
+        src={src}
+        alt={alt}
+        style={style}
+        data-illustrated-file={file}
+      />
       <div className="illustrated-lighting" />
       <div className="illustrated-vignette" />
     </div>
@@ -46,6 +54,7 @@ export function IllustratedTitleArt() {
       alt=""
       kenBurns
       className="illustrated-title-art"
+      file={TITLE_STILL.file}
     />
   );
 }
@@ -62,13 +71,14 @@ export function IllustratedTimingStage({
   const still = LIFT_STILLS[lift];
   const camera = timingCamera(lift, progress);
   return (
-    <div className="stage-wrap illustrated-timing-wrap">
+    <div className="stage-wrap illustrated-timing-wrap" data-illustrated-file={still.file}>
       <IllustratedArt
         src={still.src}
         alt=""
         objectPosition={camera.objectPosition}
         scale={camera.scale}
         className="illustrated-timing-art"
+        file={still.file}
       />
       <div className="lights illustrated-stage-lights">
         {lights.map((color, i) => (

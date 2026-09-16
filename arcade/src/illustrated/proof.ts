@@ -1,4 +1,4 @@
-import { FEEL } from "../feel.ts";
+import { FEEL, type LiftId } from "../feel.ts";
 import type { ArcadeState } from "../loop/machine.ts";
 import { sequenceDurationMs } from "../loop/timing.ts";
 import { suggestedAttempts } from "../math/attempts.ts";
@@ -11,7 +11,15 @@ export type ProofScreen = "title" | "lift" | "timing" | "results";
 export type ProofQuery = {
   screen: ProofScreen | null;
   freeze: boolean;
+  lift: LiftId | null;
 };
+
+function parseLift(raw: string | null): LiftId | null {
+  if (raw === "squat" || raw === "bench" || raw === "deadlift") {
+    return raw;
+  }
+  return null;
+}
 
 export function readProofQuery(search: string = ""): ProofQuery {
   const rawSearch =
@@ -23,7 +31,7 @@ export function readProofQuery(search: string = ""): ProofQuery {
   const freezeFlag = params.get("freeze");
   const freeze =
     freezeFlag === "0" || freezeFlag === "false" ? false : screen !== null;
-  return { screen, freeze };
+  return { screen, freeze, lift: parseLift(params.get("lift")) };
 }
 
 /** Display fixture for ?proof=results. Uses real resolveAttempt + scoreMeet. */
@@ -49,15 +57,16 @@ export function applyProofToState(state: ArcadeState, search?: string): ArcadeSt
     return { ...state, screen: "lift" };
   }
   if (proof.screen === "timing") {
-    const e1rmKg = FEEL.DEFAULT_E1RM_KG[TIMING_PROOF_LIFT];
+    const lift = proof.lift ?? TIMING_PROOF_LIFT;
+    const e1rmKg = FEEL.DEFAULT_E1RM_KG[lift];
     return {
       ...state,
       screen: "timing",
-      lift: TIMING_PROOF_LIFT,
+      lift,
       e1rmKg,
       attemptsKg: suggestedAttempts(e1rmKg),
       currentAttempt: 1,
-      timingElapsedMs: Math.round(sequenceDurationMs(TIMING_PROOF_LIFT) * 0.28),
+      timingElapsedMs: Math.round(sequenceDurationMs(lift) * 0.28),
     };
   }
   if (proof.screen === "results") {

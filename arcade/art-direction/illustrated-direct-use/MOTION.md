@@ -11,7 +11,7 @@ weights stay where they are.
 
 | Kind | Where | Notes |
 | --- | --- | --- |
-| Responsive composition | title, lift stills, results backdrop | `object-fit: cover` or `contain`; per-viewport `object-position` |
+| Responsive composition | title, lift stills, results backdrop | Phone title uses `object-fit: contain` (letterbox). Desktop title may cover. |
 | Camera pan / zoom | title Ken Burns; timing progress camera on diptychs | CSS transform / object-position. No new frames. |
 | Lighting overlay | all four proof screens | CSS gradient, not a baked relight of the PNG |
 | Vignette | all four proof screens | CSS radial, not a file edit |
