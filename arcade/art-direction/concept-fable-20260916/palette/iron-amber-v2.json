@@ -1,0 +1,121 @@
+{
+  "name": "Iron & Amber v2 — concept palette (proposed, not adopted)",
+  "status": "CONCEPT ONLY. Proposed for the future hand-pixel package. The live game still uses arcade/art-source/internal-draw-index/palette.json.",
+  "athlete": "Reed Hale — entirely fictional. Not a likeness of any real person.",
+  "rules": {
+    "per_sprite_frame_max_colors": 40,
+    "per_card_max_colors": 16,
+    "per_scene_max_colors": 64,
+    "alpha": "binary (0 or 255); no semi-transparent fringe",
+    "forbidden": "magenta/purple chroma key; any color not in this table",
+    "shadow_hue_shift": "shadows shift toward violet/cool, highlights toward amber/warm — never straight darken/lighten"
+  },
+  "ramps": {
+    "outline": {
+      "OUT": "#0F0B0B",
+      "SHAD": "#080606"
+    },
+    "skin": {
+      "SKIN0": "#4A2A26",
+      "SKIN1": "#7A4634",
+      "SKIN2": "#B0704C",
+      "SKIN3": "#D8986A",
+      "SKIN4": "#F2C28E"
+    },
+    "flush_max_effort": {
+      "FLUSH0": "#7A3030",
+      "FLUSH1": "#B85040",
+      "FLUSH2": "#D8705A"
+    },
+    "hair_beard": {
+      "HAIR0": "#17110F",
+      "HAIR1": "#2E211B",
+      "HAIR2": "#4A3628"
+    },
+    "singlet_iron": {
+      "SING0": "#15151C",
+      "SING1": "#262633",
+      "SING2": "#3E3E50",
+      "SING3": "#55566A"
+    },
+    "amber_accent": {
+      "AMB0": "#8A4A14",
+      "AMB1": "#D98B2B",
+      "AMB2": "#F5C86C",
+      "AMB3": "#FFE9B0"
+    },
+    "belt": {
+      "BELT": "#0E0B0A"
+    },
+    "knee_sleeves": {
+      "KNEE0": "#4E1E1A",
+      "KNEE1": "#7C2E26",
+      "KNEE2": "#A0463A"
+    },
+    "wraps_chalk": {
+      "WRAP0": "#A8A096",
+      "WRAP1": "#DCD6CA",
+      "CHALK": "#F3EFE6"
+    },
+    "shoes": {
+      "SHOE0": "#141212",
+      "SHOE1": "#2C2A2A"
+    },
+    "bar_collars": {
+      "BAR0": "#4A4A54",
+      "BAR1": "#8A8A96",
+      "BAR2": "#C4C4CE",
+      "BAR3": "#EEEEF4"
+    },
+    "plate_red_25": {
+      "RED0": "#7E1A1D",
+      "RED1": "#B8262A",
+      "RED2": "#D8484A"
+    },
+    "plate_blue_20": {
+      "BLU0": "#1C3272",
+      "BLU1": "#2A4FA8",
+      "BLU2": "#4A6FC8"
+    },
+    "plate_yellow_15": {
+      "YEL0": "#8E7418",
+      "YEL1": "#D4AE2A"
+    },
+    "plate_green_10": {
+      "GRN0": "#1C5228",
+      "GRN1": "#2C8040"
+    },
+    "plate_white_5": {
+      "WHT0": "#B0ACA2",
+      "WHT1": "#E8E4DA"
+    },
+    "plate_black_2_5": {
+      "BLK0": "#222226",
+      "BLK1": "#3C3C42"
+    },
+    "bench_rack": {
+      "PAD0": "#1C1A1E",
+      "PAD1": "#2E2B32",
+      "STEEL0": "#303038",
+      "STEEL1": "#505060"
+    },
+    "platform_wood": {
+      "WOOD0": "#4E3018",
+      "WOOD1": "#7E5230",
+      "WOOD2": "#A87A48"
+    },
+    "face_interior": {
+      "MOUTH": "#5A1E1E"
+    },
+    "scene_only": {
+      "BRICK0": "#2E1E1A",
+      "BRICK1": "#402A22",
+      "BRICK2": "#52362A",
+      "FLOOR0": "#2A2624",
+      "FLOOR1": "#3A3430",
+      "CROWD0": "#221A18",
+      "CROWD1": "#382824",
+      "LAMP": "#F7F3EA"
+    }
+  }
+}
