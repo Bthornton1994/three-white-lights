@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FEEL, LIFT_COPY, type LiftId } from "../feel.ts";
 import { ILLUSTRATED_EDITION } from "../illustrated/edition.ts";
-import { LIFT_STILLS, RESULTS_BACKDROP, RESULTS_SHEET_ART } from "../illustrated/assets.ts";
+import { LIFT_STILLS, RESULTS_BACKDROP, RESULTS_SHEET_ART, TITLE_STILL } from "../illustrated/assets.ts";
 import { ILLUSTRATED_MOTION } from "../illustrated/motion.ts";
 import { applyProofToState, readProofQuery } from "../illustrated/proof.ts";
 import {
@@ -459,6 +459,9 @@ function TitleScreen({ onStart, streak }: { onStart: () => void; streak: number 
     <section className="arcade-screen" data-proof-screen="title">
       <IllustratedTitleArt />
       <div className="title-veil" />
+      {TITLE_STILL.limited ? (
+        <span className="illustrated-chip illustrated-chip-title">LIMITED — no portrait title master</span>
+      ) : null}
       <div className="title-copy">
         <p className="kicker">{FEEL.FEDERATION}</p>
         <h1>Three White Lights</h1>

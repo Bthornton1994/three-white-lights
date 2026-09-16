@@ -14,8 +14,8 @@ export const ILLUSTRATED_MOTION = {
   RESULTS_SHEET_OBJECT_FIT: "contain" as const,
   VIGNETTE_OPACITY: 0.62,
   LIGHTING_AMBER_OPACITY: 0.18,
-  TIMING_ZOOM_FROM: 1.04,
-  TIMING_ZOOM_TO: 1.14,
+  TIMING_ZOOM_FROM: 1,
+  TIMING_ZOOM_TO: 1.06,
   /** object-position x% for diptych left panel (setup / light). */
   DIPTYCH_PAN_LEFT_PCT: 22,
   /** object-position x% for diptych right panel (lockout / max). */

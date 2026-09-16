@@ -570,6 +570,15 @@ h2 {
   text-transform: uppercase;
 }
 
+.illustrated-chip-title {
+  top: 40px;
+  left: 12px;
+  right: auto;
+  bottom: auto;
+  z-index: 4;
+  max-width: min(28rem, calc(100% - 24px));
+}
+
 .illustrated-results-wrap {
   display: grid;
   gap: 12px;
@@ -580,6 +589,8 @@ h2 {
   border-radius: 8px;
   overflow: hidden;
   background: #120f0c;
+  max-width: 760px;
+  margin-inline: auto;
 }
 
 .illustrated-results-portrait img {
@@ -593,6 +604,11 @@ h2 {
 
 .illustrated-timing-wrap {
   min-height: 280px;
+}
+
+.illustrated-timing-art .illustrated-still {
+  object-fit: contain;
+  background: #120f0c;
 }
 
 @keyframes illustrated-ken-burns {

@@ -68,12 +68,14 @@ export function IllustratedTimingStage({
         alt=""
         objectPosition={camera.objectPosition}
         scale={camera.scale}
+        className="illustrated-timing-art"
       />
       <div className="lights illustrated-stage-lights">
         {lights.map((color, i) => (
           <span key={`${color}-${i}`} className={`light ${color}`} />
         ))}
       </div>
+      {still.limited ? <span className="illustrated-chip">LIMITED — still, not frames</span> : null}
     </div>
   );
 }

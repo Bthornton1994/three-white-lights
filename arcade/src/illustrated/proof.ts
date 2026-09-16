@@ -1,5 +1,6 @@
 import { FEEL } from "../feel.ts";
 import type { ArcadeState } from "../loop/machine.ts";
+import { sequenceDurationMs } from "../loop/timing.ts";
 import { suggestedAttempts } from "../math/attempts.ts";
 import { resolveAttempt, scoreMeet } from "../math/score.ts";
 import type { ArcadeMeet } from "../math/types.ts";
@@ -56,7 +57,7 @@ export function applyProofToState(state: ArcadeState, search?: string): ArcadeSt
       e1rmKg,
       attemptsKg: suggestedAttempts(e1rmKg),
       currentAttempt: 1,
-      timingElapsedMs: 720,
+      timingElapsedMs: Math.round(sequenceDurationMs(TIMING_PROOF_LIFT) * 0.28),
     };
   }
   if (proof.screen === "results") {
