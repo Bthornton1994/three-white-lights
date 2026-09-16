@@ -5,6 +5,11 @@ Session A training, Meet Day presentation, Gym Empire, StageForge, or Loadout.
 
 Title (exact): **Three White Lights: Iron & Amber Arcade**
 
+Draft overlay on this branch: **Iron & Amber Illustrated Arcade**
+(`art-direction/illustrated-direct-use/`). Direct use of existing Fable PR #71
+concept stills. **DO_NOT_MERGE · not production-ready.** Gameplay loop and
+`src/feel.ts` are unchanged.
+
 ## Loop
 
 1. Choose squat, bench, or deadlift

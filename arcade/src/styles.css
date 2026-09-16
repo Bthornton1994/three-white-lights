@@ -46,6 +46,7 @@
   color: var(--color-ink);
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .arcade-screen {
@@ -456,9 +457,239 @@ h2 {
   gap: 10px;
 }
 
+.illustrated-banner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  margin: 0;
+  padding: 6px 12px;
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+  color: #f7f3ea;
+  background: #7a1d18;
+}
+
+.illustrated-edition-name {
+  margin: 0;
+  font-family: var(--font-display);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-amber-2);
+  font-size: 0.82rem;
+}
+
+.illustrated-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.illustrated-still {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: auto;
+  transform: scale(var(--illustrated-scale, 1));
+  transform-origin: center center;
+}
+
+.illustrated-title-art {
+  top: 36px;
+  bottom: auto;
+  height: 48%;
+  background: #120f0c;
+}
+
+.illustrated-title-art .illustrated-still {
+  /* Matches ILLUSTRATED_MOTION.TITLE_FIT_PORTRAIT / TITLE_OBJECT_POSITION_PORTRAIT */
+  object-fit: contain;
+  object-position: center top;
+}
+
+.illustrated-title-art .illustrated-ken-burns {
+  animation: none;
+}
+
+.illustrated-title-art .illustrated-vignette {
+  background: radial-gradient(
+    ellipse at 50% 28%,
+    transparent 58%,
+    rgb(20 17 15 / 0.32) 100%
+  );
+}
+
+.illustrated-title-art .illustrated-lighting {
+  background: linear-gradient(
+    180deg,
+    rgb(212 137 42 / 0.08) 0%,
+    transparent 45%,
+    rgb(20 17 15 / 0.15) 100%
+  );
+}
+
+.arcade-screen[data-proof-screen="title"] .title-veil {
+  background: linear-gradient(
+    180deg,
+    rgb(20 17 15 / 0.05) 0%,
+    rgb(20 17 15 / 0.12) 46%,
+    rgb(20 17 15 / 0.92) 78%
+  );
+}
+
+.illustrated-ken-burns {
+  animation: illustrated-ken-burns var(--illustrated-ken-burns-ms, 22000ms) ease-in-out alternate infinite;
+}
+
+.illustrated-lighting {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgb(212 137 42 / var(--illustrated-lighting, 0.18)) 0%,
+    transparent 38%,
+    rgb(20 17 15 / 0.35) 100%
+  );
+  pointer-events: none;
+}
+
+.illustrated-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 42%,
+    transparent 38%,
+    rgb(20 17 15 / var(--illustrated-vignette, 0.62)) 100%
+  );
+  pointer-events: none;
+}
+
+.illustrated-stage-lights {
+  position: absolute;
+  top: 16px;
+  left: 0;
+  right: 0;
+  z-index: 2;
+}
+
+.illustrated-lift-still-wrap {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #120f0c;
+}
+
+.illustrated-lift-still-wrap img {
+  display: block;
+  width: 100%;
+  height: 148px;
+  object-fit: cover;
+  image-rendering: auto;
+}
+
+.illustrated-chip {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgb(20 17 15 / 0.82);
+  color: var(--color-amber-2);
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.illustrated-chip-title {
+  top: 40px;
+  left: 12px;
+  right: auto;
+  bottom: auto;
+  z-index: 4;
+  max-width: min(28rem, calc(100% - 24px));
+}
+
+.illustrated-results-wrap {
+  display: grid;
+  gap: 12px;
+}
+
+.illustrated-results-portrait {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #120f0c;
+  max-width: 760px;
+  margin-inline: auto;
+}
+
+.illustrated-results-portrait img {
+  display: block;
+  width: 100%;
+  height: 160px;
+  object-fit: contain;
+  image-rendering: auto;
+  background: #120f0c;
+}
+
+.illustrated-timing-wrap {
+  min-height: 280px;
+}
+
+.illustrated-timing-art .illustrated-still {
+  object-fit: contain;
+  background: #120f0c;
+}
+
+@keyframes illustrated-ken-burns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(var(--illustrated-ken-burns-scale, 1.08));
+  }
+}
+
+@media (min-width: 860px) {
+  .illustrated-title-art {
+    inset: 0;
+    height: auto;
+  }
+
+  .illustrated-title-art .illustrated-still {
+    /* Matches ILLUSTRATED_MOTION.TITLE_OBJECT_POSITION_WIDE */
+    object-fit: cover;
+    object-position: center 46%;
+  }
+
+  .illustrated-title-art .illustrated-ken-burns {
+    animation: illustrated-ken-burns var(--illustrated-ken-burns-ms, 22000ms) ease-in-out alternate infinite;
+  }
+
+  .illustrated-lift-still-wrap img {
+    height: 220px;
+  }
+
+  .illustrated-results-portrait img {
+    height: 200px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .btn,
   .lane-needle {
     transition: none;
+  }
+
+  .illustrated-ken-burns {
+    animation: none;
   }
 }
