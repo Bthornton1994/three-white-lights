@@ -137,18 +137,18 @@ export const SCENE = {
 /** Lift-select card art. Presentation only — not a gameplay input. */
 export const LIFT_CARD: Record<LiftId, { light: string; max: string; pose: string }> = {
   squat: {
-    light: "/sprites/squat/frame-03.png",
-    max: "/sprites/squat-max/frame-03.png",
+    light: "/sprites/cards/squat-light.png",
+    max: "/sprites/cards/squat-max.png",
     pose: "Depth",
   },
   bench: {
-    light: "/sprites/bench/frame-03.png",
-    max: "/sprites/bench-max/frame-03.png",
+    light: "/sprites/cards/bench-light.png",
+    max: "/sprites/cards/bench-max.png",
     pose: "Pause",
   },
   deadlift: {
-    light: "/sprites/deadlift/frame-06.png",
-    max: "/sprites/deadlift-max/frame-06.png",
+    light: "/sprites/cards/deadlift-light.png",
+    max: "/sprites/cards/deadlift-max.png",
     pose: "Lockout",
   },
 };

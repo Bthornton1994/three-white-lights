@@ -43,8 +43,8 @@ Cursor QA: see [`CURSOR_QA.md`](CURSOR_QA.md).
 
 - Two in-window good taps now keep a 2-white majority. Feel values in `src/feel.ts` are still **untuned**.
 - Deadlift frame 6 is a standing hip lockout, not a setup rewind. Mid-pull head stays in-canvas.
-- Sprite package was replaced with authored 16-bit frames (binary alpha, no magenta key). This is **not** a SNES sports A/B pass — faces, mass, and grind still need a human art pass.
-- Title/platform are indexed PNGs (no JPEG grain). Spotlight dither is clean, not film grain; it is still simpler than a Genesis title backdrop.
+- Sprite package is an internal **draw-then-index** pixel set (160 lattice ×2 → 320, locked fictional athlete, separate 104 cards). This is **not** a SNES sports A/B pass — Independent QA owns that bar. See `art-source/internal-draw-index/PROVENANCE.md`.
+- Title/platform are indexed pixel scenes (no JPEG grain). The gym backdrop is a simple lattice, not a finished Genesis title.
 
 ## Out of scope
 

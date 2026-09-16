@@ -9,7 +9,7 @@
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "test": "node --experimental-strip-types --test src/math/*.test.ts src/loop/*.test.ts src/sprites/*.test.ts src/ui/*.test.ts && python3 scripts/check_sprites.py",
-    "sprites": "python3 scripts/build_sprites.py && python3 scripts/check_sprites.py"
+    "sprites": "python3 art-source/internal-draw-index/draw_then_index.py && python3 scripts/check_sprites.py"
   },
   "dependencies": {
     "react": "^18.3.1",
