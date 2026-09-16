@@ -37,7 +37,8 @@
 - Plate disks (plates are round; 3-tone lighting, not a body primitive)
 - Brick / wood scene fills for title and platform
 - OpenRaster zip packaging
-- CSS integer nearest-neighbour sizes (320 stage, 104 / 208 cards)
+- CSS integer nearest-neighbour sizes (320 stage; cards 104 inside a 162×104
+  phone box, 208 desktop — 208 is 2× integer instead of non-integer ~190)
 
 ## Manually refined pixel material
 
@@ -48,6 +49,7 @@
 - Light plate stack (red outer + blue inner) vs max (4-red)
 - Arm thickness split (thinner on deadlift)
 - Title rear hair wedge so the back-view reads on brick
+- Deadlift setup/lockout keypoints + traps no longer stretch to the bar
 - Per-frame inspection of squat strip, hole, setup/lockout, cards, title
 
 ## Known limitations (craft self-assessment)
@@ -59,8 +61,13 @@ This sample is **better than the octagon/sticker PR #70 package** on squat reada
 - Faces at 273/320 still read as a dark beard mass with two eye pixels, not one
   locked portrait
 - Limbs remain capsule-derived; deadlift near-arm still fights the singlet
+- Deadlift lockout is standing with the bar at mid-thigh (setup ≠ lockout,
+  plates on the floor at setup) but knees are not a fully locked powerlifting
+  finish and the singlet still reads as a chest-box
 - Title Reed-from-behind is a kit silhouette, not a fully drawn back
 - Cards identify squat (bar on traps, cropped plates) but the 52 head is marginal
+- Phone card *box* is 162×104 with 104px integer art inside; desktop uses 208
+  (2× integer) instead of non-integer ~190
 - Bench was not redrawn; mixed art languages if you leave lift-select
 - Integer 320 stage / 208 desktop cards fix smear; whether that *feels* right is playtest
 
@@ -75,3 +82,16 @@ environment. Pixel refinement was done by inspecting exported PNGs and editing
 stamps, keypoints, z-order, and rim rules, then re-exporting the 160 lattice.
 That is equivalent raster authorship the agent can drive; it is **not** a
 human pixel-artist session.
+
+## In-app preview evidence
+
+Harness: `author/capture_browser.mjs` (playwright-core + system Chrome).
+Outputs: `arcade/evidence/gate1-production-sample/browser/`
+
+| Viewport | Screens |
+| --- | --- |
+| 390×844 | title, lift-select, squat attempts (light + max), squat walkout, squat hole, deadlift setup, deadlift lockout, model-sheet |
+| 1280×800 | same set |
+
+Metrics (stage 320, cards 104 in a 162 box / 208 desktop) live in `METRICS.json`.
+No `feel.ts` change. Walkout/timing durations are unchanged; the harness only waits.

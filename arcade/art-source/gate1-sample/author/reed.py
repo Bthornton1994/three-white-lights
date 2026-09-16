@@ -471,8 +471,8 @@ def draw_lifter(pose: Pose, size: int = 160) -> tuple[Canvas, list[tuple[str, Ca
             shade_plate(near_plates, pose.bar_x0 + 4, pose.bar_y, 18, ("RED0", "RED1", "RED2"))
             shade_plate(near_plates, pose.bar_x0 + 14, pose.bar_y, 14, ("BLU0", "BLU1", "BLU2"))
 
-    arm_r0 = 3.6 if pose.lift == "deadlift" else 5.4
-    arm_r1 = 3.0 if pose.lift == "deadlift" else 4.4
+    arm_r0 = 2.8 if pose.lift == "deadlift" else 5.4
+    arm_r1 = 2.2 if pose.lift == "deadlift" else 4.4
     # FAR limbs (behind singlet)
     shade_mask(
         far_body,
@@ -499,8 +499,13 @@ def draw_lifter(pose: Pose, size: int = 160) -> tuple[Canvas, list[tuple[str, Ca
     sh_w = 40 if pose.effort == "light" else 42
     hip_w = 36
     tmask = torso_mask(size, size, pose.sh, pose.hip, sh_w, hip_w)
-    by = pose.bar_y if not pose.no_bar else pose.sh[1] - 2
-    trmask = traps_mask(size, size, pose.sh, sh_w, by)
+    # Squat bar sits on the traps. Deadlift bar is in the hands — never stretch
+    # traps down to the sleeve or the setup reads as a standing hitch.
+    if pose.lift == "deadlift" or pose.no_bar:
+        trap_y = pose.sh[1] - 3
+    else:
+        trap_y = pose.bar_y
+    trmask = traps_mask(size, size, pose.sh, sh_w, trap_y)
     shade_mask(kit, or_mask(tmask, trmask), SING_RAMP, rim_lit="SING3")
     # neck
     nx, ny = pose.head[0] + 7, pose.head[1] + 18
@@ -542,8 +547,9 @@ def draw_lifter(pose: Pose, size: int = 160) -> tuple[Canvas, list[tuple[str, Ca
 
     if not pose.no_bar:
         draw_bar(bar_l, pose.bar_x0, pose.bar_x1, pose.bar_y, bow=pose.bow)
-        kit.put(pose.sh[0] - 6, pose.bar_y + 2, "SKIN0")
-        kit.put(pose.sh[0] - 5, pose.bar_y + 2, "SKIN0")
+        if pose.lift != "deadlift":
+            kit.put(pose.sh[0] - 6, pose.bar_y + 2, "SKIN0")
+            kit.put(pose.sh[0] - 5, pose.bar_y + 2, "SKIN0")
 
     if pose.rear:
         face_l.stamp(pose.head[0], pose.head[1], HEAD_REAR, HEAD_REAR_CMAP, skip=".")
@@ -566,6 +572,11 @@ def draw_lifter(pose: Pose, size: int = 160) -> tuple[Canvas, list[tuple[str, Ca
     for ly in layers:
         c.blit(ly[1])
     silhouette_rim(c)
+    # Spec: no opaque pixels below master row 318. Native y=159 → 318/319 at 2×.
+    # Canvas.put ignores None, so write the buffer directly.
+    if size == 160:
+        for x in range(size):
+            c.p[159][x] = None
     return c, layers
 
 
@@ -640,42 +651,33 @@ def squat_pose(frame: int, max_eff: bool) -> Pose:
 
 
 def deadlift_pose(frame: int, max_eff: bool) -> Pose:
-    light = {
-        1: (134, 104, 78, 55),
-        2: (132, 102, 76, 55),
-        3: (122, 96, 68, 40),
-        4: (112, 92, 60, 20),
-        5: (108, 96, 54, 5),
-        6: (106, 98, 50, 0),
+    """Setup is a floor pull (plates sit on y≈154). Lockout is standing, no hitch.
+
+    Keypoints are 3/4-view, more hinged than a 55° torso so the silhouette
+    reads as bent-over vs locked — direction from the Fable brief, not a trace.
+    """
+    # bar_y, hip, sh, head, near-knee, far-knee
+    table = {
+        1: (136, (94, 100), (70, 72), (58, 50), (62, 128), (90, 126)),
+        2: (128, (90, 98), (72, 66), (60, 44), (62, 126), (92, 124)),
+        3: (118, (86, 96), (76, 58), (64, 36), (60, 124), (96, 122)),
+        4: (110, (82, 96), (78, 52), (68, 30), (60, 122), (98, 120)),
+        5: (102, (80, 94), (80, 48), (70, 26), (64, 126), (96, 124)),
+        6: (98, (80, 92), (80, 46), (72, 24), (66, 128), (94, 126)),
     }
-    heavy = {
-        1: (134, 106, 80, 55),
-        2: (132, 100, 78, 55),
-        3: (124, 96, 70, 42),
-        4: (114, 94, 62, 22),
-        5: (110, 96, 56, 8),
-        6: (106, 98, 50, 0),
-    }
-    bar_y, hips_y, sh_y, lean = (heavy if max_eff else light)[frame]
+    bar_y, hip, sh, head, kn, kf = table[frame]
+    if max_eff:
+        bar_y += 0 if frame == 6 else 1
+        hip = (hip[0], hip[1] + (1 if frame <= 2 else 0))
     cx = 80
-    bar_x = 80
-    rad = math.radians(lean)
-    hip_x = cx + (3 if frame == 6 else 0)
-    sh_x = hip_x + int(round(16 * math.sin(rad)))
-    if frame == 6:
-        sh_x = cx - 2
-        sh_y = 50
-    head_x = sh_x - 8
-    head_y = 26 if frame == 6 else sh_y - 20
-    knee_y = 134 if frame == 1 else (130 if frame <= 3 else 122)
-    kn = (cx - 14, knee_y)
-    kf = (cx + 12, knee_y - 1)
-    fn = (cx - 12, 152)
-    ff = (cx + 12, 152)
-    hn = (bar_x - 8, bar_y)
-    hf = (bar_x + 8, bar_y)
-    en = ((sh_x + hn[0]) // 2 - 1, (sh_y + bar_y) // 2)
-    ef = ((sh_x + hf[0]) // 2 + 1, (sh_y + bar_y) // 2)
+    fn = (cx - 16, 152)
+    ff = (cx + 14, 152)
+    hn = (72, bar_y)
+    hf = (88, bar_y)
+    # Straight arms: elbows sit on the shoulder–hand line, not a chicken-wing.
+    en = ((sh[0] + hn[0]) // 2 - 2, (sh[1] + bar_y) // 2)
+    ef = ((sh[0] + hf[0]) // 2 + 2, (sh[1] + bar_y) // 2)
+    lean = 45 if frame == 1 else (32 if frame == 2 else (18 if frame == 3 else (8 if frame < 6 else 0)))
     if max_eff:
         expr: Expr = "STRAIN" if frame >= 3 else "BRACE"
     else:
@@ -686,9 +688,9 @@ def deadlift_pose(frame: int, max_eff: bool) -> Pose:
         effort="max" if max_eff else "light",
         frame=frame,
         expr=expr,
-        head=(head_x, head_y),
-        sh=(sh_x, sh_y),
-        hip=(hip_x, hips_y),
+        head=head,
+        sh=sh,
+        hip=hip,
         bar_y=bar_y,
         bar_x0=12,
         bar_x1=148,

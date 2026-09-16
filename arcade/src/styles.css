@@ -253,6 +253,11 @@ h2 {
 
 .lift-card-art figure {
   margin: 0;
+  width: 162px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
   background: var(--color-iron);
   border-radius: 10px;
   overflow: hidden;
@@ -262,8 +267,9 @@ h2 {
   display: block;
   width: 104px;
   height: 104px;
+  max-width: 104px;
   max-height: 104px;
-  margin: 0 auto;
+  margin: 0;
   aspect-ratio: 1;
   object-fit: contain;
   image-rendering: -moz-crisp-edges;
@@ -300,9 +306,15 @@ h2 {
     align-items: stretch;
   }
 
+  .lift-card-art figure {
+    width: 208px;
+    height: auto;
+  }
+
   .lift-card-art img {
     width: 208px;
     height: 208px;
+    max-width: 208px;
     max-height: 208px;
   }
 

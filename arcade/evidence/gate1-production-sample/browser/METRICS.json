@@ -1,0 +1,313 @@
+{
+  "errors": [],
+  "shots": [
+    {
+      "viewport": "mobile-390x844",
+      "screen": "title",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/mobile-390x844-title.png",
+      "overflowX": false,
+      "title": "Three White Lights: Iron & Amber Arcade",
+      "h1": "Three White Lights",
+      "stage": null,
+      "cards": [],
+      "errors": []
+    },
+    {
+      "viewport": "mobile-390x844",
+      "screen": "lift-select",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/mobile-390x844-lift-select.png",
+      "overflowX": false,
+      "title": "Three White Lights: Iron & Amber Arcade",
+      "h1": "Choose a lift",
+      "stage": null,
+      "cards": [
+        {
+          "w": 104,
+          "h": 104,
+          "src": "http://127.0.0.1:5173/sprites/cards/squat-light.png"
+        },
+        {
+          "w": 104,
+          "h": 104,
+          "src": "http://127.0.0.1:5173/sprites/cards/squat-max.png"
+        },
+        {
+          "w": 104,
+          "h": 104,
+          "src": "http://127.0.0.1:5173/sprites/cards/bench-light.png"
+        },
+        {
+          "w": 104,
+          "h": 104,
+          "src": "http://127.0.0.1:5173/sprites/cards/bench-max.png"
+        },
+        {
+          "w": 104,
+          "h": 104,
+          "src": "http://127.0.0.1:5173/sprites/cards/deadlift-light.png"
+        },
+        {
+          "w": 104,
+          "h": 104,
+          "src": "http://127.0.0.1:5173/sprites/cards/deadlift-max.png"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "viewport": "mobile-390x844",
+      "screen": "squat-attempts",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/mobile-390x844-squat-attempts.png",
+      "overflowX": false,
+      "title": "Three White Lights: Iron & Amber Arcade",
+      "h1": "Squat attempts",
+      "stage": {
+        "w": 320,
+        "h": 320,
+        "src": "http://127.0.0.1:5173/sprites/squat/frame-01.png"
+      },
+      "cards": [],
+      "errors": []
+    },
+    {
+      "viewport": "mobile-390x844",
+      "screen": "squat-attempts-max",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/mobile-390x844-squat-attempts-max.png",
+      "overflowX": false,
+      "title": "Three White Lights: Iron & Amber Arcade",
+      "h1": "Squat attempts",
+      "stage": {
+        "w": 320,
+        "h": 320,
+        "src": "http://127.0.0.1:5173/sprites/squat-max/frame-01.png"
+      },
+      "cards": [],
+      "errors": []
+    },
+    {
+      "viewport": "mobile-390x844",
+      "screen": "squat-walkout",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/mobile-390x844-squat-walkout.png",
+      "overflowX": false,
+      "title": "Three White Lights: Iron & Amber Arcade",
+      "h1": "",
+      "stage": {
+        "w": 320,
+        "h": 320,
+        "src": "http://127.0.0.1:5173/sprites/squat-max/frame-01.png"
+      },
+      "cards": [],
+      "errors": []
+    },
+    {
+      "viewport": "mobile-390x844",
+      "screen": "squat-hole",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/mobile-390x844-squat-hole.png",
+      "overflowX": false,
+      "title": "Three White Lights: Iron & Amber Arcade",
+      "h1": "",
+      "stage": {
+        "w": 320,
+        "h": 320,
+        "src": "http://127.0.0.1:5173/sprites/squat-max/frame-03.png"
+      },
+      "cards": [],
+      "errors": []
+    },
+    {
+      "viewport": "mobile-390x844",
+      "screen": "deadlift-setup",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/mobile-390x844-deadlift-setup.png",
+      "overflowX": false,
+      "title": "Three White Lights: Iron & Amber Arcade",
+      "h1": "Deadlift attempts",
+      "stage": {
+        "w": 320,
+        "h": 320,
+        "src": "http://127.0.0.1:5173/sprites/deadlift/frame-01.png"
+      },
+      "cards": [],
+      "errors": []
+    },
+    {
+      "viewport": "mobile-390x844",
+      "screen": "deadlift-lockout",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/mobile-390x844-deadlift-lockout.png",
+      "overflowX": false,
+      "title": "Three White Lights: Iron & Amber Arcade",
+      "h1": "",
+      "stage": {
+        "w": 320,
+        "h": 320,
+        "src": "http://127.0.0.1:5173/sprites/deadlift/frame-06.png"
+      },
+      "cards": [],
+      "errors": []
+    },
+    {
+      "viewport": "mobile-390x844",
+      "screen": "model-sheet",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/mobile-390x844-model-sheet.png",
+      "overflowX": false,
+      "title": "model-sheet",
+      "h1": "",
+      "stage": null,
+      "cards": [],
+      "errors": []
+    },
+    {
+      "viewport": "desktop-1280x800",
+      "screen": "title",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/desktop-1280x800-title.png",
+      "overflowX": false,
+      "title": "Three White Lights: Iron & Amber Arcade",
+      "h1": "Three White Lights",
+      "stage": null,
+      "cards": [],
+      "errors": []
+    },
+    {
+      "viewport": "desktop-1280x800",
+      "screen": "lift-select",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/desktop-1280x800-lift-select.png",
+      "overflowX": false,
+      "title": "Three White Lights: Iron & Amber Arcade",
+      "h1": "Choose a lift",
+      "stage": null,
+      "cards": [
+        {
+          "w": 208,
+          "h": 208,
+          "src": "http://127.0.0.1:5173/sprites/cards/squat-light.png"
+        },
+        {
+          "w": 208,
+          "h": 208,
+          "src": "http://127.0.0.1:5173/sprites/cards/squat-max.png"
+        },
+        {
+          "w": 208,
+          "h": 208,
+          "src": "http://127.0.0.1:5173/sprites/cards/bench-light.png"
+        },
+        {
+          "w": 208,
+          "h": 208,
+          "src": "http://127.0.0.1:5173/sprites/cards/bench-max.png"
+        },
+        {
+          "w": 208,
+          "h": 208,
+          "src": "http://127.0.0.1:5173/sprites/cards/deadlift-light.png"
+        },
+        {
+          "w": 208,
+          "h": 208,
+          "src": "http://127.0.0.1:5173/sprites/cards/deadlift-max.png"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "viewport": "desktop-1280x800",
+      "screen": "squat-attempts",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/desktop-1280x800-squat-attempts.png",
+      "overflowX": false,
+      "title": "Three White Lights: Iron & Amber Arcade",
+      "h1": "Squat attempts",
+      "stage": {
+        "w": 320,
+        "h": 320,
+        "src": "http://127.0.0.1:5173/sprites/squat/frame-01.png"
+      },
+      "cards": [],
+      "errors": []
+    },
+    {
+      "viewport": "desktop-1280x800",
+      "screen": "squat-attempts-max",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/desktop-1280x800-squat-attempts-max.png",
+      "overflowX": false,
+      "title": "Three White Lights: Iron & Amber Arcade",
+      "h1": "Squat attempts",
+      "stage": {
+        "w": 320,
+        "h": 320,
+        "src": "http://127.0.0.1:5173/sprites/squat-max/frame-01.png"
+      },
+      "cards": [],
+      "errors": []
+    },
+    {
+      "viewport": "desktop-1280x800",
+      "screen": "squat-walkout",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/desktop-1280x800-squat-walkout.png",
+      "overflowX": false,
+      "title": "Three White Lights: Iron & Amber Arcade",
+      "h1": "",
+      "stage": {
+        "w": 320,
+        "h": 320,
+        "src": "http://127.0.0.1:5173/sprites/squat-max/frame-01.png"
+      },
+      "cards": [],
+      "errors": []
+    },
+    {
+      "viewport": "desktop-1280x800",
+      "screen": "squat-hole",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/desktop-1280x800-squat-hole.png",
+      "overflowX": false,
+      "title": "Three White Lights: Iron & Amber Arcade",
+      "h1": "",
+      "stage": {
+        "w": 320,
+        "h": 320,
+        "src": "http://127.0.0.1:5173/sprites/squat-max/frame-03.png"
+      },
+      "cards": [],
+      "errors": []
+    },
+    {
+      "viewport": "desktop-1280x800",
+      "screen": "deadlift-setup",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/desktop-1280x800-deadlift-setup.png",
+      "overflowX": false,
+      "title": "Three White Lights: Iron & Amber Arcade",
+      "h1": "Deadlift attempts",
+      "stage": {
+        "w": 320,
+        "h": 320,
+        "src": "http://127.0.0.1:5173/sprites/deadlift/frame-01.png"
+      },
+      "cards": [],
+      "errors": []
+    },
+    {
+      "viewport": "desktop-1280x800",
+      "screen": "deadlift-lockout",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/desktop-1280x800-deadlift-lockout.png",
+      "overflowX": false,
+      "title": "Three White Lights: Iron & Amber Arcade",
+      "h1": "",
+      "stage": {
+        "w": 320,
+        "h": 320,
+        "src": "http://127.0.0.1:5173/sprites/deadlift/frame-06.png"
+      },
+      "cards": [],
+      "errors": []
+    },
+    {
+      "viewport": "desktop-1280x800",
+      "screen": "model-sheet",
+      "file": "/workspace/arcade/evidence/gate1-production-sample/browser/desktop-1280x800-model-sheet.png",
+      "overflowX": false,
+      "title": "model-sheet",
+      "h1": "",
+      "stage": null,
+      "cards": [],
+      "errors": []
+    }
+  ]
+}
