@@ -40,7 +40,7 @@ describe("sprite package identity", () => {
     assert.equal(poseForScreen("timing", "deadlift", 0.95), "lock");
   });
 
-  it("presents lift-select cards from 320 masters in light and max", () => {
+  it("presents lift-select cards from dedicated 104px compositions in light and max", () => {
     for (const lift of ["squat", "bench", "deadlift"] as const) {
       assert.equal(existsSync(`public${LIFT_CARD[lift].light}`), true);
       assert.equal(existsSync(`public${LIFT_CARD[lift].max}`), true);
@@ -48,8 +48,10 @@ describe("sprite package identity", () => {
         readFileSync(`public${LIFT_CARD[lift].light}`).equals(readFileSync(`public${LIFT_CARD[lift].max}`)),
         false,
       );
+      assert.equal(LIFT_CARD[lift].light.includes("/cards/"), true);
+      assert.equal(LIFT_CARD[lift].max.includes("/cards/"), true);
     }
-    assert.equal(LIFT_CARD.deadlift.light.endsWith("frame-06.png"), true);
+    assert.equal(LIFT_CARD.deadlift.pose, "Lockout");
   });
 
   it("splits opener-weight sheets from maximal-attempt sheets", () => {
