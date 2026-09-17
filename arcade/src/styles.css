@@ -644,6 +644,19 @@ h2 {
   min-height: 280px;
 }
 
+.illustrated-animated-stage .stage-bg {
+  opacity: 0.72;
+  filter: saturate(0.85) brightness(0.9);
+}
+
+.illustrated-athlete {
+  z-index: 2;
+}
+
+.illustrated-animated-stage .illustrated-stage {
+  background: transparent;
+}
+
 .illustrated-timing-art .illustrated-still {
   object-fit: contain;
   background: #120f0c;

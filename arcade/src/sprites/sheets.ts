@@ -217,6 +217,10 @@ export function frameSrcFor(
     return idle ?? IDLE_FRAMES[0];
   }
   if (screen === "success") {
+    if (clockMs > 0) {
+      const i = Math.floor(clockMs / 180) % SUCCESS_FRAMES.length;
+      return SUCCESS_FRAMES[i] ?? SUCCESS_FRAMES[0];
+    }
     const i = Math.min(SUCCESS_FRAMES.length - 1, Math.floor(progress * SUCCESS_FRAMES.length));
     return SUCCESS_FRAMES[i] ?? SUCCESS_FRAMES[0];
   }
@@ -227,4 +231,13 @@ export function frameSrcFor(
   const sheet = effort === "max" ? LIFT_SHEETS_MAX[lift] : LIFT_SHEETS[lift];
   const idx = Math.min(sheet.frameCount - 1, Math.floor(Math.min(1, Math.max(0, progress)) * sheet.frameCount));
   return sheet.frames[idx] ?? sheet.frames[0];
+}
+
+/**
+ * Visual-only walkout mapping onto early lift-sheet frames.
+ * Caps below lockout. Does not change judging, timing windows, or feel.ts.
+ */
+export function walkoutProgress(elapsedMs: number, durationMs: number): number {
+  const duration = Math.max(1, durationMs);
+  return Math.min(0.49, (Math.max(0, elapsedMs) / duration) * 0.49);
 }

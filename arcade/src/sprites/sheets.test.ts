@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { LIFT_CARD, LIFT_SHEETS, LIFT_SHEETS_MAX, SCENE, poseForScreen, visualEffort } from "./sheets.ts";
+import {
+  LIFT_CARD,
+  LIFT_SHEETS,
+  LIFT_SHEETS_MAX,
+  SCENE,
+  frameSrcFor,
+  poseForScreen,
+  visualEffort,
+  walkoutProgress,
+} from "./sheets.ts";
 
 describe("sprite package identity", () => {
   it("gives squat, bench, and deadlift distinct sheet paths", () => {
@@ -38,6 +47,7 @@ describe("sprite package identity", () => {
     const lockout = readFileSync("public/sprites/deadlift/frame-06.png");
     assert.equal(setup.equals(lockout), false);
     assert.equal(poseForScreen("timing", "deadlift", 0.95), "lock");
+    assert.equal(frameSrcFor("deadlift", "judging", 1, 0).includes("deadlift/frame-06.png"), true);
   });
 
   it("presents lift-select cards from dedicated 104px compositions in light and max", () => {
@@ -78,5 +88,13 @@ describe("sprite package identity", () => {
     assert.equal(existsSync("public/sprites/title.jpg"), false);
     assert.equal(existsSync("public/sprites/platform.jpg"), false);
     assert.equal(existsSync(`public${SCENE.titleWide}`), true);
+  });
+
+  it("walkout visual progress stays below lockout", () => {
+    assert.equal(walkoutProgress(1100, 1100) <= 0.49, true);
+    assert.equal(
+      frameSrcFor("deadlift", "walkout", walkoutProgress(1100, 1100), 1100).includes("frame-06"),
+      false,
+    );
   });
 });

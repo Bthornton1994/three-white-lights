@@ -9,9 +9,11 @@ import {
   chipForScreen,
   kenBurnsForScreen,
   stillForScreen,
+  usesArcadeFrames,
 } from "../illustrated/assets.ts";
 import { ILLUSTRATED_MOTION } from "../illustrated/motion.ts";
 import type { JudgeColor } from "../math/types.ts";
+import { SCENE, frameSrcFor, poseForScreen, visualEffort } from "../sprites/sheets.ts";
 
 type ArtProps = {
   src: string;
@@ -103,35 +105,70 @@ export function IllustratedMeetStage({
   screen,
   progress,
   lights,
+  clockMs = 0,
+  weightKg = 20,
+  e1rmKg = 180,
 }: {
   lift: LiftId;
   screen: Screen;
   progress: number;
   lights: [JudgeColor, JudgeColor, JudgeColor];
+  clockMs?: number;
+  weightKg?: number;
+  e1rmKg?: number;
 }) {
   const still = screen === "bomb" ? TITLE_STILL : stillForScreen(screen, lift);
   const camera = cameraForScreen(screen, lift, progress);
   const showLights = screen !== "attempts" && screen !== "title" && screen !== "lift" && screen !== "results";
   const tone = screen === "failure" || screen === "bomb" ? "fail" : screen === "success" ? "success" : "default";
   const fit = screen === "timing" || screen === "judging" || screen === "walkout" ? "contain" : undefined;
+  const animated = usesArcadeFrames(screen);
+  const effort = visualEffort(weightKg, e1rmKg);
+  const athleteSrc = animated
+    ? frameSrcFor(lift, screen, progress, clockMs, effort)
+    : null;
+  const pose = poseForScreen(screen, lift, progress);
+  const frameName = athleteSrc ? athleteSrc.split("/").pop() ?? athleteSrc : "";
   return (
     <div
-      className="stage-wrap illustrated-timing-wrap"
+      className={`stage-wrap illustrated-timing-wrap${animated ? " illustrated-animated-stage" : ""}`}
       data-illustrated-file={still.file}
       data-illustrated-screen={screen}
       data-legacy-sprites="false"
+      data-anim-runtime={animated ? "sprite-frames" : "still"}
+      data-anim-lift={lift}
+      data-anim-src={athleteSrc ?? ""}
+      data-anim-frame={frameName}
+      data-anim-pose={pose}
+      data-anim-effort={effort}
     >
-      <IllustratedArt
-        src={still.src}
-        alt=""
-        objectPosition={camera.objectPosition}
-        scale={camera.scale}
-        kenBurns={kenBurnsForScreen(screen)}
-        className="illustrated-timing-art"
-        file={still.file}
-        objectFit={fit}
-        tone={tone}
-      />
+      {animated ? (
+        <>
+          <img className="stage-bg" src={SCENE.platform} alt="" />
+          <img
+            className="stage-lifter illustrated-athlete"
+            src={athleteSrc ?? ""}
+            alt=""
+            data-anim-frame={frameName}
+          />
+          <div className={`illustrated-stage illustrated-tone-${tone}`} aria-hidden="true">
+            <div className="illustrated-lighting" />
+            <div className="illustrated-vignette" />
+          </div>
+        </>
+      ) : (
+        <IllustratedArt
+          src={still.src}
+          alt=""
+          objectPosition={camera.objectPosition}
+          scale={camera.scale}
+          kenBurns={kenBurnsForScreen(screen)}
+          className="illustrated-timing-art"
+          file={still.file}
+          objectFit={fit}
+          tone={tone}
+        />
+      )}
       {showLights ? (
         <div className="lights illustrated-stage-lights">
           {lights.map((color, i) => (
@@ -140,7 +177,7 @@ export function IllustratedMeetStage({
         </div>
       ) : null}
       <p className="illustrated-still-caption">{captionForScreen(screen, lift)}</p>
-      {still.limited ? <span className="illustrated-chip">{chipForScreen(screen)}</span> : null}
+      <span className="illustrated-chip">{chipForScreen(screen)}</span>
     </div>
   );
 }

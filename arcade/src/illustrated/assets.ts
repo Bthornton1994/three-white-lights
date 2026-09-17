@@ -135,8 +135,10 @@ export function isLegacySpriteSrc(src: string): boolean {
 
 /**
  * Honest still reuse for screens that have no dedicated illustration.
- * Bomb uses the title hall. Every other meet screen uses the lift still.
- * Never returns a PR #70 sprite path.
+ * Bomb uses the title hall as chrome backdrop metadata only.
+ * Animated play screens still keep a still record for provenance;
+ * the athlete is driven by arcade frames, not this still.
+ * Never returns a PR #70 sprite path from this function.
  */
 export function stillForScreen(screen: Screen, lift: LiftId): IllustratedStill {
   if (screen === "title" || screen === "lift" || screen === "results" || screen === "bomb") {
@@ -145,25 +147,38 @@ export function stillForScreen(screen: Screen, lift: LiftId): IllustratedStill {
   return LIFT_STILLS[lift];
 }
 
+/** Play screens that reuse existing arcade action frames inside the illustrated shell. */
+export function usesArcadeFrames(screen: Screen): boolean {
+  return (
+    screen === "walkout" ||
+    screen === "timing" ||
+    screen === "judging" ||
+    screen === "success" ||
+    screen === "failure" ||
+    screen === "transition" ||
+    screen === "bomb"
+  );
+}
+
 export function captionForScreen(screen: Screen, lift: LiftId): string {
   const name = lift[0]?.toUpperCase() + lift.slice(1);
   switch (screen) {
     case "attempts":
       return `Illustrated still · ${name} — not an attempt-board scene`;
     case "walkout":
-      return `Illustrated still · ${name} — not a walkout cycle`;
+      return `Animated walkout · ${name} arcade frames`;
     case "timing":
-      return `Illustrated still · ${name} — camera pan only, not frames`;
+      return `Animated lift · ${name} arcade frames`;
     case "judging":
-      return `Illustrated still · ${name} — not a lockout cycle`;
+      return `Lockout hold · ${name} arcade frames`;
     case "success":
-      return `Illustrated still · ${name} — not a celebration loop`;
+      return `Good lift · ${name} arcade frames`;
     case "failure":
-      return `Illustrated still · ${name} — not a miss cycle`;
+      return `No lift · ${name} arcade frames`;
     case "transition":
-      return `Illustrated still · ${name} — not a plate-change scene`;
+      return `Plate change · ${name} arcade frames`;
     case "bomb":
-      return "Illustrated still · title hall reused — no bomb art";
+      return "Bomb-out · miss frames in illustrated chrome";
     case "results":
       return "Illustrated still · no dedicated results-card art";
     default:
@@ -172,6 +187,9 @@ export function captionForScreen(screen: Screen, lift: LiftId): string {
 }
 
 export function chipForScreen(screen: Screen): string {
+  if (usesArcadeFrames(screen)) {
+    return "ANIMATED — arcade frames";
+  }
   switch (screen) {
     case "timing":
       return "LIMITED — still, not frames";

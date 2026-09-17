@@ -113,8 +113,8 @@ describe("illustrated Fable stills", () => {
     assert.equal(stillForScreen("walkout", "bench").file, "bench-revised-20260916.png");
     assert.equal(stillForScreen("success", "squat").file, FABLE_STILLS.squat.file);
     assert.equal(stillForScreen("bomb", "deadlift").file, TITLE_STILL.file);
-    assert.match(captionForScreen("timing", "deadlift"), /not frames/i);
-    assert.match(captionForScreen("bomb", "squat"), /title hall/i);
+    assert.match(captionForScreen("timing", "deadlift"), /arcade frames/i);
+    assert.match(captionForScreen("bomb", "squat"), /miss frames/i);
   });
 
   it("keeps diptych camera honest: start left, finish right, bench zoom-only", () => {
