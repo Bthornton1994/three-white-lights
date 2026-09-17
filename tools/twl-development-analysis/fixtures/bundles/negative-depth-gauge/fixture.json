@@ -1,0 +1,12 @@
+{
+  "derivedFrom": "good-sprite-stage",
+  "mutation": "A vertical DEPTH gauge is rendered beside the lifter on squat screens.",
+  "tracesKept": [
+    "phone-squat-a1",
+    "phone-squat-a2",
+    "phone-bench-a1",
+    "phone-deadlift-a1"
+  ],
+  "maxFrames": 100,
+  "facts": "../good-sprite-stage/facts.json"
+}

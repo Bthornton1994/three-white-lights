@@ -1,0 +1,12 @@
+{
+  "derivedFrom": "good-sprite-stage",
+  "mutation": "Athlete is an illustrated <img> still; the same frame is shown for the whole lift.",
+  "tracesKept": [
+    "phone-squat-a1",
+    "phone-squat-a2",
+    "phone-bench-a1",
+    "phone-deadlift-a1"
+  ],
+  "maxFrames": 100,
+  "facts": "../good-sprite-stage/facts.json"
+}
