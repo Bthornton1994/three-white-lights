@@ -8,8 +8,9 @@
     "dev": "vite",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
-    "test": "node --experimental-strip-types --test src/math/*.test.ts src/loop/*.test.ts src/sprites/*.test.ts src/ui/*.test.ts && python3 scripts/check_sprites.py",
-    "sprites": "python3 scripts/build_sprites.py && python3 scripts/check_sprites.py"
+    "test": "node --experimental-strip-types --test src/math/*.test.ts src/loop/*.test.ts src/sprites/*.test.ts src/ui/*.test.ts && python3 scripts/check_sprites.py && npm run test:sport",
+    "sprites": "python3 scripts/build_sprites.py && python3 scripts/check_sprites.py",
+    "test:sport": "vitest run"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -21,6 +22,7 @@
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.3",
-    "vite": "^6.0.7"
+    "vite": "^6.0.7",
+    "vitest": "^3.2.0"
   }
 }

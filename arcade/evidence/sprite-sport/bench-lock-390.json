@@ -1,0 +1,20 @@
+{
+  "screen": "judging",
+  "source": "288db32c06232bb0fb65ce7236a0614c698a6920",
+  "build": "sprite-sport-20260917",
+  "shell": "sprite-stage",
+  "lift": "bench",
+  "phase": "RESOLVED",
+  "depth": "1.081",
+  "bar": "-0.081",
+  "pose": "miss",
+  "frame": "frame-06.png",
+  "worldY": "318",
+  "destY": "1",
+  "press": "false",
+  "lockout": "false",
+  "canvas": true,
+  "depthRail": false,
+  "fableAthlete": false,
+  "heading": null
+}

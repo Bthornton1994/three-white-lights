@@ -1,0 +1,11 @@
+{
+  "screen": "lift",
+  "source": "288db32c06232bb0fb65ce7236a0614c698a6920",
+  "build": "sprite-sport-20260917",
+  "shell": "sprite-stage",
+  "lift": "",
+  "canvas": false,
+  "depthRail": false,
+  "fableAthlete": false,
+  "heading": "Choose a lift"
+}

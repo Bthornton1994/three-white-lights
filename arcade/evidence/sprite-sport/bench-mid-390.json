@@ -1,0 +1,21 @@
+{
+  "screen": "play",
+  "source": "288db32c06232bb0fb65ce7236a0614c698a6920",
+  "build": "sprite-sport-20260917",
+  "shell": "sprite-stage",
+  "lift": "bench",
+  "phase": "DESCENT",
+  "depth": "0.049",
+  "bar": "0.951",
+  "pose": "descend",
+  "frame": "frame-01.png",
+  "worldY": "318",
+  "destY": "1",
+  "prompt": "STAY TIGHT",
+  "press": "false",
+  "lockout": "false",
+  "canvas": true,
+  "depthRail": false,
+  "fableAthlete": false,
+  "heading": null
+}
