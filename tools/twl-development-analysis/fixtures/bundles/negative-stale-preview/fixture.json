@@ -1,0 +1,12 @@
+{
+  "derivedFrom": "good-sprite-stage",
+  "mutation": "Served bundle hash differs from the fresh build and every screen declares a different mechanics SHA.",
+  "tracesKept": [
+    "phone-squat-a1",
+    "phone-squat-a2",
+    "phone-bench-a1",
+    "phone-deadlift-a1"
+  ],
+  "maxFrames": 100,
+  "facts": "../good-sprite-stage/facts.json"
+}

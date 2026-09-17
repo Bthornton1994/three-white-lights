@@ -1,0 +1,5 @@
+{
+  "source": "fc4c1aec-2026-09-17T22-20-23-899Z",
+  "targetSha": "fc4c1aec06f0f079b851bb703f69ee67140b4f85",
+  "note": "Trimmed real capture of the candidate: every 4th trace sample and probe frame, trace samples slimmed to the fields analyzers read, screenshots and canvases not committed. Pixel proofs are exercised by synthetic PNGs in tests and by live runs."
+}
