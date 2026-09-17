@@ -1,0 +1,232 @@
+{
+  "phone": {
+    "name": "phone",
+    "size": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "overflow": [],
+    "animation": {
+      "squat": {
+        "walkUnique": 3,
+        "walkSrcs": [
+          "/sprites/squat/frame-01.png",
+          "/sprites/squat/frame-02.png",
+          "/sprites/squat/frame-03.png"
+        ],
+        "timingUnique": 5,
+        "timingSrcs": [
+          "/sprites/squat/frame-01.png",
+          "/sprites/squat/frame-02.png",
+          "/sprites/squat/frame-03.png",
+          "/sprites/squat/frame-04.png",
+          "/sprites/squat/frame-05.png"
+        ],
+        "runtime": "sprite-frames",
+        "lastFrame": "frame-05.png",
+        "lastPose": "drive",
+        "squatFallback": false,
+        "overflow": false
+      },
+      "bench": {
+        "walkUnique": 3,
+        "walkSrcs": [
+          "/sprites/bench/frame-01.png",
+          "/sprites/bench/frame-02.png",
+          "/sprites/bench/frame-03.png"
+        ],
+        "timingUnique": 6,
+        "timingSrcs": [
+          "/sprites/bench/frame-01.png",
+          "/sprites/bench/frame-02.png",
+          "/sprites/bench/frame-03.png",
+          "/sprites/bench/frame-04.png",
+          "/sprites/bench/frame-05.png",
+          "/sprites/bench/frame-06.png"
+        ],
+        "runtime": "sprite-frames",
+        "lastFrame": "frame-06.png",
+        "lastPose": "press",
+        "squatFallback": false,
+        "overflow": false
+      },
+      "deadlift": {
+        "walkUnique": 3,
+        "walkSrcs": [
+          "/sprites/deadlift/frame-01.png",
+          "/sprites/deadlift/frame-02.png",
+          "/sprites/deadlift/frame-03.png"
+        ],
+        "timingUnique": 5,
+        "timingSrcs": [
+          "/sprites/deadlift/frame-01.png",
+          "/sprites/deadlift/frame-02.png",
+          "/sprites/deadlift/frame-03.png",
+          "/sprites/deadlift/frame-04.png",
+          "/sprites/deadlift/frame-05.png"
+        ],
+        "runtime": "sprite-frames",
+        "lastFrame": "frame-05.png",
+        "lastPose": "lock",
+        "squatFallback": false,
+        "overflow": false
+      },
+      "deadliftLockoutSeen": true,
+      "deadliftLockoutSamples": [
+        {
+          "t": 2703,
+          "screen": "timing",
+          "runtime": "sprite-frames",
+          "lift": "deadlift",
+          "src": "/sprites/deadlift/frame-06.png",
+          "frame": "frame-06.png",
+          "pose": "lock",
+          "file": "AI-REF-03-DEADLIFT-SETUP-LOCKOUT-MAX.png",
+          "heading": null,
+          "overflowX": false
+        },
+        {
+          "t": 2792,
+          "screen": "timing",
+          "runtime": "sprite-frames",
+          "lift": "deadlift",
+          "src": "/sprites/deadlift/frame-06.png",
+          "frame": "frame-06.png",
+          "pose": "lock",
+          "file": "AI-REF-03-DEADLIFT-SETUP-LOCKOUT-MAX.png",
+          "heading": null,
+          "overflowX": false
+        }
+      ]
+    },
+    "screens": {
+      "title": {
+        "screen": "title",
+        "runtime": null,
+        "lift": null,
+        "src": null,
+        "frame": null,
+        "pose": null,
+        "file": null,
+        "heading": "Three White Lights",
+        "overflowX": false
+      },
+      "liftBenchFile": "bench-revised-20260916.png",
+      "resultsShare": 1,
+      "resultsDownload": 1,
+      "resultsAnother": 1,
+      "resultsOverflow": false
+    },
+    "video": "/workspace/screenshots/qa/illustrated-animated/phone-squat-play.webm"
+  },
+  "desk": {
+    "name": "desk",
+    "size": {
+      "width": 1280,
+      "height": 800
+    },
+    "errors": [],
+    "overflow": [],
+    "animation": {
+      "squat": {
+        "walkUnique": 3,
+        "walkSrcs": [
+          "/sprites/squat/frame-01.png",
+          "/sprites/squat/frame-02.png",
+          "/sprites/squat/frame-03.png"
+        ],
+        "timingUnique": 5,
+        "timingSrcs": [
+          "/sprites/squat/frame-01.png",
+          "/sprites/squat/frame-02.png",
+          "/sprites/squat/frame-03.png",
+          "/sprites/squat/frame-04.png",
+          "/sprites/squat/frame-05.png"
+        ],
+        "runtime": "sprite-frames",
+        "lastFrame": "frame-05.png",
+        "lastPose": "drive",
+        "squatFallback": false,
+        "overflow": false
+      },
+      "bench": {
+        "walkUnique": 3,
+        "walkSrcs": [
+          "/sprites/bench/frame-01.png",
+          "/sprites/bench/frame-02.png",
+          "/sprites/bench/frame-03.png"
+        ],
+        "timingUnique": 5,
+        "timingSrcs": [
+          "/sprites/bench/frame-01.png",
+          "/sprites/bench/frame-02.png",
+          "/sprites/bench/frame-03.png",
+          "/sprites/bench/frame-04.png",
+          "/sprites/bench/frame-05.png"
+        ],
+        "runtime": "sprite-frames",
+        "lastFrame": "frame-05.png",
+        "lastPose": "press",
+        "squatFallback": false,
+        "overflow": false
+      },
+      "deadlift": {
+        "walkUnique": 3,
+        "walkSrcs": [
+          "/sprites/deadlift/frame-01.png",
+          "/sprites/deadlift/frame-02.png",
+          "/sprites/deadlift/frame-03.png"
+        ],
+        "timingUnique": 6,
+        "timingSrcs": [
+          "/sprites/deadlift/frame-01.png",
+          "/sprites/deadlift/frame-02.png",
+          "/sprites/deadlift/frame-03.png",
+          "/sprites/deadlift/frame-04.png",
+          "/sprites/deadlift/frame-05.png",
+          "/sprites/deadlift/frame-06.png"
+        ],
+        "runtime": "sprite-frames",
+        "lastFrame": "frame-06.png",
+        "lastPose": "lock",
+        "squatFallback": false,
+        "overflow": false
+      },
+      "deadliftLockoutSeen": true,
+      "deadliftLockoutSamples": [
+        {
+          "t": 2759,
+          "screen": "timing",
+          "runtime": "sprite-frames",
+          "lift": "deadlift",
+          "src": "/sprites/deadlift/frame-06.png",
+          "frame": "frame-06.png",
+          "pose": "lock",
+          "file": "AI-REF-03-DEADLIFT-SETUP-LOCKOUT-MAX.png",
+          "heading": null,
+          "overflowX": false
+        }
+      ]
+    },
+    "screens": {
+      "title": {
+        "screen": "title",
+        "runtime": null,
+        "lift": null,
+        "src": null,
+        "frame": null,
+        "pose": null,
+        "file": null,
+        "heading": "Three White Lights",
+        "overflowX": false
+      },
+      "liftBenchFile": "bench-revised-20260916.png",
+      "resultsShare": 1,
+      "resultsDownload": 1,
+      "resultsAnother": 1,
+      "resultsOverflow": false
+    }
+  },
+  "at": "2026-09-17T03:20:54.579Z"
+}

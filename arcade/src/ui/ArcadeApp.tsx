@@ -29,6 +29,7 @@ import {
 import { cuesForLift, sequenceDurationMs } from "../loop/timing.ts";
 import { nudgeAttempt } from "../math/attempts.ts";
 import type { JudgeColor } from "../math/types.ts";
+import { walkoutProgress } from "../sprites/sheets.ts";
 import { ResultsCard } from "./ResultsCard.tsx";
 import { downloadResultsCard, shareResultsCard } from "./share.ts";
 import {
@@ -68,6 +69,7 @@ function reducedMotion(): boolean {
 export function ArcadeApp() {
   const [state, setState] = useState<ArcadeState>(() => initialState(null));
   const [proof, setProof] = useState<ProofQuery>({ screen: null, freeze: false, lift: null });
+  const [presentMs, setPresentMs] = useState(0);
   const started = useRef(0);
   const cardRef = useRef<HTMLElement>(null);
 
@@ -113,6 +115,33 @@ export function ArcadeApp() {
 
   useEffect(() => {
     if (proof.freeze) {
+      setPresentMs(state.timingElapsedMs);
+      return;
+    }
+    const animated =
+      state.screen === "walkout" ||
+      state.screen === "timing" ||
+      state.screen === "judging" ||
+      state.screen === "success" ||
+      state.screen === "failure" ||
+      state.screen === "transition" ||
+      state.screen === "bomb";
+    if (!animated) {
+      setPresentMs(0);
+      return;
+    }
+    const origin = performance.now();
+    let frame = 0;
+    const tick = (now: number): void => {
+      setPresentMs(now - origin);
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [state.screen, state.currentAttempt, proof.freeze]);
+
+  useEffect(() => {
+    if (proof.freeze) {
       return;
     }
     const delay = reducedMotion() ? 80 : undefined;
@@ -151,11 +180,14 @@ export function ArcadeApp() {
   const progress =
     state.screen === "timing"
       ? Math.min(1, state.timingElapsedMs / duration)
-      : state.screen === "success" || state.screen === "judging"
-        ? 1
-        : state.screen === "failure" || state.screen === "bomb"
-          ? 0.75
-          : 0.12;
+      : state.screen === "walkout" || state.screen === "transition"
+        ? walkoutProgress(presentMs, FEEL.TIMING_MS.walkout)
+        : state.screen === "success" || state.screen === "judging"
+          ? 1
+          : state.screen === "failure" || state.screen === "bomb"
+            ? 0.75
+            : 0.12;
+  const clockMs = state.screen === "timing" ? state.timingElapsedMs : presentMs;
   const cues = useMemo(
     () => cuesForLift(lift, state.hiddenFatigue),
     [lift, state.hiddenFatigue],
@@ -217,7 +249,11 @@ export function ArcadeApp() {
     state.screen === "bomb";
 
   return (
-    <main className="arcade-root illustrated-edition" data-legacy-sprites="false">
+    <main
+      className="arcade-root illustrated-edition"
+      data-legacy-sprites="false"
+      data-visual-shell="illustrated"
+    >
       <IllustratedBanner />
       {state.screen === "title" ? <TitleScreen onStart={primary} streak={state.sessionStreak} /> : null}
 
@@ -235,8 +271,8 @@ export function ArcadeApp() {
             <p className="kicker">{FEEL.FEDERATION}</p>
             <h2>Choose a lift</h2>
             <p className="hint">
-              Each lift has its own timing. Fatigue stays hidden. Stills are Fable concept
-              references — not dedicated select cards, not animation.
+              Each lift has its own timing. Fatigue stays hidden. Select cards stay Fable stills —
+              the attempt itself uses existing arcade frames.
             </p>
             <div className="lift-grid">
               {LIFTS.map((id) => (
@@ -265,6 +301,8 @@ export function ArcadeApp() {
             screen="attempts"
             progress={0.08}
             lights={["off", "off", "off"]}
+            weightKg={state.attemptsKg[0] ?? 20}
+            e1rmKg={state.e1rmKg}
           />
           <div className="panel">
             <p className="kicker">{LIFT_COPY[lift].checks}</p>
@@ -316,6 +354,9 @@ export function ArcadeApp() {
             screen={state.screen}
             progress={progress}
             lights={lights}
+            clockMs={clockMs}
+            weightKg={weight}
+            e1rmKg={state.e1rmKg}
           />
           <div className="panel">
             <div className="hud">

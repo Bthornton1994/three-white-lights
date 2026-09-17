@@ -26,3 +26,17 @@ weights stay where they are.
 - Any pixel rewrite of the source PNGs
 
 `prefers-reduced-motion: reduce` disables Ken Burns and holds the camera still.
+
+## Integration pass — existing arcade frames in this shell
+
+PR #74 stills are single images / diptychs. They are **not** layered animation
+sources. This pass does **not** slice Fable stills.
+
+Play screens (walkout, timing, judging, success, failure, transition, bomb)
+reuse the existing arcade `frameSrcFor` runtime and lift-specific 6-frame
+sheets already in `arcade/public/sprites/`. Title, lift-select, and results
+keep the illustrated stills (including `bench-revised-20260916.png` on bench
+select).
+
+CSS pan / zoom / lighting / vignette remain supporting chrome. They are not
+the lift animation.

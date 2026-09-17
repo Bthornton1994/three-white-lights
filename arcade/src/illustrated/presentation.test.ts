@@ -10,24 +10,29 @@ function appPath(rel: string): string {
   throw new Error(`missing ${rel}`);
 }
 
-describe("illustrated presentation has no silent sprite fallback", () => {
-  it("ArcadeApp does not import or render SpriteStage", () => {
+describe("illustrated shell keeps title/select/results; play uses arcade frames", () => {
+  it("ArcadeApp keeps illustrated title, lift cards, results, and share", () => {
     const arcade = readFileSync(appPath("ui/ArcadeApp.tsx"), "utf8");
-    assert.equal(arcade.includes("SpriteStage"), false);
-    assert.equal(arcade.includes("/sprites/"), false);
-    assert.equal(arcade.includes("frameSrcFor"), false);
-    assert.equal(arcade.includes("SCENE.platform"), false);
+    assert.equal(arcade.includes("from \"./SpriteStage"), false);
+    assert.equal(arcade.includes("SCENE.title"), false);
+    assert.equal(arcade.includes("LIFT_CARD"), false);
     assert.match(arcade, /IllustratedMeetStage/);
+    assert.match(arcade, /IllustratedTitleArt/);
+    assert.match(arcade, /IllustratedLiftCardArt/);
     assert.match(arcade, /downloadResultsCard/);
-    assert.match(arcade, /data-legacy-sprites="false"/);
+    assert.match(arcade, /data-visual-shell="illustrated"/);
+    assert.match(arcade, /walkoutProgress/);
   });
 
-  it("IllustratedArt meet stage always labels the still as not animation", () => {
+  it("IllustratedArt play stage drives the athlete with frameSrcFor", () => {
     const art = readFileSync(appPath("ui/IllustratedArt.tsx"), "utf8");
-    assert.equal(art.includes("SpriteStage"), false);
-    assert.equal(art.includes("/sprites/"), false);
-    assert.match(art, /illustrated-still-caption/);
-    assert.match(art, /captionForScreen/);
+    assert.match(art, /frameSrcFor/);
+    assert.match(art, /usesArcadeFrames/);
+    assert.match(art, /illustrated-athlete/);
+    assert.match(art, /SquatDepthGauge/);
+    assert.match(art, /data-squat-depth-phase/);
+    assert.match(art, /IllustratedLiftCardArt/);
+    assert.match(art, /TITLE_STILL/);
   });
 
   it("share card may composite existing stills but does not invent art", () => {

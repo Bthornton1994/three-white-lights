@@ -191,9 +191,12 @@ export function poseForScreen(screen: Screen, lift: LiftId, progress: number): S
     return "idle";
   }
   if (lift === "squat") {
+    if (screen === "judging") return "lock";
+    if (progress < 0.22) return "idle";
     if (progress < 0.42) return "descend";
     if (progress < 0.58) return "hole";
-    return "drive";
+    if (progress < 0.92) return "drive";
+    return "lock";
   }
   if (lift === "bench") {
     if (progress < 0.4) return "descend";
@@ -203,6 +206,49 @@ export function poseForScreen(screen: Screen, lift: LiftId, progress: number): S
   if (progress < 0.2) return "pull";
   if (progress < 0.8) return "drive";
   return "lock";
+}
+
+/**
+ * Squat sheet index. Holds frame-03 (below-parallel hole) through the DEPTH cue.
+ * Walkout stays standing. Judging holds lockout. Bench/deadlift do not use this.
+ */
+export function squatSheetIndex(screen: Screen, progress: number): number {
+  if (screen === "walkout" || screen === "transition" || screen === "attempts" || screen === "lift") {
+    return 0;
+  }
+  if (screen === "judging") return 5;
+  if (screen !== "timing") {
+    return Math.min(5, Math.floor(Math.min(1, Math.max(0, progress)) * 6));
+  }
+  if (progress < 0.22) return 0;
+  if (progress < 0.42) return 1;
+  if (progress < 0.58) return 2;
+  if (progress < 0.72) return 3;
+  if (progress < 0.9) return 4;
+  return 5;
+}
+
+export type SquatDepthPhase = "stand" | "descent" | "hole" | "ascent" | "lock";
+
+export function squatDepthPhase(screen: Screen, progress: number): SquatDepthPhase {
+  if (screen === "judging" || screen === "success") return "lock";
+  if (screen !== "timing") return "stand";
+  if (progress < 0.22) return "stand";
+  if (progress < 0.42) return "descent";
+  if (progress < 0.58) return "hole";
+  if (progress < 0.92) return "ascent";
+  return "lock";
+}
+
+/** 0 = standing, 1 = legal below-parallel hole. Presentation only. */
+export function squatDepth01(screen: Screen, progress: number): number {
+  const phase = squatDepthPhase(screen, progress);
+  if (phase === "stand" || phase === "lock") return 0;
+  if (phase === "hole") return 1;
+  if (phase === "descent") {
+    return Math.min(1, Math.max(0, (progress - 0.22) / 0.2));
+  }
+  return Math.min(1, Math.max(0, 1 - (progress - 0.58) / 0.34));
 }
 
 export function frameSrcFor(
@@ -217,6 +263,10 @@ export function frameSrcFor(
     return idle ?? IDLE_FRAMES[0];
   }
   if (screen === "success") {
+    if (clockMs > 0) {
+      const i = Math.floor(clockMs / 180) % SUCCESS_FRAMES.length;
+      return SUCCESS_FRAMES[i] ?? SUCCESS_FRAMES[0];
+    }
     const i = Math.min(SUCCESS_FRAMES.length - 1, Math.floor(progress * SUCCESS_FRAMES.length));
     return SUCCESS_FRAMES[i] ?? SUCCESS_FRAMES[0];
   }
@@ -225,6 +275,18 @@ export function frameSrcFor(
     return MISS_FRAMES[i] ?? MISS_FRAMES[0];
   }
   const sheet = effort === "max" ? LIFT_SHEETS_MAX[lift] : LIFT_SHEETS[lift];
-  const idx = Math.min(sheet.frameCount - 1, Math.floor(Math.min(1, Math.max(0, progress)) * sheet.frameCount));
+  const idx =
+    lift === "squat"
+      ? squatSheetIndex(screen, progress)
+      : Math.min(sheet.frameCount - 1, Math.floor(Math.min(1, Math.max(0, progress)) * sheet.frameCount));
   return sheet.frames[idx] ?? sheet.frames[0];
+}
+
+/**
+ * Visual-only walkout mapping onto early lift-sheet frames.
+ * Caps below lockout. Does not change judging, timing windows, or feel.ts.
+ */
+export function walkoutProgress(elapsedMs: number, durationMs: number): number {
+  const duration = Math.max(1, durationMs);
+  return Math.min(0.49, (Math.max(0, elapsedMs) / duration) * 0.49);
 }
