@@ -13,7 +13,8 @@ import {
 } from "../illustrated/assets.ts";
 import { ILLUSTRATED_MOTION } from "../illustrated/motion.ts";
 import type { JudgeColor } from "../math/types.ts";
-import { SCENE, frameSrcFor, poseForScreen, visualEffort } from "../sprites/sheets.ts";
+import { SCENE, frameSrcFor, poseForScreen, squatDepth01, squatDepthPhase, visualEffort } from "../sprites/sheets.ts";
+import type { SquatDepthPhase } from "../sprites/sheets.ts";
 
 type ArtProps = {
   src: string;
@@ -129,6 +130,12 @@ export function IllustratedMeetStage({
     : null;
   const pose = poseForScreen(screen, lift, progress);
   const frameName = athleteSrc ? athleteSrc.split("/").pop() ?? athleteSrc : "";
+  const showDepthGauge =
+    lift === "squat" &&
+    animated &&
+    (screen === "walkout" || screen === "timing" || screen === "judging");
+  const depth01 = showDepthGauge ? squatDepth01(screen, progress) : 0;
+  const depthPhase = showDepthGauge ? squatDepthPhase(screen, progress) : "stand";
   return (
     <div
       className={`stage-wrap illustrated-timing-wrap${animated ? " illustrated-animated-stage" : ""}`}
@@ -141,6 +148,8 @@ export function IllustratedMeetStage({
       data-anim-frame={frameName}
       data-anim-pose={pose}
       data-anim-effort={effort}
+      data-squat-depth={showDepthGauge ? depth01.toFixed(3) : ""}
+      data-squat-depth-phase={showDepthGauge ? depthPhase : ""}
     >
       {animated ? (
         <>
@@ -176,8 +185,35 @@ export function IllustratedMeetStage({
           ))}
         </div>
       ) : null}
+      {showDepthGauge ? <SquatDepthGauge depth={depth01} phase={depthPhase} /> : null}
       <p className="illustrated-still-caption">{captionForScreen(screen, lift)}</p>
       <span className="illustrated-chip">{chipForScreen(screen)}</span>
+    </div>
+  );
+}
+
+/** Compact squat depth gauge. Lives on the stage, never in the results panel. */
+function SquatDepthGauge({ depth, phase }: { depth: number; phase: SquatDepthPhase }) {
+  const clamped = Math.min(1, Math.max(0, depth));
+  return (
+    <div
+      className="squat-depth-gauge"
+      aria-hidden="true"
+      data-squat-depth-phase={phase}
+      data-squat-depth={clamped.toFixed(3)}
+    >
+      <span className="squat-depth-gauge-label">DEPTH</span>
+      <div className="squat-depth-track">
+        <span className="squat-depth-tick squat-depth-tick-stand">Stand</span>
+        <span className="squat-depth-tick squat-depth-tick-down">Drop</span>
+        <span className="squat-depth-tick squat-depth-tick-ascent">Drive</span>
+        <span className="squat-depth-target">Legal</span>
+        <span
+          className="squat-depth-marker"
+          style={{ ["--squat-depth" as string]: String(clamped) }}
+          data-squat-depth-marker="true"
+        />
+      </div>
     </div>
   );
 }

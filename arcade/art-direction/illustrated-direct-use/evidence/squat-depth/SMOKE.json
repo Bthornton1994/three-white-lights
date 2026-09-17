@@ -1,0 +1,299 @@
+{
+  "fail": [],
+  "report": {
+    "errors": [],
+    "phases": {
+      "phone": {
+        "stand": {
+          "screen": "timing",
+          "runtime": "sprite-frames",
+          "lift": "squat",
+          "frame": "frame-01.png",
+          "pose": "idle",
+          "src": "/sprites/squat/frame-01.png",
+          "depth": "0.000",
+          "phase": "stand",
+          "gaugeInStage": true,
+          "gaugeBelowPanel": false,
+          "gaugeBelowResults": false,
+          "overflowX": false,
+          "heading": null
+        },
+        "descent": {
+          "screen": "timing",
+          "runtime": "sprite-frames",
+          "lift": "squat",
+          "frame": "frame-02.png",
+          "pose": "descend",
+          "src": "/sprites/squat/frame-02.png",
+          "depth": "0.499",
+          "phase": "descent",
+          "gaugeInStage": true,
+          "gaugeBelowPanel": false,
+          "gaugeBelowResults": false,
+          "overflowX": false,
+          "heading": null
+        },
+        "hole": {
+          "screen": "timing",
+          "runtime": "sprite-frames",
+          "lift": "squat",
+          "frame": "frame-03.png",
+          "pose": "hole",
+          "src": "/sprites/squat/frame-03.png",
+          "depth": "1.000",
+          "phase": "hole",
+          "gaugeInStage": true,
+          "gaugeBelowPanel": false,
+          "gaugeBelowResults": false,
+          "overflowX": false,
+          "heading": null
+        },
+        "ascent": {
+          "screen": "timing",
+          "runtime": "sprite-frames",
+          "lift": "squat",
+          "frame": "frame-04.png",
+          "pose": "drive",
+          "src": "/sprites/squat/frame-04.png",
+          "depth": "0.589",
+          "phase": "ascent",
+          "gaugeInStage": true,
+          "gaugeBelowPanel": false,
+          "gaugeBelowResults": false,
+          "overflowX": false,
+          "heading": null
+        },
+        "lockout": {
+          "screen": "timing",
+          "runtime": "sprite-frames",
+          "lift": "squat",
+          "frame": "frame-06.png",
+          "pose": "lock",
+          "src": "/sprites/squat/frame-06.png",
+          "depth": "0.000",
+          "phase": "lock",
+          "gaugeInStage": true,
+          "gaugeBelowPanel": false,
+          "gaugeBelowResults": false,
+          "overflowX": false,
+          "heading": null
+        }
+      },
+      "desk": {
+        "stand": {
+          "screen": "timing",
+          "runtime": "sprite-frames",
+          "lift": "squat",
+          "frame": "frame-01.png",
+          "pose": "idle",
+          "src": "/sprites/squat/frame-01.png",
+          "depth": "0.000",
+          "phase": "stand",
+          "gaugeInStage": true,
+          "gaugeBelowPanel": false,
+          "gaugeBelowResults": false,
+          "overflowX": false,
+          "heading": null
+        },
+        "descent": {
+          "screen": "timing",
+          "runtime": "sprite-frames",
+          "lift": "squat",
+          "frame": "frame-02.png",
+          "pose": "descend",
+          "src": "/sprites/squat/frame-02.png",
+          "depth": "0.499",
+          "phase": "descent",
+          "gaugeInStage": true,
+          "gaugeBelowPanel": false,
+          "gaugeBelowResults": false,
+          "overflowX": false,
+          "heading": null
+        },
+        "hole": {
+          "screen": "timing",
+          "runtime": "sprite-frames",
+          "lift": "squat",
+          "frame": "frame-03.png",
+          "pose": "hole",
+          "src": "/sprites/squat/frame-03.png",
+          "depth": "1.000",
+          "phase": "hole",
+          "gaugeInStage": true,
+          "gaugeBelowPanel": false,
+          "gaugeBelowResults": false,
+          "overflowX": false,
+          "heading": null
+        },
+        "ascent": {
+          "screen": "timing",
+          "runtime": "sprite-frames",
+          "lift": "squat",
+          "frame": "frame-04.png",
+          "pose": "drive",
+          "src": "/sprites/squat/frame-04.png",
+          "depth": "0.589",
+          "phase": "ascent",
+          "gaugeInStage": true,
+          "gaugeBelowPanel": false,
+          "gaugeBelowResults": false,
+          "overflowX": false,
+          "heading": null
+        },
+        "lockout": {
+          "screen": "timing",
+          "runtime": "sprite-frames",
+          "lift": "squat",
+          "frame": "frame-06.png",
+          "pose": "lock",
+          "src": "/sprites/squat/frame-06.png",
+          "depth": "0.000",
+          "phase": "lock",
+          "gaugeInStage": true,
+          "gaugeBelowPanel": false,
+          "gaugeBelowResults": false,
+          "overflowX": false,
+          "heading": null
+        }
+      }
+    },
+    "live": {
+      "phone": {
+        "uniqueFrames": [
+          "frame-01.png",
+          "frame-02.png",
+          "frame-03.png",
+          "frame-04.png",
+          "frame-05.png",
+          "frame-06.png"
+        ],
+        "uniquePhases": [
+          "stand",
+          "descent",
+          "hole",
+          "ascent",
+          "lock"
+        ],
+        "uniqueDepth": [
+          "0.000",
+          "0.065",
+          "0.253",
+          "0.403",
+          "0.591",
+          "0.741",
+          "0.929",
+          "1.000",
+          "0.961",
+          "0.850",
+          "0.762",
+          "0.651",
+          "0.563",
+          "0.453",
+          "0.298",
+          "0.210",
+          "0.121",
+          "0.011"
+        ],
+        "last": {
+          "screen": "judging",
+          "runtime": "sprite-frames",
+          "lift": "squat",
+          "frame": "frame-06.png",
+          "pose": "lock",
+          "src": "/sprites/squat/frame-06.png",
+          "depth": "0.000",
+          "phase": "lock",
+          "gaugeInStage": true,
+          "gaugeBelowPanel": false,
+          "gaugeBelowResults": false,
+          "overflowX": false,
+          "heading": null
+        },
+        "tapped": 2
+      },
+      "desk": {
+        "uniqueFrames": [
+          "frame-01.png",
+          "frame-02.png",
+          "frame-03.png",
+          "frame-04.png",
+          "frame-05.png",
+          "frame-06.png"
+        ],
+        "uniquePhases": [
+          "stand",
+          "descent",
+          "hole",
+          "ascent",
+          "lock"
+        ],
+        "uniqueDepth": [
+          "0.000",
+          "0.036",
+          "0.224",
+          "0.374",
+          "0.562",
+          "0.712",
+          "0.862",
+          "1.000",
+          "0.889",
+          "0.801",
+          "0.713",
+          "0.602",
+          "0.514",
+          "0.359",
+          "0.249",
+          "0.161",
+          "0.050"
+        ],
+        "last": {
+          "screen": "judging",
+          "runtime": "sprite-frames",
+          "lift": "squat",
+          "frame": "frame-06.png",
+          "pose": "lock",
+          "src": "/sprites/squat/frame-06.png",
+          "depth": "0.000",
+          "phase": "lock",
+          "gaugeInStage": true,
+          "gaugeBelowPanel": false,
+          "gaugeBelowResults": false,
+          "overflowX": false,
+          "heading": null
+        },
+        "tapped": 2
+      }
+    },
+    "play": {
+      "phone": {
+        "screen": "success",
+        "runtime": "sprite-frames",
+        "lift": "squat",
+        "frame": "frame-02.png",
+        "pose": "success",
+        "src": "/sprites/success/frame-02.png",
+        "depth": "",
+        "gaugeInStage": false,
+        "gaugeBelowPanel": false,
+        "gaugeBelowResults": false,
+        "overflowX": false,
+        "heading": "Good lift"
+      },
+      "desk": {
+        "screen": "success",
+        "runtime": "sprite-frames",
+        "lift": "squat",
+        "frame": "frame-02.png",
+        "pose": "success",
+        "src": "/sprites/success/frame-02.png",
+        "depth": "",
+        "gaugeInStage": false,
+        "gaugeBelowPanel": false,
+        "gaugeBelowResults": false,
+        "overflowX": false,
+        "heading": "Good lift"
+      }
+    }
+  }
+}

@@ -29,6 +29,23 @@ Walkout and the lift sequence play the existing arcade sprite runtime inside
 that shell: lift-specific sheets, deadlift `frame-06` lockout, visual-only
 walkout clock. Timing, judging, scoring, streak, and `feel.ts` are unchanged.
 
+## P1 squat depth (this tip)
+
+Squat `frame-03` is a real below-parallel hole (silhouette y0 60→119, height
+258→199 on the 320 master). Mapping holds that frame through the DEPTH cue
+(`progress` 0.42–0.58). Walkout stays `frame-01`. Judging holds `frame-06`.
+Success frames appear only after judging.
+
+A compact on-stage **DEPTH** gauge sits beside the lifter during
+walkout/timing/judging. It is never in the results panel. Target band is
+legal below-parallel depth, not the tap-timing lane. Bench and deadlift
+are unchanged and have no gauge.
+
+Evidence: `evidence/squat-depth/` (phone 390×844 + desk 1280×800 stand /
+descent / hole / ascent / lockout, live Good-lift, `phone-squat-depth.webm`).
+Live play cycled all six squat frames and depth 0→1→0; two in-window taps
+still scored a good lift.
+
 ## Remaining limitations
 
 - Pixel arcade frames and painterly Fable stills are two visual languages.

@@ -59,6 +59,10 @@ export function applyProofToState(state: ArcadeState, search?: string): ArcadeSt
   if (proof.screen === "timing") {
     const lift = proof.lift ?? TIMING_PROOF_LIFT;
     const e1rmKg = FEEL.DEFAULT_E1RM_KG[lift];
+    const params = new URLSearchParams((search || "").replace(/^\?/, ""));
+    const tRaw = params.get("t");
+    const t =
+      tRaw != null && Number.isFinite(Number(tRaw)) ? Math.min(1, Math.max(0, Number(tRaw))) : 0.28;
     return {
       ...state,
       screen: "timing",
@@ -66,7 +70,7 @@ export function applyProofToState(state: ArcadeState, search?: string): ArcadeSt
       e1rmKg,
       attemptsKg: suggestedAttempts(e1rmKg),
       currentAttempt: 1,
-      timingElapsedMs: Math.round(sequenceDurationMs(lift) * 0.28),
+      timingElapsedMs: Math.round(sequenceDurationMs(lift) * t),
     };
   }
   if (proof.screen === "results") {

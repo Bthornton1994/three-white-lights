@@ -795,3 +795,111 @@ h2 {
   }
 }
 
+.squat-depth-gauge {
+  position: absolute;
+  right: 6px;
+  top: 40px;
+  z-index: 6;
+  width: 46px;
+  height: min(52%, 220px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.squat-depth-gauge-label {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-amber-2);
+}
+
+.squat-depth-track {
+  position: relative;
+  flex: 1;
+  min-height: 128px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: rgb(20 17 15 / 0.82);
+  overflow: hidden;
+}
+
+.squat-depth-target {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  top: 72%;
+  height: 20%;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--color-amber) 48%, transparent);
+  color: var(--color-amber-2);
+  font-family: var(--font-display);
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1;
+  padding: 0;
+}
+
+.squat-depth-tick {
+  position: absolute;
+  left: 0;
+  right: 0;
+  font-family: var(--font-display);
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.squat-depth-tick-stand {
+  top: 5%;
+}
+
+.squat-depth-tick-down {
+  top: 28%;
+}
+
+.squat-depth-tick-ascent {
+  top: 50%;
+}
+
+.squat-depth-marker {
+  position: absolute;
+  left: 50%;
+  top: calc(10% + var(--squat-depth, 0) * 72%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-amber-2);
+  box-shadow: 0 0 0 2px rgb(20 17 15 / 0.9);
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+@media (min-width: 860px) {
+  .squat-depth-gauge {
+    right: 18px;
+    top: 52px;
+    width: 64px;
+    height: min(58%, 300px);
+  }
+
+  .squat-depth-gauge-label {
+    font-size: 0.86rem;
+  }
+
+  .squat-depth-tick {
+    font-size: 0.58rem;
+  }
+}

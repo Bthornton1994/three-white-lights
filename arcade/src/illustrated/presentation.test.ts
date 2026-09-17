@@ -29,7 +29,8 @@ describe("illustrated shell keeps title/select/results; play uses arcade frames"
     assert.match(art, /frameSrcFor/);
     assert.match(art, /usesArcadeFrames/);
     assert.match(art, /illustrated-athlete/);
-    assert.match(art, /data-anim-runtime/);
+    assert.match(art, /SquatDepthGauge/);
+    assert.match(art, /data-squat-depth-phase/);
     assert.match(art, /IllustratedLiftCardArt/);
     assert.match(art, /TITLE_STILL/);
   });
