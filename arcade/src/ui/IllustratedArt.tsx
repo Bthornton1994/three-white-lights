@@ -154,12 +154,15 @@ export function IllustratedMeetStage({
       {animated ? (
         <>
           <img className="stage-bg" src={SCENE.platform} alt="" />
-          <img
-            className="stage-lifter illustrated-athlete"
-            src={athleteSrc ?? ""}
-            alt=""
-            data-anim-frame={frameName}
-          />
+          <div className="stage-slot">
+            <img
+              className="stage-lifter illustrated-athlete"
+              src={athleteSrc ?? ""}
+              alt=""
+              data-anim-frame={frameName}
+            />
+            {showDepthGauge ? <SquatDepthGauge depth={depth01} phase={depthPhase} /> : null}
+          </div>
           <div className={`illustrated-stage illustrated-tone-${tone}`} aria-hidden="true">
             <div className="illustrated-lighting" />
             <div className="illustrated-vignette" />
@@ -185,14 +188,13 @@ export function IllustratedMeetStage({
           ))}
         </div>
       ) : null}
-      {showDepthGauge ? <SquatDepthGauge depth={depth01} phase={depthPhase} /> : null}
       <p className="illustrated-still-caption">{captionForScreen(screen, lift)}</p>
       <span className="illustrated-chip">{chipForScreen(screen)}</span>
     </div>
   );
 }
 
-/** Compact squat depth gauge. Lives on the stage, never in the results panel. */
+/** Compact squat depth gauge. Lives in the stage slot, beside the lifter. */
 function SquatDepthGauge({ depth, phase }: { depth: number; phase: SquatDepthPhase }) {
   const clamped = Math.min(1, Math.max(0, depth));
   return (
@@ -203,16 +205,21 @@ function SquatDepthGauge({ depth, phase }: { depth: number; phase: SquatDepthPha
       data-squat-depth={clamped.toFixed(3)}
     >
       <span className="squat-depth-gauge-label">DEPTH</span>
-      <div className="squat-depth-track">
-        <span className="squat-depth-tick squat-depth-tick-stand">Stand</span>
-        <span className="squat-depth-tick squat-depth-tick-down">Drop</span>
-        <span className="squat-depth-tick squat-depth-tick-ascent">Drive</span>
-        <span className="squat-depth-target">Legal</span>
-        <span
-          className="squat-depth-marker"
-          style={{ ["--squat-depth" as string]: String(clamped) }}
-          data-squat-depth-marker="true"
-        />
+      <div className="squat-depth-body">
+        <div className="squat-depth-legend">
+          <span className="squat-depth-tick squat-depth-tick-stand">Stand</span>
+          <span className="squat-depth-tick squat-depth-tick-down">Drop</span>
+          <span className="squat-depth-tick squat-depth-tick-ascent">Drive</span>
+          <span className="squat-depth-target">Legal</span>
+        </div>
+        <div className="squat-depth-track">
+          <span className="squat-depth-band" />
+          <span
+            className="squat-depth-marker"
+            style={{ ["--squat-depth" as string]: String(clamped) }}
+            data-squat-depth-marker="true"
+          />
+        </div>
       </div>
     </div>
   );

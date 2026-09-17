@@ -348,7 +348,7 @@ export function ArcadeApp() {
       ) : null}
 
       {meetStage ? (
-        <section className="arcade-screen" data-proof-screen={state.screen}>
+        <section className="arcade-screen meet-play-screen" data-proof-screen={state.screen}>
           <IllustratedMeetStage
             lift={lift}
             screen={state.screen}
