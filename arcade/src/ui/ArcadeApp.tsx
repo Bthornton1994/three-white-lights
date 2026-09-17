@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FEEL, LIFT_COPY, type LiftId } from "../feel.ts";
 import { ILLUSTRATED_EDITION } from "../illustrated/edition.ts";
 import {
@@ -15,20 +15,21 @@ import {
   backToLiftSelect,
   chooseLift,
   continueAfterOutcome,
-  finishTiming,
+  currentWeightKg,
   initialState,
+  judgingDurationMs,
+  nudgeSportAttempt,
   persistFinishedMeet,
-  recordTap,
+  queueInput,
   resetToTitle,
   setAttempts,
-  startTiming,
+  stageLights,
+  startPlay,
   startWalkout,
-  tickTiming,
-  type ArcadeState,
-} from "../loop/machine.ts";
-import { cuesForLift, sequenceDurationMs } from "../loop/timing.ts";
-import { nudgeAttempt } from "../math/attempts.ts";
-import type { JudgeColor } from "../math/types.ts";
+  stepPlay,
+  walkoutDurationMs,
+  type SportState,
+} from "../sport/machine.ts";
 import { walkoutProgress } from "../sprites/sheets.ts";
 import { ResultsCard } from "./ResultsCard.tsx";
 import { downloadResultsCard, shareResultsCard } from "./share.ts";
@@ -39,7 +40,6 @@ import {
   IllustratedTitleArt,
 } from "./IllustratedArt.tsx";
 import { IllustratedBanner } from "./IllustratedBanner.tsx";
-import { TimingLane } from "./TimingLane.tsx";
 
 const LIFTS: LiftId[] = ["squat", "bench", "deadlift"];
 
@@ -47,6 +47,12 @@ const WALKOUT_COPY: Record<LiftId, string> = {
   squat: "Walk out. Brace. Set the bar on the back.",
   bench: "Unrack. Settle the blades. Wait for the start.",
   deadlift: "Approach the bar. Set the hips. Wait for the pull.",
+};
+
+const LIFT_FACULTY: Record<LiftId, string> = {
+  squat: "Brace. Controlled descent. Depth. Drive the hole. Grind. Lockout.",
+  bench: "Lower under control. Pause. Press on the command. Keep tapping.",
+  deadlift: "Pull. Keep pulling. Lockout. Hold until down. Early release fails.",
 };
 
 function haptic(ms: number): void {
@@ -67,11 +73,13 @@ function reducedMotion(): boolean {
 }
 
 export function ArcadeApp() {
-  const [state, setState] = useState<ArcadeState>(() => initialState(null));
+  const [state, setState] = useState<SportState>(() => initialState(null));
   const [proof, setProof] = useState<ProofQuery>({ screen: null, freeze: false, lift: null });
   const [presentMs, setPresentMs] = useState(0);
-  const started = useRef(0);
   const cardRef = useRef<HTMLElement>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const heldRef = useRef(false);
 
   useEffect(() => {
     const q = readProofQuery();
@@ -84,43 +92,37 @@ export function ArcadeApp() {
   }, []);
 
   useEffect(() => {
-    if (proof.screen) {
-      return;
-    }
+    if (proof.screen) return;
     persistFinishedMeet(state, storage());
   }, [state.screen, state.sessionStreak, state.meet, proof.screen]);
 
   useEffect(() => {
-    if (state.screen !== "timing") {
-      return;
-    }
-    if (proof.freeze) {
-      return;
-    }
-    started.current = performance.now();
+    if (state.screen !== "play") return;
+    if (proof.freeze) return;
     let frame = 0;
+    let last = performance.now();
     const tick = (now: number): void => {
-      const duration = state.lift ? sequenceDurationMs(state.lift) : 1;
-      const elapsed = now - started.current;
-      if (elapsed >= duration) {
-        setState((s) => finishTiming(tickTiming(s, elapsed)));
-        return;
+      const dt = Math.min(100, now - last);
+      last = now;
+      const next = stepPlay(stateRef.current, dt);
+      if (next !== stateRef.current) {
+        stateRef.current = next;
+        setState(next);
       }
-      setState((s) => tickTiming(s, elapsed));
-      frame = requestAnimationFrame(tick);
+      if (next.screen === "play") frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [state.screen, state.lift, state.currentAttempt, proof.freeze]);
+  }, [state.screen, state.currentAttempt, proof.freeze]);
 
   useEffect(() => {
     if (proof.freeze) {
-      setPresentMs(state.timingElapsedMs);
+      setPresentMs(state.presentMs);
       return;
     }
     const animated =
       state.screen === "walkout" ||
-      state.screen === "timing" ||
+      state.screen === "play" ||
       state.screen === "judging" ||
       state.screen === "success" ||
       state.screen === "failure" ||
@@ -132,82 +134,91 @@ export function ArcadeApp() {
     }
     const origin = performance.now();
     let frame = 0;
-    const tick = (now: number): void => {
+    const loop = (now: number): void => {
       setPresentMs(now - origin);
-      frame = requestAnimationFrame(tick);
+      frame = requestAnimationFrame(loop);
     };
-    frame = requestAnimationFrame(tick);
+    frame = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(frame);
-  }, [state.screen, state.currentAttempt, proof.freeze]);
+  }, [state.screen, state.currentAttempt, proof.freeze, state.presentMs]);
 
   useEffect(() => {
-    if (proof.freeze) {
-      return;
-    }
+    if (proof.freeze) return;
     const delay = reducedMotion() ? 80 : undefined;
     if (state.screen === "walkout") {
       const id = window.setTimeout(
-        () => setState((s) => startTiming(s)),
-        delay ?? FEEL.TIMING_MS.walkout,
+        () => setState((s) => startPlay(s)),
+        delay ?? walkoutDurationMs(state),
       );
       return () => window.clearTimeout(id);
     }
     if (state.screen === "judging") {
       const id = window.setTimeout(
         () => setState((s) => afterJudging(s)),
-        delay ?? FEEL.TIMING_MS.judging,
+        delay ?? judgingDurationMs(state),
       );
       return () => window.clearTimeout(id);
     }
     return undefined;
-  }, [state.screen, proof.freeze]);
+  }, [state.screen, proof.freeze, state.currentAttempt]);
 
   useEffect(() => {
-    const onKey = (event: KeyboardEvent): void => {
-      if (event.code !== "Space" && event.code !== "Enter") {
+    const onDown = (event: KeyboardEvent): void => {
+      if (event.code !== "Space" && event.code !== "Enter") return;
+      event.preventDefault();
+      if (event.repeat) return;
+      if (stateRef.current.screen === "play") {
+        press();
         return;
       }
-      event.preventDefault();
       primary();
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const onUp = (event: KeyboardEvent): void => {
+      if (event.code !== "Space" && event.code !== "Enter") return;
+      if (stateRef.current.screen === "play") {
+        event.preventDefault();
+        release();
+      }
+    };
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("keyup", onUp);
+    return () => {
+      window.removeEventListener("keydown", onDown);
+      window.removeEventListener("keyup", onUp);
+    };
   });
 
   const lift = state.lift ?? "squat";
-  const weight = state.attemptsKg[state.currentAttempt - 1] ?? FEEL.MIN_ATTEMPT_KG;
-  const duration = sequenceDurationMs(lift);
-  const progress =
-    state.screen === "timing"
-      ? Math.min(1, state.timingElapsedMs / duration)
-      : state.screen === "walkout" || state.screen === "transition"
-        ? walkoutProgress(presentMs, FEEL.TIMING_MS.walkout)
-        : state.screen === "success" || state.screen === "judging"
-          ? 1
-          : state.screen === "failure" || state.screen === "bomb"
-            ? 0.75
-            : 0.12;
-  const clockMs = state.screen === "timing" ? state.timingElapsedMs : presentMs;
-  const cues = useMemo(
-    () => cuesForLift(lift, state.hiddenFatigue),
-    [lift, state.hiddenFatigue],
-  );
-  const nextCue = cues.find((_, i) => state.pendingGrades[i] === undefined);
-  const lights: [JudgeColor, JudgeColor, JudgeColor] =
-    state.screen === "walkout" || state.screen === "timing"
-      ? ["off", "off", "off"]
-      : (state.lastOutcome?.lights ?? ["off", "off", "off"]);
+  const weight = currentWeightKg(state);
+  const lights = stageLights(state);
+  const view = state.presentation;
+  const clockMs = state.screen === "play" ? state.presentMs : presentMs;
+  const walkProgress =
+    state.screen === "walkout" || state.screen === "transition"
+      ? walkoutProgress(presentMs, walkoutDurationMs(state))
+      : view
+        ? view.kind === "deadlift"
+          ? view.barHeight
+          : view.depth
+        : 0.12;
 
-  const tap = (): void => {
-    if (state.screen !== "timing" || !state.lift) {
-      return;
-    }
-    const index = cues.findIndex((_, i) => state.pendingGrades[i] === undefined);
-    if (index < 0) {
-      return;
-    }
+  const press = (): void => {
+    if (stateRef.current.screen !== "play") return;
+    if (heldRef.current) return;
+    heldRef.current = true;
     haptic(FEEL.HAPTIC_MS.hit);
-    setState((s) => recordTap(s, index, s.timingElapsedMs));
+    const next = queueInput(stateRef.current, "press");
+    stateRef.current = next;
+    setState(next);
+  };
+
+  const release = (): void => {
+    if (!heldRef.current) return;
+    heldRef.current = false;
+    if (stateRef.current.screen !== "play") return;
+    const next = queueInput(stateRef.current, "release");
+    stateRef.current = next;
+    setState(next);
   };
 
   const primary = (): void => {
@@ -217,10 +228,6 @@ export function ArcadeApp() {
     }
     if (state.screen === "attempts") {
       setState((s) => startWalkout(s));
-      return;
-    }
-    if (state.screen === "timing") {
-      tap();
       return;
     }
     if (state.screen === "success" || state.screen === "failure") {
@@ -241,18 +248,28 @@ export function ArcadeApp() {
 
   const meetStage =
     state.screen === "walkout" ||
-    state.screen === "timing" ||
+    state.screen === "play" ||
     state.screen === "judging" ||
     state.screen === "success" ||
     state.screen === "failure" ||
     state.screen === "transition" ||
     state.screen === "bomb";
 
+  const commandLive = Boolean(view?.command.pressCommandLive || view?.command.lockoutHoldLive);
+  const padLabel = view?.command.pressCommandLive
+    ? "PRESS"
+    : view?.command.lockoutHoldLive
+      ? "HOLD"
+      : state.prompt || "HOLD / TAP";
+
   return (
     <main
       className="arcade-root illustrated-edition"
       data-legacy-sprites="false"
       data-visual-shell="illustrated"
+      data-sport-source={ILLUSTRATED_EDITION.MECHANICS_SHA}
+      data-screen={state.screen}
+      data-lift-kind={state.lift ?? ""}
     >
       <IllustratedBanner />
       {state.screen === "title" ? <TitleScreen onStart={primary} streak={state.sessionStreak} /> : null}
@@ -271,8 +288,8 @@ export function ArcadeApp() {
             <p className="kicker">{FEEL.FEDERATION}</p>
             <h2>Choose a lift</h2>
             <p className="hint">
-              Each lift has its own timing. Fatigue stays hidden. Select cards stay Fable stills —
-              the attempt itself uses existing arcade frames.
+              Each lift is a different faculty — not a different timer. Select cards stay Fable
+              stills. The attempt is the A0 mechanic.
             </p>
             <div className="lift-grid">
               {LIFTS.map((id) => (
@@ -285,7 +302,7 @@ export function ArcadeApp() {
                   <IllustratedLiftCardArt lift={id} />
                   <span>
                     <b>{LIFT_COPY[id].name}</b>
-                    {LIFT_COPY[id].cue}
+                    {LIFT_FACULTY[id]}
                   </span>
                 </button>
               ))}
@@ -301,13 +318,15 @@ export function ArcadeApp() {
             screen="attempts"
             progress={0.08}
             lights={["off", "off", "off"]}
-            weightKg={state.attemptsKg[0] ?? 20}
+            weightKg={state.attemptsKg[0] ?? 25}
             e1rmKg={state.e1rmKg}
           />
           <div className="panel">
-            <p className="kicker">{LIFT_COPY[lift].checks}</p>
+            <p className="kicker">{LIFT_FACULTY[lift]}</p>
             <h2>{LIFT_COPY[lift].name} attempts</h2>
-            <p className="hint">Weights may not go down. 2.5 kg plates. e1RM {state.e1rmKg} kg.</p>
+            <p className="hint">
+              Openers from e1RM. Weights may not go down. 2.5 kg plates. e1RM {state.e1rmKg} kg.
+            </p>
             <div className="attempt-list">
               {state.attemptsKg.map((kg, i) => (
                 <div className="attempt-row" key={i}>
@@ -319,7 +338,7 @@ export function ArcadeApp() {
                       aria-label={`Lower attempt ${i + 1}`}
                       onClick={() =>
                         setState((s) =>
-                          setAttempts(s, nudgeAttempt(s.attemptsKg, i as 0 | 1 | 2, -1)),
+                          setAttempts(s, nudgeSportAttempt(s.lift ?? lift, s.attemptsKg, i as 0 | 1 | 2, -1)),
                         )
                       }
                     >
@@ -330,7 +349,7 @@ export function ArcadeApp() {
                       aria-label={`Raise attempt ${i + 1}`}
                       onClick={() =>
                         setState((s) =>
-                          setAttempts(s, nudgeAttempt(s.attemptsKg, i as 0 | 1 | 2, 1)),
+                          setAttempts(s, nudgeSportAttempt(s.lift ?? lift, s.attemptsKg, i as 0 | 1 | 2, 1)),
                         )
                       }
                     >
@@ -348,15 +367,16 @@ export function ArcadeApp() {
       ) : null}
 
       {meetStage ? (
-        <section className="arcade-screen" data-proof-screen={state.screen}>
+        <section className="arcade-screen meet-play-screen" data-proof-screen={state.screen}>
           <IllustratedMeetStage
             lift={lift}
             screen={state.screen}
-            progress={progress}
+            progress={walkProgress}
             lights={lights}
             clockMs={clockMs}
             weightKg={weight}
             e1rmKg={state.e1rmKg}
+            presentation={view}
           />
           <div className="panel">
             <div className="hud">
@@ -365,20 +385,48 @@ export function ArcadeApp() {
               </span>
               <strong>{weight.toFixed(1)} kg</strong>
             </div>
+            {view ? (
+              <p className="sport-meta" data-effort={view.effortBand}>
+                {view.phase}
+                {view.grindIntensity > 0.5 ? " · GRIND" : ""}
+                {view.command.pressCommandLive ? " · PRESS COMMAND" : ""}
+                {view.command.lockoutHoldLive ? " · HOLD LOCKOUT" : ""}
+              </p>
+            ) : null}
 
-            {state.screen === "timing" ? (
+            {state.screen === "play" ? (
               <>
-                <TimingLane cues={cues} progress={progress} durationMs={duration} />
-                <button className="btn btn-primary" type="button" onClick={tap}>
-                  {nextCue?.label ?? "HOLD"}
+                <p className={`lede sport-prompt${commandLive ? " command-live" : ""}`} data-prompt={state.prompt}>
+                  {state.prompt}
+                </p>
+                <button
+                  className="btn btn-primary hold-pad"
+                  type="button"
+                  data-held={heldRef.current ? "true" : "false"}
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    press();
+                  }}
+                  onPointerUp={(event) => {
+                    event.preventDefault();
+                    release();
+                  }}
+                  onPointerCancel={() => release()}
+                  onPointerLeave={() => {
+                    if (heldRef.current) release();
+                  }}
+                  onContextMenu={(event) => event.preventDefault()}
+                >
+                  {padLabel}
                 </button>
-                <p className="hint">Tap in the amber window. Fatigue is not a bar — it shrinks that window.</p>
+                <p className="hint">
+                  Hold and tap — this is the lift, not a two-window timer. Fatigue stays hidden and
+                  shows up in bar speed.
+                </p>
               </>
             ) : null}
 
-            {state.screen === "walkout" ? (
-              <p className="lede">{WALKOUT_COPY[lift]}</p>
-            ) : null}
+            {state.screen === "walkout" ? <p className="lede">{WALKOUT_COPY[lift]}</p> : null}
             {state.screen === "judging" ? <p className="lede">Judges deliberating.</p> : null}
 
             {state.screen === "success" ? (
@@ -407,8 +455,8 @@ export function ArcadeApp() {
                 <h2>Change plates</h2>
                 <p className="lede">
                   Attempt {state.currentAttempt} is{" "}
-                  {state.attemptsKg[state.currentAttempt - 1]?.toFixed(1)} kg. The next window is{" "}
-                  {state.hiddenFatigue > 0.3 ? "tighter" : "still honest"}.
+                  {state.attemptsKg[state.currentAttempt - 1]?.toFixed(1)} kg.{" "}
+                  {state.feel.barSpeedText}
                 </p>
                 <button className="btn btn-primary" type="button" onClick={primary}>
                   Walk out
@@ -516,8 +564,8 @@ function TitleScreen({ onStart, streak }: { onStart: () => void; streak: number 
         <h1>Three White Lights</h1>
         <p className="illustrated-edition-name">{ILLUSTRATED_EDITION.NAME}</p>
         <p className="lede">
-          One lift. Three attempts. Timing is the sport. Fatigue stays hidden and shows up in bar
-          speed.
+          One lift. Three attempts. Squat, bench, and deadlift are different faculties — depth,
+          pause-and-press, lockout hold. Fatigue stays hidden and shows up in bar speed.
         </p>
         <div className="lights" aria-hidden="true">
           <span className="light white" />

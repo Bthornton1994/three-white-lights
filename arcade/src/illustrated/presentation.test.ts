@@ -33,6 +33,27 @@ describe("illustrated shell keeps title/select/results; play uses arcade frames"
     assert.match(art, /data-squat-depth-phase/);
     assert.match(art, /IllustratedLiftCardArt/);
     assert.match(art, /TITLE_STILL/);
+    assert.match(art, /className="stage-slot"/);
+    assert.match(art, /squat-depth-legend/);
+    assert.match(art, /squat-depth-band/);
+    assert.equal(/showDepthGauge[\s\S]*?screen === "results"/.test(art), false);
+    assert.match(
+      art,
+      /lift === "squat" &&\s*animated &&\s*\(screen === "walkout" \|\| screen === "timing" \|\| screen === "play" \|\| screen === "judging"\)/,
+    );
+  });
+
+  it("meet play reserves a stage slot and keeps the depth gauge beside the lifter", () => {
+    const arcade = readFileSync(appPath("ui/ArcadeApp.tsx"), "utf8");
+    const css = readFileSync(appPath("styles.css"), "utf8");
+    assert.match(arcade, /meet-play-screen/);
+    assert.match(css, /--meet-stage-slot/);
+    assert.match(css, /\.illustrated-animated-stage \.stage-slot/);
+    assert.match(css, /grid-column: 3/);
+    assert.match(css, /\.meet-play-screen \.stage-wrap\.illustrated-timing-wrap/);
+    assert.equal(/\.squat-depth-gauge \{[\s\S]*?top: 40px/.test(css), false);
+    assert.match(css, /squat-depth-legend/);
+    assert.match(css, /squat-depth-band/);
   });
 
   it("share card may composite existing stills but does not invent art", () => {

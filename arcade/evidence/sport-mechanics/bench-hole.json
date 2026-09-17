@@ -1,0 +1,17 @@
+{
+  "screen": "play",
+  "source": "288db32c06232bb0fb65ce7236a0614c698a6920",
+  "lift": "bench",
+  "phase": "HOLE",
+  "depth": "1.032",
+  "bar": "0.000",
+  "strain": "0.625",
+  "grind": "0.000",
+  "pose": "pause",
+  "frame": "frame-03.png",
+  "prompt": "WAIT FOR IT",
+  "press": "false",
+  "lockout": "false",
+  "heading": null,
+  "errors": []
+}

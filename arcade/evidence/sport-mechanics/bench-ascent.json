@@ -1,0 +1,17 @@
+{
+  "screen": "play",
+  "source": "288db32c06232bb0fb65ce7236a0614c698a6920",
+  "lift": "bench",
+  "phase": "ASCENT",
+  "depth": "0.940",
+  "bar": "0.060",
+  "strain": "0.759",
+  "grind": "0.190",
+  "pose": "press",
+  "frame": "frame-04.png",
+  "prompt": "GRIND — KEEP TAPPING",
+  "press": "false",
+  "lockout": "false",
+  "heading": null,
+  "errors": []
+}

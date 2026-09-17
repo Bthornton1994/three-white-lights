@@ -1,0 +1,16 @@
+{
+  "screen": "judging",
+  "source": "288db32c06232bb0fb65ce7236a0614c698a6920",
+  "lift": "bench",
+  "phase": "RESOLVED",
+  "depth": "0.000",
+  "bar": "1.000",
+  "strain": "0.213",
+  "grind": "0.000",
+  "pose": "lock",
+  "frame": "frame-06.png",
+  "press": "false",
+  "lockout": "false",
+  "heading": null,
+  "errors": []
+}

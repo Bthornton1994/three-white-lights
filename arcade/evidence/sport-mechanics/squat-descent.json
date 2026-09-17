@@ -1,0 +1,17 @@
+{
+  "screen": "play",
+  "source": "288db32c06232bb0fb65ce7236a0614c698a6920",
+  "lift": "squat",
+  "phase": "DESCENT",
+  "depth": "0.159",
+  "bar": "0.841",
+  "strain": "0.330",
+  "grind": "0.000",
+  "pose": "descend",
+  "frame": "frame-01.png",
+  "prompt": "KEEP DESCENDING",
+  "press": "false",
+  "lockout": "false",
+  "heading": null,
+  "errors": []
+}

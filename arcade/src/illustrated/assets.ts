@@ -152,6 +152,7 @@ export function usesArcadeFrames(screen: Screen): boolean {
   return (
     screen === "walkout" ||
     screen === "timing" ||
+    screen === "play" ||
     screen === "judging" ||
     screen === "success" ||
     screen === "failure" ||
@@ -168,7 +169,8 @@ export function captionForScreen(screen: Screen, lift: LiftId): string {
     case "walkout":
       return `Animated walkout · ${name} arcade frames`;
     case "timing":
-      return `Animated lift · ${name} arcade frames`;
+    case "play":
+      return `Live lift · ${name} A0 mechanic · arcade frames`;
     case "judging":
       return `Lockout hold · ${name} arcade frames`;
     case "success":

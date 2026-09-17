@@ -1,0 +1,17 @@
+{
+  "screen": "play",
+  "source": "288db32c06232bb0fb65ce7236a0614c698a6920",
+  "lift": "bench",
+  "phase": "DESCENT",
+  "depth": "0.081",
+  "bar": "0.919",
+  "strain": "0.317",
+  "grind": "0.000",
+  "pose": "descend",
+  "frame": "frame-01.png",
+  "prompt": "STAY TIGHT",
+  "press": "false",
+  "lockout": "false",
+  "heading": null,
+  "errors": []
+}

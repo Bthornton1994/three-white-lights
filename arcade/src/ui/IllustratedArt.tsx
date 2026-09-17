@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { LiftId } from "../feel.ts";
 import type { Screen } from "../loop/machine.ts";
+import type { LiftPresentationState } from "../game/liftPresentation.ts";
 import {
   LIFT_STILLS,
   TITLE_STILL,
@@ -15,6 +16,12 @@ import { ILLUSTRATED_MOTION } from "../illustrated/motion.ts";
 import type { JudgeColor } from "../math/types.ts";
 import { SCENE, frameSrcFor, poseForScreen, squatDepth01, squatDepthPhase, visualEffort } from "../sprites/sheets.ts";
 import type { SquatDepthPhase } from "../sprites/sheets.ts";
+import {
+  frameSrcFromPresentation,
+  poseFromPresentation,
+  squatDepthFromView,
+  squatDepthPhaseFromView,
+} from "../sport/frames.ts";
 
 type ArtProps = {
   src: string;
@@ -97,7 +104,7 @@ export function IllustratedTimingStage({
   lights: [JudgeColor, JudgeColor, JudgeColor];
 }) {
   return (
-    <IllustratedMeetStage lift={lift} screen="timing" progress={progress} lights={lights} />
+    <IllustratedMeetStage lift={lift} screen="play" progress={progress} lights={lights} />
   );
 }
 
@@ -109,6 +116,7 @@ export function IllustratedMeetStage({
   clockMs = 0,
   weightKg = 20,
   e1rmKg = 180,
+  presentation = null,
 }: {
   lift: LiftId;
   screen: Screen;
@@ -117,25 +125,39 @@ export function IllustratedMeetStage({
   clockMs?: number;
   weightKg?: number;
   e1rmKg?: number;
+  presentation?: LiftPresentationState | null;
 }) {
   const still = screen === "bomb" ? TITLE_STILL : stillForScreen(screen, lift);
   const camera = cameraForScreen(screen, lift, progress);
   const showLights = screen !== "attempts" && screen !== "title" && screen !== "lift" && screen !== "results";
   const tone = screen === "failure" || screen === "bomb" ? "fail" : screen === "success" ? "success" : "default";
-  const fit = screen === "timing" || screen === "judging" || screen === "walkout" ? "contain" : undefined;
+  const fit = screen === "timing" || screen === "play" || screen === "judging" || screen === "walkout" ? "contain" : undefined;
   const animated = usesArcadeFrames(screen);
   const effort = visualEffort(weightKg, e1rmKg);
+  const live = presentation !== null && (screen === "play" || screen === "judging");
   const athleteSrc = animated
-    ? frameSrcFor(lift, screen, progress, clockMs, effort)
+    ? live
+      ? frameSrcFromPresentation(lift, screen, presentation, clockMs, effort)
+      : frameSrcFor(lift, screen, progress, clockMs, effort)
     : null;
-  const pose = poseForScreen(screen, lift, progress);
+  const pose = live ? poseFromPresentation(presentation, screen) : poseForScreen(screen, lift, progress);
   const frameName = athleteSrc ? athleteSrc.split("/").pop() ?? athleteSrc : "";
   const showDepthGauge =
     lift === "squat" &&
     animated &&
-    (screen === "walkout" || screen === "timing" || screen === "judging");
-  const depth01 = showDepthGauge ? squatDepth01(screen, progress) : 0;
-  const depthPhase = showDepthGauge ? squatDepthPhase(screen, progress) : "stand";
+    (screen === "walkout" || screen === "timing" || screen === "play" || screen === "judging");
+  const depth01 = showDepthGauge
+    ? live
+      ? squatDepthFromView(presentation)
+      : squatDepth01(screen, progress)
+    : 0;
+  const depthPhase: SquatDepthPhase = showDepthGauge
+    ? live
+      ? squatDepthPhaseFromView(presentation, screen)
+      : squatDepthPhase(screen, progress)
+    : "stand";
+  const strain = presentation?.strain ?? 0;
+  const grind = presentation?.grindIntensity ?? 0;
   return (
     <div
       className={`stage-wrap illustrated-timing-wrap${animated ? " illustrated-animated-stage" : ""}`}
@@ -150,16 +172,32 @@ export function IllustratedMeetStage({
       data-anim-effort={effort}
       data-squat-depth={showDepthGauge ? depth01.toFixed(3) : ""}
       data-squat-depth-phase={showDepthGauge ? depthPhase : ""}
+      data-lift-phase={presentation?.phase ?? ""}
+      data-bar-height={presentation ? presentation.barHeight.toFixed(3) : ""}
+      data-lift-depth={presentation ? presentation.depth.toFixed(3) : ""}
+      data-strain={presentation ? strain.toFixed(3) : ""}
+      data-grind={presentation ? grind.toFixed(3) : ""}
+      data-outcome={presentation?.outcome ?? ""}
+      data-command-press={presentation?.command.pressCommandLive ? "true" : "false"}
+      data-command-lockout={presentation?.command.lockoutHoldLive ? "true" : "false"}
+      data-sport-source="288db32c"
+      style={{
+        ["--strain" as string]: String(strain),
+        ["--grind" as string]: String(grind),
+      }}
     >
       {animated ? (
         <>
           <img className="stage-bg" src={SCENE.platform} alt="" />
-          <img
-            className="stage-lifter illustrated-athlete"
-            src={athleteSrc ?? ""}
-            alt=""
-            data-anim-frame={frameName}
-          />
+          <div className="stage-slot">
+            <img
+              className="stage-lifter illustrated-athlete"
+              src={athleteSrc ?? ""}
+              alt=""
+              data-anim-frame={frameName}
+            />
+            {showDepthGauge ? <SquatDepthGauge depth={depth01} phase={depthPhase} /> : null}
+          </div>
           <div className={`illustrated-stage illustrated-tone-${tone}`} aria-hidden="true">
             <div className="illustrated-lighting" />
             <div className="illustrated-vignette" />
@@ -185,14 +223,13 @@ export function IllustratedMeetStage({
           ))}
         </div>
       ) : null}
-      {showDepthGauge ? <SquatDepthGauge depth={depth01} phase={depthPhase} /> : null}
       <p className="illustrated-still-caption">{captionForScreen(screen, lift)}</p>
       <span className="illustrated-chip">{chipForScreen(screen)}</span>
     </div>
   );
 }
 
-/** Compact squat depth gauge. Lives on the stage, never in the results panel. */
+/** Compact squat depth gauge. Lives in the stage slot, beside the lifter. */
 function SquatDepthGauge({ depth, phase }: { depth: number; phase: SquatDepthPhase }) {
   const clamped = Math.min(1, Math.max(0, depth));
   return (
@@ -203,16 +240,21 @@ function SquatDepthGauge({ depth, phase }: { depth: number; phase: SquatDepthPha
       data-squat-depth={clamped.toFixed(3)}
     >
       <span className="squat-depth-gauge-label">DEPTH</span>
-      <div className="squat-depth-track">
-        <span className="squat-depth-tick squat-depth-tick-stand">Stand</span>
-        <span className="squat-depth-tick squat-depth-tick-down">Drop</span>
-        <span className="squat-depth-tick squat-depth-tick-ascent">Drive</span>
-        <span className="squat-depth-target">Legal</span>
-        <span
-          className="squat-depth-marker"
-          style={{ ["--squat-depth" as string]: String(clamped) }}
-          data-squat-depth-marker="true"
-        />
+      <div className="squat-depth-body">
+        <div className="squat-depth-legend">
+          <span className="squat-depth-tick squat-depth-tick-stand">Stand</span>
+          <span className="squat-depth-tick squat-depth-tick-down">Drop</span>
+          <span className="squat-depth-tick squat-depth-tick-ascent">Drive</span>
+          <span className="squat-depth-target">Legal</span>
+        </div>
+        <div className="squat-depth-track">
+          <span className="squat-depth-band" />
+          <span
+            className="squat-depth-marker"
+            style={{ ["--squat-depth" as string]: String(clamped) }}
+            data-squat-depth-marker="true"
+          />
+        </div>
       </div>
     </div>
   );

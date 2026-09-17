@@ -1,12 +1,14 @@
 import { FEEL, type LiftId } from "../feel.ts";
-import type { ArcadeState } from "../loop/machine.ts";
-import { sequenceDurationMs } from "../loop/timing.ts";
-import { suggestedAttempts } from "../math/attempts.ts";
-import { resolveAttempt, scoreMeet } from "../math/score.ts";
-import type { ArcadeMeet } from "../math/types.ts";
+import type { SportState } from "../sport/machine.ts";
+import { chooseLift, startPlay, startWalkout } from "../sport/machine.ts";
+import { sportMeetCard, mapTimingGrade, skillPointsForOutcome } from "../sport/score.ts";
+import { runLift, type LiftConfig, type ScriptedInput } from "../game/lift.ts";
+import { benchScript, deadliftScript, squatScript } from "../sport/scripts.ts";
+import { judgeAttempt, attemptSeedFor } from "../game/meetDay.ts";
+import type { ArcadeMeet, AttemptOutcome, JudgeColor } from "../math/types.ts";
 import { TIMING_PROOF_LIFT } from "./assets.ts";
 
-export type ProofScreen = "title" | "lift" | "timing" | "results";
+export type ProofScreen = "title" | "lift" | "timing" | "play" | "results";
 
 export type ProofQuery = {
   screen: ProofScreen | null;
@@ -27,51 +29,62 @@ export function readProofQuery(search: string = ""): ProofQuery {
   const params = new URLSearchParams(rawSearch.startsWith("?") ? rawSearch.slice(1) : rawSearch);
   const raw = params.get("proof");
   const screen: ProofScreen | null =
-    raw === "title" || raw === "lift" || raw === "timing" || raw === "results" ? raw : null;
+    raw === "title" || raw === "lift" || raw === "timing" || raw === "play" || raw === "results"
+      ? raw
+      : null;
   const freezeFlag = params.get("freeze");
   const freeze =
-    freezeFlag === "0" || freezeFlag === "false" ? false : screen !== null;
+    freezeFlag === "0" || freezeFlag === "false"
+      ? false
+      : screen !== null && screen !== "play" && screen !== "timing";
   return { screen, freeze, lift: parseLift(params.get("lift")) };
 }
 
-/** Display fixture for ?proof=results. Uses real resolveAttempt + scoreMeet. */
+function scriptFor(config: LiftConfig): ScriptedInput[] {
+  if (config.kind === "squat") return squatScript(config, "ideal");
+  if (config.kind === "bench") return benchScript(config, "mash");
+  return deadliftScript(config, "held");
+}
+
+/** Display fixture for ?proof=results. Three A0-scripted makes, judged by freeze. */
 export function sampleScoredMeet(): ArcadeMeet {
   const lift = TIMING_PROOF_LIFT;
   const e1rmKg = FEEL.DEFAULT_E1RM_KG[lift];
-  const attemptsKg = suggestedAttempts(e1rmKg);
-  const outcomes = ([1, 2, 3] as const).map((attempt, i) =>
-    resolveAttempt({
+  const seed = 4;
+  const outcomes: AttemptOutcome[] = ([1, 2, 3] as const).map((attempt) => {
+    const weightKg = Math.round((e1rmKg * (0.9 + (attempt - 1) * 0.035)) / 2.5) * 2.5;
+    const config: LiftConfig = { kind: lift, loadRatio: weightKg / e1rmKg, seed: seed + attempt };
+    const played = runLift(config, scriptFor(config), 1200);
+    const resolution = played.final.resolution!;
+    const call = judgeAttempt(resolution, attemptSeedFor(seed, lift, attempt));
+    const lights = call.lights as [JudgeColor, JudgeColor, JudgeColor];
+    return {
       attempt,
-      weightKg: attemptsKg[i] ?? FEEL.MIN_ATTEMPT_KG,
-      e1rmKg,
-      grades: ["great", "great"],
-      fatigue: 0,
-    }),
-  );
-  return scoreMeet(lift, e1rmKg, attemptsKg, outcomes, 0, 1);
+      weightKg,
+      made: call.good,
+      lights,
+      grades: resolution.timings.map((t) => mapTimingGrade(t.grade)),
+      impliedRpe: resolution.outcome === "grind" ? 9.5 : 8.5,
+      cue: resolution.headline,
+      skillPoints: skillPointsForOutcome(call.good, resolution.outcome, lights),
+    };
+  });
+  const attemptsKg: [number, number, number] = [
+    outcomes[0]?.weightKg ?? 25,
+    outcomes[1]?.weightKg ?? 25,
+    outcomes[2]?.weightKg ?? 25,
+  ];
+  return sportMeetCard(lift, e1rmKg, attemptsKg, outcomes, 0, 1);
 }
 
-export function applyProofToState(state: ArcadeState, search?: string): ArcadeState {
+export function applyProofToState(state: SportState, search?: string): SportState {
   const proof = readProofQuery(search);
   if (proof.screen === "lift") {
     return { ...state, screen: "lift" };
   }
-  if (proof.screen === "timing") {
+  if (proof.screen === "timing" || proof.screen === "play") {
     const lift = proof.lift ?? TIMING_PROOF_LIFT;
-    const e1rmKg = FEEL.DEFAULT_E1RM_KG[lift];
-    const params = new URLSearchParams((search || "").replace(/^\?/, ""));
-    const tRaw = params.get("t");
-    const t =
-      tRaw != null && Number.isFinite(Number(tRaw)) ? Math.min(1, Math.max(0, Number(tRaw))) : 0.28;
-    return {
-      ...state,
-      screen: "timing",
-      lift,
-      e1rmKg,
-      attemptsKg: suggestedAttempts(e1rmKg),
-      currentAttempt: 1,
-      timingElapsedMs: Math.round(sequenceDurationMs(lift) * t),
-    };
+    return startPlay(startWalkout(chooseLift({ ...state }, lift)));
   }
   if (proof.screen === "results") {
     const meet = sampleScoredMeet();

@@ -187,7 +187,7 @@ export function poseForScreen(screen: Screen, lift: LiftId, progress: number): S
   if (screen === "walkout" || screen === "transition" || screen === "lift" || screen === "attempts") {
     return "walkout";
   }
-  if (screen !== "timing" && screen !== "judging") {
+  if (screen !== "timing" && screen !== "judging" && screen !== "play") {
     return "idle";
   }
   if (lift === "squat") {
@@ -217,7 +217,7 @@ export function squatSheetIndex(screen: Screen, progress: number): number {
     return 0;
   }
   if (screen === "judging") return 5;
-  if (screen !== "timing") {
+  if (screen !== "timing" && screen !== "play") {
     return Math.min(5, Math.floor(Math.min(1, Math.max(0, progress)) * 6));
   }
   if (progress < 0.22) return 0;
@@ -232,7 +232,7 @@ export type SquatDepthPhase = "stand" | "descent" | "hole" | "ascent" | "lock";
 
 export function squatDepthPhase(screen: Screen, progress: number): SquatDepthPhase {
   if (screen === "judging" || screen === "success") return "lock";
-  if (screen !== "timing") return "stand";
+  if (screen !== "timing" && screen !== "play") return "stand";
   if (progress < 0.22) return "stand";
   if (progress < 0.42) return "descent";
   if (progress < 0.58) return "hole";

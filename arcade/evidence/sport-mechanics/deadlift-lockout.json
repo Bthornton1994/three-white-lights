@@ -1,0 +1,17 @@
+{
+  "screen": "play",
+  "source": "288db32c06232bb0fb65ce7236a0614c698a6920",
+  "lift": "deadlift",
+  "phase": "LOCKOUT",
+  "depth": "0.000",
+  "bar": "1.000",
+  "strain": "0.214",
+  "grind": "0.000",
+  "pose": "lock",
+  "frame": "frame-06.png",
+  "prompt": "DON'T LET GO",
+  "press": "false",
+  "lockout": "true",
+  "heading": null,
+  "errors": []
+}

@@ -1,0 +1,17 @@
+{
+  "screen": "play",
+  "source": "288db32c06232bb0fb65ce7236a0614c698a6920",
+  "lift": "deadlift",
+  "phase": "BRACE",
+  "depth": "1.000",
+  "bar": "0.000",
+  "strain": "0.300",
+  "grind": "0.000",
+  "pose": "brace",
+  "frame": "frame-01.png",
+  "prompt": "TAP TO PULL",
+  "press": "false",
+  "lockout": "false",
+  "heading": null,
+  "errors": []
+}
