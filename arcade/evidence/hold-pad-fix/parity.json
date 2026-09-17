@@ -1,0 +1,718 @@
+{
+  "targetSha": "4522ff42a2eaa705c8036c52c8907288e7fe5ae7",
+  "baseSha": "fc4c1aec06f0f079b851bb703f69ee67140b4f85",
+  "mechanicsSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+  "presentationBaseSha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+  "generatedAt": "2026-09-17T23:34:25.464Z",
+  "analyzer": {
+    "name": "twl-development-analysis",
+    "version": "0.1.0",
+    "engine": "deterministic-rules",
+    "node": "v22.22.2",
+    "playwright": "1.56.1",
+    "browser": "141.0.7390.37"
+  },
+  "analyzerSource": "PR #80 tools/twl-development-analysis @ 05de0cad, extended attempt plan (3 attempts x 3 lifts x 2 viewports) run from its gitignored out/ directory",
+  "standardRun": {
+    "runId": "4522ff42-2026-09-17T23-28-11-274Z",
+    "overall": "REVIEW",
+    "decisions": [
+      [
+        "source-identity",
+        "PASS",
+        []
+      ],
+      [
+        "served-identity",
+        "PASS",
+        []
+      ],
+      [
+        "existing-tests",
+        "PASS",
+        []
+      ],
+      [
+        "mechanics-frame-parity",
+        "PASS",
+        []
+      ],
+      [
+        "sprite-grounding",
+        "PASS",
+        []
+      ],
+      [
+        "design-intent",
+        "REVIEW",
+        [
+          "DESKTOP_GUTTERS_WIDE",
+          "CANDIDATE_BANNER_RENDERED",
+          "PAGE_ERRORS"
+        ]
+      ],
+      [
+        "preview-regression",
+        "REVIEW",
+        [
+          "TITLE_DRIFT_VS_REFERENCE:phone"
+        ]
+      ],
+      [
+        "document-contract-conflict",
+        "REVIEW",
+        [
+          "DOCUMENT_CONTRACT_CONFLICT",
+          "IRON_AMBER_DOC_ABSENT_AT_TARGET"
+        ]
+      ],
+      [
+        "flow",
+        "ABSTAIN",
+        [
+          "NOT_IMPLEMENTED"
+        ]
+      ],
+      [
+        "balance",
+        "ABSTAIN",
+        [
+          "NOT_IMPLEMENTED"
+        ]
+      ],
+      [
+        "input-fairness",
+        "ABSTAIN",
+        [
+          "NOT_IMPLEMENTED"
+        ]
+      ],
+      [
+        "progression",
+        "ABSTAIN",
+        [
+          "NOT_IMPLEMENTED"
+        ]
+      ],
+      [
+        "playtest",
+        "ABSTAIN",
+        [
+          "NOT_IMPLEMENTED",
+          "HUMAN_PLAYTEST_REQUIRED"
+        ]
+      ]
+    ]
+  },
+  "extendedRun": {
+    "runId": "ext-3x3-4522ff42",
+    "overall": "REVIEW",
+    "decisions": [
+      [
+        "source-identity",
+        "PASS",
+        []
+      ],
+      [
+        "served-identity",
+        "PASS",
+        []
+      ],
+      [
+        "existing-tests",
+        "PASS",
+        []
+      ],
+      [
+        "mechanics-frame-parity",
+        "PASS",
+        []
+      ],
+      [
+        "sprite-grounding",
+        "PASS",
+        []
+      ],
+      [
+        "design-intent",
+        "REVIEW",
+        [
+          "DISPLAY_FONT_NOT_LOADED:phone",
+          "DESKTOP_GUTTERS_WIDE",
+          "CANDIDATE_BANNER_RENDERED",
+          "PAGE_ERRORS"
+        ]
+      ],
+      [
+        "preview-regression",
+        "REVIEW",
+        [
+          "EVIDENCE_PIXEL_DRIFT:title-390",
+          "EVIDENCE_PIXEL_DRIFT:select-390",
+          "TITLE_DRIFT_VS_REFERENCE:phone"
+        ]
+      ],
+      [
+        "document-contract-conflict",
+        "REVIEW",
+        [
+          "DOCUMENT_CONTRACT_CONFLICT",
+          "IRON_AMBER_DOC_ABSENT_AT_TARGET"
+        ]
+      ],
+      [
+        "flow",
+        "ABSTAIN",
+        [
+          "NOT_IMPLEMENTED"
+        ]
+      ],
+      [
+        "balance",
+        "ABSTAIN",
+        [
+          "NOT_IMPLEMENTED"
+        ]
+      ],
+      [
+        "input-fairness",
+        "ABSTAIN",
+        [
+          "NOT_IMPLEMENTED"
+        ]
+      ],
+      [
+        "progression",
+        "ABSTAIN",
+        [
+          "NOT_IMPLEMENTED"
+        ]
+      ],
+      [
+        "playtest",
+        "ABSTAIN",
+        [
+          "NOT_IMPLEMENTED",
+          "HUMAN_PLAYTEST_REQUIRED"
+        ]
+      ]
+    ]
+  },
+  "parity": {
+    "framesCompared": 4140,
+    "frameMismatchFraction": 0,
+    "numericMismatchFraction": 0,
+    "promptMismatchFraction": 0,
+    "commandMismatchFraction": 0,
+    "renderLaggedFraction": 0,
+    "oracleChecked": 4140,
+    "oracleMismatchFraction": 0,
+    "traces": [
+      {
+        "id": "phone-squat-a1",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 29,
+        "firstMotionFrame": 29,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT"
+      },
+      {
+        "id": "phone-squat-a2",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 31,
+        "firstMotionFrame": 31,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT"
+      },
+      {
+        "id": "phone-squat-a3",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 32,
+        "firstMotionFrame": 32,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT"
+      },
+      {
+        "id": "phone-bench-a1",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 21,
+        "firstMotionFrame": 21,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT"
+      },
+      {
+        "id": "phone-bench-a2",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 23,
+        "firstMotionFrame": 23,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT"
+      },
+      {
+        "id": "phone-bench-a3",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 24,
+        "firstMotionFrame": 25,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT"
+      },
+      {
+        "id": "phone-deadlift-a1",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 36,
+        "firstMotionFrame": 36,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>ASCENT>LOCKOUT",
+        "probePhasePath": "BRACE>ASCENT>LOCKOUT"
+      },
+      {
+        "id": "phone-deadlift-a2",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 38,
+        "firstMotionFrame": 38,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>ASCENT",
+        "probePhasePath": "BRACE>ASCENT"
+      },
+      {
+        "id": "phone-deadlift-a3",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 41,
+        "firstMotionFrame": 41,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>ASCENT",
+        "probePhasePath": "BRACE>ASCENT"
+      },
+      {
+        "id": "desktop-squat-a1",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 29,
+        "firstMotionFrame": 29,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT"
+      },
+      {
+        "id": "desktop-squat-a2",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 31,
+        "firstMotionFrame": 31,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT"
+      },
+      {
+        "id": "desktop-squat-a3",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 32,
+        "firstMotionFrame": 32,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT"
+      },
+      {
+        "id": "desktop-bench-a1",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 21,
+        "firstMotionFrame": 21,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT"
+      },
+      {
+        "id": "desktop-bench-a2",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 23,
+        "firstMotionFrame": 23,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT"
+      },
+      {
+        "id": "desktop-bench-a3",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 24,
+        "firstMotionFrame": 25,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT"
+      },
+      {
+        "id": "desktop-deadlift-a1",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 36,
+        "firstMotionFrame": 36,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>ASCENT>LOCKOUT",
+        "probePhasePath": "BRACE>ASCENT>LOCKOUT"
+      },
+      {
+        "id": "desktop-deadlift-a2",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 38,
+        "firstMotionFrame": 38,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>ASCENT",
+        "probePhasePath": "BRACE>ASCENT"
+      },
+      {
+        "id": "desktop-deadlift-a3",
+        "heldBeforeFirstInput": false,
+        "firstPressFrame": 41,
+        "firstMotionFrame": 41,
+        "frameMismatchFraction": 0,
+        "numericMismatchFraction": 0,
+        "inputPlanMatch": true,
+        "browserEnd": "judging",
+        "probeEnd": "judging",
+        "browserPhasePath": "BRACE>ASCENT",
+        "probePhasePath": "BRACE>ASCENT"
+      }
+    ]
+  },
+  "dataHeldBeforeEveryAttempt": [
+    {
+      "beat": "phone-04-squat-brace",
+      "viewport": "phone",
+      "lift": "squat",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP AND HOLD TO DESCEND"
+    },
+    {
+      "beat": "phone-11-squat-brace",
+      "viewport": "phone",
+      "lift": "squat",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP AND HOLD TO DESCEND"
+    },
+    {
+      "beat": "phone-18-squat-brace",
+      "viewport": "phone",
+      "lift": "squat",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP AND HOLD TO DESCEND"
+    },
+    {
+      "beat": "phone-26-bench-brace",
+      "viewport": "phone",
+      "lift": "bench",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP AND HOLD TO LOWER"
+    },
+    {
+      "beat": "phone-34-bench-brace",
+      "viewport": "phone",
+      "lift": "bench",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP AND HOLD TO LOWER"
+    },
+    {
+      "beat": "phone-42-bench-brace",
+      "viewport": "phone",
+      "lift": "bench",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP AND HOLD TO LOWER"
+    },
+    {
+      "beat": "phone-51-deadlift-brace",
+      "viewport": "phone",
+      "lift": "deadlift",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP TO PULL"
+    },
+    {
+      "beat": "phone-58-deadlift-brace",
+      "viewport": "phone",
+      "lift": "deadlift",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP TO PULL"
+    },
+    {
+      "beat": "phone-64-deadlift-brace",
+      "viewport": "phone",
+      "lift": "deadlift",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP TO PULL"
+    },
+    {
+      "beat": "desktop-04-squat-brace",
+      "viewport": "desktop",
+      "lift": "squat",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP AND HOLD TO DESCEND"
+    },
+    {
+      "beat": "desktop-11-squat-brace",
+      "viewport": "desktop",
+      "lift": "squat",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP AND HOLD TO DESCEND"
+    },
+    {
+      "beat": "desktop-18-squat-brace",
+      "viewport": "desktop",
+      "lift": "squat",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP AND HOLD TO DESCEND"
+    },
+    {
+      "beat": "desktop-26-bench-brace",
+      "viewport": "desktop",
+      "lift": "bench",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP AND HOLD TO LOWER"
+    },
+    {
+      "beat": "desktop-34-bench-brace",
+      "viewport": "desktop",
+      "lift": "bench",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP AND HOLD TO LOWER"
+    },
+    {
+      "beat": "desktop-42-bench-brace",
+      "viewport": "desktop",
+      "lift": "bench",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP AND HOLD TO LOWER"
+    },
+    {
+      "beat": "desktop-51-deadlift-brace",
+      "viewport": "desktop",
+      "lift": "deadlift",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP TO PULL"
+    },
+    {
+      "beat": "desktop-58-deadlift-brace",
+      "viewport": "desktop",
+      "lift": "deadlift",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP TO PULL"
+    },
+    {
+      "beat": "desktop-64-deadlift-brace",
+      "viewport": "desktop",
+      "lift": "deadlift",
+      "screen": "play",
+      "held": false,
+      "prompt": "TAP TO PULL"
+    }
+  ],
+  "outcomes": [
+    {
+      "beat": "phone-08-squat-outcome",
+      "screen": "success"
+    },
+    {
+      "beat": "phone-15-squat-outcome",
+      "screen": "success"
+    },
+    {
+      "beat": "phone-22-squat-outcome",
+      "screen": "success"
+    },
+    {
+      "beat": "phone-31-bench-outcome",
+      "screen": "success"
+    },
+    {
+      "beat": "phone-39-bench-outcome",
+      "screen": "success"
+    },
+    {
+      "beat": "phone-47-bench-outcome",
+      "screen": "success"
+    },
+    {
+      "beat": "phone-55-deadlift-outcome",
+      "screen": "success"
+    },
+    {
+      "beat": "phone-61-deadlift-outcome",
+      "screen": "failure"
+    },
+    {
+      "beat": "phone-67-deadlift-outcome",
+      "screen": "failure"
+    },
+    {
+      "beat": "desktop-08-squat-outcome",
+      "screen": "success"
+    },
+    {
+      "beat": "desktop-15-squat-outcome",
+      "screen": "success"
+    },
+    {
+      "beat": "desktop-22-squat-outcome",
+      "screen": "success"
+    },
+    {
+      "beat": "desktop-31-bench-outcome",
+      "screen": "success"
+    },
+    {
+      "beat": "desktop-39-bench-outcome",
+      "screen": "success"
+    },
+    {
+      "beat": "desktop-47-bench-outcome",
+      "screen": "success"
+    },
+    {
+      "beat": "desktop-55-deadlift-outcome",
+      "screen": "success"
+    },
+    {
+      "beat": "desktop-61-deadlift-outcome",
+      "screen": "failure"
+    },
+    {
+      "beat": "desktop-67-deadlift-outcome",
+      "screen": "failure"
+    }
+  ],
+  "grounding": {
+    "verdict": "PASS",
+    "canvasProofs": 128,
+    "canvasProofsFailed": 0,
+    "beatsNotGrounded": 0,
+    "anchorRowsMismatched": 0
+  },
+  "screenshots": [
+    "desktop-04-squat-brace.png",
+    "desktop-08-squat-outcome.png",
+    "desktop-11-squat-brace.png",
+    "desktop-15-squat-outcome.png",
+    "desktop-18-squat-brace.png",
+    "desktop-22-squat-outcome.png",
+    "desktop-23-squat-results.png",
+    "desktop-26-bench-brace.png",
+    "desktop-31-bench-outcome.png",
+    "desktop-34-bench-brace.png",
+    "desktop-39-bench-outcome.png",
+    "desktop-42-bench-brace.png",
+    "desktop-47-bench-outcome.png",
+    "desktop-48-bench-results.png",
+    "desktop-51-deadlift-brace.png",
+    "desktop-55-deadlift-outcome.png",
+    "desktop-58-deadlift-brace.png",
+    "desktop-61-deadlift-outcome.png",
+    "desktop-64-deadlift-brace.png",
+    "desktop-67-deadlift-outcome.png",
+    "desktop-68-deadlift-results.png",
+    "phone-04-squat-brace.png",
+    "phone-08-squat-outcome.png",
+    "phone-11-squat-brace.png",
+    "phone-15-squat-outcome.png",
+    "phone-18-squat-brace.png",
+    "phone-22-squat-outcome.png",
+    "phone-23-squat-results.png",
+    "phone-26-bench-brace.png",
+    "phone-31-bench-outcome.png",
+    "phone-34-bench-brace.png",
+    "phone-39-bench-outcome.png",
+    "phone-42-bench-brace.png",
+    "phone-47-bench-outcome.png",
+    "phone-48-bench-results.png",
+    "phone-51-deadlift-brace.png",
+    "phone-55-deadlift-outcome.png",
+    "phone-58-deadlift-brace.png",
+    "phone-61-deadlift-outcome.png",
+    "phone-64-deadlift-brace.png",
+    "phone-67-deadlift-outcome.png",
+    "phone-68-deadlift-results.png"
+  ]
+}
