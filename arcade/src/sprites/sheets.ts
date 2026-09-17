@@ -187,7 +187,7 @@ export function poseForScreen(screen: Screen, lift: LiftId, progress: number): S
   if (screen === "walkout" || screen === "transition" || screen === "lift" || screen === "attempts") {
     return "walkout";
   }
-  if (screen !== "timing" && screen !== "judging") {
+  if (screen !== "timing" && screen !== "judging" && screen !== "play") {
     return "idle";
   }
   if (lift === "squat") {
@@ -227,4 +227,9 @@ export function frameSrcFor(
   const sheet = effort === "max" ? LIFT_SHEETS_MAX[lift] : LIFT_SHEETS[lift];
   const idx = Math.min(sheet.frameCount - 1, Math.floor(Math.min(1, Math.max(0, progress)) * sheet.frameCount));
   return sheet.frames[idx] ?? sheet.frames[0];
+}
+
+export function walkoutProgress(elapsedMs: number, durationMs: number): number {
+  if (durationMs <= 0) return 1;
+  return Math.min(1, Math.max(0, elapsedMs / durationMs));
 }

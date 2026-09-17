@@ -1,0 +1,21 @@
+{
+  "screen": "play",
+  "source": "288db32c06232bb0fb65ce7236a0614c698a6920",
+  "build": "sprite-sport-20260917",
+  "shell": "sprite-stage",
+  "lift": "deadlift",
+  "phase": "LOCKOUT",
+  "depth": "0.000",
+  "bar": "1.000",
+  "pose": "lock",
+  "frame": "frame-06.png",
+  "worldY": "318",
+  "destY": "0",
+  "prompt": "DON'T LET GO",
+  "press": "false",
+  "lockout": "true",
+  "canvas": true,
+  "depthRail": false,
+  "fableAthlete": false,
+  "heading": null
+}

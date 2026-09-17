@@ -1,0 +1,21 @@
+{
+  "screen": "play",
+  "source": "288db32c06232bb0fb65ce7236a0614c698a6920",
+  "build": "sprite-sport-20260917",
+  "shell": "sprite-stage",
+  "lift": "squat",
+  "phase": "BRACE",
+  "depth": "0.000",
+  "bar": "1.000",
+  "pose": "brace",
+  "frame": "frame-01.png",
+  "worldY": "318",
+  "destY": "1",
+  "prompt": "TAP AND HOLD TO DESCEND",
+  "press": "false",
+  "lockout": "false",
+  "canvas": true,
+  "depthRail": false,
+  "fableAthlete": false,
+  "heading": null
+}
