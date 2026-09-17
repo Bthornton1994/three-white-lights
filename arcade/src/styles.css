@@ -609,7 +609,7 @@ h2 {
   top: 16px;
   left: 0;
   right: 0;
-  z-index: 2;
+  z-index: 3;
 }
 
 .illustrated-lift-still-wrap {
@@ -687,14 +687,19 @@ h2 {
 }
 
 .illustrated-animated-stage .stage-slot {
+  --meet-stage-lights-clearance: 44px;
   position: absolute;
   left: 8px;
   right: 8px;
+  top: var(--meet-stage-lights-clearance);
   bottom: var(--meet-stage-caption-clearance, 52px);
   z-index: 2;
+  container-type: size;
   display: grid;
   grid-template-columns: minmax(64px, 1fr) auto minmax(64px, 1fr);
+  grid-template-rows: auto;
   column-gap: 8px;
+  align-content: end;
   align-items: end;
   pointer-events: none;
 }
@@ -704,9 +709,10 @@ h2 {
   left: auto;
   bottom: auto;
   grid-column: 2;
-  width: min(50vw, 340px);
-  height: auto;
+  width: min(50vw, 340px, 100cqh);
   max-width: 100%;
+  height: auto;
+  aspect-ratio: 1;
   transform: none;
   object-fit: contain;
   object-position: bottom center;
@@ -973,7 +979,7 @@ h2 {
 
 @media (min-width: 860px) {
   .illustrated-animated-stage .stage-slot .stage-lifter {
-    width: min(32vw, 400px);
+    width: min(30vw, 360px, 100cqh);
   }
 
   .squat-depth-gauge {

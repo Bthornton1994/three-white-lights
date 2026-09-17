@@ -1,0 +1,633 @@
+{
+  "fail": [],
+  "report": {
+    "errors": {
+      "phone": [],
+      "desk": []
+    },
+    "live": {
+      "phone": {
+        "walkoutY": 250.265625,
+        "timingY": 250.265625,
+        "judgingY": 250.265625,
+        "walkoutH": 473.265625,
+        "timingH": 473.265625,
+        "judgingH": 473.265625
+      },
+      "desk": {
+        "walkoutY": 68,
+        "timingY": 68,
+        "judgingY": 68,
+        "walkoutH": 447.75,
+        "timingH": 447.75,
+        "judgingH": 447.75
+      }
+    },
+    "frozen": {
+      "phone": {
+        "hole": {
+          "screen": "timing",
+          "runtime": "sprite-frames",
+          "lift": "squat",
+          "frame": "frame-03.png",
+          "pose": "hole",
+          "src": "/sprites/squat/frame-03.png",
+          "depth": "1.000",
+          "phase": "hole",
+          "gaugeInStage": true,
+          "gaugeInSlot": true,
+          "athleteInSlot": true,
+          "overflowX": false,
+          "wrap": {
+            "top": 28,
+            "left": 0,
+            "right": 390,
+            "bottom": 501.265625,
+            "width": 390,
+            "height": 473.265625,
+            "cx": 195,
+            "cy": 264.6328125
+          },
+          "slot": {
+            "top": 72,
+            "left": 8,
+            "right": 382,
+            "bottom": 449.265625,
+            "width": 374,
+            "height": 377.265625,
+            "cx": 195,
+            "cy": 260.6328125
+          },
+          "gauge": {
+            "top": 254.265625,
+            "left": 300.5,
+            "right": 368.5,
+            "bottom": 449.265625,
+            "width": 68,
+            "height": 195,
+            "cx": 334.5,
+            "cy": 351.765625
+          },
+          "athlete": {
+            "top": 254.265625,
+            "left": 97.5,
+            "right": 292.5,
+            "bottom": 449.265625,
+            "width": 195,
+            "height": 195,
+            "cx": 195,
+            "cy": 351.765625
+          },
+          "panel": {
+            "top": 501.265625,
+            "left": 0,
+            "right": 390,
+            "bottom": 844,
+            "width": 390,
+            "height": 342.734375,
+            "cx": 195,
+            "cy": 672.6328125
+          },
+          "label": {
+            "top": 254.265625,
+            "left": 300.5,
+            "right": 368.5,
+            "bottom": 265.140625,
+            "width": 68,
+            "height": 10.875,
+            "cx": 334.5,
+            "cy": 259.703125
+          },
+          "ticks": [
+            {
+              "text": "Stand",
+              "box": {
+                "top": 279.9375,
+                "left": 300.5,
+                "right": 336.5,
+                "bottom": 287.9375,
+                "width": 36,
+                "height": 8,
+                "cx": 318.5,
+                "cy": 283.9375
+              }
+            },
+            {
+              "text": "Drop",
+              "box": {
+                "top": 323.171875,
+                "left": 300.5,
+                "right": 336.5,
+                "bottom": 331.171875,
+                "width": 36,
+                "height": 8,
+                "cx": 318.5,
+                "cy": 327.171875
+              }
+            },
+            {
+              "text": "Drive",
+              "box": {
+                "top": 362.796875,
+                "left": 300.5,
+                "right": 336.5,
+                "bottom": 370.796875,
+                "width": 36,
+                "height": 8,
+                "cx": 318.5,
+                "cy": 366.796875
+              }
+            }
+          ],
+          "legal": {
+            "top": 412.828125,
+            "left": 300.5,
+            "right": 336.5,
+            "bottom": 420.828125,
+            "width": 36,
+            "height": 8,
+            "cx": 318.5,
+            "cy": 416.828125
+          },
+          "marker": {
+            "top": 414.765625,
+            "left": 343.5,
+            "right": 353.5,
+            "bottom": 424.765625,
+            "width": 10,
+            "height": 10,
+            "cx": 348.5,
+            "cy": 419.765625
+          },
+          "rail": {
+            "top": 269.140625,
+            "left": 342.5,
+            "right": 354.5,
+            "bottom": 449.265625,
+            "width": 12,
+            "height": 180.125,
+            "cx": 348.5,
+            "cy": 359.203125
+          },
+          "viewport": {
+            "w": 390,
+            "h": 844
+          }
+        },
+        "ascent": {
+          "screen": "timing",
+          "runtime": "sprite-frames",
+          "lift": "squat",
+          "frame": "frame-04.png",
+          "pose": "drive",
+          "src": "/sprites/squat/frame-04.png",
+          "depth": "0.589",
+          "phase": "ascent",
+          "gaugeInStage": true,
+          "gaugeInSlot": true,
+          "athleteInSlot": true,
+          "overflowX": false,
+          "wrap": {
+            "top": 28,
+            "left": 0,
+            "right": 390,
+            "bottom": 501.265625,
+            "width": 390,
+            "height": 473.265625,
+            "cx": 195,
+            "cy": 264.6328125
+          },
+          "slot": {
+            "top": 72,
+            "left": 8,
+            "right": 382,
+            "bottom": 449.265625,
+            "width": 374,
+            "height": 377.265625,
+            "cx": 195,
+            "cy": 260.6328125
+          },
+          "gauge": {
+            "top": 254.265625,
+            "left": 300.5,
+            "right": 368.5,
+            "bottom": 449.265625,
+            "width": 68,
+            "height": 195,
+            "cx": 334.5,
+            "cy": 351.765625
+          },
+          "athlete": {
+            "top": 254.265625,
+            "left": 97.5,
+            "right": 292.5,
+            "bottom": 449.265625,
+            "width": 195,
+            "height": 195,
+            "cx": 195,
+            "cy": 351.765625
+          },
+          "panel": {
+            "top": 501.265625,
+            "left": 0,
+            "right": 390,
+            "bottom": 844,
+            "width": 390,
+            "height": 342.734375,
+            "cx": 195,
+            "cy": 672.6328125
+          },
+          "label": {
+            "top": 254.265625,
+            "left": 300.5,
+            "right": 368.5,
+            "bottom": 265.140625,
+            "width": 68,
+            "height": 10.875,
+            "cx": 334.5,
+            "cy": 259.703125
+          },
+          "ticks": [
+            {
+              "text": "Stand",
+              "box": {
+                "top": 279.9375,
+                "left": 300.5,
+                "right": 336.5,
+                "bottom": 287.9375,
+                "width": 36,
+                "height": 8,
+                "cx": 318.5,
+                "cy": 283.9375
+              }
+            },
+            {
+              "text": "Drop",
+              "box": {
+                "top": 323.171875,
+                "left": 300.5,
+                "right": 336.5,
+                "bottom": 331.171875,
+                "width": 36,
+                "height": 8,
+                "cx": 318.5,
+                "cy": 327.171875
+              }
+            },
+            {
+              "text": "Drive",
+              "box": {
+                "top": 362.796875,
+                "left": 300.5,
+                "right": 336.5,
+                "bottom": 370.796875,
+                "width": 36,
+                "height": 8,
+                "cx": 318.5,
+                "cy": 366.796875
+              }
+            }
+          ],
+          "legal": {
+            "top": 412.828125,
+            "left": 300.5,
+            "right": 336.5,
+            "bottom": 420.828125,
+            "width": 36,
+            "height": 8,
+            "cx": 318.5,
+            "cy": 416.828125
+          },
+          "marker": {
+            "top": 359.09375,
+            "left": 343.5,
+            "right": 353.5,
+            "bottom": 369.09375,
+            "width": 10,
+            "height": 10,
+            "cx": 348.5,
+            "cy": 364.09375
+          },
+          "rail": {
+            "top": 269.140625,
+            "left": 342.5,
+            "right": 354.5,
+            "bottom": 449.265625,
+            "width": 12,
+            "height": 180.125,
+            "cx": 348.5,
+            "cy": 359.203125
+          },
+          "viewport": {
+            "w": 390,
+            "h": 844
+          }
+        }
+      },
+      "desk": {
+        "hole": {
+          "screen": "timing",
+          "runtime": "sprite-frames",
+          "lift": "squat",
+          "frame": "frame-03.png",
+          "pose": "hole",
+          "src": "/sprites/squat/frame-03.png",
+          "depth": "1.000",
+          "phase": "hole",
+          "gaugeInStage": true,
+          "gaugeInSlot": true,
+          "athleteInSlot": true,
+          "overflowX": false,
+          "wrap": {
+            "top": 28,
+            "left": 0,
+            "right": 1280,
+            "bottom": 475.75,
+            "width": 1280,
+            "height": 447.75,
+            "cx": 640,
+            "cy": 251.875
+          },
+          "slot": {
+            "top": 72,
+            "left": 8,
+            "right": 1272,
+            "bottom": 423.75,
+            "width": 1264,
+            "height": 351.75,
+            "cx": 640,
+            "cy": 247.875
+          },
+          "gauge": {
+            "top": 72,
+            "left": 823.875,
+            "right": 901.875,
+            "bottom": 423.75,
+            "width": 78,
+            "height": 351.75,
+            "cx": 862.875,
+            "cy": 247.875
+          },
+          "athlete": {
+            "top": 72,
+            "left": 464.125,
+            "right": 815.875,
+            "bottom": 423.75,
+            "width": 351.75,
+            "height": 351.75,
+            "cx": 640,
+            "cy": 247.875
+          },
+          "panel": {
+            "top": 475.75,
+            "left": 0,
+            "right": 1280,
+            "bottom": 800,
+            "width": 1280,
+            "height": 324.25,
+            "cx": 640,
+            "cy": 637.875
+          },
+          "label": {
+            "top": 72,
+            "left": 823.875,
+            "right": 901.875,
+            "bottom": 84.484375,
+            "width": 78,
+            "height": 12.484375,
+            "cx": 862.875,
+            "cy": 78.2421875
+          },
+          "ticks": [
+            {
+              "text": "Stand",
+              "box": {
+                "top": 108.59375,
+                "left": 823.875,
+                "right": 865.875,
+                "bottom": 117.546875,
+                "width": 42,
+                "height": 8.953125,
+                "cx": 844.875,
+                "cy": 113.0703125
+              }
+            },
+            {
+              "text": "Drop",
+              "box": {
+                "top": 189.0625,
+                "left": 823.875,
+                "right": 865.875,
+                "bottom": 198.015625,
+                "width": 42,
+                "height": 8.953125,
+                "cx": 844.875,
+                "cy": 193.5390625
+              }
+            },
+            {
+              "text": "Drive",
+              "box": {
+                "top": 262.8125,
+                "left": 823.875,
+                "right": 865.875,
+                "bottom": 271.765625,
+                "width": 42,
+                "height": 8.953125,
+                "cx": 844.875,
+                "cy": 267.2890625
+              }
+            }
+          ],
+          "legal": {
+            "top": 358.9140625,
+            "left": 823.875,
+            "right": 865.875,
+            "bottom": 367.8671875,
+            "width": 42,
+            "height": 8.953125,
+            "cx": 844.875,
+            "cy": 363.390625
+          },
+          "marker": {
+            "top": 364.421875,
+            "left": 873.875,
+            "right": 883.875,
+            "bottom": 374.421875,
+            "width": 10,
+            "height": 10,
+            "cx": 878.875,
+            "cy": 369.421875
+          },
+          "rail": {
+            "top": 88.484375,
+            "left": 871.875,
+            "right": 885.875,
+            "bottom": 423.75,
+            "width": 14,
+            "height": 335.265625,
+            "cx": 878.875,
+            "cy": 256.1171875
+          },
+          "viewport": {
+            "w": 1280,
+            "h": 800
+          }
+        },
+        "ascent": {
+          "screen": "timing",
+          "runtime": "sprite-frames",
+          "lift": "squat",
+          "frame": "frame-04.png",
+          "pose": "drive",
+          "src": "/sprites/squat/frame-04.png",
+          "depth": "0.589",
+          "phase": "ascent",
+          "gaugeInStage": true,
+          "gaugeInSlot": true,
+          "athleteInSlot": true,
+          "overflowX": false,
+          "wrap": {
+            "top": 28,
+            "left": 0,
+            "right": 1280,
+            "bottom": 475.75,
+            "width": 1280,
+            "height": 447.75,
+            "cx": 640,
+            "cy": 251.875
+          },
+          "slot": {
+            "top": 72,
+            "left": 8,
+            "right": 1272,
+            "bottom": 423.75,
+            "width": 1264,
+            "height": 351.75,
+            "cx": 640,
+            "cy": 247.875
+          },
+          "gauge": {
+            "top": 72,
+            "left": 823.875,
+            "right": 901.875,
+            "bottom": 423.75,
+            "width": 78,
+            "height": 351.75,
+            "cx": 862.875,
+            "cy": 247.875
+          },
+          "athlete": {
+            "top": 72,
+            "left": 464.125,
+            "right": 815.875,
+            "bottom": 423.75,
+            "width": 351.75,
+            "height": 351.75,
+            "cx": 640,
+            "cy": 247.875
+          },
+          "panel": {
+            "top": 475.75,
+            "left": 0,
+            "right": 1280,
+            "bottom": 800,
+            "width": 1280,
+            "height": 324.25,
+            "cx": 640,
+            "cy": 637.875
+          },
+          "label": {
+            "top": 72,
+            "left": 823.875,
+            "right": 901.875,
+            "bottom": 84.484375,
+            "width": 78,
+            "height": 12.484375,
+            "cx": 862.875,
+            "cy": 78.2421875
+          },
+          "ticks": [
+            {
+              "text": "Stand",
+              "box": {
+                "top": 108.59375,
+                "left": 823.875,
+                "right": 865.875,
+                "bottom": 117.546875,
+                "width": 42,
+                "height": 8.953125,
+                "cx": 844.875,
+                "cy": 113.0703125
+              }
+            },
+            {
+              "text": "Drop",
+              "box": {
+                "top": 189.0625,
+                "left": 823.875,
+                "right": 865.875,
+                "bottom": 198.015625,
+                "width": 42,
+                "height": 8.953125,
+                "cx": 844.875,
+                "cy": 193.5390625
+              }
+            },
+            {
+              "text": "Drive",
+              "box": {
+                "top": 262.8125,
+                "left": 823.875,
+                "right": 865.875,
+                "bottom": 271.765625,
+                "width": 42,
+                "height": 8.953125,
+                "cx": 844.875,
+                "cy": 267.2890625
+              }
+            }
+          ],
+          "legal": {
+            "top": 358.9140625,
+            "left": 823.875,
+            "right": 865.875,
+            "bottom": 367.8671875,
+            "width": 42,
+            "height": 8.953125,
+            "cx": 844.875,
+            "cy": 363.390625
+          },
+          "marker": {
+            "top": 260.265625,
+            "left": 873.875,
+            "right": 883.875,
+            "bottom": 270.265625,
+            "width": 10,
+            "height": 10,
+            "cx": 878.875,
+            "cy": 265.265625
+          },
+          "rail": {
+            "top": 88.484375,
+            "left": 871.875,
+            "right": 885.875,
+            "bottom": 423.75,
+            "width": 14,
+            "height": 335.265625,
+            "cx": 878.875,
+            "cy": 256.1171875
+          },
+          "viewport": {
+            "w": 1280,
+            "h": 800
+          }
+        }
+      }
+    },
+    "jump": {
+      "phone": 0,
+      "desk": 0
+    }
+  }
+}
