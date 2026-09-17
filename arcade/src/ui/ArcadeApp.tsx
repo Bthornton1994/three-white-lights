@@ -22,6 +22,7 @@ import {
   walkoutDurationMs,
   type SportState,
 } from "../sport/machine.ts";
+import { createHoldPad, type HoldPadController } from "./holdPad.ts";
 import { ResultsCard } from "./ResultsCard.tsx";
 import { shareResultsCard } from "./share.ts";
 import { SpriteStage } from "./SpriteStage.tsx";
@@ -63,7 +64,7 @@ export function ArcadeApp() {
   const cardRef = useRef<HTMLElement>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
-  const heldRef = useRef(false);
+  const padRef = useRef<HoldPadController | null>(null);
 
   useEffect(() => {
     setState((s) => ({ ...s, sessionStreak: initialState(storage()).sessionStreak }));
@@ -72,6 +73,31 @@ export function ArcadeApp() {
   useEffect(() => {
     persistFinishedMeet(state, storage());
   }, [state.screen, state.sessionStreak, state.meet]);
+
+  // The hold pad's one bit of state lives in a controller that also watches
+  // window pointerup / pointercancel, so a finger still down when the lift
+  // resolves (deadlift lockout by design) can never carry into the next attempt.
+  useEffect(() => {
+    const pad = createHoldPad({
+      isLive: () => stateRef.current.screen === "play",
+      onInput: (kind) => {
+        const next = queueInput(stateRef.current, kind);
+        stateRef.current = next;
+        setState(next);
+      },
+      target: window,
+    });
+    padRef.current = pad;
+    return () => {
+      pad.dispose();
+      padRef.current = null;
+    };
+  }, []);
+
+  // Any screen change (resolve, judging, fail, transition, reset, new attempt) forgets a stale hold.
+  useEffect(() => {
+    padRef.current?.screenChanged();
+  }, [state.screen, state.currentAttempt]);
 
   useEffect(() => {
     if (state.screen !== "play") return;
@@ -82,6 +108,7 @@ export function ArcadeApp() {
       last = now;
       const next = stepPlay(stateRef.current, dt);
       if (next !== stateRef.current) {
+        if (next.screen !== "play") padRef.current?.screenChanged();
         stateRef.current = next;
         setState(next);
       }
@@ -117,10 +144,10 @@ export function ArcadeApp() {
   useEffect(() => {
     const delay = reducedMotion() ? 80 : undefined;
     if (state.screen === "walkout") {
-      const id = window.setTimeout(
-        () => setState((s) => startPlay(s)),
-        delay ?? walkoutDurationMs(state),
-      );
+      const id = window.setTimeout(() => {
+        padRef.current?.screenChanged();
+        setState((s) => startPlay(s));
+      }, delay ?? walkoutDurationMs(state));
       return () => window.clearTimeout(id);
     }
     if (state.screen === "judging") {
@@ -146,10 +173,9 @@ export function ArcadeApp() {
     };
     const onUp = (event: KeyboardEvent): void => {
       if (event.code !== "Space" && event.code !== "Enter") return;
-      if (stateRef.current.screen === "play") {
-        event.preventDefault();
-        release();
-      }
+      if (stateRef.current.screen === "play") event.preventDefault();
+      // Always release: a key still down when the lift resolves must not stay held.
+      release();
     };
     window.addEventListener("keydown", onDown);
     window.addEventListener("keyup", onUp);
@@ -166,22 +192,12 @@ export function ArcadeApp() {
   const clockMs = state.screen === "play" ? state.presentMs : presentMs;
 
   const press = (): void => {
-    if (stateRef.current.screen !== "play") return;
-    if (heldRef.current) return;
-    heldRef.current = true;
-    haptic(FEEL.HAPTIC_MS.hit);
-    const next = queueInput(stateRef.current, "press");
-    stateRef.current = next;
-    setState(next);
+    const queued = padRef.current?.down() ?? null;
+    if (queued) haptic(FEEL.HAPTIC_MS.hit);
   };
 
   const release = (): void => {
-    if (!heldRef.current) return;
-    heldRef.current = false;
-    if (stateRef.current.screen !== "play") return;
-    const next = queueInput(stateRef.current, "release");
-    stateRef.current = next;
-    setState(next);
+    padRef.current?.up();
   };
 
   const primary = (): void => {
@@ -369,7 +385,7 @@ export function ArcadeApp() {
                 <button
                   className="btn btn-primary hold-pad"
                   type="button"
-                  data-held={heldRef.current ? "true" : "false"}
+                  data-held={padRef.current?.held ? "true" : "false"}
                   onPointerDown={(event) => {
                     event.preventDefault();
                     press();
@@ -380,7 +396,7 @@ export function ArcadeApp() {
                   }}
                   onPointerCancel={() => release()}
                   onPointerLeave={() => {
-                    if (heldRef.current) release();
+                    if (padRef.current?.held) release();
                   }}
                   onContextMenu={(event) => event.preventDefault()}
                 >
