@@ -693,3 +693,92 @@ h2 {
     animation: none;
   }
 }
+
+.illustrated-still-caption {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 3;
+  margin: 0;
+  padding: 6px 10px;
+  max-width: 36rem;
+  border-radius: 8px;
+  background: rgb(20 17 15 / 0.78);
+  color: var(--color-amber-2);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.illustrated-chip {
+  z-index: 4;
+}
+
+.illustrated-tone-fail .illustrated-lighting {
+  background: linear-gradient(
+    180deg,
+    rgb(184 50 40 / 0.16) 0%,
+    transparent 40%,
+    rgb(20 17 15 / 0.5) 100%
+  );
+}
+
+.illustrated-tone-success .illustrated-lighting {
+  background: linear-gradient(
+    180deg,
+    rgb(243 197 106 / 0.22) 0%,
+    transparent 42%,
+    rgb(20 17 15 / 0.28) 100%
+  );
+}
+
+.illustrated-results-panel {
+  margin-top: 48px;
+}
+
+.results-actions {
+  position: sticky;
+  bottom: 0;
+  padding-top: 8px;
+  padding-bottom: 4px;
+  background: linear-gradient(180deg, transparent, rgb(20 17 15 / 0.92) 28%);
+}
+
+.arcade-root.illustrated-edition {
+  padding-top: 28px;
+}
+
+.illustrated-banner {
+  position: fixed;
+}
+
+@media (min-width: 860px) {
+  .illustrated-results-wrap {
+    grid-template-columns: minmax(240px, 0.9fr) minmax(320px, 1.1fr);
+    align-items: start;
+  }
+
+  .illustrated-results-portrait img {
+    height: 240px;
+  }
+
+  .illustrated-results-panel {
+    margin-top: 36px;
+  }
+
+  .stack.results-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .stack.results-actions .btn {
+    flex: 1 1 180px;
+  }
+
+  .illustrated-still-caption {
+    font-size: 0.78rem;
+  }
+}
+

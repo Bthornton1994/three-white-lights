@@ -45,7 +45,8 @@ No new art was generated. Bytes are copies of the owner attachments. `reference-
 | Timing (deadlift, original designated) | `AI-REF-03` diptych, contain + HUD | Still the original four-screen designated capture. Evidence files `*-timing.png` unchanged. |
 | **Timing (bench, this follow-up)** | **`bench-revised-20260916.png` contain** | Wired. `data-illustrated-file="bench-revised-20260916.png"`. **No `AI-REF-02` request.** Not a frame sequence. LIMITED chip. |
 
-Attempts / walkout / judging / outcome still use the pre-existing PR #70 sprite package on this tip (mixed presentation; out of four-screen scope).
+Attempts / walkout / judging / outcome now reuse approved stills with an illustrated-still caption (see `PLAYABLE_REPORT.md` on the playable follow-up branch). PR #70 sprites are not requested on illustrated screens.
+
 
 ## Browser evidence (this tip)
 
