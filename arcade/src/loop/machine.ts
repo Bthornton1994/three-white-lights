@@ -11,6 +11,7 @@ export type Screen =
   | "attempts"
   | "walkout"
   | "timing"
+  | "play"
   | "judging"
   | "success"
   | "failure"

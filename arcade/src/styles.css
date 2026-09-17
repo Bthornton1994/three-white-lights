@@ -215,6 +215,39 @@ h2 {
   overflow: hidden;
 }
 
+/* Meet play: reserved stage slot so panel chrome cannot move the lifter. */
+.meet-play-screen {
+  --meet-banner-offset: 28px;
+  --meet-chrome-reserve: 268px;
+  --meet-stage-min: 280px;
+  --meet-stage-slot: clamp(
+    var(--meet-stage-min),
+    calc((100dvh - var(--meet-banner-offset)) * 0.58),
+    calc(100dvh - var(--meet-banner-offset) - var(--meet-chrome-reserve))
+  );
+  --meet-stage-caption-clearance: 52px;
+  height: calc(100dvh - var(--meet-banner-offset));
+  min-height: calc(100dvh - var(--meet-banner-offset));
+  max-height: calc(100dvh - var(--meet-banner-offset));
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
+.meet-play-screen .stage-wrap.illustrated-timing-wrap {
+  flex: 0 0 var(--meet-stage-slot);
+  height: var(--meet-stage-slot);
+  min-height: var(--meet-stage-slot);
+  max-height: var(--meet-stage-slot);
+}
+
+.meet-play-screen .panel {
+  margin-top: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .stage-lifter {
   position: absolute;
   left: 50%;
@@ -653,6 +686,38 @@ h2 {
   z-index: 2;
 }
 
+.illustrated-animated-stage .stage-slot {
+  --meet-stage-lights-clearance: 44px;
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: var(--meet-stage-lights-clearance);
+  bottom: var(--meet-stage-caption-clearance, 52px);
+  z-index: 2;
+  container-type: size;
+  display: grid;
+  grid-template-columns: minmax(64px, 1fr) auto minmax(64px, 1fr);
+  grid-template-rows: auto;
+  column-gap: 8px;
+  align-content: end;
+  align-items: end;
+  pointer-events: none;
+}
+
+.illustrated-animated-stage .stage-slot .stage-lifter {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  grid-column: 2;
+  width: min(50vw, 340px, 100cqh);
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  transform: none;
+  object-fit: contain;
+  object-position: bottom center;
+}
+
 .illustrated-animated-stage .illustrated-stage {
   background: transparent;
 }
@@ -796,58 +861,81 @@ h2 {
 }
 
 .squat-depth-gauge {
-  position: absolute;
-  right: 6px;
-  top: 40px;
+  --squat-depth-rail-width: 12px;
+  --squat-depth-legal-top: 72%;
+  --squat-depth-legal-height: 20%;
+  grid-column: 3;
+  justify-self: start;
+  align-self: stretch;
+  position: relative;
   z-index: 6;
-  width: 46px;
-  height: min(52%, 220px);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  width: max-content;
+  max-width: 92px;
+  min-width: 68px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  row-gap: 4px;
   pointer-events: none;
 }
 
 .squat-depth-gauge-label {
   margin: 0;
-  text-align: center;
+  text-align: right;
   font-family: var(--font-display);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--color-amber-2);
+  line-height: 1;
+}
+
+.squat-depth-body {
+  display: grid;
+  grid-template-columns: minmax(36px, max-content) var(--squat-depth-rail-width);
+  column-gap: 6px;
+  align-items: stretch;
+  min-height: 0;
+}
+
+.squat-depth-legend {
+  position: relative;
+  min-width: 36px;
 }
 
 .squat-depth-track {
   position: relative;
-  flex: 1;
-  min-height: 128px;
+  min-height: 0;
   border-radius: 999px;
   border: 1px solid var(--color-border);
   background: rgb(20 17 15 / 0.82);
-  overflow: hidden;
+  overflow: visible;
+}
+
+.squat-depth-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--squat-depth-legal-top);
+  height: var(--squat-depth-legal-height);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--color-amber) 48%, transparent);
 }
 
 .squat-depth-target {
   position: absolute;
-  left: 3px;
-  right: 3px;
-  top: 72%;
-  height: 20%;
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--color-amber) 48%, transparent);
+  left: 0;
+  right: 0;
+  top: calc(var(--squat-depth-legal-top) + var(--squat-depth-legal-height) / 2);
+  transform: translateY(-50%);
   color: var(--color-amber-2);
   font-family: var(--font-display);
-  font-size: 0.52rem;
-  letter-spacing: 0.1em;
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+  text-align: right;
   line-height: 1;
-  padding: 0;
+  white-space: nowrap;
 }
 
 .squat-depth-tick {
@@ -859,27 +947,29 @@ h2 {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-muted);
-  text-align: center;
+  text-align: right;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .squat-depth-tick-stand {
-  top: 5%;
+  top: 6%;
 }
 
 .squat-depth-tick-down {
-  top: 28%;
+  top: 30%;
 }
 
 .squat-depth-tick-ascent {
-  top: 50%;
+  top: 52%;
 }
 
 .squat-depth-marker {
   position: absolute;
   left: 50%;
-  top: calc(10% + var(--squat-depth, 0) * 72%);
-  width: 12px;
-  height: 12px;
+  top: calc(8% + var(--squat-depth, 0) * 76%);
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--color-amber-2);
   box-shadow: 0 0 0 2px rgb(20 17 15 / 0.9);
@@ -888,18 +978,61 @@ h2 {
 }
 
 @media (min-width: 860px) {
+  .illustrated-animated-stage .stage-slot .stage-lifter {
+    width: min(30vw, 360px, 100cqh);
+  }
+
   .squat-depth-gauge {
-    right: 18px;
-    top: 52px;
-    width: 64px;
-    height: min(58%, 300px);
+    max-width: 110px;
+    min-width: 78px;
   }
 
   .squat-depth-gauge-label {
-    font-size: 0.86rem;
+    font-size: 0.78rem;
   }
 
-  .squat-depth-tick {
-    font-size: 0.58rem;
+  .squat-depth-tick,
+  .squat-depth-target {
+    font-size: 0.56rem;
   }
+
+  .squat-depth-body {
+    grid-template-columns: minmax(42px, max-content) 14px;
+  }
+}
+
+.hold-pad {
+  min-height: 72px;
+  width: 100%;
+  touch-action: none;
+  user-select: none;
+  letter-spacing: 0.14em;
+  font-size: 1.15rem;
+}
+.hold-pad[data-held="true"] {
+  background: var(--color-amber);
+  color: var(--color-iron);
+  border-color: var(--color-amber-2);
+}
+.sport-prompt {
+  min-height: 2.4em;
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sport-prompt.command-live { color: var(--color-amber-2); }
+.sport-meta {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.illustrated-animated-stage { --strain: 0; --grind: 0; }
+.illustrated-animated-stage .illustrated-lighting {
+  opacity: calc(var(--illustrated-lighting, 0.28) + var(--strain) * 0.22 + var(--grind) * 0.18);
+}
+.illustrated-animated-stage[data-command-press="true"] .stage-lifter,
+.illustrated-animated-stage[data-command-lockout="true"] .stage-lifter {
+  filter: drop-shadow(0 0 18px color-mix(in oklab, var(--color-amber-2) 55%, transparent));
 }

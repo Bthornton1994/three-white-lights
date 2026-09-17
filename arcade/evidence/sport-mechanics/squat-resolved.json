@@ -1,0 +1,16 @@
+{
+  "screen": "failure",
+  "source": "288db32c06232bb0fb65ce7236a0614c698a6920",
+  "lift": "squat",
+  "phase": "RESOLVED",
+  "depth": "1.314",
+  "bar": "0.000",
+  "strain": "0.210",
+  "grind": "0.000",
+  "pose": "miss",
+  "frame": "frame-04.png",
+  "press": "false",
+  "lockout": "false",
+  "heading": "No lift",
+  "errors": []
+}

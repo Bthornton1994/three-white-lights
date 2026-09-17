@@ -1,0 +1,9 @@
+{
+  "screen": "play",
+  "phase": "DESCENT",
+  "depth": "0.936",
+  "bar": "0.064",
+  "pose": "descend",
+  "frame": "frame-03.png",
+  "prompt": "KEEP DESCENDING"
+}

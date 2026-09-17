@@ -1,0 +1,16 @@
+{
+  "screen": "judging",
+  "source": "288db32c06232bb0fb65ce7236a0614c698a6920",
+  "lift": "deadlift",
+  "phase": "RESOLVED",
+  "depth": "0.003",
+  "bar": "0.997",
+  "strain": "0.214",
+  "grind": "0.000",
+  "pose": "lock",
+  "frame": "frame-06.png",
+  "press": "false",
+  "lockout": "false",
+  "heading": null,
+  "errors": []
+}
