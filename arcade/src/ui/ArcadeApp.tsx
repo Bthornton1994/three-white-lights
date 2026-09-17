@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FEEL, LIFT_COPY, type LiftId } from "../feel.ts";
 import { ILLUSTRATED_EDITION } from "../illustrated/edition.ts";
-import { LIFT_STILLS, RESULTS_BACKDROP, RESULTS_SHEET_ART, TITLE_STILL } from "../illustrated/assets.ts";
+import {
+  LIFT_STILLS,
+  RESULTS_BACKDROP,
+  RESULTS_SHEET_ART,
+  TITLE_STILL,
+} from "../illustrated/assets.ts";
 import { ILLUSTRATED_MOTION } from "../illustrated/motion.ts";
 import { applyProofToState, readProofQuery } from "../illustrated/proof.ts";
+import type { ProofQuery } from "../illustrated/proof.ts";
 import {
   afterJudging,
   backToLiftSelect,
@@ -24,10 +30,14 @@ import { cuesForLift, sequenceDurationMs } from "../loop/timing.ts";
 import { nudgeAttempt } from "../math/attempts.ts";
 import type { JudgeColor } from "../math/types.ts";
 import { ResultsCard } from "./ResultsCard.tsx";
-import { shareResultsCard } from "./share.ts";
-import { IllustratedArt, IllustratedTimingStage, IllustratedTitleArt } from "./IllustratedArt.tsx";
+import { downloadResultsCard, shareResultsCard } from "./share.ts";
+import {
+  IllustratedArt,
+  IllustratedLiftCardArt,
+  IllustratedMeetStage,
+  IllustratedTitleArt,
+} from "./IllustratedArt.tsx";
 import { IllustratedBanner } from "./IllustratedBanner.tsx";
-import { SpriteStage } from "./SpriteStage.tsx";
 import { TimingLane } from "./TimingLane.tsx";
 
 const LIFTS: LiftId[] = ["squat", "bench", "deadlift"];
@@ -56,17 +66,20 @@ function reducedMotion(): boolean {
 }
 
 export function ArcadeApp() {
-  const [state, setState] = useState<ArcadeState>(() => applyProofToState(initialState(null)));
+  const [state, setState] = useState<ArcadeState>(() => initialState(null));
+  const [proof, setProof] = useState<ProofQuery>({ screen: null, freeze: false, lift: null });
   const started = useRef(0);
   const cardRef = useRef<HTMLElement>(null);
-  const proof = readProofQuery();
 
   useEffect(() => {
-    if (proof.screen) {
+    const q = readProofQuery();
+    setProof(q);
+    if (q.screen) {
+      setState(applyProofToState(initialState(storage()), window.location.search));
       return;
     }
     setState((s) => ({ ...s, sessionStreak: initialState(storage()).sessionStreak }));
-  }, [proof.screen]);
+  }, []);
 
   useEffect(() => {
     if (proof.screen) {
@@ -194,8 +207,17 @@ export function ArcadeApp() {
     }
   };
 
+  const meetStage =
+    state.screen === "walkout" ||
+    state.screen === "timing" ||
+    state.screen === "judging" ||
+    state.screen === "success" ||
+    state.screen === "failure" ||
+    state.screen === "transition" ||
+    state.screen === "bomb";
+
   return (
-    <main className="arcade-root illustrated-edition">
+    <main className="arcade-root illustrated-edition" data-legacy-sprites="false">
       <IllustratedBanner />
       {state.screen === "title" ? <TitleScreen onStart={primary} streak={state.sessionStreak} /> : null}
 
@@ -206,6 +228,7 @@ export function ArcadeApp() {
             alt=""
             objectPosition={ILLUSTRATED_MOTION.RESULTS_BACKDROP_POSITION}
             kenBurns
+            file={RESULTS_BACKDROP.file}
           />
           <div className="title-veil" />
           <div className="panel">
@@ -213,7 +236,7 @@ export function ArcadeApp() {
             <h2>Choose a lift</h2>
             <p className="hint">
               Each lift has its own timing. Fatigue stays hidden. Stills are Fable concept
-              references — not dedicated select cards.
+              references — not dedicated select cards, not animation.
             </p>
             <div className="lift-grid">
               {LIFTS.map((id) => (
@@ -223,17 +246,7 @@ export function ArcadeApp() {
                   type="button"
                   onClick={() => setState((s) => chooseLift(s, id))}
                 >
-                  <div className="illustrated-lift-still-wrap">
-                    <img
-                      src={LIFT_STILLS[id].src}
-                      alt=""
-                      data-illustrated-file={LIFT_STILLS[id].file}
-                      style={{ objectPosition: ILLUSTRATED_MOTION.LIFT_CARD_OBJECT_POSITION }}
-                    />
-                    {LIFT_STILLS[id].limited ? (
-                      <span className="illustrated-chip">LIMITED</span>
-                    ) : null}
-                  </div>
+                  <IllustratedLiftCardArt lift={id} />
                   <span>
                     <b>{LIFT_COPY[id].name}</b>
                     {LIFT_COPY[id].cue}
@@ -246,15 +259,12 @@ export function ArcadeApp() {
       ) : null}
 
       {state.screen === "attempts" ? (
-        <section className="arcade-screen">
-          <SpriteStage
+        <section className="arcade-screen" data-proof-screen="attempts" data-illustrated-file={LIFT_STILLS[lift].file}>
+          <IllustratedMeetStage
             lift={lift}
-            screen={state.screen}
+            screen="attempts"
             progress={0.08}
-            clockMs={0}
             lights={["off", "off", "off"]}
-            weightKg={state.attemptsKg[0] ?? 20}
-            e1rmKg={state.e1rmKg}
           />
           <div className="panel">
             <p className="kicker">{LIFT_COPY[lift].checks}</p>
@@ -299,27 +309,14 @@ export function ArcadeApp() {
         </section>
       ) : null}
 
-      {state.screen === "walkout" ||
-      state.screen === "timing" ||
-      state.screen === "judging" ||
-      state.screen === "success" ||
-      state.screen === "failure" ||
-      state.screen === "transition" ||
-      state.screen === "bomb" ? (
-        <section className="arcade-screen" data-proof-screen={state.screen === "timing" ? "timing" : undefined}>
-          {state.screen === "timing" ? (
-            <IllustratedTimingStage lift={lift} progress={progress} lights={lights} />
-          ) : (
-            <SpriteStage
-              lift={lift}
-              screen={state.screen}
-              progress={progress}
-              clockMs={state.timingElapsedMs}
-              lights={lights}
-              weightKg={weight}
-              e1rmKg={state.e1rmKg}
-            />
-          )}
+      {meetStage ? (
+        <section className="arcade-screen" data-proof-screen={state.screen}>
+          <IllustratedMeetStage
+            lift={lift}
+            screen={state.screen}
+            progress={progress}
+            lights={lights}
+          />
           <div className="panel">
             <div className="hud">
               <span>
@@ -400,9 +397,10 @@ export function ArcadeApp() {
             alt=""
             objectPosition={ILLUSTRATED_MOTION.RESULTS_BACKDROP_POSITION}
             kenBurns
+            file={RESULTS_BACKDROP.file}
           />
           <div className="title-veil" />
-          <div className="panel">
+          <div className="panel illustrated-results-panel">
             <p className="kicker">{FEEL.FEDERATION}</p>
             <h2>{state.meet.bombed ? "No total" : "Three white lights"}</h2>
             <div className="score-row">
@@ -425,12 +423,12 @@ export function ArcadeApp() {
             </div>
             <div className="illustrated-results-wrap">
               <div className="illustrated-results-portrait">
-                <img src={RESULTS_SHEET_ART.src} alt="" />
+                <img src={RESULTS_SHEET_ART.src} alt="" data-illustrated-file={RESULTS_SHEET_ART.file} />
                 <span className="illustrated-chip">LIMITED — no dedicated results-card art</span>
               </div>
               <ResultsCard meet={state.meet} ref={cardRef} />
             </div>
-            <div className="stack">
+            <div className="stack results-actions">
               <button
                 className="btn btn-primary"
                 type="button"
@@ -439,6 +437,15 @@ export function ArcadeApp() {
                 }}
               >
                 Share card
+              </button>
+              <button
+                className="btn btn-ghost"
+                type="button"
+                onClick={() => {
+                  void downloadResultsCard(state.meet!);
+                }}
+              >
+                Download PNG
               </button>
               <button
                 className="btn btn-ghost"

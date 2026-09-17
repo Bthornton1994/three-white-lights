@@ -27,8 +27,15 @@ Banners are left intact (no crop-out in the file).
 | --- | --- | --- | --- |
 | Title | `AI-REF-05` in an upper letterbox on phone (`object-fit: contain`); cover on desktop | **WIRED / LIMITED** | No portrait master. Phone uses contain so the “THREE WHITE LIGHTS” lockup stays readable. Hallucinated PRESS START remains in the bitmap. |
 | Lift selection | squat `AI-REF-04`, **bench `bench-revised-20260916.png`**, deadlift `AI-REF-03`. Backdrop: `AI-REF-05`. | **WIRED / LIMITED** | Bench select loads **only** the owner-revised mid-press still. `AI-REF-02` is not loaded on this screen. No dedicated 52-lattice cards. |
-| Results card | Backdrop `AI-REF-05`. Card portrait region: `AI-REF-01` displayed **contain** (whole sheet, not a masked head crop). | **LIMITED** | **No dedicated results-card illustration exists.** Federation sheet layout stays the existing `ResultsCard`. Share PNG is unchanged (no Fable composite). |
-| Timing | Designated original proof: **deadlift** `AI-REF-03`. **Bench timing** uses **only** `bench-revised-20260916.png`. Squat uses `AI-REF-04`. | **WIRED / LIMITED** | No per-frame timing sheets. `AI-REF-02` is not loaded on bench timing. |
+| Results card | Backdrop `AI-REF-05`. Card portrait region: `AI-REF-01` displayed **contain** (whole sheet, not a masked head crop). Share PNG composites those same stills under the paper sheet. | **WIRED / LIMITED** | **No dedicated results-card illustration exists.** Federation numbers still come from `scoreMeet`. |
+| Timing | Designated original proof: **deadlift** `AI-REF-03`. **Bench timing** uses **only** `bench-revised-20260916.png`. Squat uses `AI-REF-04`. | **WIRED / LIMITED** | No per-frame timing sheets. `AI-REF-02` is not loaded on bench timing. Camera pan/zoom only. |
+| Attempts | Lift still: squat `AI-REF-04`, bench revised, deadlift `AI-REF-03` | **WIRED / LIMITED** | Reused lift still. Caption: not an attempt-board scene. **No PR #70 sprites.** |
+| Walkout | Same lift still | **WIRED / LIMITED** | Reused still + Ken Burns. Not a walkout cycle. **No PR #70 sprites.** |
+| Judging | Lift still at lockout camera | **WIRED / LIMITED** | Not a lockout cycle. **No PR #70 sprites.** |
+| Success | Lift still at lockout camera + warm lighting | **WIRED / LIMITED** | Not a celebration loop. **No PR #70 sprites.** |
+| Failure | Lift still at mid-lift camera + cooler vignette | **WIRED / LIMITED** | Not a miss cycle. **No PR #70 sprites.** |
+| Transition | Lift still at setup camera | **WIRED / LIMITED** | Not a plate-change scene. **No PR #70 sprites.** |
+| Bomb | Title hall `AI-REF-05` reused | **WIRED / LIMITED** | No dedicated bomb art. Caption says so. **No PR #70 sprites.** |
 
 ## Not wired (and why)
 
@@ -39,10 +46,10 @@ Banners are left intact (no crop-out in the file).
 | `baseline/desktop-1280x800-attempts-clip.png` | Screenshot of the old loop, not Fable concept art. |
 | Any PR #72 sprite / lattice export | Wrong quality target. Not present on this tip. |
 | New generated images | Forbidden. Owner-supplied bench revisions live under `illustrated-direct-use/assets/`, not in the Fable SoT folder. |
-| `AI-REF-02` on bench select/timing | Superseded by `bench-revised-20260916.png`. Original file is preserved, not loaded on those two screens. |
+| `AI-REF-02` on bench select/timing/attempts/walkout | Superseded by `bench-revised-20260916.png`. Original file is preserved, not loaded on those screens. |
+| `arcade/public/sprites/` on illustrated screens | Silent fallback **removed**. Sprite files remain on disk for hash tests only and are not requested by ArcadeApp. |
 
-## Screens outside proof scope
+## Screens outside four-screen proof — now wired as still reuse
 
-Attempts, walkout, judging, success, failure, transition, and bomb still render
-the pre-existing `arcade/public/sprites/` package from the PR #70 parent chain
-that this tip already ships. That is mixed presentation, recorded as a gap.
+Attempts, walkout, judging, success, failure, transition, and bomb **reuse approved stills** with an `illustrated-still` caption. They are not animation. Independent QA should not treat camera pan as a frame sequence.
+

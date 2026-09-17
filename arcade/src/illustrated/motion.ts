@@ -15,6 +15,9 @@ export const ILLUSTRATED_MOTION = {
   RESULTS_SHEET_OBJECT_FIT: "contain" as const,
   VIGNETTE_OPACITY: 0.62,
   LIGHTING_AMBER_OPACITY: 0.18,
+  FAIL_VIGNETTE_OPACITY: 0.78,
+  FAIL_LIGHTING_OPACITY: 0.08,
+  SUCCESS_LIGHTING_OPACITY: 0.28,
   TIMING_ZOOM_FROM: 1,
   TIMING_ZOOM_TO: 1.06,
   /** object-position x% for diptych left panel (setup / light). */

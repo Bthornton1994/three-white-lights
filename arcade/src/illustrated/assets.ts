@@ -1,4 +1,7 @@
 import type { LiftId } from "../feel.ts";
+import type { Screen } from "../loop/machine.ts";
+import type { IllustratedCamera } from "./motion.ts";
+import { ILLUSTRATED_MOTION, timingCamera } from "./motion.ts";
 
 /**
  * Direct-use map onto existing Fable PR #71 stills, plus owner-revised
@@ -102,6 +105,8 @@ export const BENCH_RACKED_NOT_SELECTED: IllustratedStill = {
 export const TITLE_STILL = FABLE_STILLS.title;
 export const RESULTS_BACKDROP = FABLE_STILLS.title;
 export const RESULTS_SHEET_ART = FABLE_STILLS.modelSheet;
+export const SHARE_BACKDROP = FABLE_STILLS.title;
+export const SHARE_PORTRAIT = FABLE_STILLS.modelSheet;
 
 export const LIFT_STILLS: Record<LiftId, IllustratedStill> = {
   squat: FABLE_STILLS.squat,
@@ -122,4 +127,93 @@ export const FABLE_STILL_LIST: readonly IllustratedStill[] = [
 
 export function isLegacyBenchSrc(src: string): boolean {
   return src.includes("AI-REF-02-BENCH-THREE-QUARTER");
+}
+
+export function isLegacySpriteSrc(src: string): boolean {
+  return src.startsWith("/sprites/") || src.includes("/public/sprites/");
+}
+
+/**
+ * Honest still reuse for screens that have no dedicated illustration.
+ * Bomb uses the title hall. Every other meet screen uses the lift still.
+ * Never returns a PR #70 sprite path.
+ */
+export function stillForScreen(screen: Screen, lift: LiftId): IllustratedStill {
+  if (screen === "title" || screen === "lift" || screen === "results" || screen === "bomb") {
+    return TITLE_STILL;
+  }
+  return LIFT_STILLS[lift];
+}
+
+export function captionForScreen(screen: Screen, lift: LiftId): string {
+  const name = lift[0]?.toUpperCase() + lift.slice(1);
+  switch (screen) {
+    case "attempts":
+      return `Illustrated still · ${name} — not an attempt-board scene`;
+    case "walkout":
+      return `Illustrated still · ${name} — not a walkout cycle`;
+    case "timing":
+      return `Illustrated still · ${name} — camera pan only, not frames`;
+    case "judging":
+      return `Illustrated still · ${name} — not a lockout cycle`;
+    case "success":
+      return `Illustrated still · ${name} — not a celebration loop`;
+    case "failure":
+      return `Illustrated still · ${name} — not a miss cycle`;
+    case "transition":
+      return `Illustrated still · ${name} — not a plate-change scene`;
+    case "bomb":
+      return "Illustrated still · title hall reused — no bomb art";
+    case "results":
+      return "Illustrated still · no dedicated results-card art";
+    default:
+      return "Illustrated still";
+  }
+}
+
+export function chipForScreen(screen: Screen): string {
+  switch (screen) {
+    case "timing":
+      return "LIMITED — still, not frames";
+    case "success":
+      return "LIMITED — still · not a success sequence";
+    case "failure":
+    case "bomb":
+      return "LIMITED — still · not a miss sequence";
+    default:
+      return "LIMITED — illustrated still";
+  }
+}
+
+export function cameraForScreen(
+  screen: Screen,
+  lift: LiftId,
+  progress: number,
+): IllustratedCamera {
+  if (screen === "bomb" || screen === "results" || screen === "lift" || screen === "title") {
+    return {
+      objectPosition: ILLUSTRATED_MOTION.RESULTS_BACKDROP_POSITION,
+      scale: screen === "bomb" ? 1.04 : 1,
+    };
+  }
+  if (screen === "attempts" || screen === "walkout" || screen === "transition") {
+    return timingCamera(lift, 0.08);
+  }
+  if (screen === "failure") {
+    return timingCamera(lift, 0.72);
+  }
+  if (screen === "judging" || screen === "success") {
+    return timingCamera(lift, 1);
+  }
+  return timingCamera(lift, progress);
+}
+
+export function kenBurnsForScreen(screen: Screen): boolean {
+  return (
+    screen === "walkout" ||
+    screen === "success" ||
+    screen === "transition" ||
+    screen === "bomb" ||
+    screen === "attempts"
+  );
 }

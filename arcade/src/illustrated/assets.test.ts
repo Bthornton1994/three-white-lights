@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
+import type { LiftId } from "../feel.ts";
+import type { Screen } from "../loop/machine.ts";
 import {
   BENCH_RACKED_NOT_SELECTED,
   BENCH_REVISED,
@@ -9,8 +11,35 @@ import {
   FABLE_STILLS,
   LIFT_STILLS,
   TITLE_STILL,
+  cameraForScreen,
+  captionForScreen,
   isLegacyBenchSrc,
+  isLegacySpriteSrc,
+  stillForScreen,
 } from "./assets.ts";
+
+const MEET_SCREENS: Screen[] = [
+  "title",
+  "lift",
+  "attempts",
+  "walkout",
+  "timing",
+  "judging",
+  "success",
+  "failure",
+  "transition",
+  "bomb",
+  "results",
+];
+const LIFTS: LiftId[] = ["squat", "bench", "deadlift"];
+
+function appPath(rel: string): string {
+  for (const root of ["src", "src/arcade"]) {
+    const candidate = `${root}/${rel}`;
+    if (existsSync(candidate)) return candidate;
+  }
+  throw new Error(`missing ${rel}`);
+}
 
 describe("illustrated Fable stills", () => {
   it("hash-locks the five existing concept-fable reference-ai files without overwriting them", () => {
@@ -61,12 +90,40 @@ describe("illustrated Fable stills", () => {
   });
 
   it("does not load AI-REF-02 from bench select or timing source", () => {
-    const arcade = readFileSync("src/ui/ArcadeApp.tsx", "utf8");
-    const art = readFileSync("src/ui/IllustratedArt.tsx", "utf8");
+    const arcade = readFileSync(appPath("ui/ArcadeApp.tsx"), "utf8");
+    const art = readFileSync(appPath("ui/IllustratedArt.tsx"), "utf8");
     assert.equal(arcade.includes("AI-REF-02"), false);
     assert.equal(art.includes("AI-REF-02"), false);
     assert.equal(arcade.includes("benchOriginal"), false);
     assert.equal(art.includes("benchOriginal"), false);
-    assert.match(art, /LIFT_STILLS\[lift\]/);
+    assert.match(art, /stillForScreen/);
+  });
+
+  it("never maps a proof screen onto a PR #70 sprite path", () => {
+    for (const screen of MEET_SCREENS) {
+      for (const lift of LIFTS) {
+        const still = stillForScreen(screen, lift);
+        assert.equal(isLegacySpriteSrc(still.src), false, `${screen}/${lift}`);
+        assert.equal(still.src.includes("/sprites/"), false, `${screen}/${lift}`);
+        assert.equal(isLegacyBenchSrc(still.src), false, `${screen}/${lift}`);
+      }
+    }
+    assert.equal(stillForScreen("attempts", "bench").file, "bench-revised-20260916.png");
+    assert.equal(stillForScreen("timing", "bench").file, "bench-revised-20260916.png");
+    assert.equal(stillForScreen("walkout", "bench").file, "bench-revised-20260916.png");
+    assert.equal(stillForScreen("success", "squat").file, FABLE_STILLS.squat.file);
+    assert.equal(stillForScreen("bomb", "deadlift").file, TITLE_STILL.file);
+    assert.match(captionForScreen("timing", "deadlift"), /not frames/i);
+    assert.match(captionForScreen("bomb", "squat"), /title hall/i);
+  });
+
+  it("keeps diptych camera honest: start left, finish right, bench zoom-only", () => {
+    const start = cameraForScreen("timing", "deadlift", 0);
+    const end = cameraForScreen("success", "deadlift", 1);
+    assert.equal(start.objectPosition.startsWith("22%"), true);
+    assert.equal(end.objectPosition.startsWith("78%"), true);
+    const benchStart = cameraForScreen("timing", "bench", 0);
+    const benchEnd = cameraForScreen("timing", "bench", 1);
+    assert.equal(benchStart.objectPosition, benchEnd.objectPosition);
   });
 });

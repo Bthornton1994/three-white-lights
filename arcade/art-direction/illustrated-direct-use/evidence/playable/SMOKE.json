@@ -1,0 +1,47 @@
+{
+  "pageerrors": [],
+  "console": [],
+  "network": [
+    {
+      "name": "phone",
+      "net": [
+        "/illustrated/fable-20260916/AI-REF-05-TITLE-SCREEN.png",
+        "/src/arcade/illustrated/edition.ts?t=1789612518116",
+        "/src/arcade/illustrated/assets.ts?t=1789612518121",
+        "/src/arcade/illustrated/motion.ts?t=1789612518121",
+        "/src/arcade/illustrated/proof.ts?t=1789612518126",
+        "/illustrated/fable-20260916/AI-REF-04-SQUAT-HOLE-LIGHT-VS-MAX.png",
+        "/illustrated/direct-use/bench-revised-20260916.png",
+        "/illustrated/fable-20260916/AI-REF-03-DEADLIFT-SETUP-LOCKOUT-MAX.png",
+        "/illustrated/fable-20260916/AI-REF-01-MODEL-SHEET.png"
+      ]
+    },
+    {
+      "name": "desk",
+      "net": [
+        "/illustrated/fable-20260916/AI-REF-05-TITLE-SCREEN.png",
+        "/src/arcade/illustrated/edition.ts?t=1789612518116",
+        "/src/arcade/illustrated/assets.ts?t=1789612518121",
+        "/src/arcade/illustrated/motion.ts?t=1789612518121",
+        "/src/arcade/illustrated/proof.ts?t=1789612518126",
+        "/illustrated/fable-20260916/AI-REF-04-SQUAT-HOLE-LIGHT-VS-MAX.png",
+        "/illustrated/direct-use/bench-revised-20260916.png",
+        "/illustrated/fable-20260916/AI-REF-03-DEADLIFT-SETUP-LOCKOUT-MAX.png",
+        "/illustrated/fable-20260916/AI-REF-01-MODEL-SHEET.png"
+      ]
+    }
+  ],
+  "views": [
+    {
+      "name": "phone-results",
+      "hasShare": true,
+      "hasDownload": true,
+      "ov": {
+        "w": 390,
+        "h": 844,
+        "scrollWidth": 390,
+        "overflowX": false
+      }
+    }
+  ]
+}
