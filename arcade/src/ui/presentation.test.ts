@@ -48,7 +48,7 @@ describe("sprite stage presentation", () => {
     assert.match(css, /@media \(min-width: 860px\)[\s\S]*?width: 640px/);
     assert.match(
       css,
-      /@media \(min-width: 1100px\) and \(min-height: 960px\)[\s\S]*?width: 960px/,
+      /@media \(min-width: 1100px\) and \(min-height: 1120px\)[\s\S]*?width: 960px/,
     );
     // Ungated 3× at min-width 1100px would clip lockout at 1280×800.
     assert.equal(/@media \(min-width: 1100px\) \{[\s\S]*?width: 960px/.test(css), false);

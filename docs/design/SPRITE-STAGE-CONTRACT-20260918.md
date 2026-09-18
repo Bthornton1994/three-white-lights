@@ -48,10 +48,10 @@ viewport width but clips ~120 source pixels — squat lockout `minY≈60`,
 deadlift lockout `minY=31`, success `minY=2`. PR #85 used **3× at ≥1100px**
 and accepted the ceiling clip as the trade against the gutter line.
 
-This slice **falls back to 2× when height < 960** so the complete cell stays
-on screen. The 0.50 gutter at 1280×800 is therefore a standing REVIEW, not a
-threshold edit. Stretching the 320 cell to 1280×800 would be a non-uniform
-scale and is still rejected.
+This slice **falls back to 2× when height < 1120** so the complete cell and
+the stacked HUD stay on screen. The 0.50 gutter at 1280×800 is therefore a
+standing REVIEW, not a threshold edit. Stretching the 320 cell to 1280×800
+would be a non-uniform scale and is still rejected.
 
 ## Desktop scale fallback (this slice — not a document ruling)
 
@@ -69,11 +69,13 @@ This slice:
 | 390×844 | 1× | 320 | n/a (phone) | none |
 | 1280×800 | **2×** | 640 | **0.50** (REVIEW vs 0.45) | none |
 | 1440×900 | **2×** | 640 | 0.556 | none |
-| 1280×1000 | **3×** | 960 | 0.25 | none (960 ≤ 1000) |
+| 1280×1000 | **2×** | 640 | **0.50** (REVIEW vs 0.45) | none |
+| ≥1100×1120 | **3×** | 960 | depends on width | none |
 
-3× is gated on `min-width: 1100px` **and** `min-height: 960px` so the complete
-320×320 cell fits. 2× is the fallback when 3× would crop. No non-integer
-scale, no stretch, no smoothing, no analyzer-threshold edit.
+3× is gated on `min-width: 1100px` **and** `min-height: 1120px` so the complete
+320×320 cell and the stacked HUD both fit. 2× is the fallback when 3× would
+crop the lift or push the hold pad off-screen. No non-integer scale, no
+stretch, no smoothing, no analyzer-threshold edit.
 
 The wider gutter at 1280×800 is an honest **REVIEW** tradeoff against clipping
 the lift. Independent QA may later accept 2× gutters, raise the 0.45 line, or
