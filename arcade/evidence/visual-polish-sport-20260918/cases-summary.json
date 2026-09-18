@@ -1,0 +1,94 @@
+{
+  "runId": "a599b11e-2026-09-18T19-28-38-303Z",
+  "overall": "REVIEW",
+  "targetSha": "a599b11e80fdfdfa82982feb1e46405e727fb475",
+  "servedUrl": "http://127.0.0.1:41469",
+  "analyzers": {
+    "source-identity": {
+      "verdict": "PASS",
+      "flags": []
+    },
+    "served-identity": {
+      "verdict": "PASS",
+      "flags": []
+    },
+    "existing-tests": {
+      "verdict": "PASS",
+      "flags": []
+    },
+    "mechanics-frame-parity": {
+      "verdict": "PASS",
+      "flags": []
+    },
+    "attempt-matrix": {
+      "verdict": "PASS",
+      "flags": []
+    },
+    "sprite-grounding": {
+      "verdict": "PASS",
+      "flags": []
+    },
+    "design-intent": {
+      "verdict": "PASS",
+      "flags": []
+    },
+    "preview-regression": {
+      "verdict": "REVIEW",
+      "flags": [
+        "EVIDENCE_PIXEL_DRIFT:title-390",
+        "EVIDENCE_PIXEL_DRIFT:title-1280",
+        "EVIDENCE_PIXEL_DRIFT:select-390",
+        "EVIDENCE_PIXEL_DRIFT:squat-brace-1280"
+      ]
+    },
+    "document-contract-conflict": {
+      "verdict": "REVIEW",
+      "flags": [
+        "DOCUMENT_CONTRACT_CONFLICT",
+        "IRON_AMBER_DOC_ABSENT_AT_TARGET"
+      ]
+    },
+    "flow": {
+      "verdict": "ABSTAIN",
+      "flags": [
+        "NOT_IMPLEMENTED"
+      ]
+    },
+    "balance": {
+      "verdict": "ABSTAIN",
+      "flags": [
+        "NOT_IMPLEMENTED"
+      ]
+    },
+    "input-fairness": {
+      "verdict": "ABSTAIN",
+      "flags": [
+        "NOT_IMPLEMENTED"
+      ]
+    },
+    "progression": {
+      "verdict": "ABSTAIN",
+      "flags": [
+        "NOT_IMPLEMENTED"
+      ]
+    },
+    "playtest": {
+      "verdict": "ABSTAIN",
+      "flags": [
+        "NOT_IMPLEMENTED",
+        "HUMAN_PLAYTEST_REQUIRED"
+      ]
+    }
+  },
+  "attemptMatrix": {
+    "caseCount": 18,
+    "heldLeaks": 0,
+    "firstPressRejected": 0,
+    "overflowCases": 0,
+    "consoleErrorEvents": 0,
+    "ungroundedCases": 0,
+    "framesCompared": 4140,
+    "frameMismatchTotal": 0,
+    "deadliftMissMatchesMechanics": 4
+  }
+}
