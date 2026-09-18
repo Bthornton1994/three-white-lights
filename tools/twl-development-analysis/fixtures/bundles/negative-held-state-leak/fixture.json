@@ -1,0 +1,13 @@
+{
+  "derivedFrom": "good-sprite-stage",
+  "mutation": "The hold pad's held flag stays true after attempt 1 resolves with the pointer down, so attempts 2 and 3 start with data-held=true and their first press is swallowed.",
+  "tracesKept": [
+    "phone-squat-a1",
+    "phone-squat-a2",
+    "phone-squat-a3",
+    "phone-bench-a1",
+    "phone-deadlift-a1"
+  ],
+  "maxFrames": 100,
+  "facts": "../good-sprite-stage/facts.json"
+}

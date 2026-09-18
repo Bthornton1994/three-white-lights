@@ -182,11 +182,16 @@ async function main(): Promise<void> {
   }
 
   if (machine && frames && sheets && scripts) {
-    const plans: { lift: string; attempts: number }[] = [
-      { lift: "squat", attempts: 3 },
-      { lift: "bench", attempts: 1 },
-      { lift: "deadlift", attempts: 1 },
-    ];
+    const attemptsFlag = arg("attempts-per-lift");
+    const attemptsPerLift = attemptsFlag ? Number.parseInt(attemptsFlag, 10) : null;
+    const plans: { lift: string; attempts: number }[] =
+      attemptsPerLift && Number.isInteger(attemptsPerLift) && attemptsPerLift >= 1
+        ? ["squat", "bench", "deadlift"].map((lift) => ({ lift, attempts: attemptsPerLift }))
+        : [
+            { lift: "squat", attempts: 3 },
+            { lift: "bench", attempts: 1 },
+            { lift: "deadlift", attempts: 1 },
+          ];
     for (const plan of plans) {
       try {
         let state = machine.chooseLift(machine.initialState(null), plan.lift);

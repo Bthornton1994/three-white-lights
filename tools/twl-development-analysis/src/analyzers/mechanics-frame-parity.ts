@@ -93,7 +93,10 @@ export const mechanicsFrameParity: Analyzer = {
       f.metric(`${label}.heldBeforeFirstInput`, firstSample?.held ?? null);
       f.metric(`${label}.firstPressFrame`, firstPress);
       f.metric(`${label}.firstMotionFrame`, firstMotion);
+      const firstPressAccepted = (trace.firstPressAccepted ?? (firstSample?.held !== true && trace.inputPlan.some((i) => i.kind === "press")));
+      f.metric(`${label}.firstPressAccepted`, firstPressAccepted);
       f.check(firstSample?.held !== true, `INPUT_HELD_STATE_LEAK:${label}`);
+      f.check(firstPressAccepted === true, `FIRST_PRESS_REJECTED:${label}`);
       const bPath = phasePath(samples.map((s) => s.phase));
       const pPath = phasePath(pt.frames.filter((r) => r.screen === "play").map((r) => r.phase));
       f.metric(`${label}.browserPhasePath`, bPath.join(">"));

@@ -1,6 +1,6 @@
 {
   "name": "twl-development-analysis",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Read-only development analysis layer for Three White Lights. Detects mismatches between product intent, the frozen lift mechanics, the sprite presentation, the Iron & Amber visual system, and the actual browser build. Never shipped in the game runtime.",
   "type": "module",

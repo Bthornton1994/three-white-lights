@@ -1,0 +1,2298 @@
+{
+  "schemaVersion": 1,
+  "runId": "b80d6a05-2026-09-18T14-50-55-427Z",
+  "generatedAt": "2026-09-18T14:50:55.427Z",
+  "overall": "REVIEW",
+  "humanApprovalRequired": true,
+  "source": {
+    "targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+    "presentationBaseSha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+    "mechanicsSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+    "servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+    "servedUrl": "http://127.0.0.1:44579"
+  },
+  "provider": {
+    "name": "twl-development-analysis",
+    "version": "0.2.0",
+    "engine": "deterministic-rules",
+    "node": "v22.23.2",
+    "playwright": "1.56.1",
+    "browser": "141.0.7390.37"
+  },
+  "decisions": [
+    {
+      "schemaVersion": 1,
+      "id": "source-identity",
+      "title": "Source identity and protected-file hashes",
+      "verdict": "PASS",
+      "confidence": 0.99,
+      "flags": [],
+      "metrics": {
+        "targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "worktreeHead": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "authority.src/game/lift.ts": "4dc74947ffc64f1af36da92c01a7cfb53d3f021b802cba31f67c3ecdcb24e417",
+        "authority.src/game/liftTuning.ts": "ef920d59eecdb5ac698f7515a1efe4af1c7ee0e38f9079f7f9cd6deace441f2a",
+        "target.arcade/src/game/lift.ts": "4dc74947ffc64f1af36da92c01a7cfb53d3f021b802cba31f67c3ecdcb24e417",
+        "target.arcade/src/game/liftTuning.ts": "ef920d59eecdb5ac698f7515a1efe4af1c7ee0e38f9079f7f9cd6deace441f2a",
+        "target.arcade/src/feel.ts": "b26c21b520d17a8e87e6abac17661fc219870a2320a376b5b1b1adfe0bc2425c",
+        "edition.MECHANICS_SHA": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "edition.BASE_SHA": "1151569c40c77485ab9e9299e5db0db022437a8a",
+        "edition.PREVIEW_BUILD": "sprite-sport-20260917",
+        "edition.PRODUCTION_READY": false,
+        "spriteFilesChangedVsReference": 0,
+        "npmCiExit": 0,
+        "buildExit": 0
+      },
+      "evidence": [
+        {
+          "kind": "git",
+          "ref": "288db32c06232bb0fb65ce7236a0614c698a6920:src/game/lift.ts",
+          "sha256": "4dc74947ffc64f1af36da92c01a7cfb53d3f021b802cba31f67c3ecdcb24e417"
+        },
+        {
+          "kind": "git",
+          "ref": "288db32c06232bb0fb65ce7236a0614c698a6920:src/game/liftTuning.ts",
+          "sha256": "ef920d59eecdb5ac698f7515a1efe4af1c7ee0e38f9079f7f9cd6deace441f2a"
+        },
+        {
+          "kind": "file",
+          "ref": "arcade/src/game/lift.ts",
+          "sha256": "4dc74947ffc64f1af36da92c01a7cfb53d3f021b802cba31f67c3ecdcb24e417"
+        },
+        {
+          "kind": "file",
+          "ref": "arcade/src/game/liftTuning.ts",
+          "sha256": "ef920d59eecdb5ac698f7515a1efe4af1c7ee0e38f9079f7f9cd6deace441f2a"
+        },
+        {
+          "kind": "file",
+          "ref": "arcade/src/feel.ts",
+          "sha256": "b26c21b520d17a8e87e6abac17661fc219870a2320a376b5b1b1adfe0bc2425c"
+        },
+        {
+          "kind": "file",
+          "ref": "arcade/src/sprites/edition.ts"
+        },
+        {
+          "kind": "git",
+          "ref": "diff 1151569c40c77485ab9e9299e5db0db022437a8a..b80d6a0527eafb6c93afc43f63aad71c509fd277 -- arcade/public/sprites"
+        }
+      ],
+      "source": {
+        "targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "presentationBaseSha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+        "mechanicsSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedUrl": "http://127.0.0.1:44579"
+      },
+      "provider": {
+        "name": "twl-development-analysis",
+        "version": "0.2.0",
+        "engine": "deterministic-rules",
+        "node": "v22.23.2",
+        "playwright": "1.56.1",
+        "browser": "141.0.7390.37"
+      },
+      "humanApprovalRequired": false,
+      "summary": "Mechanics files match both the pinned hashes and the authority commit; sprite art is unchanged from the reference.",
+      "generatedAt": "2026-09-18T14:53:01.623Z"
+    },
+    {
+      "schemaVersion": 1,
+      "id": "served-identity",
+      "title": "Served build identity and stale-preview rejection",
+      "verdict": "PASS",
+      "confidence": 0.98,
+      "flags": [],
+      "metrics": {
+        "servedUrl": "http://127.0.0.1:44579",
+        "servedScriptSha256": "b538467d1044fea474493d3db9c2c4422454a701fc405c0f037ec15883238b3f",
+        "freshBuildScriptSha256": "b538467d1044fea474493d3db9c2c4422454a701fc405c0f037ec15883238b3f",
+        "servedSpritesChecked": 52,
+        "servedSpritesDifferFromWorktree": 0,
+        "servedSpritesDifferFromReference": 0,
+        "beats": 138,
+        "beatsMissingServedSha": 0,
+        "beatsWithMismatchedServedSha": 0,
+        "beatsWithWrongVisualShell": 0,
+        "previewBuild": "sprite-sport-20260917",
+        "servedPort": 44579,
+        "provenance.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "provenance.port": 44579
+      },
+      "evidence": [
+        {
+          "kind": "url",
+          "ref": "http://127.0.0.1:44579",
+          "sha256": "fa9881467745f1e7806d6a9b3fe8e910a729e0cf401ec3023ac2263bbb73741d",
+          "note": "index.html"
+        },
+        {
+          "kind": "url",
+          "ref": "http://127.0.0.1:44579/__provenance.json",
+          "note": "analysis-server provenance"
+        }
+      ],
+      "source": {
+        "targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "presentationBaseSha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+        "mechanicsSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedUrl": "http://127.0.0.1:44579"
+      },
+      "provider": {
+        "name": "twl-development-analysis",
+        "version": "0.2.0",
+        "engine": "deterministic-rules",
+        "node": "v22.23.2",
+        "playwright": "1.56.1",
+        "browser": "141.0.7390.37"
+      },
+      "humanApprovalRequired": false,
+      "summary": "The served page is this run's fresh build and every screen declares the configured mechanics and base SHAs.",
+      "generatedAt": "2026-09-18T14:53:01.625Z"
+    },
+    {
+      "schemaVersion": 1,
+      "id": "existing-tests",
+      "title": "Target's own test suites",
+      "verdict": "PASS",
+      "confidence": 0.95,
+      "flags": [],
+      "metrics": {
+        "exit:npm test": 0
+      },
+      "evidence": [
+        {
+          "kind": "command",
+          "ref": "npm test",
+          "note": "exit 0 in 5171 ms"
+        }
+      ],
+      "source": {
+        "targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "presentationBaseSha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+        "mechanicsSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedUrl": "http://127.0.0.1:44579"
+      },
+      "provider": {
+        "name": "twl-development-analysis",
+        "version": "0.2.0",
+        "engine": "deterministic-rules",
+        "node": "v22.23.2",
+        "playwright": "1.56.1",
+        "browser": "141.0.7390.37"
+      },
+      "humanApprovalRequired": false,
+      "summary": "The target's node tests, sprite QA and vitest parity suite all exited 0 in this run.",
+      "generatedAt": "2026-09-18T14:53:01.625Z"
+    },
+    {
+      "schemaVersion": 1,
+      "id": "mechanics-frame-parity",
+      "title": "Mechanics-to-frame parity",
+      "verdict": "PASS",
+      "confidence": 0.97,
+      "flags": [],
+      "metrics": {
+        "phone-squat-a1.samples": 155,
+        "phone-squat-a1.heldBeforeFirstInput": false,
+        "phone-squat-a1.firstPressFrame": 29,
+        "phone-squat-a1.firstMotionFrame": 29,
+        "phone-squat-a1.firstPressAccepted": true,
+        "phone-squat-a1.browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-squat-a1.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-squat-a1.browserEnd": "judging",
+        "phone-squat-a1.probeEnd": "judging",
+        "phone-squat-a1.inputPlanMatch": true,
+        "phone-squat-a1.frameMismatchFraction": 0,
+        "phone-squat-a1.numericMismatchFraction": 0,
+        "phone-squat-a1.laggedFraction": 0,
+        "phone-squat-a2.samples": 167,
+        "phone-squat-a2.heldBeforeFirstInput": false,
+        "phone-squat-a2.firstPressFrame": 31,
+        "phone-squat-a2.firstMotionFrame": 31,
+        "phone-squat-a2.firstPressAccepted": true,
+        "phone-squat-a2.browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-squat-a2.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-squat-a2.browserEnd": "judging",
+        "phone-squat-a2.probeEnd": "judging",
+        "phone-squat-a2.inputPlanMatch": true,
+        "phone-squat-a2.frameMismatchFraction": 0,
+        "phone-squat-a2.numericMismatchFraction": 0,
+        "phone-squat-a2.laggedFraction": 0,
+        "phone-squat-a3.samples": 180,
+        "phone-squat-a3.heldBeforeFirstInput": false,
+        "phone-squat-a3.firstPressFrame": 32,
+        "phone-squat-a3.firstMotionFrame": 32,
+        "phone-squat-a3.firstPressAccepted": true,
+        "phone-squat-a3.browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-squat-a3.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-squat-a3.browserEnd": "judging",
+        "phone-squat-a3.probeEnd": "judging",
+        "phone-squat-a3.inputPlanMatch": true,
+        "phone-squat-a3.frameMismatchFraction": 0,
+        "phone-squat-a3.numericMismatchFraction": 0,
+        "phone-squat-a3.laggedFraction": 0,
+        "phone-bench-a1.samples": 242,
+        "phone-bench-a1.heldBeforeFirstInput": false,
+        "phone-bench-a1.firstPressFrame": 21,
+        "phone-bench-a1.firstMotionFrame": 21,
+        "phone-bench-a1.firstPressAccepted": true,
+        "phone-bench-a1.browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-bench-a1.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-bench-a1.browserEnd": "judging",
+        "phone-bench-a1.probeEnd": "judging",
+        "phone-bench-a1.inputPlanMatch": true,
+        "phone-bench-a1.frameMismatchFraction": 0,
+        "phone-bench-a1.numericMismatchFraction": 0,
+        "phone-bench-a1.laggedFraction": 0,
+        "phone-bench-a2.samples": 345,
+        "phone-bench-a2.heldBeforeFirstInput": false,
+        "phone-bench-a2.firstPressFrame": 23,
+        "phone-bench-a2.firstMotionFrame": 23,
+        "phone-bench-a2.firstPressAccepted": true,
+        "phone-bench-a2.browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-bench-a2.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-bench-a2.browserEnd": "judging",
+        "phone-bench-a2.probeEnd": "judging",
+        "phone-bench-a2.inputPlanMatch": true,
+        "phone-bench-a2.frameMismatchFraction": 0,
+        "phone-bench-a2.numericMismatchFraction": 0,
+        "phone-bench-a2.laggedFraction": 0,
+        "phone-bench-a3.samples": 365,
+        "phone-bench-a3.heldBeforeFirstInput": false,
+        "phone-bench-a3.firstPressFrame": 24,
+        "phone-bench-a3.firstMotionFrame": 25,
+        "phone-bench-a3.firstPressAccepted": true,
+        "phone-bench-a3.browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-bench-a3.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-bench-a3.browserEnd": "judging",
+        "phone-bench-a3.probeEnd": "judging",
+        "phone-bench-a3.inputPlanMatch": true,
+        "phone-bench-a3.frameMismatchFraction": 0,
+        "phone-bench-a3.numericMismatchFraction": 0,
+        "phone-bench-a3.laggedFraction": 0,
+        "phone-deadlift-a1.samples": 250,
+        "phone-deadlift-a1.heldBeforeFirstInput": false,
+        "phone-deadlift-a1.firstPressFrame": 36,
+        "phone-deadlift-a1.firstMotionFrame": 36,
+        "phone-deadlift-a1.firstPressAccepted": true,
+        "phone-deadlift-a1.browserPhasePath": "BRACE>ASCENT>LOCKOUT",
+        "phone-deadlift-a1.probePhasePath": "BRACE>ASCENT>LOCKOUT",
+        "phone-deadlift-a1.browserEnd": "judging",
+        "phone-deadlift-a1.probeEnd": "judging",
+        "phone-deadlift-a1.inputPlanMatch": true,
+        "phone-deadlift-a1.frameMismatchFraction": 0,
+        "phone-deadlift-a1.numericMismatchFraction": 0,
+        "phone-deadlift-a1.laggedFraction": 0,
+        "phone-deadlift-a2.samples": 148,
+        "phone-deadlift-a2.heldBeforeFirstInput": false,
+        "phone-deadlift-a2.firstPressFrame": 38,
+        "phone-deadlift-a2.firstMotionFrame": 38,
+        "phone-deadlift-a2.firstPressAccepted": true,
+        "phone-deadlift-a2.browserPhasePath": "BRACE>ASCENT",
+        "phone-deadlift-a2.probePhasePath": "BRACE>ASCENT",
+        "phone-deadlift-a2.browserEnd": "judging",
+        "phone-deadlift-a2.probeEnd": "judging",
+        "phone-deadlift-a2.inputPlanMatch": true,
+        "phone-deadlift-a2.frameMismatchFraction": 0,
+        "phone-deadlift-a2.numericMismatchFraction": 0,
+        "phone-deadlift-a2.laggedFraction": 0,
+        "phone-deadlift-a3.samples": 218,
+        "phone-deadlift-a3.heldBeforeFirstInput": false,
+        "phone-deadlift-a3.firstPressFrame": 41,
+        "phone-deadlift-a3.firstMotionFrame": 41,
+        "phone-deadlift-a3.firstPressAccepted": true,
+        "phone-deadlift-a3.browserPhasePath": "BRACE>ASCENT",
+        "phone-deadlift-a3.probePhasePath": "BRACE>ASCENT",
+        "phone-deadlift-a3.browserEnd": "judging",
+        "phone-deadlift-a3.probeEnd": "judging",
+        "phone-deadlift-a3.inputPlanMatch": true,
+        "phone-deadlift-a3.frameMismatchFraction": 0,
+        "phone-deadlift-a3.numericMismatchFraction": 0,
+        "phone-deadlift-a3.laggedFraction": 0,
+        "desktop-squat-a1.samples": 155,
+        "desktop-squat-a1.heldBeforeFirstInput": false,
+        "desktop-squat-a1.firstPressFrame": 29,
+        "desktop-squat-a1.firstMotionFrame": 29,
+        "desktop-squat-a1.firstPressAccepted": true,
+        "desktop-squat-a1.browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-squat-a1.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-squat-a1.browserEnd": "judging",
+        "desktop-squat-a1.probeEnd": "judging",
+        "desktop-squat-a1.inputPlanMatch": true,
+        "desktop-squat-a1.frameMismatchFraction": 0,
+        "desktop-squat-a1.numericMismatchFraction": 0,
+        "desktop-squat-a1.laggedFraction": 0,
+        "desktop-squat-a2.samples": 167,
+        "desktop-squat-a2.heldBeforeFirstInput": false,
+        "desktop-squat-a2.firstPressFrame": 31,
+        "desktop-squat-a2.firstMotionFrame": 31,
+        "desktop-squat-a2.firstPressAccepted": true,
+        "desktop-squat-a2.browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-squat-a2.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-squat-a2.browserEnd": "judging",
+        "desktop-squat-a2.probeEnd": "judging",
+        "desktop-squat-a2.inputPlanMatch": true,
+        "desktop-squat-a2.frameMismatchFraction": 0,
+        "desktop-squat-a2.numericMismatchFraction": 0,
+        "desktop-squat-a2.laggedFraction": 0,
+        "desktop-squat-a3.samples": 180,
+        "desktop-squat-a3.heldBeforeFirstInput": false,
+        "desktop-squat-a3.firstPressFrame": 32,
+        "desktop-squat-a3.firstMotionFrame": 32,
+        "desktop-squat-a3.firstPressAccepted": true,
+        "desktop-squat-a3.browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-squat-a3.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-squat-a3.browserEnd": "judging",
+        "desktop-squat-a3.probeEnd": "judging",
+        "desktop-squat-a3.inputPlanMatch": true,
+        "desktop-squat-a3.frameMismatchFraction": 0,
+        "desktop-squat-a3.numericMismatchFraction": 0,
+        "desktop-squat-a3.laggedFraction": 0,
+        "desktop-bench-a1.samples": 242,
+        "desktop-bench-a1.heldBeforeFirstInput": false,
+        "desktop-bench-a1.firstPressFrame": 21,
+        "desktop-bench-a1.firstMotionFrame": 21,
+        "desktop-bench-a1.firstPressAccepted": true,
+        "desktop-bench-a1.browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-bench-a1.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-bench-a1.browserEnd": "judging",
+        "desktop-bench-a1.probeEnd": "judging",
+        "desktop-bench-a1.inputPlanMatch": true,
+        "desktop-bench-a1.frameMismatchFraction": 0,
+        "desktop-bench-a1.numericMismatchFraction": 0,
+        "desktop-bench-a1.laggedFraction": 0,
+        "desktop-bench-a2.samples": 345,
+        "desktop-bench-a2.heldBeforeFirstInput": false,
+        "desktop-bench-a2.firstPressFrame": 23,
+        "desktop-bench-a2.firstMotionFrame": 23,
+        "desktop-bench-a2.firstPressAccepted": true,
+        "desktop-bench-a2.browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-bench-a2.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-bench-a2.browserEnd": "judging",
+        "desktop-bench-a2.probeEnd": "judging",
+        "desktop-bench-a2.inputPlanMatch": true,
+        "desktop-bench-a2.frameMismatchFraction": 0,
+        "desktop-bench-a2.numericMismatchFraction": 0,
+        "desktop-bench-a2.laggedFraction": 0,
+        "desktop-bench-a3.samples": 365,
+        "desktop-bench-a3.heldBeforeFirstInput": false,
+        "desktop-bench-a3.firstPressFrame": 24,
+        "desktop-bench-a3.firstMotionFrame": 25,
+        "desktop-bench-a3.firstPressAccepted": true,
+        "desktop-bench-a3.browserPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-bench-a3.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-bench-a3.browserEnd": "judging",
+        "desktop-bench-a3.probeEnd": "judging",
+        "desktop-bench-a3.inputPlanMatch": true,
+        "desktop-bench-a3.frameMismatchFraction": 0,
+        "desktop-bench-a3.numericMismatchFraction": 0,
+        "desktop-bench-a3.laggedFraction": 0,
+        "desktop-deadlift-a1.samples": 250,
+        "desktop-deadlift-a1.heldBeforeFirstInput": false,
+        "desktop-deadlift-a1.firstPressFrame": 36,
+        "desktop-deadlift-a1.firstMotionFrame": 36,
+        "desktop-deadlift-a1.firstPressAccepted": true,
+        "desktop-deadlift-a1.browserPhasePath": "BRACE>ASCENT>LOCKOUT",
+        "desktop-deadlift-a1.probePhasePath": "BRACE>ASCENT>LOCKOUT",
+        "desktop-deadlift-a1.browserEnd": "judging",
+        "desktop-deadlift-a1.probeEnd": "judging",
+        "desktop-deadlift-a1.inputPlanMatch": true,
+        "desktop-deadlift-a1.frameMismatchFraction": 0,
+        "desktop-deadlift-a1.numericMismatchFraction": 0,
+        "desktop-deadlift-a1.laggedFraction": 0,
+        "desktop-deadlift-a2.samples": 148,
+        "desktop-deadlift-a2.heldBeforeFirstInput": false,
+        "desktop-deadlift-a2.firstPressFrame": 38,
+        "desktop-deadlift-a2.firstMotionFrame": 38,
+        "desktop-deadlift-a2.firstPressAccepted": true,
+        "desktop-deadlift-a2.browserPhasePath": "BRACE>ASCENT",
+        "desktop-deadlift-a2.probePhasePath": "BRACE>ASCENT",
+        "desktop-deadlift-a2.browserEnd": "judging",
+        "desktop-deadlift-a2.probeEnd": "judging",
+        "desktop-deadlift-a2.inputPlanMatch": true,
+        "desktop-deadlift-a2.frameMismatchFraction": 0,
+        "desktop-deadlift-a2.numericMismatchFraction": 0,
+        "desktop-deadlift-a2.laggedFraction": 0,
+        "desktop-deadlift-a3.samples": 218,
+        "desktop-deadlift-a3.heldBeforeFirstInput": false,
+        "desktop-deadlift-a3.firstPressFrame": 41,
+        "desktop-deadlift-a3.firstMotionFrame": 41,
+        "desktop-deadlift-a3.firstPressAccepted": true,
+        "desktop-deadlift-a3.browserPhasePath": "BRACE>ASCENT",
+        "desktop-deadlift-a3.probePhasePath": "BRACE>ASCENT",
+        "desktop-deadlift-a3.browserEnd": "judging",
+        "desktop-deadlift-a3.probeEnd": "judging",
+        "desktop-deadlift-a3.inputPlanMatch": true,
+        "desktop-deadlift-a3.frameMismatchFraction": 0,
+        "desktop-deadlift-a3.numericMismatchFraction": 0,
+        "desktop-deadlift-a3.laggedFraction": 0,
+        "tracesCompared": 18,
+        "framesCompared": 4140,
+        "frameMismatchFraction": 0,
+        "framesComparedExcludingLeakedTraces": 4140,
+        "frameMismatchFractionExcludingLeakedTraces": 0,
+        "numericMismatchFraction": 0,
+        "promptMismatchFraction": 0,
+        "commandMismatchFraction": 0,
+        "renderLaggedFraction": 0,
+        "oracleChecked": 4140,
+        "oracleMismatchFraction": 0
+      },
+      "evidence": [
+        {
+          "kind": "json",
+          "ref": "trace:phone-squat-a1",
+          "note": "155 play frames compared"
+        },
+        {
+          "kind": "json",
+          "ref": "trace:phone-squat-a2",
+          "note": "167 play frames compared"
+        },
+        {
+          "kind": "json",
+          "ref": "trace:phone-squat-a3",
+          "note": "180 play frames compared"
+        },
+        {
+          "kind": "json",
+          "ref": "trace:phone-bench-a1",
+          "note": "242 play frames compared"
+        },
+        {
+          "kind": "json",
+          "ref": "trace:phone-bench-a2",
+          "note": "345 play frames compared"
+        },
+        {
+          "kind": "json",
+          "ref": "trace:phone-bench-a3",
+          "note": "365 play frames compared"
+        },
+        {
+          "kind": "json",
+          "ref": "trace:phone-deadlift-a1",
+          "note": "250 play frames compared"
+        },
+        {
+          "kind": "json",
+          "ref": "trace:phone-deadlift-a2",
+          "note": "148 play frames compared"
+        },
+        {
+          "kind": "json",
+          "ref": "trace:phone-deadlift-a3",
+          "note": "218 play frames compared"
+        },
+        {
+          "kind": "json",
+          "ref": "trace:desktop-squat-a1",
+          "note": "155 play frames compared"
+        },
+        {
+          "kind": "json",
+          "ref": "trace:desktop-squat-a2",
+          "note": "167 play frames compared"
+        },
+        {
+          "kind": "json",
+          "ref": "trace:desktop-squat-a3",
+          "note": "180 play frames compared"
+        },
+        {
+          "kind": "json",
+          "ref": "trace:desktop-bench-a1",
+          "note": "242 play frames compared"
+        },
+        {
+          "kind": "json",
+          "ref": "trace:desktop-bench-a2",
+          "note": "345 play frames compared"
+        },
+        {
+          "kind": "json",
+          "ref": "trace:desktop-bench-a3",
+          "note": "365 play frames compared"
+        },
+        {
+          "kind": "json",
+          "ref": "trace:desktop-deadlift-a1",
+          "note": "250 play frames compared"
+        },
+        {
+          "kind": "json",
+          "ref": "trace:desktop-deadlift-a2",
+          "note": "148 play frames compared"
+        },
+        {
+          "kind": "json",
+          "ref": "trace:desktop-deadlift-a3",
+          "note": "218 play frames compared"
+        }
+      ],
+      "source": {
+        "targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "presentationBaseSha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+        "mechanicsSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedUrl": "http://127.0.0.1:44579"
+      },
+      "provider": {
+        "name": "twl-development-analysis",
+        "version": "0.2.0",
+        "engine": "deterministic-rules",
+        "node": "v22.23.2",
+        "playwright": "1.56.1",
+        "browser": "141.0.7390.37"
+      },
+      "humanApprovalRequired": false,
+      "summary": "Rendered frames, phases, prompts and commands match the frozen mechanics frame for frame under an identical input schedule.",
+      "generatedAt": "2026-09-18T14:53:01.653Z"
+    },
+    {
+      "schemaVersion": 1,
+      "id": "attempt-matrix",
+      "title": "Multi-attempt hold-pad matrix",
+      "verdict": "PASS",
+      "confidence": 0.97,
+      "flags": [],
+      "metrics": {
+        "attemptsPerLift": 3,
+        "caseCount": 18,
+        "traceCount": 18,
+        "expectedCaseCount": 18,
+        "phone-squat-a1.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "phone-squat-a1.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "phone-squat-a1.viewport": "phone",
+        "phone-squat-a1.lift": "squat",
+        "phone-squat-a1.attempt": 1,
+        "phone-squat-a1.heldBeforeFirstInput": false,
+        "phone-squat-a1.firstPressAccepted": true,
+        "phone-squat-a1.finalJudgment": "judging",
+        "phone-squat-a1.probeJudgment": "judging",
+        "phone-squat-a1.mechanicsPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-squat-a1.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-squat-a1.inputEvents": "29:press,81:release,116:press",
+        "phone-squat-a1.horizontalOverflow": false,
+        "phone-squat-a1.consoleErrors": 0,
+        "phone-squat-a1.grounded": true,
+        "phone-squat-a1.frameMismatch": 0,
+        "phone-squat-a1.framesCompared": 155,
+        "phone-squat-a1.missMatchesMechanics": null,
+        "phone-squat-a2.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "phone-squat-a2.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "phone-squat-a2.viewport": "phone",
+        "phone-squat-a2.lift": "squat",
+        "phone-squat-a2.attempt": 2,
+        "phone-squat-a2.heldBeforeFirstInput": false,
+        "phone-squat-a2.firstPressAccepted": true,
+        "phone-squat-a2.finalJudgment": "judging",
+        "phone-squat-a2.probeJudgment": "judging",
+        "phone-squat-a2.mechanicsPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-squat-a2.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-squat-a2.inputEvents": "31:press,86:release,123:press",
+        "phone-squat-a2.horizontalOverflow": false,
+        "phone-squat-a2.consoleErrors": 0,
+        "phone-squat-a2.grounded": true,
+        "phone-squat-a2.frameMismatch": 0,
+        "phone-squat-a2.framesCompared": 167,
+        "phone-squat-a2.missMatchesMechanics": null,
+        "phone-squat-a3.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "phone-squat-a3.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "phone-squat-a3.viewport": "phone",
+        "phone-squat-a3.lift": "squat",
+        "phone-squat-a3.attempt": 3,
+        "phone-squat-a3.heldBeforeFirstInput": false,
+        "phone-squat-a3.firstPressAccepted": true,
+        "phone-squat-a3.finalJudgment": "judging",
+        "phone-squat-a3.probeJudgment": "judging",
+        "phone-squat-a3.mechanicsPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-squat-a3.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-squat-a3.inputEvents": "32:press,90:release,129:press",
+        "phone-squat-a3.horizontalOverflow": false,
+        "phone-squat-a3.consoleErrors": 0,
+        "phone-squat-a3.grounded": true,
+        "phone-squat-a3.frameMismatch": 0,
+        "phone-squat-a3.framesCompared": 180,
+        "phone-squat-a3.missMatchesMechanics": null,
+        "phone-bench-a1.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "phone-bench-a1.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "phone-bench-a1.viewport": "phone",
+        "phone-bench-a1.lift": "bench",
+        "phone-bench-a1.attempt": 1,
+        "phone-bench-a1.heldBeforeFirstInput": false,
+        "phone-bench-a1.firstPressAccepted": true,
+        "phone-bench-a1.finalJudgment": "judging",
+        "phone-bench-a1.probeJudgment": "judging",
+        "phone-bench-a1.mechanicsPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-bench-a1.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-bench-a1.inputEvents": "21:press,133:release,135:press,136:release,138:press,139:release,141:press,142:release,144:press,145:release,147:press,148:release,151:press,152:release,154:press,155:release,157:press,158:release,160:press,161:release,163:press,164:release,166:press,167:release,169:press,170:release,172:press,173:release,176:press,177:release,179:press,180:release,182:press,183:release,185:press,186:release,188:press,189:release,191:press,192:release,194:press,195:release,197:press,198:release,201:press,202:release,204:press,205:release,207:press,208:release,210:press,211:release,213:press,214:release,216:press,217:release,219:press,220:release,222:press,223:release,226:press,227:release,229:press,230:release,232:press,233:release,235:press,236:release,238:press,239:release,241:press,242:release",
+        "phone-bench-a1.horizontalOverflow": false,
+        "phone-bench-a1.consoleErrors": 0,
+        "phone-bench-a1.grounded": true,
+        "phone-bench-a1.frameMismatch": 0,
+        "phone-bench-a1.framesCompared": 242,
+        "phone-bench-a1.missMatchesMechanics": null,
+        "phone-bench-a2.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "phone-bench-a2.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "phone-bench-a2.viewport": "phone",
+        "phone-bench-a2.lift": "bench",
+        "phone-bench-a2.attempt": 2,
+        "phone-bench-a2.heldBeforeFirstInput": false,
+        "phone-bench-a2.firstPressAccepted": true,
+        "phone-bench-a2.finalJudgment": "judging",
+        "phone-bench-a2.probeJudgment": "judging",
+        "phone-bench-a2.mechanicsPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-bench-a2.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-bench-a2.inputEvents": "23:press,194:release,196:press,197:release,199:press,201:release,203:press,204:release,206:press,207:release,209:press,210:release,212:press,213:release,215:press,216:release,218:press,219:release,221:press,222:release,224:press,226:release,228:press,229:release,231:press,232:release,234:press,235:release,237:press,238:release,240:press,241:release,243:press,244:release,246:press,247:release,249:press,251:release,253:press,254:release,256:press,257:release,259:press,260:release,262:press,263:release,265:press,266:release,268:press,269:release,271:press,272:release,274:press,276:release,278:press,279:release,281:press,282:release,284:press,285:release,287:press,288:release,290:press,291:release,293:press,294:release,296:press,297:release,299:press,301:release,303:press,304:release,306:press,307:release,309:press,310:release,312:press,313:release,315:press,316:release,318:press,319:release,321:press,322:release,324:press,326:release,328:press,329:release,331:press,332:release,334:press,335:release,337:press,338:release,340:press,341:release,343:press,344:release",
+        "phone-bench-a2.horizontalOverflow": false,
+        "phone-bench-a2.consoleErrors": 0,
+        "phone-bench-a2.grounded": true,
+        "phone-bench-a2.frameMismatch": 0,
+        "phone-bench-a2.framesCompared": 345,
+        "phone-bench-a2.missMatchesMechanics": null,
+        "phone-bench-a3.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "phone-bench-a3.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "phone-bench-a3.viewport": "phone",
+        "phone-bench-a3.lift": "bench",
+        "phone-bench-a3.attempt": 3,
+        "phone-bench-a3.heldBeforeFirstInput": false,
+        "phone-bench-a3.firstPressAccepted": true,
+        "phone-bench-a3.finalJudgment": "judging",
+        "phone-bench-a3.probeJudgment": "judging",
+        "phone-bench-a3.mechanicsPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-bench-a3.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "phone-bench-a3.inputEvents": "24:press,198:release,201:press,202:release,204:press,205:release,207:press,208:release,210:press,211:release,213:press,214:release,216:press,217:release,219:press,220:release,222:press,223:release,226:press,227:release,229:press,230:release,232:press,233:release,235:press,236:release,238:press,239:release,241:press,242:release,244:press,245:release,247:press,248:release,251:press,252:release,254:press,255:release,257:press,258:release,260:press,261:release,263:press,264:release,266:press,267:release,269:press,270:release,272:press,273:release,276:press,277:release,279:press,280:release,282:press,283:release,285:press,286:release,288:press,289:release,291:press,292:release,294:press,295:release,297:press,298:release,301:press,302:release,304:press,305:release,307:press,308:release,310:press,311:release,313:press,314:release,316:press,317:release,319:press,320:release,322:press,323:release,326:press,327:release,329:press,330:release,332:press,333:release,335:press,336:release,338:press,339:release,341:press,342:release,344:press,345:release,347:press,348:release,351:press,352:release,354:press,355:release,357:press,358:release,360:press,361:release,363:press,364:release",
+        "phone-bench-a3.horizontalOverflow": false,
+        "phone-bench-a3.consoleErrors": 0,
+        "phone-bench-a3.grounded": true,
+        "phone-bench-a3.frameMismatch": 0,
+        "phone-bench-a3.framesCompared": 365,
+        "phone-bench-a3.missMatchesMechanics": null,
+        "phone-deadlift-a1.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "phone-deadlift-a1.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "phone-deadlift-a1.viewport": "phone",
+        "phone-deadlift-a1.lift": "deadlift",
+        "phone-deadlift-a1.attempt": 1,
+        "phone-deadlift-a1.heldBeforeFirstInput": false,
+        "phone-deadlift-a1.firstPressAccepted": true,
+        "phone-deadlift-a1.finalJudgment": "judging",
+        "phone-deadlift-a1.probeJudgment": "judging",
+        "phone-deadlift-a1.mechanicsPhasePath": "BRACE>ASCENT>LOCKOUT",
+        "phone-deadlift-a1.probePhasePath": "BRACE>ASCENT>LOCKOUT",
+        "phone-deadlift-a1.inputEvents": "36:press",
+        "phone-deadlift-a1.horizontalOverflow": false,
+        "phone-deadlift-a1.consoleErrors": 0,
+        "phone-deadlift-a1.grounded": true,
+        "phone-deadlift-a1.frameMismatch": 0,
+        "phone-deadlift-a1.framesCompared": 250,
+        "phone-deadlift-a1.missMatchesMechanics": null,
+        "phone-deadlift-a2.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "phone-deadlift-a2.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "phone-deadlift-a2.viewport": "phone",
+        "phone-deadlift-a2.lift": "deadlift",
+        "phone-deadlift-a2.attempt": 2,
+        "phone-deadlift-a2.heldBeforeFirstInput": false,
+        "phone-deadlift-a2.firstPressAccepted": true,
+        "phone-deadlift-a2.finalJudgment": "judging",
+        "phone-deadlift-a2.probeJudgment": "judging",
+        "phone-deadlift-a2.mechanicsPhasePath": "BRACE>ASCENT",
+        "phone-deadlift-a2.probePhasePath": "BRACE>ASCENT",
+        "phone-deadlift-a2.inputEvents": "38:press",
+        "phone-deadlift-a2.horizontalOverflow": false,
+        "phone-deadlift-a2.consoleErrors": 0,
+        "phone-deadlift-a2.grounded": true,
+        "phone-deadlift-a2.frameMismatch": 0,
+        "phone-deadlift-a2.framesCompared": 148,
+        "phone-deadlift-a2.missMatchesMechanics": true,
+        "phone-deadlift-a2.deadliftMissClassified": "mechanics",
+        "phone-deadlift-a3.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "phone-deadlift-a3.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "phone-deadlift-a3.viewport": "phone",
+        "phone-deadlift-a3.lift": "deadlift",
+        "phone-deadlift-a3.attempt": 3,
+        "phone-deadlift-a3.heldBeforeFirstInput": false,
+        "phone-deadlift-a3.firstPressAccepted": true,
+        "phone-deadlift-a3.finalJudgment": "judging",
+        "phone-deadlift-a3.probeJudgment": "judging",
+        "phone-deadlift-a3.mechanicsPhasePath": "BRACE>ASCENT",
+        "phone-deadlift-a3.probePhasePath": "BRACE>ASCENT",
+        "phone-deadlift-a3.inputEvents": "41:press,158:release,159:press",
+        "phone-deadlift-a3.horizontalOverflow": false,
+        "phone-deadlift-a3.consoleErrors": 0,
+        "phone-deadlift-a3.grounded": true,
+        "phone-deadlift-a3.frameMismatch": 0,
+        "phone-deadlift-a3.framesCompared": 218,
+        "phone-deadlift-a3.missMatchesMechanics": true,
+        "phone-deadlift-a3.deadliftMissClassified": "mechanics",
+        "desktop-squat-a1.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "desktop-squat-a1.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "desktop-squat-a1.viewport": "desktop",
+        "desktop-squat-a1.lift": "squat",
+        "desktop-squat-a1.attempt": 1,
+        "desktop-squat-a1.heldBeforeFirstInput": false,
+        "desktop-squat-a1.firstPressAccepted": true,
+        "desktop-squat-a1.finalJudgment": "judging",
+        "desktop-squat-a1.probeJudgment": "judging",
+        "desktop-squat-a1.mechanicsPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-squat-a1.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-squat-a1.inputEvents": "29:press,81:release,116:press",
+        "desktop-squat-a1.horizontalOverflow": false,
+        "desktop-squat-a1.consoleErrors": 0,
+        "desktop-squat-a1.grounded": true,
+        "desktop-squat-a1.frameMismatch": 0,
+        "desktop-squat-a1.framesCompared": 155,
+        "desktop-squat-a1.missMatchesMechanics": null,
+        "desktop-squat-a2.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "desktop-squat-a2.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "desktop-squat-a2.viewport": "desktop",
+        "desktop-squat-a2.lift": "squat",
+        "desktop-squat-a2.attempt": 2,
+        "desktop-squat-a2.heldBeforeFirstInput": false,
+        "desktop-squat-a2.firstPressAccepted": true,
+        "desktop-squat-a2.finalJudgment": "judging",
+        "desktop-squat-a2.probeJudgment": "judging",
+        "desktop-squat-a2.mechanicsPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-squat-a2.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-squat-a2.inputEvents": "31:press,86:release,123:press",
+        "desktop-squat-a2.horizontalOverflow": false,
+        "desktop-squat-a2.consoleErrors": 0,
+        "desktop-squat-a2.grounded": true,
+        "desktop-squat-a2.frameMismatch": 0,
+        "desktop-squat-a2.framesCompared": 167,
+        "desktop-squat-a2.missMatchesMechanics": null,
+        "desktop-squat-a3.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "desktop-squat-a3.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "desktop-squat-a3.viewport": "desktop",
+        "desktop-squat-a3.lift": "squat",
+        "desktop-squat-a3.attempt": 3,
+        "desktop-squat-a3.heldBeforeFirstInput": false,
+        "desktop-squat-a3.firstPressAccepted": true,
+        "desktop-squat-a3.finalJudgment": "judging",
+        "desktop-squat-a3.probeJudgment": "judging",
+        "desktop-squat-a3.mechanicsPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-squat-a3.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-squat-a3.inputEvents": "32:press,90:release,129:press",
+        "desktop-squat-a3.horizontalOverflow": false,
+        "desktop-squat-a3.consoleErrors": 0,
+        "desktop-squat-a3.grounded": true,
+        "desktop-squat-a3.frameMismatch": 0,
+        "desktop-squat-a3.framesCompared": 180,
+        "desktop-squat-a3.missMatchesMechanics": null,
+        "desktop-bench-a1.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "desktop-bench-a1.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "desktop-bench-a1.viewport": "desktop",
+        "desktop-bench-a1.lift": "bench",
+        "desktop-bench-a1.attempt": 1,
+        "desktop-bench-a1.heldBeforeFirstInput": false,
+        "desktop-bench-a1.firstPressAccepted": true,
+        "desktop-bench-a1.finalJudgment": "judging",
+        "desktop-bench-a1.probeJudgment": "judging",
+        "desktop-bench-a1.mechanicsPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-bench-a1.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-bench-a1.inputEvents": "21:press,133:release,135:press,136:release,138:press,139:release,141:press,142:release,144:press,145:release,147:press,148:release,151:press,152:release,154:press,155:release,157:press,158:release,160:press,161:release,163:press,164:release,166:press,167:release,169:press,170:release,172:press,173:release,176:press,177:release,179:press,180:release,182:press,183:release,185:press,186:release,188:press,189:release,191:press,192:release,194:press,195:release,197:press,198:release,201:press,202:release,204:press,205:release,207:press,208:release,210:press,211:release,213:press,214:release,216:press,217:release,219:press,220:release,222:press,223:release,226:press,227:release,229:press,230:release,232:press,233:release,235:press,236:release,238:press,239:release,241:press,242:release",
+        "desktop-bench-a1.horizontalOverflow": false,
+        "desktop-bench-a1.consoleErrors": 0,
+        "desktop-bench-a1.grounded": true,
+        "desktop-bench-a1.frameMismatch": 0,
+        "desktop-bench-a1.framesCompared": 242,
+        "desktop-bench-a1.missMatchesMechanics": null,
+        "desktop-bench-a2.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "desktop-bench-a2.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "desktop-bench-a2.viewport": "desktop",
+        "desktop-bench-a2.lift": "bench",
+        "desktop-bench-a2.attempt": 2,
+        "desktop-bench-a2.heldBeforeFirstInput": false,
+        "desktop-bench-a2.firstPressAccepted": true,
+        "desktop-bench-a2.finalJudgment": "judging",
+        "desktop-bench-a2.probeJudgment": "judging",
+        "desktop-bench-a2.mechanicsPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-bench-a2.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-bench-a2.inputEvents": "23:press,194:release,196:press,197:release,199:press,201:release,203:press,204:release,206:press,207:release,209:press,210:release,212:press,213:release,215:press,216:release,218:press,219:release,221:press,222:release,224:press,226:release,228:press,229:release,231:press,232:release,234:press,235:release,237:press,238:release,240:press,241:release,243:press,244:release,246:press,247:release,249:press,251:release,253:press,254:release,256:press,257:release,259:press,260:release,262:press,263:release,265:press,266:release,268:press,269:release,271:press,272:release,274:press,276:release,278:press,279:release,281:press,282:release,284:press,285:release,287:press,288:release,290:press,291:release,293:press,294:release,296:press,297:release,299:press,301:release,303:press,304:release,306:press,307:release,309:press,310:release,312:press,313:release,315:press,316:release,318:press,319:release,321:press,322:release,324:press,326:release,328:press,329:release,331:press,332:release,334:press,335:release,337:press,338:release,340:press,341:release,343:press,344:release",
+        "desktop-bench-a2.horizontalOverflow": false,
+        "desktop-bench-a2.consoleErrors": 0,
+        "desktop-bench-a2.grounded": true,
+        "desktop-bench-a2.frameMismatch": 0,
+        "desktop-bench-a2.framesCompared": 345,
+        "desktop-bench-a2.missMatchesMechanics": null,
+        "desktop-bench-a3.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "desktop-bench-a3.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "desktop-bench-a3.viewport": "desktop",
+        "desktop-bench-a3.lift": "bench",
+        "desktop-bench-a3.attempt": 3,
+        "desktop-bench-a3.heldBeforeFirstInput": false,
+        "desktop-bench-a3.firstPressAccepted": true,
+        "desktop-bench-a3.finalJudgment": "judging",
+        "desktop-bench-a3.probeJudgment": "judging",
+        "desktop-bench-a3.mechanicsPhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-bench-a3.probePhasePath": "BRACE>DESCENT>HOLE>ASCENT>LOCKOUT",
+        "desktop-bench-a3.inputEvents": "24:press,198:release,201:press,202:release,204:press,205:release,207:press,208:release,210:press,211:release,213:press,214:release,216:press,217:release,219:press,220:release,222:press,223:release,226:press,227:release,229:press,230:release,232:press,233:release,235:press,236:release,238:press,239:release,241:press,242:release,244:press,245:release,247:press,248:release,251:press,252:release,254:press,255:release,257:press,258:release,260:press,261:release,263:press,264:release,266:press,267:release,269:press,270:release,272:press,273:release,276:press,277:release,279:press,280:release,282:press,283:release,285:press,286:release,288:press,289:release,291:press,292:release,294:press,295:release,297:press,298:release,301:press,302:release,304:press,305:release,307:press,308:release,310:press,311:release,313:press,314:release,316:press,317:release,319:press,320:release,322:press,323:release,326:press,327:release,329:press,330:release,332:press,333:release,335:press,336:release,338:press,339:release,341:press,342:release,344:press,345:release,347:press,348:release,351:press,352:release,354:press,355:release,357:press,358:release,360:press,361:release,363:press,364:release",
+        "desktop-bench-a3.horizontalOverflow": false,
+        "desktop-bench-a3.consoleErrors": 0,
+        "desktop-bench-a3.grounded": true,
+        "desktop-bench-a3.frameMismatch": 0,
+        "desktop-bench-a3.framesCompared": 365,
+        "desktop-bench-a3.missMatchesMechanics": null,
+        "desktop-deadlift-a1.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "desktop-deadlift-a1.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "desktop-deadlift-a1.viewport": "desktop",
+        "desktop-deadlift-a1.lift": "deadlift",
+        "desktop-deadlift-a1.attempt": 1,
+        "desktop-deadlift-a1.heldBeforeFirstInput": false,
+        "desktop-deadlift-a1.firstPressAccepted": true,
+        "desktop-deadlift-a1.finalJudgment": "judging",
+        "desktop-deadlift-a1.probeJudgment": "judging",
+        "desktop-deadlift-a1.mechanicsPhasePath": "BRACE>ASCENT>LOCKOUT",
+        "desktop-deadlift-a1.probePhasePath": "BRACE>ASCENT>LOCKOUT",
+        "desktop-deadlift-a1.inputEvents": "36:press",
+        "desktop-deadlift-a1.horizontalOverflow": false,
+        "desktop-deadlift-a1.consoleErrors": 0,
+        "desktop-deadlift-a1.grounded": true,
+        "desktop-deadlift-a1.frameMismatch": 0,
+        "desktop-deadlift-a1.framesCompared": 250,
+        "desktop-deadlift-a1.missMatchesMechanics": null,
+        "desktop-deadlift-a2.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "desktop-deadlift-a2.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "desktop-deadlift-a2.viewport": "desktop",
+        "desktop-deadlift-a2.lift": "deadlift",
+        "desktop-deadlift-a2.attempt": 2,
+        "desktop-deadlift-a2.heldBeforeFirstInput": false,
+        "desktop-deadlift-a2.firstPressAccepted": true,
+        "desktop-deadlift-a2.finalJudgment": "judging",
+        "desktop-deadlift-a2.probeJudgment": "judging",
+        "desktop-deadlift-a2.mechanicsPhasePath": "BRACE>ASCENT",
+        "desktop-deadlift-a2.probePhasePath": "BRACE>ASCENT",
+        "desktop-deadlift-a2.inputEvents": "38:press",
+        "desktop-deadlift-a2.horizontalOverflow": false,
+        "desktop-deadlift-a2.consoleErrors": 0,
+        "desktop-deadlift-a2.grounded": true,
+        "desktop-deadlift-a2.frameMismatch": 0,
+        "desktop-deadlift-a2.framesCompared": 148,
+        "desktop-deadlift-a2.missMatchesMechanics": true,
+        "desktop-deadlift-a2.deadliftMissClassified": "mechanics",
+        "desktop-deadlift-a3.targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "desktop-deadlift-a3.servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "desktop-deadlift-a3.viewport": "desktop",
+        "desktop-deadlift-a3.lift": "deadlift",
+        "desktop-deadlift-a3.attempt": 3,
+        "desktop-deadlift-a3.heldBeforeFirstInput": false,
+        "desktop-deadlift-a3.firstPressAccepted": true,
+        "desktop-deadlift-a3.finalJudgment": "judging",
+        "desktop-deadlift-a3.probeJudgment": "judging",
+        "desktop-deadlift-a3.mechanicsPhasePath": "BRACE>ASCENT",
+        "desktop-deadlift-a3.probePhasePath": "BRACE>ASCENT",
+        "desktop-deadlift-a3.inputEvents": "41:press,158:release,159:press",
+        "desktop-deadlift-a3.horizontalOverflow": false,
+        "desktop-deadlift-a3.consoleErrors": 0,
+        "desktop-deadlift-a3.grounded": true,
+        "desktop-deadlift-a3.frameMismatch": 0,
+        "desktop-deadlift-a3.framesCompared": 218,
+        "desktop-deadlift-a3.missMatchesMechanics": true,
+        "desktop-deadlift-a3.deadliftMissClassified": "mechanics",
+        "heldLeaks": 0,
+        "firstPressRejected": 0,
+        "overflowCases": 0,
+        "consoleErrorEvents": 0,
+        "ungroundedCases": 0,
+        "framesCompared": 4140,
+        "frameMismatchTotal": 0,
+        "deadliftMissMatchesMechanics": 4,
+        "deadliftMissMisclassified": 0,
+        "holdPad.controllerPresent": true,
+        "holdPad.hasPointerUp": true,
+        "holdPad.hasPointerCancel": true,
+        "holdPad.hasScreenChanged": true,
+        "holdPad.hasDispose": true,
+        "holdPad.hasResetClear": true
+      },
+      "evidence": [
+        {
+          "kind": "json",
+          "ref": "case:phone-squat-a1",
+          "note": "phone squat a1"
+        },
+        {
+          "kind": "json",
+          "ref": "case:phone-squat-a2",
+          "note": "phone squat a2"
+        },
+        {
+          "kind": "json",
+          "ref": "case:phone-squat-a3",
+          "note": "phone squat a3"
+        },
+        {
+          "kind": "json",
+          "ref": "case:phone-bench-a1",
+          "note": "phone bench a1"
+        },
+        {
+          "kind": "json",
+          "ref": "case:phone-bench-a2",
+          "note": "phone bench a2"
+        },
+        {
+          "kind": "json",
+          "ref": "case:phone-bench-a3",
+          "note": "phone bench a3"
+        },
+        {
+          "kind": "json",
+          "ref": "case:phone-deadlift-a1",
+          "note": "phone deadlift a1"
+        },
+        {
+          "kind": "json",
+          "ref": "case:phone-deadlift-a2",
+          "note": "phone deadlift a2"
+        },
+        {
+          "kind": "json",
+          "ref": "case:phone-deadlift-a3",
+          "note": "phone deadlift a3"
+        },
+        {
+          "kind": "json",
+          "ref": "case:desktop-squat-a1",
+          "note": "desktop squat a1"
+        },
+        {
+          "kind": "json",
+          "ref": "case:desktop-squat-a2",
+          "note": "desktop squat a2"
+        },
+        {
+          "kind": "json",
+          "ref": "case:desktop-squat-a3",
+          "note": "desktop squat a3"
+        },
+        {
+          "kind": "json",
+          "ref": "case:desktop-bench-a1",
+          "note": "desktop bench a1"
+        },
+        {
+          "kind": "json",
+          "ref": "case:desktop-bench-a2",
+          "note": "desktop bench a2"
+        },
+        {
+          "kind": "json",
+          "ref": "case:desktop-bench-a3",
+          "note": "desktop bench a3"
+        },
+        {
+          "kind": "json",
+          "ref": "case:desktop-deadlift-a1",
+          "note": "desktop deadlift a1"
+        },
+        {
+          "kind": "json",
+          "ref": "case:desktop-deadlift-a2",
+          "note": "desktop deadlift a2"
+        },
+        {
+          "kind": "json",
+          "ref": "case:desktop-deadlift-a3",
+          "note": "desktop deadlift a3"
+        }
+      ],
+      "source": {
+        "targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "presentationBaseSha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+        "mechanicsSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedUrl": "http://127.0.0.1:44579"
+      },
+      "provider": {
+        "name": "twl-development-analysis",
+        "version": "0.2.0",
+        "engine": "deterministic-rules",
+        "node": "v22.23.2",
+        "playwright": "1.56.1",
+        "browser": "141.0.7390.37"
+      },
+      "humanApprovalRequired": false,
+      "summary": "All 18 attempt/viewport cases started unheld, accepted the first press, matched the mechanics mirror, and showed no overflow or console errors.",
+      "generatedAt": "2026-09-18T14:53:01.655Z"
+    },
+    {
+      "schemaVersion": 1,
+      "id": "sprite-grounding",
+      "title": "Sprite grounding and animation continuity",
+      "verdict": "PASS",
+      "confidence": 0.9,
+      "flags": [],
+      "metrics": {
+        "stage.contactY": 318,
+        "stage.size": "320x320",
+        "anchorRowsChecked": 48,
+        "anchorRowsMismatched": 0,
+        "framesWithFringe": 0,
+        "framesOver48Colors": 0,
+        "stageBeats": 128,
+        "beatsWithoutSpriteStage": 0,
+        "beatsMissingWorldY": 0,
+        "beatsNotGrounded": 0,
+        "beatsAnchorArithmeticBroken": 0,
+        "beatsCanvasSizeWrong": 0,
+        "canvasProofs": 128,
+        "canvasProofsFailed": 0,
+        "canvasLifterProofsFailed": 0,
+        "canvasProofsMissing": 0,
+        "canvasWorstMismatchFraction": 0,
+        "phone-squat-a1.distinctFrames": 6,
+        "phone-squat-a1.frameJumpsWithinPhase": 0,
+        "phone-squat-a1.groundLineValues": "318",
+        "phone-squat-a1.frameAtMaxDepth": 2,
+        "phone-squat-a1.footDriftPx": 16.200000000000003,
+        "phone-squat-a2.distinctFrames": 6,
+        "phone-squat-a2.frameJumpsWithinPhase": 0,
+        "phone-squat-a2.groundLineValues": "318",
+        "phone-squat-a2.frameAtMaxDepth": 2,
+        "phone-squat-a2.footDriftPx": 16.200000000000003,
+        "phone-squat-a3.distinctFrames": 6,
+        "phone-squat-a3.frameJumpsWithinPhase": 0,
+        "phone-squat-a3.groundLineValues": "318",
+        "phone-squat-a3.frameAtMaxDepth": 2,
+        "phone-squat-a3.footDriftPx": 16.200000000000003,
+        "phone-bench-a1.distinctFrames": 6,
+        "phone-bench-a1.frameJumpsWithinPhase": 0,
+        "phone-bench-a1.groundLineValues": "318",
+        "phone-bench-a1.frameAtMaxDepth": 2,
+        "phone-bench-a1.footDriftPx": 4.300000000000011,
+        "phone-bench-a2.distinctFrames": 6,
+        "phone-bench-a2.frameJumpsWithinPhase": 0,
+        "phone-bench-a2.groundLineValues": "318",
+        "phone-bench-a2.frameAtMaxDepth": 2,
+        "phone-bench-a2.footDriftPx": 4.300000000000011,
+        "phone-bench-a3.distinctFrames": 6,
+        "phone-bench-a3.frameJumpsWithinPhase": 0,
+        "phone-bench-a3.groundLineValues": "318",
+        "phone-bench-a3.frameAtMaxDepth": 2,
+        "phone-bench-a3.footDriftPx": 4.300000000000011,
+        "phone-deadlift-a1.distinctFrames": 6,
+        "phone-deadlift-a1.frameJumpsWithinPhase": 0,
+        "phone-deadlift-a1.groundLineValues": "318",
+        "phone-deadlift-a1.footDriftPx": 35.8,
+        "phone-deadlift-a2.distinctFrames": 3,
+        "phone-deadlift-a2.frameJumpsWithinPhase": 0,
+        "phone-deadlift-a2.groundLineValues": "318",
+        "phone-deadlift-a2.footDriftPx": 33.400000000000006,
+        "phone-deadlift-a3.distinctFrames": 5,
+        "phone-deadlift-a3.frameJumpsWithinPhase": 0,
+        "phone-deadlift-a3.groundLineValues": "318",
+        "phone-deadlift-a3.footDriftPx": 33.400000000000006,
+        "desktop-squat-a1.distinctFrames": 6,
+        "desktop-squat-a1.frameJumpsWithinPhase": 0,
+        "desktop-squat-a1.groundLineValues": "318",
+        "desktop-squat-a1.frameAtMaxDepth": 2,
+        "desktop-squat-a1.footDriftPx": 16.200000000000003,
+        "desktop-squat-a2.distinctFrames": 6,
+        "desktop-squat-a2.frameJumpsWithinPhase": 0,
+        "desktop-squat-a2.groundLineValues": "318",
+        "desktop-squat-a2.frameAtMaxDepth": 2,
+        "desktop-squat-a2.footDriftPx": 16.200000000000003,
+        "desktop-squat-a3.distinctFrames": 6,
+        "desktop-squat-a3.frameJumpsWithinPhase": 0,
+        "desktop-squat-a3.groundLineValues": "318",
+        "desktop-squat-a3.frameAtMaxDepth": 2,
+        "desktop-squat-a3.footDriftPx": 16.200000000000003,
+        "desktop-bench-a1.distinctFrames": 6,
+        "desktop-bench-a1.frameJumpsWithinPhase": 0,
+        "desktop-bench-a1.groundLineValues": "318",
+        "desktop-bench-a1.frameAtMaxDepth": 2,
+        "desktop-bench-a1.footDriftPx": 4.300000000000011,
+        "desktop-bench-a2.distinctFrames": 6,
+        "desktop-bench-a2.frameJumpsWithinPhase": 0,
+        "desktop-bench-a2.groundLineValues": "318",
+        "desktop-bench-a2.frameAtMaxDepth": 2,
+        "desktop-bench-a2.footDriftPx": 4.300000000000011,
+        "desktop-bench-a3.distinctFrames": 6,
+        "desktop-bench-a3.frameJumpsWithinPhase": 0,
+        "desktop-bench-a3.groundLineValues": "318",
+        "desktop-bench-a3.frameAtMaxDepth": 2,
+        "desktop-bench-a3.footDriftPx": 4.300000000000011,
+        "desktop-deadlift-a1.distinctFrames": 6,
+        "desktop-deadlift-a1.frameJumpsWithinPhase": 0,
+        "desktop-deadlift-a1.groundLineValues": "318",
+        "desktop-deadlift-a1.footDriftPx": 35.8,
+        "desktop-deadlift-a2.distinctFrames": 3,
+        "desktop-deadlift-a2.frameJumpsWithinPhase": 0,
+        "desktop-deadlift-a2.groundLineValues": "318",
+        "desktop-deadlift-a2.footDriftPx": 33.400000000000006,
+        "desktop-deadlift-a3.distinctFrames": 5,
+        "desktop-deadlift-a3.frameJumpsWithinPhase": 0,
+        "desktop-deadlift-a3.groundLineValues": "318",
+        "desktop-deadlift-a3.footDriftPx": 33.400000000000006,
+        "tracesAnalysed": 18
+      },
+      "evidence": [
+        {
+          "kind": "file",
+          "ref": "arcade/src/sprites/anchors.ts",
+          "note": "anchor table vs measured PNG alpha"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-02-squat-attempts.canvas.png",
+          "note": "phone-02-squat-attempts: squat stage mismatch 0, lifter pixels off 0/20381, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-03-squat-walkout.canvas.png",
+          "note": "phone-03-squat-walkout: squat stage mismatch 0, lifter pixels off 0/20381, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-04-squat-brace.canvas.png",
+          "note": "phone-04-squat-brace: squat stage mismatch 0, lifter pixels off 0/20381, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-05-squat-hole.canvas.png",
+          "note": "phone-05-squat-hole: squat stage mismatch 0, lifter pixels off 0/18746, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-06-squat-ascent.canvas.png",
+          "note": "phone-06-squat-ascent: squat stage mismatch 0, lifter pixels off 0/18746, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-07-squat-judging.canvas.png",
+          "note": "phone-07-squat-judging: squat stage mismatch 0, lifter pixels off 0/20237, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-08-squat-outcome.canvas.png",
+          "note": "phone-08-squat-outcome: success stage mismatch 0, lifter pixels off 0/27053, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-09-squat-transition.canvas.png",
+          "note": "phone-09-squat-transition: squat stage mismatch 0, lifter pixels off 0/20381, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-10-squat-walkout.canvas.png",
+          "note": "phone-10-squat-walkout: squat stage mismatch 0, lifter pixels off 0/20381, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-11-squat-brace.canvas.png",
+          "note": "phone-11-squat-brace: squat stage mismatch 0, lifter pixels off 0/20381, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-12-squat-hole.canvas.png",
+          "note": "phone-12-squat-hole: squat stage mismatch 0, lifter pixels off 0/18746, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-13-squat-ascent.canvas.png",
+          "note": "phone-13-squat-ascent: squat stage mismatch 0, lifter pixels off 0/18746, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-14-squat-judging.canvas.png",
+          "note": "phone-14-squat-judging: squat stage mismatch 0, lifter pixels off 0/20237, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-15-squat-outcome.canvas.png",
+          "note": "phone-15-squat-outcome: success stage mismatch 0, lifter pixels off 0/27053, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-16-squat-transition.canvas.png",
+          "note": "phone-16-squat-transition: squat-max stage mismatch 0, lifter pixels off 0/22886, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-17-squat-walkout.canvas.png",
+          "note": "phone-17-squat-walkout: squat-max stage mismatch 0, lifter pixels off 0/22886, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-18-squat-brace.canvas.png",
+          "note": "phone-18-squat-brace: squat-max stage mismatch 0, lifter pixels off 0/22886, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-19-squat-hole.canvas.png",
+          "note": "phone-19-squat-hole: squat-max stage mismatch 0, lifter pixels off 0/23772, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-20-squat-ascent.canvas.png",
+          "note": "phone-20-squat-ascent: squat-max stage mismatch 0, lifter pixels off 0/23772, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-21-squat-judging.canvas.png",
+          "note": "phone-21-squat-judging: squat-max stage mismatch 0, lifter pixels off 0/23830, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-22-squat-outcome.canvas.png",
+          "note": "phone-22-squat-outcome: success stage mismatch 0, lifter pixels off 0/27053, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-24-bench-attempts.canvas.png",
+          "note": "phone-24-bench-attempts: bench stage mismatch 0, lifter pixels off 0/33990, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-25-bench-walkout.canvas.png",
+          "note": "phone-25-bench-walkout: bench stage mismatch 0, lifter pixels off 0/33990, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-26-bench-brace.canvas.png",
+          "note": "phone-26-bench-brace: bench stage mismatch 0, lifter pixels off 0/33990, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-27-bench-hole.canvas.png",
+          "note": "phone-27-bench-hole: bench stage mismatch 0, lifter pixels off 0/32969, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-28-bench-press.canvas.png",
+          "note": "phone-28-bench-press: bench stage mismatch 0, lifter pixels off 0/32969, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-29-bench-ascent.canvas.png",
+          "note": "phone-29-bench-ascent: bench stage mismatch 0, lifter pixels off 0/34152, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-30-bench-judging.canvas.png",
+          "note": "phone-30-bench-judging: bench stage mismatch 0, lifter pixels off 0/34633, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-31-bench-outcome.canvas.png",
+          "note": "phone-31-bench-outcome: success stage mismatch 0, lifter pixels off 0/27053, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-32-bench-transition.canvas.png",
+          "note": "phone-32-bench-transition: bench stage mismatch 0, lifter pixels off 0/33990, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-33-bench-walkout.canvas.png",
+          "note": "phone-33-bench-walkout: bench stage mismatch 0, lifter pixels off 0/33990, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-34-bench-brace.canvas.png",
+          "note": "phone-34-bench-brace: bench stage mismatch 0, lifter pixels off 0/33990, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-35-bench-hole.canvas.png",
+          "note": "phone-35-bench-hole: bench stage mismatch 0, lifter pixels off 0/32969, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-36-bench-press.canvas.png",
+          "note": "phone-36-bench-press: bench stage mismatch 0, lifter pixels off 0/32969, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-37-bench-ascent.canvas.png",
+          "note": "phone-37-bench-ascent: bench stage mismatch 0, lifter pixels off 0/34152, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-38-bench-judging.canvas.png",
+          "note": "phone-38-bench-judging: bench stage mismatch 0, lifter pixels off 0/34633, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-39-bench-outcome.canvas.png",
+          "note": "phone-39-bench-outcome: success stage mismatch 0, lifter pixels off 0/27053, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-40-bench-transition.canvas.png",
+          "note": "phone-40-bench-transition: bench-max stage mismatch 0, lifter pixels off 0/29079, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-41-bench-walkout.canvas.png",
+          "note": "phone-41-bench-walkout: bench-max stage mismatch 0, lifter pixels off 0/29079, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-42-bench-brace.canvas.png",
+          "note": "phone-42-bench-brace: bench-max stage mismatch 0, lifter pixels off 0/29079, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-43-bench-hole.canvas.png",
+          "note": "phone-43-bench-hole: bench-max stage mismatch 0, lifter pixels off 0/30833, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-44-bench-press.canvas.png",
+          "note": "phone-44-bench-press: bench-max stage mismatch 0, lifter pixels off 0/30833, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-45-bench-ascent.canvas.png",
+          "note": "phone-45-bench-ascent: bench-max stage mismatch 0, lifter pixels off 0/32063, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-46-bench-judging.canvas.png",
+          "note": "phone-46-bench-judging: bench-max stage mismatch 0, lifter pixels off 0/31733, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-47-bench-outcome.canvas.png",
+          "note": "phone-47-bench-outcome: success stage mismatch 0, lifter pixels off 0/27053, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-49-deadlift-attempts.canvas.png",
+          "note": "phone-49-deadlift-attempts: deadlift stage mismatch 0, lifter pixels off 0/17342, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-50-deadlift-walkout.canvas.png",
+          "note": "phone-50-deadlift-walkout: deadlift stage mismatch 0, lifter pixels off 0/17342, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-51-deadlift-brace.canvas.png",
+          "note": "phone-51-deadlift-brace: deadlift stage mismatch 0, lifter pixels off 0/17342, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-52-deadlift-ascent.canvas.png",
+          "note": "phone-52-deadlift-ascent: deadlift stage mismatch 0, lifter pixels off 0/17342, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-53-deadlift-lock.canvas.png",
+          "note": "phone-53-deadlift-lock: deadlift stage mismatch 0, lifter pixels off 0/28732, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-54-deadlift-judging.canvas.png",
+          "note": "phone-54-deadlift-judging: deadlift stage mismatch 0, lifter pixels off 0/28732, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-55-deadlift-outcome.canvas.png",
+          "note": "phone-55-deadlift-outcome: success stage mismatch 0, lifter pixels off 0/27053, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-56-deadlift-transition.canvas.png",
+          "note": "phone-56-deadlift-transition: deadlift stage mismatch 0, lifter pixels off 0/17342, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-57-deadlift-walkout.canvas.png",
+          "note": "phone-57-deadlift-walkout: deadlift stage mismatch 0, lifter pixels off 0/17342, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-58-deadlift-brace.canvas.png",
+          "note": "phone-58-deadlift-brace: deadlift stage mismatch 0, lifter pixels off 0/17342, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-59-deadlift-ascent.canvas.png",
+          "note": "phone-59-deadlift-ascent: deadlift stage mismatch 0, lifter pixels off 0/17342, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-60-deadlift-judging.canvas.png",
+          "note": "phone-60-deadlift-judging: deadlift stage mismatch 0, lifter pixels off 0/28732, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-61-deadlift-outcome.canvas.png",
+          "note": "phone-61-deadlift-outcome: miss stage mismatch 0, lifter pixels off 0/15404, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-62-deadlift-transition.canvas.png",
+          "note": "phone-62-deadlift-transition: deadlift-max stage mismatch 0, lifter pixels off 0/19275, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-63-deadlift-walkout.canvas.png",
+          "note": "phone-63-deadlift-walkout: deadlift-max stage mismatch 0, lifter pixels off 0/19275, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-64-deadlift-brace.canvas.png",
+          "note": "phone-64-deadlift-brace: deadlift-max stage mismatch 0, lifter pixels off 0/19275, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-65-deadlift-ascent.canvas.png",
+          "note": "phone-65-deadlift-ascent: deadlift-max stage mismatch 0, lifter pixels off 0/19275, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-66-deadlift-judging.canvas.png",
+          "note": "phone-66-deadlift-judging: deadlift-max stage mismatch 0, lifter pixels off 0/33670, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/phone-67-deadlift-outcome.canvas.png",
+          "note": "phone-67-deadlift-outcome: miss stage mismatch 0, lifter pixels off 0/15404, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-02-squat-attempts.canvas.png",
+          "note": "desktop-02-squat-attempts: squat stage mismatch 0, lifter pixels off 0/20381, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-03-squat-walkout.canvas.png",
+          "note": "desktop-03-squat-walkout: squat stage mismatch 0, lifter pixels off 0/20381, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-04-squat-brace.canvas.png",
+          "note": "desktop-04-squat-brace: squat stage mismatch 0, lifter pixels off 0/20381, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-05-squat-hole.canvas.png",
+          "note": "desktop-05-squat-hole: squat stage mismatch 0, lifter pixels off 0/18746, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-06-squat-ascent.canvas.png",
+          "note": "desktop-06-squat-ascent: squat stage mismatch 0, lifter pixels off 0/18746, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-07-squat-judging.canvas.png",
+          "note": "desktop-07-squat-judging: squat stage mismatch 0, lifter pixels off 0/20237, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-08-squat-outcome.canvas.png",
+          "note": "desktop-08-squat-outcome: success stage mismatch 0, lifter pixels off 0/27053, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-09-squat-transition.canvas.png",
+          "note": "desktop-09-squat-transition: squat stage mismatch 0, lifter pixels off 0/20381, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-10-squat-walkout.canvas.png",
+          "note": "desktop-10-squat-walkout: squat stage mismatch 0, lifter pixels off 0/20381, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-11-squat-brace.canvas.png",
+          "note": "desktop-11-squat-brace: squat stage mismatch 0, lifter pixels off 0/20381, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-12-squat-hole.canvas.png",
+          "note": "desktop-12-squat-hole: squat stage mismatch 0, lifter pixels off 0/18746, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-13-squat-ascent.canvas.png",
+          "note": "desktop-13-squat-ascent: squat stage mismatch 0, lifter pixels off 0/18746, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-14-squat-judging.canvas.png",
+          "note": "desktop-14-squat-judging: squat stage mismatch 0, lifter pixels off 0/20237, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-15-squat-outcome.canvas.png",
+          "note": "desktop-15-squat-outcome: success stage mismatch 0, lifter pixels off 0/27053, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-16-squat-transition.canvas.png",
+          "note": "desktop-16-squat-transition: squat-max stage mismatch 0, lifter pixels off 0/22886, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-17-squat-walkout.canvas.png",
+          "note": "desktop-17-squat-walkout: squat-max stage mismatch 0, lifter pixels off 0/22886, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-18-squat-brace.canvas.png",
+          "note": "desktop-18-squat-brace: squat-max stage mismatch 0, lifter pixels off 0/22886, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-19-squat-hole.canvas.png",
+          "note": "desktop-19-squat-hole: squat-max stage mismatch 0, lifter pixels off 0/23772, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-20-squat-ascent.canvas.png",
+          "note": "desktop-20-squat-ascent: squat-max stage mismatch 0, lifter pixels off 0/23772, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-21-squat-judging.canvas.png",
+          "note": "desktop-21-squat-judging: squat-max stage mismatch 0, lifter pixels off 0/23830, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-22-squat-outcome.canvas.png",
+          "note": "desktop-22-squat-outcome: success stage mismatch 0, lifter pixels off 0/27053, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-24-bench-attempts.canvas.png",
+          "note": "desktop-24-bench-attempts: bench stage mismatch 0, lifter pixels off 0/33990, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-25-bench-walkout.canvas.png",
+          "note": "desktop-25-bench-walkout: bench stage mismatch 0, lifter pixels off 0/33990, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-26-bench-brace.canvas.png",
+          "note": "desktop-26-bench-brace: bench stage mismatch 0, lifter pixels off 0/33990, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-27-bench-hole.canvas.png",
+          "note": "desktop-27-bench-hole: bench stage mismatch 0, lifter pixels off 0/32969, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-28-bench-press.canvas.png",
+          "note": "desktop-28-bench-press: bench stage mismatch 0, lifter pixels off 0/32969, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-29-bench-ascent.canvas.png",
+          "note": "desktop-29-bench-ascent: bench stage mismatch 0, lifter pixels off 0/34152, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-30-bench-judging.canvas.png",
+          "note": "desktop-30-bench-judging: bench stage mismatch 0, lifter pixels off 0/34633, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-31-bench-outcome.canvas.png",
+          "note": "desktop-31-bench-outcome: success stage mismatch 0, lifter pixels off 0/27053, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-32-bench-transition.canvas.png",
+          "note": "desktop-32-bench-transition: bench stage mismatch 0, lifter pixels off 0/33990, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-33-bench-walkout.canvas.png",
+          "note": "desktop-33-bench-walkout: bench stage mismatch 0, lifter pixels off 0/33990, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-34-bench-brace.canvas.png",
+          "note": "desktop-34-bench-brace: bench stage mismatch 0, lifter pixels off 0/33990, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-35-bench-hole.canvas.png",
+          "note": "desktop-35-bench-hole: bench stage mismatch 0, lifter pixels off 0/32969, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-36-bench-press.canvas.png",
+          "note": "desktop-36-bench-press: bench stage mismatch 0, lifter pixels off 0/32969, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-37-bench-ascent.canvas.png",
+          "note": "desktop-37-bench-ascent: bench stage mismatch 0, lifter pixels off 0/34152, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-38-bench-judging.canvas.png",
+          "note": "desktop-38-bench-judging: bench stage mismatch 0, lifter pixels off 0/34633, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-39-bench-outcome.canvas.png",
+          "note": "desktop-39-bench-outcome: success stage mismatch 0, lifter pixels off 0/27053, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-40-bench-transition.canvas.png",
+          "note": "desktop-40-bench-transition: bench-max stage mismatch 0, lifter pixels off 0/29079, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-41-bench-walkout.canvas.png",
+          "note": "desktop-41-bench-walkout: bench-max stage mismatch 0, lifter pixels off 0/29079, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-42-bench-brace.canvas.png",
+          "note": "desktop-42-bench-brace: bench-max stage mismatch 0, lifter pixels off 0/29079, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-43-bench-hole.canvas.png",
+          "note": "desktop-43-bench-hole: bench-max stage mismatch 0, lifter pixels off 0/30833, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-44-bench-press.canvas.png",
+          "note": "desktop-44-bench-press: bench-max stage mismatch 0, lifter pixels off 0/30833, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-45-bench-ascent.canvas.png",
+          "note": "desktop-45-bench-ascent: bench-max stage mismatch 0, lifter pixels off 0/32063, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-46-bench-judging.canvas.png",
+          "note": "desktop-46-bench-judging: bench-max stage mismatch 0, lifter pixels off 0/31733, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-47-bench-outcome.canvas.png",
+          "note": "desktop-47-bench-outcome: success stage mismatch 0, lifter pixels off 0/27053, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-49-deadlift-attempts.canvas.png",
+          "note": "desktop-49-deadlift-attempts: deadlift stage mismatch 0, lifter pixels off 0/17342, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-50-deadlift-walkout.canvas.png",
+          "note": "desktop-50-deadlift-walkout: deadlift stage mismatch 0, lifter pixels off 0/17342, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-51-deadlift-brace.canvas.png",
+          "note": "desktop-51-deadlift-brace: deadlift stage mismatch 0, lifter pixels off 0/17342, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-52-deadlift-ascent.canvas.png",
+          "note": "desktop-52-deadlift-ascent: deadlift stage mismatch 0, lifter pixels off 0/17342, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-53-deadlift-lock.canvas.png",
+          "note": "desktop-53-deadlift-lock: deadlift stage mismatch 0, lifter pixels off 0/28732, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-54-deadlift-judging.canvas.png",
+          "note": "desktop-54-deadlift-judging: deadlift stage mismatch 0, lifter pixels off 0/28732, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-55-deadlift-outcome.canvas.png",
+          "note": "desktop-55-deadlift-outcome: success stage mismatch 0, lifter pixels off 0/27053, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-56-deadlift-transition.canvas.png",
+          "note": "desktop-56-deadlift-transition: deadlift stage mismatch 0, lifter pixels off 0/17342, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-57-deadlift-walkout.canvas.png",
+          "note": "desktop-57-deadlift-walkout: deadlift stage mismatch 0, lifter pixels off 0/17342, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-58-deadlift-brace.canvas.png",
+          "note": "desktop-58-deadlift-brace: deadlift stage mismatch 0, lifter pixels off 0/17342, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-59-deadlift-ascent.canvas.png",
+          "note": "desktop-59-deadlift-ascent: deadlift stage mismatch 0, lifter pixels off 0/17342, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-60-deadlift-judging.canvas.png",
+          "note": "desktop-60-deadlift-judging: deadlift stage mismatch 0, lifter pixels off 0/28732, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-61-deadlift-outcome.canvas.png",
+          "note": "desktop-61-deadlift-outcome: miss stage mismatch 0, lifter pixels off 0/15404, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-62-deadlift-transition.canvas.png",
+          "note": "desktop-62-deadlift-transition: deadlift-max stage mismatch 0, lifter pixels off 0/19275, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-63-deadlift-walkout.canvas.png",
+          "note": "desktop-63-deadlift-walkout: deadlift-max stage mismatch 0, lifter pixels off 0/19275, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-64-deadlift-brace.canvas.png",
+          "note": "desktop-64-deadlift-brace: deadlift-max stage mismatch 0, lifter pixels off 0/19275, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-65-deadlift-ascent.canvas.png",
+          "note": "desktop-65-deadlift-ascent: deadlift-max stage mismatch 0, lifter pixels off 0/19275, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-66-deadlift-judging.canvas.png",
+          "note": "desktop-66-deadlift-judging: deadlift-max stage mismatch 0, lifter pixels off 0/33670, scale 1"
+        },
+        {
+          "kind": "canvas",
+          "ref": "evidence/desktop-67-deadlift-outcome.canvas.png",
+          "note": "desktop-67-deadlift-outcome: miss stage mismatch 0, lifter pixels off 0/15404, scale 1"
+        }
+      ],
+      "source": {
+        "targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "presentationBaseSha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+        "mechanicsSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedUrl": "http://127.0.0.1:44579"
+      },
+      "provider": {
+        "name": "twl-development-analysis",
+        "version": "0.2.0",
+        "engine": "deterministic-rules",
+        "node": "v22.23.2",
+        "playwright": "1.56.1",
+        "browser": "141.0.7390.37"
+      },
+      "humanApprovalRequired": true,
+      "summary": "Anchors match the PNG alpha, every stage frame sits on the shared contact line, the live canvas equals the anchored composition, and play traces animate continuously.",
+      "generatedAt": "2026-09-18T14:53:07.712Z"
+    },
+    {
+      "schemaVersion": 1,
+      "id": "design-intent",
+      "title": "Design intent: Iron & Amber shell with a grounded sprite athlete",
+      "verdict": "REVIEW",
+      "confidence": 0.8,
+      "flags": [
+        "DESKTOP_GUTTERS_WIDE",
+        "CANDIDATE_BANNER_RENDERED"
+      ],
+      "metrics": {
+        "beats": 138,
+        "phone.token.--color-iron": "#14110f",
+        "phone.token.--color-ink": "#f4efe4",
+        "phone.token.--color-amber": "#d4892a",
+        "phone.token.--color-paper": "#f3e6c8",
+        "phone.token.--color-red-light": "#b83228",
+        "phone.token.--color-white-light": "#f7f3ea",
+        "phone.displayFontLoaded": true,
+        "desktop.token.--color-iron": "#14110f",
+        "desktop.token.--color-ink": "#f4efe4",
+        "desktop.token.--color-amber": "#d4892a",
+        "desktop.token.--color-paper": "#f3e6c8",
+        "desktop.token.--color-red-light": "#b83228",
+        "desktop.token.--color-white-light": "#f7f3ea",
+        "desktop.displayFontLoaded": true,
+        "depthGaugeSightings": 0,
+        "timingLaneSightings": 0,
+        "illustratedStillSightings": 0,
+        "twoTapPromptSightings": 0,
+        "beatsWithHorizontalOverflow": 0,
+        "stageBeats": 128,
+        "stageBeatsNotCanvas": 0,
+        "stageBeatsNotPixelated": 0,
+        "stageBeatsNonIntegerScale": 0,
+        "phoneMinStageWidthFraction": 0.821,
+        "desktopMinStageHeightFraction": 0.8,
+        "desktopMaxGutterFraction": 0.5,
+        "stageWrapNarrowerThanViewport": 0,
+        "playBeatsWithoutThreeLights": 0,
+        "playBeatsWithoutHud": 0,
+        "phoneFlowMissingBeats": "none",
+        "editionBanner": "A0 squat/bench/deadlift mechanics \u00b7 sprite stage \u00b7 DO_NOT_MERGE \u00b7 not SNES craft",
+        "legacySpritesAttr": "true",
+        "pageErrors": 0,
+        "liftsPlayed": "squat,bench,deadlift"
+      },
+      "evidence": [
+        {
+          "kind": "screenshot",
+          "ref": "evidence/phone-00-none-title.png",
+          "note": "phone title"
+        },
+        {
+          "kind": "screenshot",
+          "ref": "evidence/desktop-00-none-title.png",
+          "note": "desktop title"
+        }
+      ],
+      "source": {
+        "targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "presentationBaseSha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+        "mechanicsSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedUrl": "http://127.0.0.1:44579"
+      },
+      "provider": {
+        "name": "twl-development-analysis",
+        "version": "0.2.0",
+        "engine": "deterministic-rules",
+        "node": "v22.23.2",
+        "playwright": "1.56.1",
+        "browser": "141.0.7390.37"
+      },
+      "humanApprovalRequired": true,
+      "summary": "The served build departs from the brief or needs a human look; see flags.",
+      "generatedAt": "2026-09-18T14:53:07.716Z"
+    },
+    {
+      "schemaVersion": 1,
+      "id": "preview-regression",
+      "title": "Fresh preview vs committed evidence and presentation reference",
+      "verdict": "REVIEW",
+      "confidence": 0.75,
+      "flags": [
+        "TITLE_DRIFT_VS_REFERENCE:phone"
+      ],
+      "metrics": {
+        "pixel.title-390.meanAbsDiff": 0.0483,
+        "pixel.title-390.sizeMatch": true,
+        "pixel.title-1280.meanAbsDiff": 0.0241,
+        "pixel.title-1280.sizeMatch": true,
+        "pixel.select-390.meanAbsDiff": 0.0571,
+        "pixel.select-390.sizeMatch": true,
+        "pixel.squat-brace-390.meanAbsDiff": 0.1584,
+        "pixel.squat-brace-390.sizeMatch": true,
+        "pixel.squat-brace-390.stageAlignedMeanAbsDiff": 0,
+        "pixel.squat-brace-390.stageAlignedOffsetY": 4,
+        "pixel.squat-brace-1280.meanAbsDiff": 0.1479,
+        "pixel.squat-brace-1280.sizeMatch": true,
+        "pixel.squat-brace-1280.stageAlignedMeanAbsDiff": 0.0021,
+        "pixel.squat-brace-1280.stageAlignedOffsetY": 157,
+        "pixel.squat-hole-390.meanAbsDiff": 0.1251,
+        "pixel.squat-hole-390.sizeMatch": true,
+        "pixel.squat-hole-390.stageAlignedMeanAbsDiff": 0,
+        "pixel.squat-hole-390.stageAlignedOffsetY": 4,
+        "pixel.bench-brace-390.meanAbsDiff": 0.1586,
+        "pixel.bench-brace-390.sizeMatch": true,
+        "pixel.bench-brace-390.stageAlignedMeanAbsDiff": 0,
+        "pixel.bench-brace-390.stageAlignedOffsetY": 4,
+        "pixel.bench-press-390.meanAbsDiff": 0.1291,
+        "pixel.bench-press-390.sizeMatch": true,
+        "pixel.bench-press-390.stageAlignedMeanAbsDiff": 0,
+        "pixel.bench-press-390.stageAlignedOffsetY": 4,
+        "pixel.deadlift-brace-390.meanAbsDiff": 0.1578,
+        "pixel.deadlift-brace-390.sizeMatch": true,
+        "pixel.deadlift-brace-390.stageAlignedMeanAbsDiff": 0,
+        "pixel.deadlift-brace-390.stageAlignedOffsetY": 4,
+        "pixel.deadlift-lock-390.meanAbsDiff": 0.1,
+        "pixel.deadlift-lock-390.sizeMatch": true,
+        "pixel.deadlift-lock-390.stageAlignedMeanAbsDiff": 0,
+        "pixel.deadlift-lock-390.stageAlignedOffsetY": 4,
+        "committedPairsCompared": 10,
+        "committedStructuralDrift": 0,
+        "committedPixelDrift": 0,
+        "committedFreshMissing": 0,
+        "referenceSha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+        "tokenDriftVsReference": "none",
+        "spritesComparedVsReference": 52,
+        "spritesDifferingVsReference": 0,
+        "referenceTitle.phone.meanAbsDiff": 0.1154,
+        "referenceTitle.desktop.meanAbsDiff": 0.0962
+      },
+      "evidence": [
+        {
+          "kind": "file",
+          "ref": "arcade/evidence/sprite-sport",
+          "note": "17 committed evidence entries"
+        },
+        {
+          "kind": "screenshot",
+          "ref": "evidence/phone-00-none-title.png",
+          "note": "vs committed committed-evidence/title-390.png: full-page meanAbsDiff 0.0483"
+        },
+        {
+          "kind": "screenshot",
+          "ref": "evidence/desktop-00-none-title.png",
+          "note": "vs committed committed-evidence/title-1280.png: full-page meanAbsDiff 0.0241"
+        },
+        {
+          "kind": "screenshot",
+          "ref": "evidence/phone-01-none-lift.png",
+          "note": "vs committed committed-evidence/select-390.png: full-page meanAbsDiff 0.0571"
+        },
+        {
+          "kind": "screenshot",
+          "ref": "evidence/phone-04-squat-brace.png",
+          "note": "vs committed committed-evidence/squat-brace-390.png: full-page meanAbsDiff 0.1584; stage region aligned at dy=4 meanAbsDiff 0"
+        },
+        {
+          "kind": "screenshot",
+          "ref": "evidence/desktop-04-squat-brace.png",
+          "note": "vs committed committed-evidence/squat-brace-1280.png: full-page meanAbsDiff 0.1479; stage region aligned at dy=157 meanAbsDiff 0.0021"
+        },
+        {
+          "kind": "screenshot",
+          "ref": "evidence/phone-05-squat-hole.png",
+          "note": "vs committed committed-evidence/squat-hole-390.png: full-page meanAbsDiff 0.1251; stage region aligned at dy=4 meanAbsDiff 0"
+        },
+        {
+          "kind": "screenshot",
+          "ref": "evidence/phone-26-bench-brace.png",
+          "note": "vs committed committed-evidence/bench-brace-390.png: full-page meanAbsDiff 0.1586; stage region aligned at dy=4 meanAbsDiff 0"
+        },
+        {
+          "kind": "screenshot",
+          "ref": "evidence/phone-28-bench-press.png",
+          "note": "vs committed committed-evidence/bench-press-390.png: full-page meanAbsDiff 0.1291; stage region aligned at dy=4 meanAbsDiff 0"
+        },
+        {
+          "kind": "screenshot",
+          "ref": "evidence/phone-51-deadlift-brace.png",
+          "note": "vs committed committed-evidence/deadlift-brace-390.png: full-page meanAbsDiff 0.1578; stage region aligned at dy=4 meanAbsDiff 0"
+        },
+        {
+          "kind": "screenshot",
+          "ref": "evidence/phone-53-deadlift-lock.png",
+          "note": "vs committed committed-evidence/deadlift-lock-390.png: full-page meanAbsDiff 0.1; stage region aligned at dy=4 meanAbsDiff 0"
+        },
+        {
+          "kind": "git",
+          "ref": "1151569c40c77485ab9e9299e5db0db022437a8a",
+          "note": "presentation reference worktree capture"
+        },
+        {
+          "kind": "screenshot",
+          "ref": "reference/evidence/phone-00-none-title.png",
+          "note": "reference phone title"
+        },
+        {
+          "kind": "screenshot",
+          "ref": "reference/evidence/desktop-00-none-title.png",
+          "note": "reference desktop title"
+        }
+      ],
+      "source": {
+        "targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "presentationBaseSha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+        "mechanicsSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedUrl": "http://127.0.0.1:44579"
+      },
+      "provider": {
+        "name": "twl-development-analysis",
+        "version": "0.2.0",
+        "engine": "deterministic-rules",
+        "node": "v22.23.2",
+        "playwright": "1.56.1",
+        "browser": "141.0.7390.37"
+      },
+      "humanApprovalRequired": true,
+      "summary": "The fresh preview drifted from committed evidence or the reference, or a comparison could not run; see flags.",
+      "generatedAt": "2026-09-18T14:53:11.527Z"
+    },
+    {
+      "schemaVersion": 1,
+      "id": "document-contract-conflict",
+      "title": "Design-document contract conflict (standing REVIEW)",
+      "verdict": "REVIEW",
+      "confidence": 0.99,
+      "flags": [
+        "DOCUMENT_CONTRACT_CONFLICT",
+        "IRON_AMBER_DOC_ABSENT_AT_TARGET"
+      ],
+      "metrics": {
+        "ironAmber.mechanics-authority.present": true,
+        "ironAmber.mechanics-authority.sha256": "0fcac65e4422735ff2bf0342e7de86757685c5a5c62690fdbfd71a9761d0cf67",
+        "ironAmber.mechanics-authority.clausesFound": 2,
+        "ironAmber.pr-44.present": true,
+        "ironAmber.pr-44.sha256": "0fcac65e4422735ff2bf0342e7de86757685c5a5c62690fdbfd71a9761d0cf67",
+        "ironAmber.pr-44.clausesFound": 2,
+        "ironAmber.target.present": false,
+        "ironAmber.target.sha256": null,
+        "ironAmber.target.clausesFound": 0,
+        "gdd.target.present": true,
+        "gdd.target.sha256": "b9398040e5105f1f2e7d592510996c15dc63b33cbaa511d95936e6b6171b605c",
+        "brief": "preserve the real Session A career-mode mechanics / use the career-mode sprite athlete / present it inside the Iron & Amber visual system / keep the athlete grounded on the platform / use responsive full-stage composition / use nearest-neighbor rendering / reject raw centered sprite tiles, giant gutters, floating athletes, still-image animation, and two-tap timing demos"
+      },
+      "evidence": [
+        {
+          "kind": "doc",
+          "ref": "288db32c06232bb0fb65ce7236a0614c698a6920:docs/design/IRON-AND-AMBER-REFERENCE.md",
+          "sha256": "0fcac65e4422735ff2bf0342e7de86757685c5a5c62690fdbfd71a9761d0cf67",
+          "note": "mechanics-authority"
+        },
+        {
+          "kind": "doc",
+          "ref": "c52444d407e9974209446ec1de7d127f1ce07a6a:docs/design/IRON-AND-AMBER-REFERENCE.md",
+          "sha256": "0fcac65e4422735ff2bf0342e7de86757685c5a5c62690fdbfd71a9761d0cf67",
+          "note": "pr-44"
+        },
+        {
+          "kind": "doc",
+          "ref": "fc4c1aec06f0f079b851bb703f69ee67140b4f85:docs/design/IRON-AND-AMBER-REFERENCE.md",
+          "note": "target"
+        },
+        {
+          "kind": "doc",
+          "ref": "fc4c1aec06f0f079b851bb703f69ee67140b4f85:docs/GDD.md",
+          "sha256": "b9398040e5105f1f2e7d592510996c15dc63b33cbaa511d95936e6b6171b605c",
+          "note": "GDD \u00a77.1 at target"
+        }
+      ],
+      "source": {
+        "targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "presentationBaseSha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+        "mechanicsSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedUrl": "http://127.0.0.1:44579"
+      },
+      "provider": {
+        "name": "twl-development-analysis",
+        "version": "0.2.0",
+        "engine": "deterministic-rules",
+        "node": "v22.23.2",
+        "playwright": "1.56.1",
+        "browser": "141.0.7390.37"
+      },
+      "humanApprovalRequired": true,
+      "summary": "The Iron & Amber reference, GDD \u00a77.1 and the product brief disagree about sprites as the primary art direction. Owner ruling: analyze against the brief, keep the documents unchanged, report REVIEW until the documents are reconciled.",
+      "generatedAt": "2026-09-18T14:53:11.528Z"
+    },
+    {
+      "schemaVersion": 1,
+      "id": "flow",
+      "title": "Player flow",
+      "verdict": "ABSTAIN",
+      "confidence": 0,
+      "flags": [
+        "NOT_IMPLEMENTED"
+      ],
+      "metrics": {
+        "plannedMeasurements": "screen graph coverage, dead ends, return paths, time-to-first-input"
+      },
+      "evidence": [],
+      "source": {
+        "targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "presentationBaseSha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+        "mechanicsSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedUrl": "http://127.0.0.1:44579"
+      },
+      "provider": {
+        "name": "twl-development-analysis",
+        "version": "0.2.0",
+        "engine": "deterministic-rules",
+        "node": "v22.23.2",
+        "playwright": "1.56.1",
+        "browser": "141.0.7390.37"
+      },
+      "humanApprovalRequired": true,
+      "summary": "Player flow is scheduled for a later slice and abstains rather than guessing.",
+      "generatedAt": "2026-09-18T14:53:11.528Z"
+    },
+    {
+      "schemaVersion": 1,
+      "id": "balance",
+      "title": "Balance",
+      "verdict": "ABSTAIN",
+      "confidence": 0,
+      "flags": [
+        "NOT_IMPLEMENTED"
+      ],
+      "metrics": {
+        "plannedMeasurements": "make/miss rates per lift and load ratio across seeds, opener suggestions vs e1RM"
+      },
+      "evidence": [],
+      "source": {
+        "targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "presentationBaseSha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+        "mechanicsSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedUrl": "http://127.0.0.1:44579"
+      },
+      "provider": {
+        "name": "twl-development-analysis",
+        "version": "0.2.0",
+        "engine": "deterministic-rules",
+        "node": "v22.23.2",
+        "playwright": "1.56.1",
+        "browser": "141.0.7390.37"
+      },
+      "humanApprovalRequired": true,
+      "summary": "Balance is scheduled for a later slice and abstains rather than guessing.",
+      "generatedAt": "2026-09-18T14:53:11.528Z"
+    },
+    {
+      "schemaVersion": 1,
+      "id": "input-fairness",
+      "title": "Input fairness",
+      "verdict": "ABSTAIN",
+      "confidence": 0,
+      "flags": [
+        "NOT_IMPLEMENTED"
+      ],
+      "metrics": {
+        "plannedMeasurements": "cue window widths vs fatigue, press/hold latency budget, keyboard vs pointer parity"
+      },
+      "evidence": [],
+      "source": {
+        "targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "presentationBaseSha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+        "mechanicsSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedUrl": "http://127.0.0.1:44579"
+      },
+      "provider": {
+        "name": "twl-development-analysis",
+        "version": "0.2.0",
+        "engine": "deterministic-rules",
+        "node": "v22.23.2",
+        "playwright": "1.56.1",
+        "browser": "141.0.7390.37"
+      },
+      "humanApprovalRequired": true,
+      "summary": "Input fairness is scheduled for a later slice and abstains rather than guessing.",
+      "generatedAt": "2026-09-18T14:53:11.528Z"
+    },
+    {
+      "schemaVersion": 1,
+      "id": "progression",
+      "title": "Progression",
+      "verdict": "ABSTAIN",
+      "confidence": 0,
+      "flags": [
+        "NOT_IMPLEMENTED"
+      ],
+      "metrics": {
+        "plannedMeasurements": "e1RM and streak deltas per outcome, server-authoritative boundary checks"
+      },
+      "evidence": [],
+      "source": {
+        "targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "presentationBaseSha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+        "mechanicsSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedUrl": "http://127.0.0.1:44579"
+      },
+      "provider": {
+        "name": "twl-development-analysis",
+        "version": "0.2.0",
+        "engine": "deterministic-rules",
+        "node": "v22.23.2",
+        "playwright": "1.56.1",
+        "browser": "141.0.7390.37"
+      },
+      "humanApprovalRequired": true,
+      "summary": "Progression is scheduled for a later slice and abstains rather than guessing.",
+      "generatedAt": "2026-09-18T14:53:11.528Z"
+    },
+    {
+      "schemaVersion": 1,
+      "id": "playtest",
+      "title": "Human playtest",
+      "verdict": "ABSTAIN",
+      "confidence": 0,
+      "flags": [
+        "NOT_IMPLEMENTED",
+        "HUMAN_PLAYTEST_REQUIRED"
+      ],
+      "metrics": {
+        "plannedMeasurements": "feel, pacing, tension; cannot be established by tooling"
+      },
+      "evidence": [],
+      "source": {
+        "targetSha": "b80d6a0527eafb6c93afc43f63aad71c509fd277",
+        "presentationBaseSha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+        "mechanicsSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedSha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+        "servedUrl": "http://127.0.0.1:44579"
+      },
+      "provider": {
+        "name": "twl-development-analysis",
+        "version": "0.2.0",
+        "engine": "deterministic-rules",
+        "node": "v22.23.2",
+        "playwright": "1.56.1",
+        "browser": "141.0.7390.37"
+      },
+      "humanApprovalRequired": true,
+      "summary": "Human playtest is scheduled for a later slice and abstains rather than guessing.",
+      "generatedAt": "2026-09-18T14:53:11.528Z"
+    }
+  ],
+  "blockers": [],
+  "commands": [
+    {
+      "cmd": "npm run build",
+      "cwd": "/tmp/twl-development-analysis-wt/b80d6a0527ea/arcade",
+      "exitCode": 0,
+      "durationMs": 5967,
+      "stdoutTail": "",
+      "stderrTail": ""
+    },
+    {
+      "cmd": "npm test",
+      "cwd": "/tmp/twl-development-analysis-wt/b80d6a0527ea/arcade",
+      "exitCode": 0,
+      "durationMs": 5171,
+      "stdoutTail": "",
+      "stderrTail": ""
+    },
+    {
+      "cmd": "/usr/bin/node --disable-warning=ExperimentalWarning --import /tmp/twl80/tools/twl-development-analysis/src/probe/register.mjs /tmp/twl80/tools/twl-development-analysis/src/probe/mechanics-probe.ts --arcade /tmp/twl-development-analysis-wt/b80d6a0527ea/arcade --out /tmp/twl80/tools/twl-development-analysis/out/b80d6a05-attempts-final/probe.json --attempts-per-lift 3",
+      "cwd": "/tmp/twl-development-analysis-wt/b80d6a0527ea/arcade",
+      "exitCode": 0,
+      "durationMs": 434,
+      "stdoutTail": "",
+      "stderrTail": ""
+    },
+    {
+      "cmd": "/usr/bin/node --disable-warning=ExperimentalWarning --import /tmp/twl80/tools/twl-development-analysis/src/probe/register.mjs /tmp/twl80/tools/twl-development-analysis/src/probe/mechanics-probe.ts --arcade /tmp/twl-development-analysis-wt/b80d6a0527ea/arcade --out /tmp/twl80/tools/twl-development-analysis/out/b80d6a05-attempts-final/oracle.json --attempts-per-lift 3 --oracle /tmp/twl80/tools/twl-development-analysis/out/b80d6a05-attempts-final/oracle.json.oracle-input.json",
+      "cwd": "/tmp/twl-development-analysis-wt/b80d6a0527ea/arcade",
+      "exitCode": 0,
+      "durationMs": 454,
+      "stdoutTail": "",
+      "stderrTail": ""
+    },
+    {
+      "cmd": "npm run build",
+      "cwd": "/tmp/twl-development-analysis-wt/1151569c40c7/arcade",
+      "exitCode": 0,
+      "durationMs": 3545,
+      "stdoutTail": "",
+      "stderrTail": ""
+    }
+  ],
+  "outDir": "/tmp/twl80/tools/twl-development-analysis/out/b80d6a05-attempts-final"
+}

@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { ANALYZERS } from "../src/analyzers/index.ts";
+import { attemptMatrix } from "../src/analyzers/attempt-matrix.ts";
 import { designIntent } from "../src/analyzers/design-intent.ts";
 import { documentContract } from "../src/analyzers/document-contract.ts";
 import { mechanicsFrameParity } from "../src/analyzers/mechanics-frame-parity.ts";
@@ -113,6 +114,8 @@ const NEGATIVES: Expectation[] = [
   { fixture: "negative-missing-evidence", analyzer: previewRegression, verdict: "FAIL", flagPrefixes: ["BASELINE_EVIDENCE_MISSING"] },
   { fixture: "negative-missing-evidence", analyzer: spriteGrounding, verdict: "FAIL", flagPrefixes: ["ANCHORS_MISSING", "SPRITE_FRAMES_UNMEASURED", "CANVAS_PIXELS_MISSING"] },
   { fixture: "negative-missing-evidence", analyzer: servedIdentity, verdict: "FAIL", flagPrefixes: ["SERVED_FACTS_MISSING"] },
+  { fixture: "negative-held-state-leak", analyzer: attemptMatrix, verdict: "FAIL", flagPrefixes: ["INPUT_HELD_STATE_LEAK"] },
+  { fixture: "negative-held-state-leak", analyzer: mechanicsFrameParity, verdict: "FAIL", flagPrefixes: ["INPUT_HELD_STATE_LEAK"] },
 ];
 
 describe("negative fixtures: known bad directions must FAIL with the named flags", { skip: !hasFixtures && "fixtures not built" }, () => {
@@ -143,7 +146,7 @@ describe("fail-closed rules on an empty capture", () => {
     bare.docs = null;
     bare.build = null;
     const ctx = contextFor(empty, bare, "/nonexistent");
-    for (const a of [sourceIdentity, servedIdentity, mechanicsFrameParity, spriteGrounding, designIntent, previewRegression, documentContract]) {
+    for (const a of [sourceIdentity, servedIdentity, mechanicsFrameParity, attemptMatrix, spriteGrounding, designIntent, previewRegression, documentContract]) {
       const d = await a.run(ctx);
       assert.equal(d.verdict, "FAIL", `${a.id} should fail closed, got ${d.verdict} ${JSON.stringify(d.flags)}`);
     }

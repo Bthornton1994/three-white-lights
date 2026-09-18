@@ -223,6 +223,18 @@ const negatives: Mutation[] = [
       }
     },
   },
+  {
+    name: "negative-held-state-leak",
+    mutation: "The hold pad's held flag stays true after attempt 1 resolves with the pointer down, so attempts 2 and 3 start with data-held=true and their first press is swallowed.",
+    apply: (b) => {
+      for (const t of b.traces) {
+        if (t.attempt < 2) continue;
+        t.heldBeforeFirstInput = true;
+        t.firstPressAccepted = false;
+        if (t.samples[0]) t.samples[0].dom.held = true;
+      }
+    },
+  },
 ];
 
 const outRoot = ensureDir(path.join(PACKAGE_ROOT, "fixtures", "bundles"));

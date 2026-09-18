@@ -1,3 +1,4 @@
+import { attemptMatrix } from "./attempt-matrix.ts";
 import type { Analyzer } from "../types.ts";
 import { designIntent } from "./design-intent.ts";
 import { documentContract } from "./document-contract.ts";
@@ -14,6 +15,7 @@ export const ANALYZERS: Analyzer[] = [
   servedIdentity,
   existingTests,
   mechanicsFrameParity,
+  attemptMatrix,
   spriteGrounding,
   designIntent,
   previewRegression,

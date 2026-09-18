@@ -17,6 +17,10 @@ export const sourceIdentity: Analyzer = {
     f.metric("targetSha", facts.targetSha);
     f.check(facts.targetSha === baseline.target.sha, "TARGET_SHA_MISMATCH");
     f.check(facts.worktree !== null, "WORKTREE_MISSING");
+    if (facts.worktreeHead) {
+      f.metric("worktreeHead", facts.worktreeHead);
+      f.check(facts.worktreeHead === baseline.target.sha, "WORKTREE_HEAD_MISMATCH");
+    }
 
     for (const [authorityPath, pinned] of Object.entries(baseline.mechanicsAuthority.files)) {
       const fromGit = facts.authorityHashes[authorityPath] ?? null;
