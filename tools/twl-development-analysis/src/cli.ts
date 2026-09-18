@@ -1,4 +1,5 @@
 import path from "node:path";
+import { parseAttemptsPerLift } from "./attempt-plan.ts";
 import { loadBaseline, loadIntent, providerInfo } from "./config.ts";
 import { analyzeArtifacts, runAnalysis } from "./pipeline.ts";
 import { renderMarkdown } from "./report/markdown.ts";
@@ -19,6 +20,7 @@ function usage(): never {
   cli.ts analyze [--target <sha>] [--reference <sha>] [--out <dir>] [--work-dir <dir>]
                  [--keep-worktree] [--skip-reference] [--skip-tests] [--chromium <path>]
                  [--insecure-fonts]   (accept a TLS-intercepting proxy for the font hosts only)
+                 [--attempts-per-lift <n>]  (omit for original coverage; 3 → 18 cases)
   cli.ts analyze-bundle --bundle <bundle.json> --facts <facts.json> [--out <dir>]
   cli.ts report <decisions.json>`);
   process.exit(2);
@@ -37,6 +39,7 @@ async function main(): Promise<void> {
       skipTests: has(args, "skip-tests"),
       chromiumPath: flag(args, "chromium"),
       ignoreHttpsErrors: has(args, "insecure-fonts") || process.env.TWL_IGNORE_HTTPS_ERRORS === "1",
+      attemptsPerLift: parseAttemptsPerLift(flag(args, "attempts-per-lift")),
     });
     console.log(renderMarkdown(report));
     console.error(`written: ${report.outDir}`);

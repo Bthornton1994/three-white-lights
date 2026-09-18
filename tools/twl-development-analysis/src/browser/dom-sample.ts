@@ -21,7 +21,9 @@ export function readDomInPage(args: DomReadArgs) {
   };
   const main = q("main.arcade-root");
   const stage = q('[data-sprite-stage="true"]');
-  const canvas = q("canvas.sprite-world") as HTMLCanvasElement | null;
+  const canvas =
+    (q("canvas.sprite-world") as HTMLCanvasElement | null) ??
+    (q("canvas.stage-canvas") as HTMLCanvasElement | null);
   const cs = canvas ? getComputedStyle(canvas) : null;
   const rootStyle = getComputedStyle(document.documentElement);
   const tokens: Record<string, string> = {};

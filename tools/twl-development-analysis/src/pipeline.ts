@@ -12,11 +12,13 @@ import { copyFileSync, existsSync, readdirSync, readFileSync, statSync, writeFil
 import os from "node:os";
 import path from "node:path";
 import { ANALYZERS } from "./analyzers/index.ts";
+import { buildAttemptCases, inspectHoldPadSource } from "./attempt-cases.ts";
+import { liftsByViewport } from "./attempt-plan.ts";
 import { captureBundle, playwrightVersion } from "./browser/driver.ts";
 import { serveStatic } from "./browser/server.ts";
 import { loadBaseline, loadIntent, PACKAGE_ROOT, providerInfo } from "./config.ts";
 import { validateDecision, worstVerdict } from "./decision.ts";
-import { addWorktree, diffNames, fileHashAt, repoRoot, showFile, type WorktreeHandle } from "./git.ts";
+import { addWorktree, diffNames, ensureCommit, fileHashAt, headOf, repoRoot, showFile, type WorktreeHandle } from "./git.ts";
 import { measureFrame, readPng } from "./png.ts";
 import { runProbe } from "./probe/client.ts";
 import { renderMarkdown } from "./report/markdown.ts";
@@ -31,7 +33,6 @@ import type {
   DocClauseFacts,
   DocFacts,
   IntentConfig,
-  LiftId,
   MeasuredFrame,
   OracleSample,
   ProviderInfo,
@@ -54,6 +55,7 @@ export interface RunOptions {
   skipTests?: boolean;
   chromiumPath?: string | null;
   ignoreHttpsErrors?: boolean;
+  attemptsPerLift?: number | null;
   log?: (line: string) => void;
 }
 
@@ -200,7 +202,10 @@ async function captureReference(
       facts.notes.push("reference build failed");
       return facts;
     }
-    const server = await serveStatic(path.join(arcadeDir, "dist"));
+    const server = await serveStatic(path.join(arcadeDir, "dist"), {
+      targetSha: sha,
+      runId: `reference-${short(sha, 8)}`,
+    });
     try {
       const refOut = ensureDir(path.join(outDir, "reference"));
       const bundle = await captureBundle(
@@ -212,6 +217,7 @@ async function captureReference(
           probeTraces: [],
           tickMs: 1000 / 60,
           liftsByViewport: { phone: [], desktop: [] },
+          attemptsPerLift: null,
           chromiumPath,
           spritePaths: spritePathsFor(arcadeDir),
           log,
@@ -251,6 +257,15 @@ export async function runAnalysis(opts: RunOptions = {}): Promise<RunReport> {
   if (opts.targetSha) baseline.target.sha = opts.targetSha;
   if (opts.referenceSha) baseline.presentationReference.sha = opts.referenceSha;
   const root = repoRoot(PACKAGE_ROOT);
+  for (const sha of new Set([
+    baseline.target.sha,
+    baseline.presentationReference.sha,
+    baseline.mechanicsAuthority.sha,
+    ...baseline.documents.ironAmberReference.readFrom.map((r) => r.sha),
+    ...baseline.documents.gdd.readFrom.map((r) => r.sha),
+  ])) {
+    if (!ensureCommit(root, sha)) log(`warning: commit ${sha} is not reachable; analyzers will fail closed`);
+  }
   const id = runId(baseline.target.sha);
   const outDir = ensureDir(opts.outDir ?? path.join(PACKAGE_ROOT, "out", id));
   const workDir = ensureDir(opts.workDir ?? path.join(os.tmpdir(), "twl-development-analysis"));
@@ -262,6 +277,7 @@ export async function runAnalysis(opts: RunOptions = {}): Promise<RunReport> {
     schemaVersion: 1,
     targetSha: baseline.target.sha,
     worktree: null,
+    worktreeHead: null,
     fileHashes: {},
     authorityHashes: {},
     spriteDiffVsReference: null,
@@ -274,6 +290,7 @@ export async function runAnalysis(opts: RunOptions = {}): Promise<RunReport> {
     reference: null,
     build: null,
     tests: null,
+    holdPadSource: null,
   };
   for (const file of Object.keys(baseline.mechanicsAuthority.files)) {
     facts.authorityHashes[file] = fileHashAt(root, baseline.mechanicsAuthority.sha, file);
@@ -289,6 +306,8 @@ export async function runAnalysis(opts: RunOptions = {}): Promise<RunReport> {
     viewports: intent.viewports,
     beats: [],
     traces: [],
+    cases: [],
+    attemptsPerLift: opts.attemptsPerLift ?? null,
     evidenceDir: "evidence",
     browser: null,
     notes: [],
@@ -298,6 +317,11 @@ export async function runAnalysis(opts: RunOptions = {}): Promise<RunReport> {
   try {
     handle = addWorktree(root, baseline.target.sha, path.join(workDir, short(baseline.target.sha, 12)));
     facts.worktree = handle.dir;
+    facts.worktreeHead = headOf(handle.dir);
+    facts.holdPadSource = inspectHoldPadSource(
+      showFile(root, baseline.target.sha, "arcade/src/ui/holdPad.ts")?.toString("utf8") ?? null,
+      showFile(root, baseline.target.sha, "arcade/src/ui/ArcadeApp.tsx")?.toString("utf8") ?? null,
+    );
     const arcadeDir = path.join(handle.dir, baseline.target.app ?? "arcade");
     for (const rel of Object.keys(baseline.protectedFilesAtTarget)) {
       const p = path.join(handle.dir, rel);
@@ -328,12 +352,20 @@ export async function runAnalysis(opts: RunOptions = {}): Promise<RunReport> {
     } else facts.tests = { ran: false, records: [] };
 
     log("mechanics probe");
-    const probe = runProbe(arcadeDir, path.join(outDir, "probe.json"));
+    const probe = runProbe(arcadeDir, path.join(outDir, "probe.json"), undefined, opts.attemptsPerLift ?? null);
     commands.push(toRecord(probe.record));
     facts.probe = probe.facts;
 
     if (build.buildExit === 0) {
-      const server = await serveStatic(path.join(arcadeDir, "dist"));
+      const dist = facts.build.distAssets;
+      const scriptEntry = Object.keys(dist).find((k) => /\.js$/.test(k) && k.includes("assets")) ?? Object.keys(dist).find((k) => /\.js$/.test(k)) ?? null;
+      const server = await serveStatic(path.join(arcadeDir, "dist"), {
+        targetSha: baseline.target.sha,
+        runId: id,
+        capturedAt: nowIso(),
+        distScriptPath: scriptEntry ? `/${scriptEntry}` : null,
+        distScriptSha256: scriptEntry ? dist[scriptEntry]! : null,
+      });
       try {
         log(`serving ${server.url}`);
         bundle = await captureBundle(
@@ -344,7 +376,8 @@ export async function runAnalysis(opts: RunOptions = {}): Promise<RunReport> {
             intent,
             probeTraces: probe.facts?.traces ?? [],
             tickMs: probe.facts?.tickMs ?? 1000 / 60,
-            liftsByViewport: { phone: ["squat", "bench", "deadlift"] as LiftId[], desktop: ["squat"] as LiftId[] },
+            liftsByViewport: liftsByViewport(opts.attemptsPerLift ?? null),
+            attemptsPerLift: opts.attemptsPerLift ?? null,
             chromiumPath: opts.chromiumPath,
             spritePaths: spritePathsFor(arcadeDir),
             log,
@@ -358,6 +391,8 @@ export async function runAnalysis(opts: RunOptions = {}): Promise<RunReport> {
       } finally {
         await server.close();
       }
+      bundle.cases = buildAttemptCases(bundle, facts);
+      bundle.attemptsPerLift = opts.attemptsPerLift ?? null;
       const samples: OracleSample[] = [];
       for (const trace of bundle.traces) {
         for (const s of trace.samples) {
@@ -368,7 +403,7 @@ export async function runAnalysis(opts: RunOptions = {}): Promise<RunReport> {
       }
       if (samples.length > 0) {
         log(`frame oracle (${samples.length} samples)`);
-        const oracle = runProbe(arcadeDir, path.join(outDir, "oracle.json"), samples);
+        const oracle = runProbe(arcadeDir, path.join(outDir, "oracle.json"), samples, opts.attemptsPerLift ?? null);
         commands.push(toRecord(oracle.record));
         facts.oracle = oracle.oracle ? { samples, expected: oracle.oracle } : null;
       }
@@ -387,6 +422,10 @@ export async function runAnalysis(opts: RunOptions = {}): Promise<RunReport> {
 
   writeJson(path.join(outDir, "bundle.json"), bundle);
   writeJson(path.join(outDir, "facts.json"), facts);
+  if ((!bundle.cases || bundle.cases.length === 0) && bundle.traces.length > 0) {
+    bundle.cases = buildAttemptCases(bundle, facts);
+  }
+  writeJson(path.join(outDir, "cases.json"), bundle.cases ?? []);
   const provider = providerInfo({ playwright: playwrightVersion(), browser: browserVersion });
   const report = await analyzeArtifacts(bundle, facts, baseline, intent, provider, outDir, id, commands, startedAt);
   return report;
@@ -403,6 +442,9 @@ export async function analyzeArtifacts(
   commands: CommandRecord[],
   generatedAt = nowIso(),
 ): Promise<RunReport> {
+  if ((!bundle.cases || bundle.cases.length === 0) && bundle.traces.length > 0) {
+    bundle.cases = buildAttemptCases(bundle, facts);
+  }
   const servedSha = bundle.beats[0]?.dom.sportSource ?? null;
   const source: SourceIdentity = {
     targetSha: baseline.target.sha,

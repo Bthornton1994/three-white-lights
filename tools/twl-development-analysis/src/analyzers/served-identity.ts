@@ -66,6 +66,23 @@ export const servedIdentity: Analyzer = {
     const previewBuild = bundle.beats[0]?.dom.previewBuild ?? null;
     f.metric("previewBuild", previewBuild);
 
+    const provenance = served?.provenance ?? null;
+    const port = served?.port ?? provenance?.port ?? null;
+    f.metric("servedPort", port);
+    if (port !== null) f.check(![8080, 8081].includes(Number(port)), "PRIOR_SERVER_REUSE");
+    if (served?.url) f.check(!/:8080(?:\/|$)/.test(served.url) && !/:8081(?:\/|$)/.test(served.url), "PRIOR_SERVER_REUSE");
+    if (bundle.attemptsPerLift === 3) f.check(provenance !== null, "PROVENANCE_MISSING");
+    if (provenance) {
+      f.metric("provenance.targetSha", provenance.targetSha);
+      f.metric("provenance.port", provenance.port);
+      f.check(provenance.targetSha === baseline.target.sha, "PROVENANCE_TARGET_SHA_MISMATCH");
+      f.check(![8080, 8081].includes(provenance.port), "PRIOR_SERVER_REUSE");
+      if (provenance.distScriptSha256 && served?.scriptSha256) {
+        f.check(provenance.distScriptSha256 === served.scriptSha256, "PROVENANCE_SCRIPT_MISMATCH");
+      }
+      f.ref({ kind: "url", ref: `${served?.url ?? ""}/__provenance.json`, note: "analysis-server provenance" });
+    }
+
     const verdict = f.verdict();
     return makeDecision(
       {

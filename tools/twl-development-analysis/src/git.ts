@@ -36,8 +36,15 @@ export function showFileBinary(root: string, sha: string, file: string): Buffer 
 }
 
 export function fileHashAt(root: string, sha: string, file: string): string | null {
-  // Use git's own blob hash-object pipeline to avoid encoding issues:
-  const r = run("bash", ["-lc", `git cat-file blob ${sha}:${file} | sha256sum | cut -d' ' -f1`], { cwd: root });
+  if (!objectExists(root, sha) && !ensureCommit(root, sha)) return null;
+  const exists = run("git", ["cat-file", "-e", `${sha}:${file}`], { cwd: root });
+  if (exists.exitCode !== 0) return null;
+  // pipefail so a missing blob cannot become the SHA-256 of empty stdin.
+  const r = run(
+    "bash",
+    ["-lc", `set -o pipefail && git cat-file blob ${sha}:${file} | sha256sum | awk '{print $1}'`],
+    { cwd: root },
+  );
   if (r.exitCode !== 0) return null;
   const out = r.stdout.trim();
   return /^[0-9a-f]{64}$/.test(out) ? out : null;

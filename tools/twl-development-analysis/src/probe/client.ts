@@ -20,17 +20,20 @@ export interface ProbeRun {
  * facts. A probe that cannot run yields `facts: null`; the analyzers treat
  * that as missing evidence and fail closed.
  */
-export function runProbe(arcadeDir: string, outFile: string, oracle?: OracleSample[]): ProbeRun {
+export function runProbe(arcadeDir: string, outFile: string, oracle?: OracleSample[], attemptsPerLift?: number | null): ProbeRun {
   const register = path.join(PACKAGE_ROOT, "src", "probe", "register.mjs");
   const probe = path.join(PACKAGE_ROOT, "src", "probe", "mechanics-probe.ts");
   const args = ["--disable-warning=ExperimentalWarning", "--import", register, probe, "--arcade", arcadeDir, "--out", outFile];
+  if (attemptsPerLift !== null && attemptsPerLift !== undefined) {
+    args.push("--attempts-per-lift", String(attemptsPerLift));
+  }
   let oracleFile: string | null = null;
   if (oracle && oracle.length > 0) {
     oracleFile = `${outFile}.oracle-input.json`;
     writeJson(oracleFile, oracle);
     args.push("--oracle", oracleFile);
   }
-  const record = run(process.execPath, args, { cwd: arcadeDir, timeoutMs: 180_000 });
+  const record = run(process.execPath, args, { cwd: arcadeDir, timeoutMs: 300_000 });
   if (record.exitCode !== 0) return { facts: null, oracle: null, record };
   try {
     const raw = readJson<ProbeFacts & { oracle?: OracleAnswer[] | null }>(outFile);

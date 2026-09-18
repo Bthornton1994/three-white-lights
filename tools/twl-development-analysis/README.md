@@ -46,7 +46,8 @@ design documents.
 | `source-identity` | `arcade/src/game/lift.ts` and `liftTuning.ts` hash-verified on every run against **both** the pinned SHA-256 values and the authority commit read from git; `feel.ts` pinned; sprite sheets byte-identical to the presentation reference; edition constants name the same commits; build succeeded. |
 | `served-identity` | Served script hash equals this run's fresh `dist/`; bundle contains both commit pins; served sprites equal worktree and reference; every rendered screen declares the configured mechanics and base SHAs and the `sprite-stage` shell. Rejects stale previews and mismatched served SHAs. |
 | `existing-tests` | The target's own `npm test` (node tests, sprite QA, vitest parity). |
-| `mechanics-frame-parity` | The browser trace (16 ms fake-clock frames) versus the mechanics probe's mirror of the same input schedule through the target's own `stepPlay` and frame mapping: phase path, per-frame phase/frame/depth/bar height, prompts, press and lockout commands. A frame oracle asks the target's own mapping which frame the DOM's state should show. Detects a held flag that leaks across attempts. |
+| `mechanics-frame-parity` | The browser trace (16 ms fake-clock frames) versus the mechanics probe's mirror of the same input schedule through the target's own `stepPlay` and frame mapping: phase path, per-frame phase/frame/depth/bar height, prompts, press and lockout commands. A frame oracle asks the target's own mapping which frame the DOM's state should show. Detects a held flag that leaks across attempts and whether a deadlift miss matches the frozen sim. |
+| `attempt-matrix` | One row per viewport × lift × attempt. Records target/served SHA, input events, phase/frame traces, `data-held` before the first input, first-press acceptance, judgment, console errors, overflow, grounding and parity. `--attempts-per-lift 3` requires all 18 cases. |
 | `sprite-grounding` | Anchor table equals measured PNG alpha; every stage frame reports the shared contact line (318); the live canvas equals the anchored composition of platform + frame pixel for pixel; play traces animate through distinct frames without jumps, show the hole frame at maximal depth, keep the ground line fixed, and bound foot drift. |
 | `design-intent` | Iron & Amber tokens and type, canvas athlete (no `<img>` still), `image-rendering: pixelated`, integer scale, phone stage width and desktop stage height fractions, gutter fraction, no horizontal overflow, three lights, honest HUD, no DEPTH gauge / timing lane / two-tap copy, flow coverage, page errors, candidate banner. |
 | `preview-regression` | A fresh build compared to the evidence the candidate committed (structure exact, pixels with scroll-aligned stage comparison) and to the presentation reference captured from its own worktree (tokens, sprites, title). |
@@ -68,7 +69,10 @@ npm run typecheck
 Options: `--target <sha>`, `--reference <sha>`, `--out <dir>`, `--work-dir <dir>`,
 `--chromium <path>`, `--insecure-fonts` (accept a TLS-intercepting proxy for the
 two Google Fonts hosts only; off by default; needed in sandboxes with a MITM
-proxy so the display font renders).
+proxy so the display font renders), `--attempts-per-lift <n>` (omit to keep the
+original coverage; `3` plays squat/bench/deadlift × three attempts on both
+390×844 and 1280×800 — 18 cases — and records held-state, first press, parity,
+overflow, grounding and provenance on each).
 
 Requirements: Node 22.18+ (native type stripping), network for `npm ci` in the
 worktree, Chromium (Playwright's bundled revision or `/opt/pw-browsers/chromium`),
@@ -76,11 +80,12 @@ Python 3 with Pillow and numpy for the target's own `check_sprites.py`.
 
 Outputs land in `out/<sha8>-<timestamp>/`: `decisions.json` (the `RunReport`),
 `report.md`, `bundle.json` (everything the browser observed), `facts.json`
-(everything static inspection and the probe observed), `probe.json`,
-`evidence/*.png` (screenshots and raw canvas pixels), `committed-evidence/`
-(the candidate's own evidence copied for comparison), `reference/` (the PR #69
-capture). Worktrees live under the OS temp directory and are removed unless
-`--keep-worktree` is passed; they are detached and never touch a branch.
+(everything static inspection and the probe observed), `cases.json` (one row
+per viewport × lift × attempt), `probe.json`, `evidence/*.png` (screenshots
+and raw canvas pixels), `committed-evidence/` (the candidate's own evidence
+copied for comparison), `reference/` (the PR #69 capture). Worktrees live
+under the OS temp directory and are removed unless `--keep-worktree` is
+passed; they are detached and never touch a branch.
 
 ## How the browser capture stays deterministic
 
@@ -109,7 +114,9 @@ candidate. `fixtures/bundles/negative-*/` are derived from it by
 `test/build-fixtures.ts`, one per known bad direction: two-tap timing demo,
 still-image shell, DEPTH gauge, raw centred tile, floating athlete, giant
 gutters, smoothed non-integer scale, stale preview, mechanics hash drift,
-missing evidence. `npm test` asserts each yields `FAIL` with the named flags.
+missing evidence, held-state leak across attempts. `npm test` asserts each
+yields `FAIL` with the named flags. The held-state negative must be `FAIL`,
+never `PASS` or `REVIEW`.
 
 ## Boundaries
 

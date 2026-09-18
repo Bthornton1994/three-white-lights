@@ -35,6 +35,25 @@ export function renderMarkdown(report: RunReport): string {
   lines.push(`| Served page declares | \`${report.source.servedSha ?? "not served"}\` at ${report.source.servedUrl ?? "–"} |`);
   lines.push(`| Provider | ${report.provider.name} ${report.provider.version} (${report.provider.engine}, node ${report.provider.node}, playwright ${report.provider.playwright ?? "–"}, browser ${report.provider.browser ?? "–"}) |`);
   lines.push("");
+  const matrix = report.decisions.find((d) => d.id === "attempt-matrix");
+  if (matrix) {
+    lines.push("## Attempt matrix");
+    lines.push("");
+    lines.push(`**${badge(matrix.verdict)}** — ${matrix.summary}`);
+    lines.push("");
+    const caseIds = Object.keys(matrix.metrics).filter((k) => k.endsWith(".heldBeforeFirstInput"));
+    if (caseIds.length > 0) {
+      lines.push("| Case | held before input | first press | judgment | probe | overflow | grounded | frame mismatch |");
+      lines.push("|---|---|---|---|---|---|---|---|");
+      for (const key of caseIds) {
+        const id = key.replace(/\.heldBeforeFirstInput$/, "");
+        lines.push(
+          `| \`${id}\` | ${fmt(matrix.metrics[`${id}.heldBeforeFirstInput`])} | ${fmt(matrix.metrics[`${id}.firstPressAccepted`])} | ${fmt(matrix.metrics[`${id}.finalJudgment`])} | ${fmt(matrix.metrics[`${id}.probeJudgment`])} | ${fmt(matrix.metrics[`${id}.horizontalOverflow`])} | ${fmt(matrix.metrics[`${id}.grounded`])} | ${fmt(matrix.metrics[`${id}.frameMismatch`])}/${fmt(matrix.metrics[`${id}.framesCompared`])} |`,
+        );
+      }
+      lines.push("");
+    }
+  }
   lines.push("## Decisions");
   lines.push("");
   lines.push("| Analyzer | Verdict | Confidence | Flags | Key metrics | Human approval |");

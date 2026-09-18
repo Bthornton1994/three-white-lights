@@ -195,6 +195,8 @@ export interface Trace {
   samples: TraceSample[];
   endScreen: string | null;
   framesRun: number;
+  heldBeforeFirstInput?: boolean | null;
+  firstPressAccepted?: boolean | null;
 }
 
 export interface ServedFacts {
@@ -207,6 +209,46 @@ export interface ServedFacts {
   scriptContainsMechanicsSha: boolean;
   scriptContainsBaseSha: boolean;
   spriteHashes: Record<string, string>;
+  provenance?: ServedProvenance | null;
+  port?: number | null;
+}
+
+export interface ServedProvenance {
+  schemaVersion: 1;
+  targetSha: string;
+  capturedAt: string;
+  runId: string;
+  port: number;
+  listenToken: string;
+  distScriptPath: string | null;
+  distScriptSha256: string | null;
+  indexSha256: string;
+}
+
+export interface AttemptCase {
+  id: string;
+  targetSha: string;
+  servedSha: string | null;
+  viewport: Viewport["name"];
+  lift: LiftId;
+  attempt: number;
+  inputEvents: PlannedInput[];
+  mechanicsPhasePath: string[];
+  probePhasePath: string[];
+  frameTrace: { frame: number; phase: string | null; animFrame: string | null }[];
+  heldBeforeFirstInput: boolean | null;
+  firstPressAccepted: boolean;
+  finalJudgment: string | null;
+  probeJudgment: string | null;
+  made: boolean | null;
+  probeMade: boolean | null;
+  consoleErrors: string[];
+  horizontalOverflow: boolean;
+  grounded: boolean | null;
+  framesCompared: number;
+  frameMismatch: number;
+  /** true: both sides missed the same way; false: sides disagree; null: not a miss. */
+  missMatchesMechanics: boolean | null;
 }
 
 export interface CaptureBundle {
@@ -217,6 +259,8 @@ export interface CaptureBundle {
   viewports: Viewport[];
   beats: Beat[];
   traces: Trace[];
+  cases?: AttemptCase[];
+  attemptsPerLift?: number | null;
   evidenceDir: string;
   browser: { playwright: string | null; version: string | null } | null;
   notes: string[];
@@ -313,6 +357,18 @@ export interface ProbeFacts {
   errors: string[];
 }
 
+export interface HoldPadSourceFacts {
+  controllerPresent: boolean;
+  controllerPath: string;
+  arcadeAppPath: string;
+  hasPointerUp: boolean;
+  hasPointerCancel: boolean;
+  hasScreenChanged: boolean;
+  hasDispose: boolean;
+  hasResetClear: boolean;
+  snippets: string[];
+}
+
 export interface DocClauseFacts {
   label: string;
   sha: string;
@@ -366,6 +422,7 @@ export interface WorktreeFacts {
   schemaVersion: 1;
   targetSha: string;
   worktree: string | null;
+  worktreeHead?: string | null;
   fileHashes: Record<string, string | null>;
   authorityHashes: Record<string, string | null>;
   spriteDiffVsReference: string[] | null;
@@ -378,6 +435,7 @@ export interface WorktreeFacts {
   reference: ReferenceFacts | null;
   build: BuildFacts | null;
   tests: TestFacts | null;
+  holdPadSource?: HoldPadSourceFacts | null;
 }
 
 /* ------------------------------------------------------------------ */

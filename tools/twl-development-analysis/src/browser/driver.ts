@@ -18,9 +18,11 @@ import type {
   PlannedInput,
   ProbeTrace,
   ServedFacts,
+  ServedProvenance,
   Trace,
   Viewport,
 } from "../types.ts";
+import { attemptsFor } from "../attempt-plan.ts";
 import { readDomInPage } from "./dom-sample.ts";
 import { ensureDir } from "../util/fs.ts";
 import { sha256Hex } from "../util/hash.ts";
@@ -33,6 +35,7 @@ export interface DriveOptions {
   probeTraces: ProbeTrace[];
   tickMs: number;
   liftsByViewport: Record<Viewport["name"], LiftId[]>;
+  attemptsPerLift?: number | null;
   chromiumPath?: string | null;
   spritePaths: string[];
   log?: (line: string) => void;
@@ -80,6 +83,22 @@ async function fetchServedFacts(url: string, mechanicsSha: string, baseSha: stri
     if (r.ok) spriteHashes[p] = sha256Hex(Buffer.from(await r.arrayBuffer()));
   }
   const scriptText = script ? script.toString("utf8") : "";
+  const provenanceRes = await fetch(url + "/__provenance.json");
+  let provenance: ServedProvenance | null = null;
+  if (provenanceRes.ok) {
+    try {
+      provenance = (await provenanceRes.json()) as ServedProvenance;
+    } catch {
+      provenance = null;
+    }
+  }
+  const port = (() => {
+    try {
+      return Number(new URL(url).port);
+    } catch {
+      return null;
+    }
+  })();
   return {
     url,
     indexSha256: sha256Hex(index),
@@ -90,6 +109,8 @@ async function fetchServedFacts(url: string, mechanicsSha: string, baseSha: stri
     scriptContainsMechanicsSha: scriptText.includes(mechanicsSha),
     scriptContainsBaseSha: scriptText.includes(baseSha),
     spriteHashes,
+    provenance,
+    port,
   };
 }
 
@@ -172,7 +193,9 @@ class ViewportSession {
     let canvasPng: string | null = null;
     if (withCanvas) {
       const dataUrl = await this.page.evaluate(() => {
-        const c = document.querySelector("canvas.sprite-world") as HTMLCanvasElement | null;
+        const c =
+          (document.querySelector("canvas.sprite-world") as HTMLCanvasElement | null) ??
+          (document.querySelector("canvas.stage-canvas") as HTMLCanvasElement | null);
         return c ? c.toDataURL("image/png") : null;
       });
       if (dataUrl) {
@@ -254,7 +277,9 @@ class ViewportSession {
     await this.waitScreen("play");
     await this.flushReact();
     const playStart = await this.fakePerfNow();
-    await this.beat("brace", lift, 0, true);
+    const brace = await this.beat("brace", lift, 0, true);
+    const heldBeforeFirstInput = brace.dom.held;
+    let firstPressAccepted: boolean | null = null;
     const script = [...probe.script].sort((a, b) => a.tick - b.tick);
     const handled = new Set<number>();
     let held = false;
@@ -276,6 +301,7 @@ class ViewportSession {
           if (held) continue;
           held = true;
           await this.padDown();
+          if (firstPressAccepted === null) firstPressAccepted = heldBeforeFirstInput !== true;
         } else {
           if (!held) continue;
           held = false;
@@ -329,6 +355,8 @@ class ViewportSession {
       samples,
       endScreen,
       framesRun,
+      heldBeforeFirstInput,
+      firstPressAccepted,
     };
     this.traces.push(trace);
     this.notes.push(`${trace.id}: clickAt=${clickAt} playStart=${playStart} (mod16=${playStart % FRAME_MS}) frames=${framesRun} ticks=${tick} end=${endScreen}`);
@@ -408,7 +436,7 @@ class ViewportSession {
     }
     let first = true;
     for (const lift of lifts) {
-      const attempts = lift === "squat" && this.viewport.name === "phone" ? 3 : 1;
+      const attempts = attemptsFor(lift, this.viewport.name, this.opts.attemptsPerLift ?? null);
       await this.playLift(lift, attempts, first);
       first = false;
     }
@@ -474,6 +502,8 @@ export async function captureBundle(opts: DriveOptions, mechanicsSha: string, ba
     viewports: opts.intent.viewports,
     beats,
     traces,
+    cases: [],
+    attemptsPerLift: opts.attemptsPerLift ?? null,
     evidenceDir: path.relative(opts.outDir, evidenceDir) || "evidence",
     browser: { playwright: playwrightVersion(), version },
     notes,
