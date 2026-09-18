@@ -58,6 +58,10 @@
   overflow-y: auto;
 }
 
+.meet-play-screen {
+  position: relative;
+}
+
 .title-art,
 .stage-bg {
   position: absolute;
@@ -92,6 +96,10 @@
   flex-direction: column;
   gap: 16px;
   margin-top: auto;
+}
+
+.title-copy h1 {
+  text-shadow: 0 2px 24px rgb(20 17 15 / 0.9);
 }
 
 .kicker {
@@ -464,34 +472,28 @@ h2 {
 }
 
 .edition-banner {
-  margin: 0;
-  padding: 6px 12px;
-  font-family: var(--font-display);
-  font-size: 0.68rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-amber-2);
-  background: var(--color-iron-2);
-  border-bottom: 1px solid var(--color-border);
+  display: none;
 }
 
 .sprite-world-wrap {
   position: relative;
   flex: 0 0 auto;
-  display: grid;
-  place-items: center;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  width: 100%;
   min-height: 320px;
   overflow: hidden;
-  background: var(--color-iron-2);
+  background: var(--color-iron);
 }
 
 .sprite-world {
   width: 320px;
   height: 320px;
+  flex: 0 0 auto;
   image-rendering: -moz-crisp-edges;
   image-rendering: pixelated;
   pointer-events: none;
-  filter: drop-shadow(0 18px 18px rgb(0 0 0 / 0.45));
 }
 
 .sprite-stage-lights {
@@ -499,6 +501,7 @@ h2 {
   top: 12px;
   left: 0;
   right: 0;
+  z-index: 2;
 }
 
 .hold-pad {
@@ -543,5 +546,51 @@ h2 {
 
   .sprite-world-wrap {
     min-height: 640px;
+  }
+}
+
+/*
+ * Analyzer desktop is 1280×800. Integer scales of the 320 cell:
+ *   2× = 640 CSS, gutter 0.50 (above the 0.45 REVIEW line), no clip
+ *   3× = 960 CSS, gutter 0.25, ~53 source px clipped from the ceiling
+ *   4× = 1280 CSS, gutter 0, ~120 source px clipped (lockout heads gone)
+ * 3× is the largest integer scale that beats the gutter line without
+ * stretching. Contact stays at the bottom of the cell (flex-end).
+ */
+@media (min-width: 1100px) {
+  .sprite-world {
+    width: 960px;
+    height: 960px;
+  }
+
+  .sprite-world-wrap {
+    min-height: 0;
+  }
+
+  .meet-play-screen {
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .meet-play-screen .sprite-world-wrap {
+    position: absolute;
+    inset: 0;
+    min-height: 0;
+    z-index: 0;
+  }
+
+  .meet-play-screen .panel {
+    position: relative;
+    z-index: 2;
+    margin-top: auto;
+    background: linear-gradient(
+      180deg,
+      rgb(20 17 15 / 0) 0%,
+      rgb(20 17 15 / 0.55) 22%,
+      rgb(20 17 15 / 0.94) 100%
+    );
+    padding-top: 28px;
   }
 }

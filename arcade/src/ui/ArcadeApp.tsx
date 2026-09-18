@@ -252,9 +252,6 @@ export function ArcadeApp() {
       data-screen={state.screen}
       data-lift-kind={state.lift ?? ""}
     >
-      <p className="edition-banner" data-edition-banner="true">
-        {SPRITE_EDITION.BANNER}
-      </p>
       {state.screen === "title" ? <TitleScreen onStart={primary} streak={state.sessionStreak} /> : null}
 
       {state.screen === "lift" ? (
