@@ -45,16 +45,42 @@ That threshold is **not** edited in this branch.
 
 2× cannot satisfy 0.45 without stretching or a non-integer scale. 4× fills the
 viewport width but clips ~120 source pixels — squat lockout `minY≈60`,
-deadlift lockout `minY=31`, success `minY=2`. This branch uses **3× at
-≥1100px**, overlays HUD/hold-pad on the stage so the wrap uses the viewport
-width, and keeps contact at the bottom of the cell. Side iron of 160 CSS px
-each is the remainder of 1280 − 960; stretching the 320 cell to 1280×800
-would be a non-uniform scale and is rejected.
+deadlift lockout `minY=31`, success `minY=2`. PR #85 used **3× at ≥1100px**
+and accepted the ceiling clip as the trade against the gutter line.
 
-Honest clip at 3×: deadlift lockout opaque starts at source y 31, so ~22 px
-of the bar/head can meet the top of the 800 px window. That is the trade
-against the 0.45 gutter line. Owner may later accept 2× (gutter REVIEW) or
-edit the threshold — this branch does neither.
+This slice **falls back to 2× when height < 960** so the complete cell stays
+on screen. The 0.50 gutter at 1280×800 is therefore a standing REVIEW, not a
+threshold edit. Stretching the 320 cell to 1280×800 would be a non-uniform
+scale and is still rejected.
+
+## Desktop scale fallback (this slice — not a document ruling)
+
+Status: **presentation CSS only.** This does not edit GDD, the Iron & Amber
+reference, analyzer thresholds, or feel.
+
+PR #85 used 3× at `≥1100px` regardless of height. At 1280×800 the 960 CSS
+cell is taller than the viewport, so overflow-hidden overlay clipped ~53
+source px of ceiling — enough to take bar/head off deadlift lockout.
+
+This slice:
+
+| Viewport | Scale | Canvas CSS | Gutter `1 - w/W` | Clip |
+|---|---|---|---|---|
+| 390×844 | 1× | 320 | n/a (phone) | none |
+| 1280×800 | **2×** | 640 | **0.50** (REVIEW vs 0.45) | none |
+| 1440×900 | **2×** | 640 | 0.556 | none |
+| 1280×1000 | **3×** | 960 | 0.25 | none (960 ≤ 1000) |
+
+3× is gated on `min-width: 1100px` **and** `min-height: 960px` so the complete
+320×320 cell fits. 2× is the fallback when 3× would crop. No non-integer
+scale, no stretch, no smoothing, no analyzer-threshold edit.
+
+The wider gutter at 1280×800 is an honest **REVIEW** tradeoff against clipping
+the lift. Independent QA may later accept 2× gutters, raise the 0.45 line, or
+choose a taller capture — this branch does none of those.
+
+HUD/hold-pad stack below the stage so they cannot cover feet. Vertical scroll
+is allowed when chrome does not fit; horizontal overflow is not.
 
 ## Title vs PR #69
 
