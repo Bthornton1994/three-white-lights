@@ -26,14 +26,20 @@ describe("sprite stage presentation", () => {
     assert.match(stage, /placeAnchor/);
     assert.match(css, /\.sprite-world/);
     assert.match(css, /width: 320px/);
+    assert.match(css, /width: 960px/);
   });
 
-  it("keeps Iron & Amber chrome and the hold pad", () => {
+  it("keeps Iron & Amber chrome and the hold pad, without a player-facing candidate banner", () => {
     const app = src("ui/ArcadeApp.tsx");
     const css = src("styles.css");
+    const edition = src("sprites/edition.ts");
     assert.match(app, /Step onto the platform/);
     assert.match(app, /hold-pad/);
+    assert.equal(app.includes("edition-banner"), false);
+    assert.equal(app.includes("data-edition-banner"), false);
+    assert.match(edition, /BANNER:/);
     assert.match(css, /--color-amber: #d4892a/);
     assert.match(css, /--font-display: "Barlow Condensed"/);
+    assert.match(css, /\.edition-banner \{[\s\S]*?display: none/);
   });
 });
