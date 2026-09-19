@@ -42,4 +42,18 @@ describe("sprite stage presentation", () => {
     assert.match(css, /--font-display: "Barlow Condensed"/);
     assert.match(css, /\.edition-banner \{[\s\S]*?display: none/);
   });
+
+  it("uses 3× only when the complete 960 cell fits; 2× otherwise", () => {
+    const css = src("styles.css");
+    assert.match(css, /@media \(min-width: 860px\)[\s\S]*?width: 640px/);
+    assert.match(
+      css,
+      /@media \(min-width: 1100px\) and \(min-height: 1120px\)[\s\S]*?width: 960px/,
+    );
+    // Ungated 3× at min-width 1100px would clip lockout at 1280×800.
+    assert.equal(/@media \(min-width: 1100px\) \{[\s\S]*?width: 960px/.test(css), false);
+    assert.equal(css.includes("max-height: 100dvh"), false);
+    assert.match(css, /\.sprite-world \{[\s\S]*?image-rendering: pixelated/);
+    assert.equal(/\.sprite-world \{[\s\S]*?transform:\s*scale\(/.test(css), false);
+  });
 });

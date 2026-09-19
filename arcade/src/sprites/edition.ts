@@ -9,7 +9,7 @@ export const SPRITE_EDITION = {
   BASE_SHA: "1151569c40c77485ab9e9299e5db0db022437a8a",
   MECHANICS_SHA: "288db32c06232bb0fb65ce7236a0614c698a6920",
   MECHANICS_PR: 59,
-  PREVIEW_BUILD: "sprite-sport-20260918",
+  PREVIEW_BUILD: "integer-scale-fallback-20260918",
   /**
    * Developer/metadata string only. Must never be painted in the player-facing
    * flow. Provenance stays on `data-preview-build` / `data-sport-source`.
