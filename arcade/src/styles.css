@@ -464,15 +464,7 @@ h2 {
 }
 
 .edition-banner {
-  margin: 0;
-  padding: 6px 12px;
-  font-family: var(--font-display);
-  font-size: 0.68rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-amber-2);
-  background: var(--color-iron-2);
-  border-bottom: 1px solid var(--color-border);
+  display: none;
 }
 
 .sprite-world-wrap {
