@@ -1,0 +1,323 @@
+{
+  "count": 12,
+  "cases": [
+    {
+      "id": "phone-squat-a1",
+      "viewport": "phone",
+      "lift": "squat",
+      "attempt": 1,
+      "heldBeforeFirstInput": false,
+      "firstPressAccepted": true,
+      "finalJudgment": "judging",
+      "probeJudgment": "judging",
+      "mechanicsPhasePath": [
+        "BRACE",
+        "DESCENT",
+        "HOLE",
+        "ASCENT",
+        "LOCKOUT"
+      ],
+      "probePhasePath": [
+        "BRACE",
+        "DESCENT",
+        "HOLE",
+        "ASCENT",
+        "LOCKOUT"
+      ],
+      "grounded": true,
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "frameMismatch": 0,
+      "framesCompared": 155
+    },
+    {
+      "id": "phone-squat-a2",
+      "viewport": "phone",
+      "lift": "squat",
+      "attempt": 2,
+      "heldBeforeFirstInput": false,
+      "firstPressAccepted": true,
+      "finalJudgment": "judging",
+      "probeJudgment": "judging",
+      "mechanicsPhasePath": [
+        "BRACE",
+        "DESCENT",
+        "HOLE",
+        "ASCENT",
+        "LOCKOUT"
+      ],
+      "probePhasePath": [
+        "BRACE",
+        "DESCENT",
+        "HOLE",
+        "ASCENT",
+        "LOCKOUT"
+      ],
+      "grounded": true,
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "frameMismatch": 0,
+      "framesCompared": 167
+    },
+    {
+      "id": "phone-squat-a3",
+      "viewport": "phone",
+      "lift": "squat",
+      "attempt": 3,
+      "heldBeforeFirstInput": false,
+      "firstPressAccepted": true,
+      "finalJudgment": "judging",
+      "probeJudgment": "judging",
+      "mechanicsPhasePath": [
+        "BRACE",
+        "DESCENT",
+        "HOLE",
+        "ASCENT",
+        "LOCKOUT"
+      ],
+      "probePhasePath": [
+        "BRACE",
+        "DESCENT",
+        "HOLE",
+        "ASCENT",
+        "LOCKOUT"
+      ],
+      "grounded": true,
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "frameMismatch": 0,
+      "framesCompared": 180
+    },
+    {
+      "id": "phone-bench-a1",
+      "viewport": "phone",
+      "lift": "bench",
+      "attempt": 1,
+      "heldBeforeFirstInput": false,
+      "firstPressAccepted": true,
+      "finalJudgment": "judging",
+      "probeJudgment": "judging",
+      "mechanicsPhasePath": [
+        "BRACE",
+        "DESCENT",
+        "HOLE",
+        "ASCENT",
+        "LOCKOUT"
+      ],
+      "probePhasePath": [
+        "BRACE",
+        "DESCENT",
+        "HOLE",
+        "ASCENT",
+        "LOCKOUT"
+      ],
+      "grounded": true,
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "frameMismatch": 0,
+      "framesCompared": 242
+    },
+    {
+      "id": "phone-bench-a2",
+      "viewport": "phone",
+      "lift": "bench",
+      "attempt": 2,
+      "heldBeforeFirstInput": false,
+      "firstPressAccepted": true,
+      "finalJudgment": "judging",
+      "probeJudgment": "judging",
+      "mechanicsPhasePath": [
+        "BRACE",
+        "DESCENT",
+        "HOLE",
+        "ASCENT",
+        "LOCKOUT"
+      ],
+      "probePhasePath": [
+        "BRACE",
+        "DESCENT",
+        "HOLE",
+        "ASCENT",
+        "LOCKOUT"
+      ],
+      "grounded": true,
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "frameMismatch": 0,
+      "framesCompared": 345
+    },
+    {
+      "id": "phone-bench-a3",
+      "viewport": "phone",
+      "lift": "bench",
+      "attempt": 3,
+      "heldBeforeFirstInput": false,
+      "firstPressAccepted": true,
+      "finalJudgment": "judging",
+      "probeJudgment": "judging",
+      "mechanicsPhasePath": [
+        "BRACE",
+        "DESCENT",
+        "HOLE",
+        "ASCENT",
+        "LOCKOUT"
+      ],
+      "probePhasePath": [
+        "BRACE",
+        "DESCENT",
+        "HOLE",
+        "ASCENT",
+        "LOCKOUT"
+      ],
+      "grounded": true,
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "frameMismatch": 0,
+      "framesCompared": 365
+    },
+    {
+      "id": "phone-deadlift-a1",
+      "viewport": "phone",
+      "lift": "deadlift",
+      "attempt": 1,
+      "heldBeforeFirstInput": false,
+      "firstPressAccepted": true,
+      "finalJudgment": "judging",
+      "probeJudgment": "judging",
+      "mechanicsPhasePath": [
+        "BRACE",
+        "ASCENT",
+        "LOCKOUT"
+      ],
+      "probePhasePath": [
+        "BRACE",
+        "ASCENT",
+        "LOCKOUT"
+      ],
+      "grounded": true,
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "frameMismatch": 0,
+      "framesCompared": 250
+    },
+    {
+      "id": "phone-deadlift-a2",
+      "viewport": "phone",
+      "lift": "deadlift",
+      "attempt": 2,
+      "heldBeforeFirstInput": false,
+      "firstPressAccepted": true,
+      "finalJudgment": "judging",
+      "probeJudgment": "judging",
+      "mechanicsPhasePath": [
+        "BRACE",
+        "ASCENT"
+      ],
+      "probePhasePath": [
+        "BRACE",
+        "ASCENT"
+      ],
+      "grounded": true,
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "frameMismatch": 0,
+      "framesCompared": 148
+    },
+    {
+      "id": "phone-deadlift-a3",
+      "viewport": "phone",
+      "lift": "deadlift",
+      "attempt": 3,
+      "heldBeforeFirstInput": false,
+      "firstPressAccepted": true,
+      "finalJudgment": "judging",
+      "probeJudgment": "judging",
+      "mechanicsPhasePath": [
+        "BRACE",
+        "ASCENT"
+      ],
+      "probePhasePath": [
+        "BRACE",
+        "ASCENT"
+      ],
+      "grounded": true,
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "frameMismatch": 0,
+      "framesCompared": 218
+    },
+    {
+      "id": "desktop-squat-a1",
+      "viewport": "desktop",
+      "lift": "squat",
+      "attempt": 1,
+      "heldBeforeFirstInput": false,
+      "firstPressAccepted": true,
+      "finalJudgment": "play",
+      "probeJudgment": "judging",
+      "mechanicsPhasePath": [
+        "BRACE"
+      ],
+      "probePhasePath": [
+        "BRACE",
+        "DESCENT",
+        "HOLE",
+        "ASCENT",
+        "LOCKOUT"
+      ],
+      "grounded": true,
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "frameMismatch": 128,
+      "framesCompared": 157
+    },
+    {
+      "id": "desktop-bench-a1",
+      "viewport": "desktop",
+      "lift": "bench",
+      "attempt": 1,
+      "heldBeforeFirstInput": false,
+      "firstPressAccepted": true,
+      "finalJudgment": "play",
+      "probeJudgment": "judging",
+      "mechanicsPhasePath": [
+        "BRACE"
+      ],
+      "probePhasePath": [
+        "BRACE",
+        "DESCENT",
+        "HOLE",
+        "ASCENT",
+        "LOCKOUT"
+      ],
+      "grounded": true,
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "frameMismatch": 223,
+      "framesCompared": 244
+    },
+    {
+      "id": "desktop-deadlift-a1",
+      "viewport": "desktop",
+      "lift": "deadlift",
+      "attempt": 1,
+      "heldBeforeFirstInput": false,
+      "firstPressAccepted": true,
+      "finalJudgment": "play",
+      "probeJudgment": "judging",
+      "mechanicsPhasePath": [
+        "BRACE"
+      ],
+      "probePhasePath": [
+        "BRACE",
+        "ASCENT",
+        "LOCKOUT"
+      ],
+      "grounded": true,
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "frameMismatch": 216,
+      "framesCompared": 252
+    }
+  ]
+}
