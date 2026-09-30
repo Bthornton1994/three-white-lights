@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # CLAUDE.md — Powerlifting Game
 
 ## Source of Truth
