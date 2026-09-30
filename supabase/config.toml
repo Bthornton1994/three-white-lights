@@ -1,0 +1,4 @@
+project_id = "three-white-lights"
+
+[functions.twl-api]
+verify_jwt = true

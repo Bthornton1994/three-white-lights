@@ -958,12 +958,19 @@
  *   | record  | src/game/careerServer.ts      | applyFederationChoice         | 1 |
  *   | record  | src/game/meetPreview.ts       | previewServerRecord           | 1 |
  *   | record  | src/game/saveGame.ts          | decodeSavedGame               | 1 |
+ *   | record  | src/production/server.ts      | withFacilityWallet            | 1 |
  *   | record  | src/session/sessionPreview.ts | recordBeforeSession           | 1 |
  *   | record  | src/session/sessionPreview.ts | recordAfterServer             | 1 |
  *   | wire    | src/game/sessionServer.ts     | snapshotWireFor               | 1 |
  *   | facts   | src/game/progression.ts       | receiveProgressionSnapshot    | 1 |
  *   | receive | src/game/sessionClient.ts     | receiveSnapshot               | 1 |
  *   | receive | src/game/saveGame.ts          | decodeSavedGame               | 1 |
+ *
+ * THE PRODUCTION FACILITY ROW mirrors the whole Gym Bucks held in the native
+ * facility purse into Career's existing wallet. It carries protected
+ * performance facts through unchanged, seals the changed record and wallet,
+ * and has a direct runtime freeze witness in server.test.ts. The browser
+ * never supplies a replacement purse or a performance value to this producer.
  *
  * THE TWO `saveGame.ts` ROWS ARE ONE ROUTE SEEN TWICE, AND BOTH SIGHTINGS ARE
  * WANTED (Sprint 2). Loading a save rebuilds the row a whole career resumes

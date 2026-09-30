@@ -54,6 +54,12 @@ jobs:
           npm --prefix web ci
       - name: Existing strict typecheck
         run: npm run typecheck
+      - name: Strict production and edge boundary typechecks
+        run: |
+          web/node_modules/.bin/tsc --noEmit --project src/production/tsconfig.json
+          web/node_modules/.bin/tsc --noEmit --project supabase/tsconfig.json
+      - name: Generated authoritative edge bundle matches native source
+        run: node supabase/bundle-api.mjs --check
       - name: Full existing pure test suite
         run: npm test
 

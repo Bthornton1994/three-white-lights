@@ -1,0 +1,227 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.10 /workspace/scratch/4fc55cb00998/three-white-lights
+
+stderr | src/game/progression.test.ts > purity > rules test fixtures out of §7.5 rather than matching none of them
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ ❯ src/game/progression.test.ts (143 tests | 3 failed) 7337ms
+     ✓ reads no clock, no randomness and no network 2ms
+     ✓ names every permanent fact in the unit sweep, so the sweep cannot be scoped 1ms
+     ✓ scans the whole project, not just src/  6704ms
+     ✓ leaves no TypeScript file in the repository out of the scanned set 10ms
+     × names every route into permanent progression in §7.5, derived from the type checker 10ms
+     ✓ names no route in §7.5 that no longer exists 1ms
+     × names a runtime freeze witness for every §7.5 route [every-shipped-route-observes-its-seal] 1ms
+     × seals every record and wire §7.5 finds in shipped code [every-shipped-route-is-sealed] 1ms
+     ✓ rules test fixtures out of §7.5 rather than matching none of them  507ms
+     ✓ drops from the sweep exactly the files vitest runs 1ms
+     ✓ lets no file the sweep covers import one it drops 1ms
+     ✓ counts routes from parsed code, so a sentence about one is not one 0ms
+     ✓ lets no file the project compiles assemble an object reflectively, except by name 56ms
+     ✓ sweeps every non-test file the project compiles, with no import check in the way 1ms
+     ✓ mints server truth in exactly one place 1ms
+     ✓ mints the in-flight pairing in exactly one place 1ms
+     ✓ keeps the in-flight pairing opaque, not branded 2ms
+     ✓ does not cast its way past its own boundary 0ms
+     ✓ keeps the pay-to-win guard derived, in source, where vitest cannot see it 1ms
+     ✓ is exactly the keys a live snapshot carries 0ms
+     ✓ answers the buyable question for every fact, from one map 0ms
+     ✓ derives the protected set from that map rather than restating it 0ms
+     ✓ names Total, e1RM and meet results as protected 0ms
+     ✓ leaves streak and wallet open on purpose, and nothing else yet 0ms
+     ✓ has no fact that names training pace, and can tell 0ms
+     ✓ lets no fact that names performance be bought 0ms
+     ✓ keeps the Recovery Day ledger out of the wallet 0ms
+     ✓ CARRIES A PURCHASED COVERED DAY ACROSS THE WIRE, now that GDD §8.3E is ruled in 0ms
+     ✓ tracks streak.ts own allowlist rather than duplicating it 0ms
+     ✓ pins every report type to its declared inputs 0ms
+     ✓ lets no report field name a unit unless its allowlist carries the tag 1ms
+     ✓ lets no report name an output 1ms
+     ✓ keeps a meet result to its declared fields 0ms
+     ✓ keeps a projection to a subset of the real facts 0ms
+     ✓ declares a non-empty reach for every proposal kind 0ms
+     ✓ names only real facts in every reach 0ms
+     ✓ gives every proposal kind an origin, from one map 0ms
+     ✓ derives the purchasable set from that map rather than restating it 0ms
+     ✓ keeps every purchase-originated proposal off the protected facts 0ms
+     ✓ names purchase evidence that real reports carry and earned reports do not 0ms
+     ✓ walks every exported report allowlist, nested ones included 0ms
+     ✓ lets no proposal at all move a fact that means training pace 0ms
+     ✓ lets earned proposals move the facts a purchase may not 0ms
+     ✓ offers no entitlement effect that touches a lift 0ms
+     ✓ sells no convenience that speeds up training 0ms
+     ✓ keeps every cosmetic slot cosmetic 0ms
+     ✓ lets only a proposal that carries a meet move the Total 0ms
+     ✓ does not let a training session move the Total 0ms
+     ✓ still lets a meet result move the Total 0ms
+     ✓ moves e1RM from both, because a meet is also the heaviest single you did 0ms
+     ✓ refuses a training session whose projection claims a Total 0ms
+     ✓ accepts the same projected Total from a meet result 0ms
+     ✓ lets a training session project the number a session actually moves 0ms
+     ✓ checks every kind against every projectable fact, in both directions 1ms
+     ✓ lets every kind claim nothing 0ms
+     ✓ keeps the compile-time half of the claim in the source 5ms
+     ✓ keeps the compile-time half of the PROJECTION claim in the source too 0ms
+     ✓ turns a wire payload into server truth 0ms
+     ✓ carries a bomb-out as null, not as a total of zero 0ms
+     ✓ brands a stored bodyweight like every other number on server truth 0ms
+     ✓ refuses a zero or negative total rather than storing it 0ms
+     ✓ refuses a malformed revision 0ms
+     ✓ refuses a malformed e1RM 0ms
+     ✓ refuses a streak whose best is below its current run 0ms
+     ✓ refuses a streak whose signup day is missing, fractional, or after a recorded session 0ms
+     ✓ carries the signup day through to the confirmed facts unchanged 0ms
+     ✓ refuses a fractional currency balance 0ms
+     ✓ refuses a blank meet id and a blank acknowledgement 0ms
+     ✓ freezes what it hands back, symbol payload included 1ms
+     ✓ exposes no string-named property at all 0ms
+     ✓ makes a spread-and-override tamper inert 0ms
+     ✓ starts empty, with no truth to read 1ms
+     ✓ refuses a proposal before anything has been read 0ms
+     ✓ confirms on the first snapshot 0ms
+     ✓ refuses a snapshot older than the one it holds 0ms
+     ✓ accepts a repeat of the revision it holds, per policy 0ms
+     ✓ parks a projection beside truth instead of inside it 0ms
+     ✓ holds one proposal at a time 0ms
+     ✓ discards the projection whole when the server acknowledges 0ms
+     ✓ keeps waiting when a snapshot arrives that settles something else 0ms
+     ✓ drops the projection and goes stale on a rejection 0ms
+     ✓ refuses to reject a proposal that is not the one in flight 0ms
+     ✓ refuses a proposal against stale truth, per policy 0ms
+     ✓ still renders stale truth rather than blanking it 0ms
+     ✓ recovers from stale on the next snapshot 0ms
+     ✓ has nothing to make stale before the first read 0ms
+     ✓ refuses a malformed proposal and a malformed projection 0ms
+     ✓ reports every fact through the same four-state shape 0ms
+     ✓ projects per-lift and per-currency independently 0ms
+     ✓ never projects a meet result 0ms
+     ✓ lets a renderer tell truth from a guess 0ms
+     ✓ returns null for a value nobody has yet 0ms
+     ✓ will not accept a bare number as a confirmed total 0ms
+     ✓ will not accept a locally estimated e1RM as a confirmed one 0ms
+     ✓ will not accept an officially-minted total as a confirmed one either 0ms
+     ✓ will not accept a hand-built object as a snapshot 0ms
+     ✓ will not let a wire payload into the cache without the mint 0ms
+     ✓ will not let a projection be fed in as a server response 0ms
+     ✓ will not accept a raw string where a proposal id is required 0ms
+     ✓ will not store a projection as truth 0ms
+     ✓ will not gate meet entry on a projection 0ms
+     ✓ will not gate meet entry on a bare number either 0ms
+     ✓ will not let a projected total reach a DOTS score 0ms
+     ✓ will not let a confirmed number be passed off as a projection 0ms
+     ✓ will not let a locally advanced streak be written into the facts 1ms
+     ✓ will not accept a plain number into a projection either 0ms
+     ✓ will not let a projection invent a fact the server does not have 0ms
+     ✓ will not let a training session project a Total 0ms
+     ✓ will not let a meet result project a streak 0ms
+     ✓ will not let a Recovery Day project an e1RM 0ms
+     ✓ will not let an unnarrowed proposal claim anything at all 0ms
+     ✓ will not take a projection that merely might claim a Total 0ms
+     ✓ takes the pairings the design calls for, with no directive 0ms
+     ✓ offers no entitlement effect that moves e1RM 0ms
+     ✓ offers no entitlement effect that moves a Total 0ms
+     ✓ offers no convenience that skips a training session 0ms
+     ✓ will not let a redemption tell the server what it bought 0ms
+     ✓ will not let a session report carry the e1RM it thinks it earned 0ms
+     ✓ will not let a meet report carry the total it thinks it made 0ms
+     ✓ will not let a card hand over its weights without naming a unit 0ms
+     ✓ pins the property the two tagged readings on this wire are built on 0ms
+     ✓ has no Recovery Day balance in the wallet to buy against 0ms
+     ✓ will not let a pending cache be assembled from a literal 0ms
+     ✓ will not let a REAL in-flight proposal be spread and overridden 0ms
+     ✓ makes the spread that DOES still compile inert, and this one runs 0ms
+     ✓ does not let the read model be handed back in 0ms
+     ✓ carries the reuse residual explicitly, so it cannot be silently widened 0ms
+     ✓ still lets proposeChange build one, which is the positive control 0ms
+     ✓ runs the whole legitimate flow end to end 0ms
+     ✓ has no way to commit a projection 0ms
+     ✓ has no way to set a confirmed total 0ms
+     ✓ has no exported mint for a confirmed number 0ms
+     ✓ exports exactly the surface it is meant to 0ms
+     ✓ accepts a ConfirmedFacts nowhere 1ms
+     ✓ scores a confirmed total with dots.ts, with no cast 0ms
+     ✓ gates meet entry on a confirmed total, with no cast 0ms
+     ✓ does arithmetic and formatting on confirmed numbers 0ms
+     ✓ projects an optimistic e1RM from the same pure math the server would use 0ms
+     ✓ mints ids and revisions the client is allowed to mint 0ms
+     ✓ refuses a nonsense projection at the mint 0ms
+     ✓ answers the acknowledgement question directly 0ms
+     ✓ builds every proposal kind the design calls for 0ms
+     ✓ builds every entitlement effect the catalogue allows 0ms
+ ✓ src/tuning/audit.test.ts (56 tests) 8014ms
+     ✓ preserves every offset in every real file  328ms
+     ✓ `onlyComments` and `withoutComments` PARTITION EVERY REAL FILE, character for character  1770ms
+     ✓ AND A REAL PARSER AGREES ABOUT WHERE THE COMMENTS ARE — everywhere in the tree  2899ms
+     ✓ ...AND THE EMPTY LIST IS A MEASUREMENT: the same check still catches the old substitution  2383ms
+     ✓ finds nothing anywhere in the repository  583ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/game/progression.test.ts > purity > names every route into permanent progression in §7.5, derived from the type checker
+AssertionError: shipped rows the scan resolves: expected 13 to be 12 // Object.is equality
+
+- Expected
++ Received
+
+- 12
++ 13
+
+ ❯ src/game/progression.test.ts:1717:74
+    1715|     // twice — a `receive` (the stored wire through the boundary's own…
+    1716|     // and a `record` (the sealed row assembled from what it proved).
+    1717|     expect(routeScan().shipped.length, 'shipped rows the scan resolves…
+       |                                                                          ^
+    1718|     expect(sortedKeys(routeScan().shipped)).toContain('record src/game…
+    1719|     expect(sortedKeys(routeScan().shipped)).toContain('record src/game…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/game/progression.test.ts > purity > names a runtime freeze witness for every §7.5 route [every-shipped-route-observes-its-seal]
+AssertionError: shipped record/wire/facts rows to find witnesses for: expected 11 to be 10 // Object.is equality
+
+- Expected
++ Received
+
+- 10
++ 11
+
+ ❯ src/game/progression.test.ts:1794:81
+    1792|     // 9 -> 10 with the save loader's record row (its receive row need…
+    1793|     // freeze witness — a receive mints facts behind the snapshot's ow…
+    1794|     expect(rows.length, 'shipped record/wire/facts rows to find witnes…
+       |                                                                                 ^
+    1795|     expect(SEAL_RUNTIME_WITNESSES.length, 'ledger rows').toBe(10);
+    1796|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/game/progression.test.ts > purity > seals every record and wire §7.5 finds in shipped code [every-shipped-route-is-sealed]
+AssertionError: shipped record/wire/facts literals seen sealed: expected 11 to be 10 // Object.is equality
+
+- Expected
++ Received
+
+- 10
++ 11
+
+ ❯ src/game/progression.test.ts:1982:83
+    1980|     // `deepFreeze` call respelled as the seal it already was.
+    1981|     // 9 -> 10: decodeSavedGame's record literal is passed to sealServ…
+    1982|     expect(scan.sealedLiterals, 'shipped record/wire/facts literals se…
+       |                                                                                   ^
+    1983|
+    1984|     // AND THE CALLEE IS THE SEAL, NOT A FUNCTION SPELLED LIKE IT.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  3 failed | 196 passed (199)
+   Start at  00:18:26
+   Duration  8.93s (transform 755ms, setup 0ms, import 1.66s, tests 15.35s, environment 0ms)
+

@@ -267,7 +267,7 @@ async function mobileStory() {
     await page.keyboard.down('Space');
     await page.getByTestId('session-close-out').waitFor({ timeout: 12_000 });
     await page.keyboard.up('Space');
-    const retry = await visibleButton(page, 'Try a lighter target');
+    const retry = await visibleButton(page, /^(Try a lighter target|Try again at this target)$/);
     await shot(page, '07-phone-failed-rep');
     await retry.click();
     await page.getByTestId('session-rpe-6').waitFor();

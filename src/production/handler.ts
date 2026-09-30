@@ -49,12 +49,12 @@ async function readBody(request: Request): Promise<unknown> {
 function receiptResponse(value: unknown): unknown {
   if (!object(value) || !object(value.wire)) return value;
   const { wire, ...rest } = value;
-  return { ...rest, wire: { appliedProposalId: typeof wire.appliedProposalId === 'string' ? wire.appliedProposalId : null } };
+  return { ...rest, wire: { acknowledgedProposalId: typeof wire.acknowledgedProposalId === 'string' ? wire.acknowledgedProposalId : null } };
 }
 function responseFromReceipt(value: unknown, state: ProductionState, opening: ProductionOpening): unknown {
   if (!object(value)) return value;
   if (object(value.wire)) {
-    const ack = typeof value.wire.appliedProposalId === 'string' ? value.wire.appliedProposalId : null;
+    const ack = typeof value.wire.acknowledgedProposalId === 'string' ? value.wire.acknowledgedProposalId : null;
     return { ...value, wire: productionOpening(state, opening.revision, opening.serverNowMs, ack).wire };
   }
   if ('profile' in value) return { ...value, profile: opening.profile };
@@ -78,7 +78,7 @@ export function createProductionHandler(dependencies: HandlerDependencies): (req
     let opening: ProductionOpening | undefined;
     try {
       const authorization = request.headers.get('authorization'); const match = authorization?.match(/^Bearer (\S+)$/);
-      if (!match) refuse('Sign in to use a saved account.', PRODUCTION_LIMITS.unauthorizedStatus);
+      if (!match?.[1]) refuse('Sign in to use a saved account.', PRODUCTION_LIMITS.unauthorizedStatus);
       const user = await dependencies.authenticate(match[1]);
       if (!user || !user.id || !Number.isSafeInteger(user.createdAtMs) || user.createdAtMs < 0) refuse('Sign in again to use this saved account.', PRODUCTION_LIMITS.unauthorizedStatus);
       const body = await readBody(request);

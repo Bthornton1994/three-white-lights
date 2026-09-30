@@ -17,7 +17,7 @@ import { CAREER_FEDERATION_IDS } from '../career/federation';
 import type { FacilityAction, ProductionOpening } from './contracts';
 import type { TrainingEvidenceContext, TrainingLiftEvidence, MeetLiftEvidence } from './liftEvidence';
 import { replayTrainingEvidence, replayMeetEvidence } from './evidenceReplay';
-import type { ProposalOfKind } from '../game/progression';
+import { sealServerValue, type ProposalOfKind } from '../game/progression';
 import { PRODUCTION_LIMITS } from './productionTuning';
 import { utcAccountDay } from './clock';
 
@@ -59,9 +59,19 @@ function accrued(state: ProductionState, nowMs: number, facility: GymViewState):
   if (elapsedMs <= 0) return { facility, atMs: state.facilityAtMs };
   return { facility: gymViewReduce(facility, { kind: 'advance-clock', gapSeconds: elapsedMs / PRODUCTION_LIMITS.millisecondsPerSecond, mode: nowMs - state.presenceAtMs <= PRODUCTION_LIMITS.onlinePresenceGapMs ? 'online' : 'offline' }), atMs: state.facilityAtMs + elapsedMs };
 }
+/** One spendable Gym Bucks purse: Career shows the whole bucks held by Empire.
+ * Fractional idle earnings remain in the native facility purse, never a second
+ * wallet. Chalk is carried through because Empire has no Chalk authority. */
+export function withFacilityWallet(record: ServerRecord, facility: GymViewState): ServerRecord {
+  const gymBucks = Math.floor(facility.managed.gym.ladder.gymBucks);
+  ensure(Number.isSafeInteger(gymBucks) && gymBucks >= 0, 'The saved gym balance is invalid.');
+  if (record.wallet.gymBucks === gymBucks) return record;
+  return sealServerValue({ ...record, wallet: { gymBucks, chalk: record.wallet.chalk } });
+}
 export function productionOpening(state: ProductionState, revision: number, nowMs: number, appliedProposalId: string | null = null): ProductionOpening {
   const loaded = hydrate(state); const serverDay = utcServerDay(nowMs);
-  return Object.freeze({ wire: snapshotWireFor(loaded.record, appliedProposalId), fatigue: briefFatigueFor(loaded.record.fatigue, serverDay), profile: loaded.profile, facility: accrued(state, nowMs, loaded.facility).facility, serverDay, serverNowMs: nowMs, revision });
+  const facility = accrued(state, nowMs, loaded.facility).facility;
+  return Object.freeze({ wire: snapshotWireFor(withFacilityWallet(loaded.record, facility), appliedProposalId), fatigue: briefFatigueFor(loaded.record.fatigue, serverDay), profile: loaded.profile, facility, serverDay, serverNowMs: nowMs, revision });
 }
 export function readProductionMutation(value: unknown): ProductionMutation {
   ensure(object(value) && keys(value, ['kind', 'payload', 'requestId', 'expectedRevision']), 'Progress request has an invalid shape.');
@@ -112,7 +122,7 @@ export function applyProductionMutation(state: ProductionState, command: Product
       ensure(keys(payload, ['day', 'proposal', 'context', 'evidence']) && payload.day === day, 'This training session is from a different server UTC day. Reopen training to receive today’s plan.');
       const verified = replayTrainingEvidence(record, day, payload.proposal as ProposalOfKind<'record-training-session'>, payload.context as TrainingEvidenceContext, payload.evidence as readonly TrainingLiftEvidence[]);
       const applied = applyTrainingSession(record, day, verified, command.requestId); ensure(applied.ok, applied.ok ? '' : applied.error.message);
-      record = applied.value.record; response = { kind: 'snapshot', wire: applied.value.wire }; break;
+      record = withFacilityWallet(applied.value.record, facility); response = { kind: 'snapshot', wire: snapshotWireFor(record, command.requestId) }; break;
     }
     case 'record-meet-result': {
       ensure(keys(payload, ['day', 'meetId', 'proposalId', 'proposal', 'evidence']) && payload.day === day, 'This meet is from a different server UTC day. Re-enter it from Career.');
@@ -122,8 +132,8 @@ export function applyProductionMutation(state: ProductionState, command: Product
       const meet = resolvedMeet(record, day, payload.meetId);
       const verified = replayMeetEvidence(meetContext(start.record, start.profile, day, meet), payload.proposal as ProposalOfKind<'record-meet-result'>, payload.evidence as readonly MeetLiftEvidence[]);
       const applied = applyMeetResult(record, day, meet, verified, payload.proposalId); ensure(applied.ok, applied.ok ? '' : applied.error.message);
-      record = applied.value.record; activeMeet = null; const result = applied.value;
-      response = { kind: 'recorded', wire: result.wire, result: { totalKg: result.totalKg, previousBestTotalKg: result.previousBestTotalKg, isTotalPr: result.isTotalPr, liftPrs: result.liftPrs, placing: result.placing, bestByLiftKg: result.bestByLiftKg, previousBestByLiftKg: result.previousBestByLiftKg, bombedLift: result.bombedLift, career: result.career } }; break;
+      record = withFacilityWallet(applied.value.record, facility); activeMeet = null; const result = applied.value;
+      response = { kind: 'recorded', wire: snapshotWireFor(record, payload.proposalId), result: { totalKg: result.totalKg, previousBestTotalKg: result.previousBestTotalKg, isTotalPr: result.isTotalPr, liftPrs: result.liftPrs, placing: result.placing, bestByLiftKg: result.bestByLiftKg, previousBestByLiftKg: result.previousBestByLiftKg, bombedLift: result.bombedLift, career: result.career } }; break;
     }
     case 'enter-career-meet': {
       ensure(keys(payload, ['meetId']), 'Meet entry payload contains unsupported fields.'); const meet = resolvedMeet(record, day, payload.meetId);
@@ -132,7 +142,7 @@ export function applyProductionMutation(state: ProductionState, command: Product
     case 'choose-federation': {
       ensure(keys(payload, ['proposal']) && object(payload.proposal) && payload.proposal.kind === 'choose-federation' && object(payload.proposal.report) && keys(payload.proposal.report, ['federationId']) && member(payload.proposal.report.federationId, CAREER_FEDERATION_IDS), 'Federation proposal is invalid.');
       const applied = applyFederationChoice(record, { kind: 'choose-federation', report: { federationId: payload.proposal.report.federationId } }, command.requestId);
-      ensure(applied.ok, applied.ok ? '' : applied.error.message); record = applied.value.record; response = { kind: 'chosen', wire: applied.value.wire }; break;
+      ensure(applied.ok, applied.ok ? '' : applied.error.message); record = withFacilityWallet(applied.value.record, facility); response = { kind: 'chosen', wire: snapshotWireFor(record, command.requestId) }; break;
     }
     case 'create-profile': {
       ensure(keys(payload, ['draft', 'federationId']) && object(payload.draft) && keys(payload.draft, ['name', 'sex', 'bodyweightKgText']) && typeof payload.draft.name === 'string' && typeof payload.draft.bodyweightKgText === 'string' && member(payload.draft.sex, ['male', 'female'] as const), 'Lifter profile input is invalid.');
@@ -152,5 +162,6 @@ export function applyProductionMutation(state: ProductionState, command: Product
     }
     default: throw new ProductionRefusal('This progression command is not available through the saved account API.');
   }
+  record = withFacilityWallet(record, facility);
   return { state: Object.freeze({ version: PRODUCTION_LIMITS.schemaVersion, gameSave: encodeSavedGame(record, new Date(nowMs).toISOString(), profile), facilitySave: encodeFacilitySave(persistableGymTruthFromGymView(facility)), facilityAtMs: tick.atMs, presenceAtMs: nowMs, activeMeet }), response };
 }
