@@ -72,7 +72,8 @@ try {
   report.checks.push({ name: 'browser played nine attempts; actual client/native hook confirmed one SQL meet and original proposal acknowledgement', status: 'passed', revision: bob.revision, evidenceCount: meetSave.evidenceCount, totalKg: bob.game.wire.totalKg });
   report.checks.push({ name: 'the second signed-in account did not alter the first lifter or session', status: 'passed' });
   report.meet = meet; await meetContext.close(); assert.deepEqual(report.errors, []);
-  report.status = 'account-flow-passed';
+  report.status = report.assetFailures.length ? 'account-flow-passed-art-incomplete' : 'account-flow-passed';
+  if (report.assetFailures.length) report.limitations.push('Missing art was recorded during this account-flow check. Functional acknowledgement does not satisfy the separate full-art release gate.');
 } catch (error) {
   report.status = 'failed'; report.failure = error.stack; process.exitCode = 1;
   if (page && !page.isClosed()) { try { await page.screenshot({ path: path.join(evidence, 'failure.png'), fullPage: true }); await writeFile(path.join(evidence, 'failure-body.txt'), await page.locator('body').innerText()); } catch { /* A crashed page cannot capture. */ } }

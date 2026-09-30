@@ -99,7 +99,7 @@ async function createPracticeLifter(page) {
 }
 
 /** Reusable by the built-app release runner after it creates a fresh phone page. */
-export async function rehearseMeet(page, report, evidence) {
+export async function rehearseMeet(page, report, evidence, options = {}) {
   await mkdir(evidence, { recursive: true });
   await createPracticeLifter(page);
   await (await visibleButton(page, 'Settings')).click();
@@ -138,9 +138,10 @@ export async function rehearseMeet(page, report, evidence) {
     }
   }
   await page.locator('.meet-phase-recap').waitFor({ timeout: 18_000 });
-  await page.getByRole('status').filter({ hasText: 'PRACTICE RESULT RECORDED' }).waitFor({ timeout: 10_000 });
+  const confirmation = options.savedAccount ? 'RESULT CONFIRMED ON YOUR CAREER RECORD' : 'PRACTICE RESULT RECORDED';
+  await page.getByRole('status').filter({ hasText: confirmation }).waitFor({ timeout: 10_000 });
   assert.notEqual((await page.locator('.meet-total strong').textContent())?.trim(), '—');
-  await shot(page, evidence, '05-phone-recap');
+  await shot(page, evidence, options.savedAccount ? '05-phone-recorded-recap' : '05-phone-practice-recap');
   await page.getByRole('button', { name: 'View the complete result sheet', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Meet result sheet', exact: true });
   await dialog.waitFor();
@@ -155,13 +156,13 @@ export async function rehearseMeet(page, report, evidence) {
   const downloadWait = page.waitForEvent('download');
   await dialog.getByRole('button', { name: 'Download PNG', exact: true }).click();
   const download = await downloadWait;
-  const pngPath = path.join(evidence, 'mara-vellum-practice-result.png');
+  const pngPath = path.join(evidence, options.savedAccount ? 'mara-vellum-recorded-result.png' : 'mara-vellum-practice-result.png');
   await download.saveAs(pngPath);
   const png = await readFile(pngPath);
   assert.equal(png.subarray(1, 4).toString(), 'PNG');
   assert.equal(png.readUInt32BE(16), 1600);
   assert.equal(png.readUInt32BE(20), 1060);
-  report.checks.push({ name: 'nine native attempts, successful total, correct result columns and PNG download', status: 'passed', cells: signed });
+  report.checks.push({ name: `${options.savedAccount ? 'confirmed saved' : 'confirmed practice'} meet: nine native attempts, successful total, correct result columns and PNG download`, status: 'passed', cells: signed });
   await dialog.getByRole('button', { name: 'Back to recap ×', exact: true }).click();
   await (await visibleButton(page, 'Back to career')).click();
   await page.getByRole('button', { name: 'Back to training', exact: true }).click();
@@ -196,7 +197,7 @@ async function startBenchTraining(page, report, evidence) {
   report.checks.push({ name: 'RPE selects before explicit Start; keyboard focus loss releases grip and freezes ticks', status: 'passed' });
 }
 
-async function finishBenchTraining(page, report, evidence) {
+async function finishBenchTraining(page, report, evidence, options = {}) {
   report.trainingReps = [];
   const expectedSets = Number((await page.locator('.training-set-number').textContent())?.match(/\/\s*(\d+)/)?.[1]);
   const expectedReps = await page.locator('.training-rep-pip').count();
@@ -222,15 +223,15 @@ async function finishBenchTraining(page, report, evidence) {
   }
   assert.equal(report.trainingReps.length, expectedSets * expectedReps);
   await page.locator('.training-save-confirmed').waitFor({ timeout: 10_000 });
-  await shot(page, evidence, '09-phone-confirmed-training');
-  report.checks.push({ name: 'complete native bench prescription, manual set rests, and confirmed practice close-out', status: 'passed', sets: expectedSets, repsPerSet: expectedReps });
+  await shot(page, evidence, options.savedAccount ? '09-phone-saved-training' : '09-phone-practice-training');
+  report.checks.push({ name: `complete native bench prescription, manual set rests, and confirmed ${options.savedAccount ? 'saved-account' : 'practice'} close-out`, status: 'passed', sets: expectedSets, repsPerSet: expectedReps });
 }
 
-export async function rehearseTraining(page, report, evidence) {
+export async function rehearseTraining(page, report, evidence, options = {}) {
   await createPracticeLifter(page);
   await page.getByRole('button', { name: 'Back to training', exact: true }).click();
   await startBenchTraining(page, report, evidence);
-  await finishBenchTraining(page, report, evidence);
+  await finishBenchTraining(page, report, evidence, options);
 
 }
 
