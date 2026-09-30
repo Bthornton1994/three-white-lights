@@ -1047,6 +1047,11 @@ const SEAL_RUNTIME_WITNESSES: readonly {
     testFile: 'src/game/progression.test.ts',
     title: 'freezes what it hands back, symbol payload included',
   },
+  {
+    route: 'record src/production/server.ts withFacilityWallet',
+    testFile: 'src/production/server.test.ts',
+    title: 'seals the facility wallet record without moving protected performance facts',
+  },
 ];
 
 /**
@@ -1714,7 +1719,8 @@ describe('purity', () => {
     // 10 -> 12 with Sprint 2's save loader: `decodeSavedGame` is one route seen
     // twice — a `receive` (the stored wire through the boundary's own decoder)
     // and a `record` (the sealed row assembled from what it proved).
-    expect(routeScan().shipped.length, 'shipped rows the scan resolves').toBe(12);
+    // The production purse mirror is one additional sealed record producer.
+    expect(routeScan().shipped.length, 'shipped rows the scan resolves').toBe(13);
     expect(sortedKeys(routeScan().shipped)).toContain('record src/game/sessionServer.ts newServerRecord x1');
     expect(sortedKeys(routeScan().shipped)).toContain('record src/game/meetServer.ts applyMeetResult x1');
     // The anchor that would have caught round seven's defect. A route pin whose
@@ -1744,7 +1750,7 @@ describe('purity', () => {
     // that catches the table shrinking, and it was the one number in the pair
     // that could be stated exactly.
     // 10 -> 12 with the two saveGame rows, declared beside their reasoning.
-    expect(declaredRoutes().length, '§7.5 rows parsed out of the header').toBe(12);
+    expect(declaredRoutes().length, '§7.5 rows parsed out of the header').toBe(13);
     const found = new Set(sortedKeys(routeScan().shipped));
     for (const row of declaredRoutes()) {
       expect(
@@ -1791,8 +1797,9 @@ describe('purity', () => {
     // NON-VACUITY AS A COUNT, so an empty scan cannot satisfy the loop below.
     // 9 -> 10 with the save loader's record row (its receive row needs no
     // freeze witness — a receive mints facts behind the snapshot's own seal).
-    expect(rows.length, 'shipped record/wire/facts rows to find witnesses for').toBe(10);
-    expect(SEAL_RUNTIME_WITNESSES.length, 'ledger rows').toBe(10);
+    // The production purse mirror has its own directly executed freeze test.
+    expect(rows.length, 'shipped record/wire/facts rows to find witnesses for').toBe(11);
+    expect(SEAL_RUNTIME_WITNESSES.length, 'ledger rows').toBe(11);
 
     // BOTH DIRECTIONS. An unwitnessed row is the defect this closes; a witness
     // for a row that no longer exists is bookkeeping about deleted code, and
@@ -1933,7 +1940,9 @@ describe('purity', () => {
     // producer whose arrays arrive from JSON.parse thawed — it asserts both
     // array shells, an element of each, and the entitlement, where the other
     // rows' fixtures inherit those from an already-sealed input.
-    expect(frozen, 'Object.isFrozen arguments read out of the witness bodies').toBe(92);
+    // 92 -> 99: the facility purse mirror asserts the record shell and each
+    // of its six object-valued properties directly in its runtime witness.
+    expect(frozen, 'Object.isFrozen arguments read out of the witness bodies').toBe(99);
 
     // AND THE DEPTH THE LEDGER DOES NOT REACH, TABULATED RATHER THAN CLAIMED.
     // One array element down — `meets[0]`, where a stored meet's Total lives —
@@ -1979,7 +1988,8 @@ describe('purity', () => {
     // row — the snapshot mint, which reached this count by having its
     // `deepFreeze` call respelled as the seal it already was.
     // 9 -> 10: decodeSavedGame's record literal is passed to sealServerValue.
-    expect(scan.sealedLiterals, 'shipped record/wire/facts literals seen sealed').toBe(10);
+    // 10 -> 11 with the facility purse mirror's sealed ServerRecord.
+    expect(scan.sealedLiterals, 'shipped record/wire/facts literals seen sealed').toBe(11);
 
     // AND THE CALLEE IS THE SEAL, NOT A FUNCTION SPELLED LIKE IT.
     //
@@ -2020,7 +2030,10 @@ describe('purity', () => {
     // "sealed by name and counted here" is no longer the whole of the evidence:
     // a string-only walk in `deepFreeze` reddens it.
     // 10 -> 11 with saveGame.ts's one seal.
-    expect(scan.sealCallSites.length, 'shipped sealServerValue call sites').toBe(11);
+    // 11 -> 12 with the production purse mirror; 12 -> 15 with the three
+    // client calls sealing parsed server openings and the mutation response.
+    // Those calls do not construct a record, wire or protected fact literal.
+    expect(scan.sealCallSites.length, 'shipped sealServerValue call sites').toBe(15);
 
     // AND THE NAME THE SCAN MATCHES ON IS A REAL EXPORT. Without this, renaming
     // the seal turns the whole check into "no literal is sealed, and none is

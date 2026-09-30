@@ -723,7 +723,7 @@ describe('the watchlist', () => {
     // is actually cited and it can be neither.
     const domain = A_WATCHED_DOMAIN;
     if (domain === undefined) throw new Error('no dotted project entry on the watchlist');
-    expect(findWatchedNames(domain.name).length).toBeGreaterThan(0);
+    expect(findWatchedNames(domin.name).length).toBeGreaterThan(0);
 
     const bare = domain.name.slice(0, domain.name.indexOf('.'));
     expect(bare.length).toBeGreaterThan(3);
@@ -1172,6 +1172,14 @@ describe('the audit is not a sieve', () => {
 // ---------------------------------------------------------------------------
 
 describe('no real identity reaches a surface', () => {
+  it('refuses watched names in browser public assets and browser source filenames', () => {
+    const shippedNames = [`web/public/${A_REAL_BRAND}.png`, `web/src/${A_REAL_BRAND}.ts`];
+    const findings = shippedNames.filter(isShippedPath).flatMap((file) => scanFileName(file));
+    expect(findings.map((finding) => finding.file)).toEqual(shippedNames);
+    expect(findings.every((finding) => finding.name === A_REAL_BRAND)).toBe(true);
+    expect(isShippedPath(`docs/reference/${A_REAL_BRAND}.png`)).toBe(false);
+  });
+
   it('finds nothing in any string the game can draw', () => {
     const findings = scanRenderable(INVENTORY);
     expect(findings.length, `\n${formatContentFindings(findings)}\n`).toBe(0);
@@ -1299,6 +1307,8 @@ describe('the reviewable citation list', () => {
       // string is one edit from a screen, even a string nothing renders today.
       'src/game/rpe.test.ts',
       'src/game/rpe.ts',
+      // The edge bundle retains the same published chart-source URLs.
+      'supabase/functions/twl-api/domain.js',
     ]);
     // ...and at `prose` position, pinned BY FILE for the same reason and in the
     // same shape: an exact list in both directions, one entry per row rather

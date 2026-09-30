@@ -98,7 +98,7 @@ export function createProductionHandler(dependencies: HandlerDependencies): (req
       const saved = await dependencies.repository.commit(user.id, command.expectedRevision, command.requestId, payloadHash, applied.state, receiptResponse(applied.response));
       const savedState = requireAccount(saved); opening = productionOpening(savedState, saved.revision, saved.nowMs);
       if (saved.kind === 'conflict' || saved.kind === 'idempotency-conflict') return json(PRODUCTION_LIMITS.conflictStatus, { opening, message: saved.kind === 'conflict' ? 'This account changed elsewhere. Review the latest saved state and retry.' : 'This request ID was already used for different progress.' });
-      const response = saved.kind === 'duplicate' ? responseFromReceipt(saved.response, savedState, opening) : applied.response;
+      const response = responseFromReceipt(saved.kind === 'duplicate' ? saved.response : applied.response, savedState, opening);
       return json(PRODUCTION_LIMITS.okStatus, { opening, response });
     } catch (error) {
       const status = error instanceof ProductionRefusal ? error.status : error instanceof EvidenceRefusal ? PRODUCTION_LIMITS.invalidRequestStatus : PRODUCTION_LIMITS.unavailableStatus;

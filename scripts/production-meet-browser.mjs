@@ -88,9 +88,7 @@ async function playVisibleLift(page, kind) {
   } finally { await release(); }
 }
 
-/** Reusable by the built-app release runner after it creates a fresh phone page. */
-export async function rehearseMeet(page, report, evidence) {
-  await mkdir(evidence, { recursive: true });
+async function createPracticeLifter(page) {
   await (await visibleButton(page, 'Settings')).click();
   await (await visibleButton(page, 'Create a lifter')).click();
   await page.getByLabel('Platform name', { exact: true }).fill('Mara Vellum');
@@ -98,6 +96,12 @@ export async function rehearseMeet(page, report, evidence) {
   await page.getByRole('combobox', { name: /^Competition sex/ }).selectOption('female');
   await (await visibleButton(page, 'Create lifter')).click();
   await page.getByRole('heading', { name: /A total\s+worth chasing/ }).waitFor();
+}
+
+/** Reusable by the built-app release runner after it creates a fresh phone page. */
+export async function rehearseMeet(page, report, evidence) {
+  await mkdir(evidence, { recursive: true });
+  await createPracticeLifter(page);
   await (await visibleButton(page, 'Settings')).click();
   const audio = page.locator('.settings-screen .toggle');
   if (await audio.getAttribute('aria-pressed') === 'true') await audio.click();
@@ -161,6 +165,10 @@ export async function rehearseMeet(page, report, evidence) {
   await dialog.getByRole('button', { name: 'Back to recap ×', exact: true }).click();
   await (await visibleButton(page, 'Back to career')).click();
   await page.getByRole('button', { name: 'Back to training', exact: true }).click();
+  await startBenchTraining(page, report, evidence);
+}
+
+async function startBenchTraining(page, report, evidence) {
   await (await visibleButton(page, 'Train')).click();
   await page.getByTestId('check-in-lift-bench').click();
   for (const answer of ['check-in-sleep-good', 'check-in-soreness-fresh', 'check-in-motivation-fired-up']) await page.getByTestId(answer).click();
@@ -188,8 +196,46 @@ export async function rehearseMeet(page, report, evidence) {
   report.checks.push({ name: 'RPE selects before explicit Start; keyboard focus loss releases grip and freezes ticks', status: 'passed' });
 }
 
+async function finishBenchTraining(page, report, evidence) {
+  report.trainingReps = [];
+  const expectedSets = Number((await page.locator('.training-set-number').textContent())?.match(/\/\s*(\d+)/)?.[1]);
+  const expectedReps = await page.locator('.training-rep-pip').count();
+  assert.ok(expectedSets > 0 && expectedReps > 0, 'The prescribed session is missing set or rep counts.');
+  while (true) {
+    await waitUntil(async () => {
+      const phase = await page.getByTestId('training-screen').getAttribute('data-phase');
+      if (phase === 'close-out' || phase === 'rest') return true;
+      return phase === 'set' && (await liftView(page)).phase !== 'RESOLVED';
+    }, 'Training did not advance after a resolved rep.');
+    const phase = await page.getByTestId('training-screen').getAttribute('data-phase');
+    if (phase === 'close-out') break;
+    if (phase === 'rest') {
+      await page.getByRole('button', { name: 'Next set', exact: true }).click();
+      continue;
+    }
+    const hud = (await page.locator('.training-set-hud').innerText()).trim();
+    const outcome = await playVisibleLift(page, 'bench');
+    report.trainingReps.push({ hud, outcome: outcome.outcome, resolvedTick: outcome.tick });
+    console.log(`TRAINING REP ${report.trainingReps.length}: ${outcome.outcome}`);
+    assert.notEqual(outcome.outcome, 'miss', 'A rep missed during the successful training rehearsal.');
+    assert.ok(report.trainingReps.length <= expectedSets * expectedReps, 'Training produced more reps than the prescription.');
+  }
+  assert.equal(report.trainingReps.length, expectedSets * expectedReps);
+  await page.locator('.training-save-confirmed').waitFor({ timeout: 10_000 });
+  await shot(page, evidence, '09-phone-confirmed-training');
+  report.checks.push({ name: 'complete native bench prescription, manual set rests, and confirmed practice close-out', status: 'passed', sets: expectedSets, repsPerSet: expectedReps });
+}
+
+export async function rehearseTraining(page, report, evidence) {
+  await createPracticeLifter(page);
+  await page.getByRole('button', { name: 'Back to training', exact: true }).click();
+  await startBenchTraining(page, report, evidence);
+  await finishBenchTraining(page, report, evidence);
+
+}
+
 async function main() {
-  const evidence = path.join(root, '.gauntlet/recovery/ui');
+  const evidence = path.join(root, process.env.TRAINING_ONLY === '1' ? '.gauntlet/recovery/training' : '.gauntlet/recovery/ui');
   const report = { startedAt: new Date().toISOString(), checks: [], attempts: [], errors: [], assetFailures: [], limitations: ['A disposable practice lifter is played through visible browser controls.', 'This check does not establish live-account persistence, physical-device touch feel or native haptics.'] };
   let browser;
   let page;
@@ -213,7 +259,8 @@ async function main() {
     page.on('pageerror', (error) => report.errors.push(error.message));
     page.on('response', (response) => { if (response.status() >= 400 && /\.(?:png|jpe?g|css|js)(?:\?|$)/.test(response.url())) report.assetFailures.push({ path: new URL(response.url()).pathname, status: response.status() }); });
     await page.goto(base, { waitUntil: 'networkidle' });
-    await rehearseMeet(page, report, evidence);
+    if (process.env.TRAINING_ONLY === '1') await rehearseTraining(page, report, evidence);
+    else await rehearseMeet(page, report, evidence);
     assert.deepEqual(report.errors, []);
     if (process.env.MEET_ALLOW_MISSING_ART === '1') {
       assert.equal(report.assetFailures.every((failure) => /^(?:\/athlete\/(?:squat|bench|deadlift)-atlas|\/empire-art\/production-(?:bar|bench|plates))\.png$/.test(failure.path)), true);

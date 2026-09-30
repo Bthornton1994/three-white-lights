@@ -88,5 +88,8 @@ for entry in entries:
 (git_directory / 'shallow').write_text(head + '\n')
 subprocess.run(['git', 'update-ref', 'HEAD', head], cwd=repository, check=True)
 subprocess.run(['git', 'read-tree', tree['sha']], cwd=repository, check=True)
+# A recovered index may retain unavailable historic blob objects. Reporting
+# separate additions/deletions needs no rename comparison against those bytes.
+subprocess.run(['git', 'config', 'status.renames', 'false'], cwd=repository, check=True)
 report = {'head': head, 'tree': tree['sha'], 'present': len(present), 'missing': missing, 'modified': modified}
 print(json.dumps(report, indent=2))

@@ -16,7 +16,7 @@ const bundler = JSON.parse(await readFile(resolve(root, 'web/node_modules/esbuil
 const manifest = `${JSON.stringify({ format: 1, bundler, artifactSha256: hash(bytes), sources }, null, 2)}\n`;
 const check = process.argv.includes('--check');
 if (check) {
-  if (!bytes.equals?.(await readFile(outputPath)) && Buffer.compare(Buffer.from(bytes), await readFile(outputPath)) !== 0) throw new Error('The Edge Function bundle is stale. Run node supabase/bundle-api.mjs.');
+  if (Buffer.compare(Buffer.from(bytes), await readFile(outputPath)) !== 0) throw new Error('The Edge Function bundle is stale. Run node supabase/bundle-api.mjs.');
   if (await readFile(manifestPath, 'utf8') !== manifest) throw new Error('The Edge Function source manifest is stale. Run node supabase/bundle-api.mjs.');
 } else {
   await writeFile(outputPath, bytes); await writeFile(manifestPath, manifest);

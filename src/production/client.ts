@@ -4,6 +4,7 @@ import type { MeetDefinition } from '../game/meetTuning';
 import type { ProductionEnvelope, ProductionOpening, FacilityPort } from './contracts';
 import { PRODUCTION_LIMITS } from './productionTuning';
 import { utcAccountDay } from './clock';
+import { sealServerValue } from '../game/progression';
 import type { LiftEvidence, LiftEvidencePort, TrainingEvidenceContext, TrainingLiftEvidence, MeetLiftEvidence } from './liftEvidence';
 export type { FacilityAction, FacilityResponse, FacilityPort } from './contracts';
 
@@ -32,7 +33,7 @@ interface AuthSession {
   expires_at: number;
   user: ProductionUser;
 }
-type AuthReply = Partial<AuthSession> & { expires_in?: number; msg?: string; error_description?: string; message?: string };
+type AuthReply = Partial<AuthSession> & { expires_in?: number; msg?: string; error_description?: string; message?: string; id?: string; email?: string; is_anonymous?: boolean };
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : 'The account service could not be reached. Retry when connected.';
@@ -62,7 +63,8 @@ export async function createProductionClient(config?: ProductionConfig): Promise
   }
   const base = url.replace(/\/$/, '');
   const request = config?.fetch ?? fetch;
-  const storage = config?.storage === undefined ? (typeof localStorage === 'undefined' ? null : localStorage) : config.storage;
+  let storage: ProductionConfig['storage'] = config?.storage;
+  if (storage === undefined) { try { storage = typeof localStorage === 'undefined' ? null : localStorage; } catch { storage = null; } }
   const storageKey = `twl.auth.${parsedUrl.hostname}`;
   let session: AuthSession | null = null;
   let opening: ProductionOpening | null = null;
@@ -74,7 +76,8 @@ export async function createProductionClient(config?: ProductionConfig): Promise
   let refreshInFlight: Promise<void> | null = null;
   const listeners = new Set<() => void>();
   const notify = () => { for (const listener of listeners) listener(); };
-  const clearSession = () => { authEpoch += 1; session = null; opening = null; trainingContext = null; trainingEvidence.clear(); meetEvidence.clear(); storage?.removeItem(storageKey); notify(); };
+  const persistSession = () => { try { if (session) storage?.setItem(storageKey, JSON.stringify(session)); else storage?.removeItem(storageKey); } catch { /* A blocked browser store does not replace server persistence. */ } };
+  const clearSession = () => { authEpoch += 1; session = null; opening = null; trainingContext = null; trainingEvidence.clear(); meetEvidence.clear(); refreshInFlight = null; persistSession(); notify(); };
   const saveSession = (reply: AuthReply) => {
     if (!reply.access_token || !reply.refresh_token || !reply.user?.id) throw new Error('The account service returned an incomplete session.');
     session = {
@@ -83,7 +86,7 @@ export async function createProductionClient(config?: ProductionConfig): Promise
       expires_at: reply.expires_at ?? Math.floor(Date.now() / PRODUCTION_LIMITS.millisecondsPerSecond) + (reply.expires_in ?? 0),
       user: { id: reply.user.id, ...(reply.user.email ? { email: reply.user.email } : {}) },
     };
-    storage?.setItem(storageKey, JSON.stringify(session));
+    persistSession();
   };
   const authRequest = async (path: string, body?: unknown, token?: string): Promise<AuthReply> => {
     const response = await request(`${base}/auth/v1/${path}`, {
@@ -97,22 +100,26 @@ export async function createProductionClient(config?: ProductionConfig): Promise
     return reply;
   };
   const ensureToken = async (): Promise<string> => {
+    const tokenEpoch = authEpoch;
     if (!session) throw new Error('Sign in to save account progress.');
     if (session.expires_at * PRODUCTION_LIMITS.millisecondsPerSecond <= Date.now() + PRODUCTION_LIMITS.refreshBeforeExpiryMs) {
       if (!refreshInFlight) {
         const refreshToken = session.refresh_token;
         const epoch = authEpoch;
-        refreshInFlight = authRequest('token?grant_type=refresh_token', { refresh_token: refreshToken })
-          .then(reply => { if (epoch !== authEpoch) throw new Error('This account request was superseded.'); saveSession(reply); }).catch(error => { if (epoch === authEpoch) clearSession(); throw error; }).finally(() => { refreshInFlight = null; });
+        const refreshTask: Promise<void> = authRequest('token?grant_type=refresh_token', { refresh_token: refreshToken })
+          .then(reply => { if (epoch !== authEpoch) throw new Error('This account request was superseded.'); saveSession(reply); }).catch(error => { if (epoch === authEpoch) clearSession(); throw error; }).finally(() => { if (refreshInFlight === refreshTask) refreshInFlight = null; });
+        refreshInFlight = refreshTask;
       }
       await refreshInFlight;
     }
+    if (tokenEpoch !== authEpoch) throw new Error('This account request was superseded.');
     if (!session) throw new Error('Your session has expired. Sign in again.');
     return session.access_token;
   };
   const invoke = async <T>(command: Record<string, unknown>): Promise<T> => {
-    const token = await ensureToken();
     const epoch = authEpoch;
+    const token = await ensureToken();
+    if (epoch !== authEpoch) throw new Error('This account request was superseded.');
     const response = await request(`${base}/functions/v1/twl-api`, {
       method: 'POST',
       headers: { apikey: publishableKey, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -122,7 +129,7 @@ export async function createProductionClient(config?: ProductionConfig): Promise
     if (epoch !== authEpoch) throw new Error('This account request was superseded.');
     if (reply.opening?.wire && Number.isSafeInteger(reply.opening.revision) && Number.isSafeInteger(reply.opening.serverDay) && Number.isSafeInteger(reply.opening.serverNowMs)) {
       if (opening && reply.opening.revision < opening.revision) throw new Error('Newer account progress has already loaded.');
-      opening = reply.opening; openingReceivedAt = performance.now();
+      opening = sealServerValue(reply.opening); openingReceivedAt = performance.now();
     }
     if (!response.ok) {
       if (response.status === PRODUCTION_LIMITS.unauthorizedStatus) clearSession();
@@ -131,8 +138,8 @@ export async function createProductionClient(config?: ProductionConfig): Promise
     if (!reply.opening?.wire || !Number.isSafeInteger(reply.opening.revision) || !Number.isSafeInteger(reply.opening.serverDay) || !Number.isSafeInteger(reply.opening.serverNowMs)) {
       throw new Error('The account service returned an invalid progression response.');
     }
-    opening = reply.opening;
-    return reply.response;
+    opening = sealServerValue(reply.opening);
+    return sealServerValue(reply.response);
   };
   const requireOpening = () => {
     if (!session || !opening) throw new Error('Account progress has not loaded. Sign in and retry.');
@@ -209,14 +216,17 @@ export async function createProductionClient(config?: ProductionConfig): Promise
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     async enterCareerMeet(meet) { await mutate('enter-career-meet', { meetId: meet.id }, generatedId()); },
   };
-  const saved = storage?.getItem(storageKey);
+  let saved: string | null = null; try { saved = storage?.getItem(storageKey) ?? null; } catch { /* Session storage may be disabled. */ }
   if (saved) {
     try {
       const value = JSON.parse(saved) as AuthSession;
-      if (!value.access_token || !value.refresh_token || !value.user?.id || !Number.isFinite(value.expires_at)) throw new Error('Invalid session');
+      if (typeof value.access_token !== 'string' || !value.access_token || typeof value.refresh_token !== 'string' || !value.refresh_token || typeof value.user?.id !== 'string' || !value.user.id || !Number.isSafeInteger(value.expires_at) || value.expires_at < 0) throw new Error('Invalid session');
       session = value;
+      const user = await authRequest('user', undefined, await ensureToken());
+      if (typeof user.id !== 'string' || !user.id || user.is_anonymous === true || !session) throw new Error('Your saved session is invalid. Sign in again.');
+      session = { ...session, user: { id: user.id, ...(typeof user.email === 'string' ? { email: user.email } : {}) } }; persistSession();
       await client.refresh();
-    } catch (error) { clearSession(); throw new Error(message(error)); }
+    } catch { clearSession(); }
   }
   return client;
 }

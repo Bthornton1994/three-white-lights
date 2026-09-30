@@ -910,12 +910,17 @@ export function isTextFile(bytes: Uint8Array): boolean {
  */
 export const EXTENSIONS_READ_AS_TEXT: readonly string[] = Object.freeze([
   '(none)',
+  '.css',
   '.html',
+  '.js',
   '.json',
   '.md',
   '.mjs',
   '.mts',
+  '.py',
   '.sh',
+  '.sql',
+  '.svg',
   '.toml',
   '.ts',
   '.tsx',
@@ -927,6 +932,7 @@ export const EXTENSIONS_READ_AS_TEXT: readonly string[] = Object.freeze([
   // was for. This list is the pinned ANSWER, so a new kind of readable file
   // reddens the suite once, gets read, and is written down. That happened here.
   '.txt',
+  '.webmanifest',
   '.yml',
 ]);
 
@@ -970,10 +976,14 @@ export interface UnreadableGroup {
  * the same cost `REVIEWABLE_CITATIONS` already charges, for a stronger reason.
  */
 export const UNREADABLE_BY_THIS_AUDIT: readonly UnreadableGroup[] = Object.freeze([
+  // Full published-tree census, including the browser copies of native art
+  // and audio, its licensed fonts, and the six new production PNGs. Missing
+  // local bytes still fail the reach check; this does not excuse an omission.
   { extension: '.jpeg', reason: 'nul-byte', count: 1 },
-  { extension: '.jpg', reason: 'nul-byte', count: 19 },
-  { extension: '.png', reason: 'nul-byte', count: 13 },
-  { extension: '.wav', reason: 'nul-byte', count: 7 },
+  { extension: '.jpg', reason: 'nul-byte', count: 38 },
+  { extension: '.png', reason: 'nul-byte', count: 121 },
+  { extension: '.ttf', reason: 'nul-byte', count: 3 },
+  { extension: '.wav', reason: 'nul-byte', count: 14 },
   { extension: '.webp', reason: 'nul-byte', count: 2 },
 ]);
 
@@ -1252,11 +1262,15 @@ export function reachReport(
  * `app.json` and serves `public/` verbatim. `src/` is included because a source
  * file named after a partner is the licensing system growing a hard-coded
  * dependency on one, which is the thing §7.3 exists to prevent.
+ * The production browser serves `web/public/` and builds `web/src/`, so the
+ * same filename refusal reaches both of those roots.
  *
  * `docs/` is deliberately absent. It holds downloaded reference photographs
  * named after what is in them, which is what a reference folder is for.
  */
-export const SHIPPED_ASSET_ROOTS: readonly string[] = Object.freeze(['assets/', 'public/', 'src/']);
+export const SHIPPED_ASSET_ROOTS: readonly string[] = Object.freeze([
+  'assets/', 'public/', 'src/', 'web/public/', 'web/src/',
+]);
 
 /** True when a path's own NAME carrying a real brand would be shipped content. */
 export function isShippedPath(relPath: string): boolean {
@@ -1731,10 +1745,13 @@ export function formatCitations(rows: readonly CitationRow[]): string {
  * looking for a bug in the scan.)
  */
 export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
+  { file: '.github/workflows/production-web.yml', name: 'Supabase', where: 'code', count: 4 },
+  { file: '.gitignore', name: 'Supabase', where: 'code', count: 2 },
   { file: 'BUILD_PROMPT_CLAUDE.md', name: 'Genesis', where: 'prose', count: 1 },
   { file: 'BUILD_PROMPT_CLAUDE.md', name: 'SNES', where: 'prose', count: 1 },
   { file: 'CLAUDE.md', name: 'Supabase', where: 'prose', count: 2 },
-  { file: 'docs/GDD.md', name: 'Duolingo', where: 'prose', count: 5 },  { file: 'docs/GDD.md', name: 'Game Boy', where: 'prose', count: 1 },
+  { file: 'docs/GDD.md', name: 'Duolingo', where: 'prose', count: 5 },
+  { file: 'docs/GDD.md', name: 'Game Boy', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'Genesis', where: 'prose', count: 2 },
   { file: 'docs/GDD.md', name: 'Madden', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'NBA 2K', where: 'prose', count: 1 },
@@ -1744,6 +1761,7 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'docs/GDD.md', name: 'Supabase', where: 'prose', count: 4 },
   { file: 'docs/GDD.md', name: 'USAPL', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'USPA', where: 'prose', count: 1 },
+  { file: 'docs/production/OPERATIONS.md', name: 'Supabase', where: 'prose', count: 2 },
   { file: 'docs/reference/meet-photo-ref-1-ipf-squat-bottom.webp', name: 'IPF', where: 'filename', count: 1 },
   { file: 'docs/reference/README.md', name: 'IPF', where: 'prose', count: 2 },
   { file: 'docs/reference/README.md', name: 'MLB', where: 'prose', count: 1 },
@@ -1751,43 +1769,6 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'docs/reference/README.md', name: 'Orioles', where: 'prose', count: 1 },
   { file: 'docs/reference/README.md', name: 'SNES', where: 'prose', count: 4 },
   { file: 'docs/reference/sprite-ref-1-snes-wrestling.png', name: 'SNES', where: 'filename', count: 1 },
-  // ---------------------------------------------------------------------------
-  // `docs/research/` — DERIVED-DATA PROVENANCE. 32 rows, 6 names, 7 files.
-  //
-  // Registered on an explicit human ruling, and the scope of that ruling is
-  // worth writing down because the cheap alternative was available and refused:
-  // `docs/research/**` is NOT on `NOT_WALKED`, no pattern was widened to stop
-  // the directory being read, and no count here is a bound. A new real name
-  // arriving in any of these files, or any of these counts moving by one, still
-  // reddens `realIp.test.ts`. The ruling was "register them like every other
-  // citation", not "exempt them".
-  //
-  // WHAT THEY ARE. `docs/research/qualifying-totals.md` derives a qualifying
-  // total per tier x sex x weight class from a public results database, because
-  // every published federation standards page is HTTP 403 from this
-  // environment. The names are the database, the two US federations and the
-  // international one whose meets the rows come from — i.e. the provenance of
-  // every number in the document. Deleting them would leave a table of numbers
-  // with no attributable source, which is the failure `dots.ts` and `meet.ts`
-  // are already allowed to avoid for the same reason.
-  //
-  // THE BULK ROWS ARE MACHINE-GENERATED AND THAT IS THE PART TO WATCH. The two
-  // `-meets-*.txt` files are the tier-mapping audit — every meet, its assigned
-  // tier and its row contribution — and their x275 is one federation acronym
-  // arriving inside 275 verbatim third-party meet titles. That is a data dump
-  // rather than 275 citations, and the file was already trimmed once (2,992
-  // lines to 346, ~2,400 mentions to 275) with both reasons stated in the
-  // script. A human may reasonably decide the generated artifacts should not be
-  // committed at all; that is a legal-exposure call and it is flagged rather
-  // than taken.
-  //
-  // SIX OF THESE ROWS ARE `SBD` AND NONE OF THEM IS THE APPAREL BRAND. In this
-  // sport `SBD` is the standard abbreviation for squat-bench-deadlift and is
-  // the dataset's own value for the full-power event; the `code` rows are that
-  // enum value and the `prose` ones are the document explaining it. The single
-  // genuine brand mention is inside a verbatim meet title in the audit `.txt`.
-  // A reader of this list cannot tell those apart from the row alone, which is
-  // why it is said here.
   { file: 'docs/research/qualifying-totals-derived-raw.json', name: 'IPF', where: 'code', count: 1 },
   { file: 'docs/research/qualifying-totals-derived-raw.json', name: 'SBD', where: 'code', count: 1 },
   { file: 'docs/research/qualifying-totals-derived-raw.json', name: 'USAPL', where: 'code', count: 3 },
@@ -1804,10 +1785,6 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'docs/research/qualifying-totals-NOTES.md', name: 'OpenPowerlifting', where: 'prose', count: 1 },
   { file: 'docs/research/qualifying-totals-NOTES.md', name: 'OPL', where: 'prose', count: 2 },
   { file: 'docs/research/qualifying-totals-NOTES.md', name: 'USAPL', where: 'prose', count: 1 },
-  // The two federation names below arrive as the HOSTS OF UNREACHABLE
-  // STANDARDS PAGES — §6.1 of that document is a list of what a human with an
-  // open browser should retrieve, and a retrieval list with the sources struck
-  // out is not a retrieval list.
   { file: 'docs/research/qualifying-totals.md', name: 'British Powerlifting', where: 'prose', count: 1 },
   { file: 'docs/research/qualifying-totals.md', name: 'IPF', where: 'prose', count: 1 },
   { file: 'docs/research/qualifying-totals.md', name: 'OpenPowerlifting', where: 'prose', count: 5 },
@@ -1822,21 +1799,13 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'SBD', where: 'code', count: 1 },
   { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'USAPL', where: 'code', count: 3 },
   { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'USAPL', where: 'comment', count: 1 },
+  { file: 'README.md', name: 'Supabase', where: 'prose', count: 2 },
   { file: 'src/art/craftMetrics.test.ts', name: 'SNES', where: 'code', count: 6 },
   { file: 'src/art/craftMetrics.ts', name: 'MLB', where: 'comment', count: 1 },
   { file: 'src/art/craftMetrics.ts', name: 'SNES', where: 'code', count: 6 },
   { file: 'src/art/craftMetrics.ts', name: 'SNES', where: 'comment', count: 3 },
   { file: 'src/art/gymPalette.test.ts', name: 'SNES', where: 'comment', count: 2 },
   { file: 'src/art/gymPalette.ts', name: 'SNES', where: 'comment', count: 2 },
-  // `gymScene.test.ts` is now the LAST bespoke real-IP ban in the tree; its
-  // names are here because they are the check's own operands. The environment
-  // builder wrote it independently and before this module existed, which is
-  // worth recording rather than tidying away — three builders reached for a
-  // hand-written watchlist unprompted (this one, that one, and a first draft of
-  // `meetIdentity.test.ts`), which is the argument for this module generalising
-  // them rather than the argument against it. `meetTuning.test.ts`'s ban has
-  // since been retired by its owner and its five rows are gone from this list.
-  // KEEP until whoever owns this one removes the now-redundant test.
   { file: 'src/art/gymScene.test.ts', name: 'Adidas', where: 'code', count: 1 },
   { file: 'src/art/gymScene.test.ts', name: 'Amanda Lawrence', where: 'code', count: 1 },
   { file: 'src/art/gymScene.test.ts', name: 'BVDK', where: 'code', count: 1 },
@@ -1871,10 +1840,6 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'src/art/palette.test.ts', name: 'OpenLifter', where: 'comment', count: 1 },
   { file: 'src/art/palette.test.ts', name: 'SNES', where: 'comment', count: 1 },
   { file: 'src/art/palette.ts', name: 'Genesis', where: 'comment', count: 3 },
-  // `gymPalette.ts` HAD a federation citation for the plate-colour standard and
-  // no longer does: its builder rewrote the comment to state the standard without
-  // naming the body. That is a removal this list is supposed to notice, and it
-  // was noticed — on merge, by this test, exactly as designed.
   { file: 'src/art/palette.ts', name: 'IPF', where: 'comment', count: 2 },
   { file: 'src/art/palette.ts', name: 'OpenLifter', where: 'comment', count: 6 },
   { file: 'src/art/palette.ts', name: 'OpenPowerlifting', where: 'comment', count: 1 },
@@ -1897,12 +1862,6 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'src/game/dots.test.ts', name: 'Amanda Lawrence', where: 'comment', count: 1 },
   { file: 'src/game/dots.test.ts', name: 'IPF', where: 'comment', count: 1 },
   { file: 'src/game/dots.test.ts', name: 'Jesus Olivares', where: 'comment', count: 1 },
-  // THE EXTERNAL SCORE PIN's provenance block. Two retrieval citations, both in
-  // the same comment and both load-bearing: the pinned-commit URL the reference
-  // implementation was fetched from, and the sentence recording that that
-  // implementation's own header says it was copied from the other project — which
-  // is the limit of what the pin establishes and cannot be written without naming
-  // the project it was copied from.
   { file: 'src/game/dots.test.ts', name: 'OpenLifter', where: 'comment', count: 2 },
   { file: 'src/game/dots.test.ts', name: 'OpenPowerlifting', where: 'comment', count: 3 },
   { file: 'src/game/dots.test.ts', name: 'SBD', where: 'comment', count: 1 },
@@ -1930,7 +1889,7 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'src/game/meetTuning.ts', name: 'OpenPowerlifting', where: 'comment', count: 1 },
   { file: 'src/game/meetTuning.ts', name: 'USAPL', where: 'comment', count: 1 },
   { file: 'src/game/meetTuning.ts', name: 'USPA', where: 'comment', count: 1 },
-  { file: 'src/game/progression.test.ts', name: 'Supabase', where: 'code', count: 1 },
+  { file: 'src/game/progression.test.ts', name: 'Supabase', where: 'code', count: 3 },
   { file: 'src/game/progression.ts', name: 'Supabase', where: 'comment', count: 1 },
   { file: 'src/game/resultCard.test.ts', name: 'IPF', where: 'code', count: 7 },
   { file: 'src/game/resultCard.test.ts', name: 'IPF', where: 'comment', count: 4 },
@@ -1963,11 +1922,29 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'src/game/streak.ts', name: 'Duolingo', where: 'comment', count: 4 },
   { file: 'src/meet/AttemptBoard.tsx', name: 'OpenLifter', where: 'comment', count: 1 },
   { file: 'src/meet/AttemptBoard.tsx', name: 'OpenPowerlifting', where: 'comment', count: 1 },
+  { file: 'src/production/client.ts', name: 'Supabase', where: 'code', count: 3 },
   { file: 'src/session/localSessionServer.ts', name: 'Supabase', where: 'comment', count: 1 },
   { file: 'src/shell/appServer.ts', name: 'Supabase', where: 'comment', count: 1 },
   { file: 'src/tuning/audit.ts', name: 'IPF', where: 'code', count: 2 },
   { file: 'src/tuning/index.ts', name: 'Duolingo', where: 'comment', count: 1 },
   { file: 'src/tuning/index.ts', name: 'IPF', where: 'comment', count: 1 },
+  { file: 'supabase/bundle-api.mjs', name: 'Supabase', where: 'code', count: 4 },
+  { file: 'supabase/bundle-api.mjs', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/config.toml', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/functions/deno.d.ts', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/functions/twl-api/deno.json', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/functions/twl-api/domain.d.ts', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/functions/twl-api/domain.js', name: 'karolczyz', where: 'code', count: 1 },
+  { file: 'supabase/functions/twl-api/domain.js', name: 'metriclift', where: 'code', count: 2 },
+  { file: 'supabase/functions/twl-api/domain.js', name: 'Sculpt-AI', where: 'code', count: 3 },
+  { file: 'supabase/functions/twl-api/domain.js', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/functions/twl-api/domain.manifest.json', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/functions/twl-api/index.ts', name: 'Supabase', where: 'code', count: 3 },
+  { file: 'supabase/functions/twl-api/index.ts', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/migrations/20260930193634_twl_authoritative_accounts.sql', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/tsconfig.json', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'tsconfig.json', name: 'Supabase', where: 'code', count: 1 },
   { file: 'VISION.md', name: 'Madden', where: 'prose', count: 1 },
   { file: 'VISION.md', name: 'NBA 2K', where: 'prose', count: 1 },
+  { file: 'web/tests/production-repository.test.ts', name: 'Supabase', where: 'code', count: 1 },
 ]);

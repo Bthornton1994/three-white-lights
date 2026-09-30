@@ -10,6 +10,7 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { rehearseMeet, rehearseTraining } from './production-meet-browser.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const web = path.join(root, 'web');
@@ -348,6 +349,28 @@ try {
   }
   browser = await playwright.chromium.launch({ headless: true, executablePath: process.env.BROWSER_EXECUTABLE_PATH || undefined });
   await mobileStory();
+  for (const [name, rehearse] of [
+    ['phone: nine authentic meet attempts produce the complete result sheet and a real PNG download', rehearseMeet],
+    ['phone: a complete native bench prescription reaches the confirmed practice close-out', rehearseTraining],
+  ]) {
+    await check(name, async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true, acceptDownloads: true, reducedMotion: 'reduce' });
+      const page = await context.newPage();
+      activePage = page;
+      await watch(page);
+      const rehearsal = { checks: [], attempts: [] };
+      const destination = path.join(evidence, rehearse === rehearseMeet ? 'meet' : 'training');
+      await mkdir(destination, { recursive: true });
+      try {
+        await page.goto(report.url, { waitUntil: 'networkidle' });
+        await page.locator('.practice-banner').filter({ hasText: 'Practice gym' }).waitFor();
+        await rehearse(page, rehearsal, destination);
+        await noProtectedPracticeStorage(page);
+        await renderAudit(page);
+        return rehearsal;
+      } finally { await context.close(); }
+    });
+  }
   await check('desktop: the production gym renders with usable navigation and no broken assets', async () => {
     const context = await browser.newContext({ viewport: { width: 1440, height: 960 }, reducedMotion: 'reduce' });
     const page = await context.newPage();

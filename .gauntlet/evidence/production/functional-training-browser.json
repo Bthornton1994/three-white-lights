@@ -1,0 +1,472 @@
+{
+  "startedAt": "2026-09-30T21:27:39.054Z",
+  "checks": [
+    {
+      "name": "RPE selects before explicit Start; keyboard focus loss releases grip and freezes ticks",
+      "status": "passed"
+    },
+    {
+      "name": "complete native bench prescription, manual set rests, and confirmed practice close-out",
+      "status": "passed",
+      "sets": 5,
+      "repsPerSet": 3
+    }
+  ],
+  "attempts": [],
+  "errors": [],
+  "assetFailures": [
+    {
+      "path": "/empire-art/production-plates.png",
+      "status": 404
+    },
+    {
+      "path": "/empire-art/production-plates.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    }
+  ],
+  "limitations": [
+    "A disposable practice lifter is played through visible browser controls.",
+    "This check does not establish live-account persistence, physical-device touch feel or native haptics.",
+    "Original final art files could not be restored in this run. Functional checks used the explicit art-unavailable message; visual and full asset validation remain incomplete."
+  ],
+  "trainingReps": [
+    {
+      "hud": "Set 1 / 5\n100 kg\n1\n2\n3\nRPE 6",
+      "outcome": "good-lift",
+      "resolvedTick": 168
+    },
+    {
+      "hud": "Set 1 / 5\n100 kg\n✓\n2\n3\nRPE 6",
+      "outcome": "good-lift",
+      "resolvedTick": 181
+    },
+    {
+      "hud": "Set 1 / 5\n100 kg\n✓\n✓\n3\nRPE 6",
+      "outcome": "good-lift",
+      "resolvedTick": 190
+    },
+    {
+      "hud": "Set 2 / 5\n100 kg\n1\n2\n3\nRPE 6",
+      "outcome": "good-lift",
+      "resolvedTick": 196
+    },
+    {
+      "hud": "Set 2 / 5\n100 kg\n✓\n2\n3\nRPE 6",
+      "outcome": "good-lift",
+      "resolvedTick": 221
+    },
+    {
+      "hud": "Set 2 / 5\n100 kg\n✓\n✓\n3\nRPE 6",
+      "outcome": "good-lift",
+      "resolvedTick": 196
+    },
+    {
+      "hud": "Set 3 / 5\n100 kg\n1\n2\n3\nRPE 6",
+      "outcome": "good-lift",
+      "resolvedTick": 220
+    },
+    {
+      "hud": "Set 3 / 5\n100 kg\n✓\n2\n3\nRPE 6",
+      "outcome": "good-lift",
+      "resolvedTick": 218
+    },
+    {
+      "hud": "Set 3 / 5\n100 kg\n✓\n✓\n3\nRPE 6",
+      "outcome": "good-lift",
+      "resolvedTick": 203
+    },
+    {
+      "hud": "Set 4 / 5\n100 kg\n1\n2\n3\nRPE 6",
+      "outcome": "good-lift",
+      "resolvedTick": 204
+    },
+    {
+      "hud": "Set 4 / 5\n100 kg\n✓\n2\n3\nRPE 6",
+      "outcome": "good-lift",
+      "resolvedTick": 176
+    },
+    {
+      "hud": "Set 4 / 5\n100 kg\n✓\n✓\n3\nRPE 6",
+      "outcome": "good-lift",
+      "resolvedTick": 222
+    },
+    {
+      "hud": "Set 5 / 5\n100 kg\n1\n2\n3\nRPE 6",
+      "outcome": "good-lift",
+      "resolvedTick": 201
+    },
+    {
+      "hud": "Set 5 / 5\n100 kg\n✓\n2\n3\nRPE 6",
+      "outcome": "good-lift",
+      "resolvedTick": 170
+    },
+    {
+      "hud": "Set 5 / 5\n100 kg\n✓\n✓\n3\nRPE 6",
+      "outcome": "good-lift",
+      "resolvedTick": 167
+    }
+  ],
+  "status": "functional-passed-art-incomplete",
+  "finishedAt": "2026-09-30T21:28:42.296Z",
+  "viteLog": "\n  VITE v8.2.1  ready in 136 ms\n\n  ➜  Local:   http://127.0.0.1:5178/\n"
+}

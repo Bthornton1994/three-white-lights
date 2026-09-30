@@ -344,7 +344,8 @@ const PINNED = Object.freeze({
    * 347 -> 349 with the shareable flight: `src/game/resultFlight.ts` and
    * `src/game/resultFlight.test.ts`.
    */
-  SCANNED_FILES: 349,
+  // Production browser, server, edge sources, scripts and reviewed evidence.
+  SCANNED_FILES: 446,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -400,7 +401,8 @@ const PINNED = Object.freeze({
    *
    * 113 -> 114 with the shareable flight: `src/game/resultFlight.test.ts`.
    */
-  TEST_FILES: 114,
+  // Native production boundary and web replay/repository/result-sheet cases.
+  TEST_FILES: 119,
 });
 
 /**

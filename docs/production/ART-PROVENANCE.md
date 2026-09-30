@@ -1,13 +1,28 @@
 # Iron & Amber asset provenance
 
-The governing reference is `docs/design/iron-and-amber-reference.jpeg`, introduced by PR44 at commit `c52444d407e9974209446ec1de7d127f1ce07a6a`. Its SHA-1 Git blob is `80fcaaa9ee14711776ceeaf31ca12ae61242d1d4`.
+The binding reference is `docs/design/iron-and-amber-reference.jpeg`, from PR44 at `c52444d407e9974209446ec1de7d127f1ce07a6a`; Git blob `80fcaaa9ee14711776ceeaf31ca12ae61242d1d4`. The direction is warm brick, dark iron, amber light, illustrated equipment, and readable athletic typography.
 
-- `web/public/rooms/gym-floor.png`: generated with the built-in image-generation tool in this production integration, using that actual reference image. Original generated file copied byte-for-byte. No baked characters, controls, or text. A warm brick and iron garage with an amber doorway and open floor supports live placed equipment.
-- Other `web/public/rooms/*.jpg`: existing project-owned Iron & Amber training and meet assets from PR63, commit `46ae42bb3d32319586bf99851d1f20cd171c1c60`. Original source notes remain in `docs/design/IRON-AMBER-TRAINING-ASSETS.md`.
-- `web/public/empire-art/*.png`: existing equipment and member artwork from the facility persistence branch, commit `3c55622b94a6ff5c977de8ff09c0977ecfa739a8`. Source files remain intact. Chroma-keyed textures are decoded for display in the browser.
-- `web/public/sprites/*`: accepted athlete poses from the arcade implementation, commit `30686d30464ba877b7236c59c49db766fe02ad19`. The animated athlete remains a restrained retro accent inside the illustrated room. The source files contain magenta key backgrounds; rendering removes only boundary-connected key pixels for the athlete, preserving enclosed body and equipment details.
+The six production cutouts below were made with the built-in image-generation tool for this integration and copied unchanged from its selected outputs. Their exact generation/edit prompts, original filenames, dimensions, and recorded SHA-256 hashes are in `docs/design/art-recovery-provenance.json`. Original PNGs are preserved in commit `d457b8150ae76633fe6f6b3bd0a9eaea823b4756` and subsequent release commits.
+
+| Production asset | Dimensions | Git blob |
+| --- | --- | --- |
+| `web/public/empire-art/production-bench.png` | 1254×1254 | `3d2a0b404826fd7a111fe6cbb0be08e9279823c1` |
+| `web/public/empire-art/production-bar.png` | 2062×763 | `5f8257f00e3e7328bde064489adebaa9c922f920` |
+| `web/public/empire-art/production-plates.png` | 1254×1254 | `8d29c8ba1657beda0697f2b420eb1fea702c8f0b` |
+| `web/public/athlete/squat-atlas.png` | 1536×1024 | `a6f98c0db001b58eab6ec1e898280538a1aeb4ca` |
+| `web/public/athlete/bench-atlas.png` | 1536×1024 | `af0591f871d3acd4621fb32a7afb458ef9a3c3f5` |
+| `web/public/athlete/deadlift-atlas.png` | 1536×1024 | `dd93ff9e3a32607332f25d6eda97c2ab49bf9057` |
+
+Each athlete atlas has six row-major poses in equal cells. The live renderer uses these illustrated atlases, normal canvas crops and floor alignment, with smooth display sampling. The original PNGs are not transformed. This records source identity, not a fresh visual acceptance claim.
+
+Other source assets:
+
+- `web/public/rooms/gym-floor.png`: generated with the same built-in tool using the actual reference. Its open floor has no baked athlete, controls, or text; placed equipment is rendered live.
+- Other `web/public/rooms/*.jpg`: existing project Iron & Amber training and meet assets from PR63 (`46ae42bb3d32319586bf99851d1f20cd171c1c60`). Source notes remain in `docs/design/IRON-AMBER-TRAINING-ASSETS.md`.
+- Other `web/public/empire-art/*.png`: existing facility equipment and ambient member art from `3c55622b94a6ff5c977de8ff09c0977ecfa739a8`. Chroma-keyed legacy textures are decoded at display time.
+- `web/public/sprites/*`: legacy arcade athlete poses from `30686d30464ba877b7236c59c49db766fe02ad19`, retained for source continuity. The production lift renderer uses the new illustrated atlases.
 - `web/public/sound/*.wav`: existing project-synthesized meet audio from PR63.
-- `web/public/fonts/BarlowCondensed-*.ttf`: Barlow Condensed Regular, Bold, and ExtraBold from the official `google/fonts` repository's `ofl/barlowcondensed` directory. SIL Open Font License is checked in beside them as `OFL.txt`.
-- Application icons: vector-derived three-light mark created for this browser build, without an external brand identity.
+- `web/public/fonts/BarlowCondensed-*.ttf`: Regular, Bold, and ExtraBold from the official `google/fonts` repository, with SIL Open Font License checked in as `OFL.txt`.
+- Application icons: the three-light mark made for this browser build and Lucide interface icons; Lucide's ISC notice is retained with dependencies.
 
-The asset list records origin. Visual acceptance is a separate review of the deployed artifact against the reference, at phone and desktop sizes.
+Fresh full-art review remains open while four PNGs above 1 MiB cannot be restored through the current connector. Functional browser records explicitly mark that limitation. No bitmap-content, deployed-visual, physical-device, or haptics acceptance is implied.

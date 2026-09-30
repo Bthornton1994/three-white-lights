@@ -45,6 +45,5 @@ export function Art({ src, label = '', className, style }: { src: string; label?
     }).catch(() => { if (active) setFailed(true); });
     return () => { active = false; };
   }, [src]);
-  if (failed) return <span className={className} style={style}>{label}</span>;
-  return <canvas ref={canvas} className={className} style={style} role={label ? 'img' : undefined} aria-label={label || undefined} aria-hidden={label ? undefined : true} />;
+  return <>{failed && <span className={className} style={style}>{label}</span>}<canvas ref={canvas} className={className} style={failed ? { ...style, display: 'none' } : style} role={label ? 'img' : undefined} aria-label={label || undefined} aria-hidden={failed || !label ? true : undefined} /></>;
 }
