@@ -6,6 +6,8 @@ import {
   type LiftInputKind,
   type LiftResolution,
 } from '../../src/game/lift';
+import type { LiftEvidence } from '../../src/production/liftEvidence';
+import { ATHLETE_ATLAS } from './gameplayTuning';
 import { TICK_MS } from '../../src/game/liftTuning';
 import { meetCommandFor } from '../../src/game/meetDay';
 import { SESSION_TUNING } from '../../src/game/sessionTuning';
@@ -14,72 +16,99 @@ import {
   advanceBrowserLift,
   BROWSER_LIFT_TUNING,
   createBrowserLift,
-  keySpriteBackdrop,
+  browserLiftEvidence,
   liftControlCopy,
   liftControlIsReady,
   pauseBrowserLift,
   queueBrowserInput,
   resumeBrowserLift,
-  spritePathFor,
+  spriteFrameFor,
   type BrowserLiftFrame,
 } from './liftBrowser';
 
-const spriteSurfaces = new Map<string, Promise<HTMLCanvasElement>>();
+const athleteSurfaces = new Map<string, Promise<readonly HTMLCanvasElement[]>>();
 
-function spriteSurface(src: string): Promise<HTMLCanvasElement> {
-  const cached = spriteSurfaces.get(src);
+function athleteSurface(src: string): Promise<readonly HTMLCanvasElement[]> {
+  const cached = athleteSurfaces.get(src);
   if (cached !== undefined) return cached;
-  const promise = new Promise<HTMLCanvasElement>((resolve, reject) => {
+  const promise = new Promise<readonly HTMLCanvasElement[]>((resolve, reject) => {
     const image = new Image();
     image.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = image.naturalWidth;
-      canvas.height = image.naturalHeight;
-      const context = canvas.getContext('2d');
-      if (context === null) { reject(new Error('Canvas unavailable')); return; }
-      context.imageSmoothingEnabled = false;
-      context.drawImage(image, 0, 0);
-      const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-      const keyed = keySpriteBackdrop(pixels.data, canvas.width, canvas.height);
-      pixels.data.set(keyed);
-      context.putImageData(pixels, 0, 0);
-      resolve(canvas);
+      const cellWidth = image.naturalWidth / ATHLETE_ATLAS.columns;
+      const cellHeight = image.naturalHeight / ATHLETE_ATLAS.rows;
+      if (cellWidth !== ATHLETE_ATLAS.canvasSize || cellHeight !== cellWidth) {
+        reject(new Error('Athlete atlas has an unsupported cell layout.'));
+        return;
+      }
+      const surfaces: HTMLCanvasElement[] = [];
+      for (let index = 0; index < ATHLETE_ATLAS.columns * ATHLETE_ATLAS.rows; index += 1) {
+        const crop = document.createElement('canvas');
+        crop.width = ATHLETE_ATLAS.canvasSize;
+        crop.height = ATHLETE_ATLAS.canvasSize;
+        const context = crop.getContext('2d');
+        if (context === null) { reject(new Error('Canvas unavailable')); return; }
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = 'high';
+        const sourceX = (index % ATHLETE_ATLAS.columns) * cellWidth;
+        const sourceY = Math.floor(index / ATHLETE_ATLAS.columns) * cellHeight;
+        context.drawImage(image, sourceX, sourceY, cellWidth, cellHeight, 0, 0, crop.width, crop.height);
+        const pixels = context.getImageData(0, 0, crop.width, crop.height).data;
+        let floor = crop.height - 1;
+        findFloor: for (; floor >= 0; floor -= 1) {
+          for (let x = 0; x < crop.width; x += 1) {
+            if ((pixels[(floor * crop.width + x) * ATHLETE_ATLAS.pixelChannels + ATHLETE_ATLAS.alphaChannel] ?? 0) > ATHLETE_ATLAS.visibleAlpha) break findFloor;
+          }
+        }
+        const surface = document.createElement('canvas');
+        surface.width = ATHLETE_ATLAS.canvasSize;
+        surface.height = ATHLETE_ATLAS.canvasSize;
+        const target = surface.getContext('2d');
+        if (target === null) { reject(new Error('Canvas unavailable')); return; }
+        target.imageSmoothingEnabled = true;
+        target.imageSmoothingQuality = 'high';
+        target.drawImage(crop, 0, ATHLETE_ATLAS.groundLine - floor);
+        surfaces.push(surface);
+      }
+      resolve(surfaces);
     };
-    image.onerror = () => { spriteSurfaces.delete(src); reject(new Error(`Sprite unavailable: ${src}`)); };
+    image.onerror = () => { athleteSurfaces.delete(src); reject(new Error(`Athlete art unavailable: ${src}`)); };
     image.src = src;
   });
-  spriteSurfaces.set(src, promise);
+  athleteSurfaces.set(src, promise);
   return promise;
 }
 
-function AthleteSprite({ src }: { readonly src: string }) {
+function AthleteIllustration({ kind, frame }: { readonly kind: LiftConfig['kind']; readonly frame: number }) {
+  const src = `/athlete/${kind}-atlas.png`;
   const canvas = useRef<HTMLCanvasElement>(null);
   const [unavailable, setUnavailable] = useState(false);
   useEffect(() => {
     let active = true;
-    void spriteSurface(src).then((surface) => {
-      if (!active || canvas.current === null) return;
+    void athleteSurface(src).then((surfaces) => {
+      const surface = surfaces[frame - 1];
+      if (!active || canvas.current === null || surface === undefined) return;
       const target = canvas.current;
-      target.width = surface.width;
-      target.height = surface.height;
+      target.width = ATHLETE_ATLAS.canvasSize;
+      target.height = ATHLETE_ATLAS.canvasSize;
       const context = target.getContext('2d');
       if (context === null) { setUnavailable(true); return; }
-      context.imageSmoothingEnabled = false;
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
       context.clearRect(0, 0, target.width, target.height);
       context.drawImage(surface, 0, 0);
       setUnavailable(false);
     }).catch(() => { if (active) setUnavailable(true); });
     return () => { active = false; };
-  }, [src]);
+  }, [src, frame]);
   return <>
-    <canvas ref={canvas} className="lift-athlete" aria-hidden="true" data-sprite={src} />
+    <canvas ref={canvas} className="lift-athlete" aria-hidden="true" data-athlete-atlas={src} data-athlete-frame={frame} />
     {unavailable ? <span className="lift-sprite-error" role="status">Athlete art could not load. The lift control is still available.</span> : null}
   </>;
 }
 
 export interface LiftPlayerProps {
   readonly config: LiftConfig;
-  readonly onResolved: (resolution: LiftResolution) => void;
+  readonly onResolved: (resolution: LiftResolution, evidence: LiftEvidence) => void;
   readonly competition?: boolean;
 }
 
@@ -173,7 +202,7 @@ export function LiftPlayer({ config, onResolved, competition = false }: LiftPlay
         resultElapsed.current += Math.min(elapsed, TICK_MS * BROWSER_LIFT_TUNING.MAX_CATCH_UP_TICKS);
         if (resultElapsed.current >= SESSION_TUNING.REP_RESULT_HOLD_MS) {
           delivered.current = true;
-          onResolvedRef.current(next.state.resolution);
+          onResolvedRef.current(next.state.resolution, browserLiftEvidence(next));
         }
       }
       raf = requestAnimationFrame(animate);
@@ -200,11 +229,7 @@ export function LiftPlayer({ config, onResolved, competition = false }: LiftPlay
   }, [config.kind, config.seed, config.loadRatio]);
 
   useEffect(() => {
-    for (const suffix of ['', '-max']) {
-      for (let index = 1; index <= BROWSER_LIFT_TUNING.SPRITE_FRAME_COUNT; index += 1) {
-        void spriteSurface(`/sprites/${config.kind}${suffix}/frame-${String(index).padStart(2, '0')}.png`).catch(() => undefined);
-      }
-    }
+    void athleteSurface(`/athlete/${config.kind}-atlas.png`).catch(() => undefined);
   }, [config.kind]);
 
   const pointerDown = (event: PointerEvent<HTMLButtonElement>) => {
@@ -257,7 +282,7 @@ export function LiftPlayer({ config, onResolved, competition = false }: LiftPlay
         <div className="lift-stage-light" aria-hidden="true" />
         <div className="lift-platform" aria-hidden="true" />
         <div className="lift-athlete-wrap" style={{ transform: `translate(${shake.dx}px, ${shake.dy}px)` }}>
-          <AthleteSprite src={spritePathFor(state)} />
+          <AthleteIllustration kind={config.kind} frame={spriteFrameFor(state)} />
         </div>
         {hit !== null ? <div className={`lift-command-flash lift-command-flash--${hit.command}`} style={{ opacity: hit.washAlpha }} aria-hidden="true" /> : null}
         {stalled !== null ? <div className="lift-stall" style={{ opacity: stalled.alpha }} aria-hidden="true" /> : null}
@@ -304,7 +329,11 @@ export function LiftPlayer({ config, onResolved, competition = false }: LiftPlay
           onContextMenu={(event) => event.preventDefault()}
           onClick={(event) => {
             if (event.detail !== 0 || sources.current.size > 0 || resolved) return;
-            if (live.current.paused) publish(resumeBrowserLift(live.current));
+            if (live.current.paused) {
+              publish(resumeBrowserLift(live.current));
+              lastTime.current = null;
+              setPauseReason('');
+            }
             input('press');
             input('release');
           }}

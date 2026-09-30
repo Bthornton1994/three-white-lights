@@ -346,10 +346,7 @@ try {
       try { return (await fetch(report.url, { signal: AbortSignal.timeout(1000) })).ok; } catch { return false; }
     }, `Production preview did not start: ${previewLog}`, 15_000);
   }
-  browser = await playwright.chromium.launch({
-    headless: true,
-    executablePath: process.env.BROWSER_EXECUTABLE_PATH || undefined,
-  });
+  browser = await playwright.chromium.launch({ headless: true, executablePath: process.env.BROWSER_EXECUTABLE_PATH || undefined });
   await mobileStory();
   await check('desktop: the production gym renders with usable navigation and no broken assets', async () => {
     const context = await browser.newContext({ viewport: { width: 1440, height: 960 }, reducedMotion: 'reduce' });

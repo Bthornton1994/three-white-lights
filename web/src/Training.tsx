@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   checkInProgress,
+  completeCheckIn,
+  defaultRpeChoice,
   currentSetNumber,
   executionQualityFrom,
   plannedTemplateFor,
+  prescribeSession,
+  workSetsForToday,
   repConfigFor,
   type CheckInTap,
   type PartialCheckIn,
@@ -15,12 +19,13 @@ import { repsInReserve } from '../../src/game/rpe';
 import { SESSION_COPY, SESSION_TUNING, type CheckInQuestion } from '../../src/game/sessionTuning';
 import type { LiftKind } from '../../src/game/meet';
 import type { LiftResolution } from '../../src/game/lift';
+import type { LiftEvidence, LiftEvidencePort } from '../../src/production/liftEvidence';
 import type { LocalAppServerPort } from '../../src/session/localSessionServer';
 import { useSession } from '../../src/session/useSession';
 import { LiftPlayer } from './LiftPlayer';
 
 export interface TrainingProps {
-  readonly port: LocalAppServerPort;
+  readonly port: LocalAppServerPort & Partial<LiftEvidencePort>;
   readonly onExit: () => void;
   readonly onSaved: () => void;
   readonly practice?: boolean;
@@ -61,7 +66,7 @@ function ReadinessQuestions({ answers, onTap }: { readonly answers: PartialCheck
   </div>;
 }
 
-function TrainingSet({ state, onResolved }: { readonly state: SessionState; readonly onResolved: (resolution: LiftResolution) => void }) {
+function TrainingSet({ state, onResolved }: { readonly state: SessionState; readonly onResolved: (resolution: LiftResolution, evidence: LiftEvidence) => void }) {
   const config = useMemo(() => repConfigFor(state), [state.plan, state.setIndex, state.repIndex]);
   const plan = state.plan;
   if (plan === null) return null;
@@ -83,6 +88,7 @@ function TrainingSet({ state, onResolved }: { readonly state: SessionState; read
 }
 
 export function Training({ port, onExit, onSaved, practice = false }: TrainingProps) {
+  const [selectedRpe, setSelectedRpe] = useState(defaultRpeChoice);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [recoveredCache, setRecoveredCache] = useState<ProgressionCache | null>(null);
@@ -108,7 +114,8 @@ export function Training({ port, onExit, onSaved, practice = false }: TrainingPr
       }
     },
   }), [port]);
-  const loop = useSession(undefined, sessionPort);
+  useEffect(() => { port.resetTrainingEvidence?.(); }, [port]);
+  const loop = useSession(undefined, sessionPort, port.currentServerDay);
   const { state, dispatch } = loop;
   const cache = recoveredCache ?? loop.cache;
   const readings = state.closeOut === null ? null : closeOutReadings(cache, state.closeOut);
@@ -120,9 +127,28 @@ export function Training({ port, onExit, onSaved, practice = false }: TrainingPr
     savedCallback.current();
   }, [saved, state.phase, state.closeOut]);
 
-  const onResolved = useCallback((resolution: LiftResolution) => {
+  const onResolved = useCallback((resolution: LiftResolution, evidence: LiftEvidence) => {
+    port.setTrainingLiftEvidence?.(state.setIndex, state.repIndex, evidence);
     dispatch({ kind: 'rep-resolved', outcome: resolution.outcome, executionQuality: executionQualityFrom(resolution) });
-  }, [dispatch]);
+  }, [dispatch, port, state.setIndex, state.repIndex]);
+
+  function startSession() {
+    const checkIn = completeCheckIn(state.answers);
+    if (state.phase !== 'briefing' || !loop.ladderReady || checkIn === null) return;
+    port.setTrainingEvidenceContext?.({ checkIn, targetRpe: selectedRpe });
+    dispatch({ kind: 'choose-rpe', rpe: selectedRpe });
+  }
+
+  function retrySession() {
+    port.resetTrainingEvidence?.();
+    lastSubmission.current = null;
+    savedNotice.current = false;
+    setSaveError(null);
+    setRecoveredCache(null);
+    const lower = SESSION_TUNING.RPE_CHOICES.filter((rpe) => rpe < selectedRpe).at(-1);
+    if (lower !== undefined) setSelectedRpe(lower);
+    dispatch({ kind: 'retry' });
+  }
 
   async function retrySave() {
     const submission = lastSubmission.current;
@@ -145,6 +171,11 @@ export function Training({ port, onExit, onSaved, practice = false }: TrainingPr
 
   const lift = state.context.lift;
   const template = plannedTemplateFor(state);
+  const preview = state.readiness === null ? null : prescribeSession(
+    state.context.e1rmKg, lift, selectedRpe, state.readiness,
+    workSetsForToday(state.context, selectedRpe), template.repsPerSet,
+  );
+  const canLowerTarget = SESSION_TUNING.RPE_CHOICES.some((rpe) => rpe < selectedRpe);
   const best = readingValue(readBestE1rmKg(loop.cache, lift));
   const alreadyTrained = loop.alreadyTrainedToday && state.phase === 'check-in';
   const closeOut = state.closeOut;
@@ -176,7 +207,7 @@ export function Training({ port, onExit, onSaved, practice = false }: TrainingPr
     {!alreadyTrained && state.phase === 'check-in' ? <div className="training-checkin-layout">
       <div className="training-scene-heading"><span className="training-eyebrow">THE WORK STARTS HERE</span><h1>{SESSION_COPY.LIFT_LABEL[lift]} DAY<span className="training-title-dot">.</span></h1></div>
       <div className="training-drawer training-drawer--checkin">
-        <div className="training-drawer-heading"><div><span className="training-eyebrow">READINESS CHECK-IN</span><h2>How are you today?</h2></div><span className="training-checkin-count">{checkInProgress(state.answers)} / 3</span></div>
+        <div className="training-drawer-heading"><div><span className="training-eyebrow">READINESS CHECK-IN</span><h2>How are you today?</h2></div><span className="training-checkin-count">{checkInProgress(state.answers)} / {READINESS_ROWS.length}</span></div>
         <div className="training-lift-choice" aria-label="Choose today's lift">
           {SESSION_TUNING.LIFT_ROTATION.map((option) => <button type="button" key={option} className={`training-lift-chip${option === lift ? ' training-lift-chip--selected' : ''}`} aria-pressed={option === lift} onClick={() => loop.chooseLift(option)} data-testid={`check-in-lift-${option}`}>{SESSION_COPY.LIFT_LABEL[option]}</button>)}
         </div>
@@ -190,21 +221,23 @@ export function Training({ port, onExit, onSaved, practice = false }: TrainingPr
       <div className="training-scene-heading"><span className="training-eyebrow">{SESSION_COPY.LIFT_LABEL[lift]} · TODAY’S WORK</span><h1>{state.readiness.headline}<span className="training-title-dot">.</span></h1></div>
       <div className="training-drawer training-drawer--briefing">
         <div className="training-drawer-heading"><div><span className="training-eyebrow">YOUR PRESCRIPTION</span><h2>Choose your effort.</h2></div><span className="training-readiness-label">{state.readiness.label}</span></div>
-        <div className="training-prescription"><strong>{template.workSets} <span>sets</span> × {template.repsPerSet} <span>reps</span></strong><span>{SESSION_COPY.LIFT_LABEL[lift]}</span></div>
+        <div className="training-prescription"><strong>{preview?.workSets ?? template.workSets} <span>sets</span> × {preview?.repsPerSet ?? template.repsPerSet} <span>reps</span></strong><span>{preview?.weightKg} kg · {SESSION_COPY.LIFT_LABEL[lift]}</span></div>
         <p className="training-briefing-note">Your check-in and recent training shape how the bar feels. Choose a target; the load follows your lifter’s e1RM.</p>
         {state.injury !== null ? <div className="training-injury" role="status"><strong>{state.injury.headline}</strong><p>{state.injury.detail} {state.injury.reassurance}</p></div> : null}
         <div className="training-rpe-ladder" aria-label="Choose an RPE target">
           {SESSION_TUNING.RPE_CHOICES.map((rpe, index) => <button
             type="button"
             key={rpe}
-            className={`training-rpe${index === SESSION_TUNING.DEFAULT_RPE_INDEX ? ' training-rpe--suggested' : ''}`}
+            className={`training-rpe${index === SESSION_TUNING.DEFAULT_RPE_INDEX ? ' training-rpe--suggested' : ''}${selectedRpe === rpe ? ' training-rpe--selected' : ''}`}
             disabled={!loop.ladderReady}
-            onClick={() => dispatch({ kind: 'choose-rpe', rpe })}
-            aria-label={`RPE ${rpe}, ${repsInReserve(rpe)} reps in reserve. Begin session.`}
+            onClick={() => setSelectedRpe(rpe)}
+            aria-pressed={selectedRpe === rpe}
+            aria-label={`RPE ${rpe}, ${repsInReserve(rpe)} reps in reserve.`}
             data-testid={`session-rpe-${rpe}`}
           ><span className="training-rpe-label">RPE</span><strong>{rpe}</strong><span className="training-rpe-reserve">{repsInReserve(rpe)} left</span></button>)}
         </div>
-        <div className="training-rpe-footer"><span>Reps in reserve at the end of each set</span><span>{loop.ladderReady ? 'Choose to begin ↗' : 'Preparing your session…'}</span></div>
+        <div className="training-rpe-footer"><span>Reps in reserve at the end of each set</span><span>{loop.ladderReady ? 'Target selected' : 'Preparing your session…'}</span></div>
+        <button type="button" className="training-primary" data-testid="session-start" disabled={!loop.ladderReady} onClick={startSession}>Start {lift} <span aria-hidden="true">↗</span></button>
       </div>
     </div> : null}
 
@@ -231,7 +264,7 @@ export function Training({ port, onExit, onSaved, practice = false }: TrainingPr
         <div className="training-save-status" aria-live="polite">
           {pending ? <span>Saving your session…</span> : saved ? <span className="training-save-confirmed">✓ {practice ? 'Practice session recorded' : 'Saved to your lifter'}</span> : saveError !== null ? <span className="training-save-error">{saveError}</span> : closeOut.canPropose ? <span>Waiting for confirmation.</span> : null}
         </div>
-        {saveError !== null && closeOut.canPropose ? <button type="button" className="training-primary" disabled={retrying} onClick={() => { void retrySave(); }}>{retrying ? 'Retrying…' : 'Retry saving'} <span aria-hidden="true">↗</span></button> : !closeOut.canPropose ? <button type="button" className="training-primary" onClick={() => dispatch({ kind: 'retry' })}>Try a lighter target <span aria-hidden="true">↗</span></button> : <button type="button" className="training-primary" onClick={onExit} disabled={pending}>Back to the gym <span aria-hidden="true">↗</span></button>}
+        {saveError !== null && closeOut.canPropose ? <button type="button" className="training-primary" disabled={retrying} onClick={() => { void retrySave(); }}>{retrying ? 'Retrying…' : 'Retry saving'} <span aria-hidden="true">↗</span></button> : !closeOut.canPropose ? <button type="button" className="training-primary" onClick={retrySession}>{canLowerTarget ? 'Try a lighter target' : 'Try again at this target'} <span aria-hidden="true">↗</span></button> : <button type="button" className="training-primary" onClick={onExit} disabled={pending}>Back to the gym <span aria-hidden="true">↗</span></button>}
       </div>
     </div> : null}
   </section>;

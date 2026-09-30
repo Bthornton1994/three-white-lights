@@ -7,34 +7,11 @@ import {
   type LiftInputKind,
   type LiftState,
 } from '../../src/game/lift';
-import { LIFT_TUNING, LOAD_PRESETS, TICK_MS } from '../../src/game/liftTuning';
-import type { LiftEvidence } from '../../src/production/liftEvidence';
+import { LIFT_TUNING, TICK_MS } from '../../src/game/liftTuning';
 
-export const BROWSER_LIFT_TUNING = Object.freeze({
-  HITCH_PAUSE_MS: 250,
-  MAX_CATCH_UP_TICKS: LIFT_TUNING.FEEDBACK.MAX_CATCH_UP_TICKS,
-  SPRITE_FRAME_COUNT: 6,
-  CUE_VIEW_SIZE: 120,
-  CUE_VIEW_CENTER: 60,
-  CUE_STROKE: LIFT_TUNING.FEEDBACK.CUE_RING_STROKE,
-  SQUAT_DESCENT_FIRST: 0.35,
-  SQUAT_DESCENT_SECOND: 0.9,
-  SQUAT_ASCENT_FIRST: 0.35,
-  SQUAT_ASCENT_SECOND: 0.62,
-  SQUAT_ASCENT_THIRD: 0.88,
-  BENCH_DESCENT_FIRST: 0.35,
-  BENCH_DESCENT_SECOND: 0.75,
-  BENCH_ASCENT_FIRST: 0.4,
-  BENCH_ASCENT_SECOND: 0.75,
-  DEADLIFT_HEIGHT_FIRST: 0.22,
-  DEADLIFT_HEIGHT_SECOND: 0.42,
-  DEADLIFT_HEIGHT_THIRD: 0.62,
-  DEADLIFT_HEIGHT_FOURTH: 0.82,
-  SPRITE_KEY_R: 255,
-  SPRITE_KEY_G: 0,
-  SPRITE_KEY_B: 255,
-  SPRITE_KEY_DISTANCE: 48,
-});
+import type { LiftEvidence } from '../../src/production/liftEvidence';
+import { ATHLETE_ATLAS, BROWSER_LIFT_TUNING } from './gameplayTuning';
+export { BROWSER_LIFT_TUNING } from './gameplayTuning';
 
 export interface BrowserLiftFrame {
   readonly state: LiftState;
@@ -97,106 +74,55 @@ export function advanceBrowserLift(frame: BrowserLiftFrame, elapsedMs: number): 
 }
 
 export function browserLiftEvidence(frame: BrowserLiftFrame): LiftEvidence {
-  if (frame.state.phase !== 'RESOLVED' || frame.state.resolution === null) {
-    throw new RangeError('The lift is still in progress.');
-  }
-  return { config: frame.state.config, events: frame.events, resolvedTick: frame.state.tick };
+  if (frame.state.phase !== 'RESOLVED' || frame.state.resolution === null) throw new Error('An unfinished lift has no result evidence.');
+  return { config: frame.state.config, events: [...frame.events], resolvedTick: frame.state.tick };
 }
 
 function ascentFrame(state: LiftState): number {
   const t = BROWSER_LIFT_TUNING;
   const height = state.height;
   if (state.config.kind === 'squat') {
-    if (height < t.SQUAT_ASCENT_FIRST) return 3;
-    if (height < t.SQUAT_ASCENT_SECOND) return 4;
-    if (height < t.SQUAT_ASCENT_THIRD) return 5;
-    return 6;
+    if (height < t.SQUAT_ASCENT_FIRST) return ATHLETE_ATLAS.poses.bottom;
+    if (height < t.SQUAT_ASCENT_SECOND) return ATHLETE_ATLAS.poses.lowDrive;
+    if (height < t.SQUAT_ASCENT_THIRD) return ATHLETE_ATLAS.poses.highDrive;
+    return ATHLETE_ATLAS.poses.lockout;
   }
   if (state.config.kind === 'bench') {
-    if (height < t.BENCH_ASCENT_FIRST) return 4;
-    if (height < t.BENCH_ASCENT_SECOND) return 5;
-    return 6;
+    if (height < t.BENCH_ASCENT_FIRST) return ATHLETE_ATLAS.poses.lowDrive;
+    if (height < t.BENCH_ASCENT_SECOND) return ATHLETE_ATLAS.poses.highDrive;
+    return ATHLETE_ATLAS.poses.lockout;
   }
-  if (height < t.DEADLIFT_HEIGHT_FIRST) return 1;
-  if (height < t.DEADLIFT_HEIGHT_SECOND) return 2;
-  if (height < t.DEADLIFT_HEIGHT_THIRD) return 3;
-  if (height < t.DEADLIFT_HEIGHT_FOURTH) return 4;
-  return 5;
+  if (height < t.DEADLIFT_HEIGHT_FIRST) return ATHLETE_ATLAS.poses.brace;
+  if (height < t.DEADLIFT_HEIGHT_SECOND) return ATHLETE_ATLAS.poses.halfDescent;
+  if (height < t.DEADLIFT_HEIGHT_THIRD) return ATHLETE_ATLAS.poses.bottom;
+  if (height < t.DEADLIFT_HEIGHT_FOURTH) return ATHLETE_ATLAS.poses.lowDrive;
+  return ATHLETE_ATLAS.poses.highDrive;
 }
 
 export function spriteFrameFor(state: LiftState): number {
   const t = BROWSER_LIFT_TUNING;
-  if (state.phase === 'BRACE') return 1;
+  if (state.phase === 'BRACE') return ATHLETE_ATLAS.poses.brace;
   if (state.phase === 'DESCENT') {
     if (state.config.kind === 'squat') {
       const legal = LIFT_TUNING.DEPTH_LEGAL.squat;
-      if (state.depth < t.SQUAT_DESCENT_FIRST * legal) return 1;
-      if (state.depth < t.SQUAT_DESCENT_SECOND * legal) return 2;
-      return 3;
+      if (state.depth < t.SQUAT_DESCENT_FIRST * legal) return ATHLETE_ATLAS.poses.brace;
+      if (state.depth < t.SQUAT_DESCENT_SECOND * legal) return ATHLETE_ATLAS.poses.halfDescent;
+      return ATHLETE_ATLAS.poses.bottom;
     }
-    if (state.depth < t.BENCH_DESCENT_FIRST) return 1;
-    if (state.depth < t.BENCH_DESCENT_SECOND) return 2;
-    return 3;
+    if (state.depth < t.BENCH_DESCENT_FIRST) return ATHLETE_ATLAS.poses.brace;
+    if (state.depth < t.BENCH_DESCENT_SECOND) return ATHLETE_ATLAS.poses.halfDescent;
+    return ATHLETE_ATLAS.poses.bottom;
   }
-  if (state.phase === 'HOLE') return 3;
-  if (state.phase === 'LOCKOUT') return 6;
-  if (state.phase === 'RESOLVED' && state.resolution?.outcome !== 'miss') return 6;
-  if (state.phase === 'RESOLVED' && state.resolution?.missReason === 'buried') return 3;
+  if (state.phase === 'HOLE') return ATHLETE_ATLAS.poses.bottom;
+  if (state.phase === 'LOCKOUT') return ATHLETE_ATLAS.poses.lockout;
+  if (state.phase === 'RESOLVED' && state.resolution?.outcome !== 'miss') return ATHLETE_ATLAS.poses.lockout;
+  if (state.phase === 'RESOLVED' && state.resolution?.missReason === 'buried') return ATHLETE_ATLAS.poses.bottom;
   return ascentFrame(state);
-}
-
-export function spritePathFor(state: LiftState): string {
-  const strain = state.config.loadRatio >= LOAD_PRESETS.HEAVY ? '-max' : '';
-  return `/sprites/${state.config.kind}${strain}/frame-${String(spriteFrameFor(state)).padStart(2, '0')}.png`;
 }
 
 export function liftControlIsReady(state: LiftState): boolean {
   if (state.phase === 'RESOLVED') return false;
   return state.config.kind !== 'deadlift' || state.phase !== 'BRACE' || state.phaseTick >= braceTicks(state.config.loadRatio, state.config.kind);
-}
-
-export function keySpriteBackdrop(rgba: Uint8ClampedArray, width: number, height: number): Uint8ClampedArray {
-  const output = new Uint8ClampedArray(rgba);
-  const pixelCount = width * height;
-  if (width <= 0 || height <= 0 || rgba.length !== pixelCount * 4) return output;
-  const visited = new Uint8Array(pixelCount);
-  const queue = new Int32Array(pixelCount);
-  const tuning = BROWSER_LIFT_TUNING;
-  const distanceSquared = tuning.SPRITE_KEY_DISTANCE * tuning.SPRITE_KEY_DISTANCE;
-  let read = 0;
-  let write = 0;
-
-  function visit(pixel: number) {
-    if (visited[pixel] !== 0) return;
-    visited[pixel] = 1;
-    const offset = pixel * 4;
-    const red = (rgba[offset] ?? 0) - tuning.SPRITE_KEY_R;
-    const green = (rgba[offset + 1] ?? 0) - tuning.SPRITE_KEY_G;
-    const blue = (rgba[offset + 2] ?? 0) - tuning.SPRITE_KEY_B;
-    if (red * red + green * green + blue * blue > distanceSquared) return;
-    output[offset + 3] = 0;
-    queue[write] = pixel;
-    write += 1;
-  }
-  for (let x = 0; x < width; x += 1) {
-    visit(x);
-    visit((height - 1) * width + x);
-  }
-  for (let y = 0; y < height; y += 1) {
-    visit(y * width);
-    visit(y * width + width - 1);
-  }
-  while (read < write) {
-    const pixel = queue[read] ?? 0;
-    read += 1;
-    const x = pixel % width;
-    const y = Math.floor(pixel / width);
-    if (x > 0) visit(pixel - 1);
-    if (x + 1 < width) visit(pixel + 1);
-    if (y > 0) visit(pixel - width);
-    if (y + 1 < height) visit(pixel + width);
-  }
-  return output;
 }
 
 export function liftControlCopy(state: LiftState, paused: boolean): { label: string; instruction: string } {

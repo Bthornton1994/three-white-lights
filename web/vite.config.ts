@@ -1,9 +1,10 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { RELEASE_CONFIG } from './releaseConfig.ts';
 
 export default defineConfig({
-  // The app uses hash routes. A missing image must return 404, not index.html.
+  // Fragment routes require no HTML fallback for missing assets.
   appType: 'mpa',
   plugins: [react()],
   resolve: {
@@ -11,12 +12,12 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
   },
   server: {
-    host: '0.0.0.0',
-    port: 5173,
+    host: '127.0.0.1',
+    port: RELEASE_CONFIG.developmentPort,
     strictPort: true,
     fs: { allow: [fileURLToPath(new URL('..', import.meta.url))] },
   },
-  preview: { host: '0.0.0.0', port: 4173, strictPort: true },
+  preview: { host: '127.0.0.1', port: RELEASE_CONFIG.previewPort, strictPort: true },
   build: {
     target: 'es2022',
     outDir: 'dist',
