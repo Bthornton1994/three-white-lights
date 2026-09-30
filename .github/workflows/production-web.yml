@@ -17,16 +17,19 @@ concurrency:
 
 jobs:
   references:
-    name: Original design reference archive
+    name: Original design and production source archive
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Attach original design reference bytes
+      - name: Attach original design and production art bytes
         uses: actions/upload-artifact@v4
         with:
           name: design-reference-${{ github.sha }}
-          path: docs/design/evidence/
+          path: |
+            docs/design/evidence/
+            web/public/athlete/
+            web/public/empire-art/
           if-no-files-found: error
           retention-days: 14
 

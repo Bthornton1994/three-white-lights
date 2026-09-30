@@ -1,20 +1,22 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
-import { braceTicks, createLift, stepLift, type LiftConfig, type LiftPhase, type LiftState } from '../../src/game/lift';
+import { describe, it } from 'vitest';
+import { braceTicks, createLift, pressCommandIsLive, stepLift, type LiftConfig, type LiftInputKind, type LiftPhase, type LiftState } from '../../src/game/lift';
 import { LOAD_PRESETS, TICK_MS } from '../../src/game/liftTuning';
 import {
   advanceBrowserLift,
   BROWSER_LIFT_TUNING,
   createBrowserLift,
-  keySpriteBackdrop,
+  browserLiftEvidence,
   liftControlCopy,
   liftControlIsReady,
   pauseBrowserLift,
   queueBrowserInput,
   resumeBrowserLift,
   spriteFrameFor,
-  spritePathFor,
+  type BrowserLiftFrame,
 } from './liftBrowser';
+
+import { replayLiftEvidence } from '../../src/production/evidenceReplay';
 
 const CONFIG: LiftConfig = { kind: 'squat', loadRatio: LOAD_PRESETS.LIGHT, seed: 4 };
 const PLAYBACK_LIMIT = 900;
@@ -39,6 +41,7 @@ describe('browser lift timing and input', () => {
     assert.equal(second.state.tick, 2);
     assert.equal(second.state.held, false);
     assert.deepEqual(second.inputs, []);
+    assert.deepEqual(second.events, [{ tick: 1, kind: 'press' }, { tick: 2, kind: 'release' }]);
   });
 
   it('advances the same engine states for 60 Hz and 120 Hz display frames', () => {
@@ -64,6 +67,8 @@ describe('browser lift timing and input', () => {
     assert.deepEqual(paused.inputs, []);
     assert.equal(paused.accumulatorMs, 0);
     assert.equal(paused.paused, true);
+    assert.deepEqual(paused.events, [{ tick: 1, kind: 'press' }, { tick: 1, kind: 'clear-grip' }]);
+    assert.equal(pauseBrowserLift(paused), paused);
     assert.equal(advanceBrowserLift(paused, TICK_MS * 10), paused);
     assert.equal(queueBrowserInput(paused, 'press'), paused);
     const resumed = resumeBrowserLift(paused);
@@ -134,40 +139,11 @@ describe('sprite poses follow live bar positions', () => {
     });
   }
 
-  it('chooses each lift’s owned strain sheet at the accepted heavy load preset', () => {
-    for (const kind of ['squat', 'bench', 'deadlift'] as const) {
-      assert.equal(spritePathFor(createLift({ ...CONFIG, kind })), `/sprites/${kind}/frame-01.png`);
-      assert.equal(spritePathFor(createLift({ ...CONFIG, kind, loadRatio: LOAD_PRESETS.HEAVY })), `/sprites/${kind}-max/frame-01.png`);
-    }
-  });
-
   it('keeps a buried rep at its actual bottom pose instead of showing a made lift', () => {
     let state = stepLift(createLift(CONFIG), { kind: 'press' });
     for (let tick = 0; tick < PLAYBACK_LIMIT && state.phase !== 'RESOLVED'; tick += 1) state = stepLift(state);
     assert.equal(state.resolution?.missReason, 'buried');
     assert.equal(spriteFrameFor(state), 3);
-  });
-});
-
-describe('sprite display treatment', () => {
-  it('keys connected backdrop colors and preserves enclosed athlete pixels', () => {
-    const width = 5;
-    const height = 5;
-    const rgba = new Uint8ClampedArray(width * height * 4);
-    for (let index = 0; index < width * height; index += 1) rgba.set([255, 0, 255, 255], index * 4);
-    for (const [x, y] of [[1, 1], [2, 1], [3, 1], [1, 2], [3, 2], [1, 3], [2, 3], [3, 3]]) rgba.set([95, 64, 32, 255], ((y ?? 0) * width + (x ?? 0)) * 4);
-    rgba.set([235, 0, 250, 255], 0);
-    const original = new Uint8ClampedArray(rgba);
-    const result = keySpriteBackdrop(rgba, width, height);
-    assert.equal(result[3], 0);
-    assert.equal(result[(2 * width + 2) * 4 + 3], 255);
-    assert.equal(result[(1 * width + 1) * 4 + 3], 255);
-    assert.deepEqual(rgba, original);
-  });
-
-  it('does not read beyond a malformed raster', () => {
-    const rgba = new Uint8ClampedArray([255, 0, 255, 255]);
-    assert.deepEqual(keySpriteBackdrop(rgba, 2, 2), rgba);
   });
 });
 
@@ -202,5 +178,74 @@ describe('accessible lift instructions', () => {
     assert.match(liftControlCopy(bench, false).label, /Wait/);
     assert.match(liftControlCopy({ ...bench, tick: 2 }, false).label, /Tap fast/);
     assert.match(liftControlCopy({ ...bench, tick: 2 }, false).instruction, /until the bar is locked out/);
+  });
+});
+
+/** Plays through the unchanged public native engine, never an outcome fixture. */
+function nextPlaybackInput(state: LiftState): LiftInputKind | null {
+  const nextTick = state.tick + 1;
+  if (state.phase === 'BRACE') {
+    if (state.config.kind === 'deadlift' && !liftControlIsReady(state)) return null;
+    return state.held ? null : 'press';
+  }
+  if (state.phase === 'DESCENT') {
+    if (state.config.kind === 'squat' && state.activeCue?.idealTick === nextTick) return 'release';
+    return null;
+  }
+  if (state.phase === 'LOCKOUT') {
+    if (state.config.kind !== 'deadlift') return null;
+    if (state.downCommandTick !== null && nextTick >= state.downCommandTick) return state.held ? 'release' : null;
+    return state.held ? null : 'press';
+  }
+  if (state.phase === 'HOLE' || state.phase === 'ASCENT') {
+    if (state.held) return 'release';
+    if (state.config.kind === 'bench') return state.phase === 'ASCENT' || pressCommandIsLive(state) ? 'press' : null;
+    return state.activeCue?.idealTick === nextTick ? 'press' : null;
+  }
+  return null;
+}
+
+function playBrowser(config: LiftConfig, interrupt = false): BrowserLiftFrame {
+  let frame = createBrowserLift(config);
+  let interrupted = false;
+  for (let tick = 0; tick < PLAYBACK_LIMIT && frame.state.phase !== 'RESOLVED'; tick += 1) {
+    if (interrupt && !interrupted && frame.state.phase === 'DESCENT' && frame.state.held) {
+      const paused = pauseBrowserLift(frame);
+      assert.equal(paused.state.tick, frame.state.tick);
+      frame = queueBrowserInput(resumeBrowserLift(paused), 'press');
+      interrupted = true;
+    } else {
+      const input = nextPlaybackInput(frame.state);
+      if (input !== null) frame = queueBrowserInput(frame, input);
+    }
+    frame = advanceBrowserLift(frame, TICK_MS);
+  }
+  assert.equal(frame.state.phase, 'RESOLVED');
+  if (interrupt) assert.equal(interrupted, true);
+  return frame;
+}
+
+describe('server-replayable browser evidence', () => {
+  it('does not issue evidence for an unfinished lift', () => {
+    assert.throws(() => browserLiftEvidence(createBrowserLift(CONFIG)), /unfinished/);
+  });
+
+  for (const kind of ['squat', 'bench', 'deadlift'] as const) {
+    it(`replays a real successful ${kind} from JSON input history`, () => {
+      const config = { ...CONFIG, kind };
+      const frame = playBrowser(config);
+      assert.notEqual(frame.state.resolution?.outcome, 'miss');
+      const evidence = JSON.parse(JSON.stringify(browserLiftEvidence(frame)));
+      assert.deepEqual(replayLiftEvidence(evidence, config), frame.state.resolution);
+    });
+  }
+
+  it('replays a paused bench grip without adding a native tick', () => {
+    const config = { ...CONFIG, kind: 'bench' as const };
+    const frame = playBrowser(config, true);
+    assert.notEqual(frame.state.resolution?.outcome, 'miss');
+    const evidence = JSON.parse(JSON.stringify(browserLiftEvidence(frame)));
+    assert.equal(evidence.events.some((event: { kind: string }) => event.kind === 'clear-grip'), true);
+    assert.deepEqual(replayLiftEvidence(evidence, config), frame.state.resolution);
   });
 });

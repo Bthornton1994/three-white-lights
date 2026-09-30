@@ -1,6 +1,6 @@
 """Rebuild a local Git index from authenticated GitHub API metadata, without a remote write.
 
-Usage: python3 scripts/restore-github-index.py metadata.json
+Usage: python3 scripts/restore-github-index.py metadata.json [--refresh]
 metadata.json contains {head, commit, tree}; commit/tree are Git database API responses.
 Missing tracked evidence stays in the index and is reported as unavailable.
 """
@@ -19,9 +19,10 @@ commit = metadata['commit']
 tree = metadata['tree']
 if commit['sha'] != head or tree['sha'] != commit['tree']['sha'] or tree.get('truncated'):
     raise SystemExit('The source API identity is incomplete or inconsistent')
-if (repository / '.git').exists():
+if (repository / '.git').exists() and '--refresh' not in sys.argv:
     raise SystemExit('Refusing to replace an existing Git checkout')
-subprocess.run(['git', 'init', '--initial-branch=codex/production-iron-amber'], cwd=repository, check=True)
+if not (repository / '.git').exists():
+    subprocess.run(['git', 'init', '--initial-branch=codex/production-iron-amber'], cwd=repository, check=True)
 git_directory = repository / '.git'
 
 def store_object(kind, data, expected=None):
