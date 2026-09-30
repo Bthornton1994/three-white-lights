@@ -21,6 +21,7 @@ export interface ProductionOpening {
   readonly profile: LifterProfile | null;
   readonly facility: GymViewState;
   readonly serverDay: number;
+  readonly serverNowMs: number;
   readonly revision: number;
 }
 
