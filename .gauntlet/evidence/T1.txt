@@ -1,0 +1,108 @@
+EVIDENCE BUNDLE — piece T1
+generated 2026-08-05T18:31:47.569Z
+repo /home/user/three-white-lights
+commit 74a1fddf1a269bfc3a245ddccb1be5c80e71c4c3
+working tree clean (ignoring only this script's own output and .gauntlet/state.json)
+
+This file is raw, unedited output of the commands shown. It is produced by
+the run harness, not by the agent that wrote the code under test.
+
+CHECK THE COMMIT ABOVE against the code you were asked to grade. If it does
+not match, this bundle describes different code and its results do not apply
+— report the evidence as stale rather than grading against it.
+
+======================================================================
+$ npx vitest run src/tuning --reporter=verbose
+[tests] exit code: 0
+======================================================================
+
+ RUN  v4.1.10 /home/user/three-white-lights
+
+ ✓ src/tuning/audit.test.ts > the audit has something to audit > finds the real source tree, including components 3ms
+ ✓ src/tuning/audit.test.ts > the audit has something to audit > walks the whole repository, not just src/ 0ms
+ ✓ src/tuning/audit.test.ts > the audit has something to audit > does not reach the offline tools, and says so 1ms
+ ✓ src/tuning/audit.test.ts > the audit has something to audit > never walks into a sibling git worktree, whoever is building in one 0ms
+ ✓ src/tuning/audit.test.ts > the audit has something to audit > audits the auditor, with no self-exemption 0ms
+ ✓ src/tuning/audit.test.ts > the audit has something to audit > skips tests and non-source, and nothing else 0ms
+ ✓ src/tuning/audit.test.ts > codeOnly > preserves every offset in every real file 193ms
+ ✓ src/tuning/audit.test.ts > codeOnly > leaves real code alone 1ms
+ ✓ src/tuning/audit.test.ts > codeOnly > blanks comments, strings, templates and regexes 1ms
+ ✓ src/tuning/audit.test.ts > codeOnly > keeps template interpolations live 0ms
+ ✓ src/tuning/audit.test.ts > codeOnly > does not mistake JSX self-closing tags for regex literals 0ms
+ ✓ src/tuning/audit.test.ts > codeOnly > still recognises a genuine regex after a keyword or a bracket 0ms
+ ✓ src/tuning/audit.test.ts > declarationRegions > names the block a literal sits in 1ms
+ ✓ src/tuning/audit.test.ts > declarationRegions > refuses to treat a shouty function as a constants block 0ms
+ ✓ src/tuning/audit.test.ts > declarationRegions > does not open a region on a `const` inside a comment or a string 0ms
+ ✓ src/tuning/audit.test.ts > the audit bites > is clean on the unmutated originals, so a finding is the mutation 5ms
+ ✓ src/tuning/audit.test.ts > the audit bites > catches a timing window hardcoded in a component 2ms
+ ✓ src/tuning/audit.test.ts > the audit bites > catches an animation duration hardcoded in the renderer 3ms
+ ✓ src/tuning/audit.test.ts > the audit bites > catches a feel value smuggled in as a property value 3ms
+ ✓ src/tuning/audit.test.ts > the audit bites > catches a bare 2 in a property-value position 2ms
+ ✓ src/tuning/audit.test.ts > the audit bites > catches a leading-dot fraction 2ms
+ ✓ src/tuning/audit.test.ts > the audit bites > catches a colour literal where a palette entry belongs 2ms
+ ✓ src/tuning/audit.test.ts > the audit bites > catches a colour written as rgba() 2ms
+ ✓ src/tuning/audit.test.ts > the audit bites > catches a colour literal in a tuning module too 0ms
+ ✓ src/tuning/audit.test.ts > the audit bites > catches a named constant declared in a component — "named" is not enough 2ms
+ ✓ src/tuning/audit.test.ts > the audit bites > catches a bare number in a function body of a registered constants file 0ms
+ ✓ src/tuning/audit.test.ts > the audit bites > catches a number in a file nobody has registered 0ms
+ ✓ src/tuning/audit.test.ts > the audit bites > catches a number hidden in a template interpolation 0ms
+ ✓ src/tuning/audit.test.ts > the audit bites > reports the file, the line and the literal, so the failure is actionable 1ms
+ ✓ src/tuning/audit.test.ts > the allowlist is not a sieve > swallows exactly the idioms it documents, and no more 0ms
+ ✓ src/tuning/audit.test.ts > the allowlist is not a sieve > does not swallow the planted values 1ms
+ ✓ src/tuning/audit.test.ts > the allowlist is not a sieve > does not report a literal twice or split a decimal in half 0ms
+ ✓ src/tuning/audit.test.ts > the allowlist is not a sieve > does not fire on member access or identifiers containing digits 0ms
+ ✓ src/tuning/audit.test.ts > the allowlist is not a sieve > turns the conditional idioms off in a property-value position 0ms
+ ✓ src/tuning/audit.test.ts > the allowlist is not a sieve > documents every idiom it applies 0ms
+ ✓ src/tuning/audit.test.ts > the allowlist is not a sieve > blanks a literal type union without eating arithmetic 0ms
+ ✓ src/tuning/audit.test.ts > the allowlist is not a sieve > keeps strings when looking for colours, and drops comments 0ms
+ ✓ src/tuning/audit.test.ts > the allowlist is not a sieve > `commentRanges` reports each comment once, in order, delimiters included 0ms
+ ✓ src/tuning/audit.test.ts > the allowlist is not a sieve > `onlyComments` and `withoutComments` PARTITION EVERY REAL FILE, character for character 909ms
+ ✓ src/tuning/audit.test.ts > the allowlist is not a sieve > A LINE COMMENT CONTAINING `/*` KEEPS ALL ITS PROSE — the bug this pair was rewritten for 1ms
+ ✓ src/tuning/audit.test.ts > the allowlist is not a sieve > AND A REAL PARSER AGREES ABOUT WHERE THE COMMENTS ARE — everywhere in the tree 1697ms
+ ✓ src/tuning/audit.test.ts > the allowlist is not a sieve > ...AND THE EMPTY LIST IS A MEASUREMENT: the same check still catches the old substitution 1367ms
+ ✓ src/tuning/audit.test.ts > the allowlist is not a sieve > `onlyComments` keeps prose and drops code, both ways round 1ms
+ ✓ src/tuning/audit.test.ts > the registered allowlist > is exactly this list — widening it is an edit to this test 0ms
+ ✓ src/tuning/audit.test.ts > the registered allowlist > names only files that exist and are audited 9ms
+ ✓ src/tuning/audit.test.ts > the registered allowlist > never registers a component 1ms
+ ✓ src/tuning/audit.test.ts > the registered allowlist > gives every entry a reason 1ms
+ ✓ src/tuning/audit.test.ts > the registered allowlist > keeps the function-body escape hatch to exactly one file 5ms
+ ✓ src/tuning/audit.test.ts > the registered allowlist > separates the knobs from the published data 0ms
+ ✓ src/tuning/audit.test.ts > src/tuning/index.ts is the one place > re-exports a non-empty block for every group 0ms
+ ✓ src/tuning/audit.test.ts > src/tuning/index.ts is the one place > lists a module path for every group, and no others 0ms
+ ✓ src/tuning/audit.test.ts > src/tuning/index.ts is the one place > points at files the allowlist registers, and at real files 1ms
+ ✓ src/tuning/audit.test.ts > src/tuning/index.ts is the one place > reaches every feel home and every palette — nothing tuned is unreachable 0ms
+ ✓ src/tuning/audit.test.ts > src/tuning/index.ts is the one place > re-exports the live blocks rather than copies of them 0ms
+ ✓ src/tuning/audit.test.ts > src/tuning/index.ts is the one place > reaches the block the audit just made a home for 0ms
+ ✓ src/tuning/audit.test.ts > no game-feel value lives outside a tuning module > finds nothing anywhere in the repository 329ms
+
+ Test Files  1 passed (1)
+      Tests  56 passed (56)
+   Start at  18:31:48
+   Duration  5.63s (transform 437ms, setup 0ms, import 935ms, tests 4.55s, environment 0ms)
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+======================================================================
+$ npx vitest run
+[whole suite] exit code: 0
+======================================================================
+
+ RUN  v4.1.10 /home/user/three-white-lights
+
+
+ Test Files  58 passed (58)
+      Tests  2513 passed (2513)
+   Start at  18:31:54
+   Duration  38.85s (transform 3.73s, setup 0ms, import 15.64s, tests 91.20s, environment 6ms)
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+======================================================================
+$ npx tsc --noEmit
+[typecheck] exit code: 0
+======================================================================
+(no output)

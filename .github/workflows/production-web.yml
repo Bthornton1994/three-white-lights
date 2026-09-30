@@ -1,0 +1,80 @@
+name: production-web
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - codex/production-iron-amber
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  domain:
+    name: Frozen mechanics and progression
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+      - name: Install native and browser contracts
+        run: |
+          npm ci
+          npm --prefix web ci
+      - name: Existing strict typecheck
+        run: npm run typecheck
+      - name: Full existing pure test suite
+        run: npm test
+
+  browser:
+    name: Production browser and mobile flow
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install browser runtime from its lock
+        run: npm --prefix web ci
+      - name: Strict browser typecheck
+        run: npm --prefix web run typecheck
+      - name: Portable domain and browser-clock boundaries
+        run: npm --prefix web run test:domain
+      - name: Browser adapter unit tests
+        run: npm --prefix web run test:unit:web
+      - name: Build production assets
+        run: npm --prefix web run build
+      - name: Install browser
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+      - name: Drive production build through normal controls
+        env:
+          PRODUCTION_BASE_REVISION: ${{ github.sha }}
+        run: npm --prefix web run test:browser
+      - name: Attach browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-web-${{ github.sha }}
+          path: .gauntlet/shots/production-web/
+          if-no-files-found: error
+          retention-days: 14

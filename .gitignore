@@ -1,0 +1,185 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+
+# CanvasKit WASM, copied out of node_modules by tools/dev-web.sh (~8MB)
+public/canvaskit.wasm
+
+# Subagent git worktrees (builder isolation)
+.claude/worktrees/
+
+# Run output: state.json is tracked (it drives the progress page); the
+# generated page and most screenshot evidence are regenerable, so they are not.
+# `shots/*` and not `shots/`: git does not descend into an ignored DIRECTORY,
+# so a negation under a `.gauntlet/shots/` rule re-includes nothing and
+# `git add -A` stages only this file. It looks like it worked. Ignore the
+# directory's CONTENTS and the negation can reach inside.
+.gauntlet/shots/*
+.gauntlet/progress.html
+
+# EXCEPT the shell run, which is graded evidence rather than a regenerable
+# picture. "Regenerable" was true and beside the point: a critic asked to open
+# these found nine stale shots and a 47-check `route.json` with pre-fix wordings
+# sitting where a 74-check run should have been, and — the part that matters —
+# `09-bombed-keeps-its-own-exit.png` was a bomb-out screen with NO EXIT ON IT,
+# filed next to a record saying that check passed. That is the exact false pass
+# the opacity fix was written to kill, preserved as its own refutation, and no
+# reader could date it because a screenshot carries no provenance.
+#
+# The GDD logged this once already (§ the "photographed" sentence naming a
+# gitignored artifact). Logging it twice and ignoring it a third time is not a
+# policy. `route.json` now carries `capturedFrom` — commit, branch, dirty state —
+# so these are datable; 380K is a cheap price for evidence a grader can check
+# instead of trust.
+!.gauntlet/shots/shell/
+
+# Session C post-merge smoke of the Empire shell path (PR #4 / cbef6e9). Not a
+# full verify-shell-route suite and not a bar claim — attached so A/B can see
+# what landed without review, rather than discover it only in conversation.
+!.gauntlet/shots/empire-shell-flow/
+
+# Same argument for the cut-in run: `frames.json` records eight checks a critic
+# is asked to read, and `CutInView.tsx` cites this directory by name — the
+# sentence that was false until the pictures were committed.
+!.gauntlet/shots/cutin/
+
+# And the cut-in CAP run, which is the strongest of the three: `cap.json` is the
+# only artifact in this repository that shows GDD §12.3's refusal condition
+# being ENFORCED BY THE RUNNING APP rather than scanned for in source. The
+# regexes that used to pin it all survive the mutation that breaks it. A record
+# of an executed refusal is exactly the thing the two paragraphs above argue
+# must be gradeable rather than regenerable — and it is the record that dates
+# WHICH build was played, which no amount of re-running recovers after the fact.
+!.gauntlet/shots/cutin-cap/
+
+# And the meet SOUND run, which is the only record of the half of GDD §12.2's
+# bar — "pacing AND sound" — that no screenshot can hold. `sound.json` carries
+# the wall-clock instant every cue reached the audio layer, per beat, with each
+# file's own decoded length, so it is the only artifact that can show a cue
+# firing again while the last copy is still sounding.
+#
+# It was untracked for the round in which it found exactly that: five 180ms
+# rattles inside 149ms, from a bar-load loop asking for one every 90. A finding
+# that lives only in a console someone happened to read is the same failure mode
+# as an undatable screenshot, one channel over.
+#
+# THE RECORD, AND NOT THE DIRECTORY — which is where this one differs from the
+# three above, on their own stated reason rather than on their form. Each of
+# those tracks a dated record plus the pictures that record describes. This
+# directory is shared by two tools: `sound.json` is the dated record
+# (`capturedFrom`, per-check `failures`, a `REQUIRED_SHOT_RECORDS` row), and
+# `capture-meet.mjs`'s 21 PNGs and `frames.json` are the other tool's raw dump —
+# no `capturedFrom`, no checks, in no required list, checked by nothing. A
+# directory-wide negation here tracked the record and un-ignored the dump, so
+# `git status` was never empty again and every evidence bundle from then on
+# stamped DIRTY. That is the staleness instrument grading itself unusable, which
+# costs more than the 900K it saves.
+!.gauntlet/shots/meet/
+.gauntlet/shots/meet/*
+!.gauntlet/shots/meet/sound.json
+
+# And the lift PRESS run, which is the only record that the fix a human playtest
+# asked for reached the screens a player actually presses. Its whole subject is
+# invisible to a picture: `press.json` holds the computed `touch-action` off each
+# live element and the `pointercancel` count under a real touch pan, on the
+# played session, on a played meet attempt, and on the replay harness — with the
+# neutralised and forced controls beside every reading, so the zeros are zeros
+# against something.
+#
+# It is tracked because the defect it found was a fix declared on a screen no
+# player can open, guarded by a source scan that named that screen and stayed
+# green. The scan is derived now, and this is the only artifact saying the
+# properties reached a DOM node at all: `vitest.config.ts` is `environment:
+# node`, so nothing in the suite renders.
+#
+# THE RECORD, AND NOT THE DIRECTORY, on `sound.json`'s stated reason rather than
+# on its form. The three PNGs beside it are one screenshot per arm, written for
+# somebody debugging a failing run locally. They are deliberately NOT tracked:
+# every claim this tool makes is a DOM read or an event count and none of them
+# is visual, and the meet arm's shot is taken after a meet that may legitimately
+# have bombed out — so it is not reliably a picture of the screen the readings
+# came off. Tracking a picture nothing re-reads is what the paragraphs above
+# spent two rounds learning not to do.
+!.gauntlet/shots/lift-press/
+.gauntlet/shots/lift-press/*
+!.gauntlet/shots/lift-press/press.json
+
+# Verification MARKERS, written inside the repo for the same reason and by the
+# same incident. `tools/watchdog.mjs --budget` writes one BEFORE it spawns the
+# command and replaces it with a verdict only when a verdict exists, so an
+# interrupted run leaves an INCOMPLETE record instead of the silent absence that
+# reads as a pass. See `tools/verifyMarker.mjs` for the ruling and the two
+# incidents.
+#
+# The directory's CONTENTS, not the directory — the reason is three paragraphs
+# below, under `.gauntlet/shots/`: git does not descend into an ignored
+# DIRECTORY, so anything that ever needs re-including from in here is
+# unreachable if the rule names the directory. Nothing needs re-including today;
+# writing it this way now costs one character and stops the next person
+# discovering the rule the way the shots one was discovered.
+#
+# AND THIS DIRECTORY IS NOT THE DURABLE COPY, WHICH IS THE HALF THE PARAGRAPH
+# BELOW GOT WRONG ABOUT ITS OWN SUBJECT. "Writing here means it survives the
+# container" is true; "and therefore survives a rewind" is false, because a
+# rewind reverts the whole filesystem and takes gitignored files with it. The
+# durable copy is on origin under `refs/heads/verify-markers/<host>`, pushed
+# DURING the run by `--budget` and read by `--markers`. What this rule buys is
+# only that an in-flight record never dirties a tree an evidence stamp is about
+# to describe.
+.gauntlet/verify/*
+
+# The dev-server sentinel tools/dev-web.sh writes and every browser tool gates
+# on before driving (tools/devServerSentinel.mjs). It describes a live process
+# on this machine — pid, port, boot id — so it is not meant to survive a
+# restart, a rewind, or anything else; a stale one is refused, not trusted.
+# The glob also covers the atomic-write .tmp beside it.
+.gauntlet/dev-web.sentinel*
+
+# Verification logs written INSIDE the repo, on purpose.
+#
+# The scratchpad under /tmp does not survive a rewind. The thirteenth one took
+# a running vitest process and its output file together, so a suite run that
+# was in flight came back as neither a pass nor a failure — and a missing
+# output file reads exactly like a green one to anyone who does not check the
+# clock. Writing the log here means it survives the container; ignoring it
+# means it never dirties a tree that an evidence stamp is about to describe.
+*.verify.log
+.suite-verify.log

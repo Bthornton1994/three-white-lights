@@ -1,0 +1,199 @@
+EVIDENCE BUNDLE — piece r2-from-intent
+generated 2026-08-16T02:35:33.854Z
+repo /home/user/wt-r2-intent
+commit 06653dff860d9d4013851e8a8af4dbfb8a19d92b
+working tree clean (ignoring only this script's own output and .gauntlet/state.json)
+
+This file is raw, unedited output of the commands shown. It is produced by
+the run harness, not by the agent that wrote the code under test.
+
+CHECK THE COMMIT ABOVE against the code you were asked to grade. If it does
+not match, this bundle describes different code and its results do not apply
+— report the evidence as stale rather than grading against it.
+
+WHY THE STAMP WILL NOT EQUAL HEAD, AND WHY THAT IS NOT A PROBLEM.
+
+Three critics in a row have spent a paragraph working this out from
+.git/logs/HEAD, correctly, and then had to record that they could not run
+git diff to finish the argument. So it is stated here instead.
+
+A bundle produced at commit X is itself committed BY a later commit, so it
+can never stamp the commit it lives in. The stamp will normally be one or
+two commits behind HEAD, and those commits will be the bundle itself and a
+progress-page update.
+
+What makes that safe is not the ordering — it is that
+`node tools/evidence.mjs <piece> --verify` is run immediately before a critic
+is dispatched, and it FAILS unless: no file outside the run-artefact and
+docs paths changed between the stamp and HEAD (default-deny — everything is
+code unless named otherwise, including App.tsx at the repo root and all of
+tools/); the working tree carries no uncommitted code; and every committed
+browser-shot record is present, dated, captured clean, current, and green.
+
+If any of that were false the dispatch would not have happened. You are not
+being asked to take that on trust: the check is in tools/evidence.mjs and you
+can read it. But you do not need to reconstruct it from the reflog.
+
+AND THE TREE DID NOT MOVE WHILE THIS RAN — which is a different claim from
+the stamp, and one the stamp cannot make.
+
+This run takes minutes — long enough for another commit to land inside it. If
+a tracked or untracked-but-not-ignored file changes in that window, the output
+below straddles the edit: part of it describes one tree and part another, and
+no commit describes the whole. The stamp above would still name a single
+commit, so a stale-stamp check cannot notice.
+
+The identity of every relevant file is taken before the first command and
+again after each one; if any of it moved, this file is NOT WRITTEN and the
+run exits 3. So the existence of this bundle is itself the evidence — there
+is no arm of tools/evidence.mjs that writes a straddled bundle with a warning
+in it, deliberately, because a warning in prose here is a thing no check
+reads. tools/treeIdentity.test.ts pins that control flow; tools/treeIdentity.mjs
+states what the identity covers and what it explicitly cannot see.
+
+======================================================================
+$ npx vitest run src/career --reporter=verbose
+[tests] exit code: 0
+======================================================================
+
+ RUN  v4.1.10 /home/user/wt-r2-intent
+
+ ✓ src/career/calendar.test.ts > the season anchor > is the civil date the tuning names, and 2026-01-03 is a Saturday 2ms
+ ✓ src/career/calendar.test.ts > the season anchor > each tier starts at the anchor plus its own phase 0ms
+ ✓ src/career/calendar.test.ts > the season anchor > nothing is scheduled before the anchor 0ms
+ ✓ src/career/calendar.test.ts > window boundaries > includes both ends 0ms
+ ✓ src/career/calendar.test.ts > window boundaries > an inverted window is empty rather than an error 0ms
+ ✓ src/career/calendar.test.ts > window boundaries > a window that closes before a series opens is empty 0ms
+ ✓ src/career/calendar.test.ts > window boundaries > a meet is on the calendar on the day it is held 0ms
+ ✓ src/career/calendar.test.ts > the shape of a year > holds each tier at its stated cadence 1ms
+ ✓ src/career/calendar.test.ts > the shape of a year > is sorted by day 2ms
+ ✓ src/career/calendar.test.ts > the shape of a year > gives every meet a unique, derived id 0ms
+ ✓ src/career/calendar.test.ts > the shape of a year > is the same list every time it is asked for 1ms
+ ✓ src/career/calendar.test.ts > the shape of a year > carries the federation’s own ruleset onto every meet 6ms
+ ✓ src/career/calendar.test.ts > a decade > never puts two of one federation’s tiers on the same day 2ms
+ ✓ src/career/calendar.test.ts > a decade > keeps each tier on one weekday for ten years, leap years included 1ms
+ ✓ src/career/calendar.test.ts > upcoming meets > starts at today and runs to the horizon 0ms
+ ✓ src/career/calendar.test.ts > upcoming meets > refuses a horizon that is not a whole number of days at or above zero 0ms
+ ✓ src/career/calendar.test.ts > upcoming meets > shows every tier inside the default horizon 1ms
+ ✓ src/career/calendar.test.ts > the next meet of a tier > is the first on or after the day given 0ms
+ ✓ src/career/calendar.test.ts > the next meet of a tier > is null when the horizon given holds none 0ms
+ ✓ src/career/calendar.test.ts > ISO dates > pads month and day 0ms
+ ✓ src/career/calendar.test.ts > ISO dates > handles a leap day 0ms
+ ✓ src/career/calendar.test.ts > one meet > is built from the federation, the tier and the day, and nothing else 0ms
+ ✓ src/career/careerPurity.test.ts > the career directory is fenced as a whole, not file by file > has shipped modules to scan, so the scans below are not empty 2ms
+ ✓ src/career/careerPurity.test.ts > the career directory is fenced as a whole, not file by file > ships no sibling extension the .ts filter would not open 0ms
+ ✓ src/career/careerPurity.test.ts > the career directory is fenced as a whole, not file by file > pins allowed specifiers for every shipped module, not a subset 1ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > reads every shipped file and matches the pin exactly 81ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > ships no namespace import, so a sibling let cannot hide behind import * 37ms
+ ✓ src/career/eligibility.test.ts > qualifying totals > an open tier is cleared by a lifter who has never competed 2ms
+ ✓ src/career/eligibility.test.ts > qualifying totals > a gated tier is not cleared without a total 0ms
+ ✓ src/career/eligibility.test.ts > qualifying totals > the bar is made, not beaten: exactly the qualifying total qualifies 0ms
+ ✓ src/career/eligibility.test.ts > qualifying totals > tiers open as the total rises, and never close 1ms
+ ✓ src/career/eligibility.test.ts > qualifying totals > refuses a total that is not a finite number 0ms
+ ✓ src/career/eligibility.test.ts > qualifying totals > another federation’s meet is not qualified for at any total 0ms
+ ✓ src/career/eligibility.test.ts > entry verdicts > opens for a lifter of the right federation on or before the day 0ms
+ ✓ src/career/eligibility.test.ts > entry verdicts > refuses the day after, and that is the boundary 1ms
+ ✓ src/career/eligibility.test.ts > entry verdicts > refuses a meet already competed at 1ms
+ ✓ src/career/eligibility.test.ts > entry verdicts > refuses a tier the total does not reach 0ms
+ ✓ src/career/eligibility.test.ts > entry verdicts > every refusal carries the sentence its own reason is keyed to 1ms
+ ✓ src/career/eligibility.test.ts > entry verdicts > the refusal order is the one the header states, walked to the bottom of the chain 1ms
+ ✓ src/career/eligibility.test.ts > the enterable list > a new lifter sees every local meet in the horizon and nothing else 2ms
+ ✓ src/career/eligibility.test.ts > the enterable list > entering a meet removes that meet and leaves the rest of the list alone 1ms
+ ✓ src/career/eligibility.test.ts > the enterable list > a held meet drops out of the list and the horizon rolls a new one in 1ms
+ ✓ src/career/eligibility.test.ts > the career record after a meet > takes the best total, not the latest 0ms
+ ✓ src/career/eligibility.test.ts > the career record after a meet > recording the same meet twice is the same as recording it once 0ms
+ ✓ src/career/eligibility.test.ts > the career record after a meet > refuses a total that is not a finite number 0ms
+ ✓ src/career/eligibility.test.ts > the career record after a meet > eligibility reads exactly three facts about a lifter, and none is a balance 0ms
+ ✓ src/career/eligibility.test.ts > AXIS A — a higher best Total never qualifies for fewer meets > [strength-never-removes-a-meet] every ordered pair on the grid, and the control beside it 275ms
+ ✓ src/career/careerTuning.test.ts > the tier ladder > is GDD §6.1’s, with §6.6’s summit split in two, in its order 3ms
+ ✓ src/career/careerTuning.test.ts > the tier ladder > splits async and sync where GDD §6.6 splits it, which is not one cut 0ms
+ ✓ src/career/careerTuning.test.ts > the tier ladder > opens on a tier that asks for nothing 0ms
+ ✓ src/career/careerTuning.test.ts > the tier ladder > asks for strictly more the higher up it goes 1ms
+ ✓ src/career/careerTuning.test.ts > the tier ladder > puts the campaign summit strictly between nationals and the competitive one 0ms
+ ✓ src/career/careerTuning.test.ts > the tier ladder > sets the campaign gate by the rule its block states, not by a literal 0ms
+ ✓ src/career/careerTuning.test.ts > the schedule constants > are whole weeks, so nothing drifts across a leap year 0ms
+ ✓ src/career/careerTuning.test.ts > the schedule constants > put the five tiers on five different weekdays, which is the no-collision argument 0ms
+ ✓ src/career/careerTuning.test.ts > the schedule constants > keep every phase inside its own cadence 1ms
+ ✓ src/career/careerTuning.test.ts > the schedule constants > leave a horizon long enough to show every tier once 0ms
+ ✓ src/career/careerTuning.test.ts > the schedule constants > anchor a real calendar date 0ms
+ ✓ src/career/careerTuning.test.ts > the schedule constants > are frozen 0ms
+ ✓ src/career/careerTuning.test.ts > the federations > are one per ruleset, covering all four combinations exactly once 1ms
+ ✓ src/career/careerTuning.test.ts > the federations > have unique ids and unique names 0ms
+ ✓ src/career/careerTuning.test.ts > the federations > carry no real federation, brand or athlete name 1ms
+ ✓ src/career/careerTuning.test.ts > the copy > has a label and a meet name for every tier 0ms
+ ✓ src/career/careerTuning.test.ts > the copy > has a distinct sentence for every refusal 0ms
+ ✓ src/career/eligibility.test.ts > AXIS A — a higher best Total never qualifies for fewer meets > qualification does not read the meets a lifter has already competed at 115ms
+ ✓ src/career/federation.test.ts > looking a federation up > lists every id in the order the picker shows them 3ms
+ ✓ src/career/federation.test.ts > looking a federation up > finds each one by id 1ms
+ ✓ src/career/federation.test.ts > looking a federation up > throws rather than defaulting on an id that does not exist 0ms
+ ✓ src/career/federation.test.ts > rulesets > are two axes, and both have to agree 0ms
+ ✓ src/career/federation.test.ts > rulesets > have exactly one federation each 1ms
+ ✓ src/career/federation.test.ts > rulesets > read as both axes on screen 1ms
+ ✓ src/career/federation.test.ts > the tier ladder > indexes lowest first 1ms
+ ✓ src/career/federation.test.ts > the tier ladder > orders the two summits by their gate and by nothing else 1ms
+ ✓ src/career/federation.test.ts > the tier ladder > throws on a tier that is not on it 1ms
+ ✓ src/career/federation.test.ts > the tier ladder > starts at local 0ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > names progression in no specifier, even if a pin were widened 47ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > only the sweep may reach the generator, and it reaches it by the pinned specifier 30ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > the parser sees every spelling the empire regex missed, by planting them 5ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules roll no dice and touch no host API > bans Math.random and the host list on every shipped file 4ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules roll no dice and touch no host API > each pattern is live against a tripwire, so a dead regex cannot pass 1ms
+ ✓ src/career/careerPurity.test.ts > eligibility functions close over no module-level or imported let > the shipped eligibility.ts has no module-level let or var 2ms
+ ✓ src/career/careerPurity.test.ts > eligibility functions close over no module-level or imported let > qualifiesFor and its siblings close over no mutable binding 788ms
+ ✓ src/career/careerPurity.test.ts > eligibility functions close over no module-level or imported let > reddens on the M12 plant: a module-level let that qualifiesFor reads 440ms
+ ✓ src/career/careerPurity.test.ts > eligibility functions close over no module-level or imported let > reddens on a sibling let read through import * as, which is the same wallet with a property access 406ms
+ ✓ src/career/eligibility.test.ts > AXIS A — a higher best Total never qualifies for fewer meets > the grid is ordered, so pair order is total order 16ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > [attending-a-meet-never-removes-one] every skipped meet in every seeded season, and the control beside it 2693ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > reaches a current-form rule that waits, and reports two different kinds of zero past it 4556ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > sees a rule keyed to the annual tier now that totals stop above it, and the margin is -10 kg 3772ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > a season is a real season: every meet distinct, and none of them entered twice 4ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > reaches the second worlds meet and not the first, and the first is unreachable by arithmetic 87ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > builds the same careers incrementally as `careerAfter` builds from the top 288ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > the sweep’s depth is read off the shipped calendar, not chosen in the sweep 1ms
+ ✓ src/career/eligibility.test.ts > the totals generator is bounded to a plausible range for the sport > never lets any career, at any depth, exceed the ceiling it drew 43ms
+ ✓ src/career/eligibility.test.ts > the totals generator is bounded to a plausible range for the sport > draws different ceilings for different seeds, so nothing piles up on one number 1ms
+ ✓ src/career/eligibility.test.ts > the totals generator is bounded to a plausible range for the sport > holds the constant inequality its bound is proved from 0ms
+ ✓ src/career/eligibility.test.ts > the totals generator is bounded to a plausible range for the sport > puts the band where the sourced research puts real elite totals 0ms
+ ✓ src/career/eligibility.test.ts > the totals generator is bounded to a plausible range for the sport > keeps the totals two-sided, which every record control depends on 1ms
+ ✓ src/career/eligibility.test.ts > the totals generator is bounded to a plausible range for the sport > is a prefix extension in its depth argument, so both sweeps get the same lifters 5ms
+ ✓ src/career/eligibility.test.ts > AXIS C — entering a meet spends that meet and takes nothing else > every skipped meet in every seeded season, against a rest control and three tier-keyed ones 82646ms
+ ✓ src/career/eligibility.test.ts > AXIS C — entering a meet spends that meet and takes nothing else > is blind at axis B’s evaluation lag, which is why it has its own 71469ms
+ ✓ src/career/eligibility.test.ts > AXIS C — entering a meet spends that meet and takes nothing else > runs its shipped arm on the engine’s own list, and every control as a filter of it 6ms
+ ✓ src/career/eligibility.test.ts > AXIS C — entering a meet spends that meet and takes nothing else > the two axes read two different functions, so neither can stand in for the other 1ms
+ ✓ src/career/eligibility.test.ts > days > a verdict reads the day it is given and nothing else 1ms
+ ✓ src/career/eligibility.test.ts > AXIS D — GDD §6.6’s campaign summit is reachable, and the two calendars it is not > generates its variant calendars with the engine’s own arithmetic 6ms
+ ✓ src/career/eligibility.test.ts > AXIS D — GDD §6.6’s campaign summit is reachable, and the two calendars it is not > takes every simulated arc to a campaign summit, which neither unfixed calendar does 704ms
+ ✓ src/career/eligibility.test.ts > AXIS D — GDD §6.6’s campaign summit is reachable, and the two calendars it is not > counts what the sweep actually saw, per tier, so none of the zeros is about an empty domain 166ms
+ ✓ src/career/eligibility.test.ts > AXIS D — GDD §6.6’s campaign summit is reachable, and the two calendars it is not > reproduces §6.6’s own finding under the unfixed calendar, and the tie-break it forces 548ms
+
+ Test Files  5 passed (5)
+      Tests  107 passed (107)
+   Start at  02:35:34
+   Duration  168.46s (transform 1.71s, setup 0ms, import 2.55s, tests 169.32s, environment 1ms)
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+======================================================================
+$ npx vitest run
+[whole suite] exit code: 0
+======================================================================
+
+ RUN  v4.1.10 /home/user/wt-r2-intent
+
+
+ Test Files  88 passed (88)
+      Tests  3437 passed (3437)
+   Start at  02:38:24
+   Duration  331.98s (transform 6.17s, setup 0ms, import 27.86s, tests 759.01s, environment 9ms)
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+======================================================================
+$ npx tsc --noEmit
+[typecheck] exit code: 0
+======================================================================
+(no output)

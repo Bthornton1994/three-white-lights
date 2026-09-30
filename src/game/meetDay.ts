@@ -1,0 +1,1951 @@
+/**
+ * meetDay.ts — meet day as a played loop (GDD §6.1, §6.2, §6.3, §6.5).
+ *
+ * ```
+ * Weigh-in (§6.1)
+ *   -> Openers, pre-filled from e1RM, overridable (§6.1)
+ *   -> per attempt: bar loads + walk-out (§6.2.1)
+ *                -> the rep, on the existing mechanic (§6.2.2, §6.2.3)
+ *                -> judges deliberate (§6.2.4)
+ *                -> three lights + feedback cue (§6.2.4, §6.2.5)
+ *                -> the next attempt is chosen (§6.3)
+ *   -> recap, or the bomb-out beat (§6.5, §6.3)
+ * ```
+ *
+ * ---------------------------------------------------------------------------
+ * THE RULES OF THE MEET ARE NOT IN THIS FILE
+ * ---------------------------------------------------------------------------
+ * `meet.ts` is the engine and is authoritative for every rule of the sport:
+ * lift order, three attempts each, the non-decreasing invariant, what a good
+ * lift is, what the total is, and when a lifter has bombed. THIS MODULE ASKS IT
+ * AND RENDERS THE ANSWER. It holds no copy of any of those rules, and in
+ * particular:
+ *
+ *   - The lightest weight a lifter may call next is
+ *     `currentAttemptContext(meet).minimumWeight`, read out of the engine. It
+ *     is not recomputed here, not clamped here, and not compared against the
+ *     previous attempt here. That is what makes GDD §6.3's bite — "a miss does
+ *     not lower the floor — it RAISES it" — a property of the engine that this
+ *     screen displays, rather than a second implementation that could disagree
+ *     with the one that actually refuses a declaration.
+ *   - Every weight this module offers a player goes through `declareAttempt`
+ *     before it becomes an attempt, and a refusal is surfaced rather than
+ *     swallowed.
+ *   - Bombing out is `meet.ts`'s `MeetOutcome.kind === 'bombed-out'`. Nothing
+ *     here counts misses.
+ *
+ * ---------------------------------------------------------------------------
+ * PURITY CONTRACT (CLAUDE.md "Pure logic is separate from UI", GDD §9.2)
+ * ---------------------------------------------------------------------------
+ *   - Zero React imports, zero I/O, zero side effects.
+ *   - NO CLOCK. The beat durations in `MEET_TUNING` are read by the UI's clock,
+ *     not by this module; `walkoutMs`/`deliberationMs`/`verdictMs` return
+ *     numbers and start nothing.
+ *   - NO RANDOMNESS. The judging model's dissent draw and the mechanic's wobble
+ *     jitter both run off seeds derived from (meet seed, lift, attempt number),
+ *     so a meet replays byte for byte and a screenshot of a split panel is
+ *     reproducible.
+ *   - Every transition returns a new state; inputs are never mutated.
+ *
+ * ---------------------------------------------------------------------------
+ * TOTAL MOVES HERE AND NOWHERE ELSE — AND NOT UNTIL THE SERVER SAYS SO
+ * ---------------------------------------------------------------------------
+ * GDD §2 and §3.2: Total is the sum of best successful COMPETITION attempts, it
+ * moves on meet day and on no other day, and "that is also the point rather than
+ * an inconvenience: Total only updating on meet day is what makes meet day carry
+ * weight."
+ *
+ * This module produces the ATTEMPTS. It does not produce a Total: the number on
+ * the recap comes from `meet.ts`'s `finalMeetTotal`, which is null until the
+ * meet is actually over and null forever if a lift was bombed, and the number
+ * that gets STORED comes back from `meetServer.ts` after it has replayed the
+ * attempts itself. Nothing in this file writes a fact.
+ *
+ * The mirror-image rule also holds: NO e1RM MOVES HERE. GDD §2's table gives
+ * e1RM to Sim mode, "session by session", and §6.4 gives a meet a Total, a DOTS
+ * score, Career progression and Gym Empire reputation — not an e1RM. So a meet
+ * reads e1RM (to suggest an opener, and as the mechanic's load ratio) and never
+ * writes one. See `meetServer.ts` for the enforcement and for the note on what
+ * the progression reach map would have permitted.
+ *
+ * ---------------------------------------------------------------------------
+ * THE JUDGING MODEL — WHAT IT CLAIMS AND WHAT IT REFUSES TO DO
+ * ---------------------------------------------------------------------------
+ * GDD §6.2 step 4: "Three-light judging call (red/white), with a brief 'judges
+ * deliberating' beat on close calls."
+ *
+ * Three referees, majority carries — that part is `meet.ts`'s and is the rule of
+ * the sport. What this module decides is HOW MANY of the three dissent, and it
+ * decides it from the rep the player actually played:
+ *
+ *   THE MAJORITY ALWAYS AGREES WITH THE MECHANIC. A rep `lift.ts` resolved as a
+ *   make gets at least two white lights; a miss gets at least two red. The
+ *   panel dramatises the player's input; it never overturns it.
+ *
+ *   That is a deliberate refusal, not an oversight. Turning a made lift red on
+ *   a die roll is the "punishes you for showing up" failure of GDD §12.3
+ *   arriving through the judges instead of through the streak, and it would
+ *   make the one input the whole game is built on stop deciding the outcome
+ *   (GDD design pillar 1). Real meets do overturn lifts; a game where the
+ *   player cannot see the referee's eyeline should not.
+ *
+ *   WHAT VARIES IS THE MARGIN — how obvious the call was — and it is measured,
+ *   not rolled:
+ *     · A MADE lift is doubted in proportion to how marginal the depth input
+ *       was (`InputTiming.quality` on the depth cue: 1 at the ideal moment,
+ *       falling to 0 at the window edge) and to how much of the ascent was
+ *       spent stalled (`stallTicks / ascentTicks`). A squat hit right at
+ *       parallel and ground out gets a red from one referee. One that was deep
+ *       and fast does not.
+ *     · A MISSED lift is doubted only when the lifter genuinely called depth
+ *       and missed the window narrowly. The mechanic records a signed
+ *       `offsetMs` for the depth cue even when the input landed outside it, so
+ *       "40 ms high" and "never went near it" are different numbers and only
+ *       the first is arguable.
+ *     · A bar that stalled, buried the lifter, or never got the command is
+ *       unanimous. Nobody in the building disagrees about a bar that came back
+ *       down.
+ *
+ *   THE DELIBERATION BEAT IS NOT A TELL. `DELIBERATION_MARGIN` sits strictly
+ *   above `UNANIMOUS_MARGIN`, so the band that deliberates is wider than the
+ *   band that can split and a deliberation ending 3-0 is common. A beat that
+ *   fired only before a split would announce the verdict before the lights did,
+ *   which is the opposite of what §6.2 asks it for. `meetTuning.test.ts` fails
+ *   if that ordering is ever broken.
+ *
+ * ---------------------------------------------------------------------------
+ * READINESS REACHES THE ATTEMPT AND LEAVES NO TRACE (GDD §6.2 step 3, §12.3)
+ * ---------------------------------------------------------------------------
+ * "Sim-mode readiness/fatigue silently adjusts the timing window width." A
+ * `SessionFeel` from `fatigue.ts` is put on the `LiftConfig` and that is the
+ * whole of it: `lift.ts` uses it for window width and a capacity nudge, and
+ * nothing in `MeetDayState` holds a fatigue number, so there is no field a
+ * component could bind a meter to. `MeetDayAttempt` has none either, and
+ * `meetDay.test.ts` serialises the state and fails on the word.
+ *
+ * The `LiftMoment` handed to the mechanic counts ATTEMPTS TAKEN SO FAR IN THE
+ * MEET where a training session counts work sets. That is a game-feel
+ * abstraction and is signposted as one: a third deadlift after eight attempts
+ * is a tighter window than an opening squat, which is the direction real meets
+ * run in even though the model behind it is not physiology (GDD §3.1).
+ */
+
+import {
+  ATTEMPTS_PER_LIFT,
+  ATTEMPT_NUMBERS,
+  JUDGE_COUNT,
+  LIFT_ORDER,
+  bestSuccessfulAttempt,
+  currentAttemptContext,
+  declareAttempt,
+  finalMeetTotal,
+  isCallableWeightNow,
+  isGoodLift,
+  isSplitDecision,
+  meetLoadingRules,
+  readTotal,
+  resolveAttempt,
+  suggestNextAttempt,
+  suggestOpener,
+  createMeet,
+  type AttemptContext,
+  type AttemptNumber,
+  type AttemptOutcome,
+  type CompletedAttempt,
+  type JudgeLight,
+  type JudgePanel,
+  type LiftKind,
+  type MeetError,
+  type MeetState,
+  type ProgressiveAttemptStrategy,
+} from './meet';
+import { nextRandom, seedState } from './prng';
+import { sessionFeel, type FatigueState, type LiftMoment, type SessionFeel } from './fatigue';
+import {
+  pressCommandIsLive,
+  type LiftConfig,
+  type LiftResolution,
+  type LiftState,
+  type MissReason,
+} from './lift';
+import { type HapticPattern } from './liftTuning';
+import type { MeetAttemptReport, MeetCardReport, MeetResultReport, MeetId } from './progression';
+import { asMeetId } from './progression';
+import {
+  NO_VALUE_DISPLAY,
+  WEIGHT_CLASSES_KG,
+  buildResultCard,
+  formatWeight,
+  type ResultCard,
+  type ResultCardError,
+} from './resultCard';
+import {
+  MEET_COPY,
+  MEET_FIELD_FIXTURE,
+  MEET_TUNING,
+  type MeetDefinition,
+  type KilogramMeetEntry,
+  type MeetSoundId,
+} from './meetTuning';
+import {
+  buildMeetField,
+  initialFieldReveal,
+  onDeckName,
+  revealAfterPlayer,
+  revealForDeclaration,
+  whoJustWent,
+  type FieldReveal,
+  type MeetField,
+} from './meetField';
+import {
+  buildMeetBoard,
+  placingForMeet,
+  stakesForOption,
+  type AttemptStake,
+  type MeetBoard,
+} from './meetBoard';
+import { appendLedger, lastEventOfKind, type MeetLedgerEvent } from './meetLedger';
+
+// ---------------------------------------------------------------------------
+// Small helpers
+// ---------------------------------------------------------------------------
+
+function scrub(value: number): number {
+  if (!Number.isFinite(value)) return value;
+  return Number(value.toFixed(MEET_TUNING.PRECISION_DECIMALS));
+}
+
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  if (value < 0) return 0;
+  if (value > 1) return 1;
+  return value;
+}
+
+function liftIndex(lift: LiftKind): number {
+  return LIFT_ORDER.indexOf(lift);
+}
+
+// ---------------------------------------------------------------------------
+// What the loop knows before it starts
+// ---------------------------------------------------------------------------
+
+/**
+ * Everything meet day is handed. All of it comes from server truth (through
+ * `meetServer.ts`) or from the app edge (the day).
+ *
+ * `bestE1rmKg` is READ ONLY and is used for exactly two things: suggesting an
+ * opener (GDD §6.1) and setting the mechanic's load ratio. Nothing in this
+ * module writes one back.
+ */
+export interface MeetDayContext {
+  /** Integer streak day. Resolved outside — this module never reads a clock. */
+  readonly day: number;
+  readonly meet: MeetDefinition;
+  /**
+   * KILOGRAMS, PROVEN BY THE TYPE. `KilogramMeetEntry` rather than `MeetEntry`,
+   * so a lifter who weighed in on a pound scale does not compile into a meet.
+   * Everything below reads `entry.bodyweight.kilograms` with no narrow because
+   * of this line. See `meetTuning.ts` for why it is a narrowing and not a ruling
+   * on GDD §11.
+   */
+  readonly entry: KilogramMeetEntry;
+  /** Best e1RM on record per lift, kg. The opener is suggested from it. */
+  readonly bestE1rmKg: Readonly<Record<LiftKind, number>>;
+  /** Best competition total on record before today, kg, or null. */
+  readonly previousBestTotalKg: number | null;
+  /** Best competition lift on record per lift, kg, or null. For PR call-outs. */
+  readonly previousBestByLiftKg: Readonly<Record<LiftKind, number | null>>;
+  /** The hidden ledger. Read only, and only by `fatigue.ts`. */
+  readonly fatigue: FatigueState;
+}
+
+// ---------------------------------------------------------------------------
+// The judging model (GDD §6.2 step 4)
+// ---------------------------------------------------------------------------
+
+/**
+ * How obvious the call was, 0..1. 1 is "nobody in the building disagrees".
+ *
+ * Measured off the rep, never rolled. See the header for what each branch means
+ * and why a miss is usually unanimous.
+ */
+export function judgingMargin(resolution: LiftResolution): number {
+  const depth = resolution.timings.find((timing) => timing.cue === 'depth');
+  if (resolution.outcome === 'miss') {
+    const reason: MissReason | null = resolution.missReason;
+    // Only a high squat is arguable. A bar that stalled, buried the lifter or
+    // never got the command is one everybody in the room saw the same way.
+    if (reason !== 'no-depth' || depth === undefined) return 1;
+    return clamp01(Math.abs(depth.offsetMs) / MEET_TUNING.HIGH_SQUAT_UNANIMOUS_OFFSET_MS);
+  }
+  // A made lift. How convincing was the depth, and how much of the ascent was
+  // spent going nowhere?
+  const depthConfidence = depth === undefined ? 1 : clamp01(depth.quality);
+  const ascentTicks = Math.max(1, resolution.ascentTicks);
+  const stallFraction = clamp01(resolution.stallTicks / ascentTicks);
+  return clamp01(depthConfidence - MEET_TUNING.GRIND_DOUBT_WEIGHT * stallFraction);
+}
+
+/** The seed the dissent draw for one attempt runs off. Never a clock. */
+export function judgeSeedFor(meetSeed: number, lift: LiftKind, attemptNumber: AttemptNumber): number {
+  return (
+    MEET_TUNING.JUDGE_SEED_BASE +
+    meetSeed +
+    liftIndex(lift) * MEET_TUNING.JUDGE_SEED_LIFT_STRIDE +
+    attemptNumber * MEET_TUNING.JUDGE_SEED_ATTEMPT_STRIDE
+  );
+}
+
+/** The seed the bar's wobble jitter for one attempt runs off. Never a clock. */
+export function attemptSeedFor(meetSeed: number, lift: LiftKind, attemptNumber: AttemptNumber): number {
+  return (
+    MEET_TUNING.ATTEMPT_SEED_BASE +
+    meetSeed +
+    liftIndex(lift) * MEET_TUNING.ATTEMPT_SEED_LIFT_STRIDE +
+    attemptNumber * MEET_TUNING.ATTEMPT_SEED_ATTEMPT_STRIDE
+  );
+}
+
+/**
+ * How likely a panel is to split, given the call margin.
+ *
+ * Flat 1 at or below `SPLIT_MARGIN`, flat 0 at or above `UNANIMOUS_MARGIN`,
+ * linear between. Separate from `judgePanelFor` so the curve can be checked
+ * without a seed.
+ */
+export function dissentChance(margin: number): number {
+  const low = MEET_TUNING.SPLIT_MARGIN;
+  const high = MEET_TUNING.UNANIMOUS_MARGIN;
+  if (!Number.isFinite(margin)) return 0;
+  if (margin <= low) return 1;
+  if (margin >= high) return 0;
+  return scrub((high - margin) / (high - low));
+}
+
+/** Do the judges take a beat over this one? Strictly wider than a split. */
+export function deliberates(margin: number): boolean {
+  return margin < MEET_TUNING.DELIBERATION_MARGIN;
+}
+
+/**
+ * The three lights.
+ *
+ * `good` is the mechanic's verdict and the MAJORITY ALWAYS MATCHES IT — see the
+ * header. The only question this answers is whether one referee dissents, and
+ * which one.
+ */
+export function judgePanelFor(good: boolean, margin: number, seed: number): JudgePanel {
+  const agree = good ? 'white' : 'red';
+  const dissent = good ? 'red' : 'white';
+  const draw = nextRandom(seedState(seed));
+  const splits = draw.value < dissentChance(margin);
+  const lights: ('white' | 'red')[] = [agree, agree, agree];
+  if (splits) {
+    // Which referee dissents. A second draw, so the two decisions do not share
+    // a bit and every referee can be the odd one out.
+    const which = nextRandom(draw.state);
+    const seat = Math.min(JUDGE_COUNT - 1, Math.floor(which.value * JUDGE_COUNT));
+    lights[seat] = dissent;
+  }
+  const [head, left, right] = lights;
+  if (head === undefined || left === undefined || right === undefined) {
+    // Unreachable: the array is built with exactly `JUDGE_COUNT` entries.
+    throw new Error('meetDay: a judging panel must have exactly three lights');
+  }
+  return [head, left, right];
+}
+
+/** The judges' whole answer for one attempt. */
+export interface JudgingCall {
+  readonly lights: JudgePanel;
+  /** How obvious the call was, 0..1. Never rendered as a number. */
+  readonly margin: number;
+  /** True when the panel takes a beat before the lights. */
+  readonly deliberated: boolean;
+  readonly good: boolean;
+  readonly split: boolean;
+}
+
+export function judgeAttempt(resolution: LiftResolution, seed: number): JudgingCall {
+  const margin = judgingMargin(resolution);
+  const good = resolution.outcome !== 'miss';
+  const lights = judgePanelFor(good, margin, seed);
+  return {
+    lights,
+    margin: scrub(margin),
+    deliberated: deliberates(margin),
+    good: isGoodLift(lights),
+    split: isSplitDecision(lights),
+  };
+}
+
+/**
+ * GDD §6.2 step 5: "Depth cue or bar-speed replay clip as feedback." One line,
+ * qualitative, no number and no meter (§3.4, §12.3).
+ */
+export function feedbackTextFor(resolution: LiftResolution, margin: number): string {
+  if (resolution.outcome === 'miss') {
+    switch (resolution.missReason) {
+      case 'no-depth':
+        return MEET_COPY.FEEDBACK_DEPTH_HIGH;
+      case 'buried':
+        return MEET_COPY.FEEDBACK_BURIED;
+      case 'timeout':
+        return MEET_COPY.FEEDBACK_TIMEOUT;
+      default:
+        return MEET_COPY.FEEDBACK_STALLED;
+    }
+  }
+  if (resolution.outcome === 'grind') return MEET_COPY.FEEDBACK_GRIND;
+  if (margin < MEET_TUNING.DELIBERATION_MARGIN) return MEET_COPY.FEEDBACK_DEPTH_MARGINAL;
+  if (margin >= MEET_TUNING.UNANIMOUS_MARGIN) return MEET_COPY.FEEDBACK_DEPTH_CLEAR;
+  return MEET_COPY.FEEDBACK_FAST;
+}
+
+/** The one line under the lights that says what the panel did. */
+export function lightsTextFor(call: JudgingCall): string {
+  if (!call.split) return call.good ? MEET_COPY.LIGHTS_UNANIMOUS : MEET_COPY.LIGHTS_ALL_RED;
+  return call.good ? MEET_COPY.LIGHTS_SPLIT_GOOD : MEET_COPY.LIGHTS_SPLIT_BAD;
+}
+
+// ---------------------------------------------------------------------------
+// The word "PR", decided in one place (GDD §6.3, §6.5)
+// ---------------------------------------------------------------------------
+
+/**
+ * Would putting `weightKg` on the bar take this lifter past the best
+ * competition lift they already hold on that lift?
+ *
+ * ONE PREDICATE, READ BY EVERY SURFACE THAT PRINTS THE WORD. It was three
+ * copies of `previousBestKg !== null && weightKg > previousBestKg`, one per call
+ * site, and the recap consulted none of them — which is how GDD §6.5's defect
+ * got in. There is nothing subtle about the expression; what is load-bearing is
+ * that the selection card's gold border, its PR sentence, the walk-out's extra
+ * hold and the recap's per-lift call-out all ask THIS function, so a change to
+ * what "PR" means moves all four or none.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY A NULL PREVIOUS BEST IS FALSE HERE AND TRUE IN `liftPrs`
+ * ---------------------------------------------------------------------------
+ * The two are about different moments and both are right. This one is
+ * PROSPECTIVE — "will this weight beat your record?" — and a weight that beat no
+ * number beat no record. `meetServer.ts`'s `liftPrs` is RETROSPECTIVE — "is this
+ * now your best?" — and a first-ever competition squat is, trivially, the best
+ * competition squat on record.
+ *
+ * Shipped together and rendered with one word, they contradicted: a first meet
+ * chose nine attempts with no PR call-out anywhere and then printed "PR" against
+ * all three lifts on the recap that followed. GDD §6.5 ruled the fix is to split
+ * the DISPLAY rather than the semantics, following the precedent the total
+ * already set — `MEET_COPY.RECAP_FIRST_TOTAL` calls a first-ever total a FIRST,
+ * not a PR. `liftCallOutFor` below is the per-lift half of that.
+ *
+ * `@guarantee the-pr-word-needs-a-record-to-beat`
+ */
+export function beatsPreviousBest(weightKg: number, previousBestKg: number | null): boolean {
+  return previousBestKg !== null && weightKg > previousBestKg;
+}
+
+/**
+ * Which of GDD §6.5's two per-lift call-outs a recap row prints.
+ *
+ * `'pr'` — this meet's best on the lift went past a number the lifter already
+ * held. `'first'` — the lifter held no number on this lift and now holds one.
+ */
+export type LiftCallOutKind = 'pr' | 'first';
+
+/** The call-out itself: which kind it is, and the word the board prints. */
+export interface LiftCallOut {
+  readonly kind: LiftCallOutKind;
+  readonly text: string;
+}
+
+/**
+ * The per-lift call-out for one row of the recap, or `null` for neither.
+ *
+ * @param isPr the SERVER's answer — `AppliedMeetResult.liftPrs[lift]`, meaning
+ * "this meet's best on this lift is the best on record now". Taken, never
+ * re-derived: the client is a renderer, and a second implementation of that
+ * comparison is precisely how a third meaning of "PR" gets created.
+ * @param bestKg this meet's best good lift on that lift, kg, or `null`.
+ * @param previousBestKg the best on record BEFORE this meet, kg, or `null`.
+ *
+ * The kind is `beatsPreviousBest`'s answer, so the word on the recap and the
+ * gold border on §6.3's card are one predicate seen from two sides. When the
+ * server says a lift is the best on record and nothing was beaten to get there,
+ * the lifter held no record on that lift — that is the FIRST case, and it is the
+ * case the recap used to call a PR.
+ *
+ * `@guarantee the-pr-word-needs-a-record-to-beat`
+ */
+export function liftCallOutFor(
+  isPr: boolean,
+  bestKg: number | null,
+  previousBestKg: number | null,
+): LiftCallOut | null {
+  if (!isPr) return null;
+  if (bestKg !== null && beatsPreviousBest(bestKg, previousBestKg)) {
+    return { kind: 'pr', text: MEET_COPY.RECAP_PR_LIFT };
+  }
+  return { kind: 'first', text: MEET_COPY.RECAP_FIRST_LIFT };
+}
+
+// ---------------------------------------------------------------------------
+// One attempt, as the recap and the board remember it
+// ---------------------------------------------------------------------------
+
+/**
+ * NO FATIGUE FIELD, AND NONE MAY BE ADDED (GDD §3.4, §12.3). `margin` is a
+ * judging measurement, not a readiness one, and it is never rendered as a
+ * number — `lightsTextFor` and `feedbackTextFor` turn it into a phrase.
+ */
+export interface MeetDayAttempt {
+  readonly lift: LiftKind;
+  readonly attemptNumber: AttemptNumber;
+  readonly weightKg: number;
+  readonly good: boolean;
+  readonly lights: JudgePanel;
+  readonly split: boolean;
+  readonly deliberated: boolean;
+  readonly margin: number;
+  readonly feedbackText: string;
+  readonly lightsText: string;
+  /**
+   * What the attempt was WORTH, carried over from `LiveAttempt` so the beats
+   * AFTER it escalate on the same facts the beats before it did. Satisfies
+   * `AttemptStakes`; see `deliberationMs`.
+   *
+   * Not re-derived here, and that is deliberate: `bombRisk` is a fact about the
+   * attempts banked BEFORE this one, and by the time this record exists the
+   * attempt itself has been resolved into the engine, so re-deriving it would
+   * ask the wrong question of the wrong state.
+   */
+  readonly isPrAttempt: boolean;
+  readonly bombRisk: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Attempt selection (GDD §6.3) — the read model the tension is built on
+// ---------------------------------------------------------------------------
+
+export type AttemptOptionId = 'repeat' | 'small' | 'big';
+
+export interface AttemptOption {
+  readonly id: AttemptOptionId;
+  readonly weightKg: number;
+  /** Kilos above the previous attempt. Exactly 0 on a repeat. */
+  readonly deltaKg: number;
+  readonly label: string;
+  /**
+   * Why a lifter would take this card. Never a claim about a record — the
+   * record claim is `prNote`, and `MEET_COPY.OPTION_BIG_WHY` has the account of
+   * why the two were separated.
+   */
+  readonly why: string;
+  /**
+   * True when taking this option would put the lifter above their best
+   * competition lift on this lift — GDD §6.3's "a PR on the line".
+   */
+  readonly isPrAttempt: boolean;
+  /**
+   * GDD §6.3's PR call-out for this card, or null when there is none.
+   *
+   * ONE FLAG, TWO RENDERINGS, AND NEITHER MAY OUTRUN THE OTHER. This is
+   * `MEET_COPY.OPTION_PR_NOTE` exactly when `isPrAttempt` is true and null
+   * otherwise, from the one expression below — so the sentence the card prints
+   * and the gold `MEET_PALETTE.CARD_PR_EDGE` border `AttemptSelectView` paints
+   * off `isPrAttempt` can never disagree about whether a record is on the bar.
+   * They did: the PR sentence was a static constant on the big card and said
+   * "A PR on the line" over 6 of 6 unbordered cards on a played first meet.
+   *
+   * `@guarantee pr-sentence-and-pr-border-are-one-decision`
+   */
+  readonly prNote: string | null;
+}
+
+/**
+ * The whole of the decision GDD §6.3 describes, as data.
+ *
+ * `floorKg` IS `meet.ts`'s `AttemptContext.minimumWeight`, unmodified. It is
+ * the lightest weight the engine will accept right now, and it is the number
+ * §6.3's bite is about.
+ */
+export interface AttemptDecision {
+  readonly lift: LiftKind;
+  readonly attemptNumber: AttemptNumber;
+  readonly previousWeightKg: number | null;
+  readonly previousOutcome: AttemptOutcome | null;
+  /** Best good lift banked on this lift so far, kg, or null. */
+  readonly bankedKg: number | null;
+  /** Lightest legal call right now. Straight off the engine. */
+  readonly floorKg: number;
+  /**
+   * TRUE WHEN THE FLOOR IS THE WEIGHT THAT JUST BEAT THE LIFTER.
+   *
+   * GDD §6.3: "The bite is that a miss does not lower the floor — it RAISES it.
+   * A lifter who misses their opener cannot retreat to something safe; the
+   * lightest thing they can still take is the weight that just beat them."
+   *
+   * Derived from the engine's own answer rather than from "did they miss": it
+   * is true exactly when the floor equals the previous attempt AND that attempt
+   * was a no-lift, which is the only way the engine produces that floor.
+   */
+  readonly floorRaisedByMiss: boolean;
+  readonly floorText: string;
+  /** Two options, always. §6.3 is a choice between two things. */
+  readonly options: readonly AttemptOption[];
+  readonly isLastAttempt: boolean;
+  /**
+   * True when missing this attempt bombs the lift (GDD §6.3) — the last attempt
+   * with nothing banked. What makes the walkout longest and the screen loudest.
+   */
+  readonly bombRisk: boolean;
+  readonly bombWarningText: string | null;
+}
+
+function optionFor(
+  state: MeetState,
+  id: AttemptOptionId,
+  weightKg: number,
+  previousWeightKg: number,
+  previousBestKg: number | null,
+  label: string,
+  why: string,
+): AttemptOption | null {
+  // Every weight offered is re-checked against the engine that will be asked to
+  // accept it. An option the engine would refuse is dropped rather than shown.
+  if (!isCallableWeightNow(state, weightKg)) return null;
+  // Read once, rendered twice. See `AttemptOption.prNote` — and `beatsPreviousBest`
+  // for why the recap's per-lift call-out reads the same predicate.
+  const isPrAttempt = beatsPreviousBest(weightKg, previousBestKg);
+  return {
+    id,
+    weightKg,
+    deltaKg: scrub(weightKg - previousWeightKg),
+    label,
+    why,
+    isPrAttempt,
+    prNote: isPrAttempt ? MEET_COPY.OPTION_PR_NOTE : null,
+  };
+}
+
+function suggestedWeight(state: MeetState, strategy: ProgressiveAttemptStrategy): number | null {
+  const suggested = suggestNextAttempt(state, strategy);
+  return suggested.ok ? suggested.value : null;
+}
+
+/**
+ * What the lifter chooses between for the attempt on deck, or null when no
+ * declaration is pending or this is an opener (openers are declared at
+ * weigh-in, GDD §6.1).
+ */
+export function attemptDecisionFor(
+  state: MeetState,
+  previousBestByLiftKg: Readonly<Record<LiftKind, number | null>>,
+): AttemptDecision | null {
+  const context: AttemptContext | null = currentAttemptContext(state);
+  if (context === null) return null;
+  const previousWeightKg = context.previousWeight;
+  if (previousWeightKg === null) return null;
+
+  const lift = context.lift;
+  const progress = state.lifts[lift];
+  const bankedKg = bestSuccessfulAttempt(progress);
+  const previousBestKg = previousBestByLiftKg[lift];
+  const isLastAttempt = context.attemptNumber === ATTEMPTS_PER_LIFT;
+  const bombRisk = isLastAttempt && bankedKg === null;
+
+  // THE FLOOR IS THE ENGINE'S. Not recomputed, not clamped, not compared.
+  const floorKg = context.minimumWeight;
+  const floorRaisedByMiss = context.mayRepeatWeight && context.previousOutcome === 'no-lift';
+
+  const options: AttemptOption[] = [];
+  if (context.mayRepeatWeight) {
+    // GDD §6.3 after a miss: repeat vs increase.
+    const repeat = optionFor(
+      state,
+      'repeat',
+      previousWeightKg,
+      previousWeightKg,
+      previousBestKg,
+      MEET_COPY.OPTION_REPEAT,
+      MEET_COPY.OPTION_REPEAT_WHY,
+    );
+    if (repeat !== null) options.push(repeat);
+    const past = suggestedWeight(state, MEET_TUNING.AFTER_MISS_INCREASE_STRATEGY);
+    if (past !== null) {
+      const option = optionFor(
+        state,
+        'big',
+        past,
+        previousWeightKg,
+        previousBestKg,
+        MEET_COPY.OPTION_PUSH_PAST,
+        MEET_COPY.OPTION_PUSH_PAST_WHY,
+      );
+      if (option !== null) options.push(option);
+    }
+  } else {
+    // GDD §6.3 after a make: a small increase vs a big one.
+    const small = suggestedWeight(state, MEET_TUNING.SMALL_INCREASE_STRATEGY);
+    if (small !== null) {
+      const option = optionFor(
+        state,
+        'small',
+        small,
+        previousWeightKg,
+        previousBestKg,
+        MEET_COPY.OPTION_SMALL,
+        MEET_COPY.OPTION_SMALL_WHY,
+      );
+      if (option !== null) options.push(option);
+    }
+    const big = suggestedWeight(state, MEET_TUNING.BIG_INCREASE_STRATEGY);
+    if (big !== null && (small === null || big > small)) {
+      const option = optionFor(
+        state,
+        'big',
+        big,
+        previousWeightKg,
+        previousBestKg,
+        MEET_COPY.OPTION_BIG,
+        MEET_COPY.OPTION_BIG_WHY,
+      );
+      if (option !== null) options.push(option);
+    }
+  }
+
+  return {
+    lift,
+    attemptNumber: context.attemptNumber,
+    previousWeightKg,
+    previousOutcome: context.previousOutcome,
+    bankedKg,
+    floorKg,
+    floorRaisedByMiss,
+    floorText: floorRaisedByMiss
+      ? MEET_COPY.SELECT_FLOOR_RAISED
+      : MEET_COPY.SELECT_FLOOR_AFTER_MAKE,
+    options,
+    isLastAttempt,
+    bombRisk,
+    bombWarningText: bombRisk ? MEET_COPY.OPTION_BOMB_WARNING : null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Openers (GDD §6.1)
+// ---------------------------------------------------------------------------
+
+/**
+ * The suggested safe opener per lift, from the lifter's current e1RM.
+ *
+ * GDD §6.1: "Opening attempts pre-filled from current Sim-mode e1RM data as a
+ * suggested safe opener. Player can override."
+ *
+ * The fraction and the rounding are `meet.ts`'s `suggestOpener` — this module
+ * does not choose a percentage of anything. A lift whose e1RM the engine cannot
+ * answer for falls back to the lightest callable weight, which is the bar.
+ */
+export function suggestedOpeners(
+  bestE1rmKg: Readonly<Record<LiftKind, number>>,
+  meet: MeetDefinition,
+): Readonly<Record<LiftKind, number>> {
+  const out: Partial<Record<LiftKind, number>> = {};
+  for (const lift of LIFT_ORDER) {
+    const suggested = suggestOpener(lift, bestE1rmKg[lift], meet.rules);
+    out[lift] = suggested.ok ? suggested.value : meet.rules.barAndCollarsWeight[lift];
+  }
+  return out as Record<LiftKind, number>;
+}
+
+/** Weigh-in flavour (GDD §6.1). Flavour ONLY — it moves nothing. */
+export interface WeighIn {
+  readonly bodyweightKg: number;
+  readonly weightClassText: string;
+  readonly classLimitKg: number | null;
+  readonly cuttingClose: boolean;
+  readonly flavourText: string;
+}
+
+/**
+ * @param classesKg the meet's weight classes, ascending. The caller supplies
+ * them; `resultCard.ts` owns the published list and this module does not
+ * restate it.
+ */
+export function weighInFor(entry: KilogramMeetEntry, classesKg: readonly number[]): WeighIn {
+  const bodyweightKg = entry.bodyweight.kilograms;
+  let limit: number | null = null;
+  for (const candidate of classesKg) {
+    if (bodyweightKg <= candidate) {
+      limit = candidate;
+      break;
+    }
+  }
+  const cuttingClose =
+    limit !== null && limit - bodyweightKg <= MEET_TUNING.WATER_CUT_MARGIN_KG;
+  const top = classesKg[classesKg.length - 1];
+  return {
+    bodyweightKg,
+    weightClassText: limit === null ? `${top ?? ''}+` : String(limit),
+    classLimitKg: limit,
+    cuttingClose,
+    flavourText: cuttingClose ? MEET_COPY.WEIGH_IN_CUTTING_CLOSE : MEET_COPY.WEIGH_IN_COMFORTABLE,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// The beats (GDD §6.2). Durations only — this module starts no timer.
+// ---------------------------------------------------------------------------
+
+/**
+ * How long the bar load and walk-out beat runs for this attempt.
+ *
+ * Longer on a third attempt (GDD §7.2 / §12.2 make the third-attempt walkout
+ * the reference beat), longer again above the lifter's best competition lift,
+ * longest when a miss bombs the lift. The extras stack on purpose: a third
+ * attempt, at a PR, with nothing banked, is the moment the whole mode exists
+ * for.
+ */
+export function walkoutMs(
+  attemptNumber: AttemptNumber,
+  weightKg: number,
+  previousBestKg: number | null,
+  bombRisk: boolean,
+): number {
+  let total = MEET_TUNING.BAR_LOAD_MS + MEET_TUNING.WALKOUT_MS;
+  if (attemptNumber === ATTEMPTS_PER_LIFT) total += MEET_TUNING.THIRD_ATTEMPT_WALKOUT_EXTRA_MS;
+  if (beatsPreviousBest(weightKg, previousBestKg)) {
+    total += MEET_TUNING.PR_ATTEMPT_WALKOUT_EXTRA_MS;
+  }
+  if (bombRisk) total += MEET_TUNING.BOMB_RISK_WALKOUT_EXTRA_MS;
+  return total;
+}
+
+/**
+ * What an attempt is WORTH, as the three facts every escalating beat reads.
+ *
+ * One type rather than three parameters at each call site, because the walk-out
+ * and the wait for the lights must escalate on the same facts — a beat that
+ * lengthened on a third attempt while its neighbour lengthened on a PR would
+ * read as noise. `LiveAttempt` and `MeetDayAttempt` both satisfy it structurally,
+ * which is the point: the before-picture and the after-picture of one attempt
+ * cannot disagree about what it was worth.
+ */
+export interface AttemptStakes {
+  readonly attemptNumber: AttemptNumber;
+  readonly isPrAttempt: boolean;
+  readonly bombRisk: boolean;
+}
+
+/** True when this is an attempt the meet turns on. Picks copy, crowd and cues. */
+export function isUrgentAttempt(stakes: AttemptStakes): boolean {
+  return (
+    stakes.bombRisk || stakes.isPrAttempt || stakes.attemptNumber === ATTEMPTS_PER_LIFT
+  );
+}
+
+/**
+ * The "judges deliberating" beat. Longer when the call is close, and longer
+ * again on the attempts the meet turns on.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS TAKES STAKES AND `verdictMs` BELOW DELIBERATELY DOES NOT
+ * ---------------------------------------------------------------------------
+ * The full argument is on `MEET_TUNING.DELIBERATION_STAKES_EXTRA_MS`. In one
+ * line: this beat is ANTICIPATION — the player is waiting for news and waiting
+ * is the content, so length is the escalation — and `verdictMs` is the hold
+ * AFTER the news has broken, where every added millisecond is a frame the player
+ * is waiting to leave. That is the same defect `MEET_TUNING.WALKOUT_TAIL` exists
+ * to remove, and it is not being reintroduced one screen later. What a reaction
+ * escalates instead is intensity: `CROWD.URGENT_CHEER_RISE_PX`.
+ *
+ * IT CANNOT LEAK THE CALL. These extras read which attempt this is — printed on
+ * the screen the player just came from — and nothing the judges decided.
+ */
+export function deliberationMs(deliberated: boolean, stakes: AttemptStakes): number {
+  const extra = MEET_TUNING.DELIBERATION_STAKES_EXTRA_MS;
+  let total =
+    MEET_TUNING.VERDICT_SILENCE_MS +
+    (deliberated ? MEET_TUNING.DELIBERATION_MS : MEET_TUNING.CLEAR_CALL_DELIBERATION_MS);
+  if (stakes.attemptNumber === ATTEMPTS_PER_LIFT) total += extra.THIRD_ATTEMPT;
+  if (stakes.isPrAttempt) total += extra.PR_ATTEMPT;
+  if (stakes.bombRisk) total += extra.BOMB_RISK;
+  return total;
+}
+
+/**
+ * Lights come up one at a time, then the feedback cue, then a hold.
+ *
+ * TAKES NO STAKES ON PURPOSE. See `deliberationMs` above and
+ * `MEET_TUNING.DELIBERATION_STAKES_EXTRA_MS`: a third attempt is not held on
+ * screen longer than an opener, because the player already knows the answer by
+ * then and the extra time would be dead air by construction. A future pass that
+ * wants one must give this screen a live channel first.
+ */
+export function verdictMs(): number {
+  return (
+    MEET_TUNING.LIGHT_REVEAL_FIRST_DELAY_MS +
+    (JUDGE_COUNT - 1) * MEET_TUNING.LIGHT_REVEAL_STAGGER_MS +
+    MEET_TUNING.LIGHT_FADE_MS +
+    MEET_TUNING.FEEDBACK_REVEAL_DELAY_MS +
+    MEET_TUNING.VERDICT_HOLD_MS
+  );
+}
+
+/** When the nth referee's light comes up, in ms from the start of the verdict. */
+export function lightRevealDelayMs(seat: number): number {
+  return MEET_TUNING.LIGHT_REVEAL_FIRST_DELAY_MS + seat * MEET_TUNING.LIGHT_REVEAL_STAGGER_MS;
+}
+
+// ---------------------------------------------------------------------------
+// What meet day FEELS like (GDD §12.2 — "judge pacing and sound")
+// ---------------------------------------------------------------------------
+
+/**
+ * A moment on meet day that the phone should register in the hand.
+ *
+ * Deliberately the SAME SHAPE as `lift.ts`'s `LiftEvent` -> `hapticFor` pair,
+ * and here for the same reason that one is in `lift.ts`: which pattern a moment
+ * gets is a decision about the game, not about React, and CLAUDE.md forbids it
+ * living in a component. The screens' only job is to say WHEN a beat happened.
+ *
+ * These are the beats the meet-day screens own. The rep inside the attempt is
+ * `lift.ts`'s and is not restated here.
+ */
+export type MeetBeat =
+  /** One plate landing on the sleeve as the bar is loaded. */
+  | { readonly kind: 'bar-plate' }
+  /** The walk-out line arriving. `urgent` on a third, a PR or a bomb risk. */
+  | { readonly kind: 'walkout-call'; readonly urgent: boolean }
+  /**
+   * The bar working under a braced lifter — the walk-out's TAIL (GDD §6.2's
+   * ruling, `MEET_TUNING.WALKOUT_TAIL`).
+   *
+   * Only reported when the beat is long enough to have a brace window at all,
+   * so an opener never carries it. It is what stops the escalated part of the
+   * beat being silent as well as still: measured on a third attempt with
+   * nothing banked, `CROWD_SWELL_BIG` had decayed by 2,520 ms of a 4,100 ms
+   * beat and the last 1,580 ms had nothing in any channel.
+   */
+  | { readonly kind: 'walkout-brace' }
+  /** The panel goes dark and the judges take their beat. */
+  | { readonly kind: 'deliberation' }
+  /** One referee's lamp coming up. */
+  | { readonly kind: 'light'; readonly light: JudgeLight }
+  /** GOOD LIFT / NO LIFT, after the last lamp. */
+  | { readonly kind: 'verdict'; readonly good: boolean }
+  /** The bomb-out's first line, after its silence (GDD §6.3). */
+  | { readonly kind: 'bomb-out' }
+  /** The floor landing on the attempt-select screen. */
+  | { readonly kind: 'floor'; readonly raisedByMiss: boolean }
+  /** An attempt declared. A one-way ratchet — §6.3's whole point. */
+  | { readonly kind: 'attempt-declared' };
+
+/** Every beat kind, for the exhaustiveness check in `meetDay.test.ts`. */
+export const MEET_BEAT_KINDS = Object.freeze([
+  'bar-plate',
+  'walkout-call',
+  'walkout-brace',
+  'deliberation',
+  'light',
+  'verdict',
+  'bomb-out',
+  'floor',
+  'attempt-declared',
+] as const satisfies readonly MeetBeat['kind'][]);
+
+/**
+ * The haptic pattern for a meet-day beat, or null if that beat is felt as
+ * nothing.
+ *
+ * Null is a REAL ANSWER here and not a missing case. A floor that was not
+ * raised by a miss is silent precisely so the one that was is not — the
+ * difference between "the weight you just made" and "the weight that just beat
+ * you" is GDD §6.3's entire argument, and a beat that fired on both would
+ * flatten it.
+ *
+ * NONE OF THESE HAVE BEEN FELT. See `MEET_TUNING.HAPTICS`.
+ */
+export function hapticForBeat(beat: MeetBeat): HapticPattern | null {
+  const h = MEET_TUNING.HAPTICS;
+  switch (beat.kind) {
+    case 'bar-plate':
+      return h.BAR_PLATE;
+    case 'walkout-call':
+      return beat.urgent ? h.WALKOUT_CALL_URGENT : h.WALKOUT_CALL;
+    // FELT AS NOTHING, and that is a real answer rather than a missing case.
+    // The tail is the beat where the player is waiting, and a phone that buzzed
+    // through it would be a metronome — the same argument the deliberation's
+    // silence is made of. What the tail has is a picture and a crowd.
+    case 'walkout-brace':
+      return null;
+    case 'deliberation':
+      return h.DELIBERATION;
+    case 'light':
+      return beat.light === 'white' ? h.LIGHT_WHITE : h.LIGHT_RED;
+    case 'verdict':
+      return beat.good ? h.VERDICT_GOOD : h.VERDICT_NO_LIFT;
+    case 'bomb-out':
+      return h.BOMB_OUT;
+    case 'floor':
+      return beat.raisedByMiss ? h.FLOOR_RAISED : null;
+    case 'attempt-declared':
+      return h.ATTEMPT_DECLARED;
+    default:
+      return null;
+  }
+}
+
+/**
+ * The sound cue for a meet-day beat, or null if that beat is silent.
+ *
+ * SILENCE IS A DESIGN DECISION HERE AND IS NOT THE SAME AS "unbuilt". Three
+ * beats return null on purpose and `meetSound.test.ts` pins each:
+ *
+ *   - THE DELIBERATION BEAT. The judges taking their time is quiet. A sound
+ *     under it would be a metronome telling the lifter to wait.
+ *   - A NO-LIFT. A real hall goes silent when the lights come up red, and a
+ *     fail buzzer is the opposite of what GDD §6.3 asks the piece to feel like.
+ *     The three whites get the crowd; the reds get nothing, which is what makes
+ *     the whites worth something.
+ *   - THE ATTEMPT-SELECT SCREEN. It is a menu between platform moments. The
+ *     haptics carry it (`hapticForBeat`), and a UI blip on the tensest decision
+ *     in the mode would make it feel like a settings panel.
+ *
+ * The cue RECIPES are `MEET_SOUND` in `meetTuning.ts`. Which cue a moment gets
+ * is here, for the same reason `hapticForBeat` is: it is a decision about the
+ * game, and CLAUDE.md forbids it living in a component.
+ */
+export function soundForBeat(beat: MeetBeat): MeetSoundId | null {
+  switch (beat.kind) {
+    case 'bar-plate':
+      return 'BAR_RATTLE';
+    case 'walkout-call':
+      return beat.urgent ? 'CROWD_SWELL_BIG' : 'CROWD_SWELL';
+    // THE SAME BED AGAIN, LATER. Not a new cue and deliberately so: what the
+    // tail needs is the hall still being there while he stands under the bar,
+    // and a second sound would be a second event. `WalkoutView` schedules it so
+    // its RELEASE lands on the hush, which is what makes the last stretch of the
+    // beat quiet rather than merely the part where the first swell had run out.
+    case 'walkout-brace':
+      return 'CROWD_SWELL_BIG';
+    case 'light':
+      return beat.light === 'white' ? 'LIGHT_CLACK_WHITE' : 'LIGHT_CLACK_RED';
+    case 'verdict':
+      return beat.good ? 'CROWD_CHEER' : null;
+    case 'bomb-out':
+      return 'BOMB_TONE';
+    case 'deliberation':
+    case 'floor':
+    case 'attempt-declared':
+      return null;
+    default:
+      return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The loop's phases
+// ---------------------------------------------------------------------------
+
+export type MeetDayPhaseId =
+  /** GDD §6.1's weigh-in beat. */
+  | 'weigh-in'
+  /** GDD §6.1's openers, pre-filled and overridable. */
+  | 'openers'
+  /** GDD §6.3's choice. Never shown for an opener. */
+  | 'attempt-select'
+  /** GDD §6.2 step 1: the bar loads and the lifter walks it out. */
+  | 'walkout'
+  /** GDD §6.2 steps 2-3: the rep, on the existing mechanic. */
+  | 'lift'
+  /** GDD §6.2 step 4, first half: the judges take a beat. */
+  | 'deliberation'
+  /** GDD §6.2 step 4-5: three lights, then the feedback cue. */
+  | 'verdict'
+  /** GDD §6.3's somber moment. Terminal. */
+  | 'bombed'
+  /** GDD §6.5's recap. Terminal. */
+  | 'recap';
+
+export const MEET_DAY_PHASES = Object.freeze([
+  'weigh-in',
+  'openers',
+  'attempt-select',
+  'walkout',
+  'lift',
+  'deliberation',
+  'verdict',
+  'bombed',
+  'recap',
+] as const satisfies readonly MeetDayPhaseId[]);
+
+/** The attempt currently on the platform, once its weight is declared. */
+export interface LiveAttempt {
+  readonly lift: LiftKind;
+  readonly attemptNumber: AttemptNumber;
+  readonly weightKg: number;
+  /** `weightKg / e1rmKg` — what the lift mechanic means by `loadRatio`. */
+  readonly loadRatio: number;
+  readonly seed: number;
+  /** True when a miss here bombs the lift (GDD §6.3). */
+  readonly bombRisk: boolean;
+  /** True when the bar is above the lifter's best competition lift. */
+  readonly isPrAttempt: boolean;
+  /** How long GDD §6.2 step 1 runs for this attempt. */
+  readonly walkoutMs: number;
+}
+
+export interface MeetDayState {
+  readonly context: MeetDayContext;
+  readonly phase: MeetDayPhaseId;
+  /** The engine. Authoritative for every rule of the sport. */
+  readonly meet: MeetState;
+  readonly openersKg: Readonly<Record<LiftKind, number>>;
+  /** True per lift once the player has moved an opener off the suggestion. */
+  readonly openerOverridden: Readonly<Record<LiftKind, boolean>>;
+  readonly live: LiveAttempt | null;
+  /** The judges' answer to the attempt just taken, while it is on screen. */
+  readonly call: JudgingCall | null;
+  readonly attempts: readonly MeetDayAttempt[];
+  /** The last refusal the engine returned, for the UI to surface. */
+  readonly lastError: MeetError | null;
+  /** Named flight. Published NPC results are `meet.ts` quantities. */
+  readonly field: MeetField;
+  /** How much of the flight the player has seen. */
+  readonly reveal: FieldReveal;
+  /** Immutable Meet Day events, append-only. */
+  readonly ledger: readonly MeetLedgerEvent[];
+}
+
+// ---------------------------------------------------------------------------
+// Building an attempt
+// ---------------------------------------------------------------------------
+
+/** A stable per-meet seed, so a meet replays identically. Never a clock. */
+export function meetSeedFor(context: MeetDayContext): number {
+  return context.day;
+}
+
+/**
+ * How hard the lifter is DRAWN while a bar of `weightKg` is on his back.
+ *
+ * The same quantity `LiveAttempt.loadRatio` carries, exposed for the staged
+ * beats that only have a finished attempt to work from — the deliberation and
+ * the verdict, where `MeetHallView` still has to put a figure under a loaded
+ * bar.
+ *
+ * IT IS A DRAWING INPUT AND NOTHING ELSE. It does not reach the mechanic, the
+ * judging model or the engine; `attemptConfigFor` is the only thing that decides
+ * what an attempt is played at, and it reads `LiveAttempt.loadRatio`.
+ */
+export function stageLoadRatio(
+  context: MeetDayContext,
+  lift: LiftKind,
+  weightKg: number,
+): number {
+  return scrub(weightKg / context.bestE1rmKg[lift]);
+}
+
+function liveAttemptFor(
+  context: MeetDayContext,
+  state: MeetState,
+  lift: LiftKind,
+  attemptNumber: AttemptNumber,
+  weightKg: number,
+): LiveAttempt {
+  const banked = bestSuccessfulAttempt(state.lifts[lift]);
+  const bombRisk = attemptNumber === ATTEMPTS_PER_LIFT && banked === null;
+  const previousBestKg = context.previousBestByLiftKg[lift];
+  const e1rmKg = context.bestE1rmKg[lift];
+  return {
+    lift,
+    attemptNumber,
+    weightKg,
+    loadRatio: scrub(weightKg / e1rmKg),
+    seed: attemptSeedFor(meetSeedFor(context), lift, attemptNumber),
+    bombRisk,
+    isPrAttempt: beatsPreviousBest(weightKg, previousBestKg),
+    walkoutMs: walkoutMs(attemptNumber, weightKg, previousBestKg, bombRisk),
+  };
+}
+
+/**
+ * The config for the attempt about to be taken.
+ *
+ * `feel` is what carries GDD §6.2 step 3 into the mechanic: `lift.ts` uses it
+ * for the timing-window width and the bar-speed capacity nudge, and for nothing
+ * else. No fatigue number crosses this boundary in either direction.
+ *
+ * @throws {RangeError} when there is no attempt on the platform.
+ */
+export function attemptConfigFor(state: MeetDayState): LiftConfig {
+  const live = state.live;
+  if (live === null) {
+    throw new RangeError('meetDay: there is no attempt on the platform to configure.');
+  }
+  const feel: SessionFeel = sessionFeel(state.context.fatigue, state.context.day);
+  const moment: LiftMoment = {
+    // Attempts already taken in this meet. The meet's own accumulation, which
+    // is the "same-day" horizon GDD §3.4 gives fatigue.
+    workSetsCompleted: state.attempts.length,
+    repsCompletedInSet: 0,
+  };
+  // `live.lift` rather than `simKindFor(live.lift)`: every lift on the platform
+  // has its own phase model now, so a deadlift attempt runs deadlift's beat.
+  return { kind: live.lift, loadRatio: live.loadRatio, seed: live.seed, feel, moment };
+}
+
+// ---------------------------------------------------------------------------
+// The machine
+// ---------------------------------------------------------------------------
+
+export type MeetDayEvent =
+  | { readonly kind: 'confirm-weigh-in' }
+  | { readonly kind: 'set-opener'; readonly lift: LiftKind; readonly weightKg: number }
+  | { readonly kind: 'confirm-openers' }
+  /** GDD §6.3's choice, or an opener being declared as its lift comes up. */
+  | { readonly kind: 'declare'; readonly weightKg: number }
+  /** The bar-load and walk-out beat elapsed. */
+  | { readonly kind: 'walkout-done' }
+  /** A rep of the lift mechanic resolved. `lift.ts` decided the outcome. */
+  | { readonly kind: 'lift-resolved'; readonly resolution: LiftResolution }
+  /** The deliberation beat elapsed. */
+  | { readonly kind: 'deliberation-done' }
+  /** The verdict beat elapsed (or was tapped through). */
+  | { readonly kind: 'verdict-done' };
+
+/** A meet at its first frame: the weigh-in, with the openers pre-filled. */
+export function createMeetDay(context: MeetDayContext): MeetDayState {
+  if (!Number.isSafeInteger(context.day)) {
+    throw new RangeError(`meetDay: day must be a safe integer day index, received ${context.day}.`);
+  }
+  for (const lift of LIFT_ORDER) {
+    const e1rm = context.bestE1rmKg[lift];
+    if (!Number.isFinite(e1rm) || e1rm <= 0) {
+      throw new RangeError(`meetDay: bestE1rmKg.${lift} must be a positive finite number, received ${e1rm}.`);
+    }
+  }
+  return {
+    context,
+    phase: 'weigh-in',
+    meet: createMeet(context.meet.rules),
+    openersKg: suggestedOpeners(context.bestE1rmKg, context.meet),
+    openerOverridden: { squat: false, bench: false, deadlift: false },
+    live: null,
+    call: null,
+    attempts: [],
+    lastError: null,
+    field: buildMeetField(MEET_FIELD_FIXTURE, context.meet.rules, meetSeedFor(context), context.entry.lot),
+    reveal: initialFieldReveal(),
+    ledger: [],
+  };
+}
+
+/**
+ * Where the meet goes once an attempt has been judged.
+ *
+ * Every branch reads `meet.ts` rather than counting anything: `phase.kind ===
+ * 'complete'` and `outcome.kind === 'bombed-out'` are the engine's answers, and
+ * a lift that is finished with no good attempt is the engine's definition of a
+ * bomb-out (GDD §6.3), not this module's.
+ */
+function afterVerdict(state: MeetDayState): MeetDayState {
+  const meet = state.meet;
+  if (meet.phase.kind === 'complete') {
+    const bombed = meet.phase.outcome.kind === 'bombed-out';
+    const totalKg = finalMeetTotal(meet);
+    const placing = placingForMeet(
+      meet,
+      state.context.entry.bodyweight.kilograms,
+      state.context.entry.lot,
+      state.field,
+    );
+    let ledger = appendLedger(state.ledger, { kind: 'total', kg: totalKg });
+    ledger = appendLedger(ledger, {
+      kind: 'placing',
+      place: placing.place,
+      fieldSize: placing.fieldSize,
+    });
+    if (bombed) {
+      ledger = appendLedger(ledger, { kind: 'bomb-out', lift: meet.phase.outcome.bombedLift });
+    } else if (totalKg !== null) {
+      if (state.context.meet.standingRecord !== null && totalKg > state.context.meet.standingRecord.totalKg) {
+        ledger = appendLedger(ledger, { kind: 'record', kg: totalKg });
+      }
+      const qualifying = state.context.meet.qualifyingTotalKg;
+      if (qualifying !== null && totalKg >= qualifying) {
+        ledger = appendLedger(ledger, { kind: 'qualification', kg: qualifying });
+      }
+    }
+    return {
+      ...state,
+      phase: bombed ? 'bombed' : 'recap',
+      live: null,
+      call: null,
+      ledger,
+      reveal: { ...state.reveal, afterPlayer: true },
+    };
+  }
+  const context = currentAttemptContext(meet);
+  if (context === null) return { ...state, phase: 'recap', live: null, call: null };
+  if (context.previousWeight === null) {
+    return declareLive(
+      { ...state, live: null, call: null },
+      state.openersKg[context.lift],
+    );
+  }
+  return {
+    ...state,
+    phase: 'attempt-select',
+    live: null,
+    call: null,
+    reveal: revealAfterPlayer(state.reveal),
+  };
+}
+
+/** Puts a weight on the bar through the engine, or surfaces the refusal. */
+function declareLive(state: MeetDayState, weightKg: number): MeetDayState {
+  const declared = declareAttempt(state.meet, { weight: weightKg });
+  if (!declared.ok) {
+    return { ...state, lastError: declared.error };
+  }
+  const phase = declared.value.phase;
+  if (phase.kind !== 'attempt-declared') {
+    // Unreachable: a successful declaration always lands in that phase.
+    return { ...state, lastError: null };
+  }
+  const attempt = phase.attempt;
+  return {
+    ...state,
+    phase: 'walkout',
+    meet: declared.value,
+    live: liveAttemptFor(state.context, state.meet, attempt.lift, attempt.attemptNumber, attempt.weight),
+    call: null,
+    lastError: null,
+    reveal: revealForDeclaration(attempt.lift, attempt.attemptNumber, attempt.weight),
+  };
+}
+
+/**
+ * Advance the loop by one event.
+ *
+ * TOTAL: an event that does not apply to the current phase returns the state
+ * unchanged rather than throwing. A double-tap on a button that has already
+ * advanced the screen is a thing fingers do, and it must not be a crash.
+ */
+export function stepMeetDay(state: MeetDayState, event: MeetDayEvent): MeetDayState {
+  switch (event.kind) {
+    case 'confirm-weigh-in': {
+      if (state.phase !== 'weigh-in') return state;
+      const weighIn = weighInFor(
+        state.context.entry,
+        WEIGHT_CLASSES_KG[state.context.entry.sex],
+      );
+      return {
+        ...state,
+        phase: 'openers',
+        ledger: appendLedger(state.ledger, {
+          kind: 'weigh-in',
+          bodyweightKg: weighIn.bodyweightKg,
+          weightClassText: weighIn.weightClassText,
+        }),
+      };
+    }
+
+    case 'set-opener': {
+      if (state.phase !== 'openers') return state;
+      // The engine decides whether the number is callable at all. A weight it
+      // would refuse never becomes an opener.
+      if (!isCallableWeightNow(state.meet, event.weightKg) && state.meet.phase.kind === 'awaiting-declaration'
+        && state.meet.phase.lift === event.lift) {
+        return state;
+      }
+      const floor = state.context.meet.rules.barAndCollarsWeight[event.lift];
+      if (!Number.isFinite(event.weightKg) || event.weightKg < floor) return state;
+      return {
+        ...state,
+        openersKg: { ...state.openersKg, [event.lift]: event.weightKg },
+        openerOverridden: { ...state.openerOverridden, [event.lift]: true },
+      };
+    }
+
+    case 'confirm-openers': {
+      if (state.phase !== 'openers') return state;
+      const context = currentAttemptContext(state.meet);
+      if (context === null) return state;
+      return declareLive(state, state.openersKg[context.lift]);
+    }
+
+    case 'declare': {
+      if (state.phase !== 'attempt-select') return state;
+      return declareLive(state, event.weightKg);
+    }
+
+    case 'walkout-done': {
+      if (state.phase !== 'walkout') return state;
+      return { ...state, phase: 'lift' };
+    }
+
+    case 'lift-resolved': {
+      if (state.phase !== 'lift') return state;
+      const live = state.live;
+      if (live === null) return state;
+      const call = judgeAttempt(
+        event.resolution,
+        judgeSeedFor(meetSeedFor(state.context), live.lift, live.attemptNumber),
+      );
+      // The lights are an INPUT to the engine — it does not roll them and this
+      // module does not decide whether they carry.
+      const resolved = resolveAttempt(state.meet, { lights: call.lights });
+      if (!resolved.ok) return { ...state, lastError: resolved.error };
+      const attempt: MeetDayAttempt = {
+        lift: live.lift,
+        attemptNumber: live.attemptNumber,
+        weightKg: live.weightKg,
+        good: call.good,
+        lights: call.lights,
+        split: call.split,
+        deliberated: call.deliberated,
+        margin: call.margin,
+        feedbackText: feedbackTextFor(event.resolution, call.margin),
+        lightsText: lightsTextFor(call),
+        isPrAttempt: live.isPrAttempt,
+        bombRisk: live.bombRisk,
+      };
+      let ledger = appendLedger(state.ledger, {
+        kind: 'attempt',
+        lift: attempt.lift,
+        attemptNumber: attempt.attemptNumber,
+        weightKg: attempt.weightKg,
+        good: attempt.good,
+        lights: attempt.lights,
+      });
+      if (attempt.good) {
+        const best = bestSuccessfulAttempt(resolved.value.lifts[attempt.lift]);
+        if (best === attempt.weightKg) {
+          ledger = appendLedger(ledger, { kind: 'best', lift: attempt.lift, kg: attempt.weightKg });
+        }
+      }
+      return {
+        ...state,
+        phase: 'deliberation',
+        meet: resolved.value,
+        call,
+        attempts: [...state.attempts, attempt],
+        lastError: null,
+        ledger,
+      };
+    }
+
+    case 'deliberation-done': {
+      if (state.phase !== 'deliberation') return state;
+      return { ...state, phase: 'verdict' };
+    }
+
+    case 'verdict-done': {
+      if (state.phase !== 'verdict') return state;
+      return afterVerdict(state);
+    }
+
+    default:
+      return state;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Read models for the screens
+// ---------------------------------------------------------------------------
+
+/** The attempt just judged, for the verdict screen. */
+export function lastAttempt(state: MeetDayState): MeetDayAttempt | null {
+  return state.attempts[state.attempts.length - 1] ?? null;
+}
+
+/** Every finished attempt on this lift, for the board. */
+export function attemptsOnLift(state: MeetDayState, lift: LiftKind): readonly MeetDayAttempt[] {
+  return state.attempts.filter((attempt) => attempt.lift === lift);
+}
+
+export function boardFor(state: MeetDayState): MeetBoard {
+  return buildMeetBoard(
+    {
+      name: state.context.entry.name,
+      bodyweightKg: state.context.entry.bodyweight.kilograms,
+      lot: state.context.entry.lot,
+    },
+    state.meet,
+    state.field,
+    state.reveal,
+    state.context.meet.qualifyingTotalKg,
+    state.context.meet.standingRecord,
+  );
+}
+
+export function stakesForDecision(
+  state: MeetDayState,
+  decision: AttemptDecision,
+  option: AttemptOption,
+): readonly AttemptStake[] {
+  return stakesForOption(
+    boardFor(state),
+    state.meet,
+    decision.lift,
+    option.weightKg,
+    decision.isLastAttempt,
+    decision.bankedKg,
+  );
+}
+
+/**
+ * Who follows the player in the CURRENT declared round, or null.
+ *
+ * Attempt-select has no live attempt: the next weight is not declared, so
+ * there is no platform order to report. Mixing the previous round's reveal
+ * with the next attempt's floor invents an ON DECK name.
+ */
+export function flightOnDeckText(state: MeetDayState): string | null {
+  const live = state.live;
+  if (live === null) return null;
+  return onDeckName(state.field, state.reveal, live.weightKg, state.context.entry.name);
+}
+
+export function flightJustWentText(state: MeetDayState): string | null {
+  const live = state.live;
+  const weight = live?.weightKg ?? null;
+  if (weight === null) return null;
+  return whoJustWent(state.field, state.reveal, weight, state.context.entry.name);
+}
+
+export interface MeetCommand {
+  readonly text: string;
+  readonly live: boolean;
+}
+
+/**
+ * Competition commands that belong to the current mechanic. Presentation
+ * overlay only — the lift runtime is unchanged. PRESS and DOWN are live when
+ * the mechanic already requires them.
+ */
+export function meetCommandFor(state: LiftState): MeetCommand | null {
+  const kind = state.config.kind;
+  switch (state.phase) {
+    case 'BRACE':
+      if (kind === 'squat') return { text: MEET_COPY.COMMAND_SQUAT, live: true };
+      if (kind === 'bench') return { text: MEET_COPY.COMMAND_START, live: false };
+      return null;
+    case 'DESCENT':
+      if (kind === 'bench') return { text: MEET_COPY.COMMAND_START, live: false };
+      return null;
+    case 'HOLE':
+      if (kind === 'bench' && pressCommandIsLive(state)) {
+        return { text: MEET_COPY.COMMAND_PRESS, live: true };
+      }
+      return null;
+    case 'ASCENT':
+      if (kind === 'bench') return { text: MEET_COPY.COMMAND_PRESS, live: true };
+      return null;
+    case 'LOCKOUT': {
+      if (kind === 'deadlift') {
+        const downTick = state.downCommandTick;
+        if (downTick !== null && state.tick >= downTick) {
+          return { text: MEET_COPY.COMMAND_DOWN, live: true };
+        }
+        return null;
+      }
+      return { text: MEET_COPY.COMMAND_RACK, live: false };
+    }
+    default:
+      return null;
+  }
+}
+
+/**
+ * The attempt ROWS as the SERVER is told about them. The unit is not here — see
+ * `meetResultCard` below, which is what a caller should be reaching for.
+ *
+ * INPUTS ONLY: which lift, which attempt, what was on the bar and whether it
+ * stood. There is no total in it and `progression.ts`'s allowlist forbids one —
+ * GDD §6.4's "total = sum of best successful attempt per lift" is a server
+ * computation, and `meetServer.ts` recomputes it by replaying these through the
+ * same engine rather than taking the client's word for the arithmetic.
+ *
+ * `weight`, NOT `weightKg`, on the report side. The loop's own `MeetDayAttempt`
+ * still says `weightKg` and that name is only true because `MEET_LOCAL` is a
+ * kilogram meet — see (c) in `meetServer.ts`'s residuals. What crosses the
+ * progression boundary carries no unit in a field name; it carries one on the
+ * card.
+ */
+export function meetAttemptReports(state: MeetDayState): readonly MeetAttemptReport[] {
+  return state.attempts.map((attempt) => ({
+    lift: attempt.lift,
+    attemptNumber: attempt.attemptNumber,
+    weight: attempt.weightKg,
+    good: attempt.good,
+  }));
+}
+
+/**
+ * The card as the SERVER is told about it: the rows, plus the unit they were
+ * lifted in.
+ *
+ * THE UNIT IS READ OFF THE MEET THE ROWS CAME OUT OF, not off the context and
+ * not off a literal typed here. `state.meet` is the `MeetState` every one of
+ * those weights was declared into, `readTotal` is the accessor `meet.ts` gives
+ * for "what unit is this state in", and `meetServer.ts` then checks the answer
+ * against the definition it resolves for the reported `meetId`. Stamping `'kg'`
+ * here would make that check compare a literal this function typed with a
+ * literal `meetTuning.ts` typed, which is two spellings of the same guess.
+ *
+ * Same posture as the bodyweight one field over: FORWARDED, NOT STAMPED.
+ */
+export function meetResultCard(state: MeetDayState): MeetCardReport {
+  const attempts = meetAttemptReports(state);
+  return readTotal(state.meet).unit === 'kg'
+    ? { unit: 'kg', kilogramAttempts: attempts }
+    : { unit: 'lb', poundAttempts: attempts };
+}
+
+/** The id this meet reports under. */
+export function meetIdFor(meet: MeetDefinition): MeetId {
+  return asMeetId(meet.id);
+}
+
+/**
+ * What the client asks the server to record.
+ *
+ * `null` while the meet is still running: a meet that has not finished has no
+ * result, and `meet.ts`'s `readTotal` will not produce a provisional one.
+ */
+export function meetResultProposal(
+  state: MeetDayState,
+): { readonly kind: 'record-meet-result'; readonly report: MeetResultReport } | null {
+  if (state.meet.phase.kind !== 'complete') return null;
+  if (state.attempts.length === 0) return null;
+  return {
+    kind: 'record-meet-result',
+    report: {
+      meetId: meetIdFor(state.context.meet),
+      // FORWARDED, NOT STAMPED. The unit rides out of the entry the lifter was
+      // weighed in under; this function does not know one and must not invent
+      // one, or `meetServer.ts`'s refusal would be checking a literal typed
+      // here rather than a fact.
+      bodyweight: state.context.entry.bodyweight,
+      // THE SAME POSTURE FOR THE OTHER NUMBER, and it took three rounds to
+      // arrive. The nine weights used to go out as a bare array whose rows said
+      // `weightKg` with nothing behind the name; the server then "checked" them
+      // by reading a unit off the meet definition it happened to be handed.
+      card: meetResultCard(state),
+    },
+  };
+}
+
+/** Attempts across the whole meet in the order they happened, from the engine. */
+export function completedAttempts(state: MeetDayState): readonly CompletedAttempt[] {
+  return LIFT_ORDER.flatMap((lift) => state.meet.lifts[lift].attempts);
+}
+
+// ---------------------------------------------------------------------------
+// Post-meet recap (GDD §6.5)
+//
+// "Recap screen: attempt-by-attempt breakdown, PR call-outs, DOTS score,
+// placing in field. Shareable result card formatted like a real federation
+// result sheet."
+//
+// THE CARD IS NOT REBUILT HERE. `resultCard.ts` already turns a finished meet
+// into rows, marks, a DOTS outcome and a place cell, and `src/card/` already
+// renders it. The recap BUILDS THAT CARD and reads its own numbers back off it,
+// so the screen a player sees before they share and the card they share cannot
+// print two different totals. Everything this section adds is what the card
+// deliberately does not carry: the judging lights on each attempt (a federation
+// sheet records a made or missed weight, not a 2-1) and the PR call-outs, which
+// are a fact about this lifter's history rather than about this meet.
+// ---------------------------------------------------------------------------
+
+/** One lift's row on the recap board. */
+export interface RecapLiftRow {
+  readonly lift: LiftKind;
+  readonly label: string;
+  /** The three attempts, or null where one was never taken. */
+  readonly attempts: readonly (MeetDayAttempt | null)[];
+  readonly bestKg: number | null;
+  readonly bestText: string;
+  /**
+   * The server's `liftPrs` answer: this meet's best on this lift is the best on
+   * record now. TRUE OF A FIRST-EVER LIFT TOO, which is why it is not the thing
+   * the board prints a word off — see `callOut`. `RecapView` reports it to GDD
+   * §7.2's cut-in gate, where a first-ever lift is a moment exactly as a beaten
+   * record is, and where the total's own beat has always behaved the same way.
+   */
+  readonly isPr: boolean;
+  /**
+   * Which word the board prints beside the row, or `null` for none.
+   *
+   * `liftCallOutFor`'s answer. Non-null exactly when `isPr`; `'pr'` only when
+   * there was a record to beat.
+   */
+  readonly callOut: LiftCallOut | null;
+  readonly bombed: boolean;
+}
+
+/**
+ * The facts the recap needs from the SERVER. `AppliedMeetResult` satisfies this
+ * structurally, which is how this module stays free of `meetServer.ts`: the
+ * recap consumes an answer, it does not compute one.
+ */
+export interface ConfirmedMeetFacts {
+  readonly totalKg: number | null;
+  readonly previousBestTotalKg: number | null;
+  readonly isTotalPr: boolean;
+  readonly liftPrs: Readonly<Record<LiftKind, boolean>>;
+  /** Best good lift per lift in THIS meet, kg; `null` where a lift was bombed. */
+  readonly bestByLiftKg: Readonly<Record<LiftKind, number | null>>;
+  /**
+   * Best competition lift per lift BEFORE this meet, kg; `null` where the lifter
+   * held none.
+   *
+   * The per-lift twin of `previousBestTotalKg`, and it arrived for the same
+   * reason: the total could already tell a FIRST from a PR because it had the
+   * number it was measured against, and the lifts could not. Without it the
+   * recap can only ask "is this the best on record", which is true of a
+   * first-ever lift, and the board printed PR for both.
+   */
+  readonly previousBestByLiftKg: Readonly<Record<LiftKind, number | null>>;
+  readonly placing: { readonly place: number | null; readonly fieldSize: number };
+}
+
+export interface MeetRecap {
+  /** The shareable card (GDD §6.5), built by `resultCard.ts`. */
+  readonly card: ResultCard;
+  /** This meet's total, kg, or null on a bomb-out. Never a running sum. */
+  readonly totalKg: number | null;
+  readonly totalText: string;
+  readonly previousBestTotalKg: number | null;
+  readonly isTotalPr: boolean;
+  /** True when this is the lifter's first competition total at all. */
+  readonly isFirstTotal: boolean;
+  readonly prText: string | null;
+  /** From the card, so the recap and the card cannot disagree. */
+  readonly dotsText: string;
+  readonly placeText: string;
+  readonly fieldSize: number;
+  readonly rows: readonly RecapLiftRow[];
+  readonly bombedLift: LiftKind | null;
+  /** Why the result matters — only facts that exist on this meet. */
+  readonly whyLines: readonly string[];
+}
+
+/**
+ * `resultCard.ts`'s refusals, plus one of this module's own.
+ *
+ * `TOTAL_DISAGREES_WITH_CARD` is the client-is-a-renderer check (CLAUDE.md:
+ * "Local state is a cache of server truth, not the truth itself"). The card is
+ * built from the meet the CLIENT played; the total comes back from the server,
+ * which replayed the same attempts through the same engine. Those two numbers
+ * must be the same number, and if they ever are not, the honest thing is to
+ * refuse rather than to put the server's total next to a card printing a
+ * different one — which is what would happen if this module simply preferred
+ * one of them.
+ */
+export type MeetRecapError =
+  | ResultCardError
+  | { readonly code: 'TOTAL_DISAGREES_WITH_CARD'; readonly message: string };
+
+export type MeetRecapResult =
+  | { readonly ok: true; readonly recap: MeetRecap }
+  | { readonly ok: false; readonly error: MeetRecapError };
+
+/**
+ * THE ROW'S `bestKg` IS THE CARD'S AND THE CALL-OUT'S IS THE SERVER'S, and the
+ * two are deliberately not the same read. `bestText` is what the shareable card
+ * prints, so it comes off the card; the call-out is a claim about this lifter's
+ * history, so it is measured against the number the SERVER compared. Feeding the
+ * card's cell into the comparison would let a formatting change decide whether a
+ * lift is called a record. `buildMeetRecap` already refuses outright when the
+ * card and the server disagree about the total.
+ */
+function recapWhyLines(
+  state: MeetDayState,
+  confirmed: ConfirmedMeetFacts,
+): readonly string[] {
+  const lines: string[] = [];
+  const bomb = lastEventOfKind(state.ledger, 'bomb-out');
+  if (bomb !== null) {
+    lines.push(MEET_COPY.RECAP_WHY_BOMB);
+    return lines;
+  }
+  if (confirmed.placing.place !== null) {
+    lines.push(
+      MEET_COPY.RECAP_WHY_PLACE
+        .replace('{place}', String(confirmed.placing.place))
+        .replace('{field}', String(confirmed.placing.fieldSize)),
+    );
+  }
+  if (confirmed.isTotalPr && confirmed.previousBestTotalKg !== null) {
+    lines.push(MEET_COPY.RECAP_WHY_PR);
+  } else if (confirmed.totalKg !== null && confirmed.previousBestTotalKg === null) {
+    lines.push(MEET_COPY.RECAP_WHY_FIRST);
+  }
+  if (lastEventOfKind(state.ledger, 'qualification') !== null) {
+    lines.push(MEET_COPY.RECAP_WHY_QUALIFY);
+  }
+  if (lastEventOfKind(state.ledger, 'record') !== null) {
+    lines.push(MEET_COPY.RECAP_WHY_RECORD);
+  }
+  return lines;
+}
+
+function recapRowsFor(
+  state: MeetDayState,
+  card: ResultCard,
+  confirmed: ConfirmedMeetFacts,
+): readonly RecapLiftRow[] {
+  return LIFT_ORDER.map((lift, index) => {
+    const cardRow = card.rows[index];
+    const taken = attemptsOnLift(state, lift);
+    const isPr = confirmed.liftPrs[lift];
+    return {
+      lift,
+      label: MEET_COPY.LIFT_LABEL[lift],
+      attempts: ATTEMPT_NUMBERS.map(
+        (attemptNumber) => taken.find((attempt) => attempt.attemptNumber === attemptNumber) ?? null,
+      ),
+      bestKg: cardRow?.bestKg ?? null,
+      bestText: cardRow?.bestText ?? NO_VALUE_DISPLAY,
+      isPr,
+      callOut: liftCallOutFor(isPr, confirmed.bestByLiftKg[lift], confirmed.previousBestByLiftKg[lift]),
+      bombed: cardRow?.bombed ?? false,
+    };
+  });
+}
+
+/**
+ * What the recap's TOTAL reads at one point in its count-up.
+ *
+ * Here rather than in the component because it is a formatting rule about a
+ * competition total, and getting it wrong is a domain error rather than a
+ * layout one: a total is a half-kilo number (`612.5`), and a count-up that
+ * rounded its final frame would print `613` on the one screen in the game whose
+ * whole job is that number. So the counter shows whole kilos while it is
+ * MOVING — a ticking `612.5` is unreadable — and lands on the card's own text,
+ * which is `resultCard.ts`'s `formatWeight` and therefore exactly what the
+ * shareable card prints.
+ */
+/**
+ * What is on the bar for the attempt in progress, with the unit it is measured
+ * in — `"442.5 kg"`, or `"442.5 lb"` if this meet is run under pound rules.
+ *
+ * HERE RATHER THAN IN THE COMPONENT BECAUSE THE SUFFIX IS A FACT ABOUT THE MEET.
+ * `AttemptView.tsx` composed this string itself with a hardcoded `" kg"`, so on
+ * a meet created from `POUND_MEET_RULES` — an exported, validated configuration
+ * the engine runs end to end — the one screen showing the weight was printing a
+ * unit nobody had checked. A screen cannot know that; the meet does, and
+ * `meetLoadingRules` is the only way out of the opaque `MeetRules`, so the
+ * lookup belongs on this side of the boundary.
+ *
+ * THE NUMBER IS `resultCard.ts`'S `formatWeight`, so the bar on the platform and
+ * the bar on the shareable card are formatted by one function rather than two
+ * that could disagree about `442.50`.
+ *
+ * `''` WHEN THERE IS NO LIVE ATTEMPT, which is the state `AttemptView` already
+ * draws an empty frame for. A caller that renders it anyway shows nothing rather
+ * than `"NaN kg"`.
+ *
+ * IT DOES NOT CONVERT AND IT DOES NOT RULE. GDD §11's pound-meet question is
+ * open and this does not touch it: progression still refuses to record a pound
+ * meet, and this only stops the screen claiming kilograms while one is running.
+ *
+ * NOT THE WHOLE OF THE DEFECT IT CAME FROM. `MeetDayAttempt.weightKg` and
+ * `LiveAttempt.weightKg` are still bare numbers named `Kg` — the loop's own row
+ * types, not the wire — and other meet screens print them without a unit at all.
+ * Renaming those reaches screens outside this piece's scope; named rather than
+ * half-done.
+ */
+export function liveAttemptWeightText(state: MeetDayState): string {
+  const live = state.live;
+  if (live === null) return '';
+  const unit = meetLoadingRules(state.meet).unit;
+  return `${formatWeight(live.weightKg)} ${MEET_COPY.UNIT_LABEL[unit]}`;
+}
+
+export function countedTotalText(recap: MeetRecap, counted: number): string {
+  if (recap.totalKg === null) return recap.totalText;
+  if (!Number.isFinite(counted) || counted >= recap.totalKg) return recap.totalText;
+  return String(Math.round(counted));
+}
+
+/**
+ * Build the recap for a finished meet.
+ *
+ * WORKS FOR A BOMB-OUT TOO, and does not hide one: `resultCard.ts` prints no
+ * best on the bombed lift, no total, no DOTS and "DQ" in the place column, and
+ * this passes no `placing` at all in that case — supplying one for a lifter
+ * with no total is a refusal there (`PLACING_WITHOUT_TOTAL`) rather than a
+ * rounding-down to last. GDD §6.3's bomb-out screen shows the subset it needs.
+ */
+export function buildMeetRecap(state: MeetDayState, confirmed: ConfirmedMeetFacts): MeetRecapResult {
+  const entry = state.context.entry;
+  const definition = state.context.meet;
+  const place = confirmed.totalKg === null ? undefined : confirmed.placing.place ?? undefined;
+  const built = buildResultCard({
+    meet: {
+      federation: definition.federation,
+      name: definition.name,
+      dateIso: definition.dateIso,
+      town: definition.town,
+      state: definition.state,
+      country: definition.country,
+    },
+    lifter: {
+      name: entry.name,
+      sex: entry.sex,
+      bodyweightKg: entry.bodyweight.kilograms,
+      division: entry.division,
+      equipment: entry.equipment,
+    },
+    state: state.meet,
+    ...(place === undefined ? {} : { placing: place }),
+  });
+  if (!built.ok) return { ok: false, error: built.error };
+  const card = built.card;
+  if (card.totalKg !== confirmed.totalKg) {
+    return {
+      ok: false,
+      error: {
+        code: 'TOTAL_DISAGREES_WITH_CARD',
+        message:
+          `meetDay: the server recorded a total of ${String(confirmed.totalKg)} but this meet's card ` +
+          `reads ${String(card.totalKg)}. The recap will not print two totals for one meet.`,
+      },
+    };
+  }
+  const isFirstTotal = confirmed.totalKg !== null && confirmed.previousBestTotalKg === null;
+  return {
+    ok: true,
+    recap: {
+      card,
+      totalKg: confirmed.totalKg,
+      // From the card's own summary block, so the two cannot print different
+      // numbers for the same meet.
+      totalText: card.summary[0].value,
+      previousBestTotalKg: confirmed.previousBestTotalKg,
+      isTotalPr: confirmed.isTotalPr,
+      isFirstTotal,
+      prText: isFirstTotal
+        ? MEET_COPY.RECAP_FIRST_TOTAL
+        : confirmed.isTotalPr
+          ? MEET_COPY.RECAP_PR_TOTAL
+          : confirmed.totalKg === null
+            ? null
+            : MEET_COPY.RECAP_NO_PR,
+      dotsText: card.summary[1].value,
+      placeText: card.summary[2].value,
+      fieldSize: confirmed.placing.fieldSize,
+      rows: recapRowsFor(state, card, confirmed),
+      bombedLift: card.bombedLift,
+      whyLines: recapWhyLines(state, confirmed),
+    },
+  };
+}

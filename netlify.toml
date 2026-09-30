@@ -1,0 +1,11 @@
+# Production browser package; the native runtime has its own build commands.
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Navigation uses URL hashes. Missing assets must return a real 404.
+# A catch-all HTML redirect would disguise an unavailable image or script.

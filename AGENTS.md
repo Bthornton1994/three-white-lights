@@ -44,3 +44,4 @@ Automated proof does not replace human playtesting where feel, pacing, clarity, 
 ## Agent-native tooling
 
 When a task involves a CLI, MCP server, API connector, generated adapter, external integration, or agent skill, read .claude/skills/agent-native-tooling/SKILL.md before selecting or enabling it. That skill is review guidance only. It does not override VISION.md, docs/GDD.md, CLAUDE.md, or repository release rules, and it does not authorize installs, credentials, external actions, merges, deployments, or changes to player state.
+
