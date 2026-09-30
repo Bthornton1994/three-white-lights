@@ -228,6 +228,31 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     kind: 'feel',
     why: 'EMPIRE_TUNING — GDD §5, the idle layer: passive Gym Bucks and Training IQ rates, the offline-earnings cap, NPC output by tier and tenure, and the expansion cost curves. An idle economy is nothing BUT rates, and §5.1 asks for a 30-to-60-second check-in that rewards showing up without punishing a ten-hour gap — which is a balance point somebody settles by playing, not by deriving. Registered when Session B\'s §5 work merged: it is the file this run predicted could not pass the audit unregistered, and it arrived with 87 findings that were all this one row.',
   }),
+  'src/facility/empireTuning.ts': Object.freeze({
+    role: 'constants',
+    kind: 'feel',
+    why: 'Facility placement, service rates and the named structural and refusal classifications for the GDD §5 gym-management layer.',
+  }),
+  'web/src/interfaceTuning.ts': Object.freeze({
+    role: 'constants',
+    kind: 'feel',
+    why: 'Browser shell and gym geometry, refresh cadence, texture layout and decoration dimensions.',
+  }),
+  'web/src/gameplayTuning.ts': Object.freeze({
+    role: 'constants',
+    kind: 'feel',
+    why: 'Browser lift input delivery, pause protection, athlete atlas geometry and printed result-sheet layout.',
+  }),
+  'web/releaseConfig.ts': Object.freeze({
+    role: 'constants',
+    kind: 'local',
+    why: 'Development and preview ports and the unit-test watchdog limit; these are build infrastructure parameters.',
+  }),
+  'src/production/productionTuning.ts': Object.freeze({
+    role: 'constants',
+    kind: 'data',
+    why: 'Deployment-boundary request limits, replay bounds, UTC conversion and idempotency protocol parameters.',
+  }),
   'src/shell/shellTuning.ts': Object.freeze({
     role: 'constants',
     kind: 'feel',
@@ -250,6 +275,11 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
   }),
 
   // --- palettes ------------------------------------------------------------
+  'web/src/gameplayPalette.ts': Object.freeze({
+    role: 'palette',
+    kind: 'colour',
+    why: 'The browser printed result-sheet colour palette.',
+  }),
   'src/art/palette.ts': Object.freeze({
     role: 'palette',
     kind: 'colour',

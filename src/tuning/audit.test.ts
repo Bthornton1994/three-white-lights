@@ -961,6 +961,15 @@ describe('the registered allowlist', () => {
         // check-ins without punishing a 10-hour gap" is a balance point
         // somebody settles by playing.
         'src/empire/empireTuning.ts',
+        // Named homes for the facility and browser presentation; their TSX
+        // consumers remain subject to the literal scan.
+        'src/facility/empireTuning.ts',
+        'web/src/interfaceTuning.ts',
+        'web/src/gameplayTuning.ts',
+        'web/src/gameplayPalette.ts',
+        // Build infrastructure and deployment limits are not feel knobs.
+        'web/releaseConfig.ts',
+        'src/production/productionTuning.ts',
         'src/art/lifterSprite.ts',
         'src/art/palette.ts',
         'src/art/plates.ts',

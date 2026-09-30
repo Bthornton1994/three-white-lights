@@ -16,6 +16,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  references:
+    name: Original design reference archive
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Attach original design reference bytes
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-reference-${{ github.sha }}
+          path: docs/design/evidence/
+          if-no-files-found: error
+          retention-days: 14
+
   domain:
     name: Frozen mechanics and progression
     runs-on: ubuntu-latest
@@ -56,12 +70,17 @@ jobs:
       - name: Install browser runtime from its lock
         run: npm --prefix web ci
       - name: Strict browser typecheck
-        run: npm --prefix web run typecheck
+        run: |
+          npm --prefix web run typecheck
+          npm --prefix web run typecheck:test
       - name: Portable domain and browser-clock boundaries
         run: npm --prefix web run test:domain
       - name: Browser adapter unit tests
         run: npm --prefix web run test:unit:web
       - name: Build production assets
+        env:
+          VITE_SUPABASE_URL: https://browser-contract.invalid
+          VITE_SUPABASE_PUBLISHABLE_KEY: browser-contract-key
         run: npm --prefix web run build
       - name: Install browser
         working-directory: web
@@ -69,6 +88,7 @@ jobs:
       - name: Drive production build through normal controls
         env:
           PRODUCTION_BASE_REVISION: ${{ github.sha }}
+          BROWSER_EXPECT_AUTH: '1'
         run: npm --prefix web run test:browser
       - name: Attach browser evidence
         if: always()

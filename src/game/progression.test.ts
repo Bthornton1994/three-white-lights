@@ -257,15 +257,25 @@ const IS_TEST_FILE = /\.test\.tsx?$/;
 let vitestFilesMemo: readonly string[] | null = null;
 async function filesVitestRuns(): Promise<readonly string[]> {
   if (vitestFilesMemo !== null) return vitestFilesMemo;
-  const instance = await createVitest('test', { watch: false, run: true });
-  try {
-    const specifications = await instance.globTestSpecifications();
-    vitestFilesMemo = [...new Set(specifications.map((specification) => specification.moduleId))]
-      .map((moduleId) => path.relative(REPO_ROOT, moduleId).split(path.sep).join('/'))
-      .sort();
-  } finally {
-    await instance.close();
+  const moduleIds = new Set<string>();
+  for (const relativeConfig of ['vitest.config.ts', 'web/vitest.config.ts']) {
+    const instance = await createVitest('test', {
+      root: REPO_ROOT,
+      config: path.join(REPO_ROOT, relativeConfig),
+      watch: false,
+      run: true,
+    });
+    try {
+      for (const specification of await instance.globTestSpecifications()) {
+        moduleIds.add(specification.moduleId);
+      }
+    } finally {
+      await instance.close();
+    }
   }
+  vitestFilesMemo = [...moduleIds]
+    .map((moduleId) => path.relative(REPO_ROOT, moduleId).split(path.sep).join('/'))
+    .sort();
   return vitestFilesMemo;
 }
 
@@ -513,20 +523,28 @@ let boundaryProgramMemo: BoundaryProgram | null = null;
 function boundaryProgram(): BoundaryProgram {
   if (boundaryProgramMemo !== null) return boundaryProgramMemo;
 
-  // THE ROOT SET. `parsed.fileNames` is what `tsconfig.json`'s own
-  // `include`/`exclude` resolve to — `App.tsx`, `index.ts`, `vitest.config.ts`
-  // and all of `src/` — and it is the same list `tsc --noEmit` compiles. The
-  // previous version of this function computed `parsed` for its `options`,
-  // discarded `fileNames`, and hand-walked `src/` instead; see the header note
-  // above for the route that survived in the gap.
-  const configPath = path.join(REPO_ROOT, 'tsconfig.json');
-  const config = ts.readConfigFile(configPath, ts.sys.readFile).config as unknown;
-  const parsed = ts.parseJsonConfigFileContent(config, ts.sys, REPO_ROOT);
-  if (parsed.fileNames.length === 0) {
-    throw new Error('tsconfig.json resolved to no files — the route pin would pass vacuously');
+  // Each package compiles its own strict project. The boundary inventory
+  // takes the union of their actual TypeScript inputs so adding a browser or
+  // edge package cannot make its progression routes disappear from this scan.
+  const configurations = ['tsconfig.json', 'web/tsconfig.json', 'web/tsconfig.test.json'];
+  if (existsSync(path.join(REPO_ROOT, 'supabase/tsconfig.json'))) {
+    configurations.push('supabase/tsconfig.json');
   }
-  const program = ts.createProgram([...parsed.fileNames], {
-    ...parsed.options,
+  const projects = configurations.map((relativeConfig) => {
+    const configPath = path.join(REPO_ROOT, relativeConfig);
+    const result = ts.readConfigFile(configPath, ts.sys.readFile);
+    if (result.error !== undefined) throw new Error(`Cannot read ${relativeConfig}`);
+    const parsed = ts.parseJsonConfigFileContent(result.config as unknown, ts.sys, path.dirname(configPath));
+    if (parsed.errors.length !== 0 || parsed.fileNames.length === 0) {
+      throw new Error(`${relativeConfig} did not resolve to a valid nonempty source inventory`);
+    }
+    return parsed;
+  });
+  const native = projects[0];
+  if (native === undefined) throw new Error('The native source project is missing');
+  const fileNames = [...new Set(projects.flatMap((project) => project.fileNames))];
+  const program = ts.createProgram(fileNames, {
+    ...native.options,
     noEmit: true,
     skipLibCheck: true,
   });
