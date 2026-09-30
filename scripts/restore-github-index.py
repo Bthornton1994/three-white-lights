@@ -1,8 +1,10 @@
 """Rebuild a local Git index from authenticated GitHub API metadata, without a remote write.
 
-Usage: python3 scripts/restore-github-index.py metadata.json [--refresh]
+Usage: python3 scripts/restore-github-index.py metadata.json [--refresh | --objects-only]
 metadata.json contains {head, commit, tree}; commit/tree are Git database API responses.
 Missing tracked evidence stays in the index and is reported as unavailable.
+--objects-only restores an actual historic commit/tree for read-only freeze diffs,
+without changing HEAD, the index, or files in the working tree.
 """
 import datetime
 import hashlib
@@ -19,7 +21,8 @@ commit = metadata['commit']
 tree = metadata['tree']
 if commit['sha'] != head or tree['sha'] != commit['tree']['sha'] or tree.get('truncated'):
     raise SystemExit('The source API identity is incomplete or inconsistent')
-if (repository / '.git').exists() and '--refresh' not in sys.argv:
+objects_only = '--objects-only' in sys.argv
+if (repository / '.git').exists() and '--refresh' not in sys.argv and not objects_only:
     raise SystemExit('Refusing to replace an existing Git checkout')
 if not (repository / '.git').exists():
     subprocess.run(['git', 'init', '--initial-branch=codex/production-iron-amber'], cwd=repository, check=True)
@@ -85,11 +88,12 @@ for entry in entries:
     present.append(entry['path'])
     if actual != entry['sha']:
         modified.append(entry['path'])
-(git_directory / 'shallow').write_text(head + '\n')
-subprocess.run(['git', 'update-ref', 'HEAD', head], cwd=repository, check=True)
-subprocess.run(['git', 'read-tree', tree['sha']], cwd=repository, check=True)
+if not objects_only:
+    (git_directory / 'shallow').write_text(head + '\n')
+    subprocess.run(['git', 'update-ref', 'HEAD', head], cwd=repository, check=True)
+    subprocess.run(['git', 'read-tree', tree['sha']], cwd=repository, check=True)
 # A recovered index may retain unavailable historic blob objects. Reporting
 # separate additions/deletions needs no rename comparison against those bytes.
 subprocess.run(['git', 'config', 'status.renames', 'false'], cwd=repository, check=True)
-report = {'head': head, 'tree': tree['sha'], 'present': len(present), 'missing': missing, 'modified': modified}
+report = {'head': head, 'tree': tree['sha'], 'objectsOnly': objects_only, 'present': len(present), 'missing': missing, 'modified': modified}
 print(json.dumps(report, indent=2))

@@ -723,7 +723,7 @@ describe('the watchlist', () => {
     // is actually cited and it can be neither.
     const domain = A_WATCHED_DOMAIN;
     if (domain === undefined) throw new Error('no dotted project entry on the watchlist');
-    expect(findWatchedNames(domin.name).length).toBeGreaterThan(0);
+    expect(findWatchedNames(domain.name).length).toBeGreaterThan(0);
 
     const bare = domain.name.slice(0, domain.name.indexOf('.'));
     expect(bare.length).toBeGreaterThan(3);

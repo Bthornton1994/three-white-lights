@@ -31,7 +31,7 @@ const ALLOWED_GHSA = Object.freeze([
 ]);
 
 const REQUIRED_OVERRIDES = Object.freeze({
-  'js-yaml': '4.3.1',
+  'js-yaml': '4.3.2',
   nanoid: '3.3.18',
 });
 

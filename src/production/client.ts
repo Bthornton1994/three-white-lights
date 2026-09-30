@@ -129,7 +129,13 @@ export async function createProductionClient(config?: ProductionConfig): Promise
     if (epoch !== authEpoch) throw new Error('This account request was superseded.');
     if (reply.opening?.wire && Number.isSafeInteger(reply.opening.revision) && Number.isSafeInteger(reply.opening.serverDay) && Number.isSafeInteger(reply.opening.serverNowMs)) {
       if (opening && reply.opening.revision < opening.revision) throw new Error('Newer account progress has already loaded.');
-      opening = sealServerValue(reply.opening); openingReceivedAt = performance.now();
+      const receivedAt = performance.now();
+      const previousNowMs = opening ? Math.floor(opening.serverNowMs + Math.max(0, receivedAt - openingReceivedAt)) : reply.opening.serverNowMs;
+      if (opening && reply.opening.revision === opening.revision && (reply.opening.serverNowMs < opening.serverNowMs || reply.opening.serverDay < utcAccountDay(previousNowMs))) throw new Error('Newer account time has already loaded.');
+      opening = sealServerValue(reply.opening);
+      // Preserve the monotonic UTC estimate when an accepted acknowledgement
+      // was generated before its network response arrived.
+      openingReceivedAt = receivedAt - Math.max(0, previousNowMs - reply.opening.serverNowMs);
     }
     if (!response.ok) {
       if (response.status === PRODUCTION_LIMITS.unauthorizedStatus) clearSession();
@@ -152,7 +158,7 @@ export async function createProductionClient(config?: ProductionConfig): Promise
   const generatedId = () => crypto.randomUUID();
   const client: ProductionClient = {
     get user() { return session?.user ?? null; },
-    get serverDay() { return opening?.serverDay ?? null; },
+    get serverDay() { return opening ? utcAccountDay(Math.floor(opening.serverNowMs + Math.max(0, performance.now() - openingReceivedAt))) : null; },
     port: {
       openingSnapshot: () => requireOpening().wire,
       openingProfile: () => requireOpening().profile,

@@ -33,6 +33,18 @@ beforeEach(async () => { await db.exec('reset role; truncate public.twl_accounts
 afterAll(async () => { await db?.close(); });
 
 describe('actual PostgreSQL account and receipt transaction', () => {
+  it('reads account revision and receipt through one joined SQL statement snapshot', async () => {
+    // This verifies the actual deployed routine's construction. The environment
+    // has no multi-connection Postgres server; that interleaving is not claimed.
+    const definition = await scalar<{ language: string; source: string }>("select jsonb_build_object('language', language.lanname, 'source', routine.prosrc) as value from pg_proc routine join pg_language language on language.oid=routine.prolang where routine.oid='public.twl_read_account(uuid,text)'::regprocedure");
+    expect(definition.language).toBe('sql');
+    const statements = definition.source.replace(/--[^\n]*/g, '').trim().split(';').filter(statement => statement.trim());
+    expect(statements).toHaveLength(1);
+    expect(statements[0]).toMatch(/left join public\.twl_accounts/i); expect(statements[0]).toMatch(/left join public\.twl_request_receipts/i);
+    const account = await seed(); await repository.commit(ALICE, 0, 'snapshot', HASH, account.state, { kind: 'saved' });
+    const read = await repository.read(ALICE, 'snapshot'); expect(read.revision).toBe(1); expect(read.receipt?.response).toEqual({ kind: 'saved' });
+  });
+
   it('enables RLS and denies browser roles both table access and every authority RPC', async () => {
     const rows = await db.query<{ relrowsecurity: boolean }>("select relrowsecurity from pg_class where oid in ('public.twl_accounts'::regclass, 'public.twl_request_receipts'::regclass)");
     expect(rows.rows).toHaveLength(2); expect(rows.rows.every(row => row.relrowsecurity)).toBe(true);

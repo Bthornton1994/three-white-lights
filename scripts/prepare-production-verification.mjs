@@ -5,6 +5,16 @@ import { chmod, copyFile, lstat, mkdir, readFile, readlink, symlink, unlink, wri
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const argumentsToCheck = process.argv.slice(2);
+if (argumentsToCheck.includes('--help')) {
+  console.log('Usage: node scripts/prepare-production-verification.mjs [--browser]');
+  console.log('Installs the committed native and web locks in disposable tooling directories.');
+  process.exit(0);
+}
+if (argumentsToCheck.some(argument => argument !== '--browser')) {
+  throw new Error('Only --browser and --help are supported');
+}
+
 const repository = fileURLToPath(new URL('..', import.meta.url));
 const tooling = path.resolve(repository, '../tooling');
 const browserPin = Object.freeze({

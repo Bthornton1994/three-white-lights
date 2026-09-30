@@ -121,4 +121,17 @@ describe('GoTrue client and account save lifecycle', () => {
     const saves = mock.calls.filter(call => call.body.kind === 'facility-action'); expect(saves[0]!.body.expectedRevision).toBe(1); expect(saves[1]!.body.expectedRevision).toBe(2);
     phase = 'old'; await expect(client.refresh()).rejects.toThrow(/Newer account progress/);
   });
+
+  it('refuses a late same-revision bootstrap across UTC three AM and keeps newer acknowledgements from rolling the day back', async () => {
+    const before = Date.UTC(2026, 8, 30, 2, 59, 59); const after = before + 2_000;
+    const state = initialProductionState(before); let phase = 'after'; let monotonic = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => monotonic);
+    const mock = mockBackend(call => call.body.kind === 'bootstrap' ? reply({ opening: productionOpening(state, phase === 'ack' ? 8 : 7, phase === 'after' ? after : before), response: { kind: 'opened' } }) : undefined);
+    const client = await clientFor(mock.request); await client.signIn('alice@twl.test', 'fixture-password');
+    const currentDay = client.port.currentServerDay(); phase = 'late'; monotonic = 1_000;
+    await expect(client.refresh()).rejects.toThrow(/Newer account time/);
+    expect(client.port.currentServerDay()).toBe(currentDay); expect(client.serverDay).toBe(currentDay);
+    phase = 'ack'; monotonic = 2_000; await client.refresh();
+    expect(client.port.currentServerDay()).toBe(currentDay); expect(client.serverDay).toBe(currentDay);
+  });
 });

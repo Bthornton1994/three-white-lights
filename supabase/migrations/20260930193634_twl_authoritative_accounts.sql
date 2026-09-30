@@ -21,19 +21,15 @@ grant select, insert, update, delete on public.twl_accounts to service_role;
 grant select, insert, delete on public.twl_request_receipts to service_role;
 
 create function public.twl_read_account(p_user_id uuid, p_request_id text default null)
-returns jsonb language plpgsql security invoker set search_path = '' as $$
-declare
-  account public.twl_accounts%rowtype;
-  receipt public.twl_request_receipts%rowtype;
-  now_ms bigint := floor(extract(epoch from clock_timestamp()) * 1000)::bigint;
-begin
-  select * into account from public.twl_accounts where user_id = p_user_id;
-  if p_request_id is not null then
-    select * into receipt from public.twl_request_receipts where user_id = p_user_id and request_id = p_request_id;
-  end if;
-  return jsonb_build_object('state', account.state, 'revision', coalesce(account.revision, 0), 'nowMs', now_ms,
-    'receipt', case when receipt.request_id is null then null else jsonb_build_object('payloadHash', receipt.payload_hash, 'response', receipt.response) end);
-end;
+returns jsonb language sql security invoker set search_path = '' as $$
+  -- Account state, revision and receipt use one statement's MVCC snapshot.
+  -- Separate VOLATILE selects could see a new receipt with an older revision.
+  select jsonb_build_object('state', account.state, 'revision', coalesce(account.revision, 0),
+    'nowMs', floor(extract(epoch from clock_timestamp()) * 1000)::bigint,
+    'receipt', case when receipt.request_id is null then null else jsonb_build_object('payloadHash', receipt.payload_hash, 'response', receipt.response) end)
+  from (values (p_user_id)) as identity(user_id)
+  left join public.twl_accounts as account on account.user_id = identity.user_id
+  left join public.twl_request_receipts as receipt on receipt.user_id = account.user_id and receipt.request_id = p_request_id;
 $$;
 
 create function public.twl_initialize_account(p_user_id uuid, p_state jsonb)
