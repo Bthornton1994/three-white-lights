@@ -31,7 +31,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CareerServerPort } from '../game/careerClient';
 import { asProposalId, type ProgressionCache } from '../game/progression';
 import { openingCache } from '../game/sessionClient';
-import { streakDayFromLocalWallClock, type LocalWallClock, type StreakDay } from '../game/streak';
+import { asStreakDay, streakDayFromLocalWallClock, type LocalWallClock, type StreakDay } from '../game/streak';
 import {
   cacheAfterChoiceResponse,
   cacheWithChoicePending,
@@ -75,11 +75,11 @@ export interface CareerLoop {
   readonly choose: (id: CareerFederationId) => void;
 }
 
-export function useCareer(port: CareerServerPort, active: boolean): CareerLoop {
+export function useCareer(port: CareerServerPort, active: boolean, dayClock?: () => number): CareerLoop {
   const [cache, setCache] = useState<ProgressionCache>(() => openingCache(port));
   const [refusal, setRefusal] = useState<string | null>(null);
   const [today, setToday] = useState<StreakDay>(() =>
-    streakDayFromLocalWallClock(nowWallClock()),
+    dayClock === undefined ? streakDayFromLocalWallClock(nowWallClock()) : asStreakDay(dayClock()),
   );
   const proposalSeq = useRef<number>(0);
 
@@ -89,9 +89,9 @@ export function useCareer(port: CareerServerPort, active: boolean): CareerLoop {
   // is pending — the settle handler below owns the cache until it answers.
   useEffect(() => {
     if (!active) return;
-    setToday(streakDayFromLocalWallClock(nowWallClock()));
+    setToday(dayClock === undefined ? streakDayFromLocalWallClock(nowWallClock()) : asStreakDay(dayClock()));
     setCache((current) => (current.status === 'pending' ? current : openingCache(port)));
-  }, [active, port]);
+  }, [active, port, dayClock]);
 
   // The latest cache, for the tap handler. A callback keyed on `cache` would
   // be rebuilt every settle; a ref reads the same truth without the churn, and

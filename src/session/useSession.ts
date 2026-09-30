@@ -166,6 +166,7 @@ export function useSession(
   preview?: SessionPreviewFrame,
   /** The server. Injected so a test can run one that DISAGREES with the client. */
   serverPort?: SessionServerPort,
+  dayClock?: () => number,
 ): SessionLoop {
   const portRef = useRef<SessionServerPort | null>(null);
   if (portRef.current === null) {
@@ -177,11 +178,11 @@ export function useSession(
 
   const buildSession = useCallback(
     (cache: ProgressionCache): SessionState => {
-      const day = streakDayFromLocalWallClock(nowWallClock());
+      const day = dayClock?.() ?? streakDayFromLocalWallClock(nowWallClock());
       const lift = liftForDay(day);
       return createSession(sessionContextFrom(cache, port.sessionBrief(day, lift), day, lift));
     },
-    [port],
+    [port, dayClock],
   );
 
   const [liveState, setLiveState] = useState<SessionState>(() => buildSession(liveCache));

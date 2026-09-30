@@ -166,6 +166,7 @@ export function useMeetDay(
   initial?: MeetDayState,
   frozen: boolean = false,
   entry: KilogramMeetEntry | undefined = MEET_ENTRY,
+  dayClock?: () => number,
 ): MeetDayLoop {
   const athlete = entry ?? MEET_ENTRY;
   const [cache, setCache] = useState<ProgressionCache>(() => openingCache(serverPort));
@@ -180,7 +181,7 @@ export function useMeetDay(
    * The meet is built exactly twice in its life: at mount and at `restart`.
    */
   const buildMeet = useCallback((): MeetDayState => {
-    const day = streakDayFromLocalWallClock(nowWallClock());
+    const day = dayClock?.() ?? streakDayFromLocalWallClock(nowWallClock());
     const facts = meetDayFactsFromCache(openingCache(serverPort), day, SESSION_TUNING.STARTING_E1RM);
     const context: MeetDayContext = {
       day: facts.day,
@@ -194,7 +195,7 @@ export function useMeetDay(
       fatigue: serverPort.meetBrief(day).fatigue,
     };
     return createMeetDay(context);
-  }, [serverPort, meet, athlete]);
+  }, [serverPort, meet, athlete, dayClock]);
 
   const [state, setState] = useState<MeetDayState>(() => initial ?? buildMeet());
   const [applied, setApplied] = useState<RecordedMeet | null>(null);

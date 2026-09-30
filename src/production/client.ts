@@ -2,11 +2,14 @@ import type { LocalAppServerPort } from '../session/localSessionServer';
 import { briefFatigueFor } from '../game/sessionClient';
 import type { MeetDefinition } from '../game/meetTuning';
 import type { ProductionEnvelope, ProductionOpening, FacilityPort } from './contracts';
+import { PRODUCTION_LIMITS } from './productionTuning';
+import { utcAccountDay } from './clock';
+import type { LiftEvidence, LiftEvidencePort, TrainingEvidenceContext, TrainingLiftEvidence, MeetLiftEvidence } from './liftEvidence';
 export type { FacilityAction, FacilityResponse, FacilityPort } from './contracts';
 
 export interface ProductionUser { readonly id: string; readonly email?: string }
 export interface ProductionClient {
-  readonly port: LocalAppServerPort & FacilityPort;
+  readonly port: LocalAppServerPort & FacilityPort & LiftEvidencePort;
   readonly user: ProductionUser | null;
   readonly serverDay: number | null;
   signIn(email: string, password: string): Promise<void>;
@@ -35,6 +38,11 @@ function message(error: unknown): string {
   return error instanceof Error ? error.message : 'The account service could not be reached. Retry when connected.';
 }
 
+function evidenceCopy(evidence: LiftEvidence): LiftEvidence {
+  const config = evidence.config;
+  return Object.freeze({ config: Object.freeze({ kind: config.kind, seed: config.seed, loadRatio: config.loadRatio, ...(config.feel ? { feel: config.feel } : {}), ...(config.moment ? { moment: Object.freeze({ workSetsCompleted: config.moment.workSetsCompleted, repsCompletedInSet: config.moment.repsCompletedInSet }) } : {}) }), events: Object.freeze(evidence.events.map(event => Object.freeze({ tick: event.tick, kind: event.kind }))), resolvedTick: evidence.resolvedTick });
+}
+
 /** Missing configuration exposes account unavailability; it never creates a local account. */
 export async function createProductionClient(config?: ProductionConfig): Promise<ProductionClient | null> {
   const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
@@ -46,22 +54,33 @@ export async function createProductionClient(config?: ProductionConfig): Promise
     throw new Error('Account service configuration requires HTTPS.');
   }
   if (publishableKey.startsWith('sb_secret_')) throw new Error('A server secret cannot be used in the browser.');
+  if (publishableKey.split('.').length === PRODUCTION_LIMITS.jwtSegments) {
+    try {
+      const claims = JSON.parse(atob(publishableKey.split('.')[1]!.replaceAll('-', '+').replaceAll('_', '/'))) as { role?: string };
+      if (claims.role !== 'anon') throw new Error('Invalid public key role');
+    } catch { throw new Error('Account service public key configuration is invalid.'); }
+  }
   const base = url.replace(/\/$/, '');
   const request = config?.fetch ?? fetch;
   const storage = config?.storage === undefined ? (typeof localStorage === 'undefined' ? null : localStorage) : config.storage;
   const storageKey = `twl.auth.${parsedUrl.hostname}`;
   let session: AuthSession | null = null;
   let opening: ProductionOpening | null = null;
+  let openingReceivedAt = performance.now();
+  let authEpoch = 0;
+  let trainingContext: TrainingEvidenceContext | null = null;
+  const trainingEvidence = new Map<string, TrainingLiftEvidence>();
+  const meetEvidence = new Map<string, MeetLiftEvidence>();
   let refreshInFlight: Promise<void> | null = null;
   const listeners = new Set<() => void>();
   const notify = () => { for (const listener of listeners) listener(); };
-  const clearSession = () => { session = null; opening = null; storage?.removeItem(storageKey); notify(); };
+  const clearSession = () => { authEpoch += 1; session = null; opening = null; trainingContext = null; trainingEvidence.clear(); meetEvidence.clear(); storage?.removeItem(storageKey); notify(); };
   const saveSession = (reply: AuthReply) => {
     if (!reply.access_token || !reply.refresh_token || !reply.user?.id) throw new Error('The account service returned an incomplete session.');
     session = {
       access_token: reply.access_token,
       refresh_token: reply.refresh_token,
-      expires_at: reply.expires_at ?? Math.floor(Date.now() / 1000) + (reply.expires_in ?? 0),
+      expires_at: reply.expires_at ?? Math.floor(Date.now() / PRODUCTION_LIMITS.millisecondsPerSecond) + (reply.expires_in ?? 0),
       user: { id: reply.user.id, ...(reply.user.email ? { email: reply.user.email } : {}) },
     };
     storage?.setItem(storageKey, JSON.stringify(session));
@@ -71,19 +90,20 @@ export async function createProductionClient(config?: ProductionConfig): Promise
       method: body === undefined ? 'GET' : 'POST',
       headers: { apikey: publishableKey, 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(PRODUCTION_LIMITS.authTimeoutMs),
     });
-    const reply = await response.json() as AuthReply;
+    const reply = response.status === PRODUCTION_LIMITS.noContentStatus ? {} : await response.json() as AuthReply;
     if (!response.ok) throw new Error(reply.error_description ?? reply.msg ?? reply.message ?? `Account request failed (${response.status}).`);
     return reply;
   };
   const ensureToken = async (): Promise<string> => {
     if (!session) throw new Error('Sign in to save account progress.');
-    if (session.expires_at * 1000 <= Date.now() + 60_000) {
+    if (session.expires_at * PRODUCTION_LIMITS.millisecondsPerSecond <= Date.now() + PRODUCTION_LIMITS.refreshBeforeExpiryMs) {
       if (!refreshInFlight) {
         const refreshToken = session.refresh_token;
+        const epoch = authEpoch;
         refreshInFlight = authRequest('token?grant_type=refresh_token', { refresh_token: refreshToken })
-          .then(saveSession).catch(error => { clearSession(); throw error; }).finally(() => { refreshInFlight = null; });
+          .then(reply => { if (epoch !== authEpoch) throw new Error('This account request was superseded.'); saveSession(reply); }).catch(error => { if (epoch === authEpoch) clearSession(); throw error; }).finally(() => { refreshInFlight = null; });
       }
       await refreshInFlight;
     }
@@ -92,17 +112,23 @@ export async function createProductionClient(config?: ProductionConfig): Promise
   };
   const invoke = async <T>(command: Record<string, unknown>): Promise<T> => {
     const token = await ensureToken();
+    const epoch = authEpoch;
     const response = await request(`${base}/functions/v1/twl-api`, {
       method: 'POST',
       headers: { apikey: publishableKey, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(command), signal: AbortSignal.timeout(20_000),
+      body: JSON.stringify(command), signal: AbortSignal.timeout(PRODUCTION_LIMITS.apiTimeoutMs),
     });
     const reply = await response.json() as ProductionEnvelope<T> & { message?: string };
+    if (epoch !== authEpoch) throw new Error('This account request was superseded.');
+    if (reply.opening?.wire && Number.isSafeInteger(reply.opening.revision) && Number.isSafeInteger(reply.opening.serverDay) && Number.isSafeInteger(reply.opening.serverNowMs)) {
+      if (opening && reply.opening.revision < opening.revision) throw new Error('Newer account progress has already loaded.');
+      opening = reply.opening; openingReceivedAt = performance.now();
+    }
     if (!response.ok) {
-      if (response.status === 401) clearSession();
+      if (response.status === PRODUCTION_LIMITS.unauthorizedStatus) clearSession();
       throw new Error(reply.message ?? `Progress could not be saved (${response.status}).`);
     }
-    if (!reply.opening?.wire || !Number.isSafeInteger(reply.opening.revision) || !Number.isSafeInteger(reply.opening.serverDay)) {
+    if (!reply.opening?.wire || !Number.isSafeInteger(reply.opening.revision) || !Number.isSafeInteger(reply.opening.serverDay) || !Number.isSafeInteger(reply.opening.serverNowMs)) {
       throw new Error('The account service returned an invalid progression response.');
     }
     opening = reply.opening;
@@ -126,17 +152,21 @@ export async function createProductionClient(config?: ProductionConfig): Promise
       openingFacility: () => requireOpening().facility,
       sessionBrief: (day) => ({ fatigue: briefFatigueFor(requireOpening().fatigue, day) }),
       meetBrief: (day) => ({ fatigue: briefFatigueFor(requireOpening().fatigue, day) }),
+      currentServerDay: () => utcAccountDay(Math.floor(requireOpening().serverNowMs + Math.max(0, performance.now() - openingReceivedAt))),
+      setTrainingEvidenceContext: context => { trainingContext = Object.freeze({ targetRpe: context.targetRpe, checkIn: Object.freeze({ sleep: context.checkIn.sleep, soreness: context.checkIn.soreness, motivation: context.checkIn.motivation }) }); },
+      setTrainingLiftEvidence: (setIndex, repIndex, evidence) => { trainingEvidence.set(`${setIndex}:${repIndex}`, { setIndex, repIndex, evidence: evidenceCopy(evidence) }); },
+      resetTrainingEvidence: () => { trainingContext = null; trainingEvidence.clear(); },
+      setMeetLiftEvidence: (lift, ordinal, evidence) => { meetEvidence.set(`${lift}:${ordinal}`, { lift, ordinal, evidence: evidenceCopy(evidence) }); },
+      resetMeetEvidence: () => { meetEvidence.clear(); },
       async recordTrainingSession(day, proposal, proposalId) {
-        try { return await mutate('record-training-session', { day, proposal }, proposalId); }
+        try { return await mutate('record-training-session', { day, proposal, context: trainingContext, evidence: [...trainingEvidence.values()].sort((a, b) => a.setIndex - b.setIndex || a.repIndex - b.repIndex) }, proposalId); }
         catch (error) { return { kind: 'refused', message: message(error) }; }
       },
       async recordMeetResult(day, meet, proposal, proposalId) {
-        try { return await mutate('record-meet-result', { day, meetId: meet.id, proposal }, `${meet.id}:${proposalId}`); }
-        catch (error) { return { kind: 'refused', error: { code: 'BAD_DAY', message: message(error) } }; }
+        return mutate('record-meet-result', { day, meetId: meet.id, proposalId, proposal, evidence: [...meetEvidence.values()] }, `${meet.id}:${proposalId}`);
       },
       async chooseFederation(proposal, proposalId) {
-        try { return await mutate('choose-federation', { proposal }, proposalId); }
-        catch (error) { return { kind: 'refused', error: { code: 'UNKNOWN_FEDERATION', message: message(error) } }; }
+        return mutate('choose-federation', { proposal }, proposalId);
       },
       async createProfile(draft, federationId) {
         try { const reply = await mutate<Awaited<ReturnType<LocalAppServerPort['createProfile']>>>('create-profile', { draft, federationId }, generatedId()); notify(); return reply; }
@@ -156,19 +186,24 @@ export async function createProductionClient(config?: ProductionConfig): Promise
       },
     },
     async signIn(email, password) {
-      saveSession(await authRequest('token?grant_type=password', { email, password }));
-      try { await client.refresh(); } catch (error) { clearSession(); throw error; }
+      clearSession(); const epoch = authEpoch;
+      const reply = await authRequest('token?grant_type=password', { email, password });
+      if (epoch !== authEpoch) throw new Error('This sign-in was superseded.');
+      saveSession(reply);
+      try { await client.refresh(); } catch (error) { if (epoch === authEpoch) clearSession(); throw error; }
     },
     async signUp(email, password) {
+      clearSession(); const epoch = authEpoch;
       const reply = await authRequest('signup', { email, password });
+      if (epoch !== authEpoch) throw new Error('This sign-up was superseded.');
       if (!reply.access_token) return { confirmationRequired: true };
       saveSession(reply);
-      try { await client.refresh(); } catch (error) { clearSession(); throw error; }
+      try { await client.refresh(); } catch (error) { if (epoch === authEpoch) clearSession(); throw error; }
       return { confirmationRequired: false };
     },
     async signOut() {
-      try { if (session) await authRequest('logout?scope=local', {}, await ensureToken()); }
-      finally { clearSession(); }
+      const token = session?.access_token; clearSession();
+      if (token) await authRequest('logout?scope=local', {}, token);
     },
     async refresh() { if (session) await invoke({ kind: 'bootstrap' }); notify(); },
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
