@@ -148,6 +148,15 @@ async function renderAudit(page) {
   return details;
 }
 
+async function visibleLiftView(page) {
+  return page.locator('.lift-player').evaluate(element => ({
+    phase: element.getAttribute('data-phase'),
+    outcome: element.classList.contains('lift-player--miss') ? 'miss'
+      : element.classList.contains('lift-player--grind') ? 'grind'
+        : element.classList.contains('lift-player--good-lift') ? 'good-lift' : null,
+  }));
+}
+
 async function shot(page, name) {
   await page.screenshot({ path: path.join(evidence, `${name}.png`), fullPage: true, animations: 'disabled' });
 }
@@ -280,18 +289,48 @@ async function mobileStory() {
   });
 
   await check('phone: a genuine failed rep exposes the lighter-target retry through the played session', async () => {
-    // Regrip and hold past depth: the accepted lift engine produces this miss.
-    const control = page.locator('.lift-control');
-    await control.focus();
-    await page.keyboard.down('Space');
-    await page.getByTestId('session-close-out').waitFor({ timeout: 12_000 });
-    await page.keyboard.up('Space');
+    const match = (await page.locator('.training-set-number').innerText()).match(/Set\s*(\d+)\s*\/\s*(\d+)/);
+    assert.ok(match, 'The live session does not show its prescribed set count');
+    const firstSet = Number(match[1]);
+    const workSets = Number(match[2]);
+    const failedSets = [];
+    while (await page.getByTestId('training-screen').getAttribute('data-phase') !== 'close-out') {
+      const phase = await page.getByTestId('training-screen').getAttribute('data-phase');
+      if (phase === 'rest') {
+        await (await visibleButton(page, 'Next set')).click();
+        continue;
+      }
+      assert.equal(phase, 'set', `Unexpected training phase while finishing failed sets: ${phase}`);
+      const control = page.locator('.lift-control');
+      await control.waitFor({ state: 'visible' });
+      await waitUntil(() => control.isEnabled(), 'The failed-rep control never became ready.');
+      const bounds = await control.boundingBox();
+      assert.ok(bounds && bounds.width >= 40 && bounds.height >= 40, 'The failed-rep control is not usable.');
+      await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+      await page.mouse.down();
+      try {
+        await waitUntil(async () => (await visibleLiftView(page)).phase === 'DESCENT', 'The squat did not start through its visible lift control.');
+      } finally {
+        await page.mouse.up();
+      }
+      let resolvedLift = null;
+      await waitUntil(async () => {
+        resolvedLift = await visibleLiftView(page);
+        return resolvedLift.phase === 'RESOLVED';
+      }, 'The above-depth squat did not resolve through the lift engine.', 15_000);
+      assert.equal(resolvedLift?.outcome, 'miss', 'Releasing above legal depth should produce a genuine missed rep.');
+      failedSets.push((await page.locator('.training-set-number').innerText()).replace(/\s+/g, ' ').trim());
+      await waitUntil(async () => ['rest', 'close-out'].includes(await page.getByTestId('training-screen').getAttribute('data-phase')), 'The missed rep did not end its work set.');
+    }
+    assert.equal(failedSets.length, workSets - firstSet + 1, 'Each remaining work set should end on its played missed rep.');
+    await page.getByTestId('session-close-out').waitFor();
     const retry = await visibleButton(page, /^(Try a lighter target|Try again at this target)$/);
     await shot(page, '07-phone-failed-rep');
     await retry.click();
     await page.getByTestId('session-rpe-6').waitFor();
     await (await visibleButton(page, 'Return to the gym')).click();
     await noProtectedPracticeStorage(page);
+    return { firstSet, workSets, remainingSetsMissed: failedSets };
   });
 
   await check('phone: auth validates input, surfaces a refused request, and permits an explicit retry', async () => {
