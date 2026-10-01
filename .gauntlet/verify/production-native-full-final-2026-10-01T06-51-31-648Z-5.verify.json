@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "production-native-full-final-2026-10-01T06-51-31-648Z-5",
   "label": "production-native-full-final",
   "command": [
@@ -49,5 +49,8 @@
     "platform": "linux",
     "procAvailable": true
   },
-  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass."
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "exitCode": 1,
+  "finishedAtIso": "2026-10-01T06:55:21.705Z",
+  "elapsedSeconds": 230.1
 }

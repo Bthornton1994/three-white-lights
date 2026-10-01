@@ -1,0 +1,7 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+JSON report written to /workspace/scratch/4fc55cb00998/three-white-lights/.gauntlet/evidence/production/native-full-final.json
+watchdog: verify sync OFF (VERIFY_SYNC_REMOTE=off) — this record is LOCAL ONLY
+watchdog: node node_modules/vitest/vitest.mjs run --reporter=json --outputFile.json=.gauntlet/evidence/production/native-full-final.json finished in 230.1s (budget 1800s)
+watchdog: marker FAIL — /workspace/scratch/4fc55cb00998/three-white-lights/.gauntlet/verify/production-native-full-final-2026-10-01T06-51-31-648Z-5.verify.json
