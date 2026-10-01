@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
-      BROWSER_BASE_URL: https://three-white-lights-iron-amber.balmy-river-3759.chatgpt.site
+      BROWSER_BASE_URL: https://three-white-lights-iron-amber.bthornton9415.chatgpt.site
       BROWSER_EXPECT_AUTH: '1'
       PRODUCTION_BASE_REVISION: ${{ github.sha }}
     steps:
