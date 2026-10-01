@@ -25,7 +25,6 @@
 .meet-finish-intro>.meet-eyebrow{position:static;display:block;margin:0 0 14px}
 .meet-paper-athlete{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin:0 0 16px;padding:12px;background:#eee6d5;font-size:11px;line-height:1.5}
 .meet-paper-athlete>span{font-size:9px;color:#665b46}
-.meet-paper-name small{display:block;font-size:7px;font-weight:700;color:#665b46;margin-top:4px}
 .meet-paper-cards{display:none}
 .meet-paper-note{font-size:10px;line-height:1.6;color:#665b46;margin:18px 0 28px}
 @media(max-width:650px){
@@ -41,6 +40,7 @@
 .meet-paper-lifter{border:1px solid #c5b89f;padding:14px 12px;background:#fcf8ef;min-width:0}
 .meet-paper-lifter.meet-paper-player{border:2px solid #a47737;background:#fff9e9}
 .meet-paper-lifter>header{display:flex;justify-content:space-between;align-items:start;gap:8px}
+.meet-paper-lifter>header>div{display:block;min-width:0}
 .meet-paper-place,.meet-paper-lot{font-size:8px;letter-spacing:.08em;color:#746851}
 .meet-paper-lifter h3{font-size:15px;line-height:1.3;margin:5px 0 0;overflow-wrap:anywhere}
 .meet-paper-bodyweight{font-size:10px;line-height:1.5;color:#665b46;margin:10px 0}
