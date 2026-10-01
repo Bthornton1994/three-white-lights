@@ -293,6 +293,7 @@ async function mobileStory() {
     assert.ok(match, 'The live session does not show its prescribed set count');
     const firstSet = Number(match[1]);
     const workSets = Number(match[2]);
+    const remainingSetCount = workSets - firstSet + 1;
     const failedSets = [];
     while (await page.getByTestId('training-screen').getAttribute('data-phase') !== 'close-out') {
       const phase = await page.getByTestId('training-screen').getAttribute('data-phase');
@@ -301,6 +302,8 @@ async function mobileStory() {
         continue;
       }
       assert.equal(phase, 'set', `Unexpected training phase while finishing failed sets: ${phase}`);
+      assert.ok(failedSets.length < remainingSetCount, 'The session did not close out after every remaining set was missed.');
+      const hud = (await page.locator('.training-set-number').innerText()).replace(/\s+/g, ' ').trim();
       const control = page.locator('.lift-control');
       await control.waitFor({ state: 'visible' });
       await waitUntil(() => control.isEnabled(), 'The failed-rep control never became ready.');
@@ -319,10 +322,10 @@ async function mobileStory() {
         return resolvedLift.phase === 'RESOLVED';
       }, 'The above-depth squat did not resolve through the lift engine.', 15_000);
       assert.equal(resolvedLift?.outcome, 'miss', 'Releasing above legal depth should produce a genuine missed rep.');
-      failedSets.push((await page.locator('.training-set-number').innerText()).replace(/\s+/g, ' ').trim());
+      failedSets.push(hud);
       await waitUntil(async () => ['rest', 'close-out'].includes(await page.getByTestId('training-screen').getAttribute('data-phase')), 'The missed rep did not end its work set.');
     }
-    assert.equal(failedSets.length, workSets - firstSet + 1, 'Each remaining work set should end on its played missed rep.');
+    assert.equal(failedSets.length, remainingSetCount, 'Each remaining work set should end on its played missed rep.');
     await page.getByTestId('session-close-out').waitFor();
     const retry = await visibleButton(page, /^(Try a lighter target|Try again at this target)$/);
     await shot(page, '07-phone-failed-rep');
