@@ -1,7 +1,7 @@
 import { FLIGHT_LIFT_GROUPS, sheetColumnHeading, type ResultCard } from '../../src/game/resultCard';
 import { RESULT_SHEET_LAYOUT } from './gameplayTuning';
 import { RESULT_SHEET_PALETTE } from './gameplayPalette';
-import { SHEET_COLUMNS, sheetHeading, sheetValue, type SheetStatus } from './resultSheetModel';
+import { SHEET_COLUMNS, SHEET_FLIGHT_SCOPE, sheetHeading, sheetValue, type SheetStatus } from './resultSheetModel';
 
 export async function resultPng(card: ResultCard, status: SheetStatus): Promise<Blob> {
   const sheet = RESULT_SHEET_LAYOUT;
@@ -19,7 +19,7 @@ export async function resultPng(card: ResultCard, status: SheetStatus): Promise<
   const line = (y: number, heavy = false) => { ctx.strokeStyle = palette.rule; ctx.lineWidth = heavy ? sheet.heavyRule : sheet.fineRule; ctx.beginPath(); ctx.moveTo(sheet.margin, y); ctx.lineTo(sheet.width - sheet.margin, y); ctx.stroke(); };
   line(sheet.metaY + sheet.metaHeavyRuleOffset, true); line(sheet.metaY + sheet.metaFineRuleOffset);
   ctx.textAlign = 'left'; ctx.fillStyle = palette.ink; ctx.font = sheet.categoryFont; ctx.fillText('FLIGHT RESULTS', sheet.margin, sheet.categoryY);
-  ctx.textAlign = 'right'; ctx.fillStyle = palette.muted; ctx.font = sheet.categoryDetailFont; ctx.fillText(`YOUR CATEGORY · ${card.lifter.categoryText} / KG`, sheet.width - sheet.margin, sheet.categoryY, (sheet.width - 2 * sheet.margin) / 2);
+  ctx.textAlign = 'right'; ctx.fillStyle = palette.muted; ctx.font = sheet.categoryDetailFont; ctx.fillText(`${SHEET_FLIGHT_SCOPE} / KG`, sheet.width - sheet.margin, sheet.categoryY, (sheet.width - 2 * sheet.margin) / 2);
   const totalWidth = sheet.columns.reduce((sum, width) => sum + width, 0);
   const scale = (sheet.width - 2 * sheet.margin) / totalWidth;
   const xs: number[] = [sheet.margin];
@@ -54,9 +54,8 @@ export async function resultPng(card: ResultCard, status: SheetStatus): Promise<
   });
   const bottom = sheet.tableY + sheet.headerHeight + card.field.length * sheet.rowHeight;
   [...FLIGHT_LIFT_GROUPS.map((group) => SHEET_COLUMNS.indexOf(group.attempts[0])), SHEET_COLUMNS.indexOf('total')].forEach((col) => { const x = xs[col] ?? sheet.margin; ctx.beginPath(); ctx.moveTo(x, sheet.tableY); ctx.lineTo(x, bottom); ctx.stroke(); });
-  ctx.fillStyle = palette.muted; ctx.font = sheet.noteFont; ctx.textAlign = 'left'; ctx.fillText('Negative attempts indicate a no lift. Total is the sum of the best successful attempt in each lift.', sheet.margin, bottom + sheet.noteOffset);
+  ctx.fillStyle = palette.muted; ctx.font = sheet.noteFont; ctx.textAlign = 'left'; ctx.fillText(`${card.lifter.name} · ${card.lifter.categoryText} kg. Negative attempts indicate a no lift.`, sheet.margin, bottom + sheet.noteOffset, sheet.width - 2 * sheet.margin);
   line(sheet.footerY - sheet.footerRuleOffset); ctx.font = sheet.footerFont; ctx.fillText('THREE WHITE LIGHTS · GAME COMPETITION', sheet.margin, sheet.footerY);
   ctx.textAlign = 'right'; ctx.fillText(status === 'practice' ? 'PRACTICE RESULT' : status === 'unconfirmed' ? 'UNCONFIRMED RESULT' : 'RECORDED RESULT', sheet.width - sheet.margin, sheet.footerY);
   return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('The result image could not be exported.')), 'image/png'));
 }
-

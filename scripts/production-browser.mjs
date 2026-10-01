@@ -238,9 +238,12 @@ async function mobileStory() {
     return { selectedTile };
   });
 
-  await check('phone: a practice lifter is created through settings and appears in the career flow without writing saved state', async () => {
-    await (await visibleButton(page, 'Settings')).click();
-    await (await visibleButton(page, 'Create a lifter')).click();
+  await check('phone: Career and the gym action expose create-lifter → calendar without Settings or saved storage', async () => {
+    await hitTest(await visibleButton(page, 'Career'), true);
+    await (await visibleButton(page, 'Career')).click();
+    await page.getByRole('heading', { name: 'Create your lifter', exact: true }).waitFor();
+    await (await visibleButton(page, 'Back')).click();
+    await (await visibleButton(page, 'Create your lifter')).click();
     await page.getByLabel('Platform name', { exact: true }).fill('R. VELLUM');
     await page.getByLabel('Bodyweight (kg)', { exact: true }).fill('83.5');
     await (await visibleButton(page, 'Create lifter')).click();
@@ -248,6 +251,10 @@ async function mobileStory() {
     await renderAudit(page);
     await noProtectedPracticeStorage(page);
     await shot(page, '05-phone-career');
+    await (await visibleButton(page, 'Gym')).click();
+    await (await visibleButton(page, 'Find a meet')).click();
+    await page.getByRole('heading', { name: /A total\s+worth chasing\./ }).waitFor();
+    assert.ok(await page.locator('.career-event-open .career-enter').count() > 0, 'A fresh lifter has no eligible first meet');
     await (await visibleButton(page, 'Gym')).click();
   });
 

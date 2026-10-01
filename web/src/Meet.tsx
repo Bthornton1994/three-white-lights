@@ -16,7 +16,7 @@ import { type MeetServerPort, type MeetServerResponse } from '../../src/game/mee
 import type { LiftEvidencePort } from '../../src/production/liftEvidence';
 import { RESULT_SHEET_LAYOUT } from './gameplayTuning';
 import { resultPng } from './resultSheetCanvas';
-import { SHEET_COLUMNS, sheetHeading, sheetValue, type SheetStatus } from './resultSheetModel';
+import { SHEET_COLUMNS, SHEET_FLIGHT_SCOPE, sheetHeading, sheetValue, type SheetStatus } from './resultSheetModel';
 import type { LifterServerPort } from '../../src/game/lifterClient';
 import { chosenFederationIdFromCache } from '../../src/game/lifterClient';
 import { kilogramMeetEntryFrom } from '../../src/game/lifterEntry';
@@ -229,7 +229,7 @@ function MeetView({ state, dispatch, recap, saveState, saveError, refusal, onRet
           <div className="meet-total"><strong>{recap?.totalText ?? card?.summary[0].value ?? (finalMeetTotal(state.meet) === null ? '—' : formatWeight(finalMeetTotal(state.meet) as number))}</strong><span>kg TOTAL</span></div>
           {recap?.prText && <p className="meet-total-note">{recap.prText}</p>}
           {props.practice && <p className="meet-practice-note">Recorded for this practice lifter. Reloading starts fresh.</p>}
-          {card && <dl className="meet-finish-stats"><div><dt>DOTS</dt><dd>{card.summary[1].value}</dd></div><div><dt>PLACE</dt><dd>{card.summary[2].value}<small> / {board.fieldSize}</small></dd></div></dl>}
+          {card && <dl className="meet-finish-stats"><div><dt>DOTS</dt><dd>{card.summary[1].value}</dd></div><div><dt>FLIGHT PLACE</dt><dd>{card.summary[2].value}<small> / {board.fieldSize}</small></dd></div></dl>}
         </>}
         {recap && <div className="meet-why"><p className="meet-eyebrow">WHY IT MATTERS</p>{recap.whyLines.map((line) => <p key={line}>{line}</p>)}{careerLines.map((line) => <p key={line}>{line}</p>)}</div>}
       </div>
@@ -364,7 +364,23 @@ function ResultSheet({ card, status, onClose }: { card: ResultCard; status: Shee
     if (current && !current.open) current.showModal();
     return () => { current?.close(); previous?.focus(); };
   }, []);
-  return <dialog ref={dialog} className="meet-sheet-overlay" aria-label="Meet result sheet" onCancel={(event) => { event.preventDefault(); onClose(); }}><header className="meet-sheet-toolbar"><span>YOUR RESULT SHEET</span><button autoFocus onClick={onClose}>Back to recap ×</button></header><div className="meet-sheet-scroll"><article className="meet-paper"><header><p>{card.meet.federation}</p><h2>{card.meet.name}</h2><div><span>{card.meet.dateText}</span><span>{card.meet.locationText}</span></div></header><div className="meet-paper-category"><strong>FLIGHT RESULTS</strong><span>YOUR CATEGORY · {card.lifter.categoryText} / KG</span></div><div className="meet-paper-table-wrap"><table><caption>Game flight results with signed attempts. Negative values indicate a no lift.</caption><thead><tr><th rowSpan={2} scope="col">Place</th><th rowSpan={2} scope="col">Lot</th><th rowSpan={2} scope="col" className="meet-paper-name">Lifter</th><th rowSpan={2} scope="col">Wt kg</th>{FLIGHT_LIFT_GROUPS.map((group) => <th key={group.headingId} colSpan={group.attempts.length + 1} scope="colgroup">{sheetColumnHeading(group.headingId).toUpperCase()}</th>)}<th rowSpan={2} scope="col">TOTAL</th><th rowSpan={2} scope="col">DOTS</th></tr><tr>{FLIGHT_LIFT_GROUPS.flatMap((group) => [...group.attempts, group.bestId].map((id) => <th key={id} scope="col">{sheetHeading(id)}</th>))}</tr></thead><tbody>{card.field.map((row) => <tr key={row.id}>{SHEET_COLUMNS.map((id) => id === 'lifter' ? <th key={id} scope="row" className="meet-paper-name">{sheetValue(row, id)}</th> : <td key={id} className={`${(id === 'lot' ? false : flightAttemptView(row, id)?.struckThrough) ? 'meet-paper-miss' : ''} ${id === 'total' ? 'meet-paper-total' : ''}`}>{sheetValue(row, id)}</td>)}</tr>)}</tbody></table></div><footer><span>THREE WHITE LIGHTS · GAME COMPETITION</span><span>{status === 'practice' ? 'PRACTICE RESULT' : status === 'unconfirmed' ? 'UNCONFIRMED RESULT' : 'RECORDED RESULT'}</span></footer></article><p className="meet-sheet-hint">Swipe the sheet to inspect every attempt. The PNG includes the complete table.</p><ResultActions card={card} status={status} /></div></dialog>;
+  return <dialog ref={dialog} className="meet-sheet-overlay" aria-label="Meet result sheet" onCancel={(event) => { event.preventDefault(); onClose(); }}>
+    <header className="meet-sheet-toolbar"><span>YOUR RESULT SHEET</span><button autoFocus onClick={onClose}>Back to recap ×</button></header>
+    <div className="meet-sheet-scroll"><article className="meet-paper">
+      <header><p>{card.meet.federation}</p><h2>{card.meet.name}</h2><div><span>{card.meet.dateText}</span><span>{card.meet.locationText}</span></div></header>
+      <div className="meet-paper-category"><strong>FLIGHT RESULTS / KG</strong><span>{SHEET_FLIGHT_SCOPE}</span></div>
+      <p className="meet-paper-athlete"><strong>{card.lifter.name}</strong><span>YOUR CATEGORY · {card.lifter.categoryText} kg</span></p>
+      <div className="meet-paper-table-wrap"><table><caption>Game flight results across weight classes with signed attempts. Negative values indicate a no lift.</caption><thead><tr><th rowSpan={2} scope="col">Flight place</th><th rowSpan={2} scope="col">Lot</th><th rowSpan={2} scope="col" className="meet-paper-name">Lifter</th><th rowSpan={2} scope="col">Wt kg</th>{FLIGHT_LIFT_GROUPS.map((group) => <th key={group.headingId} colSpan={group.attempts.length + 1} scope="colgroup">{sheetColumnHeading(group.headingId).toUpperCase()}</th>)}<th rowSpan={2} scope="col">TOTAL</th><th rowSpan={2} scope="col">DOTS</th></tr><tr>{FLIGHT_LIFT_GROUPS.flatMap((group) => [...group.attempts, group.bestId].map((id) => <th key={id} scope="col">{sheetHeading(id)}</th>))}</tr></thead><tbody>{card.field.map((row) => <tr key={row.id} className={row.isPlayer ? 'meet-paper-player' : undefined}>{SHEET_COLUMNS.map((id) => id === 'lifter' ? <th key={id} scope="row" className="meet-paper-name">{sheetValue(row, id)}{row.isPlayer && <small>YOU</small>}</th> : <td key={id} className={`${(id === 'lot' ? false : flightAttemptView(row, id)?.struckThrough) ? 'meet-paper-miss' : ''} ${id === 'total' ? 'meet-paper-total' : ''}`}>{sheetValue(row, id)}</td>)}</tr>)}</tbody></table></div>
+      <div className="meet-paper-cards">{card.field.map((row) => <section className={`meet-paper-lifter${row.isPlayer ? ' meet-paper-player' : ''}`} key={row.id} aria-label={`${row.name} result`}>
+        <header><div><span className="meet-paper-place">FLIGHT {row.placeText}{row.isPlayer ? ' · YOU' : ''}</span><h3>{row.name}</h3></div><span className="meet-paper-lot">LOT {row.lotText}</span></header>
+        <p className="meet-paper-bodyweight">Bodyweight {row.bodyweightText} kg{row.isPlayer && <span>{card.lifter.categoryText} kg</span>}</p>
+        <table><caption>{row.name}: attempts in kilograms; negative values are no lifts.</caption><thead><tr><th scope="col">Lift</th><th scope="col">1</th><th scope="col">2</th><th scope="col">3</th><th scope="col">Best</th></tr></thead><tbody>{FLIGHT_LIFT_GROUPS.map((group) => <tr key={group.headingId}><th scope="row">{sheetColumnHeading(group.headingId)}</th>{[...group.attempts, group.bestId].map((id) => <td key={id} className={flightAttemptView(row, id)?.struckThrough ? 'meet-paper-miss' : undefined}>{sheetValue(row, id)}</td>)}</tr>)}</tbody></table>
+        <dl><div><dt>TOTAL</dt><dd>{row.totalText}<small> kg</small></dd></div><div><dt>DOTS</dt><dd>{row.dotsText}</dd></div></dl>
+      </section>)}</div>
+      <p className="meet-paper-note">Negative attempts indicate a no lift. Flight placing compares totals across weight classes.</p>
+      <footer><span>THREE WHITE LIGHTS · GAME COMPETITION</span><span>{status === 'practice' ? 'PRACTICE RESULT' : status === 'unconfirmed' ? 'UNCONFIRMED RESULT' : 'RECORDED RESULT'}</span></footer>
+    </article><p className="meet-sheet-hint">All nine attempts, each best, total and DOTS. Download the PNG for the complete flight table.</p><ResultActions card={card} status={status} /></div>
+  </dialog>;
 }
 
 function ResultActions({ card, status, onView }: { card: ResultCard; status: SheetStatus; onView?: () => void }) {

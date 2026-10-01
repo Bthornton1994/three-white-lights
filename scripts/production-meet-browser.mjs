@@ -89,8 +89,7 @@ async function playVisibleLift(page, kind) {
 }
 
 async function createPracticeLifter(page) {
-  await (await visibleButton(page, 'Settings')).click();
-  await (await visibleButton(page, 'Create a lifter')).click();
+  await (await visibleButton(page, 'Create your lifter')).click();
   await page.getByLabel('Platform name', { exact: true }).fill('Mara Vellum');
   await page.getByLabel('Bodyweight (kg)', { exact: true }).fill('63.5');
   await page.getByRole('combobox', { name: /^Competition sex/ }).selectOption('female');
@@ -102,12 +101,10 @@ async function createPracticeLifter(page) {
 export async function rehearseMeet(page, report, evidence, options = {}) {
   await mkdir(evidence, { recursive: true });
   await createPracticeLifter(page);
-  await (await visibleButton(page, 'Settings')).click();
-  const audio = page.locator('.settings-screen .toggle');
-  if (await audio.getAttribute('aria-pressed') === 'true') await audio.click();
-  await (await visibleButton(page, 'Meets & career')).click();
   await page.locator('.career-event-open .career-enter').first().click();
   await page.locator('.meet-phase-weigh-in').waitFor();
+  const mute = page.getByRole('button', { name: 'Mute meet sounds', exact: true });
+  if (await mute.isVisible()) await mute.click();
   assert.equal(await page.getByRole('button', { name: 'Enable meet sounds', exact: true }).getAttribute('aria-pressed'), 'false');
   await shot(page, evidence, '01-phone-weigh-in');
   await page.getByRole('button', { name: 'Declare openers', exact: true }).click();
@@ -141,19 +138,58 @@ export async function rehearseMeet(page, report, evidence, options = {}) {
   const confirmation = options.savedAccount ? 'RESULT CONFIRMED ON YOUR CAREER RECORD' : 'PRACTICE RESULT RECORDED';
   await page.getByRole('status').filter({ hasText: confirmation }).waitFor({ timeout: 10_000 });
   assert.notEqual((await page.locator('.meet-total strong').textContent())?.trim(), '—');
+  const recapLayout = await page.locator('.meet-finish-intro').evaluate((intro) => {
+    const box = (selector) => {
+      const node = intro.querySelector(selector);
+      if (!node) throw new Error(`Missing recap ${selector}`);
+      const r = node.getBoundingClientRect();
+      return { x: r.x, y: r.y, right: r.right, bottom: r.bottom };
+    };
+    return { eyebrow: box(':scope > .meet-eyebrow'), title: box('h1'), total: box('.meet-total'), stats: box('.meet-finish-stats'), background: getComputedStyle(intro).backgroundColor };
+  });
+  assert.ok(recapLayout.eyebrow.bottom + 8 <= recapLayout.title.y, 'Recap title overlaps its completion label');
+  assert.ok(recapLayout.title.bottom <= recapLayout.total.y, 'Recap title overlaps the total');
+  assert.ok(recapLayout.total.bottom <= recapLayout.stats.y, 'Recap stats overlap the total');
+  assert.notEqual(recapLayout.background, 'rgba(0, 0, 0, 0)', 'Hall signage competes with transparent recap text');
+  report.checks.push({ name: 'phone recap: completion label, title, total and stats have separate readable bounds', status: 'passed', recapLayout });
   await shot(page, evidence, options.savedAccount ? '05-phone-recorded-recap' : '05-phone-practice-recap');
   await page.getByRole('button', { name: 'View the complete result sheet', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Meet result sheet', exact: true });
   await dialog.waitFor();
   assert.match(await dialog.locator('.meet-paper footer').innerText(), options.savedAccount ? /RECORDED RESULT/ : /PRACTICE RESULT/);
-  const player = dialog.locator('tbody tr').filter({ hasText: 'Mara Vellum' });
+  const player = dialog.locator('.meet-paper-table-wrap tbody tr').filter({ hasText: 'Mara Vellum' });
   const cells = player.locator('th, td');
   assert.equal(await cells.count(), 18);
   assert.equal((await cells.nth(2).textContent())?.trim(), 'Mara Vellum');
   assert.equal((await cells.nth(3).textContent())?.trim(), '63.50');
   const signed = (await cells.allTextContents()).map((value) => value.trim());
   assert.equal(signed.filter((value) => /^-\d/.test(value)).length, 0);
+  assert.match(await dialog.locator('.meet-paper-category').innerText(), /ALL WEIGHT CLASSES · RANKED BY TOTAL/);
+  assert.match(await dialog.locator('.meet-paper-athlete').innerText(), /Mara Vellum[\s\S]*YOUR CATEGORY.*69 kg/);
+  const mobile = dialog.getByRole('region', { name: 'Mara Vellum result', exact: true });
+  assert.ok(await mobile.isVisible(), 'The phone result requires a horizontal desktop-table scroll');
+  assert.equal(await dialog.locator('.meet-paper-cards > section').count(), await dialog.locator('.meet-paper-table-wrap tbody tr').count(), 'Phone results lost a lifter');
+  assert.deepEqual((await mobile.locator('tbody td').allTextContents()).map((v) => v.trim()), signed.slice(4, 16), 'Phone attempts and best lifts disagree with the full result');
+  assert.match(await mobile.locator('dl').innerText(), /TOTAL\s*90\s*kg/);
+  const assertFits = async () => {
+    const clipped = await dialog.locator('.meet-paper-cards th, .meet-paper-cards td, .meet-paper-lifter h3, .meet-paper-lifter dd').evaluateAll((nodes) => nodes.filter((node) => {
+      const r = node.getBoundingClientRect();
+      return r.left < 0 || r.right > innerWidth || node.scrollWidth > node.clientWidth + 1;
+    }).map((node) => node.textContent));
+    assert.deepEqual(clipped, [], 'Phone result cells are clipped');
+  };
+  await assertFits();
   await shot(page, evidence, '06-phone-result-sheet');
+  const viewport = page.viewportSize();
+  await page.setViewportSize({ width: 320, height: 740 });
+  await assertFits();
+  await shot(page, evidence, '06-small-phone-result-sheet');
+  await page.setViewportSize({ width: 1440, height: 960 });
+  assert.ok(await dialog.locator('.meet-paper-table-wrap').isVisible(), 'Desktop formal sheet is missing');
+  assert.equal(await mobile.isVisible(), false, 'Phone cards duplicate the desktop sheet');
+  await shot(page, evidence, '06-desktop-result-sheet');
+  await page.setViewportSize(viewport);
+  report.checks.push({ name: 'result sheet: all nine attempts fit 390px and 320px phones; flight scope, athlete category and formal desktop table are explicit', status: 'passed' });
   const downloadWait = page.waitForEvent('download');
   await dialog.getByRole('button', { name: 'Download PNG', exact: true }).click();
   const download = await downloadWait;

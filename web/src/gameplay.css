@@ -11,10 +11,47 @@
 @media(max-height:740px) and (max-width:650px){.meet-room-caption{padding-bottom:35px;padding-top:20px}.meet-room-caption>strong{font-size:31px;margin:12px 0}.meet-openers-bookend .meet-room-caption{padding-bottom:24px;padding-top:18px}.meet-openers-bookend .meet-room-caption>strong{font-size:29px}.meet-panel{padding:19px}.meet-weigh-in h1{font-size:38px}}
 
 @media(max-width:650px){
-.meet-bookend{position:relative;padding-bottom:18px}.meet-room-caption{position:absolute;left:22px;right:22px;top:28px;padding:0;z-index:-1}.meet-openers-bookend .meet-room-caption{padding:0}.meet-panel{padding:19px 20px}.meet-weigh-in h1{font-size:38px}.meet-weigh-in h1 br,.meet-openers h1 br,.meet-choice-heading h1 br,.meet-finish-intro h1 br{display:none}.meet-weigh-in h1 em:before,.meet-openers h1 em:before,.meet-choice-heading h1 em:before,.meet-finish-intro h1 em:before{content:' '}.meet-weigh-in .meet-athlete-name{margin:10px 0 8px}.meet-weigh-in .meet-category{margin:10px 0 8px}.meet-weigh-in .meet-flavour{margin:10px 0 0;font-size:10px!important;line-height:1.6}.meet-weigh-in .meet-primary{margin-top:14px}.meet-weigh-in .meet-practice-note{margin:8px 0 0;font-size:9px!important;line-height:1.5}.meet-openers{padding:18px}.meet-openers .meet-eyebrow{margin-bottom:8px}.meet-openers h1{font-size:35px}.meet-openers .meet-flavour{margin:10px 0;font-size:10px!important}.meet-opener-rows{margin:12px 0 14px}.meet-opener-row{padding:4px 0}.meet-opener-note{display:none}.meet-choice-heading h1{font-size:36px}.meet-choice-heading .meet-eyebrow{margin-bottom:9px}.meet-choice-heading .meet-flavour{font-size:10px;margin:12px 0;line-height:1.5}.meet-choice{padding-top:21px}.meet-options{margin-top:16px}.meet-option{min-height:0;padding:16px 12px}.meet-option>strong{margin-top:14px;font-size:41px}.meet-option>p{min-height:48px;margin:10px 0;font-size:10px;line-height:1.5}.meet-stakes{font-size:9px;line-height:1.5;margin-bottom:13px}.meet-option-delta{min-height:20px}.meet-bomb-warning{font-size:9px;line-height:1.5;margin-top:11px}.meet-finish-intro{position:relative}.meet-finish-intro h1{font-size:36px}.meet-finish-intro .meet-total{margin-top:16px;gap:8px;max-width:210px}.meet-finish-intro .meet-total strong{font-size:65px}.meet-finish-intro .meet-total>span{font-size:8px;letter-spacing:.05em}.meet-finish-intro .meet-finish-stats{position:absolute;right:0;top:87px;gap:17px;margin:0}.meet-finish-intro .meet-finish-stats dt{font-size:7px}.meet-finish-intro .meet-finish-stats dd{font-size:23px}.meet-finish-intro .meet-finish-stats small{font-size:10px}.meet-finish-intro .meet-practice-note{margin:10px 0 0;font-size:9px;line-height:1.5}.meet-finish-intro .meet-why{margin-top:16px}.meet-result-panel{margin-top:19px;padding:17px 14px}.meet-result-panel .meet-result-actions{display:grid;grid-template-columns:1fr 2.15fr;gap:7px;margin:12px 0}.meet-result-panel .meet-view-sheet{margin:0;height:44px}.meet-result-panel .meet-export-buttons{gap:7px}.meet-result-panel .meet-secondary{font-size:8px!important;padding:10px 8px;gap:5px;min-width:0}.meet-result-panel .meet-secondary svg{width:14px;flex:none}.meet-result-panel .meet-export-feedback{grid-column:1/-1;margin:0}.meet-result-panel .meet-primary{position:sticky;bottom:0}.meet-attempt-grid th,.meet-attempt-grid td{padding-block:11px}.meet-finish-intro .meet-kept{font-size:10px!important}.meet-finish-intro>p:not(.meet-eyebrow){font-size:10px}
+.meet-bookend{position:relative;padding-bottom:18px}.meet-room-caption{position:absolute;left:22px;right:22px;top:28px;padding:0;z-index:-1}.meet-openers-bookend .meet-room-caption{padding:0}.meet-panel{padding:19px 20px}.meet-weigh-in h1{font-size:38px}.meet-weigh-in h1 br,.meet-openers h1 br,.meet-choice-heading h1 br,.meet-finish-intro h1 br{display:none}.meet-weigh-in h1 em:before,.meet-openers h1 em:before,.meet-choice-heading h1 em:before,.meet-finish-intro h1 em:before{content:' '}.meet-weigh-in .meet-athlete-name{margin:10px 0 8px}.meet-weigh-in .meet-category{margin:10px 0 8px}.meet-weigh-in .meet-flavour{margin:10px 0 0;font-size:10px!important;line-height:1.6}.meet-weigh-in .meet-primary{margin-top:14px}.meet-weigh-in .meet-practice-note{margin:8px 0 0;font-size:9px!important;line-height:1.5}.meet-openers{padding:18px}.meet-openers .meet-eyebrow{margin-bottom:8px}.meet-openers h1{font-size:35px}.meet-openers .meet-flavour{margin:10px 0;font-size:10px!important}.meet-opener-rows{margin:12px 0 14px}.meet-opener-row{padding:4px 0}.meet-opener-note{display:none}.meet-choice-heading h1{font-size:36px}.meet-choice-heading .meet-eyebrow{margin-bottom:9px}.meet-choice-heading .meet-flavour{font-size:10px;margin:12px 0;line-height:1.5}.meet-choice{padding-top:21px}.meet-options{margin-top:16px}.meet-option{min-height:0;padding:16px 12px}.meet-option>strong{margin-top:14px;font-size:41px}.meet-option>p{min-height:48px;margin:10px 0;font-size:10px;line-height:1.5}.meet-stakes{font-size:9px;line-height:1.5;margin-bottom:13px}.meet-option-delta{min-height:20px}.meet-bomb-warning{font-size:9px;line-height:1.5;margin-top:11px}.meet-finish-intro{min-width:0}.meet-finish-intro h1{font-size:36px}.meet-finish-intro .meet-total{margin-top:16px;gap:8px;max-width:210px}.meet-finish-intro .meet-total strong{font-size:65px}.meet-finish-intro .meet-total>span{font-size:8px;letter-spacing:.05em}.meet-finish-intro .meet-finish-stats{position:static;gap:24px;margin:18px 0 0}.meet-finish-intro .meet-finish-stats dt{font-size:7px}.meet-finish-intro .meet-finish-stats dd{font-size:23px}.meet-finish-intro .meet-finish-stats small{font-size:10px}.meet-finish-intro .meet-practice-note{margin:10px 0 0;font-size:9px;line-height:1.5}.meet-finish-intro .meet-why{margin-top:16px}.meet-result-panel{margin-top:19px;padding:17px 14px}.meet-result-panel .meet-result-actions{display:grid;grid-template-columns:1fr 2.15fr;gap:7px;margin:12px 0}.meet-result-panel .meet-view-sheet{margin:0;height:44px}.meet-result-panel .meet-export-buttons{gap:7px}.meet-result-panel .meet-secondary{font-size:8px!important;padding:10px 8px;gap:5px;min-width:0}.meet-result-panel .meet-secondary svg{width:14px;flex:none}.meet-result-panel .meet-export-feedback{grid-column:1/-1;margin:0}.meet-result-panel .meet-primary{position:sticky;bottom:0}.meet-attempt-grid th,.meet-attempt-grid td{padding-block:11px}.meet-finish-intro .meet-kept{font-size:10px!important}.meet-finish-intro>p:not(.meet-eyebrow){font-size:10px}
 }
 @media(max-height:740px) and (max-width:650px){.meet-room-caption{top:18px}.meet-room-caption>strong{font-size:29px}.meet-openers-bookend .meet-room-caption>strong{font-size:28px}.meet-openers-bookend .meet-room-caption{top:18px}}
 
 @media(prefers-reduced-motion:reduce){.meet-lamp-white,.meet-lamp-red,.meet-judging-verdict h1,.meet-judging-verdict .meet-judge-copy{animation:none}}
 
 .career-entry-feedback{flex-basis:100%;margin:12px 0 0}.career-event{flex-wrap:wrap}.career-entry-feedback button{margin-left:auto}
+
+/* Recap copy stays on its own surface, clear of the hall's painted signage. */
+.meet-finish-intro{background:#19130ff5;border:1px solid #c49b6040;padding:26px;min-width:0;box-sizing:border-box}
+.meet-finish-intro h1{font-size:clamp(36px,4.4vw,60px);line-height:1.04;overflow-wrap:break-word}
+.meet-finish-intro>.meet-eyebrow{position:static;display:block;margin:0 0 14px}
+.meet-paper-athlete{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin:0 0 16px;padding:12px;background:#eee6d5;font-size:11px;line-height:1.5}
+.meet-paper-athlete>span{font-size:9px;color:#665b46}
+.meet-paper-name small{display:block;font-size:7px;font-weight:700;color:#665b46;margin-top:4px}
+.meet-paper-cards{display:none}
+.meet-paper-note{font-size:10px;line-height:1.6;color:#665b46;margin:18px 0 28px}
+@media(max-width:650px){
+.meet-finish{display:flex;flex-direction:column;gap:16px}
+.meet-finish-intro,.meet-result-panel{width:100%}
+.meet-finish-intro{padding:20px}
+.meet-finish-intro h1{font-size:clamp(28px,8.4vw,36px);line-height:1.04}
+.meet-finish-intro h1 br{display:initial}
+.meet-finish-intro h1 em:before{content:none}
+.meet-paper{min-width:0;padding:20px 14px 16px}
+.meet-paper-table-wrap{display:none}
+.meet-paper-cards{display:grid;gap:14px}
+.meet-paper-lifter{border:1px solid #c5b89f;padding:14px 12px;background:#fcf8ef;min-width:0}
+.meet-paper-lifter.meet-paper-player{border:2px solid #a47737;background:#fff9e9}
+.meet-paper-lifter>header{display:flex;justify-content:space-between;align-items:start;gap:8px}
+.meet-paper-place,.meet-paper-lot{font-size:8px;letter-spacing:.08em;color:#746851}
+.meet-paper-lifter h3{font-size:15px;line-height:1.3;margin:5px 0 0;overflow-wrap:anywhere}
+.meet-paper-bodyweight{font-size:10px;line-height:1.5;color:#665b46;margin:10px 0}
+.meet-paper-bodyweight>span{display:block;font-size:9px}
+.meet-paper-lifter table{min-width:0;width:100%;table-layout:fixed;font-size:10px}
+.meet-paper-lifter th,.meet-paper-lifter td{padding:9px 2px;white-space:normal;font-size:10px;border-left:0!important}
+.meet-paper-lifter th:first-child{width:23%;text-align:left;font-weight:600}
+.meet-paper-lifter dl{display:flex;justify-content:space-between;gap:16px;margin:12px 0 0}
+.meet-paper-lifter dt{font-size:8px;color:#746851;letter-spacing:.08em;margin-bottom:4px}
+.meet-paper-lifter dd{font-size:20px;line-height:1.2;font-weight:700;margin:0}
+.meet-paper-lifter dd small{font-size:10px;font-weight:400}
+.meet-paper footer{margin-top:12px}
+.meet-sheet-toolbar button{min-height:44px}
+}

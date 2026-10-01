@@ -6,6 +6,9 @@ import {
 export type SheetStatus = 'recorded' | 'practice' | 'unconfirmed';
 export type WebSheetColumnId = ResultSheetColumnId | 'lot';
 
+/** A flight includes multiple bodyweights; its placing is not a weight-class ranking. */
+export const SHEET_FLIGHT_SCOPE = 'ALL WEIGHT CLASSES · RANKED BY TOTAL';
+
 /** One column model shared by the on-screen sheet and the downloadable PNG. */
 export const SHEET_COLUMNS: readonly WebSheetColumnId[] = [
   'place', 'lot', 'lifter', 'bodyweight',
