@@ -61,17 +61,20 @@ jobs:
           import assert from 'node:assert/strict';
           import { readFile } from 'node:fs/promises';
           import { createHash } from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
           const origin = process.env.BROWSER_BASE_URL;
           const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+          const expectedPaths = execFileSync('git', ['ls-files', '-z', '--', 'src', 'web', 'package.json', 'package-lock.json', 'tsconfig.json'], { encoding: 'utf8' }).split('\0').filter(Boolean).sort();
+          assert.ok(expectedPaths.includes('web/src/styles.css') && expectedPaths.includes('web/src/gameplay.css'));
           let release;
           for (let attempt = 0; attempt < 36; attempt++) {
             try {
               const response = await fetch(`${origin}/release.json`, { signal: AbortSignal.timeout(10_000), cache: 'no-store' });
               if (response.ok) {
                 const candidate = await response.json();
-                assert.ok(candidate.source_files?.length > 0);
+                assert.equal(candidate.source_commit, process.env.PRODUCTION_BASE_REVISION, 'Hosted release is not the current reviewed commit.');
+                assert.deepEqual(candidate.source_files.map(file => file.path).sort(), expectedPaths, 'Hosted build input inventory is incomplete.');
                 for (const file of candidate.source_files) {
-                  assert.ok((file.path.startsWith('src/') || file.path.startsWith('web/src/')) && !file.path.split('/').includes('..'));
                   assert.equal(digest(await readFile(file.path)), file.sha256, `Hosted source differs: ${file.path}`);
                 }
                 release = candidate;
@@ -82,7 +85,11 @@ jobs:
           }
           assert.ok(release, 'The reviewed source is not available at the hosted origin.');
           assert.equal(release.supabase_project, 'qbvmtgaphvpwpwemplje');
+          const artifacts = new Map(release.artifact_files.map(file => [file.path, file]));
+          assert.equal(artifacts.size, release.artifact_files.length, 'Duplicate artifact path.');
+          assert.ok(artifacts.has('index.html'), 'Hosted inventory omits the entry point.');
           let application = '';
+          let html = '';
           for (const file of release.artifact_files.filter(file => file.path === 'index.html' || /\.css$|\.js$/.test(file.path))) {
             assert.ok(!file.path.split('/').includes('..') && !file.path.startsWith('/'));
             const response = await fetch(`${origin}/${file.path}`, { signal: AbortSignal.timeout(15_000) });
@@ -90,6 +97,13 @@ jobs:
             const bytes = Buffer.from(await response.arrayBuffer());
             assert.equal(digest(bytes), file.sha256, `Hosted bytes differ: ${file.path}`);
             if (file.path.endsWith('.js')) application += bytes.toString();
+            if (file.path === 'index.html') html = bytes.toString();
+          }
+          const entryAssets = [...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css)(?:\?[^"]*)?)"/g)].map(match => new URL(match[1], origin));
+          assert.ok(entryAssets.some(url => url.pathname.endsWith('.js')) && entryAssets.some(url => url.pathname.endsWith('.css')), 'Hosted entry omits its JS or CSS.');
+          for (const url of entryAssets) {
+            assert.equal(url.origin, origin, 'Hosted entry loads code from an unverified origin.');
+            assert.ok(artifacts.has(url.pathname.slice(1)), `Entry asset missing from inventory: ${url.pathname}`);
           }
           assert.ok(application.includes('https://qbvmtgaphvpwpwemplje.supabase.co'));
           assert.ok(!application.includes('browser-contract.invalid'));
