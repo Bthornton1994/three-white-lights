@@ -1,0 +1,69 @@
+{
+  "date": "2026-10-01",
+  "projectRef": "qbvmtgaphvpwpwemplje",
+  "finalRunId": "6eaa2f2c-7398-4a0f-9256-6908107b6f19",
+  "independentSql": {
+    "auth_users": 9,
+    "profiles": 9,
+    "residual_test_users": 0,
+    "twl_accounts": 0,
+    "twl_receipts": 0,
+    "enrolled_accounts": 1,
+    "twl_tables": [
+      {
+        "rls": true,
+        "table": "twl_accounts",
+        "anon_select": false,
+        "auth_select": false,
+        "service_select": true
+      },
+      {
+        "rls": true,
+        "table": "twl_request_receipts",
+        "anon_select": false,
+        "auth_select": false,
+        "service_select": true
+      }
+    ],
+    "twl_functions": [
+      {
+        "config": [
+          "search_path=\"\""
+        ],
+        "function": "twl_commit_account",
+        "anon_execute": false,
+        "auth_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      },
+      {
+        "config": [
+          "search_path=\"\""
+        ],
+        "function": "twl_initialize_account",
+        "anon_execute": false,
+        "auth_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      },
+      {
+        "config": [
+          "search_path=\"\""
+        ],
+        "function": "twl_read_account",
+        "anon_execute": false,
+        "auth_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      }
+    ]
+  },
+  "retirement": {
+    "version": 9,
+    "verifyJwt": false,
+    "httpStatus": 410,
+    "message": "Rollout verification endpoint retired.",
+    "deployedHandlerMatches": true,
+    "privilegedCalls": false
+  }
+}

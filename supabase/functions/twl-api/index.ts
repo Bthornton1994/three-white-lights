@@ -1,17 +1,25 @@
-import { createProductionHandler, PRODUCTION_LIMITS } from './domain.js';
+import { authenticatedTwlAccount, createProductionHandler, PRODUCTION_LIMITS } from './domain.js';
 
 type ProductionRepository = Parameters<typeof createProductionHandler>[0]['repository'];
 type AccountRead = Awaited<ReturnType<ProductionRepository['read']>>;
 type AccountCommit = Awaited<ReturnType<ProductionRepository['commit']>>;
 const url = Deno.env.get('SUPABASE_URL');
-const publicKey = Deno.env.get('SUPABASE_ANON_KEY');
-const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+function defaultKey(name: string): string | undefined {
+  const raw = Deno.env.get(name); if (!raw) return undefined;
+  const keys: unknown = JSON.parse(raw);
+  if (!keys || typeof keys !== 'object' || Array.isArray(keys)) throw new Error('Saved account key configuration is invalid.');
+  const value = (keys as Record<string, unknown>).default;
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+const publicKey = defaultKey('SUPABASE_PUBLISHABLE_KEYS') ?? Deno.env.get('SUPABASE_ANON_KEY');
+const serviceKey = defaultKey('SUPABASE_SECRET_KEYS') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 if (!url || !publicKey || !serviceKey) throw new Error('Saved account service configuration is missing.');
 const apiUrl = url; const authKey = publicKey; const serverKey = serviceKey;
 const origins = (Deno.env.get('TWL_ALLOWED_ORIGINS') ?? 'http://localhost:5173,http://127.0.0.1:5173').split(',').map(value => value.trim()).filter(Boolean);
 
 async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
-  const response = await fetch(`${apiUrl}/rest/v1/rpc/${name}`, { method: 'POST', headers: { apikey: serverKey, Authorization: `Bearer ${serverKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify(args), signal: AbortSignal.timeout(PRODUCTION_LIMITS.apiTimeoutMs) });
+  // Modern secret keys belong only in apikey; treating one as a JWT is rejected.
+  const response = await fetch(`${apiUrl}/rest/v1/rpc/${name}`, { method: 'POST', headers: { apikey: serverKey, ...(serverKey.startsWith('sb_secret_') ? {} : { Authorization: `Bearer ${serverKey}` }), 'Content-Type': 'application/json' }, body: JSON.stringify(args), signal: AbortSignal.timeout(PRODUCTION_LIMITS.apiTimeoutMs) });
   if (!response.ok) throw new Error('Saved account database request failed.');
   return await response.json() as T;
 }
@@ -25,14 +33,11 @@ Deno.serve(createProductionHandler({
   repository,
   authenticate: async token => {
     // The gateway verifies JWTs too. This live Auth lookup establishes account
-    // existence and identity; client metadata is never used for authorization.
+    // existence, identity and current TWL enrollment in this shared project.
+    // Client-editable user_metadata and cached JWT claims cannot grant access.
     const response = await fetch(`${apiUrl}/auth/v1/user`, { headers: { apikey: authKey, Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(PRODUCTION_LIMITS.authTimeoutMs) });
     if (response.status === PRODUCTION_LIMITS.unauthorizedStatus || response.status === PRODUCTION_LIMITS.forbiddenStatus) return null;
     if (!response.ok) throw new Error('Account authentication service is unavailable.');
-    const user = await response.json() as { id?: unknown; created_at?: unknown; is_anonymous?: unknown };
-    if (typeof user.id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id) || user.is_anonymous === true || typeof user.created_at !== 'string') return null;
-    const createdAtMs = Date.parse(user.created_at);
-    if (!Number.isSafeInteger(createdAtMs) || createdAtMs < 0) return null;
-    return { id: user.id, createdAtMs };
+    return authenticatedTwlAccount(await response.json());
   },
 }));

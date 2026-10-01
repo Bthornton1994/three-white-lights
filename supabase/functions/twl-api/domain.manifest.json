@@ -1,7 +1,7 @@
 {
   "format": 1,
   "bundler": "0.28.2",
-  "artifactSha256": "6cc982c794f18dfd9ef1c2a7d3894769d3d8d361455944896c9786e7c1e3603d",
+  "artifactSha256": "0dd658d8a73bfff064b49fb91ba0b4f85b205cc1048ddcff0ab7161e293709a7",
   "sources": {
     "src/art/spriteTuning.ts": "d227abde6c5a9bb2d8e45a76b2a3c6d19c535c599a8955a017d58bd2153a911d",
     "src/career/calendar.ts": "a236603abb1fc84394530eec3e8312ccec0dc921c19fc6f05595cbf449633646",
@@ -53,8 +53,9 @@
     "src/game/sessionTuning.ts": "58b82ea72d78949015024be371c961b854e2a4409d5c2afdf497bf1137bb2d1a",
     "src/game/streak.ts": "d70f1a99b4d8a7a6f9da04589f96b59b33580df5a4d049b5a912a91a3ee6d815",
     "src/game/streakEntitlement.ts": "cd6e594d37e779be49852023134b6bca84a5cf4aeff5d2c431f6cf2fc01a8360",
+    "src/production/accountAccess.ts": "d6912331ab25cb07884a7b86fab227f4e0045329ae34b9b4b1b1c00c64053526",
     "src/production/clock.ts": "d7ba3b216453edb6030dd8e6dea4330051236806900c807360afb8063effe54e",
-    "src/production/edgeEntry.ts": "b6e8564ac6fc1be06f7deb79aa555b9b9e0ffd2cb67d180aab419a5e9b65b11a",
+    "src/production/edgeEntry.ts": "1ad1ffa300200d06afa8e6d7b974b834b03be200020d3e998efefb731a54ba92",
     "src/production/evidenceReplay.ts": "353182c5e210610cb6f9c075b7425e3259280aafd77c31ac89cad1a1227dbd2c",
     "src/production/handler.ts": "04e6b6a449a4f2059dc8322191b84c238e565b499afbc44aa18a29283dc2b57d",
     "src/production/productionTuning.ts": "fbaa3c68fa36a561656f9bf54096be023b7473b48f9b72829b581b8f35075547",

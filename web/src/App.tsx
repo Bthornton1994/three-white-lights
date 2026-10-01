@@ -54,24 +54,19 @@ function Profile({ port, onDone, onCancel, practice }: { port: LocalAppServerPor
 }
 
 function Account({ client, onDone, onBack, configError }: { client: ProductionClient | null; onDone: () => void; onBack: () => void; configError: string }) {
-  const [signup, setSignup] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   async function submit(event: FormEvent) {
-    event.preventDefault(); if (!client || busy) return; setBusy(true); setError(''); setMessage('');
+    event.preventDefault(); if (!client || busy) return; setBusy(true); setError('');
     try {
-      if (signup) {
-        const result = await client.signUp(email, password);
-        if (result.confirmationRequired) { setMessage('Check your email to confirm your account, then sign in here.'); return; }
-      } else await client.signIn(email, password);
+      await client.signIn(email, password);
       onDone();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Sign in could not be completed. Try again.'); }
     finally { setBusy(false); }
   }
-  return <section className="form-screen"><div className="form-art"><img src="/rooms/gym-briefing.jpg" alt="Amber light falling across the gym" /><div><Brand /><h1>Earn every rep.<br />Keep every win.</h1><p>Your lifter, gym, and meet results.<br />Ready wherever you train.</p></div></div><form className="form-card account-form" onSubmit={submit}><button className="text-button back" type="button" onClick={onBack}><ChevronLeft size={UI.ICON_MEDIUM} />Back to gym</button><p className="eyebrow">WELCOME TO THE GYM</p><h2>{signup ? 'Start your career' : 'Welcome back'}</h2><p>{signup ? 'Create an account to save your training, gym, and competition history.' : 'Sign in to pick up where you left off.'}</p><label>Email<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" /></label><label>Password<input type="password" autoComplete={signup ? 'new-password' : 'current-password'} minLength={signup ? UI.SIGNUP_PASSWORD_MIN : 1} required value={password} onChange={e => setPassword(e.target.value)} placeholder={signup ? "Choose a password" : "Your password"} /></label>{configError && <p className="notice error" role="alert">{configError}</p>}{error && <p className="notice error" role="alert">{error}</p>}{message && <p className="notice" role="status">{message}</p>}<button className="primary" disabled={busy || !client} type="submit">{busy ? 'Connecting…' : signup ? 'Create account' : 'Sign in'}<ArrowRight size={UI.ICON_ACTION} /></button><button className="text-button" type="button" onClick={() => { setSignup(v => !v); setError(''); setMessage(''); }}>{signup ? 'Already have an account? Sign in' : 'New here? Create an account'}</button><div className="account-note"><ShieldCheck size={UI.ICON_MEDIUM} /><span>Saved progress belongs to your account. Practice remains separate.</span></div></form></section>;
+  return <section className="form-screen"><div className="form-art"><img src="/rooms/gym-briefing.jpg" alt="Amber light falling across the gym" /><div><Brand /><h1>Earn every rep.<br />Keep every win.</h1><p>Your lifter, gym, and meet results.<br />Ready wherever you train.</p></div></div><form className="form-card account-form" onSubmit={submit}><button className="text-button back" type="button" onClick={onBack}><ChevronLeft size={UI.ICON_MEDIUM} />Back to gym</button><p className="eyebrow">CLOSED BETA</p><h2>Welcome back</h2><p>Sign in with your invited account to save your career.</p><label>Email<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" /></label><label>Password<input type="password" autoComplete="current-password" minLength={1} required value={password} onChange={e => setPassword(e.target.value)} placeholder="Your password" /></label>{configError && <p className="notice error" role="alert">{configError}</p>}{error && <p className="notice error" role="alert">{error}</p>}<button className="primary" disabled={busy || !client} type="submit">{busy ? 'Connecting…' : 'Sign in'}<ArrowRight size={UI.ICON_ACTION} /></button><div className="account-note"><ShieldCheck size={UI.ICON_MEDIUM} /><span>Invited accounts can save progress. Practice remains separate.</span></div></form></section>;
 }
 
 export function App() {

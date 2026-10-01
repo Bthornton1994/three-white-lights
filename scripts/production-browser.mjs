@@ -345,9 +345,8 @@ async function mobileStory() {
     await form.waitFor();
     assert.equal(await form.getByLabel('Email', { exact: true }).getAttribute('type'), 'email');
     assert.equal(await form.getByLabel('Password', { exact: true }).getAttribute('minlength'), '1');
-    await form.getByRole('button', { name: 'New here? Create an account', exact: true }).click();
-    assert.equal(await form.getByLabel('Password', { exact: true }).getAttribute('minlength'), '8');
-    await form.getByRole('button', { name: 'Already have an account? Sign in', exact: true }).click();
+    await form.getByText('Sign in with your invited account to save your career.', { exact: true }).waitFor();
+    assert.equal(await form.getByRole('button', { name: /Create account/ }).count(), 0, 'Closed beta must not advertise uninvited account creation');
     const submit = form.getByRole('button', { name: 'Sign in', exact: true });
     let skipped = false;
     if (await submit.isDisabled()) {
