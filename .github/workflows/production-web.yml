@@ -36,6 +36,92 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  hosted:
+    name: Hosted beta frontend
+    needs: [domain, browser]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/codex/production-iron-amber'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      BROWSER_BASE_URL: https://three-white-lights-iron-amber.balmy-river-3759.chatgpt.site
+      BROWSER_EXPECT_AUTH: '1'
+      PRODUCTION_BASE_REVISION: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install exact browser runtime
+        run: npm --prefix web ci
+      - name: Match hosted artifact to current source and served bytes
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readFile } from 'node:fs/promises';
+          import { createHash } from 'node:crypto';
+          const origin = process.env.BROWSER_BASE_URL;
+          const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+          let release;
+          for (let attempt = 0; attempt < 36; attempt++) {
+            try {
+              const response = await fetch(`${origin}/release.json`, { signal: AbortSignal.timeout(10_000), cache: 'no-store' });
+              if (response.ok) {
+                const candidate = await response.json();
+                assert.ok(candidate.source_files?.length > 0);
+                for (const file of candidate.source_files) {
+                  assert.ok((file.path.startsWith('src/') || file.path.startsWith('web/src/')) && !file.path.split('/').includes('..'));
+                  assert.equal(digest(await readFile(file.path)), file.sha256, `Hosted source differs: ${file.path}`);
+                }
+                release = candidate;
+                break;
+              }
+            } catch { /* Publication may still be completing after the required gates. */ }
+            await new Promise(resolve => setTimeout(resolve, 5_000));
+          }
+          assert.ok(release, 'The reviewed source is not available at the hosted origin.');
+          assert.equal(release.supabase_project, 'qbvmtgaphvpwpwemplje');
+          let application = '';
+          for (const file of release.artifact_files.filter(file => file.path === 'index.html' || /\.css$|\.js$/.test(file.path))) {
+            assert.ok(!file.path.split('/').includes('..') && !file.path.startsWith('/'));
+            const response = await fetch(`${origin}/${file.path}`, { signal: AbortSignal.timeout(15_000) });
+            assert.equal(response.status, 200);
+            const bytes = Buffer.from(await response.arrayBuffer());
+            assert.equal(digest(bytes), file.sha256, `Hosted bytes differ: ${file.path}`);
+            if (file.path.endsWith('.js')) application += bytes.toString();
+          }
+          assert.ok(application.includes('https://qbvmtgaphvpwpwemplje.supabase.co'));
+          assert.ok(!application.includes('browser-contract.invalid'));
+          assert.ok(!/sb_secret_[A-Za-z0-9_-]{8,}/.test(application));
+          const key = application.match(/sb_publishable_[A-Za-z0-9_-]+/)?.[0];
+          assert.ok(key, 'Hosted frontend has no public Supabase key.');
+          const auth = await fetch('https://qbvmtgaphvpwpwemplje.supabase.co/auth/v1/settings', { headers: { apikey: key }, signal: AbortSignal.timeout(15_000) });
+          assert.equal(auth.status, 200, 'Hosted public configuration cannot reach live Auth.');
+          const api = 'https://qbvmtgaphvpwpwemplje.supabase.co/functions/v1/twl-api';
+          const preflight = allowedOrigin => fetch(api, { method: 'OPTIONS', headers: { Origin: allowedOrigin, 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'authorization,apikey,content-type' }, signal: AbortSignal.timeout(15_000) });
+          const allowed = await preflight(origin);
+          assert.equal(allowed.status, 204);
+          assert.equal(allowed.headers.get('access-control-allow-origin'), origin);
+          const denied = await preflight('https://unapproved-twl-origin.example');
+          assert.equal(denied.status, 403);
+          assert.equal(denied.headers.get('access-control-allow-origin'), null);
+          console.log(JSON.stringify({ source: release.source_commit, origin, hostedBytesVerified: true, exactCorsVerified: true }));
+          JS
+      - name: Install browser
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+      - name: Play the hosted beta through normal controls
+        run: npm --prefix web run test:browser
+      - name: Attach hosted browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hosted-production-web-${{ github.sha }}
+          path: .gauntlet/shots/production-web/
+          if-no-files-found: error
+          retention-days: 14
+
   domain:
     name: Frozen mechanics and progression
     runs-on: ubuntu-latest

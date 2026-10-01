@@ -15,7 +15,10 @@ const publicKey = defaultKey('SUPABASE_PUBLISHABLE_KEYS') ?? Deno.env.get('SUPAB
 const serviceKey = defaultKey('SUPABASE_SECRET_KEYS') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 if (!url || !publicKey || !serviceKey) throw new Error('Saved account service configuration is missing.');
 const apiUrl = url; const authKey = publicKey; const serverKey = serviceKey;
-const origins = (Deno.env.get('TWL_ALLOWED_ORIGINS') ?? 'http://localhost:5173,http://127.0.0.1:5173').split(',').map(value => value.trim()).filter(Boolean);
+// The reviewed release has one pinned frontend origin. Operator configuration
+// adds exact local/preview origins; no subdomain pattern or wildcard is accepted.
+const hostedOrigin = 'https://three-white-lights-iron-amber.balmy-river-3759.chatgpt.site';
+const origins = [hostedOrigin, ...(Deno.env.get('TWL_ALLOWED_ORIGINS') ?? 'http://localhost:5173,http://127.0.0.1:5173').split(',').map(value => value.trim()).filter(Boolean)];
 
 async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
   // Modern secret keys belong only in apikey; treating one as a JWT is rejected.

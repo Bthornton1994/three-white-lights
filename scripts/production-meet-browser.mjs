@@ -242,9 +242,14 @@ async function finishBenchTraining(page, report, evidence, options = {}) {
   assert.ok(expectedSets > 0 && expectedReps > 0, 'The prescribed session is missing set or rep counts.');
   while (true) {
     await waitUntil(async () => {
-      const phase = await page.getByTestId('training-screen').getAttribute('data-phase');
-      if (phase === 'close-out' || phase === 'rest') return true;
-      return phase === 'set' && (await liftView(page)).phase !== 'RESOLVED';
+      // Read the phase and its live child together. The final rep can switch
+      // to rest/close-out between separate reads and legitimately unmount it.
+      const view = await page.getByTestId('training-screen').evaluate((screen) => ({
+        phase: screen.getAttribute('data-phase'),
+        liftPhase: screen.querySelector('.lift-player')?.getAttribute('data-phase') ?? null,
+      }));
+      if (view.phase === 'close-out' || view.phase === 'rest') return true;
+      return view.phase === 'set' && view.liftPhase !== null && view.liftPhase !== 'RESOLVED';
     }, 'Training did not advance after a resolved rep.');
     const phase = await page.getByTestId('training-screen').getAttribute('data-phase');
     if (phase === 'close-out') break;
