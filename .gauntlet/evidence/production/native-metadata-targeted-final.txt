@@ -1,0 +1,7 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+JSON report written to /workspace/scratch/4fc55cb00998/three-white-lights/.gauntlet/evidence/production/native-metadata-targeted-final.json
+watchdog: verify sync OFF (VERIFY_SYNC_REMOTE=off) — this record is LOCAL ONLY
+watchdog: env -u VERIFY_SYNC_REMOTE node node_modules/vitest/vitest.mjs run src/game/streakEntitlement.test.ts src/game/guaranteeTags.test.ts --testNamePattern THE ALLOWLIST IS EXACT|AN ALIASED IMPORT NO LONGER HIDES A GRANTER|AND THE SCAN LEAVES|THE PREDICATE WAS CHOSEN BY MEASUREMENT|states what fraction of the tree --reporter=json --outputFile.json=.gauntlet/evidence/production/native-metadata-targeted-final.json finished in 5.6s (budget 120s)
+watchdog: marker PASS — /workspace/scratch/4fc55cb00998/three-white-lights/.gauntlet/verify/production-metadata-targeted-final-2026-10-01T07-19-56-195Z-5.verify.json
