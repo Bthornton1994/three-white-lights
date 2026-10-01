@@ -3,13 +3,13 @@
  *
  * This is not a GDD §12.2 bar and it does not grade Empire, Career, or art.
  * It asks whether the leaf advisories in `npm audit --json` are exactly the
- * remainder Session C already named, and whether the two package.json
+ * remainder Session C already named, after supported security patches, and whether the two package.json
  * overrides that closed the patchable pair are still in place.
  *
- * A raw `npm audit` exits 1 on that remainder (image-size, uuid). Treating
+ * A raw `npm audit` exits 1 on that remainder (uuid). Treating
  * that exit as the gate would be red on the first run. Swallowing it with
  * `|| true` would never fail. The allowlist is the third shape: novelty is
- * red, the known three are not.
+ * red, the remaining known leaf is not.
  *
  * --self-test plants a fourth GHSA and a missing one against the comparator
  * so empty-equals-empty cannot pass.
@@ -25,8 +25,7 @@ const ROOT = path.resolve(HERE, '..', '..');
 
 /** Leaf advisories C named and ruled: do not force-fix (would downgrade Expo). */
 const ALLOWED_GHSA = Object.freeze([
-  'GHSA-w3rx-r6r6-pgpr', // image-size ICNS DoS
-  'GHSA-5p2g-fcmc-qvqq', // image-size JXL/HEIF DoS
+  // Metro 0.84.5 removes image-size; its two older leaves are no longer allowed.
   'GHSA-w5hq-g745-h8pq', // uuid buffer bounds
 ]);
 

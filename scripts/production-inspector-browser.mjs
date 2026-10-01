@@ -1,12 +1,19 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { spawn, execFileSync } from 'node:child_process';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
 const { chromium } = createRequire(root + '/web/package.json')('playwright');
 const output = root + '/.gauntlet/evidence/production/art-cache-and-build';
-const report = { startedAt: new Date().toISOString(), checks: [], pageErrors: [], limitations: ['Four original final PNGs remain unavailable locally. This is a functional recovery and placement check, not complete art acceptance.'] };
+const report = { startedAt: new Date().toISOString(), checks: [], pageErrors: [], sourceHashes: {}, missingOriginalArt: [], limitations: ['One equipment artwork request is deliberately blocked to test error recovery.', 'This is a functional recovery and placement check, not complete art acceptance or physical-device QA.'] };
+const inputs = ['scripts/production-inspector-browser.mjs', 'web/src/Art.tsx', 'web/src/Gym.tsx', 'web/src/styles.css', 'web/src/interfaceTuning.ts', 'web/src/facilityPort.ts', 'src/facility/floor.ts'];
+for (const name of inputs) report.sourceHashes[name] = createHash('sha256').update(await readFile(root + '/' + name)).digest('hex');
+report.capturedFrom = { commit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(), workingTree: execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim() ? 'dirty' : 'clean', instrument: 'scripts/production-inspector-browser.mjs' };
+for (const name of ['athlete/squat-atlas.png', 'athlete/bench-atlas.png', 'athlete/deadlift-atlas.png', 'empire-art/production-bar.png', 'empire-art/production-bench.png', 'empire-art/production-plates.png']) {
+  try { await readFile(root + '/web/public/' + name); } catch (error) { if (error.code !== 'ENOENT') throw error; report.missingOriginalArt.push(name); }
+}
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function until(fn, message) { for(let n=0;n<300;n++) { if(await fn()) return; await pause(30); } throw Error(message); }
 async function clickExposed(locator) {
@@ -31,6 +38,7 @@ try {
   browser = await chromium.launch({ headless: true, executablePath: process.env.BROWSER_EXECUTABLE_PATH || undefined });
   page = await browser.newPage({ viewport: { width: 390, height: 667 } });
   page.on('pageerror', error => report.pageErrors.push(error.message));
+  await page.route('**/empire-art/production-plates.png', route => route.abort('failed'));
   await page.goto('http://127.0.0.1:5193', { waitUntil: 'networkidle' });
   const canvas = page.locator('.inspect-panel canvas');
   const painted = async () => canvas.evaluate(c => { if(!c.width || !c.height || getComputedStyle(c).display === 'none') return false; const bytes = c.getContext('2d').getImageData(0,0,c.width,c.height).data; for(let i=3;i<bytes.length;i+=4) if(bytes[i]>16) return true; return false; });
@@ -41,7 +49,8 @@ try {
   await clickExposed(page.getByRole('button', {name:'Inspect Power bar', exact:true}));
   await until(painted, 'Cached bar did not recover after the failed texture');
   assert.equal(await page.locator('.inspect-panel .panel-icon span').count(), 0);
-  report.checks.push({ name:'Equipment inspector recovers from missing plates to an already cached original bar texture', status:'passed' });
+  report.checks.push({ name:'Equipment inspector recovers from a deliberately failed texture request to an already cached original bar texture', status:'passed' });
+  await page.unroute('**/empire-art/production-plates.png');
   await page.getByRole('button', {name:'Build gym', exact:true}).click();
   await page.getByLabel('Equipment', {exact:true}).selectOption('flat-bench');
   const remove = page.getByRole('button', {name:'Return to storage', exact:true});
@@ -69,6 +78,7 @@ try {
   await page.getByRole('status').filter({hasText:'Competition bench placed.'}).waitFor();
   report.checks.push({name:'Whole footprint boundary and overlap refusals, then clear native placement acknowledgement',status:'passed'});
   assert.deepEqual(report.pageErrors, []);
-  report.status='functional-passed-art-incomplete';
+  for (const name of inputs) assert.equal(createHash('sha256').update(await readFile(root + '/' + name)).digest('hex'), report.sourceHashes[name], 'A captured source changed during the check: ' + name);
+  report.status=report.missingOriginalArt.length ? 'functional-passed-art-incomplete' : 'functional-passed';
 } catch(error) { report.status='failed'; report.failure=error.stack; process.exitCode=1; if(page) { await page.screenshot({path:output+'/failure.png',fullPage:true}).catch(()=>{}); await writeFile(output+'/failure-body.txt', await page.locator('body').innerText()).catch(()=>{}); } }
 finally { report.finishedAt=new Date().toISOString(); await writeFile(output+'/report.json', JSON.stringify(report,null,2)+'\n'); if(browser) await browser.close(); vite.kill('SIGTERM'); console.log(JSON.stringify(report)); }
