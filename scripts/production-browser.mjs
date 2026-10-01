@@ -201,14 +201,31 @@ async function mobileStory() {
     const place = await visibleButton(page, 'Place item');
     assert.equal(await place.isDisabled(), true, 'Place item must require an explicit tile');
     await page.getByLabel('Equipment', { exact: true }).selectOption('power-bar');
-    await page.getByLabel('Column', { exact: true }).fill('4');
-    await page.getByLabel('Row', { exact: true }).fill('1');
-    assert.equal(await place.isEnabled(), true);
+    const tiles = page.locator('.floor-grid button');
+    let selectedTile = null;
+    for (const tile of await tiles.all()) {
+      const exposed = await tile.evaluate(element => {
+        const rect = element.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        if (rect.width === 0 || rect.height === 0 || x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) return false;
+        const hit = document.elementFromPoint(x, y);
+        return hit === element || element.contains(hit);
+      });
+      if (!exposed) continue;
+      await tile.click();
+      if (await place.isEnabled()) {
+        selectedTile = await tile.getAttribute('aria-label');
+        break;
+      }
+    }
+    assert.ok(selectedTile, 'No exposed floor tile accepts the owned Power bar');
     await place.click();
     await page.getByRole('status').filter({ hasText: 'placed' }).waitFor();
     await noProtectedPracticeStorage(page);
     await shot(page, '04-phone-build');
     await (await visibleButton(page, 'Back to gym')).click();
+    return { selectedTile };
   });
 
   await check('phone: a practice lifter is created through settings and appears in the career flow without writing saved state', async () => {
