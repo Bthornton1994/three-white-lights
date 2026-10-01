@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "production-native-full-final-2026-10-01T06-51-31-648Z-5",
+  "label": "production-native-full-final",
+  "command": [
+    "node",
+    "node_modules/vitest/vitest.mjs",
+    "run",
+    "--reporter=json",
+    "--outputFile.json=.gauntlet/evidence/production/native-full-final.json"
+  ],
+  "budgetSeconds": 1800,
+  "startedAtIso": "2026-10-01T06:51:31.648Z",
+  "startedAtMs": 1790837491648,
+  "cwd": "/workspace/scratch/4fc55cb00998/three-white-lights",
+  "commit": "5411ae9c04df57b0bf5cc2e5360a27346f669a79",
+  "branch": "codex/production-iron-amber",
+  "dirty": 133,
+  "dirtyPaths": [
+    ".gauntlet/evidence/A1.txt",
+    ".gauntlet/evidence/A2.txt",
+    ".gauntlet/evidence/A4.txt",
+    ".gauntlet/evidence/B1.txt",
+    ".gauntlet/evidence/M1.txt",
+    ".gauntlet/evidence/M2.txt",
+    ".gauntlet/evidence/M3.txt",
+    ".gauntlet/evidence/M4.txt",
+    ".gauntlet/evidence/M5.txt",
+    ".gauntlet/evidence/M6.txt",
+    ".gauntlet/evidence/N1.txt",
+    ".gauntlet/evidence/S2.txt",
+    ".gauntlet/evidence/T1.txt",
+    ".gauntlet/evidence/X1.txt",
+    ".gauntlet/evidence/b1-licensing-realip.txt",
+    ".gauntlet/evidence/c1-sweep-depth.txt",
+    ".gauntlet/evidence/c1-worlds-reach.txt",
+    ".gauntlet/evidence/campaign-summit.txt",
+    ".gauntlet/evidence/career-wiring.txt",
+    ".gauntlet/evidence/deadlift-phase-model.txt"
+  ],
+  "runner": {
+    "pid": 5,
+    "startTick": "146",
+    "cmdline": "/bin/bash /usr/local/scripts/sync_share.sh",
+    "bootId": "1739ba09-2af8-471f-9071-9ca46300f873",
+    "bootEpochSeconds": 1790834613,
+    "host": "1311d37f2830",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass."
+}

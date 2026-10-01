@@ -1761,6 +1761,8 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'docs/GDD.md', name: 'Supabase', where: 'prose', count: 4 },
   { file: 'docs/GDD.md', name: 'USAPL', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'USPA', where: 'prose', count: 1 },
+  { file: 'docs/production/BACKEND-INDEPENDENT-REVIEW-59b7f5b3.md', name: 'Supabase', where: 'prose', count: 6 },
+  { file: 'docs/production/BACKEND-STATE.md', name: 'Supabase', where: 'prose', count: 2 },
   { file: 'docs/production/OPERATIONS.md', name: 'Supabase', where: 'prose', count: 7 },
   { file: 'docs/reference/meet-photo-ref-1-ipf-squat-bottom.webp', name: 'IPF', where: 'filename', count: 1 },
   { file: 'docs/reference/README.md', name: 'IPF', where: 'prose', count: 2 },

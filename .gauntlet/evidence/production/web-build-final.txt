@@ -1,0 +1,28 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> three-white-lights-web@1.0.0 build
+> npm run typecheck && vite build
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> three-white-lights-web@1.0.0 typecheck
+> tsc --noEmit
+
+vite v8.2.1 building client environment for production...
+[2K
+transforming...✓ 1890 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   1.17 kB │ gzip:   0.53 kB
+dist/assets/index-Ce8XoFsJ.css   76.66 kB │ gzip:  16.42 kB
+dist/assets/index-DG9viynN.js   591.65 kB │ gzip: 184.88 kB │ map: 4,660.79 kB
+
+✓ built in 324ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+watchdog: verify sync OFF (VERIFY_SYNC_REMOTE=off) — this record is LOCAL ONLY
+watchdog: npm --prefix web run build finished in 5.2s (budget 180s)
+watchdog: marker PASS — /workspace/scratch/4fc55cb00998/three-white-lights/.gauntlet/verify/production-web-build-final-2026-10-01T06-50-32-957Z-5.verify.json

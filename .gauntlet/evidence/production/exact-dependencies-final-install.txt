@@ -1,0 +1,21 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+npm warn deprecated uuid@7.0.3: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+
+added 596 packages in 23s
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+added 65 packages in 6s
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+  0     0    0     0    0     0      0      0 --:--:--  0:00:01 --:--:--     0
+  0     0    0     0    0     0      0      0 --:--:--  0:00:02 --:--:--     0
+  0     0    0     0    0     0      0      0 --:--:--  0:00:03 --:--:--     0
+  0     0    0     0    0     0      0      0 --:--:--  0:00:04 --:--:--     0
+  0     0    0     0    0     0      0      0 --:--:--  0:00:04 --:--:--     0
+ 41  114M   41 47.2M    0     0  9099k      0  0:00:12  0:00:05  0:00:07 10.9M
+ 97  114M   97  111M    0     0  17.6M      0  0:00:06  0:00:06 --:--:-- 25.8M
+100  114M  100  114M    0     0  17.8M      0  0:00:06  0:00:06 --:--:-- 33.6M
+Google Chrome for Testing 151.0.7922.34
+BROWSER_EXECUTABLE_PATH=/workspace/scratch/4fc55cb00998/tooling/browser-manual/chrome-headless-shell-linux64/chrome-headless-shell

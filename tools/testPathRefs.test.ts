@@ -346,8 +346,9 @@ const PINNED = Object.freeze({
    */
   // Production browser, server, edge sources and scripts. The real Git index
   // now includes the account browser runner, its loopback SQL fixture and
-  // the real phone inspector browser driver. Re-measured: 450 sources.
-  SCANNED_FILES: 450,
+  // the real phone inspector browser driver. The independent backend review
+  // and state note are also restored tracked prose: 452 sources, same scope.
+  SCANNED_FILES: 452,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
