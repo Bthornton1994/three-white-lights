@@ -145,6 +145,7 @@ export async function rehearseMeet(page, report, evidence, options = {}) {
   await page.getByRole('button', { name: 'View the complete result sheet', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Meet result sheet', exact: true });
   await dialog.waitFor();
+  assert.match(await dialog.locator('.meet-paper footer').innerText(), options.savedAccount ? /RECORDED RESULT/ : /PRACTICE RESULT/);
   const player = dialog.locator('tbody tr').filter({ hasText: 'Mara Vellum' });
   const cells = player.locator('th, td');
   assert.equal(await cells.count(), 18);
@@ -156,6 +157,7 @@ export async function rehearseMeet(page, report, evidence, options = {}) {
   const downloadWait = page.waitForEvent('download');
   await dialog.getByRole('button', { name: 'Download PNG', exact: true }).click();
   const download = await downloadWait;
+  assert.equal(download.suggestedFilename(), options.savedAccount ? 'mara-vellum-recorded-result.png' : 'mara-vellum-practice-result.png');
   const pngPath = path.join(evidence, options.savedAccount ? 'mara-vellum-recorded-result.png' : 'mara-vellum-practice-result.png');
   await download.saveAs(pngPath);
   const png = await readFile(pngPath);
@@ -236,7 +238,7 @@ export async function rehearseTraining(page, report, evidence, options = {}) {
 }
 
 async function main() {
-  const evidence = path.join(root, process.env.TRAINING_ONLY === '1' ? '.gauntlet/recovery/training' : '.gauntlet/recovery/ui');
+  const evidence = path.join(root, process.env.TRAINING_ONLY === '1' ? '.gauntlet/evidence/production/training-browser' : '.gauntlet/evidence/production/meet-browser');
   const report = { startedAt: new Date().toISOString(), checks: [], attempts: [], errors: [], assetFailures: [], limitations: ['A disposable practice lifter is played through visible browser controls.', 'This check does not establish live-account persistence, physical-device touch feel or native haptics.'] };
   let browser;
   let page;

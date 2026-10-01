@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "status": "incomplete",
+  "publishedSourceAtLastFreeze": "24bdae62c6b155087bf963c731d4c0fe9fbd8b32",
+  "observedChecks": {
+    "productionBuildBeforeFinalNativeMetroPatch": {
+      "status": "passed",
+      "javascriptBytes": 591330,
+      "javascriptGzipBytes": 184820,
+      "note": "Vite bundle-size warning remains; exact byte figures are rounded from Vite output."
+    },
+    "webAuditAfterVitestPatch": {
+      "status": "passed",
+      "findings": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    },
+    "nativeAuditInitially": {
+      "status": "failed",
+      "findings": {
+        "moderate": 16,
+        "high": 4,
+        "critical": 0,
+        "total": 20
+      }
+    },
+    "nativeAuditAfterCompatibleLeafPatches": {
+      "status": "failed",
+      "findings": {
+        "moderate": 13,
+        "high": 1,
+        "critical": 0,
+        "total": 14
+      }
+    },
+    "nativeGateAfterUnusedRouterRemoval": {
+      "status": "passed",
+      "leaves": [
+        "GHSA-5p2g-fcmc-qvqq",
+        "GHSA-w3rx-r6r6-pgpr",
+        "GHSA-w5hq-g745-h8pq"
+      ],
+      "note": "Uses the pre-existing three-leaf allowlist; no newly discovered advisory was allowlisted."
+    },
+    "focusedNativeObserved": {
+      "sourceBase": "59b7f5b3a84a7d3876a0f04dae1804ba554df019",
+      "status": "failed",
+      "tests": 295,
+      "passed": 292,
+      "failed": 3,
+      "runMarker": "production-native-audits-observed-2026-09-30T22-04-38-956Z-2",
+      "failures": [
+        "Five unavailable original PNGs change the binary census.",
+        "Tracked original PNGs are unreachable.",
+        "Citation row ordering was wrong; corrected source5b8ad34fd0dc80ea1cac1ea857af37ef3dcba61f has not been rerun."
+      ]
+    },
+    "historicalGitFreeze": {
+      "status": "passed",
+      "a0Commit": "39400d9790597f53a1665d8bf6eea76736d2e9cb",
+      "a1Commit": "3cee186cf1773afd54985cff978920e38d4bd60e",
+      "observedCases": 7,
+      "note": "Actual Git database commit/tree objects were verified against their original SHAs; protected lift/meet/Empire diffs are empty."
+    },
+    "sourcePathCensus": {
+      "scannedSources": 450,
+      "testPaths": 120,
+      "unresolved": 0
+    }
+  },
+  "durableCandidate": {
+    "nativePackage": "82da0b21829ceb16f6c735ace0c932f7df164590",
+    "nativeIntermediateLock": "b91138b808d854e5bb3ef6adb24714a3e8df56c8",
+    "matchingIntermediateAuditGate": "8d21e23be29c25ce48da44efa469b965251926e4",
+    "finalCitationRegistry": "5b8ad34fd0dc80ea1cac1ea857af37ef3dcba61f",
+    "finalSourceCensus": "628c4aef5eae4cbcb134a560d0208c8447f22e29"
+  },
+  "interruptedWork": {
+    "reason": "Exec transport disconnected during the final reinstall/upload. Completion of the final reinstall and final audits is unknown.",
+    "finalMetroLockUploaded": false,
+    "finalGateWithoutMatchingLockMustNotBePublished": "2bdbdea2e7ce5dcbd1f6e2e73e3db4294767df67",
+    "actualLockResolutionBeforeDisconnection": {
+      "expoMetro": "56.0.2",
+      "expoMetroNestedMetro": "0.84.5",
+      "reactNativeMetro": "0.84.6",
+      "removed": [
+        "image-size",
+        "queue",
+        "decode-uri-component"
+      ],
+      "unchanged": [
+        "Expo57 family",
+        "React Native0.86.2",
+        "native lift engines",
+        "native game tuning"
+      ]
+    },
+    "reproducibleResolution": [
+      "Start from the coherent intermediate package/lock pair in an empty tooling directory.",
+      "Unlock only root node_modules/metro* entries whose version is0.84.4; keep package.json unchanged.",
+      "Run npm install --package-lock-only --ignore-scripts in that directory.",
+      "Verify all changed versions are Metro family0.84.6 plus its ob1 companion0.84.6; image-size and decode-uri-component must be absent.",
+      "Copy the verified generated lock to the repository, then run the exact dependency preparation script and fresh audits."
+    ]
+  },
+  "requiredNextChecks": [
+    "Final exact-lock reinstall and audits",
+    "One full native suite under watchdog, sequential with the account browser capture",
+    "Built desktop/phone production browser run with zero unavailable art assets",
+    "Independent rendered visual review",
+    "Existing physical-device/haptic QA"
+  ]
+}

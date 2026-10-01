@@ -12,7 +12,7 @@ import { rehearseMeet, rehearseTraining } from './production-meet-browser.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url)); const web = path.join(root, 'web');
 const fixturePort = '5188'; const browserPort = '5189'; const api = `http://127.0.0.1:${fixturePort}`; const base = `http://127.0.0.1:${browserPort}`;
 const evidence = path.join(root, '.gauntlet/evidence/production/account-browser');
-const report = { startedAt: new Date().toISOString(), status: 'running', checks: [], attempts: [], errors: [], assetFailures: [], requests: [], sourceHashes: {}, limitations: ['Auth identities and tokens are explicit local fixtures, not live Supabase sessions.', 'Database/SQL, production handler, native replay and client/hooks are real; PGlite has one connection.', 'Automated browser input does not establish physical-device touch feel, native haptics, or human performance.'] };
+const report = { startedAt: new Date().toISOString(), status: 'running', checks: [], attempts: [], errors: [], assetFailures: [], requests: [], authChecks: [], sourceHashes: {}, limitations: ['Auth identities and tokens are explicit local fixtures, not live Supabase sessions.', 'Database/SQL, production handler, native replay and client/hooks are real; PGlite has one connection.', 'Automated browser input does not establish physical-device touch feel, native haptics, or human performance.'] };
 const responseReads = []; let browser; let page; let fixture; let vite;
 let fixtureLog = ''; let viteLog = '';
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -22,7 +22,8 @@ async function signIn(key) {
   await page.goto(base, { waitUntil: 'networkidle' }); await (await visibleButton('Sign in')).click();
   await page.getByLabel('Email', { exact: true }).fill(`${key}@twl.test`); await page.getByLabel('Password', { exact: true }).fill('local-fixture-password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).last().click();
-  await page.getByText('Saved career', { exact: true }).waitFor();
+  await page.getByText('Saved career', { exact: true }).waitFor({ state: 'attached' });
+  await page.getByRole('button', { name: 'Your athlete', exact: true }).waitFor();
   assert.equal(await page.locator('.practice-banner').count(), 0);
 }
 async function persisted(key) {
@@ -34,6 +35,7 @@ function watch(activePage) {
   activePage.on('pageerror', error => report.errors.push(error.message));
   activePage.on('response', response => {
     if (response.status() >= 400 && /\.(png|jpe?g|css|js)(\?|$)/.test(response.url())) report.assetFailures.push({ path: new URL(response.url()).pathname, status: response.status() });
+    if (response.url().endsWith('/auth/v1/user')) report.authChecks.push({ operation: 'verify-restored-identity', status: response.status() });
     if (!response.url().endsWith('/functions/v1/twl-api')) return;
     const request = response.request(); const command = request.postDataJSON();
     responseReads.push(response.json().then(body => report.requests.push({ kind: command.kind, requestId: command.requestId ?? null, evidenceCount: command.payload?.evidence?.length ?? null, status: response.status(), revision: body.opening?.revision ?? null, acknowledgement: body.response?.wire?.acknowledgedProposalId ?? null, message: body.message ?? null })).catch(error => report.errors.push(error.message)));
@@ -41,7 +43,7 @@ function watch(activePage) {
 }
 try {
   await mkdir(evidence, { recursive: true });
-  for (const name of ['src/production/client.ts', 'src/production/server.ts', 'src/production/handler.ts', 'src/production/evidenceReplay.ts', 'supabase/functions/twl-api/domain.js', 'supabase/functions/twl-api/domain.manifest.json', 'supabase/migrations/20260930193634_twl_authoritative_accounts.sql', 'web/src/App.tsx', 'web/src/Training.tsx', 'web/src/Meet.tsx', 'web/src/LiftPlayer.tsx', 'web/src/liftBrowser.ts']) report.sourceHashes[name] = createHash('sha256').update(await readFile(path.join(root, name))).digest('hex');
+  for (const name of ['scripts/production-account-browser.mjs', 'scripts/production-meet-browser.mjs', 'web/tests/production-http-fixture.mjs', 'src/production/client.ts', 'src/production/server.ts', 'src/production/handler.ts', 'src/production/evidenceReplay.ts', 'supabase/functions/twl-api/domain.js', 'supabase/functions/twl-api/domain.manifest.json', 'supabase/migrations/20260930193634_twl_authoritative_accounts.sql', 'src/session/useSession.ts', 'src/meet/useCareer.ts', 'src/meet/useMeetDay.ts', 'web/src/App.tsx', 'web/src/Training.tsx', 'web/src/Meet.tsx', 'web/src/Career.tsx', 'web/src/LiftPlayer.tsx', 'web/src/liftBrowser.ts']) report.sourceHashes[name] = createHash('sha256').update(await readFile(path.join(root, name))).digest('hex');
   fixture = spawn(process.execPath, [path.join(web, 'tests/production-http-fixture.mjs'), fixturePort, browserPort], { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
   for (const stream of [fixture.stdout, fixture.stderr]) stream.on('data', chunk => { fixtureLog += chunk.toString(); });
   await waitFor(async () => { if (fixture.exitCode !== null) throw new Error(fixtureLog); try { return (await fetch(`${api}/auth/v1/user`, { headers: { authorization: 'Bearer fixture-alice' } })).ok; } catch { return false; } }, 'The loopback SQL fixture did not become ready.');
@@ -59,6 +61,14 @@ try {
   await responseReads.splice(0).reduce(async (prior, current) => { await prior; await current; }, Promise.resolve());
   const trainingSave = report.requests.find(request => request.kind === 'record-training-session'); assert.equal(trainingSave?.status, 200); assert.equal(trainingSave?.evidenceCount, 15); assert.equal(trainingSave?.acknowledgement, trainingSave?.requestId);
   report.checks.push({ name: 'browser played five by three bench reps; actual client/native hook confirmed the SQL-persisted session', status: 'passed', revision: alice.revision, evidenceCount: trainingSave.evidenceCount });
+  const aliceReloadRequests = report.requests.length; const aliceReloadAuth = report.authChecks.length;
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.getByRole('heading', { name: 'Session logged.', exact: true }).waitFor();
+  assert.equal(await page.locator('.practice-banner').count(), 0);
+  await Promise.all(responseReads.splice(0));
+  assert.ok(report.authChecks.slice(aliceReloadAuth).some(check => check.status === 200), 'Reload did not verify the stored GoTrue identity.');
+  assert.ok(report.requests.slice(aliceReloadRequests).some(request => request.kind === 'bootstrap' && request.status === 200 && request.revision === alice.revision), 'Reload did not read the saved SQL revision.');
+  report.checks.push({ name: 'reload verifies GoTrue identity and restores the SQL-confirmed session in a fresh native hook', status: 'passed' });
   report.training = training; await trainingContext.close();
   console.log('PASS browser → client → handler → SQL → confirmed native training');
   const meetContext = await browser.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true });
@@ -71,6 +81,17 @@ try {
   const aliceAgain = await persisted('alice'); assert.deepEqual(aliceAgain.state, alice.state);
   report.checks.push({ name: 'browser played nine attempts; actual client/native hook confirmed one SQL meet and original proposal acknowledgement', status: 'passed', revision: bob.revision, evidenceCount: meetSave.evidenceCount, totalKg: bob.game.wire.totalKg });
   report.checks.push({ name: 'the second signed-in account did not alter the first lifter or session', status: 'passed' });
+  await page.goto(`${base}#career`, { waitUntil: 'networkidle' });
+  await Promise.all(responseReads.splice(0)); const bobReloadRequests = report.requests.length; const bobReloadAuth = report.authChecks.length;
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.getByText('Saved career', { exact: true }).waitFor({ state: 'attached' });
+  await page.getByRole('complementary', { name: 'Your competition standing', exact: true }).waitFor();
+  assert.match(await page.getByRole('complementary', { name: 'Your competition standing', exact: true }).innerText(), new RegExp(String(bob.game.wire.totalKg)));
+  assert.equal(await page.locator('.practice-banner').count(), 0);
+  await Promise.all(responseReads.splice(0));
+  assert.ok(report.authChecks.slice(bobReloadAuth).some(check => check.status === 200), 'Meet reload did not verify the stored GoTrue identity.');
+  assert.ok(report.requests.slice(bobReloadRequests).some(request => request.kind === 'bootstrap' && request.status === 200 && request.revision === bob.revision), 'Meet reload did not read the saved SQL revision.');
+  report.checks.push({ name: 'reload restores the recorded meet total through a fresh production client and Career reading', status: 'passed', totalKg: bob.game.wire.totalKg });
   report.meet = meet; await meetContext.close(); assert.deepEqual(report.errors, []);
   report.status = report.assetFailures.length ? 'account-flow-passed-art-incomplete' : 'account-flow-passed';
   if (report.assetFailures.length) report.limitations.push('Missing art was recorded during this account-flow check. Functional acknowledgement does not satisfy the separate full-art release gate.');

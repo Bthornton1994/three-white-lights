@@ -1,1425 +1,1954 @@
 /**
- * THE REAL-IP AUDIT, run against the real repository (GDD §12.3).
+ * realIp.ts — THE REAL-IP AUDIT.
  *
- * ---------------------------------------------------------------------------
- * WHY MOST OF THIS FILE IS MUTATIONS
- * ---------------------------------------------------------------------------
- * A denylist whose patterns never match passes everything in the world. That
- * failure mode is invisible in a green suite and it is the single most likely
- * way this piece would be worthless, so "the tree is clean" is the LAST
- * assertion here, not the first.
+ * GDD §12.3, the refusal condition this file enforces:
  *
- * Before it, `describe('the audit bites')` takes REAL DATA AND REAL FILES,
- * plants a real brand or a real athlete's name in them, asserts THE PLANT
- * ACTUALLY APPLIED — a find-and-replace that silently matched nothing reports a
- * false pass, and that has happened twice in this run — and asserts the audit
- * reports it. It plants into all three of the places §12.3 names: a string, a
- * data entry, and a config. Then `describe('the audit is not a sieve')` does the
- * reverse and asserts silence on the fictional names and on ordinary prose.
+ *   > **Any real, named athlete, brand, or company identity** — name, logo,
+ *   > likeness, or wordmark — hardcoded into any asset, string, config, or code
+ *   > path (§7.3, §8.1)
  *
- * ---------------------------------------------------------------------------
- * THIS FILE NEVER SPELLS A WATCHED NAME
- * ---------------------------------------------------------------------------
- * Every plant below is drawn from `REAL_IP_WATCHLIST` at runtime rather than
- * typed in. Two reasons, and the second is the important one:
+ * and the two properties §12.3 gives for why it is checked constantly rather
+ * than once: it is LEGAL EXPOSURE rather than taste, and it ARRIVES BY ACCIDENT
+ * — "a 'realistic' placeholder name a builder reached for because a real one was
+ * the first thing that came to mind".
  *
- *   1. It keeps the real names in one region of one file (see `WATCHLIST_FILE`).
- *   2. A hand-typed plant can be misspelled, and a misspelled plant that the
- *      scanner then fails to find would look exactly like a passing test.
- *      Drawing the plant from the list makes "the scanner knows this name" true
- *      by construction, so the only thing left for the assertion to prove is
- *      that the scanner REACHED the place it was planted.
+ * An audit nobody invokes is worth nothing, so this one is not a script. It runs
+ * inside `npx vitest run` from `realIp.test.ts`, over the whole repository
+ * — source, strings, config, data files, docs and asset filenames — and it turns
+ * the suite red. Same shape as `src/tuning/audit.ts`, deliberately: that piece
+ * established the pattern and a second idiom for "scan the tree and fail" would
+ * be a second thing to keep working.
+ *
+ * PURE MODULE: zero React imports, zero I/O, zero side effects. The caller
+ * supplies paths and contents; `realIp.test.ts` reads disk.
+ *
+ * ===========================================================================
+ * 1. WHY THERE ARE REAL BRAND NAMES IN THIS FILE, AND WHY THAT IS NOT THE
+ *    THING §12.3 FORBIDS
+ * ===========================================================================
+ *
+ * `REAL_IP_WATCHLIST` below contains real company and athlete names. That is
+ * unavoidable — a denylist has to name what it denies — and it deserves the
+ * argument rather than a shrug, because at a glance it looks like the exact
+ * thing this file exists to prevent.
+ *
+ * §12.3 forbids a real identity "hardcoded into any asset, string, config, or
+ * code path". The operative word is what the name IS THERE TO DO. Every name
+ * here exists to be REFUSED:
+ *
+ *   - It is never rendered. `scanRenderable` walks the strings a screen can
+ *     draw, and `realIp.test.ts` asserts none of them contains a watchlist name
+ *     — including, specifically, that no watchlist name reaches the licensing
+ *     catalogue.
+ *   - It never populates the licensing system. `partners.ts` does not import
+ *     this module, and `NO_ENTRY_MATCHES_THE_WATCHLIST` is a test over the real
+ *     catalogue rather than a convention.
+ *   - It is not an asset. There is no image, no font, no manifest.
+ *
+ * The house precedent is already there: `gymScene.test.ts` bans a list of real
+ * federation, brand and athlete names from the environment art by spelling them
+ * out, and `progression.ts`'s `PERFORMANCE_FACT_VOCABULARY` is a blocklist of
+ * words a fact may not be named. This is the same instrument one category over.
+ * (`meetTuning.test.ts` was the other example and is no longer one: its owner
+ * retired the five-name ban after this module generalised it, and that file now
+ * carries a test named for leaving the ban to the watchlist that owns it. Named
+ * in the past tense here rather than left standing, because a header that cites
+ * a check which no longer exists is the drift the citation list warns about.)
+ *
+ * AND IT IS HELD TO ONE REGION OF ONE FILE. Nothing else here spells a watched
+ * name — not this header, not the tests, not the pinned list's prose — and the
+ * scan enforces that on itself: `WATCHLIST_FILE` plus `WATCHLIST_REGIONS` is the
+ * only exemption, each cut at its declaration's own closing bracket, and
+ * `realIp.test.ts` plants a real brand in this very comment and asserts it is
+ * reported. Everything below that would naturally have quoted a real acronym or
+ * a real project describes it instead ("a three-letter brand acronym", "the
+ * open-results project"), which reads slightly worse and keeps the count at one
+ * place. `realIp.test.ts` asserts the consequence directly: this file has ZERO
+ * rows on the citation list, and a leak out of the three literals would put one
+ * there.
+ *
+ * THE ALTERNATIVE WAS CONSIDERED AND IS WORSE. Hashing or encoding the list
+ * would remove the names from the file and remove a human's ability to review
+ * what is on it — and a watchlist nobody can read is a watchlist nobody can
+ * correct, on the one check in this codebase whose failure cannot be patched
+ * after release.
+ *
+ * The residual is stated plainly in §5.
+ *
+ * ===========================================================================
+ * 2. TWO CATEGORIES, AND THE LINE BETWEEN THEM IS "CAN IT REACH A SCREEN"
+ * ===========================================================================
+ *
+ * A baseline scan of this repository found real names already present, and they
+ * were all one kind: VERIFICATION PROVENANCE. `dots.test.ts` cites a published
+ * all-time total to anchor a plausibility test; `resultCard.test.ts` transcribes
+ * real federation CSV rows to prove the export format matches. Those citations
+ * are the practice CLAUDE.md demands elsewhere — "use the published
+ * coefficients; do not homebrew" — and deleting them would make those tests'
+ * provenance unverifiable.
+ *
+ * So the audit splits, and the split is by WHAT THE STRING CAN DO, not by which
+ * file it is in:
+ *
+ *   (A) IDENTITY AS CONTENT — `scanRenderable`. A value that can reach a
+ *       screen, ship in an asset, or populate the licensing system. DEFAULT
+ *       DENY. There is no allowlist and no pin; a finding here fails the suite
+ *       and the only fix is to remove the name. This is the category §12.3 is
+ *       actually about.
+ *
+ *   (B) DOCUMENTED REFERENCE — `scanSourceText`. A mention in the source text
+ *       of the repository: a comment, a doc block, a test title, an identifier,
+ *       a markdown paragraph. LISTED, not silently allowed and not silently
+ *       deleted. Every one is pinned in `REVIEWABLE_CITATIONS` below with its
+ *       file, its name and where in the file it sits, so a NEW mention fails the
+ *       suite until a human looks at it and either removes it or writes it into
+ *       the list. A human rules; the machine makes sure the ruling happens.
+ *
+ * The two are not the same strength and should not be described as if they
+ * were. (A) is a prohibition. (B) is a tripwire on a reviewed inventory.
+ *
+ * ===========================================================================
+ * 3. THE FEDERATION RULING
+ * ===========================================================================
+ *
+ * Federation names are the messy case and the reason this file has a ruling
+ * section at all. The five acronyms in the `federation` block of the watchlist
+ * are real organisations, and they already appear across `meet.ts`,
+ * `resultCard.ts`, `sampleCards.ts`, `plates.ts`, `palette.ts`, the
+ * magic-number audit's own rationale strings and the GDD. They are not all the
+ * same thing, and treating them as one category produces either a suite that
+ * cannot go green or a check that means nothing.
+ *
+ * THE RULING, applied by the code below:
+ *
+ *   STRUCTURAL REFERENCE — LEGITIMATE. Naming the body that publishes a rule
+ *   being implemented: the meet structure a `why:` string attributes, the
+ *   rulebook `plates.ts` says it could not download, the plate-colour ladder
+ *   `meetPalette.ts` sources. CLAUDE.md's domain-correctness section REQUIRES
+ *   this — meet structure, plate ladder and weight classes have to be the real
+ *   sport's, and a citation with its source struck out is not a citation. These
+ *   land in category (B) and are pinned.
+ *
+ *   IDENTITY AS CONTENT — NOT LEGITIMATE. A federation name a player SEES: the
+ *   `federation` field of a meet, the masthead of a result card, a shop entry, a
+ *   sprite decal. Those are (A), default-denied — and they are already fictional
+ *   in this tree, which is why (A) is green today rather than being green
+ *   because it looks at nothing.
+ *
+ * THE TEST OF THE RULING IS THAT IT IS NOT A FILE-BY-FILE PARDON. The same
+ * acronym is category (B) in `meet.ts`'s header and would be category (A) if it
+ * were assigned to `MEET_LOCAL.federation` in the same file. What decides is
+ * whether a screen can draw it.
+ *
+ * `meetTuning.test.ts` USED TO ban five real federation names from
+ * `MEET_LOCAL.federation`, unprompted, citing §11. This module GENERALISED that
+ * check rather than duplicating it: `MEET_LOCAL` is pulled into the renderable
+ * inventory in `realIp.test.ts` through the whole `TUNING` registry, and scanned
+ * against the entire watchlist rather than five hand-typed names — as is every
+ * other tuned string in the game. Its owner has since retired the bespoke ban;
+ * the file now carries a test named for leaving the ban to the watchlist that
+ * owns it, and the five rows it used to contribute are gone from the citation
+ * list. `gymScene.test.ts` is the last hand-written one still standing.
+ *
+ * ===========================================================================
+ * 4. WHAT IS DELIBERATELY NOT WATCHED
+ * ===========================================================================
+ *
+ * `DELIBERATELY_NOT_WATCHED` is the list of real names this audit does NOT look
+ * for, with the reason for each. It exists because an omission from a denylist
+ * is invisible, and an invisible omission is how a denylist quietly stops
+ * covering the thing everyone assumed it covered.
+ *
+ * EVERY NAME ON IT IS ACTUALLY IN THIS TREE. It is a list of rulings, not of
+ * hypotheticals: the repository was swept for real-world proper nouns and each
+ * of these was found and then ruled out, so a reader sees the ruling instead of
+ * inferring it from a silence. Three groups, and they are not equally safe:
+ *
+ *   - FORMULA AND ALGORITHM EPONYMS. `Epley` is mandated — "Epley, and only
+ *     Epley" — and `Brzycki` is mandated by its PROHIBITION, which cannot be
+ *     written without writing the name. A person whose surname is attached to a
+ *     published formula is not a licensable identity in the sense §12.3 means;
+ *     there is no agreement to sign and no mark to infringe.
+ *   - CODE HOSTS AND THE DEPENDENCY GRAPH. `package.json` and its lockfile are
+ *     lists of vendor names by construction. Watching the category would make
+ *     the pinned inventory churn on `npm install` and go red for reasons that
+ *     have nothing to do with §12.3. A category exclusion, said out loud,
+ *     rather than an enumeration — it is the one part of the omission list that
+ *     is not exhaustive.
+ *   - NAMES THAT ARE ALSO ORDINARY ENGLISH IN THE USE THE TREE MAKES OF THEM.
+ *     One studio's name is a plumbing noun, and both mentions in this repository
+ *     are the noun.
+ *
+ * WHAT IS NO LONGER ON IT MATTERS MORE THAN WHAT IS. The console marks, the two
+ * named vendors and the cited repository accounts were all parked here on an
+ * "unactionable" argument, and that was a RULING wearing a category's clothes.
+ * They are watched and pinned now. Declining to count a mention is not a neutral
+ * act: it hands a human a number that is quietly wrong on the one question
+ * §12.3 says cannot be walked back after release.
+ *
+ * ===========================================================================
+ * 5. WHAT THIS DOES NOT CLOSE — stated plainly, because an audit that
+ *    overstates its coverage is worse than no audit
+ * ===========================================================================
+ *
+ *  - A WATCHLIST IS A FLOOR, NOT A NET. It catches the names somebody thought
+ *    of. A real brand nobody listed sails through, and there is no version of
+ *    this check that does not have that property. `progression.ts` says the same
+ *    thing about `PERFORMANCE_FACT_VOCABULARY` and it is just as true here.
+ *    What the list buys is the §12.3 ACCIDENT — the first real name that comes
+ *    to mind is, by construction, a famous one.
+ *    THIS IS NOT A HYPOTHETICAL AND IT HAS ALREADY HAPPENED TWICE, A WEEK
+ *    APART, FOUND BY DIFFERENT READERS. The first version of the list had no
+ *    category for open-source projects and data sources, so the single
+ *    most-cited real organisation in this repository and its software — 103
+ *    mentions across 15 files — was invisible while the suite ran green, and a
+ *    fresh mention added mid-run did not move the verdict. The second had no
+ *    category for the game industry, so a console mark in 15 files and a
+ *    character mark used as a sprite-height comparator were invisible too; that
+ *    one was found by a critic grading a different piece, not by anyone looking
+ *    at this file. 85 rows were added between them, against 60 that were already
+ *    there.
+ *    THE PATTERN IN BOTH MISSES IS THE USEFUL PART: the original categories were
+ *    chosen by asking what a builder might INVENT a fake version of, and both
+ *    holes were things this codebase CITES. Anyone extending this list should
+ *    re-derive what the tree points at rather than trusting either list to be
+ *    current, and should expect a third category nobody has thought of.
+ *  - URL FORMS ARE COVERED ONLY BECAUSE OF THE BOUNDARY RULE, not because
+ *    anything parses URLs. `patternFor`'s edges are alphanumeric-only, so `/`,
+ *    `.` and `-` are all boundaries and a name inside a host or a path matches
+ *    the same literal as the bare name. That is load-bearing — a URL is how a
+ *    real name most often survives a text scan — and `realIp.test.ts` pins it
+ *    against the actual host, path and dotted-domain forms in this tree. The
+ *    residual: a name that only ever appears SPLIT by a URL-encoded or hyphen-
+ *    joined form of itself is still missed, and one such abbreviation had to be
+ *    added as its own entry for exactly that reason.
+ *  - IT READS TEXT. A real logo drawn pixel by pixel into `partners.ts`, or
+ *    pasted into a PNG under `assets/`, is invisible to it. Filenames are
+ *    scanned; image contents are not.
+ *    WHICH FILES COUNT AS TEXT USED TO BE AN EXTENSION ALLOWLIST, AND IT FAILED
+ *    OPEN. Fifteen suffixes; anything else was skipped with no finding, no note
+ *    and no line of output, so the gap was invisible from the outside — which is
+ *    strictly worse than looking and finding nothing. `.py` was not on it, and a
+ *    builder on an unrelated piece reached for a Python script first; `.mts` and
+ *    `.toml` were not on it either and four such files were already in the tree.
+ *    It is a CONTENT test now: everything the walk reaches is read unless its
+ *    bytes are not text, and the files that fails on are enumerated by name in
+ *    `UNREADABLE_BY_THIS_AUDIT` rather than silently dropped. See the argument at
+ *    `classifyBytes` for why the replacement is not a denylist of binary
+ *    extensions — that shape fails open one level further out.
+ *  - THE DIRECTORY DIMENSION IS STILL AN ALLOWLIST. `NOT_WALKED` names seven
+ *    directories this audit never descends into, and a real mark inside one of
+ *    them is as invisible as `.py` was. Each has a written reason in
+ *    `NOT_WALKED_REASONS`, which is more than the extension rule ever had; it is
+ *    still a list somebody has to keep right, and fixing the file-type dimension
+ *    said nothing about this one.
+ *    THERE IS A LIVE INSTANCE OF THIS, and it is worth naming rather than
+ *    leaving as a general caveat: one of the committed reference images under
+ *    `docs/reference/` carries a real league's logo and a currently-competing
+ *    player's likeness in its PIXELS. This audit knows about it only because a
+ *    doc TRANSCRIBED THE CAPTION, which is what put the league, the club and the
+ *    player on the citation list. Had nobody written the caption down, the
+ *    image would be exactly as unlicensed and this file would report nothing.
+ *    Reference material outside a shipped asset root is category (B) by design,
+ *    but the human ruling on that row should know it is ruling on a picture and
+ *    not only on a sentence.
+ *  - CASE AND SPELLING. Matching is case-insensitive with word boundaries, so a
+ *    lower-cased brand is caught and a digit-substituted one is not. Deliberate
+ *    obfuscation defeats it.
+ *  - THE PINNED LIST IS A JUDGEMENT SOMEBODY MADE. Category (B) is only worth
+ *    something if a human actually reads `REVIEWABLE_CITATIONS` when it changes.
+ *    The machine can force the reading to happen; it cannot do the reading.
+ *  - IT CANNOT SEE INTENT. A fictional name that happens to be a small real
+ *    company's is exactly as invisible to this as it was to the person who typed
+ *    it. Every name in `partners.ts` was searched by hand for that reason, and
+ *    one candidate was rejected at that step.
  */
 
-import { describe, expect, it } from 'vitest';
-import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-import {
-  DELIBERATELY_NOT_WATCHED,
-  EXTENSIONS_READ_AS_TEXT,
-  NOT_WALKED,
-  NOT_WALKED_HIDES_TRACKED,
-  REAL_IP_WATCHLIST,
-  REVIEWABLE_CITATIONS,
-  UNREADABLE_BY_THIS_AUDIT,
-  WATCHLIST_FILE,
-  WATCHLIST_REGIONS,
-  censusScope,
-  citationInventory,
-  classifyBytes,
-  extensionOf,
-  reachReport,
-  unreadableCensus,
-  findWatchedNames,
-  formatCitations,
-  formatContentFindings,
-  formatMentions,
-  identityStrings,
-  isShippedPath,
-  isTextFile,
-  patternFor,
-  scanFileName,
-  scanRenderable,
-  scanSourceText,
-  walkStrings,
-  type RenderableString,
-  type WatchEntry,
-} from './realIp';
-import { IDENTITY_ENTRIES, BASE_ITEMS, SPONSORED_RESKINS } from './partners';
-import { tier3Asset, tier3Of, type IdentityEntry } from './tiers';
-import { TUNING } from '../tuning/index';
-import { SAMPLE_CARDS } from '../card/sampleCards';
-
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(HERE, '..', '..');
+import { codeOnly, declarationRegions, withoutComments } from '../tuning/audit';
+import type { IdentityEntry } from './tiers';
+import { TIER_3_SLOTS, tier3Of } from './tiers';
 
 // ---------------------------------------------------------------------------
-// Reading the tree
+// The watchlist
 // ---------------------------------------------------------------------------
 
-function walk(dir: string): string[] {
-  const out: string[] = [];
-  for (const entry of readdirSync(dir)) {
-    if (NOT_WALKED.includes(entry)) continue;
-    const full = path.join(dir, entry);
-    if (statSync(full).isDirectory()) out.push(...walk(full));
-    else out.push(full);
+/**
+ * WHY THERE ARE SIX KINDS AND NOT THE ORIGINAL FOUR.
+ *
+ * The first four were the categories a powerlifting game would plausibly touch
+ * as CONTENT: a governing body, an equipment brand, a meet, a lifter. Both
+ * additions were found the same way — a name already in the tree that nothing
+ * was looking for — and the pattern in HOW they were missed is worth more than
+ * either category:
+ *
+ *   `project` — the OPEN-SOURCE PROJECTS AND SOFTWARE PLATFORMS the sport runs
+ *   its results on. A results database, the meet-management software a
+ *   federation scores on, the repository a coefficient implementation was read
+ *   out of. Real organisations with real marks, and forcing them into `brand` or
+ *   `federation` would have made the list say something false about what they
+ *   are.
+ *
+ *   `game-industry` — CONSOLES, STUDIOS, FRANCHISES AND CHARACTERS. This is a
+ *   16-bit pixel-art project whose art bar is defined by era comparison, so it
+ *   reasons about console colour depth, vblank-authored animation and how big a
+ *   fighting-game lead stood on a 224-line field. Every one of those sentences
+ *   reaches for a real trademark, and none of them is about powerlifting.
+ *
+ * THE COMMON FAILURE was that the original four were chosen by asking WHAT A
+ * BUILDER MIGHT INVENT A FAKE VERSION OF — a sponsor, a federation, a lifter.
+ * Both missed categories are things the codebase CITES rather than invents, and
+ * both were sitting in the tree while the audit ran green. Ask what a file
+ * points at, not only what it might make up.
+ */
+export type WatchKind =
+  | 'brand'
+  | 'athlete'
+  | 'federation'
+  | 'meet-series'
+  | 'project'
+  | 'game-industry';
+
+export interface WatchEntry {
+  /** The literal to look for. Matched case-insensitively, on word boundaries. */
+  readonly name: string;
+  readonly kind: WatchKind;
+  /** Why it is on the list. One line, so the list stays reviewable. */
+  readonly note: string;
+}
+
+/**
+ * THE NAMES THIS AUDIT REFUSES.
+ *
+ * Read §1 of the header before adding to or removing from this list — in
+ * particular, this is the ONE region of the ONE file where these strings are
+ * allowed to appear, and the scan enforces that on itself.
+ *
+ * Chosen for the §12.3 accident rather than for completeness: the first real
+ * name a builder reaches for is a famous one, so the list is the famous ones in
+ * the five categories a powerlifting game would plausibly touch. Multi-word
+ * entries are used wherever the brand's single distinctive word is also ordinary
+ * English — several entries below are two words for exactly that reason —
+ * because a check that fires on prose gets suppressed and a suppressed check is
+ * worse than none.
+ *
+ * ---------------------------------------------------------------------------
+ * TWO BLOCKS WERE ADDED AFTER THE LIST WAS FOUND BLIND TWICE, AND THE TWO
+ * MISSES HAVE THE SAME SHAPE
+ * ---------------------------------------------------------------------------
+ * Worth recording, because it is the clearest evidence for what §5 of the header
+ * says about a floor and a net. The first four categories were the ones a
+ * powerlifting game would touch as CONTENT — a federation, an equipment brand, a
+ * meet, a lifter — and they were chosen by asking what a builder would INVENT a
+ * fake version of.
+ *
+ * They therefore missed, twice:
+ *
+ *   1. The software and data projects the sport's results actually live on,
+ *      which this codebase reads its result-card format, its DOTS
+ *      implementation, its plate ladder and its meet flow out of — 103 mentions
+ *      across 15 files. The audit ran green over all of it for the whole of this
+ *      run; a builder added a fresh mention to `src/game/meetServer.ts` in the
+ *      wave this block was written and the suite did not move.
+ *   2. The console, franchise and character marks a 16-bit project reaches for
+ *      every time it argues about era — 57 mentions across 15 files, including a
+ *      character used as a sprite-height comparator inside the figure rig's own
+ *      tuning file. Found by a critic grading that rig, not by anyone reading
+ *      this module.
+ *
+ * NEITHER WAS SHIPPING; almost every mention is provenance in a comment, and the
+ * default-deny half stayed green for the right reason. What was broken was the
+ * INSTRUMENT: the run was asking a human to rule on a citation count that was
+ * missing more than it contained.
+ *
+ * THE LESSON IS ABOUT HOW THE LIST IS EXTENDED, not about these fourteen names.
+ * Ask what the repository CITES, not what it might invent. A name arrives here
+ * far more often as a source URL or an era comparison than as a fake sponsor —
+ * and a third category nobody has thought of is the expected case, not the
+ * surprising one.
+ */
+export const REAL_IP_WATCHLIST: readonly WatchEntry[] = Object.freeze([
+  // --- federations and governing bodies ------------------------------------
+  { name: 'IPF', kind: 'federation', note: 'International Powerlifting Federation' },
+  { name: 'USAPL', kind: 'federation', note: 'USA Powerlifting' },
+  { name: 'USPA', kind: 'federation', note: 'United States Powerlifting Association' },
+  { name: 'WRPF', kind: 'federation', note: 'World Raw Powerlifting Federation' },
+  { name: 'NPL', kind: 'federation', note: 'National Powerlifting League' },
+  { name: 'GPC', kind: 'federation', note: 'Global Powerlifting Committee' },
+  { name: 'WPC', kind: 'federation', note: 'World Powerlifting Congress' },
+  { name: 'BVDK', kind: 'federation', note: 'Bundesverband Deutscher Kraftdreikampf' },
+  { name: 'Powerlifting America', kind: 'federation', note: 'IPF North American affiliate' },
+  { name: 'British Powerlifting', kind: 'federation', note: 'IPF British affiliate' },
+
+  // --- open-source projects, results databases and meet software -----------
+  // The category the first draft of this list missed entirely, and the one this
+  // repository cites more than any other: it transcribes its result-card
+  // format, its DOTS implementation, its plate ladder and its meet flow out of
+  // these. See the `project` note on `WatchKind`.
+  { name: 'OpenPowerlifting', kind: 'project', note: 'Open results database and archive; also its .org site and its GitLab/GitHub orgs' },
+  { name: 'OPL', kind: 'project', note: 'That project abbreviated — used bare, and as the slug of its data repository' },
+  { name: 'OpenLifter', kind: 'project', note: 'Meet-management software from the same organisation' },
+  { name: 'LiftingCast', kind: 'project', note: 'Third-party meet-management and live-scoring platform; matches liftingcast.com' },
+  // DOMAIN FORM ONLY, and the arithmetic behind that is in `realIp.test.ts`
+  // rather than left to be guessed. The bare word is a real results platform and
+  // also this codebase's own term for a passed attempt. Word boundaries mean the
+  // bare form would not fire on `isGoodLift` or `heaviestGoodLift` — a letter
+  // precedes it in both — so watching it would add an entry that matches nothing
+  // in the tree today and would fire on the first `const goodLift` anybody
+  // writes. Dead now, noisy later. The dotted form is the one actually cited.
+  { name: 'goodlift.info', kind: 'project', note: 'A federation official results platform. Domain form: the bare word is this repository verdict term' },
+  // Cited SOURCES rather than dependencies: the accounts and apps whose files
+  // `rpe.ts` and `dots.ts` transcribe, named in pinned-commit retrieval URLs. A
+  // handle is a thin kind of identity and these are the entries a human is most
+  // likely to strike; they are here so that striking them is a decision rather
+  // than an omission. See the code-host exclusion in `DELIBERATELY_NOT_WATCHED`
+  // for where the line was drawn and why.
+  { name: 'metriclift', kind: 'project', note: 'Third-party app whose RPE table rpe.ts transcribes' },
+  { name: 'karolczyz', kind: 'project', note: 'Account owning that app, in its pinned-commit URL' },
+  { name: 'Sculpt-AI', kind: 'project', note: 'Account owning the second RPE transcription source' },
+  { name: 'sstangl', kind: 'project', note: 'Account owning a cited DOTS implementation' },
+  { name: 'Marantesss', kind: 'project', note: 'Account owning a comparison DOTS implementation' },
+
+  // --- consoles, studios, franchises and characters -------------------------
+  // The second category the list was blind to, found by a critic grading the
+  // figure rig rather than by this module. A 16-bit project argues about era
+  // constantly — colour depth, vblank timing, how tall a lead sprite stood — and
+  // every one of those arguments names somebody's trademark.
+  { name: 'SNES', kind: 'game-industry', note: 'Console hardware mark. GDD §7.1 and §12.2 make it the art bar' },
+  // BARE WORD, AND IT IS ALSO ORDINARY ENGLISH. Every mention in the tree today
+  // is the console, but "the genesis of" would fire. Watched anyway rather than
+  // ruled out, because the alternative — a two-word entry with the maker's name
+  // in front — matches nothing this codebase actually writes and would be a dead
+  // row. If it starts crying wolf, that is a human's call to make, not a reason
+  // to have hidden the mentions in the meantime.
+  { name: 'Genesis', kind: 'game-industry', note: 'Console hardware mark, and an ordinary English word. GDD §7.1 names it' },
+  { name: 'Game Boy', kind: 'game-industry', note: 'Handheld hardware mark, named in GDD §7.1 as a style to avoid' },
+  { name: 'Ryu', kind: 'game-industry', note: 'Fighting-game character, cited as a sprite-height comparator' },
+
+  // --- other sports leagues, clubs and their athletes ------------------------
+  // Not powerlifting, and that is exactly how they got in: they arrived through
+  // a committed REFERENCE IMAGE whose caption a doc transcribes. §12.3's own
+  // words for how a real mark actually arrives.
+  { name: 'MLB', kind: 'federation', note: 'US baseball league. Reached the tree via a reference image caption' },
+  { name: 'Orioles', kind: 'brand', note: 'Baseball club mark, from the same caption' },
+  { name: 'Mullins', kind: 'athlete', note: 'Currently-competing baseball player, captioned in that reference image' },
+
+  // --- named comparators and vendors ----------------------------------------
+  // Real companies this project measures itself against or plans to build on.
+  // Both are prose only — neither is a dependency, so neither is excluded by the
+  // dependency-graph rule in `DELIBERATELY_NOT_WATCHED`.
+  { name: 'Duolingo', kind: 'brand', note: 'GDD §12.2 makes it the daily-loop bar by name' },
+  { name: 'Supabase', kind: 'brand', note: 'CLAUDE.md names it as the server-authoritative backend' },
+  { name: 'NBA 2K', kind: 'game-industry', note: 'Named sports-sim category comparator in VISION.md and GDD §13. The doctrine forbids copying the franchise' },
+  { name: 'Madden', kind: 'game-industry', note: 'Named sports-sim category comparator in VISION.md and GDD §13. The doctrine forbids copying the franchise' },
+
+  // --- equipment and apparel brands ----------------------------------------
+  { name: 'SBD', kind: 'brand', note: 'SBD Apparel — belts, sleeves, wraps' },
+  { name: 'Eleiko', kind: 'brand', note: 'Swedish barbell and plate manufacturer' },
+  { name: 'Rogue Fitness', kind: 'brand', note: 'US equipment manufacturer' },
+  { name: 'Inzer', kind: 'brand', note: 'Inzer Advance Designs — belts and suits' },
+  { name: 'Titan Support', kind: 'brand', note: 'Titan Support Systems — supportive gear' },
+  { name: 'Rehband', kind: 'brand', note: 'Knee sleeve manufacturer' },
+  { name: 'Pioneer Fit', kind: 'brand', note: 'General Leathercraft — belts' },
+  { name: 'Kabuki Strength', kind: 'brand', note: 'US bar and coaching brand' },
+  { name: 'Texas Power Bar', kind: 'brand', note: 'Buddy Capps barbell' },
+  { name: 'Ivanko', kind: 'brand', note: 'Plate and dumbbell manufacturer' },
+  { name: 'Gymshark', kind: 'brand', note: 'Apparel' },
+  { name: 'Virus International', kind: 'brand', note: 'Apparel' },
+  { name: 'Nike', kind: 'brand', note: 'Sportswear' },
+  { name: 'Adidas', kind: 'brand', note: 'Sportswear' },
+  { name: 'Reebok', kind: 'brand', note: 'Sportswear' },
+  { name: 'Under Armour', kind: 'brand', note: 'Sportswear' },
+  { name: 'Puma', kind: 'brand', note: 'Sportswear' },
+  { name: 'New Balance', kind: 'brand', note: 'Sportswear' },
+  { name: 'Lululemon', kind: 'brand', note: 'Apparel' },
+  { name: 'Asics', kind: 'brand', note: 'Sportswear' },
+  { name: 'Gatorade', kind: 'brand', note: 'Sports drink' },
+  { name: 'Red Bull', kind: 'brand', note: 'Energy drink' },
+  { name: 'Monster Energy', kind: 'brand', note: 'Energy drink' },
+  { name: 'Optimum Nutrition', kind: 'brand', note: 'Supplements' },
+  { name: 'MyProtein', kind: 'brand', note: 'Supplements' },
+  { name: 'Ghost Energy', kind: 'brand', note: 'Energy drink' },
+  { name: 'Bang Energy', kind: 'brand', note: 'Energy drink' },
+
+  // --- meet series ---------------------------------------------------------
+  { name: 'SBD Sheffield', kind: 'meet-series', note: 'Invitational meet' },
+  { name: 'Sheffield Powerlifting Championships', kind: 'meet-series', note: 'Invitational meet' },
+  { name: 'Arnold Sports Festival', kind: 'meet-series', note: 'Expo and meet' },
+  { name: 'Arnold Classic', kind: 'meet-series', note: 'Expo and meet' },
+
+  // --- athletes ------------------------------------------------------------
+  { name: 'Jesus Olivares', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Ray Williams', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Amanda Lawrence', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Jennifer Thompson', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Kimberly Walford', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Taylor Atwood', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Russel Orhii', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Ashton Rouska', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Agata Sitko', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Prescillia Bavoil', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Sonita Muluh', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Tiffany Chapon', kind: 'athlete', note: 'Powerlifter' },
+  // Both spellings. Matching is literal, so an accent is a different string —
+  // and the accented form is the one that appears in a real federation export.
+  { name: 'Corentin Clement', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Corentin Clément', kind: 'athlete', note: 'Powerlifter, accented spelling' },
+  { name: 'John Haack', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Austin Perkins', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Brett Gibbs', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Hunter Henderson', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Jamal Browner', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Julius Maddox', kind: 'athlete', note: 'Bench presser' },
+  { name: 'Larry Wheels', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Ed Coan', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Dan Green', kind: 'athlete', note: 'Powerlifter' },
+  { name: 'Eddie Hall', kind: 'athlete', note: 'Strongman' },
+  { name: 'Brian Shaw', kind: 'athlete', note: 'Strongman' },
+  { name: 'Mitchell Hooper', kind: 'athlete', note: 'Strongman' },
+]);
+
+/**
+ * REAL NAMES THIS AUDIT DOES NOT LOOK FOR, AND WHY — EVERY ONE OF WHICH IS
+ * ACTUALLY IN THIS TREE.
+ *
+ * An omission from a denylist is invisible; this makes these ones visible. It is
+ * not a list of names somebody might have watched — every entry below was found
+ * by scanning the repository for real-world proper nouns and then RULED OUT, so
+ * the reader can see the ruling instead of inferring it from a silence. The
+ * counts in the notes were taken at the time of writing and will drift; they are
+ * there to say "this is not hypothetical", not to be pinned.
+ *
+ * A DECISION TO WATCH ANY OF THESE IS A HUMAN ONE, and moving a name from here
+ * to `REAL_IP_WATCHLIST` is a one-line edit followed by pasting a regenerated
+ * `REVIEWABLE_CITATIONS`. The rulings below are the ones this module's stated
+ * selection rule produces; they are not a claim that no other reading exists.
+ *
+ * THE LIST IS DELIBERATELY SHORT, AND IT USED TO BE LONGER. An earlier pass put
+ * the console marks, the two named vendors and the cited repository accounts
+ * here, on the argument that they are unactionable. That was a RULING dressed as
+ * a category, and ruling is not this module's job: whether a citation may stay
+ * is the open question GDD §11 carries, and answering it by declining to count
+ * the mentions hands a human a number that is quietly wrong. They are all on the
+ * watchlist now and every mention is pinned. What is left here is only the
+ * narrow set where WATCHING WOULD BREAK THE CHECK ITSELF:
+ *
+ *   - a name the governing documents require and that has no mark to infringe
+ *     (a formula eponym),
+ *   - a name that is generated dependency metadata rather than a citation, so
+ *     watching it makes the inventory churn on `npm install`,
+ *   - a name that is also ordinary English in the sense the tree actually uses
+ *     it, so watching it produces false positives and nothing else.
+ *
+ * If an entry here cannot be defended on one of those three, it belongs on the
+ * watchlist and the count belongs in front of a human.
+ *
+ * `realIp.test.ts` asserts this list and the watchlist are disjoint, so a name
+ * cannot be quietly on both, and asserts none of these matches the watchlist.
+ */
+export const DELIBERATELY_NOT_WATCHED: readonly WatchEntry[] = Object.freeze([
+  // --- formula and algorithm eponyms ---------------------------------------
+  // Required BY NAME by CLAUDE.md's domain-correctness section — `Brzycki` by
+  // its prohibition, which cannot be written without writing the name. A surname
+  // attached to a published formula is not a licensable identity in §12.3's
+  // sense: there is no agreement to sign and no mark to infringe.
+  { name: 'Epley', kind: 'athlete', note: 'e1RM formula. CLAUDE.md mandates it by name.' },
+  { name: 'Brzycki', kind: 'athlete', note: 'e1RM formula. CLAUDE.md bans it by name.' },
+  { name: 'Wilks', kind: 'athlete', note: 'Scoring coefficient. CLAUDE.md names it.' },
+  { name: 'Tuchscherer', kind: 'athlete', note: 'RPE chart. CLAUDE.md names it.' },
+  { name: 'Konertz', kind: 'athlete', note: 'DOTS author, credited in dots.ts.' },
+  { name: 'Hinnant', kind: 'athlete', note: 'Civil-date algorithm, transcribed in streak.ts.' },
+
+  // --- code hosts and the dependency graph ----------------------------------
+  // A CATEGORY EXCLUSION, NOT AN ENUMERATION. This is the plumbing a citation
+  // travels over rather than the thing cited, and it is the one group where
+  // watching would break the audit rather than extend it: `package.json` and
+  // `package-lock.json` are lists of vendor names by construction, so the pinned
+  // inventory would churn on every `npm install` and go red for reasons that
+  // have nothing to do with §12.3 — the cry-wolf failure `patternFor` was given
+  // word boundaries to avoid, one level up.
+  //
+  // The two named below are the ones that appear in PROSE as well as in
+  // metadata, so a reader would otherwise wonder about them. Every other vendor
+  // in `package.json` is excluded by the same reason and is not listed; that is
+  // the one place this list is deliberately not exhaustive, and it is said out
+  // loud rather than left to be discovered.
+  //
+  // The line: a company whose SOFTWARE this project runs on is excluded; a
+  // company this project CITES, COMPARES ITSELF TO, or transcribes a file from
+  // is watched. That is why the two vendors named in prose as architecture and
+  // as the daily-loop bar are on the watchlist and these two are not.
+  { name: 'GitHub', kind: 'project', note: 'Code host. package-lock.json alone carries it on ~75 lines.' },
+  { name: 'GitLab', kind: 'project', note: 'Code host. Excluded with the other for coherence, not for volume.' },
+
+  // --- real names that are also ordinary English ----------------------------
+  // Watching this would produce false positives and nothing else: every
+  // occurrence in the tree is the common noun, in two comments about one-way and
+  // safety valves. A check that fires on English gets suppressed, and a
+  // suppressed check is worse than none. Recorded because a reader sweeping for
+  // game-industry names will hit it and deserves to know it was considered.
+  { name: 'Valve', kind: 'game-industry', note: 'Game studio, and a plumbing noun. Both tree mentions are the noun.' },
+]);
+
+// ---------------------------------------------------------------------------
+// Matching
+// ---------------------------------------------------------------------------
+
+const REGEX_SPECIAL = /[.*+?^${}()|[\]\\]/g;
+const WORD_EDGE_BEFORE = '(?<![A-Za-z0-9])';
+const WORD_EDGE_AFTER = '(?![A-Za-z0-9])';
+
+/**
+ * A watch entry as a regex.
+ *
+ * WORD BOUNDARIES ARE LOAD-BEARING, and not for tidiness. One of the
+ * three-letter brand acronyms on the watchlist occurs inside a base64 integrity
+ * hash in `package-lock.json`; without the edges this audit would report a
+ * dependency checksum as a brand mention on every run, and an audit that cries
+ * wolf on a lockfile is an audit somebody excludes the lockfile from — after
+ * which the lockfile is a hole. `realIp.test.ts` pins that exact string.
+ *
+ * `\b` is not used because it treats `.` as a boundary character in both
+ * directions, which would make a name ending in `Co.` match inside a longer
+ * token. The explicit alphanumeric lookarounds say what is meant.
+ */
+export function patternFor(entry: WatchEntry): RegExp {
+  const escaped = entry.name.replace(REGEX_SPECIAL, '\\$&');
+  return new RegExp(`${WORD_EDGE_BEFORE}${escaped}${WORD_EDGE_AFTER}`, 'gi');
+}
+
+export interface TextHit {
+  readonly name: string;
+  readonly kind: WatchKind;
+  /** Byte offset into the text scanned. */
+  readonly index: number;
+  /** The text as it was actually written, which may differ in case. */
+  readonly matched: string;
+}
+
+/** Every watchlist hit in a piece of text, in document order. */
+export function findWatchedNames(
+  text: string,
+  watchlist: readonly WatchEntry[] = REAL_IP_WATCHLIST,
+): readonly TextHit[] {
+  const hits: TextHit[] = [];
+  for (const entry of watchlist) {
+    for (const match of text.matchAll(patternFor(entry))) {
+      hits.push({ name: entry.name, kind: entry.kind, index: match.index, matched: match[0] });
+    }
+  }
+  return hits.sort((a, b) => a.index - b.index || a.name.localeCompare(b.name));
+}
+
+// ---------------------------------------------------------------------------
+// (A) IDENTITY AS CONTENT — the default-deny half
+// ---------------------------------------------------------------------------
+
+/** One string a screen could draw, with enough context to find it again. */
+export interface RenderableString {
+  /** Which surface family it belongs to: `licensing-entry`, `sample-card`, ... */
+  readonly surface: string;
+  /** Dotted path within that surface. */
+  readonly path: string;
+  readonly value: string;
+}
+
+export interface ContentFinding {
+  readonly surface: string;
+  readonly path: string;
+  readonly name: string;
+  readonly kind: WatchKind;
+  readonly value: string;
+}
+
+/**
+ * Deep-walk any plain value, collecting every string with its path.
+ *
+ * SYMBOL-KEYED PROPERTIES ARE INVISIBLE TO THIS, and that is not an oversight to
+ * fix here — it is why `identityStrings` below exists. `Tier3Asset` hides its
+ * content under a module-private symbol, so a walk of an `IdentityEntry` would
+ * silently skip every caption and every piece of alt text, i.e. exactly the
+ * high-fidelity strings a licensed surface renders. Anything with an opaque
+ * field needs its own collector, and `realIp.test.ts` has a non-vacuity check
+ * that would fail if the Tier 3 strings stopped arriving.
+ */
+export function walkStrings(surface: string, root: unknown, prefix: string = ''): readonly RenderableString[] {
+  const out: RenderableString[] = [];
+  const visit = (value: unknown, path: string): void => {
+    if (typeof value === 'string') {
+      out.push({ surface, path, value });
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((item, i) => visit(item, `${path}[${i}]`));
+      return;
+    }
+    if (value !== null && typeof value === 'object') {
+      for (const [key, child] of Object.entries(value)) {
+        visit(child, path === '' ? key : `${path}.${key}`);
+      }
+    }
+  };
+  visit(root, prefix);
+  return out;
+}
+
+/**
+ * Every renderable string of one identity entry, INCLUDING the Tier 3 content
+ * behind the symbol.
+ *
+ * Reads through `tier3Of` with a real Tier 3 surface, so this collector is also
+ * a live exercise of the §7.3 reveal path: if the witness mechanism broke, this
+ * would throw rather than quietly returning fewer strings.
+ *
+ * The art rows are NOT collected — they are palette characters, not text, and
+ * `partners.test.ts` checks separately that an icon-mark carries no letterform.
+ * Stated because "we scanned the entry" would otherwise imply the drawings too.
+ */
+export function identityStrings(entry: IdentityEntry): readonly RenderableString[] {
+  const surface = 'licensing-entry';
+  const out: RenderableString[] = [
+    { surface, path: `${entry.id}.id`, value: entry.id },
+    { surface, path: `${entry.id}.tier1.colorway.id`, value: entry.tier1.colorway.id },
+    { surface, path: `${entry.id}.tier1.iconMark.id`, value: entry.tier1.iconMark.id },
+    { surface, path: `${entry.id}.tier2.displayName`, value: entry.tier2.displayName },
+    { surface, path: `${entry.id}.tier2.shortName`, value: entry.tier2.shortName },
+  ];
+  for (const slot of TIER_3_SLOTS) {
+    const content = tier3Of(entry, slot, 'shop');
+    out.push({ surface, path: `${entry.id}.tier3.${slot}.alt`, value: content.alt });
+    out.push({ surface, path: `${entry.id}.tier3.${slot}.caption`, value: content.caption });
   }
   return out;
 }
 
 /**
- * The repository's own view of its files. Throws rather than degrading.
+ * THE DEFAULT-DENY SCAN. Any watchlist name in any string a screen can draw.
  *
- * A fallback would be the worst failure available here: the whole point of the
- * comparison below is that the two views agree, and a silent fallback to "no
- * tracked files" makes every agreement assertion pass on an empty set.
+ * There is no allowlist here and there must never be one. A pin on this half
+ * would be a way to ship a real mark with a comment next to it, which is the one
+ * outcome §12.3 says cannot be walked back after release.
  */
-function git(args: readonly string[]): string[] {
-  return execFileSync('git', [...args], { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 28 })
-    .split('\0')
-    .filter((line) => line !== '');
-}
-
-const TRACKED_FILES: readonly string[] = git(['ls-files', '-z']).sort();
-
-/** Every file the walk reached, repository-relative POSIX, sorted. */
-const WALKED_FILES: readonly string[] = walk(ROOT)
-  .map((f) => path.relative(ROOT, f).split(path.sep).join('/'))
-  .sort();
-
-/**
- * The walked files git IGNORES, dropped before anything else runs.
- *
- * WHY THIS EXISTS. `public/canvaskit.wasm` is 8 MB, gitignored, and copied out of
- * `node_modules` by a dev script — present in any checkout where a browser tool
- * has run, absent from every fresh worktree. It put a `.wasm` row into the
- * unreadable census in one checkout of a commit and not in another: same pin,
- * same commit, two answers. Verification logs written to the repository root did
- * the same to the READ set within the hour.
- *
- * `check-ignore` is asked ONLY about walked files git does not track, which is a
- * handful at most, so this is one cheap subprocess rather than a walk of
- * `node_modules`. It exits 1 when nothing matches, which is not an error.
- */
-const IGNORED_WALKED: ReadonlySet<string> = (() => {
-  const tracked = new Set(TRACKED_FILES);
-  const candidates = WALKED_FILES.filter((f) => !tracked.has(f));
-  if (candidates.length === 0) return new Set<string>();
-  try {
-    return new Set(
-      execFileSync('git', ['check-ignore', '--stdin', '-z'], {
-        cwd: ROOT,
-        encoding: 'utf8',
-        input: `${candidates.join('\0')}\0`,
-        maxBuffer: 1 << 28,
-      })
-        .split('\0')
-        .filter((line) => line !== ''),
-    );
-  } catch {
-    // Exit 1 is "none of them is ignored". Anything worse would already have
-    // thrown out of `git ls-files` above.
-    return new Set<string>();
+export function scanRenderable(
+  strings: readonly RenderableString[],
+  watchlist: readonly WatchEntry[] = REAL_IP_WATCHLIST,
+): readonly ContentFinding[] {
+  const findings: ContentFinding[] = [];
+  for (const entry of strings) {
+    for (const hit of findWatchedNames(entry.value, watchlist)) {
+      findings.push({
+        surface: entry.surface,
+        path: entry.path,
+        name: hit.name,
+        kind: hit.kind,
+        value: entry.value,
+      });
+    }
   }
-})();
-
-/**
- * Every file this audit treats as part of the repository.
- *
- * The walk MINUS what git ignores, so the set is a property of the repository
- * rather than of whoever's disk it is read from. An untracked file git does NOT
- * ignore stays in: that is new uncommitted work, and §12.3's accident is a real
- * name being typed before it is committed.
- */
-const ALL_FILES: readonly string[] = WALKED_FILES.filter((f) => !IGNORED_WALKED.has(f));
-
-/**
- * The subset the two PINNED CENSUSES are taken over.
- *
- * Narrower than `ALL_FILES` on purpose, and only for the counts: a builder's
- * uncommitted scratch file must not move a number that is supposed to describe
- * this repository. Nothing stops being SCANNED in order to make that true.
- */
-const CENSUS_FILES: readonly string[] = censusScope(ALL_FILES, TRACKED_FILES);
-
-/**
- * Read one repository file's BYTES, memoised.
- *
- * Bytes rather than a string because the text/binary decision is now made on the
- * bytes — `readFileSync(..., 'utf8')` has already replaced every invalid sequence
- * with U+FFFD by the time you see it, so a string cannot answer the question.
- *
- * Memoised because this suite reads the whole tree several times over — the
- * citation inventory walks it, the unreadable census walks it, and so does the
- * check that every name on `DELIBERATELY_NOT_WATCHED` is really in here.
- */
-const BYTE_CACHE = new Map<string, Uint8Array>();
-function bytesOf(relPath: string): Uint8Array {
-  const cached = BYTE_CACHE.get(relPath);
-  if (cached !== undefined) return cached;
-  const buf = new Uint8Array(readFileSync(path.join(ROOT, relPath)));
-  BYTE_CACHE.set(relPath, buf);
-  return buf;
+  return findings;
 }
 
-/**
- * Every file this audit reads the CONTENTS of.
- *
- * The filter is the content predicate, not a suffix list — see `classifyBytes`
- * in `realIp.ts` for why that inverted, and `UNREADABLE_BY_THIS_AUDIT` for the
- * census of what it leaves out.
- */
-const TEXT_FILES: readonly string[] = ALL_FILES.filter((f) => isTextFile(bytesOf(f)));
-
-/**
- * Read one repository file as text, memoised through the byte cache.
- *
- * Strings are immutable, so the mutation helpers below cannot poison the cache by
- * editing what they are given.
- */
-const FILE_CACHE = new Map<string, string>();
-function read(relPath: string): string {
-  const cached = FILE_CACHE.get(relPath);
-  if (cached !== undefined) return cached;
-  const text = new TextDecoder('utf-8').decode(bytesOf(relPath));
-  FILE_CACHE.set(relPath, text);
-  return text;
-}
-
-/** Replace exactly once, and fail loudly if the pattern did not match. */
-function mutate(source: string, find: string, replaceWith: string): string {
-  const occurrences = source.split(find).length - 1;
-  expect(occurrences, `mutation target "${find}" appears ${occurrences} times`).toBe(1);
-  const mutated = source.replace(find, replaceWith);
-  expect(mutated, 'mutation produced no change').not.toBe(source);
-  expect(mutated).toContain(replaceWith);
-  return mutated;
+export function formatContentFindings(findings: readonly ContentFinding[]): string {
+  return findings
+    .map((f) => `${f.surface} ${f.path}  [${f.kind}] ${f.name}  in: ${JSON.stringify(f.value)}`)
+    .join('\n');
 }
 
 // ---------------------------------------------------------------------------
-// The plants, drawn from the watchlist rather than typed
-// ---------------------------------------------------------------------------
-
-function watched(kind: WatchEntry['kind']): string {
-  const entry = REAL_IP_WATCHLIST.find((e) => e.kind === kind);
-  if (entry === undefined) throw new Error(`realIp.test: no watchlist entry of kind ${kind}`);
-  return entry.name;
-}
-
-/** A real apparel brand. Never typed out here; read from the list. */
-const A_REAL_BRAND = watched('brand');
-/** A real competitive lifter. Same. */
-const A_REAL_ATHLETE = watched('athlete');
-/** A real governing body. Same. */
-const A_REAL_FEDERATION = watched('federation');
-
-/** The shortest watched name — the one most at risk of matching inside a token. */
-const SHORTEST_WATCHED = [...REAL_IP_WATCHLIST].sort((a, b) => a.name.length - b.name.length)[0];
-
-/** A watched name with a space in it, for the "does not fire on prose" pair. */
-const A_TWO_WORD_BRAND = REAL_IP_WATCHLIST.find(
-  (e) => e.kind === 'brand' && e.name.includes(' '),
-);
-
-/**
- * A real open-source project or software platform. The category the first draft
- * of the watchlist had no slot for, which is why it is drawn out separately: the
- * URL tests below are about how THESE names arrive, and a plant drawn from
- * `kind: 'brand'` would have proved nothing about them.
- */
-const A_REAL_PROJECT = watched('project');
-
-/**
- * The one watched name that is a DOMAIN rather than a word, and the reason it is
- * one. Its bare form is also this codebase's own term for a passed attempt, so
- * the entry carries the dotted suffix deliberately. Found by shape rather than
- * spelled, like every other plant here.
- */
-const A_WATCHED_DOMAIN = REAL_IP_WATCHLIST.find(
-  (e) => e.kind === 'project' && e.name.includes('.'),
-);
-
-// ---------------------------------------------------------------------------
-// The renderable inventory: every string a screen can draw
+// (B) DOCUMENTED REFERENCE — the listed half
 // ---------------------------------------------------------------------------
 
 /**
- * WHAT COUNTS AS "CAN REACH A SCREEN".
+ * Where in a file a mention sits.
  *
- * `TUNING` is walked whole rather than block by block, so a copy block added
- * tomorrow is scanned the day it appears rather than the day someone remembers
- * to add it here. That also pulls in `MEET_LOCAL.federation`, which is what
- * generalises `meetTuning.test.ts`'s five-name federation ban: that check tests
- * one field against five hand-typed names, this one tests every tuned string in
- * the game against the whole watchlist.
+ * - `comment`  — inside a `//` or a block comment. Provenance lives here.
+ * - `code`     — an identifier, a string literal, a JSON value, an HTML
+ *                attribute. Higher severity: a string is one edit from a screen.
+ * - `prose`    — a markdown or plain-text file. The GDD, the READMEs.
+ * - `filename` — the path itself, which is how a logo actually arrives:
+ *                `assets/<brand>-logo.png` far more often than as a string.
+ *                Under a shipped asset root this is category (A) and fails;
+ *                anywhere else — a downloaded research photograph in
+ *                `docs/reference/`, named after its subject — it is category (B)
+ *                and is pinned. See `SHIPPED_ASSET_ROOTS`.
  */
-function renderableInventory(entries: readonly IdentityEntry[]): readonly RenderableString[] {
-  return [
-    ...walkStrings('tuning', TUNING),
-    ...entries.flatMap(identityStrings),
-    ...walkStrings('catalogue', { BASE_ITEMS, SPONSORED_RESKINS }),
-    ...SAMPLE_CARDS.flatMap((sample) => walkStrings('sample-card', sample.card, sample.id)),
-    // `app.json` is CONTENT, not just config. `expo.name` is the string under
-    // the icon on a phone's home screen and `expo.slug` goes into a store URL —
-    // both are as renderable as anything in a copy block, and neither is
-    // reachable from `TUNING`. Added after a mutation run showed a real brand
-    // planted there was only caught by the LISTED half; a name on a home screen
-    // belongs in the half that refuses outright.
-    ...walkStrings('app-config', JSON.parse(read('app.json')) as unknown),
-  ];
+export type MentionWhere = 'comment' | 'code' | 'prose' | 'filename';
+
+export interface SourceMention {
+  readonly file: string;
+  /** 1-based. */
+  readonly line: number;
+  readonly name: string;
+  readonly kind: WatchKind;
+  readonly where: MentionWhere;
+  /** The whole line, trimmed, so the list is readable without opening the file. */
+  readonly text: string;
 }
 
-const INVENTORY = renderableInventory(IDENTITY_ENTRIES);
+/**
+ * Files whose comments this audit can tell apart from their code.
+ *
+ * `withoutComments` understands `//` and block comments, so this is the family
+ * of languages that spells a comment that way. `[cm]?` covers the module-suffixed
+ * spellings — `.mts` and `.cts` were missing here for the same reason `.py` was
+ * missing from the reader below, and three `tools/*.d.mts` files were sitting in
+ * the tree while this pattern declined to recognise them.
+ *
+ * A LANGUAGE THAT IS NOT ON THIS LIST IS STILL READ; its mentions are just
+ * classified `code` rather than `comment`. That is the safe direction — `code` is
+ * the higher-severity bucket, "one edit from a screen" — and it is why a Python
+ * script's `#` comments needing a different stripper is not a reason to keep
+ * Python out of the scan.
+ */
+const TS_LIKE = /\.(?:[cm]?tsx?|[cm]?jsx?)$/;
+const PROSE_LIKE = /\.(?:md|markdown|txt)$/;
 
 // ---------------------------------------------------------------------------
-// The scan can see anything at all
+// WHAT GETS READ — and why this is a DENYLIST on content rather than an
+// allowlist on extension
 // ---------------------------------------------------------------------------
 
-describe('the real-IP audit has something to audit', () => {
-  it('walks the whole repository, not just src/', () => {
-    // Without this, every assertion below passes vacuously on an empty list.
-    expect(TEXT_FILES.length).toBeGreaterThan(60);
-    for (const anchor of [
-      'src/licensing/partners.ts',
-      'src/card/sampleCards.ts',
-      'src/game/meetTuning.ts',
-      'docs/GDD.md',
-      'CLAUDE.md',
-      'app.json',
-      'package.json',
-      'public/card.html',
-    ]) {
-      expect(TEXT_FILES, `${anchor} is missing from the scanned set`).toContain(anchor);
+/**
+ * THIS PREDICATE USED TO BE AN EXTENSION ALLOWLIST AND IT FAILED OPEN.
+ *
+ * The old rule was one regex of fifteen extensions. Everything else in the tree
+ * was skipped SILENTLY — no finding, no note, no line in any output — so the gap
+ * was invisible from the outside and the suite was exactly as green as it would
+ * have been with nothing to find. Three ways that had already gone wrong:
+ *
+ *   - `.py` matched nothing. A builder working on an unrelated piece reached for
+ *     a Python script first and would have written a completely unwatched file;
+ *     that is what produced this rewrite. Nothing in this repository is written
+ *     in Python TODAY, which is the point — the hole was in the shape of the
+ *     check, not in the contents of the tree, and it would have opened on the
+ *     first `.py` anybody committed.
+ *   - `.mts` matched nothing, and `tools/png.d.mts`, `tools/test-budgets.d.mts`
+ *     and `tools/testBudget.d.mts` were already there. `tsx?` does not cover the
+ *     module-suffixed spelling and nobody noticed for as long as those files have
+ *     existed.
+ *   - `.toml` matched nothing, and `netlify.toml` was already there — a build
+ *     config, which is one of the four words §12.3 uses.
+ *
+ * SO THE SHAPE IS INVERTED: everything the tree walk reaches is READ unless its
+ * BYTES say it cannot be text. An extension nobody thought of is now watched by
+ * default instead of skipped by default, which is the only arrangement where a
+ * new file type is a safe default rather than a silent hole.
+ *
+ * WHY THE TEST IS CONTENT AND NOT A LIST OF BINARY EXTENSIONS. A denylist of
+ * extensions fails open one level further out — the first `.pdf`, `.jpg` or
+ * `.ttf` nobody enumerated gets read as mojibake and cries wolf, and a check that
+ * cries wolf is one somebody suppresses. Bytes need no enumeration and cannot go
+ * stale: a NUL byte, or a sequence that is not valid UTF-8, is not text in any
+ * language. That also reaches the case an extension rule structurally cannot —
+ * `.gitignore` has no extension at all, and it is read now.
+ *
+ * WHY BINARIES ARE EXCLUDED AT ALL, MEASURED RATHER THAN ASSUMED. Reading this
+ * tree's 19 binaries as UTF-8 with replacement produces TWO watchlist hits, both
+ * false: a three-letter federation acronym inside the deflate stream of an app
+ * icon, and a three-letter brand acronym inside a reference screenshot. That is
+ * the same cry-wolf failure `patternFor`'s word edges were added for, one level
+ * out, and it is why "read everything" is not the answer either.
+ *
+ * WHAT THIS STILL DOES NOT CLOSE, and it is two whole dimensions rather than a
+ * corner:
+ *
+ *   - THE DIRECTORY DIMENSION. `NOT_WALKED` is still an unmeasured allowlist of
+ *     seven names; a real mark inside `.gauntlet/` or a sibling worktree is as
+ *     invisible as `.py` was. Each entry has a written reason in
+ *     `NOT_WALKED_REASONS`, which is more than the extension rule ever had, and
+ *     it is still a list somebody has to keep right.
+ *   - THE PIXELS. A file that cannot be read as text is not read as anything.
+ *     Its NAME is still scanned (`scanFileName`), which is how the two reference
+ *     photographs reach the citation list — but a logo drawn INSIDE a PNG is
+ *     invisible here and always will be. `UNREADABLE_BY_THIS_AUDIT` is the census
+ *     of exactly those files, pinned by name, so the invisible half is at least
+ *     enumerated instead of merely admitted.
+ */
+export type TextVerdict = 'text' | 'nul-byte' | 'not-utf8';
+
+/**
+ * Why a file's bytes are or are not readable as text.
+ *
+ * WHOLE FILE, NOT A PREFIX. Git's own heuristic sniffs the first 8000 bytes,
+ * which is faster and lets a NUL past the window; this tree is 284 files, so the
+ * cheap thing and the correct thing are the same thing and there is no window
+ * constant to tune.
+ *
+ * ON TODAY'S TREE ONLY THE `nul-byte` ARM FIRES — all 19 binaries are PNG, WAV
+ * or WEBP and every one of them carries a NUL in its header. `not-utf8` is
+ * therefore driven by fixtures in `realIp.test.ts` rather than by the repository,
+ * and it is kept because the arms answer different questions: a UTF-16 text file
+ * is all NULs and a latin-1 one has none.
+ */
+export function classifyBytes(bytes: Uint8Array): TextVerdict {
+  if (bytes.includes(0)) return 'nul-byte';
+  try {
+    new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return 'not-utf8';
+  }
+  return 'text';
+}
+
+/** True when this audit reads the file's contents. Binaries are FILENAME only. */
+export function isTextFile(bytes: Uint8Array): boolean {
+  return classifyBytes(bytes) === 'text';
+}
+
+/**
+ * THE EXTENSIONS THIS AUDIT ACTUALLY READS IN THIS TREE, pinned.
+ *
+ * Not an input — nothing consults it to decide anything. It is the ANSWER the
+ * content predicate gives when it is pointed at the real repository, written down
+ * so the answer is reviewable. `realIp.test.ts` set-equals it against the live
+ * walk in both directions, which is what makes the widening self-announcing: the
+ * first `.py` anybody commits reddens the suite with `.py` in the message, and
+ * the fix is to read this paragraph and add the row rather than to discover six
+ * months later that the file was never scanned.
+ *
+ * `(none)` is `.gitignore`, which has no extension and which the old
+ * extension-matching rule could not have reached under any list of suffixes.
+ */
+export const EXTENSIONS_READ_AS_TEXT: readonly string[] = Object.freeze([
+  '(none)',
+  '.css',
+  '.html',
+  '.js',
+  '.json',
+  '.md',
+  '.mjs',
+  '.mts',
+  '.py',
+  '.sh',
+  '.sql',
+  '.svg',
+  '.toml',
+  '.ts',
+  '.tsx',
+  // `.txt` ARRIVED, AND THIS ROW IS WHAT THAT IS SUPPOSED TO COST. The
+  // qualifying-totals research module commits a tier-mapping audit as plain
+  // text, which is the first `.txt` anybody has put in the walked tree. Nothing
+  // about the scan changed to accept it — the content predicate already read it
+  // the moment it appeared, which is exactly what inverting this rule onto bytes
+  // was for. This list is the pinned ANSWER, so a new kind of readable file
+  // reddens the suite once, gets read, and is written down. That happened here.
+  '.txt',
+  '.webmanifest',
+  '.yml',
+]);
+
+/** One kind of file this audit cannot read the contents of, and how many there are. */
+export interface UnreadableGroup {
+  readonly extension: string;
+  readonly reason: Exclude<TextVerdict, 'text'>;
+  readonly count: number;
+}
+
+/**
+ * EVERYTHING IN THIS TREE WHOSE CONTENTS THIS AUDIT CANNOT READ, COUNTED.
+ *
+ * The same instrument as `DELIBERATELY_NOT_WATCHED`, pointed at files instead of
+ * names, and for the same stated reason: an omission from a scan is invisible,
+ * and an invisible omission is how a scan quietly stops covering what everyone
+ * assumed it covered. The defect that produced this module's rewrite was exactly
+ * that — a file type silently declined, with nothing in any output to say so.
+ * The gap IS the output now.
+ *
+ * BY EXTENSION AND COUNT RATHER THAN BY FILENAME, AND THE REASON IS THIS
+ * MODULE'S OWN SELF-SCAN. The first draft of this block listed all nineteen paths
+ * — at which point the audit reported two watchlist names in `realIp.ts` outside
+ * its three exempt regions, because two of the reference photographs are named
+ * after a console and a federation. That was the check working on the hand
+ * writing it, and the choice it forced is the right one on its own merits:
+ * counting keeps the self-exemption at three regions instead of opening a fourth,
+ * and `realIp.test.ts` prints the live filenames in its failure message, where a
+ * name in output is not a name in source.
+ *
+ * THESE FILES ARE NOT UNWATCHED. Every one still goes through `scanFileName`,
+ * which is how the two reference photographs earn their `filename` rows on
+ * `REVIEWABLE_CITATIONS`. What is unreadable is the CONTENT, and for a picture
+ * that is permanent: §5 of the header names the live instance, a reference image
+ * carrying a real league's logo and a competing player's likeness in its pixels.
+ *
+ * SO A MOVED COUNT IS AN EVENT. It means a binary arrived or left, and a binary
+ * is the one place a real mark can sit with no text anywhere near it.
+ * `realIp.test.ts` set-equals this against the live walk in both directions, so
+ * adding an icon or a sound reddens the suite until somebody adjusts the number —
+ * the same cost `REVIEWABLE_CITATIONS` already charges, for a stronger reason.
+ */
+export const UNREADABLE_BY_THIS_AUDIT: readonly UnreadableGroup[] = Object.freeze([
+  // Full published-tree census, including the browser copies of native art
+  // and audio, its licensed fonts, and the six new production PNGs. Missing
+  // local bytes still fail the reach check; this does not excuse an omission.
+  { extension: '.jpeg', reason: 'nul-byte', count: 1 },
+  { extension: '.jpg', reason: 'nul-byte', count: 38 },
+  { extension: '.png', reason: 'nul-byte', count: 121 },
+  { extension: '.ttf', reason: 'nul-byte', count: 3 },
+  { extension: '.wav', reason: 'nul-byte', count: 14 },
+  { extension: '.webp', reason: 'nul-byte', count: 2 },
+]);
+
+/** The extension of a repository-relative path, or `(none)` when it has none. */
+export function extensionOf(relPath: string): string {
+  const base = relPath.slice(relPath.lastIndexOf('/') + 1);
+  const dot = base.lastIndexOf('.');
+  return dot > 0 ? base.slice(dot) : '(none)';
+}
+
+/** Fold a walked tree into the unreadable census, grouped and sorted. */
+export function unreadableCensus(
+  files: readonly { readonly file: string; readonly bytes: Uint8Array }[],
+): readonly UnreadableGroup[] {
+  const groups = new Map<string, UnreadableGroup>();
+  for (const { file, bytes } of files) {
+    const verdict = classifyBytes(bytes);
+    if (verdict === 'text') continue;
+    const extension = extensionOf(file);
+    const key = `${extension}|${verdict}`;
+    const existing = groups.get(key);
+    groups.set(
+      key,
+      existing === undefined
+        ? { extension, reason: verdict, count: 1 }
+        : { ...existing, count: existing.count + 1 },
+    );
+  }
+  return [...groups.values()].sort(
+    (a, b) => a.extension.localeCompare(b.extension) || a.reason.localeCompare(b.reason),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// WHAT GETS REACHED — the second dimension, and the one the first fix said
+// nothing about
+// ---------------------------------------------------------------------------
+
+/**
+ * THE REACH WAS A PROPERTY OF SOMEBODY'S CHECKOUT AND IS NOW A PROPERTY OF THE
+ * REPOSITORY.
+ *
+ * Fixing the file-type predicate said nothing about which FILES the walk hands
+ * it, and that is a separate axis with its own failure — the "reach and
+ * predicate are two axes" lesson, arriving from the other side.
+ *
+ * THE INSTANCE, MEASURED IN TWO CHECKOUTS OF THE SAME COMMIT. The census of
+ * unreadable files read `.png 10 | .wav 7 | .webp 2` where it was written and
+ * `.png 10 | .wasm 1 | .wav 7 | .webp 2` where it was merged. The extra entry is
+ * `public/canvaskit.wasm` — 8 MB, gitignored, untracked, copied out of
+ * `node_modules` by a dev script, so it exists in any checkout where somebody has
+ * run a browser tool and in no fresh worktree. A second builder had already hit
+ * the same asymmetry from the other direction. Neither number was right: pinning
+ * the larger one reddens every clean worktree and pinning the smaller one reddens
+ * every checkout anybody has worked in.
+ *
+ * A pinned census over a filesystem walk is a pin on WHAT SOMEBODY HAPPENS TO
+ * HAVE ON DISK. That is not a fact about this repository, and the same shape hit
+ * a second time in the same hour: verification logs written to the repository
+ * root by a watchdog put `.log` into the READ set in one checkout and not in
+ * another, and one of them was not valid UTF-8, so it landed in the UNREADABLE
+ * census too. Any gitignored artifact anybody generates can move a pinned count.
+ *
+ * SO THE WALK SKIPS WHAT GIT IGNORES, and the two views are asserted to agree
+ * rather than assumed to. `realIp.test.ts` runs `git ls-files` and compares:
+ *
+ *   - A WALKED FILE GIT IGNORES is dropped and pinned at zero. That is the check
+ *     `canvaskit.wasm` would have tripped.
+ *   - A TRACKED FILE THE WALK CANNOT SEE is a finding unless a named `NOT_WALKED`
+ *     entry explains it, and WHICH entries do the explaining is pinned below.
+ *   - A WALKED FILE THAT IS NOT TRACKED and not ignored is still SCANNED, on
+ *     purpose. That is new uncommitted work, which is where §12.3 says a real
+ *     name actually arrives — "the first thing that came to mind" gets typed
+ *     before it gets committed. It is reported rather than pinned, because a
+ *     builder mid-edit is not a defect.
+ *
+ * THE TWO PINNED CENSUSES ARE TAKEN OVER TRACKED FILES ONLY, which is what makes
+ * them reproducible in any checkout. The SCAN is still the whole walk; only the
+ * counts are narrowed, so nothing stops being read in order to make a number
+ * stable.
+ *
+ * AND ONE THING THIS DOES NOT DO. `public/canvaskit.wasm` is untracked and it
+ * genuinely ships — the deploy config copies it into the bundle. Excluding it is
+ * still right, for the reason `NOT_WALKED` already gives for `node_modules`: it
+ * is vendored bytes nobody here authored. Its own filename carries no watched
+ * name, and its contents are a binary this audit could not read in any case. If a
+ * future untracked-yet-shipped file is AUTHORED here, that reasoning stops
+ * applying and this is the paragraph that has to change.
+ */
+
+/**
+ * Directories the tree walk does not descend into.
+ *
+ * `.claude` is on the list for the reason `audit.test.ts` records at length: it
+ * holds `worktrees/`, each of which is a COMPLETE SECOND CHECKOUT of this
+ * repository, so descending would make this audit's verdict depend on what some
+ * other agent has half-written. `node_modules` is vendored code nobody here
+ * authored and is full of real company names by definition.
+ */
+export const NOT_WALKED: readonly string[] = Object.freeze([
+  'node_modules',
+  '.git',
+  '.expo',
+  'dist',
+  'coverage',
+  '.claude',
+  '.gauntlet',
+]);
+
+/**
+ * WHY `.gauntlet` IS ON THAT LIST, since it is the one entry that is this
+ * repository's own content rather than somebody else's.
+ *
+ * It holds `evidence/`, which is CAPTURED STDOUT from `npx vitest run` — the
+ * transcripts a critic reads. Every one of them contains the printed titles of
+ * the tests that ran, so a test named after a real federation's published
+ * results row appears in nine transcripts as a copy of a string this audit
+ * already scans at its source in `resultCard.test.ts`.
+ *
+ * Pinning those copies would make the citation list churn on every capture, and
+ * would make this audit's verdict depend on WHEN SOMEBODY LAST RAN THE SUITE —
+ * the same "verdict moves with unrelated state" failure `audit.test.ts` records
+ * for sibling worktrees. Nothing under `.gauntlet` ships and nothing there is
+ * authored: every string in it is a COPY of one this audit reads at its source.
+ *
+ * That last clause used to end "and its shots are gitignored", which was true
+ * when it was written and is not any more — `.gauntlet/shots/shell/` and
+ * `.gauntlet/shots/cutin/` are now tracked, deliberately, so a grader can date
+ * browser evidence instead of trusting it. The exclusion survives the change
+ * because it never rested on those files being untracked; it rests on them
+ * being derived. But a justification that has gone false is worth exactly as
+ * much as no justification, so it is corrected here rather than left to read
+ * plausibly.
+ *
+ * THE HOLE THIS LEAVES, stated rather than glossed, and it is now three files
+ * wide rather than one:
+ *
+ *   - `.gauntlet/state.json` — run bookkeeping for the loop, typed by hand.
+ *   - `.gauntlet/shots/shell/route.json` and `.../cutin/frames.json` — copy
+ *     strings SCRAPED FROM THE RUNNING APP. A real name could only get into
+ *     them by first existing in `src/`, where this audit does scan it, so the
+ *     derived-copy argument holds; what does not hold is any claim that the
+ *     scrape itself is checked.
+ *   - the committed PNGs, which are pixels. A real wordmark DRAWN by the
+ *     sprite code would be invisible to a string audit in any directory, so
+ *     this is not a hole `.gauntlet` opened.
+ *
+ * None of these reach a build.
+ */
+export const NOT_WALKED_REASONS: Readonly<Record<string, string>> = Object.freeze({
+  node_modules: 'vendored code nobody here authored; full of real company names by definition',
+  '.git': 'object database',
+  '.expo': 'build cache',
+  dist: 'build output',
+  coverage: 'generated report',
+  '.claude': 'holds worktrees/, each a complete second checkout of this repository',
+  '.gauntlet': 'captured run transcripts; copies of strings scanned at their source',
+});
+
+/**
+ * THE `NOT_WALKED` ENTRIES THAT ACTUALLY HIDE TRACKED FILES — pinned, because an
+ * exclusion that hides nothing and one that hides committed prose are not the
+ * same risk and the list above does not distinguish them.
+ *
+ * Five of the seven hide NOTHING: `node_modules`, `.git`, `.expo`, `dist` and
+ * `coverage` are vendored or generated and nothing under them is committed. If
+ * one of them starts hiding a tracked file — somebody commits a build output, or
+ * checks in a dependency — that is a real change in this audit's reach and it
+ * reddens here rather than passing as a silence.
+ *
+ * TWO OF THEM DO, AND THAT IS THE HOLE, STATED AS A NUMBER INSTEAD OF A SENTENCE.
+ * At the time of writing, 73 tracked files are invisible to this scan: 71 under
+ * `.gauntlet` and 2 under `.claude`. Nine of them carry 65 watchlist mentions
+ * between them. Read that before treating either exclusion as free:
+ *
+ *   - `.gauntlet` — 71 files. 64 of the 65 mentions are in captured `vitest`
+ *     transcripts and are copies of strings this audit reads at their source,
+ *     which is the argument the section above makes and it holds. The exception
+ *     is `.gauntlet/state.json`: HAND-TYPED run bookkeeping, 11 mentions, and the
+ *     header already names it as the part of this exclusion that is not derived.
+ *     It is left out of the scan anyway, because it is rewritten every wave and
+ *     pinning its citations would move `REVIEWABLE_CITATIONS` on a schedule that
+ *     has nothing to do with the code. That is a JUDGEMENT and not a category,
+ *     which is precisely what `DELIBERATELY_NOT_WATCHED` warns about — so it is
+ *     written here for a human to overrule rather than left to be inferred.
+ *   - `.claude` — 2 files, `agents/builder.md` and `agents/critic.md`, both
+ *     hand-written and both carrying ZERO watchlist mentions. THE EXCLUSION IS
+ *     WIDER THAN ITS OWN STATED REASON: that reason is `worktrees/`, which is a
+ *     complete second checkout, and it does not reach two agent definitions
+ *     sitting beside it. Narrowing it means matching a PATH rather than a
+ *     basename, which is a change to the walk rather than to this list, so it is
+ *     reported here rather than done from this piece.
+ *
+ * The 73 and the 65 are MEASUREMENTS AND NOT PINS, and the difference is
+ * deliberate: both move whenever anybody re-takes an evidence bundle, so pinning
+ * them would rebuild the exact "verdict moves with when somebody last ran the
+ * suite" failure the `.gauntlet` exclusion exists to avoid. What is pinned is the
+ * SET of entries doing the hiding, which does not move on a capture.
+ */
+export const NOT_WALKED_HIDES_TRACKED: readonly string[] = Object.freeze(['.claude', '.gauntlet']);
+
+/** What the filesystem walk and the repository's own file list disagree about. */
+export interface ReachReport {
+  /** Tracked files the walk never reached, explained by a `NOT_WALKED` entry. */
+  readonly hiddenByNotWalked: readonly string[];
+  /** Which `NOT_WALKED` entries did that hiding, sorted. */
+  readonly hidingDirectories: readonly string[];
+  /** Walked files git does not track. Scanned anyway; reported, never pinned. */
+  readonly walkedButUntracked: readonly string[];
+  /**
+   * Tracked files the walk missed that NO `NOT_WALKED` entry explains.
+   *
+   * ALWAYS A FINDING. There is no benign reason for one: it means the walk is
+   * dropping committed files for a reason nobody wrote down, which is the
+   * silent-reach failure in its purest form.
+   */
+  readonly strays: readonly string[];
+}
+
+/**
+ * The files a PINNED CENSUS may be counted over: walked and tracked, in walk
+ * order.
+ *
+ * Separate from the scan on purpose, and it is one line so that the narrowing is
+ * a thing a test can drive rather than a filter buried at a call site. On a clean
+ * checkout this returns its input unchanged, so an assertion about it taken only
+ * against the real tree is an empty domain — `realIp.test.ts` drives it with a
+ * synthetic untracked file for exactly that reason.
+ */
+export function censusScope(
+  walked: readonly string[],
+  tracked: readonly string[],
+): readonly string[] {
+  const trackedSet = new Set(tracked);
+  return walked.filter((file) => trackedSet.has(file));
+}
+
+/**
+ * Compare the two views of the tree. Pure: the caller does the git and the fs.
+ *
+ * `notWalked` is matched on any PATH SEGMENT, which is how the walk itself
+ * matches it — so this reports the same exclusions the walk actually applied
+ * rather than a second interpretation of the same list.
+ */
+export function reachReport(
+  walked: readonly string[],
+  tracked: readonly string[],
+  notWalked: readonly string[] = NOT_WALKED,
+): ReachReport {
+  const walkedSet = new Set(walked);
+  const trackedSet = new Set(tracked);
+  const hiddenByNotWalked: string[] = [];
+  const strays: string[] = [];
+  const hiding = new Set<string>();
+  for (const file of tracked) {
+    if (walkedSet.has(file)) continue;
+    const excluder = file.split('/').find((segment) => notWalked.includes(segment));
+    if (excluder === undefined) strays.push(file);
+    else {
+      hiddenByNotWalked.push(file);
+      hiding.add(excluder);
     }
-    expect(TEXT_FILES.some((f) => !f.startsWith('src/'))).toBe(true);
-  });
+  }
+  return {
+    hiddenByNotWalked: hiddenByNotWalked.sort(),
+    hidingDirectories: [...hiding].sort(),
+    walkedButUntracked: walked.filter((f) => !trackedSet.has(f)).sort(),
+    strays: strays.sort(),
+  };
+}
 
-  // A CHECK THAT USED TO BE HERE IS GONE, AND THE DOMINATION IS RECORDED RATHER
-  // THAN THE CHECK LEFT STANDING.
-  //
-  // `it('reaches configs, docs, markup and shell, not only TypeScript')` looped
-  // over `['.json', '.md', '.html', '.sh']` asserting each appeared somewhere in
-  // `TEXT_FILES`. `reports every file type it reads` below set-equals the LIVE
-  // extension census against `EXTENSIONS_READ_AS_TEXT`, which contains all four.
-  // Symbolically: any state of the tree or the predicate that empties one of
-  // those four extensions out of `TEXT_FILES` also drops it out of the live set,
-  // so the set equality is red in every case the loop was red in, and in more
-  // besides. Strictly dominated — deleted, per the standing rule, instead of left
-  // as a check that can no longer speak first.
+/**
+ * Where a file NAME reaching a real brand is category (A) rather than (B).
+ *
+ * These are the roots whose contents get bundled: Expo reads `assets/` from
+ * `app.json` and serves `public/` verbatim. `src/` is included because a source
+ * file named after a partner is the licensing system growing a hard-coded
+ * dependency on one, which is the thing §7.3 exists to prevent.
+ * The production browser serves `web/public/` and builds `web/src/`, so the
+ * same filename refusal reaches both of those roots.
+ *
+ * `docs/` is deliberately absent. It holds downloaded reference photographs
+ * named after what is in them, which is what a reference folder is for.
+ */
+export const SHIPPED_ASSET_ROOTS: readonly string[] = Object.freeze([
+  'assets/', 'public/', 'src/', 'web/public/', 'web/src/',
+]);
 
-  it('reports every file type it reads, and every file it cannot', () => {
-    // THE ANSWER TO THE DEFECT THAT PRODUCED THIS SHAPE. The old predicate was an
-    // extension allowlist and `.py` was not on it, so a Python script would have
-    // been skipped with nothing anywhere in the output to say so. Two set
-    // equalities, in both directions, are what make the gap visible now:
-    //
-    //   - a NEW file type reddens with its extension in the message, which is the
-    //     event a `.py` would have been;
-    //   - a file that stops being readable reddens as a new census row, which is
-    //     the event a new binary is.
-    //
-    // Counts and not bounds, deliberately: a bound lets the readable set shrink
-    // quietly, which is the failure this whole rewrite is about.
-    //
-    // OVER TRACKED FILES, NOT OVER THE WALK, AND THAT IS THE SECOND DEFECT THIS
-    // CHECK CARRIED. Taken over the walk, both pins were a fact about somebody's
-    // disk: an 8 MB gitignored `canvaskit.wasm` that only exists where a browser
-    // tool has run put a `.wasm` row in the census in one checkout of a commit
-    // and not in another. Same pin, same commit, two answers, and neither number
-    // was correct to write down. The scan still covers the whole walk; only these
-    // two numbers are narrowed to what the repository actually contains.
-    const censusText = CENSUS_FILES.filter((f) => isTextFile(bytesOf(f)));
-    const liveExtensions = [...new Set(censusText.map(extensionOf))].sort();
-    expect(
-      liveExtensions,
-      [
-        '',
-        'THE SET OF FILE TYPES THIS AUDIT READS HAS CHANGED.',
-        '',
-        'If a type was ADDED: a kind of file nobody had committed before is now in',
-        'the tree, and it IS being scanned — that is the fail-closed shape working.',
-        'Read the new extension, then add it to EXTENSIONS_READ_AS_TEXT.',
-        '',
-        'If a type was REMOVED: either the last file of that kind went away, or the',
-        'content predicate stopped recognising it as text. The second is a hole.',
-        '',
-        `live: ${liveExtensions.join(' ')}`,
-        '',
-      ].join('\n'),
-    ).toEqual([...EXTENSIONS_READ_AS_TEXT]);
+/** True when a path's own NAME carrying a real brand would be shipped content. */
+export function isShippedPath(relPath: string): boolean {
+  return SHIPPED_ASSET_ROOTS.some((root) => relPath.startsWith(root));
+}
 
-    const unreadable = CENSUS_FILES.filter((f) => !isTextFile(bytesOf(f)));
-    const census = unreadableCensus(CENSUS_FILES.map((file) => ({ file, bytes: bytesOf(file) })));
-    expect(
-      census,
-      [
-        '',
-        'THE CENSUS OF FILES THIS AUDIT CANNOT READ HAS CHANGED.',
-        '',
-        'A file counted here has CONTENTS invisible to every string check in this',
-        'module — which is the one place a real logo can sit with no text near it.',
-        'Its NAME is still scanned. Read the list, then paste the block.',
-        '',
-        ...census.map(
-          (r) => `  { extension: '${r.extension}', reason: '${r.reason}', count: ${r.count} },`,
-        ),
-        '',
-        // The live paths go in the MESSAGE and never in either source file: two of
-        // these photographs are named after real marks, and this module's own
-        // self-scan reports a watched name written anywhere in `realIp.ts` outside
-        // its three exempt regions. That is how this block came to be counted
-        // rather than listed — see `UNREADABLE_BY_THIS_AUDIT`.
-        ...unreadable.map((f) => `  ${f}`),
-        '',
-      ].join('\n'),
-    ).toEqual([...UNREADABLE_BY_THIS_AUDIT]);
+/**
+ * THE ONE FILE ALLOWED TO SPELL A WATCHED NAME, and the only regions of it that
+ * are allowed to.
+ *
+ * The self-exemption is the same instrument as `SourceRule.allowLiteralsIn` in
+ * `src/tuning/audit.ts`: narrow, named, and pinned by a test so it cannot widen
+ * quietly. A mention anywhere else in this file — a new helper, a comment, a
+ * doc block — is reported like any other.
+ *
+ * "NARROW" MEANS THE LITERAL, NOT THE REGION. `declarationRegions` runs each
+ * declaration up to the next one, so a region includes the doc comment of
+ * whatever follows it; taken literally that put a long paragraph of prose inside
+ * an exempt window, and the window grew every time somebody wrote a longer
+ * comment. `declarationLiteralEnd` cuts each range at the declaration's own
+ * closing bracket instead. `realIp.test.ts` plants a name in the paragraph that
+ * used to be covered and asserts it is reported.
+ */
+export const WATCHLIST_FILE = 'src/licensing/realIp.ts';
 
-    // ...and the two entry points are tied to each other, which is the only
-    // assertion here that can catch them DISAGREEING.
-    //
-    // THE OBVIOUS VERSION OF THIS LINE IS A TAUTOLOGY AND WAS WRITTEN FIRST.
-    // `ALL_FILES.length === TEXT_FILES.length + unreadable.length` holds for any
-    // predicate whatsoever, because the two lists are that predicate and its
-    // negation over one array — no state of `classifyBytes` makes it red. What
-    // bites is comparing the `isTextFile` path against the `classifyBytes` path:
-    // the census is folded by the second, `censusText` is filtered by the first,
-    // and a wrapper that stopped agreeing with what it wraps shows up here.
-    const counted = census.reduce((sum, r) => sum + r.count, 0);
-    expect(CENSUS_FILES.length).toBe(censusText.length + counted);
-    // The pin above fixes `counted` at 1 jpeg + 19 jpg + 13 png + 7 wav + 2 webp,
-    // so a separate `toBe(42)` here would be strictly dominated by it — deleted
-    // rather than left standing, per the standing domination rule. 42 is the
-    // number; the pin is where it lives.
-  });
+export const WATCHLIST_REGIONS: readonly string[] = Object.freeze([
+  'REAL_IP_WATCHLIST',
+  'DELIBERATELY_NOT_WATCHED',
+  'REVIEWABLE_CITATIONS',
+]);
 
-  it('agrees with the repository about which files exist', () => {
-    // THE REACH, WHICH FIXING THE FILE-TYPE PREDICATE SAID NOTHING ABOUT. Two
-    // views of one tree — a filesystem walk and `git ls-files` — and until this
-    // check existed, every difference between them was silent.
-    const report = reachReport(ALL_FILES, TRACKED_FILES);
+function lineOf(text: string, index: number): number {
+  let line = 1;
+  for (let i = 0; i < index; i += 1) if (text[i] === '\n') line += 1;
+  return line;
+}
 
-    // (1) NO TRACKED FILE IS DROPPED FOR A REASON NOBODY WROTE DOWN. Pinned
-    //     empty. A stray here means the walk is losing committed files, which is
-    //     the silent-reach failure in its purest form.
-    expect(report.strays, `tracked but unreachable and unexplained:\n${report.strays.join('\n')}`)
-      .toEqual([]);
+function lineTextAt(text: string, index: number): string {
+  const start = text.lastIndexOf('\n', index - 1) + 1;
+  const end = text.indexOf('\n', index);
+  return text.slice(start, end === -1 ? text.length : end).trim();
+}
 
-    // (2) WHICH EXCLUSIONS ACTUALLY COST COVERAGE, pinned as a set. Five of the
-    //     seven `NOT_WALKED` entries hide nothing at all; if `dist/` or
-    //     `node_modules/` starts hiding a committed file, this reddens instead of
-    //     passing as a silence. The two that do hide tracked files are the
-    //     declared hole, and `NOT_WALKED_HIDES_TRACKED` carries the measurement
-    //     and the argument.
-    expect(report.hidingDirectories).toEqual([...NOT_WALKED_HIDES_TRACKED]);
-    // ...and it really is hiding something, so the set above is not pinned
-    // against an empty domain. The exact number is deliberately NOT pinned: it
-    // moves whenever an evidence bundle is re-taken, which is the same
-    // "verdict moves with when somebody last ran the suite" failure the
-    // `.gauntlet` exclusion exists to avoid.
-    expect(report.hiddenByNotWalked.length).toBeGreaterThan(0);
+/**
+ * Is the character at `index` inside a comment?
+ *
+ * Decided by asking `withoutComments` — `src/tuning/audit.ts`'s stripper, which
+ * preserves every offset and is checked against every real file in the tree on
+ * every run. If the character survived the strip it was code; if it was blanked
+ * it was a comment. Reusing that function rather than writing a second stripper
+ * is the point: a second one is a second thing to get subtly wrong, and the
+ * first one already has an offset-preservation test with the whole repository
+ * behind it.
+ */
+function isInComment(source: string, stripped: string, index: number): boolean {
+  return stripped[index] !== source[index];
+}
 
-    // (3) NOTHING GIT IGNORES IS IN THE SCANNED SET. Pinned empty, and this is
-    //     the assertion `public/canvaskit.wasm` would have tripped: 8 MB,
-    //     gitignored, present only where a browser tool has run, and it moved a
-    //     pinned census between two checkouts of the same commit.
-    const ignoredButScanned = ALL_FILES.filter((f) => IGNORED_WALKED.has(f));
-    expect(ignoredButScanned).toEqual([]);
-    // ...and the drop really happens rather than the set being empty because
-    // `check-ignore` was never asked: every walked file is tracked, or ignored
-    // and dropped, or untracked-and-not-ignored and reported below.
-    expect(WALKED_FILES.length).toBe(ALL_FILES.length + IGNORED_WALKED.size);
+const BRACKET_OPEN = '([{';
+const BRACKET_CLOSE = ')]}';
 
-    // (4) UNTRACKED-AND-NOT-IGNORED FILES ARE SCANNED BUT NEVER COUNTED. That is
-    //     new uncommitted work, where §12.3 says a real name actually arrives —
-    //     typed before it is committed — so it must reach the scan; and a builder
-    //     mid-edit is not a defect, so it must not reach a pin.
-    //
-    //     ON A CLEAN CHECKOUT THIS LOOP IS AN EMPTY DOMAIN, which is why the
-    //     claim is not left to it. `censusScope` is driven with a synthetic
-    //     untracked file in the test below, where the case actually exists.
-    for (const f of report.walkedButUntracked) {
-      expect(ALL_FILES, `${f} must still be scanned`).toContain(f);
-      expect(CENSUS_FILES, `${f} is untracked and must not move a pinned census`).not.toContain(f);
-    }
-  });
-
-  it('reports a reach difference rather than swallowing it', () => {
-    // THE SYNTHETIC HALF, AND IT IS NOT OPTIONAL. On the real tree `strays` and
-    // `walkedButUntracked` are both EMPTY, so every assertion about them above
-    // passes on an empty domain and would pass just as well if `reachReport`
-    // returned empty arrays unconditionally. These drive the cases the
-    // repository cannot.
-    const notWalked = ['.git', '.gauntlet'];
-
-    const stray = reachReport(['src/a.ts'], ['src/a.ts', 'src/b.ts'], notWalked);
-    expect(stray.strays).toEqual(['src/b.ts']);
-    expect(stray.hiddenByNotWalked).toEqual([]);
-    expect(stray.hidingDirectories).toEqual([]);
-
-    const hidden = reachReport(['src/a.ts'], ['src/a.ts', '.gauntlet/evidence/x.txt'], notWalked);
-    expect(hidden.strays).toEqual([]);
-    expect(hidden.hiddenByNotWalked).toEqual(['.gauntlet/evidence/x.txt']);
-    expect(hidden.hidingDirectories).toEqual(['.gauntlet']);
-
-    const untracked = reachReport(['src/a.ts', 'public/big.wasm'], ['src/a.ts'], notWalked);
-    expect(untracked.walkedButUntracked).toEqual(['public/big.wasm']);
-    expect(untracked.strays).toEqual([]);
-
-    // A nested exclusion is matched on any path SEGMENT, the way the walk itself
-    // matches it — otherwise the report would explain fewer files than the walk
-    // actually dropped and the difference would come back as a phantom stray.
-    const nested = reachReport([], ['a/.git/config'], notWalked);
-    expect(nested.hidingDirectories).toEqual(['.git']);
-    expect(nested.strays).toEqual([]);
-  });
-
-  it('keeps an untracked file out of the counts and inside the scan', () => {
-    // THE OTHER HALF OF THE SAME EMPTY DOMAIN. On a clean checkout every walked
-    // file is tracked, so `censusScope` returns its input unchanged and an
-    // assertion taken only against the real tree could not tell it apart from a
-    // function that returns everything. This is the case the repository cannot
-    // produce: a scratch file that is walked, is not tracked, and is not ignored.
-    const walked = ['src/a.ts', 'notes.md', 'src/b.ts'];
-    const tracked = ['src/a.ts', 'src/b.ts'];
-    expect(censusScope(walked, tracked)).toEqual(['src/a.ts', 'src/b.ts']);
-    // ...and the paired direction, which is the half that matters for a legal
-    // guard: narrowing the COUNTS must not narrow the SCAN. The scanned set is
-    // the walk, and it still has the scratch file in it.
-    expect(walked).toContain('notes.md');
-    expect(censusScope(walked, tracked)).not.toContain('notes.md');
-    // A tracked file the walk never reached is not conjured into the counts
-    // either — the scope is an intersection, not a union.
-    expect(censusScope(['src/a.ts'], ['src/a.ts', '.gauntlet/state.json'])).toEqual(['src/a.ts']);
-  });
-
-  it('reads test files, .mts, .toml and an extensionless file', () => {
-    // `src/tuning/audit.ts` skips tests because a test is SUPPOSED to contain a
-    // literal number. No test is supposed to contain a real athlete's name, and
-    // §12.3 names a test fixture as one of the two ways a real mark arrives.
-    expect(TEXT_FILES).toContain('src/game/dots.test.ts');
-    // THE THREE FILES THE OLD EXTENSION ALLOWLIST WAS SILENTLY DECLINING, named
-    // individually rather than left to the census above: `tsx?` never covered the
-    // module-suffixed spelling, `.toml` was on no list, and `.gitignore` has no
-    // extension at all so no suffix rule could have reached it under any list.
-    expect(TEXT_FILES).toContain('tools/testBudget.d.mts');
-    expect(TEXT_FILES).toContain('netlify.toml');
-    expect(TEXT_FILES).toContain('.gitignore');
-    // ...and the paired direction, without which the three above would also pass
-    // if the predicate had degenerated to "everything is text": a real binary is
-    // still refused, and it is refused on its bytes rather than on its name.
-    expect(TEXT_FILES).not.toContain('assets/icon.png');
-    expect(classifyBytes(bytesOf('assets/icon.png'))).toBe('nul-byte');
-  });
-
-  it('never walks into a sibling git worktree', () => {
-    // Same reason `audit.test.ts` records: a worktree under `.claude/` is a
-    // complete second checkout, so descending makes this audit's verdict depend
-    // on what another agent has half-written.
-    expect(NOT_WALKED).toContain('.claude');
-    expect(ALL_FILES.every((f) => !f.startsWith('.claude/'))).toBe(true);
-    expect(ALL_FILES.every((f) => !f.includes('node_modules'))).toBe(true);
-  });
-
-  it('has a renderable inventory with real strings in it', () => {
-    // The default-deny half is worthless if the inventory is empty, and an empty
-    // inventory is what a broken collector produces.
-    expect(INVENTORY.length).toBeGreaterThan(200);
-    const values = INVENTORY.map((s) => s.value);
-    // A sample card's lifter name — the shape §12.3 calls "a placeholder lifter
-    // name in a test fixture".
-    expect(values).toContain('Marcus Vale');
-    // The invented federation from the meet tuning block — the exact field
-    // `meetTuning.test.ts` checks by hand against five names, reached here
-    // through the whole registry and checked against the whole watchlist.
-    expect(values).toContain('Northern Barbell Federation');
-    // A Tier 2 name tag.
-    expect(values).toContain('Ninebar Athletic');
-    // A Tier 3 caption, which lives BEHIND THE SYMBOL and is only reachable
-    // through `revealTier3`. If the reveal path broke, this is what would fail.
-    expect(values).toContain('ILSE VONDRAK');
-    // A Tier 3 alt string.
-    expect(values.some((v) => v.includes('head and shoulders'))).toBe(true);
-  });
-
-  it('collects every Tier 3 slot of every entry', () => {
-    // Non-vacuity on the collector that has to reach through the opaque type.
-    for (const entry of IDENTITY_ENTRIES) {
-      const paths = identityStrings(entry).map((s) => s.path);
-      for (const slot of ['portrait', 'wordmark', 'product']) {
-        expect(paths, `${entry.id} ${slot} caption`).toContain(`${entry.id}.tier3.${slot}.caption`);
-        expect(paths, `${entry.id} ${slot} alt`).toContain(`${entry.id}.tier3.${slot}.alt`);
+/**
+ * The last line of a declaration's own LITERAL, given its region.
+ *
+ * WHY THIS EXISTS AND WHAT IT CLOSES. `declarationRegions` splits a file at
+ * top-level declarations, so a region runs from its `export const` line all the
+ * way to the line before the NEXT declaration — which means it swallows the doc
+ * comment belonging to whatever comes next. Applied to the self-exemption that
+ * put the twenty-odd lines of prose introducing `DELIBERATELY_NOT_WATCHED`
+ * inside `REAL_IP_WATCHLIST`'s exempt window, where a real brand could have been
+ * written into a paragraph and this audit would have said nothing. Nothing had;
+ * the widening was found by measuring the ranges rather than by a finding. It
+ * grew as the file's prose grew, which is the property that made it worth
+ * closing rather than noting: an exemption that widens whenever somebody writes
+ * a longer comment is not a narrow exemption.
+ *
+ * The end is found by balancing brackets over `codeOnly` output, where comments
+ * and string CONTENTS are already blanked — so a `(` inside a note, a URL or a
+ * prose paragraph cannot move it.
+ *
+ * FAILS CLOSED. If the brackets never balance inside the region, this returns
+ * `null` and the caller exempts NOTHING for that region, so the names in it are
+ * reported and the suite goes red. A reformatting that defeats the balance
+ * therefore announces itself instead of silently opening the file up.
+ */
+export function declarationLiteralEnd(
+  codeLines: readonly string[],
+  fromLine: number,
+  toLine: number,
+): number | null {
+  let depth = 0;
+  let opened = false;
+  for (let i = fromLine; i < Math.min(toLine, codeLines.length); i += 1) {
+    for (const ch of codeLines[i] ?? '') {
+      if (BRACKET_OPEN.includes(ch)) {
+        depth += 1;
+        opened = true;
+      } else if (BRACKET_CLOSE.includes(ch)) {
+        depth -= 1;
       }
     }
-  });
-});
+    if (opened && depth <= 0) return i;
+  }
+  return null;
+}
+
+/** Scan one file's text. `relPath` is repository-relative POSIX. */
+export function scanSourceText(
+  relPath: string,
+  source: string,
+  watchlist: readonly WatchEntry[] = REAL_IP_WATCHLIST,
+): readonly SourceMention[] {
+  const tsLike = TS_LIKE.test(relPath);
+  const prose = PROSE_LIKE.test(relPath);
+  const stripped = tsLike ? withoutComments(source) : source;
+
+  // The self-exemption, held to the DECLARATION'S OWN LITERAL rather than to the
+  // whole region `declarationRegions` returns — see `declarationLiteralEnd` for
+  // the difference and why it matters. Both bounds are 1-based, inclusive.
+  const exemptRanges: { from: number; to: number }[] = [];
+  if (relPath === WATCHLIST_FILE) {
+    const code = codeOnly(source);
+    const codeLines = code.split('\n');
+    for (const region of declarationRegions(code)) {
+      if (!WATCHLIST_REGIONS.includes(region.name)) continue;
+      const end = declarationLiteralEnd(codeLines, region.fromLine, region.toLine);
+      if (end === null) continue;
+      exemptRanges.push({ from: region.fromLine + 1, to: end + 1 });
+    }
+  }
+
+  const mentions: SourceMention[] = [];
+  for (const hit of findWatchedNames(source, watchlist)) {
+    const line = lineOf(source, hit.index);
+    if (exemptRanges.some((r) => line >= r.from && line <= r.to)) continue;
+    const where: MentionWhere = prose
+      ? 'prose'
+      : tsLike && isInComment(source, stripped, hit.index)
+        ? 'comment'
+        : 'code';
+    mentions.push({
+      file: relPath,
+      line,
+      name: hit.name,
+      kind: hit.kind,
+      where,
+      text: lineTextAt(source, hit.index),
+    });
+  }
+  return mentions;
+}
+
+/**
+ * Scan a filename — for assets and anything else this audit cannot read.
+ *
+ * The only check that reaches a binary. A logo pasted into a PNG is invisible
+ * here; a logo pasted into a PNG somebody named after the brand is not, and
+ * that is how it actually arrives.
+ */
+export function scanFileName(
+  relPath: string,
+  watchlist: readonly WatchEntry[] = REAL_IP_WATCHLIST,
+): readonly SourceMention[] {
+  return findWatchedNames(relPath, watchlist).map((hit) => ({
+    file: relPath,
+    line: 1,
+    name: hit.name,
+    kind: hit.kind,
+    where: 'filename' as const,
+    text: relPath,
+  }));
+}
 
 // ---------------------------------------------------------------------------
-// The text/binary decision, driven on bytes rather than on suffixes
+// The reviewable inventory
 // ---------------------------------------------------------------------------
 
-describe('the reader decides on bytes, not on a suffix', () => {
-  const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
+/**
+ * One row of the human-reviewable list: a file, a name, and where it sits.
+ *
+ * DELIBERATELY NOT LINE-PINNED. A line number moves every time somebody edits an
+ * unrelated paragraph higher up the same file, and this run has several builders
+ * working in parallel worktrees — a list pinned to line numbers would go red on
+ * merges that changed nothing this audit cares about, and a check that goes red
+ * for unrelated reasons is a check people learn to re-run rather than read. The
+ * lines are in the FORMATTED report, which is what a human actually opens.
+ */
+export interface CitationRow {
+  readonly file: string;
+  readonly name: string;
+  readonly where: MentionWhere;
+  readonly count: number;
+}
 
-  it('reads a source file in a language nobody put on a list', () => {
-    // THE DEFECT, AS A UNIT. There is no Python in this repository, which is why
-    // the old extension allowlist could omit `.py` for the whole run without
-    // anything going red. The predicate no longer asks what the file is called.
-    expect(classifyBytes(utf8('#!/usr/bin/env python3\nprint("hello")\n'))).toBe('text');
-    expect(classifyBytes(utf8('fn main() { println!("hi"); }\n'))).toBe('text');
-    expect(classifyBytes(utf8('#!/usr/bin/env ruby\nputs "hi"\n'))).toBe('text');
-    expect(classifyBytes(utf8('SELECT 1;\n'))).toBe('text');
-    expect(classifyBytes(utf8('FROM node:22\nRUN npm ci\n'))).toBe('text');
-  });
-
-  it('refuses bytes that cannot be text, by both routes', () => {
-    // BOTH ARMS DRIVEN, and this is where the `not-utf8` arm gets its evidence:
-    // every binary in this tree happens to carry a NUL, so the repository alone
-    // exercises one arm and would leave the other passing on nothing.
-    expect(classifyBytes(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]))).toBe(
-      'nul-byte',
+/** Fold mentions into the pinnable inventory. Sorted, so the pin is stable. */
+export function citationInventory(mentions: readonly SourceMention[]): readonly CitationRow[] {
+  const counts = new Map<string, CitationRow>();
+  for (const m of mentions) {
+    const key = `${m.file}|${m.name}|${m.where}`;
+    const existing = counts.get(key);
+    counts.set(
+      key,
+      existing === undefined
+        ? { file: m.file, name: m.name, where: m.where, count: 1 }
+        : { ...existing, count: existing.count + 1 },
     );
-    // A lone 0xFF is not a legal UTF-8 start byte in any position.
-    expect(classifyBytes(new Uint8Array([0x48, 0x69, 0xff, 0x21]))).toBe('not-utf8');
-    // A truncated multi-byte sequence: a legal lead byte with its continuation
-    // missing. This is what a latin-1 file with an accent in it looks like.
-    expect(classifyBytes(new Uint8Array([0x41, 0xe9, 0x42]))).toBe('not-utf8');
-    // ...and the arms are distinguishable rather than one collapsed into the
-    // other, which is the only thing that makes the census reason worth printing.
-    expect(classifyBytes(new Uint8Array([0xff, 0x00]))).not.toBe('not-utf8');
-  });
-
-  it('accepts text a naive byte test would reject', () => {
-    // A high-plane character is multi-byte and perfectly valid, and a scan that
-    // called it binary would silently drop the accented athlete spellings the
-    // watchlist carries on purpose. Empty is text too — a zero-length file is not
-    // a binary, and treating it as one would put a row on the unreadable census
-    // for every placeholder anybody touches.
-    //
-    // THE FIXTURE IS INVENTED, and the first draft of it was not: it used a real
-    // accented lifter's name to make the point about accented spellings, and this
-    // module's own citation pin reported it as a new `code` row in this file
-    // within one run. Two checks catching the same slip from opposite sides is
-    // the only reason to keep writing them.
-    expect(classifyBytes(utf8('Aurélien Mourcade — 日本語 — 🏋'))).toBe('text');
-    expect(classifyBytes(new Uint8Array([]))).toBe('text');
-  });
-
-  it('gives real files in this tree the verdicts a reader would expect', () => {
-    // THE FIXTURES ABOVE ARE SYNTHETIC AND THIS IS THE SAME PREDICATE ON REAL
-    // BYTES. Named files with literal expectations, which is the only shape that
-    // bites here.
-    //
-    // THE VERSION THAT LOOPED OVER `TEXT_FILES` ASSERTING `'text'` WAS A
-    // TAUTOLOGY AND IS GONE. `TEXT_FILES` is filtered BY this predicate, so the
-    // loop restated the filter and no state of `classifyBytes` could have made it
-    // red — the oracle-mirrors-its-subject shape, in the test written to prove
-    // the subject works. What replaced it is the cross-path equality in the
-    // census check above, plus these.
-    expect(classifyBytes(bytesOf('src/licensing/realIp.ts'))).toBe('text');
-    // The lockfile: the largest text file here, and the one whose base64 blobs
-    // are the closest thing in the tree to bytes a sniff could get wrong.
-    expect(classifyBytes(bytesOf('package-lock.json'))).toBe('text');
-    // The three files the old allowlist declined are NOT re-asserted here.
-    // `reads test files, .mts, .toml and an extensionless file` already pins them
-    // through `TEXT_FILES`, which goes through `isTextFile`, which calls this —
-    // so a `classifyBytes` line for `netlify.toml` is red in a strict subset of
-    // the states that one is red in. Strictly dominated; left out rather than
-    // written and left unable to speak first.
-    //
-    // ...and the other side, one per unreadable extension.
-    expect(classifyBytes(bytesOf('assets/icon.png'))).toBe('nul-byte');
-    expect(classifyBytes(bytesOf('assets/sound/bar-rattle.wav'))).toBe('nul-byte');
-    expect(classifyBytes(bytesOf('docs/image-1785524656877.webp'))).toBe('nul-byte');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// The watchlist itself
-// ---------------------------------------------------------------------------
-
-describe('the watchlist', () => {
-  it('is non-empty and covers all six categories', () => {
-    expect(REAL_IP_WATCHLIST.length).toBeGreaterThan(30);
-    // `project` and `game-industry` were added last, after the list was found to
-    // be blind twice over: to the open-results project and meet software this
-    // repository cites more than anything else, and to the console, franchise
-    // and character marks a 16-bit art project reaches for whenever it argues
-    // about era. Named in this loop rather than left to a general "every kind is
-    // used" check so that deleting a category fails HERE, with its name in the
-    // message.
-    for (const kind of [
-      'brand',
-      'athlete',
-      'federation',
-      'meet-series',
-      'project',
-      'game-industry',
-    ] as const) {
-      expect(
-        REAL_IP_WATCHLIST.some((e) => e.kind === kind),
-        `no ${kind} on the watchlist`,
-      ).toBe(true);
-    }
-  });
-
-  it('finds a project name inside a URL — host, path segment and slug', () => {
-    // A URL IS HOW A NAME MOST OFTEN SURVIVES A TEXT SCAN, and every mention of
-    // this category in the tree arrived as one. Nothing here parses URLs; what
-    // makes it work is that `patternFor`'s word edges are alphanumeric-only, so
-    // `/`, `.` and `-` are all boundaries. That is a property worth pinning
-    // rather than assuming, because tightening the edges to `\b`-like rules or
-    // to whitespace would silently un-catch all three of these.
-    const forms = [
-      `https://www.${A_REAL_PROJECT.toLowerCase()}.org/`,
-      `https://gitlab.com/${A_REAL_PROJECT.toLowerCase()}/data/-/raw/main/x.csv`,
-      `see ${A_REAL_PROJECT}-derived formats`,
-      `(${A_REAL_PROJECT}),`,
-    ];
-    for (const form of forms) {
-      expect(findWatchedNames(form).map((h) => h.name), form).toContain(A_REAL_PROJECT);
-    }
-    // ...and the paired direction: glued to a letter it is a different token and
-    // is NOT a mention, which is what keeps the lockfile quiet.
-    expect(findWatchedNames(`x${A_REAL_PROJECT}`)).toEqual([]);
-    expect(findWatchedNames(`${A_REAL_PROJECT}x`)).toEqual([]);
-  });
-
-  it('watches a platform by its DOMAIN, and that entry cannot fire on our verdict term', () => {
-    // THE ONE ENTRY THAT IS DELIBERATELY NARROWER THAN THE NAME IT WATCHES, and
-    // the reason is worth pinning because it is easy to "fix" by widening.
-    //
-    // The bare word is a real federation results platform. It is also, as two
-    // words and as a camel-cased identifier, this codebase's own term for a
-    // passed attempt — `isGoodLift`, `heaviestGoodLift`, their call sites in
-    // meet.ts, meetDay.ts and renderResultCard.ts. Word boundaries mean the bare
-    // form would not fire on THOSE (a letter precedes it in each), so the real
-    // arithmetic is: the bare form matches nothing in the tree today, and the
-    // first `const goodLift = ...` anybody writes would put a false positive on
-    // the game's own vocabulary. Dead now, noisy later. The domain form is what
-    // is actually cited and it can be neither.
-    const domain = A_WATCHED_DOMAIN;
-    if (domain === undefined) throw new Error('no dotted project entry on the watchlist');
-    expect(findWatchedNames(domain.name).length).toBeGreaterThan(0);
-
-    const bare = domain.name.slice(0, domain.name.indexOf('.'));
-    expect(bare.length).toBeGreaterThan(3);
-    // The narrowing, stated as an assertion rather than as a comment: the bare
-    // word is NOT watched, so nobody has to wonder whether it was meant to be.
-    expect(findWatchedNames(bare)).toEqual([]);
-    // ...and neither identifier form is a mention, whichever way the entry is
-    // later rewritten.
-    expect(findWatchedNames(`export function is${bare}(lights: JudgePanel): boolean {`)).toEqual([]);
-    expect(findWatchedNames(`expect(heaviest${bare}(CARD)).toBeNull();`)).toEqual([]);
-  });
-
-  it('has no dead entry in the two derived categories', () => {
-    // The rest of the list is PREVENTIVE — a famous brand nobody has typed yet is
-    // exactly what it is for, and an entry that never fires is correct there. The
-    // `project` and `game-industry` blocks are different by construction: both
-    // were built by asking what this repository ACTUALLY CITES, so an entry that
-    // fires on nothing is an entry somebody padded the list with, and a watchlist
-    // row that can never fire is its own kind of dead check.
-    const pinned = new Set(REVIEWABLE_CITATIONS.map((r) => r.name));
-    const derived = REAL_IP_WATCHLIST.filter(
-      (e) => e.kind === 'project' || e.kind === 'game-industry',
-    );
-    expect(derived.length).toBeGreaterThan(8);
-    for (const entry of derived) {
-      expect(pinned.has(entry.name), `${entry.name} is watched but cites nothing`).toBe(true);
-    }
-  });
-
-  it('gives every entry a reason and never repeats one', () => {
-    const names = REAL_IP_WATCHLIST.map((e) => e.name);
-    expect(new Set(names).size).toBe(names.length);
-    for (const entry of REAL_IP_WATCHLIST) {
-      expect(entry.note.length, `${entry.name} has no note`).toBeGreaterThan(0);
-      expect(entry.name.trim()).toBe(entry.name);
-    }
-  });
-
-  it('does not also claim to skip a name it watches', () => {
-    // `DELIBERATELY_NOT_WATCHED` is the visible-omission list. A name on both
-    // would mean the file argues with itself about whether it is checked.
-    const watched = new Set(REAL_IP_WATCHLIST.map((e) => e.name));
-    for (const entry of DELIBERATELY_NOT_WATCHED) {
-      expect(watched.has(entry.name), `${entry.name} is on both lists`).toBe(false);
-      expect(entry.note.length).toBeGreaterThan(0);
-    }
-    expect(DELIBERATELY_NOT_WATCHED.length).toBeGreaterThan(0);
-  });
-
-  it('lists as deliberately-unwatched only names that are really in this tree', () => {
-    // THE OMISSION LIST HAS TO BE A LIST OF RULINGS, NOT OF GUESSES.
-    //
-    // Its whole value is that a reader can see which real names were found and
-    // waved through. A name nobody ever typed into this repository looks exactly
-    // like a name that was considered and cleared, and padding it that way makes
-    // the list read as more thorough than the sweep behind it actually was. So
-    // each entry has to point at something: this fails if one stops appearing,
-    // and the fix is to delete the row, not to widen the search.
-    //
-    // It is also the guard on the other side of the `project` additions. Those
-    // were chosen by asking what the tree cites; this asks the same question of
-    // everything the same sweep decided NOT to watch.
-    //
-    // THE WATCHLIST FILE IS EXCLUDED FROM THE SEARCH, and that exclusion is the
-    // only thing that makes this test worth running: every one of these names is
-    // spelled in `DELIBERATELY_NOT_WATCHED` itself, so searching the whole tree
-    // would find each entry in its own declaration and pass on anything.
-    const elsewhere = TEXT_FILES.filter((f) => f !== WATCHLIST_FILE);
-    expect(elsewhere.length).toBe(TEXT_FILES.length - 1);
-    for (const entry of DELIBERATELY_NOT_WATCHED) {
-      const found = elsewhere.some(
-        (relPath) => findWatchedNames(read(relPath), [entry]).length > 0,
-      );
-      expect(
-        found,
-        `${entry.name} is listed as deliberately not watched but appears nowhere in the tree — delete the row`,
-      ).toBe(true);
-    }
-  });
-
-  it('matches on word boundaries, so a checksum is not a brand', () => {
-    // One of the three-letter brand acronyms occurs inside a base64 integrity
-    // hash in package-lock.json. Without the boundaries this audit would report
-    // a dependency checksum on every run — and an audit that cries wolf on a
-    // lockfile is one somebody excludes the lockfile from, after which the
-    // lockfile is a hole.
-    //
-    // PINNED AGAINST THE REAL FILE rather than a quoted fragment, so it stays
-    // true as dependencies change and so this test file never has to spell the
-    // acronym out.
-    const lock = read('package-lock.json');
-    expect(lock.length).toBeGreaterThan(1000);
-    expect(scanSourceText('package-lock.json', lock), 'lockfile false positives').toEqual([]);
-
-    const shortest = SHORTEST_WATCHED;
-    if (shortest === undefined) throw new Error('empty watchlist');
-    expect(shortest.name.length).toBeLessThanOrEqual(5);
-    expect(findWatchedNames(`Yf${shortest.name}8n6mm8A==`)).toEqual([]);
-    // ...but the same string standing alone is found.
-    expect(findWatchedNames(shortest.name).length).toBeGreaterThan(0);
-  });
-
-  it('is case-insensitive', () => {
-    const brand = A_REAL_BRAND.toLowerCase();
-    expect(findWatchedNames(brand).length).toBeGreaterThan(0);
-    expect(findWatchedNames(A_REAL_BRAND.toUpperCase()).length).toBeGreaterThan(0);
-  });
-
-  it('escapes regex metacharacters in a name', () => {
-    // `Halberd Grip Co.` style names carry a `.`, which is a regex wildcard.
-    // An unescaped one would match `Co!` and `CoX` too.
-    const dotted: WatchEntry = { name: 'Acme Co.', kind: 'brand', note: 'test' };
-    expect(patternFor(dotted).test('Acme CoX')).toBe(false);
-    expect(patternFor(dotted).test('Acme Co.')).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// THE AUDIT BITES — a string, a data entry, a config
-// ---------------------------------------------------------------------------
-
-describe('the audit bites', () => {
-  it('is clean on the unmutated inventory, so a finding is the mutation', () => {
-    expect(scanRenderable(INVENTORY)).toEqual([]);
-  });
-
-  // --- (1) A STRING ---------------------------------------------------------
-
-  it('catches a real brand in a Tier 2 name tag', () => {
-    const original = IDENTITY_ENTRIES[0];
-    if (original === undefined) throw new Error('no identity entries');
-    const planted: IdentityEntry = {
-      ...original,
-      tier2: { ...original.tier2, displayName: A_REAL_BRAND },
-    };
-    expect(planted.tier2.displayName, 'plant did not apply').toBe(A_REAL_BRAND);
-    expect(planted.tier2.displayName).not.toBe(original.tier2.displayName);
-
-    const found = scanRenderable(renderableInventory([planted]));
-    expect(found.map((f) => f.name)).toContain(A_REAL_BRAND);
-    expect(found.map((f) => f.path)).toContain(`${original.id}.tier2.displayName`);
-    expect(formatContentFindings(found)).toContain('licensing-entry');
-  });
-
-  it('catches a real athlete in a Tier 3 caption, behind the symbol', () => {
-    // THE ONE A NAIVE WALK MISSES. Tier 3 content is opaque, so
-    // `Object.entries(entry)` cannot see a caption at all. If `identityStrings`
-    // ever stopped reading through `revealTier3`, this is what would fail —
-    // and the licensing system's most licensed-looking surface would be the one
-    // nothing was scanning.
-    const original = IDENTITY_ENTRIES.find((e) => e.kind === 'athlete');
-    if (original === undefined) throw new Error('no athlete entries');
-    const before = tier3Of(original, 'portrait', 'shop');
-    const planted: IdentityEntry = {
-      ...original,
-      tier3: {
-        ...original.tier3,
-        portrait: tier3Asset({ ...before, caption: A_REAL_ATHLETE }),
-      },
-    };
-    expect(tier3Of(planted, 'portrait', 'shop').caption, 'plant did not apply').toBe(A_REAL_ATHLETE);
-    expect(before.caption).not.toBe(A_REAL_ATHLETE);
-
-    const found = scanRenderable(renderableInventory([planted]));
-    expect(found.map((f) => f.path)).toContain(`${original.id}.tier3.portrait.caption`);
-    expect(found.map((f) => f.name)).toContain(A_REAL_ATHLETE);
-  });
-
-  // --- (2) A DATA ENTRY -----------------------------------------------------
-
-  it('catches a real athlete planted into the sample-card fixtures, as data', () => {
-    const source = read('src/card/sampleCards.ts');
-    const mutated = mutate(source, "name: 'Marcus Vale'", `name: '${A_REAL_ATHLETE}'`);
-    const found = scanSourceText('src/card/sampleCards.ts', mutated);
-    const names = found.filter((m) => m.where === 'code').map((m) => m.name);
-    expect(names, formatMentions(found)).toContain(A_REAL_ATHLETE);
-  });
-
-  it('catches the same plant as RENDERABLE CONTENT, not only as source text', () => {
-    // The source-text scan reports it; the default-deny scan REFUSES it. Both
-    // halves are exercised on the same plant so the categories cannot quietly
-    // swap places.
-    const planted: RenderableString[] = [
-      { surface: 'sample-card', path: 'strong.lifter.name', value: A_REAL_ATHLETE },
-    ];
-    const found = scanRenderable(planted);
-    expect(found).toHaveLength(1);
-    expect(found[0]?.kind).toBe('athlete');
-  });
-
-  it('catches a real brand planted into a tuned copy string', () => {
-    // Copy is the shortest path from a source file to a player's eye.
-    const found = scanRenderable([
-      { surface: 'tuning', path: 'session.SESSION_COPY.CLOSE_OUT', value: `Chalk up with ${A_REAL_BRAND}.` },
-    ]);
-    expect(found.map((f) => f.name)).toEqual([A_REAL_BRAND]);
-  });
-
-  // --- (3) A CONFIG ---------------------------------------------------------
-
-  it('catches a real brand planted into app.json, in BOTH halves', () => {
-    const source = read('app.json');
-    const mutated = mutate(source, '"name": "app"', `"name": "${A_REAL_BRAND}"`);
-
-    // (B) the listed half: a JSON file has no comments, so a hit in one is
-    // `code` — the higher-severity position, and unpinned, so the suite reds.
-    const mentions = scanSourceText('app.json', mutated);
-    expect(mentions.map((m) => m.name)).toContain(A_REAL_BRAND);
-    expect(mentions[0]?.where).toBe('code');
-
-    // (A) the default-deny half. `expo.name` is the string under the icon on a
-    // phone's home screen, so it is content and gets refused rather than
-    // listed. This assertion is why `app.json` is in `renderableInventory`.
-    const config = scanRenderable(
-      walkStrings('app-config', JSON.parse(mutated) as unknown),
-    );
-    expect(config.map((f) => f.name)).toContain(A_REAL_BRAND);
-    expect(config.map((f) => f.path)).toContain('expo.name');
-  });
-
-  it('catches a real federation planted into the Expo web config', () => {
-    const source = read('public/card.html');
-    const mutated = mutate(source, '<title>Result card harness</title>', `<title>${A_REAL_FEDERATION} harness</title>`);
-    expect(scanSourceText('public/card.html', mutated).map((m) => m.name)).toContain(A_REAL_FEDERATION);
-  });
-
-  // --- assets ---------------------------------------------------------------
-
-  it('catches a real brand in an asset FILENAME', () => {
-    // Image contents are unreadable to a text scan; filenames are not, and a
-    // logo arrives as `assets/<brand>-logo.png` far more often than as a string.
-    const planted = `assets/${A_REAL_BRAND.toLowerCase().replace(/\s+/g, '-')}-logo.png`;
-    const found = scanFileName(planted);
-    expect(found.map((m) => m.name)).toContain(A_REAL_BRAND);
-    expect(scanFileName('assets/icon.png')).toEqual([]);
-  });
-
-  // --- (5) A FILE TYPE NOBODY PUT ON A LIST ---------------------------------
-
-  it('catches a real federation in a file type the old allowlist declined', () => {
-    // THE HOLE THAT PRODUCED THE REWRITE, PINNED SO IT CANNOT REOPEN.
-    //
-    // Both halves have to hold and neither implies the other:
-    //
-    //   1. the READER lets the file in — this is what `.py`, `.mts` and `.toml`
-    //      all failed, silently, under the extension allowlist;
-    //   2. the SCANNER reports the name once the file is in.
-    //
-    // (2) was never broken — `scanSourceText` has never looked at an extension to
-    // decide whether to scan, only to decide `where` — so a check that exercised
-    // only (2) would have passed against the defect. That is why the assertion
-    // pairs them on the same bytes.
-    for (const name of ['tools/sweep.py', 'tools/thing.d.mts', 'netlify.toml', '.gitignore']) {
-      const source = `# generated for the ${A_REAL_FEDERATION} export\nvalue = 1\n`;
-      const bytes = new TextEncoder().encode(source);
-      expect(isTextFile(bytes), `${name} would not be read at all`).toBe(true);
-      const found = scanSourceText(name, source);
-      expect(found.map((m) => m.name), `${name}: ${formatMentions(found)}`).toContain(
-        A_REAL_FEDERATION,
-      );
-    }
-  });
-
-  it('classifies a .mts comment as a comment, not as code', () => {
-    // A SECOND, QUIETER HALF OF THE SAME DEFECT. `TS_LIKE` had the same `tsx?`
-    // gap as the reader did, so even once a `.mts` file was read its comments
-    // would have been graded `code` — the higher-severity bucket, which sounds
-    // safe and is not: it would have put a `code` row on the citation list for
-    // provenance that is only ever a comment, and `code` rows are the ones this
-    // module asks a human to look at first.
-    const inComment = scanSourceText('tools/x.d.mts', `export const a = 1; // ${A_REAL_FEDERATION}\n`);
-    expect(inComment.map((m) => m.where)).toEqual(['comment']);
-    // ...and the paired direction: a language whose comments this module cannot
-    // strip still reports, at the SAFE severity. A `#` comment is not something
-    // `withoutComments` understands, so the mention lands in `code`. That is the
-    // deliberate outcome and it is asserted rather than left to be discovered.
-    const python = scanSourceText('tools/sweep.py', `# ${A_REAL_FEDERATION}\nx = 1\n`);
-    expect(python.map((m) => m.where)).toEqual(['code']);
-  });
-
-  // --- the self-exemption ---------------------------------------------------
-
-  it('does not exempt the watchlist file outside its watchlist regions', () => {
-    // The one file allowed to spell these names is allowed to do it in three
-    // named blocks and nowhere else. A name in its header comment, or in a new
-    // helper, is reported like anywhere else.
-    const source = read(WATCHLIST_FILE);
-    const mutated = mutate(
-      source,
-      ' * realIp.ts — THE REAL-IP AUDIT.',
-      ` * realIp.ts — THE REAL-IP AUDIT. Sponsored by ${A_REAL_BRAND}.`,
-    );
-    const found = scanSourceText(WATCHLIST_FILE, mutated);
-    expect(found.map((m) => m.name), formatMentions(found)).toContain(A_REAL_BRAND);
-  });
-
-  it('does not exempt the watchlist file for the NEWLY watched names either', () => {
-    // Adding names to `REAL_IP_WATCHLIST` puts new real names into the one file
-    // that is allowed to hold them, which is exactly the move that could widen
-    // the self-exemption without anybody noticing — the block grew, so more of
-    // the file is exempt. The exemption is by DECLARATION REGION rather than by
-    // file, so growing the list cannot spill: this plants a project name in the
-    // header, where the argument for the whole exemption is written, and it is
-    // still reported.
-    const source = read(WATCHLIST_FILE);
-    const mutated = mutate(
-      source,
-      ' * PURE MODULE: zero React imports, zero I/O, zero side effects.',
-      ` * Provenance: ${A_REAL_PROJECT}. PURE MODULE: zero React imports, zero I/O, zero side effects.`,
-    );
-    const found = scanSourceText(WATCHLIST_FILE, mutated);
-    expect(found.map((m) => m.name), formatMentions(found)).toContain(A_REAL_PROJECT);
-    expect(found.map((m) => m.where)).toContain('comment');
-  });
-
-  it('exempts each region only as far as its own closing bracket', () => {
-    // THE HOLE THIS CLOSED, pinned so it cannot reopen.
-    //
-    // `declarationRegions` runs a declaration up to the NEXT declaration, so the
-    // region named after the watchlist used to include the doc comment
-    // introducing the block below it — twenty-odd lines of ordinary prose,
-    // inside an exempt window, growing every time somebody wrote a longer
-    // paragraph. Nothing was hiding in there. The point is that nothing COULD
-    // have been found if it were.
-    //
-    // The plant goes in the sentence that introduces the second block, which is
-    // after the first block's closing bracket and before the second block's
-    // `export const`: exempt under the old rule, reported under the new one.
-    const source = read(WATCHLIST_FILE);
-    const mutated = mutate(
-      source,
-      ' * An omission from a denylist is invisible; this makes these ones visible.',
-      ` * An omission from a denylist is invisible; unlike ${A_REAL_BRAND}. `,
-    );
-    const found = scanSourceText(WATCHLIST_FILE, mutated);
-    expect(found.map((m) => m.name), formatMentions(found)).toContain(A_REAL_BRAND);
-
-    // ...and the paired direction, without which the assertion above would also
-    // pass if the exemption had stopped working altogether: the real file, with
-    // dozens of watched names inside the three literals, still reports nothing.
-    expect(scanSourceText(WATCHLIST_FILE, source)).toEqual([]);
-  });
-
-  it('leaves the watchlist file with no pinned citations of its own', () => {
-    // THE SHARPEST STATEMENT OF THE SELF-SCAN, and the reason this module's prose
-    // describes real names instead of spelling them ("a three-letter brand
-    // acronym", "the open-results project"). If one leaked out of the three
-    // exempt blocks — into the header, a helper, a group description — it would
-    // become a mention, the mention would become a row, and the pin above would
-    // go red. So this file having ZERO rows is not a coincidence to be preserved
-    // by care; it is the invariant the pin enforces, and stating it here means a
-    // reader does not have to infer it from an absence.
-    expect(REVIEWABLE_CITATIONS.filter((r) => r.file === WATCHLIST_FILE)).toEqual([]);
-    const live = scanSourceText(WATCHLIST_FILE, read(WATCHLIST_FILE));
-    expect(live, formatMentions(live)).toEqual([]);
-  });
-
-  it('exempts exactly one file and exactly three of its regions', () => {
-    expect(WATCHLIST_FILE).toBe('src/licensing/realIp.ts');
-    expect([...WATCHLIST_REGIONS].sort()).toEqual([
-      'DELIBERATELY_NOT_WATCHED',
-      'REAL_IP_WATCHLIST',
-      'REVIEWABLE_CITATIONS',
-    ]);
-    // ...and those regions really are in that file, so the exemption cannot
-    // outlive the blocks it was opened for.
-    const source = read(WATCHLIST_FILE);
-    for (const region of WATCHLIST_REGIONS) {
-      expect(source, `${region} is exempt but not declared`).toContain(`export const ${region}`);
-    }
-  });
-
-  it('reports the file, the line and the name, so a failure is actionable', () => {
-    const found = scanSourceText('src/fake.ts', `// a comment\nconst x = '${A_REAL_ATHLETE}';\n`);
-    expect(found).toHaveLength(1);
-    expect(found[0]?.line).toBe(2);
-    expect(found[0]?.where).toBe('code');
-    expect(formatMentions(found)).toContain('src/fake.ts:2');
-  });
-
-  it('tells a comment apart from a string on the same line', () => {
-    // The whole category split rests on this. It reuses `withoutComments` from
-    // `src/tuning/audit.ts`, which preserves offsets and is checked against
-    // every file in the tree on every run.
-    const inComment = scanSourceText('src/fake.ts', `const x = 1; // cites ${A_REAL_FEDERATION}\n`);
-    expect(inComment.map((m) => m.where)).toEqual(['comment']);
-    const inCode = scanSourceText('src/fake.ts', `const x = '${A_REAL_FEDERATION}'; // nothing here\n`);
-    expect(inCode.map((m) => m.where)).toEqual(['code']);
-    const inProse = scanSourceText('docs/fake.md', `We considered ${A_REAL_FEDERATION}.\n`);
-    expect(inProse.map((m) => m.where)).toEqual(['prose']);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// ...AND IT IS NOT A SIEVE
-// ---------------------------------------------------------------------------
-
-describe('the audit is not a sieve', () => {
-  it('passes the fictional catalogue', () => {
-    // Every name in `partners.ts` was searched by hand before it was typed, and
-    // one candidate was rejected at that step. This is the machine half.
-    for (const entry of IDENTITY_ENTRIES) {
-      expect(findWatchedNames(entry.tier2.displayName), entry.id).toEqual([]);
-      expect(findWatchedNames(entry.tier2.shortName), entry.id).toEqual([]);
-      expect(findWatchedNames(entry.id), entry.id).toEqual([]);
-    }
-  });
-
-  it('does not fire on ordinary prose that contains a brandish word', () => {
-    // Multi-word entries exist precisely so this stays true: a check that fires
-    // on English gets suppressed, and a suppressed check is worse than none.
-    expect(findWatchedNames('a rogue value slipped through')).toEqual([]);
-    expect(findWatchedNames('the titan of the platform')).toEqual([]);
-    expect(findWatchedNames('a monster of a third attempt')).toEqual([]);
-    expect(findWatchedNames('a ghost total on the board')).toEqual([]);
-    // ...and the paired direction, because a check that refuses everything
-    // satisfies "does not fire on prose" perfectly and is worth nothing: the
-    // FULL two-word brand inside the same kind of sentence IS found.
-    const twoWord = A_TWO_WORD_BRAND;
-    if (twoWord === undefined) throw new Error('no multi-word brand on the watchlist');
-    expect(findWatchedNames(`a shipment of ${twoWord.name} arrived late`).length).toBeGreaterThan(0);
-  });
-
-  it('does not fire on the fictional federations already in the tree', () => {
-    expect(findWatchedNames('Irongate')).toEqual([]);
-    expect(findWatchedNames('Continental Alliance')).toEqual([]);
-  });
-
-  it('does not fire on a real town that is not a meet series', () => {
-    // `sampleCards.ts` sets meets in Sheffield, which is a city. Only the meet
-    // SERIES is watched, and watching the bare city name would refuse a
-    // perfectly ordinary invented meet.
-    expect(findWatchedNames('Sheffield')).toEqual([]);
-    expect(findWatchedNames('Newcastle upon Tyne')).toEqual([]);
-  });
-
-  it('leaves the formula eponyms alone', () => {
-    for (const entry of DELIBERATELY_NOT_WATCHED) {
-      expect(findWatchedNames(entry.name), entry.name).toEqual([]);
-    }
-  });
-});
-
-// ---------------------------------------------------------------------------
-// (A) IDENTITY AS CONTENT — default deny, no pin, no exceptions
-// ---------------------------------------------------------------------------
-
-describe('no real identity reaches a surface', () => {
-  it('refuses watched names in browser public assets and browser source filenames', () => {
-    const shippedNames = [`web/public/${A_REAL_BRAND}.png`, `web/src/${A_REAL_BRAND}.ts`];
-    const findings = shippedNames.filter(isShippedPath).flatMap((file) => scanFileName(file));
-    expect(findings.map((finding) => finding.file)).toEqual(shippedNames);
-    expect(findings.every((finding) => finding.name === A_REAL_BRAND)).toBe(true);
-    expect(isShippedPath(`docs/reference/${A_REAL_BRAND}.png`)).toBe(false);
-  });
-
-  it('finds nothing in any string the game can draw', () => {
-    const findings = scanRenderable(INVENTORY);
-    expect(findings.length, `\n${formatContentFindings(findings)}\n`).toBe(0);
-  });
-
-  it('finds nothing in the NAME of any file that ships', () => {
-    // `assets/`, `public/` and `src/` are what gets bundled. A logo pasted into
-    // a PNG is invisible to a text scan; a logo pasted into a PNG somebody named
-    // after the brand is not, and that is how it actually arrives.
-    //
-    // Names OUTSIDE those roots are category (B) and pinned instead — see the
-    // `filename` rows in the citation list, which today are the downloaded
-    // reference photographs in `docs/reference/`, named after their subject.
-    const shipped = ALL_FILES.filter(isShippedPath);
-    expect(shipped.length).toBeGreaterThan(40);
-    const findings = shipped.flatMap((f) => scanFileName(f));
-    expect(findings.length, `\n${formatMentions(findings)}\n`).toBe(0);
-  });
-
-  it('finds no watchlist name anywhere in the licensing catalogue', () => {
-    // The narrower, sharper version of the first assertion: whatever else is in
-    // the tree, the thing a partner would be ADDED TO is clean.
-    const catalogue = [
-      ...IDENTITY_ENTRIES.flatMap(identityStrings),
-      ...walkStrings('catalogue', { BASE_ITEMS, SPONSORED_RESKINS }),
-    ];
-    expect(scanRenderable(catalogue)).toEqual([]);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// (B) DOCUMENTED REFERENCE — listed, pinned, reviewable
-// ---------------------------------------------------------------------------
-
-describe('the reviewable citation list', () => {
-  const MENTIONS = [
-    ...TEXT_FILES.flatMap((relPath) => scanSourceText(relPath, read(relPath))),
-    // Filenames outside the shipped roots. The ones INSIDE them are refused
-    // outright above; these are research material named after its subject, and
-    // they get a human's eye rather than a deletion.
-    ...ALL_FILES.filter((f) => !isShippedPath(f)).flatMap((f) => scanFileName(f)),
-  ];
-  const INVENTORY_ROWS = citationInventory(MENTIONS);
-
-  it('is exactly the list in realIp.ts — a new mention is a human decision', () => {
-    // BOTH DIRECTIONS ON PURPOSE. A new mention fails until somebody rules on
-    // it; a REMOVED one fails too, because deleting a provenance citation is the
-    // cheapest way to make this green and the most expensive way to fail the
-    // codebase.
-    expect(
-      INVENTORY_ROWS,
-      [
-        '',
-        'THE REAL-NAME INVENTORY CHANGED.',
-        '',
-        'If a row was ADDED: read it. A real athlete, brand or federation name is',
-        'now somewhere it was not. If it is a published-record citation, keep it and',
-        'paste the block below. If it is anything else, delete the name instead.',
-        '',
-        'If a row was REMOVED: a citation went away. That is fine after a deliberate',
-        'edit and is a problem if nobody meant it — deleting provenance is the',
-        'cheapest way to make this test green and the most expensive way to fail the',
-        'codebase.',
-        '',
-        'IF THIS FIRED ON A MERGE and you did not touch the file named, it is the',
-        'other branch: this list is computed from the whole tree, so another',
-        "builder's edit to a comment moves it. Paste the block and read the diff.",
-        '',
-        formatCitations(INVENTORY_ROWS),
-        '',
-        'With locations:',
-        formatMentions(MENTIONS),
-        '',
-      ].join('\n'),
-    ).toEqual([...REVIEWABLE_CITATIONS]);
-  });
-
-  it('is not vacuous — the baseline citations are still found', () => {
-    // If the scan stopped matching, the list would go empty and the assertion
-    // above would still pass against an emptied pin. This is what fails then.
-    expect(INVENTORY_ROWS.length).toBeGreaterThan(20);
-    expect(MENTIONS.length).toBeGreaterThan(30);
-    expect(INVENTORY_ROWS.some((r) => r.where === 'comment')).toBe(true);
-    expect(INVENTORY_ROWS.some((r) => r.where === 'code')).toBe(true);
-    expect(INVENTORY_ROWS.some((r) => r.where === 'prose')).toBe(true);
-    expect(INVENTORY_ROWS.some((r) => r.file === 'src/game/dots.test.ts')).toBe(true);
-  });
-
-  it('counts the open-source project citations, which is what it used to miss', () => {
-    // THE REGRESSION GUARD FOR THE HOLE THIS BLOCK EXISTS BECAUSE OF.
-    //
-    // Before the `project` category, this inventory ran green while more than a
-    // hundred mentions of a real organisation sat in the tree unseen, across the
-    // result-card modules, the DOTS module, the meet module and a view. The pin
-    // above now covers them exactly. This is the FLOOR underneath the pin: it
-    // fails if somebody regenerates the block after deleting the category, which
-    // is the one edit that would make the pin agree with a blind scan again.
-    //
-    // A floor rather than an exact number on purpose — the exact number is the
-    // pin's job, and duplicating it here would mean two places to update on
-    // every unrelated comment edit.
-    const projectNames = new Set(
-      REAL_IP_WATCHLIST.filter((e) => e.kind === 'project').map((e) => e.name),
-    );
-    const rows = INVENTORY_ROWS.filter((r) => projectNames.has(r.name));
-    const mentions = rows.reduce((sum, r) => sum + r.count, 0);
-    const files = new Set(rows.map((r) => r.file));
-    expect(rows.length, 'project citations vanished from the inventory').toBeGreaterThan(20);
-    expect(mentions).toBeGreaterThan(80);
-    expect(files.size).toBeGreaterThan(10);
-    // ...and almost all of them are provenance rather than content: comments and
-    // one line of the design document. The exceptions are pinned BY FILE — the
-    // names stay out of this file, per the header — because a real
-    // organisation's name at `code` position is one edit from a screen, and a
-    // new file appearing in this list is the event worth a human's eye.
-    const codeFiles = [...new Set(rows.filter((r) => r.where === 'code').map((r) => r.file))].sort();
-    expect(codeFiles, 'a project name moved into code position in a new file').toEqual([
-      // The last bespoke real-IP ban in the tree; its names are its own operands.
-      'src/art/gymScene.test.ts',
-      // Identifiers naming the export format a meet fixture is checked against.
-      'src/game/meet.test.ts',
-      // `CHART_SOURCES` — retrieval URLs in `url:` fields rather than comments,
-      // which is `code` position by this module's rule and the reason the RPE
-      // transcription sources are worth a human's eye rather than a shrug: a
-      // string is one edit from a screen, even a string nothing renders today.
-      'src/game/rpe.test.ts',
-      'src/game/rpe.ts',
-      // The edge bundle retains the same published chart-source URLs.
-      'supabase/functions/twl-api/domain.js',
-    ]);
-    // ...and at `prose` position, pinned BY FILE for the same reason and in the
-    // same shape: an exact list in both directions, one entry per row rather
-    // than per file, so a SECOND project name appearing in an already-listed
-    // document is as visible as the first one was.
-    //
-    // The research module is here on an explicit human ruling that its source
-    // citations are REGISTERED rather than exempted. It cites the results
-    // database it derives every number from, twice over — once in the
-    // deliverable and once in the reproduction notes — because a derived table
-    // whose source is struck out is a table of unattributable numbers. Note
-    // what was NOT done: `docs/research/**` is not on `NOT_WALKED`, this
-    // assertion is not a pattern, and no count anywhere was relaxed into a
-    // bound. See the `docs/research/` group in `REVIEWABLE_CITATIONS`.
-    // Two rows per research file, not one: the database is named in both its
-    // long and its short form. The names are DESCRIBED rather than spelled here
-    // — per the module header's §1, and because writing them into this file
-    // would add two citation rows to this file, which is the check catching the
-    // hand extending it. It did exactly that on the first attempt at this
-    // comment.
-    expect(rows.filter((r) => r.where === 'prose').map((r) => r.file)).toEqual([
-      'docs/GDD.md',
-      // both forms, in the reproduction command block
-      'docs/research/qualifying-totals-NOTES.md',
-      'docs/research/qualifying-totals-NOTES.md',
-      // both forms again, in §1.3's provenance pin and §8's citation report
-      'docs/research/qualifying-totals.md',
-      'docs/research/qualifying-totals.md',
-    ]);
-  });
-
-  it('counts the game-industry citations, the second blind spot of the same shape', () => {
-    // FOUND INDEPENDENTLY, BY A CRITIC GRADING THE FIGURE RIG RATHER THAN BY
-    // THIS MODULE, and that is the part worth keeping: one miss is an oversight,
-    // two of the same shape is a property of how the list was built. Both
-    // categories are things this repository CITES — a results database, a
-    // console's colour depth, how tall a fighting-game lead stood — rather than
-    // things a builder might invent a fake version of, and the original four
-    // kinds were chosen entirely from the second question.
-    //
-    // A floor, for the same reason as the project group above: the exact numbers
-    // are the pin's job.
-    const eraNames = new Set(
-      REAL_IP_WATCHLIST.filter((e) => e.kind === 'game-industry').map((e) => e.name),
-    );
-    const rows = INVENTORY_ROWS.filter((r) => eraNames.has(r.name));
-    const mentions = rows.reduce((sum, r) => sum + r.count, 0);
-    expect(rows.length, 'game-industry citations vanished from the inventory').toBeGreaterThan(15);
-    expect(mentions).toBeGreaterThan(45);
-    expect(new Set(rows.map((r) => r.file)).size).toBeGreaterThan(10);
-
-    // The `code` positions are pinned by file, names kept out of this file. All
-    // three are art modules whose named constants encode an era measurement, so
-    // the mark is in an identifier rather than in a comment.
-    const codeFiles = [...new Set(rows.filter((r) => r.where === 'code').map((r) => r.file))].sort();
-    expect(codeFiles, 'an era mark moved into code position in a new file').toEqual([
-      'src/art/craftMetrics.test.ts',
-      'src/art/craftMetrics.ts',
-      'src/art/lifterSprite.test.ts',
-    ]);
-
-    // AND THE ONE THIS AUDIT CANNOT READ. A committed reference image is named
-    // after the console whose craft it is there to demonstrate, so the filename
-    // scan catches it; the PIXELS of the other reference image carry a real
-    // league's logo and a currently-competing player's likeness, and no text
-    // scan will ever see those. Pinned here so the residual has a test next to
-    // it rather than only a paragraph in the header.
-    expect(rows.some((r) => r.where === 'filename')).toBe(true);
-  });
-
-  it('keeps the published-record provenance the tests depend on', () => {
-    // Named individually, because these are the entries a future round is most
-    // likely to "clean up" — and doing so would make the DOTS plausibility test
-    // and the result-card format test unverifiable against their sources, which
-    // is the practice CLAUDE.md demands elsewhere.
-    const dots = INVENTORY_ROWS.filter((r) => r.file === 'src/game/dots.test.ts');
-    expect(dots.length).toBeGreaterThan(0);
-    expect(dots.every((r) => r.where === 'comment')).toBe(true);
-    const card = INVENTORY_ROWS.filter((r) => r.file === 'src/game/resultCard.test.ts');
-    expect(card.length).toBeGreaterThan(0);
-  });
-
-  it('separates the comment citations from the code ones', () => {
-    // The lead's ruling, made checkable: a name in a comment is provenance; a
-    // name in code or a string is one edit from a screen and gets a human's eye
-    // for that reason. `audit.ts` holds federation names inside `why:` strings,
-    // which is why the `code` bucket is not empty and should not be.
-    const code = INVENTORY_ROWS.filter((r) => r.where === 'code');
-    expect(code.some((r) => r.file === 'src/tuning/audit.ts')).toBe(true);
-    // `gymScene.test.ts` is the remaining bespoke real-IP ban, and its names sit
-    // in `code` position because they are the check's own operands. It used to
-    // be `meetTuning.test.ts` here as well; that ban was retired by its owner,
-    // exactly as this module's header asked for, so naming it now would pin a
-    // file to a citation it is supposed to have stopped having.
-    expect(code.some((r) => r.file === 'src/art/gymScene.test.ts')).toBe(true);
-  });
-
-  it('lists only files that exist', () => {
-    // ALL_FILES, not TEXT_FILES: a `filename` row names a binary the scan
-    // cannot read, which is the whole reason that category exists.
-    for (const row of REVIEWABLE_CITATIONS) {
-      expect(ALL_FILES, `${row.file} is pinned but not in the tree`).toContain(row.file);
-      expect(row.count).toBeGreaterThan(0);
-    }
-  });
-
-  it('carries a filename row, so the binary half is not silently empty', () => {
-    // The only check in this module that reaches a file it cannot read. If the
-    // filename scan stopped running, this and the shipped-roots refusal above
-    // would both go quiet — one by having nothing to list, the other by having
-    // nothing to refuse.
-    expect(INVENTORY_ROWS.some((r) => r.where === 'filename')).toBe(true);
-  });
-});
+  }
+  return [...counts.values()].sort(
+    (a, b) => a.file.localeCompare(b.file) || a.name.localeCompare(b.name) || a.where.localeCompare(b.where),
+  );
+}
+
+export function formatMentions(mentions: readonly SourceMention[]): string {
+  return mentions
+    .map((m) => `${m.file}:${m.line}  [${m.where}] ${m.name}  ${m.text}`)
+    .join('\n');
+}
+
+/** The pinned rows, as a diffable block a human can read in a review. */
+export function formatCitations(rows: readonly CitationRow[]): string {
+  return rows.map((r) => `${r.file}  ${r.name}  ${r.where}  x${r.count}`).join('\n');
+}
+
+/**
+ * THE REVIEWABLE LIST. Every real name currently present in this repository's
+ * SOURCE TEXT, with the file it is in and what kind of position it occupies.
+ *
+ * ===========================================================================
+ * A HUMAN RULES ON THIS LIST. THE MACHINE ONLY MAKES SURE THE RULING HAPPENS.
+ * ===========================================================================
+ *
+ * Nothing here is silently allowed and nothing here has been silently deleted.
+ * `realIp.test.ts` compares this list to what is actually in the tree, EXACTLY,
+ * in both directions:
+ *
+ *   - A NEW MENTION fails the suite until somebody looks at it and either
+ *     removes the name or writes the row here.
+ *   - A REMOVED MENTION fails too, so a citation cannot be quietly deleted to
+ *     make the check go green — which matters, because deleting the provenance
+ *     is the cheapest way to pass this test and the most expensive way to fail
+ *     the codebase.
+ *
+ * ===========================================================================
+ * THIS LIST WAS 60 ROWS AND WAS WRONG. IT IS 145, AND THE 85 THAT WERE MISSING
+ * OUTWEIGH EVERYTHING THAT WAS ON IT
+ * ===========================================================================
+ *
+ * Read this before quoting a number off this list, because the number was quoted
+ * before and it was quoted wrong. The count a human is asked to rule on is only
+ * as good as the watchlist that produced it, and the watchlist had TWO holes of
+ * the same shape, found a week apart by different readers:
+ *
+ *   was:  60 rows,  84 mentions, 18 files
+ *   now: 145 rows, 295 mentions, 42 files
+ *
+ * WHAT THE 85 NEW ROWS ARE, so the groups can be ruled on separately — they are
+ * not obviously the same question:
+ *
+ *   - 29 rows / 103 mentions / 15 files — THE OPEN-RESULTS PROJECT AND MEET
+ *     SOFTWARE this repository transcribes its result-card format, its DOTS
+ *     implementation, its plate ladder and its meet flow out of. More than every
+ *     federation acronym on the list put together.
+ *   - 23 rows /  57 mentions / 15 files — CONSOLE, FRANCHISE AND CHARACTER
+ *     MARKS. The art bar is defined by era comparison, so the art modules argue
+ *     about colour depth, vblank-authored animation and how tall a fighting-game
+ *     lead stood. Found by a critic grading the figure rig, not by this module.
+ *   - 15 rows /  23 mentions /  4 files — THE ACCOUNTS AND APPS whose files the
+ *     RPE and DOTS transcriptions were read from, in pinned-commit URLs.
+ *   - 12 rows /  21 mentions / 11 files — TWO NAMED COMPANIES the governing
+ *     documents use as the daily-loop bar and as the backend architecture.
+ *   -  6 rows /   7 mentions /  3 files — A BASEBALL LEAGUE, A CLUB AND A
+ *     CURRENTLY-COMPETING PLAYER, transcribed from the caption of a committed
+ *     reference image. §12.3's own example of how a real mark arrives.
+ *
+ * NOTHING WAS SHIPPING. Category (A) — the default-deny half over every string a
+ * screen can draw — was green throughout and is green now, for the correct
+ * reason rather than by luck. Almost every new mention is provenance in a
+ * comment; the `code` ones are retrieval URLs in `url:` fields and named
+ * constants encoding an era measurement, and none of them renders. What was
+ * broken was the INSTRUMENT, and the failure mode is worth naming precisely: a
+ * default-deny audit that cannot see a name reports the same green as one that
+ * can. A builder added a fresh mention of one of these names in the wave this
+ * paragraph was written and the suite did not move.
+ *
+ * SO THE RULING BELOW IS UNCHANGED AND THE ARITHMETIC IS NOT. Whether these
+ * citations may stay is the same open "citation versus content" question GDD §11
+ * carries for the federation names, and it is not answered here. What changed is
+ * that the question can now be asked about a real number.
+ *
+ * ===========================================================================
+ * ONE ROW OF THIS LIST WAS RULED ON A DESCRIPTION THAT DID NOT MATCH THE CODE
+ * ===========================================================================
+ *
+ * Read this before trusting any sentence below. The bullet on `pixelFont.test.ts`
+ * used to say it was "the one row on this list that is a real name being used as
+ * ordinary test DATA rather than cited as provenance". That was FALSE when it was
+ * written. `resultCard.test.ts` held a real, currently-competing athlete's name
+ * at `code` position four times, as that file's GENERAL-PURPOSE LIFTER FIXTURE —
+ * driving the blank-division test, the sex-formatting test, and an assertion that
+ * the name renders onto a result card — plus a second real name twice more. Both
+ * were grouped under "published records cited to anchor tests" and ruled into the
+ * pinned-not-refused half on the strength of that grouping.
+ *
+ * They are gone now (see the two `resultCard.test.ts` entries below), and so is
+ * the `pixelFont.test.ts` one. The lesson is worth more than the fix: THE
+ * MACHINE PINS THE ROWS, THE PROSE CLASSIFIES THEM, AND ONLY THE ROWS ARE
+ * CHECKED. A group description that drifts from what is in the group is
+ * invisible to every test in this file, and it is the one part of this module a
+ * reader has to verify by opening the files rather than by running the suite.
+ *
+ * WHAT IS ON IT TODAY, and the judgement for each group:
+ *
+ *   - `dots.test.ts` — A PUBLISHED RECORD, cited to anchor a plausibility band.
+ *     Two real athletes' names in COMMENTS, next to the totals and bodyweights
+ *     the DOTS polynomial is checked against. This is the practice CLAUDE.md's
+ *     domain-correctness section requires — "use the published coefficients; do
+ *     not homebrew" — and deleting the names would leave two magic numbers with
+ *     no way to check them. KEEP unless a human decides otherwise.
+ *   - `resultCard.test.ts` — A REAL FEDERATION EXPORT'S SHAPE. What is left is
+ *     the federation acronym: `code` in the name of the constant holding the
+ *     published CSV header and in two test titles, `comment` in the block citing
+ *     the source URL and meet. The two rows this file reproduces are still
+ *     verbatim in every cell that is a CONVENTION — signs, roundings, blanks,
+ *     "DQ" — and INVENTED in the one cell that is an IDENTITY. See the header
+ *     above those fixtures for the split and why it falls there. KEEP.
+ *   - `meet.ts`, `plates.ts`, `palette.ts`, `resultCard.ts`, `spriteTuning.ts`,
+ *     `spriteMarks.ts` — STRUCTURAL RULE REFERENCES. Naming the body that
+ *     publishes a rule being implemented (bar weights, plate ladder, plate
+ *     colours, knurl spacing). §3 of this header is the ruling. KEEP.
+ *     (`meetPalette.ts`, `gymPalette.ts` and `CLAUDE.md` used to be named in
+ *     this bullet and have no rows on the list; the first two lost their
+ *     citations to rewrites and the third never had one. Corrected rather than
+ *     left, because a group description that names files it does not contain is
+ *     the exact drift the paragraph above this one is about.)
+ *   - `dots.ts`, `dots.test.ts`, `meet.ts`, `meet.test.ts`, `meetServer.ts`,
+ *     `meetTuning.ts`, `resultCard.ts`, `resultCard.test.ts`, `plates.ts`,
+ *     `plates.test.ts`, `palette.ts`, `palette.test.ts`, `gymScene.test.ts`,
+ *     `AttemptBoard.tsx`, `docs/GDD.md` — THE OPEN-RESULTS PROJECT, ITS MEET
+ *     SOFTWARE, AND TWO OTHER MEET PLATFORMS. 29 rows, 103 mentions, 15 files:
+ *     the largest group on this list and the one that was missing from it
+ *     entirely until the `project` block was added to the watchlist. Every one
+ *     is a RETRIEVAL CITATION — the URL a format was transcribed from, the
+ *     repository a coefficient implementation was read out of, the two platforms
+ *     `meetTuning.ts` records as having refused the request when it went looking
+ *     for broadcast timings. All in comments; none renders. The judgement is the
+ *     same one §3 makes for a federation acronym and it is the same OPEN
+ *     question: a citation with its source struck out is not a citation, and a
+ *     real organisation's name in a comment is still a real organisation's name.
+ *     NOT RULED HERE. Counted, which is what was missing.
+ *   - `rpe.ts`, `rpe.test.ts`, `dots.ts`, `resultCard.ts` — THE ACCOUNTS AND
+ *     APPS THE TRANSCRIPTIONS CAME FROM. 15 rows, 23 mentions. Half of them are
+ *     `code` rather than `comment`, because `CHART_SOURCES` holds its retrieval
+ *     URLs in `url:` fields; that is a structural choice `rpe.ts` argues for at
+ *     length and not a name leaking toward a screen. Thinner identities than the
+ *     rest of this list — an account handle is not a mark this game could be
+ *     accused of trading on — and correspondingly the easiest group for a human
+ *     to strike in one edit. Listed rather than pre-struck, so striking them is
+ *     a decision. NOT RULED HERE.
+ *   - `craftMetrics.ts`, `craftMetrics.test.ts`, `lifterSprite.test.ts`,
+ *     `palette.ts`, `palette.test.ts`, `gymPalette.ts`, `gymPalette.test.ts`,
+ *     `gymTuning.ts`, `spriteTuning.ts`, `spriteMarks.ts`, `cardTuning.ts`,
+ *     `docs/GDD.md`, `docs/reference/README.md`, `BUILD_PROMPT_CLAUDE.md`, and
+ *     one reference FILENAME — CONSOLE, FRANCHISE AND CHARACTER MARKS. 23 rows,
+ *     57 mentions, 15 files. These are ERA MEASUREMENTS: the colour depth a
+ *     palette is quantised to, the vblank a frame is held for, the sprite height
+ *     a figure is scaled against. GDD §7.1 titles a section with one of them and
+ *     §12.2 makes them the art bar, so unlike the citations above these are
+ *     named by the design document itself — which is an argument for keeping
+ *     them and also the reason there are so many. Six of the rows are `code`:
+ *     era numbers live in named constants, so the mark is in an identifier.
+ *     A SEPARATE QUESTION FROM THE ONE ABOVE and likely to be ruled differently
+ *     — a rulebook citation and "our lifter is shorter than theirs" are not the
+ *     same kind of reference. NOT RULED HERE.
+ *   - `docs/reference/README.md`, `lifterSprite.test.ts`, `craftMetrics.ts` — A
+ *     BASEBALL LEAGUE, A CLUB, AND A CURRENTLY-COMPETING PLAYER. 6 rows, 7
+ *     mentions. They arrive through the CAPTION OF A COMMITTED REFERENCE IMAGE,
+ *     transcribed into a doc and two art modules to explain why that image is a
+ *     NEGATIVE control. §12.3 names this exact route. Worth a human's eye ahead
+ *     of the rest of this list, because it is the only group here naming a
+ *     living athlete who is not a powerlifter and has no reason to expect to be
+ *     in this repository at all — and because the IMAGE ITSELF carries that
+ *     league's logo and that player's likeness in pixels, where no text scan
+ *     will ever find them. NOT RULED HERE.
+ *   - `streak.ts`, `streak.test.ts`, `tuning/index.ts`, `progression.ts`,
+ *     `progression.test.ts`, `sessionServer.ts`, `meetServer.ts`,
+ *     `appServer.ts`, `localSessionServer.ts`, `CLAUDE.md`, `docs/GDD.md` — TWO
+ *     NAMED COMPANIES. 12 rows, 21 mentions. One is the daily-loop bar GDD §12.2
+ *     names; the other is the backend CLAUDE.md's architecture section names.
+ *     Both are prose and comments about design decisions, and neither is a
+ *     dependency — if either becomes one, the code-host reasoning in
+ *     `DELIBERATELY_NOT_WATCHED` starts to apply and this group should be
+ *     revisited. NOT RULED HERE.
+ *   - `audit.ts` — the same, inside a `why:` rationale string rather than a
+ *     comment. `where: 'code'` for that reason, and worth a human's eye
+ *     precisely because a string is one edit from a screen: it is a REASON given
+ *     for an allowlist entry, and nothing renders it.
+ *   - `docs/GDD.md`, `docs/reference/README.md` — DESIGN DOCUMENT AND REFERENCE
+ *     INDEX. The GDD line is §11's open question about federation licensing,
+ *     which names the candidates it is asking about; the README describes what
+ *     is in a downloaded reference photograph. Both are prose about the real
+ *     world, neither ships.
+ *   - `CLAUDE.md` — the rules themselves.
+ *   - `sampleCards.ts`, `meetTuning.ts`, `tuning/index.ts` — COMMENTS SAYING
+ *     "we did not use these names", which is the correct thing for a comment to
+ *     say and would be lost by deleting the names from it.
+ *   - `meetTuning.test.ts` — REMOVED. This was the bespoke five-name federation
+ *     ban this module generalises, listed with "KEEP until whoever owns that
+ *     file removes the now-redundant test". The meet-day builder did: the test
+ *     now asserts only that the federation is invented and not blank, and the
+ *     names it used to carry are gone. `src/meet/meetIdentity.test.ts` runs this
+ *     module's own `scanRenderable` over every string meet day can draw
+ *     instead, and takes the one name it plants as a positive control OUT OF
+ *     `REAL_IP_WATCHLIST` at runtime rather than spelling it. Five rows fewer.
+ *   - `pixelFont.test.ts` — REMOVED. A real lifter's ACCENTED name, used as the
+ *     diacritic-folding fixture for the card font, at `code` position. It was
+ *     listed rather than refused, with "the clearest candidate for a human to
+ *     replace with an invented accented name" and a note that `src/card/`
+ *     belonged to another piece. It is replaced now: `Aurélien Mourcade`, with
+ *     the acute-e kept in both its precomposed and decomposed forms, because
+ *     those are the two shapes the fold path branches on and the substitution is
+ *     only safe if the glyph coverage is re-checked rather than assumed. One row
+ *     fewer.
+ *   - `resultCard.test.ts` — SIX ROWS REMOVED, and they were the reason the
+ *     paragraph at the top of this header exists. Two real athletes' names, at
+ *     `code` position six times between them, were this file's general-purpose
+ *     lifter fixtures rather than provenance for anything. GDD §12.3 names
+ *     exactly this — "a placeholder lifter name in a test fixture" — as one of
+ *     the two ways a real mark actually arrives. The invented replacements carry
+ *     the identical load and the citation is untouched. (Two rows for an apparel
+ *     brand's three-letter acronym went with them — described rather than spelled,
+ *     per §1: it appeared only inside the quoted CSV rows, whose name and
+ *     federation cells are now redacted to `<lifter>` and `<fed>`. The source URL
+ *     and the meet are still named in the block above them, which is what makes
+ *     the citation checkable. Watching this paragraph try to spell the acronym
+ *     and being refused by this module's own self-scan is, incidentally, the
+ *     check working: it fired on the sentence that removed the rows.)
+ *   - `docs/reference/…webp` — a downloaded reference PHOTOGRAPH whose FILENAME
+ *     names its subject. The only `filename` row, and it is outside every
+ *     shipped asset root (`SHIPPED_ASSET_ROOTS`), so it is listed rather than
+ *     refused. The same name under `assets/` would fail the suite.
+ *
+ * REGENERATE, DO NOT HAND-EDIT: `realIp.test.ts` prints the exact block on
+ * failure. Paste it, then read every changed line.
+ *
+ * ---------------------------------------------------------------------------
+ * THE COST OF PINNING COUNTS, AND WHY IT IS PAID
+ * ---------------------------------------------------------------------------
+ * This list is computed from THE WHOLE TREE, so an unrelated builder editing a
+ * comment in `palette.ts` moves it. That is a real cost on a run with several
+ * parallel worktrees, and it is paid on purpose: dropping the counts would make
+ * a SECOND mention in an already-listed file invisible, and "this file already
+ * cites one real name" is exactly the place a second one would be added without
+ * anyone looking.
+ *
+ * THAT COST HAS ROUGHLY DOUBLED AND SHOULD BE EXPECTED ON MERGE — say it plainly
+ * so nobody debugs it twice. The rows below were regenerated against a branch
+ * cut from the integration branch mid-wave, and the list went from 18 files to
+ * 42. The new files include most of `src/art/` — the figure rig, the craft
+ * metrics, the palettes, the sprite tuning — because the era marks are cited in
+ * exactly the modules being reworked hardest, by builders in parallel worktrees,
+ * right now. Expect this test to be the first thing that reds on a merge.
+ *
+ * A count that is off by one on merge is this list WORKING, not this list
+ * broken: regenerate from the block the test prints, read the diff, and only
+ * worry if a row DISAPPEARED that nobody meant to remove.
+ *
+ * (The previous note here described a `src/art/gymPalette.ts` row that would be
+ * "one row too many" after a merge. There is no such row and there was none when
+ * that note was written; the removal it anticipated had already happened. It is
+ * replaced rather than kept, on the same principle as the drift paragraph above:
+ * an instruction to delete a line that does not exist sends the next reader
+ * looking for a bug in the scan.)
+ */
+export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
+  { file: '.github/workflows/production-web.yml', name: 'Supabase', where: 'code', count: 4 },
+  { file: '.gitignore', name: 'Supabase', where: 'code', count: 2 },
+  { file: 'BUILD_PROMPT_CLAUDE.md', name: 'Genesis', where: 'prose', count: 1 },
+  { file: 'BUILD_PROMPT_CLAUDE.md', name: 'SNES', where: 'prose', count: 1 },
+  { file: 'CLAUDE.md', name: 'Supabase', where: 'prose', count: 2 },
+  { file: 'docs/GDD.md', name: 'Duolingo', where: 'prose', count: 5 },
+  { file: 'docs/GDD.md', name: 'Game Boy', where: 'prose', count: 1 },
+  { file: 'docs/GDD.md', name: 'Genesis', where: 'prose', count: 2 },
+  { file: 'docs/GDD.md', name: 'Madden', where: 'prose', count: 1 },
+  { file: 'docs/GDD.md', name: 'NBA 2K', where: 'prose', count: 1 },
+  { file: 'docs/GDD.md', name: 'NPL', where: 'prose', count: 1 },
+  { file: 'docs/GDD.md', name: 'OpenPowerlifting', where: 'prose', count: 1 },
+  { file: 'docs/GDD.md', name: 'SNES', where: 'prose', count: 2 },
+  { file: 'docs/GDD.md', name: 'Supabase', where: 'prose', count: 4 },
+  { file: 'docs/GDD.md', name: 'USAPL', where: 'prose', count: 1 },
+  { file: 'docs/GDD.md', name: 'USPA', where: 'prose', count: 1 },
+  { file: 'docs/production/OPERATIONS.md', name: 'Supabase', where: 'prose', count: 7 },
+  { file: 'docs/reference/meet-photo-ref-1-ipf-squat-bottom.webp', name: 'IPF', where: 'filename', count: 1 },
+  { file: 'docs/reference/README.md', name: 'IPF', where: 'prose', count: 2 },
+  { file: 'docs/reference/README.md', name: 'MLB', where: 'prose', count: 1 },
+  { file: 'docs/reference/README.md', name: 'Mullins', where: 'prose', count: 1 },
+  { file: 'docs/reference/README.md', name: 'Orioles', where: 'prose', count: 1 },
+  { file: 'docs/reference/README.md', name: 'SNES', where: 'prose', count: 4 },
+  { file: 'docs/reference/sprite-ref-1-snes-wrestling.png', name: 'SNES', where: 'filename', count: 1 },
+  { file: 'docs/research/qualifying-totals-derived-raw.json', name: 'IPF', where: 'code', count: 1 },
+  { file: 'docs/research/qualifying-totals-derived-raw.json', name: 'SBD', where: 'code', count: 1 },
+  { file: 'docs/research/qualifying-totals-derived-raw.json', name: 'USAPL', where: 'code', count: 3 },
+  { file: 'docs/research/qualifying-totals-derived-single-ply.json', name: 'IPF', where: 'code', count: 1 },
+  { file: 'docs/research/qualifying-totals-derived-single-ply.json', name: 'SBD', where: 'code', count: 1 },
+  { file: 'docs/research/qualifying-totals-derived-single-ply.json', name: 'USAPL', where: 'code', count: 3 },
+  { file: 'docs/research/qualifying-totals-meets-raw.txt', name: 'IPF', where: 'prose', count: 11 },
+  { file: 'docs/research/qualifying-totals-meets-raw.txt', name: 'SBD', where: 'prose', count: 1 },
+  { file: 'docs/research/qualifying-totals-meets-raw.txt', name: 'USAPL', where: 'prose', count: 275 },
+  { file: 'docs/research/qualifying-totals-meets-single-ply.txt', name: 'IPF', where: 'prose', count: 11 },
+  { file: 'docs/research/qualifying-totals-meets-single-ply.txt', name: 'SBD', where: 'prose', count: 1 },
+  { file: 'docs/research/qualifying-totals-meets-single-ply.txt', name: 'USAPL', where: 'prose', count: 275 },
+  { file: 'docs/research/qualifying-totals-NOTES.md', name: 'IPF', where: 'prose', count: 1 },
+  { file: 'docs/research/qualifying-totals-NOTES.md', name: 'OpenPowerlifting', where: 'prose', count: 1 },
+  { file: 'docs/research/qualifying-totals-NOTES.md', name: 'OPL', where: 'prose', count: 2 },
+  { file: 'docs/research/qualifying-totals-NOTES.md', name: 'USAPL', where: 'prose', count: 1 },
+  { file: 'docs/research/qualifying-totals.md', name: 'British Powerlifting', where: 'prose', count: 1 },
+  { file: 'docs/research/qualifying-totals.md', name: 'IPF', where: 'prose', count: 1 },
+  { file: 'docs/research/qualifying-totals.md', name: 'OpenPowerlifting', where: 'prose', count: 5 },
+  { file: 'docs/research/qualifying-totals.md', name: 'OPL', where: 'prose', count: 3 },
+  { file: 'docs/research/qualifying-totals.md', name: 'Powerlifting America', where: 'prose', count: 1 },
+  { file: 'docs/research/qualifying-totals.md', name: 'SBD', where: 'prose', count: 4 },
+  { file: 'docs/research/qualifying-totals.md', name: 'USAPL', where: 'prose', count: 1 },
+  { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'IPF', where: 'code', count: 1 },
+  { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'IPF', where: 'comment', count: 1 },
+  { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'OpenPowerlifting', where: 'comment', count: 2 },
+  { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'OPL', where: 'comment', count: 4 },
+  { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'SBD', where: 'code', count: 1 },
+  { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'USAPL', where: 'code', count: 3 },
+  { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'USAPL', where: 'comment', count: 1 },
+  { file: 'README.md', name: 'Supabase', where: 'prose', count: 2 },
+  { file: 'scripts/production-account-browser.mjs', name: 'Supabase', where: 'code', count: 6 },
+  { file: 'src/art/craftMetrics.test.ts', name: 'SNES', where: 'code', count: 6 },
+  { file: 'src/art/craftMetrics.ts', name: 'MLB', where: 'comment', count: 1 },
+  { file: 'src/art/craftMetrics.ts', name: 'SNES', where: 'code', count: 6 },
+  { file: 'src/art/craftMetrics.ts', name: 'SNES', where: 'comment', count: 3 },
+  { file: 'src/art/gymPalette.test.ts', name: 'SNES', where: 'comment', count: 2 },
+  { file: 'src/art/gymPalette.ts', name: 'SNES', where: 'comment', count: 2 },
+  { file: 'src/art/gymScene.test.ts', name: 'Adidas', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Amanda Lawrence', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'BVDK', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Ed Coan', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Eddie Hall', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Eleiko', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'GPC', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Inzer', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'IPF', where: 'code', count: 2 },
+  { file: 'src/art/gymScene.test.ts', name: 'Ivanko', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Jesus Olivares', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Julius Maddox', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Larry Wheels', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Nike', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'NPL', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'OpenLifter', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'OpenPowerlifting', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Powerlifting America', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Ray Williams', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Reebok', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'SBD', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Taylor Atwood', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Under Armour', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'USAPL', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'USPA', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'WRPF', where: 'code', count: 1 },
+  { file: 'src/art/gymTuning.ts', name: 'SNES', where: 'comment', count: 1 },
+  { file: 'src/art/lifterSprite.test.ts', name: 'MLB', where: 'comment', count: 2 },
+  { file: 'src/art/lifterSprite.test.ts', name: 'Mullins', where: 'comment', count: 1 },
+  { file: 'src/art/lifterSprite.test.ts', name: 'SNES', where: 'code', count: 3 },
+  { file: 'src/art/lifterSprite.test.ts', name: 'SNES', where: 'comment', count: 5 },
+  { file: 'src/art/palette.test.ts', name: 'OpenLifter', where: 'comment', count: 1 },
+  { file: 'src/art/palette.test.ts', name: 'SNES', where: 'comment', count: 1 },
+  { file: 'src/art/palette.ts', name: 'Genesis', where: 'comment', count: 3 },
+  { file: 'src/art/palette.ts', name: 'IPF', where: 'comment', count: 2 },
+  { file: 'src/art/palette.ts', name: 'OpenLifter', where: 'comment', count: 6 },
+  { file: 'src/art/palette.ts', name: 'OpenPowerlifting', where: 'comment', count: 1 },
+  { file: 'src/art/palette.ts', name: 'SNES', where: 'comment', count: 6 },
+  { file: 'src/art/plates.test.ts', name: 'OpenLifter', where: 'comment', count: 1 },
+  { file: 'src/art/plates.ts', name: 'IPF', where: 'comment', count: 2 },
+  { file: 'src/art/plates.ts', name: 'OpenLifter', where: 'comment', count: 7 },
+  { file: 'src/art/plates.ts', name: 'OpenPowerlifting', where: 'comment', count: 1 },
+  { file: 'src/art/spriteMarks.ts', name: 'IPF', where: 'comment', count: 1 },
+  { file: 'src/art/spriteMarks.ts', name: 'SNES', where: 'comment', count: 1 },
+  { file: 'src/art/spriteTuning.ts', name: 'Genesis', where: 'comment', count: 1 },
+  { file: 'src/art/spriteTuning.ts', name: 'IPF', where: 'comment', count: 1 },
+  { file: 'src/art/spriteTuning.ts', name: 'Ryu', where: 'comment', count: 1 },
+  { file: 'src/art/spriteTuning.ts', name: 'SNES', where: 'comment', count: 3 },
+  { file: 'src/card/cardTuning.ts', name: 'SNES', where: 'comment', count: 1 },
+  { file: 'src/card/renderResultCard.test.ts', name: 'IPF', where: 'comment', count: 1 },
+  { file: 'src/card/sampleCards.ts', name: 'NPL', where: 'comment', count: 1 },
+  { file: 'src/card/sampleCards.ts', name: 'USAPL', where: 'comment', count: 1 },
+  { file: 'src/card/sampleCards.ts', name: 'USPA', where: 'comment', count: 1 },
+  { file: 'src/game/dots.test.ts', name: 'Amanda Lawrence', where: 'comment', count: 1 },
+  { file: 'src/game/dots.test.ts', name: 'IPF', where: 'comment', count: 1 },
+  { file: 'src/game/dots.test.ts', name: 'Jesus Olivares', where: 'comment', count: 1 },
+  { file: 'src/game/dots.test.ts', name: 'OpenLifter', where: 'comment', count: 2 },
+  { file: 'src/game/dots.test.ts', name: 'OpenPowerlifting', where: 'comment', count: 3 },
+  { file: 'src/game/dots.test.ts', name: 'SBD', where: 'comment', count: 1 },
+  { file: 'src/game/dots.test.ts', name: 'SBD Sheffield', where: 'comment', count: 1 },
+  { file: 'src/game/dots.ts', name: 'BVDK', where: 'comment', count: 2 },
+  { file: 'src/game/dots.ts', name: 'IPF', where: 'comment', count: 2 },
+  { file: 'src/game/dots.ts', name: 'Marantesss', where: 'comment', count: 1 },
+  { file: 'src/game/dots.ts', name: 'OpenPowerlifting', where: 'comment', count: 15 },
+  { file: 'src/game/dots.ts', name: 'OPL', where: 'comment', count: 2 },
+  { file: 'src/game/dots.ts', name: 'sstangl', where: 'comment', count: 1 },
+  { file: 'src/game/meet.test.ts', name: 'OpenLifter', where: 'code', count: 5 },
+  { file: 'src/game/meet.test.ts', name: 'OpenLifter', where: 'comment', count: 1 },
+  { file: 'src/game/meet.test.ts', name: 'OpenPowerlifting', where: 'code', count: 1 },
+  { file: 'src/game/meet.test.ts', name: 'OpenPowerlifting', where: 'comment', count: 1 },
+  { file: 'src/game/meet.ts', name: 'IPF', where: 'comment', count: 4 },
+  { file: 'src/game/meet.ts', name: 'OpenLifter', where: 'comment', count: 10 },
+  { file: 'src/game/meet.ts', name: 'OpenPowerlifting', where: 'comment', count: 4 },
+  { file: 'src/game/meet.ts', name: 'USAPL', where: 'comment', count: 1 },
+  { file: 'src/game/meet.ts', name: 'USPA', where: 'comment', count: 1 },
+  { file: 'src/game/meetServer.ts', name: 'OpenPowerlifting', where: 'comment', count: 1 },
+  { file: 'src/game/meetServer.ts', name: 'Supabase', where: 'comment', count: 1 },
+  { file: 'src/game/meetTuning.ts', name: 'goodlift.info', where: 'comment', count: 1 },
+  { file: 'src/game/meetTuning.ts', name: 'LiftingCast', where: 'comment', count: 1 },
+  { file: 'src/game/meetTuning.ts', name: 'NPL', where: 'comment', count: 1 },
+  { file: 'src/game/meetTuning.ts', name: 'OpenPowerlifting', where: 'comment', count: 1 },
+  { file: 'src/game/meetTuning.ts', name: 'USAPL', where: 'comment', count: 1 },
+  { file: 'src/game/meetTuning.ts', name: 'USPA', where: 'comment', count: 1 },
+  { file: 'src/game/progression.test.ts', name: 'Supabase', where: 'code', count: 3 },
+  { file: 'src/game/progression.ts', name: 'Supabase', where: 'comment', count: 1 },
+  { file: 'src/game/resultCard.test.ts', name: 'IPF', where: 'code', count: 7 },
+  { file: 'src/game/resultCard.test.ts', name: 'IPF', where: 'comment', count: 4 },
+  { file: 'src/game/resultCard.test.ts', name: 'OpenPowerlifting', where: 'comment', count: 2 },
+  { file: 'src/game/resultCard.test.ts', name: 'OPL', where: 'comment', count: 2 },
+  { file: 'src/game/resultCard.ts', name: 'IPF', where: 'comment', count: 3 },
+  { file: 'src/game/resultCard.ts', name: 'NPL', where: 'comment', count: 1 },
+  { file: 'src/game/resultCard.ts', name: 'OpenLifter', where: 'comment', count: 14 },
+  { file: 'src/game/resultCard.ts', name: 'OpenPowerlifting', where: 'comment', count: 16 },
+  { file: 'src/game/resultCard.ts', name: 'OPL', where: 'comment', count: 4 },
+  { file: 'src/game/resultCard.ts', name: 'SBD', where: 'comment', count: 2 },
+  { file: 'src/game/resultCard.ts', name: 'sstangl', where: 'comment', count: 2 },
+  { file: 'src/game/resultCard.ts', name: 'Tiffany Chapon', where: 'comment', count: 1 },
+  { file: 'src/game/resultCard.ts', name: 'USAPL', where: 'comment', count: 3 },
+  { file: 'src/game/resultCard.ts', name: 'USPA', where: 'comment', count: 1 },
+  { file: 'src/game/rpe.test.ts', name: 'karolczyz', where: 'code', count: 1 },
+  { file: 'src/game/rpe.test.ts', name: 'karolczyz', where: 'comment', count: 1 },
+  { file: 'src/game/rpe.test.ts', name: 'metriclift', where: 'code', count: 2 },
+  { file: 'src/game/rpe.test.ts', name: 'metriclift', where: 'comment', count: 2 },
+  { file: 'src/game/rpe.test.ts', name: 'Sculpt-AI', where: 'code', count: 1 },
+  { file: 'src/game/rpe.test.ts', name: 'Sculpt-AI', where: 'comment', count: 2 },
+  { file: 'src/game/rpe.ts', name: 'karolczyz', where: 'code', count: 1 },
+  { file: 'src/game/rpe.ts', name: 'karolczyz', where: 'comment', count: 1 },
+  { file: 'src/game/rpe.ts', name: 'metriclift', where: 'code', count: 2 },
+  { file: 'src/game/rpe.ts', name: 'metriclift', where: 'comment', count: 1 },
+  { file: 'src/game/rpe.ts', name: 'Sculpt-AI', where: 'code', count: 3 },
+  { file: 'src/game/rpe.ts', name: 'Sculpt-AI', where: 'comment', count: 2 },
+  { file: 'src/game/sessionServer.ts', name: 'Supabase', where: 'comment', count: 2 },
+  { file: 'src/game/streak.test.ts', name: 'Duolingo', where: 'comment', count: 1 },
+  { file: 'src/game/streak.ts', name: 'Duolingo', where: 'comment', count: 4 },
+  { file: 'src/licensing/realIp.test.ts', name: 'Supabase', where: 'code', count: 1 },
+  { file: 'src/meet/AttemptBoard.tsx', name: 'OpenLifter', where: 'comment', count: 1 },
+  { file: 'src/meet/AttemptBoard.tsx', name: 'OpenPowerlifting', where: 'comment', count: 1 },
+  { file: 'src/production/client.ts', name: 'Supabase', where: 'code', count: 3 },
+  { file: 'src/session/localSessionServer.ts', name: 'Supabase', where: 'comment', count: 1 },
+  { file: 'src/shell/appServer.ts', name: 'Supabase', where: 'comment', count: 1 },
+  { file: 'src/tuning/audit.ts', name: 'IPF', where: 'code', count: 2 },
+  { file: 'src/tuning/index.ts', name: 'Duolingo', where: 'comment', count: 1 },
+  { file: 'src/tuning/index.ts', name: 'IPF', where: 'comment', count: 1 },
+  { file: 'supabase/bundle-api.mjs', name: 'Supabase', where: 'code', count: 4 },
+  { file: 'supabase/bundle-api.mjs', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/config.toml', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/functions/deno.d.ts', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/functions/twl-api/deno.json', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/functions/twl-api/domain.d.ts', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/functions/twl-api/domain.js', name: 'karolczyz', where: 'code', count: 1 },
+  { file: 'supabase/functions/twl-api/domain.js', name: 'metriclift', where: 'code', count: 2 },
+  { file: 'supabase/functions/twl-api/domain.js', name: 'Sculpt-AI', where: 'code', count: 3 },
+  { file: 'supabase/functions/twl-api/domain.js', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/functions/twl-api/domain.manifest.json', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/functions/twl-api/index.ts', name: 'Supabase', where: 'code', count: 3 },
+  { file: 'supabase/functions/twl-api/index.ts', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/migrations/20260930193634_twl_authoritative_accounts.sql', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'supabase/tsconfig.json', name: 'Supabase', where: 'filename', count: 1 },
+  { file: 'tsconfig.json', name: 'Supabase', where: 'code', count: 1 },
+  { file: 'VISION.md', name: 'Madden', where: 'prose', count: 1 },
+  { file: 'VISION.md', name: 'NBA 2K', where: 'prose', count: 1 },
+  { file: 'web/tests/production-http-fixture.mjs', name: 'Supabase', where: 'code', count: 2 },
+  { file: 'web/tests/production-http-fixture.mjs', name: 'Supabase', where: 'comment', count: 1 },
+  { file: 'web/tests/production-repository.test.ts', name: 'Supabase', where: 'code', count: 1 },
+]);

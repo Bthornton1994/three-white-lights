@@ -2,7 +2,7 @@
 
 ## Scope and authority
 
-This integration aligns with VISION's powerlifting sports universe, GDD §2.1's career, §5's facility rules, §6's authentic meet, and §7.5's server authority, with constraints: preserve the accepted A0 lift engines and A1 meet rules, keep the two domain layers separate, and do not fabricate human feel acceptance. The owner's current request to use the made Iron & Amber mockups selects the binding visual reference added in PR44. VISION and GDD are not rewritten to manufacture acceptance.
+This integration aligns with VISION's powerlifting sports universe, GDD §2.1's career, §5's facility rules, §6's authentic meet, and §9.2's server authority, with constraints: preserve the accepted A0 lift engines and A1 meet rules, keep the two domain layers separate, and do not fabricate human feel acceptance. The owner's current request to use the made Iron & Amber mockups selects the binding visual reference added in PR44. VISION and GDD are not rewritten to manufacture acceptance.
 
 The browser is a separate application package at `web/`, using pure modules from `src/`. The native entry point and game tuning remain intact. `src/facility/` carries the newer PR55 facility reducers; the browser does not import the older native facility UI. `src/facility/ladderView.ts` extracts the exact pure reducers from that branch's JSX module.
 
@@ -20,11 +20,21 @@ An authenticated server must own athlete identity, totals, estimated one-rep max
 
 The server must validate JWTs and account ownership, use its own clock, serialize account revisions atomically, and retain idempotent receipts. Repeating a request must return its prior outcome or refuse a conflicting payload. A second browser tab must not overwrite a newer revision.
 
+The implementation is `src/production/`, with the authenticated entry point at `supabase/functions/twl-api/index.ts`. Its checked-in `domain.js` is generated from the existing pure rules. `node supabase/bundle-api.mjs --check` verifies that artifact against its manifest and source inputs. The migration at `supabase/migrations/20260930193634_twl_authoritative_accounts.sql` adds only the `twl_*` account tables and RPCs. Direct anonymous and authenticated table/RPC access is denied; the handler resolves the user through Auth before calling the service-role RPCs.
+
+The read RPC returns state, revision and a matching receipt from one SQL statement. Commits lock the account row, check the expected revision, and write the new account and payload-bound receipt in one transaction. The account day rolls over at 03:00 UTC, and accepted browser responses preserve a monotonic server-time estimate. Training and meets use native replay evidence. Facility earnings and spending use one purse, including its fractional balance.
+
+For the private rollout, first inspect and apply the additive migration to the owner-designated project `qbvmtgaphvpwpwemplje`. Set `TWL_ALLOWED_ORIGINS` to the exact approved frontend origins, retain JWT verification, and deploy `twl-api` from the verified wrapper and bundle. The hosted function reads Supabase's server-side environment; those privileged keys must never enter the frontend build. Then build the frontend with that project's public URL/key and verify real sign-in, reload, saves, retries and account isolation through the deployed endpoint. Keep access internal until the closed-beta release gates are met.
+
 A failed save remains visibly unconfirmed. Training and meet screens offer deliberate retry. A local result is never displayed as a confirmed competition record before the authoritative response.
 
 ## Verification
 
 The production workflow runs the existing pure suite and native typecheck, then strict browser typecheck, focused input adapter tests, portable boundary checks, a production build, and Chromium flow checks. Browser evidence includes the actual rendered screens, hit-tested controls at 390×844, input cancellation/resume, navigation, build placement, disposable practice reset, auth failure handling, and missing-asset checks.
+
+Run `npm --prefix web run typecheck:test` for the test adapters and `npm --prefix web run test:unit:web` for replay, client lifecycle, SQL permissions, atomic rollback and persistence checks. `node scripts/production-account-browser.mjs` starts its HTTP fixture, Vite and Chromium together and exercises the real browser client, handler, native replay and SQL RPCs. Only Auth identities/tokens are fixtures. Its report under `.gauntlet/evidence/production/account-browser/` records source hashes and actual acknowledgements; it does not establish live Supabase availability or multi-connection database behavior. `node scripts/production-inspector-browser.mjs` checks cached equipment recovery and short-phone placement controls. Set `BROWSER_EXECUTABLE_PATH` if Chromium is not in Playwright's default cache.
+
+An art-incomplete functional report does not satisfy the production browser gate. Restore the original PNGs from GitHub without substitutions, then rerun the built-app check with zero missing assets and capture fresh evidence for the visual review. Do not merge while a required CI or artifact gate is red.
 
 Review the exact commit being released. A fresh read-only critic must inspect the rendered artifact against `docs/design/iron-and-amber-reference.jpeg`; builder explanations and green tests are not visual acceptance.
 

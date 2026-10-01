@@ -344,8 +344,10 @@ const PINNED = Object.freeze({
    * 347 -> 349 with the shareable flight: `src/game/resultFlight.ts` and
    * `src/game/resultFlight.test.ts`.
    */
-  // Production browser, server, edge sources, scripts and reviewed evidence.
-  SCANNED_FILES: 446,
+  // Production browser, server, edge sources and scripts. The real Git index
+  // now includes the account browser runner, its loopback SQL fixture and
+  // the real phone inspector browser driver. Re-measured: 450 sources.
+  SCANNED_FILES: 450,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -402,7 +404,9 @@ const PINNED = Object.freeze({
    * 113 -> 114 with the shareable flight: `src/game/resultFlight.test.ts`.
    */
   // Native production boundary and web replay/repository/result-sheet cases.
-  TEST_FILES: 119,
+  // Published source already contains 120 test paths; the preceding scanned
+  // file equality masked this count's outdated pin until both were measured.
+  TEST_FILES: 120,
 });
 
 /**
