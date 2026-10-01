@@ -224,7 +224,8 @@ async function mobileStory() {
     await page.getByRole('status').filter({ hasText: 'placed' }).waitFor();
     await noProtectedPracticeStorage(page);
     await shot(page, '04-phone-build');
-    await (await visibleButton(page, 'Back to gym')).click();
+    await (await visibleButton(page, 'Gym')).click();
+    await page.getByRole('region', { name: 'Your gym', exact: true }).waitFor();
     return { selectedTile };
   });
 
