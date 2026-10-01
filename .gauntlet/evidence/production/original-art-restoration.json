@@ -1,0 +1,366 @@
+{
+  "observedAt": "2026-10-01T07:03:38.677441+00:00",
+  "archive": {
+    "artifactId": 11145618613,
+    "workflowRunId": 36827797370,
+    "sourceCommit": "e57d7ffe35a3b1041303ea482c20435f92af0797",
+    "bytes": 13119263,
+    "sha256": "0176e7bb9db6343c08d8403feebd73b81990d04700126f8d4a1d0ea69cda903b"
+  },
+  "entries": [
+    {
+      "path": "docs/design/evidence/02-close-out-drawer.png",
+      "gitBlob": "84fd6ae5c819bc9a93ee78155608100b6a18b6d3",
+      "sha256": "5e76a2492fc188c9c399e5bdbef3e3d2a8ab27801ee239a02bc8f6d07e58a87d",
+      "bytes": 975928,
+      "restored": false
+    },
+    {
+      "path": "docs/design/evidence/03-cut-in-still.png",
+      "gitBlob": "4c6c8488a2c905324c2cb87aa5c5fb3bfa463a73",
+      "sha256": "8e053213804112a2f69abca797f8475c179ef86970688b99e24aaa770dbc0e71",
+      "bytes": 766568,
+      "restored": false
+    },
+    {
+      "path": "docs/design/evidence/01-check-in-first-paint.png",
+      "gitBlob": "3108d27725ec6b318634f8dd5bd1d566e1c5cfad",
+      "sha256": "33266591cb6f94ce4fd3d19459092491e580dc4414456e67ea06923d49710f19",
+      "bytes": 1097322,
+      "restored": true
+    },
+    {
+      "path": "web/public/athlete/bench-atlas.png",
+      "gitBlob": "af0591f871d3acd4621fb32a7afb458ef9a3c3f5",
+      "sha256": "a7c15ce3e1df927c7b50b6a034d9b5773dfe7d4786daabd588aa72c22306951e",
+      "bytes": 1569260,
+      "restored": true
+    },
+    {
+      "path": "web/public/athlete/deadlift-atlas.png",
+      "gitBlob": "dd93ff9e3a32607332f25d6eda97c2ab49bf9057",
+      "sha256": "ff2116e48703d6a9abf8c24bbd475f13000dee564c3fbf0a8c3188bda50e9ebe",
+      "bytes": 1660194,
+      "restored": true
+    },
+    {
+      "path": "web/public/athlete/squat-atlas.png",
+      "gitBlob": "a6f98c0db001b58eab6ec1e898280538a1aeb4ca",
+      "sha256": "432ea223c98268bd5181c01c08910626847585926b983caf0ec58eeecfd4923f",
+      "bytes": 1636091,
+      "restored": true
+    },
+    {
+      "path": "web/public/empire-art/eq-comp-plates.png",
+      "gitBlob": "54119777d55e62e9e149f90b280964ca89a638a2",
+      "sha256": "56a372e45d0843003011993f2d06ac2d76369d4d41278e90260607d96842d7cd",
+      "bytes": 152263,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/eq-flat-bench.png",
+      "gitBlob": "d76046503380b8b269be557456fbc8d76f7045e3",
+      "sha256": "e0450caf8f39ea222801adb885130efd0837b45992b695c4cbe0ae56e1d5f29f",
+      "bytes": 146651,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/eq-plate-tree.png",
+      "gitBlob": "d463246ab803505e848e6d22b4acf8d0c11b525f",
+      "sha256": "34cc918a53c7ada9c2ba85aeccd0bcd4a68494c11daa12b31f6494c53bde0a5b",
+      "bytes": 100658,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/eq-power-bar.png",
+      "gitBlob": "80ef8f69b0e3b58bd22e9d042b0dd86235db46d3",
+      "sha256": "8966ae970e93ac8a0157adc066298eeedf8424ce48241bab5443046a1dbbe8f3",
+      "bytes": 102318,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/eq-quality-bench.png",
+      "gitBlob": "299d4e131add43a67cd23baa10b60eb5d45aef35",
+      "sha256": "212198fd8f4a1b640e6a7336d3abfb5dae1e0dc8a674a793446131e499a8c039",
+      "bytes": 240996,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-athlete-left.png",
+      "gitBlob": "0eecfc52a4de8ecd042432b9382bc20a0827eda2",
+      "sha256": "bac0956d1dbace0905f8d27216122c7150059557ee1078d9b49d186f6edba1e7",
+      "bytes": 22298,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-athlete-right.png",
+      "gitBlob": "77ff770fd5ac57a82c644edcc0678febb1dbc044",
+      "sha256": "e8cfa57017cda73cb6e20fa0ad2cac5b30c38e4bb6bb5b41c6fd534e441e2204",
+      "bytes": 22351,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-bodybuilder-left.png",
+      "gitBlob": "9f95ea6f5bacaf925a2d5e210012b24e36879785",
+      "sha256": "2d44bc4b4aee9c90c98f9d9fe3d6fc5c0b7779e411096771cacbb2edbf045d3e",
+      "bytes": 37017,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-bodybuilder-right.png",
+      "gitBlob": "ff7ed6c7beab935acbd46e5cdc05f78f8b98f993",
+      "sha256": "c509c2442de2a158d8984a3f167d5ce86235f641de91d9e0fa6920d68fb6714b",
+      "bytes": 37237,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-casual-left.png",
+      "gitBlob": "575cf4812e9757698dedc71af8ae7b3d5342b01a",
+      "sha256": "f63afbc67d73d6858e27b801a4588b83f8f852718bcc719412c9a4e6165a9836",
+      "bytes": 34388,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-casual-right.png",
+      "gitBlob": "c94fc1e59eadb6d7caeee138aff4826fb086f03c",
+      "sha256": "0be3db71da7dd0018f52a8d217b6de777ecda829bf9b12a4efd6f2920cd3c53e",
+      "bytes": 34375,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-powerlifter-left.png",
+      "gitBlob": "6af4c6cf9acef8940e7afdeab1157f399aaa7dd9",
+      "sha256": "d409d05414943794ad30ff293b8ca0591b6dc87ea983edba489d8fad950fc23d",
+      "bytes": 27654,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-powerlifter-right.png",
+      "gitBlob": "8059d1f3e4b3ff7ffe9307a923e477aeaa8679b0",
+      "sha256": "36ec835749922b9376c580c59c9229df86509d3a529ef03b61fdbe5dff61ee0b",
+      "bytes": 27648,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-serious-lifter-left.png",
+      "gitBlob": "c84d95d322a3dcb33780cedeac8c8933bacc9337",
+      "sha256": "faab2653744503d86be5756249500cbf8176da6190fab3b47c33af55a0b8d625",
+      "bytes": 28287,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-serious-lifter-right.png",
+      "gitBlob": "29b35f2293b787676245ddbec313df45a8ef7351",
+      "sha256": "428430ad0a12acbf0c93bd77eeec1c8f64a02ddd66a0e2d23948b3458679550c",
+      "bytes": 28390,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-using-bar-a-left.png",
+      "gitBlob": "255ea67cff2be5cebc4bf697607e5b19f21cbf0b",
+      "sha256": "772d0b97b6e854aa87e0bbc8a4dcab9c9f7269b6bbadd825413aca6e04aefac0",
+      "bytes": 39221,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-using-bar-a-right.png",
+      "gitBlob": "ef9f673b7bea9e72a1f33ae388ff6c5066d17273",
+      "sha256": "3a7ba4b86624543d61dbe43e263a1b282515939bac99b3e98013ef7368752708",
+      "bytes": 39250,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-using-bar-b-left.png",
+      "gitBlob": "13790ced130cdd0927245806f808df19bde375d6",
+      "sha256": "8374340876c1dccc478c65aaaa5a9b93558007d40d3f0daa06dc7463e5262ad3",
+      "bytes": 38350,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-using-bar-b-right.png",
+      "gitBlob": "c79315d987d55ad8e787fe668ed2b318f4d7b87b",
+      "sha256": "33dd899bbbd78b03df5a87df0ea030280bdb145bbc9a515d16d2b9e5a6945651",
+      "bytes": 38508,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-using-bench-a-left.png",
+      "gitBlob": "dd39d0b7c12e7daf6ff2f22451dd514840dc9143",
+      "sha256": "f3bbe5cd1f893039aca35f4f9c9677bbb4fef6fb0d396500efd0f296119a0d94",
+      "bytes": 58019,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-using-bench-a-right.png",
+      "gitBlob": "b3bf1bb827426609f628b0b19ab65aeb900dc9e5",
+      "sha256": "eeaa5739f3a2fe7f4af9790e66595b24fa0e455dea4900a8d98aa884f054face",
+      "bytes": 58130,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-using-bench-b-left.png",
+      "gitBlob": "d700f32d9f54f3ca74a7f5109bee499331e7fdcc",
+      "sha256": "8857293eaaf7689bbd5558888146443e4948abe9c4586f02bc98001653280d15",
+      "bytes": 32675,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-using-bench-b-right.png",
+      "gitBlob": "0ca25fc1910cf69ac4899c066bd5f0bc435ea601",
+      "sha256": "5e0f284268c9a2496002770b20cdd55bb03a843a0f6761e00bbab2edaf7b4a83",
+      "bytes": 32679,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-walk-a-left.png",
+      "gitBlob": "4bf6d0dab87a329e68dd54f5efa5feeea59760b6",
+      "sha256": "6476b3ddc54f7e3c28a8dca56058b037de954f3798b9f9fac784331945c4de56",
+      "bytes": 29022,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-walk-a-right.png",
+      "gitBlob": "279d7c0f2b60b0c8a0901f90764b0343a552a8e8",
+      "sha256": "46bb31a4a6cd7d82591920afedf4e0d594698b89faf32bfa37808ee7d8bda04f",
+      "bytes": 29124,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-walk-b-left.png",
+      "gitBlob": "dcbb6419fb9e3786654e5bee5e65a3b2adeb132c",
+      "sha256": "21db732546c1b49acc5770ba33e993834fe75af2d6489f21975a73f9939270f0",
+      "bytes": 28790,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/member-walk-b-right.png",
+      "gitBlob": "07ebc3e4f74ec05b21fb2b7cb9aa068a22c840f1",
+      "sha256": "b10d4e6d63488c1e9338069722ce12957865e4e7503b4deb406e87db724547ea",
+      "bytes": 28941,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/production-bar.png",
+      "gitBlob": "5f8257f00e3e7328bde064489adebaa9c922f920",
+      "sha256": "a8c6a9b241c826181ca77b5f9431b9c90f762c3b100d819f672da9b1c08b6fb2",
+      "bytes": 619002,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/production-bench.png",
+      "gitBlob": "3d2a0b404826fd7a111fe6cbb0be08e9279823c1",
+      "sha256": "d28b72ecdca28f59f0b1c665a18585c5830a9084ced2688346154f52d24336a4",
+      "bytes": 916965,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/production-plates.png",
+      "gitBlob": "8d29c8ba1657beda0697f2b420eb1fea702c8f0b",
+      "sha256": "c0874b5a2bc95e9a94cb84cbaa5f6485e522993b325fdbc0f321c09526e8eb43",
+      "bytes": 1058147,
+      "restored": true
+    },
+    {
+      "path": "web/public/empire-art/session-belts.png",
+      "gitBlob": "c9724dff860090e8b3a889330330699226ef2463",
+      "sha256": "613db8288cde1e7b7d3da6952979622d8111b65963df448ef886b606f2e8ae71",
+      "bytes": 140221,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/session-bike.png",
+      "gitBlob": "026740ea6060ef2cd1cb7ba5c45d1eebb6a8e5c2",
+      "sha256": "85520e43691edff50ab08c7bf63961518a151727772cf0348da1cfc19e0caeea",
+      "bytes": 82992,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/session-cables.png",
+      "gitBlob": "2120ce2c02d39eca7de147e6b1833bf54027dd8f",
+      "sha256": "c79d85c8f92ab7883b3ca616e4cdf5bb7511e3907d3326654785b91d941dcd10",
+      "bytes": 80571,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/session-dumbbells.png",
+      "gitBlob": "6a951c90303ff11d62e976be09c727cc79b9e307",
+      "sha256": "accf28aa9a499ed1f7d9f00b36afffbebdb4b9df9697e2f579e35606e469b1a0",
+      "bytes": 129121,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/session-foam-rollers.png",
+      "gitBlob": "e2fcf73e6137ba51ea39df117b94d822651310a9",
+      "sha256": "51fef871df89b6cc2caec9f2f8ac002f2ac6d3d2ca6b33cd8d18da83231448b2",
+      "bytes": 105426,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/session-machines.png",
+      "gitBlob": "44ef5d615c44190a969d2c4c3e54bfe6dc18d263",
+      "sha256": "cf58339c5eacf2016c880974221b38f71fd30f8f32e2095b44fee229c18cf59e",
+      "bytes": 105117,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/session-mats.png",
+      "gitBlob": "18b7655ab368c749a35e0ec1c09bdec7cf2de7fc",
+      "sha256": "53d49ad383b2efb1f1074df2403ec540d73d99d48ec038e4e45b159d29eb7ca8",
+      "bytes": 102955,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/session-rower.png",
+      "gitBlob": "70c35672469bebcdbd4e706a9f08b117313d446f",
+      "sha256": "53352c99e4f6e6feb5c137b3507a15d0235476553f059024a050e5fcde1644d2",
+      "bytes": 75876,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/session-sauna.png",
+      "gitBlob": "12588aa322d0f88a2816b0e8ffa1c8bcd4c67955",
+      "sha256": "8758e98ee530aa1f42988619d4724510deb731f45f42eaaad3afdbc0737ca616",
+      "bytes": 113230,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/session-sled.png",
+      "gitBlob": "9389d34fe5fa02d8a63d0720150c8465b34860a7",
+      "sha256": "4b901aae19e6ebb8468ae3c17a7bc49b6f2f14a1a836db465f4936fad9a21ca6",
+      "bytes": 75606,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/session-sleeves.png",
+      "gitBlob": "f85b2ecae412960b8a81b7a1465528ade83c4c75",
+      "sha256": "a8e841534350e6e530bf7ac57330150e8075f947045e69bab23e1d5ca1ccb348",
+      "bytes": 133582,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/session-specialty-bars.png",
+      "gitBlob": "06022fd61d2d2a585f37102be0af2d21e38aeb04",
+      "sha256": "5216d24875127089385b64196bab3b0399a243c3f0610631d999c6bddc378482",
+      "bytes": 64201,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/session-treadmill.png",
+      "gitBlob": "bd437c4b9f89566ac2046691ce8c8d53ad64f53b",
+      "sha256": "ebd2c4523df1326efcafdd5fe467289399d555def6b3fdda2082975984b09315",
+      "bytes": 87814,
+      "restored": false
+    },
+    {
+      "path": "web/public/empire-art/session-wrist-wraps.png",
+      "gitBlob": "5267ee9667e088a8da662bde6bb885d65e562d94",
+      "sha256": "ddae6bff0806f1fab6ef5229a2a712c551977f0045e5d89f22c2092621fbf963",
+      "bytes": 117864,
+      "restored": false
+    }
+  ],
+  "limitations": [
+    "Byte restoration only, no fresh visual or browser acceptance is claimed.",
+    "Historical screenshots outside this archive have not been restored."
+  ]
+}

@@ -25,4 +25,6 @@ Other source assets:
 - `web/public/fonts/BarlowCondensed-*.ttf`: Regular, Bold, and ExtraBold from the official `google/fonts` repository, with SIL Open Font License checked in as `OFL.txt`.
 - Application icons: the three-light mark made for this browser build and Lucide interface icons; Lucide's ISC notice is retained with dependencies.
 
-Fresh full-art review remains open while four PNGs above 1 MiB cannot be restored through the current connector. Functional browser records explicitly mark that limitation. No bitmap-content, deployed-visual, physical-device, or haptics acceptance is implied.
+The missing original PNGs were restored from GitHub Actions artifact `11145618613`, built from commit `e57d7ffe35a3b1041303ea482c20435f92af0797`. Every archive entry matched its tracked Git blob before restoration. The byte verification is recorded in `.gauntlet/evidence/production/original-art-restoration.json`.
+
+Fresh full-art review remains open. Earlier functional browser records retain their actual missing-art limitations. No bitmap-content, deployed-visual, physical-device, or haptics acceptance is implied.
