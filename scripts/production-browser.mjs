@@ -288,7 +288,7 @@ async function mobileStory() {
     await noProtectedPracticeStorage(page);
   });
 
-  await check('phone: a genuine failed rep exposes the lighter-target retry through the played session', async () => {
+  await check('phone: genuine missed reps expose the supported session retry through visible controls', async () => {
     const match = (await page.locator('.training-set-number').innerText()).match(/Set\s*(\d+)\s*\/\s*(\d+)/);
     assert.ok(match, 'The live session does not show its prescribed set count');
     const firstSet = Number(match[1]);
@@ -328,12 +328,15 @@ async function mobileStory() {
     assert.equal(failedSets.length, remainingSetCount, 'Each remaining work set should end on its played missed rep.');
     await page.getByTestId('session-close-out').waitFor();
     const retry = await visibleButton(page, /^(Try a lighter target|Try again at this target)$/);
+    const retryLabel = (await retry.textContent())?.trim() ?? '';
+    const retryCopy = await page.locator('.training-drawer--closeout > p').first().innerText();
+    assert.doesNotMatch(retryCopy, /lighter/i, 'The retry description must not promise a lighter target in every case.');
     await shot(page, '07-phone-failed-rep');
     await retry.click();
     await page.getByTestId('session-rpe-6').waitFor();
     await (await visibleButton(page, 'Return to the gym')).click();
     await noProtectedPracticeStorage(page);
-    return { firstSet, workSets, remainingSetsMissed: failedSets };
+    return { firstSet, workSets, remainingSetsMissed: failedSets, retryLabel, retryCopy };
   });
 
   await check('phone: auth validates input, surfaces a refused request, and permits an explicit retry', async () => {

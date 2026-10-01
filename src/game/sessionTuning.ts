@@ -713,7 +713,7 @@ export const SESSION_COPY = Object.freeze({
   CLOSE_OUT_PR_SUBHEAD: 'You beat your best estimate on this lift.',
   CLOSE_OUT_HELD_SUBHEAD: 'Target hit. Your estimate holds.',
   CLOSE_OUT_SHORT_SUBHEAD: 'Short of the target. Nothing lost — the estimate stands.',
-  CLOSE_OUT_EMPTY_SUBHEAD: 'No reps to log. Take it again, lighter.',
+  CLOSE_OUT_EMPTY_SUBHEAD: 'No reps to log. You can try this session again.',
 
   /**
    * ACCESSORY DAY'S CALL (GDD §3.2, ruled). THE FOURTH HEADLINE, AND IT HAD TO
