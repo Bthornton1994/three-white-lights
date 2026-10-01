@@ -349,7 +349,10 @@ const PINNED = Object.freeze({
   // the real phone inspector browser driver. The independent backend review
   // and state note are also restored tracked prose. The independently reviewed
   // e57d7ffe backend artifact adds one prose path: 453 sources, same scope.
-  SCANNED_FILES: 453,
+  // The rollout adds 17 tracked text inputs: admission/module/tests,
+  // supervised operators/constants and redacted operations/evidence files.
+  // Two JPG captures are binary and remain outside this text census.
+  SCANNED_FILES: 470,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -408,7 +411,8 @@ const PINNED = Object.freeze({
   // Native production boundary and web replay/repository/result-sheet cases.
   // Published source already contains 120 test paths; the preceding scanned
   // file equality masked this count's outdated pin until both were measured.
-  TEST_FILES: 120,
+  // Admission plus operator-auth and current-key wrapper regression tests.
+  TEST_FILES: 123,
 });
 
 /**

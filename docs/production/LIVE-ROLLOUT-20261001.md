@@ -17,7 +17,7 @@ The owner authorized finishing the live backend rollout in the existing Supabase
 | Owner | Existing confirmed owner account enrolled; unrelated shared Auth metadata preserved |
 | Current keys | Modern publishable/secret defaults supported; privileged keys remain server-only, legacy fallback supported |
 | Frontend | Sign-in-only invited-account UI; local build configured with this project's public URL/publishable key |
-| Temporary verifier | Version 9 contains only the retired handler; unauthenticated POST independently observed returning **410** |
+| Temporary verifier | Version 10 contains only the retired handler and immutable protocol constants; unauthenticated POST independently observed returning **410** |
 
 `TWL_ALLOWED_ORIGINS` is exactly:
 
@@ -51,7 +51,7 @@ The earlier [40-check result](evidence/live-rollout-20261001.json) and [capture]
 
 The staging source was reconstructed from PR #89 head `1954674cf30cd14c0e63887628ed6cdd0df516c1`. All 487 selected unchanged source/config/assets were copied only after matching their Git blob SHA. This avoided the old local checkout's missing Git objects, absent origin, and unrelated dirty/deleted files. The published changes are handpicked additions/edits against that exact remote parent.
 
-The deployed `twl-api` files were fetched back from Supabase: wrapper and domain match the reviewed source byte for byte. The checked-in Deno configuration was normalized to the deployed bytes (one redundant trailing newline removed). The domain manifest verifies all **57 inputs**, **231,901 bytes**, with the SHA below.
+The deployed `twl-api` files were fetched back from Supabase: wrapper and domain match the reviewed source byte for byte. The checked-in Deno configuration was normalized to the deployed bytes (one redundant trailing newline removed). The domain manifest verifies all **57 inputs**, **231,901 bytes**, with the SHA below. Historical executed operator hashes below bind to [commit `3ccf1c8`](https://github.com/Bthornton1994/three-white-lights/commit/3ccf1c8d0e1e91e18e6bab7d5f22a6c0cb15e2cc), where those exact source bytes remain available; later protocol-constant normalization is not represented as another proof or enrollment execution.
 
 | Source | SHA-256 |
 | --- | --- |
@@ -60,8 +60,10 @@ The deployed `twl-api` files were fetched back from Supabase: wrapper and domain
 | Deno configuration | `86e88128d08b93c2ef2a378776f0aee04008e9aa5e33fc036f33385634be91d4` |
 | Final live proof source, version 8 | `b723bedceb6346e7470c117e569040b3ee97585bddf954290c430f04d6e658cc` |
 | Native proof fixtures | `d224a7e6dfef53ce37c6e7abe6c8a37e9e8f979c1f55f0b8080cb060faec4e40` |
-| Owner enrollment operator | `596c1111ebaf32cc5fe2708de8851584d2d8dadd20dd3a06bc71683a68be2764` |
-| Retired operator handler | `cc6c3e2f0ddfc809bf8dbdb71d75dcdbbf1779f7c2444e2f74388110040c7cf0` |
+| Historical executed owner enrollment operator | `596c1111ebaf32cc5fe2708de8851584d2d8dadd20dd3a06bc71683a68be2764` |
+| Historical retired operator handler, version 9 | `cc6c3e2f0ddfc809bf8dbdb71d75dcdbbf1779f7c2444e2f74388110040c7cf0` |
+| Current retired handler, version 10 | `a0f1ba5938f84c738d267d35a6c5461ebe1b2a46e0bf0364aa392dae2034ae51` |
+| Current immutable operator protocol constants | `ef07645cb9cc9f2db951d089a8f511f9ed504ab1765fe05e0b40e62080448cd0` |
 | Closed-beta App | `6dea776581712904f8c244326dac8279c66084ea2dbddbd13214954c4dbbaf3e` |
 
 Independent read-only critics reviewed the additive SQL, authenticated wrapper, fresh beta admission, current key handling, operator authentication, cleanup, and minimal owner metadata update. The cleanup was corrected to attempt every known account even if discovery or an individual deletion failed. The enrollment operation was corrected to PUT only `twl_access`, preserving concurrent unrelated metadata. The final reviewer reran 22 boundary tests and found no blocker. A final tuple `as const` annotation changed TypeScript inference only; that exact source was deployed for the final proof.
@@ -69,6 +71,10 @@ Independent read-only critics reviewed the additive SQL, authenticated wrapper, 
 Focused verification passed: root strict typecheck; strict production/edge typechecks; 22 identity/operator/key tests; 13 actual-migration SQL/HTTP tests; 70 browser unit tests; browser test typecheck; production build; generated-bundle check. The older identity-only enrollment behavior was restored temporarily for a regression check and produced six expected failures before the fixed source was restored. Tests do not assert only their own implementation.
 
 Local Chromium exited with SIGSEGV before loading the app, so that attempt supplies no browser pass. The current PR's `production-web` workflow provisions Chromium and supplies the browser/mobile controls and art evidence; its exact-head status and the merge gate are linked from PR #89. Do not merge while either required gate is red.
+
+The first exact-head CI run at `3ccf1c8` passed the production browser/mobile story and original-art archive. Its full suites passed 3,988 tests and reported five audit-inventory failures for the new files: tracked-text/test-file counts, the two JPG evidence captures, retained native fixture citations, and bare operator protocol values. The correction keeps the audit domain intact: it registers one immutable local protocol-constants home, replaces operator literals with the same values, and updates exact reviewed inventories. The active API and 57-input bundle remain byte for byte unchanged. Root strict typecheck and all 78 focused numeric-audit/identity/operator/key tests passed after normalization. Current full CI results are linked from the PR.
+
+An independent critic expanded the named constants and verified all three normalized operator bodies are equivalent to their historical reviewed versions. The normalized retired handler was separately executed with environment and network access set to throw: OPTIONS returned 204, POST/GET returned 410, with zero privileged access. Only that retired handler was redeployed, as version 10; its handler/constants/configuration were fetched back and matched exactly. The proof and enrollment operators remain retired. The final non-`twl_` public catalog fingerprints were repeated after the live proof and retirement and still match the original baseline; the exact results are appended to the cleanup record. The original 44-check result and captures remain unchanged.
 
 ## Release boundary
 

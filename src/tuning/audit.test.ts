@@ -970,6 +970,7 @@ describe('the registered allowlist', () => {
         // Build infrastructure and deployment limits are not feel knobs.
         'web/releaseConfig.ts',
         'src/production/productionTuning.ts',
+        'supabase/verification/rolloutLimits.ts',
         'src/art/lifterSprite.ts',
         'src/art/palette.ts',
         'src/art/plates.ts',

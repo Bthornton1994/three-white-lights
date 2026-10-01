@@ -253,6 +253,11 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     kind: 'data',
     why: 'Deployment-boundary request limits, replay bounds, UTC conversion and idempotency protocol parameters.',
   }),
+  'supabase/verification/rolloutLimits.ts': Object.freeze({
+    role: 'constants',
+    kind: 'local',
+    why: 'Supervised operator HTTP statuses, request/cleanup deadlines, hash formatting, paging and deliberately forged verification inputs; these do not tune game mechanics.',
+  }),
   'src/shell/shellTuning.ts': Object.freeze({
     role: 'constants',
     kind: 'feel',

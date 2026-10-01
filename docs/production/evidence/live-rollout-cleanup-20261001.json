@@ -65,5 +65,18 @@
     "message": "Rollout verification endpoint retired.",
     "deployedHandlerMatches": true,
     "privilegedCalls": false
+  },
+  "finalCatalogAfterProofAndRetirement": {
+    "existing_public_relations_hash": "f1278e9940f2130f495c36b27b61f752",
+    "existing_public_functions_hash": "5bca307c9758143f36e088d1afd54790"
+  },
+  "retirementAfterAuditNormalization": {
+    "version": 10,
+    "verifyJwt": false,
+    "deployedHandlerAndConstantsMatch": true,
+    "httpStatus": 410,
+    "privilegedCalls": false,
+    "handlerSha256": "a0f1ba5938f84c738d267d35a6c5461ebe1b2a46e0bf0364aa392dae2034ae51",
+    "limitsSha256": "ef07645cb9cc9f2db951d089a8f511f9ed504ab1765fe05e0b40e62080448cd0"
   }
 }

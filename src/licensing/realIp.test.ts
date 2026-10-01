@@ -1309,6 +1309,8 @@ describe('the reviewable citation list', () => {
       'src/game/rpe.ts',
       // The edge bundle retains the same published chart-source URLs.
       'supabase/functions/twl-api/domain.js',
+      // Supervised native replay fixtures retain the same published chart URLs.
+      'supabase/verification/fixtures.js',
     ]);
     // ...and at `prose` position, pinned BY FILE for the same reason and in the
     // same shape: an exact list in both directions, one entry per row rather
