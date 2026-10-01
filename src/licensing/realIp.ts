@@ -1746,7 +1746,7 @@ export function formatCitations(rows: readonly CitationRow[]): string {
  * looking for a bug in the scan.)
  */
 export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
-  { file: '.github/workflows/production-web.yml', name: 'Supabase', where: 'code', count: 4 },
+  { file: '.github/workflows/production-web.yml', name: 'Supabase', where: 'code', count: 9 },
   { file: '.gitignore', name: 'Supabase', where: 'code', count: 2 },
   { file: 'BUILD_PROMPT_CLAUDE.md', name: 'Genesis', where: 'prose', count: 1 },
   { file: 'BUILD_PROMPT_CLAUDE.md', name: 'SNES', where: 'prose', count: 1 },
