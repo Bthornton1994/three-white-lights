@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react';
 import { RELEASE_CONFIG } from './releaseConfig.ts';
 
 export default defineConfig({
+  // Shared pure source uses the browser contract in a web-only checkout.
+  tsconfig: fileURLToPath(new URL('./tsconfig.json', import.meta.url)),
   // Fragment routes require no HTML fallback for missing assets.
   appType: 'mpa',
   plugins: [react()],

@@ -1111,7 +1111,9 @@ const PURCHASED_DAY_SCAN = {
    * answer this pin exists to make somebody produce rather than assume.
    */
   /** 13 -> 14 with the shared motion primitive in `src/ui/`. */
-  SOURCE_DIRECTORIES: 14,
+  // The browser facility port and authoritative production boundary add two
+  // directories; the recursive scan continues to reach every source directory.
+  SOURCE_DIRECTORIES: 16,
 
   /**
    * The files that currently contain at least one matching declaration, as
@@ -1132,6 +1134,11 @@ const PURCHASED_DAY_SCAN = {
     'empire/engagement.ts',
     'empire/expansion.ts',
     'empire/reputation.ts',
+    'facility/empireCore.ts',
+    'facility/empireInvariant.ts',
+    'facility/expansion.ts',
+    'facility/reputation.ts',
+    'facility/sessions.ts',
     'game/currencyProvenance.ts',
     'game/progression.ts',
     'game/streak.ts',
@@ -1152,9 +1159,11 @@ const PURCHASED_DAY_SCAN = {
    * when GDD §5's day anchor added five declarations to `empire/engagement.ts`,
    * a file the purchase word had not previously reached.)
    */
-  COVERAGE_FOUND: [99, 11] as readonly [number, number],
-  PURCHASE_WORD_FOUND: [68, 11] as readonly [number, number],
-  CREDIT_PATH_FOUND: [69, 11] as readonly [number, number],
+  // Re-measured after the facility port: three equipment-report declarations
+  // and five files join the broader predicates; the narrow predicate stays put.
+  COVERAGE_FOUND: [102, 16] as readonly [number, number],
+  PURCHASE_WORD_FOUND: [71, 16] as readonly [number, number],
+  CREDIT_PATH_FOUND: [72, 16] as readonly [number, number],
   NARROW_FOUND: [18, 3] as readonly [number, number],
 } as const;
 
@@ -1276,9 +1285,9 @@ const COVERED_DAY_SYMBOL_SCAN = {
 
   /**
    * The union of both passes, which is what `COVERED_DAY_TOUCHING_FUNCTIONS` is
-   * asserted equal to. 88 textual + 9 symbol-only = 97.
+   * asserted equal to. 102 textual + 9 symbol-only = 111.
    */
-  UNION_FOUND: 108,
+  UNION_FOUND: 111,
 
   /**
    * WHAT THIS PASS STILL DOES NOT SEE, pinned as a red line rather than implied
@@ -1949,6 +1958,11 @@ describe('nothing can award a purchased covered day, and that is enforced rather
       'empire/engagement.ts',
       'empire/expansion.ts',
       'empire/reputation.ts',
+      'facility/empireCore.ts',
+      'facility/empireInvariant.ts',
+      'facility/expansion.ts',
+      'facility/reputation.ts',
+      'facility/sessions.ts',
       'game/currencyProvenance.ts',
       'game/streakSweep.ts',
       'tuning/audit.ts',

@@ -734,6 +734,14 @@ export const COVERED_DAY_TOUCHING_FUNCTIONS: readonly string[] = [
   'coveredDayPurchaseDays',
   'purchaseArrivalOf',
 
+  // ---- facility/sessions.ts -----------------------------------------------
+  // These describe equipment purchases and the pure facility schedule's
+  // report. Reviewed currency vocabulary: their module imports the facility
+  // ladder and accrual helpers, not the covered-day credit machinery.
+  'GymPurchase',
+  'GymRun',
+  'runGym',
+
   // ---- empire/empireCore.ts ------------------------------------------------
   // MOSTLY NOT ABOUT COVERED DAYS. `src/empire/` is GDD §5's idle layer, built
   // by a parallel session, and it carries its own purchasable-versus-earned

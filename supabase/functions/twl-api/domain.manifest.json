@@ -52,7 +52,7 @@
     "src/game/sessionServer.ts": "5af58256998b5e647b50cc695172c83dbd678ad6e2a4a25c9e7c89367bf55096",
     "src/game/sessionTuning.ts": "f5ffd7eff65a90109b9b13dc3fac13aec519757b9ddbe7e84f389812e6c06aa3",
     "src/game/streak.ts": "d70f1a99b4d8a7a6f9da04589f96b59b33580df5a4d049b5a912a91a3ee6d815",
-    "src/game/streakEntitlement.ts": "3c8984b3f91323b192830a727106b39c12fb9c4a42196bb856e9cf6ce1c51782",
+    "src/game/streakEntitlement.ts": "cd6e594d37e779be49852023134b6bca84a5cf4aeff5d2c431f6cf2fc01a8360",
     "src/production/clock.ts": "d7ba3b216453edb6030dd8e6dea4330051236806900c807360afb8063effe54e",
     "src/production/edgeEntry.ts": "b6e8564ac6fc1be06f7deb79aa555b9b9e0ffd2cb67d180aab419a5e9b65b11a",
     "src/production/evidenceReplay.ts": "353182c5e210610cb6f9c075b7425e3259280aafd77c31ac89cad1a1227dbd2c",

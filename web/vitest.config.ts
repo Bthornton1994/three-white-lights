@@ -8,6 +8,8 @@ const deps = fileURLToPath(new URL('./node_modules', import.meta.url));
 
 export default defineConfig({
   root: repo,
+  // Browser cases and shared pure source must not inherit the native app config.
+  tsconfig: fileURLToPath(new URL('./tsconfig.test.json', import.meta.url)),
   resolve: {
     alias: {
       '@': `${repo}/src`,

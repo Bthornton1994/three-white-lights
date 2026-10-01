@@ -1135,7 +1135,9 @@ const GUARANTEE_COVERAGE = {
   // nearest-neighbour Skia upscale. The composition paragraph that used
   // a capitalised-absolute no longer trips the heuristic. No tagged
   // guarantee moved.
-  TREE_WIDE: 314,
+  // 314 -> 315 with facility/ladderView.ts's inherited paragraph about the
+  // developer clock control. The formal guarantee scope and tag set stay put.
+  TREE_WIDE: 315,
 } as const;
 
 // ---------------------------------------------------------------------------

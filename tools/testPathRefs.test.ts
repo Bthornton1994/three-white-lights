@@ -347,8 +347,9 @@ const PINNED = Object.freeze({
   // Production browser, server, edge sources and scripts. The real Git index
   // now includes the account browser runner, its loopback SQL fixture and
   // the real phone inspector browser driver. The independent backend review
-  // and state note are also restored tracked prose: 452 sources, same scope.
-  SCANNED_FILES: 452,
+  // and state note are also restored tracked prose. The independently reviewed
+  // e57d7ffe backend artifact adds one prose path: 453 sources, same scope.
+  SCANNED_FILES: 453,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.

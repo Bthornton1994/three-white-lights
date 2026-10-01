@@ -30,6 +30,9 @@ jobs:
             docs/design/evidence/
             web/public/athlete/
             web/public/empire-art/
+            .gauntlet/shots/cutin/
+            .gauntlet/evidence/production/
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
 
