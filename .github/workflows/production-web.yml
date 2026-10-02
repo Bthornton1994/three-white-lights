@@ -176,6 +176,7 @@ jobs:
             assert.ok(artifacts.has(path), label + ' is missing from the release inventory: ' + path);
             return path;
           }
+          const HOSTED_CLOUDFLARE_SCRIPT = `(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'<ray>',t:'<timestamp>'};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();`;
           function shellSignature(markup, label) {
             assert.match(markup, /<!doctype\s+html>/i, label + ' is missing its doctype.');
             const htmlTag = markup.match(/<html\b([^>]*)>/i);
@@ -190,9 +191,18 @@ jobs:
             const scripts = [...markup.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)];
             assert.equal((markup.match(/<script\b/gi) || []).length, scripts.length, label + ' contains an unclosed script.');
             const references = [];
+            let hostedInlineScripts = 0;
             for (const match of scripts) {
               const attrs = attributes(match[1]);
-              assert.equal((match[2] || '').trim(), '', label + ' contains inline executable code.');
+              const inline = (match[2] || '').trim();
+              if (inline) {
+                assert.equal(label, 'Hosted entry', label + ' contains inline executable code.');
+                assert.equal(attrs.src, undefined, 'Hosted entry combines inline and external script code.');
+                assert.equal(++hostedInlineScripts, 1, 'Hosted entry contains duplicate inline platform scripts.');
+                const normalized = inline.replace(/r:'[a-f0-9]{16}',t:'[A-Za-z0-9+/]+={0,2}'/, "r:'<ray>',t:'<timestamp>'");
+                assert.equal(normalized, HOSTED_CLOUDFLARE_SCRIPT, 'Hosted entry contains unrecognized inline code.');
+                continue;
+              }
               const path = assetPath(attrs.src, 'Script');
               assert.match(path, /\.js$/i, 'Executable entry is not JavaScript.');
               assert.equal(attrs.type, 'module', 'Application script must remain an ES module.');
