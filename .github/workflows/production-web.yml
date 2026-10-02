@@ -117,16 +117,17 @@ jobs:
           }
           assert.ok(html, 'The hosted entry document is empty.');
           const application = artifactRows.filter(file => /\.js$/i.test(file.path)).map(file => hostedScripts.get(file.path)).join('\n');
-          assert.ok(application.includes('https://qbvmtgaphvpwpwemplje.supabase.co'));
+          assert.ok(application.includes(projectUrl));
           assert.ok(!application.includes('browser-contract.invalid'));
           assert.ok(!/sb_secret_[A-Za-z0-9_-]{8,}/.test(application));
           const publicKeys = [...new Set([...application.matchAll(/sb_publishable_[A-Za-z0-9_-]+/g)].map(match => match[0]))];
           assert.equal(publicKeys.length, 1, 'Hosted frontend must contain exactly one public Supabase key.');
           const key = publicKeys[0];
+          const projectUrl = 'https://qbvmtgaphvpwpwemplje.supabase.co';
 
           execFileSync('npm', ['--prefix', 'web', 'run', 'build'], {
             stdio: 'inherit',
-            env: { ...process.env, VITE_SUPABASE_URL: 'https://qbvmtgaphvpwpwemplje.supabase.co', VITE_SUPABASE_PUBLISHABLE_KEY: key },
+            env: { ...process.env, VITE_SUPABASE_URL: projectUrl, VITE_SUPABASE_PUBLISHABLE_KEY: key },
           });
           async function walk(directory, prefix = '') {
             const files = [];
@@ -202,9 +203,9 @@ jobs:
           const expectedShell = shellSignature(await readFile('web/dist/index.html', 'utf8'), 'Rebuilt entry');
           const hostedShell = shellSignature(html, 'Hosted entry');
           assert.deepEqual(hostedShell, expectedShell, 'Hosted HTML changed the app shell or its verified asset references.');
-          const auth = await fetch('https://qbvmtgaphvpwpwemplje.supabase.co/auth/v1/settings', { headers: { apikey: key }, signal: AbortSignal.timeout(15_000) });
+          const auth = await fetch(projectUrl + '/auth/v1/settings', { headers: { apikey: key }, signal: AbortSignal.timeout(15_000) });
           assert.equal(auth.status, 200, 'Hosted public configuration cannot reach live Auth.');
-          const api = 'https://qbvmtgaphvpwpwemplje.supabase.co/functions/v1/twl-api';
+          const api = projectUrl + '/functions/v1/twl-api';
           const preflight = allowedOrigin => fetch(api, { method: 'OPTIONS', headers: { Origin: allowedOrigin, 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'authorization,apikey,content-type' }, signal: AbortSignal.timeout(15_000) });
           const allowed = await preflight(origin);
           assert.equal(allowed.status, 204);
