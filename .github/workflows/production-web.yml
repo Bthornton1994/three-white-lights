@@ -116,6 +116,7 @@ jobs:
             }));
           }
           assert.ok(html, 'The hosted entry document is empty.');
+          const projectUrl = 'https://qbvmtgaphvpwpwemplje.supabase.co';
           const application = artifactRows.filter(file => /\.js$/i.test(file.path)).map(file => hostedScripts.get(file.path)).join('\n');
           assert.ok(application.includes(projectUrl));
           assert.ok(!application.includes('browser-contract.invalid'));
@@ -123,7 +124,6 @@ jobs:
           const publicKeys = [...new Set([...application.matchAll(/sb_publishable_[A-Za-z0-9_-]+/g)].map(match => match[0]))];
           assert.equal(publicKeys.length, 1, 'Hosted frontend must contain exactly one public Supabase key.');
           const key = publicKeys[0];
-          const projectUrl = 'https://qbvmtgaphvpwpwemplje.supabase.co';
 
           execFileSync('npm', ['--prefix', 'web', 'run', 'build'], {
             stdio: 'inherit',
